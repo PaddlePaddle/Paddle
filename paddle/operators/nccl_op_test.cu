@@ -126,213 +126,40 @@ class NCCLTester : public ::testing::Test {
   std::mutex mu;
 };
 
-// // ncclInitOp with desc
-// TEST(NCCL, ncclInitOp) {
-//   std::unique_ptr<f::OpDescBind> op_desc(new f::OpDescBind);
+// ncclInitOp with desc
+TEST(NCCL, ncclInitOp) {
+  std::unique_ptr<f::OpDescBind> op_desc(new f::OpDescBind);
 
-//   op_desc->SetType("ncclInit");
-//   op_desc->SetOutput("Communicator", {"x1"});
-//   op_desc->SetAttr("gpus", {gpu_list});
+  op_desc->SetType("ncclInit");
+  op_desc->SetOutput("Communicator", {"x1"});
+  op_desc->SetAttr("gpus", {gpu_list});
 
-//   f::Scope g_scope;
-//   std::unique_ptr<p::DeviceContext> ctx(new
-//   p::CPUDeviceContext(p::CPUPlace()));
+  f::Scope g_scope;
+  std::unique_ptr<p::DeviceContext> ctx(new p::CPUDeviceContext(p::CPUPlace()));
 
-//   auto *var = g_scope.Var("x1");
-//   var->GetMutable<p::Communicator>();
+  auto *var = g_scope.Var("x1");
+  var->GetMutable<p::Communicator>();
 
-//   auto op = f::OpRegistry::CreateOp(*op_desc);
-//   VLOG(1) << "invoke NCCLInitOp.";
-//   op->Run(g_scope, *ctx.get());
-//   VLOG(1) << "NCCLInitOp finished.";
-// }
+  auto op = f::OpRegistry::CreateOp(*op_desc);
+  VLOG(1) << "invoke NCCLInitOp.";
+  op->Run(g_scope, *ctx.get());
+  VLOG(1) << "NCCLInitOp finished.";
+}
 
-// // ncclAllReduceOp with desc
-// TEST_F(NCCLTester, ncclAllReduceOp) {
-//   std::unique_ptr<f::OpDescBind> op2(new f::OpDescBind);
-//   op2->SetType("ncclAllReduce");
-//   op2->SetInput("X", {"st"});
-//   op2->SetInput("Communicator", {"comm"});
-//   op2->SetOutput("Out", {"rt"});
-
-//   std::vector<f::Scope *> dev_scopes;
-
-//   std::vector<std::thread> ths;
-
-//   for (size_t i = 0; i < gpu_list.size(); ++i) {
-//     dev_scopes.emplace_back(&g_scope.NewScope());
-//     std::thread th(&NCCLTester::PerThreadProgram<float>, this, gpu_list[i],
-//                    *op2.get(), dev_scopes[i]);
-//     ths.emplace_back(std::move(th));
-//   }
-
-//   for (size_t i = 0; i < gpu_list.size(); ++i) {
-//     ths[i].join();
-//   }
-
-//   // check results
-//   float result = std::accumulate(gpu_list.begin(), gpu_list.end(), 0);
-
-//   for (size_t i = 0; i < dev_scopes.size(); ++i) {
-//     p::CPUPlace cpu_place;
-//     p::GPUPlace gpu_place(gpu_list[i]);
-
-//     auto &recv_tensor = dev_scopes[i]->FindVar("rt")->Get<f::LoDTensor>();
-//     auto *rt = recv_tensor.data<float>();
-//     auto *result_tensor =
-//     dev_scopes[i]->Var("ct")->GetMutable<f::LoDTensor>();
-//     result_tensor->Resize(kDims);
-//     auto *ct = result_tensor->mutable_data<float>(cpu_place);
-
-//     paddle::memory::Copy(
-//         cpu_place, ct, p::GPUPlace(gpu_list[i]), rt,
-//         recv_tensor.numel() * sizeof(float),
-//         static_cast<p::CUDADeviceContext *>(dev_ctxs[i])->stream());
-
-//     for (size_t j = 0; j < f::product(kDims); ++j) {
-//       ASSERT_NEAR(ct[j], result, 1e-5);
-//     }
-//   }
-// }
-
-// // ncclAReduceOp with desc
-// TEST_F(NCCLTester, ncclReduceOp) {
-//   std::unique_ptr<f::OpDescBind> op2(new f::OpDescBind);
-//   const int kRoot = 0;
-//   op2->SetType("ncclReduce");
-//   op2->SetInput("X", {"st"});
-//   op2->SetInput("Communicator", {"comm"});
-//   op2->SetOutput("Out", {"rt"});
-//   op2->SetAttr("root", {kRoot});
-
-//   std::vector<f::Scope *> dev_scopes;
-
-//   std::vector<std::thread> ths;
-
-//   for (size_t i = 0; i < gpu_list.size(); ++i) {
-//     dev_scopes.emplace_back(&g_scope.NewScope());
-//     std::thread th(&NCCLTester::PerThreadProgram<float>, this, gpu_list[i],
-//                    *op2.get(), dev_scopes[i]);
-//     ths.emplace_back(std::move(th));
-//   }
-
-//   for (size_t i = 0; i < gpu_list.size(); ++i) {
-//     ths[i].join();
-//   }
-
-//   // check results on
-//   float result = std::accumulate(gpu_list.begin(), gpu_list.end(), 0);
-
-//   p::CPUPlace cpu_place;
-//   p::GPUPlace gpu_place(gpu_list[kRoot]);
-
-//   auto &recv_tensor = dev_scopes[kRoot]->FindVar("rt")->Get<f::LoDTensor>();
-//   auto *rt = recv_tensor.data<float>();
-//   auto *result_tensor =
-//       dev_scopes[kRoot]->Var("ct")->GetMutable<f::LoDTensor>();
-//   result_tensor->Resize(kDims);
-//   auto *ct = result_tensor->mutable_data<float>(cpu_place);
-
-//   paddle::memory::Copy(
-//       cpu_place, ct, p::GPUPlace(gpu_list[kRoot]), rt,
-//       recv_tensor.numel() * sizeof(float),
-//       static_cast<p::CUDADeviceContext *>(dev_ctxs[kRoot])->stream());
-
-//   for (int j = 0; j < f::product(kDims); ++j) {
-//     ASSERT_NEAR(ct[j], result, 1e-5);
-//   }
-// }
-
-// // // ncclBcastOp with desc
-// TEST_F(NCCLTester, ncclBcastOp) {
-//   std::unique_ptr<f::OpDescBind> op2(new f::OpDescBind);
-//   const int kRoot = 5;
-//   op2->SetType("ncclBcast");
-//   op2->SetInput("X", {"st"});
-//   op2->SetInput("Communicator", {"comm"});
-//   op2->SetOutput("Out", {"rt"});
-//   op2->SetAttr("root", {kRoot});
-
-//   std::vector<f::Scope *> dev_scopes;
-
-//   std::vector<std::thread> ths;
-
-//   for (size_t i = 0; i < gpu_list.size(); ++i) {
-//     dev_scopes.emplace_back(&g_scope.NewScope());
-//     std::thread th(&NCCLTester::PerThreadProgram<float>, this, gpu_list[i],
-//                    *op2.get(), dev_scopes[i]);
-//     ths.emplace_back(std::move(th));
-//   }
-
-//   for (size_t i = 0; i < gpu_list.size(); ++i) {
-//     ths[i].join();
-//   }
-
-//   const int idx = 1;
-//   // check results on
-//   float result = kRoot;
-
-//   p::CPUPlace cpu_place;
-//   p::GPUPlace gpu_place(gpu_list[idx]);
-
-//   auto &recv_tensor = dev_scopes[idx]->FindVar("rt")->Get<f::LoDTensor>();
-//   auto *rt = recv_tensor.data<float>();
-//   auto *result_tensor =
-//   dev_scopes[idx]->Var("ct")->GetMutable<f::LoDTensor>();
-//   result_tensor->Resize(kDims);
-//   auto *ct = result_tensor->mutable_data<float>(cpu_place);
-
-//   paddle::memory::Copy(
-//       cpu_place, ct, p::GPUPlace(gpu_list[idx]), rt,
-//       recv_tensor.numel() * sizeof(float),
-//       static_cast<p::CUDADeviceContext *>(dev_ctxs[idx])->stream());
-
-//   for (size_t j = 0; j < f::product(kDims); ++j) {
-//     ASSERT_NEAR(ct[j], result, 1e-5);
-//   }
-// }
-
-// joint ncclBcastOp and ncclReduceOp
-TEST_F(NCCLTester, MultipleOp) {
-  const int kRoot = 0;
-  std::unique_ptr<f::OpDescBind> op1(new f::OpDescBind);
-  op1->SetType("ncclReduce");
-  op1->SetInput("X", {"st"});
-  op1->SetInput("Communicator", {"comm"});
-  op1->SetOutput("Out", {"rt"});
-  op1->SetAttr("root", {kRoot});
-
+// ncclAllReduceOp with desc
+TEST_F(NCCLTester, ncclAllReduceOp) {
   std::unique_ptr<f::OpDescBind> op2(new f::OpDescBind);
-  op2->SetType("ncclBcast");
-  op2->SetInput("X", {"rt"});
+  op2->SetType("ncclAllReduce");
+  op2->SetInput("X", {"st"});
   op2->SetInput("Communicator", {"comm"});
-  op2->SetOutput("Out", {"out"});
-  op2->SetAttr("root", {kRoot});
+  op2->SetOutput("Out", {"rt"});
 
   std::vector<f::Scope *> dev_scopes;
-  // for (size_t i = 0; i < dev_scopes.size(); ++i) {
-  //   dev_scopes[i]->Var("out")->GetMutable<f::LoDTensor>();
-  // }
 
   std::vector<std::thread> ths;
 
-  // run Reduce
   for (size_t i = 0; i < gpu_list.size(); ++i) {
     dev_scopes.emplace_back(&g_scope.NewScope());
-    std::thread th(&NCCLTester::PerThreadProgram<float>, this, gpu_list[i],
-                   *op1.get(), dev_scopes[i]);
-    ths.emplace_back(std::move(th));
-  }
-
-  for (size_t i = 0; i < gpu_list.size(); ++i) {
-    ths[i].join();
-  }
-
-  ths.clear();
-
-  // run Bcast
-  for (size_t i = 0; i < gpu_list.size(); ++i) {
-    dev_scopes[i]->Var("out")->GetMutable<f::LoDTensor>();
     std::thread th(&NCCLTester::PerThreadProgram<float>, this, gpu_list[i],
                    *op2.get(), dev_scopes[i]);
     ths.emplace_back(std::move(th));
@@ -360,9 +187,105 @@ TEST_F(NCCLTester, MultipleOp) {
         recv_tensor.numel() * sizeof(float),
         static_cast<p::CUDADeviceContext *>(dev_ctxs[i])->stream());
 
-    for (int j = 0; j < f::product(kDims); ++j) {
+    for (size_t j = 0; j < f::product(kDims); ++j) {
       ASSERT_NEAR(ct[j], result, 1e-5);
     }
+  }
+}
+
+// ncclAReduceOp with desc
+TEST_F(NCCLTester, ncclReduceOp) {
+  std::unique_ptr<f::OpDescBind> op2(new f::OpDescBind);
+  const int kRoot = 0;
+  op2->SetType("ncclReduce");
+  op2->SetInput("X", {"st"});
+  op2->SetInput("Communicator", {"comm"});
+  op2->SetOutput("Out", {"rt"});
+  op2->SetAttr("root", {kRoot});
+
+  std::vector<f::Scope *> dev_scopes;
+
+  std::vector<std::thread> ths;
+
+  for (size_t i = 0; i < gpu_list.size(); ++i) {
+    dev_scopes.emplace_back(&g_scope.NewScope());
+    std::thread th(&NCCLTester::PerThreadProgram<float>, this, gpu_list[i],
+                   *op2.get(), dev_scopes[i]);
+    ths.emplace_back(std::move(th));
+  }
+
+  for (size_t i = 0; i < gpu_list.size(); ++i) {
+    ths[i].join();
+  }
+
+  // check results on
+  float result = std::accumulate(gpu_list.begin(), gpu_list.end(), 0);
+
+  p::CPUPlace cpu_place;
+  p::GPUPlace gpu_place(gpu_list[kRoot]);
+
+  auto &recv_tensor = dev_scopes[kRoot]->FindVar("rt")->Get<f::LoDTensor>();
+  auto *rt = recv_tensor.data<float>();
+  auto *result_tensor =
+      dev_scopes[kRoot]->Var("ct")->GetMutable<f::LoDTensor>();
+  result_tensor->Resize(kDims);
+  auto *ct = result_tensor->mutable_data<float>(cpu_place);
+
+  paddle::memory::Copy(
+      cpu_place, ct, p::GPUPlace(gpu_list[kRoot]), rt,
+      recv_tensor.numel() * sizeof(float),
+      static_cast<p::CUDADeviceContext *>(dev_ctxs[kRoot])->stream());
+
+  for (int j = 0; j < f::product(kDims); ++j) {
+    ASSERT_NEAR(ct[j], result, 1e-5);
+  }
+}
+
+// // ncclBcastOp with desc
+TEST_F(NCCLTester, ncclBcastOp) {
+  std::unique_ptr<f::OpDescBind> op2(new f::OpDescBind);
+  const int kRoot = 5;
+  op2->SetType("ncclBcast");
+  op2->SetInput("X", {"st"});
+  op2->SetInput("Communicator", {"comm"});
+  op2->SetOutput("Out", {"rt"});
+  op2->SetAttr("root", {kRoot});
+
+  std::vector<f::Scope *> dev_scopes;
+
+  std::vector<std::thread> ths;
+
+  for (size_t i = 0; i < gpu_list.size(); ++i) {
+    dev_scopes.emplace_back(&g_scope.NewScope());
+    std::thread th(&NCCLTester::PerThreadProgram<float>, this, gpu_list[i],
+                   *op2.get(), dev_scopes[i]);
+    ths.emplace_back(std::move(th));
+  }
+
+  for (size_t i = 0; i < gpu_list.size(); ++i) {
+    ths[i].join();
+  }
+
+  const int idx = 1;
+  // check results on
+  float result = kRoot;
+
+  p::CPUPlace cpu_place;
+  p::GPUPlace gpu_place(gpu_list[idx]);
+
+  auto &recv_tensor = dev_scopes[idx]->FindVar("rt")->Get<f::LoDTensor>();
+  auto *rt = recv_tensor.data<float>();
+  auto *result_tensor = dev_scopes[idx]->Var("ct")->GetMutable<f::LoDTensor>();
+  result_tensor->Resize(kDims);
+  auto *ct = result_tensor->mutable_data<float>(cpu_place);
+
+  paddle::memory::Copy(
+      cpu_place, ct, p::GPUPlace(gpu_list[idx]), rt,
+      recv_tensor.numel() * sizeof(float),
+      static_cast<p::CUDADeviceContext *>(dev_ctxs[idx])->stream());
+
+  for (size_t j = 0; j < f::product(kDims); ++j) {
+    ASSERT_NEAR(ct[j], result, 1e-5);
   }
 }
 
