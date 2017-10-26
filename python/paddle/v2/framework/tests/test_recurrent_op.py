@@ -92,8 +92,8 @@ class RecurrentOpTest(unittest.TestCase):
        - h
     '''
 
-    input_dim = 30
-    batch_size = 50
+    input_dim = 10
+    batch_size = 12
     weight_dim = 15
     sent_len = 11
 
@@ -101,20 +101,6 @@ class RecurrentOpTest(unittest.TestCase):
         self.py_rnn = PySimpleRNN(self.input_dim, self.batch_size,
                                   self.weight_dim, self.sent_len)
         self.output = self.create_rnn_op()
-
-    def forward(self):
-        place = core.CPUPlace()
-
-        feed_map = {}
-        feed_map["x"] = create_tensor(self.py_rnn.x, place)
-        feed_map["W"] = create_tensor(self.py_rnn.W, place)
-        feed_map["U"] = create_tensor(self.py_rnn.U, place)
-        feed_map["h_boot"] = create_tensor(self.py_rnn.h_boot, place)
-
-        exe = Executor(place)
-        out = exe.run(g_program, feed=feed_map, fetch_list=[self.output])
-
-        return np.array(out[0])
 
     def create_rnn_op(self):
         x = data(
@@ -145,6 +131,20 @@ class RecurrentOpTest(unittest.TestCase):
 
         return rnn()
 
+    def forward(self):
+        place = core.CPUPlace()
+
+        feed_map = {}
+        feed_map["x"] = create_tensor(self.py_rnn.x, place)
+        feed_map["W"] = create_tensor(self.py_rnn.W, place)
+        feed_map["U"] = create_tensor(self.py_rnn.U, place)
+        feed_map["h_boot"] = create_tensor(self.py_rnn.h_boot, place)
+
+        exe = Executor(place)
+        out = exe.run(g_program, feed=feed_map, fetch_list=[self.output])
+
+        return np.array(out[0])
+
     def test_forward(self):
         print 'test recurrent op forward'
         pd_output = self.forward()
@@ -154,6 +154,29 @@ class RecurrentOpTest(unittest.TestCase):
         print 'py_output', py_output
         self.assertEqual(pd_output.shape, py_output.shape)
         self.assertTrue(np.isclose(pd_output, py_output, rtol=0.1).all())
+
+    def get_numerical_gradient(self, delta=0.005):
+        py_output = self.py_rnn.forward()
+        dloss_dout = np.random.normal(size=py_output.shape).astype("float32")
+        feed_list = [
+            self.py_rnn.x, self.py_rnn.W, self.py_rnn.U, self.py_rnn.h_boot
+        ]
+        grad_list = [np.zeros_like(x) for x in feed_list]
+        for feed, grad in zip(feed_list, grad_list):
+            for f, g in np.nditer([feed, grad], op_flags=['readwrite']):
+                o = f
+                f[...] = o + delta
+                y_pos = self.forward()
+                f[...] = o - delta
+                y_neg = self.forward()
+                f[...] = o
+                dout_dfeed = (y_pos - y_neg) / delta / 2
+                g[...] = np.sum(dloss_dout * dout_dfeed)
+
+        return grad_list
+
+    def test_backward(self):
+        tmp = self.get_numerical_gradient()
 
 
 # class RecurrentGradientOpTest(unittest.TestCase):

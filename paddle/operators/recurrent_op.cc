@@ -41,7 +41,7 @@ void RecurrentAlgorithm::Run(const Scope& scope,
   InitMemories(step_scopes[0]);
 
   for (size_t step_id = 0; step_id < seq_len; step_id++) {
-    LOG(INFO) << "step " << step_id << " run";
+    VLOG(4) << "step " << step_id << " run";
     if (step_id > 0) {
       rnn::LinkMemories(step_scopes, arg_->states, step_id, -1);
     }
@@ -69,7 +69,7 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope,
     for (size_t i = step_scopes->size(); i < seq_len; ++i) {
       auto& step_scope = scope.NewScope();
       for (auto& var_name : *vars_) {
-        LOG(INFO) << "step " << i << " create " << var_name;
+        VLOG(5) << "step " << i << " create " << var_name;
         step_scope.Var(var_name);
       }
       step_scopes->emplace_back(&step_scope);

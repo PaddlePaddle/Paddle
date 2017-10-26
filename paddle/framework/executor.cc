@@ -90,7 +90,7 @@ std::unique_ptr<OperatorBase> create_op(const ProgramDesc& pdesc,
     } else {
       PADDLE_THROW("dynamic_cast<RecurrentOp*> fail");
     }
-    LOG(INFO) << "GO";
+    VLOG(3) << "GO";
   }
 
   return op;
@@ -119,7 +119,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
   }
 
   for (auto& op_desc : block.ops()) {
-    LOG(INFO) << op_desc.type();
+    VLOG(2) << op_desc.type();
     auto op = create_op(pdesc, op_desc);
     op->Run(local_scope, *device);
   }
@@ -127,12 +127,12 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
   for (auto& var : block.vars()) {
     std::set<std::string> name_to_print{"a", "b", "h_boot"};
     if (!var.persistable() && name_to_print.count(var.name())) {
-      LOG(INFO) << var.name();
+      VLOG(2) << var.name();
       auto* v = local_scope.Var(var.name());
       const float* f = v->GetMutable<LoDTensor>()->data<float>();
       const int64_t s = v->GetMutable<LoDTensor>()->numel();
       for (int i = 0; i < s; ++i) {
-        LOG(INFO) << f[i];
+        VLOG(10) << f[i];
       }
     }
   }
