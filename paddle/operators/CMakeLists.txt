@@ -82,7 +82,7 @@ function(op_library TARGET)
         # It's enough to just adding one operator to pybind
         file(APPEND ${pybind_file} "USE_OP(sigmoid);\n")
     endif()
-    
+
     # nccl_op contains several operators
     if ("${TARGET}" STREQUAL "nccl_op")
         set(pybind_flag 1)
@@ -132,6 +132,7 @@ set(DEPS_OPS
     pool_op
     pool_with_index_op
     nccl_op
+    sequence_conv_op
     lstm_op)
 
 
@@ -146,6 +147,7 @@ op_library(pool_with_index_op DEPS pooling)
 if(WITH_GPU)
 op_library(nccl_op DEPS nccl_common)
 endif()
+op_library(sequence_conv_op DEPS context_project)
 op_library(lstm_op DEPS sequence2batch lstm_compute)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
@@ -164,3 +166,4 @@ cc_test(dynamic_recurrent_op_test SRCS dynamic_recurrent_op_test.cc DEPS dynamic
 if(WITH_GPU)
   nv_test(nccl_op_test SRCS nccl_op_test.cu DEPS nccl_op gpu_info device_context)
 endif()
+cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)

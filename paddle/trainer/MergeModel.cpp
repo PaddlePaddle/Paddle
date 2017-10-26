@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/utils/PythonUtil.h"
 
 DEFINE_string(model_dir, "", "Directory for separated model files");
+DEFINE_string(config_file, "", "Config file for the model");
 DEFINE_string(model_file, "", "File for merged model file");
 
 using namespace paddle;  // NOLINT
@@ -28,7 +29,8 @@ using namespace std;     // NOLINT
 int main(int argc, char** argv) {
   initMain(argc, argv);
   initPython(argc, argv);
-  string confFile = TrainerConfigHelper::getConfigNameFromPath(FLAGS_model_dir);
+
+  string confFile = FLAGS_config_file;
 #ifndef PADDLE_WITH_CUDA
   FLAGS_use_gpu = false;
 #endif
