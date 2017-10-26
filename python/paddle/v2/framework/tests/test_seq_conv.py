@@ -20,8 +20,9 @@ class TestSeqProject(OpTest):
         # one level, batch size
         x = np.random.uniform(0.1, 1, [self.input_size[0],
                                        self.input_size[1]]).astype('float32')
-        w = np.random.uniform(
-            0.1, 1, [self.context_length, self.input_size[1]]).astype('float32')
+        w = np.random.uniform(0.1, 1, [
+            self.context_length * self.input_size[1], self.output_represention
+        ]).astype('float32')
 
         begin_pad = np.max([0, -self.context_start])
         end_pad = np.max([0, self.context_start + self.context_length - 1])
@@ -49,7 +50,8 @@ class TestSeqProject(OpTest):
             'padding_trainable': self.padding_trainable,
             'context_stride': self.context_stride
         }
-        out = np.zeros((self.input_size[0], 1)).astype('float32')
+        out = np.zeros(
+            (self.input_size[0], self.output_represention)).astype('float32')
         self.outputs = {'Out': out}
         self.compute()
 
@@ -95,13 +97,7 @@ class TestSeqProject(OpTest):
                 out[out_begin:out_end, j * self.input_size[1]:(j + 1) *
                     self.input_size[1]] += in_sub
 
-        filter_dim = filter.shape
-        output_dim = self.outputs['Out'].shape
-        filter.shape = filter_dim[0] * filter_dim[1]
-        self.outputs['Out'].shape = (output_dim[0], )
         np.dot(out, filter, out=self.outputs['Out'])
-        filter.shape = filter_dim
-        self.outputs['Out'].shape = output_dim
 
     def test_check_output(self):
         self.check_output()
@@ -166,6 +162,7 @@ class TestSeqProject(OpTest):
 
         self.input_size = [self.input_row, 23]
         self.lod = [[0, 4, 5, 8, self.input_row]]
+        self.output_represention = 8  # output feature size
 
 
 class TestSeqProjectCase1(TestSeqProject):
@@ -178,6 +175,7 @@ class TestSeqProjectCase1(TestSeqProject):
 
         self.input_size = [self.input_row, 23]
         self.lod = [[0, 4, 5, 8, self.input_row]]
+        self.output_represention = 8  # output feature size
 
 
 class TestSeqProjectCase2(TestSeqProject):
@@ -193,6 +191,7 @@ class TestSeqProjectCase2(TestSeqProject):
         del idx[0]
         self.lod = [[0] + np.sort(random.sample(idx, 8)).tolist() +
                     [self.input_size[0]]]
+        self.output_represention = 8  # output feature size
 
 
 if __name__ == '__main__':

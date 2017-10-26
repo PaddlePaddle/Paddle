@@ -23,31 +23,29 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-//    template <typename T, int MajorType = Eigen::RowMajor,
-//            typename IndexType = Eigen::DenseIndex>
-//    using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 /*
- * \brief SequenceProject projects features of context_length time-steps of each
- * instance.
- *
+ * \brief Context projection concatenate features in adjacent time steps in
+ * a sequence. The i-th row of the output is the concatenation of
+ * context_length rows of the input. The context_length rows are the
+ * consecutive rows from the i+shift_start row.
+
  * \param in            Input data.
- * \param inShape       The shape of Input data,
+ * \param Shape         The shape of Input data,
  *                      [minibatch, number_of_input_features].
- * \param inShape       A float LoDTensor.
+ * \param type          A float LoDTensor.
  *
  * \param padding_data  Padding data.
- * \param inShape       The shape of Padding data,
+ * \param Shape         The shape of Padding data,
  *                      [up_pad + down_pad, number_of_input_features].
- * \param inShape       A float LoDTensor.
+ * \param type          A float Tensor.
  *
  * \param col           Col data.
- * \param inShape       The shape of Col data,
- *                      [minibatch, 1].
- * \param inShape       A float LoDTensor.
+ * \param Shape         The shape of Col data,
+ *                      [minibatch, context_length * number_of_input_features].
+ * \param type           A float Tensor.
  *
  * For a mini-batch of 2 variable lengths sentences, containing 3, and 1
  * time-steps:
@@ -87,7 +85,7 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
  */
 
 template <typename Place, typename T>
-class SequenceProjectFunctor {
+class ContextProjectFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
                   framework::LoDTensor& in, framework::Tensor& padding_data,
@@ -147,8 +145,7 @@ class SequenceProjectFunctor {
                        /*stride_height*/ context_stride, /*stride_width*/ 1,
                        up_pad, down_pad, 0, 0);
           }
-          out_t.Resize(framework::make_ddim(
-              {sequence_height, context_length * sequence_width}));
+          out_t.Resize({sequence_height, context_length * sequence_width});
         }
       }
     }
@@ -162,8 +159,7 @@ class SequenceProjectFunctor {
           sequence_height = static_cast<int>(out_t.dims()[0]);
 
           // add up trainable data
-          out_t.Resize(framework::make_ddim(
-              {sequence_height * context_length, sequence_width}));
+          out_t.Resize({sequence_height * context_length, sequence_width});
 
           if (up_pad > 0) {  // add up pad
             int padding_rows = std::min(
@@ -223,8 +219,7 @@ class SequenceProjectFunctor {
               }
             }
           }
-          out_t.Resize(framework::make_ddim(
-              {sequence_height, context_length * sequence_width}));
+          out_t.Resize({sequence_height, context_length * sequence_width});
         }
       }
     }

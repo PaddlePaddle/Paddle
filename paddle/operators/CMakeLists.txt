@@ -128,7 +128,7 @@ op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
 op_library(sum_op DEPS net_op)
 op_library(pool_op DEPS pooling)
 op_library(pool_with_index_op DEPS pooling)
-op_library(sequence_conv_op DEPS sequence_project)
+op_library(sequence_conv_op DEPS context_project)
 op_library(lstm_op DEPS sequence2batch lstm_compute)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})

@@ -12,14 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/math/sequence_project.h"
+#define EIGEN_USE_GPU
+
+#include "paddle/operators/math/context_project.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
 
-template class SequenceProjectFunctor<platform::CPUPlace, float>;
-template class SequenceProjectFunctor<platform::CPUPlace, double>;
+template class ContextProjectFunctor<platform::GPUPlace, float>;
+template class ContextProjectFunctor<platform::GPUPlace, double>;
 
 }  // namespace math
 }  // namespace operators

@@ -15,20 +15,14 @@ limitations under the License. */
 #pragma once
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/math/context_project.h"
 #include "paddle/operators/math/math_function.h"
-#include "paddle/operators/math/sequence_project.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-// template <typename T, int MajorType = Eigen::RowMajor,
-//          typename IndexType = Eigen::DenseIndex>
-// using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
 class SequenceConvKernel : public framework::OpKernel<T> {
@@ -39,7 +33,7 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     auto filter = *context.Input<Tensor>("Filter");
 
     out->mutable_data<T>(context.GetPlace());
-    //  out->set_lod(in->lod());
+    context.ShareLoD("X", "Out");
 
     int context_start = context.Attr<int>("context_start");
     int context_length = context.Attr<int>("context_length");
@@ -60,17 +54,16 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     int sequence_width;
     sequence_width = static_cast<int>(in->dims()[1]);
 
-    // use col_shape in the im2col calculation
+    // Use col_shape in the im2col calculation.
     framework::DDim col_shape = {in->dims()[0],
                                  sequence_width * context_length};
     Tensor col;
     col.mutable_data<T>(col_shape, context.GetPlace());
+    math::SetConstant<Place, T> set_zero;
     // Because if padding_trainable is false, padding data should be zeros.
-    auto temp = framework::EigenVector<T>::Flatten(col);
-    temp.device(context.GetEigenDevice<Place>()) =
-        temp.constant(static_cast<T>(0));
+    set_zero(context.device_context(), &col, static_cast<T>(0));
 
-    paddle::operators::math::SequenceProjectFunctor<Place, T>
+    paddle::operators::math::ContextProjectFunctor<Place, T>
         seq_project_functor;
     LoDTensor* input = const_cast<LoDTensor*>(in);
     Tensor* pad_data = const_cast<Tensor*>(padding_data);
@@ -79,9 +72,8 @@ class SequenceConvKernel : public framework::OpKernel<T> {
                         padding_trainable, context_start, context_length,
                         context_stride, up_pad, down_pad, false, false, false);
 
-    filter.Resize(framework::make_ddim({context_length * sequence_width, 1}));
     math::matmul<Place, T>(context.device_context(), col, false, filter, false,
-                           T(1.0), out, T(0.0));
+                           static_cast<T>(1.0), out, static_cast<T>(0.0));
   }
 };
 
@@ -102,7 +94,6 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
     int context_stride = context.Attr<int>("context_stride");
     bool padding_trainable = context.Attr<bool>("padding_trainable");
 
-    // InferShape by in_lod
     PADDLE_ENFORCE_EQ(in->lod().size(), 1UL,
                       "Only support one level sequence now.");
     auto lod_g_level_0 = in->lod()[0];
@@ -111,6 +102,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
     int down_pad = std::max(0, context_start + context_length - 1);
     int sequence_width = static_cast<int>(in->dims()[1]);
 
+    math::SetConstant<Place, T> set_zero;
     // use col_shape in the im2col calculation
     framework::DDim col_shape = {in->dims()[0],
                                  sequence_width * context_length};
@@ -119,22 +111,17 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
     if (in_g || filter_g || (padding_trainable && padding_data_g)) {
       col.mutable_data<T>(col_shape, context.GetPlace());
       // Because if padding_trainable is false, padding data should be zeros.
-      auto temp = framework::EigenVector<T>::Flatten(col);
-      temp.device(context.GetEigenDevice<Place>()) =
-          temp.constant(static_cast<T>(0));
-
+      set_zero(context.device_context(), &col, static_cast<T>(0));
       math::matmul<Place, T>(context.device_context(), *out_g, false, *filter,
                              true, T(1.0), &col, T(1.0));
     }
-    paddle::operators::math::SequenceProjectFunctor<Place, T>
+    paddle::operators::math::ContextProjectFunctor<Place, T>
         seq_project_functor;
 
     if (in_g) {
       in_g->mutable_data<T>(context.GetPlace());
       in_g->set_lod(in->lod());
-
-      math::SetConstant<Place, T> functor;
-      functor(context.device_context(), in_g, 0);
+      set_zero(context.device_context(), in_g, static_cast<T>(0));
 
       seq_project_functor(context.device_context(), *in_g, *padding_data_g, col,
                           padding_trainable, context_start, context_length,
@@ -143,9 +130,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
 
     if (padding_trainable && padding_data_g) {
       padding_data_g->mutable_data<T>(context.GetPlace());
-
-      math::SetConstant<Place, T> functor;
-      functor(context.device_context(), padding_data_g, 0);
+      set_zero(context.device_context(), padding_data_g, static_cast<T>(0));
 
       LoDTensor* input = const_cast<LoDTensor*>(in);
       seq_project_functor(context.device_context(), *input, *padding_data_g,
@@ -155,12 +140,10 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
 
     if (filter_g) {
       filter_g->mutable_data<T>(context.GetPlace());
+      set_zero(context.device_context(), filter_g, static_cast<T>(0));
 
-      math::SetConstant<Place, T> functor;
-      functor(context.device_context(), filter_g, 0);
-
-      Tensor filter_grad_ = *filter_g;
-      LoDTensor out_grad_ = *out_g;
+      Tensor filter_grad = *filter_g;
+      LoDTensor out_grad = *out_g;
 
       const Tensor* padding_data = nullptr;
       if (padding_trainable) {
@@ -177,11 +160,8 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
                           context_stride, up_pad, down_pad, false, false,
                           false);
 
-      filter_grad_.Resize(
-          framework::make_ddim({context_length * sequence_width, 1}));
-
-      math::matmul<Place, T>(context.device_context(), col, true, out_grad_,
-                             false, T(1.0), &filter_grad_, T(1.0));
+      math::matmul<Place, T>(context.device_context(), col, true, out_grad,
+                             false, T(1.0), &filter_grad, T(1.0));
     }
   }
 };
