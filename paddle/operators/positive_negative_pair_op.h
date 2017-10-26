@@ -34,7 +34,7 @@ class PositiveNegativePairKernel : public framework::OpKernel<T> {
 
     auto score = score_t->data<float>();
     auto label = label_t->data<float>();
-    auto query = query_t->data<int>();
+    auto query = query_t->data<int32_t>();
 
     T* positive = positive_t->mutable_data<T>(context.GetPlace());
     T* negative = negative_t->mutable_data<T>(context.GetPlace());

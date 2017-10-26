@@ -106,6 +106,15 @@ size_t LoDTensor::NumElements(size_t level, size_t idx) const {
   return lod_[level][idx + 1] - lod_[level][idx];
 }
 
+size_t LoDTensor::NumInstancesInElement(size_t level, size_t idx) const {
+  PADDLE_ENFORCE_LT(level, NumLevels());
+  PADDLE_ENFORCE_LT(idx, NumElements(level));
+  auto abs_lod = ToAbsOffset(lod());
+  size_t begin = abs_lod[level][idx];
+  size_t end = abs_lod[level][idx + 1];
+  return end - begin;
+}
+
 void LoDTensor::ShrinkLevels(size_t level_begin, size_t level_end) {
   auto new_lod = framework::SliceLevels(lod_, level_begin, level_end);
   lod_ = new_lod;
@@ -117,8 +126,15 @@ void LoDTensor::ShrinkInLevel(size_t level, size_t elem_begin,
   PADDLE_ENFORCE_LT(elem_begin, NumElements(level));
   PADDLE_ENFORCE_LT(elem_end, NumElements(level) + 1);
 
+  auto abs_lod = framework::ToAbsOffset(lod());
   auto new_lod = framework::SliceInLevel(lod_, level, elem_begin, elem_end);
   lod_ = new_lod;
+
+  // slice the underlying tensor
+  size_t begin = abs_lod[level][elem_begin];
+  size_t end = abs_lod[level][elem_end];
+  PADDLE_ENFORCE_LT(begin, end, "Cannot shrink, the result tensor is empty.");
+  ShareDataWith(Slice(begin, end));
 }
 
 std::string LoDTensor::SerializeToString() const {
