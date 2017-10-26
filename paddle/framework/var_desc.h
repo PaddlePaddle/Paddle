@@ -59,7 +59,7 @@ class VarDescBind {
     desc_.set_type(VarDesc::LOD_TENSOR);
   }
 
-  VarDescBind(const VarDesc &desc) : desc_(desc) {}
+  explicit VarDescBind(const VarDesc &desc) : desc_(desc) {}
 
   VarDesc *Proto() { return &desc_; }
 

@@ -54,7 +54,7 @@ ProgramDescBind::ProgramDescBind(const std::string &binary_str) {
                  "Fail to parse program_desc from binary string.");
   int block_size = desc_.blocks_size();
   for (int i = 0; i < block_size; ++i) {
-    blocks_.emplace_back(new BlockDescBind(this, desc_.mutable_blocks(i));
+    blocks_.emplace_back(new BlockDescBind(this, desc_.mutable_blocks(i)));
   }
 }
 

@@ -33,7 +33,7 @@ class OpDescBind {
   OpDescBind(const std::string &type, const VariableNameMap &inputs,
              const VariableNameMap &outputs, const AttributeMap &attrs);
 
-  OpDescBind(const OpDesc &desc, const ProgramDescBind *prog);
+  OpDescBind(const OpDesc &desc, ProgramDescBind *prog);
 
   OpDesc *Proto();
 

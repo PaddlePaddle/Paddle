@@ -31,7 +31,7 @@ class ProgramDescBind {
 
   ProgramDescBind(const ProgramDescBind &o);
 
-  ProgramDescBind(const std::string &binary_str);
+  explicit ProgramDescBind(const std::string &binary_str);
 
   BlockDescBind *AppendBlock(const BlockDescBind &parent);
 

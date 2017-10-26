@@ -17,6 +17,7 @@ limitations under the License. */
 #include <unordered_map>
 #include "paddle/framework/block_desc.h"
 #include "paddle/framework/operator.h"
+#include "paddle/framework/program_desc.h"
 
 namespace paddle {
 namespace framework {
@@ -31,7 +32,7 @@ OpDescBind::OpDescBind(const std::string &type, const VariableNameMap &inputs,
   need_update_ = true;
 }
 
-OpDescBind::OpDescBind(const OpDesc &desc, const ProgramDescBind *prog)
+OpDescBind::OpDescBind(const OpDesc &desc, ProgramDescBind *prog)
     : desc_(desc), need_update_(false) {
   // restore inputs_
   int input_size = desc_.inputs_size();
@@ -46,7 +47,7 @@ OpDescBind::OpDescBind(const OpDesc &desc, const ProgramDescBind *prog)
   }
   // restore outputs_
   int output_size = desc_.outputs_size();
-  for (int i = 0; i < outputs_size; ++i) {
+  for (int i = 0; i < output_size; ++i) {
     const OpDesc::Var &var = desc_.outputs(i);
     std::vector<std::string> &argus = outputs_[var.parameter()];
     int argu_size = var.arguments_size();
