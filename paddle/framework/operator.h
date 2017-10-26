@@ -640,7 +640,9 @@ class OperatorWithKernel : public OperatorBase {
                        });
   }
 
-  virtual void InferShape(InferShapeContext* ctx) const = 0;
+  virtual void InferShape(InferShapeContext* ctx) const {
+    OpInfoMap::Instance().Get(Type()).infer_shape_(ctx);
+  }
 
  protected:
   // indicate kernel DataType by input data. Defaultly all input data must be
