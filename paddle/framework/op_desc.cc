@@ -57,9 +57,7 @@ OpDescBind::OpDescBind(const OpDesc &desc, ProgramDescBind *prog)
     }
   }
   // restore attrs_
-  int attr_size = desc_.attrs_size();
-  for (int i = 0; i < attr_size; ++i) {
-    const OpDesc::Attr &attr = desc_.attrs(i);
+  for (const OpDesc::Attr &attr : desc_.attrs()) {
     std::string attr_name = attr.name();
     attrs_[attr_name] = GetAttrValue(attr, prog->Proto());
   }
