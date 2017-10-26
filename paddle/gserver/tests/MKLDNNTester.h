@@ -62,12 +62,15 @@ protected:
   float eps_;
   /// input image size, default 1
   size_t ih_, iw_;
+  /// passType, PASS_TRAIN, PASS_TEST or PASS_GC (Gradient Check pass)
+  PassType passType_;
 
 public:
   explicit MKLDNNTester(size_t iter = 3, float epsilon = 1e-4) {
     iter_ = iter;
     eps_ = epsilon;
     log_ = false;
+    passType_ = PASS_TRAIN;
   }
 
   ~MKLDNNTester() {}
@@ -78,6 +81,7 @@ public:
            size_t batchSize,
            size_t inputImgH = 1,
            size_t inputImgW = 1,
+           PassType passType = PASS_TRAIN,
            bool printDetails = false,
            size_t iter = 3,
            float epsilon = 1e-4);
