@@ -118,7 +118,7 @@ class SaveOp : public framework::OperatorBase {
         std::unique_ptr<char[]> buf(new char[kBufSize]);
         auto &gpu_dev_ctx =
             static_cast<const platform::CUDADeviceContext &>(dev_ctx);
-        platform::Place cpu = platform::CPUPlace();
+        platform::CPUPlace cpu;
         uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
         while (size != 0) {
           size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
