@@ -50,7 +50,7 @@ The ParameterAverageOptimizer op can be like any other operator with its own CPU
 
 The idea of building an op for averaging is in sync with the refactored Paddle philosophy of using operators to represent any computation unit. The way the op will be added to the computation graph will be decided by the [layer functions](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/python_api.md#layer-function) in Python API.
 
-### Python API implementation for Regularization
+### Python API implementation for ParameterAverageOptimizer
 
 Based on Polyak and Juditsky (1992), we can generalize the averaging of updates to any optimizer. The input to the op would be the following:
 - Any optimizer (RMSProp , AdaGrad etc.)
