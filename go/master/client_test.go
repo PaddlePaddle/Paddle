@@ -118,8 +118,6 @@ func TestNextRecord(t *testing.T) {
 				panic(e)
 			}
 
-			c.StartGetRecords(100)
-
 			// test for n passes
 			for pass := 0; pass < 10; pass++ {
 				c.StartGetRecords(pass)
