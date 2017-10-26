@@ -34,18 +34,15 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
  * \param in            Input data.
  * \param Shape         The shape of Input data,
- *                      [minibatch, number_of_input_features].
- * \param type          A float LoDTensor.
+ *                      [minibatch, input_hidden_size].
  *
  * \param padding_data  Padding data.
  * \param Shape         The shape of Padding data,
- *                      [up_pad + down_pad, number_of_input_features].
- * \param type          A float Tensor.
+ *                      [up_pad + down_pad, input_hidden_size].
  *
  * \param col           Col data.
  * \param Shape         The shape of Col data,
- *                      [minibatch, context_length * number_of_input_features].
- * \param type           A float Tensor.
+ *                      [minibatch, context_length * input_hidden_size].
  *
  * For a mini-batch of 2 variable lengths sentences, containing 3, and 1
  * time-steps:

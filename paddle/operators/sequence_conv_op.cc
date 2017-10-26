@@ -30,9 +30,9 @@ class SequenceConvOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SequenceConvOp should not be null.");
 
-    int context_length = ctx->Attrs().Get<int>("context_length");
-    bool padding_trainable = ctx->Attrs().Get<bool>("padding_trainable");
-    int context_start = ctx->Attrs().Get<int>("context_start");
+    int context_length = ctx->Attrs().Get<int>("contextLength");
+    bool padding_trainable = ctx->Attrs().Get<bool>("paddingTrainable");
+    int context_start = ctx->Attrs().Get<int>("contextStart");
 
     auto in_dims = ctx->GetInputDim("X");
     auto filter_dims = ctx->GetInputDim("Filter");
@@ -54,7 +54,7 @@ class SequenceConvOp : public framework::OperatorWithKernel {
 
       if (context_start == 0 && context_length == 1) {
         PADDLE_THROW(
-            "If context_start is 0 and context_length is 1, padding_trainable "
+            "If context_start is 0 and context_length is 1, paddingTrainable "
             "should be false.");
       }
       PADDLE_ENFORCE(padding_dim.size() == 2,
@@ -81,7 +81,7 @@ class SequenceConvGradOp : public framework::OperatorWithKernel {
                    "Gradient of output(Out) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("X"), "The input(X) should not be null.");
 
-    if (ctx->Attrs().Get<bool>("padding_trainable") &&
+    if (ctx->Attrs().Get<bool>("paddingTrainable") &&
         ctx->HasOutput(framework::GradVarName("PaddingData"))) {
       ctx->SetOutputDim(framework::GradVarName("PaddingData"),
                         ctx->GetInputDim("PaddingData"));
@@ -128,25 +128,25 @@ class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
         "this LoDTensor is a matrix with shape (T, D), where, T is the "
         "total time steps in this mini-batch, D is the output feature size.");
 
-    AddAttr<bool>("padding_trainable",
+    AddAttr<bool>("paddingTrainable",
                   "(bool, default false) the padding data of SequenceConvOp "
                   "is trainable or not.")
         .SetDefault(false);
-    AddAttr<int>("context_length",
-                 "(int, default 3) the context_length of SequenceConvOp is the "
+    AddAttr<int>("contextLength",
+                 "(int, default 3) the contextLength of SequenceConvOp is the "
                  "height of the convolution kernel.")
         .SetDefault(3)
         .GreaterThan(0);
-    AddAttr<int>("context_start",
-                 "(int, default 0) the context_start of SequenceConvOp "
+    AddAttr<int>("contextStart",
+                 "(int, default 0) the contextStart of SequenceConvOp "
                  "represents the beginning of the convolution of the number of "
                  "rows of sequence, which can be negative.")
         .SetDefault(0);
-    AddAttr<int>("context_stride",
-                 "(int, default 1) the context_stride of SequenceConvOp "
+    AddAttr<int>("contextStride",
+                 "(int, default 1) the contextStride of SequenceConvOp "
                  "represents the step length of convolution. "
                  "Currently, SequenceConvOp only supports"
-                 "context_stride=1.")
+                 "contextStride=1.")
         .SetDefault(1)
         .GreaterThan(0);
 

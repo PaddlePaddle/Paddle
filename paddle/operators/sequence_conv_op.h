@@ -35,10 +35,10 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
     context.ShareLoD("X", "Out");
 
-    int context_start = context.Attr<int>("context_start");
-    int context_length = context.Attr<int>("context_length");
-    int context_stride = context.Attr<int>("context_stride");
-    bool padding_trainable = context.Attr<bool>("padding_trainable");
+    int context_start = context.Attr<int>("contextStart");
+    int context_length = context.Attr<int>("contextLength");
+    int context_stride = context.Attr<int>("contextStride");
+    bool padding_trainable = context.Attr<bool>("paddingTrainable");
 
     // InferShape by in_lod
     PADDLE_ENFORCE_EQ(in->lod().size(), 1UL,
@@ -89,10 +89,10 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
     auto* in = context.Input<LoDTensor>("X");
     auto* filter = context.Input<Tensor>("Filter");
 
-    int context_start = context.Attr<int>("context_start");
-    int context_length = context.Attr<int>("context_length");
-    int context_stride = context.Attr<int>("context_stride");
-    bool padding_trainable = context.Attr<bool>("padding_trainable");
+    int context_start = context.Attr<int>("contextStart");
+    int context_length = context.Attr<int>("contextLength");
+    int context_stride = context.Attr<int>("contextStride");
+    bool padding_trainable = context.Attr<bool>("paddingTrainable");
 
     PADDLE_ENFORCE_EQ(in->lod().size(), 1UL,
                       "Only support one level sequence now.");
