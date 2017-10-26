@@ -206,7 +206,7 @@ void RecurrentGradientAlgorithm::ExposeWeightGradients(
     // gradient name.
     // std::string param_grad_name = framework::GradVarName(param);
     std::string param_grad_name = param;
-    const framework::LoDTensor& param_gradient =
+    framework::LoDTensor& param_gradient =
         *parent_scope.FindVar(param_grad_name)->GetMutable<LoDTensor>();
     auto param_gradient_eigen =
         framework::EigenVector<float>::Flatten(param_gradient);
@@ -217,9 +217,7 @@ void RecurrentGradientAlgorithm::ExposeWeightGradients(
           *step_scopes[step]->Var(param_grad_name)->GetMutable<LoDTensor>();
       auto step_param_gradient_eigen =
           framework::EigenVector<float>::Flatten(step_param_gradient);
-      // add the gradient
-      // TODO(superjom) here can't compile
-      param_gradient_eigen.device(place) =
+      param_gradient_eigen.device(*place) =
           step_param_gradient_eigen + param_gradient_eigen;
     }
   }
