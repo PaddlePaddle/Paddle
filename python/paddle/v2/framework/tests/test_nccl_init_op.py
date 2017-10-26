@@ -8,7 +8,7 @@ from op_test import OpTest, create_op, set_input
 if not core.is_compile_gpu():
     exit(0)
 
-gpu_count = core.get_cuda_device_count
+gpu_count = core.get_cuda_device_count()
 g_scope = core.Scope()
 g_ctx = core.DeviceContext.create(core.CPUPlace())
 
@@ -16,7 +16,7 @@ g_ctx = core.DeviceContext.create(core.CPUPlace())
 class TestNCCLInit(unittest.TestCase):
     def test_init(self):
         self.op_type = "ncclInit"
-        self.gpus = [int(g) for g in range(gpu_count)]
+        self.gpus = range(gpu_count)
 
         self.inputs = {}
         self.attrs = {"gpus": self.gpus}
