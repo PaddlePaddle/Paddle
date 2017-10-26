@@ -67,7 +67,7 @@ func main() {
 		cp, err = pserver.LoadCheckpoint(e, idx)
 		if err != nil {
 			if err == pserver.ErrCheckpointNotFound {
-				log.Info("Could not find the pserver checkpoint.")
+				log.Info("load checkpoint error", "error", err)
 			} else {
 				panic(err)
 			}
@@ -99,7 +99,7 @@ func main() {
 	candy.Must(err)
 
 	go func() {
-		log.Info("starting pserver", log.Ctx{"port": *port})
+		log.Info("serving pserver", log.Ctx{"port": *port})
 		err = http.Serve(l, nil)
 		candy.Must(err)
 	}()

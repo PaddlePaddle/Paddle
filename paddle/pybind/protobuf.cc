@@ -105,6 +105,11 @@ void BindProgramDesc(py::module &m) {
            [](ProgramDescBind &self, const ProgramDescBind &other) {
              new (&self) ProgramDescBind(other);
            })
+      .def("__init__",
+           [](ProgramDescBind &self, const py::bytes &binary_str) {
+             std::string str(binary_str);
+             new (&self) ProgramDescBind(str);
+           })
       .def("append_block", &ProgramDescBind::AppendBlock,
            py::return_value_policy::reference)
       .def("append_backward",

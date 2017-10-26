@@ -10,6 +10,15 @@ from paddle.v2.framework.executor import Executor
 from paddle.v2.framework.framework import Program, OpProtoHolder
 
 
+def randomize_probability(batch_size, class_num, dtype='float32'):
+    prob = np.random.uniform(
+        0.1, 1.0, size=(batch_size, class_num)).astype(dtype)
+    prob_sum = prob.sum(axis=1)
+    for i in xrange(len(prob)):
+        prob[i] /= prob_sum[i]
+    return prob
+
+
 def create_op(scope, op_type, inputs, outputs, attrs):
     kwargs = dict()
 
@@ -75,6 +84,7 @@ def get_numeric_gradient(scope,
                          output_names,
                          delta=0.005,
                          in_place=False):
+    # FIXME: change this method by compile time concepts
     set_input(scope, op, inputs, core.CPUPlace())
 
     def product(dim):
@@ -314,9 +324,9 @@ class OpTest(unittest.TestCase):
             def err_msg():
                 offset = np.argmax(diff_mat > max_relative_error)
                 return ("%s Variable %s max gradient diff %f over limit %f, "
-                        "the first error element is %d") % (
+                        "the first error element is %d, %f, %f") % (
                             msg_prefix, name, max_diff, max_relative_error,
-                            offset)
+                            offset, a.flatten()[offset], b.flatten()[offset])
 
             self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
@@ -324,6 +334,7 @@ class OpTest(unittest.TestCase):
                    inputs_to_check,
                    output_names,
                    no_grad_set=None,
+                   numeric_grad_delta=0.005,
                    in_place=False,
                    max_relative_error=0.005,
                    user_defined_grads=None):
@@ -347,6 +358,7 @@ class OpTest(unittest.TestCase):
                 self.inputs,
                 input_to_check,
                 output_names,
+                delta=numeric_grad_delta,
                 in_place=in_place) for input_to_check in inputs_to_check
         ]
         cpu_place = core.CPUPlace()
@@ -368,6 +380,7 @@ class OpTest(unittest.TestCase):
 
     @staticmethod
     def _create_var_descs_(block, var_dict):
+        # FIXME: Try unify with `append_input_output`
         for param_name in var_dict:
             var = var_dict[param_name]
             if not isinstance(var, list) and not isinstance(var, tuple):

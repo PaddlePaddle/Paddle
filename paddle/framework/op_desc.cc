@@ -17,6 +17,7 @@ limitations under the License. */
 #include <unordered_map>
 #include "paddle/framework/block_desc.h"
 #include "paddle/framework/operator.h"
+#include "paddle/framework/program_desc.h"
 
 #include "glog/logging.h"
 
@@ -26,16 +27,47 @@ namespace framework {
 OpDescBind::OpDescBind(const std::string &type, const VariableNameMap &inputs,
                        const VariableNameMap &outputs,
                        const AttributeMap &attrs) {
-  op_desc_.set_type(type);
+  desc_.set_type(type);
   inputs_ = inputs;
   outputs_ = outputs;
   attrs_ = attrs;
   need_update_ = true;
 }
 
+OpDescBind::OpDescBind(const OpDesc &desc, ProgramDescBind *prog)
+    : desc_(desc), need_update_(false) {
+  // restore inputs_
+  int input_size = desc_.inputs_size();
+  for (int i = 0; i < input_size; ++i) {
+    const OpDesc::Var &var = desc_.inputs(i);
+    std::vector<std::string> &args = inputs_[var.parameter()];
+    int argu_size = var.arguments_size();
+    args.reserve(argu_size);
+    for (int j = 0; j < argu_size; ++j) {
+      args.push_back(var.arguments(j));
+    }
+  }
+  // restore outputs_
+  int output_size = desc_.outputs_size();
+  for (int i = 0; i < output_size; ++i) {
+    const OpDesc::Var &var = desc_.outputs(i);
+    std::vector<std::string> &args = outputs_[var.parameter()];
+    int argu_size = var.arguments_size();
+    args.reserve(argu_size);
+    for (int j = 0; j < argu_size; ++j) {
+      args.push_back(var.arguments(j));
+    }
+  }
+  // restore attrs_
+  for (const OpDesc::Attr &attr : desc_.attrs()) {
+    std::string attr_name = attr.name();
+    attrs_[attr_name] = GetAttrValue(attr, prog->Proto());
+  }
+}
+
 OpDesc *OpDescBind::Proto() {
   Flush();
-  return &op_desc_;
+  return &desc_;
 }
 
 const std::vector<std::string> &OpDescBind::Input(
@@ -169,23 +201,23 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
 
 void OpDescBind::Flush() {
   if (need_update_) {
-    this->op_desc_.mutable_inputs()->Clear();
+    this->desc_.mutable_inputs()->Clear();
     for (auto &ipt : inputs_) {
-      auto *input = op_desc_.add_inputs();
+      auto *input = desc_.add_inputs();
       input->set_parameter(ipt.first);
       VectorToRepeated(ipt.second, input->mutable_arguments());
     }
 
-    this->op_desc_.mutable_outputs()->Clear();
+    this->desc_.mutable_outputs()->Clear();
     for (auto &opt : outputs_) {
-      auto *output = op_desc_.add_outputs();
+      auto *output = desc_.add_outputs();
       output->set_parameter(opt.first);
       VectorToRepeated(opt.second, output->mutable_arguments());
     }
 
-    this->op_desc_.mutable_attrs()->Clear();
+    this->desc_.mutable_attrs()->Clear();
     for (auto &attr : attrs_) {
-      auto *attr_desc = op_desc_.add_attrs();
+      auto *attr_desc = desc_.add_attrs();
       attr_desc->set_name(attr.first);
       attr_desc->set_type(
           static_cast<framework::AttrType>(attr.second.which() - 1));
