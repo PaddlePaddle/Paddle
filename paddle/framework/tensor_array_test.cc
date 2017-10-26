@@ -126,5 +126,57 @@ TEST_F(TensorArrayTester, size) {
   ASSERT_EQ(ta.size(), static_cast<size_t>(batch_size));
 }
 
+TEST(TensorArray, LodPack) {
+  // three time steps, each step stores a LoDTensors
+  // - [0] [1]
+  // - [2 3], [4 5]
+  // - [6 7] [] [8], [9, 10]
+  // try to get a LoDTensor with content:
+  // - [0 2 6]
+  // - [0 2 7]
+  // - [0 3]
+  // - [1 4 8]
+  // - [1 5 9]
+  // - [1 5 10]
+  std::array<LoDTensor, 3> tensors;
+  tensors[0].Resize(make_ddim({2, 1}));
+  tensors[1].Resize(make_ddim({4, 1}));
+  tensors[2].Resize(make_ddim({5, 1}));
+  int index = 0;
+  for (auto& t : tensors) {
+    t.mutable_data<int>(platform::CPUPlace());
+    for (int i = 0; i < t.dims()[0]; i++) {
+      t.data<int>()[i] = index;
+      index++;
+    }
+  }
+
+  std::array<LoD, 3> lods;
+  std::vector<std::vector<size_t>> levels{
+      {0, 1, 2}, {0, 2, 4}, {0, 2, 2, 3, 5}};
+  for (int i = 0; i < 3; i++) {
+    lods[i].emplace_back(levels[i].begin(), levels[i].end());
+  }
+
+  TensorArray ta;
+  for (int i = 0; i < 3; i++) {
+    tensors[i].set_lod(lods[i]);
+    ta.Write(i, tensors[i]);
+  }
+
+  auto merged = ta.LodPack(0);
+
+  std::vector<int> target_tensor_data{{0, 2, 6,  // 0
+                                       0, 2, 7,  // 1
+                                       0, 3,     // 2
+                                       1, 4, 8,  // 3
+                                       1, 5, 9,  // 5
+                                       1, 5, 10}};
+  EXPECT_EQ(merged.dims()[0], (int)target_tensor_data.size());
+  for (size_t i = 0; i < target_tensor_data.size(); i++) {
+    EXPECT_EQ(target_tensor_data[i], merged.data<int>()[i]);
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle
