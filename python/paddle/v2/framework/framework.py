@@ -505,6 +505,8 @@ class Parameter(Variable):
 
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
 
+        self.regularizer = kwargs.get('regularizer', None)
+
 
 # program is a global instance.
 g_program = Program()
