@@ -440,6 +440,13 @@ class Program(object):
         p.sync_with_cpp()
         return p
 
+    @staticmethod
+    def parse_from_string(binary_str):
+        p = Program()
+        p.desc = core.ProgramDesc(binary_str)
+        p.sync_with_cpp()
+        return p
+
     def __repr__(self):
         return str(self)
 
