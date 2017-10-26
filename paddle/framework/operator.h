@@ -290,11 +290,12 @@ class ExecutionContext {
     return device_context_;
   }
 
-  //! Get a input which has multiple variables.
+  //! Get variables vector with same input name.
   const std::vector<std::string>& Inputs(const std::string& name) const {
     return op_.Inputs(name);
   }
-  //! Get an output which has multiple variables.
+
+  //! Get variables vector with same output name.
   const std::vector<std::string>& Outputs(const std::string& name) const {
     return op_.Outputs(name);
   }

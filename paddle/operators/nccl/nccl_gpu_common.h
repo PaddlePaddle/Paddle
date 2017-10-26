@@ -30,6 +30,8 @@
 namespace paddle {
 namespace platform {
 
+constexpr int kInvalidGPUId = -1;
+
 struct Communicator {
   std::vector<ncclComm_t> comms_;
   std::unordered_map<int, int> comm_id_map_;

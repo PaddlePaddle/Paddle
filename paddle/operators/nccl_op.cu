@@ -48,11 +48,28 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
     auto ins = ctx.MultiInput<LoDTensor>("X");
     auto outs = ctx.MultiOutput<LoDTensor>("Out");
 
+    std::string reduction = ctx.Attr<std::string>("reduction");
+
+    ncclRedOp_t reduction_op_ = ncclSum;
+
+    if (reduction == "ncclMin") {
+      reduction_op_ = ncclMin;
+    } else if (reduction == "ncclMax") {
+      reduction_op_ = ncclMax;
+    } else if (reduction == "ncclSum") {
+      reduction_op_ = ncclSum;
+    } else if (reduction == "ncclProd") {
+      reduction_op_ = ncclProd;
+    } else {
+      PADDLE_ENFORCE(false, "Invalid reduction. default ncclSum.");
+    }
+
     auto* comm = ctx.Input<Communicator>("Communicator");
 
     auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(
                       ctx.device_context())
                       .stream();
+
     // device id
     int gpu_id = boost::get<platform::GPUPlace>(ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
@@ -64,7 +81,7 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
 
       PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
           ins[i]->data<T>(), outs[i]->mutable_data<T>(ctx.GetPlace()),
-          outs[i]->numel(), NCCLTypeWrapper<T>::type, ncclSum,
+          outs[i]->numel(), NCCLTypeWrapper<T>::type, reduction_op_,
           comm->comms_[idx], stream));
       PADDLE_ENFORCE(cudaStreamSynchronize(stream));
 
@@ -98,7 +115,7 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
     auto ins_names = ctx.Inputs("X");
     std::hash<std::string> hasher;
     for (size_t i = 0; i < ins.size(); ++i) {
-      if (root == -1) {
+      if (root == platform::kInvalidGPUId) {
         root = hasher(ins_names[i]) % comm->comms_.size();
       }
       T* recvbuffer = nullptr;
