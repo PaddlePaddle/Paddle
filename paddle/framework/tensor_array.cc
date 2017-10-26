@@ -254,13 +254,12 @@ LoDTensor TensorArray::LodPackTwo(const LoDTensor& pre, const LoDTensor& cur,
 void TensorArray::LodUnpack(const LoDTensor& source, size_t level) {
   PADDLE_ENFORCE_EQ(level, source.NumLevels() - 1,
                     "only the lowest LoD level supports unpack.");
-  int non_empty_instances = -1;
+  const size_t non_empty_instances = source.dims()[0];
   size_t index = 0;
   Vector<size_t> lowest_lod_level;
   lowest_lod_level.push_back(index);
 
-  for (size_t step = 0; non_empty_instances > 0 || non_empty_instances == -1;
-       step++) {
+  for (size_t step = 0; step < non_empty_instances; step++) {
     size_t num_instances = 0;
     for (size_t id = 0; id < source.NumElements(level); id++) {
       auto instance = source;
