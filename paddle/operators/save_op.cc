@@ -12,10 +12,10 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include <stdint.h>
+#include <sys/stat.h>
 #include <fstream>
 #include <numeric>
-
-#include <sys/stat.h>
 
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/framework.pb.h"
@@ -112,8 +112,32 @@ class SaveOp : public framework::OperatorBase {
       auto *data_ptr = tensor.data<void>();
       PADDLE_ENFORCE(size < std::numeric_limits<std::streamsize>::max(),
                      "Index overflow when writing tensor");
-      fout.write(static_cast<const char *>(data_ptr),
-                 static_cast<std::streamsize>(size));
+      if (platform::is_gpu_place(tensor.place())) {
+#ifdef PADDLE_WITH_CUDA
+        constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
+        std::unique_ptr<char[]> buf(new char[kBufSize]);
+        auto &gpu_dev_ctx =
+            static_cast<const platform::CUDADeviceContext &>(dev_ctx);
+        platform::Place cpu = platform::CPUPlace();
+        uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
+        while (size != 0) {
+          size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
+
+          memory::Copy(cpu, buf.get(), tensor.place(),
+                       reinterpret_cast<const void *>(data), size_to_write,
+                       gpu_dev_ctx.stream());
+          gpu_dev_ctx.Wait();
+          fout.write(buf.get(), size_to_write);
+          data += size_to_write;
+          size -= size_to_write;
+        }
+#else
+        PADDLE_THROW("Unexpected branch");
+#endif
+      } else {
+        fout.write(static_cast<const char *>(data_ptr),
+                   static_cast<std::streamsize>(size));
+      }
     }
     {  // the 4th field, lod information
        // uint64_t lod_level
