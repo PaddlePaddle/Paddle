@@ -58,7 +58,8 @@ class LoDTensor2BatchFunctor {
     if (!is_cal_batch_lod) {
       auto lods = batch.lod();
       PADDLE_ENFORCE_EQ(lods.size(), 2UL);
-      PADDLE_ENFORCE_EQ(lods[1].size(), lod_tensor.dims()[0]);
+      PADDLE_ENFORCE_EQ(lods[1].size(),
+                        static_cast<size_t>(lod_tensor.dims()[0]));
       CopyMatrixRowsFunctor<Place, T> to_batch;
       to_batch(context, lod_tensor, lods[1].data(), batch, true);
       return;
@@ -111,10 +112,10 @@ class LoDTensor2BatchFunctor {
     size_t* batch_starts = batch_lods[0].data();
     size_t* seq2batch_idx = batch_lods[1].data();
     batch_starts[0] = 0;
-    for (size_t n = 0; n < num_batch; n++) {
+    for (int n = 0; n < num_batch; n++) {
       auto batch_id = static_cast<int>(batch_starts[n]);
       for (size_t i = 0; i < seq_info.size(); ++i) {
-        size_t seq_len = seq_info[i].length;
+        int seq_len = seq_info[i].length;
         int start = seq_info[i].start;
         if (n < seq_len) {
           seq2batch_idx[batch_id] =

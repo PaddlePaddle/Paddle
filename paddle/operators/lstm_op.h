@@ -155,7 +155,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     auto* batch_cell_pre_act = ctx.Input<LoDTensor>("BatchCellPreAct");
 
     auto* hidden_g = ctx.Input<LoDTensor>(framework::GradVarName("Hidden"));
-    auto* cell_g = ctx.Input<LoDTensor>(framework::GradVarName("Cell"));
+    // auto* cell_g = ctx.Input<LoDTensor>(framework::GradVarName("Cell"));
 
     auto* in_g = ctx.Output<LoDTensor>(framework::GradVarName("Input"));
     auto* weight_g = ctx.Output<Tensor>(framework::GradVarName("Weight"));
@@ -219,8 +219,8 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     LoDTensor batch_cell_g;
     batch_cell_g.mutable_data<T>(out_dims, ctx.GetPlace());
     batch_cell_g.set_lod(batch_gate->lod());
-    to_batch(device_ctx, *cell_g, batch_cell_g, false);
     // TODO(qingqing) support the case output cell has gradient.
+    // to_batch(device_ctx, *cell_g, batch_cell_g, false);
     zero(device_ctx, &batch_cell_g, static_cast<T>(0.0));
 
     LoDTensor batch_gate_g;
