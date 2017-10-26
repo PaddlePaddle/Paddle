@@ -103,7 +103,6 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Input<LoDTensor>("Out");
     auto* in_g = context.Output<LoDTensor>(framework::GradVarName("X"));
     auto* out_g = context.Input<LoDTensor>(framework::GradVarName("Out"));
     int strategy = context.Attr<int>("strategy");
@@ -140,16 +139,19 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
               (out_g_e / std::sqrt(static_cast<T>(h))).broadcast(bcast);
           break;
         case MAX: {
-          auto in_t = in->Slice<T>(static_cast<int>(lod[i]),
-                                   static_cast<int>(lod[i + 1]));
-          auto out_t = out->Slice<T>(i, i + 1);
-          auto in_e = EigenMatrix<T>::From(in_t, {h, w});
-          auto out_e = EigenMatrix<T>::From(out_t, {1, w});
-          auto equals = in_e == out_e.broadcast(bcast);
-          auto ones = in_g_e.constant(1);
-          auto zeros = in_g_e.constant(0);
-          in_g_e.device(place) =
-              out_g_e.broadcast(bcast) * equals.select(ones, zeros);
+          auto in_t =
+              in->Slice(static_cast<int>(lod[i]), static_cast<int>(lod[i + 1]));
+          Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>
+              in_t_map(in_t.data<T>(), h, w);
+          int row_id;
+          Eigen::array<int, 2> extents = {1, 1};
+          for (int col_id = 0; col_id < w; col_id++) {
+            in_t_map.col(col_id).maxCoeff(&row_id);
+            Eigen::array<int, 2> in_offsets = {row_id, col_id};
+            Eigen::array<int, 2> out_offsets = {0, col_id};
+            in_g_e.slice(in_offsets, extents).device(place) =
+                out_g_e.slice(out_offsets, extents);
+          }
           break;
         }
         case LAST:
