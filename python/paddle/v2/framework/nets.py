@@ -7,6 +7,7 @@ def simple_img_conv_pool(input,
                          pool_size,
                          pool_stride,
                          act,
+                         pool_type='max',
                          program=None,
                          init_program=None):
     conv_out = layers.conv2d(
@@ -20,7 +21,7 @@ def simple_img_conv_pool(input,
     pool_out = layers.pool2d(
         input=conv_out,
         pool_size=pool_size,
-        pool_type='max',
+        pool_type=pool_type,
         pool_stride=pool_stride,
         program=program,
         init_program=init_program)

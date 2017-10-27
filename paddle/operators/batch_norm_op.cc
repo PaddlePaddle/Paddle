@@ -108,10 +108,12 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
               "Store the global Variance when training");
     AddOutput("SavedMean",
               "Mean of the current mini batch, "
-              "will apply to output when training");
+              "will apply to output when training")
+        .AsIntermediate();
     AddOutput("SavedVariance",
               "Variance of the current mini batch, "
-              "will apply to output when training");
+              "will apply to output when training")
+        .AsIntermediate();
     AddComment(R"DOC(
 https://arxiv.org/pdf/1502.03167.pdf
 

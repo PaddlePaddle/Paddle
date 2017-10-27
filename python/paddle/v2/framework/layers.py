@@ -294,6 +294,73 @@ def pool2d(input,
     return pool_out
 
 
+def batch_norm(input,
+               act=None,
+               is_test=False,
+               momentum=0.9,
+               epsilon=1e05,
+               param_attr=None,
+               bias_attr=None,
+               data_layout='NCHW',
+               program=None,
+               init_program=None):
+    helper = LayerHelper('batch_norm', **locals())
+    dtype = helper.input_dtype()
+
+    input_shape = input.shape
+    if data_layout == 'NCHW':
+        channel_num = input_shape[1]
+    else:
+        if data_layout == 'NHWC':
+            channel_num = input_shape[-1]
+        else:
+            raise ValueError("unsupported data layout:" + data_layout)
+
+    param_shape = [channel_num]
+
+    # create parameter
+    scale = helper.create_parameter(
+        attr=helper.param_attr, shape=param_shape, dtype=dtype)
+    bias = helper.create_parameter(
+        attr=helper.param_attr, shape=param_shape, dtype=dtype)
+
+    # create input
+    mean = helper.create_tmp_variable(dtype)
+    variance = helper.create_tmp_variable(dtype)
+
+    # create output
+    # mean and mean_out share the same memory
+    mean_out = mean
+    # variance and variance out share the same memory
+    variance_out = variance
+    saved_mean = helper.create_tmp_variable(dtype)
+    saved_variance = helper.create_tmp_variable(dtype)
+
+    batch_norm_out = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type="batch_norm",
+        inputs={
+            "X": input,
+            "Scale": scale,
+            "Bias": bias,
+            "Mean": mean,
+            "Variance": variance
+        },
+        outputs={
+            "Y": batch_norm_out,
+            "MeanOut": mean_out,
+            "VarianceOut": variance_out,
+            "SavedMean": saved_mean,
+            "SavedVariance": saved_variance
+        },
+        attrs={"momentum": momentum,
+               "epsilon": epsilon,
+               "is_test": is_test})
+
+    return helper.append_activation(batch_norm_out)
+
+
 class BlockGuard(object):
     """
     BlockGuard used to create sub-block in program by using Python `with` 
