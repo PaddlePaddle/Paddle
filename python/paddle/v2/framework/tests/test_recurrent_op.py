@@ -93,17 +93,17 @@ class RecurrentOpTest(unittest.TestCase):
        - h
     '''
 
-    input_dim = 10
-    batch_size = 12
-    weight_dim = 15
-    sent_len = 11
+    input_dim = 2
+    batch_size = 3
+    weight_dim = 4
+    sent_len = 2
 
     def setUp(self):
         self.py_rnn = PySimpleRNN(self.input_dim, self.batch_size,
                                   self.weight_dim, self.sent_len)
         self.output = self.create_rnn_op()
-        #print g_program
         append_backward_ops(self.output)
+        print g_program
 
     def create_rnn_op(self):
         x = data(

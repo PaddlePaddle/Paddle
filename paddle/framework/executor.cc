@@ -106,10 +106,12 @@ static void CreateTensor(Variable* var, VarDesc::VarType var_type) {
     var->GetMutable<FeedFetchList>();
   } else if (var_type == VarDesc::FETCH_LIST) {
     var->GetMutable<FeedFetchList>();
+  } else if (var_type == VarDesc::STEP_SCOPES) {
+    var->GetMutable<std::vector<Scope*>>();
   } else {
     PADDLE_THROW(
         "Variable type must be "
-        "LoDTensor/SelectedRows/FEED_MINIBATCH/FETCH_LIST.");
+        "LoDTensor/SelectedRows/FEED_MINIBATCH/FETCH_LIST/STEP_SCOPES.");
   }
 }
 
@@ -125,15 +127,13 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
 
   for (auto& var : block.vars()) {
     if (var.persistable()) {
+      VLOG(3) << "Create Variable " << var.name();
       auto* ptr = scope->Var(var.name());
       CreateTensor(ptr, var.type());
-      VLOG(3) << "Create Variable " << var.name()
-              << " global, which pointer is " << ptr;
     } else {
+      VLOG(3) << "Create Variable " << var.name();
       auto* ptr = local_scope.Var(var.name());
       CreateTensor(ptr, var.type());
-      VLOG(3) << "Create Variable " << var.name()
-              << " locally, which pointer is " << ptr;
     }
   }
 
