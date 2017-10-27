@@ -251,6 +251,8 @@ class Operator(object):
                 self.desc.set_output(out_proto.name, out_argu_names)
 
         if attrs is not None:
+            if not isinstance(attrs, dict):
+                raise ValueError("'attrs' should be a dict.")
             for attr in proto.attrs:
                 attr_name = attr.name
                 if (not attr_name in attrs) or (attrs[attr_name] is None):
@@ -306,6 +308,9 @@ class Operator(object):
 
     def block_attr(self, name):
         return self.desc.block_attr(name)
+
+    def mark_as_target(self):
+        self.desc.mark_as_target()
 
 
 class Block(object):
