@@ -5,7 +5,7 @@ import re
 
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
-    'StaticRNN'
+    'StaticRNN', 'cast'
 ]
 
 
@@ -159,6 +159,18 @@ def _create_op_func_(op_type):
 _create_op_func_('mean')
 _create_op_func_('mul')
 _create_op_func_('dropout')
+
+
+def cast(x, data_type, program=None):
+    helper = LayerHelper('cast', **locals())
+    out = helper.create_tmp_variable(dtype=data_type)
+    helper.append_op(
+        type='cast',
+        inputs={'X': [x]},
+        outputs={'Out': [out]},
+        attrs={'in_data_type': x.data_type,
+               'out_data_type': out.data_type})
+    return out
 
 
 def concat(input, axis, program=None, init_program=None):
