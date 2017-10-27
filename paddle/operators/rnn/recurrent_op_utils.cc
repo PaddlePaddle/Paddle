@@ -20,7 +20,6 @@ namespace rnn {
 
 namespace f = paddle::framework;
 
-using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
 void SegmentInputs(const std::vector<Scope*>& step_scopes,
@@ -39,11 +38,11 @@ void SegmentInputs(const std::vector<Scope*>& step_scopes,
                       "all the inputs be the same length");
     f::DDim step_dims = slice_ddim(dims, 1, dims.size());
     for (size_t j = 0; j < seq_len; j++) {
-      Tensor* step_input =
-          step_scopes[j]->Var(inlinks[i])->GetMutable<Tensor>();
-      // The input of operators of each step is Tensor here.
+      LoDTensor* step_input =
+          step_scopes[j]->Var(inlinks[i])->GetMutable<LoDTensor>();
+      // The input of operators of each step is LoDTensor here.
       // Maybe need to modify Slice function.
-      *step_input = input->Slice(j, j + 1);
+      step_input->ShareDataWith(input->Slice(j, j + 1));
       step_input->Resize(step_dims);
     }
   }

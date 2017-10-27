@@ -25,7 +25,6 @@ namespace operators {
 
 using Scope = framework::Scope;
 using Variable = framework::Variable;
-using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
 void RecurrentAlgorithm::Run(const Scope& scope,

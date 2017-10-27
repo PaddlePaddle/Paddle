@@ -512,6 +512,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
  private:
   DDim GetDim(const std::string& name) const override {
+    VLOG(10) << name;
     Variable* var = scope_.FindVar(name);
     if (var->IsType<LoDTensor>()) {
       return var->Get<LoDTensor>().dims();
@@ -523,6 +524,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   void SetDim(const std::string& name, const DDim& dim) override {
+    VLOG(10) << name;
     Variable* var = scope_.FindVar(name);
     if (var->IsType<LoDTensor>()) {
       var->GetMutable<LoDTensor>()->Resize(dim);
