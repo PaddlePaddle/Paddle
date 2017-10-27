@@ -247,8 +247,8 @@ endif()
 
 set(IOS_COMPILER_FLAGS "${XCODE_IOS_PLATFORM_VERSION_FLAGS} ${XCODE_IOS_BITCODE_FLAGS}")
 
-# Hidden visibilty is required for c++ on iOS.
-# Remove -fvisibility=hidden because warp-ctc failed with it.
+# FIXME(liuyiqun01): Hidden visibilty is required for c++ on iOS,
+# but with -fvisibility=hidden external library warp-ctc fails, so remove it temporarily.
 set(CMAKE_C_FLAGS "${IOS_COMPILER_FLAGS} ${CMAKE_C_FLAGS}" CACHE STRING "C flags")
 set(CMAKE_CXX_FLAGS "${IOS_COMPILER_FLAGS} -fvisibility-inlines-hidden ${CMAKE_CXX_FLAGS}" CACHE STRING "CXX flags")
 
