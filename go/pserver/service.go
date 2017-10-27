@@ -34,7 +34,8 @@ import (
 	"github.com/gogo/protobuf/proto"
 	uuid "github.com/satori/go.uuid"
 
-	pb "github.com/PaddlePaddle/Paddle/proto"
+	pb "github.com/PaddlePaddle/Paddle/go/proto"
+
 	log "github.com/inconshreveable/log15"
 )
 

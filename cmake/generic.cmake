@@ -363,6 +363,7 @@ function(go_binary TARGET_NAME)
   cmake_parse_arguments(go_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   string(REPLACE "${PADDLE_GO_PATH}/" "" CMAKE_CURRENT_SOURCE_REL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
+    message(STATUS "gopath2:" ${GOPATH})
   add_custom_command(OUTPUT ${TARGET_NAME}_timestamp
     COMMAND env GOPATH=${GOPATH} ${CMAKE_Go_COMPILER} build
     -o "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}"
