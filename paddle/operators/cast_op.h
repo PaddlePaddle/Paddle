@@ -16,7 +16,7 @@
 
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/framework.pb.h"
-#include "paddle/framework/operator.h"
+#include "paddle/framework/op_registry.h"
 #include "paddle/platform/transform.h"
 
 namespace paddle {
