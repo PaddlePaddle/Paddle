@@ -61,6 +61,7 @@ public:
     // function arguments
     strides_ = config.get<std::vector<size_t>>("strides");
     paddings_ = config.get<std::vector<size_t>>("paddings");
+    dilations_ = config.get<std::vector<size_t>>("dilations");
     groups_ = config.get<size_t>("groups");
 
     // number of inputs and outputs
@@ -118,6 +119,7 @@ protected:
 
   std::vector<size_t> strides_;
   std::vector<size_t> paddings_;
+  std::vector<size_t> dilations_;
 
   /// Group size, refer to grouped convolution in
   /// Alex Krizhevsky's paper: when group=2, the first half of the
@@ -132,6 +134,10 @@ protected:
   inline int paddingH() const { return paddings_[0]; }
 
   inline int paddingW() const { return paddings_[1]; }
+
+  inline int dilationH() const { return dilations_[0]; }
+
+  inline int dilationW() const { return dilations_[1]; }
 
   // A temporary memory in convolution calculation.
   MemoryHandlePtr memory_;
