@@ -439,7 +439,7 @@ class Program(object):
         self.current_block_idx = 0
 
     def __str__(self):
-        protostr = self.serialize_to_string()
+        protostr = self.desc.serialize_to_string()
         proto = framework_pb2.ProgramDesc.FromString(str(protostr))
         return proto.__str__()
 
@@ -463,8 +463,13 @@ class Program(object):
                         "All targets of prune() can only be Variable or Operator."
                     )
 
-            targets_idx.append((t.block.idx, t.idx))
-        return core.prune(self, targets_idx)
+            targets_idx.append([t.block.idx, t.idx])
+        res = Program()
+        res.desc = core.prune(self.desc, targets_idx)
+        res.sync_with_cpp()
+        import pdb
+        pdb.set_trace()
+        return res
 
     @staticmethod
     def parse_from_string(binary_str):
