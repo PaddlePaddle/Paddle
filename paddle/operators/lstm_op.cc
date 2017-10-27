@@ -82,6 +82,13 @@ class LSTMOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("Input", "Hidden");
     ctx->ShareLoD("Input", "Cell");
   }
+
+ protected:
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(
+        ctx.Input<framework::LoDTensor>("Input")->type());
+  }
 };
 
 class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -238,6 +245,13 @@ class LSTMGradOp : public framework::OperatorWithKernel {
     auto b_g_name = framework::GradVarName("Bias");
     if (ctx->HasOutput(b_g_name))
       ctx->SetOutputDim(b_g_name, ctx->GetInputDim("Bias"));
+  }
+
+ protected:
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(
+        ctx.Input<framework::LoDTensor>("Input")->type());
   }
 };
 

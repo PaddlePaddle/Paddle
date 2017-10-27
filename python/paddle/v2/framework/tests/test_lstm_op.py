@@ -110,7 +110,7 @@ def lstm(
 
 class TestLstmOp(OpTest):
     def set_argument(self):
-        self.lod = [[0, 2, 6]]
+        self.lod = [[0, 2, 5, 7]]
         self.D = 16
 
         self.act_gate = 'sigmoid'
@@ -164,12 +164,13 @@ class TestLstmOp(OpTest):
         # TODO(qingqing) remove folowing two lines after the check_grad is refined.
         self.outputs['BatchGate'] = None
         self.outputs['BatchCellPreAct'] = None
-        self.check_grad(['Input', 'Weight', 'Bias'], ['Hidden'])
+        self.check_grad(
+            ['Input', 'Weight', 'Bias'], ['Hidden'], max_relative_error=0.02)
 
 
 class TestLstmOpHasNoInitial(TestLstmOp):
     def set_argument(self):
-        self.lod = [[0, 2, 6]]
+        self.lod = [[0, 2, 5, 7]]
         self.D = 16
 
         self.act_gate = 'sigmoid'
@@ -182,7 +183,7 @@ class TestLstmOpHasNoInitial(TestLstmOp):
 
 class TestLstmOpRerverse(TestLstmOp):
     def set_argument(self):
-        self.lod = [[0, 2, 6]]
+        self.lod = [[0, 2, 5, 7]]
         self.D = 16
 
         self.act_gate = 'sigmoid'
