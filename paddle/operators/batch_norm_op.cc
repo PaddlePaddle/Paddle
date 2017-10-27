@@ -128,6 +128,7 @@ template <typename T>
 class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    VLOG(2) << "Running BatchNormKernel Compute";
     const float epsilon = ctx.Attr<float>("epsilon");
     const float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");

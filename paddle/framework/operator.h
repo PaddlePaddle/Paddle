@@ -621,6 +621,7 @@ class OperatorWithKernel : public OperatorBase {
                    kernel_key);
     }
 
+    VLOG(3) << "Running Operator Kernel " << this->Type();
     kernel_iter->second->Compute(ctx);
   }
 
@@ -644,6 +645,7 @@ class OperatorWithKernel : public OperatorBase {
   // indicate kernel DataType by input data. Defaultly all input data must be
   // same.
   virtual DataType IndicateDataType(const ExecutionContext& ctx) const {
+    VLOG(3) << "Default IndicateDataType " << this->Type();
     auto& scope = ctx.scope();
     int data_type = -1;
     for (auto& input : this->inputs_) {

@@ -130,7 +130,10 @@ class Tensor {
     return holder_->place();
   }
 
-  std::type_index type() const { return holder_->type(); }
+  std::type_index type() const {
+    PADDLE_ENFORCE_NOT_NULL(holder_, "Tensor get type() must contains holder");
+    return holder_->type();
+  }
 
   size_t memory_size() const;
 
