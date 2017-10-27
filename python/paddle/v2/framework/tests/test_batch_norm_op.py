@@ -1,8 +1,23 @@
 import unittest
 import numpy as np
-from op_test import OpTest, get_backward_op, grad_var_name
+from op_test import OpTest
 import paddle.v2.framework.core as core
 from paddle.v2.framework.op import Operator
+
+
+def grad_var_name(var_name):
+    return var_name + "@GRAD"
+
+
+def get_backward_op(scope, op, no_grad_set):
+    backward_op = core.Operator.backward(op, no_grad_set)
+    for input in backward_op.input_vars():
+        var = scope.var(input)
+        var.get_tensor()
+    for output in backward_op.output_vars():
+        var = scope.var(output)
+        var.get_tensor()
+    return backward_op
 
 
 def _reference_training(x, scale, offset, epsilon, data_format):

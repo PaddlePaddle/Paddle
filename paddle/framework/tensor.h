@@ -132,6 +132,8 @@ class Tensor {
 
   std::type_index type() const { return holder_->type(); }
 
+  size_t memory_size() const;
+
  private:
   inline void check_memory_size() const;
 

@@ -24,6 +24,12 @@ namespace paddle {
 class MKLDNNMatrix;
 typedef std::shared_ptr<MKLDNNMatrix> MKLDNNMatrixPtr;
 
+#define CHECK_PRIMITIVE_DESC_EQ(MAT, PD, ...)                        \
+  CHECK(MAT) << " can not be empty.";                                \
+  CHECK(MAT->getPrimitiveDesc() == PD)                               \
+      << #MAT "->getPrimitiveDesc() and " #PD " should be equal.\n " \
+      << "" __VA_ARGS__;
+
 /**
  * @brief MKLDNN Matrix.
  *
@@ -90,6 +96,11 @@ public:
       const MKLDNNMatrixPtr& src,
       const MKLDNNMatrixPtr& dst,
       bool checkData = true);
+
+  void copyFrom(const Matrix& src) {
+    // TODO(TJ): reorder data if this format is not nchw or x
+    m_->copyFrom(src);
+  }
 
 public:
   /**
