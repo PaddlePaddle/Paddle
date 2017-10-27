@@ -9,6 +9,10 @@ if not core.is_compile_gpu():
     exit(0)
 
 gpu_count = core.get_cuda_device_count()
+
+if gpu_count <= 1:
+    exit(1)
+
 g_scope = core.Scope()
 g_ctx = core.DeviceContext.create(core.CPUPlace())
 
