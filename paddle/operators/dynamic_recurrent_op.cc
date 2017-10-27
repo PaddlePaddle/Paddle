@@ -14,6 +14,7 @@
 
 #include "paddle/operators/dynamic_recurrent_op.h"
 
+#include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
@@ -91,17 +92,20 @@ void RNNAlgorithm::Run<RNNAlgorithm::ComputeMode::kBackward>(
     const framework::Scope& scope, const framework::OperatorBase& op,
     const platform::DeviceContext& dev_ctx) {
   SetComputeMode(ComputeMode::kBackward);
+  parameters_ = op.Outputs(framework::GradVarName("parameters"));
   cache_.Init(kArgNames[mode_], op, scope, &dev_ctx, &arg_);
   SplitInputs();
   WriteStepInputs();
   InitStates();
   WriteStepOutputs();
+  CreateLocalParameterGradients();
   RunSteps();
   // copy boot-states' gradients back.
   for (const auto& state : arg_.states) {
     ExportInitialStateGradient(state);
   }
 
+  ExportWeightGradients();
   ConcatOutputs();
 }
 
@@ -269,6 +273,7 @@ void RNNAlgorithm::LinkState(const rnn::StateAttr& state, size_t step) {
     auto shrinked_pre_state = pre_state->Slice(0, num_instances);
     state_pre.ShareDataWith(shrinked_pre_state);
   }
+  pre_states_[state.var].WriteShared(step, state_pre);
 }
 
 void RNNAlgorithm::LinkInitialState(const rnn::StateAttr& state) {
@@ -299,6 +304,35 @@ void RNNAlgorithm::ExportInitialStateGradient(const rnn::StateAttr& state) {
                               pre_state.place());
 }
 
+void RNNAlgorithm::CreateLocalParameterGradients() {
+  PADDLE_ENFORCE(!parameters_.empty(), "parameters should be set first");
+  for (const auto& param_name : parameters_) {
+    for (size_t step = 0; step < cache_.num_steps; step++) {
+      cache_.scopes->at(step)->Var(param_name);
+    }
+  }
+}
+
+void RNNAlgorithm::ExportWeightGradients() {
+  auto& parent_scope = *cache_.scope;
+  // TODO(superjom) make place a customizable
+  auto place = cache_.dev_ctx->GetEigenDevice<platform::CPUPlace>();
+  for (const std::string& param : parameters_) {
+    LoDTensor& param_gradient =
+        *parent_scope.FindVar(param)->GetMutable<LoDTensor>();
+    auto param_eigen =
+        framework::EigenVector<value_type>::Flatten(param_gradient);
+
+    for (size_t step = 0; step < cache_.num_steps; step++) {
+      LoDTensor& step_param =
+          *cache_.scopes->at(step)->FindVar(param)->GetMutable<LoDTensor>();
+      auto step_param_eigen =
+          framework::EigenVector<value_type>::Flatten(step_param);
+      param_eigen.device(*place) += step_param_eigen;
+    }
+  }
+}
+
 void RNNAlgorithm::ArgCache::Init(const rnn::ArgumentName& name,
                                   const paddle::framework::OperatorBase& op,
                                   const paddle::framework::Scope& scope,
@@ -321,10 +355,11 @@ void RNNAlgorithm::ArgCache::InitArgument(const rnn::ArgumentName& name,
 void RNNAlgorithm::ArgCache::CacheScopes(const Scope& scope,
                                          const rnn::Argument& arg) {
   auto scopes_var = scope.FindVar(arg.step_scopes);
-  PADDLE_ENFORCE(scopes_var != nullptr,
-                 "the step_scopes output argument [%s] should be created first "
-                 "by framework.",
-                 arg.step_scopes);
+  PADDLE_ENFORCE_NOT_NULL(
+      scopes_var,
+      "the step_scopes output argument [%s] should be created first "
+      "by framework.",
+      arg.step_scopes);
   this->scopes = scopes_var->GetMutable<std::vector<Scope*>>();
 }
 
@@ -390,6 +425,7 @@ class DynamicRecurrentOpProtoAndCheckerMaker
         .AsDuplicable();
     AddInput(name.initial_states, "variables to initialize states.")
         .AsDuplicable();
+    AddInput("parameters", "parameter variables").AsDuplicable();
 
     AddOutput(name.outlinks, "the outputs that need to concated for all steps.")
         .AsDuplicable();
