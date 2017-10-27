@@ -108,6 +108,8 @@ class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(cross_entropy, ops::CrossEntropyOpCUDAKernel<float>);
+REGISTER_OP_GPU_KERNEL(cross_entropy, ops::CrossEntropyOpCUDAKernel<float>,
+                       ops::CrossEntropyOpCUDAKernel<double>);
 REGISTER_OP_GPU_KERNEL(cross_entropy_grad,
-                       ops::CrossEntropyGradientOpCUDAKernel<float>);
+                       ops::CrossEntropyGradientOpCUDAKernel<float>,
+                       ops::CrossEntropyGradientOpCUDAKernel<double>);

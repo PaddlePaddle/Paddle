@@ -82,7 +82,7 @@ function(op_library TARGET)
         # It's enough to just adding one operator to pybind
         file(APPEND ${pybind_file} "USE_OP(sigmoid);\n")
     endif()
-    
+
     # reduce_op contains several operators
     if ("${TARGET}" STREQUAL "reduce_op")
         set(pybind_flag 1)
@@ -123,6 +123,7 @@ set(DEPS_OPS
     sum_op
     pool_op
     pool_with_index_op
+    sequence_conv_op
     lstm_op)
 
 
@@ -131,9 +132,10 @@ op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
 op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
 op_library(cross_entropy_op DEPS cross_entropy)
 op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
-op_library(sum_op DEPS net_op)
+op_library(sum_op DEPS net_op selected_rows_functor)
 op_library(pool_op DEPS pooling)
 op_library(pool_with_index_op DEPS pooling)
+op_library(sequence_conv_op DEPS context_project)
 op_library(lstm_op DEPS sequence2batch lstm_compute)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
@@ -148,3 +150,4 @@ cc_test(net_op_test SRCS net_op_test.cc DEPS net_op)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor)
 cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor paddle_memory)
 cc_test(dynamic_recurrent_op_test SRCS dynamic_recurrent_op_test.cc DEPS dynamic_recurrent_op recurrent_op tensor_array)
+cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)

@@ -178,7 +178,3 @@ func TestBlockUntilInitialized(t *testing.T) {
 
 	wg.Wait()
 }
-
-func TestCheckpointSpeed(t *testing.T) {
-	//TODO(zhihong): test speed
-}
