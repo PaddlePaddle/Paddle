@@ -103,8 +103,6 @@ class RecurrentOpTest(unittest.TestCase):
                                   self.weight_dim, self.sent_len)
         self.output = self.create_rnn_op()
         append_backward_ops(self.output)
-        import pdb
-        pdb.set_trace()
 
     def create_rnn_op(self):
         x = data(
@@ -218,7 +216,7 @@ class RecurrentOpTest(unittest.TestCase):
 #         self.create_gradient_op()
 
 if __name__ == '__main__':
-    exit(
-        0
-    )  # FIXME(qijun): https://github.com/PaddlePaddle/Paddle/issues/5101#issuecomment-339814957
+    # exit(
+    #     0
+    # )  # FIXME(qijun): https://github.com/PaddlePaddle/Paddle/issues/5101#issuecomment-339814957
     unittest.main()
