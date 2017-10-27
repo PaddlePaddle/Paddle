@@ -2,9 +2,11 @@ from collections import defaultdict
 
 import paddle.v2.framework.framework as framework
 from paddle.v2.framework.backward import append_backward_ops
+from paddle.v2.framework.regularizer import append_regularization_ops
 
 __all__ = [
-    'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer'
+    'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
+    'AdamaxOptimizer'
 ]
 
 
@@ -160,6 +162,8 @@ class Optimizer(object):
         """
         params_grads = append_backward_ops(loss, parameter_list, no_grad_set or
                                            set())
+        # Add regularization if any 
+        params_grads = append_regularization_ops(params_grads)
         optimize_ops = self.create_optimization_pass(params_grads, loss)
         return optimize_ops
 
@@ -211,13 +215,14 @@ class MomentumOptimizer(Optimizer):
     """
     _velocity_acc_str = "velocity"
 
-    def __init__(self, learning_rate, momentum):
+    def __init__(self, learning_rate, momentum, use_nesterov=False):
         assert learning_rate is not None
         assert momentum is not None
         super(MomentumOptimizer, self).__init__()
         self.type = "momentum"
         self._learning_rate = learning_rate
         self._momentum = momentum
+        self._use_nesterov = bool(use_nesterov)
 
     def _initialize_tensors(self, block):
         assert isinstance(block, framework.Block)
@@ -259,7 +264,8 @@ class MomentumOptimizer(Optimizer):
                 "ParamOut": param_and_grad[0],
                 "VelocityOut": velocity_acc
             },
-            attrs={"mu": self._momentum})
+            attrs={"mu": self._momentum,
+                   "useNesterov": self._use_nesterov})
 
         return momentum_op
 
@@ -397,7 +403,7 @@ class AdamOptimizer(Optimizer):
                                         param_and_grad[0])
         moment2 = self._get_accumulator(self._moment2_acc_str,
                                         param_and_grad[0])
-        # create the momentum optimize op
+        # create the adam optimize op
         adam_op = block.append_op(
             type=self.type,
             inputs={
@@ -440,3 +446,108 @@ class AdamOptimizer(Optimizer):
             attrs={"scale": self._beta2})
 
         return [scale_beta1, scale_beta2]
+
+
+class AdamaxOptimizer(Optimizer):
+    """Implements the Adamax Optimizer
+    """
+    _moment_acc_str = "moment"
+    _inf_norm_acc_str = "inf_norm"
+
+    def __init__(self,
+                 learning_rate=0.001,
+                 beta1=0.9,
+                 beta2=0.999,
+                 epsilon=1e-8):
+        assert learning_rate is not None
+        assert beta1 is not None
+        assert beta2 is not None
+        assert epsilon is not None
+        super(AdamaxOptimizer, self).__init__()
+        self.type = "adamax"
+        self._learning_rate = learning_rate
+        self._beta1 = beta1
+        self._beta2 = beta2
+        self._epsilon = epsilon
+
+    def _initialize_tensors(self, block):
+        assert isinstance(block, framework.Block)
+        lr_shape = [1]
+        # create a variable for learning_rate
+        self._lr = block.create_var(
+            dtype="float32", shape=lr_shape, lod_level=0)
+
+        # create an op to init the learning_rate
+        # FIXME: Fix when Initialization design has been implemented
+        # https://github.com/PaddlePaddle/Paddle/pull/4852
+        block.append_op(
+            type="fill_constant",
+            outputs={"Out": self._lr},
+            attrs={"shape": lr_shape,
+                   "value": self._learning_rate})
+
+    def _create_accumulators(self, block, parameters):
+        assert isinstance(block, framework.Block)
+
+        global_block = block.program.global_block()
+        # Create beta1 power accumulator tensor
+        beta_shape = [1]
+        self._beta1_pow_acc = global_block.create_var(
+            dtype="float32", shape=beta_shape, lod_level=0)
+
+        # Initialize beta1 power accumulator
+        # FIXME: Fix when Initialization design has been implemented
+        # https://github.com/PaddlePaddle/Paddle/pull/4852
+        global_block.append_op(
+            type="fill_constant",
+            outputs={"Out": self._beta1_pow_acc},
+            attrs={"shape": beta_shape,
+                   "value": self._beta1})
+
+        # Create accumulator tensors for first moment and infinity norm
+        for p in parameters:
+            self._add_accumulator(block, self._moment_acc_str, p, 'float32')
+            self._add_accumulator(block, self._inf_norm_acc_str, p, 'float32')
+
+    def _append_optimize_op(self, block, param_and_grad):
+        assert isinstance(block, framework.Block)
+
+        moment = self._get_accumulator(self._moment_acc_str, param_and_grad[0])
+        inf_norm = self._get_accumulator(self._inf_norm_acc_str,
+                                         param_and_grad[0])
+        # create the adamax optimize op
+        adamax_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "LearningRate": self._lr,
+                "Moment": moment,
+                "InfNorm": inf_norm,
+                "Beta1Pow": self._beta1_pow_acc
+            },
+            outputs={
+                "ParamOut": param_and_grad[0],
+                "MomentOut": moment,
+                "InfNormOut": inf_norm
+            },
+            attrs={
+                "beta1": self._beta1,
+                "beta2": self._beta2,
+                "epsilon": self._epsilon
+            })
+
+        return adamax_op
+
+    def _finish_update(self, block):
+        """Update Beta1 Power accumulator
+        """
+        assert isinstance(block, framework.Block)
+        global_block = block.program.global_block()
+        scale_beta1 = global_block.append_op(
+            type="scale",
+            inputs={"X": self._beta1_pow_acc},
+            outputs={"Out": self._beta1_pow_acc},
+            attrs={"scale": self._beta1})
+
+        return [scale_beta1]

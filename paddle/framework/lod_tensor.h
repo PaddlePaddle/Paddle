@@ -85,7 +85,9 @@ class LoDTensor : public Tensor {
 
   void set_lod(const LoD& lod) { lod_ = lod; }
 
-  LoD lod() const { return lod_; }
+  const LoD& lod() const { return lod_; }
+
+  LoD* mutable_lod() { return &lod_; }
 
   /*
    * Get the start offset and end offset of an  element from LoD.
@@ -123,6 +125,12 @@ class LoDTensor : public Tensor {
   size_t NumElements(size_t level, size_t idx) const;
 
   /*
+   * Get the number of instances in the underlying tensor in the `idx`-th
+   * element.
+   */
+  size_t NumInstancesInElement(size_t level, size_t idx) const;
+
+  /*
    * Shrink levels[level_begin:level_end]
    */
   void ShrinkLevels(size_t level_begin, size_t level_end);
@@ -133,29 +141,45 @@ class LoDTensor : public Tensor {
    */
   void ShrinkInLevel(size_t level, size_t elem_begin, size_t elem_end);
 
-  /**
-   *  @brief Serialize tensor to char bytes.
-   *  Please check model_format.md for the format detail.
-   *  NOTE: GPUTensor will copy data to cpu implicitly.
-   *  @return return string
-   */
-
-  // FIXME(dzh) : Currently, this interface should only be used in
-  // save/restore model and checkpoint. ParameterServer do not use shape
-  // information to do the optimization, as a result, when we serialize
-  // parameter/gradient to string, we should serialize the tensor
-  // to string in the ps trainer instead of LoDTensor.
-  std::string SerializeToString() const;
-
-  /**
-   *  @brief Deserialize char bytes to tensor.
-   *  @return return string
-   */
-  void DeserializeFromString(const std::string& s,
-                             const platform::Place& dst_place);
-
  private:
   LoD lod_;
 };
+
+/*
+ * Expand the `source` to fit the LoD of `lod`. For example, a `source`
+ * LoDTensor is
+ *  - LoD: [0, 2]
+ *  - tensor: [a0, a1]
+ * a `lod` is
+ *  - LoD: [0 3 5]
+ * returns a new LoDTensor
+ *  - [a0 a0 a0 a1 a1]
+ */
+template <typename T>
+LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
+                    const platform::Place& place) {
+  LoD abs_lod = ToAbsOffset(lod);
+  const auto& lod_level = lod[level];
+  size_t num_instances = source.dims()[0];
+
+  // new tensor
+  LoDTensor tensor;
+  tensor.set_lod(lod);
+  auto dims = source.dims();
+  dims[0] = lod_level.back();
+  tensor.Resize(dims);
+  tensor.mutable_data<T>(place);
+
+  PADDLE_ENFORCE_EQ(num_instances, lod_level.size() - 1);
+  for (size_t ins = 0; ins < num_instances; ins++) {
+    for (size_t elem = lod_level[ins]; elem < lod_level[ins + 1]; elem++) {
+      tensor.Slice(elem, elem + 1)
+          .CopyFrom(source.Slice(ins, ins + 1), platform::CPUPlace(),
+                    platform::CPUDeviceContext());
+    }
+  }
+  return tensor;
+}
+
 }  // namespace framework
 }  // namespace paddle

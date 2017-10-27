@@ -48,7 +48,8 @@ class TestConv3dOp(OpTest):
         conv3d_param = {'stride': self.stride, 'pad': self.pad}
         input = np.random.random(self.input_size).astype("float32")
         filter = np.random.random(self.filter_size).astype("float32")
-        output = conv3d_forward_naive(input, filter, self.groups, conv3d_param)
+        output = conv3d_forward_naive(input, filter, self.groups,
+                                      conv3d_param).astype("float32")
 
         self.inputs = {'Input': input, 'Filter': filter}
         self.attrs = {

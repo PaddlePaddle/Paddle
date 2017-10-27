@@ -197,11 +197,11 @@ class GemmConvGrad2DKernel : public framework::OpKernel<T> {
     // convolution backward weight operator: im2col + gemm
     int in_step = input_channels / groups;
     int out_step = output_channels / groups;
+    math::SetConstant<Place, T> set_zero;
 
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
-      auto t = framework::EigenVector<T>::Flatten(*input_grad);
-      t.device(context.GetEigenDevice<Place>()) = t.constant(static_cast<T>(0));
+      set_zero(context.device_context(), input_grad, static_cast<T>(0));
 
       for (int i = 0; i < batch_size; i++) {
         Tensor out_grad_batch =
@@ -230,8 +230,7 @@ class GemmConvGrad2DKernel : public framework::OpKernel<T> {
       filter_grad->mutable_data<T>(context.GetPlace());
       Tensor filter_grad_ = *filter_grad;
       filter_grad_.Resize(filter_matrix_shape);
-      auto t = framework::EigenVector<T>::Flatten(filter_grad_);
-      t.device(context.GetEigenDevice<Place>()) = t.constant(static_cast<T>(0));
+      set_zero(context.device_context(), filter_grad, static_cast<T>(0));
 
       for (int i = 0; i < batch_size; i++) {
         Tensor out_grad_batch =
@@ -410,11 +409,11 @@ class GemmConvGrad3DKernel : public framework::OpKernel<T> {
     // convolution backward weight operator: vol2col + gemm
     int in_step = input_channels / groups;
     int out_step = output_channels / groups;
+    math::SetConstant<Place, T> set_zero;
 
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
-      auto t = framework::EigenVector<T>::Flatten(*input_grad);
-      t.device(context.GetEigenDevice<Place>()) = t.constant(static_cast<T>(0));
+      set_zero(context.device_context(), input_grad, static_cast<T>(0));
 
       for (int i = 0; i < batch_size; i++) {
         Tensor out_grad_batch =
@@ -443,8 +442,7 @@ class GemmConvGrad3DKernel : public framework::OpKernel<T> {
       filter_grad->mutable_data<T>(context.GetPlace());
       Tensor filter_grad_ = *filter_grad;
       filter_grad_.Resize(filter_matrix_shape);
-      auto t = framework::EigenVector<T>::Flatten(filter_grad_);
-      t.device(context.GetEigenDevice<Place>()) = t.constant(static_cast<T>(0));
+      set_zero(context.device_context(), filter_grad, static_cast<T>(0));
 
       for (int i = 0; i < batch_size; i++) {
         Tensor out_grad_batch =
