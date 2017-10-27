@@ -104,14 +104,14 @@ class TestBatchNormOp(OpTest):
         self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
 
     def test_python(self):
-        data_format = "NHWC"
+        data_format = "NCHW"
         epsilon = 0.00001
         momentum = 0.9
 
         # N, H, W, C: 2, 3, 4, 2
-        channel_num = 2
-        x_shape = [2, 3, 4, channel_num]
-        scale_shape = [channel_num]
+        n, h, w, c = 2, 3, 4, 2
+        x_shape = [n, h, w, c]
+        scale_shape = [c]
 
         x_val = np.random.random_sample(x_shape).astype(np.float32)
         scale_val = np.random.random_sample(scale_shape).astype(np.float32)
@@ -131,7 +131,7 @@ class TestBatchNormOp(OpTest):
 
         # running N, C, H, W case
         # should produce the same results
-        x_shape2 = [2, channel_num, 3, 4]
+        x_shape2 = [n, c, h, w]
         x_val2 = np.transpose(x_val, (0, 3, 1, 2))
         y_out2, saved_mean2, var_ref2 = _reference_training(
             x_val2, scale_val, bias_val, epsilon, "NCHW")
@@ -146,12 +146,15 @@ class TestBatchNormOp(OpTest):
 
         # test backward now
         # NHWC
-        y_grad = np.ones(x_shape).astype(np.float32)
+        self.y_grad = np.random.random_sample(x_shape).astype(np.float32)
+        y_grad = self.y_grad
+        # y_grad = np.ones(x_shape).astype(np.float32)
         x_grad_ref, scale_grad_ref, bias_grad_ref = _reference_grad(
             x_val, y_grad, scale_val, saved_mean, var_ref, epsilon, "NHWC")
 
         # NCHW
-        y_grad2 = np.ones(x_shape2).astype(np.float32)
+        y_grad2 = np.transpose(y_grad, (0, 3, 1, 2))
+        # y_grad2 = np.ones(x_shape2).astype(np.float32)
         x_grad_ref2, scale_grad_ref2, bias_grad_ref2 = _reference_grad(
             x_val2, y_grad2, scale_val, saved_mean2, var_ref2, epsilon, "NCHW")
 
@@ -168,7 +171,7 @@ class TestBatchNormOp(OpTest):
         epsilon = 0.00001
         momentum = 0.9
 
-        # N, H, W, C: 2, 3, 4, 2
+        # N, H, W, C: 12, 3, 4, 2
         n, h, w, c = 2, 3, 4, 2
 
         if data_format == "NHWC":
@@ -279,6 +282,8 @@ class TestBatchNormOp(OpTest):
                                                     None, place)
 
             # check gradient output
+            print 'var x_grad tensor: ', str(place), np.array(x_grad_tensor)
+            print 'var x_grad by python: ', str(place), x_grad_ref
             self.__assert_close(x_grad_tensor, x_grad_ref, "x_grad")
             self.__assert_close(scale_grad_tensor, scale_grad_ref, "scale_grad")
             self.__assert_close(bias_grad_tensor, bias_grad_ref, "bias_grad")

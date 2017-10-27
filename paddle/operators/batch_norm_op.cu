@@ -117,9 +117,6 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     math::SetConstant<platform::GPUPlace, T> functor;
     functor(ctx.device_context(), saved_mean, 0);
     functor(ctx.device_context(), saved_variance, 0);
-    // FIXME(qiao) should not set zero self
-    functor(ctx.device_context(), mean_out, 0);
-    functor(ctx.device_context(), variance_out, 0);
 
     auto handle = ctx.cuda_device_context().cudnn_handle();
 
