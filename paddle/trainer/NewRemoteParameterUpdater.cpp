@@ -112,7 +112,7 @@ void NewRemoteParameterUpdater::init(
     for (int i = 0; i < parameterSize(); ++i) {
       // FIXME(typhoonzero): paramConfig always have default values,
       // how to check if it's default?
-      // TODO: log output: optimizerConfigV2.DebugString();
+      // TODO(typhoonzero): log output: optimizerConfigV2.DebugString();
       LOG(INFO) << "trainerConfig_: " << trainerConfig_.DebugString();
       // send param and config to pserver
       std::string bytes = optimizerConfigV2.SerializeAsString();
