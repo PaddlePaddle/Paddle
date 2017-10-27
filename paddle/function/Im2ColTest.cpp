@@ -29,82 +29,97 @@ void TestIm2ColFunctor() {
           for (size_t filterWidth : {3, 7}) {
             for (size_t stride : {1, 2}) {
               for (size_t padding : {0, 1}) {
-                if (inputHeight <= filterHeight || inputWidth <= filterWidth)
-                  break;
-                if (padding >= filterHeight || padding >= filterWidth) break;
-                size_t outputHeight =
-                    (inputHeight - filterHeight + 2 * padding + stride) /
-                    stride;
-                size_t outputWidth =
-                    (inputWidth - filterWidth + 2 * padding + stride) / stride;
+                for (size_t dilation : {1, 3}) {
+                  size_t filterSizeH = (filterHeight - 1) * dilation + 1;
+                  size_t filterSizeW = (filterWidth - 1) * dilation + 1;
+                  if (inputHeight <= filterSizeH || inputWidth <= filterSizeW)
+                    break;
+                  if (padding >= filterSizeH || padding >= filterSizeW) break;
+                  size_t outputHeight =
+                      (inputHeight - filterSizeH + 2 * padding) / stride + 1;
+                  size_t outputWidth =
+                      (inputWidth - filterSizeW + 2 * padding) / stride + 1;
 
-                TensorShape imShape =
-                    TensorShape({channels, inputHeight, inputWidth});
-                TensorShape colShape1 = TensorShape({channels,
-                                                     filterHeight,
-                                                     filterWidth,
-                                                     outputHeight,
-                                                     outputWidth});
-                TensorShape colShape2 = TensorShape({outputHeight,
-                                                     outputWidth,
-                                                     channels,
-                                                     filterHeight,
-                                                     filterWidth});
+                  TensorShape imShape =
+                      TensorShape({channels, inputHeight, inputWidth});
+                  TensorShape colShape1 = TensorShape({channels,
+                                                       filterHeight,
+                                                       filterWidth,
+                                                       outputHeight,
+                                                       outputWidth});
+                  TensorShape colShape2 = TensorShape({outputHeight,
+                                                       outputWidth,
+                                                       channels,
+                                                       filterHeight,
+                                                       filterWidth});
 
-                size_t height = channels * filterHeight * filterWidth;
-                size_t width = outputHeight * outputWidth;
-                VectorPtr input1 = Vector::create(imShape.getElements(), false);
-                VectorPtr input2 = Vector::create(imShape.getElements(), false);
-                MatrixPtr output1 = Matrix::create(height, width, false, false);
-                MatrixPtr output2 = Matrix::create(width, height, false, false);
-                input1->uniform(0.001, 1);
-                input2->copyFrom(*input1);
+                  size_t height = channels * filterHeight * filterWidth;
+                  size_t width = outputHeight * outputWidth;
+                  VectorPtr input1 =
+                      Vector::create(imShape.getElements(), false);
+                  VectorPtr input2 =
+                      Vector::create(imShape.getElements(), false);
+                  MatrixPtr output1 =
+                      Matrix::create(height, width, false, false);
+                  MatrixPtr output2 =
+                      Matrix::create(width, height, false, false);
+                  input1->uniform(0.001, 1);
+                  input2->copyFrom(*input1);
 
-                Im2ColFunctor<kCFO, Device, T> im2Col1;
-                Im2ColFunctor<kOCF, Device, T> im2Col2;
-                im2Col1(input1->getData(),
-                        imShape,
-                        output1->getData(),
-                        colShape1,
-                        stride,
-                        stride,
-                        padding,
-                        padding);
-                im2Col2(input2->getData(),
-                        imShape,
-                        output2->getData(),
-                        colShape2,
-                        stride,
-                        stride,
-                        padding,
-                        padding);
+                  Im2ColFunctor<kCFO, Device, T> im2Col1;
+                  Im2ColFunctor<kOCF, Device, T> im2Col2;
+                  im2Col1(input1->getData(),
+                          imShape,
+                          output1->getData(),
+                          colShape1,
+                          stride,
+                          stride,
+                          padding,
+                          padding,
+                          dilation,
+                          dilation);
+                  im2Col2(input2->getData(),
+                          imShape,
+                          output2->getData(),
+                          colShape2,
+                          stride,
+                          stride,
+                          padding,
+                          padding,
+                          dilation,
+                          dilation);
 
-                // The transposition of the result of ColFormat == kCFO
-                // is equal to the result of ColFormat == kOCF.
-                MatrixPtr test;
-                output2->transpose(test, true);
-                autotest::TensorCheckErr(*output1, *test);
+                  // The transposition of the result of ColFormat == kCFO
+                  // is equal to the result of ColFormat == kOCF.
+                  MatrixPtr test;
+                  output2->transpose(test, true);
+                  autotest::TensorCheckErr(*output1, *test);
 
-                Col2ImFunctor<kCFO, Device, T> col2Im1;
-                Col2ImFunctor<kOCF, Device, T> col2Im2;
-                col2Im1(input1->getData(),
-                        imShape,
-                        output1->getData(),
-                        colShape1,
-                        stride,
-                        stride,
-                        padding,
-                        padding);
-                col2Im2(input2->getData(),
-                        imShape,
-                        output2->getData(),
-                        colShape2,
-                        stride,
-                        stride,
-                        padding,
-                        padding);
+                  Col2ImFunctor<kCFO, Device, T> col2Im1;
+                  Col2ImFunctor<kOCF, Device, T> col2Im2;
 
-                autotest::TensorCheckErr(*input1, *input2);
+                  col2Im1(input1->getData(),
+                          imShape,
+                          output1->getData(),
+                          colShape1,
+                          stride,
+                          stride,
+                          padding,
+                          padding,
+                          dilation,
+                          dilation);
+                  col2Im2(input2->getData(),
+                          imShape,
+                          output2->getData(),
+                          colShape2,
+                          stride,
+                          stride,
+                          padding,
+                          padding,
+                          dilation,
+                          dilation);
+                  autotest::TensorCheckErr(*input1, *input2);
+                }
               }
             }
           }
