@@ -136,9 +136,9 @@ to compute various metrics including:
   - micro average recall
   - micro f1 score
 
-To compute the above metrics, we need to statistic counts for true positives,
+To compute the above metrics, we need to do statistics for true positives,
 false positives and false negatives. Here count of true negatives is not
-necessary, but statisticing it may provide potential usage and the cost is
+necessary, but counting it may provide potential usage and the cost is
 trivial, so the operator also provides count of true negatives.
 
 We define state as a 2-D tensor with shape [class number, 4]. Each row of a
