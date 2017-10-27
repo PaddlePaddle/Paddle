@@ -33,24 +33,6 @@ ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
 }
 #endif
 
-const Tensor* GetTensorFromVar(const Variable* var) {
-  if (var->IsType<LoDTensor>()) {
-    return &var->Get<LoDTensor>();
-  }
-  PADDLE_ENFORCE(var->IsType<Tensor>(),
-                 "The Input must be LoDTensor or Tensor.");
-  return &var->Get<Tensor>();
-}
-
-Tensor* GetTensorFromVar(Variable* var) {
-  if (var->IsType<LoDTensor>()) {
-    return var->GetMutable<LoDTensor>();
-  }
-  PADDLE_ENFORCE(var->IsType<Tensor>(),
-                 "The Input must be LoDTensor or Tensor.");
-  return var->GetMutable<Tensor>();
-}
-
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
   PADDLE_ENFORCE_LE(ins.size(), 1UL,
@@ -204,6 +186,30 @@ void OperatorBase::GenerateTemporaryNames() {
   }
 }
 
+static const Tensor* GetTensorFromVar(const Variable* var) {
+  const Tensor* t = nullptr;
+  if (var->IsType<LoDTensor>()) {
+    t = &(var->Get<LoDTensor>());
+  } else if (var->IsType<SelectedRows>()) {
+    t = &(var->Get<SelectedRows>().value());
+  } else {
+    PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+  }
+  return t;
+}
+
+static Tensor* GetMutableTensorFromVar(Variable* var) {
+  Tensor* t = nullptr;
+  if (var->IsType<LoDTensor>()) {
+    t = var->GetMutable<LoDTensor>();
+  } else if (var->IsType<SelectedRows>()) {
+    t = var->GetMutable<SelectedRows>()->mutable_value();
+  } else {
+    PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+  }
+  return t;
+}
+
 template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
   auto* var = InputVar(name);
@@ -227,7 +233,7 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
 template <>
 Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
   auto var = OutputVar(name);
-  return var == nullptr ? nullptr : var->GetMutable<LoDTensor>();
+  return var == nullptr ? nullptr : GetMutableTensorFromVar(var);
 }
 
 template <>
@@ -240,7 +246,7 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
                  [&](const std::string& sub_name) {
                    auto var = scope_.FindVar(sub_name);
                    return var == nullptr ? nullptr
-                                         : var->GetMutable<LoDTensor>();
+                                         : GetMutableTensorFromVar(var);
                  });
   return res;
 }
@@ -250,6 +256,21 @@ std::ostream& operator<<(std::ostream& os,
   os << "place[" << kernel_key.place_ << "]:data_type[" << kernel_key.data_type_
      << "]";
   return os;
+}
+
+bool OpSupportGPU(const std::string& op_type) {
+  auto& all_kernels = OperatorWithKernel::AllOpKernels();
+  auto it = all_kernels.find(op_type);
+  if (it == all_kernels.end()) {
+    // All control operator must support GPU
+    return true;
+  }
+  for (auto& kern_pair : it->second) {
+    if (platform::is_gpu_place(kern_pair.first.place_)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace framework

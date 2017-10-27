@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -63,9 +64,9 @@ class SequencePoolKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
     auto place = context.GetEigenDevice<Place>();
     for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
-      Tensor in_t = in->Slice<T>(static_cast<int>(lod_level_0[i]),
-                                 static_cast<int>(lod_level_0[i + 1]));
-      Tensor out_t = out->Slice<T>(i, i + 1);
+      Tensor in_t = in->Slice(static_cast<int>(lod_level_0[i]),
+                              static_cast<int>(lod_level_0[i + 1]));
+      Tensor out_t = out->Slice(i, i + 1);
       int64_t h = static_cast<int64_t>(lod_level_0[i + 1] - lod_level_0[i]);
       auto in_e = EigenMatrix<T>::From(in_t, framework::make_ddim({h, w}));
       auto out_e = EigenVector<T>::Flatten(out_t);
@@ -76,6 +77,16 @@ class SequencePoolKernel : public framework::OpKernel<T> {
           break;
         case SUM:
           out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}}));
+          break;
+        case SQRT:
+          out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}})) /
+                                std::sqrt(static_cast<T>(h));
+          break;
+        case LAST:
+          out_e.device(place) = in_e.chip(h - 1, 0);
+          break;
+        case FIRST:
+          out_e.device(place) = in_e.chip(0, 0);
           break;
         default:
           PADDLE_THROW("unsupported pooling strategy");
@@ -98,11 +109,16 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
     int64_t w = in->numel() / dims[0];
 
     in_g->mutable_data<T>(context.GetPlace());
+    if (strategy == LAST || strategy == FIRST) {
+      // set X@Grad be zero at first when strategy is LAST/FIRST
+      math::SetConstant<Place, T> functor;
+      functor(context.device_context(), in_g, 0);
+    }
     auto place = context.GetEigenDevice<Place>();
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
-      auto in_g_t = in_g->Slice<T>(static_cast<int>(lod[i]),
-                                   static_cast<int>(lod[i + 1]));
-      auto out_g_t = out_g->Slice<T>(i, i + 1);
+      auto in_g_t =
+          in_g->Slice(static_cast<int>(lod[i]), static_cast<int>(lod[i + 1]));
+      auto out_g_t = out_g->Slice(i, i + 1);
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
       auto in_g_e = EigenMatrix<T>::From(in_g_t, {h, w});
       auto out_g_e = EigenMatrix<T>::From(out_g_t, {1, w});
@@ -114,6 +130,16 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
           break;
         case SUM:
           in_g_e.device(place) = (out_g_e).broadcast(bcast);
+          break;
+        case SQRT:
+          in_g_e.device(place) =
+              (out_g_e / std::sqrt(static_cast<T>(h))).broadcast(bcast);
+          break;
+        case LAST:
+          in_g_e.chip(h - 1, 0).device(place) = out_g_e;
+          break;
+        case FIRST:
+          in_g_e.chip(0, 0).device(place) = out_g_e;
           break;
         default:
           PADDLE_THROW("unsupported pooling strategy");

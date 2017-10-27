@@ -44,7 +44,8 @@ class TestConv2dOp(OpTest):
         conv2d_param = {'stride': self.stride, 'pad': self.pad}
         input = np.random.random(self.input_size).astype("float32")
         filter = np.random.random(self.filter_size).astype("float32")
-        output = conv2d_forward_naive(input, filter, self.groups, conv2d_param)
+        output = conv2d_forward_naive(input, filter, self.groups,
+                                      conv2d_param).astype('float32')
 
         self.inputs = {'Input': input, 'Filter': filter}
         self.attrs = {

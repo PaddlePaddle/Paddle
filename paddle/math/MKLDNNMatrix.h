@@ -40,24 +40,37 @@ public:
   /**
    * Create MKLDNNMatrix from a MatrixPtr and memory primitive_desc
    */
-  static MKLDNNMatrixPtr create(MatrixPtr m, mkldnn::memory::primitive_desc pd);
+  static MKLDNNMatrixPtr create(mkldnn::memory::primitive_desc pd,
+                                MatrixPtr m = nullptr);
 
   /**
    * Create MKLDNNMatrix from a MatrixPtr and memory details info
    */
   static MKLDNNMatrixPtr create(
-      MatrixPtr m,
       mkldnn::memory::dims dims,
       mkldnn::memory::format fmt,
       mkldnn::engine& eg,
+      MatrixPtr m = nullptr,
       mkldnn::memory::data_type dtype = mkldnn::memory::data_type::f32);
+
+  /**
+   * Create primitive descriptor.
+   * default with f32 dtype
+   */
+  static mkldnn::memory::primitive_desc createPrimitiveDesc(
+      const mkldnn::memory::dims dims,
+      const mkldnn::memory::format& fmt,
+      const mkldnn::engine& eg,
+      const mkldnn::memory::data_type& dtype = mkldnn::memory::data_type::f32) {
+    return mkldnn::memory::primitive_desc(memory::desc(dims, dtype, fmt), eg);
+  }
 
   /**
    * Create Memory descriptor.
    * default with any format and f32 dtype
    */
   static mkldnn::memory::desc createMemoryDesc(
-      const mkldnn::memory::dims& dims,
+      const mkldnn::memory::dims dims,
       const mkldnn::memory::format& fmt = mkldnn::memory::format::any,
       const mkldnn::memory::data_type& dtype = mkldnn::memory::data_type::f32) {
     return mkldnn::memory::desc(dims, dtype, fmt);
@@ -77,6 +90,11 @@ public:
       const MKLDNNMatrixPtr& src,
       const MKLDNNMatrixPtr& dst,
       bool checkData = true);
+
+  void copyFrom(const Matrix& src) {
+    // TODO(TJ): reorder data if this format is not nchw or x
+    m_->copyFrom(src);
+  }
 
 public:
   /**

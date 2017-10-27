@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/tensor.h"
 
 namespace paddle {
@@ -22,7 +23,10 @@ class SelectedRows {
     value_.reset(new Tensor());
   }
 
-  SelectedRows() { value_.reset(new Tensor()); }
+  SelectedRows() {
+    height_ = 0;
+    value_.reset(new Tensor());
+  }
 
   platform::Place place() const { return value_->place(); }
 
@@ -34,9 +38,11 @@ class SelectedRows {
 
   void set_height(int64_t height) { height_ = height; }
 
-  const std::vector<int64_t>& rows() const { return rows_; }
+  const Vector<int64_t>& rows() const { return rows_; }
 
-  void set_rows(const std::vector<int64_t>& rows) { rows_ = rows; }
+  Vector<int64_t>* mutable_rows() { return &rows_; }
+
+  void set_rows(const Vector<int64_t>& rows) { rows_ = rows; }
 
   DDim GetCompleteDims() const {
     std::vector<int64_t> dims = vectorize(value_->dims());
@@ -45,7 +51,10 @@ class SelectedRows {
   }
 
  private:
-  std::vector<int64_t> rows_;
+  // Notice: rows can be duplicate. We can have {0, 4, 7, 0, 5, 7, 9} here.
+  // SelectedRows are simplely concated when adding together. Until a
+  // SelectedRows add a Tensor, will the duplicate rows be handled.
+  Vector<int64_t> rows_;
   std::unique_ptr<Tensor> value_{nullptr};
   int64_t height_;
 };

@@ -21,7 +21,6 @@ class ActivationOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     ctx->SetOutputDim("Y", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Y");
@@ -32,7 +31,6 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("Y"));
   }
@@ -448,12 +446,16 @@ REGISTER_OP(thresholded_relu, ops::ActivationOp,
 REGISTER_OP(hard_sigmoid, ops::ActivationOp, ops::HardSigmoidOpMaker<float>,
             hard_sigmoid_grad, ops::ActivationOpGrad);
 
-#define REGISTER_ACTIVATION_CPU_KERNEL(act_type, functor, grad_functor)        \
-  REGISTER_OP_CPU_KERNEL(                                                      \
-      act_type,                                                                \
-      ops::ActivationKernel<paddle::platform::CPUPlace, ops::functor<float>>); \
-  REGISTER_OP_CPU_KERNEL(act_type##_grad,                                      \
-                         ops::ActivationGradKernel<paddle::platform::CPUPlace, \
-                                                   ops::grad_functor<float>>);
+#define REGISTER_ACTIVATION_CPU_KERNEL(act_type, functor, grad_functor)       \
+  REGISTER_OP_CPU_KERNEL(                                                     \
+      act_type,                                                               \
+      ops::ActivationKernel<paddle::platform::CPUPlace, ops::functor<float>>, \
+      ops::ActivationKernel<paddle::platform::CPUPlace,                       \
+                            ops::functor<double>>);                           \
+  REGISTER_OP_CPU_KERNEL(                                                     \
+      act_type##_grad, ops::ActivationGradKernel<paddle::platform::CPUPlace,  \
+                                                 ops::grad_functor<float>>,   \
+      ops::ActivationGradKernel<paddle::platform::CPUPlace,                   \
+                                ops::grad_functor<double>>);
 
 FOR_EACH_KERNEL_FUNCTOR(REGISTER_ACTIVATION_CPU_KERNEL);

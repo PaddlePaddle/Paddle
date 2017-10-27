@@ -65,16 +65,28 @@ void Scope::DropKids() {
   kids_.clear();
 }
 
-std::once_flag feed_variable_flag;
+std::vector<std::string> Scope::GetAllNames(bool recursive) const {
+  std::vector<std::string> known_vars(vars_.size());
 
-framework::Scope& GetGlobalScope() {
-  static std::unique_ptr<framework::Scope> g_scope{nullptr};
-  std::call_once(feed_variable_flag, [&]() {
-    g_scope.reset(new framework::Scope());
-    g_scope->Var("feed_value");
-    g_scope->Var("fetch_value");
-  });
-  return *(g_scope.get());
+  if (recursive) {
+    for (auto& kid : kids_) {
+      auto kid_vars = kid->GetAllNames();
+      for (auto& p : kid_vars) {
+        known_vars.emplace_back(p);
+      }
+    }
+  }
+  for (auto& p : vars_) {
+    known_vars.emplace_back(p.first);
+  }
+  return known_vars;
+}
+
+void Scope::DeleteScope(Scope* scope) {
+  auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
+  PADDLE_ENFORCE(it != this->kids_.end(), "Cannot find %p as kid scope", scope);
+  this->kids_.erase(it);
+  delete scope;
 }
 
 }  // namespace framework

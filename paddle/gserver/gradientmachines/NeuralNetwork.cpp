@@ -21,6 +21,10 @@ limitations under the License. */
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
+#ifdef PADDLE_USE_MKLDNN
+#include "paddle/gserver/layers/MKLDNNLayer.h"
+#endif
+
 #ifndef PADDLE_MOBILE_INFERENCE
 #include "MultiNetwork.h"
 #include "RecurrentGradientMachine.h"
@@ -298,6 +302,17 @@ void NeuralNetwork::backward(const UpdateCallback& callback) {
     }
     gLayerStackTrace.pop((*layer)->getName());
   }
+}
+
+void NeuralNetwork::finish() {
+#ifdef PADDLE_USE_MKLDNN
+  FOR_EACH_R(layer, layers_) {
+    MKLDNNLayerPtr dnnLayer = std::dynamic_pointer_cast<MKLDNNLayer>(*layer);
+    if (dnnLayer) {
+      dnnLayer->convertWeightsToPaddle();
+    }
+  }
+#endif
 }
 
 Argument NeuralNetwork::getLayerOutput(const std::string& layerName) {

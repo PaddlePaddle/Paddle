@@ -1,6 +1,6 @@
 # Design Doc: Selected Rows
 
-`SelectedRows` is a kind of sparse tensor data type, which is designed to support `embedding` operators. The gradient of embedding table is a sparse tensor. Only a few rows are non-zero values in that tensor. It is straightforward to represent the sparse tensor by the following sparse tensor data structure:
+`SelectedRows` is a type of sparse tensor data type, which is designed to support `embedding` operators. The gradient of embedding table is a sparse tensor. Only a few rows are non-zero values in this tensor. It is straight-forward to represent a sparse tensor by the following sparse tensor data structure:
 
 ```cpp
 class SelectedRows {
@@ -11,7 +11,7 @@ class SelectedRows {
 };
 ```
 
-The field `height_` shows the first dimension of `SelectedRows`. The `rows` are the indices of which rows of `SelectedRows` are non-zeros. The `value_` field is an N-dim tensor and shape is `[rows.size() /* NUM_ROWS */, ...]`, which supplies values for each row. The dimension of `SelectedRows` satisfies `[height_] + value_.shape[1:]`.
+The field `height_` is the first dimension of `SelectedRows`. The `rows` are the indices of the non-zero rows of `SelectedRows`. The `value_` field is an N-dim tensor of shape `[rows.size() /* NUM_ROWS */, ...]`, which supplies values for each row. The dimension of `SelectedRows` satisfies `[height_] + value_.shape[1:]`.
 
 Suppose that a SelectedRows-typed variable `x` has many rows, but only two of them have values -- row 73 is `[1, 2]` and row 84 is `[3, 4]`, the `SelectedRows` representation would be:
 
@@ -25,7 +25,7 @@ x = SelectedRow {
 
 ## SelectedRows in Protobuf
 
-`SelectedRows` is a kind of `Variable`. `VarDesc` in protobuf should describe the `SelectedRows` information. Only the tensor dimension of a `SelectedRows` will be described in compile-time since the `rows_` and `value_` are related to training data. 
+`SelectedRows` is a type of `Variable`. `VarDesc` in protobuf should describe the `SelectedRows` information. Only the tensor dimension of a `SelectedRows` will be described in compile-time because the `rows_` and `value_` are dependent on the training data. 
 So we use `TensorDesc` to unify `data_type` and `dims`. A LodTensorDesc contains a `TensorDesc` and `lod_level`. The description of `SelectedRows` is a Tensor description.
 
 ```proto
@@ -54,7 +54,7 @@ message VarDesc {
 
 ## InferShape for Selected Rows
 
-Just like `LoD` information, `InferShape` method will inference output tensor type as well. The operator should decide whether its output is a `SelectedRows` or `Dense` tensor.
+Just like `LoD` information, `InferShape` method will infer the output tensor type as well. The operator should decide whether its output is a `SelectedRows` or `Dense` tensor.
 
 For example, the gradient operator of `TableLookup` will always generate `SelectedRows`. Its `InferShape` method should be like following
 
@@ -68,7 +68,7 @@ void TableLookupGrad::InferShape(context) {
 
 ## Sparse Operators
 
-There are several operators should be written to support `SelectedRows`. They are:
+There are several operators that need to be written to support `SelectedRows`. These are:
 
-1. Operators which generates `SelectedRows` gradient. e.g. Gradient of `TableLookupOp`.
+1. Operators which generate `SelectedRows` gradient. e.g. Gradient of `TableLookupOp`.
 2. Optimize operators which support `SelectedRows` gradient. e.g. `SGD` or `AdaGrad` for `SelectedRows`. However, there should be only one `SGD` operator. `OpWithKernel::Run` should select a suitable kernel for both `dense` tensor or `SelectedRows`.
