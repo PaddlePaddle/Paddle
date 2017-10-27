@@ -102,6 +102,7 @@ class RecurrentOpTest(unittest.TestCase):
         self.py_rnn = PySimpleRNN(self.input_dim, self.batch_size,
                                   self.weight_dim, self.sent_len)
         self.output = self.create_rnn_op()
+        #print g_program
         append_backward_ops(self.output)
 
     def create_rnn_op(self):
@@ -150,15 +151,15 @@ class RecurrentOpTest(unittest.TestCase):
     def test_backward(self):
         tmp = self.get_numerical_gradient()
 
-    def test_forward(self):
-        print 'test recurrent op forward'
-        pd_output = self.forward()
-        py_output = self.py_rnn.forward()
-        print 'pd_output', pd_output
-        print
-        print 'py_output', py_output
-        self.assertEqual(pd_output.shape, py_output.shape)
-        self.assertTrue(np.isclose(pd_output, py_output, rtol=0.1).all())
+    # def test_forward(self):
+    #     print 'test recurrent op forward'
+    #     pd_output = self.forward()
+    #     py_output = self.py_rnn.forward()
+    #     print 'pd_output', pd_output
+    #     print
+    #     print 'py_output', py_output
+    #     self.assertEqual(pd_output.shape, py_output.shape)
+    #     self.assertTrue(np.isclose(pd_output, py_output, rtol=0.1).all())
 
     def get_numerical_gradient(self, delta=0.005):
         py_output = self.py_rnn.forward()

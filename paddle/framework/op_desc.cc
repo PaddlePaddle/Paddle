@@ -270,11 +270,22 @@ void OpDescBind::InferShape(const BlockDescBind &block) const {
   auto &infer_shape = OpInfoMap::Instance().Get(this->Type()).infer_shape_;
   PADDLE_ENFORCE(static_cast<bool>(infer_shape),
                  "%s's infer_shape has not been registered", this->Type());
+  for (auto &i : Inputs()) {
+    for (auto &ii : i.second) {
+      VLOG(10) << "Input: " << i.first << " " << ii;
+    }
+  }
+  for (auto &o : Outputs()) {
+    for (auto &oo : o.second) {
+      VLOG(10) << "Output: " << o.first << " " << oo;
+    }
+  }
   CompileTimeInferShapeContext ctx(*this, block);
   infer_shape(&ctx);
 }
 
 void OpDescBind::InferVarType(BlockDescBind *block) const {
+  VLOG(3) << "CompileTime infer varType on " << Type();
   auto &info = OpInfoMap::Instance().Get(this->Type());
   if (info.infer_var_type_) {
     info.infer_var_type_(*this, block);

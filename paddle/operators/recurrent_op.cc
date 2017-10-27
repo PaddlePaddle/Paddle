@@ -198,6 +198,6 @@ class RecurrentGradientOpShapeInference : public framework::InferShapeBase {
 
 REGISTER_OPERATOR(recurrent, paddle::operators::RecurrentOp,
                   paddle::operators::RecurrentAlgorithmProtoAndCheckerMaker,
-                  paddle::operators::RecurrentGradientOpShapeInference,
                   paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(recurrent_grad, paddle::operators::RecurrentGradientOp);
+REGISTER_OPERATOR(recurrent_grad, paddle::operators::RecurrentGradientOp,
+                  paddle::operators::RecurrentGradientOpShapeInference);
