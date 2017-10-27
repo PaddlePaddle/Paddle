@@ -382,14 +382,14 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
       PADDLE_ENFORCE_EQ(
           op_grads.size(), static_cast<size_t>(1),
           "rnn_op's gradient process should contain only one op.");
-      int step_block_idx = (*it)->GetBlockAttr("step_block");
+      int step_block_idx = (*it)->GetBlockAttr("block_idx");
       auto backward_block_op_descs = MakeBlockBackward(
           program_desc, step_block_idx, no_grad_vars, grad_to_var);
       BlockDescBind* backward_block = program_desc.AppendBlock(*cur_block);
       for (auto& ptr : backward_block_op_descs) {
         backward_block->AppendAllocatedOp(std::move(ptr));
       }
-      op_grads[0]->SetBlockAttr("step_block", *backward_block);
+      op_grads[0]->SetBlockAttr("block_idx", *backward_block);
     }
 
     for (const auto& desc : op_grads) {

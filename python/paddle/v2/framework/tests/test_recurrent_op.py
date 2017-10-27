@@ -6,6 +6,7 @@ from op_test import get_numeric_gradient
 from paddle.v2.framework.layers import *
 from paddle.v2.framework.framework import g_program, g_init_program
 from paddle.v2.framework.executor import Executor
+from paddle.v2.framework.backward import append_backward_ops
 import numpy as np
 import paddle.v2.framework.core as core
 
@@ -101,6 +102,9 @@ class RecurrentOpTest(unittest.TestCase):
         self.py_rnn = PySimpleRNN(self.input_dim, self.batch_size,
                                   self.weight_dim, self.sent_len)
         self.output = self.create_rnn_op()
+        append_backward_ops(self.output)
+        import pdb
+        pdb.set_trace()
 
     def create_rnn_op(self):
         x = data(
@@ -145,6 +149,9 @@ class RecurrentOpTest(unittest.TestCase):
 
         return np.array(out[0])
 
+    def test_backward(self):
+        tmp = self.get_numerical_gradient()
+
     def test_forward(self):
         print 'test recurrent op forward'
         pd_output = self.forward()
@@ -174,9 +181,6 @@ class RecurrentOpTest(unittest.TestCase):
                 g[...] = np.sum(dloss_dout * dout_dfeed)
 
         return grad_list
-
-    def test_backward(self):
-        tmp = self.get_numerical_gradient()
 
 
 # class RecurrentGradientOpTest(unittest.TestCase):

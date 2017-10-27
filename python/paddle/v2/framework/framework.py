@@ -261,7 +261,9 @@ class Operator(object):
                     self.desc.set_attr(attr_name, attrs[attr_name])
 
         self.desc.check_attrs()
-        no_kernel_op_set = {'feed', 'fetch', 'save', 'restore', 'recurrent'}
+        no_kernel_op_set = {
+            'feed', 'fetch', 'save', 'restore', 'recurrent', 'recurrent_grad'
+        }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
