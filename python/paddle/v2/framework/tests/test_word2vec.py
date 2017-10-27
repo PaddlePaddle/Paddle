@@ -15,7 +15,7 @@ embed_size = 32
 hidden_size = 256
 N = 5
 batch_size = 32
-is_sparse = False
+is_sparse = True
 
 word_dict = paddle.dataset.imikolov.build_dict()
 dict_size = len(word_dict)
