@@ -101,7 +101,7 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
                         context.device_context())
                         .stream();
       // copy GPU memory to CPU pinned memory
-      Vector<int64_t> new_rows;
+      framework::Vector<int64_t> new_rows;
       new_rows.resize(ids_dim[0]);
       auto gpu_place = boost::get<platform::GPUPlace>(context.GetPlace());
 
