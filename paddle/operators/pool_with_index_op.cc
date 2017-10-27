@@ -109,10 +109,9 @@ class MaxPool2dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
         "If globalPooling = true, ksize is ignored and need not be "
         "specified.");  // TODO(Chengduo): Add checker. (Currently,
     // TypedAttrChecker don't support vector type.)
-    AddAttr<bool>(
-        "globalPooling",
-        "(bool default: false), whether to use the global pooling."
-        "If globalPooling = true, ksize is ignored and need not be specified.")
+    AddAttr<bool>("globalPooling",
+                  "(bool default: false), whether to use the global pooling."
+                  "If globalPooling = true, ksize is ignored.")
         .SetDefault(false);
     AddAttr<std::vector<int>>(
         "strides",
@@ -178,10 +177,9 @@ class MaxPool3dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
         "If globalPooling = true, ksize is ignored and need not be "
         "specified.");  // TODO(Chengduo): Add checker. (Currently,
     // TypedAttrChecker don't support vector type.)
-    AddAttr<bool>(
-        "globalPooling",
-        "(bool default: false), whether to use the global pooling."
-        "If globalPooling = true, ksize is ignored and need not be specified.")
+    AddAttr<bool>("globalPooling",
+                  "(bool default: false), whether to use the global pooling."
+                  "If globalPooling = true, ksize is ignored.")
         .SetDefault(false);
     AddAttr<std::vector<int>>("strides",
                               "(vector, default:{1,1,1}), strides(depth, "

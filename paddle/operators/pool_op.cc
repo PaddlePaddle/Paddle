@@ -81,8 +81,8 @@ Pool2dOpMaker::Pool2dOpMaker(framework::OpProto *proto,
             "width of feature.");
 
   AddAttr<std::string>("poolingType",
-                       "(string), poolingType of pooling operator."
-                       "Str constant equal to 'max' or 'avg'.")
+                       "(string), pooling type, can be \"max\" for max-pooling "
+                       "and \"avg\" for average-pooling.")
       .InEnum({"max", "avg"});
   AddAttr<std::vector<int>>(
       "ksize",
@@ -90,10 +90,9 @@ Pool2dOpMaker::Pool2dOpMaker(framework::OpProto *proto,
       "If globalPooling = true, ksize is ignored and need not be "
       "specified.");  // TODO(Chengduo): Add checker. (Currently,
   // TypedAttrChecker don't support vector type.)
-  AddAttr<bool>(
-      "globalPooling",
-      "(bool default: false), whether to use the global pooling."
-      "If globalPooling = true, ksize is ignored and need not be specified.")
+  AddAttr<bool>("globalPooling",
+                "(bool default: false), whether to use the global pooling."
+                "If globalPooling = true, ksize is ignored.")
       .SetDefault(false);
   AddAttr<std::vector<int>>(
       "strides",
@@ -143,8 +142,8 @@ Pool3dOpMaker::Pool3dOpMaker(framework::OpProto *proto,
             "width of feature.");
 
   AddAttr<std::string>("poolingType",
-                       "(string), poolingType of pooling operator."
-                       "Str constant equal to 'max' or 'avg'.")
+                       "(string), pooling type, can be \"max\" for max-pooling "
+                       "and \"avg\" for average-pooling.")
       .InEnum({"max", "avg"});
   AddAttr<std::vector<int>>(
       "ksize",
@@ -153,10 +152,9 @@ Pool3dOpMaker::Pool3dOpMaker(framework::OpProto *proto,
       "If globalPooling = true, ksize is ignored and need not be "
       "specified.");  // TODO(Chengduo): Add checker. (Currently,
                       // TypedAttrChecker don't support vector type.)
-  AddAttr<bool>(
-      "globalPooling",
-      "(bool default: false), whether to use the global pooling."
-      "If globalPooling = true, ksize is ignored and need not be specified.")
+  AddAttr<bool>("globalPooling",
+                "(bool default: false), whether to use the global pooling."
+                "If globalPooling = true, ksize is ignored.")
       .SetDefault(false);
   AddAttr<std::vector<int>>("strides",
                             "(vector, default:{1,1,1}), strides(depth, height, "

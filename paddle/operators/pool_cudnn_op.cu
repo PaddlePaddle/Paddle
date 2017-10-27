@@ -24,15 +24,6 @@ using ScopedPoolingDescriptor = platform::ScopedPoolingDescriptor;
 using DataLayout = platform::DataLayout;
 using PoolingMode = platform::PoolingMode;
 
-// NOTE: copy from conv_cudnn
-std::vector<int> Dims2VectorPool(const framework::DDim &dims) {
-  std::vector<int> ret;
-  for (int i = 0; i < dims.size(); i++) {
-    ret.push_back(dims[i]);
-  }
-  return ret;
-}
-
 template <typename T>
 class PoolCudnnOpKernel : public framework::OpKernel<T> {
  public:
@@ -62,10 +53,10 @@ class PoolCudnnOpKernel : public framework::OpKernel<T> {
     ScopedPoolingDescriptor pool_desc;
     DataLayout layout = DataLayout::kNCHW;
 
-    cudnnTensorDescriptor_t cudnn_input_desc =
-        input_desc.descriptor<T>(layout, Dims2VectorPool(input->dims()));
-    cudnnTensorDescriptor_t cudnn_output_desc =
-        output_desc.descriptor<T>(layout, Dims2VectorPool(output->dims()));
+    cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
+        layout, framework::vectorize2int(input->dims()));
+    cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
+        layout, framework::vectorize2int(output->dims()));
 
     PoolingMode pooling_mode;
     if (pooling_type == "max") {
@@ -120,10 +111,10 @@ class PoolCudnnGradOpKernel : public framework::OpKernel<T> {
     ScopedPoolingDescriptor pool_desc;
     DataLayout layout = DataLayout::kNCHW;
 
-    cudnnTensorDescriptor_t cudnn_input_desc =
-        input_desc.descriptor<T>(layout, Dims2VectorPool(input->dims()));
-    cudnnTensorDescriptor_t cudnn_output_desc =
-        output_desc.descriptor<T>(layout, Dims2VectorPool(output->dims()));
+    cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
+        layout, framework::vectorize2int(input->dims()));
+    cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
+        layout, framework::vectorize2int(output->dims()));
 
     PoolingMode pooling_mode;
     if (pooling_type == "max") {
