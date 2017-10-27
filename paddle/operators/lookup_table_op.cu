@@ -18,8 +18,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 template <typename T, int BlockDimX, int BlockDimY, int GridDimX>
 __global__ void LookupTable(T* output, const T* table, const int64_t* ids,
                             const int64_t N, const int64_t K, const int64_t D) {
@@ -90,9 +88,9 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
     bool is_sparse = context.Attr<bool>("is_sparse");
     if (is_sparse) {
       auto* ids = context.Input<Tensor>("Ids");
+      auto* table = context.Input<Tensor>("W");
       auto* d_output = context.Input<Tensor>(framework::GradVarName("Out"));
-      auto* d_table =
-          context.Output<framework::SelectedRows>(framework::GradVarName("W"));
+      auto* d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
 
       auto* ids_data = ids->data<int64_t>();
       auto ids_dim = ids->dims();
@@ -110,23 +108,16 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
 
       d_table->set_rows(new_rows);
 
-      int64_t N = d_table->height();
-      int64_t D = d_output->dims()[1];
-      int64_t K = ids->numel();
-
-      framework::Tensor* d_table_value = d_table->mutable_value();
+      auto* d_table_value = d_table->mutable_value();
+      d_table_value->Resize({ids_dim[0], table->dims()[1]});
       d_table_value->mutable_data<T>(context.GetPlace());
 
-      auto t = framework::EigenVector<T>::Flatten(*d_table_value);
-      t.device(context.GetEigenDevice<platform::GPUPlace>()) =
-          t.constant(static_cast<T>(0));
-
-      auto* d_output_data = d_output->data<T>();
       auto* d_table_data = d_table_value->data<T>();
-      dim3 threads(128, 8);
-      dim3 grids(8, 1);
-      LookupTableGrad<T, 128, 8, 8><<<grids, threads, 0, stream>>>(
-          d_table_data, d_output_data, ids_data, N, K, D);
+      auto* d_output_data = d_output->data<T>();
+      PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output->dims());
+      memory::Copy(gpu_place, d_table_data, gpu_place, d_output_data,
+                   d_output->numel(), stream);
+
     } else {
       auto ids_t = context.Input<Tensor>("Ids");
       auto d_output_t = context.Input<Tensor>(framework::GradVarName("Out"));
