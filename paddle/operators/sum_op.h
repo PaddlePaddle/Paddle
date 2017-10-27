@@ -35,13 +35,6 @@ class SumKernel : public framework::OpKernel<T> {
 
     if (out_var->IsType<framework::LoDTensor>()) {
       auto* out = context.Output<Tensor>("Out");
-      // Runtime InferShape
-      for (int i = 0; i < N; i++) {
-        if (in_vars[i]->IsType<framework::LoDTensor>()) {
-          out->Resize(in_vars[i]->Get<framework::LoDTensor>().dims());
-          break;
-        }
-      }
       out->mutable_data<T>(context.GetPlace());
 
       auto result = EigenVector<T>::Flatten(*out);
@@ -64,6 +57,7 @@ class SumKernel : public framework::OpKernel<T> {
         }
       }
     } else if (out_var->IsType<framework::SelectedRows>()) {
+      LOG(INFO) << "sum op sparse";
       auto* out = context.Output<SelectedRows>("Out");
       auto* out_value = out->mutable_value();
 
@@ -73,24 +67,26 @@ class SumKernel : public framework::OpKernel<T> {
         first_dim += in_vars[i]->Get<SelectedRows>().rows().size();
       }
       auto in_dim = in_vars[0]->Get<SelectedRows>().value().dims();
-
       auto in_dim_vec = framework::vectorize(in_dim);
       in_dim_vec[0] = static_cast<int64_t>(first_dim);
 
       out_value->Resize(framework::make_ddim(in_dim_vec));
-
       out_value->mutable_data<T>(context.GetPlace());
 
-      math::SelectedRowsAddTo<Place, T> functor;
+      // set zero to debug
+      math::SetConstant<Place, T> constant_functor;
+      constant_functor(context.device_context(), out_value, 0.0);
 
-      int64_t offset = 0;
-      for (int i = 0; i < N; i++) {
-        PADDLE_ENFORCE_EQ(out->height(),
-                          in_vars[i]->Get<SelectedRows>().height())
-        functor(context.device_context(), in_vars[i]->Get<SelectedRows>(),
-                offset, out);
-        offset += in_vars[i]->Get<SelectedRows>().value().numel();
-      }
+      // math::SelectedRowsAddTo<Place, T> functor;
+
+      // int64_t offset = 0;
+      // for (int i = 0; i < N; i++) {
+      //   PADDLE_ENFORCE_EQ(out->height(),
+      //                     in_vars[i]->Get<SelectedRows>().height())
+      //   functor(context.device_context(), in_vars[i]->Get<SelectedRows>(),
+      //           offset, out);
+      //   offset += in_vars[i]->Get<SelectedRows>().value().numel();
+      // }
     }
   }
 };

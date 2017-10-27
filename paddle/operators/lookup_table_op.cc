@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "paddle/operators/lookup_table_op.h"
+#include "paddle/framework/var_type_inference.h"
 
 namespace paddle {
 namespace operators {
@@ -60,6 +61,7 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
              "Ids must be a column vector with rank = 2."
              "The 2nd dimension size must be 1");
     AddOutput("Out", "The lookup results, which have the same type with W.");
+    AddAttr<bool>("is_sparse", "Sparse update").SetDefault(false);
     AddComment(R"DOC(
 This operator is used to perform lookups on the parameter W,
 then concatenated into a dense tensor.
@@ -68,6 +70,15 @@ The input `Ids` can carry the LoD (Level of Details) information,
 or not. And the output only shares the LoD with input `Ids`.
 )DOC");
   }
+};
+
+class LookupTableOpGradDescMaker
+    : public framework::DefaultGradOpDescMaker<true> {
+  using ::paddle::framework::DefaultGradOpDescMaker<
+      true>::DefaultGradOpDescMaker;
+
+ protected:
+  virtual std::string GradOpType() const { return "lookup_table_grad"; }
 };
 
 class LookupTableOpGrad : public framework::OperatorWithKernel {
@@ -86,12 +97,33 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
   }
 };
 
+class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDescBind& op_desc,
+                  framework::BlockDescBind* block) const override {
+    auto out_var_name = op_desc.Output(framework::GradVarName("W")).front();
+    auto attr = op_desc.GetAttr("is_sparse");
+    bool is_sparse = boost::get<bool>(attr);
+    if (is_sparse) {
+      VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
+              << " is set to SelectedRows";
+      block->Var(out_var_name)->SetType(framework::VarDesc::SELECTED_ROWS);
+    } else {
+      VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
+              << " is set to LoDTensor";
+      block->Var(out_var_name)->SetType(framework::VarDesc::LOD_TENSOR);
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(lookup_table, ops::LookupTableOp, ops::LookupTableOpMaker,
-            lookup_table_grad, ops::LookupTableOpGrad);
+REGISTER_OPERATOR(lookup_table, ops::LookupTableOp,
+                  ops::LookupTableOpGradDescMaker, ops::LookupTableOpMaker);
+REGISTER_OPERATOR(lookup_table_grad, ops::LookupTableOpGrad,
+                  ops::LookupTableOpGradVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(lookup_table, ops::LookupTableKernel<float>);
 REGISTER_OP_CPU_KERNEL(lookup_table_grad, ops::LookupTableGradKernel<float>);

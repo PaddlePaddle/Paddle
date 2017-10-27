@@ -14,7 +14,7 @@ class TestCrossEntropyOp1(OpTest):
 
         X = randomize_probability(batch_size, class_num, dtype='float64')
 
-        label = np.random.randint(0, class_num, (batch_size, 1), dtype="int32")
+        label = np.random.randint(0, class_num, (batch_size, 1), dtype="int64")
         cross_entropy = np.asmatrix(
             [[-np.log(X[i][label[i][0]])] for i in range(X.shape[0])],
             dtype="float64")
