@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_info.h"
 #include "paddle/framework/scope.h"
+#include "paddle/framework/selected_rows.h"
 #include "paddle/framework/shape_inference.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
@@ -59,9 +60,6 @@ inline std::string GradVarName(const std::string& var_name) {
 
 class OperatorBase;
 class ExecutionContext;
-
-extern const Tensor* GetTensorFromVar(const Variable* var);
-extern Tensor* GetTensorFromVar(Variable* var);
 
 /**
  * OperatorBase has the basic element that Net will call to do computation.
@@ -414,7 +412,9 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
  private:
   DDim GetDim(const std::string& name) const override {
-    return framework::make_ddim(block_.FindVarRecursive(name)->Shape());
+    auto var = block_.FindVarRecursive(name);
+    PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
+    return framework::make_ddim(var->Shape());
   }
 
   void SetDim(const std::string& name, const DDim& dim) override {
@@ -511,28 +511,26 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
  private:
-  template <bool Allocate>
-  Tensor* GetTensor(const std::string& name) const {
-    Tensor* t = nullptr;
-    auto* var = scope_.FindVar(name);
-    if (!var->IsType<LoDTensor>() && !var->IsType<Tensor>()) {
-      if (Allocate) {
-        t = var->GetMutable<LoDTensor>();
-      } else {
-        PADDLE_THROW("Variable(%s) should be tensor", name);
-      }
-    } else {
-      t = GetTensorFromVar(scope_.FindVar(name));
-    }
-    return t;
-  }
-
   DDim GetDim(const std::string& name) const override {
-    return GetTensor<false>(name)->dims();
+    Variable* var = scope_.FindVar(name);
+    if (var->IsType<LoDTensor>()) {
+      return var->Get<LoDTensor>().dims();
+    } else if (var->IsType<SelectedRows>()) {
+      return var->Get<SelectedRows>().GetCompleteDims();
+    } else {
+      PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+    }
   }
 
   void SetDim(const std::string& name, const DDim& dim) override {
-    GetTensor<true>(name)->Resize(dim);
+    Variable* var = scope_.FindVar(name);
+    if (var->IsType<LoDTensor>()) {
+      var->GetMutable<LoDTensor>()->Resize(dim);
+    } else if (var->IsType<SelectedRows>()) {
+      var->GetMutable<SelectedRows>()->set_height(dim[0]);
+    } else {
+      PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+    }
   }
 
   const OperatorBase& op_;
@@ -639,7 +637,9 @@ class OperatorWithKernel : public OperatorBase {
                        });
   }
 
-  virtual void InferShape(InferShapeContext* ctx) const = 0;
+  virtual void InferShape(InferShapeContext* ctx) const {
+    OpInfoMap::Instance().Get(Type()).infer_shape_(ctx);
+  }
 
  protected:
   // indicate kernel DataType by input data. Defaultly all input data must be
@@ -657,11 +657,14 @@ class OperatorWithKernel : public OperatorBase {
             t = &var->Get<Tensor>();
           } else if (var->IsType<LoDTensor>()) {
             t = &var->Get<LoDTensor>();
+          } else if (var->IsType<SelectedRows>()) {
+            t = &(var->Get<SelectedRows>().value());
           }
           if (t != nullptr) {
             int tmp = static_cast<int>(ToDataType(t->type()));
+            VLOG(3) << "Input " << ipt_name << " with data_type " << tmp;
             PADDLE_ENFORCE(tmp == data_type || data_type == -1,
-                           "DataType of Paddle Op must be same.");
+                           "DataType of Paddle Op %s must be same.", Type());
             data_type = tmp;
           }
         }

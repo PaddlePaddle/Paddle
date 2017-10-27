@@ -14,10 +14,13 @@ limitations under the License. */
 
 #include "paddle/framework/op_desc.h"
 #include <functional>
+#include <mutex>
 #include <unordered_map>
 #include "paddle/framework/block_desc.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/program_desc.h"
+
+#include "glog/logging.h"
 
 namespace paddle {
 namespace framework {
@@ -227,26 +230,26 @@ void OpDescBind::Flush() {
   }
 }
 
-using InferShapeFuncMap =
-    std::unordered_map<std::string /*op_type*/,
-                       std::function<void(InferShapeContext *)>>;
+static std::once_flag init_infer_shape_funcs;
 
-static InferShapeFuncMap &InferShapeFuncs() {
-  static InferShapeFuncMap *g_map = nullptr;
-  if (g_map == nullptr) {
-    g_map = new InferShapeFuncMap();
-    auto &info_map = OpInfoMap::Instance();
-    // all registered kernels
-    for (auto &pair : OperatorWithKernel::AllOpKernels()) {
-      auto &info = info_map.Get(pair.first);
-      // use empty type here to avoid runtime checks.
+static void InitInferShapeFuncs() {
+  std::call_once(init_infer_shape_funcs, [] {
+    auto &map = OpInfoMap::Instance();
+    auto &info_map = *map.mutable_map();
+
+    for (auto &kern_pair : OperatorWithKernel::AllOpKernels()) {
+      auto op_type = kern_pair.first;
+      auto &op_info = info_map.at(op_type);
       auto op =
-          static_cast<OperatorWithKernel *>(info.Creator()("", {}, {}, {}));
-      g_map->insert(
-          {pair.first, [op](InferShapeContext *ctx) { op->InferShape(ctx); }});
+          static_cast<OperatorWithKernel *>(op_info.Creator()("", {}, {}, {}));
+      if (op_info.infer_shape_) {  // infer_shape has been registered.
+        continue;
+      }
+      op_info.infer_shape_ = [op](InferShapeContext *ctx) {
+        op->InferShape(ctx);
+      };
     }
-  }
-  return *g_map;
+  });
 }
 
 void OpDescBind::CheckAttrs() {
@@ -262,13 +265,13 @@ void OpDescBind::CheckAttrs() {
 }
 
 void OpDescBind::InferShape(const BlockDescBind &block) const {
-  auto &funcs = InferShapeFuncs();
-  auto it = funcs.find(this->Type());
-  if (it == funcs.end()) {
-    PADDLE_THROW("Operator %s has not been registered", this->Type());
-  }
+  VLOG(3) << "CompileTime infer shape on " << Type();
+  InitInferShapeFuncs();
+  auto &infer_shape = OpInfoMap::Instance().Get(this->Type()).infer_shape_;
+  PADDLE_ENFORCE(static_cast<bool>(infer_shape),
+                 "%s's infer_shape has not been registered", this->Type());
   CompileTimeInferShapeContext ctx(*this, block);
-  it->second(&ctx);
+  infer_shape(&ctx);
 }
 
 void OpDescBind::InferVarType(BlockDescBind *block) const {
