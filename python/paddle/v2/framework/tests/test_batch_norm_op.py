@@ -184,47 +184,47 @@ class TestBatchNormOp(OpTest):
         print 'python: NHWC, NCHW, backward checking passed'
 
     def test_forward_backward(self):
-        # attr
-        data_format = "NCHW"
-        epsilon = 0.00001
-        momentum = 0.9
+        def test_with_place(place, tensor_format):
+            # attr
+            epsilon = 0.00001
+            momentum = 0.9
 
-        # N, H, W, C: 12, 3, 4, 2
-        n, h, w, c = 2, 3, 4, 2
+            # N, H, W, C: 12, 3, 4, 2
+            n, h, w, c = 2, 3, 4, 2
 
-        if data_format == "NHWC":
-            x_shape = [n, h, w, c]
-        elif data_format == "NCHW":
-            x_shape = [n, c, h, w]
-        else:
-            raise ValueError("Unknown data type.")
-        scale_shape = [c]
+            if data_format == "NHWC":
+                x_shape = [n, h, w, c]
+            elif data_format == "NCHW":
+                x_shape = [n, c, h, w]
+            else:
+                raise ValueError("Unknown data type.")
+            scale_shape = [c]
 
-        x_val = np.random.random_sample(x_shape).astype(np.float32)
-        scale_val = np.random.random_sample(scale_shape).astype(np.float32)
-        bias_val = np.random.random_sample(scale_shape).astype(np.float32)
+            x_val = np.random.random_sample(x_shape).astype(np.float32)
+            scale_val = np.random.random_sample(scale_shape).astype(np.float32)
+            bias_val = np.random.random_sample(scale_shape).astype(np.float32)
 
-        mean = np.zeros(scale_shape).astype(np.float32)
-        variance = np.ones(scale_shape).astype(np.float32)
+            mean = np.zeros(scale_shape).astype(np.float32)
+            variance = np.ones(scale_shape).astype(np.float32)
 
-        # run forward
-        y_out, saved_mean, var_ref = _reference_training(
-            x_val, scale_val, bias_val, epsilon, data_format)
+            # run forward
+            y_out, saved_mean, var_ref = _reference_training(
+                x_val, scale_val, bias_val, epsilon, data_format)
 
-        # update moving mean and variance
-        mean_out = saved_mean * (1. - momentum) + momentum * mean
-        variance_out = var_ref * (1. - momentum) + momentum * variance
-        saved_variance = 1. / np.sqrt(var_ref + epsilon)
+            # update moving mean and variance
+            mean_out = saved_mean * (1. - momentum) + momentum * mean
+            variance_out = var_ref * (1. - momentum) + momentum * variance
+            saved_variance = 1. / np.sqrt(var_ref + epsilon)
 
-        #  for gradient test
-        # y_grad = np.ones(x_shape).astype(np.float32)
-        y_grad = np.zeros(x_shape).astype(np.float32)
-        y_grad[0, 0, 0, 0] = 1.
-        # y_grad = np.random.random_sample(x_shape).astype(np.float32)
-        x_grad_ref, scale_grad_ref, bias_grad_ref = _reference_grad(
-            x_val, y_grad, scale_val, saved_mean, var_ref, epsilon, data_format)
+            #  for gradient test
+            # y_grad = np.ones(x_shape).astype(np.float32)
+            y_grad = np.zeros(x_shape).astype(np.float32)
+            y_grad[0, 0, 0, 0] = 1.
+            # y_grad = np.random.random_sample(x_shape).astype(np.float32)
+            x_grad_ref, scale_grad_ref, bias_grad_ref = _reference_grad(
+                x_val, y_grad, scale_val, saved_mean, var_ref, epsilon,
+                data_format)
 
-        def test_with_place(place, tensor_format=data_format):
             scope = core.Scope()
 
             # create input
@@ -275,14 +275,13 @@ class TestBatchNormOp(OpTest):
             self.__assert_close(saved_variance_tensor, saved_variance,
                                 "saved_variance")
             self.__assert_close(mean_out_tensor, mean_out, "mean_out")
-            # FIXME(qiao) figure out why with cuDNN variance_out have a higher error rate
             if isinstance(place, core.GPUPlace):
                 atol = 5e-2
             else:
                 atol = 1e-4
             self.__assert_close(variance_out_tensor, variance_out,
                                 "variance_out", atol)
-            print "op test forward passed: ", tensor_format
+            print "op test forward passed: ", str(place), tensor_format
 
             # run backward
             batch_norm_op_grad = get_backward_op(scope, batch_norm_op, set())
@@ -307,14 +306,14 @@ class TestBatchNormOp(OpTest):
             self.__assert_close(x_grad_tensor, x_grad_ref, "x_grad")
             self.__assert_close(scale_grad_tensor, scale_grad_ref, "scale_grad")
             self.__assert_close(bias_grad_tensor, bias_grad_ref, "bias_grad")
-            print "op test backward passed: ", tensor_format
+            print "op test backward passed: ", str(place), tensor_format
 
         places = [core.CPUPlace()]
         if core.is_compile_gpu() and core.op_support_gpu("batch_norm"):
             places.append(core.GPUPlace(0))
         for place in places:
-            test_with_place(place)
-        print "test forward passed"
+            for data_format in ["NCHW", "NHWC"]:
+                test_with_place(place, data_format)
 
 
 if __name__ == '__main__':
