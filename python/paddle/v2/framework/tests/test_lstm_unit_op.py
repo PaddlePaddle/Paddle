@@ -34,6 +34,5 @@ class LstmUnitTest(OpTest):
         self.check_grad(['X', 'C_prev'], ['C', 'H'])
 
 
-# TODO(gongwb):fix CI error
-#if __name__ == "__main__":
-#    unittest.main()
+if __name__ == "__main__":
+    unittest.main()
