@@ -194,7 +194,7 @@ def load_inference_model(dirname, executor):
     :return: [program, feed_var_names, fetch_var_names]
              program: program especially for inference.
              feeded_var_names: Names of variables that need to feed data
-             fetch_var_names: Names of variables from which we can get inference results.
+             fetch_vars: Variables from which we can get inference results.
     """
     if not os.path.isdir(dirname):
         raise ValueError("There is no directory named '%s'", dirname)
@@ -204,7 +204,12 @@ def load_inference_model(dirname, executor):
     program_desc_str = model["program_desc_str"]
     feed_var_names = model["feed_var_names"]
     fetch_var_names = model["fetch_var_names"]
+    import pdb
+    pdb.set_trace()
     program = Program.parse_from_string(program_desc_str)
     load_params(executor, dirname, program)
 
-    return [program, feed_var_names, fetch_var_names]
+    pdb.set_trace()
+    fetch_vars = [program.global_block().var(name) for name in fetch_var_names]
+
+    return [program, feed_var_names, fetch_vars]

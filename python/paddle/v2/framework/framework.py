@@ -466,15 +466,15 @@ class Program(object):
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
         res.desc = core.prune(self.desc, targets_idx)
+        res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
         res.sync_with_cpp()
-        import pdb
-        pdb.set_trace()
         return res
 
     @staticmethod
     def parse_from_string(binary_str):
         p = Program()
         p.desc = core.ProgramDesc(binary_str)
+        p.blocks = [Block(p, i) for i in xrange(p.desc.num_blocks())]
         p.sync_with_cpp()
         return p
 
