@@ -12,11 +12,19 @@ import numpy as np
 
 class TestBook(unittest.TestCase):
     def test_fit_line_inference_model(self):
+        MODEL_DIR = "./tmp/inference_model"
+
         init_program = Program()
         program = Program()
         x = layers.data(
             name='x',
             shape=[2],
+            data_type='float32',
+            program=program,
+            init_program=init_program)
+        y = layers.data(
+            name='y',
+            shape=[1],
             data_type='float32',
             program=program,
             init_program=init_program)
@@ -26,13 +34,6 @@ class TestBook(unittest.TestCase):
                               act=None,
                               program=program,
                               init_program=init_program)
-
-        y = layers.data(
-            name='y',
-            shape=[1],
-            data_type='float32',
-            program=program,
-            init_program=init_program)
 
         cost = layers.square_error_cost(
             input=y_predict,
@@ -50,32 +51,44 @@ class TestBook(unittest.TestCase):
 
         exe.run(init_program, feed={}, fetch_list=[])
 
-        PASS_NUM = 1
-        for pass_id in range(PASS_NUM):
-            for i in xrange(100):
-                #x_data = np.array(map(lambda x: x[0], data)).astype("float32")
-                #y_data = np.array(map(lambda x: x[1], data)).astype("float32")
+        for i in xrange(100):
+            x_data = np.array(
+                [[1, 1], [1, 2], [3, 4], [5, 2]]).astype("float32")
+            y_data = np.array([[-2], [-3], [-7], [-7]]).astype("float32")
 
-                x_data = np.array(
-                    [[1, 1], [1, 2], [3, 4], [5, 2]]).astype("float32")
-                y_data = np.array([[-2], [-3], [-7], [-7]]).astype("float32")
+            tensor_x = core.LoDTensor()
+            tensor_x.set(x_data, place)
+            tensor_y = core.LoDTensor()
+            tensor_y.set(y_data, place)
+            exe.run(program,
+                    feed={'x': tensor_x,
+                          'y': tensor_y},
+                    fetch_list=[avg_cost])
 
-                tensor_x = core.LoDTensor()
-                tensor_x.set(x_data, place)
-                # print tensor_x.get_dims()
+        save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, program)
+        outs = exe.run(program,
+                       feed={'x': tensor_x,
+                             'y': tensor_y},
+                       fetch_list=[avg_cost])
+        expected = np.array(outs[0])
 
-                tensor_y = core.LoDTensor()
-                tensor_y.set(y_data, place)
-                # print tensor_y.get_dims()
-                outs = exe.run(program,
-                               feed={'x': tensor_x,
-                                     'y': tensor_y},
-                               fetch_list=[avg_cost])
-                out = np.array(outs[0])
-                print out
+        reload(executor)  # reload to build a new scope
+        exe = executor.Executor(place)
 
-        save_inference_model("./fit_line_infer_model", ["x", "y"], [avg_cost],
-                             exe, program)
+        [infer_prog, feed_var_names, fetch_vars] = load_inference_model(
+            MODEL_DIR, exe)
+
+        outs = exe.run(
+            infer_prog,
+            feed={feed_var_names[0]: tensor_x,
+                  feed_var_names[1]: tensor_y},
+            fetch_list=fetch_vars)
+        actual = np.array(outs[0])
+
+        self.assertEqual(feed_var_names, ["x", "y"])
+        self.assertEqual(len(fetch_vars), 1)
+        self.assertEqual(str(fetch_vars[0]), str(avg_cost))
+        self.assertEqual(expected, actual)
 
 
 if __name__ == '__main__':

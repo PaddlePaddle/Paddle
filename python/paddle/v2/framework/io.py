@@ -125,6 +125,7 @@ def load_vars(executor, dirname, program=None, vars=None, predicate=None):
                 inputs={},
                 outputs={"Out": [new_var]},
                 attrs={'file_path': os.path.join(dirname, new_var.name)})
+
         executor.run(load_prog)
 
 
@@ -184,6 +185,24 @@ def save_inference_model(dirname,
     save_params(executor, dirname, program)
 
 
+def load_persistables_if_exist(executor, dirname, program=None):
+    filenames = next(os.walk(dirname))[2]
+    filenames = set(filenames)
+
+    def _is_presistable_and_exist_(var):
+        if not is_persistable(var):
+            return False
+        else:
+            return var.name in filenames
+
+    load_vars(
+        executor,
+        dirname,
+        program=program,
+        vars=None,
+        predicate=_is_presistable_and_exist_)
+
+
 def load_inference_model(dirname, executor):
     """
     Load inference model from a directory
@@ -204,12 +223,8 @@ def load_inference_model(dirname, executor):
     program_desc_str = model["program_desc_str"]
     feed_var_names = model["feed_var_names"]
     fetch_var_names = model["fetch_var_names"]
-    import pdb
-    pdb.set_trace()
     program = Program.parse_from_string(program_desc_str)
-    load_params(executor, dirname, program)
-
-    pdb.set_trace()
+    load_persistables_if_exist(executor, dirname, program)
     fetch_vars = [program.global_block().var(name) for name in fetch_var_names]
 
     return [program, feed_var_names, fetch_vars]
