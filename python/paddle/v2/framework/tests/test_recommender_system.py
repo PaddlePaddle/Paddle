@@ -26,9 +26,9 @@ def get_usr_combined_features():
         init_program=init_program)
 
     usr_emb = layers.embedding(
-        name="user_table",
         input=uid,
         size=[USR_DICT_SIZE, 32],
+        param_attr={'name': 'user_table'},
         program=program,
         init_program=init_program)
 
@@ -49,6 +49,7 @@ def get_usr_combined_features():
     usr_gender_emb = layers.embedding(
         input=usr_gender_id,
         size=[USR_GENDER_DICT_SIZE, 16],
+        param_attr={'name': 'gender_table'},
         program=program,
         init_program=init_program)
 
@@ -68,6 +69,7 @@ def get_usr_combined_features():
     usr_age_emb = layers.embedding(
         input=usr_age_id,
         size=[USR_AGE_DICT_SIZE, 16],
+        param_attr={'name': 'age_table'},
         program=program,
         init_program=init_program)
 
@@ -87,6 +89,7 @@ def get_usr_combined_features():
     usr_job_emb = layers.embedding(
         input=usr_job_id,
         size=[USR_JOB_DICT_SIZE, 16],
+        param_attr={'name': 'job_table'},
         program=program,
         init_program=init_program)
 
@@ -125,6 +128,7 @@ def get_mov_combined_features():
     mov_emb = layers.embedding(
         input=mov_id,
         size=[MOV_DICT_SIZE, 32],
+        param_attr={'name': 'movie_table'},
         program=program,
         init_program=init_program)
 
@@ -155,10 +159,14 @@ def get_mov_combined_features():
         init_program=init_program)
 
     mov_title_emb = layers.embedding(
-        input=mov_title_id, size=32, program=program, init_program=init_program)
+        input=mov_title_id,
+        size=32,
+        param_attr={'name': 'movie_title_table'},
+        program=program,
+        init_program=init_program)
 
-    mov_title_conv = paddle.networks.sequence_conv_pool(
-        input=mov_title_emb, hidden_size=32, context_len=3)
+    mov_title_conv = layers.sequence_conv_pool(
+        X=mov_title_emb, hidden_size=32, context_length=3)
 
     concat_embed = layers.concat(
         input=[mov_fc, mov_categories_hidden, mov_title_conv],
@@ -180,22 +188,46 @@ def model():
     usr_combined_features = get_usr_combined_features()
     mov_combined_features = get_mov_combined_features()
 
+    # need cos sim
+    inference = layers.cos_sim(
+        a=usr_combined_features,
+        b=mov_combined_features,
+        size=1,
+        scale=5,
+        program=program,
+        init_program=init_program)
+    label = layers.data(
+        name='score',
+        shape=[1],
+        data_type='float32',
+        program=program,
+        init_program=init_program)
+
     cost = layers.square_error_cost(
         input=inference,
-        label=layers.data(
-            name='score', type=paddle.data_type.dense_vector(1)))
+        label=label,
+        program=program,
+        init_program=init_program)
+
+    return cost
 
 
 def main():
     place = core.CPUPlace()
     exe = Executor(place)
 
-    parameters = paddle.parameters.create(cost)
+    cost = model()
+    adam_optimizer = optimizer.AdamOptimizer(learning_rate=1e-4)
+    opts = adam_optimizer.minimize(cost)
 
-    trainer = paddle.trainer.SGD(
-        cost=cost,
-        parameters=parameters,
-        update_equation=paddle.optimizer.Adam(learning_rate=1e-4))
+    exe.run(init_program, feed={}, fetch_list=[])
+    PASS_NUM = 100
+
+    train_reader = paddle.batch(
+        paddle.reader.shuffle(
+            paddle.dataset.movielens.train(), buf_size=8192),
+        batch_size=256),
+
     feeding = {
         'user_id': 0,
         'gender_id': 1,
@@ -207,39 +239,21 @@ def main():
         'score': 7
     }
 
-    def event_handler(event):
-        if isinstance(event, paddle.event.EndIteration):
-            if event.batch_id % 100 == 0:
-                print "Pass %d Batch %d Cost %.2f" % (
-                    event.pass_id, event.batch_id, event.cost)
+    # def func_feed(feeding, data):
+    #     feed = {}
+    #     input_data = [[data_idx[idx] for data_idx in data] for idx in xrange(5)]
+    #     for k, v in feeding.iteritems():
 
-    trainer.train(
-        reader=paddle.batch(
-            paddle.reader.shuffle(
-                paddle.dataset.movielens.train(), buf_size=8192),
-            batch_size=256),
-        event_handler=event_handler,
-        feeding=feeding,
-        num_passes=1)
-
-    user_id = 234
-    movie_id = 345
-
-    user = paddle.dataset.movielens.user_info()[user_id]
-    movie = paddle.dataset.movielens.movie_info()[movie_id]
-
-    feature = user.value() + movie.value()
-
-    infer_dict = copy.copy(feeding)
-    del infer_dict['score']
-
-    prediction = paddle.infer(
-        output_layer=inference,
-        parameters=parameters,
-        input=[feature],
-        feeding=infer_dict)
-    print(prediction + 5) / 2
+    for pass_id in range(PASS_NUM):
+        for data in train_reader():
+            print data
+            outs = exe.run(program, feed=feeding, fetch_list=[cost])
+            out = np.array(outs[0])
+            if out[0] < 10.0:
+                exit(
+                    0)  # if avg cost less than 10.0, we think our code is good.
+            else:
+                exit(1)
 
 
-if __name__ == '__main__':
-    main()
+main()
