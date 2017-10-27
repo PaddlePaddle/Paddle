@@ -46,11 +46,11 @@ class PoolCudnnOpKernel : public framework::OpKernel<T> {
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>(ctx.GetPlace());
 
-    std::string pooling_type = ctx.Attr<std::string>("pooling_type");
+    std::string pooling_type = ctx.Attr<std::string>("poolingType");
     std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
-    if (ctx.Attr<bool>("global_pooling")) {
+    if (ctx.Attr<bool>("globalPooling")) {
       for (size_t i = 0; i < ksize.size(); ++i) {
         ksize[i] = static_cast<int>(input->dims()[i + 2]);
       }
@@ -100,12 +100,12 @@ class PoolCudnnGradOpKernel : public framework::OpKernel<T> {
         ctx.Input<Tensor>(framework::GradVarName("Out"));
     Tensor *input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-    std::string pooling_type = ctx.Attr<std::string>("pooling_type");
+    std::string pooling_type = ctx.Attr<std::string>("poolingType");
     std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
 
-    if (ctx.Attr<bool>("global_pooling")) {
+    if (ctx.Attr<bool>("globalPooling")) {
       for (size_t i = 0; i < ksize.size(); ++i)
         ksize[i] = static_cast<int>(input->dims()[i + 2]);
     }
@@ -169,6 +169,3 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_GPU_KERNEL(pool2d_cudnn, ops::PoolCudnnOpKernel<float>);
 REGISTER_OP_GPU_KERNEL(pool2d_cudnn_grad, ops::PoolCudnnGradOpKernel<float>);
-//
-// REGISTER_OP_GPU_KERNEL(pool3d_cudnn, ops::PoolCudnnOpKernel<float>);
-// REGISTER_OP_GPU_KERNEL(pool3d_cudnn_grad, ops::PoolCudnnGradOpKernel<float>);

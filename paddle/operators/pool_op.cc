@@ -29,7 +29,7 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
 
   auto in_x_dims = ctx->GetInputDim("X");
 
-  std::string pooling_type = ctx->Attrs().Get<std::string>("pooling_type");
+  std::string pooling_type = ctx->Attrs().Get<std::string>("poolingType");
   std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
@@ -37,7 +37,7 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
   PADDLE_ENFORCE(in_x_dims.size() == 4 || in_x_dims.size() == 5,
                  "Pooling intput should be 4-D or 5-D tensor.");
 
-  if (ctx->Attrs().Get<bool>("global_pooling")) {
+  if (ctx->Attrs().Get<bool>("globalPooling")) {
     ksize.resize(static_cast<size_t>(in_x_dims.size()) - 2);
     for (size_t i = 0; i < ksize.size(); ++i)
       ksize[i] = static_cast<int>(in_x_dims[i + 2]);
@@ -80,34 +80,31 @@ Pool2dOpMaker::Pool2dOpMaker(framework::OpProto *proto,
             "the number of channels, H and W is the height and "
             "width of feature.");
 
-  AddAttr<std::string>("pooling_type",
-                       "Pooling_type of pooling operator."
+  AddAttr<std::string>("poolingType",
+                       "(string), poolingType of pooling operator."
                        "Str constant equal to 'max' or 'avg'.")
       .InEnum({"max", "avg"});
-
   AddAttr<std::vector<int>>(
       "ksize",
-      "The pooling window size(height, width) of pooling operator."
-      "If global_pooling = true, ksize is ignored and need not be "
+      "(vector ), the pooling window size(height, width) of pooling operator."
+      "If globalPooling = true, ksize is ignored and need not be "
       "specified.");  // TODO(Chengduo): Add checker. (Currently,
-                      // TypedAttrChecker don't support vector type.)
+  // TypedAttrChecker don't support vector type.)
   AddAttr<bool>(
-      "global_pooling",
-      "Whether to use the global_pooling."
-      "Bool constant equal to false or true."
-      "Default false."
-      "If global_pooling = true, ksize is ignored and need not be specified.")
+      "globalPooling",
+      "(bool default: false), whether to use the global pooling."
+      "If globalPooling = true, ksize is ignored and need not be specified.")
       .SetDefault(false);
-  AddAttr<std::vector<int>>("strides",
-                            "The strides(height, width) of pooling window."
-                            "Default {1,1}.")
+  AddAttr<std::vector<int>>(
+      "strides",
+      "(vector, default:{1, 1}), strides(height, width) of pooling operator.")
       .SetDefault({1, 1});  // TODO(Chengduo): Add checker. (Currently,
-                            // TypedAttrChecker don't support vector type.)
-  AddAttr<std::vector<int>>("paddings",
-                            "The zero padding(height, width) size on both sides"
-                            "Default {0,0}.")
+  // TypedAttrChecker don't support vector type.)
+  AddAttr<std::vector<int>>(
+      "paddings",
+      "(vector defalut:{0,0}), paddings(height, width) of pooling operator.")
       .SetDefault({0, 0});  // TODO(Chengduo): Add checker. (Currently,
-                            // TypedAttrChecker don't support vector type.)
+  // TypedAttrChecker don't support vector type.)
 
   AddComment(R"DOC(
 The pooling2d operation calculates the output based on
@@ -123,7 +120,6 @@ Example:
        X shape: (N, C, H_in, W_in)
   Output:
        Out shape: (N, C, H_out, W_out)
-       Mask shape: (N, C, H_out, W_out)
   where
        H_out = (H_in - ksize[0] + 2 * paddings[0]) / strides[0] + 1;
        W_out = (W_in - ksize[1] + 2 * paddings[1]) / strides[1] + 1;
@@ -146,33 +142,30 @@ Pool3dOpMaker::Pool3dOpMaker(framework::OpProto *proto,
             "the number of channels, D, H and W is the depth, height and "
             "width of feature.");
 
-  AddAttr<std::string>("pooling_type",
-                       "PoolingType of pooling operator."
+  AddAttr<std::string>("poolingType",
+                       "(string), poolingType of pooling operator."
                        "Str constant equal to 'max' or 'avg'.")
       .InEnum({"max", "avg"});
-
   AddAttr<std::vector<int>>(
       "ksize",
-      "The pooling window size(depth, height, width) of pooling operator."
-      "If global_pooling = true, ksize is ignored and need not be "
+      "(vector ), the pooling window size(depth, height, width) of pooling "
+      "operator."
+      "If globalPooling = true, ksize is ignored and need not be "
       "specified.");  // TODO(Chengduo): Add checker. (Currently,
                       // TypedAttrChecker don't support vector type.)
   AddAttr<bool>(
-      "global_pooling",
-      "Whether to use the global_pooling."
-      "Bool constant equal to false or true."
-      "Default false."
-      "If global_pooling = true, ksize is ignored and need not be specified.")
+      "globalPooling",
+      "(bool default: false), whether to use the global pooling."
+      "If globalPooling = true, ksize is ignored and need not be specified.")
       .SetDefault(false);
   AddAttr<std::vector<int>>("strides",
-                            "Strides(depth, height, width) of pooling operator."
-                            "Default {1,1,1}.")
+                            "(vector, default:{1,1,1}), strides(depth, height, "
+                            "width) of pooling operator.")
       .SetDefault({1, 1, 1});  // TODO(Chengduo): Add checker. (Currently,
                                // TypedAttrChecker don't support vector type.)
-  AddAttr<std::vector<int>>(
-      "paddings",
-      "Paddings(depth, height, width) of pooling operator."
-      "Default {0,0,0}.")
+  AddAttr<std::vector<int>>("paddings",
+                            "(vector defalut:{0,0,0}), paddings(depth, height, "
+                            "width) of pooling operator.")
       .SetDefault({0, 0, 0});  // TODO(Chengduo): Add checker. (Currently,
                                // TypedAttrChecker don't support vector type.)
 
@@ -190,7 +183,6 @@ Example:
        X shape: (N, C, D_in, H_in, W_in)
   Output:
        Out shape: (N, C, D_out, H_out, W_out)
-       Mask shape: (N, C, D_out, H_out, W_out)
   where
        D_out = (D_in - ksize[0] + 2 * paddings[0]) / strides[0] + 1;
        H_out = (H_in - ksize[1] + 2 * paddings[1]) / strides[1] + 1;
