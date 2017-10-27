@@ -158,6 +158,7 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(lookup_table, ops::LookupTableCUDAKernel<float>);
-REGISTER_OP_GPU_KERNEL(lookup_table_grad,
-                       ops::LookupTableGradCUDAKernel<float>);
+REGISTER_OP_GPU_KERNEL(lookup_table, ops::LookupTableCUDAKernel<float>,
+                       ops::LookupTableCUDAKernel<double>);
+REGISTER_OP_GPU_KERNEL(lookup_table_grad, ops::LookupTableGradCUDAKernel<float>,
+                       ops::LookupTableGradCUDAKernel<double>);
