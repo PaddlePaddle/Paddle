@@ -79,45 +79,50 @@ void Convolution(const std::string& conv1,
             if (outputChannels < inputChannels) continue;
             for (size_t stride : {1, 2}) {
               for (size_t padding : {0, 1}) {
-                if (padding >= filterSize) break;
+                for (size_t dilation : {1}) {
+                  if (padding >= filterSize) break;
 
-                // NNPACK only supports stride = 1 if batchSize > 1
-                if ((conv1 == "NNPACKConv-CPU" || conv2 == "NNPACKConv-CPU") &&
-                    batchSize > 1 && stride > 1)
-                  break;
+                  // NNPACK only supports stride = 1 if batchSize > 1
+                  if ((conv1 == "NNPACKConv-CPU" ||
+                       conv2 == "NNPACKConv-CPU") &&
+                      batchSize > 1 && stride > 1)
+                    break;
 
-                size_t outputSize =
-                    (inputSize - filterSize + 2 * padding + stride) / stride;
-                VLOG(3) << " batchSize=" << batchSize
-                        << " inputChannels=" << inputChannels
-                        << " inputHeight=" << inputSize
-                        << " inputWidth=" << inputSize
-                        << " outputChannels=" << outputChannels
-                        << " filterHeight=" << filterSize
-                        << " filterWidth=" << filterSize
-                        << " outputHeight=" << outputSize
-                        << " outputWidth=" << outputSize << " stride=" << stride
-                        << " padding=" << padding;
+                  size_t outputSize =
+                      (inputSize - filterSize + 2 * padding + stride) / stride;
+                  VLOG(3) << " batchSize=" << batchSize
+                          << " inputChannels=" << inputChannels
+                          << " inputHeight=" << inputSize
+                          << " inputWidth=" << inputSize
+                          << " outputChannels=" << outputChannels
+                          << " filterHeight=" << filterSize
+                          << " filterWidth=" << filterSize
+                          << " outputHeight=" << outputSize
+                          << " outputWidth=" << outputSize
+                          << " stride=" << stride << " padding=" << padding;
 
-                std::vector<size_t> paddings = {padding, padding};
-                std::vector<size_t> strides = {stride, stride};
-                Compare2Function<DType1, DType2> test(
-                    conv1,
-                    conv2,
-                    FuncConfig()
-                        .set("paddings", paddings)
-                        .set("strides", strides)
-                        .set("groups", (size_t)1)
-                        .set("algo", (std::string) "auto"));
+                  std::vector<size_t> paddings = {padding, padding};
+                  std::vector<size_t> strides = {stride, stride};
+                  std::vector<size_t> dilations = {dilation, dilation};
+                  Compare2Function<DType1, DType2> test(
+                      conv1,
+                      conv2,
+                      FuncConfig()
+                          .set("paddings", paddings)
+                          .set("strides", strides)
+                          .set("dilations", dilations)
+                          .set("groups", (size_t)1)
+                          .set("algo", (std::string) "auto"));
 
-                TensorShape input{
-                    batchSize, inputChannels, inputSize, inputSize};
-                TensorShape filter{
-                    outputChannels, inputChannels, filterSize, filterSize};
-                TensorShape output{
-                    batchSize, outputChannels, outputSize, outputSize};
+                  TensorShape input{
+                      batchSize, inputChannels, inputSize, inputSize};
+                  TensorShape filter{
+                      outputChannels, inputChannels, filterSize, filterSize};
+                  TensorShape output{
+                      batchSize, outputChannels, outputSize, outputSize};
 
-                function(test, input, filter, output);
+                  function(test, input, filter, output);
+                }
               }
             }
           }
@@ -144,6 +149,7 @@ void Convolution2(const std::string& conv1,
               for (size_t outputChannels : {7}) {
                 size_t stride = 1;
                 size_t padding = 0;
+                size_t dilation = 1;
                 size_t outputHeight =
                     (inputHeight - filterHeight + 2 * padding + stride) /
                     stride;
@@ -162,6 +168,7 @@ void Convolution2(const std::string& conv1,
 
                 std::vector<size_t> paddings = {padding, padding};
                 std::vector<size_t> strides = {stride, stride};
+                std::vector<size_t> dilations = {dilation, dilation};
                 Compare2Function<DType1, DType2> test(
                     conv1,
                     conv2,
@@ -169,6 +176,7 @@ void Convolution2(const std::string& conv1,
                         .set("paddings", paddings)
                         .set("strides", strides)
                         .set("groups", (size_t)1)
+                        .set("dilations", dilations)
                         .set("algo", (std::string) "auto"));
 
                 TensorShape input{
@@ -223,6 +231,7 @@ void DepthwiseConvolution(const std::string& conv1,
 
                 std::vector<size_t> paddings = {padding, padding};
                 std::vector<size_t> strides = {stride, stride};
+                std::vector<size_t> dilations = {1, 1};
                 size_t groups = inputChannels;
                 Compare2Function<DType1, DType2> test(
                     conv1,
@@ -231,6 +240,7 @@ void DepthwiseConvolution(const std::string& conv1,
                         .set("paddings", paddings)
                         .set("strides", strides)
                         .set("groups", groups)
+                        .set("dilations", dilations)
                         .set("algo", (std::string) "auto"));
 
                 TensorShape input{
