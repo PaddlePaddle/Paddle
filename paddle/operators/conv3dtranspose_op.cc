@@ -42,12 +42,12 @@ void Conv3DTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[0],
                     "input and kernel input dimension should be equal.");
 
-  std::vector<int64_t> output_shape({in_dims[0], in_dims[1]});
-  for (size_t i = 0; i < filter_dims.size(); ++i) {
+  std::vector<int64_t> output_shape({in_dims[0], filter_dims[1]});
+  for (size_t i = 0; i < paddings.size(); ++i) {
     output_shape.push_back((in_dims[i + 2] - 1) * strides[i] +
                            filter_dims[i + 2]);
   }
-  ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
+  ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
 }
 
 Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(
