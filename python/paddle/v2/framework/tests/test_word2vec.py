@@ -129,19 +129,19 @@ for pass_id in range(PASS_NUM):
         first_tensor = core.LoDTensor()
         first_tensor.set(first_data, place)
 
-        second_data = input_data[0]
+        second_data = input_data[1]
         second_tensor = core.LoDTensor()
         second_tensor.set(second_data, place)
 
-        third_data = input_data[0]
+        third_data = input_data[2]
         third_tensor = core.LoDTensor()
         third_tensor.set(third_data, place)
 
-        forth_data = input_data[0]
+        forth_data = input_data[3]
         forth_tensor = core.LoDTensor()
         forth_tensor.set(forth_data, place)
 
-        next_data = input_data[0]
+        next_data = input_data[4]
         next_tensor = core.LoDTensor()
         next_tensor.set(next_data, place)
 
