@@ -37,7 +37,7 @@ predict = layers.fc(input=hidden2,
 label = layers.data(
     name='y',
     shape=[1],
-    data_type='int32',
+    data_type='int64',
     program=program,
     init_program=init_program)
 
@@ -64,7 +64,7 @@ PASS_NUM = 100
 for pass_id in range(PASS_NUM):
     for data in train_reader():
         x_data = np.array(map(lambda x: x[0], data)).astype("float32")
-        y_data = np.array(map(lambda x: x[1], data)).astype("int32")
+        y_data = np.array(map(lambda x: x[1], data)).astype("int64")
         y_data = np.expand_dims(y_data, axis=1)
 
         tensor_x = core.LoDTensor()
