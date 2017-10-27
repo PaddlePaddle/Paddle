@@ -132,7 +132,7 @@ PASS_NUM = 100
 for pass_id in range(PASS_NUM):
     for data in train_reader():
         input_data = [[data_idx[idx] for data_idx in data] for idx in xrange(5)]
-        input_data = map(lambda x: np.array(x).astype("int32"), input_data)
+        input_data = map(lambda x: np.array(x).astype("int64"), input_data)
         input_data = map(lambda x: np.expand_dims(x, axis=1), input_data)
 
         first_data = input_data[0]
