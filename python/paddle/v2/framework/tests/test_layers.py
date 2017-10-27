@@ -103,40 +103,30 @@ class TestBook(unittest.TestCase):
         next_word = layers.data(
             name='nextw', shape=[1], data_type='int64', program=program)
 
-        embed_param_attr_1 = {
-            'name': 'shared_w',
-            'init_attr': {
-                'max': 1.0,
-                'type': 'uniform_random',
-                'min': -1.0
-            }
-        }
-        embed_param_attr_2 = {'name': 'shared_w'}
-
         embed_first = layers.embedding(
             input=first_word,
             size=[dict_size, embed_size],
             data_type='float32',
-            param_attr=embed_param_attr_1,
+            param_attr={'name': 'shared_w'},
             program=program)
         embed_second = layers.embedding(
             input=second_word,
             size=[dict_size, embed_size],
             data_type='float32',
-            param_attr=embed_param_attr_2,
+            param_attr={'name': 'shared_w'},
             program=program)
 
         embed_third = layers.embedding(
             input=third_word,
             size=[dict_size, embed_size],
             data_type='float32',
-            param_attr=embed_param_attr_2,
+            param_attr={'name': 'shared_w'},
             program=program)
         embed_forth = layers.embedding(
             input=forth_word,
             size=[dict_size, embed_size],
             data_type='float32',
-            param_attr=embed_param_attr_2,
+            param_attr={'name': 'shared_w'},
             program=program)
 
         concat_embed = layers.concat(

@@ -51,22 +51,12 @@ next_word = layers.data(
     program=program,
     init_program=init_program)
 
-embed_param_attr_1 = {
-    'name': 'shared_w',
-    'init_attr': {
-        'max': 1.0,
-        'type': 'uniform_random',
-        'min': -1.0
-    }
-}
-embed_param_attr_2 = {'name': 'shared_w'}
-
 embed_first = layers.embedding(
     input=first_word,
     size=[dict_size, embed_size],
     data_type='float32',
     is_sparse=is_sparse,
-    param_attr=embed_param_attr_1,
+    param_attr={'name': 'shared_w'},
     program=program,
     init_program=init_program)
 embed_second = layers.embedding(
@@ -74,7 +64,7 @@ embed_second = layers.embedding(
     size=[dict_size, embed_size],
     data_type='float32',
     is_sparse=is_sparse,
-    param_attr=embed_param_attr_2,
+    param_attr={'name': 'shared_w'},
     program=program,
     init_program=init_program)
 
@@ -83,7 +73,7 @@ embed_third = layers.embedding(
     size=[dict_size, embed_size],
     data_type='float32',
     is_sparse=is_sparse,
-    param_attr=embed_param_attr_2,
+    param_attr={'name': 'shared_w'},
     program=program,
     init_program=init_program)
 embed_forth = layers.embedding(
@@ -91,7 +81,7 @@ embed_forth = layers.embedding(
     size=[dict_size, embed_size],
     data_type='float32',
     is_sparse=is_sparse,
-    param_attr=embed_param_attr_2,
+    param_attr={'name': 'shared_w'},
     program=program,
     init_program=init_program)
 
