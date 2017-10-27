@@ -13,5 +13,5 @@
 # limitations under the License.
 #
 if(WITH_TESTING)
-    go_test(pserver_test DEPS paddle_go_optimizer PROTO_GEN_GO)
+    go_test(pserver_test DEPS paddle_go_optimizer)
 endif()

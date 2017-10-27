@@ -30,6 +30,7 @@ add_custom_target(gen_proto_py ALL DEPENDS ${PROTO_GEN_PY})
 
 if (WITH_GOLANG)
     set(PROTO_GEN_GO)
+    file(GLOB proto_filenames . OptimizerConfig.proto)
     foreach(filename ${proto_filenames})
         message(STATUS ${filename})
         get_filename_component(ABS_FIL ${filename} ABSOLUTE)

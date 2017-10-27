@@ -13,4 +13,5 @@
 # limitations under the License.
 
 message(STATUS "gopath:" ${GOPATH})
-go_binary(pserver SRCS pserver.go DEPS paddle_go_optimizer PROTO_GEN_GO)
+#go_binary(pserver SRCS pserver.go DEPS paddle_go_optimizer PROTO_GEN_GO)
+go_binary(pserver SRCS pserver.go DEPS paddle_go_optimizer)

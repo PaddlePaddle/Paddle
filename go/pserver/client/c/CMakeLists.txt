@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-cc_library(paddle_go_optimizer DEPS paddle_optimizer paddle_proto glog gflags protobuf)
+cc_library(paddle_go_optimizer DEPS paddle_optimizer glog gflags protobuf)
 target_link_libraries(paddle_go_optimizer stdc++ m)
 
 # Copy library to the required place.
