@@ -57,6 +57,7 @@ class SumKernel : public framework::OpKernel<T> {
         }
       }
     } else if (out_var->IsType<framework::SelectedRows>()) {
+      LOG(INFO) << "sum op sparse";
       auto* out = context.Output<SelectedRows>("Out");
       auto* out_value = out->mutable_value();
 
@@ -72,16 +73,20 @@ class SumKernel : public framework::OpKernel<T> {
       out_value->Resize(framework::make_ddim(in_dim_vec));
       out_value->mutable_data<T>(context.GetPlace());
 
-      math::SelectedRowsAddTo<Place, T> functor;
+      // set zero to debug
+      math::SetConstant<Place, T> constant_functor;
+      constant_functor(context.device_context(), out_value, 0.0);
 
-      int64_t offset = 0;
-      for (int i = 0; i < N; i++) {
-        PADDLE_ENFORCE_EQ(out->height(),
-                          in_vars[i]->Get<SelectedRows>().height())
-        functor(context.device_context(), in_vars[i]->Get<SelectedRows>(),
-                offset, out);
-        offset += in_vars[i]->Get<SelectedRows>().value().numel();
-      }
+      // math::SelectedRowsAddTo<Place, T> functor;
+
+      // int64_t offset = 0;
+      // for (int i = 0; i < N; i++) {
+      //   PADDLE_ENFORCE_EQ(out->height(),
+      //                     in_vars[i]->Get<SelectedRows>().height())
+      //   functor(context.device_context(), in_vars[i]->Get<SelectedRows>(),
+      //           offset, out);
+      //   offset += in_vars[i]->Get<SelectedRows>().value().numel();
+      // }
     }
   }
 };

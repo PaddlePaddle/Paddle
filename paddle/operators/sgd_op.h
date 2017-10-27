@@ -54,10 +54,11 @@ class SGDOpKernel : public framework::OpKernel<T> {
       // TODO(qijun): In Sparse SGD operator, in-place update is enforced.
       // This manual optimization brings difficulty to track data dependency.
       // It's better to find a more elegant solution.
+      LOG(INFO) << "sgd op sparse";
       PADDLE_ENFORCE_EQ(param, param_out);
-      auto* grad = ctx.Input<framework::SelectedRows>("Grad");
-      SparseSGDFunctor<Place, T> functor;
-      functor(ctx.device_context(), *grad, *learning_rate, param_out);
+      // auto* grad = ctx.Input<framework::SelectedRows>("Grad");
+      // SparseSGDFunctor<Place, T> functor;
+      // functor(ctx.device_context(), *grad, *learning_rate, param_out);
     } else {
       PADDLE_THROW("Unsupported Variable Type of Grad");
     }

@@ -49,6 +49,7 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     bool is_sparse = context.Attr<bool>("is_sparse");
     if (is_sparse) {
+      LOG(INFO) << "lookup_table_grad op sparse";
       auto* ids = context.Input<Tensor>("Ids");
       auto* table = context.Input<Tensor>("W");
       auto* d_output = context.Input<Tensor>(framework::GradVarName("Out"));
