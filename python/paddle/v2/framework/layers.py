@@ -98,15 +98,28 @@ def _convert_(name):
 
 def _create_op_func_(op_type):
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
-    if len(op_proto.outputs) != 1:
-        raise ValueError(
-            "Only one output operator can be automatically generated")
+    not_intermediate_outputs = \
+        filter(lambda output: not output.intermediate, op_proto.outputs)
+    intermediate_outputs = \
+        filter(lambda output: output.intermediate, op_proto.outputs)
 
-    if op_proto.outputs[0].duplicable:
+    if len(not_intermediate_outputs) != 1:
+        raise ValueError(
+            "Only one not intermediate output operator can be automatically generated"
+        )
+
+    if not_intermediate_outputs[0].duplicable:
         raise ValueError(
             "Only not duplicable op can be automatically generated")
 
-    o_name = op_proto.outputs[0].name
+    for output in intermediate_outputs:
+        if output.duplicable:
+            raise ValueError(
+                "Only when all intermediate ops are not duplicable, "
+                "this op can be automatically generated")
+
+    o_name = not_intermediate_outputs[0].name
+    intermediate_output_names = [output.name for output in intermediate_outputs]
 
     def func(**kwargs):
         helper = LayerHelper(op_type, **kwargs)
@@ -129,9 +142,13 @@ def _create_op_func_(op_type):
                         "operator {0} must input same dtype".format(op_type))
             inputs[ipt.name] = val
 
+        outputs = dict()
         out = helper.create_tmp_variable(dtype=dtype)
+        outputs[o_name] = [out]
+        for name in intermediate_output_names:
+            outputs[name] = [helper.create_tmp_variable(dtype=dtype)]
         helper.append_op(
-            type=op_type, inputs=inputs, outputs={o_name: [out]}, attrs=kwargs)
+            type=op_type, inputs=inputs, outputs=outputs, attrs=kwargs)
         return out
 
     func.__name__ = op_type
@@ -144,6 +161,7 @@ _create_op_func_('mean')
 _create_op_func_('mul')
 _create_op_func_('elementwise_add')
 _create_op_func_('sigmoid')
+_create_op_func_('dropout')
 
 
 def concat(input, axis, program=None, init_program=None):
