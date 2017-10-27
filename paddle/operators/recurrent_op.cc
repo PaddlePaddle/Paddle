@@ -205,6 +205,3 @@ REGISTER_OPERATOR(recurrent, paddle::operators::RecurrentOp,
                   paddle::operators::RecurrentGradientOpShapeInference,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(recurrent_grad, paddle::operators::RecurrentGradientOp);
-// REGISTER_OP(recurrent, paddle::operators::RecurrentOp,
-//             paddle::operators::RecurrentAlgorithmProtoAndCheckerMaker,
-//             recurrent_grad, paddle::operators::RecurrentGradientOp);
