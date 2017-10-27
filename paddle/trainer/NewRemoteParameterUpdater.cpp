@@ -43,11 +43,6 @@ void NewRemoteParameterUpdater::init(
     const std::vector<ParameterPtr> &parameters) {
   ParameterUpdater::init(parameters);
 
-  for (auto &para : parameters_) {
-    para->getBuf(PARAMETER_VALUE)->zeroMem();
-    para->getBuf(PARAMETER_GRADIENT)->zeroMem();
-  }
-
   // create parameter server client.
   if (useEtcd_) {
     parameterClient_ =
@@ -109,6 +104,8 @@ void NewRemoteParameterUpdater::init(
       LOG(ERROR) << "got unsupported v1 learning_rate_schedule config: "
                  << trainerConfig_.learning_rate_schedule() << ", set to const";
       optimizerConfigV2.set_lr_policy(paddle::OptimizerConfig::Const);
+      optimizerConfigV2.mutable_const_lr()->set_learning_rate(
+          trainerConfig_.learning_rate());
     }
 
     // overwrite optimizerConfigV2 for per-parameter(layer) configs

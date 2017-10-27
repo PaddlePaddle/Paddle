@@ -52,6 +52,25 @@ class TestProgram(unittest.TestCase):
         print prog
         print prog.clone()
 
+    def test_parse_program_from_string(self):
+        prog = Program()
+
+        x = prog.global_block().create_var(
+            name='X', shape=[1000, 784], dtype='float32')
+
+        y = prog.global_block().create_var(
+            name='Y', shape=[784, 100], dtype='float32')
+        out = prog.global_block().create_var(name='Out', dtype='float32')
+        prog.global_block().append_op(
+            type="mul", inputs={'X': [x],
+                                'Y': [y]}, outputs={'Out': [out]})
+
+        binary_str = prog.desc.serialize_to_string()
+        prog_restored = Program.parse_from_string(binary_str)
+
+        print prog
+        print prog_restored
+
     def test_append_backward(self):
         prog = Program()
         block = prog.global_block()
