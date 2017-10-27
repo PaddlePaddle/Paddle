@@ -12,8 +12,11 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/scale_op.h"
+#define EIGEN_USE_GPU
+#include "paddle/operators/l1_norm_op.h"
 
+namespace ops = paddle::operators;
+REGISTER_OP_GPU_KERNEL(l1_norm,
+                       ops::L1NormKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
-    scale, paddle::operators::ScaleKernel<paddle::platform::GPUPlace, float>,
-    paddle::operators::ScaleKernel<paddle::platform::GPUPlace, double>);
+    l1_norm_grad, ops::L1NormGradKernel<paddle::platform::GPUPlace, float>);
