@@ -22,7 +22,7 @@ class AucOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase *ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Inference"),
                    "Input of Inference must be initialized.");
     PADDLE_ENFORCE(ctx->HasInput("Label"),
