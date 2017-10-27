@@ -96,22 +96,25 @@ def create_or_get_tensor(scope, var_name, var, place):
     return tensor
 
 
-def set_output_grad(scope, outputs, place):
-    def __set_tensor__(name):
+def set_output_grad(scope, outputs, place, feed_dict=None):
+    def __set_tensor__(name, data=None):
         out_tensor = scope.find_var(name).get_tensor()
         grad_tensor = scope.var(grad_var_name(name)).get_tensor()
         out_dtype = out_tensor.dtype()
-        if out_dtype == core.DataType.FP64:
-            data = np.ones(out_tensor.shape(), dtype=np.float64)
-        elif out_dtype == core.DataType.FP32:
-            data = np.ones(out_tensor.shape(), dtype=np.float32)
-        else:
-            raise ValueError("Not supported data type " + str(out_dtype))
-
+        if data is None:
+            if out_dtype == core.DataType.FP64:
+                data = np.ones(out_tensor.shape(), dtype=np.float64)
+            elif out_dtype == core.DataType.FP32:
+                data = np.ones(out_tensor.shape(), dtype=np.float32)
+            else:
+                raise ValueError("Not supported data type " + str(out_dtype))
         grad_tensor.set(data, place)
 
     for output in outputs:
-        __set_tensor__(output)
+        data = None
+        if output in feed_dict:
+            data = feed_dict[output]
+        __set_tensor__(output, data)
 
 
 class TestBatchNormOp(OpTest):
@@ -119,7 +122,7 @@ class TestBatchNormOp(OpTest):
         self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
 
     def test_python(self):
-        data_format = "NCHW"
+        data_format = "NHWC"
         epsilon = 0.00001
         momentum = 0.9
 
@@ -214,7 +217,10 @@ class TestBatchNormOp(OpTest):
         saved_variance = 1. / np.sqrt(var_ref + epsilon)
 
         #  for gradient test
-        y_grad = np.ones(x_shape).astype(np.float32)
+        # y_grad = np.ones(x_shape).astype(np.float32)
+        y_grad = np.zeros(x_shape).astype(np.float32)
+        y_grad[0, 0, 0, 0] = 1.
+        # y_grad = np.random.random_sample(x_shape).astype(np.float32)
         x_grad_ref, scale_grad_ref, bias_grad_ref = _reference_grad(
             x_val, y_grad, scale_val, saved_mean, var_ref, epsilon, data_format)
 
@@ -283,7 +289,8 @@ class TestBatchNormOp(OpTest):
             set_output_grad(
                 scope,
                 ["y_out", "mean", "variance", "saved_mean", "saved_variance"],
-                place)
+                place,
+                feed_dict={"y_out": y_grad})
             batch_norm_op_grad.run(scope, ctx)
 
             x_grad_tensor = create_or_get_tensor(scope,
@@ -297,8 +304,6 @@ class TestBatchNormOp(OpTest):
                                                     None, place)
 
             # check gradient output
-            print 'var x_grad tensor: ', str(place), np.array(x_grad_tensor)
-            print 'var x_grad by python: ', str(place), x_grad_ref
             self.__assert_close(x_grad_tensor, x_grad_ref, "x_grad")
             self.__assert_close(scale_grad_tensor, scale_grad_ref, "scale_grad")
             self.__assert_close(bias_grad_tensor, bias_grad_ref, "bias_grad")
