@@ -230,10 +230,9 @@ func (s *Service) InitParam(paramWithConfigs ParameterWithConfig, _ *int) error 
 	default:
 	}
 
-	// TODO(helin): parse parameter config
 	c := &pb.OptimizerConfig{}
 	proto.Unmarshal(paramWithConfigs.Config, c)
-	log.Debug(fmt.Sprintf("%v", c))
+	log.Debug(fmt.Sprintf("OptimizerConfig:%v", c))
 
 	s.mu.Lock()
 	defer s.mu.Unlock()

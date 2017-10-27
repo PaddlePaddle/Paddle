@@ -193,6 +193,3 @@ func TestGradientString(t *testing.T) {
 	}
 	fmt.Println(g)
 }
-
-func TestInitParam(t *testing.T) {
-}
