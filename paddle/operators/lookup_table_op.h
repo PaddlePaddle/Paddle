@@ -70,19 +70,11 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
 
       d_table->set_height(table->dims()[0]);
 
-      int N = d_table->height();
-      int D = d_output->dims()[1];
-
       auto* d_output_data = d_output->data<T>();
       auto* d_table_data = d_table_value->data<T>();
 
-      for (int64_t i = 0; i < ids->numel(); ++i) {
-        PADDLE_ENFORCE_LT(ids_data[i], N);
-        PADDLE_ENFORCE_GE(ids_data[i], 0);
-        for (int j = 0; j < D; ++j) {
-          d_table_data[ids_data[i] * D + j] = d_output_data[i * D + j];
-        }
-      }
+      PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output->dims());
+      memcpy(d_table_data, d_output_data, sizeof(T) * d_output->numel());
     } else {
       auto* ids = context.Input<Tensor>("Ids");
       auto* d_output = context.Input<Tensor>(framework::GradVarName("Out"));
