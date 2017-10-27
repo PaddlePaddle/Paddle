@@ -113,17 +113,16 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       int64_t N = d_table->height();
       int64_t D = d_output->dims()[1];
       int64_t K = ids->numel();
-      auto* ids_data = ids->data<int64_t>();
 
       framework::Tensor* d_table_value = d_table->mutable_value();
       d_table_value->mutable_data<T>(context.GetPlace());
 
-      auto t = framework::EigenVector<T>::Flatten(*d_table_t);
+      auto t = framework::EigenVector<T>::Flatten(*d_table_value);
       t.device(context.GetEigenDevice<platform::GPUPlace>()) =
           t.constant(static_cast<T>(0));
 
       auto* d_output_data = d_output->data<T>();
-      auto* d_table_data = d_table_value.data<T>();
+      auto* d_table_data = d_table_value->data<T>();
       dim3 threads(128, 8);
       dim3 grids(8, 1);
       LookupTableGrad<T, 128, 8, 8><<<grids, threads, 0, stream>>>(
@@ -136,7 +135,7 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       int N = d_table_t->dims()[0];
       int D = d_table_t->dims()[1];
       int K = ids_t->numel();
-      const int32_t* ids = ids_t->data<int32_t>();
+      const int64_t* ids = ids_t->data<int64_t>();
       const T* d_output = d_output_t->data<T>();
       T* d_table = d_table_t->mutable_data<T>(context.GetPlace());
 
