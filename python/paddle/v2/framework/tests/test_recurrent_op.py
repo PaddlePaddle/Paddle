@@ -102,7 +102,8 @@ class RecurrentOpTest(unittest.TestCase):
         self.py_rnn = PySimpleRNN(self.input_dim, self.batch_size,
                                   self.weight_dim, self.sent_len)
         self.output = self.create_rnn_op()
-        append_backward_ops(self.output)
+        loss = mean(x=self.output)
+        append_backward_ops(loss)
 
     def create_rnn_op(self):
         x = data(
