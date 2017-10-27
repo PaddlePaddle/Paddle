@@ -24,6 +24,12 @@ namespace paddle {
 class MKLDNNMatrix;
 typedef std::shared_ptr<MKLDNNMatrix> MKLDNNMatrixPtr;
 
+#define CHECK_PRIMITIVE_DESC_EQ(MAT, PD, ...)                        \
+  CHECK(MAT) << " can not be empty.";                                \
+  CHECK(MAT->getPrimitiveDesc() == PD)                               \
+      << #MAT "->getPrimitiveDesc() and " #PD " should be equal.\n " \
+      << "" __VA_ARGS__;
+
 /**
  * @brief MKLDNN Matrix.
  *
