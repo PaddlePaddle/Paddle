@@ -216,17 +216,13 @@ void MKLDNNBatchNormLayer::resetFwdPD(
   }
   auto fwdDesc = bn_fwd::desc(pk, in->getMemoryDesc(), EPS, flags_);
   pd.reset(new bn_fwd::primitive_desc(fwdDesc, engine_));
-  // TODO(TJ): use check macro
-  CHECK(out);
-  CHECK(out->getPrimitiveDesc() == pd->dst_primitive_desc());
+  CHECK_PRIMITIVE_DESC_EQ(out, pd->dst_primitive_desc());
   if (wgt) {
-    CHECK(wgt->getPrimitiveDesc() == pd->weights_primitive_desc());
+    CHECK_PRIMITIVE_DESC_EQ(wgt, pd->weights_primitive_desc());
   }
   if (passType_ != PASS_TEST || useGlobalStats_) {
-    CHECK(mean_);
-    CHECK(mean_->getPrimitiveDesc() == pd->mean_primitive_desc());
-    CHECK(var_);
-    CHECK(var_->getPrimitiveDesc() == pd->variance_primitive_desc());
+    CHECK_PRIMITIVE_DESC_EQ(mean_, pd->mean_primitive_desc());
+    CHECK_PRIMITIVE_DESC_EQ(var_, pd->variance_primitive_desc());
   }
 }
 
@@ -283,19 +279,14 @@ void MKLDNNBatchNormLayer::resetBwdPD(
   if (in == nullptr) {
     return;
   }
-  CHECK(out);
-  CHECK(out->getPrimitiveDesc() == in->getPrimitiveDesc());
+  CHECK_PRIMITIVE_DESC_EQ(out, in->getPrimitiveDesc());
   auto md = in->getMemoryDesc();
   auto bwdDesc = bn_bwd::desc(prop_kind::backward, md, md, EPS, flags_);
   pd.reset(new bn_bwd::primitive_desc(bwdDesc, engine_, *fwdPD_));
-  // TODO(TJ): use check macro
-  CHECK(wgt);
-  CHECK(wgt->getPrimitiveDesc() == pd->diff_weights_primitive_desc());
   CHECK(pd->weights_primitive_desc() == fwdPD_->weights_primitive_desc());
-  CHECK(mean_);
-  CHECK(mean_->getPrimitiveDesc() == pd->mean_primitive_desc());
-  CHECK(var_);
-  CHECK(var_->getPrimitiveDesc() == pd->variance_primitive_desc());
+  CHECK_PRIMITIVE_DESC_EQ(wgt, pd->diff_weights_primitive_desc());
+  CHECK_PRIMITIVE_DESC_EQ(mean_, pd->mean_primitive_desc());
+  CHECK_PRIMITIVE_DESC_EQ(var_, pd->variance_primitive_desc());
 }
 
 void MKLDNNBatchNormLayer::resetBwdPipeline(

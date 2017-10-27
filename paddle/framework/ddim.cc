@@ -195,6 +195,14 @@ std::vector<int64_t> vectorize(const DDim& ddim) {
   return result;
 }
 
+// NOTE: framework::vectorize converts to type int64_t
+//       which does not fit cudnn inputs.
+std::vector<int> vectorize2int(const DDim& ddim) {
+  std::vector<int64_t> temp = vectorize(ddim);
+  std::vector<int> result(temp.begin(), temp.end());
+  return result;
+}
+
 struct ProductVisitor : public boost::static_visitor<int64_t> {
   template <int D>
   int64_t operator()(const Dim<D>& dim) {
