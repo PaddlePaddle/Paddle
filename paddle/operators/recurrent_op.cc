@@ -69,7 +69,7 @@ void RecurrentAlgorithm::CreateScopes(const Scope& scope,
       auto& step_scope = scope.NewScope();
       for (auto& var_name : *vars_) {
         VLOG(5) << "step " << i << " create " << var_name;
-        step_scope.Var(var_name);
+        step_scope.Var(var_name)->GetMutable<LoDTensor>();
       }
       step_scopes->emplace_back(&step_scope);
     }
