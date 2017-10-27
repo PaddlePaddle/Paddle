@@ -60,7 +60,7 @@ class TestPool2d_Op(OpTest):
             'global_pooling': self.global_pool,
         }
 
-        self.outputs = {'Out': output}
+        self.outputs = {'Out': output.astype('float32')}
 
     def test_check_output(self):
         self.check_output()

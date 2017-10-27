@@ -29,6 +29,7 @@ class TestInferShape(unittest.TestCase):
         sum_op_desc.set_input("X", ["x1", "x2"])
         sum_op_desc.set_output("Out", ["out"])
 
+        sum_op_desc.check_attrs()
         sum_op_desc.infer_shape(block)
         self.assertEqual(out.shape(), shape)
 
@@ -61,6 +62,7 @@ class TestInferShape(unittest.TestCase):
         mul_op_desc.set_attr("x_num_col_dims", 1)
         mul_op_desc.set_attr("y_num_col_dims", 1)
 
+        mul_op_desc.check_attrs()
         mul_op_desc.infer_shape(block)
         self.assertEqual(out.shape(), [x_shape[0], y_shape[1]])
 

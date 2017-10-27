@@ -14,9 +14,13 @@ limitations under the License. */
 
 #include "paddle/framework/op_desc.h"
 #include <functional>
+#include <mutex>
 #include <unordered_map>
 #include "paddle/framework/block_desc.h"
 #include "paddle/framework/operator.h"
+#include "paddle/framework/program_desc.h"
+
+#include "glog/logging.h"
 
 namespace paddle {
 namespace framework {
@@ -24,16 +28,47 @@ namespace framework {
 OpDescBind::OpDescBind(const std::string &type, const VariableNameMap &inputs,
                        const VariableNameMap &outputs,
                        const AttributeMap &attrs) {
-  op_desc_.set_type(type);
+  desc_.set_type(type);
   inputs_ = inputs;
   outputs_ = outputs;
   attrs_ = attrs;
   need_update_ = true;
 }
 
+OpDescBind::OpDescBind(const OpDesc &desc, ProgramDescBind *prog)
+    : desc_(desc), need_update_(false) {
+  // restore inputs_
+  int input_size = desc_.inputs_size();
+  for (int i = 0; i < input_size; ++i) {
+    const OpDesc::Var &var = desc_.inputs(i);
+    std::vector<std::string> &args = inputs_[var.parameter()];
+    int argu_size = var.arguments_size();
+    args.reserve(argu_size);
+    for (int j = 0; j < argu_size; ++j) {
+      args.push_back(var.arguments(j));
+    }
+  }
+  // restore outputs_
+  int output_size = desc_.outputs_size();
+  for (int i = 0; i < output_size; ++i) {
+    const OpDesc::Var &var = desc_.outputs(i);
+    std::vector<std::string> &args = outputs_[var.parameter()];
+    int argu_size = var.arguments_size();
+    args.reserve(argu_size);
+    for (int j = 0; j < argu_size; ++j) {
+      args.push_back(var.arguments(j));
+    }
+  }
+  // restore attrs_
+  for (const OpDesc::Attr &attr : desc_.attrs()) {
+    std::string attr_name = attr.name();
+    attrs_[attr_name] = GetAttrValue(attr, prog->Proto());
+  }
+}
+
 OpDesc *OpDescBind::Proto() {
   Flush();
-  return &op_desc_;
+  return &desc_;
 }
 
 const std::vector<std::string> &OpDescBind::Input(
@@ -167,23 +202,23 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
 
 void OpDescBind::Flush() {
   if (need_update_) {
-    this->op_desc_.mutable_inputs()->Clear();
+    this->desc_.mutable_inputs()->Clear();
     for (auto &ipt : inputs_) {
-      auto *input = op_desc_.add_inputs();
+      auto *input = desc_.add_inputs();
       input->set_parameter(ipt.first);
       VectorToRepeated(ipt.second, input->mutable_arguments());
     }
 
-    this->op_desc_.mutable_outputs()->Clear();
+    this->desc_.mutable_outputs()->Clear();
     for (auto &opt : outputs_) {
-      auto *output = op_desc_.add_outputs();
+      auto *output = desc_.add_outputs();
       output->set_parameter(opt.first);
       VectorToRepeated(opt.second, output->mutable_arguments());
     }
 
-    this->op_desc_.mutable_attrs()->Clear();
+    this->desc_.mutable_attrs()->Clear();
     for (auto &attr : attrs_) {
-      auto *attr_desc = op_desc_.add_attrs();
+      auto *attr_desc = desc_.add_attrs();
       attr_desc->set_name(attr.first);
       attr_desc->set_type(
           static_cast<framework::AttrType>(attr.second.which() - 1));
@@ -195,26 +230,26 @@ void OpDescBind::Flush() {
   }
 }
 
-using InferShapeFuncMap =
-    std::unordered_map<std::string /*op_type*/,
-                       std::function<void(InferShapeContext *)>>;
+static std::once_flag init_infer_shape_funcs;
 
-static InferShapeFuncMap &InferShapeFuncs() {
-  static InferShapeFuncMap *g_map = nullptr;
-  if (g_map == nullptr) {
-    g_map = new InferShapeFuncMap();
-    auto &info_map = OpInfoMap::Instance();
-    // all registered kernels
-    for (auto &pair : OperatorWithKernel::AllOpKernels()) {
-      auto &info = info_map.Get(pair.first);
-      // use empty type here to avoid runtime checks.
+static void InitInferShapeFuncs() {
+  std::call_once(init_infer_shape_funcs, [] {
+    auto &map = OpInfoMap::Instance();
+    auto &info_map = *map.mutable_map();
+
+    for (auto &kern_pair : OperatorWithKernel::AllOpKernels()) {
+      auto op_type = kern_pair.first;
+      auto &op_info = info_map.at(op_type);
       auto op =
-          static_cast<OperatorWithKernel *>(info.Creator()("", {}, {}, {}));
-      g_map->insert(
-          {pair.first, [op](InferShapeContext *ctx) { op->InferShape(ctx); }});
+          static_cast<OperatorWithKernel *>(op_info.Creator()("", {}, {}, {}));
+      if (op_info.infer_shape_) {  // infer_shape has been registered.
+        continue;
+      }
+      op_info.infer_shape_ = [op](InferShapeContext *ctx) {
+        op->InferShape(ctx);
+      };
     }
-  }
-  return *g_map;
+  });
 }
 
 void OpDescBind::CheckAttrs() {
@@ -230,13 +265,13 @@ void OpDescBind::CheckAttrs() {
 }
 
 void OpDescBind::InferShape(const BlockDescBind &block) const {
-  auto &funcs = InferShapeFuncs();
-  auto it = funcs.find(this->Type());
-  if (it == funcs.end()) {
-    PADDLE_THROW("Operator %s has not been registered", this->Type());
-  }
+  VLOG(3) << "CompileTime infer shape on " << Type();
+  InitInferShapeFuncs();
+  auto &infer_shape = OpInfoMap::Instance().Get(this->Type()).infer_shape_;
+  PADDLE_ENFORCE(static_cast<bool>(infer_shape),
+                 "%s's infer_shape has not been registered", this->Type());
   CompileTimeInferShapeContext ctx(*this, block);
-  it->second(&ctx);
+  infer_shape(&ctx);
 }
 
 void OpDescBind::InferVarType(BlockDescBind *block) const {

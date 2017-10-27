@@ -2,6 +2,7 @@ from collections import defaultdict
 
 import paddle.v2.framework.framework as framework
 from paddle.v2.framework.backward import append_backward_ops
+from paddle.v2.framework.regularizer import append_regularization_ops
 
 __all__ = [
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
@@ -184,6 +185,8 @@ class Optimizer(object):
         """
         params_grads = append_backward_ops(loss, parameter_list, no_grad_set or
                                            set())
+        # Add regularization if any 
+        params_grads = append_regularization_ops(params_grads)
         optimize_ops = self.create_optimization_pass(params_grads, loss)
         return optimize_ops
 

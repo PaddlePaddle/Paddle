@@ -123,6 +123,7 @@ set(DEPS_OPS
     sum_op
     pool_op
     pool_with_index_op
+    sequence_conv_op
     lstm_op)
 
 
@@ -131,9 +132,10 @@ op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
 op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
 op_library(cross_entropy_op DEPS cross_entropy)
 op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
-op_library(sum_op DEPS net_op)
+op_library(sum_op DEPS net_op selected_rows_functor)
 op_library(pool_op DEPS pooling)
 op_library(pool_with_index_op DEPS pooling)
+op_library(sequence_conv_op DEPS context_project)
 op_library(lstm_op DEPS sequence2batch lstm_compute)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
