@@ -78,7 +78,9 @@ public:
                   int strideHeight,
                   int strideWidth,
                   int paddingHeight,
-                  int paddingWidth);
+                  int paddingWidth,
+                  int dilationHeight = 1,
+                  int dilationWidth = 1);
 };
 
 template <ColFormat Format, DeviceType Device, class T>
@@ -91,7 +93,9 @@ public:
                   int strideHeight,
                   int strideWidth,
                   int paddingHeight,
-                  int paddingWidth);
+                  int paddingWidth,
+                  int dilationHeight = 1,
+                  int dilationWidth = 1);
 };
 
 }  // namespace paddle

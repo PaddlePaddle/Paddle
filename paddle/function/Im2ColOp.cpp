@@ -31,7 +31,9 @@ public:
                   int strideHeight,
                   int strideWidth,
                   int paddingHeight,
-                  int paddingWidth) {
+                  int paddingWidth,
+                  int dilationHeight,
+                  int dilationWidth) {
     int inputChannels = imShape[0];
     int inputHeight = imShape[1];
     int inputWidth = imShape[2];
@@ -47,8 +49,8 @@ public:
       int c_im = c / filterWidth / filterHeight;
       for (int h = 0; h < outputHeight; ++h) {
         for (int w = 0; w < outputWidth; ++w) {
-          int imRowIdx = h * strideHeight + hOffset;
-          int imColIdx = w * strideWidth + wOffset;
+          int imRowIdx = h * strideHeight + hOffset * dilationHeight;
+          int imColIdx = w * strideWidth + wOffset * dilationWidth;
           if ((imRowIdx - paddingHeight) < 0 ||
               (imRowIdx - paddingHeight) >= inputHeight ||
               (imColIdx - paddingWidth) < 0 ||
@@ -81,7 +83,9 @@ public:
                   int strideHeight,
                   int strideWidth,
                   int paddingHeight,
-                  int paddingWidth) {
+                  int paddingWidth,
+                  int dilationHeight,
+                  int dilationWidth) {
     int inputChannels = imShape[0];
     int inputHeight = imShape[1];
     int inputWidth = imShape[2];
@@ -97,8 +101,8 @@ public:
       int c_im = c / filterWidth / filterHeight;
       for (int h = 0; h < outputHeight; ++h) {
         for (int w = 0; w < outputWidth; ++w) {
-          int imRowIdx = h * strideHeight + hOffset;
-          int imColIdx = w * strideWidth + wOffset;
+          int imRowIdx = h * strideHeight + hOffset * dilationHeight;
+          int imColIdx = w * strideWidth + wOffset * dilationWidth;
           if ((imRowIdx - paddingHeight) >= 0 &&
               (imRowIdx - paddingHeight) < inputHeight &&
               (imColIdx - paddingWidth) >= 0 &&
@@ -134,7 +138,9 @@ public:
                   int strideHeight,
                   int strideWidth,
                   int paddingHeight,
-                  int paddingWidth) {
+                  int paddingWidth,
+                  int dilationHeight = 1,
+                  int dilationWidth = 1) {
     int inputChannels = imShape[0];
     int inputHeight = imShape[1];
     int inputWidth = imShape[2];
@@ -147,9 +153,10 @@ public:
         for (int channel = 0; channel < inputChannels; ++channel) {
           for (int filterH = 0; filterH < filterHeight; ++filterH) {
             for (int filterW = 0; filterW < filterWidth; ++filterW) {
-              int imRowOffset =
-                  outputH * strideHeight + filterH - paddingHeight;
-              int imColOffset = outputW * strideWidth + filterW - paddingWidth;
+              int imRowOffset = outputH * strideHeight +
+                                filterH * dilationHeight - paddingHeight;
+              int imColOffset = outputW * strideWidth +
+                                filterW * dilationWidth - paddingWidth;
               int colDataOffset =
                   (((outputH * outputWidth + outputW) * inputChannels +
                     channel) *
@@ -189,7 +196,9 @@ public:
                   int strideHeight,
                   int strideWidth,
                   int paddingHeight,
-                  int paddingWidth) {
+                  int paddingWidth,
+                  int dilationHeight = 1,
+                  int dilationWidth = 1) {
     int inputChannels = imShape[0];
     int inputHeight = imShape[1];
     int inputWidth = imShape[2];
@@ -202,9 +211,10 @@ public:
         for (int channel = 0; channel < inputChannels; ++channel) {
           for (int filterH = 0; filterH < filterHeight; ++filterH) {
             for (int filterW = 0; filterW < filterWidth; ++filterW) {
-              int imRowOffset =
-                  outputH * strideHeight + filterH - paddingHeight;
-              int imColOffset = outputW * strideWidth + filterW - paddingWidth;
+              int imRowOffset = outputH * strideHeight +
+                                filterH * dilationHeight - paddingHeight;
+              int imColOffset = outputW * strideWidth +
+                                filterW * dilationWidth - paddingWidth;
               int colDataOffset =
                   (((outputH * outputWidth + outputW) * inputChannels +
                     channel) *
