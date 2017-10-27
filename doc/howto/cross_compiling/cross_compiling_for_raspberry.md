@@ -1,26 +1,25 @@
 # Build PaddlePaddle for Raspberry Pi
+You may use any of the following two approaches to build the inference library of PaddlePaddle for Raspberry Pi:
 
-We use one of the following two approaches to build the inference library of PaddlePaddle for Raspberry Pi:
+1. Build it: Log in to a Raspberry Pi via SSH and build the library. The required development tools and third-party dependencies are listed in [`/Dockerfile`](https://github.com/PaddlePaddle/Paddle/blob/develop/Dockerfile). 
 
-1. Log in to a Raspberry Pi via SSH and build.  [`/Dockerfile`](https://github.com/PaddlePaddle/Paddle/blob/develop/Dockerfile) lists the required development tools and third-party dependencies.
-
-1. An alternative is cross-compiling.  This article explains cross-compiling PaddlePaddle for Raspberry Pi on a Linux/x64 computer.
+1. Cross-compile: This article explains how to cross-compile PaddlePaddle for Raspberry Pi on a Linux/x64 computer.
 
 ## The Cross-Compiling Toolchain
 
-After cloning the following Github repo
+Step 1. Clone the following Github repo
 
 ```bash
 git clone https://github.com/raspberrypi/tools.git
 ```
 
-we could find the pre-built cross-compiler in `./tools/tree/master/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64`.  To run it on a Linux computer, we need glibc version >= 2.14.
+Step 2. Use the pre-built cross-compiler found in `./tools/tree/master/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64`.  To run it on a Linux computer, glibc version >= 2.14 is needed.
 
 ## CMake Arguments
 
-CMake supports [cross-compiling](https://cmake.org/cmake/help/v3.0/manual/cmake-toolchains.7.html#cross-compiling).  We configure CMake arguments related with the cross-compiling for Raspberry Pi in [`cmake/cross_compiling/raspberry_pi.cmake`](https://github.com/PaddlePaddle/Paddle/blob/develop/cmake/cross_compiling/raspberry_pi.cmake).
+CMake supports [cross-compiling](https://cmake.org/cmake/help/v3.0/manual/cmake-toolchains.7.html#cross-compiling).  All CMake configuraition arguments required for the cross-compilation for Raspberry Pi can be found in [`cmake/cross_compiling/raspberry_pi.cmake`](https://github.com/PaddlePaddle/Paddle/blob/develop/cmake/cross_compiling/raspberry_pi.cmake).
 
-Some arguments you need to know:
+Some important arguments that need to be set:
 
 - `CMAKE_SYSTEM_NAME`: The target platform.  Must be `RPi`.
 
@@ -44,9 +43,9 @@ cmake -DCMAKE_SYSTEM_NAME=RPi \
       ..
 ```
 
-The argument `WITH_C_API=ON` means to build the inference library.
+To build the inference library, please set the argument WITH_API to ON: `WITH_C_API=ON`.
 
-Users can add more arguments.  For example, to minimize the size of the generated inference library, we can have `CMAKE_BUILD_TYPE=MinSizeRel`, for performance optimization, we can have `CMAKE_BUILD_TYPE=Release`.
+You can add more arguments. For example, to minimize the size of the generated inference library, you may use `CMAKE_BUILD_TYPE=MinSizeRel`. For performance optimization, you may use `CMAKE_BUILD_TYPE=Release`.
 
 ## Build and Install
 
@@ -57,6 +56,6 @@ make
 make install
 ```
 
-The intermediate files will be in `build`.  Third-party libraries will be in `build/third_party`.  If you have built for other platforms, e.g., Android or iOS, we might want to clear out these directories by running `rm -rf build`.
+The intermediate files will be in `build`. Third-party libraries will be in `build/third_party`. If you have built for other platforms, e.g., Android or iOS, you may want to clear these directories by running `rm -rf build`.
 
 The infernece library will be in `your/path/to/install/lib`, with related header files in `your/path/to/install/include`.
