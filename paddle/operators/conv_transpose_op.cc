@@ -12,18 +12,18 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/conv3dtranspose_op.h"
+#include "paddle/operators/conv_transpose_op.h"
 
 namespace paddle {
 namespace operators {
 
-void Conv3DTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
+void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE(ctx->HasInput("Input"),
-                 "Input(Input) of Conv3DTransposeOp should not be null.");
+                 "Input(Input) of ConvTransposeOp should not be null.");
   PADDLE_ENFORCE(ctx->HasInput("Filter"),
-                 "Input(Filter) of Conv3DTransposeOp should not be null.");
+                 "Input(Filter) of ConvTransposeOp should not be null.");
   PADDLE_ENFORCE(ctx->HasOutput("Output"),
-                 "Output(Output) of Conv3DTransposeOp should not be null.");
+                 "Output(Output) of ConvTransposeOp should not be null.");
 
   auto in_dims = ctx->GetInputDim("Input");
   auto filter_dims = ctx->GetInputDim("Filter");
@@ -35,12 +35,20 @@ void Conv3DTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                       "No Padding allowed in conv transpose op.");
   }
 
-  PADDLE_ENFORCE_EQ(in_dims.size(), 5,
-                    "Conv3DTransposeOp input should be 5-D tensor.");
-  PADDLE_ENFORCE_EQ(filter_dims.size(), 5,
-                    "Conv3DTransposeOp filter should be 5-D tensor.");
-  PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[0],
-                    "input and kernel input dimension should be equal.");
+  PADDLE_ENFORCE(in_dims.size() == 4 || in_dims.size() == 5,
+                 "ConvTransposeOp intput should be 4-D or 5-D tensor.");
+  PADDLE_ENFORCE_EQ(in_dims.size(), filter_dims.size(),
+                    "ConvTransposeOp input dimension and filter dimension "
+                    "should be the same.");
+  PADDLE_ENFORCE(in_dims.size() - strides.size() == 2U,
+                 "ConvTransposeOp input dimension and strides dimension should "
+                 "be consistent.");
+  PADDLE_ENFORCE_EQ(paddings.size(), strides.size(),
+                    "ConvTransposeOp paddings dimension and Conv strides "
+                    "dimension should be the same.");
+  PADDLE_ENFORCE_EQ(
+      in_dims[1], filter_dims[0],
+      "ConvTransposeOp input and kernel input dimension should be equal.");
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[1]});
   for (size_t i = 0; i < paddings.size(); ++i) {
@@ -48,6 +56,37 @@ void Conv3DTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                            filter_dims[i + 2]);
   }
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
+}
+
+Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(
+    framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+    : OpProtoAndCheckerMaker(proto, op_checker) {
+  AddInput(
+      "Input",
+      "(Tensor) The input tensor of convolution transpose operator. "
+      "The format of input tensor is NCHW. Where N is batch size, C is the "
+      "number of input channels, H and W is the height and width of image.");
+  AddInput("Filter",
+           "(Tensor) The filter tensor of convolution transpose operator."
+           "The format of the filter tensor is CMHW, where C is the number of "
+           "output image channels, M is the number of input image channels, "
+           "H and W is height and width of filter. "
+           "We enforce groups number == 1 and padding == 0 in "
+           "convolution transpose Scenario.");
+  AddOutput("Output",
+            "(Tensor) The output tensor of convolution transpose operator."
+            "The format of output tensor is also NCHW.");
+  AddAttr<std::vector<int>>("strides",
+                            "strides of convolution transpose operator.")
+      .SetDefault({1, 1});
+  AddAttr<std::vector<int>>("paddings",
+                            "paddings of convolution transpose operator.")
+      .SetDefault({0, 0});
+  AddComment(R"DOC(
+The convolution transpose operation calculates the output based on the input, filter
+and strides, paddings, groups parameters. The size of each dimension of the
+parameters is checked in the infer-shape.
+)DOC");
 }
 
 Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(
@@ -85,8 +124,7 @@ parameters is checked in the infer-shape.
 )DOC");
 }
 
-void Conv3DTransposeOpGrad::InferShape(
-    framework::InferShapeContext* ctx) const {
+void ConvTransposeOpGrad::InferShape(framework::InferShapeContext* ctx) const {
   auto in_dims = ctx->GetInputDim("Input");
   auto filter_dims = ctx->GetInputDim("Filter");
   if (ctx->HasOutput(framework::GradVarName("Input"))) {
@@ -101,9 +139,19 @@ void Conv3DTransposeOpGrad::InferShape(
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(conv3dtranspose, ops::Conv3DTransposeOp,
-            ops::Conv3DTransposeOpMaker, conv3dtranspose_grad,
-            ops::Conv3DTransposeOpGrad);
+
+REGISTER_OP(conv2dtranspose, ops::ConvTransposeOp, ops::Conv2DTransposeOpMaker,
+            conv2dtranspose_grad, ops::ConvTransposeOpGrad);
+
+REGISTER_OP_CPU_KERNEL(
+    conv2dtranspose,
+    ops::GemmConv2DTransposeKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    conv2dtranspose_grad,
+    ops::GemmConv2DTransposeGradKernel<paddle::platform::CPUPlace, float>);
+
+REGISTER_OP(conv3dtranspose, ops::ConvTransposeOp, ops::Conv3DTransposeOpMaker,
+            conv3dtranspose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     conv3dtranspose,

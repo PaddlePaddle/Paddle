@@ -69,6 +69,13 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(max_pool2d_with_index);\n")
     endif()
 
+    # conv_transpose_op contains several operators
+    if ("${TARGET}" STREQUAL "conv_transpose_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_OP(conv2dtranspose);\n")
+    endif()
+
     # save_restore_op contains several operators
     if ("${TARGET}" STREQUAL "save_restore_op")
         set(pybind_flag 1)
@@ -124,7 +131,7 @@ set(DEPS_OPS
     pool_op
     pool_with_index_op
     lstm_op
-    conv3dtranspose_op)
+    conv_transpose_op)
 
 
 op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
@@ -136,7 +143,7 @@ op_library(sum_op DEPS net_op)
 op_library(pool_op DEPS pooling)
 op_library(pool_with_index_op DEPS pooling)
 op_library(lstm_op DEPS sequence2batch lstm_compute)
-op_library(conv3dtranspose_op DEPS vol2col)
+op_library(conv_transpose_op DEPS vol2col)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
