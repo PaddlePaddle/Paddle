@@ -15,6 +15,7 @@
 #pragma once
 #include <typeindex>
 #include "paddle/framework/framework.pb.h"
+#include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

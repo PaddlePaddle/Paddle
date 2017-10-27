@@ -91,10 +91,16 @@ void MKLDNNTester::setInputImgSize() {
 // init randome parameters of ref, and copy to mkldnn
 void MKLDNNTester::randomWgtDatas() {
   EXPECT_EQ(parameters_[DNN].size(), parameters_[REF].size());
+  const bool isBN = refLayer_->getType() == "batch_norm";
   for (size_t i = 0; i < parameters_[REF].size(); ++i) {
     const VectorPtr& dnnValue = parameters_[DNN][i]->getBuf(PARAMETER_VALUE);
     const VectorPtr& refValue = parameters_[REF][i]->getBuf(PARAMETER_VALUE);
     parameters_[REF][i]->randomize();
+    if (isBN && i == 2) {
+      // this param is moving average in batch norm, which must larger than 0
+      real offset = fabs(refValue->getMin()) + 1.0;
+      refValue->add(offset);
+    }
     dnnValue->copyFrom(*refValue);
 
     VLOG(MKLDNN_TESTS) << "Random weight " << parameters_[DNN][i]->getName();
@@ -132,8 +138,7 @@ void MKLDNNTester::checkForward() {
 
 void MKLDNNTester::checkBackwardData() {
   VLOG(MKLDNN_TESTS) << "Check Backward Data";
-  // TODO(TJ): uncomment me when batch norm ready
-  // const bool isBN = dnnLayer_->getType() == "mkldnn_batch_norm";
+  const bool isBN = refLayer_->getType() == "batch_norm";
   for (size_t i = 0; i < dataLayers_[DNN].size(); ++i) {
     const MatrixPtr& dnnDiff = dataLayers_[DNN][i]->getOutputGrad();
     const MatrixPtr& refDiff = dataLayers_[REF][i]->getOutputGrad();
@@ -144,11 +149,11 @@ void MKLDNNTester::checkBackwardData() {
 
     double delta = compareMatrix(dnnDiff, refDiff);
     EXPECT_LE(fabs(delta), eps_);
-    // TODO(TJ): uncomment me when batch norm ready
-    // if (isBN) {
-    //  // the other two inputs in batch norm are for moving mean and var
-    //  break;
-    // }
+    if (isBN) {
+      // the other two inputs in batch norm are for moving mean and var
+      // do not have grad to compare
+      break;
+    }
   }
 }
 
@@ -308,9 +313,13 @@ double MKLDNNTester::compareVector(const VectorPtr& v1, const VectorPtr& v2) {
 void MKLDNNTester::runOnce() {
   // test forward
   randomBotDatas();
-  dnnLayer_->forward(PASS_TRAIN);
-  refLayer_->forward(PASS_TRAIN);
+  dnnLayer_->forward(passType_);
+  refLayer_->forward(passType_);
   checkForward();
+
+  if (passType_ == PASS_TEST) {
+    return;
+  }
 
   // test backward
   // simple updater
@@ -343,6 +352,7 @@ void MKLDNNTester::run(const TestConfig& dnn,
                        size_t batchSize,
                        size_t inputImgH,
                        size_t inputImgW,
+                       PassType passType,
                        bool printDetails,
                        size_t iter,
                        float epsilon) {
@@ -361,6 +371,7 @@ void MKLDNNTester::run(const TestConfig& dnn,
 
   ih_ = inputImgH;
   iw_ = inputImgW;
+  passType_ = passType;
   log_ = printDetails;
   iter_ = iter;
   eps_ = epsilon;

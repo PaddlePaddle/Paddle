@@ -1,7 +1,10 @@
-from paddle.v2.framework.framework import Variable, OpProtoHolder, g_program, g_init_program
-import paddle.v2.framework.core as core
 import copy
 import itertools
+
+import paddle.v2.framework.core as core
+
+from paddle.v2.framework.framework import Variable, g_program, \
+    g_init_program
 
 
 def unique_name(prefix):
@@ -72,18 +75,29 @@ class LayerHelper(object):
             }
         }
         actual = self.kwargs.get('param_attr', None)
-        return actual if actual is not None else default
+        if actual is None:
+            actual = default
+        for default_field in default.keys():
+            if default_field not in actual:
+                actual[default_field] = default[default_field]
+        return actual
 
     def bias_attr(self):
+        default = {
+            'name': None,
+            'init_attr': {
+                'type': 'fill_constant',
+                'value': 0.0
+            }
+        }
         bias_attr = self.kwargs.get('bias_attr', None)
         if bias_attr is True:
-            bias_attr = {
-                'name': None,
-                'init_attr': {
-                    'type': 'fill_constant',
-                    'value': 0.0
-                }
-            }
+            bias_attr = default
+
+        if isinstance(bias_attr, dict):
+            for default_field in default.keys():
+                if default_field not in bias_attr:
+                    bias_attr[default_field] = default[default_field]
         return bias_attr
 
     def multiple_param_attr(self, length):
@@ -129,6 +143,9 @@ class LayerHelper(object):
             name=unique_name(".".join([self.name, 'tmp'])),
             dtype=dtype,
             persistable=False)
+
+    def create_variable(self, *args, **kwargs):
+        return self.program.current_block().create_var(*args, **kwargs)
 
     def create_global_variable(self, *args, **kwargs):
         return self.program.global_block().create_var(

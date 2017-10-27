@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/scope.h"
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 
 using paddle::framework::Scope;
@@ -53,4 +54,18 @@ TEST(Scope, FindScope) {
 
   EXPECT_EQ(&s, s.FindScope(v));
   EXPECT_EQ(&s, ss.FindScope(v));
+}
+
+TEST(Scope, GetAllNames) {
+  Scope s;
+  Variable* v = s.Var("a");
+  EXPECT_EQ(&s, s.FindScope(v));
+
+  std::vector<std::string> ans = s.GetAllNames();
+  std::string str;
+  for (auto& var : ans) {
+    str += var;
+  }
+
+  EXPECT_STREQ("a", str.c_str());
 }

@@ -113,6 +113,10 @@ class Variable(object):
     def lod_level(self):
         return self.desc.lod_level()
 
+    @property
+    def type(self):
+        return self.desc.type()
+
     @staticmethod
     def _unique_var_name_():
         uid = core.unique_integer()  # unique during whole process.
@@ -257,7 +261,8 @@ class Operator(object):
                     self.desc.set_attr(attr_name, attrs[attr_name])
 
         self.desc.check_attrs()
-        if type not in {'feed', 'fetch'}:
+        no_kernel_op_set = {'feed', 'fetch', 'save', 'load'}
+        if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
 
@@ -435,6 +440,13 @@ class Program(object):
         p.sync_with_cpp()
         return p
 
+    @staticmethod
+    def parse_from_string(binary_str):
+        p = Program()
+        p.desc = core.ProgramDesc(binary_str)
+        p.sync_with_cpp()
+        return p
+
     def __repr__(self):
         return str(self)
 
@@ -474,6 +486,11 @@ class Program(object):
         for block in self.blocks:
             block.sync_with_cpp()
 
+    def list_vars(self):
+        for each_block in self.blocks:
+            for each_var in each_block.vars.itervalues():
+                yield each_var
+
 
 class Parameter(Variable):
     def __init__(self, block, shape, dtype, **kwargs):
@@ -492,6 +509,8 @@ class Parameter(Variable):
         self.trainable = kwargs.get('trainable', True)
 
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
+
+        self.regularizer = kwargs.get('regularizer', None)
 
 
 # program is a global instance.
