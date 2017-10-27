@@ -75,6 +75,13 @@ function(op_library TARGET)
         # It's enough to just adding one operator to pybind
         file(APPEND ${pybind_file} "USE_OP(conv2dtranspose);\n")
     endif()
+    
+    # pool_cudnn_op contains several operators
+    if ("${TARGET}" STREQUAL "pool_cudnn_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_OP(pool2d_cudnn);\n")
+    endif()
 
     # save_restore_op contains several operators
     if ("${TARGET}" STREQUAL "save_restore_op")
@@ -131,7 +138,9 @@ set(DEPS_OPS
     pool_op
     pool_with_index_op
     lstm_op
-    conv_transpose_op)
+    conv_transpose_op
+    sequence_conv_op
+    lstm_op)
 
 
 op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
@@ -139,9 +148,10 @@ op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
 op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
 op_library(cross_entropy_op DEPS cross_entropy)
 op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
-op_library(sum_op DEPS net_op)
+op_library(sum_op DEPS net_op selected_rows_functor)
 op_library(pool_op DEPS pooling)
 op_library(pool_with_index_op DEPS pooling)
+op_library(sequence_conv_op DEPS context_project)
 op_library(lstm_op DEPS sequence2batch lstm_compute)
 op_library(conv_transpose_op DEPS vol2col)
 

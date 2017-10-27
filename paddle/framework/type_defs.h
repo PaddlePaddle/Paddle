@@ -28,6 +28,8 @@ class OperatorBase;
 class OpDescBind;
 class BlockDescBind;
 class BlockDesc;
+class InferShapeContext;
+
 using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 
 // The order should be as same as framework.proto
@@ -48,6 +50,8 @@ using GradOpMakerFN = std::function<std::vector<std::unique_ptr<OpDescBind>>(
 
 using InferVarTypeFN = std::function<void(const OpDescBind& /*op_desc*/,
                                           BlockDescBind* /*block*/)>;
+
+using InferShapeFN = std::function<void(InferShapeContext*)>;
 
 }  // namespace framework
 }  // namespace paddle
