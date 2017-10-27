@@ -127,7 +127,7 @@ class Optimizer(object):
             outputs={"Out": self._global_step},
             attrs={"step": 1.0})
 
-        return [increment_op]
+        return increment_op
 
     def create_optimization_pass(self, parameters_and_grads, loss):
         """Add optimization operators to update gradients to variables.
@@ -173,7 +173,7 @@ class Optimizer(object):
             return_ops += finish_ops
 
         if self._global_step is not None:
-            return_ops += self._increment_global_step(loss.block)
+            return_ops.append(self._increment_global_step(loss.block))
         return return_ops
 
     def minimize(self, loss, parameter_list=None, no_grad_set=None):
