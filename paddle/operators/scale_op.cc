@@ -73,4 +73,5 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker<float>,
                   ops::ScaleGradMaker);
 REGISTER_OP_CPU_KERNEL(scale,
-                       ops::ScaleKernel<paddle::platform::CPUPlace, float>);
+                       ops::ScaleKernel<paddle::platform::CPUPlace, float>,
+                       ops::ScaleKernel<paddle::platform::CPUPlace, double>);

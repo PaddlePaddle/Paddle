@@ -36,8 +36,7 @@ class ProgramDescBind;
 
 class BlockDescBind {
  public:
-  BlockDescBind(ProgramDescBind *prog, BlockDesc *desc)
-      : prog_(prog), desc_(desc), need_update_(false) {}
+  BlockDescBind(ProgramDescBind *prog, BlockDesc *desc);
 
   BlockDescBind(const BlockDescBind &other, BlockDesc *desc,
                 ProgramDescBind *prog);

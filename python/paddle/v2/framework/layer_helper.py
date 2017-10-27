@@ -75,18 +75,29 @@ class LayerHelper(object):
             }
         }
         actual = self.kwargs.get('param_attr', None)
-        return actual if actual is not None else default
+        if actual is None:
+            actual = default
+        for default_field in default.keys():
+            if default_field not in actual:
+                actual[default_field] = default[default_field]
+        return actual
 
     def bias_attr(self):
+        default = {
+            'name': None,
+            'init_attr': {
+                'type': 'fill_constant',
+                'value': 0.0
+            }
+        }
         bias_attr = self.kwargs.get('bias_attr', None)
         if bias_attr is True:
-            bias_attr = {
-                'name': None,
-                'init_attr': {
-                    'type': 'fill_constant',
-                    'value': 0.0
-                }
-            }
+            bias_attr = default
+
+        if isinstance(bias_attr, dict):
+            for default_field in default.keys():
+                if default_field not in bias_attr:
+                    bias_attr[default_field] = default[default_field]
         return bias_attr
 
     def multiple_param_attr(self, length):
