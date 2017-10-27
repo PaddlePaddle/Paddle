@@ -28,7 +28,8 @@ enum OpInfoFillType {
   kOperator = 0,
   kOpProtoAndCheckerMaker = 1,
   kGradOpDescMaker = 2,
-  kVarTypeInference = 3
+  kVarTypeInference = 3,
+  kShapeInference = 4
 };
 
 template <typename T>
@@ -42,7 +43,10 @@ struct OpInfoFillTypeID {
                              ? kGradOpDescMaker
                              : (std::is_base_of<VarTypeInference, T>::value
                                     ? kVarTypeInference
-                                    : static_cast<OpInfoFillType>(-1))));
+                                    : (std::is_base_of<InferShapeBase, T>::value
+                                           ? kShapeInference
+                                           : static_cast<OpInfoFillType>(
+                                                 -1)))));
   }
 };
 
@@ -117,6 +121,16 @@ struct OpInfoFiller<T, kVarTypeInference> {
     info->infer_var_type_ = [](const OpDescBind& fwd_op, BlockDescBind* block) {
       T inference;
       inference(fwd_op, block);
+    };
+  }
+};
+
+template <typename T>
+struct OpInfoFiller<T, kShapeInference> {
+  void operator()(const char* op_type, OpInfo* info) const {
+    info->infer_shape_ = [](InferShapeContext* ctx) {
+      T inference;
+      inference(ctx);
     };
   }
 };
