@@ -1,5 +1,5 @@
 import os
-import pickle
+import cPickle as pickle
 
 from paddle.v2.framework.framework import Program, Parameter, g_program, \
     Variable
