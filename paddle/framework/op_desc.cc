@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/framework/op_desc.h"
 #include <functional>
-#include <thread>
+#include <mutex>
 #include <unordered_map>
 #include "paddle/framework/block_desc.h"
 #include "paddle/framework/operator.h"
