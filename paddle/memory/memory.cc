@@ -39,11 +39,15 @@ BuddyAllocator* GetCPUBuddyAllocator() {
 
 template <>
 void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
-  return GetCPUBuddyAllocator()->Alloc(size);
+  VLOG(3) << "Allocate " << size << " bytes on " << platform::Place(place);
+  void* p = GetCPUBuddyAllocator()->Alloc(size);
+  VLOG(3) << "  pointer=" << p;
+  return p;
 }
 
 template <>
 void Free<platform::CPUPlace>(platform::CPUPlace place, void* p) {
+  VLOG(3) << "Free pointer=" << p << " on " << platform::Place(place);
   GetCPUBuddyAllocator()->Free(p);
 }
 
