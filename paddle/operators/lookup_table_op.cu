@@ -11,6 +11,7 @@
 
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/lookup_table_op.h"
 #include "paddle/platform/assert.h"
 #include "paddle/platform/cuda_helper.h"
 
