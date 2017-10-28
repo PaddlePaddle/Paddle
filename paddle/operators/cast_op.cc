@@ -40,6 +40,7 @@ class CastOpInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE(context->HasOutput("Out"),
                    "The output of cast op must be set");
     context->SetOutputDim("Out", context->GetInputDim("X"));
+    context->ShareLoD("X", "Out");
   }
 };
 
