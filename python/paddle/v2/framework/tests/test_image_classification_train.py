@@ -94,7 +94,7 @@ fc2 = layers.fc(input=drop2,
                 act=None,
                 program=program,
                 init_program=init_program)
-predict = layers.fc(input=conv1,
+predict = layers.fc(input=fc2,
                     size=classdim,
                     act='softmax',
                     program=program,
@@ -102,10 +102,10 @@ predict = layers.fc(input=conv1,
 
 cost = layers.cross_entropy(
     input=predict, label=label, program=program, init_program=init_program)
-avg_cost = layers.mean(x=cost, program=program)
+avg_cost = layers.mean(x=cost, program=program, init_program=init_program)
 
-# sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
-# opts = sgd_optimizer.minimize(avg_cost)
+sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
+opts = sgd_optimizer.minimize(avg_cost)
 
 BATCH_SIZE = 128
 PASS_NUM = 1

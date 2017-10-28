@@ -18,6 +18,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
@@ -292,6 +293,25 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
     ctx->SetOutputDim(framework::GradVarName("Bias"), {C});
+  }
+
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext &ctx) const override {
+    VLOG(3) << "IndicateDataType " << this->Type();
+    const auto *var = ctx.InputVar(framework::GradVarName("Y"));
+    if (var == nullptr) {
+      PADDLE_THROW("can't find Y@GRAD");
+    }
+    const Tensor *t = nullptr;
+    if (var->IsType<Tensor>()) {
+      t = &var->Get<Tensor>();
+    } else if (var->IsType<LoDTensor>()) {
+      t = &var->Get<LoDTensor>();
+    }
+    if (t == nullptr) {
+      PADDLE_THROW("can't find Y@GRAD");
+    }
+    return framework::ToDataType(t->type());
   }
 };
 
