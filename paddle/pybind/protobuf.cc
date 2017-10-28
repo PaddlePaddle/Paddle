@@ -141,6 +141,13 @@ void BindProgramDesc(py::module &m) {
                  desc->SerializeToString(&res),
                  "Serialize ProgramDesc Error. This could be a bug of Paddle.");
              return res;
+           })
+      .def("parse_from_string",
+           [](ProgramDescBind &program_desc, const std::string &data) {
+             ProgramDesc *desc = program_desc.Proto();
+             PADDLE_ENFORCE(desc->ParseFromString(data),
+                            "Fail to parse ProgramDesc from string. This could "
+                            "be a bug of Paddle.");
            });
 }
 

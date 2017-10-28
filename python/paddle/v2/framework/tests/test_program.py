@@ -99,6 +99,8 @@ class TestProgram(unittest.TestCase):
             outputs={"Out": add_out},
             attrs={"x_num_col_dims": 1})
 
+        self.assertEqual(mul_op.idx, 0)
+        self.assertEqual(add_op.idx, 1)
         param_to_grad = prog.append_backward(add_out, set())
 
         def grad_name(name):

@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/framework/feed_fetch_method.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/prune.h"
 #include "paddle/framework/selected_rows.h"
 #include "paddle/framework/tensor_array.h"
 #include "paddle/operators/cond_op.h"
@@ -236,6 +237,16 @@ All parameter, weight, gradient are variables in Paddle.
       }
     }
     return ret_values;
+  });
+  m.def("prune", [](const ProgramDescBind &origin,
+                    const std::vector<std::array<size_t, 2>> &targets) {
+    ProgramDescBind prog_with_targets(origin);
+    for (const auto &t : targets) {
+      prog_with_targets.Block(t[0])->Op(t[1])->MarkAsTarget();
+    }
+    ProgramDesc pruned_desc;
+    Prune(*prog_with_targets.Proto(), &pruned_desc);
+    return new ProgramDescBind(pruned_desc);
   });
   m.def_submodule(
        "var_names",
