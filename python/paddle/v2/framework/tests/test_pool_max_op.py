@@ -86,7 +86,7 @@ class TestMaxPoolWithIndex_Op(OpTest):
             'strides': self.strides,
             'paddings': self.paddings,
             'ksize': self.ksize,
-            'global_pooling': self.global_pool,
+            'globalPooling': self.global_pool,
         }
 
         self.inputs = {'X': input}

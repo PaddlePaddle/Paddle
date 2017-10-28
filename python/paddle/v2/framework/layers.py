@@ -286,9 +286,9 @@ def pool2d(input,
         inputs={"X": input},
         outputs={"Out": pool_out},
         attrs={
-            "pooling_type": pool_type,
+            "poolingType": pool_type,
             "ksize": pool_size,
-            "global_pooling": global_pooling,
+            "globalPooling": global_pooling,
             "strides": pool_stride,
             "paddings": pool_padding
         })
