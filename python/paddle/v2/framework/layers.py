@@ -295,20 +295,32 @@ def pool2d(input,
 
 
 def sequence_conv_pool(input,
-                       hidden_size,
+                       filter_size,
                        context_len,
                        context_start=None,
                        context_stride=None,
+                       padding_data=None,
                        padding_trainable=False):
-    helper = LayerHelper('conv2d', **locals())
+    if (padding_trainable == False and padding_data != None) or \
+       (padding_trainable == True and padding_data == None):
+        raise ValueError(
+            "padding_trainable and padding_data must set simultaneously.")
+
+    helper = LayerHelper('sequence_conv_pool', **locals())
     dtype = helper.input_dtype()
+
+    if isinstance(filter_size, context_len, int):
+        filter_shape = [filter_size, context_len]
+
+    filter = helper.create_parameter(
+        attr=helper.param_attr, shape=filter_shape, dtype=dtype)
     pool_out = helper.create_tmp_variable(dtype)
 
     helper.append_op(
-        type="sequence_conv",
+        type="sequence_conv_pool",
         inputs={"X": input,
                 "Filter": filter,
-                "PaddingData": PaddingData},
+                "PaddingData": padding_data},
         outputs={"Out": pool_out},
         attrs={
             "context_length": context_length,
@@ -316,6 +328,7 @@ def sequence_conv_pool(input,
             "context_stride": context_stride,
             "padding_trainable": padding_trainable
         })
+    return pool_out
 
 
 class BlockGuard(object):
