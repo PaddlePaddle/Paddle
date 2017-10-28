@@ -390,7 +390,8 @@ void OperatorWithKernel::Run(const Scope& scope,
   auto& all_op_kernels = AllOpKernels();
   auto kernels_iter = all_op_kernels.find(type_);
   if (kernels_iter == all_op_kernels.end()) {
-    PADDLE_THROW("op[%s] has no kernel", type_);
+    PADDLE_THROW(
+        "There are no kernels which are registered in the %s operator.", type_);
   }
 
   // check if op[type] have kernel for kernel_key
@@ -399,7 +400,7 @@ void OperatorWithKernel::Run(const Scope& scope,
   auto kernel_iter = kernels.find(kernel_key);
 
   if (kernel_iter == kernels.end()) {
-    PADDLE_THROW("op[%s] has no kernel with kernel_key[%s]", type_, kernel_key);
+    PADDLE_THROW("The operator %s does not support %s", type_, kernel_key);
   }
 
   kernel_iter->second->Compute(ctx);
