@@ -79,8 +79,12 @@ void Convolution(const std::string& conv1,
             if (outputChannels < inputChannels) continue;
             for (size_t stride : {1, 2}) {
               for (size_t padding : {0, 1}) {
-                for (size_t dilation : {1}) {
+                for (size_t dilation : {1, 3}) {
                   if (padding >= filterSize) break;
+
+                  if ((conv1 == "NaiveConv-CPU" || conv2 == "NaiveConv-CPU") &&
+                      dilation > 1)
+                    break;
 
                   // NNPACK only supports stride = 1 if batchSize > 1
                   if ((conv1 == "NNPACKConv-CPU" ||
