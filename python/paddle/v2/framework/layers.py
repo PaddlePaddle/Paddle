@@ -1,6 +1,7 @@
 from paddle.v2.framework.layer_helper import LayerHelper, unique_name
 import paddle.v2.framework.core as core
-from paddle.v2.framework.framework import OpProtoHolder, Variable, Program
+from paddle.v2.framework.framework import OpProtoHolder, Variable, Program, \
+    Operator
 import re
 
 __all__ = [
@@ -160,6 +161,8 @@ def _create_op_func_(op_type):
 
 _create_op_func_('mean')
 _create_op_func_('mul')
+_create_op_func_('elementwise_add')
+_create_op_func_('sigmoid')
 _create_op_func_('dropout')
 
 
@@ -313,7 +316,7 @@ class BlockGuard(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.program.rollback()
         if exc_type is not None:
-            return False  # re-raise exception
+            raise exc_val
         return True
 
 
@@ -329,6 +332,8 @@ class StaticRNNGuard(BlockGuard):
         return super(StaticRNNGuard, self).__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            raise exc_val
         self.rnn.status = StaticRNN.AFTER_RNN_BLOCK
         self.rnn.complete_rnn_op()
         return super(StaticRNNGuard, self).__exit__(exc_type, exc_val, exc_tb)
@@ -371,20 +376,20 @@ class StaticRNN(object):
         if self.status != StaticRNN.IN_RNN_BLOCK:
             raise ValueError("You must invoke {0} in rnn block".format(method))
 
-    def memory(self, init=None, shape=None, dtype=None, init_value=0):
+    def memory(self, init=None, ref=None, shape=None, dtype=None, init_value=0):
         self._assert_in_rnn_block_('memory')
         if init is None:
-            if shape is None or dtype is None:
+            if shape is None or dtype is None or ref is None:
                 raise ValueError(
-                    "if init is None, memory at least need shape and dtype")
+                    "if init is None, memory at least need ref, shape and dtype")
             parent_block = self.parent_block()
             var_name = unique_name("@".join([self.helper.name, "memory_boot"]))
             boot_var = parent_block.create_var(
                 name=var_name, shape=shape, dtype=dtype, persistable=False)
 
             parent_block.append_op(
-                type="fill_constant",
-                inputs={},
+                type="fill_constant_batch_size_like",
+                inputs={'Input': [ref]},
                 outputs={'Out': [boot_var]},
                 attrs={
                     'value': init_value,
@@ -458,6 +463,58 @@ class StaticRNN(object):
             return self.outputs
 
     def complete_rnn_op(self):
-        # TODO(yuyang18): Create RNN Op here.
-        # Implement this method after RNN op complete.
-        pass
+        program = self.helper.program
+        rnn_block = program.current_block()
+        parent_block = self.parent_block()
+
+        local_inputs = set()
+
+        for op in rnn_block.ops:
+            assert isinstance(op, Operator)
+            for oname in op.output_names:
+                for out_var_name in op.output(oname):
+                    local_inputs.add(out_var_name)
+
+        for var in self.inputs:
+            local_inputs.add(var.name)
+        for m in self.memories:
+            local_inputs.add(m)
+
+        params = list()
+        for op in rnn_block.ops:
+            assert isinstance(op, Operator)
+            for iname in op.input_names:
+                for in_var_name in op.input(iname):
+                    if in_var_name not in local_inputs:
+                        params.append(in_var_name)
+
+        parameters = [parent_block.var(name) for name in params]
+
+        step_scope = parent_block.create_var(
+            type=core.VarDesc.VarType.STEP_SCOPES)
+
+        inlinks = [parent_block.var(i.name) for i in self.inputs]
+        outlinks = self.outputs
+
+        boot_memories = []
+        pre_memories = []
+        memories = []
+        for _, mem in self.memories.iteritems():
+            boot_memories.append(mem.init)
+            pre_memories.append(mem.pre_mem.name)
+            memories.append(mem.mem.name)
+
+        parent_block.append_op(
+            type='recurrent',
+            inputs={
+                'inputs': inlinks,
+                'initial_states': boot_memories,
+                'parameters': parameters
+            },
+            outputs={'outputs': outlinks,
+                     'step_scopes': [step_scope]},
+            attrs={
+                'ex_states': pre_memories,
+                'states': memories,
+                'block_idx': rnn_block
+            })

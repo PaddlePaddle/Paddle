@@ -25,6 +25,8 @@ limitations under the License. */
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/scope.h"
 
+#include "paddle/operators/recurrent_op.h"
+
 namespace paddle {
 namespace framework {
 
@@ -55,6 +57,44 @@ Executor::~Executor() {
   for (auto& device_context : device_contexts_) {
     delete device_context;
   }
+}
+
+int getBlockIdx(const OpDesc& op_desc) {
+  for (auto& attr : op_desc.attrs()) {
+    if (attr.has_block_idx()) {
+      return attr.block_idx();
+    }
+  }
+
+  PADDLE_THROW("Missing block_idx in recurrent opDesc");
+  return -1;
+}
+
+std::unique_ptr<OperatorBase> create_op(const ProgramDesc& pdesc,
+                                        const OpDesc& op_desc) {
+  auto op = paddle::framework::OpRegistry::CreateOp(
+      op_desc, const_cast<ProgramDesc*>(&pdesc));
+
+  if (op_desc.type() == "recurrent") {
+    int block_idx = getBlockIdx(op_desc);
+    std::unique_ptr<std::vector<std::unique_ptr<OperatorBase>>> step_net{
+        new std::vector<std::unique_ptr<OperatorBase>>};
+    for (auto& my_op_desc : pdesc.blocks(block_idx).ops()) {
+      step_net->push_back(create_op(pdesc, my_op_desc));
+    }
+    if (auto* rnn_op = dynamic_cast<operators::RecurrentOp*>(op.get())) {
+      std::vector<std::string> vars;
+      for (auto& var : pdesc.blocks(block_idx).vars()) {
+        vars.push_back(var.name());
+      }
+      rnn_op->set_stepnet(step_net, vars);
+    } else {
+      PADDLE_THROW("dynamic_cast<RecurrentOp*> fail");
+    }
+    VLOG(3) << "GO";
+  }
+
+  return op;
 }
 
 static void CreateTensor(Variable* var, VarDesc::VarType var_type) {
@@ -98,9 +138,22 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
   }
 
   for (auto& op_desc : block.ops()) {
-    auto op = paddle::framework::OpRegistry::CreateOp(
-        op_desc, const_cast<ProgramDesc*>(&pdesc));
+    VLOG(2) << op_desc.type();
+    auto op = create_op(pdesc, op_desc);
     op->Run(local_scope, *device);
+  }
+
+  for (auto& var : block.vars()) {
+    std::set<std::string> name_to_print{"a", "b", "h_boot"};
+    if (!var.persistable() && name_to_print.count(var.name())) {
+      VLOG(2) << var.name();
+      auto* v = local_scope.Var(var.name());
+      const float* f = v->GetMutable<LoDTensor>()->data<float>();
+      const int64_t s = v->GetMutable<LoDTensor>()->numel();
+      for (int i = 0; i < s; ++i) {
+        VLOG(10) << f[i];
+      }
+    }
   }
 
   scope->DeleteScope(&local_scope);

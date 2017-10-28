@@ -220,17 +220,18 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
 
     // process recurrent gradient op as a special operator.
     if (forwardOp.Type() == "recurrent") {
+      PADDLE_THROW("Disable old backward");
       // NOTE clean up cycle call somewhere (RNN's stepnet constains itself),
       // or this will result in infinite loop.
-      const auto& rnnop =
-          *static_cast<const operators::RecurrentOp*>(&forwardOp);
-      auto rnn_grad_op =
-          static_cast<operators::RecurrentGradientOp*>(grad_op.get());
-      const auto& stepnet_op =
-          *static_cast<const OperatorBase*>(&rnnop.stepnet());
-      // create stepnet's gradient op
-      rnn_grad_op->set_stepnet(
-          BackwardRecursive(stepnet_op, no_grad_names, grad_to_var, uniq_id));
+      // const auto& rnnop =
+      //     *static_cast<const operators::RecurrentOp*>(&forwardOp);
+      // auto rnn_grad_op =
+      //     static_cast<operators::RecurrentGradientOp*>(grad_op.get());
+      // const auto& stepnet_op =
+      //     *static_cast<const OperatorBase*>(&rnnop.stepnet());
+      // // create stepnet's gradient op
+      // rnn_grad_op->set_stepnet(
+      // BackwardRecursive(stepnet_op, no_grad_names, grad_to_var, uniq_id));
     } else if (forwardOp.Type() == "dynamic_recurrent") {
       // NOTE clean up cycle call somewhere (RNN's stepnet constains itself),
       // or this will result in infinite loop.
@@ -382,14 +383,14 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
       PADDLE_ENFORCE_EQ(
           op_grads.size(), static_cast<size_t>(1),
           "rnn_op's gradient process should contain only one op.");
-      int step_block_idx = (*it)->GetBlockAttr("step_block");
+      int step_block_idx = (*it)->GetBlockAttr("block_idx");
       auto backward_block_op_descs = MakeBlockBackward(
           program_desc, step_block_idx, no_grad_vars, grad_to_var);
       BlockDescBind* backward_block = program_desc.AppendBlock(*cur_block);
       for (auto& ptr : backward_block_op_descs) {
         backward_block->AppendAllocatedOp(std::move(ptr));
       }
-      op_grads[0]->SetBlockAttr("step_block", *backward_block);
+      op_grads[0]->SetBlockAttr("block_idx", *backward_block);
     }
 
     for (const auto& desc : op_grads) {
