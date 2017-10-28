@@ -159,6 +159,7 @@ def _create_op_func_(op_type):
 _create_op_func_('mean')
 _create_op_func_('mul')
 _create_op_func_('dropout')
+_create_op_func_('reshape')
 
 
 def concat(input, axis, program=None, init_program=None):
@@ -316,6 +317,29 @@ def batch_norm(input,
         else:
             raise ValueError("unsupported data layout:" + data_layout)
 
+    def get_init_attr(value):
+        if not isinstance(value, float):
+            raise ValueError("attr value should be a float")
+        return {'type': 'fill_constant', 'value': value}
+
+    def prepend_init_op(var, init_attr):
+        assert isinstance(var, Variable)
+        op_type = init_attr['type']
+        init_attr['shape'] = var.shape
+        init_attr['data_type'] = int(var.data_type)
+        op = var.block.prepend_op(
+            type=op_type, inputs=None, outputs={'Out': [var]}, attrs=init_attr)
+        return op
+
+    def create_persistable_var(dtype, shape, init_attr=None):
+        name = unique_name(".".join([helper.name, "xxxx"]))
+        var = init_program.global_block().create_var(
+            dtype=dtype, shape=shape, name=name, persistable=True)
+        if 'init_attr' is not None:
+            prepend_init_op(var, init_attr)
+        return program.global_block().create_var(
+            name=name, dtype=dtype, shape=shape, persistable=True)
+
     param_shape = [channel_num]
 
     # create parameter
@@ -325,8 +349,8 @@ def batch_norm(input,
         attr=helper.param_attr, shape=param_shape, dtype=dtype)
 
     # create input
-    mean = helper.create_tmp_variable(dtype)
-    variance = helper.create_tmp_variable(dtype)
+    mean = create_persistable_var(dtype, param_shape, get_init_attr(0.0))
+    variance = create_persistable_var(dtype, param_shape, get_init_attr(1.0))
 
     # create output
     # mean and mean_out share the same memory

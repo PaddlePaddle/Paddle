@@ -86,6 +86,7 @@ for pass_id in range(PASS_NUM):
                        fetch_list=[avg_cost])
 
         loss = np.array(outs[0])
+        print(loss)
 
         if loss < 10.0:
             exit(0)  # if avg cost less than 10.0, we think our code is good.

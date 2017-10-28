@@ -64,6 +64,9 @@ class BatchNormOp : public framework::OperatorWithKernel {
         (tensor_format == TensorFormat::NCHW ? x_dims[1]
                                              : x_dims[x_dims.size() - 1]);
 
+    PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
+                   "input x dims should be between 3 and 5, actual");
+
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1UL);
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], C);
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias").size(), 1UL);
@@ -128,7 +131,6 @@ template <typename T>
 class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    VLOG(2) << "Running BatchNormKernel Compute";
     const float epsilon = ctx.Attr<float>("epsilon");
     const float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -138,7 +140,6 @@ class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
-
     PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
                    "The Input dim size should be between 3 and 5");
     const int N = x_dims[0];
