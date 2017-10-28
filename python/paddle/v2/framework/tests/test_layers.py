@@ -93,15 +93,15 @@ class TestBook(unittest.TestCase):
         dict_size = 10000
         embed_size = 32
         first_word = layers.data(
-            name='firstw', shape=[1], data_type='int32', program=program)
+            name='firstw', shape=[1], data_type='int64', program=program)
         second_word = layers.data(
-            name='secondw', shape=[1], data_type='int32', program=program)
+            name='secondw', shape=[1], data_type='int64', program=program)
         third_word = layers.data(
-            name='thirdw', shape=[1], data_type='int32', program=program)
+            name='thirdw', shape=[1], data_type='int64', program=program)
         forth_word = layers.data(
-            name='forthw', shape=[1], data_type='int32', program=program)
+            name='forthw', shape=[1], data_type='int64', program=program)
         next_word = layers.data(
-            name='nextw', shape=[1], data_type='int32', program=program)
+            name='nextw', shape=[1], data_type='int64', program=program)
 
         embed_first = layers.embedding(
             input=first_word,
