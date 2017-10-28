@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/framework/operator.h"
-#include "paddle/operators/net_op.h"
 #include "paddle/operators/rnn/recurrent_op_utils.h"
 
 #include <memory>

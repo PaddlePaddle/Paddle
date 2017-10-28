@@ -185,9 +185,10 @@ RecurrentGradientOp::RecurrentGradientOp(
   alg_.Init(&arg_, &stepnet_, &vars_);
 }
 
-class RecurrentGradOpDescMaker : public SingleGradOpDescMaker {
+class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
  public:
-  using SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using OpDescBind = framework::OpDescBind;
 
  protected:
   virtual std::unique_ptr<OpDescBind> Apply() const {
@@ -196,17 +197,18 @@ class RecurrentGradOpDescMaker : public SingleGradOpDescMaker {
 
     for (auto& input_param : this->InputNames()) {
       grad->SetInput(input_param, this->Input(input_param));
-      grad->SetOutput(GradVarName(input_param),
-                      this->InputGrad(input_param, DropEmptyIG));
+      grad->SetOutput(framework::GradVarName(input_param),
+                      this->InputGrad(input_param));
     }
 
     for (auto& output_param : this->OutputNames()) {
       if (output_param == "step_scopes") {
         grad->SetInput(output_param, this->Output(output_param));
-        grad->SetInput(GradVarName(output_param), this->Output(output_param));
+        grad->SetInput(framework::GradVarName(output_param),
+                       this->Output(output_param));
       } else {
         grad->SetInput(output_param, this->Output(output_param));
-        grad->SetInput(GradVarName(output_param),
+        grad->SetInput(framework::GradVarName(output_param),
                        this->OutputGrad(output_param));
       }
     }
@@ -239,6 +241,6 @@ class RecurrentGradientOpShapeInference : public framework::InferShapeBase {
 
 REGISTER_OPERATOR(recurrent, paddle::operators::RecurrentOp,
                   paddle::operators::RecurrentAlgorithmProtoAndCheckerMaker,
-                  RecurrentGradOpDescMaker);
+                  paddle::operators::RecurrentGradOpDescMaker);
 REGISTER_OPERATOR(recurrent_grad, paddle::operators::RecurrentGradientOp,
                   paddle::operators::RecurrentGradientOpShapeInference);
