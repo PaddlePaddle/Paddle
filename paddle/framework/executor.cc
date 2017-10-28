@@ -75,18 +75,21 @@ std::unique_ptr<OperatorBase> create_op(const ProgramDesc& pdesc,
   auto op = paddle::framework::OpRegistry::CreateOp(
       op_desc, const_cast<ProgramDesc*>(&pdesc));
 
-  if (op_desc.type() == "recurrent") {
+  if (op_desc.type() == "recurrent" || op_desc.type() == "recurrent_grad") {
     int block_idx = getBlockIdx(op_desc);
     std::unique_ptr<std::vector<std::unique_ptr<OperatorBase>>> step_net{
         new std::vector<std::unique_ptr<OperatorBase>>};
     for (auto& my_op_desc : pdesc.blocks(block_idx).ops()) {
       step_net->push_back(create_op(pdesc, my_op_desc));
     }
+    std::vector<std::string> vars;
+    for (auto& var : pdesc.blocks(block_idx).vars()) {
+      vars.push_back(var.name());
+    }
     if (auto* rnn_op = dynamic_cast<operators::RecurrentOp*>(op.get())) {
-      std::vector<std::string> vars;
-      for (auto& var : pdesc.blocks(block_idx).vars()) {
-        vars.push_back(var.name());
-      }
+      rnn_op->set_stepnet(step_net, vars);
+    } else if (auto* rnn_op =
+                   dynamic_cast<operators::RecurrentGradientOp*>(op.get())) {
       rnn_op->set_stepnet(step_net, vars);
     } else {
       PADDLE_THROW("dynamic_cast<RecurrentOp*> fail");

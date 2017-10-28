@@ -18,7 +18,6 @@
 #include <sstream>
 
 #include "paddle/framework/op_registry.h"
-#include "paddle/operators/net_op.h"
 
 namespace paddle {
 namespace operators {
@@ -138,12 +137,19 @@ class RecurrentAlgorithmProtoAndCheckerMaker
 
 void RecurrentGradientAlgorithm::Run(
     const Scope& scope, const platform::DeviceContext& dev_ctx) const {
+  VLOG(10) << "---------------------------";
   auto* input0 = scope.FindVar(arg_->inlinks[0]);
+  VLOG(10) << "---------------------------";
   PADDLE_ENFORCE_NOT_NULL(input0);
+  VLOG(10) << "---------------------------";
   size_t seq_len = input0->GetMutable<LoDTensor>()->dims()[0];
+  VLOG(10) << "---------------------------";
   auto& step_scopes = GetStepScopes(scope);
+  VLOG(10) << "---------------------------";
   rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len);
+  VLOG(10) << "---------------------------";
   for (int step_id = seq_len - 1; step_id >= 0; --step_id) {
+    VLOG(10) << "---------------------------";
     if (static_cast<size_t>(step_id) != seq_len - 1) {
       rnn::LinkMemories(step_scopes, arg_->states, step_id, 1);
     }
@@ -179,6 +185,42 @@ RecurrentGradientOp::RecurrentGradientOp(
   alg_.Init(&arg_, &stepnet_, &vars_);
 }
 
+class RecurrentGradOpDescMaker : public SingleGradOpDescMaker {
+ public:
+  using SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  virtual std::unique_ptr<OpDescBind> Apply() const {
+    auto* grad = new OpDescBind();
+    grad->SetType(this->GradOpType());
+
+    for (auto& input_param : this->InputNames()) {
+      grad->SetInput(input_param, this->Input(input_param));
+      grad->SetOutput(GradVarName(input_param),
+                      this->InputGrad(input_param, DropEmptyIG));
+    }
+
+    for (auto& output_param : this->OutputNames()) {
+      if (output_param == "step_scopes") {
+        grad->SetInput(output_param, this->Output(output_param));
+        grad->SetInput(GradVarName(output_param), this->Output(output_param));
+      } else {
+        grad->SetInput(output_param, this->Output(output_param));
+        grad->SetInput(GradVarName(output_param),
+                       this->OutputGrad(output_param));
+      }
+    }
+
+    grad->SetAttrMap(this->Attrs());
+
+    return std::unique_ptr<OpDescBind>(grad);
+  }
+
+  virtual std::string GradOpType() const {
+    return this->ForwardOpType() + "_grad";
+  }
+};
+
 class RecurrentGradientOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* ctx) const override {
@@ -197,6 +239,6 @@ class RecurrentGradientOpShapeInference : public framework::InferShapeBase {
 
 REGISTER_OPERATOR(recurrent, paddle::operators::RecurrentOp,
                   paddle::operators::RecurrentAlgorithmProtoAndCheckerMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  RecurrentGradOpDescMaker);
 REGISTER_OPERATOR(recurrent_grad, paddle::operators::RecurrentGradientOp,
                   paddle::operators::RecurrentGradientOpShapeInference);
