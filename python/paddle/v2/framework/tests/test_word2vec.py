@@ -15,6 +15,7 @@ embed_size = 32
 hidden_size = 256
 N = 5
 batch_size = 32
+is_sparse = True
 
 word_dict = paddle.dataset.imikolov.build_dict()
 dict_size = len(word_dict)
@@ -22,31 +23,31 @@ dict_size = len(word_dict)
 first_word = layers.data(
     name='firstw',
     shape=[1],
-    data_type='int32',
+    data_type='int64',
     program=program,
     init_program=init_program)
 second_word = layers.data(
     name='secondw',
     shape=[1],
-    data_type='int32',
+    data_type='int64',
     program=program,
     init_program=init_program)
 third_word = layers.data(
     name='thirdw',
     shape=[1],
-    data_type='int32',
+    data_type='int64',
     program=program,
     init_program=init_program)
 forth_word = layers.data(
     name='forthw',
     shape=[1],
-    data_type='int32',
+    data_type='int64',
     program=program,
     init_program=init_program)
 next_word = layers.data(
     name='nextw',
     shape=[1],
-    data_type='int32',
+    data_type='int64',
     program=program,
     init_program=init_program)
 
@@ -54,6 +55,7 @@ embed_first = layers.embedding(
     input=first_word,
     size=[dict_size, embed_size],
     data_type='float32',
+    is_sparse=is_sparse,
     param_attr={'name': 'shared_w'},
     program=program,
     init_program=init_program)
@@ -61,6 +63,7 @@ embed_second = layers.embedding(
     input=second_word,
     size=[dict_size, embed_size],
     data_type='float32',
+    is_sparse=is_sparse,
     param_attr={'name': 'shared_w'},
     program=program,
     init_program=init_program)
@@ -69,6 +72,7 @@ embed_third = layers.embedding(
     input=third_word,
     size=[dict_size, embed_size],
     data_type='float32',
+    is_sparse=is_sparse,
     param_attr={'name': 'shared_w'},
     program=program,
     init_program=init_program)
@@ -76,6 +80,7 @@ embed_forth = layers.embedding(
     input=forth_word,
     size=[dict_size, embed_size],
     data_type='float32',
+    is_sparse=is_sparse,
     param_attr={'name': 'shared_w'},
     program=program,
     init_program=init_program)
@@ -117,26 +122,26 @@ PASS_NUM = 100
 for pass_id in range(PASS_NUM):
     for data in train_reader():
         input_data = [[data_idx[idx] for data_idx in data] for idx in xrange(5)]
-        input_data = map(lambda x: np.array(x).astype("int32"), input_data)
+        input_data = map(lambda x: np.array(x).astype("int64"), input_data)
         input_data = map(lambda x: np.expand_dims(x, axis=1), input_data)
 
         first_data = input_data[0]
         first_tensor = core.LoDTensor()
         first_tensor.set(first_data, place)
 
-        second_data = input_data[0]
+        second_data = input_data[1]
         second_tensor = core.LoDTensor()
         second_tensor.set(second_data, place)
 
-        third_data = input_data[0]
+        third_data = input_data[2]
         third_tensor = core.LoDTensor()
         third_tensor.set(third_data, place)
 
-        forth_data = input_data[0]
+        forth_data = input_data[3]
         forth_tensor = core.LoDTensor()
         forth_tensor.set(forth_data, place)
 
-        next_data = input_data[0]
+        next_data = input_data[4]
         next_tensor = core.LoDTensor()
         next_tensor.set(next_data, place)
 
