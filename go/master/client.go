@@ -121,6 +121,7 @@ func (c *Client) StartGetRecords(passID int) {
 }
 
 func (c *Client) getRecords(passID int) {
+	i := 0
 	for {
 		t, err := c.getTask(passID)
 		if err != nil {
@@ -130,12 +131,20 @@ func (c *Client) getRecords(passID int) {
 				c.ch <- record{nil, err}
 				break
 			}
-			if err.Error() == ErrPassAfter.Error() {
-				// wait util last pass finishes
-				time.Sleep(time.Second * 3)
-				continue
+
+			if i%60 == 0 {
+				log.Debug("getTask of passID error.",
+					log.Ctx{"error": err, "passID": passID})
+				i = 0
 			}
-			log.Error("getTask error.", log.Ctx{"error": err})
+
+			// if err.Error() == ErrPassAfter.Error()
+			//   wait util last pass finishes
+			// if other error such as network error
+			//   wait to reconnect or task time out
+			time.Sleep(time.Second * 3)
+			i += 3
+			continue
 		}
 
 		for _, chunk := range t.Chunks {
