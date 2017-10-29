@@ -241,7 +241,7 @@ def conv1d(input,
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
-        type='conv2d',
+        type='sequence_conv',
         inputs={
             'X': input,
             'Filter': filter,

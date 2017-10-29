@@ -1,5 +1,6 @@
 import paddle.v2 as paddle
 import paddle.v2.framework.layers as layers
+import paddle.v2.framework.nets as nets
 import paddle.v2.framework.core as core
 import paddle.v2.framework.optimizer as optimizer
 
@@ -26,7 +27,6 @@ def get_usr_combined_features():
         init_program=init_program)
 
     usr_emb = layers.embedding(
-        name="user_table",
         input=uid,
         size=[USR_DICT_SIZE, 32],
         program=program,
@@ -158,10 +158,13 @@ def get_mov_combined_features():
         init_program=init_program)
 
     mov_title_emb = layers.embedding(
-        input=mov_title_id, size=32, program=program, init_program=init_program)
+        input=mov_title_id,
+        size=[MOV_TITLE_DICT_SIZE, 32],
+        program=program,
+        init_program=init_program)
 
-    mov_title_conv = paddle.networks.sequence_conv_pool(
-        input=mov_title_emb, hidden_size=32, context_len=3)
+    mov_title_conv = nets.sequence_conv_pool(
+        input=mov_title_emb, num_filters=32, filter_size=3, pool_size=3, pool_stride=1, act="tanh")
 
     concat_embed = layers.concat(
         input=[mov_fc, mov_categories_hidden, mov_title_conv],
