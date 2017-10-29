@@ -3014,16 +3014,19 @@ def batch_norm_layer(input,
     :param input: batch normalization input. Better be linear activation.
                 Because there is an activation inside batch_normalization.
     :type input: LayerOutput
-    :param batch_norm_type: We have batch_norm and cudnn_batch_norm. batch_norm
-                            supports both CPU and GPU. cudnn_batch_norm requires
-                            cuDNN version greater or equal to v4 (>=v4). But
-                            cudnn_batch_norm is faster and needs less memory
-                            than batch_norm. By default (None), we will
-                            automaticly select cudnn_batch_norm for GPU and
-                            batch_norm for CPU. Otherwise, select batch norm
-                            type based on the specified type. If you use cudnn_batch_norm,
+    :param batch_norm_type: We have batch_norm, mkldnn_batch_norm and cudnn_batch_norm.
+                            batch_norm supports CPU, MKLDNN and GPU. cudnn_batch_norm
+                            requires cuDNN version greater or equal to v4 (>=v4).
+                            But cudnn_batch_norm is faster and needs less
+                            memory than batch_norm. mkldnn_batch_norm requires
+                            enable use_mkldnn. By default (None), we will
+                            automaticly select cudnn_batch_norm for GPU,
+                            mkldnn_batch_norm for MKLDNN and batch_norm for CPU.
+                            Otherwise, select batch norm type based on the
+                            specified type. If you use cudnn_batch_norm,
                             we suggested you use latest version, such as v5.1.
     :type batch_norm_type: None | string, None or "batch_norm" or "cudnn_batch_norm"
+                           or "mkldnn_batch_norm"
     :param act: Activation Type. Better be relu. Because batch
                      normalization will normalize input near zero.
     :type act: BaseActivation
@@ -3063,6 +3066,7 @@ def batch_norm_layer(input,
         else:
             num_channels = input.size
     assert (batch_norm_type is None) or (batch_norm_type == "batch_norm") or \
+           (batch_norm_type == "mkldnn_batch_norm") or \
            (batch_norm_type == "cudnn_batch_norm")
     l = Layer(
         name=name,

@@ -31,6 +31,8 @@ namespace paddle {
 
 namespace framework {
 
+class LoDTensor;
+
 class Tensor {
  public:
   template <typename T, size_t D, int MajorType, typename IndexType>
@@ -130,10 +132,14 @@ class Tensor {
 
   std::type_index type() const { return holder_->type(); }
 
+  size_t memory_size() const;
+
  private:
   inline void check_memory_size() const;
 
  private:
+  friend class LoDTensor;
+
   /**
    * @note    Placeholder hides type T, so it doesn't appear as a template
    *          parameter of Variable.
@@ -181,7 +187,12 @@ class Tensor {
   /*! holds the memory block if allocated. */
   std::shared_ptr<Placeholder> holder_;
 
-  /*! points to dimensions of memory block. */
+  /**
+   * @brief points to elements dimensions.
+   *
+   * @note dims_ do not indicate the memory block size.
+   */
+
   DDim dims_;
 
   /**
