@@ -23,7 +23,6 @@
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/dynamic_recurrent_op.h"
 #include "paddle/operators/net_op.h"
-#include "paddle/operators/recurrent_op.h"
 
 namespace paddle {
 namespace framework {
@@ -219,19 +218,7 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
                    });
 
     // process recurrent gradient op as a special operator.
-    if (forwardOp.Type() == "recurrent") {
-      // NOTE clean up cycle call somewhere (RNN's stepnet constains itself),
-      // or this will result in infinite loop.
-      const auto& rnnop =
-          *static_cast<const operators::RecurrentOp*>(&forwardOp);
-      auto rnn_grad_op =
-          static_cast<operators::RecurrentGradientOp*>(grad_op.get());
-      const auto& stepnet_op =
-          *static_cast<const OperatorBase*>(&rnnop.stepnet());
-      // create stepnet's gradient op
-      rnn_grad_op->set_stepnet(
-          BackwardRecursive(stepnet_op, no_grad_names, grad_to_var, uniq_id));
-    } else if (forwardOp.Type() == "dynamic_recurrent") {
+    if (forwardOp.Type() == "dynamic_recurrent") {
       // NOTE clean up cycle call somewhere (RNN's stepnet constains itself),
       // or this will result in infinite loop.
       const auto& rnnop =

@@ -12,181 +12,207 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/recurrent_op.h"
-
-#include <cstring>
-#include <sstream>
-
+#include <vector>
+#include "paddle/framework/executor.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/operators/net_op.h"
 
 namespace paddle {
 namespace operators {
+constexpr char kInputs[] = "inputs";
+constexpr char kInitialStates[] = "initial_states";
+constexpr char kParameters[] = "parameters";
+constexpr char kOutputs[] = "outputs";
+constexpr char kStepScopes[] = "step_scopes";
+constexpr char kExStates[] = "ex_states";
+constexpr char kStates[] = "states";
+constexpr char kStepNet[] = "step_net";
+constexpr char kReverse[] = "reverse";
+constexpr char kIsTrain[] = "is_train";
 
-using Scope = framework::Scope;
-using Variable = framework::Variable;
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using StepScopeVar = std::vector<framework::Scope *>;
 
-void RecurrentAlgorithm::Run(const Scope& scope,
-                             const platform::DeviceContext& dev_ctx) const {
-  auto* input0 = scope.FindVar(arg_->inlinks[0]);
-  PADDLE_ENFORCE_NOT_NULL(input0);
-  size_t seq_len = input0->GetMutable<LoDTensor>()->dims()[0];
-  PADDLE_ENFORCE_GT(seq_len, 0);
-
-  CreateScopes(scope, seq_len);
-  auto& step_scopes = GetStepScopes(scope);
-  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len);
-  InitMemories(step_scopes[0]);
-
-  for (size_t step_id = 0; step_id < seq_len; step_id++) {
-    if (step_id > 0) {
-      rnn::LinkMemories(step_scopes, arg_->states, step_id, -1);
-    }
-    (*stepnet_)->Run(*step_scopes[step_id], dev_ctx);
-  }
-  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len, dev_ctx);
-}
-
-void RecurrentAlgorithm::CreateScopes(const Scope& scope,
-                                      size_t seq_len) const {
-  // TODO(superjom) Only two scopes are needed for inference, this case will be
-  // supported later.
-  auto* step_scopes_var = scope.FindVar(arg_->step_scopes);
-  PADDLE_ENFORCE(step_scopes_var != nullptr, "");
-  auto* step_scopes = step_scopes_var->GetMutable<std::vector<Scope*>>();
-
-  // Now all variables in scope must be created outside of op.
-  PADDLE_ENFORCE_NOT_NULL(stepnet_);
-  PADDLE_ENFORCE(!(*stepnet_)->Outputs().empty(),
-                 "step_unit_ op has no outputs");
-
-  if (seq_len > step_scopes->size()) {
-    for (size_t i = step_scopes->size(); i < seq_len; ++i) {
-      auto& step_scope = scope.NewScope();
-
-      // create step net's temp inputs
-      for (auto& input : (*stepnet_)->Inputs()) {
-        // the weight are located in parent scope
-        for (auto& var_name : input.second) {
-          if (!step_scope.FindVar(var_name)) {
-            step_scope.Var(var_name)->GetMutable<LoDTensor>();
-          }
-        }
-      }
-      // create stepnet's outputs
-      for (const auto& output : (*stepnet_)->Outputs()) {
-        for (auto& var_name : output.second) {
-          step_scope.Var(var_name);
-        }
-      }
-      step_scopes->emplace_back(&step_scope);
-    }
-  }
-}
-
-void RecurrentAlgorithm::InitMemories(Scope* step_scope) const {
-  for (auto& attr : arg_->states) {
-    auto* pre_mem = step_scope->Var(attr.pre_var)->GetMutable<LoDTensor>();
-    PADDLE_ENFORCE(step_scope->FindVar(attr.boot_var) != nullptr,
-                   "memory [%s]'s boot variable [%s] not exists", attr.var,
-                   attr.boot_var);
-    auto* boot_mem =
-        step_scope->FindVar(attr.boot_var)->GetMutable<LoDTensor>();
-    pre_mem->Resize(boot_mem->dims());
-    PADDLE_ENFORCE_EQ(pre_mem->dims().size(), 2);
-    pre_mem->ShareDataWith(*boot_mem);
-  }
-}
-
-const rnn::ArgumentName RecurrentOp::kArgName{
-    "step_net", "step_scopes", "inputs",        "outputs",
-    "states",   "ex_states",   "initial_states"};
-
-const rnn::ArgumentName RecurrentGradientOp::kArgName{
-    "step_net", "step_scopes@GRAD", "outputs@GRAD",       "inputs@GRAD",
-    "states",   "ex_states",        "initial_states@GRAD"};
-
-RecurrentOp::RecurrentOp(const std::string& type,
-                         const framework::VariableNameMap& inputs,
-                         const framework::VariableNameMap& outputs,
-                         const framework::AttributeMap& attrs)
-    : OperatorBase(type, inputs, outputs, attrs) {
-  rnn::InitArgument(kArgName, &arg_, *this);
-  alg_.Init(&arg_, &stepnet_);
-}
-
-class RecurrentAlgorithmProtoAndCheckerMaker
-    : public framework::OpProtoAndCheckerMaker {
+class StepScopes {
  public:
-  RecurrentAlgorithmProtoAndCheckerMaker(framework::OpProto* proto,
-                                         framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    const auto& name = RecurrentOp::kArgName;
-    // inputs and outputs stored in proto
-    AddInput(name.inlinks,
-             "the inputs that need to be segmented for each step.")
-        .AsDuplicable();
-    AddInput(name.initial_states, "variables to initialize states.")
-        .AsDuplicable();
+  StepScopes(const framework::Scope &parent, StepScopeVar *scopes,
+             bool is_train, size_t seq_len)
+      : counter_(0UL), scopes_(scopes), is_train_(is_train) {
+    size_t num_step_scopes = is_train ? seq_len : 2;
+    PADDLE_ENFORCE(scopes->empty());
+    scopes->reserve(static_cast<size_t>(num_step_scopes));
+    for (size_t i = 0; i < num_step_scopes; ++i) {
+      scopes->emplace_back(&parent.NewScope());
+    }
+  }
 
-    AddOutput(name.outlinks, "the outputs that need to concated for all steps.")
-        .AsDuplicable();
-    AddOutput(name.step_scopes, "step scopes");
+  framework::Scope &NextStep() {
+    size_t scope_id = counter_;
+    counter_++;
+    return GetScope(scope_id);
+  }
 
-    // Attributes stored in AttributeMap
-    AddAttr<std::vector<std::string>>(name.ex_states, "names of pre-states");
-    AddAttr<std::vector<std::string>>(name.states, "names of states");
+  framework::Scope &GetScope(size_t scope_id) const {
+    if (!is_train_) {
+      scope_id %= 2;
+    }
+    PADDLE_ENFORCE_LT(scope_id, scopes_->size());
+    return *(*scopes_)[scope_id];
+  }
 
-    AddComment("This is a recurrent group operator.");
+  framework::Scope &ExScope() { return GetScope(counter_ - 1); }
+
+ private:
+  size_t counter_;
+  StepScopeVar *scopes_;
+  bool is_train_;
+};
+
+class RecurrentOp : public framework::OperatorBase {
+ public:
+  RecurrentOp(const std::string &type, const framework::VariableNameMap &inputs,
+              const framework::VariableNameMap &outputs,
+              const framework::AttributeMap &attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+
+  void Run(const framework::Scope &scope,
+           const platform::DeviceContext &dev_ctx) const override {
+    auto seq_len = static_cast<size_t>(this->GetSequenceLength(scope));
+    VLOG(3) << "Static RNN input sequence length = " << seq_len;
+    StepScopes scopes = CreateStepScopes(scope, seq_len);
+    auto reverse = Attr<bool>(kReverse);
+
+    framework::Executor executor(dev_ctx);
+    auto *block = Attr<framework::BlockDescBind *>(kStepNet);
+    for (auto *var : block->AllVars()) {
+      var->SetPersistable(true);  // do not drop any variable inside RNN.
+    }
+    auto *program = block->Program();
+
+    for (size_t i = 0; i < seq_len; ++i) {
+      size_t seq_offset = reverse ? i : seq_len - i - 1;
+      auto &cur_scope = scopes.NextStep();
+
+      for (auto &iname : Inputs(kInputs)) {
+        // Link inputs
+        LinkVarWithCallback(
+            scope, iname, &cur_scope, iname,
+            [&seq_offset](const framework::Tensor &outside,
+                          framework::Tensor *inside) {
+              inside->ShareDataWith(outside.Slice(seq_offset, seq_offset + 1));
+            });
+      }
+
+      if (i == 0) {
+        // Link initialize states
+        auto &init_states = Inputs(kInitialStates);
+        auto &ex_states = Attr<std::vector<std::string>>(kExStates);
+        PADDLE_ENFORCE_EQ(init_states.size(), ex_states.size());
+        for (size_t i = 0; i < init_states.size(); ++i) {
+          LinkVar(scope, init_states[i], &cur_scope, ex_states[i]);
+        }
+      } else {
+        // Link ex states
+        auto &ex_states = Attr<std::vector<std::string>>(kExStates);
+        auto &states = Attr<std::vector<std::string>>(kStates);
+        auto &ex_scope = scopes.ExScope();
+
+        PADDLE_ENFORCE_EQ(ex_states.size(), states.size());
+        for (size_t i = 0; i < ex_states.size(); ++i) {
+          LinkVar(ex_scope, states[i], &cur_scope, ex_states[i]);
+        }
+      }
+      // Every inputs are linked now, execute!
+      executor.Run(*program, &cur_scope, block->ID());
+
+      for (auto &oname : Outputs(kOutputs)) {
+        auto *src_var = cur_scope.FindVar(oname);
+        PADDLE_ENFORCE(src_var != nullptr);
+        auto &src_tensor = src_var->Get<framework::LoDTensor>();
+
+        auto *dst_var = scope.FindVar(oname);
+        PADDLE_ENFORCE(dst_var != nullptr);
+        auto &dst_tensor = dst_var->Get<framework::LoDTensor>();
+        auto dst_out = dst_tensor.Slice(seq_offset, seq_offset + 1);
+        // Explicit copy output since the local RNN scope can be destroyed
+        // early.
+        dst_out.CopyFrom(src_tensor, dev_ctx.GetPlace(), dev_ctx);
+      }
+    }
+  }
+
+ private:
+  template <typename Callback>
+  static void LinkVarWithCallback(const framework::Scope &src_scope,
+                                  const std::string &src_var_name,
+                                  framework::Scope *dst_scope,
+                                  const std::string &dst_var_name,
+                                  Callback callback) {
+    auto *src_var = src_scope.FindVar(src_var_name);
+    PADDLE_ENFORCE(src_var != nullptr);
+    auto &src_tensor = src_var->Get<framework::LoDTensor>();
+
+    auto *dst_var = dst_scope->Var(dst_var_name);
+    auto *dst_tensor = dst_var->GetMutable<framework::LoDTensor>();
+    callback(src_tensor, dst_tensor);
+  }
+
+  static void LinkVar(const framework::Scope &src_scope,
+                      const std::string &src_var_name,
+                      framework::Scope *dst_scope,
+                      const std::string &dst_var_name) {
+    LinkVarWithCallback(
+        src_scope, src_var_name, dst_scope, dst_var_name,
+        [](const framework::Tensor &src, framework::Tensor *dst) {
+          dst->ShareDataWith(src);
+        });
+  }
+
+  StepScopes CreateStepScopes(const framework::Scope &scope,
+                              size_t seq_len) const {
+    auto *var = scope.FindVar(Output(kStepScopes));
+    PADDLE_ENFORCE(var != nullptr);
+    return StepScopes(scope, var->GetMutable<StepScopeVar>(),
+                      Attr<bool>(kIsTrain), seq_len);
+  }
+
+  int64_t GetSequenceLength(const framework::Scope &scope) const {
+    // Dim format SEQ_LEN, BATCH_SIZE, ...
+    int64_t seq_len = -1;
+    auto &all_inputs = Inputs(kInputs);
+    PADDLE_ENFORCE(!all_inputs.empty());
+    for (auto &iname : all_inputs) {
+      auto *var = scope.FindVar(iname);
+      PADDLE_ENFORCE(var != nullptr);
+      PADDLE_ENFORCE(var->IsType<framework::LoDTensor>());
+      auto &dim = var->Get<framework::LoDTensor>().dims();
+      if (seq_len == -1) {
+        seq_len = dim[0];
+      } else {
+        PADDLE_ENFORCE_EQ(seq_len, dim[0]);
+      }
+    }
+    return seq_len;
   }
 };
 
-void RecurrentGradientAlgorithm::Run(
-    const Scope& scope, const platform::DeviceContext& dev_ctx) const {
-  auto* input0 = scope.FindVar(arg_->inlinks[0]);
-  PADDLE_ENFORCE_NOT_NULL(input0);
-  size_t seq_len = input0->GetMutable<LoDTensor>()->dims()[0];
-  auto& step_scopes = GetStepScopes(scope);
-  rnn::SegmentInputs(step_scopes, arg_->inlinks, seq_len);
-  for (int step_id = seq_len - 1; step_id >= 0; --step_id) {
-    if (static_cast<size_t>(step_id) != seq_len - 1) {
-      rnn::LinkMemories(step_scopes, arg_->states, step_id, 1);
-    }
-    (*stepnet_)->Run(*step_scopes[step_id], dev_ctx);
+class RecurrentOpProtoMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  RecurrentOpProtoMaker(framework::OpProto *proto,
+                        framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput(kInputs, "rnn inputs");
+    AddInput(kInitialStates, "rnn initial states");
+    AddInput(kParameters, "");
+    AddOutput(kOutputs, "");
+    AddOutput(kStepScopes, "");
+    AddAttr<std::vector<std::string>>(kExStates, "");
+    AddAttr<std::vector<std::string>>(kStates, "");
+    AddAttr<framework::BlockDescBind *>(kStepNet, "");
+    AddAttr<bool>(kReverse, "").SetDefault(false);
+    AddAttr<bool>(kIsTrain, "").SetDefault(true);
   }
-  rnn::ConcatOutputs(step_scopes, arg_->outlinks, seq_len, dev_ctx);
-  LinkBootMemoryGradients(step_scopes[0]);
-}
-
-void RecurrentGradientAlgorithm::LinkBootMemoryGradients(
-    Scope* step_scope) const {
-  for (auto& attr : arg_->states) {
-    PADDLE_ENFORCE(step_scope->FindVar(attr.var) != nullptr,
-                   "memory variable [%s] does not exists", attr.var);
-    PADDLE_ENFORCE(step_scope->FindVar(attr.boot_var) != nullptr,
-                   "boot variable [%s] does not exists", attr.boot_var);
-    auto* mem_grad = step_scope->Var(attr.var)->GetMutable<LoDTensor>();
-    auto* boot_mem_grad =
-        step_scope->Var(attr.boot_var)->GetMutable<LoDTensor>();
-    boot_mem_grad->Resize(mem_grad->dims());
-    boot_mem_grad->ShareDataWith(*mem_grad);
-  }
-}
-
-RecurrentGradientOp::RecurrentGradientOp(
-    const std::string& type, const framework::VariableNameMap& inputs,
-    const framework::VariableNameMap& outputs,
-    const framework::AttributeMap& attrs)
-    : OperatorBase(type, inputs, outputs, attrs) {
-  rnn::InitArgument(kArgName, &arg_, *this, true /*is grad*/);
-  alg_.Init(&arg_, &stepnet_);
-}
+};
 
 }  // namespace operators
 }  // namespace paddle
-
-REGISTER_OP(recurrent, paddle::operators::RecurrentOp,
-            paddle::operators::RecurrentAlgorithmProtoAndCheckerMaker,
-            recurrent_grad, paddle::operators::RecurrentGradientOp);
+REGISTER_OPERATOR(recurrent, paddle::operators::RecurrentOp,
+                  paddle::operators::RecurrentOpProtoMaker);
