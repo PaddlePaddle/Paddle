@@ -29,6 +29,8 @@ class ProgramDescBind {
  public:
   ProgramDescBind();
 
+  explicit ProgramDescBind(const ProgramDesc &desc);
+
   ProgramDescBind(const ProgramDescBind &o);
 
   explicit ProgramDescBind(const std::string &binary_str);

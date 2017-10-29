@@ -5,7 +5,7 @@ import re
 
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
-    'StaticRNN', 'sequence_conv_pool'
+    'StaticRNN', 'cast'
 ]
 
 
@@ -61,6 +61,7 @@ def fc(input,
 def embedding(input,
               size,
               data_type='float32',
+              is_sparse=False,
               param_attr=None,
               program=None,
               init_program=None):
@@ -72,7 +73,8 @@ def embedding(input,
         type='lookup_table',
         inputs={'Ids': input,
                 'W': w},
-        outputs={'Out': tmp})
+        outputs={'Out': tmp},
+        attrs={'is_sparse': is_sparse})
     return tmp
 
 
@@ -159,6 +161,18 @@ def _create_op_func_(op_type):
 _create_op_func_('mean')
 _create_op_func_('mul')
 _create_op_func_('dropout')
+
+
+def cast(x, data_type, program=None):
+    helper = LayerHelper('cast', **locals())
+    out = helper.create_tmp_variable(dtype=data_type)
+    helper.append_op(
+        type='cast',
+        inputs={'X': [x]},
+        outputs={'Out': [out]},
+        attrs={'in_data_type': x.data_type,
+               'out_data_type': out.data_type})
+    return out
 
 
 def concat(input, axis, program=None, init_program=None):
@@ -360,43 +374,6 @@ def pool2d(input,
             "paddings": pool_padding
         })
 
-    return pool_out
-
-
-def sequence_conv_pool(input,
-                       filter_size,
-                       context_len,
-                       context_start=None,
-                       context_stride=None,
-                       padding_data=None,
-                       padding_trainable=False):
-    if (padding_trainable == False and padding_data != None) or \
-       (padding_trainable == True and padding_data == None):
-        raise ValueError(
-            "padding_trainable and padding_data must set simultaneously.")
-
-    helper = LayerHelper('sequence_conv_pool', **locals())
-    dtype = helper.input_dtype()
-
-    if isinstance(filter_size, context_len, int):
-        filter_shape = [filter_size, context_len]
-
-    filter = helper.create_parameter(
-        attr=helper.param_attr, shape=filter_shape, dtype=dtype)
-    pool_out = helper.create_tmp_variable(dtype)
-
-    helper.append_op(
-        type="sequence_conv_pool",
-        inputs={"X": input,
-                "Filter": filter,
-                "PaddingData": padding_data},
-        outputs={"Out": pool_out},
-        attrs={
-            "context_length": context_length,
-            "context_start": context_start,
-            "context_stride": context_stride,
-            "padding_trainable": padding_trainable
-        })
     return pool_out
 
 

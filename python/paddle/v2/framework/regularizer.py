@@ -1,6 +1,8 @@
 import paddle.v2.framework.framework as framework
 
-__all__ = ['append_regularization_ops', 'L2DecayRegularizer']
+__all__ = [
+    'append_regularization_ops', 'L2DecayRegularizer', 'L1DecayRegularizer'
+]
 
 
 def append_regularization_ops(parameters_and_grads):
@@ -93,6 +95,46 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         block.append_op(
             type='scale',
             inputs={"X": param},
+            outputs={"Out": decay},
+            attrs={"scale": self._regularization_coeff})
+
+        return decay
+
+
+class L1DecayRegularizer(WeightDecayRegularizer):
+    """Implements the L1 Weight Decay Regularization
+    """
+
+    def __init__(self, regularization_coeff=0.0):
+        assert regularization_coeff is not None
+        super(L1DecayRegularizer, self).__init__()
+        self._regularization_coeff = regularization_coeff
+
+    def __call__(self, param, block):
+        """Add L1 weight decay ops to network
+
+        Adds L1 weight decay ops.
+        L1WeightDecay = reg_coeff * sign(parameter)
+
+        Args:
+            param: parameter variable for which regularization is applied
+            block: block in which variable is to be created
+
+        Returns:
+            new variable for weight decay
+        """
+        assert isinstance(param, framework.Parameter)
+        assert isinstance(block, framework.Block)
+        decay = block.create_var(
+            dtype="float32", shape=param.shape, lod_level=param.lod_level)
+        # Append sign op
+        block.append_op(
+            type='sign', inputs={"X": param}, outputs={"Out": decay})
+
+        # Append scale op to the output of sign op
+        block.append_op(
+            type='scale',
+            inputs={"X": decay},
             outputs={"Out": decay},
             attrs={"scale": self._regularization_coeff})
 
