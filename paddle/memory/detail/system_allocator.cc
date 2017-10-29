@@ -45,8 +45,11 @@ void* CPUAllocator::Alloc(size_t& index, size_t size) {
 
   if (p != nullptr) {
     if (FLAGS_use_pinned_memory) {
+      LOG(INFO) << "use pinned memory";
       index = 1;
       mlock(p, size);  // lock memory
+    } else {
+      LOG(INFO) << "no use pinned memory";
     }
   }
 
