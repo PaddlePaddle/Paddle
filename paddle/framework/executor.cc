@@ -31,7 +31,7 @@ namespace framework {
 const std::string kFeedOpType = "feed";
 const std::string kFetchOpType = "fetch";
 
-Executor::Executor(const std::vector<platform::Place>& places) {
+Executor::Executor(const std::vector<platform::Place>& places) : own_(true) {
   PADDLE_ENFORCE_GT(places.size(), 0);
   device_contexts_.resize(places.size());
   for (size_t i = 0; i < places.size(); i++) {
@@ -52,8 +52,10 @@ Executor::Executor(const std::vector<platform::Place>& places) {
 }
 
 Executor::~Executor() {
-  for (auto& device_context : device_contexts_) {
-    delete device_context;
+  if (own_) {
+    for (auto& device_context : device_contexts_) {
+      delete device_context;
+    }
   }
 }
 
@@ -104,6 +106,9 @@ void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id) {
 
   scope->DeleteScope(&local_scope);
 }
+
+Executor::Executor(const platform::DeviceContext& device)
+    : device_contexts_({&device}), own_(false) {}
 
 }  // namespace framework
 }  // namespace paddle
