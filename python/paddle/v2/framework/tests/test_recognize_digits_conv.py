@@ -21,7 +21,7 @@ images = layers.data(
 label = layers.data(
     name='label',
     shape=[1],
-    data_type='int32',
+    data_type='int64',
     program=program,
     init_program=init_program)
 conv_pool_1 = nets.simple_img_conv_pool(
@@ -72,7 +72,7 @@ for pass_id in range(PASS_NUM):
     for data in train_reader():
         img_data = np.array(map(lambda x: x[0].reshape([1, 28, 28]),
                                 data)).astype("float32")
-        y_data = np.array(map(lambda x: x[1], data)).astype("int32")
+        y_data = np.array(map(lambda x: x[1], data)).astype("int64")
         y_data = y_data.reshape([BATCH_SIZE, 1])
 
         tensor_img = core.LoDTensor()
