@@ -122,7 +122,7 @@ class OperatorBase {
  protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
-  // I (Inputs)opear
+  // I (Inputs)
   // O (Outputs)
   // OG (Output Gradients)
   VariableNameMap inputs_;
@@ -285,6 +285,16 @@ class ExecutionContext {
 
   const platform::DeviceContext& device_context() const {
     return device_context_;
+  }
+
+  //! Get actual name vector for this input.
+  const std::vector<std::string>& Inputs(const std::string& name) const {
+    return op_.Inputs(name);
+  }
+
+  //! Get actual name vector for this output.
+  const std::vector<std::string>& Outputs(const std::string& name) const {
+    return op_.Outputs(name);
   }
 
 #ifdef PADDLE_WITH_CUDA
