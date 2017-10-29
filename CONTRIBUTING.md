@@ -2,7 +2,6 @@
 
 We sincerely appreciate your contribution.  This document explains our workflow and work style.
 
-
 ## Workflow
 
 PaddlePaddle uses this [Git branching model](http://nvie.com/posts/a-successful-git-branching-model/).  The following steps guide usual contributions.
@@ -30,16 +29,35 @@ PaddlePaddle uses this [Git branching model](http://nvie.com/posts/a-successful-
 
 1. Commit
 
-   Before issuing your first `git commit` command, please install [`pre-commit`](http://pre-commit.com/) and our customized hook, which checks the style of code and documentation you changed in the most recent commit.
+   Before issuing your first `git commit` command, please install [`pre-commit`](http://pre-commit.com/) by running the following commands:
 
    ```bash
    pip install pre-commit
    pre-commit install
    ```
 
+   Our pre-commit configuration requires clang-format 3.8 for auto-formating C/C++ code and yapf for Python.
+
+   Once installed, `pre-commit` checks the style of code and documentation in every commit.  We will see something like the following when you run `git commit`:
+
+   ```
+   ➜  git commit
+   CRLF end-lines remover...............................(no files to check)Skipped
+   yapf.................................................(no files to check)Skipped
+   Check for added large files..............................................Passed
+   Check for merge conflicts................................................Passed
+   Check for broken symlinks................................................Passed
+   Detect Private Key...................................(no files to check)Skipped
+   Fix End of Files.....................................(no files to check)Skipped
+   clang-formater.......................................(no files to check)Skipped
+   [my-cool-stuff c703c041] add test file
+    1 file changed, 0 insertions(+), 0 deletions(-)
+    create mode 100644 233
+   ```
+
 1. Build and test
 
-   Users can build PaddlePaddle natively on Linux and Mac OS X.  But to unify the building environment and to make it easy for debugging, the recommended way is [using Docker](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/contribute_to_paddle_en.md).
+   Users can build PaddlePaddle natively on Linux and Mac OS X.  But to unify the building environment and to make it easy for debugging, the recommended way is [using Docker](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/build_en.md).
 
 1. Keep pulling
 
@@ -78,7 +96,7 @@ PaddlePaddle uses this [Git branching model](http://nvie.com/posts/a-successful-
    git branch -d my-cool-stuff
    ```
 
-### Good Manner in Code Review
+### Code Review
 
 -  Please feel free to ping your reviewers by sending them the URL of your pull request via IM or email.  Please do this after your pull request passes the CI.
 
@@ -88,7 +106,29 @@ PaddlePaddle uses this [Git branching model](http://nvie.com/posts/a-successful-
 
 - Reduce the unnecessary commits.  Some developers commit often.  It is recommended to append a sequence of small changes into one commit by running `git commit --amend` instead of `git commit`.
 
-## Logging in the Code
+
+## Coding Standard
+
+### Code Style
+
+Our C/C++ code follows the [Google style guide](http://google.github.io/styleguide/cppguide.html).
+
+Our Python code follows the [PEP8 style guide](https://www.python.org/dev/peps/pep-0008/).
+
+Our build process helps to check the code style.  In [`build.sh`](https://github.com/PaddlePaddle/Paddle/blob/b84e8226514b8bb4405c3c28e54aa5077193d179/paddle/scripts/docker/build.sh#L42), the entry point of our [builder Docker image](https://github.com/PaddlePaddle/Paddle/blob/b84e8226514b8bb4405c3c28e54aa5077193d179/Dockerfile#L88), the CMake argument `WITH_STYLE_CHECK` is set to `ON` by default.  This flag is on
+
+Please install pre-commit, which automatically reformat the changes to C/C++ and Python code whenever we run `git commit`.  To check the whole codebase, we can run the command `pre-commit run -a`, as in the [`check_style.sh` file](https://github.com/PaddlePaddle/Paddle/blob/b84e8226514b8bb4405c3c28e54aa5077193d179/paddle/scripts/travis/check_style.sh#L30), which is invoked by [our Travis CI configuration](https://github.com/PaddlePaddle/Paddle/blob/b84e8226514b8bb4405c3c28e54aa5077193d179/.travis.yml#L43).
+
+### Unit Tests
+
+Please remember to add related unit tests.
+
+- For C/C++ code, please follow [`google-test` Primer](https://github.com/google/googletest/blob/master/googletest/docs/Primer.md).
+
+- For Python code, please use [Python's standard `unittest` package](http://pythontesting.net/framework/unittest/unittest-introduction/).
+
+
+### Writing Logs
 
 We use [glog](https://github.com/google/glog) for logging in our C/C++ code.
 
