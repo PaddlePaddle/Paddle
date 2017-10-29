@@ -12,8 +12,6 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#define EIGEN_USE_GPU
-
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <algorithm>
@@ -193,7 +191,7 @@ TEST_F(NCCLTester, ncclAllReduceOp) {
   }
 }
 
-// ncclAReduceOp with desc
+// ncclReduceOp with desc
 TEST_F(NCCLTester, ncclReduceOp) {
   std::unique_ptr<f::OpDescBind> op2(new f::OpDescBind);
   const int kRoot = 0;
@@ -201,7 +199,7 @@ TEST_F(NCCLTester, ncclReduceOp) {
   op2->SetInput("X", {"st"});
   op2->SetInput("Communicator", {"comm"});
   op2->SetOutput("Out", {"rt"});
-  op2->SetAttr("root", {kRoot});
+  op2->SetAttr("root", kRoot);
 
   std::vector<f::Scope *> dev_scopes;
 
@@ -241,7 +239,7 @@ TEST_F(NCCLTester, ncclReduceOp) {
   }
 }
 
-// // ncclBcastOp with desc
+// ncclBcastOp with desc
 TEST_F(NCCLTester, ncclBcastOp) {
   std::unique_ptr<f::OpDescBind> op2(new f::OpDescBind);
   const int kRoot = 5;
@@ -249,7 +247,7 @@ TEST_F(NCCLTester, ncclBcastOp) {
   op2->SetInput("X", {"st"});
   op2->SetInput("Communicator", {"comm"});
   op2->SetOutput("Out", {"rt"});
-  op2->SetAttr("root", {kRoot});
+  op2->SetAttr("root", kRoot);
 
   std::vector<f::Scope *> dev_scopes;
 

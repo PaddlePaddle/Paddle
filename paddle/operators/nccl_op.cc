@@ -30,6 +30,11 @@ class NCCLInitOp : public framework::OperatorBase {
                             "Can not find variable '%s' in the scope.", name);
     std::vector<int> gpus = Attr<std::vector<int>>("gpus");
     PADDLE_ENFORCE(!gpus.empty(), "Attr(gpus) should not be empty.");
+
+    if (scope.FindVar(name) == nullptr) {
+      PADDLE_THROW("Output(Communicator) is needed for ncclInit operator.");
+    }
+
     platform::Communicator *comm =
         scope.FindVar(name)->GetMutable<platform::Communicator>();
     comm->InitAll(gpus);

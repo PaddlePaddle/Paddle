@@ -9,7 +9,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#define EIGEN_USE_GPU
 #include <functional>
 
 #include "paddle/framework/lod_tensor.h"
@@ -60,7 +59,7 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
     } else if (reduction == "ncclProd") {
       reduction_op_ = ncclProd;
     } else {
-      PADDLE_ENFORCE(false, "Invalid reduction. default ncclSum.");
+      PADDLE_THROW("Invalid reduction. default ncclSum.");
     }
 
     auto* comm = ctx.Input<Communicator>("Communicator");
@@ -113,7 +112,7 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
     } else if (reduction == "ncclProd") {
       reduction_op_ = ncclProd;
     } else {
-      PADDLE_ENFORCE(false, "Invalid reduction. default ncclSum.");
+      PADDLE_THROW("Invalid reduction. default ncclSum.");
     }
 
     int root = ctx.Attr<int>("root");

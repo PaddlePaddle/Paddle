@@ -290,12 +290,12 @@ class ExecutionContext {
     return device_context_;
   }
 
-  //! Get variables vector with same input name.
+  //! Get actual name vector for this input.
   const std::vector<std::string>& Inputs(const std::string& name) const {
     return op_.Inputs(name);
   }
 
-  //! Get variables vector with same output name.
+  //! Get actual name vector for this output.
   const std::vector<std::string>& Outputs(const std::string& name) const {
     return op_.Outputs(name);
   }
