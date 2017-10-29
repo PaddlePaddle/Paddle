@@ -199,16 +199,17 @@ class RecurrentOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   RecurrentOpProtoMaker(framework::OpProto *proto,
                         framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput(kInputs, "rnn inputs");
-    AddInput(kInitialStates, "rnn initial states");
-    AddInput(kParameters, "");
-    AddOutput(kOutputs, "");
+    AddInput(kInputs, "rnn inputs").AsDuplicable();
+    AddInput(kInitialStates, "rnn initial states").AsDuplicable();
+    AddInput(kParameters, "").AsDuplicable();
+    AddOutput(kOutputs, "").AsDuplicable();
     AddOutput(kStepScopes, "");
     AddAttr<std::vector<std::string>>(kExStates, "");
     AddAttr<std::vector<std::string>>(kStates, "");
     AddAttr<framework::BlockDescBind *>(kStepNet, "");
     AddAttr<bool>(kReverse, "").SetDefault(false);
     AddAttr<bool>(kIsTrain, "").SetDefault(true);
+    AddComment("");
   }
 };
 

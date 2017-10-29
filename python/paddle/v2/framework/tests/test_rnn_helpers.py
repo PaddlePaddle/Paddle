@@ -8,15 +8,16 @@ class TestRNN(unittest.TestCase):
         img = data(
             shape=[
                 80,  # sequence length
+                -1,  # batch size
                 22,  # image height
                 22
             ],  # image width
             data_type='float32',
             name='image')
         hidden = fc(input=img, size=100, act='sigmoid', num_flatten_dims=2)
-        self.assertEqual((-1, 80, 100), hidden.shape)
+        self.assertEqual((80, -1, 100), hidden.shape)
         hidden = fc(input=hidden, size=100, act='sigmoid', num_flatten_dims=2)
-        self.assertEqual((-1, 80, 100), hidden.shape)
+        self.assertEqual((80, -1, 100), hidden.shape)
 
         rnn = StaticRNN()
         with rnn.step():
@@ -30,7 +31,7 @@ class TestRNN(unittest.TestCase):
             rnn.output(rnn_out)
 
         out = rnn()
-        self.assertEqual((-1, 80, 32), out.shape)
+        self.assertEqual((80, -1, 32), out.shape)
         print g_program
 
 

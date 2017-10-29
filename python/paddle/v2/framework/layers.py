@@ -1,6 +1,7 @@
 from paddle.v2.framework.layer_helper import LayerHelper, unique_name
 import paddle.v2.framework.core as core
-from paddle.v2.framework.framework import OpProtoHolder, Variable, Program
+from paddle.v2.framework.framework import OpProtoHolder, Variable, Program, \
+    Operator
 import re
 
 __all__ = [
@@ -30,6 +31,7 @@ def fc(input,
         param_shape = [
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
         ] + [size]
+        print param_shape
 
         w = helper.create_parameter(
             attr=param_attr, shape=param_shape, dtype=dtype)
@@ -53,7 +55,8 @@ def fc(input,
         helper.append_op(
             type="sum", inputs={"X": mul_results}, outputs={"Out": pre_bias})
     # add bias
-    pre_activation = helper.append_bias_op(pre_bias)
+    pre_activation = helper.append_bias_op(
+        pre_bias, num_flatten_dims=num_flatten_dims)
     # add activation
     return helper.append_activation(pre_activation)
 
@@ -86,8 +89,17 @@ def data(name,
          program=None,
          init_program=None):
     helper = LayerHelper('data', **locals())
+    shape = list(shape)
+    for i in xrange(len(shape)):
+        if shape[i] is None:
+            shape[i] = -1
+            append_batch_size = False
+        elif shape[i] < 0:
+            append_batch_size = False
+
     if append_batch_size:
         shape = [-1] + shape  # append batch size as -1
+
     return helper.create_global_variable(
         name=name, shape=shape, dtype=data_type, type=type)
 
@@ -266,7 +278,7 @@ def conv2d(input,
                'paddings': padding,
                'groups': groups})
 
-    pre_act = helper.append_bias_op(pre_bias)
+    pre_act = helper.append_bias_op(pre_bias, 1)
 
     return helper.append_activation(pre_act)
 
@@ -510,14 +522,14 @@ class StaticRNN(object):
         if not isinstance(x, Variable):
             raise TypeError("step input takes a Variable")
         if self.seq_len is None:
-            self.seq_len = x.shape[1]
-        elif self.seq_len != x.shape[1]:
+            self.seq_len = x.shape[0]
+        elif self.seq_len != x.shape[0]:
             raise ValueError("Static RNN only take fix seq_len input")
 
         ipt = self.helper.create_variable(
             name=x.name,
             dtype=x.data_type,
-            shape=[-1] + list(x.shape[2:]),
+            shape=list(x.shape[1:]),
             type=x.type)
         self.inputs.append(ipt)
         return ipt
@@ -529,7 +541,7 @@ class StaticRNN(object):
 
         out_var = self.parent_block().create_var(
             name=o.name,
-            shape=[-1, self.seq_len] + list(o.shape[1:]),
+            shape=[self.seq_len] + list(o.shape),
             dtype=o.data_type)
 
         self.outputs.append(out_var)
@@ -561,6 +573,61 @@ class StaticRNN(object):
             return self.outputs
 
     def complete_rnn_op(self):
-        # TODO(yuyang18): Create RNN Op here.
-        # Implement this method after RNN op complete.
-        pass
+        program = self.helper.program
+        rnn_block = program.current_block()
+        parent_block = self.parent_block()
+
+        local_inputs = set()
+
+        for op in rnn_block.ops:
+            assert isinstance(op, Operator)
+            for oname in op.output_names:
+                for out_var_name in op.output(oname):
+                    local_inputs.add(out_var_name)
+
+        for var in self.inputs:
+            local_inputs.add(var.name)
+        for m in self.memories:
+            local_inputs.add(m)
+
+        params = list()
+        for op in rnn_block.ops:
+            assert isinstance(op, Operator)
+            for iname in op.input_names:
+                for in_var_name in op.input(iname):
+                    if in_var_name not in local_inputs:
+                        params.append(in_var_name)
+
+        parameters = [parent_block.var(name) for name in params]
+
+        step_scope = parent_block.create_var(
+            type=core.VarDesc.VarType.STEP_SCOPES)
+
+        inlinks = [parent_block.var(i.name) for i in self.inputs]
+        outlinks = self.outputs
+
+        boot_memories = []
+        pre_memories = []
+        memories = []
+        for _, mem in self.memories.iteritems():
+            boot_memories.append(mem.init)
+            pre_memories.append(mem.pre_mem.name)
+            memories.append(mem.mem.name)
+
+        print self.memories
+        print pre_memories
+
+        parent_block.append_op(
+            type='recurrent',
+            inputs={
+                'inputs': inlinks,
+                'initial_states': boot_memories,
+                'parameters': parameters
+            },
+            outputs={'outputs': outlinks,
+                     'step_scopes': [step_scope]},
+            attrs={
+                'ex_states': pre_memories,
+                'states': memories,
+                'step_net': rnn_block
+            })
