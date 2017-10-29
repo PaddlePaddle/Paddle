@@ -54,8 +54,7 @@ class GRUUnitOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         weight_width, frame_size * 3,
         "The shape of Weight matrix must be [frame_size, frame_size * 3].");
-    auto bias = Input("Bias");
-    if (bias != framework::kEmptyVarName) {
+    if (ctx->HasInput("Bias")) {
       auto bias_dims = ctx->GetInputDim("Bias");
       int bias_height = bias_dims[0];
       int bias_width = bias_dims[1];
@@ -89,7 +88,8 @@ class GRUUnitOpMaker : public framework::OpProtoAndCheckerMaker {
              "weights of output candidate with shape [frame_size, frame_size]");
     AddInput("Bias",
              "(Tensor) Bias vector with shape [1, frame_size * 3] concating "
-             "bias of the update gate, reset gate and output candidate.");
+             "bias of the update gate, reset gate and output candidate.")
+        .AsDispensable();
     AddOutput("Gate",
               "(Tensor) Matrix with shape [batch_size, frame_size * 3] for the "
               "output of update gate, reset gate and output candidate")
@@ -171,8 +171,7 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         weight_width, frame_size * 3,
         "The shape of Weight matrix must be [frame_size, frame_size * 3].");
-    auto bias = Input("Bias");
-    if (bias != framework::kEmptyVarName) {
+    if (ctx->HasInput("Bias")) {
       auto bias_dims = ctx->GetInputDim("Bias");
       int bias_height = bias_dims[0];
       int bias_width = bias_dims[1];
@@ -203,6 +202,8 @@ namespace ops = paddle::operators;
 REGISTER_OP(gru_unit, ops::GRUUnitOp, ops::GRUUnitOpMaker, gru_unit_grad,
             ops::GRUUnitGradOp);
 REGISTER_OP_CPU_KERNEL(gru_unit,
-                       ops::GRUUnitKernel<paddle::platform::CPUPlace, float>);
+                       ops::GRUUnitKernel<paddle::platform::CPUPlace, float>,
+                       ops::GRUUnitKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
-    gru_unit_grad, ops::GRUUnitGradKernel<paddle::platform::CPUPlace, float>);
+    gru_unit_grad, ops::GRUUnitGradKernel<paddle::platform::CPUPlace, float>,
+    ops::GRUUnitGradKernel<paddle::platform::CPUPlace, double>);

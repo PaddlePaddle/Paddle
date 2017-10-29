@@ -21,6 +21,7 @@
 
 #include "paddle/framework/block_desc.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/dynamic_recurrent_op.h"
 #include "paddle/operators/net_op.h"
 #include "paddle/operators/recurrent_op.h"
 
@@ -220,8 +221,7 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
     // process recurrent gradient op as a special operator.
     if (forwardOp.Type() == "recurrent") {
       // NOTE clean up cycle call somewhere (RNN's stepnet constains itself),
-      // or
-      // this will result in infinite loop.
+      // or this will result in infinite loop.
       const auto& rnnop =
           *static_cast<const operators::RecurrentOp*>(&forwardOp);
       auto rnn_grad_op =
@@ -230,6 +230,18 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
           *static_cast<const OperatorBase*>(&rnnop.stepnet());
       // create stepnet's gradient op
       rnn_grad_op->set_stepnet(
+          BackwardRecursive(stepnet_op, no_grad_names, grad_to_var, uniq_id));
+    } else if (forwardOp.Type() == "dynamic_recurrent") {
+      // NOTE clean up cycle call somewhere (RNN's stepnet constains itself),
+      // or this will result in infinite loop.
+      const auto& rnnop =
+          *static_cast<const operators::DynamicRecurrentOp*>(&forwardOp);
+      auto rnn_grad_op =
+          static_cast<operators::DynamicRecurrentGradientOp*>(grad_op.get());
+      const auto& stepnet_op =
+          *static_cast<const OperatorBase*>(&rnnop.rnn.GetStepUnit());
+      // create stepnet's gradient op
+      rnn_grad_op->rnn.SetStepUnit(
           BackwardRecursive(stepnet_op, no_grad_names, grad_to_var, uniq_id));
     }
 
@@ -303,6 +315,7 @@ static void CreateGradVarInBlock(
                      return false; /* not break */
                    });
     if (need_infer_shape) {
+      ops[op_index]->InferVarType(block_desc);
       ops[op_index]->InferShape(*block_desc);
     }
   }
@@ -440,11 +453,16 @@ ParamGradInfoMap AppendBackward(
   std::transform(target_shape_desc.begin(), target_shape_desc.end(),
                  std::back_inserter(target_shape),
                  [](int64_t dim) { return static_cast<int>(dim); });
+  VLOG(3) << "backward from loss=" << target.Name()
+          << " data_type=" << target.GetDataType();
   std::unique_ptr<OpDescBind> fill_one_op(
       new OpDescBind("fill_constant", {}, {{"Out", {fill_one_op_out}}},
                      {{"shape", target_shape},
                       {"value", static_cast<float>(1.0)},
-                      {"data_type", framework::DataType::FP32}}));
+                      {"data_type", target.GetDataType()}}));
+  // infer var type of fill_one_op
+  fill_one_op->InferVarType(root_block);
+
   root_block->AppendAllocatedOp(std::move(fill_one_op));
   size_t forward_op_num = root_block->OpSize();
   size_t forward_block_num = program_desc.Size();
@@ -463,8 +481,7 @@ ParamGradInfoMap AppendBackward(
   std::unordered_map<std::string, GradVarInfo> retv;
 
   auto var = root_block->Var(fill_one_op_out);
-  // FIXME(qiao) infer the data type
-  var->SetDataType(framework::DataType::FP32);
+  var->SetDataType(target.GetDataType());
   var->SetShape(target.Shape());
   auto& target_grad = retv[target.Name()];
   target_grad.name_ = fill_one_op_out;

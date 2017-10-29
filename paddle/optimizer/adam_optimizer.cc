@@ -22,18 +22,16 @@ void AdamOptimizer::Update(const Tensor *gradient) {
   }
 }
 
-const char *AdamOptimizer::SerializeState(int *state_len) {
+std::string AdamOptimizer::SerializeState() {
   AdamOptimizerState state;
-  std::string lr_str = this->lr_policy_->SerializeState(state_len);
+  std::string lr_str = this->lr_policy_->SerializeState();
   state.mutable_lr_state()->ParseFromString(lr_str);
   state.set_num_sample_passed(num_sample_passed_);
 
   TensorToProto(*parameter_, state.mutable_parameter());
   TensorToProto(*momentums_, state.mutable_momentums());
   TensorToProto(*velocitys_, state.mutable_velocitys());
-  auto str = state.SerializeAsString();
-  *state_len += str.size();
-  return str.c_str();
+  return state.SerializeAsString();
 }
 
 void AdamOptimizer::DeserializeState(const std::string &str) {

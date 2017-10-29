@@ -25,7 +25,7 @@ import (
 	"github.com/PaddlePaddle/Paddle/go/pserver"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/concurrency"
-	log "github.com/sirupsen/logrus"
+	log "github.com/inconshreveable/log15"
 )
 
 const (
@@ -54,26 +54,29 @@ func (e *Etcd) Desired() int {
 		resp, err := e.client.Get(ctx, pserver.PsDesired)
 		cancel()
 		if err != nil {
-			log.Errorf("Get ps dresire number failed! recnnectiong..., %v", err)
+			log.Error(
+				"Get ps dresire number failed! reconnecting...",
+				log.Ctx{"error": err},
+			)
 			time.Sleep(e.timeout)
 			continue
 		}
 
 		kvs := resp.Kvs
 		if len(kvs) == 0 {
-			log.Infoln("Waiting for ps desired registered ...")
+			log.Info("Waiting for ps desired registered ...")
 			time.Sleep(e.timeout)
 			continue
 		}
 
 		psDesired, err = strconv.Atoi(string(resp.Kvs[0].Value))
 		if err != nil {
-			log.Errorf("psDesired %d invalid %v", psDesired, err)
+			log.Error("atoi failed", log.Ctx{"error": err})
 			time.Sleep(e.timeout)
 			continue
 		}
 
-		log.Debugf("Get psDesired number: %d", psDesired)
+		log.Debug("Got psDesired", log.Ctx{"psDesired": psDesired})
 		break
 	}
 	return psDesired
@@ -88,17 +91,20 @@ func (e *Etcd) List() []Server {
 		for i := 0; i < psDesired; i++ {
 			ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 			psKey := pserver.PsPath + strconv.Itoa(i)
-			log.Debugf("checking %s", psKey)
+			log.Debug("looking for pserver", log.Ctx{"ps key": psKey})
 			resp, err := e.client.Get(ctx, psKey)
 			cancel()
 			if err != nil {
-				log.Infof("Get psKey= %s error, %v", psKey, err)
+				log.Info(
+					"Get psKey error",
+					log.Ctx{"ps key": psKey, "error": err},
+				)
 				time.Sleep(e.timeout)
 				continue
 			}
 			kvs := resp.Kvs
 			if len(kvs) == 0 {
-				log.Infof("Waiting for ps addr registered ...")
+				log.Info("Waiting for ps addr registered ...")
 				time.Sleep(e.timeout)
 				continue
 			}
@@ -106,11 +112,17 @@ func (e *Etcd) List() []Server {
 			psAddr := string(resp.Kvs[0].Value)
 			// TODO(Longfei) check the ps address
 			if psAddr == "" {
-				log.Infof("Get psKey = %s, psAddr is empty", psKey)
+				log.Info(
+					"Value under psKey is empty",
+					log.Ctx{"psKey": psKey},
+				)
 				time.Sleep(e.timeout)
 				continue
 			}
-			log.Debugf("got value (%s) for key: %s", psAddr, psKey)
+			log.Debug(
+				"got psAddr given psKey",
+				log.Ctx{"psAddr": psAddr, "psKey": psKey},
+			)
 			servers[i].Index = i
 			servers[i].Addr = psAddr
 		}
@@ -130,13 +142,13 @@ func NewEtcd(endpoints string) *Etcd {
 			DialTimeout: defaultEtcdTimeout,
 		})
 		if err != nil {
-			log.Errorf("Init etcd connection failed: %v", err)
+			log.Error("Init etcd connection failed", log.Ctx{"error": err})
 			time.Sleep(defaultEtcdTimeout)
 			continue
 		}
 		break
 	}
-	log.Infof("Connected to etcd: %s\n", endpoints)
+	log.Info("Connected to etcd endpoint", log.Ctx{"endpoint": endpoints})
 	client := &Etcd{
 		client:    cli,
 		timeout:   defaultEtcdTimeout,
@@ -154,7 +166,7 @@ func (e *Etcd) Select() (bool, error) {
 	}
 
 	lock := concurrency.NewMutex(sess, initLockPath)
-	log.Infof("Trying to acquire lock at %s.", initLockPath)
+	log.Info("Trying to acquire lock", log.Ctx{"lock path": initLockPath})
 	// Do not use timeout context here, since we don't know how
 	// long does it take for other trainers to initialize the
 	// parameters.
@@ -162,7 +174,7 @@ func (e *Etcd) Select() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	log.Infof("Successfully acquired lock at %s.", initLockPath)
+	log.Info("Successfully acquired lock", log.Ctx{"lock path": initLockPath})
 
 	get := clientv3.OpGet(initDonePath)
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
@@ -181,17 +193,17 @@ func (e *Etcd) Select() (bool, error) {
 	if len(resp.Kvs) == 0 {
 		// Key value not set, select current trainer.
 		e.lock = lock
-		log.Infoln("Trainer selected.")
+		log.Info("Trainer selected.")
 		return true, nil
 	}
 
 	if string(resp.Kvs[0].Value) == initDoneVal {
-		log.Infoln("Initialization is already done.")
+		log.Info("Initialization is already done.")
 		ctx, cancel = context.WithTimeout(context.Background(), e.timeout)
 		err = lock.Unlock(ctx)
 		cancel()
 		if err != nil {
-			log.Errorln(err)
+			log.Error("error unlocking", log.Ctx{"error": err})
 		}
 		return false, nil
 	}
@@ -221,7 +233,7 @@ func (e *Etcd) Done() error {
 	err = e.lock.Unlock(ctx)
 	cancel()
 	if err != nil {
-		log.Errorln(err)
+		log.Error("error unlocking", log.Ctx{"error": err})
 	} else {
 		e.lock = nil
 	}
@@ -244,7 +256,7 @@ func (e *Etcd) Close() error {
 	cErr := e.client.Close()
 	if cErr != nil {
 		if err != nil {
-			log.Errorln(cErr)
+			log.Error("error closing etcd client", log.Ctx{"error": cErr})
 			return err
 		}
 		return cErr

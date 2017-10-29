@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/framework/feed_fetch_method.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/prune.h"
 #include "paddle/framework/selected_rows.h"
 #include "paddle/framework/tensor_array.h"
 #include "paddle/operators/cond_op.h"
@@ -31,6 +32,11 @@ limitations under the License. */
 #include "paddle/pybind/pybind.h"
 #include "paddle/pybind/tensor_py.h"
 #include "paddle/string/to_string.h"
+
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/operators/nccl/nccl_gpu_common.h"
+#include "paddle/platform/gpu_info.h"
+#endif
 
 namespace paddle {
 namespace pybind {
@@ -203,6 +209,13 @@ All parameter, weight, gradient are variables in Paddle.
              return self.GetMutable<SelectedRows>();
            },
            py::return_value_policy::reference)
+#ifdef PADDLE_WITH_CUDA
+      .def("get_communicator",
+           [](Variable &self) -> platform::Communicator * {
+             return self.GetMutable<platform::Communicator>();
+           },
+           py::return_value_policy::reference)
+#endif
       .def("get_net",
            [](Variable &self) -> operators::NetOp * {
              return self.GetMutable<operators::NetOp>();
@@ -219,23 +232,33 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<>())
       .def("new_scope", [](Scope &self) -> Scope * { return &self.NewScope(); },
            py::return_value_policy::reference)
-      .def("drop_kids", &Scope::DropKids)
-      .def_static("global_scope", &GetGlobalScope);
+      .def("drop_kids", &Scope::DropKids);
 
   //! @note: Be careful! PyBind will return std::string as an unicode, not
   //! Python str. If you want a str object, you should cast them in Python.
   m.def("get_all_op_protos", []() -> std::vector<py::bytes> {
     std::vector<py::bytes> ret_values;
-
-    OpInfoMap::Instance().IterAllInfo([&ret_values](const std::string &type,
-                                                    const OpInfo &info) {
-      if (!info.HasOpProtoAndChecker()) return;
-      std::string str;
-      PADDLE_ENFORCE(info.Proto().SerializeToString(&str),
-                     "Serialize OpProto Error. This could be a bug of Paddle.");
-      ret_values.emplace_back(str);
-    });
+    for (auto &iter : OpInfoMap::Instance().map()) {
+      auto &info = iter.second;
+      if (info.HasOpProtoAndChecker()) {
+        std::string str;
+        PADDLE_ENFORCE(
+            info.Proto().SerializeToString(&str),
+            "Serialize OpProto Error. This could be a bug of Paddle.");
+        ret_values.emplace_back(str);
+      }
+    }
     return ret_values;
+  });
+  m.def("prune", [](const ProgramDescBind &origin,
+                    const std::vector<std::array<size_t, 2>> &targets) {
+    ProgramDescBind prog_with_targets(origin);
+    for (const auto &t : targets) {
+      prog_with_targets.Block(t[0])->Op(t[1])->MarkAsTarget();
+    }
+    ProgramDesc pruned_desc;
+    Prune(*prog_with_targets.Proto(), &pruned_desc);
+    return new ProgramDescBind(pruned_desc);
   });
   m.def_submodule(
        "var_names",
@@ -258,8 +281,11 @@ All parameter, weight, gradient are variables in Paddle.
                     return new paddle::platform::CUDADeviceContext(place);
 #endif
                   });
-  // clang-format on
+// clang-format on
 
+#ifdef PADDLE_WITH_CUDA
+  py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
+#endif
   py::class_<platform::GPUPlace>(m, "GPUPlace")
       .def(py::init<int>())
       .def("__str__", string::to_string<const platform::GPUPlace &>);
@@ -414,18 +440,18 @@ All parameter, weight, gradient are variables in Paddle.
                     return static_cast<operators::DynamicRecurrentOp *>(
                         rnn_op.release());
                   })
-      .def("set_stepnet",
+      .def("set_step_unit",
            [](operators::DynamicRecurrentOp &self, const operators::NetOp &net)
-               -> void { self.SetStepNet(net.Clone()); })
+               -> void { self.rnn.SetStepUnit(net.Clone()); })
       .def("get_state",
            [](operators::DynamicRecurrentOp &self, const std::string &name)
-               -> const TensorArray & { return self.state(name); })
+               -> const TensorArray & { return self.rnn.state(name); })
       .def("get_step_input",
            [](operators::DynamicRecurrentOp &self, const std::string &name)
-               -> const TensorArray & { return self.step_input(name); })
+               -> const TensorArray & { return self.rnn.step_input(name); })
       .def("get_step_output",
            [](operators::DynamicRecurrentOp &self, const std::string &name)
-               -> const TensorArray & { return self.step_output(name); });
+               -> const TensorArray & { return self.rnn.step_output(name); });
 
   // cond_op
   py::class_<operators::CondOp, OperatorBase>(m, "CondOp")
@@ -451,11 +477,10 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<std::vector<platform::Place> &>())
-      .def("run",
-           [](Executor &self, ProgramDescBind *program_bind, int block_id) {
-             framework::Scope &global_scope = GetGlobalScope();
-             self.Run(*program_bind->Proto(), &global_scope, block_id);
-           });
+      .def("run", [](Executor &self, ProgramDescBind *program_bind,
+                     Scope *scope, int block_id) {
+        self.Run(*program_bind->Proto(), scope, block_id);
+      });
 
   m.def("unique_integer", UniqueIntegerGenerator);
 
@@ -467,6 +492,11 @@ All parameter, weight, gradient are variables in Paddle.
   BindBlockDesc(m);
   BindVarDsec(m);
   BindOpDesc(m);
+
+  m.def("op_support_gpu", OpSupportGPU);
+#ifdef PADDLE_WITH_CUDA
+  m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
+#endif
 
   return m.ptr();
 }

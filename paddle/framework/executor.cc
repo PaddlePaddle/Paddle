@@ -20,6 +20,7 @@ limitations under the License. */
 #include <set>
 #include <vector>
 
+#include "paddle/framework/feed_fetch_type.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/scope.h"
@@ -56,6 +57,22 @@ Executor::~Executor() {
   }
 }
 
+static void CreateTensor(Variable* var, VarDesc::VarType var_type) {
+  if (var_type == VarDesc::LOD_TENSOR) {
+    var->GetMutable<LoDTensor>();
+  } else if (var_type == VarDesc::SELECTED_ROWS) {
+    var->GetMutable<SelectedRows>();
+  } else if (var_type == VarDesc::FEED_MINIBATCH) {
+    var->GetMutable<FeedFetchList>();
+  } else if (var_type == VarDesc::FETCH_LIST) {
+    var->GetMutable<FeedFetchList>();
+  } else {
+    PADDLE_THROW(
+        "Variable type must be "
+        "LoDTensor/SelectedRows/FEED_MINIBATCH/FETCH_LIST.");
+  }
+}
+
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
   // TODO(tonyyang-svail):
   //    - only runs on the first device (i.e. no interdevice communication)
@@ -69,10 +86,12 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
   for (auto& var : block.vars()) {
     if (var.persistable()) {
       auto* ptr = scope->Var(var.name());
+      CreateTensor(ptr, var.type());
       VLOG(3) << "Create Variable " << var.name()
               << " global, which pointer is " << ptr;
     } else {
       auto* ptr = local_scope.Var(var.name());
+      CreateTensor(ptr, var.type());
       VLOG(3) << "Create Variable " << var.name()
               << " locally, which pointer is " << ptr;
     }
@@ -84,8 +103,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
     op->Run(local_scope, *device);
   }
 
-  // TODO(tonyyang-svail):
-  //  - Destroy local_scope
+  scope->DeleteScope(&local_scope);
 }
 
 }  // namespace framework

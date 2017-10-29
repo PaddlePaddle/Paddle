@@ -17,6 +17,7 @@ limitations under the License. */
 #include <memory>
 #include <vector>
 #include "paddle/framework/framework.pb.h"
+#include "paddle/framework/proto_desc.h"
 #include "paddle/platform/macros.h"
 
 namespace paddle {
@@ -28,7 +29,11 @@ class ProgramDescBind {
  public:
   ProgramDescBind();
 
+  explicit ProgramDescBind(const ProgramDesc &desc);
+
   ProgramDescBind(const ProgramDescBind &o);
+
+  explicit ProgramDescBind(const std::string &binary_str);
 
   BlockDescBind *AppendBlock(const BlockDescBind &parent);
 
@@ -39,7 +44,7 @@ class ProgramDescBind {
   ProgramDesc *Proto();
 
  private:
-  ProgramDesc prog_;
+  ProgramDesc desc_;
 
   std::vector<std::unique_ptr<BlockDescBind>> blocks_;
 };

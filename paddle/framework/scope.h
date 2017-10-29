@@ -17,6 +17,7 @@ limitations under the License. */
 #include <list>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "paddle/framework/variable.h"
 #include "paddle/platform/macros.h"
@@ -59,8 +60,13 @@ class Scope {
   /// Find the scope or an ancestor scope that contains the given variable.
   const Scope* FindScope(const Variable* var) const;
 
+  void DeleteScope(Scope* scope);
+
   /// Drop all kids scopes belonged to this scope.
   void DropKids();
+
+  // enumerate all the variables current contains.
+  std::vector<std::string> GetAllNames(bool recursive = false) const;
 
  private:
   // Call Scope::NewScope for a sub-scope.
@@ -72,8 +78,5 @@ class Scope {
 
   DISABLE_COPY_AND_ASSIGN(Scope);
 };
-
-framework::Scope& GetGlobalScope();
-
 }  // namespace framework
 }  // namespace paddle

@@ -71,7 +71,5 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(accuracy, ops::AccuracyOp, ops::AccuracyOpMaker,
                   paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    accuracy, ops::AccuracyKernel<paddle::platform::CPUPlace, float>,
-    ops::AccuracyKernel<paddle::platform::CPUPlace, int>,
-    ops::AccuracyKernel<paddle::platform::CPUPlace, double>,
+    accuracy, ops::AccuracyKernel<paddle::platform::CPUPlace, int>,
     ops::AccuracyKernel<paddle::platform::CPUPlace, int64_t>);

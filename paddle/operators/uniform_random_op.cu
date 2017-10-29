@@ -64,4 +64,5 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_GPU_KERNEL(uniform_random,
-                       paddle::operators::GPUUniformRandomKernel<float>);
+                       paddle::operators::GPUUniformRandomKernel<float>,
+                       paddle::operators::GPUUniformRandomKernel<double>);
