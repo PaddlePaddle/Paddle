@@ -21,7 +21,6 @@ class FillConstantOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of FillConstantOp should not be null.");
@@ -33,6 +32,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", dims);
   }
 
+ protected:
   framework::DataType IndicateDataType(
       const framework::ExecutionContext &ctx) const override {
     return static_cast<framework::DataType>(ctx.Attr<int>("data_type"));
@@ -64,5 +64,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(fill_constant, ops::FillConstantOp,
                              ops::FillConstantOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    fill_constant,
-    ops::FillConstantOpKernel<paddle::platform::CPUPlace, float>);
+    fill_constant, ops::FillConstantOpKernel<paddle::platform::CPUPlace, float>,
+    ops::FillConstantOpKernel<paddle::platform::CPUPlace, double>,
+    ops::FillConstantOpKernel<paddle::platform::CPUPlace, int>);

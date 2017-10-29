@@ -21,7 +21,6 @@ class SequencePoolOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of SequencePoolOp should not be null.");
@@ -48,6 +47,15 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
     SequencePoolOp pools features of all time-steps of each instance.
 
+    It supports six pooling strategy:
+    - AVERAGE: Out[i] = average_{for each instance in i-th sequence}{X[i]}
+    - SUM:     Out[i] = sum_{for each instance in i-th sequence}{X[i]}
+    - SQRT:    Out[i] = sum_{for each instance in i-th sequence}{X[i]} 
+                        / sqrt(i-th sequence length)
+    - LAST:    Out[i] = last instance in i-th sequence X[i]
+    - FIRST:   Out[i] = first instance in i-th sequence X[i]
+    - MAX:     Out[i] = max_{for each instance in i-th sequence}{X[i]}
+
     For a mini-batch of 3 variable-length sentences, containing 2, 3, and 2 time-steps:
 
     Assume X is a [7,M,N] LoDTensor, and X->lod()[0] = [0, 2, 5, 7], 7=2+3+2.
@@ -72,7 +80,6 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Gradient of Out should not be null.");

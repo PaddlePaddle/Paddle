@@ -101,6 +101,10 @@ class Parameters(object):
 
         self.__param_conf__[param_conf.name] = param_conf
 
+    def update_param_conf(self, model_config):
+        for p in model_config.parameters:
+            self.__param_conf__[p.name] = p
+
     def keys(self):
         """
         keys are the names of each parameter.
@@ -322,6 +326,17 @@ class Parameters(object):
         self.set(name, arr.reshape(self.get_shape(name)))
 
     def to_tar(self, f):
+        """
+        Save parameters to a tar file.
+
+        WARNING: You should use `paddle.v2.trainer.SGD.save_parameter_to_tar(f)`
+            to save parameters most of the time. Otherwise, some settings such
+            as model average will not take effect.
+
+        :param f:
+        :type f: file
+        :return:
+        """
         tar = tarfile.TarFile(fileobj=f, mode='w')
         for nm in self.names():
             buf = cStringIO.StringIO()

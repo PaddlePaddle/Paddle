@@ -64,9 +64,9 @@ class SequencePoolKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
     auto place = context.GetEigenDevice<Place>();
     for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
-      Tensor in_t = in->Slice<T>(static_cast<int>(lod_level_0[i]),
-                                 static_cast<int>(lod_level_0[i + 1]));
-      Tensor out_t = out->Slice<T>(i, i + 1);
+      Tensor in_t = in->Slice(static_cast<int>(lod_level_0[i]),
+                              static_cast<int>(lod_level_0[i + 1]));
+      Tensor out_t = out->Slice(i, i + 1);
       int64_t h = static_cast<int64_t>(lod_level_0[i + 1] - lod_level_0[i]);
       auto in_e = EigenMatrix<T>::From(in_t, framework::make_ddim({h, w}));
       auto out_e = EigenVector<T>::Flatten(out_t);
@@ -81,6 +81,9 @@ class SequencePoolKernel : public framework::OpKernel<T> {
         case SQRT:
           out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}})) /
                                 std::sqrt(static_cast<T>(h));
+          break;
+        case MAX:
+          out_e.device(place) = in_e.maximum(Eigen::array<int, 1>({{0}}));
           break;
         case LAST:
           out_e.device(place) = in_e.chip(h - 1, 0);
@@ -100,8 +103,8 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
-    auto* out_g = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* in_g = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* out_g = context.Input<LoDTensor>(framework::GradVarName("Out"));
     int strategy = context.Attr<int>("strategy");
 
     auto dims = in->dims();
@@ -116,9 +119,9 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
     }
     auto place = context.GetEigenDevice<Place>();
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
-      auto in_g_t = in_g->Slice<T>(static_cast<int>(lod[i]),
-                                   static_cast<int>(lod[i + 1]));
-      auto out_g_t = out_g->Slice<T>(i, i + 1);
+      auto in_g_t =
+          in_g->Slice(static_cast<int>(lod[i]), static_cast<int>(lod[i + 1]));
+      auto out_g_t = out_g->Slice(i, i + 1);
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
       auto in_g_e = EigenMatrix<T>::From(in_g_t, {h, w});
       auto out_g_e = EigenMatrix<T>::From(out_g_t, {1, w});
@@ -135,6 +138,22 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
           in_g_e.device(place) =
               (out_g_e / std::sqrt(static_cast<T>(h))).broadcast(bcast);
           break;
+        case MAX: {
+          auto in_t =
+              in->Slice(static_cast<int>(lod[i]), static_cast<int>(lod[i + 1]));
+          Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>
+              in_t_map(in_t.data<T>(), h, w);
+          int row_id;
+          Eigen::array<int, 2> extents{{1, 1}};
+          for (int col_id = 0; col_id < w; col_id++) {
+            in_t_map.col(col_id).maxCoeff(&row_id);
+            Eigen::array<int, 2> in_offsets{{row_id, col_id}};
+            Eigen::array<int, 2> out_offsets{{0, col_id}};
+            in_g_e.slice(in_offsets, extents).device(place) =
+                out_g_e.slice(out_offsets, extents);
+          }
+          break;
+        }
         case LAST:
           in_g_e.chip(h - 1, 0).device(place) = out_g_e;
           break;

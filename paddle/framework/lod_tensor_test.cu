@@ -36,8 +36,8 @@ TEST(LoDTensor, LoDInGPU) {
   lod_tensor.mutable_data<float>(place);
 
   lod_tensor.set_lod(src_lod);
-  CHECK_EQ(lod_tensor.lod_element(0, 2), 4UL);
-  CHECK_EQ(lod_tensor.lod_element(0, 4), 8UL);
+  CHECK_EQ(lod_tensor.lod_element(0, 2).first, 4UL);
+  CHECK_EQ(lod_tensor.lod_element(0, 4).first, 8UL);
 
   auto lod = lod_tensor.lod();
 

@@ -26,8 +26,9 @@ class FeedOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
-    auto feed_var_name = Input("Input");
+    auto feed_var_name = Input("X");
     auto *feed_var = scope.FindVar(feed_var_name);
+
     PADDLE_ENFORCE(feed_var != nullptr,
                    "Cannot find feed_var in scope, feed_var_name is %s",
                    feed_var_name);
@@ -40,18 +41,32 @@ class FeedOp : public framework::OperatorBase {
 
     auto col = Attr<int>("col");
 
+    VLOG(3) << "Feed Var " << feed_var_name << "'s " << col << " column to var "
+            << out_name;
+
     auto &feed_list = feed_var->Get<framework::FeedFetchList>();
     auto &feed_item = feed_list.at(static_cast<size_t>(col));
     auto *out_item = out_var->GetMutable<framework::FeedFetchType>();
-    out_item->CopyFromTensor(feed_item, dev_ctx.GetPlace(), dev_ctx);
+    out_item->CopyFrom(feed_item, dev_ctx.GetPlace(), dev_ctx);
     out_item->set_lod(feed_item.lod());
+  }
+};
+
+class FeedOpInfoMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  FeedOpInfoMaker(framework::OpProto *proto,
+                  framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "The input of feed op");
+    AddOutput("Out", "The output of feed op");
+    AddComment("feed op, it should not be configured by users directly");
+    AddAttr<int>("col", "column of feed");
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
-// We do not need to register OpInfoMaker,
-// since feed operator will not be used by end users directly
 REGISTER_OPERATOR(feed, paddle::operators::FeedOp,
-                  paddle::framework::EmptyGradOpMaker);
+                  paddle::framework::EmptyGradOpMaker,
+                  paddle::operators::FeedOpInfoMaker);

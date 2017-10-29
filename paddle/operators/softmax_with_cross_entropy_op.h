@@ -57,7 +57,7 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
     const Tensor* labels = context.Input<Tensor>("Label");
     Tensor* logit_grad =
         context.Output<Tensor>(framework::GradVarName("Logits"));
-    logit_grad->ShareDataWith<T>(*context.Input<Tensor>("Softmax"));
+    logit_grad->ShareDataWith(*context.Input<Tensor>("Softmax"));
 
     const int class_num = logit_grad->dims()[1];
     if (context.Attr<bool>("soft_label")) {
@@ -67,8 +67,8 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
 
       logit_grad_mat.device(context.GetEigenDevice<platform::CPUPlace>()) =
           logit_grad_mat *
-              out_grad_mat.broadcast(Eigen::DSizes<int, 2>(1, class_num)) -
-          lbl_mat;
+          (out_grad_mat.broadcast(Eigen::DSizes<int, 2>(1, class_num)) -
+           lbl_mat);
     } else {
       const int batch_size = logit_grad->dims()[0];
       const int* label_data = labels->data<int>();
@@ -78,7 +78,7 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
       for (int i = 0; i < batch_size; ++i) {
         int index = i * class_num + label_data[i];
         logit_grad_data[index] =
-            (out_grad_data[i] * logit_grad_data[index] - 1.);
+            out_grad_data[i] * (logit_grad_data[index] - 1.);
       }
     }
   }

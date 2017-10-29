@@ -87,16 +87,16 @@ class SequenceConcatOpKernel : public framework::OpKernel<T> {
 
     auto out_lod_level = out_lod[level];
     for (size_t i = 0; i < out_lod_level.size() - 1; ++i) {
-      Tensor out_t = out->Slice<T>(static_cast<int>(out_lod_level[i]),
-                                   static_cast<int>(out_lod_level[i + 1]));
+      Tensor out_t = out->Slice(static_cast<int>(out_lod_level[i]),
+                                static_cast<int>(out_lod_level[i + 1]));
       auto out_stride = framework::stride(out_t.dims());
       size_t offset = 0;
 
       for (size_t j = 0; j < n; ++j) {
         auto in_lod_level = ins[j]->lod()[level];
         auto in_stride = framework::stride(ins[j]->dims());
-        Tensor in_t = ins[j]->Slice<T>(static_cast<int>(in_lod_level[i]),
-                                       static_cast<int>(in_lod_level[i + 1]));
+        Tensor in_t = ins[j]->Slice(static_cast<int>(in_lod_level[i]),
+                                    static_cast<int>(in_lod_level[i + 1]));
         size_t axis_dim = in_t.dims()[axis];
         StridedMemcpy<T>(ctx.device_context(), in_t.data<T>(), in_stride,
                          in_t.dims(), out_stride, out_t.data<T>() + offset);
@@ -130,8 +130,8 @@ class SequenceConcatGradOpKernel : public framework::OpKernel<T> {
 
     for (size_t i = 0; i < out_lod_level.size() - 1; ++i) {
       Tensor out_grad_t =
-          out_grad->Slice<T>(static_cast<int>(out_lod_level[i]),
-                             static_cast<int>(out_lod_level[i + 1]));
+          out_grad->Slice(static_cast<int>(out_lod_level[i]),
+                          static_cast<int>(out_lod_level[i + 1]));
       auto out_grad_stride = framework::stride(out_grad_t.dims());
       size_t offset = 0;
 
@@ -139,8 +139,8 @@ class SequenceConcatGradOpKernel : public framework::OpKernel<T> {
         auto x_grad_lod_level = x_grads[j]->lod()[level];
         auto x_grad_stride = framework::stride(x_grads[j]->dims());
         Tensor x_grad_t =
-            x_grads[j]->Slice<T>(static_cast<int>(x_grad_lod_level[i]),
-                                 static_cast<int>(x_grad_lod_level[i + 1]));
+            x_grads[j]->Slice(static_cast<int>(x_grad_lod_level[i]),
+                              static_cast<int>(x_grad_lod_level[i + 1]));
         size_t axis_dim = x_grad_t.dims()[axis];
         StridedMemcpy<T>(ctx.device_context(), out_grad_t.data<T>() + offset,
                          out_grad_stride, out_grad_t.dims(), x_grad_stride,

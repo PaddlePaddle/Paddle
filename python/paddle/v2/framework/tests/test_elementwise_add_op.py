@@ -92,5 +92,33 @@ class TestElementwiseAddOp_broadcast_3(TestElementwiseOp):
         }
 
 
+class TestElementwiseAddOp_rowwise_add_0(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_add"
+        self.inputs = {
+            'X': np.random.rand(2, 3, 4).astype(np.float32),
+            'Y': np.random.rand(3, 4).astype(np.float32)
+        }
+
+        self.attrs = {'axis': 1}
+        self.outputs = {
+            'Out': self.inputs['X'] + self.inputs['Y'].reshape(1, 3, 4)
+        }
+
+
+class TestElementwiseAddOp_rowwise_add_1(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_add"
+        self.inputs = {
+            'X': np.random.rand(2, 1).astype(np.float32),
+            'Y': np.random.rand(1).astype(np.float32)
+        }
+
+        self.attrs = {'axis': 1}
+        self.outputs = {
+            'Out': self.inputs['X'] + self.inputs['Y'].reshape(1, 1)
+        }
+
+
 if __name__ == '__main__':
     unittest.main()
