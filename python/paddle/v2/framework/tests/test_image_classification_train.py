@@ -123,8 +123,8 @@ for pass_id in range(PASS_NUM):
                        fetch_list=[avg_cost])
 
         loss = np.array(outs[0])
-        print("pass_id:" + str(pass_id) + " batch_id:" + str(batch_id) +
-              " loss:" + str(loss))
+        # print("pass_id:" + str(pass_id) + " batch_id:" + str(batch_id) +
+        #       " loss:" + str(loss))
         batch_id = batch_id + 1
 
         if batch_id > 1:

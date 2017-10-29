@@ -66,7 +66,7 @@ class BatchNormOp : public framework::OperatorWithKernel {
                                              : x_dims[x_dims.size() - 1]);
 
     PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
-                   "input x dims should be between 3 and 5, actual");
+                   "Input x must have 3 to 5 dimensions.");
 
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1UL);
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], C);

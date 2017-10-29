@@ -126,12 +126,14 @@ class Tensor {
   inline Tensor Slice(const int& begin_idx, const int& end_idx) const;
 
   platform::Place place() const {
-    PADDLE_ENFORCE_NOT_NULL(holder_, "Tensor get place() must contains holder");
+    PADDLE_ENFORCE_NOT_NULL(
+        holder_, "Tensor not initialized yet when Tensor::place() is called.");
     return holder_->place();
   }
 
   std::type_index type() const {
-    PADDLE_ENFORCE_NOT_NULL(holder_, "Tensor get type() must contains holder");
+    PADDLE_ENFORCE_NOT_NULL(
+        holder_, "Tensor not initialized yet when Tensor::type() is called.");
     return holder_->type();
   }
 
