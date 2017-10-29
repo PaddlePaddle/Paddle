@@ -90,6 +90,13 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(sigmoid);\n")
     endif()
 
+    # nccl_op contains several operators
+    if ("${TARGET}" STREQUAL "nccl_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_GPU_ONLY_OP(ncclAllReduce);\n")
+    endif()
+    
     # reduce_op contains several operators
     if ("${TARGET}" STREQUAL "reduce_op")
         set(pybind_flag 1)
@@ -121,6 +128,7 @@ function(op_library TARGET)
 endfunction()
 
 add_subdirectory(math)
+add_subdirectory(nccl)
 
 set(DEPS_OPS
     cond_op
@@ -131,6 +139,7 @@ set(DEPS_OPS
     sum_op
     pool_op
     pool_with_index_op
+    nccl_op
     sequence_conv_op
     lstm_op)
 
@@ -140,6 +149,9 @@ op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
 op_library(sum_op DEPS net_op selected_rows_functor)
 op_library(pool_op DEPS pooling)
 op_library(pool_with_index_op DEPS pooling)
+if(WITH_GPU)
+op_library(nccl_op DEPS nccl_common)
+endif()
 op_library(sequence_conv_op DEPS context_project)
 op_library(lstm_op DEPS sequence2batch lstm_compute)
 op_library(dynamic_recurrent_op SRCS dynamic_recurrent_op.cc rnn/recurrent_op_utils.cc
@@ -159,4 +171,7 @@ cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor paddle_memor
 cc_test(dynamic_recurrent_op_test SRCS dynamic_recurrent_op_test.cc
         rnn/recurrent_op_utils.cc
         DEPS dynamic_recurrent_op)
+if(WITH_GPU)
+  nv_test(nccl_op_test SRCS nccl_op_test.cu DEPS nccl_op gpu_info device_context)
+endif()
 cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)
