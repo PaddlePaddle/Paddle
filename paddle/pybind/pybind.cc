@@ -25,7 +25,6 @@ limitations under the License. */
 #include "paddle/operators/cond_op.h"
 #include "paddle/operators/dynamic_recurrent_op.h"
 #include "paddle/operators/net_op.h"
-#include "paddle/operators/recurrent_op.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 #include "paddle/pybind/exception.h"
@@ -254,7 +253,7 @@ All parameter, weight, gradient are variables in Paddle.
                     const std::vector<std::array<size_t, 2>> &targets) {
     ProgramDescBind prog_with_targets(origin);
     for (const auto &t : targets) {
-      prog_with_targets.Block(t[0])->Op(t[1])->MarkAsTarget();
+      prog_with_targets.MutableBlock(t[0])->Op(t[1])->MarkAsTarget();
     }
     ProgramDesc pruned_desc;
     Prune(*prog_with_targets.Proto(), &pruned_desc);
@@ -314,7 +313,7 @@ All parameter, weight, gradient are variables in Paddle.
                     PADDLE_ENFORCE(desc.IsInitialized(),
                                    "User OpDesc is not initialized, reason %s",
                                    desc.InitializationErrorString());
-                    return OpRegistry::CreateOp(desc, nullptr);
+                    return OpRegistry::CreateOp(desc);
                   })
       .def("backward",
            [](const OperatorBase &forwardOp,
@@ -407,25 +406,6 @@ All parameter, weight, gradient are variables in Paddle.
         return self.UnstackShared(source);
       });
 
-  // recurrent_op
-  py::class_<operators::RecurrentOp, OperatorBase>(m, "RecurrentOp")
-      .def_static(
-          "create",
-          [](py::bytes protobin) -> operators::RecurrentOp * {
-            OpDesc desc;
-            PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
-                           "Cannot parse user input to OpDesc");
-            PADDLE_ENFORCE(desc.IsInitialized(),
-                           "User OpDesc is not initialized, reason %s",
-                           desc.InitializationErrorString());
-            auto rnn_op = OpRegistry::CreateOp(desc, nullptr);
-            return static_cast<operators::RecurrentOp *>(rnn_op.release());
-          })
-      .def("set_stepnet", [](operators::RecurrentOp &self,
-                             const operators::NetOp &net) -> void {
-        self.set_stepnet(net.Clone());
-      });
-
   py::class_<operators::DynamicRecurrentOp, OperatorBase>(m,
                                                           "DynamicRecurrentOp")
       .def_static("create",
@@ -436,7 +416,7 @@ All parameter, weight, gradient are variables in Paddle.
                     PADDLE_ENFORCE(desc.IsInitialized(),
                                    "User OpDesc is not initialized, reason %s",
                                    desc.InitializationErrorString());
-                    auto rnn_op = OpRegistry::CreateOp(desc, nullptr);
+                    auto rnn_op = OpRegistry::CreateOp(desc);
                     return static_cast<operators::DynamicRecurrentOp *>(
                         rnn_op.release());
                   })
@@ -463,7 +443,7 @@ All parameter, weight, gradient are variables in Paddle.
                     PADDLE_ENFORCE(desc.IsInitialized(),
                                    "User OpDesc is not initialized, reason %s",
                                    desc.InitializationErrorString());
-                    auto cond_op = OpRegistry::CreateOp(desc, nullptr);
+                    auto cond_op = OpRegistry::CreateOp(desc);
                     return static_cast<operators::CondOp *>(cond_op.release());
                   })
       .def("set_truenet",
@@ -477,10 +457,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<std::vector<platform::Place> &>())
-      .def("run", [](Executor &self, ProgramDescBind *program_bind,
-                     Scope *scope, int block_id) {
-        self.Run(*program_bind->Proto(), scope, block_id);
-      });
+      .def("run", &Executor::Run);
 
   m.def("unique_integer", UniqueIntegerGenerator);
 

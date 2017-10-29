@@ -123,7 +123,7 @@ class Tensor {
    * @param[in] begin_idx   The begin index of the slice.
    * @param[in] end_idx     The end index of the slice.
    */
-  inline Tensor Slice(const int& begin_idx, const int& end_idx) const;
+  inline Tensor Slice(int begin_idx, int end_idx) const;
 
   platform::Place place() const {
     PADDLE_ENFORCE_NOT_NULL(
