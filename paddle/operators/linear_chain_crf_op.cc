@@ -204,8 +204,7 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(emission_exps_dims[0],
                    "An empty mini-batch is not allowed.");
 
-    auto transition_exps_dims =
-        ctx->GetInputDim(framework::GradVarName("TransitionExps"));
+    auto transition_exps_dims = ctx->GetInputDim("TransitionExps");
     PADDLE_ENFORCE_EQ(transition_exps_dims.size(), 2UL,
                       "The Input(TransitionExps) should be a 2-D tensor.");
     PADDLE_ENFORCE_EQ(
@@ -240,7 +239,8 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
   // operator is determined by its input: graidents of LogLikelihood.
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.Input<LoDTensor>("LogLikelihood")->type());
+    return framework::ToDataType(
+        ctx.Input<LoDTensor>(framework::GradVarName("LogLikelihood"))->type());
   }
 };
 

@@ -108,9 +108,10 @@ inline void* Tensor::mutable_data(platform::Place place, std::type_index type) {
   if (holder_ != nullptr) {
     holder_->set_type(type);
   }
-  PADDLE_ENFORCE_GT(numel(), 0,
-                    "Tensor's numel must be larger than zero to call "
-                    "Tensor::mutable_data. Call Tensor::set_dim first.");
+  PADDLE_ENFORCE_GT(
+      numel(), 0,
+      "When calling this method, the Tensor's numel must be larger than zero. "
+      "Please check Tensor::Resize has been called first.");
   int64_t size = numel() * SizeOfType(type);
   /* some versions of boost::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
