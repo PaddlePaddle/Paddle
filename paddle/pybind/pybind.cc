@@ -242,7 +242,7 @@ All parameter, weight, gradient are variables in Paddle.
                     const std::vector<std::array<size_t, 2>> &targets) {
     ProgramDescBind prog_with_targets(origin);
     for (const auto &t : targets) {
-      prog_with_targets.Block(t[0])->Op(t[1])->MarkAsTarget();
+      prog_with_targets.MutableBlock(t[0])->Op(t[1])->MarkAsTarget();
     }
     ProgramDesc pruned_desc;
     Prune(*prog_with_targets.Proto(), &pruned_desc);
