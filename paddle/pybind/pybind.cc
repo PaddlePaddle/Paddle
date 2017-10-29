@@ -44,18 +44,19 @@ static size_t UniqueIntegerGenerator() {
 
 std::once_flag gflags_init_flag;
 
-void InitGflags(std::vector<std::string> argv_vec) {
+// TODO(qijun) move init gflags to init.cc
+void InitGflags(std::vector<std::string> &argv) {
   std::call_once(gflags_init_flag, [&]() {
-    int argc = argv_vec.size();
-    char **arr = new char *[argv_vec.size()];
+    int argc = argv.size();
+    char **arr = new char *[argv.size()];
     std::string line;
-    for (size_t i = 0; i < argv_vec.size(); i++) {
-      arr[i] = &argv_vec[i][0];
-      line += argv_vec[i];
+    for (size_t i = 0; i < argv.size(); i++) {
+      arr[i] = &argv[i][0];
+      line += argv[i];
       line += ' ';
     }
     google::ParseCommandLineFlags(&argc, &arr, true);
-    VLOG(3) << "Init commandline: " << line;
+    VLOG(1) << "Init commandline: " << line;
   });
 }
 
