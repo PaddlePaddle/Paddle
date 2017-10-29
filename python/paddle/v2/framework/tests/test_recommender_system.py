@@ -61,7 +61,7 @@ def get_usr_combined_features():
     usr_age_id = layers.data(
         name='age_id',
         shape=[1],
-        type="int32",
+        data_type="int32",
         program=program,
         init_program=init_program)
 
@@ -80,7 +80,7 @@ def get_usr_combined_features():
     usr_job_id = layers.data(
         name='job_id',
         shape=[1],
-        type="int32",
+        data_type="int32",
         program=program,
         init_program=init_program)
 
@@ -96,7 +96,7 @@ def get_usr_combined_features():
                            init_program=init_program)
 
     concat_embed = layers.concat(
-        input=[embed_first, embed_second, embed_third, embed_forth],
+        input=[usr_fc, usr_gender_fc, usr_age_fc, usr_job_fc],
         axis=1,
         program=program,
         init_program=init_program)
@@ -104,7 +104,7 @@ def get_usr_combined_features():
     # FIXME(dzh) : need tanh operator
     usr_combined_features = layers.fc(input=concat_embed,
                                       size=200,
-                                      act="sigmoid",
+                                      act="tanh",
                                       program=program,
                                       init_program=init_program)
 
@@ -135,15 +135,18 @@ def get_mov_combined_features():
 
     CATEGORY_DICT_SIZE = len(paddle.dataset.movielens.movie_categories())
 
-    mov_categories = layers.data(
+    category_id = layers.data(
         name='category_id',
-        type=paddle.data_type.sparse_binary_vector(
-            len(paddle.dataset.movielens.movie_categories())))
+        shape=[1],
+        data_type='int32',
+        program=program,
+        init_program=init_program)
 
-    mov_categories_hidden = layers.fc(input=mov_categories,
-                                      size=32,
-                                      program=program,
-                                      init_program=init_program)
+    mov_categories_hidden = layers.embedding(
+        input=category_id,
+        size=[CATEGORY_DICT_SIZE, 32],
+        program=program,
+        init_program=init_program)
 
     MOV_TITLE_DICT_SIZE = len(paddle.dataset.movielens.get_movie_title_dict())
 
@@ -169,7 +172,7 @@ def get_mov_combined_features():
     # FIXME(dzh) : need tanh operator
     mov_combined_features = layers.fc(input=concat_embed,
                                       size=200,
-                                      act="sigmoid",
+                                      act="tanh",
                                       program=program,
                                       init_program=init_program)
 
@@ -180,22 +183,49 @@ def model():
     usr_combined_features = get_usr_combined_features()
     mov_combined_features = get_mov_combined_features()
 
+    inference = layers.cos_sim(
+        a=usr_combined_features,
+        b=mov_combined_features,
+        size=1, scale=5,
+                                      program=program,
+                                      init_program=init_program)
+
+    label = layers.data(
+        name='score',
+        shape=[1],
+        data_type='float32',
+        program=program,
+        init_program=init_program)
+
     cost = layers.square_error_cost(
         input=inference,
-        label=layers.data(
-            name='score', type=paddle.data_type.dense_vector(1)))
+        label=label,
+        program=program,
+        init_program=init_program)
+
+    return cost
 
 
 def main():
+    cost = model()
+    adam_optimizer = optimizer.AdamOptimizer(learning_rate=1e-4)
+    opts = adam_optimizer.minimize(cost)
+
+    train_reader=paddle.batch(
+        paddle.reader.shuffle(
+            paddle.dataset.movielens.train(), buf_size=8192),
+        batch_size=256),
+
     place = core.CPUPlace()
     exe = Executor(place)
+    exe.run(init_program, feed={}, fetch_list=[])
+    PASS_NUM = 100
 
-    parameters = paddle.parameters.create(cost)
 
-    trainer = paddle.trainer.SGD(
-        cost=cost,
-        parameters=parameters,
-        update_equation=paddle.optimizer.Adam(learning_rate=1e-4))
+    for pass_id in range(PASS_NUM):
+        for data in train_reader():
+            print data
+
     feeding = {
         'user_id': 0,
         'gender_id': 1,
@@ -207,38 +237,38 @@ def main():
         'score': 7
     }
 
-    def event_handler(event):
-        if isinstance(event, paddle.event.EndIteration):
-            if event.batch_id % 100 == 0:
-                print "Pass %d Batch %d Cost %.2f" % (
-                    event.pass_id, event.batch_id, event.cost)
+    # def event_handler(event):
+    #     if isinstance(event, paddle.event.EndIteration):
+    #         if event.batch_id % 100 == 0:
+    #             print "Pass %d Batch %d Cost %.2f" % (
+    #                 event.pass_id, event.batch_id, event.cost)
 
-    trainer.train(
-        reader=paddle.batch(
-            paddle.reader.shuffle(
-                paddle.dataset.movielens.train(), buf_size=8192),
-            batch_size=256),
-        event_handler=event_handler,
-        feeding=feeding,
-        num_passes=1)
+    # trainer.train(
+    #     reader=paddle.batch(
+    #         paddle.reader.shuffle(
+    #             paddle.dataset.movielens.train(), buf_size=8192),
+    #         batch_size=256),
+    #     event_handler=event_handler,
+    #     feeding=feeding,
+    #     num_passes=1)
 
-    user_id = 234
-    movie_id = 345
+    # user_id = 234
+    # movie_id = 345
 
-    user = paddle.dataset.movielens.user_info()[user_id]
-    movie = paddle.dataset.movielens.movie_info()[movie_id]
+    # user = paddle.dataset.movielens.user_info()[user_id]
+    # movie = paddle.dataset.movielens.movie_info()[movie_id]
 
-    feature = user.value() + movie.value()
+    # feature = user.value() + movie.value()
 
-    infer_dict = copy.copy(feeding)
-    del infer_dict['score']
+    # infer_dict = copy.copy(feeding)
+    # del infer_dict['score']
 
-    prediction = paddle.infer(
-        output_layer=inference,
-        parameters=parameters,
-        input=[feature],
-        feeding=infer_dict)
-    print(prediction + 5) / 2
+    # prediction = paddle.infer(
+    #     output_layer=inference,
+    #     parameters=parameters,
+    #     input=[feature],
+    #     feeding=infer_dict)
+    # print(prediction + 5) / 2
 
 
 if __name__ == '__main__':
