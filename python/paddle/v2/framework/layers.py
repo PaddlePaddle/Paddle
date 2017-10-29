@@ -5,7 +5,7 @@ import re
 
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
-    'StaticRNN'
+    'StaticRNN', 'cast'
 ]
 
 
@@ -61,6 +61,7 @@ def fc(input,
 def embedding(input,
               size,
               data_type='float32',
+              is_sparse=False,
               param_attr=None,
               program=None,
               init_program=None):
@@ -72,7 +73,8 @@ def embedding(input,
         type='lookup_table',
         inputs={'Ids': input,
                 'W': w},
-        outputs={'Out': tmp})
+        outputs={'Out': tmp},
+        attrs={'is_sparse': is_sparse})
     return tmp
 
 
@@ -97,15 +99,28 @@ def _convert_(name):
 
 def _create_op_func_(op_type):
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
-    if len(op_proto.outputs) != 1:
-        raise ValueError(
-            "Only one output operator can be automatically generated")
+    not_intermediate_outputs = \
+        filter(lambda output: not output.intermediate, op_proto.outputs)
+    intermediate_outputs = \
+        filter(lambda output: output.intermediate, op_proto.outputs)
 
-    if op_proto.outputs[0].duplicable:
+    if len(not_intermediate_outputs) != 1:
+        raise ValueError(
+            "Only one not intermediate output operator can be automatically generated"
+        )
+
+    if not_intermediate_outputs[0].duplicable:
         raise ValueError(
             "Only not duplicable op can be automatically generated")
 
-    o_name = op_proto.outputs[0].name
+    for output in intermediate_outputs:
+        if output.duplicable:
+            raise ValueError(
+                "Only when all intermediate ops are not duplicable, "
+                "this op can be automatically generated")
+
+    o_name = not_intermediate_outputs[0].name
+    intermediate_output_names = [output.name for output in intermediate_outputs]
 
     def func(**kwargs):
         helper = LayerHelper(op_type, **kwargs)
@@ -128,9 +143,13 @@ def _create_op_func_(op_type):
                         "operator {0} must input same dtype".format(op_type))
             inputs[ipt.name] = val
 
+        outputs = dict()
         out = helper.create_tmp_variable(dtype=dtype)
+        outputs[o_name] = [out]
+        for name in intermediate_output_names:
+            outputs[name] = [helper.create_tmp_variable(dtype=dtype)]
         helper.append_op(
-            type=op_type, inputs=inputs, outputs={o_name: [out]}, attrs=kwargs)
+            type=op_type, inputs=inputs, outputs=outputs, attrs=kwargs)
         return out
 
     func.__name__ = op_type
@@ -141,6 +160,19 @@ def _create_op_func_(op_type):
 
 _create_op_func_('mean')
 _create_op_func_('mul')
+_create_op_func_('dropout')
+
+
+def cast(x, data_type, program=None):
+    helper = LayerHelper('cast', **locals())
+    out = helper.create_tmp_variable(dtype=data_type)
+    helper.append_op(
+        type='cast',
+        inputs={'X': [x]},
+        outputs={'Out': [out]},
+        attrs={'in_data_type': x.data_type,
+               'out_data_type': out.data_type})
+    return out
 
 
 def concat(input, axis, program=None, init_program=None):
@@ -266,9 +298,9 @@ def pool2d(input,
         inputs={"X": input},
         outputs={"Out": pool_out},
         attrs={
-            "pooling_type": pool_type,
+            "poolingType": pool_type,
             "ksize": pool_size,
-            "global_pooling": global_pooling,
+            "globalPooling": global_pooling,
             "strides": pool_stride,
             "paddings": pool_padding
         })

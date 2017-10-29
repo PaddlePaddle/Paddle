@@ -73,12 +73,13 @@ struct SelectedRowsAdd<platform::GPUPlace, T> {
 };
 
 template struct SelectedRowsAdd<platform::GPUPlace, float>;
+template struct SelectedRowsAdd<platform::GPUPlace, double>;
 
 namespace {
-template <typename T>
+template <typename T, int block_size>
 __global__ void SelectedRowsAddTensorKernel(const T* selected_rows,
                                             const int64_t* rows, T* tensor_out,
-                                            int64_t row_numel, int block_size) {
+                                            int64_t row_numel) {
   const int ty = blockIdx.y;
   int tid = threadIdx.x;
 
@@ -119,14 +120,13 @@ struct SelectedRowsAddTensor<platform::GPUPlace, T> {
     SetConstant<platform::GPUPlace, T> functor;
     functor(context, output, 0.0);
 
-    int block_size = 256;
+    const int block_size = 256;
     dim3 threads(block_size, 1);
     dim3 grid(1, in1_rows.size());
-    SelectedRowsAddTensorKernel<
-        T><<<grid, threads, 0,
-             reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                 .stream()>>>(in1_data, in1_rows.data(), out_data,
-                              in1_row_numel, block_size);
+    SelectedRowsAddTensorKernel<T, block_size><<<
+        grid, threads, 0,
+        reinterpret_cast<const platform::CUDADeviceContext&>(context)
+            .stream()>>>(in1_data, in1_rows.data(), out_data, in1_row_numel);
 
     auto out_eigen = framework::EigenVector<T>::Flatten(*output);
     auto in2_eigen = framework::EigenVector<T>::Flatten(input2);
@@ -136,6 +136,93 @@ struct SelectedRowsAddTensor<platform::GPUPlace, T> {
 };
 
 template struct SelectedRowsAddTensor<platform::GPUPlace, float>;
+template struct SelectedRowsAddTensor<platform::GPUPlace, double>;
+
+template <typename T>
+struct SelectedRowsAddTo<platform::GPUPlace, T> {
+  void operator()(const platform::DeviceContext& context,
+                  const framework::SelectedRows& input1,
+                  const int64_t input2_offset,
+                  framework::SelectedRows* input2) {
+    auto in1_height = input1.height();
+    PADDLE_ENFORCE_EQ(in1_height, input2->height());
+
+    auto& in1_rows = input1.rows();
+    auto& in2_rows = *(input2->mutable_rows());
+
+    auto& in1_value = input1.value();
+    auto* in2_value = input2->mutable_value();
+
+    // concat rows
+    in2_rows.insert(in2_rows.end(), in1_rows.begin(), in1_rows.end());
+
+    auto in1_place = input1.place();
+    PADDLE_ENFORCE(platform::is_gpu_place(in1_place));
+    auto in2_place = input2->place();
+    PADDLE_ENFORCE(platform::is_gpu_place(in2_place));
+
+    auto* in1_data = in1_value.data<T>();
+    auto* in2_data = in2_value->data<T>();
+    memory::Copy(
+        boost::get<platform::GPUPlace>(in2_place), in2_data + input2_offset,
+        boost::get<platform::GPUPlace>(in1_place), in1_data,
+        in1_value.numel() * sizeof(T),
+        reinterpret_cast<const platform::CUDADeviceContext&>(context).stream());
+  }
+};
+
+template struct SelectedRowsAddTo<platform::GPUPlace, float>;
+template struct SelectedRowsAddTo<platform::GPUPlace, double>;
+
+namespace {
+template <typename T, int block_size>
+__global__ void SelectedRowsAddToTensorKernel(const T* selected_rows,
+                                              const int64_t* rows,
+                                              T* tensor_out,
+                                              int64_t row_numel) {
+  const int ty = blockIdx.y;
+  int tid = threadIdx.x;
+
+  selected_rows += ty * row_numel;
+  tensor_out += rows[ty] * row_numel;
+
+  for (int index = tid; index < row_numel; index += block_size) {
+    // Since index in rows of SelectedRows can be duplicate, we have to use
+    // Atomic Operation to avoid concurrent write error.
+    paddle::platform::CudaAtomicAdd(tensor_out + index, selected_rows[index]);
+  }
+}
+}  // namespace
+
+template <typename T>
+struct SelectedRowsAddToTensor<platform::GPUPlace, T> {
+  void operator()(const platform::DeviceContext& context,
+                  const framework::SelectedRows& input1,
+                  framework::Tensor* input2) {
+    auto in1_height = input1.height();
+    auto in2_dims = input2->dims();
+    PADDLE_ENFORCE_EQ(in1_height, in2_dims[0]);
+
+    auto& in1_value = input1.value();
+    auto& in1_rows = input1.rows();
+
+    int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
+    PADDLE_ENFORCE_EQ(in1_row_numel, input2->numel() / in1_height);
+
+    auto* in1_data = in1_value.data<T>();
+    auto* in2_data = input2->data<T>();
+    const int block_size = 256;
+    dim3 threads(block_size, 1);
+    dim3 grid(1, in1_rows.size());
+    SelectedRowsAddToTensorKernel<T, block_size><<<
+        grid, threads, 0,
+        reinterpret_cast<const platform::CUDADeviceContext&>(context)
+            .stream()>>>(in1_data, in1_rows.data(), in2_data, in1_row_numel);
+  }
+};
+
+template struct SelectedRowsAddToTensor<platform::GPUPlace, float>;
+template struct SelectedRowsAddToTensor<platform::GPUPlace, double>;
 
 }  // namespace math
 }  // namespace operators
