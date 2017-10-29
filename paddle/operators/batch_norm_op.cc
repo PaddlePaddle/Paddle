@@ -18,6 +18,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
@@ -64,6 +65,9 @@ class BatchNormOp : public framework::OperatorWithKernel {
         (tensor_format == TensorFormat::NCHW ? x_dims[1]
                                              : x_dims[x_dims.size() - 1]);
 
+    PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
+                   "Input x must have 3 to 5 dimensions.");
+
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1UL);
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], C);
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias").size(), 1UL);
@@ -108,10 +112,12 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
               "Store the global Variance when training");
     AddOutput("SavedMean",
               "Mean of the current mini batch, "
-              "will apply to output when training");
+              "will apply to output when training")
+        .AsIntermediate();
     AddOutput("SavedVariance",
               "Variance of the current mini batch, "
-              "will apply to output when training");
+              "will apply to output when training")
+        .AsIntermediate();
     AddComment(R"DOC(
 https://arxiv.org/pdf/1502.03167.pdf
 
@@ -135,7 +141,6 @@ class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
-
     PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
                    "The Input dim size should be between 3 and 5");
     const int N = x_dims[0];
@@ -288,6 +293,25 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
     ctx->SetOutputDim(framework::GradVarName("Bias"), {C});
+  }
+
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext &ctx) const override {
+    VLOG(3) << "IndicateDataType " << this->Type();
+    const auto *var = ctx.InputVar(framework::GradVarName("Y"));
+    if (var == nullptr) {
+      PADDLE_THROW("can't find Y@GRAD");
+    }
+    const Tensor *t = nullptr;
+    if (var->IsType<Tensor>()) {
+      t = &var->Get<Tensor>();
+    } else if (var->IsType<LoDTensor>()) {
+      t = &var->Get<LoDTensor>();
+    }
+    if (t == nullptr) {
+      PADDLE_THROW("can't find Y@GRAD");
+    }
+    return framework::ToDataType(t->type());
   }
 };
 
