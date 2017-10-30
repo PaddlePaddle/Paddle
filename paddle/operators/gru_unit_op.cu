@@ -17,6 +17,8 @@
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(gru_unit,
-                       ops::GRUUnitKernel<paddle::platform::GPUPlace, float>);
+                       ops::GRUUnitKernel<paddle::platform::GPUPlace, float>,
+                       ops::GRUUnitKernel<paddle::platform::GPUPlace, double>);
 REGISTER_OP_GPU_KERNEL(
-    gru_unit_grad, ops::GRUUnitGradKernel<paddle::platform::GPUPlace, float>);
+    gru_unit_grad, ops::GRUUnitGradKernel<paddle::platform::GPUPlace, float>,
+    ops::GRUUnitGradKernel<paddle::platform::GPUPlace, double>);
