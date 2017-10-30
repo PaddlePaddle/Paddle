@@ -44,11 +44,7 @@ class StepScopes {
     }
   }
 
-  framework::Scope &NextStep() {
-    size_t scope_id = counter_;
-    counter_++;
-    return GetScope(scope_id);
-  }
+  framework::Scope &CurScope() { return GetScope(counter_); }
 
   framework::Scope &GetScope(size_t scope_id) const {
     if (!is_train_) {
@@ -58,7 +54,12 @@ class StepScopes {
     return *(*scopes_)[scope_id];
   }
 
-  framework::Scope &ExScope() { return GetScope(counter_ - 1); }
+  framework::Scope &ExScope() {
+    auto &scope = GetScope(counter_ - 1);
+    return scope;
+  }
+
+  void Next() { this->counter_++; }
 
  private:
   size_t counter_;
@@ -88,16 +89,22 @@ class RecurrentOp : public framework::OperatorBase {
     auto *program = block->Program();
 
     for (size_t i = 0; i < seq_len; ++i) {
-      size_t seq_offset = reverse ? i : seq_len - i - 1;
-      auto &cur_scope = scopes.NextStep();
+      size_t seq_offset = reverse ? seq_len - i - 1 : i;
+      VLOG(3) << "Recurrent operate at the time step " << seq_offset;
+
+      auto &cur_scope = scopes.CurScope();
 
       for (auto &iname : Inputs(kInputs)) {
         // Link inputs
         LinkVarWithCallback(
             scope, iname, &cur_scope, iname,
-            [&seq_offset](const framework::Tensor &outside,
-                          framework::Tensor *inside) {
+            [&seq_offset, &iname](const framework::Tensor &outside,
+                                  framework::Tensor *inside) {
               inside->ShareDataWith(outside.Slice(seq_offset, seq_offset + 1));
+              auto dims = framework::vectorize(inside->dims());
+              dims.erase(dims.begin());
+              inside->Resize(framework::make_ddim(dims));
+              VLOG(4) << "RNN input=" << iname << " shape=" << inside->dims();
             });
       }
 
@@ -130,12 +137,21 @@ class RecurrentOp : public framework::OperatorBase {
 
         auto *dst_var = scope.FindVar(oname);
         PADDLE_ENFORCE(dst_var != nullptr);
-        auto &dst_tensor = dst_var->Get<framework::LoDTensor>();
+        auto &dst_tensor = *dst_var->GetMutable<framework::LoDTensor>();
+
+        if (i == 0) {  // create output tensor at begin
+          auto dims = framework::vectorize(src_tensor.dims());
+          dims.insert(dims.begin(), static_cast<int64_t>(seq_len));
+          dst_tensor.Resize(framework::make_ddim(dims));
+          dst_tensor.mutable_data(dev_ctx.GetPlace(), src_tensor.type());
+        }
+
         auto dst_out = dst_tensor.Slice(seq_offset, seq_offset + 1);
         // Explicit copy output since the local RNN scope can be destroyed
         // early.
         dst_out.CopyFrom(src_tensor, dev_ctx.GetPlace(), dev_ctx);
       }
+      scopes.Next();
     }
   }
 
@@ -161,7 +177,10 @@ class RecurrentOp : public framework::OperatorBase {
                       const std::string &dst_var_name) {
     LinkVarWithCallback(
         src_scope, src_var_name, dst_scope, dst_var_name,
-        [](const framework::Tensor &src, framework::Tensor *dst) {
+        [&src_var_name, &dst_var_name](const framework::Tensor &src,
+                                       framework::Tensor *dst) {
+          VLOG(4) << "Linking from " << src_var_name << " with shape("
+                  << src.dims() << ") to " << dst_var_name;
           dst->ShareDataWith(src);
         });
   }

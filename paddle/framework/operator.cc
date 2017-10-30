@@ -126,7 +126,7 @@ OperatorBase::OperatorBase(const std::string& type,
 
 std::vector<std::string> OperatorBase::InputVars() const {
   std::vector<std::string> ret_val;
-  for (auto& o : outputs_) {
+  for (auto& o : inputs_) {
     ret_val.reserve(ret_val.size() + o.second.size());
     ret_val.insert(ret_val.end(), o.second.begin(), o.second.end());
   }
