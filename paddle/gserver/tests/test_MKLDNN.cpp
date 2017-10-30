@@ -234,8 +234,7 @@ static void getMKLDNNBatchNormConfig(TestConfig& cfg,
   cfg.inputDefs.push_back({INPUT_DATA, "layer_2_moving_var", 1, size_t(pm.ic)});
   cfg.inputDefs.back().isStatic = true;
   LayerInputConfig* input = cfg.layerConfig.add_inputs();
-  // TODO(TJ): uncomment me when refine and support comparing all zeroes vector
-  // cfg.layerConfig.set_active_type("relu");
+  cfg.layerConfig.set_active_type("relu");
   cfg.layerConfig.add_inputs();
   cfg.layerConfig.add_inputs();
   ImageConfig* img_conf = input->mutable_image_conf();
