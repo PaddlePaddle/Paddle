@@ -265,7 +265,6 @@ def square_error_cost(input, label, **kwargs):
 def sequence_conv(input,
                   num_filters,
                   filter_size=3,
-                  act=None,
                   stride=1,
                   padding=None,
                   bias_attr=None,
@@ -338,8 +337,8 @@ def conv2d(input,
     helper.append_op(
         type='conv2d',
         inputs={
-            'Input': input,
-            'Filter': filter,
+            'Input': [input],
+            'Filter': [filter],
         },
         outputs={"Output": pre_bias},
         attrs={'strides': stride,
@@ -351,28 +350,21 @@ def conv2d(input,
     return helper.append_activation(pre_act)
 
 
-def sequence_pool(input,
-                  pool_size,
-                  pool_type,
-                  pool_stride=1,
-                  pool_padding=0,
-                  global_pooling=False,
-                  program=None,
-                  init_program=None):
+def sequence_pool(input, pool_type, program=None, init_program=None):
     # FIXME(dzh) : want to unify the argument of python layer
     # function. So we ignore some unecessary attributes
-    # class ENUM_POOL_TYPE(object):
-    #     AVERAGE = 0
-    #     SUM = 1
-    #     SQRT = 2
-    #     MAX = 3
-    #     LAST = 4
-    #     FIRST = 5
 
-    ENUM_POOL_TYPE = set(["max", "avg", "sum", "sqrt", "last", "first"])
-    if pool_type not in ENUM_POOL_TYPE:
+    ENUM_POOL_TYPE = dict({
+        "AVERAGE": 0,
+        "SUM": 1,
+        "SQRT": 2,
+        "MAX": 3,
+        "LAST": 4,
+        "FIRST": 5
+    })
+    if pool_type.upper() not in ENUM_POOL_TYPE:
         raise ValueError("Unknown pool_type: '%s'. It can only be %s.",
-                         str(pool_type), " ".join(ENUM_POOL_TYPE))
+                         str(pool_type), " ".join(ENUM_POOL_TYPE.keys()))
 
     helper = LayerHelper('sequence_pool', **locals())
     dtype = helper.input_dtype()
@@ -382,8 +374,8 @@ def sequence_pool(input,
     helper.append_op(
         type="sequence_pool",
         inputs={"X": [input]},
-        outputs={"Out": pool_out},
-        attrs={"strategy": 1})
+        outputs={"Out": [pool_out]},
+        attrs={"strategy": ENUM_POOL_TYPE[pool_type.upper()]})
 
     return pool_out
 
@@ -413,8 +405,8 @@ def pool2d(input,
 
     helper.append_op(
         type="pool2d",
-        inputs={"X": input},
-        outputs={"Out": pool_out},
+        inputs={"X": [input]},
+        outputs={"Out": [pool_out]},
         attrs={
             "poolingType": pool_type,
             "ksize": pool_size,
