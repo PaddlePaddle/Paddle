@@ -31,8 +31,6 @@ def fc(input,
         param_shape = [
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
         ] + [size]
-        print param_shape
-
         w = helper.create_parameter(
             attr=param_attr, shape=param_shape, dtype=dtype)
         tmp = helper.create_tmp_variable(dtype)
@@ -443,6 +441,8 @@ class StaticRNNGuard(BlockGuard):
         return super(StaticRNNGuard, self).__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            return False
         self.rnn.status = StaticRNN.AFTER_RNN_BLOCK
         self.rnn.complete_rnn_op()
         return super(StaticRNNGuard, self).__exit__(exc_type, exc_val, exc_tb)
@@ -502,7 +502,7 @@ class StaticRNN(object):
                 outputs={'Out': [boot_var]},
                 attrs={
                     'value': init_value,
-                    'shape': boot_var.shape,
+                    'shape': [40] + list(boot_var.shape[1:]),
                     'data_type': boot_var.data_type
                 })
 
@@ -612,9 +612,6 @@ class StaticRNN(object):
             boot_memories.append(mem.init)
             pre_memories.append(mem.pre_mem.name)
             memories.append(mem.mem.name)
-
-        print self.memories
-        print pre_memories
 
         parent_block.append_op(
             type='recurrent',

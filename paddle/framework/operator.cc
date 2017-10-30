@@ -380,7 +380,19 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
 void OperatorWithKernel::Run(const Scope& scope,
                              const platform::DeviceContext& dev_ctx) const {
-  VLOG(3) << "Running operator " << this->Type();
+  if (VLOG_IS_ON(1)) {
+    auto inputs = this->InputVars();
+    auto outputs = this->OutputVars(true);
+    std::ostringstream sout;
+    sout << "Run operator " << this->Type() << " From [";
+    std::ostream_iterator<std::string> out_it(sout, ",");
+    std::copy(inputs.begin(), inputs.end(), out_it);
+    sout << "] to [";
+    std::copy(outputs.begin(), outputs.end(), out_it);
+    sout << "]";
+    VLOG(1) << sout.str();
+  }
+
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
   this->InferShape(&infer_shape_ctx);
 

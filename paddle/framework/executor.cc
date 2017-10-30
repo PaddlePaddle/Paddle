@@ -68,10 +68,13 @@ static void CreateTensor(Variable* var, VarDesc::VarType var_type) {
     var->GetMutable<FeedFetchList>();
   } else if (var_type == VarDesc::FETCH_LIST) {
     var->GetMutable<FeedFetchList>();
+  } else if (var_type == VarDesc::STEP_SCOPES) {
+    var->GetMutable<std::vector<framework::Scope>>();
   } else {
     PADDLE_THROW(
-        "Variable type must be "
-        "LoDTensor/SelectedRows/FEED_MINIBATCH/FETCH_LIST.");
+        "Variable type %d is not in "
+        "[LoDTensor, SelectedRows, FEED_MINIBATCH, FETCH_LIST]",
+        var_type);
   }
 }
 
