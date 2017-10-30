@@ -292,6 +292,19 @@ class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
 };
 
 template <typename AttrType>
+class PowOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  PowOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Pow operator");
+    AddOutput("Y", "Output of Pow operator");
+    AddComment("Pow activation operator, pow(x, factor) = x^factor");
+    AddAttr<AttrType>("factor", "The exponential factor of Pow")
+        .SetDefault(static_cast<AttrType>(1));
+  }
+};
+
+template <typename AttrType>
 class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   STanhOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
@@ -352,18 +365,6 @@ References:
         .SetDefault(static_cast<AttrType>(0.2));
     AddAttr<AttrType>("offset", "Offset for linear approximation of sigmoid")
         .SetDefault(static_cast<AttrType>(0.5));
-  }
-};
-
-class PowOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  PowOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of Pow operator");
-    AddOutput("Y", "Output of Pow operator");
-    AddComment("Pow activation operator, pow(x, factor) = x^factor");
-    AddAttr<float>("factor", "The exponential factor of Pow")
-        .SetDefault(static_cast<float>(1));
   }
 };
 
@@ -429,6 +430,9 @@ REGISTER_OP(elu, ops::ActivationOp, ops::ELUOpMaker<float>, elu_grad,
 REGISTER_OP(relu6, ops::ActivationOp, ops::Relu6OpMaker<float>, relu6_grad,
             ops::ActivationOpGrad);
 
+REGISTER_OP(pow, ops::ActivationOp, ops::PowOpMaker<float>, pow_grad,
+            ops::ActivationOpGrad);
+
 REGISTER_OP(stanh, ops::ActivationOp, ops::STanhOpMaker<float>, stanh_grad,
             ops::ActivationOpGrad);
 
@@ -441,16 +445,6 @@ REGISTER_OP(thresholded_relu, ops::ActivationOp,
 
 REGISTER_OP(hard_sigmoid, ops::ActivationOp, ops::HardSigmoidOpMaker<float>,
             hard_sigmoid_grad, ops::ActivationOpGrad);
-
-REGISTER_OP(pow, ops::ActivationOp, ops::PowOpMaker, pow_grad,
-            ops::ActivationOpGrad);
-
-REGISTER_OP_CPU_KERNEL(pow, ops::PowKernel<paddle::platform::CPUPlace, float>,
-                       ops::PowKernel<paddle::platform::CPUPlace, double>);
-
-REGISTER_OP_CPU_KERNEL(pow_grad,
-                       ops::PowGradKernel<paddle::platform::CPUPlace, float>,
-                       ops::PowGradKernel<paddle::platform::CPUPlace, double>);
 
 #define REGISTER_ACTIVATION_CPU_KERNEL(act_type, functor, grad_functor)       \
   REGISTER_OP_CPU_KERNEL(                                                     \
