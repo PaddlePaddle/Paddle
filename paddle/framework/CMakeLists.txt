@@ -15,7 +15,7 @@ nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
 
 cc_test(variable_test SRCS variable_test.cc)
 
-cc_library(scope SRCS scope.cc)
+cc_library(scope SRCS scope.cc DEPS glog)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)
 
 
@@ -24,9 +24,10 @@ cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc)
 cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute)
 cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
-cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog)
+cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute)
+cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog shape_inference)
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry)
-cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS attribute ddim op_info operator glog)
+cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog)
 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 cc_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
@@ -42,7 +43,7 @@ add_custom_command(TARGET framework_py_proto POST_BUILD
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 cc_library(backward SRCS backward.cc DEPS net_op)
-cc_test(backward_test SRCS backward_test.cc DEPS backward recurrent_op device_context)
+cc_test(backward_test SRCS backward_test.cc DEPS backward recurrent_op device_context fill_constant_op)
 
 cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto backward glog)
 

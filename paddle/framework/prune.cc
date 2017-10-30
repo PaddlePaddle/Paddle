@@ -46,7 +46,7 @@ bool IsTarget(const OpDesc& op_desc) {
   return false;
 }
 
-void prune_impl(const ProgramDesc& input, ProgramDesc& output, int block_id) {
+void prune_impl(const ProgramDesc& input, ProgramDesc* output, int block_id) {
   // TODO(tonyyang-svail):
   //    - will change to use multiple blocks for RNN op and Cond Op
 
@@ -91,8 +91,8 @@ void prune_impl(const ProgramDesc& input, ProgramDesc& output, int block_id) {
   // we reverse the should_run vector
   std::reverse(should_run.begin(), should_run.end());
 
-  output = input;
-  auto* op_field = output.mutable_blocks(block_id)->mutable_ops();
+  *output = input;
+  auto* op_field = output->mutable_blocks(block_id)->mutable_ops();
   op_field->Clear();
   for (size_t i = 0; i < should_run.size(); ++i) {
     if (should_run[i]) {
@@ -101,7 +101,8 @@ void prune_impl(const ProgramDesc& input, ProgramDesc& output, int block_id) {
   }
 }
 
-void Prune(const ProgramDesc& input, ProgramDesc& output) {
+// TODO(fengjiayi): Prune() could be inplaced to avoid unnecessary copies
+void Prune(const ProgramDesc& input, ProgramDesc* output) {
   prune_impl(input, output, 0);
 }
 

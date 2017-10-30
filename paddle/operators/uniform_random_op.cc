@@ -95,4 +95,5 @@ Used to initialize tensor with uniform random generator.
 REGISTER_OP_WITHOUT_GRADIENT(uniform_random, paddle::operators::UniformRandomOp,
                              paddle::operators::UniformRandomOpMaker);
 REGISTER_OP_CPU_KERNEL(uniform_random,
-                       paddle::operators::CPUUniformRandomKernel<float>);
+                       paddle::operators::CPUUniformRandomKernel<float>,
+                       paddle::operators::CPUUniformRandomKernel<double>);
