@@ -372,7 +372,8 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
       int step_block_idx = (*it)->GetBlockAttr("step_block");
       auto backward_block_op_descs = MakeBlockBackward(
           program_desc, step_block_idx, no_grad_vars, grad_to_var);
-      BlockDescBind* backward_block = program_desc.AppendBlock(*cur_block);
+      BlockDescBind* backward_block =
+          program_desc.AppendBlock(*program_desc.MutableBlock(step_block_idx));
       for (auto& ptr : backward_block_op_descs) {
         backward_block->AppendAllocatedOp(std::move(ptr));
       }

@@ -25,7 +25,7 @@ constexpr char kOutputs[] = "outputs";
 constexpr char kStepScopes[] = "step_scopes";
 constexpr char kExStates[] = "ex_states";
 constexpr char kStates[] = "states";
-constexpr char kStepNet[] = "step_net";
+constexpr char kStepBlock[] = "step_block";
 constexpr char kReverse[] = "reverse";
 constexpr char kIsTrain[] = "is_train";
 #define GRAD_SUFFIX "@GRAD"
@@ -215,7 +215,7 @@ class RecurrentOp : public RecurrentBase {
     auto reverse = Attr<bool>(kReverse);
 
     framework::Executor executor(dev_ctx);
-    auto *block = Attr<framework::BlockDescBind *>(kStepNet);
+    auto *block = Attr<framework::BlockDescBind *>(kStepBlock);
     auto *program = block->Program();
 
     for (size_t i = 0; i < seq_len; ++i) {
@@ -297,7 +297,7 @@ class RecurrentGradOp : public RecurrentBase {
     auto reverse = Attr<bool>(kReverse);
 
     framework::Executor executor(dev_ctx);
-    auto *block = Attr<framework::BlockDescBind *>(kStepNet);
+    auto *block = Attr<framework::BlockDescBind *>(kStepBlock);
     auto *program = block->Program();
 
     for (size_t step_id = 0; step_id < seq_len; ++step_id) {
@@ -454,7 +454,7 @@ class RecurrentOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput(kStepScopes, "");
     AddAttr<std::vector<std::string>>(kExStates, "");
     AddAttr<std::vector<std::string>>(kStates, "");
-    AddAttr<framework::BlockDescBind *>(kStepNet, "");
+    AddAttr<framework::BlockDescBind *>(kStepBlock, "");
     AddAttr<bool>(kReverse, "").SetDefault(false);
     AddAttr<bool>(kIsTrain, "").SetDefault(true);
     AddComment("");

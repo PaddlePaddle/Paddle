@@ -627,5 +627,5 @@ class StaticRNN(object):
             attrs={
                 'ex_states': pre_memories,
                 'states': memories,
-                'step_net': rnn_block
+                'step_block': rnn_block
             })
