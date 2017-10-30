@@ -206,6 +206,8 @@ predict = layers.fc(input=net,
 cost = layers.cross_entropy(
     input=predict, label=label, program=program, init_program=init_program)
 avg_cost = layers.mean(x=cost, program=program, init_program=init_program)
+accuracy = layers.accuracy(
+    input=predict, label=label, program=program, init_program=init_program)
 
 sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
 opts = sgd_optimizer.minimize(avg_cost)
@@ -242,11 +244,12 @@ for pass_id in range(PASS_NUM):
         outs = exe.run(program,
                        feed={"pixel": tensor_img,
                              "label": tensor_y},
-                       fetch_list=[avg_cost])
+                       fetch_list=[avg_cost, accuracy])
 
         loss = np.array(outs[0])
+        acc = np.array(outs[1])
         print("pass_id:" + str(pass_id) + " batch_id:" + str(batch_id) +
-              " loss:" + str(loss))
+              " loss:" + str(loss) + " acc:" + str(acc))
         batch_id = batch_id + 1
 
         if batch_id > 1:
