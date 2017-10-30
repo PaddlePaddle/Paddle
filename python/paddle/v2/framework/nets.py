@@ -37,7 +37,7 @@ def sequence_conv_pool(input,
                        act,
                        program=None,
                        init_program=None):
-    conv_out = layers.conv1d(
+    conv_out = layers.sequence_conv(
         input=input,
         num_filters=num_filters,
         filter_size=filter_size,
@@ -45,7 +45,7 @@ def sequence_conv_pool(input,
         program=program,
         init_program=init_program)
 
-    pool_out = layers.pool1d(
+    pool_out = layers.sequence_pool(
         input=conv_out,
         pool_size=pool_size,
         pool_type='max',
