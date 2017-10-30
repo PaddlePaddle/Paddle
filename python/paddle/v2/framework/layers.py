@@ -161,6 +161,7 @@ def _create_op_func_(op_type):
 _create_op_func_('mean')
 _create_op_func_('mul')
 _create_op_func_('dropout')
+_create_op_func_('reshape')
 
 
 def cast(x, data_type, program=None):
@@ -306,6 +307,96 @@ def pool2d(input,
         })
 
     return pool_out
+
+
+def batch_norm(input,
+               act=None,
+               is_test=False,
+               momentum=0.9,
+               epsilon=1e05,
+               param_attr=None,
+               bias_attr=None,
+               data_layout='NCHW',
+               program=None,
+               init_program=None):
+    helper = LayerHelper('batch_norm', **locals())
+    dtype = helper.input_dtype()
+
+    input_shape = input.shape
+    if data_layout == 'NCHW':
+        channel_num = input_shape[1]
+    else:
+        if data_layout == 'NHWC':
+            channel_num = input_shape[-1]
+        else:
+            raise ValueError("unsupported data layout:" + data_layout)
+
+    def get_init_attr(value):
+        if not isinstance(value, float):
+            raise ValueError("attr value should be a float")
+        return {'type': 'fill_constant', 'value': value}
+
+    def prepend_init_op(var, init_attr):
+        assert isinstance(var, Variable)
+        op_type = init_attr['type']
+        init_attr['shape'] = var.shape
+        init_attr['data_type'] = int(var.data_type)
+        op = var.block.prepend_op(
+            type=op_type, inputs=None, outputs={'Out': [var]}, attrs=init_attr)
+        return op
+
+    def create_persistable_var(dtype, shape, init_attr=None):
+        name = unique_name(".".join([helper.name, "xxxx"]))
+        var = init_program.global_block().create_var(
+            dtype=dtype, shape=shape, name=name, persistable=True)
+        if 'init_attr' is not None:
+            prepend_init_op(var, init_attr)
+        return program.global_block().create_var(
+            name=name, dtype=dtype, shape=shape, persistable=True)
+
+    param_shape = [channel_num]
+
+    # create parameter
+    scale = helper.create_parameter(
+        attr=helper.param_attr, shape=param_shape, dtype=dtype)
+    bias = helper.create_parameter(
+        attr=helper.param_attr, shape=param_shape, dtype=dtype)
+
+    # create input
+    mean = create_persistable_var(dtype, param_shape, get_init_attr(0.0))
+    variance = create_persistable_var(dtype, param_shape, get_init_attr(1.0))
+
+    # create output
+    # mean and mean_out share the same memory
+    mean_out = mean
+    # variance and variance out share the same memory
+    variance_out = variance
+    saved_mean = helper.create_tmp_variable(dtype)
+    saved_variance = helper.create_tmp_variable(dtype)
+
+    batch_norm_out = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type="batch_norm",
+        inputs={
+            "X": input,
+            "Scale": scale,
+            "Bias": bias,
+            "Mean": mean,
+            "Variance": variance
+        },
+        outputs={
+            "Y": batch_norm_out,
+            "MeanOut": mean_out,
+            "VarianceOut": variance_out,
+            "SavedMean": saved_mean,
+            "SavedVariance": saved_variance
+        },
+        attrs={"momentum": momentum,
+               "epsilon": epsilon,
+               "is_test": is_test})
+
+    return helper.append_activation(batch_norm_out)
 
 
 class BlockGuard(object):
