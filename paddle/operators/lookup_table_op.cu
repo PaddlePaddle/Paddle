@@ -116,7 +116,7 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       auto* d_output_data = d_output->data<T>();
       PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output->dims());
       memory::Copy(gpu_place, d_table_data, gpu_place, d_output_data,
-                   d_output->numel(), stream);
+                   d_output->numel() * sizeof(T), stream);
 
     } else {
       auto ids_t = context.Input<Tensor>("Ids");
