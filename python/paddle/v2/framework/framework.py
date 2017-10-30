@@ -121,7 +121,7 @@ class Variable(object):
     def _unique_var_name_():
         prefix = "_generated_var"
         uid = core.unique_integer(prefix)  # unique during whole process.
-        return "_".join(prefix, str(uid))
+        return "_".join([prefix, str(uid)])
 
     @staticmethod
     def _convert_np_dtype_to_dtype_(np_dtype):
