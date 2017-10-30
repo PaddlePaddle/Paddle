@@ -73,7 +73,7 @@ function(op_library TARGET)
     if ("${TARGET}" STREQUAL "conv_transpose_op")
         set(pybind_flag 1)
         # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(conv2dtranspose);\n")
+        file(APPEND ${pybind_file} "USE_OP(conv2d_transpose);\n")
     endif()
     
     # pool_cudnn_op contains several operators

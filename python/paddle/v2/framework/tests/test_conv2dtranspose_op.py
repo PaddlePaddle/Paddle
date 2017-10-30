@@ -26,7 +26,7 @@ def conv2dtranspose_forward_naive(input_, filter_, conv2dtranspose_param):
                 for k in range(out_c):
                     tmp_out = np.sum(input_masked * filter_[:, k, :, :], axis=0)
                     i1, i2 = i * stride[0], i * stride[0] + f_h
-                    j1, j2 = j * stride[0], j * stride[0] + f_w
+                    j1, j2 = j * stride[1], j * stride[1] + f_w
                     out[n, k, i1:i2, j1:j2] += tmp_out
 
     return out
@@ -86,7 +86,7 @@ class TestConv2dTransposeOp(OpTest):
         self.filter_size = [f_c, 6, 3, 3]
 
     def init_op_type(self):
-        self.op_type = "conv2dtranspose"
+        self.op_type = "conv2d_transpose"
 
 
 """

@@ -90,7 +90,7 @@ class TestConv3dTransposeOp(OpTest):
         self.filter_size = [f_c, 6, 3, 3, 3]
 
     def init_op_type(self):
-        self.op_type = "conv3dtranspose"
+        self.op_type = "conv3d_transpose"
 
 
 if __name__ == '__main__':

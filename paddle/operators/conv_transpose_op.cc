@@ -46,9 +46,9 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(paddings.size(), strides.size(),
                     "ConvTransposeOp paddings dimension and Conv strides "
                     "dimension should be the same.");
-  PADDLE_ENFORCE_EQ(
-      in_dims[1], filter_dims[0],
-      "ConvTransposeOp input and kernel input dimension should be equal.");
+  PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[0],
+                    "In ConvTransposeOp, The input channel should be the same "
+                    "as the number of filters.");
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[1]});
   for (size_t i = 0; i < paddings.size(); ++i) {
@@ -76,16 +76,33 @@ Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(
   AddOutput("Output",
             "(Tensor) The output tensor of convolution transpose operator."
             "The format of output tensor is also NCHW.");
-  AddAttr<std::vector<int>>("strides",
-                            "strides of convolution transpose operator.")
+  AddAttr<std::vector<int>>(
+      "strides",
+      "(vector defalut:{1, 1}), strides of convolution transpose operator.")
       .SetDefault({1, 1});
-  AddAttr<std::vector<int>>("paddings",
-                            "paddings of convolution transpose operator.")
+  AddAttr<std::vector<int>>(
+      "paddings",
+      "(vector defalut:{0, 0}), paddings of convolution transpose operator.")
       .SetDefault({0, 0});
   AddComment(R"DOC(
 The convolution transpose operation calculates the output based on the input, filter
 and strides, paddings, groups parameters. The size of each dimension of the
 parameters is checked in the infer-shape.
+
+Input(Input, Filter) and output(Output) are in NCHW format. Where N is batch
+size, C is the number of channels, H and W is the height and
+width of feature. Parameters(ksize, strides, paddings) are two elements.
+These two elements represent height and width, respectively.
+The input(X) size and output(Out) size may be different.
+Example:
+  Input:
+       Input shape: (N, C_in, H_in, W_in)
+       Filter shape: (C_in, C_out, H_f, W_f)
+  Output:
+       Output shape: (N, C_out, H_out, W_out)
+  where
+       H_out = (H_in - 1) * strides[0] - 2 * paddings[0] + filter_size[0];
+       W_out = (W_in - 1) * strides[1] - 2 * paddings[1] + filter_size[1];
 )DOC");
 }
 
@@ -111,16 +128,34 @@ Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(
             "Where N is batch size, C is "
             "the number of channels, D, H and W is the depth, height and "
             "width of feature.");
-  AddAttr<std::vector<int>>("strides",
-                            "strides of convolution transpose operator.")
+  AddAttr<std::vector<int>>(
+      "strides",
+      "(vector defalut:{1, 1, 1}), strides of convolution transpose operator.")
       .SetDefault({1, 1, 1});
-  AddAttr<std::vector<int>>("paddings",
-                            "paddings of convolution transpose operator.")
+  AddAttr<std::vector<int>>(
+      "paddings",
+      "(vector defalut:{0, 0, 0}), paddings of convolution transpose operator.")
       .SetDefault({0, 0, 0});
   AddComment(R"DOC(
 The convolution transpose operation calculates the output based on the input, filter
 and strides, paddings, groups parameters. The size of each dimension of the
 parameters is checked in the infer-shape.
+
+Input(Input, Filter) and output(Output) are in NCDHW format. Where N is batch
+size, C is the number of channels, d, H and W is the depth, height and
+width of feature. Parameters(ksize, strides, paddings) are three elements.
+These three elements represent depth, height and width, respectively.
+The input(X) size and output(Out) size may be different.
+Example:
+  Input:
+       Input shape: (N, C_in, D_in, H_in, W_in)
+       Filter shape: (C_in, C_out, D_f, H_f, W_f)
+  Output:
+       Output shape: (N, C_out, D_out, H_out, W_out)
+  where
+       D_out = (D_in - 1) * strides[0] - 2 * paddings[0] + filter_size[0];
+       H_out = (H_in - 1) * strides[1] - 2 * paddings[1] + filter_size[1];
+       W_out = (W_in - 1) * strides[2] - 2 * paddings[2] + filter_size[2];
 )DOC");
 }
 
@@ -140,22 +175,22 @@ void ConvTransposeOpGrad::InferShape(framework::InferShapeContext* ctx) const {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP(conv2dtranspose, ops::ConvTransposeOp, ops::Conv2DTransposeOpMaker,
-            conv2dtranspose_grad, ops::ConvTransposeOpGrad);
+REGISTER_OP(conv2d_transpose, ops::ConvTransposeOp, ops::Conv2DTransposeOpMaker,
+            conv2d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
-    conv2dtranspose,
+    conv2d_transpose,
     ops::GemmConv2DTransposeKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    conv2dtranspose_grad,
+    conv2d_transpose_grad,
     ops::GemmConv2DTransposeGradKernel<paddle::platform::CPUPlace, float>);
 
-REGISTER_OP(conv3dtranspose, ops::ConvTransposeOp, ops::Conv3DTransposeOpMaker,
-            conv3dtranspose_grad, ops::ConvTransposeOpGrad);
+REGISTER_OP(conv3d_transpose, ops::ConvTransposeOp, ops::Conv3DTransposeOpMaker,
+            conv3d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
-    conv3dtranspose,
+    conv3d_transpose,
     ops::GemmConv3DTransposeKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    conv3dtranspose_grad,
+    conv3d_transpose_grad,
     ops::GemmConv3DTransposeGradKernel<paddle::platform::CPUPlace, float>);
