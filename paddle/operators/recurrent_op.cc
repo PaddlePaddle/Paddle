@@ -461,7 +461,68 @@ class RecurrentOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using OpDescBind = framework::OpDescBind;
+
+ protected:
+  virtual std::unique_ptr<OpDescBind> Apply() const {
+    auto *grad = new OpDescBind();
+    grad->SetType(this->GradOpType());
+
+    for (auto &input_param : this->InputNames()) {
+      grad->SetInput(input_param, this->Input(input_param));
+      grad->SetOutput(framework::GradVarName(input_param),
+                      this->InputGrad(input_param));
+    }
+
+    for (auto &output_param : this->OutputNames()) {
+      if (output_param == kStepScopes) {
+        grad->SetInput(output_param, this->Output(output_param));
+        grad->SetInput(framework::GradVarName(output_param),
+                       this->Output(output_param));
+      } else {
+        grad->SetInput(output_param, this->Output(output_param));
+        grad->SetInput(framework::GradVarName(output_param),
+                       this->OutputGrad(output_param));
+      }
+    }
+
+    grad->SetAttrMap(this->Attrs());
+
+    return std::unique_ptr<OpDescBind>(grad);
+  }
+
+  virtual std::string GradOpType() const {
+    return this->ForwardOpType() + "_grad";
+  }
+};
+
+class RecurrentGradOpShapeInference : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext *ctx) const override {
+    std::vector<std::string> input{kInputs, kInitialStates, kParameters};
+    std::vector<std::string> output{kOutputs};
+    for (auto &s : input) {
+      PADDLE_ENFORCE(ctx->HasInput(s));
+      PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName(s)));
+    }
+    for (auto &s : output) {
+      PADDLE_ENFORCE(ctx->HasInput(s));
+    }
+
+    for (auto &s : input) {
+      ctx->SetOutputDim(s, ctx->GetInputDim(framework::GradVarName(s)));
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
+
 REGISTER_OPERATOR(recurrent, paddle::operators::RecurrentOp,
-                  paddle::operators::RecurrentOpProtoMaker);
+                  paddle::operators::RecurrentOpProtoMaker,
+                  paddle::operators::RecurrentGradOpDescMaker);
+REGISTER_OPERATOR(recurrent_grad, paddle::operators::RecurrentGradOp,
+                  paddle::operators::RecurrentGradOpShapeInference);
