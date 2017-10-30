@@ -75,13 +75,6 @@ size_t GpuMaxChunkSize() {
 
   GpuMemoryUsage(available, total);
 
-  if (IsEnvVarDefined(kEnvFractionGpuMemoryToUse)) {
-    auto val = std::stod(GetEnvValue(kEnvFractionGpuMemoryToUse));
-    PADDLE_ENFORCE_GT(val, 0.0);
-    PADDLE_ENFORCE_LE(val, 1.0);
-    FLAGS_fraction_of_gpu_memory_to_use = val;
-  }
-
   // Reserving the rest memory for page tables, etc.
   size_t reserving = (1 - FLAGS_fraction_of_gpu_memory_to_use) * total;
 
