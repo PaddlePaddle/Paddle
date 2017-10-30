@@ -295,7 +295,8 @@ class OpTest(unittest.TestCase):
                             + ") has different lod at " + str(place))
             else:
                 idx = find_actual(out_name, fetch_list)
-                actual_t = outs[idx]
+                actual = outs[idx]
+                actual_t = np.array(actual)
                 expect = self.outputs[out_name]
                 expect_t = expect[0] if isinstance(expect, tuple) else expect
                 self.assertTrue(
@@ -303,7 +304,7 @@ class OpTest(unittest.TestCase):
                         actual_t, expect_t, atol=atol),
                     "Output (" + out_name + ") has diff at " + str(place))
                 if isinstance(expect, tuple):
-                    self.assertListEqual(actual_t.lod(), expect[1],
+                    self.assertListEqual(actual.lod(), expect[1],
                                          "Output (" + out_name +
                                          ") has different lod at " + str(place))
 

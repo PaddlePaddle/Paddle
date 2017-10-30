@@ -212,10 +212,7 @@ def square_error_cost(input, label, **kwargs):
 
     square_out = helper.create_tmp_variable(dtype=input.data_type)
     helper.append_op(
-        type='pow',
-        inputs={'X': [minus_out]},
-        outputs={'Y': [square_out]},
-        attrs={'factor': 2.0})
+        type='square', inputs={'X': [minus_out]}, outputs={'Y': [square_out]})
     return square_out
 
 

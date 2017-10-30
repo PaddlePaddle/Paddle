@@ -15,6 +15,9 @@
 #pragma once
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/platform/device_context.h"
+#include "paddle/platform/hostdevice.h"
+#include "paddle/platform/transform.h"
 
 namespace paddle {
 namespace operators {
@@ -548,31 +551,6 @@ struct ELUGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct PowFunctor : public BaseActivationFunctor<T> {
-  float factor;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"factor", &factor}};
-  }
-  template <typename Device, typename X, typename Y>
-  void operator()(Device d, X x, Y y) const {
-    y.device(d) = x.pow(static_cast<T>(factor));
-  }
-};
-
-template <typename T>
-struct PowGradFunctor : public BaseActivationFunctor<T> {
-  float factor;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"factor", &factor}};
-  }
-  template <typename Device, typename X, typename Y, typename dY, typename dX>
-  void operator()(Device d, X x, Y y, dY dy, dX dx) const {
-    dx.device(d) = dy * static_cast<T>(factor) *
-                   x.pow(static_cast<T>(factor - static_cast<T>(1)));
-  }
-};
-
-template <typename T>
 struct STanhFunctor : public BaseActivationFunctor<T> {
   float scale_a;
   float scale_b;
@@ -664,6 +642,41 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+namespace {
+template <typename T>
+struct Pow {
+  explicit Pow(const T& factor) : factor_(factor) {}
+
+  HOSTDEVICE T operator()(const T& a) const { return std::pow(a, factor_); }
+  T factor_;
+};
+}  // namespace
+
+template <typename Place, typename T>
+struct PowFunctor {
+  void operator()(const platform::DeviceContext& ctx,
+                  const framework::Tensor& in, const T& factor,
+                  framework::Tensor* out) {
+    auto* in_data = in.data<T>();
+    auto* out_data = out->data<T>();
+    platform::Transform<Place> trans;
+    trans(ctx, in_data, in_data + out->numel(), out_data, Pow<T>(factor));
+  }
+};
+
+template <typename Place, typename T>
+class PowKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* in = context.Input<framework::Tensor>("X");
+    auto* out = context.Output<framework::Tensor>("Y");
+    out->mutable_data<T>(context.GetPlace());
+    T factor = static_cast<T>(context.Attr<float>("factor"));
+    PowFunctor<Place, T> functor;
+    functor(context.device_context(), *in, factor, out);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -681,7 +694,6 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   __macro(square, SquareFunctor, SquareGradFunctor);                 \
   __macro(brelu, BReluFunctor, BReluGradFunctor);                    \
   __macro(soft_relu, SoftReluFunctor, SoftReluGradFunctor);          \
-  __macro(pow, PowFunctor, PowGradFunctor);                          \
   __macro(stanh, STanhFunctor, STanhGradFunctor);                    \
   __macro(softplus, SoftplusFunctor, SoftplusGradFunctor);           \
   __macro(softsign, SoftsignFunctor, SoftsignGradFunctor);           \

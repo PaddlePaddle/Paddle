@@ -17,6 +17,9 @@
 
 namespace ops = paddle::operators;
 
+REGISTER_OP_GPU_KERNEL(pow, ops::PowKernel<paddle::platform::GPUPlace, float>,
+                       ops::PowKernel<paddle::platform::GPUPlace, double>);
+
 #define REGISTER_ACTIVATION_GPU_KERNEL(act_type, functor, grad_functor)       \
   REGISTER_OP_GPU_KERNEL(                                                     \
       act_type,                                                               \
