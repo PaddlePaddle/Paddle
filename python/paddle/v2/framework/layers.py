@@ -5,7 +5,7 @@ import re
 
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
-    'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool'
+    'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool', 'sums'
 ]
 
 
@@ -150,7 +150,7 @@ def _create_op_func_(op_type):
             outputs[name] = [helper.create_tmp_variable(dtype=dtype)]
         helper.append_op(
             type=op_type, inputs=inputs, outputs=outputs, attrs=kwargs)
-        return helper.append_activation(out)
+        return out
 
     func.__name__ = op_type
     globals()[op_type] = func
@@ -160,21 +160,9 @@ def _create_op_func_(op_type):
 
 _create_op_func_('mean')
 _create_op_func_('mul')
-_create_op_func_('elementwise_add')
 _create_op_func_('dropout')
-_create_op_func_('reshape')
 
-
-def cast(x, data_type, program=None):
-    helper = LayerHelper('cast', **locals())
-    out = helper.create_tmp_variable(dtype=data_type)
-    helper.append_op(
-        type='cast',
-        inputs={'X': [x]},
-        outputs={'Out': [out]},
-        attrs={'in_data_type': x.data_type,
-               'out_data_type': out.data_type})
-    return out
+# _create_op_func_('cos_sim')
 
 
 def cast(x, data_type, program=None):
@@ -200,6 +188,30 @@ def concat(input, axis, program=None, init_program=None):
         outputs={'Out': [out]},
         attrs={'axis': axis})
     return out
+
+
+def sums(input, program=None, init_program=None):
+    helper = LayerHelper('sum', **locals())
+    if not isinstance(input, list) and not isinstance(input, tuple):
+        input = [input]
+    out = helper.create_tmp_variable(dtype=input[0].data_type)
+    helper.append_op(type='sum', inputs={'X': input}, outputs={'Out': out})
+    return out
+
+
+def cos_sim(X, Y, program=None, init_program=None):
+    helper = LayerHelper('cos_sim', **locals())
+    out = helper.create_tmp_variable(dtype=X.data_type)
+    xnorm = helper.create_tmp_variable(dtype=X.data_type)
+    ynorm = helper.create_tmp_variable(dtype=X.data_type)
+    helper.append_op(
+        type='cos_sim',
+        inputs={'X': [X],
+                'Y': [Y]},
+        outputs={'Out': [out],
+                 'XNorm': [xnorm],
+                 'YNorm': [ynorm]})
+    return out, xnorm, ynorm
 
 
 def cross_entropy(input, label, **kwargs):
@@ -232,9 +244,26 @@ def square_error_cost(input, label, **kwargs):
     return square_out
 
 
+def square_error_cost(input, label, **kwargs):
+    helper = LayerHelper('square_error_cost', **kwargs)
+    minus_out = helper.create_tmp_variable(dtype=input.data_type)
+    helper.append_op(
+        type='elementwise_sub',
+        inputs={'X': [input],
+                'Y': [label]},
+        outputs={'Out': [minus_out]})
+
+    square_out = helper.create_tmp_variable(dtype=input.data_type)
+    helper.append_op(
+        type='pow',
+        inputs={'X': [minus_out]},
+        outputs={'Y': [square_out]},
+        attrs={'factor': 2.0})
+    return square_out
+
+
 def sequence_conv(input,
                   num_filters,
-                  name=None,
                   filter_size=3,
                   act=None,
                   stride=1,
@@ -250,7 +279,7 @@ def sequence_conv(input,
     helper = LayerHelper('sequence_conv', **locals())
     dtype = helper.input_dtype()
 
-    filter_shape = [num_filters, filter_size]
+    filter_shape = [num_filters * filter_size, filter_size]
     filter = helper.create_parameter(
         attr=helper.param_attr, shape=filter_shape, dtype=dtype)
     pre_bias = helper.create_tmp_variable(dtype)
@@ -259,7 +288,7 @@ def sequence_conv(input,
         type='sequence_conv',
         inputs={
             'X': [input],
-            'Filter': filter,
+            'Filter': [filter],
         },
         outputs={"Out": pre_bias},
         attrs={
@@ -267,9 +296,7 @@ def sequence_conv(input,
             'context_start': 0,
             'context_length': filter_size
         })
-
-    pre_act = helper.append_bias_op(pre_bias)
-    return helper.append_activation(pre_act)
+    return pre_bias
 
 
 def conv2d(input,
@@ -334,8 +361,15 @@ def sequence_pool(input,
                   init_program=None):
     # FIXME(dzh) : want to unify the argument of python layer
     # function. So we ignore some unecessary attributes
+    # class ENUM_POOL_TYPE(object):
+    #     AVERAGE = 0
+    #     SUM = 1
+    #     SQRT = 2
+    #     MAX = 3
+    #     LAST = 4
+    #     FIRST = 5
 
-    ENUM_POOL_TYPE = set(["max", "avg", "sqrt", "last", "first"])
+    ENUM_POOL_TYPE = set(["max", "avg", "sum", "sqrt", "last", "first"])
     if pool_type not in ENUM_POOL_TYPE:
         raise ValueError("Unknown pool_type: '%s'. It can only be %s.",
                          str(pool_type), " ".join(ENUM_POOL_TYPE))
@@ -344,11 +378,12 @@ def sequence_pool(input,
     dtype = helper.input_dtype()
     pool_out = helper.create_tmp_variable(dtype)
 
+    # FIXME(dzh): strategy
     helper.append_op(
         type="sequence_pool",
         inputs={"X": [input]},
         outputs={"Out": pool_out},
-        attrs={"strategy": pool_type})
+        attrs={"strategy": 1})
 
     return pool_out
 
@@ -389,96 +424,6 @@ def pool2d(input,
         })
 
     return pool_out
-
-
-def batch_norm(input,
-               act=None,
-               is_test=False,
-               momentum=0.9,
-               epsilon=1e05,
-               param_attr=None,
-               bias_attr=None,
-               data_layout='NCHW',
-               program=None,
-               init_program=None):
-    helper = LayerHelper('batch_norm', **locals())
-    dtype = helper.input_dtype()
-
-    input_shape = input.shape
-    if data_layout == 'NCHW':
-        channel_num = input_shape[1]
-    else:
-        if data_layout == 'NHWC':
-            channel_num = input_shape[-1]
-        else:
-            raise ValueError("unsupported data layout:" + data_layout)
-
-    def get_init_attr(value):
-        if not isinstance(value, float):
-            raise ValueError("attr value should be a float")
-        return {'type': 'fill_constant', 'value': value}
-
-    def prepend_init_op(var, init_attr):
-        assert isinstance(var, Variable)
-        op_type = init_attr['type']
-        init_attr['shape'] = var.shape
-        init_attr['data_type'] = int(var.data_type)
-        op = var.block.prepend_op(
-            type=op_type, inputs=None, outputs={'Out': [var]}, attrs=init_attr)
-        return op
-
-    def create_persistable_var(dtype, shape, init_attr=None):
-        name = unique_name(".".join([helper.name, "xxxx"]))
-        var = init_program.global_block().create_var(
-            dtype=dtype, shape=shape, name=name, persistable=True)
-        if 'init_attr' is not None:
-            prepend_init_op(var, init_attr)
-        return program.global_block().create_var(
-            name=name, dtype=dtype, shape=shape, persistable=True)
-
-    param_shape = [channel_num]
-
-    # create parameter
-    scale = helper.create_parameter(
-        attr=helper.param_attr, shape=param_shape, dtype=dtype)
-    bias = helper.create_parameter(
-        attr=helper.param_attr, shape=param_shape, dtype=dtype)
-
-    # create input
-    mean = create_persistable_var(dtype, param_shape, get_init_attr(0.0))
-    variance = create_persistable_var(dtype, param_shape, get_init_attr(1.0))
-
-    # create output
-    # mean and mean_out share the same memory
-    mean_out = mean
-    # variance and variance out share the same memory
-    variance_out = variance
-    saved_mean = helper.create_tmp_variable(dtype)
-    saved_variance = helper.create_tmp_variable(dtype)
-
-    batch_norm_out = helper.create_tmp_variable(dtype)
-
-    helper.append_op(
-        type="batch_norm",
-        inputs={
-            "X": input,
-            "Scale": scale,
-            "Bias": bias,
-            "Mean": mean,
-            "Variance": variance
-        },
-        outputs={
-            "Y": batch_norm_out,
-            "MeanOut": mean_out,
-            "VarianceOut": variance_out,
-            "SavedMean": saved_mean,
-            "SavedVariance": saved_variance
-        },
-        attrs={"momentum": momentum,
-               "epsilon": epsilon,
-               "is_test": is_test})
-
-    return helper.append_activation(batch_norm_out)
 
 
 class BlockGuard(object):
