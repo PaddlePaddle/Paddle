@@ -127,6 +127,21 @@ class RecurrentBase : public framework::OperatorBase {
     callback(src_tensor, dst_tensor);
   }
 
+  template <typename Callback>
+  static void LinkVarWithCallback(const framework::Scope &src_scope,
+                                  const std::string &src_var_name,
+                                  const framework::Scope &dst_scope,
+                                  const std::string &dst_var_name,
+                                  Callback callback) {
+    auto *src_var = src_scope.FindVar(src_var_name);
+    PADDLE_ENFORCE(src_var != nullptr);
+    auto &src_tensor = src_var->Get<framework::LoDTensor>();
+    auto *dst_var = dst_scope.FindVar(dst_var_name);
+    PADDLE_ENFORCE(dst_var != nullptr);
+    auto *dst_tensor = dst_var->GetMutable<framework::LoDTensor>();
+    callback(src_tensor, dst_tensor);
+  }
+
   static void LinkVar(const framework::Scope &src_scope,
                       const std::string &src_var_name,
                       framework::Scope *dst_scope,
@@ -139,6 +154,42 @@ class RecurrentBase : public framework::OperatorBase {
                   << src.dims() << ") to " << dst_var_name;
           dst->ShareDataWith(src);
         });
+  }
+
+  static void LinkVars(const framework::Scope &src_scope,
+                       const std::vector<std::string> &src_vars,
+                       framework::Scope *dst_scope,
+                       const std::vector<std::string> &dst_vars) {
+    PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size());
+    for (size_t i = 0; i < dst_vars.size(); ++i) {
+      LinkVar(src_scope, src_vars[i], dst_scope, dst_vars[i]);
+    }
+  }
+
+  template <typename Callback>
+  static void LinkVarsWithCallback(const framework::Scope &src_scope,
+                                   const std::vector<std::string> &src_vars,
+                                   framework::Scope *dst_scope,
+                                   const std::vector<std::string> &dst_vars,
+                                   Callback callback) {
+    PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size());
+    for (size_t i = 0; i < dst_vars.size(); ++i) {
+      LinkVarWithCallback(src_scope, src_vars[i], dst_scope, dst_vars[i],
+                          callback);
+    }
+  }
+
+  template <typename Callback>
+  static void LinkVarsWithCallback(const framework::Scope &src_scope,
+                                   const std::vector<std::string> &src_vars,
+                                   const framework::Scope &dst_scope,
+                                   const std::vector<std::string> &dst_vars,
+                                   Callback callback) {
+    PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size());
+    for (size_t i = 0; i < dst_vars.size(); ++i) {
+      LinkVarWithCallback(src_scope, src_vars[i], dst_scope, dst_vars[i],
+                          callback);
+    }
   }
 
   static framework::DDim AppendSeqLenToDim(size_t seq_len,
@@ -173,62 +224,50 @@ class RecurrentOp : public RecurrentBase {
 
       auto &cur_scope = scopes.CurScope();
 
-      for (auto &iname : Inputs(kInputs)) {
-        // Link inputs
-        LinkVarWithCallback(
-            scope, iname, &cur_scope, iname,
-            [&seq_offset, &iname](const framework::Tensor &outside,
-                                  framework::Tensor *inside) {
-              inside->ShareDataWith(outside.Slice(seq_offset, seq_offset + 1));
-              auto dims = framework::vectorize(inside->dims());
-              dims.erase(dims.begin());
-              inside->Resize(framework::make_ddim(dims));
-              VLOG(4) << "RNN input=" << iname << " shape=" << inside->dims();
-            });
-      }
+      // Link outside::input --> inside::input
+      //   inside::input = outside::input[seq_offset: seq_offset+1]
+      LinkVarsWithCallback(
+          scope, Inputs(kInputs), &cur_scope, Inputs(kInputs),
+          [&seq_offset](const framework::Tensor &outside,
+                        framework::Tensor *inside) {
+            inside->ShareDataWith(outside.Slice(seq_offset, seq_offset + 1));
+            auto dims = framework::vectorize(inside->dims());
+            dims.erase(dims.begin());
+            inside->Resize(framework::make_ddim(dims));
+          });
 
       if (i == 0) {
-        // Link initialize states
-        auto &init_states = Inputs(kInitialStates);
-        auto &ex_states = Attr<std::vector<std::string>>(kExStates);
-        PADDLE_ENFORCE_EQ(init_states.size(), ex_states.size());
-        for (size_t i = 0; i < init_states.size(); ++i) {
-          LinkVar(scope, init_states[i], &cur_scope, ex_states[i]);
-        }
+        // Link initial states  --> ex_states
+        LinkVars(scope, Inputs(kInitialStates), &cur_scope,
+                 Attr<std::vector<std::string>>(kExStates));
       } else {
-        // Link ex states
-        auto &ex_states = Attr<std::vector<std::string>>(kExStates);
-        auto &states = Attr<std::vector<std::string>>(kStates);
         auto &ex_scope = scopes.ExScope();
-
-        PADDLE_ENFORCE_EQ(ex_states.size(), states.size());
-        for (size_t i = 0; i < ex_states.size(); ++i) {
-          LinkVar(ex_scope, states[i], &cur_scope, ex_states[i]);
-        }
+        // Link ex_scope::state --> cur_scope::ex_state
+        LinkVars(ex_scope, Attr<std::vector<std::string>>(kStates), &cur_scope,
+                 Attr<std::vector<std::string>>(kExStates));
       }
+
       // Every inputs are linked now, execute!
       executor.Run(*program, &cur_scope, block->ID(),
                    false /*create_local_scope*/);
 
-      for (auto &oname : Outputs(kOutputs)) {
-        auto *src_var = cur_scope.FindVar(oname);
-        PADDLE_ENFORCE(src_var != nullptr);
-        auto &src_tensor = src_var->Get<framework::LoDTensor>();
+      // Copy inside::output -> outside::output
+      //    outside::output[seq_offset: seq_offset + 1] = inside::output
+      this->LinkVarsWithCallback(
+          cur_scope, Outputs(kOutputs), scope, Outputs(kOutputs),
+          [&](const framework::LoDTensor &src_tensor,
+              framework::LoDTensor *dst_tensor) {
+            if (i == 0) {  // create output tensor at begin
+              dst_tensor->Resize(AppendSeqLenToDim(seq_len, src_tensor.dims()));
+              dst_tensor->mutable_data(dev_ctx.GetPlace(), src_tensor.type());
+            }
 
-        auto *dst_var = scope.FindVar(oname);
-        PADDLE_ENFORCE(dst_var != nullptr);
-        auto &dst_tensor = *dst_var->GetMutable<framework::LoDTensor>();
+            auto dst_out = dst_tensor->Slice(seq_offset, seq_offset + 1);
+            // Explicit copy output since the local RNN scope can be destroyed
+            // early.
+            dst_out.CopyFrom(src_tensor, dev_ctx.GetPlace(), dev_ctx);
+          });
 
-        if (i == 0) {  // create output tensor at begin
-          dst_tensor.Resize(AppendSeqLenToDim(seq_len, src_tensor.dims()));
-          dst_tensor.mutable_data(dev_ctx.GetPlace(), src_tensor.type());
-        }
-
-        auto dst_out = dst_tensor.Slice(seq_offset, seq_offset + 1);
-        // Explicit copy output since the local RNN scope can be destroyed
-        // early.
-        dst_out.CopyFrom(src_tensor, dev_ctx.GetPlace(), dev_ctx);
-      }
       scopes.Next();
     }
   }

@@ -103,9 +103,10 @@ class RecurrentOpTest(unittest.TestCase):
 
     def create_rnn_op(self):
         x = data(
-            shape=[self.sent_len, self.input_dim],
+            shape=[self.sent_len, self.batch_size, self.input_dim],
             data_type='float32',
-            name='x')
+            name='x',
+            append_batch_size=False)
         h_boot = data(
             shape=[self.input_dim], data_type='float32', name='h_boot')
 
