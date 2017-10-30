@@ -36,7 +36,6 @@ class SeqExpandKernel : public framework::OpKernel<T> {
                       "The size of last lod level in Input(Y)"
                       "must be equal to dims[0] of Input(X).");
     out->set_lod(y->lod());
-    out->Resize(y->dims());
     auto place = context.GetEigenDevice<Place>();
     size_t element_len = framework::product(x_dims) / x_dims[0];
     T* out_data = out->mutable_data<T>(context.GetPlace());
@@ -57,6 +56,18 @@ class SeqExpandKernel : public framework::OpKernel<T> {
   }
 };
 
+/*
+ *Given Grad(Out)
+ *
+ *    Grad(Out).lod = [[0,                            2],
+ *                     [0,              3,            6]]
+ *    Grad(Out).data = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
+ * Then
+ *    Grad(X).data = [(0.1 + 0.2 + 0.3), (0.4 + 0.5 + 0.6)]
+ *                 = [0.6, 1.5]
+ *    Grad(X).lod = Input(X).lod
+ *
+ * */
 template <typename Place, typename T>
 class SeqExpandGradKernel : public framework::OpKernel<T> {
  public:
@@ -68,10 +79,8 @@ class SeqExpandGradKernel : public framework::OpKernel<T> {
     auto out_last_level = out->lod().back();
     d_x->set_lod(x->lod());
     const T* d_out_data = d_out->data<T>();
-    auto d_out_dims = d_out->dims();
     T* d_x_data = d_x->mutable_data<T>(context.GetPlace());
-    size_t element_len = framework::product(d_out_dims) / d_out_dims[0];
-
+    size_t element_len = d_out->numel() / d_out->dims()[0];
     for (size_t i = 0; i < out_last_level.size() - 1; ++i) {
       size_t repeat = out_last_level[i + 1] - out_last_level[i];
       Eigen::TensorMap<
