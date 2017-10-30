@@ -188,6 +188,15 @@ def concat(input, axis, program=None, init_program=None):
     return out
 
 
+def sums(input, program=None, init_program=None):
+    helper = LayerHelper('sum', **locals())
+    if not isinstance(input, list) and not isinstance(input, tuple):
+        input = [input]
+    out = helper.create_tmp_variable(dtype=input[0].data_type)
+    helper.append_op(type='sum', inputs={'X': input}, outputs={'Out': out})
+    return out
+
+
 def cross_entropy(input, label, **kwargs):
     helper = LayerHelper('cross_entropy', **kwargs)
     out = helper.create_tmp_variable(dtype=input.data_type)
@@ -241,7 +250,6 @@ def conv1d(input,
         attr=helper.param_attr, shape=filter_shape, dtype=dtype)
     pre_bias = helper.create_tmp_variable(dtype)
 
-    input.set_lod(lod)
     helper.append_op(
         type='sequence_conv',
         inputs={
