@@ -126,11 +126,11 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
              " - Bias = {b_c, b_i, b_f, b_o, W_ic, W_fc, W_oc}.")
         .AsDispensable();
     AddOutput("Hidden",
-              "(LoDTensor) the hidden state lod tensor of LSTM operator. "
-              "The shape and lod is the same with the `Input`.");
+              "(LoDTensor) the hidden state of LSTM operator. "
+              "The shape is (T x D), and lod is the same with the `Input`.");
     AddOutput("Cell",
-              "(LoDTensor) the cell state lod tensor of LSTM operator. "
-              "The shape and lod is the same with the `Input`.");
+              "(LoDTensor) the cell state of LSTM operator. "
+              "The shape is (T x D), and lod is the same with the `Input`.");
     AddOutput("BatchGate",
               "(LoDTensor) This LoDTensor contains input gate, forget gate "
               "and output gate after the nonlinear computation. This "
@@ -141,7 +141,7 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
               "in the raw input.")
         .AsIntermediate();
     AddOutput("BatchCellPreAct",
-              "(LoDTensor) This LoDTensor is get in the forward and used "
+              "(LoDTensor) This LoDTensor is got in the forward and used "
               "in the backward.")
         .AsIntermediate();
     AddAttr<bool>("usePeepholes",
