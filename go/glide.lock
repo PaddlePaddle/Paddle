@@ -1,5 +1,5 @@
 hash: 107c058cf5c9163a75d40eef2273a793c36112683c25d72aa8288827fdde3a19
-updated: 2017-10-30T02:49:38.356110587Z
+updated: 2017-10-30T03:46:19.137696069Z
 imports:
 - name: github.com/alecthomas/gometalinter
   version: bae2f1293d092fd8167939d5108d1b025eaef9de
