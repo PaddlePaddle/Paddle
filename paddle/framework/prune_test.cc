@@ -59,11 +59,11 @@ TEST(Prune, one_operator) {
   f::ProgramDesc *pdesc = program.Proto();
   f::ProgramDesc pruned;
 
-  Prune(*pdesc, pruned);
+  Prune(*pdesc, &pruned);
   PADDLE_ENFORCE_EQ(pruned.blocks(0).ops_size(), 0);
 
   pdesc->mutable_blocks(0)->mutable_ops(0)->set_is_target(true);
-  Prune(*pdesc, pruned);
+  Prune(*pdesc, &pruned);
   PADDLE_ENFORCE_EQ(pruned.blocks(0).ops_size(), 1);
 }
 
@@ -81,7 +81,7 @@ TEST(Prune, forward) {
   for (int i = 0; i < pdesc->blocks(0).ops_size(); ++i) {
     f::ProgramDesc pruned;
     pdesc->mutable_blocks(0)->mutable_ops(i)->set_is_target(true);
-    Prune(*pdesc, pruned);
+    Prune(*pdesc, &pruned);
     PADDLE_ENFORCE_EQ(pruned.blocks(0).ops_size(), i + 1);
   }
 }
@@ -100,7 +100,7 @@ TEST(Prune, multi_input_op) {
   pdesc->mutable_blocks(0)->mutable_ops(3)->set_is_target(true);
 
   f::ProgramDesc pruned;
-  Prune(*pdesc, pruned);
+  Prune(*pdesc, &pruned);
   PADDLE_ENFORCE_EQ(pruned.blocks(0).ops_size(), 4);
 }
 
@@ -116,7 +116,7 @@ TEST(Prune, multi_output_op) {
   pdesc->mutable_blocks(0)->mutable_ops(2)->set_is_target(true);
 
   f::ProgramDesc pruned;
-  Prune(*pdesc, pruned);
+  Prune(*pdesc, &pruned);
   PADDLE_ENFORCE_EQ(pruned.blocks(0).ops_size(), 2);
 }
 
@@ -133,6 +133,6 @@ TEST(Prune, multi_target) {
   pdesc->mutable_blocks(0)->mutable_ops(2)->set_is_target(true);
 
   f::ProgramDesc pruned;
-  Prune(*pdesc, pruned);
+  Prune(*pdesc, &pruned);
   PADDLE_ENFORCE_EQ(pruned.blocks(0).ops_size(), 3);
 }

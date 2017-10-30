@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/framework/feed_fetch_method.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/prune.h"
 #include "paddle/framework/selected_rows.h"
 #include "paddle/framework/tensor_array.h"
 #include "paddle/operators/cond_op.h"
@@ -31,6 +32,11 @@ limitations under the License. */
 #include "paddle/pybind/pybind.h"
 #include "paddle/pybind/tensor_py.h"
 #include "paddle/string/to_string.h"
+
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/operators/nccl/nccl_gpu_common.h"
+#include "paddle/platform/gpu_info.h"
+#endif
 
 namespace paddle {
 namespace pybind {
@@ -203,6 +209,13 @@ All parameter, weight, gradient are variables in Paddle.
              return self.GetMutable<SelectedRows>();
            },
            py::return_value_policy::reference)
+#ifdef PADDLE_WITH_CUDA
+      .def("get_communicator",
+           [](Variable &self) -> platform::Communicator * {
+             return self.GetMutable<platform::Communicator>();
+           },
+           py::return_value_policy::reference)
+#endif
       .def("get_net",
            [](Variable &self) -> operators::NetOp * {
              return self.GetMutable<operators::NetOp>();
@@ -237,6 +250,16 @@ All parameter, weight, gradient are variables in Paddle.
     }
     return ret_values;
   });
+  m.def("prune", [](const ProgramDescBind &origin,
+                    const std::vector<std::array<size_t, 2>> &targets) {
+    ProgramDescBind prog_with_targets(origin);
+    for (const auto &t : targets) {
+      prog_with_targets.Block(t[0])->Op(t[1])->MarkAsTarget();
+    }
+    ProgramDesc pruned_desc;
+    Prune(*prog_with_targets.Proto(), &pruned_desc);
+    return new ProgramDescBind(pruned_desc);
+  });
   m.def_submodule(
        "var_names",
        "The module will return special predefined variable name in Paddle")
@@ -258,8 +281,11 @@ All parameter, weight, gradient are variables in Paddle.
                     return new paddle::platform::CUDADeviceContext(place);
 #endif
                   });
-  // clang-format on
+// clang-format on
 
+#ifdef PADDLE_WITH_CUDA
+  py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
+#endif
   py::class_<platform::GPUPlace>(m, "GPUPlace")
       .def(py::init<int>())
       .def("__str__", string::to_string<const platform::GPUPlace &>);
@@ -468,6 +494,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindOpDesc(m);
 
   m.def("op_support_gpu", OpSupportGPU);
+#ifdef PADDLE_WITH_CUDA
+  m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
+#endif
 
   return m.ptr();
 }
