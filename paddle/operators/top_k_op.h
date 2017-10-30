@@ -66,7 +66,7 @@ class TopkKernel : public framework::OpKernel<T> {
           });
       for (size_t j = 0; j < k; j++) {
         output_data[i * k + j] = vec[j].first;
-        indices_data[i * k + j] = int64(vec[j].second);
+        indices_data[i * k + j] = int64_t(vec[j].second);
       }
     }
   }
