@@ -36,7 +36,12 @@ class FillConstantBatchSizeLikeOp : public framework::OperatorWithKernel {
                    [](int a) { return static_cast<int64_t>(a); });
     auto dims = framework::make_ddim(shape_int64);
 
-    dims[0] = ctx->GetInputDim("Input")[0];
+    int dim_idx = ctx->Attrs().Get<int>("dim_idx");
+    PADDLE_ENFORCE_GE(dim_idx, 0);
+    PADDLE_ENFORCE_GT(static_cast<int>(shape.size()), dim_idx);
+    PADDLE_ENFORCE_GT(ctx->GetInputDim("Input").size(), dim_idx);
+
+    dims[dim_idx] = ctx->GetInputDim("Input")[dim_idx];
     ctx->SetOutputDim("Out", dims);
   }
 
@@ -57,15 +62,18 @@ class FillConstantBatchSizeLikeOpMaker
                  "(int, default 5 (FP32)) "
                  "Output data type")
         .SetDefault(framework::DataType::FP32);
-    AddAttr<std::vector<int>>("shape", "(vector<int>) The shape of the output");
-    AddAttr<float>("value", "(float, default 0) The value to be filled")
-        .SetDefault(0.0f);
     AddInput("Input",
              "(Tensor) Tensor "
-             "whose first dimension is used to specify the batch_size");
+             "whose dim_idx th dimension is used to specify the batch_size");
     AddOutput("Out",
               "(Tensor) Tensor of specified shape will be filled "
               "with the specified value");
+    AddAttr<std::vector<int>>("shape", "(vector<int>) The shape of the output");
+    AddAttr<int>("dim_idx",
+                 "(int, default 0) the index of batch size dimension")
+        .SetDefault(0);
+    AddAttr<float>("value", "(float, default 0) The value to be filled")
+        .SetDefault(0.0f);
     AddComment(R"DOC(Fill up a variable with specified constant value.)DOC");
   }
 };
