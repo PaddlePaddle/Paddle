@@ -29,8 +29,12 @@ endforeach()
 add_custom_target(gen_proto_py ALL DEPENDS ${PROTO_GEN_PY})
 
 
-add_custom_target(protoc-gen-go)
 if (WITH_GOLANG)
+    add_custom_target(protoc-gen-go)
+    add_custom_command(TARGET protoc-gen-go
+            COMMAND go 
+            ARGS "get" "-u" "github.com/golang/protobuf/protoc-gen-go")
+
     set(PROTO_GEN_GO)
     file(GLOB proto_filenames . OptimizerConfig.proto)
     foreach(filename ${proto_filenames})
@@ -42,10 +46,6 @@ if (WITH_GOLANG)
         set(PROTO_GEN_GO
                 ${CUR_PROTO_GEN_GO}
                 ${PROTO_GEN_GO})
-        add_custom_command(TARGET protoc-gen-go
-            COMMAND go 
-            ARGS "get" 
-            "-u" "github.com/golang/protobuf/protoc-gen-go")
         add_custom_command(OUTPUT ${CUR_PROTO_GEN_GO}
                 COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
                 ARGS "--go_out=${PADDLE_SOURCE_DIR}/go/proto"
