@@ -642,7 +642,6 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-namespace {
 template <typename T>
 struct Pow {
   explicit Pow(const T& factor) : factor_(factor) {}
@@ -650,7 +649,6 @@ struct Pow {
   HOSTDEVICE T operator()(const T& a) const { return std::pow(a, factor_); }
   T factor_;
 };
-}  // namespace
 
 template <typename Place, typename T>
 struct PowFunctor {
@@ -677,7 +675,6 @@ class PowKernel : public framework::OpKernel<T> {
   }
 };
 
-namespace {
 template <typename T>
 struct PowGrad {
   explicit PowGrad(const T& factor) : factor_(factor) {}
@@ -687,7 +684,6 @@ struct PowGrad {
   }
   T factor_;
 };
-}  // namespace
 
 template <typename Place, typename T>
 struct PowGradFunctor {
