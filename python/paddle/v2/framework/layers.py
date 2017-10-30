@@ -218,17 +218,17 @@ def square_error_cost(input, label, **kwargs):
     return square_out
 
 
-def conv1d(input,
-           num_filters,
-           name=None,
-           filter_size=3,
-           act=None,
-           stride=1,
-           padding=None,
-           bias_attr=None,
-           param_attr=None,
-           program=None,
-           init_program=None):
+def sequence_conv(input,
+                  num_filters,
+                  name=None,
+                  filter_size=3,
+                  act=None,
+                  stride=1,
+                  padding=None,
+                  bias_attr=None,
+                  param_attr=None,
+                  program=None,
+                  init_program=None):
     # FIXME(dzh) : want to unify the argument of python layer
     # function. So we ignore some unecessary attributes.
     # such as, padding_trainable, context_start.
@@ -241,11 +241,10 @@ def conv1d(input,
         attr=helper.param_attr, shape=filter_shape, dtype=dtype)
     pre_bias = helper.create_tmp_variable(dtype)
 
-    input.set_lod(lod)
     helper.append_op(
         type='sequence_conv',
         inputs={
-            'X': input,
+            'X': [input],
             'Filter': filter,
         },
         outputs={"Out": pre_bias},
@@ -311,18 +310,18 @@ def conv2d(input,
     return helper.append_activation(pre_act)
 
 
-def pool1d(input,
-           pool_size,
-           pool_type,
-           pool_stride=1,
-           pool_padding=0,
-           global_pooling=False,
-           program=None,
-           init_program=None):
+def sequence_pool(input,
+                  pool_size,
+                  pool_type,
+                  pool_stride=1,
+                  pool_padding=0,
+                  global_pooling=False,
+                  program=None,
+                  init_program=None):
     # FIXME(dzh) : want to unify the argument of python layer
     # function. So we ignore some unecessary attributes
 
-    ENUM_POOL_TYPE = ["max", "avg", "sqrt", "last", "first"]
+    ENUM_POOL_TYPE = set(["max", "avg", "sqrt", "last", "first"])
     if pool_type not in ENUM_POOL_TYPE:
         raise ValueError("Unknown pool_type: '%s'. It can only be %s.",
                          str(pool_type), " ".join(ENUM_POOL_TYPE))
@@ -333,9 +332,9 @@ def pool1d(input,
 
     helper.append_op(
         type="sequence_pool",
-        inputs={"X": input},
+        inputs={"X": [input]},
         outputs={"Out": pool_out},
-        attrs={"strategy": pool_type, })
+        attrs={"strategy": pool_type})
 
     return pool_out
 
