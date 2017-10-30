@@ -70,6 +70,29 @@ class TestLayer(unittest.TestCase):
 
         # print str(program)
 
+    def test_elementwise_add_with_act(self):
+        program = Program()
+        init_program = Program()
+        image1 = layers.data(
+            name='pixel1',
+            shape=[3, 48, 48],
+            data_type='float32',
+            program=program,
+            init_program=init_program)
+        image2 = layers.data(
+            name='pixel2',
+            shape=[3, 48, 48],
+            data_type='float32',
+            program=program,
+            init_program=init_program)
+        out = layers.elementwise_add(
+            x=image1,
+            y=image2,
+            act='relu',
+            program=program,
+            init_program=init_program)
+        # print(program)
+
 
 if __name__ == '__main__':
     unittest.main()
