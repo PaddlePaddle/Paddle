@@ -5,7 +5,7 @@ import re
 
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
-    'StaticRNN', 'cast'
+    'StaticRNN', 'cast', 'batch_norm'
 ]
 
 
@@ -150,7 +150,7 @@ def _create_op_func_(op_type):
             outputs[name] = [helper.create_tmp_variable(dtype=dtype)]
         helper.append_op(
             type=op_type, inputs=inputs, outputs=outputs, attrs=kwargs)
-        return out
+        return helper.append_activation(out)
 
     func.__name__ = op_type
     globals()[op_type] = func
@@ -160,6 +160,7 @@ def _create_op_func_(op_type):
 
 _create_op_func_('mean')
 _create_op_func_('mul')
+_create_op_func_('elementwise_add')
 _create_op_func_('dropout')
 _create_op_func_('reshape')
 
