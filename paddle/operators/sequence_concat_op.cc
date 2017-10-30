@@ -68,12 +68,12 @@ class SequenceConcatOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The level should be less than the level number of inputs.")
         .SetDefault(0);
     AddComment(R"DOC(
-    The sequence_concat operator concatenates multiple LoDTensors. 
-    It only supports sequence (LoD Tensor with level number is 1) 
+    The sequence_concat operator concatenates multiple LoDTensors.
+    It only supports sequence (LoD Tensor with level number is 1)
     or a nested sequence (LoD tensor with level number is 2) as its input.
     - Case1:
       If the axis is other than 0(here, axis is 1 and level is 1),
-      each input should have the same LoD information and the LoD 
+      each input should have the same LoD information and the LoD
       information of the output keeps the same as the input.
 
       LoD(x0) = {{0,2,4}, {0,1,2,3,4}}; Dims(x0) = (4,3,4)
@@ -81,7 +81,7 @@ class SequenceConcatOpMaker : public framework::OpProtoAndCheckerMaker {
       LoD(Out) = {{0,2,4}, {0,1,2,3,4}}; Dims(Out) = (4,7,4)
 
     - Case2:
-      If the axis is 0(here, leve is 0), the inputs are concatenated along 
+      If the axis is 0(here, leve is 0), the inputs are concatenated along
       time steps, the LoD information of the output need to re-compute.
 
       LoD(x0) = {{0,2,4}, {0,1,2,3,4}}; Dims(x0) = (4,3,4)
@@ -94,7 +94,7 @@ class SequenceConcatOpMaker : public framework::OpProtoAndCheckerMaker {
       LoD(x0) = {{0,2,4}, {0,1,2,3,4}}; Dims(x0) = (4,3,4)
       LoD(x1) = {{0,3,5}, {0,1,3,4,5}}; Dims(x1) = (5,3,4)
       LoD(Out) = {{0,5,9}, {0,2,5,7,9}}; Dims(Out) = (9,3,4)
-      
+
     NOTE: The levels of all the inputs should be the same.
     )DOC");
   }
