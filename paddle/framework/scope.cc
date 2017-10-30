@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <memory>  // for unique_ptr
 #include <mutex>   // for call_once
+#include "glog/logging.h"
 #include "paddle/string/printf.h"
 
 namespace paddle {
@@ -23,7 +24,10 @@ namespace framework {
 
 Scope::~Scope() {
   DropKids();
-  for (auto& kv : vars_) delete kv.second;
+  for (auto& kv : vars_) {
+    VLOG(3) << "Destroy variable " << kv.first;
+    delete kv.second;
+  }
 }
 
 Scope& Scope::NewScope() const {
@@ -38,6 +42,7 @@ Variable* Scope::Var(const std::string& name) {
   }
   Variable* v = new Variable();
   vars_[name] = v;
+  VLOG(3) << "Create variable " << name << " on scope";
   v->name_ = &(vars_.find(name)->first);
   return v;
 }

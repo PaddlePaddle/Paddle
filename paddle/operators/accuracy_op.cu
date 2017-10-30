@@ -81,7 +81,5 @@ class AccuracyOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_GPU_KERNEL(accuracy, paddle::operators::AccuracyOpCUDAKernel<float>,
-                       paddle::operators::AccuracyOpCUDAKernel<double>,
-                       paddle::operators::AccuracyOpCUDAKernel<int>,
+REGISTER_OP_GPU_KERNEL(accuracy, paddle::operators::AccuracyOpCUDAKernel<int>,
                        paddle::operators::AccuracyOpCUDAKernel<int64_t>);

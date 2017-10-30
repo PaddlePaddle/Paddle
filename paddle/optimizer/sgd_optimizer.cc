@@ -27,16 +27,14 @@ void SGDOptimizer::Update(const Tensor *gradient) {
   }
 }
 
-const char *SGDOptimizer::SerializeState(int *state_len) {
+std::string SGDOptimizer::SerializeState() {
   SGDOptimizerState state;
   state.set_num_sample_passed(num_sample_passed_);
-  std::string lr_str = this->lr_policy_->SerializeState(state_len);
+  std::string lr_str = this->lr_policy_->SerializeState();
   state.mutable_lr_state()->ParseFromString(lr_str);
   TensorToProto(*parameter_, state.mutable_parameter());
   if (momentum_ != 0.0) TensorToProto(*momentums_, state.mutable_momentums());
-  auto str = state.SerializeAsString();
-  *state_len += str.size();
-  return str.c_str();
+  return state.SerializeAsString();
 }
 
 void SGDOptimizer::DeserializeState(const std::string &str) {
@@ -46,7 +44,7 @@ void SGDOptimizer::DeserializeState(const std::string &str) {
   this->lr_policy_->DeserializeState(lr_state.SerializeAsString());
   num_sample_passed_ = state.num_sample_passed();
   ProtoToTensor(state.parameter(), parameter_);
-  if (momentum_ != 0.0) ProtoToTensor(state.parameter(), momentums_);
+  if (momentum_ != 0.0) ProtoToTensor(state.momentums(), momentums_);
 }
 
 }  // namespace optimizer
