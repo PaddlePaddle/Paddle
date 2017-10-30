@@ -316,12 +316,17 @@ class TestPow(OpTest):
 class TestPow1(OpTest):
     def setUp(self):
         self.op_type = "pow"
-        self.inputs = {'X': np.random.uniform(2, 3, [2, 2]).astype("float32")}
+        self.inputs = {
+            'X': np.random.uniform(-2, 2, [11, 17]).astype("float32")
+        }
         self.attrs = {'factor': 2.0}
         self.outputs = {'Y': np.power(self.inputs['X'], 2)}
 
     def test_check_output(self):
         self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=0.02)
 
 
 class TestSTanh(OpTest):

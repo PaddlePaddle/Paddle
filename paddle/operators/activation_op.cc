@@ -448,6 +448,10 @@ REGISTER_OP(pow, ops::ActivationOp, ops::PowOpMaker, pow_grad,
 REGISTER_OP_CPU_KERNEL(pow, ops::PowKernel<paddle::platform::CPUPlace, float>,
                        ops::PowKernel<paddle::platform::CPUPlace, double>);
 
+REGISTER_OP_CPU_KERNEL(pow_grad,
+                       ops::PowGradKernel<paddle::platform::CPUPlace, float>,
+                       ops::PowGradKernel<paddle::platform::CPUPlace, double>);
+
 #define REGISTER_ACTIVATION_CPU_KERNEL(act_type, functor, grad_functor)       \
   REGISTER_OP_CPU_KERNEL(                                                     \
       act_type,                                                               \

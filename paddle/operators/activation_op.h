@@ -660,7 +660,7 @@ struct PowFunctor {
     auto* in_data = in.data<T>();
     auto* out_data = out->data<T>();
     platform::Transform<Place> trans;
-    trans(ctx, in_data, in_data + out->numel(), out_data, Pow<T>(factor));
+    trans(ctx, in_data, in_data + in.numel(), out_data, Pow<T>(factor));
   }
 };
 
@@ -674,6 +674,48 @@ class PowKernel : public framework::OpKernel<T> {
     T factor = static_cast<T>(context.Attr<float>("factor"));
     PowFunctor<Place, T> functor;
     functor(context.device_context(), *in, factor, out);
+  }
+};
+
+namespace {
+template <typename T>
+struct PowGrad {
+  explicit PowGrad(const T& factor) : factor_(factor) {}
+
+  HOSTDEVICE T operator()(const T& a, const T& b) const {
+    return a * factor_ * std::pow(b, factor_ - 1);
+  }
+  T factor_;
+};
+}  // namespace
+
+template <typename Place, typename T>
+struct PowGradFunctor {
+  void operator()(const platform::DeviceContext& ctx,
+                  const framework::Tensor& in1, const framework::Tensor& in2,
+                  const T& factor, framework::Tensor* out) {
+    auto* in1_data = in1.data<T>();
+    auto* in2_data = in2.data<T>();
+    auto* out_data = out->data<T>();
+    platform::Transform<Place> trans;
+    trans(ctx, in1_data, in1_data + in1.numel(), in2_data, out_data,
+          PowGrad<T>(factor));
+  }
+};
+
+template <typename Place, typename T>
+class PowGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* in = context.Input<framework::Tensor>("X");
+    auto* out_grad =
+        context.Input<framework::Tensor>(framework::GradVarName("Y"));
+    auto* in_grad =
+        context.Output<framework::Tensor>(framework::GradVarName("X"));
+    in_grad->mutable_data<T>(context.GetPlace());
+    T factor = static_cast<T>(context.Attr<float>("factor"));
+    PowGradFunctor<Place, T> functor;
+    functor(context.device_context(), *out_grad, *in, factor, in_grad);
   }
 };
 
