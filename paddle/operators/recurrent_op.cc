@@ -304,32 +304,25 @@ class RecurrentGradOp : public RecurrentBase {
       size_t seq_offset = reverse ? step_id : seq_len - step_id - 1;
       VLOG(3) << "Recurrent backward operate at the time step " << seq_offset;
       auto &cur_scope = scopes.CurScope();
-      // Link OG for RNN
-      for (auto &og_name : Inputs(kOutputGrads)) {
-        LinkVarWithCallback(
-            scope, og_name, &cur_scope, og_name,
-            [&seq_offset, &og_name](const framework::Tensor &outside,
-                                    framework::Tensor *inside) {
-              inside->ShareDataWith(outside.Slice(seq_offset, seq_offset + 1));
-              auto dims = framework::vectorize(inside->dims());
-              dims.erase(dims.begin());
-              inside->Resize(framework::make_ddim(dims));
-              VLOG(4) << "RNN OG.name=" << og_name
-                      << " shape=" << inside->dims();
-            });
-      }
+      // Link outside::output_grads --> inside::output_grads
+      //   inside::output_grad = outside::output_grad[seq_offset:seq_offset+1]
+      LinkVarsWithCallback(
+          scope, Inputs(kOutputGrads), &cur_scope, Inputs(kOutputGrads),
+          [&seq_offset](const framework::Tensor &outside,
+                        framework::Tensor *inside) {
+            inside->ShareDataWith(outside.Slice(seq_offset, seq_offset + 1));
+            auto dims = framework::vectorize(inside->dims());
+            dims.erase(dims.begin());
+            inside->Resize(framework::make_ddim(dims));
+          });
 
       // Link memories
+      //   ex_scope::ex_state_grad --> cur_scope::cur_state_grad
       if (step_id != 0) {  // not at beginning
-        auto &ex_states = Attr<std::vector<std::string>>(kExStates);
-        auto &states = Attr<std::vector<std::string>>(kStates);
         auto &ex_scope = scopes.ExScope();
-        PADDLE_ENFORCE_EQ(ex_states.size(), states.size());
-        for (size_t i = 0; i < ex_states.size(); ++i) {
-          auto ex_state_grad = framework::GradVarName(ex_states[i]);
-          auto state_grad = framework::GradVarName(states[i]);
-          LinkVar(ex_scope, ex_state_grad, &cur_scope, state_grad);
-        }
+        LinkVars(
+            ex_scope, GradVarLists(Attr<std::vector<std::string>>(kExStates)),
+            &cur_scope, GradVarLists(Attr<std::vector<std::string>>(kStates)));
       }
 
       // Run
@@ -339,91 +332,82 @@ class RecurrentGradOp : public RecurrentBase {
       auto local_var_names = LocalVarNames(cur_scope);
 
       // Accumulate params
+      //   outside::param_grad += inside::param_grad
       {
         auto &pg_names = Outputs(kParamGrads);
         auto &p_names = Inputs(kParameters);
         PADDLE_ENFORCE_EQ(pg_names.size(), p_names.size());
 
         for (size_t prog_id = 0; prog_id < pg_names.size(); ++prog_id) {
-          auto param_grad_name = framework::GradVarName(p_names[prog_id]);
-          if (local_var_names.find(param_grad_name) !=
-              local_var_names.end()) {  // local scope contains that gradient
-            if (step_id == 0) {         // zero outside tensor
-              auto &inside_tensor = cur_scope.FindVar(param_grad_name)
-                                        ->Get<framework::LoDTensor>();
-              framework::AttributeMap attrs;
+          auto inside_grad_name = framework::GradVarName(p_names[prog_id]);
 
-              attrs["data_type"] = framework::ToDataType(inside_tensor.type());
-              attrs["shape"] = framework::vectorize2int(inside_tensor.dims());
-              attrs["value"] = 0.0f;
+          // If does not compute gradient of that variable inside rnn, just
+          // continue
+          if (local_var_names.find(inside_grad_name) == local_var_names.end()) {
+            continue;
+          }
 
-              auto zero_op = framework::OpRegistry::CreateOp(
-                  "fill_constant", {}, {{"Out", {pg_names[prog_id]}}}, attrs);
-              zero_op->Run(scope, dev_ctx);
+          // zero gradient variable in step 0
+          if (step_id == 0) {
+            auto &inside_tensor = cur_scope.FindVar(inside_grad_name)
+                                      ->Get<framework::LoDTensor>();
+            framework::AttributeMap attrs;
+
+            attrs["data_type"] = framework::ToDataType(inside_tensor.type());
+            attrs["shape"] = framework::vectorize2int(inside_tensor.dims());
+            attrs["value"] = 0.0f;
+
+            auto zero_op = framework::OpRegistry::CreateOp(
+                "fill_constant", {}, {{"Out", {pg_names[prog_id]}}}, attrs);
+            zero_op->Run(scope, dev_ctx);
+          }
+
+          // sum gradient
+          auto *outside_var = scope.FindVar(pg_names[prog_id]);
+          PADDLE_ENFORCE(outside_var != nullptr);
+          auto &outside_tensor =
+              *outside_var->GetMutable<framework::LoDTensor>();
+
+          std::string result_var_name;
+          auto *local_result_var = cur_scope.Var(&result_var_name);
+          auto &local_result_tensor =
+              *local_result_var->GetMutable<framework::LoDTensor>();
+
+          local_result_tensor.ShareDataWith(outside_tensor);
+
+          auto sum_op = framework::OpRegistry::CreateOp(
+              "sum", {{"X", {result_var_name, inside_grad_name}}},
+              {{"Out", {result_var_name}}}, {});
+          sum_op->Run(cur_scope, dev_ctx);
+        }
+      }
+
+      // Copy input gradient from inside to outside
+      //   outside::input_grad[seq_offset: seq_offset + 1] = inside::input_grad
+      LinkVarsWithCallback(
+          cur_scope, GradVarLists(Inputs(kInputs)), scope, Outputs(kInputGrads),
+          [&](const framework::LoDTensor &inside,
+              framework::LoDTensor *outside) {
+            if (step_id == 0) {  // alloc memory
+              outside->Resize(AppendSeqLenToDim(seq_len, inside.dims()));
+              outside->mutable_data(dev_ctx.GetPlace(), inside.type());
             }
 
-            auto *outside_var = scope.FindVar(pg_names[prog_id]);
-            PADDLE_ENFORCE(outside_var != nullptr);
-            auto &outside_tensor =
-                *outside_var->GetMutable<framework::LoDTensor>();
-
-            std::string result_var_name;
-            auto *local_result_var = cur_scope.Var(&result_var_name);
-            auto &local_result_tensor =
-                *local_result_var->GetMutable<framework::LoDTensor>();
-
-            local_result_tensor.ShareDataWith(outside_tensor);
-
-            auto sum_op = framework::OpRegistry::CreateOp(
-                "sum", {{"X", {result_var_name, param_grad_name}}},
-                {{"Out", {result_var_name}}}, {});
-            sum_op->Run(cur_scope, dev_ctx);
-          }
-        }
-      }
-
-      // Copy IG
-      {
-        auto &inames = Inputs(kInputs);
-        auto &ig_names = Outputs(kInputGrads);
-        PADDLE_ENFORCE_EQ(inames.size(), ig_names.size());
-        for (size_t i = 0; i < inames.size(); ++i) {
-          auto &iname = inames[i];
-          auto ig_name_inside = framework::GradVarName(iname);
-          auto &ig_name_outside = ig_names[i];
-
-          auto *outside = scope.FindVar(ig_name_outside)
-                              ->GetMutable<framework::LoDTensor>();
-          auto &inside =
-              cur_scope.FindVar(ig_name_inside)->Get<framework::LoDTensor>();
-          if (step_id == 0) {  // alloc memory
-            outside->Resize(AppendSeqLenToDim(seq_len, inside.dims()));
-            outside->mutable_data(dev_ctx.GetPlace(), inside.type());
-          }
-
-          auto dst = outside->Slice(seq_offset, seq_offset + 1);
-          dst.CopyFrom(inside, dev_ctx.GetPlace(), dev_ctx);
-        }
-      }
+            auto dst = outside->Slice(seq_offset, seq_offset + 1);
+            dst.CopyFrom(inside, dev_ctx.GetPlace(), dev_ctx);
+          });
 
       if (step_id + 1 == seq_len) {  // at_end
-        // Copy Memory
-        auto &init_state_grads = Outputs(kInitStateGrads);
-        auto &ex_states = Attr<std::vector<std::string>>(kExStates);
-        PADDLE_ENFORCE_EQ(init_state_grads.size(), ex_states.size());
-        for (size_t i = 0; i < init_state_grads.size(); ++i) {
-          auto grad_name_inside = framework::GradVarName(ex_states[i]);
-          auto &inside_tensor =
-              scope.FindVar(grad_name_inside)->Get<framework::LoDTensor>();
-
-          auto grad_name_outside = init_state_grads[i];
-          auto outside_tensor = scope.FindVar(grad_name_outside)
-                                    ->GetMutable<framework::LoDTensor>();
-          outside_tensor->Resize(inside_tensor.dims());
-          outside_tensor->mutable_data(dev_ctx.GetPlace(),
-                                       inside_tensor.type());
-          outside_tensor->CopyFrom(inside_tensor, dev_ctx.GetPlace(), dev_ctx);
-        }
+        // copy initialize states gradient from inside to outside
+        LinkVarsWithCallback(
+            cur_scope, GradVarLists(Attr<std::vector<std::string>>(kExStates)),
+            scope, Outputs(kInitStateGrads),
+            [&](const framework::LoDTensor &inside,
+                framework::LoDTensor *outside) {
+              outside->Resize(inside.dims());
+              outside->mutable_data(dev_ctx.GetPlace(), inside.type());
+              outside->CopyFrom(inside, dev_ctx.GetPlace(), dev_ctx);
+            });
       }
       scopes.Next();
     }
@@ -447,6 +431,14 @@ class RecurrentGradOp : public RecurrentBase {
       local_var_name_set.insert(each);
     }
     return local_var_name_set;
+  }
+  static std::vector<std::string> GradVarLists(
+      const std::vector<std::string> &var_names) {
+    std::vector<std::string> retv;
+    retv.reserve(var_names.size());
+    std::transform(var_names.begin(), var_names.end(), std::back_inserter(retv),
+                   framework::GradVarName);
+    return retv;
   }
 };
 
