@@ -5,7 +5,7 @@ import re
 
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
-    'StaticRNN', 'cast'
+    'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool'
 ]
 
 
