@@ -154,6 +154,17 @@ class LayerHelper(object):
             *args, persistable=False, **kwargs)
 
     def append_bias_op(self, input_var, num_flatten_dims=None):
+        """
+        Append bias operator and return its output. If the user does not set 
+        bias_attr, append_bias_op will return input_var
+         
+        :param input_var: the input variable. The len(input_var.shape) is larger
+        or equal than 2.
+        :param num_flatten_dims: The input tensor will be flatten as a matrix 
+        when adding bias.
+        `matrix.shape = product(input_var.shape[0:num_flatten_dims]), product(
+                input_var.shape[num_flatten_dims:])`
+        """
         if num_flatten_dims is None:
             num_flatten_dims = self.kwargs.get('num_flatten_dims', None)
             if num_flatten_dims is None:
