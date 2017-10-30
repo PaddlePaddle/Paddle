@@ -27,10 +27,11 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	uuid "github.com/satori/go.uuid"
 
 	pb "github.com/PaddlePaddle/Paddle/go/proto"
@@ -90,13 +91,13 @@ func float32ByteToString(c []byte) string {
 	}
 
 	var s string
-	s = "top:" + float32ToString(a)
+	s = float32ToString(a)
 
 	if b == nil {
 		return s
 	}
 
-	s += "...tail:" + float32ToString(b)
+	s = strings.Replace(s, "]", "", -1) + "..." + strings.Replace(float32ToString(b), "[", "", -1)
 	return s
 }
 
