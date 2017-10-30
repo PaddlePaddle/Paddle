@@ -64,5 +64,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(fill_constant, ops::FillConstantOp,
                              ops::FillConstantOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    fill_constant,
-    ops::FillConstantOpKernel<paddle::platform::CPUPlace, float>);
+    fill_constant, ops::FillConstantOpKernel<paddle::platform::CPUPlace, float>,
+    ops::FillConstantOpKernel<paddle::platform::CPUPlace, double>,
+    ops::FillConstantOpKernel<paddle::platform::CPUPlace, int>);
