@@ -99,7 +99,7 @@ class RecurrentOpTest(unittest.TestCase):
 
         self.output = self.create_rnn_op()
         loss = mean(x=self.output)
-        # append_backward_ops(loss)
+        append_backward_ops(loss)
 
     def create_rnn_op(self):
         x = data(

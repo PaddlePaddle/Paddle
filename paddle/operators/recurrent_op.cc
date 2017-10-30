@@ -434,7 +434,7 @@ class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
     }
 
     for (auto &output_param : this->OutputNames()) {
-      if (output_param == "step_scopes") {
+      if (output_param == kStepScopes) {
         grad->SetInput(output_param, this->Output(output_param));
         grad->SetInput(framework::GradVarName(output_param),
                        this->Output(output_param));
@@ -455,7 +455,30 @@ class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
+class RecurrentGradOpShapeInference : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext *ctx) const override {
+    std::vector<std::string> input{kInputs, kInitialStates, kParameters};
+    std::vector<std::string> output{kOutputs};
+    for (auto &s : input) {
+      PADDLE_ENFORCE(ctx->HasInput(s));
+      PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName(s)));
+    }
+    for (auto &s : output) {
+      PADDLE_ENFORCE(ctx->HasInput(s));
+    }
+
+    for (auto &s : input) {
+      ctx->SetOutputDim(s, ctx->GetInputDim(framework::GradVarName(s)));
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
+
 REGISTER_OPERATOR(recurrent, paddle::operators::RecurrentOp,
-                  paddle::operators::RecurrentOpProtoMaker);
+                  paddle::operators::RecurrentOpProtoMaker,
+                  paddle::operators::RecurrentGradOpDescMaker);
+REGISTER_OPERATOR(recurrent_grad, paddle::operators::RecurrentGradOp,
+                  paddle::operators::RecurrentGradOpShapeInference);
