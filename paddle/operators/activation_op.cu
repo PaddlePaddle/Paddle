@@ -20,7 +20,7 @@ namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(pow, ops::PowKernel<paddle::platform::GPUPlace, float>,
                        ops::PowKernel<paddle::platform::GPUPlace, double>);
 
-REGISTER_OP_CPU_KERNEL(pow_grad,
+REGISTER_OP_GPU_KERNEL(pow_grad,
                        ops::PowGradKernel<paddle::platform::GPUPlace, float>,
                        ops::PowGradKernel<paddle::platform::GPUPlace, double>);
 
