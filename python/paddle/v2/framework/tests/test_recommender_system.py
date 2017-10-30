@@ -147,11 +147,14 @@ def get_mov_combined_features():
         program=program,
         init_program=init_program)
 
-    mov_categories_hidden = layers.embedding(
+    mov_categories_emb = layers.embedding(
         input=category_id,
         size=[CATEGORY_DICT_SIZE, 32],
         program=program,
         init_program=init_program)
+
+    mov_categories_hidden = layers.sums(
+        input=mov_categories_emb, program=program, init_program=init_program)
 
     MOV_TITLE_DICT_SIZE = len(paddle.dataset.movielens.get_movie_title_dict())
 
@@ -208,7 +211,7 @@ def model():
     label = layers.data(
         name='score',
         shape=[1],
-        data_type='float32',
+        data_type='int32',
         program=program,
         init_program=init_program)
 
@@ -229,12 +232,11 @@ def main():
     place = core.CPUPlace()
     exe = Executor(place)
     exe.run(init_program, feed={}, fetch_list=[])
-    PASS_NUM = 100
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.movielens.train(), buf_size=8192),
-        batch_size=256),
+        batch_size=256)
 
     feeding = {
         'user_id': 0,
@@ -247,15 +249,32 @@ def main():
         'score': 7
     }
 
-    # def func_feed(feeding, data):
-    #     feed = {}
-    #     input_data = [[data_idx[idx] for data_idx in data] for idx in xrange(5)]
-    #     for k, v in feeding.iteritems():
+    def func_feed(feeding, data):
+        feed_tensors = {}
+        for (key, idx) in feeding.iteritems():
+            tensor = core.LoDTensor()
+            if key != "category_id" and key != "movie_title":
+                numpy_data = np.array(map(lambda x: x[idx], data)).astype(
+                    "int32")
+            else:
+                numpy_data = map(lambda x: np.array(x[idx]).astype("int32"),
+                                 data)
+                lod = [[len(item)] for item in numpy_data]
+                numpy_data = np.concatenate(numpy_data, axis=0)
+                tensor.set_lod(lod)
 
+            tensor.set(numpy_data, place)
+            feed_tensors[key] = tensor
+        return feed_tensors
+
+    PASS_NUM = 100
     for pass_id in range(PASS_NUM):
         for data in train_reader():
             print data
-            outs = exe.run(program, feed=feeding, fetch_list=[cost])
+            print func_feed(feeding, data)
+            outs = exe.run(program,
+                           feed=func_feed(feeding, data),
+                           fetch_list=[cost])
             out = np.array(outs[0])
             if out[0] < 10.0:
                 exit(
