@@ -189,8 +189,13 @@ label = layers.data(
     data_type='int64',
     program=program,
     init_program=init_program)
-# net = vgg16_bn_drop(images, program, init_program)
+
+# Add neural network config
+# option 1. resnet
 net = resnet_cifar10(images, 32, program, init_program)
+# option 2. vgg
+# net = vgg16_bn_drop(images, program, init_program)
+
 # print(program)
 
 predict = layers.fc(input=net,
@@ -244,7 +249,7 @@ for pass_id in range(PASS_NUM):
               " loss:" + str(loss))
         batch_id = batch_id + 1
 
-        if batch_id > 10:
+        if batch_id > 1:
             # this model is slow, so if we can train two mini batch, we think it works properly.
             exit(0)
 exit(1)
