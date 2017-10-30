@@ -219,13 +219,21 @@ def square_error_cost(input, label, **kwargs):
     return square_out
 
 
-def accuracy(input, label, **kwargs):
+def accuracy(input, label, k=1, **kwargs):
     helper = LayerHelper("accuracy", **kwargs)
-    out_dtype = kwargs.get("out_dtype", "float32")
-    acc_out = helper.create_tmp_variable(dtype=out_dtype)
+    topk_out = helper.create_tmp_variable(dtype=input.data_type)
+    topk_indices = helper.create_tmp_variable(dtype="int64")
+    helper.append_op(
+        type="top_k",
+        inputs={"X": [input]},
+        outputs={"Out": [topk_out],
+                 "Indices": [topk_indices]},
+        attrs={"k": k})
+    acc_out_dtype = kwargs.get("out_dtype", "float32")
+    acc_out = helper.create_tmp_variable(dtype=acc_out_dtype)
     helper.append_op(
         type="accuracy",
-        inputs={"Inference": [input],
+        inputs={"Inference": [topk_indices],
                 "Label": [label]},
         outputs={"Accuracy": [acc_out]})
     return acc_out
