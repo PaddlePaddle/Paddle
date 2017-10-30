@@ -117,10 +117,11 @@ class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
              "sequence according to context_length, context_stride and "
              "context_start")
         .AsDispensable();
-    AddInput("Filter",
-             "(Tensor) the input(Filter) is an learnable parameter."
-             "This is a tensor with shape (N, D), where N is the "
-             "context_length, D is the output feature size.");
+    AddInput(
+        "Filter",
+        "(Tensor) the input(Filter) is an learnable parameter."
+        "This is a tensor with shape (N, D), where N is the "
+        "context_length * input_hidden_size, D is the output feature size.");
     AddOutput(
         "Out",
         "(LoDTensor) the output(Out) is a LodTensor, which support "
@@ -133,18 +134,21 @@ class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
                   "is trainable or not.")
         .SetDefault(false);
     AddAttr<int>("contextLength",
-                 "(int, default 3) the contextLength of SequenceConvOp is the "
+                 "(int) the contextLength of SequenceConvOp is the "
                  "height of the convolution kernel.")
-        .SetDefault(3)
         .GreaterThan(0);
     AddAttr<int>("contextStart",
                  "(int, default 0) the contextStart of SequenceConvOp "
                  "represents the beginning of the convolution of the number of "
-                 "rows of sequence, which can be negative.")
+                 "rows of sequence, which can be negative. The negative number "
+                 "means to pad contextStart time-steps of zeros or learnable "
+                 "parameters at the beginning of each instance. The positive "
+                 "number means to skip contextStart time-steps of each "
+                 "instance.")
         .SetDefault(0);
     AddAttr<int>("contextStride",
                  "(int, default 1) the contextStride of SequenceConvOp "
-                 "represents the step length of convolution. "
+                 "represents the stride length of convolution kernel. "
                  "Currently, SequenceConvOp only supports"
                  "contextStride=1.")
         .SetDefault(1)
