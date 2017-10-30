@@ -153,8 +153,12 @@ def get_mov_combined_features():
         program=program,
         init_program=init_program)
 
-    mov_categories_hidden = layers.sums(
-        input=mov_categories_emb, program=program, init_program=init_program)
+    mov_categories_hidden = layers.sequence_pool(
+        input=mov_categories_emb,
+        pool_size=None,
+        pool_type="sum",
+        program=program,
+        init_program=init_program)
 
     MOV_TITLE_DICT_SIZE = len(paddle.dataset.movielens.get_movie_title_dict())
 
@@ -175,9 +179,12 @@ def get_mov_combined_features():
         input=mov_title_emb,
         num_filters=32,
         filter_size=3,
+        pool_type="sum",
         pool_size=3,
         pool_stride=1,
-        act="tanh")
+        act="tanh",
+        program=program,
+        init_program=init_program)
 
     concat_embed = layers.concat(
         input=[mov_fc, mov_categories_hidden, mov_title_conv],
@@ -200,11 +207,9 @@ def model():
     mov_combined_features = get_mov_combined_features()
 
     # need cos sim
-    inference = layers.cos_sim(
-        a=usr_combined_features,
-        b=mov_combined_features,
-        size=1,
-        scale=5,
+    inference, _, _ = layers.cos_sim(
+        X=usr_combined_features,
+        Y=mov_combined_features,
         program=program,
         init_program=init_program)
 
@@ -259,9 +264,14 @@ def main():
             else:
                 numpy_data = map(lambda x: np.array(x[idx]).astype("int32"),
                                  data)
-                lod = [[len(item)] for item in numpy_data]
+                lod_info = [len(item) for item in numpy_data]
+                offset = 0
+                lod = [offset]
+                for item in lod_info:
+                    offset += item
+                    lod.append(offset)
                 numpy_data = np.concatenate(numpy_data, axis=0)
-                tensor.set_lod(lod)
+                tensor.set_lod([lod])
 
             tensor.set(numpy_data, place)
             feed_tensors[key] = tensor
@@ -281,38 +291,6 @@ def main():
                     0)  # if avg cost less than 10.0, we think our code is good.
             else:
                 exit(1)
-    # def event_handler(event):
-    #     if isinstance(event, paddle.event.EndIteration):
-    #         if event.batch_id % 100 == 0:
-    #             print "Pass %d Batch %d Cost %.2f" % (
-    #                 event.pass_id, event.batch_id, event.cost)
-
-    # trainer.train(
-    #     reader=paddle.batch(
-    #         paddle.reader.shuffle(
-    #             paddle.dataset.movielens.train(), buf_size=8192),
-    #         batch_size=256),
-    #     event_handler=event_handler,
-    #     feeding=feeding,
-    #     num_passes=1)
-
-    # user_id = 234
-    # movie_id = 345
-
-    # user = paddle.dataset.movielens.user_info()[user_id]
-    # movie = paddle.dataset.movielens.movie_info()[movie_id]
-
-    # feature = user.value() + movie.value()
-
-    # infer_dict = copy.copy(feeding)
-    # del infer_dict['score']
-
-    # prediction = paddle.infer(
-    #     output_layer=inference,
-    #     parameters=parameters,
-    #     input=[feature],
-    #     feeding=infer_dict)
-    # print(prediction + 5) / 2
 
 
 main()

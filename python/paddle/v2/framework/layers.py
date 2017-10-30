@@ -5,7 +5,7 @@ import re
 
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
-    'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool'
+    'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool', 'sums'
 ]
 
 
@@ -162,6 +162,8 @@ _create_op_func_('mean')
 _create_op_func_('mul')
 _create_op_func_('dropout')
 
+# _create_op_func_('cos_sim')
+
 
 def cast(x, data_type, program=None):
     helper = LayerHelper('cast', **locals())
@@ -197,6 +199,21 @@ def sums(input, program=None, init_program=None):
     return out
 
 
+def cos_sim(X, Y, program=None, init_program=None):
+    helper = LayerHelper('cos_sim', **locals())
+    out = helper.create_tmp_variable(dtype=X.data_type)
+    xnorm = helper.create_tmp_variable(dtype=X.data_type)
+    ynorm = helper.create_tmp_variable(dtype=X.data_type)
+    helper.append_op(
+        type='cos_sim',
+        inputs={'X': [X],
+                'Y': [Y]},
+        outputs={'Out': [out],
+                 'XNorm': [xnorm],
+                 'YNorm': [ynorm]})
+    return out, xnorm, ynorm
+
+
 def cross_entropy(input, label, **kwargs):
     helper = LayerHelper('cross_entropy', **kwargs)
     out = helper.create_tmp_variable(dtype=input.data_type)
@@ -227,9 +244,26 @@ def square_error_cost(input, label, **kwargs):
     return square_out
 
 
+def square_error_cost(input, label, **kwargs):
+    helper = LayerHelper('square_error_cost', **kwargs)
+    minus_out = helper.create_tmp_variable(dtype=input.data_type)
+    helper.append_op(
+        type='elementwise_sub',
+        inputs={'X': [input],
+                'Y': [label]},
+        outputs={'Out': [minus_out]})
+
+    square_out = helper.create_tmp_variable(dtype=input.data_type)
+    helper.append_op(
+        type='pow',
+        inputs={'X': [minus_out]},
+        outputs={'Y': [square_out]},
+        attrs={'factor': 2.0})
+    return square_out
+
+
 def sequence_conv(input,
                   num_filters,
-                  name=None,
                   filter_size=3,
                   act=None,
                   stride=1,
@@ -245,7 +279,7 @@ def sequence_conv(input,
     helper = LayerHelper('sequence_conv', **locals())
     dtype = helper.input_dtype()
 
-    filter_shape = [num_filters, filter_size]
+    filter_shape = [num_filters * filter_size, filter_size]
     filter = helper.create_parameter(
         attr=helper.param_attr, shape=filter_shape, dtype=dtype)
     pre_bias = helper.create_tmp_variable(dtype)
@@ -254,7 +288,7 @@ def sequence_conv(input,
         type='sequence_conv',
         inputs={
             'X': [input],
-            'Filter': filter,
+            'Filter': [filter],
         },
         outputs={"Out": pre_bias},
         attrs={
@@ -262,9 +296,7 @@ def sequence_conv(input,
             'context_start': 0,
             'context_length': filter_size
         })
-
-    pre_act = helper.append_bias_op(pre_bias)
-    return helper.append_activation(pre_act)
+    return pre_bias
 
 
 def conv2d(input,
@@ -329,8 +361,15 @@ def sequence_pool(input,
                   init_program=None):
     # FIXME(dzh) : want to unify the argument of python layer
     # function. So we ignore some unecessary attributes
+    # class ENUM_POOL_TYPE(object):
+    #     AVERAGE = 0
+    #     SUM = 1
+    #     SQRT = 2
+    #     MAX = 3
+    #     LAST = 4
+    #     FIRST = 5
 
-    ENUM_POOL_TYPE = set(["max", "avg", "sqrt", "last", "first"])
+    ENUM_POOL_TYPE = set(["max", "avg", "sum", "sqrt", "last", "first"])
     if pool_type not in ENUM_POOL_TYPE:
         raise ValueError("Unknown pool_type: '%s'. It can only be %s.",
                          str(pool_type), " ".join(ENUM_POOL_TYPE))
@@ -339,11 +378,12 @@ def sequence_pool(input,
     dtype = helper.input_dtype()
     pool_out = helper.create_tmp_variable(dtype)
 
+    # FIXME(dzh): strategy
     helper.append_op(
         type="sequence_pool",
         inputs={"X": [input]},
         outputs={"Out": pool_out},
-        attrs={"strategy": pool_type})
+        attrs={"strategy": 1})
 
     return pool_out
 
