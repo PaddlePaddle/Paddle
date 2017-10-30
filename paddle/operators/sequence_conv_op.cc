@@ -30,19 +30,20 @@ class SequenceConvOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SequenceConvOp should not be null.");
 
-    int context_length = ctx->Attrs().Get<int>("context_length");
-    bool padding_trainable = ctx->Attrs().Get<bool>("padding_trainable");
-    int context_start = ctx->Attrs().Get<int>("context_start");
+    int context_length = ctx->Attrs().Get<int>("contextLength");
+    int context_start = ctx->Attrs().Get<int>("contextStart");
 
     auto in_dims = ctx->GetInputDim("X");
     auto filter_dims = ctx->GetInputDim("Filter");
+    PADDLE_ENFORCE(ctx->Attrs().Get<int>("contextStride") == 1,
+                   "Currently, SequenceConvOp only supports contextStride=1.");
     PADDLE_ENFORCE(in_dims.size() == 2 && filter_dims.size() == 2,
                    "Input(X, Filter) should be 2-D tensor.");
     PADDLE_ENFORCE(filter_dims[0] == context_length * in_dims[1],
                    "Filter's height should be context_length * "
-                   "number_of_input_features .");
+                   "input_hidden_size .");
 
-    if (padding_trainable) {
+    if (ctx->Attrs().Get<bool>("paddingTrainable")) {
       PADDLE_ENFORCE(
           ctx->HasInput("PaddingData"),
           "Input(PaddingData) of SequenceConvOp should not be null.");
@@ -54,7 +55,7 @@ class SequenceConvOp : public framework::OperatorWithKernel {
 
       if (context_start == 0 && context_length == 1) {
         PADDLE_THROW(
-            "If context_start is 0 and context_length is 1, padding_trainable "
+            "If context_start is 0 and context_length is 1, paddingTrainable "
             "should be false.");
       }
       PADDLE_ENFORCE(padding_dim.size() == 2,
@@ -81,13 +82,14 @@ class SequenceConvGradOp : public framework::OperatorWithKernel {
                    "Gradient of output(Out) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("X"), "The input(X) should not be null.");
 
-    if (ctx->Attrs().Get<bool>("padding_trainable") &&
+    if (ctx->Attrs().Get<bool>("paddingTrainable") &&
         ctx->HasOutput(framework::GradVarName("PaddingData"))) {
       ctx->SetOutputDim(framework::GradVarName("PaddingData"),
                         ctx->GetInputDim("PaddingData"));
     }
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+      ctx->ShareLoD(framework::GradVarName("X"), "X");
     }
     if (ctx->HasOutput(framework::GradVarName("Filter"))) {
       ctx->SetOutputDim(framework::GradVarName("Filter"),
@@ -105,54 +107,58 @@ class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
         "X",
         "(LoDTensor) the input(X) is a LodTensor, which support "
         "variable-time length input sequence. The underlying tensor in "
-        "this LoDTensor is a matrix with shape (T, D), where, T is the "
-        "total time steps in this mini-batch, D is the input feature size.");
+        "this LoDTensor is a matrix with shape (T, N), where, T is the "
+        "total time steps in this mini-batch, N is the input_hidden_size.");
     AddInput("PaddingData",
              "(Tensor, optional) the input(PaddingData) is an optional "
              "parameter, and it is learnable. "
-             "This is a tensor with shape (N, D), where N is the "
-             "top_pad + bottom_pad, D is the input feature size. In order to "
+             "This is a tensor with shape (P, N), where P is the "
+             "top_pad + bottom_pad, N is the input_hidden_size. In order to "
              "ensure the equal length of sequence before and after "
              "convolution, it is necessary to fill the top and bottom of each "
              "sequence according to context_length, context_stride and "
              "context_start")
         .AsDispensable();
-    AddInput("Filter",
-             "(Tensor) the input(Filter) is an learnable parameter."
-             "This is a tensor with shape (N, D), where N is the "
-             "context_length, D is the output feature size.");
+    AddInput(
+        "Filter",
+        "(Tensor) the input(Filter) is an learnable parameter."
+        "This is a tensor with shape (K, M), where K is the "
+        "context_length * input_hidden_size, M is the output feature size.");
     AddOutput(
         "Out",
         "(LoDTensor) the output(Out) is a LodTensor, which support "
         "variable-time length output sequence. The underlying tensor in "
-        "this LoDTensor is a matrix with shape (T, D), where, T is the "
-        "total time steps in this mini-batch, D is the output feature size.");
+        "this LoDTensor is a matrix with shape (T, M), where, T is the "
+        "total time steps in this mini-batch, M is the output feature size.");
 
-    AddAttr<bool>("padding_trainable",
-                  "(bool, default false) the padding data of SequenceConvOp "
+    AddAttr<bool>("paddingTrainable",
+                  "(bool, default:false) the padding data of SequenceConvOp "
                   "is trainable or not.")
         .SetDefault(false);
-    AddAttr<int>("context_length",
-                 "(int, default 3) the context_length of SequenceConvOp is the "
+    AddAttr<int>("contextLength",
+                 "(int) the contextLength of SequenceConvOp is the "
                  "height of the convolution kernel.")
-        .SetDefault(3)
         .GreaterThan(0);
-    AddAttr<int>("context_start",
-                 "(int, default 0) the context_start of SequenceConvOp "
+    AddAttr<int>("contextStart",
+                 "(int, default:0) the contextStart of SequenceConvOp "
                  "represents the beginning of the convolution of the number of "
-                 "rows of sequence, which can be negative.")
+                 "rows of sequence, which can be negative. The negative number "
+                 "means to pad contextStart time-steps of zeros or learnable "
+                 "parameters at the beginning of each instance. The positive "
+                 "number means to skip contextStart time-steps of each "
+                 "instance.")
         .SetDefault(0);
-    AddAttr<int>("context_stride",
-                 "(int, default 1) the context_stride of SequenceConvOp "
-                 "represents the step length of convolution. "
+    AddAttr<int>("contextStride",
+                 "(int, default:1) the contextStride of SequenceConvOp "
+                 "represents the stride length of convolution kernel. "
                  "Currently, SequenceConvOp only supports"
-                 "context_stride=1.")
+                 "contextStride=1.")
         .SetDefault(1)
         .GreaterThan(0);
 
     AddComment(R"DOC(
     SequenceConvOp performs convolution operation on features of
-    context_length time-steps of each instance.
+    contextLength time-steps of each instance.
     The convolution operation calculates the output based on the input, filter
     and strides, paddings parameters. The size of each dimension of the
     parameters is checked in the infer-shape. In order to ensure the equal

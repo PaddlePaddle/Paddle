@@ -39,8 +39,10 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
 
   if (ctx->Attrs().Get<bool>("globalPooling")) {
     ksize.resize(static_cast<size_t>(in_x_dims.size()) - 2);
-    for (size_t i = 0; i < ksize.size(); ++i)
+    for (size_t i = 0; i < ksize.size(); ++i) {
+      paddings[i] = 0;
       ksize[i] = static_cast<int>(in_x_dims[i + 2]);
+    }
   }
 
   PADDLE_ENFORCE(in_x_dims.size() - ksize.size() == 2U,
@@ -84,15 +86,16 @@ Pool2dOpMaker::Pool2dOpMaker(framework::OpProto *proto,
                        "(string), pooling type, can be \"max\" for max-pooling "
                        "and \"avg\" for average-pooling.")
       .InEnum({"max", "avg"});
-  AddAttr<std::vector<int>>(
-      "ksize",
-      "(vector ), the pooling window size(height, width) of pooling operator."
-      "If globalPooling = true, ksize is ignored and need not be "
-      "specified.");  // TODO(Chengduo): Add checker. (Currently,
+  AddAttr<std::vector<int>>("ksize",
+                            "(vector ), the pooling window size(height, width) "
+                            "of pooling operator."
+                            "If globalPooling = true, ksize and paddings will "
+                            "be ignored.");  // TODO(Chengduo): Add checker.
+                                             // (Currently,
   // TypedAttrChecker don't support vector type.)
   AddAttr<bool>("globalPooling",
                 "(bool default: false), whether to use the global pooling."
-                "If globalPooling = true, ksize is ignored.")
+                "If globalPooling = true, ksize and paddings will be ignored.")
       .SetDefault(false);
   AddAttr<std::vector<int>>(
       "strides",
@@ -101,7 +104,8 @@ Pool2dOpMaker::Pool2dOpMaker(framework::OpProto *proto,
   // TypedAttrChecker don't support vector type.)
   AddAttr<std::vector<int>>(
       "paddings",
-      "(vector defalut:{0,0}), paddings(height, width) of pooling operator.")
+      "(vector defalut:{0,0}), paddings(height, width) of pooling operator."
+      "If globalPooling = true, paddings and ksize will be ignored.")
       .SetDefault({0, 0});  // TODO(Chengduo): Add checker. (Currently,
   // TypedAttrChecker don't support vector type.)
 
@@ -145,25 +149,28 @@ Pool3dOpMaker::Pool3dOpMaker(framework::OpProto *proto,
                        "(string), pooling type, can be \"max\" for max-pooling "
                        "and \"avg\" for average-pooling.")
       .InEnum({"max", "avg"});
-  AddAttr<std::vector<int>>(
-      "ksize",
-      "(vector ), the pooling window size(depth, height, width) of pooling "
-      "operator."
-      "If globalPooling = true, ksize is ignored and need not be "
-      "specified.");  // TODO(Chengduo): Add checker. (Currently,
-                      // TypedAttrChecker don't support vector type.)
+  AddAttr<std::vector<int>>("ksize",
+                            "(vector ), the pooling window size(depth, height, "
+                            "width) of pooling "
+                            "operator."
+                            "If globalPooling = true, ksize and paddings wille "
+                            "be ignored.");  // TODO(Chengduo): Add checker.
+                                             // (Currently,
+  // TypedAttrChecker don't support vector type.)
   AddAttr<bool>("globalPooling",
                 "(bool default: false), whether to use the global pooling."
-                "If globalPooling = true, ksize is ignored.")
+                "If globalPooling = true, ksize and paddings wille be ignored.")
       .SetDefault(false);
   AddAttr<std::vector<int>>("strides",
                             "(vector, default:{1,1,1}), strides(depth, height, "
                             "width) of pooling operator.")
       .SetDefault({1, 1, 1});  // TODO(Chengduo): Add checker. (Currently,
                                // TypedAttrChecker don't support vector type.)
-  AddAttr<std::vector<int>>("paddings",
-                            "(vector defalut:{0,0,0}), paddings(depth, height, "
-                            "width) of pooling operator.")
+  AddAttr<std::vector<int>>(
+      "paddings",
+      "(vector defalut:{0,0,0}), paddings(depth, height, "
+      "width) of pooling operator."
+      "If globalPooling = true, ksize and paddings wille be ignored.")
       .SetDefault({0, 0, 0});  // TODO(Chengduo): Add checker. (Currently,
                                // TypedAttrChecker don't support vector type.)
 
