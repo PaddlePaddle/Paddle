@@ -50,5 +50,14 @@ class TestSeqExpandCase2(TestSeqExpand):
         self.inputs = {'X': (x_data, x_lod), 'Y': (y_data, y_lod)}
 
 
+class TestSeqExpandCase3(TestSeqExpand):
+    def set_data(self):
+        x_data = np.random.uniform(0.1, 1, [4, 1]).astype('float32')
+        x_lod = [[0, 1, 2, 3, 4]]
+        y_data = np.random.uniform(0.1, 1, [6, 1]).astype('float32')
+        y_lod = [[0, 2, 4, 4, 6]]
+        self.inputs = {'X': (x_data, x_lod), 'Y': (y_data, y_lod)}
+
+
 if __name__ == '__main__':
     unittest.main()
