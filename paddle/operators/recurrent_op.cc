@@ -417,6 +417,44 @@ class RecurrentOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using OpDescBind = framework::OpDescBind;
+
+ protected:
+  virtual std::unique_ptr<OpDescBind> Apply() const {
+    auto *grad = new OpDescBind();
+    grad->SetType(this->GradOpType());
+
+    for (auto &input_param : this->InputNames()) {
+      grad->SetInput(input_param, this->Input(input_param));
+      grad->SetOutput(framework::GradVarName(input_param),
+                      this->InputGrad(input_param));
+    }
+
+    for (auto &output_param : this->OutputNames()) {
+      if (output_param == "step_scopes") {
+        grad->SetInput(output_param, this->Output(output_param));
+        grad->SetInput(framework::GradVarName(output_param),
+                       this->Output(output_param));
+      } else {
+        grad->SetInput(output_param, this->Output(output_param));
+        grad->SetInput(framework::GradVarName(output_param),
+                       this->OutputGrad(output_param));
+      }
+    }
+
+    grad->SetAttrMap(this->Attrs());
+
+    return std::unique_ptr<OpDescBind>(grad);
+  }
+
+  virtual std::string GradOpType() const {
+    return this->ForwardOpType() + "_grad";
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 REGISTER_OPERATOR(recurrent, paddle::operators::RecurrentOp,
