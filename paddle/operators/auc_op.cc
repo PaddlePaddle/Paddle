@@ -22,7 +22,7 @@ class AucOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContextBase *ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Inference"),
                    "Input of Inference must be initialized.");
     PADDLE_ENFORCE(ctx->HasInput("Label"),
@@ -62,18 +62,18 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddComment(
         R"DOC(Computes the AUC according forward output and label.
-        Best to use for binary classification evaluations.
+Best to use for binary classification evaluations.
 
-        If input label contains values other than 0 and 1, it will be cast
-        to bool.
+If input label contains values other than 0 and 1, it will be cast
+to bool.
 
-        You can find the definations here: 
-        https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve
-        
-        Possible curves are:
-        - ROC: Receiver operating characteristic
-        - PR: Precision Recall
-        )DOC");
+You can find the definations here: 
+https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve
+
+Possible curves are:
+- ROC: Receiver operating characteristic
+- PR: Precision Recall
+)DOC");
   }
 };
 

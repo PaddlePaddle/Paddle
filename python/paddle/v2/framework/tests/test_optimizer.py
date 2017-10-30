@@ -27,6 +27,32 @@ class TestOptimizer(unittest.TestCase):
         sgd_op = opts[0]
         self.assertEqual(sgd_op.type, "sgd")
 
+    def test_sgd_optimizer_with_global_step(self):
+        program = framework.Program()
+        block = program.global_block()
+        mul_x = block.create_parameter(
+            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
+        block.append_op(
+            type="mul",
+            inputs={"X": mul_x,
+                    "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1})
+        global_step = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="step")
+        sgd_optimizer = optimizer.SGDOptimizer(
+            learning_rate=0.01, global_step=global_step)
+        opts = sgd_optimizer.minimize(mul_out)
+        self.assertEqual(len(opts), 2)
+        sgd_op = opts[0]
+        self.assertEqual(sgd_op.type, "sgd")
+        increment_op = opts[1]
+        self.assertEqual(increment_op.type, "increment")
+
 
 class TestMomentumOptimizer(unittest.TestCase):
     class MockMomentum(optimizer.MomentumOptimizer):

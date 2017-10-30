@@ -29,7 +29,6 @@ limitations under the License. */
 #include "paddle/framework/op_info.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/selected_rows.h"
-#include "paddle/framework/shape_inference.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/place.h"
@@ -123,7 +122,7 @@ class OperatorBase {
  protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
-  // I (Inputs)opear
+  // I (Inputs)
   // O (Outputs)
   // OG (Output Gradients)
   VariableNameMap inputs_;
@@ -288,6 +287,16 @@ class ExecutionContext {
     return device_context_;
   }
 
+  //! Get actual name vector for this input.
+  const std::vector<std::string>& Inputs(const std::string& name) const {
+    return op_.Inputs(name);
+  }
+
+  //! Get actual name vector for this output.
+  const std::vector<std::string>& Outputs(const std::string& name) const {
+    return op_.Outputs(name);
+  }
+
 #ifdef PADDLE_WITH_CUDA
   const platform::CUDADeviceContext& cuda_device_context() const {
     PADDLE_ENFORCE(platform::is_gpu_place(device_context_.GetPlace()));
@@ -316,226 +325,6 @@ Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const;
 template <>
 std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
     const std::string& name) const;
-
-class CompileTimeInferShapeContext : public InferShapeContext {
- public:
-  CompileTimeInferShapeContext(const OpDescBind& op, const BlockDescBind& block)
-      : op_(op), block_(block) {}
-
-  bool HasInput(const std::string& name) const override {
-    const std::vector<std::string>& input_names = op_.Input(name);
-    auto length = input_names.size();
-    if (length == 0) {
-      return false;
-    }
-    PADDLE_ENFORCE_EQ(length, 1UL,
-                      "Input(%s) should have only one value, "
-                      "but it have %d now",
-                      name, length);
-    return block_.HasVarRecursive(input_names[0]);
-  }
-
-  bool HasOutput(const std::string& name) const override {
-    const std::vector<std::string>& output_names = op_.Output(name);
-    auto length = output_names.size();
-    if (length == 0) {
-      return false;
-    }
-    PADDLE_ENFORCE_EQ(length, 1UL,
-                      "Output(%s) should have only one value, "
-                      "but it have %d now",
-                      name, length);
-    return block_.HasVarRecursive(output_names[0]);
-  }
-
-  bool HasInputs(const std::string& name) const override {
-    const std::vector<std::string>& input_names = op_.Input(name);
-    if (input_names.empty()) {
-      return false;
-    }
-    for (auto& input : input_names) {
-      if (!block_.HasVarRecursive(input)) return false;
-    }
-    return true;
-  }
-
-  bool HasOutputs(const std::string& name) const override {
-    const std::vector<std::string>& output_names = op_.Output(name);
-    if (output_names.empty()) {
-      return false;
-    }
-    for (auto& output : output_names) {
-      if (!block_.HasVarRecursive(output)) return false;
-    }
-    return true;
-  }
-
-  DDim GetInputDim(const std::string& name) const override {
-    std::vector<DDim> ddims = GetInputsDim(name);
-    auto length = ddims.size();
-    PADDLE_ENFORCE_EQ(length, 1UL,
-                      "Input(%s) should have 1 value, "
-                      "but it has %d now",
-                      name, length);
-    return ddims[0];
-  }
-
-  void SetInputDim(const std::string& name, const DDim& dim) override {
-    SetInputsDim(name, {dim});
-  }
-
-  DDim GetOutputDim(const std::string& name) const override {
-    std::vector<DDim> ddims = GetOutputsDim(name);
-    auto length = ddims.size();
-    PADDLE_ENFORCE_EQ(length, 1UL,
-                      "Output(%s) should have 1 value, "
-                      "but it has %d now",
-                      name, length);
-    return ddims[0];
-  }
-
-  void SetOutputDim(const std::string& name, const DDim& dim) override {
-    SetOutputsDim(name, {dim});
-  }
-
-  AttrReader Attrs() const override { return AttrReader(op_.GetAttrMap()); }
-
-  const std::vector<std::string>& Inputs(
-      const std::string& name) const override {
-    return op_.Input(name);
-  }
-
-  const std::vector<std::string>& Outputs(
-      const std::string& name) const override {
-    return op_.Output(name);
-  }
-
- private:
-  DDim GetDim(const std::string& name) const override {
-    auto var = block_.FindVarRecursive(name);
-    PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
-    return framework::make_ddim(var->Shape());
-  }
-
-  void SetDim(const std::string& name, const DDim& dim) override {
-    block_.FindVarRecursive(name)->SetShape(framework::vectorize(dim));
-  }
-
-  const OpDescBind& op_;
-  const BlockDescBind& block_;
-};
-
-class RuntimeInferShapeContext : public InferShapeContext {
- public:
-  RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope)
-      : op_(op), scope_(scope) {}
-
-  bool HasInput(const std::string& name) const override {
-    auto& ins = Inputs(name);
-    size_t length = ins.size();
-    if (length == 0) {
-      return false;
-    }
-    PADDLE_ENFORCE_EQ(length, 1UL, "Input %s should have more than one inputs",
-                      name);
-    auto ipt = ins[0];
-    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-    return var != nullptr;
-  }
-
-  bool HasOutput(const std::string& name) const override {
-    auto& outs = Outputs(name);
-    size_t length = outs.size();
-    if (length == 0) {
-      return false;
-    }
-    PADDLE_ENFORCE_EQ(length, 1UL, "Output %s should have more than one inputs",
-                      name);
-    auto ipt = outs[0];
-    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-    return var != nullptr;
-  }
-
-  bool HasInputs(const std::string& name) const override {
-    auto inputs = op_.Inputs(name);
-    if (inputs.empty()) {
-      return false;
-    }
-    for (auto& input : inputs) {
-      if (scope_.FindVar(input) == nullptr) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  bool HasOutputs(const std::string& name) const override {
-    auto outputs = op_.Outputs(name);
-    if (outputs.empty()) {
-      return false;
-    }
-    for (auto& output : outputs) {
-      if (scope_.FindVar(output) == nullptr) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  DDim GetInputDim(const std::string& name) const override {
-    return GetDim(op_.Input(name));
-  }
-
-  void SetInputDim(const std::string& name, const DDim& dim) override {
-    SetDim(op_.Input(name), dim);
-  }
-
-  DDim GetOutputDim(const std::string& name) const override {
-    return GetDim(op_.Output(name));
-  }
-
-  void SetOutputDim(const std::string& name, const DDim& dim) override {
-    SetDim(op_.Output(name), dim);
-  }
-
-  AttrReader Attrs() const override { return AttrReader(op_.Attrs()); }
-
-  const std::vector<std::string>& Inputs(
-      const std::string& name) const override {
-    return op_.Inputs(name);
-  }
-
-  const std::vector<std::string>& Outputs(
-      const std::string& name) const override {
-    return op_.Outputs(name);
-  }
-
- private:
-  DDim GetDim(const std::string& name) const override {
-    Variable* var = scope_.FindVar(name);
-    if (var->IsType<LoDTensor>()) {
-      return var->Get<LoDTensor>().dims();
-    } else if (var->IsType<SelectedRows>()) {
-      return var->Get<SelectedRows>().GetCompleteDims();
-    } else {
-      PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
-    }
-  }
-
-  void SetDim(const std::string& name, const DDim& dim) override {
-    Variable* var = scope_.FindVar(name);
-    if (var->IsType<LoDTensor>()) {
-      var->GetMutable<LoDTensor>()->Resize(dim);
-    } else if (var->IsType<SelectedRows>()) {
-      var->GetMutable<SelectedRows>()->set_height(dim[0]);
-    } else {
-      PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
-    }
-  }
-
-  const OperatorBase& op_;
-  const Scope& scope_;
-};
 
 class OpKernelBase {
  public:
@@ -595,32 +384,7 @@ class OperatorWithKernel : public OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void Run(const Scope& scope,
-           const platform::DeviceContext& dev_ctx) const final {
-    VLOG(3) << "Running operator " << this->Type();
-    RuntimeInferShapeContext infer_shape_ctx(*this, scope);
-    this->InferShape(&infer_shape_ctx);
-
-    ExecutionContext ctx(*this, scope, dev_ctx);
-
-    // check if op[type] has kernel registered.
-    auto& all_op_kernels = AllOpKernels();
-    auto kernels_iter = all_op_kernels.find(type_);
-    if (kernels_iter == all_op_kernels.end()) {
-      PADDLE_THROW("op[%s] has no kernel", type_);
-    }
-
-    // check if op[type] have kernel for kernel_key
-    OpKernelMap& kernels = kernels_iter->second;
-    auto kernel_key = OpKernelKey(IndicateDataType(ctx), dev_ctx);
-    auto kernel_iter = kernels.find(kernel_key);
-
-    if (kernel_iter == kernels.end()) {
-      PADDLE_THROW("op[%s] has no kernel with kernel_key[%s]", type_,
-                   kernel_key);
-    }
-
-    kernel_iter->second->Compute(ctx);
-  }
+           const platform::DeviceContext& dev_ctx) const final;
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&
   AllOpKernels() {
@@ -644,6 +408,7 @@ class OperatorWithKernel : public OperatorBase {
   // indicate kernel DataType by input data. Defaultly all input data must be
   // same.
   virtual DataType IndicateDataType(const ExecutionContext& ctx) const {
+    VLOG(3) << "Default IndicateDataType " << this->Type();
     auto& scope = ctx.scope();
     int data_type = -1;
     for (auto& input : this->inputs_) {
