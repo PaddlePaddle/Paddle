@@ -3,11 +3,7 @@ import numpy as np
 from op_test import OpTest
 
 
-def max_pool3D_forward_naive(x,
-                             ksize,
-                             strides,
-                             paddings=[0, 0, 0],
-                             global_pool=0):
+def max_pool3D_forward_naive(x, ksize, strides, paddings, global_pool=0):
 
     N, C, D, H, W = x.shape
     if global_pool == 1:
@@ -44,7 +40,7 @@ def max_pool3D_forward_naive(x,
     return out, mask
 
 
-def max_pool2D_forward_naive(x, ksize, strides, paddings=[0, 0], global_pool=0):
+def max_pool2D_forward_naive(x, ksize, strides, paddings, global_pool=0):
 
     N, C, H, W = x.shape
     if global_pool == 1:
@@ -77,10 +73,14 @@ def max_pool2D_forward_naive(x, ksize, strides, paddings=[0, 0], global_pool=0):
 
 class TestMaxPoolWithIndex_Op(OpTest):
     def setUp(self):
-        self.initTestCase()
+        self.init_test_case()
+        if self.global_pool:
+            self.paddings = [0 for _ in range(len(self.paddings))]
         input = np.random.random(self.shape).astype("float32")
         output, mask = self.pool_forward_naive(input, self.ksize, self.strides,
                                                self.paddings, self.global_pool)
+        output = output.astype("float32")
+        mask = mask.astype("float32")
 
         self.attrs = {
             'strides': self.strides,
@@ -98,7 +98,7 @@ class TestMaxPoolWithIndex_Op(OpTest):
     # def test_check_grad(self):
     #     self.check_grad(set(['X']), ['Out'], max_relative_error=0.07)
 
-    def initTestCase(self):
+    def init_test_case(self):
         self.global_pool = True
         self.index = "max_pool3d_with_index"
         self.op_type = "%s" % self.index
@@ -110,7 +110,7 @@ class TestMaxPoolWithIndex_Op(OpTest):
 
 
 class TestCase1(TestMaxPoolWithIndex_Op):
-    def initTestCase(self):
+    def init_test_case(self):
         self.global_pool = True
         self.op_type = "max_pool3d_with_index"
         self.pool_forward_naive = max_pool3D_forward_naive
@@ -121,7 +121,7 @@ class TestCase1(TestMaxPoolWithIndex_Op):
 
 
 class TestCase2(TestMaxPoolWithIndex_Op):
-    def initTestCase(self):
+    def init_test_case(self):
         self.global_pool = False
         self.op_type = "max_pool3d_with_index"
         self.pool_forward_naive = max_pool3D_forward_naive
@@ -132,7 +132,7 @@ class TestCase2(TestMaxPoolWithIndex_Op):
 
 
 class TestCase3(TestMaxPoolWithIndex_Op):
-    def initTestCase(self):
+    def init_test_case(self):
         self.global_pool = False
         self.op_type = "max_pool3d_with_index"
         self.pool_forward_naive = max_pool3D_forward_naive
@@ -143,7 +143,7 @@ class TestCase3(TestMaxPoolWithIndex_Op):
 
 
 class TestCase4(TestMaxPoolWithIndex_Op):
-    def initTestCase(self):
+    def init_test_case(self):
         self.global_pool = True
         self.op_type = "max_pool3d_with_index"
         self.pool_forward_naive = max_pool3D_forward_naive
@@ -154,7 +154,7 @@ class TestCase4(TestMaxPoolWithIndex_Op):
 
 
 class TestCase5(TestMaxPoolWithIndex_Op):
-    def initTestCase(self):
+    def init_test_case(self):
         self.global_pool = True
         self.op_type = "max_pool3d_with_index"
         self.pool_forward_naive = max_pool3D_forward_naive
@@ -165,7 +165,7 @@ class TestCase5(TestMaxPoolWithIndex_Op):
 
 
 class TestCase6(TestMaxPoolWithIndex_Op):
-    def initTestCase(self):
+    def init_test_case(self):
         self.global_pool = False
         self.op_type = "max_pool2d_with_index"
         self.pool_forward_naive = max_pool2D_forward_naive
@@ -176,7 +176,7 @@ class TestCase6(TestMaxPoolWithIndex_Op):
 
 
 class TestCase7(TestMaxPoolWithIndex_Op):
-    def initTestCase(self):
+    def init_test_case(self):
         self.global_pool = False
         self.op_type = "max_pool2d_with_index"
         self.pool_forward_naive = max_pool2D_forward_naive
@@ -187,7 +187,7 @@ class TestCase7(TestMaxPoolWithIndex_Op):
 
 
 class TestCase8(TestMaxPoolWithIndex_Op):
-    def initTestCase(self):
+    def init_test_case(self):
         self.global_pool = True
         self.op_type = "max_pool2d_with_index"
         self.pool_forward_naive = max_pool2D_forward_naive
@@ -198,7 +198,7 @@ class TestCase8(TestMaxPoolWithIndex_Op):
 
 
 class TestCase9(TestMaxPoolWithIndex_Op):
-    def initTestCase(self):
+    def init_test_case(self):
         self.global_pool = True
         self.op_type = "max_pool2d_with_index"
         self.pool_forward_naive = max_pool2D_forward_naive

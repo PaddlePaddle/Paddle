@@ -49,9 +49,12 @@ class TestPool2d_Op(OpTest):
         self.init_test_case()
         self.init_op_type()
         self.init_pool_type()
+        if self.global_pool:
+            self.paddings = [0 for _ in range(len(self.paddings))]
         input = np.random.random(self.shape).astype("float32")
         output = self.pool2D_forward_naive(input, self.ksize, self.strides,
-                                           self.paddings, self.global_pool)
+                                           self.paddings,
+                                           self.global_pool).astype("float32")
         self.inputs = {'X': input}
 
         self.attrs = {

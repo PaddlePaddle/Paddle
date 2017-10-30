@@ -251,6 +251,8 @@ class Operator(object):
                 self.desc.set_output(out_proto.name, out_argu_names)
 
         if attrs is not None:
+            if not isinstance(attrs, dict):
+                raise TypeError("'attrs' should be a dict.")
             for attr in proto.attrs:
                 attr_name = attr.name
                 if (not attr_name in attrs) or (attrs[attr_name] is None):
@@ -290,6 +292,14 @@ class Operator(object):
     @property
     def output_names(self):
         return self.desc.output_names()
+
+    @property
+    def idx(self):
+        for i, op in enumerate(self.block.ops):
+            if op == self:
+                return i
+        raise ValueError(
+            "Can't find op itself in it's block. It could be a bug of Paddle.")
 
     def has_attr(self, name):
         return self.desc.has_attr(name)
@@ -342,7 +352,10 @@ class Block(object):
         return {v for k, v in self.vars.iteritems() if isinstance(v, Parameter)}
 
     def create_var(self, *args, **kwargs):
-        return Variable(self, *args, **kwargs)
+        var = Variable(self, *args, **kwargs)
+        if 'init_attr' in kwargs:
+            self._prepend_initialize_ops_(var, kwargs['init_attr'])
+        return var
 
     def has_var(self, name):
         return name in self.vars
@@ -440,10 +453,31 @@ class Program(object):
         p.sync_with_cpp()
         return p
 
+    def prune(self, targets):
+        if not isinstance(targets, list):
+            targets = [targets]
+        targets_idx = []
+        for t in targets:
+            if not isinstance(t, Operator):
+                if isinstance(t, Variable):
+                    t = t.op
+                else:
+                    raise ValueError(
+                        "All targets of prune() can only be Variable or Operator."
+                    )
+
+            targets_idx.append([t.block.idx, t.idx])
+        res = Program()
+        res.desc = core.prune(self.desc, targets_idx)
+        res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
+        res.sync_with_cpp()
+        return res
+
     @staticmethod
     def parse_from_string(binary_str):
         p = Program()
         p.desc = core.ProgramDesc(binary_str)
+        p.blocks = [Block(p, i) for i in xrange(p.desc.num_blocks())]
         p.sync_with_cpp()
         return p
 

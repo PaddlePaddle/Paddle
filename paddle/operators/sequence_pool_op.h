@@ -144,11 +144,11 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
           Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>
               in_t_map(in_t.data<T>(), h, w);
           int row_id;
-          Eigen::array<int, 2> extents = {1, 1};
+          Eigen::array<int, 2> extents{{1, 1}};
           for (int col_id = 0; col_id < w; col_id++) {
             in_t_map.col(col_id).maxCoeff(&row_id);
-            Eigen::array<int, 2> in_offsets = {row_id, col_id};
-            Eigen::array<int, 2> out_offsets = {0, col_id};
+            Eigen::array<int, 2> in_offsets{{row_id, col_id}};
+            Eigen::array<int, 2> out_offsets{{0, col_id}};
             in_g_e.slice(in_offsets, extents).device(place) =
                 out_g_e.slice(out_offsets, extents);
           }
