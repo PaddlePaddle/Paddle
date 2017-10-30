@@ -128,13 +128,13 @@ private:
 
   /**
    * Get delta percent
-   * if many(>failRate) wrong(abs(dnn-ref)/abs(ref)>thres) points return the
-   * max(diff/ref)
-   * else return sum(abs(a-b)) / sum(abs(b))
+   * if many(>failRate) wrong(abs(val-ref)/abs(ref) > thres) points
+   * return the max(diff/ref)
+   * else return sum(abs(diff)) / sum(abs(ref))
    * The return value should be smaller than eps when passing.
    */
-  static double getDelta(const real* d1,
-                         const real* d2,
+  static double getDelta(const real* refer,
+                         const real* value,
                          size_t len,
                          const float failRate = 1e-3,
                          const float thres = 0.1);
