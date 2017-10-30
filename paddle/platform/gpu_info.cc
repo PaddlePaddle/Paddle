@@ -17,7 +17,6 @@ limitations under the License. */
 #include "gflags/gflags.h"
 
 #include "paddle/platform/enforce.h"
-#include "paddle/platform/environment.h"
 
 DEFINE_double(fraction_of_gpu_memory_to_use, 0.95,
               "Default use 95% of GPU memory for PaddlePaddle,"
