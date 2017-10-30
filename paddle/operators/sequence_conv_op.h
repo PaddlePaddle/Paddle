@@ -40,7 +40,6 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     int context_stride = context.Attr<int>("contextStride");
     bool padding_trainable = context.Attr<bool>("paddingTrainable");
 
-    // InferShape by in_lod
     PADDLE_ENFORCE_EQ(in->lod().size(), 1UL,
                       "Only support one level sequence now.");
 
@@ -51,20 +50,17 @@ class SequenceConvKernel : public framework::OpKernel<T> {
 
     int up_pad = std::max(0, -context_start);
     int down_pad = std::max(0, context_start + context_length - 1);
-    int sequence_width;
-    sequence_width = static_cast<int>(in->dims()[1]);
+    int sequence_width = static_cast<int>(in->dims()[1]);
 
-    // Use col_shape in the im2col calculation.
     framework::DDim col_shape = {in->dims()[0],
-                                 sequence_width * context_length};
+                                 context_length * sequence_width};
     Tensor col;
     col.mutable_data<T>(col_shape, context.GetPlace());
-    math::SetConstant<Place, T> set_zero;
     // Because if padding_trainable is false, padding data should be zeros.
+    math::SetConstant<Place, T> set_zero;
     set_zero(context.device_context(), &col, static_cast<T>(0));
 
-    paddle::operators::math::ContextProjectFunctor<Place, T>
-        seq_project_functor;
+    math::ContextProjectFunctor<Place, T> seq_project_functor;
 
     seq_project_functor(context.device_context(), *in, *padding_data, col,
                         padding_trainable, context_start, context_length,
@@ -79,8 +75,8 @@ template <typename Place, typename T>
 class SequenceConvGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* out_g = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* in_g = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* out_g = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* filter_g = context.Output<Tensor>(framework::GradVarName("Filter"));
     auto* padding_data_g =
         context.Output<Tensor>(framework::GradVarName("PaddingData"));
@@ -113,10 +109,8 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       math::matmul<Place, T>(context.device_context(), *out_g, false, *filter,
                              true, T(1.0), &col, T(1.0));
     }
-    paddle::operators::math::ContextProjectFunctor<Place, T>
-        seq_project_functor;
-    paddle::operators::math::ContextProjectGradFunctor<Place, T>
-        seq_project_grad_functor;
+    math::ContextProjectFunctor<Place, T> seq_project_functor;
+    math::ContextProjectGradFunctor<Place, T> seq_project_grad_functor;
 
     if (in_g) {
       in_g->mutable_data<T>(context.GetPlace());
