@@ -308,15 +308,15 @@ TEST(MKLDNNActivation, Activations) {
 }
 
 DECLARE_string(config_args);
-TEST(MKLDNNLayer, branches) {
-  std::vector<std::string> cases = {"conv", "pool", "fc"};
+TEST(MKLDNNNet, net) {
+  std::vector<std::string> cases = {"simple", "branch"};
   for (auto name : cases) {
-    std::string config = "./gserver/tests/mkldnn_branches_" + name + ".conf";
+    std::string config = "./gserver/tests/mkldnn_" + name + "_net.conf";
     for (auto channels : {2, 32}) {
       std::ostringstream oss;
       oss << "channels=" << channels;
       FLAGS_config_args = oss.str();
-      MKLDNNTester::runBranchesTest(config);
+      MKLDNNTester::runNetTest(config);
     }
   }
 }

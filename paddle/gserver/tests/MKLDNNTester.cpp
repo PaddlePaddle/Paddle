@@ -521,12 +521,16 @@ void MKLDNNTester::getOutResult(const std::string& configPath,
     gradientMachine->forward(in.inArgs[i], &outArgs, PASS_TRAIN);
     // save forward result
     for (size_t k = 0; k < outArgs.size(); k++) {
-      MatrixPtr value = Matrix::create(outArgs[k].value->getHeight(),
-                                       outArgs[k].value->getWidth(),
-                                       false,
-                                       false);
-      value->copyFrom(*outArgs[k].value);
-      out.outValues.push_back(value);
+      const MatrixPtr& src = outArgs[k].value;
+      MatrixPtr dst =
+          Matrix::create(src->getHeight(), src->getWidth(), false, false);
+      if (typeid(*src) == typeid(MKLDNNMatrix)) {
+        MKLDNNMatrixPtr dnnSrc = std::dynamic_pointer_cast<MKLDNNMatrix>(src);
+        dnnSrc->copyTo(*dst);
+      } else {
+        dst->copyFrom(*src);
+      }
+      out.outValues.push_back(dst);
     }
 
     // random backward input
@@ -559,9 +563,9 @@ void MKLDNNTester::compareResult(DataOut& ref, DataOut& dnn, float eps) {
   }
 }
 
-void MKLDNNTester::runBranchesTest(const std::string& configPath,
-                                   size_t iter,
-                                   float eps) {
+void MKLDNNTester::runNetTest(const std::string& configPath,
+                              size_t iter,
+                              float eps) {
   DataIn in;
   initArgument(in, configPath, iter);
   DataOut outCpu, outDnn;
