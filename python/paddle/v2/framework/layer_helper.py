@@ -153,7 +153,12 @@ class LayerHelper(object):
         return self.program.global_block().create_var(
             *args, persistable=False, **kwargs)
 
-    def append_bias_op(self, input_var, num_flatten_dims):
+    def append_bias_op(self, input_var, num_flatten_dims=None):
+        if num_flatten_dims is None:
+            num_flatten_dims = self.kwargs.get('num_flatten_dims', None)
+            if num_flatten_dims is None:
+                num_flatten_dims = 1
+
         size = list(input_var.shape[num_flatten_dims:])
         bias_attr = self.bias_attr()
         if not bias_attr:
