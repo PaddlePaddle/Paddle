@@ -372,6 +372,19 @@ class RecurrentGradOp : public RecurrentBase {
         auto &init_state_grads = Outputs(kInitStateGrads);
         auto &ex_states = Attr<std::vector<std::string>>(kExStates);
         PADDLE_ENFORCE_EQ(init_state_grads.size(), ex_states.size());
+        for (size_t i = 0; i < init_state_grads.size(); ++i) {
+          auto grad_name_inside = framework::GradVarName(ex_states[i]);
+          auto &inside_tensor =
+              scope.FindVar(grad_name_inside)->Get<framework::LoDTensor>();
+
+          auto grad_name_outside = init_state_grads[i];
+          auto outside_tensor = scope.FindVar(grad_name_outside)
+                                    ->GetMutable<framework::LoDTensor>();
+          outside_tensor->Resize(inside_tensor.dims());
+          outside_tensor->mutable_data(dev_ctx.GetPlace(),
+                                       inside_tensor.type());
+          outside_tensor->CopyFrom(inside_tensor, dev_ctx.GetPlace(), dev_ctx);
+        }
       }
       scopes.Next();
     }
