@@ -71,7 +71,7 @@ class AccuracyOpCUDAKernel : public framework::OpKernel<T> {
       return;
     }
 
-    AccuracyCudaKernel<T, PADDLE_CUDA_NUM_THREADS><<<
+    AccuracyCudaKernel<PADDLE_CUDA_NUM_THREADS><<<
         1, PADDLE_CUDA_NUM_THREADS, 0,
         reinterpret_cast<const platform::CUDADeviceContext&>(
             ctx.device_context())
