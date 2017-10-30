@@ -85,17 +85,17 @@ public:
            bool printDetails = false,
            size_t iter = 3,
            float epsilon = 1e-4);
-  static void runBranchesTest(const std::string& configPath,
-                              size_t iter = 3,
-                              float eps = 1e-4);
+  static void runNetTest(const std::string& configPath,
+                         size_t iter = 2,
+                         float eps = 1e-4);
   static void initArgument(DataIn& data,
                            const std::string& configPath,
-                           size_t iter = 3);
+                           size_t iter = 2);
   static void getOutResult(const std::string& configPath,
                            DataIn& in,
                            DataOut& out,
                            bool use_mkldnn,
-                           size_t iter = 3);
+                           size_t iter = 2);
 
 private:
   void reset(const TestConfig& dnn, const TestConfig& ref, size_t batchSize);
