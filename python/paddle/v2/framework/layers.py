@@ -171,6 +171,8 @@ _create_op_func_('mean')
 _create_op_func_('mul')
 _create_op_func_('dropout')
 _create_op_func_('reshape')
+_create_op_func_('elementwise_add')
+_create_op_func_('sigmoid')
 
 
 def cast(x, data_type, program=None):

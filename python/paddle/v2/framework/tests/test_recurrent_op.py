@@ -15,36 +15,37 @@ def py_sigmoid(x):
     return 1. / (1. + np.exp(-x))
 
 
-class PySimpleRNN(object):
-    '''
-    A simple implementation of RNN based on numpy, to futhur test RecurrentOp's alogorithm
-    '''
+class PyRNNBase(object):
+    def __init__(self, input_shape, output_shape):
+        self.x = np.random.normal(size=input_shape).astype("float32")
+        self.y = np.zeros(shape=output_shape).astype("float32")
 
-    def __init__(self, input_dim=30, batch_size=50, weight_dim=15, sent_len=11):
-        self.x = np.random.normal(size=(sent_len, batch_size,
-                                        input_dim)).astype("float32")
+    def step(self):
+        pass
+
+    def forward(self):
+        for step_id in range(self.x.shape[0]):
+            self.step(step_id, self.x[step_id])
+        return self.y
+
+    def segment_inputs(self):
+        return [self.x[i] for i in range(self.x.shape[0])]
+
+
+class PySimpleRNN(PyRNNBase):
+    def __init__(self, input_shape, output_shape):
+        super(PySimpleRNN, self).__init__(input_shape, output_shape)
+
+        seq_len, batch_size, input_dim = input_shape
+        seq_len, batch_size, _ = output_shape
+
         self.W = np.random.normal(size=(input_dim, input_dim)).astype("float32")
         self.U = np.random.normal(size=(input_dim, input_dim)).astype("float32")
         self.h_boot = np.random.normal(size=(batch_size,
                                              input_dim)).astype("float32")
 
-        # memories
-        self.mems = [
-            np.zeros(shape=(batch_size, input_dim)).astype("float32")
-            for i in range(sent_len)
-        ]
-
-    def forward(self):
-        xs = self.segment_inputs()
-        for step_id in range(self.x.shape[0]):
-            self.step(step_id, xs[step_id])
-        return self.concat_outputs()
-
-    def segment_inputs(self):
-        return [self.x[i] for i in range(self.x.shape[0])]
-
-    def concat_outputs(self):
-        return np.array(self.mems).astype("float32")
+        men_dim = (seq_len, batch_size, input_dim)
+        self.mems = np.zeros(shape=men_dim).astype("float32")
 
     def step(self, step_id, x):
         '''
@@ -60,14 +61,7 @@ class PySimpleRNN(object):
 
         sum = xW + hU
         self.mems[step_id] = py_sigmoid(sum)
-
-
-class PySimpleRNNTest(unittest.TestCase):
-    def setUp(self):
-        self.rnn = PySimpleRNN()
-
-    def test_forward(self):
-        output = self.rnn.forward()
+        self.y[step_id] = self.mems[step_id]
 
 
 def create_tensor(np_data, place):
@@ -94,15 +88,18 @@ class RecurrentOpTest(unittest.TestCase):
 
     input_dim = 2
     batch_size = 3
-    weight_dim = 4
     sent_len = 2
 
     def setUp(self):
-        self.py_rnn = PySimpleRNN(self.input_dim, self.batch_size,
-                                  self.weight_dim, self.sent_len)
+        self.data_field = {"x", "W", "U", "h_boot"}
+
+        input_shape = (self.sent_len, self.batch_size, self.input_dim)
+        output_shape = (self.sent_len, self.batch_size, self.input_dim)
+        self.py_rnn = PySimpleRNN(input_shape, output_shape)
+
         self.output = self.create_rnn_op()
         loss = mean(x=self.output)
-        append_backward_ops(loss)
+        # append_backward_ops(loss)
 
     def create_rnn_op(self):
         x = data(
@@ -136,11 +133,10 @@ class RecurrentOpTest(unittest.TestCase):
     def forward(self):
         place = core.CPUPlace()
 
-        feed_map = {}
-        feed_map["x"] = create_tensor(self.py_rnn.x, place)
-        feed_map["W"] = create_tensor(self.py_rnn.W, place)
-        feed_map["U"] = create_tensor(self.py_rnn.U, place)
-        feed_map["h_boot"] = create_tensor(self.py_rnn.h_boot, place)
+        feed_map = {
+            x: create_tensor(getattr(self.py_rnn, x), place)
+            for x in self.data_field
+        }
 
         exe = Executor(place)
         out = exe.run(g_program, feed=feed_map, fetch_list=[self.output])
@@ -163,57 +159,21 @@ class RecurrentOpTest(unittest.TestCase):
     def get_numerical_gradient(self, delta=0.005):
         py_output = self.py_rnn.forward()
         dloss_dout = np.random.normal(size=py_output.shape).astype("float32")
-        feed_list = [
-            self.py_rnn.x, self.py_rnn.W, self.py_rnn.U, self.py_rnn.h_boot
-        ]
+        feed_list = [getattr(self.py_rnn, x) for x in self.data_field]
         grad_list = [np.zeros_like(x) for x in feed_list]
         for feed, grad in zip(feed_list, grad_list):
             for f, g in np.nditer([feed, grad], op_flags=['readwrite']):
                 o = f
                 f[...] = o + delta
-                y_pos = self.forward()
+                y_pos = self.py_rnn.forward()
                 f[...] = o - delta
-                y_neg = self.forward()
+                y_neg = self.py_rnn.forward()
                 f[...] = o
                 dout_dfeed = (y_pos - y_neg) / delta / 2
                 g[...] = np.sum(dloss_dout * dout_dfeed)
 
         return grad_list
 
-
-# class RecurrentGradientOpTest(unittest.TestCase):
-#     def create_forward_op(self):
-#         self.forward_op = RecurrentOp(
-#             # inputs
-#             inputs=["x"],
-#             initial_states=["h_boot"],
-#             step_net="stepnet",
-#             # outputs
-#             outputs=["h"],
-#             step_scopes="step_scopes",
-#             # attributes
-#             ex_states=["h@pre"],
-#             states=["h@alias"])
-# 
-#         # create a stepnet for RNN
-#         stepnet = core.Net.create()
-#         x_fc_op = Operator("mul", X="x@alias", Y="W", Out="Wx")
-#         h_fc_op = Operator("mul", X="h@pre", Y="U", Out="Uh")
-#         sum_op = Operator("sum", X=["Wx", "Uh"], Out="sum")
-#         sig_op = Operator("sigmoid", X="sum", Y="h@alias")
-# 
-#         for op in [x_fc_op, h_fc_op, sum_op, sig_op]:
-#             stepnet.append_op(op)
-#         stepnet.complete_add_op(True)
-#         self.forward_op.set_stepnet(stepnet)
-# 
-#     def create_gradient_op(self):
-#         a = set()
-#         backward_op = core.RecurrentOp.backward(self.forward_op, a)
-# 
-#     def test_grad(self):
-#         self.create_forward_op()
-#         self.create_gradient_op()
 
 if __name__ == '__main__':
     # exit(
