@@ -85,9 +85,7 @@ class GemmConv2DKernel : public framework::OpKernel<T> {
     int output_height = output->dims()[2];
     int output_width = output->dims()[3];
 
-    paddle::operators::math::Im2ColFunctor<
-        paddle::operators::math::ColFormat::kCFO, Place, T>
-        im2col;
+    math::Im2ColFunctor<math::ColFormat::kCFO, Place, T> im2col;
     // use col_shape in the im2col calculation
     framework::DDim col_shape = {input_channels / groups, filter_height,
                                  filter_width, output_height, output_width};
@@ -162,12 +160,8 @@ class GemmConvGrad2DKernel : public framework::OpKernel<T> {
     int output_height = output_grad->dims()[2];
     int output_width = output_grad->dims()[3];
 
-    paddle::operators::math::Col2ImFunctor<
-        paddle::operators::math::ColFormat::kCFO, Place, T>
-        col2im;
-    paddle::operators::math::Im2ColFunctor<
-        paddle::operators::math::ColFormat::kCFO, Place, T>
-        im2col;
+    math::Col2ImFunctor<math::ColFormat::kCFO, Place, T> col2im;
+    math::Im2ColFunctor<math::ColFormat::kCFO, Place, T> im2col;
     // use col_shape in the im2col and col2im calculation
     framework::DDim col_shape = {input_channels / groups, filter_height,
                                  filter_width, output_height, output_width};
@@ -283,7 +277,7 @@ class GemmConv3DKernel : public framework::OpKernel<T> {
     int output_height = output->dims()[3];
     int output_width = output->dims()[4];
 
-    paddle::operators::math::Vol2ColFunctor<Place, T> vol2col;
+    math::Vol2ColFunctor<Place, T> vol2col;
     // use col_shape in the vol2col calculation
     framework::DDim col_shape = {input_channels / groups,
                                  filter_depth,
@@ -369,8 +363,8 @@ class GemmConvGrad3DKernel : public framework::OpKernel<T> {
     int output_height = output_grad->dims()[3];
     int output_width = output_grad->dims()[4];
 
-    paddle::operators::math::Col2VolFunctor<Place, T> col2vol;
-    paddle::operators::math::Vol2ColFunctor<Place, T> vol2col;
+    math::Col2VolFunctor<Place, T> col2vol;
+    math::Vol2ColFunctor<Place, T> vol2col;
     // use col_shape in the vol2col and col2vol calculation
     framework::DDim col_shape = {input_channels / groups,
                                  filter_depth,
