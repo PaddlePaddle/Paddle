@@ -161,9 +161,11 @@ class TestLstmOp(OpTest):
 
     #TODO(qingqing) add more unit testing case
     def test_check_grad(self):
-        # TODO(qingqing) remove folowing two lines after the check_grad is refined.
-        self.outputs['BatchGate'] = None
-        self.outputs['BatchCellPreAct'] = None
+        # TODO(qingqing) remove folowing lines after the check_grad is refined.
+        N = len(self.lod[0]) - 1
+        self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
         self.check_grad(
             ['Input', 'Weight', 'Bias'], ['Hidden'], max_relative_error=0.02)
 
