@@ -58,7 +58,7 @@ sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
 opts = sgd_optimizer.minimize(avg_cost)
 
 BATCH_SIZE = 50
-PASS_NUM = 20
+PASS_NUM = 3
 train_reader = paddle.batch(
     paddle.reader.shuffle(
         paddle.dataset.mnist.train(), buf_size=500),
@@ -86,9 +86,10 @@ for pass_id in range(PASS_NUM):
                        feed={"pixel": tensor_img,
                              "label": tensor_y},
                        fetch_list=[avg_cost, accuracy])
+        loss = np.array(outs[0])
+        acc = np.array(outs[1])
 
-    print("loss=" + str(np.array(outs[0])) + " acc=" + str(np.array(outs[1])))
-
-    # if loss < 10.0:
-    #    exit(0)  # if avg cost less than 10.0, we think our code is good.
-# exit(1)
+        if loss < 10.0 and acc > 0.9:
+            # if avg cost less than 10.0 and accuracy is larger than 0.9, we think our code is good.
+            exit(0)
+exit(1)
