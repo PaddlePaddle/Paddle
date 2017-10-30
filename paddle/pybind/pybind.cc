@@ -33,6 +33,11 @@ limitations under the License. */
 #include "paddle/pybind/tensor_py.h"
 #include "paddle/string/to_string.h"
 
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/operators/nccl/nccl_gpu_common.h"
+#include "paddle/platform/gpu_info.h"
+#endif
+
 namespace paddle {
 namespace pybind {
 static size_t UniqueIntegerGenerator() {
@@ -204,6 +209,13 @@ All parameter, weight, gradient are variables in Paddle.
              return self.GetMutable<SelectedRows>();
            },
            py::return_value_policy::reference)
+#ifdef PADDLE_WITH_CUDA
+      .def("get_communicator",
+           [](Variable &self) -> platform::Communicator * {
+             return self.GetMutable<platform::Communicator>();
+           },
+           py::return_value_policy::reference)
+#endif
       .def("get_net",
            [](Variable &self) -> operators::NetOp * {
              return self.GetMutable<operators::NetOp>();
@@ -269,8 +281,11 @@ All parameter, weight, gradient are variables in Paddle.
                     return new paddle::platform::CUDADeviceContext(place);
 #endif
                   });
-  // clang-format on
+// clang-format on
 
+#ifdef PADDLE_WITH_CUDA
+  py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
+#endif
   py::class_<platform::GPUPlace>(m, "GPUPlace")
       .def(py::init<int>())
       .def("__str__", string::to_string<const platform::GPUPlace &>);
@@ -479,6 +494,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindOpDesc(m);
 
   m.def("op_support_gpu", OpSupportGPU);
+#ifdef PADDLE_WITH_CUDA
+  m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
+#endif
 
   return m.ptr();
 }
