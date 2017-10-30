@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/pybind/protobuf.h"
 
+#include <mutex>  // for call_once
+#include "gflags/gflags.h"
 #include "paddle/framework/backward.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/feed_fetch_method.h"
@@ -43,6 +45,24 @@ namespace pybind {
 static size_t UniqueIntegerGenerator() {
   static std::atomic<size_t> generator;
   return generator.fetch_add(1);
+}
+
+std::once_flag gflags_init_flag;
+
+// TODO(qijun) move init gflags to init.cc
+void InitGflags(std::vector<std::string> &argv) {
+  std::call_once(gflags_init_flag, [&]() {
+    int argc = argv.size();
+    char **arr = new char *[argv.size()];
+    std::string line;
+    for (size_t i = 0; i < argv.size(); i++) {
+      arr[i] = &argv[i][0];
+      line += argv[i];
+      line += ' ';
+    }
+    google::ParseCommandLineFlags(&argc, &arr, true);
+    VLOG(1) << "Init commandline: " << line;
+  });
 }
 
 bool IsCompileGPU() {
@@ -483,6 +503,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   m.def("unique_integer", UniqueIntegerGenerator);
+  m.def("init_gflags", InitGflags);
 
   m.def("is_compile_gpu", IsCompileGPU);
   m.def("set_feed_variable", framework::SetFeedVariable);
