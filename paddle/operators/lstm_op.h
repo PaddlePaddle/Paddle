@@ -155,7 +155,6 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     auto* batch_cell_pre_act = ctx.Input<LoDTensor>("BatchCellPreAct");
 
     auto* hidden_g = ctx.Input<LoDTensor>(framework::GradVarName("Hidden"));
-    // auto* cell_g = ctx.Input<LoDTensor>(framework::GradVarName("Cell"));
 
     auto* in_g = ctx.Output<LoDTensor>(framework::GradVarName("Input"));
     auto* weight_g = ctx.Output<Tensor>(framework::GradVarName("Weight"));
@@ -251,7 +250,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
       lstm_grad.gateGrad = gate_g.data<T>();
       lstm_grad.outputGrad = out_g.data<T>();
 
-      if (n != 0) {
+      if (n) {
         int bstart_pre = static_cast<int>(batch_starts[n - 1]);
         Tensor cell_pre = batch_cell.Slice(bstart_pre, bstart);
         Tensor cell_pre_g = batch_cell_g.Slice(bstart_pre, bstart);
@@ -292,17 +291,6 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     }
     if (bias && bias_g) {
       /* backward bias */
-      // Following Eigen computation failed for double type on GPU device.
-      // bias_g->mutable_data<T>(ctx.GetPlace());
-      // Tensor bias_mat;
-      // bias_mat.ShareDataWith(*bias_g);
-      // bias_mat.Resize({1, 4 * frame_size});
-
-      // auto bias_g_e = EigenVector<T>::Flatten(bias_mat);
-      // auto gate_g_e = EigenMatrix<T>::From(batch_gate_g);
-      // Eigen::array<int, 1> dims{{0}};
-      // bias_g_e.device(ctx.GetEigenDevice<Place>()) = gate_g_e.sum(dims);
-
       int m = static_cast<int>(batch_gate_g.dims()[0]);
       int n = static_cast<int>(batch_gate_g.dims()[1]);
 
