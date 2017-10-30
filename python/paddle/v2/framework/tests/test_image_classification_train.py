@@ -10,6 +10,120 @@ from paddle.v2.framework.executor import Executor
 import numpy as np
 
 
+def resnet_cifar10(input, depth=32, program=None, init_program=None):
+    def conv_bn_layer(input,
+                      ch_out,
+                      filter_size,
+                      stride,
+                      padding,
+                      act='relu',
+                      program=None,
+                      init_program=None):
+        tmp = layers.conv2d(
+            input=input,
+            filter_size=filter_size,
+            num_filters=ch_out,
+            stride=stride,
+            padding=padding,
+            act=None,
+            bias_attr=False,
+            program=program,
+            init_program=init_program)
+        return layers.batch_norm(
+            input=tmp, act=act, program=program, init_program=init_program)
+
+    def shortcut(input, ch_in, ch_out, stride, program, init_program):
+        if ch_in != ch_out:
+            return conv_bn_layer(input, ch_out, 1, stride, 0, None, program,
+                                 init_program)
+        else:
+            return input
+
+    def basicblock(input,
+                   ch_in,
+                   ch_out,
+                   stride,
+                   program=program,
+                   init_program=init_program):
+        tmp = conv_bn_layer(
+            input,
+            ch_out,
+            3,
+            stride,
+            1,
+            program=program,
+            init_program=init_program)
+        tmp = conv_bn_layer(
+            tmp,
+            ch_out,
+            3,
+            1,
+            1,
+            act=None,
+            program=program,
+            init_program=init_program)
+        short = shortcut(input, ch_in, ch_out, stride, program, init_program)
+        return layers.elementwise_add(
+            x=tmp,
+            y=short,
+            act='relu',
+            program=program,
+            init_program=init_program)
+
+    def layer_warp(block_func, input, ch_in, ch_out, count, stride, program,
+                   init_program):
+        tmp = block_func(input, ch_in, ch_out, stride, program, init_program)
+        for i in range(1, count):
+            tmp = block_func(tmp, ch_out, ch_out, 1, program, init_program)
+        return tmp
+
+    assert (depth - 2) % 6 == 0
+    n = (depth - 2) / 6
+    conv1 = conv_bn_layer(
+        input=input,
+        ch_out=16,
+        filter_size=3,
+        stride=1,
+        padding=1,
+        program=program,
+        init_program=init_program)
+    res1 = layer_warp(
+        basicblock,
+        conv1,
+        16,
+        16,
+        n,
+        1,
+        program=program,
+        init_program=init_program)
+    res2 = layer_warp(
+        basicblock,
+        res1,
+        16,
+        32,
+        n,
+        2,
+        program=program,
+        init_program=init_program)
+    res3 = layer_warp(
+        basicblock,
+        res2,
+        32,
+        64,
+        n,
+        2,
+        program=program,
+        init_program=init_program)
+    pool = layers.pool2d(
+        input=res3,
+        pool_size=8,
+        pool_type='avg',
+        pool_stride=1,
+        program=program,
+        init_program=init_program)
+    return pool
+
+
 def vgg16_bn_drop(input, program, init_program):
     def conv_block(input,
                    num_filter,
@@ -75,8 +189,11 @@ label = layers.data(
     data_type='int64',
     program=program,
     init_program=init_program)
-vgg_net = vgg16_bn_drop(images, program, init_program)
-predict = layers.fc(input=vgg_net,
+# net = vgg16_bn_drop(images, program, init_program)
+net = resnet_cifar10(images, 32, program, init_program)
+# print(program)
+
+predict = layers.fc(input=net,
                     size=classdim,
                     act='softmax',
                     program=program,
@@ -123,11 +240,11 @@ for pass_id in range(PASS_NUM):
                        fetch_list=[avg_cost])
 
         loss = np.array(outs[0])
-        # print("pass_id:" + str(pass_id) + " batch_id:" + str(batch_id) +
-        #       " loss:" + str(loss))
+        print("pass_id:" + str(pass_id) + " batch_id:" + str(batch_id) +
+              " loss:" + str(loss))
         batch_id = batch_id + 1
 
-        if batch_id > 1:
+        if batch_id > 10:
             # this model is slow, so if we can train two mini batch, we think it works properly.
             exit(0)
 exit(1)
