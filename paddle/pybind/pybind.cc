@@ -326,6 +326,12 @@ All parameter, weight, gradient are variables in Paddle.
                   })
       .def("append_op", [](operators::NetOp &self,
                            const OperatorBase &op) { self.AppendOp(op); })
+      .def("backward_net",
+           [](operators::NetOp &self) {
+             std::unordered_set<std::string> no_grad_vars;
+             return static_cast<operators::NetOp *>(
+                 Backward(self, no_grad_vars).release());
+           })
       .def("complete_add_op", &operators::NetOp::CompleteAddOp)
       .def("complete_add_op", [](std::shared_ptr<operators::NetOp> &self) {
         self->CompleteAddOp();
@@ -414,6 +420,12 @@ All parameter, weight, gradient are variables in Paddle.
                     return static_cast<operators::DynamicRecurrentOp *>(
                         rnn_op.release());
                   })
+      .def("backward",
+           [](operators::DynamicRecurrentOp &self) {
+             std::unordered_set<std::string> no_grad_vars;
+             auto *backward_op = Backward(self, no_grad_vars).release();
+             return static_cast<operators::DynamicRecurrentOp *>(backward_op);
+           })
       .def("set_step_unit",
            [](operators::DynamicRecurrentOp &self, const operators::NetOp &net)
                -> void { self.rnn.SetStepUnit(net.Clone()); })

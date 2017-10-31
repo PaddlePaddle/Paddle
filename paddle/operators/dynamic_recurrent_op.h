@@ -81,6 +81,12 @@ class RNNAlgorithm {
   void LinkState(const rnn::StateAttr& state, size_t step);
 
   /*
+   * Link state@GRAD when backwards, this will add `pre_state@GRAD` to
+   * `state@GRAD` in the previous scope.
+   */
+  void LinkGradState(const rnn::StateAttr& state, size_t step);
+
+  /*
    * Link the pre-state of the first time step to the `boot-state` in parent's
    * scope.
    */
@@ -170,7 +176,8 @@ class RNNAlgorithm {
 
     void Init(const rnn::ArgumentName& name, const framework::OperatorBase& op,
               const framework::Scope& scope,
-              platform::DeviceContext const* dev_ctx, rnn::Argument* arg);
+              platform::DeviceContext const* dev_ctx, rnn::Argument* arg,
+              bool is_grad);
 
     framework::Scope& GetScope(size_t index) {
       PADDLE_ENFORCE_LT(index, num_steps);
@@ -182,7 +189,8 @@ class RNNAlgorithm {
 
    private:
     void InitArgument(const rnn::ArgumentName& name,
-                      const framework::OperatorBase& op, rnn::Argument* arg);
+                      const framework::OperatorBase& op, rnn::Argument* arg,
+                      bool is_grad);
     void CacheScopes(const framework::Scope& scope, const rnn::Argument& arg);
     void CacheInlinks(const framework::Scope& scope,
                       const std::vector<std::string>& names);

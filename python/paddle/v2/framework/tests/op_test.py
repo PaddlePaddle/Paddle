@@ -169,7 +169,10 @@ def get_numeric_gradient(scope,
 
 
 def get_backward_op(scope, op, no_grad_set):
-    backward_op = core.Operator.backward(op, no_grad_set)
+    if isinstance(op, core.Net):
+        backward_op = op.backward_net()
+    else:
+        backward_op = core.Operator.backward(op, no_grad_set)
     for input in backward_op.input_vars():
         var = scope.var(input)
         var.get_tensor()

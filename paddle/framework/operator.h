@@ -515,6 +515,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
   Tensor* GetTensor(const std::string& name) const {
     Tensor* t = nullptr;
     auto* var = scope_.FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(var, "no variable [%s] in current scope", name);
     if (!var->IsType<LoDTensor>() && !var->IsType<Tensor>()) {
       if (Allocate) {
         t = var->GetMutable<LoDTensor>();
