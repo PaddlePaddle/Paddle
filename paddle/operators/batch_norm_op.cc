@@ -51,6 +51,10 @@ class BatchNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("SavedMean"), "");
     PADDLE_ENFORCE(ctx->HasOutput("SavedVariance"), "");
 
+    const float epsilon = ctx->Attrs().Get<float>("epsilon");
+    PADDLE_ENFORCE_GE(epsilon, 0.0, "epsilon should be larger than 0");
+    PADDLE_ENFORCE_LE(epsilon, 0.001, "epsilon should not be too large");
+
     // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
     PADDLE_ENFORCE_EQ(ctx->Inputs("Mean")[0], ctx->Outputs("MeanOut")[0],
                       "Mean and MeanOut should share the same memory");

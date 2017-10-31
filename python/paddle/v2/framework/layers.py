@@ -1,7 +1,7 @@
 from paddle.v2.framework.layer_helper import LayerHelper, unique_name
 import paddle.v2.framework.core as core
 from paddle.v2.framework.framework import OpProtoHolder, Variable, Program
-from paddle.v2.framework.initializer import ConstantInitializer
+from paddle.v2.framework.initializer import ConstantInitializer, NormalInitializer
 import re
 
 __all__ = [
@@ -332,20 +332,12 @@ def conv2d(input,
     input_shape = input.shape
     filter_shape = [num_filters, num_filter_channels] + filter_size
 
-    def get_init_attr():
-        std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
-        return {
-            'type': 'gaussian_random',
-            'mean': 0.0,
-            "std": std,
-            'dims': filter_shape
-        }
-
+    std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
     filter = helper.create_parameter(
         attr=helper.param_attr,
         shape=filter_shape,
         dtype=dtype,
-        init_attr=get_init_attr())
+        initializer=NormalInitializer(0.0, std, 0))
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
@@ -436,7 +428,7 @@ def batch_norm(input,
                act=None,
                is_test=False,
                momentum=0.9,
-               epsilon=1e05,
+               epsilon=1e-05,
                param_attr=None,
                bias_attr=None,
                data_layout='NCHW',
@@ -455,7 +447,7 @@ def batch_norm(input,
             raise ValueError("unsupported data layout:" + data_layout)
 
     def create_persistable_var(dtype, shape, initializer=None):
-        name = unique_name(".".join([helper.name, "xxxx"]))
+        name = unique_name(".".join([helper.name, "persistable"]))
         var = init_program.global_block().create_var(
             dtype=dtype, shape=shape, name=name, persistable=True)
         if initializer is not None:
@@ -470,12 +462,12 @@ def batch_norm(input,
         attr=helper.param_attr,
         shape=param_shape,
         dtype=dtype,
-        init_attr=get_init_attr(1.0))
+        initializer=ConstantInitializer(1.0))
     bias = helper.create_parameter(
         attr=helper.param_attr,
         shape=param_shape,
         dtype=dtype,
-        init_attr=get_init_attr(0.0))
+        initializer=ConstantInitializer(0.0))
 
     # create input
     mean = create_persistable_var(dtype, param_shape, ConstantInitializer(0.0))
