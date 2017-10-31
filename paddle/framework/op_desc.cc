@@ -52,6 +52,22 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   const std::vector<std::string> &Outputs(
       const std::string &name) const override;
 
+  void ShareLoD(const std::string &in, const std::string &out, size_t i = 0,
+                size_t j = 0) const override {
+    PADDLE_ENFORCE_LT(i, Inputs(in).size());
+    PADDLE_ENFORCE_LT(j, Outputs(out).size());
+    auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
+    auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
+    if (in_var->GetType() != VarDesc::LOD_TENSOR) {
+      VLOG(3) << "input " << in << "is not LodTensor";
+      return;
+    }
+    PADDLE_ENFORCE_EQ(in_var->GetType(), VarDesc::LOD_TENSOR,
+                      "The %d-th output of Output(%s) must be LoDTensor.", j,
+                      out);
+    in_var->SetLoDLevel(out_var->GetLodLevel());
+  }
+
  private:
   DDim GetDim(const std::string &name) const override;
 
