@@ -192,9 +192,9 @@ label = layers.data(
 
 # Add neural network config
 # option 1. resnet
-net = resnet_cifar10(images, 32, program, init_program)
+# net = resnet_cifar10(images, 32, program, init_program)
 # option 2. vgg
-# net = vgg16_bn_drop(images, program, init_program)
+net = vgg16_bn_drop(images, program, init_program)
 
 # print(program)
 
@@ -211,6 +211,11 @@ accuracy = layers.accuracy(
 
 sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
 opts = sgd_optimizer.minimize(avg_cost)
+
+with open("init_program", 'w') as f:
+    f.write(str(init_program))
+with open("program", 'w') as f:
+    f.write(str(program))
 
 BATCH_SIZE = 128
 PASS_NUM = 1
@@ -252,7 +257,4 @@ for pass_id in range(PASS_NUM):
               " loss:" + str(loss) + " acc:" + str(acc))
         batch_id = batch_id + 1
 
-        if batch_id > 1:
-            # this model is slow, so if we can train two mini batch, we think it works properly.
-            exit(0)
 exit(1)

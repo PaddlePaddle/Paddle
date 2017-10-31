@@ -324,8 +324,21 @@ def conv2d(input,
 
     input_shape = input.shape
     filter_shape = [num_filters, num_filter_channels] + filter_size
+
+    def get_init_attr():
+        std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
+        return {
+            'type': 'gaussian_random',
+            'mean': 0.0,
+            "std": std,
+            'dims': filter_shape
+        }
+
     filter = helper.create_parameter(
-        attr=helper.param_attr, shape=filter_shape, dtype=dtype)
+        attr=helper.param_attr,
+        shape=filter_shape,
+        dtype=dtype,
+        init_attr=get_init_attr())
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
@@ -451,7 +464,7 @@ def batch_norm(input,
         name = unique_name(".".join([helper.name, "xxxx"]))
         var = init_program.global_block().create_var(
             dtype=dtype, shape=shape, name=name, persistable=True)
-        if 'init_attr' is not None:
+        if init_attr is not None:
             prepend_init_op(var, init_attr)
         return program.global_block().create_var(
             name=name, dtype=dtype, shape=shape, persistable=True)
@@ -460,9 +473,15 @@ def batch_norm(input,
 
     # create parameter
     scale = helper.create_parameter(
-        attr=helper.param_attr, shape=param_shape, dtype=dtype)
+        attr=helper.param_attr,
+        shape=param_shape,
+        dtype=dtype,
+        init_attr=get_init_attr(1.0))
     bias = helper.create_parameter(
-        attr=helper.param_attr, shape=param_shape, dtype=dtype)
+        attr=helper.param_attr,
+        shape=param_shape,
+        dtype=dtype,
+        init_attr=get_init_attr(0.0))
 
     # create input
     mean = create_persistable_var(dtype, param_shape, get_init_attr(0.0))

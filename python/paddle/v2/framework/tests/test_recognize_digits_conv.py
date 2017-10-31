@@ -89,7 +89,6 @@ for pass_id in range(PASS_NUM):
         loss = np.array(outs[0])
         acc = np.array(outs[1])
 
-        if loss < 10.0 and acc > 0.9:
-            # if avg cost less than 10.0 and accuracy is larger than 0.9, we think our code is good.
-            exit(0)
+        print("loss:" + str(loss) + " acc:" + str(acc))
+
 exit(1)

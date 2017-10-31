@@ -297,7 +297,6 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
 
   framework::DataType IndicateDataType(
       const framework::ExecutionContext &ctx) const override {
-    VLOG(3) << "IndicateDataType " << this->Type();
     const auto *var = ctx.InputVar(framework::GradVarName("Y"));
     if (var == nullptr) {
       PADDLE_THROW("can't find Y@GRAD");

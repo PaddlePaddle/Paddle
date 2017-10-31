@@ -59,6 +59,8 @@ label = layers.data(
 cost = layers.cross_entropy(
     input=predict, label=label, program=program, init_program=init_program)
 avg_cost = layers.mean(x=cost, program=program, init_program=init_program)
+accuracy = layers.accuracy(
+    input=predict, label=label, program=program, init_program=init_program)
 
 sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
 opts = sgd_optimizer.minimize(avg_cost)
@@ -75,6 +77,7 @@ exe.run(init_program, feed={}, fetch_list=[])
 
 PASS_NUM = 100
 for pass_id in range(PASS_NUM):
+    batch_id = 0
     for data in train_reader():
         x_data = np.array(map(lambda x: x[0], data)).astype("float32")
         y_data = np.array(map(lambda x: x[1], data)).astype("int64")
@@ -89,8 +92,13 @@ for pass_id in range(PASS_NUM):
         outs = exe.run(program,
                        feed={'x': tensor_x,
                              'y': tensor_y},
-                       fetch_list=[avg_cost])
+                       fetch_list=[avg_cost, accuracy])
         out = np.array(outs[0])
+        loss = np.array(outs[0])
+        acc = np.array(outs[1])
+        if batch_id % 10 == 0:
+            print("loss:" + str(loss) + " acc:" + str(acc))
+        batch_id = batch_id + 1
         if out[0] < 5.0:
             exit(0)  # if avg cost less than 5.0, we think our code is good.
 exit(1)
