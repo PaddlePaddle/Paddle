@@ -1,12 +1,13 @@
 from paddle.v2.framework.layer_helper import LayerHelper, unique_name
 import paddle.v2.framework.core as core
 from paddle.v2.framework.framework import OpProtoHolder, Variable, Program
+from paddle.v2.framework.initializer import ConstantInitializer
 import re
 
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
     'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool', 'sums', 'cos_sim',
-    'batch_norm'
+    'batch_norm', 'accuracy'
 ]
 
 
@@ -234,36 +235,38 @@ def square_error_cost(input, label, **kwargs):
 
     square_out = helper.create_tmp_variable(dtype=input.data_type)
     helper.append_op(
-        type='pow',
-        inputs={'X': [minus_out]},
-        outputs={'Y': [square_out]},
-        attrs={'factor': 2.0})
+        type='square', inputs={'X': [minus_out]}, outputs={'Y': [square_out]})
     return square_out
 
 
-def square_error_cost(input, label, **kwargs):
-    helper = LayerHelper('square_error_cost', **kwargs)
-    minus_out = helper.create_tmp_variable(dtype=input.data_type)
+def accuracy(input, label, k=1, **kwargs):
+    helper = LayerHelper("accuracy", **kwargs)
+    topk_out = helper.create_tmp_variable(dtype=input.data_type)
+    topk_indices = helper.create_tmp_variable(dtype="int64")
     helper.append_op(
-        type='elementwise_sub',
-        inputs={'X': [input],
-                'Y': [label]},
-        outputs={'Out': [minus_out]})
-
-    square_out = helper.create_tmp_variable(dtype=input.data_type)
+        type="top_k",
+        inputs={"X": [input]},
+        outputs={"Out": [topk_out],
+                 "Indices": [topk_indices]},
+        attrs={"k": k})
+    acc_out_dtype = kwargs.get("out_dtype", "float32")
+    acc_out = helper.create_tmp_variable(dtype=acc_out_dtype)
     helper.append_op(
-        type='pow',
-        inputs={'X': [minus_out]},
-        outputs={'Y': [square_out]},
-        attrs={'factor': 2.0})
-    return square_out
+        type="accuracy",
+        inputs={
+            "Out": [topk_out],
+            "Indices": [topk_indices],
+            "Label": [label]
+        },
+        outputs={"Accuracy": [acc_out]})
+    return acc_out
 
 
 def sequence_conv(input,
                   num_filters,
                   filter_size=3,
-                  filter_stride=1,
-                  act="sigmoid",
+                  stride=1,
+                  padding=None,
                   bias_attr=None,
                   param_attr=None,
                   program=None,
@@ -438,26 +441,12 @@ def batch_norm(input,
         else:
             raise ValueError("unsupported data layout:" + data_layout)
 
-    def get_init_attr(value):
-        if not isinstance(value, float):
-            raise ValueError("attr value should be a float")
-        return {'type': 'fill_constant', 'value': value}
-
-    def prepend_init_op(var, init_attr):
-        assert isinstance(var, Variable)
-        op_type = init_attr['type']
-        init_attr['shape'] = var.shape
-        init_attr['data_type'] = int(var.data_type)
-        op = var.block.prepend_op(
-            type=op_type, inputs=None, outputs={'Out': [var]}, attrs=init_attr)
-        return op
-
-    def create_persistable_var(dtype, shape, init_attr=None):
+    def create_persistable_var(dtype, shape, initializer=None):
         name = unique_name(".".join([helper.name, "xxxx"]))
         var = init_program.global_block().create_var(
             dtype=dtype, shape=shape, name=name, persistable=True)
-        if 'init_attr' is not None:
-            prepend_init_op(var, init_attr)
+        if initializer is not None:
+            initializer(var, var.block)
         return program.global_block().create_var(
             name=name, dtype=dtype, shape=shape, persistable=True)
 
@@ -470,8 +459,9 @@ def batch_norm(input,
         attr=helper.param_attr, shape=param_shape, dtype=dtype)
 
     # create input
-    mean = create_persistable_var(dtype, param_shape, get_init_attr(0.0))
-    variance = create_persistable_var(dtype, param_shape, get_init_attr(1.0))
+    mean = create_persistable_var(dtype, param_shape, ConstantInitializer(0.0))
+    variance = create_persistable_var(dtype, param_shape,
+                                      ConstantInitializer(1.0))
 
     # create output
     # mean and mean_out share the same memory

@@ -109,7 +109,6 @@ def sequence_conv_pool(input,
         input=input,
         num_filters=num_filters,
         filter_size=filter_size,
-        act=act,
         program=program,
         init_program=init_program)
 
