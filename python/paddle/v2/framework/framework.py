@@ -352,7 +352,10 @@ class Block(object):
         return {v for k, v in self.vars.iteritems() if isinstance(v, Parameter)}
 
     def create_var(self, *args, **kwargs):
-        return Variable(self, *args, **kwargs)
+        var = Variable(self, *args, **kwargs)
+        if 'init_attr' in kwargs:
+            self._prepend_initialize_ops_(var, kwargs['init_attr'])
+        return var
 
     def has_var(self, name):
         return name in self.vars

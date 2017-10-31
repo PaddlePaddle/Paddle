@@ -122,7 +122,7 @@ class OperatorBase {
  protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
-  // I (Inputs)opear
+  // I (Inputs)
   // O (Outputs)
   // OG (Output Gradients)
   VariableNameMap inputs_;
@@ -287,6 +287,16 @@ class ExecutionContext {
     return device_context_;
   }
 
+  //! Get actual name vector for this input.
+  const std::vector<std::string>& Inputs(const std::string& name) const {
+    return op_.Inputs(name);
+  }
+
+  //! Get actual name vector for this output.
+  const std::vector<std::string>& Outputs(const std::string& name) const {
+    return op_.Outputs(name);
+  }
+
 #ifdef PADDLE_WITH_CUDA
   const platform::CUDADeviceContext& cuda_device_context() const {
     PADDLE_ENFORCE(platform::is_gpu_place(device_context_.GetPlace()));
@@ -398,6 +408,7 @@ class OperatorWithKernel : public OperatorBase {
   // indicate kernel DataType by input data. Defaultly all input data must be
   // same.
   virtual DataType IndicateDataType(const ExecutionContext& ctx) const {
+    VLOG(3) << "Default IndicateDataType " << this->Type();
     auto& scope = ctx.scope();
     int data_type = -1;
     for (auto& input : this->inputs_) {

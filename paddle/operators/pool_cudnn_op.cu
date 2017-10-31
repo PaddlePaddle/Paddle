@@ -43,6 +43,7 @@ class PoolCudnnOpKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     if (ctx.Attr<bool>("globalPooling")) {
       for (size_t i = 0; i < ksize.size(); ++i) {
+        paddings[i] = 0;
         ksize[i] = static_cast<int>(input->dims()[i + 2]);
       }
     }
@@ -97,8 +98,10 @@ class PoolCudnnGradOpKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
 
     if (ctx.Attr<bool>("globalPooling")) {
-      for (size_t i = 0; i < ksize.size(); ++i)
+      for (size_t i = 0; i < ksize.size(); ++i) {
+        paddings[i] = 0;
         ksize[i] = static_cast<int>(input->dims()[i + 2]);
+      }
     }
 
     const T *input_data = input->data<T>();
