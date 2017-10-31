@@ -44,8 +44,11 @@ def to_lodtensor(data, place):
         cur_len += l
         lod.append(cur_len)
     flattened_data = np.concatenate(data, axis=0)
+    flattened_data = flattened_data.reshape([len(flattened_data), 1])
     res = core.LoDTensor()
     res.set(flattened_data, place)
+    #import pdb
+    # pdb.set_trace()
     res.set_lod([lod])
     return res
 
@@ -71,11 +74,11 @@ def main():
 
     for pass_id in xrange(PASS_NUM):
         for data in train_data():
-            words = np.array(map(lambda x: x[0], data)).astype("int64")
-            label = np.array(map(lambda x: x[0], data)).astype("int64")
+            tensor_words = to_lodtensor(map(lambda x: x[0], data), place)
+
+            label = np.array(map(lambda x: x[1], data)).astype("int64")
             label = label.reshape([BATCH_SIZE, 1])
 
-            tensor_words = to_lodtensor(words, place)
             tensor_label = core.LoDTensor()
             tensor_label.set(label, place)
 
@@ -87,3 +90,7 @@ def main():
             acc = np.array(outs[1])
 
             print("loss=" + str(loss) + " acc=" + str(acc))
+
+
+if __name__ == '__main__':
+    main()

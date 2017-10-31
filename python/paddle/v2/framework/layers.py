@@ -265,6 +265,7 @@ def sequence_conv(input,
                   num_filters,
                   filter_size=3,
                   stride=1,
+                  act=None,
                   padding=None,
                   bias_attr=None,
                   param_attr=None,
@@ -290,9 +291,9 @@ def sequence_conv(input,
         },
         outputs={"Out": pre_bias},
         attrs={
-            'context_stride': stride,
-            'context_start': 0,
-            'context_length': filter_size
+            'contextStride': stride,
+            'contextLength': 0,
+            'contextLength': filter_size
         })
     pre_act = helper.append_bias_op(pre_bias)
     return helper.append_activation(pre_act)
