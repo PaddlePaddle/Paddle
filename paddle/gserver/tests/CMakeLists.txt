@@ -112,8 +112,10 @@ endif()
 ################ test_LinearChainCRF ####################
 add_simple_unittest(test_LinearChainCRF)
 
+if(NOT MOBILE_INFERENCE)
 ############## test_MultinomialSampler ###################
 add_simple_unittest(test_MultinomialSampler)
+endif()
 
 ############## test_PyDataProvider ########################
 if(WITH_PYTHON)
@@ -129,7 +131,7 @@ endif()
 add_simple_unittest(test_RecurrentLayer)
 
 ############### test_WarpCTCLayer #######################
-if(NOT WITH_DOUBLE)
+if(NOT WITH_DOUBLE AND NOT MOBILE_INFERENCE)
     add_unittest_without_exec(test_WarpCTCLayer
         test_WarpCTCLayer.cpp)
 
