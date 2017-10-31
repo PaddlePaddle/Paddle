@@ -499,7 +499,7 @@ TEST(Backward, linear_net_intermediate_variable_has_no_grad) {
 
 TEST(Backward, simple_single_op) {
   f::ProgramDescBind program;
-  f::BlockDescBind *block = program.Block(0);
+  f::BlockDescBind *block = program.MutableBlock(0);
 
   f::OpDescBind *op = block->AppendOp();
   op->SetType("rowwise_add");
@@ -535,7 +535,7 @@ TEST(Backward, simple_single_op) {
 
 TEST(Backward, default_attribute) {
   f::ProgramDescBind program;
-  f::BlockDescBind *block = program.Block(0);
+  f::BlockDescBind *block = program.MutableBlock(0);
   f::OpDescBind *op = block->AppendOp();
   op->SetType("mul");
   op->SetInput("X", {"x"});
@@ -561,7 +561,7 @@ TEST(Backward, default_attribute) {
 
 TEST(Backward, simple_mult_op) {
   f::ProgramDescBind program;
-  f::BlockDescBind *block = program.Block(0);
+  f::BlockDescBind *block = program.MutableBlock(0);
   f::OpDescBind *op1 = block->AppendOp();
   op1->SetType("rowwise_add");
   op1->SetInput("X", {"x1"});
@@ -644,7 +644,7 @@ TEST(Backward, simple_mult_op) {
 
 TEST(Backward, intermedia_var_no_grad) {
   f::ProgramDescBind program;
-  f::BlockDescBind *block = program.Block(0);
+  f::BlockDescBind *block = program.MutableBlock(0);
   f::OpDescBind *op1 = block->AppendOp();
   op1->SetType("rowwise_add");
   op1->SetInput("X", {"x1"});
@@ -714,7 +714,7 @@ TEST(Backward, intermedia_var_no_grad) {
 
 TEST(Backward, var_no_grad) {
   f::ProgramDescBind program;
-  f::BlockDescBind *block = program.Block(0);
+  f::BlockDescBind *block = program.MutableBlock(0);
   f::OpDescBind *op1 = block->AppendOp();
   op1->SetType("mult_in_out");
   op1->SetInput("X", {"x1"});
@@ -790,7 +790,7 @@ TEST(Backward, var_no_grad) {
 
 TEST(Backward, shared_var) {
   f::ProgramDescBind program;
-  f::BlockDescBind *block = program.Block(0);
+  f::BlockDescBind *block = program.MutableBlock(0);
   f::OpDescBind *op1 = block->AppendOp();
   op1->SetType("rowwise_add");
   op1->SetInput("X", {"x1"});
@@ -880,7 +880,7 @@ TEST(Backward, shared_var) {
 
 TEST(Backward, half_backward) {
   f::ProgramDescBind program;
-  f::BlockDescBind *block = program.Block(0);
+  f::BlockDescBind *block = program.MutableBlock(0);
   auto *op1 = block->AppendOp();
   op1->SetType("minus");
   op1->SetInput("X", {"a"});

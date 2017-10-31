@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/framework.pb.h"
 #include "paddle/framework/op_info.h"
+#include "paddle/framework/program_desc.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/tensor.h"
 
@@ -34,7 +34,7 @@ class Executor {
    *  ProgramDesc
    *  Scope
    */
-  void Run(const ProgramDesc&, Scope*, int);
+  void Run(const ProgramDescBind&, Scope*, int);
 
  private:
   std::vector<platform::DeviceContext*> device_contexts_;
