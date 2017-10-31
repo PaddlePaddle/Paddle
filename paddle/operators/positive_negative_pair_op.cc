@@ -129,7 +129,10 @@ class PositiveNegativePairOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddInput("Weight",
              "(float) Optional. Weight of current item. If specified, its "
-             "shape should be the same as Label.")
+             "shape should be the same as Label, and the meaning of the output "
+             "changes from numbers of pairs to the total sum of pairs' "
+             "weights. Weight of a pair of items is the average of their "
+             "weights.")
         .AsDispensable();
     AddOutput("PositivePair",
               "(float) Number of positive pairs, i.e. the pairs of "
@@ -150,9 +153,13 @@ class PositiveNegativePairOpMaker : public framework::OpProtoAndCheckerMaker {
         "Noting that reducing on the first dim will make the LoD info lost.")
         .SetDefault(0);
     AddComment(R"DOC(
-        PositiveNegativePairOp can be used to evaluate Learning To Rank(LTR) model performance. 
-        Within some context, e.g. the "query", a LTR model generates scores for a list of items, which gives a partial order of the items. 
-        PositiveNegativePairOp takes a list of reference rank order (Input("Label")) and the model generated scores (Input(Score)) as inputs and counts the pairs that ranked correctly and incorrectly.
+        PositiveNegativePairOp can be used to evaluate Learning To Rank(LTR) 
+        model performance. 
+        Within some context, e.g. the "query", a LTR model generates scores
+        for a list of items, which gives a partial order of the items.
+        PositiveNegativePairOp takes a list of reference rank order 
+        (Input("Label")) and the model generated scores (Input(Score)) as 
+        inputs and counts the pairs that ranked correctly and incorrectly.
 )DOC");
   }
 };

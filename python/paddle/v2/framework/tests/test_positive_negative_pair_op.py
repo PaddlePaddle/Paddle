@@ -12,9 +12,6 @@ def py_pnpair_op(score, label, query, column=-1, weight=None):
     if weight is None:
         weight = np.ones(shape=(batch_size, 1)).astype('float32')
     for s, l, q, w in zip(score, label, query, weight):
-        # s = s[column]
-        # q = q[0]
-        # w = w[0]
         s, l, q, w = s[column], l[0], q[0], w[0]
         if q not in predictions:
             predictions[q] = []
