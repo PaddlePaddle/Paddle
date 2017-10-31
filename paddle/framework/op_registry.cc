@@ -43,13 +43,15 @@ static VariableNameMap ConvertOpDescVarsToVarNameMap(
   return ret_val;
 }
 
-std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc,
-                                                   ProgramDesc* program) {
+std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
+  VLOG(1) << "CreateOp directly from OpDesc is deprecated. It should only be"
+             "used in unit tests. Use CreateOp(const OpDescBind& op_desc) "
+             "instead.";
   VariableNameMap inputs = ConvertOpDescVarsToVarNameMap(op_desc.inputs());
   VariableNameMap outputs = ConvertOpDescVarsToVarNameMap(op_desc.outputs());
   AttributeMap attrs;
   for (auto& attr : op_desc.attrs()) {
-    attrs[attr.name()] = GetAttrValue(attr, program);
+    attrs[attr.name()] = GetAttrValue(attr);
   }
 
   return CreateOp(op_desc.type(), inputs, outputs, attrs);
