@@ -79,13 +79,13 @@ class CudnnConvTransposeOpKernel : public framework::OpKernel<T> {
     // ------------------- cudnn conv workspace ---------------------
     void* cudnn_workspace = nullptr;
     size_t workspace_size_in_bytes;  // final workspace to allocate.
-    size_t tmp_size;
     size_t workspace_size_limit = kCONV_CUDNN_WORKSPACE_LIMIT_BYTES;
     if (user_workspace_size > 0) {
       workspace_size_limit = user_workspace_size * 1024 * 1024;
     }
     // ------------------- cudnn conv algorithm ---------------------
-    cudnnConvolutionBwdAlgo_t algo;
+    // cudnnConvolutionBwdAlgo_t algo;
+    cudnnConvolutionBwdDataAlgo_t algo;
     auto handle = ctx.cuda_device_context().cudnn_handle();
     // Get the algorithm
     PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
@@ -99,8 +99,8 @@ class CudnnConvTransposeOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(
         platform::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
             handle, cudnn_filter_desc, cudnn_input_desc, cudnn_conv_desc,
-            cudnn_output_desc, algo, &tmp_size));
-    workspace_size_in_bytes = std::max(workspace_size_in_bytes, tmp_size);
+            cudnn_output_desc, algo, &workspace_size_in_bytes));
+    // workspace_size_in_bytes = std::max(workspace_size_in_bytes, tmp_size);
 
     // Allocate on GPU memory
     platform::GPUPlace gpu = boost::get<platform::GPUPlace>(ctx.GetPlace());
