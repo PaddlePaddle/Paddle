@@ -242,9 +242,9 @@ class RecurrentOpTest2(RecurrentOpTest1):
        - h
     '''
 
-    input_dim = 1
-    batch_size = 1
-    sent_len = 1
+    input_dim = 2
+    batch_size = 10
+    sent_len = 2
 
     def setUp(self):
         self.init_program()
@@ -287,7 +287,10 @@ class RecurrentOpTest2(RecurrentOpTest1):
                         **self.p_info)
 
             # h = elementwise_add(x=h_pre, y=x_t, **self.p_info)
-            h = elementwise_add(x=temp_l, y=temp_r, **self.p_info)
+            h = sigmoid(
+                x=elementwise_add(
+                    x=temp_l, y=temp_r, **self.p_info),
+                **self.p_info)
 
             rnn.update_memory(h_pre, h)
             rnn.output(h)
