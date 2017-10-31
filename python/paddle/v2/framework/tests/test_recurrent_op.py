@@ -93,9 +93,9 @@ class RecurrentOpTest(unittest.TestCase):
     def setUp(self):
         self.data_field = {"x", "W", "U", "h_boot"}
 
-        input_shape = (self.sent_len, self.batch_size, self.input_dim)
-        output_shape = (self.sent_len, self.batch_size, self.input_dim)
-        self.py_rnn = PySimpleRNN(input_shape, output_shape)
+        self.input_shape = (self.sent_len, self.batch_size, self.input_dim)
+        self.output_shape = (self.sent_len, self.batch_size, self.input_dim)
+        self.py_rnn = PySimpleRNN(self.input_shape, self.output_shape)
 
         self.output = self.create_rnn_op()
         loss = mean(x=self.output)
@@ -144,34 +144,59 @@ class RecurrentOpTest(unittest.TestCase):
 
         return np.array(out[0])
 
-    # def test_backward(self):
-    #     tmp = self.get_numerical_gradient()
+    def backward(self):
+        place = core.CPUPlace()
 
-    def test_forward(self):
-        print 'test recurrent op forward'
-        pd_output = self.forward()
-        py_output = self.py_rnn.forward()
-        print 'pd_output', pd_output
-        print
-        print 'py_output', py_output
-        self.assertEqual(pd_output.shape, py_output.shape)
-        self.assertTrue(np.isclose(pd_output, py_output, rtol=0.1).all())
+        feed_map = {
+            x: create_tensor(getattr(self.py_rnn, x), place)
+            for x in self.data_field
+        }
+        fetch_list = [
+            g_program.global_block().var(x + "@GRAD") for x in self.data_field
+        ]
+
+        exe = Executor(place)
+        return exe.run(g_program, feed=feed_map, fetch_list=fetch_list)
+
+    def test_backward(self):
+        num_grad = self.get_numerical_gradient()
+        ana_grad = [np.array(x) for x in self.backward()]
+        for idx, name in enumerate(self.data_field):
+            print '-' * 20
+            print name + '@GRAD num', num_grad[idx]
+            print
+            print name + '@GRAD ana', ana_grad[idx]
+            print
+            print 'ratio', num_grad[idx] / ana_grad[idx]
+            print
+            self.assertEqual(num_grad[idx].shape, ana_grad[idx].shape)
+            # self.assertTrue(np.isclose(num_grad[idx], ana_grad[idx], rtol=0.1).all())
+
+        # def test_forward(self):
+        #     print 'test recurrent op forward'
+        #     pd_output = self.forward()
+        #     py_output = self.py_rnn.forward()
+        #     print 'pd_output', pd_output
+        #     print
+        #     print 'py_output', py_output
+        #     self.assertEqual(pd_output.shape, py_output.shape)
+        #     self.assertTrue(np.isclose(pd_output, py_output, rtol=0.1).all())
 
     def get_numerical_gradient(self, delta=0.005):
         py_output = self.py_rnn.forward()
-        dloss_dout = np.random.normal(size=py_output.shape).astype("float32")
+        dloss_dout = 1.0 / reduce(lambda x, y: x * y, self.output_shape)
         feed_list = [getattr(self.py_rnn, x) for x in self.data_field]
         grad_list = [np.zeros_like(x) for x in feed_list]
         for feed, grad in zip(feed_list, grad_list):
             for f, g in np.nditer([feed, grad], op_flags=['readwrite']):
                 o = f
                 f[...] = o + delta
-                y_pos = self.py_rnn.forward()
+                y_pos = self.forward()
                 f[...] = o - delta
-                y_neg = self.py_rnn.forward()
+                y_neg = self.forward()
                 f[...] = o
                 dout_dfeed = (y_pos - y_neg) / delta / 2
-                g[...] = np.sum(dloss_dout * dout_dfeed)
+                g[...] = dloss_dout * np.sum(dout_dfeed)
 
         return grad_list
 
