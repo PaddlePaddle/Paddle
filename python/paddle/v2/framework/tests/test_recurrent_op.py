@@ -52,15 +52,17 @@ class PySimpleRNN(PyRNNBase):
         run a step
         '''
         mem = self.mems[step_id]
-        if step_id > 0:
-            pre_mem = self.mems[step_id - 1]
-        else:
-            pre_mem = self.h_boot
-        xW = np.matmul(x, self.W).astype("float32")
-        hU = np.matmul(pre_mem, self.U).astype("float32")
+        # if step_id > 0:
+        #     pre_mem = self.mems[step_id - 1]
+        # else:
+        #     pre_mem = self.h_boot
+        # xW = np.matmul(x, self.W).astype("float32")
+        # hU = np.matmul(pre_mem, self.U).astype("float32")
 
-        sum = xW + hU
-        self.mems[step_id] = py_sigmoid(sum)
+        # sum = xW + hU
+        # self.mems[step_id] = py_sigmoid(sum)
+        # self.y[step_id] = self.mems[step_id]
+        self.mems[step_id] = mem + x
         self.y[step_id] = self.mems[step_id]
 
 
@@ -115,16 +117,16 @@ class RecurrentOpTest(unittest.TestCase):
             h_pre = rnn.memory(init=h_boot)
             x_t = rnn.step_input(x)
 
-            temp_l = fc(input=x_t,
-                        size=self.input_dim,
-                        param_attr={'name': 'W'},
-                        bias_attr=False)
-            temp_r = fc(input=h_pre,
-                        size=self.input_dim,
-                        param_attr={'name': 'U'},
-                        bias_attr=False)
+            # temp_l = fc(input=x_t,
+            #             size=self.input_dim,
+            #             param_attr={'name': 'W'},
+            #             bias_attr=False)
+            # temp_r = fc(input=h_pre,
+            #             size=self.input_dim,
+            #             param_attr={'name': 'U'},
+            #             bias_attr=False)
 
-            h = sigmoid(x=elementwise_add(x=temp_l, y=temp_r))
+            h = elementwise_add(x=h_pre, y=x_t)
 
             rnn.update_memory(h_pre, h)
             rnn.output(h)
