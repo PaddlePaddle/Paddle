@@ -266,16 +266,11 @@ def sequence_conv(input,
                   num_filters,
                   filter_size=3,
                   stride=1,
+                  filter_start=0,
+                  act=None,
                   padding=None,
-                  bias_attr=None,
-                  param_attr=None,
-                  program=None,
-                  init_program=None):
-    # FIXME(dzh) : want to unify the argument of python layer
-    # function. So we ignore some unecessary attributes.
-    # such as, padding_trainable, context_start.
-
-    helper = LayerHelper('sequence_conv', **locals())
+                  **kwargs):
+    helper = LayerHelper('sequence_conv', **kwargs)
     dtype = helper.input_dtype()
 
     filter_shape = [filter_size * input.shape[1], num_filters]
@@ -283,17 +278,20 @@ def sequence_conv(input,
         attr=helper.param_attr, shape=filter_shape, dtype=dtype)
     pre_bias = helper.create_tmp_variable(dtype)
 
+    inputs = {
+        'X': [input],
+        'Filter': [filter],
+    }
+    if padding:
+        inputs["PaddingData"] = padding
     helper.append_op(
         type='sequence_conv',
-        inputs={
-            'X': [input],
-            'Filter': [filter],
-        },
+        inputs=padding,
         outputs={"Out": pre_bias},
         attrs={
-            'context_stride': stride,
-            'context_start': 0,
-            'context_length': filter_size
+            'contextStride': stride,
+            'contextStart': filter_start,
+            'contextLength': filter_size
         })
     pre_act = helper.append_bias_op(pre_bias)
     return helper.append_activation(pre_act)
