@@ -2065,6 +2065,7 @@ public:
 };
 
 class SharedCpuMatrix : public CpuMatrix {
+#ifndef PADDLE_MOBILE_INFERENCE
 public:
   /* blockNum is number of partitions of the matrix  */
   SharedCpuMatrix(int blockNum, size_t height, size_t width, bool trans = false)
@@ -2111,6 +2112,7 @@ private:
   ThreadLocal<CpuMatrixPtr> localBuf_;
   ThreadLocal<std::vector<int>> localBufRows_;
   ThreadLocal<std::vector<int>> blockSeq_;
+#endif
 };
 
 typedef struct { unsigned int col; } sparse_non_value_t;
