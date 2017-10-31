@@ -36,6 +36,27 @@ constexpr char kInitStateGrads[] = "initial_states" GRAD_SUFFIX;
 
 using StepScopeVar = std::vector<framework::Scope *>;
 
+struct TensorPrinter {
+  TensorPrinter(std::ostream &os, const framework::Tensor &t)
+      : os_(os), t_(t) {}
+
+  template <typename T>
+  void operator()() const {
+    auto *data = t_.data<T>();
+    for (int64_t i = 0; i < framework::product(t_.dims()); ++i) {
+      os_ << data[i] << ", ";
+    }
+  }
+
+  std::ostream &os_;
+  const framework::Tensor &t_;
+};
+
+static void PrintTensor(std::ostream &os, const framework::Tensor &t) {
+  framework::VisitDataType(framework::ToDataType(t.type()),
+                           TensorPrinter(os, t));
+}
+
 class StepScopes {
  public:
   StepScopes(const framework::Scope &parent, StepScopeVar *scopes,
@@ -296,21 +317,57 @@ class RecurrentGradOp : public RecurrentBase {
       //   inside::output_grad = outside::output_grad[seq_offset:seq_offset+1]
       AccessTensor(
           scope, Inputs(kOutputGrads), &cur_scope, Inputs(kOutputGrads),
-          [&seq_offset](const framework::Tensor &outside,
-                        framework::Tensor *inside) {
+          [&](const framework::Tensor &outside, framework::Tensor *inside) {
             inside->ShareDataWith(outside.Slice(seq_offset, seq_offset + 1));
             auto dims = framework::vectorize(inside->dims());
             dims.erase(dims.begin());
             inside->Resize(framework::make_ddim(dims));
           });
+      auto og_set = List2Set(Inputs(kOutputGrads));
 
-      // Link memories
-      //   ex_scope::ex_state_grad --> cur_scope::cur_state_grad
+      if (VLOG_IS_ON(10)) {
+        std::ostringstream sout;
+        std::copy(og_set.begin(), og_set.end(),
+                  std::ostream_iterator<std::string>(sout, ","));
+        VLOG(10) << " RNN output gradients = [" << sout.str() << "]";
+      }
+
+      // Link states
+      //   if cur_scope::cur_state_grad in out_grads:
+      //     cur_scope::cur_state_grad += ex_scope::ex_state_grad
+      //   else:
+      //     ex_scope::ex_state_grad --> cur_scope::cur_state_grad
       if (step_id != 0) {  // not at beginning
         auto &ex_scope = scopes.ExScope();
-        ShareVars(
-            ex_scope, GradVarLists(Attr<std::vector<std::string>>(kExStates)),
-            &cur_scope, GradVarLists(Attr<std::vector<std::string>>(kStates)));
+        auto ex_state_grads =
+            GradVarLists(Attr<std::vector<std::string>>(kExStates));
+        auto cur_state_grads =
+            GradVarLists(Attr<std::vector<std::string>>(kStates));
+
+        PADDLE_ENFORCE_EQ(ex_state_grads.size(), cur_state_grads.size());
+        for (size_t i = 0; i < ex_state_grads.size(); ++i) {
+          auto &cur_grad = cur_state_grads[i];
+          auto &ex_grad = ex_state_grads[i];
+          auto &ex_tensor =
+              ex_scope.FindVar(ex_grad)->Get<framework::LoDTensor>();
+
+          VLOG(10) << " RNN link " << cur_grad << " from " << ex_grad;
+          if (og_set.find(cur_grad) != og_set.end()) {
+            VLOG(10) << " RNN link " << cur_grad << " with output grad ";
+            std::string tmp_var_name;
+            auto *tmp_var = cur_scope.Var(&tmp_var_name);
+            tmp_var->GetMutable<framework::LoDTensor>()->ShareDataWith(
+                ex_tensor);
+            auto sum_op = framework::OpRegistry::CreateOp(
+                "sum", {{"X", {cur_grad, tmp_var_name}}}, {{"Out", {cur_grad}}},
+                {});
+            sum_op->Run(cur_scope, dev_ctx);
+          } else {
+            auto *cur_grad_var = cur_scope.FindVar(cur_grad);
+            cur_grad_var->GetMutable<framework::LoDTensor>()->ShareDataWith(
+                ex_tensor);
+          }
+        }
       }
 
       // Run
@@ -410,15 +467,19 @@ class RecurrentGradOp : public RecurrentBase {
                       Attr<bool>(kIsTrain), seq_len, true /*is_backward*/);
   }
 
-  std::unordered_set<std::string> LocalVarNames(
-      const framework::Scope &scope) const {
-    auto local_var_name_list = scope.GetAllNames(false);
+  std::unordered_set<std::string> List2Set(
+      const std::vector<std::string> &list) const {
     std::unordered_set<std::string> local_var_name_set;
-    local_var_name_set.reserve(local_var_name_list.size());
-    for (auto &each : local_var_name_list) {
+    local_var_name_set.reserve(list.size());
+    for (auto &each : list) {
       local_var_name_set.insert(each);
     }
     return local_var_name_set;
+  }
+
+  std::unordered_set<std::string> LocalVarNames(
+      const framework::Scope &scope) const {
+    return this->List2Set(scope.GetAllNames(false));
   }
   static std::vector<std::string> GradVarLists(
       const std::vector<std::string> &var_names) {

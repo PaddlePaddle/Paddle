@@ -17,7 +17,7 @@ def py_sigmoid(x):
 
 class PyRNNBase(object):
     def __init__(self, input_shape, output_shape):
-        self.x = np.random.normal(size=input_shape).astype("float32")
+        self.x = np.ones(shape=input_shape).astype("float32")
         self.y = np.zeros(shape=output_shape).astype("float32")
 
     def step(self):
@@ -41,28 +41,26 @@ class PySimpleRNN(PyRNNBase):
 
         self.W = np.random.normal(size=(input_dim, input_dim)).astype("float32")
         self.U = np.random.normal(size=(input_dim, input_dim)).astype("float32")
-        self.h_boot = np.random.normal(size=(batch_size,
-                                             input_dim)).astype("float32")
+        self.h_boot = np.ones(shape=(batch_size, input_dim)).astype("float32")
 
         men_dim = (seq_len, batch_size, input_dim)
         self.mems = np.zeros(shape=men_dim).astype("float32")
 
     def step(self, step_id, x):
-        '''
+        """
         run a step
-        '''
-        mem = self.mems[step_id]
-        # if step_id > 0:
-        #     pre_mem = self.mems[step_id - 1]
-        # else:
-        #     pre_mem = self.h_boot
+        """
+        if step_id > 0:
+            pre_mem = self.mems[step_id - 1]
+        else:
+            pre_mem = self.h_boot
         # xW = np.matmul(x, self.W).astype("float32")
         # hU = np.matmul(pre_mem, self.U).astype("float32")
 
         # sum = xW + hU
         # self.mems[step_id] = py_sigmoid(sum)
         # self.y[step_id] = self.mems[step_id]
-        self.mems[step_id] = (mem + x) / 3.5
+        self.mems[step_id] = (pre_mem + x) / 2
         self.y[step_id] = self.mems[step_id]
 
 
@@ -88,8 +86,8 @@ class RecurrentOpTest(unittest.TestCase):
        - h
     '''
 
-    input_dim = 2
-    batch_size = 3
+    input_dim = 1
+    batch_size = 1
     sent_len = 2
 
     def setUp(self):
@@ -99,9 +97,7 @@ class RecurrentOpTest(unittest.TestCase):
         self.output_shape = (self.sent_len, self.batch_size, self.input_dim)
         self.py_rnn = PySimpleRNN(self.input_shape, self.output_shape)
 
-        self.output = self.create_rnn_op()
-        loss = mean(x=self.output)
-        append_backward_ops(loss)
+        self.output = mean(x=self.create_rnn_op())
 
     def create_rnn_op(self):
         x = data(
@@ -126,7 +122,7 @@ class RecurrentOpTest(unittest.TestCase):
             #             param_attr={'name': 'U'},
             #             bias_attr=False)
 
-            h = scale(x=elementwise_add(x=h_pre, y=x_t), scale=1.0 / 3.5)
+            h = scale(x=elementwise_add(x=h_pre, y=x_t), scale=2.0)
 
             rnn.update_memory(h_pre, h)
             rnn.output(h)
@@ -142,11 +138,16 @@ class RecurrentOpTest(unittest.TestCase):
         }
 
         exe = Executor(place)
-        out = exe.run(g_program, feed=feed_map, fetch_list=[self.output])
+        scope = core.Scope()
+        out = exe.run(g_program,
+                      feed=feed_map,
+                      fetch_list=[self.output],
+                      scope=scope)
 
         return np.array(out[0])
 
     def backward(self):
+        append_backward_ops(self.output)
         place = core.CPUPlace()
 
         feed_map = {
@@ -158,7 +159,11 @@ class RecurrentOpTest(unittest.TestCase):
         ]
 
         exe = Executor(place)
-        return exe.run(g_program, feed=feed_map, fetch_list=fetch_list)
+        scope = core.Scope()
+        return exe.run(g_program,
+                       feed=feed_map,
+                       fetch_list=fetch_list,
+                       scope=scope)
 
     def test_backward(self):
         num_grad = self.get_numerical_gradient()
@@ -174,31 +179,29 @@ class RecurrentOpTest(unittest.TestCase):
             self.assertEqual(num_grad[idx].shape, ana_grad[idx].shape)
             # self.assertTrue(np.isclose(num_grad[idx], ana_grad[idx], rtol=0.1).all())
 
-        # def test_forward(self):
-        #     print 'test recurrent op forward'
-        #     pd_output = self.forward()
-        #     py_output = self.py_rnn.forward()
-        #     print 'pd_output', pd_output
-        #     print
-        #     print 'py_output', py_output
-        #     self.assertEqual(pd_output.shape, py_output.shape)
-        #     self.assertTrue(np.isclose(pd_output, py_output, rtol=0.1).all())
-
-    def get_numerical_gradient(self, delta=0.005):
+    def test_forward(self):
+        print 'test recurrent op forward'
+        pd_output = self.forward()
         py_output = self.py_rnn.forward()
-        dloss_dout = 1.0 / reduce(lambda x, y: x * y, self.output_shape)
+        print 'pd_output', pd_output
+        print
+        print 'py_output', py_output
+        self.assertEqual(pd_output.shape, py_output.shape)
+        self.assertTrue(np.isclose(pd_output, py_output, rtol=0.1).all())
+
+    def get_numerical_gradient(self, delta=0.0005):
         feed_list = [getattr(self.py_rnn, x) for x in self.data_field]
         grad_list = [np.zeros_like(x) for x in feed_list]
         for feed, grad in zip(feed_list, grad_list):
             for f, g in np.nditer([feed, grad], op_flags=['readwrite']):
-                o = f
+                o = float(f)
                 f[...] = o + delta
                 y_pos = self.forward()
                 f[...] = o - delta
                 y_neg = self.forward()
                 f[...] = o
-                dout_dfeed = (y_pos - y_neg) / delta / 2
-                g[...] = dloss_dout * np.sum(dout_dfeed)
+                dout_dfeed = (y_pos - y_neg) / (delta * 2)
+                g[...] = dout_dfeed[0]
 
         return grad_list
 
