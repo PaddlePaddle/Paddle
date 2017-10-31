@@ -237,12 +237,12 @@ TEST(OpKernel, multi_inputs) {
 
   paddle::platform::CPUDeviceContext cpu_device_context;
   paddle::framework::Scope scope;
-  scope.Var("x0")->GetMutable<Tensor>();
-  scope.Var("x1")->GetMutable<Tensor>();
-  scope.Var("x2")->GetMutable<Tensor>();
-  scope.Var("k0")->GetMutable<Tensor>();
-  scope.Var("y0")->GetMutable<Tensor>();
-  scope.Var("y1")->GetMutable<Tensor>();
+  scope.Var("x0")->GetMutable<LoDTensor>();
+  scope.Var("x1")->GetMutable<LoDTensor>();
+  scope.Var("x2")->GetMutable<LoDTensor>();
+  scope.Var("k0")->GetMutable<LoDTensor>();
+  scope.Var("y0")->GetMutable<LoDTensor>();
+  scope.Var("y1")->GetMutable<LoDTensor>();
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc, nullptr);
   op->Run(scope, cpu_device_context);

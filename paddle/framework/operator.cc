@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/framework/operator.h"
 #include <algorithm>
 #include <atomic>
+#include "paddle/framework/shape_inference.h"
 
 namespace paddle {
 namespace framework {
@@ -32,24 +33,6 @@ ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
   return *device_context_.GetEigenDevice<platform::GPUPlace>();
 }
 #endif
-
-const Tensor* GetTensorFromVar(const Variable* var) {
-  if (var->IsType<LoDTensor>()) {
-    return &var->Get<LoDTensor>();
-  }
-  PADDLE_ENFORCE(var->IsType<Tensor>(),
-                 "The Input must be a LoDTensor or a Tensor.");
-  return &var->Get<Tensor>();
-}
-
-Tensor* GetTensorFromVar(Variable* var) {
-  if (var->IsType<LoDTensor>()) {
-    return var->GetMutable<LoDTensor>();
-  }
-  PADDLE_ENFORCE(var->IsType<Tensor>(),
-                 "The Input must be a LoDTensor or a Tensor.");
-  return var->GetMutable<Tensor>();
-}
 
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
@@ -204,6 +187,30 @@ void OperatorBase::GenerateTemporaryNames() {
   }
 }
 
+static const Tensor* GetTensorFromVar(const Variable* var) {
+  const Tensor* t = nullptr;
+  if (var->IsType<LoDTensor>()) {
+    t = &(var->Get<LoDTensor>());
+  } else if (var->IsType<SelectedRows>()) {
+    t = &(var->Get<SelectedRows>().value());
+  } else {
+    PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+  }
+  return t;
+}
+
+static Tensor* GetMutableTensorFromVar(Variable* var) {
+  Tensor* t = nullptr;
+  if (var->IsType<LoDTensor>()) {
+    t = var->GetMutable<LoDTensor>();
+  } else if (var->IsType<SelectedRows>()) {
+    t = var->GetMutable<SelectedRows>()->mutable_value();
+  } else {
+    PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+  }
+  return t;
+}
+
 template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
   auto* var = InputVar(name);
@@ -227,7 +234,7 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
 template <>
 Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
   auto var = OutputVar(name);
-  return var == nullptr ? nullptr : var->GetMutable<LoDTensor>();
+  return var == nullptr ? nullptr : GetMutableTensorFromVar(var);
 }
 
 template <>
@@ -240,7 +247,7 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
                  [&](const std::string& sub_name) {
                    auto var = scope_.FindVar(sub_name);
                    return var == nullptr ? nullptr
-                                         : var->GetMutable<LoDTensor>();
+                                         : GetMutableTensorFromVar(var);
                  });
   return res;
 }
@@ -265,6 +272,138 @@ bool OpSupportGPU(const std::string& op_type) {
     }
   }
   return false;
+}
+
+class RuntimeInferShapeContext : public InferShapeContext {
+ public:
+  RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope)
+      : op_(op), scope_(scope) {}
+
+  bool HasInput(const std::string& name) const override {
+    auto& ins = Inputs(name);
+    size_t length = ins.size();
+    if (length == 0) {
+      return false;
+    }
+    PADDLE_ENFORCE_EQ(length, 1UL, "Input %s should have more than one inputs",
+                      name);
+    auto ipt = ins[0];
+    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
+    return var != nullptr;
+  }
+
+  bool HasOutput(const std::string& name) const override {
+    auto& outs = Outputs(name);
+    size_t length = outs.size();
+    if (length == 0) {
+      return false;
+    }
+    PADDLE_ENFORCE_EQ(length, 1UL, "Output %s should have more than one inputs",
+                      name);
+    auto ipt = outs[0];
+    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
+    return var != nullptr;
+  }
+
+  bool HasInputs(const std::string& name) const override {
+    auto inputs = op_.Inputs(name);
+    if (inputs.empty()) {
+      return false;
+    }
+    for (auto& input : inputs) {
+      if (scope_.FindVar(input) == nullptr) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool HasOutputs(const std::string& name) const override {
+    auto outputs = op_.Outputs(name);
+    if (outputs.empty()) {
+      return false;
+    }
+    for (auto& output : outputs) {
+      if (scope_.FindVar(output) == nullptr) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  DDim GetInputDim(const std::string& name) const override {
+    return GetDim(op_.Input(name));
+  }
+
+  void SetOutputDim(const std::string& name, const DDim& dim) override {
+    SetDim(op_.Output(name), dim);
+  }
+
+  AttrReader Attrs() const override { return AttrReader(op_.Attrs()); }
+
+  const std::vector<std::string>& Inputs(
+      const std::string& name) const override {
+    return op_.Inputs(name);
+  }
+
+  const std::vector<std::string>& Outputs(
+      const std::string& name) const override {
+    return op_.Outputs(name);
+  }
+
+ private:
+  DDim GetDim(const std::string& name) const override {
+    Variable* var = scope_.FindVar(name);
+    if (var->IsType<LoDTensor>()) {
+      return var->Get<LoDTensor>().dims();
+    } else if (var->IsType<SelectedRows>()) {
+      return var->Get<SelectedRows>().GetCompleteDims();
+    } else {
+      PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+    }
+  }
+
+  void SetDim(const std::string& name, const DDim& dim) override {
+    Variable* var = scope_.FindVar(name);
+    if (var->IsType<LoDTensor>()) {
+      var->GetMutable<LoDTensor>()->Resize(dim);
+    } else if (var->IsType<SelectedRows>()) {
+      var->GetMutable<SelectedRows>()->set_height(dim[0]);
+    } else {
+      PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+    }
+  }
+
+  const OperatorBase& op_;
+  const Scope& scope_;
+};
+
+void OperatorWithKernel::Run(const Scope& scope,
+                             const platform::DeviceContext& dev_ctx) const {
+  VLOG(3) << "Running operator " << this->Type();
+  RuntimeInferShapeContext infer_shape_ctx(*this, scope);
+  this->InferShape(&infer_shape_ctx);
+
+  ExecutionContext ctx(*this, scope, dev_ctx);
+
+  // check if op[type] has kernel registered.
+  auto& all_op_kernels = AllOpKernels();
+  auto kernels_iter = all_op_kernels.find(type_);
+  if (kernels_iter == all_op_kernels.end()) {
+    PADDLE_THROW(
+        "There are no kernels which are registered in the %s operator.", type_);
+  }
+
+  // check if op[type] have kernel for kernel_key
+  OpKernelMap& kernels = kernels_iter->second;
+  auto kernel_key = OpKernelKey(IndicateDataType(ctx), dev_ctx);
+  auto kernel_iter = kernels.find(kernel_key);
+
+  if (kernel_iter == kernels.end()) {
+    PADDLE_THROW("The operator %s does not support %s", type_, kernel_key);
+  }
+
+  kernel_iter->second->Compute(ctx);
 }
 
 }  // namespace framework

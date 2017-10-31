@@ -85,7 +85,9 @@ class LoDTensor : public Tensor {
 
   void set_lod(const LoD& lod) { lod_ = lod; }
 
-  LoD lod() const { return lod_; }
+  const LoD& lod() const { return lod_; }
+
+  LoD* mutable_lod() { return &lod_; }
 
   /*
    * Get the start offset and end offset of an  element from LoD.
@@ -138,27 +140,6 @@ class LoDTensor : public Tensor {
    * @note: low performance in slice lod_.
    */
   void ShrinkInLevel(size_t level, size_t elem_begin, size_t elem_end);
-
-  /**
-   *  @brief Serialize tensor to char bytes.
-   *  Please check model_format.md for the format detail.
-   *  NOTE: GPUTensor will copy data to cpu implicitly.
-   *  @return return string
-   */
-
-  // FIXME(dzh) : Currently, this interface should only be used in
-  // save/restore model and checkpoint. ParameterServer do not use shape
-  // information to do the optimization, as a result, when we serialize
-  // parameter/gradient to string, we should serialize the tensor
-  // to string in the ps trainer instead of LoDTensor.
-  std::string SerializeToString() const;
-
-  /**
-   *  @brief Deserialize char bytes to tensor.
-   *  @return return string
-   */
-  void DeserializeFromString(const std::string& s,
-                             const platform::Place& dst_place);
 
  private:
   LoD lod_;
