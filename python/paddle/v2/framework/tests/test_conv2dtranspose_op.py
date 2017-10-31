@@ -43,8 +43,8 @@ class TestConv2dTransposeOp(OpTest):
         conv2dtranspose_param = {'stride': self.stride, 'pad': self.pad}
         input_ = np.random.random(self.input_size).astype("float32")
         filter_ = np.random.random(self.filter_size).astype("float32")
-        output = conv2dtranspose_forward_naive(input_, filter_,
-                                               conv2dtranspose_param)
+        output = conv2dtranspose_forward_naive(
+            input_, filter_, conv2dtranspose_param).astype('float32')
         # print 'deconv output py', output, output.shape
 
         self.inputs = {'Input': input_, 'Filter': filter_}

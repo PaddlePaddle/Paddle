@@ -93,6 +93,7 @@ int64_t get(const DDim& dim, int idx);
 void set(DDim& dim, int idx, int val);
 
 std::vector<int64_t> vectorize(const DDim& ddim);
+std::vector<int> vectorize2int(const DDim& ddim);
 
 int64_t product(const DDim& ddim);
 

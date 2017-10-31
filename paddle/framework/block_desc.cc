@@ -120,6 +120,17 @@ BlockDesc *BlockDescBind::Proto() {
   Flush();
   return desc_;
 }
+
+BlockDescBind::BlockDescBind(ProgramDescBind *prog, BlockDesc *desc)
+    : prog_(prog), desc_(desc), need_update_(false) {
+  for (const VarDesc &var_desc : desc_->vars()) {
+    vars_[var_desc.name()].reset(new VarDescBind(var_desc));
+  }
+  for (const OpDesc &op_desc : desc_->ops()) {
+    ops_.emplace_back(new OpDescBind(op_desc, prog));
+  }
+}
+
 BlockDescBind::BlockDescBind(const BlockDescBind &other, BlockDesc *desc,
                              ProgramDescBind *prog)
     : prog_(prog), desc_(desc) {
