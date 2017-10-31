@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void Prune(const ProgramDesc& input, ProgramDesc& output);
+void Prune(const ProgramDesc& input, ProgramDesc* output);
 
 }  // namespace framework
 }  // namespace paddle

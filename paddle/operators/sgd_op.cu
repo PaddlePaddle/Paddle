@@ -71,10 +71,11 @@ struct SparseSGDFunctor<platform::GPUPlace, T> {
 };
 
 template struct SparseSGDFunctor<platform::GPUPlace, float>;
+template struct SparseSGDFunctor<platform::GPUPlace, double>;
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(sgd,
-                       ops::SGDOpKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(sgd, ops::SGDOpKernel<paddle::platform::GPUPlace, float>,
+                       ops::SGDOpKernel<paddle::platform::GPUPlace, double>);
