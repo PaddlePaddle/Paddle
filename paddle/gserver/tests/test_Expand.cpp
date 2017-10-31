@@ -91,6 +91,8 @@ TEST(Layer, ExpandLayerFwd) {
   doOneExpandTest("non-seq", false, useGpu, input1, input2, result);
 
   // CPU case 2. non-seq expand to sub-seq
+  // NOTE: input1.batch_size == input2.sequencelength in this case.
+  // i.e, input1 expands by input2.sequence
   // input1 = 1,2,3
   // input2 = [[4,5]],[[6]],[[7],[8,9]]
   // result = [[1,1]],[[2]],[[3],[3,3]]
