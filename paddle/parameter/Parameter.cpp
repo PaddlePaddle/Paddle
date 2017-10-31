@@ -217,7 +217,9 @@ void Parameter::setMat(ParameterType pType, int matType) {
             bufs_[pType]->getMemoryHandle()),
         height,
         width);
-  } else if (matType == MAT_SPARSE_ROW_IDS) {
+  }
+#ifndef PADDLE_MOBILE_INFERENCE
+  else if (matType == MAT_SPARSE_ROW_IDS) {
     CHECK_EQ(height * width, bufs_[pType]->getSize());
     mats_[pType] = std::make_shared<SparseRowIdsCpuMatrix>(
         std::dynamic_pointer_cast<CpuMemoryHandle>(
@@ -259,7 +261,9 @@ void Parameter::setMat(ParameterType pType, int matType) {
   } else if (matType == MAT_SPARSE_ROW_AUTO_GROW) {
     CHECK(isGradSparseUpdate());
     mats_[pType] = std::make_shared<SparseAutoGrowRowCpuMatrix>(height, width);
-  } else {
+  }
+#endif
+  else {
     LOG(FATAL) << "Unsupported mat type" << matType;
   }
 }
