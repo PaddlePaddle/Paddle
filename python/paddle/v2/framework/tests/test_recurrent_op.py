@@ -176,7 +176,6 @@ class RecurrentOpTest1(unittest.TestCase):
         self.check_forward()
 
         append_backward_ops(self.output)
-        print self.program
         ana_grad = [np.array(x) for x in self.backward()]
 
         num_grad = self.get_numerical_gradient()
@@ -286,7 +285,6 @@ class RecurrentOpTest2(RecurrentOpTest1):
                         bias_attr=False,
                         **self.p_info)
 
-            # h = elementwise_add(x=h_pre, y=x_t, **self.p_info)
             h = sigmoid(
                 x=elementwise_add(
                     x=temp_l, y=temp_r, **self.p_info),
