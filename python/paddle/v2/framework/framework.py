@@ -119,8 +119,9 @@ class Variable(object):
 
     @staticmethod
     def _unique_var_name_():
-        uid = core.unique_integer()  # unique during whole process.
-        return "_generated_var_%d" % uid
+        prefix = "_generated_var"
+        uid = core.unique_integer(prefix)  # unique during whole process.
+        return "_".join([prefix, str(uid)])
 
     @staticmethod
     def _convert_np_dtype_to_dtype_(np_dtype):
@@ -251,6 +252,8 @@ class Operator(object):
                 self.desc.set_output(out_proto.name, out_argu_names)
 
         if attrs is not None:
+            if not isinstance(attrs, dict):
+                raise TypeError("'attrs' should be a dict.")
             for attr in proto.attrs:
                 attr_name = attr.name
                 if (not attr_name in attrs) or (attrs[attr_name] is None):
@@ -261,7 +264,8 @@ class Operator(object):
                     self.desc.set_attr(attr_name, attrs[attr_name])
 
         self.desc.check_attrs()
-        if type not in {'feed', 'fetch'}:
+        no_kernel_op_set = {'feed', 'fetch', 'save', 'load'}
+        if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
 
@@ -289,6 +293,14 @@ class Operator(object):
     @property
     def output_names(self):
         return self.desc.output_names()
+
+    @property
+    def idx(self):
+        for i, op in enumerate(self.block.ops):
+            if op == self:
+                return i
+        raise ValueError(
+            "Can't find op itself in it's block. It could be a bug of Paddle.")
 
     def has_attr(self, name):
         return self.desc.has_attr(name)
@@ -341,7 +353,10 @@ class Block(object):
         return {v for k, v in self.vars.iteritems() if isinstance(v, Parameter)}
 
     def create_var(self, *args, **kwargs):
-        return Variable(self, *args, **kwargs)
+        var = Variable(self, *args, **kwargs)
+        if 'init_attr' in kwargs:
+            self._prepend_initialize_ops_(var, kwargs['init_attr'])
+        return var
 
     def has_var(self, name):
         return name in self.vars
@@ -439,6 +454,34 @@ class Program(object):
         p.sync_with_cpp()
         return p
 
+    def prune(self, targets):
+        if not isinstance(targets, list):
+            targets = [targets]
+        targets_idx = []
+        for t in targets:
+            if not isinstance(t, Operator):
+                if isinstance(t, Variable):
+                    t = t.op
+                else:
+                    raise ValueError(
+                        "All targets of prune() can only be Variable or Operator."
+                    )
+
+            targets_idx.append([t.block.idx, t.idx])
+        res = Program()
+        res.desc = core.prune(self.desc, targets_idx)
+        res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
+        res.sync_with_cpp()
+        return res
+
+    @staticmethod
+    def parse_from_string(binary_str):
+        p = Program()
+        p.desc = core.ProgramDesc(binary_str)
+        p.blocks = [Block(p, i) for i in xrange(p.desc.num_blocks())]
+        p.sync_with_cpp()
+        return p
+
     def __repr__(self):
         return str(self)
 
@@ -478,6 +521,11 @@ class Program(object):
         for block in self.blocks:
             block.sync_with_cpp()
 
+    def list_vars(self):
+        for each_block in self.blocks:
+            for each_var in each_block.vars.itervalues():
+                yield each_var
+
 
 class Parameter(Variable):
     def __init__(self, block, shape, dtype, **kwargs):
@@ -496,6 +544,8 @@ class Parameter(Variable):
         self.trainable = kwargs.get('trainable', True)
 
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
+
+        self.regularizer = kwargs.get('regularizer', None)
 
 
 # program is a global instance.

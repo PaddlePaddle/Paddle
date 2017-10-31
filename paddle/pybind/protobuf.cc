@@ -105,6 +105,11 @@ void BindProgramDesc(py::module &m) {
            [](ProgramDescBind &self, const ProgramDescBind &other) {
              new (&self) ProgramDescBind(other);
            })
+      .def("__init__",
+           [](ProgramDescBind &self, const py::bytes &binary_str) {
+             std::string str(binary_str);
+             new (&self) ProgramDescBind(str);
+           })
       .def("append_block", &ProgramDescBind::AppendBlock,
            py::return_value_policy::reference)
       .def("append_backward",
@@ -136,6 +141,13 @@ void BindProgramDesc(py::module &m) {
                  desc->SerializeToString(&res),
                  "Serialize ProgramDesc Error. This could be a bug of Paddle.");
              return res;
+           })
+      .def("parse_from_string",
+           [](ProgramDescBind &program_desc, const std::string &data) {
+             ProgramDesc *desc = program_desc.Proto();
+             PADDLE_ENFORCE(desc->ParseFromString(data),
+                            "Fail to parse ProgramDesc from string. This could "
+                            "be a bug of Paddle.");
            });
 }
 
@@ -224,7 +236,8 @@ void BindVarDsec(py::module &m) {
       .value("LOD_TENSOR", VarDesc::LOD_TENSOR)
       .value("SELECTED_ROWS", VarDesc::SELECTED_ROWS)
       .value("FEED_MINIBATCH", VarDesc::FEED_MINIBATCH)
-      .value("FETCH_LIST", VarDesc::FETCH_LIST);
+      .value("FETCH_LIST", VarDesc::FETCH_LIST)
+      .value("STEP_SCOPES", VarDesc::STEP_SCOPES);
 }
 
 void BindOpDesc(py::module &m) {

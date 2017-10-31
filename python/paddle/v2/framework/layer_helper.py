@@ -8,7 +8,7 @@ from paddle.v2.framework.framework import Variable, g_program, \
 
 
 def unique_name(prefix):
-    uid = core.unique_integer()  # unique during whole process.
+    uid = core.unique_integer(prefix)  # unique during whole process.
     return "_".join([prefix, str(uid)])
 
 
@@ -75,18 +75,29 @@ class LayerHelper(object):
             }
         }
         actual = self.kwargs.get('param_attr', None)
-        return actual if actual is not None else default
+        if actual is None:
+            actual = default
+        for default_field in default.keys():
+            if default_field not in actual:
+                actual[default_field] = default[default_field]
+        return actual
 
     def bias_attr(self):
+        default = {
+            'name': None,
+            'init_attr': {
+                'type': 'fill_constant',
+                'value': 0.0
+            }
+        }
         bias_attr = self.kwargs.get('bias_attr', None)
         if bias_attr is True:
-            bias_attr = {
-                'name': None,
-                'init_attr': {
-                    'type': 'fill_constant',
-                    'value': 0.0
-                }
-            }
+            bias_attr = default
+
+        if isinstance(bias_attr, dict):
+            for default_field in default.keys():
+                if default_field not in bias_attr:
+                    bias_attr[default_field] = default[default_field]
         return bias_attr
 
     def multiple_param_attr(self, length):
@@ -120,12 +131,14 @@ class LayerHelper(object):
         return dtype
 
     def create_parameter(self, attr, shape, dtype, suffix='w'):
-        if attr['name'] is None:
-            attr['name'] = unique_name(".".join([self.name, suffix]))
+        # Deepcopy the attr so that parameters can be shared in program
+        attr_copy = copy.deepcopy(attr)
+        if attr_copy['name'] is None:
+            attr_copy['name'] = unique_name(".".join([self.name, suffix]))
         self.init_program.global_block().create_parameter(
-            dtype=dtype, shape=shape, **attr)
+            dtype=dtype, shape=shape, **attr_copy)
         return self.program.global_block().create_parameter(
-            name=attr['name'], dtype=dtype, shape=shape)
+            name=attr_copy['name'], dtype=dtype, shape=shape)
 
     def create_tmp_variable(self, dtype):
         return self.program.current_block().create_var(
