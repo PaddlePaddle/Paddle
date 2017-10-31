@@ -23,7 +23,10 @@ class SelectedRows {
     value_.reset(new Tensor());
   }
 
-  SelectedRows() { value_.reset(new Tensor()); }
+  SelectedRows() {
+    height_ = 0;
+    value_.reset(new Tensor());
+  }
 
   platform::Place place() const { return value_->place(); }
 
@@ -36,6 +39,8 @@ class SelectedRows {
   void set_height(int64_t height) { height_ = height; }
 
   const Vector<int64_t>& rows() const { return rows_; }
+
+  Vector<int64_t>* mutable_rows() { return &rows_; }
 
   void set_rows(const Vector<int64_t>& rows) { rows_ = rows; }
 

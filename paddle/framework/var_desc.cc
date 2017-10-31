@@ -18,6 +18,10 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+VarDesc::VarType VarDescBind::GetType() const { return desc_.type(); }
+
+void VarDescBind::SetType(VarDesc::VarType type) { desc_.set_type(type); }
+
 void VarDescBind::SetShape(const std::vector<int64_t> &dims) {
   VectorToRepeated(dims, mutable_tensor_desc()->mutable_dims());
 }

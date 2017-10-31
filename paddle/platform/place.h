@@ -35,6 +35,7 @@ struct GPUPlace {
   GPUPlace() : GPUPlace(0) {}
   explicit GPUPlace(int d) : device(d) {}
 
+  inline int GetDeviceId() const { return device; }
   // needed for variant equality comparison
   inline bool operator==(const GPUPlace &o) const { return device == o.device; }
   inline bool operator!=(const GPUPlace &o) const { return !(*this == o); }

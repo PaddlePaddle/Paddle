@@ -62,11 +62,13 @@ class SmoothL1LossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("InsideWeight",
              "Optional input tensor of smooth l1 loss op with the same shape "
              "as X. If provided, the result of (X - Y) will be multiplied "
-             "by this tensor element by element.");
+             "by this tensor element by element.")
+        .AsDispensable();
     AddInput("OutsideWeight",
              "Optinal input of smooth l1 loss op with the same shape as X."
              "If provided, the output smooth l1 loss will be multiplied by "
-             "this tensor element by element.");
+             "this tensor element by element.")
+        .AsDispensable();
     AddOutput("Diff", "Intermediate variable to cache InsideWeight*(X-Y).")
         .AsIntermediate();
     AddOutput("Out", "Smooth l1 loss.");
