@@ -23,18 +23,21 @@ using Tensor = framework::Tensor;
 
 namespace {
 template <typename T>
-__global__ void CrossEntropyGrad(T* out_grad, const T* in_grad,
+__global__ void CrossEntropyGrad(T* logit_grad, const T* loss_grad,
                                  const int* labels, const int batch_size,
                                  const int class_num) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int sample_idx = tid / class_num;
 
-  if (tid < batch_size * class_num) out_grad[tid] *= in_grad[sample_idx];
-  __syncthreads();
-
   if (tid < batch_size) {
     PADDLE_ASSERT(labels[sample_idx] >= 0 && labels[sample_idx] < class_num);
-    out_grad[tid * class_num + labels[tid]] -= 1.;
+    logit_grad[tid * class_num + labels[tid]] -= static_cast<T>(1.);
+  }
+
+  __syncthreads();
+
+  if (tid < batch_size * class_num) {
+    logit_grad[tid] *= loss_grad[sample_idx];
   }
 }
 
@@ -47,7 +50,7 @@ __global__ void SoftCrossEntropyGradientKernel(T* logit_grad,
   int ids = blockIdx.x * blockDim.x + threadIdx.x;
   if (ids < batch_size * class_num) {
     int row_ids = ids / class_num;
-    logit_grad[ids] = logit_grad[ids] * loss_grad[row_ids] - labels[ids];
+    logit_grad[ids] = logit_grad[ids] * (loss_grad[row_ids] - labels[ids]);
   }
 }
 }  // namespace
