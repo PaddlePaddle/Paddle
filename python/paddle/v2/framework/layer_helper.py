@@ -8,7 +8,7 @@ from paddle.v2.framework.framework import Variable, g_program, \
 
 
 def unique_name(prefix):
-    uid = core.unique_integer()  # unique during whole process.
+    uid = core.unique_integer(prefix)  # unique during whole process.
     return "_".join([prefix, str(uid)])
 
 
