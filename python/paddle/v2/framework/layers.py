@@ -1,6 +1,7 @@
 from paddle.v2.framework.layer_helper import LayerHelper, unique_name
 import paddle.v2.framework.core as core
 from paddle.v2.framework.framework import OpProtoHolder, Variable, Program
+from paddle.v2.framework.initializer import ConstantInitializer
 import re
 
 __all__ = [
@@ -413,26 +414,12 @@ def batch_norm(input,
         else:
             raise ValueError("unsupported data layout:" + data_layout)
 
-    def get_init_attr(value):
-        if not isinstance(value, float):
-            raise ValueError("attr value should be a float")
-        return {'type': 'fill_constant', 'value': value}
-
-    def prepend_init_op(var, init_attr):
-        assert isinstance(var, Variable)
-        op_type = init_attr['type']
-        init_attr['shape'] = var.shape
-        init_attr['data_type'] = int(var.data_type)
-        op = var.block.prepend_op(
-            type=op_type, inputs=None, outputs={'Out': [var]}, attrs=init_attr)
-        return op
-
-    def create_persistable_var(dtype, shape, init_attr=None):
+    def create_persistable_var(dtype, shape, initializer=None):
         name = unique_name(".".join([helper.name, "xxxx"]))
         var = init_program.global_block().create_var(
             dtype=dtype, shape=shape, name=name, persistable=True)
-        if 'init_attr' is not None:
-            prepend_init_op(var, init_attr)
+        if initializer is not None:
+            initializer(var, var.block)
         return program.global_block().create_var(
             name=name, dtype=dtype, shape=shape, persistable=True)
 
@@ -445,8 +432,9 @@ def batch_norm(input,
         attr=helper.param_attr, shape=param_shape, dtype=dtype)
 
     # create input
-    mean = create_persistable_var(dtype, param_shape, get_init_attr(0.0))
-    variance = create_persistable_var(dtype, param_shape, get_init_attr(1.0))
+    mean = create_persistable_var(dtype, param_shape, ConstantInitializer(0.0))
+    variance = create_persistable_var(dtype, param_shape,
+                                      ConstantInitializer(1.0))
 
     # create output
     # mean and mean_out share the same memory
