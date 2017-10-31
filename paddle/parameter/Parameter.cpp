@@ -202,6 +202,7 @@ void Parameter::setMat(ParameterType pType, int matType) {
     }
   }
 #ifndef PADDLE_MOBILE_INFERENCE
+  // NOLINTNEXTLINE
   else if (matType == MAT_NORMAL_SHARED) {
     CHECK_EQ(height * width, bufs_[pType]->getSize());
     size_t blockNum = 0;
@@ -263,6 +264,7 @@ void Parameter::setMat(ParameterType pType, int matType) {
     mats_[pType] = std::make_shared<SparseAutoGrowRowCpuMatrix>(height, width);
   }
 #endif
+  // NOLINTNEXTLINE
   else {
     LOG(FATAL) << "Unsupported mat type" << matType;
   }
