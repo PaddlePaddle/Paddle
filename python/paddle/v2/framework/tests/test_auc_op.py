@@ -6,10 +6,11 @@ from op_test import OpTest
 class TestAucOp(OpTest):
     def setUp(self):
         self.op_type = "auc"
-        pred = np.random.random((128)).astype("float32")
-        labels = np.random.randint(0, 2, (128, ))
+        pred = np.random.random((128, 2)).astype("float32")
+        indices = np.random.randint(0, 2, (128, 2))
+        labels = np.random.randint(0, 2, (128, 1))
         num_thresholds = 200
-        self.inputs = {'Inference': pred, 'Label': labels}
+        self.inputs = {'Out': pred, 'Indices': indices, 'Label': labels}
         self.attrs = {'curve': 'ROC', 'num_thresholds': num_thresholds}
         # NOTE: sklearn use a different way to generate thresholds
         #       which will cause the result differs slightly:
@@ -31,12 +32,12 @@ class TestAucOp(OpTest):
             tp, fn, tn, fp = 0, 0, 0, 0
             for i, lbl in enumerate(labels):
                 if lbl:
-                    if pred[i] >= thresh:
+                    if pred[i, 0] >= thresh:
                         tp += 1
                     else:
                         fn += 1
                 else:
-                    if pred[i] >= thresh:
+                    if pred[i, 0] >= thresh:
                         fp += 1
                     else:
                         tn += 1
@@ -62,6 +63,5 @@ class TestAucOp(OpTest):
         self.check_output()
 
 
-# TODO(typhoonzero): add this back till we fix it
-#if __name__ == "__main__":
-#    unittest.main()
+if __name__ == "__main__":
+    unittest.main()
