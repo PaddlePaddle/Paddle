@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/pybind/protobuf.h"
 
 #include <mutex>  // for call_once
+#include <unordered_map>
 #include "gflags/gflags.h"
 #include "paddle/framework/backward.h"
 #include "paddle/framework/executor.h"
@@ -42,9 +43,9 @@ limitations under the License. */
 
 namespace paddle {
 namespace pybind {
-static size_t UniqueIntegerGenerator() {
-  static std::atomic<size_t> generator;
-  return generator.fetch_add(1);
+static size_t UniqueIntegerGenerator(const std::string &prefix) {
+  static std::unordered_map<std::string, std::atomic<size_t>> generators;
+  return generators[prefix].fetch_add(1);
 }
 
 std::once_flag gflags_init_flag;

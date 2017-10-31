@@ -6,7 +6,7 @@ import re
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
     'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool', 'sums', 'cos_sim',
-    'batch_norm'
+    'batch_norm', 'accuracy'
 ]
 
 
@@ -234,11 +234,28 @@ def square_error_cost(input, label, **kwargs):
 
     square_out = helper.create_tmp_variable(dtype=input.data_type)
     helper.append_op(
-        type='pow',
-        inputs={'X': [minus_out]},
-        outputs={'Y': [square_out]},
-        attrs={'factor': 2.0})
+        type='square', inputs={'X': [minus_out]}, outputs={'Y': [square_out]})
     return square_out
+
+
+def accuracy(input, label, k=1, **kwargs):
+    helper = LayerHelper("accuracy", **kwargs)
+    topk_out = helper.create_tmp_variable(dtype=input.data_type)
+    topk_indices = helper.create_tmp_variable(dtype="int64")
+    helper.append_op(
+        type="top_k",
+        inputs={"X": [input]},
+        outputs={"Out": [topk_out],
+                 "Indices": [topk_indices]},
+        attrs={"k": k})
+    acc_out_dtype = kwargs.get("out_dtype", "float32")
+    acc_out = helper.create_tmp_variable(dtype=acc_out_dtype)
+    helper.append_op(
+        type="accuracy",
+        inputs={"Inference": [topk_indices],
+                "Label": [label]},
+        outputs={"Accuracy": [acc_out]})
+    return acc_out
 
 
 def sequence_conv(input,
