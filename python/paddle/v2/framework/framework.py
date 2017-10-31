@@ -119,8 +119,9 @@ class Variable(object):
 
     @staticmethod
     def _unique_var_name_():
-        uid = core.unique_integer()  # unique during whole process.
-        return "_generated_var_%d" % uid
+        prefix = "_generated_var"
+        uid = core.unique_integer(prefix)  # unique during whole process.
+        return "_".join([prefix, str(uid)])
 
     @staticmethod
     def _convert_np_dtype_to_dtype_(np_dtype):
@@ -352,7 +353,10 @@ class Block(object):
         return {v for k, v in self.vars.iteritems() if isinstance(v, Parameter)}
 
     def create_var(self, *args, **kwargs):
-        return Variable(self, *args, **kwargs)
+        var = Variable(self, *args, **kwargs)
+        if 'init_attr' in kwargs:
+            self._prepend_initialize_ops_(var, kwargs['init_attr'])
+        return var
 
     def has_var(self, name):
         return name in self.vars

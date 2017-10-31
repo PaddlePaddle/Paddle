@@ -16,14 +16,50 @@ limitations under the License. */
 #include <functional>
 #include <mutex>
 #include <unordered_map>
+#include "glog/logging.h"
 #include "paddle/framework/block_desc.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/program_desc.h"
-
-#include "glog/logging.h"
+#include "paddle/framework/shape_inference.h"
 
 namespace paddle {
 namespace framework {
+
+class OpDescBind;
+class BlockDescBind;
+class CompileTimeInferShapeContext : public InferShapeContext {
+ public:
+  CompileTimeInferShapeContext(const OpDescBind &op,
+                               const BlockDescBind &block);
+
+  bool HasInput(const std::string &name) const override;
+
+  bool HasOutput(const std::string &name) const override;
+
+  bool HasInputs(const std::string &name) const override;
+
+  bool HasOutputs(const std::string &name) const override;
+
+  DDim GetInputDim(const std::string &name) const override;
+
+  void SetOutputDim(const std::string &name, const DDim &dim) override;
+
+  AttrReader Attrs() const override;
+
+  const std::vector<std::string> &Inputs(
+      const std::string &name) const override;
+
+  const std::vector<std::string> &Outputs(
+      const std::string &name) const override;
+
+ private:
+  DDim GetDim(const std::string &name) const override;
+
+  void SetDim(const std::string &name, const DDim &dim) override;
+
+  const OpDescBind &op_;
+  const BlockDescBind &block_;
+};
 
 OpDescBind::OpDescBind(const std::string &type, const VariableNameMap &inputs,
                        const VariableNameMap &outputs,
@@ -286,6 +322,98 @@ void OpDescBind::InferVarType(BlockDescBind *block) const {
       }
     }
   }
+}
+
+CompileTimeInferShapeContext::CompileTimeInferShapeContext(
+    const OpDescBind &op, const BlockDescBind &block)
+    : op_(op), block_(block) {}
+
+bool CompileTimeInferShapeContext::HasInput(const std::string &name) const {
+  const std::vector<std::string> &input_names = op_.Input(name);
+  auto length = input_names.size();
+  if (length == 0) {
+    return false;
+  }
+  PADDLE_ENFORCE_EQ(length, 1UL,
+                    "Input(%s) should have only one value, "
+                    "but it have %d now",
+                    name, length);
+  return block_.HasVarRecursive(input_names[0]);
+}
+
+bool CompileTimeInferShapeContext::HasOutput(const std::string &name) const {
+  const std::vector<std::string> &output_names = op_.Output(name);
+  auto length = output_names.size();
+  if (length == 0) {
+    return false;
+  }
+  PADDLE_ENFORCE_EQ(length, 1UL,
+                    "Output(%s) should have only one value, "
+                    "but it have %d now",
+                    name, length);
+  return block_.HasVarRecursive(output_names[0]);
+}
+
+bool CompileTimeInferShapeContext::HasInputs(const std::string &name) const {
+  const std::vector<std::string> &input_names = op_.Input(name);
+  if (input_names.empty()) {
+    return false;
+  }
+  for (auto &input : input_names) {
+    if (!block_.HasVarRecursive(input)) return false;
+  }
+  return true;
+}
+
+bool CompileTimeInferShapeContext::HasOutputs(const std::string &name) const {
+  const std::vector<std::string> &output_names = op_.Output(name);
+  if (output_names.empty()) {
+    return false;
+  }
+  for (auto &output : output_names) {
+    if (!block_.HasVarRecursive(output)) return false;
+  }
+  return true;
+}
+
+DDim CompileTimeInferShapeContext::GetInputDim(const std::string &name) const {
+  std::vector<DDim> ddims = GetInputsDim(name);
+  auto length = ddims.size();
+  PADDLE_ENFORCE_EQ(length, 1UL,
+                    "Input(%s) should have 1 value, "
+                    "but it has %d now",
+                    name, length);
+  return ddims[0];
+}
+
+void CompileTimeInferShapeContext::SetOutputDim(const std::string &name,
+                                                const DDim &dim) {
+  SetOutputsDim(name, {dim});
+}
+
+AttrReader CompileTimeInferShapeContext::Attrs() const {
+  return AttrReader(op_.GetAttrMap());
+}
+
+const std::vector<std::string> &CompileTimeInferShapeContext::Inputs(
+    const std::string &name) const {
+  return op_.Input(name);
+}
+
+const std::vector<std::string> &CompileTimeInferShapeContext::Outputs(
+    const std::string &name) const {
+  return op_.Output(name);
+}
+
+DDim CompileTimeInferShapeContext::GetDim(const std::string &name) const {
+  auto var = block_.FindVarRecursive(name);
+  PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
+  return framework::make_ddim(var->Shape());
+}
+
+void CompileTimeInferShapeContext::SetDim(const std::string &name,
+                                          const DDim &dim) {
+  block_.FindVarRecursive(name)->SetShape(framework::vectorize(dim));
 }
 
 }  // namespace framework
