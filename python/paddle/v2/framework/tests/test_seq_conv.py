@@ -47,7 +47,6 @@ class TestSeqProject(OpTest):
         self.attrs = {
             'contextStart': self.context_start,
             'contextLength': self.context_length,
-            'paddingTrainable': self.padding_trainable,
             'contextStride': self.context_stride
         }
         out = np.zeros(

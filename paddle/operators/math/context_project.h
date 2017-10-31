@@ -206,7 +206,7 @@ class ContextProjectGradFunctor {
 
     int input_row_begin, input_row_end;
     int sequence_height, sequence_width;
-    sequence_width = in.dims()[1];
+    sequence_width = in->dims()[1];
 
     if (input_grad) {
       for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {

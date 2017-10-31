@@ -59,7 +59,7 @@ class SequenceConvKernel : public framework::OpKernel<T> {
 
       PADDLE_ENFORCE(
           (padding_dims[0] == up_pad + down_pad) &&
-              padding_dim[1] == sequence_width,
+              padding_dims[1] == sequence_width,
           "Input(PaddingData)'s shape is not consistent with 'context_start' "
           "and 'context_length'.");
     }
@@ -129,7 +129,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
 
       seq_project_grad_functor(context.device_context(), context_start,
                                context_length, context_stride, up_pad, down_pad,
-                               true, false, *in_g, *padding_data_g, &col);
+                               true, false, in_g, padding_data_g, &col);
     }
 
     if (padding_data_g) {
@@ -137,10 +137,9 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       set_zero(context.device_context(), padding_data_g, static_cast<T>(0));
 
       LoDTensor* input = const_cast<LoDTensor*>(in);
-      seq_project_grad_functor(context.device_context(), padding_trainable,
-                               context_start, context_length, context_stride,
-                               up_pad, down_pad, false, true, *input,
-                               *padding_data_g, &col);
+      seq_project_grad_functor(context.device_context(), context_start,
+                               context_length, context_stride, up_pad, down_pad,
+                               false, true, input, padding_data_g, &col);
     }
 
     if (filter_g) {

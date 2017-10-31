@@ -31,7 +31,6 @@ class SequenceConvOp : public framework::OperatorWithKernel {
                    "Output(Out) of SequenceConvOp should not be null.");
 
     int context_length = ctx->Attrs().Get<int>("contextLength");
-    int context_start = ctx->Attrs().Get<int>("contextStart");
 
     auto in_dims = ctx->GetInputDim("X");
     auto filter_dims = ctx->GetInputDim("Filter");
