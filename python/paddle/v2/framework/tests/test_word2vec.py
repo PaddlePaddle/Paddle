@@ -118,6 +118,7 @@ hidden1 = layers.fc(input=concat_embed,
 predict_bias_attr = {'optimize_attr': {'learning_rate': 2.0}}
 predict_word = layers.fc(input=hidden1,
                          size=dict_size,
+                         bias_attr=predict_bias_attr,
                          act='softmax',
                          program=program,
                          init_program=init_program)
