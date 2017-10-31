@@ -20,9 +20,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-namespace {
 template <typename T>
-T NormalizeL1(T* x, size_t len) {
+static inline T NormalizeL1(T* x, size_t len) {
   T sum = 0.;
   for (size_t i = 0; i < len; ++i) sum += x[i];
   // (This comment is from the old LinearChainCRFLayer.)
@@ -35,7 +34,6 @@ T NormalizeL1(T* x, size_t len) {
   for (size_t i = 0; i < len; ++i) x[i] *= s;
   return sum;
 }
-}  // namespace
 
 using framework::LoDTensor;
 using framework::LoD;
@@ -192,6 +190,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
       dst->CopyFrom(src, platform::CPUPlace(), ctx);
 
     };
+
     copyLoDTensor(ctx, emission_weights_src, emission_weights_dst);
     copyLoDTensor(ctx, label_src, label_dst);
 
@@ -219,7 +218,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     copyTensor(ctx, transition_exps_src, transition_exps_dst);
     copyTensor(ctx, alpha_src, alpha_dst);
     copyTensor(ctx, ll_src, ll_dst);
-  };
+  }
 
   T ForwardOneSequence(const Tensor& emission, const Tensor& emission_row_max,
                        const Tensor& emission_exps, const Tensor& trans_weights,
@@ -278,7 +277,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
             w[(lbl[k - 1] + state_trans_base_idx) * tag_num + lbl[k]];
     }
     return -ll;
-  };
+  }
 };
 
 template <typename Place, typename T>
@@ -413,7 +412,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     copyTensor(ctx, transition_exps_src, transition_exps_dst);
     copyTensor(ctx, alpha_src, alpha_dst);
     copyTensor(ctx, ll_grad_src, ll_grad_dst);
-  };
+  }
 
   void CopyOutputsToGpuMemory(const platform::DeviceContext& ctx,
                               const Tensor* emission_grad_src,
@@ -431,7 +430,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     };
     copyTensor(ctx, emission_grad_src, emission_grad_dst);
     copyTensor(ctx, transition_grad_src, transition_grad_dst);
-  };
+  }
 
   void BackwardOneSequence(const platform::DeviceContext& ctx, const T ll_grad,
                            const Tensor& emission_exps,
@@ -524,7 +523,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
                    label_value[k]] -= static_cast<T>(1.);
       }
     }
-  };
+  }
 };
 
 }  // namespace operators

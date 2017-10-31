@@ -335,7 +335,7 @@ class TestSoftplus(OpTest):
     def setUp(self):
         self.op_type = "softplus"
         self.inputs = {
-            'X': np.random.uniform(-1, 1, [11, 17]).astype("float32")
+            'X': np.random.uniform(-1, 1, [11, 17]).astype("float64")
         }
         self.outputs = {'Y': np.log(1 + np.exp(self.inputs['X']))}
 

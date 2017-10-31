@@ -34,13 +34,19 @@ class ReshapeOp : public framework::OperatorWithKernel {
 
     auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
     PADDLE_ENFORCE(shape.size() > 0, "Attr(shape) shouldn't be empty.");
-    for (auto dim : shape) {
-      PADDLE_ENFORCE(dim > 0, "Each dimension of shape must be positive.");
+    auto x_dims = ctx->GetInputDim("X");
+    // TODO(qiao) change batch_size
+    for (int i = 1; i < shape.size(); ++i) {
+      PADDLE_ENFORCE(shape[i] > 0,
+                     "Each dimension of shape "
+                     "must be positiv except the first.");
+    }
+    if (shape[0] < 0) {
+      shape[0] = x_dims[0];
     }
     // capacity check
     int64_t capacity =
         std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
-    auto x_dims = ctx->GetInputDim("X");
     int64_t in_size = framework::product(x_dims);
     PADDLE_ENFORCE_EQ(capacity, in_size,
                       "The size of Input(X) mismatches with Attr(shape).");

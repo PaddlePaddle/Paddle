@@ -235,8 +235,7 @@ void MKLDNNLayer::resetInGrad(MKLDNNMatrixPtr& in,
   in = MKLDNNMatrix::create(intPD, inMat);
   Argument& arg = input->getOutput(this->getName());
   arg.grad = std::dynamic_pointer_cast<Matrix>(in);
-  CHECK(inVal_);
-  CHECK(inVal_->getPrimitiveDesc() == intPD) << "the primitive desc must equal";
+  CHECK_PRIMITIVE_DESC_EQ(inVal_, intPD);
   if (inputIsOnlyMKLDNN()) {
     return;
   }
@@ -250,8 +249,7 @@ void MKLDNNLayer::resetInGrad(MKLDNNMatrixPtr& in,
   CHECK(extInVal_ != nullptr && isPaddleFormat(extInVal_->getFormat()))
       << "should have external input value and the format must be nchw(nc)";
   extInGrad_ = MKLDNNMatrix::create(extInVal_->getPrimitiveDesc(), inMat);
-  CHECK(inVal_ != nullptr && inVal_->getPrimitiveDesc() == intPD)
-      << "should have internal input value and primitive desc must equal";
+  CHECK_PRIMITIVE_DESC_EQ(inVal_, intPD);
   in = MKLDNNMatrix::create(intPD);
   cvtInGrad_ = MKLDNNMatrix::createReorder(in, extInGrad_);
   CHECK(cvtInGrad_);
@@ -277,8 +275,7 @@ void MKLDNNLayer::resetOutGrad(MKLDNNMatrixPtr& out,
   CHECK(extOutVal_ != nullptr && isPaddleFormat(extOutVal_->getFormat()))
       << "should have external output value and the format must be nchw(nc)";
   extOutGrad_ = MKLDNNMatrix::create(extOutVal_->getPrimitiveDesc(), outMat);
-  CHECK(outVal_ != nullptr && outVal_->getPrimitiveDesc() == intPD)
-      << "should have internal output value and primitive desc must equal";
+  CHECK_PRIMITIVE_DESC_EQ(outVal_, intPD);
   out = MKLDNNMatrix::create(intPD);
   cvtOutGrad_ = MKLDNNMatrix::createReorder(extOutGrad_, out);
   CHECK(cvtOutGrad_);

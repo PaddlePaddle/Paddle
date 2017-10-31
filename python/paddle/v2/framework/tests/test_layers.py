@@ -93,50 +93,40 @@ class TestBook(unittest.TestCase):
         dict_size = 10000
         embed_size = 32
         first_word = layers.data(
-            name='firstw', shape=[1], data_type='int32', program=program)
+            name='firstw', shape=[1], data_type='int64', program=program)
         second_word = layers.data(
-            name='secondw', shape=[1], data_type='int32', program=program)
+            name='secondw', shape=[1], data_type='int64', program=program)
         third_word = layers.data(
-            name='thirdw', shape=[1], data_type='int32', program=program)
+            name='thirdw', shape=[1], data_type='int64', program=program)
         forth_word = layers.data(
-            name='forthw', shape=[1], data_type='int32', program=program)
+            name='forthw', shape=[1], data_type='int64', program=program)
         next_word = layers.data(
-            name='nextw', shape=[1], data_type='int32', program=program)
-
-        embed_param_attr_1 = {
-            'name': 'shared_w',
-            'init_attr': {
-                'max': 1.0,
-                'type': 'uniform_random',
-                'min': -1.0
-            }
-        }
-        embed_param_attr_2 = {'name': 'shared_w'}
+            name='nextw', shape=[1], data_type='int64', program=program)
 
         embed_first = layers.embedding(
             input=first_word,
             size=[dict_size, embed_size],
             data_type='float32',
-            param_attr=embed_param_attr_1,
+            param_attr={'name': 'shared_w'},
             program=program)
         embed_second = layers.embedding(
             input=second_word,
             size=[dict_size, embed_size],
             data_type='float32',
-            param_attr=embed_param_attr_2,
+            param_attr={'name': 'shared_w'},
             program=program)
 
         embed_third = layers.embedding(
             input=third_word,
             size=[dict_size, embed_size],
             data_type='float32',
-            param_attr=embed_param_attr_2,
+            param_attr={'name': 'shared_w'},
             program=program)
         embed_forth = layers.embedding(
             input=forth_word,
             size=[dict_size, embed_size],
             data_type='float32',
-            param_attr=embed_param_attr_2,
+            param_attr={'name': 'shared_w'},
             program=program)
 
         concat_embed = layers.concat(
