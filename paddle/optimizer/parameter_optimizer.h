@@ -28,7 +28,7 @@ public:
                                     Tensor *parameter);
   virtual void Update(const Tensor *gradient) = 0;
   virtual float *get_weight(int *param_size) const;
-  virtual const char *SerializeState(int *state_len) = 0;
+  virtual std::string SerializeState() = 0;
   virtual void DeserializeState(const std::string &state) = 0;
 
 protected:
