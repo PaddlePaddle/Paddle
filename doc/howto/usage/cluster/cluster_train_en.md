@@ -19,7 +19,7 @@
       * [Launching Cluster Job](#launching-cluster-job-1)
    * [Cluster Training Using Kubernetes](#cluster-training-using-kubernetes)
 
-# Introduction
+## Introduction
 
 In this article, we'll explain how to run distributed training jobs with PaddlePaddle on different types of clusters. The diagram below shows the main architecture of a distributed trainning job:
 
@@ -33,7 +33,7 @@ PaddlePaddle can support both synchronize stochastic gradient descent (SGD) and 
 
 When training with synchronize SGD, PaddlePaddle uses an internal "synchronize barrier" which makes gradients update and parameter download in strict order. On the other hand, asynchronous SGD won't wait for all trainers to finish upload at a single step, this will increase the parallelism of distributed training: parameter servers do not depend on each other, they'll do parameter optimization concurrently. Parameter servers will not wait for trainers, so trainers will also do their work concurrently. But asynchronous SGD will introduce more randomness and noises in the gradient.
 
-# Preparations
+## Preparations
 1. Prepare your computer cluster. It's normally a bunch of Linux servers connected by LAN. Each server will be assigned a unique IP address. The computers in the cluster can be called "nodes".
 2. Install PaddlePaddle on every node. If you are going to take advantage of GPU cards, you'll also need to install proper driver and CUDA libraries. To install PaddlePaddle please read [this build and install](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/getstarted/build_and_install) document. We strongly recommend using [Docker installation](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/getstarted/build_and_install/docker_install_en.rst).
 
@@ -52,9 +52,9 @@ PaddlePaddle 0.10.0rc, compiled with
 
 We'll take `doc/howto/usage/cluster/src/word2vec` as an example to introduce distributed training using PaddlePaddle v2 API.
 
-# Command-line arguments
+## Command-line arguments
 
-## Starting parameter server
+### Starting parameter server
 
 Type the below command to start a parameter server which will wait for trainers to connect:
 
@@ -74,7 +74,7 @@ $ stdbuf -oL /usr/bin/nohup paddle pserver --port=7164 --ports_num=1 --ports_num
 | ports_num_for_sparse  | required | 1 | number of ports which serves sparse parameter update  |
 | num_gradient_servers  | required | 1 | total number of gradient servers |
 
-## Starting trainer
+### Starting trainer
 Type the command below to start the trainer(name the file whatever you want, like "train.py")
 
 ```bash
@@ -122,7 +122,7 @@ paddle.init(
 | trainer_id  | required | 0 | ID for every trainer, start from 0 |
 | pservers  | required | 127.0.0.1 | list of IPs of parameter servers, separated by "," |
 
-## Prepare Training Dataset
+### Prepare Training Dataset
 
 Here's some example code [prepare.py](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/howto/usage/cluster/src/word2vec/prepare.py), it will download public `imikolov` dataset and split it into multiple files according to job parallelism(trainers count). Modify `SPLIT_COUNT` at the begining of `prepare.py` to change the count of output files.
 
@@ -155,7 +155,7 @@ When job started, every trainer needs to get it's own part of data. In some dist
 
 Different training jobs may have different data format and `reader()` function, developers may need to write different data prepare scripts and `reader()` functions for their job.
 
-## Prepare Training program
+### Prepare Training program
 
 We'll create a *workspace* directory on each node, storing your training program, dependencies, mounted or downloaded dataset directory.
 
@@ -191,7 +191,7 @@ Your workspace may looks like:
 - `train_data_dir`: containing training data. Mount from storage service or copy trainning data to here.
 - `test_data_dir`: containing testing data.
 
-# Use cluster platforms or cluster management tools
+## Use cluster platforms or cluster management tools
 
 PaddlePaddle supports running jobs on several platforms including:
 - [Kubernetes](http://kubernetes.io) open-source system for automating deployment, scaling, and management of containerized applications from Google.
@@ -202,13 +202,13 @@ We'll introduce cluster job management on these platforms. The examples can be f
 
 These cluster platforms provide API or environment variables for training processes, when the job is dispatched to different nodes. Like node ID, IP or total number of nodes etc.
 
-## Cluster Training Using Fabric
+### Cluster Training Using Fabric
 
-### Prepare a Linux cluster
+#### Prepare a Linux cluster
 
 Run `kubectl -f ssh_servers.yaml` under the directory:  `paddle/scripts/cluster_train_v2/fabric/docker_cluster` will launch a demo cluster. Run `kubectl get po -o wide` to get IP addresses of these nodes.
 
-### Launching Cluster Job
+#### Launching Cluster Job
 `paddle.py` provides automatical scripts to start all PaddlePaddle cluster processes in different nodes. By default, all command line options can be set as `paddle.py` command options and `paddle.py` will transparently and automatically set these options to PaddlePaddle lower level processes.
 
 `paddle.py`provides two distinguished command option for easy job launching.
@@ -224,10 +224,10 @@ sh run.sh
 
 The cluster Job will start in several seconds.
 
-### Kill Cluster Job
+#### Kill Cluster Job
 `paddle.py` can capture `Ctrl + C` SIGINT signal to automatically kill all processes launched by it. So just stop `paddle.py` to kill cluster job. You should manually kill the job if the program crashed.
 
-### Check Cluster Training Result
+#### Check Cluster Training Result
 Check log in $workspace/log for details, each node owns same log structure.
 
 `paddle_trainer.INFO`
@@ -242,13 +242,13 @@ It provides stderr and stdout of parameter server process. Check error log if tr
 `train.log`
 It provides stderr and stdout of trainer process. Check error log if training crashes.
 
-### Check Model Output
+#### Check Model Output
 After one pass finished, model files will be written in `output` directory in node 0.
 `nodefile` in workspace indicates the node id of current cluster job.
 
-## Cluster Training Using OpenMPI
+### Cluster Training Using OpenMPI
 
-### Prepare an OpenMPI cluster
+#### Prepare an OpenMPI cluster
 
 Run the following command to start a 3-node MPI cluster and one "head" node.
 
@@ -260,7 +260,7 @@ kubectl create -f mpi-nodes.yaml
 
 Then you can log in to every OpenMPI node using ssh without input any passwords.
 
-### Launching Cluster Job
+#### Launching Cluster Job
 
 Follow the steps to launch a PaddlePaddle training job in OpenMPI cluster:\
 
@@ -288,6 +288,6 @@ scp train.txt-00002 test.txt-00002 [node3IP]:/home/tutorial
 mpirun -hostfile machines -n 3  /home/tutorial/start_mpi_train.sh
 ```
 
-## Cluster Training Using Kubernetes
+### Cluster Training Using Kubernetes
 
 The details can be found [here](../k8s/k8s_cn.md)
