@@ -36,8 +36,8 @@ class AccuracyOp : public framework::OperatorWithKernel {
     // Assume indices has same shape with infernece, because
     // it's the output of topk.
 
-    PADDLE_ENFORCE_EQ(label_dim.size(), 2, "label must be a 2D tensor.");
-    PADDLE_ENFORCE_EQ(label_dim[1], 1, "label width must be 1.");
+    PADDLE_ENFORCE_EQ(label_dim.size(), 2, "label's rank must be 2.");
+    PADDLE_ENFORCE_EQ(label_dim[1], 1, "label's second dimension must be 1");
     PADDLE_ENFORCE_EQ(inference_dim[0], label_dim[0],
                       "the inference tensor's num_rows must be"
                       " the same as label.");
@@ -82,7 +82,8 @@ information, or not. But the output only shares the LoD with input `Inference`.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(accuracy, ops::AccuracyOp, ops::AccuracyOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(accuracy, ops::AccuracyOp, ops::AccuracyOpMaker,
+                             paddle::framework::EmptyGradOpMaker);
 // FIXME(typhoonzero): types of T is for infernece data.
 // label data is always int.
 REGISTER_OP_CPU_KERNEL(accuracy,

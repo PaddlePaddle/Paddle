@@ -5,7 +5,7 @@ import re
 
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
-    'StaticRNN', 'cast'
+    'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool', 'accuracy'
 ]
 
 
@@ -150,7 +150,7 @@ def _create_op_func_(op_type):
             outputs[name] = [helper.create_tmp_variable(dtype=dtype)]
         helper.append_op(
             type=op_type, inputs=inputs, outputs=outputs, attrs=kwargs)
-        return out
+        return helper.append_activation(out)
 
     func.__name__ = op_type
     globals()[op_type] = func
@@ -160,8 +160,21 @@ def _create_op_func_(op_type):
 
 _create_op_func_('mean')
 _create_op_func_('mul')
+_create_op_func_('elementwise_add')
 _create_op_func_('dropout')
 _create_op_func_('reshape')
+
+
+def cast(x, data_type, program=None):
+    helper = LayerHelper('cast', **locals())
+    out = helper.create_tmp_variable(dtype=data_type)
+    helper.append_op(
+        type='cast',
+        inputs={'X': [x]},
+        outputs={'Out': [out]},
+        attrs={'in_data_type': x.data_type,
+               'out_data_type': out.data_type})
+    return out
 
 
 def cast(x, data_type, program=None):
@@ -212,11 +225,68 @@ def square_error_cost(input, label, **kwargs):
 
     square_out = helper.create_tmp_variable(dtype=input.data_type)
     helper.append_op(
-        type='pow',
-        inputs={'X': [minus_out]},
-        outputs={'Y': [square_out]},
-        attrs={'factor': 2.0})
+        type='square', inputs={'X': [minus_out]}, outputs={'Y': [square_out]})
     return square_out
+
+
+def accuracy(input, label, k=1, **kwargs):
+    helper = LayerHelper("accuracy", **kwargs)
+    topk_out = helper.create_tmp_variable(dtype=input.data_type)
+    topk_indices = helper.create_tmp_variable(dtype="int64")
+    helper.append_op(
+        type="top_k",
+        inputs={"X": [input]},
+        outputs={"Out": [topk_out],
+                 "Indices": [topk_indices]},
+        attrs={"k": k})
+    acc_out_dtype = kwargs.get("out_dtype", "float32")
+    acc_out = helper.create_tmp_variable(dtype=acc_out_dtype)
+    helper.append_op(
+        type="accuracy",
+        inputs={"Inference": [topk_indices],
+                "Label": [label]},
+        outputs={"Accuracy": [acc_out]})
+    return acc_out
+
+
+def sequence_conv(input,
+                  num_filters,
+                  name=None,
+                  filter_size=3,
+                  act=None,
+                  stride=1,
+                  padding=None,
+                  bias_attr=None,
+                  param_attr=None,
+                  program=None,
+                  init_program=None):
+    # FIXME(dzh) : want to unify the argument of python layer
+    # function. So we ignore some unecessary attributes.
+    # such as, padding_trainable, context_start.
+
+    helper = LayerHelper('sequence_conv', **locals())
+    dtype = helper.input_dtype()
+
+    filter_shape = [num_filters, filter_size]
+    filter = helper.create_parameter(
+        attr=helper.param_attr, shape=filter_shape, dtype=dtype)
+    pre_bias = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type='sequence_conv',
+        inputs={
+            'X': [input],
+            'Filter': filter,
+        },
+        outputs={"Out": pre_bias},
+        attrs={
+            'context_stride': stride,
+            'context_start': 0,
+            'context_length': filter_size
+        })
+
+    pre_act = helper.append_bias_op(pre_bias)
+    return helper.append_activation(pre_act)
 
 
 def conv2d(input,
@@ -271,6 +341,35 @@ def conv2d(input,
     return helper.append_activation(pre_act)
 
 
+def sequence_pool(input,
+                  pool_size,
+                  pool_type,
+                  pool_stride=1,
+                  pool_padding=0,
+                  global_pooling=False,
+                  program=None,
+                  init_program=None):
+    # FIXME(dzh) : want to unify the argument of python layer
+    # function. So we ignore some unecessary attributes
+
+    ENUM_POOL_TYPE = set(["max", "avg", "sqrt", "last", "first"])
+    if pool_type not in ENUM_POOL_TYPE:
+        raise ValueError("Unknown pool_type: '%s'. It can only be %s.",
+                         str(pool_type), " ".join(ENUM_POOL_TYPE))
+
+    helper = LayerHelper('sequence_pool', **locals())
+    dtype = helper.input_dtype()
+    pool_out = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type="sequence_pool",
+        inputs={"X": [input]},
+        outputs={"Out": pool_out},
+        attrs={"strategy": pool_type})
+
+    return pool_out
+
+
 def pool2d(input,
            pool_size,
            pool_type,
@@ -290,7 +389,7 @@ def pool2d(input,
     if isinstance(pool_padding, int):
         pool_padding = [pool_padding, pool_padding]
 
-    helper = LayerHelper('conv2d', **locals())
+    helper = LayerHelper('pool2d', **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_tmp_variable(dtype)
 
