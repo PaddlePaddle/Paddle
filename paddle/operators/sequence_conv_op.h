@@ -38,19 +38,31 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     int context_start = context.Attr<int>("contextStart");
     int context_length = context.Attr<int>("contextLength");
     int context_stride = context.Attr<int>("contextStride");
-    bool padding_trainable = context.Attr<bool>("paddingTrainable");
 
     PADDLE_ENFORCE_EQ(in->lod().size(), 1UL,
-                      "Only support one level sequence now.");
-
-    const Tensor* padding_data = nullptr;
-    if (padding_trainable) {
-      padding_data = context.Input<Tensor>("PaddingData");
-    }
+                      "Only support sequence of LoDTensor level = 1 .");
 
     int up_pad = std::max(0, -context_start);
     int down_pad = std::max(0, context_start + context_length - 1);
     int sequence_width = static_cast<int>(in->dims()[1]);
+
+    const Tensor* padding = context.Input<Tensor>("PaddingData");
+    if (padding) {
+      auto padding_dims = padding->dims();
+      PADDLE_ENFORCE(
+          !(context_start == 0 && context_length == 1),
+          "If context_start is 0 and context_length is 1, paddingTrainable "
+          "should be false.");
+
+      PADDLE_ENFORCE(padding_dims.size() == 2,
+                     "Input(PaddingData) should be 2-D tensor.");
+
+      PADDLE_ENFORCE(
+          (padding_dims[0] == up_pad + down_pad) &&
+              padding_dim[1] == sequence_width,
+          "Input(PaddingData)'s shape is not consistent with 'context_start' "
+          "and 'context_length'.");
+    }
 
     framework::DDim col_shape = {in->dims()[0],
                                  context_length * sequence_width};
@@ -62,9 +74,8 @@ class SequenceConvKernel : public framework::OpKernel<T> {
 
     math::ContextProjectFunctor<Place, T> seq_project_functor;
 
-    seq_project_functor(context.device_context(), *in, *padding_data, col,
-                        padding_trainable, context_start, context_length,
-                        context_stride, up_pad, down_pad);
+    seq_project_functor(context.device_context(), *in, *padding, context_start,
+                        context_length, context_stride, up_pad, down_pad, &col);
 
     math::matmul<Place, T>(context.device_context(), col, false, filter, false,
                            static_cast<T>(1.0), out, static_cast<T>(0.0));
@@ -86,7 +97,6 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
     int context_start = context.Attr<int>("contextStart");
     int context_length = context.Attr<int>("contextLength");
     int context_stride = context.Attr<int>("contextStride");
-    bool padding_trainable = context.Attr<bool>("paddingTrainable");
 
     PADDLE_ENFORCE_EQ(in->lod().size(), 1UL,
                       "Only support one level sequence now.");
@@ -102,7 +112,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
                                  sequence_width * context_length};
     Tensor col;
 
-    if (in_g || filter_g || (padding_trainable && padding_data_g)) {
+    if (in_g || filter_g || padding_data_g) {
       col.mutable_data<T>(col_shape, context.GetPlace());
       // Because if padding_trainable is false, padding data should be zeros.
       set_zero(context.device_context(), &col, static_cast<T>(0));
@@ -117,21 +127,20 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       in_g->set_lod(in->lod());
       set_zero(context.device_context(), in_g, static_cast<T>(0));
 
-      seq_project_grad_functor(context.device_context(), *in_g, *padding_data_g,
-                               col, padding_trainable, context_start,
+      seq_project_grad_functor(context.device_context(), context_start,
                                context_length, context_stride, up_pad, down_pad,
-                               true, false);
+                               true, false, *in_g, *padding_data_g, &col);
     }
 
-    if (padding_trainable && padding_data_g) {
+    if (padding_data_g) {
       padding_data_g->mutable_data<T>(context.GetPlace());
       set_zero(context.device_context(), padding_data_g, static_cast<T>(0));
 
       LoDTensor* input = const_cast<LoDTensor*>(in);
-      seq_project_grad_functor(context.device_context(), *input,
-                               *padding_data_g, col, padding_trainable,
+      seq_project_grad_functor(context.device_context(), padding_trainable,
                                context_start, context_length, context_stride,
-                               up_pad, down_pad, false, true);
+                               up_pad, down_pad, false, true, *input,
+                               *padding_data_g, &col);
     }
 
     if (filter_g) {
@@ -141,14 +150,11 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       Tensor filter_grad = *filter_g;
       LoDTensor out_grad = *out_g;
 
-      const Tensor* padding_data = nullptr;
-      if (padding_trainable) {
-        padding_data = context.Input<Tensor>("PaddingData");
-      }
+      const Tensor* padding_data = context.Input<Tensor>("PaddingData");
 
-      seq_project_functor(context.device_context(), *in, *padding_data, col,
-                          padding_trainable, context_start, context_length,
-                          context_stride, up_pad, down_pad);
+      seq_project_functor(context.device_context(), *in, *padding_data,
+                          context_start, context_length, context_stride, up_pad,
+                          down_pad, &col);
 
       math::matmul<Place, T>(context.device_context(), col, true, out_grad,
                              false, T(1.0), &filter_grad, T(1.0));

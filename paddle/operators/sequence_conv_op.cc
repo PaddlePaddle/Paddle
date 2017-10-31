@@ -43,29 +43,6 @@ class SequenceConvOp : public framework::OperatorWithKernel {
                    "Filter's height should be context_length * "
                    "input_hidden_size .");
 
-    if (ctx->Attrs().Get<bool>("paddingTrainable")) {
-      PADDLE_ENFORCE(
-          ctx->HasInput("PaddingData"),
-          "Input(PaddingData) of SequenceConvOp should not be null.");
-      framework::DDim padding_dim = ctx->GetInputDim("PaddingData");
-      int up_pad = std::max(0, -context_start);
-      int down_pad = std::max(0, context_start + context_length - 1);
-      int total_pad = up_pad + down_pad;
-      int input_width = static_cast<int>(in_dims[1]);
-
-      if (context_start == 0 && context_length == 1) {
-        PADDLE_THROW(
-            "If context_start is 0 and context_length is 1, paddingTrainable "
-            "should be false.");
-      }
-      PADDLE_ENFORCE(padding_dim.size() == 2,
-                     "Input(PaddingData) should be 2-D tensor.");
-      PADDLE_ENFORCE(
-          padding_dim[0] == total_pad && padding_dim[1] == input_width,
-          "Input(PaddingData)'s shape is not consistent with 'context_start' "
-          "and 'context_length'.");
-    }
-
     in_dims[1] = filter_dims[1];
     ctx->SetOutputDim("Out", in_dims);
     ctx->ShareLoD("X", "Out");
@@ -82,8 +59,7 @@ class SequenceConvGradOp : public framework::OperatorWithKernel {
                    "Gradient of output(Out) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("X"), "The input(X) should not be null.");
 
-    if (ctx->Attrs().Get<bool>("paddingTrainable") &&
-        ctx->HasOutput(framework::GradVarName("PaddingData"))) {
+    if (ctx->HasOutput(framework::GradVarName("PaddingData"))) {
       ctx->SetOutputDim(framework::GradVarName("PaddingData"),
                         ctx->GetInputDim("PaddingData"));
     }
@@ -131,10 +107,6 @@ class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
         "this LoDTensor is a matrix with shape (T, M), where, T is the "
         "total time steps in this mini-batch, M is the output feature size.");
 
-    AddAttr<bool>("paddingTrainable",
-                  "(bool, default:false) the padding data of SequenceConvOp "
-                  "is trainable or not.")
-        .SetDefault(false);
     AddAttr<int>("contextLength",
                  "(int) the contextLength of SequenceConvOp is the "
                  "height of the convolution kernel.")

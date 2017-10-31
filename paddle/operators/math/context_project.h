@@ -88,9 +88,9 @@ template <typename Place, typename T>
 class ContextProjectFunctor {
  public:
   void operator()(const platform::DeviceContext& context, const LoDTensor& in,
-                  const Tensor& padding_data, Tensor& col,
-                  bool padding_trainable, int context_start, int context_length,
-                  int context_stride, int up_pad, int down_pad) {
+                  const Tensor& padding_data, int context_start,
+                  int context_length, int context_stride, int up_pad,
+                  int down_pad, Tensor* col) {
     auto lod_level_0 = in.lod()[0];
 
     math::Im2ColFunctor<math::ColFormat::kOCF, Place, float> im2col_ocf;
@@ -105,8 +105,8 @@ class ContextProjectFunctor {
                             : static_cast<int>(lod_level_0[i]);
       input_row_end = static_cast<int>(lod_level_0[i + 1]);
 
-      Tensor out_t = col.Slice(static_cast<int>(lod_level_0[i]),
-                               static_cast<int>(lod_level_0[i + 1]));
+      Tensor out_t = col->Slice(static_cast<int>(lod_level_0[i]),
+                                static_cast<int>(lod_level_0[i + 1]));
 
       sequence_height = static_cast<int>(out_t.dims()[0]);
 
@@ -130,10 +130,10 @@ class ContextProjectFunctor {
         out_t.Resize({sequence_height, context_length * sequence_width});
       }
     }
-    if (padding_trainable) {
+    if (col != nullptr) {
       for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
-        Tensor out_t = col.Slice(static_cast<int>(lod_level_0[i]),
-                                 static_cast<int>(lod_level_0[i + 1]));
+        Tensor out_t = col->Slice(static_cast<int>(lod_level_0[i]),
+                                  static_cast<int>(lod_level_0[i + 1]));
 
         sequence_height = static_cast<int>(out_t.dims()[0]);
 
@@ -196,11 +196,11 @@ class ContextProjectFunctor {
 template <typename Place, typename T>
 class ContextProjectGradFunctor {
  public:
-  void operator()(const platform::DeviceContext& context, LoDTensor& in,
-                  Tensor& padding_data, Tensor& col, bool padding_trainable,
-                  int context_start, int context_length, int context_stride,
-                  int up_pad, int down_pad, bool input_grad, bool pad_grad) {
-    auto lod_level_0 = in.lod()[0];
+  void operator()(const platform::DeviceContext& context, int context_start,
+                  int context_length, int context_stride, int up_pad,
+                  int down_pad, bool input_grad, bool pad_grad, LoDTensor* in,
+                  Tensor* padding_data, Tensor* col) {
+    auto lod_level_0 = in->lod()[0];
 
     math::Col2ImFunctor<math::ColFormat::kOCF, Place, float> col2im_ocf;
 
@@ -215,13 +215,13 @@ class ContextProjectGradFunctor {
                               : static_cast<int>(lod_level_0[i]);
         input_row_end = static_cast<int>(lod_level_0[i + 1]);
 
-        Tensor out_t = col.Slice(static_cast<int>(lod_level_0[i]),
-                                 static_cast<int>(lod_level_0[i + 1]));
+        Tensor out_t = col->Slice(static_cast<int>(lod_level_0[i]),
+                                  static_cast<int>(lod_level_0[i + 1]));
 
         sequence_height = static_cast<int>(out_t.dims()[0]);
 
         if (input_row_begin < input_row_end) {
-          Tensor in_t = in.Slice(input_row_begin, input_row_end);
+          Tensor in_t = in->Slice(input_row_begin, input_row_end);
 
           std::vector<int64_t> output_shape(
               {sequence_height, 1, 1, context_length,
@@ -242,10 +242,10 @@ class ContextProjectGradFunctor {
       }
     }
     if (pad_grad) {
-      if (padding_trainable) {
+      if (padding_data) {
         for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
-          Tensor out_t = col.Slice(static_cast<int>(lod_level_0[i]),
-                                   static_cast<int>(lod_level_0[i + 1]));
+          Tensor out_t = col->Slice(static_cast<int>(lod_level_0[i]),
+                                    static_cast<int>(lod_level_0[i + 1]));
 
           sequence_height = static_cast<int>(out_t.dims()[0]);
           out_t.Resize({sequence_height * context_length, sequence_width});
@@ -259,7 +259,7 @@ class ContextProjectGradFunctor {
                   k + context_length < up_pad ? context_length : up_pad - k;
               Tensor out_t_sub = out_t.Slice(k * context_length,
                                              k * context_length + padding_size);
-              Tensor w_sub = padding_data.Slice(k, k + padding_size);
+              Tensor w_sub = padding_data->Slice(k, k + padding_size);
               auto out_t_sub_e = EigenMatrix<T>::From(out_t_sub);
               auto w_sub_e = EigenMatrix<T>::From(w_sub);
               w_sub_e.device(*context.GetEigenDevice<Place>()) =
@@ -292,7 +292,7 @@ class ContextProjectGradFunctor {
               Tensor out_t_sub = out_t.Slice(
                   (down_pad_begin_row + t) * context_length - padding_size,
                   (down_pad_begin_row + t) * context_length);
-              Tensor w_sub = padding_data.Slice(
+              Tensor w_sub = padding_data->Slice(
                   up_pad + padding_idx, up_pad + padding_idx + padding_size);
               auto out_t_sub_e = EigenMatrix<T>::From(out_t_sub);
               auto w_sub_e = EigenMatrix<T>::From(w_sub);
