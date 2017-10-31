@@ -33,6 +33,7 @@ MatrixPtr makeRandomSparseMatrix(size_t height,
                                  bool withValue,
                                  bool useGpu,
                                  bool equalNnzPerSample) {
+#ifndef PADDLE_MOBILE_INFERENCE
   std::vector<int64_t> ids(height);
   std::vector<int64_t> indices(height + 1);
   indices[0] = 0;
@@ -84,6 +85,8 @@ MatrixPtr makeRandomSparseMatrix(size_t height,
     }
     return mat;
   }
+#endif
+  return nullptr;
 }
 
 void generateSequenceStartPositions(size_t batchSize,

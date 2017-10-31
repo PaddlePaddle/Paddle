@@ -200,7 +200,9 @@ void Parameter::setMat(ParameterType pType, int matType) {
                                      false,
                                      useGpu_);
     }
-  } else if (matType == MAT_NORMAL_SHARED) {
+  }
+#ifndef PADDLE_MOBILE_INFERENCE
+  else if (matType == MAT_NORMAL_SHARED) {
     CHECK_EQ(height * width, bufs_[pType]->getSize());
     size_t blockNum = 0;
     CHECK(isGradShared(&blockNum));
@@ -217,9 +219,7 @@ void Parameter::setMat(ParameterType pType, int matType) {
             bufs_[pType]->getMemoryHandle()),
         height,
         width);
-  }
-#ifndef PADDLE_MOBILE_INFERENCE
-  else if (matType == MAT_SPARSE_ROW_IDS) {
+  } else if (matType == MAT_SPARSE_ROW_IDS) {
     CHECK_EQ(height * width, bufs_[pType]->getSize());
     mats_[pType] = std::make_shared<SparseRowIdsCpuMatrix>(
         std::dynamic_pointer_cast<CpuMemoryHandle>(
