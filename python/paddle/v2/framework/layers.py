@@ -265,7 +265,7 @@ def accuracy(input, label, k=1, **kwargs):
 def sequence_conv(input,
                   num_filters,
                   filter_size=3,
-                  stride=1,
+                  filter_stride=1,
                   padding=None,
                   bias_attr=None,
                   param_attr=None,

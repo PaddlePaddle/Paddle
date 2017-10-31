@@ -109,14 +109,11 @@ def get_usr_combined_features():
         program=program,
         init_program=init_program)
 
-    # FIXME(dzh) : need tanh operator
-    usr_combined_features = layers.fc(
-        input=concat_embed,
-        # usr_combined_features = layers.fc(input=usr_emb,
-        size=200,
-        act="tanh",
-        program=program,
-        init_program=init_program)
+    usr_combined_features = layers.fc(input=concat_embed,
+                                      size=200,
+                                      act="tanh",
+                                      program=program,
+                                      init_program=init_program)
 
     return usr_combined_features
 
@@ -168,31 +165,31 @@ def get_mov_combined_features():
 
     MOV_TITLE_DICT_SIZE = len(paddle.dataset.movielens.get_movie_title_dict())
 
-    # mov_title_id = layers.data(
-    #     name='movie_title',
-    #     shape=[1],
-    #     data_type='int64',
-    #     program=program,
-    #     init_program=init_program)
+    mov_title_id = layers.data(
+        name='movie_title',
+        shape=[1],
+        data_type='int64',
+        program=program,
+        init_program=init_program)
 
-    # mov_title_emb = layers.embedding(
-    #     input=mov_title_id,
-    #     size=[MOV_TITLE_DICT_SIZE, 32],
-    #     program=program,
-    #     init_program=init_program)
+    mov_title_emb = layers.embedding(
+        input=mov_title_id,
+        size=[MOV_TITLE_DICT_SIZE, 32],
+        program=program,
+        init_program=init_program)
 
-    # mov_title_conv = nets.sequence_conv_pool(
-    #     input=mov_title_emb,
-    #     num_filters=32,
-    #     filter_size=3,
-    #     act="tanh",
-    #     pool_type="sum",
-    #     program=program,
-    #     init_program=init_program)
+    mov_title_conv = nets.sequence_conv_pool(
+        input=mov_title_emb,
+        num_filters=32,
+        filter_size=3,
+        act="tanh",
+        pool_type="sum",
+        program=program,
+        init_program=init_program)
 
     concat_embed = layers.concat(
-        # input=[mov_fc, mov_categories_hidden, mov_title_conv],
-        input=[mov_fc, mov_categories_hidden],
+        input=[mov_fc, mov_categories_hidden, mov_title_conv],
+        # input=[mov_fc, mov_categories_hidden],
         axis=1,
         program=program,
         init_program=init_program)
@@ -261,7 +258,7 @@ def main():
         'job_id': 3,
         'movie_id': 4,
         'category_id': 5,
-        # 'movie_title': 6,
+        'movie_title': 6,
         'score': 7
     }
 
@@ -300,12 +297,13 @@ def main():
                            feed=func_feed(feeding, data),
                            fetch_list=[cost])
             out = np.array(outs[0])
-            print out
-            # if out[0] < 10.0:
-            #     exit(
-            #         0)  # if avg cost less than 10.0, we think our code is good.
-            # else:
-            #     exit(1)
+            print "cost : ", out
+
+            if out[0] < 10.0:
+                exit(
+                    0)  # if avg cost less than 10.0, we think our code is good.
+            else:
+                exit(1)
 
 
 main()
