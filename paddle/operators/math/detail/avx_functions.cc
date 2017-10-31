@@ -13,14 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <immintrin.h>
-#include "hl_functions.h"
+#include "paddle/operators/math/detail/activation_functions.h"
 // TODO(qingqing) refine this dependence
 #include "paddle/cuda/src/avx_mathfun.h"
 
-namespace hppl {
+namespace paddle {
+namespace operators {
+namespace math {
+namespace detail {
 
 __m256 exp(__m256 a) { return exp256_ps(a); }
 
+namespace forward {
+namespace avx {
 __m256 relu(const __m256 a) {
   __m256 tmp = _mm256_set1_ps(0.0f);
   return _mm256_max_ps(a, tmp);
@@ -50,6 +55,11 @@ __m256 tanh(const __m256 a) {
 
 __m256 linear(const __m256 a) { return a; }
 
+}  // namespace avx
+}  // namespace forward
+
+namespace backward {
+namespace avx {
 __m256 relu(const __m256 a, const __m256 b) {
   return _mm256_mul_ps(
       a, _mm256_and_ps(_mm256_cmp_ps(b, _mm256_set1_ps(0.0f), _CMP_GT_OS),
@@ -67,4 +77,10 @@ __m256 tanh(const __m256 a, const __m256 b) {
 }
 
 __m256 linear(const __m256 a, const __m256 b) { return a; }
-}  // namespace hppl
+}  // namespace avx
+}  // namespace backward
+
+}  // namespace detail
+}  // namespace math
+}  // namespace operators
+}  // namespace paddle

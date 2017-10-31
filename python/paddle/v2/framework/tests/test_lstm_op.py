@@ -157,7 +157,7 @@ class TestLstmOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(atol=1e-8)
 
     #TODO(qingqing) add more unit testing case
     def test_check_grad(self):
@@ -167,7 +167,7 @@ class TestLstmOp(OpTest):
         self.outputs['BatchCellPreAct'] = np.zeros(
             (N, self.D)).astype('float64')
         self.check_grad(
-            ['Input', 'Weight', 'Bias'], ['Hidden'], max_relative_error=0.02)
+            ['Input', 'Weight', 'Bias'], ['Hidden'], max_relative_error=5e-4)
 
 
 class TestLstmOpHasNoInitial(TestLstmOp):
