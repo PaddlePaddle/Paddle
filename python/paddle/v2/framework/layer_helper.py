@@ -5,6 +5,8 @@ import paddle.v2.framework.core as core
 
 from paddle.v2.framework.framework import Variable, g_program, \
     g_init_program
+from paddle.v2.framework.initializer import ConstantInitializer, \
+    UniformInitializer
 
 
 def unique_name(prefix):
@@ -66,14 +68,7 @@ class LayerHelper(object):
 
     @property
     def param_attr(self):
-        default = {
-            'name': None,
-            'init_attr': {
-                'type': 'uniform_random',
-                'min': -1.0,
-                'max': 1.0
-            }
-        }
+        default = {'name': None, 'initializer': UniformInitializer()}
         actual = self.kwargs.get('param_attr', None)
         if actual is None:
             actual = default
@@ -83,13 +78,7 @@ class LayerHelper(object):
         return actual
 
     def bias_attr(self):
-        default = {
-            'name': None,
-            'init_attr': {
-                'type': 'fill_constant',
-                'value': 0.0
-            }
-        }
+        default = {'name': None, 'initializer': ConstantInitializer()}
         bias_attr = self.kwargs.get('bias_attr', None)
         if bias_attr is True:
             bias_attr = default
