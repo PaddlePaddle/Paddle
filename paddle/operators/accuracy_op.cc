@@ -23,23 +23,24 @@ class AccuracyOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Out"),
-                   "Input(Out) of accuracy op should not be null.");
+                   "Input (Out) of accuracy op should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Indices"),
-                   "Input(Indices) of accuracy op should not be null.");
+                   "Input (Indices) of accuracy op should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"),
-                   "Input(Label) of accuracy op should not be null.");
+                   "Input (Label) of accuracy op should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Accuracy"),
-                   "Output(Accuracy) of AccuracyOp should not be null.");
+                   "Output (Accuracy) of AccuracyOp should not be null.");
 
     auto inference_dim = ctx->GetInputDim("Out");
     auto label_dim = ctx->GetInputDim("Label");
-    // assume indices has same shape with infernece, because
+    // Assume indices has same shape with infernece, because
     // it's the output of topk.
 
     PADDLE_ENFORCE_EQ(label_dim.size(), 2, "label must be a 2D tensor.");
     PADDLE_ENFORCE_EQ(label_dim[1], 1, "label width must be 1.");
     PADDLE_ENFORCE_EQ(inference_dim[0], label_dim[0],
-                      "inference height must be the same as label.");
+                      "the inference tensor's num_rows must be"
+                      " the same as label.");
 
     ctx->SetOutputDim("Accuracy", {1});
     ctx->ShareLoD("Out", /*->*/ "Accuracy");
