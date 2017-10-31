@@ -83,6 +83,9 @@ class LinearChainCrfForward(object):
 
 class TestLinearChainCrfOp(OpTest):
     def set_test_data(self):
+        # TODO(caoying) Fix the unittest by: add the boundary cases when
+        # sequence lengths are 1, 2, and 3.
+
         SEQ_NUM = 3
         TAG_NUM = 17
         MAX_SEQ_LEN = 5
