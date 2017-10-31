@@ -188,7 +188,6 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
                             const LoDTensor& src, LoDTensor* dst) {
       dst->mutable_data<T>(src.dims(), platform::CPUPlace());
       dst->CopyFrom(src, platform::CPUPlace(), ctx);
-
     };
 
     copyLoDTensor(ctx, emission_weights_src, emission_weights_dst);
@@ -248,7 +247,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < tag_num; ++i) {
         T sum = 0.;
         for (size_t j = 0; j < tag_num; ++j) {
-          sum += alpha_value[(k - 1) * tag_num + j] *
+          sum += alpha_value[(k - 1) * tag_num + j] *  // (*)
                  w_exps[(j + state_trans_base_idx) * tag_num + i];
         }
         alpha_value[k * tag_num + i] = x_exps[k * tag_num + i] * sum;
@@ -291,7 +290,8 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     // These local variables hold the inputs and outputs, garanteeing them on
     // CPU memory, to provide a consistent reference.
     // TODO(caoying) Fix this by moving all these local variables into the
-    // class's data members once we can profile the training process.
+    // class's data members once we can profile the training process, or
+    // implementing a real GPU kernel for CRF.
     Tensor* label = nullptr;
     Tensor label_tensor;
     Tensor* emission_exps = nullptr;
@@ -344,6 +344,9 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
       transition_grad =
           ctx.Output<Tensor>(framework::GradVarName("Transition"));
     }
+
+    // TODO(caoying) Fix this constraint. When the Input(Emission) is from the
+    // data reader operator, it can have no gradients.
     PADDLE_ENFORCE(emission_grad, "Output(Emission@Grad) should not be null.");
     emission_grad->mutable_data<T>(platform::CPUPlace());
     math::SetConstant<platform::CPUPlace, T>()(ctx.device_context(),
@@ -458,7 +461,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < tag_num; ++i) {
         T sum = 0.;
         for (size_t j = 0; j < tag_num; ++j) {
-          sum += w_exps[(i + state_trans_base_idx) * tag_num + j] *
+          sum += w_exps[(i + state_trans_base_idx) * tag_num + j] *  // (**)
                  x_exps[(k + 1) * tag_num + j] *
                  beta_value[(k + 1) * tag_num + j];
         }
@@ -493,7 +496,8 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
 
       auto x_exps_mat = EigenMatrix<T>::From(emission_exps);
 
-      // TODO(caoying): Fix this to avoid using this local variable.
+      // TODO(caoying): Fix this to avoid using this local variable if when can
+      // profiling the training process.
       Tensor tmp;
       tmp.mutable_data<T>(beta->dims(), platform::CPUPlace());
       auto tmp_mat = EigenMatrix<T>::From(tmp);
