@@ -114,7 +114,12 @@ OpDescBind::OpDescBind(const OpDesc &desc, ProgramDescBind *prog)
   // restore attrs_
   for (const OpDesc::Attr &attr : desc_.attrs()) {
     std::string attr_name = attr.name();
-    attrs_[attr_name] = GetAttrValue(attr, prog->Proto());
+    if (attr.type() != AttrType::BLOCK) {
+      attrs_[attr_name] = GetAttrValue(attr);
+    } else {
+      auto bid = attr.block_idx();
+      attrs_[attr_name] = prog->MutableBlock(bid);
+    }
   }
 }
 
@@ -188,8 +193,7 @@ void OpDescBind::SetAttr(const std::string &name, const Attribute &v) {
 }
 
 void OpDescBind::SetBlockAttr(const std::string &name, BlockDescBind &block) {
-  BlockDesc *desc = block.Proto();
-  this->attrs_[name] = desc;
+  this->attrs_[name] = &block;
   need_update_ = true;
 }
 
@@ -208,7 +212,7 @@ Attribute OpDescBind::GetAttr(const std::string &name) const {
 int OpDescBind::GetBlockAttr(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
-  return boost::get<BlockDesc *>(it->second)->idx();
+  return boost::get<BlockDescBind *>(it->second)->ID();
 }
 
 const std::unordered_map<std::string, Attribute> &OpDescBind::GetAttrMap()
