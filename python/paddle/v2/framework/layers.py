@@ -205,7 +205,7 @@ def concat(input, axis, program=None, init_program=None):
 def sums(input, program=None, init_program=None):
     helper = LayerHelper('sum', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
-    helper.append_op(type='sum', inputs={'X': [input]}, outputs={'Out': out})
+    helper.append_op(type='sum', inputs={'X': input}, outputs={'Out': out})
     return out
 
 

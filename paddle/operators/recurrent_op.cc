@@ -160,6 +160,7 @@ class RecurrentBase : public framework::OperatorBase {
                                      Callback callback) {
     PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size());
     for (size_t i = 0; i < dst_vars.size(); ++i) {
+      VLOG(10) << "Link " << src_vars[i] << " to " << dst_vars[i];
       AccessTensor(src_scope, src_vars[i], dst_scope, dst_vars[i], callback);
     }
   }
@@ -175,6 +176,7 @@ class RecurrentBase : public framework::OperatorBase {
                                      Callback callback) {
     PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size());
     for (size_t i = 0; i < dst_vars.size(); ++i) {
+      VLOG(10) << "Link " << src_vars[i] << " to " << dst_vars[i];
       AccessTensor(src_scope, src_vars[i], dst_scope, dst_vars[i], callback);
     }
   }
@@ -354,11 +356,8 @@ class RecurrentGradOp : public RecurrentBase {
 
         PADDLE_ENFORCE_EQ(ex_state_grads.size(), cur_state_grads.size());
         for (size_t i = 0; i < ex_state_grads.size(); ++i) {
-          VLOG(5) << "----------------------------";
           auto &cur_grad = cur_state_grads[i];
-          VLOG(5) << "----------------------------";
           auto &ex_grad = ex_state_grads[i];
-          VLOG(5) << "----------------------------";
           auto &ex_tensor =
               ex_scope.FindVar(ex_grad)->Get<framework::LoDTensor>();
 
@@ -375,21 +374,15 @@ class RecurrentGradOp : public RecurrentBase {
             sum_op->Run(cur_scope, dev_ctx);
           } else {
             VLOG(10) << " RNN link " << cur_grad << " with mem grad ";
-            auto *cur_grad_var = cur_scope.FindVar(cur_grad);
-            VLOG(5) << "----------------------------";
-            VLOG(5) << "cur_grad " << cur_grad << " with ptr " << cur_grad_var;
-            if (cur_grad_var == nullptr) {
-              continue;
-            }
-            cur_grad_var->GetMutable<framework::LoDTensor>()->ShareDataWith(
-                ex_tensor);
-            VLOG(5) << "----------------------------";
+            auto *cur_grad_var = cur_scope.Var(cur_grad);
+            auto cur_grad_tensor =
+                cur_grad_var->GetMutable<framework::LoDTensor>();
+            cur_grad_tensor->CopyFrom(ex_tensor, dev_ctx.GetPlace(), dev_ctx);
           }
         }
       }
 
       VLOG(5) << "Recurrent memory linking finished ";
-
       // Run step block with cur_scope
       executor.Run(*program, &cur_scope, block->ID(),
                    false /*create_local_scope*/);
@@ -460,11 +453,12 @@ class RecurrentGradOp : public RecurrentBase {
           cur_scope, GradVarLists(Inputs(kInputs)), scope, Outputs(kInputGrads),
           [&](const framework::LoDTensor &inside,
               framework::LoDTensor *outside) {
+            if (inside.memory_size() == 0) {  // IG is not created.
+              return;
+            }
             if (step_id == 0) {  // alloc memory
               outside->Resize(PrependDims(seq_len, inside.dims()));
-              VLOG(5) << "----------------------------";
               outside->mutable_data(dev_ctx.GetPlace(), inside.type());
-              VLOG(5) << "----------------------------";
             }
 
             auto dst = outside->Slice(seq_offset, seq_offset + 1);
@@ -480,9 +474,7 @@ class RecurrentGradOp : public RecurrentBase {
             [&](const framework::LoDTensor &inside,
                 framework::LoDTensor *outside) {
               outside->Resize(inside.dims());
-              VLOG(5) << "----------------------------";
               outside->mutable_data(dev_ctx.GetPlace(), inside.type());
-              VLOG(5) << "----------------------------";
               outside->CopyFrom(inside, dev_ctx.GetPlace(), dev_ctx);
             });
         VLOG(5) << "Link initialize state gradient finished ";
