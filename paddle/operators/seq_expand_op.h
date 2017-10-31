@@ -48,7 +48,7 @@ class SeqExpandKernel : public framework::OpKernel<T> {
           x_t(x_data, 1, element_len);
       Eigen::TensorMap<Eigen::Tensor<T, 2, Eigen::RowMajor, Eigen::DenseIndex>>
           out_t(out_data, scale, element_len);
-      Eigen::array<int, 2> cast({scale, 1});
+      Eigen::array<int, 2> cast({{scale, 1}});
       out_t.device(place) = x_t.broadcast(cast);
       x_data += element_len;
       out_data += element_len * scale;
