@@ -18,5 +18,6 @@
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
-    fill_constant,
-    ops::FillConstantOpKernel<paddle::platform::GPUPlace, float>);
+    fill_constant, ops::FillConstantOpKernel<paddle::platform::GPUPlace, float>,
+    ops::FillConstantOpKernel<paddle::platform::GPUPlace, double>,
+    ops::FillConstantOpKernel<paddle::platform::GPUPlace, int>);

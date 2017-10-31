@@ -95,17 +95,18 @@ class SplitOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class SplitOpGrad : public NetOp {
+class SplitGradMaker : public framework::SingleGradOpDescMaker {
  public:
-  SplitOpGrad(const std::string &type, const framework::VariableNameMap &inputs,
-              const framework::VariableNameMap &outputs,
-              const framework::AttributeMap &attrs)
-      : NetOp(type, inputs, outputs, attrs) {
-    auto out_grad = Inputs(framework::GradVarName("Out"));
-    auto x_grad = Output(framework::GradVarName("X"));
-    AppendOp(framework::OpRegistry::CreateOp("concat", {{"X", out_grad}},
-                                             {{"Out", {x_grad}}}, attrs));
-    CompleteAddOp(false);
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDescBind> Apply() const override {
+    auto op = new framework::OpDescBind();
+    op->SetType("concat");
+    op->SetInput("X", OutputGrad("Out"));
+    op->SetOutput("Out", InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDescBind>(op);
   }
 };
 
@@ -114,7 +115,7 @@ class SplitOpGrad : public NetOp {
 
 namespace ops = paddle::operators;
 USE_CPU_ONLY_OP(concat);
-REGISTER_OP(split, ops::SplitOp, ops::SplitOpMaker, split_grad,
-            ops::SplitOpGrad);
+
+REGISTER_OPERATOR(split, ops::SplitOp, ops::SplitOpMaker, ops::SplitGradMaker);
 REGISTER_OP_CPU_KERNEL(split,
                        ops::SplitOpKernel<paddle::platform::CPUPlace, float>);
