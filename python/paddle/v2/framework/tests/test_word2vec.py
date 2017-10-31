@@ -53,7 +53,7 @@ next_word = layers.data(
     program=program,
     init_program=init_program)
 
-embed_param_init = NormalInitializer(std=0.0001)
+embed_param_init = NormalInitializer(std=0.001)
 
 embed_param_attr = {'name': 'shared_w', 'initializer': embed_param_init}
 # the shared param attr should not have initializer
@@ -128,8 +128,8 @@ cost = layers.cross_entropy(
     init_program=init_program)
 avg_cost = layers.mean(x=cost, program=program, init_program=init_program)
 
-sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
-opts = sgd_optimizer.minimize(avg_cost)
+adagrad_optimizer = optimizer.AdagradOptimizer(learning_rate=0.001)
+opts = adagrad_optimizer.minimize(avg_cost)
 
 train_reader = paddle.batch(
     paddle.dataset.imikolov.train(word_dict, N), batch_size)
@@ -138,8 +138,9 @@ place = core.CPUPlace()
 exe = Executor(place)
 
 exe.run(init_program, feed={}, fetch_list=[])
-PASS_NUM = 100
+PASS_NUM = 30
 for pass_id in range(PASS_NUM):
+    # print 'pass: ', pass_id
     for data in train_reader():
         input_data = [[data_idx[idx] for data_idx in data] for idx in xrange(5)]
         input_data = map(lambda x: np.array(x).astype("int64"), input_data)
@@ -174,7 +175,8 @@ for pass_id in range(PASS_NUM):
                            'nextw': next_tensor
                        },
                        fetch_list=[avg_cost])
-        out = np.array(outs[0])
-        if out[0] < 10.0:
-            exit(0)  # if avg cost less than 10.0, we think our code is good.
+        loss = np.array(outs[0])
+        # print loss
+        if loss[0] < 5.0:
+            exit(0)  # if avg cost less than 5.0, we think our code is good.
 exit(1)
