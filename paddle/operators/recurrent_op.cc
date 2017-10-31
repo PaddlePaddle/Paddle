@@ -354,8 +354,11 @@ class RecurrentGradOp : public RecurrentBase {
 
         PADDLE_ENFORCE_EQ(ex_state_grads.size(), cur_state_grads.size());
         for (size_t i = 0; i < ex_state_grads.size(); ++i) {
+          VLOG(5) << "----------------------------";
           auto &cur_grad = cur_state_grads[i];
+          VLOG(5) << "----------------------------";
           auto &ex_grad = ex_state_grads[i];
+          VLOG(5) << "----------------------------";
           auto &ex_tensor =
               ex_scope.FindVar(ex_grad)->Get<framework::LoDTensor>();
 
@@ -371,16 +374,27 @@ class RecurrentGradOp : public RecurrentBase {
                 {});
             sum_op->Run(cur_scope, dev_ctx);
           } else {
+            VLOG(10) << " RNN link " << cur_grad << " with mem grad ";
             auto *cur_grad_var = cur_scope.FindVar(cur_grad);
+            VLOG(5) << "----------------------------";
+            VLOG(5) << "cur_grad " << cur_grad << " with ptr " << cur_grad_var;
+            if (cur_grad_var == nullptr) {
+              continue;
+            }
             cur_grad_var->GetMutable<framework::LoDTensor>()->ShareDataWith(
                 ex_tensor);
+            VLOG(5) << "----------------------------";
           }
         }
       }
 
+      VLOG(5) << "Recurrent memory linking finished ";
+
       // Run step block with cur_scope
       executor.Run(*program, &cur_scope, block->ID(),
                    false /*create_local_scope*/);
+
+      VLOG(5) << "executor.Run finished ";
 
       auto local_var_names = LocalVarNames(cur_scope);
 
@@ -408,7 +422,9 @@ class RecurrentGradOp : public RecurrentBase {
                                       ->Get<framework::LoDTensor>();
             framework::AttributeMap attrs;
 
+            VLOG(5) << "----------------------------";
             attrs["data_type"] = framework::ToDataType(inside_tensor.type());
+            VLOG(5) << "----------------------------";
             attrs["shape"] = framework::vectorize2int(inside_tensor.dims());
             attrs["value"] = 0.0f;
 
@@ -436,6 +452,7 @@ class RecurrentGradOp : public RecurrentBase {
           sum_op->Run(cur_scope, dev_ctx);
         }
       }
+      VLOG(5) << "Accumulate Parameter finished ";
 
       // Copy input gradient from inside to outside
       //   outside::input_grad[seq_offset: seq_offset + 1] = inside::input_grad
@@ -445,12 +462,15 @@ class RecurrentGradOp : public RecurrentBase {
               framework::LoDTensor *outside) {
             if (step_id == 0) {  // alloc memory
               outside->Resize(PrependDims(seq_len, inside.dims()));
+              VLOG(5) << "----------------------------";
               outside->mutable_data(dev_ctx.GetPlace(), inside.type());
+              VLOG(5) << "----------------------------";
             }
 
             auto dst = outside->Slice(seq_offset, seq_offset + 1);
             dst.CopyFrom(inside, dev_ctx.GetPlace(), dev_ctx);
           });
+      VLOG(5) << "Link outside gradient finished ";
 
       if (step_id + 1 == seq_len) {  // at_end
         // copy initialize states gradient from inside to outside
@@ -460,9 +480,12 @@ class RecurrentGradOp : public RecurrentBase {
             [&](const framework::LoDTensor &inside,
                 framework::LoDTensor *outside) {
               outside->Resize(inside.dims());
+              VLOG(5) << "----------------------------";
               outside->mutable_data(dev_ctx.GetPlace(), inside.type());
+              VLOG(5) << "----------------------------";
               outside->CopyFrom(inside, dev_ctx.GetPlace(), dev_ctx);
             });
+        VLOG(5) << "Link initialize state gradient finished ";
       }
       scopes.Next();
     }

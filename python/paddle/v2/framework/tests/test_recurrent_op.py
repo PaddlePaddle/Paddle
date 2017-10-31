@@ -36,7 +36,7 @@ class PySimpleRNN1(PyRNNBase):
         self.h_boot = np.random.normal(size=(batch_size,
                                              input_dim)).astype("float32")
 
-        self.scale = 1.0 / 1.0
+        self.scale = 1.0 / 2.0
         men_dim = (seq_len, batch_size, input_dim)
         self.mems = np.zeros(shape=men_dim).astype("float32")
 
@@ -157,6 +157,10 @@ class RecurrentOpTest1(unittest.TestCase):
                       feed=self.feed_map,
                       fetch_list=[self.output])
 
+        # for k in self.feed_map:
+        #     print k, np.array(self.feed_map[k])
+        # print self.program
+
         return np.array(out[0])
 
     def backward(self):
@@ -176,6 +180,8 @@ class RecurrentOpTest1(unittest.TestCase):
         self.check_forward()
 
         append_backward_ops(self.output)
+        print self.program
+
         ana_grad = [np.array(x) for x in self.backward()]
 
         num_grad = self.get_numerical_gradient()
@@ -292,6 +298,102 @@ class RecurrentOpTest2(RecurrentOpTest1):
 
             rnn.update_memory(h_pre, h)
             rnn.output(h)
+
+        return rnn()
+
+
+class RecurrentOpTest3(RecurrentOpTest1):
+    '''
+    Test RNNOp with two memories
+    equation:
+        h_1 = h_pre_1
+        h_2 = h_pre_2
+        y = h_1 + h_2
+    vars:
+        - x
+    memories:
+        - h_1, h_2
+    outputs:
+       - y
+    '''
+
+    class PySimpleRNN3(PyRNNBase):
+        def __init__(self, input_shape, output_shape):
+            super(RecurrentOpTest3.PySimpleRNN3, self).__init__(input_shape,
+                                                                output_shape)
+
+            seq_len, batch_size, input_dim = input_shape
+            self.h_boot1 = np.random.normal(size=(batch_size,
+                                                  input_dim)).astype("float32")
+            self.h_boot2 = np.random.normal(size=(batch_size,
+                                                  input_dim)).astype("float32")
+
+            men_dim = (seq_len, batch_size, input_dim)
+            self.mems1 = np.zeros(shape=men_dim).astype("float32")
+            self.mems2 = np.zeros(shape=men_dim).astype("float32")
+
+        def step(self, step_id, x):
+            if step_id == 0:
+                pre_mem1 = self.h_boot1
+                pre_mem2 = self.h_boot2
+            else:
+                pre_mem1 = self.mems1[step_id - 1]
+                pre_mem2 = self.mems2[step_id - 1]
+            self.mems1[step_id] = pre_mem1
+            self.mems2[step_id] = pre_mem2
+            self.y[step_id] = self.mems1[step_id] + self.mems2[step_id]
+
+    input_dim = 1
+    batch_size = 1
+    sent_len = 2
+
+    def setUp(self):
+        self.init_program()
+
+        self.data_field = {"x", "h_boot1", "h_boot2"}
+
+        self.input_shape = (self.sent_len, self.batch_size, self.input_dim)
+        self.output_shape = (self.sent_len, self.batch_size, self.input_dim)
+        self.py_rnn = RecurrentOpTest3.PySimpleRNN3(self.input_shape,
+                                                    self.output_shape)
+
+        self.output = mean(x=self.create_rnn_op(), **self.p_info)
+
+    def create_rnn_op(self):
+        x = data(
+            shape=[self.sent_len, self.batch_size, self.input_dim],
+            data_type='float32',
+            name='x',
+            append_batch_size=False,
+            **self.p_info)
+        h_boot1 = data(
+            shape=[self.input_dim],
+            data_type='float32',
+            name='h_boot1',
+            **self.p_info)
+        h_boot2 = data(
+            shape=[self.input_dim],
+            data_type='float32',
+            name='h_boot2',
+            **self.p_info)
+
+        rnn = StaticRNN(program=self.program)
+        with rnn.step():
+            h_pre1 = rnn.memory(init=h_boot1)
+            h_pre2 = rnn.memory(init=h_boot2)
+            x_t = rnn.step_input(x)
+
+            # mem1 = h_pre1
+            # mem2 = h_pre2
+            # mem1 = elementwise_add(x=h_pre1, y=x_t, **self.p_info)
+            # mem2 = elementwise_add(x=h_pre2, y=x_t, **self.p_info)
+            mem1 = scale(x=h_pre1, scale=1.0, **self.p_info)
+            mem2 = scale(x=h_pre2, scale=1.0, **self.p_info)
+            out = elementwise_add(x=mem1, y=mem2, **self.p_info)
+
+            rnn.update_memory(h_pre1, mem1)
+            rnn.update_memory(h_pre2, mem2)
+            rnn.output(out)
 
         return rnn()
 
