@@ -1,11 +1,13 @@
 from paddle.v2.framework.layer_helper import LayerHelper, unique_name
 import paddle.v2.framework.core as core
 from paddle.v2.framework.framework import OpProtoHolder, Variable, Program
+from paddle.v2.framework.initializer import ConstantInitializer
 import re
 
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
-    'StaticRNN', 'cast'
+    'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool', 'sums', 'cos_sim',
+    'batch_norm', 'accuracy'
 ]
 
 
@@ -150,7 +152,7 @@ def _create_op_func_(op_type):
             outputs[name] = [helper.create_tmp_variable(dtype=dtype)]
         helper.append_op(
             type=op_type, inputs=inputs, outputs=outputs, attrs=kwargs)
-        return out
+        return helper.append_activation(out)
 
     func.__name__ = op_type
     globals()[op_type] = func
@@ -160,6 +162,7 @@ def _create_op_func_(op_type):
 
 _create_op_func_('mean')
 _create_op_func_('mul')
+_create_op_func_('elementwise_add')
 _create_op_func_('dropout')
 _create_op_func_('reshape')
 
@@ -178,15 +181,35 @@ def cast(x, data_type, program=None):
 
 def concat(input, axis, program=None, init_program=None):
     helper = LayerHelper('concat', **locals())
-    if not isinstance(input, list) and not isinstance(input, tuple):
-        input = [input]
-    out = helper.create_tmp_variable(dtype=input[0].data_type)
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
         type='concat',
         inputs={'X': input},
         outputs={'Out': [out]},
         attrs={'axis': axis})
     return out
+
+
+def sums(input, program=None, init_program=None):
+    helper = LayerHelper('sum', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(type='sum', inputs={'X': [input]}, outputs={'Out': out})
+    return out
+
+
+def cos_sim(X, Y, program=None, init_program=None):
+    helper = LayerHelper('cos_sim', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype("X"))
+    xnorm = helper.create_tmp_variable(dtype=helper.input_dtype("X"))
+    ynorm = helper.create_tmp_variable(dtype=helper.input_dtype("X"))
+    helper.append_op(
+        type='cos_sim',
+        inputs={'X': [X],
+                'Y': [Y]},
+        outputs={'Out': [out],
+                 'XNorm': [xnorm],
+                 'YNorm': [ynorm]})
+    return out, xnorm, ynorm
 
 
 def cross_entropy(input, label, **kwargs):
@@ -212,11 +235,68 @@ def square_error_cost(input, label, **kwargs):
 
     square_out = helper.create_tmp_variable(dtype=input.data_type)
     helper.append_op(
-        type='pow',
-        inputs={'X': [minus_out]},
-        outputs={'Y': [square_out]},
-        attrs={'factor': 2.0})
+        type='square', inputs={'X': [minus_out]}, outputs={'Y': [square_out]})
     return square_out
+
+
+def accuracy(input, label, k=1, **kwargs):
+    helper = LayerHelper("accuracy", **kwargs)
+    topk_out = helper.create_tmp_variable(dtype=input.data_type)
+    topk_indices = helper.create_tmp_variable(dtype="int64")
+    helper.append_op(
+        type="top_k",
+        inputs={"X": [input]},
+        outputs={"Out": [topk_out],
+                 "Indices": [topk_indices]},
+        attrs={"k": k})
+    acc_out_dtype = kwargs.get("out_dtype", "float32")
+    acc_out = helper.create_tmp_variable(dtype=acc_out_dtype)
+    helper.append_op(
+        type="accuracy",
+        inputs={
+            "Out": [topk_out],
+            "Indices": [topk_indices],
+            "Label": [label]
+        },
+        outputs={"Accuracy": [acc_out]})
+    return acc_out
+
+
+def sequence_conv(input,
+                  num_filters,
+                  filter_size=3,
+                  stride=1,
+                  padding=None,
+                  bias_attr=None,
+                  param_attr=None,
+                  program=None,
+                  init_program=None):
+    # FIXME(dzh) : want to unify the argument of python layer
+    # function. So we ignore some unecessary attributes.
+    # such as, padding_trainable, context_start.
+
+    helper = LayerHelper('sequence_conv', **locals())
+    dtype = helper.input_dtype()
+
+    filter_shape = [filter_size * input.shape[1], num_filters]
+    filter = helper.create_parameter(
+        attr=helper.param_attr, shape=filter_shape, dtype=dtype)
+    pre_bias = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type='sequence_conv',
+        inputs={
+            'X': [input],
+            'Filter': [filter],
+        },
+        outputs={"Out": pre_bias},
+        attrs={
+            'context_stride': stride,
+            'context_start': 0,
+            'context_length': filter_size
+        })
+    pre_act = helper.append_bias_op(pre_bias)
+    return helper.append_activation(pre_act)
 
 
 def conv2d(input,
@@ -271,6 +351,36 @@ def conv2d(input,
     return helper.append_activation(pre_act)
 
 
+def sequence_pool(input, pool_type, program=None, init_program=None):
+    # FIXME(dzh) : want to unify the argument of python layer
+    # function. So we ignore some unecessary attributes
+
+    ENUM_POOL_TYPE = dict({
+        "AVERAGE": 0,
+        "SUM": 1,
+        "SQRT": 2,
+        "MAX": 3,
+        "LAST": 4,
+        "FIRST": 5
+    })
+    if pool_type.upper() not in ENUM_POOL_TYPE:
+        raise ValueError("Unknown pool_type: '%s'. It can only be %s.",
+                         str(pool_type), " ".join(ENUM_POOL_TYPE.keys()))
+
+    helper = LayerHelper('sequence_pool', **locals())
+    dtype = helper.input_dtype()
+    pool_out = helper.create_tmp_variable(dtype)
+
+    # FIXME(dzh): strategy
+    helper.append_op(
+        type="sequence_pool",
+        inputs={"X": [input]},
+        outputs={"Out": [pool_out]},
+        attrs={"strategy": ENUM_POOL_TYPE[pool_type.upper()]})
+
+    return pool_out
+
+
 def pool2d(input,
            pool_size,
            pool_type,
@@ -290,7 +400,7 @@ def pool2d(input,
     if isinstance(pool_padding, int):
         pool_padding = [pool_padding, pool_padding]
 
-    helper = LayerHelper('conv2d', **locals())
+    helper = LayerHelper('pool2d', **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_tmp_variable(dtype)
 
@@ -331,26 +441,12 @@ def batch_norm(input,
         else:
             raise ValueError("unsupported data layout:" + data_layout)
 
-    def get_init_attr(value):
-        if not isinstance(value, float):
-            raise ValueError("attr value should be a float")
-        return {'type': 'fill_constant', 'value': value}
-
-    def prepend_init_op(var, init_attr):
-        assert isinstance(var, Variable)
-        op_type = init_attr['type']
-        init_attr['shape'] = var.shape
-        init_attr['data_type'] = int(var.data_type)
-        op = var.block.prepend_op(
-            type=op_type, inputs=None, outputs={'Out': [var]}, attrs=init_attr)
-        return op
-
-    def create_persistable_var(dtype, shape, init_attr=None):
+    def create_persistable_var(dtype, shape, initializer=None):
         name = unique_name(".".join([helper.name, "xxxx"]))
         var = init_program.global_block().create_var(
             dtype=dtype, shape=shape, name=name, persistable=True)
-        if 'init_attr' is not None:
-            prepend_init_op(var, init_attr)
+        if initializer is not None:
+            initializer(var, var.block)
         return program.global_block().create_var(
             name=name, dtype=dtype, shape=shape, persistable=True)
 
@@ -363,8 +459,9 @@ def batch_norm(input,
         attr=helper.param_attr, shape=param_shape, dtype=dtype)
 
     # create input
-    mean = create_persistable_var(dtype, param_shape, get_init_attr(0.0))
-    variance = create_persistable_var(dtype, param_shape, get_init_attr(1.0))
+    mean = create_persistable_var(dtype, param_shape, ConstantInitializer(0.0))
+    variance = create_persistable_var(dtype, param_shape,
+                                      ConstantInitializer(1.0))
 
     # create output
     # mean and mean_out share the same memory

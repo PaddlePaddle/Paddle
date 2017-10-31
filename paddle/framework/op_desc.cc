@@ -52,6 +52,22 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   const std::vector<std::string> &Outputs(
       const std::string &name) const override;
 
+  void ShareLoD(const std::string &in, const std::string &out, size_t i = 0,
+                size_t j = 0) const override {
+    PADDLE_ENFORCE_LT(i, Inputs(in).size());
+    PADDLE_ENFORCE_LT(j, Outputs(out).size());
+    auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
+    auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
+    if (in_var->GetType() != VarDesc::LOD_TENSOR) {
+      VLOG(3) << "input " << in << "is not LodTensor";
+      return;
+    }
+    PADDLE_ENFORCE_EQ(in_var->GetType(), VarDesc::LOD_TENSOR,
+                      "The %d-th output of Output(%s) must be LoDTensor.", j,
+                      out);
+    in_var->SetLoDLevel(out_var->GetLodLevel());
+  }
+
  private:
   DDim GetDim(const std::string &name) const override;
 
@@ -98,7 +114,12 @@ OpDescBind::OpDescBind(const OpDesc &desc, ProgramDescBind *prog)
   // restore attrs_
   for (const OpDesc::Attr &attr : desc_.attrs()) {
     std::string attr_name = attr.name();
-    attrs_[attr_name] = GetAttrValue(attr, prog->Proto());
+    if (attr.type() != AttrType::BLOCK) {
+      attrs_[attr_name] = GetAttrValue(attr);
+    } else {
+      auto bid = attr.block_idx();
+      attrs_[attr_name] = prog->MutableBlock(bid);
+    }
   }
 }
 
@@ -172,8 +193,7 @@ void OpDescBind::SetAttr(const std::string &name, const Attribute &v) {
 }
 
 void OpDescBind::SetBlockAttr(const std::string &name, BlockDescBind &block) {
-  BlockDesc *desc = block.Proto();
-  this->attrs_[name] = desc;
+  this->attrs_[name] = &block;
   need_update_ = true;
 }
 
@@ -192,7 +212,7 @@ Attribute OpDescBind::GetAttr(const std::string &name) const {
 int OpDescBind::GetBlockAttr(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
-  return boost::get<BlockDesc *>(it->second)->idx();
+  return boost::get<BlockDescBind *>(it->second)->ID();
 }
 
 const std::unordered_map<std::string, Attribute> &OpDescBind::GetAttrMap()

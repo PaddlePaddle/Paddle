@@ -23,18 +23,26 @@ class AucOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Inference"),
-                   "Input of Inference must be initialized.");
+    PADDLE_ENFORCE(ctx->HasInput("Out"), "Input of Out must be initialized.");
+    PADDLE_ENFORCE(ctx->HasInput("Indices"),
+                   "Input of Indices must be initialized.");
     PADDLE_ENFORCE(ctx->HasInput("Label"),
                    "Input of Label must be initialized.");
-    auto inference_dim = ctx->GetInputDim("Inference");
-    auto label_dim = ctx->GetInputDim("Label");
+    auto inference_height = ctx->GetInputDim("Out")[0];
+    auto label_height = ctx->GetInputDim("Label")[0];
 
-    PADDLE_ENFORCE_EQ(inference_dim, label_dim,
-                      "inference and label should have same shape");
+    PADDLE_ENFORCE_EQ(inference_height, label_height,
+                      "Out and Label should have same height.");
 
     ctx->SetOutputDim("AUC", {1});
-    ctx->ShareLoD("Inference", /*->*/ "AUC");
+    ctx->ShareLoD("Out", /*->*/ "AUC");
+  }
+
+ protected:
+  // IndicateDataType
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::ToDataType(ctx.Input<Tensor>("Out")->type());
   }
 };
 
@@ -42,12 +50,18 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   AucOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("Inference",
-             "A floating point tensor of arbitrary shape and whose values"
-             "are in the range [0, 1].");
+    AddInput("Out",
+             "A floating point 2D tensor, values are in the range [0, 1]."
+             "Each row is descend sorted. This input should be the"
+             "output of topk."
+             "Typically, this tensor indicates the probability of each label");
+    AddInput("Indices",
+             "An int 2D tensor, indicating the indices of original"
+             "tensor before sort. Typically, this tensor indicates which label"
+             "the probability stands for.");
     AddInput("Label",
-             "A tensor whose shape matches "
-             "Inference. Will be cast to bool.");
+             "A 2D int tensor indicating the label of the training data."
+             "The height is batch size and width is always 1.");
     // TODO(typhoonzero): support weight input
     AddOutput("AUC",
               "A scalar representing the "
