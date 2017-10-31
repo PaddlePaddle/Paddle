@@ -189,19 +189,16 @@ def get_mov_combined_features():
 
     concat_embed = layers.concat(
         input=[mov_fc, mov_categories_hidden, mov_title_conv],
-        # input=[mov_fc, mov_categories_hidden],
         axis=1,
         program=program,
         init_program=init_program)
 
     # FIXME(dzh) : need tanh operator
-    mov_combined_features = layers.fc(
-        input=concat_embed,
-        # mov_combined_features = layers.fc(input=mov_title_emb,
-        size=200,
-        act="tanh",
-        program=program,
-        init_program=init_program)
+    mov_combined_features = layers.fc(input=concat_embed,
+                                      size=200,
+                                      act="tanh",
+                                      program=program,
+                                      init_program=init_program)
 
     return mov_combined_features
 
@@ -238,8 +235,8 @@ def model():
 
 def main():
     cost = model()
-    adam_optimizer = optimizer.AdamOptimizer(learning_rate=1e-4)
-    opts = adam_optimizer.minimize(cost)
+    sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.2)
+    opts = sgd_optimizer.minimize(cost)
     block = program.block(0)
 
     place = core.CPUPlace()
@@ -297,13 +294,11 @@ def main():
                            feed=func_feed(feeding, data),
                            fetch_list=[cost])
             out = np.array(outs[0])
-            print "cost : ", out
+            print out
 
-            if out[0] < 10.0:
+            if out[0] < 5.0:
                 exit(
                     0)  # if avg cost less than 10.0, we think our code is good.
-            else:
-                exit(1)
 
 
 main()
