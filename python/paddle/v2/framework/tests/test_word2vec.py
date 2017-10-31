@@ -5,8 +5,10 @@ import paddle.v2.framework.optimizer as optimizer
 
 from paddle.v2.framework.framework import Program, g_program
 from paddle.v2.framework.executor import Executor
+from paddle.v2.framework.initializer import NormalInitializer
 
 import numpy as np
+import math
 
 init_program = Program()
 program = Program()
@@ -15,7 +17,7 @@ embed_size = 32
 hidden_size = 256
 N = 5
 batch_size = 32
-is_sparse = True
+is_sparse = False
 
 word_dict = paddle.dataset.imikolov.build_dict()
 dict_size = len(word_dict)
@@ -51,12 +53,21 @@ next_word = layers.data(
     program=program,
     init_program=init_program)
 
+embed_param_init = NormalInitializer(std=0.0001)
+
+embed_param_attr = {'name': 'shared_w', 'initializer': embed_param_init}
+# the shared param attr should not have initializer
+embed_param_attr_shared = {
+    'name': 'shared_w',
+    'is_shared': True,
+}
+
 embed_first = layers.embedding(
     input=first_word,
     size=[dict_size, embed_size],
     data_type='float32',
     is_sparse=is_sparse,
-    param_attr={'name': 'shared_w'},
+    param_attr=embed_param_attr,
     program=program,
     init_program=init_program)
 embed_second = layers.embedding(
@@ -64,7 +75,7 @@ embed_second = layers.embedding(
     size=[dict_size, embed_size],
     data_type='float32',
     is_sparse=is_sparse,
-    param_attr={'name': 'shared_w'},
+    param_attr=embed_param_attr_shared,
     program=program,
     init_program=init_program)
 
@@ -73,7 +84,7 @@ embed_third = layers.embedding(
     size=[dict_size, embed_size],
     data_type='float32',
     is_sparse=is_sparse,
-    param_attr={'name': 'shared_w'},
+    param_attr=embed_param_attr_shared,
     program=program,
     init_program=init_program)
 embed_forth = layers.embedding(
@@ -81,7 +92,7 @@ embed_forth = layers.embedding(
     size=[dict_size, embed_size],
     data_type='float32',
     is_sparse=is_sparse,
-    param_attr={'name': 'shared_w'},
+    param_attr=embed_param_attr_shared,
     program=program,
     init_program=init_program)
 
@@ -91,11 +102,20 @@ concat_embed = layers.concat(
     program=program,
     init_program=init_program)
 
+hidden1_param_init = NormalInitializer(std=1 / math.sqrt(embed_size * 8))
+hidden1_param_attr = {'initializer': hidden1_param_init}
+hidden1_bias_attr = {'optimize_attr': {'learning_rate': 2.0}}
+
+# TODO(qijun) need to add dropout layer
 hidden1 = layers.fc(input=concat_embed,
                     size=hidden_size,
+                    param_attr=hidden1_param_attr,
+                    bias_attr=hidden1_bias_attr,
                     act='sigmoid',
                     program=program,
                     init_program=init_program)
+
+predict_bias_attr = {'optimize_attr': {'learning_rate': 2.0}}
 predict_word = layers.fc(input=hidden1,
                          size=dict_size,
                          act='softmax',

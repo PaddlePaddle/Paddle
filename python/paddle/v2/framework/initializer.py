@@ -114,20 +114,20 @@ class NormalInitializer(Initializer):
     """Implements the  random Normal(Gaussian) distribution initializer
     """
 
-    def __init__(self, loc=0.0, scale=1.0, seed=0):
+    def __init__(self, mean=0.0, std=1.0, seed=0):
         """Constructor for NormalInitializer
 
         Args:
-            loc: mean of the normal distribution
-            scale: standard deviation of the normal distribution
+            mean: mean of the normal distribution
+            std: standard deviation of the normal distribution
             seed: random seed
         """
-        assert loc is not None
-        assert scale is not None
+        assert mean is not None
+        assert std is not None
         assert seed is not None
         super(NormalInitializer, self).__init__()
-        self._mean = loc
-        self._std_dev = scale
+        self._mean = mean
+        self._std_dev = std
         self._seed = seed
 
     def __call__(self, var, block):

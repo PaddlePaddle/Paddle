@@ -68,13 +68,19 @@ class LayerHelper(object):
 
     @property
     def param_attr(self):
-        default = {'name': None, 'initializer': UniformInitializer()}
+        default = {
+            'name': None,
+            'is_shared': False,
+            'initializer': UniformInitializer()
+        }
         actual = self.kwargs.get('param_attr', None)
         if actual is None:
             actual = default
         for default_field in default.keys():
             if default_field not in actual:
                 actual[default_field] = default[default_field]
+        if actual['is_shared']:
+            actual.pop('initializer', None)
         return actual
 
     def bias_attr(self):
