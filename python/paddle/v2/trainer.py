@@ -205,7 +205,8 @@ class SGD(object):
         """
         Testing method. Will test input data.
 
-        :param reader: A reader that reads and yeilds data items.
+        :param reader: A batch reader that reads and yeilds data items,
+                       it should be a paddle.v2.batch.
         :type reader: collections.Iterable
         :param feeding: Feeding is a map of neural network input name and array
                         index that reader returns.
