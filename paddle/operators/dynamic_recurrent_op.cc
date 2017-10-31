@@ -244,11 +244,19 @@ void RNNAlgorithm::RunSteps() {
     // call stepnet in all the time steps reversely
     for (int step = cache_.num_steps - 1; step >= 0; step--) {
       auto& step_scope = cache_.GetScope(step);
+      // after run, the current state@grad will be assigned.
       step_unit_->Run(step_scope, *cache_.dev_ctx);
       // accumulate gradients to the state@grad in the previous scope.
-      for (auto& state : arg_.states) {
-        LinkGradState(detail::GenGradStateAttr(state), step);
+      if (step < cache_.num_steps - 1) {
+        for (auto& state : arg_.states) {
+          // Add the state@pre@grad to the current state@grad
+          LinkGradState(detail::GenGradStateAttr(state), step + 1);
+        }
       }
+    }
+    // set the current state@grad to boot_state@grad
+    for (auto& state : arg_.states) {
+      LinkGradState(detail::GenGradStateAttr(state), 0);
     }
   } else {
     for (size_t step = 0; step < cache_.num_steps; step++) {
@@ -343,7 +351,7 @@ void RNNAlgorithm::LinkInitialState(const rnn::StateAttr& state) {
   auto& scope = cache_.GetScope(0);
   auto& state_pre = *cache_.GetTensor(scope, state.pre_var);
   auto* pre_state = cache_.GetTensor(*cache_.scope, state.boot_var);
-  pre_state->mutable_data<float>(platform::CPUPlace());
+  pre_state->mutable_data<value_type>(platform::CPUPlace());
   // allocate state
   state_pre.Resize(pre_state->dims());
   state_pre.mutable_data<value_type>(platform::CPUPlace());
@@ -360,7 +368,7 @@ void RNNAlgorithm::ExportInitialStateGradient(const rnn::StateAttr& state) {
   auto& state_pre = *cache_.GetTensor(scope, state.pre_var);
   auto& pre_state = *cache_.GetTensor(*cache_.scope, state.boot_var);
   pre_state.Resize(state_pre.dims());
-  pre_state.mutable_data<float>(platform::CPUPlace());
+  pre_state.mutable_data<value_type>(platform::CPUPlace());
   detail::RestoreInitialState(some_meta, state_pre, &pre_state,
                               platform::CPUPlace());
 }
