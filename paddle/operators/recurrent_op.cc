@@ -464,13 +464,11 @@ class RecurrentOpProtoMaker : public framework::OpProtoAndCheckerMaker {
 class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
-  using OpDescBind = framework::OpDescBind;
 
  protected:
-  virtual std::unique_ptr<OpDescBind> Apply() const {
-    auto *grad = new OpDescBind();
-    grad->SetType(this->GradOpType());
-
+  virtual std::unique_ptr<framework::OpDescBind> Apply() const {
+    auto *grad = new framework::OpDescBind();
+    grad->SetType("recurrent_grad");
     for (auto &input_param : this->InputNames()) {
       grad->SetInput(input_param, this->Input(input_param));
       grad->SetOutput(framework::GradVarName(input_param),
@@ -491,11 +489,7 @@ class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
     grad->SetAttrMap(this->Attrs());
 
-    return std::unique_ptr<OpDescBind>(grad);
-  }
-
-  virtual std::string GradOpType() const {
-    return this->ForwardOpType() + "_grad";
+    return std::unique_ptr<framework::OpDescBind>(grad);
   }
 };
 
@@ -505,15 +499,15 @@ class RecurrentGradOpShapeInference : public framework::InferShapeBase {
     std::vector<std::string> input{kInputs, kInitialStates, kParameters};
     std::vector<std::string> output{kOutputs};
     for (auto &s : input) {
-      PADDLE_ENFORCE(ctx->HasInput(s));
-      PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName(s)));
+      PADDLE_ENFORCE(ctx->HasInputs(s));
+      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(s)));
     }
     for (auto &s : output) {
-      PADDLE_ENFORCE(ctx->HasInput(s));
+      PADDLE_ENFORCE(ctx->HasInputs(s));
     }
 
     for (auto &s : input) {
-      ctx->SetOutputDim(s, ctx->GetInputDim(framework::GradVarName(s)));
+      ctx->SetOutputsDim(framework::GradVarName(s), ctx->GetInputsDim(s));
     }
   }
 };
