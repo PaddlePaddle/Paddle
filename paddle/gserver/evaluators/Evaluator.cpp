@@ -399,6 +399,7 @@ real AucEvaluator::evalImp(std::vector<Argument>& arguments) {
   MatrixPtr weight = supportWeight ? arguments[2].value : nullptr;
   if (nullptr == output || nullptr == label ||
       (supportWeight && nullptr == weight)) {
+    LOG(ERROR) << "label or output is null";
     return 0;
   }
   size_t insNum = output->getHeight();

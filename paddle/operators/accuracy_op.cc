@@ -60,8 +60,8 @@ class AccuracyOpMaker : public framework::OpProtoAndCheckerMaker {
                   framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     // TODO(typhoonzero): support both inference value and indices.
-    AddInput("Out", "topk(inferences) the network output");
-    AddInput("Indices", "topk(indices) the network output");
+    AddInput("Out", "topk (inferences) the network output");
+    AddInput("Indices", "topk (indices) the network output");
     AddInput("Label", "Label of the training data");
     // TODO(typhoonzero): AddInput("Weight", ...
     AddOutput("Accuracy", "The accuracy of current batch");
@@ -82,7 +82,8 @@ information, or not. But the output only shares the LoD with input `Inference`.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(accuracy, ops::AccuracyOp, ops::AccuracyOpMaker);
+REGISTER_OPERATOR(accuracy, ops::AccuracyOp, ops::AccuracyOpMaker,
+                  paddle::framework::EmptyGradOpMaker);
 // FIXME(typhoonzero): types of T is for infernece data.
 // label data is always int.
 REGISTER_OP_CPU_KERNEL(accuracy,

@@ -252,7 +252,7 @@ protected:
  */
 class AucEvaluator : public Evaluator {
 public:
-  AucEvaluator(int32_t colIdx)
+  AucEvaluator(int32_t colIdx = 0)
       : colIdx_(colIdx),
         realColumnIdx_(0),
         cpuOutput_(nullptr),
