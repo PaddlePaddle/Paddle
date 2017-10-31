@@ -43,14 +43,12 @@ class GRUOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         weight_dims[1], frame_size * 3,
         "The shape of Weight matrix must be [frame_size, frame_size * 3].");
-    auto h0 = Input("H0");
-    if (h0 != framework::kEmptyVarName) {
+    if (ctx->HasInput("H0")) {
       auto h0_dims = ctx->GetInputDim("H0");
       PADDLE_ENFORCE_EQ(h0_dims[1], frame_size,
                         "The width of H0 must be equal to frame_size.");
     }
-    auto bias = Input("Bias");
-    if (bias != framework::kEmptyVarName) {
+    if (ctx->HasInput("Bias")) {
       auto bias_dims = ctx->GetInputDim("Bias");
       int bias_height = bias_dims[0];
       int bias_width = bias_dims[1];
@@ -74,42 +72,52 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
   GRUOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Input",
-             "(LoDTensor) the first input is a LodTensor, which support "
+             "(LoDTensor) The first input is a LodTensor, which support "
              "variable-time length input sequence. The underlying tensor in "
              "this LoDTenosr is a matrix with shape (T X 3D), where, T is the "
              "total time steps in this mini-batch, D is the hidden size.");
     AddInput("H0",
-             "(Tensor, optional) the initial hidden state is an optional "
+             "(Tensor, optional) The initial hidden state is an optional "
              "input. This is a tensor with shape (N x D), where N is the "
-             "batch size, D is the hidden size.");
+             "batch size, D is the hidden size.")
+        .AsDispensable();
     AddInput(
         "Weight",
-        "(Tensor) Weight matrix with shape [hidden_size, hidden_size * 3]. "
-        "The elements continuous in memory can be divided into two parts. "
-        "The first part are weights of the update gate and reset gate "
-        "with shape [hidden_size, hidden_size * 2], and the second part are "
-        "weights of output candidate with shape [hidden_size, hidden_size]");
+        "(Tensor) The learnable hidden-hidden weight matrix with shape "
+        "(D x 3D), where D is the hidden size. The elements continuous in "
+        "memory can be divided into two parts. The first part are weights of "
+        "the update gate and reset gate with shape (D x 2D), and the second "
+        "part are weights of output candidate with shape (D x D).");
     AddInput("Bias",
-             "(Tensor) Bias vector with shape [1, hidden_size * 3] concating "
-             "bias of the update gate, reset gate and output candidate.");
+             "(Tensor, optional) Bias vector with shape (1 x 3D) concating "
+             "bias of the update gate, reset gate and output candidate.")
+        .AsDispensable();
     AddOutput("BatchGate",
-              "(LoDTensor) the update gata, reset gate and output candidate "
-              "lod tensor of GRU operator. "
-              "The shape and lod is the same with the `Input`.")
+              "(LoDTensor) To compute with batches, sequence data will be "
+              "reorganized into several successive batches each containing "
+              "data from the same time step. The LoDTensor BatchGate contains "
+              "the update gate, reset gate and output candidate values "
+              "organized in batches. The LoD size is 2. The first LoD contains "
+              "the batch offsets and the second LoD contains the indexes in "
+              "the raw sequence data.")
         .AsIntermediate();
     AddOutput(
         "BatchResetHiddenPrev",
-        "(LoDTensor) the reseted hidden state lod tensor of GRU operator. "
-        "The shape and lod is the same with the `Input`.")
+        "(LoDTensor) The reseted hidden state LoDTensor organized in batches. "
+        "This LoDTensor is a matrix with shape (T X D) and has the same LoD "
+        "with `BatchGate`.")
         .AsIntermediate();
     AddOutput(
         "BatchHidden",
-        "(LoDTensor) the reseted hidden state lod tensor of GRU operator. "
-        "The shape and lod is the same with the `Input`.")
+        "(LoDTensor) The hidden state LoDTensor organized in batches.  "
+        "This LoDTensor is a matrix with shape (T X D) and has the same LoD "
+        "with `BatchGate`.")
         .AsIntermediate();
-    AddOutput("Hidden",
-              "(LoDTensor) the hidden state lod tensor of GRU operator. "
-              "The shape and lod is the same with the `Input`.");
+    AddOutput(
+        "Hidden",
+        "(LoDTensor) the hidden state LoDTensor organized in sequences. "
+        "This LoDTensor is a matrix with shape (T X D) and has the same LoD "
+        "with `BatchGate`.");
     AddAttr<std::string>("activation",
                          "(string, default tanh) "
                          "The activation type used for output candidate {h}_t.")
@@ -124,14 +132,14 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
                   "whether to compute reversed GRU.")
         .SetDefault(false);
     AddComment(R"DOC(
-GRUOp implements part calculations of the GRU unit as following:
+GRUOp implements part calculations of the GRU as following:
 \f[
 update \ gate: u_t = actGate(xu_t + W_u * hidden_prev + bias_u) \\
 reset \ gate: r_t = actGate(xr_t + W_r * hidden_prev + bias_r)  \\
 output \ candidate: {h}_t = actNode(xc_t + W_c * dot(r_t, hidden_prev) + bias_c) \\
 output: h_t = dot((1-u_t), hidden_prev) + dot(u_t, {h}_t)
 \f]
-The rest of GRU unit can be completed by using FCOp's output as the input of GRUOp.
+The rest of GRU can be completed by using FCOp's output as the input of GRUOp.
 )DOC");
   }
 };
@@ -170,8 +178,7 @@ class GRUGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         weight_width, frame_size * 3,
         "The shape of Weight matrix must be [frame_size, frame_size * 3].");
-    auto h0 = Input("H0");
-    if (h0 != framework::kEmptyVarName) {
+    if (ctx->HasInput("H0")) {
       auto h0_dims = ctx->GetInputDim("H0");
       PADDLE_ENFORCE_EQ(h0_dims[1], frame_size,
                         "The width of H0 must be equal to frame_size.");
@@ -179,8 +186,7 @@ class GRUGradOp : public framework::OperatorWithKernel {
       if (ctx->HasOutput(h0_grad_name))
         ctx->SetOutputDim(h0_grad_name, h0_dims);
     }
-    auto bias = Input("Bias");
-    if (bias != framework::kEmptyVarName) {
+    if (ctx->HasInput("Bias")) {
       auto bias_dims = ctx->GetInputDim("Bias");
       int bias_height = bias_dims[0];
       int bias_width = bias_dims[1];
