@@ -538,5 +538,20 @@ class Parameter(Variable):
 
 
 # program is a global instance.
-g_program = Program()
-g_init_program = Program()
+g_program_dict = dict()
+
+
+def switch_g_program(prog, init_prog):
+    g_program_dict['program'] = prog
+    g_program_dict['init_program'] = init_prog
+
+
+def g_program():
+    return g_program_dict['program']
+
+
+def g_init_program():
+    return g_program_dict['init_program']
+
+
+switch_g_program(Program(), Program())

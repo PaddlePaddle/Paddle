@@ -30,7 +30,7 @@ class LayerHelper(object):
     def program(self):
         prog = self.kwargs.get('program', None)
         if prog is None:
-            return g_program
+            return g_program()
         else:
             return prog
 
@@ -38,7 +38,7 @@ class LayerHelper(object):
     def init_program(self):
         prog = self.kwargs.get('init_program', None)
         if prog is None:
-            return g_init_program
+            return g_init_program()
         else:
             return prog
 

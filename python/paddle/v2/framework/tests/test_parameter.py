@@ -5,7 +5,7 @@ import paddle.v2.framework.core as core
 
 class TestParameter(unittest.TestCase):
     def test_param(self):
-        b = g_program.create_block()
+        b = g_program().create_block()
         param = b.create_parameter(
             name='fc.w',
             shape=[784, 100],

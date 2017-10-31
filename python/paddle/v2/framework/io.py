@@ -45,7 +45,7 @@ def save_vars(executor, dirname, program=None, vars=None, predicate=None):
     """
     if vars is None:
         if program is None:
-            program = g_program
+            program = g_program()
         if not isinstance(program, Program):
             raise TypeError("program should be as Program type or None")
 
@@ -106,7 +106,7 @@ def load_vars(executor, dirname, program=None, vars=None, predicate=None):
     """
     if vars is None:
         if program is None:
-            program = g_program
+            program = g_program()
         if not isinstance(program, Program):
             raise TypeError("program's type should be Program")
 
@@ -164,7 +164,7 @@ def save_inference_model(dirname,
     :return: None
     """
     if program is None:
-        program = g_program
+        program = g_program()
     if not isinstance(target_vars, list):
         target_vars = [target_vars]
 
