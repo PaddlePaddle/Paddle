@@ -3,7 +3,7 @@ import numpy as np
 from op_test import OpTest
 
 
-class TestFillConstantBatchSizeLikeOp1(OpTest):
+class TestFillConstantBatchSizeLikeWhenFirstDimIsBatchSize(OpTest):
     def setUp(self):
         self.op_type = "fill_constant_batch_size_like"
         self.inputs = {'Input': np.random.random((219, 232)).astype("float32")}
@@ -17,7 +17,7 @@ class TestFillConstantBatchSizeLikeOp1(OpTest):
         self.check_output()
 
 
-class TestFillConstantBatchSizeLikeOp2(OpTest):
+class TestFillConstantBatchSizeLikeWhenSecondDimIsBatchSize(OpTest):
     def setUp(self):
         self.op_type = "fill_constant_batch_size_like"
         self.inputs = {'Input': np.random.random((219, 232)).astype("float32")}
