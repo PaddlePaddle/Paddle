@@ -86,8 +86,8 @@ class RecurrentOpTest(unittest.TestCase):
        - h
     '''
 
-    input_dim = 1
-    batch_size = 1
+    input_dim = 2
+    batch_size = 10
     sent_len = 2
 
     def setUp(self):

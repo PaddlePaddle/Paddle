@@ -48,6 +48,7 @@ class SumKernel : public framework::OpKernel<T> {
 
       math::SelectedRowsAddToTensor<Place, T> functor;
       auto place = context.GetEigenDevice<Place>();
+      // If in_place, just skip the first tensor
       for (int i = in_place ? 1 : 0; i < N; i++) {
         if (in_vars[i]->IsType<framework::LoDTensor>()) {
           auto& in_t = in_vars[i]->Get<framework::LoDTensor>();
@@ -61,6 +62,7 @@ class SumKernel : public framework::OpKernel<T> {
         }
       }
     } else if (out_var->IsType<framework::SelectedRows>()) {
+      PADDLE_ENFORCE(!in_place, "SelectedRows not support inplace sum now");
       auto* out = context.Output<SelectedRows>("Out");
       auto* out_value = out->mutable_value();
 
