@@ -451,6 +451,7 @@ void GpuMatrix::addSharedBias(Matrix& b, real scale) {
 }
 
 void GpuMatrix::collectBias(Matrix& a, real scale) {
+#ifdef PADDLE_WITH_CUDA
   CHECK_EQ(getHeight(), (size_t)1);
   CHECK_EQ(width_, a.getWidth());
   GpuSparseMatrix* sMatPtr = dynamic_cast<GpuSparseMatrix*>(&a);
@@ -461,6 +462,7 @@ void GpuMatrix::collectBias(Matrix& a, real scale) {
     hl_sparse_matrix_s A_d = sMatPtr->sMatrix_.get();
     hl_sparse_matrix_column_sum(data, A_d, sMatPtr->getHeight(), width_, scale);
   }
+#endif
 }
 
 void GpuMatrix::collectSharedBias(Matrix& a, real scale) {
@@ -552,6 +554,7 @@ void GpuMatrix::mul(const GpuSparseMatrix& a,
                     const GpuMatrix& b,
                     real scaleAB,
                     real scaleT) {
+#ifdef PADDLE_WITH_CUDA
   CHECK(isContiguous());
   CHECK(b.isContiguous());
   CHECK(b.useGpu_ == true) << "Matrix type are not equal";
@@ -578,12 +581,14 @@ void GpuMatrix::mul(const GpuSparseMatrix& a,
                           b.height_,
                           scaleAB,
                           scaleT);
+#endif
 }
 
 void GpuMatrix::mul(const GpuMatrix& a,
                     const GpuSparseMatrix& b,
                     real scaleAB,
                     real scaleT) {
+#ifdef PADDLE_WITH_CUDA
   CHECK(isContiguous());
   CHECK(a.isContiguous());
   CHECK(a.useGpu_ == true) << "Matrix type are not equal";
@@ -622,6 +627,7 @@ void GpuMatrix::mul(const GpuMatrix& a,
                             scaleAB,
                             scaleT);
   }
+#endif
 }
 
 /* this = a*b */
@@ -1548,6 +1554,7 @@ void GpuMatrix::bilinearBackward(const Matrix& out,
 }
 
 void GpuMatrix::multiBinaryLabelCrossEntropy(Matrix& output, Matrix& label) {
+#ifdef PADDLE_WITH_CUDA
   GpuMatrix* outputPtr = dynamic_cast<GpuMatrix*>(&output);
   auto labelPtr = dynamic_cast<GpuSparseMatrix*>(&label);
 
@@ -1563,9 +1570,11 @@ void GpuMatrix::multiBinaryLabelCrossEntropy(Matrix& output, Matrix& label) {
   hl_sparse_matrix_s mat_d = labelPtr->sMatrix_.get();
   hl_matrix_multi_binary_cross_entropy(
       output_d, entropy_d, mat_d, height_, outputPtr->width_);
+#endif
 }
 
 void GpuMatrix::multiBinaryLabelCrossEntropyBp(Matrix& output, Matrix& label) {
+#ifdef PADDLE_WITH_CUDA
   GpuMatrix* outputPtr = dynamic_cast<GpuMatrix*>(&output);
   auto labelPtr = dynamic_cast<GpuSparseMatrix*>(&label);
 
@@ -1581,6 +1590,7 @@ void GpuMatrix::multiBinaryLabelCrossEntropyBp(Matrix& output, Matrix& label) {
   hl_sparse_matrix_s mat_d = labelPtr->sMatrix_.get();
   hl_matrix_multi_binary_cross_entropy_bp(
       output_d, grad_d, mat_d, height_, width_);
+#endif
 }
 
 void GpuMatrix::vol2Col(real* dataSrc,
@@ -3226,6 +3236,7 @@ template void CpuMatrix::mul<CpuMatrix, CacheRowCpuMatrix>(CpuSparseMatrix* a,
                                                            real scaleAB,
                                                            real scaleT);
 
+#ifndef PADDLE_MOBILE_INFERENCE
 void SharedCpuMatrix::mul(CpuSparseMatrix* a,
                           CpuMatrix* b,
                           real scaleAB,
@@ -3354,6 +3365,7 @@ void SharedCpuMatrix::initBlock(int blockNum) {
   }
 }
 
+#endif
 /* Add a (column) vector b to matrix a, column by column */
 void CpuMatrix::addColumnVector(const Matrix& b) {
   BaseMatrix::addColVector(const_cast<Matrix&>(b));
