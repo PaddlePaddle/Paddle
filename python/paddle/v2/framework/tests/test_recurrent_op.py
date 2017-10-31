@@ -62,7 +62,7 @@ class PySimpleRNN(PyRNNBase):
         # sum = xW + hU
         # self.mems[step_id] = py_sigmoid(sum)
         # self.y[step_id] = self.mems[step_id]
-        self.mems[step_id] = mem + x
+        self.mems[step_id] = (mem + x) / 3.5
         self.y[step_id] = self.mems[step_id]
 
 
@@ -93,7 +93,7 @@ class RecurrentOpTest(unittest.TestCase):
     sent_len = 2
 
     def setUp(self):
-        self.data_field = {"x", "W", "U", "h_boot"}
+        self.data_field = {"x", "h_boot"}
 
         self.input_shape = (self.sent_len, self.batch_size, self.input_dim)
         self.output_shape = (self.sent_len, self.batch_size, self.input_dim)
@@ -126,7 +126,7 @@ class RecurrentOpTest(unittest.TestCase):
             #             param_attr={'name': 'U'},
             #             bias_attr=False)
 
-            h = elementwise_add(x=h_pre, y=x_t)
+            h = scale(x=elementwise_add(x=h_pre, y=x_t), scale=1.0 / 3.5)
 
             rnn.update_memory(h_pre, h)
             rnn.output(h)

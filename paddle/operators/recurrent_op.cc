@@ -484,7 +484,7 @@ class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
 class RecurrentGradOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
-    std::vector<std::string> input{kInputs, kInitialStates, kParameters};
+    std::vector<std::string> input{kInputs, kInitialStates};
     std::vector<std::string> output{kOutputs};
     for (auto &s : input) {
       PADDLE_ENFORCE(ctx->HasInputs(s));
@@ -496,6 +496,11 @@ class RecurrentGradOpShapeInference : public framework::InferShapeBase {
 
     for (auto &s : input) {
       ctx->SetOutputsDim(framework::GradVarName(s), ctx->GetInputsDim(s));
+    }
+    if (ctx->HasInputs(kParameters)) {
+      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(kParameters)));
+      ctx->SetOutputsDim(framework::GradVarName(kParameters),
+                         ctx->GetInputsDim(kParameters));
     }
   }
 };
