@@ -165,8 +165,6 @@ _create_op_func_('elementwise_add')
 _create_op_func_('dropout')
 _create_op_func_('reshape')
 
-# _create_op_func_('cos_sim')
-
 
 def cast(x, data_type, program=None):
     helper = LayerHelper('cast', **locals())
@@ -198,11 +196,11 @@ def sums(input, program=None, init_program=None):
     return out
 
 
-def cos_sim(X, Y, program=None, init_program=None):
-    helper = LayerHelper('cos_sim', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype("X"))
-    xnorm = helper.create_tmp_variable(dtype=helper.input_dtype("X"))
-    ynorm = helper.create_tmp_variable(dtype=helper.input_dtype("X"))
+def cos_sim(X, Y, **kwargs):
+    helper = LayerHelper('cos_sim', **kwargs)
+    out = helper.create_tmp_variable(dtype=X.data_type)
+    xnorm = helper.create_tmp_variable(dtype=X.data_type)
+    ynorm = helper.create_tmp_variable(dtype=X.data_type)
     helper.append_op(
         type='cos_sim',
         inputs={'X': [X],
@@ -210,7 +208,7 @@ def cos_sim(X, Y, program=None, init_program=None):
         outputs={'Out': [out],
                  'XNorm': [xnorm],
                  'YNorm': [ynorm]})
-    return out, xnorm, ynorm
+    return out
 
 
 def cross_entropy(input, label, **kwargs):
@@ -264,6 +262,8 @@ def square_error_cost(input, label, **kwargs):
 def sequence_conv(input,
                   num_filters,
                   filter_size=3,
+                  filter_stride=1,
+                  act="sigmoid",
                   bias_attr=None,
                   param_attr=None,
                   program=None,
@@ -288,9 +288,9 @@ def sequence_conv(input,
         },
         outputs={"Out": pre_bias},
         attrs={
-            'context_stride': stride,
-            'context_start': 0,
-            'context_length': filter_size
+            'contextStride': filter_stride,
+            'contextStart': 0,
+            'contextLength': filter_size
         })
     pre_act = helper.append_bias_op(pre_bias)
     return helper.append_activation(pre_act)
