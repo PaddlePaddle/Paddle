@@ -8,12 +8,12 @@ class TestAccuracyOp(OpTest):
         self.op_type = "accuracy"
         n = 8192
         infer = np.random.randint(0, 2, (n, 1)).astype("int")
-        label = np.random.randint(0, 2, (n, )).astype("int")
+        label = np.random.randint(0, 2, (n, 1)).astype("int")
         self.inputs = {'Inference': infer, "Label": label}
         num_correct = 0
         for rowid in xrange(n):
             for ele in infer[rowid]:
-                if ele == label[rowid]:
+                if ele == label[rowid][0]:
                     num_correct += 1
                     break
         self.outputs = {

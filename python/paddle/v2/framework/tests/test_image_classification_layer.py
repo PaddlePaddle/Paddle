@@ -37,7 +37,7 @@ class TestLayer(unittest.TestCase):
         layers.batch_norm(
             input=images, program=program, init_program=init_program)
 
-        #print str(program)
+        # print str(program)
 
     def test_dropout_layer(self):
         program = Program()
@@ -53,7 +53,7 @@ class TestLayer(unittest.TestCase):
             program=program,
             init_program=init_program)
 
-        #print str(program)
+        # print str(program)
 
     def test_img_conv_group(self):
         program = Program()
