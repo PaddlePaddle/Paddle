@@ -25,6 +25,19 @@ else()
     message(STATUS "Compile with MKLDNNMatrix")
 endif()
 
+if(MOBILE_INFERENCE)
+    list(REMOVE_ITEM MATH_SOURCES
+         ${CMAKE_CURRENT_SOURCE_DIR}/SIMDFunctions.cpp)
+    # Remove sparse
+    list(REMOVE_ITEM MATH_HEADERS
+         ${CMAKE_CURRENT_SOURCE_DIR}/CpuSparseMatrix.h
+         ${CMAKE_CURRENT_SOURCE_DIR}/SparseMatrix.h
+         ${CMAKE_CURRENT_SOURCE_DIR}/SparseRowMatrix.h)
+    list(REMOVE_ITEM MATH_SOURCES
+         ${CMAKE_CURRENT_SOURCE_DIR}/CpuSparseMatrix.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/SparseMatrix.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/SparseRowMatrix.cpp)
+endif()
 set(MATH_SOURCES
     "${PADDLE_SOURCE_DIR}/paddle/math/BaseMatrix.cu"
     "${PADDLE_SOURCE_DIR}/paddle/math/TrainingAlgorithmOp.cu"

@@ -1902,5 +1902,52 @@ void BaseMatrixT<real>::sumOfProducts(BaseMatrixT& b,
 }
 
 template class BaseMatrixT<real>;
+
+#ifndef PADDLE_MOBILE_INFERENCE
+
 template class BaseMatrixT<int>;
+
+#else
+
+template <>
+void BaseMatrixT<int>::zero() {
+  applyUnary(unary::Zero<int>());
+}
+
+template <>
+void BaseMatrixT<int>::assign(int p) {
+  applyUnary(unary::Assign<int>(p));
+}
+
+template <>
+void BaseMatrixT<int>::isEqualTo(BaseMatrixT& b, int value) {
+  applyBinary(binary::IsEqual<int>(value), b);
+}
+
+template <>
+void BaseMatrixT<int>::neg() {
+  applyUnary(unary::Neg<int>());
+}
+
+template <>
+void BaseMatrixT<int>::abs2() {
+  applyUnary(unary::Abs<int>());
+}
+
+template <>
+void BaseMatrixT<int>::add(int p) {
+  applyUnary(unary::Add<int>(p));
+}
+
+template <>
+void BaseMatrixT<int>::add(int p1, int p2) {
+  applyUnary(unary::Add2<int>(p1, p2));
+}
+
+template <>
+void BaseMatrixT<int>::applyL1(int learningRate, int decayRate) {
+  applyUnary(unary::ApplyL1<int>(learningRate * decayRate));
+}
+
+#endif
 }  // namespace paddle
