@@ -23,7 +23,7 @@ class TestExecutor(unittest.TestCase):
         tensor_b = core.LoDTensor()
         tensor_b.set(b_np, place)
         exe = Executor(place)
-        outs = exe.run(g_program,
+        outs = exe.run(g_program(),
                        feed={'a': tensor_a,
                              'b': tensor_b},
                        fetch_list=[out])

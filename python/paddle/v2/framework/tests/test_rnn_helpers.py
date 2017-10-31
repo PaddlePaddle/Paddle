@@ -31,7 +31,7 @@ class TestRNN(unittest.TestCase):
 
         out = rnn()
         self.assertEqual((-1, 80, 32), out.shape)
-        print g_program
+        print g_program()
 
 
 if __name__ == '__main__':

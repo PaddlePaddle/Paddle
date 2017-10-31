@@ -7,30 +7,30 @@ from paddle.v2.framework.framework import g_program
 
 class TestProgram(unittest.TestCase):
     def test_program(self):
-        b = g_program.current_block()
+        b = g_program().current_block()
         self.assertEqual(-1, b.parent_idx)
         self.assertEqual(0, b.idx)
 
-        b = g_program.create_block()
+        b = g_program().create_block()
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
 
-        b = g_program.create_block()
+        b = g_program().create_block()
         self.assertEqual(2, b.idx)
         self.assertEqual(1, b.parent_idx)
 
-        g_program.rollback()
+        g_program().rollback()
 
-        b = g_program.current_block()
+        b = g_program().current_block()
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
 
-        b = g_program.create_block()
+        b = g_program().create_block()
         self.assertEqual(3, b.idx)
         self.assertEqual(1, b.parent_idx)
 
-        g_program.rollback()
-        b = g_program.current_block()
+        g_program().rollback()
+        b = g_program().current_block()
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
 
