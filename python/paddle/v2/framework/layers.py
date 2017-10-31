@@ -243,8 +243,11 @@ def accuracy(input, label, k=1, **kwargs):
     acc_out = helper.create_tmp_variable(dtype=acc_out_dtype)
     helper.append_op(
         type="accuracy",
-        inputs={"Inference": [topk_indices],
-                "Label": [label]},
+        inputs={
+            "Out": [topk_out],
+            "Indices": [topk_indices],
+            "Label": [label]
+        },
         outputs={"Accuracy": [acc_out]})
     return acc_out
 
