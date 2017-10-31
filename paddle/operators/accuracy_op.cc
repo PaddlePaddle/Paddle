@@ -82,8 +82,7 @@ information, or not. But the output only shares the LoD with input `Inference`.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(accuracy, ops::AccuracyOp, ops::AccuracyOpMaker,
-                             paddle::framework::EmptyGradOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(accuracy, ops::AccuracyOp, ops::AccuracyOpMaker);
 // FIXME(typhoonzero): types of T is for infernece data.
 // label data is always int.
 REGISTER_OP_CPU_KERNEL(accuracy,
