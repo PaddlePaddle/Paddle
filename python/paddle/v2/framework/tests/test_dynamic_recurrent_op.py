@@ -5,7 +5,6 @@ import copy
 import math
 from paddle.v2.framework.op import Operator, DynamicRecurrentOp
 import numpy as np
-from op_test import get_backward_op
 
 lod_py = [[0, 1, 3, 6]]
 input_dim = 6
@@ -42,6 +41,20 @@ def create_raw_tensor(np_data, place):
     tensor = core.LoDTensor()
     tensor.set(np_data, place)
     return tensor
+
+
+def get_backward_op(scope, op, no_grad_set):
+    if isinstance(op, core.Net):
+        backward_op = op.backward_net()
+    else:
+        backward_op = core.Operator.backward(op, no_grad_set)
+    for input in backward_op.input_vars():
+        var = scope.var(input)
+        var.get_tensor()
+    for output in backward_op.output_vars():
+        var = scope.var(output)
+        var.get_tensor()
+    return backward_op
 
 
 class PyRNN(object):

@@ -27,6 +27,32 @@ class TestOptimizer(unittest.TestCase):
         sgd_op = opts[0]
         self.assertEqual(sgd_op.type, "sgd")
 
+    def test_sgd_optimizer_with_global_step(self):
+        program = framework.Program()
+        block = program.global_block()
+        mul_x = block.create_parameter(
+            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
+        block.append_op(
+            type="mul",
+            inputs={"X": mul_x,
+                    "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1})
+        global_step = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="step")
+        sgd_optimizer = optimizer.SGDOptimizer(
+            learning_rate=0.01, global_step=global_step)
+        opts = sgd_optimizer.minimize(mul_out)
+        self.assertEqual(len(opts), 2)
+        sgd_op = opts[0]
+        self.assertEqual(sgd_op.type, "sgd")
+        increment_op = opts[1]
+        self.assertEqual(increment_op.type, "increment")
+
 
 class TestMomentumOptimizer(unittest.TestCase):
     class MockMomentum(optimizer.MomentumOptimizer):
@@ -194,6 +220,55 @@ class TestAdamOptimizer(unittest.TestCase):
         self.assertEqual(len(moment2_acc), 1)
         self.assertTrue(mul_x.name in moment1_acc)
         self.assertTrue(mul_x.name in moment2_acc)
+
+
+class TestAdamaxOptimizer(unittest.TestCase):
+    class MockAdamax(optimizer.AdamaxOptimizer):
+        def get_accumulators(self):
+            return self._accumulators
+
+        def get_moment_str(self):
+            return self._moment_acc_str
+
+        def get_inf_norm_str(self):
+            return self._inf_norm_acc_str
+
+    def test_adamax_optimizer(self):
+        program = framework.Program()
+        block = program.global_block()
+        mul_x = block.create_parameter(
+            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
+        block.append_op(
+            type="mul",
+            inputs={"X": mul_x,
+                    "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1})
+        adamax_optimizer = self.MockAdamax(
+            learning_rate=0.01, beta1=0.9, beta2=0.999)
+        params_grads = append_backward_ops(mul_out)
+        self.assertEqual(len(params_grads), 1)
+        self.assertEqual(len(adamax_optimizer.get_accumulators()), 0)
+        opts = adamax_optimizer.create_optimization_pass(params_grads, mul_out)
+        self.assertEqual(len(opts), 2)
+        adam_op = opts[0]
+        self.assertEqual(adam_op.type, "adamax")
+
+        # Check accumulators
+        accumulators = adamax_optimizer.get_accumulators()
+        self.assertEqual(len(accumulators), 2)
+        self.assertTrue(adamax_optimizer.get_moment_str() in accumulators)
+        self.assertTrue(adamax_optimizer.get_inf_norm_str() in accumulators)
+        moment_acc = accumulators[adamax_optimizer.get_moment_str()]
+        inf_norm_acc = accumulators[adamax_optimizer.get_inf_norm_str()]
+        self.assertEqual(len(moment_acc), 1)
+        self.assertEqual(len(inf_norm_acc), 1)
+        self.assertTrue(mul_x.name in moment_acc)
+        self.assertTrue(mul_x.name in inf_norm_acc)
 
 
 if __name__ == '__main__':

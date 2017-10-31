@@ -3,11 +3,14 @@ import paddle.v2.framework.layers as layers
 import paddle.v2.framework.core as core
 import paddle.v2.framework.optimizer as optimizer
 
-from paddle.v2.framework.framework import Program, g_program
+from paddle.v2.framework.framework import Program
 from paddle.v2.framework.executor import Executor
+from paddle.v2.framework.regularizer import L2DecayRegularizer
+from paddle.v2.framework.initializer import UniformInitializer
 
 import numpy as np
 
+BATCH_SIZE = 128
 init_program = Program()
 program = Program()
 image = layers.data(
@@ -17,27 +20,37 @@ image = layers.data(
     program=program,
     init_program=init_program)
 
+param_attr = {
+    'name': None,
+    'initializer': UniformInitializer(
+        low=-1.0, high=1.0),
+    'regularization': L2DecayRegularizer(0.0005 * BATCH_SIZE)
+}
+
 hidden1 = layers.fc(input=image,
                     size=128,
                     act='relu',
                     program=program,
-                    init_program=init_program)
+                    init_program=init_program,
+                    param_attr=param_attr)
 hidden2 = layers.fc(input=hidden1,
                     size=64,
                     act='relu',
                     program=program,
-                    init_program=init_program)
+                    init_program=init_program,
+                    param_attr=param_attr)
 
 predict = layers.fc(input=hidden2,
                     size=10,
                     act='softmax',
                     program=program,
-                    init_program=init_program)
+                    init_program=init_program,
+                    param_attr=param_attr)
 
 label = layers.data(
     name='y',
     shape=[1],
-    data_type='int32',
+    data_type='int64',
     program=program,
     init_program=init_program)
 
@@ -47,8 +60,6 @@ avg_cost = layers.mean(x=cost, program=program, init_program=init_program)
 
 sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
 opts = sgd_optimizer.minimize(avg_cost)
-
-BATCH_SIZE = 128
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
@@ -64,7 +75,7 @@ PASS_NUM = 100
 for pass_id in range(PASS_NUM):
     for data in train_reader():
         x_data = np.array(map(lambda x: x[0], data)).astype("float32")
-        y_data = np.array(map(lambda x: x[1], data)).astype("int32")
+        y_data = np.array(map(lambda x: x[1], data)).astype("int64")
         y_data = np.expand_dims(y_data, axis=1)
 
         tensor_x = core.LoDTensor()
