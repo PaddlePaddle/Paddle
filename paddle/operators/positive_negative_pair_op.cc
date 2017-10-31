@@ -26,8 +26,8 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
         ctx->HasInput("Label"),
         "Input(Label) of PositiveNegativePairOp should not be null.");
     PADDLE_ENFORCE(
-        ctx->HasInput("QueryId"),
-        "Input(QueryId) of PositiveNegativePairOp should not be null.");
+        ctx->HasInput("QueryID"),
+        "Input(QueryID) of PositiveNegativePairOp should not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("PositivePair"),
         "Output(PositivePair) of PositiveNegativePairOp should not be null.");
@@ -37,21 +37,51 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(
         ctx->HasOutput("NeutralPair"),
         "Output(NeutralPair) of PositiveNegativePairOp should not be null.");
+    auto scalar_dim = framework::make_ddim({1});
+    if (ctx->HasInput("AccumulatePositivePair") ||
+        ctx->HasInput("AccumulateNegativePair") ||
+        ctx->HasInput("AccumulateNeutralPair")) {
+      PADDLE_ENFORCE(ctx->HasInput("AccumulatePositivePair") &&
+                         ctx->HasInput("AccumulateNegativePair") &&
+                         ctx->HasInput("AccumulateNeutralPair"),
+                     "All optional inputs(AccumulatePositivePair, "
+                     "AccumulateNegativePair, AccumulateNeutralPair) of "
+                     "PositiveNegativePairOp are required if one of them is "
+                     "specified.");
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("AccumulatePositivePair"), scalar_dim,
+                        "Shape of AccumulatePositivePair should be {1}.");
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("AccumulateNegativePair"), scalar_dim,
+                        "Shape of AccumulateNegativePair should be {1}.");
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("AccumulateNeutralPair"), scalar_dim,
+                        "Shape of AccumulateNeutralPair should be {1}.");
+    }
 
     auto score_dim = ctx->GetInputDim("Score");
     auto label_dim = ctx->GetInputDim("Label");
-    auto query_dim = ctx->GetInputDim("QueryId");
-
-    PADDLE_ENFORCE(score_dim == label_dim,
-                   "Shape of Score must be the same as Label's shape.");
+    auto query_dim = ctx->GetInputDim("QueryID");
+    PADDLE_ENFORCE_EQ(score_dim.size(), 2, "Score should be a 2-D tensor.");
+    PADDLE_ENFORCE_EQ(label_dim.size(), 2, "Label should be a 2-D tensor.");
+    PADDLE_ENFORCE_EQ(
+        label_dim[0], score_dim[0],
+        "Tensor Score and Label should have the same height (batch size).");
+    PADDLE_ENFORCE_EQ(label_dim[1], 1,
+                      "The width of Label should be 1, i.e. each item should "
+                      "have a scalar label.");
     PADDLE_ENFORCE(query_dim == label_dim,
-                   "Shape of QueryId must be the same as Label's shape.");
-    PADDLE_ENFORCE(query_dim == label_dim,
-                   "Shape of QueryId must be the same as Label's shape.");
+                   "QueryID should have the same shape as Label.");
+    if (ctx->HasInput("Weight")) {
+      PADDLE_ENFORCE(ctx->GetInputDim("Weight") == label_dim,
+                     "Weight should have the same shape as Label.");
+    }
+    int column = ctx->Attrs().Get<int>("column");
+    auto depth = score_dim[1];
+    PADDLE_ENFORCE(column < depth && column >= -depth,
+                   "Attribute column should be in the range of [-%l, %l)",
+                   depth, depth);
 
-    ctx->SetOutputDim("PositivePair", {1});
-    ctx->SetOutputDim("NegativePair", {1});
-    ctx->SetOutputDim("NeutralPair", {1});
+    ctx->SetOutputDim("PositivePair", scalar_dim);
+    ctx->SetOutputDim("NegativePair", scalar_dim);
+    ctx->SetOutputDim("NeutralPair", scalar_dim);
   }
 
  protected:
@@ -67,27 +97,62 @@ class PositiveNegativePairOpMaker : public framework::OpProtoAndCheckerMaker {
                               framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Score",
-             "(Tensor, float) Output score of the network on <query, document> "
-             "pair.");
+             "(Tensor, float) Model Score on an item (with "
+             "respect to QueryID). It's a 2-D tensor with shape [batch_size, "
+             "depth], where the column specified by the attribute \"column\" "
+             "is used as item score.");
     AddInput("Label",
-             "(Tensor, float or int) Label of current <query, document> pair.");
-    AddInput("QueryId",
-             "(Tensor, int) query id of current <query, document> pair.");
+             "(Tensor, float) Label of an item (with repsect to "
+             "QueryId). It's a 2-D tensor with shape [batch_size, 1].");
+    AddInput("QueryID",
+             "(Tensor, int) Query ID that indicates the context. Its shape "
+             "should be the same as Label.");
+    AddInput(
+        "AccumulatePositivePair",
+        "(float) Optional. The accumulated number of positive pairs over a "
+        "stream of data. If provided, the output PositivePair will be "
+        "initialized with this number rather than 0. it won't be modified "
+        "in place.")
+        .AsDispensable();
+    AddInput(
+        "AccumulateNegativePair",
+        "(float) Optional. The accumulated number of negative pairs over a "
+        "stream of data. If provided, the output NegativePair will be "
+        "initialized with this number rather than 0. it won't be modified "
+        "in place.")
+        .AsDispensable();
+    AddInput("AccumulateNeutralPair",
+             "(float) Optional. The accumulated number of neutral pairs over a "
+             "stream of data. If provided, the output NeutralPair will be "
+             "initialized with this number rather than 0. it won't be modified "
+             "in place.")
+        .AsDispensable();
+    AddInput("Weight",
+             "(float) Optional. Weight of current item. If specified, its "
+             "shape should be the same as Label.")
+        .AsDispensable();
     AddOutput("PositivePair",
-              "(float) Number of positive ranking pairs, i.e. the pairs of "
-              "documents that are ranked correctly");
+              "(float) Number of positive pairs, i.e. the pairs of "
+              "items that are ranked correctly.");
     AddOutput("NegativePair",
-              "(float) Number of negative ranking pairs, i.e. the pairs of "
-              "documents that are ranked incorrectly");
+              "(float) Number of negative pairs, i.e. the pairs of "
+              "items that are ranked incorrectly.");
     AddOutput("NeutralPair",
-              "(float) Number of neutral ranking pairs. A pair of document "
-              "(doc#1, doc#2) is classified as \"neutral\" if their scores are "
-              "the same.");
+              "(float) Number of neutral pairs, i.e. the pairs of items "
+              "that have the same score.")
+        .AsDispensable();
+    AddAttr<int>(
+        "column",
+        "(int, default -1) The column position of Score used to rank items in "
+        "descending order. It must be in the range of [-rank(Score), "
+        "rank(Score)). "
+        "If `dim < 0`, the dim to reduce is `rank + dim`. "
+        "Noting that reducing on the first dim will make the LoD info lost.")
+        .SetDefault(0);
     AddComment(R"DOC(
-        PositiveNegativePairOp can be used to evaluate Learning To Rank(LTR) model performance. Its outputs are usually 
-        further summarized as positive-negative-ratio: PositivePair/NegativePair.
-        Its 3 inputs can be viewd as a series of 3 tuples: (predicition score, golden label, query id).
-        For each unique query id, a list of <score, label> are collected and positive/negative pairs are accumulated to its output. 
+        PositiveNegativePairOp can be used to evaluate Learning To Rank(LTR) model performance. 
+        Within some context, e.g. the "query", a LTR model generates scores for a list of items, which gives a partial order of the items. 
+        PositiveNegativePairOp takes a list of reference rank order (Input("Label")) and the model generated scores (Input(Score)) as inputs and counts the pairs that ranked correctly and incorrectly.
 )DOC");
   }
 };
@@ -101,4 +166,5 @@ REGISTER_OP_WITHOUT_GRADIENT(positive_negative_pair,
                              ops::PositiveNegativePairOpMaker);
 REGISTER_OP_CPU_KERNEL(
     positive_negative_pair,
-    ops::PositiveNegativePairKernel<paddle::platform::CPUPlace, float>);
+    ops::PositiveNegativePairKernel<paddle::platform::CPUPlace, float>,
+    ops::PositiveNegativePairKernel<paddle::platform::CPUPlace, double>);

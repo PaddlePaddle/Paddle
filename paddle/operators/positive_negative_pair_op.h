@@ -14,6 +14,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/utils/Logging.h"
 
 namespace paddle {
 namespace operators {
@@ -24,64 +25,86 @@ using LoDTensor = framework::LoDTensor;
 template <typename Place, typename T>
 class PositiveNegativePairKernel : public framework::OpKernel<T> {
  public:
+  struct PredictionResult {
+    PredictionResult(T score, T label, T weight)
+        : score(score), label(label), weight(weight) {}
+    T score;
+    T label;
+    T weight;
+  };
+
   void Compute(const framework::ExecutionContext& context) const override {
     auto score_t = context.Input<Tensor>("Score");
     auto label_t = context.Input<Tensor>("Label");
-    auto query_t = context.Input<Tensor>("QueryId");
+    auto query_t = context.Input<Tensor>("QueryID");
+    auto acc_positive_t = context.Input<Tensor>("AccumulatePositivePair");
+    auto acc_negative_t = context.Input<Tensor>("AccumulateNegativePair");
+    auto acc_neutral_t = context.Input<Tensor>("AccumulateNeutralPair");
     auto positive_t = context.Output<Tensor>("PositivePair");
     auto negative_t = context.Output<Tensor>("NegativePair");
     auto neutral_t = context.Output<Tensor>("NeutralPair");
+    auto weight_t = context.Input<Tensor>("Weight");
 
-    auto score = score_t->data<float>();
-    auto label = label_t->data<float>();
+    auto score = score_t->data<T>();
+    auto label = label_t->data<T>();
     auto query = query_t->data<int32_t>();
-
+    const T* weight = nullptr;
+    auto has_weight = weight_t != nullptr;
+    if (has_weight) {
+      weight = weight_t->data<T>();
+    }
     T* positive = positive_t->mutable_data<T>(context.GetPlace());
     T* negative = negative_t->mutable_data<T>(context.GetPlace());
     T* neutral = neutral_t->mutable_data<T>(context.GetPlace());
 
     auto score_dim = score_t->dims();
-    PADDLE_ENFORCE_GE(score_dim.size(), 1L,
-                      "Rank of Score must be at least 1.");
-    PADDLE_ENFORCE_LE(score_dim.size(), 2L,
-                      "Rank of Score must be less or equal to 2.");
     auto batch_size = score_dim[0];
-    auto width = score_dim.size() > 1 ? score_dim[1] : 1;
+    auto width = score_dim[1];
+    auto column = context.Attr<int32_t>("column");
+    if (column < 0) {
+      column += width;
+    }
 
     // construct document instances for each query: Query => List[<score#0,
     // label#0>, ...]
-    std::unordered_map<int, std::vector<std::pair<float, float>>> predictions;
+    std::unordered_map<int32_t, std::vector<PredictionResult>> predictions;
     for (auto i = 0; i < batch_size; ++i) {
       if (predictions.find(query[i]) == predictions.end()) {
         predictions.emplace(
-            std::make_pair(query[i], std::vector<std::pair<float, float>>()));
+            std::make_pair(query[i], std::vector<PredictionResult>()));
       }
-      predictions[query[i]].push_back(
-          std::make_pair(score[i * width + width - 1], label[i]));
+      predictions[query[i]].push_back(PredictionResult(
+          score[i * width + column], label[i], has_weight ? weight[i] : 1.0));
     }
 
     // for each query, accumulate pair counts
     T pos = 0, neg = 0, neu = 0;
+    if (acc_positive_t != nullptr && acc_negative_t != nullptr &&
+        acc_neutral_t != nullptr) {
+      pos = acc_positive_t->data<T>()[0];
+      neg = acc_negative_t->data<T>()[0];
+      neu = acc_neutral_t->data<T>()[0];
+    }
     auto evaluate_one_list = [&pos, &neg,
-                              &neu](std::vector<std::pair<float, float>> vec) {
+                              &neu](std::vector<PredictionResult> vec) {
       for (auto ite1 = vec.begin(); ite1 != vec.end(); ++ite1) {
         for (auto ite2 = ite1 + 1; ite2 != vec.end(); ++ite2) {
-          if (ite1->second == ite2->second) {  // labels are equal, ignore.
+          if (ite1->label == ite2->label) {  // labels are equal, ignore.
             continue;
           }
-          if (ite1->first == ite2->first) {
-            ++neu;
+          T w = (ite1->weight + ite2->weight) * 0.5;
+          if (ite1->score == ite2->score) {
+            neu += w;
           }
-          (ite1->first - ite2->first) * (ite1->second - ite2->second) > 0.0
-              ? pos++
-              : neg++;
+          (ite1->score - ite2->score) * (ite1->label - ite2->label) > 0.0
+              ? pos += w
+              : neg += w;
         }
       }
     };
     for (auto prediction : predictions) {
       evaluate_one_list(prediction.second);
     }
-
     *positive = pos;
     *negative = neg;
     *neutral = neu;
