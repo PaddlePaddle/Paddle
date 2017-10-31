@@ -180,9 +180,7 @@ def cast(x, data_type, program=None):
 
 def concat(input, axis, program=None, init_program=None):
     helper = LayerHelper('concat', **locals())
-    if not isinstance(input, list) and not isinstance(input, tuple):
-        input = [input]
-    out = helper.create_tmp_variable(dtype=input[0].data_type)
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
         type='concat',
         inputs={'X': input},
@@ -193,18 +191,16 @@ def concat(input, axis, program=None, init_program=None):
 
 def sums(input, program=None, init_program=None):
     helper = LayerHelper('sum', **locals())
-    if not isinstance(input, list) and not isinstance(input, tuple):
-        input = [input]
-    out = helper.create_tmp_variable(dtype=input[0].data_type)
-    helper.append_op(type='sum', inputs={'X': input}, outputs={'Out': out})
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(type='sum', inputs={'X': [input]}, outputs={'Out': out})
     return out
 
 
 def cos_sim(X, Y, program=None, init_program=None):
     helper = LayerHelper('cos_sim', **locals())
-    out = helper.create_tmp_variable(dtype=X.data_type)
-    xnorm = helper.create_tmp_variable(dtype=X.data_type)
-    ynorm = helper.create_tmp_variable(dtype=X.data_type)
+    out = helper.create_tmp_variable(dtype=helper.input_dtype("X"))
+    xnorm = helper.create_tmp_variable(dtype=helper.input_dtype("X"))
+    ynorm = helper.create_tmp_variable(dtype=helper.input_dtype("X"))
     helper.append_op(
         type='cos_sim',
         inputs={'X': [X],
@@ -261,7 +257,7 @@ def sequence_conv(input,
     helper = LayerHelper('sequence_conv', **locals())
     dtype = helper.input_dtype()
 
-    filter_shape = [num_filters * filter_size, filter_size]
+    filter_shape = [filter_size * input.shape[1], num_filters]
     filter = helper.create_parameter(
         attr=helper.param_attr, shape=filter_shape, dtype=dtype)
     pre_bias = helper.create_tmp_variable(dtype)
@@ -278,7 +274,8 @@ def sequence_conv(input,
             'context_start': 0,
             'context_length': filter_size
         })
-    return pre_bias
+    pre_act = helper.append_bias_op(pre_bias)
+    return helper.append_activation(pre_act)
 
 
 def conv2d(input,

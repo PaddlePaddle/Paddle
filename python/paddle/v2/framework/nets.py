@@ -101,8 +101,7 @@ def img_conv_group(input,
 def sequence_conv_pool(input,
                        num_filters,
                        filter_size,
-                       pool_size,
-                       pool_stride,
+                       pool_type="max",
                        program=None,
                        init_program=None):
     conv_out = layers.sequence_conv(
@@ -114,7 +113,7 @@ def sequence_conv_pool(input,
 
     pool_out = layers.sequence_pool(
         input=conv_out,
-        pool_type='sum',
+        pool_type=pool_type,
         program=program,
         init_program=init_program)
     return pool_out
