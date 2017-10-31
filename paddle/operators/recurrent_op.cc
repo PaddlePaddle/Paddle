@@ -36,27 +36,20 @@ constexpr char kInitStateGrads[] = "initial_states" GRAD_SUFFIX;
 
 using StepScopeVar = std::vector<framework::Scope *>;
 
-struct TensorPrinter {
-  TensorPrinter(std::ostream &os, const framework::Tensor &t)
-      : os_(os), t_(t) {}
-
-  template <typename T>
-  void operator()() const {
-    auto *data = t_.data<T>();
-    for (int64_t i = 0; i < framework::product(t_.dims()); ++i) {
-      os_ << data[i] << ", ";
-    }
-  }
-
-  std::ostream &os_;
-  const framework::Tensor &t_;
-};
-
-static void PrintTensor(std::ostream &os, const framework::Tensor &t) {
-  framework::VisitDataType(framework::ToDataType(t.type()),
-                           TensorPrinter(os, t));
-}
-
+// StepScopes manages scopes inside RNN.
+//    StepScopes::CurScope() get the current scope
+//    StepScopes::ExScope() get the ex-scope, or scope in previous time step.
+//    StepScopes::Next() move to next time step.
+//
+// if is_train = False, then
+//   there are two scopes for the RNN and just support forward.
+// else
+//   the len(scopes) == seq_len
+//
+// if is_backward = True, then
+//   reversely access scopes
+// else
+//   access scopes from begin to end.
 class StepScopes {
  public:
   StepScopes(const framework::Scope &parent, StepScopeVar *scopes,
@@ -66,6 +59,8 @@ class StepScopes {
         is_train_(is_train),
         is_backward_(is_backward) {
     size_t num_step_scopes = is_train ? seq_len : 2;
+    PADDLE_ENFORCE(!is_train && is_backward,
+                   "Cannot backward when is not training");
     if (!is_backward_) {
       PADDLE_ENFORCE(scopes->empty());
       scopes->reserve(static_cast<size_t>(num_step_scopes));
@@ -76,14 +71,6 @@ class StepScopes {
   }
 
   framework::Scope &CurScope() { return GetScope(counter_); }
-
-  framework::Scope &GetScope(size_t scope_id) const {
-    if (!is_train_) {
-      scope_id %= 2;
-    }
-    PADDLE_ENFORCE_LT(scope_id, scopes_->size());
-    return *(*scopes_)[scope_id];
-  }
 
   framework::Scope &ExScope() {
     auto &scope = GetScope(is_backward_ ? counter_ + 1 : counter_ - 1);
@@ -99,12 +86,22 @@ class StepScopes {
   }
 
  private:
+  framework::Scope &GetScope(size_t scope_id) const {
+    if (!is_train_) {
+      scope_id %= 2;
+    }
+    PADDLE_ENFORCE_LT(scope_id, scopes_->size());
+    return *(*scopes_)[scope_id];
+  }
+
   size_t counter_;
   StepScopeVar *scopes_;
   bool is_train_;
   bool is_backward_;
 };
 
+// Base class for RecurrentOp/RecurrentGradOp
+//    Some common protected functions for RecurrentOp/RecurrentGradOp
 class RecurrentBase : public framework::OperatorBase {
  public:
   RecurrentBase(const std::string &type,
@@ -114,6 +111,11 @@ class RecurrentBase : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
  protected:
+  // Get SequenceLength from Scope
+  //   The sequence length is got from input tensor. The input tensor's
+  //   dimension should be [SEQ_LEN, ..., ...]. The first of the tensor's shape
+  //   is SEQ_LEN. The second of the tensor's shape could be the batch size or
+  //   nested sequence length.
   int64_t GetSequenceLength(const framework::Scope &scope) const {
     // Dim format SEQ_LEN, BATCH_SIZE, ...
     int64_t seq_len = -1;
@@ -133,47 +135,53 @@ class RecurrentBase : public framework::OperatorBase {
     return seq_len;
   }
 
-  static void ShareVars(const framework::Scope &src_scope,
-                        const std::vector<std::string> &src_vars,
-                        framework::Scope *dst_scope,
-                        const std::vector<std::string> &dst_vars) {
-    PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size());
-    for (size_t i = 0; i < dst_vars.size(); ++i) {
-      AccessTensor(src_scope, src_vars[i], dst_scope, dst_vars[i],
-                   [&](const framework::Tensor &src, framework::Tensor *dst) {
-                     VLOG(4) << "Linking from " << src_vars[i] << " with shape("
-                             << src.dims() << ") to " << dst_vars[i];
-                     dst->ShareDataWith(src);
-                   });
-    }
+  // for src_tensor, dst_tensor in zip(map(src_scope.FindVar, src_vars),
+  //                                   map(dst_scope.Var, dst_vars)):
+  //   dst_tensor.ShareDataWith(src_tensor)
+  static void LinkTensor(const framework::Scope &src_scope,
+                         const std::vector<std::string> &src_vars,
+                         framework::Scope *dst_scope,
+                         const std::vector<std::string> &dst_vars) {
+    LinkTensorWithCallback(
+        src_scope, src_vars, dst_scope, dst_vars,
+        [&](const framework::Tensor &src, framework::Tensor *dst) {
+          dst->ShareDataWith(src);
+        });
   }
 
+  // for src_tensor, dst_tensor in zip(map(src_scope.FindVar, src_vars),
+  //                                   map(dst_scope.Var, dst_vars)):
+  //   callback(src_tensor, &dst_tensor)
   template <typename Callback>
-  static void AccessTensor(const framework::Scope &src_scope,
-                           const std::vector<std::string> &src_vars,
-                           framework::Scope *dst_scope,
-                           const std::vector<std::string> &dst_vars,
-                           Callback callback) {
+  static void LinkTensorWithCallback(const framework::Scope &src_scope,
+                                     const std::vector<std::string> &src_vars,
+                                     framework::Scope *dst_scope,
+                                     const std::vector<std::string> &dst_vars,
+                                     Callback callback) {
     PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size());
     for (size_t i = 0; i < dst_vars.size(); ++i) {
       AccessTensor(src_scope, src_vars[i], dst_scope, dst_vars[i], callback);
     }
   }
 
+  // for src_tensor, dst_tensor in zip(map(src_scope.FindVar, src_vars),
+  //                                   map(dst_scope.FindVar, dst_vars)):
+  //   callback(src_tensor, &dst_tensor)
   template <typename Callback>
-  static void AccessTensor(const framework::Scope &src_scope,
-                           const std::vector<std::string> &src_vars,
-                           const framework::Scope &dst_scope,
-                           const std::vector<std::string> &dst_vars,
-                           Callback callback) {
+  static void LinkTensorWithCallback(const framework::Scope &src_scope,
+                                     const std::vector<std::string> &src_vars,
+                                     const framework::Scope &dst_scope,
+                                     const std::vector<std::string> &dst_vars,
+                                     Callback callback) {
     PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size());
     for (size_t i = 0; i < dst_vars.size(); ++i) {
       AccessTensor(src_scope, src_vars[i], dst_scope, dst_vars[i], callback);
     }
   }
 
-  static framework::DDim AppendSeqLenToDim(size_t seq_len,
-                                           const framework::DDim &src) {
+  // (seq_len, shape) -> return [seq_len] + list(shape)
+  static framework::DDim PrependDims(size_t seq_len,
+                                     const framework::DDim &src) {
     auto dims = framework::vectorize(src);
     dims.insert(dims.begin(), static_cast<int64_t>(seq_len));
     return framework::make_ddim(dims);
@@ -235,7 +243,7 @@ class RecurrentOp : public RecurrentBase {
 
       // Link outside::input --> inside::input
       //   inside::input = outside::input[seq_offset: seq_offset+1]
-      AccessTensor(
+      LinkTensorWithCallback(
           scope, Inputs(kInputs), &cur_scope, Inputs(kInputs),
           [&seq_offset](const framework::Tensor &outside,
                         framework::Tensor *inside) {
@@ -247,13 +255,13 @@ class RecurrentOp : public RecurrentBase {
 
       if (i == 0) {
         // Link initial states  --> ex_states
-        ShareVars(scope, Inputs(kInitialStates), &cur_scope,
-                  Attr<std::vector<std::string>>(kExStates));
+        LinkTensor(scope, Inputs(kInitialStates), &cur_scope,
+                   Attr<std::vector<std::string>>(kExStates));
       } else {
         auto &ex_scope = scopes.ExScope();
         // Link ex_scope::state --> cur_scope::ex_state
-        ShareVars(ex_scope, Attr<std::vector<std::string>>(kStates), &cur_scope,
-                  Attr<std::vector<std::string>>(kExStates));
+        LinkTensor(ex_scope, Attr<std::vector<std::string>>(kStates),
+                   &cur_scope, Attr<std::vector<std::string>>(kExStates));
       }
 
       // Every inputs are linked now, execute!
@@ -262,12 +270,12 @@ class RecurrentOp : public RecurrentBase {
 
       // Copy inside::output -> outside::output
       //    outside::output[seq_offset: seq_offset + 1] = inside::output
-      this->AccessTensor(
+      this->LinkTensorWithCallback(
           cur_scope, Outputs(kOutputs), scope, Outputs(kOutputs),
           [&](const framework::LoDTensor &src_tensor,
               framework::LoDTensor *dst_tensor) {
             if (i == 0) {  // create output tensor at begin
-              dst_tensor->Resize(AppendSeqLenToDim(seq_len, src_tensor.dims()));
+              dst_tensor->Resize(PrependDims(seq_len, src_tensor.dims()));
               dst_tensor->mutable_data(dev_ctx.GetPlace(), src_tensor.type());
             }
 
@@ -315,7 +323,7 @@ class RecurrentGradOp : public RecurrentBase {
       auto &cur_scope = scopes.CurScope();
       // Link outside::output_grads --> inside::output_grads
       //   inside::output_grad = outside::output_grad[seq_offset:seq_offset+1]
-      AccessTensor(
+      LinkTensorWithCallback(
           scope, Inputs(kOutputGrads), &cur_scope, Inputs(kOutputGrads),
           [&](const framework::Tensor &outside, framework::Tensor *inside) {
             inside->ShareDataWith(outside.Slice(seq_offset, seq_offset + 1));
@@ -370,13 +378,15 @@ class RecurrentGradOp : public RecurrentBase {
         }
       }
 
-      // Run
+      // Run step block with cur_scope
       executor.Run(*program, &cur_scope, block->ID(),
                    false /*create_local_scope*/);
 
       auto local_var_names = LocalVarNames(cur_scope);
 
       // Accumulate params
+      //   if (step == 0):
+      //      outside::param_grad = 0.0
       //   outside::param_grad += inside::param_grad
       {
         auto &pg_names = Outputs(kParamGrads);
@@ -429,12 +439,12 @@ class RecurrentGradOp : public RecurrentBase {
 
       // Copy input gradient from inside to outside
       //   outside::input_grad[seq_offset: seq_offset + 1] = inside::input_grad
-      AccessTensor(
+      LinkTensorWithCallback(
           cur_scope, GradVarLists(Inputs(kInputs)), scope, Outputs(kInputGrads),
           [&](const framework::LoDTensor &inside,
               framework::LoDTensor *outside) {
             if (step_id == 0) {  // alloc memory
-              outside->Resize(AppendSeqLenToDim(seq_len, inside.dims()));
+              outside->Resize(PrependDims(seq_len, inside.dims()));
               outside->mutable_data(dev_ctx.GetPlace(), inside.type());
             }
 
@@ -444,15 +454,15 @@ class RecurrentGradOp : public RecurrentBase {
 
       if (step_id + 1 == seq_len) {  // at_end
         // copy initialize states gradient from inside to outside
-        AccessTensor(cur_scope,
-                     GradVarLists(Attr<std::vector<std::string>>(kExStates)),
-                     scope, Outputs(kInitStateGrads),
-                     [&](const framework::LoDTensor &inside,
-                         framework::LoDTensor *outside) {
-                       outside->Resize(inside.dims());
-                       outside->mutable_data(dev_ctx.GetPlace(), inside.type());
-                       outside->CopyFrom(inside, dev_ctx.GetPlace(), dev_ctx);
-                     });
+        LinkTensorWithCallback(
+            cur_scope, GradVarLists(Attr<std::vector<std::string>>(kExStates)),
+            scope, Outputs(kInitStateGrads),
+            [&](const framework::LoDTensor &inside,
+                framework::LoDTensor *outside) {
+              outside->Resize(inside.dims());
+              outside->mutable_data(dev_ctx.GetPlace(), inside.type());
+              outside->CopyFrom(inside, dev_ctx.GetPlace(), dev_ctx);
+            });
       }
       scopes.Next();
     }
@@ -498,15 +508,60 @@ class RecurrentOpProtoMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(kInputs, "rnn inputs").AsDuplicable();
     AddInput(kInitialStates, "rnn initial states").AsDuplicable();
-    AddInput(kParameters, "").AsDuplicable();
-    AddOutput(kOutputs, "").AsDuplicable();
-    AddOutput(kStepScopes, "");
-    AddAttr<std::vector<std::string>>(kExStates, "");
-    AddAttr<std::vector<std::string>>(kStates, "");
-    AddAttr<framework::BlockDescBind *>(kStepBlock, "");
-    AddAttr<bool>(kReverse, "").SetDefault(false);
+    AddInput(kParameters,
+             "Parameters are used by step block as its input. However, the "
+             "inputs is not a sequence tensor. Every time step, each operator "
+             "in step block just use the parameter directly")
+        .AsDuplicable();
+    AddOutput(kOutputs,
+              "The output sequence of RNN. The sequence length must be same")
+        .AsDuplicable();
+    AddOutput(kStepScopes,
+              "StepScopes contains all local variables in each time step.");
+    AddAttr<std::vector<std::string>>(kExStates,
+                                      string::Sprintf(
+                                          R"DOC(The ex-state variable names.
+The ex-state means the state value in the ex-timestep or the previous time step
+[%s, %s, %s] must be the same order)DOC",
+                                          kExStates, kStates, kInitStateGrads));
+    AddAttr<std::vector<std::string>>(
+        kStates,
+        string::Sprintf(
+            "The state variable names. [%s, %s, %s] must be the same order",
+            kExStates, kStates, kInitStateGrads));
+    AddAttr<framework::BlockDescBind *>(kStepBlock,
+                                        "The step block inside RNN");
+    AddAttr<bool>(kReverse, R"DOC(Calculate RNN reversely or not.
+By default reverse=False
+
+Assume the input data is [A, B, C, D]
+
+if reverse is False:
+  the computation of RNN is like
+      A          B          C         D
+      |          |          |         |
+      v          v          v         v
+     rnn -----> rnn -----> rnn ----> rnn
+      |          |          |         |
+      v          v          v         v
+      o          o          o         o
+
+if reverse is True
+  the computation of RNN is like
+      A          B          C         D
+      |          |          |         |
+      v          v          v         v
+     rnn <----- rnn <----- rnn <---- rnn
+      |          |          |         |
+      v          v          v         v
+      o          o          o         o
+)DOC").SetDefault(false);
     AddAttr<bool>(kIsTrain, "").SetDefault(true);
-    AddComment("");
+    AddComment(R"DOC(Static Length Recurrent Operator
+
+The static length recurrent operator can only operate on fix sized sequence
+data, i.e. in each mini-batch, the sequence length of all inputs are same.
+)DOC");
   }
 };
 
