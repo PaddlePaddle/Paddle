@@ -89,9 +89,14 @@ class Optimizer(object):
             dtype=dtype,
             shape=param_shape,
             lod_level=0,
+            persistable=True,
             initializer=ConstantInitializer(fill_value))
         param_acc = main_block.create_var(
-            name=acc_name, dtype=dtype, shape=param_shape, lod_level=0)
+            name=acc_name,
+            dtype=dtype,
+            persistable=True,
+            shape=param_shape,
+            lod_level=0)
         # Add to accumulators dict
         self._accumulators[name][param.name] = param_acc
 
@@ -221,12 +226,14 @@ class SGDOptimizer(Optimizer):
             dtype="float32",
             shape=lr_shape,
             lod_level=0,
+            persistable=True,
             initializer=ConstantInitializer(self._learning_rate))
         self._lr = block.create_var(
             name=learning_rate_name,
             dtype="float32",
             shape=lr_shape,
-            lod_level=0)
+            lod_level=0,
+            persistable=True)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -272,11 +279,13 @@ class MomentumOptimizer(Optimizer):
             dtype="float32",
             shape=lr_shape,
             lod_level=0,
+            persistable=True,
             initializer=ConstantInitializer(self._learning_rate))
         self._lr = block.create_var(
             name=learning_rate_name,
             dtype="float32",
             shape=lr_shape,
+            persistable=True,
             lod_level=0)
 
     def _create_accumulators(self, block, parameters):
@@ -332,11 +341,13 @@ class AdagradOptimizer(Optimizer):
             dtype="float32",
             shape=lr_shape,
             lod_level=0,
+            persistable=True,
             initializer=ConstantInitializer(self._learning_rate))
         self._lr = block.create_var(
             name=learning_rate_name,
             dtype="float32",
             shape=lr_shape,
+            persistable=True,
             lod_level=0)
 
     def _create_accumulators(self, block, parameters):
@@ -400,11 +411,13 @@ class AdamOptimizer(Optimizer):
             dtype="float32",
             shape=lr_shape,
             lod_level=0,
+            persistable=True,
             initializer=ConstantInitializer(self._learning_rate))
         self._lr = block.create_var(
             name=learning_rate_name,
             dtype="float32",
             shape=lr_shape,
+            persistable=True,
             lod_level=0)
 
     def _create_accumulators(self, block, parameters):
@@ -421,11 +434,13 @@ class AdamOptimizer(Optimizer):
             dtype="float32",
             shape=beta_shape,
             lod_level=0,
+            persistable=True,
             initializer=ConstantInitializer(self._beta1))
         self._beta1_pow_acc = main_block.create_var(
             name=beta1_pow_acc_name,
             dtype="float32",
             shape=beta_shape,
+            persistable=True,
             lod_level=0)
 
         beta2_pow_acc_name = unique_name("beta2_pow_acc")
@@ -434,11 +449,13 @@ class AdamOptimizer(Optimizer):
             dtype="float32",
             shape=beta_shape,
             lod_level=0,
+            persistable=True,
             initializer=ConstantInitializer(self._beta2))
         self._beta2_pow_acc = main_block.create_var(
             name=beta2_pow_acc_name,
             dtype="float32",
             shape=beta_shape,
+            persistable=True,
             lod_level=0)
 
         # Create accumulator tensors for first and second moments
@@ -531,11 +548,13 @@ class AdamaxOptimizer(Optimizer):
             dtype="float32",
             shape=lr_shape,
             lod_level=0,
+            persistable=True,
             initializer=ConstantInitializer(self._learning_rate))
         self._lr = block.create_var(
             name=learning_rate_name,
             dtype="float32",
             shape=lr_shape,
+            persistable=True,
             lod_level=0)
 
     def _create_accumulators(self, block, parameters):
@@ -551,11 +570,13 @@ class AdamaxOptimizer(Optimizer):
             dtype="float32",
             shape=beta_shape,
             lod_level=0,
+            persistable=True,
             initializer=ConstantInitializer(self._beta1))
         self._beta1_pow_acc = main_block.create_var(
             name=beta1_pow_acc_name,
             dtype="float32",
             shape=beta_shape,
+            persistable=True,
             lod_level=0)
 
         # Create accumulator tensors for first moment and infinity norm

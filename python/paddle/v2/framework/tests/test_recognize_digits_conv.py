@@ -54,8 +54,8 @@ avg_cost = layers.mean(x=cost, program=program)
 accuracy = layers.accuracy(
     input=predict, label=label, program=program, init_program=init_program)
 
-sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
-opts = sgd_optimizer.minimize(avg_cost)
+optimizer = optimizer.MomentumOptimizer(learning_rate=0.1 / 128.0, momentum=0.9)
+opts = optimizer.minimize(avg_cost, init_program)
 
 BATCH_SIZE = 50
 PASS_NUM = 3

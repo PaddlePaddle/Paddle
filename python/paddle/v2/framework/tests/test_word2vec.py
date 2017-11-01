@@ -109,7 +109,7 @@ cost = layers.cross_entropy(
 avg_cost = layers.mean(x=cost, program=program, init_program=init_program)
 
 sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
-opts = sgd_optimizer.minimize(avg_cost)
+opts = sgd_optimizer.minimize(avg_cost, init_program)
 
 train_reader = paddle.batch(
     paddle.dataset.imikolov.train(word_dict, N), batch_size)
