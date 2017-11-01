@@ -93,7 +93,9 @@ struct SparseAdagradFunctor<platform::CPUPlace, T> {
                   const framework::Tensor& learning_rate, T epsilon,
                   framework::Tensor* moment, framework::Tensor* param) {
     std::unique_ptr<framework::SelectedRows> grad_square{
-        new framework::SelectedRows(grad.rows(), grad.height())};
+        new framework::SelectedRows()};
+    grad_square->set_rows(grad.rows());
+    grad_square->set_height(grad.height());
     grad_square->mutable_value()->mutable_data<T>(grad.value().dims(),
                                                   context.GetPlace());
     auto gs =
