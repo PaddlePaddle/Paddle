@@ -2523,7 +2523,9 @@ def img_conv_layer(input,
 
     if layer_type:
         if dilation > 1 or dilation_y > 1:
-            assert layer_type in ["cudnn_conv", "cudnn_convt"]
+            assert layer_type in [
+                "cudnn_conv", "cudnn_convt", "exconv", "exconvt"
+            ]
         if trans:
             assert layer_type in ["exconvt", "cudnn_convt"]
         else:

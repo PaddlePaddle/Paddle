@@ -874,7 +874,7 @@ class Conv(Cfg):
                  filter_size_y=None,
                  padding_y=None,
                  stride_y=None,
-                 dilation=1,
+                 dilation=None,
                  dilation_y=None):
         self.add_keys(locals())
         if filter_size_y is None:
@@ -1388,8 +1388,12 @@ def parse_conv(conv, input_layer_name, conv_conf, num_filters, trans=False):
     conv_conf.stride_y = conv.stride_y
     conv_conf.groups = conv.groups
     conv_conf.caffe_mode = conv.caffe_mode
-    conv_conf.dilation = conv.dilation
-    conv_conf.dilation_y = conv.dilation_y
+    if not conv.dilation:
+        conv.dilation = 1
+        conv.dilation_y = 1
+    else:
+        conv_conf.dilation = conv.dilation
+        conv_conf.dilation_y = conv.dilation_y
 
     if not trans:
         conv_conf.filter_channels = conv.channels / conv.groups
@@ -1397,20 +1401,20 @@ def parse_conv(conv, input_layer_name, conv_conf, num_filters, trans=False):
             get_img_size(input_layer_name, conv.channels)
         conv_conf.output_x = cnn_output_size(
             conv_conf.img_size, conv_conf.filter_size, conv_conf.padding,
-            conv_conf.stride, conv_conf.caffe_mode, conv_conf.dilation)
+            conv_conf.stride, conv_conf.caffe_mode, conv.dilation)
         conv_conf.output_y = cnn_output_size(
             conv_conf.img_size_y, conv_conf.filter_size_y, conv_conf.padding_y,
-            conv_conf.stride_y, conv_conf.caffe_mode, conv_conf.dilation_y)
+            conv_conf.stride_y, conv_conf.caffe_mode, conv.dilation_y)
     else:
         conv_conf.filter_channels = num_filters / conv.groups
         conv_conf.output_x, conv_conf.output_y = \
             get_img_size(input_layer_name, conv.channels)
         conv_conf.img_size = cnn_image_size(
             conv_conf.output_x, conv_conf.filter_size, conv_conf.padding,
-            conv_conf.stride, conv_conf.caffe_mode, conv_conf.dilation)
+            conv_conf.stride, conv_conf.caffe_mode, conv.dilation)
         conv_conf.img_size_y = cnn_image_size(
             conv_conf.output_y, conv_conf.filter_size_y, conv_conf.padding_y,
-            conv_conf.stride_y, conv_conf.caffe_mode, conv_conf.dilation_y)
+            conv_conf.stride_y, conv_conf.caffe_mode, conv.dilation_y)
 
 
 #caffe_mode: compute the output size using floor instead of ceil,
