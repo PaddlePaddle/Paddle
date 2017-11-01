@@ -249,7 +249,7 @@ def main():
     if use_gpu:
         place = core.GPUPlace(0)
     else:
-        place = core.CPUPlace(0)
+        place = core.CPUPlace()
 
     exe = Executor(place)
     exe.run(init_program, feed={}, fetch_list=[])
@@ -306,7 +306,6 @@ def main():
                            fetch_list=[cost])
             out = np.array(outs[0])
             if out[0] < 5.0:
-
                 # if avg cost less than 10.0, we think our code is good.
                 exit(0)
 
