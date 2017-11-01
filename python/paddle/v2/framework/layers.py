@@ -357,7 +357,7 @@ def sequence_pool(input, pool_type, **kwargs):
         raise ValueError("Unknown pool_type: '%s'. It can only be %s.",
                          str(pool_type), " ".join(ENUM_POOL_TYPE))
 
-    helper = LayerHelper('sequence_pool', **locals())
+    helper = LayerHelper('sequence_pool', input=input, **kwargs)
     dtype = helper.input_dtype()
     pool_out = helper.create_tmp_variable(dtype)
 
