@@ -215,7 +215,7 @@ class SGDOptimizer(Optimizer):
         self._lr = main_block.create_persistable_var(
             init_program=self._init_program,
             initializer=ConstantInitializer(self._learning_rate),
-            prefix="accumulator",
+            prefix="learning_rate",
             dtype="float32",
             shape=lr_shape,
             lod_level=0)
