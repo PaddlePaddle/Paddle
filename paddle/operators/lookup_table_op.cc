@@ -43,7 +43,7 @@ class LookupTableOp : public framework::OperatorWithKernel {
  protected:
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("W")->type());
+    return framework::ToDataType(ctx.Input<LoDTensor>("W")->type());
   }
 };
 
@@ -93,7 +93,7 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("W")->type());
+    return framework::ToDataType(ctx.Input<LoDTensor>("W")->type());
   }
 };
 

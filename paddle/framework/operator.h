@@ -427,7 +427,8 @@ class OperatorWithKernel : public OperatorBase {
             int tmp = static_cast<int>(ToDataType(t->type()));
             VLOG(3) << "Input " << ipt_name << " with data_type " << tmp;
             PADDLE_ENFORCE(tmp == data_type || data_type == -1,
-                           "DataType of Paddle Op %s must be same.", Type());
+                           "DataType of Paddle Op %s must be the same.",
+                           Type());
             data_type = tmp;
           }
         }

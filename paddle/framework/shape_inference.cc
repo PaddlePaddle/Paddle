@@ -28,9 +28,6 @@ void InferShapeContext::SetOutputsDim(
   SetDims(names, dims);
 }
 
-void InferShapeContext::ShareLoD(const std::string &in, const std::string &out,
-                                 size_t i, size_t j) const {}
-
 std::vector<framework::DDim> InferShapeContext::GetDims(
     const std::vector<std::string> &names) const {
   std::vector<framework::DDim> ret;
