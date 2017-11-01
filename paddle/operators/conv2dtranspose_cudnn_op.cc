@@ -38,13 +38,13 @@ class CudnnConv2DTransposeOpMaker : public Conv2DTransposeOpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(conv2dtranspose_cudnn, ops::Conv2DTransposeOp,
-            ops::CudnnConv2DTransposeOpMaker, conv2dtranspose_cudnn_grad,
+REGISTER_OP(conv2d_transpose_cudnn, ops::Conv2DTransposeOp,
+            ops::CudnnConv2DTransposeOpMaker, conv2d_transpose_cudnn_grad,
             ops::Conv2DTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
-    conv2dtranspose_cudnn,
+    conv2d_transpose_cudnn,
     ops::GemmConv2DTransposeKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    conv2dtranspose_cudnn_grad,
+    conv2d_transpose_cudnn_grad,
     ops::GemmConv2DTransposeGradKernel<paddle::platform::CPUPlace, float>);
