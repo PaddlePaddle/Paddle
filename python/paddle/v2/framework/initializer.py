@@ -65,7 +65,7 @@ class UniformInitializer(Initializer):
     """Implements the random uniform distribution initializer
     """
 
-    def __init__(self, low=-1.0, high=1.0, seed=0):
+    def __init__(self, low=-0.1, high=0.1, seed=0):
         """Constructor for UniformInitializer
 
         Args:

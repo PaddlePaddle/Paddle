@@ -69,8 +69,6 @@ exe = Executor(place)
 
 exe.run(init_program, feed={}, fetch_list=[])
 
-import pdb
-pdb.set_trace()
 for pass_id in range(PASS_NUM):
     count = 0
     for data in train_reader():
