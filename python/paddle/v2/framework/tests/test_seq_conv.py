@@ -45,10 +45,10 @@ class TestSeqProject(OpTest):
             self.inputs_val_no_f = ['PaddingData', 'X']
 
         self.attrs = {
-            'context_start': self.context_start,
-            'context_length': self.context_length,
-            'padding_trainable': self.padding_trainable,
-            'context_stride': self.context_stride
+            'contextStart': self.context_start,
+            'contextLength': self.context_length,
+            'paddingTrainable': self.padding_trainable,
+            'contextStride': self.context_stride
         }
         out = np.zeros(
             (self.input_size[0], self.output_represention)).astype('float32')

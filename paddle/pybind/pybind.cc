@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/pybind/protobuf.h"
 
+#include <mutex>  // for call_once
+#include <unordered_map>
+#include "gflags/gflags.h"
 #include "paddle/framework/backward.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/feed_fetch_method.h"
@@ -40,9 +43,27 @@ limitations under the License. */
 
 namespace paddle {
 namespace pybind {
-static size_t UniqueIntegerGenerator() {
-  static std::atomic<size_t> generator;
-  return generator.fetch_add(1);
+static size_t UniqueIntegerGenerator(const std::string &prefix) {
+  static std::unordered_map<std::string, std::atomic<size_t>> generators;
+  return generators[prefix].fetch_add(1);
+}
+
+std::once_flag gflags_init_flag;
+
+// TODO(qijun) move init gflags to init.cc
+void InitGflags(std::vector<std::string> &argv) {
+  std::call_once(gflags_init_flag, [&]() {
+    int argc = argv.size();
+    char **arr = new char *[argv.size()];
+    std::string line;
+    for (size_t i = 0; i < argv.size(); i++) {
+      arr[i] = &argv[i][0];
+      line += argv[i];
+      line += ' ';
+    }
+    google::ParseCommandLineFlags(&argc, &arr, true);
+    VLOG(1) << "Init commandline: " << line;
+  });
 }
 
 bool IsCompileGPU() {
@@ -254,7 +275,7 @@ All parameter, weight, gradient are variables in Paddle.
                     const std::vector<std::array<size_t, 2>> &targets) {
     ProgramDescBind prog_with_targets(origin);
     for (const auto &t : targets) {
-      prog_with_targets.Block(t[0])->Op(t[1])->MarkAsTarget();
+      prog_with_targets.MutableBlock(t[0])->Op(t[1])->MarkAsTarget();
     }
     ProgramDesc pruned_desc;
     Prune(*prog_with_targets.Proto(), &pruned_desc);
@@ -314,7 +335,7 @@ All parameter, weight, gradient are variables in Paddle.
                     PADDLE_ENFORCE(desc.IsInitialized(),
                                    "User OpDesc is not initialized, reason %s",
                                    desc.InitializationErrorString());
-                    return OpRegistry::CreateOp(desc, nullptr);
+                    return OpRegistry::CreateOp(desc);
                   })
       .def("backward",
            [](const OperatorBase &forwardOp,
@@ -418,7 +439,7 @@ All parameter, weight, gradient are variables in Paddle.
             PADDLE_ENFORCE(desc.IsInitialized(),
                            "User OpDesc is not initialized, reason %s",
                            desc.InitializationErrorString());
-            auto rnn_op = OpRegistry::CreateOp(desc, nullptr);
+            auto rnn_op = OpRegistry::CreateOp(desc);
             return static_cast<operators::RecurrentOp *>(rnn_op.release());
           })
       .def("set_stepnet", [](operators::RecurrentOp &self,
@@ -436,7 +457,7 @@ All parameter, weight, gradient are variables in Paddle.
                     PADDLE_ENFORCE(desc.IsInitialized(),
                                    "User OpDesc is not initialized, reason %s",
                                    desc.InitializationErrorString());
-                    auto rnn_op = OpRegistry::CreateOp(desc, nullptr);
+                    auto rnn_op = OpRegistry::CreateOp(desc);
                     return static_cast<operators::DynamicRecurrentOp *>(
                         rnn_op.release());
                   })
@@ -463,7 +484,7 @@ All parameter, weight, gradient are variables in Paddle.
                     PADDLE_ENFORCE(desc.IsInitialized(),
                                    "User OpDesc is not initialized, reason %s",
                                    desc.InitializationErrorString());
-                    auto cond_op = OpRegistry::CreateOp(desc, nullptr);
+                    auto cond_op = OpRegistry::CreateOp(desc);
                     return static_cast<operators::CondOp *>(cond_op.release());
                   })
       .def("set_truenet",
@@ -477,12 +498,10 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<std::vector<platform::Place> &>())
-      .def("run", [](Executor &self, ProgramDescBind *program_bind,
-                     Scope *scope, int block_id) {
-        self.Run(*program_bind->Proto(), scope, block_id);
-      });
+      .def("run", &Executor::Run);
 
   m.def("unique_integer", UniqueIntegerGenerator);
+  m.def("init_gflags", InitGflags);
 
   m.def("is_compile_gpu", IsCompileGPU);
   m.def("set_feed_variable", framework::SetFeedVariable);

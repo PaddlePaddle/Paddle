@@ -185,7 +185,7 @@ TEST_F(NCCLTester, ncclAllReduceOp) {
         recv_tensor.numel() * sizeof(float),
         static_cast<p::CUDADeviceContext *>(dev_ctxs[i])->stream());
 
-    for (size_t j = 0; j < f::product(kDims); ++j) {
+    for (int64_t j = 0; j < f::product(kDims); ++j) {
       ASSERT_NEAR(ct[j], result, 1e-5);
     }
   }
@@ -234,7 +234,7 @@ TEST_F(NCCLTester, ncclReduceOp) {
       recv_tensor.numel() * sizeof(float),
       static_cast<p::CUDADeviceContext *>(dev_ctxs[kRoot])->stream());
 
-  for (int j = 0; j < f::product(kDims); ++j) {
+  for (int64_t j = 0; j < f::product(kDims); ++j) {
     ASSERT_NEAR(ct[j], result, 1e-5);
   }
 }
@@ -282,7 +282,7 @@ TEST_F(NCCLTester, ncclBcastOp) {
       recv_tensor.numel() * sizeof(float),
       static_cast<p::CUDADeviceContext *>(dev_ctxs[idx])->stream());
 
-  for (size_t j = 0; j < f::product(kDims); ++j) {
+  for (int64_t j = 0; j < f::product(kDims); ++j) {
     ASSERT_NEAR(ct[j], result, 1e-5);
   }
 }

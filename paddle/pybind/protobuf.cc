@@ -129,7 +129,8 @@ void BindProgramDesc(py::module &m) {
              }
              return retv;
            })
-      .def("block", &ProgramDescBind::Block, py::return_value_policy::reference)
+      .def("block", &ProgramDescBind::MutableBlock,
+           py::return_value_policy::reference)
       .def("num_blocks", &ProgramDescBind::Size)
       .def("serialize_to_string",
            [](ProgramDescBind &program_desc) -> py::bytes {
