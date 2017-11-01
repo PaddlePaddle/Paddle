@@ -1,7 +1,7 @@
 from paddle.v2.framework.layer_helper import LayerHelper, unique_name
 import paddle.v2.framework.core as core
 from paddle.v2.framework.framework import OpProtoHolder, Variable, Program
-from paddle.v2.framework.initializer import ConstantInitializer
+from paddle.v2.framework.initializer import ConstantInitializer, NormalInitializer
 import re
 
 __all__ = [
@@ -282,7 +282,10 @@ def sequence_conv(input,
 
     filter_shape = [filter_size * input.shape[1], num_filters]
     filter = helper.create_parameter(
-        attr=helper.param_attr, shape=filter_shape, dtype=dtype)
+        attr={'name': None,
+              'initializer': NormalInitializer()},
+        shape=filter_shape,
+        dtype=dtype)
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(

@@ -114,7 +114,7 @@ class NormalInitializer(Initializer):
     """Implements the  random Normal(Gaussian) distribution initializer
     """
 
-    def __init__(self, loc=0.0, scale=1.0, seed=0):
+    def __init__(self, loc=0.0, scale=0.1, seed=0):
         """Constructor for NormalInitializer
 
         Args:

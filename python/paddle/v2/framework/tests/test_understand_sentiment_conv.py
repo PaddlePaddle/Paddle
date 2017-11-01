@@ -23,20 +23,18 @@ def convolution_net(input_dim, class_dim=2, emb_dim=32, hid_dim=32):
         num_filters=hid_dim,
         filter_size=3,
         act="tanh",
-        pool_type="max")
-    conv_5 = nets.sequence_conv_pool(
-        input=emb,
-        num_filters=hid_dim,
-        filter_size=5,
-        act="tanh",
-        pool_type="max")
-    prediction = layers.fc(input=[conv_3, conv_5],
-                           size=class_dim,
-                           act="softmax")
+        pool_type="average")
+    # conv_5 = nets.sequence_conv_pool(
+    #    input=emb,
+    #    num_filters=hid_dim,
+    #    filter_size=5,
+    #    act="tanh",
+    #    pool_type="average")
+    prediction = layers.fc(input=conv_3, size=class_dim, act="softmax")
     #prediction = layers.softmax(x=before_prediction)
     cost = layers.cross_entropy(input=prediction, label=label)
     avg_cost = layers.mean(x=cost)
-    adam_optimizer = optimizer.SGDOptimizer(learning_rate=0.002)
+    adam_optimizer = optimizer.SGDOptimizer(learning_rate=0.02)
     opts = adam_optimizer.minimize(avg_cost)
     acc = layers.accuracy(input=prediction, label=label)
     return avg_cost, acc, prediction, conv_3, conv_5, emb
@@ -99,9 +97,8 @@ def main():
             print("loss=" + str(loss_val) + " acc=" + str(acc_val))
             #print("pre=" + str(pre_val))
 
-            #import pdb
-            # pdb.set_trace()
-            exit(0)
+            import pdb
+            pdb.set_trace()
 
 
 if __name__ == '__main__':
