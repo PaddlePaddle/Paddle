@@ -11,7 +11,7 @@ import numpy as np
 
 init_program = Program()
 program = Program()
-is_sparse = False
+is_sparse = True
 BATCH_SIZE = 256
 
 
@@ -55,6 +55,7 @@ def get_usr_combined_features():
         input=usr_gender_id,
         size=[USR_GENDER_DICT_SIZE, 16],
         param_attr={'name': 'gender_table'},
+        is_sparse=is_sparse,
         program=program,
         init_program=init_program)
 
@@ -74,6 +75,7 @@ def get_usr_combined_features():
     usr_age_emb = layers.embedding(
         input=usr_age_id,
         size=[USR_AGE_DICT_SIZE, 16],
+        is_sparse=is_sparse,
         param_attr={'name': 'age_table'},
         program=program,
         init_program=init_program)
@@ -95,6 +97,7 @@ def get_usr_combined_features():
         input=usr_job_id,
         size=[USR_JOB_DICT_SIZE, 16],
         param_attr={'name': 'job_table'},
+        is_sparse=is_sparse,
         program=program,
         init_program=init_program)
 
@@ -134,6 +137,7 @@ def get_mov_combined_features():
         data_type='float32',
         size=[MOV_DICT_SIZE, 32],
         param_attr={'name': 'movie_table'},
+        is_sparse=is_sparse,
         program=program,
         init_program=init_program)
 
@@ -154,6 +158,7 @@ def get_mov_combined_features():
     mov_categories_emb = layers.embedding(
         input=category_id,
         size=[CATEGORY_DICT_SIZE, 32],
+        is_sparse=is_sparse,
         program=program,
         init_program=init_program)
 
@@ -175,6 +180,7 @@ def get_mov_combined_features():
     mov_title_emb = layers.embedding(
         input=mov_title_id,
         size=[MOV_TITLE_DICT_SIZE, 32],
+        is_sparse=is_sparse,
         program=program,
         init_program=init_program)
 
