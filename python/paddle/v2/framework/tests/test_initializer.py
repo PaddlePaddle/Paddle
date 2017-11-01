@@ -202,9 +202,8 @@ class TestXavierInitializer(unittest.TestCase):
         self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
         self.assertEqual(init_op.attr('seed'), 0)
 
-    def test_xavier_initializer_supplied_fans(self):
-        """Test the Xavier initializer with supplied fan_in
-           and fan_out
+    def test_xavier_initializer_supplied_arguments(self):
+        """Test the Xavier initializer with supplied arguments
         """
         program = framework.Program()
         block = program.global_block()
@@ -214,14 +213,14 @@ class TestXavierInitializer(unittest.TestCase):
             lod_level=0,
             name="param",
             initializer=initializer.XavierInitializer(
-                fan_in=12, fan_out=23))
+                fan_in=12, fan_out=23, seed=134))
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
         limit = np.sqrt(6.0 / (12 + 23))
         self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 0)
+        self.assertEqual(init_op.attr('seed'), 134)
 
 
 if __name__ == '__main__':

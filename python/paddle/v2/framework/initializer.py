@@ -50,7 +50,7 @@ class Initializer(object):
             fan_out = shape[1]
         else:
             # Assume this to be a convolutional kernel
-            # In Paddlepaddle, the shape of the kernel is like:
+            # In PaddlePaddle, the shape of the kernel is like:
             # [num_filters, num_filter_channels, ...] where the remaining
             # dimensions are the filter_size
             receptive_field_size = np.prod(shape[2:])
@@ -255,8 +255,8 @@ class XavierInitializer(Initializer):
         f_in, f_out = self._compute_fans(var)
 
         # If fan_in and fan_out are passed, use them
-        fan_in = self._fan_in or f_in
-        fan_out = self._fan_out or f_out
+        fan_in = f_in if self._fan_in is None else self._fan_in
+        fan_out = f_out if self._fan_out is None else self._fan_out
 
         if self._uniform:
             limit = np.sqrt(6.0 / float(fan_in + fan_out))
