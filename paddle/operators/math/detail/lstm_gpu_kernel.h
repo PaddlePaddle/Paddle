@@ -248,7 +248,7 @@ void gpu_lstm_backward(const platform::DeviceContext& context, Op op,
   cudaStreamSynchronize(stream);
   // TODO(qingqing): Add cuda error check for each kernel.
   cudaError_t err = cudaGetLastError();
-  PADDLE_ENFORCE_EQ(err, cudaGetErrorString(err));
+  PADDLE_ENFORCE(err, cudaGetErrorString(err));
 }
 
 }  // namespace detail
