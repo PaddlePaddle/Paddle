@@ -54,9 +54,8 @@ avg_cost = layers.mean(x=cost, program=program)
 accuracy = layers.accuracy(
     input=predict, label=label, program=program, init_program=init_program)
 
-# optimizer = optimizer.MomentumOptimizer(learning_rate=0.1 / 128.0, momentum=0.9)
-optimizer = optimizer.AdamOptimizer(
-    learning_rate=0.1 / 128.0, beta1=0.9, beta2=0.999)
+#optimizer = optimizer.MomentumOptimizer(learning_rate=0.1 / 128.0, momentum=0.9)
+optimizer = optimizer.AdamOptimizer(learning_rate=0.01, beta1=0.9, beta2=0.999)
 opts = optimizer.minimize(avg_cost, init_program)
 
 BATCH_SIZE = 50

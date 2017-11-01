@@ -363,23 +363,6 @@ class Block(object):
             kwargs['initializer'](var, self)
         return var
 
-    def create_persistable_var(self, init_program, initializer, prefix, *args,
-                               **kwargs):
-        """
-        create a persistable var in init_program.global_block and current block.
-        """
-        if not isinstance(init_program, Program):
-            raise ValueError("must have init_program")
-        if init_program.global_block() == self:
-            raise ValueError(
-                "this method should not call on init_program.global_block()")
-        var_name = unique_name(prefix)
-        kwargs['persistable'] = True
-        init_program.global_block().create_var(
-            name=var_name, initializer=initializer, *args, **kwargs)
-        var = Variable(self, name=var_name, *args, **kwargs)
-        return var
-
     def has_var(self, name):
         return name in self.vars
 

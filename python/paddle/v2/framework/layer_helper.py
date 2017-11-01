@@ -1,10 +1,8 @@
 import copy
 import itertools
 
-import paddle.v2.framework.core as core
-
 from paddle.v2.framework.framework import Variable, g_program, \
-    g_init_program, unique_name
+    g_init_program, unique_name, Program
 from paddle.v2.framework.initializer import ConstantInitializer, \
     UniformInitializer
 
@@ -136,6 +134,24 @@ class LayerHelper(object):
     def create_global_variable(self, *args, **kwargs):
         return self.program.global_block().create_var(
             *args, persistable=False, **kwargs)
+
+    @staticmethod
+    def create_global_persistable_var(init_program, block, initializer, prefix,
+                                      *args, **kwargs):
+        """
+        create a persistable var in init_program.global_block and current block.
+        """
+        if not isinstance(init_program, Program):
+            raise ValueError("must have init_program")
+        if init_program.global_block() == block:
+            raise ValueError(
+                "this method should not call on init_program.global_block()")
+        var_name = unique_name(prefix)
+        kwargs['persistable'] = True
+        init_program.global_block().create_var(
+            name=var_name, initializer=initializer, *args, **kwargs)
+        var = Variable(block, name=var_name, *args, **kwargs)
+        return var
 
     def append_bias_op(self, input_var, num_flatten_dims=None):
         """

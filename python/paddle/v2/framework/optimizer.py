@@ -5,6 +5,7 @@ from paddle.v2.framework.framework import unique_name, Program
 from paddle.v2.framework.backward import append_backward_ops
 from paddle.v2.framework.initializer import ConstantInitializer
 from paddle.v2.framework.regularizer import append_regularization_ops
+from paddle.v2.framework.layer_helper import LayerHelper
 
 __all__ = [
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
@@ -83,8 +84,9 @@ class Optimizer(object):
         main_block = block.program.global_block()
         param_shape = list(param.shape)
         self._accumulators[name][
-            param.name] = main_block.create_persistable_var(
+            param.name] = LayerHelper.create_global_persistable_var(
                 init_program=self._init_program,
+                block=main_block,
                 initializer=ConstantInitializer(fill_value),
                 prefix="accumulator",
                 dtype=dtype,
@@ -212,8 +214,9 @@ class SGDOptimizer(Optimizer):
         lr_shape = [1]
         main_block = block.program.global_block()
         # create a variable for learning_rate
-        self._lr = main_block.create_persistable_var(
+        self._lr = LayerHelper.create_global_persistable_var(
             init_program=self._init_program,
+            block=main_block,
             initializer=ConstantInitializer(self._learning_rate),
             prefix="learning_rate",
             dtype="float32",
@@ -259,8 +262,9 @@ class MomentumOptimizer(Optimizer):
         lr_shape = [1]
         main_block = block.program.global_block()
         # create a variable for learning_rate
-        self._lr = main_block.create_persistable_var(
+        self._lr = LayerHelper.create_global_persistable_var(
             init_program=self._init_program,
+            block=main_block,
             initializer=ConstantInitializer(self._learning_rate),
             prefix="learning_rate",
             dtype="float32",
@@ -314,8 +318,9 @@ class AdagradOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
         lr_shape = [1]
         main_block = block.program.global_block()
-        self._lr = main_block.create_persistable_var(
+        self._lr = LayerHelper.create_global_persistable_var(
             init_program=self._init_program,
+            block=main_block,
             initializer=ConstantInitializer(self._learning_rate),
             prefix="learning_rate",
             dtype="float32",
@@ -378,8 +383,9 @@ class AdamOptimizer(Optimizer):
         lr_shape = [1]
         # create a variable for learning_rate
         main_block = block.program.global_block()
-        self._lr = main_block.create_persistable_var(
+        self._lr = LayerHelper.create_global_persistable_var(
             init_program=self._init_program,
+            block=main_block,
             initializer=ConstantInitializer(self._learning_rate),
             prefix="learning_rate",
             dtype="float32",
@@ -392,16 +398,18 @@ class AdamOptimizer(Optimizer):
         main_block = block.program.global_block()
         # Create beta1 and beta2 power tensors
         beta_shape = [1]
-        self._beta1_pow_acc = main_block.create_persistable_var(
+        self._beta1_pow_acc = LayerHelper.create_global_persistable_var(
             init_program=self._init_program,
+            block=main_block,
             initializer=ConstantInitializer(self._beta1),
             prefix="beta1_pow_acc",
             dtype="float32",
             shape=beta_shape,
             lod_level=0)
 
-        self._beta2_pow_acc = main_block.create_persistable_var(
+        self._beta2_pow_acc = LayerHelper.create_global_persistable_var(
             init_program=self._init_program,
+            block=main_block,
             initializer=ConstantInitializer(self._beta2),
             prefix="beta2_pow_acc",
             dtype="float32",
@@ -493,8 +501,9 @@ class AdamaxOptimizer(Optimizer):
         lr_shape = [1]
         main_block = block.program.global_block()
         # create a variable for learning_rate
-        self._lr = main_block.create_persistable_var(
+        self._lr = LayerHelper.create_global_persistable_var(
             init_program=self._init_program,
+            block=main_block,
             initializer=ConstantInitializer(self._learning_rate),
             prefix="learning_rate",
             dtype="float32",
@@ -507,8 +516,9 @@ class AdamaxOptimizer(Optimizer):
         main_block = block.program.global_block()
         # Create beta1 power accumulator tensor
         beta_shape = [1]
-        self._beta1_pow_acc = main_block.create_persistable_var(
+        self._beta1_pow_acc = LayerHelper.create_global_persistable_var(
             init_program=self._init_program,
+            block=main_block,
             initializer=ConstantInitializer(self._beta1),
             prefix="beta1_pow_acc",
             dtype="float32",
