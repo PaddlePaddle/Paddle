@@ -16,21 +16,22 @@ def convolution_net(input_dim, class_dim=2, emb_dim=32, hid_dim=32):
     data = layers.data(name="words", shape=[1], data_type="int64")
     label = layers.data(name="label", shape=[1], data_type="int64")
 
-    emb = layers.embedding(
-        input=data, size=[input_dim, emb_dim], is_sparse=True)
+    emb = layers.embedding(input=data, size=[input_dim, emb_dim])
     conv_3 = nets.sequence_conv_pool(
         input=emb,
         num_filters=hid_dim,
         filter_size=3,
         act="tanh",
-        pool_type="average")
-    # conv_5 = nets.sequence_conv_pool(
-    #    input=emb,
-    #    num_filters=hid_dim,
-    #    filter_size=5,
-    #    act="tanh",
-    #    pool_type="average")
-    prediction = layers.fc(input=conv_3, size=class_dim, act="softmax")
+        pool_type="max")
+    conv_5 = nets.sequence_conv_pool(
+        input=emb,
+        num_filters=hid_dim,
+        filter_size=5,
+        act="tanh",
+        pool_type="max")
+    prediction = layers.fc(input=[conv_3, conv_5],
+                           size=class_dim,
+                           act="softmax")
     #prediction = layers.softmax(x=before_prediction)
     cost = layers.cross_entropy(input=prediction, label=label)
     avg_cost = layers.mean(x=cost)
@@ -47,7 +48,7 @@ def to_lodtensor(data, place):
     for l in seq_lens:
         cur_len += l
         lod.append(cur_len)
-    flattened_data = np.concatenate(data, axis=0)
+    flattened_data = np.concatenate(data, axis=0).astype("int64")
     flattened_data = flattened_data.reshape([len(flattened_data), 1])
     res = core.LoDTensor()
     res.set(flattened_data, place)
@@ -73,6 +74,9 @@ def main():
     place = core.CPUPlace()
     exe = Executor(place)
 
+    import pdb
+    pdb.set_trace()
+
     exe.run(g_init_program)
 
     for pass_id in xrange(PASS_NUM):
@@ -97,8 +101,8 @@ def main():
             print("loss=" + str(loss_val) + " acc=" + str(acc_val))
             #print("pre=" + str(pre_val))
 
-            import pdb
-            pdb.set_trace()
+            #import pdb
+            # pdb.set_trace()
 
 
 if __name__ == '__main__':

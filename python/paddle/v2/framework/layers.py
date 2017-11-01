@@ -1,7 +1,7 @@
 from paddle.v2.framework.layer_helper import LayerHelper, unique_name
 import paddle.v2.framework.core as core
 from paddle.v2.framework.framework import OpProtoHolder, Variable, Program
-from paddle.v2.framework.initializer import ConstantInitializer, NormalInitializer
+from paddle.v2.framework.initializer import ConstantInitializer, NormalInitializer, UniformInitializer
 import re
 
 __all__ = [
@@ -362,7 +362,7 @@ def sequence_pool(input, pool_type, **kwargs):
         raise ValueError("Unknown pool_type: '%s'. It can only be %s.",
                          str(pool_type), " ".join(ENUM_POOL_TYPE))
 
-    helper = LayerHelper('sequence_pool', **kwargs)
+    helper = LayerHelper('sequence_pool', **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_tmp_variable(dtype)
 
