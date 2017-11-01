@@ -53,7 +53,18 @@ class LoDTensor2BatchFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::LoDTensor& lod_tensor,
-                  framework::LoDTensor& batch, bool is_reverse) const {
+                  framework::LoDTensor& batch, bool is_cal_batch_lod,
+                  bool is_reverse = false) const {
+    if (!is_cal_batch_lod) {
+      auto lods = batch.lod();
+      PADDLE_ENFORCE_EQ(lods.size(), 2UL);
+      PADDLE_ENFORCE_EQ(lods[1].size(),
+                        static_cast<size_t>(lod_tensor.dims()[0]));
+      CopyMatrixRowsFunctor<Place, T> to_batch;
+      to_batch(context, lod_tensor, lods[1].data(), batch, true);
+      return;
+    }
+
     auto lods = lod_tensor.lod();
     PADDLE_ENFORCE_EQ(lods.size(), 1UL, "Only support one level sequence now.");
     auto lod = lods[0];
@@ -101,10 +112,10 @@ class LoDTensor2BatchFunctor {
     size_t* batch_starts = batch_lods[0].data();
     size_t* seq2batch_idx = batch_lods[1].data();
     batch_starts[0] = 0;
-    for (size_t n = 0; n < num_batch; n++) {
+    for (int n = 0; n < num_batch; n++) {
       auto batch_id = static_cast<int>(batch_starts[n]);
       for (size_t i = 0; i < seq_info.size(); ++i) {
-        size_t seq_len = seq_info[i].length;
+        int seq_len = seq_info[i].length;
         int start = seq_info[i].start;
         if (n < seq_len) {
           seq2batch_idx[batch_id] =
@@ -132,11 +143,8 @@ class Batch2LoDTensorFunctor {
     auto in_lod = batch.lod();
     PADDLE_ENFORCE_EQ(in_lod.size(), 2UL,
                       "The LoD size of input `batch` should be 2.");
-    auto out_lod = lod_tensor.lod()[0];
-    auto num = out_lod[out_lod.size() - 1];
-    PADDLE_ENFORCE_EQ(num, lod_tensor.dims()[0]);
-    PADDLE_ENFORCE_EQ(num, in_lod[1].size());
-    PADDLE_ENFORCE_EQ(num, batch.dims()[0]);
+    PADDLE_ENFORCE_EQ(in_lod[1].size(),
+                      static_cast<size_t>(lod_tensor.dims()[0]));
     CopyMatrixRowsFunctor<Place, T> to_seq;
     size_t* index = in_lod[1].data();
     to_seq(context, batch, index, lod_tensor, false);
