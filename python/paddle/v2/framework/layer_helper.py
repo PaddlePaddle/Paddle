@@ -4,14 +4,9 @@ import itertools
 import paddle.v2.framework.core as core
 
 from paddle.v2.framework.framework import Variable, g_program, \
-    g_init_program
+    g_init_program, unique_name
 from paddle.v2.framework.initializer import ConstantInitializer, \
     UniformInitializer
-
-
-def unique_name(prefix):
-    uid = core.unique_integer(prefix)  # unique during whole process.
-    return "_".join([prefix, str(uid)])
 
 
 class LayerHelper(object):

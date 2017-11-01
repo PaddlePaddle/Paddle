@@ -1,7 +1,9 @@
 from collections import defaultdict
 
 import paddle.v2.framework.framework as framework
+from paddle.v2.framework.framework import unique_name, Program
 from paddle.v2.framework.backward import append_backward_ops
+from paddle.v2.framework.initializer import ConstantInitializer
 from paddle.v2.framework.regularizer import append_regularization_ops
 
 __all__ = [
@@ -25,6 +27,7 @@ class Optimizer(object):
         # to train. These variables are called accumulators.
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
+        self._init_program = None
 
     def _append_optimize_op(self, block, param_and_grad):
         """ append optimize operator to block and return all the added optimize_op
@@ -77,20 +80,18 @@ class Optimizer(object):
                 param.name in self._accumulators[name]):
             raise Exception("Accumulator {} already exists for parmeter {}".
                             format(name, param.name))
-        global_block = block.program.global_block()
+        global_block = self._init_program.global_block()
+        main_block = block.program.global_block()
         param_shape = list(param.shape)
-        param_acc = global_block.create_var(
-            dtype=dtype, shape=param_shape, lod_level=0)
-
-        # Initialize the accumulator with fill_value
-        # FIXME: Fix when Initialization design has been implemented
-        # https://github.com/PaddlePaddle/Paddle/pull/4852
-        global_block.append_op(
-            type="fill_constant",
-            outputs={"Out": param_acc},
-            attrs={"shape": param_shape,
-                   "value": fill_value})
-
+        acc_name = unique_name("accumulator")
+        global_block.create_var(
+            name=acc_name,
+            dtype=dtype,
+            shape=param_shape,
+            lod_level=0,
+            initializer=ConstantInitializer(fill_value))
+        param_acc = main_block.create_var(
+            name=acc_name, dtype=dtype, shape=param_shape, lod_level=0)
         # Add to accumulators dict
         self._accumulators[name][param.name] = param_acc
 
@@ -130,7 +131,8 @@ class Optimizer(object):
 
         return increment_op
 
-    def create_optimization_pass(self, parameters_and_grads, loss):
+    def create_optimization_pass(self, parameters_and_grads, loss,
+                                 init_program):
         """Add optimization operators to update gradients to variables.
 
         Args:
@@ -151,6 +153,9 @@ class Optimizer(object):
         # for parameters and extend _finish_update method to add custom ops.
 
         # Create any accumulators
+        if not isinstance(init_program, Program):
+            raise ValueError("init_program should be Program")
+        self._init_program = init_program
         self._create_accumulators(loss.block,
                                   [p[0] for p in parameters_and_grads])
         # Create any necessary tensors
@@ -177,7 +182,11 @@ class Optimizer(object):
             return_ops.append(self._increment_global_step(loss.block))
         return return_ops
 
-    def minimize(self, loss, parameter_list=None, no_grad_set=None):
+    def minimize(self,
+                 loss,
+                 init_program,
+                 parameter_list=None,
+                 no_grad_set=None):
         """Add operations to minimize `loss` by updating `parameter_list`.
 
         This method combines interface `append_backward_ops()` and
@@ -187,7 +196,8 @@ class Optimizer(object):
                                            set())
         # Add regularization if any 
         params_grads = append_regularization_ops(params_grads)
-        optimize_ops = self.create_optimization_pass(params_grads, loss)
+        optimize_ops = self.create_optimization_pass(params_grads, loss,
+                                                     init_program)
         return optimize_ops
 
 
@@ -205,17 +215,18 @@ class SGDOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
         lr_shape = [1]
         # create a variable for learning_rate
+        learning_rate_name = unique_name("learning_rate")
+        self._init_program.global_block().create_var(
+            name=learning_rate_name,
+            dtype="float32",
+            shape=lr_shape,
+            lod_level=0,
+            initializer=ConstantInitializer(self._learning_rate))
         self._lr = block.create_var(
-            dtype="float32", shape=lr_shape, lod_level=0)
-
-        # create an op to init the learning_rate
-        # FIXME: Fix when Initialization design has been implemented
-        # https://github.com/PaddlePaddle/Paddle/pull/4852
-        block.append_op(
-            type="fill_constant",
-            outputs={"Out": self._lr},
-            attrs={"shape": lr_shape,
-                   "value": self._learning_rate})
+            name=learning_rate_name,
+            dtype="float32",
+            shape=lr_shape,
+            lod_level=0)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -255,17 +266,18 @@ class MomentumOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
         lr_shape = [1]
         # create a variable for learning_rate
+        learning_rate_name = unique_name("learning_rate")
+        self._init_program.global_block().create_var(
+            name=learning_rate_name,
+            dtype="float32",
+            shape=lr_shape,
+            lod_level=0,
+            initializer=ConstantInitializer(self._learning_rate))
         self._lr = block.create_var(
-            dtype="float32", shape=lr_shape, lod_level=0)
-
-        # create an op to init the learning_rate
-        # FIXME: Fix when Initialization design has been implemented
-        # https://github.com/PaddlePaddle/Paddle/pull/4852
-        block.append_op(
-            type="fill_constant",
-            outputs={"Out": self._lr},
-            attrs={"shape": lr_shape,
-                   "value": self._learning_rate})
+            name=learning_rate_name,
+            dtype="float32",
+            shape=lr_shape,
+            lod_level=0)
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -314,17 +326,18 @@ class AdagradOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
         lr_shape = [1]
         # create a variable for learning_rate
+        learning_rate_name = unique_name("learning_rate")
+        self._init_program.global_block().create_var(
+            name=learning_rate_name,
+            dtype="float32",
+            shape=lr_shape,
+            lod_level=0,
+            initializer=ConstantInitializer(self._learning_rate))
         self._lr = block.create_var(
-            dtype="float32", shape=lr_shape, lod_level=0)
-
-        # create an op to init the learning_rate
-        # FIXME: Fix when Initialization design has been implemented
-        # https://github.com/PaddlePaddle/Paddle/pull/4852
-        block.append_op(
-            type="fill_constant",
-            outputs={"Out": self._lr},
-            attrs={"shape": lr_shape,
-                   "value": self._learning_rate})
+            name=learning_rate_name,
+            dtype="float32",
+            shape=lr_shape,
+            lod_level=0)
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -381,43 +394,52 @@ class AdamOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
         lr_shape = [1]
         # create a variable for learning_rate
+        learning_rate_name = unique_name("learning_rate")
+        self._init_program.global_block().create_var(
+            name=learning_rate_name,
+            dtype="float32",
+            shape=lr_shape,
+            lod_level=0,
+            initializer=ConstantInitializer(self._learning_rate))
         self._lr = block.create_var(
-            dtype="float32", shape=lr_shape, lod_level=0)
-
-        # create an op to init the learning_rate
-        # FIXME: Fix when Initialization design has been implemented
-        # https://github.com/PaddlePaddle/Paddle/pull/4852
-        block.append_op(
-            type="fill_constant",
-            outputs={"Out": self._lr},
-            attrs={"shape": lr_shape,
-                   "value": self._learning_rate})
+            name=learning_rate_name,
+            dtype="float32",
+            shape=lr_shape,
+            lod_level=0)
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
 
-        global_block = block.program.global_block()
+        global_block = self._init_program.global_block()
+        main_block = block.program.global_block()
         # Create beta1 and beta2 power tensors
         beta_shape = [1]
         # Create variables for beta1 and beta2 powers
-        self._beta1_pow_acc = global_block.create_var(
-            dtype="float32", shape=beta_shape, lod_level=0)
-        self._beta2_pow_acc = global_block.create_var(
-            dtype="float32", shape=beta_shape, lod_level=0)
+        beta1_pow_acc_name = unique_name("beta1_pow_acc")
+        global_block.create_var(
+            name=beta1_pow_acc_name,
+            dtype="float32",
+            shape=beta_shape,
+            lod_level=0,
+            initializer=ConstantInitializer(self._beta1))
+        self._beta1_pow_acc = main_block.create_var(
+            name=beta1_pow_acc_name,
+            dtype="float32",
+            shape=beta_shape,
+            lod_level=0)
 
-        # Initialize beta1 and beta2 power accumulators
-        # FIXME: Fix when Initialization design has been implemented
-        # https://github.com/PaddlePaddle/Paddle/pull/4852
-        global_block.append_op(
-            type="fill_constant",
-            outputs={"Out": self._beta1_pow_acc},
-            attrs={"shape": beta_shape,
-                   "value": self._beta1})
-        global_block.append_op(
-            type="fill_constant",
-            outputs={"Out": self._beta2_pow_acc},
-            attrs={"shape": beta_shape,
-                   "value": self._beta2})
+        beta2_pow_acc_name = unique_name("beta2_pow_acc")
+        global_block.create_var(
+            name=beta2_pow_acc_name,
+            dtype="float32",
+            shape=beta_shape,
+            lod_level=0,
+            initializer=ConstantInitializer(self._beta2))
+        self._beta2_pow_acc = main_block.create_var(
+            name=beta2_pow_acc_name,
+            dtype="float32",
+            shape=beta_shape,
+            lod_level=0)
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
@@ -503,35 +525,38 @@ class AdamaxOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
         lr_shape = [1]
         # create a variable for learning_rate
+        learning_rate_name = unique_name("learning_rate")
+        self._init_program.global_block().create_var(
+            name=learning_rate_name,
+            dtype="float32",
+            shape=lr_shape,
+            lod_level=0,
+            initializer=ConstantInitializer(self._learning_rate))
         self._lr = block.create_var(
-            dtype="float32", shape=lr_shape, lod_level=0)
-
-        # create an op to init the learning_rate
-        # FIXME: Fix when Initialization design has been implemented
-        # https://github.com/PaddlePaddle/Paddle/pull/4852
-        block.append_op(
-            type="fill_constant",
-            outputs={"Out": self._lr},
-            attrs={"shape": lr_shape,
-                   "value": self._learning_rate})
+            name=learning_rate_name,
+            dtype="float32",
+            shape=lr_shape,
+            lod_level=0)
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
 
-        global_block = block.program.global_block()
+        global_block = self._init_program.global_block()
+        main_block = block.program.global_block()
         # Create beta1 power accumulator tensor
         beta_shape = [1]
-        self._beta1_pow_acc = global_block.create_var(
-            dtype="float32", shape=beta_shape, lod_level=0)
-
-        # Initialize beta1 power accumulator
-        # FIXME: Fix when Initialization design has been implemented
-        # https://github.com/PaddlePaddle/Paddle/pull/4852
-        global_block.append_op(
-            type="fill_constant",
-            outputs={"Out": self._beta1_pow_acc},
-            attrs={"shape": beta_shape,
-                   "value": self._beta1})
+        beta1_pow_acc_name = unique_name("beta1_pow_acc")
+        global_block.create_var(
+            name=beta1_pow_acc_name,
+            dtype="float32",
+            shape=beta_shape,
+            lod_level=0,
+            initializer=ConstantInitializer(self._beta1))
+        self._beta1_pow_acc = main_block.create_var(
+            name=beta1_pow_acc_name,
+            dtype="float32",
+            shape=beta_shape,
+            lod_level=0)
 
         # Create accumulator tensors for first moment and infinity norm
         for p in parameters:
