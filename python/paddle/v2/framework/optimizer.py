@@ -67,7 +67,7 @@ class Optimizer(object):
         """
         pass
 
-    def _add_accumulator(self, name, param, fill_value=0.0):
+    def _add_accumulator(self, name, param, dtype='float32', fill_value=0.0):
         """Utility function to add an accumulator for a parameter
 
         Args:
@@ -86,7 +86,7 @@ class Optimizer(object):
         var = self.helper.create_global_variable(
             name=unique_name(name),
             persistable=True,
-            dtype=param.data_type,
+            dtype=dtype,
             type=param.type,
             shape=param.shape)
         self.helper.set_variable_initializer(
@@ -154,9 +154,6 @@ class Optimizer(object):
         # for parameters and extend _finish_update method to add custom ops.
 
         # Create any accumulators
-        if not isinstance(init_program, Program):
-            raise ValueError("init_program should be Program")
-
         program = loss.block.program
         self.helper = LayerHelper(
             self.__class__.__name__, program=program, init_program=init_program)
@@ -277,7 +274,7 @@ class MomentumOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
 
         for p in parameters:
-            self._add_accumulator(self._velocity_acc_str, p)
+            self._add_accumulator(self._velocity_acc_str, p, 'float32')
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -332,7 +329,7 @@ class AdagradOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
 
         for p in parameters:
-            self._add_accumulator(self._moment_acc_str, p)
+            self._add_accumulator(self._moment_acc_str, p, 'float32')
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -418,8 +415,8 @@ class AdamOptimizer(Optimizer):
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
-            self._add_accumulator(self._moment1_acc_str, p)
-            self._add_accumulator(self._moment2_acc_str, p)
+            self._add_accumulator(self._moment1_acc_str, p, 'float32')
+            self._add_accumulator(self._moment2_acc_str, p, 'float32')
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -522,8 +519,8 @@ class AdamaxOptimizer(Optimizer):
 
         # Create accumulator tensors for first moment and infinity norm
         for p in parameters:
-            self._add_accumulator(self._moment_acc_str, p)
-            self._add_accumulator(self._inf_norm_acc_str, p)
+            self._add_accumulator(self._moment_acc_str, p, 'float32')
+            self._add_accumulator(self._inf_norm_acc_str, p, 'float32')
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
