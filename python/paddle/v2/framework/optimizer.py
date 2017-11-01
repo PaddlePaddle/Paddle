@@ -210,8 +210,9 @@ class SGDOptimizer(Optimizer):
     def _initialize_tensors(self, block):
         assert isinstance(block, framework.Block)
         lr_shape = [1]
+        main_block = block.program.global_block()
         # create a variable for learning_rate
-        self._lr = block.create_persistable_var(
+        self._lr = main_block.create_persistable_var(
             init_program=self._init_program,
             initializer=ConstantInitializer(self._learning_rate),
             prefix="accumulator",
@@ -256,20 +257,14 @@ class MomentumOptimizer(Optimizer):
     def _initialize_tensors(self, block):
         assert isinstance(block, framework.Block)
         lr_shape = [1]
+        main_block = block.program.global_block()
         # create a variable for learning_rate
-        learning_rate_name = unique_name("learning_rate")
-        self._init_program.global_block().create_var(
-            name=learning_rate_name,
+        self._lr = main_block.create_persistable_var(
+            init_program=self._init_program,
+            initializer=ConstantInitializer(self._learning_rate),
+            prefix="learning_rate",
             dtype="float32",
             shape=lr_shape,
-            lod_level=0,
-            persistable=True,
-            initializer=ConstantInitializer(self._learning_rate))
-        self._lr = block.create_var(
-            name=learning_rate_name,
-            dtype="float32",
-            shape=lr_shape,
-            persistable=True,
             lod_level=0)
 
     def _create_accumulators(self, block, parameters):
@@ -318,20 +313,13 @@ class AdagradOptimizer(Optimizer):
     def _initialize_tensors(self, block):
         assert isinstance(block, framework.Block)
         lr_shape = [1]
-        # create a variable for learning_rate
-        learning_rate_name = unique_name("learning_rate")
-        self._init_program.global_block().create_var(
-            name=learning_rate_name,
+        main_block = block.program.global_block()
+        self._lr = main_block.create_persistable_var(
+            init_program=self._init_program,
+            initializer=ConstantInitializer(self._learning_rate),
+            prefix="learning_rate",
             dtype="float32",
             shape=lr_shape,
-            lod_level=0,
-            persistable=True,
-            initializer=ConstantInitializer(self._learning_rate))
-        self._lr = block.create_var(
-            name=learning_rate_name,
-            dtype="float32",
-            shape=lr_shape,
-            persistable=True,
             lod_level=0)
 
     def _create_accumulators(self, block, parameters):
@@ -389,57 +377,35 @@ class AdamOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
         lr_shape = [1]
         # create a variable for learning_rate
-        learning_rate_name = unique_name("learning_rate")
-        self._init_program.global_block().create_var(
-            name=learning_rate_name,
+        main_block = block.program.global_block()
+        self._lr = main_block.create_persistable_var(
+            init_program=self._init_program,
+            initializer=ConstantInitializer(self._learning_rate),
+            prefix="learning_rate",
             dtype="float32",
             shape=lr_shape,
-            lod_level=0,
-            persistable=True,
-            initializer=ConstantInitializer(self._learning_rate))
-        self._lr = block.create_var(
-            name=learning_rate_name,
-            dtype="float32",
-            shape=lr_shape,
-            persistable=True,
             lod_level=0)
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
 
-        global_block = self._init_program.global_block()
         main_block = block.program.global_block()
         # Create beta1 and beta2 power tensors
         beta_shape = [1]
-        # Create variables for beta1 and beta2 powers
-        beta1_pow_acc_name = unique_name("beta1_pow_acc")
-        global_block.create_var(
-            name=beta1_pow_acc_name,
+        self._beta1_pow_acc = main_block.create_persistable_var(
+            init_program=self._init_program,
+            initializer=ConstantInitializer(self._beta1),
+            prefix="beta1_pow_acc",
             dtype="float32",
             shape=beta_shape,
-            lod_level=0,
-            persistable=True,
-            initializer=ConstantInitializer(self._beta1))
-        self._beta1_pow_acc = main_block.create_var(
-            name=beta1_pow_acc_name,
-            dtype="float32",
-            shape=beta_shape,
-            persistable=True,
             lod_level=0)
 
-        beta2_pow_acc_name = unique_name("beta2_pow_acc")
-        global_block.create_var(
-            name=beta2_pow_acc_name,
+        self._beta2_pow_acc = main_block.create_persistable_var(
+            init_program=self._init_program,
+            initializer=ConstantInitializer(self._beta2),
+            prefix="beta2_pow_acc",
             dtype="float32",
             shape=beta_shape,
-            lod_level=0,
-            persistable=True,
-            initializer=ConstantInitializer(self._beta2))
-        self._beta2_pow_acc = main_block.create_var(
-            name=beta2_pow_acc_name,
-            dtype="float32",
-            shape=beta_shape,
-            persistable=True,
             lod_level=0)
 
         # Create accumulator tensors for first and second moments
@@ -483,14 +449,14 @@ class AdamOptimizer(Optimizer):
         """Update Beta1 and Beta2 Power accumulators
         """
         assert isinstance(block, framework.Block)
-        global_block = block.program.global_block()
-        scale_beta1 = global_block.append_op(
+        main_block = block.program.global_block()
+        scale_beta1 = main_block.append_op(
             type="scale",
             inputs={"X": self._beta1_pow_acc},
             outputs={"Out": self._beta1_pow_acc},
             attrs={"scale": self._beta1})
 
-        scale_beta2 = global_block.append_op(
+        scale_beta2 = main_block.append_op(
             type="scale",
             inputs={"X": self._beta2_pow_acc},
             outputs={"Out": self._beta2_pow_acc},
@@ -525,42 +491,28 @@ class AdamaxOptimizer(Optimizer):
     def _initialize_tensors(self, block):
         assert isinstance(block, framework.Block)
         lr_shape = [1]
+        main_block = block.program.global_block()
         # create a variable for learning_rate
-        learning_rate_name = unique_name("learning_rate")
-        self._init_program.global_block().create_var(
-            name=learning_rate_name,
+        self._lr = main_block.create_persistable_var(
+            init_program=self._init_program,
+            initializer=ConstantInitializer(self._learning_rate),
+            prefix="learning_rate",
             dtype="float32",
             shape=lr_shape,
-            lod_level=0,
-            persistable=True,
-            initializer=ConstantInitializer(self._learning_rate))
-        self._lr = block.create_var(
-            name=learning_rate_name,
-            dtype="float32",
-            shape=lr_shape,
-            persistable=True,
             lod_level=0)
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
 
-        global_block = self._init_program.global_block()
         main_block = block.program.global_block()
         # Create beta1 power accumulator tensor
         beta_shape = [1]
-        beta1_pow_acc_name = unique_name("beta1_pow_acc")
-        global_block.create_var(
-            name=beta1_pow_acc_name,
+        self._beta1_pow_acc = main_block.create_persistable_var(
+            init_program=self._init_program,
+            initializer=ConstantInitializer(self._beta1),
+            prefix="beta1_pow_acc",
             dtype="float32",
             shape=beta_shape,
-            lod_level=0,
-            persistable=True,
-            initializer=ConstantInitializer(self._beta1))
-        self._beta1_pow_acc = main_block.create_var(
-            name=beta1_pow_acc_name,
-            dtype="float32",
-            shape=beta_shape,
-            persistable=True,
             lod_level=0)
 
         # Create accumulator tensors for first moment and infinity norm
@@ -602,8 +554,8 @@ class AdamaxOptimizer(Optimizer):
         """Update Beta1 Power accumulator
         """
         assert isinstance(block, framework.Block)
-        global_block = block.program.global_block()
-        scale_beta1 = global_block.append_op(
+        main_block = block.program.global_block()
+        scale_beta1 = main_block.append_op(
             type="scale",
             inputs={"X": self._beta1_pow_acc},
             outputs={"Out": self._beta1_pow_acc},
