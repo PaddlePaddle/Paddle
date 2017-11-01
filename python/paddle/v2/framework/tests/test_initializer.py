@@ -1,3 +1,4 @@
+import numpy as np
 import unittest
 
 import paddle.v2.framework.framework as framework
@@ -114,6 +115,113 @@ class TestNormalInitializer(unittest.TestCase):
         self.assertAlmostEqual(init_op.attr('mean'), 2.3, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('std'), 1.9, delta=DELTA)
         self.assertEqual(init_op.attr('seed'), 123)
+
+
+class TestXavierInitializer(unittest.TestCase):
+    def test_uniform_xavier_initializer(self):
+        """Test Xavier initializer with uniform distribution on
+           for matrix multiply.
+        """
+        program = framework.Program()
+        block = program.global_block()
+        param = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.XavierInitializer())
+        self.assertEqual(len(block.ops), 1)
+        init_op = block.ops[0]
+        self.assertEqual(init_op.type, 'uniform_random')
+        limit = np.sqrt(6.0 / (param.shape[0] + param.shape[1]))
+        self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
+        self.assertEqual(init_op.attr('seed'), 0)
+
+    def test_uniform_xavier_initializer_conv(self):
+        """Test Xavier initializer with uniform distribution on
+           for convolutions.
+        """
+        program = framework.Program()
+        block = program.global_block()
+        param = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10, 15, 20],
+            lod_level=0,
+            name="param",
+            initializer=initializer.XavierInitializer())
+        self.assertEqual(len(block.ops), 1)
+        init_op = block.ops[0]
+        self.assertEqual(init_op.type, 'uniform_random')
+        receptive_field_size = float(15 * 20)
+        limit = np.sqrt(6.0 / (
+            (param.shape[0] + param.shape[1]) * receptive_field_size))
+        self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
+        self.assertEqual(init_op.attr('seed'), 0)
+
+    def test_normal_xavier_initializer(self):
+        """Test Xavier initializer with normal distribution on
+           for matrix multiply.
+        """
+        program = framework.Program()
+        block = program.global_block()
+        param = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.XavierInitializer(uniform=False))
+        self.assertEqual(len(block.ops), 1)
+        init_op = block.ops[0]
+        self.assertEqual(init_op.type, 'gaussian_random')
+        std = np.sqrt(2.0 / (param.shape[0] + param.shape[1]))
+        self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
+        self.assertEqual(init_op.attr('seed'), 0)
+
+    def test_normal_xavier_initializer_conv(self):
+        """Test Xavier initializer with normal distribution on
+           for convolutions.
+        """
+        program = framework.Program()
+        block = program.global_block()
+        param = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10, 15, 20],
+            lod_level=0,
+            name="param",
+            initializer=initializer.XavierInitializer(uniform=False))
+        self.assertEqual(len(block.ops), 1)
+        init_op = block.ops[0]
+        self.assertEqual(init_op.type, 'gaussian_random')
+        receptive_field_size = float(15 * 20)
+        std = np.sqrt(2.0 / (
+            (param.shape[0] + param.shape[1]) * receptive_field_size))
+        self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
+        self.assertEqual(init_op.attr('seed'), 0)
+
+    def test_xavier_initializer_supplied_fans(self):
+        """Test the Xavier initializer with supplied fan_in
+           and fan_out
+        """
+        program = framework.Program()
+        block = program.global_block()
+        block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.XavierInitializer(
+                fan_in=12, fan_out=23))
+        self.assertEqual(len(block.ops), 1)
+        init_op = block.ops[0]
+        self.assertEqual(init_op.type, 'uniform_random')
+        limit = np.sqrt(6.0 / (12 + 23))
+        self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
+        self.assertEqual(init_op.attr('seed'), 0)
 
 
 if __name__ == '__main__':
