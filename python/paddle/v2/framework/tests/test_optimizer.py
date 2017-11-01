@@ -325,9 +325,6 @@ class TestAdamaxOptimizer(unittest.TestCase):
         self.assertTrue(mul_x.name in inf_norm_acc)
 
         # Check init_program
-        print(init_program)
-        print("=======")
-        print(program)
         init_ops = init_program.global_block().ops
         self.assertEqual(len(init_ops), 4)
         self.assertEqual(init_ops[0].type, "fill_constant")

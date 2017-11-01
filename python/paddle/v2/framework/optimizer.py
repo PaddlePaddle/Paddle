@@ -80,25 +80,16 @@ class Optimizer(object):
                 param.name in self._accumulators[name]):
             raise Exception("Accumulator {} already exists for parmeter {}".
                             format(name, param.name))
-        global_block = self._init_program.global_block()
         main_block = block.program.global_block()
         param_shape = list(param.shape)
-        acc_name = unique_name("accumulator")
-        global_block.create_var(
-            name=acc_name,
-            dtype=dtype,
-            shape=param_shape,
-            lod_level=0,
-            persistable=True,
-            initializer=ConstantInitializer(fill_value))
-        param_acc = main_block.create_var(
-            name=acc_name,
-            dtype=dtype,
-            persistable=True,
-            shape=param_shape,
-            lod_level=0)
-        # Add to accumulators dict
-        self._accumulators[name][param.name] = param_acc
+        self._accumulators[name][
+            param.name] = main_block.create_persistable_var(
+                init_program=self._init_program,
+                initializer=ConstantInitializer(fill_value),
+                prefix="accumulator",
+                dtype=dtype,
+                shape=param_shape,
+                lod_level=0)
 
     def _get_accumulator(self, name, param):
         """Utility function to fetch an accumulator for a parameter
@@ -220,20 +211,13 @@ class SGDOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
         lr_shape = [1]
         # create a variable for learning_rate
-        learning_rate_name = unique_name("learning_rate")
-        self._init_program.global_block().create_var(
-            name=learning_rate_name,
+        self._lr = block.create_persistable_var(
+            init_program=self._init_program,
+            initializer=ConstantInitializer(self._learning_rate),
+            prefix="accumulator",
             dtype="float32",
             shape=lr_shape,
-            lod_level=0,
-            persistable=True,
-            initializer=ConstantInitializer(self._learning_rate))
-        self._lr = block.create_var(
-            name=learning_rate_name,
-            dtype="float32",
-            shape=lr_shape,
-            lod_level=0,
-            persistable=True)
+            lod_level=0)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
