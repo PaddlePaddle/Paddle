@@ -627,10 +627,17 @@ class StaticRNN(object):
         if not isinstance(o, Variable):
             raise TypeError("step output takes a Variable")
 
+        tmp_o = self.helper.create_tmp_variable(dtype=o.data_type)
+        self.helper.append_op(
+            type='rnn_memory_helper',
+            inputs={'X': [o]},
+            outputs={'Out': tmp_o},
+            attrs={'data_type': o.data_type})
+
         out_var = self.parent_block().create_var(
-            name=o.name,
-            shape=[self.seq_len] + list(o.shape),
-            dtype=o.data_type)
+            name=tmp_o.name,
+            shape=[self.seq_len] + list(tmp_o.shape),
+            dtype=tmp_o.data_type)
 
         self.outputs.append(out_var)
 
@@ -700,7 +707,17 @@ class StaticRNN(object):
         for _, mem in self.memories.iteritems():
             boot_memories.append(mem.init)
             pre_memories.append(mem.pre_mem.name)
-            memories.append(mem.mem.name)
+            mem_var = rnn_block.var(mem.mem.name)
+            assert isinstance(mem_var, Variable)
+            new_mem = self.helper.create_tmp_variable(dtype=mem_var.data_type)
+
+            rnn_block.append_op(
+                type='rnn_memory_helper',
+                inputs={'X': [mem_var]},
+                outputs={'Out': [new_mem]},
+                attrs={'data_type': mem_var.data_type})
+
+            memories.append(new_mem.name)
 
         parent_block.append_op(
             type='recurrent',

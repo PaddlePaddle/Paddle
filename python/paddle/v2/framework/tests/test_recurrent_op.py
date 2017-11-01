@@ -157,10 +157,6 @@ class RecurrentOpTest1(unittest.TestCase):
                       feed=self.feed_map,
                       fetch_list=[self.output])
 
-        # for k in self.feed_map:
-        #     print k, np.array(self.feed_map[k])
-        # print self.program
-
         return np.array(out[0])
 
     def backward(self):
@@ -185,20 +181,10 @@ class RecurrentOpTest1(unittest.TestCase):
 
         num_grad = self.get_numerical_gradient()
         for idx, name in enumerate(self.data_field):
-            print '-' * 20
-            print name + '@GRAD num'
-            print num_grad[idx]
-            print
-            print name + '@GRAD ana'
-            print ana_grad[idx]
-            print
-            print 'ratio'
-            print num_grad[idx] / ana_grad[idx]
-            print
-            # self.assertEqual(num_grad[idx].shape, ana_grad[idx].shape)
-            # self.assertTrue(
-            #     np.isclose(
-            #         num_grad[idx], ana_grad[idx], rtol=0.1).all())
+            self.assertEqual(num_grad[idx].shape, ana_grad[idx].shape)
+            self.assertTrue(
+                np.isclose(
+                    num_grad[idx], ana_grad[idx], rtol=0.1).all())
 
     def check_forward(self):
         print 'test recurrent op forward'
@@ -207,8 +193,8 @@ class RecurrentOpTest1(unittest.TestCase):
         print 'pd_output', pd_output
         print
         print 'py_output', py_output
-        # self.assertEqual(pd_output.shape, py_output.shape)
-        # self.assertTrue(np.isclose(pd_output, py_output, rtol=0.1).all())
+        self.assertEqual(pd_output.shape, py_output.shape)
+        self.assertTrue(np.isclose(pd_output, py_output, rtol=0.1).all())
 
     def get_numerical_gradient(self, delta=0.005):
         dloss_dout = 1.0
@@ -334,14 +320,13 @@ class RecurrentOpTest3(RecurrentOpTest1):
         def step(self, step_id, x):
             if step_id == 0:
                 pre_mem1 = self.h_boot1
-                # pre_mem2 = self.h_boot2
+                pre_mem2 = self.h_boot2
             else:
                 pre_mem1 = self.mems1[step_id - 1]
-                # pre_mem2 = self.mems2[step_id - 1]
+                pre_mem2 = self.mems2[step_id - 1]
             self.mems1[step_id] = pre_mem1
-            # self.mems2[step_id] = pre_mem2
-            # self.y[step_id] = self.mems1[step_id] + self.mems2[step_id] + x
-            self.y[step_id] = self.mems1[step_id] + x
+            self.mems2[step_id] = pre_mem2
+            self.y[step_id] = self.mems1[step_id] + self.mems2[step_id] + x
 
     input_dim = 1
     batch_size = 1
@@ -350,7 +335,7 @@ class RecurrentOpTest3(RecurrentOpTest1):
     def setUp(self):
         self.init_program()
 
-        self.data_field = {"x", "h_boot1"}
+        self.data_field = {"x", "h_boot1", "h_boot2"}
 
         self.input_shape = (self.sent_len, self.batch_size, self.input_dim)
         self.output_shape = (self.sent_len, self.batch_size, self.input_dim)
@@ -372,32 +357,29 @@ class RecurrentOpTest3(RecurrentOpTest1):
             name='h_boot1',
             append_batch_size=False,
             **self.p_info)
-        # h_boot2 = data(
-        #     shape=[self.batch_size, self.input_dim],
-        #     data_type='float32',
-        #     name='h_boot2',
-        #     append_batch_size=False,
-        #     **self.p_info)
+        h_boot2 = data(
+            shape=[self.batch_size, self.input_dim],
+            data_type='float32',
+            name='h_boot2',
+            append_batch_size=False,
+            **self.p_info)
 
         rnn = StaticRNN(program=self.program)
         with rnn.step():
             h_pre1 = rnn.memory(init=h_boot1)
-            # h_pre2 = rnn.memory(init=h_boot2)
+            h_pre2 = rnn.memory(init=h_boot2)
             x_t = rnn.step_input(x)
 
             mem1 = scale(x=h_pre1, scale=1.0, **self.p_info)
-            # mem2 = scale(x=h_pre2, scale=1.0, **self.p_info)
-            out = sums(input=[mem1, x_t], **self.p_info)
+            mem2 = scale(x=h_pre2, scale=1.0, **self.p_info)
+            out = sums(input=[mem1, x_t, mem2], **self.p_info)
 
             rnn.update_memory(h_pre1, mem1)
-            # rnn.update_memory(h_pre2, mem2)
+            rnn.update_memory(h_pre2, mem2)
             rnn.output(out)
 
         return rnn()
 
 
 if __name__ == '__main__':
-    # exit(
-    #     0
-    # )  # FIXME(qijun): https://github.com/PaddlePaddle/Paddle/issues/5101#issuecomment-339814957
     unittest.main()

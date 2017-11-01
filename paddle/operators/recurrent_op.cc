@@ -362,23 +362,10 @@ class RecurrentGradOp : public RecurrentBase {
               ex_scope.FindVar(ex_grad)->Get<framework::LoDTensor>();
 
           VLOG(10) << " RNN link " << cur_grad << " from " << ex_grad;
-          if (og_set.find(cur_grad) != og_set.end()) {
-            VLOG(10) << " RNN link " << cur_grad << " with output grad ";
-            std::string tmp_var_name;
-            auto *tmp_var = cur_scope.Var(&tmp_var_name);
-            tmp_var->GetMutable<framework::LoDTensor>()->ShareDataWith(
-                ex_tensor);
-            auto sum_op = framework::OpRegistry::CreateOp(
-                "sum", {{"X", {cur_grad, tmp_var_name}}}, {{"Out", {cur_grad}}},
-                {});
-            sum_op->Run(cur_scope, dev_ctx);
-          } else {
-            VLOG(10) << " RNN link " << cur_grad << " with mem grad ";
-            auto *cur_grad_var = cur_scope.Var(cur_grad);
-            auto cur_grad_tensor =
-                cur_grad_var->GetMutable<framework::LoDTensor>();
-            cur_grad_tensor->CopyFrom(ex_tensor, dev_ctx.GetPlace(), dev_ctx);
-          }
+          auto *cur_grad_var = cur_scope.Var(cur_grad);
+          auto cur_grad_tensor =
+              cur_grad_var->GetMutable<framework::LoDTensor>();
+          cur_grad_tensor->CopyFrom(ex_tensor, dev_ctx.GetPlace(), dev_ctx);
         }
       }
 
@@ -414,10 +401,7 @@ class RecurrentGradOp : public RecurrentBase {
             auto &inside_tensor = cur_scope.FindVar(inside_grad_name)
                                       ->Get<framework::LoDTensor>();
             framework::AttributeMap attrs;
-
-            VLOG(5) << "----------------------------";
             attrs["data_type"] = framework::ToDataType(inside_tensor.type());
-            VLOG(5) << "----------------------------";
             attrs["shape"] = framework::vectorize2int(inside_tensor.dims());
             attrs["value"] = 0.0f;
 
@@ -605,8 +589,8 @@ class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
                        this->OutputGrad(output_param));
       }
     }
-
     grad->SetAttrMap(this->Attrs());
+    grad->SetBlockAttr(kStepBlock, *grad_block_[0]);
 
     return std::unique_ptr<framework::OpDescBind>(grad);
   }
@@ -624,7 +608,6 @@ class RecurrentGradOpShapeInference : public framework::InferShapeBase {
     for (auto &s : output) {
       PADDLE_ENFORCE(ctx->HasInputs(s));
     }
-
     for (auto &s : input) {
       ctx->SetOutputsDim(framework::GradVarName(s), ctx->GetInputsDim(s));
     }
