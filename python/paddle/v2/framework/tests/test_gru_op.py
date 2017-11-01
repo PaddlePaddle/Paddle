@@ -62,7 +62,6 @@ class TestGRUOp(OpTest):
         return idx_in_seq_list
 
     def gru_step(self, x, h_p, w, b):
-        # print x.shape, h_p.shape, w.shape, b.shape
         batch_size = x.shape[0]
         frame_size = w.shape[0]
         g = x + np.tile(b, (batch_size, 1))
@@ -96,7 +95,6 @@ class TestGRUOp(OpTest):
         num_batch = len(idx_in_seq_list)
         end_idx = 0
         for batch_idx in range(num_batch):
-            # print idx_in_seq_list[batch_idx]
             x = input[idx_in_seq_list[batch_idx]]
             g, r_h_p, h = self.gru_step(x, h_p, w, b)
             if batch_idx < (num_batch - 1):
@@ -110,9 +108,8 @@ class TestGRUOp(OpTest):
         return batch_gate, batch_reset_hidden_prev, hidden
 
     def set_data(self):
-        lod = [[0, 2, 6, 9]]  #[[0, 1, 2, 3]]
+        lod = [[0, 2, 6, 9]]
         self.idx_in_seq_list = self.seq_to_batch(lod, self.is_reverse)
-        # print self.idx_in_seq_list
         batch_size = self.batch_size
         frame_size = self.frame_size
         input = np.random.rand(batch_size, frame_size * 3).astype('float64')
