@@ -5,6 +5,8 @@ import paddle.v2.framework.core as core
 
 from paddle.v2.framework.framework import Variable, g_program, \
     g_init_program
+from paddle.v2.framework.initializer import ConstantInitializer, \
+    UniformInitializer
 
 
 def unique_name(prefix):
@@ -66,14 +68,7 @@ class LayerHelper(object):
 
     @property
     def param_attr(self):
-        default = {
-            'name': None,
-            'init_attr': {
-                'type': 'uniform_random',
-                'min': -1.0,
-                'max': 1.0
-            }
-        }
+        default = {'name': None, 'initializer': UniformInitializer()}
         actual = self.kwargs.get('param_attr', None)
         if actual is None:
             actual = default
@@ -83,13 +78,7 @@ class LayerHelper(object):
         return actual
 
     def bias_attr(self):
-        default = {
-            'name': None,
-            'init_attr': {
-                'type': 'fill_constant',
-                'value': 0.0
-            }
-        }
+        default = {'name': None, 'initializer': ConstantInitializer()}
         bias_attr = self.kwargs.get('bias_attr', None)
         if bias_attr is True:
             bias_attr = default
@@ -153,8 +142,24 @@ class LayerHelper(object):
         return self.program.global_block().create_var(
             *args, persistable=False, **kwargs)
 
-    def append_bias_op(self, input_var):
-        size = list(input_var.shape[1:])
+    def append_bias_op(self, input_var, num_flatten_dims=None):
+        """
+        Append bias operator and return its output. If the user does not set 
+        bias_attr, append_bias_op will return input_var
+         
+        :param input_var: the input variable. The len(input_var.shape) is larger
+        or equal than 2.
+        :param num_flatten_dims: The input tensor will be flatten as a matrix 
+        when adding bias.
+        `matrix.shape = product(input_var.shape[0:num_flatten_dims]), product(
+                input_var.shape[num_flatten_dims:])`
+        """
+        if num_flatten_dims is None:
+            num_flatten_dims = self.kwargs.get('num_flatten_dims', None)
+            if num_flatten_dims is None:
+                num_flatten_dims = 1
+
+        size = list(input_var.shape[num_flatten_dims:])
         bias_attr = self.bias_attr()
         if not bias_attr:
             return input_var

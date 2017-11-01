@@ -1,11 +1,13 @@
 from paddle.v2.framework.layer_helper import LayerHelper, unique_name
 import paddle.v2.framework.core as core
 from paddle.v2.framework.framework import OpProtoHolder, Variable, Program
+from paddle.v2.framework.initializer import ConstantInitializer
 import re
 
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
-    'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool', 'accuracy'
+    'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool', 'sums', 'cos_sim',
+    'batch_norm', 'accuracy'
 ]
 
 
@@ -177,29 +179,37 @@ def cast(x, data_type, program=None):
     return out
 
 
-def cast(x, data_type, program=None):
-    helper = LayerHelper('cast', **locals())
-    out = helper.create_tmp_variable(dtype=data_type)
-    helper.append_op(
-        type='cast',
-        inputs={'X': [x]},
-        outputs={'Out': [out]},
-        attrs={'in_data_type': x.data_type,
-               'out_data_type': out.data_type})
-    return out
-
-
 def concat(input, axis, program=None, init_program=None):
     helper = LayerHelper('concat', **locals())
-    if not isinstance(input, list) and not isinstance(input, tuple):
-        input = [input]
-    out = helper.create_tmp_variable(dtype=input[0].data_type)
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
         type='concat',
         inputs={'X': input},
         outputs={'Out': [out]},
         attrs={'axis': axis})
     return out
+
+
+def sums(input, program=None, init_program=None):
+    helper = LayerHelper('sum', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(type='sum', inputs={'X': [input]}, outputs={'Out': out})
+    return out
+
+
+def cos_sim(X, Y, program=None, init_program=None):
+    helper = LayerHelper('cos_sim', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype("X"))
+    xnorm = helper.create_tmp_variable(dtype=helper.input_dtype("X"))
+    ynorm = helper.create_tmp_variable(dtype=helper.input_dtype("X"))
+    helper.append_op(
+        type='cos_sim',
+        inputs={'X': [X],
+                'Y': [Y]},
+        outputs={'Out': [out],
+                 'XNorm': [xnorm],
+                 'YNorm': [ynorm]})
+    return out, xnorm, ynorm
 
 
 def cross_entropy(input, label, **kwargs):
@@ -254,9 +264,7 @@ def accuracy(input, label, k=1, **kwargs):
 
 def sequence_conv(input,
                   num_filters,
-                  name=None,
                   filter_size=3,
-                  act=None,
                   stride=1,
                   padding=None,
                   bias_attr=None,
@@ -270,7 +278,7 @@ def sequence_conv(input,
     helper = LayerHelper('sequence_conv', **locals())
     dtype = helper.input_dtype()
 
-    filter_shape = [num_filters, filter_size]
+    filter_shape = [filter_size * input.shape[1], num_filters]
     filter = helper.create_parameter(
         attr=helper.param_attr, shape=filter_shape, dtype=dtype)
     pre_bias = helper.create_tmp_variable(dtype)
@@ -279,7 +287,7 @@ def sequence_conv(input,
         type='sequence_conv',
         inputs={
             'X': [input],
-            'Filter': filter,
+            'Filter': [filter],
         },
         outputs={"Out": pre_bias},
         attrs={
@@ -287,7 +295,6 @@ def sequence_conv(input,
             'context_start': 0,
             'context_length': filter_size
         })
-
     pre_act = helper.append_bias_op(pre_bias)
     return helper.append_activation(pre_act)
 
@@ -344,31 +351,21 @@ def conv2d(input,
     return helper.append_activation(pre_act)
 
 
-def sequence_pool(input,
-                  pool_size,
-                  pool_type,
-                  pool_stride=1,
-                  pool_padding=0,
-                  global_pooling=False,
-                  program=None,
-                  init_program=None):
-    # FIXME(dzh) : want to unify the argument of python layer
-    # function. So we ignore some unecessary attributes
-
-    ENUM_POOL_TYPE = set(["max", "avg", "sqrt", "last", "first"])
-    if pool_type not in ENUM_POOL_TYPE:
+def sequence_pool(input, pool_type, **kwargs):
+    ENUM_POOL_TYPE = set(["MAX", "AVG", "SQRT", "LAST", "FIRST"])
+    if pool_type.upper() not in ENUM_POOL_TYPE:
         raise ValueError("Unknown pool_type: '%s'. It can only be %s.",
                          str(pool_type), " ".join(ENUM_POOL_TYPE))
 
-    helper = LayerHelper('sequence_pool', **locals())
+    helper = LayerHelper('sequence_pool', **kwargs)
     dtype = helper.input_dtype()
     pool_out = helper.create_tmp_variable(dtype)
 
     helper.append_op(
         type="sequence_pool",
         inputs={"X": [input]},
-        outputs={"Out": pool_out},
-        attrs={"strategy": pool_type})
+        outputs={"Out": [pool_out]},
+        attrs={"pooltype": pool_type.upper()})
 
     return pool_out
 
@@ -433,26 +430,12 @@ def batch_norm(input,
         else:
             raise ValueError("unsupported data layout:" + data_layout)
 
-    def get_init_attr(value):
-        if not isinstance(value, float):
-            raise ValueError("attr value should be a float")
-        return {'type': 'fill_constant', 'value': value}
-
-    def prepend_init_op(var, init_attr):
-        assert isinstance(var, Variable)
-        op_type = init_attr['type']
-        init_attr['shape'] = var.shape
-        init_attr['data_type'] = int(var.data_type)
-        op = var.block.prepend_op(
-            type=op_type, inputs=None, outputs={'Out': [var]}, attrs=init_attr)
-        return op
-
-    def create_persistable_var(dtype, shape, init_attr=None):
+    def create_persistable_var(dtype, shape, initializer=None):
         name = unique_name(".".join([helper.name, "xxxx"]))
         var = init_program.global_block().create_var(
             dtype=dtype, shape=shape, name=name, persistable=True)
-        if 'init_attr' is not None:
-            prepend_init_op(var, init_attr)
+        if initializer is not None:
+            initializer(var, var.block)
         return program.global_block().create_var(
             name=name, dtype=dtype, shape=shape, persistable=True)
 
@@ -465,8 +448,9 @@ def batch_norm(input,
         attr=helper.param_attr, shape=param_shape, dtype=dtype)
 
     # create input
-    mean = create_persistable_var(dtype, param_shape, get_init_attr(0.0))
-    variance = create_persistable_var(dtype, param_shape, get_init_attr(1.0))
+    mean = create_persistable_var(dtype, param_shape, ConstantInitializer(0.0))
+    variance = create_persistable_var(dtype, param_shape,
+                                      ConstantInitializer(1.0))
 
     # create output
     # mean and mean_out share the same memory
