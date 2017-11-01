@@ -3,16 +3,16 @@
 Machine:
 
 - Server
- 	- Intel(R) Xeon(R) Gold 6148M CPU @ 2.40GHz, 2 Sockets, 20 Cores per socket
+ 	- Intel(R) Xeon(R) Gold 6148 CPU @ 2.40GHz, 2 Sockets, 20 Cores per socket
 - Laptop
  	- DELL XPS15-9560-R1745: i7-7700HQ 8G 256GSSD
  	- i5 MacBook Pro (Retina, 13-inch, Early 2015)
 - Desktop
  	- i7-6700k
 
-System: CentOS 7.3.1611
+System: CentOS release 6.3 (Final), Docker 1.12.1.
 
-PaddlePaddle: commit cfa86a3f70cb5f2517a802f32f2c88d48ab4e0e0
+PaddlePaddle: paddlepaddle/paddle:latest (TODO: will rerun after 0.11.0)
 
 - MKL-DNN tag v0.10
 - MKLML 2018.0.20170720
@@ -31,9 +31,9 @@ Input image size - 3 * 224 * 224, Time: images/second
 
 | BatchSize    | 64    | 128  | 256     |
 |--------------|-------| -----| --------|
-| OpenBLAS     | 7.86  | 9.02  | 10.62  | 
-| MKLML        | 11.80 | 13.43 | 16.21  |
-| MKL-DNN      | 29.07 | 30.40 | 31.06  |
+| OpenBLAS     | 7.82  | 8.62  | 10.34  | 
+| MKLML        | 11.02 | 12.86 | 15.33  |
+| MKL-DNN      | 27.69 | 28.8 | 29.27  |
 
 
 chart on batch size 128
