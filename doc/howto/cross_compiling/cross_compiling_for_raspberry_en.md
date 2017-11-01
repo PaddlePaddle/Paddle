@@ -44,7 +44,7 @@ cmake -DCMAKE_SYSTEM_NAME=RPi \
       ..
 ```
 
-To build the inference library, please set the argument WITH_API to ON: `WITH_C_API=ON`.
+To build the inference library, please set the argument WITH\_C\_API to ON: `WITH_C_API=ON`.
 
 You can add more arguments. For example, to minimize the size of the generated inference library, you may use `CMAKE_BUILD_TYPE=MinSizeRel`. For performance optimization, you may use `CMAKE_BUILD_TYPE=Release`.
 

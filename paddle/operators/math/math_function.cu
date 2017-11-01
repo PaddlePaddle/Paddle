@@ -203,6 +203,33 @@ void batched_gemm<platform::GPUPlace, double>(
       &beta, C, ldc, strideC, batchCount));
 }
 
+template <>
+void gemv<platform::GPUPlace, float>(const platform::DeviceContext& context,
+                                     const bool trans_a, const int M,
+                                     const int N, const float alpha,
+                                     const float* A, const float* B,
+                                     const float beta, float* C) {
+  cublasOperation_t cuTransA = (trans_a == false) ? CUBLAS_OP_T : CUBLAS_OP_N;
+
+  PADDLE_ENFORCE(platform::dynload::cublasSgemv(
+      reinterpret_cast<const platform::CUDADeviceContext&>(context)
+          .cublas_handle(),
+      cuTransA, N, M, &alpha, A, N, B, 1, &beta, C, 1));
+}
+
+template <>
+void gemv<platform::GPUPlace, double>(const platform::DeviceContext& context,
+                                      const bool trans_a, const int M,
+                                      const int N, const double alpha,
+                                      const double* A, const double* B,
+                                      const double beta, double* C) {
+  cublasOperation_t cuTransA = (trans_a == false) ? CUBLAS_OP_T : CUBLAS_OP_N;
+  PADDLE_ENFORCE(platform::dynload::cublasDgemv(
+      reinterpret_cast<const platform::CUDADeviceContext&>(context)
+          .cublas_handle(),
+      cuTransA, N, M, &alpha, A, N, B, 1, &beta, C, 1));
+}
+
 template struct SetConstant<platform::GPUPlace, float>;
 
 }  // namespace math
