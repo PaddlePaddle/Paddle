@@ -15,7 +15,7 @@
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/memory/memory.h"
-#include "paddle/operators/conv2d_op.h"
+#include "paddle/operators/conv2dtranspose_op.h"
 #include "paddle/platform/assert.h"
 #include "paddle/platform/cudnn_helper.h"
 
@@ -76,7 +76,6 @@ class CudnnConvTransposeOpKernel : public framework::OpKernel<T> {
       workspace_size_limit = user_workspace_size * 1024 * 1024;
     }
     // ------------------- cudnn conv algorithm ---------------------
-    // cudnnConvolutionBwdAlgo_t algo;
     cudnnConvolutionBwdDataAlgo_t algo;
     auto handle = ctx.cuda_device_context().cudnn_handle();
     // Get the algorithm
@@ -92,7 +91,6 @@ class CudnnConvTransposeOpKernel : public framework::OpKernel<T> {
         platform::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
             handle, cudnn_filter_desc, cudnn_input_desc, cudnn_conv_desc,
             cudnn_output_desc, algo, &workspace_size_in_bytes));
-    // workspace_size_in_bytes = std::max(workspace_size_in_bytes, tmp_size);
 
     // Allocate on GPU memory
     platform::GPUPlace gpu = boost::get<platform::GPUPlace>(ctx.GetPlace());
@@ -234,7 +232,7 @@ class CudnnConvTransposeGradOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(conv2dtranspose_cudnn,
+REGISTER_OP_GPU_KERNEL(conv2d_transpose_cudnn,
                        ops::CudnnConvTransposeOpKernel<float>);
-REGISTER_OP_GPU_KERNEL(conv2dtranspose_cudnn_grad,
+REGISTER_OP_GPU_KERNEL(conv2d_transpose_cudnn_grad,
                        ops::CudnnConvTransposeGradOpKernel<float>);

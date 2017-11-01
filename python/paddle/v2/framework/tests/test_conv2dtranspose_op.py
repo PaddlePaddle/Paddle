@@ -45,13 +45,12 @@ class TestConv2dTransposeOp(OpTest):
         filter_ = np.random.random(self.filter_size).astype("float32")
         output = conv2dtranspose_forward_naive(
             input_, filter_, conv2dtranspose_param).astype('float32')
-        # print 'deconv output py', output, output.shape
 
         self.inputs = {'Input': input_, 'Filter': filter_}
         self.attrs = {
             'strides': self.stride,
             'paddings': self.pad,
-            # 'dilations': self.dilations
+            'dilations': self.dilations
         }
         self.outputs = {'Output': output}
 
@@ -91,7 +90,7 @@ class TestConv2dTransposeOp(OpTest):
 
 class TestCudnn(TestConv2dTransposeOp):
     def init_op_type(self):
-        self.op_type = "conv2dtranspose_cudnn"
+        self.op_type = "conv2d_transpose_cudnn"
 
 
 if __name__ == '__main__':
