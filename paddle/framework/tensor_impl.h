@@ -112,9 +112,10 @@ inline void* Tensor::mutable_data(platform::Place place, std::type_index type) {
   if (holder_ != nullptr) {
     holder_->set_type(type);
   }
-  PADDLE_ENFORCE_GT(numel(), 0,
-                    "Tensor's numel must be larger than zero to call "
-                    "Tensor::mutable_data. Call Tensor::set_dim first.");
+  PADDLE_ENFORCE_GT(
+      numel(), 0,
+      "When calling this method, the Tensor's numel must be larger than zero. "
+      "Please check Tensor::Resize has been called first.");
   int64_t size = numel() * SizeOfType(type);
   /* some versions of boost::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
@@ -229,10 +230,12 @@ inline void Tensor::CopyFromVector(const std::vector<T>& src,
 
 inline Tensor Tensor::Slice(const int& begin_idx, const int& end_idx) const {
   check_memory_size();
-  PADDLE_ENFORCE_GE(begin_idx, 0, "Slice begin index is less than zero.");
-  PADDLE_ENFORCE_LE(end_idx, dims_[0], "Slice end index is out of bound.");
-  PADDLE_ENFORCE_LT(begin_idx, end_idx,
-                    "Begin index must be less than end index.");
+  PADDLE_ENFORCE_GE(begin_idx, 0,
+                    "The start row index must be greater than 0.");
+  PADDLE_ENFORCE_LE(end_idx, dims_[0], "The end row index is out of bound.");
+  PADDLE_ENFORCE_LT(
+      begin_idx, end_idx,
+      "The start row index must be lesser than the end row index.");
 
   if (dims_[0] == 1) {
     return *this;
