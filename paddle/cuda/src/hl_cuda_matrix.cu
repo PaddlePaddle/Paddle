@@ -801,5 +801,6 @@ __global__ void keVectorCast2Int(int* out, real* vec, int size) {
 }
 
 void hl_vector_cast2int(int* out, real* vec, int size) {
-  keVectorCast2Int<<<1, 512>>>(out, vec, size);
+  keVectorCast2Int<<<1, 512, 0, STREAM_DEFAULT>>>(out, vec, size);
+  CHECK_SYNC("hl_vector_cast2int failed");
 }

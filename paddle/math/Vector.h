@@ -167,7 +167,7 @@ public:
    *
    * @note: float -> int must be casted, or you'll get wrong data.
    */
-  std::shared_ptr<VectorT<int>> castToInt(bool useGPU);
+  std::shared_ptr<VectorT<int>> castToInt();
 
   /**
    * This function will crash if the size of src and dest is different.

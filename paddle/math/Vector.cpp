@@ -101,12 +101,10 @@ MatrixPtr VectorT<int>::toOneHotSparseMatrix(size_t idRange, bool useGpu) {
 }
 
 template <>
-std::shared_ptr<VectorT<int>> VectorT<real>::castToInt(bool useGpu) {
-  std::shared_ptr<VectorT<int>> ret = IVector::create(this->getSize(), useGpu);
-  if (useGpu) {
-#ifdef PADDLE_WITH_CUDA
+std::shared_ptr<VectorT<int>> VectorT<real>::castToInt() {
+  std::shared_ptr<VectorT<int>> ret = IVector::create(this->getSize(), useGpu_);
+  if (useGpu_) {
     hl_vector_cast2int(ret->getData(), this->getData(), this->getSize());
-#endif
   } else {
     for (size_t i = 0; i < getSize(); ++i) {
       ret->getData()[i] = int(this->getData()[i]);

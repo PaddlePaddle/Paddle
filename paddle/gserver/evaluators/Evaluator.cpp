@@ -408,9 +408,9 @@ real AucEvaluator::evalImp(std::vector<Argument>& arguments) {
   if (nullptr == label && nullptr != labelval) {
     // label width is 1
     CHECK_EQ(1, labelval->getWidth());
-    auto tmp = labelval->getTranspose();  // do *not* copy
-    VectorPtr vec = Vector::create(tmp->getRowBuf(0), insNum, output->useGpu());
-    label = vec->castToInt(output->useGpu());
+    VectorPtr vec =
+        Vector::create(labelval->getData(), insNum, output->useGpu());
+    label = vec->castToInt();
   }
 
   CHECK_EQ(insNum, label->getSize());
