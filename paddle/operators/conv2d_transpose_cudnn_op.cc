@@ -12,7 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/conv2dtranspose_op.h"
+#include "paddle/operators/conv2d_transpose_op.h"
 
 namespace paddle {
 namespace operators {

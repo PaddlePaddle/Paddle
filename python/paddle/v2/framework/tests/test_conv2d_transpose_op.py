@@ -67,7 +67,7 @@ class TestConv2dTransposeOp(OpTest):
         self.filter_size = [f_c, 6, 3, 3]
 
     def init_op_type(self):
-        self.op_type = "conv2dtranspose"
+        self.op_type = "conv2d_transpose"
 
     def test_check_grad_no_input(self):
         self.check_grad(

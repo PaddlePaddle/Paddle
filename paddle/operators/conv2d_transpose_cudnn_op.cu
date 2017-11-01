@@ -15,7 +15,7 @@
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/memory/memory.h"
-#include "paddle/operators/conv2dtranspose_op.h"
+#include "paddle/operators/conv2d_transpose_op.h"
 #include "paddle/platform/assert.h"
 #include "paddle/platform/cudnn_helper.h"
 
