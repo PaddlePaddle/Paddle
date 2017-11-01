@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/adagrad_op.h"
+#include <cmath>
+#include "paddle/operators/math/selected_rows_functor.h"
 
 namespace paddle {
 namespace operators {
@@ -21,7 +23,7 @@ class AdagradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Param"),
                    "Input(Param) of AdagradOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Grad"),
@@ -54,8 +56,8 @@ class AdagradOp : public framework::OperatorWithKernel {
 
 class AdagradOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AdagradOpMaker(framework::OpProto *proto,
-                 framework::OpAttrChecker *op_checker)
+  AdagradOpMaker(framework::OpProto* proto,
+                 framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param", "(Tensor) Input parameter");
     AddInput("Grad", "(Tensor) Input gradient");
@@ -83,10 +85,53 @@ by avoiding division by zero.
 )DOC");
   }
 };
+
+template <typename T>
+struct SparseAdagradFunctor<platform::CPUPlace, T> {
+  void operator()(const platform::DeviceContext& context,
+                  const framework::SelectedRows& grad,
+                  const framework::Tensor& learning_rate, T epsilon,
+                  framework::Tensor* moment, framework::Tensor* param) {
+    std::unique_ptr<framework::SelectedRows> grad_square{
+        new framework::SelectedRows(grad.rows(), grad.height())};
+    grad_square->mutable_value()->mutable_data<T>(grad.value().dims(),
+                                                  context.GetPlace());
+    auto gs =
+        framework::EigenVector<T>::Flatten(*(grad_square->mutable_value()));
+    auto g = framework::EigenVector<T>::Flatten(grad.value());
+    gs.device(*context.GetEigenDevice<platform::CPUPlace>()) = g * g;
+
+    math::SelectedRowsAddToTensor<platform::CPUPlace, T> functor;
+    functor(context, *grad_square, moment);
+
+    auto grad_rows = grad.rows();
+    auto grad_rows_size = grad_rows.size();
+
+    int64_t grad_row_numel = grad.value().numel() / grad_rows_size;
+
+    auto* lr = learning_rate.data<T>();
+    auto* param_data = param->data<T>();
+    auto* moment_data = moment->data<T>();
+    auto* grad_data = grad.value().data<T>();
+
+    for (size_t i = 0; i < grad_rows_size; i++) {
+      for (int64_t j = 0; j < grad_row_numel; j++) {
+        param_data[grad_rows[i] * grad_row_numel + j] -=
+            lr[0] * grad_data[i * grad_row_numel + j] /
+            (std::sqrt(moment_data[grad_rows[i] * grad_row_numel + j]) +
+             epsilon);
+      }
+    }
+  }
+};
+
+template struct SparseAdagradFunctor<platform::CPUPlace, float>;
+template struct SparseAdagradFunctor<platform::CPUPlace, double>;
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(adagrad, ops::AdagradOp, ops::AdagradOpMaker);
-REGISTER_OP_CPU_KERNEL(adagrad,
-                       ops::AdagradOpKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    adagrad, ops::AdagradOpKernel<paddle::platform::CPUPlace, float>,
+    ops::AdagradOpKernel<paddle::platform::CPUPlace, double>);
