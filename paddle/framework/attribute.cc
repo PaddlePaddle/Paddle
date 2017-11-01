@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-Attribute GetAttrValue(const OpDesc::Attr& attr_desc, ProgramDesc* program) {
+Attribute GetAttrValue(const OpDesc::Attr& attr_desc) {
   switch (attr_desc.type()) {
     case framework::AttrType::BOOLEAN: {
       return attr_desc.b();
@@ -61,13 +61,9 @@ Attribute GetAttrValue(const OpDesc::Attr& attr_desc, ProgramDesc* program) {
       }
       return val;
     }
-    case framework::AttrType::BLOCK: {
-      PADDLE_ENFORCE(program != nullptr,
-                     "Need to specify ProgramDesc when get a block attr");
-      return program->mutable_blocks(attr_desc.block_idx());
-    }
+    default:
+      PADDLE_THROW("Unsupport attr type %d", attr_desc.type());
   }
-  PADDLE_ENFORCE(false, "Unknown OpDesc::AttrDesc::type !");
   return boost::blank();
 }
 
