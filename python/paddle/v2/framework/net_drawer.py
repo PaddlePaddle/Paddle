@@ -32,8 +32,6 @@ VAR_STYLE = {}
 
 GRAPH_STYLE = {"rankdir": "TB", }
 
-INIT_GRAPH = {"style": "filled", "color": "lightgrey"}
-
 GRAPH_ID = 0
 
 
@@ -45,7 +43,6 @@ def unique_id():
     return generator
 
 
-# use kwargs share common attrs
 def draw_node(op):
     node = OP_STYLE
     node["name"] = op.type
