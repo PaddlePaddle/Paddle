@@ -36,7 +36,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(shape.size() > 0, "Attr(shape) shouldn't be empty.");
     auto x_dims = ctx->GetInputDim("X");
     // TODO(qiao) change batch_size
-    for (int i = 1; i < shape.size(); ++i) {
+    for (size_t i = 1; i < shape.size(); ++i) {
       PADDLE_ENFORCE(shape[i] > 0,
                      "Each dimension of shape "
                      "must be positiv except the first.");
