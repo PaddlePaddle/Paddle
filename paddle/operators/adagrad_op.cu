@@ -15,6 +15,7 @@
 #define EIGEN_USE_GPU
 #include "paddle/operators/adagrad_op.h"
 #include "paddle/operators/math/selected_rows_functor.h"
+#include "paddle/platform/cuda_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -49,7 +50,9 @@ struct SparseAdagradFunctor<platform::GPUPlace, T> {
                   const framework::Tensor& learning_rate, T epsilon,
                   framework::Tensor* moment, framework::Tensor* param) {
     std::unique_ptr<framework::SelectedRows> grad_square{
-        new framework::SelectedRows(grad.rows(), grad.height())};
+        new framework::SelectedRows()};
+    grad_square->set_rows(grad.rows());
+    grad_square->set_height(grad.height());
     grad_square->mutable_value()->mutable_data<T>(grad.value().dims(),
                                                   context.GetPlace());
     auto gs =
@@ -72,7 +75,7 @@ struct SparseAdagradFunctor<platform::GPUPlace, T> {
 
     const int block_size = 256;
     dim3 threads(block_size, 1);
-    dim3 grid(1, in_rows.size());
+    dim3 grid(1, grad_rows.size());
     SparseAdagradFunctorKernel<
         T, 256><<<grid, threads, 0,
                   reinterpret_cast<const platform::CUDADeviceContext&>(context)
