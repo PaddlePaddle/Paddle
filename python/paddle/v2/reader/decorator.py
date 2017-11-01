@@ -323,3 +323,101 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
                 yield sample
 
     return xreader
+
+
+def _buf2lines(buf, line_break="\n"):
+    # FIXME: line_break should be automatically configured.
+    lines = buf.split(line_break)
+    return lines[:-1], lines[-1]
+
+
+def pipe_reader(left_cmd,
+                parser,
+                bufsize=8192,
+                file_type="plain",
+                cut_lines=True,
+                line_break="\n"):
+    """
+    pipe_reader read data by stream from a command, take it's 
+    stdout into a pipe buffer and redirect it to the parser to
+    parse, then yield data as your desired format.
+
+    You can using standard linux command or call another program
+    to read data, from HDFS, Ceph, URL, AWS S3 etc:
+
+    cmd = "hadoop fs -cat /path/to/some/file"
+    cmd = "cat sample_file.tar.gz"
+    cmd = "curl http://someurl"
+    cmd = "python print_s3_bucket.py"
+
+    A sample parser:
+    
+    def sample_parser(lines):
+        # parse each line as one sample data,
+        # return a list of samples as batches.
+        ret = []
+        for l in lines:
+            ret.append(l.split(" ")[1:5])
+        return ret
+
+    :param left_cmd: command to excute to get stdout from.
+    :type left_cmd: string
+    :param parser: parser function to parse lines of data.
+                   if cut_lines is True, parser will receive list
+                   of lines.
+                   if cut_lines is False, parser will receive a
+                   raw buffer each time.
+                   parser should return a list of parsed values.
+    :type parser: callable
+    :param bufsize: the buffer size used for the stdout pipe.
+    :type bufsize: int
+    :param file_type: can be plain/gzip, stream buffer data type.
+    :type file_type: string
+    :param cut_lines: whether to pass lines instead of raw buffer
+                      to the parser
+    :type cut_lines: bool
+    :param line_break: line break of the file, like \n or \r
+    :type line_break: string
+
+    :return: the reader generator.
+    :rtype: callable
+    """
+    if not isinstance(left_cmd, str):
+        raise TypeError("left_cmd must be a string")
+    if not callable(parser):
+        raise TypeError("parser must be a callable object")
+
+    process = subprocess.Popen(
+        left_cmd.split(" "), bufsize=bufsize, stdout=subprocess.PIPE)
+    # TODO(typhoonzero): add a thread to read stderr
+
+    # Always init a decompress object is better than
+    # create in the loop.
+    dec = zlib.decompressobj(
+        32 + zlib.MAX_WBITS)  # offset 32 to skip the header
+
+    def reader():
+        remained = ""
+        while True:
+            buff = process.stdout.read(bufsize)
+            if buff:
+                if file_type == "gzip":
+                    decomp_buff = dec.decompress(buff)
+                elif file_type == "plain":
+                    decomp_buff = buff
+                else:
+                    raise TypeError("file_type %s is not allowed" % file_type)
+
+                if cut_lines:
+                    lines, remained = _buf2lines(''.join(
+                        [remained, decomp_buff]), line_break)
+                    parsed_list = parser(lines)
+                    for ret in parsed_list:
+                        yield ret
+                else:
+                    for ret in parser(decomp_buff):
+                        yield ret
+            else:
+                break
+
+    return reader
