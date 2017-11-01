@@ -52,7 +52,7 @@ void AddOp(const std::string &type, const f::VariableNameMap &inputs,
 
 TEST(Prune, one_operator) {
   f::ProgramDescBind program;
-  f::BlockDescBind *block = program.Block(0);
+  f::BlockDescBind *block = program.MutableBlock(0);
 
   AddOp("one_one", {{"input", {"a"}}}, {{"output", {"b"}}}, {}, block);
 
@@ -69,7 +69,7 @@ TEST(Prune, one_operator) {
 
 TEST(Prune, forward) {
   f::ProgramDescBind program;
-  f::BlockDescBind *block = program.Block(0);
+  f::BlockDescBind *block = program.MutableBlock(0);
 
   AddOp("one_one", {{"input", {"a"}}}, {{"output", {"b"}}}, {}, block);
   AddOp("one_one", {{"input", {"b"}}}, {{"output", {"c"}}}, {}, block);
@@ -88,7 +88,7 @@ TEST(Prune, forward) {
 
 TEST(Prune, multi_input_op) {
   f::ProgramDescBind program;
-  f::BlockDescBind *block = program.Block(0);
+  f::BlockDescBind *block = program.MutableBlock(0);
 
   AddOp("one_one", {{"input", {"a0"}}}, {{"output", {"b0"}}}, {}, block);
   AddOp("one_one", {{"input", {"a1"}}}, {{"output", {"b1"}}}, {}, block);
@@ -106,7 +106,7 @@ TEST(Prune, multi_input_op) {
 
 TEST(Prune, multi_output_op) {
   f::ProgramDescBind program;
-  f::BlockDescBind *block = program.Block(0);
+  f::BlockDescBind *block = program.MutableBlock(0);
 
   AddOp("one_two", {{"input", {"a"}}}, {{"output", {"b", "c"}}}, {}, block);
   AddOp("one_one", {{"input", {"b"}}}, {{"output", {"b1"}}}, {}, block);
@@ -122,7 +122,7 @@ TEST(Prune, multi_output_op) {
 
 TEST(Prune, multi_target) {
   f::ProgramDescBind program;
-  f::BlockDescBind *block = program.Block(0);
+  f::BlockDescBind *block = program.MutableBlock(0);
 
   AddOp("one_two", {{"input", {"a"}}}, {{"output", {"b", "c"}}}, {}, block);
   AddOp("one_one", {{"input", {"b"}}}, {{"output", {"b1"}}}, {}, block);
