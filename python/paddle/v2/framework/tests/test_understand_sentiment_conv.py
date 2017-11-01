@@ -101,6 +101,7 @@ def main():
 
             #import pdb
             # pdb.set_trace()
+            exit(0)
 
 
 if __name__ == '__main__':
