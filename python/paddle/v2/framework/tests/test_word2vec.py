@@ -53,7 +53,7 @@ next_word = layers.data(
     program=program,
     init_program=init_program)
 
-embed_param_init = NormalInitializer(std=0.001)
+embed_param_init = NormalInitializer(scale=0.001)
 
 embed_param_attr = {'name': 'shared_w', 'initializer': embed_param_init}
 # the shared param attr should not have initializer
@@ -102,7 +102,7 @@ concat_embed = layers.concat(
     program=program,
     init_program=init_program)
 
-hidden1_param_init = NormalInitializer(std=1 / math.sqrt(embed_size * 8))
+hidden1_param_init = NormalInitializer(scale=1 / math.sqrt(embed_size * 8))
 hidden1_param_attr = {'initializer': hidden1_param_init}
 hidden1_bias_attr = {'optimize_attr': {'learning_rate': 2.0}}
 
