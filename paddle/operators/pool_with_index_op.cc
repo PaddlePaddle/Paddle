@@ -46,8 +46,10 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
 
     if (ctx->Attrs().Get<bool>("globalPooling")) {
       ksize.resize(static_cast<size_t>(in_x_dims.size()) - 2);
-      for (size_t i = 0; i < ksize.size(); ++i)
+      for (size_t i = 0; i < ksize.size(); ++i) {
+        paddings[i] = 0;
         ksize[i] = static_cast<int>(in_x_dims[i + 2]);
+      }
     }
 
     PADDLE_ENFORCE(in_x_dims.size() - ksize.size() == 2U,
@@ -87,31 +89,33 @@ class MaxPool2dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(
         "X",
-        "(Tensor) The input tensor of pooling operator. "
+        "(Tensor), the input tensor of pooling operator. "
         "The format of input tensor is NCHW. Where N is batch size, C is the "
         "number of channels, H and W is the height and width of image.");
     AddOutput("Out",
-              "(Tensor) The output tensor of pooling operator."
+              "(Tensor), the output tensor of pooling operator."
               "The format of output tensor is also NCHW."
               "Where N is batch size, C is "
               "the number of channels, H and W is the height and "
               "width of image.");
     AddOutput("Mask",
-              "(Tensor) The Mask tensor of pooling operator."
+              "(Tensor), the Mask tensor of pooling operator."
               "The format of output tensor is also NCHW."
               "Where N is batch size, C is the number of channels, H and W "
               "is the height and width of image."
               "The value in it is the index in current feature map");
 
-    AddAttr<std::vector<int>>(
-        "ksize",
-        "(vector ), the pooling window size(height, width) of pooling operator."
-        "If globalPooling = true, ksize is ignored and need not be "
-        "specified.");  // TODO(Chengduo): Add checker. (Currently,
+    AddAttr<std::vector<int>>("ksize",
+                              "(vector ), the pooling window size(height, "
+                              "width) of pooling operator."
+                              "If globalPooling = true, ksize and paddings "
+                              "will be ignored.");  // TODO(Chengduo): Add
+                                                    // checker. (Currently,
     // TypedAttrChecker don't support vector type.)
-    AddAttr<bool>("globalPooling",
-                  "(bool default: false), whether to use the global pooling."
-                  "If globalPooling = true, ksize is ignored.")
+    AddAttr<bool>(
+        "globalPooling",
+        "(bool default: false), whether to use the global pooling."
+        "If globalPooling = true, ksize and paddings will be ignored.")
         .SetDefault(false);
     AddAttr<std::vector<int>>(
         "strides",
@@ -120,7 +124,8 @@ class MaxPool2dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
     // TypedAttrChecker don't support vector type.)
     AddAttr<std::vector<int>>(
         "paddings",
-        "(vector defalut:{0,0}), paddings(height, width) of pooling operator.")
+        "(vector defalut:{0, 0}), paddings(height, width) of pooling operator."
+        "If globalPooling = true, paddings and will be ignored.")
         .SetDefault({0, 0});  // TODO(Chengduo): Add checker. (Currently,
     // TypedAttrChecker don't support vector type.)
 
@@ -153,42 +158,46 @@ class MaxPool3dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(
         "X",
-        "(Tensor) The input tensor of pooling operator. "
+        "(Tensor), the input tensor of pooling operator. "
         "The format of input tensor is NCDHW. Where N is batch size, C is "
         "the number of channels, D, H and W is the depth, height and width of "
         "image.");
     AddOutput("Out",
-              "(Tensor) The output tensor of pooling operator."
+              "(Tensor), the output tensor of pooling operator."
               "The format of output tensor is also NCDHW."
               "Where N is batch size, C is "
               "the number of channels, D, H and W is the depth, height and "
               "width of image.");
     AddOutput("Mask",
-              "(Tensor) The Mask tensor of pooling operator."
+              "(Tensor), the Mask tensor of pooling operator."
               "The format of output tensor is also NCDHW."
               "Where N is batch size, C is the number of channels, D, H and W "
               "is the depth, height and width of image."
               "The value in it is the index in current feature map");
 
-    AddAttr<std::vector<int>>(
-        "ksize",
-        "(vector ), the pooling window size(depth, height, width) of pooling "
-        "operator."
-        "If globalPooling = true, ksize is ignored and need not be "
-        "specified.");  // TODO(Chengduo): Add checker. (Currently,
+    AddAttr<std::vector<int>>("ksize",
+                              "(vector), the pooling window size(depth, "
+                              "height, width) of pooling "
+                              "operator."
+                              "If globalPooling = true, ksize and paddings "
+                              "will be ignored.");  // TODO(Chengduo): Add
+                                                    // checker. (Currently,
     // TypedAttrChecker don't support vector type.)
-    AddAttr<bool>("globalPooling",
-                  "(bool default: false), whether to use the global pooling."
-                  "If globalPooling = true, ksize is ignored.")
+    AddAttr<bool>(
+        "globalPooling",
+        "(bool default: false), whether to use the global pooling."
+        "If globalPooling = true, ksize and paddings will be ignored.")
         .SetDefault(false);
     AddAttr<std::vector<int>>("strides",
                               "(vector, default:{1,1,1}), strides(depth, "
                               "height, width) of pooling operator.")
         .SetDefault({1, 1, 1});  // TODO(Chengduo): Add checker. (Currently,
     // TypedAttrChecker don't support vector type.)
-    AddAttr<std::vector<int>>("paddings",
-                              "(vector defalut:{0,0,0}), paddings(depth, "
-                              "height, width) of pooling operator.")
+    AddAttr<std::vector<int>>(
+        "paddings",
+        "(vector defalut:{0,0,0}), paddings(depth, "
+        "height, width) of pooling operator."
+        "If globalPooling = true, paddings and ksize will be ignored.")
         .SetDefault({0, 0, 0});  // TODO(Chengduo): Add checker. (Currently,
     // TypedAttrChecker don't support vector type.)
 

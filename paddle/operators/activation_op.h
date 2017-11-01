@@ -547,6 +547,7 @@ struct ELUGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+// FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5198
 template <typename T>
 struct PowFunctor : public BaseActivationFunctor<T> {
   float factor;

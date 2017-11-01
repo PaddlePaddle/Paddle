@@ -73,33 +73,32 @@ static void CreateTensor(Variable* var, VarDesc::VarType var_type) {
   }
 }
 
-void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
+void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id) {
   // TODO(tonyyang-svail):
   //    - only runs on the first device (i.e. no interdevice communication)
   //    - will change to use multiple blocks for RNN op and Cond Op
-  PADDLE_ENFORCE_GT(pdesc.blocks_size(), block_id);
-  auto& block = pdesc.blocks(block_id);
+  PADDLE_ENFORCE_LT(block_id, pdesc.Size());
+  auto& block = pdesc.Block(block_id);
   auto& device = device_contexts_[0];
 
   Scope& local_scope = scope->NewScope();
 
-  for (auto& var : block.vars()) {
-    if (var.persistable()) {
-      auto* ptr = scope->Var(var.name());
-      CreateTensor(ptr, var.type());
-      VLOG(3) << "Create Variable " << var.name()
+  for (auto& var : block.AllVars()) {
+    if (var->Persistable()) {
+      auto* ptr = scope->Var(var->Name());
+      CreateTensor(ptr, var->GetType());
+      VLOG(3) << "Create Variable " << var->Name()
               << " global, which pointer is " << ptr;
     } else {
-      auto* ptr = local_scope.Var(var.name());
-      CreateTensor(ptr, var.type());
-      VLOG(3) << "Create Variable " << var.name()
+      auto* ptr = local_scope.Var(var->Name());
+      CreateTensor(ptr, var->GetType());
+      VLOG(3) << "Create Variable " << var->Name()
               << " locally, which pointer is " << ptr;
     }
   }
 
-  for (auto& op_desc : block.ops()) {
-    auto op = paddle::framework::OpRegistry::CreateOp(
-        op_desc, const_cast<ProgramDesc*>(&pdesc));
+  for (auto& op_desc : block.AllOps()) {
+    auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
     op->Run(local_scope, *device);
   }
 
