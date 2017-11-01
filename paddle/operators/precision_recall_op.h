@@ -30,7 +30,7 @@ template <typename Place, typename T>
 class PrecisionRecallKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in0 = ctx.Input<Tensor>("Predictions");
+    auto* in0 = ctx.Input<Tensor>("Indices");
     auto* in1 = ctx.Input<Tensor>("Labels");
     auto* in2 = ctx.Input<Tensor>("Weights");
     auto* in3 = ctx.Input<Tensor>("StatesInfo");
@@ -38,8 +38,9 @@ class PrecisionRecallKernel : public framework::OpKernel<T> {
     auto* out1 = ctx.Output<Tensor>("AccumMetrics");
     auto* out2 = ctx.Output<Tensor>("AccumStatesInfo");
 
-    const T* predictions_data = in0->data<T>();
+    const int* ids_data = in0->data<int>();
     const int* labels_data = in1->data<int>();
+    size_t cls_num = static_cast<size_t>(ctx.Attr<int>("class_number"));
     const T* weights_data = in2 ? in2->data<T>() : nullptr;
     const T* states_data = in3 ? in3->data<T>() : nullptr;
     double* batch_metrics_data = out0->mutable_data<double>(ctx.GetPlace());
@@ -50,43 +51,42 @@ class PrecisionRecallKernel : public framework::OpKernel<T> {
     T* accum_states_data = out2->data<T>();
 
     size_t sample_num = in0->dims()[0];
-    size_t class_dim = in0->dims()[1];
     size_t state_var_num = 4;  // TP FP TN FN
 
     // get states info for current batch
     for (size_t i = 0; i < sample_num; ++i) {
-      size_t max_idx = 0;
-      T max_val = predictions_data[i * class_dim];
-      for (size_t j = 1; j < class_dim; ++j) {
-        if (max_val < predictions_data[i * class_dim + j]) {
-          max_idx = j;
-          max_val = predictions_data[i * class_dim + j];
-        }
-      }
+      size_t idx = ids_data[i];
+      size_t label = labels_data[i];
+
+      PADDLE_ENFORCE(idx >= 0 && idx < cls_num,
+                     "Class index of each instance should be in "
+                     "[0, class_number).");
+      PADDLE_ENFORCE(label >= 0 && label < cls_num,
+                     "Label of each instance should be in [0, class_number).");
 
       T w = weights_data ? weights_data[i] : 1.0;
-      if (max_idx == labels_data[i]) {
-        accum_states_data[max_idx * state_var_num + TP] += w;
-        for (size_t j = 0; j < class_dim; ++j) {
+      if (idx == label) {
+        accum_states_data[idx * state_var_num + TP] += w;
+        for (size_t j = 0; j < cls_num; ++j) {
           accum_states_data[j * state_var_num + TN] += w;
         }
-        accum_states_data[max_idx * state_var_num + TN] -= w;
+        accum_states_data[idx * state_var_num + TN] -= w;
       } else {
-        accum_states_data[labels_data[i] * state_var_num + FN] += w;
-        accum_states_data[max_idx * state_var_num + FP] += w;
-        for (size_t j = 0; j < class_dim; ++j) {
+        accum_states_data[label * state_var_num + FN] += w;
+        accum_states_data[idx * state_var_num + FP] += w;
+        for (size_t j = 0; j < cls_num; ++j) {
           accum_states_data[j * state_var_num + TN] += w;
         }
-        accum_states_data[max_idx * state_var_num + TN] -= w;
-        accum_states_data[labels_data[i] * state_var_num + TN] -= w;
+        accum_states_data[idx * state_var_num + TN] -= w;
+        accum_states_data[label * state_var_num + TN] -= w;
       }
     }
 
     ComputeMetrics(accum_states_data, batch_metrics_data, state_var_num,
-                   class_dim);
+                   cls_num);
 
     if (states_data) {
-      for (size_t i = 0; i < class_dim; ++i) {
+      for (size_t i = 0; i < cls_num; ++i) {
         for (size_t j = 0; j < state_var_num; ++j) {
           size_t idx = i * state_var_num + j;
           accum_states_data[idx] += states_data[idx];
@@ -95,7 +95,7 @@ class PrecisionRecallKernel : public framework::OpKernel<T> {
     }
 
     ComputeMetrics(accum_states_data, accum_metrics_data, state_var_num,
-                   class_dim);
+                   cls_num);
   }
 
   // expose to be reused
@@ -122,14 +122,14 @@ class PrecisionRecallKernel : public framework::OpKernel<T> {
 
  protected:
   void ComputeMetrics(const T* states_data, double* metrics_data,
-                      size_t state_var_num, size_t class_dim) const {
+                      size_t state_var_num, size_t cls_num) const {
     T total_tp_count = 0;
     T total_fp_count = 0;
     T total_fn_count = 0;
     T macro_avg_precision = 0.0;
     T macro_avg_recall = 0.0;
 
-    for (size_t i = 0; i < class_dim; ++i) {
+    for (size_t i = 0; i < cls_num; ++i) {
       T tp_count = states_data[i * state_var_num + TP];
       T fp_count = states_data[i * state_var_num + FP];
       T fn_count = states_data[i * state_var_num + FN];
@@ -139,8 +139,8 @@ class PrecisionRecallKernel : public framework::OpKernel<T> {
       macro_avg_precision += CalcPrecision(tp_count, fp_count);
       macro_avg_recall += CalcRecall(tp_count, fn_count);
     }
-    macro_avg_precision /= class_dim;
-    macro_avg_recall /= class_dim;
+    macro_avg_precision /= cls_num;
+    macro_avg_recall /= cls_num;
     T macro_f1_score = CalcF1Score(macro_avg_precision, macro_avg_recall);
 
     T micro_avg_precision = CalcPrecision(total_tp_count, total_fp_count);

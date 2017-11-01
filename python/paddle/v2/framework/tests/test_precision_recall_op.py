@@ -21,45 +21,44 @@ def calc_f1_score(precision, recall):
     return 0.0
 
 
-def get_states(predictions, labels, weights=None):
-    ins_num = predictions.shape[0]
-    class_num = predictions.shape[1]
+def get_states(idxs, labels, cls_num, weights=None):
+    ins_num = idxs.shape[0]
     # TP FP TN FN
-    states = np.zeros((class_num, 4)).astype('float32')
+    states = np.zeros((cls_num, 4)).astype('float32')
     for i in xrange(ins_num):
         w = weights[i] if weights is not None else 1.0
-        max_idx = np.argmax(predictions[i])
-        if max_idx == labels[i][0]:
-            states[max_idx][0] += w
-            for j in xrange(class_num):
+        idx = idxs[i][0]
+        label = labels[i][0]
+        if idx == label:
+            states[idx][0] += w
+            for j in xrange(cls_num):
                 states[j][2] += w
-            states[max_idx][2] -= w
+            states[idx][2] -= w
         else:
-            states[labels[i][0]][3] += w
-            states[max_idx][1] += w
-            for j in xrange(class_num):
+            states[label][3] += w
+            states[idx][1] += w
+            for j in xrange(cls_num):
                 states[j][2] += w
-            states[labels[i][0]][2] -= w
-            states[max_idx][2] -= w
+            states[label][2] -= w
+            states[idx][2] -= w
     return states
 
 
-def compute_metrics(states):
-    class_num = states.shape[0]
+def compute_metrics(states, cls_num):
     total_tp_count = 0.0
     total_fp_count = 0.0
     total_fn_count = 0.0
     macro_avg_precision = 0.0
     macro_avg_recall = 0.0
-    for i in xrange(class_num):
+    for i in xrange(cls_num):
         total_tp_count += states[i][0]
         total_fp_count += states[i][1]
         total_fn_count += states[i][3]
         macro_avg_precision += calc_precision(states[i][0], states[i][1])
         macro_avg_recall += calc_recall(states[i][0], states[i][3])
     metrics = []
-    macro_avg_precision /= class_num
-    macro_avg_recall /= class_num
+    macro_avg_precision /= cls_num
+    macro_avg_recall /= cls_num
     metrics.append(macro_avg_precision)
     metrics.append(macro_avg_recall)
     metrics.append(calc_f1_score(macro_avg_precision, macro_avg_recall))
@@ -75,15 +74,18 @@ class TestPrecisionRecallOp_0(OpTest):
     def setUp(self):
         self.op_type = "precision_recall"
         ins_num = 64
-        class_num = 10
-        predictions = np.random.uniform(0, 1.0,
-                                        (ins_num, class_num)).astype('float32')
-        labels = np.random.choice(xrange(class_num), ins_num).reshape(
+        cls_num = 10
+        max_probs = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
+        idxs = np.random.choice(xrange(cls_num), ins_num).reshape(
             (ins_num, 1)).astype('int32')
-        states = get_states(predictions, labels)
-        metrics = compute_metrics(states)
+        labels = np.random.choice(xrange(cls_num), ins_num).reshape(
+            (ins_num, 1)).astype('int32')
+        states = get_states(idxs, labels, cls_num)
+        metrics = compute_metrics(states, cls_num)
 
-        self.inputs = {'Predictions': predictions, 'Labels': labels}
+        self.attrs = {'class_number': cls_num}
+
+        self.inputs = {'MaxProbs': max_probs, 'Indices': idxs, 'Labels': labels}
 
         self.outputs = {
             'BatchMetrics': metrics,
@@ -99,18 +101,22 @@ class TestPrecisionRecallOp_1(OpTest):
     def setUp(self):
         self.op_type = "precision_recall"
         ins_num = 64
-        class_num = 10
-        predictions = np.random.uniform(0, 1.0,
-                                        (ins_num, class_num)).astype('float32')
+        cls_num = 10
+        max_probs = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
+        idxs = np.random.choice(xrange(cls_num), ins_num).reshape(
+            (ins_num, 1)).astype('int32')
         weights = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
-        predictions = np.random.random((ins_num, class_num)).astype('float32')
-        labels = np.random.choice(xrange(class_num), ins_num).reshape(
+        labels = np.random.choice(xrange(cls_num), ins_num).reshape(
             (ins_num, 1)).astype('int32')
 
-        states = get_states(predictions, labels, weights)
-        metrics = compute_metrics(states)
+        states = get_states(idxs, labels, cls_num, weights)
+        metrics = compute_metrics(states, cls_num)
+
+        self.attrs = {'class_number': cls_num}
+
         self.inputs = {
-            'Predictions': predictions,
+            'MaxProbs': max_probs,
+            'Indices': idxs,
             'Labels': labels,
             'Weights': weights
         }
@@ -129,22 +135,25 @@ class TestPrecisionRecallOp_2(OpTest):
     def setUp(self):
         self.op_type = "precision_recall"
         ins_num = 64
-        class_num = 10
-        predictions = np.random.uniform(0, 1.0,
-                                        (ins_num, class_num)).astype('float32')
-        weights = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
-        predictions = np.random.random((ins_num, class_num)).astype('float32')
-        labels = np.random.choice(xrange(class_num), ins_num).reshape(
+        cls_num = 10
+        max_probs = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
+        idxs = np.random.choice(xrange(cls_num), ins_num).reshape(
             (ins_num, 1)).astype('int32')
-        states = np.random.randint(0, 30, (class_num, 4)).astype('float32')
+        weights = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
+        labels = np.random.choice(xrange(cls_num), ins_num).reshape(
+            (ins_num, 1)).astype('int32')
+        states = np.random.randint(0, 30, (cls_num, 4)).astype('float32')
 
-        accum_states = get_states(predictions, labels, weights)
-        batch_metrics = compute_metrics(accum_states)
+        accum_states = get_states(idxs, labels, cls_num, weights)
+        batch_metrics = compute_metrics(accum_states, cls_num)
         accum_states += states
-        accum_metrics = compute_metrics(accum_states)
+        accum_metrics = compute_metrics(accum_states, cls_num)
+
+        self.attrs = {'class_number': cls_num}
 
         self.inputs = {
-            'Predictions': predictions,
+            'MaxProbs': max_probs,
+            'Indices': idxs,
             'Labels': labels,
             'Weights': weights,
             'StatesInfo': states

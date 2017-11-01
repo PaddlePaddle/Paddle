@@ -22,8 +22,10 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Predictions"),
-                   "Input(Predictions) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("MaxProbs"),
+                   "Input(MaxProbs) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Indices"),
+                   "Input(Indices) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Labels"),
                    "Input(Labels) should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("BatchMetrics"),
@@ -33,34 +35,36 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("AccumStatesInfo"),
                    "Output(AccumStatesInfo) should not be null.");
 
-    auto predictions_dims = ctx->GetInputDim("Predictions");
+    int64_t cls_num =
+        static_cast<int64_t>(ctx->Attrs().Get<int>("class_number"));
+    auto max_probs_dims = ctx->GetInputDim("MaxProbs");
     auto labels_dims = ctx->GetInputDim("Labels");
 
+    PADDLE_ENFORCE_EQ(max_probs_dims[1], 1,
+                      "Each instance contains one max probability, so the "
+                      "shape of Input(MaxProbs) should be [batch_size, 1].");
+    PADDLE_ENFORCE_EQ(ctx->GetInputDim("Indices"), max_probs_dims,
+                      "The shape of Input(Indices) should be [batch_size, 1].");
+    PADDLE_ENFORCE_EQ(max_probs_dims[0], labels_dims[0],
+                      "The 1st dimension of Input(MaxProbs) and "
+                      "Input(Labels) both are batch_size and the shape should "
+                      "be the same.");
+    PADDLE_ENFORCE_EQ(labels_dims[1], 1,
+                      "The 2nd dimension of Input(Labels) contains instance "
+                      "label and the shape should be equal to 1.");
     if (ctx->HasInput("Weights")) {
       auto weights_dims = ctx->GetInputDim("Weights");
       PADDLE_ENFORCE_EQ(weights_dims,
-                        framework::make_ddim({predictions_dims[0], 1}),
+                        framework::make_ddim({max_probs_dims[0], 1}),
                         "The shape of Input(Weights) should be "
                         "[batch_size, 1].");
     }
     if (ctx->HasInput("StatesInfo")) {
       auto states_dims = ctx->GetInputDim("StatesInfo");
-      PADDLE_ENFORCE_EQ(states_dims,
-                        framework::make_ddim({predictions_dims[1], 4}),
+      PADDLE_ENFORCE_EQ(states_dims, framework::make_ddim({cls_num, 4}),
                         "The shape of Input(StatesInfo) should be "
                         "[class_number, 4].");
     }
-    PADDLE_ENFORCE_EQ(predictions_dims[0], labels_dims[0],
-                      "The 1st dimension of Input(Predictions) and "
-                      "Input(Labels) both are batch_size and the shape should "
-                      "be the same.");
-    PADDLE_ENFORCE_EQ(labels_dims[1], 1,
-                      "The 2nd dimension of Input(Labels) "
-                      "contains instance label and the shape should be equal "
-                      "to 1");
-    PADDLE_ENFORCE_GE(predictions_dims[1], 1,
-                      "The shape of Input(Predictions)'s 2nd dimension is "
-                      "equal to class number and should be at least 1.");
 
     // Layouts of BatchMetrics and AccumMetrics both are:
     // [
@@ -72,13 +76,13 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
     // Shape of AccumStatesInfo is [class_number, 4]
     // The layout of each row is:
     // [ TP, FP, TN, FN ]
-    ctx->SetOutputDim("AccumStatesInfo", {predictions_dims[1], 4});
+    ctx->SetOutputDim("AccumStatesInfo", {cls_num, 4});
   }
 
  protected:
   framework::DataType IndicateDataType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("Predictions")->type());
+    return framework::ToDataType(ctx.Input<Tensor>("MaxProbs")->type());
   }
 };
 
@@ -87,11 +91,15 @@ class PrecisionRecallOpMaker : public framework::OpProtoAndCheckerMaker {
   PrecisionRecallOpMaker(framework::OpProto *proto,
                          framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("Predictions",
-             "(Tensor, default Tensor<float>), a 2-D tensor with shape N x D, "
-             "where N is the batch size and D is the number of classes. "
-             "Each row contains probabilities for an instance which computed "
-             "by the previous operator.");
+    AddInput("MaxProbs",
+             "(Tensor, default Tensor<float>), a 2-D tensor with shape N x 1, "
+             "where N is the batch size. Each row contains the max probability "
+             "of an instance which computed by the previous top_k (k=1) "
+             "operator.");
+    AddInput("Indices",
+             "(Tensor, default Tensor<int>), a 2-D tensor with shape N x 1, "
+             "where N is the batch size. Each row contains the corresponding "
+             "index which computed by the previous top_k (k=1) operator.");
     AddInput("Labels",
              "(Tensor, default Tensor<int>), a 2-D tensor with shape N x 1, "
              "where N is the batch size. Each element is a label and the "
@@ -125,9 +133,9 @@ class PrecisionRecallOpMaker : public framework::OpProtoAndCheckerMaker {
               "accumulated state variables used to compute metrics. The layout "
               "for each class is [true positives, false positives, "
               "true negatives, false negatives].");
-
+    AddAttr<int>("class_number", "Number of classes to be evaluated.");
     AddComment(R"DOC(
-When given 'Input(Predictions)' and 'Input(Labels)', this operator can be used
+When given 'Input(Indices)' and 'Input(Labels)', this operator can be used
 to compute various metrics including:
   - macro average precision
   - macro average recall
@@ -141,7 +149,7 @@ false positives and false negatives. Here count of true negatives is not
 necessary, but counting it may provide potential usage and the cost is
 trivial, so the operator also provides count of true negatives.
 
-We define state as a 2-D tensor with shape [class number, 4]. Each row of a
+We define state as a 2-D tensor with shape [class_number, 4]. Each row of a
 state contains statistic variables for corresponding class. Layout of each row
 is: TP(true positives), FP(false positives), TN(true negatives),
 FN(false negatives). If 'Input(Weights)' provided, TP, FP, TN, FN will be
