@@ -37,32 +37,32 @@ ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
   PADDLE_ENFORCE_LE(ins.size(), 1UL,
-                    "Op %s input %s should contain only one variable", type_,
-                    name);
+                    "Operator %s's input %s should contain only one variable.",
+                    type_, name);
   return ins.empty() ? kEmptyVarName : ins[0];
 }
 
 const std::vector<std::string>& OperatorBase::Inputs(
     const std::string& name) const {
   auto it = inputs_.find(name);
-  PADDLE_ENFORCE(it != inputs_.end(), "Op %s do not have input %s", type_,
-                 name);
+  PADDLE_ENFORCE(it != inputs_.end(), "Operator %s does not have the input %s.",
+                 type_, name);
   return it->second;
 }
 
 std::string OperatorBase::Output(const std::string& name) const {
   auto& outs = Outputs(name);
   PADDLE_ENFORCE_LE(outs.size(), 1UL,
-                    "Op %s output %s should contain only one variable", type_,
-                    name);
+                    "Operator %s's output %s should contain only one variable.",
+                    type_, name);
   return outs.empty() ? kEmptyVarName : outs[0];
 }
 
 const std::vector<std::string>& OperatorBase::Outputs(
     const std::string& name) const {
   auto it = outputs_.find(name);
-  PADDLE_ENFORCE(it != outputs_.end(), "Op %s does not have output called %s",
-                 type_, name);
+  PADDLE_ENFORCE(it != outputs_.end(),
+                 "Operator %s does not have an output called %s.", type_, name);
   return it->second;
 }
 
