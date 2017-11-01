@@ -131,27 +131,19 @@ class LayerHelper(object):
     def create_variable(self, *args, **kwargs):
         return self.program.current_block().create_var(*args, **kwargs)
 
-    def create_global_variable(self, *args, **kwargs):
+    def create_global_variable(self, persistable=False, *args, **kwargs):
         return self.program.global_block().create_var(
-            *args, persistable=False, **kwargs)
+            *args, persistable=persistable, **kwargs)
 
-    @staticmethod
-    def create_global_persistable_var(init_program, block, initializer, prefix,
-                                      *args, **kwargs):
-        """
-        create a persistable var in init_program.global_block and current block.
-        """
-        if not isinstance(init_program, Program):
-            raise ValueError("must have init_program")
-        if init_program.global_block() == block:
-            raise ValueError(
-                "this method should not call on init_program.global_block()")
-        var_name = unique_name(prefix)
-        kwargs['persistable'] = True
-        init_program.global_block().create_var(
-            name=var_name, initializer=initializer, *args, **kwargs)
-        var = Variable(block, name=var_name, *args, **kwargs)
-        return var
+    def set_variable_initializer(self, var, initializer):
+        assert isinstance(var, Variable)
+        self.init_program.global_block().create_var(
+            name=var.name,
+            type=var.type,
+            dtype=var.data_type,
+            shape=var.shape,
+            persistable=True,
+            initializer=initializer)
 
     def append_bias_op(self, input_var, num_flatten_dims=None):
         """

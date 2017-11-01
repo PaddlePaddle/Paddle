@@ -28,7 +28,7 @@ class Optimizer(object):
         # to train. These variables are called accumulators.
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
-        self._init_program = None
+        self.helper = None
 
     def _append_optimize_op(self, block, param_and_grad):
         """ append optimize operator to block and return all the added optimize_op
@@ -67,7 +67,7 @@ class Optimizer(object):
         """
         pass
 
-    def _add_accumulator(self, block, name, param, dtype=None, fill_value=0.0):
+    def _add_accumulator(self, name, param, fill_value=0.0):
         """Utility function to add an accumulator for a parameter
 
         Args:
@@ -81,17 +81,17 @@ class Optimizer(object):
                 param.name in self._accumulators[name]):
             raise Exception("Accumulator {} already exists for parmeter {}".
                             format(name, param.name))
-        main_block = block.program.global_block()
-        param_shape = list(param.shape)
-        self._accumulators[name][
-            param.name] = LayerHelper.create_global_persistable_var(
-                init_program=self._init_program,
-                block=main_block,
-                initializer=ConstantInitializer(fill_value),
-                prefix="accumulator",
-                dtype=dtype,
-                shape=param_shape,
-                lod_level=0)
+
+        assert isinstance(self.helper, LayerHelper)
+        var = self.helper.create_global_variable(
+            name=unique_name(name),
+            persistable=True,
+            dtype=param.data_type,
+            type=param.type,
+            shape=param.shape)
+        self.helper.set_variable_initializer(
+            var, initializer=ConstantInitializer(value=float(fill_value)))
+        self._accumulators[name][param.name] = var
 
     def _get_accumulator(self, name, param):
         """Utility function to fetch an accumulator for a parameter
@@ -129,8 +129,10 @@ class Optimizer(object):
 
         return increment_op
 
-    def create_optimization_pass(self, parameters_and_grads, loss,
-                                 init_program):
+    def create_optimization_pass(self,
+                                 parameters_and_grads,
+                                 loss,
+                                 init_program=None):
         """Add optimization operators to update gradients to variables.
 
         Args:
@@ -142,6 +144,7 @@ class Optimizer(object):
           optimization. This will include parameter update ops, global step
           update ops and any other custom ops required by subclasses to manage
           their internal state.
+          :param init_program: 
         """
         # This is a default implementation of create_optimization_pass that
         # can be shared by most optimizers. This implementation assumes that
@@ -153,7 +156,10 @@ class Optimizer(object):
         # Create any accumulators
         if not isinstance(init_program, Program):
             raise ValueError("init_program should be Program")
-        self._init_program = init_program
+
+        program = loss.block.program
+        self.helper = LayerHelper(
+            self.__class__.__name__, program=program, init_program=init_program)
         self._create_accumulators(loss.block,
                                   [p[0] for p in parameters_and_grads])
         # Create any necessary tensors
@@ -182,7 +188,7 @@ class Optimizer(object):
 
     def minimize(self,
                  loss,
-                 init_program,
+                 init_program=None,
                  parameter_list=None,
                  no_grad_set=None):
         """Add operations to minimize `loss` by updating `parameter_list`.
@@ -210,22 +216,19 @@ class SGDOptimizer(Optimizer):
         self._learning_rate = learning_rate
 
     def _initialize_tensors(self, block):
-        assert isinstance(block, framework.Block)
         lr_shape = [1]
-        main_block = block.program.global_block()
         # create a variable for learning_rate
-        self._lr = LayerHelper.create_global_persistable_var(
-            init_program=self._init_program,
-            block=main_block,
-            initializer=ConstantInitializer(self._learning_rate),
-            prefix="learning_rate",
-            dtype="float32",
+        self._lr = self.helper.create_global_variable(
+            name=unique_name("learning_rate"),
+            dtype='float32',
             shape=lr_shape,
-            lod_level=0)
+            lod_level=1,
+            persistable=True)
+        self.helper.set_variable_initializer(
+            var=self._lr, initializer=ConstantInitializer(self._learning_rate))
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
-
         # create the optimize op
         sgd_op = block.append_op(
             type=self.type,
@@ -260,22 +263,21 @@ class MomentumOptimizer(Optimizer):
     def _initialize_tensors(self, block):
         assert isinstance(block, framework.Block)
         lr_shape = [1]
-        main_block = block.program.global_block()
         # create a variable for learning_rate
-        self._lr = LayerHelper.create_global_persistable_var(
-            init_program=self._init_program,
-            block=main_block,
-            initializer=ConstantInitializer(self._learning_rate),
-            prefix="learning_rate",
-            dtype="float32",
+        self._lr = self.helper.create_global_variable(
+            name=unique_name("learning_rate"),
+            dtype='float32',
             shape=lr_shape,
-            lod_level=0)
+            lod_level=1,
+            persistable=True)
+        self.helper.set_variable_initializer(
+            var=self._lr, initializer=ConstantInitializer(self._learning_rate))
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
 
         for p in parameters:
-            self._add_accumulator(block, self._velocity_acc_str, p, 'float32')
+            self._add_accumulator(self._velocity_acc_str, p)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -315,23 +317,22 @@ class AdagradOptimizer(Optimizer):
         self._epsilon = epsilon
 
     def _initialize_tensors(self, block):
-        assert isinstance(block, framework.Block)
         lr_shape = [1]
-        main_block = block.program.global_block()
-        self._lr = LayerHelper.create_global_persistable_var(
-            init_program=self._init_program,
-            block=main_block,
-            initializer=ConstantInitializer(self._learning_rate),
-            prefix="learning_rate",
-            dtype="float32",
+        # create a variable for learning_rate
+        self._lr = self.helper.create_global_variable(
+            name=unique_name("learning_rate"),
+            dtype='float32',
             shape=lr_shape,
-            lod_level=0)
+            lod_level=1,
+            persistable=True)
+        self.helper.set_variable_initializer(
+            var=self._lr, initializer=ConstantInitializer(self._learning_rate))
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
 
         for p in parameters:
-            self._add_accumulator(block, self._moment_acc_str, p, 'float32')
+            self._add_accumulator(self._moment_acc_str, p)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -379,18 +380,16 @@ class AdamOptimizer(Optimizer):
         self._epsilon = epsilon
 
     def _initialize_tensors(self, block):
-        assert isinstance(block, framework.Block)
         lr_shape = [1]
         # create a variable for learning_rate
-        main_block = block.program.global_block()
-        self._lr = LayerHelper.create_global_persistable_var(
-            init_program=self._init_program,
-            block=main_block,
-            initializer=ConstantInitializer(self._learning_rate),
-            prefix="learning_rate",
-            dtype="float32",
+        self._lr = self.helper.create_global_variable(
+            name=unique_name("learning_rate"),
+            dtype='float32',
             shape=lr_shape,
-            lod_level=0)
+            lod_level=1,
+            persistable=True)
+        self.helper.set_variable_initializer(
+            var=self._lr, initializer=ConstantInitializer(self._learning_rate))
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -398,28 +397,29 @@ class AdamOptimizer(Optimizer):
         main_block = block.program.global_block()
         # Create beta1 and beta2 power tensors
         beta_shape = [1]
-        self._beta1_pow_acc = LayerHelper.create_global_persistable_var(
-            init_program=self._init_program,
-            block=main_block,
-            initializer=ConstantInitializer(self._beta1),
-            prefix="beta1_pow_acc",
-            dtype="float32",
+        self._beta1_pow_acc = self.helper.create_global_variable(
+            name=unique_name('beta1_pow_acc'),
+            dtype='float32',
             shape=beta_shape,
-            lod_level=0)
+            lod_level=0,
+            persistable=True)
+        self.helper.set_variable_initializer(
+            self._beta1_pow_acc, initializer=ConstantInitializer(self._beta1))
 
-        self._beta2_pow_acc = LayerHelper.create_global_persistable_var(
-            init_program=self._init_program,
-            block=main_block,
-            initializer=ConstantInitializer(self._beta2),
-            prefix="beta2_pow_acc",
-            dtype="float32",
+        self._beta2_pow_acc = self.helper.create_global_variable(
+            name=unique_name('beta2_pow_acc'),
+            dtype='float32',
             shape=beta_shape,
-            lod_level=0)
+            lod_level=0,
+            persistable=True)
+
+        self.helper.set_variable_initializer(
+            self._beta2_pow_acc, initializer=ConstantInitializer(self._beta2))
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
-            self._add_accumulator(block, self._moment1_acc_str, p, 'float32')
-            self._add_accumulator(block, self._moment2_acc_str, p, 'float32')
+            self._add_accumulator(self._moment1_acc_str, p)
+            self._add_accumulator(self._moment2_acc_str, p)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -497,38 +497,33 @@ class AdamaxOptimizer(Optimizer):
         self._epsilon = epsilon
 
     def _initialize_tensors(self, block):
-        assert isinstance(block, framework.Block)
         lr_shape = [1]
-        main_block = block.program.global_block()
         # create a variable for learning_rate
-        self._lr = LayerHelper.create_global_persistable_var(
-            init_program=self._init_program,
-            block=main_block,
-            initializer=ConstantInitializer(self._learning_rate),
-            prefix="learning_rate",
-            dtype="float32",
+        self._lr = self.helper.create_global_variable(
+            name=unique_name("learning_rate"),
+            dtype='float32',
             shape=lr_shape,
-            lod_level=0)
+            lod_level=1,
+            persistable=True)
+        self.helper.set_variable_initializer(
+            var=self._lr, initializer=ConstantInitializer(self._learning_rate))
 
     def _create_accumulators(self, block, parameters):
-        assert isinstance(block, framework.Block)
-
-        main_block = block.program.global_block()
         # Create beta1 power accumulator tensor
         beta_shape = [1]
-        self._beta1_pow_acc = LayerHelper.create_global_persistable_var(
-            init_program=self._init_program,
-            block=main_block,
-            initializer=ConstantInitializer(self._beta1),
-            prefix="beta1_pow_acc",
-            dtype="float32",
+        self._beta1_pow_acc = self.helper.create_global_variable(
+            name=unique_name('beta1_pow_acc'),
+            dtype='float32',
             shape=beta_shape,
-            lod_level=0)
+            lod_level=0,
+            persistable=True)
+        self.helper.set_variable_initializer(
+            self._beta1_pow_acc, initializer=ConstantInitializer(self._beta1))
 
         # Create accumulator tensors for first moment and infinity norm
         for p in parameters:
-            self._add_accumulator(block, self._moment_acc_str, p, 'float32')
-            self._add_accumulator(block, self._inf_norm_acc_str, p, 'float32')
+            self._add_accumulator(self._moment_acc_str, p)
+            self._add_accumulator(self._inf_norm_acc_str, p)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
