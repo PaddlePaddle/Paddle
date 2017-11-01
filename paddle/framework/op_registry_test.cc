@@ -74,7 +74,7 @@ TEST(OpRegistry, CreateOp) {
   attr->set_type(paddle::framework::AttrType::FLOAT);
   attr->set_f(scale);
 
-  auto op = paddle::framework::OpRegistry::CreateOp(op_desc, nullptr);
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::framework::Scope scope;
   paddle::platform::CPUDeviceContext dev_ctx;
   op->Run(scope, dev_ctx);
@@ -95,7 +95,7 @@ TEST(OpRegistry, IllegalAttr) {
 
   bool caught = false;
   try {
-    paddle::framework::OpRegistry::CreateOp(op_desc, nullptr);
+    paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::platform::EnforceNotMet err) {
     caught = true;
     std::string msg = "larger_than check fail";
@@ -115,7 +115,7 @@ TEST(OpRegistry, DefaultValue) {
 
   ASSERT_TRUE(op_desc.IsInitialized());
 
-  auto op = paddle::framework::OpRegistry::CreateOp(op_desc, nullptr);
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::framework::Scope scope;
   paddle::platform::CPUDeviceContext dev_ctx;
   op->Run(scope, dev_ctx);
@@ -131,7 +131,7 @@ TEST(OpRegistry, CustomChecker) {
   // attr 'test_attr' is not set
   bool caught = false;
   try {
-    paddle::framework::OpRegistry::CreateOp(op_desc, nullptr);
+    paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::platform::EnforceNotMet err) {
     caught = true;
     std::string msg = "Attribute 'test_attr' is required!";
@@ -149,7 +149,7 @@ TEST(OpRegistry, CustomChecker) {
   attr->set_i(3);
   caught = false;
   try {
-    paddle::framework::OpRegistry::CreateOp(op_desc, nullptr);
+    paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::platform::EnforceNotMet err) {
     caught = true;
     std::string msg = "'test_attr' must be even!";
@@ -166,7 +166,7 @@ TEST(OpRegistry, CustomChecker) {
   attr->set_name("test_attr");
   attr->set_type(paddle::framework::AttrType::INT);
   attr->set_i(4);
-  auto op = paddle::framework::OpRegistry::CreateOp(op_desc, nullptr);
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::platform::CPUDeviceContext dev_ctx;
   paddle::framework::Scope scope;
   op->Run(scope, dev_ctx);
