@@ -12,6 +12,7 @@ import numpy as np
 init_program = Program()
 program = Program()
 is_sparse = True
+use_gpu = False
 BATCH_SIZE = 256
 
 
@@ -245,7 +246,11 @@ def main():
     opts = sgd_optimizer.minimize(cost)
     block = program.block(0)
 
-    place = core.CPUPlace()
+    if use_gpu:
+        place = core.GPUPlace(0)
+    else:
+        place = core.CPUPlace(0)
+
     exe = Executor(place)
     exe.run(init_program, feed={}, fetch_list=[])
 
@@ -300,11 +305,10 @@ def main():
                            feed=func_feed(feeding, data),
                            fetch_list=[cost])
             out = np.array(outs[0])
-            print out
-
             if out[0] < 5.0:
-                exit(
-                    0)  # if avg cost less than 10.0, we think our code is good.
+
+                # if avg cost less than 10.0, we think our code is good.
+                exit(0)
 
 
 main()
