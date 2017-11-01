@@ -6,6 +6,8 @@ On a typical device or system, there are multiple computing devices. In PaddlePa
 If a PaddlePaddle operation has both CPU and GPU implementations, we decide which kernel to execute based on the device type.  
 Training deep learning models can be resource intensive. Even with a very powerful GPU, some models can take really long to train. This is obvious with deep learning models, especially recurrent models where the execution of each step depends on the execution and output of previous step.
 
+We also need to support multi-device during inference. When using FPGA for inference, we might want to use the CPU for some operator computation, GPU for some and FPGA for the others, since FPGA does not support all operators. In this setup, we also need multi-device support to facilitate the above scenario.
+
 If we could come up with a way to optimize the usage of multiple heterogeneous devices that are available, we can achieve significant speedups during training and inference.
 
 There are two ways we could achieve this:
