@@ -67,7 +67,7 @@ struct SparseSGDFunctor<platform::GPUPlace, T> {
                   reinterpret_cast<const platform::CUDADeviceContext&>(context)
                       .stream()>>>(in_data, in_rows.data(),
                                    learning_rate.data<T>(), out_data,
-                                   in_row_numel, block_size);
+                                   in_row_numel);
   }
 };
 
