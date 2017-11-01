@@ -3,9 +3,10 @@ import paddle.v2.framework.layers as layers
 import paddle.v2.framework.core as core
 import paddle.v2.framework.optimizer as optimizer
 
-from paddle.v2.framework.framework import Program, g_program
+from paddle.v2.framework.framework import Program
 from paddle.v2.framework.executor import Executor
 from paddle.v2.framework.regularizer import L2DecayRegularizer
+from paddle.v2.framework.initializer import UniformInitializer
 
 import numpy as np
 
@@ -21,11 +22,8 @@ image = layers.data(
 
 param_attr = {
     'name': None,
-    'init_attr': {
-        'type': 'uniform_random',
-        'min': -1.0,
-        'max': 1.0
-    },
+    'initializer': UniformInitializer(
+        low=-1.0, high=1.0),
     'regularization': L2DecayRegularizer(0.0005 * BATCH_SIZE)
 }
 
