@@ -7,6 +7,11 @@ import copy
 __all__ = ['Block', 'Variable', 'Program', 'Operator']
 
 
+def unique_name(prefix):
+    uid = core.unique_integer(prefix)  # unique during whole process.
+    return "_".join([prefix, str(uid)])
+
+
 class Variable(object):
     def __init__(self,
                  block,
