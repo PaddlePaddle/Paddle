@@ -90,6 +90,9 @@ def main():
             acc_val = np.array(outs[1])
 
             print("cost=" + str(cost_val) + " acc=" + str(acc_val))
+            if cost_val < 1.0 and acc_val > 0.7:
+                exit(0)
+    exit(1)
 
 
 if __name__ == '__main__':
