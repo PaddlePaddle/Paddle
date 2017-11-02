@@ -81,6 +81,12 @@ class RNNAlgorithm {
   void LinkState(const rnn::StateAttr& state, size_t step);
 
   /*
+   * Link state@GRAD when backwards, this will add `pre_state@GRAD` to
+   * `state@GRAD` in the previous scope.
+   */
+  void LinkGradState(const rnn::StateAttr& state, size_t step);
+
+  /*
    * Link the pre-state of the first time step to the `boot-state` in parent's
    * scope.
    */
@@ -88,9 +94,21 @@ class RNNAlgorithm {
 
   /*
    * Copy the gradient from `pre-state` in the first step-scope to the
-   * `boot-state` in parent's scope.
+   * `boot-state` in parent's scope, this is only used in backward mode.
    */
   void ExportInitialStateGradient(const rnn::StateAttr& state);
+
+  /*
+   * Create parameter gradient variables in step scopes to avoid the backward
+   * algorithm change the variable in parent scope directly.
+   */
+  void CreateLocalParameterGradients();
+
+  /*
+   * Accumulate the weight gradient in all the time steps and sum to the
+   * gradient in parent scope.
+   */
+  void ExportWeightGradients();
 
   /*
    * Calculate time steps.
@@ -120,6 +138,13 @@ class RNNAlgorithm {
     PADDLE_ENFORCE(it != states_.end());
     return it->second;
   }
+
+  const framework::TensorArray& pre_state(const std::string& name) const {
+    auto it = pre_states_.find(name);
+    PADDLE_ENFORCE(it != pre_states_.end());
+    return it->second;
+  }
+
   const framework::TensorArray& step_input(const std::string& name) const {
     auto it = step_inputs_.find(name);
     PADDLE_ENFORCE(it != step_inputs_.end());
@@ -129,6 +154,14 @@ class RNNAlgorithm {
     auto it = step_outputs_.find(name);
     PADDLE_ENFORCE(it != step_outputs_.end());
     return it->second;
+  }
+  const framework::LoDTensor& step_tensor(size_t step,
+                                          const std::string& name) const {
+    PADDLE_ENFORCE_LT(step, cache_.scopes->size());
+    auto var = cache_.scopes->at(step)->FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(var, "no varialbe called %s exists in step %d",
+                            name, step);
+    return var->Get<framework::LoDTensor>();
   }
 
  protected:
@@ -143,7 +176,8 @@ class RNNAlgorithm {
 
     void Init(const rnn::ArgumentName& name, const framework::OperatorBase& op,
               const framework::Scope& scope,
-              platform::DeviceContext const* dev_ctx, rnn::Argument* arg);
+              platform::DeviceContext const* dev_ctx, rnn::Argument* arg,
+              bool is_grad);
 
     framework::Scope& GetScope(size_t index) {
       PADDLE_ENFORCE_LT(index, num_steps);
@@ -155,7 +189,8 @@ class RNNAlgorithm {
 
    private:
     void InitArgument(const rnn::ArgumentName& name,
-                      const framework::OperatorBase& op, rnn::Argument* arg);
+                      const framework::OperatorBase& op, rnn::Argument* arg,
+                      bool is_grad);
     void CacheScopes(const framework::Scope& scope, const rnn::Argument& arg);
     void CacheInlinks(const framework::Scope& scope,
                       const std::vector<std::string>& names);
@@ -168,9 +203,12 @@ class RNNAlgorithm {
  private:
   std::unique_ptr<framework::OperatorBase> step_unit_;
   std::map<std::string, framework::TensorArray> states_;
+  std::map<std::string, framework::TensorArray> pre_states_;
   std::map<std::string, framework::TensorArray> step_inputs_;
   std::map<std::string, framework::TensorArray> step_outputs_;
   std::map<std::string, std::vector<framework::DySeqMeta>> dy_seq_metas_;
+  // name of parameter variables
+  std::vector<std::string> parameters_;
   rnn::Argument arg_;
   ArgCache cache_;
   ComputeMode mode_{ComputeMode::kForward};
