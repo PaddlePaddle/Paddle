@@ -1046,8 +1046,11 @@ def fc_layer(input,
         else:
             if "parameter_name" in param_attr.attr and len(input) > 1:
                 logger.fatal(
-                    "You should set the parameter name for each of the input item."
-                )
+                    "When the name field of param_attr is manually specified "
+                    "and the input is a list, the param_attr should also be a "
+                    "list with each item being the param_attr for each input "
+                    "item. If only one named param_attr is provided, all the "
+                    "input items would share this parameter.")
             param_attr = [copy.deepcopy(param_attr) for _ in range(len(input))]
 
     assert isinstance(input, collections.Sequence)
@@ -4869,8 +4872,11 @@ def selective_fc_layer(input,
         else:
             if "parameter_name" in param_attr.attr and len(input) > 1:
                 logger.fatal(
-                    "You should set the parameter name for each of the input item."
-                )
+                    "When the name field of param_attr is manually specified "
+                    "and the input is a list, the param_attr should also be a "
+                    "list with each item being the param_attr for each input "
+                    "item. If only one named param_attr is provided, all the "
+                    "input items would share this parameter.")
             param_attr = [copy.deepcopy(param_attr) for _ in range(len(input))]
 
     assert isinstance(input, collections.Sequence)
