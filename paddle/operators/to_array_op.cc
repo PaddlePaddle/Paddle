@@ -60,8 +60,8 @@ class ToArrayOpVarTypeInference : public framework::VarTypeInference {
   }
 };
 
-}  // operators
-}  // paddle
+}  // namespace operators
+}  // namespace paddle
 
 namespace ops = paddle::operators;
 
