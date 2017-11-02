@@ -64,6 +64,9 @@ class TestGaussianRandomOp(unittest.TestCase):
         op.run(scope, context)
         tensor2 = numpy.array(scope.find_var("Out").get_tensor())
 
+        # Although tensor1 and tensor2 are sampled randomly, some values may
+        # still be identical by chance. Therefore, we choose a not-so-big,
+        # not-so-small ratio 0.95 here. 
         false_num = (tensor1 != tensor2).sum()
         self.assertGreater(false_num, int(0.95 * 1000 * 784))
 
