@@ -35,10 +35,12 @@ class TestToArrayOp(unittest.TestCase):
         for i in range(max_seq_len):
             act_result.append(core.get_fetch_variable(scope, "Out", i))
 
+        act_result = map(lambda x: np.array(x), act_result)
+
         expect_result = [[4, 0, 3], [5, 1], [6, 2], [7], [8], [9]]
         expect_result = map(lambda x: np.asarray(x, dtype=np.float32), expect_result)
 
-        self.assertEqual(len(result), 6)
+        self.assertEqual(len(act_result), 6)
         for i in range(max_seq_len):
             self.assertTrue(np.allclose(act_result[i], expect_result[i]))
 

@@ -23,7 +23,6 @@ template <typename Place, typename T>
 class ToArrayOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    LOG(INFO) << "into compute";
     auto* input_tensor = ctx.Input<framework::Tensor>("X");
     auto input_dim = input_tensor->dims();
     auto input_dim_vec = framework::vectorize(input_dim);
@@ -39,11 +38,9 @@ class ToArrayOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(table_width, 3);
 
     auto max_seq_len = table_data[1] - table_data[0];
-    LOG(INFO) << max_seq_len;
 
     auto& out = *(ctx.Output<framework::FeedFetchList>("Out"));
 
-    LOG(INFO) << "should core";
     out.resize(max_seq_len);
     auto place = ctx.GetPlace();
 
@@ -72,6 +69,7 @@ class ToArrayOpKernel : public framework::OpKernel<T> {
               .CopyFrom(
                   input_tensor->Slice(input_slice_idx, input_slice_idx + 1),
                   place, ctx.device_context());
+          out_slice_idx++;
         }
       }
     }
