@@ -1,17 +1,10 @@
 import copy
 import itertools
 
-import paddle.v2.framework.core as core
-
 from paddle.v2.framework.framework import Variable, g_program, \
-    g_init_program
+    g_init_program, unique_name, Program
 from paddle.v2.framework.initializer import ConstantInitializer, \
     UniformInitializer
-
-
-def unique_name(prefix):
-    uid = core.unique_integer(prefix)  # unique during whole process.
-    return "_".join([prefix, str(uid)])
 
 
 class LayerHelper(object):
@@ -141,9 +134,19 @@ class LayerHelper(object):
     def create_variable(self, *args, **kwargs):
         return self.program.current_block().create_var(*args, **kwargs)
 
-    def create_global_variable(self, *args, **kwargs):
+    def create_global_variable(self, persistable=False, *args, **kwargs):
         return self.program.global_block().create_var(
-            *args, persistable=False, **kwargs)
+            *args, persistable=persistable, **kwargs)
+
+    def set_variable_initializer(self, var, initializer):
+        assert isinstance(var, Variable)
+        self.init_program.global_block().create_var(
+            name=var.name,
+            type=var.type,
+            dtype=var.data_type,
+            shape=var.shape,
+            persistable=True,
+            initializer=initializer)
 
     def append_bias_op(self, input_var, num_flatten_dims=None):
         """

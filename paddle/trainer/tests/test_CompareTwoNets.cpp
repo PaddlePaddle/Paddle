@@ -26,15 +26,12 @@ DECLARE_int32(gpu_id);
 
 DECLARE_bool(local);
 DECLARE_bool(use_gpu);
-DECLARE_bool(use_mkldnn);
 
 DECLARE_string(config);
 DECLARE_string(nics);
 
 DEFINE_string(config_file_a, "", "config of one network to compare");
 DEFINE_string(config_file_b, "", "config of another network to compare");
-DEFINE_bool(use_mkldnn_a, false, "whether to use mkldnn to run config_file_a");
-DEFINE_bool(use_mkldnn_b, false, "whether to use mkldnn to run config_file_b");
 DEFINE_bool(need_high_accuracy,
             false,
             "whether need to run in double accuracy");
@@ -131,12 +128,6 @@ void compareGradient(ComData& comDataA, ComData& comDataB) {
                 matA.getWidth());
   }
 
-  if (FLAGS_use_mkldnn_a || FLAGS_use_mkldnn_b) {
-    // some format of mkldnn parameter is different with cpu
-    // test_MKLDNN will check the parameters
-    return;
-  }
-
   vector<ParameterPtr>& parametersA = comDataA.parameters;
   vector<ParameterPtr>& parametersB = comDataB.parameters;
 
@@ -176,12 +167,10 @@ void compareGradient(ComData& comDataA, ComData& comDataB) {
 
 TEST(Trainer, create) {
   ComData dataA;
-  FLAGS_use_mkldnn = FLAGS_use_mkldnn_a;
   calcGradient(dataA, FLAGS_config_file_a);
   LOG(INFO) << "\n\nforwardBackward of Network A is finished\n\n";
 
   ComData dataB;
-  FLAGS_use_mkldnn = FLAGS_use_mkldnn_b;
   calcGradient(dataB, FLAGS_config_file_b);
   LOG(INFO) << "\n\nforwardBackward of the Network B is finished\n\n";
 

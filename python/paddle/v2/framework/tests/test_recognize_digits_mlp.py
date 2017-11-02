@@ -60,8 +60,8 @@ avg_cost = layers.mean(x=cost, program=program, init_program=init_program)
 accuracy = layers.accuracy(
     input=predict, label=label, program=program, init_program=init_program)
 
-sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
-opts = sgd_optimizer.minimize(avg_cost)
+optimizer = optimizer.MomentumOptimizer(learning_rate=0.001, momentum=0.9)
+opts = optimizer.minimize(avg_cost, init_program)
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
@@ -92,11 +92,6 @@ for pass_id in range(PASS_NUM):
                              'y': tensor_y},
                        fetch_list=[avg_cost, accuracy])
         out = np.array(outs[0])
-        loss = np.array(outs[0])
-        acc = np.array(outs[1])
-        if batch_id % 10 == 0:
-            print("loss:" + str(loss) + " acc:" + str(acc))
-        batch_id = batch_id + 1
         if out[0] < 5.0:
             exit(0)  # if avg cost less than 5.0, we think our code is good.
 exit(1)
