@@ -14,7 +14,7 @@ import numpy as np
 # FIXME: parameter changed.
 
 
-def convolution_net(input_dim, class_dim=2, emb_dim=28, hid_dim=32):
+def convolution_net(input_dim, class_dim=2, emb_dim=32, hid_dim=32):
     data = layers.data(name="words", shape=[1], data_type="int64")
     label = layers.data(name="label", shape=[1], data_type="int64")
 
@@ -61,7 +61,7 @@ def to_lodtensor(data, place):
 
 
 def main():
-    BATCH_SIZE = 200
+    BATCH_SIZE = 100
     PASS_NUM = 5
 
     word_dict = paddle.dataset.imdb.word_dict()
