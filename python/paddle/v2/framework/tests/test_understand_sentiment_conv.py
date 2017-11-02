@@ -7,12 +7,13 @@ import paddle.v2.framework.optimizer as optimizer
 from paddle.v2.framework.framework import Program, g_program, g_init_program
 from paddle.v2.framework.executor import Executor
 
+import pdb
 import numpy as np
 
 # FIXME: parameter changed.
 
 
-def convolution_net(input_dim, class_dim=2, emb_dim=32, hid_dim=32):
+def convolution_net(input_dim, class_dim=2, emb_dim=32, hid_dim=16):
     data = layers.data(name="words", shape=[1], data_type="int64")
     label = layers.data(name="label", shape=[1], data_type="int64")
 
@@ -22,20 +23,20 @@ def convolution_net(input_dim, class_dim=2, emb_dim=32, hid_dim=32):
         num_filters=hid_dim,
         filter_size=3,
         act="tanh",
-        pool_type="max")
+        pool_type="MAX")
     conv_5 = nets.sequence_conv_pool(
         input=emb,
         num_filters=hid_dim,
         filter_size=5,
         act="tanh",
-        pool_type="max")
+        pool_type="MAX")
     prediction = layers.fc(input=[conv_3, conv_5],
                            size=class_dim,
                            act="softmax")
     #prediction = layers.softmax(x=before_prediction)
     cost = layers.cross_entropy(input=prediction, label=label)
     avg_cost = layers.mean(x=cost)
-    adam_optimizer = optimizer.SGDOptimizer(learning_rate=0.02)
+    adam_optimizer = optimizer.AdamOptimizer(learning_rate=0.002)
     opts = adam_optimizer.minimize(avg_cost)
     acc = layers.accuracy(input=prediction, label=label)
     return avg_cost, acc, prediction, conv_3, conv_5, emb
@@ -74,9 +75,6 @@ def main():
     place = core.CPUPlace()
     exe = Executor(place)
 
-    import pdb
-    pdb.set_trace()
-
     exe.run(g_init_program)
 
     for pass_id in xrange(PASS_NUM):
@@ -89,20 +87,38 @@ def main():
             tensor_label = core.LoDTensor()
             tensor_label.set(label, place)
 
-            outs = exe.run(
-                g_program,
-                feed={"words": tensor_words,
-                      "label": tensor_label},
-                fetch_list=[cost, acc, prediction, conv_3, conv_5, emb])
-            loss_val = np.array(outs[0])
-            acc_val = np.array(outs[1])
-            pre_val = np.array(outs[2])
+            #var_name = []
+            #var_vars = []
+            # for k, v in g_program.global_block().vars.items():
+            #    if v.type == core.VarDesc.VarType.LOD_TENSOR:
+            #        var_name.append(k)
+            #        var_vars.append(v)
+            var_names = [
+                "embedding_0.w_0", "embedding_0.w_0@GRAD",
+                "sequence_conv_0.w_0", "embedding_0.tmp_0",
+                "sequence_conv_0.tmp_0", "sequence_conv_0.w_0@GRAD",
+                "embedding_0.tmp_0@GRAD", "sequence_conv_0.tmp_0@GRAD",
+                "sequence_conv_0.tmp_1", "sequence_conv_0.tmp_1@GRAD",
+                "sequence_pool_0.tmp_0", "sequence_pool_0.tmp_0@GRAD"
+            ]
+            var_vars = [cost]
+            for n in var_names:
+                var_vars.append(g_program.global_block().var(n))
 
-            print("loss=" + str(loss_val) + " acc=" + str(acc_val))
+            var_names = ["mean_0.tmp_0"] + var_names
+
+            outs = exe.run(g_program,
+                           feed={"words": tensor_words,
+                                 "label": tensor_label},
+                           fetch_list=var_vars)
+            out_vals = map(lambda x: np.array(x), outs)
+
+            ccc = dict(zip(var_names, out_vals))
+
+            print("cost=" + str(ccc["mean_0.tmp_0"]))
             #print("pre=" + str(pre_val))
 
-            #import pdb
-            # pdb.set_trace()
+            pdb.set_trace()
 
 
 if __name__ == '__main__':

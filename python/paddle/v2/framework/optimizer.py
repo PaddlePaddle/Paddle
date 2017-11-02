@@ -154,8 +154,8 @@ class Optimizer(object):
         # for parameters and extend _finish_update method to add custom ops.
 
         # Create any accumulators
-        if not isinstance(init_program, Program):
-            raise ValueError("init_program should be Program")
+        # if not isinstance(init_program, Program):
+        #    raise ValueError("init_program should be Program")
 
         program = loss.block.program
         self.helper = LayerHelper(
@@ -198,7 +198,7 @@ class Optimizer(object):
         """
         params_grads = append_backward_ops(loss, parameter_list, no_grad_set or
                                            set())
-        # Add regularization if any 
+        # Add regularization if any
         params_grads = append_regularization_ops(params_grads)
         optimize_ops = self.create_optimization_pass(params_grads, loss,
                                                      init_program)

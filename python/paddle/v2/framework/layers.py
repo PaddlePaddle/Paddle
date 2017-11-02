@@ -357,12 +357,12 @@ def conv2d(input,
 
 
 def sequence_pool(input, pool_type, **kwargs):
-    ENUM_POOL_TYPE = set(["MAX", "AVG", "SQRT", "LAST", "FIRST"])
+    ENUM_POOL_TYPE = set(["MAX", "AVERAGE", "SQRT", "LAST", "FIRST"])
     if pool_type.upper() not in ENUM_POOL_TYPE:
         raise ValueError("Unknown pool_type: '%s'. It can only be %s.",
                          str(pool_type), " ".join(ENUM_POOL_TYPE))
 
-    helper = LayerHelper('sequence_pool', **locals())
+    helper = LayerHelper('sequence_pool', input=input, **kwargs)
     dtype = helper.input_dtype()
     pool_out = helper.create_tmp_variable(dtype)
 
@@ -492,7 +492,7 @@ def batch_norm(input,
 
 class BlockGuard(object):
     """
-    BlockGuard used to create sub-block in program by using Python `with` 
+    BlockGuard used to create sub-block in program by using Python `with`
     keyword.
     """
 
