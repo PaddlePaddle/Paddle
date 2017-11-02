@@ -67,7 +67,7 @@ class Optimizer(object):
         """
         pass
 
-    def _add_accumulator(self, name, param, fill_value=0.0):
+    def _add_accumulator(self, name, param, dtype=None, fill_value=0.0):
         """Utility function to add an accumulator for a parameter
 
         Args:
@@ -86,7 +86,7 @@ class Optimizer(object):
         var = self.helper.create_global_variable(
             name=unique_name(name),
             persistable=True,
-            dtype=param.data_type,
+            dtype=dtype or param.data_type,
             type=param.type,
             shape=param.shape)
         self.helper.set_variable_initializer(
@@ -154,9 +154,6 @@ class Optimizer(object):
         # for parameters and extend _finish_update method to add custom ops.
 
         # Create any accumulators
-        # if not isinstance(init_program, Program):
-        #    raise ValueError("init_program should be Program")
-
         program = loss.block.program
         self.helper = LayerHelper(
             self.__class__.__name__, program=program, init_program=init_program)
