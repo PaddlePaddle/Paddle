@@ -133,11 +133,10 @@ class RNNMemoryHelperGradOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
     auto x_grad_name = framework::GradVarName("X");
-    auto out_grad_name = framework::GradVarName("Out");
-    PADDLE_ENFORCE(ctx->HasInput(out_grad_name), "");
     PADDLE_ENFORCE(ctx->HasOutput(x_grad_name), "");
-    ctx->SetOutputDim(x_grad_name, ctx->GetInputDim(out_grad_name));
-    ctx->ShareLoD(out_grad_name, /*->*/ x_grad_name);
+    PADDLE_ENFORCE(ctx->HasInput("X"), "");
+    ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", /*->*/ x_grad_name);
   }
 };
 

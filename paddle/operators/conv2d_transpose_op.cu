@@ -12,13 +12,13 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/conv2dtranspose_op.h"
+#include "paddle/operators/conv2d_transpose_op.h"
 
 namespace ops = paddle::operators;
 
 REGISTER_OP_GPU_KERNEL(
-    conv2dtranspose,
+    conv2d_transpose,
     ops::GemmConv2DTransposeKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
-    conv2dtranspose_grad,
+    conv2d_transpose_grad,
     ops::GemmConv2DTransposeGradKernel<paddle::platform::GPUPlace, float>);

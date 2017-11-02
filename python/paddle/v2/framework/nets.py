@@ -101,6 +101,7 @@ def img_conv_group(input,
 def sequence_conv_pool(input,
                        num_filters,
                        filter_size,
+                       act="sigmoid",
                        pool_type="max",
                        program=None,
                        init_program=None):
