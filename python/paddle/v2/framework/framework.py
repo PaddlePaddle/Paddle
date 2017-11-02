@@ -270,7 +270,8 @@ class Operator(object):
 
         self.desc.check_attrs()
         no_kernel_op_set = {
-            'feed', 'fetch', 'save', 'load', 'rnn_memory_helper_grad'
+            'feed', 'fetch', 'save', 'load', 'recurrent',
+            'rnn_memory_helper_grad'
         }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
