@@ -3,7 +3,7 @@ import unittest
 import logging
 
 from op_test import get_numeric_gradient
-from paddle.v2.framework.layers import *
+import paddle.v2.framework.layers as layers
 from paddle.v2.framework.framework import Program
 from paddle.v2.framework.executor import Executor
 from paddle.v2.framework.backward import append_backward_ops
@@ -16,8 +16,8 @@ class PyRNNBase(object):
         self.x = np.ones(shape=input_shape).astype("float32")
         self.y = np.zeros(shape=output_shape).astype("float32")
 
-    def step(self):
-        pass
+    def step(self, step_id, x):
+        raise NotImplementedError
 
     def forward(self):
         for step_id in range(self.x.shape[0]):
@@ -116,28 +116,28 @@ class RecurrentOpTest1(unittest.TestCase):
         self.output_shape = (self.sent_len, self.batch_size, self.input_dim)
         self.py_rnn = PySimpleRNN1(self.input_shape, self.output_shape)
 
-        self.output = mean(x=self.create_rnn_op(), **self.p_info)
+        self.output = layers.mean(x=self.create_rnn_op(), **self.p_info)
 
     def create_rnn_op(self):
-        x = data(
+        x = layers.data(
             shape=[self.sent_len, self.batch_size, self.input_dim],
             data_type='float32',
             name='x',
             append_batch_size=False,
             **self.p_info)
-        h_boot = data(
+        h_boot = layers.data(
             shape=[self.input_dim],
             data_type='float32',
             name='h_boot',
             **self.p_info)
 
-        rnn = StaticRNN(program=self.program)
+        rnn = layers.StaticRNN(program=self.program)
         with rnn.step():
             h_pre = rnn.memory(init=h_boot)
             x_t = rnn.step_input(x)
 
-            h = scale(
-                x=elementwise_add(
+            h = layers.scale(
+                x=layers.elementwise_add(
                     x=h_pre, y=x_t, **self.p_info),
                 scale=self.py_rnn.scale,
                 **self.p_info)
@@ -245,39 +245,39 @@ class RecurrentOpTest2(RecurrentOpTest1):
         self.output_shape = (self.sent_len, self.batch_size, self.input_dim)
         self.py_rnn = PySimpleRNN2(self.input_shape, self.output_shape)
 
-        self.output = mean(x=self.create_rnn_op(), **self.p_info)
+        self.output = layers.mean(x=self.create_rnn_op(), **self.p_info)
 
     def create_rnn_op(self):
-        x = data(
+        x = layers.data(
             shape=[self.sent_len, self.batch_size, self.input_dim],
             data_type='float32',
             name='x',
             append_batch_size=False,
             **self.p_info)
-        h_boot = data(
+        h_boot = layers.data(
             shape=[self.input_dim],
             data_type='float32',
             name='h_boot',
             **self.p_info)
 
-        rnn = StaticRNN(program=self.program)
+        rnn = layers.StaticRNN(program=self.program)
         with rnn.step():
             h_pre = rnn.memory(init=h_boot)
             x_t = rnn.step_input(x)
 
-            temp_l = fc(input=x_t,
-                        size=self.input_dim,
-                        param_attr={'name': 'W'},
-                        bias_attr=False,
-                        **self.p_info)
-            temp_r = fc(input=h_pre,
-                        size=self.input_dim,
-                        param_attr={'name': 'U'},
-                        bias_attr=False,
-                        **self.p_info)
+            temp_l = layers.fc(input=x_t,
+                               size=self.input_dim,
+                               param_attr={'name': 'W'},
+                               bias_attr=False,
+                               **self.p_info)
+            temp_r = layers.fc(input=h_pre,
+                               size=self.input_dim,
+                               param_attr={'name': 'U'},
+                               bias_attr=False,
+                               **self.p_info)
 
-            h = sigmoid(
-                x=elementwise_add(
+            h = layers.sigmoid(
+                x=layers.elementwise_add(
                     x=temp_l, y=temp_r, **self.p_info),
                 **self.p_info)
 
@@ -287,7 +287,7 @@ class RecurrentOpTest2(RecurrentOpTest1):
         return rnn()
 
 
-class RecurrentOpTest3(RecurrentOpTest1):
+class RecurrentOpMultipleMemoryTest(RecurrentOpTest1):
     '''
     Test RNNOp with two memories
     equation:
@@ -304,8 +304,8 @@ class RecurrentOpTest3(RecurrentOpTest1):
 
     class PySimpleRNN3(PyRNNBase):
         def __init__(self, input_shape, output_shape):
-            super(RecurrentOpTest3.PySimpleRNN3, self).__init__(input_shape,
-                                                                output_shape)
+            super(RecurrentOpMultipleMemoryTest.PySimpleRNN3, self).__init__(
+                input_shape, output_shape)
 
             seq_len, batch_size, input_dim = input_shape
             self.h_boot1 = np.random.normal(size=(batch_size,
@@ -339,44 +339,107 @@ class RecurrentOpTest3(RecurrentOpTest1):
 
         self.input_shape = (self.sent_len, self.batch_size, self.input_dim)
         self.output_shape = (self.sent_len, self.batch_size, self.input_dim)
-        self.py_rnn = RecurrentOpTest3.PySimpleRNN3(self.input_shape,
-                                                    self.output_shape)
+        self.py_rnn = RecurrentOpMultipleMemoryTest.PySimpleRNN3(
+            self.input_shape, self.output_shape)
 
-        self.output = mean(x=self.create_rnn_op(), **self.p_info)
+        self.output = layers.mean(x=self.create_rnn_op(), **self.p_info)
 
     def create_rnn_op(self):
-        x = data(
+        x = layers.data(
             shape=[self.sent_len, self.batch_size, self.input_dim],
             data_type='float32',
             name='x',
             append_batch_size=False,
             **self.p_info)
-        h_boot1 = data(
+        h_boot1 = layers.data(
             shape=[self.batch_size, self.input_dim],
             data_type='float32',
             name='h_boot1',
             append_batch_size=False,
             **self.p_info)
-        h_boot2 = data(
+        h_boot2 = layers.data(
             shape=[self.batch_size, self.input_dim],
             data_type='float32',
             name='h_boot2',
             append_batch_size=False,
             **self.p_info)
 
-        rnn = StaticRNN(program=self.program)
+        rnn = layers.StaticRNN(program=self.program)
         with rnn.step():
             h_pre1 = rnn.memory(init=h_boot1)
             h_pre2 = rnn.memory(init=h_boot2)
             x_t = rnn.step_input(x)
 
-            mem1 = scale(x=h_pre1, scale=1.0, **self.p_info)
-            mem2 = scale(x=h_pre2, scale=1.0, **self.p_info)
-            out = sums(input=[mem1, x_t, mem2], **self.p_info)
+            mem1 = layers.scale(x=h_pre1, scale=1.0, **self.p_info)
+            mem2 = layers.scale(x=h_pre2, scale=1.0, **self.p_info)
+            out = layers.sums(input=[mem1, x_t, mem2], **self.p_info)
 
             rnn.update_memory(h_pre1, mem1)
             rnn.update_memory(h_pre2, mem2)
             rnn.output(out)
+
+        return rnn()
+
+
+class RecurrentOpNoMemBootTest(RecurrentOpTest1):
+    '''
+    Test RNNOp with two memories
+    equation:
+        mem = x + mem_pre
+        y = mem
+    vars:
+        - x
+    memories:
+        - mem
+    outputs:
+       - y
+    '''
+
+    class PySimpleRNN4(PyRNNBase):
+        def __init__(self, input_shape, output_shape):
+            super(RecurrentOpNoMemBootTest.PySimpleRNN4, self).__init__(
+                input_shape, output_shape)
+            men_dim = input_shape
+            self.mems = np.zeros(shape=men_dim).astype("float32")
+
+        def step(self, step_id, x):
+            if step_id == 0:
+                pre_mem = np.zeros_like(x)
+            else:
+                pre_mem = self.mems[step_id - 1]
+            self.mems[step_id] = pre_mem + x
+            self.y[step_id] = self.mems[step_id]
+
+    input_dim = 1
+    batch_size = 1
+    sent_len = 2
+
+    def setUp(self):
+        self.init_program()
+
+        self.data_field = {"x"}
+
+        self.input_shape = (self.sent_len, self.batch_size, self.input_dim)
+        self.output_shape = (self.sent_len, self.batch_size, self.input_dim)
+        self.py_rnn = RecurrentOpNoMemBootTest.PySimpleRNN4(self.input_shape,
+                                                            self.output_shape)
+        self.output = layers.mean(x=self.create_rnn_op(), **self.p_info)
+
+    def create_rnn_op(self):
+        x = layers.data(
+            shape=[self.sent_len, self.batch_size, self.input_dim],
+            data_type='float32',
+            name='x',
+            append_batch_size=False,
+            **self.p_info)
+
+        rnn = layers.StaticRNN(program=self.program)
+        with rnn.step():
+            mem_pre = rnn.memory(shape=[-1, self.input_dim], batch_ref=x)
+            x_t = rnn.step_input(x)
+            mem = layers.elementwise_add(x=mem_pre, y=x_t, **self.p_info)
+            rnn.update_memory(mem_pre, mem)
+            rnn.output(mem)
 
         return rnn()
 
