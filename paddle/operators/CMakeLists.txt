@@ -140,6 +140,7 @@ set(DEPS_OPS
     pool_with_index_op
     nccl_op
     sequence_conv_op
+    rank_sort_lod_op
     lstm_op)
 
 
@@ -156,6 +157,7 @@ op_library(nccl_op DEPS nccl_common)
 endif()
 op_library(sequence_conv_op DEPS context_project)
 op_library(lstm_op DEPS sequence2batch lstm_compute)
+op_library(rank_sort_lod_op SRCS rank_sort_lod_op.cc)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
