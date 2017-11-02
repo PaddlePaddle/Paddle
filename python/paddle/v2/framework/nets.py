@@ -47,7 +47,7 @@ def img_conv_group(input,
     """
     tmp = input
     assert isinstance(conv_num_filter, list) or \
-           isinstance(conv_num_filter, tuple)
+        isinstance(conv_num_filter, tuple)
 
     def __extend_list__(obj):
         if not hasattr(obj, '__len__'):
@@ -101,6 +101,7 @@ def img_conv_group(input,
 def sequence_conv_pool(input,
                        num_filters,
                        filter_size,
+                       act="sigmoid",
                        pool_type="max",
                        program=None,
                        init_program=None):
@@ -108,6 +109,7 @@ def sequence_conv_pool(input,
         input=input,
         num_filters=num_filters,
         filter_size=filter_size,
+        act=act,
         program=program,
         init_program=init_program)
 
