@@ -7,9 +7,9 @@ from paddle.v2.framework.backward import append_backward_ops
 
 class TestOptimizer(unittest.TestCase):
     def test_sgd_optimizer(self):
-        init_program = framework.Program()
-        program = framework.Program()
-        block = program.global_block()
+        startup_program = framework.Program()
+        main_program = framework.Program()
+        block = main_program.global_block()
         mul_x = block.create_parameter(
             dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
         mul_y = block.create_var(
@@ -23,15 +23,15 @@ class TestOptimizer(unittest.TestCase):
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1})
         sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.01)
-        opts = sgd_optimizer.minimize(mul_out, init_program)
+        opts = sgd_optimizer.minimize(mul_out, startup_program)
         self.assertEqual(len(opts), 1)
         sgd_op = opts[0]
         self.assertEqual(sgd_op.type, "sgd")
 
     def test_sgd_optimizer_with_global_step(self):
-        init_program = framework.Program()
-        program = framework.Program()
-        block = program.global_block()
+        startup_program = framework.Program()
+        main_program = framework.Program()
+        block = main_program.global_block()
         mul_x = block.create_parameter(
             dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
         mul_y = block.create_var(
@@ -49,15 +49,15 @@ class TestOptimizer(unittest.TestCase):
         learning_rate = 0.01
         sgd_optimizer = optimizer.SGDOptimizer(
             learning_rate=learning_rate, global_step=global_step)
-        opts = sgd_optimizer.minimize(mul_out, init_program)
+        opts = sgd_optimizer.minimize(mul_out, startup_program)
         self.assertEqual(len(opts), 2)
         sgd_op = opts[0]
         self.assertEqual(sgd_op.type, "sgd")
         increment_op = opts[1]
         self.assertEqual(increment_op.type, "increment")
 
-        # Check init_program
-        init_ops = init_program.global_block().ops
+        # Check startup_program
+        init_ops = startup_program.global_block().ops
         self.assertEqual(len(init_ops), 1)
         self.assertEqual(init_ops[0].type, "fill_constant")
         self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
@@ -72,9 +72,9 @@ class TestMomentumOptimizer(unittest.TestCase):
             return self._velocity_acc_str
 
     def test_vanilla_momentum_optimizer(self):
-        init_program = framework.Program()
-        program = framework.Program()
-        block = program.global_block()
+        startup_program = framework.Program()
+        main_program = framework.Program()
+        block = main_program.global_block()
         mul_x = block.create_parameter(
             dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
         mul_y = block.create_var(
@@ -94,7 +94,7 @@ class TestMomentumOptimizer(unittest.TestCase):
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(momentum_optimizer.get_accumulators()), 0)
         opts = momentum_optimizer.create_optimization_pass(
-            params_grads, mul_out, init_program)
+            params_grads, mul_out, startup_program)
         self.assertEqual(len(opts), 1)
         sgd_op = opts[0]
         self.assertEqual(sgd_op.type, "momentum")
@@ -108,8 +108,8 @@ class TestMomentumOptimizer(unittest.TestCase):
         self.assertEqual(len(velocity_acc), 1)
         self.assertTrue(mul_x.name in velocity_acc)
 
-        # Check init_program
-        init_ops = init_program.global_block().ops
+        # Check startup_program
+        init_ops = startup_program.global_block().ops
         self.assertEqual(len(init_ops), 2)
         self.assertEqual(init_ops[0].type, "fill_constant")
         self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
@@ -117,9 +117,9 @@ class TestMomentumOptimizer(unittest.TestCase):
         self.assertAlmostEqual(init_ops[1].attr('value'), 0.0)
 
     def test_nesterov_momentum_optimizer(self):
-        init_program = framework.Program()
-        program = framework.Program()
-        block = program.global_block()
+        startup_program = framework.Program()
+        main_program = framework.Program()
+        block = main_program.global_block()
         mul_x = block.create_parameter(
             dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
         mul_y = block.create_var(
@@ -139,7 +139,7 @@ class TestMomentumOptimizer(unittest.TestCase):
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(momentum_optimizer.get_accumulators()), 0)
         opts = momentum_optimizer.create_optimization_pass(
-            params_grads, mul_out, init_program)
+            params_grads, mul_out, startup_program)
         self.assertEqual(len(opts), 1)
         sgd_op = opts[0]
         self.assertEqual(sgd_op.type, "momentum")
@@ -153,8 +153,8 @@ class TestMomentumOptimizer(unittest.TestCase):
         self.assertEqual(len(velocity_acc), 1)
         self.assertTrue(mul_x.name in velocity_acc)
 
-        # Check init_program
-        init_ops = init_program.global_block().ops
+        # Check startup_program
+        init_ops = startup_program.global_block().ops
         self.assertEqual(len(init_ops), 2)
         self.assertEqual(init_ops[0].type, "fill_constant")
         self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
@@ -171,9 +171,9 @@ class TestAdagradOptimizer(unittest.TestCase):
             return self._moment_acc_str
 
     def test_adagrad_optimizer(self):
-        init_program = framework.Program()
-        program = framework.Program()
-        block = program.global_block()
+        startup_program = framework.Program()
+        main_program = framework.Program()
+        block = main_program.global_block()
         mul_x = block.create_parameter(
             dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
         mul_y = block.create_var(
@@ -193,7 +193,7 @@ class TestAdagradOptimizer(unittest.TestCase):
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(adagrad_optimizer.get_accumulators()), 0)
         opts = adagrad_optimizer.create_optimization_pass(params_grads, mul_out,
-                                                          init_program)
+                                                          startup_program)
         self.assertEqual(len(opts), 1)
         adagrad_op = opts[0]
         self.assertEqual(adagrad_op.type, "adagrad")
@@ -206,8 +206,8 @@ class TestAdagradOptimizer(unittest.TestCase):
         self.assertEqual(len(moment_acc), 1)
         self.assertTrue(mul_x.name in moment_acc)
 
-        # Check init_program
-        init_ops = init_program.global_block().ops
+        # Check startup_program
+        init_ops = startup_program.global_block().ops
         self.assertEqual(len(init_ops), 2)
         self.assertEqual(init_ops[0].type, "fill_constant")
         self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
@@ -227,9 +227,9 @@ class TestAdamOptimizer(unittest.TestCase):
             return self._moment2_acc_str
 
     def test_adam_optimizer(self):
-        init_program = framework.Program()
-        program = framework.Program()
-        block = program.global_block()
+        startup_program = framework.Program()
+        main_program = framework.Program()
+        block = main_program.global_block()
         mul_x = block.create_parameter(
             dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
         mul_y = block.create_var(
@@ -249,7 +249,7 @@ class TestAdamOptimizer(unittest.TestCase):
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(adam_optimizer.get_accumulators()), 0)
         opts = adam_optimizer.create_optimization_pass(params_grads, mul_out,
-                                                       init_program)
+                                                       startup_program)
         self.assertEqual(len(opts), 3)
         adam_op = opts[0]
         self.assertEqual(adam_op.type, "adam")
@@ -266,8 +266,8 @@ class TestAdamOptimizer(unittest.TestCase):
         self.assertTrue(mul_x.name in moment1_acc)
         self.assertTrue(mul_x.name in moment2_acc)
 
-        # Check init_program
-        init_ops = init_program.global_block().ops
+        # Check startup_program
+        init_ops = startup_program.global_block().ops
         self.assertEqual(len(init_ops), 5)
         self.assertEqual(init_ops[0].type, "fill_constant")
         self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
@@ -285,9 +285,9 @@ class TestAdamaxOptimizer(unittest.TestCase):
             return self._inf_norm_acc_str
 
     def test_adamax_optimizer(self):
-        init_program = framework.Program()
-        program = framework.Program()
-        block = program.global_block()
+        startup_program = framework.Program()
+        main_program = framework.Program()
+        block = main_program.global_block()
         mul_x = block.create_parameter(
             dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
         mul_y = block.create_var(
@@ -307,7 +307,7 @@ class TestAdamaxOptimizer(unittest.TestCase):
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(adamax_optimizer.get_accumulators()), 0)
         opts = adamax_optimizer.create_optimization_pass(params_grads, mul_out,
-                                                         init_program)
+                                                         startup_program)
         self.assertEqual(len(opts), 2)
         adam_op = opts[0]
         self.assertEqual(adam_op.type, "adamax")
@@ -324,8 +324,8 @@ class TestAdamaxOptimizer(unittest.TestCase):
         self.assertTrue(mul_x.name in moment_acc)
         self.assertTrue(mul_x.name in inf_norm_acc)
 
-        # Check init_program
-        init_ops = init_program.global_block().ops
+        # Check startup_program
+        init_ops = startup_program.global_block().ops
         self.assertEqual(len(init_ops), 4)
         self.assertEqual(init_ops[0].type, "fill_constant")
         self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)

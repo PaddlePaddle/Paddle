@@ -1,8 +1,8 @@
 import copy
 import itertools
 
-from paddle.v2.framework.framework import Variable, g_program, \
-    g_init_program, unique_name, Program
+from paddle.v2.framework.framework import Variable, g_main_program, \
+    g_startup_program, unique_name, Program
 from paddle.v2.framework.initializer import ConstantInitializer, \
     UniformInitializer
 
@@ -20,23 +20,23 @@ class LayerHelper(object):
         return self.kwargs['name']
 
     @property
-    def program(self):
-        prog = self.kwargs.get('program', None)
+    def main_program(self):
+        prog = self.kwargs.get('main_program', None)
         if prog is None:
-            return g_program
+            return g_main_program
         else:
             return prog
 
     @property
-    def init_program(self):
-        prog = self.kwargs.get('init_program', None)
+    def startup_program(self):
+        prog = self.kwargs.get('startup_program', None)
         if prog is None:
-            return g_init_program
+            return g_startup_program
         else:
             return prog
 
     def append_op(self, *args, **kwargs):
-        return self.program.current_block().append_op(*args, **kwargs)
+        return self.main_program.current_block().append_op(*args, **kwargs)
 
     def multiple_input(self, input_param_name='input'):
         inputs = self.kwargs.get(input_param_name, [])
@@ -117,27 +117,27 @@ class LayerHelper(object):
         attr_copy = copy.deepcopy(attr)
         if attr_copy['name'] is None:
             attr_copy['name'] = unique_name(".".join([self.name, suffix]))
-        self.init_program.global_block().create_parameter(
+        self.startup_program.global_block().create_parameter(
             dtype=dtype, shape=shape, **attr_copy)
-        return self.program.global_block().create_parameter(
+        return self.main_program.global_block().create_parameter(
             name=attr_copy['name'], dtype=dtype, shape=shape)
 
     def create_tmp_variable(self, dtype):
-        return self.program.current_block().create_var(
+        return self.main_program.current_block().create_var(
             name=unique_name(".".join([self.name, 'tmp'])),
             dtype=dtype,
             persistable=False)
 
     def create_variable(self, *args, **kwargs):
-        return self.program.current_block().create_var(*args, **kwargs)
+        return self.main_program.current_block().create_var(*args, **kwargs)
 
     def create_global_variable(self, persistable=False, *args, **kwargs):
-        return self.program.global_block().create_var(
+        return self.main_program.global_block().create_var(
             *args, persistable=persistable, **kwargs)
 
     def set_variable_initializer(self, var, initializer):
         assert isinstance(var, Variable)
-        self.init_program.global_block().create_var(
+        self.startup_program.global_block().create_var(
             name=var.name,
             type=var.type,
             dtype=var.data_type,
@@ -147,12 +147,12 @@ class LayerHelper(object):
 
     def append_bias_op(self, input_var, num_flatten_dims=None):
         """
-        Append bias operator and return its output. If the user does not set 
+        Append bias operator and return its output. If the user does not set
         bias_attr, append_bias_op will return input_var
-         
+
         :param input_var: the input variable. The len(input_var.shape) is larger
         or equal than 2.
-        :param num_flatten_dims: The input tensor will be flatten as a matrix 
+        :param num_flatten_dims: The input tensor will be flatten as a matrix
         when adding bias.
         `matrix.shape = product(input_var.shape[0:num_flatten_dims]), product(
                 input_var.shape[num_flatten_dims:])`

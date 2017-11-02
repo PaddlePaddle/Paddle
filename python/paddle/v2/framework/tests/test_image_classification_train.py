@@ -4,21 +4,21 @@ import paddle.v2.framework.nets as nets
 import paddle.v2.framework.core as core
 import paddle.v2.framework.optimizer as optimizer
 
-from paddle.v2.framework.framework import Program, g_program
+from paddle.v2.framework.framework import Program, g_main_program
 from paddle.v2.framework.executor import Executor
 
 import numpy as np
 
 
-def resnet_cifar10(input, depth=32, program=None, init_program=None):
+def resnet_cifar10(input, depth=32, main_program=None, startup_program=None):
     def conv_bn_layer(input,
                       ch_out,
                       filter_size,
                       stride,
                       padding,
                       act='relu',
-                      program=None,
-                      init_program=None):
+                      main_program=None,
+                      startup_program=None):
         tmp = layers.conv2d(
             input=input,
             filter_size=filter_size,
@@ -27,15 +27,18 @@ def resnet_cifar10(input, depth=32, program=None, init_program=None):
             padding=padding,
             act=None,
             bias_attr=False,
-            program=program,
-            init_program=init_program)
+            main_program=main_program,
+            startup_program=startup_program)
         return layers.batch_norm(
-            input=tmp, act=act, program=program, init_program=init_program)
+            input=tmp,
+            act=act,
+            main_program=main_program,
+            startup_program=startup_program)
 
-    def shortcut(input, ch_in, ch_out, stride, program, init_program):
+    def shortcut(input, ch_in, ch_out, stride, main_program, startup_program):
         if ch_in != ch_out:
-            return conv_bn_layer(input, ch_out, 1, stride, 0, None, program,
-                                 init_program)
+            return conv_bn_layer(input, ch_out, 1, stride, 0, None,
+                                 main_program, startup_program)
         else:
             return input
 
@@ -43,16 +46,16 @@ def resnet_cifar10(input, depth=32, program=None, init_program=None):
                    ch_in,
                    ch_out,
                    stride,
-                   program=program,
-                   init_program=init_program):
+                   main_program=main_program,
+                   startup_program=startup_program):
         tmp = conv_bn_layer(
             input,
             ch_out,
             3,
             stride,
             1,
-            program=program,
-            init_program=init_program)
+            main_program=main_program,
+            startup_program=startup_program)
         tmp = conv_bn_layer(
             tmp,
             ch_out,
@@ -60,21 +63,24 @@ def resnet_cifar10(input, depth=32, program=None, init_program=None):
             1,
             1,
             act=None,
-            program=program,
-            init_program=init_program)
-        short = shortcut(input, ch_in, ch_out, stride, program, init_program)
+            main_program=main_program,
+            startup_program=startup_program)
+        short = shortcut(input, ch_in, ch_out, stride, main_program,
+                         startup_program)
         return layers.elementwise_add(
             x=tmp,
             y=short,
             act='relu',
-            program=program,
-            init_program=init_program)
+            main_program=main_program,
+            startup_program=startup_program)
 
-    def layer_warp(block_func, input, ch_in, ch_out, count, stride, program,
-                   init_program):
-        tmp = block_func(input, ch_in, ch_out, stride, program, init_program)
+    def layer_warp(block_func, input, ch_in, ch_out, count, stride,
+                   main_program, startup_program):
+        tmp = block_func(input, ch_in, ch_out, stride, main_program,
+                         startup_program)
         for i in range(1, count):
-            tmp = block_func(tmp, ch_out, ch_out, 1, program, init_program)
+            tmp = block_func(tmp, ch_out, ch_out, 1, main_program,
+                             startup_program)
         return tmp
 
     assert (depth - 2) % 6 == 0
@@ -85,8 +91,8 @@ def resnet_cifar10(input, depth=32, program=None, init_program=None):
         filter_size=3,
         stride=1,
         padding=1,
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
     res1 = layer_warp(
         basicblock,
         conv1,
@@ -94,8 +100,8 @@ def resnet_cifar10(input, depth=32, program=None, init_program=None):
         16,
         n,
         1,
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
     res2 = layer_warp(
         basicblock,
         res1,
@@ -103,8 +109,8 @@ def resnet_cifar10(input, depth=32, program=None, init_program=None):
         32,
         n,
         2,
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
     res3 = layer_warp(
         basicblock,
         res2,
@@ -112,25 +118,25 @@ def resnet_cifar10(input, depth=32, program=None, init_program=None):
         64,
         n,
         2,
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
     pool = layers.pool2d(
         input=res3,
         pool_size=8,
         pool_type='avg',
         pool_stride=1,
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
     return pool
 
 
-def vgg16_bn_drop(input, program, init_program):
+def vgg16_bn_drop(input, main_program, startup_program):
     def conv_block(input,
                    num_filter,
                    groups,
                    dropouts,
-                   program=None,
-                   init_program=None):
+                   main_program=None,
+                   startup_program=None):
         return nets.img_conv_group(
             input=input,
             pool_size=2,
@@ -141,74 +147,91 @@ def vgg16_bn_drop(input, program, init_program):
             conv_with_batchnorm=True,
             conv_batchnorm_drop_rate=dropouts,
             pool_type='max',
-            program=program,
-            init_program=init_program)
+            main_program=main_program,
+            startup_program=startup_program)
 
-    conv1 = conv_block(input, 64, 2, [0.3, 0], program, init_program)
-    conv2 = conv_block(conv1, 128, 2, [0.4, 0], program, init_program)
-    conv3 = conv_block(conv2, 256, 3, [0.4, 0.4, 0], program, init_program)
-    conv4 = conv_block(conv3, 512, 3, [0.4, 0.4, 0], program, init_program)
-    conv5 = conv_block(conv4, 512, 3, [0.4, 0.4, 0], program, init_program)
+    conv1 = conv_block(input, 64, 2, [0.3, 0], main_program, startup_program)
+    conv2 = conv_block(conv1, 128, 2, [0.4, 0], main_program, startup_program)
+    conv3 = conv_block(conv2, 256, 3, [0.4, 0.4, 0], main_program,
+                       startup_program)
+    conv4 = conv_block(conv3, 512, 3, [0.4, 0.4, 0], main_program,
+                       startup_program)
+    conv5 = conv_block(conv4, 512, 3, [0.4, 0.4, 0], main_program,
+                       startup_program)
 
     drop = layers.dropout(
-        x=conv5, dropout_prob=0.5, program=program, init_program=init_program)
+        x=conv5,
+        dropout_prob=0.5,
+        main_program=main_program,
+        startup_program=startup_program)
     fc1 = layers.fc(input=drop,
                     size=512,
                     act=None,
-                    program=program,
-                    init_program=init_program)
+                    main_program=main_program,
+                    startup_program=startup_program)
     reshape1 = layers.reshape(
         x=fc1,
         shape=list(fc1.shape + (1, 1)),
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
     bn = layers.batch_norm(
-        input=reshape1, act='relu', program=program, init_program=init_program)
+        input=reshape1,
+        act='relu',
+        main_program=main_program,
+        startup_program=startup_program)
     drop2 = layers.dropout(
-        x=bn, dropout_prob=0.5, program=program, init_program=init_program)
+        x=bn,
+        dropout_prob=0.5,
+        main_program=main_program,
+        startup_program=startup_program)
     fc2 = layers.fc(input=drop2,
                     size=512,
                     act=None,
-                    program=program,
-                    init_program=init_program)
+                    main_program=main_program,
+                    startup_program=startup_program)
     return fc2
 
 
-init_program = Program()
-program = Program()
+startup_program = Program()
+main_program = Program()
 
 classdim = 10
 data_shape = [3, 32, 32]
 
 images = layers.data(
-    name='pixel', shape=data_shape, data_type='float32', program=program)
+    name='pixel',
+    shape=data_shape,
+    data_type='float32',
+    main_program=main_program)
 
 label = layers.data(
     name='label',
     shape=[1],
     data_type='int64',
-    program=program,
-    init_program=init_program)
+    main_program=main_program,
+    startup_program=startup_program)
 
 # Add neural network config
 # option 1. resnet
-net = resnet_cifar10(images, 32, program, init_program)
+net = resnet_cifar10(images, 32, main_program, startup_program)
 # option 2. vgg
-# net = vgg16_bn_drop(images, program, init_program)
-
-# print(program)
+# net = vgg16_bn_drop(images, main_program, startup_program)
 
 predict = layers.fc(input=net,
                     size=classdim,
                     act='softmax',
-                    program=program,
-                    init_program=init_program)
+                    main_program=main_program,
+                    startup_program=startup_program)
 cost = layers.cross_entropy(
-    input=predict, label=label, program=program, init_program=init_program)
-avg_cost = layers.mean(x=cost, program=program, init_program=init_program)
+    input=predict,
+    label=label,
+    main_program=main_program,
+    startup_program=startup_program)
+avg_cost = layers.mean(
+    x=cost, main_program=main_program, startup_program=startup_program)
 
 sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
-opts = sgd_optimizer.minimize(avg_cost, init_program)
+opts = sgd_optimizer.minimize(avg_cost, startup_program)
 
 BATCH_SIZE = 128
 PASS_NUM = 1
@@ -221,7 +244,7 @@ train_reader = paddle.batch(
 place = core.CPUPlace()
 exe = Executor(place)
 
-exe.run(init_program, feed={}, fetch_list=[])
+exe.run(startup_program, feed={}, fetch_list=[])
 
 for pass_id in range(PASS_NUM):
     batch_id = 0
@@ -239,7 +262,7 @@ for pass_id in range(PASS_NUM):
         tensor_img.set(img_data, place)
         tensor_y.set(y_data, place)
 
-        outs = exe.run(program,
+        outs = exe.run(main_program,
                        feed={"pixel": tensor_img,
                              "label": tensor_y},
                        fetch_list=[avg_cost])
