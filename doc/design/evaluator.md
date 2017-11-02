@@ -22,28 +22,36 @@ class Evaluator(object):
     """
     Evalutor Base class.
     """
+    def __init__(self):
+       """
+       create metric states and append to block
+       """ 
+       pass
 
-    def _initialize(self):
-    """
-    add initialize operators and create metric states to block
-    """
-        pass
+    def _clear_state(self):
+      """
+      clear metric states at the begin of each pass
+      """
+      pass
 
-    def _add_evalutor_op(self):
-    """
-    add mini-batch caculate operators to block
-    """
-        pass
+    def _append_evalutor_op(self):
+      """
+      add mini-batch caculate operators to block
+      add increment operator to accumulate the metric state
+      """
+      pass
 
-    def _merge(self);
-    """
-    Merge the mini-batch statistics to form the evaluation result for multiple mini-batches.
-    """
-        pass
+    def _merge(self):
+      """
+      Merge the mini-batch statistics to form the evaluation result for multiple mini-batches.
+      """
+      pass
 
     def evaluate(self):
-    """
-    exported interface
-    """
+      """
+      only one exported interface
+      user calculate the result
+      """
+      pass
 
 ```
