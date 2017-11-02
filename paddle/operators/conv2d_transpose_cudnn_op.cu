@@ -43,6 +43,7 @@ class CudnnConvTransposeOpKernel : public framework::OpKernel<T> {
 
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
+    // cudnn v5 does not support dilations
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int user_workspace_size = ctx.Attr<int>("workspace_size_MB");
 
