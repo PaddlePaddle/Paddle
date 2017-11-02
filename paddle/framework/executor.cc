@@ -83,7 +83,7 @@ void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id,
   // TODO(tonyyang-svail):
   //    - only runs on the first device (i.e. no interdevice communication)
   //    - will change to use multiple blocks for RNN op and Cond Op
-  PADDLE_ENFORCE_LT(block_id, pdesc.Size());
+  PADDLE_ENFORCE_LT(block_id, static_cast<int>(pdesc.Size()));
   auto& block = pdesc.Block(block_id);
   auto& device = device_contexts_[0];
 
