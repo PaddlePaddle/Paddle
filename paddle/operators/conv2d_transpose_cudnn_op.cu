@@ -29,7 +29,7 @@ using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
 using DataLayout = platform::DataLayout;
 using CUDADeviceContext = platform::CUDADeviceContext;
 
-static constexpr size_t kCONV_CUDNN_WORKSPACE_LIMIT_BYTES = 1024 * 1024 * 1024;
+static constexpr size_t kConvCudnnWorkspaceLimitBytes = 1024 * 1024 * 1024;
 
 template <typename T>
 class CudnnConvTransposeOpKernel : public framework::OpKernel<T> {
@@ -71,7 +71,7 @@ class CudnnConvTransposeOpKernel : public framework::OpKernel<T> {
     // ------------------- cudnn conv workspace ---------------------
     void* cudnn_workspace = nullptr;
     size_t workspace_size_in_bytes;  // final workspace to allocate.
-    size_t workspace_size_limit = kCONV_CUDNN_WORKSPACE_LIMIT_BYTES;
+    size_t workspace_size_limit = kConvCudnnWorkspaceLimitBytes;
     if (user_workspace_size > 0) {
       workspace_size_limit = user_workspace_size * 1024 * 1024;
     }
@@ -125,6 +125,7 @@ class CudnnConvTransposeGradOpKernel : public framework::OpKernel<T> {
 
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
+    // cudnn v5 does not support dilations
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int user_workspace_size = ctx.Attr<int>("workspace_size_MB");
 
@@ -153,7 +154,7 @@ class CudnnConvTransposeGradOpKernel : public framework::OpKernel<T> {
     cudnnConvolutionBwdFilterAlgo_t filter_algo;
     size_t bwd_filter_ws_size, fwd_ws_size;
     size_t workspace_size_in_bytes = 0;
-    size_t workspace_size_limit = kCONV_CUDNN_WORKSPACE_LIMIT_BYTES;
+    size_t workspace_size_limit = kConvCudnnWorkspaceLimitBytes;
     if (user_workspace_size > 0) {
       workspace_size_limit = user_workspace_size * 1024 * 1024;
     }
