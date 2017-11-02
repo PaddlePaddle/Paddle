@@ -31,7 +31,7 @@ namespace framework {
 const std::string kFeedOpType = "feed";
 const std::string kFetchOpType = "fetch";
 
-Executor::Executor(const std::vector<platform::Place>& places) {
+Executor::Executor(const std::vector<platform::Place>& places) : own_(true) {
   PADDLE_ENFORCE_GT(places.size(), 0);
   device_contexts_.resize(places.size());
   for (size_t i = 0; i < places.size(); i++) {
@@ -52,8 +52,10 @@ Executor::Executor(const std::vector<platform::Place>& places) {
 }
 
 Executor::~Executor() {
-  for (auto& device_context : device_contexts_) {
-    delete device_context;
+  if (own_) {
+    for (auto& device_context : device_contexts_) {
+      delete device_context;
+    }
   }
 }
 
@@ -66,14 +68,18 @@ static void CreateTensor(Variable* var, VarDesc::VarType var_type) {
     var->GetMutable<FeedFetchList>();
   } else if (var_type == VarDesc::FETCH_LIST) {
     var->GetMutable<FeedFetchList>();
+  } else if (var_type == VarDesc::STEP_SCOPES) {
+    var->GetMutable<std::vector<framework::Scope>>();
   } else {
     PADDLE_THROW(
-        "Variable type must be "
-        "LoDTensor/SelectedRows/FEED_MINIBATCH/FETCH_LIST.");
+        "Variable type %d is not in "
+        "[LoDTensor, SelectedRows, FEED_MINIBATCH, FETCH_LIST]",
+        var_type);
   }
 }
 
-void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id) {
+void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id,
+                   bool create_local_scope) {
   // TODO(tonyyang-svail):
   //    - only runs on the first device (i.e. no interdevice communication)
   //    - will change to use multiple blocks for RNN op and Cond Op
@@ -81,29 +87,42 @@ void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id) {
   auto& block = pdesc.Block(block_id);
   auto& device = device_contexts_[0];
 
-  Scope& local_scope = scope->NewScope();
-
-  for (auto& var : block.AllVars()) {
-    if (var->Persistable()) {
-      auto* ptr = scope->Var(var->Name());
+  Scope* local_scope = scope;
+  if (create_local_scope) {
+    local_scope = &scope->NewScope();
+    for (auto& var : block.AllVars()) {
+      if (var->Persistable()) {
+        auto* ptr = scope->Var(var->Name());
+        CreateTensor(ptr, var->GetType());
+        VLOG(3) << "Create Variable " << var->Name()
+                << " global, which pointer is " << ptr;
+      } else {
+        auto* ptr = local_scope->Var(var->Name());
+        CreateTensor(ptr, var->GetType());
+        VLOG(3) << "Create Variable " << var->Name()
+                << " locally, which pointer is " << ptr;
+      }
+    }
+  } else {
+    for (auto& var : block.AllVars()) {
+      auto* ptr = local_scope->Var(var->Name());
       CreateTensor(ptr, var->GetType());
-      VLOG(3) << "Create Variable " << var->Name()
-              << " global, which pointer is " << ptr;
-    } else {
-      auto* ptr = local_scope.Var(var->Name());
-      CreateTensor(ptr, var->GetType());
-      VLOG(3) << "Create Variable " << var->Name()
-              << " locally, which pointer is " << ptr;
+      VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
+              << ptr;
     }
   }
 
   for (auto& op_desc : block.AllOps()) {
     auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
-    op->Run(local_scope, *device);
+    op->Run(*local_scope, *device);
   }
-
-  scope->DeleteScope(&local_scope);
+  if (create_local_scope) {
+    scope->DeleteScope(local_scope);
+  }
 }
+
+Executor::Executor(const platform::DeviceContext& device)
+    : device_contexts_({&device}), own_(false) {}
 
 }  // namespace framework
 }  // namespace paddle
