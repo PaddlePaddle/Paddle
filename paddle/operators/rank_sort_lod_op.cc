@@ -63,25 +63,36 @@ void RankSortLoDOp::Run(const framework::Scope& scope,
   const auto& tensor = x->Get<framework::LoDTensor>();
   auto lod_level = Attr<int>("lod_level");
   auto meta = BuildLengthSortedMeta(tensor, lod_level);
+
+  auto* out_var = scope.FindVar(Output("Out"));
+  PADDLE_ENFORCE_NOT_NULL(
+      out_var,
+      "Out variable [%s] should be created by framework first.",
+      Output("Out"));
+  auto* out_tensor = out_var->GetMutable<framework::LoDTensor>();
+  framework::LoDTensor tmp_tensor;
+  framework::LoDTensor *tmp;
+
+  if (platform::is_cpu_place(dev_ctx.GetPlace())) {
+    tmp = out_tensor;
+  } else {
+    tmp = &tmp_tensor;
+  }
   // copy meta to tmp
-  framework::LoDTensor tmp;
-  tmp.Resize(
+  tmp->Resize(
       framework::make_ddim(std::vector<int64_t>({(int64_t)meta.size(), 3})));
-  auto* data = tmp.mutable_data<int64_t>(platform::CPUPlace());
+  auto* data = tmp->mutable_data<int64_t>(platform::CPUPlace());
   for (const auto& rcd : meta) {
     *(data++) = rcd.begin;
     *(data++) = rcd.end;
     *(data++) = rcd.ori_idx;
   }
-  // copy cpu lodtensor to gpu
-  auto* out_var = scope.FindVar(Output("Out"));
-  PADDLE_ENFORCE_NOT_NULL(
-      out_var, "Out variable [%s] should be created by framework first.",
-      Output("Out"));
-  auto* out_tensor = out_var->GetMutable<framework::LoDTensor>();
-  out_tensor->Resize(tmp.dims());
-  out_tensor->mutable_data(dev_ctx.GetPlace());
-  out_tensor->CopyFrom(tmp, dev_ctx.GetPlace(), dev_ctx);
+  // copy cpu lodtensor to gpu if needed
+  if (platform::is_gpu_place(dev_ctx.GetPlace())) {
+    out_tensor->Resize(tmp->dims());
+    out_tensor->mutable_data(dev_ctx.GetPlace(), tmp->type());
+    out_tensor->CopyFrom(*tmp, dev_ctx.GetPlace(), dev_ctx);
+  }
 }
 
 class RankSortLoDProtoAndCheckerMaker
