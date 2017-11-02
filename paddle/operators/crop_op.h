@@ -27,7 +27,7 @@ using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 using framework::Tensor;
 
 template <typename T>
-class CropKernel : public framework::OpKernel {
+class CropKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<Tensor>("X");
@@ -69,7 +69,7 @@ void CropGradFunction(const framework::ExecutionContext& context) {
 }
 
 template <typename Place, typename T>
-class CropGradKernel : public framework::OpKernel {
+class CropGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     size_t rank =

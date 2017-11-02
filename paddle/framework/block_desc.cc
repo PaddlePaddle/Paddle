@@ -18,20 +18,40 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-VarDescBind *BlockDescBind::NewVar(const std::string &name) {
-  need_update_ = true;
+VarDescBind *BlockDescBind::Var(const std::string &name) {
   auto it = vars_.find(name);
-  PADDLE_ENFORCE(it == vars_.end(), "Duplicated variable %s", name);
-  auto var = new VarDescBind(name);
+  if (it != vars_.end()) {
+    return it->second.get();
+  }
+  need_update_ = true;
+  auto *var = new VarDescBind(name);
   vars_[name].reset(var);
   return var;
 }
 
-VarDescBind *BlockDescBind::Var(const std::string &name) const {
+VarDescBind *BlockDescBind::FindVar(const std::string &name) const {
   auto it = vars_.find(name);
-  PADDLE_ENFORCE(it != vars_.end(),
-                 "Can not find variable %s in current block.", name);
+  if (it == vars_.end()) {
+    return nullptr;
+  }
   return it->second.get();
+}
+
+bool BlockDescBind::HasVar(const std::string &name) const {
+  return vars_.find(name) != vars_.end();
+}
+
+VarDescBind *BlockDescBind::FindVarRecursive(const std::string &name) const {
+  auto it = vars_.find(name);
+  if (it == vars_.end()) {
+    return Parent() == kNoneBlockIndex ? nullptr
+                                       : ParentBlock()->FindVarRecursive(name);
+  }
+  return it->second.get();
+}
+
+bool BlockDescBind::HasVarRecursive(const std::string &name) const {
+  return FindVarRecursive(name) != nullptr;
 }
 
 std::vector<VarDescBind *> BlockDescBind::AllVars() const {
@@ -48,6 +68,11 @@ OpDescBind *BlockDescBind::AppendOp() {
   return ops_.back().get();
 }
 
+void BlockDescBind::AppendAllocatedOp(std::unique_ptr<OpDescBind> &&op_desc) {
+  need_update_ = true;
+  ops_.emplace_back(std::move(op_desc));
+}
+
 OpDescBind *BlockDescBind::PrependOp() {
   need_update_ = true;
   ops_.emplace_front(new OpDescBind());
@@ -62,28 +87,79 @@ std::vector<OpDescBind *> BlockDescBind::AllOps() const {
   return res;
 }
 
-void BlockDescBind::Sync() {
+void BlockDescBind::Flush() {
+  for (auto &op_desc : ops_) {
+    op_desc->Flush();
+  }
+
   if (need_update_) {
     auto &op_field = *this->desc_->mutable_ops();
-    op_field.Clear();
+    this->ClearPBOps();
     op_field.Reserve(static_cast<int>(ops_.size()));
     for (auto &op_desc : ops_) {
       op_field.AddAllocated(op_desc->Proto());
+    }
+    auto &var_field = *this->desc_->mutable_vars();
+    this->ClearPBVars();
+    var_field.Reserve(static_cast<int>(vars_.size()));
+    for (auto &var_desc : vars_) {
+      var_field.AddAllocated(var_desc.second->Proto());
     }
     need_update_ = false;
   }
 }
 
 BlockDescBind *BlockDescBind::ParentBlock() const {
-  if (this->desc_->parent_idx() == -1) {
+  if (this->desc_->parent_idx() == kNoneBlockIndex) {
     return nullptr;
   }
-  return prog_->Block(static_cast<size_t>(this->desc_->parent_idx()));
+  return prog_->MutableBlock(static_cast<size_t>(this->desc_->parent_idx()));
 }
 
-void OpDescBind::SetBlockAttr(const std::string &name, BlockDescBind &block) {
-  BlockDesc *desc = block.RawPtr();
-  this->attrs_[name] = desc;
+BlockDesc *BlockDescBind::Proto() {
+  Flush();
+  return desc_;
 }
+
+BlockDescBind::BlockDescBind(ProgramDescBind *prog, BlockDesc *desc)
+    : prog_(prog), desc_(desc), need_update_(false) {
+  for (const VarDesc &var_desc : desc_->vars()) {
+    vars_[var_desc.name()].reset(new VarDescBind(var_desc));
+  }
+  for (const OpDesc &op_desc : desc_->ops()) {
+    ops_.emplace_back(new OpDescBind(op_desc, prog));
+  }
+}
+
+BlockDescBind::BlockDescBind(const BlockDescBind &other, BlockDesc *desc,
+                             ProgramDescBind *prog)
+    : prog_(prog), desc_(desc) {
+  need_update_ = true;
+  for (auto &op : other.ops_) {
+    ops_.emplace_back(new OpDescBind(*op));
+  }
+
+  for (auto &it : other.vars_) {
+    auto *var = new VarDescBind(*it.second);
+    vars_[it.first].reset(var);
+  }
+}
+
+void BlockDescBind::ClearPBOps() {
+  auto ops = this->desc_->mutable_ops();
+  while (!ops->empty()) {
+    // we do not own the OpDesc, so release the ownership.
+    ops->ReleaseLast();
+  }
+}
+
+void BlockDescBind::ClearPBVars() {
+  auto vars = this->desc_->mutable_vars();
+  while (!vars->empty()) {
+    // we do not own the VarDesc, so release the ownership.
+    vars->ReleaseLast();
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle

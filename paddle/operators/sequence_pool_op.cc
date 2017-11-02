@@ -21,12 +21,11 @@ class SequencePoolOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceAvgPoolOp should not be null.");
+                   "Input(X) of SequencePoolOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequenceAvgPoolOp should not be null.");
+                   "Output(Out) of SequencePoolOp should not be null.");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
   }
 };
@@ -36,27 +35,34 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
   SequencePoolOpMaker(framework::OpProto* proto,
                       framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X",
-             "A float LoDTensor, the variable-length input of SequencePoolOp");
-    AddOutput(
-        "Out",
-        "A float LoDTensor, the variable-length output of SequencePoolOp.");
-    AddAttr<int>(
-        "strategy",
-        "(int, default AVERAGE) the pooling strategy of SequencePoolOp.")
-        .SetDefault(AVERAGE)
-        .InEnum({AVERAGE, SUM, SQRT, MAX, LAST, FIRST});
+    AddInput("X", "(LoDTensor), the variable-length input of SequencePoolOp");
+    AddOutput("Out",
+              "(Tensor), output of SequencePoolOp, which does not contain LoD "
+              "infomation.");
+    AddAttr<std::string>(
+        "pooltype",
+        "(int, default AVERAGE) the pooling pooltype of SequencePoolOp.")
+        .SetDefault("AVERAGE");
     AddComment(R"DOC(
     SequencePoolOp pools features of all time-steps of each instance.
 
-    For a mini-batch of 3 variable lengths sentences, containing 2, 3, and 2 time-steps:
+    It supports six pooling pooltype:
+    - AVERAGE: Out[i] = average_{for each instance in i-th sequence}{X[i]}
+    - SUM:     Out[i] = sum_{for each instance in i-th sequence}{X[i]}
+    - SQRT:    Out[i] = sum_{for each instance in i-th sequence}{X[i]} 
+                        / sqrt(i-th sequence length)
+    - LAST:    Out[i] = last instance in i-th sequence X[i]
+    - FIRST:   Out[i] = first instance in i-th sequence X[i]
+    - MAX:     Out[i] = max_{for each instance in i-th sequence}{X[i]}
 
-    Assume X is a [7,M,N] float LoDTensor, and X->lod()[0] = [0, 2, 5, 7].
+    For a mini-batch of 3 variable-length sentences, containing 2, 3, and 2 time-steps:
+
+    Assume X is a [7,M,N] LoDTensor, and X->lod()[0] = [0, 2, 5, 7], 7=2+3+2.
     Besides, for the sake of simplicity, we assume M=1 and N=1,
     and the value of X = [[1, 3], [2, 4, 6], [5, 1]].
 
-    Thus, Out is a [3,1,1] float LoDTensor, but Out->lod() is nullptr.
-    And for different strategy, the value of Out is as follows:
+    Thus, Out is a [3,1,1] Tensor without LoD infomation.
+    And for different pooltype, the value of Out is as follows:
 
     - AVERAGE: [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
     - SUM: [4, 12, 6], where 4=1+3, 12=2+4+6, 6=5+1
@@ -73,8 +79,7 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Gradient of Out should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("X"), "The input X should not be null.");

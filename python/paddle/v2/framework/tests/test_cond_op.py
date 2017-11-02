@@ -15,7 +15,7 @@ class PySimpleCond(object):
         for i in range(1, 10, 2):
             array[i] = 0
         self.cond = np.array(array)
-        self.x = np.ones(shape=(10, 1))
+        self.x = np.ones(shape=(10, 1)).astype("float32")
 
     def forward(self):
         self.index_t = np.where(self.cond == 1)
@@ -39,7 +39,7 @@ class PySimpleCondTest(unittest.TestCase):
 
 
 def create_tensor(scope, name, shape, np_data):
-    tensor = scope.new_var(name).get_tensor()
+    tensor = scope.var(name).get_tensor()
     tensor.set_dims(shape)
     tensor.set(np_data, core.CPUPlace())
     return tensor
@@ -74,9 +74,9 @@ class TestCondOp(unittest.TestCase):
         create_tensor(self.scope, "X", [10, 1], x_np_data)
         cond_np_data = self.py_cond.cond.astype("int32")
         create_tensor(self.scope, "cond", [10, 1], cond_np_data)
-        self.scope.new_var("SubScopes")
-        self.scope.new_var("IndexTensors")
-        self.scope.new_var("Out")
+        self.scope.var("SubScopes")
+        self.scope.var("IndexTensors")
+        self.scope.var("Out")
 
     def create_cond_op(self):
         self.condop = CondOp(
@@ -114,5 +114,5 @@ class TestCondOp(unittest.TestCase):
 if __name__ == "__main__":
     exit(
         0
-    )  # FIXME(yuyang18): Since infer_shape has been removed, cond op may error
+    )  # FIXME(qijun): https://github.com/PaddlePaddle/Paddle/issues/5101#issuecomment-339814957
     unittest.main()

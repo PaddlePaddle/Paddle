@@ -29,11 +29,14 @@ limitations under the License. */
 #include <cxxabi.h>  // for __cxa_demangle
 #endif
 
-#ifndef PADDLE_ONLY_CPU
+#include <glog/logging.h>
+
+#ifdef PADDLE_WITH_CUDA
 
 #include "paddle/platform/dynload/cublas.h"
 #include "paddle/platform/dynload/cudnn.h"
 #include "paddle/platform/dynload/curand.h"
+#include "paddle/platform/dynload/nccl.h"
 
 #include <cublas_v2.h>
 #include <cudnn.h>
@@ -41,7 +44,7 @@ limitations under the License. */
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
 
-#endif  // PADDLE_ONLY_CPU
+#endif
 
 namespace paddle {
 namespace platform {
@@ -113,7 +116,7 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
   }
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 
 template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
@@ -172,6 +175,17 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
   throw std::runtime_error(err + string::Sprintf(args...));
 }
 
+template <typename... Args>
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    ncclResult_t stat, const Args&... args) {
+  if (stat == ncclSuccess) {
+    return;
+  } else {
+    throw std::runtime_error(platform::dynload::ncclGetErrorString(stat) +
+                             string::Sprintf(args...));
+  }
+}
+
 #endif  // PADDLE_ONLY_CPU
 
 template <typename T>
@@ -185,7 +199,7 @@ inline void throw_on_error(T e) {
         std::make_exception_ptr(                                       \
             std::runtime_error(paddle::string::Sprintf(__VA_ARGS__))), \
         __FILE__, __LINE__);                                           \
-  } while (0)
+  } while (false)
 
 #define PADDLE_ENFORCE(...)                                             \
   do {                                                                  \
@@ -195,7 +209,7 @@ inline void throw_on_error(T e) {
       throw ::paddle::platform::EnforceNotMet(std::current_exception(), \
                                               __FILE__, __LINE__);      \
     }                                                                   \
-  } while (0)
+  } while (false)
 
 /*
  * Some enforce helpers here, usage:

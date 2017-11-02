@@ -14,12 +14,12 @@ class TestGaussianRandomOp(unittest.TestCase):
 
     def gaussian_random_test(self, place):
         scope = core.Scope()
-        scope.new_var('Out').get_tensor()
+        scope.var('Out').get_tensor()
 
         op = Operator(
             "gaussian_random",
             Out='Out',
-            dims=[1000, 784],
+            shape=[1000, 784],
             mean=.0,
             std=1.,
             seed=10)

@@ -21,25 +21,25 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
     PADDLE_ENFORCE(ctx->HasOutput("Y"), "Output(Y) should be not null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto label_dims = ctx->GetInputDim("Label");
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(label_dims.size(), 2, "Input(Label)'s rank should be 2.");
+    PADDLE_ENFORCE_EQ(x_dims.size(), 2UL, "Input(X)'s rank should be 2.");
+    PADDLE_ENFORCE_EQ(label_dims.size(), 2UL,
+                      "Input(Label)'s rank should be 2.");
     PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0],
                       "The 1st dimension of Input(X) and Input(Label) should "
                       "be equal.");
-    if (ctx->Attrs().Get<bool>("softLabel")) {
+    if (ctx->Attrs().Get<bool>("soft_label")) {
       PADDLE_ENFORCE_EQ(x_dims[1], label_dims[1],
-                        "If Attr(softLabel) == true, the 2nd dimension of "
+                        "If Attr(soft_label) == true, the 2nd dimension of "
                         "Input(X) and Input(Label) should be equal.");
     } else {
-      PADDLE_ENFORCE_EQ(label_dims[1], 1,
+      PADDLE_ENFORCE_EQ(label_dims[1], 1UL,
                         "If Attr(softLabel) == false, the 2nd dimension of "
                         "Input(Label) should be 1.");
     }
@@ -47,14 +47,21 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Y", {x_dims[0], 1});
     ctx->ShareLoD("X", /*->*/ "Y");
   }
+
+ protected:
+  // Explicitly set that data type of the output of the cross_entropy operator
+  // is determined by its input "X".
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.Input<Tensor>("X")->type());
+  }
 };
 
 class CrossEntropyGradientOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
@@ -76,16 +83,23 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
                       "be equal.");
     PADDLE_ENFORCE_EQ(dy_dims[1], 1,
                       "The 2nd dimension of Input(Y@Grad) should be 1.");
-    if (ctx->Attrs().Get<bool>("softLabel")) {
+    if (ctx->Attrs().Get<bool>("soft_label")) {
       PADDLE_ENFORCE_EQ(x_dims[1], label_dims[1],
-                        "When Attr(softLabel) == true, the 2nd dimension of "
+                        "When Attr(soft_label) == true, the 2nd dimension of "
                         "Input(X) and Input(Label) should be equal.");
     } else {
       PADDLE_ENFORCE_EQ(label_dims[1], 1,
-                        "When Attr(softLabel) == false, the 2nd dimension of "
+                        "When Attr(soft_label) == false, the 2nd dimension of "
                         "Input(Label) should be 1.");
     }
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+  }
+
+ protected:
+  // CrossEntropy's data type just determined by "X"
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.Input<Tensor>("X")->type());
   }
 };
 
@@ -103,15 +117,15 @@ class CrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
         "Label",
         "(Tensor, default Tensor<int>), the ground truth which is "
         "a 2-D tensor. "
-        "When softLabel is set to false, `Label` is a Tensor<int> with shape "
+        "When soft_label is set to false, `Label` is a Tensor<int> with shape "
         "[N x 1]. "
-        "When softLabel is set to true, `Label` is a Tensor<float/double> "
+        "When soft_label is set to true, `Label` is a Tensor<float/double> "
         "with shape [N x K].");
     AddOutput("Y",
               "(Tensor, default Tensor<float>), a 2-D tensor "
               "with shape [N x 1]. The cross entropy loss.");
     AddAttr<bool>(
-        "softLabel",
+        "soft_label",
         "(bool, default false), a flag to indicate whether to interpretate "
         "the given labels as soft labels.")
         .SetDefault(false);
@@ -121,12 +135,12 @@ CrossEntropy Operator.
 It supports both standard cross-entropy and soft-label cross-entropy loss
 computation.
 1) One-hot cross-entropy:
-    softLabel = false, Label[i, 0] indicates the class index for sample i:
+    soft_label = false, Label[i, 0] indicates the class index for sample i:
 
                 Y[i] = -log(X[i, Label[i]])
 
 2) Soft-label cross-entropy:
-    softLabel = true, Label[i, j] indicates the soft label of class j
+    soft_label = true, Label[i, j] indicates the soft label of class j
     for sample i:
 
                 Y[i] = \sum_j{-Label[i, j] * log(X[i, j])}
@@ -150,6 +164,8 @@ or not. But the output only shares the LoD with input `X`.
 namespace ops = paddle::operators;
 REGISTER_OP(cross_entropy, ops::CrossEntropyOp, ops::CrossEntropyOpMaker,
             cross_entropy_grad, ops::CrossEntropyGradientOp);
-REGISTER_OP_CPU_KERNEL(cross_entropy, ops::CrossEntropyOpKernel<float>);
+REGISTER_OP_CPU_KERNEL(cross_entropy, ops::CrossEntropyOpKernel<float>,
+                       ops::CrossEntropyOpKernel<double>);
 REGISTER_OP_CPU_KERNEL(cross_entropy_grad,
-                       ops::CrossEntropyGradientOpKernel<float>);
+                       ops::CrossEntropyGradientOpKernel<float>,
+                       ops::CrossEntropyGradientOpKernel<double>);

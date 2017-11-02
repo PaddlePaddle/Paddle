@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "paddle/memory/detail/meta_cache.h"
+#include "glog/logging.h"
 #include "paddle/memory/detail/memory_block.h"
 #include "paddle/platform/assert.h"
 
@@ -28,7 +29,9 @@ Metadata MetadataCache::load(const MemoryBlock* block) {
     PADDLE_ASSERT(existing_metadata->second.check_guards());
     return existing_metadata->second;
   } else {
-    PADDLE_ASSERT(reinterpret_cast<const Metadata*>(block)->check_guards());
+    auto* meta = reinterpret_cast<const Metadata*>(block);
+    VLOG(10) << "Load MetaData type=" << meta->type;
+    PADDLE_ASSERT(meta->check_guards());
     return *reinterpret_cast<const Metadata*>(block);
   }
 }

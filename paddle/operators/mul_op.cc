@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/mul_op.h"
 
@@ -19,12 +19,9 @@ namespace operators {
 
 using framework::Tensor;
 
-class MulOp : public framework::OperatorWithKernel {
+class MulOpShapeInference : public framework::InferShapeBase {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void operator()(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of MulOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) of MulOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
@@ -32,15 +29,22 @@ class MulOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
+
     int x_num_col_dims = ctx->Attrs().Get<int>("x_num_col_dims");
     int y_num_col_dims = ctx->Attrs().Get<int>("y_num_col_dims");
 
-    PADDLE_ENFORCE(x_dims.size() > x_num_col_dims,
-                   "The rank of input tensor X should be larger than "
-                   "`mul_op`'s `x_num_col_dims`.");
-    PADDLE_ENFORCE(y_dims.size() > y_num_col_dims,
-                   "The rank of input tensor Y should be larger than "
-                   "`mul_op`'s `y_num_col_dims`.");
+    VLOG(3) << "mul operator x.shape=" << x_dims << " y.shape=" << y_dims
+            << " x_num_col_dims=" << x_num_col_dims
+            << " y_num_col_dims=" << y_num_col_dims;
+
+    PADDLE_ENFORCE_GT(
+        x_dims.size(), x_num_col_dims,
+        "The input tensor X's rank of MulOp should be larger than "
+        "x_num_col_dims.");
+    PADDLE_ENFORCE_GT(
+        y_dims.size(), y_num_col_dims,
+        "The input tensor Y's rank of MulOp should be larger than "
+        "y_num_col_dims.");
 
     auto x_mat_dims = framework::flatten_to_2d(x_dims, x_num_col_dims);
     auto y_mat_dims = framework::flatten_to_2d(y_dims, y_num_col_dims);
@@ -48,7 +52,19 @@ class MulOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_mat_dims[1], y_mat_dims[0],
         "First matrix's width must be equal with second matrix's height.");
-    ctx->SetOutputDim("Out", {x_mat_dims[0], y_mat_dims[1]});
+    std::vector<int64_t> output_dims;
+    output_dims.reserve(
+        static_cast<size_t>(x_num_col_dims + y_dims.size() - y_num_col_dims));
+
+    for (int i = 0; i < x_num_col_dims; ++i) {
+      output_dims.push_back(x_dims[i]);
+    }
+
+    for (int i = y_num_col_dims; i < y_dims.size(); ++i) {
+      output_dims.push_back(y_dims[i]);
+    }
+
+    ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
@@ -94,8 +110,7 @@ class MulOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
     PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
@@ -104,19 +119,10 @@ class MulOpGrad : public framework::OperatorWithKernel {
     auto y_dims = ctx->GetInputDim("Y");
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
-    auto x_mat_dims =
-        framework::flatten_to_2d(x_dims, Attr<int>("x_num_col_dims"));
-    auto y_mat_dims =
-        framework::flatten_to_2d(y_dims, Attr<int>("y_num_col_dims"));
-
-    PADDLE_ENFORCE_EQ(
-        x_mat_dims[0], out_dims[0],
-        "The first dimension of Out@GRAD must equal to the first dimension of "
-        "the first operand.");
-    PADDLE_ENFORCE_EQ(
-        y_mat_dims[1], out_dims[1],
-        "The second dimension of Out@GRAD must equal to the second "
-        "dimension of the second operand.");
+    auto x_mat_dims = framework::flatten_to_2d(
+        x_dims, ctx->Attrs().Get<int>("x_num_col_dims"));
+    auto y_mat_dims = framework::flatten_to_2d(
+        y_dims, ctx->Attrs().Get<int>("y_num_col_dims"));
 
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
@@ -134,7 +140,10 @@ class MulOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulOpGrad);
+REGISTER_OPERATOR(mul, paddle::framework::OperatorWithKernel, ops::MulOpMaker,
+                  ops::MulOpShapeInference,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(mul_grad, ops::MulOpGrad);
 REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(mul_grad,
                        ops::MulGradKernel<paddle::platform::CPUPlace, float>);

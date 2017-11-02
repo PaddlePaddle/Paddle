@@ -45,8 +45,8 @@ class OpProtoAndCheckerMaker {
       return *this;
     }
 
-    VariableBuilder& NotInGradient() {
-      var_->set_not_in_gradient(true);
+    VariableBuilder& AsDispensable() {
+      var_->set_dispensable(true);
       return *this;
     }
   };
