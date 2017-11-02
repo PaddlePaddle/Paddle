@@ -27,6 +27,11 @@ class SequencePoolOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SequencePoolOp should not be null.");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    if (ctx->Attrs().Get<std::string>("pooltype") == "MAX") {
+      PADDLE_ENFORCE(ctx->HasOutput("MaxIndex"),
+                     "Output(MaxIndex) of SequencePoolOp should not be null.");
+      ctx->SetOutputDim("MaxIndex", ctx->GetInputDim("X"));
+    }
   }
 };
 
@@ -35,13 +40,17 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
   SequencePoolOpMaker(framework::OpProto* proto,
                       framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "(LoDTensor), the variable-length input of SequencePoolOp");
+    AddInput("X", "(LoDTensor) The variable-length input of SequencePoolOp");
     AddOutput("Out",
-              "(Tensor), output of SequencePoolOp, which does not contain LoD "
+              "(Tensor) The output of SequencePoolOp does not contain LoD "
               "infomation.");
+    AddOutput("MaxIndex",
+              "(Tensor<int>) This tensor is used for the max-pooling "
+              "of sequence to record the max indexes.")
+        .AsIntermediate();
     AddAttr<std::string>(
         "pooltype",
-        "(int, default AVERAGE) the pooling pooltype of SequencePoolOp.")
+        "(int, default AVERAGE) The pooling pooltype of SequencePoolOp.")
         .SetDefault("AVERAGE");
     AddComment(R"DOC(
     SequencePoolOp pools features of all time-steps of each instance.
@@ -91,6 +100,12 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(og_dims[i], x_dims[i], "The dimension mismatch.");
     }
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+  }
+
+ protected:
+  framework::DataType IndicateDataType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::ToDataType(ctx.Input<Tensor>("X")->type());
   }
 };
 
