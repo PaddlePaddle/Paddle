@@ -42,6 +42,30 @@ class SequenceConvOp : public framework::OperatorWithKernel {
                    "Filter's height should be context_length * "
                    "input_hidden_size .");
 
+    if (ctx->HasInput("PaddingData")) {
+      framework::DDim padding_dims = ctx->GetInputDim("PaddingData");
+
+      int context_length = ctx->Attrs().Get<int>("contextLength");
+      int context_start = ctx->Attrs().Get<int>("contextStart");
+      int up_pad = std::max(0, -context_start);
+      int down_pad = std::max(0, context_start + context_length - 1);
+      int sequence_width = static_cast<int>(in_dims[1]);
+
+      PADDLE_ENFORCE(
+          !(context_start == 0 && context_length == 1),
+          "If context_start is 0 and context_length is 1, paddingTrainable "
+          "should be false.");
+
+      PADDLE_ENFORCE(padding_dims.size() == 2,
+                     "Input(PaddingData) should be 2-D tensor.");
+
+      PADDLE_ENFORCE(
+          (padding_dims[0] == up_pad + down_pad) &&
+              padding_dims[1] == sequence_width,
+          "Input(PaddingData)'s shape is not consistent with 'context_start' "
+          "and 'context_length'.");
+    }
+
     in_dims[1] = filter_dims[1];
     ctx->SetOutputDim("Out", in_dims);
     ctx->ShareLoD("X", "Out");

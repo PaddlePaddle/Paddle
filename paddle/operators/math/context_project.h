@@ -88,9 +88,9 @@ template <typename Place, typename T>
 class ContextProjectFunctor {
  public:
   void operator()(const platform::DeviceContext& context, const LoDTensor& in,
-                  const Tensor& padding_data, int context_start,
-                  int context_length, int context_stride, int up_pad,
-                  int down_pad, Tensor* col) {
+                  int context_start, int context_length, int context_stride,
+                  int up_pad, int down_pad, const Tensor* padding_data,
+                  Tensor* col) {
     auto lod_level_0 = in.lod()[0];
 
     math::Im2ColFunctor<math::ColFormat::kOCF, Place, float> im2col_ocf;
@@ -130,7 +130,7 @@ class ContextProjectFunctor {
         out_t.Resize({sequence_height, context_length * sequence_width});
       }
     }
-    if (col != nullptr) {
+    if (padding_data != nullptr) {
       for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
         Tensor out_t = col->Slice(static_cast<int>(lod_level_0[i]),
                                   static_cast<int>(lod_level_0[i + 1]));
@@ -149,7 +149,7 @@ class ContextProjectFunctor {
                 k + context_length < up_pad ? context_length : up_pad - k;
             Tensor out_t_sub = out_t.Slice(k * context_length,
                                            k * context_length + padding_size);
-            Tensor w_sub = padding_data.Slice(k, k + padding_size);
+            Tensor w_sub = padding_data->Slice(k, k + padding_size);
             auto out_t_sub_e = EigenMatrix<T>::From(out_t_sub);
             auto w_sub_e = EigenMatrix<T>::From(w_sub);
             out_t_sub_e.device(*context.GetEigenDevice<Place>()) = w_sub_e;
@@ -180,7 +180,7 @@ class ContextProjectFunctor {
             Tensor out_t_sub = out_t.Slice(
                 (down_pad_begin_row + t) * context_length - padding_size,
                 (down_pad_begin_row + t) * context_length);
-            Tensor w_sub = padding_data.Slice(
+            Tensor w_sub = padding_data->Slice(
                 up_pad + padding_idx, up_pad + padding_idx + padding_size);
             auto out_t_sub_e = EigenMatrix<T>::From(out_t_sub);
             auto w_sub_e = EigenMatrix<T>::From(w_sub);
@@ -241,67 +241,64 @@ class ContextProjectGradFunctor {
         }
       }
     }
-    if (pad_grad) {
-      if (padding_data) {
-        for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
-          Tensor out_t = col->Slice(static_cast<int>(lod_level_0[i]),
-                                    static_cast<int>(lod_level_0[i + 1]));
+    if (pad_grad && padding_data) {
+      for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
+        Tensor out_t = col->Slice(static_cast<int>(lod_level_0[i]),
+                                  static_cast<int>(lod_level_0[i + 1]));
 
-          sequence_height = static_cast<int>(out_t.dims()[0]);
-          out_t.Resize({sequence_height * context_length, sequence_width});
+        sequence_height = static_cast<int>(out_t.dims()[0]);
+        out_t.Resize({sequence_height * context_length, sequence_width});
 
-          if (up_pad > 0) {
-            int padding_rows = std::min(
-                up_pad, static_cast<int>(lod_level_0[i + 1] - lod_level_0[i]));
+        if (up_pad > 0) {
+          int padding_rows = std::min(
+              up_pad, static_cast<int>(lod_level_0[i + 1] - lod_level_0[i]));
 
-            for (int k = 0; k < padding_rows; ++k) {
-              int padding_size =
-                  k + context_length < up_pad ? context_length : up_pad - k;
-              Tensor out_t_sub = out_t.Slice(k * context_length,
-                                             k * context_length + padding_size);
-              Tensor w_sub = padding_data->Slice(k, k + padding_size);
-              auto out_t_sub_e = EigenMatrix<T>::From(out_t_sub);
-              auto w_sub_e = EigenMatrix<T>::From(w_sub);
-              w_sub_e.device(*context.GetEigenDevice<Place>()) =
-                  w_sub_e + out_t_sub_e;
-            }
-          }
-          if (down_pad > 0) {
-            int down_pad_begin_row =
-                std::max(
-                    0, (sequence_height - context_start - context_length) + 1) +
-                1;
-            int padding_begin = std::max(0, context_start - sequence_height);
+          for (int k = 0; k < padding_rows; ++k) {
             int padding_size =
-                sequence_height - context_start >= context_length
-                    ? 1
-                    : context_length - (sequence_height - context_start);
-            if (context_start >= sequence_height) padding_size = context_length;
-            int padding_idx = padding_begin;
-            for (int t = 0; t + down_pad_begin_row <= sequence_height;
-                 ++t, ++padding_size) {
-              if (context_start >= sequence_height)
-                padding_size = context_length;
-              if (padding_size > context_length) {
-                padding_size = context_length;
-                padding_idx++;
-              }
-              if (padding_begin > 0 || sequence_height == context_start)
-                padding_idx = padding_begin + t;
-
-              Tensor out_t_sub = out_t.Slice(
-                  (down_pad_begin_row + t) * context_length - padding_size,
-                  (down_pad_begin_row + t) * context_length);
-              Tensor w_sub = padding_data->Slice(
-                  up_pad + padding_idx, up_pad + padding_idx + padding_size);
-              auto out_t_sub_e = EigenMatrix<T>::From(out_t_sub);
-              auto w_sub_e = EigenMatrix<T>::From(w_sub);
-              w_sub_e.device(*context.GetEigenDevice<Place>()) =
-                  w_sub_e + out_t_sub_e;
-            }
+                k + context_length < up_pad ? context_length : up_pad - k;
+            Tensor out_t_sub = out_t.Slice(k * context_length,
+                                           k * context_length + padding_size);
+            Tensor w_sub = padding_data->Slice(k, k + padding_size);
+            auto out_t_sub_e = EigenMatrix<T>::From(out_t_sub);
+            auto w_sub_e = EigenMatrix<T>::From(w_sub);
+            w_sub_e.device(*context.GetEigenDevice<Place>()) =
+                w_sub_e + out_t_sub_e;
           }
-          out_t.Resize({sequence_height, context_length * sequence_width});
         }
+        if (down_pad > 0) {
+          int down_pad_begin_row =
+              std::max(0,
+                       (sequence_height - context_start - context_length) + 1) +
+              1;
+          int padding_begin = std::max(0, context_start - sequence_height);
+          int padding_size =
+              sequence_height - context_start >= context_length
+                  ? 1
+                  : context_length - (sequence_height - context_start);
+          if (context_start >= sequence_height) padding_size = context_length;
+          int padding_idx = padding_begin;
+          for (int t = 0; t + down_pad_begin_row <= sequence_height;
+               ++t, ++padding_size) {
+            if (context_start >= sequence_height) padding_size = context_length;
+            if (padding_size > context_length) {
+              padding_size = context_length;
+              padding_idx++;
+            }
+            if (padding_begin > 0 || sequence_height == context_start)
+              padding_idx = padding_begin + t;
+
+            Tensor out_t_sub = out_t.Slice(
+                (down_pad_begin_row + t) * context_length - padding_size,
+                (down_pad_begin_row + t) * context_length);
+            Tensor w_sub = padding_data->Slice(
+                up_pad + padding_idx, up_pad + padding_idx + padding_size);
+            auto out_t_sub_e = EigenMatrix<T>::From(out_t_sub);
+            auto w_sub_e = EigenMatrix<T>::From(w_sub);
+            w_sub_e.device(*context.GetEigenDevice<Place>()) =
+                w_sub_e + out_t_sub_e;
+          }
+        }
+        out_t.Resize({sequence_height, context_length * sequence_width});
       }
     }
   }
