@@ -149,7 +149,7 @@ class LayerHelper(object):
         """
         Append bias operator and return its output. If the user does not set 
         bias_attr, append_bias_op will return input_var
-         
+
         :param input_var: the input variable. The len(input_var.shape) is larger
         or equal than 2.
         :param num_flatten_dims: The input tensor will be flatten as a matrix 
@@ -182,9 +182,11 @@ class LayerHelper(object):
         if act is None:
             return input_var
         if isinstance(act, basestring):
-            act = {'type': act}
+            #act = {'type': act}
+            act = copy.deepcopy({'type': act})
         tmp = self.create_tmp_variable(dtype=input_var.data_type)
         act_type = act.pop('type')
+        print act_type
         self.append_op(
             type=act_type,
             inputs={"X": [input_var]},

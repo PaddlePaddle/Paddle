@@ -141,12 +141,16 @@ set(DEPS_OPS
     pool_with_index_op
     nccl_op
     sequence_conv_op
-    lstm_op)
+    lstm_op
+    sgd_op
+    adagrad_op)
 
 op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
 op_library(cross_entropy_op DEPS cross_entropy)
 op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
-op_library(sum_op DEPS net_op selected_rows_functor)
+op_library(sum_op DEPS selected_rows_functor)
+op_library(sgd_op DEPS selected_rows_functor)
+op_library(adagrad_op DEPS selected_rows_functor)
 op_library(pool_op DEPS pooling)
 op_library(pool_with_index_op DEPS pooling)
 if(WITH_GPU)
