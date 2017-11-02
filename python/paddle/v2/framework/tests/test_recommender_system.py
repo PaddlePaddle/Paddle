@@ -245,8 +245,8 @@ def model():
 def main():
     cost = model()
     sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.2)
-    opts = sgd_optimizer.minimize(cost)
-    block = main_program.block(0)
+    opts = sgd_optimizer.minimize(cost, startup_program=startup_program)
+    block = program.block(0)
 
     if use_gpu:
         place = core.GPUPlace(0)
@@ -307,8 +307,8 @@ def main():
                            feed=func_feed(feeding, data),
                            fetch_list=[cost])
             out = np.array(outs[0])
-            if out[0] < 5.0:
-                # if avg cost less than 10.0, we think our code is good.
+            if out[0] < 6.0:
+                # if avg cost less than 6.0, we think our code is good.
                 exit(0)
 
 
