@@ -10,7 +10,7 @@ from paddle.v2.framework.executor import Executor
 import numpy as np
 
 
-def convolution_net(input_dim, class_dim=2, emb_dim=128, hid_dim=128):
+def convolution_net(input_dim, class_dim=2, emb_dim=32, hid_dim=32):
     data = layers.data(name="words", shape=[1], data_type="int64")
     label = layers.data(name="label", shape=[1], data_type="int64")
 
@@ -21,13 +21,13 @@ def convolution_net(input_dim, class_dim=2, emb_dim=128, hid_dim=128):
         filter_size=3,
         act="tanh",
         pool_type="sqrt")
-    conv_5 = nets.sequence_conv_pool(
+    conv_4 = nets.sequence_conv_pool(
         input=emb,
         num_filters=hid_dim,
         filter_size=4,
         act="tanh",
         pool_type="sqrt")
-    prediction = layers.fc(input=[conv_3, conv_5],
+    prediction = layers.fc(input=[conv_3, conv_4],
                            size=class_dim,
                            act="softmax")
     cost = layers.cross_entropy(input=prediction, label=label)
