@@ -31,8 +31,8 @@ template <typename Place, typename T>
 class AdagradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto param_out_tensor = ctx.Output<framework::Tensor>("ParamOut");
-    auto moment_out_tensor = ctx.Output<framework::Tensor>("MomentOut");
+    auto* param_out_tensor = ctx.Output<framework::Tensor>("ParamOut");
+    auto* moment_out_tensor = ctx.Output<framework::Tensor>("MomentOut");
 
     param_out_tensor->mutable_data<T>(ctx.GetPlace());
     moment_out_tensor->mutable_data<T>(ctx.GetPlace());
@@ -59,18 +59,16 @@ class AdagradOpKernel : public framework::OpKernel<T> {
       param_out.device(place) =
           param - lr.broadcast(m_dsize) * grad / (moment_out.sqrt() + epsilon);
     } else if (grad_var->IsType<framework::SelectedRows>()) {
-      auto* param = ctx.Input<framework::Tensor>("Param");
-      auto* param_out = ctx.Output<framework::Tensor>("ParamOut");
-      PADDLE_ENFORCE_EQ(param, param_out);
+      auto* param_tensor = ctx.Input<framework::Tensor>("Param");
+      PADDLE_ENFORCE_EQ(param_tensor, param_out_tensor);
 
-      auto* moment = ctx.Input<framework::Tensor>("Moment");
-      auto* moment_out = ctx.Output<framework::Tensor>("MomentOut");
-      PADDLE_ENFORCE_EQ(moment, moment_out);
+      auto* moment_tensor = ctx.Input<framework::Tensor>("Moment");
+      PADDLE_ENFORCE_EQ(moment_tensor, moment_out_tensor);
 
       SparseAdagradFunctor<Place, T> functor;
       functor(ctx.device_context(), *ctx.Input<framework::SelectedRows>("Grad"),
               *ctx.Input<framework::Tensor>("LearningRate"), epsilon,
-              moment_out, param_out);
+              moment_out_tensor, param_out_tensor);
     } else {
       PADDLE_THROW("Unsupported Variable Type of Grad");
     }

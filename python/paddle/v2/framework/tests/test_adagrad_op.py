@@ -74,7 +74,7 @@ class TestSparseAdagradOp(unittest.TestCase):
 
         # create and initialize Grad Variable   
         height = 10
-        rows = [0, 4, 7]
+        rows = [0, 4, 7, 4]
         row_numel = 12
 
         grad_selected_rows = scope.var('Grad').get_selected_rows()
@@ -122,7 +122,10 @@ class TestSparseAdagradOp(unittest.TestCase):
         self.assertAlmostEqual(6.0, moment_result_array[rows[0], 0])
         self.assertAlmostEqual(3.0, moment_result_array[rows[0], 2])
         self.assertAlmostEqual(2.0, moment_result_array[1, 0])
-        self.assertAlmostEqual(3.0, moment_result_array[rows[1], 10])
+        # 2.0 + (1.0 + 1.0)^2
+        self.assertAlmostEqual(6.0, moment_result_array[rows[1], 10])
+        self.assertAlmostEqual(6.0, moment_result_array[rows[3], 4])
+
         self.assertAlmostEqual(2.0, moment_result_array[5, 8])
         self.assertAlmostEqual(3.0, moment_result_array[rows[2], 1])
         self.assertAlmostEqual(18.0, moment_result_array[rows[2], 8])
@@ -143,10 +146,14 @@ class TestSparseAdagradOp(unittest.TestCase):
             places=5)
         self.assertAlmostEqual(
             get_out(5.0, 2.0, 0.0, 2.0, 2.0), result_array[1, 0], places=5)
+
+        # grad_merge = 1.0 + 1.0
+        # m = 6.0
         self.assertAlmostEqual(
-            get_out(5.0, 2.0, 1.0, 3.0, 2.0),
+            get_out(5.0, 2.0, 2.0, 6.0, 2.0),
             result_array[rows[1], 10],
             places=5)
+
         self.assertAlmostEqual(
             get_out(5.0, 2.0, 0.0, 2.0, 2.0), result_array[5, 8], places=5)
         self.assertAlmostEqual(

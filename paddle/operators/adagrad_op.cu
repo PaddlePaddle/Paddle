@@ -21,6 +21,59 @@ namespace paddle {
 namespace operators {
 
 namespace {
+
+// CUDA do not support dynamic arrary in template
+// https://stackoverflow.com/questions/20497209
+template <typename T>
+struct SharedMemory {
+  // Ensure that we won't compile any un-specialized types
+  __device__ T* GetPointer() { return NULL; }
+};
+
+template <>
+struct SharedMemory<float> {
+  __device__ float* GetPointer() {
+    extern __shared__ float s_float[];
+    return s_float;
+  }
+};
+
+template <>
+struct SharedMemory<double> {
+  __device__ double* GetPointer() {
+    extern __shared__ double s_double[];
+    return s_double;
+  }
+};
+
+template <typename T, int block_size>
+__global__ void MergeGradKernel(const T* grad, const int64_t* grad_rows,
+                                T* grad_merge, T* grad_merge_rows,
+                                size_t grad_merge_rows_size,
+                                int64_t row_numel) {
+  const int ty = blockIdx.y;
+  int tid = threadIdx.x;
+
+  SharedMemory<T> grad_merge_idx;
+  T* d_grad_merge_idx = grad_merge_idx.GetPointer();
+
+  if (tid == 0) {
+    for (size_t i = 0; i < grad_merge_rows_size; i++) {
+      if (grad_rows[ty] == grad_merge_rows[i]) {
+        d_grad_merge_idx[0] = i;
+      }
+    }
+  }
+
+  __syncthreads();
+
+  grad += ty * row_numel;
+  grad_merge += d_grad_merge_idx[0] * row_numel;
+  for (int index = tid; index < row_numel; index += block_size) {
+    paddle::platform::CudaAtomicAdd(grad_merge + index, grad + index);
+  }
+}
+
 template <typename T, int block_size>
 __global__ void SparseAdagradFunctorKernel(const T* grad, const int64_t* rows,
                                            const T* learning_rate, T* param,
@@ -49,39 +102,65 @@ struct SparseAdagradFunctor<platform::GPUPlace, T> {
                   const framework::SelectedRows& grad,
                   const framework::Tensor& learning_rate, T epsilon,
                   framework::Tensor* moment, framework::Tensor* param) {
-    std::unique_ptr<framework::SelectedRows> grad_square{
-        new framework::SelectedRows()};
-    grad_square->set_rows(grad.rows());
-    grad_square->set_height(grad.height());
-    grad_square->mutable_value()->mutable_data<T>(grad.value().dims(),
-                                                  context.GetPlace());
-    auto gs =
-        framework::EigenVector<T>::Flatten(*(grad_square->mutable_value()));
-    auto g = framework::EigenVector<T>::Flatten(grad.value());
-    gs.device(*context.GetEigenDevice<platform::GPUPlace>()) = g * g;
-
-    math::SelectedRowsAddToTensor<platform::GPUPlace, T> functor;
-    functor(context, *grad_square, moment);
-
+    // 1. g_m.rows = set(g.rows)
     auto grad_rows = grad.rows();
-    auto grad_rows_size = grad_rows.size();
+    std::set<int64_t> row_set(grad_rows.begin(), grad_rows.end());
+    std::vector<int64_t> merge_rows(row_set.begin(), row_set.end());
 
-    int64_t grad_row_numel = grad.value().numel() / grad_rows_size;
+    auto grad_width = grad.value().dims()[1];
+    std::unique_ptr<framework::SelectedRows> grad_merge{
+        new framework::SelectedRows()};
+    grad_merge->set_rows(merge_rows);
+    grad_merge->set_height(grad.height());
+    grad_merge->mutable_value()->mutable_data<T>(
+        framework::make_ddim(
+            {static_cast<int64_t>(merge_rows.size()), grad_width}),
+        context.GetPlace());
 
-    auto* lr = learning_rate.data<T>();
-    auto* param_data = param->data<T>();
-    auto* moment_data = moment->data<T>();
+    math::SetConstant<platform::CPUPlace, T> constant_functor;
+    constant_functor(context, grad_merge->mutable_value(), 0.0);
+
+    auto* grad_merge_data = grad_merge->mutable_value()->data<T>();
     auto* grad_data = grad.value().data<T>();
 
     const int block_size = 256;
     dim3 threads(block_size, 1);
-    dim3 grid(1, grad_rows.size());
-    SparseAdagradFunctorKernel<
-        T, 256><<<grid, threads, 0,
+    dim3 grid1(1, grad_rows.size());
+
+    MergeGradKernel<
+        T, 256><<<grid1, threads, sizeof(T),
                   reinterpret_cast<const platform::CUDADeviceContext&>(context)
                       .stream()>>>(grad_data, grad.rows().data(),
+                                   grad_merge_data, grad_merge.rows().data(),
+                                   grad_merge.rows().size(), grad_width);
+
+    // 2. m += g_m * g_m
+    std::unique_ptr<framework::SelectedRows> grad_square{
+        new framework::SelectedRows()};
+    grad_square->set_rows(grad_merge->rows());
+    grad_square->set_height(grad_merge->height());
+    grad_square->mutable_value()->mutable_data<T>(grad_merge->value().dims(),
+                                                  context.GetPlace());
+    auto gs =
+        framework::EigenVector<T>::Flatten(*(grad_square->mutable_value()));
+    auto gm = framework::EigenVector<T>::Flatten(grad_merge.value());
+    gs.device(*context.GetEigenDevice<platform::GPUPlace>()) = gm * gm;
+
+    math::SelectedRowsAddToTensor<platform::GPUPlace, T> functor;
+    functor(context, *grad_square, moment);
+
+    // 3. update parameter
+    auto* lr = learning_rate.data<T>();
+    auto* param_data = param->data<T>();
+    auto* moment_data = moment->data<T>();
+
+    dim3 grid2(1, merge_rows.size());
+    SparseAdagradFunctorKernel<
+        T, 256><<<grid2, threads, 0,
+                  reinterpret_cast<const platform::CUDADeviceContext&>(context)
+                      .stream()>>>(grad_merge_data, grad_merge.rows().data(),
                                    learning_rate.data<T>(), param_data,
-                                   moment_data, grad_row_numel, epsilon);
+                                   moment_data, grad_width, epsilon);
   }
 };
 

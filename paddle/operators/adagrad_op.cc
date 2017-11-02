@@ -13,7 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/adagrad_op.h"
+
 #include <cmath>
+
+#include "paddle/operators/math/math_function.h"
 #include "paddle/operators/math/selected_rows_functor.h"
 
 namespace paddle {
@@ -86,42 +89,72 @@ by avoiding division by zero.
   }
 };
 
+namespace {
+size_t FindPos(const std::vector<int64_t>& rows, int64_t value) {
+  return std::find(rows.begin(), rows.end(), value) - rows.begin();
+}
+}  // namespace
+
 template <typename T>
 struct SparseAdagradFunctor<platform::CPUPlace, T> {
   void operator()(const platform::DeviceContext& context,
                   const framework::SelectedRows& grad,
                   const framework::Tensor& learning_rate, T epsilon,
                   framework::Tensor* moment, framework::Tensor* param) {
+    // 1. g_m.rows = set(g.rows)
+    auto grad_rows = grad.rows();
+    std::set<int64_t> row_set(grad_rows.begin(), grad_rows.end());
+    std::vector<int64_t> merge_rows(row_set.begin(), row_set.end());
+
+    auto grad_width = grad.value().dims()[1];
+    std::unique_ptr<framework::SelectedRows> grad_merge{
+        new framework::SelectedRows()};
+    grad_merge->set_rows(merge_rows);
+    grad_merge->set_height(grad.height());
+    grad_merge->mutable_value()->mutable_data<T>(
+        framework::make_ddim(
+            {static_cast<int64_t>(merge_rows.size()), grad_width}),
+        context.GetPlace());
+
+    math::SetConstant<platform::CPUPlace, T> constant_functor;
+    constant_functor(context, grad_merge->mutable_value(), 0.0);
+
+    auto* grad_merge_data = grad_merge->mutable_value()->data<T>();
+    auto* grad_data = grad.value().data<T>();
+
+    for (size_t i = 0; i < grad_rows.size(); i++) {
+      size_t grad_merge_i = FindPos(merge_rows, grad_rows[i]);
+      for (int64_t j = 0; j < grad_width; j++) {
+        grad_merge_data[grad_merge_i * grad_width + j] +=
+            grad_data[i * grad_width + j];
+      }
+    }
+
+    // 2. m += g_m * g_m
     std::unique_ptr<framework::SelectedRows> grad_square{
         new framework::SelectedRows()};
-    grad_square->set_rows(grad.rows());
-    grad_square->set_height(grad.height());
-    grad_square->mutable_value()->mutable_data<T>(grad.value().dims(),
+    grad_square->set_rows(grad_merge->rows());
+    grad_square->set_height(grad_merge->height());
+    grad_square->mutable_value()->mutable_data<T>(grad_merge->value().dims(),
                                                   context.GetPlace());
     auto gs =
         framework::EigenVector<T>::Flatten(*(grad_square->mutable_value()));
-    auto g = framework::EigenVector<T>::Flatten(grad.value());
-    gs.device(*context.GetEigenDevice<platform::CPUPlace>()) = g * g;
+    auto gm = framework::EigenVector<T>::Flatten(grad_merge->value());
+    gs.device(*context.GetEigenDevice<platform::CPUPlace>()) = gm * gm;
 
     math::SelectedRowsAddToTensor<platform::CPUPlace, T> functor;
     functor(context, *grad_square, moment);
 
-    auto grad_rows = grad.rows();
-    auto grad_rows_size = grad_rows.size();
-
-    int64_t grad_row_numel = grad.value().numel() / grad_rows_size;
-
+    // 3. update parameter
     auto* lr = learning_rate.data<T>();
     auto* param_data = param->data<T>();
     auto* moment_data = moment->data<T>();
-    auto* grad_data = grad.value().data<T>();
 
-    for (size_t i = 0; i < grad_rows_size; i++) {
-      for (int64_t j = 0; j < grad_row_numel; j++) {
-        param_data[grad_rows[i] * grad_row_numel + j] -=
-            lr[0] * grad_data[i * grad_row_numel + j] /
-            (std::sqrt(moment_data[grad_rows[i] * grad_row_numel + j]) +
-             epsilon);
+    for (size_t i = 0; i < merge_rows.size(); i++) {
+      for (int64_t j = 0; j < grad_width; j++) {
+        param_data[merge_rows[i] * grad_width + j] -=
+            lr[0] * grad_merge_data[i * grad_width + j] /
+            (std::sqrt(moment_data[merge_rows[i] * grad_width + j]) + epsilon);
       }
     }
   }
