@@ -29,7 +29,7 @@ class SequenceConvKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
-    auto* padding = context.Input<Tensor>("PaddingData");
+    auto* padding_data = context.Input<Tensor>("PaddingData");
     auto filter = *context.Input<Tensor>("Filter");
 
     auto* out = context.Output<LoDTensor>("Out");
@@ -52,7 +52,6 @@ class SequenceConvKernel : public framework::OpKernel<T> {
                                  context_length * sequence_width};
     Tensor col;
     col.mutable_data<T>(col_shape, context.GetPlace());
-    // Because if padding_trainable is false, padding data should be zeros.
     math::SetConstant<Place, T> set_zero;
     set_zero(context.device_context(), &col, static_cast<T>(0));
 
@@ -60,7 +59,7 @@ class SequenceConvKernel : public framework::OpKernel<T> {
 
     seq_project_functor(context.device_context(), *in, context_start,
                         context_length, context_stride, up_pad, down_pad,
-                        padding, &col);
+                        padding_data, &col);
 
     math::matmul<Place, T>(context.device_context(), col, false, filter, false,
                            static_cast<T>(1.0), out, static_cast<T>(0.0));
