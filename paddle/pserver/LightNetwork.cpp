@@ -49,6 +49,11 @@ DEFINE_int32(sock_recv_buf_size,
              1024 * 1024 * 40,
              "restrict sock recv buff size");
 
+/// reasonable sock_listen_queue_size can control maximum pending connections.
+DEFINE_int32(sock_listen_queue_size,
+             1024,
+             "listen queue size when pserver listen a TCP port");
+
 namespace paddle {
 
 /**
@@ -129,7 +134,7 @@ SocketServer::SocketServer(const std::string &addr, int port, int rdmaCpu)
   if (rdmaCpu == -1) {
     tcpRdma_ = F_TCP;
     socket_ = 0;
-    maxPendingConnections_ = 100;
+    maxPendingConnections_ = FLAGS_sock_listen_queue_size;
   } else {
     tcpRdma_ = F_RDMA;
     rdmaCpu_ = rdmaCpu;

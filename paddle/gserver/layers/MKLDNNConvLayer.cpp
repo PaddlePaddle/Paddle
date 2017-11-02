@@ -116,8 +116,6 @@ void MKLDNNConvLayer::resetFwd(std::vector<primitive>& pipeline,
   resetFwdBuffers(fwdPD_, in, wgt, bias, out);
 
   resetFwdPipeline(pipeline, fwdPD_, in, wgt, bias, out);
-
-  printValueFormatFlow();
 }
 
 void MKLDNNConvLayer::resetBwd(std::vector<primitive>& pipeline,
@@ -135,12 +133,6 @@ void MKLDNNConvLayer::resetBwd(std::vector<primitive>& pipeline,
   resetBwdBuffers(bwdWgtPD, bwdDataPD, in, wgt, bias, out);
 
   resetBwdPipeline(pipeline, bwdWgtPD, bwdDataPD, in, wgt, bias, out);
-
-  printGradFormatFlow();
-}
-
-void MKLDNNConvLayer::updateInputData() {
-  cpuInVal_->setData(getInputValue(0, CPU_DEVICE)->getData());
 }
 
 void MKLDNNConvLayer::updateWeights(const UpdateCallback& callback) {
@@ -211,11 +203,18 @@ void MKLDNNConvLayer::resetFwdBuffers(
     MKLDNNMatrixPtr& bias,
     MKLDNNMatrixPtr& out) {
   CHECK(pd);
-  resetInValue(pd, in);
+  resetInValue(
+      in, std::make_shared<memory::primitive_desc>(pd->src_primitive_desc()));
 
-  resetWgtBiasValue(pd, wgt, bias);
+  resetOutValue(out, pd->dst_primitive_desc());
 
-  resetOutValue(pd, out);
+  resetWithMatrix(wgt, weight_->getW(), pd->weights_primitive_desc());
+
+  if (biases_ && biases_->getW()) {
+    resetWithMatrix(bias, biases_->getW(), pd->bias_primitive_desc());
+  } else {
+    bias = nullptr;
+  }
 }
 
 void MKLDNNConvLayer::resetFwdPipeline(
@@ -225,100 +224,12 @@ void MKLDNNConvLayer::resetFwdPipeline(
     MKLDNNMatrixPtr& wgt,
     MKLDNNMatrixPtr& bias,
     MKLDNNMatrixPtr& out) {
-  pipeline.clear();
-
-  if (cvtInVal_) {
-    pipeline.push_back(*cvtInVal_);
-  }
-
   if (bias) {
     fwd_.reset(new conv_fwd(*pd, *in, *wgt, *bias, *out));
   } else {
     fwd_.reset(new conv_fwd(*pd, *in, *wgt, *out));
   }
   pipeline.push_back(*fwd_);
-
-  if (cvtOutVal_) {
-    pipeline.push_back(*cvtOutVal_);
-  }
-}
-
-void MKLDNNConvLayer::resetInValue(
-    std::shared_ptr<conv_fwd::primitive_desc>& pd, MKLDNNMatrixPtr& in) {
-  const MatrixPtr& inMat = inputLayers_[0]->getOutput().value;
-  in = MKLDNNMatrix::create(inMat, pd->src_primitive_desc());
-
-  // create buffer and reorder if input value do not match
-  cpuInVal_ = nullptr;
-  cvtInVal_ = nullptr;
-
-  MKLDNNMatrixPtr dnnIn = std::dynamic_pointer_cast<MKLDNNMatrix>(inMat);
-  CHECK_EQ(inputIsOnlyMKLDNN(), dnnIn != nullptr);
-  if (dnnIn != nullptr && dnnIn->getPrimitiveDesc() == in->getPrimitiveDesc()) {
-    in = dnnIn;
-    return;
-  }
-  if (dnnIn) {
-    if (dnnIn->getFormat() == format::nc) {
-      CHECK(ih_ == 1 && iw_ == 1) << "when input is nc format";
-      // create a new one with nchw format and same data
-      memory::dims inDims = memory::dims{bs_, ic_, 1, 1};
-      dnnIn = MKLDNNMatrix::create(inMat, inDims, format::nchw, engine_);
-    }
-    if (dnnIn->getPrimitiveDesc() == in->getPrimitiveDesc()) {
-      in = dnnIn;
-      return;
-    }
-    cpuInVal_ = dnnIn;
-    in = MKLDNNMatrix::create(nullptr, pd->src_primitive_desc());
-    cvtInVal_ = MKLDNNMatrix::createReorder(cpuInVal_, in);
-    CHECK(cvtInVal_) << "should not be emptry";
-  } else {
-    memory::dims inDims = memory::dims{bs_, ic_, ih_, iw_};
-    cpuInVal_ = MKLDNNMatrix::create(inMat, inDims, format::nchw, engine_);
-    if (cpuInVal_->getPrimitiveDesc() != in->getPrimitiveDesc()) {
-      // create new mkldnn matrix
-      in = MKLDNNMatrix::create(nullptr, pd->src_primitive_desc());
-      cvtInVal_ = MKLDNNMatrix::createReorder(cpuInVal_, in);
-      CHECK(cvtInVal_) << "should not be emptry";
-    } else {
-      in = cpuInVal_;
-    }
-  }
-}
-
-void MKLDNNConvLayer::resetWgtBiasValue(
-    std::shared_ptr<conv_fwd::primitive_desc>& pd,
-    MKLDNNMatrixPtr& wgt,
-    MKLDNNMatrixPtr& bias) {
-  wgt = MKLDNNMatrix::create(weight_->getW(), pd->weights_primitive_desc());
-  VLOG(MKLDNN_FMTS) << "Weight value format: " << wgt->getFormat();
-
-  bias = (biases_ && biases_->getW())
-             ? MKLDNNMatrix::create(biases_->getW(), pd->bias_primitive_desc())
-             : nullptr;
-}
-
-void MKLDNNConvLayer::resetOutValue(
-    std::shared_ptr<conv_fwd::primitive_desc>& pd, MKLDNNMatrixPtr& out) {
-  out = MKLDNNMatrix::create(output_.value, pd->dst_primitive_desc());
-
-  // create reorder if output value has cpu device and pd do not match
-  cpuOutVal_ = nullptr;
-  cvtOutVal_ = nullptr;
-  if (!outputIsOnlyMKLDNN()) {
-    const MatrixPtr& cpuOut = getOutput(CPU_DEVICE).value;
-    memory::dims outDims = memory::dims{bs_, oc_, oh_, ow_};
-    cpuOutVal_ = MKLDNNMatrix::create(cpuOut, outDims, format::nchw, engine_);
-    if (cpuOutVal_->getPrimitiveDesc() != out->getPrimitiveDesc()) {
-      cvtOutVal_ = MKLDNNMatrix::createReorder(out, cpuOutVal_);
-      CHECK(cvtOutVal_) << "should not be emptry";
-    } else {
-      // CPU output share the same data of MKLDNN output
-      cpuOut->setData(out->getData());
-      cpuOutVal_ = out;
-    }
-  }
 }
 
 void MKLDNNConvLayer::resetBwdWgtPD(
@@ -327,8 +238,8 @@ void MKLDNNConvLayer::resetBwdWgtPD(
   loadConvSettings(wgtDims, biasDims, strides, dilations, padL, padR);
 
   // create backward weight using input, output and weight value memory desc
-  CHECK(inVal_) << "Should have input value";
-  CHECK(outVal_) << "Should have output value";
+  CHECK(inVal_) << "Should have internal input value";
+  CHECK(outVal_) << "Should have internal output value";
   CHECK(wgtVal_) << "Should have weight value";
   algorithm algo = algorithm::convolution_direct;
   padding_kind padKind = padding_kind::zero;
@@ -351,12 +262,15 @@ void MKLDNNConvLayer::resetBwdWgtPD(
                                             padR,
                                             padKind);
   pd.reset(new conv_bwdWgt::primitive_desc(bwdWgtDesc, engine_, *fwdPD_));
-  CHECK(pd->src_primitive_desc() == inVal_->getPrimitiveDesc())
-      << "primitive desc of in value should equal";
-  CHECK(pd->diff_dst_primitive_desc() == outVal_->getPrimitiveDesc())
-      << "primitive desc of out grad should equal the out value";
-  CHECK(pd->diff_weights_primitive_desc() == wgtVal_->getPrimitiveDesc())
-      << "primitive desc of weight grad should equal the weight value";
+  CHECK_PRIMITIVE_DESC_EQ(inVal_, pd->src_primitive_desc());
+  CHECK_PRIMITIVE_DESC_EQ(
+      outVal_,
+      pd->diff_dst_primitive_desc(),
+      "primitive desc of out value and grad should be equal");
+  CHECK_PRIMITIVE_DESC_EQ(
+      wgtVal_,
+      pd->diff_weights_primitive_desc(),
+      "primitive desc of weight value and grad should be equal");
 }
 
 void MKLDNNConvLayer::resetBwdDataPD(
@@ -368,8 +282,8 @@ void MKLDNNConvLayer::resetBwdDataPD(
 
   memory::dims wgtDims, biasDims, strides, dilations, padL, padR;
   loadConvSettings(wgtDims, biasDims, strides, dilations, padL, padR);
-  CHECK(inVal_) << "Should have input value";
-  CHECK(outVal_) << "Should have output value";
+  CHECK(inVal_) << "Should have internal input value";
+  CHECK(outVal_) << "Should have internal output value";
   // create backward data using input and output value memory desc
   // but using weight memory desc with any format
   auto bwdDataDesc = conv_bwdData::desc(algorithm::convolution_direct,
@@ -381,10 +295,14 @@ void MKLDNNConvLayer::resetBwdDataPD(
                                         padR,
                                         padding_kind::zero);
   pd.reset(new conv_bwdData::primitive_desc(bwdDataDesc, engine_, *fwdPD_));
-  CHECK(pd->diff_src_primitive_desc() == inVal_->getPrimitiveDesc())
-      << "primitive desc of in grad should equal the in value";
-  CHECK(pd->diff_dst_primitive_desc() == outVal_->getPrimitiveDesc())
-      << "primitive desc of out grad should equal";
+  CHECK_PRIMITIVE_DESC_EQ(
+      inVal_,
+      pd->diff_src_primitive_desc(),
+      "primitive desc of in value and grad should be equal");
+  CHECK_PRIMITIVE_DESC_EQ(
+      outVal_,
+      pd->diff_dst_primitive_desc(),
+      "primitive desc of out value and grad should be equal");
 }
 
 void MKLDNNConvLayer::resetBwdBuffers(
@@ -395,12 +313,30 @@ void MKLDNNConvLayer::resetBwdBuffers(
     MKLDNNMatrixPtr& bias,
     MKLDNNMatrixPtr& out) {
   CHECK(wgtPD);
-  resetOutGrad(wgtPD, out);
+  resetOutGrad(out, wgtPD->diff_dst_primitive_desc());
 
-  resetWgtBiasGrad(wgtPD, wgt, bias);
+  resetWithMatrix(
+      wgt, weight_->getWGrad(), wgtPD->diff_weights_primitive_desc());
+  CHECK_PRIMITIVE_DESC_EQ(
+      wgtVal_,
+      wgt->getPrimitiveDesc(),
+      "primitive desc of weight grad and value should be equal");
 
-  resetInGrad(dataPD, in);
+  bias = nullptr;
+  if (biases_ && biases_->getWGrad()) {
+    resetWithMatrix(
+        bias, biases_->getWGrad(), wgtPD->diff_bias_primitive_desc());
+    CHECK(bias);
+    CHECK_PRIMITIVE_DESC_EQ(
+        biasVal_,
+        bias->getPrimitiveDesc(),
+        "primitive desc of bias grad and value should be equal");
+  }
 
+  if (dataPD == nullptr) {
+    return;
+  }
+  resetInGrad(in, dataPD->diff_src_primitive_desc());
   resetWgtValBwdData(dataPD, wgtValBwdData_);
 }
 
@@ -412,12 +348,7 @@ void MKLDNNConvLayer::resetBwdPipeline(
     MKLDNNMatrixPtr& wgt,
     MKLDNNMatrixPtr& bias,
     MKLDNNMatrixPtr& out) {
-  pipeline.clear();
-
-  if (cvtOutGrad_) {
-    pipeline.push_back(*cvtOutGrad_);
-  }
-
+  CHECK(inVal_);
   // add bwdWgt handle
   if (bias) {
     bwdWgt_.reset(new conv_bwdWgt(*wgtPD, *inVal_, *out, *wgt, *bias));
@@ -429,101 +360,13 @@ void MKLDNNConvLayer::resetBwdPipeline(
   if (dataPD == nullptr) {
     return;
   }
-
   if (cvtWgtVal_) {
     pipeline.push_back(*cvtWgtVal_);
   }
-
   // add bwdData handle
   CHECK(wgtValBwdData_) << "Should have weight memory";
   bwdData_.reset(new conv_bwdData(*dataPD, *out, *wgtValBwdData_, *in));
   pipeline.push_back(*bwdData_);
-
-  if (cvtInGrad_) {
-    pipeline.push_back(*cvtInGrad_);
-  }
-}
-
-void MKLDNNConvLayer::resetOutGrad(
-    std::shared_ptr<conv_bwdWgt::primitive_desc>& wgtPD, MKLDNNMatrixPtr& out) {
-  const MatrixPtr& outMat = output_.grad;
-  out = MKLDNNMatrix::create(outMat, wgtPD->diff_dst_primitive_desc());
-  CHECK(outVal_ != nullptr &&
-        out->getPrimitiveDesc() == outVal_->getPrimitiveDesc())
-      << "primitive desc of out grad and value should be equal";
-
-  // TODO(TJ): merge outgrad
-  // create reorder if has output grad does not match
-  cpuOutGrad_ = nullptr;
-  cvtOutGrad_ = nullptr;
-  if (!outputIsOnlyMKLDNN()) {
-    const MatrixPtr& cpuOut = getOutput(CPU_DEVICE).grad;
-    outMat->setData(cpuOut->getData());
-    // same PrimitiveDesc with cpuInVal_
-    CHECK(cpuOutVal_);
-    cpuOutGrad_ = MKLDNNMatrix::create(cpuOut, cpuOutVal_->getPrimitiveDesc());
-    if (cpuOutGrad_->getPrimitiveDesc() == out->getPrimitiveDesc()) {
-      out = cpuOutGrad_;
-    } else {
-      out = MKLDNNMatrix::create(nullptr, wgtPD->diff_dst_primitive_desc());
-      cvtOutGrad_ = MKLDNNMatrix::createReorder(cpuOutGrad_, out);
-      CHECK(cvtOutGrad_);
-    }
-  }
-}
-
-void MKLDNNConvLayer::resetWgtBiasGrad(
-    std::shared_ptr<conv_bwdWgt::primitive_desc>& wgtPD,
-    MKLDNNMatrixPtr& wgt,
-    MKLDNNMatrixPtr& bias) {
-  wgt = MKLDNNMatrix::create(weight_->getWGrad(),
-                             wgtPD->diff_weights_primitive_desc());
-  CHECK(nullptr != wgtVal_ &&
-        wgt->getPrimitiveDesc() == wgtVal_->getPrimitiveDesc())
-      << "primitive desc of weight grad and value should be equal";
-  VLOG(MKLDNN_FMTS) << "weight grad format: " << wgt->getFormat();
-
-  bias = nullptr;
-  if (biasVal_ == nullptr) {
-    return;
-  }
-  bias = MKLDNNMatrix::create(biases_->getWGrad(),
-                              wgtPD->diff_bias_primitive_desc());
-  CHECK(bias->getPrimitiveDesc() == biasVal_->getPrimitiveDesc())
-      << "primitive desc of bias grad should equal the bias value";
-}
-
-void MKLDNNConvLayer::resetInGrad(
-    std::shared_ptr<conv_bwdData::primitive_desc>& dataPD,
-    MKLDNNMatrixPtr& in) {
-  if (dataPD == nullptr) {
-    return;
-  }
-
-  // TODO(TJ): use outputMaps_ ways to get the inGrad_ when merge outgrad done
-  in = MKLDNNMatrix::create(inputLayers_[0]->getOutput().grad,
-                            dataPD->diff_src_primitive_desc());
-  CHECK(nullptr != inVal_ &&
-        in->getPrimitiveDesc() == inVal_->getPrimitiveDesc())
-      << "primitive desc of input grad and value should be equal";
-
-  // create reorder if has output grad does not match
-  cpuInGrad_ = nullptr;
-  cvtInGrad_ = nullptr;
-  if (!inputIsOnlyMKLDNN()) {
-    const MatrixPtr& cpuIn = getInputGrad(0, CPU_DEVICE);
-    // same PrimitiveDesc with cpuInVal_
-    CHECK(cpuInVal_);
-    cpuInGrad_ = MKLDNNMatrix::create(cpuIn, cpuInVal_->getPrimitiveDesc());
-    if (cpuInGrad_->getPrimitiveDesc() != in->getPrimitiveDesc()) {
-      const MatrixPtr& dnnIn = getInputGrad(0, MKLDNN_DEVICE);
-      in = MKLDNNMatrix::create(dnnIn, in->getPrimitiveDesc());
-      cvtInGrad_ = MKLDNNMatrix::createReorder(in, cpuInGrad_);
-      CHECK(cvtInGrad_);
-    } else {
-      in = cpuInGrad_;
-    }
-  }
 }
 
 void MKLDNNConvLayer::resetWgtValBwdData(
@@ -537,8 +380,7 @@ void MKLDNNConvLayer::resetWgtValBwdData(
   // since the primitive_desc would be different with wgtVal_
   CHECK(wgtVal_) << "should have weight value";
   if (dataPD->weights_primitive_desc() != wgtVal_->getPrimitiveDesc()) {
-    wgtValBwdData_ =
-        MKLDNNMatrix::create(nullptr, dataPD->weights_primitive_desc());
+    wgtValBwdData_ = MKLDNNMatrix::create(dataPD->weights_primitive_desc());
     cvtWgtVal_ = MKLDNNMatrix::createReorder(wgtVal_, wgtValBwdData_);
     CHECK(cvtWgtVal_);
   } else {

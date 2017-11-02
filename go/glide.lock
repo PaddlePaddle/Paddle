@@ -1,6 +1,8 @@
-hash: 1b9b07408ca7fac27a374dc2ccd2433e4bff090484008a037df967284949a582
-updated: 2017-08-07T23:37:48.867469328Z
+hash: 107c058cf5c9163a75d40eef2273a793c36112683c25d72aa8288827fdde3a19
+updated: 2017-10-30T03:46:19.137696069Z
 imports:
+- name: github.com/alecthomas/gometalinter
+  version: bae2f1293d092fd8167939d5108d1b025eaef9de
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
   subpackages:
@@ -10,7 +12,7 @@ imports:
 - name: github.com/cockroachdb/cmux
   version: 112f0506e7743d64a6eb8fedbcff13d9979bbf92
 - name: github.com/coreos/etcd
-  version: d0d1a87aa96ae14914751d42264262cb69eda170
+  version: f1d7dd87da3e8feab4aaf675b8e29c6a5ed5f58b
   subpackages:
   - alarm
   - auth
@@ -97,6 +99,8 @@ imports:
   version: d2709f9f1f31ebcda9651b03077758c1f3a0018c
 - name: github.com/ghodss/yaml
   version: 0ca9ea5df5451ffdf184b4428c902747c2c11cd7
+- name: github.com/go-stack/stack
+  version: 817915b46b97fd7bb80e8ab6b69f01a53ac3eebf
 - name: github.com/gogo/protobuf
   version: 909568be09de550ed094403c2bf8a261b5bb730a
   subpackages:
@@ -118,8 +122,14 @@ imports:
   - runtime
   - runtime/internal
   - utilities
+- name: github.com/inconshreveable/log15
+  version: 0decfc6c20d9ca0ad143b0e89dcaa20f810b4fb3
 - name: github.com/jonboulle/clockwork
   version: 2eee05ed794112d45db504eb05aa693efd2b8b09
+- name: github.com/mattn/go-colorable
+  version: 5411d3eea5978e6cdc258b30de592b60df6aba96
+- name: github.com/mattn/go-isatty
+  version: 57fdcb988a5c543893cc61bce354a6e24ab70022
 - name: github.com/matttproud/golang_protobuf_extensions
   version: c12348ce28de40eed0136aa2b644d0ee0650e56c
   subpackages:
@@ -149,7 +159,7 @@ imports:
 - name: github.com/satori/go.uuid
   version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/sirupsen/logrus
-  version: a3f95b5c423586578a4e099b11a46c2479628cac
+  version: f006c2ac4710855cf0f916dd6b77acf6b048dc6e
 - name: github.com/topicai/candy
   version: 1b9030d056fa9f8c4b1f9c91b52fe4b8ab4cd8cc
 - name: github.com/ugorji/go
@@ -159,12 +169,13 @@ imports:
 - name: github.com/xiang90/probing
   version: 07dd2e8dfe18522e9c447ba95f2fe95262f63bb2
 - name: golang.org/x/crypto
-  version: 1351f936d976c60a0a48d728281922cf63eafb8d
+  version: 9419663f5a44be8b34ca85f08abc5fe1be11f8a3
   repo: https://github.com/golang/crypto.git
   vcs: git
   subpackages:
   - bcrypt
   - blowfish
+  - ssh/terminal
 - name: golang.org/x/net
   version: c8c74377599bd978aee1cf3b9b63a8634051cec2
   subpackages:
@@ -176,11 +187,12 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: 0f826bdd13b500be0f1d4004938ad978fcc6031e
+  version: e48874b42435b4347fc52bdee0424a52abc974d7
   repo: https://github.com/golang/sys.git
   vcs: git
   subpackages:
   - unix
+  - windows
 - name: golang.org/x/text
   version: 836efe42bb4aa16aaa17b9c155d8813d336ed720
   repo: https://github.com/golang/text.git

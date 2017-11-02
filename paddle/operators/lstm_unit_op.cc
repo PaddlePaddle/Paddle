@@ -21,8 +21,7 @@ class LstmUnitOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("C_prev"),
                    "Input(C_prev) of LSTM should not be null.");
@@ -47,7 +46,6 @@ class LstmUnitOp : public framework::OperatorWithKernel {
   }
 };
 
-template <typename AttrType>
 class LstmUnitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   LstmUnitOpMaker(framework::OpProto* proto,
@@ -68,7 +66,7 @@ Equation:
   H = C * sigm(o)
 
 )DOC");
-    AddAttr<AttrType>("forget_bias", "The forget bias of Lstm Unit.")
+    AddAttr<float>("forget_bias", "The forget bias of Lstm Unit.")
         .SetDefault(0.0);
   }
 };
@@ -77,8 +75,7 @@ class LstmUnitGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("C")),
                    "Input(C@GRAD) should not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("H")),
@@ -93,9 +90,11 @@ class LstmUnitGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(lstm_unit, ops::LstmUnitOp, ops::LstmUnitOpMaker<float>,
-            lstm_unit_grad, ops::LstmUnitGradOp);
+REGISTER_OP(lstm_unit, ops::LstmUnitOp, ops::LstmUnitOpMaker, lstm_unit_grad,
+            ops::LstmUnitGradOp);
 REGISTER_OP_CPU_KERNEL(lstm_unit,
-                       ops::LstmUnitKernel<paddle::platform::CPUPlace, float>);
+                       ops::LstmUnitKernel<paddle::platform::CPUPlace, float>,
+                       ops::LstmUnitKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
-    lstm_unit_grad, ops::LstmUnitGradKernel<paddle::platform::CPUPlace, float>);
+    lstm_unit_grad, ops::LstmUnitGradKernel<paddle::platform::CPUPlace, float>,
+    ops::LstmUnitGradKernel<paddle::platform::CPUPlace, double>);

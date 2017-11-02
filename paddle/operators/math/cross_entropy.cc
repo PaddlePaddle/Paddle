@@ -26,8 +26,8 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 template <typename T>
 class CrossEntropyFunctor<platform::CPUPlace, T> {
  public:
-  void operator()(const framework::ExecutionContext& ctx,
-                  framework::Tensor* out, const framework::Tensor* prob,
+  void operator()(const platform::DeviceContext& ctx, framework::Tensor* out,
+                  const framework::Tensor* prob,
                   const framework::Tensor* labels, const bool softLabel) {
     const int batch_size = prob->dims()[0];
     if (softLabel) {
@@ -35,7 +35,7 @@ class CrossEntropyFunctor<platform::CPUPlace, T> {
       auto lbl = EigenMatrix<T>::From(*labels);
       auto loss = EigenMatrix<T>::From(*out);
 
-      loss.device(ctx.GetEigenDevice<platform::CPUPlace>()) =
+      loss.device(*ctx.GetEigenDevice<platform::CPUPlace>()) =
           -((lbl * in.log().unaryExpr(math::TolerableValue<T>()))
                 .sum(Eigen::DSizes<int, 1>(1))
                 .reshape(Eigen::DSizes<int, 2>(batch_size, 1)));
@@ -44,7 +44,7 @@ class CrossEntropyFunctor<platform::CPUPlace, T> {
       const T* prob_data = prob->data<T>();
       T* loss_data = out->data<T>();
 
-      const int* label_data = labels->data<int>();
+      const int64_t* label_data = labels->data<int64_t>();
       for (int i = 0; i < batch_size; ++i) {
         int index = i * class_num + label_data[i];
         loss_data[i] = -math::TolerableValue<T>()(std::log(prob_data[index]));
@@ -54,6 +54,7 @@ class CrossEntropyFunctor<platform::CPUPlace, T> {
 };
 
 template class CrossEntropyFunctor<platform::CPUPlace, float>;
+template class CrossEntropyFunctor<platform::CPUPlace, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

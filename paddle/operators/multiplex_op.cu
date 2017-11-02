@@ -21,7 +21,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename Place, typename T>
-class MultiplexGPUKernel : public framework::OpKernel {
+class MultiplexGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto ins = ctx.MultiInput<Tensor>("X");
@@ -33,7 +33,7 @@ class MultiplexGPUKernel : public framework::OpKernel {
     auto cols = ins[0]->numel() / rows;
     // copy index to cpu
     Tensor index_t_cpu;
-    index_t_cpu.CopyFrom<int32_t>(*ids, platform::CPUPlace());
+    index_t_cpu.CopyFrom(*ids, platform::CPUPlace(), ctx.device_context());
     auto* index = index_t_cpu.data<int32_t>();
     auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(
                       ctx.device_context())
@@ -51,7 +51,7 @@ class MultiplexGPUKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class MultiplexGradGPUKernel : public framework::OpKernel {
+class MultiplexGradGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* d_out = ctx.Input<Tensor>(framework::GradVarName("Out"));
@@ -70,7 +70,7 @@ class MultiplexGradGPUKernel : public framework::OpKernel {
     auto cols = ins[0]->numel() / rows;
     // copy index to cpu
     Tensor index_t_cpu;
-    index_t_cpu.CopyFrom<int32_t>(*ids, platform::CPUPlace());
+    index_t_cpu.CopyFrom(*ids, platform::CPUPlace(), ctx.device_context());
     auto* index = index_t_cpu.data<int32_t>();
 
     auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(

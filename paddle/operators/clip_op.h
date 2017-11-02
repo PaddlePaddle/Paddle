@@ -56,7 +56,7 @@ class ClipGradFunctor {
 };
 
 template <typename Place, typename T>
-class ClipKernel : public framework::OpKernel {
+class ClipKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto max = context.Attr<T>("max");
@@ -73,7 +73,7 @@ class ClipKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class ClipGradKernel : public framework::OpKernel {
+class ClipGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto max = context.Attr<T>("max");

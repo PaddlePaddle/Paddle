@@ -96,6 +96,9 @@ class Inference(object):
             for i, item in enumerate(result):
                 retv[i].append(item)
 
+        if retv == None:
+            return []
+
         if flatten_result:
             retv = [numpy.concatenate(out) for out in retv]
 

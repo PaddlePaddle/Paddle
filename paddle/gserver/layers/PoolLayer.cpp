@@ -15,7 +15,7 @@ limitations under the License. */
 #include "PoolLayer.h"
 #include "PoolProjectionLayer.h"
 #include "paddle/utils/Logging.h"
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 #include "CudnnPoolLayer.h"
 #endif
 namespace paddle {
@@ -53,7 +53,7 @@ Layer* PoolLayer::create(const LayerConfig& config) {
   const std::string& pool = config.inputs(0).pool_conf().pool_type();
   if (pool == "max-projection" || pool == "avg-projection") {
     return new PoolProjectionLayer(config);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   } else if (CudnnPoolLayer::typeCheck(pool)) {
     return new CudnnPoolLayer(config);
 #endif

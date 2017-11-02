@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class RankLossKernel : public framework::OpKernel {
+class RankLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* out_t = ctx.Output<framework::Tensor>("Out");
@@ -42,7 +42,7 @@ class RankLossKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class RankLossGradKernel : public framework::OpKernel {
+class RankLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* d_left_t =

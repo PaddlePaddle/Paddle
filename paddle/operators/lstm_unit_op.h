@@ -12,6 +12,10 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+/* Acknowledgement: the following code is strongly inspired by
+https://github.com/caffe2/caffe2/blob/master/caffe2/operators/lstm_unit_op.h
+*/
+
 #pragma once
 #include "glog/logging.h"
 #include "paddle/framework/op_registry.h"
@@ -19,7 +23,6 @@
 namespace paddle {
 namespace operators {
 
-using framework::LoDTensor;
 using framework::Tensor;
 
 template <typename T>
@@ -32,8 +35,8 @@ inline T tanh(T x) {
   return 2. * sigmoid(2. * x) - 1.;
 }
 
-template <typename Place, typename T, typename AttrType = T>
-class LstmUnitKernel : public framework::OpKernel {
+template <typename Place, typename T>
+class LstmUnitKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
@@ -44,7 +47,7 @@ class LstmUnitKernel : public framework::OpKernel {
     auto* c_tensor = ctx.Output<framework::Tensor>("C");
     auto* h_tensor = ctx.Output<framework::Tensor>("H");
 
-    auto forget_bias = static_cast<T>(ctx.Attr<AttrType>("forget_bias"));
+    auto forget_bias = static_cast<T>(ctx.Attr<float>("forget_bias"));
 
     int b_size = c_tensor->dims()[0];
     int D = c_tensor->dims()[1];
@@ -75,8 +78,8 @@ class LstmUnitKernel : public framework::OpKernel {
   }
 };
 
-template <typename Place, typename T, typename AttrType = T>
-class LstmUnitGradKernel : public framework::OpKernel {
+template <typename Place, typename T>
+class LstmUnitGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
@@ -108,7 +111,7 @@ class LstmUnitGradKernel : public framework::OpKernel {
     int N = c_tensor->dims()[0];
     int D = c_tensor->dims()[1];
 
-    auto forget_bias = static_cast<T>(ctx.Attr<AttrType>("forget_bias"));
+    auto forget_bias = static_cast<T>(ctx.Attr<float>("forget_bias"));
 
     for (int n = 0; n < N; ++n) {
       for (int d = 0; d < D; ++d) {

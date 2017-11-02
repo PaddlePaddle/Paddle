@@ -116,7 +116,7 @@ def reader_creator(pos_pattern, neg_pattern, word_idx, buffer_size):
             yield [word_idx.get(w, UNK) for w in doc], i % 2
             doc = qs[i % 2].get()
 
-    return reader()
+    return reader
 
 
 def train(word_idx):

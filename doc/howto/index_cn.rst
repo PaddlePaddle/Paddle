@@ -21,7 +21,6 @@
 
   dev/build_cn.rst
   dev/write_docs_cn.rst
-  dev/contribute_to_paddle_cn.md
 
 模型配置
 --------
