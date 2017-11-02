@@ -54,15 +54,16 @@ Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(
   AddInput(
       "Input",
       "(Tensor) The input tensor of convolution transpose operator. "
-      "The format of input tensor is NCHW. Where N is batch size, C is the "
-      "number of input channels, H and W is the height and width of image.");
+      "The format of input tensor is NCHW, where N is batch size, C is the "
+      "number of input channels, H is the height of the image, and "
+      "W is the width of the image.");
   AddInput("Filter",
            "(Tensor) The filter tensor of convolution transpose operator."
            "The format of the filter tensor is CMHW, where C is the number of "
            "output image channels, M is the number of input image channels, "
-           "H and W is height and width of filter. "
+           "H is the height of the filter, and W is the width of the filter. "
            "We enforce groups number == 1 and padding == 0 in "
-           "convolution transpose Scenario.");
+           "the convolution transpose Scenario.");
   AddOutput("Output",
             "(Tensor) The output tensor of convolution transpose operator."
             "The format of output tensor is also NCHW.");
@@ -73,9 +74,12 @@ Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(
                             "paddings of convolution transpose operator.")
       .SetDefault({0, 0});
   AddComment(R"DOC(
-The convolution transpose operation calculates the output based on the input, filter
-and strides, paddings, groups parameters. The size of each dimension of the
-parameters is checked in the infer-shape.
+Convolution Transpose Operator.
+
+The convolution transpose operation calculates the output based on the input, 
+filter, strides, paddings, and groups parameters. The size of each dimension 
+of the parameters is checked in the infer-shape method.
+
 )DOC");
 }
 
