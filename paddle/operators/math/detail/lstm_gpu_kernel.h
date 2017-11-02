@@ -226,9 +226,9 @@ void gpu_lstm_backward(const platform::DeviceContext& context, Op op,
     threads = dim3(framePerBlock, 1);
     grid = dim3(frameBlocks, 1);
   } else {
-    /* framePerBlock = 32 batchPerBlock = 32 */
+    /* framePerBlock = 32 batchPerBlock = 16 */
     threads = dim3(32, 16);
-    grid = dim3((frameSize + 32 - 1) / 32, (batchSize + 32 - 1) / 32);
+    grid = dim3((frameSize + 32 - 1) / 32, (batchSize + 16 - 1) / 16);
   }
 
   auto stream =

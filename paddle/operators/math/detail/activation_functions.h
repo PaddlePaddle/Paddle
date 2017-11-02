@@ -32,17 +32,17 @@ namespace detail {
 namespace forward {
 
 template <typename T>
-DEVICE T linear(const T a) {
+DEVICE T Identity(const T a) {
   return a;
 }
 
 template <typename T>
-DEVICE T relu(const T a) {
+DEVICE T Relu(const T a) {
   return a > static_cast<T>(0.0) ? a : static_cast<T>(0.0);
 }
 
 template <typename T>
-DEVICE T sigmoid(const T a) {
+DEVICE T Sigmoid(const T a) {
   const T min = SIGMOID_THRESHOLD_MIN;
   const T max = SIGMOID_THRESHOLD_MAX;
   T tmp = (a < min) ? min : ((a > max) ? max : a);
@@ -50,7 +50,7 @@ DEVICE T sigmoid(const T a) {
 }
 
 template <typename T>
-DEVICE T tanh(const T a) {
+DEVICE T Tanh(const T a) {
   T tmp = -2.0 * a;
   tmp = (tmp > EXP_MAX_INPUT) ? EXP_MAX_INPUT : tmp;
   return (2.0 / (1.0 + exp(tmp))) - 1.0;
@@ -61,22 +61,22 @@ DEVICE T tanh(const T a) {
 namespace backward {
 
 template <typename T>
-DEVICE T linear(const T a, const T b) {
+DEVICE T Identity(const T a, const T b) {
   return a;
 }
 
 template <typename T>
-DEVICE T relu(const T a, const T b) {
+DEVICE T Relu(const T a, const T b) {
   return a * (b > 0.0 ? 1.0 : 0.0);
 }
 
 template <typename T>
-DEVICE T sigmoid(const T a, const T b) {
+DEVICE T Sigmoid(const T a, const T b) {
   return a * b * (1.0 - b);
 }
 
 template <typename T>
-DEVICE T tanh(const T a, const T b) {
+DEVICE T Tanh(const T a, const T b) {
   return a * (1.0 - b * b);
 }
 
@@ -89,20 +89,20 @@ struct Active {
 };
 
 static DEVICE Active<float>::Act kActFloat[] = {
-    &forward::sigmoid<float>, &forward::relu<float>, &forward::tanh<float>,
-    &forward::linear<float>};
+    &forward::Sigmoid<float>, &forward::Relu<float>, &forward::Tanh<float>,
+    &forward::Identity<float>};
 
 static DEVICE Active<float>::ActGrad kActGradFloat[] = {
-    &backward::sigmoid<float>, &backward::relu<float>, &backward::tanh<float>,
-    &backward::linear<float>};
+    &backward::Sigmoid<float>, &backward::Relu<float>, &backward::Tanh<float>,
+    &backward::Identity<float>};
 
 static DEVICE Active<double>::Act kActDouble[] = {
-    &forward::sigmoid<double>, &forward::relu<double>, &forward::tanh<double>,
-    &forward::linear<double>};
+    &forward::Sigmoid<double>, &forward::Relu<double>, &forward::Tanh<double>,
+    &forward::Identity<double>};
 
 static DEVICE Active<double>::ActGrad kActGradDouble[] = {
-    &backward::sigmoid<double>, &backward::relu<double>,
-    &backward::tanh<double>, &backward::linear<double>};
+    &backward::Sigmoid<double>, &backward::Relu<double>,
+    &backward::Tanh<double>, &backward::Identity<double>};
 
 namespace forward {
 inline DEVICE float activation(float a, int index) {
@@ -128,29 +128,29 @@ inline DEVICE double activation(double a, double b, int index) {
 #ifdef __AVX__
 namespace forward {
 namespace avx {
-__m256 relu(const __m256 a);
-__m256 sigmoid(const __m256 a);
-__m256 tanh(const __m256 a);
-__m256 linear(const __m256 a);
+__m256 Relu(const __m256 a);
+__m256 Sigmoid(const __m256 a);
+__m256 Tanh(const __m256 a);
+__m256 Identity(const __m256 a);
 }  // namespace avx
 }  // namespace forward
 
 namespace backward {
 namespace avx {
-__m256 relu(const __m256 a, const __m256 b);
-__m256 sigmoid(const __m256 a, const __m256 b);
-__m256 tanh(const __m256 a, const __m256 b);
-__m256 linear(const __m256 a, const __m256 b);
+__m256 Relu(const __m256 a, const __m256 b);
+__m256 Sigmoid(const __m256 a, const __m256 b);
+__m256 Tanh(const __m256 a, const __m256 b);
+__m256 Identity(const __m256 a, const __m256 b);
 }  // namespace avx
 }  // namespace backward
 
 static Active<__m256>::Act kActAvx[] = {
-    &forward::avx::sigmoid, &forward::avx::relu, &forward::avx::tanh,
-    &forward::avx::linear};
+    &forward::avx::Sigmoid, &forward::avx::Relu, &forward::avx::Tanh,
+    &forward::avx::Identity};
 
 static Active<__m256>::ActGrad kActGradAvx[] = {
-    &backward::avx::sigmoid, &backward::avx::relu, &backward::avx::tanh,
-    &backward::avx::linear};
+    &backward::avx::Sigmoid, &backward::avx::Relu, &backward::avx::Tanh,
+    &backward::avx::Identity};
 
 namespace forward {
 inline __m256 activation(__m256 a, int index) { return kActAvx[index](a); }
