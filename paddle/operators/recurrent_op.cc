@@ -184,9 +184,24 @@ RecurrentGradientOp::RecurrentGradientOp(
   alg_.Init(&arg_, &stepnet_);
 }
 
+class RecurrentGradientOpShapeInference : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext* ctx) const override {
+    const auto& in_name = RecurrentOp::kArgName;
+    const auto& out_name = RecurrentGradientOp::kArgName;
+    PADDLE_ENFORCE(ctx->HasInput(in_name.inlinks));
+    PADDLE_ENFORCE(ctx->HasInput(in_name.outlinks));
+    PADDLE_ENFORCE(ctx->HasInput(out_name.inlinks));
+    PADDLE_ENFORCE(ctx->HasOutput(out_name.outlinks));
+    ctx->SetOutputDim(out_name.outlinks, ctx->GetInputDim(in_name.inlinks));
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP(recurrent, paddle::operators::RecurrentOp,
-            paddle::operators::RecurrentAlgorithmProtoAndCheckerMaker,
-            recurrent_grad, paddle::operators::RecurrentGradientOp);
+REGISTER_OPERATOR(recurrent, paddle::operators::RecurrentOp,
+                  paddle::operators::RecurrentAlgorithmProtoAndCheckerMaker,
+                  paddle::operators::RecurrentGradientOpShapeInference,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(recurrent_grad, paddle::operators::RecurrentGradientOp);
