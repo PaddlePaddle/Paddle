@@ -77,7 +77,7 @@ void MKLDNNLayer::forward(PassType passType) {
       needResetBwd_ = true;
     }
 
-    if (inputLayers_[0]->getType() == "data") {
+    if (inputLayers_[0]->getType() == "data" && inputLayers_.size() == 1) {
       // Update input value data when input layer is "data" type,
       // since the input value data address might be changed.
       CHECK(extInVal_);
