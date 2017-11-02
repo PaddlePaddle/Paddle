@@ -69,11 +69,12 @@ LoD SliceInLevel(const LoD& in, size_t level, size_t elem_begin,
 
 LoD ToAbsOffset(const LoD& in) {
   // the lowest level stores relative offsets
-  if (in.empty() || in.size() == 1) return in;
   LoD result = in;
-  for (int level = result.size() - 2; level >= 0; level--) {
+  for (size_t i = 1; i < result.size(); ++i) {
+    size_t level = result.size() - i - 1;  // reversely
     for (auto& ele : result[level]) {
-      ele = result[level + 1][ele];
+      if (ele == 0) continue;
+      ele = result[level + 1][ele - 1];
     }
   }
   return result;
