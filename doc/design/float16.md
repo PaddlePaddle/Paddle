@@ -11,9 +11,9 @@ When high precision computation is not required, using float16 data type could p
 
 A brief survey of float16 support on different hardwares can be found [here](https://github.com/PaddlePaddle/Paddle/issues/4853). A brief survey of existing float16 implementations can be found [here](https://github.com/Xreki/Xreki.github.io/blob/master/multi_data_types_in_dl_framework/ppt/float16_and_quantized_type.md). 
 
-There are various natively supported float16 implementations on different hardwares/linear algebra libraries including half on cuda, __fp16/float16_t on ARM processor, and Eigen::half on Eigen.
+There are various natively supported float16 implementations on different hardwares/linear algebra libraries including half on cuda, float16_t on ARM processor, and Eigen::half on Eigen.
 
-The goal of float16 is to serve as a key for the executor to find and run the correct version of operator kernel compute method specialized for float16. It should be compatible with half on cuda, __fp16 on ARM, and Eigen::half on Eigen to make writing customized float16 kernels easier. 
+The goal of float16 is to serve as a key for the executor to find and run the correct version of operator kernel compute method specialized for float16. It should be compatible with half on cuda, float16_t on ARM, and Eigen::half on Eigen to make writing customized float16 kernels easier. 
 
 ## Implementation
 The float16 class holds a 2-byte uint16_t data internally.
@@ -25,10 +25,10 @@ struct float16 {
 
 float16 supports the following features:
   - constructors / assignment operators that take input from primitive data types including bool, integers of various length, float, and double. 
-  - constructors / assignment operators that take input from half on cuda, __fp16 on ARM, and Eigen::half on Eigen.
+  - constructors / assignment operators that take input from half on cuda, float16_t on ARM, and Eigen::half on Eigen.
   - conversion operators to primitive data types and half precision data types on cuda, ARM and Eigen. 
-  - overloaded arithmetic operators (e.g., +, -, *, /) for cuda, arm, and non-arm cpu, respectively. These operators will take advantage of the cuda and ARM intrinsics on the corresponding hardware. 
-
+  - overloaded arithmetic operators for cuda, arm, and non-arm cpu, respectively. These operators will take advantage of the cuda and ARM intrinsics on the corresponding hardware. 
+  
 To support the above features, two fundamental conversion functions are provided:
 ```
 float16 float_to_half_rn(float f);  // convert to half precision in round-to-nearest-even mode
