@@ -45,8 +45,8 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor) The output of SequencePoolOp does not contain LoD "
               "infomation.");
     AddOutput("MaxIndex",
-              "(Tensor<int>) This tensor is used for the max-pooling "
-              "of sequence to record the max indexes.")
+              "(Tensor<int>) This tensor is used for the sequence max-pooling "
+              "to record the max indexes.")
         .AsIntermediate();
     AddAttr<std::string>(
         "pooltype",
