@@ -2,6 +2,7 @@ import paddle.v2.framework.core as core
 from paddle.v2.framework.framework import OpProtoHolder, Variable, Program, Operator
 from paddle.v2.framework.initializer import ConstantInitializer, NormalInitializer
 from paddle.v2.framework.layer_helper import LayerHelper, unique_name
+import re
 
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
