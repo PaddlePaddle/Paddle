@@ -282,7 +282,7 @@ def sequence_conv(input,
                   act=None,
                   padding=None,
                   **kwargs):
-    helper = LayerHelper('sequence_conv', **kwargs)
+    helper = LayerHelper('sequence_conv', **locals())
     dtype = helper.input_dtype()
 
     filter_shape = [filter_size * input.shape[1], num_filters]
@@ -362,12 +362,12 @@ def conv2d(input,
 
 
 def sequence_pool(input, pool_type, **kwargs):
-    ENUM_POOL_TYPE = set(["MAX", "AVERAGE", "SQRT", "LAST", "FIRST"])
+    ENUM_POOL_TYPE = set(["MAX", "SUM", "AVERAGE", "SQRT", "LAST", "FIRST"])
     if pool_type.upper() not in ENUM_POOL_TYPE:
         raise ValueError("Unknown pool_type: '%s'. It can only be %s.",
                          str(pool_type), " ".join(ENUM_POOL_TYPE))
 
-    helper = LayerHelper('sequence_pool', input=input, **kwargs)
+    helper = LayerHelper('sequence_pool', **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_tmp_variable(dtype)
 
