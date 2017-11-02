@@ -29,9 +29,11 @@ template <typename Place, typename T>
 class SumKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto& in_vars = context.MultiInputVar("X");
+    auto in_vars = context.MultiInputVar("X");
     int N = in_vars.size();
     auto out_var = context.OutputVar("Out");
+
+    bool in_place = out_var == in_vars[0];
 
     if (out_var->IsType<framework::LoDTensor>()) {
       auto* out = context.Output<Tensor>("Out");
@@ -39,12 +41,15 @@ class SumKernel : public framework::OpKernel<T> {
 
       auto result = EigenVector<T>::Flatten(*out);
 
-      math::SetConstant<Place, T> constant_functor;
-      constant_functor(context.device_context(), out, 0.0);
+      if (!in_place) {
+        math::SetConstant<Place, T> constant_functor;
+        constant_functor(context.device_context(), out, 0.0);
+      }
 
       math::SelectedRowsAddToTensor<Place, T> functor;
       auto place = context.GetEigenDevice<Place>();
-      for (int i = 0; i < N; i++) {
+      // If in_place, just skip the first tensor
+      for (int i = in_place ? 1 : 0; i < N; i++) {
         if (in_vars[i]->IsType<framework::LoDTensor>()) {
           auto& in_t = in_vars[i]->Get<framework::LoDTensor>();
           auto in = EigenVector<T>::Flatten(in_t);
@@ -57,6 +62,7 @@ class SumKernel : public framework::OpKernel<T> {
         }
       }
     } else if (out_var->IsType<framework::SelectedRows>()) {
+      PADDLE_ENFORCE(!in_place, "SelectedRows not support inplace sum now");
       auto* out = context.Output<SelectedRows>("Out");
       auto* out_value = out->mutable_value();
 
