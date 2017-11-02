@@ -6,9 +6,9 @@ from op_test import OpTest
 def Levenshtein(hyp, ref):
     """ Compute the Levenshtein distance between two strings.
 
-    :param hyp:
+    :param hyp: hypothesis string in index
     :type hyp: list
-    :param ref:
+    :param ref: reference string in index
     :type ref: list
     """
     m = len(hyp)
@@ -44,7 +44,6 @@ class TestCTCEditDistanceOp(OpTest):
         distance = Levenshtein(hyp=x1, ref=x2)
         if normalized is True:
             distance = distance / len(x2)
-        print "distance = ", distance
         self.attrs = {'normalized': normalized}
         self.inputs = {'X1': x1, 'X2': x2}
         self.outputs = {'Out': distance}
@@ -54,7 +53,4 @@ class TestCTCEditDistanceOp(OpTest):
 
 
 if __name__ == '__main__':
-    #x1 = ['c', 'a', 'f', 'e']
-    #x2 = ['c', 'o', 'f', 'f', 'e', 'e']
-    #print Levenshtein(x1, x2)
     unittest.main()

@@ -38,11 +38,11 @@ class CTCEditDistanceOpMaker : public framework::OpProtoAndCheckerMaker {
              "(2-D tensor with shape [M x 1]) The indices for "
              "hypothesis string");
     AddInput("X2",
-             "(2-D tensor with shape [batch_size x 1]) The indices "
+             "(2-D tensor with shape [N x 1]) The indices "
              "for reference string.");
     AddAttr<bool>("normalized",
                   "(bool, default false) Indicated whether "
-                  "normalize. the Output(Out) by the length of reference "
+                  "normalize the Output(Out) by the length of reference "
                   "string (X2).")
         .SetDefault(false);
     AddOutput("Out",
