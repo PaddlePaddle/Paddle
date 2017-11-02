@@ -77,4 +77,4 @@ class ToArrayOpKernel : public framework::OpKernel<T> {
 };
 
 }  // namespace operators
-}  // namespae paddle
+}  // namespace paddle
