@@ -96,7 +96,7 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_LT(ids_data[i], N);
         PADDLE_ENFORCE_GE(ids_data[i], 0);
         for (int j = 0; j < D; ++j) {
-          d_table_data[ids_data[i] * D + j] = d_output_data[i * D + j];
+          d_table_data[ids_data[i] * D + j] += d_output_data[i * D + j];
         }
       }
     }
