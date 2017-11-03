@@ -50,8 +50,9 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddAttr<std::string>(
         "pooltype",
-        "(int, default AVERAGE) The pooling pooltype of SequencePoolOp.")
-        .SetDefault("AVERAGE");
+        "(int, default AVERAGE) the pooling pooltype of SequencePoolOp.")
+        .SetDefault("AVERAGE")
+        .InEnum({"AVERAGE", "SUM", "SQRT", "LAST", "FIRST", "MAX"});
     AddComment(R"DOC(
     SequencePoolOp pools features of all time-steps of each instance.
 

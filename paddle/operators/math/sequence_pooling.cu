@@ -31,7 +31,7 @@ __global__ void KeMaxSequencePool(const T* input, const size_t* starts,
   size_t start = starts[seq_id];
   size_t end = starts[seq_id + 1];
 
-  for (int i = dim_idx; i < dim; i += blockDim.x) {
+  for (int64_t i = dim_idx; i < dim; i += blockDim.x) {
     T max_val = static_cast<T>(-FLT_MAX);
     int max_id = -1;
     for (size_t step_id = start; step_id < end; step_id++) {
@@ -54,9 +54,9 @@ class MaxSeqPoolFunctor<platform::GPUPlace, T> {
     auto in_dims = input.dims();
     auto out_dims = output->dims();
     auto idx_dims = index->dims();
-    PADDLE_ENFORCE_GT(in_dims.size(), 1UL);
-    PADDLE_ENFORCE_GT(out_dims.size(), 1UL);
-    for (size_t i = 1; i < in_dims.size(); ++i) {
+    PADDLE_ENFORCE_GT(in_dims.size(), static_cast<int64_t>(1));
+    PADDLE_ENFORCE_GT(out_dims.size(), 1);
+    for (int64_t i = 1; i < in_dims.size(); ++i) {
       PADDLE_ENFORCE_EQ(in_dims[i], out_dims[i]);
     }
     PADDLE_ENFORCE_EQ(idx_dims, out_dims);
@@ -100,9 +100,9 @@ class MaxSeqPoolGradFunctor<platform::GPUPlace, T> {
     auto og_dims = out_grad.dims();
     auto idx_dims = index.dims();
     auto ig_dims = in_grad->dims();
-    PADDLE_ENFORCE_GT(og_dims.size(), 1UL);
-    PADDLE_ENFORCE_GT(ig_dims.size(), 1UL);
-    for (size_t i = 1; i < og_dims.size(); ++i) {
+    PADDLE_ENFORCE_GT(og_dims.size(), static_cast<int64_t>(1));
+    PADDLE_ENFORCE_GT(ig_dims.size(), static_cast<int64_t>(1));
+    for (int64_t i = 1; i < og_dims.size(); ++i) {
       PADDLE_ENFORCE_EQ(og_dims[i], ig_dims[i]);
     }
     PADDLE_ENFORCE_EQ(idx_dims, og_dims);
