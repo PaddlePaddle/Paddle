@@ -47,10 +47,9 @@ class PositiveNegativePairKernel : public framework::OpKernel<T> {
 
     auto score = score_t->data<T>();
     auto label = label_t->data<T>();
-    auto query = query_t->data<int32_t>();
+    auto query = query_t->data<int64_t>();
     const T* weight = nullptr;
-    auto has_weight = weight_t != nullptr;
-    if (has_weight) {
+    if (weight_t != nullptr) {
       weight = weight_t->data<T>();
     }
     T* positive = positive_t->mutable_data<T>(context.GetPlace());
@@ -66,15 +65,15 @@ class PositiveNegativePairKernel : public framework::OpKernel<T> {
     }
 
     // construct document instances for each query: Query => List[<score#0,
-    // label#0>, ...]
-    std::unordered_map<int32_t, std::vector<PredictionResult>> predictions;
+    // label#0, weight#0>, ...]
+    std::unordered_map<int64_t, std::vector<PredictionResult>> predictions;
     for (auto i = 0; i < batch_size; ++i) {
       if (predictions.find(query[i]) == predictions.end()) {
         predictions.emplace(
             std::make_pair(query[i], std::vector<PredictionResult>()));
       }
-      predictions[query[i]].push_back(PredictionResult(
-          score[i * width + column], label[i], has_weight ? weight[i] : 1.0));
+      predictions[query[i]].emplace_back(score[i * width + column], label[i],
+                                         weight_t != nullptr ? weight[i] : 1.0);
     }
 
     // for each query, accumulate pair counts

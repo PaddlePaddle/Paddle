@@ -7,6 +7,11 @@ import copy
 __all__ = ['Block', 'Variable', 'Program', 'Operator']
 
 
+def unique_name(prefix):
+    uid = core.unique_integer(prefix)  # unique during whole process.
+    return "_".join([prefix, str(uid)])
+
+
 class Variable(object):
     def __init__(self,
                  block,
@@ -264,7 +269,10 @@ class Operator(object):
                     self.desc.set_attr(attr_name, attrs[attr_name])
 
         self.desc.check_attrs()
-        no_kernel_op_set = {'feed', 'fetch', 'save', 'load'}
+        no_kernel_op_set = {
+            'feed', 'fetch', 'save', 'load', 'recurrent',
+            'rnn_memory_helper_grad'
+        }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
@@ -354,8 +362,8 @@ class Block(object):
 
     def create_var(self, *args, **kwargs):
         var = Variable(self, *args, **kwargs)
-        if 'init_attr' in kwargs:
-            self._prepend_initialize_ops_(var, kwargs['init_attr'])
+        if 'initializer' in kwargs:
+            kwargs['initializer'](var, self)
         return var
 
     def has_var(self, name):
@@ -364,8 +372,8 @@ class Block(object):
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
         param = Parameter(global_block, *args, **kwargs)
-        if 'init_attr' in kwargs:
-            self._prepend_initialize_ops_(param, kwargs['init_attr'])
+        if 'initializer' in kwargs:
+            kwargs['initializer'](param, self)
         return param
 
     def append_op(self, *args, **kwargs):
@@ -423,17 +431,6 @@ class Block(object):
         assert len(self.ops) == len(ops_in_cpp)
         for index in range(len(self.ops)):
             assert self.ops[index].desc == ops_in_cpp[index]
-
-    def _prepend_initialize_ops_(self, param, init_attr):
-        op_type = init_attr['type']
-        init_attr['shape'] = param.shape
-        init_attr['data_type'] = int(param.data_type)
-        op = self.prepend_op(
-            type=op_type,
-            inputs=None,
-            outputs={'Out': [param]},
-            attrs=init_attr)
-        param.op = op
 
 
 class Program(object):

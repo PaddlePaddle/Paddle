@@ -3,9 +3,10 @@ import paddle.v2.framework.layers as layers
 import paddle.v2.framework.core as core
 import paddle.v2.framework.optimizer as optimizer
 
-from paddle.v2.framework.framework import Program, g_program
+from paddle.v2.framework.framework import Program
 from paddle.v2.framework.executor import Executor
 from paddle.v2.framework.regularizer import L2DecayRegularizer
+from paddle.v2.framework.initializer import UniformInitializer
 
 import numpy as np
 
@@ -21,11 +22,8 @@ image = layers.data(
 
 param_attr = {
     'name': None,
-    'init_attr': {
-        'type': 'uniform_random',
-        'min': -1.0,
-        'max': 1.0
-    },
+    'initializer': UniformInitializer(
+        low=-1.0, high=1.0),
     'regularization': L2DecayRegularizer(0.0005 * BATCH_SIZE)
 }
 
@@ -60,8 +58,8 @@ cost = layers.cross_entropy(
     input=predict, label=label, program=program, init_program=init_program)
 avg_cost = layers.mean(x=cost, program=program, init_program=init_program)
 
-sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
-opts = sgd_optimizer.minimize(avg_cost)
+optimizer = optimizer.MomentumOptimizer(learning_rate=0.001, momentum=0.9)
+opts = optimizer.minimize(avg_cost, init_program)
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
@@ -91,6 +89,7 @@ for pass_id in range(PASS_NUM):
                              'y': tensor_y},
                        fetch_list=[avg_cost])
         out = np.array(outs[0])
+
         if out[0] < 5.0:
             exit(0)  # if avg cost less than 5.0, we think our code is good.
 exit(1)
