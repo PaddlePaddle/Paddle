@@ -57,6 +57,8 @@ label = layers.data(
 cost = layers.cross_entropy(
     input=predict, label=label, program=program, init_program=init_program)
 avg_cost = layers.mean(x=cost, program=program, init_program=init_program)
+accuracy = layers.accuracy(
+    input=predict, label=label, program=program, init_program=init_program)
 
 optimizer = optimizer.MomentumOptimizer(learning_rate=0.001, momentum=0.9)
 opts = optimizer.minimize(avg_cost, init_program)
@@ -87,9 +89,9 @@ for pass_id in range(PASS_NUM):
         outs = exe.run(program,
                        feed={'x': tensor_x,
                              'y': tensor_y},
-                       fetch_list=[avg_cost])
+                       fetch_list=[avg_cost, accuracy])
         out = np.array(outs[0])
-
+        acc = np.array(outs[1])
         if out[0] < 5.0:
             exit(0)  # if avg cost less than 5.0, we think our code is good.
 exit(1)

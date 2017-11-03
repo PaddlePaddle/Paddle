@@ -47,7 +47,7 @@ def img_conv_group(input,
     """
     tmp = input
     assert isinstance(conv_num_filter, list) or \
-           isinstance(conv_num_filter, tuple)
+        isinstance(conv_num_filter, tuple)
 
     def __extend_list__(obj):
         if not hasattr(obj, '__len__'):

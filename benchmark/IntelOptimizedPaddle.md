@@ -23,7 +23,7 @@ On each machine, we will test and compare the performance of training on single 
 ## Benchmark Model
 
 ### Server
-Test on batch size 64, 128, 256 on Intel(R) Xeon(R) Gold 6148M CPU @ 2.40GHz
+Test on batch size 64, 128, 256 on Intel(R) Xeon(R) Gold 6148 CPU @ 2.40GHz
 
 Input image size - 3 * 224 * 224, Time: images/second
 
