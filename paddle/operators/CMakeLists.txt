@@ -62,6 +62,11 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(pool2d);\n")
     endif()
 
+    if ("${TARGET}" STREQUAL "compare_op")
+        set(pybind_flag 1)
+        file(APPEND ${pybind_file} "USE_OP(less_than);\nUSE_OP(equal);\n")
+    endif()
+
     # pool_with_index_op contains several operators
     if ("${TARGET}" STREQUAL "pool_with_index_op")
         set(pybind_flag 1)
@@ -96,7 +101,7 @@ function(op_library TARGET)
         # It's enough to just adding one operator to pybind
         file(APPEND ${pybind_file} "USE_GPU_ONLY_OP(ncclAllReduce);\n")
     endif()
-    
+
     # reduce_op contains several operators
     if ("${TARGET}" STREQUAL "reduce_op")
         set(pybind_flag 1)

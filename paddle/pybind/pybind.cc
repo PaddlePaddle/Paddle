@@ -111,11 +111,13 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCPUTensorSetFromArray<int>)
       .def("set", PyCPUTensorSetFromArray<double>)
       .def("set", PyCPUTensorSetFromArray<int64_t>)
+      .def("set", PyCPUTensorSetFromArray<bool>)
 #ifdef PADDLE_WITH_CUDA
       .def("set", PyCUDATensorSetFromArray<float>)
       .def("set", PyCUDATensorSetFromArray<int>)
       .def("set", PyCUDATensorSetFromArray<double>)
       .def("set", PyCUDATensorSetFromArray<int64_t>)
+      .def("set", PyCUDATensorSetFromArray<bool>)
 #endif
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
       .def("set_float_element", TensorSetElement<float>)
