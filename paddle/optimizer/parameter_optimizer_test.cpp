@@ -85,7 +85,7 @@ public:
     for (size_t i = 0; i < opts_.size(); ++i) {
       int s = 0;
       float* newp = (float*)opts_[i]->get_weight(&s);
-      EXPECT_EQ(s, kSize);
+      EXPECT_EQ(static_cast<size_t>(s), kSize);
       for (size_t j = 0; j < kSize; ++j) {
         EXPECT_EQ(newp[j], (*p)[j]);
       }

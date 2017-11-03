@@ -407,7 +407,7 @@ real AucEvaluator::evalImp(std::vector<Argument>& arguments) {
   // Copy label from value to a vector.
   if (nullptr == label && nullptr != labelval) {
     // label width is 1
-    CHECK_EQ(1, labelval->getWidth());
+    CHECK_EQ(1U, labelval->getWidth());
     VectorPtr vec =
         Vector::create(labelval->getData(), insNum, output->useGpu());
     label = vec->castToInt();

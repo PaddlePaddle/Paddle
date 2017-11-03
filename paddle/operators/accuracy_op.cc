@@ -33,7 +33,7 @@ class AccuracyOp : public framework::OperatorWithKernel {
 
     auto inference_dim = ctx->GetInputDim("Out");
     auto label_dim = ctx->GetInputDim("Label");
-    // Assume indices has same shape with infernece, because
+    // Assume indices has same shape as inference, because
     // it's the output of topk.
 
     PADDLE_ENFORCE_EQ(label_dim.size(), 2, "label's rank must be 2.");
@@ -60,20 +60,24 @@ class AccuracyOpMaker : public framework::OpProtoAndCheckerMaker {
                   framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     // TODO(typhoonzero): support both inference value and indices.
-    AddInput("Out", "topk (inferences) the network output");
-    AddInput("Indices", "topk (indices) the network output");
+    AddInput("Out", "The network output of topk (inferences)");
+    AddInput("Indices", "The the network output of topk (indices)");
     AddInput("Label", "Label of the training data");
     // TODO(typhoonzero): AddInput("Weight", ...
     AddOutput("Accuracy", "The accuracy of current batch");
 
     AddComment(R"DOC(
-Accuracy. It will print accuracy rate for classification.
-The accuracy is:
-..  math::
-accuracy = \\frac{NumOfCorrectPredicts}{NumOfAllSamples})
+Accuracy Operator. 
 
-Both the input `Out` and `Label` can carry the LoD (Level of Details)
-information, or not. But the output only shares the LoD with input `Inference`.
+It will print accuracy rate for classification.
+The accuracy is calculated as follows:
+
+$$accuracy = \frac{NumOfCorrectPredicts}{NumOfAllSamples}$$
+
+Both the input Out and Label can carry the LoD (Level of Details)
+information, or not. But the output only shares the LoD information 
+with the input Out(Inference).
+
 )DOC");
   }
 };
