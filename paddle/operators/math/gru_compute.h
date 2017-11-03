@@ -19,28 +19,6 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-// typedef enum {
-//   HL_ACTIVATION_SIGMOID = 0,
-//   HL_ACTIVATION_RELU = 1,
-//   HL_ACTIVATION_TANH = 2,
-//   HL_ACTIVATION_LINEAR = 3,
-//   HL_ACTIVATION_END
-// } activation_mode_t;
-
-// inline activation_mode_t ActiveType(const std::string &type) {
-//   if (type == "sigmoid") {
-//     return HL_ACTIVATION_SIGMOID;
-//   } else if (type == "relu") {
-//     return HL_ACTIVATION_RELU;
-//   } else if (type == "tanh") {
-//     return HL_ACTIVATION_TANH;
-//   } else if (type == "linear" || type == "") {
-//     return HL_ACTIVATION_LINEAR;
-//   } else {
-//     PADDLE_THROW("Do not support activation type.");
-//   }
-// }
-
 template <typename T>
 struct hl_gru_value {
   T *gateWeight;
