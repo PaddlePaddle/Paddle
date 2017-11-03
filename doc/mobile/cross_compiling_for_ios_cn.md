@@ -27,10 +27,11 @@ iOS平台可选配置参数：
   - `SIMULATOR`，构建目标为`x86`架构的模拟器平台。
 - `IOS_ARCH`，目标架构。针对不同的`IOS_PLATFORM`，可设置的目标架构如下表所示：
 
-   | IOS_PLATFORM | IOS_ARCH             |
-   |--------------|----------------------|
-   |   OS         | armv7, armv7s, arm64 (默认) |
-   | SIMULATOR    | i386, x86_64 (默认)         |   
+<table>
+<tr><th>IOS_PLATFORM</th><th>IOS_ARCH</th></tr>
+<tr><td>OS</td><td>armv7, armv7s, arm64 (默认)</td></tr>
+<tr><td>SIMULATOR</td><td>i386, x86_64 (默认)</td></tr>
+</table>
 
 - `IOS_DEPLOYMENT_TARGET`，最小的iOS部署版本，默认值为`7.0`。
 - `IOS_ENABLE_BITCODE`，是否使能[Bitcode](https://developer.apple.com/library/content/documentation/IDEs/Conceptual/AppDistributionGuide/AppThinning/AppThinning.html#//apple_ref/doc/uid/TP40012582-CH35-SW3)，可设置`ON/OFF`，默认值为`ON`。
