@@ -25,8 +25,6 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/PaddlePaddle/Paddle/go/connection"
 	"github.com/PaddlePaddle/recordio"
 )
@@ -35,10 +33,6 @@ const (
 	totalTask    = 20
 	chunkPerTask = 10
 )
-
-func init() {
-	log.SetLevel(log.ErrorLevel)
-}
 
 func TestGetFinishTask(t *testing.T) {
 	const path = "/tmp/master_client_test_0"

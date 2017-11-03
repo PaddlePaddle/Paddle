@@ -21,7 +21,7 @@ images = layers.data(
 label = layers.data(
     name='label',
     shape=[1],
-    data_type='int32',
+    data_type='int64',
     program=program,
     init_program=init_program)
 conv_pool_1 = nets.simple_img_conv_pool(
@@ -51,12 +51,16 @@ predict = layers.fc(input=conv_pool_2,
 cost = layers.cross_entropy(
     input=predict, label=label, program=program, init_program=init_program)
 avg_cost = layers.mean(x=cost, program=program)
+accuracy = layers.accuracy(
+    input=predict, label=label, program=program, init_program=init_program)
 
-sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
-opts = sgd_optimizer.minimize(avg_cost)
+# optimizer = optimizer.MomentumOptimizer(learning_rate=0.1 / 128.0,
+# momentum=0.9)
+optimizer = optimizer.AdamOptimizer(learning_rate=0.01, beta1=0.9, beta2=0.999)
+opts = optimizer.minimize(avg_cost, init_program)
 
 BATCH_SIZE = 50
-PASS_NUM = 1
+PASS_NUM = 3
 train_reader = paddle.batch(
     paddle.reader.shuffle(
         paddle.dataset.mnist.train(), buf_size=500),
@@ -72,7 +76,7 @@ for pass_id in range(PASS_NUM):
     for data in train_reader():
         img_data = np.array(map(lambda x: x[0].reshape([1, 28, 28]),
                                 data)).astype("float32")
-        y_data = np.array(map(lambda x: x[1], data)).astype("int32")
+        y_data = np.array(map(lambda x: x[1], data)).astype("int64")
         y_data = y_data.reshape([BATCH_SIZE, 1])
 
         tensor_img = core.LoDTensor()
@@ -83,10 +87,11 @@ for pass_id in range(PASS_NUM):
         outs = exe.run(program,
                        feed={"pixel": tensor_img,
                              "label": tensor_y},
-                       fetch_list=[avg_cost])
-
+                       fetch_list=[avg_cost, accuracy])
         loss = np.array(outs[0])
+        acc = np.array(outs[1])
 
-        if loss < 10.0:
-            exit(0)  # if avg cost less than 10.0, we think our code is good.
+        if loss < 10.0 and acc > 0.9:
+            # if avg cost less than 10.0 and accuracy is larger than 0.9, we think our code is good.
+            exit(0)
 exit(1)

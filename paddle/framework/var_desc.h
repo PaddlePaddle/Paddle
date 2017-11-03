@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+#include "glog/logging.h"
 #include "paddle/framework/framework.pb.h"
 
 namespace paddle {
@@ -58,6 +59,8 @@ class VarDescBind {
     desc_.set_name(name);
     desc_.set_type(VarDesc::LOD_TENSOR);
   }
+
+  explicit VarDescBind(const VarDesc &desc) : desc_(desc) {}
 
   VarDesc *Proto() { return &desc_; }
 

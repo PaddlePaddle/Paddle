@@ -26,14 +26,14 @@ Android的Docker开发镜像向用户提供两个可配置的参数：
 |`ANDROID_API`    |`>= 21` | `21` |
 
 - 编译`armeabi-v7a`，`Android API 21`的PaddlePaddle库
-```bash
-$ docker run -it --rm -v $PWD:/paddle -e "ANDROID_ABI=armeabi-v7a" -e "ANDROID_API=21" username/paddle-android:dev
-```
+  ```bash
+  $ docker run -it --rm -v $PWD:/paddle -e "ANDROID_ABI=armeabi-v7a" -e "ANDROID_API=21" username/paddle-android:dev
+  ```
 
 - 编译`arm64-v8a`，`Android API 21`的PaddlePaddle库
-```bash
-$ docker run -it --rm -v $PWD:/paddle -e "ANDROID_ABI=arm64-v8a" -e "ANDROID_API=21" username/paddle-android:dev
-```
+  ```bash
+  $ docker run -it --rm -v $PWD:/paddle -e "ANDROID_ABI=arm64-v8a" -e "ANDROID_API=21" username/paddle-android:dev
+  ```
 
 执行上述`docker run`命令时，容器默认执行[paddle/scripts/docker/build_android.sh](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/build_android.sh)脚本。该脚本中记录了交叉编译Android版PaddlePaddle库常用的CMake配置，并且会根据`ANDROID_ABI`和`ANDROID_API`自动构建独立工具链、进行编译和安装。由于arm64架构要求Android API不小于21。因此当`ANDROID_ABI=arm64-v8a`，`ANDROID_API<21`时，Docker容器中将默认使用`Android API 21`的编译工具链。用户可以参考下文**配置交叉编译参数**章节，根据个人的需求修改定制Docker容器所执行的脚本。编译安装结束之后，PaddlePaddle的C-API库将被安装到`$PWD/install_android`目录，所依赖的第三方库同时也被安装到`$PWD/install_android/third_party`目录。
 
@@ -119,7 +119,7 @@ cmake -DCMAKE_SYSTEM_NAME=Android \
       -DANDROID_STANDALONE_TOOLCHAIN=your/path/to/arm64_standalone_toolchain \
       -DANDROID_ABI=arm64-v8a \
       -DUSE_EIGEN_FOR_BLAS=OFF \
-      -DCMAKE_INSTALL_PREFIX=your/path/to/install \  
+      -DCMAKE_INSTALL_PREFIX=your/path/to/install \
       -DWITH_C_API=ON \
       -DWITH_SWIG_PY=OFF \
       ..

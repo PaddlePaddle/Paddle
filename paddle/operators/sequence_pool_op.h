@@ -29,22 +29,13 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
-enum SeqPoolType {
-  AVERAGE = 0,
-  SUM = 1,
-  SQRT = 2,  // square_root_n
-  MAX = 3,
-  LAST = 4,
-  FIRST = 5
-};
-
 template <typename Place, typename T>
 class SequencePoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
     auto* out = context.Output<LoDTensor>("Out");
-    int strategy = context.Attr<int>("strategy");
+    std::string pooltype = context.Attr<std::string>("pooltype");
 
     auto dims = in->dims();
     auto lod = in->lod();
@@ -71,25 +62,21 @@ class SequencePoolKernel : public framework::OpKernel<T> {
       auto in_e = EigenMatrix<T>::From(in_t, framework::make_ddim({h, w}));
       auto out_e = EigenVector<T>::Flatten(out_t);
 
-      switch (strategy) {
-        case AVERAGE:
-          out_e.device(place) = in_e.mean(Eigen::array<int, 1>({{0}}));
-          break;
-        case SUM:
-          out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}}));
-          break;
-        case SQRT:
-          out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}})) /
-                                std::sqrt(static_cast<T>(h));
-          break;
-        case LAST:
-          out_e.device(place) = in_e.chip(h - 1, 0);
-          break;
-        case FIRST:
-          out_e.device(place) = in_e.chip(0, 0);
-          break;
-        default:
-          PADDLE_THROW("unsupported pooling strategy");
+      if (pooltype == "AVERAGE") {
+        out_e.device(place) = in_e.mean(Eigen::array<int, 1>({{0}}));
+      } else if (pooltype == "SUM") {
+        out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}}));
+      } else if (pooltype == "SQRT") {
+        out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}})) /
+                              std::sqrt(static_cast<T>(h));
+      } else if (pooltype == "MAX") {
+        out_e.device(place) = in_e.maximum(Eigen::array<int, 1>({{0}}));
+      } else if (pooltype == "LAST") {
+        out_e.device(place) = in_e.chip(h - 1, 0);
+      } else if (pooltype == "FIRST") {
+        out_e.device(place) = in_e.chip(0, 0);
+      } else {
+        PADDLE_THROW("unsupported pooling pooltype");
       }
     }
   }
@@ -100,17 +87,17 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
-    auto* out_g = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* in_g = context.Output<LoDTensor>(framework::GradVarName("X"));
-    int strategy = context.Attr<int>("strategy");
+    auto* out_g = context.Input<LoDTensor>(framework::GradVarName("Out"));
+    std::string pooltype = context.Attr<std::string>("pooltype");
 
     auto dims = in->dims();
     auto lod = in->lod()[0];
     int64_t w = in->numel() / dims[0];
 
     in_g->mutable_data<T>(context.GetPlace());
-    if (strategy == LAST || strategy == FIRST) {
-      // set X@Grad be zero at first when strategy is LAST/FIRST
+    if (pooltype == "LAST" || pooltype == "FIRST") {
+      // set X@Grad be zero at first when pooltype is LAST/FIRST
       math::SetConstant<Place, T> functor;
       functor(context.device_context(), in_g, 0);
     }
@@ -124,25 +111,33 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
       auto out_g_e = EigenMatrix<T>::From(out_g_t, {1, w});
       Eigen::DSizes<int, 2> bcast(h, 1);
 
-      switch (strategy) {
-        case AVERAGE:
-          in_g_e.device(place) = (out_g_e / static_cast<T>(h)).broadcast(bcast);
-          break;
-        case SUM:
-          in_g_e.device(place) = (out_g_e).broadcast(bcast);
-          break;
-        case SQRT:
-          in_g_e.device(place) =
-              (out_g_e / std::sqrt(static_cast<T>(h))).broadcast(bcast);
-          break;
-        case LAST:
-          in_g_e.chip(h - 1, 0).device(place) = out_g_e;
-          break;
-        case FIRST:
-          in_g_e.chip(0, 0).device(place) = out_g_e;
-          break;
-        default:
-          PADDLE_THROW("unsupported pooling strategy");
+      if (pooltype == "AVERAGE") {
+        in_g_e.device(place) = (out_g_e / static_cast<T>(h)).broadcast(bcast);
+      } else if (pooltype == "SUM") {
+        in_g_e.device(place) = (out_g_e).broadcast(bcast);
+      } else if (pooltype == "SQRT") {
+        in_g_e.device(place) =
+            (out_g_e / std::sqrt(static_cast<T>(h))).broadcast(bcast);
+      } else if (pooltype == "MAX") {
+        auto in_t =
+            in->Slice(static_cast<int>(lod[i]), static_cast<int>(lod[i + 1]));
+        Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>
+            in_t_map(in_t.data<T>(), h, w);
+        int row_id;
+        Eigen::array<int, 2> extents{{1, 1}};
+        for (int col_id = 0; col_id < w; col_id++) {
+          in_t_map.col(col_id).maxCoeff(&row_id);
+          Eigen::array<int, 2> in_offsets{{row_id, col_id}};
+          Eigen::array<int, 2> out_offsets{{0, col_id}};
+          in_g_e.slice(in_offsets, extents).device(place) =
+              out_g_e.slice(out_offsets, extents);
+        }
+      } else if (pooltype == "LAST") {
+        in_g_e.chip(h - 1, 0).device(place) = out_g_e;
+      } else if (pooltype == "FIRST") {
+        in_g_e.chip(0, 0).device(place) = out_g_e;
+      } else {
+        PADDLE_THROW("unsupported pooling pooltype");
       }
     }
   }

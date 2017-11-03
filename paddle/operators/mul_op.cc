@@ -19,11 +19,9 @@ namespace operators {
 
 using framework::Tensor;
 
-class MulOp : public framework::OperatorWithKernel {
+class MulOpShapeInference : public framework::InferShapeBase {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void operator()(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of MulOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) of MulOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
@@ -31,8 +29,13 @@ class MulOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
+
     int x_num_col_dims = ctx->Attrs().Get<int>("x_num_col_dims");
     int y_num_col_dims = ctx->Attrs().Get<int>("y_num_col_dims");
+
+    VLOG(3) << "mul operator x.shape=" << x_dims << " y.shape=" << y_dims
+            << " x_num_col_dims=" << x_num_col_dims
+            << " y_num_col_dims=" << y_num_col_dims;
 
     PADDLE_ENFORCE_GT(
         x_dims.size(), x_num_col_dims,
@@ -137,7 +140,10 @@ class MulOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulOpGrad);
+REGISTER_OPERATOR(mul, paddle::framework::OperatorWithKernel, ops::MulOpMaker,
+                  ops::MulOpShapeInference,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(mul_grad, ops::MulOpGrad);
 REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(mul_grad,
                        ops::MulGradKernel<paddle::platform::CPUPlace, float>);

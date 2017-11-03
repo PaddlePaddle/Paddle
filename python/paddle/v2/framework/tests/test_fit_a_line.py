@@ -4,6 +4,7 @@ import paddle.v2.framework.core as core
 import paddle.v2.framework.optimizer as optimizer
 
 from paddle.v2.framework.framework import Program, g_program
+from paddle.v2.framework.io import save_persistables, load_persistables
 from paddle.v2.framework.executor import Executor
 
 import numpy as np
@@ -35,7 +36,7 @@ cost = layers.square_error_cost(
 avg_cost = layers.mean(x=cost, program=program, init_program=init_program)
 
 sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
-opts = sgd_optimizer.minimize(avg_cost)
+opts = sgd_optimizer.minimize(avg_cost, init_program)
 
 BATCH_SIZE = 20
 
@@ -51,6 +52,8 @@ exe.run(init_program, feed={}, fetch_list=[])
 
 PASS_NUM = 100
 for pass_id in range(PASS_NUM):
+    save_persistables(exe, "./fit_a_line.model/", program=program)
+    load_persistables(exe, "./fit_a_line.model/", program=program)
     for data in train_reader():
         x_data = np.array(map(lambda x: x[0], data)).astype("float32")
         y_data = np.array(map(lambda x: x[1], data)).astype("float32")

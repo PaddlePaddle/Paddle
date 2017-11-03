@@ -21,7 +21,22 @@ TEST(TensorToProto, Case1) {
   paddle::optimizer::Tensor t(3), t1(3);
   for (size_t i = 0; i < t.size(); ++i) {
     t[i] = i;
-    t1[i] = 0;
+    t1[i] = 10;
+  }
+
+  paddle::TensorProto proto;
+  paddle::optimizer::TensorToProto(t, &proto);
+  paddle::optimizer::ProtoToTensor(proto, &t1);
+  for (size_t i = 0; i < t1.size(); ++i) {
+    EXPECT_EQ(t1[i], t[i]);
+  }
+}
+
+TEST(TensorToProto, Case2) {
+  paddle::optimizer::Tensor t(1), t1(1);
+  for (size_t i = 0; i < t.size(); ++i) {
+    t[i] = i;
+    t1[i] = 10;
   }
 
   paddle::TensorProto proto;

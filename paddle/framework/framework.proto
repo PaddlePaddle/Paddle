@@ -115,6 +115,8 @@ message VarDesc {
     SELECTED_ROWS = 2;
     FEED_MINIBATCH = 3;
     FETCH_LIST = 4;
+    STEP_SCOPES = 5;
+    LOD_RANK_TABLE = 6;
   }
   required string name = 1;
   required VarType type = 2;

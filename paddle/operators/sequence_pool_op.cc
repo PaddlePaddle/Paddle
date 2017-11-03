@@ -39,13 +39,22 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "(Tensor), output of SequencePoolOp, which does not contain LoD "
               "infomation.");
-    AddAttr<int>(
-        "strategy",
-        "(int, default AVERAGE) the pooling strategy of SequencePoolOp.")
-        .SetDefault(AVERAGE)
-        .InEnum({AVERAGE, SUM, SQRT, MAX, LAST, FIRST});
+    AddAttr<std::string>(
+        "pooltype",
+        "(int, default AVERAGE) the pooling pooltype of SequencePoolOp.")
+        .SetDefault("AVERAGE")
+        .InEnum({"AVERAGE", "SUM", "SQRT", "LAST", "FIRST", "MAX"});
     AddComment(R"DOC(
     SequencePoolOp pools features of all time-steps of each instance.
+
+    It supports six pooling pooltype:
+    - AVERAGE: Out[i] = average_{for each instance in i-th sequence}{X[i]}
+    - SUM:     Out[i] = sum_{for each instance in i-th sequence}{X[i]}
+    - SQRT:    Out[i] = sum_{for each instance in i-th sequence}{X[i]} 
+                        / sqrt(i-th sequence length)
+    - LAST:    Out[i] = last instance in i-th sequence X[i]
+    - FIRST:   Out[i] = first instance in i-th sequence X[i]
+    - MAX:     Out[i] = max_{for each instance in i-th sequence}{X[i]}
 
     For a mini-batch of 3 variable-length sentences, containing 2, 3, and 2 time-steps:
 
@@ -54,7 +63,7 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
     and the value of X = [[1, 3], [2, 4, 6], [5, 1]].
 
     Thus, Out is a [3,1,1] Tensor without LoD infomation.
-    And for different strategy, the value of Out is as follows:
+    And for different pooltype, the value of Out is as follows:
 
     - AVERAGE: [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
     - SUM: [4, 12, 6], where 4=1+3, 12=2+4+6, 6=5+1
