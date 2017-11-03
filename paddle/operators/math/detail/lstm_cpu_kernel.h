@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <type_traits>
-#include "paddle/operators/math/detail/hl_activation_functions.h"
+#include "paddle/operators/math/detail/activation_functions.h"
 #include "paddle/operators/math/lstm_compute.h"
 
 namespace paddle {
@@ -26,7 +26,10 @@ namespace detail {
 
 template <class T, class Op>
 void naive_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
-                                     int frameSize) {
+                                     int frameSize,
+                                     activation_mode_t active_node,
+                                     activation_mode_t active_gate,
+                                     activation_mode_t active_state) {
   T rValueIn;
   T rValueIg;
   T rValueFg;
@@ -58,7 +61,7 @@ void naive_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
     }
 
     op(rValueIn, rValueIg, rValueFg, rValueOg, rPrevState, rState, rStateAtv,
-       rOut, rCheckI, rCheckF, rCheckO);
+       rOut, rCheckI, rCheckF, rCheckO, active_node, active_gate, active_state);
 
     valueIn[i] = rValueIn;
     valueIg[i] = rValueIg;
@@ -72,7 +75,10 @@ void naive_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
 
 template <class T, class Op>
 void naive_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
-                                      LstmMetaGrad<T> grad, int frameSize) {
+                                      LstmMetaGrad<T> grad, int frameSize,
+                                      activation_mode_t active_node,
+                                      activation_mode_t active_gate,
+                                      activation_mode_t active_state) {
   T rValueIn;
   T rValueIg;
   T rValueFg;
@@ -122,7 +128,7 @@ void naive_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
     op(rValueIn, rValueIg, rValueFg, rValueOg, rGradIn, rGradIg, rGradFg,
        rGradOg, rPrevState, rPrevStateGrad, rState, rStateGrad, rStateAtv,
        rOutputGrad, rCheckI, rCheckF, rCheckO, rCheckIGrad, rCheckFGrad,
-       rCheckOGrad);
+       rCheckOGrad, active_node, active_gate, active_state);
 
     gradIn[i] = rGradIn;
     gradIg[i] = rGradIg;
@@ -176,8 +182,7 @@ void avx_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value, int frameSize,
     }
 
     op(rValueIn, rValueIg, rValueFg, rValueOg, rPrevState, rState, rStateAtv,
-       rOut, rCheckI, rCheckF, rCheckO, hppl::avx::forward[active_node],
-       hppl::avx::forward[active_gate], hppl::avx::forward[active_state]);
+       rOut, rCheckI, rCheckF, rCheckO, active_node, active_gate, active_state);
 
     valueIn[i] = rValueIn;
     valueIg[i] = rValueIg;
@@ -246,8 +251,7 @@ void avx_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
     op(rValueIn, rValueIg, rValueFg, rValueOg, rGradIn, rGradIg, rGradFg,
        rGradOg, rPrevState, rPrevStateGrad, rState, rStateGrad, rStateAtv,
        rOutputGrad, rCheckI, rCheckF, rCheckO, rCheckIGrad, rCheckFGrad,
-       rCheckOGrad, hppl::avx::backward[active_node],
-       hppl::avx::backward[active_gate], hppl::avx::backward[active_state]);
+       rCheckOGrad, active_node, active_gate, active_state);
 
     gradIn[i] = rGradIn;
     gradIg[i] = rGradIg;
@@ -274,7 +278,8 @@ void cpu_lstm_forward(Op op, LstmMetaValue<T> value, int frameSize,
     avx_lstm_forward_one_sequence<T>(op, value, frameSize, active_node,
                                      active_gate, active_state);
   } else {
-    naive_lstm_forward_one_sequence<T>(op, value, frameSize);
+    naive_lstm_forward_one_sequence<T>(op, value, frameSize, active_node,
+                                       active_gate, active_state);
   }
 }
 
@@ -287,7 +292,8 @@ void cpu_lstm_backward(Op op, LstmMetaValue<T> value, LstmMetaGrad<T> grad,
     avx_lstm_backward_one_sequence<T>(op, value, grad, frameSize, active_node,
                                       active_gate, active_state);
   } else {
-    naive_lstm_backward_one_sequence<T>(op, value, grad, frameSize);
+    naive_lstm_backward_one_sequence<T>(op, value, grad, frameSize, active_node,
+                                        active_gate, active_state);
   }
 }
 
