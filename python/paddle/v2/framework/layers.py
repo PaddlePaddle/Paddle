@@ -442,15 +442,6 @@ def batch_norm(input,
         else:
             raise ValueError("unsupported data layout:" + data_layout)
 
-    def create_persistable_var(dtype, shape, initializer=None):
-        name = unique_name(".".join([helper.name, "persistable"]))
-        var = init_program.global_block().create_var(
-            dtype=dtype, shape=shape, name=name, persistable=True)
-        if initializer is not None:
-            initializer(var, var.block)
-        return program.global_block().create_var(
-            name=name, dtype=dtype, shape=shape, persistable=True)
-
     param_shape = [channel_num]
 
     # create parameter
@@ -465,10 +456,15 @@ def batch_norm(input,
         dtype=dtype,
         initializer=ConstantInitializer(0.0))
 
-    # create input
-    mean = create_persistable_var(dtype, param_shape, ConstantInitializer(0.0))
-    variance = create_persistable_var(dtype, param_shape,
-                                      ConstantInitializer(1.0))
+    mean = helper.create_global_variable(
+        dtype=input.data_type, shape=param_shape, persistable=True)
+    helper.set_variable_initializer(
+        var=mean, initializer=ConstantInitializer(0.0))
+
+    variance = helper.create_global_variable(
+        dtype=input.data_type, shape=param_shape, persistable=True)
+    helper.set_variable_initializer(
+        var=variance, initializer=ConstantInitializer(1.0))
 
     # create output
     # mean and mean_out share the same memory
