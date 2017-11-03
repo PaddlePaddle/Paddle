@@ -75,7 +75,6 @@ exe.run(init_program, feed={}, fetch_list=[])
 
 PASS_NUM = 100
 for pass_id in range(PASS_NUM):
-    batch_id = 0
     for data in train_reader():
         x_data = np.array(map(lambda x: x[0], data)).astype("float32")
         y_data = np.array(map(lambda x: x[1], data)).astype("int64")
@@ -92,6 +91,7 @@ for pass_id in range(PASS_NUM):
                              'y': tensor_y},
                        fetch_list=[avg_cost, accuracy])
         out = np.array(outs[0])
+        acc = np.array(outs[1])
         if out[0] < 5.0:
             exit(0)  # if avg cost less than 5.0, we think our code is good.
 exit(1)
