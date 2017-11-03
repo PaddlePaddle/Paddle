@@ -154,7 +154,7 @@ class Optimizer(object):
         # for parameters and extend _finish_update method to add custom ops.
 
         # Create any accumulators
-        main_program = loss.block.main_program
+        main_program = loss.block.program
         self.helper = LayerHelper(
             self.__class__.__name__,
             main_program=main_program,
