@@ -1,13 +1,11 @@
+import numpy as np
 import paddle.v2 as paddle
+import paddle.v2.framework.core as core
 import paddle.v2.framework.layers as layers
 import paddle.v2.framework.nets as nets
-import paddle.v2.framework.core as core
 import paddle.v2.framework.optimizer as optimizer
-
-from paddle.v2.framework.framework import Program, g_program
 from paddle.v2.framework.executor import Executor
-
-import numpy as np
+from paddle.v2.framework.framework import Program
 
 
 def resnet_cifar10(input, depth=32, program=None, init_program=None):
@@ -253,4 +251,7 @@ for pass_id in range(PASS_NUM):
               " loss:" + str(loss) + " acc:" + str(acc))
         batch_id = batch_id + 1
 
+        if batch_id > 1:
+            # this model is slow, so if we can train two mini batch, we think it works properly.
+            exit(0)
 exit(1)
