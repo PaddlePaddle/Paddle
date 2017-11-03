@@ -45,37 +45,18 @@ class TestConv2dTransposeOp(OpTest):
         filter_ = np.random.random(self.filter_size).astype("float32")
         output = conv2dtranspose_forward_naive(
             input_, filter_, conv2dtranspose_param).astype('float32')
-        # print 'deconv output py', output, output.shape
 
         self.inputs = {'Input': input_, 'Filter': filter_}
         self.attrs = {
             'strides': self.stride,
             'paddings': self.pad,
-            # 'dilations': self.dilations
+            'dilations': self.dilations
         }
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        print 'check output here'
+        print 'check output here for', self.op_type
         self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(
-            set(['Input', 'Filter']), 'Output', max_relative_error=0.05)
-
-    def test_check_grad_no_filter(self):
-        self.check_grad(
-            ['Input'],
-            'Output',
-            max_relative_error=0.05,
-            no_grad_set=set(['Filter']))
-
-    def test_check_grad_no_input(self):
-        self.check_grad(
-            ['Filter'],
-            'Output',
-            max_relative_error=0.05,
-            no_grad_set=set(['Input']))
 
     def init_test_case(self):
         self.pad = [0, 0]
@@ -86,17 +67,31 @@ class TestConv2dTransposeOp(OpTest):
         self.filter_size = [f_c, 6, 3, 3]
 
     def init_op_type(self):
-        self.op_type = "conv2dtranspose"
+        self.op_type = "conv2d_transpose"
+
+    def test_check_grad_no_input(self):
+        self.check_grad(
+            ['Filter'],
+            'Output',
+            max_relative_error=0.05,
+            no_grad_set=set(['Input']))
+
+    def test_check_grad_no_filter(self):
+        self.check_grad(
+            ['Input'],
+            'Output',
+            max_relative_error=0.05,
+            no_grad_set=set(['Filter']))
+
+    def test_check_grad(self):
+        self.check_grad(
+            set(['Input', 'Filter']), 'Output', max_relative_error=0.05)
 
 
-"""
-class TestCudnn(TestConv2dOp):
-    def init_group(self):
-        self.groups = 1
-
+class TestCudnn(TestConv2dTransposeOp):
     def init_op_type(self):
-        self.op_type = "conv_cudnn"
-"""
+        self.op_type = "conv2d_transpose_cudnn"
+
 
 if __name__ == '__main__':
     unittest.main()

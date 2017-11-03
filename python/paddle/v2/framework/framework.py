@@ -7,6 +7,11 @@ import copy
 __all__ = ['Block', 'Variable', 'Program', 'Operator']
 
 
+def unique_name(prefix):
+    uid = core.unique_integer(prefix)  # unique during whole process.
+    return "_".join([prefix, str(uid)])
+
+
 class Variable(object):
     def __init__(self,
                  block,
@@ -264,7 +269,10 @@ class Operator(object):
                     self.desc.set_attr(attr_name, attrs[attr_name])
 
         self.desc.check_attrs()
-        no_kernel_op_set = {'feed', 'fetch', 'save', 'load'}
+        no_kernel_op_set = {
+            'feed', 'fetch', 'save', 'load', 'recurrent',
+            'rnn_memory_helper_grad'
+        }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
