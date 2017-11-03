@@ -44,7 +44,7 @@ class TestBook(unittest.TestCase):
             x=cost, program=program, init_program=init_program)
 
         sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
-        opts = sgd_optimizer.minimize(avg_cost)
+        opts = sgd_optimizer.minimize(avg_cost, init_program)
 
         place = core.CPUPlace()
         exe = executor.Executor(place)
