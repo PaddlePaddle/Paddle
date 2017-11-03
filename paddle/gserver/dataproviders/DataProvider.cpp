@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <unistd.h>
 #include <algorithm>
-#include "ProtoDataProvider.h"
 #include "paddle/utils/Logging.h"
+#include "paddle/utils/Stat.h"
 #include "paddle/utils/StringUtil.h"
 #include "paddle/utils/Util.h"
 
@@ -164,8 +164,6 @@ DataProvider* DataProvider::create(const DataConfig& config,
 
 REGISTER_DATA_PROVIDER(simple, SimpleDataProvider);
 REGISTER_DATA_PROVIDER(dummy, DummyDataProvider);
-REGISTER_DATA_PROVIDER(proto, ProtoDataProvider);
-REGISTER_DATA_PROVIDER(proto_sequence, ProtoSequenceDataProvider);
 
 int64_t DataProvider::getNextBatch(int64_t size, DataBatch* batch) {
   int64_t batchSize = doubleBuffer_ ? getNextBatchFromBuffer(size, batch)

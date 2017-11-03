@@ -58,17 +58,6 @@ if(NOT WITH_DOUBLE)
 endif()
 
 if(NOT MOBILE_INFERENCE)
-################### test_ProtoDataProvider ############
-    add_unittest_without_exec(test_ProtoDataProvider
-        test_ProtoDataProvider.cpp)
-
-    # test_ProtoDataProvider will mkdir as same name,
-    # so if WORKING_DIRECTORY is default directory, then
-    # mkdir will get error.
-    add_test(NAME test_ProtoDataProvider
-        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/test_ProtoDataProvider
-        WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle)
-
 ################## test_Evaluator #######################
     add_unittest(test_Evaluator
         test_Evaluator.cpp)
