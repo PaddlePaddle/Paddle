@@ -232,7 +232,7 @@ struct HardShrinkGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-// softshrink(x) = x - lambda, if x > lambda; x + lambda, if x < lambda; 0
+// softshrink(x) = x - lambda, if x > lambda; x + lambda, if x < -lambda; 0
 // otherwise
 template <typename T>
 struct SoftShrinkFunctor : public BaseActivationFunctor<T> {
