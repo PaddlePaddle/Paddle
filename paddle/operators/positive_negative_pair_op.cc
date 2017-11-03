@@ -105,7 +105,7 @@ class PositiveNegativePairOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor, float) Label of an item (with repsect to "
              "QueryId). It's a 2-D tensor with shape [batch_size, 1].");
     AddInput("QueryID",
-             "(Tensor, int) Query ID that indicates the context. Its shape "
+             "(Tensor, int64) Query ID that indicates the context. Its shape "
              "should be the same as Label.");
     AddInput(
         "AccumulatePositivePair",

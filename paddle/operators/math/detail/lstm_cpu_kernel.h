@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <type_traits>
-#include "paddle/operators/math/detail/hl_activation_functions.h"
+#include "paddle/operators/math/detail/activation_functions.h"
 #include "paddle/operators/math/lstm_compute.h"
 
 namespace paddle {
@@ -60,10 +60,8 @@ void naive_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
       rPrevState = value.prevStateValue[i];
     }
 
-    hppl::cpu::ForwardAct<T> act;
     op(rValueIn, rValueIg, rValueFg, rValueOg, rPrevState, rState, rStateAtv,
-       rOut, rCheckI, rCheckF, rCheckO, act(active_node), act(active_gate),
-       act(active_state));
+       rOut, rCheckI, rCheckF, rCheckO, active_node, active_gate, active_state);
 
     valueIn[i] = rValueIn;
     valueIg[i] = rValueIg;
@@ -127,11 +125,10 @@ void naive_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
       rPrevState = value.prevStateValue[i];
     }
 
-    hppl::cpu::BackwardAct<T> act;
     op(rValueIn, rValueIg, rValueFg, rValueOg, rGradIn, rGradIg, rGradFg,
        rGradOg, rPrevState, rPrevStateGrad, rState, rStateGrad, rStateAtv,
        rOutputGrad, rCheckI, rCheckF, rCheckO, rCheckIGrad, rCheckFGrad,
-       rCheckOGrad, act(active_node), act(active_gate), act(active_state));
+       rCheckOGrad, active_node, active_gate, active_state);
 
     gradIn[i] = rGradIn;
     gradIg[i] = rGradIg;
@@ -185,8 +182,7 @@ void avx_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value, int frameSize,
     }
 
     op(rValueIn, rValueIg, rValueFg, rValueOg, rPrevState, rState, rStateAtv,
-       rOut, rCheckI, rCheckF, rCheckO, hppl::avx::forward[active_node],
-       hppl::avx::forward[active_gate], hppl::avx::forward[active_state]);
+       rOut, rCheckI, rCheckF, rCheckO, active_node, active_gate, active_state);
 
     valueIn[i] = rValueIn;
     valueIg[i] = rValueIg;
@@ -255,8 +251,7 @@ void avx_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
     op(rValueIn, rValueIg, rValueFg, rValueOg, rGradIn, rGradIg, rGradFg,
        rGradOg, rPrevState, rPrevStateGrad, rState, rStateGrad, rStateAtv,
        rOutputGrad, rCheckI, rCheckF, rCheckO, rCheckIGrad, rCheckFGrad,
-       rCheckOGrad, hppl::avx::backward[active_node],
-       hppl::avx::backward[active_gate], hppl::avx::backward[active_state]);
+       rCheckOGrad, active_node, active_gate, active_state);
 
     gradIn[i] = rGradIn;
     gradIg[i] = rGradIg;
