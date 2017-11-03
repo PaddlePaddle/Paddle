@@ -24,6 +24,11 @@ class LSTMOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
                    "Input(Input) of LSTM should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Weight"),
+                   "Input(Weight) of LSTM should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Bias"),
+                   "Input(Bias) of LSTM should not be null.");
+
     PADDLE_ENFORCE(ctx->HasOutput("Hidden"),
                    "Output(Hidden) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Cell"),
@@ -59,11 +64,13 @@ class LSTMOp : public framework::OperatorWithKernel {
                       "The second dimension of Input(Weight) "
                       "should be 4 * %d.",
                       frame_size);
+
     auto b_dims = ctx->GetInputDim("Bias");
     PADDLE_ENFORCE_EQ(b_dims.size(), 2, "The rank of Input(Bias) should be 2.");
     PADDLE_ENFORCE_EQ(b_dims[0], 1,
                       "The first dimension of Input(Bias) should be 1.");
-    if (ctx->Attrs().Get<bool>("usePeepholes")) {
+
+    if (ctx->Attrs().Get<bool>("use_peepholes")) {
       PADDLE_ENFORCE_EQ(b_dims[1], 7 * frame_size,
                         "The second dimension of Input(Bias) should be "
                         "7 * %d if enable peepholes connection",
@@ -74,6 +81,7 @@ class LSTMOp : public framework::OperatorWithKernel {
                         "4 * %d if disable peepholes connection",
                         frame_size);
     }
+
     framework::DDim out_dims({in_dims[0], frame_size});
     ctx->SetOutputDim("Hidden", out_dims);
     ctx->SetOutputDim("Cell", out_dims);
@@ -117,14 +125,13 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Bias",
              "(Tensor) the learnable weights, which contains two parts: "
              "input-hidden bias weight and peephole connections weight if "
-             "setting `usePeepholes` True. "
-             "1. `usePeepholes = False` "
+             "setting `use_peepholes` True. "
+             "1. `use_peepholes = False` "
              " - The shape is (1 x 4D). "
              " - Bias = {b_c, b_i, b_f, b_o}."
-             "2. `usePeepholes = True` "
+             "2. `use_peepholes = True` "
              " - The shape is (1 x 7D). "
-             " - Bias = {b_c, b_i, b_f, b_o, W_ic, W_fc, W_oc}.")
-        .AsDispensable();
+             " - Bias = {b_c, b_i, b_f, b_o, W_ic, W_fc, W_oc}.");
     AddOutput("Hidden",
               "(LoDTensor) the hidden state of LSTM operator. "
               "The shape is (T x D), and lod is the same with the `Input`.");
@@ -144,25 +151,25 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
               "(LoDTensor) This LoDTensor is got in the forward and used "
               "in the backward.")
         .AsIntermediate();
-    AddAttr<bool>("usePeepholes",
+    AddAttr<bool>("use_peepholes",
                   "(bool, defalut: True) "
                   "whether to enable diagonal/peephole connections.")
         .SetDefault(true);
-    AddAttr<bool>("isReverse",
+    AddAttr<bool>("is_reverse",
                   "(bool, defalut: False) "
                   "whether to compute reversed LSTM.")
         .SetDefault(false);
     AddAttr<std::string>(
-        "gateActivation",
+        "gate_activation",
         "(string, default: sigmoid)"
         "The activation for input gate, forget gate and output "
         "gate, `sigmoid` by default.")
         .SetDefault("sigmoid");
-    AddAttr<std::string>("cellActivation",
+    AddAttr<std::string>("cell_activation",
                          "(string, default: tanh)"
                          "The activation for cell output, `tanh` by defalut.")
         .SetDefault("tanh");
-    AddAttr<std::string>("candidateActivation",
+    AddAttr<std::string>("candidate_activation",
                          "(string, default: tanh)"
                          "The activation for candidate hidden state, "
                          "`tanh` by default.")
@@ -199,7 +206,7 @@ are the cell input and cell output activation functions, `tanh` is usually
 used for them. \f$\tilde{c_t}\f$ is also called candidate hidden state,
 which is computed based on the current input and the previous hidden state.
 
-Set `usePeepholes` False to disable peephole connection [2]. The formula
+Set `use_peepholes` False to disable peephole connection [2]. The formula
 is omitted here.
 
 @note These \f$W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}\f$
@@ -228,6 +235,10 @@ class LSTMGradOp : public framework::OperatorWithKernel {
                    "Input(Hidden) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Cell"),
                    "Input(Cell) of LSTM should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Weight"),
+                   "Input(Weight) of LSTM should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Bias"),
+                   "Input(Bias) of LSTM should not be null.");
 
     PADDLE_ENFORCE(ctx->HasInput("BatchGate"),
                    "Input(BatchGate) of LSTM should not be null.");
@@ -245,6 +256,14 @@ class LSTMGradOp : public framework::OperatorWithKernel {
     auto b_g_name = framework::GradVarName("Bias");
     if (ctx->HasOutput(b_g_name))
       ctx->SetOutputDim(b_g_name, ctx->GetInputDim("Bias"));
+
+    auto h0_g_name = framework::GradVarName("H0");
+    if (ctx->HasOutput(h0_g_name))
+      ctx->SetOutputDim(h0_g_name, ctx->GetInputDim("H0"));
+
+    auto c0_g_name = framework::GradVarName("C0");
+    if (ctx->HasOutput(c0_g_name))
+      ctx->SetOutputDim(c0_g_name, ctx->GetInputDim("C0"));
   }
 
  protected:
