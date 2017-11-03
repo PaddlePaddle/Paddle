@@ -159,8 +159,7 @@ class Optimizer(object):
             self.__class__.__name__,
             main_program=main_program,
             startup_program=startup_program)
-        self._create_accumulators(loss.block,
-                                  [p[0] for p in parameters_and_grads])
+        self._create_accumulators(loss.block, [p[0] for p in parameters_and_grads])
         # Create any necessary tensors
         self._initialize_tensors(loss.block)
 
@@ -199,8 +198,7 @@ class Optimizer(object):
                                            set())
         # Add regularization if any
         params_grads = append_regularization_ops(params_grads)
-        optimize_ops = self.create_optimization_pass(params_grads, loss,
-                                                     startup_program)
+        optimize_ops = self.create_optimization_pass(params_grads, loss, startup_program)
         return optimize_ops
 
 
@@ -393,7 +391,7 @@ class AdamOptimizer(Optimizer):
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
 
-        main_block = block.main_program.global_block()
+        main_block = block.program.global_block()
         # Create beta1 and beta2 power tensors
         beta_shape = [1]
         self._beta1_pow_acc = self.helper.create_global_variable(

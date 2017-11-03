@@ -311,5 +311,4 @@ def main():
                 # if avg cost less than 6.0, we think our code is good.
                 exit(0)
 
-
 main()

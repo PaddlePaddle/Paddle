@@ -1,6 +1,6 @@
 import paddle.v2.framework.layers as layers
 import paddle.v2.framework.nets as nets
-from paddle.v2.framework.framework import Program, g_program
+from paddle.v2.framework.framework import Program, g_main_program
 import paddle.v2.framework.core as core
 import unittest
 
@@ -25,7 +25,7 @@ class TestBook(unittest.TestCase):
     def test_recognize_digits_mlp(self):
         program = Program()
 
-        # Change g_program, so the rest layers use `g_program`
+        # Change g_main_program, so the rest layers use `g_main_program`
         images = layers.data(
             name='pixel', shape=[784], data_type='float32', program=program)
         label = layers.data(

@@ -184,9 +184,7 @@ class RecurrentOpTest1(unittest.TestCase):
         num_grad = self.get_numerical_gradient()
         for idx, name in enumerate(self.data_field):
             self.assertEqual(num_grad[idx].shape, ana_grad[idx].shape)
-            self.assertTrue(
-                np.isclose(
-                    num_grad[idx], ana_grad[idx], rtol=0.1).all())
+            self.assertTrue(np.isclose(num_grad[idx], ana_grad[idx], rtol=0.1).all())
 
     def check_forward(self):
         print 'test recurrent op forward'

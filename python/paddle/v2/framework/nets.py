@@ -110,12 +110,12 @@ def sequence_conv_pool(input,
         num_filters=num_filters,
         filter_size=filter_size,
         act=act,
-        program=program,
+        main_program=main_program,
         startup_program=startup_program)
 
     pool_out = layers.sequence_pool(
         input=conv_out,
         pool_type=pool_type,
-        program=program,
+        main_program=main_program,
         startup_program=startup_program)
     return pool_out
