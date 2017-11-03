@@ -69,6 +69,8 @@ const TensorDesc &VarDescBind::tensor_desc() const {
       return desc_.selected_rows();
     case VarDesc::LOD_TENSOR:
       return desc_.lod_tensor().tensor();
+    case VarDesc::LOD_TENSOR_ARRAY:
+      return desc_.tensor_array().tensor();
     default:
       PADDLE_THROW("Unexpected branch.");
   }
