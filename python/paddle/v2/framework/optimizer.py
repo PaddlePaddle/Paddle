@@ -456,7 +456,7 @@ class AdamOptimizer(Optimizer):
         """Update Beta1 and Beta2 Power accumulators
         """
         assert isinstance(block, framework.Block)
-        main_block = block.main_program.global_block()
+        main_block = block.program.global_block()
         scale_beta1 = main_block.append_op(
             type="scale",
             inputs={"X": self._beta1_pow_acc},
@@ -558,7 +558,7 @@ class AdamaxOptimizer(Optimizer):
         """Update Beta1 Power accumulator
         """
         assert isinstance(block, framework.Block)
-        main_block = block.main_program.global_block()
+        main_block = block.program.global_block()
         scale_beta1 = main_block.append_op(
             type="scale",
             inputs={"X": self._beta1_pow_acc},
