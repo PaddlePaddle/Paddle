@@ -60,10 +60,21 @@ class LoDRankTableInferShape : public framework::InferShapeBase {
   }
 };
 
+class LoDRankTableInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDescBind &op_desc,
+                  framework::BlockDescBind *block) const override {
+    for (auto &o : op_desc.Output("Out")) {
+      block->Var(o)->SetType(framework::VarDesc::LOD_RANK_TABLE);
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 REGISTER_OPERATOR(lod_rank_table, paddle::operators::LoDRankTableOp,
                   paddle::operators::LoDRankTableOpProtoMaker,
                   paddle::operators::LoDRankTableInferShape,
+                  paddle::operators::LoDRankTableInferVarType,
                   paddle::framework::EmptyGradOpMaker);
