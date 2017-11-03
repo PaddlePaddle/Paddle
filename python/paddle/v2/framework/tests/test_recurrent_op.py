@@ -125,11 +125,13 @@ class RecurrentOpTest1(unittest.TestCase):
             name='x',
             append_batch_size=False,
             **self.p_info)
+        x.stop_gradient = False
         h_boot = data(
             shape=[self.input_dim],
             data_type='float32',
             name='h_boot',
             **self.p_info)
+        h_boot.stop_gradient = False
 
         rnn = StaticRNN(program=self.program)
         with rnn.step():
@@ -254,11 +256,13 @@ class RecurrentOpTest2(RecurrentOpTest1):
             name='x',
             append_batch_size=False,
             **self.p_info)
+        x.stop_gradient = False
         h_boot = data(
             shape=[self.input_dim],
             data_type='float32',
             name='h_boot',
             **self.p_info)
+        h_boot.stop_gradient = False
 
         rnn = StaticRNN(program=self.program)
         with rnn.step():
@@ -351,18 +355,21 @@ class RecurrentOpTest3(RecurrentOpTest1):
             name='x',
             append_batch_size=False,
             **self.p_info)
+        x.stop_gradient = False
         h_boot1 = data(
             shape=[self.batch_size, self.input_dim],
             data_type='float32',
             name='h_boot1',
             append_batch_size=False,
             **self.p_info)
+        h_boot1.stop_gradient = False
         h_boot2 = data(
             shape=[self.batch_size, self.input_dim],
             data_type='float32',
             name='h_boot2',
             append_batch_size=False,
             **self.p_info)
+        h_boot2.stop_gradient = False
 
         rnn = StaticRNN(program=self.program)
         with rnn.step():

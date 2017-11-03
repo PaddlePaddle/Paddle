@@ -21,6 +21,7 @@ class Variable(object):
                  dtype=None,
                  lod_level=None,
                  persistable=None,
+                 stop_gradient=False,
                  **kwargs):
         self.block = block
 
@@ -89,6 +90,7 @@ class Variable(object):
 
         self.block.vars[name] = self
         self.op = None
+        self.stop_gradient = stop_gradient
 
     def __str__(self):
         protostr = self.desc.serialize_to_string()
