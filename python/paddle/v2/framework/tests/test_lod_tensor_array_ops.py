@@ -19,11 +19,56 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
                      [[3, 0, 9], [4, 1], [5, 2], [6], [7], [8]])
         self.main(tensor=tensor, expect_array=expect, expect_lod=[] * 6)
 
-    def main(self, tensor, expect_array, expect_lod):
+    def test_lod_tensor_to_array_level_0_empty_seq(self):
+        tensor = core.LoDTensor()
+        tensor.set(
+            numpy.arange(10).reshape(10, 1).astype('int32'), self.place())
+        tensor.set_lod([[0, 3, 9, 9, 10]])
+        expect = map(lambda x: numpy.array(x).astype('int32'),
+                     [[3, 0, 9], [4, 1], [5, 2], [6], [7], [8]])
+        self.main(tensor=tensor, expect_array=expect, expect_lod=[] * 6)
+
+    def test_lod_tensor_to_array_level_1(self):
+        tensor = core.LoDTensor()
+        tensor.set(
+            numpy.arange(20).reshape(20, 1).astype('int32'), self.place())
+        tensor.set_lod([[0, 2, 5], [0, 3, 9, 11, 17, 20]])
+
+        expect = [
+            numpy.array(
+                [9, 10, 0, 1, 2], dtype='int32'), numpy.array(
+                    [11, 12, 13, 14, 15, 16, 3, 4, 5, 6, 7, 8], dtype='int32'),
+            numpy.array(
+                [17, 18, 19], dtype='int32')
+        ]
+
+        lod = [[[0, 2, 5]], [[0, 6, 12]], [[0, 3]]]
+        self.main(tensor=tensor, expect_array=expect, expect_lod=lod)
+
+    def test_lod_tensor_to_array_level_1_empty_seq(self):
+        tensor = core.LoDTensor()
+        tensor.set(
+            numpy.arange(31).reshape(31, 1).astype('int32'), self.place())
+
+        tensor.set_lod([[0, 3, 5, 9, 11],
+                        [0, 3, 7, 11, 11, 12, 17, 19, 21, 23, 30, 31]])
+
+        expect = [
+            numpy.array(
+                item, dtype='int32')
+            for item in [[
+                12, 13, 14, 15, 16, 0, 1, 2, 23, 24, 25, 26, 27, 28, 29
+            ], [17, 18, 3, 4, 5, 6, 11, 30], [19, 20, 7, 8, 9, 10], [21, 22]]
+        ]
+
+        lod = [[[0, 5, 8, 8, 15]], [[0, 2, 6, 7, 8]], [[0, 2, 6]], [[0, 2]]]
+        self.main(tensor=tensor, expect_array=expect, expect_lod=lod)
+
+    def main(self, tensor, expect_array, expect_lod, level=0):
         place = self.place()
         program = Program()
         x = layers.data(name='x', shape=[10], program=program)
-        table = layers.lod_rank_table(x, level=0, program=program)
+        table = layers.lod_rank_table(x, level=level, program=program)
         array = layers.lod_tensor_to_array(x, table, program=program)
         array.persistable = True
 

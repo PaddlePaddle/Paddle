@@ -33,10 +33,10 @@ void LoDRankTable::Reset(const LoD& lod, size_t level) {
     item.length = vec[i + 1] - vec[i];
     items_.emplace_back(item);
   }
-  std::sort(items_.begin(), items_.end(),
-            [](const TableItem& a, const TableItem& b) {
-              return a.length > b.length;
-            });
+  std::stable_sort(items_.begin(), items_.end(),
+                   [](const TableItem& a, const TableItem& b) {
+                     return a.length > b.length;
+                   });
 }
 
 }  // namespace framework
