@@ -63,7 +63,7 @@ Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(
            "output image channels, M is the number of input image channels, "
            "H is the height of the filter, and W is the width of the filter. "
            "We enforce groups number == 1 and padding == 0 in "
-           "the convolution transpose Scenario.");
+           "the convolution transpose scenario.");
   AddOutput("Output",
             "(Tensor) The output tensor of convolution transpose operator."
             "The format of output tensor is also NCHW.");
