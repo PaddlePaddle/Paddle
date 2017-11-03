@@ -7,9 +7,9 @@ During training or serving, we provide the evaluation function to measure the mo
 ### Evaluator Design
 Currently, every operation is expressed in the graph. we divide the evaluator process into three steps.
 
-1. Initialize the metric state necessary and add it into the block.
+1. Initialize the metric state and add it into the block.
 
-2. Calculate the statistic of the metric state in every mini-batch. The single operator is only responsible for calculating necessary statistics for one mini-batch. For example, accuracy operator only calculate a minibatch data if run once.\
+2. Calculate the statistic of the metric state in every mini-batch. The single operator is only responsible for calculating necessary statistics for one mini-batch. For example, accuracy operator only calculate a minibatch data if run once.
 
 
 3. Merge the mini-batch statistics to form the evaluation result for multiple mini-batches. When it comes to distributed training/Multi-GPU training, aggregate the value from different devices.
@@ -20,38 +20,30 @@ This design is shown in python API. There would be an abstract python interface 
 ```python
 class Evaluator(object):
     """
-    Evalutor Base class.
+    Evaluator Base class.
     """
     def __init__(self):
        """
-       create metric states and append to block
+       Different evaluator may has different metric states. E.g, Accuracy need two variables, total and right sample counts.
+       Auc need four variables, `true_positives`,
+         `true_negatives`, `false_positives` and `false_negatives`. So every evaluator should create its needed variables and append the related mini-batch operator to main_program
+
+       The initialization of Evaluator should be responsible for:
+       create metric states and append to the main_program
+       add mini-batch evaluator caculate operators to the main_program
+       add increment operator to accumulate the metric states
        """ 
        pass
 
-    def _clear_state(self):
+    def clear(self):
       """
-      clear metric states at the begin of each pass
+      clear metric states at the begin of each pass/user specified batch
       """
-      pass
-
-    def _append_evalutor_op(self):
-      """
-      add mini-batch caculate operators to block
-      add increment operator to accumulate the metric state
-      """
-      pass
-
-    def _merge(self):
-      """
-      Merge the mini-batch statistics to form the evaluation result for multiple mini-batches.
-      """
-      pass
+      return init_program
 
     def evaluate(self):
       """
-      only one exported interface
-      user calculate the result
+      Merge the mini-batch statistics to form the evaluation result for multiple mini-batches.
       """
-      pass
-
+      return eval_program
 ```
