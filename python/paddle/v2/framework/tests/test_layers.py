@@ -9,15 +9,24 @@ class TestBook(unittest.TestCase):
     def test_fit_a_line(self):
         program = Program()
         x = layers.data(
-            name='x', shape=[13], data_type='float32', program=program)
-        y_predict = layers.fc(input=x, size=1, act=None, program=program)
+            name='x',
+            shape=[13],
+            data_type='float32',
+            main_program=g_main_program)
+        y_predict = layers.fc(input=x,
+                              size=1,
+                              act=None,
+                              main_program=g_main_program)
 
         y = layers.data(
-            name='y', shape=[1], data_type='float32', program=program)
+            name='y',
+            shape=[1],
+            data_type='float32',
+            main_program=g_main_program)
         cost = layers.square_error_cost(
-            input=y_predict, label=y, program=program)
+            input=y_predict, label=y, main_program=g_main_program)
 
-        avg_cost = layers.mean(x=cost, program=program)
+        avg_cost = layers.mean(x=cost, main_program=g_main_program)
         self.assertIsNotNone(avg_cost)
         program.append_backward(avg_cost)
         print str(program)
@@ -27,26 +36,45 @@ class TestBook(unittest.TestCase):
 
         # Change g_main_program, so the rest layers use `g_main_program`
         images = layers.data(
-            name='pixel', shape=[784], data_type='float32', program=program)
+            name='pixel',
+            shape=[784],
+            data_type='float32',
+            main_program=g_main_program)
         label = layers.data(
-            name='label', shape=[1], data_type='int32', program=program)
-        hidden1 = layers.fc(input=images, size=128, act='relu', program=program)
-        hidden2 = layers.fc(input=hidden1, size=64, act='relu', program=program)
+            name='label',
+            shape=[1],
+            data_type='int32',
+            main_program=g_main_program)
+        hidden1 = layers.fc(input=images,
+                            size=128,
+                            act='relu',
+                            main_program=g_main_program)
+        hidden2 = layers.fc(input=hidden1,
+                            size=64,
+                            act='relu',
+                            main_program=g_main_program)
         predict = layers.fc(input=hidden2,
                             size=10,
                             act='softmax',
-                            program=program)
-        cost = layers.cross_entropy(input=predict, label=label, program=program)
-        avg_cost = layers.mean(x=cost, program=program)
+                            main_program=g_main_program)
+        cost = layers.cross_entropy(
+            input=predict, label=label, main_program=g_main_program)
+        avg_cost = layers.mean(x=cost, main_program=g_main_program)
         self.assertIsNotNone(avg_cost)
         print str(program)
 
     def test_simple_conv2d(self):
         program = Program()
         images = layers.data(
-            name='pixel', shape=[3, 48, 48], data_type='int32', program=program)
+            name='pixel',
+            shape=[3, 48, 48],
+            data_type='int32',
+            main_program=g_main_program)
         layers.conv2d(
-            input=images, num_filters=3, filter_size=[4, 4], program=program)
+            input=images,
+            num_filters=3,
+            filter_size=[4, 4],
+            main_program=g_main_program)
 
         print str(program)
 
@@ -57,9 +85,12 @@ class TestBook(unittest.TestCase):
             name='pixel',
             shape=[1, 28, 28],
             data_type='float32',
-            program=program)
+            main_program=g_main_program)
         label = layers.data(
-            name='label', shape=[1], data_type='int32', program=program)
+            name='label',
+            shape=[1],
+            data_type='int32',
+            main_program=g_main_program)
         conv_pool_1 = nets.simple_img_conv_pool(
             input=images,
             filter_size=5,
@@ -67,7 +98,7 @@ class TestBook(unittest.TestCase):
             pool_size=2,
             pool_stride=2,
             act="relu",
-            program=program)
+            main_program=g_main_program)
         conv_pool_2 = nets.simple_img_conv_pool(
             input=conv_pool_1,
             filter_size=5,
@@ -75,14 +106,15 @@ class TestBook(unittest.TestCase):
             pool_size=2,
             pool_stride=2,
             act="relu",
-            program=program)
+            main_program=g_main_program)
 
         predict = layers.fc(input=conv_pool_2,
                             size=10,
                             act="softmax",
-                            program=program)
-        cost = layers.cross_entropy(input=predict, label=label, program=program)
-        avg_cost = layers.mean(x=cost, program=program)
+                            main_program=g_main_program)
+        cost = layers.cross_entropy(
+            input=predict, label=label, main_program=g_main_program)
+        avg_cost = layers.mean(x=cost, main_program=g_main_program)
 
         program.append_backward(avg_cost)
 
@@ -93,58 +125,73 @@ class TestBook(unittest.TestCase):
         dict_size = 10000
         embed_size = 32
         first_word = layers.data(
-            name='firstw', shape=[1], data_type='int64', program=program)
+            name='firstw',
+            shape=[1],
+            data_type='int64',
+            main_program=g_main_program)
         second_word = layers.data(
-            name='secondw', shape=[1], data_type='int64', program=program)
+            name='secondw',
+            shape=[1],
+            data_type='int64',
+            main_program=g_main_program)
         third_word = layers.data(
-            name='thirdw', shape=[1], data_type='int64', program=program)
+            name='thirdw',
+            shape=[1],
+            data_type='int64',
+            main_program=g_main_program)
         forth_word = layers.data(
-            name='forthw', shape=[1], data_type='int64', program=program)
+            name='forthw',
+            shape=[1],
+            data_type='int64',
+            main_program=g_main_program)
         next_word = layers.data(
-            name='nextw', shape=[1], data_type='int64', program=program)
+            name='nextw',
+            shape=[1],
+            data_type='int64',
+            main_program=g_main_program)
 
         embed_first = layers.embedding(
             input=first_word,
             size=[dict_size, embed_size],
             data_type='float32',
             param_attr={'name': 'shared_w'},
-            program=program)
+            main_program=g_main_program)
         embed_second = layers.embedding(
             input=second_word,
             size=[dict_size, embed_size],
             data_type='float32',
             param_attr={'name': 'shared_w'},
-            program=program)
+            main_program=g_main_program)
 
         embed_third = layers.embedding(
             input=third_word,
             size=[dict_size, embed_size],
             data_type='float32',
             param_attr={'name': 'shared_w'},
-            program=program)
+            main_program=g_main_program)
         embed_forth = layers.embedding(
             input=forth_word,
             size=[dict_size, embed_size],
             data_type='float32',
             param_attr={'name': 'shared_w'},
-            program=program)
+            main_program=g_main_program)
 
         concat_embed = layers.concat(
             input=[embed_first, embed_second, embed_third, embed_forth],
             axis=1,
-            program=program)
+            main_program=g_main_program)
 
         hidden1 = layers.fc(input=concat_embed,
                             size=256,
                             act='sigmoid',
-                            program=program)
+                            main_program=g_main_program)
         predict_word = layers.fc(input=hidden1,
                                  size=dict_size,
                                  act='softmax',
-                                 program=program)
+                                 main_program=g_main_program)
         cost = layers.cross_entropy(
-            input=predict_word, label=next_word, program=program)
-        avg_cost = layers.mean(x=cost, program=program)
+            input=predict_word, label=next_word, main_program=g_main_program)
+        avg_cost = layers.mean(x=cost, main_program=g_main_program)
         self.assertIsNotNone(avg_cost)
 
         print str(program)
