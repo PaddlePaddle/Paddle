@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/prune.h"
 #include "paddle/framework/selected_rows.h"
 #include "paddle/framework/tensor_array.h"
@@ -232,6 +233,9 @@ All parameter, weight, gradient are variables in Paddle.
            [](Variable &self) -> SelectedRows * {
              return self.GetMutable<SelectedRows>();
            },
+           py::return_value_policy::reference)
+      .def("get_lod_tensor_array",
+           [](Variable &self) { return self.GetMutable<LoDTensorArray>(); },
            py::return_value_policy::reference)
 #ifdef PADDLE_WITH_CUDA
       .def("get_communicator",
@@ -504,6 +508,12 @@ All parameter, weight, gradient are variables in Paddle.
         }
         return res;
       });
+
+  py::class_<LoDTensorArray>(m, "LoDTensorArray")
+      .def("__getitem__",
+           [](LoDTensorArray &self, size_t i) { return &self.at(i); },
+           py::return_value_policy::reference)
+      .def("__len__", [](LoDTensorArray &self) { return self.size(); });
 
   m.def("op_support_gpu", OpSupportGPU);
 #ifdef PADDLE_WITH_CUDA
