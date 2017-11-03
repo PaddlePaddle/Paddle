@@ -52,14 +52,10 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
   LookupTableOpMaker(framework::OpProto* proto,
                      framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("W",
-             "An input represents embedding tensors,"
-             " which is a learnable parameter.");
+    AddInput("W", "All learnable embedded tensors.");
     AddInput("Ids",
-             "An input with type int32 or int64"
-             "contains the ids to be looked up in W."
-             "Ids must be a column vector with rank = 2."
-             "The 2nd dimension size must be 1");
+             "Ids to be looked up in W."
+             "Must be a rank 2 tensor with second dimension equals 1.");
     AddOutput("Out", "The lookup results, which have the same type with W.");
     AddAttr<bool>("is_sparse", "Sparse update").SetDefault(false);
     AddComment(R"DOC(
