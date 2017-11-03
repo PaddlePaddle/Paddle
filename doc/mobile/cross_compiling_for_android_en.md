@@ -26,10 +26,11 @@ $ docker run -it --rm -v $PWD:/paddle -e "ANDROID_ABI=armeabi-v7a" -e "ANDROID_A
 
 The Docker image accepts two arguments `ANDROID_ABI` and `ANDROID_API`:
 
-| Argument        | Optional Values         | Default |
-|-----------------|-------------------------|---------|
-|`ANDROID_ABI`    |`armeabi-v7a, arm64-v8a` | `armeabi-v7a` |
-|`ANDROID_API`    |`>= 21` | `21` |
+<table>
+<tr><th>Argument</th><th>Optional Values</th><th>Default</th></tr>
+<tr><td>ANDROID_ABI</td><td>armeabi-v7a, arm64-v8a</td><td>armeabi-v7a</td></tr>
+<tr><td>ANDROID_API</td><td>>= 21</td><td>21</td></tr>
+</table>
 
 The ARM-64 architecture (`arm64-v8a`) requires at least level 21 of Android API.
 
