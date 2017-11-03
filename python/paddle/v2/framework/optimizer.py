@@ -132,7 +132,7 @@ class Optimizer(object):
     def create_optimization_pass(self,
                                  parameters_and_grads,
                                  loss,
-                                 init_program=None):
+                                 startup_program=None):
         """Add optimization operators to update gradients to variables.
 
         Args:
@@ -144,7 +144,7 @@ class Optimizer(object):
           optimization. This will include parameter update ops, global step
           update ops and any other custom ops required by subclasses to manage
           their internal state.
-          :param init_program: 
+          :param startup_program:
         """
         # This is a default implementation of create_optimization_pass that
         # can be shared by most optimizers. This implementation assumes that
@@ -154,9 +154,11 @@ class Optimizer(object):
         # for parameters and extend _finish_update method to add custom ops.
 
         # Create any accumulators
-        program = loss.block.program
+        main_program = loss.block.program
         self.helper = LayerHelper(
-            self.__class__.__name__, program=program, init_program=init_program)
+            self.__class__.__name__,
+            main_program=main_program,
+            startup_program=startup_program)
         self._create_accumulators(loss.block,
                                   [p[0] for p in parameters_and_grads])
         # Create any necessary tensors
@@ -185,7 +187,7 @@ class Optimizer(object):
 
     def minimize(self,
                  loss,
-                 init_program=None,
+                 startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
         """Add operations to minimize `loss` by updating `parameter_list`.
@@ -195,10 +197,10 @@ class Optimizer(object):
         """
         params_grads = append_backward_ops(loss, parameter_list, no_grad_set or
                                            set())
-        # Add regularization if any 
+        # Add regularization if any
         params_grads = append_regularization_ops(params_grads)
         optimize_ops = self.create_optimization_pass(params_grads, loss,
-                                                     init_program)
+                                                     startup_program)
         return optimize_ops
 
 

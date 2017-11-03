@@ -1,7 +1,7 @@
 import os
 import cPickle as pickle
 
-from paddle.v2.framework.framework import Program, Parameter, g_program, \
+from paddle.v2.framework.framework import Program, Parameter, g_main_program, \
     Variable
 
 __all__ = [

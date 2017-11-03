@@ -546,5 +546,5 @@ class Parameter(Variable):
 
 
 # program is a global instance.
-g_program = Program()
-g_init_program = Program()
+g_main_program = Program()
+g_startup_program = Program()

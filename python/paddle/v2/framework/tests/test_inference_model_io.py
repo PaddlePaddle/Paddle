@@ -3,7 +3,7 @@ import paddle.v2.framework.layers as layers
 import paddle.v2.framework.core as core
 import paddle.v2.framework.optimizer as optimizer
 
-from paddle.v2.framework.framework import Program, g_program
+from paddle.v2.framework.framework import Program, g_main_program
 from paddle.v2.framework.io import save_inference_model, load_inference_model
 import paddle.v2.framework.executor as executor
 import unittest
@@ -14,42 +14,42 @@ class TestBook(unittest.TestCase):
     def test_fit_line_inference_model(self):
         MODEL_DIR = "./tmp/inference_model"
 
-        init_program = Program()
-        program = Program()
+        startup_program = Program()
+        main_program = Program()
         x = layers.data(
             name='x',
             shape=[2],
             data_type='float32',
-            program=program,
-            init_program=init_program)
+            main_program=main_program,
+            startup_program=startup_program)
         y = layers.data(
             name='y',
             shape=[1],
             data_type='float32',
-            program=program,
-            init_program=init_program)
+            main_program=main_program,
+            startup_program=startup_program)
 
         y_predict = layers.fc(input=x,
                               size=1,
                               act=None,
-                              program=program,
-                              init_program=init_program)
+                              main_program=main_program,
+                              startup_program=startup_program)
 
         cost = layers.square_error_cost(
             input=y_predict,
             label=y,
-            program=program,
-            init_program=init_program)
+            main_program=main_program,
+            startup_program=startup_program)
         avg_cost = layers.mean(
-            x=cost, program=program, init_program=init_program)
+            x=cost, main_program=main_program, startup_program=startup_program)
 
         sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
-        opts = sgd_optimizer.minimize(avg_cost, init_program)
+        opts = sgd_optimizer.minimize(avg_cost, startup_program)
 
         place = core.CPUPlace()
         exe = executor.Executor(place)
 
-        exe.run(init_program, feed={}, fetch_list=[])
+        exe.run(startup_program, feed={}, fetch_list=[])
 
         for i in xrange(100):
             x_data = np.array(
@@ -60,13 +60,14 @@ class TestBook(unittest.TestCase):
             tensor_x.set(x_data, place)
             tensor_y = core.LoDTensor()
             tensor_y.set(y_data, place)
-            exe.run(program,
+            exe.run(main_program,
                     feed={'x': tensor_x,
                           'y': tensor_y},
                     fetch_list=[avg_cost])
 
-        save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, program)
-        outs = exe.run(program,
+        save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe,
+                             main_program)
+        outs = exe.run(main_program,
                        feed={'x': tensor_x,
                              'y': tensor_y},
                        fetch_list=[avg_cost])
