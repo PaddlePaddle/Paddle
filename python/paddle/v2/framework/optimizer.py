@@ -159,7 +159,8 @@ class Optimizer(object):
             self.__class__.__name__,
             main_program=main_program,
             startup_program=startup_program)
-        self._create_accumulators(loss.block, [p[0] for p in parameters_and_grads])
+        self._create_accumulators(loss.block,
+                                  [p[0] for p in parameters_and_grads])
         # Create any necessary tensors
         self._initialize_tensors(loss.block)
 
@@ -198,7 +199,8 @@ class Optimizer(object):
                                            set())
         # Add regularization if any
         params_grads = append_regularization_ops(params_grads)
-        optimize_ops = self.create_optimization_pass(params_grads, loss, startup_program)
+        optimize_ops = self.create_optimization_pass(params_grads, loss,
+                                                     startup_program)
         return optimize_ops
 
 
