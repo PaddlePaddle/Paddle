@@ -5,7 +5,8 @@ import paddle.v2.framework.layers as layers
 import paddle.v2.framework.nets as nets
 import paddle.v2.framework.optimizer as optimizer
 from paddle.v2.framework.executor import Executor
-from paddle.v2.framework.framework import Program, g_init_program, g_program
+from paddle.v2.framework.framework import g_init_program, g_program
+from paddle.v2.framework.initializer import XavierInitializer
 
 
 def resnet_cifar10(input, depth=32, program=None, init_program=None):
@@ -153,6 +154,7 @@ def vgg16_bn_drop(input, program=None, init_program=None):
     fc1 = layers.fc(input=drop,
                     size=512,
                     act=None,
+                    param_attr={"initializer": XavierInitializer()},
                     program=program,
                     init_program=init_program)
     reshape1 = layers.reshape(
@@ -167,6 +169,7 @@ def vgg16_bn_drop(input, program=None, init_program=None):
     fc2 = layers.fc(input=drop2,
                     size=512,
                     act=None,
+                    param_attr={"initializer": XavierInitializer()},
                     program=program,
                     init_program=init_program)
     return fc2
@@ -192,7 +195,7 @@ avg_cost = layers.mean(x=cost)
 accuracy = layers.accuracy(input=predict, label=label)
 
 # optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
-optimizer = optimizer.AdamOptimizer(learning_rate=0.01)
+optimizer = optimizer.AdamOptimizer(learning_rate=0.001)
 opts = optimizer.minimize(avg_cost)
 
 BATCH_SIZE = 128
