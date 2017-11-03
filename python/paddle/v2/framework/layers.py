@@ -729,3 +729,16 @@ class StaticRNN(object):
                 'states': memories,
                 'step_block': rnn_block
             })
+
+
+def lod_rank_table(x, level=0, program=None):
+    helper = LayerHelper("lod_rank_table", **locals())
+    table = helper.create_variable(
+        type=core.VarDesc.VarType.LOD_RANK_TABLE,
+        name=unique_name("lod_rank_table"))
+    helper.append_op(
+        type='lod_rank_table',
+        inputs={'X': x},
+        outputs={'Out': table},
+        attrs={'level': level})
+    return table

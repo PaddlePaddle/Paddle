@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/framework/executor.h"
 #include "paddle/framework/feed_fetch_method.h"
 #include "paddle/framework/framework.pb.h"
+#include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/prune.h"
 #include "paddle/framework/selected_rows.h"
@@ -222,6 +223,9 @@ All parameter, weight, gradient are variables in Paddle.
              return self.GetMutable<LoDTensor>();
            },
            py::return_value_policy::reference)
+      .def("get_lod_rank_table",
+           [](Variable &self) { return self.GetMutable<LoDRankTable>(); },
+           py::return_value_policy::reference)
       .def("get_selected_rows",
            [](Variable &self) -> SelectedRows * {
              return self.GetMutable<SelectedRows>();
@@ -412,6 +416,15 @@ All parameter, weight, gradient are variables in Paddle.
   BindBlockDesc(m);
   BindVarDsec(m);
   BindOpDesc(m);
+
+  py::class_<framework::LoDRankTable>(m, "LodRankTable")
+      .def("items", [](framework::LoDRankTable &table) {
+        std::vector<std::pair<size_t, size_t>> res;
+        for (auto &item : table.items()) {
+          res.push_back({item.index, item.length});
+        }
+        return res;
+      });
 
   m.def("op_support_gpu", OpSupportGPU);
 #ifdef PADDLE_WITH_CUDA

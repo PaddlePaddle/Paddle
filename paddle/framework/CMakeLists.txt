@@ -42,8 +42,9 @@ add_custom_command(TARGET framework_py_proto POST_BUILD
 
 cc_library(backward SRCS backward.cc DEPS net_op)
 cc_test(backward_test SRCS backward_test.cc DEPS backward recurrent_op device_context fill_constant_op)
+cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 
-cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto backward glog)
+cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto backward glog lod_rank_table)
 
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
