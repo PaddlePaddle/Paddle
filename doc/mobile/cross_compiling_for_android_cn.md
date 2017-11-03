@@ -1,109 +1,105 @@
-# Build PaddlePaddle for Android
+# 构建Android平台上的PaddlePaddle库
 
-There are two approaches to build PaddlePaddle for Android: using Docker and on Linux without Docker. 
+用户可通过如下两种方式，交叉编译Android平台上适用的PaddlePaddle库：
+- 基于Docker容器的编译方式
+- 基于Linux交叉编译环境的编译方式
 
-## Cross-Compiling Using Docker
+## 基于Docker容器的编译方式
+Docker能在所有主要操作系统（包括Linux，Mac OS X和Windows）上运行，因此，使用基于Docker容器的编译方式，用户可在自己熟悉的开发平台上编译Android平台上适用的PaddlePaddle库。
 
-Docker-based cross-compiling is the recommended approach because Docker runs on all major operating systems, including Linux, Mac OS X, and Windows.
-
-### Build the Docker Image
-
-The following steps pack all the tools that we need to build PaddlePaddle into a Docker image.
+### 构建PaddlePaddle的Android开发镜像
+我们把PaddlePaddle的交叉编译环境打包成一个镜像，称为开发镜像，里面涵盖了交叉编译Android版PaddlePaddle库需要的所有编译工具。
 
 ```bash
 $ git clone https://github.com/PaddlePaddle/Paddle.git
 $ cd Paddle
-$ docker build -t paddle:dev-android . -f Dockerfile.android
+$ docker build -t username/paddle-android:dev . -f Dockerfile.android
 ```
 
-### Build the Inference Library
-
-We can run the Docker image we just created to build the inference library of PaddlePaddle for Android using the command below:
-
-```bash
-$ docker run -it --rm -v $PWD:/paddle -e "ANDROID_ABI=armeabi-v7a" -e "ANDROID_API=21" paddle:dev-android
-```
-
-The Docker image accepts two arguments `ANDROID_ABI` and `ANDROID_API`:
+### 编译PaddlePaddle C-API库
+构建好开发镜像后，即可使用开发镜像来编译Android版PaddlePaddle C-API库。
+Android的Docker开发镜像向用户提供两个可配置的参数：
 
 | Argument        | Optional Values         | Default |
 |-----------------|-------------------------|---------|
 |`ANDROID_ABI`    |`armeabi-v7a, arm64-v8a` | `armeabi-v7a` |
 |`ANDROID_API`    |`>= 21` | `21` |
 
-The ARM-64 architecture (`arm64-v8a`) requires at least level 21 of Android API.
+- 编译`armeabi-v7a`，`Android API 21`的PaddlePaddle库
+  ```bash
+  $ docker run -it --rm -v $PWD:/paddle -e "ANDROID_ABI=armeabi-v7a" -e "ANDROID_API=21" username/paddle-android:dev
+  ```
 
-The default entry-point of the Docker image, [`paddle/scripts/docker/build_android.sh`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/build_android.sh) generates the [Android cross-compiling standalone toolchain](https://developer.android.com/ndk/guides/standalone_toolchain.html) based on the argument: `ANDROID_ABI` or `ANDROID_API`.  For information about other configuration arguments, please continue reading.
+- 编译`arm64-v8a`，`Android API 21`的PaddlePaddle库
+  ```bash
+  $ docker run -it --rm -v $PWD:/paddle -e "ANDROID_ABI=arm64-v8a" -e "ANDROID_API=21" username/paddle-android:dev
+  ```
 
-The above command generates and outputs the inference library in `$PWD/install_android` and puts third-party libraries in `$PWD/install_android/third_party`.
+执行上述`docker run`命令时，容器默认执行[paddle/scripts/docker/build_android.sh](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/build_android.sh)脚本。该脚本中记录了交叉编译Android版PaddlePaddle库常用的CMake配置，并且会根据`ANDROID_ABI`和`ANDROID_API`自动构建独立工具链、进行编译和安装。由于arm64架构要求Android API不小于21。因此当`ANDROID_ABI=arm64-v8a`，`ANDROID_API<21`时，Docker容器中将默认使用`Android API 21`的编译工具链。用户可以参考下文**配置交叉编译参数**章节，根据个人的需求修改定制Docker容器所执行的脚本。编译安装结束之后，PaddlePaddle的C-API库将被安装到`$PWD/install_android`目录，所依赖的第三方库同时也被安装到`$PWD/install_android/third_party`目录。
 
-## Cross-Compiling on Linux
+## 基于Linux交叉编译环境的编译方式
+本文档将以Linux x86-64平台为例，介绍交叉编译Android平台上适用的PaddlePaddle库的方法和步骤。
 
-The Linux-base approach to cross-compile is to run steps in `Dockerfile.android` manually on a Linux x64 computer.
+### 准备交叉编译环境
 
-### Setup the Environment
-
-To build for Android's, we need [Android NDK](
-https://developer.android.com/ndk/downloads/index.html):
+从源码交叉编译PaddlePaddle，用户需要提前准备好交叉编译环境。Android平台上使用的C/C++交叉编译工具链为[Android NDK](https://developer.android.com/ndk/downloads/index.html?hl=zh-cn)，用户可自行前往下载预编译好的版本，也可通过以下命令获取：
 
 ```bash
 wget -q https://dl.google.com/android/repository/android-ndk-r14b-linux-x86_64.zip
 unzip -q android-ndk-r14b-linux-x86_64.zip
 ```
 
-Android NDK includes everything we need to build the [*standalone toolchain*](https://developer.android.com/ndk/guides/standalone_toolchain.html), which in then used to build PaddlePaddle for Android.  (We plan to remove the intermediate stage of building the standalone toolchain in the near future.)
+Android NDK中包含了所有Android API级别、所有架构（arm/arm64/x86/mips）需要用到的编译工具和系统库。用户可根据自己的编译目标架构、所需支持的最低Android API级别，构建[独立工具链](https://developer.android.google.cn/ndk/guides/standalone_toolchain.html?hl=zh-cn)。
 
-- To build the standalone toolchain for `armeabi-v7a` and Android API level 21:
+- 构建`armeabi-v7a`、 `Android API 21`的独立工具链：
 
-  ```bash
-  your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain.sh \
-          --arch=arm --platform=android-21 --install-dir=your/path/to/arm_standalone_toolchain
-  ```
-  
-  The generated standalone toolchain will be in `your/path/to/arm_standalone_toolchain`.
+```bash
+your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain.sh \
+        --arch=arm --platform=android-21 --install-dir=your/path/to/arm_standalone_toolchain
+```
 
-- To build the standalone toolchain for `arm64-v8a` and Android API level 21:
+此命令将在`your/path/to/arm_standalone_toolchain`目录生成一套独立编译工具链，面向架构为32位ARM架构，支持的最小的Android API级别为21，支持编译器`arm-linux-androideabi-gcc (GCC) 4.9`和`clang 3.8`。
 
-  ```bash
-  your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain.sh \
-          --arch=arm64 --platform=android-21 --install-dir=your/path/to/arm64_standalone_toolchain
-  ```
+- 构建`arm64-v8a`、 `Android API 21`的独立工具链：
+```bash
+your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain.sh \
+        --arch=arm64 --platform=android-21 --install-dir=your/path/to/arm64_standalone_toolchain
+```
 
-  The generated standalone toolchain will be in `your/path/to/arm64_standalone_toolchain`.
+此命令将在`your/path/to/arm64_standalone_toolchain`目录生成一套独立编译工具链，面向架构为64位ARM64架构，支持的最小Android API级别为21，支持编译器`arm-linux-androideabi-gcc (GCC) 4.9`和`clang 3.8`。
 
-**Please be aware that the minimum level of Android API required by PaddlePaddle is 21.**
+注意：**PaddlePaddle要求使用的编译工具链所支持的Android API级别不小于21**。
 
-### Cross-Compiling Arguments
+### 配置交叉编译参数
 
-CMake supports [choosing the toolchain](https://cmake.org/cmake/help/v3.0/manual/cmake-toolchains.7.html#cross-compiling).  PaddlePaddle provides [`android.cmake`](https://github.com/PaddlePaddle/Paddle/blob/develop/cmake/cross_compiling/android.cmake), which configures the Android cross-compiling toolchain for CMake.  `android.cmake` is not required for CMake >= 3.7, which support Android cross-compiling. PaddlePaddle detects the CMake version, for those newer than 3.7, it uses [the official version](https://cmake.org/cmake/help/v3.7/manual/cmake-toolchains.7.html#cross-compiling).
+CMake系统对交叉编译提供了支持[cmake-toolchains](https://cmake.org/cmake/help/v3.0/manual/cmake-toolchains.7.html#cross-compiling)。为了简化cmake配置，PaddlePaddle为交叉编译提供了工具链配置文档[cmake/cross_compiling/android.cmake](https://github.com/PaddlePaddle/Paddle/blob/develop/cmake/cross_compiling/android.cmake)，以提供一些默认的编译器和编译参数相关配置。注意，从CMake 3.7版本开始，CMake官方对Android平台的交叉编译提供了通用的支持。PaddlePaddle若检测到用户使用的CMake版本不低于3.7时，将会将用户传进来的配置参数传递CMake系统，交由CMake系统本身来处理。有关参数配置的详细说明见[cmake-toolchains](https://cmake.org/cmake/help/v3.7/manual/cmake-toolchains.7.html#cross-compiling)。
 
-Some other CMake arguments you need to know:
+交叉编译Android版本的PaddlePaddle库时，有一些必须配置的参数：
+- `CMAKE_SYSTEM_NAME`，CMake编译的目标平台，必须设置为`Android`。在设置`CMAKE_SYSTEM_NAME=Android`后，PaddlePaddle的CMake系统才认为是在交叉编译Android系统的版本，并自动编译宿主机版protoc可执行文件、目标机版protobuf库、以及Android所需`arm_soft_fp_abi`分支的目标机版OpenBLAS库。此外，还会强制设置一些PaddlePaddle参数的值（`WITH_GPU=OFF`、`WITH_AVX=OFF`、`WITH_PYTHON=OFF`、`WITH_RDMA=OFF`）。
+- `WITH_C_API`，必须设置为`ON`。在Android平台上只支持使用C-API来预测。
+- `WITH_SWIG_PY`，必须设置为`OFF`。在Android平台上不支持通过swig调用来训练或者预测。
 
-- `CMAKE_SYSTEM_NAME` must be `Android`.  This tells PaddlePaddle's CMake system to cross-compile third-party dependencies.  This also changes some other CMake arguments like `WITH_GPU=OFF`, `WITH_AVX=OFF`, `WITH_PYTHON=OFF`, and `WITH_RDMA=OFF`.
-- `WITH_C_API` must be `ON`, to build the C-based inference library for Android.
-- `WITH_SWIG_PY` must be `OFF` because the Android platform doesn't support SWIG-based API.
+Android平台可选配置参数：
 
-Some Android-specific arguments:
+- `ANDROID_STANDALONE_TOOLCHAIN`，独立工具链所在的绝对路径，或者相对于构建目录的相对路径。PaddlePaddle的CMake系统将根据该值自动推导和设置需要使用的交叉编译器、sysroot、以及Android API级别；否则，用户需要在cmake时手动设置这些值。无默认值。
+- `ANDROID_TOOLCHAIN`，目标工具链。可设置`gcc/clang`，默认值为`clang`。
+	- CMake 3.7以上，将会始终使用`clang`工具链；CMake 3.7以下，可设置`ANDROID_TOOLCHAIN=gcc`以使用`gcc`工具链。
+	- Android官方提供的`clang`编译器要求系统支持`GLIBC 2.15`以上。
+- `ANDROID_ABI`，目标架构ABI。目前支持`armeabi-v7a`和`arm64-v8a`，默认值为`armeabi-v7a`。
+- `ANDROID_NATIVE_API_LEVEL`，工具链的Android API级别。若没有显式设置，PaddlePaddle将根据`ANDROID_STANDALONE_TOOLCHAIN`的值自动推导得到。
+- `ANROID_ARM_MODE`，是否使用ARM模式。
+	- `ANDROID_ABI=armeabi-v7a`时，可设置`ON/OFF`，默认值为`ON`；
+	- `ANDROID_ABI=arm64-v8a`时，不需要设置。
+- `ANDROID_ARM_NEON`，是否使用NEON指令。
+	- `ANDROID_ABI=armeabi-v7a`时，可设置`ON/OFF`，默认值为`ON`；
+	- `ANDROID_ABI=arm64-v8a`时，不需要设置。
 
-- `ANDROID_STANDALONE_TOOLCHAIN`: the absolute path of the Android standalone toolchain, or the path relative to the CMake build directory.  PaddlePaddle's CMake extensions would derive the cross-compiler, sysroot and Android API level from this argument.
-- `ANDROID_TOOLCHAIN`: could be `gcc` or `clang`.  The default value is `clang`.
-  - For CMake >= 3.7, it should anyway be `clang`.  For older versions, it could be `gcc`.
-  - Android's official `clang` requires `glibc` >= 2.15.
-- `ANDROID_ABI`: could be `armeabi-v7a` or `arm64-v8a`.  The default value is `armeabi-v7a`.
-- `ANDROID_NATIVE_API_LEVEL`: could be derived from the value of `ANDROID_STANDALONE_TOOLCHAIN`.
-- `ANROID_ARM_MODE`:
-  - could be `ON` or `OFF`, and defaults to `ON`, when `ANDROID_ABI=armeabi-v7a`;
-  - no need to specify when `ANDROID_ABI=arm64-v8a`.
-- `ANDROID_ARM_NEON`: indicates if to use NEON instructions.
-  - could be `ON` or `OFF`, and defaults to `ON`, when `ANDROID_ABI=armeabi-v7a`;
-  - no need to specify when `ANDROID_ABI=arm64-v8a`.
+其他配置参数：
 
-Other useful arguments:
+- `USE_EIGEN_FOR_BLAS`，是否使用Eigen库进行矩阵计算。可设置`ON/OFF`，默认值为`OFF`。
+- `HOST_C/CXX_COMPILER`，宿主机的C/C++编译器。在编译宿主机版protoc可执行文件和目标机版OpenBLAS库时需要用到。默认设置成环境变量`CC`的值；若环境变量`CC`没有设置，则设置成`cc`编译器。
 
-- `USE_EIGEN_FOR_BLAS`: indicates if using Eigen.  Could be `ON` or `OFF`, defaults to `OFF`.
-- `HOST_C/CXX_COMPILER`: specifies the host compiler, which is used to build the host-specific protoc and target-specific OpenBLAS.  It defaults to the value of the environment variable `CC`, or `cc`.
-
-Some frequent configurations for your reference:
+常用的cmake配置如下：
 
 ```bash
 cmake -DCMAKE_SYSTEM_NAME=Android \
@@ -129,25 +125,22 @@ cmake -DCMAKE_SYSTEM_NAME=Android \
       ..
 ```
 
+用户还可根据自己的需求设置其他编译参数。比如希望最小化生成的库的大小，可以设置`CMAKE_BUILD_TYPE`为`MinSizeRel`；若希望最快的执行速度，则可设置`CMAKE_BUILD_TYPE`为`Release`。亦可以通过手动设置`CMAKE_C/CXX_FLAGS_MINSIZEREL/RELEASE`来影响PaddlePaddle的编译过程。
 
-There are some other arguments you might want to configure.
+**性能TIPS**，为了达到最快的计算速度，在CMake参数配置上，有以下建议：
+- 设置`CMAKE_BUILD_TYPE`为`Release`
+- 使用`clang`编译工具链
+- `armeabi-v7a`时，设置`USE_EIGEN_BLAS=ON`，使用Eigen进行矩阵计算；`arm64-v8a`时，设置`USE_EIGEN_FOR_BLAS=OFF`，使用OpenBLAS进行矩阵计算
 
-- `CMAKE_BUILD_TYPE=MinSizeRel` minimizes the size of library.
-- `CMAKE_BUILD_TYPE-Release` optimizes the runtime performance.
+### 编译和安装
 
-Our own tip for performance optimization to use clang and Eigen or OpenBLAS:
-- `CMAKE_BUILD_TYPE=Release`
-- `ANDROID_TOOLCHAIN=clang`
-- `USE_EIGEN_BLAS=ON` for `armeabi-v7a`, or `USE_EIGEN_FOR_BLAS=OFF` for `arm64-v8a`.
+CMake配置完成后，执行以下命令，PaddlePaddle将自动下载和编译所有第三方依赖库、编译和安装PaddlePaddle预测库。
 
-### Build and Install
+```bash
+make
+make install
+```
 
-After running `cmake`, we can run `make; make install` to build and install.
+注意：如果你曾经在源码目录下编译过其他平台的PaddlePaddle库，请先使用`rm -rf`命令删除`third_party`目录和`build`目录，以确保所有的第三方依赖库和PaddlePaddle代码都是针对新的CMake配置重新编译的。
 
-Before building, you might want to remove the `third_party` and `build` directories including pre-built libraries for other architectures.
-
-After building，in the directory `CMAKE_INSTALL_PREFIX`, you will find three sub-directories:
-
-- `include`: the header file of the inference library,
-- `lib`: the inference library built for various Android ABIs,
-- `third_party`: dependent third-party libraries built for Android.
+执行完安装命令后，`your/path/to/install`目录中会包含`include`、`lib`和`third_party`目录，其中`include`中包含C-API的头文件，`lib`中包含若干个不同Android ABI的PaddlePaddle库，`third_party`中包含所依赖的所有第三方库。自此，PaddlePaddle的已经安装完成，用户可将`your/path/to/install`目录下的生成文件用于深度学习相关Android App中，调用方法见C-API文档。
