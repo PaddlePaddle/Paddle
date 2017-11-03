@@ -152,11 +152,20 @@ def gated_conv(input,
                gate_bias_attr=True,
                layer_attr=None):
     """
-    Calculate the context vector with a gated convolution operation.
+    Calculate and return the context vectors with gated convolution mechanism.
     Please refer to **Language Modeling with Gated Convolutional Networks**
     for more details. The link is as follows:
     https://arxiv.org/pdf/1612.08083.pdf.
- 
+
+    .. math::
+       y=(X * W + b)\otimes \sigma(X * V + c)
+
+    where :math:`X` is the input layer,
+    :math:`W` is the parameter of the first text convolution,
+    :math:`b` is bias of the first text convolution,
+    :math:`V` is the parameter of the second text convolution,
+    :math:`c` is bias of the second text convolution,
+
     The example usage is:
  
     ..  code-block:: python
@@ -167,7 +176,7 @@ def gated_conv(input,
                                      
     :param input: Input layer.
     :type input: LayerOutput
-    :param context_len: The context projection length. 
+    :param context_len: The context length. 
     :type context_len: int
     :param size: The size of output layer.
     :type size: int
