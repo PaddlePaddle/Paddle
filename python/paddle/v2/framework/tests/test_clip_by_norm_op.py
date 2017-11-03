@@ -18,21 +18,19 @@ class TestClipByNormOp(OpTest):
             output = self.max_norm * input / norm
         else:
             output = input
-        self.outputs = {
-            'Out': output
-        }
+        self.outputs = {'Out': output}
 
     def test_check_output(self):
         self.check_output()
 
     def initTestCase(self):
-        self.shape = (100,)
+        self.shape = (100, )
         self.max_norm = 1.0
 
 
 class TestCase1(TestClipByNormOp):
     def initTestCase(self):
-        self.shape = (100,)
+        self.shape = (100, )
         self.max_norm = 1e20
 
 

@@ -15,6 +15,5 @@
 #include "paddle/operators/clip_by_norm_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(clip_by_norm,
-                       ops::ClipByNormKernel
-                       <paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    clip_by_norm, ops::ClipByNormKernel<paddle::platform::GPUPlace, float>);
