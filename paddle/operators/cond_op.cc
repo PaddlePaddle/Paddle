@@ -216,7 +216,7 @@ class CondOpProtoAndCheckerMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("IndexTensors", "Index Tensors contains indices for true/false");
 
     AddComment(R"DOC(
-Sample dependent Cond Operator.
+Sample Dependent Conditional Operator.
 
 Given Cond[i] as a 1/0 vector to indicate true/false:
 Out[i] = subnet_true[i], if Cond[i] == true
