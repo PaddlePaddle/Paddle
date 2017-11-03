@@ -101,6 +101,10 @@ class Variable(object):
     def persistable(self):
         return self.desc.persistable()
 
+    @persistable.setter
+    def persistable(self, p):
+        self.desc.set_persistable(p)
+
     @property
     def name(self):
         return self.desc.name()

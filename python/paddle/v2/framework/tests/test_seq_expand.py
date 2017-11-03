@@ -13,9 +13,8 @@ class TestSeqExpand(OpTest):
     def compute(self):
         x = self.inputs['X']
         x_data, x_lod = x if type(x) == tuple else (x, None)
-        n = 1 + x_data.shape[0] if not x_lod else len(x_lod[0])
         y_data, y_lod = self.inputs['Y']
-        repeats = [((y_lod[-1][i + 1] - y_lod[-1][i]))
+        repeats = [(y_lod[-1][i + 1] - y_lod[-1][i])
                    for i in range(len(y_lod[-1]) - 1)]
         out = x_data.repeat(repeats, axis=0)
         self.outputs = {'Out': out}
@@ -35,9 +34,9 @@ class TestSeqExpand(OpTest):
 class TestSeqExpandCase1(TestSeqExpand):
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [5, 1]).astype('float32')
-        x_lod = [[0, 2, 5]]
+        x_lod = [[0, 3, 7]]
         y_data = np.random.uniform(0.1, 1, [13, 1]).astype('float32')
-        y_lod = [[0, 2, 5], [0, 2, 4, 7, 10, 13]]
+        y_lod = [[0, 3, 7], [0, 2, 4, 7, 10, 13]]
         self.inputs = {'X': (x_data, x_lod), 'Y': (y_data, y_lod)}
 
 

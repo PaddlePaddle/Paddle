@@ -57,16 +57,6 @@ using Vector = thrust::host_vector<
 using LoD = std::vector<Vector<size_t>>;
 
 /*
- * Slice levels from a LoD.
- * NOTE the lowest level should always be the absolute offsets of the underlying
- * tensor instances. So if higher layers are sliced without the lowest level,
- * the lower level of the sliced LoD will be transformed to the absolute offset.
- */
-LoD SliceLevels(const LoD& in, size_t level_begin, size_t level_end);
-
-LoD SliceInLevel(const LoD& in, size_t level, size_t elem_begin,
-                 size_t elem_end);
-/*
  * Transform an LoD from relative offsets to absolute offsets.
  */
 LoD ToAbsOffset(const LoD& in);
@@ -89,57 +79,7 @@ class LoDTensor : public Tensor {
 
   LoD* mutable_lod() { return &lod_; }
 
-  /*
-   * Get the start offset and end offset of an  element from LoD.
-   */
-  std::pair<size_t, size_t> lod_element(size_t level, size_t elem) const {
-    PADDLE_ENFORCE_LT(level, NumLevels());
-    PADDLE_ENFORCE_LT(elem, NumElements(level));
-    return std::make_pair((lod_)[level][elem], (lod_)[level][elem + 1]);
-  }
-
-  /*
-   * Number of LoDTensor's levels, each level has units of data, for example,
-   * in the sentence's view, article, paragraph, sentence are 3 levels.
-   */
   size_t NumLevels() const { return lod_.size(); }
-  /*
-   * Number of elements in a level.
-   */
-  size_t NumElements(size_t level = 0) const {
-    PADDLE_ENFORCE_LT(level, NumLevels());
-    // the last offset is the end of last element
-    return (lod_)[level].size() - 1;
-  }
-
-  /*
-   * Number of lower-level elements.
-   * For example, a 2-level lod-tensor
-   *
-   * 0-th level   |   |
-   * 1-th level   ||  |||
-   *
-   * NumElements(0, 0) get 2
-   * NumElements(0, 1) get 3
-   */
-  size_t NumElements(size_t level, size_t idx) const;
-
-  /*
-   * Get the number of instances in the underlying tensor in the `idx`-th
-   * element.
-   */
-  size_t NumInstancesInElement(size_t level, size_t idx) const;
-
-  /*
-   * Shrink levels[level_begin:level_end]
-   */
-  void ShrinkLevels(size_t level_begin, size_t level_end);
-
-  /*
-   * Shrink elements of a level, [elem_begin: elem_end]
-   * @note: low performance in slice lod_.
-   */
-  void ShrinkInLevel(size_t level, size_t elem_begin, size_t elem_end);
 
  private:
   LoD lod_;
