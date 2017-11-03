@@ -28,7 +28,6 @@ limitations under the License. */
 #include "paddle/operators/cond_op.h"
 #include "paddle/operators/dynamic_recurrent_op.h"
 #include "paddle/operators/net_op.h"
-#include "paddle/operators/recurrent_op.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 #include "paddle/pybind/exception.h"
@@ -426,25 +425,6 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("unstack_shared", [](TensorArray &self, const LoDTensor &source) {
         return self.UnstackShared(source);
-      });
-
-  // recurrent_op
-  py::class_<operators::RecurrentOp, OperatorBase>(m, "RecurrentOp")
-      .def_static(
-          "create",
-          [](py::bytes protobin) -> operators::RecurrentOp * {
-            OpDesc desc;
-            PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
-                           "Cannot parse user input to OpDesc");
-            PADDLE_ENFORCE(desc.IsInitialized(),
-                           "User OpDesc is not initialized, reason %s",
-                           desc.InitializationErrorString());
-            auto rnn_op = OpRegistry::CreateOp(desc);
-            return static_cast<operators::RecurrentOp *>(rnn_op.release());
-          })
-      .def("set_stepnet", [](operators::RecurrentOp &self,
-                             const operators::NetOp &net) -> void {
-        self.set_stepnet(net.Clone());
       });
 
   py::class_<operators::DynamicRecurrentOp, OperatorBase>(m,

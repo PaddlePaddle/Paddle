@@ -12,7 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/conv2dtranspose_op.h"
+#include "paddle/operators/conv2d_transpose_op.h"
 
 namespace paddle {
 namespace operators {
@@ -95,13 +95,13 @@ void Conv2DTransposeOpGrad::InferShape(
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(conv2dtranspose, ops::Conv2DTransposeOp,
-            ops::Conv2DTransposeOpMaker, conv2dtranspose_grad,
+REGISTER_OP(conv2d_transpose, ops::Conv2DTransposeOp,
+            ops::Conv2DTransposeOpMaker, conv2d_transpose_grad,
             ops::Conv2DTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
-    conv2dtranspose,
+    conv2d_transpose,
     ops::GemmConv2DTransposeKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    conv2dtranspose_grad,
+    conv2d_transpose_grad,
     ops::GemmConv2DTransposeGradKernel<paddle::platform::CPUPlace, float>);

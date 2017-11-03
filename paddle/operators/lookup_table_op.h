@@ -90,11 +90,13 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
       auto* d_output_data = d_output->data<T>();
       auto* d_table_data = d_table->mutable_data<T>(context.GetPlace());
 
+      memset(d_table_data, 0, d_table->numel() * sizeof(T));
+
       for (int64_t i = 0; i < ids->numel(); ++i) {
         PADDLE_ENFORCE_LT(ids_data[i], N);
         PADDLE_ENFORCE_GE(ids_data[i], 0);
         for (int j = 0; j < D; ++j) {
-          d_table_data[ids_data[i] * D + j] = d_output_data[i * D + j];
+          d_table_data[ids_data[i] * D + j] += d_output_data[i * D + j];
         }
       }
     }

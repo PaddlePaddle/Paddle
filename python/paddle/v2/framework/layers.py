@@ -1,6 +1,7 @@
 from paddle.v2.framework.layer_helper import LayerHelper, unique_name
 import paddle.v2.framework.core as core
-from paddle.v2.framework.framework import OpProtoHolder, Variable, Program
+from paddle.v2.framework.framework import OpProtoHolder, Variable, Program, \
+    Operator
 from paddle.v2.framework.initializer import ConstantInitializer
 import re
 
@@ -32,7 +33,6 @@ def fc(input,
         param_shape = [
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
         ] + [size]
-
         w = helper.create_parameter(
             attr=param_attr, shape=param_shape, dtype=dtype)
         tmp = helper.create_tmp_variable(dtype)
@@ -88,8 +88,17 @@ def data(name,
          program=None,
          init_program=None):
     helper = LayerHelper('data', **locals())
+    shape = list(shape)
+    for i in xrange(len(shape)):
+        if shape[i] is None:
+            shape[i] = -1
+            append_batch_size = False
+        elif shape[i] < 0:
+            append_batch_size = False
+
     if append_batch_size:
         shape = [-1] + shape  # append batch size as -1
+
     return helper.create_global_variable(
         name=name, shape=shape, dtype=data_type, type=type)
 
@@ -165,6 +174,9 @@ _create_op_func_('mul')
 _create_op_func_('elementwise_add')
 _create_op_func_('dropout')
 _create_op_func_('reshape')
+_create_op_func_('elementwise_add')
+_create_op_func_('sigmoid')
+_create_op_func_('scale')
 
 
 def cast(x, data_type, program=None):
@@ -193,15 +205,15 @@ def concat(input, axis, program=None, init_program=None):
 def sums(input, program=None, init_program=None):
     helper = LayerHelper('sum', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
-    helper.append_op(type='sum', inputs={'X': [input]}, outputs={'Out': out})
+    helper.append_op(type='sum', inputs={'X': input}, outputs={'Out': out})
     return out
 
 
-def cos_sim(X, Y, program=None, init_program=None):
-    helper = LayerHelper('cos_sim', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype("X"))
-    xnorm = helper.create_tmp_variable(dtype=helper.input_dtype("X"))
-    ynorm = helper.create_tmp_variable(dtype=helper.input_dtype("X"))
+def cos_sim(X, Y, **kwargs):
+    helper = LayerHelper('cos_sim', **kwargs)
+    out = helper.create_tmp_variable(dtype=X.data_type)
+    xnorm = helper.create_tmp_variable(dtype=X.data_type)
+    ynorm = helper.create_tmp_variable(dtype=X.data_type)
     helper.append_op(
         type='cos_sim',
         inputs={'X': [X],
@@ -209,7 +221,7 @@ def cos_sim(X, Y, program=None, init_program=None):
         outputs={'Out': [out],
                  'XNorm': [xnorm],
                  'YNorm': [ynorm]})
-    return out, xnorm, ynorm
+    return out
 
 
 def cross_entropy(input, label, **kwargs):
@@ -265,7 +277,8 @@ def accuracy(input, label, k=1, **kwargs):
 def sequence_conv(input,
                   num_filters,
                   filter_size=3,
-                  stride=1,
+                  filter_stride=1,
+                  act=None,
                   padding=None,
                   bias_attr=None,
                   param_attr=None,
@@ -291,9 +304,9 @@ def sequence_conv(input,
         },
         outputs={"Out": pre_bias},
         attrs={
-            'context_stride': stride,
-            'context_start': 0,
-            'context_length': filter_size
+            'contextStride': filter_stride,
+            'contextStart': -int(filter_size / 2),
+            'contextLength': filter_size
         })
     pre_act = helper.append_bias_op(pre_bias)
     return helper.append_activation(pre_act)
@@ -346,17 +359,12 @@ def conv2d(input,
                'paddings': padding,
                'groups': groups})
 
-    pre_act = helper.append_bias_op(pre_bias)
+    pre_act = helper.append_bias_op(pre_bias, 1)
 
     return helper.append_activation(pre_act)
 
 
 def sequence_pool(input, pool_type, **kwargs):
-    ENUM_POOL_TYPE = set(["MAX", "AVG", "SQRT", "LAST", "FIRST"])
-    if pool_type.upper() not in ENUM_POOL_TYPE:
-        raise ValueError("Unknown pool_type: '%s'. It can only be %s.",
-                         str(pool_type), " ".join(ENUM_POOL_TYPE))
-
     helper = LayerHelper('sequence_pool', input=input, **kwargs)
     dtype = helper.input_dtype()
     pool_out = helper.create_tmp_variable(dtype)
@@ -518,6 +526,8 @@ class StaticRNNGuard(BlockGuard):
         return super(StaticRNNGuard, self).__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            return False
         self.rnn.status = StaticRNN.AFTER_RNN_BLOCK
         self.rnn.complete_rnn_op()
         return super(StaticRNNGuard, self).__exit__(exc_type, exc_val, exc_tb)
@@ -577,7 +587,7 @@ class StaticRNN(object):
                 outputs={'Out': [boot_var]},
                 attrs={
                     'value': init_value,
-                    'shape': boot_var.shape,
+                    'shape': [40] + list(boot_var.shape[1:]),
                     'data_type': boot_var.data_type
                 })
 
@@ -596,14 +606,14 @@ class StaticRNN(object):
         if not isinstance(x, Variable):
             raise TypeError("step input takes a Variable")
         if self.seq_len is None:
-            self.seq_len = x.shape[1]
-        elif self.seq_len != x.shape[1]:
+            self.seq_len = x.shape[0]
+        elif self.seq_len != x.shape[0]:
             raise ValueError("Static RNN only take fix seq_len input")
 
         ipt = self.helper.create_variable(
             name=x.name,
             dtype=x.data_type,
-            shape=[-1] + list(x.shape[2:]),
+            shape=list(x.shape[1:]),
             type=x.type)
         self.inputs.append(ipt)
         return ipt
@@ -613,10 +623,17 @@ class StaticRNN(object):
         if not isinstance(o, Variable):
             raise TypeError("step output takes a Variable")
 
+        tmp_o = self.helper.create_tmp_variable(dtype=o.data_type)
+        self.helper.append_op(
+            type='rnn_memory_helper',
+            inputs={'X': [o]},
+            outputs={'Out': tmp_o},
+            attrs={'data_type': o.data_type})
+
         out_var = self.parent_block().create_var(
-            name=o.name,
-            shape=[-1, self.seq_len] + list(o.shape[1:]),
-            dtype=o.data_type)
+            name=tmp_o.name,
+            shape=[self.seq_len] + list(tmp_o.shape),
+            dtype=tmp_o.data_type)
 
         self.outputs.append(out_var)
 
@@ -647,6 +664,68 @@ class StaticRNN(object):
             return self.outputs
 
     def complete_rnn_op(self):
-        # TODO(yuyang18): Create RNN Op here.
-        # Implement this method after RNN op complete.
-        pass
+        program = self.helper.program
+        rnn_block = program.current_block()
+        parent_block = self.parent_block()
+
+        local_inputs = set()
+
+        for op in rnn_block.ops:
+            assert isinstance(op, Operator)
+            for oname in op.output_names:
+                for out_var_name in op.output(oname):
+                    local_inputs.add(out_var_name)
+
+        for var in self.inputs:
+            local_inputs.add(var.name)
+        for m in self.memories:
+            local_inputs.add(m)
+
+        params = list()
+        for op in rnn_block.ops:
+            assert isinstance(op, Operator)
+            for iname in op.input_names:
+                for in_var_name in op.input(iname):
+                    if in_var_name not in local_inputs:
+                        params.append(in_var_name)
+
+        parameters = [parent_block.var(name) for name in params]
+
+        step_scope = parent_block.create_var(
+            type=core.VarDesc.VarType.STEP_SCOPES)
+
+        inlinks = [parent_block.var(i.name) for i in self.inputs]
+        outlinks = self.outputs
+
+        boot_memories = []
+        pre_memories = []
+        memories = []
+        for _, mem in self.memories.iteritems():
+            boot_memories.append(mem.init)
+            pre_memories.append(mem.pre_mem.name)
+            mem_var = rnn_block.var(mem.mem.name)
+            assert isinstance(mem_var, Variable)
+            new_mem = self.helper.create_tmp_variable(dtype=mem_var.data_type)
+
+            rnn_block.append_op(
+                type='rnn_memory_helper',
+                inputs={'X': [mem_var]},
+                outputs={'Out': [new_mem]},
+                attrs={'data_type': mem_var.data_type})
+
+            memories.append(new_mem.name)
+
+        parent_block.append_op(
+            type='recurrent',
+            inputs={
+                'inputs': inlinks,
+                'initial_states': boot_memories,
+                'parameters': parameters
+            },
+            outputs={'outputs': outlinks,
+                     'step_scopes': [step_scope]},
+            attrs={
+                'ex_states': pre_memories,
+                'states': memories,
+                'step_block': rnn_block
+            })
