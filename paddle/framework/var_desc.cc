@@ -37,13 +37,29 @@ std::vector<int64_t> VarDescBind::Shape() const {
 DataType VarDescBind::GetDataType() const { return tensor_desc().data_type(); }
 
 void VarDescBind::SetLoDLevel(int32_t lod_level) {
-  PADDLE_ENFORCE(desc_.type() == VarDesc::LOD_TENSOR);
-  desc_.mutable_lod_tensor()->set_lod_level(lod_level);
+  switch (desc_.type()) {
+    case VarDesc::LOD_TENSOR:
+      desc_.mutable_lod_tensor()->set_lod_level(lod_level);
+      break;
+    case VarDesc::LOD_TENSOR_ARRAY:
+      desc_.mutable_tensor_array()->set_lod_level(lod_level);
+      break;
+    default:
+      PADDLE_THROW("Tensor type=%d does not support LoDLevel",
+                   desc_.tensor_array().lod_level());
+  }
 }
 
 int32_t VarDescBind::GetLodLevel() const {
-  PADDLE_ENFORCE(desc_.type() == VarDesc::LOD_TENSOR);
-  return desc_.lod_tensor().lod_level();
+  switch (desc_.type()) {
+    case VarDesc::LOD_TENSOR:
+      return desc_.lod_tensor().lod_level();
+    case VarDesc::LOD_TENSOR_ARRAY:
+      return desc_.tensor_array().lod_level();
+    default:
+      PADDLE_THROW("Tensor type=%d does not support LoDLevel",
+                   desc_.tensor_array().lod_level());
+  }
 }
 
 const TensorDesc &VarDescBind::tensor_desc() const {
@@ -66,6 +82,8 @@ TensorDesc *VarDescBind::mutable_tensor_desc() {
       return desc_.mutable_selected_rows();
     case VarDesc::LOD_TENSOR:
       return desc_.mutable_lod_tensor()->mutable_tensor();
+    case VarDesc::LOD_TENSOR_ARRAY:
+      return desc_.mutable_tensor_array()->mutable_tensor();
     default:
       PADDLE_THROW("Unexpected branch.");
   }

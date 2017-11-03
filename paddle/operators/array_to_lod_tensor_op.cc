@@ -11,7 +11,9 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
+#include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
+
 namespace paddle {
 namespace operators {
 
@@ -47,6 +49,6 @@ class ArrayToLoDTensorInferShape : public framework::InferShapeBase {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lod_tensor_to_array, ops::ArrayToLoDTensorOp,
+REGISTER_OPERATOR(array_to_lod_tensor, ops::ArrayToLoDTensorOp,
                   ops::ArrayToLoDTensorOpProtoMaker,
                   ops::ArrayToLoDTensorInferShape);

@@ -11,7 +11,9 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
+#include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
+
 namespace paddle {
 namespace operators {
 
@@ -43,10 +45,21 @@ class LoDTensorToArrayInferShape : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *context) const override {}
 };
 
+class LoDTensorToArrayInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDescBind &op_desc,
+                  framework::BlockDescBind *block) const override {
+    for (auto &out_var : op_desc.Output("Out")) {
+      block->Var(out_var)->SetType(framework::VarDesc::LOD_TENSOR_ARRAY);
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lod_tensor_to_array, ops::LoDTensorToArrayOp,
                   ops::LoDTensorToArrayOpProtoMaker,
-                  ops::LoDTensorToArrayInferShape);
+                  ops::LoDTensorToArrayInferShape,
+                  ops::LoDTensorToArrayInferVarType);
