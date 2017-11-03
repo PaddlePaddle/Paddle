@@ -88,6 +88,8 @@ class BlockDescBind {
 
   BlockDesc *Proto();
 
+  ProgramDescBind *Program() { return this->prog_; }
+
  private:
   void ClearPBOps();
   void ClearPBVars();

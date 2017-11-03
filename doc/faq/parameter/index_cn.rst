@@ -75,7 +75,7 @@ PaddlePaddle目前支持8种learning_rate_schedule，这8种learning_rate_schedu
 
       optimizer = paddle.optimizer.Adam(
           learning_rate=1e-3,
-          learning_rate_schedule="manual",
+          learning_rate_schedule="pass_manual",
           learning_rate_args="1:1.0,2:0.9,3:0.8",)
 
   在该示例中，当已训练pass数小于等于1时，学习率为 :code:`1e-3 * 1.0`；当已训练pass数大于1小于等于2时，学习率为 :code:`1e-3 * 0.9`；当已训练pass数大于2时，学习率为 :code:`1e-3 * 0.8`。

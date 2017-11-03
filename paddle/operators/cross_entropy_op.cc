@@ -28,8 +28,9 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     auto label_dims = ctx->GetInputDim("Label");
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(label_dims.size(), 2, "Input(Label)'s rank should be 2.");
+    PADDLE_ENFORCE_EQ(x_dims.size(), 2UL, "Input(X)'s rank should be 2.");
+    PADDLE_ENFORCE_EQ(label_dims.size(), 2UL,
+                      "Input(Label)'s rank should be 2.");
     PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0],
                       "The 1st dimension of Input(X) and Input(Label) should "
                       "be equal.");
@@ -38,8 +39,8 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
                         "If Attr(soft_label) == true, the 2nd dimension of "
                         "Input(X) and Input(Label) should be equal.");
     } else {
-      PADDLE_ENFORCE_EQ(label_dims[1], 1,
-                        "If Attr(soft_label) == false, the 2nd dimension of "
+      PADDLE_ENFORCE_EQ(label_dims[1], 1UL,
+                        "If Attr(softLabel) == false, the 2nd dimension of "
                         "Input(Label) should be 1.");
     }
 
@@ -48,7 +49,8 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  // CrossEntropy's data type just determined by "X"
+  // Explicitly set that data type of the output of the cross_entropy operator
+  // is determined by its input "X".
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
     return framework::ToDataType(ctx.Input<Tensor>("X")->type());
