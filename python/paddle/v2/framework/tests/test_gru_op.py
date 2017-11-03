@@ -2,31 +2,7 @@ import unittest
 import numpy as np
 import math
 from op_test import OpTest
-
-SIGMOID_THRESHOLD_MIN = -40.0
-SIGMOID_THRESHOLD_MAX = 13.0
-EXP_MAX_INPUT = 40.0
-
-
-def identity(x):
-    return x
-
-
-def sigmoid(x):
-    y = np.copy(x)
-    y[x < SIGMOID_THRESHOLD_MIN] = SIGMOID_THRESHOLD_MIN
-    y[x > SIGMOID_THRESHOLD_MAX] = SIGMOID_THRESHOLD_MAX
-    return 1. / (1. + np.exp(-y))
-
-
-def tanh(x):
-    y = -2. * x
-    y[y > EXP_MAX_INPUT] = EXP_MAX_INPUT
-    return (2. / (1. + np.exp(y))) - 1.
-
-
-def relu(x):
-    return np.maximum(x, 0)
+from test_lstm_op import identity, sigmoid, tanh, relu
 
 
 class TestGRUOp(OpTest):
@@ -108,7 +84,7 @@ class TestGRUOp(OpTest):
         return batch_gate, batch_reset_hidden_prev, hidden
 
     def set_data(self):
-        lod = [[0, 2, 6, 9]]
+        lod = [[0, 2, 6, self.batch_size]]
         self.idx_in_seq_list = self.seq_to_batch(lod, self.is_reverse)
         batch_size = self.batch_size
         frame_size = self.frame_size

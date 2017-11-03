@@ -61,8 +61,6 @@ class GRUOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("BatchResetHiddenPrev", {input_dims[0], frame_size});
     ctx->SetOutputDim("BatchHidden", {input_dims[0], frame_size});
     ctx->SetOutputDim("Hidden", {input_dims[0], frame_size});
-    // ctx->ShareLoD("Input", "Gate");
-    // ctx->ShareLoD("Input", "ResetHiddenPrev");
     ctx->ShareLoD("Input", "Hidden");
   }
 };
@@ -72,7 +70,7 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
   GRUOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Input",
-             "(LoDTensor) The first input is a LodTensor, which support "
+             "(LoDTensor) The first input is a LodTensor, which supports "
              "variable-time length input sequence. The underlying tensor in "
              "this LoDTenosr is a matrix with shape (T X 3D), where, T is the "
              "total time steps in this mini-batch, D is the hidden size.");
@@ -132,14 +130,17 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
                   "whether to compute reversed GRU.")
         .SetDefault(false);
     AddComment(R"DOC(
-GRUOp implements part calculations of the GRU as following:
+GRU Operator implements part calculations of the complete GRU as following:
+
 \f[
-update \ gate: u_t = actGate(xu_t + W_u * hidden_prev + bias_u) \\
-reset \ gate: r_t = actGate(xr_t + W_r * hidden_prev + bias_r)  \\
-output \ candidate: {h}_t = actNode(xc_t + W_c * dot(r_t, hidden_prev) + bias_c) \\
-output: h_t = dot((1-u_t), hidden_prev) + dot(u_t, {h}_t)
+update \ gate: u_t = actGate(xu_t + W_u * h_{t-1} + b_u) \\
+reset \ gate: r_t = actGate(xr_t + W_r * h_{t-1} + b_r)  \\
+output \ candidate: {h}_t = actNode(xc_t + W_c * dot(r_t, h_{t-1}) + b_c) \\
+output: h_t = dot((1 - u_t), h_{t-1}) + dot(u_t, {h}_t)
 \f]
-The rest of GRU can be completed by using FCOp's output as the input of GRUOp.
+
+@note To implement the complete GRU, fully-connected operator must be used  
+before to feed xu, xr and xc as the Input of GRU operator.
 )DOC");
   }
 };
