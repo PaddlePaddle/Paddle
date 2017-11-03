@@ -46,7 +46,7 @@ class ClipByNormOpMaker : public framework::OpProtoAndCheckerMaker {
              "The number of dimensions must be between [1, 9].");
     AddOutput("Out",
               "(Tensor) The output of clip_by_norm op with shape as input(X)");
-    AddAttr<AttrType>("max_norm", "(float)The maximum norm value.");
+    AddAttr<AttrType>("max_norm", "(float) The maximum norm value.");
     AddComment(R"DOC(
 ClipByNorm operator limits the L2 norm of the input 'X' within 'max_norm'. 
 If the L2 norm of 'X' is less than or equal to 'max_norm', 'Out' will be 
