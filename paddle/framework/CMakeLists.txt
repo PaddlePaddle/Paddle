@@ -10,8 +10,6 @@ cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
 cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto)
-cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor paddle_memory)
-nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
 
 cc_test(variable_test SRCS variable_test.cc)
 
@@ -49,9 +47,6 @@ cc_library(executor SRCS executor.cc DEPS op_registry device_context scope frame
 
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
-
-cc_library(tensor_array SRCS tensor_array.cc DEPS lod_tensor)
-cc_test(tensor_array_test SRCS tensor_array_test.cc DEPS tensor_array place)
 
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
         proto_desc)
