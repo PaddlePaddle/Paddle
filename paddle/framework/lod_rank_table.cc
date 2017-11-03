@@ -1,0 +1,43 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License. */
+
+#include "paddle/framework/lod_rank_table.h"
+
+namespace paddle {
+namespace framework {
+void LoDRankTable::Reset(const LoD& lod, size_t level) {
+  this->coarse_lod_.clear();
+  this->items_.clear();
+  PADDLE_ENFORCE(level < lod.size(),
+                 "Cannot rank lod since the level %d is less than lod size %d",
+                 level, lod.size());
+  coarse_lod_.reserve(level);
+  for (size_t i = 0; i < level; ++i) {
+    coarse_lod_.push_back(lod[i]);
+  }
+  auto& vec = lod[level];
+  for (size_t i = 0; i < vec.size() - 1; ++i) {
+    TableItem item;
+    item.index = i;
+    item.length = vec[i + 1] - vec[i];
+    items_.emplace_back(item);
+  }
+  std::sort(items_.begin(), items_.end(),
+            [](const TableItem& a, const TableItem& b) {
+              return a.length > b.length;
+            });
+}
+
+}  // namespace framework
+}  // namespace paddle
