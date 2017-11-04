@@ -81,8 +81,8 @@ Smooth L1 Loss Operator.
 
 This operator computes the smooth l1 loss for input and target.
 The operator takes the first dimension of input as the batch size.
-For each instance, it computes the smooth l1 loss, element by element first
-and then sums all the losses to one value. So the resulting output shape
+For each instance, it computes the smooth l1 loss element by element first
+and then sums all the losses. So the resulting output shape
 is [batch_size, 1].
 
 The equation is:
