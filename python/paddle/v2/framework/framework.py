@@ -101,6 +101,10 @@ class Variable(object):
     def persistable(self):
         return self.desc.persistable()
 
+    @persistable.setter
+    def persistable(self, p):
+        self.desc.set_persistable(p)
+
     @property
     def name(self):
         return self.desc.name()
@@ -546,5 +550,5 @@ class Parameter(Variable):
 
 
 # program is a global instance.
-g_program = Program()
-g_init_program = Program()
+g_main_program = Program()
+g_startup_program = Program()
