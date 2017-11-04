@@ -28,7 +28,7 @@ class CastOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("out_data_type", "output data type");
     AddAttr<int>("in_data_type", "input data type");
     AddComment(R"DOC(
-Cast operator.
+Cast Operator.
 
 This Operator casts the input tensor to another data type and
 returns tha Output Tensor.
