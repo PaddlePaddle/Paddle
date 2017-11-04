@@ -134,7 +134,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
 
     Tensor emission_row_max;
     emission_row_max.mutable_data<T>(
-        framework::make_ddim({static_cast<int>(batch_size), 1}),
+        framework::make_ddim({static_cast<int64_t>(batch_size), 1}),
         platform::CPUPlace());
 
     auto place = ctx.GetEigenDevice<platform::CPUPlace>();
@@ -273,7 +273,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
 
     const int* lbl = label.data<int>();
     PADDLE_ENFORCE_LT(
-        *std::max_element(lbl, lbl + seq_length), tag_num,
+        static_cast<size_t>(*std::max_element(lbl, lbl + seq_length)), tag_num,
         "An invalid tag label that execesses the largest tag number.");
 
     // Calculate the nominator part, which depends on the label sequence.

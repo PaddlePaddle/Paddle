@@ -238,7 +238,8 @@ void BindVarDsec(py::module &m) {
       .value("SELECTED_ROWS", VarDesc::SELECTED_ROWS)
       .value("FEED_MINIBATCH", VarDesc::FEED_MINIBATCH)
       .value("FETCH_LIST", VarDesc::FETCH_LIST)
-      .value("STEP_SCOPES", VarDesc::STEP_SCOPES);
+      .value("STEP_SCOPES", VarDesc::STEP_SCOPES)
+      .value("LOD_RANK_TABLE", VarDesc::LOD_RANK_TABLE);
 }
 
 void BindOpDesc(py::module &m) {

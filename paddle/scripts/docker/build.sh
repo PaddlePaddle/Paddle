@@ -162,6 +162,7 @@ ${DOCKERFILE_CUDNN_DSO}
 ${DOCKERFILE_GPU_ENV}
 ADD go/cmd/pserver/pserver /usr/bin/
 ADD go/cmd/master/master /usr/bin/
+ADD paddle/pybind/print_operators_doc /usr/bin/
 # default command shows the paddle version and exit
 CMD ["paddle", "version"]
 EOF
