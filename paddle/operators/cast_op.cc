@@ -23,13 +23,17 @@ class CastOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   CastOpProtoMaker(framework::OpProto *proto,
                    framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "the input tensor of cast op");
-    AddOutput("Out", "the output tensor of cast op");
-    AddComment(R"DOC(Cast operator.
-cast the input tensor to other data type.
-)DOC");
+    AddInput("X", "The input tensor of cast op");
+    AddOutput("Out", "The output tensor of cast op");
     AddAttr<int>("out_data_type", "output data type");
     AddAttr<int>("in_data_type", "input data type");
+    AddComment(R"DOC(
+Cast operator.
+
+This Operator casts the input tensor to another data type and
+returns tha Output Tensor.
+
+)DOC");
   }
 };
 
