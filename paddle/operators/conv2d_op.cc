@@ -56,17 +56,18 @@ Conv2DOpMaker::Conv2DOpMaker(framework::OpProto* proto,
   AddInput(
       "Input",
       "The input tensor of convolution operator. "
-      "The format of input tensor is NCHW. Where N is batch size, C is the "
-      "number of channels, H and W is the height and width of image.");
+      "The format of input tensor is NCHW, where N is batch size, C is the "
+      "number of channels, H is the height of the image, "
+      "and W is the width of the image.");
   AddInput("Filter",
-           "The filter tensor of convolution operator."
+           "The filter tensor of convolution operator. "
            "The format of the filter tensor is MCHW, where M is the number of "
            "output image channels, C is the number of input image channels, "
-           "H and W is height and width of filter. "
-           "If the groups attribute is greater than 1, C equal the number of "
+           "H is the height of the filter, and W is the width of the filter. "
+           "If the groups attribute is greater than 1, C equals the number of "
            "input image channels divided by the groups.");
   AddOutput("Output",
-            "The output tensor of convolution operator."
+            "The output tensor of convolution operator. "
             "The format of output tensor is also NCHW.");
   AddAttr<std::vector<int>>("strides", "strides of convolution operator.")
       .SetDefault({1, 1});
@@ -74,16 +75,19 @@ Conv2DOpMaker::Conv2DOpMaker(framework::OpProto* proto,
       .SetDefault({0, 0});
   AddAttr<int>(
       "groups",
-      "group size of convolution operator. "
-      "Refer to grouped convolution in Alex Krizhevsky's paper: "
-      "when group=2, the first half of the filters are only connected to the "
-      "first half of the input channels, and the second half only connected "
-      "to the second half.")
+      "Group size of convolution operator. "
+      "According to grouped convolution in Alex Krizhevsky's Deep CNN paper: "
+      "when group=2, the first half of the filters is only connected to the "
+      "first half of the input channels, while the second half of the filters "
+      "is only connected to the second half of the input channels.")
       .SetDefault(1);
   AddComment(R"DOC(
-The convolution operation calculates the output based on the input, filter
-and strides, paddings, groups parameters. The size of each dimension of the
-parameters is checked in the infer-shape.
+Convolution Operator.
+
+The convolution operation calculates the output based on the input, filter, 
+strides, paddings, and groups parameters. The size of each dimension of the
+parameters is checked in the infer-shape method.
+
 )DOC");
 }
 
