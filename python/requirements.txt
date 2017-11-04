@@ -7,3 +7,4 @@ rarfile
 scipy>=0.19.0
 Pillow
 nltk>=3.2.2
+graphviz

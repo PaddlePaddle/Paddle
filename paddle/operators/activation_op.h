@@ -232,7 +232,7 @@ struct HardShrinkGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-// softshrink(x) = x - lambda, if x > lambda; x + lambda, if x < lambda; 0
+// softshrink(x) = x - lambda, if x > lambda; x + lambda, if x < -lambda; 0
 // otherwise
 template <typename T>
 struct SoftShrinkFunctor : public BaseActivationFunctor<T> {
@@ -547,6 +547,7 @@ struct ELUGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+// FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5198
 template <typename T>
 struct PowFunctor : public BaseActivationFunctor<T> {
   float factor;
