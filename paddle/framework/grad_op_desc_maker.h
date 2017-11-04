@@ -15,6 +15,7 @@
 #pragma once
 #include <string>
 #include <unordered_set>
+#include <vector>
 #include "paddle/framework/op_desc.h"
 #include "paddle/framework/operator.h"
 
@@ -26,8 +27,13 @@ class GradOpDescMakerBase {
   explicit GradOpDescMakerBase(
       const OpDescBind& fwd_op,
       const std::unordered_set<std::string>& no_grad_set,
-      std::unordered_map<std::string, std::string>* grad_to_var)
-      : fwd_op_(fwd_op), no_grad_set_(no_grad_set), grad_to_var_(grad_to_var) {}
+      std::unordered_map<std::string, std::string>* grad_to_var,
+      const std::vector<BlockDescBind*>& grad_block =
+          std::vector<BlockDescBind*>())
+      : fwd_op_(fwd_op),
+        no_grad_set_(no_grad_set),
+        grad_to_var_(grad_to_var),
+        grad_block_(grad_block) {}
 
   virtual ~GradOpDescMakerBase() = default;
   virtual std::vector<std::unique_ptr<OpDescBind>> operator()() const = 0;
@@ -102,6 +108,9 @@ class GradOpDescMakerBase {
   const OpDescBind& fwd_op_;
   const std::unordered_set<std::string>& no_grad_set_;
   std::unordered_map<std::string, std::string>* grad_to_var_;
+
+ protected:
+  std::vector<BlockDescBind*> grad_block_;
 };
 
 class SingleGradOpDescMaker : public GradOpDescMakerBase {

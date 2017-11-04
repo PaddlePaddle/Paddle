@@ -54,7 +54,12 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "(Tensor) Tensor of specified shape will be filled "
               "with the specified value");
-    AddComment(R"DOC(Fill up a variable with specified constant value.)DOC");
+    AddComment(R"DOC(
+FillConstantBatchSizeLike Operator.
+
+Fill up a variable with specified constant value.
+
+)DOC");
   }
 };
 }  // namespace operators

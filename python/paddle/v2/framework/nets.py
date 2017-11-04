@@ -1,9 +1,11 @@
 import paddle.v2.framework.layers as layers
 
+__all__ = ["simple_img_conv_pool", "sequence_conv_pool"]
+
 
 def simple_img_conv_pool(input,
-                         filter_size,
                          num_filters,
+                         filter_size,
                          pool_size,
                          pool_stride,
                          act,
@@ -45,7 +47,7 @@ def img_conv_group(input,
     """
     tmp = input
     assert isinstance(conv_num_filter, list) or \
-           isinstance(conv_num_filter, tuple)
+        isinstance(conv_num_filter, tuple)
 
     def __extend_list__(obj):
         if not hasattr(obj, '__len__'):
@@ -91,6 +93,29 @@ def img_conv_group(input,
         pool_size=pool_size,
         pool_type=pool_type,
         pool_stride=pool_stride,
+        program=program,
+        init_program=init_program)
+    return pool_out
+
+
+def sequence_conv_pool(input,
+                       num_filters,
+                       filter_size,
+                       act="sigmoid",
+                       pool_type="max",
+                       program=None,
+                       init_program=None):
+    conv_out = layers.sequence_conv(
+        input=input,
+        num_filters=num_filters,
+        filter_size=filter_size,
+        act=act,
+        program=program,
+        init_program=init_program)
+
+    pool_out = layers.sequence_pool(
+        input=conv_out,
+        pool_type=pool_type,
         program=program,
         init_program=init_program)
     return pool_out
