@@ -18,8 +18,8 @@ def fc(input,
        name=None,
        act=None,
        num_flatten_dims=1,
-       program=None,
-       init_program=None):
+       main_program=None,
+       startup_program=None):
     # create helper
     helper = LayerHelper('fc', **locals())
 
@@ -64,8 +64,8 @@ def embedding(input,
               data_type='float32',
               is_sparse=False,
               param_attr=None,
-              program=None,
-              init_program=None):
+              main_program=None,
+              startup_program=None):
     helper = LayerHelper('embedding', **locals())
     w = helper.create_parameter(
         attr=helper.param_attr, shape=size, dtype=data_type)
@@ -84,8 +84,8 @@ def data(name,
          data_type='float32',
          type=core.VarDesc.VarType.LOD_TENSOR,
          append_batch_size=True,
-         program=None,
-         init_program=None):
+         main_program=None,
+         startup_program=None):
     helper = LayerHelper('data', **locals())
     shape = list(shape)
     for i in xrange(len(shape)):
@@ -178,7 +178,7 @@ _create_op_func_('sigmoid')
 _create_op_func_('scale')
 
 
-def cast(x, data_type, program=None):
+def cast(x, data_type, main_program=None):
     helper = LayerHelper('cast', **locals())
     out = helper.create_tmp_variable(dtype=data_type)
     helper.append_op(
@@ -190,7 +190,7 @@ def cast(x, data_type, program=None):
     return out
 
 
-def concat(input, axis, program=None, init_program=None):
+def concat(input, axis, main_program=None, startup_program=None):
     helper = LayerHelper('concat', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
@@ -201,7 +201,7 @@ def concat(input, axis, program=None, init_program=None):
     return out
 
 
-def sums(input, program=None, init_program=None):
+def sums(input, main_program=None, startup_program=None):
     helper = LayerHelper('sum', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(type='sum', inputs={'X': input}, outputs={'Out': out})
@@ -281,8 +281,8 @@ def sequence_conv(input,
                   padding=None,
                   bias_attr=None,
                   param_attr=None,
-                  program=None,
-                  init_program=None):
+                  main_program=None,
+                  startup_program=None):
     # FIXME(dzh) : want to unify the argument of python layer
     # function. So we ignore some unecessary attributes.
     # such as, padding_trainable, context_start.
@@ -321,8 +321,8 @@ def conv2d(input,
            padding=None,
            bias_attr=None,
            param_attr=None,
-           program=None,
-           init_program=None):
+           main_program=None,
+           startup_program=None):
     helper = LayerHelper('conv2d', **locals())
     dtype = helper.input_dtype()
 
@@ -388,8 +388,8 @@ def pool2d(input,
            pool_stride=[1, 1],
            pool_padding=[0, 0],
            global_pooling=False,
-           program=None,
-           init_program=None):
+           main_program=None,
+           startup_program=None):
     if pool_type not in ["max", "avg"]:
         raise ValueError(
             "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
@@ -428,8 +428,8 @@ def batch_norm(input,
                param_attr=None,
                bias_attr=None,
                data_layout='NCHW',
-               program=None,
-               init_program=None):
+               main_program=None,
+               startup_program=None):
     helper = LayerHelper('batch_norm', **locals())
     dtype = helper.input_dtype()
 
@@ -505,16 +505,16 @@ class BlockGuard(object):
     keyword.
     """
 
-    def __init__(self, program):
-        if not isinstance(program, Program):
+    def __init__(self, main_program):
+        if not isinstance(main_program, Program):
             raise TypeError("BlockGuard takes a program")
-        self.program = program
+        self.main_program = main_program
 
     def __enter__(self):
-        self.program.create_block()
+        self.main_program.create_block()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.program.rollback()
+        self.main_program.rollback()
         if exc_type is not None:
             return False  # re-raise exception
         return True
@@ -524,7 +524,7 @@ class StaticRNNGuard(BlockGuard):
     def __init__(self, rnn):
         if not isinstance(rnn, StaticRNN):
             raise TypeError("StaticRNNGuard takes an StaticRNN")
-        super(StaticRNNGuard, self).__init__(rnn.helper.program)
+        super(StaticRNNGuard, self).__init__(rnn.helper.main_program)
         self.rnn = rnn
 
     def __enter__(self):
@@ -560,8 +560,9 @@ class StaticRNN(object):
     IN_RNN_BLOCK = 1
     AFTER_RNN_BLOCK = 2
 
-    def __init__(self, name=None, program=None):
-        self.helper = LayerHelper("static_rnn", name=name, program=program)
+    def __init__(self, name=None, main_program=None):
+        self.helper = LayerHelper(
+            "static_rnn", name=name, main_program=main_program)
         self.memories = {}  # memory map, from pre_mem.name --> MemoryLink
         self.inputs = []  # input variable list in current block
         self.outputs = []  # output variable list in parent block
@@ -653,7 +654,7 @@ class StaticRNN(object):
         self.memories[mem.name].mem = var
 
     def parent_block(self):
-        prog = self.helper.program
+        prog = self.helper.main_program
         parent_idx = prog.current_block().parent_idx
         assert parent_idx >= 0
         parent_block = prog.block(parent_idx)
@@ -670,8 +671,8 @@ class StaticRNN(object):
             return self.outputs
 
     def complete_rnn_op(self):
-        program = self.helper.program
-        rnn_block = program.current_block()
+        main_program = self.helper.main_program
+        rnn_block = main_program.current_block()
         parent_block = self.parent_block()
 
         local_inputs = set()
@@ -737,7 +738,7 @@ class StaticRNN(object):
             })
 
 
-def lod_rank_table(x, level=0, program=None):
+def lod_rank_table(x, level=0, main_program=None):
     helper = LayerHelper("lod_rank_table", **locals())
     table = helper.create_variable(
         type=core.VarDesc.VarType.LOD_RANK_TABLE,
