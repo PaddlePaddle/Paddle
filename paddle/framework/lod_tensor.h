@@ -181,5 +181,11 @@ LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
   return tensor;
 }
 
+void GetFineGrainedLoDLength(const LoD& lod, size_t start_idx, size_t end_idx,
+                             std::vector<std::vector<size_t>>* lod_length,
+                             size_t* start_offset);
+
+void AppendLoD(LoD* lod, std::vector<std::vector<size_t>>& lod_length);
+
 }  // namespace framework
 }  // namespace paddle
