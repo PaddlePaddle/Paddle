@@ -65,16 +65,17 @@ Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(
       "Input",
       "(Tensor) The input tensor of convolution transpose operator. "
       "The format of input tensor is NCHW. Where N is batch size, C is the "
-      "number of input channels, H and W is the height and width of image.");
+      "number of input channels, H is the height of the feature, and "
+      "W is the width of the feature.");
   AddInput("Filter",
-           "(Tensor) The filter tensor of convolution transpose operator."
+           "(Tensor) The filter tensor of convolution transpose operator. "
            "The format of the filter tensor is CMHW, where C is the number of "
            "output image channels, M is the number of input image channels, "
-           "H and W is height and width of filter. "
+           "H is the height of the filter, and W is the width of the filter. "
            "We enforce groups number == 1 and padding == 0 in "
-           "convolution transpose Scenario.");
+           "the convolution transpose scenario.");
   AddOutput("Output",
-            "(Tensor) The output tensor of convolution transpose operator."
+            "(Tensor) The output tensor of convolution transpose operator. "
             "The format of output tensor is also NCHW.");
   AddAttr<std::vector<int>>(
       "strides",
@@ -85,13 +86,15 @@ Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(
       "(vector defalut:{0, 0}), paddings of convolution transpose operator.")
       .SetDefault({0, 0});
   AddComment(R"DOC(
+Convolution2D Transpose Operator.
+
 The convolution transpose operation calculates the output based on the input, filter
 and strides, paddings, groups parameters. The size of each dimension of the
 parameters is checked in the infer-shape.
 
 Input(Input, Filter) and output(Output) are in NCHW format. Where N is batch
-size, C is the number of channels, H and W is the height and
-width of feature. Parameters(ksize, strides, paddings) are two elements.
+size, C is the number of channels, H is the height of the feature, and 
+W is the width of the feature. Parameters(ksize, strides, paddings) are two elements.
 These two elements represent height and width, respectively.
 The input(X) size and output(Out) size may be different.
 Example:
@@ -109,25 +112,26 @@ Example:
 Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(
     framework::OpProto* proto, framework::OpAttrChecker* op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
-  AddInput(
-      "Input",
-      "(Tensor) The input tensor of convolution transpose operator."
-      "The format of input tensor is NCDHW. Where N is batch size, C is "
-      "the number of channels, D, H and W is the depth, height and width of "
-      "feature.");
+  AddInput("Input",
+           "(Tensor) The input tensor of convolution transpose operator."
+           "The format of input tensor is NCDHW. Where N is batch size, C is "
+           "the number of channels, D is the depth of the feature, H is the "
+           "height of the feature, and "
+           "W is the width of the feature.");
   AddInput("Filter",
            "(Tensor) The filter tensor of convolution transpose operator."
            "The format of the filter tensor is CMDHW, where C is the number of "
-           "output image channels, M is the number of input image channels, "
-           "D, H and W is depth, height and width of filter. "
+           "output image channels, M is the number of input image channels, D "
+           "is the depth of the filter, H is the height of the filter, and "
+           "W is the width of the filter."
            "We enforce groups number == 1 and padding == 0 in "
-           "convolution transpose Scenario.");
+           "the convolution3d transpose scenario.");
   AddOutput("Output",
             "(Tensor) The output tensor of convolution transpose operator."
             "The format of output tensor is also NCDHW."
             "Where N is batch size, C is "
-            "the number of channels, D, H and W is the depth, height and "
-            "width of feature.");
+            "the number of channels, D is the depth of the feature, H is the "
+            "height of the feature, and W is the width of the feature.");
   AddAttr<std::vector<int>>(
       "strides",
       "(vector defalut:{1, 1, 1}), strides of convolution transpose operator.")
@@ -137,13 +141,16 @@ Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(
       "(vector defalut:{0, 0, 0}), paddings of convolution transpose operator.")
       .SetDefault({0, 0, 0});
   AddComment(R"DOC(
+Convolution3D Transpose Operator.
+
 The convolution transpose operation calculates the output based on the input, filter
 and strides, paddings, groups parameters. The size of each dimension of the
 parameters is checked in the infer-shape.
 
 Input(Input, Filter) and output(Output) are in NCDHW format. Where N is batch
-size, C is the number of channels, d, H and W is the depth, height and
-width of feature. Parameters(ksize, strides, paddings) are three elements.
+size, C is the number of channels, D is the depth of the feature, 
+H is the height of the feature, and W is the width of the feature. 
+Parameters(ksize, strides, paddings) are three elements.
 These three elements represent depth, height and width, respectively.
 The input(X) size and output(Out) size may be different.
 Example:

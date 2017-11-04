@@ -175,6 +175,10 @@ class GemmConv2DTransposeGradKernel : public framework::OpKernel<T> {
     DDim filter_matrix_shape = {m, c * k_h * k_w};
     filter.Resize(filter_matrix_shape);
 
+    if ((!input_grad) && (!filter_grad)) {
+      return;
+    }
+
     // convolution transpose grad on input:
     // im2col + gemm (similar to conv-forward)
     // input need to compute gradient
@@ -265,7 +269,7 @@ class GemmConv3DTransposeKernel : public framework::OpKernel<T> {
     const int64_t o_h = output->dims()[3];
     const int64_t o_w = output->dims()[4];
 
-    paddle::operators::math::Col2VolFunctor<Place, T> col2vol;
+    math::Col2VolFunctor<Place, T> col2vol;
 
     // use col_shape in the vol2col and col2vol calculation
     DDim col_shape = {c, k_d, k_h, k_w, d, h, w};
@@ -349,7 +353,7 @@ class GemmConv3DTransposeGradKernel : public framework::OpKernel<T> {
     const int64_t o_w = output_grad->dims()[4];
 
     // Only vol2col functor required for bp to get to the right shape
-    paddle::operators::math::Vol2ColFunctor<Place, T> vol2col;
+    math::Vol2ColFunctor<Place, T> vol2col;
 
     // use col_shape in the vol2col and col2vol calculation
     DDim col_shape = {c, k_d, k_h, k_w, d, h, w};
@@ -362,6 +366,10 @@ class GemmConv3DTransposeGradKernel : public framework::OpKernel<T> {
 
     DDim filter_matrix_shape = {m, c * k_d * k_h * k_w};
     filter.Resize(filter_matrix_shape);
+
+    if ((!input_grad) && (!filter_grad)) {
+      return;
+    }
 
     // convolution transpose grad on input:
     // vol2col + gemm (similar to conv-forward)
