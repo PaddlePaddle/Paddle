@@ -80,7 +80,7 @@ def parse_graph(program, graph, var_dict, **kwargs):
                         graph.edge(**draw_edge(var_dict, op, e, arg))
 
 
-def draw_graph(init_program, program, **kwargs):
+def draw_graph(startup_program, main_program, **kwargs):
     if kwargs.has_key("graph_attr"):
         GRAPH_STYLE.update(kwargs[graph_attr])
     if kwargs.has_key("node_attr"):
@@ -101,8 +101,8 @@ def draw_graph(init_program, program, **kwargs):
         **kwargs)
 
     var_dict = {}
-    parse_graph(init_program, g, var_dict)
-    parse_graph(program, g, var_dict)
+    parse_graph(startup_program, g, var_dict)
+    parse_graph(main_program, g, var_dict)
 
     if filename != None:
         g.save()

@@ -1,5 +1,5 @@
 import unittest
-from paddle.v2.framework.framework import Variable, g_program, Program
+from paddle.v2.framework.framework import Variable, g_main_program, Program
 import paddle.v2.framework.core as core
 import numpy as np
 
@@ -18,7 +18,7 @@ class TestVariable(unittest.TestCase):
         self.assertRaises(ValueError, lambda: convert("int8"))
 
     def test_var(self):
-        b = g_program.current_block()
+        b = g_main_program.current_block()
         w = b.create_var(
             dtype="float64", shape=[784, 100], lod_level=0, name="fc.w")
         self.assertNotEqual(str(w), "")
