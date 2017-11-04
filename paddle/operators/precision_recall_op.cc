@@ -120,13 +120,13 @@ class PrecisionRecallOpMaker : public framework::OpProtoAndCheckerMaker {
               "This output tensor contains metrics for current batch data. "
               "The layout is [macro average precision, macro average recall, "
               "macro f1 score, micro average precision, micro average recall, "
-              "micro f1 score]".);
+              "micro f1 score].");
     AddOutput("AccumMetrics",
               "(Tensor, default Tensor<float>) A 1-D tensor with shape {6}. "
               "This output tensor contains metrics for accumulated data. "
               "The layout is [macro average precision, macro average recall, "
               "macro f1 score, micro average precision, micro average recall, "
-              "micro f1 score]".);
+              "micro f1 score].");
     AddOutput("AccumStatesInfo",
               "(Tensor, default Tensor<float>) A 2-D tensor with shape D x 4, "
               "where D is equal to class number. This output tensor contains "
