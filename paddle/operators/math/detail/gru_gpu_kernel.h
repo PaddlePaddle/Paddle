@@ -57,9 +57,8 @@ __global__ void KeGruForwardResetOutput(OpResetOutput opResetOutput,
     rPrevOut = prevOutputValue[frameIdx];
   }
 
-  hppl::gpu::ForwardAct<T> act;
   opResetOutput(rValueUpdateGate, rValueResetGate, rPrevOut, rValueResetOutput,
-                act(active_gate));
+                active_gate);
 
   gateValue[frameIdx + frameSize * 0] = rValueUpdateGate;
   gateValue[frameIdx + frameSize * 1] = rValueResetGate;
@@ -96,9 +95,8 @@ __global__ void KeGruForwardFinalOutput(OpFinalOutput opFinalOutput,
     rPrevOut = prevOutputValue[frameIdx];
   }
 
-  hppl::gpu::ForwardAct<T> act;
   opFinalOutput(rValueUpdateGate, rValueFrameState, rPrevOut, rOutput,
-                act(active_node));
+                active_node);
 
   gateValue[frameIdx + frameSize * 2] = rValueFrameState;
   outputValue[frameIdx] = rOutput;
@@ -141,10 +139,9 @@ __global__ void KeGruBackwardStateGrad(OpStateGrad opStateGrad, T *gateValue,
     rPrevOutGrad = prevOutGrad[frameIdx];
   }
 
-  hppl::gpu::BackwardAct<T> act;
   opStateGrad(rUpdateGateValue, rUpdateGateGrad, rFrameStateValue,
               rFrameStateGrad, rPrevOutValue, rPrevOutGrad, rOutGrad,
-              act(active_node));
+              active_node);
 
   gateGrad[frameIdx + frameSize * 0] = rUpdateGateGrad;
   gateGrad[frameIdx + frameSize * 2] = rFrameStateGrad;
@@ -190,10 +187,9 @@ __global__ void KeGruBackwardResetGrad(OpResetGrad opResetGrad, T *gateValue,
     rResetOutputGrad = resetOutputGrad[frameIdx];
   }
 
-  hppl::gpu::BackwardAct<T> act;
   opResetGrad(rUpdateGateValue, rUpdateGateGrad, rResetGateValue,
               rResetGateGrad, rPrevOutValue, rPrevOutGrad, rResetOutputGrad,
-              act(active_gate));
+              active_gate);
 
   gateGrad[frameIdx + frameSize * 0] = rUpdateGateGrad;
   gateGrad[frameIdx + frameSize * 1] = rResetGateGrad;

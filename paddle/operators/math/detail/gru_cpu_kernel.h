@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <type_traits>
-#include "paddle/operators/math/detail/hl_activation_functions.h"
+#include "paddle/operators/math/detail/activation_functions.h"
 #include "paddle/operators/math/gru_compute.h"
 
 namespace paddle {
@@ -43,9 +43,8 @@ void hl_naive_gru_forward_reset_output(OpResetOutput opResetOutput,
       rPrevOut = prevOutputValue[i];
     }
 
-    hppl::cpu::ForwardAct<T> act;
     opResetOutput(rValueUpdateGate, rValueResetGate, rPrevOut,
-                  rValueResetOutput, act(active_gate));
+                  rValueResetOutput, active_gate);
 
     updateGate[i] = rValueUpdateGate;
     resetGate[i] = rValueResetGate;
@@ -72,9 +71,8 @@ void hl_naive_gru_forward_final_output(OpFinalOutput opFinalOutput,
       rPrevOut = prevOutputValue[i];
     }
 
-    hppl::cpu::ForwardAct<T> act;
     opFinalOutput(rValueUpdateGate, rValueFrameState, rPrevOut, rOutput,
-                  act(active_node));
+                  active_node);
 
     frameState[i] = rValueFrameState;
     outputValue[i] = rOutput;
@@ -102,7 +100,7 @@ void hl_avx_gru_forward_reset_output(OpResetOutput opResetOutput, T *gateValue,
     }
 
     opResetOutput(rValueUpdateGate, rValueResetGate, rPrevOut,
-                  rValueResetOutput, hppl::avx::forward[active_gate]);
+                  rValueResetOutput, active_gate);
 
     updateGate[i] = rValueUpdateGate;
     resetGate[i] = rValueResetGate;
@@ -132,7 +130,7 @@ void hl_avx_gru_forward_final_output(OpFinalOutput opFinalOutput, T *gateValue,
     }
 
     opFinalOutput(rValueUpdateGate, rValueFrameState, rPrevOut, rOutput,
-                  hppl::avx::forward[active_node]);
+                  active_node);
 
     frameState[i] = rValueFrameState;
     ((__m256 *)outputValue)[i] = rOutput;
@@ -215,10 +213,9 @@ void hl_naive_gru_backward_state_grad(OpStateGrad opStateGrad, T *gateValue,
       rPrevOutGrad = prevOutGrad[i];
     }
 
-    hppl::cpu::BackwardAct<T> act;
     opStateGrad(rUpdateGateValue, rUpdateGateGrad, rFrameStateValue,
                 rFrameStateGrad, rPrevOutValue, rPrevOutGrad, rOutGrad,
-                act(active_node));
+                active_node);
 
     updateGateGrad[i] = rUpdateGateGrad;
     frameStateGrad[i] = rFrameStateGrad;
@@ -261,10 +258,9 @@ void hl_naive_gru_backward_reset_grad(OpResetGrad opResetGrad, T *gateValue,
       rPrevOutGrad = prevOutGrad[i];
     }
 
-    hppl::cpu::BackwardAct<T> act;
     opResetGrad(rUpdateGateValue, rUpdateGateGrad, rResetGateValue,
                 rResetGateGrad, rPrevOutValue, rPrevOutGrad, rResetOutputGrad,
-                act(active_gate));
+                active_gate);
 
     updateGateGrad[i] = rUpdateGateGrad;
     resetGateGrad[i] = rResetGateGrad;
@@ -306,7 +302,7 @@ void hl_avx_gru_backward_state_grad(OpStateGrad opStateGrad, T *gateValue,
 
     opStateGrad(rUpdateGateValue, rUpdateGateGrad, rFrameStateValue,
                 rFrameStateGrad, rPrevOutValue, rPrevOutGrad, rOutGrad,
-                hppl::avx::backward[active_node]);
+                active_node);
 
     updateGateGrad[i] = rUpdateGateGrad;
     frameStateGrad[i] = rFrameStateGrad;
@@ -353,7 +349,7 @@ void hl_avx_gru_backward_reset_grad(OpResetGrad opResetGrad, T *gateValue,
 
     opResetGrad(rUpdateGateValue, rUpdateGateGrad, rResetGateValue,
                 rResetGateGrad, rPrevOutValue, rPrevOutGrad, rResetOutputGrad,
-                hppl::avx::backward[active_gate]);
+                active_gate);
 
     updateGateGrad[i] = rUpdateGateGrad;
     resetGateGrad[i] = rResetGateGrad;
