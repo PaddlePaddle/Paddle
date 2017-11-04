@@ -23,7 +23,7 @@ else()
     cc_library(context_project SRCS context_project.cc DEPS device_context)
     cc_library(sequence2batch SRCS sequence2batch.cc DEPS device_context)
     cc_library(lstm_compute SRCS lstm_compute.cc DEPS device_context activation_functions)
-    cc_library(gru_compute SRCS gru_compute.cc DEPS device_context activation_functions)
+    cc_library(gru_compute SRCS gru_compute.cc DEPS device_context activation_functions math_function)
 endif()
 
 cc_test(math_function_test SRCS math_function_test.cc DEPS math_function tensor)
