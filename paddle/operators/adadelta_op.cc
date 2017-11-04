@@ -85,7 +85,7 @@ class AdadeltaOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Adadelta Optimizer.
 
-We implement the Adadelta optimizer as explained in:
+Adadelta optimizer is implemented as explained in:
 https://arxiv.org/abs/1212.5701
 Adadelta is a per-dimension adaptive learning rate method used
 for gradient descent.
