@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <type_traits>
-#include "paddle/operators/math/detail/hl_activation_functions.h"
+#include "paddle/operators/math/detail/activation_functions.h"
 #include "paddle/operators/math/gru_compute.h"
 #include "paddle/platform/cuda_helper.h"
 #include "paddle/platform/device_context.h"
