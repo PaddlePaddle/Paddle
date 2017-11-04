@@ -68,7 +68,7 @@ class SequenceConcatOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The level should be less than the level number of inputs.")
         .SetDefault(0);
     AddComment(R"DOC(
-Sequence Concat operator.
+Sequence Concat Operator.
 
 The sequence_concat operator concatenates multiple LoDTensors.
 It supports a sequence (LoD Tensor with level number is 1)
