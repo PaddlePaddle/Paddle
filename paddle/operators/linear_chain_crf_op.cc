@@ -22,43 +22,44 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
   LinearChainCRFOpMaker(framework::OpProto* proto,
                         framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput(
-        "Emission",
-        "(LoDTensor, default: LoDTensor<float>). "
-        "The unscaled emission weight matrix for the linear chain CRF. "
-        "This input is a LoDTensor with shape [N x D] where N is the size of "
-        "the mini-batch and D is the total tag number.");
-    AddInput(
-        "Transition",
-        "(Tensor, default: Tensor<float>). A Tensor with shape [(D + 2) x D]. "
-        "The learnable parameter for the linear_chain_crf operator. "
-        "See more details in the operator's comments.");
-    AddInput(
-        "Label",
-        "(LoDTensor, default: LoDTensor<int>). The ground truth which is a 2-D "
-        "LoDTensor with shape [N x 1], where N is the total element number in "
-        "a mini-batch.");
+    AddInput("Emission",
+             "(LoDTensor, default: LoDTensor<float>). "
+             "A 2-D LoDTensor with shape [N x D] where N is the size of the "
+             "mini-batch and D is the total tag number. The unscaled emission "
+             "weight matrix for the linear chain CRF. ");
+    AddInput("Transition",
+             "(Tensor, default: Tensor<float>). A 2-D Tensor with shape "
+             "[(D + 2) x D]. The learnable parameter for the linear_chain_crf "
+             "operator. See more details in the operator's comments.");
+    AddInput("Label",
+             "(LoDTensor, default: LoDTensor<int>). A LoDTensor with shape "
+             "[N x 1], where N is the total element number in a mini-batch. "
+             "The ground truth.");
     AddOutput(
         "Alpha",
-        "Tensor, default: Tensor<float>. The forward vectors for the entire "
-        "batch. A two dimensional tensor with shape [N x D], "
-        "denoted as \f$\alpha\f$. \f$\alpha$\f is a memo table used to "
-        "calculate the normalization factor in CRF. \f$\alpha[k, v]$\f stores "
-        "the unnormalized probabilites of all possible unfinished sequences of "
-        "tags that end at position \f$k$\f with tag \f$v$\f. For each \f$k$\f, "
+        "(Tensor, default: Tensor<float>). A 2-D Tensor with shape [N x D]. "
+        "The forward vectors for the entire batch. Denote it as \f$\alpha\f$. "
+        "\f$\alpha$\f is a memo table used to calculate the normalization "
+        "factor in CRF. \f$\alpha[k, v]$\f stores the unnormalized "
+        "probabilites of all possible unfinished sequences of tags that end at "
+        "position \f$k$\f with tag \f$v$\f. For each \f$k$\f, "
         "\f$\alpha[k, v]$\f is a vector of length \f$D$\f with a component for "
         "each tag value \f$v$\f. This vector is called a forward vecotr and "
         "will also be used in backward computations.")
         .AsIntermediate();
-    AddOutput("EmissionExps",
-              "The exponentials of Input(Emission). This is an intermediate "
-              "computational result in forward computation, and will be reused "
-              "in backward computation.")
+    AddOutput(
+        "EmissionExps",
+        "(Tensor, default: Tensor<float>). A 2-D Tensor with shape [N x D]. "
+        "The exponentials of Input(Emission). This is an intermediate "
+        "computational result in forward computation, and will be reused in "
+        "backward computation.")
         .AsIntermediate();
-    AddOutput("TransitionExps",
-              "The exponentials of Input(Transition). This is an intermediate "
-              "computational result in forward computation, and will be reused "
-              "in backward computation.")
+    AddOutput(
+        "TransitionExps",
+        "(Tensor, default: Tensor<float>). A 2-D Tensor with shape "
+        "[(D + 2) x D]. The exponentials of Input(Transition). This is an "
+        "intermediate computational result in forward computation, and "
+        "will be reused in backward computation.")
         .AsIntermediate();
     AddOutput(
         "LogLikelihood",
@@ -179,8 +180,8 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  // Explicitly set that the data type of output of the linear_chain_crf
-  // operator is determined by its input "Emission".
+  // Explicitly set that the data type of computation kernel of linear_chain_crf
+  // is determined by its input "Emission".
   framework::DataType IndicateDataType(
       const framework::ExecutionContext& ctx) const override {
     return framework::ToDataType(ctx.Input<LoDTensor>("Emission")->type());
