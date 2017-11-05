@@ -53,8 +53,10 @@ class SeqExpandOpMaker : public framework::OpProtoAndCheckerMaker {
               "(LodTensor)The output of seq_expand op."
               "The lod of output will be as same as input(Y)'s lod.");
     AddComment(R"DOC(
-Expand input(X) according to LOD of input(Y).
+Seq Expand Operator.
 
+This operator expands input(X) according to LOD of input(Y).
+Following are cases to better explain how this works:
 Case 1:
 
 Given 2-level a LoDTensor input(X)
