@@ -142,8 +142,6 @@ set(DEPS_OPS
     nccl_op
     sequence_conv_op
     lod_rank_table_op
-    lod_tensor_to_array_op
-    array_to_lod_tensor_op
     lstm_op)
 
 op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
@@ -153,8 +151,6 @@ op_library(sum_op DEPS net_op selected_rows_functor)
 op_library(pool_op DEPS pooling)
 op_library(pool_with_index_op DEPS pooling)
 op_library(lod_rank_table_op SRCS lod_rank_table_op.cc DEPS lod_rank_table)
-op_library(lod_tensor_to_array_op SRCS lod_tensor_to_array_op.cc DEPS lod_rank_table_op)
-op_library(array_to_lod_tensor_op SRCS array_to_lod_tensor_op.cc DEPS lod_rank_table_op)
 if(WITH_GPU)
 op_library(nccl_op DEPS nccl_common)
 endif()

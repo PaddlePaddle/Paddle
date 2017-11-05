@@ -513,7 +513,18 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__getitem__",
            [](LoDTensorArray &self, size_t i) { return &self.at(i); },
            py::return_value_policy::reference)
-      .def("__len__", [](LoDTensorArray &self) { return self.size(); });
+      .def("__len__", [](LoDTensorArray &self) { return self.size(); })
+      .def("__setitem__",
+           [](LoDTensorArray &self, size_t i, const LoDTensor &t) {
+             PADDLE_ENFORCE_LT(i, self.size());
+             self[i].ShareDataWith(t);
+             self[i].set_lod(t.lod());
+           })
+      .def("append", [](LoDTensorArray &self, const LoDTensor &t) {
+        self.emplace_back();
+        self.back().ShareDataWith(t);
+        self.back().set_lod(t.lod());
+      });
 
   m.def("op_support_gpu", OpSupportGPU);
 #ifdef PADDLE_WITH_CUDA

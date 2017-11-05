@@ -18,13 +18,6 @@
 namespace paddle {
 namespace operators {
 
-static inline size_t CalcOffsetByLoD(const framework::LoD &lod, size_t idx) {
-  for (const auto &level : lod) {
-    idx = level.at(idx);
-  }
-  return idx;
-}
-
 class ArrayToLoDTensorOp : public framework::OperatorBase {
  public:
   ArrayToLoDTensorOp(const std::string &type,

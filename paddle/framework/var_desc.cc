@@ -45,8 +45,7 @@ void VarDescBind::SetLoDLevel(int32_t lod_level) {
       desc_.mutable_tensor_array()->set_lod_level(lod_level);
       break;
     default:
-      PADDLE_THROW("Tensor type=%d does not support LoDLevel",
-                   desc_.tensor_array().lod_level());
+      PADDLE_THROW("Tensor type=%d does not support LoDLevel", desc_.type());
   }
 }
 
@@ -57,8 +56,7 @@ int32_t VarDescBind::GetLodLevel() const {
     case VarDesc::LOD_TENSOR_ARRAY:
       return desc_.tensor_array().lod_level();
     default:
-      PADDLE_THROW("Tensor type=%d does not support LoDLevel",
-                   desc_.tensor_array().lod_level());
+      PADDLE_THROW("Tensor type=%d does not support LoDLevel", desc_.type());
   }
 }
 

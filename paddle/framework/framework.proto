@@ -111,7 +111,7 @@ message LoDTensorDesc {
 
 message LoDTensorArrayDesc {
   required TensorDesc tensor = 1;
-  optional int32 lod_level = 3 [ default = 0 ];
+  optional int32 lod_level = 2 [ default = 0 ];
 }
 
 message VarDesc {
