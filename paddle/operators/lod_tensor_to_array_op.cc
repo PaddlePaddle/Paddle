@@ -104,6 +104,11 @@ class LoDTensorToArrayInferShape : public framework::InferShapeBase {
 
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of LoDTensorToArrayOp should not be null.");
+
+    auto x_dim = ctx->GetInputDim("X");
+    // The first dim of each LoDTensor in Output can only be set at run-time.;
+    // We still have to Resize each LoDTensor in Output.
+    ctx->SetOutputDim("Out", x_dim);
   }
 };
 
