@@ -44,13 +44,15 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SumOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "the input tensors of sum operator.").AsDuplicable();
-    AddOutput("Out", "the output tensor of sum operator.");
+    AddInput("X", "(vector<Tensor>) The input tensors of sum operator.")
+        .AsDuplicable();
+    AddOutput("Out", "(Tensor) The output tensor of sum operator.");
     AddComment(R"DOC(
-Sum the input tensors.
+Sum operator.
 
-All the inputs can carry the LoD (Level of Details) information,
-or not. But the output only shares the LoD with the first input.
+This operators sums the input tensors. All the inputs can carry the 
+LoD (Level of Details) information. However, the output only shares 
+the LoD information with the first input.
 )DOC");
   }
 };

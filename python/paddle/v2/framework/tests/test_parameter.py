@@ -1,11 +1,11 @@
 import unittest
-from paddle.v2.framework.framework import g_program
+from paddle.v2.framework.framework import g_main_program
 import paddle.v2.framework.core as core
 
 
 class TestParameter(unittest.TestCase):
     def test_param(self):
-        b = g_program.create_block()
+        b = g_main_program.create_block()
         param = b.create_parameter(
             name='fc.w',
             shape=[784, 100],
