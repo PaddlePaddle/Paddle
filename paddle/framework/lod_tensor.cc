@@ -140,9 +140,9 @@ void GetFineGrainedLoDLength(const LoD& lod, size_t start_idx, size_t end_idx,
                              std::vector<std::vector<size_t>>* lod_length,
                              size_t* start_offset) {
   lod_length->clear();
-  PADDLE_ENFORCE(start_idx >= 0 && start_idx < lod.size() - 1,
+  PADDLE_ENFORCE(start_idx < lod.size() - 1,
                  "start_idx should be >= 0 and < lod.size() - 1.");
-  PADDLE_ENFORCE(end_idx >= 0 && end_idx < lod.size(),
+  PADDLE_ENFORCE(end_idx < lod.size(),
                  "end_idx should be >= 0 and < lod.size().");
   PADDLE_ENFORCE_LE(start_idx, end_idx,
                     "start_idx should be less than end_idx.");
@@ -158,7 +158,7 @@ void GetFineGrainedLoDLength(const LoD& lod, size_t start_idx, size_t end_idx,
   *start_offset = start_idx;
 }
 
-void AppendLoD(LoD* lod, std::vector<std::vector<size_t>>& lod_length) {
+void AppendLoD(LoD* lod, const std::vector<std::vector<size_t>>& lod_length) {
   PADDLE_ENFORCE_EQ(
       lod->size(), lod_length.size(),
       "The lod_length should has the same size with the appended lod.");
