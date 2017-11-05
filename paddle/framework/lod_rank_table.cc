@@ -33,6 +33,11 @@ void LoDRankTable::Reset(const LoD& lod, size_t level) {
     item.length = vec[i + 1] - vec[i];
     items_.emplace_back(item);
   }
+  // NOTE(yuyang18):
+  //
+  // The time complexity of stable_sort is O(N*log(N)) if additional memory is
+  // available. It is easy to debug and unit test when using `stable_sort`
+  // instead of `sort`. Also, the items of a rank table will not be too large.
   std::stable_sort(items_.begin(), items_.end(),
                    [](const TableItem& a, const TableItem& b) {
                      return a.length > b.length;
