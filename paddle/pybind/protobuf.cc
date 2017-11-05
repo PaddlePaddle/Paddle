@@ -97,6 +97,14 @@ namespace pybind {
 
 using namespace paddle::framework;  // NOLINT
 
+static py::bytes SerializeMessage(const google::protobuf::MessageLite &self) {
+  // Check IsInitialized in Python
+  std::string retv;
+  PADDLE_ENFORCE(self.SerializePartialToString(&retv),
+                 "Cannot serialize message");
+  return retv;
+}
+
 // Bind Methods
 void BindProgramDesc(py::module &m) {
   py::class_<ProgramDescBind>(m, "ProgramDesc", "")
@@ -132,17 +140,7 @@ void BindProgramDesc(py::module &m) {
       .def("block", &ProgramDescBind::MutableBlock,
            py::return_value_policy::reference)
       .def("num_blocks", &ProgramDescBind::Size)
-      .def("serialize_to_string",
-           [](ProgramDescBind &program_desc) -> py::bytes {
-             const ProgramDesc *desc = program_desc.Proto();
-             PADDLE_ENFORCE(desc->IsInitialized(),
-                            "ProgramDesc has not been initialized.");
-             std::string res;
-             PADDLE_ENFORCE(
-                 desc->SerializeToString(&res),
-                 "Serialize ProgramDesc Error. This could be a bug of Paddle.");
-             return res;
-           })
+      .def("serialize_to_string", SerializeMessage)
       .def("parse_from_string",
            [](ProgramDescBind &program_desc, const std::string &data) {
              ProgramDesc *desc = program_desc.Proto();
@@ -181,16 +179,7 @@ void BindBlockDesc(py::module &m) {
            py::return_value_policy::reference)
       .def("op_size", &BlockDescBind::OpSize)
       .def("op", &BlockDescBind::Op, py::return_value_policy::reference)
-      .def("serialize_to_string", [](BlockDescBind &block_desc) -> py::bytes {
-        const BlockDesc *desc = block_desc.Proto();
-        PADDLE_ENFORCE(desc->IsInitialized(),
-                       "BlockDesc has not been initialized.");
-        std::string res;
-        PADDLE_ENFORCE(
-            desc->SerializeToString(&res),
-            "Serialize BlockDesc Error. This could be a bug of Paddle.");
-        return res;
-      });
+      .def("serialize_to_string", SerializeMessage);
 }
 
 void BindVarDsec(py::module &m) {
@@ -219,17 +208,7 @@ void BindVarDsec(py::module &m) {
       .def("set_lod_level", &VarDescBind::SetLoDLevel)
       .def("type", &VarDescBind::GetType)
       .def("set_type", &VarDescBind::SetType)
-      .def("serialize_to_string",
-           [](VarDescBind &var_desc) -> py::bytes {
-             const VarDesc *desc = var_desc.Proto();
-             PADDLE_ENFORCE(desc->IsInitialized(),
-                            "VarDesc has not been initialized.");
-             std::string res;
-             PADDLE_ENFORCE(
-                 desc->SerializeToString(&res),
-                 "Serialize VarDesc Error. This could be a bug of Paddle.");
-             return res;
-           })
+      .def("serialize_to_string", SerializeMessage)
       .def("persistable", &VarDescBind::Persistable)
       .def("set_persistable", &VarDescBind::SetPersistable);
 
@@ -274,16 +253,7 @@ void BindOpDesc(py::module &m) {
       .def("check_attrs", &OpDescBind::CheckAttrs)
       .def("infer_shape", &OpDescBind::InferShape)
       .def("infer_var_type", &OpDescBind::InferVarType)
-      .def("serialize_to_string", [](OpDescBind &op_desc) -> py::bytes {
-        const OpDesc *desc = op_desc.Proto();
-        PADDLE_ENFORCE(desc->IsInitialized(),
-                       "OpDesc has not been initialized.");
-        std::string res;
-        PADDLE_ENFORCE(
-            desc->SerializeToString(&res),
-            "Serialize OpDesc Error. This could be a bug of Paddle.");
-        return res;
-      });
+      .def("serialize_to_string", SerializeMessage);
 }
 
 }  // namespace pybind
