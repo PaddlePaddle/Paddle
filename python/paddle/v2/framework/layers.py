@@ -101,7 +101,7 @@ def data(name,
         shape = [-1] + shape  # append batch size as -1
 
     return helper.create_global_variable(
-        name=name, shape=shape, dtype=data_type, type=type)
+        name=name, shape=shape, dtype=data_type, type=type, stop_gradient=True)
 
 
 def _convert_(name):

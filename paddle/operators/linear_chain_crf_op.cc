@@ -23,21 +23,21 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
                         framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Emission",
-             "(LoDTensor, default: LoDTensor<float>). "
-             "A 2-D LoDTensor with shape [N x D] where N is the size of the "
+             "(LoDTensor, default LoDTensor<float>) "
+             "A 2-D LoDTensor with shape [N x D], where N is the size of the "
              "mini-batch and D is the total tag number. The unscaled emission "
              "weight matrix for the linear chain CRF. ");
     AddInput("Transition",
-             "(Tensor, default: Tensor<float>). A 2-D Tensor with shape "
+             "(Tensor, default Tensor<float>) A 2-D Tensor with shape "
              "[(D + 2) x D]. The learnable parameter for the linear_chain_crf "
              "operator. See more details in the operator's comments.");
     AddInput("Label",
-             "(LoDTensor, default: LoDTensor<int>). A LoDTensor with shape "
+             "(LoDTensor, default LoDTensor<int>) A LoDTensor with shape "
              "[N x 1], where N is the total element number in a mini-batch. "
              "The ground truth.");
     AddOutput(
         "Alpha",
-        "(Tensor, default: Tensor<float>). A 2-D Tensor with shape [N x D]. "
+        "(Tensor, default Tensor<float>) A 2-D Tensor with shape [N x D]. "
         "The forward vectors for the entire batch. Denote it as \f$\alpha\f$. "
         "\f$\alpha$\f is a memo table used to calculate the normalization "
         "factor in CRF. \f$\alpha[k, v]$\f stores the unnormalized "
@@ -49,26 +49,28 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddOutput(
         "EmissionExps",
-        "(Tensor, default: Tensor<float>). A 2-D Tensor with shape [N x D]. "
+        "(Tensor, default Tensor<float>) A 2-D Tensor with shape [N x D]. "
         "The exponentials of Input(Emission). This is an intermediate "
         "computational result in forward computation, and will be reused in "
         "backward computation.")
         .AsIntermediate();
     AddOutput(
         "TransitionExps",
-        "(Tensor, default: Tensor<float>). A 2-D Tensor with shape "
+        "(Tensor, default Tensor<float>) A 2-D Tensor with shape "
         "[(D + 2) x D]. The exponentials of Input(Transition). This is an "
         "intermediate computational result in forward computation, and "
         "will be reused in backward computation.")
         .AsIntermediate();
     AddOutput(
         "LogLikelihood",
-        "(Tensor, default: Tensor<float>). The logarithm of the conditional "
+        "(Tensor, default Tensor<float>) The logarithm of the conditional "
         "likelihood of each training sample in a mini-batch. This is a 2-D "
         "tensor with shape [S x 1], where S is the sequence number in a "
         "mini-batch. Note: S is equal to the sequence number in a mini-batch. "
         "The output is no longer a LoDTensor.");
     AddComment(R"DOC(
+LinearChainCRF Operator.
+
 Conditional Random Field defines an undirected probabilistic graph with nodes
 denoting random variables and edges denoting dependencies between these
 variables. CRF learns the conditional probability \f$P(Y|X)\f$, where
@@ -82,29 +84,28 @@ and output must be linear sequences. Thus, the graph of such a CRF is a simple
 chain or a line, which results in the linear chain CRF.
 
 This operator implements the Forward-Backward algorithm for the linear chain
-CRF. Please see http://www.cs.columbia.edu/~mcollins/fb.pdf and
-http://cseweb.ucsd.edu/~elkan/250Bwinter2012/loglinearCRFs.pdf for reference.
+CRF. Please refer to http://www.cs.columbia.edu/~mcollins/fb.pdf and
+http://cseweb.ucsd.edu/~elkan/250Bwinter2012/loglinearCRFs.pdf for details.
 
 Equation:
-
-- Denote Input(Emission) to this operator as \f$x\f$ here.
-- The first D values of Input(Transition) to this operator are for starting
+1. Denote Input(Emission) to this operator as \f$x\f$ here.
+2. The first D values of Input(Transition) to this operator are for starting
 weights, denoted as \f$a\f$ here.
-- The next D values of Input(Transition) of this operator are for ending
+3. The next D values of Input(Transition) of this operator are for ending
 weights, denoted as \f$b\f$ here.
-- The remaning values of Input(Transition) are for transition weights,
+4. The remaning values of Input(Transition) are for transition weights,
 denoted as \f$w\f$ here.
-- Denote Input(Label) as \f$s\f$ here.
+5. Denote Input(Label) as \f$s\f$ here.
 
 The probability of a sequence \f$s\f$ of length \f$L\f$ is defined as:
-\f$P(s) = (1/Z) exp(a_{s_1} + b_{s_L}
+\f$P(s) = (1/Z) \exp(a_{s_1} + b_{s_L}
                  + \sum_{l=1}^L x_{s_l}
                  + \sum_{l=2}^L w_{s_{l-1},s_l})\f$
 where \f$Z\f$ is a normalization value so that the sum of \f$P(s)\f$ over
 all possible sequences is \f$1\f$, and \f$x\f$ is the emission feature weight
 to the linear chain CRF.
 
-Finaly, the linear chain CRF operator outputs the logarithm of the conditional
+Finally, the linear chain CRF operator outputs the logarithm of the conditional
 likelihood of each training sample in a mini-batch.
 
 NOTE:
