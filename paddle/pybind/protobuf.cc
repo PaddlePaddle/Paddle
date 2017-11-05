@@ -135,11 +135,9 @@ void BindProgramDesc(py::module &m) {
       .def("serialize_to_string",
            [](ProgramDescBind &program_desc) -> py::bytes {
              const ProgramDesc *desc = program_desc.Proto();
-             PADDLE_ENFORCE(desc->IsInitialized(),
-                            "ProgramDesc has not been initialized.");
              std::string res;
              PADDLE_ENFORCE(
-                 desc->SerializeToString(&res),
+                 desc->SerializePartialToString(&res),
                  "Serialize ProgramDesc Error. This could be a bug of Paddle.");
              return res;
            })

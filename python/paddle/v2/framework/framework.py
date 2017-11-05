@@ -446,6 +446,9 @@ class Program(object):
     def __str__(self):
         protostr = self.desc.serialize_to_string()
         proto = framework_pb2.ProgramDesc.FromString(str(protostr))
+        error_fields = []
+        if not proto.IsInitialized(error_fields):
+            print error_fields
         return proto.__str__()
 
     def clone(self):

@@ -96,12 +96,17 @@ function(op_library TARGET)
         # It's enough to just adding one operator to pybind
         file(APPEND ${pybind_file} "USE_GPU_ONLY_OP(ncclAllReduce);\n")
     endif()
-    
+
     # reduce_op contains several operators
     if ("${TARGET}" STREQUAL "reduce_op")
         set(pybind_flag 1)
         # It's enough to just adding one operator to pybind
         file(APPEND ${pybind_file} "USE_OP(reduce_sum);\n")
+    endif()
+
+    if ("${TARGET}" STREQUAL "tensor_array_read_write_op")
+        set(pybind_flag 1)
+        file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(read_from_array);\nUSE_NO_KERNEL_OP(write_to_array);\n")
     endif()
 
     # pybind USE_NO_KERNEL_OP
@@ -142,7 +147,8 @@ set(DEPS_OPS
     nccl_op
     sequence_conv_op
     lod_rank_table_op
-    lstm_op)
+    lstm_op
+    tensor_array_read_write_op)
 
 op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
 op_library(cross_entropy_op DEPS cross_entropy)
@@ -151,6 +157,7 @@ op_library(sum_op DEPS net_op selected_rows_functor)
 op_library(pool_op DEPS pooling)
 op_library(pool_with_index_op DEPS pooling)
 op_library(lod_rank_table_op SRCS lod_rank_table_op.cc DEPS lod_rank_table)
+op_library(tensor_array_read_write_op SRCS tensor_array_read_write_op.cc)
 if(WITH_GPU)
 op_library(nccl_op DEPS nccl_common)
 endif()
