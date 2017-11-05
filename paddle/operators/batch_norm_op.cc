@@ -70,7 +70,7 @@ class BatchNormOp : public framework::OperatorWithKernel {
                                              : x_dims[x_dims.size() - 1]);
 
     PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
-                   "Input x must have 3 to 5 dimensions.");
+                   "Input X must have 3 to 5 dimensions.");
 
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1UL);
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], C);
@@ -97,16 +97,16 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "The input tensor");
     AddInput("Scale",
              "Scale is a 1-dimensional tensor of size C "
-             "to be applied to the output");
+             "that is applied to the output");
     AddInput("Bias",
              "Bias is a 1-dimensional tensor of size C "
-             "to be applied to the output");
+             "that is applied to the output");
     AddInput("Mean",
-             "The global mean (for training) or the "
+             "The global mean (for training) or "
              "estimated mean (for testing)");
     AddInput("Variance",
              "The global variance (for training) "
-             "or the estimated Variance (for testing)");
+             "or estimated Variance (for testing)");
     AddOutput("Y", "result after normalization");
     AddOutput("MeanOut",
               "Share memory with Mean. "
@@ -123,10 +123,14 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
               "will apply to output when training")
         .AsIntermediate();
     AddComment(R"DOC(
-https://arxiv.org/pdf/1502.03167.pdf
+Batch Normalization.
 
-NHWC `[batch, in_height, in_width, in_channels]`
-NCHW `[batch, in_channels, in_height, in_width]`
+Batch Norm has been implemented as discussed in the paper:
+https://arxiv.org/pdf/1502.03167.pdf
+Can be used as a normalizer function for conv2d and fully_connected operations.
+The required data format for this layer is one of the following:
+1. NHWC `[batch, in_height, in_width, in_channels]`
+2. NCHW `[batch, in_channels, in_height, in_width]`
 
 )DOC");
   }
