@@ -44,17 +44,21 @@ public:
     AddOutput("Out", "(Tensor) Accumulated output tensor");
     AddAttr<float>("gamma", "(float, default 1.0) Accumulation multiplier").SetDefault(1.0f);
     AddComment(R"DOC(
-Accumulate operator accumulates the input tensor to the output tensor. If the
+Accumulate Operator.
+
+This operator accumulates the input tensor to the output tensor. If the
 output tensor already has the right size, we add to it; otherwise, we first
 initialize the output tensor to all zeros, and then do accumulation. Any
 further calls to the operator, given that no one else fiddles with the output
 in the interim, will do simple accumulations.
-Accumulation is done as shown:
+
+Accumulation is done as follows:
 
 Out = 1*X + gamma*Out
 
 where X is the input tensor, Out is the output tensor and gamma is the multiplier
 argument.
+
 )DOC");
   }
 };
