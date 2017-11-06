@@ -80,7 +80,12 @@ class FillConstantBatchSizeLikeOpMaker
         .SetDefault(0);
     AddAttr<float>("value", "(float, default 0) The value to be filled")
         .SetDefault(0.0f);
-    AddComment(R"DOC(Fill up a variable with specified constant value.)DOC");
+    AddComment(R"DOC(
+FillConstantBatchSizeLike Operator.
+
+Fill up a variable with specified constant value.
+
+)DOC");
   }
 };
 }  // namespace operators

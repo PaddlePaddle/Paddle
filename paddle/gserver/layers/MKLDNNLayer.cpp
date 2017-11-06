@@ -77,7 +77,7 @@ void MKLDNNLayer::forward(PassType passType) {
       needResetBwd_ = true;
     }
 
-    if (inputLayers_[0]->getType() == "data") {
+    if (inputLayers_[0]->getType() == "data" && inputLayers_.size() == 1) {
       // Update input value data when input layer is "data" type,
       // since the input value data address might be changed.
       CHECK(extInVal_);
@@ -171,14 +171,16 @@ void MKLDNNLayer::resetWithMatrix(MKLDNNMatrixPtr& dnn,
 }
 
 void MKLDNNLayer::resetInValue(
-    MKLDNNMatrixPtr& in, const std::shared_ptr<memory::primitive_desc>& intPD) {
+    MKLDNNMatrixPtr& in,
+    const std::shared_ptr<memory::primitive_desc>& intPD,
+    size_t inputIdx) {
   cvtInVal_ = nullptr;
   extInVal_ = nullptr;
   in = nullptr;
   CHECK_GT(bs_ * ic_ * ih_ * iw_, 0);
   auto extPD = MKLDNNMatrix::createPrimitiveDesc(
       {bs_, ic_, ih_, iw_}, format::nchw, engine_);
-  const MatrixPtr& inMat = inputLayers_[0]->getOutputValue();
+  const MatrixPtr& inMat = inputLayers_[inputIdx]->getOutputValue();
   in = std::dynamic_pointer_cast<MKLDNNMatrix>(inMat);
   CHECK_EQ(inputIsOnlyMKLDNN(), in != nullptr);
   if (in == nullptr || in->getFormat() == format::nc) {
@@ -216,11 +218,12 @@ void MKLDNNLayer::resetOutValue(MKLDNNMatrixPtr& out,
 }
 
 void MKLDNNLayer::resetInGrad(MKLDNNMatrixPtr& in,
-                              memory::primitive_desc intPD) {
+                              memory::primitive_desc intPD,
+                              size_t inputIdx) {
   cvtInGrad_ = nullptr;
   extInGrad_ = nullptr;
   in = nullptr;
-  LayerPtr& input = inputLayers_[0];
+  LayerPtr& input = inputLayers_[inputIdx];
   if (input->getOutputGrad() == nullptr) {
     // no need input grad
     return;
@@ -245,7 +248,6 @@ void MKLDNNLayer::resetInGrad(MKLDNNMatrixPtr& in,
     return;
   }
   // need create reorder
-  // TODO(TJ): add macro definition to simplify it
   CHECK(extInVal_ != nullptr && isPaddleFormat(extInVal_->getFormat()))
       << "should have external input value and the format must be nchw(nc)";
   extInGrad_ = MKLDNNMatrix::create(extInVal_->getPrimitiveDesc(), inMat);
