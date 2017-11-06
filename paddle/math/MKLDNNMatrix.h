@@ -102,6 +102,11 @@ public:
     m_->copyFrom(src);
   }
 
+  void copyTo(Matrix& dst) {
+    // TODO(TJ): reorder data if this format is not nchw or x
+    dst.copyFrom(*m_);
+  }
+
 public:
   /**
    * Reorder this MKLDNNMatrix from other format.

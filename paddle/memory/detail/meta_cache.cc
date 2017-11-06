@@ -30,7 +30,7 @@ Metadata MetadataCache::load(const MemoryBlock* block) {
     return existing_metadata->second;
   } else {
     auto* meta = reinterpret_cast<const Metadata*>(block);
-    VLOG(3) << "Load MetaData type=" << meta->type;
+    VLOG(10) << "Load MetaData type=" << meta->type;
     PADDLE_ASSERT(meta->check_guards());
     return *reinterpret_cast<const Metadata*>(block);
   }
