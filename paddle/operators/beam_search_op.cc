@@ -35,17 +35,14 @@ void BeamSearch::ToLoDTensor(framework::LoDTensor *selected_ids,
   size_t num_instances = std::accumulate(
       std::begin(items), std::end(items), 0,
       [](size_t a, std::vector<Item> &b) { return a + b.size(); });
-  LOG(INFO) << "num_instances " << num_instances;
   // the output tensor shape should be [num_instances, 1]
   auto dims = framework::make_ddim(
       std::vector<int64_t>({static_cast<int>(num_instances), 1}));
-  LOG(INFO) << "dims " << dims;
   selected_ids->Resize(dims);
   selected_scores->Resize(dims);
 
   std::map<size_t /*offset*/, std::vector<Item>> hash;
   framework::LoD new_lod;
-  LOG(INFO) << "to get mutable data, dims " << selected_ids->dims();
   auto *ids_data = selected_ids->mutable_data<int>(platform::CPUPlace());
   auto *scores_data =
       selected_scores->mutable_data<float>(platform::CPUPlace());
@@ -104,19 +101,11 @@ BeamSearch::SelectTopBeamSizeItems() {
     }
     result.emplace_back(items);
   }
-  for (int i = 0; i < result.size(); i++) {
-    LOG(INFO) << "result " << i;
-    for (auto &item : result[i]) {
-      LOG(INFO) << "item " << item.id << " " << item.score << " "
-                << item.offset;
-    }
-  }
   return result;
 }
 
 // the candidates of a source
 bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
-  LOG(INFO) << ">> sent_offset " << sent_offset_;
   if (sent_offset_ >= ids_->NumElements(lod_level_)) {
     return false;
   }
@@ -128,7 +117,6 @@ bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
       ids.lod(), lod_level_, sent_offset_, sent_offset_ + 1);
   source_abs_two_level_lod = framework::ToAbsOffset(source_abs_two_level_lod);
   auto abs_lod = framework::ToAbsOffset(ids.lod());
-  auto abs_offset = abs_lod[lod_level_][sent_offset_];
   PADDLE_ENFORCE_GE(source_abs_two_level_lod.size(), 2UL);
 
   auto *ids_data = ids.data<int>();
@@ -141,20 +129,10 @@ bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
 
   items->clear();
   items->reserve(framework::product(ids.dims()));
-  LOG(INFO) << "abs_lod";
-  for (int i = 0; i < 2; i++) {
-    LOG(INFO) << "level " << i;
-    for (int j = 0; j < source_abs_two_level_lod[i].size(); j++) {
-      LOG(INFO) << abs_offset + source_abs_two_level_lod[i][j];
-    }
-  }
   for (size_t offset = abs_lod[lod_level_][sent_offset_];
        offset < abs_lod[lod_level_][sent_offset_ + 1]; offset++) {
     for (int d = 0; d < instance_dim; d++) {
       const size_t dim_offset = offset * instance_dim + d;
-      LOG(INFO) << "offset " << offset << " "
-                << "absoffset " << dim_offset << " ids_data "
-                << ids_data[dim_offset];
       items->emplace_back(offset, ids_data[dim_offset],
                           scores_data[dim_offset]);
     }
