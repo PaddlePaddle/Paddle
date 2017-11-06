@@ -92,76 +92,78 @@ class PrecisionRecallOpMaker : public framework::OpProtoAndCheckerMaker {
                          framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("MaxProbs",
-             "(Tensor, default Tensor<float>), a 2-D tensor with shape N x 1, "
+             "(Tensor, default Tensor<float>) A 2-D tensor with shape N x 1, "
              "where N is the batch size. Each row contains the max probability "
              "of an instance which computed by the previous top_k (k=1) "
              "operator.");
     AddInput("Indices",
-             "(Tensor, default Tensor<int>), a 2-D tensor with shape N x 1, "
+             "(Tensor, default Tensor<int>) A 2-D tensor with shape N x 1, "
              "where N is the batch size. Each row contains the corresponding "
              "index which computed by the previous top_k (k=1) operator.");
     AddInput("Labels",
-             "(Tensor, default Tensor<int>), a 2-D tensor with shape N x 1, "
+             "(Tensor, default Tensor<int>) A 2-D tensor with shape N x 1, "
              "where N is the batch size. Each element is a label and the "
              "value should be in [0, class_number - 1].");
     AddInput("Weights",
-             "(Tensor, default Tensor<float>), a 2-D tensor with shape N x 1, "
+             "(Tensor, default Tensor<float>) A 2-D tensor with shape N x 1, "
              "where N is the batch size. This input is optional. If provided, "
              "weight of instance would be considered when computing metrics.")
         .AsDispensable();
     AddInput("StatesInfo",
-             "(Tensor, default Tensor<int>), a 2-D tensor with shape D x 4, "
+             "(Tensor, default Tensor<int>) A 2-D tensor with shape D x 4, "
              "where D is the number of classes. This input is optional. If "
              "provided, current state will be accumulated to this state and "
-             "the accumulation state will be as the output state.")
+             "the accumulation state will be the output state.")
         .AsDispensable();
     AddOutput("BatchMetrics",
-              "(Tensor, default Tensor<float>), a 1-D tensor with shape {6}."
-              "This output tensor contains metrics for current batch data."
+              "(Tensor, default Tensor<float>) A 1-D tensor with shape {6}. "
+              "This output tensor contains metrics for current batch data. "
               "The layout is [macro average precision, macro average recall, "
               "macro f1 score, micro average precision, micro average recall, "
-              "micro f1 score]");
+              "micro f1 score].");
     AddOutput("AccumMetrics",
-              "(Tensor, default Tensor<float>), a 1-D tensor with shape {6}."
-              "This output tensor contains metrics for accumulated data."
+              "(Tensor, default Tensor<float>) A 1-D tensor with shape {6}. "
+              "This output tensor contains metrics for accumulated data. "
               "The layout is [macro average precision, macro average recall, "
               "macro f1 score, micro average precision, micro average recall, "
-              "micro f1 score]");
+              "micro f1 score].");
     AddOutput("AccumStatesInfo",
-              "(Tensor, default Tensor<float>), a 2-D tensor with shape D x 4, "
+              "(Tensor, default Tensor<float>) A 2-D tensor with shape D x 4, "
               "where D is equal to class number. This output tensor contains "
               "accumulated state variables used to compute metrics. The layout "
               "for each class is [true positives, false positives, "
               "true negatives, false negatives].");
-    AddAttr<int>("class_number", "Number of classes to be evaluated.");
+    AddAttr<int>("class_number", "(int) Number of classes to be evaluated.");
     AddComment(R"DOC(
-When given 'Input(Indices)' and 'Input(Labels)', this operator can be used
+Precision Recall Operator.
+
+When given Input(Indices) and Input(Labels), this operator can be used
 to compute various metrics including:
-  - macro average precision
-  - macro average recall
-  - macro f1 score
-  - micro average precision
-  - micro average recall
-  - micro f1 score
+1. macro average precision
+2. macro average recall
+3. macro f1 score
+4. micro average precision
+5. micro average recall
+6. micro f1 score
 
 To compute the above metrics, we need to do statistics for true positives,
-false positives and false negatives. Here count of true negatives is not
+false positives and false negatives. Here the count of true negatives is not
 necessary, but counting it may provide potential usage and the cost is
-trivial, so the operator also provides count of true negatives.
+trivial, so the operator also provides the count of true negatives.
 
 We define state as a 2-D tensor with shape [class_number, 4]. Each row of a
 state contains statistic variables for corresponding class. Layout of each row
 is: TP(true positives), FP(false positives), TN(true negatives),
-FN(false negatives). If 'Input(Weights)' provided, TP, FP, TN, FN will be
-calculated by given weight instead of instance count.
+FN(false negatives). If Input(Weights) is provided, TP, FP, TN, FN will be
+calculated by given weight instead of the instance count.
 
 This operator also supports metrics computing for cross-batch situation. To
-achieve this, 'Input(StatesInfo)' should be provided. State of current batch
-data will be accumulated to 'Input(StatesInfo)' and 'Output(AccumStatesInfo)'
+achieve this, Input(StatesInfo) should be provided. State of current batch
+data will be accumulated to Input(StatesInfo) and Output(AccumStatesInfo)
 is the accumulation state.
 
-'Output(BatchMetrics)' is metrics of current batch data while
-'Output(AccumStatesInfo)' is metrics of accumulation data.
+Output(BatchMetrics) is metrics of current batch data while
+Output(AccumStatesInfo) is metrics of accumulation data.
 
 )DOC");
   }

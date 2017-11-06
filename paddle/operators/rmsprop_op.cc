@@ -68,22 +68,22 @@ class RmspropOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param",
              "(Tensor, default Tensor<float>) "
-             "Input parameter value that has to be updated");
+             "Input parameter value that has to be updated.");
     AddInput("MeanSquare",
              "(Tensor, default Tensor<float>)"
-             " The mean square value that gets updated");
+             " The mean square value that gets updated.");
     AddInput("LearningRate",
              "(Tensor, default Tensor<float>) "
-             "The learning rate should be a tensor of size 1");
+             "The learning rate should be a tensor of size 1.");
     AddInput("Grad",
              "(Tensor, default Tensor<float>) "
-             "Input gradient of the parameter");
+             "Input gradient of the parameter.");
     AddInput("Moment",
-             "(Tensor, default Tensor<float>) The moment that gets updated");
+             "(Tensor, default Tensor<float>) The moment that gets updated.");
 
-    AddOutput("ParamOut", "(Tensor) Output updated parameter value");
-    AddOutput("MomentOut", "(Tensor) Output updated moment");
-    AddOutput("MeanSquareOut", "(Tensor) Output Mean squared updated value");
+    AddOutput("ParamOut", "(Tensor) Output updated parameter value.");
+    AddOutput("MomentOut", "(Tensor) Output updated moment.");
+    AddOutput("MeanSquareOut", "(Tensor) Output Mean squared updated value.");
 
     AddAttr<float>("epsilon",
                    "(float, default 1e-10) Constant "
@@ -93,18 +93,19 @@ class RmspropOpMaker : public framework::OpProtoAndCheckerMaker {
                    "(float, default 0.9) "
                    "Discounting factor for coming gradient.")
         .SetDefault(0.9f);
-    AddAttr<float>("momentum", "(float, default 0.0) Constant value")
+    AddAttr<float>("momentum", "(float, default 0.0) Constant value.")
         .SetDefault(0.0f);
     AddComment(R"DOC(
+Rmsprop Optimizer. 
 
-RMSprop
-
-MeanSquareOut = decay * MeanSquare + (1 - decay) * Grad * Grad
+$$
+MeanSquareOut = decay * MeanSquare + (1 - decay) * Grad * Grad \\
 MomentOut = momentum * Moment +
-            LearningRate * Grad / sqrt(MeanSquareOut + epsilon)
+            \frac{LearningRate * Grad}{\sqrt{MeanSquareOut + epsilon}} \\
 ParamOut = Param -  MomentOut
+$$
 
-The original slides that proposed RMSprop: Slide 29 of
+The original slides that proposed Rmsprop: Slide 29 of
 http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf)
 
 )DOC");

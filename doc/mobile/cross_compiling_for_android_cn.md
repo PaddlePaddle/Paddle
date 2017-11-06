@@ -20,10 +20,32 @@ $ docker build -t username/paddle-android:dev . -f Dockerfile.android
 构建好开发镜像后，即可使用开发镜像来编译Android版PaddlePaddle C-API库。
 Android的Docker开发镜像向用户提供两个可配置的参数：
 
-| Argument        | Optional Values         | Default |
-|-----------------|-------------------------|---------|
-|`ANDROID_ABI`    |`armeabi-v7a, arm64-v8a` | `armeabi-v7a` |
-|`ANDROID_API`    |`>= 21` | `21` |
+<table class="docutils">
+<colgroup>
+  <col width="25%" />
+  <col width="50%" />
+  <col width="25%" />
+</colgroup>
+<thead valign="bottom">
+  <tr class="row-odd">
+  <th class="head">Argument</th>
+  <th class="head">Optional Values</th>
+  <th class="head">Default</th>
+</tr>
+</thead>
+<tbody valign="top">
+  <tr class="row-even">
+  <td>ANDROID_ABI</td>
+  <td>armeabi-v7a, arm64-v8a</td>
+  <td>armeabi-v7a</td>
+</tr>
+<tr class="row-odd">
+  <td>ANDROID_API</td>
+  <td>>= 21</td>
+  <td>21</td>
+</tr>
+</tbody>
+</table>
 
 - 编译`armeabi-v7a`，`Android API 21`的PaddlePaddle库
   ```bash

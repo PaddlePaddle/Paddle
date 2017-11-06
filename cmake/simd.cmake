@@ -1,27 +1,28 @@
 # This file is use to check all support level of AVX on your machine
 # so that PaddlePaddle can unleash the vectorization power of muticore.
 
-INCLUDE(CheckCXXSourceRuns)
-INCLUDE(CheckCXXSourceCompiles)
+include(CheckCXXSourceRuns)
+include(CheckCXXSourceCompiles)
 
-IF(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(MMX_FLAG "-mmmx")
     set(SSE2_FLAG "-msse2")
     set(SSE3_FLAG "-msse3")
-    SET(AVX_FLAG "-mavx")
-    SET(AVX2_FLAG "-mavx2")
-ELSEIF(MSVC)
+    set(AVX_FLAG "-mavx")
+    set(AVX2_FLAG "-mavx2")
+elseif(MSVC)
     set(MMX_FLAG "/arch:MMX")
     set(SSE2_FLAG "/arch:SSE2")
     set(SSE3_FLAG "/arch:SSE3")
     SET(AVX_FLAG "/arch:AVX")
     SET(AVX2_FLAG "/arch:AVX2")
-ENDIF()
+endif()
 
 set(CMAKE_REQUIRED_FLAGS_RETAINED ${CMAKE_REQUIRED_FLAGS})
 
 # Check  MMX
 set(CMAKE_REQUIRED_FLAGS ${MMX_FLAG})
+set(MMX_FOUND_EXITCODE 1 CACHE STRING "Result from TRY_RUN" FORCE)
 CHECK_CXX_SOURCE_RUNS("
 #include <mmintrin.h>
 int main()
@@ -32,6 +33,7 @@ int main()
 
 # Check SSE2
 set(CMAKE_REQUIRED_FLAGS ${SSE2_FLAG})
+set(SSE2_FOUND_EXITCODE 1 CACHE STRING "Result from TRY_RUN" FORCE)
 CHECK_CXX_SOURCE_RUNS("
 #include <emmintrin.h>
 int main()
@@ -42,6 +44,7 @@ int main()
 
 # Check SSE3
 set(CMAKE_REQUIRED_FLAGS ${SSE3_FLAG})
+set(SSE3_FOUND_EXITCODE 1 CACHE STRING "Result from TRY_RUN" FORCE)
 CHECK_CXX_SOURCE_RUNS("
 #include <pmmintrin.h>
 int main()
@@ -55,6 +58,7 @@ int main()
 
 # Check AVX
 set(CMAKE_REQUIRED_FLAGS ${AVX_FLAG})
+set(AVX_FOUND_EXITCODE 1 CACHE STRING "Result from TRY_RUN" FORCE)
 CHECK_CXX_SOURCE_RUNS("
 #include <immintrin.h>
 int main()
@@ -67,6 +71,7 @@ int main()
 
 # Check AVX 2
 set(CMAKE_REQUIRED_FLAGS ${AVX2_FLAG})
+set(AVX2_FOUND_EXITCODE 1 CACHE STRING "Result from TRY_RUN" FORCE)
 CHECK_CXX_SOURCE_RUNS("
 #include <immintrin.h>
 int main()
