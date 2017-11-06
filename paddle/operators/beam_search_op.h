@@ -1,18 +1,22 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
+
+#ifdef PADDLE_WITH_TESTING
+#include "gtest/gtest.h"
+#endif
 
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/operator.h"
@@ -21,11 +25,63 @@ namespace paddle {
 namespace operators {
 
 /*
- * This is an implementation of beam search algorithm, input the candidate ids
- * and candidate scores, it will sort and select the top beam_size candidates,
- * return the corresponding ids and scores.
+ * This is an implementation of beam search.
+ *
+ * To explain the details, lets take machine translation task for example, in
+ * this task, one source sentence is translated to multiple target sentences,
+ * during this period, one sentence will be translated to multiple translation
+ * prefixes(target sentence that have not ended), in each time step a prefix
+ * will have some candidates, input the candidate ids and their corresponding
+ * scores (probabilities), it will sort and select the top beam_size candidates
+ * for each source sentence, and store the selected candidates's score and their
+ * corresponding ids to LoDTensors.
+ *
+ * A detailed example:
+ *
+ * Input
+ *
+ * ids:
+ * LoD (should have 2 levels)
+ * first level: [0, 1, 3]
+ * second level: [0, 1, 2, 3, 4]
+ *
+ * tensor's data
+ * [
+ * [4, 2, 5]
+ * [2, 1, 3]
+ * [3, 5, 2]
+ * [8, 2, 1]
+ * ]
+ *
+ * scores:
+ * LoD same as `ids`
+ * tensor's data
+ * [
+ * [0.5, 0.3, 0.2]
+ * [0.6, 0.3, 0.1]
+ * [0.9, 0.5, 0.1]
+ * [0.7, 0.5, 0.1]
+ * ]
+ *
+ * the inputs means that there are 2 source sentences to translate, and the
+ * first source has 1 prefix, the second source has 2 prefix.
+ *
+ * lets assume beam size is 2, and the beam search's output should be
+ * LoD
+ * first level:
+ * [0, 1, 2]
+ * second level:
+ * [0, 2, 4]
+ *
+ * tensor's data
+ * [[
+ * 0.5,
+ * 0.3,
+ * 0.9,
+ * 0.7
+ * ]]
  */
-class BeamSearchAlgorithm {
+class BeamSearch {
  public:
   // TODO(superjom) make type customizable
   using id_t = size_t;
@@ -33,9 +89,8 @@ class BeamSearchAlgorithm {
   /*
    * Input the arguments that needed by this class.
    */
-  BeamSearchAlgorithm(const framework::LoDTensor& ids,
-                      const framework::LoDTensor& scores, size_t level,
-                      size_t beam_size)
+  BeamSearch(const framework::LoDTensor& ids,
+             const framework::LoDTensor& scores, size_t level, size_t beam_size)
       : beam_size_(beam_size),
         ids_(&ids),
         scores_(&scores),
@@ -84,35 +139,44 @@ class BeamSearchAlgorithm {
   };
 
   /*
-   * Collect the candidate ids that is selected by beam search and store them
+   * Collect the ids that is selected by beam search and store them
    * into a LoDTensor.
    */
-  void CollectSelectedResult(framework::LoDTensor* selected_ids,
-                             framework::LoDTensor* selected_scores);
+  void ToLoDTensor(framework::LoDTensor* selected_ids,
+                   framework::LoDTensor* selected_scores);
 
   /*
    * Transform the items into a map whose key is offset, value is the items.
    * NOTE low performance
    */
-  std::map<size_t, std::vector<Item>> CollectItems(
+  std::vector<std::vector<Item>> ToMap(
       const std::vector<std::vector<Item>>& inputs);
 
   /*
    * For each source, select top beam_size records.
    */
-  std::vector<std::vector<Item>> BeamSelectSourceItems();
+  std::vector<std::vector<Item>> SelectTopBeamSizeItems();
 
   /*
    * Get the items of next source sequence, return false if no remaining items.
    */
-  bool NextSourceItems(std::vector<Item>* items);
+  bool NextItemSet(std::vector<Item>* items);
+
+ private:
+  /* #ifdef PADDLE_WITH_TESTING */
+  /* friend class BeamSearchTestHelper; */
+  /* FRIEND_TEST(BeamSearchTestHelper, SelectTopBeamSizeItems); */
+  /* FRIEND_TEST(NextItemSet); */
+  /* FRIEND_TEST(ToMap); */
+  /* FRIEND_TEST(ToLoDTensor); */
+  /* #endif */
 
  private:
   size_t beam_size_;
   const framework::LoDTensor* ids_;
   const framework::LoDTensor* scores_;
   size_t lod_level_{0};
-  size_t seq_offset_{0};
+  size_t sent_offset_{0};
 };
 
 class BeamSearchOp : public framework::OperatorBase {
@@ -131,6 +195,7 @@ class BeamSearchOp : public framework::OperatorBase {
 
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
+    LOG(INFO) << "run beam search op";
     auto ids_var = scope.FindVar(Input("ids"));
     auto scores_var = scope.FindVar(Input("scores"));
     PADDLE_ENFORCE_NOT_NULL(ids_var);
@@ -140,7 +205,21 @@ class BeamSearchOp : public framework::OperatorBase {
     auto& scores = scores_var->Get<framework::LoDTensor>();
     size_t level = Attr<int>("level");
     size_t beam_size = Attr<int>("beam_size");
-    BeamSearchAlgorithm alg(ids, scores, level, beam_size);
+    LOG(INFO) << "init beam search";
+    BeamSearch alg(ids, scores, level, beam_size);
+
+    LOG(INFO) << "after beam search";
+    auto selected_ids_var = scope.FindVar(Output("selected_ids"));
+    auto selected_scores_var = scope.FindVar(Output("selected_scores"));
+    PADDLE_ENFORCE_NOT_NULL(selected_ids_var);
+    PADDLE_ENFORCE_NOT_NULL(selected_scores_var);
+    auto& selected_ids_tensor =
+        *selected_ids_var->GetMutable<framework::LoDTensor>();
+    auto& selected_scores_tensor =
+        *selected_scores_var->GetMutable<framework::LoDTensor>();
+    LOG(INFO) << "run beam search";
+    alg(&selected_ids_tensor, &selected_scores_tensor);
+    LOG(INFO) << "finish beam search";
   }
 };
 

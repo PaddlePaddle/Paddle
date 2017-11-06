@@ -15,137 +15,152 @@
 #include "paddle/operators/beam_search_op.h"
 
 #include <map>
+#include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
-bool BeamSearchAlgorithm::operator()(framework::LoDTensor *selected_ids,
-                                     framework::LoDTensor *selected_scores) {
-  if (framework::product(selected_ids->dims()) == 0) {
-    return false;
-  }
-
-  CollectSelectedResult(selected_ids, selected_scores);
+bool BeamSearch::operator()(framework::LoDTensor *selected_ids,
+                            framework::LoDTensor *selected_scores) {
+  ToLoDTensor(selected_ids, selected_scores);
   return true;
 }
 
-void BeamSearchAlgorithm::CollectSelectedResult(
-    framework::LoDTensor *selected_ids, framework::LoDTensor *selected_scores) {
-  auto items = BeamSelectSourceItems();
-  auto selected_items = CollectItems(items);
-  // calculate tensor shape first
+void BeamSearch::ToLoDTensor(framework::LoDTensor *selected_ids,
+                             framework::LoDTensor *selected_scores) {
+  auto items = SelectTopBeamSizeItems();
+  auto selected_items = ToMap(items);
+  // calculate the output tensor's height
   size_t num_instances = std::accumulate(
       std::begin(items), std::end(items), 0,
       [](size_t a, std::vector<Item> &b) { return a + b.size(); });
+  LOG(INFO) << "num_instances " << num_instances;
+  // the output tensor shape should be [num_instances, 1]
   auto dims = framework::make_ddim(
       std::vector<int64_t>({static_cast<int>(num_instances), 1}));
+  LOG(INFO) << "dims " << dims;
   selected_ids->Resize(dims);
   selected_scores->Resize(dims);
 
   std::map<size_t /*offset*/, std::vector<Item>> hash;
   framework::LoD new_lod;
-  std::vector<size_t> high_level;
+  LOG(INFO) << "to get mutable data, dims " << selected_ids->dims();
+  auto *ids_data = selected_ids->mutable_data<int>(platform::CPUPlace());
+  auto *scores_data =
+      selected_scores->mutable_data<float>(platform::CPUPlace());
+
+  // fill in data
   std::vector<size_t> low_level;
   size_t low_offset = 0;
-  auto *ids_data = selected_ids->data<id_t>();
-  auto *scores_data = selected_scores->data<score_t>();
-
-  for (size_t high_id = 0; high_id < ids_->NumElements(lod_level_);
-       high_id++) {  // source sentence level
-    for (size_t low_id = 0;
-         low_id < ids_->NumElements(lod_level_ + 1);  // prefix level
-         low_id++) {
-      size_t num_prefix = ids_->NumElements(lod_level_ + 1, low_id);
-      // empty prefix, should insert an empty record into the LoD
-      if (num_prefix == 0) {
-        low_level.push_back(low_offset);
-      } else {
-        // each instance will get a candidate set.
-        for (size_t i = 0; i < num_prefix; i++) {
-          auto &prefix_items = selected_items[low_offset];
-          for (auto &item : prefix_items) {
-            ids_data[low_offset] = item.id;
-            scores_data[low_offset] = item.score;
-            low_offset++;
-          }
-          low_level.push_back(low_offset);
-        }
-      }
+  for (auto &items : selected_items) {
+    low_level.push_back(low_offset);
+    for (auto &item : items) {
+      ids_data[low_offset] = item.id;
+      scores_data[low_offset] = item.score;
+      low_offset++;
     }
   }
-  // update the lowest LoD level.
-  framework::LoD lod = ids_->lod();
-  lod.back().clear();
-  for (auto offset : low_level) {
-    lod.back().push_back(offset);
-  }
+  // fill lod
+  auto abs_lod = framework::ToAbsOffset(ids_->lod());
+  auto& high_level = abs_lod[lod_level_];
+  framework::LoD lod(2);
+  lod[0].assign(high_level.begin(), high_level.end());
+  lod[1].assign(low_level.begin(), low_level.end());
   selected_ids->set_lod(lod);
   selected_scores->set_lod(lod);
 }
 
-std::map<size_t, std::vector<BeamSearchAlgorithm::Item>>
-BeamSearchAlgorithm::CollectItems(const std::vector<std::vector<Item>> &items) {
-  std::map<size_t, std::vector<BeamSearchAlgorithm::Item>> result;
-  for (size_t offset = 0; offset < items.size(); offset++) {
-    for (const auto &item : items[offset]) {
-      result[offset].push_back(item);
+std::vector<std::vector<BeamSearch::Item>> BeamSearch::ToMap(
+    const std::vector<std::vector<Item>> &items) {
+  std::vector<std::vector<Item>> result;
+  for (auto &entries : items) {
+    for (const auto &item : entries) {
+      if (item.offset >= result.size()) {
+        result.resize(item.offset + 1);
+      }
+      result[item.offset].push_back(item);
     }
   }
   return result;
 }
 
-std::vector<std::vector<BeamSearchAlgorithm::Item>>
-BeamSearchAlgorithm::BeamSelectSourceItems() {
+std::vector<std::vector<BeamSearch::Item>>
+BeamSearch::SelectTopBeamSizeItems() {
   std::vector<std::vector<Item>> result;
   std::vector<Item> items;
-  while (NextSourceItems(&items)) {
+  // for each source sentence, select the top beam_size items across all
+  // candidate sets.
+  while (NextItemSet(&items)) {
     std::nth_element(std::begin(items), std::begin(items) + beam_size_,
                      std::end(items), [](const Item &a, const Item &b) {
                        // TODO(superjom) make score's comparation customizable.
-                       return a.score < b.score;
+                       // partial sort in descending order
+                       return a.score > b.score;
                      });
+    // prune the top beam_size items.
     if (items.size() > beam_size_) {
       items.resize(beam_size_);
     }
     result.emplace_back(items);
   }
+  for (int i = 0; i < result.size(); i++) {
+    LOG(INFO) << "result " << i;
+    for (auto &item : result[i]) {
+      LOG(INFO) << "item " << item.id << " " << item.score << " "
+                << item.offset;
+    }
+  }
   return result;
 }
 
-bool BeamSearchAlgorithm::NextSourceItems(
-    std::vector<BeamSearchAlgorithm::Item> *items) {
-  if (seq_offset_ >= ids_->NumElements(lod_level_)) {
+// the candidates of a source
+bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
+  LOG(INFO) << ">> sent_offset " << sent_offset_;
+  if (sent_offset_ >= ids_->NumElements(lod_level_)) {
     return false;
   }
   // find the current candidates
   auto ids = *ids_;
   auto scores = *scores_;
-  ids.ShrinkInLevel(lod_level_, seq_offset_, seq_offset_ + 1);
-  scores.ShrinkInLevel(lod_level_, seq_offset_, seq_offset_ + 1);
-  // transform tensor to items
-  items->clear();
-  items->reserve(framework::product(ids.dims()));
 
-  PADDLE_ENFORCE_GT(ids.NumLevels(), size_t(lod_level_ + 1),
-                    "more than %d+1 LoD levels should be valid", lod_level_);
-  // traverse the lower-level elements as offsets
-  // skip the empty set first, for that will not affect the order of sort.
+  auto source_abs_two_level_lod = framework::SliceInLevel(
+      ids.lod(), lod_level_, sent_offset_, sent_offset_ + 1);
+  source_abs_two_level_lod = framework::ToAbsOffset(source_abs_two_level_lod);
+  auto abs_lod = framework::ToAbsOffset(ids.lod());
+  auto abs_offset = abs_lod[lod_level_][sent_offset_];
+  PADDLE_ENFORCE_GE(source_abs_two_level_lod.size(), 2UL);
+
+  auto *ids_data = ids.data<int>();
+  auto *scores_data = scores.data<float>();
+
   size_t instance_dim = 1;
   for (int i = 1; i < ids.dims().size(); i++) {
     instance_dim *= ids.dims()[i];
   }
-  // TODO(superjom) make the type customizable.
-  auto *ids_data = ids_->data<int>();
-  auto *scores_data = scores_->data<float>();
-  auto abs_lod = framework::ToAbsOffset(ids.lod());
-  for (size_t offset = abs_lod[lod_level_].front();
-       offset != abs_lod[lod_level_].back(); offset++) {
-    for (size_t d = 0; d < instance_dim; d++) {
-      items->emplace_back(offset, ids_data[offset + d],
-                          scores_data[offset + d]);
+
+  items->clear();
+  items->reserve(framework::product(ids.dims()));
+  LOG(INFO) << "abs_lod";
+  for (int i = 0; i < 2; i++) {
+    LOG(INFO) << "level " << i;
+    for (int j = 0; j < source_abs_two_level_lod[i].size(); j++) {
+      LOG(INFO) << abs_offset + source_abs_two_level_lod[i][j];
     }
   }
+  for (size_t offset = abs_lod[lod_level_][sent_offset_];
+       offset < abs_lod[lod_level_][sent_offset_ + 1]; offset++) {
+    for (int d = 0; d < instance_dim; d++) {
+      const size_t dim_offset = offset * instance_dim + d;
+      LOG(INFO) << "offset " << offset << " "
+                << "absoffset " << dim_offset << " ids_data "
+                << ids_data[dim_offset];
+      items->emplace_back(offset, ids_data[dim_offset],
+                          scores_data[dim_offset]);
+    }
+  }
+
+  sent_offset_++;
   return true;
 }
 
@@ -156,10 +171,14 @@ class BeamSearchProtoAndCheckerMaker
                                  framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     // inputs and outputs stored in proto
-    AddInput("ids", "the candidate ids");
-    AddInput("scores", "the scores of candidates");
-    AddOutput("selected_ids", "the selected candiates");
-    AddOutput("selected_scores", "the scores of the selected candidates");
+    AddInput("ids", "a LoDTensor of shape of [None,k]");
+    AddInput("scores",
+             "a LoDTensor that has the same shape and LoD with `ids`");
+    AddOutput("selected_ids",
+              "a LoDTensor that stores the IDs selected by beam search");
+    AddOutput(
+        "selected_scores",
+        "a LoDTensor that has the same shape and LoD with `selected_ids`");
 
     // Attributes stored in AttributeMap
     AddAttr<int>("level", "the level of LoDTensor");
