@@ -158,6 +158,45 @@ void GetFineGrainedLoDLength(const LoD& lod, size_t start_idx, size_t end_idx,
   *start_offset = start_idx;
 }
 
+void GetFineGrainedLoDLength2(const LoD& lod, size_t start_idx, size_t end_idx,
+                              size_t start_level,
+                              std::vector<std::vector<size_t>>* lod_length,
+                              size_t* start_offset) {
+  lod_length->clear();
+  for (size_t level_idx = start_level; level_idx < lod.size(); ++level_idx) {
+    std::vector<size_t> level_lens;
+    for (size_t i = start_idx; i < end_idx; ++i) {
+      LOG(INFO) << lod[level_idx][i];
+      LOG(INFO) << lod[level_idx][i + 1];
+      level_lens.push_back(lod[level_idx][i + 1] - lod[level_idx][i]);
+    }
+    lod_length->emplace_back(level_lens);
+    start_idx = lod[level_idx][start_idx];
+    end_idx = lod[level_idx][end_idx];
+  }
+  *start_offset = start_idx;
+}
+
+// void Copy(
+//   const LoDTensor& lod_tensor,
+//   const LoD& lod, size_t start_idx, size_t end_idx, size_t start_level,
+//   std::vector<LoDTensor>* out) {
+//   for (size_t level_idx = start_level; level_idx < lod.size(); ++level_idx) {
+//     // for (size_t i = start_idx; i < end_idx; ++i) {
+//     //   level_lens.push_back(lod[level_idx][i + 1] - lod[level_idx][i]);
+//     // }
+
+//     start_idx = lod[level_idx][start_idx];
+//     end_idx = lod[level_idx][end_idx];
+
+//     if (level_idx + 1 == lod.size()) {
+//       out[i].Slice().CopyFrom(lod_tensor.Slice(start_idx, end_idx))
+//       LOG(INFO) << start_idx;
+//       LOG(INFO) << end_idx;
+//     }
+//   }
+// }
+
 void AppendLoD(LoD* lod, const std::vector<std::vector<size_t>>& lod_length) {
   PADDLE_ENFORCE_EQ(
       lod->size(), lod_length.size(),
