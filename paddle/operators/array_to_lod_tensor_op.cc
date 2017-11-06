@@ -91,8 +91,23 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
                             type_sz * start_offset;
         size_t cpy_len =
             type_sz * (lod_length.back().back() - lod_length.back().front());
-        memory::Copy(place, reinterpret_cast<void *>(dst_ptr), place,
-                     reinterpret_cast<const void *>(src_ptr), cpy_len);
+        if (platform::is_cpu_place(place)) {
+          auto cpu_place = boost::get<platform::CPUPlace>(place);
+          memory::Copy(cpu_place, reinterpret_cast<void *>(dst_ptr), cpu_place,
+                       reinterpret_cast<const void *>(src_ptr), cpy_len);
+        } else if (platform::is_gpu_place(place)) {
+#ifdef PADDLE_WITH_CUDA
+          auto gpu_place = boost::get<platform::GPUPlace>(place);
+          memory::Copy(
+              gpu_place, reinterpret_cast<void *>(dst_ptr), gpu_place,
+              reinterpret_cast<const void *>(src_ptr), cpy_len,
+              reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx)
+                  .stream());
+#else
+          PADDLE_THROW("GPU not supported");
+#endif
+        }
+
         dst_ptr += cpy_len;
       }
     }
