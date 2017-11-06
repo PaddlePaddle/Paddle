@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/math/math_function.h"
+#include "paddle/operators/math/sequence_pooling.h"
 
 namespace paddle {
 namespace operators {
@@ -34,7 +35,7 @@ class SequencePoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* out = context.Output<Tensor>("Out");
     std::string pooltype = context.Attr<std::string>("pooltype");
 
     auto dims = in->dims();
@@ -53,6 +54,16 @@ class SequencePoolKernel : public framework::OpKernel<T> {
     auto lod_level_0 = lod[0];
 
     out->mutable_data<T>(context.GetPlace());
+
+    if (pooltype == "MAX") {
+      math::MaxSeqPoolFunctor<Place, T> max_pool;
+      auto* index = context.Output<Tensor>("MaxIndex");
+      index->Resize({dims});
+      index->mutable_data<int>(context.GetPlace());
+      max_pool(context.device_context(), *in, out, index);
+      return;
+    }
+
     auto place = context.GetEigenDevice<Place>();
     for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
       Tensor in_t = in->Slice(static_cast<int>(lod_level_0[i]),
@@ -69,8 +80,6 @@ class SequencePoolKernel : public framework::OpKernel<T> {
       } else if (pooltype == "SQRT") {
         out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}})) /
                               std::sqrt(static_cast<T>(h));
-      } else if (pooltype == "MAX") {
-        out_e.device(place) = in_e.maximum(Eigen::array<int, 1>({{0}}));
       } else if (pooltype == "LAST") {
         out_e.device(place) = in_e.chip(h - 1, 0);
       } else if (pooltype == "FIRST") {
@@ -87,8 +96,8 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
+    auto* out_g = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* in_g = context.Output<LoDTensor>(framework::GradVarName("X"));
-    auto* out_g = context.Input<LoDTensor>(framework::GradVarName("Out"));
     std::string pooltype = context.Attr<std::string>("pooltype");
 
     auto dims = in->dims();
@@ -96,6 +105,14 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
     int64_t w = in->numel() / dims[0];
 
     in_g->mutable_data<T>(context.GetPlace());
+
+    if (pooltype == "MAX") {
+      math::MaxSeqPoolGradFunctor<Place, T> max_pool_grad;
+      auto* index = context.Input<Tensor>("MaxIndex");
+      max_pool_grad(context.device_context(), *out_g, *index, in_g);
+      return;
+    }
+
     if (pooltype == "LAST" || pooltype == "FIRST") {
       // set X@Grad be zero at first when pooltype is LAST/FIRST
       math::SetConstant<Place, T> functor;
@@ -118,20 +135,6 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
       } else if (pooltype == "SQRT") {
         in_g_e.device(place) =
             (out_g_e / std::sqrt(static_cast<T>(h))).broadcast(bcast);
-      } else if (pooltype == "MAX") {
-        auto in_t =
-            in->Slice(static_cast<int>(lod[i]), static_cast<int>(lod[i + 1]));
-        Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>
-            in_t_map(in_t.data<T>(), h, w);
-        int row_id;
-        Eigen::array<int, 2> extents{{1, 1}};
-        for (int col_id = 0; col_id < w; col_id++) {
-          in_t_map.col(col_id).maxCoeff(&row_id);
-          Eigen::array<int, 2> in_offsets{{row_id, col_id}};
-          Eigen::array<int, 2> out_offsets{{0, col_id}};
-          in_g_e.slice(in_offsets, extents).device(place) =
-              out_g_e.slice(out_offsets, extents);
-        }
       } else if (pooltype == "LAST") {
         in_g_e.chip(h - 1, 0).device(place) = out_g_e;
       } else if (pooltype == "FIRST") {
