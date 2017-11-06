@@ -198,12 +198,12 @@ namespace ops = paddle::operators;
 REGISTER_OP(conv3d, ops::ConvOp, ops::Conv3DOpMaker, conv3d_grad,
             ops::ConvOpGrad);
 
+REGISTER_OP_CPU_KERNEL(conv2d,
+                       ops::GemmConvKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    conv2d, ops::GemmConv2DKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(
-    conv2d_grad, ops::GemmConvGrad2DKernel<paddle::platform::CPUPlace, float>);
+    conv2d_grad, ops::GemmConvGradKernel<paddle::platform::CPUPlace, float>);
 
+REGISTER_OP_CPU_KERNEL(conv3d,
+                       ops::GemmConvKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    conv3d, ops::GemmConv3DKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(
-    conv3d_grad, ops::GemmConvGrad3DKernel<paddle::platform::CPUPlace, float>);
+    conv3d_grad, ops::GemmConvGradKernel<paddle::platform::CPUPlace, float>);

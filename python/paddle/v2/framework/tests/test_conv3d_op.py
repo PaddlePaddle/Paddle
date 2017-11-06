@@ -64,20 +64,20 @@ class TestConv3dOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            set(['Input', 'Filter']), 'Output', max_relative_error=0.05)
+            set(['Input', 'Filter']), 'Output', max_relative_error=0.03)
 
     def test_check_grad_no_filter(self):
         self.check_grad(
             ['Input'],
             'Output',
-            max_relative_error=0.05,
+            max_relative_error=0.03,
             no_grad_set=set(['Filter']))
 
     def test_check_grad_no_input(self):
         self.check_grad(
             ['Filter'],
             'Output',
-            max_relative_error=0.05,
+            max_relative_error=0.03,
             no_grad_set=set(['Input']))
 
     def init_test_case(self):
