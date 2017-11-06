@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include <type_traits>
 
+// TODO(guosheng): refine code style in gru_kernel
 namespace paddle {
 namespace operators {
 namespace math {

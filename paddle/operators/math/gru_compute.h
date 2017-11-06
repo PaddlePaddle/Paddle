@@ -19,6 +19,7 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+// TODO(guosheng): refine code style in gru_compute
 template <typename T>
 struct hl_gru_value {
   T *gateWeight;
