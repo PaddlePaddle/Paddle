@@ -100,6 +100,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         place = self.place()
         program = Program()
         x = layers.data(name='x', shape=[10], main_program=program)
+        x.persistable = True
         table = layers.lod_rank_table(x, level=level, main_program=program)
         array = layers.lod_tensor_to_array(x, table, main_program=program)
         array.persistable = True
@@ -112,7 +113,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         var = scope.find_var(array.name)
         array = var.get_lod_tensor_array()
         self.check_array_same(array, expect_array, expect_lod)
-        self.check_tensor_same(scope.find_var(x.name).get_tensor(), tensor)
+        self.check_tensor_same(scope.find_var(result.name).get_tensor(), tensor)
 
     def check_array_same(self, array, expect_tensor, expect_lod):
         self.assertEqual(len(expect_tensor), len(array))
@@ -122,8 +123,9 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
             self.assertEqual(exp_lod, array[i].get_lod())
 
     def check_tensor_same(self, actual, expect):
-        self.assertEqual(numpy.array(actual), numpy.array(expect))
-        self.assertEqual(actual.get_lod(), expect.get_lod())
+        self.assertTrue(
+            numpy.allclose(numpy.array(actual), numpy.array(expect)))
+        self.assertEqual(actual.lod(), expect.lod())
 
 
 if __name__ == '__main__':
