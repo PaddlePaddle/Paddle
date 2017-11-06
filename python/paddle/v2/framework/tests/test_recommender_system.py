@@ -4,13 +4,13 @@ import paddle.v2.framework.nets as nets
 import paddle.v2.framework.core as core
 import paddle.v2.framework.optimizer as optimizer
 
-from paddle.v2.framework.framework import Program, g_program
+from paddle.v2.framework.framework import Program, g_main_program
 from paddle.v2.framework.executor import Executor
 
 import numpy as np
 
-init_program = Program()
-program = Program()
+startup_program = Program()
+main_program = Program()
 is_sparse = True
 use_gpu = False
 BATCH_SIZE = 256
@@ -26,8 +26,8 @@ def get_usr_combined_features():
         name='user_id',
         shape=[1],
         data_type='int64',
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
 
     usr_emb = layers.embedding(
         input=uid,
@@ -35,13 +35,13 @@ def get_usr_combined_features():
         size=[USR_DICT_SIZE, 32],
         param_attr={'name': 'user_table'},
         is_sparse=is_sparse,
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
 
     usr_fc = layers.fc(input=usr_emb,
                        size=32,
-                       program=program,
-                       init_program=init_program)
+                       main_program=main_program,
+                       startup_program=startup_program)
 
     USR_GENDER_DICT_SIZE = 2
 
@@ -49,75 +49,75 @@ def get_usr_combined_features():
         name='gender_id',
         shape=[1],
         data_type='int64',
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
 
     usr_gender_emb = layers.embedding(
         input=usr_gender_id,
         size=[USR_GENDER_DICT_SIZE, 16],
         param_attr={'name': 'gender_table'},
         is_sparse=is_sparse,
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
 
     usr_gender_fc = layers.fc(input=usr_gender_emb,
                               size=16,
-                              program=program,
-                              init_program=init_program)
+                              main_program=main_program,
+                              startup_program=startup_program)
 
     USR_AGE_DICT_SIZE = len(paddle.dataset.movielens.age_table)
     usr_age_id = layers.data(
         name='age_id',
         shape=[1],
         data_type="int64",
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
 
     usr_age_emb = layers.embedding(
         input=usr_age_id,
         size=[USR_AGE_DICT_SIZE, 16],
         is_sparse=is_sparse,
         param_attr={'name': 'age_table'},
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
 
     usr_age_fc = layers.fc(input=usr_age_emb,
                            size=16,
-                           program=program,
-                           init_program=init_program)
+                           main_program=main_program,
+                           startup_program=startup_program)
 
     USR_JOB_DICT_SIZE = paddle.dataset.movielens.max_job_id() + 1
     usr_job_id = layers.data(
         name='job_id',
         shape=[1],
         data_type="int64",
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
 
     usr_job_emb = layers.embedding(
         input=usr_job_id,
         size=[USR_JOB_DICT_SIZE, 16],
         param_attr={'name': 'job_table'},
         is_sparse=is_sparse,
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
 
     usr_job_fc = layers.fc(input=usr_job_emb,
                            size=16,
-                           program=program,
-                           init_program=init_program)
+                           main_program=main_program,
+                           startup_program=startup_program)
 
     concat_embed = layers.concat(
         input=[usr_fc, usr_gender_fc, usr_age_fc, usr_job_fc],
         axis=1,
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
 
     usr_combined_features = layers.fc(input=concat_embed,
                                       size=200,
                                       act="tanh",
-                                      program=program,
-                                      init_program=init_program)
+                                      main_program=main_program,
+                                      startup_program=startup_program)
 
     return usr_combined_features
 
@@ -130,8 +130,8 @@ def get_mov_combined_features():
         name='movie_id',
         shape=[1],
         data_type='int64',
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
 
     mov_emb = layers.embedding(
         input=mov_id,
@@ -139,13 +139,13 @@ def get_mov_combined_features():
         size=[MOV_DICT_SIZE, 32],
         param_attr={'name': 'movie_table'},
         is_sparse=is_sparse,
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
 
     mov_fc = layers.fc(input=mov_emb,
                        size=32,
-                       program=program,
-                       init_program=init_program)
+                       main_program=main_program,
+                       startup_program=startup_program)
 
     CATEGORY_DICT_SIZE = len(paddle.dataset.movielens.movie_categories())
 
@@ -153,21 +153,21 @@ def get_mov_combined_features():
         name='category_id',
         shape=[1],
         data_type='int64',
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
 
     mov_categories_emb = layers.embedding(
         input=category_id,
         size=[CATEGORY_DICT_SIZE, 32],
         is_sparse=is_sparse,
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
 
     mov_categories_hidden = layers.sequence_pool(
         input=mov_categories_emb,
         pool_type="sum",
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
 
     MOV_TITLE_DICT_SIZE = len(paddle.dataset.movielens.get_movie_title_dict())
 
@@ -175,15 +175,15 @@ def get_mov_combined_features():
         name='movie_title',
         shape=[1],
         data_type='int64',
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
 
     mov_title_emb = layers.embedding(
         input=mov_title_id,
         size=[MOV_TITLE_DICT_SIZE, 32],
         is_sparse=is_sparse,
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
 
     mov_title_conv = nets.sequence_conv_pool(
         input=mov_title_emb,
@@ -191,21 +191,21 @@ def get_mov_combined_features():
         filter_size=3,
         act="tanh",
         pool_type="sum",
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
 
     concat_embed = layers.concat(
         input=[mov_fc, mov_categories_hidden, mov_title_conv],
         axis=1,
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
 
     # FIXME(dzh) : need tanh operator
     mov_combined_features = layers.fc(input=concat_embed,
                                       size=200,
                                       act="tanh",
-                                      program=program,
-                                      init_program=init_program)
+                                      main_program=main_program,
+                                      startup_program=startup_program)
 
     return mov_combined_features
 
@@ -218,24 +218,26 @@ def model():
     inference = layers.cos_sim(
         X=usr_combined_features,
         Y=mov_combined_features,
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
 
     label = layers.data(
         name='score',
         shape=[1],
         data_type='float32',
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
 
     square_cost = layers.square_error_cost(
         input=inference,
         label=label,
-        program=program,
-        init_program=init_program)
+        main_program=main_program,
+        startup_program=startup_program)
 
     avg_cost = layers.mean(
-        x=square_cost, program=program, init_program=init_program)
+        x=square_cost,
+        main_program=main_program,
+        startup_program=startup_program)
 
     return avg_cost
 
@@ -243,8 +245,8 @@ def model():
 def main():
     cost = model()
     sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.2)
-    opts = sgd_optimizer.minimize(cost, init_program=init_program)
-    block = program.block(0)
+    opts = sgd_optimizer.minimize(cost, startup_program=startup_program)
+    block = main_program.block(0)
 
     if use_gpu:
         place = core.GPUPlace(0)
@@ -252,7 +254,7 @@ def main():
         place = core.CPUPlace()
 
     exe = Executor(place)
-    exe.run(init_program, feed={}, fetch_list=[])
+    exe.run(startup_program, feed={}, fetch_list=[])
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
@@ -301,7 +303,7 @@ def main():
     PASS_NUM = 100
     for pass_id in range(PASS_NUM):
         for data in train_reader():
-            outs = exe.run(program,
+            outs = exe.run(main_program,
                            feed=func_feed(feeding, data),
                            fetch_list=[cost])
             out = np.array(outs[0])

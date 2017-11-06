@@ -26,9 +26,9 @@ class RankLossOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     // input check
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) shouldn't be null");
-    PADDLE_ENFORCE(ctx->HasInput("Left"), "Input(Left) shouldn't be null");
-    PADDLE_ENFORCE(ctx->HasInput("Right"), "Input(Right) shouldn't be null");
+    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) shouldn't be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Left"), "Input(Left) shouldn't be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Right"), "Input(Right) shouldn't be null.");
 
     auto label_dims = ctx->GetInputDim("Label");
     auto left_dims = ctx->GetInputDim("Left");
@@ -50,32 +50,32 @@ class RankLossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Label",
              "The label indicating A ranked higher than B or not, row vector.");
     AddInput("Left", "The output of RankNet for doc A, vector.");
-    AddInput("Right", "The output of RankNet for doc B, vetor");
+    AddInput("Right", "The output of RankNet for doc B, vetor.");
     AddOutput("Out", "The output loss of RankLoss operator, vector.");
-    AddComment(R"DOC(RankLoss operator
+    AddComment(R"DOC(
+RankLoss Operator.
 
-Rank loss operator for RankNet[1]. RankNet is a pairwise ranking model with
+RankLoss operator for RankNet
+(http://icml.cc/2015/wp-content/uploads/2015/06/icml_ranking.pdf). 
+RankNet is a pairwise ranking model with
 one training sample consisting of a pair of doc A and B, and the label P
 indicating that A is ranked higher than B or not:
 
 P = {0, 1} or {0, 0.5, 1}, where 0.5 means no information about the rank of
 the input pair.
 
-The RankLoss operator contains three inputs: Left (o_i), Right (o_j) and Label
-(P_{i,j}), which represent the output of RankNet for two docs and the label
-respectively, and yields the rank loss C_{i,j} by following the expression
+The RankLoss operator takes three inputs: Left (o_i), Right (o_j) and Label
+(P_{i,j}), which represent the output of RankNet for the two docs and the label, 
+respectively, and yields the rank loss C_{i,j} using the following equation:
 
-\f[
+\f$$
   C_{i,j} = -\tilde{P_{ij}} * o_{i,j} + log(1 + e^{o_{i,j}}) \\
   o_{i,j} =  o_i - o_j  \\
   \tilde{P_{i,j}} = \left \{0, 0.5, 1 \right \} \ or \ \left \{0, 1 \right \}
-\f]
+\f$$
 
 The operator can take inputs of one sample or in batch.
 
-[1]. Chris Burges, Tal Shaked, Erin Renshaw, et al. Learning to
-     Rank using Gradient Descent.
-     http://icml.cc/2015/wp-content/uploads/2015/06/icml_ranking.pdf
 )DOC");
   }
 };
