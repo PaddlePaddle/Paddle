@@ -103,7 +103,7 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("H0",
              "(Tensor, optional) the initial hidden state is an optional "
              "input. This is a tensor with shape (N x D), where N is the "
-             "batch size, D is the hidden size.")
+             "batch size and D is the hidden size.")
         .AsDispensable();
     AddInput("C0",
              "(Tensor, optional) the initial cell state is an optional "
@@ -134,84 +134,81 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("BatchGate",
               "(LoDTensor) This LoDTensor contains input gate, forget gate "
               "and output gate after the nonlinear computation. This "
-              "LoDTensor has the same shape with the reorganized input, which "
+              "LoDTensor has the same shape as the reorganized input, which "
               "is also be called batch input. The LoD size is 2. The first "
               "LoD is the batch offsets and the second LoD contains the "
               "indexes, which denote the position of reorganized sequence "
               "in the raw input.")
         .AsIntermediate();
     AddOutput("BatchCellPreAct",
-              "(LoDTensor) This LoDTensor is got in the forward and used "
+              "(LoDTensor) This LoDTensor is obtained in the forward and used "
               "in the backward.")
         .AsIntermediate();
     AddAttr<bool>("usePeepholes",
-                  "(bool, defalut: True) "
+                  "(bool, default True) "
                   "whether to enable diagonal/peephole connections.")
         .SetDefault(true);
     AddAttr<bool>("isReverse",
-                  "(bool, defalut: False) "
+                  "(bool, default False) "
                   "whether to compute reversed LSTM.")
         .SetDefault(false);
     AddAttr<std::string>(
         "gateActivation",
-        "(string, default: sigmoid)"
+        "(string, default sigmoid)"
         "The activation for input gate, forget gate and output "
         "gate, `sigmoid` by default.")
         .SetDefault("sigmoid");
     AddAttr<std::string>("cellActivation",
-                         "(string, default: tanh)"
+                         "(string, default tanh)"
                          "The activation for cell output, `tanh` by defalut.")
         .SetDefault("tanh");
     AddAttr<std::string>("candidateActivation",
-                         "(string, default: tanh)"
+                         "(string, default tanh)"
                          "The activation for candidate hidden state, "
                          "`tanh` by default.")
         .SetDefault("tanh");
-    AddComment(R"DOC(Long-Short Term Memory (LSTM) Operator
+    AddComment(R"DOC(
+Long-Short Term Memory (LSTM) Operator.
 
-The defalut implementation is diagonal/peephole connection [1], the formula is
-as follows
+The defalut implementation is diagonal/peephole connection 
+(https://arxiv.org/pdf/1402.1128.pdf), the formula is as follows:
 
-    i_t = \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + W_{ic}c_{t-1} + b_i)
+$$
+i_t = \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + W_{ic}c_{t-1} + b_i) \\
 
-    f_t = \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + W_{fc}c_{t-1} + b_f)
+f_t = \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + W_{fc}c_{t-1} + b_f) \\
 
-    \tilde{c_t} = act_g(W_{cx}x_t + W_{ch}h_{t-1} + b_c)
+\tilde{c_t} = act_g(W_{cx}x_t + W_{ch}h_{t-1} + b_c) \\
 
-    o_t = \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + W_{oc}c_t + b_o)
+o_t = \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + W_{oc}c_t + b_o) \\
 
-    c_t = f_t ⊙ c_{t-1} + i_t ⊙ \tilde{c_t}
+c_t = f_t \odot c_{t-1} + i_t \odot \tilde{c_t} \\
 
-    h_t = o_t ⊙ act_h(c_t)
+h_t = o_t \odot act_h(c_t)
+$$
 
 where the W terms denote weight matrices (e.g. \f$W_{xi}\f$ is the matrix
 of weights from the input gate to the input), \f$W_{ic}, W_{fc}, W_{oc}\f$
-are diagonal weight matrices for peephole connections. In our implenmention,
-We use vectors to reprenset these diagonal weight matrices. The b terms
+are diagonal weight matrices for peephole connections. In our implementation,
+we use vectors to reprenset these diagonal weight matrices. The b terms
 denote bias vectors (\f$b_i\f$ is the input gate bias vector), \f$\sigma\f$
-is the non-line actications, such as logistic sigmoid function, and
-\f$i, f, o\f$ and \f$c\f$ are respectively the input gate, forget gate,
-output gate and cell activation vectors, all of which are the same size as
+is the non-line activations, such as logistic sigmoid function, and
+\f$i, f, o\f$ and \f$c\f$ are the input gate, forget gate, output gate,
+and cell activation vectors, respectively, all of which have the same size as
 the cell output activation vector \f$h\f$.
 
-The ⊙ is the element-wise product of the vectors, \f$act_g\f$ and \f$act_h\f$
-are the cell input and cell output activation functions, `tanh` is usually
+The \f$\odot\f$ is the element-wise product of the vectors. \f$act_g\f$ and \f$act_h\f$
+are the cell input and cell output activation functions and `tanh` is usually
 used for them. \f$\tilde{c_t}\f$ is also called candidate hidden state,
 which is computed based on the current input and the previous hidden state.
 
-Set `usePeepholes` False to disable peephole connection [2]. The formula
+Set usePeepholes False to disable peephole connection 
+(http://www.bioinf.jku.at/publications/older/2604.pdf). The formula
 is omitted here.
 
-@note These \f$W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}\f$
-operations on the input x_{t} were NOT included in this operator.
+Note that these \f$W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}\f$
+operations on the input \f$x_{t}\f$ are NOT included in this operator.
 Users can choose to use fully-connect operator before LSTM operator.
-
-[1] Hasim Sak, Andrew Senior, and Francoise Beaufays. Long short-term memory
-recurrent neural network architectures for large scale acoustic modeling.
-INTERSPEECH, 2014.
-
-[2] S. Hochreiter and J. Schmidhuber. Long Short-Term Memory.
-Neural Computation, 9(8):1735-1780, 1997.
 
 )DOC");
   }

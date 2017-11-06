@@ -99,17 +99,17 @@ class RecurrentOpTest1(unittest.TestCase):
     batch_size = 1
     sent_len = 1
 
-    def init_program(self):
-        self.program = Program()
-        self.init_program = Program()
+    def setup_program(self):
+        self.main_program = Program()
+        self.startup_program = Program()
         self.p_info = {
-            "program": self.program,
-            "init_program": self.init_program
+            "main_program": self.main_program,
+            "startup_program": self.startup_program
         }
         self.place = core.CPUPlace()
 
     def setUp(self):
-        self.init_program()
+        self.setup_program()
         self.data_field = {"x", "h_boot"}
 
         self.input_shape = (self.sent_len, self.batch_size, self.input_dim)
@@ -125,13 +125,15 @@ class RecurrentOpTest1(unittest.TestCase):
             name='x',
             append_batch_size=False,
             **self.p_info)
+        x.stop_gradient = False
         h_boot = data(
             shape=[self.input_dim],
             data_type='float32',
             name='h_boot',
             **self.p_info)
+        h_boot.stop_gradient = False
 
-        rnn = StaticRNN(program=self.program)
+        rnn = StaticRNN(main_program=self.main_program)
         with rnn.step():
             h_pre = rnn.memory(init=h_boot)
             x_t = rnn.step_input(x)
@@ -153,7 +155,7 @@ class RecurrentOpTest1(unittest.TestCase):
             for x in self.data_field
         }
         exe = Executor(self.place)
-        out = exe.run(self.program,
+        out = exe.run(self.main_program,
                       feed=self.feed_map,
                       fetch_list=[self.output])
 
@@ -165,12 +167,14 @@ class RecurrentOpTest1(unittest.TestCase):
             for x in self.data_field
         }
         fetch_list = [
-            self.program.global_block().var(x + "@GRAD")
+            self.main_program.global_block().var(x + "@GRAD")
             for x in self.data_field
         ]
 
         exe = Executor(self.place)
-        return exe.run(self.program, feed=self.feed_map, fetch_list=fetch_list)
+        return exe.run(self.main_program,
+                       feed=self.feed_map,
+                       fetch_list=fetch_list)
 
     def test_backward(self):
         self.check_forward()
@@ -237,7 +241,7 @@ class RecurrentOpTest2(RecurrentOpTest1):
     sent_len = 2
 
     def setUp(self):
-        self.init_program()
+        self.setup_program()
 
         self.data_field = {"x", "h_boot", "W", "U"}
 
@@ -254,13 +258,15 @@ class RecurrentOpTest2(RecurrentOpTest1):
             name='x',
             append_batch_size=False,
             **self.p_info)
+        x.stop_gradient = False
         h_boot = data(
             shape=[self.input_dim],
             data_type='float32',
             name='h_boot',
             **self.p_info)
+        h_boot.stop_gradient = False
 
-        rnn = StaticRNN(program=self.program)
+        rnn = StaticRNN(main_program=self.main_program)
         with rnn.step():
             h_pre = rnn.memory(init=h_boot)
             x_t = rnn.step_input(x)
@@ -333,7 +339,7 @@ class RecurrentOpTest3(RecurrentOpTest1):
     sent_len = 2
 
     def setUp(self):
-        self.init_program()
+        self.setup_program()
 
         self.data_field = {"x", "h_boot1", "h_boot2"}
 
@@ -351,20 +357,23 @@ class RecurrentOpTest3(RecurrentOpTest1):
             name='x',
             append_batch_size=False,
             **self.p_info)
+        x.stop_gradient = False
         h_boot1 = data(
             shape=[self.batch_size, self.input_dim],
             data_type='float32',
             name='h_boot1',
             append_batch_size=False,
             **self.p_info)
+        h_boot1.stop_gradient = False
         h_boot2 = data(
             shape=[self.batch_size, self.input_dim],
             data_type='float32',
             name='h_boot2',
             append_batch_size=False,
             **self.p_info)
+        h_boot2.stop_gradient = False
 
-        rnn = StaticRNN(program=self.program)
+        rnn = StaticRNN(main_program=self.main_program)
         with rnn.step():
             h_pre1 = rnn.memory(init=h_boot1)
             h_pre2 = rnn.memory(init=h_boot2)
