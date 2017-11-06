@@ -1,5 +1,5 @@
 import paddle.v2.framework.core as core
-from paddle.v2.framework.framework import Block, Program
+from paddle.v2.framework.framework import Block, Program, g_main_program
 
 g_scope = core.Scope()
 
@@ -18,7 +18,7 @@ class Executor(object):
         self.executor = core.Executor(act_places)
 
     def run(self,
-            program,
+            program=None,
             feed=None,
             fetch_list=None,
             feed_var_name='feed',
@@ -28,6 +28,9 @@ class Executor(object):
             feed = {}
         if fetch_list is None:
             fetch_list = []
+
+        if program is None:
+            program = g_main_program
 
         if not isinstance(program, Program):
             raise TypeError()
