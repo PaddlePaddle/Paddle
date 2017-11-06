@@ -77,7 +77,12 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     framework::LoD *out_lod = out->mutable_lod();
     out_lod->clear();
     size_t out_offset = 0;
+    auto prefix_lod = rank_table.coarse_lod();
+    prefix_lod.emplace_back();
+    auto &cur_level_lod = prefix_lod.back();
+    cur_level_lod.push_back(0);
     for (size_t idx : table_item_idx) {
+      cur_level_lod.push_back(cur_level_lod.back() + table_items[idx].length);
       for (size_t x_idx = 0; x_idx < table_items[idx].length; ++x_idx) {
         std::vector<std::vector<size_t>> lod_length;
         size_t start_offset;
@@ -94,8 +99,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
         out_offset += len;
       }
     }
-    out_lod->insert(out_lod->begin(), rank_table.coarse_lod().begin(),
-                    rank_table.coarse_lod().end());
+    out_lod->insert(out_lod->begin(), prefix_lod.begin(), prefix_lod.end());
   }
 };
 
