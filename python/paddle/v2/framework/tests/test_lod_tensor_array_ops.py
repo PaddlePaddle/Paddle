@@ -105,14 +105,13 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         array = layers.lod_tensor_to_array(x, table, main_program=program)
         array.persistable = True
 
-        # result = layers.array_to_lod_tensor(array, table, main_program=program)
-        # result.persistable = True
+        result = layers.array_to_lod_tensor(array, table, main_program=program)
+        result.persistable = True
         exe = Executor(place)
         scope = core.Scope()
         exe.run(program, feed={'x': tensor}, scope=scope)
         var = scope.find_var(array.name)
         array = var.get_lod_tensor_array()
-        exit(0)
         self.check_array_same(array, expect_array, expect_lod)
         self.check_tensor_same(scope.find_var(x.name).get_tensor(), tensor)
 
