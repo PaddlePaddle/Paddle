@@ -93,6 +93,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
         // Append lod
         framework::AppendLoD(out_lod, lod_length);
         // Copy data
+        PADDLE_ENFORCE_GE(end_offset, start_offset);
         size_t len = end_offset - start_offset;
         if (len == 0) {
           continue;
