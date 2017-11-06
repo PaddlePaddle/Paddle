@@ -11,6 +11,8 @@ When high precision computation is not required, using float16 data type could p
 
 A brief survey of float16 support on different hardwares can be found [here](https://github.com/PaddlePaddle/Paddle/issues/4853). A brief survey of existing float16 implementations can be found [here](https://github.com/Xreki/Xreki.github.io/blob/master/multi_data_types_in_dl_framework/ppt/float16_and_quantized_type.md). 
 
+## Survey of current float16 support
+### 
 There are various natively supported float16 implementations on different hardwares/linear algebra libraries including half on cuda, float16_t on ARM processor, and Eigen::half on Eigen.
 
 The goal of float16 is to serve as a key for the executor to find and run the correct version of operator kernel compute method specialized for float16. It should be compatible with half on cuda, float16_t on ARM, and Eigen::half on Eigen to make writing customized float16 kernels easier. 
@@ -34,7 +36,7 @@ To support the above features, two fundamental conversion functions are provided
 float16 float_to_half_rn(float f);  // convert to half precision in round-to-nearest-even mode
 float half_to_float(float16 h);
 ```
-which provides one-to-one conversion between float32 and float16. These twos functions will do different conversion routines based on the current hardware. CUDA/ARM instrinsics will be used when the corresonding hardware is available. When the hardware falls back to non-ARM cpu, software emulation will be performed to do the conversion.
+which provides one-to-one conversion between float32 and float16. These twos functions will do different conversion routines based on the current hardware. CUDA/ARM instrinsics will be used when the corresonding hardware is available. If the hardware or compiler level does not support float32 to float16 conversion, software emulation will be performed to do the conversion.
 
 ## To do
 After float16 class is available, some of the future items are below:
