@@ -37,22 +37,6 @@ add_test(NAME test_CompareTwoNets
             --config_file_a=trainer/tests/sample_trainer_config_qb_rnn.conf --config_file_b=trainer/tests/sample_trainer_config_rnn.conf
     WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
 
-################ test_CompareMKLDNNandCPU ######################
-if(WITH_MKLDNN)
-  macro(gen_command VAR_NAME CONFIG_FILE)
-    set(${VAR_NAME} "${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh" "-d" "${PADDLE_SOURCE_DIR}/python/"
-                    "${CMAKE_CURRENT_BINARY_DIR}/test_CompareMKLDNNandCPU --use_gpu=False"
-                    "--config_file_a=trainer/tests/${CONFIG_FILE} --use_mkldnn_a=True"
-                    "--config_file_b=trainer/tests/${CONFIG_FILE} --use_mkldnn_b=False"
-                    "WORKING_DIRECTORY" "${PADDLE_SOURCE_DIR}/paddle/")
-  endmacro()
-  add_unittest_without_exec(test_CompareMKLDNNandCPU test_CompareTwoNets.cpp)
-  gen_command(compare_simple_net "sample_trainer_config_simple_net.conf")
-  gen_command(compare_branch_net "sample_trainer_config_branch_net.conf")
-  add_test(NAME test_CompareMKLDNNandCPU_simple_net COMMAND ${compare_simple_net})
-  add_test(NAME test_CompareMKLDNNandCPU_branch_net COMMAND ${compare_branch_net})
-endif()
-
 ############### test_CompareTwoOpts ###################
 add_unittest_without_exec(test_CompareTwoOpts
     test_CompareTwoOpts.cpp)

@@ -36,6 +36,22 @@ struct SelectedRowsAddTensor {
                   const framework::Tensor& input2, framework::Tensor* output);
 };
 
+// input2 = input1 + input2
+template <typename Place, typename T>
+struct SelectedRowsAddTo {
+  void operator()(const platform::DeviceContext& context,
+                  const framework::SelectedRows& input1,
+                  const int64_t input2_offset, framework::SelectedRows* input2);
+};
+
+// input2 = input1 + input2
+template <typename Place, typename T>
+struct SelectedRowsAddToTensor {
+  void operator()(const platform::DeviceContext& context,
+                  const framework::SelectedRows& input1,
+                  framework::Tensor* input2);
+};
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

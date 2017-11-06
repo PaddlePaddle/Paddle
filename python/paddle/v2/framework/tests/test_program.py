@@ -2,35 +2,35 @@ import unittest
 
 import paddle.v2.framework.core as core
 from paddle.v2.framework.framework import Program
-from paddle.v2.framework.framework import g_program
+from paddle.v2.framework.framework import g_main_program
 
 
 class TestProgram(unittest.TestCase):
     def test_program(self):
-        b = g_program.current_block()
+        b = g_main_program.current_block()
         self.assertEqual(-1, b.parent_idx)
         self.assertEqual(0, b.idx)
 
-        b = g_program.create_block()
+        b = g_main_program.create_block()
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
 
-        b = g_program.create_block()
+        b = g_main_program.create_block()
         self.assertEqual(2, b.idx)
         self.assertEqual(1, b.parent_idx)
 
-        g_program.rollback()
+        g_main_program.rollback()
 
-        b = g_program.current_block()
+        b = g_main_program.current_block()
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
 
-        b = g_program.create_block()
+        b = g_main_program.create_block()
         self.assertEqual(3, b.idx)
         self.assertEqual(1, b.parent_idx)
 
-        g_program.rollback()
-        b = g_program.current_block()
+        g_main_program.rollback()
+        b = g_main_program.current_block()
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
 
@@ -51,6 +51,25 @@ class TestProgram(unittest.TestCase):
         # of variable could be changed.
         print prog
         print prog.clone()
+
+    def test_parse_program_from_string(self):
+        prog = Program()
+
+        x = prog.global_block().create_var(
+            name='X', shape=[1000, 784], dtype='float32')
+
+        y = prog.global_block().create_var(
+            name='Y', shape=[784, 100], dtype='float32')
+        out = prog.global_block().create_var(name='Out', dtype='float32')
+        prog.global_block().append_op(
+            type="mul", inputs={'X': [x],
+                                'Y': [y]}, outputs={'Out': [out]})
+
+        binary_str = prog.desc.serialize_to_string()
+        prog_restored = Program.parse_from_string(binary_str)
+
+        print prog
+        print prog_restored
 
     def test_append_backward(self):
         prog = Program()
@@ -80,6 +99,8 @@ class TestProgram(unittest.TestCase):
             outputs={"Out": add_out},
             attrs={"x_num_col_dims": 1})
 
+        self.assertEqual(mul_op.idx, 0)
+        self.assertEqual(add_op.idx, 1)
         param_to_grad = prog.append_backward(add_out, set())
 
         def grad_name(name):

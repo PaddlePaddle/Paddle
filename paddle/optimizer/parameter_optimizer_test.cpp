@@ -85,6 +85,7 @@ public:
     for (size_t i = 0; i < opts_.size(); ++i) {
       int s = 0;
       float* newp = (float*)opts_[i]->get_weight(&s);
+      EXPECT_EQ(static_cast<size_t>(s), kSize);
       for (size_t j = 0; j < kSize; ++j) {
         EXPECT_EQ(newp[j], (*p)[j]);
       }
@@ -99,10 +100,20 @@ public:
   }
 
   void TestCheckPoint() {
+    paddle::optimizer::Tensor* p = FixedTensor(kSize);
     for (size_t i = 0; i < opts_.size(); ++i) {
-      int state_len = 0;
-      std::string state = opts_[i]->SerializeState(&state_len);
+      auto state = opts_[i]->SerializeState();
       opts_[i]->DeserializeState(state);
+      auto state1 = opts_[i]->SerializeState();
+      opts_[i]->DeserializeState(state);
+      EXPECT_EQ(state, state1);
+
+      int s = 0;
+      float* newp = (float*)opts_[i]->get_weight(&s);
+      EXPECT_EQ(s, kSize);
+      for (size_t j = 0; j < kSize; ++j) {
+        EXPECT_EQ(newp[j], (*p)[j]);
+      }
     }
   }
 

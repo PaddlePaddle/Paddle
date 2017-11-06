@@ -57,17 +57,22 @@ class LstmUnitOpMaker : public framework::OpProtoAndCheckerMaker {
         "The cell state tensor of last time-step in the Lstm Unit operator.");
     AddOutput("C", "The cell tensor of Lstm Unit operator.");
     AddOutput("H", "The hidden state tensor of Lstm Unit operator.");
-
-    AddComment(R"DOC(Lstm-Unit Operator
+    AddAttr<float>("forget_bias",
+                   "(float, default 0.0) "
+                   "The forget bias of Lstm Unit.")
+        .SetDefault(0.0);
+    AddComment(R"DOC(
+Lstm Unit Operator
 
 Equation:
-  i, f, o, j = split(X)
-  C = C_prev * sigm(f + forget_bias) + sigm(i) * tanh(j)
-  H = C * sigm(o)
+
+$$
+i, f, o, j = split(X) \\
+C = C_{prev} * sigm(f + forget\_bias) + sigm(i) * tanh(j) \\
+H = C * sigm(o)
+$$
 
 )DOC");
-    AddAttr<float>("forget_bias", "The forget bias of Lstm Unit.")
-        .SetDefault(0.0);
   }
 };
 

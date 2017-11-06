@@ -1,12 +1,10 @@
-from paddle.v2.framework.framework import Variable, OpProtoHolder, g_program, g_init_program
-import paddle.v2.framework.core as core
 import copy
 import itertools
 
-
-def unique_name(prefix):
-    uid = core.unique_integer()  # unique during whole process.
-    return "_".join([prefix, str(uid)])
+from paddle.v2.framework.framework import Variable, g_main_program, \
+    g_startup_program, unique_name, Program
+from paddle.v2.framework.initializer import ConstantInitializer, \
+    UniformInitializer
 
 
 class LayerHelper(object):
@@ -22,23 +20,23 @@ class LayerHelper(object):
         return self.kwargs['name']
 
     @property
-    def program(self):
-        prog = self.kwargs.get('program', None)
+    def main_program(self):
+        prog = self.kwargs.get('main_program', None)
         if prog is None:
-            return g_program
+            return g_main_program
         else:
             return prog
 
     @property
-    def init_program(self):
-        prog = self.kwargs.get('init_program', None)
+    def startup_program(self):
+        prog = self.kwargs.get('startup_program', None)
         if prog is None:
-            return g_init_program
+            return g_startup_program
         else:
             return prog
 
     def append_op(self, *args, **kwargs):
-        return self.program.current_block().append_op(*args, **kwargs)
+        return self.main_program.current_block().append_op(*args, **kwargs)
 
     def multiple_input(self, input_param_name='input'):
         inputs = self.kwargs.get(input_param_name, [])
@@ -63,27 +61,25 @@ class LayerHelper(object):
 
     @property
     def param_attr(self):
-        default = {
-            'name': None,
-            'init_attr': {
-                'type': 'uniform_random',
-                'min': -1.0,
-                'max': 1.0
-            }
-        }
+        default = {'name': None, 'initializer': UniformInitializer()}
         actual = self.kwargs.get('param_attr', None)
-        return actual if actual is not None else default
+        if actual is None:
+            actual = default
+        for default_field in default.keys():
+            if default_field not in actual:
+                actual[default_field] = default[default_field]
+        return actual
 
     def bias_attr(self):
+        default = {'name': None, 'initializer': ConstantInitializer()}
         bias_attr = self.kwargs.get('bias_attr', None)
         if bias_attr is True:
-            bias_attr = {
-                'name': None,
-                'init_attr': {
-                    'type': 'fill_constant',
-                    'value': 0.0
-                }
-            }
+            bias_attr = default
+
+        if isinstance(bias_attr, dict):
+            for default_field in default.keys():
+                if default_field not in bias_attr:
+                    bias_attr[default_field] = default[default_field]
         return bias_attr
 
     def multiple_param_attr(self, length):
@@ -116,29 +112,60 @@ class LayerHelper(object):
                 raise ValueError("Data Type mismatch")
         return dtype
 
-    def create_parameter(self, attr, shape, dtype, suffix='w'):
-        if attr['name'] is None:
-            attr['name'] = unique_name(".".join([self.name, suffix]))
-        self.init_program.global_block().create_parameter(
-            name=attr['name'],
-            dtype=dtype,
-            shape=shape,
-            init_attr=attr['init_attr'])
-        return self.program.global_block().create_parameter(
-            name=attr['name'], dtype=dtype, shape=shape)
+    def create_parameter(self, attr, shape, dtype, suffix='w',
+                         initializer=None):
+        # Deepcopy the attr so that parameters can be shared in program
+        attr_copy = copy.deepcopy(attr)
+        if initializer is not None:
+            attr_copy['initializer'] = initializer
+        if attr_copy['name'] is None:
+            attr_copy['name'] = unique_name(".".join([self.name, suffix]))
+        self.startup_program.global_block().create_parameter(
+            dtype=dtype, shape=shape, **attr_copy)
+        return self.main_program.global_block().create_parameter(
+            name=attr_copy['name'], dtype=dtype, shape=shape)
 
     def create_tmp_variable(self, dtype):
-        return self.program.current_block().create_var(
+        return self.main_program.current_block().create_var(
             name=unique_name(".".join([self.name, 'tmp'])),
             dtype=dtype,
             persistable=False)
 
-    def create_global_variable(self, *args, **kwargs):
-        return self.program.global_block().create_var(
-            *args, persistable=False, **kwargs)
+    def create_variable(self, *args, **kwargs):
+        return self.main_program.current_block().create_var(*args, **kwargs)
 
-    def append_bias_op(self, input_var):
-        size = list(input_var.shape[1:])
+    def create_global_variable(self, persistable=False, *args, **kwargs):
+        return self.main_program.global_block().create_var(
+            *args, persistable=persistable, **kwargs)
+
+    def set_variable_initializer(self, var, initializer):
+        assert isinstance(var, Variable)
+        self.startup_program.global_block().create_var(
+            name=var.name,
+            type=var.type,
+            dtype=var.data_type,
+            shape=var.shape,
+            persistable=True,
+            initializer=initializer)
+
+    def append_bias_op(self, input_var, num_flatten_dims=None):
+        """
+        Append bias operator and return its output. If the user does not set 
+        bias_attr, append_bias_op will return input_var
+         
+        :param input_var: the input variable. The len(input_var.shape) is larger
+        or equal than 2.
+        :param num_flatten_dims: The input tensor will be flatten as a matrix 
+        when adding bias.
+        `matrix.shape = product(input_var.shape[0:num_flatten_dims]), product(
+                input_var.shape[num_flatten_dims:])`
+        """
+        if num_flatten_dims is None:
+            num_flatten_dims = self.kwargs.get('num_flatten_dims', None)
+            if num_flatten_dims is None:
+                num_flatten_dims = 1
+
+        size = list(input_var.shape[num_flatten_dims:])
         bias_attr = self.bias_attr()
         if not bias_attr:
             return input_var

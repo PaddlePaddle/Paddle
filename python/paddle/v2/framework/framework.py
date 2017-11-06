@@ -7,6 +7,11 @@ import copy
 __all__ = ['Block', 'Variable', 'Program', 'Operator']
 
 
+def unique_name(prefix):
+    uid = core.unique_integer(prefix)  # unique during whole process.
+    return "_".join([prefix, str(uid)])
+
+
 class Variable(object):
     def __init__(self,
                  block,
@@ -16,6 +21,7 @@ class Variable(object):
                  dtype=None,
                  lod_level=None,
                  persistable=None,
+                 stop_gradient=False,
                  **kwargs):
         self.block = block
 
@@ -53,8 +59,8 @@ class Variable(object):
             if is_new_var:
                 self.desc.set_data_type(dtype)
             else:
-                old_dtype = self.data_type()
-                if dtype != old_shape:
+                old_dtype = self.data_type
+                if dtype != old_dtype:
                     raise ValueError("Variable {0} has been created before. "
                                      "The previous data type is {1}; the new "
                                      "data type is {2}. They are not "
@@ -84,6 +90,7 @@ class Variable(object):
 
         self.block.vars[name] = self
         self.op = None
+        self.stop_gradient = stop_gradient
 
     def __str__(self):
         protostr = self.desc.serialize_to_string()
@@ -95,6 +102,10 @@ class Variable(object):
     @property
     def persistable(self):
         return self.desc.persistable()
+
+    @persistable.setter
+    def persistable(self, p):
+        self.desc.set_persistable(p)
 
     @property
     def name(self):
@@ -113,10 +124,15 @@ class Variable(object):
     def lod_level(self):
         return self.desc.lod_level()
 
+    @property
+    def type(self):
+        return self.desc.type()
+
     @staticmethod
     def _unique_var_name_():
-        uid = core.unique_integer()  # unique during whole process.
-        return "_generated_var_%d" % uid
+        prefix = "_generated_var"
+        uid = core.unique_integer(prefix)  # unique during whole process.
+        return "_".join([prefix, str(uid)])
 
     @staticmethod
     def _convert_np_dtype_to_dtype_(np_dtype):
@@ -192,31 +208,32 @@ class Operator(object):
         self.desc.set_type(type)
         proto = OpProtoHolder.instance().get_op_proto(type)
 
-        if inputs is not None:
-            given = set()
-            need = set()
-            for n in inputs:
-                given.add(n)
-            for m in proto.inputs:
-                need.add(m.name)
-            if not given == need:
-                raise ValueError(
-                    "Incorrect setting for input(s) of operator \"%s\". Need: [%s] Given: [%s]"
-                    % (type, ", ".join(str(e) for e in need), ", ".join(
-                        str(e) for e in given)))
+        def find_name(var_list, name):
+            for var_name in var_list:
+                if var_name == name:
+                    return True
+            return False
 
+        if inputs is not None:
             for in_proto in proto.inputs:
-                in_argus = inputs[in_proto.name]
-                if not isinstance(in_argus, list):
-                    in_argus = [in_argus]
-                if not in_proto.duplicable and len(in_argus) > 1:
-                    raise ValueError(
-                        "Input %s expects only one input, but %d are given." %
-                        (in_proto.name, len(in_argus)))
-                in_argu_names = []
-                for argu in in_argus:
-                    in_argu_names.append(argu.name)
-                self.desc.set_input(in_proto.name, in_argu_names)
+                found = find_name(inputs, in_proto.name)
+                assert found or in_proto.dispensable, "Input {} not found".format(
+                    in_proto.name)
+
+                if found:
+                    in_argus = inputs[in_proto.name]
+                    if not isinstance(in_argus, list):
+                        in_argus = [in_argus]
+                    if not in_proto.duplicable and len(in_argus) > 1:
+                        raise ValueError(
+                            "Input %s expects only one input, but %d are given."
+                            % (in_proto.name, len(in_argus)))
+                    in_argu_names = []
+                    for argu in in_argus:
+                        in_argu_names.append(argu.name)
+                    self.desc.set_input(in_proto.name, in_argu_names)
+                else:
+                    self.desc.set_input(in_proto.name, [])
 
         if outputs is not None:
             given = set()
@@ -246,17 +263,24 @@ class Operator(object):
                 self.desc.set_output(out_proto.name, out_argu_names)
 
         if attrs is not None:
+            if not isinstance(attrs, dict):
+                raise TypeError("'attrs' should be a dict.")
             for attr in proto.attrs:
                 attr_name = attr.name
                 if (not attr_name in attrs) or (attrs[attr_name] is None):
                     continue
-                if not isinstance(attrs[attr_name], Block):
-                    self.desc.set_attr(attr_name, attrs[attr_name])
-                else:
+                if isinstance(attrs[attr_name], Block):
                     self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
+                else:
+                    self.desc.set_attr(attr_name, attrs[attr_name])
 
         self.desc.check_attrs()
-        if type not in {'feed', 'fetch'}:
+        no_kernel_op_set = {
+            'feed', 'fetch', 'save', 'load', 'recurrent',
+            'rnn_memory_helper_grad'
+        }
+        if type not in no_kernel_op_set:
+            self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
 
     def __str__(self):
@@ -283,6 +307,14 @@ class Operator(object):
     @property
     def output_names(self):
         return self.desc.output_names()
+
+    @property
+    def idx(self):
+        for i, op in enumerate(self.block.ops):
+            if op == self:
+                return i
+        raise ValueError(
+            "Can't find op itself in it's block. It could be a bug of Paddle.")
 
     def has_attr(self, name):
         return self.desc.has_attr(name)
@@ -335,7 +367,10 @@ class Block(object):
         return {v for k, v in self.vars.iteritems() if isinstance(v, Parameter)}
 
     def create_var(self, *args, **kwargs):
-        return Variable(self, *args, **kwargs)
+        var = Variable(self, *args, **kwargs)
+        if 'initializer' in kwargs:
+            kwargs['initializer'](var, self)
+        return var
 
     def has_var(self, name):
         return name in self.vars
@@ -343,8 +378,8 @@ class Block(object):
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
         param = Parameter(global_block, *args, **kwargs)
-        if 'init_attr' in kwargs:
-            self._prepend_initialize_ops_(param, kwargs['init_attr'])
+        if 'initializer' in kwargs:
+            kwargs['initializer'](param, self)
         return param
 
     def append_op(self, *args, **kwargs):
@@ -403,17 +438,6 @@ class Block(object):
         for index in range(len(self.ops)):
             assert self.ops[index].desc == ops_in_cpp[index]
 
-    def _prepend_initialize_ops_(self, param, init_attr):
-        op_type = init_attr['type']
-        init_attr['shape'] = param.shape
-        init_attr['data_type'] = int(param.data_type)
-        op = self.prepend_op(
-            type=op_type,
-            inputs=None,
-            outputs={'Out': [param]},
-            attrs=init_attr)
-        param.op = op
-
 
 class Program(object):
     def __init__(self):
@@ -430,6 +454,34 @@ class Program(object):
         p = Program()
         p.desc = core.ProgramDesc(self.desc)
         p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
+        p.sync_with_cpp()
+        return p
+
+    def prune(self, targets):
+        if not isinstance(targets, list):
+            targets = [targets]
+        targets_idx = []
+        for t in targets:
+            if not isinstance(t, Operator):
+                if isinstance(t, Variable):
+                    t = t.op
+                else:
+                    raise ValueError(
+                        "All targets of prune() can only be Variable or Operator."
+                    )
+
+            targets_idx.append([t.block.idx, t.idx])
+        res = Program()
+        res.desc = core.prune(self.desc, targets_idx)
+        res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
+        res.sync_with_cpp()
+        return res
+
+    @staticmethod
+    def parse_from_string(binary_str):
+        p = Program()
+        p.desc = core.ProgramDesc(binary_str)
+        p.blocks = [Block(p, i) for i in xrange(p.desc.num_blocks())]
         p.sync_with_cpp()
         return p
 
@@ -472,6 +524,11 @@ class Program(object):
         for block in self.blocks:
             block.sync_with_cpp()
 
+    def list_vars(self):
+        for each_block in self.blocks:
+            for each_var in each_block.vars.itervalues():
+                yield each_var
+
 
 class Parameter(Variable):
     def __init__(self, block, shape, dtype, **kwargs):
@@ -491,7 +548,9 @@ class Parameter(Variable):
 
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
 
+        self.regularizer = kwargs.get('regularizer', None)
+
 
 # program is a global instance.
-g_program = Program()
-g_init_program = Program()
+g_main_program = Program()
+g_startup_program = Program()

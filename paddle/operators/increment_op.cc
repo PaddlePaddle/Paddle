@@ -39,14 +39,18 @@ class IncrementOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) The input tensor of increment operator");
     AddOutput("Out", "(Tensor) The output tensor of increment operator.");
-    AddComment(R"DOC(Increment operator
-
-The equation is: Out = X + step
-)DOC");
     AddAttr<AttrType>("step",
+                      "(float, default 1.0) "
                       "The step size by which the "
                       "input tensor will be incremented.")
         .SetDefault(1.0);
+    AddComment(R"DOC(
+Increment Operator.
+
+The equation is: 
+$$Out = X + step$$
+
+)DOC");
   }
 };
 

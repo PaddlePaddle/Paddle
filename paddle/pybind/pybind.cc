@@ -14,17 +14,22 @@ limitations under the License. */
 
 #include "paddle/pybind/protobuf.h"
 
+#include <mutex>  // for call_once
+#include <unordered_map>
+#include "gflags/gflags.h"
 #include "paddle/framework/backward.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/feed_fetch_method.h"
 #include "paddle/framework/framework.pb.h"
+#include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/lod_tensor_array.h"
+#include "paddle/framework/prune.h"
 #include "paddle/framework/selected_rows.h"
 #include "paddle/framework/tensor_array.h"
 #include "paddle/operators/cond_op.h"
 #include "paddle/operators/dynamic_recurrent_op.h"
 #include "paddle/operators/net_op.h"
-#include "paddle/operators/recurrent_op.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 #include "paddle/pybind/exception.h"
@@ -32,11 +37,34 @@ limitations under the License. */
 #include "paddle/pybind/tensor_py.h"
 #include "paddle/string/to_string.h"
 
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/operators/nccl/nccl_gpu_common.h"
+#include "paddle/platform/gpu_info.h"
+#endif
+
 namespace paddle {
 namespace pybind {
-static size_t UniqueIntegerGenerator() {
-  static std::atomic<size_t> generator;
-  return generator.fetch_add(1);
+static size_t UniqueIntegerGenerator(const std::string &prefix) {
+  static std::unordered_map<std::string, std::atomic<size_t>> generators;
+  return generators[prefix].fetch_add(1);
+}
+
+std::once_flag gflags_init_flag;
+
+// TODO(qijun) move init gflags to init.cc
+void InitGflags(std::vector<std::string> &argv) {
+  std::call_once(gflags_init_flag, [&]() {
+    int argc = argv.size();
+    char **arr = new char *[argv.size()];
+    std::string line;
+    for (size_t i = 0; i < argv.size(); i++) {
+      arr[i] = &argv[i][0];
+      line += argv[i];
+      line += ' ';
+    }
+    google::ParseCommandLineFlags(&argc, &arr, true);
+    VLOG(1) << "Init commandline: " << line;
+  });
 }
 
 bool IsCompileGPU() {
@@ -198,11 +226,24 @@ All parameter, weight, gradient are variables in Paddle.
              return self.GetMutable<LoDTensor>();
            },
            py::return_value_policy::reference)
+      .def("get_lod_rank_table",
+           [](Variable &self) { return self.GetMutable<LoDRankTable>(); },
+           py::return_value_policy::reference)
       .def("get_selected_rows",
            [](Variable &self) -> SelectedRows * {
              return self.GetMutable<SelectedRows>();
            },
            py::return_value_policy::reference)
+      .def("get_lod_tensor_array",
+           [](Variable &self) { return self.GetMutable<LoDTensorArray>(); },
+           py::return_value_policy::reference)
+#ifdef PADDLE_WITH_CUDA
+      .def("get_communicator",
+           [](Variable &self) -> platform::Communicator * {
+             return self.GetMutable<platform::Communicator>();
+           },
+           py::return_value_policy::reference)
+#endif
       .def("get_net",
            [](Variable &self) -> operators::NetOp * {
              return self.GetMutable<operators::NetOp>();
@@ -225,16 +266,27 @@ All parameter, weight, gradient are variables in Paddle.
   //! Python str. If you want a str object, you should cast them in Python.
   m.def("get_all_op_protos", []() -> std::vector<py::bytes> {
     std::vector<py::bytes> ret_values;
-
-    OpInfoMap::Instance().IterAllInfo([&ret_values](const std::string &type,
-                                                    const OpInfo &info) {
-      if (!info.HasOpProtoAndChecker()) return;
-      std::string str;
-      PADDLE_ENFORCE(info.Proto().SerializeToString(&str),
-                     "Serialize OpProto Error. This could be a bug of Paddle.");
-      ret_values.emplace_back(str);
-    });
+    for (auto &iter : OpInfoMap::Instance().map()) {
+      auto &info = iter.second;
+      if (info.HasOpProtoAndChecker()) {
+        std::string str;
+        PADDLE_ENFORCE(
+            info.Proto().SerializeToString(&str),
+            "Serialize OpProto Error. This could be a bug of Paddle.");
+        ret_values.emplace_back(str);
+      }
+    }
     return ret_values;
+  });
+  m.def("prune", [](const ProgramDescBind &origin,
+                    const std::vector<std::array<size_t, 2>> &targets) {
+    ProgramDescBind prog_with_targets(origin);
+    for (const auto &t : targets) {
+      prog_with_targets.MutableBlock(t[0])->Op(t[1])->MarkAsTarget();
+    }
+    ProgramDesc pruned_desc;
+    Prune(*prog_with_targets.Proto(), &pruned_desc);
+    return new ProgramDescBind(pruned_desc);
   });
   m.def_submodule(
        "var_names",
@@ -257,8 +309,11 @@ All parameter, weight, gradient are variables in Paddle.
                     return new paddle::platform::CUDADeviceContext(place);
 #endif
                   });
-  // clang-format on
+// clang-format on
 
+#ifdef PADDLE_WITH_CUDA
+  py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
+#endif
   py::class_<platform::GPUPlace>(m, "GPUPlace")
       .def(py::init<int>())
       .def("__str__", string::to_string<const platform::GPUPlace &>);
@@ -287,7 +342,7 @@ All parameter, weight, gradient are variables in Paddle.
                     PADDLE_ENFORCE(desc.IsInitialized(),
                                    "User OpDesc is not initialized, reason %s",
                                    desc.InitializationErrorString());
-                    return OpRegistry::CreateOp(desc, nullptr);
+                    return OpRegistry::CreateOp(desc);
                   })
       .def("backward",
            [](const OperatorBase &forwardOp,
@@ -380,25 +435,6 @@ All parameter, weight, gradient are variables in Paddle.
         return self.UnstackShared(source);
       });
 
-  // recurrent_op
-  py::class_<operators::RecurrentOp, OperatorBase>(m, "RecurrentOp")
-      .def_static(
-          "create",
-          [](py::bytes protobin) -> operators::RecurrentOp * {
-            OpDesc desc;
-            PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
-                           "Cannot parse user input to OpDesc");
-            PADDLE_ENFORCE(desc.IsInitialized(),
-                           "User OpDesc is not initialized, reason %s",
-                           desc.InitializationErrorString());
-            auto rnn_op = OpRegistry::CreateOp(desc, nullptr);
-            return static_cast<operators::RecurrentOp *>(rnn_op.release());
-          })
-      .def("set_stepnet", [](operators::RecurrentOp &self,
-                             const operators::NetOp &net) -> void {
-        self.set_stepnet(net.Clone());
-      });
-
   py::class_<operators::DynamicRecurrentOp, OperatorBase>(m,
                                                           "DynamicRecurrentOp")
       .def_static("create",
@@ -409,7 +445,7 @@ All parameter, weight, gradient are variables in Paddle.
                     PADDLE_ENFORCE(desc.IsInitialized(),
                                    "User OpDesc is not initialized, reason %s",
                                    desc.InitializationErrorString());
-                    auto rnn_op = OpRegistry::CreateOp(desc, nullptr);
+                    auto rnn_op = OpRegistry::CreateOp(desc);
                     return static_cast<operators::DynamicRecurrentOp *>(
                         rnn_op.release());
                   })
@@ -436,7 +472,7 @@ All parameter, weight, gradient are variables in Paddle.
                     PADDLE_ENFORCE(desc.IsInitialized(),
                                    "User OpDesc is not initialized, reason %s",
                                    desc.InitializationErrorString());
-                    auto cond_op = OpRegistry::CreateOp(desc, nullptr);
+                    auto cond_op = OpRegistry::CreateOp(desc);
                     return static_cast<operators::CondOp *>(cond_op.release());
                   })
       .def("set_truenet",
@@ -450,12 +486,10 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<std::vector<platform::Place> &>())
-      .def("run", [](Executor &self, ProgramDescBind *program_bind,
-                     Scope *scope, int block_id) {
-        self.Run(*program_bind->Proto(), scope, block_id);
-      });
+      .def("run", &Executor::Run);
 
   m.def("unique_integer", UniqueIntegerGenerator);
+  m.def("init_gflags", InitGflags);
 
   m.def("is_compile_gpu", IsCompileGPU);
   m.def("set_feed_variable", framework::SetFeedVariable);
@@ -466,7 +500,36 @@ All parameter, weight, gradient are variables in Paddle.
   BindVarDsec(m);
   BindOpDesc(m);
 
+  py::class_<framework::LoDRankTable>(m, "LodRankTable")
+      .def("items", [](framework::LoDRankTable &table) {
+        std::vector<std::pair<size_t, size_t>> res;
+        for (auto &item : table.items()) {
+          res.push_back({item.index, item.length});
+        }
+        return res;
+      });
+
+  py::class_<LoDTensorArray>(m, "LoDTensorArray")
+      .def("__getitem__",
+           [](LoDTensorArray &self, size_t i) { return &self.at(i); },
+           py::return_value_policy::reference)
+      .def("__len__", [](LoDTensorArray &self) { return self.size(); })
+      .def("__setitem__",
+           [](LoDTensorArray &self, size_t i, const LoDTensor &t) {
+             PADDLE_ENFORCE_LT(i, self.size());
+             self[i].ShareDataWith(t);
+             self[i].set_lod(t.lod());
+           })
+      .def("append", [](LoDTensorArray &self, const LoDTensor &t) {
+        self.emplace_back();
+        self.back().ShareDataWith(t);
+        self.back().set_lod(t.lod());
+      });
+
   m.def("op_support_gpu", OpSupportGPU);
+#ifdef PADDLE_WITH_CUDA
+  m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
+#endif
 
   return m.ptr();
 }
