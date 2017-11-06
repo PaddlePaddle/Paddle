@@ -11,13 +11,17 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
-#include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
+
+struct CopyRange {
+  size_t begin;
+  size_t end;
+};
 
 class LoDTensorToArrayOp : public framework::OperatorBase {
  public:
@@ -28,83 +32,59 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
-    auto x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
-    auto x_dim = x.dims();
-    auto x_dim_vec = framework::vectorize(x_dim);
-
-    auto rank_table =
+    auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
+    auto &rank_table =
         scope.FindVar(Input("RankTable"))->Get<framework::LoDRankTable>();
-    auto out = *(
-        scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensorArray>());
+    auto &out =
+        *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensorArray>();
 
-    auto items = rank_table.items();
+    auto &items = rank_table.items();
     auto max_seq_len = items[0].length;
     auto table_height = items.size();
-
-    auto rank_level = rank_table.coarse_lod().size() + 1;
-
+    auto rank_level = rank_table.level();
     out.resize(max_seq_len);
-    auto place = dev_ctx.GetPlace();
+    std::vector<std::vector<CopyRange>> copy_ranges(max_seq_len);
 
     // set out[i] lod
     for (size_t i = 0; i < max_seq_len; i++) {
-      framework::LoD lod;
-      lod.resize(rank_level);
+      auto &lod = *out[i].mutable_lod();
+      lod.clear();
       for (size_t j = 0; j < table_height; j++) {
-        std::vector<std::vector<size_t>> lod_length;
-        size_t start_offset;
-        size_t start_idx = x.lod()[rank_level - 1][items[j].index] + i;
-        if (i < items[j].length) {
-          framework::GetFineGrainedLoDLength2(x.lod(), start_idx, start_idx + 1,
-                                              rank_level, &lod_length,
-                                              &start_offset);
-          framework::AppendLoD(&lod, lod_length);
+        if (i >= items[j].length) {
+          break;
         }
-      }
-      out[i].set_lod(lod);
-    }
-
-    /*
-    for (auto &lod_tensor : out) {
-      auto lod = lod_tensor.lod();
-      for (auto i : lod[0]) {
-        std::cout << i << " ";
-      }
-      std::cout << std::endl;
-    }
-    */
-
-    // set out[i] shape
-    for (size_t i = 0; i < out.size(); i++) {
-      auto lod = out[i].lod();
-      x_dim_vec[0] = lod.back().back();
-      out[i].Resize(framework::make_ddim(x_dim_vec));
-      out[i].mutable_data(place, x.type());
-    }
-
-    // out CopyFrom
-    for (size_t i = 0; i < max_seq_len; i++) {
-      for (size_t j = 0; j < table_height; j++) {
+        size_t start_idx = x.lod()[rank_level][items[j].index] + i;
+        copy_ranges[i].emplace_back();
+        auto &range = copy_ranges[i].back();
         std::vector<std::vector<size_t>> lod_length;
-        size_t start_offset;
-        size_t start_idx = x.lod()[rank_level - 1][items[j].index] + i;
-        if (i < items[j].length) {
-          framework::GetFineGrainedLoDLength2(x.lod(), start_idx, start_idx + 1,
-                                              rank_level, &lod_length,
-                                              &start_offset);
-          /*
-          LOG(INFO) << start_offset;
-          LOG(INFO) << start_offset + lod_length.back().back();
+        framework::GetFineGrainedLoDLength2(x.lod(), start_idx, start_idx + 1,
+                                            rank_level + 1, &lod_length,
+                                            &range.begin, &range.end);
+        VLOG(10) << "Append Range " << i << " [" << range.begin << ", "
+                 << range.end << "]";
+        framework::AppendLoD(&lod, lod_length);
+      }
+    }
 
-          LOG(INFO) << out[i].lod().back()[j];
-          LOG(INFO) << out[i].lod().back()[j + 1];
-          */
-          out[i]
-              .Slice(out[i].lod().back()[j], out[i].lod().back()[j + 1])
-              .CopyFrom(x.Slice(start_offset,
-                                start_offset + lod_length.back().back()),
-                        place, dev_ctx);
-        }
+    for (size_t i = 0; i < max_seq_len; ++i) {
+      auto &ranges = copy_ranges[i];
+      size_t height = std::accumulate(
+          ranges.begin(), ranges.end(), 0UL,
+          [](size_t a, const CopyRange &b) { return a + b.end - b.begin; });
+      auto x_dim = x.dims();
+      x_dim[0] = static_cast<int64_t>(height);
+      out[i].Resize(x_dim);
+      out[i].mutable_data(x.place(), x.type());
+      size_t offset = 0;
+      for (auto &each_range : ranges) {
+        size_t len = each_range.end - each_range.begin;
+        // out[i][offset: offset+len] = x[each_range.begin: each_range.end]
+        out[i]
+            .Slice(static_cast<int>(offset), static_cast<int>(offset + len))
+            .CopyFrom(x.Slice(static_cast<int>(each_range.begin),
+                              static_cast<int>(each_range.end)),
+                      x.place(), dev_ctx);
+        offset += len;
       }
     }
   }

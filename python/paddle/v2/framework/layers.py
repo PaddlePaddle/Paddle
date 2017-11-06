@@ -1,6 +1,8 @@
 import paddle.v2.framework.core as core
-from paddle.v2.framework.framework import OpProtoHolder, Variable, Program, Operator
-from paddle.v2.framework.initializer import ConstantInitializer, NormalInitializer
+from paddle.v2.framework.framework import OpProtoHolder, Variable, Program, \
+    Operator
+from paddle.v2.framework.initializer import ConstantInitializer, \
+    NormalInitializer
 from paddle.v2.framework.layer_helper import LayerHelper, unique_name
 import re
 
@@ -372,11 +374,13 @@ def sequence_pool(input, pool_type, **kwargs):
     helper = LayerHelper('sequence_pool', input=input, **kwargs)
     dtype = helper.input_dtype()
     pool_out = helper.create_tmp_variable(dtype)
+    max_index = helper.create_tmp_variable(dtype)
 
     helper.append_op(
         type="sequence_pool",
-        inputs={"X": [input]},
-        outputs={"Out": [pool_out]},
+        inputs={"X": input},
+        outputs={"Out": pool_out,
+                 "MaxIndex": max_index},
         attrs={"pooltype": pool_type.upper()})
 
     return pool_out
@@ -577,25 +581,45 @@ class StaticRNN(object):
         if self.status != StaticRNN.IN_RNN_BLOCK:
             raise ValueError("You must invoke {0} in rnn block".format(method))
 
-    def memory(self, init=None, shape=None, dtype=None, init_value=0):
+    def memory(self,
+               init=None,
+               shape=None,
+               batch_ref=None,
+               init_value=0.0,
+               init_batch_dim_idx=0,
+               ref_batch_dim_idx=1):
+        '''
+        :param init: boot memory, if not set, a shape, batch_ref must be provided
+        :param shape: shape of the boot memory
+        :param batch_ref: batch size reference variable
+        :param init_value: the init value of boot memory
+        :param init_batch_dim_idx: the index of batch size in init's dimension
+        :param ref_batch_dim_idx: the index of batch size in batch_ref's dimension
+        :return: boot memory
+        '''
         self._assert_in_rnn_block_('memory')
         if init is None:
-            if shape is None or dtype is None:
+            if shape is None or batch_ref is None:
                 raise ValueError(
-                    "if init is None, memory at least need shape and dtype")
+                    "if init is None, memory at least need shape and batch_ref")
             parent_block = self.parent_block()
             var_name = unique_name("@".join([self.helper.name, "memory_boot"]))
             boot_var = parent_block.create_var(
-                name=var_name, shape=shape, dtype=dtype, persistable=False)
+                name=var_name,
+                shape=shape,
+                dtype=batch_ref.data_type,
+                persistable=False)
 
             parent_block.append_op(
-                type="fill_constant",
-                inputs={},
+                type="fill_constant_batch_size_like",
+                inputs={'Input': [batch_ref]},
                 outputs={'Out': [boot_var]},
                 attrs={
                     'value': init_value,
-                    'shape': [40] + list(boot_var.shape[1:]),
-                    'data_type': boot_var.data_type
+                    'shape': boot_var.shape,
+                    'data_type': boot_var.data_type,
+                    'input_dim_idx': ref_batch_dim_idx,
+                    'output_dim_idx': init_batch_dim_idx
                 })
 
             return self.memory(init=boot_var)
@@ -773,3 +797,67 @@ def array_to_lod_tensor(x, table, main_program=None):
                 'RankTable': table},
         outputs={'Out': tmp})
     return tmp
+
+
+def fill_constant(shape, dtype, value, main_program=None):
+    helper = LayerHelper("ones", **locals())
+    out = helper.create_tmp_variable(dtype=dtype)
+    helper.append_op(
+        type='fill_constant',
+        inputs={},
+        outputs={'Out': [out]},
+        attrs={
+            'shape': shape,
+            'data_type': out.data_type,
+            'value': float(value)
+        })
+    out.stop_gradient = True
+    return out
+
+
+def ones(shape, dtype, main_program=None):
+    return fill_constant(value=1.0, **locals())
+
+
+def zeros(shape, dtype, main_program=None):
+    return fill_constant(value=0.0, **locals())
+
+
+def increment(x, value=1.0, main_program=None):
+    helper = LayerHelper("increment", **locals())
+    helper.append_op(
+        type='increment',
+        inputs={'X': [x]},
+        outputs={'Out': [x]},
+        attrs={'step': value})
+    return x
+
+
+def array_write(x, i, array=None, main_program=None):
+    helper = LayerHelper('array_write', **locals())
+    if array is None:
+        array = helper.create_variable(
+            name="{0}.out".format(helper.name),
+            type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+            dtype=x.data_type)
+    helper.append_op(
+        type='write_to_array',
+        inputs={'X': [x],
+                'I': [i]},
+        outputs={'Out': [array]})
+    return array
+
+
+def array_read(array, i, main_program=None):
+    helper = LayerHelper('array_read', **locals())
+    if not isinstance(
+            array,
+            Variable) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        raise TypeError("array should be tensor array vairable")
+    out = helper.create_tmp_variable(dtype=array.data_type)
+    helper.append_op(
+        type='read_from_array',
+        inputs={'X': [array],
+                'I': [i]},
+        outputs={'Out': [out]})
+    return out
