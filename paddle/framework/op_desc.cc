@@ -327,6 +327,19 @@ void OpDescBind::InferShape(const BlockDescBind &block) const {
   PADDLE_ENFORCE(static_cast<bool>(infer_shape),
                  "%s's infer_shape has not been registered", this->Type());
   CompileTimeInferShapeContext ctx(*this, block);
+  if (VLOG_IS_ON(10)) {
+    std::ostringstream sout;
+    auto inames = this->InputArgumentNames();
+    sout << " From [";
+    std::copy(inames.begin(), inames.end(),
+              std::ostream_iterator<std::string>(sout, ", "));
+    sout << "] to [";
+    auto onames = this->OutputArgumentNames();
+    std::copy(onames.begin(), onames.end(),
+              std::ostream_iterator<std::string>(sout, ", "));
+    sout << "]";
+    VLOG(10) << sout.str();
+  }
   infer_shape(&ctx);
 }
 
@@ -336,6 +349,9 @@ void OpDescBind::InferVarType(BlockDescBind *block) const {
     info.infer_var_type_(*this, block);
   } else {
     // all output type is LoDTensor by default
+    VLOG(10) << this->Type()
+             << " has not registered InferVarType. Set output variables to "
+                "LOD_TENSOR";
     for (auto &out_pair : this->outputs_) {
       for (auto &out_var_name : out_pair.second) {
         block->Var(out_var_name)->SetType(VarDesc::LOD_TENSOR);

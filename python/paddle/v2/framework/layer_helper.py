@@ -1,17 +1,10 @@
 import copy
 import itertools
 
-import paddle.v2.framework.core as core
-
-from paddle.v2.framework.framework import Variable, g_program, \
-    g_init_program
+from paddle.v2.framework.framework import Variable, g_main_program, \
+    g_startup_program, unique_name, Program
 from paddle.v2.framework.initializer import ConstantInitializer, \
     UniformInitializer
-
-
-def unique_name(prefix):
-    uid = core.unique_integer(prefix)  # unique during whole process.
-    return "_".join([prefix, str(uid)])
 
 
 class LayerHelper(object):
@@ -27,23 +20,23 @@ class LayerHelper(object):
         return self.kwargs['name']
 
     @property
-    def program(self):
-        prog = self.kwargs.get('program', None)
+    def main_program(self):
+        prog = self.kwargs.get('main_program', None)
         if prog is None:
-            return g_program
+            return g_main_program
         else:
             return prog
 
     @property
-    def init_program(self):
-        prog = self.kwargs.get('init_program', None)
+    def startup_program(self):
+        prog = self.kwargs.get('startup_program', None)
         if prog is None:
-            return g_init_program
+            return g_startup_program
         else:
             return prog
 
     def append_op(self, *args, **kwargs):
-        return self.program.current_block().append_op(*args, **kwargs)
+        return self.main_program.current_block().append_op(*args, **kwargs)
 
     def multiple_input(self, input_param_name='input'):
         inputs = self.kwargs.get(input_param_name, [])
@@ -119,28 +112,41 @@ class LayerHelper(object):
                 raise ValueError("Data Type mismatch")
         return dtype
 
-    def create_parameter(self, attr, shape, dtype, suffix='w'):
+    def create_parameter(self, attr, shape, dtype, suffix='w',
+                         initializer=None):
         # Deepcopy the attr so that parameters can be shared in program
         attr_copy = copy.deepcopy(attr)
+        if initializer is not None:
+            attr_copy['initializer'] = initializer
         if attr_copy['name'] is None:
             attr_copy['name'] = unique_name(".".join([self.name, suffix]))
-        self.init_program.global_block().create_parameter(
+        self.startup_program.global_block().create_parameter(
             dtype=dtype, shape=shape, **attr_copy)
-        return self.program.global_block().create_parameter(
+        return self.main_program.global_block().create_parameter(
             name=attr_copy['name'], dtype=dtype, shape=shape)
 
     def create_tmp_variable(self, dtype):
-        return self.program.current_block().create_var(
+        return self.main_program.current_block().create_var(
             name=unique_name(".".join([self.name, 'tmp'])),
             dtype=dtype,
             persistable=False)
 
     def create_variable(self, *args, **kwargs):
-        return self.program.current_block().create_var(*args, **kwargs)
+        return self.main_program.current_block().create_var(*args, **kwargs)
 
-    def create_global_variable(self, *args, **kwargs):
-        return self.program.global_block().create_var(
-            *args, persistable=False, **kwargs)
+    def create_global_variable(self, persistable=False, *args, **kwargs):
+        return self.main_program.global_block().create_var(
+            *args, persistable=persistable, **kwargs)
+
+    def set_variable_initializer(self, var, initializer):
+        assert isinstance(var, Variable)
+        self.startup_program.global_block().create_var(
+            name=var.name,
+            type=var.type,
+            dtype=var.data_type,
+            shape=var.shape,
+            persistable=True,
+            initializer=initializer)
 
     def append_bias_op(self, input_var, num_flatten_dims=None):
         """

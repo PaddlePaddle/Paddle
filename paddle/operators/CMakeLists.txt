@@ -69,6 +69,20 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(max_pool2d_with_index);\n")
     endif()
 
+    # conv_op contains several operators
+    if ("${TARGET}" STREQUAL "conv_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_OP(conv2d);\n")
+    endif()
+
+    # conv_transpose_op contains several operators
+    if ("${TARGET}" STREQUAL "conv_transpose_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_OP(conv2d_transpose);\n")
+    endif()
+    
     # pool_cudnn_op contains several operators
     if ("${TARGET}" STREQUAL "pool_cudnn_op")
         set(pybind_flag 1)
@@ -96,12 +110,17 @@ function(op_library TARGET)
         # It's enough to just adding one operator to pybind
         file(APPEND ${pybind_file} "USE_GPU_ONLY_OP(ncclAllReduce);\n")
     endif()
-    
+
     # reduce_op contains several operators
     if ("${TARGET}" STREQUAL "reduce_op")
         set(pybind_flag 1)
         # It's enough to just adding one operator to pybind
         file(APPEND ${pybind_file} "USE_OP(reduce_sum);\n")
+    endif()
+
+    if ("${TARGET}" STREQUAL "tensor_array_read_write_op")
+        set(pybind_flag 1)
+        file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(read_from_array);\nUSE_NO_KERNEL_OP(write_to_array);\n")
     endif()
 
     # pybind USE_NO_KERNEL_OP
@@ -131,31 +150,45 @@ add_subdirectory(math)
 add_subdirectory(nccl)
 
 set(DEPS_OPS
-    recurrent_op
     cond_op
     cross_entropy_op
+    recurrent_op
+    dynamic_recurrent_op
     softmax_with_cross_entropy_op
     sum_op
     pool_op
     pool_with_index_op
+    conv_op
+    lstm_op
+    conv_transpose_op
     nccl_op
     sequence_conv_op
-    lstm_op)
+    sequence_pool_op
+    lod_rank_table_op
+    lstm_op
+    tensor_array_read_write_op
+    gru_op)
 
-
-op_library(recurrent_op SRCS recurrent_op.cc rnn/recurrent_op_utils.cc
-  DEPS framework_proto tensor net_op)
 op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
 op_library(cross_entropy_op DEPS cross_entropy)
 op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
+op_library(conv_op DEPS vol2col)
 op_library(sum_op DEPS net_op selected_rows_functor)
 op_library(pool_op DEPS pooling)
 op_library(pool_with_index_op DEPS pooling)
+op_library(lod_rank_table_op SRCS lod_rank_table_op.cc DEPS lod_rank_table)
+op_library(tensor_array_read_write_op SRCS tensor_array_read_write_op.cc)
 if(WITH_GPU)
 op_library(nccl_op DEPS nccl_common)
 endif()
 op_library(sequence_conv_op DEPS context_project)
+op_library(sequence_pool_op DEPS sequence_pooling)
 op_library(lstm_op DEPS sequence2batch lstm_compute)
+op_library(conv_transpose_op DEPS vol2col)
+op_library(gru_op DEPS sequence2batch gru_compute)
+op_library(dynamic_recurrent_op SRCS dynamic_recurrent_op.cc rnn/recurrent_op_utils.cc
+        DEPS net_op tensor_array)
+op_library(recurrent_op SRCS recurrent_op.cc DEPS executor)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
@@ -168,8 +201,9 @@ cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 cc_test(net_op_test SRCS net_op_test.cc DEPS net_op)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor)
 cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor paddle_memory)
-cc_test(dynamic_recurrent_op_test SRCS dynamic_recurrent_op_test.cc DEPS dynamic_recurrent_op recurrent_op tensor_array)
-
+cc_test(dynamic_recurrent_op_test SRCS dynamic_recurrent_op_test.cc
+        rnn/recurrent_op_utils.cc
+        DEPS dynamic_recurrent_op)
 if(WITH_GPU)
   nv_test(nccl_op_test SRCS nccl_op_test.cu DEPS nccl_op gpu_info device_context)
 endif()
