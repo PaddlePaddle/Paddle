@@ -69,6 +69,13 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(max_pool2d_with_index);\n")
     endif()
 
+    # conv_transpose_op contains several operators
+    if ("${TARGET}" STREQUAL "conv_transpose_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_OP(conv2d_transpose);\n")
+    endif()
+    
     # pool_cudnn_op contains several operators
     if ("${TARGET}" STREQUAL "pool_cudnn_op")
         set(pybind_flag 1)
@@ -139,6 +146,8 @@ set(DEPS_OPS
     sum_op
     pool_op
     pool_with_index_op
+    lstm_op
+    conv_transpose_op
     nccl_op
     sequence_conv_op
     sequence_pool_op
@@ -159,10 +168,12 @@ endif()
 op_library(sequence_conv_op DEPS context_project)
 op_library(sequence_pool_op DEPS sequence_pooling)
 op_library(lstm_op DEPS sequence2batch lstm_compute)
+op_library(conv_transpose_op DEPS vol2col)
 op_library(gru_op DEPS sequence2batch gru_compute)
 op_library(dynamic_recurrent_op SRCS dynamic_recurrent_op.cc rnn/recurrent_op_utils.cc
         DEPS net_op tensor_array)
 op_library(recurrent_op SRCS recurrent_op.cc DEPS executor)
+
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
     op_library(${src})
