@@ -8,6 +8,12 @@ import numpy as np
 import paddle.v2.framework.core as core
 
 
+def create_tensor(np_data, place):
+    tensor = core.LoDTensor()
+    tensor.set(np_data, place)
+    return tensor
+
+
 class PyRNNBase(object):
     def __init__(self, input_shape, output_shape):
         self.x = np.ones(shape=input_shape).astype("float32")
@@ -25,60 +31,6 @@ class PyRNNBase(object):
         return [self.x[i] for i in range(self.x.shape[0])]
 
 
-class PySimpleRNN1(PyRNNBase):
-    def __init__(self, input_shape, output_shape):
-        super(PySimpleRNN1, self).__init__(input_shape, output_shape)
-
-        seq_len, batch_size, input_dim = input_shape
-        self.h_boot = np.random.normal(size=(batch_size,
-                                             input_dim)).astype("float32")
-
-        self.scale = 1.0 / 2.0
-        men_dim = (seq_len, batch_size, input_dim)
-        self.mems = np.zeros(shape=men_dim).astype("float32")
-
-    def step(self, step_id, x):
-        if step_id == 0:
-            pre_mem = self.h_boot
-        else:
-            pre_mem = self.mems[step_id - 1]
-        self.mems[step_id] = (pre_mem + x) * self.scale
-        self.y[step_id] = self.mems[step_id]
-
-
-class PySimpleRNN2(PyRNNBase):
-    def __init__(self, input_shape, output_shape):
-        super(PySimpleRNN2, self).__init__(input_shape, output_shape)
-
-        seq_len, batch_size, input_dim = input_shape
-        self.W = np.random.normal(size=(input_dim, input_dim)).astype("float32")
-        self.U = np.random.normal(size=(input_dim, input_dim)).astype("float32")
-        self.h_boot = np.ones(shape=(batch_size, input_dim)).astype("float32")
-
-        men_dim = (seq_len, batch_size, input_dim)
-        self.mems = np.zeros(shape=men_dim).astype("float32")
-
-    def step(self, step_id, x):
-        if step_id > 0:
-            pre_mem = self.mems[step_id - 1]
-        else:
-            pre_mem = self.h_boot
-        xW = np.matmul(x, self.W).astype("float32")
-        hU = np.matmul(pre_mem, self.U).astype("float32")
-
-        def py_sigmoid(x):
-            return 1. / (1. + np.exp(-x))
-
-        self.mems[step_id] = py_sigmoid(xW + hU)
-        self.y[step_id] = self.mems[step_id]
-
-
-def create_tensor(np_data, place):
-    tensor = core.LoDTensor()
-    tensor.set(np_data, place)
-    return tensor
-
-
 class RecurrentOpTest1(unittest.TestCase):
     '''
     Test RNNOp
@@ -92,9 +44,61 @@ class RecurrentOpTest1(unittest.TestCase):
         - h
     '''
 
-    input_dim = 2
-    batch_size = 1
-    sent_len = 1
+    class PyRNN(PyRNNBase):
+        def __init__(self, input_shape, output_shape):
+            super(RecurrentOpTest1.PyRNN, self).__init__(input_shape,
+                                                         output_shape)
+
+            seq_len, batch_size, input_dim = input_shape
+            self.h_boot = np.random.normal(size=(batch_size,
+                                                 input_dim)).astype("float32")
+
+            self.scale = 1.0 / 2.0
+            men_dim = (seq_len, batch_size, input_dim)
+            self.mems = np.zeros(shape=men_dim).astype("float32")
+
+        def step(self, step_id, x):
+            if step_id == 0:
+                pre_mem = self.h_boot
+            else:
+                pre_mem = self.mems[step_id - 1]
+            self.mems[step_id] = (pre_mem + x) * self.scale
+            self.y[step_id] = self.mems[step_id]
+
+    input_dim, batch_size, sent_len = 3, 4, 5
+    input_shape = (sent_len, batch_size, input_dim)
+    output_shape = input_shape
+
+    def setUp(self):
+        self.setup_py_rnn()
+        self.setup_program()
+
+    def test_backward(self):
+        print 'test recurrent op backward'
+        append_backward_ops(self.output)
+
+        ana_grad = [np.array(x) for x in self.backward()]
+
+        num_grad = self.get_numerical_gradient()
+        for idx, name in enumerate(self.data_field):
+            self.assertEqual(num_grad[idx].shape, ana_grad[idx].shape)
+            self.assertTrue(
+                np.isclose(
+                    num_grad[idx], ana_grad[idx], rtol=0.1).all())
+
+    def test_forward(self):
+        print 'test recurrent op forward'
+        pd_output = self.forward()
+        py_output = self.py_rnn.forward()
+        print 'pd_output', pd_output
+        print
+        print 'py_output', py_output
+        self.assertEqual(pd_output.shape, py_output.shape)
+        self.assertTrue(np.isclose(pd_output, py_output, rtol=0.1).all())
+
+    def setup_py_rnn(self):
+        self.py_rnn = RecurrentOpTest1.PyRNN(self.input_shape,
+                                             self.output_shape)
 
     def setup_program(self):
         self.main_program = Program()
@@ -104,18 +108,10 @@ class RecurrentOpTest1(unittest.TestCase):
             "startup_program": self.startup_program
         }
         self.place = core.CPUPlace()
-
-    def setUp(self):
-        self.setup_program()
-        self.data_field = {"x", "h_boot"}
-
-        self.input_shape = (self.sent_len, self.batch_size, self.input_dim)
-        self.output_shape = (self.sent_len, self.batch_size, self.input_dim)
-        self.py_rnn = PySimpleRNN1(self.input_shape, self.output_shape)
-
         self.output = layers.mean(x=self.create_rnn_op(), **self.p_info)
 
     def create_rnn_op(self):
+        self.data_field = {"x", "h_boot"}
         x = layers.data(
             shape=[self.sent_len, self.batch_size, self.input_dim],
             data_type='float32',
@@ -173,32 +169,7 @@ class RecurrentOpTest1(unittest.TestCase):
                        feed=self.feed_map,
                        fetch_list=fetch_list)
 
-    def test_backward(self):
-        self.check_forward()
-
-        append_backward_ops(self.output)
-
-        ana_grad = [np.array(x) for x in self.backward()]
-
-        num_grad = self.get_numerical_gradient()
-        for idx, name in enumerate(self.data_field):
-            self.assertEqual(num_grad[idx].shape, ana_grad[idx].shape)
-            self.assertTrue(
-                np.isclose(
-                    num_grad[idx], ana_grad[idx], rtol=0.1).all())
-
-    def check_forward(self):
-        print 'test recurrent op forward'
-        pd_output = self.forward()
-        py_output = self.py_rnn.forward()
-        print 'pd_output', pd_output
-        print
-        print 'py_output', py_output
-        self.assertEqual(pd_output.shape, py_output.shape)
-        self.assertTrue(np.isclose(pd_output, py_output, rtol=0.1).all())
-
     def get_numerical_gradient(self, delta=0.005):
-        dloss_dout = 1.0
         feed_list = [getattr(self.py_rnn, x) for x in self.data_field]
         grad_list = [np.zeros_like(x) for x in feed_list]
         for feed, grad in zip(feed_list, grad_list):
@@ -217,7 +188,7 @@ class RecurrentOpTest1(unittest.TestCase):
         return grad_list
 
 
-class RecurrentOpTest2(RecurrentOpTest1):
+class RecurrentOpWithParameterTest(RecurrentOpTest1):
     '''
     Test RNNOp
     equation:
@@ -233,22 +204,42 @@ class RecurrentOpTest2(RecurrentOpTest1):
        - h
     '''
 
-    input_dim = 2
-    batch_size = 10
-    sent_len = 2
+    class PySimpleRNN2(PyRNNBase):
+        def __init__(self, input_shape, output_shape):
+            super(RecurrentOpWithParameterTest.PySimpleRNN2, self).__init__(
+                input_shape, output_shape)
 
-    def setUp(self):
-        self.setup_program()
+            seq_len, batch_size, input_dim = input_shape
+            self.W = np.random.normal(size=(input_dim,
+                                            input_dim)).astype("float32")
+            self.U = np.random.normal(size=(input_dim,
+                                            input_dim)).astype("float32")
+            self.h_boot = np.ones(shape=(batch_size,
+                                         input_dim)).astype("float32")
 
-        self.data_field = {"x", "h_boot", "W", "U"}
+            men_dim = (seq_len, batch_size, input_dim)
+            self.mems = np.zeros(shape=men_dim).astype("float32")
 
-        self.input_shape = (self.sent_len, self.batch_size, self.input_dim)
-        self.output_shape = (self.sent_len, self.batch_size, self.input_dim)
-        self.py_rnn = PySimpleRNN2(self.input_shape, self.output_shape)
+        def step(self, step_id, x):
+            if step_id > 0:
+                pre_mem = self.mems[step_id - 1]
+            else:
+                pre_mem = self.h_boot
+            xW = np.matmul(x, self.W).astype("float32")
+            hU = np.matmul(pre_mem, self.U).astype("float32")
 
-        self.output = layers.mean(x=self.create_rnn_op(), **self.p_info)
+            def py_sigmoid(x):
+                return 1. / (1. + np.exp(-x))
+
+            self.mems[step_id] = py_sigmoid(xW + hU)
+            self.y[step_id] = self.mems[step_id]
+
+    def setup_py_rnn(self):
+        self.py_rnn = RecurrentOpWithParameterTest.PySimpleRNN2(
+            self.input_shape, self.output_shape)
 
     def create_rnn_op(self):
+        self.data_field = {"x", "h_boot", "W", "U"}
         x = layers.data(
             shape=[self.sent_len, self.batch_size, self.input_dim],
             data_type='float32',
@@ -331,23 +322,12 @@ class RecurrentOpMultipleMemoryTest(RecurrentOpTest1):
             self.mems2[step_id] = pre_mem2
             self.y[step_id] = self.mems1[step_id] + self.mems2[step_id] + x
 
-    input_dim = 1
-    batch_size = 1
-    sent_len = 2
-
-    def setUp(self):
-        self.setup_program()
-
-        self.data_field = {"x", "h_boot1", "h_boot2"}
-
-        self.input_shape = (self.sent_len, self.batch_size, self.input_dim)
-        self.output_shape = (self.sent_len, self.batch_size, self.input_dim)
+    def setup_py_rnn(self):
         self.py_rnn = RecurrentOpMultipleMemoryTest.PySimpleRNN3(
             self.input_shape, self.output_shape)
 
-        self.output = layers.mean(x=self.create_rnn_op(), **self.p_info)
-
     def create_rnn_op(self):
+        self.data_field = {"x", "h_boot1", "h_boot2"}
         x = layers.data(
             shape=[self.sent_len, self.batch_size, self.input_dim],
             data_type='float32',
@@ -416,23 +396,12 @@ class RecurrentOpNoMemBootTest(RecurrentOpTest1):
             self.mems[step_id] = pre_mem + x
             self.y[step_id] = self.mems[step_id]
 
-    input_dim = 1
-    batch_size = 1
-    sent_len = 2
-
-    def setUp(self):
-        self.setup_program()
-
-        self.data_field = {"x"}
-
-        self.input_shape = (self.sent_len, self.batch_size, self.input_dim)
-        self.output_shape = (self.sent_len, self.batch_size, self.input_dim)
+    def setup_py_rnn(self):
         self.py_rnn = RecurrentOpNoMemBootTest.PySimpleRNN4(self.input_shape,
                                                             self.output_shape)
-        self.output = layers.mean(x=self.create_rnn_op(), **self.p_info)
-        print self.main_program
 
     def create_rnn_op(self):
+        self.data_field = {"x"}
         x = layers.data(
             shape=[self.sent_len, self.batch_size, self.input_dim],
             data_type='float32',
