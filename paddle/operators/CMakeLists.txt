@@ -142,7 +142,8 @@ set(DEPS_OPS
     nccl_op
     sequence_conv_op
     lod_rank_table_op
-    lstm_op)
+    lstm_op
+    gru_op)
 
 op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
 op_library(cross_entropy_op DEPS cross_entropy)
@@ -156,6 +157,7 @@ op_library(nccl_op DEPS nccl_common)
 endif()
 op_library(sequence_conv_op DEPS context_project)
 op_library(lstm_op DEPS sequence2batch lstm_compute)
+op_library(gru_op DEPS sequence2batch gru_compute)
 op_library(dynamic_recurrent_op SRCS dynamic_recurrent_op.cc rnn/recurrent_op_utils.cc
         DEPS net_op tensor_array)
 op_library(recurrent_op SRCS recurrent_op.cc DEPS executor)
