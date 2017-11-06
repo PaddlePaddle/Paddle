@@ -63,6 +63,8 @@ def main():
 
     cost, acc = convolution_net(input_dim=dict_dim, class_dim=class_dim)
 
+    print(g_program)
+
     train_data = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.imdb.train(word_dict), buf_size=1000),
