@@ -23,7 +23,6 @@
 
 #include <glog/logging.h>
 #include "paddle/framework/ddim.h"
-#include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
