@@ -78,6 +78,9 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
       size_t offset = 0;
       for (auto &each_range : ranges) {
         size_t len = each_range.end - each_range.begin;
+        if (len == 0) {
+          continue;
+        }
         // out[i][offset: offset+len] = x[each_range.begin: each_range.end]
         out[i]
             .Slice(static_cast<int>(offset), static_cast<int>(offset + len))

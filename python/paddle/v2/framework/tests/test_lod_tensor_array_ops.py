@@ -119,6 +119,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         self.assertEqual(len(expect_tensor), len(array))
         for i, exp in enumerate(zip(expect_tensor, expect_lod)):
             exp_tensor, exp_lod = exp
+            exp_tensor = numpy.expand_dims(exp_tensor, axis=1)
             self.assertTrue(numpy.allclose(exp_tensor, numpy.array(array[i])))
             self.assertEqual(exp_lod, array[i].lod())
 

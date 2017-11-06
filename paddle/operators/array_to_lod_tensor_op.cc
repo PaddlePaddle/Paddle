@@ -94,6 +94,9 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
         framework::AppendLoD(out_lod, lod_length);
         // Copy data
         size_t len = end_offset - start_offset;
+        if (len == 0) {
+          continue;
+        }
         out->Slice(out_offset, out_offset + len)
             .CopyFrom(x[x_idx].Slice(start_offset, end_offset), place, dev_ctx);
         out_offset += len;
