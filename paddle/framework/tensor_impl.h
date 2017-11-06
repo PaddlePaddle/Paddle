@@ -228,7 +228,7 @@ inline void Tensor::CopyFromVector(const std::vector<T>& src,
 #endif
 }
 
-inline Tensor Tensor::Slice(const int& begin_idx, const int& end_idx) const {
+inline Tensor Tensor::Slice(int begin_idx, int end_idx) const {
   check_memory_size();
   PADDLE_ENFORCE_GE(begin_idx, 0,
                     "The start row index must be greater than 0.");

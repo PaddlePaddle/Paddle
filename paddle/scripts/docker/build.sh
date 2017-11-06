@@ -150,16 +150,10 @@ EOF
     ENV HOME /root
 EOF
 
-    if [[ -n ${APT_MIRROR} ]]; then
-    cat >> /paddle/build/Dockerfile <<EOF
-    RUN sed -i '${APT_MIRROR}' /etc/apt/sources.list
-EOF
-    fi
-
     if [[ ${WITH_GPU} == "ON"  ]]; then
-    NCCL_DEPS="apt-get install -y libnccl-dev &&"
+        NCCL_DEPS="apt-get install -y libnccl-dev &&"
     else
-    NCCL_DEPS="" 
+        NCCL_DEPS="" 
     fi
 
     cat >> /paddle/build/Dockerfile <<EOF

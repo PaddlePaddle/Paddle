@@ -126,7 +126,7 @@ OperatorBase::OperatorBase(const std::string& type,
 
 std::vector<std::string> OperatorBase::InputVars() const {
   std::vector<std::string> ret_val;
-  for (auto& o : outputs_) {
+  for (auto& o : inputs_) {
     ret_val.reserve(ret_val.size() + o.second.size());
     ret_val.insert(ret_val.end(), o.second.begin(), o.second.end());
   }
@@ -394,7 +394,19 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
 void OperatorWithKernel::Run(const Scope& scope,
                              const platform::DeviceContext& dev_ctx) const {
-  VLOG(3) << "Running operator " << this->Type();
+  if (VLOG_IS_ON(1)) {
+    auto inputs = this->InputVars();
+    auto outputs = this->OutputVars(true);
+    std::ostringstream sout;
+    sout << "Run operator " << this->Type() << " From [";
+    std::ostream_iterator<std::string> out_it(sout, ",");
+    std::copy(inputs.begin(), inputs.end(), out_it);
+    sout << "] to [";
+    std::copy(outputs.begin(), outputs.end(), out_it);
+    sout << "]";
+    VLOG(1) << sout.str();
+  }
+
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
   this->InferShape(&infer_shape_ctx);
 

@@ -7,6 +7,11 @@ import copy
 __all__ = ['Block', 'Variable', 'Program', 'Operator']
 
 
+def unique_name(prefix):
+    uid = core.unique_integer(prefix)  # unique during whole process.
+    return "_".join([prefix, str(uid)])
+
+
 class Variable(object):
     def __init__(self,
                  block,
@@ -16,6 +21,7 @@ class Variable(object):
                  dtype=None,
                  lod_level=None,
                  persistable=None,
+                 stop_gradient=False,
                  **kwargs):
         self.block = block
 
@@ -84,6 +90,7 @@ class Variable(object):
 
         self.block.vars[name] = self
         self.op = None
+        self.stop_gradient = stop_gradient
 
     def __str__(self):
         protostr = self.desc.serialize_to_string()
@@ -95,6 +102,10 @@ class Variable(object):
     @property
     def persistable(self):
         return self.desc.persistable()
+
+    @persistable.setter
+    def persistable(self, p):
+        self.desc.set_persistable(p)
 
     @property
     def name(self):
@@ -264,7 +275,10 @@ class Operator(object):
                     self.desc.set_attr(attr_name, attrs[attr_name])
 
         self.desc.check_attrs()
-        no_kernel_op_set = {'feed', 'fetch', 'save', 'load'}
+        no_kernel_op_set = {
+            'feed', 'fetch', 'save', 'load', 'recurrent',
+            'rnn_memory_helper_grad'
+        }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
@@ -538,5 +552,5 @@ class Parameter(Variable):
 
 
 # program is a global instance.
-g_program = Program()
-g_init_program = Program()
+g_main_program = Program()
+g_startup_program = Program()
