@@ -20,8 +20,8 @@
 
 #include "parameter_optimizer.h"
 
-namespace paddle {
-namespace optimizer {
+using paddle::optimizer::ParameterOptimizer;
+using paddle::optimizer::Tensor;
 
 template <paddle_element_type VALUE>
 struct EnumToType {};
@@ -44,7 +44,6 @@ MATCH_ENUM_TYPE(int32_t, PADDLE_ELEMENT_TYPE_INT32);
 MATCH_ENUM_TYPE(uint32_t, PADDLE_ELEMENT_TYPE_UINT32);
 MATCH_ENUM_TYPE(int64_t, PADDLE_ELEMENT_TYPE_INT64);
 MATCH_ENUM_TYPE(uint64_t, PADDLE_ELEMENT_TYPE_UINT64);
-// TODO(zhihong): only implement below type, need to fix
 MATCH_ENUM_TYPE(float, PADDLE_ELEMENT_TYPE_FLOAT32);
 MATCH_ENUM_TYPE(double, PADDLE_ELEMENT_TYPE_FLOAT64);
 
@@ -105,6 +104,3 @@ int paddle_optimizer_get_state(paddle_optimizer* o, const char** state) {
 
   return state_len;
 }
-
-}  // namespace optimizer
-}  // namespace paddle
