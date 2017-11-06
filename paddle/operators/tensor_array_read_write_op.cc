@@ -111,6 +111,18 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
   }
 };
 
+class WriteToArrayInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDescBind &op_desc,
+                  framework::BlockDescBind *block) const override {
+    VLOG(10) << "I am here?";
+    for (auto &out_var : op_desc.OutputArgumentNames()) {
+      VLOG(10) << "Set Variable " << out_var << " as LOD_TENSOR_ARRAY";
+      block->Var(out_var)->SetType(framework::VarDesc::LOD_TENSOR_ARRAY);
+    }
+  }
+};
+
 class ReadFromArrayOp : public ArrayOpBase {
  public:
   ReadFromArrayOp(const std::string &type,
@@ -201,7 +213,7 @@ class ReadFromArrayGradMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(write_to_array, ops::WriteToArrayOp,
                   ops::WriteToArrayInferShape, ops::WriteToArrayOpProtoMaker,
-                  ops::WriteToArrayGradMaker);
+                  ops::WriteToArrayGradMaker, ops::WriteToArrayInferVarType);
 REGISTER_OPERATOR(read_from_array, ops::ReadFromArrayOp,
                   ops::ReadFromArrayInferShape, ops::ReadFromArrayProtoMaker,
                   ops::ReadFromArrayGradMaker);
