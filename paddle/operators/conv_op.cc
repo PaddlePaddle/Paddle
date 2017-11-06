@@ -64,42 +64,41 @@ Conv2DOpMaker::Conv2DOpMaker(framework::OpProto* proto,
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput(
       "Input",
-      "(Tensor), the input tensor of convolution operator. "
-      "The format of input tensor is NCHW. Where N is batch size, C is the "
-      "number of channels, H and W is the height and width of image.");
+      "(Tensor) The input tensor of convolution operator. "
+      "The format of input tensor is NCHW, where N is batch size, C is the "
+      "number of channels, H is the height of the feature, "
+      "and W is the width of the feature.");
   AddInput("Filter",
-           "(Tensor), the filter tensor of convolution operator."
+           "(Tensor) The filter tensor of convolution operator. "
            "The format of the filter tensor is MCHW, where M is the number of "
            "output image channels, C is the number of input image channels, "
-           "H and W is height and width of filter. "
-           "If the groups attribute is greater than 1, C equal the number of "
+           "H is the height of the filter, and W is the width of the filter. "
+           "If the groups attribute is greater than 1, C equals the number of "
            "input image channels divided by the groups.");
   AddOutput("Output",
-            "(Tensor), the output tensor of convolution operator."
-            "The format of output tensor is also NCHW. Where N is batch size, "
-            "C is the "
-            "number of channels, H and W is the height and width of image.");
-  AddAttr<std::vector<int>>(
-      "strides", "(vector default:{1, 1}), strides of convolution operator.")
+            "(Tensor) The output tensor of convolution operator. "
+            "The format of output tensor is also NCHW.");
+  AddAttr<std::vector<int>>("strides", "strides of convolution operator.")
       .SetDefault({1, 1});
-  AddAttr<std::vector<int>>(
-      "paddings", "(vector default:{0, 0}), paddings of convolution operator.")
+  AddAttr<std::vector<int>>("paddings", "paddings of convolution operator.")
       .SetDefault({0, 0});
   AddAttr<int>(
       "groups",
-      "(int, default:1), group size of convolution operator. "
-      "Refer to grouped convolution in Alex Krizhevsky's paper: "
-      "when group=2, the first half of the filters are only connected to the "
-      "first half of the input channels, and the second half only connected "
-      "to the second half.")
+      "(int default:1), the group size of convolution operator. "
+      "According to grouped convolution in Alex Krizhevsky's Deep CNN paper: "
+      "when group=2, the first half of the filters is only connected to the "
+      "first half of the input channels, while the second half of the filters "
+      "is only connected to the second half of the input channels.")
       .SetDefault(1);
   AddComment(R"DOC(
+Convolution Operator.
+
 The convolution operation calculates the output based on the input, filter
 and strides, paddings, groups parameters. The size of each dimension of the
 parameters is checked in the infer-shape.
 Input(Input, Filter) and output(Output) are in NCHW format. Where N is batch
-size, C is the number of channels, H and W is the height and
-width of feature. Parameters(ksize, strides, paddings) are two elements.
+size, C is the number of channels, H is the height of the feature, and W is
+the width of the feature. Parameters(ksize, strides, paddings) are two elements.
 These two elements represent height and width, respectively.
 The input(X) size and output(Out) size may be different.
 
@@ -120,19 +119,21 @@ Conv3DOpMaker::Conv3DOpMaker(framework::OpProto* proto,
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput(
       "Input",
-      "(Tensor), the input tensor of convolution operator. "
+      "(Tensor) The input tensor of convolution operator. "
       "The format of input tensor is NCDHW. Where N is batch size, C is the "
-      "number of channels, D, H and W is the depth, height and width of "
-      "image.");
+      "number of channels, D is the depth of the feature, H is the height of "
+      "the feature, "
+      "and W is the width of the feature.");
   AddInput("Filter",
-           "(Tensor), the filter tensor of convolution operator."
+           "(Tensor) The filter tensor of convolution operator. "
            "The format of the filter tensor is MCDHW, where M is the number of "
            "output image channels, C is the number of input image channels, "
-           "D, H and W is depth, height and width of filter. "
-           "If the groups attribute is greater than 1, C equal the number of "
+           "D is the depth of the filter, H is the height of the filter, and W "
+           "is the width of the filter."
+           "If the groups attribute is greater than 1, C equals the number of "
            "input image channels divided by the groups.");
   AddOutput("Output",
-            "(Tensor), the output tensor of convolution operator."
+            "(Tensor) The output tensor of convolution operator."
             "The format of output tensor is also NCDHW.");
   AddAttr<std::vector<int>>(
       "strides",
@@ -144,20 +145,23 @@ Conv3DOpMaker::Conv3DOpMaker(framework::OpProto* proto,
       .SetDefault({0, 0, 0});
   AddAttr<int>(
       "groups",
-      "(int, default:1) the group size of convolution operator. "
-      "Refer to grouped convolution in Alex Krizhevsky's paper: "
-      "when group=2, the first half of the filters are only connected to the "
-      "first half of the input channels, and the second half only connected "
-      "to the second half.")
+      "(int default:1), the group size of convolution operator. "
+      "According to grouped convolution in Alex Krizhevsky's Deep CNN paper: "
+      "when group=2, the first half of the filters is only connected to the "
+      "first half of the input channels, while the second half of the filters "
+      "is only connected to the second half of the input channels.")
       .SetDefault(1);
+
   AddComment(R"DOC(
+Convolution3D Operator.
+
 The convolution operation calculates the output based on the input, filter
 and strides, paddings, groups parameters. The size of each dimension of the
 parameters is checked in the infer-shape.
 Input(Input, Filter) and output(Output) are in NCDHW format. Where N is batch
-size, C is the number of channels, D, H and W is the depth, height and
-width of feature. Parameters(ksize, strides, paddings) are three elements.
-These three elements represent depth, height and width, respectively.
+size, C is the number of channels,D is the depth of the feature, H is the height of
+the feature, and W is the width of the feature. Parameters(ksize, strides, paddings)
+are three elements. These three elements represent depth, height and width, respectively.
 The input(X) size and output(Out) size may be different.
 
 Example:
