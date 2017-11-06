@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+#include "glog/logging.h"
 #include "paddle/framework/framework.pb.h"
 
 namespace paddle {

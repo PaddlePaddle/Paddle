@@ -2775,9 +2775,15 @@ class NCELayer(LayerBase):
 
 @config_layer('addto')
 class AddToLayer(LayerBase):
+    layer_type = 'addto'
+
     def __init__(self, name, inputs, bias=True, **xargs):
+        use_mkldnn = bool(int(g_command_config_args.get("use_mkldnn", 0)))
+        if self.layer_type == "mkldnn_addto":
+            config_assert(use_mkldnn, "mkldnn_addto only support MKLDNN")
+        self.layer_type = 'mkldnn_addto' if use_mkldnn else 'addto'
         super(AddToLayer, self).__init__(
-            name, 'addto', 0, inputs=inputs, **xargs)
+            name, self.layer_type, 0, inputs=inputs, **xargs)
         config_assert(len(inputs) > 0, 'inputs cannot be empty for AddToLayer')
 
         if len(self.inputs) > 1:
@@ -2794,6 +2800,11 @@ class AddToLayer(LayerBase):
                                         self.get_input_layer(0).width)
         self.set_layer_depth(self.get_input_layer(0).depth)
         self.create_bias_parameter(bias, self.config.size)
+
+
+@config_layer('mkldnn_addto')
+class MKLDNNAddtoLayer(AddToLayer):
+    layer_type = 'mkldnn_addto'
 
 
 @config_layer('agent')
