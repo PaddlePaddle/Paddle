@@ -116,7 +116,7 @@ class AdamOptimizer(BaseSGDOptimizer):
 
         m(w, t) & = \\beta_1 m(w, t-1) + (1 - \\beta_1) \\nabla Q_i(w) \\\\
         v(w, t) & = \\beta_2 v(w, t-1) + (1 - \\beta_2)(\\nabla Q_i(w)) ^2 \\\\
-        w & = w - \\frac{\\eta}{\\sqrt{v(w,t) + \\epsilon}}
+        w & = w - \\frac{\\eta m(w, t)}{\\sqrt{v(w,t) + \\epsilon}}
 
     :param beta1: the :math:`\\beta_1` in equation.
     :type beta1: float
