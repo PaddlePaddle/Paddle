@@ -1,8 +1,5 @@
 import unittest
 
-import logging
-
-from op_test import get_numeric_gradient
 import paddle.v2.framework.layers as layers
 from paddle.v2.framework.framework import Program
 from paddle.v2.framework.executor import Executor
@@ -126,14 +123,14 @@ class RecurrentOpTest1(unittest.TestCase):
             append_batch_size=False,
             **self.p_info)
         x.stop_gradient = False
-        h_boot = data(
+        h_boot = layers.data(
             shape=[self.input_dim],
             data_type='float32',
             name='h_boot',
             **self.p_info)
         h_boot.stop_gradient = False
 
-        rnn = StaticRNN(main_program=self.main_program)
+        rnn = layers.StaticRNN(main_program=self.main_program)
         with rnn.step():
             h_pre = rnn.memory(init=h_boot)
             x_t = rnn.step_input(x)
@@ -259,14 +256,14 @@ class RecurrentOpTest2(RecurrentOpTest1):
             append_batch_size=False,
             **self.p_info)
         x.stop_gradient = False
-        h_boot = data(
+        h_boot = layers.data(
             shape=[self.input_dim],
             data_type='float32',
             name='h_boot',
             **self.p_info)
         h_boot.stop_gradient = False
 
-        rnn = StaticRNN(main_program=self.main_program)
+        rnn = layers.StaticRNN(main_program=self.main_program)
         with rnn.step():
             h_pre = rnn.memory(init=h_boot)
             x_t = rnn.step_input(x)
@@ -358,14 +355,14 @@ class RecurrentOpMultipleMemoryTest(RecurrentOpTest1):
             append_batch_size=False,
             **self.p_info)
         x.stop_gradient = False
-        h_boot1 = data(
+        h_boot1 = layers.data(
             shape=[self.batch_size, self.input_dim],
             data_type='float32',
             name='h_boot1',
             append_batch_size=False,
             **self.p_info)
         h_boot1.stop_gradient = False
-        h_boot2 = data(
+        h_boot2 = layers.data(
             shape=[self.batch_size, self.input_dim],
             data_type='float32',
             name='h_boot2',
@@ -373,7 +370,7 @@ class RecurrentOpMultipleMemoryTest(RecurrentOpTest1):
             **self.p_info)
         h_boot2.stop_gradient = False
 
-        rnn = StaticRNN(main_program=self.main_program)
+        rnn = layers.StaticRNN(main_program=self.main_program)
         with rnn.step():
             h_pre1 = rnn.memory(init=h_boot1)
             h_pre2 = rnn.memory(init=h_boot2)
@@ -424,7 +421,7 @@ class RecurrentOpNoMemBootTest(RecurrentOpTest1):
     sent_len = 2
 
     def setUp(self):
-        self.init_program()
+        self.setup_program()
 
         self.data_field = {"x"}
 
@@ -433,6 +430,7 @@ class RecurrentOpNoMemBootTest(RecurrentOpTest1):
         self.py_rnn = RecurrentOpNoMemBootTest.PySimpleRNN4(self.input_shape,
                                                             self.output_shape)
         self.output = layers.mean(x=self.create_rnn_op(), **self.p_info)
+        print self.main_program
 
     def create_rnn_op(self):
         x = layers.data(
@@ -441,8 +439,9 @@ class RecurrentOpNoMemBootTest(RecurrentOpTest1):
             name='x',
             append_batch_size=False,
             **self.p_info)
+        x.stop_gradient = False
 
-        rnn = layers.StaticRNN(program=self.program)
+        rnn = layers.StaticRNN(main_program=self.main_program)
         with rnn.step():
             mem_pre = rnn.memory(shape=[-1, self.input_dim], batch_ref=x)
             x_t = rnn.step_input(x)

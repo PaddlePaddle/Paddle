@@ -584,15 +584,15 @@ class StaticRNN(object):
     def memory(self,
                init=None,
                shape=None,
-               init_value=0.0,
                batch_ref=None,
+               init_value=0.0,
                init_batch_dim_idx=0,
                ref_batch_dim_idx=1):
         '''
         :param init: boot memory, if not set, a shape, batch_ref must be provided
         :param shape: shape of the boot memory
-        :param init_value: the init value of boot memory
         :param batch_ref: batch size reference variable
+        :param init_value: the init value of boot memory
         :param init_batch_dim_idx: the index of batch size in init's dimension
         :param ref_batch_dim_idx: the index of batch size in batch_ref's dimension
         :return: boot memory
