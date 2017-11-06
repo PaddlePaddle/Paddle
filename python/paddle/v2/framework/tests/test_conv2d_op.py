@@ -61,25 +61,23 @@ class TestConv2dOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            set(['Input', 'Filter']), 'Output', max_relative_error=0.05)
+            set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
 
     def test_check_grad_no_filter(self):
         self.check_grad(
             ['Input'],
             'Output',
-            max_relative_error=0.05,
+            max_relative_error=0.02,
             no_grad_set=set(['Filter']))
 
     def test_check_grad_no_input(self):
         self.check_grad(
             ['Filter'],
             'Output',
-            max_relative_error=0.05,
+            max_relative_error=0.02,
             no_grad_set=set(['Input']))
 
     def init_test_case(self):
-        # self.groups = 1
-        # self.op_type = "conv2d"
         self.pad = [0, 0]
         self.stride = [1, 1]
         self.dilations = [1, 1]
