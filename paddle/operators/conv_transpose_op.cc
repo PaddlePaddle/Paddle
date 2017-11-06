@@ -187,17 +187,17 @@ REGISTER_OP(conv2d_transpose, ops::ConvTransposeOp, ops::Conv2DTransposeOpMaker,
 
 REGISTER_OP_CPU_KERNEL(
     conv2d_transpose,
-    ops::GemmConv2DTransposeKernel<paddle::platform::CPUPlace, float>);
+    ops::GemmConvTransposeKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
     conv2d_transpose_grad,
-    ops::GemmConv2DTransposeGradKernel<paddle::platform::CPUPlace, float>);
+    ops::GemmConvTransposeGradKernel<paddle::platform::CPUPlace, float>);
 
 REGISTER_OP(conv3d_transpose, ops::ConvTransposeOp, ops::Conv3DTransposeOpMaker,
             conv3d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     conv3d_transpose,
-    ops::GemmConv3DTransposeKernel<paddle::platform::CPUPlace, float>);
+    ops::GemmConvTransposeKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
     conv3d_transpose_grad,
-    ops::GemmConv3DTransposeGradKernel<paddle::platform::CPUPlace, float>);
+    ops::GemmConvTransposeGradKernel<paddle::platform::CPUPlace, float>);
