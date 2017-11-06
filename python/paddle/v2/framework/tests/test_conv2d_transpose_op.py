@@ -58,6 +58,24 @@ class TestConv2dTransposeOp(OpTest):
         print 'check output here for', self.op_type
         self.check_output()
 
+    def test_check_grad_no_input(self):
+        self.check_grad(
+            ['Filter'],
+            'Output',
+            max_relative_error=0.02,
+            no_grad_set=set(['Input']))
+
+    def test_check_grad_no_filter(self):
+        self.check_grad(
+            ['Input'],
+            'Output',
+            max_relative_error=0.02,
+            no_grad_set=set(['Filter']))
+
+    def test_check_grad(self):
+        self.check_grad(
+            set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
+
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -69,25 +87,8 @@ class TestConv2dTransposeOp(OpTest):
     def init_op_type(self):
         self.op_type = "conv2d_transpose"
 
-    def test_check_grad_no_input(self):
-        self.check_grad(
-            ['Filter'],
-            'Output',
-            max_relative_error=0.05,
-            no_grad_set=set(['Input']))
 
-    def test_check_grad_no_filter(self):
-        self.check_grad(
-            ['Input'],
-            'Output',
-            max_relative_error=0.05,
-            no_grad_set=set(['Filter']))
-
-    def test_check_grad(self):
-        self.check_grad(
-            set(['Input', 'Filter']), 'Output', max_relative_error=0.05)
-
-
+# ------------ test_cudnn ------------
 class TestCudnn(TestConv2dTransposeOp):
     def init_op_type(self):
         self.op_type = "conv2d_transpose_cudnn"
