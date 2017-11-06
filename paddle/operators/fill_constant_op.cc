@@ -35,7 +35,9 @@ class FillConstantOp : public framework::OperatorWithKernel {
  protected:
   framework::DataType IndicateDataType(
       const framework::ExecutionContext &ctx) const override {
-    return static_cast<framework::DataType>(ctx.Attr<int>("data_type"));
+    int data_type = ctx.Attr<int>("data_type");
+    VLOG(10) << " FillConstant data_type = " << data_type;
+    return static_cast<framework::DataType>(data_type);
   }
 };
 
@@ -71,4 +73,5 @@ REGISTER_OP_WITHOUT_GRADIENT(fill_constant, ops::FillConstantOp,
 REGISTER_OP_CPU_KERNEL(
     fill_constant, ops::FillConstantOpKernel<paddle::platform::CPUPlace, float>,
     ops::FillConstantOpKernel<paddle::platform::CPUPlace, double>,
-    ops::FillConstantOpKernel<paddle::platform::CPUPlace, int>);
+    ops::FillConstantOpKernel<paddle::platform::CPUPlace, int>,
+    ops::FillConstantOpKernel<paddle::platform::CPUPlace, int64_t>);

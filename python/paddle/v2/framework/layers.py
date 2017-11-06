@@ -1,6 +1,8 @@
 import paddle.v2.framework.core as core
-from paddle.v2.framework.framework import OpProtoHolder, Variable, Program, Operator
-from paddle.v2.framework.initializer import ConstantInitializer, NormalInitializer
+from paddle.v2.framework.framework import OpProtoHolder, Variable, Program, \
+    Operator
+from paddle.v2.framework.initializer import ConstantInitializer, \
+    NormalInitializer
 from paddle.v2.framework.layer_helper import LayerHelper, unique_name
 import re
 
@@ -751,3 +753,67 @@ def lod_rank_table(x, level=0, main_program=None):
         outputs={'Out': table},
         attrs={'level': level})
     return table
+
+
+def fill_constant(shape, dtype, value, main_program=None):
+    helper = LayerHelper("ones", **locals())
+    out = helper.create_tmp_variable(dtype=dtype)
+    helper.append_op(
+        type='fill_constant',
+        inputs={},
+        outputs={'Out': [out]},
+        attrs={
+            'shape': shape,
+            'data_type': out.data_type,
+            'value': float(value)
+        })
+    out.stop_gradient = True
+    return out
+
+
+def ones(shape, dtype, main_program=None):
+    return fill_constant(value=1.0, **locals())
+
+
+def zeros(shape, dtype, main_program=None):
+    return fill_constant(value=0.0, **locals())
+
+
+def increment(x, value=1.0, main_program=None):
+    helper = LayerHelper("increment", **locals())
+    helper.append_op(
+        type='increment',
+        inputs={'X': [x]},
+        outputs={'Out': [x]},
+        attrs={'step': value})
+    return x
+
+
+def array_write(x, i, array=None, main_program=None):
+    helper = LayerHelper('array_write', **locals())
+    if array is None:
+        array = helper.create_variable(
+            name="{0}.out".format(helper.name),
+            type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+            dtype=x.data_type)
+    helper.append_op(
+        type='write_to_array',
+        inputs={'X': [x],
+                'I': [i]},
+        outputs={'Out': [array]})
+    return array
+
+
+def array_read(array, i, main_program=None):
+    helper = LayerHelper('array_read', **locals())
+    if not isinstance(
+            array,
+            Variable) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        raise TypeError("array should be tensor array vairable")
+    out = helper.create_tmp_variable(dtype=array.data_type)
+    helper.append_op(
+        type='read_from_array',
+        inputs={'X': [array],
+                'I': [i]},
+        outputs={'Out': [out]})
+    return out
