@@ -69,6 +69,13 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(max_pool2d_with_index);\n")
     endif()
 
+    # conv_op contains several operators
+    if ("${TARGET}" STREQUAL "conv_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_OP(conv2d);\n")
+    endif()
+
     # conv_transpose_op contains several operators
     if ("${TARGET}" STREQUAL "conv_transpose_op")
         set(pybind_flag 1)
@@ -146,6 +153,7 @@ set(DEPS_OPS
     sum_op
     pool_op
     pool_with_index_op
+    conv_op
     lstm_op
     conv_transpose_op
     nccl_op
@@ -158,6 +166,7 @@ set(DEPS_OPS
 op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
 op_library(cross_entropy_op DEPS cross_entropy)
 op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
+op_library(conv_op DEPS vol2col)
 op_library(sum_op DEPS net_op selected_rows_functor)
 op_library(pool_op DEPS pooling)
 op_library(pool_with_index_op DEPS pooling)
