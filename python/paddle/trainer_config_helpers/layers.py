@@ -143,6 +143,7 @@ __all__ = [
     'scale_shift_layer',
     'img_conv3d_layer',
     'resize_layer',
+    'sub_seq_layer',
 ]
 
 
@@ -252,6 +253,7 @@ class LayerType(object):
     SCALE_SHIFT_LAYER = 'scale_shift'
 
     RESIZE = 'resize'
+    SUB_SEQ_LAYER = 'subseq'
 
     @staticmethod
     def is_layer_type(type_name):
@@ -6980,3 +6982,58 @@ def resize_layer(input, size, name=None):
     """
     Layer(name=name, type=LayerType.RESIZE, inputs=Input(input.name), size=size)
     return LayerOutput(name, LayerType.RESIZE, parents=[input], size=input.size)
+
+
+@wrap_act_default(act=LinearActivation())
+@wrap_name_default('sub_seq')
+def sub_seq_layer(input, offsets, sizes, act=None, bias_attr=None, name=None):
+    """
+    sub_seq_layer will return sub-sequences from the input sequences. For each
+    sequence in the input sequence layer, sub_seq_layer will slice it by given
+    offset and size. Please notice that, number of offset value and size value
+    both are equal to the number of sequence in the input layer.
+
+    .. code-block:: python
+
+        sub_seq = sub_seq_layer(input=input_seq, offsets=offsets, sizes=sizes)
+
+    :param name: The name of this layer. It is optional.
+    :type name: basestring
+    :param input: The input of this layer, which should be sequence.
+    :type input: LayerOutput
+    :param offsets: offset indices to slice the input sequence, which should be
+                    sequence type.
+    :type offsets: LayerOutput
+    :param sizes: sizes of the sub-sequences, which should be sequence type.
+    :type sizes: LayerOutput
+    :param act: Layer activation, default is LinearActivation
+    :type act: BaseActivation.
+    :param bias_attr: The Bias Attribute. If the parameter is set to
+                      False or something not type of ParameterAttribute,
+                      no bias is defined. If the parameter is set to
+                      True, the bias is initialized to zero.
+    :type bias_attr: ParameterAttribute | None | bool | Any
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+
+    assert isinstance(input, LayerOutput), (
+        'The first input of sub_seq_layer layer must be a PaddlePaddle layer.')
+    assert isinstance(offsets, LayerOutput), (
+        'The offset indices for sub_seq_layer, '
+        'must be a PaddlePaddle layer.')
+    assert isinstance(sizes, LayerOutput), (
+        'The sizes of sub-sequences, must be a PaddlePaddle layer.')
+
+    Layer(
+        name=name,
+        type=LayerType.SUB_SEQ_LAYER,
+        inputs=[input.name, offsets.name, sizes.name],
+        active_type=act.name,
+        bias=ParamAttr.to_bias(bias_attr))
+
+    return LayerOutput(
+        name,
+        LayerType.SUB_SEQ_LAYER,
+        parents=[input, offsets, sizes],
+        size=input.size)
