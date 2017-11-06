@@ -16,4 +16,7 @@
 
 REGISTER_OP_GPU_KERNEL(
     increment,
-    paddle::operators::IncrementKernel<paddle::platform::GPUPlace, float>);
+    paddle::operators::IncrementKernel<paddle::platform::GPUPlace, float>,
+    paddle::operators::IncrementKernel<paddle::platform::GPUPlace, double>,
+    paddle::operators::IncrementKernel<paddle::platform::GPUPlace, int>,
+    paddle::operators::IncrementKernel<paddle::platform::GPUPlace, int64_t>);
