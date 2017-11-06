@@ -11,6 +11,7 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/framework/eigen.h"
+#include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/math/math_function.h"
 #include "paddle/operators/math/selected_rows_functor.h"
@@ -88,6 +89,33 @@ class SumKernel : public framework::OpKernel<T> {
                 offset, out);
         offset += in_vars[i]->Get<SelectedRows>().value().numel();
       }
+    } else if (out_var->IsType<framework::LoDTensorArray>()) {
+      auto& out_array = *out_var->GetMutable<framework::LoDTensorArray>();
+      for (size_t i = in_place ? 1 : 0; i < in_vars.size(); ++i) {
+        PADDLE_ENFORCE(in_vars[i]->IsType<framework::LoDTensorArray>(),
+                       "Only support all inputs are TensorArray");
+        auto& in_array = in_vars[i]->Get<framework::LoDTensorArray>();
+
+        for (size_t i = 0; i < in_array.size(); ++i) {
+          if (in_array[i].numel() != 0) {
+            if (i >= out_array.size()) {
+              out_array.resize(i + 1);
+            }
+            if (out_array[i].numel() == 0) {
+              out_array[i].CopyFrom(in_array[i], in_array[i].place(),
+                                    context.device_context());
+              out_array[i].set_lod(in_array[i].lod());
+            } else {
+              PADDLE_ENFORCE(out_array[i].lod() == in_array[i].lod());
+              auto in = EigenVector<T>::Flatten(in_array[i]);
+              auto result = EigenVector<T>::Flatten(out_array[i]);
+              result.device(context.GetEigenDevice<Place>()) = result + in;
+            }
+          }
+        }
+      }
+    } else {
+      PADDLE_THROW("Unexpected branch");
     }
   }
 };
