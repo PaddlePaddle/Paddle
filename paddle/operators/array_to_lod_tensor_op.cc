@@ -42,7 +42,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     platform::Place place = x[0].place();
     std::type_index data_type = x[0].type();
     framework::DDim ins_dims = framework::slice_ddim(x[0].dims(), 1, rank);
-    int64_t batch_size = 0;
+    int64_t batch_size = x[0].dims()[0];
     for (size_t i = 1; i < x.size(); ++i) {
       PADDLE_ENFORCE_EQ(framework::slice_ddim(x[i].dims(), 1, rank), ins_dims,
                         "The dimension of the %zu'th element in LoDTensorArray "
@@ -62,53 +62,36 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     ins_dim_vec.insert(ins_dim_vec.begin(), batch_size);
     framework::DDim out_dims = framework::make_ddim(ins_dim_vec);
     out->Resize(out_dims);
+    out->mutable_data(place, data_type);
 
     auto &table_items = rank_table.items();
     std::vector<size_t> table_item_idx(table_items.size());
-    std::iota(std::begin(table_item_idx), std::end(table_item_idx), 0);
+    // table_item_idx = range(table_items_idx.size())
+    std::iota(table_item_idx.begin(), table_item_idx.end(), 0);
     std::sort(table_item_idx.begin(), table_item_idx.end(),
-              [&](const size_t &a, const size_t &b) {
+              [&](size_t a, size_t b) {
                 return table_items[a].index < table_items[b].index;
               });
 
     // Build LoDTensor `out`
-    uintptr_t dst_ptr =
-        reinterpret_cast<uintptr_t>(out->mutable_data(place, data_type));
     framework::LoD *out_lod = out->mutable_lod();
     out_lod->clear();
-    for (const size_t &idx : table_item_idx) {
-      size_t seq_len = table_items[idx].length;
-      for (size_t x_idx = 0; x_idx < seq_len; ++x_idx) {
+    size_t out_offset = 0;
+    for (size_t idx : table_item_idx) {
+      for (size_t x_idx = 0; x_idx < table_items[idx].length; ++x_idx) {
         std::vector<std::vector<size_t>> lod_length;
         size_t start_offset;
-        framework::GetFineGrainedLoDLength(x[x_idx].lod(), idx, idx + 1,
-                                           &lod_length, &start_offset);
+        size_t end_offset;
+        framework::GetFineGrainedLoDLength2(x[x_idx].lod(), idx, idx + 1, 0,
+                                            &lod_length, &start_offset,
+                                            &end_offset);
         // Append lod
         framework::AppendLoD(out_lod, lod_length);
         // Copy data
-        size_t type_sz = framework::SizeOfType(data_type);
-        uintptr_t src_ptr = reinterpret_cast<uintptr_t>(x[x_idx].data<void>()) +
-                            type_sz * start_offset;
-        size_t cpy_len =
-            type_sz * (lod_length.back().back() - lod_length.back().front());
-        if (platform::is_cpu_place(place)) {
-          auto cpu_place = boost::get<platform::CPUPlace>(place);
-          memory::Copy(cpu_place, reinterpret_cast<void *>(dst_ptr), cpu_place,
-                       reinterpret_cast<const void *>(src_ptr), cpy_len);
-        } else if (platform::is_gpu_place(place)) {
-#ifdef PADDLE_WITH_CUDA
-          auto gpu_place = boost::get<platform::GPUPlace>(place);
-          memory::Copy(
-              gpu_place, reinterpret_cast<void *>(dst_ptr), gpu_place,
-              reinterpret_cast<const void *>(src_ptr), cpy_len,
-              reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx)
-                  .stream());
-#else
-          PADDLE_THROW("GPU not supported");
-#endif
-        }
-
-        dst_ptr += cpy_len;
+        size_t len = end_offset - start_offset;
+        out->Slice(out_offset, out_offset + len)
+            .CopyFrom(x[x_idx].Slice(start_offset, end_offset), place, dev_ctx);
+        out_offset += len;
       }
     }
     out_lod->insert(out_lod->begin(), rank_table.coarse_lod().begin(),
