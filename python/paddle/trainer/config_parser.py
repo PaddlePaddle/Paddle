@@ -2434,6 +2434,8 @@ class BatchNormLayer(LayerBase):
 
         parallel_nn = bool(int(g_command_config_args.get("parallel_nn", 0)))
         cudnn_version = int(g_command_config_args.get("cudnn_version", 0))
+        config_assert(cudnn_version >= 4007,
+                      "CudnnBatchNorm requires cudnn version >= 4007.")
         # Automatically select cudnn_batch_norm for GPU, batch_norm for CPU
         # and mkldnn_batch_norm for MKLDNN. Also based on cudnn version.
         if batch_norm_type == "mkldnn_batch_norm":
