@@ -11,6 +11,7 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
+#include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
 
@@ -25,7 +26,59 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
                      const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {}
+           const platform::DeviceContext &dev_ctx) const override {
+    auto x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
+    auto x_dim = x->dims();
+    auto x_dim_vec = framework::vectorize(x_dim);
+
+    auto rank_table =
+        scope.FindVar(Input("RankTable"))->Get<framework::LoDRankTable>();
+    auto *out =
+        scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensorArray>();
+
+    auto items = rank_table.items();
+    auto max_seq_len = items[0].length;
+    auto table_height = items.size();
+
+    auto rank_level = rank_table.coarse_lod().size();
+    auto x_level = x.lod().size();
+
+    out->resize(max_seq_len);
+    auto place = ctx.GetPlace();
+
+    // out InferShape
+    for (size_t i = 0; i < max_seq_len; i++) {
+      size_t height = 0;
+      framework::LoD out_lod;
+      out_lod.resize(x_level - rank_level - 1);
+      for (size_t j = 0; j < table_height; j++) {
+        if (i < items[j].length) {
+          for (size_t k = 0; k < x_level - out_level - 1; k++) {
+            out_lod[k] = x[k + out_level + 1]
+          }
+          height++;
+        }
+      }
+      x_dim_vec[0] = height;
+      out[i].Resize(framework::make_ddim(x_dim_vec));
+      out[i].mutable_data(place, x.type());
+    }
+
+    // out CopyFrom
+    for (size_t i = 0; i < max_seq_len; i++) {
+      size_t out_slice_idx = 0;
+      for (size_t j = 0; j < table_height; j++) {
+        size_t input_slice_idx = items[j].index + items[j].length + i;
+        if (i < items[j].length) {
+          out[i]
+              .Slice(out_slice_idx, out_slice_idx + 1)
+              .CopyFrom(x.Slice(input_slice_idx, input_slice_idx + 1), place,
+                        ctx.device_context());
+          out_slice_idx++;
+        }
+      }
+    }
+  }
 };
 
 class LoDTensorToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
@@ -42,7 +95,21 @@ class LoDTensorToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
 
 class LoDTensorToArrayInferShape : public framework::InferShapeBase {
  public:
-  void operator()(framework::InferShapeContext *context) const override {}
+  void operator()(framework::InferShapeContext *context) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of LoDTensorToArrayOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasInput("RankTable"),
+        "Input(RankTable) of LoDTensorToArrayOp should not be null.");
+
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of LoDTensorToArrayOp should not be null.");
+
+    auto x_dim = ctx->GetInputDim("X");
+    // The first dim of each LoDTensor in Output can only be set at run-time.;
+    // We still have to Resize each LoDTensor in Output.
+    ctx->SetOutputDim("Out", x_dim);
+  }
 };
 
 class LoDTensorToArrayInferVarType : public framework::VarTypeInference {
