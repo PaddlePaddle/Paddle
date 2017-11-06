@@ -42,24 +42,18 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
     auto table_height = items.size();
 
     auto rank_level = rank_table.coarse_lod().size() + 1;
-    LOG(INFO) << rank_level;
-    // auto x_level = x.lod().size();
 
     out.resize(max_seq_len);
-    LOG(INFO) << max_seq_len;
     auto place = dev_ctx.GetPlace();
 
     // set out[i] lod
     for (size_t i = 0; i < max_seq_len; i++) {
-      LOG(INFO) << i;
       framework::LoD lod;
       lod.resize(rank_level);
       for (size_t j = 0; j < table_height; j++) {
         std::vector<std::vector<size_t>> lod_length;
         size_t start_offset;
-        LOG(INFO) << items[j].index;
         size_t start_idx = x.lod()[rank_level - 1][items[j].index] + i;
-        LOG(INFO) << start_idx;
         if (i < items[j].length) {
           framework::GetFineGrainedLoDLength2(x.lod(), start_idx, start_idx + 1,
                                               rank_level, &lod_length,
@@ -70,6 +64,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
       out[i].set_lod(lod);
     }
 
+    /*
     for (auto &lod_tensor : out) {
       auto lod = lod_tensor.lod();
       for (auto i : lod[0]) {
@@ -77,12 +72,12 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
       }
       std::cout << std::endl;
     }
+    */
 
     // set out[i] shape
     for (size_t i = 0; i < out.size(); i++) {
       auto lod = out[i].lod();
       x_dim_vec[0] = lod.back().back();
-      LOG(INFO) << x_dim_vec[0];
       out[i].Resize(framework::make_ddim(x_dim_vec));
       out[i].mutable_data(place, x.type());
     }
@@ -97,11 +92,13 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
           framework::GetFineGrainedLoDLength2(x.lod(), start_idx, start_idx + 1,
                                               rank_level, &lod_length,
                                               &start_offset);
+          /*
           LOG(INFO) << start_offset;
           LOG(INFO) << start_offset + lod_length.back().back();
 
           LOG(INFO) << out[i].lod().back()[j];
           LOG(INFO) << out[i].lod().back()[j + 1];
+          */
           out[i]
               .Slice(out[i].lod().back()[j], out[i].lod().back()[j + 1])
               .CopyFrom(x.Slice(start_offset,

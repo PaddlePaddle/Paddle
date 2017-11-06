@@ -191,11 +191,6 @@ void GetFineGrainedLoDLength2(const LoD& lod, size_t start_idx, size_t end_idx,
                               std::vector<std::vector<size_t>>* lod_length,
                               size_t* start_offset);
 
-// void Copy(
-//   const LoDTensor& lod_tensor,
-//   const LoD& lod, size_t start_idx, size_t end_idx,
-//   size_t start_level, std::vector<LoDTensor>* out);
-
 void AppendLoD(LoD* lod, const std::vector<std::vector<size_t>>& lod_length);
 
 }  // namespace framework
