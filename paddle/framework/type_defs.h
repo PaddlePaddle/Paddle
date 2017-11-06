@@ -29,6 +29,7 @@ class OpDescBind;
 class BlockDescBind;
 class BlockDesc;
 class InferShapeContext;
+class BlockDescBind;
 
 using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 
@@ -36,7 +37,7 @@ using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 using Attribute =
     boost::variant<boost::blank, int, float, std::string, std::vector<int>,
                    std::vector<float>, std::vector<std::string>, bool,
-                   std::vector<bool>, BlockDesc*>;
+                   std::vector<bool>, BlockDescBind*>;
 
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 
@@ -46,7 +47,8 @@ using OpCreator = std::function<OperatorBase*(
 
 using GradOpMakerFN = std::function<std::vector<std::unique_ptr<OpDescBind>>(
     const OpDescBind&, const std::unordered_set<std::string>& /*no_grad_set*/,
-    std::unordered_map<std::string, std::string>* /*grad_to_var*/)>;
+    std::unordered_map<std::string, std::string>* /*grad_to_var*/,
+    const std::vector<BlockDescBind*>& grad_block)>;
 
 using InferVarTypeFN = std::function<void(const OpDescBind& /*op_desc*/,
                                           BlockDescBind* /*block*/)>;

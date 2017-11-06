@@ -29,7 +29,7 @@ class CudnnConvOpMaker : public Conv2DOpMaker {
                  "workspace is a section of GPU memory which will be "
                  "allocated/freed each time the operator runs, larger "
                  "workspace size can increase performance but also requires "
-                 "better hardward. This size should be carefully setted.")
+                 "better hardware. This size should be chosen carefully.")
         .SetDefault(4096);
   }
 };

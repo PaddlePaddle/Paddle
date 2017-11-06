@@ -37,32 +37,32 @@ ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
   PADDLE_ENFORCE_LE(ins.size(), 1UL,
-                    "Op %s input %s should contain only one variable", type_,
-                    name);
+                    "Operator %s's input %s should contain only one variable.",
+                    type_, name);
   return ins.empty() ? kEmptyVarName : ins[0];
 }
 
 const std::vector<std::string>& OperatorBase::Inputs(
     const std::string& name) const {
   auto it = inputs_.find(name);
-  PADDLE_ENFORCE(it != inputs_.end(), "Op %s do not have input %s", type_,
-                 name);
+  PADDLE_ENFORCE(it != inputs_.end(), "Operator %s does not have the input %s.",
+                 type_, name);
   return it->second;
 }
 
 std::string OperatorBase::Output(const std::string& name) const {
   auto& outs = Outputs(name);
   PADDLE_ENFORCE_LE(outs.size(), 1UL,
-                    "Op %s output %s should contain only one variable", type_,
-                    name);
+                    "Operator %s's output %s should contain only one variable.",
+                    type_, name);
   return outs.empty() ? kEmptyVarName : outs[0];
 }
 
 const std::vector<std::string>& OperatorBase::Outputs(
     const std::string& name) const {
   auto it = outputs_.find(name);
-  PADDLE_ENFORCE(it != outputs_.end(), "Op %s does not have output called %s",
-                 type_, name);
+  PADDLE_ENFORCE(it != outputs_.end(),
+                 "Operator %s does not have an output called %s.", type_, name);
   return it->second;
 }
 
@@ -126,7 +126,7 @@ OperatorBase::OperatorBase(const std::string& type,
 
 std::vector<std::string> OperatorBase::InputVars() const {
   std::vector<std::string> ret_val;
-  for (auto& o : outputs_) {
+  for (auto& o : inputs_) {
     ret_val.reserve(ret_val.size() + o.second.size());
     ret_val.insert(ret_val.end(), o.second.begin(), o.second.end());
   }
@@ -351,6 +351,20 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return op_.Outputs(name);
   }
 
+  void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
+                size_t j = 0) const override {
+    PADDLE_ENFORCE_LT(i, Inputs(in).size());
+    PADDLE_ENFORCE_LT(j, Outputs(out).size());
+    Variable* in_var = scope_.FindVar(Inputs(in)[i]);
+    Variable* out_var = scope_.FindVar(Outputs(out)[j]);
+    if (!in_var->IsType<LoDTensor>()) return;
+    PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
+                   "The %d-th output of Output(%s) must be LoDTensor.", j, out);
+    auto in_tensor = in_var->Get<LoDTensor>();
+    auto* out_tensor = out_var->GetMutable<LoDTensor>();
+    out_tensor->set_lod(in_tensor.lod());
+  }
+
  private:
   DDim GetDim(const std::string& name) const override {
     Variable* var = scope_.FindVar(name);
@@ -380,7 +394,19 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
 void OperatorWithKernel::Run(const Scope& scope,
                              const platform::DeviceContext& dev_ctx) const {
-  VLOG(3) << "Running operator " << this->Type();
+  if (VLOG_IS_ON(1)) {
+    auto inputs = this->InputVars();
+    auto outputs = this->OutputVars(true);
+    std::ostringstream sout;
+    sout << "Run operator " << this->Type() << " From [";
+    std::ostream_iterator<std::string> out_it(sout, ",");
+    std::copy(inputs.begin(), inputs.end(), out_it);
+    sout << "] to [";
+    std::copy(outputs.begin(), outputs.end(), out_it);
+    sout << "]";
+    VLOG(1) << sout.str();
+  }
+
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
   this->InferShape(&infer_shape_ctx);
 
