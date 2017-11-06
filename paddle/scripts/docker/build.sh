@@ -52,9 +52,6 @@ EOF
     # See /Paddle/CMakeLists.txt, UNITTEST_USE_VIRTUALENV option.
     cmake .. \
         -DCMAKE_BUILD_TYPE=Release \
-        -DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27mu/bin/python \
-        -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include \
-        -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs4/lib/libpython2.7.so \
         -DWITH_DOC=OFF \
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_MKLDNN=${WITH_MKLDNN:-ON} \
