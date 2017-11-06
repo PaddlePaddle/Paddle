@@ -68,11 +68,12 @@ class SequenceConcatOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The level should be less than the level number of inputs.")
         .SetDefault(0);
     AddComment(R"DOC(
-Sequence Concat operator
+Sequence Concat Operator.
 
 The sequence_concat operator concatenates multiple LoDTensors.
-It only supports sequence (LoD Tensor with level number is 1)
+It supports a sequence (LoD Tensor with level number is 1)
 or a nested sequence (LoD tensor with level number is 2) as its input.
+The following examples explain how the operator works:
 - Case1:
   If the axis is other than 0(here, axis is 1 and level is 1),
   each input should have the same LoD information and the LoD
@@ -98,6 +99,7 @@ or a nested sequence (LoD tensor with level number is 2) as its input.
     LoD(Out) = {{0,5,9}, {0,2,5,7,9}}; Dims(Out) = (9,3,4)
 
 NOTE: The levels of all the inputs should be the same.
+
     )DOC");
   }
 };
