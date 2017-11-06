@@ -12,7 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/conv2d_transpose_op.h"
+#include "paddle/operators/conv_transpose_op.h"
 
 namespace paddle {
 namespace operators {
@@ -38,13 +38,13 @@ class CudnnConv2DTransposeOpMaker : public Conv2DTransposeOpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(conv2d_transpose_cudnn, ops::Conv2DTransposeOp,
+REGISTER_OP(conv2d_transpose_cudnn, ops::ConvTransposeOp,
             ops::CudnnConv2DTransposeOpMaker, conv2d_transpose_cudnn_grad,
-            ops::Conv2DTransposeOpGrad);
+            ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     conv2d_transpose_cudnn,
-    ops::GemmConv2DTransposeKernel<paddle::platform::CPUPlace, float>);
+    ops::GemmConvTransposeKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
     conv2d_transpose_cudnn_grad,
-    ops::GemmConv2DTransposeGradKernel<paddle::platform::CPUPlace, float>);
+    ops::GemmConvTransposeGradKernel<paddle::platform::CPUPlace, float>);

@@ -12,6 +12,14 @@ def unique_name(prefix):
     return "_".join([prefix, str(uid)])
 
 
+def _debug_string_(proto):
+    error_fields = list()
+    if not proto.IsInitialized(error_fields):
+        raise ValueError("{0} are not initialized\nThe message is {1}".format(
+            error_fields, proto))
+    return proto.__str__()
+
+
 class Variable(object):
     def __init__(self,
                  block,
@@ -21,6 +29,7 @@ class Variable(object):
                  dtype=None,
                  lod_level=None,
                  persistable=None,
+                 stop_gradient=False,
                  **kwargs):
         self.block = block
 
@@ -89,11 +98,12 @@ class Variable(object):
 
         self.block.vars[name] = self
         self.op = None
+        self.stop_gradient = stop_gradient
 
     def __str__(self):
         protostr = self.desc.serialize_to_string()
         proto = framework_pb2.VarDesc.FromString(str(protostr))
-        return proto.__str__()
+        return _debug_string_(proto)
 
     __repr__ = __str__
 
@@ -284,7 +294,7 @@ class Operator(object):
     def __str__(self):
         protostr = self.desc.serialize_to_string()
         proto = framework_pb2.OpDesc.FromString(str(protostr))
-        return proto.__str__()
+        return _debug_string_(proto)
 
     __repr__ = __str__
 
@@ -341,7 +351,7 @@ class Block(object):
     def __str__(self):
         protostr = self.desc.serialize_to_string()
         proto = framework_pb2.BlockDesc.FromString(str(protostr))
-        return proto.__str__()
+        return _debug_string_(proto)
 
     __repr__ = __str__
 
@@ -446,7 +456,7 @@ class Program(object):
     def __str__(self):
         protostr = self.desc.serialize_to_string()
         proto = framework_pb2.ProgramDesc.FromString(str(protostr))
-        return proto.__str__()
+        return _debug_string_(proto)
 
     def clone(self):
         p = Program()
@@ -550,5 +560,5 @@ class Parameter(Variable):
 
 
 # program is a global instance.
-g_program = Program()
-g_init_program = Program()
+g_main_program = Program()
+g_startup_program = Program()
