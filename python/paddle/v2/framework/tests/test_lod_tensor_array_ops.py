@@ -78,7 +78,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
                 22, 39) + range(7, 21), range(39, 46)]
         ]
         lod = [[[0, 1, 3, 4], [0, 1, 4, 8, 12]],
-               [[0, 4, 7], [0, 1, 5, 9, 16, 21, 27, 31]], [[0, 2], [0, 6, 7]]]
+               [[0, 4, 7], [0, 1, 5, 9, 17, 21, 27, 31]], [[0, 2], [0, 6, 7]]]
         self.main(tensor=tensor, expect_array=expect, expect_lod=lod)
 
     def test_lod_tensor_to_array_level_2_skip_level(self):
