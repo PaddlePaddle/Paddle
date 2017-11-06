@@ -159,14 +159,14 @@ void GetFineGrainedLoDLength(const LoD& lod, size_t start_idx, size_t end_idx,
 }
 
 void AppendLoD(LoD* lod, const std::vector<std::vector<size_t>>& lod_length) {
-  PADDLE_ENFORCE_EQ(
-      lod->size(), lod_length.size(),
+  PADDLE_ENFORCE(
+      lod->empty() || lod->size() == lod_length.size(),
       "The lod_length should has the same size with the appended lod.");
+  if (lod->empty()) {
+    lod = LoD(lod_length.size(), {0});
+  }
   for (size_t i = 0; i < lod->size(); ++i) {
     auto& level = (*lod)[i];
-    if (level.empty()) {
-      level.push_back(0);
-    }
     for (size_t len : lod_length[i]) {
       level.push_back(level.back() + len);
     }

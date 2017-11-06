@@ -12,8 +12,10 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 #include <numeric>
+#include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/memory/memcpy.h"
 
 namespace paddle {
 namespace operators {
@@ -33,9 +35,12 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
 
-    // Check dims of input's elements and infer output's dim
+    // Check dims, place and data type of input's elements and infer output's
+    // dim
     PADDLE_ENFORCE(!x.empty(), "There's no element in the input array.");
     int rank = x[0].dims().size();
+    platform::Place place = x[0].place();
+    std::type_index data_type = x[0].type();
     framework::DDim ins_dims = framework::slice_ddim(x[0].dims(), 1, rank);
     int64_t batch_size = 0;
     for (size_t i = 1; i < x.size(); ++i) {
@@ -43,26 +48,56 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
                         "The dimension of the %zu'th element in LoDTensorArray "
                         "differs from previous ones.",
                         i);
+      PADDLE_ENFORCE(platform::places_are_same_class(x[i].place(), place),
+                     "The place class of the %zu'th element in LoDTensorArray "
+                     "differs from previous ones.",
+                     i);
+      PADDLE_ENFORCE(x[i].type() == data_type,
+                     "The date type of the %zu'th element in LoDTensorArray "
+                     "differs from previous ones.",
+                     i);
       batch_size += x[i].dims()[0];
     }
-    framework::DDim out_dims = framework::make_ddim(
-        framework::vectorize(ins_dims).push_front(batch_size));
+    auto ins_dim_vec = framework::vectorize(ins_dims);
+    ins_dim_vec.insert(ins_dim_vec.begin(), batch_size);
+    framework::DDim out_dims = framework::make_ddim(ins_dim_vec);
     out->Resize(out_dims);
 
     auto &table_items = rank_table.items();
-    std::vector<size_t> table_item_idx(rank_table_items.size());
+    std::vector<size_t> table_item_idx(table_items.size());
     std::iota(std::begin(table_item_idx), std::end(table_item_idx), 0);
     std::sort(table_item_idx.begin(), table_item_idx.end(),
               [&](const size_t &a, const size_t &b) {
                 return table_items[a].index < table_items[b].index;
               });
 
-    // Copy data from input x to output out
+    // Build LoDTensor `out`
+    uintptr_t dst_ptr =
+        reinterpret_cast<uintptr_t>(out->mutable_data(place, data_type));
+    framework::LoD *out_lod = out->mutable_lod();
+    out_lod->clear();
     for (const size_t &idx : table_item_idx) {
       size_t seq_len = table_items[idx].length;
       for (size_t x_idx = 0; x_idx < seq_len; ++x_idx) {
+        std::vector<std::vector<size_t>> lod_length;
+        size_t start_offset;
+        framework::GetFineGrainedLoDLength(x[x_idx].lod(), idx, idx + 1,
+                                           &lod_length, &start_offset);
+        // Append lod
+        framework::AppendLoD(out_lod, lod_length);
+        // Copy data
+        size_t type_sz = framework::SizeOfType(data_type);
+        uintptr_t src_ptr = reinterpret_cast<uintptr_t>(x[x_idx].data<void>()) +
+                            type_sz * start_offset;
+        size_t cpy_len =
+            type_sz * (lod_length.back().back() - lod_length.back().front());
+        memory::Copy(place, reinterpret_cast<void *>(dst_ptr), place,
+                     reinterpret_cast<const void *>(src_ptr), cpy_len);
+        dst_ptr += cpy_len;
       }
     }
+    out_lod->insert(out_lod->begin(), rank_table.coarse_lod().begin(),
+                    rank_table.coarse_lod().end());
   }
 };
 
