@@ -113,13 +113,24 @@ BlockDescBind *BlockDescBind::ParentBlock() const {
   if (this->desc_->parent_idx() == kNoneBlockIndex) {
     return nullptr;
   }
-  return prog_->Block(static_cast<size_t>(this->desc_->parent_idx()));
+  return prog_->MutableBlock(static_cast<size_t>(this->desc_->parent_idx()));
 }
 
 BlockDesc *BlockDescBind::Proto() {
   Flush();
   return desc_;
 }
+
+BlockDescBind::BlockDescBind(ProgramDescBind *prog, BlockDesc *desc)
+    : prog_(prog), desc_(desc), need_update_(false) {
+  for (const VarDesc &var_desc : desc_->vars()) {
+    vars_[var_desc.name()].reset(new VarDescBind(var_desc));
+  }
+  for (const OpDesc &op_desc : desc_->ops()) {
+    ops_.emplace_back(new OpDescBind(op_desc, prog));
+  }
+}
+
 BlockDescBind::BlockDescBind(const BlockDescBind &other, BlockDesc *desc,
                              ProgramDescBind *prog)
     : prog_(prog), desc_(desc) {

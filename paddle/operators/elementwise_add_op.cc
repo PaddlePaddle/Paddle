@@ -22,7 +22,7 @@ class ElementwiseAddOpMaker : public ElementwiseOpMaker {
   ElementwiseAddOpMaker(framework::OpProto* proto,
                         framework::OpAttrChecker* op_checker)
       : ElementwiseOpMaker(proto, op_checker) {
-    SetComment("add", "Out = X + Y");
+    SetComment("Add", "$Out = X + Y$");
     AddComment(comment_);
   }
 };

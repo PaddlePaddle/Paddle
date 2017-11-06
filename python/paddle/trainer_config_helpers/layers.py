@@ -143,6 +143,7 @@ __all__ = [
     'scale_shift_layer',
     'img_conv3d_layer',
     'resize_layer',
+    'sub_seq_layer',
 ]
 
 
@@ -252,6 +253,7 @@ class LayerType(object):
     SCALE_SHIFT_LAYER = 'scale_shift'
 
     RESIZE = 'resize'
+    SUB_SEQ_LAYER = 'subseq'
 
     @staticmethod
     def is_layer_type(type_name):
@@ -1047,6 +1049,13 @@ def fc_layer(input,
         if isinstance(param_attr, collections.Sequence):
             assert len(input) == len(param_attr)
         else:
+            if "parameter_name" in param_attr.attr and len(input) > 1:
+                logger.fatal(
+                    "When the name field of param_attr is manually specified "
+                    "and the input is a list, the param_attr should also be a "
+                    "list with each item being the param_attr for each input "
+                    "item. If only one named param_attr is provided, all the "
+                    "input items would share this parameter.")
             param_attr = [copy.deepcopy(param_attr) for _ in range(len(input))]
 
     assert isinstance(input, collections.Sequence)
@@ -3014,16 +3023,19 @@ def batch_norm_layer(input,
     :param input: batch normalization input. Better be linear activation.
                 Because there is an activation inside batch_normalization.
     :type input: LayerOutput
-    :param batch_norm_type: We have batch_norm and cudnn_batch_norm. batch_norm
-                            supports both CPU and GPU. cudnn_batch_norm requires
-                            cuDNN version greater or equal to v4 (>=v4). But
-                            cudnn_batch_norm is faster and needs less memory
-                            than batch_norm. By default (None), we will
-                            automaticly select cudnn_batch_norm for GPU and
-                            batch_norm for CPU. Otherwise, select batch norm
-                            type based on the specified type. If you use cudnn_batch_norm,
+    :param batch_norm_type: We have batch_norm, mkldnn_batch_norm and cudnn_batch_norm.
+                            batch_norm supports CPU, MKLDNN and GPU. cudnn_batch_norm
+                            requires cuDNN version greater or equal to v4 (>=v4).
+                            But cudnn_batch_norm is faster and needs less
+                            memory than batch_norm. mkldnn_batch_norm requires
+                            enable use_mkldnn. By default (None), we will
+                            automaticly select cudnn_batch_norm for GPU,
+                            mkldnn_batch_norm for MKLDNN and batch_norm for CPU.
+                            Otherwise, select batch norm type based on the
+                            specified type. If you use cudnn_batch_norm,
                             we suggested you use latest version, such as v5.1.
     :type batch_norm_type: None | string, None or "batch_norm" or "cudnn_batch_norm"
+                           or "mkldnn_batch_norm"
     :param act: Activation Type. Better be relu. Because batch
                      normalization will normalize input near zero.
     :type act: BaseActivation
@@ -3063,6 +3075,7 @@ def batch_norm_layer(input,
         else:
             num_channels = input.size
     assert (batch_norm_type is None) or (batch_norm_type == "batch_norm") or \
+           (batch_norm_type == "mkldnn_batch_norm") or \
            (batch_norm_type == "cudnn_batch_norm")
     l = Layer(
         name=name,
@@ -4873,6 +4886,13 @@ def selective_fc_layer(input,
         if isinstance(param_attr, collections.Sequence):
             assert len(input) == len(param_attr)
         else:
+            if "parameter_name" in param_attr.attr and len(input) > 1:
+                logger.fatal(
+                    "When the name field of param_attr is manually specified "
+                    "and the input is a list, the param_attr should also be a "
+                    "list with each item being the param_attr for each input "
+                    "item. If only one named param_attr is provided, all the "
+                    "input items would share this parameter.")
             param_attr = [copy.deepcopy(param_attr) for _ in range(len(input))]
 
     assert isinstance(input, collections.Sequence)
@@ -6962,3 +6982,58 @@ def resize_layer(input, size, name=None):
     """
     Layer(name=name, type=LayerType.RESIZE, inputs=Input(input.name), size=size)
     return LayerOutput(name, LayerType.RESIZE, parents=[input], size=input.size)
+
+
+@wrap_act_default(act=LinearActivation())
+@wrap_name_default('sub_seq')
+def sub_seq_layer(input, offsets, sizes, act=None, bias_attr=None, name=None):
+    """
+    sub_seq_layer will return sub-sequences from the input sequences. For each
+    sequence in the input sequence layer, sub_seq_layer will slice it by given
+    offset and size. Please notice that, number of offset value and size value
+    both are equal to the number of sequence in the input layer.
+
+    .. code-block:: python
+
+        sub_seq = sub_seq_layer(input=input_seq, offsets=offsets, sizes=sizes)
+
+    :param name: The name of this layer. It is optional.
+    :type name: basestring
+    :param input: The input of this layer, which should be sequence.
+    :type input: LayerOutput
+    :param offsets: offset indices to slice the input sequence, which should be
+                    sequence type.
+    :type offsets: LayerOutput
+    :param sizes: sizes of the sub-sequences, which should be sequence type.
+    :type sizes: LayerOutput
+    :param act: Layer activation, default is LinearActivation
+    :type act: BaseActivation.
+    :param bias_attr: The Bias Attribute. If the parameter is set to
+                      False or something not type of ParameterAttribute,
+                      no bias is defined. If the parameter is set to
+                      True, the bias is initialized to zero.
+    :type bias_attr: ParameterAttribute | None | bool | Any
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+
+    assert isinstance(input, LayerOutput), (
+        'The first input of sub_seq_layer layer must be a PaddlePaddle layer.')
+    assert isinstance(offsets, LayerOutput), (
+        'The offset indices for sub_seq_layer, '
+        'must be a PaddlePaddle layer.')
+    assert isinstance(sizes, LayerOutput), (
+        'The sizes of sub-sequences, must be a PaddlePaddle layer.')
+
+    Layer(
+        name=name,
+        type=LayerType.SUB_SEQ_LAYER,
+        inputs=[input.name, offsets.name, sizes.name],
+        active_type=act.name,
+        bias=ParamAttr.to_bias(bias_attr))
+
+    return LayerOutput(
+        name,
+        LayerType.SUB_SEQ_LAYER,
+        parents=[input, offsets, sizes],
+        size=input.size)

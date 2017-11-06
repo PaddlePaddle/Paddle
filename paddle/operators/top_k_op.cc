@@ -48,16 +48,20 @@ class TopkOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   TopkOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The input of Topk op");
-    AddOutput("Out", "The output tensor of Topk op");
-    AddOutput("Indices", "The indices of Topk elements of input");
-    AddComment(
-        R"DOC(If the input is a vector (1d tensor), finds the k largest entries in the vector and outputs their values and indices as vectors. Thus values[j] is the j-th largest entry in input, and its index is indices[j].
+    AddInput("X", "(Tensor) The input of Topk op");
+    AddOutput("Out", "(Tensor) The output tensor of Topk op");
+    AddOutput("Indices", "(Tensor) The indices of Topk elements of input");
+    AddComment(R"DOC(
+Top K operator
 
-    For matrices, computes the top k entries in each row. )DOC");
+If the input is a vector (1d tensor), this operator finds the k largest 
+entries in the vector and outputs their values and indices as vectors. 
+Thus values[j] is the j-th largest entry in input, and its index is indices[j].
+
+For matrices, this operator computes the top k entries in each row. )DOC");
     AddAttr<int>("k",
-                 "Number of top elements to look for along the last "
-                 "dimension (along each row for matrices).")
+                 "(int, default 1) Number of top elements to look for along "
+                 "the last dimension (along each row for matrices).")
         .SetDefault(1);
   }
 };
@@ -66,6 +70,7 @@ class TopkOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(top_k, ops::TopkOp, ops::TopkOpMaker);
+REGISTER_OPERATOR(top_k, ops::TopkOp, ops::TopkOpMaker,
+                  paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(top_k,
                        ops::TopkKernel<paddle::platform::CPUPlace, float>);

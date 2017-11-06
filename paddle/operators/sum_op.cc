@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/operators/sum_op.h"
 #include <vector>
+#include "paddle/framework/var_type_inference.h"
 #include "paddle/operators/net_op.h"
 
 namespace paddle {
@@ -44,14 +45,36 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SumOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "the input tensors of sum operator.").AsDuplicable();
-    AddOutput("Out", "the output tensor of sum operator.");
+    AddInput("X", "(vector<Tensor>) The input tensors of sum operator.")
+        .AsDuplicable();
+    AddOutput("Out", "(Tensor) The output tensor of sum operator.");
     AddComment(R"DOC(
-Sum the input tensors.
+Sum operator.
 
-All the inputs can carry the LoD (Level of Details) information,
-or not. But the output only shares the LoD with the first input.
+This operators sums the input tensors. All the inputs can carry the 
+LoD (Level of Details) information. However, the output only shares 
+the LoD information with the first input.
 )DOC");
+  }
+};
+
+class SumOpVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDescBind& op_desc,
+                  framework::BlockDescBind* block) const override {
+    auto& inputs = op_desc.Input("X");
+    auto default_var_type = framework::VarDesc::SELECTED_ROWS;
+
+    bool any_input_is_lod_tensor = std::any_of(
+        inputs.begin(), inputs.end(), [block](const std::string& name) {
+          return block->Var(name)->GetType() == framework::VarDesc::LOD_TENSOR;
+        });
+    if (any_input_is_lod_tensor) {
+      default_var_type = framework::VarDesc::LOD_TENSOR;
+    }
+
+    auto out_var_name = op_desc.Output("Out").front();
+    block->Var(out_var_name)->SetType(default_var_type);
   }
 };
 
@@ -83,5 +106,7 @@ class SumGradMaker : public framework::GradOpDescMakerBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(sum, ops::SumOp, ops::SumOpMaker, ops::SumGradMaker);
-REGISTER_OP_CPU_KERNEL(sum, ops::SumKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OPERATOR(sum, ops::SumOp, ops::SumOpMaker, ops::SumGradMaker,
+                  ops::SumOpVarTypeInference);
+REGISTER_OP_CPU_KERNEL(sum, ops::SumKernel<paddle::platform::CPUPlace, float>,
+                       ops::SumKernel<paddle::platform::CPUPlace, double>);

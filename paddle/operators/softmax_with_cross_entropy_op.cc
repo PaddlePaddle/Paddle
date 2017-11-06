@@ -32,9 +32,9 @@ class SoftmaxWithCrossEntropyOpMaker
     AddInput("Label",
              "(Tensor, default: Tensor<int>), The ground truth which is a 2-D "
              "tensor. "
-             "If softLable is set to 0, Label is a Tensor<int> with shape [N x "
-             "1]. "
-             "If softLable is set to 1, Label is a Tensor<float/double> "
+             "If softLabel is set to false, Label is a Tensor<int> with shape "
+             "[N x 1]."
+             "If softLabel is set to true, Label is a Tensor<float/double> "
              "with shape [N x K].");
     AddOutput(
         "Softmax",
@@ -51,28 +51,34 @@ class SoftmaxWithCrossEntropyOpMaker
         "the given labels as soft labels.")
         .SetDefault(false);
     AddComment(R"DOC(
-Cross entropy loss with softmax are used as the output layer extensively. This
+Softmax With Cross Entropy Operator.
+
+Cross entropy loss with softmax is used as the output layer extensively. This
 operator computes the softmax normalized values for each row of the input
-tensor, after which cross-entropy loss is then computed. This provides a more
+tensor, after which cross-entropy loss is computed. This provides a more
 numerically stable gradient.
 
-Because this operators performs a softmax on logits internally, it expects
-unscaled logits. Please do not call this op with the output of softmax operator,
-which will produce incorrect results.
+Because this operator performs a softmax on logits internally, it expects
+unscaled logits. This operator should not be used with the output of
+softmax operator since that would produce incorrect results.
 
-This operators expects mutually exclusive hard labels, each sample in a batch
-is in exactly one class with probabilities 1. Each sample in the batch with one
-and only one label.
+When the attribute softLabel is set false, this operators expects mutually
+exclusive hard labels, each sample in a batch is in exactly one class with a
+probability of 1.0. Each sample in the batch will have a single label.
 
-Equation:
+The equation is as follows:
 
-1) hard label (one-hot label)
+1) Hard label (one-hot label, so every sample has exactly one class)
 
-Loss_j = -\text{Logit}_{Label_j} + \log\left(\sum_{i=0}^{K}\exp(\text{Logit}_i)\right), j = 1, ..., K
+$$Loss_j = \f$ -\text{Logit}_{Label_j} +
+\log\left(\sum_{i=0}^{K}\exp(\text{Logit}_i)\right),
+j = 1, ..., K $\f$$
 
-2) soft label (a distribution over all classes)
+2) Soft label (each sample can have a distribution over all classes)
 
-Loss_j = -\sum_{i=0}^{K}\text{Label}_i\left(\text{Logit}_i-\log\left(\sum_{i=0}^{K}\exp(\text{Logit}_i)\right)\right), j = 1,...,K
+$$Loss_j = \f$ -\sum_{i=0}^{K}\text{Label}_i\left(\text{Logit}_i -
+\log\left(\sum_{i=0}^{K}\exp(\text{Logit}_i)\right)\right),
+j = 1,...,K $\f$$
 
 )DOC");
   }

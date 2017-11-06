@@ -15,8 +15,12 @@
 package pserver
 
 import (
+	"encoding/binary"
 	"io/ioutil"
+	"math"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestOptimizerCreateRelease(t *testing.T) {
@@ -35,4 +39,40 @@ func TestOptimizerCreateRelease(t *testing.T) {
 	}
 	o := newOptimizer(param, nil)
 	o.Cleanup()
+}
+
+func float32Bytes(float float32) []byte {
+	bits := math.Float32bits(float)
+	bytes := make([]byte, 4)
+	binary.LittleEndian.PutUint32(bytes, bits)
+	return bytes
+}
+
+func TestOptimizerState(t *testing.T) {
+	p := Parameter{
+		Name:        "a",
+		ElementType: Int32,
+	}
+	weights := float32Bytes(100)
+	p.Content = weights
+	config, err := ioutil.ReadFile("./client/c/test/testdata/optimizer.pb")
+	if err != nil {
+		t.Fatalf("read optimizer proto failed")
+	}
+	param := ParameterWithConfig{
+		Param:  p,
+		Config: config,
+	}
+	o := newOptimizer(param, nil)
+	s := o.GetStates()
+
+	// clear param content and check if the state is restored.
+	param.Param.Content = float32Bytes(300)
+	o1 := newOptimizer(param, s)
+	s1 := o1.GetStates()
+	assert.Equal(t, s, s1)
+	assert.Equal(t, weights, o.GetWeights())
+	assert.Equal(t, weights, o1.GetWeights())
+	o.Cleanup()
+	o1.Cleanup()
 }
