@@ -27,7 +27,6 @@ using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using ScopedFilterDescriptor = platform::ScopedFilterDescriptor;
 using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
 using DataLayout = platform::DataLayout;
-using CUDADeviceContext = platform::CUDADeviceContext;
 
 static constexpr size_t kConvCudnnWorkspaceLimitBytes = 1024 * 1024 * 1024;
 
