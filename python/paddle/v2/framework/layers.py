@@ -581,25 +581,45 @@ class StaticRNN(object):
         if self.status != StaticRNN.IN_RNN_BLOCK:
             raise ValueError("You must invoke {0} in rnn block".format(method))
 
-    def memory(self, init=None, shape=None, dtype=None, init_value=0):
+    def memory(self,
+               init=None,
+               shape=None,
+               batch_ref=None,
+               init_value=0.0,
+               init_batch_dim_idx=0,
+               ref_batch_dim_idx=1):
+        '''
+        :param init: boot memory, if not set, a shape, batch_ref must be provided
+        :param shape: shape of the boot memory
+        :param batch_ref: batch size reference variable
+        :param init_value: the init value of boot memory
+        :param init_batch_dim_idx: the index of batch size in init's dimension
+        :param ref_batch_dim_idx: the index of batch size in batch_ref's dimension
+        :return: boot memory
+        '''
         self._assert_in_rnn_block_('memory')
         if init is None:
-            if shape is None or dtype is None:
+            if shape is None or batch_ref is None:
                 raise ValueError(
-                    "if init is None, memory at least need shape and dtype")
+                    "if init is None, memory at least need shape and batch_ref")
             parent_block = self.parent_block()
             var_name = unique_name("@".join([self.helper.name, "memory_boot"]))
             boot_var = parent_block.create_var(
-                name=var_name, shape=shape, dtype=dtype, persistable=False)
+                name=var_name,
+                shape=shape,
+                dtype=batch_ref.data_type,
+                persistable=False)
 
             parent_block.append_op(
-                type="fill_constant",
-                inputs={},
+                type="fill_constant_batch_size_like",
+                inputs={'Input': [batch_ref]},
                 outputs={'Out': [boot_var]},
                 attrs={
                     'value': init_value,
-                    'shape': [40] + list(boot_var.shape[1:]),
-                    'data_type': boot_var.data_type
+                    'shape': boot_var.shape,
+                    'data_type': boot_var.data_type,
+                    'input_dim_idx': ref_batch_dim_idx,
+                    'output_dim_idx': init_batch_dim_idx
                 })
 
             return self.memory(init=boot_var)
