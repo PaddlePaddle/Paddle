@@ -182,7 +182,7 @@ void AppendLoD(LoD* lod, const std::vector<std::vector<size_t>>& lod_length) {
       lod->empty() || lod->size() == lod_length.size(),
       "The lod_length should has the same size with the appended lod.");
   if (lod->empty()) {
-    lod = LoD(lod_length.size(), {0});
+    *lod = LoD(lod_length.size(), {0});
   }
   for (size_t i = 0; i < lod->size(); ++i) {
     auto& level = (*lod)[i];
