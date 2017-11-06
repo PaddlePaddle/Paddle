@@ -90,6 +90,8 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
         framework::GetFineGrainedLoDLength2(x[x_idx].lod(), idx, idx + 1, 0,
                                             &lod_length, &start_offset,
                                             &end_offset);
+        VLOG(10) << "idx=" << idx << " x_idx=" << x_idx << " [" << start_offset
+                 << ", " << end_offset << "]";
         // Append lod
         framework::AppendLoD(out_lod, lod_length);
         // Copy data

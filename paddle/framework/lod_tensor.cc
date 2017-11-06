@@ -168,7 +168,7 @@ void GetFineGrainedLoDLength2(const LoD& lod, size_t start_idx, size_t end_idx,
 
   for (size_t level_idx = start_level; level_idx < lod.size(); ++level_idx) {
     std::vector<size_t> level_lens;
-    for (size_t i = start_idx; i < end_idx; ++i) {
+    for (size_t i = *start_offset; i < *end_offset; ++i) {
       level_lens.push_back(lod[level_idx][i + 1] - lod[level_idx][i]);
     }
     lod_length->emplace_back(level_lens);
