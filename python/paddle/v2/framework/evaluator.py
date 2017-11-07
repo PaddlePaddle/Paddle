@@ -12,18 +12,35 @@ class Evaluator(object):
     add increment operator to accumulate the metric states
     """
 
-    def __init__(self, evaluator_type, **kwargs):
+    def __init__(self, name, **kwargs):
         self._states = []
-        self._helper = LayerHelper(layer_type=evaluator_type, **kwargs)
+        self._helper = LayerHelper(layer_type=name, **kwargs)
 
-    @staticmethod
-    def clear(self):
+    # def _update(self):
+    #     """
+    #     Updates the internal states througth operator
+    #   """
+    #     raise NotImplementedError()
+
+    def reset(self):
         """
-      clear metric states at the begin of each pass/user specified batch
+      Clear metric states at the begin of each pass/user specified batch
       """
-        raise NotImplementedError()
+        reset_program = Program()
+        for var in self._states:
+            zeros = helper.create_tmp_variable(dtype=var.data_type)
+            self._helper.append_op(
+                type="fill_constant",
+                outputs={"Out": [zeros]},
+                attrs={
+                    "shape": var.shape,
+                    "value": 0,
+                })
+            self._helper.append_op(
+                type="scale", inputs={"X": zeros}, outputs={"Out": var})
+        return reset_program
 
-    def evaluate(self):
+    def eval(self):
         """
       Merge the mini-batch statistics to form the evaluation result for multiple mini-batches.
       """
@@ -31,6 +48,10 @@ class Evaluator(object):
 
 
 class Accuracy(Evaluator):
+    """
+    Accuracy need two state variable Total, Correct
+    """
+
     def __init__(self, input, label, k=1, **kwargs):
         super(Accuracy, self).__init__("accuracy", **kwargs)
         g_total = helper.create_global_variable(
@@ -43,6 +64,8 @@ class Accuracy(Evaluator):
             persistable=True,
             dtype="int64",
             shape=[1])
+        self._states.append(g_total)
+        self._states.append(g_correct)
 
         topk_out = helper.create_tmp_variable(dtype=input.data_type)
         topk_indices = helper.create_tmp_variable(dtype="int64")
@@ -61,10 +84,34 @@ class Accuracy(Evaluator):
                 "Indices": [topk_indices],
                 "Label": [label]
             },
-            outputs={"Accuracy": [acc_out]})
+            outputs={
+                "Accuracy": [acc_out],
+                "Correct": [tp_out],
+            })
 
         helper.append_op(
-            type="sum", inputs={"X": [g_total, ], },
+            type="sum",
+            inputs={"X": [g_total, tp_out]},
             outputs={"Out": [g_total]})
-
         return acc_out
+
+    def eval(self):
+        eval_program = Program()
+        g_total = self._program
+
+
+# This is demo for composing low level op to compute metric
+class F1(Evaluator):
+    def __init__(self, input, label, **kwargs):
+        super(F1, self).__init__("F1", **kwargs)
+        super(Accuracy, self).__init__("accuracy", **kwargs)
+        g_total = helper.create_global_variable(
+            name=unique_name("Total"),
+            persistable=True,
+            dtype="int64",
+            shape=[1])
+        g_correct = helper.create_global_variable(
+            name=unique_name("Correct"),
+            persistable=True,
+            dtype="int64",
+            shape=[1])
