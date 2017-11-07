@@ -17,9 +17,9 @@
 namespace paddle {
 namespace operators {
 template <typename OpComment>
-class LogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
+class CompareOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LogicalOpProtoMaker(framework::OpProto *proto,
+  CompareOpProtoMaker(framework::OpProto *proto,
                       framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     OpComment comment;
@@ -43,7 +43,7 @@ calculated by %s
 };
 
 template <typename OpComment>
-class LogicalOpInferShape : public framework::InferShapeBase {
+class CompareOpInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     OpComment comment;
@@ -51,6 +51,11 @@ class LogicalOpInferShape : public framework::InferShapeBase {
                    comment.type);
     PADDLE_ENFORCE(context->HasInput("Y"), "%s operator must has input Y",
                    comment.type);
+    auto dim_x = context->GetInputDim("X");
+    auto dim_y = context->GetInputDim("Y");
+    PADDLE_ENFORCE_EQ(framework::product(dim_x), framework::product(dim_y),
+                      "The number of elements in X and Y should be same");
+
     context->SetOutputDim("Out", context->GetInputDim("X"));
     context->ShareLoD("X", "Out");
   }
@@ -67,8 +72,8 @@ class LogicalOpInferShape : public framework::InferShapeBase {
   char _##op_type##Comment::type[]{#op_type};                                 \
   char _##op_type##Comment::equation[]{_equation};                            \
   REGISTER_OP_WITH_KERNEL(                                                    \
-      op_type, ::paddle::operators::LogicalOpProtoMaker<_##op_type##Comment>, \
-      ::paddle::operators::LogicalOpInferShape<_##op_type##Comment>,          \
+      op_type, ::paddle::operators::CompareOpProtoMaker<_##op_type##Comment>, \
+      ::paddle::operators::CompareOpInferShape<_##op_type##Comment>,          \
       ::paddle::framework::EmptyGradOpMaker);
 
 REGISTER_LOGICAL_OP(less_than, "Out = X < Y");

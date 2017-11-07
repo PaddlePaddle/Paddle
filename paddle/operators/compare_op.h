@@ -42,7 +42,7 @@ struct EqualFunctor {
 };
 
 template <typename Place, typename Functor>
-class LogicalOpKernel
+class CompareOpKernel
     : public framework::OpKernel<typename Functor::ELEM_TYPE> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -64,11 +64,11 @@ class LogicalOpKernel
 #define REGISTER_LOGICAL_KERNEL(op_type, dev, functor)                     \
   REGISTER_OP_##dev##_KERNEL(                                              \
       op_type,                                                             \
-      ::paddle::operators::LogicalOpKernel<::paddle::platform::dev##Place, \
+      ::paddle::operators::CompareOpKernel<::paddle::platform::dev##Place, \
                                            functor<int>>,                  \
-      ::paddle::operators::LogicalOpKernel<::paddle::platform::dev##Place, \
+      ::paddle::operators::CompareOpKernel<::paddle::platform::dev##Place, \
                                            functor<int64_t>>,              \
-      ::paddle::operators::LogicalOpKernel<::paddle::platform::dev##Place, \
+      ::paddle::operators::CompareOpKernel<::paddle::platform::dev##Place, \
                                            functor<float>>,                \
-      ::paddle::operators::LogicalOpKernel<::paddle::platform::dev##Place, \
+      ::paddle::operators::CompareOpKernel<::paddle::platform::dev##Place, \
                                            functor<double>>);
