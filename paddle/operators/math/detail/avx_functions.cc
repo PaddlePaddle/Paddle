@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef __AVX__
+
 #include <immintrin.h>
 #include "paddle/operators/math/detail/activation_functions.h"
 // TODO(qingqing) refine this dependence
@@ -84,3 +86,5 @@ __m256 Identity(const __m256 a, const __m256 b) { return a; }
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
+
+#endif
