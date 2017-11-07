@@ -32,7 +32,8 @@ class SeqExpandKernel : public framework::OpKernel<T> {
     const T* x_data = x->data<T>();
     auto x_dims = x->dims();
     auto* y = context.Input<LoDTensor>("Y");
-    PADDLE_ENFORCE_EQ(x_dims[0], y->lod().back().size() - 1,
+    PADDLE_ENFORCE_EQ(static_cast<size_t>(x_dims[0]),
+                      y->lod().back().size() - 1,
                       "The size of last lod level in Input(Y)"
                       "must be equal to dims[0] of Input(X).");
     out->set_lod(y->lod());
