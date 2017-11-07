@@ -67,8 +67,11 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                       out);
     in_var->SetLoDLevel(out_var->GetLodLevel());
   }
+  bool IsRuntime() const override;
 
- private:
+ protected:
+  VarDesc::VarType GetVarType(const std::string &name) const override;
+
   DDim GetDim(const std::string &name) const override;
 
   void SetDim(const std::string &name, const DDim &dim) override;
@@ -450,6 +453,12 @@ DDim CompileTimeInferShapeContext::GetDim(const std::string &name) const {
 void CompileTimeInferShapeContext::SetDim(const std::string &name,
                                           const DDim &dim) {
   block_.FindVarRecursive(name)->SetShape(framework::vectorize(dim));
+}
+bool CompileTimeInferShapeContext::IsRuntime() const { return false; }
+
+VarDesc::VarType CompileTimeInferShapeContext::GetVarType(
+    const std::string &name) const {
+  return block_.FindVarRecursive(name)->GetType();
 }
 
 }  // namespace framework
