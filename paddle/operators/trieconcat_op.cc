@@ -20,68 +20,194 @@ namespace operators {
 using value_type = float;
 using LoDTensor = framework::LoDTensor;
 
-void PackTwoLoDTensor(const LoDTensor &pre, const LoDTensor &cur,
-                      std::vector<std::vector<int64_t>> *ended_result,
-                      std::vector<std::vector<int64_t>> *extending_result) {
-  PADDLE_ENFORCE_EQ(pre.lod()[0].size(), cur.lod()[0].size(),
-                    "the number of source sentences size should be the same");
-  PADDLE_ENFORCE_EQ(
-      pre.lod()[1].size(), cur.lod()[1].size(),
-      "the number of prefix and it's Candidate words should be the same");
-  const size_t batch_size = pre.lod()[0].size() - 1;
-  for (size_t i = 0; i < batch_size; ++i) {
-    int64_t source_start = pre.lod()[0][i];
-    int64_t source_end = pre.lod()[0][i + 1];
+const int64_t kInitLength = 1024;
+const int64_t kEndId = 0;
+
+struct BeamNode {
+  BeamNode(int64_t word_id, float prob) : word_id_(word_id), prob_(prob) {}
+
+  BeamNode* father_ = nullptr;
+  std::vector<BeamNode*> kids_;
+  int64_t word_id_;
+  float prob_;
+};
+
+void RemoveFromEnd(BeamNode* end) {
+  PADDLE_ENFORCE_EQ(end->kids_.size(), 0UL, "end should not have any kids");
+  auto* father = end->father_;
+  if (father != nullptr) {
+    auto kids = father->kids_;
+    kids.erase(std::remove(kids.begin(), kids.end(), end), kids.end());
+    delete end;
+    if (father->kids_.size() == 0) {
+      RemoveFromEnd(father);
+    }
   }
 }
 
+template <typename T>
+struct AppendToLoDTensor {
+  void operator()(const std::vector<T> data, LoDTensor* dst) {
+    std::vector<size_t> sentances = dst->lod()[1];
+    T* dst_data =
+        dst->data<T>() + (sentances[sentances.size() - 1] - 1) * sizeof(T);
+    memcpy(dst_data, &data, data.size() * sizeof(int));
+    dst->mutable_lod()->at(0).push_back(sentances[sentances.size() - 1] +
+                                        data.size());
+  }
+};
+
+class PackTwoBeamStepOut {
+ public:
+  std::vector<BeamNode*> operator()(size_t batch_start,
+                                    const std::vector<BeamNode*>& pre_results,
+                                    const LoDTensor& cur_ids,
+                                    const LoDTensor& cur_probs,
+                                    LoDTensor* result_seq_ids,
+                                    LoDTensor* result_probs) {
+    //    PADDLE_ENFORCE_EQ(cur_ids.lod(), cur_probs.lod(),
+    //                      "lod of ids and probs should be the same");
+    std::vector<BeamNode*> result;
+    std::vector<size_t> candidate_offset = cur_ids.lod()[0];
+    for (size_t i = 0; i < pre_results.size(); ++i) {
+      size_t candidate_start = candidate_offset[batch_start + i];
+      size_t candidate_end = candidate_offset[batch_start + i + 1];
+      if (candidate_start == candidate_end) {
+        VLOG(3) << "this prefix does not have candidate";
+        auto* prefix_end = pre_results[i];
+        if (prefix_end->word_id_ == kEndId) {
+          VLOG(3) << "find an end Id, append to result tensor";
+          std::vector<int64_t> sequence_ids;
+          std::vector<float> sequence_probs;
+          BeamNode* tmp = prefix_end;
+          while (tmp != nullptr) {
+            sequence_ids.push_back(tmp->word_id_);
+            sequence_probs.push_back(tmp->prob_);
+            tmp = tmp->father_;
+          }
+          // copy ended sentance to result lod tensor.
+          AppendToLoDTensor<int64_t> sequence_id_appender;
+          sequence_id_appender(sequence_ids, result_seq_ids);
+          AppendToLoDTensor<float> sequence_prob_appender;
+          sequence_prob_appender(sequence_probs, result_probs);
+        } else {
+          VLOG(3) << "this sentence has no more candidate, prune it";
+        }
+        // remove from Beam Tree
+        RemoveFromEnd(prefix_end);
+      } else {
+        for (size_t candidate_index = candidate_start;
+             candidate_index < candidate_end; ++candidate_index) {
+          int64_t word_id = cur_ids.data<int64_t>()[candidate_index];
+          PADDLE_ENFORCE_NE(word_id, kEndId,
+                            "End id should not have candidate anymore");
+          float prob = cur_probs.data<float>()[candidate_index];
+          auto* candidate = new BeamNode(word_id, prob);
+          auto* prefix = pre_results[i];
+          candidate->father_ = prefix;
+          prefix->kids_.push_back(candidate);
+          result.push_back(candidate);
+        }
+      }
+    }
+    return result;
+  }
+};
+
 class TrieConcatOp : public framework::OperatorBase {
  public:
-  TrieConcatOp(const std::string &type,
-               const framework::VariableNameMap &inputs,
-               const framework::VariableNameMap &outputs,
-               const framework::AttributeMap &attrs)
+  TrieConcatOp(const std::string& type,
+               const framework::VariableNameMap& inputs,
+               const framework::VariableNameMap& outputs,
+               const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
-    // TODO(qiao) trie concat a vector of LodTensors to a LodTensor
+  void Run(const framework::Scope& scope,
+           const platform::DeviceContext& dev_ctx) const override {
     framework::ExecutionContext ctx(*this, scope, dev_ctx);
-    const std::vector<LoDTensor> *input =
-        ctx.Input<std::vector<LoDTensor>>("X");
-    const size_t step_num = input->size();
-    PADDLE_ENFORCE_LT(step_num, 0, "beam search stop should be larger than 0");
-    for (auto &in : *input) {
-      PADDLE_ENFORCE_EQ(in.lod().size(), 2UL, "Level of LodTensor should be 2");
+    const std::vector<LoDTensor>* ids =
+        ctx.Input<std::vector<LoDTensor>>("Ids");
+    const std::vector<LoDTensor>* scores =
+        ctx.Input<std::vector<LoDTensor>>("Scores");
+    const size_t step_num = ids->size();
+    PADDLE_ENFORCE_LT(step_num, 0, "beam search steps should be larger than 0");
+    const size_t batch_size = ids->at(0).lod()[0].size() - 1;
+    PADDLE_ENFORCE_LT(batch_size, 0UL, "batch size should be larger than 0");
+
+    for (size_t i = 0; i < step_num; ++i) {
+      PADDLE_ENFORCE_EQ(ids->at(i).lod().size(), 2UL,
+                        "Level of LodTensor should be 2");
+      //      PADDLE_ENFORCE_EQ(ids->at(i).lod(), scores->at(i).lod(),
+      //                        "score and ids should have the same lod info");
     }
+
     // prepare output
-    auto *output = ctx.Output<LoDTensor>("Out");
-    output->mutable_data<value_type>(ctx.GetPlace());
+    LoDTensor* sentenceIds = ctx.Output<LoDTensor>("SentenceIds");
+    LoDTensor* sentenceScores = ctx.Output<LoDTensor>("SentenceScores");
 
-    const size_t batch_size = input->at(0).lod()[0].size() - 1;
+    sentenceIds->Resize({kInitLength});
+    sentenceIds->mutable_data<int64_t>(ids->at(0).place());
+    sentenceScores->Resize({kInitLength});
+    sentenceScores->mutable_data<int64_t>(ids->at(0).place());
 
-    std::vector<std::vector<int64_t>> ended_result;
-    ended_result.reserve(batch_size);
-    std::vector<std::vector<int64_t>> extending_result;
-    extending_result.reserve(batch_size);
+    std::vector<std::vector<BeamNode*>> batch_beam_nodes;
+    batch_beam_nodes.reserve(batch_size);
+    for (size_t batch_idx = 0; batch_idx < batch_size; ++batch_idx) {
+      std::vector<BeamNode*> beam_nodes;
+      size_t batch_start = ids->at(0).lod()[0][batch_idx];
+      size_t batch_end = ids->at(0).lod()[0][batch_idx + 1];
+      for (size_t word_id_idx = batch_start; word_id_idx < batch_end;
+           ++word_id_idx) {
+        beam_nodes.push_back(
+            new BeamNode(ids->at(0).data<int64_t>()[word_id_idx],
+                         scores->at(0).data<float>()[word_id_idx]));
+      }
+      batch_beam_nodes[batch_idx] = beam_nodes;
+    }
+
+    // pack all step result together
+    PackTwoBeamStepOut packer;
+    for (size_t step_id = 1; step_id < step_num; ++step_id) {
+      for (size_t batch_idx = 0; batch_idx < batch_size; ++batch_idx) {
+        size_t batch_start = ids->at(step_id).lod()[0][batch_idx];
+        std::vector<BeamNode*> result =
+            packer(batch_start, batch_beam_nodes[batch_idx], ids->at(step_id),
+                   scores->at(step_id), sentenceIds, sentenceScores);
+        batch_beam_nodes[batch_idx] = result;
+      }
+    }
+
+    // process the last result
+    // batch_beam_nodes to result tensor
   }
 };
 
 class TrieConcatOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  TrieConcatOpProtoMaker(framework::OpProto *proto,
-                         framework::OpAttrChecker *op_checker)
+  TrieConcatOpProtoMaker(framework::OpProto* proto,
+                         framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "(vector<LodTensor>)The input vector of tensors");
-    AddOutput("Out", "(Tensor)The output tensor");
+    AddInput("Ids",
+             "(vector<LodTensor>) "
+             "score of the candidate words in each step");
+    AddInput("Scores",
+             "(vector<LodTensor>) "
+             "score of the candidate words in each step");
+    AddOutput("SentenceIds",
+              "(LodTensor)"
+              "All possible result sentences of word ids");
+    AddOutput("SentenceScores",
+              "(LodTensor)"
+              ""
+              "All possible result sentences of word scores");
     AddComment(R"DOC(
-The Tensor will be permuted according to the axis values given.
+Pack the result of Beam search op into SentenceIds and SentenceScores.
 )DOC");
   }
 };
 
 class TrieConcatInferShape : public framework::InferShapeBase {
  public:
-  void operator()(framework::InferShapeContext *context) const override {
+  void operator()(framework::InferShapeContext* context) const override {
     PADDLE_ENFORCE(context->HasInput("X"), "TrieConcatOp must has input X");
     PADDLE_ENFORCE(context->HasOutput("out"),
                    "TrieConcatOp must has output Out");
@@ -90,9 +216,9 @@ class TrieConcatInferShape : public framework::InferShapeBase {
 
 class TrieConcatInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDescBind &op_desc,
-                  framework::BlockDescBind *block) const override {
-    for (auto &o : op_desc.Output("Out")) {
+  void operator()(const framework::OpDescBind& op_desc,
+                  framework::BlockDescBind* block) const override {
+    for (auto& o : op_desc.Output("Out")) {
       block->Var(o)->SetType(framework::VarDesc::LOD_TENSOR);
     }
   }
