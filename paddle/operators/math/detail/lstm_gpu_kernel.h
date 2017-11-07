@@ -55,9 +55,10 @@ __global__ void KeLstmForward(Op op, LstmMetaValue<T> value, int frameSize,
   T rValueIg;
   T rValueFg;
   T rValueOg;
-  T rCheckI = value.checkIg[frameIdx];
-  T rCheckF = value.checkFg[frameIdx];
-  T rCheckO = value.checkOg[frameIdx];
+
+  T rCheckI = value.checkIg ? value.checkIg[frameIdx] : 0;
+  T rCheckF = value.checkFg ? value.checkFg[frameIdx] : 0;
+  T rCheckO = value.checkOg ? value.checkOg[frameIdx] : 0;
 
   rValueIn = value.gateValue[frameIdx];
   rValueIg = value.gateValue[frameIdx + frameSize];
@@ -121,9 +122,10 @@ __global__ void KeLstmBackward(Op op, LstmMetaValue<T> value,
   T rStateGrad;
   T rStateAtv;
   T rOutputGrad;
-  T rCheckI = value.checkIg[frameIdx];
-  T rCheckF = value.checkFg[frameIdx];
-  T rCheckO = value.checkOg[frameIdx];
+  T rCheckI = value.checkIg ? value.checkIg[frameIdx] : 0;
+  T rCheckF = value.checkFg ? value.checkFg[frameIdx] : 0;
+  T rCheckO = value.checkOg ? value.checkOg[frameIdx] : 0;
+
   T rCheckIGrad;
   T rCheckFGrad;
   T rCheckOGrad;

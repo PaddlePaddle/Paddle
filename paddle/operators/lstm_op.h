@@ -69,7 +69,7 @@ class LSTMKernel : public framework::OpKernel<T> {
     }
 
     math::LstmMetaValue<T> lstm_value;
-    if (bias) {
+    if (bias && ctx.Attr<bool>("use_peepholes")) {
       T* bias_data = const_cast<T*>(bias->data<T>());
       // the code style in LstmMetaValue will be updated later.
 
@@ -85,6 +85,7 @@ class LSTMKernel : public framework::OpKernel<T> {
     Tensor ordered_c0;
     if (cell_t0) {
       math::CopyMatrixRowsFunctor<Place, T> row_shuffle;
+      ordered_c0.mutable_data<T>(cell_t0->dims(), ctx.GetPlace());
       const size_t* order = batch_gate->lod()[2].data();
       row_shuffle(device_ctx, *cell_t0, order, ordered_c0, true);
       lstm_value.prevStateValue = ordered_c0.data<T>();
@@ -124,6 +125,7 @@ class LSTMKernel : public framework::OpKernel<T> {
       } else if (hidden_t0) {
         math::CopyMatrixRowsFunctor<Place, T> row_shuffle;
         Tensor ordered_h0;
+        ordered_h0.mutable_data<T>(hidden_t0->dims(), ctx.GetPlace());
         const size_t* order = batch_gate->lod()[2].data();
         row_shuffle(device_ctx, *hidden_t0, order, ordered_h0, true);
         math::matmul<Place, T>(device_ctx, ordered_h0, false, *weight, false,
@@ -199,7 +201,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(frame_size, out_dims[1]);
 
     math::LstmMetaValue<T> lstm_value;
-    if (bias) {
+    if (bias && ctx.Attr<bool>("use_peepholes")) {
       T* bias_data = const_cast<T*>(bias->data<T>());
       lstm_value.checkIg = bias_data + 4 * frame_size;
       lstm_value.checkFg = lstm_value.checkIg + frame_size;
@@ -211,9 +213,13 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     }
 
     math::LstmMetaGrad<T> lstm_grad;
+
     if (bias && bias_g) {
-      T* bias_g_data = const_cast<T*>(bias_g->mutable_data<T>(ctx.GetPlace()));
+      bias_g->mutable_data<T>(ctx.GetPlace());
       zero(device_ctx, bias_g, static_cast<T>(0.0));
+    }
+    if (bias && bias_g && ctx.Attr<bool>("use_peepholes")) {
+      T* bias_g_data = bias_g->data<T>();
       lstm_grad.checkIgGrad = bias_g_data + 4 * frame_size;
       lstm_grad.checkFgGrad = lstm_grad.checkIgGrad + frame_size;
       lstm_grad.checkOgGrad = lstm_grad.checkFgGrad + frame_size;
