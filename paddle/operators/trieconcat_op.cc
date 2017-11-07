@@ -45,15 +45,27 @@ void RemoveFromEnd(BeamNode* end) {
   }
 }
 
-template <typename T>
-struct AppendToLoDTensor {
-  void operator()(const std::vector<T> data, LoDTensor* dst) {
+struct AppendBeamNodeToLoDTensor {
+  template <typename T>
+  void AppendVector(const std::vector<T> data, LoDTensor* dst) {
     std::vector<size_t> sentances = dst->lod()[1];
-    T* dst_data =
-        dst->data<T>() + (sentances[sentances.size() - 1] - 1) * sizeof(T);
+    // TODO(check)
+    T* dst_data = dst->data<T>() + sentances[sentances.size() - 1];
     memcpy(dst_data, &data, data.size() * sizeof(int));
-    dst->mutable_lod()->at(0).push_back(sentances[sentances.size() - 1] +
-                                        data.size());
+    dst->mutable_lod()->at(0).push_back(sentances.back() + data.size());
+  }
+
+  void operator()(BeamNode* node, LoDTensor* dst_ids, LoDTensor* dst_probs) {
+    std::vector<int64_t> sequence_ids;
+    std::vector<float> sequence_probs;
+    BeamNode* tmp = node;
+    while (tmp != nullptr) {
+      sequence_ids.push_back(tmp->word_id_);
+      sequence_probs.push_back(tmp->prob_);
+      tmp = tmp->father_;
+    }
+    AppendVector<int64_t>(sequence_ids, dst_ids);
+    AppendVector<float>(sequence_probs, dst_probs);
   }
 };
 
@@ -77,19 +89,8 @@ class PackTwoBeamStepOut {
         auto* prefix_end = pre_results[i];
         if (prefix_end->word_id_ == kEndId) {
           VLOG(3) << "find an end Id, append to result tensor";
-          std::vector<int64_t> sequence_ids;
-          std::vector<float> sequence_probs;
-          BeamNode* tmp = prefix_end;
-          while (tmp != nullptr) {
-            sequence_ids.push_back(tmp->word_id_);
-            sequence_probs.push_back(tmp->prob_);
-            tmp = tmp->father_;
-          }
-          // copy ended sentance to result lod tensor.
-          AppendToLoDTensor<int64_t> sequence_id_appender;
-          sequence_id_appender(sequence_ids, result_seq_ids);
-          AppendToLoDTensor<float> sequence_prob_appender;
-          sequence_prob_appender(sequence_probs, result_probs);
+          AppendBeamNodeToLoDTensor appender;
+          appender(prefix_end, result_seq_ids, result_probs);
         } else {
           VLOG(3) << "this sentence has no more candidate, prune it";
         }
@@ -147,8 +148,9 @@ class TrieConcatOp : public framework::OperatorBase {
     sentenceIds->Resize({kInitLength});
     sentenceIds->mutable_data<int64_t>(ids->at(0).place());
     sentenceScores->Resize({kInitLength});
-    sentenceScores->mutable_data<int64_t>(ids->at(0).place());
+    sentenceScores->mutable_data<float>(ids->at(0).place());
 
+    // beam_nodes for each source sentence.
     std::vector<std::vector<BeamNode*>> batch_beam_nodes;
     batch_beam_nodes.reserve(batch_size);
     for (size_t batch_idx = 0; batch_idx < batch_size; ++batch_idx) {
@@ -164,20 +166,28 @@ class TrieConcatOp : public framework::OperatorBase {
       batch_beam_nodes[batch_idx] = beam_nodes;
     }
 
-    // pack all step result together
+    // pack all steps for one batch first, then another batch
     PackTwoBeamStepOut packer;
-    for (size_t step_id = 1; step_id < step_num; ++step_id) {
-      for (size_t batch_idx = 0; batch_idx < batch_size; ++batch_idx) {
+    AppendBeamNodeToLoDTensor appender;
+    for (size_t batch_idx = 0; batch_idx < batch_size; ++batch_idx) {
+      for (size_t step_id = 1; step_id < step_num; ++step_id) {
         size_t batch_start = ids->at(step_id).lod()[0][batch_idx];
         std::vector<BeamNode*> result =
             packer(batch_start, batch_beam_nodes[batch_idx], ids->at(step_id),
                    scores->at(step_id), sentenceIds, sentenceScores);
         batch_beam_nodes[batch_idx] = result;
       }
-    }
 
-    // process the last result
-    // batch_beam_nodes to result tensor
+      // append last beam_node to result
+      for (auto* beam_node : batch_beam_nodes[batch_idx]) {
+        appender(beam_node, sentenceIds, sentenceScores);
+      }
+
+      // update batch_lod_level
+      sentenceIds->mutable_lod()->at(0).push_back(sentenceIds->lod()[1].size());
+      sentenceScores->mutable_lod()->at(0).push_back(
+          sentenceScores->lod()[1].size());
+    }
   }
 };
 
