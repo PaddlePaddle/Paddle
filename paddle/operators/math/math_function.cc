@@ -211,6 +211,26 @@ void batched_gemm<platform::CPUPlace, double>(
 }
 #endif
 
+template <>
+void gemv<platform::CPUPlace, float>(const platform::DeviceContext& context,
+                                     const bool trans_a, const int M,
+                                     const int N, const float alpha,
+                                     const float* A, const float* B,
+                                     const float beta, float* C) {
+  CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
+  cblas_sgemv(CblasRowMajor, transA, M, N, alpha, A, N, B, 1, beta, C, 1);
+}
+
+template <>
+void gemv<platform::CPUPlace, double>(const platform::DeviceContext& context,
+                                      const bool trans_a, const int M,
+                                      const int N, const double alpha,
+                                      const double* A, const double* B,
+                                      const double beta, double* C) {
+  CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
+  cblas_dgemv(CblasRowMajor, transA, M, N, alpha, A, N, B, 1, beta, C, 1);
+}
+
 template struct SetConstant<platform::CPUPlace, float>;
 
 }  // namespace math

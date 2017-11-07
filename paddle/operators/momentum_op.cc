@@ -75,12 +75,23 @@ class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("VelocityOut", "(Tensor) Output updated velocity");
 
     AddAttr<float>("mu", "(float) Momentum coefficient");
+    AddAttr<bool>("useNesterov",
+                  "(bool, default false) "
+                  "Use Nesterov Momentum")
+        .SetDefault(false);
     AddComment(R"DOC(
+Momentum Optimizer.
 
-Momentum Algorithm (momentum).
+This optimizer has a flag for Nestrov Momentum.
+The update equations are as follows:
 
-velocity = mu * velocity + gradient
-param = param - learning_rate * velocity
+$$
+velocity = mu * velocity + gradient \\
+if (use\_nesterov):   \\
+  param = param - gradient * learning\_rate + mu * velocity * learning\_rate \\
+else:   \\
+  param = param - learning\_rate * velocity. \\
+$$
 
 )DOC");
   }

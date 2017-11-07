@@ -1457,11 +1457,13 @@ def dot_product_attention(encoded_sequence,
 
     expanded = expand_layer(
         input=transformed_state,
-        expanded_as=encoded_sequence,
+        expand_as=encoded_sequence,
         name='%s_expand' % name)
 
     m = linear_comb_layer(
-        weights=expanded, vectors=encoded_sequence, name='%s_dot-product')
+        weights=expanded,
+        vectors=encoded_sequence,
+        name='%s_dot-product' % name)
 
     attention_weight = fc_layer(
         input=m,

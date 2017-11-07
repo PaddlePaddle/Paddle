@@ -12,6 +12,10 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+/* Acknowledgement: the following code is strongly inspired by
+https://github.com/caffe2/caffe2/blob/master/caffe2/operators/lstm_unit_op.h
+*/
+
 #pragma once
 #include "glog/logging.h"
 #include "paddle/framework/op_registry.h"
@@ -19,7 +23,6 @@
 namespace paddle {
 namespace operators {
 
-using framework::LoDTensor;
 using framework::Tensor;
 
 template <typename T>

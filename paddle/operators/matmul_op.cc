@@ -144,7 +144,10 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(false);
     AddComment(R"DOC(
-The MatMul operator is used to perform (batched) matrix multiplication
+MatMul Operator.
+
+
+This operator is used to perform (batched) matrix multiplication
 over the last two dimensions of the input tensors `X` and `Y`.
 
 If a transpose flag is specified, the last two dimensions of the
@@ -166,7 +169,8 @@ The differences are:
 - We add `transpose_X` and `transpose_Y` flags.
 
 Both the input `X` and `Y` can carry the LoD (Level of Details) information,
-or not. But the output only shares the LoD with input `X`.
+or not. But the output only shares the LoD information with input `X`.
+
 )DOC");
   }
 };
