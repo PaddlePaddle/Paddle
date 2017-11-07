@@ -2,6 +2,8 @@ set -e
 
 function train() {
   unset OMP_NUM_THREADS MKL_NUM_THREADS
+  export OMP_DYNAMIC="FALSE"
+  export KMP_AFFINITY="granularity=fine,compact,0,0"
   topology=$1
   layer_num=$2
   bs=$3
@@ -37,17 +39,6 @@ if [ ! -d "train.list" ]; then
 fi
 if [ ! -d "logs" ]; then
   mkdir logs
-fi
-
-total_cores=`ls -l /sys/devices/system/cpu/ | grep "cpu[0-9]*$" | wc -l`
-online_cores=`cat /sys/devices/system/cpu/cpu*/online | grep -o '1' | wc -l`
-if [ $online_cores -eq $total_cores ]; then
-  echo "Hyper Threading is ON"
-  export KMP_AFFINITY="granularity=fine,compact,1,0"
-else
-  echo "Hyper Threading is OFF"
-  export OMP_DYNAMIC="FALSE"
-  export KMP_AFFINITY="granularity=fine,compact,0,0"
 fi
 
 for use_mkldnn in True False; do
