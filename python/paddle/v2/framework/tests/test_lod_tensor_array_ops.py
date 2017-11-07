@@ -134,7 +134,7 @@ class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
             shape=[1],
             data_type='float32',
             main_program=program,
-            stop_gradient=True)
+            stop_gradient=False)
         table = layers.lod_rank_table(x, level=0, main_program=program)
         array = layers.lod_tensor_to_array(x, table, main_program=program)
         result = layers.array_to_lod_tensor(array, table, main_program=program)
