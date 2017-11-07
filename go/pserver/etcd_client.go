@@ -24,7 +24,7 @@ import (
 	"github.com/PaddlePaddle/Paddle/go/utils/networkhelper"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/concurrency"
-	log "github.com/sirupsen/logrus"
+	log "github.com/inconshreveable/log15"
 )
 
 const (
@@ -82,19 +82,19 @@ func (e *EtcdClient) Register(port int) (int, error) {
 			DialTimeout: e.dialTimeout,
 		})
 		if err != nil {
-			log.Errorf("connect to etcd error: %v", err)
+			log.Error("connect to etcd error", log.Ctx{"error": err})
 			time.Sleep(retryTimeout)
 			continue
 		}
 		e.client = cli
 		sess, err := concurrency.NewSession(cli, concurrency.WithTTL(e.ttlSec))
 		if err != nil {
-			log.Errorf("create etcd session error: %v", err)
+			log.Error("create etcd session error", log.Ctx{"error": err})
 			time.Sleep(retryTimeout)
 			continue
 		}
 		e.sess = sess
-		log.Debugf("inited client to %s", e.endpoints)
+		log.Debug("connected to etcd", log.Ctx{"endpoint": e.endpoints})
 		break
 	}
 	// init /ps_desired using transaction, for multiple pservers may want to write
@@ -104,7 +104,7 @@ func (e *EtcdClient) Register(port int) (int, error) {
 		_, err := e.initDesiredPservers(ctx, e.numPservers)
 		cancel()
 		if err != nil {
-			log.Warn(err)
+			log.Warn("pserver init error", log.Ctx{"error": err, "num pservers": e.numPservers})
 			time.Sleep(retryTimeout)
 			continue
 		}
@@ -119,14 +119,17 @@ func (e *EtcdClient) Register(port int) (int, error) {
 		resp, err := e.client.Get(ctx, PsDesired)
 		cancel()
 		if err != nil {
-			log.Errorf("getting %s error: %v", PsDesired, err)
+			log.Error("get etcd key error", log.Ctx{"key": PsDesired, "error": err})
 			time.Sleep(retryTimeout)
 			continue
 		}
 		if len(resp.Kvs) != 0 {
 			e.desired, err = strconv.Atoi(string(resp.Kvs[0].Value))
 			if err != nil {
-				log.Errorf("value of %s invalid %v\n", PsDesired, err)
+				log.Error(
+					"psDesired atoi error",
+					log.Ctx{"error": err, "value": string(resp.Kvs[0].Value)},
+				)
 				time.Sleep(retryTimeout)
 				// NOTE: wait util ps_desired value change
 				continue
@@ -143,7 +146,7 @@ func (e *EtcdClient) Register(port int) (int, error) {
 		pserverIdx, err = e.registerPserverEtcd(ctx, port)
 		cancel()
 		if err != nil {
-			log.Warn(err)
+			log.Warn("register pserver on etcd error", log.Ctx{"error": err})
 			time.Sleep(retryTimeout)
 			continue
 		}
@@ -170,16 +173,17 @@ func (e *EtcdClient) registerPserverEtcd(ctx context.Context, port int) (int, er
 		registered := false
 		for i := 0; i < e.desired; i++ {
 			psKey := PsPath + strconv.Itoa(i)
-			log.Debugf("checking %s", psKey)
 			ps := c.Get(psKey)
-			log.Debugf("got value (%s) for key: %s", ps, psKey)
+			log.Debug(
+				"register pserver got value",
+				log.Ctx{"value": ps, "key": psKey},
+			)
 
 			if ps == "" {
 				// find the first id and write info
 				pserverAddr := e.externalIP + ":" + strconv.Itoa(port)
 				c.Put(psKey, pserverAddr, clientv3.WithLease(e.sess.Lease()))
-				log.Debugf("set pserver node %s with value %s", psKey, pserverAddr)
-				log.Debug("register finished")
+				log.Debug("register finished", log.Ctx{"key": psKey, "value": pserverAddr})
 				idx = i
 				registered = true
 				break
@@ -239,7 +243,7 @@ func (e *EtcdClient) Shutdown() error {
 		newErr := e.client.Close()
 		if newErr != nil {
 			if err != nil {
-				log.Errorln(newErr)
+				log.Error("shutdown error", log.Ctx{"error": newErr})
 			} else {
 				err = newErr
 			}

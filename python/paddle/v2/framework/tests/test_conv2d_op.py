@@ -44,7 +44,8 @@ class TestConv2dOp(OpTest):
         conv2d_param = {'stride': self.stride, 'pad': self.pad}
         input = np.random.random(self.input_size).astype("float32")
         filter = np.random.random(self.filter_size).astype("float32")
-        output = conv2d_forward_naive(input, filter, self.groups, conv2d_param)
+        output = conv2d_forward_naive(input, filter, self.groups,
+                                      conv2d_param).astype('float32')
 
         self.inputs = {'Input': input, 'Filter': filter}
         self.attrs = {
@@ -60,25 +61,23 @@ class TestConv2dOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            set(['Input', 'Filter']), 'Output', max_relative_error=0.05)
+            set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
 
     def test_check_grad_no_filter(self):
         self.check_grad(
             ['Input'],
             'Output',
-            max_relative_error=0.05,
+            max_relative_error=0.02,
             no_grad_set=set(['Filter']))
 
     def test_check_grad_no_input(self):
         self.check_grad(
             ['Filter'],
             'Output',
-            max_relative_error=0.05,
+            max_relative_error=0.02,
             no_grad_set=set(['Input']))
 
     def init_test_case(self):
-        # self.groups = 1
-        # self.op_type = "conv2d"
         self.pad = [0, 0]
         self.stride = [1, 1]
         self.dilations = [1, 1]
@@ -100,6 +99,9 @@ class TestWithGroup(TestConv2dOp):
 
     def init_op_type(self):
         self.op_type = "conv2d"
+
+
+#----------------Conv2dCudnn----------------
 
 
 class TestCudnn(TestConv2dOp):

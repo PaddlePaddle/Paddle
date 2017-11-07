@@ -1,3 +1,17 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License. */
+
 #include "adam_optimizer.h"
 #include <cmath>
 
@@ -22,18 +36,16 @@ void AdamOptimizer::Update(const Tensor *gradient) {
   }
 }
 
-const char *AdamOptimizer::SerializeState(int *state_len) {
+std::string AdamOptimizer::SerializeState() {
   AdamOptimizerState state;
-  std::string lr_str = this->lr_policy_->SerializeState(state_len);
+  std::string lr_str = this->lr_policy_->SerializeState();
   state.mutable_lr_state()->ParseFromString(lr_str);
   state.set_num_sample_passed(num_sample_passed_);
 
   TensorToProto(*parameter_, state.mutable_parameter());
   TensorToProto(*momentums_, state.mutable_momentums());
   TensorToProto(*velocitys_, state.mutable_velocitys());
-  auto str = state.SerializeAsString();
-  *state_len += str.size();
-  return str.c_str();
+  return state.SerializeAsString();
 }
 
 void AdamOptimizer::DeserializeState(const std::string &str) {
