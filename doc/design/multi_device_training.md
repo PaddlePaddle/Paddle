@@ -1,0 +1,72 @@
+# Multi-device training in PaddlePaddle
+
+## Why Multi-device
+On a typical device or system, there are multiple computing devices. In PaddlePaddle, the supported device types as of now, are CPU and GPU (we will be adding FPGA in the future too).
+
+If a PaddlePaddle operation has both CPU and GPU implementations, we decide which kernel to execute based on the device type.  
+Training deep learning models can be resource intensive. Even with a very powerful GPU, some models can take really long to train. This is obvious with deep learning models, especially recurrent models where the execution of each step depends on the execution and output of previous step.
+
+We also need to support multi-device during inference. When using FPGA for inference, we might want to use the CPU for some operator computations, GPU for some and FPGA for the others, since FPGA does not support all operators at the moment. In this setup, we also need multi-device support to facilitate the above scenario.
+
+We will have various combinations of devices in our PaddlePaddle usage setup. For example:
+
+1. DGX-1 : x64 CPU + CUDA
+2. Intel Nervana system: x64 CPU + Xeon Phi
+3. PX2/3 : ARM CPU + CUDA
+4. Some servers : x64 CPU + FPGA
+
+Hence multi-device support will help us facilitate execution in the discussed device combinations as well. If we could come up with a way to optimize the usage of multiple heterogeneous devices that are available, we can achieve significant speedups during training as well as inference.
+
+There are two ways we could achieve this:
+1. Data Parallelism
+2. Model Parallelism
+
+### Data Parallelism
+Data parallelism works by partitioning the training data over all the devices and hence distributes the workload over multiple devices. Each device has a copy of the complete model and only has access to 1/d of the total training data (if there are d devices in total). The updates from each device (gradients, parameter updates etc.) are communicated across all the devices once the device has an update.
+
+### Model Parallelism
+Model parallelism on the other hand, works by keeping a part of the model on each available device. This is useful when the model is too large to keep on one device or when there are parts of the model that can be executed independently ( in parallel). In this setup, each device will train a part of the model and pass on its updates to the next device.
+
+Here, we want to explore the model parallelism setup, where different parts of the same model reside on different devices and communicate to each other by sending updates.
+
+### Components of Model Parallelism
+Let us look at a very simple example of model parallelism in the figure below:
+<img src="./images/model_parallel.png" align="center"/><br/>
+
+Here we have four GPUs, (say GPU: 0, GPU: 1, GPU: 2 and GPU: 3) and each GPU is executing a separate operator viz. Op1, Op2, Op3 and Op4. All the operators together are a part of the same model.
+
+### Operator placement policy
+Apart from distributing data and model components on different computing devices, PaddlePaddle should support a feature of letting the users explicitly decide which operator(operation: MatMul etc) should run on which device (computation device: CPU, GPU, FPGA etc.). This can be modeled once we design the python API.
+
+There are various ways of addressing this setup:
+1. Pick CPU by default.
+2. Pick GPU by default, if the device has a GPU.
+3. Pick the first GPU by default, if the device has multiple GPUs.
+4. Provide the functionality to support explicit assignment of device for operations, using some configuration options when setting up the devices. TensorFlow supports this very elegantly as mentioned [here](https://www.tensorflow.org/tutorials/using_gpu#manual_device_placement)
+
+We can discuss this in more detail when designing the Python API.
+
+### Copy operator
+Now to pass on the updates from GPU: 0 to GPU: 1, we need to somehow copy the updates made by GPU: 0 and move them to GPU: 1 . This can be done in two ways:
+1. Copy updates from GPU: 0 to CPU. Then copy updates from CPU to GPU: 1. This is shown as follows:
+<img src="./images/cpu_gpu.png" align="center"/><br/>
+
+2. Copy updates directly from GPU: 0 to GPU: 1, shown as follows:
+<img src="./images/gpu_gpu.png" align="center"/><br/>
+
+The first approach above requires two memcpy operations, one from GPU to CPU and another one from CPU to GPU. The second approach however requires just one memcpy operation (one GPU to another).
+
+We have some low level implementations of CUDA memcpy [here](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/memory/memcpy.h) and the next step would be to write C++ operators to expose these functions.
+
+### Python API
+To enable users to use the setup we talked about above, we need to set up a Python API that the users can use. We specifically need two components here:
+1. The Python API: This is the interface that the users of PaddlePaddle will use to set up model/data parallelism.
+2. ProgramDesc: Behind the scenes we need a module that can convert the python API to a ProgramDesc (which is a collection of repeated OpDescs). The ProgramDesc then will be sent to the Executor, which creates the Ops and eventually runs the Ops.
+
+We need to design the above two components as well as propose how the Python API will be parsed into ProgramDesc.
+These components will be addressed in the following design documents, one for each component.
+
+### C API
+We need to define the C API to support the functionality discussed in this design document, as well, which would be used during inference.
+We will address the design of the API in the following design documents.
+C-API is usually used in inference. We may also need to add C-API document for multi-device support.
