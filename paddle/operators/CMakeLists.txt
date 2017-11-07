@@ -200,6 +200,7 @@ set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 cc_test(net_op_test SRCS net_op_test.cc DEPS net_op)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor)
+cc_test(trieconcat_op_test SRCS trieconcat_op_test.cc DEPS lod_tensor)
 cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor paddle_memory)
 cc_test(dynamic_recurrent_op_test SRCS dynamic_recurrent_op_test.cc
         rnn/recurrent_op_utils.cc
