@@ -15,7 +15,9 @@ limitations under the License. */
 #include "paddle/framework/operator.h"
 #include <algorithm>
 #include <atomic>
+#include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/shape_inference.h"
+#include "paddle/framework/var_type.h"
 
 namespace paddle {
 namespace framework {
@@ -365,7 +367,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
     out_tensor->set_lod(in_tensor.lod());
   }
 
- private:
+  bool IsRuntime() const override { return true; }
+
+ protected:
   DDim GetDim(const std::string& name) const override {
     Variable* var = scope_.FindVar(name);
     if (var->IsType<LoDTensor>()) {
@@ -388,6 +392,12 @@ class RuntimeInferShapeContext : public InferShapeContext {
     }
   }
 
+  VarDesc::VarType GetVarType(const std::string& name) const override {
+    auto* var = scope_.FindVar(name);
+    return ToVarType(var->Type());
+  }
+
+ private:
   const OperatorBase& op_;
   const Scope& scope_;
 };
