@@ -29,6 +29,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
+    LOG(INFO) << "Running array to lod tensor. Out: " << Output("Out");
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
     auto &rank_table =
         scope.FindVar(Input("RankTable"))->Get<framework::LoDRankTable>();
@@ -138,6 +139,7 @@ class ArrayToLoDTensorInferShape : public framework::InferShapeBase {
                    "ArrayToLoDTensorOp must has input X.");
     PADDLE_ENFORCE(context->HasInput("RankTable"),
                    "ArrayToLoDTensorOp must has input RankTable.");
+    context->SetOutputDim("Out", context->GetInputDim("X"));
   }
 };
 
@@ -163,4 +165,5 @@ class ArrayToLoDTensorGradMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(array_to_lod_tensor, ops::ArrayToLoDTensorOp,
                   ops::ArrayToLoDTensorOpProtoMaker,
-                  ops::ArrayToLoDTensorInferShape, ops::LoDTensorToArrayOp);
+                  ops::ArrayToLoDTensorInferShape,
+                  ops::ArrayToLoDTensorGradMaker);

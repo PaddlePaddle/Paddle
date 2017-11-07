@@ -101,7 +101,7 @@ def data(name,
         shape = [-1] + shape  # append batch size as -1
 
     return helper.create_global_variable(
-        name=name, shape=shape, dtype=data_type, type=type, stop_gradient=True)
+        name=name, shape=shape, dtype=data_type, type=type, stop_gradient=False)
 
 
 def _convert_(name):
@@ -779,7 +779,8 @@ def lod_tensor_to_array(x, table, main_program=None):
     helper = LayerHelper("lod_tensor_to_array", **locals())
     array = helper.create_variable(
         name=unique_name("lod_tensor_to_array"),
-        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY)
+        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+        dtype=x.data_type)
     helper.append_op(
         type='lod_tensor_to_array',
         inputs={'X': x,

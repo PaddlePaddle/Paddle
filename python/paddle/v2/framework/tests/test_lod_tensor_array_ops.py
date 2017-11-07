@@ -4,6 +4,7 @@ import numpy
 import paddle.v2.framework.layers as layers
 from paddle.v2.framework.framework import Program
 from paddle.v2.framework.executor import Executor
+from paddle.v2.framework.backward import append_backward_ops
 
 
 class TestCPULoDTensorArrayOps(unittest.TestCase):
@@ -121,6 +122,43 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         self.assertTrue(
             numpy.allclose(numpy.array(actual), numpy.array(expect)))
         self.assertEqual(actual.lod(), expect.lod())
+
+
+class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
+    def test_grad(self):
+        place = core.CPUPlace()
+        program = Program()
+
+        x = layers.data(
+            name='x', shape=[1], data_type='float32', main_program=program)
+        x.persistable = True
+        table = layers.lod_rank_table(x, level=0, main_program=program)
+        table.persistable = True
+        array = layers.lod_tensor_to_array(x, table, main_program=program)
+        array.persistable = True
+        result = layers.array_to_lod_tensor(array, table, main_program=program)
+        result.persistable = True
+
+        mean = layers.mean(x=result, main_program=program)
+
+        append_backward_ops(mean)
+
+        tensor = core.LoDTensor()
+        tensor.set(numpy.arange(10).reshape(10, 1).astype('float32'), place)
+        tensor.set_lod([[0, 3, 9, 10]])
+
+        g_vars = program.global_block().var(x.name + "@GRAD")
+        print program
+        exe = Executor(place)
+        g_out = [
+            item.sum()
+            for item in map(
+                numpy.array,
+                exe.run(program, feed={'x': tensor}, fetch_list=[g_vars]))
+        ]
+        g_out_sum = numpy.array(g_out).sum()
+
+        self.assertAlmostEqual(1.0, g_out_sum, delta=0.1)
 
 
 if __name__ == '__main__':
