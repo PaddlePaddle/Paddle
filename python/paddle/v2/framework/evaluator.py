@@ -121,18 +121,14 @@ class Accuracy(Evaluator):
         return executor.run(eval_program, fetch_list=[eval_out])
 
 
-# This is demo for composing low level op to compute metric
+# Demo for composing low level op to compute the F1 metric
 class F1(Evaluator):
     def __init__(self, input, label, **kwargs):
         super(F1, self).__init__("F1", **kwargs)
-        super(Accuracy, self).__init__("accuracy", **kwargs)
-        g_total = helper.create_global_variable(
-            name=unique_name("Total"),
-            persistable=True,
-            dtype="int64",
-            shape=[1])
-        g_correct = helper.create_global_variable(
-            name=unique_name("Correct"),
-            persistable=True,
-            dtype="int64",
-            shape=[1])
+        g_tp = helper.create_global_variable(
+            name=unique_name("Tp"), persistable=True, dtype="int64", shape=[1])
+        g_fp = helper.create_global_variable(
+            name=unique_name("Fp"), persistable=True, dtype="int64", shape=[1])
+
+        self._states["Tp"] = g_tp
+        self._states["Fp"] = g_fp
