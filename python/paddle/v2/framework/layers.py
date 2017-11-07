@@ -90,11 +90,11 @@ def lstm(input,
          data_type='float32',
          para_attr=None,
          bias_attr=None,
-         usePeepholes=True,
-         isReverse=False,
-         gateActivation='sigmoid',
-         cellActivation='tanh',
-         candidateActivation='tanh',
+         use_peepholes=True,
+         is_reverse=False,
+         gate_activation='sigmoid',
+         cell_activation='tanh',
+         candidate_activation='tanh',
          main_program=None,
          startup_program=None):
     helper = LayerHelper('lstm', **locals())
@@ -123,11 +123,11 @@ def lstm(input,
             'BatchCellPreAct': batch_cell_pre_act
         },
         attrs={
-            'usePeepholes': usePeepholes,
-            'isReverse': isReverse,
-            'gateActivation': gateActivation,
-            'cellActivation': cellActivation,
-            'candidateActivation': candidateActivation
+            'usePeepholes': use_peepholes,
+            'isReverse': is_reverse,
+            'gateActivation': gate_activation,
+            'cellActivation': cell_activation,
+            'candidateActivation': candidate_activation
         })
     return hidden
 
