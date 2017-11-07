@@ -32,12 +32,9 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
-    LOG(INFO) << "running tensor to array, output: " << Output("Out");
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
     auto &rank_table =
         scope.FindVar(Input("RankTable"))->Get<framework::LoDRankTable>();
-    LOG(INFO)
-        << scope.FindVar(Output("Out"))->IsType<framework::LoDTensorArray>();
     auto &out =
         *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensorArray>();
 

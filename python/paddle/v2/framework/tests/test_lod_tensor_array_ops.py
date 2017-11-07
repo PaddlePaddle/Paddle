@@ -130,14 +130,14 @@ class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
         program = Program()
 
         x = layers.data(
-            name='x', shape=[1], data_type='float32', main_program=program)
-        x.persistable = True
+            name='x',
+            shape=[1],
+            data_type='float32',
+            main_program=program,
+            stop_gradient=True)
         table = layers.lod_rank_table(x, level=0, main_program=program)
-        table.persistable = True
         array = layers.lod_tensor_to_array(x, table, main_program=program)
-        array.persistable = True
         result = layers.array_to_lod_tensor(array, table, main_program=program)
-        result.persistable = True
 
         mean = layers.mean(x=result, main_program=program)
 
@@ -148,7 +148,7 @@ class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
         tensor.set_lod([[0, 3, 9, 10]])
 
         g_vars = program.global_block().var(x.name + "@GRAD")
-        print program
+
         exe = Executor(place)
         g_out = [
             item.sum()

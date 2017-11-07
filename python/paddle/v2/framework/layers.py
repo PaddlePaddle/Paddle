@@ -87,7 +87,8 @@ def data(name,
          type=core.VarDesc.VarType.LOD_TENSOR,
          append_batch_size=True,
          main_program=None,
-         startup_program=None):
+         startup_program=None,
+         stop_gradient=True):
     helper = LayerHelper('data', **locals())
     shape = list(shape)
     for i in xrange(len(shape)):
@@ -101,7 +102,11 @@ def data(name,
         shape = [-1] + shape  # append batch size as -1
 
     return helper.create_global_variable(
-        name=name, shape=shape, dtype=data_type, type=type, stop_gradient=False)
+        name=name,
+        shape=shape,
+        dtype=data_type,
+        type=type,
+        stop_gradient=stop_gradient)
 
 
 def _convert_(name):
