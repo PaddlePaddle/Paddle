@@ -18,7 +18,7 @@ limitations under the License. */
 #include <istream>
 #include <ostream>
 
-#include <cuda.h>  // seems need to delete it
+#include <cuda.h>
 
 #ifdef USE_EIGEN  // delete this #if macro
 #include "Eigen/src/Core/arch/CUDA/Half.h"
@@ -32,7 +32,7 @@ limitations under the License. */
 #endif  // CUDA_VERSION >= 7050
 #else
 #define PADDLE_HOSTDEVICE
-#endif  // __CUDA_ARCH__
+#endif  // __CUDACC__
 
 #ifdef __arm__
 #define PADDLE_ARM_32
