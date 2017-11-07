@@ -182,13 +182,9 @@ LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
 }
 
 void GetFineGrainedLoDLength(const LoD& lod, size_t start_idx, size_t end_idx,
+                             size_t start_level,
                              std::vector<std::vector<size_t>>* lod_length,
-                             size_t* start_offset);
-
-void GetFineGrainedLoDLength2(const LoD& lod, size_t start_idx, size_t end_idx,
-                              size_t start_level,
-                              std::vector<std::vector<size_t>>* lod_length,
-                              size_t* start_offset, size_t* end_offset);
+                             size_t* start_offset, size_t* end_offset);
 
 void AppendLoD(LoD* lod, const std::vector<std::vector<size_t>>& lod_length);
 

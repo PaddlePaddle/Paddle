@@ -153,8 +153,9 @@ TEST(LoD, GetFineGrainedLoDLength) {
 
   std::vector<std::vector<size_t>> lod_length;
   size_t start_offset;
-  paddle::framework::GetFineGrainedLoDLength(lod, 1, 2, &lod_length,
-                                             &start_offset);
+  size_t end_offset;
+  paddle::framework::GetFineGrainedLoDLength(lod, 1, 2, 0, &lod_length,
+                                             &start_offset, &end_offset);
 
   std::vector<std::vector<size_t>> expected;
   expected.push_back(std::vector<size_t>{2});
@@ -162,6 +163,7 @@ TEST(LoD, GetFineGrainedLoDLength) {
   expected.push_back(std::vector<size_t>{2, 3, 4, 2});
   EXPECT_EQ(lod_length, expected);
   EXPECT_EQ(start_offset, 15UL);
+  EXPECT_EQ(end_offset, 26UL);
 }
 
 TEST(LoD, AppendLoD) {

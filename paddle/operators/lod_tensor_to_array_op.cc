@@ -57,9 +57,9 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
         copy_ranges[i].emplace_back();
         auto &range = copy_ranges[i].back();
         std::vector<std::vector<size_t>> lod_length;
-        framework::GetFineGrainedLoDLength2(x.lod(), start_idx, start_idx + 1,
-                                            rank_level + 1, &lod_length,
-                                            &range.begin, &range.end);
+        framework::GetFineGrainedLoDLength(x.lod(), start_idx, start_idx + 1,
+                                           rank_level + 1, &lod_length,
+                                           &range.begin, &range.end);
         VLOG(10) << "Append Range " << i << " [" << range.begin << ", "
                  << range.end << "]";
         framework::AppendLoD(&lod, lod_length);

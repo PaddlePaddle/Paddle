@@ -87,9 +87,9 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
         std::vector<std::vector<size_t>> lod_length;
         size_t start_offset;
         size_t end_offset;
-        framework::GetFineGrainedLoDLength2(x[x_idx].lod(), idx, idx + 1, 0,
-                                            &lod_length, &start_offset,
-                                            &end_offset);
+        framework::GetFineGrainedLoDLength(x[x_idx].lod(), idx, idx + 1, 0,
+                                           &lod_length, &start_offset,
+                                           &end_offset);
         VLOG(10) << "idx=" << idx << " x_idx=" << x_idx << " [" << start_offset
                  << ", " << end_offset << "]";
         // Append lod

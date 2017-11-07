@@ -137,31 +137,9 @@ void LoDTensor::ShrinkInLevel(size_t level, size_t elem_begin,
 }
 
 void GetFineGrainedLoDLength(const LoD& lod, size_t start_idx, size_t end_idx,
+                             size_t start_level,
                              std::vector<std::vector<size_t>>* lod_length,
-                             size_t* start_offset) {
-  lod_length->clear();
-  PADDLE_ENFORCE(start_idx < lod.size() - 1,
-                 "start_idx should be >= 0 and < lod.size() - 1.");
-  PADDLE_ENFORCE(end_idx < lod.size(),
-                 "end_idx should be >= 0 and < lod.size().");
-  PADDLE_ENFORCE_LE(start_idx, end_idx,
-                    "start_idx should be less than end_idx.");
-  for (size_t level_idx = 0; level_idx < lod.size(); ++level_idx) {
-    std::vector<size_t> level_lens;
-    for (size_t i = start_idx; i < end_idx; ++i) {
-      level_lens.push_back(lod[level_idx][i + 1] - lod[level_idx][i]);
-    }
-    lod_length->emplace_back(level_lens);
-    start_idx = lod[level_idx][start_idx];
-    end_idx = lod[level_idx][end_idx];
-  }
-  *start_offset = start_idx;
-}
-
-void GetFineGrainedLoDLength2(const LoD& lod, size_t start_idx, size_t end_idx,
-                              size_t start_level,
-                              std::vector<std::vector<size_t>>* lod_length,
-                              size_t* start_offset, size_t* end_offset) {
+                             size_t* start_offset, size_t* end_offset) {
   lod_length->clear();
   *start_offset = start_idx;
   *end_offset = end_idx;
