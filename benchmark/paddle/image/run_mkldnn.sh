@@ -52,13 +52,7 @@ fi
 
 for use_mkldnn in True False; do
   for batchsize in 64 128 256; do
-    # vgg-19 and vgg-16
     train vgg 19 $batchsize $use_mkldnn
-    train vgg 16 $batchsize $use_mkldnn
-
-    # resnet-50, 101 and 152
     train resnet 50  $batchsize $use_mkldnn
-    train resnet 101 $batchsize $use_mkldnn
-    train resnet 152 $batchsize $use_mkldnn
   done
 done
