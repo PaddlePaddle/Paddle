@@ -6,9 +6,16 @@ On a typical device or system, there are multiple computing devices. In PaddlePa
 If a PaddlePaddle operation has both CPU and GPU implementations, we decide which kernel to execute based on the device type.  
 Training deep learning models can be resource intensive. Even with a very powerful GPU, some models can take really long to train. This is obvious with deep learning models, especially recurrent models where the execution of each step depends on the execution and output of previous step.
 
-We also need to support multi-device during inference. When using FPGA for inference, we might want to use the CPU for some operator computation, GPU for some and FPGA for the others, since FPGA does not support all operators. In this setup, we also need multi-device support to facilitate the above scenario.
+We also need to support multi-device during inference. When using FPGA for inference, we might want to use the CPU for some operator computations, GPU for some and FPGA for the others, since FPGA does not support all operators at the moment. In this setup, we also need multi-device support to facilitate the above scenario.
 
-If we could come up with a way to optimize the usage of multiple heterogeneous devices that are available, we can achieve significant speedups during training and inference.
+We will have various combinations of devices in our PaddlePaddle usage setup. For example:
+
+1. DGX-1 : x64 CPU + CUDA
+2. Intel Nervana system: x64 CPU + Xeon Phi
+3. PX2/3 : ARM CPU + CUDA
+4. Some servers : x64 CPU + FPGA
+
+Hence multi-device support will help us facilitate execution in the discussed device combinations as well. If we could come up with a way to optimize the usage of multiple heterogeneous devices that are available, we can achieve significant speedups during training as well as inference.
 
 There are two ways we could achieve this:
 1. Data Parallelism
@@ -47,3 +54,8 @@ To enable users to use the setup we talked about above, we need to set up a Pyth
 
 We need to design the above two components as well as propose how the Python API will be parsed into ProgramDesc.
 These components will be addressed in the following design documents, one for each component.
+
+### C API
+We need to define the C API to support the functionality discussed in this design document, as well, which would be used during inference.
+We will address the design of the API in the following design documents.
+C-API is usually used in inference. We may also need to add C-API document for multi-device support.
