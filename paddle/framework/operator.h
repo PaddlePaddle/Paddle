@@ -298,11 +298,10 @@ class ExecutionContext {
   }
 
 #ifdef PADDLE_WITH_CUDA
-  const platform::CUDADeviceContext& cuda_device_context() const {
+  const inline platform::CUDADeviceContext& cuda_device_context() const {
     PADDLE_ENFORCE(platform::is_gpu_place(device_context_.GetPlace()));
-    auto cuda_ctx =
-        reinterpret_cast<const platform::CUDADeviceContext*>(&device_context_);
-    return *cuda_ctx;
+    return *reinterpret_cast<const platform::CUDADeviceContext*>(
+        &device_context_);
   }
 #endif
 
