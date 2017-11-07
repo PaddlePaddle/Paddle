@@ -4,13 +4,13 @@
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #define EIGEN_USE_GPU
 
@@ -23,18 +23,21 @@ using Tensor = framework::Tensor;
 
 namespace {
 template <typename T>
-__global__ void CrossEntropyGrad(T* out_grad, const T* in_grad,
-                                 const int* labels, const int batch_size,
+__global__ void CrossEntropyGrad(T* logit_grad, const T* loss_grad,
+                                 const int64_t* labels, const int batch_size,
                                  const int class_num) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int sample_idx = tid / class_num;
 
-  if (tid < batch_size * class_num) out_grad[tid] *= in_grad[sample_idx];
-  __syncthreads();
-
   if (tid < batch_size) {
     PADDLE_ASSERT(labels[sample_idx] >= 0 && labels[sample_idx] < class_num);
-    out_grad[tid * class_num + labels[tid]] -= 1.;
+    logit_grad[tid * class_num + labels[tid]] -= static_cast<T>(1.);
+  }
+
+  __syncthreads();
+
+  if (tid < batch_size * class_num) {
+    logit_grad[tid] *= loss_grad[sample_idx];
   }
 }
 
@@ -47,7 +50,7 @@ __global__ void SoftCrossEntropyGradientKernel(T* logit_grad,
   int ids = blockIdx.x * blockDim.x + threadIdx.x;
   if (ids < batch_size * class_num) {
     int row_ids = ids / class_num;
-    logit_grad[ids] = logit_grad[ids] * loss_grad[row_ids] - labels[ids];
+    logit_grad[ids] = loss_grad[row_ids] * (logit_grad[ids] - labels[ids]);
   }
 }
 }  // namespace
@@ -101,7 +104,7 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
                               .stream()>>>(logit_grad_data, loss_grad_data,
                                            label_data, batch_size, class_num);
     } else {
-      const int* label_data = labels->data<int>();
+      const int64_t* label_data = labels->data<int64_t>();
       CrossEntropyGrad<T><<<
           grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
                               context.device_context())
@@ -116,6 +119,8 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(softmax_with_cross_entropy,
-                       ops::SoftmaxWithCrossEntropyCUDAKernel<float>);
+                       ops::SoftmaxWithCrossEntropyCUDAKernel<float>,
+                       ops::SoftmaxWithCrossEntropyCUDAKernel<double>);
 REGISTER_OP_GPU_KERNEL(softmax_with_cross_entropy_grad,
-                       ops::SoftmaxWithCrossEntropyGradCUDAKernel<float>);
+                       ops::SoftmaxWithCrossEntropyGradCUDAKernel<float>,
+                       ops::SoftmaxWithCrossEntropyGradCUDAKernel<double>);

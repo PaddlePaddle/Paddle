@@ -21,6 +21,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/framework/op_desc.h"
+#include "paddle/framework/proto_desc.h"
 #include "paddle/framework/var_desc.h"
 #include "paddle/platform/macros.h"
 
@@ -35,8 +36,7 @@ class ProgramDescBind;
 
 class BlockDescBind {
  public:
-  BlockDescBind(ProgramDescBind *prog, BlockDesc *desc)
-      : prog_(prog), desc_(desc), need_update_(false) {}
+  BlockDescBind(ProgramDescBind *prog, BlockDesc *desc);
 
   BlockDescBind(const BlockDescBind &other, BlockDesc *desc,
                 ProgramDescBind *prog);
@@ -55,6 +55,10 @@ class BlockDescBind {
   VarDescBind *FindVar(const std::string &name_bytes) const;
 
   bool HasVar(const std::string &var_name) const;
+
+  VarDescBind *FindVarRecursive(const std::string &name_bytes) const;
+
+  bool HasVarRecursive(const std::string &var_name) const;
 
   std::set<std::string> LocalVarNames() const {
     std::set<std::string> var_names;
@@ -83,6 +87,8 @@ class BlockDescBind {
   void Flush();
 
   BlockDesc *Proto();
+
+  ProgramDescBind *Program() { return this->prog_; }
 
  private:
   void ClearPBOps();
