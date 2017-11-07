@@ -164,16 +164,19 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
         "(string, default: sigmoid)"
         "The activation for input gate, forget gate and output "
         "gate, `sigmoid` by default.")
-        .SetDefault("sigmoid");
+        .SetDefault("sigmoid")
+        .InEnum({"sigmoid", "tanh", "relu", "identity"});
     AddAttr<std::string>("cell_activation",
                          "(string, default: tanh)"
                          "The activation for cell output, `tanh` by defalut.")
-        .SetDefault("tanh");
+        .SetDefault("tanh")
+        .InEnum({"sigmoid", "tanh", "relu", "identity"});
     AddAttr<std::string>("candidate_activation",
                          "(string, default: tanh)"
                          "The activation for candidate hidden state, "
                          "`tanh` by default.")
-        .SetDefault("tanh");
+        .SetDefault("tanh")
+        .InEnum({"sigmoid", "tanh", "relu", "identity"});
     AddComment(R"DOC(
 Long-Short Term Memory (LSTM) Operator.
 

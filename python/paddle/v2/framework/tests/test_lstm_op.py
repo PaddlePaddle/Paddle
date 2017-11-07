@@ -117,9 +117,9 @@ class TestLstmOp(OpTest):
         self.act_cell = 'tanh'
         self.act_cand = 'tanh'
 
-        self.has_initial_state = True
-        self.has_bias = True
+        self.has_initial_state = False
         self.is_reverse = False
+        self.use_peepholes = True
 
     def setUp(self):
         self.set_argument()
@@ -129,21 +129,27 @@ class TestLstmOp(OpTest):
         N = len(self.lod[0]) - 1
 
         x = np.random.normal(size=(T, 4 * self.D)).astype('float64')
-        h0 = np.zeros((N, self.D)).astype('float64')
-        c0 = np.zeros((N, self.D)).astype('float64')
+        if self.has_initial_state:
+            h0 = np.random.normal(size=(N, self.D)).astype('float64')
+            c0 = np.random.normal(size=(N, self.D)).astype('float64')
+        else:
+            h0 = np.zeros((N, self.D)).astype('float64')
+            c0 = np.zeros((N, self.D)).astype('float64')
         w = np.random.normal(size=(self.D, 4 * self.D)).astype('float64')
-        b = np.random.normal(size=(1, 7 * self.D)).astype('float64')
+        if self.use_peepholes:
+            b = np.random.normal(size=(1, 7 * self.D)).astype('float64')
+        else:
+            b = np.random.normal(size=(1, 4 * self.D)).astype('float64')
 
-        w_b = b[:, 0:4 * self.D] if self.has_bias else None
-        w_c = b[:, 4 * self.D:] if self.has_bias else None
+        w_b = b[:, 0:4 * self.D]
+        w_c = b[:, 4 * self.D:] if self.use_peepholes else None
         h, c = lstm(x, self.lod, h0, c0, w, w_b, w_c, self.is_reverse,
                     ACTVATION[self.act_gate], ACTVATION[self.act_cell],
                     ACTVATION[self.act_cand])
 
         self.inputs = {'Input': (x, self.lod), 'Weight': w}
 
-        if self.has_bias:
-            self.inputs['Bias'] = b
+        self.inputs['Bias'] = b
 
         if self.has_initial_state:
             self.inputs['H0'] = h0
@@ -154,18 +160,17 @@ class TestLstmOp(OpTest):
             'Cell': (c, self.lod),
         }
         self.attrs = {
-            'use_peepholes': True,
+            'use_peepholes': self.use_peepholes,
             'is_reverse': self.is_reverse,
             'gate_activation': self.act_gate,
             'cell_activation': self.act_cell,
             'candidate_activation': self.act_cand
         }
 
-    def not_test_check_output(self):
+    def test_check_output(self):
         self.check_output(atol=1e-8)
 
-    #TODO(qingqing) add more unit testing case
-    def not_test_check_grad(self):
+    def test_check_grad(self):
         # TODO(qingqing) remove folowing lines after the check_grad is refined.
         N = len(self.lod[0]) - 1
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
@@ -174,22 +179,38 @@ class TestLstmOp(OpTest):
         self.check_grad(
             ['Input', 'Weight', 'Bias'], ['Hidden'], max_relative_error=5e-4)
 
+    def test_check_grad_ingore_bias(self):
+        N = len(self.lod[0]) - 1
+        self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(
+            ['Input', 'Weight'], ['Hidden'],
+            max_relative_error=5e-4,
+            no_grad_set=set('Bias'))
 
-class TestLstmOpHasNoInitial(TestLstmOp):
-    def set_argument(self):
-        self.lod = [[0, 2, 5, 7]]
-        self.D = 16
+    def test_check_grad_ingore_weight(self):
+        N = len(self.lod[0]) - 1
+        self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(
+            ['Input', 'Bias'], ['Hidden'],
+            max_relative_error=5e-4,
+            no_grad_set=set('Weight'))
 
-        self.act_gate = 'sigmoid'
-        self.act_cell = 'tanh'
-        self.act_cand = 'tanh'
+    def test_check_grad_ingore_input(self):
+        N = len(self.lod[0]) - 1
+        self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(
+            ['Weight', 'Bias'], ['Hidden'],
+            max_relative_error=5e-4,
+            no_grad_set=set('Input'))
 
-        self.has_initial_state = False
-        self.is_reverse = True
-        self.has_bias = True
 
-
-class TestLstmOpHasNoBias(TestLstmOp):
+class TestLstmOpHasInitial(TestLstmOp):
     def set_argument(self):
         self.lod = [[0, 2, 5, 7]]
         self.D = 16
@@ -199,11 +220,48 @@ class TestLstmOpHasNoBias(TestLstmOp):
         self.act_cand = 'tanh'
 
         self.has_initial_state = True
-        self.is_reverse = False
-        self.has_bias = False
+        self.is_reverse = True
+        self.use_peepholes = True
 
-    def test_check_output(self):
-        self.check_output(atol=1e-8)
+    def test_check_grad(self):
+        # TODO(qingqing) remove folowing lines after the check_grad is refined.
+        N = len(self.lod[0]) - 1
+        self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(
+            ['Input', 'Weight', 'Bias', 'H0', 'C0'], ['Hidden'],
+            max_relative_error=5e-4)
+
+    # In order to speed up, skip following testing
+    def test_check_grad_ingore_bias(self):
+        return
+
+    def test_check_grad_ingore_weight(self):
+        return
+
+    def test_check_grad_ingore_input(self):
+        return
+
+    def test_check_grad_ingore_h0(self):
+        N = len(self.lod[0]) - 1
+        self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(
+            ['Input', 'Weight', 'Bias', 'C0'], ['Hidden'],
+            max_relative_error=5e-4,
+            no_grad_set=set('H0'))
+
+    def test_check_grad_ingore_c0(self):
+        N = len(self.lod[0]) - 1
+        self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(
+            ['Input', 'Weight', 'Bias', 'H0'], ['Hidden'],
+            max_relative_error=5e-4,
+            no_grad_set=set('C0'))
 
 
 class TestLstmOpRerverse(TestLstmOp):
@@ -215,9 +273,43 @@ class TestLstmOpRerverse(TestLstmOp):
         self.act_cell = 'tanh'
         self.act_cand = 'tanh'
 
-        self.has_initial_state = True
+        self.has_initial_state = False
         self.is_reverse = True
-        self.has_bias = True
+        self.use_peepholes = True
+
+    # In order to speed up, skip following testing
+    def test_check_grad_ingore_bias(self):
+        return
+
+    def test_check_grad_ingore_weight(self):
+        return
+
+    def test_check_grad_ingore_input(self):
+        return
+
+
+class TestLstmOpNotUsePeepholes(TestLstmOp):
+    def set_argument(self):
+        self.lod = [[0, 2, 5, 7]]
+        self.D = 16
+
+        self.act_gate = 'sigmoid'
+        self.act_cell = 'tanh'
+        self.act_cand = 'tanh'
+
+        self.has_initial_state = False
+        self.is_reverse = True
+        self.use_peepholes = False
+
+    # In order to speed up, skip following testing
+    def test_check_grad_ingore_bias(self):
+        return
+
+    def test_check_grad_ingore_weight(self):
+        return
+
+    def test_check_grad_ingore_input(self):
+        return
 
 
 if __name__ == '__main__':

@@ -31,7 +31,7 @@ class CopyMatrixRowsFunctor {
   // The indexed rows are based on the input index.
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& src, const size_t* index,
-                  framework::Tensor* dst, bool is_src_index);
+                  framework::Tensor& dst, bool is_src_index);
 };
 
 template <typename Place, typename T>
@@ -57,7 +57,7 @@ class LoDTensor2BatchFunctor {
                   bool is_reverse = false) const {
     if (!is_cal_batch_lod) {
       auto lods = batch.lod();
-      PADDLE_ENFORCE_LE(lods.size(), 2UL);
+      PADDLE_ENFORCE_GT(lods.size(), 2UL);
       PADDLE_ENFORCE_EQ(lods[1].size(),
                         static_cast<size_t>(lod_tensor.dims()[0]));
       CopyMatrixRowsFunctor<Place, T> to_batch;
@@ -68,8 +68,6 @@ class LoDTensor2BatchFunctor {
     auto lods = lod_tensor.lod();
     auto lod = lods[0];
     PADDLE_ENFORCE_EQ(lods.size(), 1UL, "Only support one level sequence now.");
-    PADDLE_ENFORCE_EQ(lod_tensor.dims()[0],
-                      static_cast<int64_t>(lod.size() - 1));
 
     std::vector<SeqInfo> seq_info;
     for (size_t seq_id = 0; seq_id < lod.size() - 1; ++seq_id) {
@@ -112,7 +110,7 @@ class LoDTensor2BatchFunctor {
     int num_batch = seq_info[0].length;
     batch_lods[0].resize(static_cast<size_t>(num_batch + 1));
     // batch_lods[1] is the raw index in the input LoDTensor
-    batch_lods[1].resize(static_cast<size_t>(seq_info.size()));
+    batch_lods[1].resize(static_cast<size_t>(lod_tensor.dims()[0]));
     // batch_lods[2] is the sort order for the input LoDTensor.
     batch_lods[2].resize(seq_info.size());
 
@@ -152,8 +150,7 @@ class Batch2LoDTensorFunctor {
                   const framework::LoDTensor& batch,
                   framework::LoDTensor& lod_tensor) const {
     auto in_lod = batch.lod();
-    PADDLE_ENFORCE_LT(in_lod.size(), 2UL,
-                      "The LoD size of input `batch` should be 2.");
+    PADDLE_ENFORCE_GT(in_lod.size(), 2UL);
     PADDLE_ENFORCE_EQ(in_lod[1].size(),
                       static_cast<size_t>(lod_tensor.dims()[0]));
     CopyMatrixRowsFunctor<Place, T> to_seq;
