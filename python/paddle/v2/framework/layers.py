@@ -82,7 +82,10 @@ def embedding(input,
 
 
 def lstm(input,
-         init_hidden,
+         init_hidden=None,
+         hidden_shape=None,
+         hidden_batch_ref=None,
+         init_hidden_value=0.0,
          init_cell,
          data_type='float32',
          para_attr=None,
