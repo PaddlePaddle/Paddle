@@ -1,4 +1,4 @@
-from paddle.v2.framework.framework import Program, unique_name
+from paddle.v2.framework.framework import Program, g_program, unique_name
 from paddle.v2.framework.layer_helper import LayerHelper
 import paddle.v2.framework.core as core
 
@@ -13,8 +13,12 @@ class Evaluator(object):
     """
 
     def __init__(self, name, **kwargs):
-        self._states = []
+        self._states = {}
         self._helper = LayerHelper(layer_type=name, **kwargs)
+        # if kwargs.has_key("program"):
+        #     self._program =  kwargs.get("program")
+        # else:
+        #     self._program = g_program
 
     # def _update(self):
     #     """
@@ -22,12 +26,15 @@ class Evaluator(object):
     #   """
     #     raise NotImplementedError()
 
-    def reset(self):
+    def reset(self, executor, program=None):
         """
       Clear metric states at the begin of each pass/user specified batch
       """
-        reset_program = Program()
-        for var in self._states:
+        if program == None:
+            reset_program = Program()
+        else:
+            reset_program = program
+        for k, var in self._states.iteritems():
             zeros = helper.create_tmp_variable(dtype=var.data_type)
             self._helper.append_op(
                 type="fill_constant",
@@ -38,7 +45,7 @@ class Evaluator(object):
                 })
             self._helper.append_op(
                 type="scale", inputs={"X": zeros}, outputs={"Out": var})
-        return reset_program
+        executor.run(reset_program)
 
     def eval(self):
         """
@@ -64,8 +71,8 @@ class Accuracy(Evaluator):
             persistable=True,
             dtype="int64",
             shape=[1])
-        self._states.append(g_total)
-        self._states.append(g_correct)
+        self._states["Total"] = g_total
+        self._states["Correct"] = g_correct
 
         topk_out = helper.create_tmp_variable(dtype=input.data_type)
         topk_indices = helper.create_tmp_variable(dtype="int64")
@@ -86,18 +93,32 @@ class Accuracy(Evaluator):
             },
             outputs={
                 "Accuracy": [acc_out],
-                "Correct": [tp_out],
+                "Correct": [correct],
+                "Total": [total],
             })
 
         helper.append_op(
             type="sum",
-            inputs={"X": [g_total, tp_out]},
+            inputs={"X": [g_total, total]},
+            outputs={"Out": [g_total]})
+        helper.append_op(
+            type="sum",
+            inputs={"X": [g_correct, correct]},
             outputs={"Out": [g_total]})
         return acc_out
 
-    def eval(self):
-        eval_program = Program()
-        g_total = self._program
+    def eval(self, executor, program=None):
+        if program == None:
+            eval_program = Program()
+        else:
+            eval_program = program
+        eval_out = helper.create_tmp_variable(dtype=self._helper.input_dtype())
+        self._helper.append_op(
+            type="elementwise_div",
+            inputs={"X": self._states["Total"],
+                    "Y": self._states["Correct"]},
+            outputs={"Out": eval_out})
+        return executor.run(eval_program, fetch_list=[eval_out])
 
 
 # This is demo for composing low level op to compute metric

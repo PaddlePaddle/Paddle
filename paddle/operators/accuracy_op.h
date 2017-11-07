@@ -43,9 +43,11 @@ class AccuracyKernel : public framework::OpKernel<T> {
     auto* label = ctx.Input<Tensor>("Label");
     auto* accuracy = ctx.Output<Tensor>("Accuracy");
     auto* correct = ctx.Output<Tensor>("Correct");
+    auto* total = ctx.Output<Tensor>("Total");
 
     float* correct_data = correct->mutable_data<float>(ctx.GetPlace());
     int* accuracy_data = accuracy->mutable_data<int>(ctx.GetPlace());
+    int* total_data = total->mutable_data<int>(ctx.GetPlace());
 
     const int64_t* indices_data = indices->data<int64_t>();
     const int64_t* label_data = label->data<int64_t>();
@@ -71,6 +73,7 @@ class AccuracyKernel : public framework::OpKernel<T> {
     }
 
     *correct_data = num_correct;
+    *total_data = num_samples;
     *accuracy_data =
         static_cast<float>(num_correct) / static_cast<float>(num_samples);
   }
