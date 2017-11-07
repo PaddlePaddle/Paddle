@@ -20,10 +20,8 @@ namespace math {
 
 namespace {
 template <typename T>
-__global__ void CrossEntropyKernel(T* Y, const T* X, const int* label,
+__global__ void CrossEntropyKernel(T* Y, const T* X, const int64_t* label,
                                    const int N, const int D) {
-  // TOOD(qingqing) define CUDA_1D_KERNEL_LOOP macro in a common file.
-  // CUDA_1D_KERNEL_LOOP(i, N) {
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
     PADDLE_ASSERT(label[i] >= 0 && label[i] < D);
@@ -41,11 +39,36 @@ __device__ __forceinline__ T sum_single_warp(T val) {
   return val;
 }
 
+// CUDA do not support dynamic arrary in template
+// https://stackoverflow.com/questions/20497209
+template <typename T>
+struct SharedMemory {
+  // Ensure that we won't compile any un-specialized types
+  __device__ T* GetPointer() { return NULL; }
+};
+
+template <>
+struct SharedMemory<float> {
+  __device__ float* GetPointer() {
+    extern __shared__ float s_float[];
+    return s_float;
+  }
+};
+
+template <>
+struct SharedMemory<double> {
+  __device__ double* GetPointer() {
+    extern __shared__ double s_double[];
+    return s_double;
+  }
+};
+
 template <typename T>
 __global__ void SoftCrossEntropyKernel(T* Y, const T* X, const T* label,
                                        const int class_num) {
   int tid = threadIdx.x;
-  extern __shared__ T d_sum[];
+  SharedMemory<T> d_sum_shared;
+  T* d_sum = d_sum_shared.GetPointer();
   d_sum[tid] = 0;
 
   int cur_idx = tid;
@@ -92,7 +115,7 @@ class CrossEntropyFunctor<platform::GPUPlace, T> {
           reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
           loss_data, prob_data, label_data, class_num);
     } else {
-      const int* label_data = labels->data<int>();
+      const int64_t* label_data = labels->data<int64_t>();
       int block = 512;
       int grid = (batch_size + block - 1) / block;
       CrossEntropyKernel<T><<<
@@ -104,6 +127,7 @@ class CrossEntropyFunctor<platform::GPUPlace, T> {
 };
 
 template class CrossEntropyFunctor<platform::GPUPlace, float>;
+template class CrossEntropyFunctor<platform::GPUPlace, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

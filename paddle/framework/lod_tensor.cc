@@ -14,6 +14,14 @@
 
 #include "paddle/framework/lod_tensor.h"
 
+#include "paddle/memory/memcpy.h"
+#include "paddle/memory/memory.h"
+
+#include <stdint.h>
+#include <string.h>
+#include <algorithm>
+#include <iterator>
+
 #include <glog/logging.h>
 
 namespace paddle {
@@ -97,6 +105,15 @@ size_t LoDTensor::NumElements(size_t level, size_t idx) const {
   return lod_[level][idx + 1] - lod_[level][idx];
 }
 
+size_t LoDTensor::NumInstancesInElement(size_t level, size_t idx) const {
+  PADDLE_ENFORCE_LT(level, NumLevels());
+  PADDLE_ENFORCE_LT(idx, NumElements(level));
+  auto abs_lod = ToAbsOffset(lod());
+  size_t begin = abs_lod[level][idx];
+  size_t end = abs_lod[level][idx + 1];
+  return end - begin;
+}
+
 void LoDTensor::ShrinkLevels(size_t level_begin, size_t level_end) {
   auto new_lod = framework::SliceLevels(lod_, level_begin, level_end);
   lod_ = new_lod;
@@ -108,8 +125,52 @@ void LoDTensor::ShrinkInLevel(size_t level, size_t elem_begin,
   PADDLE_ENFORCE_LT(elem_begin, NumElements(level));
   PADDLE_ENFORCE_LT(elem_end, NumElements(level) + 1);
 
+  auto abs_lod = framework::ToAbsOffset(lod());
   auto new_lod = framework::SliceInLevel(lod_, level, elem_begin, elem_end);
   lod_ = new_lod;
+
+  // slice the underlying tensor
+  size_t begin = abs_lod[level][elem_begin];
+  size_t end = abs_lod[level][elem_end];
+  PADDLE_ENFORCE_LT(begin, end, "Cannot shrink, the result tensor is empty.");
+  ShareDataWith(Slice(begin, end));
+}
+
+void GetFineGrainedLoDLength(const LoD& lod, size_t start_idx, size_t end_idx,
+                             std::vector<std::vector<size_t>>* lod_length,
+                             size_t* start_offset) {
+  lod_length->clear();
+  PADDLE_ENFORCE(start_idx < lod.size() - 1,
+                 "start_idx should be >= 0 and < lod.size() - 1.");
+  PADDLE_ENFORCE(end_idx < lod.size(),
+                 "end_idx should be >= 0 and < lod.size().");
+  PADDLE_ENFORCE_LE(start_idx, end_idx,
+                    "start_idx should be less than end_idx.");
+  for (size_t level_idx = 0; level_idx < lod.size(); ++level_idx) {
+    std::vector<size_t> level_lens;
+    for (size_t i = start_idx; i < end_idx; ++i) {
+      level_lens.push_back(lod[level_idx][i + 1] - lod[level_idx][i]);
+    }
+    lod_length->emplace_back(level_lens);
+    start_idx = lod[level_idx][start_idx];
+    end_idx = lod[level_idx][end_idx];
+  }
+  *start_offset = start_idx;
+}
+
+void AppendLoD(LoD* lod, const std::vector<std::vector<size_t>>& lod_length) {
+  PADDLE_ENFORCE_EQ(
+      lod->size(), lod_length.size(),
+      "The lod_length should has the same size with the appended lod.");
+  for (size_t i = 0; i < lod->size(); ++i) {
+    auto& level = (*lod)[i];
+    if (level.empty()) {
+      level.push_back(0);
+    }
+    for (size_t len : lod_length[i]) {
+      level.push_back(level.back() + len);
+    }
+  }
 }
 
 }  // namespace framework

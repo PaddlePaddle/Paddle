@@ -1,11 +1,11 @@
 import unittest
-from paddle.v2.framework.framework import Variable, g_program
+from paddle.v2.framework.framework import Variable, Program, g_main_program
 import paddle.v2.framework.core as core
 
 
 class TestOperator(unittest.TestCase):
     def test_error_type(self):
-        block = g_program.create_block()
+        block = g_main_program.create_block()
         try:
             block.append_op()
             self.assertFail()
@@ -21,7 +21,8 @@ class TestOperator(unittest.TestCase):
                              "Operator \"no_such_op\" has not been registered.")
 
     def test_op_desc_creation(self):
-        block = g_program.current_block()
+        program = Program()
+        block = program.current_block()
         mul_x = block.create_var(
             dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
         mul_y = block.create_var(
@@ -50,10 +51,12 @@ class TestOperator(unittest.TestCase):
         self.assertEqual(mul_op.has_attr("y_num_col_dims"), True)
         self.assertEqual(mul_op.attr_type("y_num_col_dims"), core.AttrType.INT)
         self.assertEqual(mul_op.attr("y_num_col_dims"), 1)
+        self.assertEqual(mul_op.idx, 0)
         self.assertEqual(mul_out.op, mul_op)
 
     def test_mult_input(self):
-        block = g_program.current_block()
+        program = Program()
+        block = program.current_block()
         sum_x1 = block.create_var(
             dtype="int", shape=[3, 4], lod_level=0, name="sum.x1")
         sum_x2 = block.create_var(
@@ -71,6 +74,7 @@ class TestOperator(unittest.TestCase):
         self.assertEqual(sum_op.input("X"), ["sum.x1", "sum.x2", "sum.x3"])
         self.assertEqual(sum_op.output_names, ["Out"])
         self.assertEqual(sum_op.output("Out"), ["sum.out"])
+        self.assertEqual(sum_op.idx, 0)
         self.assertEqual(sum_out.op, sum_op)
 
 

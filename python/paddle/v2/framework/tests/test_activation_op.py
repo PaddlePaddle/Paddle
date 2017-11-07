@@ -172,8 +172,8 @@ class TestBRelu(OpTest):
     def setUp(self):
         self.op_type = "brelu"
         x = np.random.uniform(-1, 1, [4, 4]).astype("float32")
-        t_min = 1
-        t_max = 4
+        t_min = 1.0
+        t_max = 4.0
         # The same with TestAbs
         x[np.abs(x - t_min) < 0.005] = t_min + 0.02
         x[np.abs(x - t_max) < 0.005] = t_max + 0.02
@@ -218,7 +218,7 @@ class TestSoftRelu(OpTest):
     def setUp(self):
         self.op_type = "soft_relu"
         x = np.random.uniform(-3, 3, [4, 4]).astype("float32")
-        threshold = 2
+        threshold = 2.0
         # The same reason with TestAbs
         x[np.abs(x - threshold) < 0.005] = threshold + 0.02
         x[np.abs(x + threshold) < 0.005] = -threshold + 0.02
@@ -303,7 +303,7 @@ class TestPow(OpTest):
     def setUp(self):
         self.op_type = "pow"
         self.inputs = {'X': np.random.uniform(1, 2, [11, 17]).astype("float32")}
-        self.attrs = {'factor': 3}
+        self.attrs = {'factor': 3.0}
         self.outputs = {'Y': np.power(self.inputs['X'], 3)}
 
     def test_check_output(self):
@@ -335,7 +335,7 @@ class TestSoftplus(OpTest):
     def setUp(self):
         self.op_type = "softplus"
         self.inputs = {
-            'X': np.random.uniform(-1, 1, [11, 17]).astype("float32")
+            'X': np.random.uniform(-1, 1, [11, 17]).astype("float64")
         }
         self.outputs = {'Y': np.log(1 + np.exp(self.inputs['X']))}
 

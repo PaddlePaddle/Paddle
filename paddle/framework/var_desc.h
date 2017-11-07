@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+#include "glog/logging.h"
 #include "paddle/framework/framework.pb.h"
 
 namespace paddle {
@@ -59,6 +60,8 @@ class VarDescBind {
     desc_.set_type(VarDesc::LOD_TENSOR);
   }
 
+  explicit VarDescBind(const VarDesc &desc) : desc_(desc) {}
+
   VarDesc *Proto() { return &desc_; }
 
   std::string Name() const { return desc_.name(); }
@@ -75,9 +78,9 @@ class VarDescBind {
 
   int32_t GetLodLevel() const;
 
-  VarDesc::VarType GetType() const { return desc_.type(); }
+  VarDesc::VarType GetType() const;
 
-  void SetType(VarDesc::VarType type) { desc_.set_type(type); }
+  void SetType(VarDesc::VarType type);
 
   bool Persistable() const { return desc_.persistable(); }
 

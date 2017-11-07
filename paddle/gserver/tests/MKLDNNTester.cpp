@@ -91,10 +91,16 @@ void MKLDNNTester::setInputImgSize() {
 // init randome parameters of ref, and copy to mkldnn
 void MKLDNNTester::randomWgtDatas() {
   EXPECT_EQ(parameters_[DNN].size(), parameters_[REF].size());
+  const bool isBN = refLayer_->getType() == "batch_norm";
   for (size_t i = 0; i < parameters_[REF].size(); ++i) {
     const VectorPtr& dnnValue = parameters_[DNN][i]->getBuf(PARAMETER_VALUE);
     const VectorPtr& refValue = parameters_[REF][i]->getBuf(PARAMETER_VALUE);
     parameters_[REF][i]->randomize();
+    if (isBN && i == 2) {
+      // this param is moving average in batch norm, which must larger than 0
+      real offset = fabs(refValue->getMin()) + 1.0;
+      refValue->add(offset);
+    }
     dnnValue->copyFrom(*refValue);
 
     VLOG(MKLDNN_TESTS) << "Random weight " << parameters_[DNN][i]->getName();
@@ -126,14 +132,13 @@ void MKLDNNTester::checkForward() {
   VLOG(MKLDNN_TESTS) << "Check Forward";
   printTopDatas();
   double delta =
-      compareMatrix(dnnLayer_->getOutputValue(), refLayer_->getOutputValue());
+      compareMatrix(refLayer_->getOutputValue(), dnnLayer_->getOutputValue());
   EXPECT_LE(fabs(delta), eps_);
 }
 
 void MKLDNNTester::checkBackwardData() {
   VLOG(MKLDNN_TESTS) << "Check Backward Data";
-  // TODO(TJ): uncomment me when batch norm ready
-  // const bool isBN = dnnLayer_->getType() == "mkldnn_batch_norm";
+  const bool isBN = refLayer_->getType() == "batch_norm";
   for (size_t i = 0; i < dataLayers_[DNN].size(); ++i) {
     const MatrixPtr& dnnDiff = dataLayers_[DNN][i]->getOutputGrad();
     const MatrixPtr& refDiff = dataLayers_[REF][i]->getOutputGrad();
@@ -142,13 +147,13 @@ void MKLDNNTester::checkBackwardData() {
     VLOG(MKLDNN_ALL) << "Reference Backward Result: InputGrad " << i;
     printMatrix(refDiff);
 
-    double delta = compareMatrix(dnnDiff, refDiff);
+    double delta = compareMatrix(refDiff, dnnDiff);
     EXPECT_LE(fabs(delta), eps_);
-    // TODO(TJ): uncomment me when batch norm ready
-    // if (isBN) {
-    //  // the other two inputs in batch norm are for moving mean and var
-    //  break;
-    // }
+    if (isBN) {
+      // the other two inputs in batch norm are for moving mean and var
+      // do not have grad to compare
+      break;
+    }
   }
 }
 
@@ -172,7 +177,7 @@ void MKLDNNTester::checkBackwardWgts() {
                      << parameters_[REF][i]->getName();
     printVector(ref);
 
-    double delta = compareVector(dnn, ref);
+    double delta = compareVector(ref, dnn);
     EXPECT_LE(fabs(delta), eps_);
   }
 
@@ -268,31 +273,37 @@ void MKLDNNTester::printVector(const VectorPtr& v) {
   VLOG(MKLDNN_ALL) << std::endl << ostr.str();
 }
 
-double MKLDNNTester::getDelta(const real* d1,
-                              const real* d2,
+double MKLDNNTester::getDelta(const real* refer,
+                              const real* value,
                               size_t len,
                               const float failRate,
                               const float thres) {
   double delta = 0, sum = 0;
   int failCnt = 0;
   const double eps = 1e-5;
-  double maxOut = 0;
+  double maxRatio = 0;
   for (size_t i = 0; i < len; ++i) {
-    double ref = fabs(d2[i]);
-    double diff = fabs(d1[i] - d2[i]);
+    double ref = fabs(refer[i]);
+    double val = fabs(value[i]);
+    double diff = fabs(refer[i] - value[i]);
     delta += diff;
     sum += ref;
-    if (ref > eps && fabs(d1[i]) > eps && diff / ref > thres) {
-      maxOut = std::max(maxOut, diff / ref);
+    if (ref < eps && val < eps) {  // both values are very small
+      continue;
+    }
+    double ratio = diff / ref;
+    if (ratio > thres) {
+      maxRatio = std::max(maxRatio, ratio);
       failCnt++;
     }
   }
-  EXPECT_TRUE(std::isnormal(sum));
   EXPECT_FALSE(std::isinf(sum));
+  EXPECT_FALSE(std::isnan(sum));
   EXPECT_FALSE(std::isnan(delta));
   VLOG(MKLDNN_ALL) << "reference avg data: " << sum / len
                    << ", delta: " << delta / sum << ", failCnt:" << failCnt;
-  return (failCnt / (float)len) > failRate ? maxOut : delta / sum;
+  double res = sum > eps ? delta / sum : eps;
+  return (failCnt / (float)len) > failRate ? maxRatio : res;
 }
 
 double MKLDNNTester::compareMatrix(const MatrixPtr& m1, const MatrixPtr& m2) {
@@ -308,9 +319,13 @@ double MKLDNNTester::compareVector(const VectorPtr& v1, const VectorPtr& v2) {
 void MKLDNNTester::runOnce() {
   // test forward
   randomBotDatas();
-  dnnLayer_->forward(PASS_TRAIN);
-  refLayer_->forward(PASS_TRAIN);
+  dnnLayer_->forward(passType_);
+  refLayer_->forward(passType_);
   checkForward();
+
+  if (passType_ == PASS_TEST) {
+    return;
+  }
 
   // test backward
   // simple updater
@@ -343,6 +358,7 @@ void MKLDNNTester::run(const TestConfig& dnn,
                        size_t batchSize,
                        size_t inputImgH,
                        size_t inputImgW,
+                       PassType passType,
                        bool printDetails,
                        size_t iter,
                        float epsilon) {
@@ -361,6 +377,7 @@ void MKLDNNTester::run(const TestConfig& dnn,
 
   ih_ = inputImgH;
   iw_ = inputImgW;
+  passType_ = passType;
   log_ = printDetails;
   iter_ = iter;
   eps_ = epsilon;
@@ -504,12 +521,16 @@ void MKLDNNTester::getOutResult(const std::string& configPath,
     gradientMachine->forward(in.inArgs[i], &outArgs, PASS_TRAIN);
     // save forward result
     for (size_t k = 0; k < outArgs.size(); k++) {
-      MatrixPtr value = Matrix::create(outArgs[k].value->getHeight(),
-                                       outArgs[k].value->getWidth(),
-                                       false,
-                                       false);
-      value->copyFrom(*outArgs[k].value);
-      out.outValues.push_back(value);
+      const MatrixPtr& src = outArgs[k].value;
+      MatrixPtr dst =
+          Matrix::create(src->getHeight(), src->getWidth(), false, false);
+      if (typeid(*src) == typeid(MKLDNNMatrix)) {
+        MKLDNNMatrixPtr dnnSrc = std::dynamic_pointer_cast<MKLDNNMatrix>(src);
+        dnnSrc->copyTo(*dst);
+      } else {
+        dst->copyFrom(*src);
+      }
+      out.outValues.push_back(dst);
     }
 
     // random backward input
@@ -532,19 +553,19 @@ void MKLDNNTester::getOutResult(const std::string& configPath,
 void MKLDNNTester::compareResult(DataOut& ref, DataOut& dnn, float eps) {
   CHECK_EQ(ref.outValues.size(), dnn.outValues.size());
   CHECK_EQ(ref.paraValues.size(), dnn.paraValues.size());
-  VLOG(MKLDNN_TESTS) << "compare value size: " << ref.outValues.size();
   for (size_t i = 0; i < ref.outValues.size(); i++) {
+    VLOG(MKLDNN_TESTS) << "compare value index: " << i;
     EXPECT_LE(fabs(compareMatrix(ref.outValues[i], dnn.outValues[i])), eps);
   }
-  VLOG(MKLDNN_TESTS) << "compare param size: " << ref.outValues.size();
   for (size_t i = 0; i < ref.paraValues.size(); i++) {
+    VLOG(MKLDNN_TESTS) << "compare param index: " << i;
     EXPECT_LE(fabs(compareVector(ref.paraValues[i], dnn.paraValues[i])), eps);
   }
 }
 
-void MKLDNNTester::runBranchesTest(const std::string& configPath,
-                                   size_t iter,
-                                   float eps) {
+void MKLDNNTester::runNetTest(const std::string& configPath,
+                              size_t iter,
+                              float eps) {
   DataIn in;
   initArgument(in, configPath, iter);
   DataOut outCpu, outDnn;

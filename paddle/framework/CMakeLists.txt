@@ -1,4 +1,6 @@
 # ddim lib
+proto_library(framework_proto SRCS framework.proto)
+
 cc_library(ddim SRCS ddim.cc DEPS eigen3)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
@@ -7,25 +9,26 @@ cc_library(tensor SRCS tensor.cc DEPS ddim place paddle_memory device_context)
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
-cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor)
-cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor)
+cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto)
+cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor paddle_memory)
 nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
 
 cc_test(variable_test SRCS variable_test.cc)
 
-cc_library(scope SRCS scope.cc)
+cc_library(scope SRCS scope.cc DEPS glog)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)
 
-proto_library(framework_proto SRCS framework.proto)
 
 cc_library(attribute SRCS attribute.cc DEPS framework_proto)
-cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc)
+cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc
+device_context)
 cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute)
 cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
-cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog)
+cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute)
+cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog shape_inference)
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry)
-cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS attribute ddim op_info operator)
+cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog)
 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 cc_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
@@ -41,9 +44,10 @@ add_custom_command(TARGET framework_py_proto POST_BUILD
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 cc_library(backward SRCS backward.cc DEPS net_op)
-cc_test(backward_test SRCS backward_test.cc DEPS backward recurrent_op device_context)
+cc_test(backward_test SRCS backward_test.cc DEPS backward recurrent_op device_context fill_constant_op)
+cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 
-cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto backward glog)
+cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto backward glog lod_rank_table)
 
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)

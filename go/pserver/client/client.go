@@ -22,7 +22,7 @@ import (
 
 	"github.com/PaddlePaddle/Paddle/go/connection"
 	"github.com/PaddlePaddle/Paddle/go/pserver"
-	log "github.com/sirupsen/logrus"
+	log "github.com/inconshreveable/log15"
 )
 
 // TODO(helin): add RPC call retry logic
@@ -84,7 +84,7 @@ func (c *Client) monitorPservers(l Lister, pserverNum int) {
 			if curServers[i].Addr == "" {
 				err := c.pservers[i].Close()
 				if err != nil {
-					log.Errorln(err)
+					log.Error("error closing connection to pserver", log.Ctx{"error": err})
 				}
 
 				continue
@@ -92,7 +92,7 @@ func (c *Client) monitorPservers(l Lister, pserverNum int) {
 
 			err := c.pservers[i].Connect(curServers[i].Addr)
 			if err != nil {
-				log.Errorln(err)
+				log.Error("error connecting to pserver", log.Ctx{"error": err})
 
 				// connect to addr failed, set
 				// to last known addr in order
