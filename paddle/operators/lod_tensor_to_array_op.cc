@@ -40,29 +40,28 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
 
     auto &items = rank_table.items();
     auto max_seq_len = items[0].length;
-    auto table_height = items.size();
     auto rank_level = rank_table.level();
     out.resize(max_seq_len);
     std::vector<std::vector<CopyRange>> copy_ranges(max_seq_len);
 
     // set out[i] lod
-    for (size_t i = 0; i < max_seq_len; i++) {
-      auto &lod = *out[i].mutable_lod();
+    for (size_t t = 0; t < max_seq_len; t++) {
+      auto &lod = *out[t].mutable_lod();
       lod.clear();
-      for (size_t j = 0; j < table_height; j++) {
-        if (i >= items[j].length) {
+      for (auto &item : items) {
+        if (t >= item.length) {
           break;
         }
-        size_t start_idx = x.lod()[rank_level][items[j].index] + i;
-        copy_ranges[i].emplace_back();
-        auto &range = copy_ranges[i].back();
-        std::vector<std::vector<size_t>> lod_length;
-        framework::GetFineGrainedLoDLength(x.lod(), start_idx, start_idx + 1,
-                                           rank_level + 1, &lod_length,
-                                           &range.begin, &range.end);
-        VLOG(10) << "Append Range " << i << " [" << range.begin << ", "
-                 << range.end << "]";
+        size_t start_idx = x.lod()[rank_level][item.index] + t;
+        auto lod_and_offset = framework::GetSubLoDAndAbsoluteOffset(
+            x.lod(), start_idx, start_idx + 1, rank_level + 1);
+
+        auto &lod_length = lod_and_offset.first;
         framework::AppendLoD(&lod, lod_length);
+
+        size_t start_offset = lod_and_offset.second.first;
+        size_t end_offset = lod_and_offset.second.second;
+        copy_ranges[t].emplace_back(CopyRange{start_offset, end_offset});
       }
     }
 
