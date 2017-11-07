@@ -12,6 +12,10 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+/* Acknowledgement: the following code is strongly inspired by
+https://github.com/caffe2/caffe2/blob/master/caffe2/operators/lstm_unit_op_gpu.cu
+*/
+
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/cross_entropy_op.h"
 #include "paddle/platform/assert.h"

@@ -67,8 +67,11 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                       out);
     in_var->SetLoDLevel(out_var->GetLodLevel());
   }
+  bool IsRuntime() const override;
 
- private:
+ protected:
+  VarDesc::VarType GetVarType(const std::string &name) const override;
+
   DDim GetDim(const std::string &name) const override;
 
   void SetDim(const std::string &name, const DDim &dim) override;
@@ -114,7 +117,12 @@ OpDescBind::OpDescBind(const OpDesc &desc, ProgramDescBind *prog)
   // restore attrs_
   for (const OpDesc::Attr &attr : desc_.attrs()) {
     std::string attr_name = attr.name();
-    attrs_[attr_name] = GetAttrValue(attr, prog->Proto());
+    if (attr.type() != AttrType::BLOCK) {
+      attrs_[attr_name] = GetAttrValue(attr);
+    } else {
+      auto bid = attr.block_idx();
+      attrs_[attr_name] = prog->MutableBlock(bid);
+    }
   }
 }
 
@@ -188,8 +196,7 @@ void OpDescBind::SetAttr(const std::string &name, const Attribute &v) {
 }
 
 void OpDescBind::SetBlockAttr(const std::string &name, BlockDescBind &block) {
-  BlockDesc *desc = block.Proto();
-  this->attrs_[name] = desc;
+  this->attrs_[name] = &block;
   need_update_ = true;
 }
 
@@ -208,7 +215,7 @@ Attribute OpDescBind::GetAttr(const std::string &name) const {
 int OpDescBind::GetBlockAttr(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
-  return boost::get<BlockDesc *>(it->second)->idx();
+  return boost::get<BlockDescBind *>(it->second)->ID();
 }
 
 const std::unordered_map<std::string, Attribute> &OpDescBind::GetAttrMap()
@@ -323,6 +330,19 @@ void OpDescBind::InferShape(const BlockDescBind &block) const {
   PADDLE_ENFORCE(static_cast<bool>(infer_shape),
                  "%s's infer_shape has not been registered", this->Type());
   CompileTimeInferShapeContext ctx(*this, block);
+  if (VLOG_IS_ON(10)) {
+    std::ostringstream sout;
+    auto inames = this->InputArgumentNames();
+    sout << " From [";
+    std::copy(inames.begin(), inames.end(),
+              std::ostream_iterator<std::string>(sout, ", "));
+    sout << "] to [";
+    auto onames = this->OutputArgumentNames();
+    std::copy(onames.begin(), onames.end(),
+              std::ostream_iterator<std::string>(sout, ", "));
+    sout << "]";
+    VLOG(10) << sout.str();
+  }
   infer_shape(&ctx);
 }
 
@@ -332,6 +352,9 @@ void OpDescBind::InferVarType(BlockDescBind *block) const {
     info.infer_var_type_(*this, block);
   } else {
     // all output type is LoDTensor by default
+    VLOG(10) << this->Type()
+             << " has not registered InferVarType. Set output variables to "
+                "LOD_TENSOR";
     for (auto &out_pair : this->outputs_) {
       for (auto &out_var_name : out_pair.second) {
         block->Var(out_var_name)->SetType(VarDesc::LOD_TENSOR);
@@ -430,6 +453,12 @@ DDim CompileTimeInferShapeContext::GetDim(const std::string &name) const {
 void CompileTimeInferShapeContext::SetDim(const std::string &name,
                                           const DDim &dim) {
   block_.FindVarRecursive(name)->SetShape(framework::vectorize(dim));
+}
+bool CompileTimeInferShapeContext::IsRuntime() const { return false; }
+
+VarDesc::VarType CompileTimeInferShapeContext::GetVarType(
+    const std::string &name) const {
+  return block_.FindVarRecursive(name)->GetType();
 }
 
 }  // namespace framework

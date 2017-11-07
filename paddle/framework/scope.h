@@ -49,7 +49,7 @@ class Scope {
   Variable* Var(const std::string& name);
 
   /// Create a variable with a scope-unique name.
-  Variable* Var();
+  Variable* Var(std::string* name = nullptr);
 
   /// Find a variable in the scope or any of its ancestors.  Returns
   /// nullptr if cannot find.

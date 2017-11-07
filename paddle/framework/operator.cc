@@ -15,7 +15,9 @@ limitations under the License. */
 #include "paddle/framework/operator.h"
 #include <algorithm>
 #include <atomic>
+#include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/shape_inference.h"
+#include "paddle/framework/var_type.h"
 
 namespace paddle {
 namespace framework {
@@ -37,32 +39,32 @@ ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
   PADDLE_ENFORCE_LE(ins.size(), 1UL,
-                    "Op %s input %s should contain only one variable", type_,
-                    name);
+                    "Operator %s's input %s should contain only one variable.",
+                    type_, name);
   return ins.empty() ? kEmptyVarName : ins[0];
 }
 
 const std::vector<std::string>& OperatorBase::Inputs(
     const std::string& name) const {
   auto it = inputs_.find(name);
-  PADDLE_ENFORCE(it != inputs_.end(), "Op %s do not have input %s", type_,
-                 name);
+  PADDLE_ENFORCE(it != inputs_.end(), "Operator %s does not have the input %s.",
+                 type_, name);
   return it->second;
 }
 
 std::string OperatorBase::Output(const std::string& name) const {
   auto& outs = Outputs(name);
   PADDLE_ENFORCE_LE(outs.size(), 1UL,
-                    "Op %s output %s should contain only one variable", type_,
-                    name);
+                    "Operator %s's output %s should contain only one variable.",
+                    type_, name);
   return outs.empty() ? kEmptyVarName : outs[0];
 }
 
 const std::vector<std::string>& OperatorBase::Outputs(
     const std::string& name) const {
   auto it = outputs_.find(name);
-  PADDLE_ENFORCE(it != outputs_.end(), "Op %s does not have output called %s",
-                 type_, name);
+  PADDLE_ENFORCE(it != outputs_.end(),
+                 "Operator %s does not have an output called %s.", type_, name);
   return it->second;
 }
 
@@ -126,7 +128,7 @@ OperatorBase::OperatorBase(const std::string& type,
 
 std::vector<std::string> OperatorBase::InputVars() const {
   std::vector<std::string> ret_val;
-  for (auto& o : outputs_) {
+  for (auto& o : inputs_) {
     ret_val.reserve(ret_val.size() + o.second.size());
     ret_val.insert(ret_val.end(), o.second.begin(), o.second.end());
   }
@@ -365,7 +367,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
     out_tensor->set_lod(in_tensor.lod());
   }
 
- private:
+  bool IsRuntime() const override { return true; }
+
+ protected:
   DDim GetDim(const std::string& name) const override {
     Variable* var = scope_.FindVar(name);
     if (var->IsType<LoDTensor>()) {
@@ -388,13 +392,31 @@ class RuntimeInferShapeContext : public InferShapeContext {
     }
   }
 
+  VarDesc::VarType GetVarType(const std::string& name) const override {
+    auto* var = scope_.FindVar(name);
+    return ToVarType(var->Type());
+  }
+
+ private:
   const OperatorBase& op_;
   const Scope& scope_;
 };
 
 void OperatorWithKernel::Run(const Scope& scope,
                              const platform::DeviceContext& dev_ctx) const {
-  VLOG(3) << "Running operator " << this->Type();
+  if (VLOG_IS_ON(1)) {
+    auto inputs = this->InputVars();
+    auto outputs = this->OutputVars(true);
+    std::ostringstream sout;
+    sout << "Run operator " << this->Type() << " From [";
+    std::ostream_iterator<std::string> out_it(sout, ",");
+    std::copy(inputs.begin(), inputs.end(), out_it);
+    sout << "] to [";
+    std::copy(outputs.begin(), outputs.end(), out_it);
+    sout << "]";
+    VLOG(1) << sout.str();
+  }
+
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
   this->InferShape(&infer_shape_ctx);
 
