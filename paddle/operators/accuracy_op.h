@@ -42,8 +42,10 @@ class AccuracyKernel : public framework::OpKernel<T> {
     auto* indices = ctx.Input<Tensor>("Indices");
     auto* label = ctx.Input<Tensor>("Label");
     auto* accuracy = ctx.Output<Tensor>("Accuracy");
+    auto* correct = ctx.Output<Tensor>("Correct");
 
-    float* accuracy_data = accuracy->mutable_data<float>(ctx.GetPlace());
+    float* correct_data = correct->mutable_data<float>(ctx.GetPlace());
+    int* accuracy_data = accuracy->mutable_data<int>(ctx.GetPlace());
 
     const int64_t* indices_data = indices->data<int64_t>();
     const int64_t* label_data = label->data<int64_t>();
@@ -68,7 +70,7 @@ class AccuracyKernel : public framework::OpKernel<T> {
       }
     }
 
-    // FIXME(typhoonzero): we don't accumulate the accuracy for now.
+    *correct_data = num_correct;
     *accuracy_data =
         static_cast<float>(num_correct) / static_cast<float>(num_samples);
   }
