@@ -81,6 +81,54 @@ def embedding(input,
     return tmp
 
 
+def lstm(input,
+         init_hidden,
+         init_cell,
+         data_type='float32',
+         para_attr=None,
+         bias_attr=None,
+         usePeepholes=True,
+         isReverse=False,
+         gateActivation='sigmoid',
+         cellActivation='tanh',
+         candidateActivation='tanh',
+         main_program=None,
+         startup_program=None):
+    helper = LayerHelper('lstm', **locals())
+
+    weight = helper.create_parameter(attr=helper.param_attr)
+    bias = helper.create_parameter(attr=helper.bias_attr)
+
+    hidden = helper.create_tmp_variable(data_type)
+    cell = helper.create_tmp_variable(data_type)
+    batch_gate = helper.create_tmp_variable(data_type)
+    batch_cell_pre_act = helper.create_tmp_variable(data_type)
+
+    helper.append_op(
+        type='lstm',
+        inputs={
+            'Input': input,
+            'H0': init_hidden,
+            'C0': init_cell,
+            'Weight': weight,
+            'Bias': bias
+        },
+        outputs={
+            'Hidden': hidden,
+            'Cell': cell,
+            'BatchGate': batch_gate,
+            'BatchCellPreAct': batch_cell_pre_act
+        },
+        attrs={
+            'usePeepholes': usePeepholes,
+            'isReverse': isReverse,
+            'gateActivation': gateActivation,
+            'cellActivation': cellActivation,
+            'candidateActivation': candidateActivation
+        })
+    return hidden
+
+
 def data(name,
          shape,
          data_type='float32',
