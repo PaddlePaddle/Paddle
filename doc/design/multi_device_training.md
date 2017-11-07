@@ -35,6 +35,17 @@ Let us look at a very simple example of model parallelism in the figure below:
 
 Here we have four GPUs, (say GPU: 0, GPU: 1, GPU: 2 and GPU: 3) and each GPU is executing a separate operator viz. Op1, Op2, Op3 and Op4. All the operators together are a part of the same model.
 
+### Operator placement policy
+Apart from distributing data and model components on different computing devices, PaddlePaddle should support a feature of letting the users explicitly decide which operator(operation: MatMul etc) should run on which device (computation device: CPU, GPU, FPGA etc.). This can be modeled once we design the python API.
+
+There are various ways of addressing this setup:
+1. Pick CPU by default.
+2. Pick GPU by default, if the device has a GPU.
+3. Pick the first GPU by default, if the device has multiple GPUs.
+4. Provide the functionality to support explicit assignment of device for operations, using some configuration options when setting up the devices. TensorFlow supports this very elegantly as mentioned [here](https://www.tensorflow.org/tutorials/using_gpu#manual_device_placement)
+
+We can discuss this in more detail when designing the Python API.
+
 ### Copy operator
 Now to pass on the updates from GPU: 0 to GPU: 1, we need to somehow copy the updates made by GPU: 0 and move them to GPU: 1 . This can be done in two ways:
 1. Copy updates from GPU: 0 to CPU. Then copy updates from CPU to GPU: 1. This is shown as follows:
