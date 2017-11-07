@@ -349,6 +349,9 @@ void OpDescBind::InferVarType(BlockDescBind *block) const {
     info.infer_var_type_(*this, block);
   } else {
     // all output type is LoDTensor by default
+    VLOG(10) << this->Type()
+             << " has not registered InferVarType. Set output variables to "
+                "LOD_TENSOR";
     for (auto &out_pair : this->outputs_) {
       for (auto &out_var_name : out_pair.second) {
         block->Var(out_var_name)->SetType(VarDesc::LOD_TENSOR);
