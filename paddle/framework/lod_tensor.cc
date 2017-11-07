@@ -27,20 +27,18 @@
 namespace paddle {
 namespace framework {
 
-std::string LoDtoString(LoD lod) {
-  std::stringstream ss;
-
-  ss << "{";
+std::ostream& operator<<(std::ostream& os, const LoD& lod) {
+  os << "{";
   for (auto& v : lod) {
-    ss << "{";
+    os << "{";
     for (auto& i : v) {
-      ss << i << ",";
+      os << i << ",";
     }
-    ss << "}";
+    os << "}";
   }
-  ss << "}";
+  os << "}";
 
-  return ss.str();
+  return os;
 }
 
 LoD SliceLevels(const LoD& in, size_t level_begin, size_t level_end) {

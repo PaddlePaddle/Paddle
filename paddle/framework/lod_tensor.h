@@ -55,7 +55,8 @@ using Vector = thrust::host_vector<
  *    0 2 5 7 10 12 15 20
  */
 using LoD = std::vector<Vector<size_t>>;
-std::string LoDtoString(LoD lod);
+
+std::ostream& operator<<(std::ostream& os, const LoD& lod);
 
 /*
  * Slice levels from a LoD.
