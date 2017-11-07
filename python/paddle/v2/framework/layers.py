@@ -825,12 +825,13 @@ def zeros(shape, dtype, main_program=None):
 
 def increment(x, value=1.0, main_program=None):
     helper = LayerHelper("increment", **locals())
+    tmp = helper.create_tmp_variable(dtype=x.data_type)
     helper.append_op(
         type='increment',
         inputs={'X': [x]},
-        outputs={'Out': [x]},
+        outputs={'Out': [tmp]},
         attrs={'step': value})
-    return x
+    return tmp
 
 
 def array_write(x, i, array=None, main_program=None):
