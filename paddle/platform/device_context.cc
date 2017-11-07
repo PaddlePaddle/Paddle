@@ -124,6 +124,11 @@ void CUDADeviceContext::Wait() const {
   PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
 }
 
+void CUDADeviceContext::Finish() const {
+  Wait();
+  PADDLE_ENFORCE(cudaGetLastError());
+}
+
 Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
   return eigen_device_.get();
 }
