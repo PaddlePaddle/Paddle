@@ -29,7 +29,7 @@ using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 template <typename Place, typename T>
 class SumKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
+  void Compute(const framework::ExecutionContext &context) const override {
     auto in_vars = context.MultiInputVar("X");
     int N = in_vars.size();
     auto out_var = context.OutputVar("Out");
@@ -37,7 +37,7 @@ class SumKernel : public framework::OpKernel<T> {
     bool in_place = out_var == in_vars[0];
 
     if (out_var->IsType<framework::LoDTensor>()) {
-      auto* out = context.Output<Tensor>("Out");
+      auto *out = context.Output<Tensor>("Out");
       out->mutable_data<T>(context.GetPlace());
 
       auto result = EigenVector<T>::Flatten(*out);
@@ -52,11 +52,11 @@ class SumKernel : public framework::OpKernel<T> {
       // If in_place, just skip the first tensor
       for (int i = in_place ? 1 : 0; i < N; i++) {
         if (in_vars[i]->IsType<framework::LoDTensor>()) {
-          auto& in_t = in_vars[i]->Get<framework::LoDTensor>();
+          auto &in_t = in_vars[i]->Get<framework::LoDTensor>();
           auto in = EigenVector<T>::Flatten(in_t);
           result.device(place) = result + in;
         } else if (in_vars[i]->IsType<framework::SelectedRows>()) {
-          auto& in_t = in_vars[i]->Get<framework::SelectedRows>();
+          auto &in_t = in_vars[i]->Get<framework::SelectedRows>();
           functor(context.device_context(), in_t, out);
         } else {
           PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
@@ -64,8 +64,8 @@ class SumKernel : public framework::OpKernel<T> {
       }
     } else if (out_var->IsType<framework::SelectedRows>()) {
       PADDLE_ENFORCE(!in_place, "SelectedRows not support inplace sum now");
-      auto* out = context.Output<SelectedRows>("Out");
-      auto* out_value = out->mutable_value();
+      auto *out = context.Output<SelectedRows>("Out");
+      auto *out_value = out->mutable_value();
 
       // Runtime InferShape
       size_t first_dim = 0;
@@ -90,11 +90,11 @@ class SumKernel : public framework::OpKernel<T> {
         offset += in_vars[i]->Get<SelectedRows>().value().numel();
       }
     } else if (out_var->IsType<framework::LoDTensorArray>()) {
-      auto& out_array = *out_var->GetMutable<framework::LoDTensorArray>();
+      auto &out_array = *out_var->GetMutable<framework::LoDTensorArray>();
       for (size_t i = in_place ? 1 : 0; i < in_vars.size(); ++i) {
         PADDLE_ENFORCE(in_vars[i]->IsType<framework::LoDTensorArray>(),
                        "Only support all inputs are TensorArray");
-        auto& in_array = in_vars[i]->Get<framework::LoDTensorArray>();
+        auto &in_array = in_vars[i]->Get<framework::LoDTensorArray>();
 
         for (size_t i = 0; i < in_array.size(); ++i) {
           if (in_array[i].numel() != 0) {
@@ -115,10 +115,10 @@ class SumKernel : public framework::OpKernel<T> {
         }
       }
     } else {
-      PADDLE_THROW("Unexpected branch");
+      PADDLE_THROW("Unexpected branch, output variable type is %s",
+                   out_var->Type().name());
     }
   }
 };
-
 }  // namespace operators
 }  // namespace paddle

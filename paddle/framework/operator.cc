@@ -17,6 +17,7 @@ limitations under the License. */
 #include <atomic>
 #include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/shape_inference.h"
+#include "paddle/framework/var_type.h"
 
 namespace paddle {
 namespace framework {
@@ -392,16 +393,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   VarDesc::VarType GetVarType(const std::string& name) const override {
-    Variable* var = scope_.FindVar(name);
-    if (var->IsType<LoDTensor>()) {
-      return VarDesc_VarType_LOD_TENSOR;
-    } else if (var->IsType<SelectedRows>()) {
-      return VarDesc_VarType_SELECTED_ROWS;
-    } else if (var->IsType<LoDTensorArray>()) {
-      return VarDesc_VarType_LOD_TENSOR_ARRAY;
-    } else {
-      PADDLE_THROW("Not support variable type");
-    }
+    auto* var = scope_.FindVar(name);
+    return ToVarType(var->Type());
   }
 
  private:

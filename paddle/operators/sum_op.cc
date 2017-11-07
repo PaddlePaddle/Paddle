@@ -64,7 +64,8 @@ class SumOp : public framework::OperatorWithKernel {
         }
       }
     }
-    PADDLE_THROW("Unexpected branch");
+    PADDLE_THROW("Unexpected branch. Input type is %s",
+                 x_vars[0]->Type().name());
   }
 };
 
