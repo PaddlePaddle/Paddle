@@ -21,7 +21,8 @@ class TestHuberLossOp(OpTest):
             'Y': np.random.uniform(0, 1., (samples_num, 1)).astype('float32'),
         }
         residual = self.inputs['Y'] - self.inputs['X']
-        loss = np.vectorize(huber_loss_forward)(residual, delta)
+        loss = np.vectorize(huber_loss_forward)(residual,
+                                                delta).astype('float32')
         self.attrs = {'delta': delta}
         self.outputs = {
             'Residual': residual,
@@ -43,6 +44,5 @@ class TestHuberLossOp(OpTest):
             ['X'], 'Out', max_relative_error=0.008, no_grad_set=set('residual'))
 
 
-# TODO(typhoonzero): should add this back till we fix it
-#if __name__ == '__main__':
-#    unittest.main()
+if __name__ == '__main__':
+    unittest.main()
