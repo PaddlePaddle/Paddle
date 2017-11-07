@@ -32,6 +32,8 @@ class AccuracyOp : public framework::OperatorWithKernel {
                    "Output (Accuracy) of AccuracyOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Correct"),
                    "Output (Correct) of AccuracyOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Total"),
+                   "Output (Total) of AccuracyOp should not be null.");
 
     auto inference_dim = ctx->GetInputDim("Out");
     auto label_dim = ctx->GetInputDim("Label");
@@ -46,6 +48,7 @@ class AccuracyOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("Accuracy", {1});
     ctx->SetOutputDim("Correct", {1});
+    ctx->SetOutputDim("Total", {1});
     ctx->ShareLoD("Out", /*->*/ "Accuracy");
   }
 
@@ -69,6 +72,7 @@ class AccuracyOpMaker : public framework::OpProtoAndCheckerMaker {
     // TODO(typhoonzero): AddInput("Weight", ...
     AddOutput("Accuracy", "The accuracy of current batch");
     AddOutput("Correct", "The correct samples count of current batch");
+    AddOutput("Total", "The samples count of current batch");
 
     AddComment(R"DOC(
 Accuracy. It will print accuracy rate for classification.
