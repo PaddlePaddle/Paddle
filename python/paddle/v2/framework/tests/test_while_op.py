@@ -13,7 +13,7 @@ class TestWhileOp(unittest.TestCase):
             "d1", shape=[10], append_batch_size=False, data_type='float32')
         d2 = layers.data(
             "d2", shape=[10], append_batch_size=False, data_type='float32')
-        i = layers.zeros(shape=[1], dtype='int32')
+        i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
         init = layers.zeros(shape=[10], dtype='float32')
         mem_array = layers.array_write(init, i=i)
@@ -25,10 +25,10 @@ class TestWhileOp(unittest.TestCase):
         i = layers.increment(i)
         layers.array_write(d2, i, array=data_array)
 
-        i = layers.zeros(shape=[1], dtype='int32')
+        i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
 
-        array_len = layers.fill_constant(shape=[1], dtype='int32', value=3)
+        array_len = layers.fill_constant(shape=[1], dtype='int64', value=3)
         cond = layers.less_than(x=i, y=array_len)
 
         out_array = layers.create_array(dtype='float32')
