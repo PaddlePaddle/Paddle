@@ -3801,6 +3801,23 @@ class SwitchOrderLayer(LayerBase):
         self.config.reshape_conf.width_axis.extend(reshape['width'])
 
 
+@config_layer('mul_value')
+class MulValueLayer(LayerBase):
+    def __init__(self, name, inputs, value, **xargs):
+        super(MulValueLayer, self).__init__(
+            name, 'mul_value', 0, inputs=inputs, **xargs)
+        mul_value_conf = self.config.inputs[0].mul_value_conf
+        mul_value_conf.value = value
+
+        # get channel, width and height from input_0 layer
+        input_layer = self.get_input_layer(0)
+        image_conf = mul_value_conf.image_conf
+        image_conf.img_size = input_layer.width
+        image_conf.img_size_y = input_layer.height
+        image_conf.channels = input_layer.size / (input_layer.width *
+                                                  input_layer.height)
+
+
 # Deprecated, use a new layer specific class instead
 @config_func
 def Layer(name, type, **xargs):

@@ -144,6 +144,7 @@ __all__ = [
     'img_conv3d_layer',
     'resize_layer',
     'sub_seq_layer',
+    'mul_value_layer',
 ]
 
 
@@ -254,6 +255,8 @@ class LayerType(object):
 
     RESIZE = 'resize'
     SUB_SEQ_LAYER = 'subseq'
+
+    MUL_VALUE_LAYER = 'mul_value'
 
     @staticmethod
     def is_layer_type(type_name):
@@ -7036,4 +7039,51 @@ def sub_seq_layer(input, offsets, sizes, act=None, bias_attr=None, name=None):
         name,
         LayerType.SUB_SEQ_LAYER,
         parents=[input, offsets, sizes],
+        size=input.size)
+
+
+@wrap_name_default('mul_value')
+def mul_value_layer(input, indices, value, name=None):
+    """
+    Given an image or feature map with CHW information, mul_value_layer can be
+    used to multiply a real value to values of a sub continuous region. You can
+    provide start and end indices of CHW for each instance. Please notice that
+    all start indices are counting from 1. The shape of indices should be
+    [batch_size, 6] and the layout for each row is [C_Start, C_End, H_Start,
+    H_End, W_Start, W_End].
+
+    .. code-block:: python
+
+        mul_value = mul_value_layer(input=input, indices=indices, value=value)
+
+    :param name: The name of this layer. It is optional.
+    :type name: basestring
+    :param input: The input of this layer which should contains CHW information.
+    :type input: LayerOutput
+    :param indices: Start index and end index for C H W, the input value should
+                    be a 2-D matrix with shape [batch_size, 6].
+    :type indices: LayerOutput.
+    :param value: value to multiply.
+    :type value: float
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+
+    assert isinstance(input, LayerOutput), (
+        'The first input of mul_value_layer, must be a PaddlePaddle layer.')
+    assert isinstance(indices, LayerOutput), (
+        'The start and end indices for CHW, must be a PaddlePaddle layer.')
+    assert isinstance(value, float), (
+        'The value to multiply, must be a real value.')
+
+    Layer(
+        name=name,
+        type=LayerType.MUL_VALUE_LAYER,
+        inputs=[input.name, indices.name],
+        value=value)
+
+    return LayerOutput(
+        name,
+        LayerType.MUL_VALUE_LAYER,
+        parents=[input, indices],
         size=input.size)
