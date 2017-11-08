@@ -800,7 +800,7 @@ def array_to_lod_tensor(x, table, main_program=None):
 
 
 def fill_constant(shape, dtype, value, main_program=None):
-    helper = LayerHelper("ones", **locals())
+    helper = LayerHelper("fill_constant", **locals())
     out = helper.create_tmp_variable(dtype=dtype)
     helper.append_op(
         type='fill_constant',
@@ -823,9 +823,12 @@ def zeros(shape, dtype, main_program=None):
     return fill_constant(value=0.0, **locals())
 
 
-def increment(x, value=1.0, main_program=None):
+def increment(x, value=1.0, in_place=False, main_program=None):
     helper = LayerHelper("increment", **locals())
-    tmp = helper.create_tmp_variable(dtype=x.data_type)
+    if in_place:
+        tmp = x
+    else:
+        tmp = helper.create_tmp_variable(dtype=x.data_type)
     helper.append_op(
         type='increment',
         inputs={'X': [x]},
