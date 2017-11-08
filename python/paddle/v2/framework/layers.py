@@ -775,6 +775,30 @@ def lod_rank_table(x, level=0, main_program=None):
     return table
 
 
+def lod_tensor_to_array(x, table, main_program=None):
+    helper = LayerHelper("lod_tensor_to_array", **locals())
+    array = helper.create_variable(
+        name=unique_name("lod_tensor_to_array"),
+        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY)
+    helper.append_op(
+        type='lod_tensor_to_array',
+        inputs={'X': x,
+                'RankTable': table},
+        outputs={'Out': array})
+    return array
+
+
+def array_to_lod_tensor(x, table, main_program=None):
+    helper = LayerHelper("array_to_lod_tensor", **locals())
+    tmp = helper.create_tmp_variable(dtype=x.data_type)
+    helper.append_op(
+        type="array_to_lod_tensor",
+        inputs={'X': x,
+                'RankTable': table},
+        outputs={'Out': tmp})
+    return tmp
+
+
 def fill_constant(shape, dtype, value, main_program=None):
     helper = LayerHelper("ones", **locals())
     out = helper.create_tmp_variable(dtype=dtype)
