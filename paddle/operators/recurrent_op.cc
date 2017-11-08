@@ -509,14 +509,14 @@ class RecurrentOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddInput(kInitialStates, "rnn initial states").AsDuplicable();
     AddInput(kParameters,
              "Parameters are used by step block as its input. However, the "
-             "inputs is not a sequence tensor. Every time step, each operator "
-             "in step block just use the parameter directly")
+             "input is not a sequence tensor. Every time step, each operator "
+             "in step block just use the parameter directly.")
         .AsDuplicable();
     AddOutput(kOutputs,
-              "The output sequence of RNN. The sequence length must be same")
+              "The output sequence of RNN. The sequence length must be same.")
         .AsDuplicable();
     AddOutput(kStepScopes,
-              "StepScopes contains all local variables in each time step.");
+              "StepScopes contain all local variables in each time step.");
     AddAttr<std::vector<std::string>>(kExStates,
                                       string::Sprintf(
                                           R"DOC(The ex-state variable names.
@@ -556,10 +556,12 @@ if reverse is True
       o          o          o         o
 )DOC").SetDefault(false);
     AddAttr<bool>(kIsTrain, "").SetDefault(true);
-    AddComment(R"DOC(Static Length Recurrent Operator
+    AddComment(R"DOC(
+Static Length Recurrent Operator.
 
-The static length recurrent operator can only operate on fix sized sequence
-data, i.e. in each mini-batch, the sequence length of all inputs are same.
+The static length recurrent operator can only operate on fixed size sequence
+data, i.e. in each mini-batch, the sequence length of all inputs are the same.
+
 )DOC");
   }
 };

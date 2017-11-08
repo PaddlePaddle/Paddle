@@ -78,6 +78,7 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The output of mul op");
     AddAttr<int>(
         "x_num_col_dims",
+        "(int, default 1) "
         R"DOC(mul_op can take tensors with more than two dimensions as input `X`,
             in that case, tensors will be reshaped to a matrix. The matrix's first
             dimension(column length) will be the product of tensor's last
@@ -88,20 +89,24 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
         .EqualGreaterThan(1);
     AddAttr<int>(
         "y_num_col_dims",
+        "(int, default 1) "
         R"DOC(mul_op can take tensors with more than two dimensions as input `Y`,
              in that case, tensors will be reshaped to a matrix. Just like input `X`.
         )DOC")
         .SetDefault(1)
         .EqualGreaterThan(1);
     AddComment(R"DOC(
-Mul operator is used to perform matrix multiplication for input X and Y.
+Mul Operator. 
+
+This operator is used to perform matrix multiplication for input X and Y.
 
 The equation is:
 
-    Out = X * Y
+    $$Out = X * Y$$
 
 Both the input `X` and `Y` can carry the LoD (Level of Details) information,
-or not. But the output only shares the LoD with input `X`.
+or not. But the output only shares the LoD information with input `X`.
+
 )DOC");
   }
 };

@@ -21,7 +21,9 @@ limitations under the License. */
 #include "paddle/framework/executor.h"
 #include "paddle/framework/feed_fetch_method.h"
 #include "paddle/framework/framework.pb.h"
+#include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/prune.h"
 #include "paddle/framework/selected_rows.h"
 #include "paddle/framework/tensor_array.h"
@@ -111,11 +113,13 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCPUTensorSetFromArray<int>)
       .def("set", PyCPUTensorSetFromArray<double>)
       .def("set", PyCPUTensorSetFromArray<int64_t>)
+      .def("set", PyCPUTensorSetFromArray<bool>)
 #ifdef PADDLE_WITH_CUDA
       .def("set", PyCUDATensorSetFromArray<float>)
       .def("set", PyCUDATensorSetFromArray<int>)
       .def("set", PyCUDATensorSetFromArray<double>)
       .def("set", PyCUDATensorSetFromArray<int64_t>)
+      .def("set", PyCUDATensorSetFromArray<bool>)
 #endif
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
       .def("set_float_element", TensorSetElement<float>)
@@ -224,10 +228,16 @@ All parameter, weight, gradient are variables in Paddle.
              return self.GetMutable<LoDTensor>();
            },
            py::return_value_policy::reference)
+      .def("get_lod_rank_table",
+           [](Variable &self) { return self.GetMutable<LoDRankTable>(); },
+           py::return_value_policy::reference)
       .def("get_selected_rows",
            [](Variable &self) -> SelectedRows * {
              return self.GetMutable<SelectedRows>();
            },
+           py::return_value_policy::reference)
+      .def("get_lod_tensor_array",
+           [](Variable &self) { return self.GetMutable<LoDTensorArray>(); },
            py::return_value_policy::reference)
 #ifdef PADDLE_WITH_CUDA
       .def("get_communicator",
@@ -491,6 +501,32 @@ All parameter, weight, gradient are variables in Paddle.
   BindBlockDesc(m);
   BindVarDsec(m);
   BindOpDesc(m);
+
+  py::class_<framework::LoDRankTable>(m, "LodRankTable")
+      .def("items", [](framework::LoDRankTable &table) {
+        std::vector<std::pair<size_t, size_t>> res;
+        for (auto &item : table.items()) {
+          res.push_back({item.index, item.length});
+        }
+        return res;
+      });
+
+  py::class_<LoDTensorArray>(m, "LoDTensorArray")
+      .def("__getitem__",
+           [](LoDTensorArray &self, size_t i) { return &self.at(i); },
+           py::return_value_policy::reference)
+      .def("__len__", [](LoDTensorArray &self) { return self.size(); })
+      .def("__setitem__",
+           [](LoDTensorArray &self, size_t i, const LoDTensor &t) {
+             PADDLE_ENFORCE_LT(i, self.size());
+             self[i].ShareDataWith(t);
+             self[i].set_lod(t.lod());
+           })
+      .def("append", [](LoDTensorArray &self, const LoDTensor &t) {
+        self.emplace_back();
+        self.back().ShareDataWith(t);
+        self.back().set_lod(t.lod());
+      });
 
   m.def("op_support_gpu", OpSupportGPU);
 #ifdef PADDLE_WITH_CUDA
