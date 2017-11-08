@@ -83,40 +83,45 @@ struct BeamHelpter {
   }
 
   std::vector<BeamNode*> PackTwoBeamStepOut(
-      size_t source_idx, size_t source_start,
-      const std::vector<BeamNode*>& prefixes, const LoDTensor& cur_ids,
-      const LoDTensor& cur_probs) {
+      size_t source_idx, const std::vector<BeamNode*>& prefixes,
+      const LoDTensor& cur_ids, const LoDTensor& cur_probs) {
     std::vector<BeamNode*> result;
+
+    size_t source_start = cur_ids.lod()[kSourceLevel][source_idx];
+    size_t source_end = cur_ids.lod()[kSourceLevel][source_idx + 1];
+    PADDLE_ENFORCE_EQ(source_end - source_start, prefixes.size(),
+                      "prefix and candidate set number should be the same");
     std::vector<size_t> candidate_offset = cur_ids.lod()[kSentenceLevel];
     for (size_t prefix_idx = 0; prefix_idx < prefixes.size(); ++prefix_idx) {
       size_t candidate_start = candidate_offset[source_start + prefix_idx];
       size_t candidate_end = candidate_offset[source_start + prefix_idx + 1];
       auto* prefix = prefixes[prefix_idx];
+      PADDLE_ENFORCE_NE(prefix->word_id_, kEndId,
+                        "prefix should not contain end id");
       if (candidate_start == candidate_end) {
-        VLOG(3) << "this prefix does not have candidate any more";
-        if (prefix->word_id_ == kEndId) {
-          VLOG(3) << "find an end Id, append to result tensor";
-          AppendBeamNodeToResult(source_idx, prefix);
-        } else {
-          VLOG(3) << "this sentence has no more candidate and is not end with "
-                     "end id, prune it";
-        }
+        VLOG(3) << "this sentence has no more candidate, prune it";
         // remove this sentence from Beam Tree.
         RemoveFromEnd(prefix);
       } else {
         // two level lod
         // [0 2 6] source level
         // [0 1 1 2 3 4] sentence level
-
+        PADDLE_ENFORCE_NE(prefix->word_id_, kEndId,
+                          "End id should not have candidate anymore");
         for (size_t candidate_index = candidate_start;
              candidate_index < candidate_end; ++candidate_index) {
           int64_t word_id = cur_ids.data<int64_t>()[candidate_index];
-          PADDLE_ENFORCE_NE(word_id, kEndId,
-                            "End id should not have candidate anymore");
           float prob = cur_probs.data<float>()[candidate_index];
           auto* candidate = new BeamNode(word_id, prob);
           candidate->AppendTo(prefix);
-          result.push_back(candidate);
+          // if candidate is end id, then put it into result and remove it from
+          // beam tree.
+          if (word_id == kEndId) {
+            AppendBeamNodeToResult(source_idx, candidate);
+            RemoveFromEnd(candidate);
+          } else {
+            result.push_back(candidate);
+          }
         }
       }
     }
@@ -168,6 +173,9 @@ struct BeamHelpter {
     size_t step_num = step_ids.size();
     size_t source_num = step_ids.at(0).lod().at(1).size() - 1;
 
+    std::cout << "step_num"
+              << ":" << step_num << std::endl;
+
     InitOutputLodTensor<int64_t>(id_tensor);
     InitOutputLodTensor<float>(prob_tensor);
 
@@ -177,12 +185,10 @@ struct BeamHelpter {
     // pack all steps for one batch first, then another batch
     for (size_t source_idx = 0; source_idx < source_num; ++source_idx) {
       for (size_t step_id = 1; step_id < step_num; ++step_id) {
-        size_t source_start =
-            step_ids.at(step_id).lod()[kSourceLevel][source_idx];
-        std::vector<BeamNode*> result = PackTwoBeamStepOut(
-            source_idx, source_start, batch_beam_nodes.at(source_idx),
-            step_ids.at(step_id), step_probs.at(step_id));
-        batch_beam_nodes.at(source_idx) = result;
+        std::vector<BeamNode*> result =
+            PackTwoBeamStepOut(source_idx, batch_beam_nodes.at(source_idx),
+                               step_ids.at(step_id), step_probs.at(step_id));
+        batch_beam_nodes[source_idx] = result;
       }
 
       // append last beam_node to result

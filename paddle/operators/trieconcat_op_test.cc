@@ -55,8 +55,6 @@ TEST(TrieConcatOp, AppendBeamNodeToResult) {
     float prob = helper.result_prob.at(0).at(0).at(i);
     ASSERT_EQ(prob, static_cast<float>(i));
     ASSERT_EQ(static_cast<float>(helper.result_id.at(0).at(0).at(i)), prob);
-    std::cout << prob << " ";
-    std::cout << std::endl;
   }
 }
 
@@ -68,14 +66,6 @@ TEST(TrieConcatOp, InitFirstStepBeamNodes) {
   using LoDTensor = paddle::framework::LoDTensor;
 
   CPUPlace place;
-
-  std::vector<BeamNode*> prefixes;
-  prefixes.push_back(new BeamNode(0, 0));
-  prefixes.push_back(new BeamNode(1, 1));
-  prefixes.push_back(new BeamNode(2, 2));
-
-  std::vector<LoDTensor> beam_out_Ids;
-  std::vector<LoDTensor> beam_out_Probs;
 
   LoD lod;
   lod.push_back(std::vector<size_t>{0, 3, 6});
@@ -120,4 +110,162 @@ TEST(TrieConcatOp, InitFirstStepBeamNodes) {
   }
 }
 
-TEST(TrieConcatOp, PackAllSteps) {}
+TEST(TrieConcatOp, PackTwoBeamStepOut) {
+  using BeamHelper = paddle::operators::BeamHelpter;
+  using BeamNode = paddle::operators::BeamNode;
+  using LoD = paddle::framework::LoD;
+  using CPUPlace = paddle::platform::CPUPlace;
+  using LoDTensor = paddle::framework::LoDTensor;
+
+  CPUPlace place;
+
+  // we have 2 source prefix to handle
+  LoD lod;
+  lod.push_back(std::vector<size_t>{0, 3, 5});
+  // the first source prefix have 4 candidate, the second have 2 candidate
+  lod.push_back(std::vector<size_t>{0, 1, 1, 4, 4, 6});
+
+  // Ids
+  LoDTensor tensor_id;
+  tensor_id.set_lod(lod);
+  tensor_id.Resize({6});
+  // malloc memory
+  int64_t* id_ptr = tensor_id.mutable_data<int64_t>(place);
+  for (int64_t i = 0; i < 6; ++i) {
+    id_ptr[i] = i;
+  }
+
+  // Probs
+  LoDTensor tensor_prob;
+  tensor_prob.set_lod(lod);
+  tensor_prob.Resize({6});
+  // malloc memory
+  float* prob_ptr = tensor_prob.mutable_data<float>(place);
+  for (int i = 0; i < 6; ++i) {
+    prob_ptr[i] = static_cast<float>(i);
+  }
+
+  // result should be:
+  // [1 0]
+  // vector<BeamNode*> should be:
+  // [3 1] [3 2] [3 3]
+
+  // three prefix
+  std::vector<BeamNode*> prefixes1;
+  prefixes1.push_back(new BeamNode(1, 1));
+  prefixes1.push_back(new BeamNode(2, 2));
+  prefixes1.push_back(new BeamNode(3, 3));
+
+  BeamHelper helper1;
+  std::vector<BeamNode*> vec =
+      helper1.PackTwoBeamStepOut(0, prefixes1, tensor_id, tensor_prob);
+  ASSERT_EQ(vec.size(), 3UL);
+  for (size_t i = 0; i < 3; ++i) {
+    ASSERT_EQ(vec.at(i)->word_id_, static_cast<int64_t>(i + 1));
+    ASSERT_EQ(vec.at(i)->prob_, static_cast<float>(i + 1));
+  }
+
+  ASSERT_EQ(helper1.result_id.at(0).size(), 1UL);
+  std::vector<int64_t> id_res = {1, 0};
+  ASSERT_EQ(helper1.result_id.at(0).at(0), id_res);
+
+  ASSERT_EQ(helper1.result_prob.at(0).size(), 1UL);
+  std::vector<float> prob_res = {1, 0};
+  ASSERT_EQ(helper1.result_prob.at(0).at(0), prob_res);
+
+  // two prefix
+  // result should be:
+  // [2 4] [2 5]
+  std::vector<BeamNode*> prefixes2;
+  prefixes2.push_back(new BeamNode(1, 1));
+  prefixes2.push_back(new BeamNode(2, 2));
+
+  BeamHelper helper2;
+  std::vector<BeamNode*> vec2 =
+      helper2.PackTwoBeamStepOut(1, prefixes2, tensor_id, tensor_prob);
+  ASSERT_EQ(vec2.size(), 2UL);
+  for (size_t i = 0; i < 2; ++i) {
+    ASSERT_EQ(vec2.at(i)->word_id_, static_cast<int64_t>(i + 4));
+    ASSERT_EQ(vec2.at(i)->father_->word_id_, static_cast<int64_t>(2));
+    ASSERT_EQ(vec2.at(i)->prob_, static_cast<float>(i + 4));
+    ASSERT_EQ(vec2.at(i)->father_->prob_, static_cast<float>(2));
+  }
+  ASSERT_EQ(helper2.result_id.size(), 0UL);
+  ASSERT_EQ(helper2.result_prob.size(), 0UL);
+}
+
+namespace paddle {
+namespace test {
+using LoD = paddle::framework::LoD;
+using CPUPlace = paddle::platform::CPUPlace;
+using LoDTensor = paddle::framework::LoDTensor;
+
+void GenerateExample(const std::vector<size_t>& level_0,
+                     const std::vector<size_t>& level_1,
+                     const std::vector<int>& data, std::vector<LoDTensor>* ids,
+                     std::vector<LoDTensor>* probs) {
+  PADDLE_ENFORCE_EQ(level_0.back(), level_1.size() - 1, "");
+  PADDLE_ENFORCE_EQ(level_1.back(), data.size(), "");
+
+  CPUPlace place;
+
+  LoD lod;
+  lod.push_back(level_0);
+  lod.push_back(level_1);
+
+  // Ids
+  LoDTensor tensor_id;
+  tensor_id.set_lod(lod);
+  tensor_id.Resize({static_cast<int64_t>(data.size())});
+  // malloc memory
+  int64_t* id_ptr = tensor_id.mutable_data<int64_t>(place);
+  for (size_t i = 0; i < data.size(); ++i) {
+    id_ptr[i] = static_cast<int64_t>(data.at(i));
+  }
+
+  // Probs
+  LoDTensor tensor_prob;
+  tensor_prob.set_lod(lod);
+  tensor_prob.Resize({static_cast<int64_t>(data.size())});
+  // malloc memory
+  float* prob_ptr = tensor_prob.mutable_data<float>(place);
+  for (size_t i = 0; i < 6; ++i) {
+    prob_ptr[i] = static_cast<float>(data.at(i));
+  }
+
+  ids->push_back(tensor_id);
+  probs->push_back(tensor_prob);
+}
+
+}  // namespace test
+}  // namespace paddle
+
+TEST(TrieConcatOp, PackAllSteps) {
+  using BeamHelper = paddle::operators::BeamHelpter;
+  using CPUPlace = paddle::platform::CPUPlace;
+  using LoDTensor = paddle::framework::LoDTensor;
+
+  CPUPlace place;
+
+  // we will constuct a sample data with 3 steps and 2 source sentences
+  std::vector<LoDTensor> ids;
+  std::vector<LoDTensor> probs;
+
+  paddle::test::GenerateExample(
+      std::vector<size_t>{0, 3, 6}, std::vector<size_t>{0, 1, 2, 3, 4, 5, 6},
+      std::vector<int>{1, 2, 3, 4, 5, 6}, &ids, &probs);
+  paddle::test::GenerateExample(
+      std::vector<size_t>{0, 3, 6}, std::vector<size_t>{0, 1, 1, 3, 5, 5, 6},
+      std::vector<int>{0, 1, 2, 3, 4, 5}, &ids, &probs);
+  paddle::test::GenerateExample(std::vector<size_t>{0, 2, 5},
+                                std::vector<size_t>{0, 1, 2, 3, 4, 5},
+                                std::vector<int>{0, 1, 2, 3, 4}, &ids, &probs);
+
+  ASSERT_EQ(ids.size(), 3UL);
+  ASSERT_EQ(probs.size(), 3UL);
+
+  BeamHelper helper;
+  LoDTensor id_tensor;
+  LoDTensor prob_tensor;
+  helper.PackAllSteps(ids, probs, &id_tensor, &prob_tensor);
+}
