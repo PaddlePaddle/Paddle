@@ -16,7 +16,7 @@ __all__ = [
 def fc(input,
        size,
        param_attr=None,
-       bias_attr=True,
+       bias_attr=None,
        name=None,
        act=None,
        num_flatten_dims=1,
@@ -83,8 +83,9 @@ def embedding(input,
 
 # TODO(qijun): expose H0 and C0
 def dynamic_lstm(input,
+                 size,
                  data_type='float32',
-                 para_attr=None,
+                 param_attr=None,
                  bias_attr=None,
                  use_peepholes=True,
                  is_reverse=False,
@@ -94,9 +95,14 @@ def dynamic_lstm(input,
                  main_program=None,
                  startup_program=None):
     helper = LayerHelper('lstm', **locals())
-
-    weight = helper.create_parameter(attr=helper.param_attr)
-    bias = helper.create_parameter(attr=helper.bias_attr)
+    size = size / 4
+    weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[size, 4 * size], dtype=data_type)
+    bias_size = [1, 7 * size]
+    if not use_peepholes:
+        bias_size[1] = 4 * size
+    bias = helper.create_parameter(
+        attr=helper.bias_attr, shape=bias_size, dtype=data_type, suffix='b')
 
     hidden = helper.create_tmp_variable(data_type)
     cell = helper.create_tmp_variable(data_type)

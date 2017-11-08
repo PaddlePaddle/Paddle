@@ -24,22 +24,23 @@ def stacked_lstm_net(input_dim,
 
     # TODO(qijun) linear act
     fc1 = layers.fc(input=emb, size=hid_dim)
-    lstm1 = layers.dynamic_lstm(fc1)
+    lstm1 = layers.dynamic_lstm(input=fc1, size=hid_dim)
 
     inputs = [fc1, lstm1]
 
     for i in range(2, stacked_num + 1):
         fc = layers.fc(input=inputs, size=hid_dim)
-        lstm = layers.dynamic_lstm(fc)
+        lstm = layers.dynamic_lstm(
+            input=fc, size=hid_dim, is_reverse=(i % 2) == 0)
         inputs = [fc, lstm]
 
-    fc_last = layers.sequence_pool(input=inputs[0])
-    lstm_last = layers.sequence_pool(inputs=inputs[1])
+    fc_last = layers.sequence_pool(input=inputs[0], pool_type='max')
+    lstm_last = layers.sequence_pool(input=inputs[1], pool_type='max')
 
-    output = layers.fc(input=[fc_last, lstm_last],
-                       size=class_dim,
-                       act='softmax')
-    cost = layers.cross_entropy(input=output, label=label)
+    prediction = layers.fc(input=[fc_last, lstm_last],
+                           size=class_dim,
+                           act='softmax')
+    cost = layers.cross_entropy(input=prediction, label=label)
     avg_cost = layers.mean(x=cost)
     adam_optimizer = optimizer.AdamOptimizer(learning_rate=0.002)
     opts = adam_optimizer.minimize(avg_cost)
@@ -67,10 +68,11 @@ def main():
     PASS_NUM = 5
 
     word_dict = paddle.dataset.imdb.word_dict()
+    print "load word dict successfully"
     dict_dim = len(word_dict)
     class_dim = 2
 
-    cost, acc = convolution_net(input_dim=dict_dim, class_dim=class_dim)
+    cost, acc = stacked_lstm_net(input_dim=dict_dim, class_dim=class_dim)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(

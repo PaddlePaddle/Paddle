@@ -70,10 +70,11 @@ class LayerHelper(object):
                 actual[default_field] = default[default_field]
         return actual
 
+    @property
     def bias_attr(self):
         default = {'name': None, 'initializer': ConstantInitializer()}
         bias_attr = self.kwargs.get('bias_attr', None)
-        if bias_attr is True:
+        if bias_attr is None:
             bias_attr = default
 
         if isinstance(bias_attr, dict):
@@ -166,7 +167,7 @@ class LayerHelper(object):
                 num_flatten_dims = 1
 
         size = list(input_var.shape[num_flatten_dims:])
-        bias_attr = self.bias_attr()
+        bias_attr = self.bias_attr
         if not bias_attr:
             return input_var
 
