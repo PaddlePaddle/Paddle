@@ -1,4 +1,4 @@
-from paddle.v2.framework.framework import Program, g_program, unique_name
+from paddle.v2.framework.framework import Program, g_main_program, unique_name
 from paddle.v2.framework.layer_helper import LayerHelper
 import paddle.v2.framework.core as core
 
@@ -14,17 +14,10 @@ class Evaluator(object):
 
     def __init__(self, name, **kwargs):
         self._states = {}
-        self._helper = LayerHelper(layer_type=name, **kwargs)
-        # if kwargs.has_key("program"):
-        #     self._program =  kwargs.get("program")
-        # else:
-        #     self._program = g_program
-
-    # def _update(self):
-    #     """
-    #     Updates the internal states througth operator
-    #   """
-    #     raise NotImplementedError()
+        if kwargs.has_key("program"):
+            self._program = kwargs.get("program")
+        else:
+            self._program = g_main_program
 
     def reset(self, executor, program=None):
         """
@@ -34,20 +27,21 @@ class Evaluator(object):
             reset_program = Program()
         else:
             reset_program = program
+        block = reset_program.global_block()
         for k, var in self._states.iteritems():
-            zeros = helper.create_tmp_variable(dtype=var.data_type)
-            self._helper.append_op(
+            zeros = block.create_var(dtype=var.data_type)
+            block.append_op(
                 type="fill_constant",
                 outputs={"Out": [zeros]},
                 attrs={
                     "shape": var.shape,
                     "value": 0,
                 })
-            self._helper.append_op(
+            block.append_op(
                 type="scale", inputs={"X": zeros}, outputs={"Out": var})
         executor.run(reset_program)
 
-    def eval(self):
+    def eval(self, executor, program=None):
         """
       Merge the mini-batch statistics to form the evaluation result for multiple mini-batches.
       """
@@ -61,7 +55,8 @@ class Accuracy(Evaluator):
 
     def __init__(self, input, label, k=1, **kwargs):
         super(Accuracy, self).__init__("accuracy", **kwargs)
-        g_total = helper.create_global_variable(
+        block = self._program.global_block()
+        g_total = block.create_var(
             name=unique_name("Total"),
             persistable=True,
             dtype="int64",
@@ -74,17 +69,17 @@ class Accuracy(Evaluator):
         self._states["Total"] = g_total
         self._states["Correct"] = g_correct
 
-        topk_out = helper.create_tmp_variable(dtype=input.data_type)
-        topk_indices = helper.create_tmp_variable(dtype="int64")
-        helper.append_op(
+        topk_out = block.create_var(dtype=input.data_type)
+        topk_indices = block.create_var(dtype="int64")
+        block.append_op(
             type="top_k",
             inputs={"X": [input]},
             outputs={"Out": [topk_out],
                      "Indices": [topk_indices]},
             attrs={"k": k})
         acc_out_dtype = kwargs.get("out_dtype", "float32")
-        acc_out = helper.create_tmp_variable(dtype=acc_out_dtype)
-        helper.append_op(
+        acc_out = block.create_var(dtype=acc_out_dtype)
+        block.append_op(
             type="accuracy",
             inputs={
                 "Out": [topk_out],
@@ -97,11 +92,11 @@ class Accuracy(Evaluator):
                 "Total": [total],
             })
 
-        helper.append_op(
+        block.append_op(
             type="sum",
             inputs={"X": [g_total, total]},
             outputs={"Out": [g_total]})
-        helper.append_op(
+        block.append_op(
             type="sum",
             inputs={"X": [g_correct, correct]},
             outputs={"Out": [g_total]})
@@ -112,8 +107,9 @@ class Accuracy(Evaluator):
             eval_program = Program()
         else:
             eval_program = program
-        eval_out = helper.create_tmp_variable(dtype=self._helper.input_dtype())
-        self._helper.append_op(
+        block = eval_program.global_block()
+        eval_out = block.create_var(dtype=self._helper.input_dtype())
+        block.append_op(
             type="elementwise_div",
             inputs={"X": self._states["Total"],
                     "Y": self._states["Correct"]},
