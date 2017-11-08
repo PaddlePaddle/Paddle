@@ -53,10 +53,11 @@ class AccuracyOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  // IndicateDataType
-  framework::DataType IndicateDataType(
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("Out")->type());
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("Out")->type()),
+        ctx.device_context());
   }
 };
 
