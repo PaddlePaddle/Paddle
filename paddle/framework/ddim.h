@@ -71,7 +71,7 @@ struct DDim {
 
   DDim operator*(DDim d) const;
 
-  int64_t size() const;
+  int size() const;
 };
 
 /**
