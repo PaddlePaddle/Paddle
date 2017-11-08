@@ -48,15 +48,15 @@ TEST(TrieConcatOp, AppendBeamNodeToResult) {
 
   BeamHelper helper;
   std::unordered_map<size_t, std::vector<std::vector<int64_t>>> result_id;
-  std::unordered_map<size_t, std::vector<std::vector<float>>> result_prob;
+  std::unordered_map<size_t, std::vector<std::vector<float>>> result_score;
 
-  helper.AppendBeamNodeToResult(0, end, &result_id, &result_prob);
+  helper.AppendBeamNodeToResult(0, end, &result_id, &result_score);
 
-  ASSERT_EQ(result_prob.at(0).size(), 1UL);
-  for (size_t i = 0; i < result_prob.at(0).at(0).size(); ++i) {
-    float prob = result_prob.at(0).at(0).at(i);
-    ASSERT_EQ(prob, static_cast<float>(i));
-    ASSERT_EQ(static_cast<float>(result_id.at(0).at(0).at(i)), prob);
+  ASSERT_EQ(result_score.at(0).size(), 1UL);
+  for (size_t i = 0; i < result_score.at(0).at(0).size(); ++i) {
+    float score = result_score.at(0).at(0).at(i);
+    ASSERT_EQ(score, static_cast<float>(i));
+    ASSERT_EQ(static_cast<float>(result_id.at(0).at(0).at(i)), score);
   }
 }
 
@@ -83,32 +83,32 @@ TEST(TrieConcatOp, InitFirstStepBeamNodes) {
     id_ptr[i] = i;
   }
 
-  // Probs
-  LoDTensor tensor_prob;
-  tensor_prob.set_lod(lod);
-  tensor_prob.Resize({6});
+  // Scores
+  LoDTensor tensor_score;
+  tensor_score.set_lod(lod);
+  tensor_score.Resize({6});
   // malloc memory
-  float* prob_ptr = tensor_prob.mutable_data<float>(place);
+  float* score_ptr = tensor_score.mutable_data<float>(place);
   for (int i = 0; i < 6; ++i) {
-    prob_ptr[i] = static_cast<float>(i);
+    score_ptr[i] = static_cast<float>(i);
   }
 
   BeamHelper helper;
   std::unordered_map<size_t, std::vector<BeamNode*>> result;
-  helper.InitFirstStepBeamNodes(tensor_id, tensor_prob, &result);
+  helper.InitFirstStepBeamNodes(tensor_id, tensor_score, &result);
 
   ASSERT_EQ(result.size(), 2UL);
   ASSERT_EQ(result.at(0).size(), 3UL);
   for (size_t i = 0; i < result.at(0).size(); ++i) {
     auto* beam_node = result.at(0).at(i);
     ASSERT_EQ(beam_node->word_id_, static_cast<int64_t>(i));
-    ASSERT_EQ(beam_node->prob_, static_cast<float>(i));
+    ASSERT_EQ(beam_node->score_, static_cast<float>(i));
   }
   ASSERT_EQ(result.at(1).size(), 3UL);
   for (size_t i = 0; i < result.at(1).size(); ++i) {
     auto* beam_node = result.at(1).at(i);
     ASSERT_EQ(beam_node->word_id_, static_cast<int64_t>(i + 3));
-    ASSERT_EQ(beam_node->prob_, static_cast<float>(i + 3));
+    ASSERT_EQ(beam_node->score_, static_cast<float>(i + 3));
   }
 }
 
@@ -137,14 +137,14 @@ TEST(TrieConcatOp, PackTwoBeamStepOut) {
     id_ptr[i] = i;
   }
 
-  // Probs
-  LoDTensor tensor_prob;
-  tensor_prob.set_lod(lod);
-  tensor_prob.Resize({6});
+  // Scores
+  LoDTensor tensor_score;
+  tensor_score.set_lod(lod);
+  tensor_score.Resize({6});
   // malloc memory
-  float* prob_ptr = tensor_prob.mutable_data<float>(place);
+  float* score_ptr = tensor_score.mutable_data<float>(place);
   for (int i = 0; i < 6; ++i) {
-    prob_ptr[i] = static_cast<float>(i);
+    score_ptr[i] = static_cast<float>(i);
   }
 
   // result should be:
@@ -160,22 +160,22 @@ TEST(TrieConcatOp, PackTwoBeamStepOut) {
 
   BeamHelper helper1;
   std::unordered_map<size_t, std::vector<std::vector<int64_t>>> result_id_1;
-  std::unordered_map<size_t, std::vector<std::vector<float>>> result_prob_1;
+  std::unordered_map<size_t, std::vector<std::vector<float>>> result_score_1;
   std::vector<BeamNode*> vec = helper1.PackTwoBeamStepOut(
-      0, prefixes1, tensor_id, tensor_prob, &result_id_1, &result_prob_1);
+      0, prefixes1, tensor_id, tensor_score, &result_id_1, &result_score_1);
   ASSERT_EQ(vec.size(), 3UL);
   for (size_t i = 0; i < 3; ++i) {
     ASSERT_EQ(vec.at(i)->word_id_, static_cast<int64_t>(i + 1));
-    ASSERT_EQ(vec.at(i)->prob_, static_cast<float>(i + 1));
+    ASSERT_EQ(vec.at(i)->score_, static_cast<float>(i + 1));
   }
 
   ASSERT_EQ(result_id_1.at(0).size(), 1UL);
   std::vector<int64_t> id_res = {1, 0};
   ASSERT_EQ(result_id_1.at(0).at(0), id_res);
 
-  ASSERT_EQ(result_prob_1.at(0).size(), 1UL);
-  std::vector<float> prob_res = {1, 0};
-  ASSERT_EQ(result_prob_1.at(0).at(0), prob_res);
+  ASSERT_EQ(result_score_1.at(0).size(), 1UL);
+  std::vector<float> score_res = {1, 0};
+  ASSERT_EQ(result_score_1.at(0).at(0), score_res);
 
   // two prefix
   // result should be:
@@ -186,18 +186,18 @@ TEST(TrieConcatOp, PackTwoBeamStepOut) {
 
   BeamHelper helper2;
   std::unordered_map<size_t, std::vector<std::vector<int64_t>>> result_id_2;
-  std::unordered_map<size_t, std::vector<std::vector<float>>> result_prob_2;
+  std::unordered_map<size_t, std::vector<std::vector<float>>> result_score_2;
   std::vector<BeamNode*> vec2 = helper2.PackTwoBeamStepOut(
-      1, prefixes2, tensor_id, tensor_prob, &result_id_2, &result_prob_2);
+      1, prefixes2, tensor_id, tensor_score, &result_id_2, &result_score_2);
   ASSERT_EQ(vec2.size(), 2UL);
   for (size_t i = 0; i < 2; ++i) {
     ASSERT_EQ(vec2.at(i)->word_id_, static_cast<int64_t>(i + 4));
     ASSERT_EQ(vec2.at(i)->father_->word_id_, static_cast<int64_t>(2));
-    ASSERT_EQ(vec2.at(i)->prob_, static_cast<float>(i + 4));
-    ASSERT_EQ(vec2.at(i)->father_->prob_, static_cast<float>(2));
+    ASSERT_EQ(vec2.at(i)->score_, static_cast<float>(i + 4));
+    ASSERT_EQ(vec2.at(i)->father_->score_, static_cast<float>(2));
   }
   ASSERT_EQ(result_id_2.size(), 0UL);
-  ASSERT_EQ(result_prob_2.size(), 0UL);
+  ASSERT_EQ(result_score_2.size(), 0UL);
 }
 
 namespace paddle {
@@ -209,7 +209,7 @@ using LoDTensor = paddle::framework::LoDTensor;
 void GenerateExample(const std::vector<size_t>& level_0,
                      const std::vector<size_t>& level_1,
                      const std::vector<int>& data, std::vector<LoDTensor>* ids,
-                     std::vector<LoDTensor>* probs) {
+                     std::vector<LoDTensor>* scores) {
   PADDLE_ENFORCE_EQ(level_0.back(), level_1.size() - 1, "");
   PADDLE_ENFORCE_EQ(level_1.back(), data.size(), "");
 
@@ -229,18 +229,18 @@ void GenerateExample(const std::vector<size_t>& level_0,
     id_ptr[i] = static_cast<int64_t>(data.at(i));
   }
 
-  // Probs
-  LoDTensor tensor_prob;
-  tensor_prob.set_lod(lod);
-  tensor_prob.Resize({static_cast<int64_t>(data.size())});
+  // Scores
+  LoDTensor tensor_score;
+  tensor_score.set_lod(lod);
+  tensor_score.Resize({static_cast<int64_t>(data.size())});
   // malloc memory
-  float* prob_ptr = tensor_prob.mutable_data<float>(place);
+  float* score_ptr = tensor_score.mutable_data<float>(place);
   for (size_t i = 0; i < data.size(); ++i) {
-    prob_ptr[i] = static_cast<float>(data.at(i));
+    score_ptr[i] = static_cast<float>(data.at(i));
   }
 
   ids->push_back(tensor_id);
-  probs->push_back(tensor_prob);
+  scores->push_back(tensor_score);
 }
 
 }  // namespace test
@@ -256,25 +256,25 @@ TEST(TrieConcatOp, PackAllSteps) {
 
   // we will constuct a sample data with 3 steps and 2 source sentences
   std::vector<LoDTensor> ids;
-  std::vector<LoDTensor> probs;
+  std::vector<LoDTensor> scores;
 
   paddle::test::GenerateExample(
       std::vector<size_t>{0, 3, 6}, std::vector<size_t>{0, 1, 2, 3, 4, 5, 6},
-      std::vector<int>{1, 2, 3, 4, 5, 6}, &ids, &probs);
+      std::vector<int>{1, 2, 3, 4, 5, 6}, &ids, &scores);
   paddle::test::GenerateExample(
       std::vector<size_t>{0, 3, 6}, std::vector<size_t>{0, 1, 1, 3, 5, 5, 6},
-      std::vector<int>{0, 1, 2, 3, 4, 5}, &ids, &probs);
+      std::vector<int>{0, 1, 2, 3, 4, 5}, &ids, &scores);
   paddle::test::GenerateExample(std::vector<size_t>{0, 2, 5},
                                 std::vector<size_t>{0, 1, 2, 3, 4, 5},
-                                std::vector<int>{0, 1, 2, 3, 4}, &ids, &probs);
+                                std::vector<int>{0, 1, 2, 3, 4}, &ids, &scores);
 
   ASSERT_EQ(ids.size(), 3UL);
-  ASSERT_EQ(probs.size(), 3UL);
+  ASSERT_EQ(scores.size(), 3UL);
 
   BeamHelper helper;
   LoDTensor id_tensor;
-  LoDTensor prob_tensor;
-  helper.PackAllSteps(ids, probs, &id_tensor, &prob_tensor);
+  LoDTensor score_tensor;
+  helper.PackAllSteps(ids, scores, &id_tensor, &score_tensor);
 
   LoD lod = id_tensor.lod();
   for (size_t level = 0; level < 2; ++level) {
@@ -287,8 +287,8 @@ TEST(TrieConcatOp, PackAllSteps) {
     std::cout << id_tensor.data<int64_t>()[i] << " ";
   }
   std::cout << std::endl;
-  for (int64_t i = 0; i < prob_tensor.dims()[0]; ++i) {
-    std::cout << prob_tensor.data<float>()[i] << " ";
+  for (int64_t i = 0; i < score_tensor.dims()[0]; ++i) {
+    std::cout << score_tensor.data<float>()[i] << " ";
   }
   std::cout << std::endl;
 }

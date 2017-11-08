@@ -29,7 +29,7 @@ class TrieConcatOp : public framework::OperatorBase {
     framework::ExecutionContext ctx(*this, scope, dev_ctx);
     const std::vector<LoDTensor>* ids =
         ctx.Input<std::vector<LoDTensor>>("Ids");
-    const std::vector<LoDTensor>* probs =
+    const std::vector<LoDTensor>* scores =
         ctx.Input<std::vector<LoDTensor>>("Scores");
     const size_t step_num = ids->size();
     PADDLE_ENFORCE_LT(step_num, 0, "beam search steps should be larger than 0");
@@ -43,10 +43,10 @@ class TrieConcatOp : public framework::OperatorBase {
 
     // prepare output
     LoDTensor* sentenceIds = ctx.Output<LoDTensor>("SentenceIds");
-    LoDTensor* sentenceProbs = ctx.Output<LoDTensor>("SentenceScores");
+    LoDTensor* sentenceScores = ctx.Output<LoDTensor>("SentenceScores");
 
     BeamHelpter beam_helper;
-    beam_helper.PackAllSteps(*ids, *probs, sentenceIds, sentenceProbs);
+    beam_helper.PackAllSteps(*ids, *scores, sentenceIds, sentenceScores);
   }
 };
 

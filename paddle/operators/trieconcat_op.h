@@ -30,7 +30,7 @@ const size_t kSourceLevel = 0;
 const size_t kSentenceLevel = 1;
 
 struct BeamNode {
-  BeamNode(int64_t word_id, float prob) : word_id_(word_id), prob_(prob) {}
+  BeamNode(int64_t word_id, float score) : word_id_(word_id), score_(score) {}
 
   void AppendTo(BeamNode* father) {
     father_ = father;
@@ -40,7 +40,7 @@ struct BeamNode {
   BeamNode* father_ = nullptr;
   std::vector<BeamNode*> kids_;
   int64_t word_id_;
-  float prob_;
+  float score_;
 };
 
 struct BeamHelpter {
@@ -67,30 +67,30 @@ struct BeamHelpter {
       size_t source_idx, const BeamNode* node,
       std::unordered_map<size_t, std::vector<std::vector<int64_t>>>* result_id,
       std::unordered_map<size_t, std::vector<std::vector<float>>>*
-          result_prob) {
+          result_score) {
     std::vector<int64_t> sequence_ids;
-    std::vector<float> sequence_probs;
+    std::vector<float> sequence_scores;
 
     const BeamNode* tmp = node;
     while (tmp != nullptr) {
       sequence_ids.emplace_back(tmp->word_id_);
-      sequence_probs.emplace_back(tmp->prob_);
+      sequence_scores.emplace_back(tmp->score_);
       tmp = tmp->father_;
     }
 
     std::reverse(std::begin(sequence_ids), std::end(sequence_ids));
-    std::reverse(std::begin(sequence_probs), std::end(sequence_probs));
+    std::reverse(std::begin(sequence_scores), std::end(sequence_scores));
 
     (*result_id)[source_idx].emplace_back(sequence_ids);
-    (*result_prob)[source_idx].push_back(sequence_probs);
+    (*result_score)[source_idx].push_back(sequence_scores);
   }
 
   std::vector<BeamNode*> PackTwoBeamStepOut(
       size_t source_idx, const std::vector<BeamNode*>& prefixes,
-      const LoDTensor& cur_ids, const LoDTensor& cur_probs,
+      const LoDTensor& cur_ids, const LoDTensor& cur_scores,
       std::unordered_map<size_t, std::vector<std::vector<int64_t>>>* result_id,
       std::unordered_map<size_t, std::vector<std::vector<float>>>*
-          result_prob) {
+          result_score) {
     std::vector<BeamNode*> result;
 
     size_t source_start = cur_ids.lod()[kSourceLevel][source_idx];
@@ -117,14 +117,14 @@ struct BeamHelpter {
         for (size_t candidate_index = candidate_start;
              candidate_index < candidate_end; ++candidate_index) {
           int64_t word_id = cur_ids.data<int64_t>()[candidate_index];
-          float prob = cur_probs.data<float>()[candidate_index];
-          auto* candidate = new BeamNode(word_id, prob);
+          float score = cur_scores.data<float>()[candidate_index];
+          auto* candidate = new BeamNode(word_id, score);
           candidate->AppendTo(prefix);
           // if candidate is end id, then put it into result and remove it from
           // beam tree.
           if (word_id == kEndId) {
             AppendBeamNodeToResult(source_idx, candidate, result_id,
-                                   result_prob);
+                                   result_score);
             RemoveFromEnd(candidate);
           } else {
             result.push_back(candidate);
@@ -136,7 +136,7 @@ struct BeamHelpter {
   }
 
   void InitFirstStepBeamNodes(
-      const LoDTensor& tensor_id, const LoDTensor& tensor_prob,
+      const LoDTensor& tensor_id, const LoDTensor& tensor_score,
       std::unordered_map<size_t, std::vector<BeamNode*>>* batch_beam_nodes) {
     // init beam_nodes for each source sentence.
     // in the first level, each sentence should have be a prefix
@@ -157,7 +157,7 @@ struct BeamHelpter {
            ++word_id_idx) {
         init_beam_nodes.push_back(
             new BeamNode(tensor_id.data<int64_t>()[word_id_idx],
-                         tensor_prob.data<float>()[word_id_idx]));
+                         tensor_score.data<float>()[word_id_idx]));
       }
       (*batch_beam_nodes)[source_idx] = init_beam_nodes;
     }
@@ -167,24 +167,24 @@ struct BeamHelpter {
       const std::unordered_map<size_t, std::vector<std::vector<int64_t>>>&
           result_id,
       const std::unordered_map<size_t, std::vector<std::vector<float>>>&
-          result_prob,
-      LoDTensor* id_tensor, LoDTensor* prob_tensor) const {
+          result_score,
+      LoDTensor* id_tensor, LoDTensor* score_tensor) const {
     size_t source_num = result_id.size();
 
     std::vector<size_t> source_level_lod = {0};
     std::vector<size_t> sentence_level_lod = {0};
     std::vector<int64_t> id_data;
-    std::vector<float> prob_data;
+    std::vector<float> score_data;
     for (size_t source_idx = 0; source_idx < source_num; ++source_idx) {
       auto& all_sentence_ids = result_id.at(source_idx);
-      auto& all_sentence_probs = result_prob.at(source_idx);
+      auto& all_sentence_scores = result_score.at(source_idx);
       for (size_t sentence_idx = 0; sentence_idx < all_sentence_ids.size();
            ++sentence_idx) {
         auto& sentence_ids = all_sentence_ids.at(sentence_idx);
         id_data.insert(id_data.end(), sentence_ids.begin(), sentence_ids.end());
-        auto& sentence_probs = all_sentence_probs.at(sentence_idx);
-        prob_data.insert(prob_data.end(), sentence_probs.begin(),
-                         sentence_probs.end());
+        auto& sentence_scores = all_sentence_scores.at(sentence_idx);
+        score_data.insert(score_data.end(), sentence_scores.begin(),
+                          sentence_scores.end());
         sentence_level_lod.push_back(sentence_level_lod.back() +
                                      sentence_ids.size());
       }
@@ -204,25 +204,26 @@ struct BeamHelpter {
     id_tensor->mutable_data<int64_t>(paddle::platform::CPUPlace());
     id_tensor->CopyFromVector<int64_t>(id_data, cpu_ctx);
 
-    prob_tensor->set_lod(lod);
-    prob_tensor->Resize({static_cast<int64_t>(prob_data.size())});
-    prob_tensor->mutable_data<float>(paddle::platform::CPUPlace());
-    prob_tensor->CopyFromVector<float>(prob_data, cpu_ctx);
+    score_tensor->set_lod(lod);
+    score_tensor->Resize({static_cast<int64_t>(score_data.size())});
+    score_tensor->mutable_data<float>(paddle::platform::CPUPlace());
+    score_tensor->CopyFromVector<float>(score_data, cpu_ctx);
   }
 
   void PackAllSteps(const std::vector<LoDTensor>& step_ids,
-                    const std::vector<LoDTensor>& step_probs,
-                    LoDTensor* id_tensor, LoDTensor* prob_tensor) {
-    PADDLE_ENFORCE_EQ(step_ids.size(), step_probs.size(),
-                      "step_ids and step_probs should be the same");
+                    const std::vector<LoDTensor>& step_scores,
+                    LoDTensor* id_tensor, LoDTensor* score_tensor) {
+    PADDLE_ENFORCE_EQ(step_ids.size(), step_scores.size(),
+                      "step_ids and step_scores should be the same");
     size_t step_num = step_ids.size();
     size_t source_num = step_ids.at(0).lod().at(kSourceLevel).size() - 1;
 
     std::unordered_map<size_t, std::vector<BeamNode*>> batch_beam_nodes;
     std::unordered_map<size_t, std::vector<std::vector<int64_t>>> result_id;
-    std::unordered_map<size_t, std::vector<std::vector<float>>> result_prob;
+    std::unordered_map<size_t, std::vector<std::vector<float>>> result_score;
 
-    InitFirstStepBeamNodes(step_ids.at(0), step_probs.at(0), &batch_beam_nodes);
+    InitFirstStepBeamNodes(step_ids.at(0), step_scores.at(0),
+                           &batch_beam_nodes);
 
     // pack all steps for one batch first, then another batch
     for (size_t source_idx = 0; source_idx < source_num; ++source_idx) {
@@ -231,7 +232,7 @@ struct BeamHelpter {
         if (prefixes.size() > 0UL) {
           std::vector<BeamNode*> result = PackTwoBeamStepOut(
               source_idx, prefixes, step_ids.at(step_id),
-              step_probs.at(step_id), &result_id, &result_prob);
+              step_scores.at(step_id), &result_id, &result_score);
           batch_beam_nodes[source_idx] = result;
         } else {
           VLOG(3) << "source_idx: " << source_idx << " step_id: " << step_id
@@ -241,12 +242,13 @@ struct BeamHelpter {
 
       // append last beam_node to result
       for (auto* beam_node : batch_beam_nodes.at(source_idx)) {
-        AppendBeamNodeToResult(source_idx, beam_node, &result_id, &result_prob);
+        AppendBeamNodeToResult(source_idx, beam_node, &result_id,
+                               &result_score);
         RemoveFromEnd(beam_node);
       }
     }
 
-    ConvertMapToLodTensor(result_id, result_prob, id_tensor, prob_tensor);
+    ConvertMapToLodTensor(result_id, result_score, id_tensor, score_tensor);
   }
 };
 
