@@ -51,9 +51,11 @@ class MultiplexOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::DataType IndicateDataType(
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type());
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type()),
+        ctx.device_context());
   }
 };
 
@@ -107,9 +109,11 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::DataType IndicateDataType(
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type());
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type()),
+        ctx.device_context());
   }
 };
 
