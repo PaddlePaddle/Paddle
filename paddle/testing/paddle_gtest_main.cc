@@ -20,11 +20,11 @@ int main(int argc, char** argv) {
   std::string gflags_env;
 
   new_argv.push_back(argv[0]);
-#ifdef PADDLE_WITH_CDUA
+#ifdef PADDLE_WITH_CUDA
   new_argv.push_back(
       "--tryfromenv=fraction_of_gpu_memory_to_use,use_pinned_memory");
 #else
-  new_argv.push_back("--fromenv=use_pinned_memory");
+  new_argv.push_back("--tryfromenv=use_pinned_memory");
 #endif
   int new_argc = 2;
   char** new_argv_address = const_cast<char**>(new_argv.data());
