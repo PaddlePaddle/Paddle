@@ -128,15 +128,6 @@ struct BeamHelpter {
     return result;
   }
 
-  template <typename T>
-  void InitOutputLodTensor(LoDTensor* out) {
-    // tensor have two level
-    out->mutable_lod()->push_back(std::vector<size_t>{0});
-    out->mutable_lod()->push_back(std::vector<size_t>{0});
-    out->Resize({kInitLength});
-    out->mutable_data<T>(paddle::platform::CPUPlace());
-  }
-
   void InitFirstStepBeamNodes(
       const LoDTensor& tensor_id, const LoDTensor& tensor_prob,
       std::unordered_map<size_t, std::vector<BeamNode*>>* batch_beam_nodes) {
@@ -165,6 +156,53 @@ struct BeamHelpter {
     }
   }
 
+  void ConvertMapToLodTensor(
+      const std::unordered_map<size_t, std::vector<std::vector<int64_t>>>&
+          result_id,
+      const std::unordered_map<size_t, std::vector<std::vector<float>>>&
+          result_prob,
+      LoDTensor* id_tensor, LoDTensor* prob_tensor) const {
+    size_t source_num = result_id.size();
+
+    std::vector<size_t> source_level_lod = {0};
+    std::vector<size_t> sentence_level_lod = {0};
+    std::vector<int64_t> id_data;
+    std::vector<float> prob_data;
+    for (size_t source_idx = 0; source_idx < source_num; ++source_idx) {
+      auto& all_sentence_ids = result_id.at(source_idx);
+      auto& all_sentence_probs = result_prob.at(source_idx);
+      for (size_t sentence_idx = 0; sentence_idx < all_sentence_ids.size();
+           ++sentence_idx) {
+        auto& sentence_ids = all_sentence_ids.at(sentence_idx);
+        id_data.insert(id_data.end(), sentence_ids.begin(), sentence_ids.end());
+        auto& sentence_probs = all_sentence_probs.at(sentence_idx);
+        prob_data.insert(prob_data.end(), sentence_probs.begin(),
+                         sentence_probs.end());
+        sentence_level_lod.push_back(sentence_level_lod.back() +
+                                     sentence_ids.size());
+      }
+      source_level_lod.push_back(source_level_lod.back() +
+                                 all_sentence_ids.size());
+    }
+
+    auto cpu_place = new paddle::platform::CPUPlace();
+    paddle::platform::CPUDeviceContext cpu_ctx(*cpu_place);
+
+    framework::LoD lod;
+    lod.push_back(source_level_lod);
+    lod.push_back(sentence_level_lod);
+
+    id_tensor->set_lod(lod);
+    id_tensor->Resize({static_cast<int64_t>(id_data.size())});
+    id_tensor->mutable_data<int64_t>(paddle::platform::CPUPlace());
+    id_tensor->CopyFromVector<int64_t>(id_data, cpu_ctx);
+
+    prob_tensor->set_lod(lod);
+    prob_tensor->Resize({static_cast<int64_t>(prob_data.size())});
+    prob_tensor->mutable_data<float>(paddle::platform::CPUPlace());
+    prob_tensor->CopyFromVector<float>(prob_data, cpu_ctx);
+  }
+
   void PackAllSteps(const std::vector<LoDTensor>& step_ids,
                     const std::vector<LoDTensor>& step_probs,
                     LoDTensor* id_tensor, LoDTensor* prob_tensor) {
@@ -172,9 +210,6 @@ struct BeamHelpter {
                       "step_ids and step_probs should be the same");
     size_t step_num = step_ids.size();
     size_t source_num = step_ids.at(0).lod().at(kSourceLevel).size() - 1;
-
-    //    InitOutputLodTensor<int64_t>(id_tensor);
-    //    InitOutputLodTensor<float>(prob_tensor);
 
     std::unordered_map<size_t, std::vector<BeamNode*>> batch_beam_nodes;
     InitFirstStepBeamNodes(step_ids.at(0), step_probs.at(0), &batch_beam_nodes);
@@ -200,6 +235,8 @@ struct BeamHelpter {
         RemoveFromEnd(beam_node);
       }
     }
+
+    ConvertMapToLodTensor(result_id, result_prob, id_tensor, prob_tensor);
   }
 
  public:

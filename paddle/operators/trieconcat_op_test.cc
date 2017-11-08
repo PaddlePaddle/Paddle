@@ -244,6 +244,7 @@ TEST(TrieConcatOp, PackAllSteps) {
   using BeamHelper = paddle::operators::BeamHelpter;
   using CPUPlace = paddle::platform::CPUPlace;
   using LoDTensor = paddle::framework::LoDTensor;
+  using LoD = paddle::framework::LoD;
 
   CPUPlace place;
 
@@ -268,4 +269,16 @@ TEST(TrieConcatOp, PackAllSteps) {
   LoDTensor id_tensor;
   LoDTensor prob_tensor;
   helper.PackAllSteps(ids, probs, &id_tensor, &prob_tensor);
+
+  LoD lod = id_tensor.lod();
+  for (size_t level = 0; level < 2; ++level) {
+    for (size_t i = 0; i < lod[level].size(); ++i) {
+      std::cout << lod[level][i] << " ";
+    }
+    std::cout << std::endl;
+  }
+  for (int64_t i = 0; i < id_tensor.dims()[0]; ++i) {
+    std::cout << id_tensor.data<int64_t>()[i] << " ";
+  }
+  std::cout << std::endl;
 }
