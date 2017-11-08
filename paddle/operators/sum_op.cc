@@ -47,20 +47,24 @@ class SumOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::DataType IndicateDataType(
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto x_vars = ctx.MultiInputVar("X");
     if (x_vars[0]->IsType<framework::LoDTensor>()) {
-      return framework::ToDataType(
-          x_vars[0]->Get<framework::LoDTensor>().type());
+      return framework::OpKernelType(
+          framework::ToDataType(x_vars[0]->Get<framework::LoDTensor>().type()),
+          ctx.device_context());
     } else if (x_vars[0]->IsType<framework::SelectedRows>()) {
-      return framework::ToDataType(
-          x_vars[0]->Get<framework::SelectedRows>().value().type());
+      return framework::OpKernelType(
+          framework::ToDataType(
+              x_vars[0]->Get<framework::SelectedRows>().value().type()),
+          ctx.device_context());
     } else if (x_vars[0]->IsType<framework::LoDTensorArray>()) {
       auto& array = x_vars[0]->Get<framework::LoDTensorArray>();
       for (auto& each : array) {
         if (each.numel() != 0) {
-          return framework::ToDataType(each.type());
+          return framework::OpKernelType(framework::ToDataType(each.type()),
+                                         ctx.device_context());
         }
       }
     }
