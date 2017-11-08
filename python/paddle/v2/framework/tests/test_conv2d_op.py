@@ -39,6 +39,7 @@ class TestConv2dOp(OpTest):
     def setUp(self):
         self.init_op_type()
         self.init_group()
+        self.init_dilation()
         self.init_test_case()
 
         conv2d_param = {'stride': self.stride, 'pad': self.pad}
@@ -80,11 +81,13 @@ class TestConv2dOp(OpTest):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
-        self.dilations = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] / self.groups
         self.filter_size = [6, f_c, 3, 3]
+
+    def init_dilation(self):
+        self.dilations = [1, 1]
 
     def init_group(self):
         self.groups = 1
