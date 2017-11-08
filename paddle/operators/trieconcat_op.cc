@@ -33,8 +33,8 @@ class TrieConcatOp : public framework::OperatorBase {
         ctx.Input<std::vector<LoDTensor>>("Scores");
     const size_t step_num = ids->size();
     PADDLE_ENFORCE_LT(step_num, 0, "beam search steps should be larger than 0");
-    const size_t batch_size = ids->at(0).lod()[0].size() - 1;
-    PADDLE_ENFORCE_LT(batch_size, 0UL, "batch size should be larger than 0");
+    const size_t source_num = ids->at(0).lod().at(0).size() - 1;
+    PADDLE_ENFORCE_LT(source_num, 0UL, "source num should be larger than 0");
 
     for (size_t i = 0; i < step_num; ++i) {
       PADDLE_ENFORCE_EQ(ids->at(i).lod().size(), 2UL,
@@ -55,11 +55,11 @@ class TrieConcatOp : public framework::OperatorBase {
     BeamHelpter beam_helper;
     // init beam_nodes for each source sentence.
     std::vector<std::vector<BeamNode*>> batch_beam_nodes;
-    batch_beam_nodes.reserve(batch_size);
-    for (size_t batch_idx = 0; batch_idx < batch_size; ++batch_idx) {
+    batch_beam_nodes.reserve(source_num);
+    for (size_t source_idx = 0; source_idx < source_num; ++source_idx) {
       std::vector<BeamNode*> beam_nodes;
-      size_t batch_start = ids->at(0).lod()[0][batch_idx];
-      size_t batch_end = ids->at(0).lod()[0][batch_idx + 1];
+      size_t batch_start = ids->at(0).lod()[0][source_idx];
+      size_t batch_end = ids->at(0).lod()[0][source_idx + 1];
       for (size_t word_id_idx = batch_start; word_id_idx < batch_end;
            ++word_id_idx) {
         beam_nodes.push_back(
@@ -70,17 +70,17 @@ class TrieConcatOp : public framework::OperatorBase {
     }
 
     // pack all steps for one batch first, then another batch
-    for (size_t batch_idx = 0; batch_idx < batch_size; ++batch_idx) {
+    for (size_t source_idx = 0; source_idx < source_num; ++source_idx) {
       for (size_t step_id = 1; step_id < step_num; ++step_id) {
-        size_t batch_start = ids->at(step_id).lod()[0][batch_idx];
+        size_t batch_start = ids->at(step_id).lod()[0][source_idx];
         std::vector<BeamNode*> result = beam_helper.PackTwoBeamStepOut(
-            batch_start, batch_beam_nodes[batch_idx], ids->at(step_id),
+            batch_start, batch_beam_nodes[source_idx], ids->at(step_id),
             scores->at(step_id), sentenceIds, sentenceScores);
-        batch_beam_nodes[batch_idx] = result;
+        batch_beam_nodes.at(source_idx) = result;
       }
 
       // append last beam_node to result
-      for (auto* beam_node : batch_beam_nodes[batch_idx]) {
+      for (auto* beam_node : batch_beam_nodes[source_idx]) {
         beam_helper.AppendBeamNodeToLoDTensor(beam_node, sentenceIds,
                                               sentenceScores);
       }

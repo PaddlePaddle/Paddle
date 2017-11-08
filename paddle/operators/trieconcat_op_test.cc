@@ -36,42 +36,7 @@ TEST(TrieConcatOp, RemoveFromEnd) {
   helper.RemoveFromEnd(b2);
 }
 
-TEST(TrieConcatOp, AppendVector) {
-  using LoD = paddle::framework::LoD;
-  using CPUPlace = paddle::platform::CPUPlace;
-  using LoDTensor = paddle::framework::LoDTensor;
-  using BeamHelper = paddle::operators::BeamHelpter;
-
-  CPUPlace place;
-
-  LoD lod;
-  lod.push_back(std::vector<size_t>{});
-  lod.push_back(std::vector<size_t>{0, 3, 6});
-
-  LoDTensor tensor;
-  tensor.set_lod(lod);
-
-  tensor.Resize({10});
-  float* dst_ptr = tensor.mutable_data<float>(place);
-  for (int i = 0; i < 6; ++i) {
-    dst_ptr[i] = i;
-  }
-
-  std::vector<float> vec = {6.0, 7.0, 8.0, 9.0};
-
-  BeamHelper helper;
-  helper.AppendVector<float>(vec, &tensor);
-
-  ASSERT_EQ(tensor.lod()[1][3], 10UL);
-  for (int i = 0; i < 10; ++i) {
-    ASSERT_EQ(tensor.data<float>()[i], static_cast<float>(i));
-  }
-}
-
-TEST(TrieConcatOp, AppendBeamNodeToLoDTensor) {
-  using LoD = paddle::framework::LoD;
-  using CPUPlace = paddle::platform::CPUPlace;
-  using LoDTensor = paddle::framework::LoDTensor;
+TEST(TrieConcatOp, AppendBeamNodeToResult) {
   using BeamHelper = paddle::operators::BeamHelpter;
   using BeamNode = paddle::operators::BeamNode;
 
@@ -83,103 +48,76 @@ TEST(TrieConcatOp, AppendBeamNodeToLoDTensor) {
 
   BeamHelper helper;
 
-  CPUPlace place;
+  helper.AppendBeamNodeToResult(0, end);
 
-  LoD lod;
-  lod.push_back(std::vector<size_t>{});
-  lod.push_back(std::vector<size_t>{0, 3, 6});
-
-  // id tensor
-  LoDTensor tensor_ids;
-  tensor_ids.set_lod(lod);
-
-  tensor_ids.Resize({10});
-  int64_t* ids_ptr = tensor_ids.mutable_data<int64_t>(place);
-  for (int i = 0; i < 6; ++i) {
-    ids_ptr[i] = static_cast<int64_t>(i);
-  }
-
-  // probs tensor
-  LoDTensor tensor_probs;
-  tensor_probs.set_lod(lod);
-
-  tensor_probs.Resize({10});
-  float* probs_ptr = tensor_probs.mutable_data<float>(place);
-  for (int i = 0; i < 6; ++i) {
-    probs_ptr[i] = static_cast<float>(i);
-  }
-
-  helper.AppendBeamNodeToLoDTensor(end, &tensor_ids, &tensor_probs);
-
-  // debug string tensor_ids
-  for (auto& item : tensor_ids.lod()[1]) {
-    std::cout << item << " ";
-  }
-  std::cout << std::endl;
-
-  for (size_t i = 0; i < tensor_ids.lod()[1].back(); ++i) {
-    std::cout << ids_ptr[i] << " ";
-  }
-  std::cout << std::endl;
-
-  // make sure ids and probs are the same
-  auto sentence_ids = tensor_ids.lod().at(1);
-  auto sentences_probs = tensor_probs.lod().at(1);
-  ASSERT_EQ(sentence_ids.size(), sentences_probs.size());
-  for (size_t i = 0; i < sentence_ids.size(); ++i) {
-    ASSERT_EQ(sentence_ids.at(i), sentences_probs.at(i));
-  }
-  for (size_t i = 0; i < sentence_ids.back(); ++i) {
-    ASSERT_EQ(static_cast<float>(ids_ptr[i]), probs_ptr[i]);
-  }
-
-  ASSERT_EQ(tensor_ids.lod()[1].size(), 4UL);
-  ASSERT_EQ(tensor_ids.lod()[1].back(), 9UL);
-  size_t sentence_len = tensor_ids.lod()[1].size() - 1;
-  ASSERT_EQ(sentence_len, 3UL);
-  size_t added_sentence_start = tensor_ids.lod().at(1).at(sentence_len - 1);
-  ASSERT_EQ(added_sentence_start, 6UL);
-  for (size_t i = added_sentence_start; i < tensor_ids.lod().at(1).back();
-       ++i) {
-    ASSERT_EQ(ids_ptr[i], static_cast<int64_t>(i - added_sentence_start));
+  ASSERT_EQ(helper.result_prob.at(0).size(), 1UL);
+  for (size_t i = 0; i < helper.result_prob.at(0).at(0).size(); ++i) {
+    float prob = helper.result_prob.at(0).at(0).at(i);
+    ASSERT_EQ(prob, static_cast<float>(i));
+    ASSERT_EQ(static_cast<float>(helper.result_id.at(0).at(0).at(i)), prob);
+    std::cout << prob << " ";
+    std::cout << std::endl;
   }
 }
 
-// TEST(TrieConcatOp, CPU) {
-//  using LoD = paddle::framework::LoD;
-//  using CPUPlace = paddle::platform::CPUPlace;
-//  using LoDTensor = paddle::framework::LoDTensor;
-//
-//  CPUPlace place;
-//
-//  size_t step_num = 3;
-//  size_t beam_size = 3;
-//  size_t batch_size = 2;
-//
-//  std::vector<LoDTensor> beam_out_Ids;
-//  std::vector<LoDTensor> beam_out_Probs;
-//
-//  LoD lod_step_0;
-//  lod_step_0.push_back(std::vector<size_t>{0, 3, 6});
-//  lod_step_0.push_back(std::vector<size_t>{0, 1, 2, 3, 4, 5, 6});
-//
-//  // Ids
-//  LoDTensor ids_step_0;
-//  ids_step_0.set_lod(lod_step_0);
-//  ids_step_0.Resize({6});
-//  // malloc memory
-//  int64_t* dst_ptr = ids_step_0.mutable_data<int64_t>(place);
-//  for (int i = 0; i < 6; ++i) {
-//    dst_ptr[i] = i;
-//  }
-//
-//  LoDTensor probs_step_0;
-//  probs_step_0.set_lod(lod_step_0);
-//  probs_step_0.Resize({6});
-//  // malloc memory
-//  float* dst_ptr = probs_step_0.mutable_data<float>(place);
-//  for (int i = 0; i < 6; ++i) {
-//    dst_ptr[i] = i;
-//  }
-//
-//}
+TEST(TrieConcatOp, InitFirstStepBeamNodes) {
+  using BeamHelper = paddle::operators::BeamHelpter;
+  using BeamNode = paddle::operators::BeamNode;
+  using LoD = paddle::framework::LoD;
+  using CPUPlace = paddle::platform::CPUPlace;
+  using LoDTensor = paddle::framework::LoDTensor;
+
+  CPUPlace place;
+
+  std::vector<BeamNode*> prefixes;
+  prefixes.push_back(new BeamNode(0, 0));
+  prefixes.push_back(new BeamNode(1, 1));
+  prefixes.push_back(new BeamNode(2, 2));
+
+  std::vector<LoDTensor> beam_out_Ids;
+  std::vector<LoDTensor> beam_out_Probs;
+
+  LoD lod;
+  lod.push_back(std::vector<size_t>{0, 3, 6});
+  lod.push_back(std::vector<size_t>{0, 1, 2, 3, 4, 5, 6});
+
+  // Ids
+  LoDTensor tensor_id;
+  tensor_id.set_lod(lod);
+  tensor_id.Resize({6});
+  // malloc memory
+  int64_t* id_ptr = tensor_id.mutable_data<int64_t>(place);
+  for (int64_t i = 0; i < 6; ++i) {
+    id_ptr[i] = i;
+  }
+
+  // Probs
+  LoDTensor tensor_prob;
+  tensor_prob.set_lod(lod);
+  tensor_prob.Resize({6});
+  // malloc memory
+  float* prob_ptr = tensor_prob.mutable_data<float>(place);
+  for (int i = 0; i < 6; ++i) {
+    prob_ptr[i] = static_cast<float>(i);
+  }
+
+  BeamHelper helper;
+  std::unordered_map<size_t, std::vector<BeamNode*>> result;
+  helper.InitFirstStepBeamNodes(tensor_id, tensor_prob, &result);
+
+  ASSERT_EQ(result.size(), 2UL);
+  ASSERT_EQ(result.at(0).size(), 3UL);
+  for (size_t i = 0; i < result.at(0).size(); ++i) {
+    auto* beam_node = result.at(0).at(i);
+    ASSERT_EQ(beam_node->word_id_, static_cast<int64_t>(i));
+    ASSERT_EQ(beam_node->prob_, static_cast<float>(i));
+  }
+  ASSERT_EQ(result.at(1).size(), 3UL);
+  for (size_t i = 0; i < result.at(1).size(); ++i) {
+    auto* beam_node = result.at(1).at(i);
+    ASSERT_EQ(beam_node->word_id_, static_cast<int64_t>(i + 3));
+    ASSERT_EQ(beam_node->prob_, static_cast<float>(i + 3));
+  }
+}
+
+TEST(TrieConcatOp, PackAllSteps) {}
