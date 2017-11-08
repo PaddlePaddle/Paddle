@@ -21,21 +21,19 @@ class ModifiedHuberLossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(const framework::InferShapeContext& context) const override {
-    PADDLE_ENFORCE_NOT_NULL(context.InputVar("X"), "X must be initialized.");
-    PADDLE_ENFORCE_NOT_NULL(context.InputVar("Y"), "Y must be initialized.");
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "X must be initialized.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Y must be initialized.");
 
-    auto* x = context.Input<Tensor>("X");
-    auto* y = context.Input<Tensor>("Y");
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
 
-    PADDLE_ENFORCE_EQ(x->dims(), y->dims(),
-                      "The shape of X and Y must be the same.");
-    PADDLE_ENFORCE_EQ(x->dims().size(), 2, "The tensor rank of X must be 2.");
-    PADDLE_ENFORCE_EQ(x->dims()[1], 1, "The 2nd dimension of X must be 1.");
+    PADDLE_ENFORCE_EQ(x_dims, y_dims, "The shape of X and Y must be the same.");
+    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "The tensor rank of X must be 2.");
+    PADDLE_ENFORCE_EQ(x_dims[1], 1, "The 2nd dimension of X must be 1.");
 
-    context.Output<framework::LoDTensor>("IntermediateVal")->Resize(x->dims());
-    context.Output<framework::LoDTensor>("Out")->Resize({x->dims()[0], 1});
+    ctx->SetOutputDim("IntermediateVal", x_dims);
+    ctx->SetOutputDim("Out", {x_dims[0], 1});
   }
 };
 
@@ -45,27 +43,35 @@ class ModifiedHuberLossOpMaker : public framework::OpProtoAndCheckerMaker {
                            framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
-             "The input tensor of modified huber loss op."
+             "The input tensor of modified huber loss op. "
              "X is 2-D tensor with shape [batch_size, 1].");
     AddInput("Y",
-             "The target labels of modified huber loss op."
-             "The shape of Y is same as X. Values of Y must be 0 or 1.");
+             "The target labels of modified huber loss op. "
+             "The shape of Y is the same as X. Values of Y must be 0 or 1.");
     AddOutput("IntermediateVal",
               "Variable to save intermediate result which will be reused in "
               "backward processing.")
         .AsIntermediate();
     AddOutput("Out", "Classification loss for X.");
     AddComment(R"DOC(
-Modified huber loss is used in binary classification problem. The shape of
-input X and target Y are both [N, 1] and so is the shape of output loss.
-Since target Y is not differentiable, cacluating gradient for Y is illegal.
-The formulation of modified huber loss is:
+Modified Huber Loss Operator.
 
-L(y, f(x)) = max(0, 1 - yf(x))^2  for yf(x) >= -1,
-             -4yf(x)              otherwise.
+This operator is used in binary classification problem. The shape of
+input X and target Y are both [N, 1] and so is the shape of the output loss.
+Since target Y is not differentiable, calculating gradient for Y is illegal.
+The formula of modified huber loss is:
 
-Make sure the values of target label Y are in {0, 1} here. The operator will
+$$
+L(y, f(x)) = 
+\begin{cases}
+(\max(0, 1 - yf(x)))^2,  \text{if} \  yf(x) >= -1    \\
+             -4yf(x),    \quad \text{otherwise}
+\end{cases}
+$$
+
+Make sure the values of target label Y are in {0, 1} here. This operator will
 scale values of Y to {-1, +1} when computing losses and gradients.
+
 )DOC");
   }
 };
@@ -74,28 +80,28 @@ class ModifiedHuberLossGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(const framework::InferShapeContext& context) const override {
-    auto* x = context.Input<Tensor>("X");
-    auto* y = context.Input<Tensor>("Y");
-    auto* intermediate_val = context.Input<Tensor>("IntermediateVal");
-    auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* x_grad =
-        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "X must be initialized.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Y must be initialized.");
+    PADDLE_ENFORCE(ctx->HasInput("IntermediateVal"),
+                   "Intermediate value must not be null.");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input(Out@Grad) must not be null.");
 
-    PADDLE_ENFORCE_NOT_NULL(x, "X must be initialized.");
-    PADDLE_ENFORCE_NOT_NULL(y, "Y must be initialized.");
-    PADDLE_ENFORCE_NOT_NULL(intermediate_val,
-                            "Intermediate value must not be null.");
-    PADDLE_ENFORCE_NOT_NULL(out_grad, "Input(Out@Grad) must not be null.");
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
+    auto intermediate_dims = ctx->GetInputDim("IntermediateVal");
+    auto out_grad_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_EQ(
-        intermediate_val->dims(), x->dims(),
+        intermediate_dims, x_dims,
         "The shape of X and intermediate value must be the same.");
-    PADDLE_ENFORCE_EQ(out_grad->dims(), x->dims(),
+    PADDLE_ENFORCE_EQ(out_grad_dims, x_dims,
                       "The shape of Input(Out@Grad) and X must be the same.");
 
-    if (x_grad) x_grad->Resize(x->dims());
+    if (ctx->HasOutput(framework::GradVarName("X"))) {
+      ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+    }
   }
 };
 

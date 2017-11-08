@@ -86,6 +86,14 @@ if(ANDROID OR IOS)
         "Disable MKLDNN when cross-compiling for Android and iOS" FORCE)
     set(WITH_MKLML OFF CACHE STRING
         "Disable MKLML package when cross-compiling for Android and iOS" FORCE)
+
+    # Compile PaddlePaddle mobile inference library
+    if (NOT WITH_C_API)
+        set(WITH_C_API ON CACHE STRING
+            "Always compile the C_API when cross-compiling for Android and iOS" FORCE)
+    endif()
+    set(MOBILE_INFERENCE ON)
+    add_definitions(-DPADDLE_MOBILE_INFERENCE)
 endif()
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
@@ -95,6 +103,12 @@ if (WITH_C_API AND WITH_PYTHON)
   message(WARNING "It is suggest not embedded a python interpreter in Paddle "
     "when using C-API. It will give an unpredictable behavior when using a "
     "different Python interpreter from compiling.")
+endif()
+
+if(MOBILE_INFERENCE)
+    set(THIRD_PARTY_BUILD_TYPE MinSizeRel)
+else()
+    set(THIRD_PARTY_BUILD_TYPE Release)
 endif()
 
 ########################################################################################
@@ -112,7 +126,8 @@ include(external/swig)      # download, build, install swig
 include(external/warpctc)   # download, build, install warpctc
 include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
-include(external/pybind11)    # download pybind11
+include(external/pybind11)  # download pybind11
+include(external/nccl)
 
 include(cudnn)              # set cudnn libraries, must before configure
 include(configure)          # add paddle env configuration
@@ -145,7 +160,7 @@ set(EXTERNAL_LIBS
 if(WITH_GPU)
     list(APPEND EXTERNAL_LIBS ${CUDA_LIBRARIES} ${CUDA_rt_LIBRARY})
     if(NOT WITH_DSO)
-        list(APPEND EXTERNAL_LIBS ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
+        list(APPEND EXTERNAL_LIBS ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${NCCL_LIBRARY})
     endif(NOT WITH_DSO)
 endif(WITH_GPU)
 
@@ -160,9 +175,11 @@ endif(USE_NNPACK)
 
 add_subdirectory(proto)
 
-# "add_subdirectory(go)" should be placed after the following loine,
-# because it depends on paddle/optimizer.
-add_subdirectory(paddle/optimizer)
+if(NOT MOBILE_INFERENCE)
+    # "add_subdirectory(go)" should be placed after the following loine,
+    # because it depends on paddle/optimizer.
+    add_subdirectory(paddle/optimizer)
+endif()
 
 # "add_subdirectory(paddle)" and "add_subdirectory(python)" should be
 # placed after this block, because they depends on it.

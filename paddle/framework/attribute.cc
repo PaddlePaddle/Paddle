@@ -19,77 +19,51 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-template <>
-AttrType AttrTypeID<int>() {
-  return INT;
-}
-template <>
-AttrType AttrTypeID<float>() {
-  return FLOAT;
-}
-template <>
-AttrType AttrTypeID<std::string>() {
-  return STRING;
-}
-template <>
-AttrType AttrTypeID<std::vector<int>>() {
-  return INTS;
-}
-template <>
-AttrType AttrTypeID<std::vector<float>>() {
-  return FLOATS;
-}
-template <>
-AttrType AttrTypeID<std::vector<std::string>>() {
-  return STRINGS;
-}
-template <>
-AttrType AttrTypeID<std::vector<std::pair<int, int>>>() {
-  return INT_PAIRS;
-}
-
 Attribute GetAttrValue(const OpDesc::Attr& attr_desc) {
   switch (attr_desc.type()) {
-    case paddle::framework::AttrType::INT: {
+    case framework::AttrType::BOOLEAN: {
+      return attr_desc.b();
+    }
+    case framework::AttrType::INT: {
       return attr_desc.i();
     }
-    case paddle::framework::AttrType::FLOAT: {
+    case framework::AttrType::FLOAT: {
       return attr_desc.f();
     }
-    case paddle::framework::AttrType::STRING: {
+    case framework::AttrType::STRING: {
       return attr_desc.s();
     }
-    case paddle::framework::AttrType::INTS: {
+    case framework::AttrType::BOOLEANS: {
+      std::vector<bool> val(attr_desc.bools_size());
+      for (int i = 0; i < attr_desc.bools_size(); ++i) {
+        val[i] = attr_desc.bools(i);
+      }
+      return val;
+    }
+    case framework::AttrType::INTS: {
       std::vector<int> val(attr_desc.ints_size());
       for (int i = 0; i < attr_desc.ints_size(); ++i) {
         val[i] = attr_desc.ints(i);
       }
       return val;
     }
-    case paddle::framework::AttrType::FLOATS: {
+    case framework::AttrType::FLOATS: {
       std::vector<float> val(attr_desc.floats_size());
       for (int i = 0; i < attr_desc.floats_size(); ++i) {
         val[i] = attr_desc.floats(i);
       }
       return val;
     }
-    case paddle::framework::AttrType::STRINGS: {
+    case framework::AttrType::STRINGS: {
       std::vector<std::string> val(attr_desc.strings_size());
       for (int i = 0; i < attr_desc.strings_size(); ++i) {
         val[i] = attr_desc.strings(i);
       }
       return val;
     }
-    case paddle::framework::AttrType::INT_PAIRS: {
-      std::vector<std::pair<int, int>> val(attr_desc.int_pairs_size());
-      for (int i = 0; i < attr_desc.int_pairs_size(); ++i) {
-        val[i].first = attr_desc.int_pairs(i).first();
-        val[i].second = attr_desc.int_pairs(i).second();
-      }
-      return val;
-    }
+    default:
+      PADDLE_THROW("Unsupport attr type %d", attr_desc.type());
   }
-  PADDLE_ENFORCE(false, "Unknown OpDesc::AttrDesc::type !");
   return boost::blank();
 }
 

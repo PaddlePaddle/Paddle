@@ -19,15 +19,15 @@
 
 namespace paddle {
 namespace operators {
-template <typename Place, typename T, typename AttrType = T>
-class ScaleKernel : public framework::OpKernel {
+template <typename Place, typename T>
+class ScaleKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& context) const {
     auto* tensor = context.Output<framework::Tensor>("Out");
     auto* in = context.Input<framework::Tensor>("X");
     tensor->mutable_data<T>(in->place());
 
-    auto scale = static_cast<T>(context.Attr<AttrType>("scale"));
+    auto scale = static_cast<T>(context.Attr<float>("scale"));
 
     auto eigen_out = framework::EigenVector<T>::Flatten(*tensor);
     auto eigen_in = framework::EigenVector<T>::Flatten(*in);

@@ -54,9 +54,9 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   MulOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The first input of mul op");
-    AddInput("Y", "The second input of mul op");
-    AddOutput("Out", "The output of mul op");
+    AddInput("X", "(Tensor), 2D tensor of size (M x K)");
+    AddInput("Y", "(Tensor), 2D tensor of size (K x N)");
+    AddOutput("Out", "(Tensor), 2D tensor of size (M x N)");
     AddComment(R"DOC(
 Two Element Mul Operator.
 The equation is: Out = X * Y
@@ -72,7 +72,7 @@ The equation is: Out = X * Y
 
 构造函数里通过`AddInput`添加输入参数，通过`AddOutput`添加输出参数，通过`AddComment`添加Op的注释。这些函数会将对应内容添加到`OpProto`中。
 
-上面的代码在`MulOp`中添加两个输入`X`和`Y`，添加了一个输出`Out`，并解释了各自含义，命名请遵守命名规范。
+上面的代码在`MulOp`中添加两个输入`X`和`Y`，添加了一个输出`Out`，并解释了各自含义，命名请遵守[命名规范](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/name_convention.md)。
 
 
 再以[`ScaleOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/scale_op.cc#L37)为例：
@@ -206,7 +206,7 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
 
     - `REGISTER_OP` ： 注册`ops::MulOp`类，类型名为`mul`，该类的`ProtoMaker`为`ops::MulOpMaker`，注册`ops::MulOpGrad`，类型名为`mul_grad`。
     - `REGISTER_OP_WITHOUT_GRADIENT` ： 用于注册没有反向的Op。
-    - `REGISTER_OP_CPU_KERNEL` ：注册`ops::MulKernel`类，并特化模板参数为`paddle::platform::CPUPlace`和`float`类型，同理，注册`ops::MulKernel`类。
+    - `REGISTER_OP_CPU_KERNEL` ：注册`ops::MulKernel`类，并特化模板参数为`paddle::platform::CPUPlace`和`float`类型，同理，注册`ops::MulGradKernel`类。
 
 
 - 在 `.cu`文件中注册GPU Kernel。
@@ -285,41 +285,27 @@ class TestMulGradOp(GradientChecker):
             'Y': np.random.random((84, 100)).astype("float32")
         }
 
-    def test_cpu_gpu_compare(self):
-        self.compare_grad(self.op, self.inputs)
-
-    def test_normal(self):
+    def test_check_grad_normal(self):
         # mul op will enlarge the relative error
-        self.check_grad(
-            self.op, self.inputs, ["X", "Y"], "Out", max_relative_error=0.5)
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.5)
 
-    def test_ignore_x(self):
+    def test_check_grad_ingore_x(self):
         self.check_grad(
-            self.op,
-            self.inputs, ["Y"],
-            "Out",
-            max_relative_error=0.5,
-            no_grad_set={"X"})
+            ['Y'], 'Out', max_relative_error=0.5, no_grad_set=set("X"))
 
-    def test_ignore_y(self):
+    def test_check_grad_ingore_y(self):
         self.check_grad(
-            self.op,
-            self.inputs, ["X"],
-            "Out",
-            max_relative_error=0.5,
-            no_grad_set={"Y"})
+            ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
 ```
 
 下面解释代码中一些关键的地方:
 
 - 调用`create_op("mul")`创建反向Op对应的前向Op。
-- 调用`compare_grad`函数对比CPU、GPU计算结果。
-- `test_normal`中调用`check_grad`使用数值法检测梯度正确性和稳定性。
-  - 第一个参数`self.op` : 前向Op。
-  - 第二个参数`self.inputs` : 输入词典，词典的Key和`ProtoMaker`定义保持一致。
-  - 第三个参数`["X", "Y"]` : 指定对输入变量`X`、`Y`做梯度检测。
-  - 第四个参数`"Out"` : 指定前向网络最终的输出目标变量`Out`
-- `test_ignore_x`和`test_ignore_y`分支用来测试只需要计算一个输入梯度的情况。
+- `test_check_grad_normal`中调用`check_grad`使用数值法检测梯度正确性和稳定性。
+  - 第一个参数`["X", "Y"]` : 指定对输入变量`X`、`Y`做梯度检测。
+  - 第二个参数`"Out"` : 指定前向网络最终的输出目标变量`Out`。
+  - 第三个参数`max_relative_error`：指定检测梯度时能容忍的最大错误值。
+- `test_check_grad_ingore_x`和`test_check_grad_ingore_y`分支用来测试只需要计算一个输入梯度的情况。
 
 
 ### 编译和执行单元测试
