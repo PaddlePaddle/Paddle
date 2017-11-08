@@ -1,4 +1,4 @@
-from setuptools import setup, Distribution
+from setuptools import setup, Distribution, Extension
 class BinaryDistribution(Distribution):
     def has_ext_modules(foo):
         return True
@@ -41,6 +41,7 @@ setup(name='paddlepaddle',
       description='Parallel Distributed Deep Learning',
       install_requires=setup_requires,
       packages=packages,
+      ext_modules=[Extension('_foo', ['stub.cc'])],
       package_data={
         'paddle.v2.master': ['libpaddle_master.so'],
         'paddle.v2.framework': ['core.so'],
@@ -54,6 +55,5 @@ setup(name='paddlepaddle',
           'py_paddle': '${PADDLE_SOURCE_DIR}/paddle/py_paddle'
       },
       scripts=paddle_bins,
-      distclass=BinaryDistribution,
       data_files=[(paddle_rt_lib_dir, paddle_rt_libs)]
 )

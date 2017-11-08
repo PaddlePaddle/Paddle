@@ -244,11 +244,6 @@ void gpu_lstm_backward(const platform::DeviceContext& context, Op op,
         op, value, grad, frameSize, batchSize, active_node, active_gate,
         active_state);
   }
-
-  cudaStreamSynchronize(stream);
-  // TODO(qingqing): Add cuda error check for each kernel.
-  cudaError_t err = cudaGetLastError();
-  PADDLE_ENFORCE(err, cudaGetErrorString(err));
 }
 
 }  // namespace detail

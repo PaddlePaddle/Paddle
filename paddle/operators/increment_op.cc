@@ -31,7 +31,6 @@ class IncrementOp : public framework::OperatorWithKernel {
   }
 };
 
-template <typename AttrType>
 class IncrementOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   IncrementOpMaker(framework::OpProto *proto,
@@ -39,14 +38,18 @@ class IncrementOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) The input tensor of increment operator");
     AddOutput("Out", "(Tensor) The output tensor of increment operator.");
-    AddComment(R"DOC(Increment operator
-
-The equation is: Out = X + step
-)DOC");
-    AddAttr<AttrType>("step",
-                      "The step size by which the "
-                      "input tensor will be incremented.")
+    AddAttr<float>("step",
+                   "(float, default 1.0) "
+                   "The step size by which the "
+                   "input tensor will be incremented.")
         .SetDefault(1.0);
+    AddComment(R"DOC(
+Increment Operator.
+
+The equation is: 
+$$Out = X + step$$
+
+)DOC");
   }
 };
 
@@ -69,7 +72,10 @@ class IncrementGradOpMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(increment, ops::IncrementOp, ops::IncrementOpMaker<float>,
+REGISTER_OPERATOR(increment, ops::IncrementOp, ops::IncrementOpMaker,
                   ops::IncrementGradOpMaker);
-REGISTER_OP_CPU_KERNEL(increment,
-                       ops::IncrementKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    increment, ops::IncrementKernel<paddle::platform::CPUPlace, float>,
+    ops::IncrementKernel<paddle::platform::CPUPlace, double>,
+    ops::IncrementKernel<paddle::platform::CPUPlace, int>,
+    ops::IncrementKernel<paddle::platform::CPUPlace, int64_t>);
