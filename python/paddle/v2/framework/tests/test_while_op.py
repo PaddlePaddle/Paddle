@@ -42,7 +42,7 @@ class TestWhileOp(unittest.TestCase):
             layers.array_write(result, i=i, array=out_array)
             layers.less_than(x=i, y=array_len, cond=cond)
 
-        sum_result = layers.array_read(result, i=array_len)
+        sum_result = layers.array_read(out_array, i=array_len)
 
         cpu = core.CPUPlace()
         exe = Executor(cpu)

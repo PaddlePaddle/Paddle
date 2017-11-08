@@ -801,7 +801,7 @@ class WhileGuard(BlockGuard):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
-            return False
+            raise exc_val
         self.while_op.status = While.AFTER_WHILE_BLOCK
         self.while_op.complete()
         return super(WhileGuard, self).__exit__(exc_type, exc_val, exc_tb)
@@ -861,7 +861,7 @@ class While(object):
             },
             outputs={'Out': out_vars,
                      'StepScopes': [step_scope]},
-            attrs={'step_block': [while_block]})
+            attrs={'step_block': while_block})
 
 
 def lstm(x,
