@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/math/selected_rows_functor.h"
+#include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/operators/math/math_function.h"
 
@@ -191,4 +192,22 @@ TEST(selected_rows_functor, cpu_add_to) {
   EXPECT_EQ(tensor1_data[7 * row_numel + 3], 6.0);
   // row9: 2.0 + 3.0
   EXPECT_EQ(tensor1_data[9 * row_numel + 6], 5.0);
+}
+
+int main(int argc, char** argv) {
+  std::vector<const char*> new_argv;
+  std::string gflags_env;
+
+  new_argv.push_back(argv[0]);
+#ifdef PADDLE_WITH_CDUA
+  new_argv.push_back(
+      "--tryfromenv=fraction_of_gpu_memory_to_use,use_pinned_memory");
+#else
+  new_argv.push_back("--fromenv=use_pinned_memory");
+#endif
+  int new_argc = 2;
+  char** new_argv_address = const_cast<char**>(new_argv.data());
+  google::ParseCommandLineFlags(&new_argc, &new_argv_address, true);
+  testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
 }
