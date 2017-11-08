@@ -62,6 +62,11 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(pool2d);\n")
     endif()
 
+    if ("${TARGET}" STREQUAL "compare_op")
+        set(pybind_flag 1)
+        file(APPEND ${pybind_file} "USE_OP(less_than);\nUSE_OP(equal);\n")
+    endif()
+
     # pool_with_index_op contains several operators
     if ("${TARGET}" STREQUAL "pool_with_index_op")
         set(pybind_flag 1)
@@ -165,6 +170,8 @@ set(DEPS_OPS
     sequence_conv_op
     sequence_pool_op
     lod_rank_table_op
+    lod_tensor_to_array_op
+    array_to_lod_tensor_op
     lstm_op
     tensor_array_read_write_op
     gru_op)
@@ -177,6 +184,8 @@ op_library(sum_op DEPS net_op selected_rows_functor)
 op_library(pool_op DEPS pooling)
 op_library(pool_with_index_op DEPS pooling)
 op_library(lod_rank_table_op SRCS lod_rank_table_op.cc DEPS lod_rank_table)
+op_library(lod_tensor_to_array_op SRCS lod_tensor_to_array_op.cc DEPS lod_rank_table_op)
+op_library(array_to_lod_tensor_op SRCS array_to_lod_tensor_op.cc DEPS lod_rank_table_op)
 op_library(tensor_array_read_write_op SRCS tensor_array_read_write_op.cc)
 if(WITH_GPU)
 op_library(nccl_op DEPS nccl_common)
