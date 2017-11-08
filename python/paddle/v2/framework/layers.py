@@ -134,9 +134,7 @@ def _create_op_func_(op_type):
     o_name = not_intermediate_outputs[0].name
     intermediate_output_names = [output.name for output in intermediate_outputs]
 
-    def func(**kwargs):
-        helper = LayerHelper(op_type, **kwargs)
-        inputs = dict()
+    def infer_and_check_data_type(op_proto, **kwargs):
         dtype = None
         for ipt in op_proto.inputs:
             name = _convert_(ipt.name)
@@ -153,6 +151,20 @@ def _create_op_func_(op_type):
                 elif dtype != each.data_type:
                     raise ValueError(
                         "operator {0} must input same dtype".format(op_type))
+
+        return dtype
+
+    def func(**kwargs):
+        helper = LayerHelper(op_type, **kwargs)
+
+        dtype = infer_and_check_data_type(op_proto, **kwargs)
+
+        inputs = dict()
+        for ipt in op_proto.inputs:
+            name = _convert_(ipt.name)
+            val = kwargs.pop(name, [])
+            if not isinstance(val, list) and not isinstance(val, tuple):
+                val = [val]
             inputs[ipt.name] = val
 
         outputs = dict()
@@ -178,6 +190,20 @@ _create_op_func_('reshape')
 _create_op_func_('elementwise_add')
 _create_op_func_('sigmoid')
 _create_op_func_('scale')
+_create_op_func_('reshape')
+_create_op_func_('transpose')
+
+
+def fill_constant(data_type, shape, value=None, program=None):
+    helper = LayerHelper('fill_constant', **locals())
+    out = helper.create_tmp_variable(dtype=data_type)
+    helper.append_op(
+        type='fill_constant',
+        outputs={'Out': [out]},
+        attrs={'data_type': data_type,
+               'shape': shape,
+               'value': value})
+    return out
 
 
 def cast(x, data_type, main_program=None):
@@ -760,6 +786,46 @@ class StaticRNN(object):
                 'states': memories,
                 'step_block': rnn_block
             })
+
+
+def lstm(x,
+         c_pre_init,
+         hidden_dim,
+         forget_bias=None,
+         main_program=None,
+         startup_program=None):
+    helper = LayerHelper('lstm_unit', **locals())
+    rnn = StaticRNN()
+    with rnn.step():
+        c_pre = rnn.memory(init=c_pre_init)
+        x_t = rnn.step_input(x)
+
+        before_fc = concat(
+            input=[x_t, c_pre],
+            axis=1,
+            main_program=main_program,
+            startup_program=startup_program)
+        after_fc = fc(input=before_fc,
+                      size=hidden_dim * 4,
+                      main_program=main_program,
+                      startup_program=startup_program)
+
+        data_type = x.data_type
+        c = helper.create_tmp_variable(data_type)
+        h = helper.create_tmp_variable(data_type)
+
+        helper.append_op(
+            type='lstm_unit',
+            inputs={"X": after_fc,
+                    "C_prev": c_pre},
+            outputs={"C": c,
+                     "H": h},
+            attrs={"forget_bias": forget_bias})
+
+        rnn.update_memory(c_pre, c)
+        rnn.output(h)
+
+    return rnn()
 
 
 def lod_rank_table(x, level=0, main_program=None):
