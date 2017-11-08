@@ -2358,11 +2358,11 @@ TEST(Layer, ScaleShiftLayer) {
   }
 }
 
-TEST(Layer, MulValueLayer) {
+TEST(Layer, ScaleSubRegionLayer) {
   const size_t batchSize = 64;
   const size_t size = 4096;
   TestConfig config;
-  config.layerConfig.set_type("mul_value");
+  config.layerConfig.set_type("scale_sub_region");
   config.inputDefs.push_back({INPUT_DATA, "input", size, 0});
   MatrixPtr indicesV = Matrix::create(batchSize, 6, false, false);
   auto* data = indicesV->getData();
@@ -2376,16 +2376,17 @@ TEST(Layer, MulValueLayer) {
   }
   config.inputDefs.push_back({INPUT_SELF_DEFINE_DATA, "indices", indicesV, {}});
   LayerInputConfig* input = config.layerConfig.add_inputs();
-  MulValueConfig* mulValueConf = input->mutable_mul_value_conf();
-  ImageConfig* imgConf = mulValueConf->mutable_image_conf();
+  ScaleSubRegionConfig* scaleSubRegionConf =
+      input->mutable_scale_sub_region_conf();
+  ImageConfig* imgConf = scaleSubRegionConf->mutable_image_conf();
   imgConf->set_img_size(32);
   imgConf->set_img_size_y(32);
   imgConf->set_channels(4);
-  mulValueConf->set_value(1.0);
+  scaleSubRegionConf->set_value(2.0);
   config.layerConfig.add_inputs();
 
   for (auto useGpu : {false, true}) {
-    testLayerGrad(config, "mul_value", batchSize, false, useGpu, false);
+    testLayerGrad(config, "scale_sub_region", batchSize, false, useGpu, false);
   }
 }
 

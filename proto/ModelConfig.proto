@@ -321,7 +321,7 @@ message ClipConfig {
   required double max = 2;
 }
 
-message MulValueConfig {
+message ScaleSubRegionConfig {
   required ImageConfig image_conf = 1;
   required float value = 2;
 }
@@ -347,7 +347,7 @@ message LayerInputConfig {
   optional MultiBoxLossConfig multibox_loss_conf = 16;
   optional DetectionOutputConfig detection_output_conf = 17;
   optional ClipConfig clip_conf = 18;
-  optional MulValueConfig mul_value_conf = 19;
+  optional ScaleSubRegionConfig scale_sub_region_conf = 19;
 }
 
 message LayerConfig {
