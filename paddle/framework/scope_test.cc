@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/scope.h"
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 
 using paddle::framework::Scope;
@@ -23,8 +24,8 @@ TEST(Scope, VarsShadowing) {
   Scope& ss1 = s.NewScope();
   Scope& ss2 = s.NewScope();
 
-  Variable* v0 = s.NewVar("a");
-  Variable* v1 = ss1.NewVar("a");
+  Variable* v0 = s.Var("a");
+  Variable* v1 = ss1.Var("a");
 
   EXPECT_NE(v0, v1);
 
@@ -40,7 +41,7 @@ TEST(Scope, FindVar) {
   EXPECT_EQ(nullptr, s.FindVar("a"));
   EXPECT_EQ(nullptr, ss.FindVar("a"));
 
-  ss.NewVar("a");
+  ss.Var("a");
 
   EXPECT_EQ(nullptr, s.FindVar("a"));
   EXPECT_NE(nullptr, ss.FindVar("a"));
@@ -49,8 +50,22 @@ TEST(Scope, FindVar) {
 TEST(Scope, FindScope) {
   Scope s;
   Scope& ss = s.NewScope();
-  Variable* v = s.NewVar("a");
+  Variable* v = s.Var("a");
 
   EXPECT_EQ(&s, s.FindScope(v));
   EXPECT_EQ(&s, ss.FindScope(v));
+}
+
+TEST(Scope, GetAllNames) {
+  Scope s;
+  Variable* v = s.Var("a");
+  EXPECT_EQ(&s, s.FindScope(v));
+
+  std::vector<std::string> ans = s.GetAllNames();
+  std::string str;
+  for (auto& var : ans) {
+    str += var;
+  }
+
+  EXPECT_STREQ("a", str.c_str());
 }

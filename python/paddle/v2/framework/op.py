@@ -89,12 +89,16 @@ class OpDescCreationMethod(object):
                     new_attr.f = user_defined_attr
                 elif attr.type == framework_pb2.STRING:
                     new_attr.s = user_defined_attr
+                elif attr.type == framework_pb2.BOOLEAN:
+                    new_attr.b = user_defined_attr
                 elif attr.type == framework_pb2.INTS:
                     new_attr.ints.extend(user_defined_attr)
                 elif attr.type == framework_pb2.FLOATS:
                     new_attr.floats.extend(user_defined_attr)
                 elif attr.type == framework_pb2.STRINGS:
                     new_attr.strings.extend(user_defined_attr)
+                elif attr.type == framework_pb2.BOOLEANS:
+                    new_attr.bools.extend(user_defined_attr)
                 elif attr.type == framework_pb2.INT_PAIRS:
                     for p in user_defined_attr:
                         pair = new_attr.int_pairs.add()
@@ -215,6 +219,27 @@ class __RecurrentOp__(object):
         return core.RecurrentOp.create(proto.SerializeToString())
 
 
+class __DynamicRecurrentOp__(object):
+    __proto__ = None
+    type = "dynamic_recurrent"
+
+    def __init__(self):
+        # cache recurrent_op's proto
+        if self.__proto__ is None:
+            for op_proto in get_all_op_protos():
+                if op_proto.type == self.type:
+                    self.__proto__ = op_proto
+
+    def __call__(self, *args, **kwargs):
+        if self.type not in args and "type" not in kwargs:
+            kwargs["type"] = self.type
+        # create proto
+        create_method = OpDescCreationMethod(self.__proto__)
+        proto = create_method(*args, **kwargs)
+        # create rnnop
+        return core.DynamicRecurrentOp.create(proto.SerializeToString())
+
+
 class __CondOp__(object):
     __proto__ = None
     type = "cond"
@@ -238,4 +263,5 @@ class __CondOp__(object):
 
 Operator = OperatorFactory()  # The default global factory
 RecurrentOp = __RecurrentOp__()
+DynamicRecurrentOp = __DynamicRecurrentOp__()
 CondOp = __CondOp__()

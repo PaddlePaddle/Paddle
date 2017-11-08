@@ -33,7 +33,7 @@ namespace memory {
 template <typename DstPlace, typename SrcPlace>
 void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num);
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 
 /**
  * \brief   Copy memory from one place to another place.
@@ -53,7 +53,6 @@ template <typename DstPlace, typename SrcPlace>
 void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num,
           cudaStream_t stream);
 
-#endif  // PADDLE_ONLY_CPU
-
+#endif
 }  // namespace memory
 }  // namespace paddle

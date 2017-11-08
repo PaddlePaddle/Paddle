@@ -117,7 +117,7 @@ int64_t DDim::operator[](int idx) const {
   return boost::apply_visitor(DynamicConstIndexer(idx), var);
 }
 
-int64_t DDim::size() const { return arity(*this); }
+int DDim::size() const { return arity(*this); }
 
 bool DDim::operator==(DDim d) const {
   if (var.which() != d.getVar().which()) {
@@ -192,6 +192,14 @@ std::vector<int64_t> vectorize(const DDim& ddim) {
   std::vector<int64_t> result;
   VectorizeVisitor visitor(result);
   boost::apply_visitor(visitor, ddim);
+  return result;
+}
+
+// NOTE: framework::vectorize converts to type int64_t
+//       which does not fit cudnn inputs.
+std::vector<int> vectorize2int(const DDim& ddim) {
+  std::vector<int64_t> temp = vectorize(ddim);
+  std::vector<int> result(temp.begin(), temp.end());
   return result;
 }
 
@@ -292,5 +300,13 @@ DDim flatten_to_2d(const DDim& src, int num_col_dims) {
 
 DDim flatten_to_1d(const DDim& src) { return make_ddim({product(src)}); }
 
+DDim stride(const DDim& ddim) {
+  std::vector<int64_t> strides(ddim.size());
+  strides[ddim.size() - 1] = 1;
+  for (int i = ddim.size() - 2; i >= 0; --i) {
+    strides[i] = strides[i + 1] * ddim[i + 1];
+  }
+  return framework::make_ddim(strides);
+}
 }  // namespace framework
 }  // namespace paddle

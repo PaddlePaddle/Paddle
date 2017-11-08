@@ -24,7 +24,7 @@ TEST(GemmConv, NaiveConv) {
       "NaiveConv-CPU", "GemmConv-CPU", forward);
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 TEST(GemmConv, Forward) {
   Convolution<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU>(
       "GemmConv-CPU", "GemmConv-GPU", forward);

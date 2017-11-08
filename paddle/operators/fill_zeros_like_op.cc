@@ -21,17 +21,13 @@ class FillZerosLikeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(
-        ctx.InputVar("Src"),
-        "Input(Src) of FillZerosLikeOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(
-        ctx.OutputVar("Dst"),
-        "Output(Dst) of FillZerosLikeOp should not be null.");
-
-    ctx.Output<framework::LoDTensor>("Dst")->Resize(
-        ctx.Input<framework::Tensor>("Src")->dims());
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of FillZerosLikeOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Y"),
+                   "Output(Y) of FillZerosLikeOp should not be null.");
+    ctx->SetOutputDim("Y", ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", /*->*/ "Y");
   }
 };
 
@@ -40,12 +36,14 @@ class FillZerosLikeOpMaker : public framework::OpProtoAndCheckerMaker {
   FillZerosLikeOpMaker(framework::OpProto *proto,
                        framework::OpAttrChecker *op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("Src", "The input of fill-zeros-like op.");
-    AddOutput("Dst", "The varibale will be filled up with zeros.");
+    AddInput("X", "The input of fill-zeros-like op.");
+    AddOutput("Y", "The variable will be filled up with zeros.");
     AddComment(R"DOC(
-Fill up a vriable with zeros.
+FillZerosLike Operator.
 
-The output will have the same size with input.
+Fill up a variable with zeros.
+The output will have the same size as the input.
+
 )DOC");
   }
 };

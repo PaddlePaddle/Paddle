@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 syntax = "proto2";
+option optimize_for = LITE_RUNTIME;
 package paddle.framework;
 
 enum AttrType {
@@ -22,13 +23,10 @@ enum AttrType {
   INTS = 3;
   FLOATS = 4;
   STRINGS = 5;
-  INT_PAIRS = 6;
+  BOOLEAN = 6;
+  BOOLEANS = 7;
+  BLOCK = 8;
 }
-
-message IntPair {
-  required int32 first = 1;
-  required int32 second = 2;
-};
 
 // OpDesc describes an instance of a C++ framework::OperatorBase
 // derived class type.
@@ -43,7 +41,9 @@ message OpDesc {
     repeated int32 ints = 6;
     repeated float floats = 7;
     repeated string strings = 8;
-    repeated IntPair int_pairs = 9;
+    optional bool b = 10;
+    repeated bool bools = 11;
+    optional int32 block_idx = 12;
   };
 
   message Var {
@@ -55,6 +55,7 @@ message OpDesc {
   repeated Var inputs = 1;
   repeated Var outputs = 2;
   repeated Attr attrs = 4;
+  optional bool is_target = 5 [ default = false ];
 };
 
 // OpProto describes a C++ framework::OperatorBase derived class.
@@ -67,7 +68,7 @@ message OpProto {
 
     optional bool duplicable = 3 [ default = false ];
     optional bool intermediate = 4 [ default = false ];
-    optional bool not_in_gradient = 5 [ default = false ];
+    optional bool dispensable = 5 [ default = false ];
   }
 
   // AttrProto describes the C++ type Attribute.
@@ -98,13 +99,47 @@ enum DataType {
   FP64 = 6;
 }
 
-message LoDTensorDesc {
+message TensorDesc {
   required DataType data_type = 1;
-  repeated int32 dims = 2; // [UNK, 640, 480] is saved as [-1, 640, 480]
-  optional int32 lod_level = 3 [ default = 0 ];
+  repeated int64 dims = 2; // [UNK, 640, 480] is saved as [-1, 640, 480]
+}
+
+message LoDTensorDesc {
+  required TensorDesc tensor = 1;
+  optional int32 lod_level = 2 [ default = 0 ];
+}
+
+message LoDTensorArrayDesc {
+  required TensorDesc tensor = 1;
+  optional int32 lod_level = 2 [ default = 0 ];
 }
 
 message VarDesc {
+  enum VarType {
+    LOD_TENSOR = 1;
+    SELECTED_ROWS = 2;
+    FEED_MINIBATCH = 3;
+    FETCH_LIST = 4;
+    STEP_SCOPES = 5;
+    LOD_RANK_TABLE = 6;
+    LOD_TENSOR_ARRAY = 7;
+  }
   required string name = 1;
-  optional LoDTensorDesc lod_tensor = 2;
+  required VarType type = 2;
+  optional LoDTensorDesc lod_tensor = 3;
+  optional TensorDesc selected_rows = 4;
+  optional LoDTensorArrayDesc tensor_array = 6;
+  optional bool persistable = 5 [ default = false ];
 }
+
+message BlockDesc {
+  required int32 idx = 1;
+  required int32 parent_idx = 2;
+  repeated VarDesc vars = 3;
+  repeated OpDesc ops = 4;
+}
+
+// Please refer to
+// https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/program.md
+// for more details.
+message ProgramDesc { repeated BlockDesc blocks = 1; }

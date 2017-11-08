@@ -25,7 +25,10 @@ class TestSmoothL1LossOp1(OpTest):
         diff = self.inputs['X'] - self.inputs['Y']
         loss = np.vectorize(smooth_l1_loss_forward)(diff, sigma2).sum(1)
         loss = loss.reshape((dims[0], 1))
-        self.outputs = {'Diff': diff, 'Out': loss}
+        self.outputs = {
+            'Diff': diff.astype('float32'),
+            'Out': loss.astype('float32')
+        }
 
     def test_check_output(self):
         self.check_output()
@@ -60,7 +63,10 @@ class TestSmoothL1LossOp2(OpTest):
         loss = np.vectorize(smooth_l1_loss_forward)(diff, sigma2)
         loss = loss * self.inputs['OutsideWeight']
         loss = loss.sum(1).reshape((dims[0], 1))
-        self.outputs = {'Diff': diff, 'Out': loss}
+        self.outputs = {
+            'Diff': diff.astype('float32'),
+            'Out': loss.astype('float32')
+        }
 
     def test_check_output(self):
         self.check_output()

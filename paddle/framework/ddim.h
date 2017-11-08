@@ -71,7 +71,7 @@ struct DDim {
 
   DDim operator*(DDim d) const;
 
-  int64_t size() const;
+  int size() const;
 };
 
 /**
@@ -93,6 +93,7 @@ int64_t get(const DDim& dim, int idx);
 void set(DDim& dim, int idx, int val);
 
 std::vector<int64_t> vectorize(const DDim& ddim);
+std::vector<int> vectorize2int(const DDim& ddim);
 
 int64_t product(const DDim& ddim);
 
@@ -121,6 +122,7 @@ DDim flatten_to_2d(const DDim& src, int num_col_dims);
 
 DDim flatten_to_1d(const DDim& src);
 
+DDim stride(const DDim& ddim);
 }  // namespace framework
 }  // namespace paddle
 
