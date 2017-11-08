@@ -17,7 +17,7 @@
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/platform/place.h"
 
-TEST(TrieConcatOp, RemoveFromEnd) {
+TEST(TrieConcatOp, DeleteBeamNode) {
   using BeamNode = paddle::operators::BeamNode;
 
   BeamNode* root = new BeamNode(0, 0);
@@ -29,8 +29,8 @@ TEST(TrieConcatOp, RemoveFromEnd) {
   b2->AppendTo(root);
   b3->AppendTo(b1);
 
-  BeamNode::RemoveFromEnd(b3);
-  BeamNode::RemoveFromEnd(b2);
+  delete b3;
+  delete b2;
 }
 
 TEST(TrieConcatOp, AppendBeamNodeToResult) {
@@ -189,9 +189,9 @@ TEST(TrieConcatOp, PackTwoBeamStepOut) {
   ASSERT_EQ(vec2.size(), 2UL);
   for (size_t i = 0; i < 2; ++i) {
     ASSERT_EQ(vec2.at(i)->word_id_, static_cast<int64_t>(i + 4));
-    ASSERT_EQ(vec2.at(i)->father_->word_id_, static_cast<int64_t>(2));
+    ASSERT_EQ(vec2.at(i)->parent_->word_id_, static_cast<int64_t>(2));
     ASSERT_EQ(vec2.at(i)->score_, static_cast<float>(i + 4));
-    ASSERT_EQ(vec2.at(i)->father_->score_, static_cast<float>(2));
+    ASSERT_EQ(vec2.at(i)->parent_->score_, static_cast<float>(2));
   }
   ASSERT_EQ(result_id_2.size(), 0UL);
   ASSERT_EQ(result_score_2.size(), 0UL);
