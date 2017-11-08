@@ -44,8 +44,8 @@ def fc(input,
     The function also applies an activation (non-linearity) on top of the
     output, if activation is passed in the input.
 
-    All the input variables are passed in as local variables to the
-    LayerHelper function.
+    All the input variables pf this function are passed in as local variables
+    to the LayerHelper constructor.
 
     """
     helper = LayerHelper('fc', **locals())
