@@ -66,7 +66,7 @@ class LoDRankTableInferVarType : public framework::VarTypeInference {
   void operator()(const framework::OpDescBind &op_desc,
                   framework::BlockDescBind *block) const override {
     for (auto &o : op_desc.Output("Out")) {
-      block->Var(o)->SetType(framework::VarDesc::LOD_RANK_TABLE);
+      block->FindVarRecursive(o)->SetType(framework::VarDesc::LOD_RANK_TABLE);
     }
   }
 };

@@ -801,7 +801,7 @@ class WhileGuard(BlockGuard):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
-            raise exc_val
+            return False
         self.while_op.status = While.AFTER_WHILE_BLOCK
         self.while_op.complete()
         return super(WhileGuard, self).__exit__(exc_type, exc_val, exc_tb)
