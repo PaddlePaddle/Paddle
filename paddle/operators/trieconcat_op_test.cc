@@ -229,7 +229,7 @@ void GenerateExample(const std::vector<size_t>& level_0,
   tensor_prob.Resize({static_cast<int64_t>(data.size())});
   // malloc memory
   float* prob_ptr = tensor_prob.mutable_data<float>(place);
-  for (size_t i = 0; i < 6; ++i) {
+  for (size_t i = 0; i < data.size(); ++i) {
     prob_ptr[i] = static_cast<float>(data.at(i));
   }
 

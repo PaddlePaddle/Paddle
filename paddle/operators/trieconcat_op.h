@@ -134,7 +134,7 @@ struct BeamHelpter {
     out->mutable_lod()->push_back(std::vector<size_t>{0});
     out->mutable_lod()->push_back(std::vector<size_t>{0});
     out->Resize({kInitLength});
-    out->mutable_data<T>(out->place());
+    out->mutable_data<T>(paddle::platform::CPUPlace());
   }
 
   void InitFirstStepBeamNodes(
@@ -171,13 +171,10 @@ struct BeamHelpter {
     PADDLE_ENFORCE_EQ(step_ids.size(), step_probs.size(),
                       "step_ids and step_probs should be the same");
     size_t step_num = step_ids.size();
-    size_t source_num = step_ids.at(0).lod().at(1).size() - 1;
+    size_t source_num = step_ids.at(0).lod().at(kSourceLevel).size() - 1;
 
-    std::cout << "step_num"
-              << ":" << step_num << std::endl;
-
-    InitOutputLodTensor<int64_t>(id_tensor);
-    InitOutputLodTensor<float>(prob_tensor);
+    //    InitOutputLodTensor<int64_t>(id_tensor);
+    //    InitOutputLodTensor<float>(prob_tensor);
 
     std::unordered_map<size_t, std::vector<BeamNode*>> batch_beam_nodes;
     InitFirstStepBeamNodes(step_ids.at(0), step_probs.at(0), &batch_beam_nodes);
@@ -185,10 +182,16 @@ struct BeamHelpter {
     // pack all steps for one batch first, then another batch
     for (size_t source_idx = 0; source_idx < source_num; ++source_idx) {
       for (size_t step_id = 1; step_id < step_num; ++step_id) {
-        std::vector<BeamNode*> result =
-            PackTwoBeamStepOut(source_idx, batch_beam_nodes.at(source_idx),
-                               step_ids.at(step_id), step_probs.at(step_id));
-        batch_beam_nodes[source_idx] = result;
+        auto prefixes = batch_beam_nodes.at(source_idx);
+        if (prefixes.size() > 0UL) {
+          std::vector<BeamNode*> result =
+              PackTwoBeamStepOut(source_idx, prefixes, step_ids.at(step_id),
+                                 step_probs.at(step_id));
+          batch_beam_nodes[source_idx] = result;
+        } else {
+          VLOG(3) << "source_idx: " << source_idx << " step_id: " << step_id
+                  << " have no more candidate";
+        }
       }
 
       // append last beam_node to result
@@ -196,7 +199,6 @@ struct BeamHelpter {
         AppendBeamNodeToResult(source_idx, beam_node);
         RemoveFromEnd(beam_node);
       }
-      batch_beam_nodes.clear();
     }
   }
 
