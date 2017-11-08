@@ -16,13 +16,6 @@ limitations under the License. */
 #include "FunctionTest.h"
 
 namespace paddle {
-/*
-  for (size_t numSamples : {5, 32}) {
-    for (size_t channels : {5, 5, 32}) {
-      for (size_t imgSizeH : {5, 33, 100}) {
-        for (size_t imgSizeW : {5, 32, 96}) {
-          for (real value : {-0.5, 0.0, 0.5}) {
-*/
 
 TEST(MulValue, real) {
   for (size_t numSamples : {5, 32}) {
@@ -46,7 +39,7 @@ TEST(MulValue, real) {
                 compare.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape));
                 compare.addInputs(BufferArg(VALUE_TYPE_FLOAT, indicesShape));
 
-                compare.registerInitCallBack([=](BufferArg& arg, size_t index) {
+                compare.registerInitCallback([=](BufferArg& arg, size_t index) {
                   if (index == 1) {
                     real* data = (real*)arg.data();
 
