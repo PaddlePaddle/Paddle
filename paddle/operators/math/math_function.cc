@@ -272,11 +272,10 @@ struct TensorSetConstantWithPlace : public boost::static_visitor<void> {
 
 void set_constant(const platform::DeviceContext& context,
                   framework::Tensor* tensor, float value) {
-#ifdef PADDLE_WITH_CUDA
-  boost::apply_visitor(TensorSetConstantWithPlace(context, tensor, value),
-                       tensor->place());
-#else
   TensorSetConstantWithPlace func(context, tensor, value);
+#ifdef PADDLE_WITH_CUDA
+  tensor->place().apply_visitor(func);
+#else
   func(platform::CPUPlace());
 #endif
 }
