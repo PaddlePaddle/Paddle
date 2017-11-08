@@ -215,7 +215,11 @@ class OpTest(unittest.TestCase):
             if isinstance(input_vars[var_name], list):
                 for name, np_value in self.inputs[var_name]:
                     tensor = core.LoDTensor()
-                    tensor.set(np_value, place)
+                    if isinstance(np_value, tuple):
+                        tensor.set(np_value[0], place)
+                        tensor.set_lod(np_value[1])
+                    else:
+                        tensor.set(np_value, place)
                     feed_map[name] = tensor
             else:
                 tensor = core.LoDTensor()
