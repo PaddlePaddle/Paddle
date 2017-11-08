@@ -5494,7 +5494,6 @@ def crf_decoding_layer(input,
     return LayerOutput(name, LayerType.CRF_DECODING_LAYER, parents, size=1)
 
 
-@wrap_act_default(act=SigmoidActivation())
 @wrap_bias_attr_default(has_bias=True)
 @wrap_param_attr_default()
 @wrap_name_default()
@@ -5502,7 +5501,6 @@ def crf_decoding_layer(input,
 def nce_layer(input,
               label,
               num_classes=None,
-              act=None,
               param_attr=None,
               weight=None,
               num_neg_samples=10,
@@ -5525,32 +5523,37 @@ def nce_layer(input,
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param input: The input layers. It could be a LayerOutput of list/tuple of LayerOutput.
+    :param input: The input layers. It should be a LayerOutput or a list/tuple
+                  of LayerOutput.
     :type input: LayerOutput | list | tuple | collections.Sequence
-    :param label: label layer
+    :param label: The ground truth.
     :type label: LayerOutput
-    :param weight: weight layer, can be None(default)
+    :param weight: The weight layer defines a weight for each sample in the
+                   mini-batch. The default value is None.
     :type weight: LayerOutput
-    :param num_classes: number of classes.
+    :param num_classes: The class number.
     :type num_classes: int
-    :param act: Activation type. SigmoidActivation is the default.
-    :type act: BaseActivation
-    :param param_attr: The Parameter Attribute|list.
-    :type param_attr: ParameterAttribute
-    :param num_neg_samples: number of negative samples. Default is 10.
+    :param param_attr: The parameter attributes.
+    :type param_attr: ParameterAttribute|list
+    :param num_neg_samples: The number of sampled negative labels. The default
+                            value is 10.
     :type num_neg_samples: int
-    :param neg_distribution: The distribution for generating the random negative labels.
-                             A uniform distribution will be used if not provided.
-                             If not None, its length must be equal to num_classes.
+    :param neg_distribution: The discrete noisy distribution over the output
+                             space from which num_neg_samples negative labels
+                             are sampled. If this parameter is not set, a
+                             uniform distribution will be used. A user defined
+                             distribution is a list whose length must be equal
+                             to the num_classes. Each member of the list defines
+                             the probability of a class given input x.
     :type neg_distribution: list | tuple | collections.Sequence | None
-    :param bias_attr: The Bias Attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The attribute for bias. If this parameter is set False or
+                      any object whose type is not ParameterAttribute, no bias
+                      is added. If this parameter is set True, the bias is
+                      initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
-    :return: layer name.
+    :return: The LayerOutput object.
     :rtype: LayerOutput
     """
     if isinstance(input, LayerOutput):
@@ -5573,8 +5576,6 @@ def nce_layer(input,
         assert isinstance(neg_distribution, collections.Sequence)
         assert len(neg_distribution) == num_classes
         assert abs(sum(neg_distribution) - 1.0) < 1e-5
-    if not isinstance(act, BaseActivation):
-        raise TypeError()
 
     ipts_for_layer = []
     parents = []
@@ -5596,17 +5597,12 @@ def nce_layer(input,
         type=LayerType.NCE_LAYER,
         num_classes=num_classes,
         neg_sampling_dist=neg_distribution,
-        active_type=act.name,
         num_neg_samples=num_neg_samples,
         inputs=ipts_for_layer,
         bias=ParamAttr.to_bias(bias_attr),
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
-        name,
-        LayerType.NCE_LAYER,
-        parents=parents,
-        size=l.config.size,
-        activation=act)
+        name, LayerType.NCE_LAYER, parents=parents, size=l.config.size)
 
 
 """

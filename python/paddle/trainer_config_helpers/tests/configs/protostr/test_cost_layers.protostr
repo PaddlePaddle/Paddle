@@ -233,7 +233,7 @@ layers {
   name: "__nce_layer_0__"
   type: "nce"
   size: 1
-  active_type: "sigmoid"
+  active_type: ""
   inputs {
     input_layer_name: "__fc_layer_0__"
     input_parameter_name: "___nce_layer_0__.w0"
