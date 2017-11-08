@@ -3,7 +3,7 @@ import paddle.v2.framework.layers as layers
 import paddle.v2.framework.core as core
 import paddle.v2.framework.optimizer as optimizer
 
-from paddle.v2.framework.framework import g_program, g_init_program
+from paddle.v2.framework.framework import g_main_program, g_startup_program
 from paddle.v2.framework.executor import Executor
 
 import numpy as np
@@ -26,7 +26,7 @@ def lstm_net(dict_dim, class_dim=2, emb_dim=32, seq_len=80, batch_size=50):
     emb = layers.transpose(x=emb, axis=[1, 0, 2])
 
     c_pre_init = layers.fill_constant(
-        data_type=emb.data_type, shape=[batch_size, emb_dim], value=0.0)
+        dtype=emb.data_type, shape=[batch_size, emb_dim], value=0.0)
     layer_1_out = layers.lstm(emb, c_pre_init=c_pre_init, hidden_dim=emb_dim)
     layer_1_out = layers.transpose(x=layer_1_out, axis=[1, 0, 2])
 
@@ -88,10 +88,10 @@ def main():
     place = core.CPUPlace()
     tensor_words, tensor_label = prepare_feed_data(data, place)
     exe = Executor(place)
-    exe.run(g_init_program)
+    exe.run(g_startup_program)
 
     while True:
-        outs = exe.run(g_program,
+        outs = exe.run(g_main_program,
                        feed={"words": tensor_words,
                              "label": tensor_label},
                        fetch_list=[cost, acc])
