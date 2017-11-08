@@ -1,0 +1,42 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License. */
+
+syntax = "proto3";
+
+package sendrecv;
+
+import "../framework/framework.proto" // SendRecv RPC definations. service SendRecvOp { // For parameter server round-robin like hashing, do not split tensors. // Send and recv only one tensor rpc SendTensor(TensorMessage) returns (TensorMessage) {} // Bidirectional streaming RPC that client send and recv streams of tensors. rpc SendTensorStream(stream TensorMessage) returns (stream TensorMessage) {}
+
+// For large tensor hashing
+rpc SendTensorChunk(TensorChunk) returns (TensorChunk) {}
+rpc SendTensorChunkStream(stream TensorChunk) returns (stream TensorChunk) {}
+}
+
+// TensorMessage a single paddle LoDTensor information.
+message TensorMessage {
+  uint32 version = 1;
+  paddle.framework.TensorDesc tensor_desc = 2;
+  uint64 tensor_data_size = 3;
+  bytes tensor_data = 4;
+  uint64 lod_data_size = 5;
+  bytes lod_data = 6;
+}
+
+message TensorChunk {
+  uint32 version = 1;
+  paddle.framework.TensorDesc tensor_desc = 2;
+  uint64 chunk_offset = 3; // offset of tensor data.
+  uint64 chunk_size = 4;
+  bytes chunk_data = 5;
+}

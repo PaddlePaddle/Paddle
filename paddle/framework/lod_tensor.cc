@@ -173,5 +173,9 @@ void AppendLoD(LoD* lod, const std::vector<std::vector<size_t>>& lod_length) {
   }
 }
 
+void SerializeToStream(std::ostream& os) {
+  // TODO(typhoonzero): serialize to ostream
+}
+
 }  // namespace framework
 }  // namespace paddle

@@ -187,5 +187,7 @@ void GetFineGrainedLoDLength(const LoD& lod, size_t start_idx, size_t end_idx,
 
 void AppendLoD(LoD* lod, const std::vector<std::vector<size_t>>& lod_length);
 
+void SerializeToStream(std::ostream& os);
+
 }  // namespace framework
 }  // namespace paddle
