@@ -22,8 +22,6 @@ class CudnnConvOpMaker : public Conv2DOpMaker {
   CudnnConvOpMaker(framework::OpProto* proto,
                    framework::OpAttrChecker* op_checker)
       : Conv2DOpMaker(proto, op_checker) {
-    AddAttr<std::vector<int>>("dilations", "dilations of convolution operator.")
-        .SetDefault(std::vector<int>{1, 1});
     AddAttr<int>("workspace_size_MB",
                  "workspace size for cudnn, in MB, "
                  "workspace is a section of GPU memory which will be "

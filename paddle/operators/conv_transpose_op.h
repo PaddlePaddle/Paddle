@@ -69,6 +69,9 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     // TODO(Zhuoyuan): Paddings can be added in future.
     // groups will alway be disabled in conv2dtranspose.
 
+    int dilation_h = 1;
+    int dilation_w = 1;
+
     const int batch_size = static_cast<int>(input->dims()[0]);
 
     // input_shape_vec: {h, w} or {d, h, w}
@@ -140,8 +143,8 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
         // from (c * k_h * k_w, h * w) to (c, o_h, o_w)
         math::Col2ImFunctor<math::ColFormat::kCFO, Place, T> col2im;
 
-        col2im(context.device_context(), output_batch, col, strides[0],
-               strides[1], 0, 0, 0, 0);
+        col2im(context.device_context(), output_batch, col, dilation_h,
+               dilation_w, strides[0], strides[1], 0, 0, 0, 0);
       } else if (filter_shape_vec.size() == 3) {
         // col2vol: col_matrix -> dy
         // from (c * k_d * k_h * k_w, d * h * w) to (c, o_d, o_h, o_w)
@@ -173,6 +176,9 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     // Actually, no paddings and groups allowed in conv transpose.
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
+
+    int dilation_h = 1;
+    int dilation_w = 1;
 
     const int batch_size = static_cast<int>(input->dims()[0]);
 
@@ -248,9 +254,9 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
           // im2col: dy -> col matrix
           // from (c, o_h, o_w) to (c * k_h * k_w, h * w)
           math::Im2ColFunctor<math::ColFormat::kCFO, Place, T> im2col;
-          im2col(context.device_context(), output_grad_batch, col, strides[0],
-                 strides[1], paddings[0], paddings[0], paddings[1],
-                 paddings[1]);
+          im2col(context.device_context(), output_grad_batch, col, dilation_h,
+                 dilation_w, strides[0], strides[1], paddings[0], paddings[0],
+                 paddings[1], paddings[1]);
         } else if (filter_shape_vec.size() == 3) {
           // vol2col: dy -> col_matrix
           // from (c, o_d, o_h, o_w) to (c * k_d * k_h * k_w, d * h * w)

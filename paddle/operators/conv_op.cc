@@ -30,6 +30,7 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
   int groups = ctx->Attrs().Get<int>("groups");
+  std::vector<int> dilations = ctx->Attrs().Get<std::vector<int>>("dilations");
   int input_channels = in_dims[1];
   int output_channels = filter_dims[0];
 
@@ -54,7 +55,8 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[0]});
   for (size_t i = 0; i < paddings.size(); ++i) {
     output_shape.push_back(OutputSize(in_dims[i + 2], filter_dims[i + 2],
-                                      paddings[i], strides[i]));
+                                      dilations[i], paddings[i], paddings[i],
+                                      strides[i]));
   }
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
 }
@@ -90,6 +92,10 @@ Conv2DOpMaker::Conv2DOpMaker(framework::OpProto* proto,
       "first half of the input channels, while the second half of the filters "
       "is only connected to the second half of the input channels.")
       .SetDefault(1);
+  AddAttr<std::vector<int>>("dilations",
+                            "(vector default:{1, 1}), the dilations of "
+                            "convolution operator.")
+      .SetDefault(std::vector<int>{1, 1});
   AddComment(R"DOC(
 Convolution Operator.
 
@@ -151,6 +157,11 @@ Conv3DOpMaker::Conv3DOpMaker(framework::OpProto* proto,
       "first half of the input channels, while the second half of the filters "
       "is only connected to the second half of the input channels.")
       .SetDefault(1);
+  AddAttr<std::vector<int>>("dilations",
+                            "(vector default:{1, 1, 1}), the dilations of "
+                            "convolution operator. Currently, conv3d doesn't "
+                            "support dilation.")
+      .SetDefault(std::vector<int>{1, 1, 1});
 
   AddComment(R"DOC(
 Convolution3D Operator.
