@@ -792,8 +792,8 @@ def lstm(x,
          c_pre_init,
          hidden_dim,
          forget_bias=None,
-         program=None,
-         init_program=None):
+         main_program=None,
+         startup_program=None):
     helper = LayerHelper('lstm_unit', **locals())
     rnn = StaticRNN()
     with rnn.step():
@@ -803,12 +803,12 @@ def lstm(x,
         before_fc = concat(
             input=[x_t, c_pre],
             axis=1,
-            program=program,
-            init_program=init_program)
+            main_program=main_program,
+            startup_program=startup_program)
         after_fc = fc(input=before_fc,
                       size=hidden_dim * 4,
-                      program=program,
-                      init_program=init_program)
+                      main_program=main_program,
+                      startup_program=startup_program)
 
         data_type = x.data_type
         c = helper.create_tmp_variable(data_type)
