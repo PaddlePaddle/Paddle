@@ -81,22 +81,18 @@ def embedding(input,
     return tmp
 
 
-def lstm(input,
-         init_hidden=None,
-         hidden_shape=None,
-         hidden_batch_ref=None,
-         init_hidden_value=0.0,
-         init_cell,
-         data_type='float32',
-         para_attr=None,
-         bias_attr=None,
-         use_peepholes=True,
-         is_reverse=False,
-         gate_activation='sigmoid',
-         cell_activation='tanh',
-         candidate_activation='tanh',
-         main_program=None,
-         startup_program=None):
+# TODO(qijun): expose H0 and C0
+def dynamic_lstm(input,
+                 data_type='float32',
+                 para_attr=None,
+                 bias_attr=None,
+                 use_peepholes=True,
+                 is_reverse=False,
+                 gate_activation='sigmoid',
+                 cell_activation='tanh',
+                 candidate_activation='tanh',
+                 main_program=None,
+                 startup_program=None):
     helper = LayerHelper('lstm', **locals())
 
     weight = helper.create_parameter(attr=helper.param_attr)
@@ -109,13 +105,9 @@ def lstm(input,
 
     helper.append_op(
         type='lstm',
-        inputs={
-            'Input': input,
-            'H0': init_hidden,
-            'C0': init_cell,
-            'Weight': weight,
-            'Bias': bias
-        },
+        inputs={'Input': input,
+                'Weight': weight,
+                'Bias': bias},
         outputs={
             'Hidden': hidden,
             'Cell': cell,

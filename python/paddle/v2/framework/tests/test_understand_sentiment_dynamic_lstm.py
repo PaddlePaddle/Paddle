@@ -10,27 +10,36 @@ from paddle.v2.framework.executor import Executor
 import numpy as np
 
 
-def convolution_net(input_dim, class_dim=2, emb_dim=32, hid_dim=32):
+def stacked_lstm_net(input_dim,
+                     class_dim=2,
+                     emb_dim=128,
+                     hid_dim=512,
+                     stacked_num=3):
+    assert stacked_num % 2 == 1
     data = layers.data(name="words", shape=[1], data_type="int64")
     label = layers.data(name="label", shape=[1], data_type="int64")
 
     emb = layers.embedding(input=data, size=[input_dim, emb_dim])
-    conv_3 = nets.sequence_conv_pool(
-        input=emb,
-        num_filters=hid_dim,
-        filter_size=3,
-        act="tanh",
-        pool_type="sqrt")
-    conv_4 = nets.sequence_conv_pool(
-        input=emb,
-        num_filters=hid_dim,
-        filter_size=4,
-        act="tanh",
-        pool_type="sqrt")
-    prediction = layers.fc(input=[conv_3, conv_4],
-                           size=class_dim,
-                           act="softmax")
-    cost = layers.cross_entropy(input=prediction, label=label)
+    # add bias attr
+
+    # TODO(qijun) linear act
+    fc1 = layers.fc(input=emb, size=hid_dim)
+    lstm1 = layers.dynamic_lstm(fc1)
+
+    inputs = [fc1, lstm1]
+
+    for i in range(2, stacked_num + 1):
+        fc = layers.fc(input=inputs, size=hid_dim)
+        lstm = layers.dynamic_lstm(fc)
+        inputs = [fc, lstm]
+
+    fc_last = layers.sequence_pool(input=inputs[0])
+    lstm_last = layers.sequence_pool(inputs=inputs[1])
+
+    output = layers.fc(input=[fc_last, lstm_last],
+                       size=class_dim,
+                       act='softmax')
+    cost = layers.cross_entropy(input=output, label=label)
     avg_cost = layers.mean(x=cost)
     adam_optimizer = optimizer.AdamOptimizer(learning_rate=0.002)
     opts = adam_optimizer.minimize(avg_cost)
