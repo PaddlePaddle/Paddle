@@ -20,6 +20,8 @@
 namespace paddle {
 namespace operators {
 
+using LoD = framework::LoD;
+
 class ArrayToLoDTensorOp : public framework::OperatorBase {
  public:
   ArrayToLoDTensorOp(const std::string &type,
@@ -84,16 +86,16 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     for (size_t idx : table_item_idx) {
       cur_level_lod.push_back(cur_level_lod.back() + table_items[idx].length);
       for (size_t x_idx = 0; x_idx < table_items[idx].length; ++x_idx) {
-        std::vector<std::vector<size_t>> lod_length;
-        size_t start_offset;
-        size_t end_offset;
-        framework::GetFineGrainedLoDLength2(x[x_idx].lod(), idx, idx + 1, 0,
-                                            &lod_length, &start_offset,
-                                            &end_offset);
-        VLOG(10) << "idx=" << idx << " x_idx=" << x_idx << " [" << start_offset
-                 << ", " << end_offset << "]";
-        // Append lod
+        auto lod_and_offset = framework::GetSubLoDAndAbsoluteOffset(
+            x[x_idx].lod(), idx, idx + 1, 0);
+
+        auto &lod_length = lod_and_offset.first;
         framework::AppendLoD(out_lod, lod_length);
+
+        size_t start_offset = lod_and_offset.second.first;
+        size_t end_offset = lod_and_offset.second.second;
+        VLOG(10) << "idx=" << idx << " x_idx=" << x_idx << " ["
+                 << ", " << end_offset << "]";
         // Copy data
         PADDLE_ENFORCE_GE(end_offset, start_offset);
         size_t len = end_offset - start_offset;
