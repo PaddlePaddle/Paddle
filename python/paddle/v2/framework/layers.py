@@ -22,12 +22,36 @@ def fc(input,
        num_flatten_dims=1,
        main_program=None,
        startup_program=None):
-    # create helper
+    """
+    Fully Connected Layer.
+
+    Args:
+       input: The input tensor to the function
+       size: The size of the layer
+       param_attr: The parameters/weights to the FC Layer
+       bias_attr: The bias parameter for the FC layer
+       name: Name/alias of the function
+       act: Activation to be applied to the output of FC layer
+       num_flatten_dims: Number of columns in input
+       main_program: Name of the main program that calls this
+       startup_program: Name of the startup program
+
+    This function can take in multiple inputs and performs the Fully Connected
+    function (linear transformation) on top of each of them.
+    So for input x, the output will be : Wx + b. Where W is the parameter,
+    b the bias and x is the input.
+
+    The function also applies an activation (non-linearity) on top of the
+    output, if activation is passed in the input.
+
+    All the input variables are passed in as local variables to the
+    LayerHelper function.
+
+    """
     helper = LayerHelper('fc', **locals())
 
     dtype = helper.input_dtype()
 
-    # mul
     mul_results = []
     for input_var, param_attr in helper.iter_inputs_and_params():
         input_shape = input_var.shape
@@ -531,7 +555,7 @@ def batch_norm(input,
 
 class BlockGuard(object):
     """
-    BlockGuard used to create sub-block in program by using Python `with` 
+    BlockGuard used to create sub-block in program by using Python `with`
     keyword.
     """
 
