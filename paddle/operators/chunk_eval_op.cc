@@ -21,7 +21,6 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Inference"),
                    "Input(Inference) of ChunkEvalOp should not be null.");
@@ -45,6 +44,7 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("F1-Score", {1});
   }
 
+ protected:
   framework::DataType IndicateDataType(
       const framework::ExecutionContext &ctx) const override {
     return framework::DataType::FP32;
@@ -57,61 +57,66 @@ class ChunkEvalOpMaker : public framework::OpProtoAndCheckerMaker {
                    framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Inference",
-             "(Tensor, default: Tensor<int>) Predictions from the network.");
-    AddInput("Label", "(Tensor, default: Tensor<int>) Labels of the data.");
-    AddOutput(
-        "Precision",
-        "(float) The precision ratio of the predictions on current data.");
+             "(Tensor, default: Tensor<int>). Predictions from the network.");
+    AddInput("Label",
+             "(Tensor, default: Tensor<int>). The true tag sequences.");
+    AddOutput("Precision",
+              "(float). The evaluated precision (called positive predictive "
+              "value) of chunks on the given mini-batch.");
     AddOutput("Recall",
-              "(float) The recall ratio of the predictions on current data.");
+              "(float). The evaluated recall (true positive rate or "
+              "sensitivity) of chunks on the given mini-batch.");
     AddOutput("F1-Score",
-              "(float) The F1-Score of the predictions on current data.");
-    AddAttr<int>("num_chunk_types", "(int) The number of chunk type.");
-    AddAttr<std::string>("chunk_scheme",
-                         "(string, default IOB) The label scheme.")
+              "(float). The evaluated F1-Score on the given mini-batch.");
+    AddAttr<int>("num_chunk_types",
+                 "(int). The number of chunk type. See below for details.");
+    AddAttr<std::string>(
+        "chunk_scheme",
+        "(string, default IOB). The labeling scheme indicating "
+        "how to encode the chunks. Must be IOB, IOE, IOBES or plain. See below "
+        "for details.")
         .SetDefault("IOB");
-    AddAttr<std::vector<int>>(
-        "excluded_chunk_types",
-        "(list<int>) A list<int> indicating chunk types not to be counted.")
+    AddAttr<std::vector<int>>("excluded_chunk_types",
+                              "(list<int>) A list including chunk type ids "
+                              "indicating chunk types that are not counted. "
+                              "See below for details.")
         .SetDefault(std::vector<int>{});
     AddComment(R"DOC(
-Chunk evaluator is used to evaluate segment labelling accuracy for a
-sequence. It calculates precision, recall and F1 scores for the chunk detection.
-To use chunk evaluator, several concepts need to be clarified firstly.
-[Chunk type] is the type of the whole chunk and a chunk consists of one or several words.  (For example in NER, ORG for organization name, PER for person name etc.)
-[Tag type] indicates the position of a word in a chunk. (B for begin, I for inside, E for end, S for single)
-We can name a label by combining tag type and chunk type. (ie. B-ORG for begining of an organization name)
-The construction of label dictionary should obey the following rules:
-- Use one of the listed labelling schemes. These schemes differ in ways indicating chunk boundry.
+For some basics of chunking, please refer to 
+‘Chunking with Support Vector Mechines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>’.
 
-    Scheme    Description
-    plain    Use the same label for the whole chunk.
-    IOB      Two labels for chunk type X, B-X for chunk begining and I-X for chunk inside.
-    IOE      Two labels for chunk type X, E-X for chunk ending and I-X for chunk inside.
-    IOBES    Four labels for chunk type X, B-X for chunk begining, I-X for chunk inside, E-X for chunk end and S-X for single word chunk.
 
-To make it clear, let's illustrate by an NER example.
-Assuming that there are three named entity types including ORG, PER and LOC which are called 'chunk type' here,
-if 'IOB' scheme were used, the label set will be extended to a set including B-ORG, I-ORG, B-PER, I-PER, B-LOC, I-LOC and O,
-in which B-ORG for begining of ORG and I-ORG for inside of ORG.
-Prefixes which are called 'tag type' here are added to chunk types and there are two tag types including B and I.
-Of course, the training data should be labeled accordingly.
-- Mapping is done correctly by the listed equations and assigning protocol.
-The following table are equations to extract tag type and chunk type from a label.
+CheckEvalOp computes the precision, recall, and F1-score of chunk detection, 
+and supports IOB, IOE, IOBES and IO (also known as plain) tagging schemes. 
+Here is a NER example of labeling for these tagging schemes:
 
-    tagType = label % numTagType
-    chunkType = label / numTagType
-    otherChunkType = numChunkTypes
+ 	     Li     Ming    works  at  Agricultural   Bank   of    China  in  Beijing.
+  IO:    I-PER  I-PER   O      O   I-ORG          I-ORG  I-ORG I-ORG  O   I-LOC
+  IOB:   B-PER  I-PER   O      O   B-ORG          I-ORG  I-ORG I-ORG  O   B-LOC
+  IOE:   I-PER  E-PER   O      O   I-ORG          I-ORG  I-ORG E-ORG  O   E-LOC
+  IOBES: B-PER  E-PER   O      O   I-ORG          I-ORG  I-ORG E-ORG  O   S-LOC
 
-The following table shows the mapping rule between tagType and tag type in each scheme.
+There are three chunk types(named entity types) including PER(person), ORG(orgnazation) 
+and LOC(LOCATION), and we can see that the labels have the form <tag type>-<chunk type>.
+
+Since the calculations actually use label ids rather than labels, extra attention 
+should be paid when mapping labels to ids to make CheckEvalOp work. The key point 
+is that the listed equations are satisfied by ids. 
+
+    tag_type = label % num_tag_type
+    chunk_type = label / num_tag_type
+
+where `num_tag_type` is the num of tag types in the tagging scheme, `num_chunk_type` 
+is the num of chunk types, and `tag_type` get its value from the following table.
 
     Scheme Begin Inside End   Single
-    plain  0     -      -     -
-    IOB    0     1      -     -
-    IOE    -     0      1     -
-    IOBES  0     1      2     3
+     plain   0     -      -     -
+     IOB     0     1      -     -
+     IOE     -     0      1     -
+     IOBES   0     1      2     3
 
-Continue the NER example, and the label dict should look like this to satify above equations:
+Still use NER as example, assuming the tagging scheme is IOB while chunk types are ORG, 
+PER and LOC. To satisfy the above equations, the label map can be like this:
 
     B-ORG  0
     I-ORG  1
@@ -121,11 +126,10 @@ Continue the NER example, and the label dict should look like this to satify abo
     I-LOC  5
     O      6
 
-In this example, chunkType has three values: 0 for ORG, 1 for PER, 2 for LOC, because the scheme is
-"IOB" so tagType has two values: 0 for B and 1 for I.
-Here we will use I-LOC to explain the above mapping rules in detail.
-For I-LOC, the label id is 5, so we can get tagType=1 and chunkType=2, which means I-LOC is a part of NER chunk LOC
-and the tag is I.
+It’s not hard to verify the equations noting that the num of chunk types 
+is 3 and the num of tag types in IOB scheme is 2. For example, the label 
+id of I-LOC is 5, the tag type id of I-LOC is 1, and the chunk type id of 
+I-LOC is 2, which consistent with the results from the equations.
 )DOC");
   }
 };

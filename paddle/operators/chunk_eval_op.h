@@ -171,10 +171,10 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
                  num_tag_types, other_chunk_type, tag_begin, tag_inside,
                  tag_end, tag_single, excluded_chunk_types);
     }
-    *precision_data =
-        !num_output_segments ? 0 : (T)num_correct / num_output_segments;
-    *racall_data =
-        !num_label_segments ? 0 : (T)num_correct / num_label_segments;
+    *precision_data = !num_output_segments ? 0 : static_cast<T>(num_correct) /
+                                                     num_output_segments;
+    *racall_data = !num_label_segments ? 0 : static_cast<T>(num_correct) /
+                                                 num_label_segments;
     *f1_data = !num_correct ? 0 : 2 * (*precision_data) * (*racall_data) /
                                       ((*precision_data) + (*racall_data));
   }
