@@ -891,13 +891,13 @@ def zeros(shape, dtype, main_program=None):
 
 def increment(x, value=1.0, main_program=None):
     helper = LayerHelper("increment", **locals())
-    tmp = helper.create_tmp_variable(dtype=x.data_type)
+    out = helper.create_tmp_variable(dtype=x.data_type)
     helper.append_op(
         type='increment',
         inputs={'X': [x]},
-        outputs={'Out': [tmp]},
+        outputs={'Out': [out]},
         attrs={'step': value})
-    return tmp
+    return out
 
 
 def array_write(x, i, array=None, main_program=None):
@@ -927,4 +927,17 @@ def array_read(array, i, main_program=None):
         inputs={'X': [array],
                 'I': [i]},
         outputs={'Out': [out]})
+    return out
+
+
+def shrink_memory(x, i, table, main_program=None):
+    helper = LayerHelper('shrink_memory', **locals())
+    out = helper.create_tmp_variable(dtype=x.data_type)
+    helper.append_op(
+        type='shrink_rnn_memory',
+        inputs={'X': [x],
+                'I': [i],
+                'RankTable': [table]},
+        outputs={'Out': [out]},
+        attrs={})
     return out
