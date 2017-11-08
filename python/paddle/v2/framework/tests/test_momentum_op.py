@@ -37,7 +37,7 @@ class TestMomentumOp1(OpTest):
 
 
 class TestMomentumOp2(OpTest):
-    '''Test Momentum with defaukt values for attributes
+    '''Test Momentum with default values for attributes
     '''
 
     def setUp(self):
