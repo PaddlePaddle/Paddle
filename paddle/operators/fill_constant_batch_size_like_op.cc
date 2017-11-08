@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/fill_constant_batch_size_like_op.h"
+#include "paddle/operators/fill_constant_op.h"
 
 namespace paddle {
 namespace operators {
@@ -100,5 +100,5 @@ REGISTER_OPERATOR(fill_constant_batch_size_like,
                   ops::FillConstantBatchSizeLikeOpMaker);
 REGISTER_OP_CPU_KERNEL(
     fill_constant_batch_size_like,
-    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUPlace, float>,
-    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUPlace, double>);
+    ops::FillConstantOpKernel<paddle::platform::CPUPlace, float>,
+    ops::FillConstantOpKernel<paddle::platform::CPUPlace, double>);

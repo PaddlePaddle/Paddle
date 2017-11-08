@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -27,9 +28,8 @@ class FillConstantOpKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(ctx.GetPlace());
     auto value = ctx.Attr<float>("value");
 
-    auto out_eigen = framework::EigenVector<T>::Flatten(*out);
-    auto place = ctx.GetEigenDevice<Place>();
-    out_eigen.device(place) = out_eigen.constant(static_cast<T>(value));
+    math::SetConstant<Place, T> setter;
+    setter(ctx.device_context(), out, static_cast<T>(value));
   }
 };
 
