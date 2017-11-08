@@ -118,19 +118,26 @@ class Tensor {
                              const platform::DeviceContext& ctx);
 
   /**
-   * @brief   Return the slice of the tensor.
+   * @brief  Return a sub-tensor of the given tensor.
    *
-   * @param[in] begin_idx   The begin index of the slice.
-   * @param[in] end_idx     The end index of the slice.
+   * @param[in] begin_idx   The index of the start row(inclusive) to slice.
+   *                        The index number begins from 0.
+   * @param[in] end_idx     The index of the end row(exclusive) to slice.
+   *                        The index number begins from 0.
    */
-  inline Tensor Slice(const int& begin_idx, const int& end_idx) const;
+  inline Tensor Slice(int begin_idx, int end_idx) const;
 
   platform::Place place() const {
-    PADDLE_ENFORCE_NOT_NULL(holder_, "Tensor get place() must contains holder");
+    PADDLE_ENFORCE_NOT_NULL(
+        holder_, "Tensor not initialized yet when Tensor::place() is called.");
     return holder_->place();
   }
 
-  std::type_index type() const { return holder_->type(); }
+  std::type_index type() const {
+    PADDLE_ENFORCE_NOT_NULL(
+        holder_, "Tensor not initialized yet when Tensor::type() is called.");
+    return holder_->type();
+  }
 
   size_t memory_size() const;
 

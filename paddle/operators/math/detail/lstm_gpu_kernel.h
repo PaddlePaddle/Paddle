@@ -13,13 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <type_traits>
-#include "paddle/operators/math/detail/hl_activation_functions.h"
+#include "paddle/operators/math/detail/activation_functions.h"
 #include "paddle/operators/math/lstm_compute.h"
 #include "paddle/platform/cuda_helper.h"
 #include "paddle/platform/device_context.h"
 
-#include <glog/logging.h>
+#include <type_traits>
 
 namespace paddle {
 namespace operators {
@@ -70,10 +69,8 @@ __global__ void KeLstmForward(Op op, LstmMetaValue<T> value, int frameSize,
     rPrevState = value.prevStateValue[frameIdx];
   }
 
-  hppl::gpu::ForwardAct<T> act;
   op(rValueIn, rValueIg, rValueFg, rValueOg, rPrevState, rState, rStateAtv,
-     rOut, rCheckI, rCheckF, rCheckO, act(active_node), act(active_gate),
-     act(active_state));
+     rOut, rCheckI, rCheckF, rCheckO, active_node, active_gate, active_state);
 
   value.gateValue[frameIdx] = rValueIn;
   value.gateValue[frameIdx + frameSize] = rValueIg;
@@ -145,11 +142,10 @@ __global__ void KeLstmBackward(Op op, LstmMetaValue<T> value,
     rPrevState = value.prevStateValue[frameIdx];
   }
 
-  hppl::gpu::BackwardAct<T> act;
   op(rValueIn, rValueIg, rValueFg, rValueOg, rGradIn, rGradIg, rGradFg, rGradOg,
      rPrevState, rPrevStateGrad, rState, rStateGrad, rStateAtv, rOutputGrad,
      rCheckI, rCheckF, rCheckO, rCheckIGrad, rCheckFGrad, rCheckOGrad,
-     act(active_node), act(active_gate), act(active_state));
+     active_node, active_gate, active_state);
 
   grad.gateGrad[frameIdx] = rGradIn;
   grad.gateGrad[frameIdx + frameSize] = rGradIg;
@@ -230,9 +226,9 @@ void gpu_lstm_backward(const platform::DeviceContext& context, Op op,
     threads = dim3(framePerBlock, 1);
     grid = dim3(frameBlocks, 1);
   } else {
-    /* framePerBlock = 32 batchPerBlock = 32 */
-    threads = dim3(32, 32);
-    grid = dim3((frameSize + 32 - 1) / 32, (batchSize + 32 - 1) / 32);
+    /* framePerBlock = 32 batchPerBlock = 16 */
+    threads = dim3(32, 16);
+    grid = dim3((frameSize + 32 - 1) / 32, (batchSize + 16 - 1) / 16);
   }
 
   auto stream =

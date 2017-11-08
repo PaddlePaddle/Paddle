@@ -77,8 +77,7 @@ class OpRegistry {
                                                 const VariableNameMap& outputs,
                                                 AttributeMap attrs);
 
-  static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc,
-                                                ProgramDesc* program);
+  static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
 
   static std::unique_ptr<OperatorBase> CreateOp(const OpDescBind& op_desc);
 };
@@ -93,8 +92,7 @@ struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
 
   void operator()(const char* op_type) const {
     using T = typename KERNEL_TYPE::ELEMENT_TYPE;
-    OperatorWithKernel::OpKernelKey key(ToDataType(std::type_index(typeid(T))),
-                                        PlaceType());
+    OpKernelType key(ToDataType(std::type_index(typeid(T))), PlaceType());
     OperatorWithKernel::AllOpKernels()[op_type][key].reset(new KERNEL_TYPE);
 
     constexpr auto size = std::tuple_size<std::tuple<KernelTypes...>>::value;
@@ -227,6 +225,10 @@ class OpKernelRegistrar : public Registrar {
 #define USE_CPU_ONLY_OP(op_type) \
   USE_OP_ITSELF(op_type);        \
   USE_OP_DEVICE_KERNEL(op_type, CPU);
+
+#define USE_GPU_ONLY_OP(op_type) \
+  USE_OP_ITSELF(op_type);        \
+  USE_OP_DEVICE_KERNEL(op_type, GPU)
 
 #define USE_OP(op_type)   \
   USE_OP_ITSELF(op_type); \

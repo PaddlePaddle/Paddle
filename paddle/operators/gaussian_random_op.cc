@@ -45,21 +45,23 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of GaussianRandomOp should not be null.");
-    auto dims = ctx->Attrs().Get<std::vector<int>>("dims");
+    auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
     std::vector<int64_t> temp;
-    temp.reserve(dims.size());
-    for (auto dim : dims) {
+    temp.reserve(shape.size());
+    for (auto dim : shape) {
       temp.push_back(static_cast<int64_t>(dim));
     }
-    PADDLE_ENFORCE(dims.size() > 0UL,
-                   "dims can be one int or array. dims must be set.");
+    PADDLE_ENFORCE(shape.size() > 0UL,
+                   "shape can be one int or array. shape must be set.");
     ctx->SetOutputDim("Out", framework::make_ddim(temp));
   }
 
  protected:
-  framework::DataType IndicateDataType(
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return static_cast<framework::DataType>(ctx.Attr<int>("data_type"));
+    return framework::OpKernelType(
+        static_cast<framework::DataType>(ctx.Attr<int>("data_type")),
+        ctx.device_context());
   }
 };
 
@@ -68,21 +70,35 @@ class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
   GaussianRandomOpMaker(framework::OpProto* proto,
                         framework::OpAttrChecker* op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddOutput("Out", "output matrix of random op");
-    AddComment(R"DOC(
-GaussianRandom operator.
-Use to initialize tensor with gaussian random generator.
-)DOC");
+    AddOutput("Out", "Output matrix of gaussian random op");
 
-    AddAttr<std::vector<int>>("dims", "The dimension of random tensor.");
-    AddAttr<float>("mean", "mean of random tensor.").SetDefault(.0f);
-    AddAttr<float>("std", "std of random tensor.").SetDefault(1.0f);
+    AddAttr<std::vector<int>>("shape",
+                              "(vector<int>) "
+                              "The dimension of random tensor.");
+    AddAttr<float>("mean",
+                   "(float, default 0.0) "
+                   "mean of random tensor.")
+        .SetDefault(.0f);
+    AddAttr<float>("std",
+                   "(float, default 1.0) "
+                   "std of random tensor.")
+        .SetDefault(1.0f);
     AddAttr<int>("seed",
+                 "(int, default 0) "
                  "Random seed of generator."
-                 "0 means use system wide seed")
+                 "0 means use system wide seed.")
         .SetDefault(0);
-    AddAttr<int>("data_type", "output data type")
+    AddAttr<int>("data_type",
+                 "(int, default 5(FP32)) "
+                 "Output data type.")
         .SetDefault(framework::DataType::FP32);
+
+    AddComment(R"DOC(
+GaussianRandom Operator.
+
+Used to initialize tensors with gaussian random generator.
+
+)DOC");
   }
 };
 

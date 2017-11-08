@@ -386,12 +386,13 @@ class DynamicRecurrentOpProtoAndCheckerMaker
         RNNAlgorithm::kArgNames[RNNAlgorithm::ComputeMode::kForward];
     // inputs and outputs stored in proto
     AddInput(name.inlinks,
-             "the inputs that need to be segmented for each step.")
+             "The inputs that need to be segmented for each step.")
         .AsDuplicable();
-    AddInput(name.initial_states, "variables to initialize states.")
+    AddInput(name.initial_states, "Variables to initialize the states.")
         .AsDuplicable();
 
-    AddOutput(name.outlinks, "the outputs that need to concated for all steps.")
+    AddOutput(name.outlinks,
+              "The outputs that need to be concatenated for all steps.")
         .AsDuplicable();
     AddOutput(name.step_scopes, "step scopes");
 
@@ -399,7 +400,12 @@ class DynamicRecurrentOpProtoAndCheckerMaker
     AddAttr<std::vector<std::string>>(name.ex_states, "names of ex_states");
     AddAttr<std::vector<std::string>>(name.states, "names of states");
 
-    AddComment("This is a RNN operator for varience-length sequences.");
+    AddComment(R"DOC(
+Dynamic Recurrent Operator.
+
+This is a RNN operator for varience-length sequences.
+
+)DOC");
   }
 };
 

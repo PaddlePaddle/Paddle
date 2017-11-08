@@ -94,6 +94,11 @@ void batched_gemm(const platform::DeviceContext& context,
                   const int batchCount, const int strideA, const int strideB);
 
 template <typename Place, typename T>
+void gemv(const platform::DeviceContext& context, const bool trans_a,
+          const int M, const int N, const T alpha, const T* A, const T* B,
+          const T beta, T* C);
+
+template <typename Place, typename T>
 struct SetConstant {
   void operator()(const platform::DeviceContext& context,
                   framework::Tensor* tensor, T num) {
@@ -102,6 +107,13 @@ struct SetConstant {
         t.constant(static_cast<T>(num));
   }
 };
+
+template <typename Place>
+void set_constant_with_place(const platform::DeviceContext& context,
+                             framework::Tensor* tensor, float value);
+
+void set_constant(const platform::DeviceContext& context,
+                  framework::Tensor* tensor, float value);
 
 }  // namespace math
 }  // namespace operators
