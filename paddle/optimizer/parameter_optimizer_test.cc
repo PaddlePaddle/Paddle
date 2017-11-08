@@ -127,8 +127,3 @@ TEST_F(OptimizerTest, TestGetWeight) { TestGetWeight(); }
 TEST_F(OptimizerTest, TestUpdate) { TestUpdate(); }
 
 TEST_F(OptimizerTest, TestCheckPoint) { TestCheckPoint(); }
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
