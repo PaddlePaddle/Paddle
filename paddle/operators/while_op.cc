@@ -43,7 +43,8 @@ class WhileOp : public framework::OperatorBase {
     auto *block = Attr<framework::BlockDescBind *>(kStepBlock);
     auto *program = block->Program();
 
-    auto step_scopes = scope.FindVar(kStepScopes)->GetMutable<StepScopeVar>();
+    auto step_scopes =
+        scope.FindVar(Output(kStepScopes))->GetMutable<StepScopeVar>();
 
     while (cond.data<bool>()[0]) {
       auto &current_scope = scope.NewScope();

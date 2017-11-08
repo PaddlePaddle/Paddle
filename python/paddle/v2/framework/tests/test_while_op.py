@@ -41,7 +41,6 @@ class TestWhileOp(unittest.TestCase):
             result = layers.sums(input=[d, prev])
             layers.array_write(result, i=i, array=out_array)
             layers.less_than(x=i, y=array_len, cond=cond)
-        print out_array
         sum_result = layers.array_read(out_array, i=array_len)
 
         cpu = core.CPUPlace()
