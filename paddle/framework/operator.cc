@@ -254,8 +254,7 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
   return res;
 }
 
-std::ostream& operator<<(std::ostream& os,
-                         const OperatorWithKernel::OpKernelKey& kernel_key) {
+std::ostream& operator<<(std::ostream& os, const OpKernelType& kernel_key) {
   os << "place[" << kernel_key.place_ << "]:data_type[" << kernel_key.data_type_
      << "]";
   return os;
@@ -432,7 +431,7 @@ void OperatorWithKernel::Run(const Scope& scope,
 
   // check if op[type] have kernel for kernel_key
   OpKernelMap& kernels = kernels_iter->second;
-  auto kernel_key = OpKernelKey(IndicateDataType(ctx), dev_ctx);
+  auto kernel_key = GetKernelType(ctx);
   auto kernel_iter = kernels.find(kernel_key);
 
   if (kernel_iter == kernels.end()) {
@@ -443,6 +442,38 @@ void OperatorWithKernel::Run(const Scope& scope,
 
   // throws errors if have.
   dev_ctx.Finish();
+}
+OpKernelType OperatorWithKernel::GetKernelType(
+    const ExecutionContext& ctx) const {
+  return OpKernelType(IndicateDataType(ctx), ctx.device_context());
+}
+DataType OperatorWithKernel::IndicateDataType(
+    const ExecutionContext& ctx) const {
+  auto& scope = ctx.scope();
+  int data_type = -1;
+  for (auto& input : this->inputs_) {
+    for (auto& ipt_name : input.second) {
+      auto* var = scope.FindVar(ipt_name);
+      if (var != nullptr) {
+        const Tensor* t = nullptr;
+        if (var->IsType<Tensor>()) {
+          t = &var->Get<Tensor>();
+        } else if (var->IsType<LoDTensor>()) {
+          t = &var->Get<LoDTensor>();
+        } else if (var->IsType<SelectedRows>()) {
+          t = &(var->Get<SelectedRows>().value());
+        }
+        if (t != nullptr) {
+          int tmp = static_cast<int>(ToDataType(t->type()));
+          PADDLE_ENFORCE(tmp == data_type || data_type == -1,
+                         "DataType of Paddle Op %s must be the same.", Type());
+          data_type = tmp;
+        }
+      }
+    }
+  }
+  PADDLE_ENFORCE(data_type != -1, "DataType should be indicated by input");
+  return static_cast<DataType>(data_type);
 }
 
 }  // namespace framework
