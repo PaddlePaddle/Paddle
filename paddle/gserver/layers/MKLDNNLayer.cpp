@@ -181,21 +181,17 @@ void MKLDNNLayer::resetInValue(
   auto extPD = MKLDNNMatrix::createPrimitiveDesc(
       {bs_, ic_, ih_, iw_}, format::nchw, engine_);
   const MatrixPtr& inMat = inputLayers_[inputIdx]->getOutputValue();
-  in = std::dynamic_pointer_cast<MKLDNNMatrix>(inMat);
-  CHECK_EQ(inputIsOnlyMKLDNN(), in != nullptr);
-  if (in == nullptr || in->getFormat() == format::nc) {
-    in = MKLDNNMatrix::create(extPD, inMat);
+  extInVal_ = std::dynamic_pointer_cast<MKLDNNMatrix>(inMat);
+  CHECK_EQ(inputIsOnlyMKLDNN(), extInVal_ != nullptr);
+  if (extInVal_ == nullptr || extInVal_->getFormat() == format::nc) {
+    extInVal_ = MKLDNNMatrix::create(extPD, inMat);
   }
-  extInVal_ = isPaddleFormat(in->getFormat()) ? in : nullptr;
-  if (in->getFormat() == format::nc) {
-    CHECK(ih_ == 1 && iw_ == 1);
-  }
+  in = extInVal_;
   if (nullptr == intPD || in->getPrimitiveDesc() == *intPD) {
     return;
   }
   // need create reorder
   in = MKLDNNMatrix::create(*intPD);
-  extInVal_ = extInVal_ ? extInVal_ : MKLDNNMatrix::create(extPD, inMat);
   cvtInVal_ = MKLDNNMatrix::createReorder(extInVal_, in);
   CHECK(cvtInVal_) << "should not be emptry";
 }

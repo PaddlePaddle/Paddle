@@ -33,11 +33,12 @@ class FillConstantOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::DataType IndicateDataType(
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext &ctx) const override {
     int data_type = ctx.Attr<int>("data_type");
     VLOG(10) << " FillConstant data_type = " << data_type;
-    return static_cast<framework::DataType>(data_type);
+    return framework::OpKernelType(static_cast<framework::DataType>(data_type),
+                                   ctx.device_context());
   }
 };
 

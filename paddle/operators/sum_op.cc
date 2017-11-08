@@ -24,10 +24,16 @@ class SumOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInputs("X"), "Inputs(X) should not be null");
-    auto x_dims = ctx->GetInputsDim("X");
+
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SumOp should not be null.");
+    if (ctx->IsRuntime() &&
+        ctx->GetOutputsVarType("Out")[0] ==
+            framework::VarDesc::LOD_TENSOR_ARRAY) {
+      return;  // skip runtime infershape when is tensor array;
+    }
 
+    auto x_dims = ctx->GetInputsDim("X");
     size_t N = x_dims.size();
     PADDLE_ENFORCE_GT(N, 1, "Input tensors count should > 1.");
 
@@ -38,6 +44,32 @@ class SumOp : public framework::OperatorWithKernel {
     }
     ctx->SetOutputDim("Out", in_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+ protected:
+  framework::OpKernelType GetKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto x_vars = ctx.MultiInputVar("X");
+    if (x_vars[0]->IsType<framework::LoDTensor>()) {
+      return framework::OpKernelType(
+          framework::ToDataType(x_vars[0]->Get<framework::LoDTensor>().type()),
+          ctx.device_context());
+    } else if (x_vars[0]->IsType<framework::SelectedRows>()) {
+      return framework::OpKernelType(
+          framework::ToDataType(
+              x_vars[0]->Get<framework::SelectedRows>().value().type()),
+          ctx.device_context());
+    } else if (x_vars[0]->IsType<framework::LoDTensorArray>()) {
+      auto& array = x_vars[0]->Get<framework::LoDTensorArray>();
+      for (auto& each : array) {
+        if (each.numel() != 0) {
+          return framework::OpKernelType(framework::ToDataType(each.type()),
+                                         ctx.device_context());
+        }
+      }
+    }
+    PADDLE_THROW("Unexpected branch. Input type is %s",
+                 x_vars[0]->Type().name());
   }
 };
 
@@ -63,18 +95,32 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
   void operator()(const framework::OpDescBind& op_desc,
                   framework::BlockDescBind* block) const override {
     auto& inputs = op_desc.Input("X");
-    auto default_var_type = framework::VarDesc::SELECTED_ROWS;
+    auto var_type = framework::VarDesc::SELECTED_ROWS;
 
     bool any_input_is_lod_tensor = std::any_of(
         inputs.begin(), inputs.end(), [block](const std::string& name) {
           return block->Var(name)->GetType() == framework::VarDesc::LOD_TENSOR;
         });
-    if (any_input_is_lod_tensor) {
-      default_var_type = framework::VarDesc::LOD_TENSOR;
+
+    auto is_tensor_array = [block](const std::string& name) {
+      return block->Var(name)->GetType() ==
+             framework::VarDesc::LOD_TENSOR_ARRAY;
+    };
+
+    bool any_input_is_tensor_array =
+        std::any_of(inputs.begin(), inputs.end(), is_tensor_array);
+    bool all_inputs_are_tensor_array =
+        std::all_of(inputs.begin(), inputs.end(), is_tensor_array);
+
+    if (any_input_is_tensor_array) {
+      PADDLE_ENFORCE(all_inputs_are_tensor_array);
+      var_type = framework::VarDesc::LOD_TENSOR_ARRAY;
+    } else if (any_input_is_lod_tensor) {
+      var_type = framework::VarDesc::LOD_TENSOR;
     }
 
     auto out_var_name = op_desc.Output("Out").front();
-    block->Var(out_var_name)->SetType(default_var_type);
+    block->Var(out_var_name)->SetType(var_type);
   }
 };
 
