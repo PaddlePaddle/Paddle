@@ -786,10 +786,9 @@ class MixedLayerType(LayerOutput):
         :type size: int
         :param act: Activation type.
         :type act: BaseActivation
-        :param bias_attr: The Bias Attribute. If the parameter is set to
-                          False or something not type of ParameterAttribute,
-                          no bias is defined. If the parameter is set to
-                          True, the bias is initialized to zero.
+        :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                          whose type is not ParameterAttribute, no bias is defined. If the
+                          parameter is set to True, the bias is initialized to zero.
         :type bias_attr: ParameterAttribute | None | bool | Any
         :param layer_attr: Extra Layer Attribute.
         :type layer_attr: ExtraLayerAttribute or None
@@ -886,10 +885,9 @@ def mixed_layer(size=0,
                   then this function will just return layer's name.
     :param act: Activation Type. LinearActivation is the default.
     :type act: BaseActivation
-    :param bias_attr: The Bias Attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                      whose type is not ParameterAttribute, no bias is defined. If the
+                      parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :param layer_attr: The extra layer config. Default is None.
     :type layer_attr: ExtraLayerAttribute
@@ -1031,10 +1029,9 @@ def fc_layer(input,
     :type act: BaseActivation
     :param param_attr: The Parameter Attribute|list.
     :type param_attr: ParameterAttribute
-    :param bias_attr: The Bias Attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                      whose type is not ParameterAttribute, no bias is defined. If the
+                      parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :param layer_attr: Extra Layer config.
     :type layer_attr: ExtraLayerAttribute | None
@@ -1387,10 +1384,9 @@ def pooling_layer(input,
     :type pooling_type: BasePoolingType | None
     :param stride: The step size between successive pooling regions.
     :type stride: Int
-    :param bias_attr: The Bias Attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                      whose type is not ParameterAttribute, no bias is defined. If the
+                      parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :param layer_attr: The Extra Attributes for layer, such as dropout.
     :type layer_attr: ExtraLayerAttribute | None
@@ -1488,10 +1484,9 @@ def lstmemory(input,
     :type gate_act: BaseActivation
     :param state_act: state activation type, TanhActivation by default.
     :type state_act: BaseActivation
-    :param bias_attr: The Bias Attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                      whose type is not ParameterAttribute, no bias is defined. If the
+                      parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :param param_attr: Parameter Attribute.
     :type param_attr: ParameterAttribute | None | False
@@ -1614,10 +1609,9 @@ def grumemory(input,
                      This activation affects the :math:`z_t` and :math:`r_t`. It is the
                      :math:`\\sigma` in the above formula.
     :type gate_act: BaseActivation
-    :param bias_attr: The Bias Attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                      whose type is not ParameterAttribute, no bias is defined. If the
+                      parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :param param_attr: Parameter Attribute.
     :type param_attr: ParameterAttribute | None | False
@@ -1814,10 +1808,9 @@ def expand_layer(input,
     :type expand_as: LayerOutput
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param bias_attr: The Bias Attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                      whose type is not ParameterAttribute, no bias is defined. If the
+                      parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :param expand_level: whether input layer is timestep(default) or sequence.
     :type expand_level: ExpandLevel
@@ -1936,10 +1929,9 @@ def seq_reshape_layer(input,
     :type act: BaseActivation
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
-    :param bias_attr: The Bias Attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                      whose type is not ParameterAttribute, no bias is defined. If the
+                      parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2323,10 +2315,9 @@ def hsigmoid(input,
     :type num_classes: int | None
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param bias_attr: The Bias Attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                      whose type is not ParameterAttribute, no bias is defined. If the
+                      parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :param param_attr: Parameter Attribute. None means default parameter.
     :type param_attr: ParameterAttribute | None
@@ -2466,10 +2457,9 @@ def img_conv_layer(input,
     :type dilation: int | tuple | list
     :param dilation_y: The y dimension of the dilation.
     :type dilation_y: int
-    :param bias_attr: The Bias Attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                      whose type is not ParameterAttribute, no bias is defined. If the
+                      parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :param num_channels: number of input channels. If None will be set
                         automatically from previous output.
@@ -3216,10 +3206,9 @@ def addto_layer(input, act=None, name=None, bias_attr=None, layer_attr=None):
     :type input: LayerOutput | list | tuple
     :param act: Activation Type. LinearActivation is the default.
     :type act: BaseActivation
-    :param bias_attr: The Bias Attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                      whose type is not ParameterAttribute, no bias is defined. If the
+                      parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :param layer_attr: Extra Layer attribute.
     :type layer_attr: ExtraLayerAttribute
@@ -3372,10 +3361,9 @@ def seq_concat_layer(a, b, act=None, name=None, layer_attr=None,
     :type act: BaseActivation
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
-    :param bias_attr: The Bias Attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                      whose type is not ParameterAttribute, no bias is defined. If the
+                      parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -3555,10 +3543,9 @@ def lstm_step_layer(input,
     :type gate_act: BaseActivation
     :param state_act: State Activation Type. TanhActivation is the default.
     :type state_act: BaseActivation
-    :param bias_attr: The Bias Attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                      whose type is not ParameterAttribute, no bias is defined. If the
+                      parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :param layer_attr: layer's extra attribute.
     :type layer_attr: ExtraLayerAttribute
@@ -3614,10 +3601,9 @@ def gru_step_layer(input,
     :param name: The name of this layer. It is optional.
     :param gate_act: Activation type of this layer's two gates. Default is Sigmoid.
     :type gate_act: BaseActivation
-    :param bias_attr: The Bias Attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                      whose type is not ParameterAttribute, no bias is defined. If the
+                      parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :param param_attr: the parameter_attribute for transforming the output_mem
                        from previous step.
@@ -3677,10 +3663,9 @@ def gru_step_naive_layer(input,
     :type act: BaseActivation
     :param gate_act: Activation type of this layer's two gates. Default is Sigmoid.
     :type gate_act: BaseActivation
-    :param bias_attr: The Bias Attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                      whose type is not ParameterAttribute, no bias is defined. If the
+                      parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :param param_attr:
     :param layer_attr:
@@ -3810,10 +3795,9 @@ def recurrent_layer(input,
     :type input: LayerOutput
     :param act: Activation type. TanhActivation is the default.
     :type act: BaseActivation
-    :param bias_attr: The Bias Attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                      whose type is not ParameterAttribute, no bias is defined. If the
+                      parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :param param_attr: parameter attribute.
     :type param_attr: ParameterAttribute
@@ -4803,10 +4787,9 @@ def tensor_layer(a,
     :type act: BaseActivation
     :param param_attr: The Parameter Attribute.
     :type param_attr: ParameterAttribute
-    :param bias_attr: The Bias Attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                      whose type is not ParameterAttribute, no bias is defined. If the
+                      parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :param layer_attr: Extra Layer config.
     :type layer_attr: ExtraLayerAttribute | None
@@ -4868,10 +4851,9 @@ def selective_fc_layer(input,
     :type act: BaseActivation
     :param param_attr: The Parameter Attribute.
     :type param_attr: ParameterAttribute
-    :param bias_attr: The Bias Attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                      whose type is not ParameterAttribute, no bias is defined. If the
+                      parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :param layer_attr: Extra Layer config.
     :type layer_attr: ExtraLayerAttribute | None
@@ -5543,10 +5525,9 @@ def nce_layer(input,
                              A uniform distribution will be used if not provided.
                              If not None, its length must be equal to num_classes.
     :type neg_distribution: list | tuple | collections.Sequence | None
-    :param bias_attr: The Bias Attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                      whose type is not ParameterAttribute, no bias is defined. If the
+                      parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
@@ -6178,7 +6159,8 @@ def smooth_l1_cost(input, label, name=None, coeff=1.0, layer_attr=None):
     :type input: LayerOutput
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param coeff: The coefficient affects the gradient in the backward.
+    :param coeff: The weight of the gradient in the back propagation.
+                  1.0 is the default.
     :type coeff: float
     :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
                        details.
@@ -6450,7 +6432,7 @@ def gated_unit_layer(input,
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param size: The dimemsion of this layer's output.
+    :param size: The dimension of this layer's output.
     :type size: int
     :param act: Activation type of the projection. LinearActivation is the default.
     :type act: BaseActivation
@@ -6462,10 +6444,9 @@ def gated_unit_layer(input,
     :param gate_param_attr: The parameter attribute of the gate. See ParameterAttribute
                             for details.
     :type gate_param_attr: ParameterAttribute
-    :param gate_bias_attr: The bias attribute of the gate. If the parameter is set to
-                           False or something not type of ParameterAttribute, no bias is
-                           defined. If the parameter is set to True, the bias is initialized
-                           to zero.
+    :param gate_bias_attr: The bias attribute of the gate. If the parameter is set to False or
+                           an object whose type is not ParameterAttribute, no bias is defined.
+                           If the parameter is set to True, the bias is initialized to zero.
     :type gate_bias_attr: ParameterAttribute | bool | None | Any
     :param inproj_attr: Extra layer attributes of the projection. See ExtraLayerAttribute for
                         details.
@@ -6473,10 +6454,9 @@ def gated_unit_layer(input,
     :param inproj_param_attr: The parameter attribute of the projection. See ParameterAttribute
                               for details.
     :type inproj_param_attr: ParameterAttribute
-    :param inproj_bias_attr: The bias attribute of the projection. If the parameter is set to
-                             False or something not type of ParameterAttribute, no bias is
-                             defined. If the parameter is set to True, the bias is initialized
-                             to zero.
+    :param inproj_bias_attr: The bias attribute of the projection. If the parameter is set to False
+                             or an object whose type is not ParameterAttribute, no bias is defined.
+                             If the parameter is set to True, the bias is initialized to zero.
     :type inproj_bias_attr: ParameterAttribute | bool | None | Any
     :param layer_attr: Extra layer attribute of the product. See ExtraLayerAttribute for
                        details.
@@ -6845,10 +6825,9 @@ def img_conv3d_layer(input,
     :param padding: The numbers of padding along three axises. If the parameter is set to
                     one integer, they will be same.
     :type padding: int | tuple | list
-    :param bias_attr: The bias attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                      whose type is not ParameterAttribute, no bias is defined. If the
+                      parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :param num_channels: The number of input channels. If the parameter is not set or
                          set to None,  its actual value will be automatically set to
@@ -6970,10 +6949,9 @@ def scale_shift_layer(input, name=None, param_attr=None, bias_attr=None):
     :param param_attr: The parameter attribute of scaling. See ParameterAttribute for
                       details.
     :type param_attr: ParameterAttribute
-    :param bias_attr: The bias attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                      whose type is not ParameterAttribute, no bias is defined. If the
+                      parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -7031,10 +7009,9 @@ def sub_seq_layer(input, offsets, sizes, act=None, bias_attr=None, name=None):
     :type sizes: LayerOutput
     :param act: Activation type, LinearActivation is the default.
     :type act: BaseActivation.
-    :param bias_attr: The bias attribute. If the parameter is set to
-                      False or something not type of ParameterAttribute,
-                      no bias is defined. If the parameter is set to
-                      True, the bias is initialized to zero.
+    :param bias_attr: The bias attribute. If the parameter is set to False or an object
+                      whose type is not ParameterAttribute, no bias is defined. If the
+                      parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :return: LayerOutput object.
     :rtype: LayerOutput
