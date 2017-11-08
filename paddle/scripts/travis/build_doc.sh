@@ -53,8 +53,8 @@ function deploy_docs() {
   set +e
   rm -rf ${DIR}/doc ${DIR}/doc_cn
   set -e
-  mv ../doc/cn/html ${DIR}/doc_cn
-  mv ../doc/en/html ${DIR}/doc
+  cp -r ../doc/cn/html ${DIR}/doc_cn
+  cp -r ../doc/en/html ${DIR}/doc
   git add .
 }
 

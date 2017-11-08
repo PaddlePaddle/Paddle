@@ -3,7 +3,7 @@ import paddle.v2.framework.layers as layers
 import paddle.v2.framework.core as core
 import paddle.v2.framework.optimizer as optimizer
 
-from paddle.v2.framework.framework import Program, g_program
+from paddle.v2.framework.framework import Program, g_main_program
 from paddle.v2.framework.io import save_inference_model, load_inference_model
 import paddle.v2.framework.executor as executor
 import unittest
@@ -20,28 +20,28 @@ class TestBook(unittest.TestCase):
             name='x',
             shape=[2],
             data_type='float32',
-            program=program,
-            init_program=init_program)
+            main_program=program,
+            startup_program=init_program)
         y = layers.data(
             name='y',
             shape=[1],
             data_type='float32',
-            program=program,
-            init_program=init_program)
+            main_program=program,
+            startup_program=init_program)
 
         y_predict = layers.fc(input=x,
                               size=1,
                               act=None,
-                              program=program,
-                              init_program=init_program)
+                              main_program=program,
+                              startup_program=init_program)
 
         cost = layers.square_error_cost(
             input=y_predict,
             label=y,
-            program=program,
-            init_program=init_program)
+            main_program=program,
+            startup_program=init_program)
         avg_cost = layers.mean(
-            x=cost, program=program, init_program=init_program)
+            x=cost, main_program=program, startup_program=init_program)
 
         sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
         opts = sgd_optimizer.minimize(avg_cost, init_program)

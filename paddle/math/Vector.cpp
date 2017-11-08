@@ -18,6 +18,7 @@ limitations under the License. */
 #include <memory>
 #include "Matrix.h"
 #include "hl_gpu.h"
+#include "hl_matrix.h"
 #include "hl_table_apply.h"
 #include "paddle/utils/Flags.h"
 #include "paddle/utils/Logging.h"
@@ -97,6 +98,19 @@ MatrixPtr VectorT<int>::toOneHotSparseMatrix(size_t idRange, bool useGpu) {
     mat->setRow(i, 1, &id, nullptr);
   }
   return mat;
+}
+
+template <>
+std::shared_ptr<VectorT<int>> VectorT<real>::castToInt() {
+  std::shared_ptr<VectorT<int>> ret = IVector::create(this->getSize(), useGpu_);
+  if (useGpu_) {
+    hl_vector_cast2int(ret->getData(), this->getData(), this->getSize());
+  } else {
+    for (size_t i = 0; i < getSize(); ++i) {
+      ret->getData()[i] = int(this->getData()[i]);
+    }
+  }
+  return ret;
 }
 
 template <class T>

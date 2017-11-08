@@ -143,6 +143,7 @@ __all__ = [
     'scale_shift_layer',
     'img_conv3d_layer',
     'resize_layer',
+    'sub_seq_layer',
 ]
 
 
@@ -252,6 +253,7 @@ class LayerType(object):
     SCALE_SHIFT_LAYER = 'scale_shift'
 
     RESIZE = 'resize'
+    SUB_SEQ_LAYER = 'subseq'
 
     @staticmethod
     def is_layer_type(type_name):
@@ -1047,6 +1049,13 @@ def fc_layer(input,
         if isinstance(param_attr, collections.Sequence):
             assert len(input) == len(param_attr)
         else:
+            if "parameter_name" in param_attr.attr and len(input) > 1:
+                logger.fatal(
+                    "When the name field of param_attr is manually specified "
+                    "and the input is a list, the param_attr should also be a "
+                    "list with each item being the param_attr for each input "
+                    "item. If only one named param_attr is provided, all the "
+                    "input items would share this parameter.")
             param_attr = [copy.deepcopy(param_attr) for _ in range(len(input))]
 
     assert isinstance(input, collections.Sequence)
@@ -4877,6 +4886,13 @@ def selective_fc_layer(input,
         if isinstance(param_attr, collections.Sequence):
             assert len(input) == len(param_attr)
         else:
+            if "parameter_name" in param_attr.attr and len(input) > 1:
+                logger.fatal(
+                    "When the name field of param_attr is manually specified "
+                    "and the input is a list, the param_attr should also be a "
+                    "list with each item being the param_attr for each input "
+                    "item. If only one named param_attr is provided, all the "
+                    "input items would share this parameter.")
             param_attr = [copy.deepcopy(param_attr) for _ in range(len(input))]
 
     assert isinstance(input, collections.Sequence)
@@ -6532,26 +6548,27 @@ def switch_order_layer(input,
 @layer_support()
 def crop_layer(input, offset, axis=2, shape=None, name=None, layer_attr=None):
     """
-    This layer crops images by offset and shape. User can set crop shape by
-    args 'shape' explicitly or by reference input layer.
+    This layer crops images according to the offset and shape. Users can set
+    the crop shape through the argument 'shape' explicitly or by specifying a
+    reference input layer.
 
     The example usage is:
 
     .. code-block:: python
     crop = crop_layer(input=[image_input, reference_input], axis=2, offset=[2, 3])
 
-    :param input: The input of this layer. If two inputs are given, the second input
-                  will be regarded as reference input.
+    :param input: The input of this layer. If two inputs are given, the second one
+                  will be regarded as the reference.
     :type input: LayerOutput | Sequence
     :param offset: The crop offset.
     :type offset: Sequence
-    :param axis: start axis to be cropped. To image input layer:
+    :param axis: The start axis to be cropped. For image input layer:
         - 0: batch size
         - 1: channels
         - 2: height
         - 3: width
-    :type partial_sum: int
-    :param shape: The shape to be cropped. Default is None.
+    :type axis: int
+    :param shape: The shape to be cropped to. Default is None.
     :type shape: Sequence | None
     :param name: The name of this layer. It is optional.
     :type name: basestring
@@ -6686,9 +6703,9 @@ def seq_slice_layer(input, starts, ends, name=None):
     :type name: basestring
     :param input: The input of this layer, which should be a sequence.
     :type input: LayerOutput
-    :param starts: start indices to slice the input sequence.
+    :param starts: The start indices to slice the input sequence.
     :type starts: LayerOutput | None
-    :param ends: end indices to slice the input sequence.
+    :param ends: The end indices to slice the input sequence.
     :type ends: LayerOutput | None
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -6728,7 +6745,7 @@ def seq_slice_layer(input, starts, ends, name=None):
 @layer_support()
 def kmax_seq_score_layer(input, name=None, beam_size=1):
     """
-    This layer accepts one input which are scores over a sequence or a nested
+    This layer accepts one input which is scores over a sequence or a nested
     sequence, and returns indices of beam_size sequences with highest scores.
 
     .. code-block:: python
@@ -6738,11 +6755,11 @@ def kmax_seq_score_layer(input, name=None, beam_size=1):
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param input: The input of this layer. It stores scores over a sequence or a nested
-        sequence and its size must be 1.
+    :param input: The input of this layer. It stores scores over a sequence or
+                  a nested sequence and its size must be 1.
     :type input: LayerOutput
-    :param beam_size: sequence indices with top beam_size scores are returned.
-    :type beam_size: double
+    :param beam_size: The indices of the sequences with top beam_size scores are returned.
+    :type beam_size: int
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -6798,38 +6815,42 @@ def img_conv3d_layer(input,
     :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param filter_size: The x dimension of a filter kernel. Or input a list.
+    :param filter_size: The dimensions of the filter kernel along three axises. If the parameter
+                        is set to one integer, the three dimensions will be same.
     :type filter_size: int | tuple | list
-    :param num_filters: Each filter group's number of filter
+    :param num_filters: The number of filters in each group.
+    :type num_filters: int
     :param act: Activation type. ReluActivation is the default.
     :type act: BaseActivation
-    :param groups: Group size of filters.
+    :param groups: The number of the filter groups.
     :type groups: int
-    :param stride: The x dimension of the stride. Or input a tuple for two image
-                   dimension.
+    :param stride: The strides of the convolution along three axises. If the parameter
+                   is set to one integer, the three strides will be same.
     :type stride: int | tuple | list
-    :param padding: The x dimension of the padding. Or input a tuple for two
-                    image dimension
+    :param padding: The numbers of padding along three axises. If the parameter is set to
+                    one integer, they will be same.
     :type padding: int | tuple | list
-    :param bias_attr: Convolution bias attribute. None means default bias.
-                      False means no bias.
+    :param bias_attr: The Bias Attribute. If the parameter is set to
+                      False or something not type of ParameterAttribute,
+                      no bias is defined. If the parameter is set to
+                      True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param num_channels: number of input channels. If None will be set
-                        automatically from previous output.
+    :param num_channels: The number of input channels. If the parameter is not set or
+                         set to None,  its actual value will be automatically set to
+                         the channels number of the input .
     :type num_channels: int
-    :param param_attr: Convolution param attribute. None means default attribute
+    :param param_attr: The parameter attribute of the convolution.
     :type param_attr: ParameterAttribute
-    :param shared_biases: Is biases will be shared between filters or not.
+    :param shared_biases: Whether biases will be shared between filters or not.
     :type shared_biases: bool
-    :param layer_attr: Layer Extra Attribute.
+    :param layer_attr: Extra layer attributes.
     :type layer_attr: ExtraLayerAttribute
-    :param trans: true if it is a convTransLayer, false if it is a convLayer
+    :param trans: True if it is a convTransLayer, False if it is a convLayer
     :type trans: bool
-    :param layer_type: specify the layer_type, default is None. If trans=True,
-                       layer_type has to be "exconvt" or "cudnn_convt",
-                       otherwise layer_type has to be either "exconv" or
-                       "cudnn_conv"
-    :type layer_type: String
+    :param layer_type: Specify the layer_type. If the parameter is set, it must be "deconv3d"
+                       when trans=True. If not set, it will be automatically set to "deconv3d"
+                       when trans=True and "conv3d" when trans=False.
+    :type layer_type: basestring
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -6911,7 +6932,7 @@ def img_conv3d_layer(input,
 def scale_shift_layer(input, name=None, param_attr=None, bias_attr=None):
     """
     A layer applies a linear transformation to each element in each row of
-    the input matrix. For each element, the layer first re-scale it and then
+    the input matrix. For each element, the layer first re-scales it and then
     adds a bias to it.
 
     This layer is very like the SlopeInterceptLayer, except the scale and
@@ -6966,3 +6987,58 @@ def resize_layer(input, size, name=None):
     """
     Layer(name=name, type=LayerType.RESIZE, inputs=Input(input.name), size=size)
     return LayerOutput(name, LayerType.RESIZE, parents=[input], size=input.size)
+
+
+@wrap_act_default(act=LinearActivation())
+@wrap_name_default('sub_seq')
+def sub_seq_layer(input, offsets, sizes, act=None, bias_attr=None, name=None):
+    """
+    sub_seq_layer will return sub-sequences from the input sequences. For each
+    sequence in the input sequence layer, sub_seq_layer will slice it by given
+    offset and size. Please notice that, number of offset value and size value
+    both are equal to the number of sequence in the input layer.
+
+    .. code-block:: python
+
+        sub_seq = sub_seq_layer(input=input_seq, offsets=offsets, sizes=sizes)
+
+    :param name: The name of this layer. It is optional.
+    :type name: basestring
+    :param input: The input of this layer, which should be sequence.
+    :type input: LayerOutput
+    :param offsets: The offset indices to slice the input sequence, which should
+                    be sequence type.
+    :type offsets: LayerOutput
+    :param sizes: The sizes of the sub-sequences, which should be sequence type.
+    :type sizes: LayerOutput
+    :param act: Activation type, LinearActivation is the default.
+    :type act: BaseActivation.
+    :param bias_attr: The Bias Attribute. If the parameter is set to
+                      False or something not type of ParameterAttribute,
+                      no bias is defined. If the parameter is set to
+                      True, the bias is initialized to zero.
+    :type bias_attr: ParameterAttribute | None | bool | Any
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+
+    assert isinstance(input, LayerOutput), (
+        'The first input of sub_seq_layer layer must be a PaddlePaddle layer.')
+    assert isinstance(offsets, LayerOutput), (
+        'The offset indices for sub_seq_layer, '
+        'must be a PaddlePaddle layer.')
+    assert isinstance(sizes, LayerOutput), (
+        'The sizes of sub-sequences, must be a PaddlePaddle layer.')
+
+    Layer(
+        name=name,
+        type=LayerType.SUB_SEQ_LAYER,
+        inputs=[input.name, offsets.name, sizes.name],
+        active_type=act.name,
+        bias=ParamAttr.to_bias(bias_attr))
+
+    return LayerOutput(
+        name,
+        LayerType.SUB_SEQ_LAYER,
+        parents=[input, offsets, sizes],
+        size=input.size)
