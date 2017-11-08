@@ -22,7 +22,6 @@ namespace operators {
 using value_type = float;
 using LoDTensor = framework::LoDTensor;
 
-const int64_t kInitLength = 1024;
 const int64_t kEndId = 0;
 
 // all the lod have 2 level, the first it source level,
@@ -64,11 +63,15 @@ struct BeamHelpter {
     }
   }
 
-  void AppendBeamNodeToResult(size_t source_idx, BeamNode* node) {
+  void AppendBeamNodeToResult(
+      size_t source_idx, const BeamNode* node,
+      std::unordered_map<size_t, std::vector<std::vector<int64_t>>>* result_id,
+      std::unordered_map<size_t, std::vector<std::vector<float>>>*
+          result_prob) {
     std::vector<int64_t> sequence_ids;
     std::vector<float> sequence_probs;
 
-    BeamNode* tmp = node;
+    const BeamNode* tmp = node;
     while (tmp != nullptr) {
       sequence_ids.emplace_back(tmp->word_id_);
       sequence_probs.emplace_back(tmp->prob_);
@@ -78,13 +81,16 @@ struct BeamHelpter {
     std::reverse(std::begin(sequence_ids), std::end(sequence_ids));
     std::reverse(std::begin(sequence_probs), std::end(sequence_probs));
 
-    result_id[source_idx].emplace_back(sequence_ids);
-    result_prob[source_idx].push_back(sequence_probs);
+    (*result_id)[source_idx].emplace_back(sequence_ids);
+    (*result_prob)[source_idx].push_back(sequence_probs);
   }
 
   std::vector<BeamNode*> PackTwoBeamStepOut(
       size_t source_idx, const std::vector<BeamNode*>& prefixes,
-      const LoDTensor& cur_ids, const LoDTensor& cur_probs) {
+      const LoDTensor& cur_ids, const LoDTensor& cur_probs,
+      std::unordered_map<size_t, std::vector<std::vector<int64_t>>>* result_id,
+      std::unordered_map<size_t, std::vector<std::vector<float>>>*
+          result_prob) {
     std::vector<BeamNode*> result;
 
     size_t source_start = cur_ids.lod()[kSourceLevel][source_idx];
@@ -117,7 +123,8 @@ struct BeamHelpter {
           // if candidate is end id, then put it into result and remove it from
           // beam tree.
           if (word_id == kEndId) {
-            AppendBeamNodeToResult(source_idx, candidate);
+            AppendBeamNodeToResult(source_idx, candidate, result_id,
+                                   result_prob);
             RemoveFromEnd(candidate);
           } else {
             result.push_back(candidate);
@@ -212,6 +219,9 @@ struct BeamHelpter {
     size_t source_num = step_ids.at(0).lod().at(kSourceLevel).size() - 1;
 
     std::unordered_map<size_t, std::vector<BeamNode*>> batch_beam_nodes;
+    std::unordered_map<size_t, std::vector<std::vector<int64_t>>> result_id;
+    std::unordered_map<size_t, std::vector<std::vector<float>>> result_prob;
+
     InitFirstStepBeamNodes(step_ids.at(0), step_probs.at(0), &batch_beam_nodes);
 
     // pack all steps for one batch first, then another batch
@@ -219,9 +229,9 @@ struct BeamHelpter {
       for (size_t step_id = 1; step_id < step_num; ++step_id) {
         auto prefixes = batch_beam_nodes.at(source_idx);
         if (prefixes.size() > 0UL) {
-          std::vector<BeamNode*> result =
-              PackTwoBeamStepOut(source_idx, prefixes, step_ids.at(step_id),
-                                 step_probs.at(step_id));
+          std::vector<BeamNode*> result = PackTwoBeamStepOut(
+              source_idx, prefixes, step_ids.at(step_id),
+              step_probs.at(step_id), &result_id, &result_prob);
           batch_beam_nodes[source_idx] = result;
         } else {
           VLOG(3) << "source_idx: " << source_idx << " step_id: " << step_id
@@ -231,17 +241,13 @@ struct BeamHelpter {
 
       // append last beam_node to result
       for (auto* beam_node : batch_beam_nodes.at(source_idx)) {
-        AppendBeamNodeToResult(source_idx, beam_node);
+        AppendBeamNodeToResult(source_idx, beam_node, &result_id, &result_prob);
         RemoveFromEnd(beam_node);
       }
     }
 
     ConvertMapToLodTensor(result_id, result_prob, id_tensor, prob_tensor);
   }
-
- public:
-  std::unordered_map<size_t, std::vector<std::vector<int64_t>>> result_id;
-  std::unordered_map<size_t, std::vector<std::vector<float>>> result_prob;
 };
 
 }  // namespace operators

@@ -47,14 +47,16 @@ TEST(TrieConcatOp, AppendBeamNodeToResult) {
   end->AppendTo(b1);
 
   BeamHelper helper;
+  std::unordered_map<size_t, std::vector<std::vector<int64_t>>> result_id;
+  std::unordered_map<size_t, std::vector<std::vector<float>>> result_prob;
 
-  helper.AppendBeamNodeToResult(0, end);
+  helper.AppendBeamNodeToResult(0, end, &result_id, &result_prob);
 
-  ASSERT_EQ(helper.result_prob.at(0).size(), 1UL);
-  for (size_t i = 0; i < helper.result_prob.at(0).at(0).size(); ++i) {
-    float prob = helper.result_prob.at(0).at(0).at(i);
+  ASSERT_EQ(result_prob.at(0).size(), 1UL);
+  for (size_t i = 0; i < result_prob.at(0).at(0).size(); ++i) {
+    float prob = result_prob.at(0).at(0).at(i);
     ASSERT_EQ(prob, static_cast<float>(i));
-    ASSERT_EQ(static_cast<float>(helper.result_id.at(0).at(0).at(i)), prob);
+    ASSERT_EQ(static_cast<float>(result_id.at(0).at(0).at(i)), prob);
   }
 }
 
@@ -157,21 +159,23 @@ TEST(TrieConcatOp, PackTwoBeamStepOut) {
   prefixes1.push_back(new BeamNode(3, 3));
 
   BeamHelper helper1;
-  std::vector<BeamNode*> vec =
-      helper1.PackTwoBeamStepOut(0, prefixes1, tensor_id, tensor_prob);
+  std::unordered_map<size_t, std::vector<std::vector<int64_t>>> result_id_1;
+  std::unordered_map<size_t, std::vector<std::vector<float>>> result_prob_1;
+  std::vector<BeamNode*> vec = helper1.PackTwoBeamStepOut(
+      0, prefixes1, tensor_id, tensor_prob, &result_id_1, &result_prob_1);
   ASSERT_EQ(vec.size(), 3UL);
   for (size_t i = 0; i < 3; ++i) {
     ASSERT_EQ(vec.at(i)->word_id_, static_cast<int64_t>(i + 1));
     ASSERT_EQ(vec.at(i)->prob_, static_cast<float>(i + 1));
   }
 
-  ASSERT_EQ(helper1.result_id.at(0).size(), 1UL);
+  ASSERT_EQ(result_id_1.at(0).size(), 1UL);
   std::vector<int64_t> id_res = {1, 0};
-  ASSERT_EQ(helper1.result_id.at(0).at(0), id_res);
+  ASSERT_EQ(result_id_1.at(0).at(0), id_res);
 
-  ASSERT_EQ(helper1.result_prob.at(0).size(), 1UL);
+  ASSERT_EQ(result_prob_1.at(0).size(), 1UL);
   std::vector<float> prob_res = {1, 0};
-  ASSERT_EQ(helper1.result_prob.at(0).at(0), prob_res);
+  ASSERT_EQ(result_prob_1.at(0).at(0), prob_res);
 
   // two prefix
   // result should be:
@@ -181,8 +185,10 @@ TEST(TrieConcatOp, PackTwoBeamStepOut) {
   prefixes2.push_back(new BeamNode(2, 2));
 
   BeamHelper helper2;
-  std::vector<BeamNode*> vec2 =
-      helper2.PackTwoBeamStepOut(1, prefixes2, tensor_id, tensor_prob);
+  std::unordered_map<size_t, std::vector<std::vector<int64_t>>> result_id_2;
+  std::unordered_map<size_t, std::vector<std::vector<float>>> result_prob_2;
+  std::vector<BeamNode*> vec2 = helper2.PackTwoBeamStepOut(
+      1, prefixes2, tensor_id, tensor_prob, &result_id_2, &result_prob_2);
   ASSERT_EQ(vec2.size(), 2UL);
   for (size_t i = 0; i < 2; ++i) {
     ASSERT_EQ(vec2.at(i)->word_id_, static_cast<int64_t>(i + 4));
@@ -190,8 +196,8 @@ TEST(TrieConcatOp, PackTwoBeamStepOut) {
     ASSERT_EQ(vec2.at(i)->prob_, static_cast<float>(i + 4));
     ASSERT_EQ(vec2.at(i)->father_->prob_, static_cast<float>(2));
   }
-  ASSERT_EQ(helper2.result_id.size(), 0UL);
-  ASSERT_EQ(helper2.result_prob.size(), 0UL);
+  ASSERT_EQ(result_id_2.size(), 0UL);
+  ASSERT_EQ(result_prob_2.size(), 0UL);
 }
 
 namespace paddle {
