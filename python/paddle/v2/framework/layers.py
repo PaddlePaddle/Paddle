@@ -968,6 +968,7 @@ def zeros(shape, dtype, main_program=None):
 def increment(x, value=1.0, main_program=None):
     helper = LayerHelper("increment", **locals())
     out = helper.create_tmp_variable(dtype=x.data_type)
+    out.stop_gradient = True
     helper.append_op(
         type='increment',
         inputs={'X': [x]},
@@ -989,6 +990,26 @@ def array_write(x, i, array=None, main_program=None):
                 'I': [i]},
         outputs={'Out': [array]})
     return array
+
+
+def create_array(dtype, main_program=None):
+    helper = LayerHelper("array", **locals())
+    return helper.create_variable(
+        name="{0}.out".format(helper.name),
+        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+        dtype=dtype)
+
+
+def less_than(x, y, cond=None, main_program=None):
+    helper = LayerHelper("less_than", **locals())
+    if cond is None:
+        cond = helper.create_tmp_variable(dtype='bool')
+        cond.stop_gradient = True
+
+    helper.append_op(
+        type='less_than', inputs={'X': [x],
+                                  'Y': [y]}, outputs={'Out': [cond]})
+    return cond
 
 
 def array_read(array, i, main_program=None):
