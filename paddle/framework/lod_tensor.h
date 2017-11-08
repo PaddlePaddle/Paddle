@@ -186,7 +186,7 @@ LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
 std::pair<LoD, std::pair<size_t, size_t>> GetSubLoDAndAbsoluteOffset(
     const LoD& lod, size_t start_idx, size_t end_idx, size_t start_level);
 
-void AppendLoD(LoD* lod, const std::vector<std::vector<size_t>>& lod_length);
+void AppendLoD(LoD* lod, const LoD& lod_length);
 
 }  // namespace framework
 }  // namespace paddle
