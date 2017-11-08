@@ -3,15 +3,15 @@ import numpy as np
 from op_test import OpTest
 
 
-class Segments(object):
+class Segment(object):
     def __init__(self, chunk_type, start_idx, end_idx):
         self.chunk_type = chunk_type
         self.start_idx = start_idx
         self.end_idx = end_idx
 
     def __str__(self):
-        return '(Segments: %s, %s, %s)' % (self.chunk_type, self.start_idx,
-                                           self.end_idx)
+        return '(Segment: %s, %s, %s)' % (self.chunk_type, self.start_idx,
+                                          self.end_idx)
 
     __repr__ = __str__
 
@@ -71,7 +71,7 @@ class TestChunkEvalOp(OpTest):
         # generate chunks
         for chunk_pos in zip(chunk_begins, chunk_ends):
             chunk_type = np.random.randint(self.num_chunk_types)
-            chunks.append(Segments(chunk_type, *chunk_pos))
+            chunks.append(Segment(chunk_type, *chunk_pos))
         return chunks
 
     def gen_chunks(self, infer, label, starts):
@@ -120,7 +120,7 @@ class TestChunkEvalOp(OpTest):
         self.num_correct_chunks, self.num_infer_chunks, self.num_label_chunks = 4, 5, 9
 
     def set_data(self):
-        infer = np.zeros((self.batch_size, )).astype("int32")
+        infer = np.zeros((self.batch_size, )).astype('int32')
         infer.fill(self.num_chunk_types * self.num_tag_types)
         label = np.copy(infer)
         starts = np.random.choice(
@@ -142,9 +142,12 @@ class TestChunkEvalOp(OpTest):
         f1 = float(2 * precision * recall) / (
             precision + recall) if self.num_correct_chunks else 0
         self.outputs = {
-            'Precision': [precision],
-            'Recall': [recall],
-            'F1-Score': [f1]
+            'Precision': np.asarray(
+                [precision], dtype='float32'),
+            'Recall': np.asarray(
+                [recall], dtype='float32'),
+            'F1-Score': np.asarray(
+                [f1], dtype='float32')
         }
 
     def setUp(self):
