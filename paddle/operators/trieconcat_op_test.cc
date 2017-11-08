@@ -281,4 +281,8 @@ TEST(TrieConcatOp, PackAllSteps) {
     std::cout << id_tensor.data<int64_t>()[i] << " ";
   }
   std::cout << std::endl;
+  for (int64_t i = 0; i < prob_tensor.dims()[0]; ++i) {
+    std::cout << prob_tensor.data<float>()[i] << " ";
+  }
+  std::cout << std::endl;
 }

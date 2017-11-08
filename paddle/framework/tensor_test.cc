@@ -267,26 +267,6 @@ TEST(Tensor, CopyFrom) {
 #endif
 }
 
-TEST(Tensor, Append) {
-  using namespace paddle::framework;
-  using namespace paddle::platform;
-  {
-    Tensor src_tensor;
-    double* src_ptr =
-        src_tensor.mutable_data<double>(make_ddim({3, 3}), CPUPlace());
-
-    double arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-    double arr1[4] = {1, 2, 3, 4};
-    double arr2[5] = {5, 6, 7, 8, 9};
-    memcpy(src_ptr, arr1, 4 * sizeof(double));
-    memcpy(src_ptr + 4, arr2, 5 * sizeof(double));
-
-    for (size_t i = 0; i < 9; ++i) {
-      EXPECT_EQ(src_ptr[i], arr[i]);
-    }
-  }
-}
-
 TEST(Tensor, CopyFromVector) {
   using namespace paddle::framework;
   using namespace paddle::platform;

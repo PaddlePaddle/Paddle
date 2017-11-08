@@ -29,7 +29,7 @@ class TrieConcatOp : public framework::OperatorBase {
     framework::ExecutionContext ctx(*this, scope, dev_ctx);
     const std::vector<LoDTensor>* ids =
         ctx.Input<std::vector<LoDTensor>>("Ids");
-    const std::vector<LoDTensor>* scores =
+    const std::vector<LoDTensor>* probs =
         ctx.Input<std::vector<LoDTensor>>("Scores");
     const size_t step_num = ids->size();
     PADDLE_ENFORCE_LT(step_num, 0, "beam search steps should be larger than 0");
@@ -39,57 +39,14 @@ class TrieConcatOp : public framework::OperatorBase {
     for (size_t i = 0; i < step_num; ++i) {
       PADDLE_ENFORCE_EQ(ids->at(i).lod().size(), 2UL,
                         "Level of LodTensor should be 2");
-      //      PADDLE_ENFORCE_EQ(ids->at(i).lod(), scores->at(i).lod(),
-      //                        "score and ids should have the same lod info");
     }
 
     // prepare output
     LoDTensor* sentenceIds = ctx.Output<LoDTensor>("SentenceIds");
-    LoDTensor* sentenceScores = ctx.Output<LoDTensor>("SentenceScores");
-
-    sentenceIds->Resize({kInitLength});
-    sentenceIds->mutable_data<int64_t>(ids->at(0).place());
-    sentenceScores->Resize({kInitLength});
-    sentenceScores->mutable_data<float>(ids->at(0).place());
+    LoDTensor* sentenceProbs = ctx.Output<LoDTensor>("SentenceScores");
 
     BeamHelpter beam_helper;
-    // init beam_nodes for each source sentence.
-    std::vector<std::vector<BeamNode*>> batch_beam_nodes;
-    batch_beam_nodes.reserve(source_num);
-    for (size_t source_idx = 0; source_idx < source_num; ++source_idx) {
-      std::vector<BeamNode*> beam_nodes;
-      size_t batch_start = ids->at(0).lod()[0][source_idx];
-      size_t batch_end = ids->at(0).lod()[0][source_idx + 1];
-      for (size_t word_id_idx = batch_start; word_id_idx < batch_end;
-           ++word_id_idx) {
-        beam_nodes.push_back(
-            new BeamNode(ids->at(0).data<int64_t>()[word_id_idx],
-                         scores->at(0).data<float>()[word_id_idx]));
-      }
-      batch_beam_nodes.push_back(beam_nodes);
-    }
-
-    // pack all steps for one batch first, then another batch
-    for (size_t source_idx = 0; source_idx < source_num; ++source_idx) {
-      for (size_t step_id = 1; step_id < step_num; ++step_id) {
-        size_t batch_start = ids->at(step_id).lod()[0][source_idx];
-        std::vector<BeamNode*> result = beam_helper.PackTwoBeamStepOut(
-            batch_start, batch_beam_nodes[source_idx], ids->at(step_id),
-            scores->at(step_id), sentenceIds, sentenceScores);
-        batch_beam_nodes.at(source_idx) = result;
-      }
-
-      // append last beam_node to result
-      for (auto* beam_node : batch_beam_nodes[source_idx]) {
-        beam_helper.AppendBeamNodeToLoDTensor(beam_node, sentenceIds,
-                                              sentenceScores);
-      }
-
-      // update batch_lod_level
-      sentenceIds->mutable_lod()->at(0).push_back(sentenceIds->lod()[1].size());
-      sentenceScores->mutable_lod()->at(0).push_back(
-          sentenceScores->lod()[1].size());
-    }
+    beam_helper.PackAllSteps(*ids, *probs, sentenceIds, sentenceProbs);
   }
 };
 
@@ -99,17 +56,16 @@ class TrieConcatOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                          framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Ids",
-             "(vector<LodTensor>) "
+             "(vector<LodTensor>)"
              "score of the candidate words in each step");
     AddInput("Scores",
-             "(vector<LodTensor>) "
+             "(vector<LodTensor>)"
              "score of the candidate words in each step");
     AddOutput("SentenceIds",
               "(LodTensor)"
               "All possible result sentences of word ids");
     AddOutput("SentenceScores",
               "(LodTensor)"
-              ""
               "All possible result sentences of word scores");
     AddComment(R"DOC(
 Pack the result of Beam search op into SentenceIds and SentenceScores.
@@ -120,9 +76,13 @@ Pack the result of Beam search op into SentenceIds and SentenceScores.
 class TrieConcatInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"), "TrieConcatOp must has input X");
-    PADDLE_ENFORCE(context->HasOutput("out"),
-                   "TrieConcatOp must has output Out");
+    PADDLE_ENFORCE(context->HasInput("Ids"), "TrieConcatOp must has input Ids");
+    PADDLE_ENFORCE(context->HasInput("Scores"),
+                   "TrieConcatOp must has input Scores");
+    PADDLE_ENFORCE(context->HasOutput("SentenceIds"),
+                   "TrieConcatOp must has output SentenceIds");
+    PADDLE_ENFORCE(context->HasOutput("SentenceScores"),
+                   "TrieConcatOp must has output SentenceScores");
   }
 };
 
@@ -130,7 +90,10 @@ class TrieConcatInferVarType : public framework::VarTypeInference {
  public:
   void operator()(const framework::OpDescBind& op_desc,
                   framework::BlockDescBind* block) const override {
-    for (auto& o : op_desc.Output("Out")) {
+    for (auto& o : op_desc.Output("SentenceIds")) {
+      block->Var(o)->SetType(framework::VarDesc::LOD_TENSOR);
+    }
+    for (auto& o : op_desc.Output("SentenceScores")) {
       block->Var(o)->SetType(framework::VarDesc::LOD_TENSOR);
     }
   }
