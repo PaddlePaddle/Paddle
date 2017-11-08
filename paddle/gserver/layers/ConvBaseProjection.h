@@ -105,7 +105,7 @@ protected:
   bool bias_;
 
   std::unique_ptr<Weight> weight_;
-  static ThreadLocalD<std::vector<MemoryHandle*>> convMem_;
+  static ThreadLocalD<std::vector<MemoryHandlePtr>> convMem_;
 };
 
 }  // namespace paddle

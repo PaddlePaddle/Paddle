@@ -144,5 +144,48 @@ TEST(LodExpand, test) {
   }
 }
 
+TEST(LoD, GetFineGrainedLoDLength) {
+  LoD lod;
+  lod.push_back(std::vector<size_t>({0, 2, 4, 5}));
+  lod.push_back(std::vector<size_t>({0, 1, 6, 8, 10, 11}));
+  lod.push_back(
+      std::vector<size_t>({0, 2, 5, 7, 10, 12, 15, 17, 20, 24, 26, 29}));
+
+  auto lod_and_offset =
+      paddle::framework::GetSubLoDAndAbsoluteOffset(lod, 1, 2, 0);
+  LoD lod_length = lod_and_offset.first;
+  size_t start_offset = lod_and_offset.second.first;
+  size_t end_offset = lod_and_offset.second.second;
+
+  LoD expected;
+  expected.push_back(std::vector<size_t>{2});
+  expected.push_back(std::vector<size_t>{2, 2});
+  expected.push_back(std::vector<size_t>{2, 3, 4, 2});
+  EXPECT_EQ(lod_length, expected);
+  EXPECT_EQ(start_offset, 15UL);
+  EXPECT_EQ(end_offset, 26UL);
+}
+
+TEST(LoD, AppendLoD) {
+  LoD lod_lens;
+  lod_lens.push_back(std::vector<size_t>({2}));
+  lod_lens.push_back(std::vector<size_t>({2, 2}));
+  lod_lens.push_back(std::vector<size_t>({2, 3, 4, 2}));
+
+  LoD origin;
+  origin.push_back(std::vector<size_t>({0, 2}));
+  origin.push_back(std::vector<size_t>({0, 1, 6}));
+  origin.push_back(std::vector<size_t>({0, 2, 5, 7, 10, 12, 15}));
+
+  paddle::framework::AppendLoD(&origin, lod_lens);
+
+  LoD expected;
+  expected.push_back(std::vector<size_t>({0, 2, 4}));
+  expected.push_back(std::vector<size_t>({0, 1, 6, 8, 10}));
+  expected.push_back(
+      std::vector<size_t>({0, 2, 5, 7, 10, 12, 15, 17, 20, 24, 26}));
+  EXPECT_EQ(origin, expected);
+}
+
 }  // namespace framework
 }  // namespace paddle
