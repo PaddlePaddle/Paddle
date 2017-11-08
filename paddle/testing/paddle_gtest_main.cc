@@ -14,13 +14,16 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
+#include "paddle/memory/memory.h"
 
 int main(int argc, char** argv) {
   std::vector<const char*> new_argv;
   std::string gflags_env;
 
   new_argv.push_back(argv[0]);
+  paddle::memory::Used(paddle::platform::CPUPlace());
 #ifdef PADDLE_WITH_CUDA
+  paddle::memory::Used(paddle::platform::GPUPlace(0));
   new_argv.push_back(
       "--tryfromenv=fraction_of_gpu_memory_to_use,use_pinned_memory");
 #else
