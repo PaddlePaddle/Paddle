@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include <thrust/execution_policy.h>
 #include <thrust/reduce.h>
-#include <iostream>
 #include "paddle/operators/accuracy_op.h"
 #include "paddle/platform/cuda_helper.h"
 
@@ -66,8 +65,7 @@ class AccuracyOpCUDAKernel : public framework::OpKernel<T> {
 
     size_t num_samples = inference->dims()[0];
     size_t infer_width = inference->dims()[1];
-    cudaError_t e = cudaMemset(accuracy_data, 0, sizeof(float));
-    PADDLE_ENFORCE_EQ(0, e, "cudaMemset error");
+    PADDLE_ENFORCE(cudaMemset(accuracy_data, 0, sizeof(float)));
 
     if (num_samples == 0) {
       return;
