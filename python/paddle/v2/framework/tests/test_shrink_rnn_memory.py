@@ -7,8 +7,8 @@ from paddle.v2.framework.framework import g_main_program
 import numpy
 
 
-class TestShrinkState(unittest.TestCase):
-    def test_shrink_state(self):
+class TestShrinkRNNMemory(unittest.TestCase):
+    def test_shrink_rnn_memory(self):
         x = layers.data('x', shape=[100], data_type='float32')
         x.stop_gradient = False
         table = layers.lod_rank_table(x=x)

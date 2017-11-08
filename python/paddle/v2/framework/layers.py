@@ -844,7 +844,7 @@ def shrink_memory(x, i, table, main_program=None):
     helper = LayerHelper('shrink_memory', **locals())
     out = helper.create_tmp_variable(dtype=x.data_type)
     helper.append_op(
-        type='shrink_state',
+        type='shrink_rnn_memory',
         inputs={'X': [x],
                 'I': [i],
                 'RankTable': [table]},
