@@ -158,15 +158,36 @@ void GetFineGrainedLoDLength(const LoD& lod, size_t start_idx, size_t end_idx,
   *start_offset = start_idx;
 }
 
+void GetFineGrainedLoDLength2(const LoD& lod, size_t start_idx, size_t end_idx,
+                              size_t start_level,
+                              std::vector<std::vector<size_t>>* lod_length,
+                              size_t* start_offset, size_t* end_offset) {
+  lod_length->clear();
+  *start_offset = start_idx;
+  *end_offset = end_idx;
+
+  for (size_t level_idx = start_level; level_idx < lod.size(); ++level_idx) {
+    std::vector<size_t> level_lens;
+    PADDLE_ENFORCE_LE(*start_offset, *end_offset);
+    PADDLE_ENFORCE_LT(*end_offset, lod[level_idx].size());
+    for (size_t i = *start_offset; i < *end_offset; ++i) {
+      level_lens.push_back(lod[level_idx][i + 1] - lod[level_idx][i]);
+    }
+    lod_length->emplace_back(level_lens);
+    *start_offset = lod[level_idx][*start_offset];
+    *end_offset = lod[level_idx][*end_offset];
+  }
+}
+
 void AppendLoD(LoD* lod, const std::vector<std::vector<size_t>>& lod_length) {
-  PADDLE_ENFORCE_EQ(
-      lod->size(), lod_length.size(),
+  PADDLE_ENFORCE(
+      lod->empty() || lod->size() == lod_length.size(),
       "The lod_length should has the same size with the appended lod.");
+  if (lod->empty()) {
+    *lod = LoD(lod_length.size(), std::vector<size_t>({0}));
+  }
   for (size_t i = 0; i < lod->size(); ++i) {
     auto& level = (*lod)[i];
-    if (level.empty()) {
-      level.push_back(0);
-    }
     for (size_t len : lod_length[i]) {
       level.push_back(level.back() + len);
     }
