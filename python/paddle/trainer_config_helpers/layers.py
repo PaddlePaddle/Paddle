@@ -5770,20 +5770,21 @@ def cross_entropy(input,
     :param input: The first input layer.
     :type input: LayerOutput.
     :param label: The input label.
-    :type input: LayerOutput.
+    :type input: LayerOutput
     :param name: The name of this layer. It is optional.
-    :type name: None | basestring.
-    :param coeff: The cost is multiplied with coeff.
-                  The coefficient affects the gradient in the backward.
-    :type coeff: float.
+    :type name: basestring
+    :param coeff: The weight of the gradient in the back propagation.
+                  1.0 is the default.
+    :type coeff: float
     :param weight: The cost of each sample is multiplied with each weight.
                    The weight should be a layer with size=1. Note that gradient
                    will not be calculated for weight.
     :type weight: LayerOutout
-    :param layer_attr: Extra Layer Attribute.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
-    :rtype: LayerOutput.
+    :rtype: LayerOutput
     """
 
     ipts, parents = __cost_input__(input, label, weight)
@@ -5816,19 +5817,21 @@ def cross_entropy_with_selfnorm(input,
                                           label=label_layer)
 
     :param input: The first input layer.
-    :type input: LayerOutput.
+    :type input: LayerOutput
     :param label: The input label.
-    :type input: LayerOutput.
+    :type input: LayerOutput
     :param name: The name of this layer. It is optional.
-    :type name: None | basestring.
-    :param coeff: The coefficient affects the gradient in the backward.
-    :type coeff: float.
+    :type name: basestring
+    :param coeff: The weight of the gradient in the back propagation.
+                  1.0 is the default.
+    :type coeff: float
     :param softmax_selfnorm_alpha: The scale factor affects the cost.
-    :type softmax_selfnorm_alpha: float.
-    :param layer_attr: Extra Layer Attribute.
+    :type softmax_selfnorm_alpha: float
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
-    :rtype: LayerOutput.
+    :rtype: LayerOutput
     """
     Layer(
         name=name,
@@ -5849,7 +5852,7 @@ def cross_entropy_with_selfnorm(input,
 @layer_support()
 def sum_cost(input, name=None, layer_attr=None):
     """
-    A loss layer which calculate the sum of the input as loss
+    A loss layer which calculates the sum of the input as loss.
 
     The example usage is:
 
@@ -5858,10 +5861,11 @@ def sum_cost(input, name=None, layer_attr=None):
        cost = sum_cost(input=input_layer)
 
     :param input: The input of this layer.
-    :type input: LayerOutput.
+    :type input: LayerOutput
     :param name: The name of this layer. It is optional.
-    :type name: None | basestring.
-    :param layer_attr: Extra Layer Attribute.
+    :type name: basestring
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput.
@@ -5901,16 +5905,18 @@ def huber_regression_cost(input,
        cost = huber_regression_cost(input=input_layer, label=label_layer)
 
     :param input: The first input layer.
-    :type input: LayerOutput.
+    :type input: LayerOutput
     :param label: The input label.
-    :type input: LayerOutput.
+    :type input: LayerOutput
     :param name: The name of this layer. It is optional.
-    :type name: None | basestring.
+    :type name: basestring
     :param delta: The difference between the observed and predicted values.
-    :type delta: float.
-    :param coeff: The coefficient affects the gradient in the backward.
-    :type coeff: float.
-    :param layer_attr: Extra Layer Attribute.
+    :type delta: float
+    :param coeff: The weight of the gradient in the back propagation.
+                  1.0 is the default.
+    :type coeff: float
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput.
@@ -5951,17 +5957,19 @@ def huber_classification_cost(input,
        cost = huber_classification_cost(input=input_layer, label=label_layer)
 
     :param input: The first input layer.
-    :type input: LayerOutput.
+    :type input: LayerOutput
     :param label: The input label.
-    :type input: LayerOutput.
+    :type input: LayerOutput
     :param name: The name of this layer. It is optional.
-    :type name: None | basestring.
-    :param coeff: The coefficient affects the gradient in the backward.
-    :type coeff: float.
-    :param layer_attr: Extra Layer Attribute.
+    :type name: basestring
+    :param coeff: The weight of the gradient in the back propagation.
+                  1.0 is the default.
+    :type coeff: float
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
-    :rtype: LayerOutput.
+    :rtype: LayerOutput
     """
     assert isinstance(input, LayerOutput)
     if input.size is not None:
@@ -5998,10 +6006,12 @@ def multi_binary_label_cross_entropy(input,
     :param label: The input label.
     :type input: LayerOutput
     :param name: The name of this layer. It is optional.
-    :type name: None | basestring
-    :param coeff: The coefficient affects the gradient in the backward.
+    :type name: basestring
+    :param coeff: The weight of the gradient in the back propagation.
+                  1.0 is the default.
     :type coeff: float
-    :param layer_attr: Extra Layer Attribute.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -6104,7 +6114,7 @@ def cross_entropy_over_beam(input, name=None):
 
     :param input: Input beams for this layer.
     :type input: BeamInput
-    :param name: The name of this layer.
+    :param name: The name of this layer. It is optional.
     :type name: basestring
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -6139,7 +6149,7 @@ def cross_entropy_over_beam(input, name=None):
 def smooth_l1_cost(input, label, name=None, coeff=1.0, layer_attr=None):
     """
     This is a L1 loss but more smooth. It requires that the
-    size of input and label are equal. The formula is as follows,
+    sizes of input and label are equal. The formula is as follows,
 
     .. math::
 
@@ -6151,8 +6161,9 @@ def smooth_l1_cost(input, label, name=None, coeff=1.0, layer_attr=None):
 
         smooth_{L1}(x) = \\begin{cases} 0.5x^2& \\text{if}  \\ |x| < 1 \\\\ |x|-0.5& \\text{otherwise} \end{cases}
 
-    More details can be found by referring to `Fast R-CNN
-    <https://arxiv.org/pdf/1504.08083v2.pdf>`_
+    Reference:
+        Fast R-CNN
+        https://arxiv.org/pdf/1504.08083v2.pdf
 
     The example usage is:
 
@@ -6166,10 +6177,11 @@ def smooth_l1_cost(input, label, name=None, coeff=1.0, layer_attr=None):
     :param label: The input label.
     :type input: LayerOutput
     :param name: The name of this layer. It is optional.
-    :type name: None | basestring
+    :type name: basestring
     :param coeff: The coefficient affects the gradient in the backward.
     :type coeff: float
-    :param layer_attr: Extra Layer Attribute.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -6191,12 +6203,12 @@ def smooth_l1_cost(input, label, name=None, coeff=1.0, layer_attr=None):
 @wrap_name_default()
 def multiplex_layer(input, name=None, layer_attr=None):
     """
-    This layer multiplex multiple layers according to the index,
-    which is provided by the first input layer.
-    inputs[0]: the index of the layer to output of size batchSize.
+    This layer multiplex multiple layers according to the indexes,
+    which are provided by the first input layer.
+    inputs[0]: the indexes of the layers to form the output of size batchSize.
     inputs[1:N]; the candidate output data.
-    For each index i from 0 to batchSize -1, the output is the i-th row of the
-    (index[i] + 1)-th layer.
+    For each index i from 0 to batchSize - 1, the i-th row of the output is the
+    the same to the i-th row of the (index[i] + 1)-th layer.
 
     For each i-th row of output:
     .. math::
@@ -6215,7 +6227,8 @@ def multiplex_layer(input, name=None, layer_attr=None):
     :type input: list of LayerOutput
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param layer_attr: extra layer attributes.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -6319,14 +6332,14 @@ def row_conv_layer(input,
     :type context_len: int
     :param act: Activation Type. LinearActivation is the default.
     :type act: BaseActivation
-    :param param_attr: The Parameter Attribute. If None, the parameter will be
-                       initialized smartly. It's better to set it by yourself.
+    :param param_attr: The parameter attribute. See ParameterAttribute for
+                       details.
     :type param_attr: ParameterAttribute
-    :param layer_attr: Extra Layer config.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute | None
     :return: LayerOutput object.
     :rtype: LayerOutput
-
     """
     assert isinstance(input, LayerOutput)
     assert context_len > 0, "the context_len must be greatet than 0."
@@ -6351,7 +6364,7 @@ def prelu_layer(input,
                 param_attr=None,
                 layer_attr=None):
     """
-    The Parameter Relu activation that actives outputs with a learnable weight.
+    The Parametric Relu activation that actives outputs with a learnable weight.
 
     Reference:
         Delving Deep into Rectifiers: Surpassing Human-Level Performance on
@@ -6371,16 +6384,17 @@ def prelu_layer(input,
     :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param partial_sum: this parameter makes a group of inputs share a same weight.
+    :param partial_sum: this parameter makes a group of inputs share the same weight.
 
         - partial_sum = 1, indicates the element-wise activation: each element has a weight.
-        - partial_sum = number of elements in one channel, indicates the channel-wise activation, elements in a channel share a same weight.
-        - partial_sum = number of outputs, indicates all elements share a same weight.
+        - partial_sum = number of elements in one channel, indicates the channel-wise activation, elements in a channel share the same weight.
+        - partial_sum = number of outputs, indicates all elements share the same weight.
 
     :type partial_sum: int
     :param param_attr: The parameter attribute. See ParameterAttribute for details.
-    :type param_attr: ParameterAttribute | None
-    :param layer_attr: Extra layer configurations. Default is None.
+    :type param_attr: ParameterAttribute
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute | None
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -6436,34 +6450,36 @@ def gated_unit_layer(input,
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param size: output size of the gated unit.
+    :param size: The dimemsion of this layer's output.
     :type size: int
-    :param act: Activation type of the projected input. LinearActivation is the default.
+    :param act: Activation type of the projection. LinearActivation is the default.
     :type act: BaseActivation
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param gate_attr: Attributes to tune the gate output, for example, error
-        clipping threshold, dropout and so on. See ExtraLayerAttribute for
-        more details.
+    :param gate_attr: The extra layer attribute of the gate. See ExtraLayerAttribute for
+                      details.
     :type gate_attr: ExtraLayerAttribute | None
-    :param gate_param_attr: Attributes to tune the learnable projected matrix
-        parameter of the gate.
-    :type gate_param_attr: ParameterAttribute | None
-    :param gate_bias_attr: Attributes to tune the learnable bias of the gate.
-    :type gate_bias_attr: ParameterAttribute | None
-    :param inproj_attr: Attributes to the tune the projected input, for
-        example, error clipping threshold, dropout and so on. See
-        ExtraLayerAttribute for more details.
+    :param gate_param_attr: The parameter attribute of the gate. See ParameterAttribute
+                            for details.
+    :type gate_param_attr: ParameterAttribute
+    :param gate_bias_attr: The bias attribute of the gate. If the parameter is set to
+                           False or something not type of ParameterAttribute, no bias is
+                           defined. If the parameter is set to True, the bias is initialized
+                           to zero.
+    :type gate_bias_attr: ParameterAttribute | bool | None | Any
+    :param inproj_attr: Extra layer attributes of the projection. See ExtraLayerAttribute for
+                        details.
     :type inproj_attr: ExtraLayerAttribute | None
-    :param inproj_param_attr: Attributes to tune the learnable parameter of
-        the projection of input.
-    :type inproj_param_attr: ParameterAttribute | None
-    :param inproj_bias_attr: Attributes to tune the learnable bias of
-        projection of the input.
-    :type inproj_bias_attr: ParameterAttribute | None
-    :param layer_attr: Attributes to tune the final output of the gated unit,
-        for example, error clipping threshold, dropout and so on. See
-        ExtraLayerAttribute for more details.
+    :param inproj_param_attr: The parameter attribute of the projection. See ParameterAttribute
+                              for details.
+    :type inproj_param_attr: ParameterAttribute
+    :param inproj_bias_attr: The bias attribute of the projection. If the parameter is set to
+                             False or something not type of ParameterAttribute, no bias is
+                             defined. If the parameter is set to True, the bias is initialized
+                             to zero.
+    :type inproj_bias_attr: ParameterAttribute | bool | None | Any
+    :param layer_attr: Extra layer attribute of the product. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute | None
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -6659,9 +6675,9 @@ def clip_layer(input, min, max, name=None):
     :param input: The input of this layer.
     :type input: LayerOutput.
     :param min: The lower threshold for clipping.
-    :type min: double
+    :type min: float
     :param max: The upper threshold for clipping.
-    :type max: double
+    :type max: float
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -6709,7 +6725,6 @@ def seq_slice_layer(input, starts, ends, name=None):
     :type ends: LayerOutput | None
     :return: LayerOutput object.
     :rtype: LayerOutput
-
     """
 
     assert isinstance(input, LayerOutput), (
@@ -6830,7 +6845,7 @@ def img_conv3d_layer(input,
     :param padding: The numbers of padding along three axises. If the parameter is set to
                     one integer, they will be same.
     :type padding: int | tuple | list
-    :param bias_attr: The Bias Attribute. If the parameter is set to
+    :param bias_attr: The bias attribute. If the parameter is set to
                       False or something not type of ParameterAttribute,
                       no bias is defined. If the parameter is set to
                       True, the bias is initialized to zero.
@@ -6839,11 +6854,13 @@ def img_conv3d_layer(input,
                          set to None,  its actual value will be automatically set to
                          the channels number of the input .
     :type num_channels: int
-    :param param_attr: The parameter attribute of the convolution.
+    :param param_attr: The parameter attribute of the convolution. See ParameterAttribute for
+                       details.
     :type param_attr: ParameterAttribute
     :param shared_biases: Whether biases will be shared between filters or not.
     :type shared_biases: bool
-    :param layer_attr: Extra layer attributes.
+    :param layer_attr: The extra layer attributes. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
     :param trans: True if it is a convTransLayer, False if it is a convLayer
     :type trans: bool
@@ -6950,9 +6967,10 @@ def scale_shift_layer(input, name=None, param_attr=None, bias_attr=None):
     :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param param_attr: The parameter attribute of scaling.
+    :param param_attr: The parameter attribute of scaling. See ParameterAttribute for
+                      details.
     :type param_attr: ParameterAttribute
-    :param bias_attr: The Bias Attribute. If the parameter is set to
+    :param bias_attr: The bias attribute. If the parameter is set to
                       False or something not type of ParameterAttribute,
                       no bias is defined. If the parameter is set to
                       True, the bias is initialized to zero.
@@ -7013,7 +7031,7 @@ def sub_seq_layer(input, offsets, sizes, act=None, bias_attr=None, name=None):
     :type sizes: LayerOutput
     :param act: Activation type, LinearActivation is the default.
     :type act: BaseActivation.
-    :param bias_attr: The Bias Attribute. If the parameter is set to
+    :param bias_attr: The bias attribute. If the parameter is set to
                       False or something not type of ParameterAttribute,
                       no bias is defined. If the parameter is set to
                       True, the bias is initialized to zero.
