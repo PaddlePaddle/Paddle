@@ -859,7 +859,7 @@ class While(object):
                 'X': [parent_block.var(x_name) for x_name in x_name_list],
                 'Condition': [self.cond_var]
             },
-            outputs={'Out': [out_vars],
+            outputs={'Out': out_vars,
                      'StepScopes': [step_scope]},
             attrs={'step_block': [while_block]})
 
