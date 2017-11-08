@@ -24,8 +24,10 @@ using LoDTensor = framework::LoDTensor;
 
 const int64_t kEndId = 0;
 
-// all the lod have 2 level, the first it source level,
-// each source have multiple possible sentences in the second level
+// all the lod have 2 levels.
+// The First is source level, the second is sentence level.
+// source level describe how many candidate words for this source.
+// sentence level describe these candidates belong to which prefix
 const size_t kSourceLevel = 0;
 const size_t kSentenceLevel = 1;
 
@@ -37,15 +39,8 @@ struct BeamNode {
     father->kids_.push_back(this);
   }
 
-  BeamNode* father_ = nullptr;
-  std::vector<BeamNode*> kids_;
-  int64_t word_id_;
-  float score_;
-};
-
-struct BeamHelpter {
   // remove this prefix from the beam tree
-  void RemoveFromEnd(BeamNode* end) {
+  static void RemoveFromEnd(BeamNode* end) {
     PADDLE_ENFORCE_EQ(end->kids_.size(), 0UL, "end should not have any kids");
     auto* father = end->father_;
     if (father != nullptr) {
@@ -63,6 +58,13 @@ struct BeamHelpter {
     }
   }
 
+  BeamNode* father_ = nullptr;
+  std::vector<BeamNode*> kids_;
+  int64_t word_id_;
+  float score_;
+};
+
+struct BeamHelpter {
   void AppendBeamNodeToResult(
       size_t source_idx, const BeamNode* node,
       std::unordered_map<size_t, std::vector<std::vector<int64_t>>>* result_id,
@@ -107,7 +109,7 @@ struct BeamHelpter {
       if (candidate_start == candidate_end) {
         VLOG(3) << "this sentence has no more candidate, prune it";
         // remove this sentence from Beam Tree.
-        RemoveFromEnd(prefix);
+        BeamNode::RemoveFromEnd(prefix);
       } else {
         // two level lod
         // [0 2 6] source level
@@ -125,7 +127,7 @@ struct BeamHelpter {
           if (word_id == kEndId) {
             AppendBeamNodeToResult(source_idx, candidate, result_id,
                                    result_score);
-            RemoveFromEnd(candidate);
+            BeamNode::RemoveFromEnd(candidate);
           } else {
             result.push_back(candidate);
           }
@@ -244,7 +246,7 @@ struct BeamHelpter {
       for (auto* beam_node : batch_beam_nodes.at(source_idx)) {
         AppendBeamNodeToResult(source_idx, beam_node, &result_id,
                                &result_score);
-        RemoveFromEnd(beam_node);
+        BeamNode::RemoveFromEnd(beam_node);
       }
     }
 

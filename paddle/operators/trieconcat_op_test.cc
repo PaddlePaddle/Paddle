@@ -18,10 +18,7 @@
 #include "paddle/platform/place.h"
 
 TEST(TrieConcatOp, RemoveFromEnd) {
-  using BeamHelper = paddle::operators::BeamHelpter;
   using BeamNode = paddle::operators::BeamNode;
-
-  BeamHelper helper;
 
   BeamNode* root = new BeamNode(0, 0);
   BeamNode* b1 = new BeamNode(1, 1);
@@ -32,8 +29,8 @@ TEST(TrieConcatOp, RemoveFromEnd) {
   b2->AppendTo(root);
   b3->AppendTo(b1);
 
-  helper.RemoveFromEnd(b3);
-  helper.RemoveFromEnd(b2);
+  BeamNode::RemoveFromEnd(b3);
+  BeamNode::RemoveFromEnd(b2);
 }
 
 TEST(TrieConcatOp, AppendBeamNodeToResult) {
@@ -272,23 +269,36 @@ TEST(TrieConcatOp, PackAllSteps) {
   ASSERT_EQ(scores.size(), 3UL);
 
   BeamHelper helper;
+
   LoDTensor id_tensor;
   LoDTensor score_tensor;
   helper.PackAllSteps(ids, scores, &id_tensor, &score_tensor);
 
   LoD lod = id_tensor.lod();
+  std::vector<size_t> expect_source_lod = {0, 3, 6};
+  EXPECT_EQ(lod[0], expect_source_lod);
+  std::vector<size_t> expect_sentence_lod = {0, 2, 5, 8, 11, 14, 17};
+  EXPECT_EQ(lod[1], expect_sentence_lod);
+  std::vector<int> expect_data = {1, 0, 3, 1, 0, 3, 2, 1, 4,
+                                  3, 2, 4, 4, 3, 6, 5, 4};
+  ASSERT_EQ(id_tensor.dims()[0], static_cast<int64_t>(expect_data.size()));
+  for (size_t i = 0; i < expect_data.size(); ++i) {
+    ASSERT_EQ(id_tensor.data<int64_t>()[i],
+              static_cast<int64_t>(expect_data[i]));
+  }
+
   for (size_t level = 0; level < 2; ++level) {
     for (size_t i = 0; i < lod[level].size(); ++i) {
-      std::cout << lod[level][i] << " ";
+      std::cout << lod[level][i] << ", ";
     }
     std::cout << std::endl;
   }
   for (int64_t i = 0; i < id_tensor.dims()[0]; ++i) {
-    std::cout << id_tensor.data<int64_t>()[i] << " ";
+    std::cout << id_tensor.data<int64_t>()[i] << ", ";
   }
   std::cout << std::endl;
   for (int64_t i = 0; i < score_tensor.dims()[0]; ++i) {
-    std::cout << score_tensor.data<float>()[i] << " ";
+    std::cout << score_tensor.data<float>()[i] << ", ";
   }
   std::cout << std::endl;
 }
