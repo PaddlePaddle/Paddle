@@ -21,7 +21,7 @@
 #include "paddle/framework/var_desc.h"
 #include "paddle/operators/net_op.h"
 
-USE_OP(fill_constant);
+USE_NO_KERNEL_OP(fill_constant);
 
 namespace paddle {
 namespace framework {
