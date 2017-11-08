@@ -2358,6 +2358,37 @@ TEST(Layer, ScaleShiftLayer) {
   }
 }
 
+TEST(Layer, MulValueLayer) {
+  const size_t batchSize = 64;
+  const size_t size = 4096;
+  TestConfig config;
+  config.layerConfig.set_type("mul_value");
+  config.inputDefs.push_back({INPUT_DATA, "input", size, 0});
+  MatrixPtr indicesV = Matrix::create(batchSize, 6, false, false);
+  auto* data = indicesV->getData();
+  for (size_t i = 0; i < batchSize; ++i) {
+    data[i * 2] = 2;
+    data[i * 2 + 1] = 4;
+    data[i * 2 + 2] = 16;
+    data[i * 2 + 3] = 32;
+    data[i * 2 + 4] = 16;
+    data[i * 2 + 5] = 32;
+  }
+  config.inputDefs.push_back({INPUT_SELF_DEFINE_DATA, "indices", indicesV, {}});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  MulValueConfig* mulValueConf = input->mutable_mul_value_conf();
+  ImageConfig* imgConf = mulValueConf->mutable_image_conf();
+  imgConf->set_img_size(32);
+  imgConf->set_img_size_y(32);
+  imgConf->set_channels(4);
+  mulValueConf->set_value(1.0);
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "mul_value", batchSize, false, useGpu, false);
+  }
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   initMain(argc, argv);

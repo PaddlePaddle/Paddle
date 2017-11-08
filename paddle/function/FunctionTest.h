@@ -110,6 +110,7 @@ public:
         function2_(FunctionBase::funcRegistrar_.createByType(name2)) {
     function1_->init(config);
     function2_->init(config);
+    initArgsCallBack_ = nullptr;
   }
 
   ~Compare2Function() {}
@@ -168,6 +169,10 @@ public:
                                       input.valueType(),
                                       input.shape(),
                                       *seq2_));
+  }
+
+  void registerInitCallBack(std::function<void(BufferArg&, size_t)> callback) {
+    initArgsCallBack_ = callback;
   }
 
   // output need only contains shape, do not contains data.
@@ -340,6 +345,10 @@ protected:
         initArg(*func1Inputs_[i]);
       }
 
+      if (initArgsCallBack_ != nullptr) {
+        initArgsCallBack_(*func1Inputs_[i], i);
+      }
+
       copyArg_(*func1Inputs_[i], *func2Inputs_[i]);
     }
   }
@@ -386,6 +395,7 @@ protected:
   std::shared_ptr<SequenceIdArg> seq1_;
   std::shared_ptr<SequenceIdArg> seq2_;
   test::CopyArgument<DType1, DType2> copyArg_;
+  std::function<void(BufferArg&, size_t)> initArgsCallBack_;
 };
 
 class CpuGpuFuncCompare
