@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   You may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 
@@ -21,7 +21,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using framework::Tensor;
 
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -49,34 +49,27 @@ class BilinearTensorProductKernel : public framework::OpKernel<T> {
     auto weight_dims = weight->dims();
     auto place = ctx.GetEigenDevice<Place>();
 
-    // Create the temporary variables.
+    // Create the intermediate variables.
     Tensor left_mul;
     left_mul.mutable_data<T>(framework::make_ddim({batch_size, weight_dims[2]}),
                              ctx.GetPlace());
     auto left_mul_mat = EigenMatrix<T>::From(left_mul);
-    Tensor output_col;
-    output_col.mutable_data<T>(framework::make_ddim({weight_dims[0]}),
-                               ctx.GetPlace());
-    auto output_col_vec = EigenVector<T>::From(output_col);
 
     for (size_t i = 0; i < weight_dims[0]; ++i) {
+      auto output_col_vec = output_mat.chip(i, 1);
       Tensor weight_mat = weight->Slice(i, i + 1).Resize(
           framework::make_ddim({weight_dims[1], weight_dims[2]}));
       math::gemm<Place, T>(ctx.device_context(), CblasNoTrans, CblasNoTrans,
                            batch_size, weight_dims[2], weight_dims[1], 1,
                            x->data<T>(), weight_mat.data<T>(), 0,
                            left_mul.data<T>());
-      output_col_vec = (left_mul_mat * y_mat).sum(Eigen::DSizes<int, 1>(1));
-      for (size_t j = 0; j < batch_size; ++j) {
-        output_mat(j, i) = output_col_vec(j);
-      }
+      output_col_vec.device(place) =
+          (left_mul_mat * y_mat).sum(Eigen::DSizes<int, 1>(1));
     }
     if (bias) {
       auto bias_vec = EigenMatrix<T>::From(*bias);
       Eigen::DSizes<int, 2> bcast(batch_size, 1);
       output_mat.device(place) = bias_vec.broadcast(bcast) + output_mat;
-    } else {
-      output_mat.device(place) = output_mat;
     }
   }
 };
@@ -102,7 +95,7 @@ class BilinearTensorProductGradKernel : public framework::OpKernel<T> {
     auto d_out_mat = EigenMatrix<T>::From(*d_out);
     auto place = ctx.GetEigenDevice<Place>();
 
-    // Create the temporary variables for gradient.
+    // Create the intermediate variables for gradient.
     Tensor x_scale;
     x_scale.mutable_data<T>(framework::make_ddim({batch_size, weight_dims[1]}),
                             ctx.GetPlace());
