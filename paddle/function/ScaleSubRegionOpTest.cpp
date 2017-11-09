@@ -19,9 +19,9 @@ namespace paddle {
 
 TEST(ScaleSubRegion, real) {
   for (size_t numSamples : {5, 32}) {
-    for (size_t channels : {5, 5, 32}) {
-      for (size_t imgSizeH : {5, 33, 100}) {
-        for (size_t imgSizeW : {5, 32, 96}) {
+    for (size_t channels : {5, 32}) {
+      for (size_t imgSizeH : {5, 33}) {
+        for (size_t imgSizeW : {5, 32}) {
           for (real value : {-0.5, 0.0, 0.5}) {
             for (bool firstHalf : {false, true}) {
               VLOG(3) << " numSamples=" << numSamples
