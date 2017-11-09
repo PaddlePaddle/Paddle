@@ -19,11 +19,8 @@ limitations under the License. */
 int main(int argc, char** argv) {
   std::vector<const char*> new_argv;
   std::string gflags_env;
-
   new_argv.push_back(argv[0]);
-  paddle::memory::Used(paddle::platform::CPUPlace());
 #ifdef PADDLE_WITH_CUDA
-  paddle::memory::Used(paddle::platform::GPUPlace(0));
   new_argv.push_back(
       "--tryfromenv=fraction_of_gpu_memory_to_use,use_pinned_memory");
 #else
@@ -33,5 +30,9 @@ int main(int argc, char** argv) {
   char** new_argv_address = const_cast<char**>(new_argv.data());
   google::ParseCommandLineFlags(&new_argc, &new_argv_address, true);
   testing::InitGoogleTest(&argc, argv);
+  paddle::memory::Used(paddle::platform::CPUPlace());
+#ifdef PADDLE_WITH_CUDA
+  paddle::memory::Used(paddle::platform::GPUPlace(0));
+#endif
   return RUN_ALL_TESTS();
 }
