@@ -88,73 +88,7 @@ class SaveOp : public framework::OperatorBase {
                    "SaveOp only support LoDTensor, %s has wrong type", iname);
 
     auto &tensor = var->Get<framework::LoDTensor>();
-
-    {  // the 1st field, uint32_t version
-      constexpr uint32_t version = 0;
-      fout.write(reinterpret_cast<const char *>(&version), sizeof(version));
-    }
-    {  // the 2nd field, tensor description
-       // int32_t  size
-       // void*    protobuf message
-      framework::TensorDesc desc;
-      desc.set_data_type(framework::ToDataType(tensor.type()));
-      auto dims = framework::vectorize(tensor.dims());
-      auto *pb_dims = desc.mutable_dims();
-      pb_dims->Resize(static_cast<int>(dims.size()), 0);
-      std::copy(dims.begin(), dims.end(), pb_dims->begin());
-      int32_t size = desc.ByteSize();
-      fout.write(reinterpret_cast<const char *>(&size), sizeof(size));
-      auto out = desc.SerializeAsString();
-      fout.write(out.data(), size);
-    }
-    {  // the 3rd field, tensor data
-      uint64_t size = tensor.memory_size();
-      auto *data_ptr = tensor.data<void>();
-      PADDLE_ENFORCE(size < std::numeric_limits<std::streamsize>::max(),
-                     "Index overflow when writing tensor");
-      if (platform::is_gpu_place(tensor.place())) {
-#ifdef PADDLE_WITH_CUDA
-        constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
-        std::unique_ptr<char[]> buf(new char[kBufSize]);
-        auto &gpu_dev_ctx =
-            static_cast<const platform::CUDADeviceContext &>(dev_ctx);
-        platform::CPUPlace cpu;
-        uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
-        while (size != 0) {
-          size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
-          memory::Copy(cpu, buf.get(),
-                       boost::get<platform::GPUPlace>(tensor.place()),
-                       reinterpret_cast<const void *>(data), size_to_write,
-                       gpu_dev_ctx.stream());
-          gpu_dev_ctx.Wait();
-          fout.write(buf.get(), size_to_write);
-          data += size_to_write;
-          size -= size_to_write;
-        }
-#else
-        PADDLE_THROW("Unexpected branch");
-#endif
-      } else {
-        fout.write(static_cast<const char *>(data_ptr),
-                   static_cast<std::streamsize>(size));
-      }
-    }
-    {  // the 4th field, lod information
-       // uint64_t lod_level
-       // uint64_t lod_level_1 size in byte.
-       // int*     lod_level_1 data
-       // ...
-      auto lod = tensor.lod();
-      uint64_t size = lod.size();
-      fout.write(reinterpret_cast<const char *>(&size), sizeof(size));
-
-      for (auto &each : lod) {
-        size = each.size() * sizeof(framework::LoD::value_type::value_type);
-        fout.write(reinterpret_cast<const char *>(&size), sizeof(size));
-        fout.write(reinterpret_cast<const char *>(each.data()),
-                   static_cast<std::streamsize>(size));
-      }
-    }
+    framework::SerializeToStream(fout, tensor);
   }
 };
 

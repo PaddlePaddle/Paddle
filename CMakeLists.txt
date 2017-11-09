@@ -128,6 +128,7 @@ include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
 include(external/pybind11)  # download pybind11
 include(external/nccl)
+include(external/grpc)
 
 include(cudnn)              # set cudnn libraries, must before configure
 include(configure)          # add paddle env configuration

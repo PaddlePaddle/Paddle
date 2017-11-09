@@ -38,75 +38,7 @@ class LoadOp : public framework::OperatorBase {
                    out_var_name);
 
     auto *tensor = out_var->GetMutable<framework::LoDTensor>();
-
-    uint32_t version;
-    fin.read(reinterpret_cast<char *>(&version), sizeof(version));
-    PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
-    framework::TensorDesc desc;
-    {  // int32_t size
-       // proto buffer
-      int32_t size;
-      fin.read(reinterpret_cast<char *>(&size), sizeof(size));
-      std::unique_ptr<char[]> buf(new char[size]);
-      fin.read(reinterpret_cast<char *>(buf.get()), size);
-      PADDLE_ENFORCE(desc.ParseFromArray(buf.get(), size),
-                     "Cannot parse tensor desc");
-    }
-    {  // read tensor
-      std::vector<int64_t> dims;
-      dims.reserve(static_cast<size_t>(desc.dims().size()));
-      std::copy(desc.dims().begin(), desc.dims().end(),
-                std::back_inserter(dims));
-      tensor->Resize(framework::make_ddim(dims));
-
-      void *buf;
-      platform::Place cpu = platform::CPUPlace();
-      switch (desc.data_type()) {
-        case framework::FP32:
-          buf = tensor->mutable_data<float>(cpu);
-          break;
-        case framework::FP64:
-          buf = tensor->mutable_data<double>(cpu);
-          break;
-        case framework::INT32:
-          buf = tensor->mutable_data<int>(cpu);
-          break;
-        case framework::INT64:
-          buf = tensor->mutable_data<int64_t>(cpu);
-          break;
-        default:
-          PADDLE_THROW("DataType %d not supported", desc.data_type());
-      }
-      fin.read(static_cast<char *>(buf), tensor->memory_size());
-    }
-    {  // read lod
-      uint64_t lod_level;
-      fin.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
-      auto &lod = *tensor->mutable_lod();
-      lod.resize(lod_level);
-      for (uint64_t i = 0; i < lod_level; ++i) {
-        uint64_t size;
-        fin.read(reinterpret_cast<char *>(&size), sizeof(size));
-        std::vector<size_t> tmp(size / sizeof(size_t));
-        fin.read(reinterpret_cast<char *>(tmp.data()),
-                 static_cast<std::streamsize>(size));
-        lod[i] = tmp;
-      }
-    }
-
-    auto place = dev_ctx.GetPlace();
-    if (platform::is_gpu_place(place)) {
-      // copy CPU to GPU
-      framework::LoDTensor cpu_tensor;
-      cpu_tensor.ShareDataWith(*tensor);
-      cpu_tensor.set_lod(tensor->lod());
-
-      // reset tensor
-      out_var->Clear();
-      tensor = out_var->GetMutable<framework::LoDTensor>();
-      tensor->set_lod(cpu_tensor.lod());
-      tensor->CopyFrom(cpu_tensor, place, dev_ctx);
-    }
+    framework::DeserializeFromStream(fin, tensor);
   }
 };
 

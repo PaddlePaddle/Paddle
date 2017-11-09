@@ -14,8 +14,8 @@
 
 #include <stdint.h>
 #include <sys/stat.h>
-#include <fstream>
-#include <numeric>
+#include <ostream>
+#include <thread>
 
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/framework.pb.h"
@@ -28,7 +28,7 @@
 #include <grpc++/server_builder.h>
 #include <grpc++/server_context.h>
 #include <grpc/grpc.h>
-#include "sendrecv.grpc.pb.h"
+#include "paddle/operators/send_recv.grpc.pb.h"
 
 using grpc::Server;
 using grpc::ServerBuilder;
@@ -42,36 +42,58 @@ using sendrecv::TensorMessage;
 
 class SendRecvServerImpl final : public SendRecvOp::Service {
  public:
-  explicit RouteGuideImpl() {}
+  explicit SendRecvServerImpl() {}
 
-  Status SendTensor(ServerContext *context, const TensorMessage *in_tensor,
-                    TensorMessage *out_tensor) override {
+  Status SendTensor(ServerContext *context, const std::string *in_tensor,
+                    std::string *out_tensor) override {
     framework::LodTensor t;
-    // load t from in_tensor messge.
+    // TODO(typhoonzero): desirealize in_tensor and run pserver network.
+    std::istringstream iss(*in_tensor);
+    framework::Tensor t;
+    framework::DesirializeFromStream(iss, &t);
+    lodtensor_queue_.Push(std::move(t));
+    // Block util the sub graph is done.
+    auto t = lodtensor_return_queue_.Pop();
+    std::ostringstream oss;
+    framework::SerializeToStream(oss, &t);
+    *out_tensor = oss.str();
   }
 
   Status SendTensorStream(
       ServerContext *context,
       ServerReaderWriter<TensorMessage, TensorMessage> *stream) override {
-    std::vector<TensorMessage> received_tensor_chunk;
-    TensorMessage tensormsg;
-    while (stream->Read(&tensormsg)) {
-      // TODO(typhoonzero): implement stream methods.
-      // stream->Write(tensormsg);
-      // framework::LodTensor t;
-      // lodtensor_queue_.Push();
-    }
+    // TODO(typhoonzero): implement stream methods.
     return Status::OK;
+  }
+
+  Status SendSelectedRows(ServerContext *context, const std::string *in_sr,
+                          std::string *out_sr) {
+    // TODO(typhoonzero): implement SendSelectedRows
+    return Status::OK;
+  }
+
+  Status SendSelectedRowsStream(
+      ServerContext *context,
+      ServerReaderWriter<std::string, std::string> *stream) override {
+    // TODO(typhoonzero): implement SendSelectedRowsStream
+    return Status::OK;
+  }
+
+  const framework::LodTensor &Get() const { return lodtensor_queue_.Pop(); }
+
+  void Push(framework::LodTensor &tensor) {
+    lodtensor_return_queue_.Push(tensor);
   }
 
  private:
   SimpleBlockQueue<framework::LodTensor> lodtensor_queue_;
+  SimpleBlockQueue<framework::LodTensor> lodtensor_return_queue_;
+  SimpleBlockQueue<framework::SelectedRows> selected_rows_queue_;
+  SimpleBlockQueue<framework::SelectedRows> selected_rows_return_queue_;
 };
 
-void RunServer(const std::string &endpoint) {
-  std::string server_address(endpoint);
-  RouteGuideImpl service;
-
+void RunServer(const SendRecvServerImpl &service,
+               const std::string &server_address) {
   ServerBuilder builder;
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   builder.RegisterService(&service);
@@ -91,8 +113,33 @@ class RecvOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
-    // TODO(typhoonzero): start RPC server here
-    // TODO(typhoonzero): how to trigger server side net graph non-blocking?
+    constexpr RecvOpName = "RecvOp@SendRecvServerImpl";
+    auto *var = scope.FindVar(RecvOpName);
+    if (var == nullptr) {
+      // create RPC server object if it is not inited.
+      std::string endpoint = Attr<std::string>("endpoint");
+      var = scope.Var(RecvOpName);
+      SendRecvServerImpl *service = var->GetMutable<SendRecvServerImpl>();
+
+      // start server in a thread in background
+      std::thread server_thread(RunServer(*service, endpoit));
+    }
+    SendRecvServerImpl *service = var->Get<SendRecvServerImpl>();
+    framework::LoDTensor &t = service->Get();
+    // set graph input var
+    auto *var = scope.Var(Input("X"));
+    auto *tensor = var->GetMutable<framework::LoDTensor>();
+    // FIXME(typhoonzero): do not copy
+    tensor->CopyFrom(t, dev_ctx.GetPlace(), dev_ctx);
+
+    auto *block = Attr<framework::BlockDescBind *>("OptimizeBlock");
+    auto *program = block->Program();
+    framework::Executor executor(dev_ctx);
+    // Run sub graph to get optimized tensor
+    executor.Run(*program, &scope, block->ID(), false /*create_local_scope*/);
+
+    auto *out_var = scope.FindVar("Out");
+    service->Push(out_var->Get<framework::LoDTensor>());
   }
 };
 
@@ -119,4 +166,4 @@ This operator will recv tensor from send_op
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(save, ops::SaveOp, ops::SaveOpProtoMaker);
+REGISTER_OPERATOR(recv, ops::RecvOp, ops::RecvOpMaker);

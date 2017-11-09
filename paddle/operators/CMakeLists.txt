@@ -146,6 +146,37 @@ function(op_library TARGET)
     endif()
 endfunction()
 
+
+function(grpc_library TARGET_NAME)
+set(oneValueArgs "")
+set(multiValueArgs SRCS DEPS)
+cmake_parse_arguments(proto_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+set(_all_grpc_gen_srcs)
+
+foreach(FIL ${ARGN})
+
+  get_filename_component(ABS_FIL ${FIL} ABSOLUTE)
+  get_filename_component(FIL_WE ${FIL} NAME_WE)
+  get_filename_component(hw_proto_path "${hw_proto}" PATH)
+  
+  protobuf_generate_cpp(grpc_proto_srcs grpc_proto_hdrs "${grpc_library_SRCS}")
+  set(grpc_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.grpc.pb.cc")
+  set(grpc_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.grpc.pb.h")
+  LIST(APPEND ${_all_grpc_gen_srcs} ${grpc_grpc_srcs})
+  add_custom_command(
+        OUTPUT "${grpc_grpc_srcs}" "${grpc_grpc_hdrs}"
+        COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
+        ARGS --grpc_out "${CMAKE_CURRENT_BINARY_DIR}"
+          --plugin=protoc-gen-grpc="${gRPC_CPP_PLUGIN_EXECUTABLE}"
+          "${ABS_FIL}"
+        DEPENDS "${ABS_FIL}")
+
+endforeach()
+cc_library("${TARGET_NAME}" SRC "${_all_grpc_gen_srcs}" DEPS protobuf gRPC)
+endfunction()
+
+
 add_subdirectory(math)
 add_subdirectory(nccl)
 
@@ -167,7 +198,13 @@ set(DEPS_OPS
     lod_rank_table_op
     lstm_op
     tensor_array_read_write_op
-    gru_op)
+    gru_op
+    send_op
+    recv_op)
+
+grpc_library(sendrecvop_proto SRCS send_recv.proto)
+op_library(send_op SRCS send_op.cc DEPS sendrecvop_proto grpc)
+op_library(recv_op SRCS recv_op.cc DEPS sendrecvop_proto grpc)
 
 op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
 op_library(cross_entropy_op DEPS cross_entropy)
@@ -196,6 +233,8 @@ foreach(src ${GENERAL_OPS})
 endforeach()
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
+
+
 
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 cc_test(net_op_test SRCS net_op_test.cc DEPS net_op)

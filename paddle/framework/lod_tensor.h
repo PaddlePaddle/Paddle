@@ -187,7 +187,13 @@ void GetFineGrainedLoDLength(const LoD& lod, size_t start_idx, size_t end_idx,
 
 void AppendLoD(LoD* lod, const std::vector<std::vector<size_t>>& lod_length);
 
-void SerializeToStream(std::ostream& os);
+/*
+ * Serialize/Desiralize LoDTensor to std::ostream
+ * You can pass ofstream or ostringstream to serilize to file
+ * or to a in memory string.
+ */
+void SerializeToStream(std::ostream& os, const LoDTensor& tensor);
+void DeserializeFromStream(std::istream& is, LoDTensor* tensor);
 
 }  // namespace framework
 }  // namespace paddle
