@@ -61,8 +61,8 @@ class TestPool2d_Op(OpTest):
             'strides': self.strides,
             'paddings': self.paddings,
             'ksize': self.ksize,
-            'poolingType': self.pool_type,
-            'globalPooling': self.global_pool,
+            'pooling_type': self.pool_type,
+            'global_pooling': self.global_pool,
         }
 
         self.outputs = {'Out': output.astype('float32')}

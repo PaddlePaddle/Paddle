@@ -11,48 +11,18 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
-#include "paddle/framework/lod_tensor_array.h"
-#include "paddle/framework/op_registry.h"
+#include "paddle/operators/array_operator.h"
 
 namespace paddle {
 namespace operators {
-class ArrayOpBase : public framework::OperatorBase {
- public:
-  ArrayOpBase(const std::string &type, const framework::VariableNameMap &inputs,
-              const framework::VariableNameMap &outputs,
-              const framework::AttributeMap &attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {}
 
- protected:
-  size_t GetOffset(const framework::Scope &scope,
-                   const platform::DeviceContext &dev_ctx) const {
-    auto *i = scope.FindVar(Input("I"));
-    PADDLE_ENFORCE(i != nullptr, "I must be set");
-    auto &i_tensor = i->Get<framework::LoDTensor>();
-    PADDLE_ENFORCE_EQ(i_tensor.numel(), 1);
-    size_t offset;
-    if (platform::is_gpu_place(i_tensor.place())) {
-      // FIXME: Avoid copy from GPU to CPU
-      framework::Tensor t;
-      t.CopyFrom(i_tensor, platform::CPUPlace(), dev_ctx);
-      dev_ctx.Wait();
-      offset = static_cast<size_t>(*t.data<int64_t>());
-    } else {
-      offset = static_cast<size_t>(*i_tensor.data<int64_t>());
-    }
-    return offset;
-  }
-};
-
-class WriteToArrayOp : public ArrayOpBase {
+class WriteToArrayOp : public ArrayOp {
  public:
   WriteToArrayOp(const std::string &type,
                  const framework::VariableNameMap &inputs,
                  const framework::VariableNameMap &outputs,
                  const framework::AttributeMap &attrs)
-      : ArrayOpBase(type, inputs, outputs, attrs) {}
+      : ArrayOp(type, inputs, outputs, attrs) {}
 
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
@@ -122,13 +92,13 @@ class WriteToArrayInferVarType : public framework::VarTypeInference {
   }
 };
 
-class ReadFromArrayOp : public ArrayOpBase {
+class ReadFromArrayOp : public ArrayOp {
  public:
   ReadFromArrayOp(const std::string &type,
                   const framework::VariableNameMap &inputs,
                   const framework::VariableNameMap &outputs,
                   const framework::AttributeMap &attrs)
-      : ArrayOpBase(type, inputs, outputs, attrs) {}
+      : ArrayOp(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
     auto *x = scope.FindVar(Input("X"));

@@ -18,5 +18,5 @@
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
     fill_constant_batch_size_like,
-    ops::FillConstantOpKernel<paddle::platform::GPUPlace, float>,
-    ops::FillConstantOpKernel<paddle::platform::GPUPlace, double>);
+    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::GPUPlace, float>,
+    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::GPUPlace, double>);
