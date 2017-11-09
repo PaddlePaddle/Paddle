@@ -49,8 +49,6 @@ struct Transform<platform::CPUPlace> {
   template <typename InputIter, typename OutputIter, typename UnaryOperation>
   void operator()(const DeviceContext& context, InputIter first, InputIter last,
                   OutputIter result, UnaryOperation op) {
-    auto place = context.GetPlace();
-    PADDLE_ENFORCE(is_cpu_place(place), "It must use CPU place.");
     std::transform(first, last, result, op);
   }
 
@@ -59,8 +57,6 @@ struct Transform<platform::CPUPlace> {
   void operator()(const DeviceContext& context, InputIter1 first1,
                   InputIter1 last1, InputIter2 first2, OutputIter result,
                   BinaryOperation op) {
-    auto place = context.GetPlace();
-    PADDLE_ENFORCE(is_cpu_place(place), "It must use CPU place.");
     std::transform(first1, last1, first2, result, op);
   }
 };
