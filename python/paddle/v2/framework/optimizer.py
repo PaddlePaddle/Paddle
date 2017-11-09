@@ -169,8 +169,6 @@ class Optimizer(object):
             startup_program=startup_program)
         self._create_accumulators(loss.block,
                                   [p[0] for p in parameters_and_grads])
-        # Create any necessary tensors
-        self._initialize_tensors(loss.block)
 
         optimize_ops = []
         for param_and_grad in parameters_and_grads:
