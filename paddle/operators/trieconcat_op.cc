@@ -45,7 +45,7 @@ class TrieConcatOp : public framework::OperatorBase {
     LoDTensor* sentenceIds = ctx.Output<LoDTensor>("SentenceIds");
     LoDTensor* sentenceScores = ctx.Output<LoDTensor>("SentenceScores");
 
-    BeamHelpter beam_helper;
+    BeamHelper beam_helper;
     beam_helper.PackAllSteps(*ids, *scores, sentenceIds, sentenceScores);
   }
 };

@@ -57,195 +57,183 @@ struct BeamNode {
   float score_;
 };
 
-struct BeamHelpter {
-  void AppendBeamNodeToResult(
-      size_t source_idx, const BeamNode* node,
-      std::unordered_map<size_t, std::vector<std::vector<int64_t>>>* result_id,
-      std::unordered_map<size_t, std::vector<std::vector<float>>>*
-          result_score) {
-    std::vector<int64_t> sequence_ids;
-    std::vector<float> sequence_scores;
+using BeamNodeVector = std::vector<BeamNode*>;
 
-    const BeamNode* tmp = node;
-    while (tmp != nullptr) {
-      sequence_ids.emplace_back(tmp->word_id_);
-      sequence_scores.emplace_back(tmp->score_);
-      tmp = tmp->parent_;
-    }
+struct Sentence {
+  std::vector<int64_t> word_ids;
+  std::vector<float> scores;
+};
 
-    std::reverse(std::begin(sequence_ids), std::end(sequence_ids));
-    std::reverse(std::begin(sequence_scores), std::end(sequence_scores));
+using SentenceVector = std::vector<Sentence>;
 
-    (*result_id)[source_idx].emplace_back(sequence_ids);
-    (*result_score)[source_idx].push_back(sequence_scores);
+struct BeamHelper {
+  // make a BeamNode into sentence.
+  Sentence MakeSentence(const BeamNode* node) const;
+
+  std::vector<BeamNodeVector> PackTwoSteps(
+      const LoDTensor& cur_ids, const LoDTensor& cur_scores,
+      const std::vector<BeamNodeVector> prefixes_list,
+      std::unordered_map<size_t, SentenceVector>* sentence_vector_list) const;
+
+  void ConvertMapToLodTensor(
+      std::unordered_map<size_t, SentenceVector> sentence_vector_list,
+      LoDTensor* id_tensor, LoDTensor* score_tensor) const;
+
+  void PackAllSteps(const std::vector<LoDTensor>& step_ids,
+                    const std::vector<LoDTensor>& step_scores,
+                    LoDTensor* id_tensor, LoDTensor* score_tensor) const;
+};
+
+Sentence BeamHelper::MakeSentence(const BeamNode* node) const {
+  const BeamNode* tmp = node;
+  Sentence sentence;
+  while (tmp != nullptr) {
+    sentence.word_ids.emplace_back(tmp->word_id_);
+    sentence.scores.emplace_back(tmp->score_);
+    tmp = tmp->parent_;
   }
 
-  std::vector<BeamNode*> PackTwoBeamStepOut(
-      size_t source_idx, const std::vector<BeamNode*>& prefixes,
-      const LoDTensor& cur_ids, const LoDTensor& cur_scores,
-      std::unordered_map<size_t, std::vector<std::vector<int64_t>>>* result_id,
-      std::unordered_map<size_t, std::vector<std::vector<float>>>*
-          result_score) {
-    std::vector<BeamNode*> result;
+  std::reverse(std::begin(sentence.word_ids), std::end(sentence.word_ids));
+  std::reverse(std::begin(sentence.scores), std::end(sentence.scores));
 
-    size_t source_start = cur_ids.lod()[kSourceLevel][source_idx];
-    size_t source_end = cur_ids.lod()[kSourceLevel][source_idx + 1];
-    PADDLE_ENFORCE_EQ(source_end - source_start, prefixes.size(),
-                      "prefix and candidate set number should be the same");
-    std::vector<size_t> candidate_offset = cur_ids.lod()[kSentenceLevel];
-    for (size_t prefix_idx = 0; prefix_idx < prefixes.size(); ++prefix_idx) {
-      size_t candidate_start = candidate_offset[source_start + prefix_idx];
-      size_t candidate_end = candidate_offset[source_start + prefix_idx + 1];
-      auto* prefix = prefixes[prefix_idx];
-      PADDLE_ENFORCE_NE(prefix->word_id_, kEndId,
-                        "prefix should not contain end id");
-      if (candidate_start == candidate_end) {
-        VLOG(3) << "this sentence has no more candidate, prune it";
-        // remove this sentence from Beam Tree.
-        delete prefix;
-      } else {
-        // two level lod
-        // [0 2 6] source level
-        // [0 1 1 2 3 4] sentence level
-        PADDLE_ENFORCE_NE(prefix->word_id_, kEndId,
-                          "End id should not have candidate anymore");
-        for (size_t candidate_index = candidate_start;
-             candidate_index < candidate_end; ++candidate_index) {
-          int64_t word_id = cur_ids.data<int64_t>()[candidate_index];
-          float score = cur_scores.data<float>()[candidate_index];
-          auto* candidate = new BeamNode(word_id, score);
-          candidate->AppendTo(prefix);
-          // if candidate is end id, then put it into result and remove it from
-          // beam tree.
-          if (word_id == kEndId) {
-            AppendBeamNodeToResult(source_idx, candidate, result_id,
-                                   result_score);
-            delete candidate;
-          } else {
-            result.push_back(candidate);
+  return sentence;
+}
+
+std::vector<BeamNodeVector> BeamHelper::PackTwoSteps(
+    const LoDTensor& cur_ids, const LoDTensor& cur_scores,
+    const std::vector<BeamNodeVector> prefixes_list,
+    std::unordered_map<size_t, SentenceVector>* sentence_vector_list) const {
+  std::vector<BeamNodeVector> result;
+
+  for (size_t src_idx = 0; src_idx < cur_ids.lod()[kSourceLevel].size() - 1;
+       ++src_idx) {
+    size_t src_start = cur_ids.lod().at(kSourceLevel).at(src_idx);
+    size_t src_end = cur_ids.lod().at(kSourceLevel).at(src_idx + 1);
+
+    BeamNodeVector beam_nodes;
+
+    // if prefixes is nullptr, it means this is the first step.
+    if (prefixes_list.size() == 0UL) {
+      PADDLE_ENFORCE_EQ(cur_ids.lod().at(kSourceLevel).back(),
+                        cur_ids.lod().at(kSentenceLevel).back(),
+                        "in the first step");
+      for (size_t id_idx = src_start; id_idx < src_end; ++id_idx) {
+        beam_nodes.push_back(new BeamNode(cur_ids.data<int64_t>()[id_idx],
+                                          cur_scores.data<float>()[id_idx]));
+      }
+    } else {
+      const BeamNodeVector& prefixes = prefixes_list[src_idx];
+      SentenceVector& sentence_vector = (*sentence_vector_list)[src_idx];
+
+      PADDLE_ENFORCE_EQ(src_end - src_start, prefixes.size(),
+                        "prefix and candidate set number should be the same");
+
+      std::vector<size_t> candidate_offset = cur_ids.lod()[kSentenceLevel];
+      for (size_t prefix_idx = 0; prefix_idx < prefixes.size(); ++prefix_idx) {
+        auto* prefix = prefixes[prefix_idx];
+        size_t candidate_start = candidate_offset[src_start + prefix_idx];
+        size_t candidate_end = candidate_offset[src_start + prefix_idx + 1];
+        if (candidate_start == candidate_end) {
+          if (prefix->word_id_ == kEndId) {
+            VLOG(3) << "this sentence has Ended, prune it";
+            sentence_vector.push_back(MakeSentence(prefix));
+          }
+          VLOG(3) << "this sentence has no more candidate, prune it";
+          // remove this sentence from Beam Tree.
+          delete prefix;
+        } else {
+          // two level lod
+          // [0 2 6] source level
+          // [0 1 1 2 3 4] sentence level
+          PADDLE_ENFORCE_NE(prefix->word_id_, kEndId,
+                            "End id should not have candidate anymore");
+          for (size_t candidate_idx = candidate_start;
+               candidate_idx < candidate_end; ++candidate_idx) {
+            auto* candidate =
+                new BeamNode(cur_ids.data<int64_t>()[candidate_idx],
+                             cur_scores.data<float>()[candidate_idx]);
+            candidate->AppendTo(prefix);
+            beam_nodes.push_back(candidate);
           }
         }
       }
     }
-    return result;
+    result.push_back(beam_nodes);
+  }
+  return result;
+}
+
+void BeamHelper::ConvertMapToLodTensor(
+    std::unordered_map<size_t, SentenceVector> sentence_vector_list,
+    LoDTensor* id_tensor, LoDTensor* score_tensor) const {
+  size_t src_num = sentence_vector_list.size();
+
+  std::vector<size_t> source_level_lod = {0};
+  std::vector<size_t> sentence_level_lod = {0};
+  std::vector<int64_t> id_data;
+  std::vector<float> score_data;
+  for (size_t src_idx = 0; src_idx < src_num; ++src_idx) {
+    for (Sentence& sentence : sentence_vector_list[src_idx]) {
+      id_data.insert(id_data.end(), sentence.word_ids.begin(),
+                     sentence.word_ids.end());
+      score_data.insert(score_data.end(), sentence.scores.begin(),
+                        sentence.scores.end());
+      sentence_level_lod.push_back(sentence_level_lod.back() +
+                                   sentence.word_ids.size());
+    }
+    source_level_lod.push_back(source_level_lod.back() +
+                               sentence_vector_list[src_idx].size());
   }
 
-  void InitFirstStepBeamNodes(
-      const LoDTensor& tensor_id, const LoDTensor& tensor_score,
-      std::unordered_map<size_t, std::vector<BeamNode*>>* batch_beam_nodes) {
-    // init beam_nodes for each source sentence.
-    // in the first level, each sentence should have be a prefix
-    // [0 3 6] level 0
-    // [0 1 2 3 4 5 6] level 1
-    // [0 0 0 0 0 0] data
-    PADDLE_ENFORCE_EQ(tensor_id.lod().at(kSourceLevel).back(),
-                      tensor_id.lod().at(kSentenceLevel).back());
+  auto cpu_place = new paddle::platform::CPUPlace();
+  paddle::platform::CPUDeviceContext cpu_ctx(*cpu_place);
 
-    const size_t source_num = tensor_id.lod().at(kSourceLevel).size() - 1;
+  framework::LoD lod;
+  lod.push_back(source_level_lod);
+  lod.push_back(sentence_level_lod);
 
-    for (size_t source_idx = 0; source_idx < source_num; ++source_idx) {
-      std::vector<BeamNode*> init_beam_nodes;
-      size_t source_start = tensor_id.lod().at(kSourceLevel).at(source_idx);
-      size_t source_end = tensor_id.lod().at(kSourceLevel).at(source_idx + 1);
+  id_tensor->set_lod(lod);
+  id_tensor->Resize({static_cast<int64_t>(id_data.size())});
+  id_tensor->mutable_data<int64_t>(paddle::platform::CPUPlace());
+  id_tensor->CopyFromVector<int64_t>(id_data, cpu_ctx);
 
-      for (size_t word_id_idx = source_start; word_id_idx < source_end;
-           ++word_id_idx) {
-        init_beam_nodes.push_back(
-            new BeamNode(tensor_id.data<int64_t>()[word_id_idx],
-                         tensor_score.data<float>()[word_id_idx]));
-      }
-      (*batch_beam_nodes)[source_idx] = init_beam_nodes;
+  score_tensor->set_lod(lod);
+  score_tensor->Resize({static_cast<int64_t>(score_data.size())});
+  score_tensor->mutable_data<float>(paddle::platform::CPUPlace());
+  score_tensor->CopyFromVector<float>(score_data, cpu_ctx);
+}
+
+void BeamHelper::PackAllSteps(const std::vector<LoDTensor>& step_ids,
+                              const std::vector<LoDTensor>& step_scores,
+                              LoDTensor* id_tensor,
+                              LoDTensor* score_tensor) const {
+  PADDLE_ENFORCE_GT(step_ids.size(), 0, "step num should be larger than 0");
+  PADDLE_ENFORCE_EQ(step_ids.size(), step_scores.size(),
+                    "step_ids and step_scores should be the same");
+  size_t step_num = step_ids.size();
+  size_t src_num = step_ids.at(0).lod().at(kSourceLevel).size() - 1;
+
+  PADDLE_ENFORCE_GT(src_num, 0, "source num should be larger than 0");
+
+  std::vector<BeamNodeVector> beamnode_vector_list;
+  std::unordered_map<size_t, SentenceVector> sentence_vector_list;
+
+  // pack all steps for one batch first, then another batch
+  for (size_t step_id = 0; step_id < step_num; ++step_id) {
+    beamnode_vector_list =
+        PackTwoSteps(step_ids.at(step_id), step_scores.at(step_id),
+                     beamnode_vector_list, &sentence_vector_list);
+  }
+  // append last beam_node to result
+  for (size_t src_idx = 0; src_idx < src_num; ++src_idx) {
+    for (auto* beam_node : beamnode_vector_list.at(src_idx)) {
+      sentence_vector_list[src_idx].push_back(MakeSentence(beam_node));
+      delete beam_node;
     }
   }
 
-  void ConvertMapToLodTensor(
-      const std::unordered_map<size_t, std::vector<std::vector<int64_t>>>&
-          result_id,
-      const std::unordered_map<size_t, std::vector<std::vector<float>>>&
-          result_score,
-      LoDTensor* id_tensor, LoDTensor* score_tensor) const {
-    size_t source_num = result_id.size();
-
-    std::vector<size_t> source_level_lod = {0};
-    std::vector<size_t> sentence_level_lod = {0};
-    std::vector<int64_t> id_data;
-    std::vector<float> score_data;
-    for (size_t source_idx = 0; source_idx < source_num; ++source_idx) {
-      auto& all_sentence_ids = result_id.at(source_idx);
-      auto& all_sentence_scores = result_score.at(source_idx);
-      for (size_t sentence_idx = 0; sentence_idx < all_sentence_ids.size();
-           ++sentence_idx) {
-        auto& sentence_ids = all_sentence_ids.at(sentence_idx);
-        id_data.insert(id_data.end(), sentence_ids.begin(), sentence_ids.end());
-        auto& sentence_scores = all_sentence_scores.at(sentence_idx);
-        score_data.insert(score_data.end(), sentence_scores.begin(),
-                          sentence_scores.end());
-        sentence_level_lod.push_back(sentence_level_lod.back() +
-                                     sentence_ids.size());
-      }
-      source_level_lod.push_back(source_level_lod.back() +
-                                 all_sentence_ids.size());
-    }
-
-    auto cpu_place = new paddle::platform::CPUPlace();
-    paddle::platform::CPUDeviceContext cpu_ctx(*cpu_place);
-
-    framework::LoD lod;
-    lod.push_back(source_level_lod);
-    lod.push_back(sentence_level_lod);
-
-    id_tensor->set_lod(lod);
-    id_tensor->Resize({static_cast<int64_t>(id_data.size())});
-    id_tensor->mutable_data<int64_t>(paddle::platform::CPUPlace());
-    id_tensor->CopyFromVector<int64_t>(id_data, cpu_ctx);
-
-    score_tensor->set_lod(lod);
-    score_tensor->Resize({static_cast<int64_t>(score_data.size())});
-    score_tensor->mutable_data<float>(paddle::platform::CPUPlace());
-    score_tensor->CopyFromVector<float>(score_data, cpu_ctx);
-  }
-
-  void PackAllSteps(const std::vector<LoDTensor>& step_ids,
-                    const std::vector<LoDTensor>& step_scores,
-                    LoDTensor* id_tensor, LoDTensor* score_tensor) {
-    PADDLE_ENFORCE_EQ(step_ids.size(), step_scores.size(),
-                      "step_ids and step_scores should be the same");
-    size_t step_num = step_ids.size();
-    size_t source_num = step_ids.at(0).lod().at(kSourceLevel).size() - 1;
-
-    std::unordered_map<size_t, std::vector<BeamNode*>> batch_beam_nodes;
-    std::unordered_map<size_t, std::vector<std::vector<int64_t>>> result_id;
-    std::unordered_map<size_t, std::vector<std::vector<float>>> result_score;
-
-    InitFirstStepBeamNodes(step_ids.at(0), step_scores.at(0),
-                           &batch_beam_nodes);
-
-    // pack all steps for one batch first, then another batch
-    for (size_t source_idx = 0; source_idx < source_num; ++source_idx) {
-      for (size_t step_id = 1; step_id < step_num; ++step_id) {
-        auto prefixes = batch_beam_nodes.at(source_idx);
-        if (prefixes.size() > 0UL) {
-          std::vector<BeamNode*> result = PackTwoBeamStepOut(
-              source_idx, prefixes, step_ids.at(step_id),
-              step_scores.at(step_id), &result_id, &result_score);
-          batch_beam_nodes[source_idx] = result;
-        } else {
-          VLOG(3) << "source_idx: " << source_idx << " step_id: " << step_id
-                  << " have no more candidate";
-        }
-      }
-
-      // append last beam_node to result
-      for (auto* beam_node : batch_beam_nodes.at(source_idx)) {
-        AppendBeamNodeToResult(source_idx, beam_node, &result_id,
-                               &result_score);
-        delete beam_node;
-      }
-    }
-
-    ConvertMapToLodTensor(result_id, result_score, id_tensor, score_tensor);
-  }
-};
+  ConvertMapToLodTensor(sentence_vector_list, id_tensor, score_tensor);
+}
 
 }  // namespace operators
 }  // namespace paddle
