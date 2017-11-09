@@ -68,7 +68,7 @@ using SentenceVector = std::vector<Sentence>;
 
 struct BeamHelper {
   /**
-   * make a node and all it's related prefixes into a Sentence.
+   * make a BeamNode and all it's related prefix BeanNode into a Sentence.
    */
   Sentence MakeSentence(const BeamNode* node) const;
 
@@ -83,8 +83,8 @@ struct BeamHelper {
    */
   std::vector<BeamNodeVector> PackTwoSteps(
       const LoDTensor& cur_ids, const LoDTensor& cur_scores,
-      const std::vector<BeamNodeVector> prefixes_list,
-      std::unordered_map<size_t, SentenceVector>* sentence_vector_list) const;
+      const std::vector<BeamNodeVector>& prefixes_list,
+      std::vector<SentenceVector>* sentence_vector_list) const;
 
   /**
    * convert the result sentence_vector for each source sentence into two
@@ -97,8 +97,8 @@ struct BeamHelper {
    *  score_tensor: result LoDTensor for sentences of score.
    */
   void ConvertSentenceVectorToLodTensor(
-      std::unordered_map<size_t, SentenceVector> sentence_vector_list,
-      LoDTensor* id_tensor, LoDTensor* score_tensor) const;
+      std::vector<SentenceVector> sentence_vector_list, LoDTensor* id_tensor,
+      LoDTensor* score_tensor) const;
 
   /**
    * Pack all steps of id/score LodTensor into sentence LoDTensor
@@ -119,12 +119,11 @@ struct BeamHelper {
 };
 
 Sentence BeamHelper::MakeSentence(const BeamNode* node) const {
-  const BeamNode* tmp = node;
   Sentence sentence;
-  while (tmp != nullptr) {
-    sentence.word_ids.emplace_back(tmp->word_id_);
-    sentence.scores.emplace_back(tmp->score_);
-    tmp = tmp->parent_;
+  while (node != nullptr) {
+    sentence.word_ids.emplace_back(node->word_id_);
+    sentence.scores.emplace_back(node->score_);
+    node = node->parent_;
   }
 
   std::reverse(std::begin(sentence.word_ids), std::end(sentence.word_ids));
@@ -135,8 +134,8 @@ Sentence BeamHelper::MakeSentence(const BeamNode* node) const {
 
 std::vector<BeamNodeVector> BeamHelper::PackTwoSteps(
     const LoDTensor& cur_ids, const LoDTensor& cur_scores,
-    const std::vector<BeamNodeVector> prefixes_list,
-    std::unordered_map<size_t, SentenceVector>* sentence_vector_list) const {
+    const std::vector<BeamNodeVector>& prefixes_list,
+    std::vector<SentenceVector>* sentence_vector_list) const {
   std::vector<BeamNodeVector> result;
 
   for (size_t src_idx = 0; src_idx < cur_ids.lod()[kSourceLevel].size() - 1;
@@ -146,8 +145,9 @@ std::vector<BeamNodeVector> BeamHelper::PackTwoSteps(
 
     BeamNodeVector beam_nodes;
 
-    // if prefixes is nullptr, it means this is the first step.
-    if (prefixes_list.size() == 0UL) {
+    // if prefixes size is 0, it means this is the first step. In this step,
+    // all candidate id is the start of candidate sentences.
+    if (prefixes_list.empty()) {
       PADDLE_ENFORCE_EQ(cur_ids.lod().at(kSourceLevel).back(),
                         cur_ids.lod().at(kSentenceLevel).back(),
                         "in the first step");
@@ -198,14 +198,17 @@ std::vector<BeamNodeVector> BeamHelper::PackTwoSteps(
 }
 
 void BeamHelper::ConvertSentenceVectorToLodTensor(
-    std::unordered_map<size_t, SentenceVector> sentence_vector_list,
-    LoDTensor* id_tensor, LoDTensor* score_tensor) const {
+    std::vector<SentenceVector> sentence_vector_list, LoDTensor* id_tensor,
+    LoDTensor* score_tensor) const {
   size_t src_num = sentence_vector_list.size();
+
+  PADDLE_ENFORCE_NE(src_num, 0, "src_num should not be 0");
 
   std::vector<size_t> source_level_lod = {0};
   std::vector<size_t> sentence_level_lod = {0};
   std::vector<int64_t> id_data;
   std::vector<float> score_data;
+
   for (size_t src_idx = 0; src_idx < src_num; ++src_idx) {
     for (Sentence& sentence : sentence_vector_list[src_idx]) {
       id_data.insert(id_data.end(), sentence.word_ids.begin(),
@@ -241,16 +244,17 @@ void BeamHelper::PackAllSteps(const std::vector<LoDTensor>& step_ids,
                               const std::vector<LoDTensor>& step_scores,
                               LoDTensor* id_tensor,
                               LoDTensor* score_tensor) const {
-  PADDLE_ENFORCE_GT(step_ids.size(), 0, "step num should be larger than 0");
+  PADDLE_ENFORCE(!step_ids.empty(), "step num should be larger than 0");
   PADDLE_ENFORCE_EQ(step_ids.size(), step_scores.size(),
                     "step_ids and step_scores should be the same");
-  size_t step_num = step_ids.size();
-  size_t src_num = step_ids.at(0).lod().at(kSourceLevel).size() - 1;
+  const size_t step_num = step_ids.size();
+  const size_t src_num = step_ids.at(0).lod().at(kSourceLevel).size() - 1;
 
-  PADDLE_ENFORCE_GT(src_num, 0, "source num should be larger than 0");
+  PADDLE_ENFORCE_GT(src_num, 0UL, "source num should be larger than 0");
 
-  std::vector<BeamNodeVector> beamnode_vector_list;
-  std::unordered_map<size_t, SentenceVector> sentence_vector_list;
+  std::vector<BeamNodeVector>
+      beamnode_vector_list;  // previous prefixes for each step
+  std::vector<SentenceVector> sentence_vector_list(src_num, SentenceVector());
 
   // pack all steps for one batch first, then another batch
   for (size_t step_id = 0; step_id < step_num; ++step_id) {

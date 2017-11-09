@@ -14,8 +14,6 @@ limitations under the License. */
 
 #include "paddle/operators/trieconcat_op.h"
 #include "gtest/gtest.h"
-#include "paddle/framework/lod_tensor.h"
-#include "paddle/platform/place.h"
 
 namespace paddle {
 namespace test {
@@ -27,8 +25,11 @@ void GenerateExample(const std::vector<size_t>& level_0,
                      const std::vector<size_t>& level_1,
                      const std::vector<int>& data, std::vector<LoDTensor>* ids,
                      std::vector<LoDTensor>* scores) {
-  PADDLE_ENFORCE_EQ(level_0.back(), level_1.size() - 1, "");
-  PADDLE_ENFORCE_EQ(level_1.back(), data.size(), "");
+  PADDLE_ENFORCE_EQ(level_0.back(), level_1.size() - 1,
+                    "source level is used to describe candidate set");
+  PADDLE_ENFORCE_EQ(level_1.back(), data.size(),
+                    "the lowest level is used to describe data"
+                    ", so it's last element should be data length");
 
   CPUPlace place;
 
@@ -92,6 +93,7 @@ TEST(TrieConcatOp, MakeSentence) {
 
   BeamHelper helper;
   Sentence sentence = helper.MakeSentence(end);
+  delete end;
 
   std::vector<int64_t> expect_ids = {0, 1, 2};
   ASSERT_EQ(sentence.word_ids, expect_ids);
@@ -117,7 +119,7 @@ TEST(TrieConcatOp, PackTwoStepsFistStep) {
       std::vector<int>{1, 2, 3, 4, 5, 6}, &ids, &scores);
 
   std::vector<BeamNodeVector> beamnode_vector_list;
-  std::unordered_map<size_t, SentenceVector> sentence_vector_list;
+  std::vector<SentenceVector> sentence_vector_list(2, SentenceVector());
 
   BeamHelper helper;
   beamnode_vector_list = helper.PackTwoSteps(
@@ -149,7 +151,7 @@ TEST(TrieConcatOp, PackTwoSteps) {
   source1_prefixes.push_back(new BeamNode(5, 5));
 
   std::vector<BeamNodeVector> beamnode_vector_list;
-  std::unordered_map<size_t, SentenceVector> sentence_vector_list;
+  std::vector<SentenceVector> sentence_vector_list(2, SentenceVector());
 
   beamnode_vector_list.push_back(source0_prefixes);
   beamnode_vector_list.push_back(source1_prefixes);
