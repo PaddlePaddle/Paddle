@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/fill_constant_op.h"
+#include "paddle/operators/fill_constant_batch_size_like_op.h"
 
 namespace paddle {
 namespace operators {

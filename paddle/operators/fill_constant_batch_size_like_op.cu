@@ -13,7 +13,7 @@
    limitations under the License. */
 
 #include "paddle/framework/op_registry.h"
-#include "paddle/operators/fill_constant_op.h"
+#include "paddle/operators/fill_constant_batch_size_like_op.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
