@@ -86,7 +86,7 @@ IF(NOT ${CBLAS_FOUND})
         UPDATE_COMMAND      ""
         CONFIGURE_COMMAND   ""
     )
-
+    SET(CBLAS_PROVIDER openblas)
     IF(WITH_C_API)
         INSTALL(DIRECTORY ${CBLAS_INC_DIR} DESTINATION third_party/openblas)
         # Because libopenblas.a is a symbolic link of another library, thus need to
