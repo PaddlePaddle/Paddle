@@ -13,11 +13,11 @@
    limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/fill_constant_op.h"
+#include "paddle/operators/gru_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
-    fill_constant, ops::FillConstantOpKernel<paddle::platform::GPUPlace, float>,
-    ops::FillConstantOpKernel<paddle::platform::GPUPlace, double>,
-    ops::FillConstantOpKernel<paddle::platform::GPUPlace, int>);
+REGISTER_OP_GPU_KERNEL(gru, ops::GRUKernel<paddle::platform::GPUPlace, float>,
+                       ops::GRUKernel<paddle::platform::GPUPlace, double>);
+REGISTER_OP_GPU_KERNEL(gru_grad,
+                       ops::GRUGradKernel<paddle::platform::GPUPlace, float>,
+                       ops::GRUGradKernel<paddle::platform::GPUPlace, double>);

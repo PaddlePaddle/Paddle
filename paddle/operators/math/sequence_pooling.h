@@ -13,25 +13,33 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/op_registry.h"
+#include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/tensor.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
+namespace math {
+
+#define FLT_MAX __FLT_MAX__
 
 template <typename Place, typename T>
-class FillConstantOpKernel : public framework::OpKernel<T> {
+class MaxSeqPoolFunctor {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out = ctx.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(ctx.GetPlace());
-    auto value = ctx.Attr<float>("value");
-
-    auto out_eigen = framework::EigenVector<T>::Flatten(*out);
-    auto place = ctx.GetEigenDevice<Place>();
-    out_eigen.device(place) = out_eigen.constant(static_cast<T>(value));
-  }
+  void operator()(const platform::DeviceContext& context,
+                  const framework::LoDTensor& input, framework::Tensor* output,
+                  framework::Tensor* index);
 };
 
+template <typename Place, class T>
+class MaxSeqPoolGradFunctor {
+ public:
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& out_grad,
+                  const framework::Tensor& index,
+                  framework::LoDTensor* in_grad);
+};
+
+}  // namespace math
 }  // namespace operators
 }  // namespace paddle

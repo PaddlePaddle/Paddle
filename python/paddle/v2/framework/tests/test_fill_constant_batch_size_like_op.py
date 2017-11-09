@@ -21,9 +21,14 @@ class TestFillConstantBatchSizeLikeWhenSecondDimIsBatchSize(OpTest):
     def setUp(self):
         self.op_type = "fill_constant_batch_size_like"
         self.inputs = {'Input': np.random.random((219, 232)).astype("float32")}
-        self.attrs = {'value': 3.5, 'shape': [132, -1, 7], 'dim_idx': 1}
+        self.attrs = {
+            'value': 3.5,
+            'shape': [132, -1, 7],
+            'input_dim_idx': 0,
+            'output_dim_idx': 1
+        }
 
-        out = np.random.random((132, 232, 7)).astype("float32")
+        out = np.random.random((132, 219, 7)).astype("float32")
         out.fill(3.5)
         self.outputs = {'Out': out}
 
