@@ -35,15 +35,23 @@ class Optimizer(object):
         """
         raise NotImplementedError()
 
-    def _initialize_tensors(self, block):
-        """Create all necessary tensors, that will be shared for all parameter updates.
-
-        Tensors like learning rate should be initialized here.
-
-        Args:
-            block: the block in which the loss variable is present
-        """
-        pass
+    def _create_param_lr(self, param_and_grad):
+        # create learning rate variable for every parameter
+        param = param_and_grad[0]
+        param_lr = param.optimize_attr['learning_rate']
+        param_lr_shape = [1]
+        param_lr_var = self.helper.create_global_variable(
+            name=unique_name("learning_rate"),
+            dtype='float32',
+            shape=param_lr_shape,
+            lod_level=1,
+            persistable=True)
+        if param_lr == -1:
+            param_lr = self._learning_rate
+            param.optimize_attr['learning_rate'] = param_lr
+        self.helper.set_variable_initializer(
+            var=param_lr_var, initializer=ConstantInitializer(param_lr))
+        return param_lr_var
 
     def _create_accumulators(self, block, parameters):
         """Create all accumulators needed by the parameters
@@ -214,27 +222,16 @@ class SGDOptimizer(Optimizer):
         self.type = "sgd"
         self._learning_rate = learning_rate
 
-    def _initialize_tensors(self, block):
-        lr_shape = [1]
-        # create a variable for learning_rate
-        self._lr = self.helper.create_global_variable(
-            name=unique_name("learning_rate"),
-            dtype='float32',
-            shape=lr_shape,
-            lod_level=1,
-            persistable=True)
-        self.helper.set_variable_initializer(
-            var=self._lr, initializer=ConstantInitializer(self._learning_rate))
-
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
+
         # create the optimize op
         sgd_op = block.append_op(
             type=self.type,
             inputs={
                 "Param": param_and_grad[0],
                 "Grad": param_and_grad[1],
-                "LearningRate": self._lr
+                "LearningRate": self._create_param_lr(param_and_grad)
             },
             outputs={"ParamOut": param_and_grad[0]})
 
@@ -259,19 +256,6 @@ class MomentumOptimizer(Optimizer):
         self._momentum = momentum
         self._use_nesterov = bool(use_nesterov)
 
-    def _initialize_tensors(self, block):
-        assert isinstance(block, framework.Block)
-        lr_shape = [1]
-        # create a variable for learning_rate
-        self._lr = self.helper.create_global_variable(
-            name=unique_name("learning_rate"),
-            dtype='float32',
-            shape=lr_shape,
-            lod_level=1,
-            persistable=True)
-        self.helper.set_variable_initializer(
-            var=self._lr, initializer=ConstantInitializer(self._learning_rate))
-
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
 
@@ -290,7 +274,7 @@ class MomentumOptimizer(Optimizer):
                 "Param": param_and_grad[0],
                 "Grad": param_and_grad[1],
                 "Velocity": velocity_acc,
-                "LearningRate": self._lr
+                "LearningRate": self._create_param_lr(param_and_grad)
             },
             outputs={
                 "ParamOut": param_and_grad[0],
@@ -315,18 +299,6 @@ class AdagradOptimizer(Optimizer):
         self._learning_rate = learning_rate
         self._epsilon = epsilon
 
-    def _initialize_tensors(self, block):
-        lr_shape = [1]
-        # create a variable for learning_rate
-        self._lr = self.helper.create_global_variable(
-            name=unique_name("learning_rate"),
-            dtype='float32',
-            shape=lr_shape,
-            lod_level=1,
-            persistable=True)
-        self.helper.set_variable_initializer(
-            var=self._lr, initializer=ConstantInitializer(self._learning_rate))
-
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
 
@@ -346,7 +318,7 @@ class AdagradOptimizer(Optimizer):
                 "Param": param_and_grad[0],
                 "Grad": param_and_grad[1],
                 "Moment": moment_acc,
-                "LearningRate": self._lr
+                "LearningRate": self._create_param_lr(param_and_grad)
             },
             outputs={"ParamOut": param_and_grad[0],
                      "MomentOut": moment_acc},
@@ -377,18 +349,6 @@ class AdamOptimizer(Optimizer):
         self._beta1 = beta1
         self._beta2 = beta2
         self._epsilon = epsilon
-
-    def _initialize_tensors(self, block):
-        lr_shape = [1]
-        # create a variable for learning_rate
-        self._lr = self.helper.create_global_variable(
-            name=unique_name("learning_rate"),
-            dtype='float32',
-            shape=lr_shape,
-            lod_level=1,
-            persistable=True)
-        self.helper.set_variable_initializer(
-            var=self._lr, initializer=ConstantInitializer(self._learning_rate))
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -433,7 +393,7 @@ class AdamOptimizer(Optimizer):
             inputs={
                 "Param": param_and_grad[0],
                 "Grad": param_and_grad[1],
-                "LearningRate": self._lr,
+                "LearningRate": self._create_param_lr(param_and_grad),
                 "Moment1": moment1,
                 "Moment2": moment2,
                 "Beta1Pow": self._beta1_pow_acc,
@@ -495,18 +455,6 @@ class AdamaxOptimizer(Optimizer):
         self._beta2 = beta2
         self._epsilon = epsilon
 
-    def _initialize_tensors(self, block):
-        lr_shape = [1]
-        # create a variable for learning_rate
-        self._lr = self.helper.create_global_variable(
-            name=unique_name("learning_rate"),
-            dtype='float32',
-            shape=lr_shape,
-            lod_level=1,
-            persistable=True)
-        self.helper.set_variable_initializer(
-            var=self._lr, initializer=ConstantInitializer(self._learning_rate))
-
     def _create_accumulators(self, block, parameters):
         # Create beta1 power accumulator tensor
         beta_shape = [1]
@@ -536,7 +484,7 @@ class AdamaxOptimizer(Optimizer):
             inputs={
                 "Param": param_and_grad[0],
                 "Grad": param_and_grad[1],
-                "LearningRate": self._lr,
+                "LearningRate": self._create_param_lr(param_and_grad),
                 "Moment": moment,
                 "InfNorm": inf_norm,
                 "Beta1Pow": self._beta1_pow_acc

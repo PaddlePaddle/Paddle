@@ -554,7 +554,7 @@ class Parameter(Variable):
             self, block, persistable=True, shape=shape, dtype=dtype, **kwargs)
         self.trainable = kwargs.get('trainable', True)
 
-        self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
+        self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': -1})
 
         self.regularizer = kwargs.get('regularizer', None)
 
