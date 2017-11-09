@@ -357,7 +357,8 @@ void OpDescBind::InferVarType(BlockDescBind *block) const {
                 "LOD_TENSOR";
     for (auto &out_pair : this->outputs_) {
       for (auto &out_var_name : out_pair.second) {
-        block->FindVarRecursive(out_var_name)->SetType(VarDesc::LOD_TENSOR);
+        block->FindRecursiveOrCreateVar(out_var_name)
+            ->SetType(VarDesc::LOD_TENSOR);
       }
     }
   }

@@ -87,7 +87,7 @@ class WriteToArrayInferVarType : public framework::VarTypeInference {
                   framework::BlockDescBind *block) const override {
     for (auto &out_var : op_desc.OutputArgumentNames()) {
       VLOG(10) << "Set Variable " << out_var << " as LOD_TENSOR_ARRAY";
-      block->FindVarRecursive(out_var)->SetType(
+      block->FindRecursiveOrCreateVar(out_var)->SetType(
           framework::VarDesc::LOD_TENSOR_ARRAY);
     }
   }
