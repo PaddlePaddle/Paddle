@@ -67,18 +67,52 @@ struct Sentence {
 using SentenceVector = std::vector<Sentence>;
 
 struct BeamHelper {
-  // make a BeamNode into sentence.
+  /**
+   * make a node and all it's related prefixes into a Sentence.
+   */
   Sentence MakeSentence(const BeamNode* node) const;
 
+  /**
+   * Param:
+   *  cur_ids: LoDTensor of One step for word ID
+   *  cur_scores: LoDTensor of One Step for word score
+   *  prefixes_list: prefixes for each source sentence.
+   *  sentence_vector_list: result sentence_vector for each source sentence.
+   * Return:
+   *  a new prefixes list for each source of current step
+   */
   std::vector<BeamNodeVector> PackTwoSteps(
       const LoDTensor& cur_ids, const LoDTensor& cur_scores,
       const std::vector<BeamNodeVector> prefixes_list,
       std::unordered_map<size_t, SentenceVector>* sentence_vector_list) const;
 
-  void ConvertMapToLodTensor(
+  /**
+   * convert the result sentence_vector for each source sentence into two
+   * LodTensor.
+   * One is all candidate sentences with word id, one is all candidate sentences
+   * with word score.
+   * Param:
+   *  sentence_vector_list: sentence_vector for each source sentence.
+   *  id_tensor: result LoDTensor for sentences of id.
+   *  score_tensor: result LoDTensor for sentences of score.
+   */
+  void ConvertSentenceVectorToLodTensor(
       std::unordered_map<size_t, SentenceVector> sentence_vector_list,
       LoDTensor* id_tensor, LoDTensor* score_tensor) const;
 
+  /**
+   * Pack all steps of id/score LodTensor into sentence LoDTensor
+   * it's main logic is:
+   * ```python
+   *   prefix
+   *   result_sentence
+   *   result_lod_tensor
+   *
+   *   for (step in steps):
+   *     prefix = PackTwoSteps(prefix, step, &result_sentence)
+   *   ConvertSentenceVectorToLodTensor(result_sentence, &result_lod_tensor)
+   * ```
+   */
   void PackAllSteps(const std::vector<LoDTensor>& step_ids,
                     const std::vector<LoDTensor>& step_scores,
                     LoDTensor* id_tensor, LoDTensor* score_tensor) const;
@@ -163,7 +197,7 @@ std::vector<BeamNodeVector> BeamHelper::PackTwoSteps(
   return result;
 }
 
-void BeamHelper::ConvertMapToLodTensor(
+void BeamHelper::ConvertSentenceVectorToLodTensor(
     std::unordered_map<size_t, SentenceVector> sentence_vector_list,
     LoDTensor* id_tensor, LoDTensor* score_tensor) const {
   size_t src_num = sentence_vector_list.size();
@@ -232,7 +266,8 @@ void BeamHelper::PackAllSteps(const std::vector<LoDTensor>& step_ids,
     }
   }
 
-  ConvertMapToLodTensor(sentence_vector_list, id_tensor, score_tensor);
+  ConvertSentenceVectorToLodTensor(sentence_vector_list, id_tensor,
+                                   score_tensor);
 }
 
 }  // namespace operators
