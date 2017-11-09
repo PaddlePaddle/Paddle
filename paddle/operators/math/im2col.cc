@@ -73,13 +73,13 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
               h * stride_height - padding_up + h_offset * dilation_h;
           int im_col_idx =
               w * stride_width - padding_left + w_offset * dilation_w;
+          int col_idx = (c * col_height + h) * col_width + w;
+          int im_idx = (im_row_idx + c_im * im_height) * im_width + im_col_idx;
 
-          col_data[(c * col_height + h) * col_width + w] =
-              (im_row_idx < 0 || im_row_idx >= im_height || im_col_idx < 0 ||
-               im_col_idx >= im_width)
-                  ? static_cast<T>(0)
-                  : im_data[(im_row_idx + c_im * im_height) * im_width +
-                            im_col_idx];
+          col_data[col_idx] = (im_row_idx < 0 || im_row_idx >= im_height ||
+                               im_col_idx < 0 || im_col_idx >= im_width)
+                                  ? static_cast<T>(0)
+                                  : im_data[im_idx];
         }
       }
     }
