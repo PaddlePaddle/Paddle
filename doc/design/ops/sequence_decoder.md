@@ -101,13 +101,13 @@ encoder_ctx_proj = pd.fc(
 
 ```python
 def generate():
-    decoder = pd.sequence_decoder()
+    decoder = pd.while_loop()
     with decoder.step():
         decoder_mem = decoder.memory(init=encoder_ctx)  # mark the memory
         generated_ids = decoder.memory() # TODO init to batch_size <s>s
         generated_scores = decoder.memory() # TODO init to batch_size 1s or 0s
 
-        target_word = pd.lookup(trg_embedding, decoder.gendrated_ids())
+        target_word = pd.lookup(trg_embedding, gendrated_ids)
         # expand encoder_ctx's batch to fit target_word's lod
         # for example
         # decoder_mem.lod is
@@ -137,14 +137,15 @@ def generate():
             size=trg_dic_size,
             bias=None,
             act=pd.activation.Softmax())
-        topk_scores, topk_ids = pd.top_k(scores)
+        # K is an config
+        topk_scores, topk_ids = pd.top_k(scores, K)
         topk_generated_scores = pd.add_scalar(topk_scores, generated_scores)
 
         selected_ids, selected_generation_scores = decoder.beam_search(
             topk_ids, topk_generated_scores)
 
         # update the states
-        decoder_mem.update(mem)  # tells how to update state
+        decoder_mem.update(cur_mem)  # tells how to update state
         generated_ids.update(selected_ids)
         generated_scores.update(selected_generation_scores)
 
