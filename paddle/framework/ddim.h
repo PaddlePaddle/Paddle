@@ -81,6 +81,8 @@ struct DDim {
  */
 DDim make_ddim(const std::vector<int64_t>& dims);
 
+DDim make_ddim(const std::vector<int>& dims);
+
 /**
  * \brief Make a DDim from an initializer list
  *
