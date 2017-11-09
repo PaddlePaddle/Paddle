@@ -823,7 +823,7 @@ def zeros(shape, dtype, main_program=None):
     return fill_constant(value=0.0, **locals())
 
 
-def increment(x, value=1.0, in_place=False, main_program=None):
+def increment(x, value=1.0, in_place=True, main_program=None):
     helper = LayerHelper("increment", **locals())
     if in_place:
         tmp = x
