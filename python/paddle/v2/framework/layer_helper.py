@@ -4,7 +4,7 @@ import itertools
 from paddle.v2.framework.framework import Variable, g_main_program, \
     g_startup_program, unique_name, Program
 from paddle.v2.framework.initializer import ConstantInitializer, \
-    UniformInitializer
+    UniformInitializer, XavierInitializer
 
 
 class LayerHelper(object):
@@ -61,7 +61,7 @@ class LayerHelper(object):
 
     @property
     def param_attr(self):
-        default = {'name': None, 'initializer': UniformInitializer()}
+        default = {'name': None, 'initializer': XavierInitializer()}
         actual = self.kwargs.get('param_attr', None)
         if actual is None:
             actual = default
@@ -72,7 +72,7 @@ class LayerHelper(object):
 
     @property
     def bias_attr(self):
-        default = {'name': None, 'initializer': ConstantInitializer()}
+        default = {'name': None, 'initializer': XavierInitializer()}
         bias_attr = self.kwargs.get('bias_attr', None)
         if bias_attr is None:
             bias_attr = default
