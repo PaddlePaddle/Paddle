@@ -54,13 +54,14 @@ class TestWhileOp(unittest.TestCase):
             t.set(item, cpu)
             d_tensor.append(t)
 
-        print map(numpy.array,
-                  exe.run(feed={
-                      'd0': d_tensor[0],
-                      'd1': d_tensor[1],
-                      'd2': d_tensor[2]
-                  },
-                          fetch_list=[sum_result]))
+        outs = map(numpy.array,
+                   exe.run(feed={
+                       'd0': d_tensor[0],
+                       'd1': d_tensor[1],
+                       'd2': d_tensor[2]
+                   },
+                           fetch_list=[sum_result]))
+        self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 
 
 if __name__ == '__main__':
