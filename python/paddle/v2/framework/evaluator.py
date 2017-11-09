@@ -1,3 +1,4 @@
+import numpy as np
 from paddle.v2.framework.framework import Program, g_main_program, unique_name, Variable
 import paddle.v2.framework.core as core
 
@@ -31,12 +32,8 @@ class Evaluator(object):
             self._main_program = kwargs.get("main_program")
         else:
             self._main_program = g_main_program
-        if kwargs.has_key("eval_program"):
-            self._eval_program = kwargs.get("eval_program")
-        else:
-            self._eval_program = Program()
 
-    def _update_ops(self):
+    def _update_ops(self, *args, **kwargs):
         """
         append update ops to the global states
         """
@@ -64,13 +61,12 @@ class Evaluator(object):
                 })
             block.append_op(
                 type="scale", inputs={"X": zeros}, outputs={"Out": g_var})
-        print reset_program
         executor.run(reset_program, fetch_list=self._states.values())
 
     def eval(self, executor, program=None):
         """
-      Merge the mini-batch statistics to form the evaluation result for multiple mini-batches.
-      """
+        Merge the mini-batch statistics to form the evaluation result for multiple mini-batches.
+        """
         raise NotImplementedError()
 
 
@@ -81,7 +77,6 @@ class Accuracy(Evaluator):
 
     def __init__(self, *args, **kwargs):
         super(Accuracy, self).__init__("accuracy", **kwargs)
-        # block = self._eval_program.global_block()
         block = self._main_program.global_block()
         g_total = block.create_var(
             name=unique_name("Total"),
@@ -122,21 +117,13 @@ class Accuracy(Evaluator):
                 "Total": [total],
             })
 
-        # block = self._eval_program.global_block()
-        # e_correct = _clone_var_in_block_(block, correct)
-        # e_total = _clone_var_in_block_(block, total)
-
-        # block.append_op(
-        #     type="sum",
-        #     inputs={"X": [self._states["Total"], total]},
-        #     outputs={"Out": [self._states["Total"]]})
         block.append_op(
             type="cast",
             inputs={"X": [self._states["Total"]]},
             outputs={"Out": [self._states["Total"]]},
             attrs={
-                "in_data_type": 5,
-                "out_data_type": 2,
+                "in_data_type": 5,  # float32
+                "out_data_type": 2,  #int32
             })
         block.append_op(
             type="cast",
@@ -158,44 +145,40 @@ class Accuracy(Evaluator):
                     "Y": [correct]},
             outputs={"Out": [self._states["Correct"]]})
 
-        # g_total = self._states["Total"]
-        # print g_total
-        # print total
-
-        # print "*" * 100
-        # print g_total.block.program == total.block.program
-
-        # g_total = _clone_var_in_block_(block, self._states["Total"])
-        # e_total = _clone_var_in_block_(block, total)
-
-        # block.append_op(
-        #     type="sum",
-        #     inputs={"X": [g_total, e_total]},
-        #     outputs={"Out": [g_total]})
-
-        # block.append_op(
-        #     type="sum",
-        #     inputs={"X": [self._states["Correct"], correct]},
-        #     outputs={"Out": [self._states["Correct"]]})
-        # print self._main_program
         return acc_out
 
-    def eval(self, executor):
-        block = self._eval_program.global_block()
+    def eval(self, executor, program=None):
+        if program != None:
+            eval_program = program
+        else:
+            eval_program = Program()
+        block = eval_program.global_block()
         eval_out = block.create_var(dtype=self._states["Total"].data_type)
-        e_correct = _clone_var_in_block_(block, correct)
-        e_total = _clone_var_in_block_(block, total)
-        # block.append_op(
-        #     type="elementwise_div",
-        #     inputs={"X": self._states["Total"],
-        #             "Y": self._states["Correct"]},
-        #     outputs={"Out": eval_out})
+        e_total = _clone_var_in_block_(block, self._states["Total"])
+        e_correct = _clone_var_in_block_(block, self._states["Correct"])
+        block.append_op(
+            type="cast",
+            inputs={"X": [e_total]},
+            outputs={"Out": [e_total]},
+            attrs={
+                "in_data_type": 2,  #int32
+                "out_data_type": 5,  #float32
+            })
+        block.append_op(
+            type="cast",
+            inputs={"X": [e_correct]},
+            outputs={"Out": [e_correct]},
+            attrs={
+                "in_data_type": 2,
+                "out_data_type": 5,
+            })
         block.append_op(
             type="elementwise_div",
-            inputs={"X": e_total,
-                    "Y": e_correct},
+            inputs={"X": e_correct,
+                    "Y": e_total},
             outputs={"Out": eval_out})
-        return executor.run(self._eval_program, fetch_list=[eval_out])
+        out = executor.run(eval_program, fetch_list=[eval_out])
+        return np.array(out[0])
 
 
 # Demo for composing low level ops to compute the F1 metric
@@ -235,8 +218,8 @@ class FScore(Evaluator):
             persistable=True)
 
 
-# def register():
-accuracy = Accuracy
-# def accuracy(*args, **kwargs):
-#     acc = Accuracy(**kwargs)
-#     return acc._update_ops(*args, **kwargs)
+# FIXME(dzh): add a decorator to call _update_ops automatically
+def accuracy(*args, **kwargs):
+    cls = Accuracy(*args, **kwargs)
+    out = cls._update_ops(*args, **kwargs)
+    return cls, out
