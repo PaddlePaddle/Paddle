@@ -21,10 +21,14 @@ namespace paddle {
 namespace operators {
 
 using StepScopeVar = std::vector<framework::Scope *>;
+using LoDTensor = framework::LoDTensor;
 
 constexpr char kStepBlock[] = "step_block";
 constexpr char kCondition[] = "Condition";
 constexpr char kStepScopes[] = "StepScopes";
+constexpr char kParamGrads[] = "X@Grad";
+constexpr char kParameters[] = "X";
+
 class WhileOp : public framework::OperatorBase {
  public:
   WhileOp(const std::string &type, const framework::VariableNameMap &inputs,
@@ -35,7 +39,7 @@ class WhileOp : public framework::OperatorBase {
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(Input(kCondition)));
-    auto &cond = scope.FindVar(Input(kCondition))->Get<framework::LoDTensor>();
+    auto &cond = scope.FindVar(Input(kCondition))->Get<LoDTensor>();
     PADDLE_ENFORCE_EQ(cond.dims(), paddle::framework::make_ddim({1}));
 
     framework::Executor executor(dev_ctx);
@@ -59,7 +63,7 @@ class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   WhileOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X",
+    AddInput(kParameters,
              "A set of variables, which are required by operators inside the "
              "block of While Op.")
         .AsDuplicable();
@@ -81,8 +85,117 @@ class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
 )DOC");
   }
 };
+
+class WhileGradOp : public framework::OperatorBase {
+ public:
+  WhileGradOp(const std::string &type, const framework::VariableNameMap &inputs,
+              const framework::VariableNameMap &outputs,
+              const framework::AttributeMap &attrs)
+      : framework::OperatorBase(type, inputs, outputs, attrs) {}
+
+  void Run(const framework::Scope &scope,
+           const platform::DeviceContext &dev_ctx) const override {
+    //    PADDLE_ENFORCE(...)
+
+    framework::Executor executor(dev_ctx);
+    auto *block = Attr<framework::BlockDescBind *>(kStepBlock);
+    auto *program = block->Program();
+
+    auto *step_scopes =
+        scope.FindVar(Input(kStepScopes))->GetMutable<StepScopeVar>();
+
+    for (auto cur_scope_iter = step_scopes->rbegin();
+         cur_scope_iter != step_scopes->rend(); ++cur_scope_iter) {
+      executor.Run(*program, *cur_scope_iter, block->ID(), false);
+
+      auto &pg_names = Outputs(kParamGrads);
+      auto &p_names = Inputs(kParameters);
+      PADDLE_ENFORCE_EQ(pg_names.size(), p_names.size());
+      for (size_t prog_id = 0; prog_id < pg_names.size(); ++prog_id) {
+        auto inside_grad_name = framework::GradVarName(p_names[prog_id]);
+
+        //  // TODO(tonyyang-savil: Not sure we need the following
+        //  // If does not compute gradient of that variable inside rnn,
+        //  just
+        //  // continue
+        //  if (local_var_names.find(inside_grad_name) ==
+        //  local_var_names.end()) {
+        //    continue;
+        //  }
+
+        // zero gradient variable in step 0
+        if (cur_scope_iter == step_scopes->rbegin()) {
+          auto *var = (*cur_scope_iter)->FindVar(inside_grad_name);
+          if (var->IsType<LoDTensor>()) {
+            auto &inside_tensor = var->Get<framework::LoDTensor>();
+            framework::AttributeMap attrs;
+            attrs["data_type"] = framework::ToDataType(inside_tensor.type());
+            attrs["shape"] = framework::vectorize2int(inside_tensor.dims());
+            attrs["value"] = 0.0f;
+
+            auto zero_op = framework::OpRegistry::CreateOp(
+                "fill_constant", {}, {{"Out", {pg_names[prog_id]}}}, attrs);
+            zero_op->Run(scope, dev_ctx);
+          }
+        }
+
+        // sum gradient
+        auto *outside_var = scope.FindVar(pg_names[prog_id]);
+        PADDLE_ENFORCE(outside_var != nullptr);
+        auto &outside_tensor = *outside_var->GetMutable<framework::LoDTensor>();
+
+        std::string result_var_name;
+        auto *local_result_var = (*cur_scope_iter)->Var(&result_var_name);
+        auto &local_result_tensor =
+            *local_result_var->GetMutable<framework::LoDTensor>();
+
+        local_result_tensor.ShareDataWith(outside_tensor);
+
+        auto sum_op = framework::OpRegistry::CreateOp(
+            "sum", {{"X", {result_var_name, inside_grad_name}}},
+            {{"Out", {result_var_name}}}, {});
+        sum_op->Run(**cur_scope_iter, dev_ctx);
+      }
+    }
+  }
+};
+
+class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  virtual std::unique_ptr<framework::OpDescBind> Apply() const {
+    auto *grad = new framework::OpDescBind();
+    grad->SetType("while_grad");
+    for (auto &input_param : this->InputNames()) {
+      grad->SetInput(input_param, this->Input(input_param));
+      grad->SetOutput(framework::GradVarName(input_param),
+                      this->InputGrad(input_param));
+    }
+
+    for (auto &output_param : this->OutputNames()) {
+      if (output_param == kStepScopes) {
+        // backward.input.kStepScopes = forward.output.kStepScopes
+        grad->SetInput(output_param, this->Output(output_param));
+        grad->SetInput(framework::GradVarName(output_param),
+                       this->Output(output_param));
+      } else {
+        grad->SetInput(output_param, this->Output(output_param));
+        grad->SetInput(framework::GradVarName(output_param),
+                       this->OutputGrad(output_param));
+      }
+    }
+    grad->SetAttrMap(this->Attrs());
+    grad->SetBlockAttr(kStepBlock, *grad_block_[0]);
+
+    return std::unique_ptr<framework::OpDescBind>(grad);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 REGISTER_OPERATOR(while, paddle::operators::WhileOp,
-                  paddle::operators::WhileOpMaker);
+                  paddle::operators::WhileOpMaker,
+                  paddle::operators::WhileGradOpDescMaker);
