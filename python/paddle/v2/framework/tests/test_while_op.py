@@ -31,17 +31,15 @@ class TestWhileOp(unittest.TestCase):
         array_len = layers.fill_constant(shape=[1], dtype='int64', value=3)
         cond = layers.less_than(x=i, y=array_len)
 
-        out_array = layers.create_array(dtype='float32')
-
         while_op = layers.While(cond=cond)
         with while_op.block():
             d = layers.array_read(array=data_array, i=i)
             prev = layers.array_read(array=mem_array, i=i)
             i = layers.increment(x=i, in_place=True)
             result = layers.sums(input=[d, prev])
-            layers.array_write(result, i=i, array=out_array)
+            layers.array_write(result, i=i, array=mem_array)
             layers.less_than(x=i, y=array_len, cond=cond)
-        sum_result = layers.array_read(out_array, i=array_len)
+        sum_result = layers.array_read(mem_array, i=array_len)
 
         cpu = core.CPUPlace()
         exe = Executor(cpu)
