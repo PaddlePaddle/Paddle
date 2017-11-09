@@ -947,3 +947,12 @@ def shrink_memory(x, i, table, main_program=None):
         outputs={'Out': [out]},
         attrs={})
     return out
+
+
+def array_length(array, main_program=None):
+    helper = LayerHelper('array_length', **locals())
+    tmp = helper.create_tmp_variable(dtype='int64')
+    tmp.stop_gradient = True
+    helper.append_op(
+        type='lod_array_length', inputs={'X': [array]}, outputs={'Out': [tmp]})
+    return tmp
