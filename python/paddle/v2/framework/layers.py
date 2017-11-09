@@ -92,6 +92,26 @@ def embedding(input,
               param_attr=None,
               main_program=None,
               startup_program=None):
+    """
+    Embedding Layer.
+
+    Args:
+       input: The input to the function
+       size: The size of the layer
+       data_type: The type of data : float32, float_16, int etc
+       is_sparse: A flag that decleares whether the input is sparse
+       param_attr: Parameters for this layer
+       main_program: Name of the main program that calls this
+       startup_program: Name of the startup program
+
+    This function can take in the input (which is a vector of IDs) and
+    performs a lookup in the lookup_table using these IDs, to result into
+    the embedding of each ID in the input.
+
+    All the input variables of this function are passed in as local variables
+    to the LayerHelper constructor.
+
+    """
     helper = LayerHelper('embedding', **locals())
     w = helper.create_parameter(
         attr=helper.param_attr, shape=size, dtype=data_type)
@@ -113,6 +133,28 @@ def data(name,
          main_program=None,
          startup_program=None,
          stop_gradient=True):
+    """
+    Data Layer.
+
+    Args:
+       name: The name/alias of the function
+       shape: Tuple declaring the shape.
+       data_type: The type of data : float32, float_16, int etc
+       type: The output type. By default it is LOD_TENSOR.
+       append_batch_size: Whether or not to append the data as a batch.
+       main_program: Name of the main program that calls this
+       startup_program: Name of the startup program
+       stop_gradient: A boolean that mentions whether gradient should flow.
+
+    This function takes in input and based on whether data has
+    to be returned back as a minibatch, it creates the global variable using
+    the helper functions. The global variables can be accessed by all the
+    following operations and layers in the graph.
+
+    All the input variables of this function are passed in as local variables
+    to the LayerHelper constructor.
+
+    """
     helper = LayerHelper('data', **locals())
     shape = list(shape)
     for i in xrange(len(shape)):
@@ -134,11 +176,32 @@ def data(name,
 
 
 def _convert_(name):
+    """
+    Formatting.
+
+    Args:
+       name: The name/alias
+
+    This function takes in a name and converts it to a standard format of
+    group1_group2. Where as per the regular expression, group1 can have
+    alphabets and numbers and group2 has capital alphabets.
+
+    """
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
 def _create_op_func_(op_type):
+    """
+    Create an Operator for a Function.
+
+    Args:
+       op_type: The name of the operator to be created
+
+    This function takes in the operator type (sigmoid, mean , average etc) and
+    creates the operator functionality.
+
+    """
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
     not_intermediate_outputs = \
         filter(lambda output: not output.intermediate, op_proto.outputs)
@@ -146,24 +209,26 @@ def _create_op_func_(op_type):
         filter(lambda output: output.intermediate, op_proto.outputs)
 
     if len(not_intermediate_outputs) != 1:
-        raise ValueError(
-            "Only one not intermediate output operator can be automatically generated"
-        )
+        raise ValueError("Only one non intermediate output operator can be",
+                         "automatically generated")
 
     if not_intermediate_outputs[0].duplicable:
         raise ValueError(
-            "Only not duplicable op can be automatically generated")
+            "Only non duplicable op can be automatically generated")
 
     for output in intermediate_outputs:
         if output.duplicable:
-            raise ValueError(
-                "Only when all intermediate ops are not duplicable, "
-                "this op can be automatically generated")
+            raise ValueError("The op can be automatically generated only when ",
+                             "all intermediate ops are not duplicable")
 
     o_name = not_intermediate_outputs[0].name
     intermediate_output_names = [output.name for output in intermediate_outputs]
 
     def infer_and_check_data_type(op_proto, **kwargs):
+        """
+        This function performs the sanity check for data_type and
+        instance type.
+        """
         dtype = None
         for ipt in op_proto.inputs:
             name = _convert_(ipt.name)
@@ -184,6 +249,11 @@ def _create_op_func_(op_type):
         return dtype
 
     def func(**kwargs):
+        """
+        This function implements the function for the operator. This process
+        involves doing the sanity check (using the function above), reading
+        inputs from protobuf and applying the activations on top.
+        """
         helper = LayerHelper(op_type, **kwargs)
 
         dtype = infer_and_check_data_type(op_proto, **kwargs)
@@ -224,6 +294,11 @@ _create_op_func_('transpose')
 
 
 def fill_constant(data_type, shape, value=None, program=None):
+    """
+    This function creates a tensor , with shape as mentioned in the input and
+    specified data_type and fills this up with a constant value that
+    comes in the input.
+    """
     helper = LayerHelper('fill_constant', **locals())
     out = helper.create_tmp_variable(dtype=data_type)
     helper.append_op(
@@ -236,6 +311,10 @@ def fill_constant(data_type, shape, value=None, program=None):
 
 
 def cast(x, data_type, main_program=None):
+    """
+    This function takes in the input with input_data_type
+    and casts it to the output_data_type as the output.
+    """
     helper = LayerHelper('cast', **locals())
     out = helper.create_tmp_variable(dtype=data_type)
     helper.append_op(
@@ -248,6 +327,10 @@ def cast(x, data_type, main_program=None):
 
 
 def concat(input, axis, main_program=None, startup_program=None):
+    """
+    This function concats the input along the axis mentioned
+    and returns that as the output.
+    """
     helper = LayerHelper('concat', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
@@ -259,6 +342,10 @@ def concat(input, axis, main_program=None, startup_program=None):
 
 
 def sums(input, main_program=None, startup_program=None):
+    """
+    This function takes in the input and performs the sum operation on it
+    and returns that as the output.
+    """
     helper = LayerHelper('sum', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(type='sum', inputs={'X': input}, outputs={'Out': out})
@@ -266,6 +353,10 @@ def sums(input, main_program=None, startup_program=None):
 
 
 def cos_sim(X, Y, **kwargs):
+    """
+    This function performs the cosine similarity between two tensors
+    X and Y and returns that as the output.
+    """
     helper = LayerHelper('cos_sim', **kwargs)
     out = helper.create_tmp_variable(dtype=X.data_type)
     xnorm = helper.create_tmp_variable(dtype=X.data_type)
@@ -281,6 +372,9 @@ def cos_sim(X, Y, **kwargs):
 
 
 def cross_entropy(input, label, **kwargs):
+    """
+    This function computes cross_entropy using the input and label.
+    """
     helper = LayerHelper('cross_entropy', **kwargs)
     out = helper.create_tmp_variable(dtype=input.data_type)
     helper.append_op(
@@ -293,6 +387,10 @@ def cross_entropy(input, label, **kwargs):
 
 
 def square_error_cost(input, label, **kwargs):
+    """
+    This functions returns the squared error cost using the input and label.
+    The output is appending the op to do the above.
+    """
     helper = LayerHelper('square_error_cost', **kwargs)
     minus_out = helper.create_tmp_variable(dtype=input.data_type)
     helper.append_op(
@@ -308,6 +406,10 @@ def square_error_cost(input, label, **kwargs):
 
 
 def accuracy(input, label, k=1, **kwargs):
+    """
+    This function computes the accuracy using the input and label.
+    The output is the top_k inputs and their indices.
+    """
     helper = LayerHelper("accuracy", **kwargs)
     topk_out = helper.create_tmp_variable(dtype=input.data_type)
     topk_indices = helper.create_tmp_variable(dtype="int64")
@@ -340,6 +442,11 @@ def sequence_conv(input,
                   param_attr=None,
                   main_program=None,
                   startup_program=None):
+    """
+    This function creates the op for sequence_conv, using the inputs and
+    other convolutional configurations for the filters and stride as given
+    in the input parameters to the function.
+    """
     # FIXME(dzh) : want to unify the argument of python layer
     # function. So we ignore some unecessary attributes.
     # such as, padding_trainable, context_start.
@@ -380,6 +487,13 @@ def conv2d(input,
            param_attr=None,
            main_program=None,
            startup_program=None):
+    """
+    This function creates the op for a 2-dimensional Convolution.
+    This is performed using the parameters of filters(size, dimensionality etc)
+    , stride and other configurations for a Convolution operation.
+    This funciton can also append an activation on top of the
+    conv-2d output, if mentioned in the input parameters.
+    """
     helper = LayerHelper('conv2d', **locals())
     dtype = helper.input_dtype()
 
@@ -426,6 +540,11 @@ def conv2d(input,
 
 
 def sequence_pool(input, pool_type, **kwargs):
+    """
+    This function add the operator for sequence pooling.
+    This is applied on top of the input using pool_type mentioned
+    in the parameters.
+    """
     helper = LayerHelper('sequence_pool', input=input, **kwargs)
     dtype = helper.input_dtype()
     pool_out = helper.create_tmp_variable(dtype)
@@ -449,6 +568,10 @@ def pool2d(input,
            global_pooling=False,
            main_program=None,
            startup_program=None):
+    """
+    This function adds the operator for pooling in 2 dimensions, using the
+    pooling configurations mentioned in input parameters.
+    """
     if pool_type not in ["max", "avg"]:
         raise ValueError(
             "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
@@ -489,6 +612,10 @@ def batch_norm(input,
                data_layout='NCHW',
                main_program=None,
                startup_program=None):
+    """
+    This function helps create an operator to implement
+    the BatchNorm layer using the configurations from the input parameters.
+    """
     helper = LayerHelper('batch_norm', **locals())
     dtype = helper.input_dtype()
 
@@ -560,8 +687,8 @@ def batch_norm(input,
 
 class BlockGuard(object):
     """
-    BlockGuard used to create sub-block in program by using Python `with`
-    keyword.
+    BlockGuard class is used to create a sub-block in a program by
+    using the Python `with` keyword.
     """
 
     def __init__(self, main_program):
