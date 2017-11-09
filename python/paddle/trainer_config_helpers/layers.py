@@ -5135,12 +5135,19 @@ def block_expand_layer(input,
 @layer_support()
 def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
     """
-    A layer to do max out on conv layer output.
-      - Input: output of a conv layer.
-      - Output: feature map size same as input. Channel is (input channel) / groups.
+    A layer to do max out on convolutional layer output.
+      - Input: the output of a convolutional layer.
+      - Output: feature map size same as the input's, and its channel number is
+        (input channel) / groups.
 
     So groups should be larger than 1, and the num of channels should be able
-    to devided by groups.
+    to be devided by groups.
+
+    Reference:
+        Maxout Networks
+        http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf
+        Multi-digit Number Recognition from Street View Imagery using Deep Convolutional Neural Networks
+        https://arxiv.org/pdf/1312.6082v4.pdf
 
     .. math::
        y_{si+j} = \max_k x_{gsi + sk + j}
@@ -5149,12 +5156,6 @@ def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
        0 \le i < num_channels / groups
        0 \le j < s
        0 \le k < groups
-
-    Please refer to Paper:
-      - Maxout Networks: http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf
-      - Multi-digit Number Recognition from Street View \
-        Imagery using Deep Convolutional Neural Networks: \
-        https://arxiv.org/pdf/1312.6082v4.pdf
 
     The simple usage is:
 
@@ -5166,14 +5167,16 @@ def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param num_channels: The channel number of input layer. If None will be set
-                     automatically from previous output.
-    :type num_channels: int | None
+    :param num_channels: The number of input channels. If the parameter is not set or
+                         set to None, its actual value will be automatically set to
+                         the channels number of the input.
+    :type num_channels: int
     :param groups: The group number of input layer.
     :type groups: int
     :param name: The name of this layer. It is optional.
-    :type name: None | basestring.
-    :param layer_attr: Extra Layer attribute.
+    :type name: basestring
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -5205,20 +5208,20 @@ def ctc_layer(input,
               layer_attr=None):
     """
     Connectionist Temporal Classification (CTC) is designed for temporal
-    classication task. That is, for sequence labeling problems where the
+    classication task. e.g. sequence labeling problems where the
     alignment between the inputs and the target labels is unknown.
 
-    More details can be found by referring to `Connectionist Temporal
-    Classification: Labelling Unsegmented Sequence Data with Recurrent
-    Neural Networks <http://machinelearning.wustl.edu/mlpapers/paper_files/
-    icml2006_GravesFGS06.pdf>`_
+    Reference:
+        Connectionist Temporal Classification: Labelling Unsegmented Sequence Data
+        with Recurrent Neural Networks
+        http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf
 
     Note:
-        Considering the 'blank' label needed by CTC, you need to use
-        (num_classes + 1) as the input size. num_classes is the category number.
-        And the 'blank' is the last category index. So the size of 'input' layer, such as
-        fc_layer with softmax activation, should be num_classes + 1. The size of ctc_layer
-        should also be num_classes + 1.
+        Considering the 'blank' label needed by CTC, you need to use (num_classes + 1)
+        as the size of the input, where num_classes is the category number.
+        And the 'blank' is the last category index. So the size of 'input' layer (e.g.
+        fc_layer with softmax activation) should be (num_classes + 1). The size of
+        ctc_layer should also be (num_classes + 1).
 
     The example usage is:
 
@@ -5231,16 +5234,17 @@ def ctc_layer(input,
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param label: The data layer of label with variable length.
+    :param label: The input label.
     :type label: LayerOutput
-    :param size: category numbers + 1.
+    :param size: The dimension of this layer, which must be equal to (category number + 1).
     :type size: int
     :param name: The name of this layer. It is optional.
-    :type name: basestring | None
-    :param norm_by_times: Whether to normalization by times. False by default.
+    :type name: basestring
+    :param norm_by_times: Whether to do normalization by times. False is the default.
     :type norm_by_times: bool
-    :param layer_attr: Extra Layer config.
-    :type layer_attr: ExtraLayerAttribute | None
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -5281,20 +5285,19 @@ def warp_ctc_layer(input,
     building process, PaddlePaddle will clone the source codes, build and
     install it to :code:`third_party/install/warpctc` directory.
 
-    More details of CTC can be found by referring to `Connectionist Temporal
-    Classification: Labelling Unsegmented Sequence Data with Recurrent
-    Neural Networks <http://machinelearning.wustl.edu/mlpapers/paper_files/
-    icml2006_GravesFGS06.pdf>`_.
+    Reference:
+        Connectionist Temporal Classification: Labelling Unsegmented Sequence Data
+        with Recurrent Neural Networks
+        http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf
 
     Note:
-        - Let num_classes represent the category number. Considering the 'blank'
-          label needed by CTC, you need to use (num_classes + 1) as the input size.
-          Thus, the size of both warp_ctc layer and 'input' layer should be set to
-          num_classes + 1.
+        - Let num_classes represents the category number. Considering the 'blank'
+          label needed by CTC, you need to use (num_classes + 1) as the size of
+          warp_ctc layer.
         - You can set 'blank' to any value ranged in [0, num_classes], which
-          should be consistent as that used in your labels.
+          should be consistent with those used in your labels.
         - As a native 'softmax' activation is interated to the warp-ctc library,
-          'linear' activation is expected instead in the 'input' layer.
+          'linear' activation is expected to be used instead in the 'input' layer.
 
     The example usage is:
 
@@ -5308,18 +5311,19 @@ def warp_ctc_layer(input,
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param label: The data layer of label with variable length.
+    :param label: The input label.
     :type label: LayerOutput
-    :param size: category numbers + 1.
+    :param size: The dimension of this layer, which must be equal to (category number + 1).
     :type size: int
     :param name: The name of this layer. It is optional.
-    :type name: basestring | None
-    :param blank: the 'blank' label used in ctc
+    :type name: basestring
+    :param blank: The 'blank' label used in ctc.
     :type blank: int
-    :param norm_by_times: Whether to normalization by times. False by default.
+    :param norm_by_times: Whether to do normalization by times. False is the default.
     :type norm_by_times: bool
-    :param layer_attr: Extra Layer config.
-    :type layer_attr: ExtraLayerAttribute | None
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -5365,23 +5369,25 @@ def crf_layer(input,
                       label=label,
                       size=label_dim)
 
-    :param input: The first input layer is the feature.
+    :param input: The first input layer.
     :type input: LayerOutput
-    :param label: The second input layer is label.
+    :param label: The input label.
     :type label: LayerOutput
     :param size: The category number.
     :type size: int
-    :param weight: The third layer is "weight" of each sample, which is an
-                  optional argument.
+    :param weight: The scale of the cost of each sample. It is optional.
     :type weight: LayerOutput
-    :param param_attr: Parameter attribute. None means default attribute
+    :param param_attr: The parameter attribute. See ParameterAttribute for
+                       details.
     :type param_attr: ParameterAttribute
     :param name: The name of this layer. It is optional.
-    :type name: None | basestring
-    :param coeff: The coefficient affects the gradient in the backward.
+    :type name: basestring
+    :param coeff: The weight of the gradient in the back propagation.
+                  1.0 is the default.
     :type coeff: float
-    :param layer_attr: Extra Layer config.
-    :type layer_attr: ExtraLayerAttribute | None
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -5427,9 +5433,9 @@ def crf_decoding_layer(input,
     """
     A layer for calculating the decoding sequence of sequential conditional
     random field model. The decoding sequence is stored in output.ids.
-    If a second input is provided, it is treated as the ground-truth label, and
-    this layer will also calculate error. output.value[i] is 1 for incorrect
-    decoding or 0 for correct decoding.
+    If the input 'label' is provided, it is treated as the ground-truth label, and
+    this layer will also calculate error. output.value[i] is 1 for an incorrect
+    decoding and 0 for the correct.
 
     The example usage is:
 
@@ -5440,16 +5446,18 @@ def crf_decoding_layer(input,
 
     :param input: The first input layer.
     :type input: LayerOutput
-    :param size: size of this layer.
+    :param size: The dimension of this layer.
     :type size: int
-    :param label: None or ground-truth label.
-    :type label: LayerOutput or None
-    :param param_attr: Parameter attribute. None means default attribute
+    :param label: The input label.
+    :type label: LayerOutput | None
+    :param param_attr: The parameter attribute. See ParameterAttribute for
+                       details.
     :type param_attr: ParameterAttribute
     :param name: The name of this layer. It is optional.
-    :type name: None | basestring
-    :param layer_attr: Extra Layer config.
-    :type layer_attr: ExtraLayerAttribute | None
+    :type name: basestring
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -5494,8 +5502,10 @@ def nce_layer(input,
               layer_attr=None):
     """
     Noise-contrastive estimation.
-    Implements the method in the following paper:
-    A fast and simple algorithm for training neural probabilistic language models.
+
+    Reference:
+        A fast and simple algorithm for training neural probabilistic language models.
+        http://www.icml.cc/2012/papers/855.pdf
 
     The example usage is:
 
@@ -5507,31 +5517,33 @@ def nce_layer(input,
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param input: The input layers. It could be a LayerOutput of list/tuple of LayerOutput.
+    :param input: The first input of this layer.
     :type input: LayerOutput | list | tuple | collections.Sequence
-    :param label: label layer
+    :param label: The input label.
     :type label: LayerOutput
-    :param weight: weight layer, can be None(default)
+    :param weight: The scale of the cost. It is optional.
     :type weight: LayerOutput
-    :param num_classes: number of classes.
+    :param num_classes: The number of classes.
     :type num_classes: int
     :param act: Activation type. SigmoidActivation is the default.
     :type act: BaseActivation
-    :param param_attr: The Parameter Attribute|list.
+    :param param_attr: The parameter attribute. See ParameterAttribute for
+                       details.
     :type param_attr: ParameterAttribute
-    :param num_neg_samples: number of negative samples. Default is 10.
+    :param num_neg_samples: The number of negative samples. 10 is the default.
     :type num_neg_samples: int
-    :param neg_distribution: The distribution for generating the random negative labels.
-                             A uniform distribution will be used if not provided.
-                             If not None, its length must be equal to num_classes.
+    :param neg_distribution: The probability distribution for generating the random negative
+                             labels. If this parameter is not set, a uniform distribution will
+                             be used. If not None, its length must be equal to num_classes.
     :type neg_distribution: list | tuple | collections.Sequence | None
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param layer_attr: Extra Layer Attribute.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
-    :return: layer name.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     if isinstance(input, LayerOutput):
@@ -5605,11 +5617,11 @@ def rank_cost(left,
               coeff=1.0,
               layer_attr=None):
     """
-    A cost Layer for learning to rank using gradient descent. Details can refer
-    to `papers <http://research.microsoft.com/en-us/um/people/cburges/papers/
-    ICML_ranking.pdf>`_.
-    This layer contains at least three inputs. The weight is an optional
-    argument, which affects the cost.
+    A cost Layer for learning to rank using gradient descent.
+
+    Reference:
+        Learning to Rank using Gradient Descent
+        http://research.microsoft.com/en-us/um/people/cburges/papers/ICML_ranking.pdf
 
     .. math::
 
@@ -5640,14 +5652,15 @@ def rank_cost(left,
     :type right: LayerOutput
     :param label: Label is 1 or 0, means positive order and reverse order.
     :type label: LayerOutput
-    :param weight: The weight affects the cost, namely the scale of cost.
-                   It is an optional argument.
+    :param weight: The scale of cost. It is optional.
     :type weight: LayerOutput
     :param name: The name of this layer. It is optional.
-    :type name: None | basestring
-    :param coeff: The coefficient affects the gradient in the backward.
+    :type name: basestring
+    :param coeff: The weight of the gradient in the back propagation.
+                  1.0 is the default.
     :type coeff: float
-    :param layer_attr: Extra Layer Attribute.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -5692,25 +5705,25 @@ def lambda_cost(input,
                          NDCG_num=8,
                          max_sort_size=-1)
 
-    :param input: Samples of the same query should be loaded as sequence.
+    :param input: The first input of this layer, which is often a document
+                  samples list of the same query and whose type must be sequence.
     :type input: LayerOutput
-    :param score: The 2nd input. Score of each sample.
+    :param score: The scores of the samples.
     :type input: LayerOutput
     :param NDCG_num: The size of NDCG (Normalized Discounted Cumulative Gain),
                      e.g., 5 for NDCG@5. It must be less than or equal to the
-                     minimum size of lists.
+                     minimum size of the list.
     :type NDCG_num: int
-    :param max_sort_size: The size of partial sorting in calculating gradient.
-                          If max_sort_size = -1, then for each list, the
-                          algorithm will sort the entire list to get gradient.
-                          In other cases, max_sort_size must be greater than or
-                          equal to NDCG_num. And if max_sort_size is greater
-                          than the size of a list, the algorithm will sort the
-                          entire list of get gradient.
+    :param max_sort_size: The size of partial sorting in calculating gradient. If
+                          max_sort_size is equal to -1 or greater than the number
+                          of the samples in the list, then the algorithm will sort
+                          the entire list to compute the gradient. In other cases,
+                          max_sort_size must be greater than or equal to NDCG_num.
     :type max_sort_size: int
     :param name: The name of this layer. It is optional.
-    :type name: None | basestring
-    :param layer_attr: Extra Layer Attribute.
+    :type name: basestring
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -6830,8 +6843,8 @@ def img_conv3d_layer(input,
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :param num_channels: The number of input channels. If the parameter is not set or
-                         set to None,  its actual value will be automatically set to
-                         the channels number of the input .
+                         set to None, its actual value will be automatically set to
+                         the channels number of the input.
     :type num_channels: int
     :param param_attr: The parameter attribute of the convolution. See ParameterAttribute for
                        details.
