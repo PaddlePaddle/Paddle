@@ -41,7 +41,7 @@ class TestSeqConcatOp(OpTest):
         level = 1
         self.inputs = {'X': [('x0', (x0, lod0)), ('x1', (x1, lod1))]}
         self.attrs = {'axis': axis, 'level': level}
-        self.outputs = {'Out': np.concatenate([x0, x1], axis=1)}
+        self.outputs = {'Out': (np.concatenate([x0, x1], axis=1), lod0)}
 
     def setUp(self):
         self.op_type = "sequence_concat"

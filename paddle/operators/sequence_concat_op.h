@@ -29,7 +29,6 @@ LoD concatLoD(const std::vector<const T*> ins, const size_t level) {
   auto numLevels = ins[0]->NumLevels();
   const size_t n = ins.size();
   const size_t level_idx = ins[0]->NumLevels() - 1 - level;
-
   for (size_t i = 1; i < n; ++i) {
     for (size_t j = 0; j < ins[i]->lod()[level_idx].size(); ++j) {
       out_lod[level_idx][j] += ins[i]->lod()[level_idx][j];
@@ -142,7 +141,8 @@ class SequenceConcatGradOpKernel : public framework::OpKernel<T> {
     if (axis == 0UL) {
       out_lod = concatLoD<LoDTensor>(ins, level);
     }
-    auto out_lod_level = framework::ToAbsOffset(out_lod)[level];
+    const size_t level_idx = out_lod.size() - level - 1;
+    auto out_lod_level = framework::ToAbsOffset(out_lod)[level_idx];
 
     for (size_t i = 0; i < out_lod_level.size() - 1; ++i) {
       Tensor out_grad_t =
@@ -153,7 +153,7 @@ class SequenceConcatGradOpKernel : public framework::OpKernel<T> {
 
       for (size_t j = 0; j < n; ++j) {
         auto x_grad_lod_level =
-            framework::ToAbsOffset(x_grads[j]->lod())[level];
+            framework::ToAbsOffset(x_grads[j]->lod())[level_idx];
         auto x_grad_stride = framework::stride(x_grads[j]->dims());
         Tensor x_grad_t =
             x_grads[j]->Slice(static_cast<int>(x_grad_lod_level[i]),
