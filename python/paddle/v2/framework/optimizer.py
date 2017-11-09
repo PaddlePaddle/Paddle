@@ -297,7 +297,7 @@ class MomentumOptimizer(Optimizer):
                 "VelocityOut": velocity_acc
             },
             attrs={"mu": self._momentum,
-                   "useNesterov": self._use_nesterov})
+                   "use_nesterov": self._use_nesterov})
 
         return momentum_op
 
