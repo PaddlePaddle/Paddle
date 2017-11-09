@@ -15,6 +15,7 @@
 #pragma once
 #include <math.h>
 #include <type_traits>
+#include "glog/logging.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/platform/transform.h"
 
@@ -24,7 +25,10 @@ namespace operators {
 template <typename T>
 struct LessThanFunctor {
   using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a, const T& b) const { return a < b; }
+  HOSTDEVICE bool operator()(const T& a, const T& b) const {
+    VLOG(10) << "LessThan? " << a << ", " << b;
+    return a < b;
+  }
 };
 
 template <typename T>

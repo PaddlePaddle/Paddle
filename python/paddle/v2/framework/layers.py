@@ -965,9 +965,12 @@ def zeros(shape, dtype, main_program=None):
     return fill_constant(value=0.0, **locals())
 
 
-def increment(x, value=1.0, main_program=None):
+def increment(x, value=1.0, in_place=False, main_program=None):
     helper = LayerHelper("increment", **locals())
-    out = helper.create_tmp_variable(dtype=x.data_type)
+    if not in_place:
+        out = helper.create_tmp_variable(dtype=x.data_type)
+    else:
+        out = x
     out.stop_gradient = True
     helper.append_op(
         type='increment',

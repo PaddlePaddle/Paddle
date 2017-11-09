@@ -37,7 +37,7 @@ class TestWhileOp(unittest.TestCase):
         with while_op.block():
             d = layers.array_read(array=data_array, i=i)
             prev = layers.array_read(array=mem_array, i=i)
-            i = layers.increment(x=i)
+            i = layers.increment(x=i, in_place=True)
             result = layers.sums(input=[d, prev])
             layers.array_write(result, i=i, array=out_array)
             layers.less_than(x=i, y=array_len, cond=cond)
