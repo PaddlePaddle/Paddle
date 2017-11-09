@@ -273,6 +273,11 @@ class Operator(object):
         if attrs is not None:
             if not isinstance(attrs, dict):
                 raise TypeError("'attrs' should be a dict.")
+            for attr_name in attrs:
+                match = [x for x in proto.attrs if x.name == attr_name]
+                if not match:
+                    raise TypeError("Invalid attribute name {}".format(
+                        attr_name))
             for attr in proto.attrs:
                 attr_name = attr.name
                 if (not attr_name in attrs) or (attrs[attr_name] is None):
