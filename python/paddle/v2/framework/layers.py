@@ -136,7 +136,8 @@ def data(name,
          type=core.VarDesc.VarType.LOD_TENSOR,
          append_batch_size=True,
          main_program=None,
-         startup_program=None):
+         startup_program=None,
+         stop_gradient=True):
     helper = LayerHelper('data', **locals())
     shape = list(shape)
     for i in xrange(len(shape)):
@@ -150,7 +151,11 @@ def data(name,
         shape = [-1] + shape  # append batch size as -1
 
     return helper.create_global_variable(
-        name=name, shape=shape, dtype=data_type, type=type, stop_gradient=True)
+        name=name,
+        shape=shape,
+        dtype=data_type,
+        type=type,
+        stop_gradient=stop_gradient)
 
 
 def _convert_(name):
@@ -894,7 +899,8 @@ def lod_tensor_to_array(x, table, main_program=None):
     helper = LayerHelper("lod_tensor_to_array", **locals())
     array = helper.create_variable(
         name=unique_name("lod_tensor_to_array"),
-        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY)
+        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+        dtype=x.data_type)
     helper.append_op(
         type='lod_tensor_to_array',
         inputs={'X': x,
@@ -990,3 +996,12 @@ def shrink_memory(x, i, table, main_program=None):
         outputs={'Out': [out]},
         attrs={})
     return out
+
+
+def array_length(array, main_program=None):
+    helper = LayerHelper('array_length', **locals())
+    tmp = helper.create_tmp_variable(dtype='int64')
+    tmp.stop_gradient = True
+    helper.append_op(
+        type='lod_array_length', inputs={'X': [array]}, outputs={'Out': [tmp]})
+    return tmp
