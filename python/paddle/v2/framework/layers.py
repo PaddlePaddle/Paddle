@@ -1155,7 +1155,7 @@ def array_read(array, i, main_program=None):
 def shrink_memory(x, i, table, main_program=None):
     """
     This function creates an operator to shrink_rnn_memory using the RankTable
-    mentioned in the input parameter.
+    as mentioned in the input parameter.
     """
     helper = LayerHelper('shrink_memory', **locals())
     out = helper.create_tmp_variable(dtype=x.data_type)
