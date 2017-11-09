@@ -174,8 +174,6 @@ EOF
 EOF
 }
 
-set +xe
-
 cmake_gen
 run_build
 run_test
