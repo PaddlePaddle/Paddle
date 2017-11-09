@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class FillConstantOpKernel : public framework::OpKernel<T> {
+class FillConstantBatchSizeLikeOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* out = ctx.Output<framework::Tensor>("Out");

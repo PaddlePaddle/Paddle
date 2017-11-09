@@ -87,7 +87,8 @@ def data(name,
          type=core.VarDesc.VarType.LOD_TENSOR,
          append_batch_size=True,
          main_program=None,
-         startup_program=None):
+         startup_program=None,
+         stop_gradient=True):
     helper = LayerHelper('data', **locals())
     shape = list(shape)
     for i in xrange(len(shape)):
@@ -101,7 +102,11 @@ def data(name,
         shape = [-1] + shape  # append batch size as -1
 
     return helper.create_global_variable(
-        name=name, shape=shape, dtype=data_type, type=type, stop_gradient=True)
+        name=name,
+        shape=shape,
+        dtype=data_type,
+        type=type,
+        stop_gradient=stop_gradient)
 
 
 def _convert_(name):
@@ -134,9 +139,7 @@ def _create_op_func_(op_type):
     o_name = not_intermediate_outputs[0].name
     intermediate_output_names = [output.name for output in intermediate_outputs]
 
-    def func(**kwargs):
-        helper = LayerHelper(op_type, **kwargs)
-        inputs = dict()
+    def infer_and_check_data_type(op_proto, **kwargs):
         dtype = None
         for ipt in op_proto.inputs:
             name = _convert_(ipt.name)
@@ -153,6 +156,20 @@ def _create_op_func_(op_type):
                 elif dtype != each.data_type:
                     raise ValueError(
                         "operator {0} must input same dtype".format(op_type))
+
+        return dtype
+
+    def func(**kwargs):
+        helper = LayerHelper(op_type, **kwargs)
+
+        dtype = infer_and_check_data_type(op_proto, **kwargs)
+
+        inputs = dict()
+        for ipt in op_proto.inputs:
+            name = _convert_(ipt.name)
+            val = kwargs.pop(name, [])
+            if not isinstance(val, list) and not isinstance(val, tuple):
+                val = [val]
             inputs[ipt.name] = val
 
         outputs = dict()
@@ -178,6 +195,20 @@ _create_op_func_('reshape')
 _create_op_func_('elementwise_add')
 _create_op_func_('sigmoid')
 _create_op_func_('scale')
+_create_op_func_('reshape')
+_create_op_func_('transpose')
+
+
+def fill_constant(data_type, shape, value=None, program=None):
+    helper = LayerHelper('fill_constant', **locals())
+    out = helper.create_tmp_variable(dtype=data_type)
+    helper.append_op(
+        type='fill_constant',
+        outputs={'Out': [out]},
+        attrs={'data_type': data_type,
+               'shape': shape,
+               'value': value})
+    return out
 
 
 def cast(x, data_type, main_program=None):
@@ -414,9 +445,9 @@ def pool2d(input,
         inputs={"X": input},
         outputs={"Out": pool_out},
         attrs={
-            "poolingType": pool_type,
+            "pooling_type": pool_type,
             "ksize": pool_size,
-            "globalPooling": global_pooling,
+            "global_pooling": global_pooling,
             "strides": pool_stride,
             "paddings": pool_padding
         })
@@ -762,6 +793,46 @@ class StaticRNN(object):
             })
 
 
+def lstm(x,
+         c_pre_init,
+         hidden_dim,
+         forget_bias=None,
+         main_program=None,
+         startup_program=None):
+    helper = LayerHelper('lstm_unit', **locals())
+    rnn = StaticRNN()
+    with rnn.step():
+        c_pre = rnn.memory(init=c_pre_init)
+        x_t = rnn.step_input(x)
+
+        before_fc = concat(
+            input=[x_t, c_pre],
+            axis=1,
+            main_program=main_program,
+            startup_program=startup_program)
+        after_fc = fc(input=before_fc,
+                      size=hidden_dim * 4,
+                      main_program=main_program,
+                      startup_program=startup_program)
+
+        data_type = x.data_type
+        c = helper.create_tmp_variable(data_type)
+        h = helper.create_tmp_variable(data_type)
+
+        helper.append_op(
+            type='lstm_unit',
+            inputs={"X": after_fc,
+                    "C_prev": c_pre},
+            outputs={"C": c,
+                     "H": h},
+            attrs={"forget_bias": forget_bias})
+
+        rnn.update_memory(c_pre, c)
+        rnn.output(h)
+
+    return rnn()
+
+
 def lod_rank_table(x, level=0, main_program=None):
     helper = LayerHelper("lod_rank_table", **locals())
     table = helper.create_variable(
@@ -779,7 +850,8 @@ def lod_tensor_to_array(x, table, main_program=None):
     helper = LayerHelper("lod_tensor_to_array", **locals())
     array = helper.create_variable(
         name=unique_name("lod_tensor_to_array"),
-        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY)
+        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+        dtype=x.data_type)
     helper.append_op(
         type='lod_tensor_to_array',
         inputs={'X': x,
@@ -825,13 +897,13 @@ def zeros(shape, dtype, main_program=None):
 
 def increment(x, value=1.0, main_program=None):
     helper = LayerHelper("increment", **locals())
-    tmp = helper.create_tmp_variable(dtype=x.data_type)
+    out = helper.create_tmp_variable(dtype=x.data_type)
     helper.append_op(
         type='increment',
         inputs={'X': [x]},
-        outputs={'Out': [tmp]},
+        outputs={'Out': [out]},
         attrs={'step': value})
-    return tmp
+    return out
 
 
 def array_write(x, i, array=None, main_program=None):
@@ -861,4 +933,17 @@ def array_read(array, i, main_program=None):
         inputs={'X': [array],
                 'I': [i]},
         outputs={'Out': [out]})
+    return out
+
+
+def shrink_memory(x, i, table, main_program=None):
+    helper = LayerHelper('shrink_memory', **locals())
+    out = helper.create_tmp_variable(dtype=x.data_type)
+    helper.append_op(
+        type='shrink_rnn_memory',
+        inputs={'X': [x],
+                'I': [i],
+                'RankTable': [table]},
+        outputs={'Out': [out]},
+        attrs={})
     return out
