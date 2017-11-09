@@ -104,6 +104,25 @@ class TestWithGroup(TestConv2dOp):
         self.op_type = "conv2d"
 
 
+class TestWith1x1(TestConv2dOp):
+    def init_test_case(self):
+        self.pad = [0, 0]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] / self.groups
+        self.filter_size = [6, f_c, 1, 1]
+
+    def init_dilation(self):
+        self.dilations = [1, 1]
+
+    def init_group(self):
+        self.groups = 3
+
+    def init_op_type(self):
+        self.op_type = "conv2d"
+
+
 #----------------Conv2dCudnn----------------
 
 
