@@ -46,9 +46,7 @@ class Optimizer(object):
             shape=param_lr_shape,
             lod_level=1,
             persistable=True)
-        if param_lr == -1:
-            param_lr = self._learning_rate
-            param.optimize_attr['learning_rate'] = param_lr
+        param_lr = param_lr * self._learning_rate
         self.helper.set_variable_initializer(
             var=param_lr_var, initializer=ConstantInitializer(param_lr))
         return param_lr_var
