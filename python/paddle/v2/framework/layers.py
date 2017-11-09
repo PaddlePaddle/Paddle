@@ -263,7 +263,9 @@ def accuracy(input, label, k=1, **kwargs):
                  "Indices": [topk_indices]},
         attrs={"k": k})
     acc_out_dtype = kwargs.get("out_dtype", "float32")
-    acc_out = helper.create_tmp_variable(dtype=acc_out_dtype)
+    acc_out = helper.create_tmp_variable(dtype="float32")
+    correct = helper.create_tmp_variable(dtype="int64")
+    total = helper.create_tmp_variable(dtype="int64")
     helper.append_op(
         type="accuracy",
         inputs={
@@ -271,7 +273,11 @@ def accuracy(input, label, k=1, **kwargs):
             "Indices": [topk_indices],
             "Label": [label]
         },
-        outputs={"Accuracy": [acc_out]})
+        outputs={
+            "Accuracy": [acc_out],
+            "Correct": [correct],
+            "Total": [total],
+        })
     return acc_out
 
 

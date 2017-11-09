@@ -19,7 +19,8 @@ class TestAccuracyOp(OpTest):
                     break
         self.outputs = {
             'Accuracy': np.array([num_correct / float(n)]).astype("float32"),
-            'Correct': np.array([num_correct]).astype("int32")
+            'Correct': np.array([num_correct]).astype("int32"),
+            'Total': np.array([n]).astype("int32")
         }
 
     def test_check_output(self):
@@ -27,5 +28,4 @@ class TestAccuracyOp(OpTest):
 
 
 if __name__ == '__main__':
-    exit(0)
     unittest.main()

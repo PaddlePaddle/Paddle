@@ -550,7 +550,7 @@ class Parameter(Variable):
                 raise ValueError("Parameter shape should not be related with "
                                  "batch-size")
 
-        super(Parameter, self).__init__(
+        Variable.__init__(
             self, block, persistable=True, shape=shape, dtype=dtype, **kwargs)
         self.trainable = kwargs.get('trainable', True)
 
