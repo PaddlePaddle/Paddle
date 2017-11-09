@@ -15,35 +15,44 @@ Currently, every operation is expressed in the graph. we divide the evaluator pr
 3. Merge the mini-batch statistics to form the evaluation result for multiple mini-batches. When it comes to distributed training/Multi-GPU training, aggregate the value from different devices.
 
 ### Implementation
-This design is shown in python API. There would be an abstract python interface and multiple inheritances for each evaluation method.
+This design is shown in python API. 
+Each metric operator need to caculate the metric statistic and return the batch aware states, Python side responsible for accumulate the states for each pass. 
 
+    
 ```python
 class Evaluator(object):
     """
     Evaluator Base class.
     """
-    def __init__(self):
+    def __init__(self, name, **kwargs):
        """
        Different evaluator may has different metric states. E.g, Accuracy need two variables, total and right sample counts.
        Auc need four variables, `true_positives`,
-         `true_negatives`, `false_positives` and `false_negatives`. So every evaluator should create its needed variables and append the related mini-batch operator to main_program
+         `true_negatives`, `false_positives` and `false_negatives`. So every evaluator should create its needed variables and append to main_program
 
        The initialization of Evaluator should be responsible for:
        create metric states and append to the main_program
-       add mini-batch evaluator caculate operators to the main_program
-       add increment operator to accumulate the metric states
        """ 
        pass
 
-    def clear(self):
-      """
-      clear metric states at the begin of each pass/user specified batch
-      """
-      return init_program
+    def _update_ops(self, input, label, **kwargs)
+       """
+       Add mini-batch evaluator caculate operators to the main_program.
+       Add increment operator to accumulate the metric states.
+       """
+    
 
-    def evaluate(self):
+    def reset(self, executor, program=None):
+      """
+      Reset metric states at the begin of each pass/user specified batch number.
+      Execute the reset_program to reset the states.
+      """
+      
+
+    def eval(self, executor, program=None):
       """
       Merge the mini-batch statistics to form the evaluation result for multiple mini-batches.
+      Execute the eval_program and return the result.
       """
-      return eval_program
+      return eval_result
 ```

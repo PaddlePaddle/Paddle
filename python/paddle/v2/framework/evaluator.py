@@ -181,43 +181,6 @@ class Accuracy(Evaluator):
         return np.array(out[0])
 
 
-# Demo for composing low level ops to compute the F1 metric
-class FScore(Evaluator):
-    def __init__(self, input, label, beta=1.0, **kwargs):
-        super(F1, self).__init__("FScore", **kwargs)
-        block = self._program.global_block()
-        g_tp = block.create_var(
-            name=unique_name("Tp"), persistable=True, dtype="int64", shape=[1])
-        g_fn = block.create_var(
-            name=unique_name("Fn"), persistable=True, dtype="int64", shape=[1])
-        g_fp = block.create_var(
-            name=unique_name("Fp"), persistable=True, dtype="int64", shape=[1])
-
-        self._states["Tp"] = g_tp
-        self._states["Fp"] = g_fp
-        self._states["Fn"] = g_fn
-
-    def _update_ops(self):
-        block = self._program.global_block()
-        equal_out = block.create_var()
-        block.append_op(
-            type="equal",
-            inputs={"X": [input],
-                    "Y": [label]},
-            outputs={"Out": equal_out})
-
-        positive = block.create_var()
-        block.append_op(
-            type="sequence_pool",
-            inputs={"X": [equal_out]},
-            outputs={"Out": positive},
-            attrs={"pooltype": "SUM"})
-        batch = block.create_var(
-            name=feed_var_name,
-            type=core.VarDesc.VarType.FEED_MINIBATCH,
-            persistable=True)
-
-
 # FIXME(dzh): add a decorator to call _update_ops automatically
 def accuracy(*args, **kwargs):
     cls = Accuracy(*args, **kwargs)
