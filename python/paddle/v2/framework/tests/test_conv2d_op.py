@@ -10,23 +10,33 @@ def conv2d_forward_naive(input, filter, group, conv_param):
     assert np.mod(out_c, group) == 0
     sub_out_c = out_c / group
 
-    stride, pad = conv_param['stride'], conv_param['pad']
-    out_h = 1 + (in_h + 2 * pad[0] - f_h) / stride[0]
-    out_w = 1 + (in_w + 2 * pad[1] - f_w) / stride[1]
+    stride, pad, dilation = conv_param['stride'], conv_param['pad'], conv_param[
+        'dilation']
+    out_h = 1 + (in_h + 2 * pad[0] - (dilation[0] * (f_h - 1) + 1)) / stride[0]
+    out_w = 1 + (in_w + 2 * pad[1] - (dilation[1] * (f_w - 1) + 1)) / stride[1]
     out = np.zeros((in_n, out_c, out_h, out_w))
+
+    d_bolck_w = (dilation[0] * (f_h - 1) + 1)
+    d_bolck_h = (dilation[1] * (f_w - 1) + 1)
 
     input_pad = np.pad(input, ((0, ), (0, ), (pad[0], ), (pad[1], )),
                        mode='constant',
                        constant_values=0)
+
+    filter_dilation = np.zeros((out_c, f_c, d_bolck_h, d_bolck_w))
+    filter_dilation[:, :, 0:d_bolck_h:dilation[0], 0:d_bolck_w:dilation[
+        1]] = filter
+
     for i in range(out_h):
         for j in range(out_w):
             for g in range(group):
                 input_pad_masked = \
                     input_pad[:, g * f_c:(g + 1) * f_c,
-                    i * stride[0]:i * stride[0] + f_h,
-                    j * stride[1]:j * stride[1] + f_w]
+                    i * stride[0]:i * stride[0] + d_bolck_h,
+                    j * stride[1]:j * stride[1] + d_bolck_w]
 
-                f_sub = filter[g * sub_out_c:(g + 1) * sub_out_c, :, :, :]
+                f_sub = filter_dilation[g * sub_out_c:(g + 1) *
+                                        sub_out_c, :, :, :]
                 for k in range(sub_out_c):
                     out[:, g * sub_out_c + k, i, j] = \
                         np.sum(input_pad_masked * f_sub[k, :, :, :],
@@ -42,7 +52,11 @@ class TestConv2dOp(OpTest):
         self.init_dilation()
         self.init_test_case()
 
-        conv2d_param = {'stride': self.stride, 'pad': self.pad}
+        conv2d_param = {
+            'stride': self.stride,
+            'pad': self.pad,
+            'dilation': self.dilations
+        }
         input = np.random.random(self.input_size).astype("float32")
         filter = np.random.random(self.filter_size).astype("float32")
         output = conv2d_forward_naive(input, filter, self.groups,
@@ -123,24 +137,47 @@ class TestWith1x1(TestConv2dOp):
         self.op_type = "conv2d"
 
 
-#----------------Conv2dCudnn----------------
+class TestWithDilation(TestConv2dOp):
+    def init_test_case(self):
+        self.pad = [0, 0]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 10, 10]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] / self.groups
+        self.filter_size = [6, f_c, 3, 3]
 
+    def init_dilation(self):
+        self.dilations = [2, 2]
 
-class TestCudnn(TestConv2dOp):
-    def init_group(self):
-        self.groups = 1
-
-    def init_op_type(self):
-        self.op_type = "conv_cudnn"
-
-
-class TestCudnnWithGroup(TestConv2dOp):
     def init_group(self):
         self.groups = 3
 
     def init_op_type(self):
+        self.op_type = "conv2d"
+
+
+#----------------Conv2dCudnn----------------
+
+
+class TestCudnn(TestConv2dOp):
+    def init_op_type(self):
         self.op_type = "conv_cudnn"
 
+
+class TestCudnnWithGroup(TestWithGroup):
+    def init_op_type(self):
+        self.op_type = "conv_cudnn"
+
+
+class TestCudnnWith1x1(TestWith1x1):
+    def init_op_type(self):
+        self.op_type = "conv_cudnn"
+
+
+#  cudnn v5 does not support dilation conv.
+# class TestCudnnWithDilation(TestWithDilation):
+#     def init_op_type(self):
+#         self.op_type = "conv_cudnn"
 
 if __name__ == '__main__':
     unittest.main()
