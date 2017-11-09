@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 #include <algorithm>
-#include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {

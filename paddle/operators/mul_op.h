@@ -16,7 +16,6 @@
 
 #include "paddle/operators/math/math_function.h"
 
-#include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
