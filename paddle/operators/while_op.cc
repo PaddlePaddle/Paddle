@@ -34,8 +34,7 @@ class WhileOp : public framework::OperatorBase {
 
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
-    //    PADDLE_ENFORCE(...)
-
+    PADDLE_ENFORCE_NOT_NULL(scope.FindVar(Input(kCondition)));
     auto &cond = scope.FindVar(Input(kCondition))->Get<framework::LoDTensor>();
     PADDLE_ENFORCE_EQ(cond.dims(), paddle::framework::make_ddim({1}));
 
