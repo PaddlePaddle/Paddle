@@ -49,7 +49,7 @@ void ScaleSubRegionLayer::forward(PassType passType) {
   shape_ = TensorShape({batchSize, channelsNum_, imgH_, imgW_});
 
   resetOutput(batchSize, imgV->getWidth());
-  auto out = getOutput();
+  auto& out = getOutput();
   out.setFrameHeight(imgH_);
   out.setFrameWidth(imgW_);
 
