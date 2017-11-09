@@ -45,6 +45,8 @@
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
@@ -53,24 +55,24 @@ template <typename T, size_t D, int MajorType = Eigen::RowMajor,
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
 template <typename Place, typename T>
-class ExpandKernel : public framework::OpKernel {
+class ExpandKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto rank = context.Input<framework::Tensor>("X")->dims().size();
+    auto rank = context.Input<Tensor>("X")->dims().size();
     switch (rank) {
       REP_EXPAND_TEMPLATE(6)
       default:
         PADDLE_ENFORCE(false,
                        "Only support tensor with rank being between 1 and 6.");
-    };
+    }
   }
 
  protected:
   template <int Rank>
   void Expand(const framework::ExecutionContext& context) const {
-    auto* in0 = context.Input<framework::Tensor>("X");
+    auto* in0 = context.Input<Tensor>("X");
     auto& expand_times = context.Attr<std::vector<int>>("expandTimes");
-    auto* out0 = context.Output<framework::LoDTensor>("Out");
+    auto* out0 = context.Output<Tensor>("Out");
     Eigen::DSizes<int, Rank> bcast_dims;
     auto x_dims = in0->dims();
     for (size_t i = 0; i < expand_times.size(); ++i) {
@@ -85,10 +87,10 @@ class ExpandKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class ExpandGradKernel : public framework::OpKernel {
+class ExpandGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in0 = context.Input<framework::Tensor>("X");
+    auto* in0 = context.Input<Tensor>("X");
     auto& expand_times = context.Attr<std::vector<int>>("expandTimes");
     auto x_dims = in0->dims();
     std::vector<int> reshape_dims_vec;
@@ -111,23 +113,17 @@ class ExpandGradKernel : public framework::OpKernel {
     int dims = reshape_dims_vec.size() * 6 + reduce_dims_vec.size() - 7;
     // no need reduce, just copy
     if (reduce_dims_vec.size() == 0) {
-      auto* in0 =
-          context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-      auto* out0 =
-          context.Output<framework::LoDTensor>(framework::GradVarName("X"));
+      auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
+      auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
       out0->mutable_data<T>(context.GetPlace());
-      if (platform::is_cpu_place(context.GetPlace())) {
-        out0->CopyFrom<T>(*in0, platform::CPUPlace());
-      } else {
-        out0->CopyFrom<T>(*in0, platform::GPUPlace());
-      }
+      out0->CopyFrom(*in0, context.GetPlace(), context.device_context());
     } else {
       switch (dims) {
         REP_EXPAND_GRAD_TEMPLATE(72)
         default:
           PADDLE_ENFORCE(
               false, "Only support tensor with rank being between 1 and 6.");
-      };
+      }
     }
   }
 
@@ -144,11 +140,9 @@ class ExpandGradKernel : public framework::OpKernel {
     PADDLE_ENFORCE_EQ(reduce_size, reduce_dims_vec.size(),
                       "Inconsistent size between template Dims and "
                       "reduce dimensions.");
-    auto* in0 =
-        context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto* out0 =
-        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto x = EigenVector<T>::Flatten(*(context.Input<framework::Tensor>("X")));
+    auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
+    auto x = EigenVector<T>::Flatten(*(context.Input<Tensor>("X")));
     out0->mutable_data<T>(context.GetPlace());
     auto x_grad = EigenVector<T>::Flatten(*out0);
     Eigen::DSizes<int, Dims / 6 + 1> reshape_dims;
@@ -165,5 +159,5 @@ class ExpandGradKernel : public framework::OpKernel {
   }
 };
 
-}  // operators
-}  // paddle
+}  // namespace operators
+}  // namespace paddle
