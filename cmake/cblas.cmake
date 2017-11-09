@@ -30,44 +30,6 @@ if(WITH_MKLML AND MKLML_INC_DIR AND MKLML_LIB)
   return()
 endif()
 
-## Then find MKL.
-set(INTEL_MKL_ROOT "/opt/intel/mkl" CACHE PATH "Folder contains intel mkl libs")
-set(MKL_ROOT $ENV{MKL_ROOT} CACHE PATH "Folder contains env MKL")
-
-set(MKL_INCLUDE_SEARCH_PATHS
-  ${MKL_ROOT}/include
-  ${INTEL_MKL_ROOT}/include)
-set(MKL_LIB_SEARCH_PATHS
-  ${MKL_ROOT}/lib
-  ${MKL_ROOT}/lib/intel64
-  ${INTEL_MKL_ROOT}/lib
-  ${INTEL_MKL_ROOT}/lib/intel64)
-
-find_path(MKL_INC_DIR mkl.h PATHS
-  ${MKL_INCLUDE_SEARCH_PATHS})
-find_path(MKL_LAPACK_INC_DIR mkl_lapacke.h PATHS
-  ${MKL_INCLUDE_SEARCH_PATHS})
-find_library(MKL_CORE_LIB NAMES mkl_core PATHS
-  ${MKL_LIB_SEARCH_PATHS})
-find_library(MKL_SEQUENTIAL_LIB NAMES mkl_sequential PATHS
-  ${MKL_LIB_SEARCH_PATHS})
-find_library(MKL_INTEL_LP64 NAMES mkl_intel_lp64 PATHS
-  ${MKL_LIB_SEARCH_PATHS})
-
-if(MKL_LAPACK_INC_DIR AND MKL_INC_DIR AND MKL_CORE_LIB AND MKL_SEQUENTIAL_LIB AND MKL_INTEL_LP64)
-  set(CBLAS_FOUND ON)
-  set(CBLAS_PROVIDER MKL)
-  set(CBLAS_INC_DIR ${MKL_INC_DIR} ${MKL_LAPACK_INC_DIR})
-  set(CBLAS_LIBRARIES ${MKL_INTEL_LP64} ${MKL_SEQUENTIAL_LIB} ${MKL_CORE_LIB})
-
-  add_definitions(-DPADDLE_USE_MKL)
-  add_definitions(-DLAPACK_FOUND)
-
-  message(STATUS "Found MKL (include: ${MKL_INC_DIR}, library: ${CBLAS_LIBRARIES})")
-  message(STATUS "Found lapack in MKL (include: ${MKL_LAPACK_INC_DIR})")
-  return()
-endif()
-
 ## Then find atlas.
 set(ATLAS_ROOT $ENV{ATLAS_ROOT} CACHE PATH "Folder contains Atlas")
 set(ATLAS_INCLUDE_SEARCH_PATHS
