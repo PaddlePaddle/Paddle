@@ -170,6 +170,8 @@ set(DEPS_OPS
     sequence_conv_op
     sequence_pool_op
     lod_rank_table_op
+    lod_tensor_to_array_op
+    array_to_lod_tensor_op
     lstm_op
     tensor_array_read_write_op
     gru_op)
@@ -182,6 +184,8 @@ op_library(sum_op DEPS net_op selected_rows_functor)
 op_library(pool_op DEPS pooling)
 op_library(pool_with_index_op DEPS pooling)
 op_library(lod_rank_table_op SRCS lod_rank_table_op.cc DEPS lod_rank_table)
+op_library(lod_tensor_to_array_op SRCS lod_tensor_to_array_op.cc DEPS lod_rank_table_op)
+op_library(array_to_lod_tensor_op SRCS array_to_lod_tensor_op.cc DEPS lod_rank_table_op)
 op_library(tensor_array_read_write_op SRCS tensor_array_read_write_op.cc)
 if(WITH_GPU)
 op_library(nccl_op DEPS nccl_common)
@@ -191,8 +195,13 @@ op_library(sequence_pool_op DEPS sequence_pooling)
 op_library(lstm_op DEPS sequence2batch lstm_compute)
 op_library(conv_transpose_op DEPS vol2col)
 op_library(gru_op DEPS sequence2batch gru_compute)
-op_library(dynamic_recurrent_op SRCS dynamic_recurrent_op.cc rnn/recurrent_op_utils.cc
-        DEPS net_op tensor_array)
+if(WITH_TESTING)
+    op_library(dynamic_recurrent_op SRCS dynamic_recurrent_op.cc rnn/recurrent_op_utils.cc
+        DEPS net_op tensor_array gtest)
+else()
+    op_library(dynamic_recurrent_op SRCS dynamic_recurrent_op.cc rnn/recurrent_op_utils.cc
+            DEPS net_op tensor_array)
+endif()
 op_library(recurrent_op SRCS recurrent_op.cc DEPS executor)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
