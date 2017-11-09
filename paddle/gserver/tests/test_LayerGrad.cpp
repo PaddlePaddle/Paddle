@@ -53,7 +53,7 @@ TEST(Operator, dot_mul) {
 TEST(Projection, context) {
   for (auto contextStart : {-5, -3, -1, 0, 3}) {
     for (auto contextLength : {1, 2, 5, 7}) {
-      for (auto batchSize : {1, 2, 5, 20, 50}) {
+      for (auto batchSize : {1, 2, 5, 20}) {
         for (auto trainablePadding : {false, true}) {
           LOG(INFO) << " contextStart=" << contextStart
                     << " contextLength=" << contextLength
@@ -585,14 +585,14 @@ TEST(Layer, maxoutLayer) {
 }
 void testFcLayer(string format, size_t nnz) {
   TestConfig config;
-  config.biasSize = 4096;
+  config.biasSize = 1024;
   config.layerConfig.set_type("fc");
-  config.layerConfig.set_size(4096);
+  config.layerConfig.set_size(1024);
   config.layerConfig.set_active_type("sigmoid");
   config.layerConfig.set_drop_rate(0.1);
 
   config.inputDefs.push_back(
-      {INPUT_DATA, "layer_0", 8192, nnz, ParaSparse(format)});
+      {INPUT_DATA, "layer_0", 2048, nnz, ParaSparse(format)});
   config.layerConfig.add_inputs();
 
   LOG(INFO) << config.inputDefs[0].sparse.sparse << " "
@@ -609,9 +609,9 @@ void testFcLayer(string format, size_t nnz) {
 }
 
 TEST(Layer, fcLayer) {
-  testFcLayer("", 4096 * 4096 * 2);
-  testFcLayer("csc", 4096 * 40);
-  testFcLayer("csr", 4096 * 40);
+  testFcLayer("", 1024 * 1024 * 2);
+  testFcLayer("csc", 1024 * 10);
+  testFcLayer("csr", 1024 * 10);
 }
 
 TEST(Layer, SelectiveFullyConnectedLayer) {
@@ -1995,7 +1995,7 @@ TEST(Layer, multibox_loss) {
 TEST(Layer, TransLayer) {
   TestConfig config;
   const int height = 128;
-  const int width = 1028;
+  const int width = 256;
   config.layerConfig.set_type("trans");
   config.layerConfig.set_size(width);
 
@@ -2355,6 +2355,38 @@ TEST(Layer, ScaleShiftLayer) {
   config.layerConfig.add_inputs();
   for (auto useGpu : {false, true}) {
     testLayerGrad(config, "scale_shift", batchSize, false, useGpu, false);
+  }
+}
+
+TEST(Layer, ScaleSubRegionLayer) {
+  const size_t batchSize = 64;
+  const size_t size = 4096;
+  TestConfig config;
+  config.layerConfig.set_type("scale_sub_region");
+  config.inputDefs.push_back({INPUT_DATA, "input", size, 0});
+  MatrixPtr indicesV = Matrix::create(batchSize, 6, false, false);
+  auto* data = indicesV->getData();
+  for (size_t i = 0; i < batchSize; ++i) {
+    data[i * 2] = 2;
+    data[i * 2 + 1] = 4;
+    data[i * 2 + 2] = 16;
+    data[i * 2 + 3] = 32;
+    data[i * 2 + 4] = 16;
+    data[i * 2 + 5] = 32;
+  }
+  config.inputDefs.push_back({INPUT_SELF_DEFINE_DATA, "indices", indicesV, {}});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ScaleSubRegionConfig* scaleSubRegionConf =
+      input->mutable_scale_sub_region_conf();
+  ImageConfig* imgConf = scaleSubRegionConf->mutable_image_conf();
+  imgConf->set_img_size(32);
+  imgConf->set_img_size_y(32);
+  imgConf->set_channels(4);
+  scaleSubRegionConf->set_value(2.0);
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "scale_sub_region", batchSize, false, useGpu, false);
   }
 }
 
