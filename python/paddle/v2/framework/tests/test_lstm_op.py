@@ -179,6 +179,30 @@ class TestLstmOp(OpTest):
         self.check_grad(
             ['Input', 'Weight', 'Bias'], ['Hidden'], max_relative_error=5e-4)
 
+
+class TestLstmOpHasInitial(TestLstmOp):
+    def set_argument(self):
+        self.lod = [[0, 2, 5, 7]]
+        self.D = 16
+
+        self.act_gate = 'sigmoid'
+        self.act_cell = 'tanh'
+        self.act_cand = 'tanh'
+
+        self.has_initial_state = True
+        self.is_reverse = True
+        self.use_peepholes = True
+
+    def test_check_grad(self):
+        # TODO(qingqing) remove folowing lines after the check_grad is refined.
+        N = len(self.lod[0]) - 1
+        self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(
+            ['Input', 'Weight', 'Bias', 'H0', 'C0'], ['Hidden'],
+            max_relative_error=5e-4)
+
     def test_check_grad_ingore_bias(self):
         N = len(self.lod[0]) - 1
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
@@ -208,40 +232,6 @@ class TestLstmOp(OpTest):
             ['Weight', 'Bias'], ['Hidden'],
             max_relative_error=5e-4,
             no_grad_set=set('Input'))
-
-
-class TestLstmOpHasInitial(TestLstmOp):
-    def set_argument(self):
-        self.lod = [[0, 2, 5, 7]]
-        self.D = 16
-
-        self.act_gate = 'sigmoid'
-        self.act_cell = 'tanh'
-        self.act_cand = 'tanh'
-
-        self.has_initial_state = True
-        self.is_reverse = True
-        self.use_peepholes = True
-
-    def test_check_grad(self):
-        # TODO(qingqing) remove folowing lines after the check_grad is refined.
-        N = len(self.lod[0]) - 1
-        self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
-        self.outputs['BatchCellPreAct'] = np.zeros(
-            (N, self.D)).astype('float64')
-        self.check_grad(
-            ['Input', 'Weight', 'Bias', 'H0', 'C0'], ['Hidden'],
-            max_relative_error=5e-4)
-
-    # In order to speed up, skip following testing
-    def test_check_grad_ingore_bias(self):
-        return
-
-    def test_check_grad_ingore_weight(self):
-        return
-
-    def test_check_grad_ingore_input(self):
-        return
 
     def test_check_grad_ingore_h0(self):
         N = len(self.lod[0]) - 1
@@ -277,16 +267,6 @@ class TestLstmOpRerverse(TestLstmOp):
         self.is_reverse = True
         self.use_peepholes = True
 
-    # In order to speed up, skip following testing
-    def test_check_grad_ingore_bias(self):
-        return
-
-    def test_check_grad_ingore_weight(self):
-        return
-
-    def test_check_grad_ingore_input(self):
-        return
-
 
 class TestLstmOpNotUsePeepholes(TestLstmOp):
     def set_argument(self):
@@ -300,16 +280,6 @@ class TestLstmOpNotUsePeepholes(TestLstmOp):
         self.has_initial_state = False
         self.is_reverse = True
         self.use_peepholes = False
-
-    # In order to speed up, skip following testing
-    def test_check_grad_ingore_bias(self):
-        return
-
-    def test_check_grad_ingore_weight(self):
-        return
-
-    def test_check_grad_ingore_input(self):
-        return
 
 
 if __name__ == '__main__':

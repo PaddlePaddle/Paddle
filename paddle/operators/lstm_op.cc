@@ -246,25 +246,17 @@ class LSTMGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("BatchCellPreAct"),
                    "Input(BatchGate) of LSTM should not be null.");
 
-    auto in_g_name = framework::GradVarName("Input");
-    if (ctx->HasOutput(in_g_name))
-      ctx->SetOutputDim(in_g_name, ctx->GetInputDim("Input"));
+    auto SetOutGradDim = [&ctx](const std::string& name) {
+      auto g_name = framework::GradVarName(name);
+      if (ctx->HasOutput(g_name))
+        ctx->SetOutputDim(g_name, ctx->GetInputDim(name));
+    };
 
-    auto w_g_name = framework::GradVarName("Weight");
-    if (ctx->HasOutput(w_g_name))
-      ctx->SetOutputDim(w_g_name, ctx->GetInputDim("Weight"));
-
-    auto b_g_name = framework::GradVarName("Bias");
-    if (ctx->HasOutput(b_g_name))
-      ctx->SetOutputDim(b_g_name, ctx->GetInputDim("Bias"));
-
-    auto h0_g_name = framework::GradVarName("H0");
-    if (ctx->HasOutput(h0_g_name))
-      ctx->SetOutputDim(h0_g_name, ctx->GetInputDim("H0"));
-
-    auto c0_g_name = framework::GradVarName("C0");
-    if (ctx->HasOutput(c0_g_name))
-      ctx->SetOutputDim(c0_g_name, ctx->GetInputDim("C0"));
+    SetOutGradDim("Input");
+    SetOutGradDim("Weight");
+    SetOutGradDim("Bias");
+    SetOutGradDim("H0");
+    SetOutGradDim("C0");
   }
 
  protected:
