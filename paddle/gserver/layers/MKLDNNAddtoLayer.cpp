@@ -91,7 +91,7 @@ void MKLDNNAddtoLayer::resetBwd(std::vector<primitive>& pipeline,
   // backward bias
   bwdBias_ = nullptr;
   if (bias) {
-    std::vector<double> scales(bs_, 1.0);
+    std::vector<float> scales(bs_, 1.0);
     std::vector<memory::primitive_desc> srcPDs(bs_, bias->getPrimitiveDesc());
     auto biasPD = sum::primitive_desc(bias->getMemoryDesc(), scales, srcPDs);
     std::vector<primitive::at> srcs;
@@ -153,7 +153,7 @@ void MKLDNNAddtoLayer::resetFwdPD(std::shared_ptr<sum::primitive_desc>& pd,
                                   std::vector<MKLDNNMatrixPtr>& inputs,
                                   MKLDNNMatrixPtr bias,
                                   MKLDNNMatrixPtr out) {
-  std::vector<double> scales(inputs.size(), 1.0);
+  std::vector<float> scales(inputs.size(), 1.0);
   std::vector<memory::primitive_desc> srcPDs;
   for (size_t i = 0; i < inputs.size(); i++) {
     srcPDs.push_back(inputs[i]->getPrimitiveDesc());
@@ -164,7 +164,7 @@ void MKLDNNAddtoLayer::resetFwdPD(std::shared_ptr<sum::primitive_desc>& pd,
 
   biasPD = nullptr;
   if (bias) {
-    std::vector<double> scales(2, 1.0);
+    std::vector<float> scales(2, 1.0);
     std::vector<memory::primitive_desc> srcPDs(2, bias->getPrimitiveDesc());
     biasPD.reset(
         new sum::primitive_desc(bias->getMemoryDesc(), scales, srcPDs));
