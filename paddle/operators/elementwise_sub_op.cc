@@ -34,7 +34,13 @@ REGISTER_OP(elementwise_sub, ops::ElementwiseOp, ops::ElementwiseSubOpMaker,
             elementwise_sub_grad, ops::ElementwiseOpGrad);
 REGISTER_OP_CPU_KERNEL(
     elementwise_sub,
-    ops::ElementwiseSubKernel<paddle::platform::CPUPlace, float>);
+    ops::ElementwiseSubKernel<paddle::platform::CPUPlace, float>,
+    ops::ElementwiseSubKernel<paddle::platform::CPUPlace, double>,
+    ops::ElementwiseSubKernel<paddle::platform::CPUPlace, int>,
+    ops::ElementwiseSubKernel<paddle::platform::CPUPlace, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_sub_grad,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUPlace, float>);
+    ops::ElementwiseSubGradKernel<paddle::platform::CPUPlace, float>,
+    ops::ElementwiseSubGradKernel<paddle::platform::CPUPlace, double>,
+    ops::ElementwiseSubGradKernel<paddle::platform::CPUPlace, int>,
+    ops::ElementwiseSubGradKernel<paddle::platform::CPUPlace, int64_t>);

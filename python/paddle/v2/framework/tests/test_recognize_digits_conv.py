@@ -55,23 +55,14 @@ cost = layers.cross_entropy(
     main_program=main_program,
     startup_program=startup_program)
 avg_cost = layers.mean(x=cost, main_program=main_program)
-# accuracy = layers.accuracy(
-#     input=predict,
-#     label=label,
-#     main_program=main_program,
-#     startup_program=startup_program)
-# optimizer = optimizer.MomentumOptimizer(learning_rate=0.1 / 128.0,
-# momentum=0.9)
 optimizer = optimizer.AdamOptimizer(learning_rate=0.01, beta1=0.9, beta2=0.999)
 opts = optimizer.minimize(avg_cost, startup_program)
 
-accuracy = evaluator.accuracy(
+accuracy, acc_out = evaluator.accuracy(
     input=predict,
     label=label,
     main_program=main_program,
     startup_program=startup_program)
-acc_out = accuracy._update_ops(
-    input=predict, label=label, main_program=main_program)
 
 BATCH_SIZE = 50
 PASS_NUM = 3
@@ -105,11 +96,14 @@ for pass_id in range(PASS_NUM):
                        fetch_list=[avg_cost, acc_out])
         loss = np.array(outs[0])
         acc = np.array(outs[1])
-        # pass_acc = accuracy.eval(exe)
-        # print pass_acc
-        print loss, acc
+        pass_acc = accuracy.eval(exe)
+        print "pass id : ", pass_id, pass_acc
+        # print loss, acc
+        if loss < 10.0 and acc > 0.9:
+            # if avg cost less than 10.0 and accuracy is larger than 0.9, we think our code is good.
+            exit(0)
 
-        # if loss < 10.0 and acc > 0.9:
-        #     # if avg cost less than 10.0 and accuracy is larger than 0.9, we think our code is good.
-        #     exit(0)
+    pass_acc = accuracy.eval(exe)
+    print "pass id : ", pass_id, pass_acc
+
 exit(1)
