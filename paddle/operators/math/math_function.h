@@ -108,6 +108,13 @@ struct SetConstant {
   }
 };
 
+template <typename Place>
+void set_constant_with_place(const platform::DeviceContext& context,
+                             framework::Tensor* tensor, float value);
+
+void set_constant(const platform::DeviceContext& context,
+                  framework::Tensor* tensor, float value);
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
