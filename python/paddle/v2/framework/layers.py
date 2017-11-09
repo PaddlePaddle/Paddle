@@ -687,6 +687,8 @@ def batch_norm(input,
 
 class BlockGuard(object):
     """
+    BlockGuard class.
+
     BlockGuard class is used to create a sub-block in a program by
     using the Python `with` keyword.
     """
@@ -707,6 +709,12 @@ class BlockGuard(object):
 
 
 class StaticRNNGuard(BlockGuard):
+    """
+    StaticRNNGuard class.
+
+    StaticRNNGuard class is used to create a StaticRNN block in a program.
+    """
+
     def __init__(self, rnn):
         if not isinstance(rnn, StaticRNN):
             raise TypeError("StaticRNNGuard takes an StaticRNN")
@@ -727,12 +735,18 @@ class StaticRNNGuard(BlockGuard):
 
 class StaticRNNMemoryLink(object):
     """
-    :param init: the initial variable for Memory
-    :type init: Variable
-    :param pre_mem: the memory variable in previous time step
-    :type pre_mem: Variable
-    :param mem: the memory variable in current time step
-    :type mem: Variable
+    StaticRNNMemoryLink class.
+
+    Args:
+        init: the initial variable for Memory
+        init: Variable
+        pre_mem: the memory variable in previous time step
+        pre_mem: Variable
+        mem: the memory variable in current time step
+        mem: Variable
+
+    StaticRNNMemoryLink class is used to create a link between two
+    memory cells of a StaticRNN.
     """
 
     def __init__(self, init, pre_mem, mem=None):
@@ -742,6 +756,12 @@ class StaticRNNMemoryLink(object):
 
 
 class StaticRNN(object):
+    """
+    StaticRNN class.
+
+    StaticRNN class is used to create a StaticRNN. The RNN will have its
+    own parameters like inputs, outputs, memories, status and length.
+    """
     BEFORE_RNN_BLOCK = 0
     IN_RNN_BLOCK = 1
     AFTER_RNN_BLOCK = 2
@@ -770,15 +790,15 @@ class StaticRNN(object):
                init_value=0.0,
                init_batch_dim_idx=0,
                ref_batch_dim_idx=1):
-        '''
-        :param init: boot memory, if not set, a shape, batch_ref must be provided
-        :param shape: shape of the boot memory
-        :param batch_ref: batch size reference variable
-        :param init_value: the init value of boot memory
-        :param init_batch_dim_idx: the index of batch size in init's dimension
-        :param ref_batch_dim_idx: the index of batch size in batch_ref's dimension
-        :return: boot memory
-        '''
+        """
+        Args:
+            init: boot memory, if not set, a shape, batch_ref must be provided
+            shape: shape of the boot memory
+            batch_ref: batch size reference variable
+            init_value: the init value of boot memory
+            init_batch_dim_idx: the index of batch size in init's dimension
+            ref_batch_dim_idx: the index of batch size in batch_ref's dimension
+        """
         self._assert_in_rnn_block_('memory')
         if init is None:
             if shape is None or batch_ref is None:
@@ -950,6 +970,10 @@ def lstm(x,
          forget_bias=None,
          main_program=None,
          startup_program=None):
+    """
+    This function helps create an operator for the LSTM (Long Short Term
+    Memory) cell that can be used inside an RNN.
+    """
     helper = LayerHelper('lstm_unit', **locals())
     rnn = StaticRNN()
     with rnn.step():
@@ -985,6 +1009,10 @@ def lstm(x,
 
 
 def lod_rank_table(x, level=0, main_program=None):
+    """
+    This function creates an operator for creating a LOD_RANK_TABLE
+    using the input x.
+    """
     helper = LayerHelper("lod_rank_table", **locals())
     table = helper.create_variable(
         type=core.VarDesc.VarType.LOD_RANK_TABLE,
@@ -998,6 +1026,10 @@ def lod_rank_table(x, level=0, main_program=None):
 
 
 def lod_tensor_to_array(x, table, main_program=None):
+    """
+    This function creates an operator to convert an LOD_Tensor to
+    an array.
+    """
     helper = LayerHelper("lod_tensor_to_array", **locals())
     array = helper.create_variable(
         name=unique_name("lod_tensor_to_array"),
@@ -1012,6 +1044,10 @@ def lod_tensor_to_array(x, table, main_program=None):
 
 
 def array_to_lod_tensor(x, table, main_program=None):
+    """
+    This function creates an operator to convert an array to a
+    LOD_Tensor.
+    """
     helper = LayerHelper("array_to_lod_tensor", **locals())
     tmp = helper.create_tmp_variable(dtype=x.data_type)
     helper.append_op(
@@ -1023,6 +1059,11 @@ def array_to_lod_tensor(x, table, main_program=None):
 
 
 def fill_constant(shape, dtype, value, main_program=None):
+    """
+    This function creates a tensor , with shape as mentioned in the input and
+    specified data_type and fills this up with a constant value that
+    comes in the input. It also sets the stop_gradient to be True.
+    """
     helper = LayerHelper("fill_constant", **locals())
     out = helper.create_tmp_variable(dtype=dtype)
     helper.append_op(
@@ -1039,14 +1080,27 @@ def fill_constant(shape, dtype, value, main_program=None):
 
 
 def ones(shape, dtype, main_program=None):
+    """
+    This function performs the same function as fill_constant() declared above
+    with the constant value being 1.0.
+    """
     return fill_constant(value=1.0, **locals())
 
 
 def zeros(shape, dtype, main_program=None):
+    """
+    This function performs the same function as fill_constant() declared above
+    with the constant value being 0.0.
+    """
     return fill_constant(value=0.0, **locals())
 
 
 def increment(x, value=1.0, in_place=True, main_program=None):
+    """
+    This function creates an operator to increment each value in the input
+    `x` by an amount: `value` as mentioned in the input parameter. This
+    operation is performed in-place by default.
+    """
     helper = LayerHelper("increment", **locals())
     if in_place:
         out = x
@@ -1061,6 +1115,10 @@ def increment(x, value=1.0, in_place=True, main_program=None):
 
 
 def array_write(x, i, array=None, main_program=None):
+    """
+    This function creates an operator to write the data out as a
+    LOD_TENSOR_ARRAY.
+    """
     helper = LayerHelper('array_write', **locals())
     if array is None:
         array = helper.create_variable(
@@ -1076,6 +1134,10 @@ def array_write(x, i, array=None, main_program=None):
 
 
 def array_read(array, i, main_program=None):
+    """
+    This function creates an operator to read the data in as a
+    LOD_TENSOR_ARRAY.
+    """
     helper = LayerHelper('array_read', **locals())
     if not isinstance(
             array,
@@ -1091,6 +1153,10 @@ def array_read(array, i, main_program=None):
 
 
 def shrink_memory(x, i, table, main_program=None):
+    """
+    This function creates an operator to shrink_rnn_memory using the RankTable
+    mentioned in the input parameter.
+    """
     helper = LayerHelper('shrink_memory', **locals())
     out = helper.create_tmp_variable(dtype=x.data_type)
     helper.append_op(
@@ -1104,6 +1170,10 @@ def shrink_memory(x, i, table, main_program=None):
 
 
 def array_length(array, main_program=None):
+    """
+    This function creates an operator to find the length of the
+    LOD_TENSOR_ARRAY.
+    """
     helper = LayerHelper('array_length', **locals())
     tmp = helper.create_tmp_variable(dtype='int64')
     tmp.stop_gradient = True
