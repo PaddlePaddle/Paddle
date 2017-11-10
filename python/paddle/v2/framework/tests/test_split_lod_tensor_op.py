@@ -96,8 +96,6 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
 
     def check_tensor_same(self, actual, expect):
         self.assertTrue(np.allclose(np.array(actual), np.array(expect)))
-        print np.array(actual)
-        print np.array(expect)
         self.assertEqual(actual.lod(), expect.lod())
 
 
