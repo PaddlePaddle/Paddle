@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/math/MathFunctions.h"
+#include "TensorType.h"
 
 namespace paddle {
 
@@ -24,73 +24,42 @@ namespace paddle {
 // of MatMulFunction, we need to consider the reconstruction of hl_matrix_mul
 // interface.
 template <DeviceType Device, class T>
-class GemmFunctor {
-public:
-  void operator()(const CBLAS_TRANSPOSE transA,
-                  const CBLAS_TRANSPOSE TransB,
-                  const int M,
-                  const int N,
-                  const int K,
-                  const T alpha,
-                  const T* A,
-                  const int lda,
-                  const T* B,
-                  const int ldb,
-                  const T beta,
-                  T* C,
-                  const int ldc);
+struct BlasGemm {
+  static void compute(const bool transA,
+                      const bool transB,
+                      const int M,
+                      const int N,
+                      const int K,
+                      const T alpha,
+                      const T* A,
+                      const int lda,
+                      const T* B,
+                      const int ldb,
+                      const T beta,
+                      T* C,
+                      const int ldc);
 };
 
+// TODO(hedaoyuan): Since the definition of the real type in the Paddle
+// conflicts with the Eigen library, so compile the Eigen code can not
+// include the Paddle header file. And need an EigenBlasGemm template class
+// that does not contain the DeviceType parameter.
+// I will fix this problem and merge BlasGemm and EigenBlasGemm into one.
 template <class T>
-class GemmFunctor<DEVICE_TYPE_CPU, T> {
-public:
-  void operator()(const CBLAS_TRANSPOSE transA,
-                  const CBLAS_TRANSPOSE TransB,
-                  const int M,
-                  const int N,
-                  const int K,
-                  const T alpha,
-                  const T* A,
-                  const int lda,
-                  const T* B,
-                  const int ldb,
-                  const T beta,
-                  T* C,
-                  const int ldc) {
-    gemm<T>(transA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);
-  }
-};
-
-template <class T>
-class GemmFunctor<DEVICE_TYPE_GPU, T> {
-public:
-  void operator()(const CBLAS_TRANSPOSE transA,
-                  const CBLAS_TRANSPOSE TransB,
-                  const int M,
-                  const int N,
-                  const int K,
-                  const T alpha,
-                  const T* A,
-                  const int lda,
-                  const T* B,
-                  const int ldb,
-                  const T beta,
-                  T* C,
-                  const int ldc) {
-    hl_matrix_mul((T*)A,
-                  transA == CblasNoTrans ? HPPL_OP_N : HPPL_OP_T,
-                  (T*)B,
-                  TransB == CblasNoTrans ? HPPL_OP_N : HPPL_OP_T,
-                  C,
-                  M,
-                  N,
-                  K,
-                  alpha,
-                  beta,
-                  lda,
-                  ldb,
-                  ldc);
-  }
+struct EigenBlasGemm {
+  static void compute(const bool transA,
+                      const bool transB,
+                      const int M,
+                      const int N,
+                      const int K,
+                      const T alpha,
+                      const T* A,
+                      const int lda,
+                      const T* B,
+                      const int ldb,
+                      const T beta,
+                      T* C,
+                      const int ldc);
 };
 
 }  // namespace paddle

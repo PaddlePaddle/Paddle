@@ -28,7 +28,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
-class MeanKernel : public framework::OpKernel {
+class MeanKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* input = context.Input<Tensor>("X");
@@ -45,19 +45,19 @@ class MeanKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class MeanGradKernel : public framework::OpKernel {
+class MeanGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto OG = context.Input<Tensor>(framework::GradVarName("Out"));
-    PADDLE_ENFORCE(framework::product(OG->dims()) == 1,
-                   "Mean Gradient should be scalar");
+    PADDLE_ENFORCE(OG->numel() == 1, "Mean Gradient should be scalar");
     auto IG = context.Output<Tensor>(framework::GradVarName("X"));
     IG->mutable_data<T>(context.GetPlace());
 
-    T ig_size = (T)framework::product(IG->dims());
+    T ig_size = static_cast<T>(IG->numel());
+    Eigen::DSizes<int, 1> bcast(ig_size);
 
     EigenVector<T>::Flatten(*IG).device(context.GetEigenDevice<Place>()) =
-        EigenScalar<T>::From(*OG) / ig_size;
+        (EigenVector<T>::From(*OG) / ig_size).broadcast(bcast);
   }
 };
 

@@ -25,7 +25,10 @@ class Variable {
  public:
   template <typename T>
   const T& Get() const {
-    PADDLE_ENFORCE(IsType<T>(), "Variable must be type %s", typeid(T).name());
+    PADDLE_ENFORCE(holder_ != nullptr, "Variable must hold some thing");
+    PADDLE_ENFORCE(IsType<T>(),
+                   "Variable must be type %s, the holding type is %s",
+                   typeid(T).name(), holder_->Type().name());
     return *static_cast<const T*>(holder_->Ptr());
   }
 
@@ -41,6 +44,13 @@ class Variable {
   bool IsType() const {
     return holder_ != nullptr &&
            std::type_index(typeid(T)) == std::type_index(holder_->Type());
+  }
+
+  void Clear() { holder_.reset(); }
+
+  std::type_index Type() const {
+    PADDLE_ENFORCE(holder_ != nullptr, "Must hold memory");
+    return holder_->Type();
   }
 
  private:

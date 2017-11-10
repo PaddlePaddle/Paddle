@@ -30,7 +30,7 @@ import (
 	"github.com/PaddlePaddle/Paddle/go/pserver"
 	"github.com/PaddlePaddle/Paddle/go/pserver/client"
 	"github.com/coreos/etcd/clientv3"
-	log "github.com/sirupsen/logrus"
+	log "github.com/inconshreveable/log15"
 )
 
 const (
@@ -90,7 +90,7 @@ func initEtcdClient() {
 		DialTimeout: time.Second * time.Duration(1),
 	})
 	if err != nil {
-		log.Errorf("err %v", err)
+		log.Error("error init etcd client", log.Ctx{"error": err})
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	_, err = client.Delete(ctx, pserver.PsDesired)

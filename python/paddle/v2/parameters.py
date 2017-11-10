@@ -14,6 +14,7 @@
 
 import numpy as np
 from paddle.proto.ParameterConfig_pb2 import ParameterConfig
+from collections import OrderedDict
 import paddle.trainer.config_parser as cp
 import struct
 import tarfile
@@ -42,9 +43,25 @@ def create(layers):
 
 class Parameters(object):
     """
-    Parameters is a dictionary contains Paddle's parameter. The key of
-    Parameters is the name of parameter. The value of Parameters is a plain
-    :code:`numpy.ndarry` .
+    `Parameters` manages all the learnable parameters in a neural network.
+    It stores parameters' information in an OrderedDict. The key is
+    the name of a parameter, and value is a parameter's configuration(in
+    protobuf format), such as initialization mean and std, its size, whether it
+    is a static parameter, and so on.
+
+    :param __param_conf__: store the configurations of learnable parameters in
+        the network in an OrderedDict. Parameter is added one by one into the
+        dict by following their created order in the network: parameters of
+        the previous layers in a network are careted first. You can visit the
+        parameters from bottom to top by iterating over this dict.
+    :type __param_conf__: OrderedDict
+    :param __gradient_machines__: all of the parameters in a neural network are
+        appended to a PaddlePaddle gradient machine, which is used internally to
+        copy parameter values between C++ and Python end.
+    :type __gradient_machines__: list
+    :param __tmp_params__: a dict to store dummy parameters if no
+        __gradient_machines__ is appended to `Parameters`.
+    :type __tmp_params__: dict
 
     Basically usage is
 
@@ -62,7 +79,7 @@ class Parameters(object):
     """
 
     def __init__(self):
-        self.__param_conf__ = dict()
+        self.__param_conf__ = OrderedDict()
         self.__gradient_machines__ = []
         self.__tmp_params__ = dict()
 
@@ -83,6 +100,10 @@ class Parameters(object):
             raise ValueError("duplicated parameter %s" % param_conf.name)
 
         self.__param_conf__[param_conf.name] = param_conf
+
+    def update_param_conf(self, model_config):
+        for p in model_config.parameters:
+            self.__param_conf__[p.name] = p
 
     def keys(self):
         """
@@ -231,6 +252,9 @@ class Parameters(object):
         :rtype: np.ndarray
         """
         import py_paddle.swig_paddle as api
+        if self.__param_conf__[key].is_static:
+            return np.zeros(self.__param_conf__[key].size, dtype=np.float32)
+
         return self.__getter_inner(key, api.PARAMETER_GRADIENT)
 
     def set(self, parameter_name, value):
@@ -250,7 +274,7 @@ class Parameters(object):
         append gradient machine to parameters. This method is used internally in
         Trainer.train.
 
-        :param gradient_machine: Paddle C++ GradientMachine object.
+        :param gradient_machine: PaddlePaddle C++ GradientMachine object.
         :type gradient_machine: api.GradientMachine
         :return:
         """
@@ -302,6 +326,17 @@ class Parameters(object):
         self.set(name, arr.reshape(self.get_shape(name)))
 
     def to_tar(self, f):
+        """
+        Save parameters to a tar file.
+
+        WARNING: You should use `paddle.v2.trainer.SGD.save_parameter_to_tar(f)`
+            to save parameters most of the time. Otherwise, some settings such
+            as model average will not take effect.
+
+        :param f:
+        :type f: file
+        :return:
+        """
         tar = tarfile.TarFile(fileobj=f, mode='w')
         for nm in self.names():
             buf = cStringIO.StringIO()

@@ -48,7 +48,16 @@ public:
                  << inputLayers_.size() << ") at " << getName();
     }
     s << format.substr(pos);
-    LOG(INFO) << s.str();
+
+    const std::string delimiter("\n");
+    std::string content = s.str();
+    std::string::size_type foundPos = 0;
+    std::string::size_type prevPos = 0;
+    while ((foundPos = content.find(delimiter, prevPos)) != std::string::npos) {
+      LOG(INFO) << content.substr(prevPos, foundPos - prevPos);
+      prevPos = foundPos + delimiter.size();
+    }
+    LOG(INFO) << content.substr(prevPos);
   }
 
   void backward(const UpdateCallback& callback) override {}

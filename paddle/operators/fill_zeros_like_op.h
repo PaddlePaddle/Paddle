@@ -13,20 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class FillZerosLikeKernel : public framework::OpKernel {
+class FillZerosLikeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* output = context.Output<framework::Tensor>("Dst");
-    output->mutable_data<T>(context.GetPlace());
-    auto t = framework::EigenVector<T>::Flatten(*output);
-    t.device(context.GetEigenDevice<Place>()) = t.constant(T(0));
+    auto* out = context.Output<framework::Tensor>("Y");
+    out->mutable_data<T>(context.GetPlace());
+
+    math::SetConstant<Place, T> setter;
+    setter(context.device_context(), out, static_cast<T>(0));
   }
 };
 

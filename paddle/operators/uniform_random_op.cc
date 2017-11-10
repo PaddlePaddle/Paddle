@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
-
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
-
    http://www.apache.org/licenses/LICENSE-2.0
-
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,22 +21,22 @@ namespace operators {
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
 // implement uniform random.
 template <typename T>
-class CPUUniformRandomKernel : public framework::OpKernel {
+class CPUUniformRandomKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* tensor = context.Output<framework::Tensor>("Out");
-    T* data = tensor->mutable_data<T>(context.GetPlace());
-    unsigned int seed =
-        static_cast<unsigned int>(context.op_.GetAttr<int>("seed"));
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* tensor = ctx.Output<framework::Tensor>("Out");
+    T* data = tensor->mutable_data<T>(ctx.GetPlace());
+    unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
     std::minstd_rand engine;
     if (seed == 0) {
       seed = std::random_device()();
     }
     engine.seed(seed);
     std::uniform_real_distribution<T> dist(
-        static_cast<T>(context.op_.GetAttr<float>("min")),
-        static_cast<T>(context.op_.GetAttr<float>("max")));
-    for (ssize_t i = 0; i < framework::product(tensor->dims()); ++i) {
+        static_cast<T>(ctx.Attr<float>("min")),
+        static_cast<T>(ctx.Attr<float>("max")));
+    int64_t size = tensor->numel();
+    for (int64_t i = 0; i < size; ++i) {
       data[i] = dist(engine);
     }
   }
@@ -49,13 +46,28 @@ class UniformRandomOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of UniformRandomOp should not be null.");
+
+    PADDLE_ENFORCE(
+        ctx->Attrs().Get<float>("min") < ctx->Attrs().Get<float>("max"),
+        "uniform_random's min must less then max");
+    auto& shape = ctx->Attrs().Get<std::vector<int>>("shape");
+    std::vector<int64_t> temp;
+    temp.reserve(shape.size());
+    for (auto dim : shape) {
+      temp.push_back(static_cast<int64_t>(dim));
+    }
+    ctx->SetOutputDim("Out", framework::make_ddim(temp));
+  }
+
  protected:
-  void InferShape(const framework::InferShapeContext& ctx) const override {
-    PADDLE_ENFORCE(GetAttr<float>("min") < GetAttr<float>("max"),
-                   "uniform_random's min must less then max");
-    auto* tensor = ctx.Output<framework::Tensor>("Out");
-    auto dims = GetAttr<std::vector<int>>("dims");
-    tensor->Resize(framework::make_ddim(dims));
+  framework::OpKernelType GetKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        static_cast<framework::DataType>(ctx.Attr<int>("data_type")),
+        ctx.device_context());
   }
 };
 
@@ -64,18 +76,31 @@ class UniformRandomOpMaker : public framework::OpProtoAndCheckerMaker {
   UniformRandomOpMaker(framework::OpProto* proto,
                        framework::OpAttrChecker* op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddOutput("Out", "The output tensor of uniform random op");
-    AddComment(R"DOC(Uniform random operator.
+    AddOutput("Out", "(Tensor) The output tensor of uniform random op");
+    AddComment(R"DOC(
+Uniform random operator.
 
-Used to initialize tensor with uniform random generator.
+This operator initializes a tensor with random values sampled from a 
+uniform distribution.
+
 )DOC");
-    AddAttr<std::vector<int>>("dims", "the dimension of random tensor");
-    AddAttr<float>("min", "Minimum value of uniform random").SetDefault(-1.0f);
-    AddAttr<float>("max", "Maximun value of uniform random").SetDefault(1.0f);
+    AddAttr<std::vector<int>>("shape",
+                              "(vector<int>) The shape of the output tensor");
+    AddAttr<float>("min",
+                   "(float, default -1.0) "
+                   "Minimum value of uniform random")
+        .SetDefault(-1.0f);
+    AddAttr<float>("max",
+                   "(float, default 1.0) "
+                   "Maximun value of uniform random")
+        .SetDefault(1.0f);
     AddAttr<int>("seed",
-                 "Random seed of uniform random. "
-                 "0 means generate a seed by system")
+                 "(int, default 0) "
+                 "Random seed used for generating samples. "
+                 "0 means use a seed generated by the system.")
         .SetDefault(0);
+    AddAttr<int>("data_type", "(int, default 5(FP32)) Output tensor data type")
+        .SetDefault(framework::DataType::FP32);
   }
 };
 }  // namespace operators
@@ -84,4 +109,5 @@ Used to initialize tensor with uniform random generator.
 REGISTER_OP_WITHOUT_GRADIENT(uniform_random, paddle::operators::UniformRandomOp,
                              paddle::operators::UniformRandomOpMaker);
 REGISTER_OP_CPU_KERNEL(uniform_random,
-                       paddle::operators::CPUUniformRandomKernel<float>);
+                       paddle::operators::CPUUniformRandomKernel<float>,
+                       paddle::operators::CPUUniformRandomKernel<double>);

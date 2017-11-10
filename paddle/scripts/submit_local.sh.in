@@ -18,7 +18,7 @@ function version(){
         echo "PaddlePaddle @PADDLE_VERSION@, compiled with"
         echo "    with_avx: @WITH_AVX@"
         echo "    with_gpu: @WITH_GPU@"
-        echo "    with_mkldnn: @WITH_MKLDNN"
+        echo "    with_mkldnn: @WITH_MKLDNN@"
         echo "    with_mklml: @WITH_MKLML@"
         echo "    with_double: @WITH_DOUBLE@"
         echo "    with_python: @WITH_PYTHON@"
@@ -56,8 +56,7 @@ if [ -z "${PADDLE_NO_STAT+x}" ]; then
     fi
 fi
 
-
-MYDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PADDLE_BIN_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 if [ ! -z "${DEBUGGER}" ]; then
     echo "Using debug command ${DEBUGGER}"
@@ -93,34 +92,16 @@ else:
   sys.exit(0)
 EOF
 
-if [ $? -eq 1 ]; then  # Older version installed, or not installed at all
-    echo "First time run paddle, need to install some python dependencies."
-    # setuptools normalizes package version, so we need to use normalized
-    # package version for paddle python package
-    PYTHON_PADDLE_VERSION=$(python -c 'import packaging.version
-import setuptools
-print str(packaging.version.Version("@PADDLE_VERSION@"))
-' 2>/dev/null)
-    BASEDIR=$(dirname "$0")
-    pip install ${BASEDIR}/../opt/paddle/share/wheels/*-${PYTHON_PADDLE_VERSION}-*.whl
-    if [ $? -ne 0 ]; then
-	echo "pip install wheels failed. "
-	echo "Please use 'sudo paddle' at the first time you use PaddlePaddle"
-	echo "PaddlePaddle will install some python dependencies automatically."
-	exit 1
-    fi
-    echo "Python dependencies are installed."
-fi
 
 case "$1" in
     "train")
-        ${DEBUGGER} $MYDIR/../opt/paddle/bin/paddle_trainer ${@:2}
+        ${DEBUGGER} $PADDLE_BIN_PATH/paddle_trainer ${@:2}
         ;;
     "merge_model")
-        ${DEBUGGER} $MYDIR/../opt/paddle/bin/paddle_merge_model ${@:2}
+        ${DEBUGGER} $PADDLE_BIN_PATH/paddle_merge_model ${@:2}
         ;;
     "pserver")
-        ${DEBUGGER} $MYDIR/../opt/paddle/bin/paddle_pserver_main ${@:2}
+        ${DEBUGGER} $PADDLE_BIN_PATH/paddle_pserver_main ${@:2}
         ;;
     "dump_config")
         python -m paddle.utils.dump_config ${@:2}
@@ -129,7 +110,7 @@ case "$1" in
         python -m paddle.utils.make_model_diagram ${@:2}
         ;;
     "usage")
-        $MYDIR/../opt/paddle/bin/paddle_usage ${@:2}
+        $PADDLE_BIN_PATH/paddle_usage ${@:2}
         ;;
     "version")
         version

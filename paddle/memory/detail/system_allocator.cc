@@ -27,7 +27,7 @@ limitations under the License. */
 // between host and device.  Allocates too much would reduce the amount
 // of memory available to the system for paging.  So, by default, we
 // should set false to use_pinned_memory.
-DEFINE_bool(use_pinned_memory, false, "If set, allocate cpu pinned memory.");
+DEFINE_bool(use_pinned_memory, true, "If set, allocate cpu pinned memory.");
 
 namespace paddle {
 namespace memory {
@@ -41,7 +41,16 @@ void* CPUAllocator::Alloc(size_t& index, size_t size) {
 
   index = 0;  // unlock memory
 
-  void* p = malloc(size);
+  void* p;
+
+#ifdef PADDLE_USE_MKLDNN
+  // refer to https://github.com/01org/mkl-dnn/blob/master/include/mkldnn.hpp
+  // memory alignment
+  PADDLE_ENFORCE_EQ(posix_memalign(&p, 4096ul, size), 0);
+#else
+  PADDLE_ENFORCE_EQ(posix_memalign(&p, 32ul, size), 0);
+#endif
+  PADDLE_ENFORCE(p, "Fail to allocate CPU memory: size = %d .", size);
 
   if (p != nullptr) {
     if (FLAGS_use_pinned_memory) {
@@ -62,7 +71,7 @@ void CPUAllocator::Free(void* p, size_t size, size_t index) {
 
 bool CPUAllocator::UseGpu() const { return false; }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 
 void* GPUAllocator::Alloc(size_t& index, size_t size) {
   // CUDA documentation doesn't explain if cudaMalloc returns nullptr
@@ -134,7 +143,7 @@ void GPUAllocator::Free(void* p, size_t size, size_t index) {
 
 bool GPUAllocator::UseGpu() const { return true; }
 
-#endif  // PADDLE_ONLY_CPU
+#endif
 
 }  // namespace detail
 }  // namespace memory

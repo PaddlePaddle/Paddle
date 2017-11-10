@@ -62,19 +62,28 @@ extern void* cudnn_dso_handle;
 #define CUDNN_DNN_ROUTINE_EACH(__macro)             \
   __macro(cudnnSetTensor4dDescriptor);              \
   __macro(cudnnSetTensor4dDescriptorEx);            \
+  __macro(cudnnSetTensorNdDescriptor);              \
+  __macro(cudnnGetTensorNdDescriptor);              \
   __macro(cudnnGetConvolutionNdForwardOutputDim);   \
   __macro(cudnnGetConvolutionForwardAlgorithm);     \
   __macro(cudnnCreateTensorDescriptor);             \
   __macro(cudnnDestroyTensorDescriptor);            \
   __macro(cudnnCreateFilterDescriptor);             \
   __macro(cudnnSetFilter4dDescriptor);              \
+  __macro(cudnnSetFilterNdDescriptor);              \
+  __macro(cudnnGetFilterNdDescriptor);              \
   __macro(cudnnSetPooling2dDescriptor);             \
+  __macro(cudnnSetPoolingNdDescriptor);             \
+  __macro(cudnnGetPoolingNdDescriptor);             \
   __macro(cudnnDestroyFilterDescriptor);            \
   __macro(cudnnCreateConvolutionDescriptor);        \
   __macro(cudnnCreatePoolingDescriptor);            \
   __macro(cudnnDestroyPoolingDescriptor);           \
   __macro(cudnnSetConvolution2dDescriptor);         \
   __macro(cudnnDestroyConvolutionDescriptor);       \
+  __macro(cudnnSetConvolutionNdDescriptor);         \
+  __macro(cudnnGetConvolutionNdDescriptor);         \
+  __macro(cudnnDeriveBNTensorDescriptor);           \
   __macro(cudnnCreate);                             \
   __macro(cudnnDestroy);                            \
   __macro(cudnnSetStream);                          \

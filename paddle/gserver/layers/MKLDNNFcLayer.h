@@ -18,6 +18,9 @@ limitations under the License. */
 #include "mkldnn.hpp"
 
 namespace paddle {
+typedef mkldnn::inner_product_forward fc_fwd;
+typedef mkldnn::inner_product_backward_weights fc_bwdWgt;
+typedef mkldnn::inner_product_backward_data fc_bwdData;
 
 /**
  * @brief A subclass of MKLDNNLayer fc layer.
@@ -32,8 +35,8 @@ protected:
   // if has already init the weight
   bool hasInitedWgt_;
 
-  // if input layer has image size info (ih>1 && iw>1)
-  bool hasSpatial_;
+  // save forward primitive_desc, which can be used backward
+  std::shared_ptr<fc_fwd::primitive_desc> fwdPD_;
 
   // fc weight and bias
   std::unique_ptr<Weight> weight_;
@@ -41,40 +44,80 @@ protected:
 
 public:
   explicit MKLDNNFcLayer(const LayerConfig& config)
-      : MKLDNNLayer(config), hasInitedWgt_(false), hasSpatial_(true) {}
+      : MKLDNNLayer(config), hasInitedWgt_(false) {}
 
   ~MKLDNNFcLayer() {}
 
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
 
+  void reshape(
+      int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) override;
+
+  void resetFwd(std::vector<mkldnn::primitive>& pipeline,
+                MKLDNNMatrixPtr& in,
+                MKLDNNMatrixPtr& wgt,
+                MKLDNNMatrixPtr& bias,
+                MKLDNNMatrixPtr& out) override;
+
+  void resetBwd(std::vector<mkldnn::primitive>& pipeline,
+                MKLDNNMatrixPtr& in,
+                MKLDNNMatrixPtr& wgt,
+                MKLDNNMatrixPtr& bias,
+                MKLDNNMatrixPtr& out) override;
+
+  void updateWeights(const UpdateCallback& callback) override;
+
   void convertWeightsFromPaddle() override;
 
   void convertWeightsToPaddle() override;
 
-  void forward(PassType passType) override;
-
-  void backward(const UpdateCallback& callback) override;
-
 protected:
   /**
-   * reshape the input image sizes
-   * and reset output buffer size
-   * and reset mkldnn forward
+   * Forward functions: reset buffers(input, output, weight and bias),
+   *                    reset primitive descriptor,
+   *                    reset pipeline.
    */
-  void reshape();
+  void resetFwdBuffers(MKLDNNMatrixPtr& in,
+                       MKLDNNMatrixPtr& wgt,
+                       MKLDNNMatrixPtr& bias,
+                       MKLDNNMatrixPtr& out);
+  void resetFwdPD(std::shared_ptr<fc_fwd::primitive_desc>& pd,
+                  MKLDNNMatrixPtr in,
+                  MKLDNNMatrixPtr wgt,
+                  MKLDNNMatrixPtr bias,
+                  MKLDNNMatrixPtr out);
+  void resetFwdPipeline(std::vector<mkldnn::primitive>& pipeline,
+                        std::shared_ptr<fc_fwd::primitive_desc>& pd,
+                        MKLDNNMatrixPtr& in,
+                        MKLDNNMatrixPtr& wgt,
+                        MKLDNNMatrixPtr& bias,
+                        MKLDNNMatrixPtr& out);
 
   /**
-   * reset the forward primitve and memory
-   * only would be called when input size changes
+   * Backward functions: reset buffers(input, output, weight and bias),
+   *                     reset primitive descriptor for backward weight,
+   *                     reset primitive descriptor for backward data,
+   *                     reset pipeline.
    */
-  void resetFwd();
-
-  /**
-   * reset the backward primitve and memory for mkldnn fc
-   * only would be called when needed
-   */
-  void resetBwd();
+  void resetBwdBuffers(MKLDNNMatrixPtr& in,
+                       MKLDNNMatrixPtr& wgt,
+                       MKLDNNMatrixPtr& bias,
+                       MKLDNNMatrixPtr& out);
+  void resetBwdWgtPD(std::shared_ptr<fc_bwdWgt::primitive_desc>& pd,
+                     MKLDNNMatrixPtr& wgt,
+                     MKLDNNMatrixPtr& bias,
+                     MKLDNNMatrixPtr& out);
+  void resetBwdDataPD(std::shared_ptr<fc_bwdData::primitive_desc>& pd,
+                      MKLDNNMatrixPtr& in,
+                      MKLDNNMatrixPtr& out);
+  void resetBwdPipeline(std::vector<mkldnn::primitive>& pipeline,
+                        std::shared_ptr<fc_bwdWgt::primitive_desc>& bwdWgtPD,
+                        std::shared_ptr<fc_bwdData::primitive_desc>& bwdDataPD,
+                        MKLDNNMatrixPtr& in,
+                        MKLDNNMatrixPtr& wgt,
+                        MKLDNNMatrixPtr& bias,
+                        MKLDNNMatrixPtr& out);
 };
 
 }  // namespace paddle

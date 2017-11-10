@@ -27,8 +27,8 @@ ENDIF()
 INCLUDE(ExternalProject)
 
 SET(MKLML_PROJECT       "extern_mklml")
-SET(MKLML_VER           "mklml_lnx_2018.0.20170720")
-SET(MKLML_URL           "https://github.com/01org/mkl-dnn/releases/download/v0.9/${MKLML_VER}.tgz")
+SET(MKLML_VER           "mklml_lnx_2018.0.1.20171007")
+SET(MKLML_URL           "https://github.com/01org/mkl-dnn/releases/download/v0.11/${MKLML_VER}.tgz")
 SET(MKLML_SOURCE_DIR    "${THIRD_PARTY_PATH}/mklml")
 SET(MKLML_DOWNLOAD_DIR  "${MKLML_SOURCE_DIR}/src/${MKLML_PROJECT}")
 SET(MKLML_DST_DIR       "mklml")
@@ -54,7 +54,8 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     PREFIX                ${MKLML_SOURCE_DIR}
     DOWNLOAD_DIR          ${MKLML_DOWNLOAD_DIR}
-    DOWNLOAD_COMMAND      wget --no-check-certificate -qO- ${MKLML_URL} | tar xz -C ${MKLML_DOWNLOAD_DIR}
+    DOWNLOAD_COMMAND      wget --no-check-certificate ${MKLML_URL} -c -q -O ${MKLML_VER}.tgz 
+                          && tar zxf ${MKLML_VER}.tgz
     DOWNLOAD_NO_PROGRESS  1
     UPDATE_COMMAND        ""
     CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${MKLML_INSTALL_ROOT}

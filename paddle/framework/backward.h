@@ -13,15 +13,44 @@
    limitations under the License. */
 
 #pragma once
+
+#include <string>
+#include <unordered_map>
 #include <unordered_set>
-#include "operator.h"
+
+#include "paddle/framework/operator.h"
+#include "paddle/framework/program_desc.h"
+
 namespace paddle {
 namespace framework {
 
 // Create the backward operator from a forward operator.
 // TODO(yuyang18): Add more API reference comment.
-extern std::shared_ptr<OperatorBase> Backward(
+extern std::unique_ptr<OperatorBase> Backward(
     const OperatorBase& forwardOp,
     const std::unordered_set<std::string>& no_grad_vars);
+
+struct GradVarInfo {
+  GradVarInfo() {}
+  GradVarInfo(const std::string& name, int block_idx, int op_idx)
+      : name_(name), block_idx_(block_idx), op_idx_(op_idx) {}
+
+  bool operator==(const GradVarInfo& b) const {
+    return name_ == b.name_ && block_idx_ == b.block_idx_ &&
+           op_idx_ == b.op_idx_;
+  }
+
+  std::string name_;
+  int block_idx_;
+  int op_idx_;
+};
+
+using ParamGradInfoMap = std::unordered_map<std::string /*fwd_var_name*/,
+                                            GradVarInfo /*grad_var_info*/>;
+
+ParamGradInfoMap AppendBackward(
+    ProgramDescBind& program_desc, const VarDescBind& target,
+    const std::unordered_set<std::string>& no_grad_vars);
+
 }  // namespace framework
 }  // namespace paddle

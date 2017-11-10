@@ -17,7 +17,6 @@ limitations under the License. */
 #include <vector>
 #include "ModelConfig.pb.h"
 #include "paddle/gserver/layers/DataLayer.h"
-#include "paddle/trainer/Trainer.h"
 
 #include "LayerGradUtil.h"
 #include "paddle/testing/TestUtil.h"

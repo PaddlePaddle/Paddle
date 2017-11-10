@@ -17,7 +17,7 @@ limitations under the License. */
 
 namespace paddle {
 
-ThreadLocalD<std::vector<MemoryHandle *>> ConvBaseProjection::convMem_;
+ThreadLocalD<std::vector<MemoryHandlePtr>> ConvBaseProjection::convMem_;
 
 ConvBaseProjection::ConvBaseProjection(const ProjectionConfig &config,
                                        ParameterPtr parameter,
@@ -40,6 +40,11 @@ void ConvBaseProjection::getConvParams() {
 
   strideH_ = conf.stride_y();
   strideW_ = conf.stride();
+
+  dilationH_ = conf.dilation_y();
+  dilationW_ = conf.dilation();
+  CHECK_GT(dilationH_, 0);
+  CHECK_GT(dilationW_, 0);
 
   filterH_ = conf.filter_size_y();
   filterW_ = conf.filter_size();
@@ -77,7 +82,9 @@ void ConvBaseProjection::initCudnn() {
                                    paddingH_,
                                    paddingW_,
                                    strideH_,
-                                   strideW_);
+                                   strideW_,
+                                   dilationH_,
+                                   dilationW_);
 
   // initialize all to default algorithms
   fwdAlgo_ = 0;
@@ -131,7 +138,9 @@ void ConvBaseProjection::reshapeTensorDesc(int batchSize) {
                                   paddingH_,
                                   paddingW_,
                                   strideH_,
-                                  strideW_);
+                                  strideW_,
+                                  dilationH_,
+                                  dilationW_);
 }
 
 void ConvBaseProjection::reshape(int batchSize) {
@@ -140,6 +149,10 @@ void ConvBaseProjection::reshape(int batchSize) {
   CHECK_EQ(calInputSize(), in_->value->getWidth());
 
   reshapeTensorDesc(batchSize);
+  bool useDilation = false;
+  if (dilationH_ > 1 || dilationW_ > 1) {
+    useDilation = true;
+  }
   hl_conv_workspace(imageDesc_,
                     outputDesc_,
                     filterDesc_,
@@ -149,7 +162,8 @@ void ConvBaseProjection::reshape(int batchSize) {
                     &bwdDataAlgo_,
                     &bwdDataLimitBytes_,
                     &bwdFilterAlgo_,
-                    &bwdFilterLimitBytes_);
+                    &bwdFilterLimitBytes_,
+                    useDilation);
 
   size_t maxWorkSpace = 0;
   maxWorkSpace = std::max(fwdLimitBytes_, bwdDataLimitBytes_);
@@ -161,18 +175,18 @@ void ConvBaseProjection::reshape(int batchSize) {
 }
 
 void *ConvBaseProjection::getSpaceBytes(size_t size) {
-  std::vector<MemoryHandle *> &convMem = *convMem_;
+  std::vector<MemoryHandlePtr> &convMem = *convMem_;
   if (convMem.empty()) {
     int numDevices = hl_get_device_count();
     convMem.resize(numDevices);
   }
 
   int devId = hl_get_device();
-  MemoryHandle **localMem = &(convMem[devId]);
-  if (NULL == *localMem || size > (*localMem)->getAllocSize()) {
-    *localMem = new GpuMemoryHandle(size);
+  MemoryHandlePtr localMem = convMem[devId];
+  if (NULL == localMem || size > localMem->getAllocSize()) {
+    localMem = std::make_shared<GpuMemoryHandle>(size);
   }
-  return (*localMem)->getBuf();
+  return localMem->getBuf();
 }
 
 ConvBaseProjection::~ConvBaseProjection() {

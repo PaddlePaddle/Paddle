@@ -224,4 +224,88 @@ extern void hl_matrix_collect_shared_bias(real* B_d,
 extern void hl_matrix_rotate(
     real* mat, real* matRot, int dimM, int dimN, bool clockWise);
 
+/**
+ * @brief  Matrix vol2Col: Convert 3D volume into col matrix
+ *
+ * @param[in]   matSrc     input matrix.
+ * @param[in]   channel    channel of matSrc.
+ * @param[in]   depth      depth of matSrc.
+ * @param[in]   height     height of matSrc.
+ * @param[in]   width      width of matSrc.
+ * @param[in]   filterD    depth of filter.
+ * @param[in]   filterH    height of filter.
+ * @param[in]   filterW    width of filter.
+ * @param[in]   strideD    stride in the depth.
+ * @param[in]   strideH    stride in the height.
+ * @param[in]   strideW    stride in the width.
+ * @param[in]   paddingD   padding in the depth.
+ * @param[in]   paddingH   padding in the height.
+ * @param[in]   paddingW   padding in the width.
+ * @param[out]   dataDst     output matrix.
+ *
+ */
+extern void hl_matrix_vol2Col(const real* dataSrc,
+                              int channels,
+                              int depth,
+                              int height,
+                              int width,
+                              int filterD,
+                              int filterH,
+                              int filterW,
+                              int strideD,
+                              int strideH,
+                              int strideW,
+                              int paddingD,
+                              int paddingH,
+                              int paddingW,
+                              real* dataDst);
+
+/**
+ * @brief  Matrix col2Vol: Convert col matrix into 3D volume
+ *
+ * @param[out]  matDst     output matrix.
+ * @param[in]   channel    channel of matDst.
+ * @param[in]   depth      depth of matDst.
+ * @param[in]   height     height of matDst.
+ * @param[in]   width      width of matDst.
+ * @param[in]   filterD    depth of filter.
+ * @param[in]   filterH    height of filter.
+ * @param[in]   filterW    width of filter.
+ * @param[in]   strideD    stride in the depth.
+ * @param[in]   strideH    stride in the height.
+ * @param[in]   strideW    stride in the width.
+ * @param[in]   paddingD   padding in the depth.
+ * @param[in]   paddingH   padding in the height.
+ * @param[in]   paddingW   padding in the width.
+ * @param[in]   matSrc     input matrix.
+ * @param[in]   beta       input
+ * @param[in]   alpha      input
+ *
+ */
+extern void hl_matrix_col2Vol(real* dataDst,
+                              int channels,
+                              int depth,
+                              int height,
+                              int width,
+                              int filterD,
+                              int filterH,
+                              int filterW,
+                              int strideD,
+                              int strideH,
+                              int strideW,
+                              int paddingD,
+                              int paddingH,
+                              int paddingW,
+                              const real* dataSrc,
+                              real alpha,
+                              real beta);
+
+/**
+ * @brief  Matrix col2Vol: Convert col matrix into 3D volume
+ * @param[out]  out     output int vector.
+ * @param[in]   vec     input float vector.
+ * @param[in]   size    size of the vector.
+ */
+extern void hl_vector_cast2int(int* out, real* vec, int size);
+
 #endif /* HL_MATRIX_H_ */

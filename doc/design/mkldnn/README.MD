@@ -101,6 +101,7 @@ if use_mkldnn
 5. 在**Argument**里添加两个`MkldnnMatrixPtr`，取名为`mkldnnValue`和`mkldnnGrad`，用于存放`MkldnnLayer`会用到的memory buffer。 并且添加函数cvt(会修改为一个更加合适的函数名)，用于处理"CPU device"和"MKL-DNN device"之间memory的相互转化。
 6. 在父类`Layer`中的`getOutput`函数中添加一段逻辑，用于判断`deviceId`，并针对device在MKL-DNN和CPU之间不统一的情况，做一个前期转换。 也就是调用`Argument`的cvt函数把output统一到需要的device上。
 7. 在原来的`FLAGS`中添加一个`use_mkldnn`的flag，用于选择是否使用MKL-DNN的相关功能。
+8. 关于MKLDNN参数的保存。由于MKLDNN参数的格式与PaddlePaddle原有的格式存在不一样的情况，所以需要在保存参数时同时保存该格式信息。目前准备扩展[Header](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/parameter/Parameter.h#L247)里面的`int32_t version`。这个值不管是在v1还是在v2里面，一直保存的是0，所以可以充分利用这个信息，定义一个枚举处理所有MKLDNN的参数格式，从而`MKLDNNLayer`就可以从输入的参数中获取需要的格式信息。
 
 ## References
 

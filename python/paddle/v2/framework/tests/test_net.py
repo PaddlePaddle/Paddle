@@ -6,8 +6,8 @@ import unittest
 def fc(X, W, Y):
     ret_v = core.Net.create()
 
-    ret_v.add_op(Operator("mul", X="X", Y="W", Out="pre_activation"))
-    ret_v.add_op(Operator("sigmoid", X="pre_activation", Y=Y))
+    ret_v.append_op(Operator("mul", X="X", Y="W", Out="pre_activation"))
+    ret_v.append_op(Operator("sigmoid", X="pre_activation", Y=Y))
     ret_v.complete_add_op(True)
     return ret_v
 
@@ -15,18 +15,18 @@ def fc(X, W, Y):
 class TestNet(unittest.TestCase):
     def test_net_all(self):
         net = core.Net.create()
-        op1 = Operator("add_two", X="X", Y="Y", Out="Out")
-        net.add_op(op1)
+        op1 = Operator("sum", X=["X", "Y"], Out="Out")
+        net.append_op(op1)
 
         net2 = core.Net.create()
-        net2.add_op(fc(X="X", W="w", Y="fc.out"))
+        net2.append_op(fc(X="X", W="w", Y="fc.out"))
         net2.complete_add_op(True)
-        net.add_op(net2)
+        net.append_op(net2)
         net.complete_add_op(True)
 
         expected = '''
 Op(plain_net), inputs:{all[W, X, Y]}, outputs:{all[Out, fc.out, pre_activation]}.
-    Op(add_two), inputs:{X[X], Y[Y]}, outputs:{Out[Out]}.
+    Op(sum), inputs:{X[X, Y]}, outputs:{Out[Out]}.
     Op(plain_net), inputs:{all[W, X]}, outputs:{all[fc.out, pre_activation]}.
         Op(plain_net), inputs:{all[W, X]}, outputs:{all[fc.out, pre_activation]}.
             Op(mul), inputs:{X[X], Y[W]}, outputs:{Out[pre_activation]}.
@@ -35,5 +35,5 @@ Op(plain_net), inputs:{all[W, X, Y]}, outputs:{all[Out, fc.out, pre_activation]}
         self.assertEqual(expected, "\n" + str(net))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

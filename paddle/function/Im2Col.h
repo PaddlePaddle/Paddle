@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "TensorShape.h"
 #include "TensorType.h"
+#include "neon/neon_util.h"
 
 namespace paddle {
 

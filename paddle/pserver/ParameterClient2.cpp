@@ -65,7 +65,6 @@ void ParameterClient2::initThreads() {
     LOG(INFO) << "parallel_thread_num dosent need to set";
   }
   syncThreadPool_.reset(new SyncThreadPool(threadNum_));
-
   startThreads();
 }
 
@@ -187,6 +186,7 @@ void ParameterClient2::sendParallel(int tid,
             parameter->getMat(recvParameterType).get());
         CHECK(recvMat);
         size_t width = parameter->getConfig().dims(1);
+        // TODO(wuyi): need add lock here? may also cause resize.
         buf = recvMat->getLocalRow(block.begin_pos() / width);
       }
       /// sparse_id is not useful while receiving data since sparse data
@@ -224,6 +224,14 @@ void ParameterClient2::prepareSendData(
     request.set_cost(cost);
     request.set_batch_status(batchStatus);
     CHECK_EQ(request.blocks_size(), 0);
+    VLOG(10) << "request: trainer_id: " << request.trainer_id()
+             << " update_mode" << request.update_mode()
+             << " send_back_parameter: " << request.send_back_parameter()
+             << " send_back_parameter_type: "
+             << request.send_back_parameter_type()
+             << " num_samples: " << request.num_samples()
+             << " cost: " << request.cost()
+             << " batch_status: " << request.batch_status();
   }
   for (const auto& segments : parameterSegments) {
     const auto it = parameterMap_.find(segments.id);
@@ -251,11 +259,17 @@ void ParameterClient2::prepareSendData(
       CHECK(sendMat != nullptr) << "sendMat is nullptr";
 
       syncThreadPool_->exec([&](int tid, size_t numThreads) {
+        std::lock_guard<std::mutex> guard(sparseAutoGrowthMutex_);
         const auto& localIndices = prefetchMat->getLocalIndices();
         /// num of sparse rows
         size_t nLocalBlocks = localIndices.size();
         uint64_t beginDim = 0;
         uint64_t endDim = 0;
+
+        // HACK(typhoonzero): let it resize first
+        prefetchMat->getLocalRow(nLocalBlocks);
+        sendMat->getLocalRow(nLocalBlocks);
+
         for (size_t row = 0; row < nLocalBlocks; ++row) {
           int64_t blockId = localIndices[row];  // local row -> sparse row
           int serverId = std::abs((blockId + nameHash) % serviceNum_);
@@ -275,7 +289,6 @@ void ParameterClient2::prepareSendData(
           block->set_begin_pos(row * blockSize);
           /// block len
           block->set_block_size(endDim - beginDim);
-
           if (sendingPara) {
             sendJob->parallelInputIovs[serverId].push_back(
                 {sendMat->getLocalRow(row), sizeof(real) * (size_t)blockSize});

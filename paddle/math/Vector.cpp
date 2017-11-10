@@ -18,6 +18,7 @@ limitations under the License. */
 #include <memory>
 #include "Matrix.h"
 #include "hl_gpu.h"
+#include "hl_matrix.h"
 #include "hl_table_apply.h"
 #include "paddle/utils/Flags.h"
 #include "paddle/utils/Logging.h"
@@ -99,6 +100,19 @@ MatrixPtr VectorT<int>::toOneHotSparseMatrix(size_t idRange, bool useGpu) {
   return mat;
 }
 
+template <>
+std::shared_ptr<VectorT<int>> VectorT<real>::castToInt() {
+  std::shared_ptr<VectorT<int>> ret = IVector::create(this->getSize(), useGpu_);
+  if (useGpu_) {
+    hl_vector_cast2int(ret->getData(), this->getData(), this->getSize());
+  } else {
+    for (size_t i = 0; i < getSize(); ++i) {
+      ret->getData()[i] = int(this->getData()[i]);
+    }
+  }
+  return ret;
+}
+
 template <class T>
 GpuVectorT<T>::GpuVectorT(size_t size)
     : VectorT<T>(size,
@@ -172,7 +186,7 @@ void GpuVectorT<T>::isEqualTo(const VectorT<T>& b, const T& value) {
 
 template <class T>
 void GpuVectorT<T>::selectFrom(const VectorT<T>& src, const VectorT<int>& ids) {
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   hl_vector_select_from<T>(this->getData(),
                            this->getSize(),
                            src.getData(),
@@ -850,7 +864,7 @@ CpuGpuVectorT<T>::CpuGpuVectorT(CpuGpuVectorT<T>& src,
                                 size_t size)
     : sync_(nullptr) {
   CHECK_LE(offset + size, static_cast<size_t>(src.getSize()));
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   SyncedFlag* flag = src.getSync();
   if (*flag == DATA_AT_CPU) {
     src.copyToGpu();  // will set synchronous data between CPU and GPU
@@ -861,7 +875,7 @@ CpuGpuVectorT<T>::CpuGpuVectorT(CpuGpuVectorT<T>& src,
   auto cMemHandle = (src.getVector(false))->getMemoryHandle();
   cpuVectorT_ = std::make_shared<CpuVectorT<T>>(
       size, std::dynamic_pointer_cast<CpuMemoryHandle>(cMemHandle), offset);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   auto gMemHandle = (src.getVector(true))->getMemoryHandle();
   gpuVectorT_ = std::make_shared<GpuVectorT<T>>(
       size, std::dynamic_pointer_cast<GpuMemoryHandle>(gMemHandle), offset);

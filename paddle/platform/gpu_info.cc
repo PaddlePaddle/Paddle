@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/platform/gpu_info.h"
+
 #include "gflags/gflags.h"
+
 #include "paddle/platform/enforce.h"
 
 DEFINE_double(fraction_of_gpu_memory_to_use, 0.95,
@@ -23,11 +25,11 @@ DEFINE_double(fraction_of_gpu_memory_to_use, 0.95,
 namespace paddle {
 namespace platform {
 
-int GetDeviceCount() {
+int GetCUDADeviceCount() {
   int count;
   PADDLE_ENFORCE(
       cudaGetDeviceCount(&count),
-      "cudaGetDeviceCount failed in paddle::platform::GetDeviceCount");
+      "cudaGetDeviceCount failed in paddle::platform::GetCUDADeviceCount");
   return count;
 }
 
@@ -40,6 +42,8 @@ int GetCurrentDeviceId() {
 }
 
 void SetDeviceId(int id) {
+  // TODO(qijun): find a better way to cache the cuda device count
+  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   PADDLE_ENFORCE(cudaSetDevice(id),
                  "cudaSetDevice failed in paddle::platform::SetDeviceId");
 }
