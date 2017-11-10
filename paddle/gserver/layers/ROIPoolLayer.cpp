@@ -91,6 +91,8 @@ void ROIPoolLayer::forward(PassType passType) {
   real* argmaxData = maxIdxs_->getData();
 
   for (size_t n = 0; n < numROIs; ++n) {
+    // the first five elememts of each RoI should be:
+    // batch_idx, roi_x_start, roi_y_start, roi_x_end, roi_y_end
     size_t roiBatchIdx = bottomROIs[0];
     size_t roiStartW = round(bottomROIs[1] * spatialScale_);
     size_t roiStartH = round(bottomROIs[2] * spatialScale_);

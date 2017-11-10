@@ -41,6 +41,7 @@ protected:
   size_t pooledHeight_;
   real spatialScale_;
 
+  // Since there is no int matrix, use real maxtrix instead.
   MatrixPtr maxIdxs_;
 
 public:
