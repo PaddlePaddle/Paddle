@@ -12,17 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/beam_search_out_concat_op.h"
+#include "paddle/operators/beam_search_decode_op.h"
 
 namespace paddle {
 namespace operators {
 
-class BeamSearchOutConcatOp : public framework::OperatorBase {
+class BeamSearchDecodeOp : public framework::OperatorBase {
  public:
-  BeamSearchOutConcatOp(const std::string& type,
-                        const framework::VariableNameMap& inputs,
-                        const framework::VariableNameMap& outputs,
-                        const framework::AttributeMap& attrs)
+  BeamSearchDecodeOp(const std::string& type,
+                     const framework::VariableNameMap& inputs,
+                     const framework::VariableNameMap& outputs,
+                     const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
@@ -43,22 +43,22 @@ class BeamSearchOutConcatOp : public framework::OperatorBase {
     LoDTensor* sentenceIds = ctx.Output<LoDTensor>("SentenceIds");
     LoDTensor* sentenceScores = ctx.Output<LoDTensor>("SentenceScores");
 
-    BeamHelper<float> beam_helper;
-    beam_helper.PackAllSteps(*ids, *scores, sentenceIds, sentenceScores);
+    BeamSearchDecoder<float> beam_search_decoder;
+    beam_search_decoder.PackAllSteps(*ids, *scores, sentenceIds,
+                                     sentenceScores);
   }
 };
 
-class BeamSearchOutConcatOpProtoMaker
-    : public framework::OpProtoAndCheckerMaker {
+class BeamSearchDecodeOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BeamSearchOutConcatOpProtoMaker(framework::OpProto* proto,
-                                  framework::OpAttrChecker* op_checker)
+  BeamSearchDecodeOpProtoMaker(framework::OpProto* proto,
+                               framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Ids",
-             "(vector<LodTensor>)"
+             "(LodTensorArray)"
              "score of the candidate words in each step");
     AddInput("Scores",
-             "(vector<LodTensor>)"
+             "(LodTensorArray)"
              "score of the candidate words in each step");
     AddOutput("SentenceIds",
               "(LodTensor)"
@@ -72,21 +72,21 @@ Pack the result of Beam search op into SentenceIds and SentenceScores.
   }
 };
 
-class BeamSearchOutConcatInferShape : public framework::InferShapeBase {
+class BeamSearchDecodeInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* context) const override {
     PADDLE_ENFORCE(context->HasInput("Ids"),
-                   "BeamSearchOutConcatOp must has input Ids");
+                   "BeamSearchDecodeOp must has input Ids");
     PADDLE_ENFORCE(context->HasInput("Scores"),
-                   "BeamSearchOutConcatOp must has input Scores");
+                   "BeamSearchDecodeOp must has input Scores");
     PADDLE_ENFORCE(context->HasOutput("SentenceIds"),
-                   "BeamSearchOutConcatOp must has output SentenceIds");
+                   "BeamSearchDecodeOp must has output SentenceIds");
     PADDLE_ENFORCE(context->HasOutput("SentenceScores"),
-                   "BeamSearchOutConcatOp must has output SentenceScores");
+                   "BeamSearchDecodeOp must has output SentenceScores");
   }
 };
 
-class BeamSearchOutConcatInferVarType : public framework::VarTypeInference {
+class BeamSearchDecodeInferVarType : public framework::VarTypeInference {
  public:
   void operator()(const framework::OpDescBind& op_desc,
                   framework::BlockDescBind* block) const override {
@@ -102,9 +102,8 @@ class BeamSearchOutConcatInferVarType : public framework::VarTypeInference {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(beam_search_out_concat,
-                  paddle::operators::BeamSearchOutConcatOp,
-                  paddle::operators::BeamSearchOutConcatOpProtoMaker,
-                  paddle::operators::BeamSearchOutConcatInferShape,
-                  paddle::operators::BeamSearchOutConcatInferVarType,
+REGISTER_OPERATOR(beam_search_out_concat, paddle::operators::BeamSearchDecodeOp,
+                  paddle::operators::BeamSearchDecodeOpProtoMaker,
+                  paddle::operators::BeamSearchDecodeInferShape,
+                  paddle::operators::BeamSearchDecodeInferVarType,
                   paddle::framework::EmptyGradOpMaker);

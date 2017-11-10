@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/beam_search_out_concat_op.h"
+#include "paddle/operators/beam_search_decode_op.h"
 #include "gtest/gtest.h"
 
 using CPUPlace = paddle::platform::CPUPlace;
@@ -23,7 +23,7 @@ using LoDTensorArray = paddle::framework::LoDTensorArray;
 template <typename T>
 using BeamNode = paddle::operators::BeamNode<T>;
 template <typename T>
-using BeamHelper = paddle::operators::BeamHelper<T>;
+using BeamSearchDecoder = paddle::operators::BeamSearchDecoder<T>;
 template <typename T>
 using Sentence = paddle::operators::Sentence<T>;
 template <typename T>
@@ -77,7 +77,7 @@ void GenerateExample(const std::vector<size_t>& level_0,
 }  // namespace test
 }  // namespace paddle
 
-TEST(BeamSearchOutConcatOp, DeleteBeamNode) {
+TEST(BeamSearchDecodeOp, DeleteBeamNode) {
   auto* root = new BeamNode<float>(0, 0);
   auto* b1 = new BeamNode<float>(1, 1);
   auto* b2 = new BeamNode<float>(2, 2);
@@ -91,14 +91,14 @@ TEST(BeamSearchOutConcatOp, DeleteBeamNode) {
   delete b2;
 }
 
-TEST(BeamSearchOutConcatOp, MakeSentence) {
+TEST(BeamSearchDecodeOp, MakeSentence) {
   auto* root = new BeamNode<float>(0, 0);
   auto* b1 = new BeamNode<float>(1, 1);
   auto* end = new BeamNode<float>(2, 2);
   b1->AppendTo(root);
   end->AppendTo(b1);
 
-  BeamHelper<float> helper;
+  BeamSearchDecoder<float> helper;
   Sentence<float> sentence = helper.MakeSentence(end);
   delete end;
 
@@ -109,7 +109,7 @@ TEST(BeamSearchOutConcatOp, MakeSentence) {
   ASSERT_EQ(sentence.scores, expect_scores);
 }
 
-TEST(BeamSearchOutConcatOp, PackTwoStepsFistStep) {
+TEST(BeamSearchDecodeOp, PackTwoStepsFistStep) {
   CPUPlace place;
 
   LoDTensorArray ids;
@@ -123,7 +123,7 @@ TEST(BeamSearchOutConcatOp, PackTwoStepsFistStep) {
   std::vector<SentenceVector<float>> sentence_vector_list(
       2, SentenceVector<float>());
 
-  BeamHelper<float> helper;
+  BeamSearchDecoder<float> helper;
   beamnode_vector_list = helper.PackTwoSteps(
       ids[0], scores[0], beamnode_vector_list, &sentence_vector_list);
   ASSERT_EQ(beamnode_vector_list.size(), 2UL);
@@ -131,7 +131,7 @@ TEST(BeamSearchOutConcatOp, PackTwoStepsFistStep) {
   ASSERT_EQ(beamnode_vector_list[1].size(), 4UL);
 }
 
-TEST(BeamSearchOutConcatOp, PackTwoSteps) {
+TEST(BeamSearchDecodeOp, PackTwoSteps) {
   CPUPlace place;
 
   // first source has three prefix
@@ -160,7 +160,7 @@ TEST(BeamSearchOutConcatOp, PackTwoSteps) {
                                 std::vector<size_t>{0, 1, 1, 3, 4, 5},
                                 std::vector<int>{0, 1, 2, 3, 4}, &ids, &scores);
 
-  BeamHelper<float> helper1;
+  BeamSearchDecoder<float> helper1;
   beamnode_vector_list = helper1.PackTwoSteps(
       ids[0], scores[0], beamnode_vector_list, &sentence_vector_list);
 
@@ -170,7 +170,7 @@ TEST(BeamSearchOutConcatOp, PackTwoSteps) {
   ASSERT_EQ(beamnode_vector_list[1].size(), 2UL);
 }
 
-TEST(BeamSearchOutConcatOp, PackAllSteps) {
+TEST(BeamSearchDecodeOp, PackAllSteps) {
   CPUPlace place;
 
   // we will constuct a sample data with 3 steps and 2 source sentences
@@ -190,7 +190,7 @@ TEST(BeamSearchOutConcatOp, PackAllSteps) {
   ASSERT_EQ(ids.size(), 3UL);
   ASSERT_EQ(scores.size(), 3UL);
 
-  BeamHelper<float> helper;
+  BeamSearchDecoder<float> helper;
 
   LoDTensor id_tensor;
   LoDTensor score_tensor;

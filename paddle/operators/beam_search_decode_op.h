@@ -72,7 +72,7 @@ template <typename T>
 using SentenceVector = std::vector<Sentence<T>>;
 
 template <typename T>
-struct BeamHelper {
+struct BeamSearchDecoder {
   /**
    * make a BeamNode and all it's related prefix BeanNode into a Sentence.
    */
@@ -125,7 +125,7 @@ struct BeamHelper {
 };
 
 template <typename T>
-Sentence<T> BeamHelper<T>::MakeSentence(const BeamNode<T>* node) const {
+Sentence<T> BeamSearchDecoder<T>::MakeSentence(const BeamNode<T>* node) const {
   Sentence<T> sentence;
   while (node != nullptr) {
     sentence.word_ids.emplace_back(node->word_id_);
@@ -140,7 +140,7 @@ Sentence<T> BeamHelper<T>::MakeSentence(const BeamNode<T>* node) const {
 }
 
 template <typename T>
-std::vector<BeamNodeVector<T>> BeamHelper<T>::PackTwoSteps(
+std::vector<BeamNodeVector<T>> BeamSearchDecoder<T>::PackTwoSteps(
     const LoDTensor& cur_ids, const LoDTensor& cur_scores,
     const std::vector<BeamNodeVector<T>>& prefixes_list,
     std::vector<SentenceVector<T>>* sentence_vector_list) const {
@@ -203,7 +203,7 @@ std::vector<BeamNodeVector<T>> BeamHelper<T>::PackTwoSteps(
 }
 
 template <typename T>
-void BeamHelper<T>::ConvertSentenceVectorToLodTensor(
+void BeamSearchDecoder<T>::ConvertSentenceVectorToLodTensor(
     std::vector<SentenceVector<T>> sentence_vector_list, LoDTensor* id_tensor,
     LoDTensor* score_tensor) const {
   size_t src_num = sentence_vector_list.size();
@@ -247,10 +247,10 @@ void BeamHelper<T>::ConvertSentenceVectorToLodTensor(
 }
 
 template <typename T>
-void BeamHelper<T>::PackAllSteps(const LoDTensorArray& step_ids,
-                                 const LoDTensorArray& step_scores,
-                                 LoDTensor* id_tensor,
-                                 LoDTensor* score_tensor) const {
+void BeamSearchDecoder<T>::PackAllSteps(const LoDTensorArray& step_ids,
+                                        const LoDTensorArray& step_scores,
+                                        LoDTensor* id_tensor,
+                                        LoDTensor* score_tensor) const {
   PADDLE_ENFORCE(!step_ids.empty(), "step num should be larger than 0");
   PADDLE_ENFORCE_EQ(step_ids.size(), step_scores.size(),
                     "step_ids and step_scores should be the same");
