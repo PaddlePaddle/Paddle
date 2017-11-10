@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <cudnn.h>
 #include <dlfcn.h>
-#include <mutex>
+#include "paddle/platform/call_once.h"
 #include "paddle/platform/dynload/dynamic_loader.h"
 
 namespace paddle {
@@ -28,18 +28,18 @@ extern void* cudnn_dso_handle;
 
 #ifdef PADDLE_USE_DSO
 
-#define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)                    \
-  struct DynLoad__##__name {                                       \
-    template <typename... Args>                                    \
-    auto operator()(Args... args) -> decltype(__name(args...)) {   \
-      using cudnn_func = decltype(__name(args...)) (*)(Args...);   \
-      std::call_once(cudnn_dso_flag,                               \
-                     paddle::platform::dynload::GetCudnnDsoHandle, \
-                     &cudnn_dso_handle);                           \
-      void* p_##__name = dlsym(cudnn_dso_handle, #__name);         \
-      return reinterpret_cast<cudnn_func>(p_##__name)(args...);    \
-    }                                                              \
-  };                                                               \
+#define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)                         \
+  struct DynLoad__##__name {                                            \
+    template <typename... Args>                                         \
+    auto operator()(Args... args) -> decltype(__name(args...)) {        \
+      using cudnn_func = decltype(__name(args...)) (*)(Args...);        \
+      platform::call_once(cudnn_dso_flag,                               \
+                          paddle::platform::dynload::GetCudnnDsoHandle, \
+                          &cudnn_dso_handle);                           \
+      void* p_##__name = dlsym(cudnn_dso_handle, #__name);              \
+      return reinterpret_cast<cudnn_func>(p_##__name)(args...);         \
+    }                                                                   \
+  };                                                                    \
   extern struct DynLoad__##__name __name
 
 #else

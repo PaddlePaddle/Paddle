@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/pybind/protobuf.h"
 
-#include <mutex>  // for call_once
 #include <unordered_map>
 #include "gflags/gflags.h"
 #include "paddle/framework/backward.h"
@@ -30,6 +29,7 @@ limitations under the License. */
 #include "paddle/operators/cond_op.h"
 #include "paddle/operators/dynamic_recurrent_op.h"
 #include "paddle/operators/net_op.h"
+#include "paddle/platform/call_once.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 #include "paddle/pybind/exception.h"
@@ -53,7 +53,7 @@ std::once_flag gflags_init_flag;
 
 // TODO(qijun) move init gflags to init.cc
 void InitGflags(std::vector<std::string> &argv) {
-  std::call_once(gflags_init_flag, [&]() {
+  platform::call_once(gflags_init_flag, [&]() {
     int argc = argv.size();
     char **arr = new char *[argv.size()];
     std::string line;

@@ -38,7 +38,7 @@ inline void call_once(std::once_flag& flag, Callable&& f, Args&&... args) {
     } catch (const std::exception& e) {
       ex = e;
     } catch (...) {
-      ex = std::runtime_error("excption caught in call_once");
+      ex = std::runtime_error("Exception caught in call_once.");
     }
   });
   if (!good) {
