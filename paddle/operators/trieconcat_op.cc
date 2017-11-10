@@ -45,7 +45,7 @@ class TrieConcatOp : public framework::OperatorBase {
     LoDTensor* sentenceIds = ctx.Output<LoDTensor>("SentenceIds");
     LoDTensor* sentenceScores = ctx.Output<LoDTensor>("SentenceScores");
 
-    BeamHelper beam_helper;
+    BeamHelper<float> beam_helper;
     beam_helper.PackAllSteps(*ids, *scores, sentenceIds, sentenceScores);
   }
 };
@@ -102,7 +102,7 @@ class TrieConcatInferVarType : public framework::VarTypeInference {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(trie_concat, paddle::operators::TrieConcatOp,
+REGISTER_OPERATOR(trieconcat, paddle::operators::TrieConcatOp,
                   paddle::operators::TrieConcatOpProtoMaker,
                   paddle::operators::TrieConcatInferShape,
                   paddle::operators::TrieConcatInferVarType,
