@@ -38,11 +38,28 @@ using grpc::ServerReaderWriter;
 using grpc::ServerWriter;
 using grpc::Status;
 using sendrecv::SendRecvOp;
-using sendrecv::TensorMessage;
+using sendrecv::VariableMessage;
 
 class SendRecvServerImpl final : public SendRecvOp::Service {
  public:
   explicit SendRecvServerImpl() {}
+
+  void SetScope(framework::Scope *scope) { scope_ = scope; }
+
+  Status InitVariables(ServerContext *context,
+                       ServerReader<VariableMessage> *in_var_reader) override {
+    // set up all variables to run server side block
+    PADDLE_ENFORCE(scope_);
+    VariableMessage in_buf;
+    while (in_var_reader->Read(&in_buf)) {
+      // create var if not exist
+      auto *var = scope_->Var(in_buf.varname);
+      auto *tensor = var->GetMutable<framework::LoDTensor>();
+      std::istringstream iss(in_buf.serialized);
+      framework::DeserializeFromStream(iss, *tensor);
+    }
+    return Status::OK;
+  }
 
   Status SendTensor(ServerContext *context, const std::string *in_tensor,
                     std::string *out_tensor) override {
@@ -57,25 +74,7 @@ class SendRecvServerImpl final : public SendRecvOp::Service {
     std::ostringstream oss;
     framework::SerializeToStream(oss, &t);
     *out_tensor = oss.str();
-  }
 
-  Status SendTensorStream(
-      ServerContext *context,
-      ServerReaderWriter<TensorMessage, TensorMessage> *stream) override {
-    // TODO(typhoonzero): implement stream methods.
-    return Status::OK;
-  }
-
-  Status SendSelectedRows(ServerContext *context, const std::string *in_sr,
-                          std::string *out_sr) {
-    // TODO(typhoonzero): implement SendSelectedRows
-    return Status::OK;
-  }
-
-  Status SendSelectedRowsStream(
-      ServerContext *context,
-      ServerReaderWriter<std::string, std::string> *stream) override {
-    // TODO(typhoonzero): implement SendSelectedRowsStream
     return Status::OK;
   }
 
@@ -86,6 +85,7 @@ class SendRecvServerImpl final : public SendRecvOp::Service {
   }
 
  private:
+  framework::Scope *scope_;
   SimpleBlockQueue<framework::LodTensor> lodtensor_queue_;
   SimpleBlockQueue<framework::LodTensor> lodtensor_return_queue_;
   SimpleBlockQueue<framework::SelectedRows> selected_rows_queue_;

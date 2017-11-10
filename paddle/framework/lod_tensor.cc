@@ -29,6 +29,20 @@
 namespace paddle {
 namespace framework {
 
+std::ostream &operator<<(std::ostream &os, const LoD &lod) {
+  os << "{";
+  for (auto &v : lod) {
+    os << "{";
+    for (auto &i : v) {
+      os << i << ",";
+    }
+    os << "}";
+  }
+  os << "}";
+
+  return os;
+}
+
 LoD SliceLevels(const LoD &in, size_t level_begin, size_t level_end) {
   LoD new_lod;
   new_lod.reserve(level_end - level_begin);
@@ -138,37 +152,35 @@ void LoDTensor::ShrinkInLevel(size_t level, size_t elem_begin,
   ShareDataWith(Slice(begin, end));
 }
 
-void GetFineGrainedLoDLength(const LoD &lod, size_t start_idx, size_t end_idx,
-                             std::vector<std::vector<size_t>> *lod_length,
-                             size_t *start_offset) {
-  lod_length->clear();
-  PADDLE_ENFORCE(start_idx < lod.size() - 1,
-                 "start_idx should be >= 0 and < lod.size() - 1.");
-  PADDLE_ENFORCE(end_idx < lod.size(),
-                 "end_idx should be >= 0 and < lod.size().");
-  PADDLE_ENFORCE_LE(start_idx, end_idx,
-                    "start_idx should be less than end_idx.");
-  for (size_t level_idx = 0; level_idx < lod.size(); ++level_idx) {
+using LoDAndOffset = std::pair<LoD, std::pair<size_t, size_t>>;
+LoDAndOffset GetSubLoDAndAbsoluteOffset(const LoD &lod, size_t start_idx,
+                                        size_t end_idx, size_t start_level) {
+  LoD sub_lod;
+
+  for (size_t level_idx = start_level; level_idx < lod.size(); ++level_idx) {
+    PADDLE_ENFORCE_LE(start_idx, end_idx);
+    PADDLE_ENFORCE_LT(end_idx, lod[level_idx].size());
     std::vector<size_t> level_lens;
     for (size_t i = start_idx; i < end_idx; ++i) {
       level_lens.push_back(lod[level_idx][i + 1] - lod[level_idx][i]);
     }
-    lod_length->emplace_back(level_lens);
+    sub_lod.emplace_back(level_lens);
     start_idx = lod[level_idx][start_idx];
     end_idx = lod[level_idx][end_idx];
   }
-  *start_offset = start_idx;
+
+  return LoDAndOffset{sub_lod, {start_idx, end_idx}};
 }
 
-void AppendLoD(LoD *lod, const std::vector<std::vector<size_t>> &lod_length) {
-  PADDLE_ENFORCE_EQ(
-      lod->size(), lod_length.size(),
+void AppendLoD(LoD *lod, const LoD &lod_length) {
+  PADDLE_ENFORCE(
+      lod->empty() || lod->size() == lod_length.size(),
       "The lod_length should has the same size with the appended lod.");
+  if (lod->empty()) {
+    *lod = LoD(lod_length.size(), std::vector<size_t>({0}));
+  }
   for (size_t i = 0; i < lod->size(); ++i) {
     auto &level = (*lod)[i];
-    if (level.empty()) {
-      level.push_back(0);
-    }
     for (size_t len : lod_length[i]) {
       level.push_back(level.back() + len);
     }

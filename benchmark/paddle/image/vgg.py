@@ -13,7 +13,7 @@ define_py_data_sources2(
 
 settings(
     batch_size=batch_size,
-    learning_rate=0.01 / batch_size,
+    learning_rate=0.001 / batch_size,
     learning_method=MomentumOptimizer(0.9),
     regularization=L2Regularization(0.0005 * batch_size))
 

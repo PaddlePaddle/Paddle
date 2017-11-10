@@ -13,29 +13,28 @@
    limitations under the License. */
 
 syntax = "proto3";
+option optimize_for = LITE_RUNTIME;
 
 package sendrecv;
 
-import "../framework/framework.proto" // SendRecv RPC definations. 
-
-service SendRecvOp { 
+service SendRecvOp {
+  // Init Variables before running server side block.
+  rpc InitVariables(stream VariableMessage) returns (VoidMessage);
   // For parameter server round-robin like hashing, do not split tensors. 
-  // Send and recv only one tensor 
-  rpc SendTensor(TensorMessage) returns (TensorMessage) {} 
-  // Bidirectional streaming RPC that client send and recv streams of tensors. 
-  rpc SendTensorStream(stream TensorMessage) returns (stream TensorMessage) {}
-
-  // For large tensor hashing
-  rpc SendSelectedRows(SelectedRows) returns (SelectedRows) {}
-  rpc SendSelectedRowsStream(stream SelectedRows) returns (stream SelectedRows) {}
+  // Send and recv only one tensor
+  rpc SendVariable(VariableMessage) returns (VariableMessage);
 }
 
-// TensorMessage is serialized binary tensor data.
-message TensorMessage {
-  string serialized = 1;
+// VariableMessage is serialized paddle variable message.
+// It can be:
+// Tensor
+// LoDTensor
+// SelectedRows
+message VariableMessage {
+  string varname = 1;
+  string serialized = 2;
 }
 
-// SelectedRows 
-message SelectedRows {
-  string serialized = 1;
+message VoidMessage {
+
 }
