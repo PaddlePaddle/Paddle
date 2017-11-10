@@ -44,9 +44,9 @@ struct BeamNode {
     VLOG(3) << "Delete BeamNode root with word_id:" << this->word_id_;
   }
 
-  void AppendTo(BeamNode* father) {
-    parent_ = father;
-    father->kids_.insert(this);
+  void AppendTo(BeamNode* parent) {
+    parent_ = parent;
+    parent->kids_.insert(this);
   }
 
   void DropKid(BeamNode* kid) { kids_.erase(kid); }
