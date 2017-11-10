@@ -19,11 +19,6 @@ limitations under the License. */
 #include <mkl_vml_functions.h>
 #endif
 
-#ifdef PADDLE_USE_MKL
-#include <mkl.h>
-#include <mkl_lapacke.h>
-#endif
-
 #ifdef PADDLE_USE_ATLAS
 extern "C" {
 #include <cblas.h>

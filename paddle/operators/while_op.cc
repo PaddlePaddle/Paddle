@@ -127,6 +127,7 @@ class WhileGradOp : public framework::OperatorBase {
         // zero gradient variable in step 0
         if (cur_scope_iter == step_scopes->rbegin()) {
           auto *var = (*cur_scope_iter)->FindVar(inside_grad_name);
+          PADDLE_ENFORCE_NOT_NULL(var);
           if (var->IsType<LoDTensor>()) {
             auto &inside_tensor = var->Get<framework::LoDTensor>();
             framework::AttributeMap attrs;
@@ -142,7 +143,7 @@ class WhileGradOp : public framework::OperatorBase {
 
         // sum gradient
         auto *outside_var = scope.FindVar(pg_names[prog_id]);
-        PADDLE_ENFORCE(outside_var != nullptr);
+        PADDLE_ENFORCE_NOT_NULL(outside_var);
         auto &outside_tensor = *outside_var->GetMutable<framework::LoDTensor>();
 
         std::string result_var_name;
@@ -176,13 +177,8 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
     }
 
     for (auto &output_param : this->OutputNames()) {
-      if (output_param == kStepScopes) {
-        // backward.input.kStepScopes = forward.output.kStepScopes
-        grad->SetInput(output_param, this->Output(output_param));
-        grad->SetInput(framework::GradVarName(output_param),
-                       this->Output(output_param));
-      } else {
-        grad->SetInput(output_param, this->Output(output_param));
+      grad->SetInput(output_param, this->Output(output_param));
+      if (output_param != kStepScopes) {
         grad->SetInput(framework::GradVarName(output_param),
                        this->OutputGrad(output_param));
       }

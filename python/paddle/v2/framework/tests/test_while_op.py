@@ -33,10 +33,6 @@ class TestWhileOp(unittest.TestCase):
         array_len = layers.fill_constant(shape=[1], dtype='int64', value=3)
         cond = layers.less_than(x=i, y=array_len)
 
-        # import paddle.v2.framework.net_drawer as drawer
-        # print drawer.draw_graph(g_startup_program, g_main_program)
-        # exit(0)
-
         while_op = layers.While(cond=cond)
         with while_op.block():
             d = layers.array_read(array=data_array, i=i)
