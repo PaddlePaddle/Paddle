@@ -9,7 +9,7 @@ import re
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
     'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool', 'sums', 'cos_sim',
-    'batch_norm', 'accuracy'
+    'batch_norm', 'accuracy', 'split_lod_tensor'
 ]
 
 
@@ -239,6 +239,26 @@ def sums(input, main_program=None, startup_program=None):
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(type='sum', inputs={'X': input}, outputs={'Out': out})
     return out
+
+
+def split_lod_tensor(input,
+                     mask,
+                     level,
+                     main_program=None,
+                     startup_program=None):
+    helper = LayerHelper('split_lod_tensor', **locals())
+    out_true = helper.create_tmp_variable(dtype=input.data_type)
+    out_false = helper.create_tmp_variable(dtype=input.data_type)
+    helper.append_op(
+        type='split_lod_tensor',
+        inputs={
+            'X': input,
+            'Mask': mask,
+        },
+        outputs={'OutTrue': out_true,
+                 'OutFalse': out_false},
+        attrs={'level': level})
+    return out_true, out_false
 
 
 def cos_sim(X, Y, **kwargs):
