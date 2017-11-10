@@ -122,6 +122,7 @@ __all__ = [
     'cross_channel_norm_layer',
     'multibox_loss_layer',
     'detection_output_layer',
+    'roi_pool_layer',
     'spp_layer',
     'pad_layer',
     'eos_layer',
@@ -221,6 +222,7 @@ class LayerType(object):
     PRIORBOX_LAYER = 'priorbox'
     MULTIBOX_LOSS_LAYER = 'multibox_loss'
     DETECTION_OUTPUT_LAYER = 'detection_output'
+    ROI_POOL_LAYER = 'roi_pool'
 
     CTC_LAYER = 'ctc'
     WARP_CTC_LAYER = 'warp_ctc'
@@ -1303,6 +1305,50 @@ def detection_output_layer(input_loc,
         background_id=background_id)
     return LayerOutput(
         name, LayerType.DETECTION_OUTPUT_LAYER, parents=parents, size=size)
+
+
+@wrap_name_default("roi_pool")
+def roi_pool_layer(input,
+                   rois,
+                   pooled_width,
+                   pooled_height,
+                   spatial_scale,
+                   num_channels=None,
+                   name=None):
+    """
+    A layer used by Fast R-CNN to extract feature maps of ROIs from the last
+    feature map.
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input: The input layer.
+    :type input: LayerOutput.
+    :param rois: The input ROIs' data.
+    :type rois: LayerOutput.
+    :param pooled_width: The width after pooling.
+    :type pooled_width: int
+    :param pooled_height: The height after pooling.
+    :type pooled_height: int
+    :param spatial_scale: The spatial scale between the image and feature map.
+    :type spatial_scale: float
+    :param num_channels: number of input channel.
+    :type num_channels: int
+    :return: LayerOutput
+    """
+    if num_channels is None:
+        assert input.num_filters is not None
+        num_channels = input.num_filters
+    size = num_channels * pooled_width * pooled_height
+    Layer(
+        name=name,
+        type=LayerType.ROI_POOL_LAYER,
+        inputs=[input.name, rois.name],
+        pooled_width=pooled_width,
+        pooled_height=pooled_height,
+        spatial_scale=spatial_scale,
+        num_channels=num_channels)
+    return LayerOutput(
+        name, LayerType.ROI_POOL_LAYER, parents=[input, rois], size=size)
 
 
 @wrap_name_default("cross_channel_norm")
