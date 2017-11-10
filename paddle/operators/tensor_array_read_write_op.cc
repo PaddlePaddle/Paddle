@@ -36,7 +36,7 @@ class ArrayOpBase : public framework::OperatorBase {
     if (platform::is_gpu_place(i_tensor.place())) {
       // FIXME: Avoid copy from GPU to CPU
       framework::Tensor t;
-      t.CopyFrom(i_tensor, platform::CPUPlace(), dev_ctx);
+      CopyFrom(i_tensor, platform::CPUPlace(), dev_ctx, &t);
       dev_ctx.Wait();
       offset = static_cast<size_t>(*t.data<int64_t>());
     } else {
@@ -66,7 +66,7 @@ class WriteToArrayOp : public ArrayOpBase {
       out->resize(offset + 1);
     }
     auto *out_tensor = &out->at(offset);
-    out_tensor->CopyFrom(x_tensor, dev_ctx.GetPlace(), dev_ctx);
+    CopyFrom(x_tensor, dev_ctx.GetPlace(), dev_ctx, out_tensor);
     out_tensor->set_lod(x_tensor.lod());
   }
 };
@@ -139,7 +139,7 @@ class ReadFromArrayOp : public ArrayOpBase {
     auto *out_tesnor = out->GetMutable<framework::LoDTensor>();
     size_t offset = GetOffset(scope, dev_ctx);
     PADDLE_ENFORCE_LT(offset, x_array.size());
-    out_tesnor->CopyFrom(x_array[offset], dev_ctx.GetPlace(), dev_ctx);
+    CopyFrom(x_array[offset], dev_ctx.GetPlace(), dev_ctx, out_tesnor);
     out_tesnor->set_lod(x_array[offset].lod());
   }
 };

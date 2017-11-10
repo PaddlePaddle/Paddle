@@ -52,7 +52,7 @@ inline void ReorderInitialState(const DySeqMetaBatch& metas,
     auto boot_slice =
         boot_state.Slice(metas[seq_id].ori_idx, metas[seq_id].ori_idx + 1);
     // TODO(superjom) pass in device context as an argument
-    slice.CopyFrom(boot_slice, dst_place, platform::CPUDeviceContext());
+    CopyFrom(boot_slice, dst_place, platform::CPUDeviceContext(), &slice);
   }
 }
 
@@ -63,7 +63,7 @@ inline void RestoreInitialState(const DySeqMetaBatch& metas,
     auto slice = tensor.Slice(seq_id, seq_id + 1);
     auto boot_slice =
         boot_state->Slice(metas[seq_id].ori_idx, metas[seq_id].ori_idx + 1);
-    boot_slice.CopyFrom(slice, dst_place, platform::CPUDeviceContext());
+    CopyFrom(slice, dst_place, platform::CPUDeviceContext(), &boot_slice);
   }
 }
 

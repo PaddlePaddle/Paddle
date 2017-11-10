@@ -81,11 +81,11 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
           continue;
         }
         // out[i][offset: offset+len] = x[each_range.begin: each_range.end]
-        out[i]
-            .Slice(static_cast<int>(offset), static_cast<int>(offset + len))
-            .CopyFrom(x.Slice(static_cast<int>(each_range.begin),
-                              static_cast<int>(each_range.end)),
-                      x.place(), dev_ctx);
+        Tensor slice = out[i].Slice(static_cast<int>(offset),
+                                    static_cast<int>(offset + len));
+        CopyFrom(x.Slice(static_cast<int>(each_range.begin),
+                         static_cast<int>(each_range.end)),
+                 x.place(), dev_ctx, &slice);
         offset += len;
       }
     }

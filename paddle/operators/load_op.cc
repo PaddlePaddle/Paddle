@@ -105,7 +105,7 @@ class LoadOp : public framework::OperatorBase {
       out_var->Clear();
       tensor = out_var->GetMutable<framework::LoDTensor>();
       tensor->set_lod(cpu_tensor.lod());
-      tensor->CopyFrom(cpu_tensor, place, dev_ctx);
+      CopyFrom(cpu_tensor, place, dev_ctx, &tensor);
     }
   }
 };

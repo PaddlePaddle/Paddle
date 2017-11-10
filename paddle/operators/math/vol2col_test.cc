@@ -78,7 +78,7 @@ void testVol2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     input = input_tmp;
   } else {
-    input.CopyFrom(input_tmp, *place, *context);
+    CopyFrom(input_tmp, *place, *context, &input);
   }
   output.mutable_data<float>({1, filter_size, filter_size, filter_size,
                               output_depth, output_height, output_width},
@@ -93,7 +93,7 @@ void testVol2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     out_cfo_ptr = output.data<float>();
   } else {
-    output_tmp.CopyFrom(output, paddle::platform::CPUPlace(), *context);
+    CopyFrom(output, paddle::platform::CPUPlace(), *context, &output_tmp);
     out_cfo_ptr = output_tmp.data<float>();
   }
 
@@ -107,7 +107,7 @@ void testVol2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     input = input_tmp;
   } else {
-    input.CopyFrom(input_tmp, *place, *context);
+    CopyFrom(input_tmp, *place, *context, &input);
   }
 
   paddle::operators::math::Col2VolFunctor<Place, float> col2vol;
@@ -118,7 +118,7 @@ void testVol2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
-    input_tmp.CopyFrom(input, paddle::platform::CPUPlace(), *context);
+    CopyFrom(input, paddle::platform::CPUPlace(), *context, &input_tmp);
     in_ptr = input_tmp.data<float>();
   }
 

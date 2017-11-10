@@ -102,8 +102,9 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
         if (len == 0) {
           continue;
         }
-        out->Slice(out_offset, out_offset + len)
-            .CopyFrom(x[x_idx].Slice(start_offset, end_offset), place, dev_ctx);
+        Tensor slice = out->Slice(out_offset, out_offset + len);
+        CopyFrom(x[x_idx].Slice(start_offset, end_offset), place, dev_ctx,
+                 &slice);
         out_offset += len;
       }
     }

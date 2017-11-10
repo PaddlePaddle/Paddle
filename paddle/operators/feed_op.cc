@@ -47,7 +47,7 @@ class FeedOp : public framework::OperatorBase {
     auto &feed_list = feed_var->Get<framework::FeedFetchList>();
     auto &feed_item = feed_list.at(static_cast<size_t>(col));
     auto *out_item = out_var->GetMutable<framework::FeedFetchType>();
-    out_item->CopyFrom(feed_item, dev_ctx.GetPlace(), dev_ctx);
+    CopyFrom(feed_item, dev_ctx.GetPlace(), dev_ctx, &out_item);
     out_item->set_lod(feed_item.lod());
   }
 };
