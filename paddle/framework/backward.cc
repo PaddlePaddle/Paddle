@@ -381,6 +381,7 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
     ProgramDescBind& program_desc, int block_idx,
     std::unordered_set<std::string>* no_grad_vars,
     std::unordered_map<std::string, std::string>* grad_to_var) {
+  VLOG(5) << "MakeBlockBackward";
   BlockDescBind* cur_block = program_desc.MutableBlock(block_idx);
   std::vector<OpDescBind*> op_descs = cur_block->AllOps();
   std::unordered_map<std::string, std::vector<size_t>> dup_out_ops;
@@ -388,9 +389,10 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
   std::vector<std::unique_ptr<OpDescBind>> backward_descs;
 
   for (auto it = op_descs.rbegin(); it != op_descs.rend(); ++it) {
+    VLOG(5) << "Making backward " << (*it)->Type() << " op";
     std::vector<std::unique_ptr<OpDescBind>> op_grads;
 
-    if ((*it)->Type() == "recurrent") {
+    if ((*it)->Type() == "recurrent" || (*it)->Type() == "while") {
       int step_block_idx = (*it)->GetBlockAttr("step_block");
       auto backward_block_op_descs = MakeBlockBackward(
           program_desc, step_block_idx, no_grad_vars, grad_to_var);
@@ -414,6 +416,8 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
         op_grads.begin(), op_grads.end(), std::back_inserter(backward_descs),
         [](std::unique_ptr<OpDescBind>& ptr) { return std::move(ptr); });
   }
+
+  VLOG(5) << "Appending Sums";
   // Check whether some variables are written more than once
   std::list<std::pair<size_t, std::unique_ptr<OpDescBind>>> pending_sum_ops;
   for (const auto& dup : dup_out_ops) {
@@ -422,6 +426,8 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
     if (out_name != kEmptyVarName && dup_op.size() > 1) {
       std::vector<std::string> sum_op_inputs;
       for (size_t i = 0; i < dup_op.size(); ++i) {
+        VLOG(10) << backward_descs[dup_op[i]]->Type() << " has " << out_name
+                 << " duplicated";
         std::string new_name = out_name + "@RENAME@" + std::to_string(i);
         backward_descs[dup_op[i]]->Rename(out_name, new_name);
         sum_op_inputs.emplace_back(new_name);
@@ -431,6 +437,7 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
       pending_sum_ops.push_back({dup_op.back(), std::move(sum_op)});
     }
   }
+
   pending_sum_ops.sort(
       [](const std::pair<size_t, std::unique_ptr<OpDescBind>>& a,
          const std::pair<size_t, std::unique_ptr<OpDescBind>>& b) {
@@ -440,6 +447,8 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
     backward_descs.insert(backward_descs.begin() + p.first + 1,
                           std::move(p.second));
   }
+
+  VLOG(5) << "MakeBlockBackward Finished";
 
   return backward_descs;
 }

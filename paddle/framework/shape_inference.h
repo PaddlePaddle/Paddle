@@ -53,15 +53,16 @@ class InferShapeContext {
 
   virtual bool IsRuntime() const = 0;
 
+  // Note: In while op, we need this to be public
+  void SetDims(const std::vector<std::string> &names,
+               const std::vector<framework::DDim> &dims);
+
  protected:
   virtual framework::DDim GetDim(const std::string &name) const = 0;
   virtual void SetDim(const std::string &name, const framework::DDim &dim) = 0;
 
   std::vector<framework::DDim> GetDims(
       const std::vector<std::string> &names) const;
-
-  void SetDims(const std::vector<std::string> &names,
-               const std::vector<framework::DDim> &dims);
 
   std::vector<VarDesc::VarType> GetVarTypes(
       const std::vector<std::string> &names) const;

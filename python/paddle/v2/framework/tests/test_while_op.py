@@ -2,6 +2,8 @@ import unittest
 import paddle.v2.framework.layers as layers
 from paddle.v2.framework.executor import Executor
 import paddle.v2.framework.core as core
+from paddle.v2.framework.backward import append_backward_ops
+from paddle.v2.framework.framework import g_main_program, g_startup_program
 import numpy
 
 
@@ -16,7 +18,7 @@ class TestWhileOp(unittest.TestCase):
         i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
         init = layers.zeros(shape=[10], dtype='float32')
-        mem_array = layers.array_write(init, i=i)
+        mem_array = layers.array_write(x=init, i=i)
         data_array = layers.array_write(x=d0, i=i)
 
         i = layers.increment(i)
@@ -31,15 +33,30 @@ class TestWhileOp(unittest.TestCase):
         array_len = layers.fill_constant(shape=[1], dtype='int64', value=3)
         cond = layers.less_than(x=i, y=array_len)
 
+        # import paddle.v2.framework.net_drawer as drawer
+        # print drawer.draw_graph(g_startup_program, g_main_program)
+        # exit(0)
+
         while_op = layers.While(cond=cond)
         with while_op.block():
             d = layers.array_read(array=data_array, i=i)
             prev = layers.array_read(array=mem_array, i=i)
-            i = layers.increment(x=i, in_place=True)
             result = layers.sums(input=[d, prev])
+
+            i = layers.increment(x=i, in_place=True)
             layers.array_write(result, i=i, array=mem_array)
+
             layers.less_than(x=i, y=array_len, cond=cond)
         sum_result = layers.array_read(mem_array, i=array_len)
+
+        loss = layers.mean(x=sum_result)
+        # print g_main_program
+        # exit(0)
+        print loss
+
+        append_backward_ops(loss)
+
+        print "-" * 10
 
         cpu = core.CPUPlace()
         exe = Executor(cpu)
