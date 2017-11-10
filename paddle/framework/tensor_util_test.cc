@@ -15,19 +15,20 @@
 #include <gtest/gtest.h>
 #include <string>
 
-TEST(CopyFrom, Normal) {
-  using namespace paddle::framework;
-  using namespace paddle::platform;
+namespace paddle {
+namespace framework {
+TEST(CopyFrom, Tensor) {
   Tensor src_tensor;
   Tensor dst_tensor;
-  CPUDeviceContext cpu_ctx((CPUPlace()));
+  platform::CPUDeviceContext cpu_ctx((platform::CPUPlace()));
 
-  int* src_ptr = src_tensor.mutable_data<int>(make_ddim({3, 3}), CPUPlace());
+  int* src_ptr =
+      src_tensor.mutable_data<int>(make_ddim({3, 3}), platform::CPUPlace());
 
   int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
   memcpy(src_ptr, arr, 9 * sizeof(int));
 
-  auto cpu_place = new paddle::platform::CPUPlace();
+  auto cpu_place = new platform::CPUPlace();
   CopyFrom(src_tensor, *cpu_place, cpu_ctx, &dst_tensor);
 
   const int* dst_ptr = dst_tensor.data<int>();
@@ -55,12 +56,12 @@ TEST(CopyFrom, Normal) {
   memcpy(src_ptr, arr, 9 * sizeof(int));
 
   // CPU Tensor to GPU Tensor
-  auto gpu_place = new paddle::platform::GPUPlace(0);
-  CUDADeviceContext gpu_ctx(*gpu_place);
+  auto gpu_place = new platform::GPUPlace(0);
+  platform::CUDADeviceContext gpu_ctx(*gpu_place);
   CopyFrom(src_tensor, *gpu_place, gpu_ctx, &gpu_tensor);
 
   // GPU Tensor to CPU Tensor
-  auto cpu_place = new paddle::platform::CPUPlace();
+  auto cpu_place = new platform::CPUPlace();
   CopyFrom(gpu_tensor, *cpu_place, gpu_ctx, &gpu_tensor);
 
   // Sync before Compare Tensors
@@ -90,7 +91,7 @@ TEST(CopyFrom, Normal) {
 #endif
 }
 
-TEST(CopyFromVector, Normal) {
+TEST(CopyFromVector, Tensor) {
   using namespace paddle::framework;
   using namespace paddle::platform;
   {
@@ -183,7 +184,7 @@ TEST(CopyFromVector, Normal) {
 #endif
 }
 
-TEST(Tensor, CopyToVector) {
+TEST(CopyToVector, Tensor) {
   using namespace paddle::framework;
   using namespace paddle::platform;
   {
@@ -219,3 +220,6 @@ TEST(Tensor, CopyToVector) {
   }
 #endif
 }
+
+}  // namespace framework
+}  // namespace paddle

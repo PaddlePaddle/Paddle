@@ -5,7 +5,10 @@ cc_library(ddim SRCS ddim.cc DEPS eigen3)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
 
-cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS ddim place paddle_memory device_context)
+# cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS ddim place paddle_memory device_context)
+cc_library(tensor SRCS tensor.cc DEPS ddim place paddle_memory device_context)
+# cc_library(tensor_util SRCS tensor_util.cc DEPS tensor)
+
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
 cc_test(tensor_util_test SRCS tensor_util_test.cc DEPS tensor)
 
