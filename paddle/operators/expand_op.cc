@@ -72,7 +72,24 @@ class ExpandOpMaker : public framework::OpProtoAndCheckerMaker {
 Expand operator tiles the input by given times number. You should set times
 number for each dimension by providing attribute 'expand_times'. The rank of X
 should be in [1, 6]. Please notice that size of 'expand_times' must be same with
-X's rank.
+X's rank. Following is a using case:
+
+Input(X) is a 3-D tensor with shape [2, 3, 1]:
+
+        [
+           [[1], [2], [3]],
+           [[4], [5], [6]]
+        ]
+
+Attr(expand_times):  [1, 2, 2]
+
+Output(Out) is a 3-D tensor with shape [2, 6, 2]:
+
+        [
+            [[1, 1], [2, 2], [3, 3], [1, 1], [2, 2], [3, 3]],
+            [[4, 4], [5, 5], [6, 6], [4, 4], [5, 5], [6, 6]]
+        ]
+
 )DOC");
   }
 };
