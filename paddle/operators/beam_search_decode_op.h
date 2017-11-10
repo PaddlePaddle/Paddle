@@ -23,8 +23,6 @@ namespace operators {
 using LoDTensor = framework::LoDTensor;
 using LoDTensorArray = framework::LoDTensorArray;
 
-const int64_t kEndId = 0;
-
 // all the lod have 2 levels.
 // The First is source level, the second is sentence level.
 // source level describe how many candidate words for this source.
@@ -176,16 +174,11 @@ std::vector<BeamNodeVector<T>> BeamSearchDecoder<T>::PackTwoSteps(
         size_t candidate_start = candidate_offset[src_start + prefix_idx];
         size_t candidate_end = candidate_offset[src_start + prefix_idx + 1];
         if (candidate_start == candidate_end) {
-          if (prefix->word_id_ == kEndId) {
-            VLOG(3) << "this sentence has Ended, prune it";
-            sentence_vector.push_back(MakeSentence(prefix));
-          }
-          VLOG(3) << "this sentence has no more candidate, prune it";
-          // remove this sentence from Beam Tree.
+          VLOG(3) << "this sentence has no more candidate, "
+                     "add to result sentence and rm it from beam tree";
+          sentence_vector.push_back(MakeSentence(prefix));
           delete prefix;
         } else {
-          PADDLE_ENFORCE_NE(prefix->word_id_, kEndId,
-                            "End id should not have candidate anymore");
           for (size_t candidate_idx = candidate_start;
                candidate_idx < candidate_end; ++candidate_idx) {
             auto* candidate =

@@ -197,12 +197,13 @@ TEST(BeamSearchDecodeOp, PackAllSteps) {
   helper.PackAllSteps(ids, scores, &id_tensor, &score_tensor);
 
   LoD lod = id_tensor.lod();
-  std::vector<size_t> expect_source_lod = {0, 3, 6};
+  std::vector<size_t> expect_source_lod = {0, 4, 8};
   EXPECT_EQ(lod[0], expect_source_lod);
-  std::vector<size_t> expect_sentence_lod = {0, 2, 5, 8, 11, 14, 17};
+  std::vector<size_t> expect_sentence_lod = {0, 1, 3, 6, 9, 10, 13, 16, 19};
   EXPECT_EQ(lod[1], expect_sentence_lod);
-  std::vector<int> expect_data = {1, 0, 3, 1, 0, 3, 2, 1, 4,
-                                  3, 2, 4, 4, 3, 6, 5, 4};
+  // 2| 1, 0| 3, 1, 0| 3, 2, 1| 5| 4, 3, 2| 4, 4, 3| 6, 5, 4
+  std::vector<int> expect_data = {2, 1, 0, 3, 1, 0, 3, 2, 1, 5,
+                                  4, 3, 2, 4, 4, 3, 6, 5, 4};
   ASSERT_EQ(id_tensor.dims()[0], static_cast<int64_t>(expect_data.size()));
   for (size_t i = 0; i < expect_data.size(); ++i) {
     ASSERT_EQ(id_tensor.data<int64_t>()[i],
