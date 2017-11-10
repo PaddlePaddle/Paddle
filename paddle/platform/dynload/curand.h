@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <curand.h>
 #include <dlfcn.h>
-#include <mutex>
+#include "paddle/platform/call_once.h"
 #include "paddle/platform/dynload/dynamic_loader.h"
 
 namespace paddle {
@@ -25,18 +25,18 @@ namespace dynload {
 extern std::once_flag curand_dso_flag;
 extern void *curand_dso_handle;
 #ifdef PADDLE_USE_DSO
-#define DECLARE_DYNAMIC_LOAD_CURAND_WRAP(__name)                    \
-  struct DynLoad__##__name {                                        \
-    template <typename... Args>                                     \
-    curandStatus_t operator()(Args... args) {                       \
-      typedef curandStatus_t (*curandFunc)(Args...);                \
-      std::call_once(curand_dso_flag,                               \
-                     paddle::platform::dynload::GetCurandDsoHandle, \
-                     &curand_dso_handle);                           \
-      void *p_##__name = dlsym(curand_dso_handle, #__name);         \
-      return reinterpret_cast<curandFunc>(p_##__name)(args...);     \
-    }                                                               \
-  };                                                                \
+#define DECLARE_DYNAMIC_LOAD_CURAND_WRAP(__name)                         \
+  struct DynLoad__##__name {                                             \
+    template <typename... Args>                                          \
+    curandStatus_t operator()(Args... args) {                            \
+      typedef curandStatus_t (*curandFunc)(Args...);                     \
+      platform::call_once(curand_dso_flag,                               \
+                          paddle::platform::dynload::GetCurandDsoHandle, \
+                          &curand_dso_handle);                           \
+      void *p_##__name = dlsym(curand_dso_handle, #__name);              \
+      return reinterpret_cast<curandFunc>(p_##__name)(args...);          \
+    }                                                                    \
+  };                                                                     \
   extern DynLoad__##__name __name
 #else
 #define DECLARE_DYNAMIC_LOAD_CURAND_WRAP(__name) \

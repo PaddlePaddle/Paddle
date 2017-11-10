@@ -14,13 +14,13 @@ limitations under the License. */
 
 #include "paddle/framework/op_desc.h"
 #include <functional>
-#include <mutex>
 #include <unordered_map>
 #include "glog/logging.h"
 #include "paddle/framework/block_desc.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/program_desc.h"
 #include "paddle/framework/shape_inference.h"
+#include "paddle/platform/call_once.h"
 
 namespace paddle {
 namespace framework {
@@ -292,7 +292,7 @@ void OpDescBind::Flush() {
 static std::once_flag init_infer_shape_funcs;
 
 static void InitInferShapeFuncs() {
-  std::call_once(init_infer_shape_funcs, [] {
+  platform::call_once(init_infer_shape_funcs, [] {
     auto &map = OpInfoMap::Instance();
     auto &info_map = *map.mutable_map();
 
