@@ -108,5 +108,24 @@ TEST(Eigen, Matrix) {
   }
 }
 
+TEST(Eigen, MatrixReshape) {
+  Tensor t;
+  float* p = t.mutable_data<float>({2, 3, 6, 4}, platform::CPUPlace());
+  for (int i = 0; i < 2 * 3 * 6 * 4; ++i) {
+    p[i] = static_cast<float>(i);
+  }
+
+  EigenMatrix<float>::Type em = EigenMatrix<float>::Reshape(t, 2);
+
+  ASSERT_EQ(2 * 3, em.dimension(0));
+  ASSERT_EQ(6 * 4, em.dimension(1));
+
+  for (int i = 0; i < 2 * 3; i++) {
+    for (int j = 0; j < 6 * 4; j++) {
+      ASSERT_NEAR(i * 6 * 4 + j, em(i, j), 1e-6f);
+    }
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle

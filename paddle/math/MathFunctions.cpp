@@ -84,6 +84,7 @@ LAPACK_ROUTINE_EACH(DYNAMIC_LOAD_LAPACK_WRAP)
 
 namespace paddle {
 
+#ifndef PADDLE_USE_EIGEN_FOR_BLAS
 template <>
 void gemm<float>(const CBLAS_TRANSPOSE transA,
                  const CBLAS_TRANSPOSE transB,
@@ -143,6 +144,7 @@ void gemm<double>(const CBLAS_TRANSPOSE transA,
               C,
               ldc);
 }
+#endif
 
 template <>
 int getrf<float>(const CBLAS_ORDER order,
@@ -182,6 +184,7 @@ int getri<double>(const CBLAS_ORDER order,
   return dynload::PADDLE_DGETRI(order, N, A, lda, ipiv);
 }
 
+#ifndef PADDLE_USE_EIGEN_FOR_BLAS
 template <>
 void axpy<float>(const int n, const float alpha, const float* x, float* y) {
   cblas_saxpy(n, alpha, x, 1, y, 1);
@@ -201,8 +204,9 @@ template <>
 double dotProduct<double>(const int n, const double* x, const double* y) {
   return cblas_ddot(n, x, 1, y, 1);
 }
+#endif
 
-#if defined(PADDLE_USE_MKL) || defined(PADDLE_USE_MKLML)
+#if defined(PADDLE_USE_MKLML)
 
 template <>
 void vExp<float>(const int n, const float* a, float* r) {
@@ -291,38 +295,6 @@ template void vAdd(const int n, const double* a, const double* b, double* r);
 
 #endif
 
-#ifdef PADDLE_USE_MKL
-template <>
-void vInvSqrt<float>(const int n, const float* a, float* r) {
-  vsInvSqrt(n, a, r);
-}
-
-template <>
-void vInvSqrt<double>(const int n, const double* a, double* r) {
-  vdInvSqrt(n, a, r);
-}
-
-template <>
-void vLog1p<float>(const int n, const float* a, float* r) {
-  vsLog1p(n, a, r);
-}
-
-template <>
-void vLog1p<double>(const int n, const double* a, double* r) {
-  vdLog1p(n, a, r);
-}
-
-template <>
-void vTanh<float>(const int n, const float* a, float* r) {
-  vsTanh(n, a, r);
-}
-
-template <>
-void vTanh<double>(const int n, const double* a, double* r) {
-  vdTanh(n, a, r);
-}
-#else
-
 DEFINE_MATRIX_BINARY_OP(vInvSqrt, b = 1.0f / std::sqrt(a));
 template <class T>
 void vInvSqrt(const int n, const T* a, T* r) {
@@ -352,7 +324,5 @@ template void vLog1p(const int n, const float* a, float* r);
 template void vLog1p(const int n, const double* a, double* r);
 template void vTanh(const int n, const float* a, float* r);
 template void vTanh(const int n, const double* a, double* r);
-
-#endif
 
 }  // namespace paddle

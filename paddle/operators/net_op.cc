@@ -31,10 +31,13 @@ void NetOp::CompleteAddOp(bool calc) {
   for (auto& op : ops_) {
     for (auto& ipt : op->Inputs()) {
       for (auto& var_name : ipt.second) {
-        if (!Contains(output_set, var_name)) {  // Not other op's output
-          input_set.insert(var_name);
-        } else {
+        // If input variable has been in output set, then it will be
+        // added into intermediate_outputs_. Otherwise, it will be
+        // added into input set.
+        if (Contains(output_set, var_name)) {
           intermediate_outputs_.insert(var_name);
+        } else {
+          input_set.insert(var_name);
         }
       }
     }
@@ -68,10 +71,15 @@ std::string NetOp::DebugString() const {
 bool NetOp::IsNetOp() const { return true; }
 
 std::vector<std::string> NetOp::OutputVars(bool has_intermediate) const {
-  if (has_intermediate) {
-    return this->outputs_.at(kAll);
+  std::vector<std::string> all;
+  for (auto& pair : this->outputs_) {
+    for (auto& var_name : pair.second) {
+      all.push_back(var_name);
+    }
   }
-  auto& all = this->outputs_.at(kAll);
+  if (has_intermediate) {
+    return all;
+  }
   std::vector<std::string> ret_val;
   for (auto& each : all) {
     if (!Contains(intermediate_outputs_, each)) {
@@ -81,11 +89,17 @@ std::vector<std::string> NetOp::OutputVars(bool has_intermediate) const {
   return ret_val;
 }
 
-NetOp::NetOp(const std::string& type,
-             const framework::OperatorBase::VarNameMap& inputs,
-             const framework::OperatorBase::VarNameMap& outputs,
+NetOp::NetOp(const std::string& type, const framework::VariableNameMap& inputs,
+             const framework::VariableNameMap& outputs,
              const framework::AttributeMap& attrs)
-    : OperatorBase(type, inputs, outputs, attrs) {}
+    : framework::OperatorBase(type, inputs, outputs, attrs) {}
+
+std::unique_ptr<framework::OperatorBase> NetOp::Clone() const {
+  PADDLE_ENFORCE(
+      add_op_done_,
+      "Must clone a sealed NetOp, invoke Net::CompleteAddOp before clone");
+  return std::unique_ptr<OperatorBase>(new NetOp(*this));
+}
 
 }  // namespace operators
 }  // namespace paddle

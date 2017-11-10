@@ -17,99 +17,174 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <memory>
+#include <vector>
 
 namespace paddle {
 namespace framework {
 
-class LODTensorTester : public ::testing::Test {
+const int kLodTensorSize = 20 * 128;
+
+class LoDTensorTester : public ::testing::Test {
  public:
   virtual void SetUp() override {
-    lod_tensor.reset(new LODTensor);
     // tensor's batch_size: 30
     // 3 levels
     // 0 10 20
     // 0 5 10 15 20
     // 0 2 5 7 10 12 15 20
-    LODTensor::LOD lod;
-    lod.push_back(std::vector<size_t>{0, 10, 20});
-    lod.push_back(std::vector<size_t>{0, 5, 10, 15, 20});
+    LoD lod;
+    lod.push_back(std::vector<size_t>{0, 2, 3});
+    lod.push_back(std::vector<size_t>{0, 2, 5, 8});
     lod.push_back(std::vector<size_t>{0, 2, 5, 7, 10, 12, 15, 17, 20});
 
     ASSERT_EQ(lod.size(), 3UL);
 
-    tensor.Resize({20 /*batch size*/, 128 /*dim*/});
+    lod_tensor_.Resize({20 /*batch size*/, 128 /*dim*/});
     // malloc memory
-    tensor.mutable_data<float>(place);
+    float* dst_ptr = lod_tensor_.mutable_data<float>(place);
+    for (int i = 0; i < kLodTensorSize; ++i) {
+      dst_ptr[i] = i;
+    }
 
-    lod_tensor.reset(new LODTensor(lod));
-    lod_tensor->Resize({20 /*batch size*/, 128 /*dim*/});
-
-    lod_tensor->ShareDataWith<float>(tensor);
-    // lod_tensor->ShareDataWith<Tensor>(tensor);
+    lod_tensor_.set_lod(lod);
   }
 
  protected:
-  std::unique_ptr<LODTensor> lod_tensor;
   platform::CPUPlace place;
-  Tensor tensor;
+  LoDTensor lod_tensor_;
 };
 
-TEST_F(LODTensorTester, NumLevels) { ASSERT_EQ(lod_tensor->NumLevels(), 3UL); }
+TEST_F(LoDTensorTester, NumLevels) { ASSERT_EQ(lod_tensor_.NumLevels(), 3UL); }
 
-TEST_F(LODTensorTester, NumElements) {
-  ASSERT_EQ(lod_tensor->NumElements(0), 2UL);
-  ASSERT_EQ(lod_tensor->NumElements(1), 4UL);
-  ASSERT_EQ(lod_tensor->NumElements(2), 8UL);
+TEST_F(LoDTensorTester, NumElements) {
+  ASSERT_EQ(lod_tensor_.NumElements(0), 2UL);
+  ASSERT_EQ(lod_tensor_.NumElements(1), 3UL);
+  ASSERT_EQ(lod_tensor_.NumElements(2), 8UL);
 }
 
-TEST_F(LODTensorTester, SliceLevels) {
+TEST_F(LoDTensorTester, NumElements2) {
+  ASSERT_EQ(lod_tensor_.NumElements(0, 0), 2UL);
+  ASSERT_EQ(lod_tensor_.NumElements(0, 1), 1UL);
+  ASSERT_EQ(lod_tensor_.NumElements(1, 1), 3UL);
+}
+
+TEST_F(LoDTensorTester, ShrinkLevels) {
   // slice 1 level
   for (size_t level = 0; level < 3UL; ++level) {
-    auto new_lod_tensor = lod_tensor->SliceLevels<float>(level, level + 1);
+    LoDTensor new_lod_tensor = lod_tensor_;
+    new_lod_tensor.ShrinkLevels(level, level + 1);
     ASSERT_EQ(new_lod_tensor.NumLevels(), 1UL);
-    ASSERT_EQ(new_lod_tensor.NumElements(0UL), lod_tensor->NumElements(level));
-    // ASSERT_EQ(new_lod_tensor, *lod_tensor);
+    ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor_.data<float>());
   }
-  // slice 2 level
+  // shrink 2 level
   for (size_t level = 0; level < 2UL; ++level) {
-    auto new_lod_tensor = lod_tensor->SliceLevels<float>(level, level + 2);
+    LoDTensor new_lod_tensor = lod_tensor_;
+    new_lod_tensor.ShrinkLevels(level, level + 2);
+    // the lowest level's last element should be the tensor's batch_size.
+    ASSERT_EQ(new_lod_tensor.lod().back().back(),
+              lod_tensor_.lod().back().back());
     ASSERT_EQ(new_lod_tensor.NumLevels(), 2UL);
-    ASSERT_EQ(new_lod_tensor.NumElements(0), lod_tensor->NumElements(level));
-    ASSERT_EQ(new_lod_tensor.NumElements(1),
-              lod_tensor->NumElements(level + 1));
-    ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor->data<float>());
+    ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor_.data<float>());
   }
 }
 
-TEST_F(LODTensorTester, SliceInLevel) {
+TEST_F(LoDTensorTester, ShrinkInLevel) {
   size_t level = 0;
-  auto new_lod_tensor = lod_tensor->SliceInLevel<float>(level, 0, 2);
-  EXPECT_EQ(new_lod_tensor.NumLevels(), 3UL);
-  EXPECT_EQ(new_lod_tensor.NumElements(0), 2UL);
-  EXPECT_EQ(new_lod_tensor.NumElements(1), 4UL);
-  EXPECT_EQ(new_lod_tensor.NumElements(2), 8UL);
-  ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor->data<float>());
+  LoDTensor new_lod_tensor = lod_tensor_;
+  new_lod_tensor.ShrinkInLevel(level, 0, 1);
+  ASSERT_EQ(new_lod_tensor.NumLevels(), 3UL);
+  ASSERT_EQ(new_lod_tensor.NumElements(0), 1UL);
+  ASSERT_EQ(new_lod_tensor.NumElements(1), 2UL);
+  ASSERT_EQ(new_lod_tensor.NumElements(2), 5UL);
+  ASSERT_EQ(new_lod_tensor.dims()[0], 12);
+  for (int i = 0; i < 12 * 128; i++) {
+    ASSERT_EQ(new_lod_tensor.data<float>()[i], i);
+  }
 
   level = 1;
-  new_lod_tensor = lod_tensor->SliceInLevel<float>(level, 0, 2);
+  new_lod_tensor = lod_tensor_;
+  new_lod_tensor.ShrinkInLevel(level, 1, 2);
   ASSERT_EQ(new_lod_tensor.NumLevels(), 2UL);
-  ASSERT_EQ(new_lod_tensor.NumElements(0), 2UL);
-  ASSERT_EQ(new_lod_tensor.NumElements(1), 4UL);
-  ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor->data<float>());
+  ASSERT_EQ(new_lod_tensor.NumElements(0), 1UL);
+  ASSERT_EQ(new_lod_tensor.NumElements(1), 3UL);
+  ASSERT_EQ(new_lod_tensor.dims()[0], 7);
+  for (int i = 5 * 128; i < 12 * 128; i++) {
+    ASSERT_EQ(new_lod_tensor.data<float>()[i - 5 * 128], i);
+  }
+
+  LoDTensor t1;
+  t1.set_lod(lod_tensor_.lod());
+  t1.ShareDataWith(lod_tensor_);
+
+  LoDTensor t2;
+  t2.set_lod(lod_tensor_.lod());
+  t2.ShareDataWith(lod_tensor_);
+
+  t1.ShrinkInLevel(0, 1, 2);
+  t2.ShrinkInLevel(0, 0, 1);
+  EXPECT_NE(t1.data<float>(), t2.data<float>());
+  EXPECT_NE(t1.data<float>(), lod_tensor_.data<float>());
 }
 
-TEST_F(LODTensorTester, ShareLOD) {
-  LODTensor new_lod_tensor;
-  new_lod_tensor.CopyLOD(*lod_tensor);
-  ASSERT_EQ(new_lod_tensor.lod(), lod_tensor->lod());
+TEST(LodExpand, test) {
+  LoD lod{{0, 2}};
+  LoDTensor tensor;
+  tensor.set_lod(lod);
+  tensor.Resize({2, 1});
+  tensor.mutable_data<float>(platform::CPUPlace());
+  tensor.data<float>()[0] = 0;
+  tensor.data<float>()[1] = 1;
+
+  LoD target;
+  target.emplace_back(std::vector<size_t>{0, 3, 5});
+  auto new_tensor = LodExpand<float>(tensor, target, 0UL, platform::CPUPlace());
+  std::vector<int> result{{0, 0, 0, 1, 1}};
+  for (size_t i = 0; i < 5; i++) {
+    ASSERT_EQ(new_tensor.data<float>()[i], result[i]);
+  }
 }
 
-TEST_F(LODTensorTester, CopyLOD) {
-  LODTensor new_lod_tensor;
-  new_lod_tensor.CopyLOD(*lod_tensor);
-  bool equals = std::equal(lod_tensor->lod().begin(), lod_tensor->lod().end(),
-                           new_lod_tensor.lod().begin());
-  ASSERT_TRUE(equals);
+TEST(LoD, GetFineGrainedLoDLength) {
+  LoD lod;
+  lod.push_back(std::vector<size_t>({0, 2, 4, 5}));
+  lod.push_back(std::vector<size_t>({0, 1, 6, 8, 10, 11}));
+  lod.push_back(
+      std::vector<size_t>({0, 2, 5, 7, 10, 12, 15, 17, 20, 24, 26, 29}));
+
+  auto lod_and_offset =
+      paddle::framework::GetSubLoDAndAbsoluteOffset(lod, 1, 2, 0);
+  LoD lod_length = lod_and_offset.first;
+  size_t start_offset = lod_and_offset.second.first;
+  size_t end_offset = lod_and_offset.second.second;
+
+  LoD expected;
+  expected.push_back(std::vector<size_t>{2});
+  expected.push_back(std::vector<size_t>{2, 2});
+  expected.push_back(std::vector<size_t>{2, 3, 4, 2});
+  EXPECT_EQ(lod_length, expected);
+  EXPECT_EQ(start_offset, 15UL);
+  EXPECT_EQ(end_offset, 26UL);
+}
+
+TEST(LoD, AppendLoD) {
+  LoD lod_lens;
+  lod_lens.push_back(std::vector<size_t>({2}));
+  lod_lens.push_back(std::vector<size_t>({2, 2}));
+  lod_lens.push_back(std::vector<size_t>({2, 3, 4, 2}));
+
+  LoD origin;
+  origin.push_back(std::vector<size_t>({0, 2}));
+  origin.push_back(std::vector<size_t>({0, 1, 6}));
+  origin.push_back(std::vector<size_t>({0, 2, 5, 7, 10, 12, 15}));
+
+  paddle::framework::AppendLoD(&origin, lod_lens);
+
+  LoD expected;
+  expected.push_back(std::vector<size_t>({0, 2, 4}));
+  expected.push_back(std::vector<size_t>({0, 1, 6, 8, 10}));
+  expected.push_back(
+      std::vector<size_t>({0, 2, 5, 7, 10, 12, 15, 17, 20, 24, 26}));
+  EXPECT_EQ(origin, expected);
 }
 
 }  // namespace framework

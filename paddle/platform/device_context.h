@@ -14,10 +14,9 @@ limitations under the License. */
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/platform/dynload/cublas.h"
 #include "paddle/platform/dynload/cudnn.h"
-#include "paddle/platform/dynload/curand.h"
 #include "paddle/platform/gpu_info.h"
 #define EIGEN_USE_GPU
 #endif
@@ -28,20 +27,33 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+template <typename T>
+struct EigenDeviceConverter;
+
+template <>
+struct EigenDeviceConverter<platform::CPUPlace> {
+  using EigenDeviceType = Eigen::DefaultDevice;
+};
+
 class DeviceContext {
  public:
   virtual ~DeviceContext() {}
   virtual Place GetPlace() const = 0;
 
-  template <typename DeviceType>
-  DeviceType* get_eigen_device() const;
+  template <typename PlaceType,
+            typename DeviceType =
+                typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
+  DeviceType* GetEigenDevice() const;
+
+  virtual void Wait() const {}
+
+  virtual void Finish() const {}
 };
 
 class CPUDeviceContext : public DeviceContext {
  public:
   CPUDeviceContext();
-  explicit CPUDeviceContext(CPUPlace);
-  virtual ~CPUDeviceContext() {}
+  explicit CPUDeviceContext(CPUPlace place);
 
   Eigen::DefaultDevice* eigen_device() const;
 
@@ -51,15 +63,24 @@ class CPUDeviceContext : public DeviceContext {
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
+template <>
+struct EigenDeviceConverter<platform::GPUPlace> {
+  using EigenDeviceType = Eigen::GpuDevice;
+};
+
+class EigenCudaStreamDevice;
 
 class CUDADeviceContext : public DeviceContext {
  public:
-  explicit CUDADeviceContext(GPUPlace);
+  explicit CUDADeviceContext(GPUPlace place);
   virtual ~CUDADeviceContext();
 
   /*! \brief  Wait for all operations completion in the stream. */
-  void Wait() const;
+  void Wait() const override;
+
+  /*! \brief  Check potential errors for the cuda kernel calls. */
+  void Finish() const override;
 
   /*! \brief  Return place in the device context. */
   Place GetPlace() const override;
@@ -67,32 +88,24 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return eigen device in the device context. */
   Eigen::GpuDevice* eigen_device() const;
 
-  // clang-format off
   /*! \brief  Return cublas handle in the device context. */
-  cublasHandle_t    cublas_handle();
+  cublasHandle_t cublas_handle() const;
 
   /*! \brief  Return cudnn  handle in the device context. */
-  cudnnHandle_t     cudnn_handle();
+  cudnnHandle_t cudnn_handle() const;
 
-  /*! \brief  Return curand handle in the device context. */
-  curandGenerator_t curand_generator();
-  // clang-format on
+  /*! \brief  Return cuda stream in the device context. */
+  cudaStream_t stream() const;
 
  private:
   GPUPlace place_;
 
- private:
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
-  std::unique_ptr<Eigen::CudaStreamDevice> eigen_stream_;
+  std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
 
- private:
-  uint64_t seed_;
-
-  // clang-format off
-  cudnnHandle_t     cudnn_handle_     = nullptr;
-  cublasHandle_t    cublas_handle_    = nullptr;
-  curandGenerator_t curand_generator_ = nullptr;
-  // clang-format on
+  cudaStream_t stream_;
+  cudnnHandle_t cudnn_handle_;
+  cublasHandle_t cublas_handle_;
 };
 
 #endif

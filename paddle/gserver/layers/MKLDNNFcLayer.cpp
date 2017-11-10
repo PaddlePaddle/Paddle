@@ -14,13 +14,9 @@ limitations under the License. */
 
 #include "MKLDNNFcLayer.h"
 #include "paddle/utils/Logging.h"
-#include "paddle/utils/Stat.h"
 
 using namespace mkldnn;  // NOLINT
 typedef memory::format format;
-typedef inner_product_forward fc_fwd;
-typedef inner_product_backward_weights fc_bwdWgt;
-typedef inner_product_backward_data fc_bwdData;
 
 namespace paddle {
 
@@ -32,7 +28,7 @@ bool MKLDNNFcLayer::init(const LayerMap& layerMap,
     return false;
   }
 
-  CHECK_EQ(inputLayers_.size(), 1) << "Only support one input layer yet";
+  CHECK_EQ(inputLayers_.size(), 1UL) << "Only support one input layer yet";
   CHECK_EQ(inputLayers_.size(), parameters_.size());
   CHECK(!parameters_[0]->isSparse()) << "Do not support sparse yet";
 
@@ -40,6 +36,8 @@ bool MKLDNNFcLayer::init(const LayerMap& layerMap,
   oc_ = getSize();
   oh_ = 1;
   ow_ = 1;
+  ih_ = 1;
+  iw_ = 1;
 
   // input size can not change in FC
   iLayerSize_ = inputLayers_[0]->getSize();
@@ -51,232 +49,218 @@ bool MKLDNNFcLayer::init(const LayerMap& layerMap,
 
   // create biases
   if (biasParameter_.get() != NULL) {
-    biases_ = std::unique_ptr<Weight>(new Weight(1, oc_, biasParameter_));
+    biases_ = std::unique_ptr<Weight>(new Weight(1, oc_, biasParameter_, 0));
   }
   return true;
 }
 
 void MKLDNNFcLayer::convertWeightsFromPaddle() {
-  if (FLAGS_use_mkldnn_wgt) {
-    return;
-  }
-
   if (hasInitedWgt_) {
     return;
   }
 
-  // The weight_ is transposed from initial paddle weight
-  MatrixPtr paddleWgt = Matrix::create(
-      weight_->getW()->getData(), iLayerSize_, oc_, false, false);
-
-  // TODO(TJ): remove this print when do not need differ weights
-  std::ostringstream ostr;
-  paddleWgt->print(ostr);
-  VLOG(MKLDNN_ALL) << "Initial Weight from paddle: " << std::endl << ostr.str();
-
-  // The mkldnn weight is transposed from initial paddle matrix
-  MatrixPtr paddleWgtT;
-  paddleWgt->transpose(paddleWgtT, true);
-  weight_->getW()->copyFrom(*paddleWgtT);
+  CHECK(wgtVal_) << "should have been initialized";
+  auto targetDim = wgtVal_->getDims();
+  auto srcFmt = targetDim.size() == 2 ? format::io : format::ihwo;
+  wgtVal_->reorderDataFrom(wgtVal_, srcFmt, targetDim);
   hasInitedWgt_ = true;
 }
 
 void MKLDNNFcLayer::convertWeightsToPaddle() {
-  MatrixPtr dnnWgt = weight_->getW();
-  MatrixPtr paddleWgt;
-  dnnWgt->transpose(paddleWgt, true);
-
-  // copy paddle weight and override on weight_
-  MatrixPtr dnnWgtT = Matrix::create(
-      dnnWgt->getData(), dnnWgt->getWidth(), dnnWgt->getHeight(), false, false);
-  dnnWgtT->copyFrom(*paddleWgt);
+  CHECK(wgtVal_) << "should have been initialized";
+  auto targetDim = wgtVal_->getDims();
+  auto dstFmt = targetDim.size() == 2 ? format::io : format::ihwo;
+  wgtVal_->reorderDataTo(wgtVal_, dstFmt, targetDim);
 }
 
-void MKLDNNFcLayer::reshape() {
-  const Argument& input = getInput(0);
-  int batchSize = input.getBatchSize();
-  if (bs_ == batchSize) {
-    return;
-  }
-  bs_ = batchSize;
-  ih_ = input.getFrameHeight();
-  iw_ = input.getFrameWidth();
-  if (ih_ == 0) {
-    ih_ = 1;
-  }
-  if (iw_ == 0) {
-    iw_ = 1;
-  }
-  hasSpatial_ = true;
-  if (ih_ == 1 && iw_ == 1) {
-    hasSpatial_ = false;
-  }
+void MKLDNNFcLayer::reshape(
+    int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) {
+  reshapeInput(bs, ih, iw);
+
   CHECK_EQ(iLayerSize_, inputLayers_[0]->getSize());
-  ic_ = iLayerSize_ / (ih_ * iw_);
-  CHECK_EQ(size_t(ic_ * ih_ * iw_), iLayerSize_) << "not divisible";
-  CHECK_EQ(size_t(oc_), getSize());
+  ic = iLayerSize_ / (ih * iw);
+  CHECK_EQ(size_t(ic * ih * iw), iLayerSize_) << "not divisible";
+  CHECK_EQ(size_t(oc), getSize());
+
+  reshapeOutput(oh, ow);
+  resizeOutput(bs, oc);
+
   printSizeInfo();
-
-  // reset output
-  output_.setFrameHeight(oh_);
-  output_.setFrameWidth(ow_);
-  resetOutput(bs_, oc_);
-
-  // reset mkldnn forward
-  resetFwd();
-  needResetBwd_ = true;
-
-  convertWeightsFromPaddle();
 }
 
-void MKLDNNFcLayer::resetFwd() {
-  bool hasBias = biases_ && biases_->getW();
-  real* iData = getInputValue(0)->getData();
-  real* oData = getOutputValue()->getData();
-  real* wData = weight_->getW()->getData();
-  real* bData = hasBias ? biases_->getW()->getData() : NULL;
+void MKLDNNFcLayer::resetFwd(std::vector<primitive>& pipeline,
+                             MKLDNNMatrixPtr& in,
+                             MKLDNNMatrixPtr& wgt,
+                             MKLDNNMatrixPtr& bias,
+                             MKLDNNMatrixPtr& out) {
+  resetFwdBuffers(in, wgt, bias, out);
 
-  // TODO(TJ): below create should be covered in MkldnnMatrix
-  // create memory desc
-  memory::desc iMD = hasSpatial_ ? createMD({bs_, ic_, ih_, iw_}, format::nchw)
-                                 : createMD({bs_, ic_}, format::nc);
-  memory::desc wMD = hasSpatial_ ? createMD({oc_, ic_, ih_, iw_}, format::oihw)
-                                 : createMD({oc_, ic_}, format::oi);
-  memory::desc bMD = bData != NULL ? createMD({oc_}, format::x)
-                                   : createMD({}, format::format_undef);
-  memory::desc oMD = createMD({bs_, oc_}, format::nc);
+  resetFwdPD(fwdPD_, in, wgt, bias, out);
 
-  // create memory primitive desc and memory self
-  inVal_.reset(new memory(memory::primitive_desc(iMD, engine_), iData));
-  wgtVal_.reset(new memory(memory::primitive_desc(wMD, engine_), wData));
-  outVal_.reset(new memory(memory::primitive_desc(oMD, engine_), oData));
+  resetFwdPipeline(pipeline, fwdPD_, in, wgt, bias, out);
+}
 
+void MKLDNNFcLayer::resetBwd(std::vector<primitive>& pipeline,
+                             MKLDNNMatrixPtr& in,
+                             MKLDNNMatrixPtr& wgt,
+                             MKLDNNMatrixPtr& bias,
+                             MKLDNNMatrixPtr& out) {
+  std::shared_ptr<fc_bwdWgt::primitive_desc> bwdWgtPD;
+  std::shared_ptr<fc_bwdData::primitive_desc> bwdDataPD;
+
+  resetBwdBuffers(in, wgt, bias, out);
+
+  resetBwdWgtPD(bwdWgtPD, wgt, bias, out);
+
+  resetBwdDataPD(bwdDataPD, in, out);
+
+  resetBwdPipeline(pipeline, bwdWgtPD, bwdDataPD, in, wgt, bias, out);
+}
+
+void MKLDNNFcLayer::updateWeights(const UpdateCallback& callback) {
+  weight_->getParameterPtr()->incUpdate(callback);
+  if (biases_ && biases_->getWGrad()) {
+    biases_->getParameterPtr()->incUpdate(callback);
+  }
+}
+
+void MKLDNNFcLayer::resetFwdBuffers(MKLDNNMatrixPtr& in,
+                                    MKLDNNMatrixPtr& wgt,
+                                    MKLDNNMatrixPtr& bias,
+                                    MKLDNNMatrixPtr& out) {
+  resetInValue(in);
+  CHECK(in);
+  in->downSpatial();
+
+  auto outPD =
+      MKLDNNMatrix::createPrimitiveDesc({bs_, oc_}, format::nc, engine_);
+  resetOutValue(out, outPD);
+
+  format wgtFmt = format::oihw;
+  if (in->getFormat() == format::nChw8c) {
+    wgtFmt = format::oIhw8i;
+  } else if (in->getFormat() == format::nChw16c) {
+    wgtFmt = format::oIhw16i;
+  }
+  auto wgtPD =
+      MKLDNNMatrix::createPrimitiveDesc({oc_, ic_, ih_, iw_}, wgtFmt, engine_);
+  resetWithMatrix(wgt, weight_->getW(), wgtPD);
+  wgt->downSpatial();
+
+  if (biases_ && biases_->getW()) {
+    auto biasPD = MKLDNNMatrix::createPrimitiveDesc({oc_}, format::x, engine_);
+    resetWithMatrix(bias, biases_->getW(), biasPD);
+  } else {
+    bias = nullptr;
+  }
+}
+
+void MKLDNNFcLayer::resetFwdPD(std::shared_ptr<fc_fwd::primitive_desc>& pd,
+                               MKLDNNMatrixPtr in,
+                               MKLDNNMatrixPtr wgt,
+                               MKLDNNMatrixPtr bias,
+                               MKLDNNMatrixPtr out) {
+  CHECK(in);
+  CHECK(wgt);
+  CHECK(out);
   prop_kind pk = prop_kind::forward;
-  fc_fwd::desc fwdDesc = bData != NULL ? fc_fwd::desc(pk, iMD, wMD, bMD, oMD)
-                                       : fc_fwd::desc(pk, iMD, wMD, oMD);
-  fc_fwd::primitive_desc fwdPD = fc_fwd::primitive_desc(fwdDesc, engine_);
-
-  if (bData != NULL) {
-    biasVal_.reset(new memory(memory::primitive_desc(bMD, engine_), bData));
-    fwd_.reset(new fc_fwd(fwdPD, *inVal_, *wgtVal_, *biasVal_, *outVal_));
-  } else {
-    fwd_.reset(new fc_fwd(fwdPD, *inVal_, *wgtVal_, *outVal_));
-  }
-  pipelineFwd_.clear();
-  pipelineFwd_.push_back(*fwd_);
+  fc_fwd::desc fwdDesc = bias != nullptr ? fc_fwd::desc(pk,
+                                                        in->getMemoryDesc(),
+                                                        wgt->getMemoryDesc(),
+                                                        bias->getMemoryDesc(),
+                                                        out->getMemoryDesc())
+                                         : fc_fwd::desc(pk,
+                                                        in->getMemoryDesc(),
+                                                        wgt->getMemoryDesc(),
+                                                        out->getMemoryDesc());
+  pd.reset(new fc_fwd::primitive_desc(fwdDesc, engine_));
 }
 
-void MKLDNNFcLayer::resetBwd() {
-  if (!needResetBwd_) {
+void MKLDNNFcLayer::resetFwdPipeline(
+    std::vector<primitive>& pipeline,
+    std::shared_ptr<fc_fwd::primitive_desc>& pd,
+    MKLDNNMatrixPtr& in,
+    MKLDNNMatrixPtr& wgt,
+    MKLDNNMatrixPtr& bias,
+    MKLDNNMatrixPtr& out) {
+  if (bias) {
+    fwd_.reset(new fc_fwd(*pd, *in, *wgt, *bias, *out));
+  } else {
+    fwd_.reset(new fc_fwd(*pd, *in, *wgt, *out));
+  }
+  pipeline.push_back(*fwd_);
+}
+
+void MKLDNNFcLayer::resetBwdBuffers(MKLDNNMatrixPtr& in,
+                                    MKLDNNMatrixPtr& wgt,
+                                    MKLDNNMatrixPtr& bias,
+                                    MKLDNNMatrixPtr& out) {
+  CHECK(inVal_ && outVal_);
+  resetOutGrad(out, outVal_->getPrimitiveDesc());
+  resetInGrad(in, inVal_->getPrimitiveDesc());
+
+  CHECK(wgtVal_);
+  resetWithMatrix(wgt, weight_->getWGrad(), wgtVal_->getPrimitiveDesc());
+
+  if (biasVal_) {
+    resetWithMatrix(bias, biases_->getWGrad(), biasVal_->getPrimitiveDesc());
+  } else {
+    bias = nullptr;
+  }
+}
+
+void MKLDNNFcLayer::resetBwdWgtPD(
+    std::shared_ptr<fc_bwdWgt::primitive_desc>& pd,
+    MKLDNNMatrixPtr& wgt,
+    MKLDNNMatrixPtr& bias,
+    MKLDNNMatrixPtr& out) {
+  CHECK(inVal_);
+  fc_bwdWgt::desc bwdWgtDesc = bias ? fc_bwdWgt::desc(inVal_->getMemoryDesc(),
+                                                      wgt->getMemoryDesc(),
+                                                      bias->getMemoryDesc(),
+                                                      out->getMemoryDesc())
+                                    : fc_bwdWgt::desc(inVal_->getMemoryDesc(),
+                                                      wgt->getMemoryDesc(),
+                                                      out->getMemoryDesc());
+  pd.reset(new fc_bwdWgt::primitive_desc(bwdWgtDesc, engine_, *fwdPD_));
+}
+
+void MKLDNNFcLayer::resetBwdDataPD(
+    std::shared_ptr<fc_bwdData::primitive_desc>& pd,
+    MKLDNNMatrixPtr& in,
+    MKLDNNMatrixPtr& out) {
+  pd = nullptr;
+  if (in == nullptr) {
     return;
   }
-  needResetBwd_ = false;
+  CHECK(wgtVal_);
+  fc_bwdData::desc bwdDataDesc = fc_bwdData::desc(
+      in->getMemoryDesc(), wgtVal_->getMemoryDesc(), out->getMemoryDesc());
+  pd.reset(new fc_bwdData::primitive_desc(bwdDataDesc, engine_, *fwdPD_));
+}
 
-  bool hasBias = biases_ && biases_->getWGrad();
-  real* iData = getInputValue(0)->getData();
-  real* iDiff = getInputGrad(0) != nullptr ? getInputGrad(0)->getData() : NULL;
-  real* oDiff = getOutputGrad()->getData();
-  real* wDiff = weight_->getWGrad()->getData();
-  real* bDiff = hasBias ? biases_->getWGrad()->getData() : NULL;
-
-  /// backward weight
-  // create memory desc for backward memory
-  memory::desc iMD = hasSpatial_ ? createMD({bs_, ic_, ih_, iw_}, format::nchw)
-                                 : createMD({bs_, ic_}, format::nc);
-  memory::desc wMD = hasSpatial_ ? createMD({oc_, ic_, ih_, iw_}, format::oihw)
-                                 : createMD({oc_, ic_}, format::oi);
-  memory::desc oMD = createMD({bs_, oc_}, format::nc);
-  memory::desc bMD = bDiff != NULL ? createMD({oc_}, format::x)
-                                   : createMD({}, format::format_undef);
-
-  if (inVal_) {
-    // update data
-    inVal_->set_data_handle(iData);
+void MKLDNNFcLayer::resetBwdPipeline(
+    std::vector<primitive>& pipeline,
+    std::shared_ptr<fc_bwdWgt::primitive_desc>& bwdWgtPD,
+    std::shared_ptr<fc_bwdData::primitive_desc>& bwdDataPD,
+    MKLDNNMatrixPtr& in,
+    MKLDNNMatrixPtr& wgt,
+    MKLDNNMatrixPtr& bias,
+    MKLDNNMatrixPtr& out) {
+  CHECK(inVal_);
+  if (bias) {
+    bwdWgt_.reset(new fc_bwdWgt(*bwdWgtPD, *inVal_, *out, *wgt, *bias));
   } else {
-    inVal_.reset(new memory(memory::primitive_desc(iMD, engine_), iData));
+    bwdWgt_.reset(new fc_bwdWgt(*bwdWgtPD, *inVal_, *out, *wgt));
   }
+  pipeline.push_back(*bwdWgt_);
 
-  // create memory primitive desc and memory self
-  wgtGrad_.reset(new memory(memory::primitive_desc(wMD, engine_), wDiff));
-  outGrad_.reset(new memory(memory::primitive_desc(oMD, engine_), oDiff));
-
-  fc_fwd::desc fwdDesc = fc_fwd::desc(prop_kind::forward, iMD, wMD, oMD);
-  fc_fwd::primitive_desc fwdPD = fc_fwd::primitive_desc(fwdDesc, engine_);
-  fc_bwdWgt::desc bwdWgtDesc = bDiff != NULL
-                                   ? fc_bwdWgt::desc(iMD, wMD, bMD, oMD)
-                                   : fc_bwdWgt::desc(iMD, wMD, oMD);
-  fc_bwdWgt::primitive_desc bwdWgtPD =
-      fc_bwdWgt::primitive_desc(bwdWgtDesc, engine_, fwdPD);
-
-  if (bDiff != NULL) {
-    biasGrad_.reset(new memory(memory::primitive_desc(bMD, engine_), bDiff));
-    bwdWgt_.reset(
-        new fc_bwdWgt(bwdWgtPD, *inVal_, *outGrad_, *wgtGrad_, *biasGrad_));
-  } else {
-    bwdWgt_.reset(new fc_bwdWgt(bwdWgtPD, *inVal_, *outGrad_, *wgtGrad_));
-  }
-  pipelineBwd_.clear();
-  pipelineBwd_.push_back(*bwdWgt_);
-
-  /// backward data
-  if (iDiff == NULL) {
+  if (bwdDataPD == nullptr) {
     return;
   }
-  fc_bwdData::desc bwdDataDesc = fc_bwdData::desc(iMD, wMD, oMD);
-  fc_bwdData::primitive_desc bwdDataPD =
-      fc_bwdData::primitive_desc(bwdDataDesc, engine_, fwdPD);
-  inGrad_.reset(new memory(memory::primitive_desc(iMD, engine_), iDiff));
   CHECK(wgtVal_) << "Should have weight memory";
-  bwdData_.reset(new fc_bwdData(bwdDataPD, *outGrad_, *wgtVal_, *inGrad_));
-  pipelineBwd_.push_back(*bwdData_);
+  bwdData_.reset(new fc_bwdData(*bwdDataPD, *out, *wgtVal_, *in));
+  pipeline.push_back(*bwdData_);
 }
 
-void MKLDNNFcLayer::forward(PassType passType) {
-  Layer::forward(passType);
-  reshape();
-
-  {
-    REGISTER_TIMER_INFO("mkldnn_FwdTimer", getName().c_str());
-
-    // update input data
-    // since it might be changed if this is after data layer
-    real* iData = getInputValue(0)->getData();
-    inVal_->set_data_handle(iData);
-
-    // just submit forward pipeline
-    stream_->submit(pipelineFwd_);
-  }
-
-  /* activation */ {
-    REGISTER_TIMER_INFO("FwActTimer", getName().c_str());
-    forwardActivation();
-  }
-}
-
-void MKLDNNFcLayer::backward(const UpdateCallback& callback) {
-  /* Do derivation */ {
-    REGISTER_TIMER_INFO("BpActTimer", getName().c_str());
-    backwardActivation();
-  }
-
-  {
-    REGISTER_TIMER_INFO("mkldnn_bwdTimer", getName().c_str());
-    resetBwd();
-
-    // update diff
-    real* oDiff = getOutputGrad()->getData();
-    outGrad_->set_data_handle(oDiff);
-
-    // just sumbmit backward pipeline
-    stream_->submit(pipelineBwd_);
-  }
-
-  {
-    REGISTER_TIMER_INFO("WeightUpdate", getName().c_str());
-    weight_->getParameterPtr()->incUpdate(callback);
-    if (biases_ && biases_->getWGrad()) {
-      biases_->getParameterPtr()->incUpdate(callback);
-    }
-  }
-}
 }  // namespace paddle

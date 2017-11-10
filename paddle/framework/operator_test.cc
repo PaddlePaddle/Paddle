@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/framework/operator.h"
 #include "gtest/gtest.h"
+#include "paddle/framework/op_info.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
@@ -23,10 +24,9 @@ static int op_run_num = 0;
 
 class OpWithoutKernelTest : public OperatorBase {
  public:
-  OpWithoutKernelTest(const std::string& type, const VarNameMap& inputs,
-                      const VarNameMap& outputs, const AttributeMap& attrs)
+  OpWithoutKernelTest(const std::string& type, const VariableNameMap& inputs,
+                      const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs), x(1) {}
-  void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
     ++op_run_num;
@@ -84,9 +84,8 @@ TEST(OperatorBase, all) {
   paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  scope.NewVar("OUT1");
+  scope.Var("OUT1");
   ASSERT_EQ(paddle::framework::op_run_num, 0);
-  op->InferShape(scope);
   op->Run(scope, device_context);
   ASSERT_EQ(paddle::framework::op_run_num, 1);
 }
@@ -102,7 +101,7 @@ class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     AddOutput("y", "output of test op");
     AddAttr<float>("scale", "scale of cosine op")
         .SetDefault(1.0)
-        .LargerThan(0.0);
+        .GreaterThan(0.0);
     AddComment("This is test op");
   }
 };
@@ -114,18 +113,21 @@ class OpWithKernelTest : public OperatorWithKernel {
   using OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext& ctx) const override {}
+  void InferShape(framework::InferShapeContext* ctx) const override {}
+  OpKernelType GetKernelType(const ExecutionContext& ctx) const override {
+    return OpKernelType(DataType::FP32, ctx.device_context());
+  }
 };
 
 template <typename T1, typename T2>
-class CPUKernelTest : public OpKernel {
+class CPUKernelTest : public OpKernel<float> {
  public:
   void Compute(const ExecutionContext& ctx) const {
     std::cout << "this is cpu kernel" << std::endl;
-    std::cout << ctx.op_.DebugString() << std::endl;
+    std::cout << ctx.op().DebugString() << std::endl;
     cpu_kernel_run_num++;
-    ASSERT_EQ(ctx.op_.Input("x"), "IN1");
-    ASSERT_EQ(ctx.op_.Output("y"), "OUT1");
+    ASSERT_EQ(ctx.op().Input("x"), "IN1");
+    ASSERT_EQ(ctx.op().Output("y"), "OUT1");
   }
 };
 
@@ -140,15 +142,15 @@ class OpKernelTestMultiInputsProtoAndCheckerMaker
     AddOutput("ys", "outputs of test op").AsDuplicable();
     AddAttr<float>("scale", "scale of cosine op")
         .SetDefault(1.0)
-        .LargerThan(0.0);
+        .GreaterThan(0.0);
     AddComment("This is test op");
   }
 };
 
-class CPUKernalMultiInputsTest : public OpKernel {
+class CPUKernalMultiInputsTest : public OpKernel<float> {
  public:
   void Compute(const ExecutionContext& ctx) const {
-    auto xs = ctx.op_.Inputs("xs");
+    auto xs = ctx.op().Inputs("xs");
     ASSERT_EQ(xs.size(), 3UL);
     ASSERT_EQ(xs[0], "x0");
     ASSERT_EQ(xs[1], "x1");
@@ -172,10 +174,10 @@ class CPUKernalMultiInputsTest : public OpKernel {
     auto outTensor0 = ctx.MultiOutput<Tensor>("ys");
     ASSERT_EQ(outTensor0.size(), 2U);
 
-    auto k = ctx.op_.Input("k");
+    auto k = ctx.op().Input("k");
     ASSERT_EQ(k, "k0");
 
-    auto ys = ctx.op_.Outputs("ys");
+    auto ys = ctx.op().Outputs("ys");
     ASSERT_EQ(ys.size(), 2UL);
     ASSERT_EQ(ys[0], "y0");
     ASSERT_EQ(ys[1], "y1");
@@ -235,13 +237,31 @@ TEST(OpKernel, multi_inputs) {
 
   paddle::platform::CPUDeviceContext cpu_device_context;
   paddle::framework::Scope scope;
-  scope.NewVar("x0")->GetMutable<Tensor>();
-  scope.NewVar("x1")->GetMutable<Tensor>();
-  scope.NewVar("x2")->GetMutable<Tensor>();
-  scope.NewVar("k0")->GetMutable<Tensor>();
-  scope.NewVar("y0")->GetMutable<Tensor>();
-  scope.NewVar("y1")->GetMutable<Tensor>();
+  scope.Var("x0")->GetMutable<LoDTensor>();
+  scope.Var("x1")->GetMutable<LoDTensor>();
+  scope.Var("x2")->GetMutable<LoDTensor>();
+  scope.Var("k0")->GetMutable<LoDTensor>();
+  scope.Var("y0")->GetMutable<LoDTensor>();
+  scope.Var("y1")->GetMutable<LoDTensor>();
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(scope, cpu_device_context);
+}
+
+class OperatorClone : public paddle::framework::OperatorBase {
+ public:
+  DEFINE_OP_CLONE_METHOD(OperatorClone);
+  OperatorClone(const std::string& type,
+                const paddle::framework::VariableNameMap& inputs,
+                const paddle::framework::VariableNameMap& outputs,
+                const paddle::framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+  void Run(const paddle::framework::Scope& scope,
+           const paddle::platform::DeviceContext& dev_ctx) const override {}
+};
+
+TEST(Operator, Clone) {
+  OperatorClone a("ABC", {}, {}, {});
+  auto b = a.Clone();
+  ASSERT_EQ(a.Type(), b->Type());
 }

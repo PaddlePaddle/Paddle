@@ -12,7 +12,7 @@ TEST(DDim, Equality) {
   EXPECT_EQ(ddim[2], 5);
 
   // construct a DDim from a vector
-  std::vector<int> vec({9, 1, 5});
+  std::vector<int64_t> vec({9, 1, 5});
   paddle::framework::DDim vddim = paddle::framework::make_ddim(vec);
   EXPECT_EQ(ddim[0], 9);
   EXPECT_EQ(ddim[1], 1);
@@ -25,7 +25,7 @@ TEST(DDim, Equality) {
   EXPECT_EQ(paddle::framework::get(ddim, 0), 6);
 
   // vectorize a DDim
-  std::vector<int> res_vec = paddle::framework::vectorize(vddim);
+  std::vector<int64_t> res_vec = paddle::framework::vectorize(vddim);
   EXPECT_EQ(res_vec[0], 9);
   EXPECT_EQ(res_vec[1], 1);
   EXPECT_EQ(res_vec[2], 5);

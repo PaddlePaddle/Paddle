@@ -40,7 +40,7 @@ struct DDim {
   template <int D>
   explicit DDim(const Dim<D>& in) : var(in) {}
 
-  /*implicit*/ DDim(std::initializer_list<int> init_list);
+  /*implicit*/ DDim(std::initializer_list<int64_t> init_list);
 
   template <int D>
   DDim& operator=(const Dim<D>& in) {
@@ -48,8 +48,8 @@ struct DDim {
     return *this;
   }
 
-  int& operator[](int idx);
-  int operator[](int idx) const;
+  int64_t& operator[](int idx);
+  int64_t operator[](int idx) const;
 
   template <typename Visitor>
   typename Visitor::result_type apply_visitor(Visitor& visitor) {
@@ -71,14 +71,16 @@ struct DDim {
 
   DDim operator*(DDim d) const;
 
-  ssize_t size() const;
+  int size() const;
 };
 
 /**
- * \brief Make a DDim from std::vector<int>
+ * \brief Make a DDim from std::vector<int64_t>
  *
  * \param dims An vector of ints. Must be sized between [1, 9]
  */
+DDim make_ddim(const std::vector<int64_t>& dims);
+
 DDim make_ddim(const std::vector<int>& dims);
 
 /**
@@ -87,14 +89,15 @@ DDim make_ddim(const std::vector<int>& dims);
  * \param dims An initializer list of ints. Must be sized between [1, 9]
  *
  */
-DDim make_ddim(std::initializer_list<int> dims);
+DDim make_ddim(std::initializer_list<int64_t> dims);
 
-int get(const DDim& dim, int idx);
+int64_t get(const DDim& dim, int idx);
 void set(DDim& dim, int idx, int val);
 
-std::vector<int> vectorize(const DDim& ddim);
+std::vector<int64_t> vectorize(const DDim& ddim);
+std::vector<int> vectorize2int(const DDim& ddim);
 
-ssize_t product(const DDim& ddim);
+int64_t product(const DDim& ddim);
 
 /**
  * \brief Slice a ddim
@@ -115,6 +118,13 @@ int arity(const DDim& ddim);
 
 std::ostream& operator<<(std::ostream&, const DDim&);
 
+// Reshape a tensor to a matrix. The matrix's first dimension(column length)
+// will be the product of tensor's first `num_col_dims` dimensions.
+DDim flatten_to_2d(const DDim& src, int num_col_dims);
+
+DDim flatten_to_1d(const DDim& src);
+
+DDim stride(const DDim& ddim);
 }  // namespace framework
 }  // namespace paddle
 

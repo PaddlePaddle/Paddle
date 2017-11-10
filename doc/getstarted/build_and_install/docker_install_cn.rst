@@ -20,7 +20,7 @@ Docker使用入门
 		  
      docker pull paddlepaddle/paddle:0.10.0
 
-  来下载Docker镜像，paddlepaddle/paddle是从官方镜像源Dockerhub.com下载的，推荐国内用户使用ocker.paddlepaddle.org/paddle下载。
+  来下载Docker镜像，paddlepaddle/paddle是从官方镜像源Dockerhub.com下载的，推荐国内用户使用docker.paddlepaddle.org/paddle下载。
 
 - *容器*： 如果说一个Docker镜像就是一个程序，那容器就是这个程序运行时产生的“进程”。
   实际上，一个容器就是一个操作系统的进程，但是是运行在独立的进程空间，文件系统以及网络之上。
@@ -145,7 +145,7 @@ PaddlePaddle发布新版本的时候都会发布对应版本的生产镜像以�
 
 Jupyter Notebook是一个开源的web程序，大家可以通过它制作和分享带有代码、公式、图表、文字的交互式文档。用户可以通过网页浏览文档。
 
-PaddlePaddle Book是为用户和开发者制作的一个交互式的Jupyter Nodebook。
+PaddlePaddle Book是为用户和开发者制作的一个交互式的Jupyter Notebook。
 如果您想要更深入了解deep learning，PaddlePaddle Book一定是您最好的选择。
 
 我们提供可以直接运行PaddlePaddle Book的Docker镜像，直接运行：

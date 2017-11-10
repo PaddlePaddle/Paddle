@@ -52,23 +52,34 @@ private:
    *   ]
    *
    * ths output is saved to private member rowIndice_;
-   * [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-   *  16,17,18,19,20,21,22,23,24,25,26,27]
+   * [0,1,2,3,4,5,6,7,8,9,15,16,17,18,19,20,21,23,24,25,26,27]
    */
 
-  void calSelectedCols(const MatrixPtr selectedIndices,
+  void calSelectedRows(const MatrixPtr selectedIndices,
                        const std::vector<std::vector<int>>& inputSeqInfo);
 
-  // if the second input of this layer is on GPU memory, copy it to CPU memory.
+  /*
+   * TODO(caoying)
+   * In PaddePaddle, currently all matrices are real number types,
+   * but the second is some selected indices of the give sequence to trim
+   * the nested sequence, are actually filled with int types so that storing
+   * int types information in real number matrices is very dangerous, since
+   * real numbers will be convered to int types. If a user fills this matrix
+   * himself, invalid data may occor.
+   *
+   * if the second input of this layer is on GPU memory, copy it to CPU memory.
+   */
   MatrixPtr selIdsCpu_;
 
-  // reorganized sequenceStartPositions and subSequenceStartPositions
-  // into a 2d vector to facilitate the sequence selection process.
+  /*
+   * reorganize sequenceStartPositions and subSequenceStartPositions
+   * into a 2d vector to facilitate the sequence selection process.
+   */
   std::vector<std::vector<int>> inputSeqInfoVec_;
 
-  // the final selected row indices in a batch,
-  // rowIdx_ and selectedRows_ actually share a same memory.
+  /* store the final selected row indices in a batch */
   IVectorPtr rowIndice_;
+  /* rowIndice_ and selectedRows_ actually share a same memory. */
   std::vector<int> selectedRows_;
 };
 
@@ -83,7 +94,7 @@ bool SubNestedSequenceLayer::init(const LayerMap& layerMap,
   return true;
 }
 
-void SubNestedSequenceLayer::calSelectedCols(
+void SubNestedSequenceLayer::calSelectedRows(
     const MatrixPtr selectedIndices,
     const std::vector<std::vector<int>>& inputSeqInfo) {
   selectedRows_.clear();
@@ -160,7 +171,7 @@ void SubNestedSequenceLayer::forward(PassType passType) {
   Argument::reorganizeSeqInfo(inputSeq.sequenceStartPositions,
                               inputSeq.subSequenceStartPositions,
                               inputSeqInfoVec_);
-  calSelectedCols(selIdsCpu_, inputSeqInfoVec_);
+  calSelectedRows(selIdsCpu_, inputSeqInfoVec_);
 
   resetOutput(selectedRows_.size(), getSize());
   getOutputValue()->selectRows(*getInputValue(0), *rowIndice_);

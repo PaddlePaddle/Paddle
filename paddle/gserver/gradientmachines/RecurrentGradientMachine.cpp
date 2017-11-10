@@ -184,7 +184,7 @@ public:
   }
 
   void backward(const UpdateCallback& callback) override {
-    if (biases_) {
+    if (biases_ && biases_->getWGrad()) {
       backwardActivation();
       biases_->getWGrad()->collectBias(*getOutputGrad(), 1);
       biases_->getParameterPtr()->incUpdate(callback);
@@ -1012,11 +1012,6 @@ void RecurrentGradientMachine::generateSequence() {
                            /* width */ resultNum,
                            false,
                            /* useGpu */ false);
-    Matrix::resizeOrCreate(generator_.outArg.value,
-                           /* height */ maxGenWordCount,
-                           /* width */ 1,
-                           false,
-                           /* useGpu */ false);
   }
   ICpuGpuVector::resizeOrCreate(generator_.outArg.sequenceStartPositions,
                                 numSequences + 1,
@@ -1026,7 +1021,7 @@ void RecurrentGradientMachine::generateSequence() {
   } else {
     oneWaySearch(numSequences);
   }
-  if (dataArgsSize_) createDataOutlink(batchMachineIdVec_);
+  if (dataArgsSize_) createDataOutlink();
 
   size_t size = generator_.ids.size();
   generator_.outArg.ids->resize(size);
@@ -1106,6 +1101,7 @@ void RecurrentGradientMachine::oneWaySearch(size_t batchSize) {
   }
 
   batchMachineIdVec_.clear();
+  batchMachineStartPos_.clear();
   int* starts = generator_.outArg.sequenceStartPositions->getMutableData(false);
   starts[0] = 0;
   generator_.ids.clear();
@@ -1312,13 +1308,20 @@ void RecurrentGradientMachine::fillGenOutputs() {
     finalPaths_[i].resize(minFinalPathsSize);
   }
 
-  batchMachineIdVec_.clear();
   generator_.ids.clear();
   int* starts = generator_.outArg.sequenceStartPositions->getMutableData(false);
   starts[0] = 0;
   if (numResults > 1) {
-    real* probs = generator_.outArg.in->getData();
+    int idsProbSaveSize = 0;
+    for (auto inSeq : finalPaths_) {
+      for (auto path : inSeq) idsProbSaveSize += path.ids.size();
+      idsProbSaveSize += inSeq.size();
+    }
+    Matrix::resizeOrCreate(
+        generator_.outArg.value, idsProbSaveSize, 1, false, false);
     real* idsProb = generator_.outArg.value->getData();
+
+    real* probs = generator_.outArg.in->getData();
     size_t curPos = 0;
     for (size_t i = 0; i < finalPaths_.size(); ++i) {
       for (size_t j = 0; j < finalPaths_[i].size(); ++j) {
@@ -1333,24 +1336,16 @@ void RecurrentGradientMachine::fillGenOutputs() {
         curPos += genLen;
         idsProb[curPos++] = -1.0;
         probs[i * numResults + j] = path.logProb;
-
-        if (!j && dataArgsSize_) {
-          // in beam search, here only reserved the top 1 generated result
-          // for out_links that are not the generated word indices.
-          batchMachineIdVec_.insert(batchMachineIdVec_.end(),
-                                    path.machineIdVec.begin(),
-                                    path.machineIdVec.end());
-        }
       }
       starts[i + 1] = generator_.ids.size();
     }
   } else {
     for (size_t i = 0; i < finalPaths_.size(); ++i) {
       CHECK(!finalPaths_[i].empty());
-      generator_.ids.insert(generator_.ids.begin(),
-                            finalPaths_[i][0].ids.begin(),
-                            finalPaths_[i][0].ids.end());
-      starts[i + 1] = starts[i] + finalPaths_[i][0].ids.size();
+      Path& path = finalPaths_[i][0];
+      generator_.ids.insert(
+          generator_.ids.end(), path.ids.begin(), path.ids.end());
+      starts[i + 1] = starts[i] + path.ids.size();
     }
   }
 }
@@ -1364,25 +1359,76 @@ void RecurrentGradientMachine::copyDataOutlinkFrame(size_t machineCur) {
   }
 }
 
-void RecurrentGradientMachine::createDataOutlink(
-    std::vector<int>& machineIdVec) {
-  size_t seqNum =
-      getBeamSize() > 1UL ? finalPaths_.size() : finalPaths_[0].size();
-  std::vector<int> starts(seqNum + 1, 0);
-  for (size_t i = 0; i < seqNum; ++i) {
-    size_t seqLen = getBeamSize() > 1UL ? finalPaths_[i][0].ids.size()
-                                        : finalPaths_[0][i].ids.size();
-    starts[i + 1] = starts[i] + seqLen;
-  }
+void RecurrentGradientMachine::createDataOutlinkSelRowsInfo(
+    bool isSeq, std::vector<Argument>& outArgs) {
+  batchMachineIdVec_.clear();
 
+  size_t seqIdx = 0;
+  for (size_t i = 0; i < finalPaths_.size(); ++i) {
+    for (size_t j = 0; j < finalPaths_[i].size(); ++j) {
+      std::vector<int>& machineIdVec = finalPaths_[i][j].machineIdVec;
+      if (isSeq) {
+        for (size_t i = 0; i < machineIdVec.size(); ++i) {
+          size_t rowId = machineIdVec[i];
+          int* seqPos =
+              outArgs[i].sequenceStartPositions->getMutableData(false);
+          batchMachineIdVec_.push_back(seqPos[rowId]);
+        }
+      } else {
+        batchMachineIdVec_.insert(
+            batchMachineIdVec_.end(), machineIdVec.begin(), machineIdVec.end());
+      }
+      seqIdx++;
+    }
+  }
+}
+
+void RecurrentGradientMachine::createDataOutlinkCopySizeInfo(
+    bool isSeq, std::vector<Argument>& outArgs, std::vector<int>& copySize) {
+  size_t totalSeqNum = std::accumulate(
+      finalPaths_.begin(),
+      finalPaths_.end(),
+      0UL,
+      [](size_t a, const std::vector<Path>& b) { return a + b.size(); });
+  copySize.resize(totalSeqNum, 1);
+
+  batchMachineStartPos_.resize(totalSeqNum + 1, 0);
+  if (isSeq) {
+    ICpuGpuVectorPtr inputSeqStartPos = outArgs[0].sequenceStartPositions;
+    CHECK_EQ(static_cast<size_t>(inputSeqStartPos->getSize() - 1),
+             getBeamSize() > 1 ? finalPaths_.size() : finalPaths_[0].size());
+    int* starts = inputSeqStartPos->getMutableData(false);
+    int seqId = 0;
+    for (size_t i = 0; i < finalPaths_.size(); ++i) {
+      for (size_t j = 0; j < finalPaths_[i].size(); ++j) {
+        copySize[seqId] = getBeamSize() > 1 ? starts[i + 1] - starts[i]
+                                            : starts[j + 1] - starts[j];
+        batchMachineStartPos_[seqId + 1] =
+            batchMachineStartPos_[seqId] + finalPaths_[i][j].ids.size();
+        seqId++;
+      }
+    }
+  } else {
+    for (size_t i = 0; i < finalPaths_[0].size(); ++i)
+      batchMachineStartPos_[i + 1] =
+          batchMachineStartPos_[i] + finalPaths_[0][i].ids.size();
+  }
+}
+
+void RecurrentGradientMachine::createDataOutlink() {
   for (size_t i = 0; i < dataArgsSize_; i++) {
+    bool isSeq = dataArgsFrame_[i][0].hasSeq();
+    std::vector<int> copySize;
+    createDataOutlinkCopySizeInfo(isSeq, dataArgsFrame_[i], copySize);
+    createDataOutlinkSelRowsInfo(isSeq, dataArgsFrame_[i]);
+
     dataArgs_[i].concat(dataArgsFrame_[i],
-                        machineIdVec,
-                        starts,
+                        batchMachineIdVec_,
+                        batchMachineStartPos_,
+                        copySize,
                         useGpu_,
                         HPPL_STREAM_1,
                         PASS_TEST);
-
     auto dataAgent =
         dynamic_cast<DataLayer*>(outFrameLines_[i + 1].agentLayer.get());
     CHECK_NOTNULL(dataAgent);

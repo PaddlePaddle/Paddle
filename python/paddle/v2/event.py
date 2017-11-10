@@ -10,7 +10,8 @@ There are:
 * EndPass
 """
 __all__ = [
-    'EndIteration', 'BeginIteration', 'BeginPass', 'EndPass', 'TestResult'
+    'EndIteration', 'BeginIteration', 'BeginPass', 'EndPass', 'TestResult',
+    'EndForwardBackward'
 ]
 
 
@@ -53,10 +54,13 @@ class BeginPass(object):
 class EndPass(WithMetric):
     """
     Event On One Pass Training Complete.
+    To get the output of a specific layer, add "event.gm.getLayerOutputs('predict_layer')"
+    in your event_handler call back
     """
 
-    def __init__(self, pass_id, evaluator):
+    def __init__(self, pass_id, evaluator, gm):
         self.pass_id = pass_id
+        self.gm = gm
         WithMetric.__init__(self, evaluator)
 
 
@@ -70,13 +74,27 @@ class BeginIteration(object):
         self.batch_id = batch_id
 
 
+class EndForwardBackward(object):
+    """
+    Event On One Batch ForwardBackward Complete.
+    """
+
+    def __init__(self, pass_id, batch_id, gm):
+        self.pass_id = pass_id
+        self.batch_id = batch_id
+        self.gm = gm
+
+
 class EndIteration(WithMetric):
     """
     Event On One Batch Training Complete.
+    To get the output of a specific layer, add "event.gm.getLayerOutputs('predict_layer')"
+    in your event_handler call back
     """
 
-    def __init__(self, pass_id, batch_id, cost, evaluator):
+    def __init__(self, pass_id, batch_id, cost, evaluator, gm):
         self.pass_id = pass_id
         self.batch_id = batch_id
         self.cost = cost
+        self.gm = gm
         WithMetric.__init__(self, evaluator)

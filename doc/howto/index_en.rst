@@ -18,6 +18,7 @@ Development
 ..  toctree::
   :maxdepth: 1
 
+  dev/build_en.rst
   dev/new_layer_en.rst
   dev/contribute_to_paddle_en.md
 

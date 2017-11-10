@@ -27,6 +27,14 @@ class SequenceType(object):
     SEQUENCE = 1
     SUB_SEQUENCE = 2
 
+    @classmethod
+    def tostring(cls, value):
+        for k in cls.__dict__:
+            if not k.startswith('__'):
+                if getattr(cls, k) == value:
+                    return cls.__name__ + '.' + k
+        return 'INVALID(' + str(value) + ')'
+
 
 # TODO(yuyang18): Add string data type here.
 class DataType(object):
@@ -34,6 +42,14 @@ class DataType(object):
     SparseNonValue = 1
     SparseValue = 2
     Index = 3
+
+    @classmethod
+    def tostring(cls, value):
+        for k in cls.__dict__:
+            if not k.startswith('__'):
+                if getattr(cls, k) == value:
+                    return cls.__name__ + '.' + k
+        return 'INVALID(' + str(value) + ')'
 
 
 class CacheType(object):
@@ -68,6 +84,26 @@ class InputType(object):
         self.dim = dim
         self.seq_type = seq_type
         self.type = tp
+
+    def __repr__(self):
+        """
+        Return a human readable representation like 'InputType(dim=25921, 
+            seq_type=SequenceType.NO_SEQUENCE, type=DataType.Dense)'
+        """
+        repr_str = type(self).__name__
+        repr_str += '('
+        serialize_func_map = {
+            'dim': repr,
+            'seq_type': SequenceType.tostring,
+            'type': DataType.tostring
+        }
+        for idx, k in enumerate(self.__slots__):
+            if idx != 0:
+                repr_str += ', '
+            repr_str += (
+                k + '=' + serialize_func_map.get(k, repr)(getattr(self, k)))
+        repr_str += ')'
+        return repr_str
 
 
 def dense_slot(dim, seq_type=SequenceType.NO_SEQUENCE):
@@ -139,7 +175,7 @@ def index_slot(value_range, seq_type=SequenceType.NO_SEQUENCE):
 
 dense_vector = dense_slot
 sparse_binary_vector = sparse_non_value_slot
-sparse_vector = sparse_value_slot
+sparse_float_vector = sparse_value_slot
 integer_value = index_slot
 
 # dense_array can be used for variable-length input feature.
@@ -180,7 +216,7 @@ def sparse_binary_vector_sub_sequence(dim):
     return sparse_binary_vector(dim, seq_type=SequenceType.SUB_SEQUENCE)
 
 
-def sparse_vector_sequence(dim):
+def sparse_float_vector_sequence(dim):
     """
     Data type of a sequence of sparse vector, which most elements are zero,
     others could be any float value.
@@ -190,11 +226,11 @@ def sparse_vector_sequence(dim):
     :return: An input type object
     :rtype: InputType
     """
-    return sparse_vector(dim, seq_type=SequenceType.SEQUENCE)
+    return sparse_float_vector(dim, seq_type=SequenceType.SEQUENCE)
 
 
-def sparse_vector_sub_sequence(dim):
-    return sparse_vector(dim, seq_type=SequenceType.SUB_SEQUENCE)
+def sparse_float_vector_sub_sequence(dim):
+    return sparse_float_vector(dim, seq_type=SequenceType.SUB_SEQUENCE)
 
 
 def integer_value_sequence(value_range):

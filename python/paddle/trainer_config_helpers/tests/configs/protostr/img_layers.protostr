@@ -62,6 +62,7 @@ layers {
   moving_average_fraction: 0.9
   height: 227
   width: 227
+  depth: 1
 }
 layers {
   name: "__crmnorm_0__"

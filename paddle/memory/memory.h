@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/platform/gpu_info.h"
 #include "paddle/platform/place.h"
 
 namespace paddle {

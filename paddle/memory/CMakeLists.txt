@@ -1,7 +1,7 @@
 add_subdirectory(detail)
 
-cc_library(memory SRCS memory.cc)
-cc_library(memcpy SRCS memcpy.cc DEPS device_context)
+cc_library(memory SRCS memory.cc DEPS place)
+cc_library(memcpy SRCS memcpy.cc)
 
 cc_library(paddle_memory
     DEPS

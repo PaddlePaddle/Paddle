@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-Optimizers(update equation) for SGD method.
-
-TODO(yuyang18): Complete comments.
-"""
 
 import paddle.trainer_config_helpers.config_parser_utils as config_parser_utils
 import paddle.trainer_config_helpers.optimizers as v1_optimizers
@@ -101,32 +96,37 @@ class Optimizer(object):
 
 class Momentum(Optimizer):
     """
-    SGD Optimizer.
+    Momentum Optimizer.
 
-    SGD is an optimization method, trying to find a neural network that
-    minimize the "cost/error" of it by iteration. In paddle's implementation
-    SGD Optimizer is synchronized, which means all gradients will be wait to
-    calculate and reduced into one gradient, then do optimize operation.
-
-    The neural network consider the learning problem of minimizing an objective
-    function, that has the form of a sum
+    When sparse=False, the momentum update formula is as follows:
 
     ..  math::
 
-        Q(w) = \\sum_{i}^{n} Q_i(w)
+        v_{t} &= k * v_{t-1} - \\gamma_t (g_{t} + \\lambda w_{t-1}) \\\\
+        w_{t} &= w_{t-1} + v_{t} \\\\
 
-    The value of function Q sometimes is the cost of neural network (Mean
-    Square Error between prediction and label for example). The function Q is
-    parametrised by w, the weight/bias of neural network. And weights is what to
-    be learned. The i is the i-th observation in (trainning) data.
+    where, :math:`k` is momentum, :math:`\\lambda` is decay rate,
+    :math:`\\gamma_t` is learning rate at the t'th iteration.
+    :math:`w_{t}` is the weight as the t'th iteration.
+    And the :math:`v_{t}` is the history momentum variable.
 
-    So, the SGD method will optimize the weight by
+    When sparse=True, the update scheme:
 
     ..  math::
 
-        w = w - \\eta \\nabla Q(w) = w - \\eta \\sum_{i}^{n} \\nabla Q_i(w)
+        \\alpha_t &= \\alpha_{t-1} / k \\\\
+        \\beta_t &= \\beta_{t-1} / (1 + \\lambda \\gamma_t) \\\\
+        u_t &= u_{t-1} - \\alpha_t \\gamma_t g_t \\\\
+        v_t &= v_{t-1} + \\tau_{t-1} \\alpha_t \\gamma_t g_t \\\\
+        \\tau_t &= \\tau_{t-1} + \\beta_t / \\alpha_t
+    
+    where :math:`k` is momentum, :math:`\\lambda` is decay rate, 
+    :math:`\\gamma_t` is learning rate at the t'th iteration.
 
-    where :math:`\\eta` is learning rate. And :math:`n` is batch size.
+    :param momentum: the momentum factor.
+    :type momentum: float
+    :param sparse: with sparse support or not, False by default.
+    :type sparse: bool
     """
 
     def __init__(self, momentum=None, sparse=False, **kwargs):
@@ -146,7 +146,7 @@ class Adam(Optimizer):
 
         m(w, t) & = \\beta_1 m(w, t-1) + (1 - \\beta_1) \\nabla Q_i(w) \\\\
         v(w, t) & = \\beta_2 v(w, t-1) + (1 - \\beta_2)(\\nabla Q_i(w)) ^2 \\\\
-        w & = w - \\frac{\\eta}{\\sqrt{v(w,t) + \\epsilon}}
+        w & = w - \\frac{\\eta m(w, t)}{\\sqrt{v(w,t) + \\epsilon}}
 
     :param beta1: the :math:`\\beta_1` in equation.
     :type beta1: float

@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 #include "ModelConfig.pb.h"
 #include "paddle/gserver/layers/DataLayer.h"
-#include "paddle/trainer/Trainer.h"
 
 #include "paddle/testing/TestUtil.h"
 using namespace std;  // NOLINT

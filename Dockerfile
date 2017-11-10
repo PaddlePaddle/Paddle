@@ -10,13 +10,11 @@ RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ub
 ARG WITH_GPU
 ARG WITH_AVX
 ARG WITH_DOC
-ARG WITH_STYLE_CHECK
 
 ENV WOBOQ OFF
-ENV WITH_GPU=${WITH_GPU:-OFF}
+ENV WITH_GPU=${WITH_GPU:-ON}
 ENV WITH_AVX=${WITH_AVX:-ON}
 ENV WITH_DOC=${WITH_DOC:-OFF}
-ENV WITH_STYLE_CHECK=${WITH_STYLE_CHECK:-OFF}
 
 ENV HOME /root
 # Add bash enhancements
@@ -24,7 +22,7 @@ COPY ./paddle/scripts/docker/root/ /root/
 
 RUN apt-get update && \
     apt-get install -y \
-    git python-pip python-dev openssh-server bison  \
+    git python-pip python-dev openssh-server bison libnccl-dev \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-matplotlib gcc-4.8 g++-4.8 \
@@ -71,20 +69,6 @@ RUN pip install -r /root/requirements.txt
 RUN apt-get install -y libssl-dev libffi-dev
 RUN pip install certifi urllib3[secure]
 
-# TODO(qijun) The template library Eigen doesn't work well with GCC 5 
-# coming with the default Docker image, so we switch to use GCC 4.8 
-# by default. And I will check Eigen library later.
-
-RUN ln -sf gcc-4.8 /usr/bin/gcc && \
-    ln -sf gcc-ar-4.8 /usr/bin/gcc-ar && \
-    ln -sf gcc-nm-4.8 /usr/bin/gcc-nm && \
-    ln -sf gcc-ranlib-4.8 /usr/bin/gcc-ranlib && \
-    ln -sf gcc-4.8 /usr/bin/x86_64-linux-gnu-gcc && \
-    ln -sf gcc-ar-4.8 /usr/bin/x86_64-linux-gnu-gcc-ar && \
-    ln -sf gcc-nm-4.8 /usr/bin/x86_64-linux-gnu-gcc-nm && \
-    ln -sf gcc-ranlib-4.8 /usr/bin/x86_64-linux-gnu-gcc-ranlib && \
-    ln -sf g++-4.8 /usr/bin/g++ && \
-    ln -sf g++-4.8 /usr/bin/x86_64-linux-gnu-g++ 
 
 # Install woboq_codebrowser to /woboq
 RUN git clone https://github.com/woboq/woboq_codebrowser /woboq && \

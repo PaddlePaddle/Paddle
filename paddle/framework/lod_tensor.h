@@ -15,60 +15,93 @@
 #pragma once
 
 #include <memory>
-#if !defined(PADDLE_ONLY_CPU)
+#ifdef PADDLE_WITH_CUDA
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+#include <thrust/system/cuda/experimental/pinned_allocator.h>
 #endif
 
+#include <glog/logging.h>
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/enforce.h"
+#include "paddle/platform/place.h"
 
 namespace paddle {
 namespace framework {
 
+#ifndef PADDLE_WITH_CUDA
+template <typename T>
+using Vector = std::vector<T>;
+#else
+template <typename T>
+using Vector = thrust::host_vector<
+    T, thrust::system::cuda::experimental::pinned_allocator<T>>;
+#endif
+
 /*
- * LODTensor (Level of details Tensor)
+ * LoD is short for Level of Details.
+ *
+ * - in a level, each element indicates relative offset of the lower level
+ * - the first element should be 0 and that indicates that this sequence start
+ * from 0
+ * - each sequence's begin and end(no-inclusive) is level[id, id+1]
+ *
+ * For example:
+ *    3-level LoD stores
+ *
+ *    0 2 3
+ *    0 2 4 7
+ *    0 2 5 7 10 12 15 20
+ */
+using LoD = std::vector<Vector<size_t>>;
+
+std::ostream& operator<<(std::ostream& os, const LoD& lod);
+
+/*
+ * Slice levels from a LoD.
+ * NOTE the lowest level should always be the absolute offsets of the underlying
+ * tensor instances. So if higher layers are sliced without the lowest level,
+ * the lower level of the sliced LoD will be transformed to the absolute offset.
+ */
+LoD SliceLevels(const LoD& in, size_t level_begin, size_t level_end);
+
+LoD SliceInLevel(const LoD& in, size_t level, size_t elem_begin,
+                 size_t elem_end);
+/*
+ * Transform an LoD from relative offsets to absolute offsets.
+ */
+LoD ToAbsOffset(const LoD& in);
+
+bool operator==(const LoD& a, const LoD& b);
+
+/*
+ * LoDTensor (Level of details Tensor)
  * see https://en.wikipedia.org/wiki/Level_of_details for reference.
  */
-class LODTensor : public Tensor {
+class LoDTensor : public Tensor {
  public:
-// Level save offsets of each unit.
-#ifdef PADDLE_ONLY_CPU
-  template <typename T>
-  using Vector = std::vector<T>;
-#else
-  template <typename T>
-  using Vector = thrust::host_vector<T>;
-#endif
-  // LoD stores offsets of each level of units, the largest units level first,
-  // then the smaller units level. Each Level stores the offsets of units in
-  // Tesor.
-  class LOD : public std::vector<Vector<size_t>> {
-   public:
-    LOD SliceLevels(size_t level_begin, size_t level_end) const;
-    LOD SliceInLevel(size_t level, size_t elem_begin, size_t elem_end) const;
-  };
+  LoDTensor() {}
 
-  LODTensor() {}
-  explicit LODTensor(const LOD &lod) : lod_(lod) {}
+  explicit LoDTensor(const LoD& lod) : lod_(lod) {}
 
-  virtual Tensor *Clone() const { return new LODTensor(lod_); }
+  void set_lod(const LoD& lod) { lod_ = lod; }
+
+  const LoD& lod() const { return lod_; }
+
+  LoD* mutable_lod() { return &lod_; }
 
   /*
-   * Get a element from LOD.
+   * Get the start offset and end offset of an  element from LoD.
    */
-  size_t lod_element(size_t level, size_t elem) const {
-    PADDLE_ENFORCE(level < NumLevels(), "level [%d] out of range [%d]", level,
-                   NumLevels());
-    PADDLE_ENFORCE(elem < NumElements(level),
-                   "element begin [%d] out of range [%d]", elem,
-                   NumElements(level));
-    return (lod_)[level][elem];
+  std::pair<size_t, size_t> lod_element(size_t level, size_t elem) const {
+    PADDLE_ENFORCE_LT(level, NumLevels());
+    PADDLE_ENFORCE_LT(elem, NumElements(level));
+    return std::make_pair((lod_)[level][elem], (lod_)[level][elem + 1]);
   }
 
   /*
-   * Number of LODTensor's levels, each level has units of data, for example,
+   * Number of LoDTensor's levels, each level has units of data, for example,
    * in the sentence's view, article, paragraph, sentence are 3 levels.
    */
   size_t NumLevels() const { return lod_.size(); }
@@ -76,74 +109,84 @@ class LODTensor : public Tensor {
    * Number of elements in a level.
    */
   size_t NumElements(size_t level = 0) const {
-    PADDLE_ENFORCE(level < NumLevels(), "level [%d] out of range [%d]", level,
-                   NumLevels());
+    PADDLE_ENFORCE_LT(level, NumLevels());
     // the last offset is the end of last element
-    return lod_[level].size() - 1;
+    return (lod_)[level].size() - 1;
   }
 
   /*
-   * Slice of levels[level_begin:level_end], with tensor shared.
+   * Number of lower-level elements.
+   * For example, a 2-level lod-tensor
+   *
+   * 0-th level   |   |
+   * 1-th level   ||  |||
+   *
+   * NumElements(0, 0) get 2
+   * NumElements(0, 1) get 3
    */
-  template <typename T>
-  LODTensor SliceLevels(size_t level_begin, size_t level_end) const;
+  size_t NumElements(size_t level, size_t idx) const;
 
   /*
-   * Slice of elements of a level, [elem_begin: elem_end], with tensor shared.
+   * Get the number of instances in the underlying tensor in the `idx`-th
+   * element.
+   */
+  size_t NumInstancesInElement(size_t level, size_t idx) const;
+
+  /*
+   * Shrink levels[level_begin:level_end]
+   */
+  void ShrinkLevels(size_t level_begin, size_t level_end);
+
+  /*
+   * Shrink elements of a level, [elem_begin: elem_end]
    * @note: low performance in slice lod_.
    */
-  template <typename T>
-  LODTensor SliceInLevel(size_t level, size_t elem_begin,
-                         size_t elem_end) const;
-
-  /*
-   * Copy other's lod_'s content, free to mutate.
-   */
-  void CopyLOD(const LODTensor &other) { lod_ = other.lod_; }
-  /*
-   * Determine whether LODTensor has a valid LOD info.
-   */
-  const LOD &lod() const { return lod_; }
-  LOD *mutable_lod() { return &lod_; }
-
-  virtual ~LODTensor() {}
+  void ShrinkInLevel(size_t level, size_t elem_begin, size_t elem_end);
 
  private:
-  LOD lod_;
+  LoD lod_;
 };
 
-bool operator==(const LODTensor::LOD &a, const LODTensor::LOD &b);
-
+/*
+ * Expand the `source` to fit the LoD of `lod`. For example, a `source`
+ * LoDTensor is
+ *  - LoD: [0, 2]
+ *  - tensor: [a0, a1]
+ * a `lod` is
+ *  - LoD: [0 3 5]
+ * returns a new LoDTensor
+ *  - [a0 a0 a0 a1 a1]
+ */
 template <typename T>
-LODTensor LODTensor::SliceLevels(size_t level_begin, size_t level_end) const {
-  auto new_lod = lod_.SliceLevels(level_begin, level_end);
-  // slice levels just need to update LOD info, each level will contains the
-  // whole tensor_, so no need to modify tensor_.
-  LODTensor new_tensor(new_lod);
-  new_tensor.ShareDataWith<T>(*this);
-  return new_tensor;
+LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
+                    const platform::Place& place) {
+  LoD abs_lod = ToAbsOffset(lod);
+  const auto& lod_level = lod[level];
+  size_t num_instances = source.dims()[0];
+
+  // new tensor
+  LoDTensor tensor;
+  tensor.set_lod(lod);
+  auto dims = source.dims();
+  dims[0] = lod_level.back();
+  tensor.Resize(dims);
+  tensor.mutable_data<T>(place);
+
+  PADDLE_ENFORCE_EQ(num_instances, lod_level.size() - 1);
+  for (size_t ins = 0; ins < num_instances; ins++) {
+    for (size_t elem = lod_level[ins]; elem < lod_level[ins + 1]; elem++) {
+      tensor.Slice(elem, elem + 1)
+          .CopyFrom(source.Slice(ins, ins + 1), platform::CPUPlace(),
+                    platform::CPUDeviceContext());
+    }
+  }
+  return tensor;
 }
 
-template <typename T>
-LODTensor LODTensor::SliceInLevel(size_t level, size_t elem_begin,
-                                  size_t elem_end) const {
-  PADDLE_ENFORCE(level < NumLevels(), "level [%d] out of range [%d]", level,
-                 NumLevels());
-  PADDLE_ENFORCE(elem_begin < NumElements(level),
-                 "element begin [%d] out of range [%d]", elem_begin,
-                 NumElements(level));
-  PADDLE_ENFORCE(elem_end < NumElements(level) + 1,
-                 "element end [%d] out of range [%d]", elem_end,
-                 NumElements(level));
+std::pair<LoD, std::pair<size_t, size_t>> GetSubLoDAndAbsoluteOffset(
+    const LoD& lod, size_t start_idx, size_t end_idx, size_t start_level);
 
-  auto new_lod = lod_.SliceInLevel(level, elem_begin, elem_end);
-
-  // slice elements just need to update LOD info, because offsets are not
-  // changed, so the original tensor_ can be reused.
-  LODTensor new_tensor(new_lod);
-  new_tensor.ShareDataWith<T>(*this);
-  return new_tensor;
-}
+void AppendLoD(LoD* lod, const LoD& lod_length);
 
 }  // namespace framework
 }  // namespace paddle

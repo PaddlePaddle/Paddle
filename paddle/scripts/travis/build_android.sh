@@ -22,6 +22,7 @@ cmake -DCMAKE_SYSTEM_NAME=Android \
       -DANDROID_ABI=armeabi-v7a \
       -DANDROID_ARM_NEON=ON \
       -DANDROID_ARM_MODE=ON \
+      -DUSE_EIGEN_FOR_BLAS=ON \
       -DWITH_C_API=ON \
       -DWITH_SWIG_PY=OFF \
       -DWITH_STYLE_CHECK=OFF \

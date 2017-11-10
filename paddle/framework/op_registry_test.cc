@@ -10,7 +10,6 @@ class CosineOp : public OperatorBase {
   using OperatorBase::OperatorBase;
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}
-  void InferShape(const Scope& scope) const override {}
 };
 
 class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -21,7 +20,7 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     AddOutput("output", "output of cosine op");
     AddAttr<float>("scale", "scale of cosine op")
         .SetDefault(1.0)
-        .LargerThan(0.0);
+        .GreaterThan(0.0);
     AddComment("This is cos op");
   }
 };
@@ -29,7 +28,6 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 class MyTestOp : public OperatorBase {
  public:
   using OperatorBase::OperatorBase;
-  void InferShape(const Scope& scope) const override {}
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {}
 };
@@ -76,12 +74,11 @@ TEST(OpRegistry, CreateOp) {
   attr->set_type(paddle::framework::AttrType::FLOAT);
   attr->set_f(scale);
 
-  std::shared_ptr<paddle::framework::OperatorBase> op =
-      paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::framework::Scope scope;
   paddle::platform::CPUDeviceContext dev_ctx;
   op->Run(scope, dev_ctx);
-  float scale_get = op->GetAttr<float>("scale");
+  float scale_get = op->Attr<float>("scale");
   ASSERT_EQ(scale_get, scale);
 }
 
@@ -118,12 +115,11 @@ TEST(OpRegistry, DefaultValue) {
 
   ASSERT_TRUE(op_desc.IsInitialized());
 
-  std::shared_ptr<paddle::framework::OperatorBase> op =
-      paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::framework::Scope scope;
   paddle::platform::CPUDeviceContext dev_ctx;
   op->Run(scope, dev_ctx);
-  ASSERT_EQ(op->GetAttr<float>("scale"), 1.0);
+  ASSERT_EQ(op->Attr<float>("scale"), 1.0);
 }
 
 TEST(OpRegistry, CustomChecker) {
@@ -174,38 +170,17 @@ TEST(OpRegistry, CustomChecker) {
   paddle::platform::CPUDeviceContext dev_ctx;
   paddle::framework::Scope scope;
   op->Run(scope, dev_ctx);
-  int test_attr = op->GetAttr<int>("test_attr");
+  int test_attr = op->Attr<int>("test_attr");
   ASSERT_EQ(test_attr, 4);
 }
 
-class TestAttrProtoMaker : public pd::OpProtoAndCheckerMaker {
+class CosineOpComplete : public paddle::framework::CosineOp {
  public:
-  TestAttrProtoMaker(pd::OpProto* proto, pd::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddAttr<float>("scale", "scale of test op");
-    AddAttr<float>("scale", "scale of test op");
-  }
+  DEFINE_OP_CONSTRUCTOR(CosineOpComplete, paddle::framework::CosineOp);
+  DEFINE_OP_CLONE_METHOD(CosineOpComplete);
 };
 
-TEST(ProtoMaker, DuplicatedAttr) {
-  pd::OpProto op_proto;
-  pd::OpAttrChecker op_checker;
-  auto proto_maker = TestAttrProtoMaker(&op_proto, &op_checker);
-  ASSERT_THROW(proto_maker.Validate(), paddle::platform::EnforceNotMet);
-}
-
-class TestInOutProtoMaker : public pd::OpProtoAndCheckerMaker {
- public:
-  TestInOutProtoMaker(pd::OpProto* proto, pd::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("input", "input of test op");
-    AddInput("input", "input of test op");
-  }
-};
-
-TEST(ProtoMaker, DuplicatedInOut) {
-  pd::OpProto op_proto;
-  pd::OpAttrChecker op_checker;
-  auto proto_maker = TestInOutProtoMaker(&op_proto, &op_checker);
-  ASSERT_THROW(proto_maker.Validate(), paddle::platform::EnforceNotMet);
+TEST(OperatorRegistrar, Test) {
+  using namespace paddle::framework;
+  OperatorRegistrar<CosineOpComplete, CosineOpProtoAndCheckerMaker> reg("cos");
 }

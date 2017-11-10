@@ -81,9 +81,9 @@ PaddlePaddle支持不同类型的输入数据，主要包括四种类型，和�
 ..	code-block:: bash
 
     y_predict = paddle.layer.fc(input=x, size=1, act=paddle.activation.Linear())
-    cost = paddle.layer.mse_cost(input=y_predict, label=y)
+    cost = paddle.layer.square_error_cost(input=y_predict, label=y)
 
-其中，x与y为之前描述的输入层；而y_predict是接收x作为输入，接上一个全连接层；cost接收y_predict与y作为输入，接上均方误差层。
+其中，x与y为之前描述的输入层；而y_predict是接收x作为输入，接上一个全连接层；cost接收y_predict与y作为输入，接上平方误差层。
 
 最后一层cost中记录了神经网络的所有拓扑结构，通过组合不同的layer，我们即可完成神经网络的搭建。
 
