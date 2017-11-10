@@ -259,10 +259,10 @@ void BeamSearchDecoder<T>::PackAllSteps(const LoDTensorArray& step_ids,
 
   PADDLE_ENFORCE_GT(src_num, 0UL, "source num should be larger than 0");
 
-  std::vector<BeamNodeVector<T>>
-      beamnode_vector_list;  // previous prefixes for each step
-  std::vector<SentenceVector<T>> sentence_vector_list(src_num,
-                                                      SentenceVector<T>());
+  // previous prefixes for each step,
+  // the init length is 0, means this is the first step.
+  std::vector<BeamNodeVector<T>> beamnode_vector_list(0);
+  std::vector<SentenceVector<T>> sentence_vector_list(src_num);
 
   // pack all steps for one batch first, then another batch
   for (size_t step_id = 0; step_id < step_num; ++step_id) {
