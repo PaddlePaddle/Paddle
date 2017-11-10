@@ -228,11 +228,11 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
       std::vector<framework::DDim> dims_to_set;
       for (size_t i = 0; i < names.size(); ++i) {
         if (var_types[i] == framework::VarDesc::LOD_TENSOR) {
-          names_to_set.push_back(names[i]);
+          names_to_set.push_back(framework::GradVarName(names[i]));
           dims_to_set.push_back(dims[i]);
         } else if (var_types[i] == framework::VarDesc::LOD_TENSOR_ARRAY) {
           // not sure how to set the dim of LOD_TENSOR_ARRAY
-          names_to_set.push_back(names[i]);
+          names_to_set.push_back(framework::GradVarName(names[i]));
           dims_to_set.push_back(dims[i]);
         }
       }

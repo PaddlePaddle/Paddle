@@ -43,9 +43,14 @@ def unique_id():
     return generator
 
 
+INDEX = 0
+
+
 def draw_node(op):
+    global INDEX
+    INDEX += 1
     node = OP_STYLE
-    node["name"] = op.type
+    node["name"] = op.type + "_" + str(INDEX)
     node["label"] = op.type
     return node
 
@@ -78,6 +83,7 @@ def parse_graph(program, graph, var_dict, **kwargs):
                 for arg in e.arguments:
                     if var_dict.has_key(arg):
                         graph.edge(**draw_edge(var_dict, op, e, arg))
+        break  # only plot the first block
 
 
 def draw_graph(startup_program, main_program, **kwargs):

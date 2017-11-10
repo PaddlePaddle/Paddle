@@ -114,10 +114,12 @@ void ROIPoolLayer::forward(PassType passType) {
           size_t wstart = static_cast<size_t>(std::floor(pw * binSizeW));
           size_t hend = static_cast<size_t>(std::ceil((ph + 1) * binSizeH));
           size_t wend = static_cast<size_t>(std::ceil((pw + 1) * binSizeW));
-          hstart = std::min(std::max(hstart + roiStartH, 0UL), height_);
-          wstart = std::min(std::max(wstart + roiStartW, 0UL), width_);
-          hend = std::min(std::max(hend + roiStartH, 0UL), height_);
-          wend = std::min(std::max(wend + roiStartW, 0UL), width_);
+          //          hstart = std::min(std::max(hstart + roiStartH, 0UL),
+          //          height_);
+          //          wstart = std::min(std::max(wstart + roiStartW, 0UL),
+          //          width_);
+          //          hend = std::min(std::max(hend + roiStartH, 0UL), height_);
+          //          wend = std::min(std::max(wend + roiStartW, 0UL), width_);
 
           bool isEmpty = (hend <= hstart) || (wend <= wstart);
           size_t poolIndex = ph * pooledWidth_ + pw;

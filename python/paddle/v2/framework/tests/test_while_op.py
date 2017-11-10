@@ -46,11 +46,12 @@ class TestWhileOp(unittest.TestCase):
         sum_result = layers.array_read(mem_array, i=array_len)
 
         loss = layers.mean(x=sum_result)
-        # print g_main_program
-        # exit(0)
         print loss
 
         append_backward_ops(loss)
+        import paddle.v2.framework.net_drawer as drawer
+        print drawer.draw_graph(g_startup_program, g_main_program)
+        exit(0)
 
         print "-" * 10
 
