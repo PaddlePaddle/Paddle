@@ -12,17 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/trieconcat_op.h"
+#include "paddle/operators/beam_search_out_concat_op.h"
 
 namespace paddle {
 namespace operators {
 
-class TrieConcatOp : public framework::OperatorBase {
+class BeamSearchOutConcatOp : public framework::OperatorBase {
  public:
-  TrieConcatOp(const std::string& type,
-               const framework::VariableNameMap& inputs,
-               const framework::VariableNameMap& outputs,
-               const framework::AttributeMap& attrs)
+  BeamSearchOutConcatOp(const std::string& type,
+                        const framework::VariableNameMap& inputs,
+                        const framework::VariableNameMap& outputs,
+                        const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
@@ -50,10 +50,11 @@ class TrieConcatOp : public framework::OperatorBase {
   }
 };
 
-class TrieConcatOpProtoMaker : public framework::OpProtoAndCheckerMaker {
+class BeamSearchOutConcatOpProtoMaker
+    : public framework::OpProtoAndCheckerMaker {
  public:
-  TrieConcatOpProtoMaker(framework::OpProto* proto,
-                         framework::OpAttrChecker* op_checker)
+  BeamSearchOutConcatOpProtoMaker(framework::OpProto* proto,
+                                  framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Ids",
              "(vector<LodTensor>)"
@@ -73,20 +74,21 @@ Pack the result of Beam search op into SentenceIds and SentenceScores.
   }
 };
 
-class TrieConcatInferShape : public framework::InferShapeBase {
+class BeamSearchOutConcatInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* context) const override {
-    PADDLE_ENFORCE(context->HasInput("Ids"), "TrieConcatOp must has input Ids");
+    PADDLE_ENFORCE(context->HasInput("Ids"),
+                   "BeamSearchOutConcatOp must has input Ids");
     PADDLE_ENFORCE(context->HasInput("Scores"),
-                   "TrieConcatOp must has input Scores");
+                   "BeamSearchOutConcatOp must has input Scores");
     PADDLE_ENFORCE(context->HasOutput("SentenceIds"),
-                   "TrieConcatOp must has output SentenceIds");
+                   "BeamSearchOutConcatOp must has output SentenceIds");
     PADDLE_ENFORCE(context->HasOutput("SentenceScores"),
-                   "TrieConcatOp must has output SentenceScores");
+                   "BeamSearchOutConcatOp must has output SentenceScores");
   }
 };
 
-class TrieConcatInferVarType : public framework::VarTypeInference {
+class BeamSearchOutConcatInferVarType : public framework::VarTypeInference {
  public:
   void operator()(const framework::OpDescBind& op_desc,
                   framework::BlockDescBind* block) const override {
@@ -102,8 +104,9 @@ class TrieConcatInferVarType : public framework::VarTypeInference {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(trieconcat, paddle::operators::TrieConcatOp,
-                  paddle::operators::TrieConcatOpProtoMaker,
-                  paddle::operators::TrieConcatInferShape,
-                  paddle::operators::TrieConcatInferVarType,
+REGISTER_OPERATOR(beam_search_out_concat,
+                  paddle::operators::BeamSearchOutConcatOp,
+                  paddle::operators::BeamSearchOutConcatOpProtoMaker,
+                  paddle::operators::BeamSearchOutConcatInferShape,
+                  paddle::operators::BeamSearchOutConcatInferVarType,
                   paddle::framework::EmptyGradOpMaker);

@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/trieconcat_op.h"
+#include "paddle/operators/beam_search_out_concat_op.h"
 #include "gtest/gtest.h"
 
 namespace paddle {
@@ -79,7 +79,7 @@ using BeamNodeVector = paddle::operators::BeamNodeVector<T>;
 template <typename T>
 using SentenceVector = paddle::operators::SentenceVector<T>;
 
-TEST(TrieConcatOp, DeleteBeamNode) {
+TEST(BeamSearchOutConcatOp, DeleteBeamNode) {
   auto* root = new BeamNode<float>(0, 0);
   auto* b1 = new BeamNode<float>(1, 1);
   auto* b2 = new BeamNode<float>(2, 2);
@@ -93,7 +93,7 @@ TEST(TrieConcatOp, DeleteBeamNode) {
   delete b2;
 }
 
-TEST(TrieConcatOp, MakeSentence) {
+TEST(BeamSearchOutConcatOp, MakeSentence) {
   auto* root = new BeamNode<float>(0, 0);
   auto* b1 = new BeamNode<float>(1, 1);
   auto* end = new BeamNode<float>(2, 2);
@@ -111,7 +111,7 @@ TEST(TrieConcatOp, MakeSentence) {
   ASSERT_EQ(sentence.scores, expect_scores);
 }
 
-TEST(TrieConcatOp, PackTwoStepsFistStep) {
+TEST(BeamSearchOutConcatOp, PackTwoStepsFistStep) {
   CPUPlace place;
 
   std::vector<LoDTensor> ids;
@@ -133,7 +133,7 @@ TEST(TrieConcatOp, PackTwoStepsFistStep) {
   ASSERT_EQ(beamnode_vector_list[1].size(), 4UL);
 }
 
-TEST(TrieConcatOp, PackTwoSteps) {
+TEST(BeamSearchOutConcatOp, PackTwoSteps) {
   CPUPlace place;
 
   // first source has three prefix
@@ -172,7 +172,7 @@ TEST(TrieConcatOp, PackTwoSteps) {
   ASSERT_EQ(beamnode_vector_list[1].size(), 2UL);
 }
 
-TEST(TrieConcatOp, PackAllSteps) {
+TEST(BeamSearchOutConcatOp, PackAllSteps) {
   CPUPlace place;
 
   // we will constuct a sample data with 3 steps and 2 source sentences
