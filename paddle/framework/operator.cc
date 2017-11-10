@@ -15,7 +15,9 @@ limitations under the License. */
 #include "paddle/framework/operator.h"
 #include <algorithm>
 #include <atomic>
+#include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/shape_inference.h"
+#include "paddle/framework/var_type.h"
 
 namespace paddle {
 namespace framework {
@@ -37,32 +39,32 @@ ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
   PADDLE_ENFORCE_LE(ins.size(), 1UL,
-                    "Op %s input %s should contain only one variable", type_,
-                    name);
+                    "Operator %s's input %s should contain only one variable.",
+                    type_, name);
   return ins.empty() ? kEmptyVarName : ins[0];
 }
 
 const std::vector<std::string>& OperatorBase::Inputs(
     const std::string& name) const {
   auto it = inputs_.find(name);
-  PADDLE_ENFORCE(it != inputs_.end(), "Op %s do not have input %s", type_,
-                 name);
+  PADDLE_ENFORCE(it != inputs_.end(), "Operator %s does not have the input %s.",
+                 type_, name);
   return it->second;
 }
 
 std::string OperatorBase::Output(const std::string& name) const {
   auto& outs = Outputs(name);
   PADDLE_ENFORCE_LE(outs.size(), 1UL,
-                    "Op %s output %s should contain only one variable", type_,
-                    name);
+                    "Operator %s's output %s should contain only one variable.",
+                    type_, name);
   return outs.empty() ? kEmptyVarName : outs[0];
 }
 
 const std::vector<std::string>& OperatorBase::Outputs(
     const std::string& name) const {
   auto it = outputs_.find(name);
-  PADDLE_ENFORCE(it != outputs_.end(), "Op %s does not have output called %s",
-                 type_, name);
+  PADDLE_ENFORCE(it != outputs_.end(),
+                 "Operator %s does not have an output called %s.", type_, name);
   return it->second;
 }
 
@@ -126,7 +128,7 @@ OperatorBase::OperatorBase(const std::string& type,
 
 std::vector<std::string> OperatorBase::InputVars() const {
   std::vector<std::string> ret_val;
-  for (auto& o : outputs_) {
+  for (auto& o : inputs_) {
     ret_val.reserve(ret_val.size() + o.second.size());
     ret_val.insert(ret_val.end(), o.second.begin(), o.second.end());
   }
@@ -252,8 +254,7 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
   return res;
 }
 
-std::ostream& operator<<(std::ostream& os,
-                         const OperatorWithKernel::OpKernelKey& kernel_key) {
+std::ostream& operator<<(std::ostream& os, const OpKernelType& kernel_key) {
   os << "place[" << kernel_key.place_ << "]:data_type[" << kernel_key.data_type_
      << "]";
   return os;
@@ -351,7 +352,23 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return op_.Outputs(name);
   }
 
- private:
+  void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
+                size_t j = 0) const override {
+    PADDLE_ENFORCE_LT(i, Inputs(in).size());
+    PADDLE_ENFORCE_LT(j, Outputs(out).size());
+    Variable* in_var = scope_.FindVar(Inputs(in)[i]);
+    Variable* out_var = scope_.FindVar(Outputs(out)[j]);
+    if (!in_var->IsType<LoDTensor>()) return;
+    PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
+                   "The %d-th output of Output(%s) must be LoDTensor.", j, out);
+    auto in_tensor = in_var->Get<LoDTensor>();
+    auto* out_tensor = out_var->GetMutable<LoDTensor>();
+    out_tensor->set_lod(in_tensor.lod());
+  }
+
+  bool IsRuntime() const override { return true; }
+
+ protected:
   DDim GetDim(const std::string& name) const override {
     Variable* var = scope_.FindVar(name);
     if (var->IsType<LoDTensor>()) {
@@ -374,13 +391,31 @@ class RuntimeInferShapeContext : public InferShapeContext {
     }
   }
 
+  VarDesc::VarType GetVarType(const std::string& name) const override {
+    auto* var = scope_.FindVar(name);
+    return ToVarType(var->Type());
+  }
+
+ private:
   const OperatorBase& op_;
   const Scope& scope_;
 };
 
 void OperatorWithKernel::Run(const Scope& scope,
                              const platform::DeviceContext& dev_ctx) const {
-  VLOG(3) << "Running operator " << this->Type();
+  if (VLOG_IS_ON(1)) {
+    auto inputs = this->InputVars();
+    auto outputs = this->OutputVars(true);
+    std::ostringstream sout;
+    sout << "Run operator " << this->Type() << " From [";
+    std::ostream_iterator<std::string> out_it(sout, ",");
+    std::copy(inputs.begin(), inputs.end(), out_it);
+    sout << "] to [";
+    std::copy(outputs.begin(), outputs.end(), out_it);
+    sout << "]";
+    VLOG(1) << sout.str();
+  }
+
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
   this->InferShape(&infer_shape_ctx);
 
@@ -396,7 +431,7 @@ void OperatorWithKernel::Run(const Scope& scope,
 
   // check if op[type] have kernel for kernel_key
   OpKernelMap& kernels = kernels_iter->second;
-  auto kernel_key = OpKernelKey(IndicateDataType(ctx), dev_ctx);
+  auto kernel_key = GetKernelType(ctx);
   auto kernel_iter = kernels.find(kernel_key);
 
   if (kernel_iter == kernels.end()) {
@@ -404,6 +439,41 @@ void OperatorWithKernel::Run(const Scope& scope,
   }
 
   kernel_iter->second->Compute(ctx);
+
+  // throws errors if have.
+  dev_ctx.Finish();
+}
+OpKernelType OperatorWithKernel::GetKernelType(
+    const ExecutionContext& ctx) const {
+  return OpKernelType(IndicateDataType(ctx), ctx.device_context());
+}
+DataType OperatorWithKernel::IndicateDataType(
+    const ExecutionContext& ctx) const {
+  auto& scope = ctx.scope();
+  int data_type = -1;
+  for (auto& input : this->inputs_) {
+    for (auto& ipt_name : input.second) {
+      auto* var = scope.FindVar(ipt_name);
+      if (var != nullptr) {
+        const Tensor* t = nullptr;
+        if (var->IsType<Tensor>()) {
+          t = &var->Get<Tensor>();
+        } else if (var->IsType<LoDTensor>()) {
+          t = &var->Get<LoDTensor>();
+        } else if (var->IsType<SelectedRows>()) {
+          t = &(var->Get<SelectedRows>().value());
+        }
+        if (t != nullptr) {
+          int tmp = static_cast<int>(ToDataType(t->type()));
+          PADDLE_ENFORCE(tmp == data_type || data_type == -1,
+                         "DataType of Paddle Op %s must be the same.", Type());
+          data_type = tmp;
+        }
+      }
+    }
+  }
+  PADDLE_ENFORCE(data_type != -1, "DataType should be indicated by input");
+  return static_cast<DataType>(data_type);
 }
 
 }  // namespace framework

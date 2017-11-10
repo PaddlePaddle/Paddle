@@ -47,8 +47,12 @@ Variable* Scope::Var(const std::string& name) {
   return v;
 }
 
-Variable* Scope::Var() {
-  return Var(string::Sprintf("%p.%d", this, vars_.size()));
+Variable* Scope::Var(std::string* name) {
+  auto var_name = string::Sprintf("%p.%d", this, vars_.size());
+  if (name != nullptr) {
+    *name = var_name;
+  }
+  return Var(var_name);
 }
 
 Variable* Scope::FindVar(const std::string& name) const {

@@ -61,23 +61,23 @@ template <typename T>
 class LookupTableCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto table_t = context.Input<Tensor>("W");
-    auto ids_t = context.Input<Tensor>("Ids");
-    auto output_t = context.Output<Tensor>("Out");
+    auto* table_t = context.Input<LoDTensor>("W");
+    auto* ids_t = context.Input<LoDTensor>("Ids");
+    auto* output_t = context.Output<LoDTensor>("Out");
 
     size_t N = table_t->dims()[0];
     size_t D = table_t->dims()[1];
     size_t K = ids_t->numel();
-    auto ids = ids_t->data<int64_t>();
-    auto table = table_t->data<T>();
-    auto output = output_t->mutable_data<T>(context.GetPlace());
+    auto* ids = ids_t->data<int64_t>();
+    auto* table = table_t->data<T>();
+    auto* output = output_t->mutable_data<T>(context.GetPlace());
 
     dim3 threads(128, 8);
     dim3 grids(8, 1);
-    LookupTable<T, 128, 8, 8><<<
-        grids, threads, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                               context.device_context())
-                               .stream()>>>(output, table, ids, N, K, D);
+    LookupTable<
+        T, 128, 8,
+        8><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
+        output, table, ids, N, K, D);
   }
 };
 
@@ -87,17 +87,15 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     bool is_sparse = context.Attr<bool>("is_sparse");
     if (is_sparse) {
-      auto* ids = context.Input<Tensor>("Ids");
-      auto* table = context.Input<Tensor>("W");
-      auto* d_output = context.Input<Tensor>(framework::GradVarName("Out"));
+      auto* ids = context.Input<LoDTensor>("Ids");
+      auto* table = context.Input<LoDTensor>("W");
+      auto* d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
       auto* d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
 
       auto* ids_data = ids->data<int64_t>();
       auto ids_dim = ids->dims();
 
-      auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(
-                        context.device_context())
-                        .stream();
+      auto stream = context.cuda_device_context().stream();
       // copy GPU memory to CPU pinned memory
       framework::Vector<int64_t> new_rows;
       new_rows.resize(ids_dim[0]);
@@ -116,12 +114,12 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       auto* d_output_data = d_output->data<T>();
       PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output->dims());
       memory::Copy(gpu_place, d_table_data, gpu_place, d_output_data,
-                   d_output->numel(), stream);
+                   d_output->numel() * sizeof(T), stream);
 
     } else {
-      auto ids_t = context.Input<Tensor>("Ids");
-      auto d_output_t = context.Input<Tensor>(framework::GradVarName("Out"));
-      auto d_table_t = context.Output<Tensor>(framework::GradVarName("W"));
+      auto ids_t = context.Input<LoDTensor>("Ids");
+      auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
+      auto d_table_t = context.Output<LoDTensor>(framework::GradVarName("W"));
 
       int N = d_table_t->dims()[0];
       int D = d_table_t->dims()[1];
@@ -136,11 +134,10 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
 
       dim3 threads(128, 8);
       dim3 grids(8, 1);
-      LookupTableGrad<T, 128, 8,
-                      8><<<grids, threads, 0,
-                           reinterpret_cast<const platform::CUDADeviceContext&>(
-                               context.device_context())
-                               .stream()>>>(d_table, d_output, ids, N, K, D);
+      LookupTableGrad<
+          T, 128, 8,
+          8><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
+          d_table, d_output, ids, N, K, D);
     }
   }
 };
