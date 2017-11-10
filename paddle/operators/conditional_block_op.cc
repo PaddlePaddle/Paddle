@@ -101,7 +101,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
         [](const framework::LoDTensor *t) { return t->numel() != 0; });
 
     if (need_run) {
-      auto *scope_var = scope.FindVar(Output("Scope"));
+      auto *scope_var = scope.FindVar(Input("Scope"));
       PADDLE_ENFORCE(scope_var != nullptr, "Must set scope");
       auto &scopes = scope_var->Get<std::vector<framework::Scope *>>();
       framework::Scope &cur_scope = *scopes[0];
@@ -110,18 +110,68 @@ class ConditionalBlockGradOp : public ConditionalOp {
       framework::Executor exec(dev_ctx);
       exec.Run(*block->Program(), &cur_scope, block->ID(), false);
 
-      auto p_names = Inputs("Params");
-      auto pg_names = Outputs(framework::GradVarName("Params"));
+      AssignLocalGradientToGlobal(dev_ctx, cur_scope, Inputs("Params"),
+                                  Outputs(framework::GradVarName("Params")));
 
-      for (size_t i = 0; i < p_names.size(); ++i) {
-        auto out_grad_name = pg_names[i];
-        auto in_grad_name = framework::GradVarName(p_names[i]);
-        auto *in_var = cur_scope.FindVar(in_grad_name);
-        if (in_var == nullptr) {
-          continue;
-        }
-      }
+      AssignLocalGradientToGlobal(dev_ctx, cur_scope, Inputs("X"),
+                                  Outputs(framework::GradVarName("X")));
     }
+  }
+
+ private:
+  void AssignLocalGradientToGlobal(
+      const platform::DeviceContext &dev_ctx, const framework::Scope &cur_scope,
+      const std::vector<std::string> &p_names,
+      const std::vector<std::string> &pg_names) const {
+    for (size_t i = 0; i < p_names.size(); ++i) {
+      auto out_grad_name = pg_names[i];
+      auto in_grad_name = framework::GradVarName(p_names[i]);
+      auto *in_var = cur_scope.FindVar(in_grad_name);
+      if (in_var == nullptr) {
+        continue;
+      }
+      auto new_in_grad_name = cur_scope.Rename(in_grad_name);
+      auto assign =
+          framework::OpRegistry::CreateOp("assign", {{"X", {new_in_grad_name}}},
+                                          {{"Out", {out_grad_name}}}, {});
+      assign->Run(cur_scope, dev_ctx);
+      cur_scope.Rename(new_in_grad_name, in_grad_name);
+    }
+  }
+};
+
+class ConditionalBlockGradInferShape : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext *context) const override {
+    PADDLE_ENFORCE(context->HasInputs("X"));
+    if (context->HasInputs("Params")) {
+      PADDLE_ENFORCE(context->HasOutputs(framework::GradVarName("Params")));
+      context->SetOutputsDim(framework::GradVarName("Params"),
+                             context->GetInputsDim("Params"));
+    }
+    PADDLE_ENFORCE(context->HasOutputs(framework::GradVarName("X")));
+    context->SetOutputsDim(framework::GradVarName("X"),
+                           context->GetInputsDim("X"));
+  }
+};
+
+class ConditionalBlockGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDescBind> Apply() const override {
+    auto grad_op = new framework::OpDescBind();
+    grad_op->SetType("conditional_block_grad");
+    grad_op->SetInput("X", Input("X"));
+    grad_op->SetInput("Params", Input("Params"));
+    grad_op->SetInput("Out", Output("Out"));
+    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    grad_op->SetInput("Scope", Output("Scope"));
+    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    grad_op->SetOutput(framework::GradVarName("Params"), InputGrad("Params"));
+    grad_op->SetBlockAttr("block", *this->grad_block_[0]);
+    return std::unique_ptr<framework::OpDescBind>(grad_op);
   }
 };
 
@@ -130,4 +180,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conditional_block, ops::ConditionalBlockOp,
-                  ops::ConditionalBlockOpProtoMaker);
+                  ops::ConditionalBlockOpProtoMaker,
+                  ops::ConditionalBlockGradMaker);
+REGISTER_OPERATOR(conditional_block_grad, ops::ConditionalBlockGradOp,
+                  ops::ConditionalBlockGradInferShape);
