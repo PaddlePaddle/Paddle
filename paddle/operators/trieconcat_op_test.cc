@@ -64,13 +64,26 @@ void GenerateExample(const std::vector<size_t>& level_0,
 }  // namespace test
 }  // namespace paddle
 
-TEST(TrieConcatOp, DeleteBeamNode) {
-  using BeamNode = paddle::operators::BeamNode;
+using CPUPlace = paddle::platform::CPUPlace;
+using LoD = paddle::framework::LoD;
+using LoDTensor = paddle::framework::LoDTensor;
 
-  BeamNode* root = new BeamNode(0, 0);
-  BeamNode* b1 = new BeamNode(1, 1);
-  BeamNode* b2 = new BeamNode(2, 2);
-  BeamNode* b3 = new BeamNode(3, 3);
+template <typename T>
+using BeamNode = paddle::operators::BeamNode<T>;
+template <typename T>
+using BeamHelper = paddle::operators::BeamHelper<T>;
+template <typename T>
+using Sentence = paddle::operators::Sentence<T>;
+template <typename T>
+using BeamNodeVector = paddle::operators::BeamNodeVector<T>;
+template <typename T>
+using SentenceVector = paddle::operators::SentenceVector<T>;
+
+TEST(TrieConcatOp, DeleteBeamNode) {
+  auto* root = new BeamNode<float>(0, 0);
+  auto* b1 = new BeamNode<float>(1, 1);
+  auto* b2 = new BeamNode<float>(2, 2);
+  auto* b3 = new BeamNode<float>(3, 3);
 
   b1->AppendTo(root);
   b2->AppendTo(root);
@@ -81,18 +94,14 @@ TEST(TrieConcatOp, DeleteBeamNode) {
 }
 
 TEST(TrieConcatOp, MakeSentence) {
-  using BeamHelper = paddle::operators::BeamHelper;
-  using BeamNode = paddle::operators::BeamNode;
-  using Sentence = paddle::operators::Sentence;
-
-  BeamNode* root = new BeamNode(0, 0);
-  BeamNode* b1 = new BeamNode(1, 1);
-  BeamNode* end = new BeamNode(2, 2);
+  auto* root = new BeamNode<float>(0, 0);
+  auto* b1 = new BeamNode<float>(1, 1);
+  auto* end = new BeamNode<float>(2, 2);
   b1->AppendTo(root);
   end->AppendTo(b1);
 
-  BeamHelper helper;
-  Sentence sentence = helper.MakeSentence(end);
+  BeamHelper<float> helper;
+  Sentence<float> sentence = helper.MakeSentence(end);
   delete end;
 
   std::vector<int64_t> expect_ids = {0, 1, 2};
@@ -103,12 +112,6 @@ TEST(TrieConcatOp, MakeSentence) {
 }
 
 TEST(TrieConcatOp, PackTwoStepsFistStep) {
-  using BeamHelper = paddle::operators::BeamHelper;
-  using CPUPlace = paddle::platform::CPUPlace;
-  using LoDTensor = paddle::framework::LoDTensor;
-  using BeamNodeVector = paddle::operators::BeamNodeVector;
-  using SentenceVector = paddle::operators::SentenceVector;
-
   CPUPlace place;
 
   std::vector<LoDTensor> ids;
@@ -118,10 +121,11 @@ TEST(TrieConcatOp, PackTwoStepsFistStep) {
       std::vector<size_t>{0, 2, 6}, std::vector<size_t>{0, 1, 2, 3, 4, 5, 6},
       std::vector<int>{1, 2, 3, 4, 5, 6}, &ids, &scores);
 
-  std::vector<BeamNodeVector> beamnode_vector_list;
-  std::vector<SentenceVector> sentence_vector_list(2, SentenceVector());
+  std::vector<BeamNodeVector<float>> beamnode_vector_list;
+  std::vector<SentenceVector<float>> sentence_vector_list(
+      2, SentenceVector<float>());
 
-  BeamHelper helper;
+  BeamHelper<float> helper;
   beamnode_vector_list = helper.PackTwoSteps(
       ids[0], scores[0], beamnode_vector_list, &sentence_vector_list);
   ASSERT_EQ(beamnode_vector_list.size(), 2UL);
@@ -130,28 +134,22 @@ TEST(TrieConcatOp, PackTwoStepsFistStep) {
 }
 
 TEST(TrieConcatOp, PackTwoSteps) {
-  using BeamHelper = paddle::operators::BeamHelper;
-  using BeamNode = paddle::operators::BeamNode;
-  using BeamNodeVector = paddle::operators::BeamNodeVector;
-  using SentenceVector = paddle::operators::SentenceVector;
-  using CPUPlace = paddle::platform::CPUPlace;
-  using LoDTensor = paddle::framework::LoDTensor;
-
   CPUPlace place;
 
   // first source has three prefix
-  BeamNodeVector source0_prefixes;
-  source0_prefixes.push_back(new BeamNode(1, 1));
-  source0_prefixes.push_back(new BeamNode(0, 0));
-  source0_prefixes.push_back(new BeamNode(3, 3));
+  BeamNodeVector<float> source0_prefixes;
+  source0_prefixes.push_back(new BeamNode<float>(1, 1));
+  source0_prefixes.push_back(new BeamNode<float>(0, 0));
+  source0_prefixes.push_back(new BeamNode<float>(3, 3));
 
   // second source has two prefix
-  BeamNodeVector source1_prefixes;
-  source1_prefixes.push_back(new BeamNode(4, 4));
-  source1_prefixes.push_back(new BeamNode(5, 5));
+  BeamNodeVector<float> source1_prefixes;
+  source1_prefixes.push_back(new BeamNode<float>(4, 4));
+  source1_prefixes.push_back(new BeamNode<float>(5, 5));
 
-  std::vector<BeamNodeVector> beamnode_vector_list;
-  std::vector<SentenceVector> sentence_vector_list(2, SentenceVector());
+  std::vector<BeamNodeVector<float>> beamnode_vector_list;
+  std::vector<SentenceVector<float>> sentence_vector_list(
+      2, SentenceVector<float>());
 
   beamnode_vector_list.push_back(source0_prefixes);
   beamnode_vector_list.push_back(source1_prefixes);
@@ -164,7 +162,7 @@ TEST(TrieConcatOp, PackTwoSteps) {
                                 std::vector<size_t>{0, 1, 1, 3, 4, 5},
                                 std::vector<int>{0, 1, 2, 3, 4}, &ids, &scores);
 
-  BeamHelper helper1;
+  BeamHelper<float> helper1;
   beamnode_vector_list = helper1.PackTwoSteps(
       ids[0], scores[0], beamnode_vector_list, &sentence_vector_list);
 
@@ -175,11 +173,6 @@ TEST(TrieConcatOp, PackTwoSteps) {
 }
 
 TEST(TrieConcatOp, PackAllSteps) {
-  using BeamHelper = paddle::operators::BeamHelper;
-  using CPUPlace = paddle::platform::CPUPlace;
-  using LoDTensor = paddle::framework::LoDTensor;
-  using LoD = paddle::framework::LoD;
-
   CPUPlace place;
 
   // we will constuct a sample data with 3 steps and 2 source sentences
@@ -199,7 +192,7 @@ TEST(TrieConcatOp, PackAllSteps) {
   ASSERT_EQ(ids.size(), 3UL);
   ASSERT_EQ(scores.size(), 3UL);
 
-  BeamHelper helper;
+  BeamHelper<float> helper;
 
   LoDTensor id_tensor;
   LoDTensor score_tensor;
