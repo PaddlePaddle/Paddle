@@ -24,7 +24,7 @@ using LoDTensor = framework::LoDTensor;
 using LoD = framework::LoD;
 
 template <typename T>
-LoD concatLoD(const std::vector<const T*> ins, const size_t level) {
+LoD ConcatLoD(const std::vector<const T*> ins, const size_t level) {
   auto out_lod = ins[0]->lod();
   auto numLevels = ins[0]->NumLevels();
   const size_t n = ins.size();
@@ -94,7 +94,7 @@ class SequenceConcatOpKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(ctx.GetPlace());
     auto out_lod = ins[0]->lod();
     if (axis == 0) {
-      out_lod = concatLoD<LoDTensor>(ins, level);
+      out_lod = ConcatLoD<LoDTensor>(ins, level);
     }
     out->set_lod(out_lod);
 
@@ -139,7 +139,7 @@ class SequenceConcatGradOpKernel : public framework::OpKernel<T> {
     }
     auto out_lod = ins[0]->lod();
     if (axis == 0UL) {
-      out_lod = concatLoD<LoDTensor>(ins, level);
+      out_lod = ConcatLoD<LoDTensor>(ins, level);
     }
     const size_t level_idx = out_lod.size() - level - 1;
     auto out_lod_level = framework::ToAbsOffset(out_lod)[level_idx];
