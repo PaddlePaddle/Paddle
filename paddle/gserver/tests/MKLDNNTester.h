@@ -58,19 +58,19 @@ protected:
   size_t iter_;
   /// whether to print out the details
   bool log_;
-  /// vlog level to print the matrix details datas
-  int lvl_;
   /// epsilon
   float eps_;
   /// input image size, default 1
   size_t ih_, iw_;
+  /// passType, PASS_TRAIN, PASS_TEST or PASS_GC (Gradient Check pass)
+  PassType passType_;
 
 public:
   explicit MKLDNNTester(size_t iter = 3, float epsilon = 1e-4) {
     iter_ = iter;
     eps_ = epsilon;
     log_ = false;
-    lvl_ = MKLDNN_ALL;
+    passType_ = PASS_TRAIN;
   }
 
   ~MKLDNNTester() {}
@@ -81,21 +81,21 @@ public:
            size_t batchSize,
            size_t inputImgH = 1,
            size_t inputImgW = 1,
+           PassType passType = PASS_TRAIN,
+           bool printDetails = false,
            size_t iter = 3,
-           float epsilon = 1e-4,
-           bool log = false,
-           int level = MKLDNN_ALL);
-  static void runBranchesTest(const std::string& configPath,
-                              size_t iter = 3,
-                              float eps = 1e-4);
+           float epsilon = 1e-4);
+  static void runNetTest(const std::string& configPath,
+                         size_t iter = 2,
+                         float eps = 1e-4);
   static void initArgument(DataIn& data,
                            const std::string& configPath,
-                           size_t iter = 3);
+                           size_t iter = 2);
   static void getOutResult(const std::string& configPath,
                            DataIn& in,
                            DataOut& out,
                            bool use_mkldnn,
-                           size_t iter = 3);
+                           size_t iter = 2);
 
 private:
   void reset(const TestConfig& dnn, const TestConfig& ref, size_t batchSize);
@@ -128,13 +128,13 @@ private:
 
   /**
    * Get delta percent
-   * if many(>failRate) wrong(abs(dnn-ref)/abs(ref)>thres) points return the
-   * max(diff/ref)
-   * else return sum(abs(a-b)) / sum(abs(b))
+   * if many(>failRate) wrong(abs(val-ref)/abs(ref) > thres) points
+   * return the max(diff/ref)
+   * else return sum(abs(diff)) / sum(abs(ref))
    * The return value should be smaller than eps when passing.
    */
-  static double getDelta(const real* d1,
-                         const real* d2,
+  static double getDelta(const real* refer,
+                         const real* value,
                          size_t len,
                          const float failRate = 1e-3,
                          const float thres = 0.1);

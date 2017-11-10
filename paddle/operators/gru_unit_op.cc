@@ -54,8 +54,7 @@ class GRUUnitOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         weight_width, frame_size * 3,
         "The shape of Weight matrix must be [frame_size, frame_size * 3].");
-    auto bias = Input("Bias");
-    if (bias != framework::kEmptyVarName) {
+    if (ctx->HasInput("Bias")) {
       auto bias_dims = ctx->GetInputDim("Bias");
       int bias_height = bias_dims[0];
       int bias_width = bias_dims[1];
@@ -81,18 +80,21 @@ class GRUUnitOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("HiddenPrev",
              "(Tensor) Matrix with shape [batch_size, frame_size] for the "
              "states of previous time step.");
-    AddInput("Weight",
-             "(Tensor) Weight matrix with shape [frame_size, frame_size * 3]. "
-             "The elements continuous in memory can be divided into two parts. "
-             "The first part are weights of the update gate and reset gate "
-             "with shape [frame_size, frame_size * 2], and the second part are "
-             "weights of output candidate with shape [frame_size, frame_size]");
-    AddInput("Bias",
-             "(Tensor) Bias vector with shape [1, frame_size * 3] concating "
-             "bias of the update gate, reset gate and output candidate.");
+    AddInput(
+        "Weight",
+        "(Tensor) Weight matrix with shape [frame_size, frame_size * 3]. "
+        "The elements continuous in memory can be divided into two parts. "
+        "The first part are weights of the update gate and reset gate "
+        "with shape [frame_size, frame_size * 2], and the second part are "
+        "weights of output candidate with shape [frame_size, frame_size].");
+    AddInput(
+        "Bias",
+        "(Tensor) Bias vector with shape [1, frame_size * 3] concatenating "
+        "bias of the update gate, reset gate and output candidate.")
+        .AsDispensable();
     AddOutput("Gate",
               "(Tensor) Matrix with shape [batch_size, frame_size * 3] for the "
-              "output of update gate, reset gate and output candidate")
+              "output of update gate, reset gate and output candidate.")
         .AsIntermediate();
     AddOutput("ResetHiddenPrev",
               "(Tensor) Matrix with shape [batch_size, frame_size] for the "
@@ -112,16 +114,19 @@ class GRUUnitOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(sigmoid)
         .InEnum({identity, sigmoid, tanh, relu});
     AddComment(R"DOC(
-GRUUnitOp implements part calculations of the GRU unit as following:
+GRUUnit Operator.
 
-\f[
-update \ gate: u_t = actGate(xu_t + W_u * hidden_prev + bias_u) \\
-reset \ gate: r_t = actGate(xr_t + W_r * hidden_prev + bias_r)  \\
-output \ candidate: {h}_t = actNode(xc_t + W_c * dot(r_t, hidden_prev) + bias_c) \\
-output: h_t = dot((1-u_t), {h}_t) + dot(u_t, hidden_prev)
-\f]
+This operator implements partial calculations of the GRU unit as follows:
+
+$$
+update \ gate: u_t = actGate(xu_t + W_u * hidden_{prev} + bias_u) \\
+reset \ gate: r_t = actGate(xr_t + W_r * hidden_{prev} + bias_r)  \\
+output \ candidate: {h}_t = actNode({xc}_t + W_c * dot(r_t, hidden_{prev}) + bias_c) \\
+output: h_t = dot((1-u_t), {h}_t) + dot(u_t, hidden_{prev})
+$$
 
 The rest of GRU unit can be completed by using FCOp's output as the input of GRUUnitOp.
+
 )DOC");
   }
 };
@@ -171,8 +176,7 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         weight_width, frame_size * 3,
         "The shape of Weight matrix must be [frame_size, frame_size * 3].");
-    auto bias = Input("Bias");
-    if (bias != framework::kEmptyVarName) {
+    if (ctx->HasInput("Bias")) {
       auto bias_dims = ctx->GetInputDim("Bias");
       int bias_height = bias_dims[0];
       int bias_width = bias_dims[1];
@@ -203,6 +207,8 @@ namespace ops = paddle::operators;
 REGISTER_OP(gru_unit, ops::GRUUnitOp, ops::GRUUnitOpMaker, gru_unit_grad,
             ops::GRUUnitGradOp);
 REGISTER_OP_CPU_KERNEL(gru_unit,
-                       ops::GRUUnitKernel<paddle::platform::CPUPlace, float>);
+                       ops::GRUUnitKernel<paddle::platform::CPUPlace, float>,
+                       ops::GRUUnitKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
-    gru_unit_grad, ops::GRUUnitGradKernel<paddle::platform::CPUPlace, float>);
+    gru_unit_grad, ops::GRUUnitGradKernel<paddle::platform::CPUPlace, float>,
+    ops::GRUUnitGradKernel<paddle::platform::CPUPlace, double>);

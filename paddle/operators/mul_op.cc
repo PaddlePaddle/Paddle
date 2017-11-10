@@ -19,11 +19,9 @@ namespace operators {
 
 using framework::Tensor;
 
-class MulOp : public framework::OperatorWithKernel {
+class MulOpShapeInference : public framework::InferShapeBase {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void operator()(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of MulOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) of MulOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
@@ -31,8 +29,13 @@ class MulOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
+
     int x_num_col_dims = ctx->Attrs().Get<int>("x_num_col_dims");
     int y_num_col_dims = ctx->Attrs().Get<int>("y_num_col_dims");
+
+    VLOG(3) << "mul operator x.shape=" << x_dims << " y.shape=" << y_dims
+            << " x_num_col_dims=" << x_num_col_dims
+            << " y_num_col_dims=" << y_num_col_dims;
 
     PADDLE_ENFORCE_GT(
         x_dims.size(), x_num_col_dims,
@@ -49,7 +52,19 @@ class MulOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_mat_dims[1], y_mat_dims[0],
         "First matrix's width must be equal with second matrix's height.");
-    ctx->SetOutputDim("Out", {x_mat_dims[0], y_mat_dims[1]});
+    std::vector<int64_t> output_dims;
+    output_dims.reserve(
+        static_cast<size_t>(x_num_col_dims + y_dims.size() - y_num_col_dims));
+
+    for (int i = 0; i < x_num_col_dims; ++i) {
+      output_dims.push_back(x_dims[i]);
+    }
+
+    for (int i = y_num_col_dims; i < y_dims.size(); ++i) {
+      output_dims.push_back(y_dims[i]);
+    }
+
+    ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
@@ -63,6 +78,7 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The output of mul op");
     AddAttr<int>(
         "x_num_col_dims",
+        "(int, default 1) "
         R"DOC(mul_op can take tensors with more than two dimensions as input `X`,
             in that case, tensors will be reshaped to a matrix. The matrix's first
             dimension(column length) will be the product of tensor's last
@@ -73,20 +89,24 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
         .EqualGreaterThan(1);
     AddAttr<int>(
         "y_num_col_dims",
+        "(int, default 1) "
         R"DOC(mul_op can take tensors with more than two dimensions as input `Y`,
              in that case, tensors will be reshaped to a matrix. Just like input `X`.
         )DOC")
         .SetDefault(1)
         .EqualGreaterThan(1);
     AddComment(R"DOC(
-Mul operator is used to perform matrix multiplication for input X and Y.
+Mul Operator. 
+
+This operator is used to perform matrix multiplication for input X and Y.
 
 The equation is:
 
-    Out = X * Y
+    $$Out = X * Y$$
 
 Both the input `X` and `Y` can carry the LoD (Level of Details) information,
-or not. But the output only shares the LoD with input `X`.
+or not. But the output only shares the LoD information with input `X`.
+
 )DOC");
   }
 };
@@ -109,15 +129,6 @@ class MulOpGrad : public framework::OperatorWithKernel {
     auto y_mat_dims = framework::flatten_to_2d(
         y_dims, ctx->Attrs().Get<int>("y_num_col_dims"));
 
-    PADDLE_ENFORCE_EQ(
-        x_mat_dims[0], out_dims[0],
-        "The first dimension of Out@GRAD must equal to the first dimension of "
-        "the first operand.");
-    PADDLE_ENFORCE_EQ(
-        y_mat_dims[1], out_dims[1],
-        "The second dimension of Out@GRAD must equal to the second "
-        "dimension of the second operand.");
-
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
 
@@ -134,7 +145,10 @@ class MulOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulOpGrad);
+REGISTER_OPERATOR(mul, paddle::framework::OperatorWithKernel, ops::MulOpMaker,
+                  ops::MulOpShapeInference,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(mul_grad, ops::MulOpGrad);
 REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(mul_grad,
                        ops::MulGradKernel<paddle::platform::CPUPlace, float>);

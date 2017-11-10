@@ -83,6 +83,7 @@ extern void* cudnn_dso_handle;
   __macro(cudnnDestroyConvolutionDescriptor);       \
   __macro(cudnnSetConvolutionNdDescriptor);         \
   __macro(cudnnGetConvolutionNdDescriptor);         \
+  __macro(cudnnDeriveBNTensorDescriptor);           \
   __macro(cudnnCreate);                             \
   __macro(cudnnDestroy);                            \
   __macro(cudnnSetStream);                          \

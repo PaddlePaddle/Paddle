@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 #include <algorithm>
-#include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
@@ -22,30 +21,19 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
-
 template <typename Place, typename T>
 class AccuracyKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* inference = ctx.Input<Tensor>("Inference");
+    auto* inference = ctx.Input<Tensor>("Out");
+    auto* indices = ctx.Input<Tensor>("Indices");
     auto* label = ctx.Input<Tensor>("Label");
     auto* accuracy = ctx.Output<Tensor>("Accuracy");
 
     float* accuracy_data = accuracy->mutable_data<float>(ctx.GetPlace());
 
-    const T* inference_data = inference->data<T>();
-    const T* label_data = label->data<T>();
+    const int64_t* indices_data = indices->data<int64_t>();
+    const int64_t* label_data = label->data<int64_t>();
 
     size_t num_samples = inference->dims()[0];
     size_t class_dim = inference->dims()[1];
@@ -60,7 +48,7 @@ class AccuracyKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < num_samples; ++i) {
       PADDLE_ENFORCE_GE(label_data[i], 0, "label must >= 0");
       for (size_t j = 0; j < class_dim; ++j) {
-        if (inference_data[i * class_dim + j] == label_data[i]) {
+        if (indices_data[i * class_dim + j] == label_data[i]) {
           ++num_correct;
           break;
         }

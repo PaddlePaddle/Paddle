@@ -1,5 +1,5 @@
 import unittest
-from paddle.v2.framework.framework import Variable, g_program
+from paddle.v2.framework.framework import Variable, g_main_program, Program
 import paddle.v2.framework.core as core
 import numpy as np
 
@@ -18,7 +18,7 @@ class TestVariable(unittest.TestCase):
         self.assertRaises(ValueError, lambda: convert("int8"))
 
     def test_var(self):
-        b = g_program.current_block()
+        b = g_main_program.current_block()
         w = b.create_var(
             dtype="float64", shape=[784, 100], lod_level=0, name="fc.w")
         self.assertNotEqual(str(w), "")
@@ -35,6 +35,13 @@ class TestVariable(unittest.TestCase):
 
         self.assertRaises(ValueError,
                           lambda: b.create_var(name="fc.w", shape=(24, 100)))
+
+    def test_step_scopes(self):
+        prog = Program()
+        b = prog.current_block()
+        var = b.create_var(
+            name='step_scopes', type=core.VarDesc.VarType.STEP_SCOPES)
+        self.assertEqual(core.VarDesc.VarType.STEP_SCOPES, var.type)
 
 
 if __name__ == '__main__':

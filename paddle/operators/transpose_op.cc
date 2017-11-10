@@ -32,7 +32,7 @@ class TransposeOp : public framework::OperatorWithKernel {
     size_t axis_size = axis.size();
 
     PADDLE_ENFORCE_EQ(x_rank, axis_size,
-                      "the input tensor's rank(%d) "
+                      "The input tensor's rank(%d) "
                       "should be equal to the axis's size(%d)",
                       x_rank, axis_size);
 
@@ -64,12 +64,14 @@ class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor)The output tensor");
     AddAttr<std::vector<int>>(
         "axis",
-        "(vector<int>)a list of values, and the size of the list should be "
+        "(vector<int>)A list of values, and the size of the list should be "
         "the same with the input tensor rank, the tensor will "
         "permute the axes according the the values given");
     AddComment(R"DOC(
-The Tensor will be permuted according to the axis values given.
-The op is very much like the numpy.transpose function in python
+Transpose Operator.
+
+The input tensor will be permuted according to the axis values given.
+The op functions similar to how numpy.transpose works in python.
 For example:
  >> input = numpy.arange(6).reshape((2,3))
  >> input
@@ -83,6 +85,7 @@ For example:
 		[2, 5]])
 So, given a input tensor of shape(N, C, H, W) and the axis is {0, 2, 3, 1},
 the output tensor shape will be (N, H, W, C)
+
 )DOC");
   }
 };
