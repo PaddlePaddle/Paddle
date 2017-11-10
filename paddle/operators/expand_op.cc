@@ -25,13 +25,15 @@ class ExpandOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must be initialized.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null.");
+
     std::vector<int> expand_times =
-        ctx->Attrs().Get<std::vector<int>>("expandTimes");
+        ctx->Attrs().Get<std::vector<int>>("expand_times");
     auto x_dims = ctx->GetInputDim("X");
 
     PADDLE_ENFORCE_EQ(static_cast<size_t>(x_dims.size()), expand_times.size(),
-                      "The number of Attr(expandTimes)'s value must be equal "
+                      "The number of Attr(expand_times)'s value must be equal "
                       "to the rank of Input(X).");
     PADDLE_ENFORCE_LE(x_dims.size(), 6,
                       "The rank of Input(X) must not be greater than 6.");
@@ -39,13 +41,15 @@ class ExpandOp : public framework::OperatorWithKernel {
     std::vector<int64_t> out_shape(x_dims.size());
     for (size_t i = 0; i < expand_times.size(); ++i) {
       PADDLE_ENFORCE_GE(expand_times[i], 1,
-                        "Each value of Attr(expandTimes) should not be "
+                        "Each value of Attr(expand_times) should not be "
                         "less than 1.");
       out_shape[i] = x_dims[i] * expand_times[i];
     }
 
     ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
-    ctx->ShareLoD("X", "Out");
+    if (out_shape[0] == x_dims[0]) {
+      ctx->ShareLoD("X", "Out");
+    }
   }
 };
 
@@ -61,13 +65,13 @@ class ExpandOpMaker : public framework::OpProtoAndCheckerMaker {
               "The rank of Output(Out) is same as Input(X) except that each "
               "dimension size of Output(Out) is equal to corresponding "
               "dimension size of Input(X) multiplying corresponding value of "
-              "Attr(expandTimes).");
-    AddAttr<std::vector<int>>("expandTimes",
+              "Attr(expand_times).");
+    AddAttr<std::vector<int>>("expand_times",
                               "Expand times number for each dimension.");
     AddComment(R"DOC(
 Expand operator tiles the input by given times number. You should set times
-number for each dimension by providing attribute 'expandTimes'. The rank of X
-should be in [1, 6]. Please notice that size of 'expandTimes' must be same with
+number for each dimension by providing attribute 'expand_times'. The rank of X
+should be in [1, 6]. Please notice that size of 'expand_times' must be same with
 X's rank.
 )DOC");
   }
@@ -82,16 +86,17 @@ class ExpandGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null.");
+
     auto x_dims = ctx->GetInputDim("X");
     std::vector<int> expand_times =
-        ctx->Attrs().Get<std::vector<int>>("expandTimes");
+        ctx->Attrs().Get<std::vector<int>>("expand_times");
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
     for (size_t i = 0; i < expand_times.size(); ++i) {
       PADDLE_ENFORCE_EQ(x_dims[i] * expand_times[i], out_dims[i],
                         "Each dimension size of Input(Out@GRAD) should be "
                         "equal to multiplication of crroresponding dimension "
-                        "size of Input(X) and Attr(expandTimes) value.");
+                        "size of Input(X) and Attr(expand_times) value.");
     }
 
     auto x_grad_name = framework::GradVarName("X");
