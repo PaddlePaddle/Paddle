@@ -27,10 +27,8 @@ class BeamSearchOutConcatOp : public framework::OperatorBase {
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
     framework::ExecutionContext ctx(*this, scope, dev_ctx);
-    const std::vector<LoDTensor>* ids =
-        ctx.Input<std::vector<LoDTensor>>("Ids");
-    const std::vector<LoDTensor>* scores =
-        ctx.Input<std::vector<LoDTensor>>("Scores");
+    const LoDTensorArray* ids = ctx.Input<LoDTensorArray>("Ids");
+    const LoDTensorArray* scores = ctx.Input<LoDTensorArray>("Scores");
     const size_t step_num = ids->size();
     PADDLE_ENFORCE_LT(step_num, 0, "beam search steps should be larger than 0");
     const size_t source_num = ids->at(0).lod().at(0).size() - 1;

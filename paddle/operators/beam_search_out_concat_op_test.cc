@@ -15,16 +15,29 @@ limitations under the License. */
 #include "paddle/operators/beam_search_out_concat_op.h"
 #include "gtest/gtest.h"
 
+using CPUPlace = paddle::platform::CPUPlace;
+using LoD = paddle::framework::LoD;
+using LoDTensor = paddle::framework::LoDTensor;
+using LoDTensorArray = paddle::framework::LoDTensorArray;
+
+template <typename T>
+using BeamNode = paddle::operators::BeamNode<T>;
+template <typename T>
+using BeamHelper = paddle::operators::BeamHelper<T>;
+template <typename T>
+using Sentence = paddle::operators::Sentence<T>;
+template <typename T>
+using BeamNodeVector = paddle::operators::BeamNodeVector<T>;
+template <typename T>
+using SentenceVector = paddle::operators::SentenceVector<T>;
+
 namespace paddle {
 namespace test {
-using LoD = paddle::framework::LoD;
-using CPUPlace = paddle::platform::CPUPlace;
-using LoDTensor = paddle::framework::LoDTensor;
 
 void GenerateExample(const std::vector<size_t>& level_0,
                      const std::vector<size_t>& level_1,
-                     const std::vector<int>& data, std::vector<LoDTensor>* ids,
-                     std::vector<LoDTensor>* scores) {
+                     const std::vector<int>& data, LoDTensorArray* ids,
+                     LoDTensorArray* scores) {
   PADDLE_ENFORCE_EQ(level_0.back(), level_1.size() - 1,
                     "source level is used to describe candidate set");
   PADDLE_ENFORCE_EQ(level_1.back(), data.size(),
@@ -64,21 +77,6 @@ void GenerateExample(const std::vector<size_t>& level_0,
 }  // namespace test
 }  // namespace paddle
 
-using CPUPlace = paddle::platform::CPUPlace;
-using LoD = paddle::framework::LoD;
-using LoDTensor = paddle::framework::LoDTensor;
-
-template <typename T>
-using BeamNode = paddle::operators::BeamNode<T>;
-template <typename T>
-using BeamHelper = paddle::operators::BeamHelper<T>;
-template <typename T>
-using Sentence = paddle::operators::Sentence<T>;
-template <typename T>
-using BeamNodeVector = paddle::operators::BeamNodeVector<T>;
-template <typename T>
-using SentenceVector = paddle::operators::SentenceVector<T>;
-
 TEST(BeamSearchOutConcatOp, DeleteBeamNode) {
   auto* root = new BeamNode<float>(0, 0);
   auto* b1 = new BeamNode<float>(1, 1);
@@ -114,8 +112,8 @@ TEST(BeamSearchOutConcatOp, MakeSentence) {
 TEST(BeamSearchOutConcatOp, PackTwoStepsFistStep) {
   CPUPlace place;
 
-  std::vector<LoDTensor> ids;
-  std::vector<LoDTensor> scores;
+  LoDTensorArray ids;
+  LoDTensorArray scores;
 
   paddle::test::GenerateExample(
       std::vector<size_t>{0, 2, 6}, std::vector<size_t>{0, 1, 2, 3, 4, 5, 6},
@@ -155,8 +153,8 @@ TEST(BeamSearchOutConcatOp, PackTwoSteps) {
   beamnode_vector_list.push_back(source1_prefixes);
 
   // generate data for one step
-  std::vector<LoDTensor> ids;
-  std::vector<LoDTensor> scores;
+  LoDTensorArray ids;
+  LoDTensorArray scores;
 
   paddle::test::GenerateExample(std::vector<size_t>{0, 3, 5},
                                 std::vector<size_t>{0, 1, 1, 3, 4, 5},
@@ -176,8 +174,8 @@ TEST(BeamSearchOutConcatOp, PackAllSteps) {
   CPUPlace place;
 
   // we will constuct a sample data with 3 steps and 2 source sentences
-  std::vector<LoDTensor> ids;
-  std::vector<LoDTensor> scores;
+  LoDTensorArray ids;
+  LoDTensorArray scores;
 
   paddle::test::GenerateExample(
       std::vector<size_t>{0, 3, 6}, std::vector<size_t>{0, 1, 2, 3, 4, 5, 6},

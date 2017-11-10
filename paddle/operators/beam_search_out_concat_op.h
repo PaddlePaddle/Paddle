@@ -14,12 +14,14 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
 using LoDTensor = framework::LoDTensor;
+using LoDTensorArray = framework::LoDTensorArray;
 
 const int64_t kEndId = 0;
 
@@ -117,9 +119,9 @@ struct BeamHelper {
    *   ConvertSentenceVector<T>ToLodTensor(result_sentence, &result_lod_tensor)
    * ```
    */
-  void PackAllSteps(const std::vector<LoDTensor>& step_ids,
-                    const std::vector<LoDTensor>& step_scores,
-                    LoDTensor* id_tensor, LoDTensor* score_tensor) const;
+  void PackAllSteps(const LoDTensorArray& step_ids,
+                    const LoDTensorArray& step_scores, LoDTensor* id_tensor,
+                    LoDTensor* score_tensor) const;
 };
 
 template <typename T>
@@ -245,8 +247,8 @@ void BeamHelper<T>::ConvertSentenceVectorToLodTensor(
 }
 
 template <typename T>
-void BeamHelper<T>::PackAllSteps(const std::vector<LoDTensor>& step_ids,
-                                 const std::vector<LoDTensor>& step_scores,
+void BeamHelper<T>::PackAllSteps(const LoDTensorArray& step_ids,
+                                 const LoDTensorArray& step_scores,
                                  LoDTensor* id_tensor,
                                  LoDTensor* score_tensor) const {
   PADDLE_ENFORCE(!step_ids.empty(), "step num should be larger than 0");
