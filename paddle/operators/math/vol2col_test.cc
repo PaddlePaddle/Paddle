@@ -64,6 +64,7 @@ void testVol2col() {
   int filter_size = 2;
   int stride = 1;
   int padding = 0;
+  int dilation = 1;
   int output_depth = (input_depth - filter_size + 2 * padding) / stride + 1;
   int output_height = (input_height - filter_size + 2 * padding) / stride + 1;
   int output_width = (input_width - filter_size + 2 * padding) / stride + 1;
@@ -85,8 +86,8 @@ void testVol2col() {
                              *place);
 
   paddle::operators::math::Vol2ColFunctor<Place, float> vol2col;
-  vol2col(*context, input, output, stride, stride, stride, padding, padding,
-          padding);
+  vol2col(*context, input, output, dilation, dilation, dilation, stride, stride,
+          stride, padding, padding, padding);
 
   float vol_2_col[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 10, 11};
   float* out_cfo_ptr;
@@ -111,8 +112,8 @@ void testVol2col() {
   }
 
   paddle::operators::math::Col2VolFunctor<Place, float> col2vol;
-  col2vol(*context, input, output, stride, stride, stride, padding, padding,
-          padding);
+  col2vol(*context, input, output, dilation, dilation, dilation, stride, stride,
+          stride, padding, padding, padding);
 
   float* in_ptr;
   if (paddle::platform::is_cpu_place(*place)) {

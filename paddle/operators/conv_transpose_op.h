@@ -69,6 +69,7 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     // TODO(Zhuoyuan): Paddings can be added in future.
     // groups will alway be disabled in conv2dtranspose.
 
+    int dilaiton_d = 1;
     int dilation_h = 1;
     int dilation_w = 1;
 
@@ -149,8 +150,9 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
         // col2vol: col_matrix -> dy
         // from (c * k_d * k_h * k_w, d * h * w) to (c, o_d, o_h, o_w)
         math::Col2VolFunctor<Place, T> col2vol;
-        col2vol(context.device_context(), output_batch, col, strides[0],
-                strides[1], strides[2], 0, 0, 0);
+        col2vol(context.device_context(), output_batch, col, dilaiton_d,
+                dilation_h, dilation_w, strides[0], strides[1], strides[2], 0,
+                0, 0);
       }
     }
   }
@@ -177,6 +179,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
     // Actually, no paddings and groups allowed in conv transpose.
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
 
+    int dilaiton_d = 1;
     int dilation_h = 1;
     int dilation_w = 1;
 
@@ -261,9 +264,9 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
           // vol2col: dy -> col_matrix
           // from (c, o_d, o_h, o_w) to (c * k_d * k_h * k_w, d * h * w)
           math::Vol2ColFunctor<Place, T> vol2col;
-          vol2col(context.device_context(), output_grad_batch, col, strides[0],
-                  strides[1], strides[2], paddings[0], paddings[1],
-                  paddings[2]);
+          vol2col(context.device_context(), output_grad_batch, col, dilaiton_d,
+                  dilation_h, dilation_w, strides[0], strides[1], strides[2],
+                  paddings[0], paddings[1], paddings[2]);
         }
 
         if (input_grad) {

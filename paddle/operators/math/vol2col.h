@@ -58,6 +58,7 @@ class Vol2ColFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& vol, framework::Tensor& col,
+                  int dilation_d, int dilation_h, int dilation_w,
                   int stride_depth, int stride_height, int stride_width,
                   int padding_depth, int padding_height,
                   int padding_width) const;
@@ -68,6 +69,7 @@ class Col2VolFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
                   framework::Tensor& vol, const framework::Tensor& col,
+                  int dilation_d, int dilation_h, int dilation_w,
                   int stride_depth, int stride_height, int stride_width,
                   int padding_depth, int padding_height,
                   int padding_width) const;
