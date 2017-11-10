@@ -11,6 +11,33 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
     def place(self):
         return core.CPUPlace()
 
+    def test_lod_tensor_to_array_no_lod(self):
+        tensor = core.LoDTensor()
+        tensor.set(np.arange(10).reshape(10, 1).astype('int32'), self.place())
+
+        mask_np = np.array([0, 0, 1, 1, 1, 1, 0, 0, 0, 0]).astype('bool')
+        mask_np = np.expand_dims(mask_np, axis=1)
+
+        mask = core.LoDTensor()
+        mask.set(mask_np, self.place())
+
+        expect_true_tensor = np.array([2, 3, 4, 5]).astype('int32')
+        expect_true_tensor = np.expand_dims(expect_true_tensor, axis=1)
+        expect_true = core.LoDTensor()
+        expect_true.set(expect_true_tensor, self.place())
+
+        expect_false_tensor = np.array([0, 1, 6, 7, 8, 9]).astype('int32')
+        expect_false_tensor = np.expand_dims(expect_false_tensor, axis=1)
+
+        expect_false = core.LoDTensor()
+        expect_false.set(expect_false_tensor, self.place())
+
+        self.main(
+            tensor=tensor,
+            mask=mask,
+            expect_true=expect_true,
+            expect_false=expect_false)
+
     def test_lod_tensor_to_array_level_0(self):
         tensor = core.LoDTensor()
         tensor.set(np.arange(10).reshape(10, 1).astype('int32'), self.place())
@@ -69,6 +96,8 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
 
     def check_tensor_same(self, actual, expect):
         self.assertTrue(np.allclose(np.array(actual), np.array(expect)))
+        print np.array(actual)
+        print np.array(expect)
         self.assertEqual(actual.lod(), expect.lod())
 
 

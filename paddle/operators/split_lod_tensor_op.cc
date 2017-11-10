@@ -41,24 +41,9 @@ class SplitLoDTensorOp : public framework::OperatorBase {
     auto *out_false =
         scope.FindVar(Output("OutFalse"))->GetMutable<framework::LoDTensor>();
     auto level = static_cast<size_t>(Attr<int>("level"));
-
     auto &x_lod = x.lod();
-    //    auto x_lod_level = x_lod.size();
-
     auto &mask_dim = mask.dims();
     auto *mask_data = mask.data<bool>();
-
-    // TODO(qijun): handle some corner case
-    // if (x_lod_level == 0) {
-    //   // no lod
-    //   PADDLE_ENFORCE_EQ(x_dim[0], mask_dim.size());
-
-    // } else {
-    //   PADDLE_ENFORCE_LT(level, x_lod_level);
-    //   cur_level_lod = x_lod_level[level];
-    //   PADDLE_ENFORCE_EQ(cur_level_lod.size() - 1, mask_dim.size());
-
-    // }
 
     std::vector<std::vector<CopyRange>> copy_ranges(mask_dim[0]);
 
