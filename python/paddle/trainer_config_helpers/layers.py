@@ -1345,7 +1345,8 @@ def roi_pool_layer(input,
         inputs=[input.name, rois.name],
         pooled_width=pooled_width,
         pooled_height=pooled_height,
-        spatial_scale=spatial_scale)
+        spatial_scale=spatial_scale,
+        num_channels=num_channels)
     return LayerOutput(
         name, LayerType.ROI_POOL_LAYER, parents=[input, rois], size=size)
 
