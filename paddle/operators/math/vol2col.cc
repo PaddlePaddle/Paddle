@@ -29,6 +29,7 @@ class Vol2ColFunctor<platform::CPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& vol, framework::Tensor& col,
+                  int dilation_d, int dilation_h, int dilation_w,
                   int stride_depth, int stride_height, int stride_width,
                   int padding_depth, int padding_height,
                   int padding_width) const {
@@ -48,6 +49,28 @@ class Vol2ColFunctor<platform::CPUPlace, T> {
     int channels_col =
         input_channels * filter_depth * filter_height * filter_width;
 
+    PADDLE_ENFORCE_EQ((input_depth + 2 * padding_depth -
+                       ((dilation_d * (filter_depth - 1) + 1))) /
+                              stride_depth +
+                          1,
+                      output_depth,
+                      "input_depth and output_depth are "
+                      "Mismatching.");
+    PADDLE_ENFORCE_EQ((input_height + 2 * padding_height -
+                       ((dilation_h * (filter_height - 1) + 1))) /
+                              stride_height +
+                          1,
+                      output_height,
+                      "input_height and output_height are "
+                      "Mismatching.");
+    PADDLE_ENFORCE_EQ((input_width + 2 * padding_width -
+                       ((dilation_w * (filter_width - 1) + 1))) /
+                              stride_width +
+                          1,
+                      output_width,
+                      "input_width and output_width are "
+                      "Mismatching.");
+
     const T* vol_data = vol.data<T>();
     T* col_data = col.data<T>();
 
@@ -57,24 +80,25 @@ class Vol2ColFunctor<platform::CPUPlace, T> {
       int d_offset = (c / filter_width / filter_height) % filter_depth;
       int c_in = c / filter_width / filter_height / filter_depth;
       for (int d = 0; d < output_depth; ++d) {
-        int d_pad = d * stride_depth - padding_depth + d_offset;
+        int d_pad = d * stride_depth - padding_depth + d_offset * dilation_d;
         for (int h = 0; h < output_height; ++h) {
-          int h_pad = h * stride_height - padding_height + h_offset;
+          int h_pad =
+              h * stride_height - padding_height + h_offset * dilation_h;
           for (int w = 0; w < output_width; ++w) {
-            int w_pad = w * stride_width - padding_width + w_offset;
+            int w_pad =
+                w * stride_width - padding_width + w_offset * dilation_w;
 
             int col_idx =
                 ((c * output_depth + d) * output_height + h) * output_width + w;
-            if (h_pad < 0 || h_pad >= input_height || w_pad < 0 ||
-                w_pad >= input_width || d_pad < 0 || d_pad >= input_depth) {
-              col_data[col_idx] = static_cast<T>(0);
-            } else {
-              int vol_idx =
-                  ((c_in * input_depth + d_pad) * input_height + h_pad) *
-                      input_width +
-                  w_pad;
-              col_data[col_idx] = vol_data[vol_idx];
-            }
+            int vol_idx =
+                ((c_in * input_depth + d_pad) * input_height + h_pad) *
+                    input_width +
+                w_pad;
+            col_data[col_idx] =
+                (h_pad < 0 || h_pad >= input_height || w_pad < 0 ||
+                 w_pad >= input_width || d_pad < 0 || d_pad >= input_depth)
+                    ? static_cast<T>(0)
+                    : vol_data[vol_idx];
           }
         }
       }
@@ -93,6 +117,7 @@ class Col2VolFunctor<platform::CPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
                   framework::Tensor& vol, const framework::Tensor& col,
+                  int dilation_d, int dilation_h, int dilation_w,
                   int stride_depth, int stride_height, int stride_width,
                   int padding_depth, int padding_height,
                   int padding_width) const {
@@ -112,6 +137,27 @@ class Col2VolFunctor<platform::CPUPlace, T> {
     int channels_col =
         input_channels * filter_depth * filter_height * filter_width;
 
+    PADDLE_ENFORCE_EQ((input_depth + 2 * padding_depth -
+                       ((dilation_d * (filter_depth - 1) + 1))) /
+                              stride_depth +
+                          1,
+                      output_depth,
+                      "input_depth and output_depth are "
+                      "Mismatching.");
+    PADDLE_ENFORCE_EQ((input_height + 2 * padding_height -
+                       ((dilation_h * (filter_height - 1) + 1))) /
+                              stride_height +
+                          1,
+                      output_height,
+                      "input_height and output_height are "
+                      "Mismatching.");
+    PADDLE_ENFORCE_EQ((input_width + 2 * padding_width -
+                       ((dilation_w * (filter_width - 1) + 1))) /
+                              stride_width +
+                          1,
+                      output_width,
+                      "input_width and output_width are "
+                      "Mismatching.");
     T* vol_data = vol.data<T>();
     const T* col_data = col.data<T>();
 
@@ -121,11 +167,13 @@ class Col2VolFunctor<platform::CPUPlace, T> {
       int d_offset = (c / filter_width / filter_height) % filter_depth;
       int cIm = c / filter_width / filter_height / filter_depth;
       for (int d = 0; d < output_depth; ++d) {
-        int d_pad = d * stride_depth - padding_depth + d_offset;
+        int d_pad = d * stride_depth - padding_depth + d_offset * dilation_d;
         for (int h = 0; h < output_height; ++h) {
-          int h_pad = h * stride_height - padding_height + h_offset;
+          int h_pad =
+              h * stride_height - padding_height + h_offset * dilation_h;
           for (int w = 0; w < output_width; ++w) {
-            int w_pad = w * stride_width - padding_width + w_offset;
+            int w_pad =
+                w * stride_width - padding_width + w_offset * dilation_w;
 
             if (h_pad >= 0 && h_pad < input_height && w_pad >= 0 &&
                 w_pad < input_width && d_pad >= 0 && d_pad < input_depth) {

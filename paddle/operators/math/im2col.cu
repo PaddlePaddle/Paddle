@@ -145,6 +145,7 @@ __global__ void col2im(int n, const T* data_col, int im_height, int im_width,
                h_col) *
                   col_width +
               w_col;
+
           val += data_col[data_col_index];
         }
       }

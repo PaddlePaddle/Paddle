@@ -165,9 +165,9 @@ class GemmConvKernel : public framework::OpKernel<T> {
           } else if (filter_shape_vec.size() == 3) {
             // vol2col
             math::Vol2ColFunctor<Place, T> vol2col;
-            vol2col(context.device_context(), in_slice, col, strides[0],
-                    strides[1], strides[2], paddings[0], paddings[1],
-                    paddings[2]);
+            vol2col(context.device_context(), in_slice, col, dilations[0],
+                    dilations[1], dilations[2], strides[0], strides[1],
+                    strides[2], paddings[0], paddings[1], paddings[2]);
           }
 
           // gemm
@@ -314,7 +314,8 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
 
             } else if (filter_shape_vec.size() == 3) {
               math::Col2VolFunctor<Place, T> col2vol;
-              col2vol(context.device_context(), in_grad_slice, col, strides[0],
+              col2vol(context.device_context(), in_grad_slice, col,
+                      dilations[0], dilations[1], dilations[2], strides[0],
                       strides[1], strides[2], paddings[0], paddings[1],
                       paddings[2]);
             }
@@ -371,9 +372,9 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
                      paddings[0], paddings[1], paddings[1]);
             } else if (filter_shape_vec.size() == 3) {
               math::Vol2ColFunctor<Place, T> vol2col;
-              vol2col(context.device_context(), in_slice, col, strides[0],
-                      strides[1], strides[2], paddings[0], paddings[1],
-                      paddings[2]);
+              vol2col(context.device_context(), in_slice, col, dilations[0],
+                      dilations[1], dilations[2], strides[0], strides[1],
+                      strides[2], paddings[0], paddings[1], paddings[2]);
             }
 
             // gemm
