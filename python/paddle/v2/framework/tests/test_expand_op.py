@@ -7,7 +7,7 @@ class TestExpandOpRank1(OpTest):
     def setUp(self):
         self.op_type = "expand"
         self.inputs = {'X': np.random.random(12).astype("float32")}
-        self.attrs = {'expandTimes': [2]}
+        self.attrs = {'expand_times': [2]}
         output = np.tile(self.inputs['X'], 2)
         self.outputs = {'Out': output}
 
@@ -18,11 +18,11 @@ class TestExpandOpRank1(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestExpandOpRank2_1(OpTest):
+class TestExpandOpRank2_Corner(OpTest):
     def setUp(self):
         self.op_type = "expand"
         self.inputs = {'X': np.random.random((12, 14)).astype("float32")}
-        self.attrs = {'expandTimes': [1, 1]}
+        self.attrs = {'expand_times': [1, 1]}
         output = np.tile(self.inputs['X'], (1, 1))
         self.outputs = {'Out': output}
 
@@ -33,11 +33,11 @@ class TestExpandOpRank2_1(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestExpandOpRank2_2(OpTest):
+class TestExpandOpRank2(OpTest):
     def setUp(self):
         self.op_type = "expand"
         self.inputs = {'X': np.random.random((12, 14)).astype("float32")}
-        self.attrs = {'expandTimes': [2, 3]}
+        self.attrs = {'expand_times': [2, 3]}
         output = np.tile(self.inputs['X'], (2, 3))
         self.outputs = {'Out': output}
 
@@ -48,11 +48,11 @@ class TestExpandOpRank2_2(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestExpandOpRank3_1(OpTest):
+class TestExpandOpRank3_Corner(OpTest):
     def setUp(self):
         self.op_type = "expand"
         self.inputs = {'X': np.random.random((2, 4, 5)).astype("float32")}
-        self.attrs = {'expandTimes': [1, 1, 1]}
+        self.attrs = {'expand_times': [1, 1, 1]}
         output = np.tile(self.inputs['X'], (1, 1, 1))
         self.outputs = {'Out': output}
 
@@ -63,11 +63,11 @@ class TestExpandOpRank3_1(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestExpandOpRank3_2(OpTest):
+class TestExpandOpRank3(OpTest):
     def setUp(self):
         self.op_type = "expand"
         self.inputs = {'X': np.random.random((2, 4, 5)).astype("float32")}
-        self.attrs = {'expandTimes': [2, 1, 4]}
+        self.attrs = {'expand_times': [2, 1, 4]}
         output = np.tile(self.inputs['X'], (2, 1, 4))
         self.outputs = {'Out': output}
 
@@ -82,7 +82,7 @@ class TestExpandOpRank4(OpTest):
     def setUp(self):
         self.op_type = "expand"
         self.inputs = {'X': np.random.random((2, 4, 5, 7)).astype("float32")}
-        self.attrs = {'expandTimes': [3, 2, 1, 2]}
+        self.attrs = {'expand_times': [3, 2, 1, 2]}
         output = np.tile(self.inputs['X'], (3, 2, 1, 2))
         self.outputs = {'Out': output}
 
