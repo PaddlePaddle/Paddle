@@ -321,8 +321,6 @@ static void CreateGradVarInBlock(
         auto* param = block_desc->FindVarRecursive(pname);
         auto* grad = block_desc->FindVar(arg);
         if (param == nullptr) {
-          LOG(WARNING) << "Cannot find forward variable of " << arg
-                       << ". Set its gradient to FP32";
           grad->SetDataType(DataType::FP32);
         } else {
           grad->SetDataType(param->GetDataType());
