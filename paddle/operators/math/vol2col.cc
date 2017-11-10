@@ -181,6 +181,7 @@ class Col2VolFunctor<platform::CPUPlace, T> {
                   ((cIm * input_depth + d_pad) * input_height + h_pad) *
                       input_width +
                   w_pad;
+
               int col_idx =
                   ((c * output_depth + d) * output_height + h) * output_width +
                   w;
