@@ -87,6 +87,16 @@ class TensorArray {
   DySeqMetaBatch Unpack(const LoDTensor &source, int level, bool length_desend);
 
   /*
+   * Pack an array of LoDTensors to a LoDTensor.
+   */
+  LoDTensor LodPack(size_t level) const;
+
+  /*
+   * Unpack a LoDTensor to an array of LoDTensors.
+   */
+  void LodUnpack(const LoDTensor &source, size_t level);
+
+  /*
    * Pack the values into a tensor with rank one higher than each tensor in
    * values.
    */
@@ -110,6 +120,9 @@ class TensorArray {
 
  protected:
   void Unstack(const LoDTensor &source, bool data_shared) const;
+
+  LoDTensor LodPackTwo(const LoDTensor &pre, const LoDTensor &cur,
+                       size_t level) const;
 
  private:
   mutable std::vector<LoDTensor> values_;

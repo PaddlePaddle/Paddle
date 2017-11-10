@@ -27,7 +27,7 @@ class FetchOp : public framework::OperatorBase {
 
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
-    auto fetch_var_name = Input("Input");
+    auto fetch_var_name = Input("X");
     auto *fetch_var = scope.FindVar(fetch_var_name);
     PADDLE_ENFORCE(fetch_var != nullptr,
                    "Cannot find fetch variable in scope, fetch_var_name is %s",
@@ -51,14 +51,33 @@ class FetchOp : public framework::OperatorBase {
 
     // FIXME(yuyang18): Should we assume the fetch operator always generate
     // CPU outputs?
-    dst_item.CopyFromTensor(src_item, platform::CPUPlace(), dev_ctx);
+    dst_item.CopyFrom(src_item, platform::CPUPlace(), dev_ctx);
+    dev_ctx.Wait();
+    dst_item.set_lod(src_item.lod());
+
+    VLOG(3) << "Fetch variable " << fetch_var_name << " to " << out_name;
   }
 };
 
+class FetchOpInfoMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  FetchOpInfoMaker(framework::OpProto *proto,
+                   framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "The input of fetch op");
+    AddOutput("Out", "The output of fetch op");
+    AddAttr<int>("col", "(int) The column of fetch");
+    AddComment(R"DOC(
+Fetch Operator.
+
+It should not be configured by users directly.
+
+)DOC");
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
-// We do not need to register OpInfoMaker,
-// since fetch operator will not be used by end users directly
 REGISTER_OPERATOR(fetch, paddle::operators::FetchOp,
-                  paddle::framework::EmptyGradOpMaker);
+                  paddle::framework::EmptyGradOpMaker,
+                  paddle::operators::FetchOpInfoMaker);

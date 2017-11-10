@@ -44,7 +44,7 @@ class CrossEntropyFunctor<platform::CPUPlace, T> {
       const T* prob_data = prob->data<T>();
       T* loss_data = out->data<T>();
 
-      const int* label_data = labels->data<int>();
+      const int64_t* label_data = labels->data<int64_t>();
       for (int i = 0; i < batch_size; ++i) {
         int index = i * class_num + label_data[i];
         loss_data[i] = -math::TolerableValue<T>()(std::log(prob_data[index]));
@@ -54,6 +54,7 @@ class CrossEntropyFunctor<platform::CPUPlace, T> {
 };
 
 template class CrossEntropyFunctor<platform::CPUPlace, float>;
+template class CrossEntropyFunctor<platform::CPUPlace, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

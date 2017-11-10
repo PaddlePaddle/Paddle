@@ -52,14 +52,16 @@ class MinusOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Y", "The right tensor of minus operator.");
     AddOutput("Out", "The output tensor of minus operator.");
 
-    AddComment(R"DOC(Minus Operator
+    AddComment(R"DOC(
+Minus Operator.
 
 Equation:
 
-    Out = X - Y
+    $Out = X - Y$
 
 Both the input `X` and `Y` can carry the LoD (Level of Details) information,
-or not. But the output only shares the LoD with input `X`.
+or not. But the output only shares the LoD information with input `X`.
+
 )DOC");
   }
 };

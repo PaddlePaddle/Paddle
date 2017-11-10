@@ -9,7 +9,6 @@ cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 add_subdirectory(dynload)
 
 cc_test(enforce_test SRCS enforce_test.cc DEPS stringpiece)
-cc_test(environment_test SRCS environment_test.cc DEPS stringpiece)
 
 IF(WITH_GPU)
     set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
@@ -25,3 +24,4 @@ nv_test(device_context_test SRCS device_context_test.cc DEPS device_context gpu_
 
 nv_test(cudnn_helper_test SRCS cudnn_helper_test.cc DEPS dynload_cuda)
 nv_test(transform_test SRCS transform_test.cu DEPS paddle_memory place device_context)
+nv_test(nccl_test SRCS nccl_test.cu DEPS dynload_cuda gpu_info device_context)

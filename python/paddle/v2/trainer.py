@@ -64,6 +64,11 @@ class SGD(object):
                             "paddle.v2.optimizer.Optimizer")
         import py_paddle.swig_paddle as api
         topology = Topology(cost, extra_layers=extra_layers)
+        # HACK(typhoonzero): update ParameterConfig(proto) in case of optimizers
+        # are defined after layers, or between layers.
+        topology.update_from_default()
+        parameters.update_param_conf(topology.proto())
+
         self.__optimizer__ = update_equation
         self.__topology__ = topology
         self.__parameters__ = parameters
@@ -90,6 +95,9 @@ class SGD(object):
         self.__gradient_machine__.randParameters()
         self.__parameters__.append_gradient_machine(gm)
         self.__parameter_updater__ = None
+
+    def get_topology_proto(self):
+        return self.__topology_in_proto__
 
     def __use_remote_sparse_updater__(self):
         return self.__use_sparse_updater__ and not self.__is_local__
@@ -197,7 +205,8 @@ class SGD(object):
         """
         Testing method. Will test input data.
 
-        :param reader: A reader that reads and yeilds data items.
+        :param reader: A batch reader that reads and yeilds data items,
+                       it should be a paddle.v2.batch.
         :type reader: collections.Iterable
         :param feeding: Feeding is a map of neural network input name and array
                         index that reader returns.

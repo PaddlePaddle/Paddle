@@ -19,11 +19,11 @@ namespace paddle {
 namespace framework {
 
 VarDescBind *BlockDescBind::Var(const std::string &name) {
-  need_update_ = true;
   auto it = vars_.find(name);
   if (it != vars_.end()) {
     return it->second.get();
   }
+  need_update_ = true;
   auto *var = new VarDescBind(name);
   vars_[name].reset(var);
   return var;
@@ -41,6 +41,28 @@ bool BlockDescBind::HasVar(const std::string &name) const {
   return vars_.find(name) != vars_.end();
 }
 
+VarDescBind *BlockDescBind::FindVarRecursive(const std::string &name) const {
+  auto it = vars_.find(name);
+  if (it == vars_.end()) {
+    return Parent() == kNoneBlockIndex ? nullptr
+                                       : ParentBlock()->FindVarRecursive(name);
+  }
+  return it->second.get();
+}
+
+VarDescBind *BlockDescBind::FindRecursiveOrCreateVar(
+    const std::string &name_bytes) {
+  VarDescBind *res = FindVarRecursive(name_bytes);
+  if (res == nullptr) {
+    res = Var(name_bytes);
+  }
+  return res;
+}
+
+bool BlockDescBind::HasVarRecursive(const std::string &name) const {
+  return FindVarRecursive(name) != nullptr;
+}
+
 std::vector<VarDescBind *> BlockDescBind::AllVars() const {
   std::vector<VarDescBind *> res;
   for (const auto &p : vars_) {
@@ -53,6 +75,11 @@ OpDescBind *BlockDescBind::AppendOp() {
   need_update_ = true;
   ops_.emplace_back(new OpDescBind());
   return ops_.back().get();
+}
+
+void BlockDescBind::AppendAllocatedOp(std::unique_ptr<OpDescBind> &&op_desc) {
+  need_update_ = true;
+  ops_.emplace_back(std::move(op_desc));
 }
 
 OpDescBind *BlockDescBind::PrependOp() {
@@ -70,6 +97,10 @@ std::vector<OpDescBind *> BlockDescBind::AllOps() const {
 }
 
 void BlockDescBind::Flush() {
+  for (auto &op_desc : ops_) {
+    op_desc->Flush();
+  }
+
   if (need_update_) {
     auto &op_field = *this->desc_->mutable_ops();
     this->ClearPBOps();
@@ -88,15 +119,39 @@ void BlockDescBind::Flush() {
 }
 
 BlockDescBind *BlockDescBind::ParentBlock() const {
-  if (this->desc_->parent_idx() == -1) {
+  if (this->desc_->parent_idx() == kNoneBlockIndex) {
     return nullptr;
   }
-  return prog_->Block(static_cast<size_t>(this->desc_->parent_idx()));
+  return prog_->MutableBlock(static_cast<size_t>(this->desc_->parent_idx()));
 }
 
 BlockDesc *BlockDescBind::Proto() {
   Flush();
   return desc_;
+}
+
+BlockDescBind::BlockDescBind(ProgramDescBind *prog, BlockDesc *desc)
+    : prog_(prog), desc_(desc), need_update_(false) {
+  for (const VarDesc &var_desc : desc_->vars()) {
+    vars_[var_desc.name()].reset(new VarDescBind(var_desc));
+  }
+  for (const OpDesc &op_desc : desc_->ops()) {
+    ops_.emplace_back(new OpDescBind(op_desc, prog));
+  }
+}
+
+BlockDescBind::BlockDescBind(const BlockDescBind &other, BlockDesc *desc,
+                             ProgramDescBind *prog)
+    : prog_(prog), desc_(desc) {
+  need_update_ = true;
+  for (auto &op : other.ops_) {
+    ops_.emplace_back(new OpDescBind(*op));
+  }
+
+  for (auto &it : other.vars_) {
+    auto *var = new VarDescBind(*it.second);
+    vars_[it.first].reset(var);
+  }
 }
 
 void BlockDescBind::ClearPBOps() {

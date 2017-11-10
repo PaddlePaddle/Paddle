@@ -37,6 +37,7 @@ class MaxPoolWithIndexKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     if (context.Attr<bool>("global_pooling")) {
       for (size_t i = 0; i < ksize.size(); ++i) {
+        paddings[i] = 0;
         ksize[i] = static_cast<int>(in_x->dims()[i + 2]);
       }
     }
@@ -54,6 +55,7 @@ class MaxPoolWithIndexKernel : public framework::OpKernel<T> {
         pool3d_forward(context.device_context(), *in_x, *out, *mask, ksize,
                        strides, paddings);
       } break;
+      default: { PADDLE_THROW("Pool op only supports 2D and 3D input."); }
     }
   }
 };
@@ -72,6 +74,7 @@ class MaxPoolWithIndexGradKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     if (context.Attr<bool>("global_pooling")) {
       for (size_t i = 0; i < ksize.size(); ++i) {
+        paddings[i] = 0;
         ksize[i] = static_cast<int>(in_x_grad->dims()[i + 2]);
       }
     }
@@ -95,6 +98,7 @@ class MaxPoolWithIndexGradKernel : public framework::OpKernel<T> {
           pool3d_backward(context.device_context(), *in_x_grad, *out_grad,
                           *mask, ksize, strides, paddings);
         } break;
+        default: { PADDLE_THROW("Pool op only supports 2D and 3D input."); }
       }
     }
   }

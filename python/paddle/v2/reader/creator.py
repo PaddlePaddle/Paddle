@@ -61,7 +61,7 @@ def recordio(paths, buf_size=100):
     """
     Creates a data reader from given RecordIO file paths separated by ",",
         glob pattern is supported.
-    :path: path of recordio files.
+    :path: path of recordio files, can be a string or a string list.
     :returns: data reader of recordio files.
     """
 
@@ -92,7 +92,7 @@ def cloud_reader(paths, etcd_endpoints, timeout_sec=5, buf_size=64):
     """
     Create a data reader that yield a record one by one from
         the paths:
-    :path: path of recordio files.
+    :paths: path of recordio files, can be a string or a string list.
     :etcd_endpoints: the endpoints for etcd cluster
     :returns: data reader of recordio files.
 
@@ -107,7 +107,12 @@ def cloud_reader(paths, etcd_endpoints, timeout_sec=5, buf_size=64):
     import cPickle as pickle
     import paddle.v2.master as master
     c = master.client(etcd_endpoints, timeout_sec, buf_size)
-    c.set_dataset(paths)
+
+    if isinstance(paths, basestring):
+        path = [paths]
+    else:
+        path = paths
+    c.set_dataset(path)
 
     def reader():
         global pass_num
