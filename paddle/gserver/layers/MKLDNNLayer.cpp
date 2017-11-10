@@ -77,7 +77,7 @@ void MKLDNNLayer::forward(PassType passType) {
       needResetBwd_ = true;
     }
 
-    if (inputLayers_[0]->getType() == "data") {
+    if (inputLayers_[0]->getType() == "data" && inputLayers_.size() == 1) {
       // Update input value data when input layer is "data" type,
       // since the input value data address might be changed.
       CHECK(extInVal_);
@@ -171,29 +171,27 @@ void MKLDNNLayer::resetWithMatrix(MKLDNNMatrixPtr& dnn,
 }
 
 void MKLDNNLayer::resetInValue(
-    MKLDNNMatrixPtr& in, const std::shared_ptr<memory::primitive_desc>& intPD) {
+    MKLDNNMatrixPtr& in,
+    const std::shared_ptr<memory::primitive_desc>& intPD,
+    size_t inputIdx) {
   cvtInVal_ = nullptr;
   extInVal_ = nullptr;
   in = nullptr;
   CHECK_GT(bs_ * ic_ * ih_ * iw_, 0);
   auto extPD = MKLDNNMatrix::createPrimitiveDesc(
       {bs_, ic_, ih_, iw_}, format::nchw, engine_);
-  const MatrixPtr& inMat = inputLayers_[0]->getOutputValue();
-  in = std::dynamic_pointer_cast<MKLDNNMatrix>(inMat);
-  CHECK_EQ(inputIsOnlyMKLDNN(), in != nullptr);
-  if (in == nullptr || in->getFormat() == format::nc) {
-    in = MKLDNNMatrix::create(extPD, inMat);
+  const MatrixPtr& inMat = inputLayers_[inputIdx]->getOutputValue();
+  extInVal_ = std::dynamic_pointer_cast<MKLDNNMatrix>(inMat);
+  CHECK_EQ(inputIsOnlyMKLDNN(), extInVal_ != nullptr);
+  if (extInVal_ == nullptr || extInVal_->getFormat() == format::nc) {
+    extInVal_ = MKLDNNMatrix::create(extPD, inMat);
   }
-  extInVal_ = isPaddleFormat(in->getFormat()) ? in : nullptr;
-  if (in->getFormat() == format::nc) {
-    CHECK(ih_ == 1 && iw_ == 1);
-  }
+  in = extInVal_;
   if (nullptr == intPD || in->getPrimitiveDesc() == *intPD) {
     return;
   }
   // need create reorder
   in = MKLDNNMatrix::create(*intPD);
-  extInVal_ = extInVal_ ? extInVal_ : MKLDNNMatrix::create(extPD, inMat);
   cvtInVal_ = MKLDNNMatrix::createReorder(extInVal_, in);
   CHECK(cvtInVal_) << "should not be emptry";
 }
@@ -216,11 +214,12 @@ void MKLDNNLayer::resetOutValue(MKLDNNMatrixPtr& out,
 }
 
 void MKLDNNLayer::resetInGrad(MKLDNNMatrixPtr& in,
-                              memory::primitive_desc intPD) {
+                              memory::primitive_desc intPD,
+                              size_t inputIdx) {
   cvtInGrad_ = nullptr;
   extInGrad_ = nullptr;
   in = nullptr;
-  LayerPtr& input = inputLayers_[0];
+  LayerPtr& input = inputLayers_[inputIdx];
   if (input->getOutputGrad() == nullptr) {
     // no need input grad
     return;
@@ -245,7 +244,6 @@ void MKLDNNLayer::resetInGrad(MKLDNNMatrixPtr& in,
     return;
   }
   // need create reorder
-  // TODO(TJ): add macro definition to simplify it
   CHECK(extInVal_ != nullptr && isPaddleFormat(extInVal_->getFormat()))
       << "should have external input value and the format must be nchw(nc)";
   extInGrad_ = MKLDNNMatrix::create(extInVal_->getPrimitiveDesc(), inMat);
@@ -289,7 +287,7 @@ void MKLDNNLayer::resetMergeGrad(MKLDNNMatrixPtr& out) {
     return;
   }
   CHECK(out) << "should have reset internal ouput grad";
-  std::vector<double> scales(outputMap_.size(), 1.0);
+  std::vector<float> scales(outputMap_.size(), 1.0);
   std::vector<memory::primitive_desc> srcPDs;
   std::vector<primitive::at> srcs;
   for (auto it = outputMap_.begin(); it != outputMap_.end(); ++it) {

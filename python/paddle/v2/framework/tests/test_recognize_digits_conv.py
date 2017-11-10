@@ -4,26 +4,26 @@ import paddle.v2.framework.nets as nets
 import paddle.v2.framework.core as core
 import paddle.v2.framework.optimizer as optimizer
 
-from paddle.v2.framework.framework import Program, g_program
+from paddle.v2.framework.framework import Program
 from paddle.v2.framework.executor import Executor
 
 import numpy as np
 
-init_program = Program()
-program = Program()
+startup_program = Program()
+main_program = Program()
 
 images = layers.data(
     name='pixel',
     shape=[1, 28, 28],
     data_type='float32',
-    program=program,
-    init_program=init_program)
+    main_program=main_program,
+    startup_program=startup_program)
 label = layers.data(
     name='label',
     shape=[1],
     data_type='int64',
-    program=program,
-    init_program=init_program)
+    main_program=main_program,
+    startup_program=startup_program)
 conv_pool_1 = nets.simple_img_conv_pool(
     input=images,
     filter_size=5,
@@ -31,8 +31,8 @@ conv_pool_1 = nets.simple_img_conv_pool(
     pool_size=2,
     pool_stride=2,
     act="relu",
-    program=program,
-    init_program=init_program)
+    main_program=main_program,
+    startup_program=startup_program)
 conv_pool_2 = nets.simple_img_conv_pool(
     input=conv_pool_1,
     filter_size=5,
@@ -40,22 +40,30 @@ conv_pool_2 = nets.simple_img_conv_pool(
     pool_size=2,
     pool_stride=2,
     act="relu",
-    program=program,
-    init_program=init_program)
+    main_program=main_program,
+    startup_program=startup_program)
 
 predict = layers.fc(input=conv_pool_2,
                     size=10,
                     act="softmax",
-                    program=program,
-                    init_program=init_program)
+                    main_program=main_program,
+                    startup_program=startup_program)
 cost = layers.cross_entropy(
-    input=predict, label=label, program=program, init_program=init_program)
-avg_cost = layers.mean(x=cost, program=program)
+    input=predict,
+    label=label,
+    main_program=main_program,
+    startup_program=startup_program)
+avg_cost = layers.mean(x=cost, main_program=main_program)
 accuracy = layers.accuracy(
-    input=predict, label=label, program=program, init_program=init_program)
+    input=predict,
+    label=label,
+    main_program=main_program,
+    startup_program=startup_program)
 
-sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
-opts = sgd_optimizer.minimize(avg_cost)
+# optimizer = optimizer.MomentumOptimizer(learning_rate=0.1 / 128.0,
+# momentum=0.9)
+optimizer = optimizer.AdamOptimizer(learning_rate=0.01, beta1=0.9, beta2=0.999)
+opts = optimizer.minimize(avg_cost, startup_program)
 
 BATCH_SIZE = 50
 PASS_NUM = 3
@@ -67,7 +75,7 @@ train_reader = paddle.batch(
 place = core.CPUPlace()
 exe = Executor(place)
 
-exe.run(init_program, feed={}, fetch_list=[])
+exe.run(startup_program, feed={}, fetch_list=[])
 
 for pass_id in range(PASS_NUM):
     count = 0
@@ -82,7 +90,7 @@ for pass_id in range(PASS_NUM):
         tensor_img.set(img_data, place)
         tensor_y.set(y_data, place)
 
-        outs = exe.run(program,
+        outs = exe.run(main_program,
                        feed={"pixel": tensor_img,
                              "label": tensor_y},
                        fetch_list=[avg_cost, accuracy])

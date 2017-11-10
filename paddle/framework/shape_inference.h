@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/ddim.h"
+#include "paddle/framework/framework.pb.h"
 
 namespace paddle {
 namespace framework {
@@ -25,6 +26,10 @@ class InferShapeContext {
   virtual ~InferShapeContext() = default;
   virtual bool HasInput(const std::string &name) const = 0;
   virtual bool HasOutput(const std::string &name) const = 0;
+
+  std::vector<VarDesc::VarType> GetInputsVarType(const std::string &name) const;
+  std::vector<VarDesc::VarType> GetOutputsVarType(
+      const std::string &name) const;
 
   virtual bool HasInputs(const std::string &name) const = 0;
   virtual bool HasOutputs(const std::string &name) const = 0;
@@ -43,9 +48,10 @@ class InferShapeContext {
   virtual const std::vector<std::string> &Outputs(
       const std::string &name) const = 0;
 
-  // TODO(qiao) implement this function
-  void ShareLoD(const std::string &in, const std::string &out, size_t i = 0,
-                size_t j = 0) const;
+  virtual void ShareLoD(const std::string &in, const std::string &out,
+                        size_t i = 0, size_t j = 0) const = 0;
+
+  virtual bool IsRuntime() const = 0;
 
  protected:
   virtual framework::DDim GetDim(const std::string &name) const = 0;
@@ -56,6 +62,11 @@ class InferShapeContext {
 
   void SetDims(const std::vector<std::string> &names,
                const std::vector<framework::DDim> &dims);
+
+  std::vector<VarDesc::VarType> GetVarTypes(
+      const std::vector<std::string> &names) const;
+
+  virtual VarDesc::VarType GetVarType(const std::string &name) const = 0;
 };
 
 }  // namespace framework

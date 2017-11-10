@@ -7,13 +7,14 @@ class TestAccuracyOp(OpTest):
     def setUp(self):
         self.op_type = "accuracy"
         n = 8192
-        infer = np.random.randint(0, 2, (n, 1)).astype("int")
-        label = np.random.randint(0, 2, (n, 1)).astype("int")
-        self.inputs = {'Inference': infer, "Label": label}
+        infer = np.random.random((n, 1)).astype("float32")
+        indices = np.random.randint(0, 2, (n, 1))
+        label = np.random.randint(0, 2, (n, 1))
+        self.inputs = {'Out': infer, 'Indices': indices, "Label": label}
         num_correct = 0
         for rowid in xrange(n):
-            for ele in infer[rowid]:
-                if ele == label[rowid][0]:
+            for ele in indices[rowid]:
+                if ele == label[rowid]:
                     num_correct += 1
                     break
         self.outputs = {

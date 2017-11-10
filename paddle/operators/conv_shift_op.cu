@@ -130,9 +130,7 @@ class ConvShiftKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
 
     dim3 grid_dim(num_x_blocks, batch_size);
 
-    auto stream = reinterpret_cast<const platform::CUDADeviceContext &>(
-                      context.device_context())
-                      .stream();
+    auto stream = context.cuda_device_context().stream();
 
     conv_shift_forward<T><<<grid_dim, x_per_block, mem_per_block, stream>>>(
         x_data, y_data, out_data, x_width, y_width, y_half_width, batch_size);
@@ -159,9 +157,7 @@ class ConvShiftGradKernel<platform::GPUPlace, T>
     int y_width = Y->dims()[1];
     int y_half_width = (y_width - 1) / 2;
 
-    auto stream = reinterpret_cast<const platform::CUDADeviceContext &>(
-                      context.device_context())
-                      .stream();
+    auto stream = context.cuda_device_context().stream();
 
     const int x_per_block = 256;
     int num_x_blocks = div_up(x_width, x_per_block);

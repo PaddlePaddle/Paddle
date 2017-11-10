@@ -52,7 +52,7 @@ def lstm(
         g = np.dot(h_pre, w_h)  # 1 x 4D
         g = g + x
         g = np.reshape(g, (1, g.size))
-        c_tmp, g_i, g_f, g_o = np.split(g, 4, axis=1)
+        c, g_i, g_f, g_o = np.split(g, 4, axis=1)
         if w_c is None:
             g_i = act_gate(g_i)  # 1 x D
             g_f = act_gate(g_f)  # 1 x D
@@ -60,7 +60,7 @@ def lstm(
             w_ic, w_fc, w_oc = np.split(w_c, 3, axis=1)
             g_i = act_gate(g_i + w_ic * c_pre)  # 1 x D
             g_f = act_gate(g_f + w_fc * c_pre)  # 1 x D
-        c = g_f * c_pre + g_i * act_cand(c_tmp)  # 1 x D
+        c = g_f * c_pre + g_i * act_cand(c)  # 1 x D
 
         if w_c is None:
             g_o = act_gate(g_o)  # 1 x D
@@ -68,8 +68,7 @@ def lstm(
             _, _, w_oc = np.split(w_c, 3, axis=1)
             g_o = act_gate(g_o + w_oc * c)  # 1 x D
         h = g_o * act_cell(c)
-        bg = np.concatenate((act_cand(c_tmp), g_i, g_f, g_o), axis=1)
-        return h, c, bg
+        return h, c
 
     def _reverse(x, lod):
         y = np.zeros_like(x)
@@ -82,7 +81,6 @@ def lstm(
     batch_size = len(offset) - 1
     hidden = []
     cell = []
-    gate = []
     input = _reverse(input, offset) if is_reverse else input
     if w_b is not None:
         input = input + np.tile(w_b, (offset[-1], 1))
@@ -94,96 +92,195 @@ def lstm(
         c_pre = c0[i]  # 1 x D
         for j in range(seq_len):
             # compute one step
-            h_pre, c_pre, g_pre = _step(x[j], w_h, w_c, h_pre, c_pre, act_gate,
-                                        act_cell, act_cand)
+            h_pre, c_pre = _step(x[j], w_h, w_c, h_pre, c_pre, act_gate,
+                                 act_cell, act_cand)
             hidden.append(h_pre.flatten())
             cell.append(c_pre.flatten())
-            gate.append(g_pre.flatten())
 
-    hidden = np.array(hidden).astype("float64")
-    cell = np.array(cell).astype("float64")
-    gate = np.array(gate).astype("float64")
+    hidden = np.array(hidden).astype('float64')
+    cell = np.array(cell).astype('float64')
 
     hidden = _reverse(hidden, offset) if is_reverse else hidden
     cell = _reverse(cell, offset) if is_reverse else cell
 
-    assert gate.shape == input.shape
     assert hidden.shape == (input.shape[0], input.shape[1] / 4)
     assert cell.shape == (input.shape[0], input.shape[1] / 4)
-    return hidden, cell, gate
+    return hidden, cell
 
 
 class TestLstmOp(OpTest):
-    def set_data(self):
-        self.lod = [[0, 2, 6, 9]]
-        self.D = 64
-        self.sort_idx = [2, 6, 0, 3, 7, 1, 4, 8, 5]
+    def set_argument(self):
+        self.lod = [[0, 2, 5, 7]]
+        self.D = 16
 
-        self.act_gate = "sigmoid"
-        self.act_cell = "tanh"
-        self.act_cand = "tanh"
+        self.act_gate = 'sigmoid'
+        self.act_cell = 'tanh'
+        self.act_cand = 'tanh'
 
+        self.has_initial_state = False
         self.is_reverse = False
+        self.use_peepholes = True
 
     def setUp(self):
-        self.set_data()
-        self.op_type = "lstm"
+        self.set_argument()
+        self.op_type = 'lstm'
 
         T = self.lod[0][-1]
         N = len(self.lod[0]) - 1
 
-        x = np.random.normal(size=(T, 4 * self.D)).astype("float64")
-        h0 = np.zeros((N, self.D)).astype("float64")
-        c0 = np.zeros((N, self.D)).astype("float64")
-        w = np.random.normal(size=(self.D, 4 * self.D)).astype("float64")
-        b = np.random.normal(size=(1, 7 * self.D)).astype("float64")
+        x = np.random.normal(size=(T, 4 * self.D)).astype('float64')
+        if self.has_initial_state:
+            h0 = np.random.normal(size=(N, self.D)).astype('float64')
+            c0 = np.random.normal(size=(N, self.D)).astype('float64')
+        else:
+            h0 = np.zeros((N, self.D)).astype('float64')
+            c0 = np.zeros((N, self.D)).astype('float64')
+        w = np.random.normal(size=(self.D, 4 * self.D)).astype('float64')
+        if self.use_peepholes:
+            b = np.random.normal(size=(1, 7 * self.D)).astype('float64')
+        else:
+            b = np.random.normal(size=(1, 4 * self.D)).astype('float64')
 
         w_b = b[:, 0:4 * self.D]
-        w_c = b[:, 4 * self.D:]
-        h, c, g = lstm(x, self.lod, h0, c0, w, w_b, w_c, self.is_reverse,
-                       ACTVATION[self.act_gate], ACTVATION[self.act_cell],
-                       ACTVATION[self.act_cand])
+        w_c = b[:, 4 * self.D:] if self.use_peepholes else None
+        h, c = lstm(x, self.lod, h0, c0, w, w_b, w_c, self.is_reverse,
+                    ACTVATION[self.act_gate], ACTVATION[self.act_cell],
+                    ACTVATION[self.act_cand])
 
-        g_sort = np.zeros_like(x)
-        for i, j in enumerate(self.sort_idx):
-            g_sort[i, :] = g[j, :]
+        self.inputs = {'Input': (x, self.lod), 'Weight': w}
 
-        self.inputs = {
-            'Input': (x, self.lod),
-            'H0': h0,
-            'C0': c0,
-            'Weight': w,
-            'Bias': b
-        }
+        self.inputs['Bias'] = b
+
+        if self.has_initial_state:
+            self.inputs['H0'] = h0
+            self.inputs['C0'] = c0
+
         self.outputs = {
             'Hidden': (h, self.lod),
             'Cell': (c, self.lod),
-            'BatchGate': g_sort
         }
         self.attrs = {
-            'usePeepholes': True,
-            'isReverse': self.is_reverse,
-            'gateActivation': 'sigmoid',
-            'cellActivation': 'tanh',
-            'candidateActivation': 'tanh'
+            'use_peepholes': self.use_peepholes,
+            'is_reverse': self.is_reverse,
+            'gate_activation': self.act_gate,
+            'cell_activation': self.act_cell,
+            'candidate_activation': self.act_cand
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(atol=1e-8)
+
+    def test_check_grad(self):
+        # TODO(qingqing) remove folowing lines after the check_grad is refined.
+        N = len(self.lod[0]) - 1
+        self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(
+            ['Input', 'Weight', 'Bias'], ['Hidden'], max_relative_error=5e-4)
+
+
+class TestLstmOpHasInitial(TestLstmOp):
+    def set_argument(self):
+        self.lod = [[0, 2, 5, 7]]
+        self.D = 16
+
+        self.act_gate = 'sigmoid'
+        self.act_cell = 'tanh'
+        self.act_cand = 'tanh'
+
+        self.has_initial_state = True
+        self.is_reverse = True
+        self.use_peepholes = True
+
+    def test_check_grad(self):
+        # TODO(qingqing) remove folowing lines after the check_grad is refined.
+        N = len(self.lod[0]) - 1
+        self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(
+            ['Input', 'Weight', 'Bias', 'H0', 'C0'], ['Hidden'],
+            max_relative_error=5e-4)
+
+    def test_check_grad_ingore_bias(self):
+        N = len(self.lod[0]) - 1
+        self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(
+            ['Input', 'Weight'], ['Hidden'],
+            max_relative_error=5e-4,
+            no_grad_set=set('Bias'))
+
+    def test_check_grad_ingore_weight(self):
+        N = len(self.lod[0]) - 1
+        self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(
+            ['Input', 'Bias'], ['Hidden'],
+            max_relative_error=5e-4,
+            no_grad_set=set('Weight'))
+
+    def test_check_grad_ingore_input(self):
+        N = len(self.lod[0]) - 1
+        self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(
+            ['Weight', 'Bias'], ['Hidden'],
+            max_relative_error=5e-4,
+            no_grad_set=set('Input'))
+
+    def test_check_grad_ingore_h0(self):
+        N = len(self.lod[0]) - 1
+        self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(
+            ['Input', 'Weight', 'Bias', 'C0'], ['Hidden'],
+            max_relative_error=5e-4,
+            no_grad_set=set('H0'))
+
+    def test_check_grad_ingore_c0(self):
+        N = len(self.lod[0]) - 1
+        self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(
+            ['Input', 'Weight', 'Bias', 'H0'], ['Hidden'],
+            max_relative_error=5e-4,
+            no_grad_set=set('C0'))
 
 
 class TestLstmOpRerverse(TestLstmOp):
-    def set_data(self):
-        self.lod = [[0, 2, 6, 9]]
-        self.D = 64
-        self.sort_idx = [2, 6, 0, 3, 7, 1, 4, 8, 5]
+    def set_argument(self):
+        self.lod = [[0, 2, 5, 7]]
+        self.D = 16
 
-        self.act_gate = "sigmoid"
-        self.act_cell = "tanh"
-        self.act_cand = "tanh"
+        self.act_gate = 'sigmoid'
+        self.act_cell = 'tanh'
+        self.act_cand = 'tanh'
 
+        self.has_initial_state = False
         self.is_reverse = True
+        self.use_peepholes = True
 
 
-if __name__ == "__main__":
+class TestLstmOpNotUsePeepholes(TestLstmOp):
+    def set_argument(self):
+        self.lod = [[0, 2, 5, 7]]
+        self.D = 16
+
+        self.act_gate = 'sigmoid'
+        self.act_cell = 'tanh'
+        self.act_cand = 'tanh'
+
+        self.has_initial_state = False
+        self.is_reverse = True
+        self.use_peepholes = False
+
+
+if __name__ == '__main__':
     unittest.main()
