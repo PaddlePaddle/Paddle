@@ -27,37 +27,9 @@ namespace framework {
  *
  * @note    CopyFrom supports CPU <-> GPU, GPU <-> GPU.
  */
-void CopyFrom(const Tensor& src, const platform::Place& dst_place,
-              const platform::DeviceContext& ctx, Tensor* dst);
 
-/**
- * @brief   Copy the content of an external vector to a tensor.
- *
- * @param[in] src        The external tensor.
- * @param[in] ctx        The device context contains device resources.
- *
- * * @note    CopyFromVector assumes that the tensor has been resized
- *            before invoking.
- */
-template <typename T>
-void CopyFromVector(const std::vector<T>& src,
-                    const platform::DeviceContext& ctx, Tensor* dst);
-
-/**
- * @brief   Copy the content of a tensor to a vector
- *
- * @param[in] src        The external tensor.
- * @param[in] ctx        The device context contains device resources.
- *
- * * @note    CopyFromVector assumes that the tensor has been resized
- *            before invoking.
- */
-template <typename T>
-void CopyToVector(const Tensor& src, const platform::DeviceContext& ctx,
-                  std::vector<T>* dst);
-
-void CopyFrom(const Tensor& src, const platform::Place& dst_place,
-              const platform::DeviceContext& ctx, Tensor* dst) {
+inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
+                     const platform::DeviceContext& ctx, Tensor* dst) {
   src.check_memory_size();
 
   dst->Resize(src.dims());
@@ -110,9 +82,18 @@ void CopyFrom(const Tensor& src, const platform::Place& dst_place,
 #endif
 }
 
+/**
+ * @brief   Copy the content of an external vector to a tensor.
+ *
+ * @param[in] src        The external tensor.
+ * @param[in] ctx        The device context contains device resources.
+ *
+ * * @note    CopyFromVector assumes that the tensor has been resized
+ *            before invoking.
+ */
 template <typename T>
-void CopyFromVector(const std::vector<T>& src,
-                    const platform::DeviceContext& ctx, Tensor* dst) {
+inline void CopyFromVector(const std::vector<T>& src,
+                           const platform::DeviceContext& ctx, Tensor* dst) {
   auto dst_place = ctx.GetPlace();
   auto src_ptr = static_cast<const void*>(src.data());
   platform::CPUPlace src_place;
@@ -133,9 +114,18 @@ void CopyFromVector(const std::vector<T>& src,
 #endif
 }
 
+/**
+ * @brief   Copy the content of a tensor to a vector
+ *
+ * @param[in] src        The external tensor.
+ * @param[in] ctx        The device context contains device resources.
+ *
+ * * @note    CopyFromVector assumes that the tensor has been resized
+ *            before invoking.
+ */
 template <typename T>
-void CopyToVector(const Tensor& src, const platform::DeviceContext& ctx,
-                  std::vector<T>* dst) {
+inline void CopyToVector(const Tensor& src, const platform::DeviceContext& ctx,
+                         std::vector<T>* dst) {
   auto src_ptr = static_cast<const void*>(src.data<T>());
   platform::CPUPlace src_place = boost::get<platform::CPUPlace>(src.place());
   auto size = src.numel() * sizeof(T);

@@ -57,6 +57,8 @@ using Vector = thrust::host_vector<
  */
 using LoD = std::vector<Vector<size_t>>;
 
+std::ostream& operator<<(std::ostream& os, const LoD& lod);
+
 /*
  * Slice levels from a LoD.
  * NOTE the lowest level should always be the absolute offsets of the underlying
@@ -174,19 +176,18 @@ LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
   PADDLE_ENFORCE_EQ(num_instances, lod_level.size() - 1);
   for (size_t ins = 0; ins < num_instances; ins++) {
     for (size_t elem = lod_level[ins]; elem < lod_level[ins + 1]; elem++) {
-      auto t = tensor.Slice(elem, elem + 1);
+      auto slice = tensor.Slice(elem, elem + 1);
       CopyFrom(source.Slice(ins, ins + 1), platform::CPUPlace(),
-               platform::CPUDeviceContext(), &t);
+               platform::CPUDeviceContext(), &slice);
     }
   }
   return tensor;
 }
 
-void GetFineGrainedLoDLength(const LoD& lod, size_t start_idx, size_t end_idx,
-                             std::vector<std::vector<size_t>>* lod_length,
-                             size_t* start_offset);
+std::pair<LoD, std::pair<size_t, size_t>> GetSubLoDAndAbsoluteOffset(
+    const LoD& lod, size_t start_idx, size_t end_idx, size_t start_level);
 
-void AppendLoD(LoD* lod, const std::vector<std::vector<size_t>>& lod_length);
+void AppendLoD(LoD* lod, const LoD& lod_length);
 
 }  // namespace framework
 }  // namespace paddle
