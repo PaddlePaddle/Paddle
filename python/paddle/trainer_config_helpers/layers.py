@@ -4495,9 +4495,9 @@ def conv_projection(input,
                     param_attr=None,
                     trans=False):
     """
-    Different from img_conv_layer and conv_op, conv_projection is an Projection,
-    which can be used in mixed_layer and conat_layer. It use cudnn to implement
-    conv and only support GPU mode.
+    Different from img_conv_layer and conv_op, conv_projection is a Projection,
+    which can be used in mixed_layer and concat_layer. It uses cudnn to implement
+    convolution and only supports GPU mode.
 
     The example usage is:
 
@@ -4510,32 +4510,45 @@ def conv_projection(input,
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param filter_size: The x dimension of a filter kernel.
-    :type filter_size: int
-    :param filter_size_y: The y dimension of a filter kernel. Since
-                          PaddlePaddle now supports rectangular filters,
-                          the filter's shape can be (filter_size, filter_size_y).
+    :param filter_size: The dimensions of the filter kernel. If the parameter is
+                        set to one integer, the two dimensions on x and y axises
+                        will be same when filter_size_y is not set. If it is set
+                        to a list, the first element indicates the dimension on
+                        the x axis, and the second is used to specify the dimension
+                        on the y axis when filter_size is not provided.
+    :type filter_size: int | tuple | list
+    :param filter_size_y: The dimension of the filter kernel on the y axis. If the parameter
+                          is not set, it will be set automatically according to filter_size.
     :type filter_size_y: int
-    :param num_filters: channel of output data.
+    :param num_filters: The number of filters.
     :type num_filters: int
-    :param num_channels: channel of input data.
+    :param num_channels: The number of the input channels.
     :type num_channels: int
-    :param stride: The x dimension of the stride.
-    :type stride: int
-    :param stride_y: The y dimension of the stride.
+    :param stride: The strides. If the parameter is set to one integer, the strides
+                   on x and y axises will be same when stride_y is not set. If it is
+                   set to a list, the first element indicates the stride on the x axis,
+                   and the second is used to specify the stride on the y axis when
+                   stride_y is not provided.
+    :type stride: int | tuple | list
+    :param stride_y: The stride on the y axis.
     :type stride_y: int
-    :param padding: The x dimension of padding.
-    :type padding: int
-    :param padding_y: The y dimension of padding.
+    :param padding: The padding sizes. If the parameter is set to one integer, the padding
+                    sizes on x and y axises will be same when padding_y is not set. If it
+                    is set to a list, the first element indicates the padding size on the
+                    x axis, and the second is used to specify the padding size on the y axis
+                    when padding_y is not provided.
+    :type padding: int | tuple | list
+    :param padding_y: The padding size on the y axis.
     :type padding_y: int
     :param groups: The group number.
     :type groups: int
-    :param param_attr: Convolution param attribute. None means default attribute
+    :param param_attr: The parameter attribute of the convolution. See ParameterAttribute for
+                       details.
     :type param_attr: ParameterAttribute
-    :param trans: whether it is convTrans or conv
+    :param trans: Whether it is ConvTransProjection or ConvProjection
     :type trans: bool
-    :return: A DotMulProjection Object.
-    :rtype: DotMulProjection
+    :return: A Projection Object.
+    :rtype: ConvTransProjection | ConvProjection
     """
     if num_channels is None:
         assert input.num_filters is not None
@@ -4600,13 +4613,13 @@ def pad_layer(input,
               layer_attr=None):
     """
     This operation pads zeros to the input data according to pad_c,pad_h
-    and pad_w. pad_c, pad_h, pad_w specifies the which dimension and size
-    of padding. And the input data shape is NCHW.
+    and pad_w. pad_c, pad_h, pad_w specify the size in the corresponding
+    dimension. And the input data shape is NCHW.
 
-    For example, pad_c=[2,3] means padding 2 zeros before the
-    input data and 3 zeros after the input data in channel dimension.
-    pad_h means padding zeros in height dimension. pad_w means padding zeros
-    in width dimension.
+    For example, pad_c=[2,3] means padding 2 zeros before the input data
+    and 3 zeros after the input data in the channel dimension. pad_h means
+    padding zeros in the height dimension. pad_w means padding zeros in the
+    width dimension.
 
     For example,
 
@@ -4643,13 +4656,14 @@ def pad_layer(input,
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param pad_c: padding size in channel dimension.
+    :param pad_c: The padding size in the channel dimension.
     :type pad_c: list | None
-    :param pad_h: padding size in height dimension.
+    :param pad_h: The padding size in the height dimension.
     :type pad_h: list | None
-    :param pad_w: padding size in width dimension.
+    :param pad_w: The padding size in the width dimension.
     :type pad_w: list | None
-    :param layer_attr: Extra Layer Attribute.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
     :param name: The name of this layer. It is optional.
     :type name: basestring
@@ -4698,7 +4712,7 @@ def pad_layer(input,
 @layer_support()
 def conv_shift_layer(a, b, name=None, layer_attr=None):
     """
-    This layer performs cyclic convolution for two input. For example:
+    This layer performs cyclic convolution on two inputs. For example:
       - a[in]: contains M elements.
       - b[in]: contains N elements (N should be odd).
       - c[out]: contains M elements.
@@ -4707,7 +4721,7 @@ def conv_shift_layer(a, b, name=None, layer_attr=None):
 
         c[i] = \sum_{j=-(N-1)/2}^{(N-1)/2}a_{i+j} * b_{j}
 
-    In this formular:
+    In this formula:
      - a's index is computed modulo M. When it is negative, then get item from
        the right side (which is the end of array) to the left.
      - b's index is computed modulo N. When it is negative, then get item from
@@ -4721,11 +4735,12 @@ def conv_shift_layer(a, b, name=None, layer_attr=None):
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param a: Input layer a.
+    :param a: The first input of this layer.
     :type a: LayerOutput
-    :param b: input layer b.
+    :param b: The second input of this layer.
     :type b: LayerOutput
-    :param layer_attr: layer's extra attribute.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -4756,8 +4771,8 @@ def tensor_layer(a,
                  bias_attr=None,
                  layer_attr=None):
     """
-    This layer performs tensor operation for two input.
-    For example, each sample:
+    This layer performs tensor operation on two inputs.
+    For example:
 
     .. math::
        y_{i} = a * W_{i} * {b^\mathrm{T}}, i=0,1,...,K-1
@@ -4777,21 +4792,23 @@ def tensor_layer(a,
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param a: Input layer a.
+    :param a: The first input of this layer.
     :type a: LayerOutput
-    :param b: input layer b.
+    :param b: The second input of this layer.
     :type b: LayerOutput
-    :param size: the layer dimension.
-    :type size: int.
+    :param size: The dimension of this layer.
+    :type size: int
     :param act: Activation type. LinearActivation is the default.
     :type act: BaseActivation
-    :param param_attr: The Parameter Attribute.
+    :param param_attr: The parameter attribute. See ParameterAttribute for
+                       details.
     :type param_attr: ParameterAttribute
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param layer_attr: Extra Layer config.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute | None
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -4827,7 +4844,7 @@ def selective_fc_layer(input,
                        layer_attr=None):
     """
     Selectived fully connected layer. Different from fc_layer, the output
-    of this layer maybe sparse. It requires an additional input to indicate
+    of this layer can be sparse. It requires an additional input to indicate
     several selected columns for output. If the selected columns is not
     specified, selective_fc_layer acts exactly like fc_layer.
 
@@ -4841,21 +4858,33 @@ def selective_fc_layer(input,
     :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput | list | tuple
-    :param select: The select layer. The output of select layer should be a
-                   sparse binary matrix, and treat as the mask of selective fc.
-                   If is None, acts exactly like fc_layer.
+    :param select: The layer to select columns to output. It should be a sparse
+                   binary matrix, and is treated as the mask of selective fc. If
+                   it is not set or set to None, selective_fc_layer acts exactly
+                   like fc_layer.
     :type select: LayerOutput
-    :param size: The layer dimension.
+    :param size: The dimension of this layer, which should be equal to that of
+                 the layer 'select'.
     :type size: int
     :param act: Activation type. TanhActivation is the default.
     :type act: BaseActivation
-    :param param_attr: The Parameter Attribute.
+    :param pass_generation: The flag which indicates whether it is during generation.
+    :type pass_generation: bool
+    :param has_selected_colums: The flag which indicates whether the parameter 'select'
+                                has been set. True is the default.
+    :type has_selected_colums: bool
+    :param mul_ratio: A ratio helps to judge how sparse the output is and determine
+                      the computation method for speed consideration.
+    :type mul_ratio: float
+    :param param_attr: The parameter attribute. See ParameterAttribute for
+                       details.
     :type param_attr: ParameterAttribute
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param layer_attr: Extra Layer config.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute | None
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -4906,7 +4935,7 @@ def selective_fc_layer(input,
 @layer_support()
 def sampling_id_layer(input, name=None, layer_attr=None):
     """
-    A layer for sampling id from multinomial distribution from the input layer.
+    A layer for sampling id from a multinomial distribution from the input layer.
     Sampling one id for one sample.
 
     The simple usage is:
@@ -4919,8 +4948,9 @@ def sampling_id_layer(input, name=None, layer_attr=None):
     :type input: LayerOutput
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param layer_attr: Extra Layer config.
-    :type layer_attr: ExtraLayerAttribute | None
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -4941,8 +4971,7 @@ def slope_intercept_layer(input,
                           intercept=0.0,
                           layer_attr=None):
     """
-    This layer for applying a slope and an intercept to the input
-    element-wise. There is no activation and weight.
+    This layer for applying a slope and an intercept to the input.
 
     ..  math::
         y = slope * x + intercept
@@ -4957,12 +4986,13 @@ def slope_intercept_layer(input,
     :type input: LayerOutput
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param slope: the scale factor.
-    :type slope: float.
-    :param intercept: the offset.
-    :type intercept: float.
-    :param layer_attr: Extra Layer config.
-    :type layer_attr: ExtraLayerAttribute | None
+    :param slope: The scale factor.
+    :type slope: float
+    :param intercept: The offset.
+    :type intercept: float
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -5017,12 +5047,13 @@ def linear_comb_layer(weights, vectors, size=None, name=None, layer_attr=None):
     :type weights: LayerOutput
     :param vectors: The vector layer.
     :type vectors: LayerOutput
-    :param size: the dimension of this layer.
+    :param size: The dimension of this layer.
     :type size: int
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param layer_attr: Extra Layer config.
-    :type layer_attr: ExtraLayerAttribute | None
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -5069,11 +5100,11 @@ def block_expand_layer(input,
 
        outputW = 1 + (2 * padding_x + imgSizeW - block_x + stride_x - 1) / stride_x
 
-    The expand method is the same with ExpandConvLayer, but saved the transposed
+    The expanding method is the same with ExpandConvLayer, but saved the transposed
     value. After expanding, output.sequenceStartPositions will store timeline.
-    The number of time steps are outputH * outputW and the dimension of each
+    The number of time steps is outputH * outputW and the dimension of each
     time step is block_y * block_x * num_channels. This layer can be used after
-    convolution neural network, and before recurrent neural network.
+    convolutional neural network, and before recurrent neural network.
 
     The simple usage is:
 
@@ -5088,8 +5119,10 @@ def block_expand_layer(input,
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param num_channels: The channel number of input layer.
-    :type num_channels: int | None
+    :param num_channels: The number of input channels. If the parameter is not set or
+                         set to None, its actual value will be automatically set to
+                         the channels number of the input.
+    :type num_channels: int
     :param block_x: The width of sub block.
     :type block_x: int
     :param block_y: The width of sub block.
@@ -5103,9 +5136,10 @@ def block_expand_layer(input,
     :param padding_y: The padding size in vertical direction.
     :type padding_y: int
     :param name: The name of this layer. It is optional.
-    :type name: None | basestring.
-    :param layer_attr: Extra Layer config.
-    :type layer_attr: ExtraLayerAttribute | None
+    :type name: basestring.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
