@@ -42,14 +42,14 @@ class Evaluator(object):
        """
     
 
-    def reset(self, executor, program=None):
+    def reset(self, executor, reset_program=None):
       """
       Reset metric states at the begin of each pass/user specified batch number.
       Execute the reset_program to reset the states.
       """
       
 
-    def eval(self, executor, program=None):
+    def eval(self, executor, eval_program=None):
       """
       Merge the mini-batch statistics to form the evaluation result for multiple mini-batches.
       Execute the eval_program and return the result.

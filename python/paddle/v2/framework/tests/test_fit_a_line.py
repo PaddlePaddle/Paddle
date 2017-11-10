@@ -6,7 +6,6 @@ import paddle.v2.framework.optimizer as optimizer
 from paddle.v2.framework.framework import Program, g_main_program
 from paddle.v2.framework.io import save_persistables, load_persistables
 from paddle.v2.framework.executor import Executor
-from paddle.v2.framework.evaluator import Accuracy
 
 import numpy as np
 
@@ -31,8 +30,6 @@ y = layers.data(
     data_type='float32',
     main_program=main_program,
     startup_program=startup_program)
-
-accuracy = evaluator.Accuracy(input=y_predict, label=y)
 
 cost = layers.square_error_cost(
     input=y_predict,
@@ -61,7 +58,6 @@ PASS_NUM = 100
 for pass_id in range(PASS_NUM):
     save_persistables(exe, "./fit_a_line.model/", main_program=main_program)
     load_persistables(exe, "./fit_a_line.model/", main_program=main_program)
-    accuracy.reset(exe)
     for data in train_reader():
         x_data = np.array(map(lambda x: x[0], data)).astype("float32")
         y_data = np.array(map(lambda x: x[1], data)).astype("float32")
@@ -76,10 +72,8 @@ for pass_id in range(PASS_NUM):
         outs = exe.run(main_program,
                        feed={'x': tensor_x,
                              'y': tensor_y},
-                       fetch_list=[avg_cost, accuracy])
+                       fetch_list=[avg_cost])
         out = np.array(outs[0])
-        pass_acc = accuracy.eval(exe)
-        print pass_acc
 
         if out[0] < 10.0:
             exit(0)  # if avg cost less than 10.0, we think our code is good.
