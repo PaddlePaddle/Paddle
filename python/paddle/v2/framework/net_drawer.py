@@ -43,14 +43,9 @@ def unique_id():
     return generator
 
 
-INDEX = 0
-
-
 def draw_node(op):
-    global INDEX
-    INDEX += 1
     node = OP_STYLE
-    node["name"] = op.type + "_" + str(INDEX)
+    node["name"] = op.type
     node["label"] = op.type
     return node
 
@@ -71,10 +66,13 @@ def parse_graph(program, graph, var_dict, **kwargs):
             if not var_dict.has_key(var):
                 var_dict[var] = "Feed"
 
+    temp_id = 0
     proto = framework_pb2.ProgramDesc.FromString(
         program.desc.serialize_to_string())
     for block in proto.blocks:
         for op in block.ops:
+            op.type = op.type + "_" + str(temp_id)
+            temp_id += 1
             graph.node(**draw_node(op))
             for o in op.outputs:
                 for arg in o.arguments:
