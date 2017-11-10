@@ -39,7 +39,7 @@ class Evaluator(object):
         """
         raise NotImplementedError()
 
-    def reset(self, executor, program=None):
+    def reset(self, executor, reset_program=None):
         """
         Clear metric states at the begin of each pass/user specified batch
         """
@@ -63,7 +63,7 @@ class Evaluator(object):
                 type="scale", inputs={"X": zeros}, outputs={"Out": g_var})
         executor.run(reset_program, fetch_list=self._states.values())
 
-    def eval(self, executor, program=None):
+    def eval(self, executor, eval_program=None):
         """
         Merge the mini-batch statistics to form the evaluation result for multiple mini-batches.
         """
