@@ -406,6 +406,11 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
 
     for (const auto& desc : op_grads) {
       for (const std::string& out_name : desc->OutputArgumentNames()) {
+        if (out_name.find("@GRAD") == std::string::npos) {
+          // Not all outputs of a backward operator is a gradient. Only gradient
+          // need to be sum. Skip variables are not gradient.
+          continue;
+        }
         dup_out_ops[out_name].emplace_back(grad_desc_idx);
       }
       ++grad_desc_idx;
