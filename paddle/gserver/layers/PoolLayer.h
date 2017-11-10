@@ -37,8 +37,6 @@ protected:
   int confPaddingY_;
 
   std::string poolType_;
-  bool with_mask_;
-  Argument mask_;
 
 public:
   explicit PoolLayer(const LayerConfig& config) : Layer(config) {}

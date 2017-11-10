@@ -31,25 +31,8 @@ inline void hl_maxpool_forward(const int frameCnt,
                                const int paddingH,
                                const int paddingW,
                                real* tgtData,
-                               const int tgtStride) {}
-
-inline void hl_maxpool_forward(const int frameCnt,
-                               const real* inputData,
-                               const int channels,
-                               const int height,
-                               const int width,
-                               const int pooledH,
-                               const int pooledW,
-                               const int sizeX,
-                               const int sizeY,
-                               const int strideH,
-                               const int strideW,
-                               const int paddingH,
-                               const int paddingW,
-                               real* tgtData,
                                const int tgtStride,
-                               real* MaskData,
-                               bool withMask) {}
+                               real* MaskData = NULL) {}
 
 inline void hl_maxpool_backward(const int frameCnt,
                                 const real* inputData,

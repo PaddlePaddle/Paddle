@@ -69,17 +69,6 @@ public:
     forward();
   }
 
-  void forward(const Argument* in,
-               const Argument* out,
-               const Argument* mask,
-               PassType passType) {
-    in_ = in;
-    out_ = out;
-    mask_ = mask;
-    passType_ = passType;
-    forward();
-  }
-
   virtual void prefetch(const Argument* in) {}
   virtual void forward() = 0;
   virtual void backward(const UpdateCallback& callback) = 0;
@@ -141,8 +130,6 @@ protected:
   const Argument* in_;
   /// Store `out` passed to forward()
   const Argument* out_;
-  /// Store `mask` passed to forward()
-  const Argument* mask_;
   /// Store `passType` passed to forward()
   PassType passType_;
   /// Layer forward function

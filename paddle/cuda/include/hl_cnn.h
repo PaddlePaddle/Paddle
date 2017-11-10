@@ -35,8 +35,7 @@ limitations under the License. */
  * @param[in]   paddingW    padding width.
  * @param[out]  tgtData     output data.
  * @param[in]   tgtStride   stride between output data samples.
- * @param[out]  maskData    the location indices of select max data
- * @param[in]   withMask    set true if output maskData
+ * @param[out]  maskData    the location indices of select max data.
  */
 extern void hl_maxpool_forward(const int frameCnt,
                                const real* inputData,
@@ -53,45 +52,7 @@ extern void hl_maxpool_forward(const int frameCnt,
                                const int paddingW,
                                real* tgtData,
                                const int tgtStride,
-                               real* maskData,
-                               bool withMask);
-
-/**
- * @brief   Maximum pool forward.
- *
- * @param[in]   frameCnt    batch size of input image.
- * @param[in]   inputData   input data.
- * @param[in]   channels    number of channel.
- * @param[in]   height      image height.
- * @param[in]   width       image width.
- * @param[in]   pooledH     output image height.
- * @param[in]   pooledW     output image width.
- * @param[in]   sizeX       width of pooling window.
- * @param[in]   sizeY       height of pooling window.
- * @param[in]   strideH     pooling stride height.
- * @param[in]   strideW     pooling stride width.
- * @param[in]   paddingH    padding height.
- * @param[in]   paddingW    padding width.
- * @param[out]  tgtData     output data.
- * @param[in]   tgtStride   stride between output data samples.
- * @param[out]  maskData    the location indices of select max data
- * @param[in]   withMask    set true if output maskData
- */
-extern void hl_maxpool_forward(const int frameCnt,
-                               const real* inputData,
-                               const int channels,
-                               const int height,
-                               const int width,
-                               const int pooledH,
-                               const int pooledW,
-                               const int sizeX,
-                               const int sizeY,
-                               const int strideH,
-                               const int strideW,
-                               const int paddingH,
-                               const int paddingW,
-                               real* tgtData,
-                               const int tgtStride);
+                               real* maskData = NULL);
 
 /**
  * @brief   Maximum pool backward.

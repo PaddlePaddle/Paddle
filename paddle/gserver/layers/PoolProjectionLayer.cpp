@@ -52,15 +52,8 @@ void PoolProjectionLayer::forward(PassType passType) {
   int batchSize = in.value->getHeight();
   int size = getSize();
 
-  if (with_mask_) {
-    resetSpecifyOutput(mask_,
-                       batchSize,
-                       size,
-                       /* isValueClean */ false,
-                       /* isGradClean */ true);
-  }
   resetOutput(batchSize, size);
-  poolProjection_->forward(&in, &output_, &mask_, passType);
+  poolProjection_->forward(&in, &output_, passType);
 }
 
 void PoolProjectionLayer::backward(const UpdateCallback& callback) {

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "PoolLayer.h"
+#include "MaxPoolWithMaskLayer.h"
 #include "PoolProjectionLayer.h"
 #include "paddle/utils/Logging.h"
 #ifdef PADDLE_WITH_CUDA
@@ -44,24 +45,20 @@ bool PoolLayer::init(const LayerMap& layerMap,
   strideY_ = conf.has_stride_y() ? conf.stride_y() : conf.stride();
   confPaddingY_ = conf.has_padding_y() ? conf.padding_y() : conf.padding();
   outputY_ = conf.has_output_y() ? conf.output_y() : conf.output_x();
-  with_mask_ = false;
-  if (poolType_ == "max-pool-with-mask") {
-    setOutput("mask", &mask_);
-    with_mask_ = true;
-  }
   return true;
 }
 
 Layer* PoolLayer::create(const LayerConfig& config) {
   CHECK_EQ(config.inputs_size(), 1);
   const std::string& pool = config.inputs(0).pool_conf().pool_type();
-  if (pool == "max-projection" || pool == "avg-projection" ||
-      pool == "max-pool-with-mask") {
+  if (pool == "max-projection" || pool == "avg-projection") {
     return new PoolProjectionLayer(config);
 #ifdef PADDLE_WITH_CUDA
   } else if (CudnnPoolLayer::typeCheck(pool)) {
     return new CudnnPoolLayer(config);
 #endif
+  } else if (pool == "max-pool-with-mask") {
+    return new MaxPoolWithMaskLayer(config);
   } else {
     LOG(FATAL) << "Unknown pool type: " << pool;
     return nullptr;

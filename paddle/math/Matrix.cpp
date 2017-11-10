@@ -1028,37 +1028,8 @@ void GpuMatrix::maxPoolForward(Matrix& inputMat,
                                size_t outputH,
                                size_t outputW,
                                size_t paddingH,
-                               size_t paddingW) {
-  maxPoolForward(inputMat,
-                 imgSizeH,
-                 imgSizeW,
-                 channels,
-                 sizeX,
-                 sizeY,
-                 strideH,
-                 strideW,
-                 outputH,
-                 outputW,
-                 paddingH,
-                 paddingW,
-                 NULL,
-                 false);
-}
-
-void GpuMatrix::maxPoolForward(Matrix& inputMat,
-                               size_t imgSizeH,
-                               size_t imgSizeW,
-                               size_t channels,
-                               size_t sizeX,
-                               size_t sizeY,
-                               size_t strideH,
-                               size_t strideW,
-                               size_t outputH,
-                               size_t outputW,
-                               size_t paddingH,
                                size_t paddingW,
-                               MatrixPtr maskMatP,
-                               bool withMask) {
+                               MatrixPtr maskMatP) {
   CHECK(inputMat.useGpu_ == true) << "Matrix type are not equal";
 
   real* inputData = inputMat.getData();
@@ -1068,7 +1039,7 @@ void GpuMatrix::maxPoolForward(Matrix& inputMat,
   CHECK(height_ == inputMat.getHeight());
   CHECK(width_ == outputH * outputW * channels);
 
-  if (withMask) {
+  if (maskMatP != NULL) {
     CHECK(maskMatP->useGpu_ == true) << "Matrix type are not equal";
     CHECK(outputH * outputW * channels == maskMatP->getWidth());
     maskData = maskMatP->getData();
@@ -1089,8 +1060,7 @@ void GpuMatrix::maxPoolForward(Matrix& inputMat,
                      paddingW,
                      data_,
                      getStride(),
-                     maskData,
-                     withMask);
+                     maskData);
 }
 
 void GpuMatrix::maxPoolBackward(Matrix& inputMat,
@@ -2012,37 +1982,8 @@ void CpuMatrix::maxPoolForward(Matrix& inputMat,
                                size_t outputH,
                                size_t outputW,
                                size_t paddingH,
-                               size_t paddingW) {
-  maxPoolForward(inputMat,
-                 imgSizeH,
-                 imgSizeW,
-                 channels,
-                 sizeX,
-                 sizeY,
-                 strideH,
-                 strideW,
-                 outputH,
-                 outputW,
-                 paddingH,
-                 paddingW,
-                 NULL,
-                 false);
-}
-
-void CpuMatrix::maxPoolForward(Matrix& inputMat,
-                               size_t imgSizeH,
-                               size_t imgSizeW,
-                               size_t channels,
-                               size_t sizeX,
-                               size_t sizeY,
-                               size_t strideH,
-                               size_t strideW,
-                               size_t outputH,
-                               size_t outputW,
-                               size_t paddingH,
                                size_t paddingW,
-                               MatrixPtr maskMatP,
-                               bool withMask) {
+                               MatrixPtr maskMatP) {
   real* inputData = inputMat.getData();
   real* outData = data_;
   real* maskData = NULL;
@@ -2054,7 +1995,7 @@ void CpuMatrix::maxPoolForward(Matrix& inputMat,
   CHECK_EQ(channels * outLength, this->getWidth());
   size_t outStride = getStride();
 
-  if (withMask) {
+  if (maskMatP != NULL) {
     maskData = maskMatP->getData();
     CHECK_EQ(channels * outLength, maskMatP->getWidth());
   }
@@ -2080,7 +2021,7 @@ void CpuMatrix::maxPoolForward(Matrix& inputMat,
           int wstart = pw * strideW - paddingW;
           int wend = std::min(wstart + sizeX, imgSizeW);
           wstart = std::max(wstart, 0);
-          if (!withMask) {
+          if (maskMatP == NULL) {
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {
                 outData[ph * outputW + pw] = std::max(
@@ -2103,7 +2044,7 @@ void CpuMatrix::maxPoolForward(Matrix& inputMat,
       inputData += inLength;
       outData += outLength;
 
-      if (withMask) maskData += outLength;
+      if (maskMatP != NULL) maskData += outLength;
     }
   }
 }

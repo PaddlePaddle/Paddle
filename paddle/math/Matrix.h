@@ -861,26 +861,7 @@ public:
 
   /**
    * Pooling forward operation, pick out the largest element
-   * in the sizeX of value.
-   */
-  virtual void maxPoolForward(Matrix& inputMat,
-                              size_t imgSizeH,
-                              size_t imgSizeW,
-                              size_t channels,
-                              size_t sizeX,
-                              size_t sizeY,
-                              size_t strideH,
-                              size_t strideW,
-                              size_t outputH,
-                              size_t outputW,
-                              size_t paddingH,
-                              size_t paddingW) {
-    LOG(FATAL) << "Not implemeted";
-  }
-
-  /**
-   * Pooling forward operation, pick out the largest element
-   * in the sizeX of value, if set withMask true, it will
+   * in the sizeX of value, if the maskMatP is not NULL, it will
    * also caculate the location indices.
    */
   virtual void maxPoolForward(Matrix& inputMat,
@@ -895,8 +876,7 @@ public:
                               size_t outputW,
                               size_t paddingH,
                               size_t paddingW,
-                              MatrixPtr maskMatP,
-                              bool withMask) {
+                              MatrixPtr maskMatP = NULL) {
     LOG(FATAL) << "Not implemeted";
   }
 
@@ -1448,22 +1428,8 @@ public:
                       size_t outputH,
                       size_t outputW,
                       size_t paddingH,
-                      size_t paddingW);
-
-  void maxPoolForward(Matrix& inputMat,
-                      size_t imgSizeH,
-                      size_t imgSizeW,
-                      size_t channels,
-                      size_t sizeX,
-                      size_t sizeY,
-                      size_t strideH,
-                      size_t strideW,
-                      size_t outputH,
-                      size_t outputW,
-                      size_t paddingH,
                       size_t paddingW,
-                      MatrixPtr maskMatP,
-                      bool withMask);
+                      MatrixPtr maskMatP);
 
   void maxPoolBackward(Matrix& image,
                        size_t imgSizeH,
@@ -1734,22 +1700,8 @@ public:
                       size_t outputH,
                       size_t outputW,
                       size_t paddingH,
-                      size_t paddingW);
-
-  void maxPoolForward(Matrix& inputMat,
-                      size_t imgSizeH,
-                      size_t imgSizeW,
-                      size_t channels,
-                      size_t sizeX,
-                      size_t sizeY,
-                      size_t strideH,
-                      size_t strideW,
-                      size_t outputH,
-                      size_t outputW,
-                      size_t paddingH,
                       size_t paddingW,
-                      MatrixPtr maskMatP,
-                      bool withMask);
+                      MatrixPtr maskMatP);
 
   void maxPoolBackward(Matrix& image,
                        size_t imgSizeH,
