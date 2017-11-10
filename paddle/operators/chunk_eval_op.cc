@@ -46,7 +46,7 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
 
  protected:
   framework::DataType IndicateDataType(
-      const framework::ExecutionContext &ctx) const override {
+      const framework::ExecutionContext &ctx) const {
     return framework::DataType::FP32;
   }
 };
