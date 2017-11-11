@@ -262,8 +262,8 @@ DEFINE_CPU_TRANS(4);
 DEFINE_CPU_TRANS(5);
 DEFINE_CPU_TRANS(6);
 
-struct TensorSetConstant {
-  TensorSetConstant(framework::Tensor* tensor, float value)
+struct TensorSetConstantCPU {
+  TensorSetConstantCPU(framework::Tensor* tensor, float value)
       : tensor_(tensor), value_(value) {}
   template <typename T>
   void operator()() const {
@@ -280,7 +280,7 @@ void set_constant_with_place<platform::CPUPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {
   framework::VisitDataType(framework::ToDataType(tensor->type()),
-                           TensorSetConstant(tensor, value));
+                           TensorSetConstantCPU(tensor, value));
 }
 
 struct TensorSetConstantWithPlace : public boost::static_visitor<void> {

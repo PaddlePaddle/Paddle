@@ -321,6 +321,14 @@ message ClipConfig {
   required double max = 2;
 }
 
+message ROIPoolConfig {
+  required uint32 pooled_width = 1;
+  required uint32 pooled_height = 2;
+  required float spatial_scale = 3;
+  optional uint32 height = 4 [ default = 1 ];
+  optional uint32 width = 5 [ default = 1 ];
+}
+
 message ScaleSubRegionConfig {
   required ImageConfig image_conf = 1;
   required float value = 2;
@@ -348,6 +356,7 @@ message LayerInputConfig {
   optional DetectionOutputConfig detection_output_conf = 17;
   optional ClipConfig clip_conf = 18;
   optional ScaleSubRegionConfig scale_sub_region_conf = 19;
+  optional ROIPoolConfig roi_pool_conf = 20;
 }
 
 message LayerConfig {
