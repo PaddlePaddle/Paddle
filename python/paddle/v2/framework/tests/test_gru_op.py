@@ -6,7 +6,8 @@ from test_lstm_op import identity, sigmoid, tanh, relu
 
 
 class TestGRUOp(OpTest):
-    batch_size = 9
+    lod = [[0, 2, 6, 9]]
+    batch_size = lod[0][-1]
     frame_size = 5
     activate = {
         'identity': identity,
@@ -35,7 +36,7 @@ class TestGRUOp(OpTest):
                            seq_starts[sorted_seqs[i]] + batch_idx)
                 idx_in_seq.append(idx)
             idx_in_seq_list.append(idx_in_seq)
-        return idx_in_seq_list
+        return idx_in_seq_list, sorted_seqs
 
     def gru_step(self, x, h_p, w, b):
         batch_size = x.shape[0]
@@ -66,8 +67,8 @@ class TestGRUOp(OpTest):
         batch_hidden = self.outputs['BatchHidden']
         hidden = self.outputs['Hidden']
         idx_in_seq_list = self.idx_in_seq_list
-        h_p = self.inputs['H0'] if self.inputs.has_key('H0') else np.zeros(
-            (len(idx_in_seq_list[0]), self.frame_size))
+        h_p = self.inputs['H0'][self.sorted_seqs] if self.inputs.has_key(
+            'H0') else np.zeros((len(idx_in_seq_list[0]), self.frame_size))
         num_batch = len(idx_in_seq_list)
         end_idx = 0
         for batch_idx in range(num_batch):
@@ -84,8 +85,9 @@ class TestGRUOp(OpTest):
         return batch_gate, batch_reset_hidden_prev, hidden
 
     def set_data(self):
-        lod = [[0, 2, 6, self.batch_size]]
-        self.idx_in_seq_list = self.seq_to_batch(lod, self.is_reverse)
+        lod = self.lod
+        self.idx_in_seq_list, self.sorted_seqs = self.seq_to_batch(
+            lod, self.is_reverse)
         batch_size = self.batch_size
         frame_size = self.frame_size
         input = np.random.rand(batch_size, frame_size * 3).astype('float64')
@@ -146,8 +148,8 @@ class TestGRUOpReverse(TestGRUOp):
     def set_confs(self):
         self.is_reverse = True
         self.attrs = {
-            'activation': 'identity',
-            'gate_activation': 'sigmoid',
+            'activation': 'tanh',
+            'gate_activation': 'tanh',
             'is_reverse': self.is_reverse
         }
 
