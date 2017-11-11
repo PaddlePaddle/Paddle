@@ -169,7 +169,7 @@ void TensorCheck(AssertEq compare,
       count++;
     }
   }
-  EXPECT_EQ(count, 0) << "There are " << count << " different element.";
+  EXPECT_EQ(count, 0) << "There are " << count << " different elements.";
 }
 
 template <typename AssertEq, typename Tensor1, typename Tensor2>
