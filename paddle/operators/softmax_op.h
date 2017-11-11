@@ -27,9 +27,6 @@ class SoftmaxKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* X = context.Input<Tensor>("X");
     auto* Y = context.Output<Tensor>("Y");
-    if (platform::is_gpu_place(context.GetPlace())) {
-      LOG(INFO) << "==========gpu=========";
-    }
 
     // allocate memory on device.
     Y->mutable_data<T>(context.GetPlace());

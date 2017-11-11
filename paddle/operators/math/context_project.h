@@ -91,9 +91,6 @@ class ContextProjectFunctor {
     auto lod_level_0 = in.lod()[0];
 
     math::Im2ColFunctor<math::ColFormat::kOCF, Place, float> im2col_ocf;
-    if (platform::is_gpu_place(context.GetPlace())) {
-      LOG(INFO) << "========= gpu ==========";
-    }
 
     int input_row_begin, input_row_end;
     int sequence_height, sequence_width;
