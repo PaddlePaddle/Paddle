@@ -144,13 +144,9 @@ class ReduceKernel : public framework::OpKernel<T> {
 
     if (D == 1) {
       auto out = EigenScalar<T>::From(*output);
-      // auto out = EigenTensor<T, 1>::From(*output, dims);
-      VLOG(0) << "x dims : " << x.rank() << " out dims : " << out.rank();
       functor(place, x, out, reduce_dim);
     } else {
       auto out = EigenTensor<T, (D - 1)>::From(*output, dims);
-      // VLOG(0) << "x dims : "<< x.dimensions().size() << " out dims : "
-      //         << out.dimensions().size();
       functor(place, x, out, reduce_dim);
     }
   }
