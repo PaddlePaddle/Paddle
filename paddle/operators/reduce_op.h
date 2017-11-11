@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "glog/logging.h"
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 
@@ -25,6 +26,10 @@ using DDim = framework::DDim;
 template <typename T, size_t D, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
+
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
 
 struct SumFunctor {
   template <typename Place, typename X, typename Y, typename Dim>
@@ -133,10 +138,21 @@ class ReduceKernel : public framework::OpKernel<T> {
       dims_vector.erase(dims_vector.begin() + dim);
       dims = framework::make_ddim(dims_vector);
     }
-    auto out = EigenTensor < T, D == 1 ? 1 : (D - 1) > ::From(*output, dims);
+
     auto& place = context.GetEigenDevice<Place>();
     Functor functor;
-    functor(place, x, out, reduce_dim);
+
+    if (D == 1) {
+      auto out = EigenScalar<T>::From(*output);
+      // auto out = EigenTensor<T, 1>::From(*output, dims);
+      VLOG(0) << "x dims : " << x.rank() << " out dims : " << out.rank();
+      functor(place, x, out, reduce_dim);
+    } else {
+      auto out = EigenTensor<T, (D - 1)>::From(*output, dims);
+      // VLOG(0) << "x dims : "<< x.dimensions().size() << " out dims : "
+      //         << out.dimensions().size();
+      functor(place, x, out, reduce_dim);
+    }
   }
 };
 
@@ -186,13 +202,13 @@ class ReduceGradKernel : public framework::OpKernel<T> {
     auto x_reduce = EigenTensor<T, D>::From(*input1, dims);
     auto x_reduce_grad = EigenTensor<T, D>::From(*input2, dims);
 
-    Eigen::array<int, D> braodcast_dim;
-    for (size_t i = 0; i < D; ++i) braodcast_dim[i] = 1;
-    braodcast_dim[dim] = input0->dims()[dim];
+    Eigen::array<int, D> broadcast_dim;
+    for (size_t i = 0; i < D; ++i) broadcast_dim[i] = 1;
+    broadcast_dim[dim] = input0->dims()[dim];
     auto& place = context.GetEigenDevice<Place>();
     Functor functor;
-    functor(place, x, x_reduce, x_grad, x_reduce_grad, braodcast_dim,
-            braodcast_dim[dim]);
+    functor(place, x, x_reduce, x_grad, x_reduce_grad, broadcast_dim,
+            broadcast_dim[dim]);
   }
 };
 
