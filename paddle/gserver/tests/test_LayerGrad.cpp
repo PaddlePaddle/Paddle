@@ -2058,6 +2058,43 @@ TEST(Layer, CropLayer) {
   }
 }
 
+TEST(Layer, roi_pool) {
+  TestConfig config;
+  config.layerConfig.set_type("roi_pool");
+  config.biasSize = 0;
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ROIPoolConfig* roiPoolConf = input->mutable_roi_pool_conf();
+  roiPoolConf->set_pooled_width(7);
+  roiPoolConf->set_pooled_height(7);
+  roiPoolConf->set_spatial_scale(1. / 16);
+  roiPoolConf->set_width(14);
+  roiPoolConf->set_height(14);
+
+  const size_t roiNum = 10;
+  const size_t roiDim = 10;
+  const size_t batchSize = 5;
+  MatrixPtr roiValue = Matrix::create(roiNum, roiDim, false, false);
+  roiValue->zeroMem();
+  real* roiData = roiValue->getData();
+  for (size_t i = 0; i < roiNum; ++i) {
+    roiData[i * roiDim + 0] = std::rand() % batchSize;
+    roiData[i * roiDim + 1] = std::rand() % 224;  // xMin
+    roiData[i * roiDim + 2] = std::rand() % 224;  // yMin
+    size_t xMin = static_cast<size_t>(roiData[i * roiDim + 1]);
+    size_t yMin = static_cast<size_t>(roiData[i * roiDim + 2]);
+    roiData[i * roiDim + 3] = xMin + std::rand() % (224 - xMin);  // xMax
+    roiData[i * roiDim + 4] = yMin + std::rand() % (224 - yMin);  // yMax
+  }
+
+  config.inputDefs.push_back({INPUT_DATA, "input", 3 * 14 * 14, {}});
+  config.inputDefs.push_back({INPUT_SELF_DEFINE_DATA, "rois", roiValue, {}});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "roi_pool", batchSize, false, useGpu, false);
+  }
+}
+
 TEST(Layer, SwitchOrderLayer) {
   TestConfig config;
   // config input_0
