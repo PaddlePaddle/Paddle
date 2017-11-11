@@ -269,22 +269,51 @@ void testBatchNormLayer(const testBatchNormDesc& pm) {
 TEST(MKLDNNLayer, BatchNormLayer) {
   testBatchNormLayer({4, 10, 6, 6});
   testBatchNormLayer({16, 32, 16, 16});
+  testBatchNormLayer({4, 16, 8, 10});
 }
 
-struct testActDesc {
+struct testImageDesc {
   int bs, ic, ih, iw;
 };
 
-static void getAddtoConfig(TestConfig& cfg, const testActDesc& pm) {
+static void getAddtoConfig(TestConfig& cfg,
+                           const testImageDesc& pm,
+                           const size_t nInputs = 1) {
   cfg.biasSize = 0;
   cfg.layerConfig.set_type("addto");
   size_t layerSize = pm.ic * pm.ih * pm.iw;
   cfg.layerConfig.set_size(layerSize);
-  cfg.inputDefs.push_back({INPUT_DATA, "layer_0", layerSize, 0});
-  cfg.layerConfig.add_inputs();
+  cfg.layerConfig.set_active_type("relu");
+  for (size_t i = 0; i < nInputs; ++i) {
+    std::stringstream ss;
+    ss << "layer_" << i;
+    cfg.inputDefs.push_back({INPUT_DATA, ss.str(), layerSize, 0});
+    LayerInputConfig* input = cfg.layerConfig.add_inputs();
+    ImageConfig* img_conf = input->mutable_image_conf();
+    img_conf->set_channels(pm.ic);
+    img_conf->set_img_size_y(pm.ih);
+    img_conf->set_img_size(pm.iw);
+  }
 }
 
-void testActivation(std::string actType, const testActDesc& pm) {
+void testAddtoLayer(const testImageDesc& pm, const size_t nInputs) {
+  CHECK_GE(nInputs, 1);
+  TestConfig dnnConfig;
+  getAddtoConfig(dnnConfig, pm, nInputs);
+  dnnConfig.layerConfig.set_type("mkldnn_addto");
+  for (auto withBias : {false, true}) {
+    dnnConfig.biasSize = withBias ? pm.ic * pm.ih * pm.iw : 0;
+    RUN_MKLDNN_TEST_LAYER(dnnConfig, "addto", pm)
+  }
+}
+
+TEST(MKLDNNLayer, AddtoLayer) {
+  testAddtoLayer({16, 5, 14, 14}, 1);
+  testAddtoLayer({8, 10, 8, 8}, 2);
+  testAddtoLayer({4, 12, 1, 1}, 3);
+}
+
+void testActivation(std::string actType, const testImageDesc& pm) {
   // TODO(TJ): remove me when paddle support elu activation
   if (actType == "mkldnn_elu") {
     return;

@@ -73,12 +73,16 @@ class AdagradOpMaker : public framework::OpProtoAndCheckerMaker {
 
 Adaptive Gradient Algorithm (Adagrad).
 
-moment_out = moment + grad * grad
-param_out = param - learning_rate * grad / (sqrt(moment_out) + epsilon)
+The update is done as follows:
+
+$$momentOut = moment + grad * grad \break
+paramOut = param - learningRate * grad / ($\sqrt{momentOut}$ + \epsilon) \break
+$$
 
 The original paper(http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
-does not have the epsilon attribute. It is added here for numerical stability 
-by avoiding division by zero.
+does not have the epsilon attribute. It is added here in our implementation
+as also proposed here: http://cs231n.github.io/neural-networks-3/#ada
+for numerical stability to avoid the division by zero error.
 
 )DOC");
   }

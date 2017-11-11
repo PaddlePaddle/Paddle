@@ -2,7 +2,7 @@ import unittest
 from paddle.v2.framework.layers import mul, data
 import paddle.v2.framework.core as core
 from paddle.v2.framework.executor import Executor
-from paddle.v2.framework.framework import g_program
+from paddle.v2.framework.framework import g_main_program
 import numpy
 
 
@@ -23,7 +23,7 @@ class TestExecutor(unittest.TestCase):
         tensor_b = core.LoDTensor()
         tensor_b.set(b_np, place)
         exe = Executor(place)
-        outs = exe.run(g_program,
+        outs = exe.run(g_main_program,
                        feed={'a': tensor_a,
                              'b': tensor_b},
                        fetch_list=[out])
