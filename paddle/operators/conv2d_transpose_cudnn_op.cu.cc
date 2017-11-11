@@ -200,9 +200,7 @@ class CudnnConvTransposeGradOpKernel : public framework::OpKernel<T> {
     T alpha = 1.0f, beta = 0.0f;
     if (input_grad) {
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
-      auto t = framework::EigenVector<T>::Flatten(*input_grad);
-      t.device(ctx.GetEigenDevice<platform::GPUPlace>()) =
-          t.constant(static_cast<T>(0));
+      math::set_constant(ctx.device_context(), input_grad, 0);
 
       PADDLE_ENFORCE(platform::dynload::cudnnConvolutionForward(
           handle, &alpha, cudnn_output_desc, output_grad_data,
@@ -214,9 +212,8 @@ class CudnnConvTransposeGradOpKernel : public framework::OpKernel<T> {
     // ------------------- cudnn conv backward filter ---------------------
     if (filter_grad) {
       T* filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace());
-      auto t = framework::EigenVector<T>::Flatten(*filter_grad);
-      t.device(ctx.GetEigenDevice<platform::GPUPlace>()) =
-          t.constant(static_cast<T>(0));
+      math::set_constant(ctx.device_context(), filter_grad, 0);
+
       // Gradient with respect to the filter
       PADDLE_ENFORCE(platform::dynload::cudnnConvolutionBackwardFilter(
           handle, &alpha, cudnn_output_desc, output_grad_data, cudnn_input_desc,
