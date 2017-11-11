@@ -96,7 +96,7 @@ function(op_library TARGET)
         # It's enough to just adding one operator to pybind
         file(APPEND ${pybind_file} "USE_GPU_ONLY_OP(ncclAllReduce);\n")
     endif()
-    
+
     # reduce_op contains several operators
     if ("${TARGET}" STREQUAL "reduce_op")
         set(pybind_flag 1)
@@ -138,6 +138,7 @@ set(DEPS_OPS
     softmax_with_cross_entropy_op
     sum_op
     pool_op
+    maxout_op
     pool_with_index_op
     nccl_op
     sequence_conv_op
@@ -149,6 +150,7 @@ op_library(cross_entropy_op DEPS cross_entropy)
 op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
 op_library(sum_op DEPS net_op selected_rows_functor)
 op_library(pool_op DEPS pooling)
+op_library(maxout_op DEPS maxouting)
 op_library(pool_with_index_op DEPS pooling)
 op_library(lod_rank_table_op SRCS lod_rank_table_op.cc DEPS lod_rank_table)
 if(WITH_GPU)
