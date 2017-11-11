@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/operators/lstm_op.h"
 #include "paddle/operators/math/gru_compute.h"
 #include "paddle/operators/math/math_function.h"
 #include "paddle/operators/math/sequence2batch.h"
@@ -24,20 +25,12 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-
 template <typename Place, typename T>
 class GRUKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
     auto* input = context.Input<LoDTensor>("Input");
     auto* h0 = context.Input<Tensor>("H0");
-    const T* h0_data = h0 ? h0->data<T>() : nullptr;
     auto* weight = context.Input<Tensor>("Weight");
     const T* weight_data = weight->data<T>();
     auto* bias = context.Input<Tensor>("Bias");
@@ -74,7 +67,18 @@ class GRUKernel : public framework::OpKernel<T> {
     gru_value.gateWeight = const_cast<T*>(weight_data);
     gru_value.stateWeight =
         const_cast<T*>(weight_data + 2 * frame_size * frame_size);
-    gru_value.prevOutValue = const_cast<T*>(h0_data);
+    Tensor ordered_h0;
+    const size_t* order = batch_gate->lod()[2].data();
+    if (h0) {
+      // Since the batch computing for GRU reorders the input sequences
+      // according to their length. The initialized cell state also needs
+      // to reorder.
+      ReorderInitState<Place, T>(context.device_context(), *h0, order,
+                                 &ordered_h0, true);
+      gru_value.prevOutValue = ordered_h0.data<T>();
+    } else {
+      gru_value.prevOutValue = nullptr;
+    }
     auto batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
     for (size_t n = 0; n < num_batch; n++) {
@@ -110,7 +114,6 @@ class GRUGradKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
     auto* h0 = context.Input<Tensor>("H0");
-    const T* h0_data = h0 ? h0->data<T>() : nullptr;
     auto* weight = context.Input<Tensor>("Weight");
     const T* weight_data = weight->data<T>();
     auto* batch_gate = context.Input<LoDTensor>("BatchGate");
@@ -142,6 +145,16 @@ class GRUGradKernel : public framework::OpKernel<T> {
     zero(context.device_context(), &batch_gate_grad, static_cast<T>(0.0));
     zero(context.device_context(), &batch_reset_hidden_prev_grad,
          static_cast<T>(0.0));
+
+    Tensor ordered_h0, ordered_h0_grad;
+    const size_t* order = batch_gate->lod()[2].data();
+    if (h0) {
+      ReorderInitState<Place, T>(context.device_context(), *h0, order,
+                                 &ordered_h0, true);
+    }
+    if (h0_grad) {
+      ordered_h0_grad.mutable_data<T>(h0_grad->dims(), context.GetPlace());
+    }
 
     bool is_reverse = context.Attr<bool>("is_reverse");
     batch_hidden_grad.set_lod(batch_hidden->lod());
@@ -185,11 +198,13 @@ class GRUGradKernel : public framework::OpKernel<T> {
           batch_reset_hidden_prev_grad.Slice(bstart, bend);
       gru_grad.resetOutputGrad = reset_hidden_prev_grad_t.data<T>();
       if (n == 0) {
-        gru_value.prevOutValue = const_cast<T*>(h0_data);
-        if (h0_grad) {
-          T* h0_grad_data = h0_grad->mutable_data<T>(context.GetPlace());
-          zero(context.device_context(), h0_grad, static_cast<T>(0.0));
-          gru_grad.prevOutGrad = h0_grad_data;
+        if (h0) {
+          gru_value.prevOutValue = ordered_h0.data<T>();
+        } else {
+          gru_value.prevOutValue = nullptr;
+        }
+        if (h0 && h0_grad) {
+          gru_grad.prevOutGrad = ordered_h0_grad.data<T>();
         } else {
           gru_grad.prevOutGrad = nullptr;
         }
@@ -219,6 +234,10 @@ class GRUGradKernel : public framework::OpKernel<T> {
       auto d_g = EigenMatrix<T>::From(batch_gate_grad);
       auto place = context.GetEigenDevice<Place>();
       d_b.device(place) = d_g.sum(Eigen::array<int, 1>({{0}}));
+    }
+    if (h0 && h0_grad) {
+      ReorderInitState<Place, T>(context.device_context(), ordered_h0_grad,
+                                 order, h0_grad, false);
     }
   }
 
