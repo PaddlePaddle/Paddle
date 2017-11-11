@@ -268,8 +268,8 @@ DEFINE_GPU_TRANS(4);
 DEFINE_GPU_TRANS(5);
 DEFINE_GPU_TRANS(6);
 
-struct TensorSetConstant {
-  TensorSetConstant(const platform::DeviceContext& context,
+struct TensorSetConstantGPU {
+  TensorSetConstantGPU(const platform::DeviceContext& context,
                     framework::Tensor* tensor, float value)
       : context_(context), tensor_(tensor), value_(value) {}
 
@@ -289,7 +289,7 @@ void set_constant_with_place<platform::GPUPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {
   framework::VisitDataType(framework::ToDataType(tensor->type()),
-                           TensorSetConstant(context, tensor, value));
+                           TensorSetConstantGPU(context, tensor, value));
 }
 
 }  // namespace math
