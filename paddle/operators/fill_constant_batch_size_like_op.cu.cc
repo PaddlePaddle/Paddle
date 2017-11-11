@@ -12,10 +12,11 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include "paddle/operators/fill_constant_batch_size_like_op.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/operators/fill_zeros_like_op.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
-    fill_zeros_like,
-    ops::FillZerosLikeKernel<paddle::platform::GPUPlace, float>);
+    fill_constant_batch_size_like,
+    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::GPUPlace, float>,
+    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::GPUPlace, double>);

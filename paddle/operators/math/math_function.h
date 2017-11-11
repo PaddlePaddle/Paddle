@@ -94,13 +94,20 @@ void gemv(const platform::DeviceContext& context, const bool trans_a,
           const T beta, T* C);
 
 template <typename Place, typename T>
+void axpy(const platform::DeviceContext& context, const int n, const T alpha,
+          const T* x, T* y);
+
+template <typename Place, typename T, int Rank>
+struct Transpose {
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& in, framework::Tensor* out,
+                  const std::vector<int>& axis);
+};
+
+template <typename Place, typename T>
 struct SetConstant {
   void operator()(const platform::DeviceContext& context,
-                  framework::Tensor* tensor, T num) {
-    auto t = framework::EigenVector<T>::Flatten(*tensor);
-    t.device(*context.GetEigenDevice<Place>()) =
-        t.constant(static_cast<T>(num));
-  }
+                  framework::Tensor* tensor, T num);
 };
 
 template <typename Place>

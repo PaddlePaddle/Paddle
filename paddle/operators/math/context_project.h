@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/eigen.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/operators/math/im2col.h"
+#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -24,9 +24,6 @@ namespace math {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 /*
  * \brief Context projection concatenates features in adjacent time-steps in
@@ -94,6 +91,9 @@ class ContextProjectFunctor {
     auto lod_level_0 = in.lod()[0];
 
     math::Im2ColFunctor<math::ColFormat::kOCF, Place, float> im2col_ocf;
+    if (platform::is_gpu_place(context.GetPlace())) {
+      LOG(INFO) << "========= gpu ==========";
+    }
 
     int input_row_begin, input_row_end;
     int sequence_height, sequence_width;
@@ -150,9 +150,7 @@ class ContextProjectFunctor {
             Tensor out_t_sub = out_t.Slice(k * context_length,
                                            k * context_length + padding_size);
             Tensor w_sub = padding_data.Slice(k, k + padding_size);
-            auto out_t_sub_e = EigenMatrix<T>::From(out_t_sub);
-            auto w_sub_e = EigenMatrix<T>::From(w_sub);
-            out_t_sub_e.device(*context.GetEigenDevice<Place>()) = w_sub_e;
+            out_t_sub.CopyFrom(w_sub, context.GetPlace(), context);
           }
         }
         if (down_pad > 0) {  // add down pad
@@ -182,9 +180,7 @@ class ContextProjectFunctor {
                 (down_pad_begin_row + t) * context_length);
             Tensor w_sub = padding_data.Slice(
                 up_pad + padding_idx, up_pad + padding_idx + padding_size);
-            auto out_t_sub_e = EigenMatrix<T>::From(out_t_sub);
-            auto w_sub_e = EigenMatrix<T>::From(w_sub);
-            out_t_sub_e.device(*context.GetEigenDevice<Place>()) = w_sub_e;
+            out_t_sub.CopyFrom(w_sub, context.GetPlace(), context);
           }
         }
         out_t.Resize({sequence_height, context_length * sequence_width});
@@ -260,10 +256,8 @@ class ContextProjectGradFunctor {
               Tensor out_t_sub = out_t.Slice(k * context_length,
                                              k * context_length + padding_size);
               Tensor w_sub = padding_data.Slice(k, k + padding_size);
-              auto out_t_sub_e = EigenMatrix<T>::From(out_t_sub);
-              auto w_sub_e = EigenMatrix<T>::From(w_sub);
-              w_sub_e.device(*context.GetEigenDevice<Place>()) =
-                  w_sub_e + out_t_sub_e;
+              axpy<Place, T>(context, w_sub.numel(), static_cast<T>(1),
+                             out_t_sub.data<T>(), w_sub.data<T>());
             }
           }
           if (down_pad > 0) {
@@ -294,10 +288,8 @@ class ContextProjectGradFunctor {
                   (down_pad_begin_row + t) * context_length);
               Tensor w_sub = padding_data.Slice(
                   up_pad + padding_idx, up_pad + padding_idx + padding_size);
-              auto out_t_sub_e = EigenMatrix<T>::From(out_t_sub);
-              auto w_sub_e = EigenMatrix<T>::From(w_sub);
-              w_sub_e.device(*context.GetEigenDevice<Place>()) =
-                  w_sub_e + out_t_sub_e;
+              axpy<Place, T>(context, w_sub.numel(), static_cast<T>(1),
+                             out_t_sub.data<T>(), w_sub.data<T>());
             }
           }
           out_t.Resize({sequence_height, context_length * sequence_width});

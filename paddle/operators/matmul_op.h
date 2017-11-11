@@ -15,8 +15,8 @@
 #pragma once
 
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/math/math_function.h"
 #include "paddle/operators/math/matmul.h"
-#include "paddle/operators/transpose_op.h"
 
 namespace paddle {
 namespace operators {
@@ -74,11 +74,13 @@ Tensor CombineBatchAndN(const framework::ExecutionContext& context,
   Tensor output;
   auto in_dims = input.dims();
   if (in_dims.size() == 3) {
-    output.Resize(in_dims);
+    output.Resize({in_dims[1], in_dims[0], in_dims[2]});
     output.mutable_data<T>(context.GetPlace());
-    EigenTranspose<Place, T, 3>(context, input, output, {1, 0, 2});
+    std::vector<int> axis = {1, 0, 2};
+    math::Transpose<Place, T, 3> trans;
+    trans(context.device_context(), input, &output, axis);
     std::vector<int64_t> out_dims = {in_dims[1], in_dims[0] * in_dims[2]};
-    output.Resize(make_ddim(out_dims));
+    output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
   } else {
     output.ShareDataWith(input);
   }

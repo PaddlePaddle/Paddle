@@ -24,10 +24,6 @@ namespace operators {
 using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-
 template <typename Place, typename T>
 inline void ReorderInitState(const platform::DeviceContext& ctx,
                              const framework::Tensor& src, const size_t* index,
@@ -65,16 +61,11 @@ class LSTMKernel : public framework::OpKernel<T> {
     framework::DDim dims({in_dims[0], frame_size});
 
     if (bias) {
-      Eigen::array<int, 2> extents({{1, 4 * frame_size}});
-      Eigen::array<int, 2> offsets({{0, 0}});
-      auto b = EigenMatrix<T>::From(*bias);
-      auto gate = EigenMatrix<T>::From(*batch_gate);
-      gate.device(ctx.GetEigenDevice<Place>()) =
-          gate +
-          b.slice(offsets, extents)
-              .reshape(Eigen::array<int, 2>({{1, frame_size * 4}}))
-              .broadcast(
-                  Eigen::array<int, 2>({{static_cast<int>(in_dims[0]), 1}}));
+      Tensor b = *bias;
+      b.Resize({bias->numel(), 1});
+      Tensor gate_bias = b.Slice(0, 4 * frame_size);
+      math::RowwiseAdd<Place, T> add_bias;
+      add_bias(device_ctx, *batch_gate, gate_bias, batch_gate);
     }
 
     math::LstmMetaValue<T> lstm_value;

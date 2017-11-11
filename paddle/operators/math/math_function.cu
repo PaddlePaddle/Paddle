@@ -12,8 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#define EIGEN_USE_GPU
 #include "paddle/framework/data_type.h"
 #include "paddle/operators/math/math_function.h"
+#include "paddle/operators/math/math_function_impl.h"
 
 namespace paddle {
 namespace operators {
@@ -231,7 +233,40 @@ void gemv<platform::GPUPlace, double>(const platform::DeviceContext& context,
       cuTransA, N, M, &alpha, A, N, B, 1, &beta, C, 1));
 }
 
+template <>
+void axpy<platform::GPUPlace, float>(const platform::DeviceContext& context,
+                                     const int n, const float alpha,
+                                     const float* x, float* y) {
+  PADDLE_ENFORCE(platform::dynload::cublasSaxpy(
+      reinterpret_cast<const platform::CUDADeviceContext&>(context)
+          .cublas_handle(),
+      n, alpha, x, 1, y, 1));
+}
+
+template <>
+void axpy<platform::GPUPlace, double>(const platform::DeviceContext& context,
+                                      const int n, const double alpha,
+                                      const double* x, double* y) {
+  PADDLE_ENFORCE(platform::dynload::cublasDaxpy(
+      reinterpret_cast<const platform::CUDADeviceContext&>(context)
+          .cublas_handle(),
+      n, alpha, x, 1, y, 1));
+}
+
 template struct SetConstant<platform::GPUPlace, float>;
+template struct SetConstant<platform::GPUPlace, double>;
+template struct SetConstant<platform::GPUPlace, int>;
+
+#define DEFINE_GPU_TRANS(RANK)                                \
+  template struct Transpose<platform::GPUPlace, float, RANK>; \
+  template struct Transpose<platform::GPUPlace, double, RANK>;
+
+DEFINE_GPU_TRANS(1);
+DEFINE_GPU_TRANS(2);
+DEFINE_GPU_TRANS(3);
+DEFINE_GPU_TRANS(4);
+DEFINE_GPU_TRANS(5);
+DEFINE_GPU_TRANS(6);
 
 struct TensorSetConstant {
   TensorSetConstant(const platform::DeviceContext& context,

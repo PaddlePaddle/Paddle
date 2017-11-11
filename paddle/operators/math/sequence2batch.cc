@@ -56,6 +56,29 @@ template class LoDTensor2BatchFunctor<platform::CPUPlace, double>;
 template class Batch2LoDTensorFunctor<platform::CPUPlace, float>;
 template class Batch2LoDTensorFunctor<platform::CPUPlace, double>;
 
+template <typename T>
+struct RowwiseAdd<platform::CPUPlace, T> {
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& input, const framework::Tensor& bias,
+                  framework::Tensor* output) {
+    auto in_dims = input.dims();
+    auto size = input.numel() / in_dims[0];
+    PADDLE_ENFORCE_EQ(bias.numel(), size);
+    PADDLE_ENFORCE_EQ(output->dims(), in_dims);
+
+    auto in = EigenMatrix<T>::From(input);
+    auto b = EigenMatrix<T>::From(bias);
+    auto out = EigenMatrix<T>::From(*output);
+    Eigen::array<int, 2> bshape({{1, static_cast<int>(size)}});
+    Eigen::array<int, 2> bcast({{static_cast<int>(in_dims[0]), 1}});
+    out.device(*context.GetEigenDevice<platform::CPUPlace>()) =
+        in + b.reshape(bshape).broadcast(bcast);
+  }
+};
+
+template struct RowwiseAdd<platform::CPUPlace, float>;
+template struct RowwiseAdd<platform::CPUPlace, double>;
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

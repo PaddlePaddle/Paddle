@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/framework/eigen.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
@@ -20,6 +21,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 namespace math {
+
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
 class CopyMatrixRowsFunctor {
@@ -157,6 +162,13 @@ class Batch2LoDTensorFunctor {
     size_t* index = in_lod[1].data();
     to_seq(context, batch, index, lod_tensor, false);
   }
+};
+
+template <typename Place, typename T>
+struct RowwiseAdd {
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& input, const framework::Tensor& bias,
+                  framework::Tensor* output);
 };
 
 }  // namespace math

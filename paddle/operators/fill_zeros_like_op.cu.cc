@@ -12,12 +12,10 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#define EIGEN_USE_GPU
-#include "paddle/operators/gru_op.h"
+#include "paddle/operators/fill_zeros_like_op.h"
+#include "paddle/framework/op_registry.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(gru, ops::GRUKernel<paddle::platform::GPUPlace, float>,
-                       ops::GRUKernel<paddle::platform::GPUPlace, double>);
-REGISTER_OP_GPU_KERNEL(gru_grad,
-                       ops::GRUGradKernel<paddle::platform::GPUPlace, float>,
-                       ops::GRUGradKernel<paddle::platform::GPUPlace, double>);
+REGISTER_OP_GPU_KERNEL(
+    fill_zeros_like,
+    ops::FillZerosLikeKernel<paddle::platform::GPUPlace, float>);
