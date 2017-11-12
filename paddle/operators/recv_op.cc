@@ -21,76 +21,8 @@
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/detail/send_recv_impl.h"
 #include "paddle/operators/detail/simple_block_queue.h"
-
-#include <grpc++/security/server_credentials.h>
-#include <grpc++/server.h>
-#include <grpc++/server_builder.h>
-#include <grpc++/server_context.h>
-#include <grpc/grpc.h>
-#include "paddle/operators/send_recv.grpc.pb.h"
-
-using grpc::Server;
-using grpc::ServerBuilder;
-using grpc::ServerContext;
-using grpc::ServerReader;
-using grpc::ServerReaderWriter;
-using grpc::ServerWriter;
-using grpc::Status;
-using sendrecv::SendRecvOp;
-using sendrecv::VariableMessage;
-
-class SendRecvServerImpl final : public SendRecvOp::Service {
- public:
-  explicit SendRecvServerImpl() {}
-
-  void SetScope(framework::Scope *scope) { scope_ = scope; }
-
-  Status InitVariables(ServerContext *context,
-                       ServerReader<VariableMessage> *in_var_reader) override {
-    // set up all variables to run server side block
-    PADDLE_ENFORCE(scope_);
-    VariableMessage in_buf;
-    while (in_var_reader->Read(&in_buf)) {
-      // create var if not exist
-      auto *var = scope_->Var(in_buf.varname);
-      auto *tensor = var->GetMutable<framework::LoDTensor>();
-      std::istringstream iss(in_buf.serialized);
-      framework::DeserializeFromStream(iss, *tensor);
-    }
-    return Status::OK;
-  }
-
-  Status SendTensor(ServerContext *context, const std::string *in_tensor,
-                    std::string *out_tensor) override {
-    framework::LodTensor t;
-    // TODO(typhoonzero): desirealize in_tensor and run pserver network.
-    std::istringstream iss(*in_tensor);
-    framework::Tensor t;
-    framework::DesirializeFromStream(iss, &t);
-    lodtensor_queue_.Push(std::move(t));
-    // Block util the sub graph is done.
-    auto t = lodtensor_return_queue_.Pop();
-    std::ostringstream oss;
-    framework::SerializeToStream(oss, &t);
-    *out_tensor = oss.str();
-
-    return Status::OK;
-  }
-
-  const framework::LodTensor &Get() const { return lodtensor_queue_.Pop(); }
-
-  void Push(framework::LodTensor &tensor) {
-    lodtensor_return_queue_.Push(tensor);
-  }
-
- private:
-  framework::Scope *scope_;
-  SimpleBlockQueue<framework::LodTensor> lodtensor_queue_;
-  SimpleBlockQueue<framework::LodTensor> lodtensor_return_queue_;
-  SimpleBlockQueue<framework::SelectedRows> selected_rows_queue_;
-  SimpleBlockQueue<framework::SelectedRows> selected_rows_return_queue_;
-};
 
 void RunServer(const SendRecvServerImpl &service,
                const std::string &server_address) {

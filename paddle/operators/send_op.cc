@@ -23,42 +23,6 @@
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/detail/simple_block_queue.h"
 
-#include <grpc++/channel.h>
-#include <grpc++/client_context.h>
-#include <grpc++/create_channel.h>
-#include <grpc++/security/credentials.h>
-#include <grpc/grpc.h>
-#include "paddle/operators/send_recv.grpc.pb.h"
-
-using grpc::Channel;
-using grpc::ClientContext;
-using grpc::ClientReader;
-using grpc::ClientReaderWriter;
-using grpc::ClientWriter;
-using grpc::Status;
-using sendrecv::SendRecvOp;
-using sendrecv::SendTensor;
-
-// RPCClient is a class to send tensors to pserver sub-network
-// using different hashing methods.
-class RPCClient {
- public:
-  RPCClient(std::shared_ptr<Channel> channel)
-      : stub_(SendRecvOp::NewStub(channel)) {}
-
-  bool SendTensor(const framework::LoDTensor &tensor) {
-    ClientContext context;
-    Status status = stub_->SendTensor(&context, tensor);
-    if (!status.ok()) {
-      std::cout << "GetFeature rpc failed." << std::endl;
-      return false;
-    }
-    return true;
-  }
-
-  std::unique_ptr<SendRecvOp::Stub> stub_;
-};
-
 namespace paddle {
 namespace operators {
 

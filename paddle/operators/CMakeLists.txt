@@ -178,7 +178,7 @@ set(DEPS_OPS
     send_op
     recv_op)
 
-grpc_library(sendrecvop_grpc SRCS send_recv.proto)
+add_subdirectory(detail)
 op_library(send_op SRCS send_op.cc DEPS sendrecvop_grpc)
 op_library(recv_op SRCS recv_op.cc DEPS sendrecvop_grpc)
 
