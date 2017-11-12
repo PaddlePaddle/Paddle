@@ -470,27 +470,27 @@ endfunction()
 
 
 function(grpc_library TARGET_NAME)
-  set(oneValueArgs SRCS)
-  set(multiValueArgs "")
+  set(oneValueArgs PROTO)
+  set(multiValueArgs SRCS)
   set(options "")
   cmake_parse_arguments(grpc_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-  message("processing ${grpc_library_SRCS}")
+  message("processing ${grpc_library_PROTO}")
 
-  get_filename_component(ABS_FIL ${grpc_library_SRCS} ABSOLUTE)
-  get_filename_component(FIL_WE ${grpc_library_SRCS} NAME_WE)
-  get_filename_component(FIL_PATH ${ABS_FIL} PATH)
+  get_filename_component(ABS_PROTO ${grpc_library_PROTO} ABSOLUTE)
+  get_filename_component(PROTO_WE ${grpc_library_PROTO} NAME_WE)
+  get_filename_component(PROTO_PATH ${ABS_FIL} PATH)
 
-  protobuf_generate_cpp(grpc_proto_srcs grpc_proto_hdrs "${grpc_library_SRCS}")
-  set(grpc_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.grpc.pb.cc")
-  set(grpc_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.grpc.pb.h")
+  protobuf_generate_cpp(grpc_proto_srcs grpc_proto_hdrs "${ABS_PROTO}")
+  set(grpc_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_WE}.grpc.pb.cc")
+  set(grpc_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_WE}.grpc.pb.h")
 
   add_custom_command(
           OUTPUT "${grpc_grpc_srcs}" "${grpc_grpc_hdrs}"
           COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
-          ARGS --grpc_out "${CMAKE_CURRENT_BINARY_DIR}" -I "${FIL_PATH}"
-          --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN}" "${ABS_FIL}"
-          DEPENDS "${ABS_FIL}")
+          ARGS --grpc_out "${CMAKE_CURRENT_BINARY_DIR}" -I "${PROTO_PATH}"
+          --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN}" "${ABS_PROTO}"
+          DEPENDS "${ABS_PROTO}")
 
-  cc_library("${TARGET_NAME}" SRCS "${grpc_grpc_srcs}" "${grpc_proto_srcs}"  DEPS protobuf grpc)
+  cc_library("${TARGET_NAME}" SRCS "${SRCS}" "${grpc_grpc_srcs}" "${grpc_proto_srcs}"  DEPS protobuf grpc)
 endfunction()
