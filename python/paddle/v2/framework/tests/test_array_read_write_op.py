@@ -20,21 +20,19 @@ class TestArrayReadWrite(unittest.TestCase):
             each_x.stop_gradient = False
 
         i = layers.zeros(shape=[1], dtype='int64')
+        i.stop_gradient = False
         arr = layers.array_write(x=x[0], i=i)
         i = layers.increment(x=i)
-        i.stop_gradient = True
         arr = layers.array_write(x=x[1], i=i, array=arr)
         i = layers.increment(x=i)
-        i.stop_gradient = True
         arr = layers.array_write(x=x[2], i=i, array=arr)
 
         i = layers.zeros(shape=[1], dtype='int64')
+        i.stop_gradient = False
         a0 = layers.array_read(array=arr, i=i)
         i = layers.increment(x=i)
-        i.stop_gradient = True  # index should not calculate gradient
         a1 = layers.array_read(array=arr, i=i)
         i = layers.increment(x=i)
-        i.stop_gradient = True
         a2 = layers.array_read(array=arr, i=i)
 
         mean_a0 = layers.mean(x=a0)
