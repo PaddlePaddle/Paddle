@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -12,11 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/increment_op.h"
+#include "paddle/operators/compare_op.h"
 
-REGISTER_OP_GPU_KERNEL(
-    increment,
-    paddle::operators::IncrementKernel<paddle::platform::GPUPlace, float>,
-    paddle::operators::IncrementKernel<paddle::platform::GPUPlace, double>,
-    paddle::operators::IncrementKernel<paddle::platform::GPUPlace, int>,
-    paddle::operators::IncrementKernel<paddle::platform::GPUPlace, int64_t>);
+REGISTER_LOGICAL_KERNEL(less_than, GPU, paddle::operators::LessThanFunctor);
+REGISTER_LOGICAL_KERNEL(equal, GPU, paddle::operators::EqualFunctor);

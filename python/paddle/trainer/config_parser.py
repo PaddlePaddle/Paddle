@@ -1969,6 +1969,18 @@ class DetectionOutputLayer(LayerBase):
         self.config.size = size
 
 
+@config_layer('roi_pool')
+class ROIPoolLayer(LayerBase):
+    def __init__(self, name, inputs, pooled_width, pooled_height, spatial_scale,
+                 num_channels, **xargs):
+        super(ROIPoolLayer, self).__init__(name, 'roi_pool', 0, inputs)
+        config_assert(len(inputs) == 2, 'ROIPoolLayer must have 2 inputs')
+        self.config.inputs[0].roi_pool_conf.pooled_width = pooled_width
+        self.config.inputs[0].roi_pool_conf.pooled_height = pooled_height
+        self.config.inputs[0].roi_pool_conf.spatial_scale = spatial_scale
+        self.set_cnn_layer(name, pooled_height, pooled_width, num_channels)
+
+
 @config_layer('data')
 class DataLayer(LayerBase):
     def __init__(self,
@@ -3799,6 +3811,25 @@ class SwitchOrderLayer(LayerBase):
             name, 'switch_order', 0, inputs=inputs, **xargs)
         self.config.reshape_conf.height_axis.extend(reshape['height'])
         self.config.reshape_conf.width_axis.extend(reshape['width'])
+
+
+@config_layer('scale_sub_region')
+class ScaleSubRegionLayer(LayerBase):
+    def __init__(self, name, inputs, value, **xargs):
+        super(ScaleSubRegionLayer, self).__init__(
+            name, 'scale_sub_region', 0, inputs=inputs, **xargs)
+        scale_sub_region_conf = self.config.inputs[0].scale_sub_region_conf
+        scale_sub_region_conf.value = value
+
+        # get channel, width and height from input_0 layer
+        input_layer = self.get_input_layer(0)
+        image_conf = scale_sub_region_conf.image_conf
+        image_conf.img_size = input_layer.width
+        image_conf.img_size_y = input_layer.height
+        image_conf.channels = input_layer.size / (input_layer.width *
+                                                  input_layer.height)
+        self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
+                           image_conf.channels)
 
 
 # Deprecated, use a new layer specific class instead
