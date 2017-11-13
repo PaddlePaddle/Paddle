@@ -54,7 +54,7 @@ class LoDResetKernel : public framework::OpKernel<T> {
     }
 
     out->ShareDataWith(*in);
-
+    // cast level0 to size_t
     std::vector<size_t> ulevel0(level0.size(), 0);
     std::transform(level0.begin(), level0.end(), ulevel0.begin(),
                    [](int a) { return static_cast<size_t>(a); });
