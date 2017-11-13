@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/operators/softmax_with_cross_entropy_op.h"
 #include <paddle/function/TensorType.h>
-#include <iostream>
 
 namespace paddle {
 namespace operators {
