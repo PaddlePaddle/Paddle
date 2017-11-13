@@ -39,7 +39,18 @@ Input image size - 3 * 224 * 224, Time: images/second
 chart on batch size 128
 TBD
 
- - ResNet
+ - ResNet-50
+
+| BatchSize    | 64    | 128   | 256    |
+|--------------|-------| ------| -------|
+| OpenBLAS     | 22.90 | 23.10 | 25.59  | 
+| MKLML        | 29.81 | 30.18 | 32.77  |
+| MKL-DNN      | 80.49 | 82.89 | 83.13  |
+
+
+chart on batch size 128
+TBD
+
  - GoogLeNet
 
 ### Laptop
