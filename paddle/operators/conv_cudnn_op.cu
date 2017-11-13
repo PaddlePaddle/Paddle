@@ -15,7 +15,7 @@
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/memory/memory.h"
-#include "paddle/operators/conv2d_op.h"
+#include "paddle/operators/conv_op.h"
 #include "paddle/platform/assert.h"
 #include "paddle/platform/cudnn_helper.h"
 
@@ -27,7 +27,6 @@ using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using ScopedFilterDescriptor = platform::ScopedFilterDescriptor;
 using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
 using DataLayout = platform::DataLayout;
-using CUDADeviceContext = platform::CUDADeviceContext;
 
 static constexpr size_t kCONV_CUDNN_WORKSPACE_LIMIT_BYTES = 1024 * 1024 * 1024;
 

@@ -119,7 +119,7 @@ void MKLDNNBatchNormLayer::reshape(
     int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) {
   reshapeInput(bs, ih, iw);
   oh = ih;
-  ow = ow;
+  ow = iw;
   // ic_ and oc can not be changed
   CHECK_EQ(inputElemenCnt_ / bs / ih / iw, (size_t)ic)
       << "Input channel can not be changed";

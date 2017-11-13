@@ -215,7 +215,11 @@ class OpTest(unittest.TestCase):
             if isinstance(input_vars[var_name], list):
                 for name, np_value in self.inputs[var_name]:
                     tensor = core.LoDTensor()
-                    tensor.set(np_value, place)
+                    if isinstance(np_value, tuple):
+                        tensor.set(np_value[0], place)
+                        tensor.set_lod(np_value[1])
+                    else:
+                        tensor.set(np_value, place)
                     feed_map[name] = tensor
             else:
                 tensor = core.LoDTensor()
@@ -236,7 +240,6 @@ class OpTest(unittest.TestCase):
 
         inputs = append_input_output(block, op_proto, self.inputs, True)
         outputs = append_input_output(block, op_proto, self.outputs, False)
-
         op = block.append_op(
             type=self.op_type,
             inputs=inputs,
@@ -397,9 +400,11 @@ class OpTest(unittest.TestCase):
                 if not isinstance(item[0], basestring):
                     item = [[param_name] + list(item)]
                 if len(item) == 2:
-                    # only set var name and value, set lod to None
-                    var[i] = list(item) + [None]
-
+                    if isinstance(item[1], tuple):
+                        var[i] = [item[0], item[1][0], item[1][1]]
+                    else:
+                        # only set var name and value, set lod to None
+                        var[i] = list(item) + [None]
             var_descs = [(block.create_var(
                 name=name, shape=each.shape, dtype=each.dtype), each, lod)
                          for name, each, lod in var]
