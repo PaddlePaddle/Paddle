@@ -98,5 +98,23 @@ void Scope::DeleteScope(Scope* scope) {
   delete scope;
 }
 
+void Scope::Rename(const std::string& origin_name,
+                   const std::string& new_name) const {
+  auto origin_it = vars_.find(origin_name);
+  PADDLE_ENFORCE(origin_it != vars_.end(),
+                 "Cannot find original variable with name %s", origin_name);
+  auto new_it = vars_.find(new_name);
+  PADDLE_ENFORCE(new_it == vars_.end(),
+                 "The variable with name %s is already in the scope", new_name);
+  vars_[new_name] = origin_it->second;
+  vars_.erase(origin_it);
+}
+
+std::string Scope::Rename(const std::string& origin_name) const {
+  auto var_name = string::Sprintf("%p.%d", this, vars_.size());
+  Rename(origin_name, var_name);
+  return var_name;
+}
+
 }  // namespace framework
 }  // namespace paddle

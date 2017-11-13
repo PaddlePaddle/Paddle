@@ -34,6 +34,21 @@ inline DataType ToDataType(std::type_index type) {
   }
 }
 
+inline std::type_index ToTypeIndex(DataType type) {
+  switch (type) {
+    case DataType::FP32:
+      return typeid(float);
+    case DataType::FP64:
+      return typeid(double);
+    case DataType::INT32:
+      return typeid(int);
+    case DataType::INT64:
+      return typeid(int64_t);
+    default:
+      PADDLE_THROW("Not support type %d", type);
+  }
+}
+
 template <typename Visitor>
 inline void VisitDataType(DataType type, Visitor visitor) {
   switch (type) {

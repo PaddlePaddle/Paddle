@@ -17,6 +17,7 @@
 #include <dlfcn.h>
 #include <nccl.h>
 #include <mutex>
+#include "paddle/platform/call_once.h"
 #include "paddle/platform/dynload/dynamic_loader.h"
 
 namespace paddle {
@@ -27,18 +28,18 @@ extern std::once_flag nccl_dso_flag;
 extern void* nccl_dso_handle;
 
 #ifdef PADDLE_USE_DSO
-#define DECLARE_DYNAMIC_LOAD_NCCL_WRAP(__name)                    \
-  struct DynLoad__##__name {                                      \
-    template <typename... Args>                                   \
-    auto operator()(Args... args) -> decltype(__name(args...)) {  \
-      using nccl_func = decltype(__name(args...)) (*)(Args...);   \
-      std::call_once(nccl_dso_flag,                               \
-                     paddle::platform::dynload::GetNCCLDsoHandle, \
-                     &nccl_dso_handle);                           \
-      void* p_##__name = dlsym(nccl_dso_handle, #__name);         \
-      return reinterpret_cast<nccl_func>(p_##__name)(args...);    \
-    }                                                             \
-  };                                                              \
+#define DECLARE_DYNAMIC_LOAD_NCCL_WRAP(__name)                         \
+  struct DynLoad__##__name {                                           \
+    template <typename... Args>                                        \
+    auto operator()(Args... args) -> decltype(__name(args...)) {       \
+      using nccl_func = decltype(__name(args...)) (*)(Args...);        \
+      platform::call_once(nccl_dso_flag,                               \
+                          paddle::platform::dynload::GetNCCLDsoHandle, \
+                          &nccl_dso_handle);                           \
+      void* p_##__name = dlsym(nccl_dso_handle, #__name);              \
+      return reinterpret_cast<nccl_func>(p_##__name)(args...);         \
+    }                                                                  \
+  };                                                                   \
   extern DynLoad__##__name __name
 #else
 #define DECLARE_DYNAMIC_LOAD_NCCL_WRAP(__name) \

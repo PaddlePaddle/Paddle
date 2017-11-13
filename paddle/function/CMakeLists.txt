@@ -45,6 +45,7 @@ if(WITH_GPU)
     add_simple_unittest(BlockExpandOpTest)
     add_simple_unittest(CropOpTest)
     add_simple_unittest(SwitchOpTest)
+    add_simple_unittest(ScaleSubRegionOpTest)
 endif()
 
 add_simple_unittest(Im2ColTest)

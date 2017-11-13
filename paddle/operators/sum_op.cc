@@ -47,20 +47,24 @@ class SumOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::DataType IndicateDataType(
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto x_vars = ctx.MultiInputVar("X");
     if (x_vars[0]->IsType<framework::LoDTensor>()) {
-      return framework::ToDataType(
-          x_vars[0]->Get<framework::LoDTensor>().type());
+      return framework::OpKernelType(
+          framework::ToDataType(x_vars[0]->Get<framework::LoDTensor>().type()),
+          ctx.device_context());
     } else if (x_vars[0]->IsType<framework::SelectedRows>()) {
-      return framework::ToDataType(
-          x_vars[0]->Get<framework::SelectedRows>().value().type());
+      return framework::OpKernelType(
+          framework::ToDataType(
+              x_vars[0]->Get<framework::SelectedRows>().value().type()),
+          ctx.device_context());
     } else if (x_vars[0]->IsType<framework::LoDTensorArray>()) {
       auto& array = x_vars[0]->Get<framework::LoDTensorArray>();
       for (auto& each : array) {
         if (each.numel() != 0) {
-          return framework::ToDataType(each.type());
+          return framework::OpKernelType(framework::ToDataType(each.type()),
+                                         ctx.device_context());
         }
       }
     }
@@ -95,11 +99,12 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
 
     bool any_input_is_lod_tensor = std::any_of(
         inputs.begin(), inputs.end(), [block](const std::string& name) {
-          return block->Var(name)->GetType() == framework::VarDesc::LOD_TENSOR;
+          return block->FindRecursiveOrCreateVar(name)->GetType() ==
+                 framework::VarDesc::LOD_TENSOR;
         });
 
     auto is_tensor_array = [block](const std::string& name) {
-      return block->Var(name)->GetType() ==
+      return block->FindRecursiveOrCreateVar(name)->GetType() ==
              framework::VarDesc::LOD_TENSOR_ARRAY;
     };
 
@@ -116,7 +121,7 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
     }
 
     auto out_var_name = op_desc.Output("Out").front();
-    block->Var(out_var_name)->SetType(var_type);
+    block->FindRecursiveOrCreateVar(out_var_name)->SetType(var_type);
   }
 };
 

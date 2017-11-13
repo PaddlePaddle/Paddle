@@ -35,6 +35,7 @@ constexpr int kInvalidGPUId = -1;
 struct Communicator {
   std::vector<ncclComm_t> comms_;
   std::unordered_map<int, int> comm_id_map_;
+  bool inited_;
 
   Communicator() {}
 
@@ -42,17 +43,21 @@ struct Communicator {
 
   void InitAll(const std::vector<int>& gpus) {
     comms_.resize(gpus.size());
+    inited_ = false;
     for (size_t i = 0; i < gpus.size(); ++i) {
       comm_id_map_[gpus[i]] = i;
     }
     PADDLE_ENFORCE(
         dynload::ncclCommInitAll(comms_.data(), gpus.size(), gpus.data()));
+    inited_ = true;
   }
 
   ~Communicator() {
-    for (size_t i = 0; i < comms_.size(); ++i) {
-      // FIXME(dzh) : PADDLE_ENFORCE return void
-      dynload::ncclCommDestroy(comms_[i]);
+    if (inited_) {
+      for (size_t i = 0; i < comms_.size(); ++i) {
+        // FIXME(dzh) : PADDLE_ENFORCE return void
+        dynload::ncclCommDestroy(comms_[i]);
+      }
     }
   }
 

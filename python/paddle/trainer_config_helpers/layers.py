@@ -122,6 +122,7 @@ __all__ = [
     'cross_channel_norm_layer',
     'multibox_loss_layer',
     'detection_output_layer',
+    'roi_pool_layer',
     'spp_layer',
     'pad_layer',
     'eos_layer',
@@ -144,6 +145,7 @@ __all__ = [
     'img_conv3d_layer',
     'resize_layer',
     'sub_seq_layer',
+    'scale_sub_region_layer',
 ]
 
 
@@ -220,6 +222,7 @@ class LayerType(object):
     PRIORBOX_LAYER = 'priorbox'
     MULTIBOX_LOSS_LAYER = 'multibox_loss'
     DETECTION_OUTPUT_LAYER = 'detection_output'
+    ROI_POOL_LAYER = 'roi_pool'
 
     CTC_LAYER = 'ctc'
     WARP_CTC_LAYER = 'warp_ctc'
@@ -254,6 +257,8 @@ class LayerType(object):
 
     RESIZE = 'resize'
     SUB_SEQ_LAYER = 'subseq'
+
+    SCALE_SUB_REGION_LAYER = 'scale_sub_region'
 
     @staticmethod
     def is_layer_type(type_name):
@@ -1300,6 +1305,50 @@ def detection_output_layer(input_loc,
         background_id=background_id)
     return LayerOutput(
         name, LayerType.DETECTION_OUTPUT_LAYER, parents=parents, size=size)
+
+
+@wrap_name_default("roi_pool")
+def roi_pool_layer(input,
+                   rois,
+                   pooled_width,
+                   pooled_height,
+                   spatial_scale,
+                   num_channels=None,
+                   name=None):
+    """
+    A layer used by Fast R-CNN to extract feature maps of ROIs from the last
+    feature map.
+
+    :param name: The Layer Name.
+    :type name: basestring
+    :param input: The input layer.
+    :type input: LayerOutput.
+    :param rois: The input ROIs' data.
+    :type rois: LayerOutput.
+    :param pooled_width: The width after pooling.
+    :type pooled_width: int
+    :param pooled_height: The height after pooling.
+    :type pooled_height: int
+    :param spatial_scale: The spatial scale between the image and feature map.
+    :type spatial_scale: float
+    :param num_channels: number of input channel.
+    :type num_channels: int
+    :return: LayerOutput
+    """
+    if num_channels is None:
+        assert input.num_filters is not None
+        num_channels = input.num_filters
+    size = num_channels * pooled_width * pooled_height
+    Layer(
+        name=name,
+        type=LayerType.ROI_POOL_LAYER,
+        inputs=[input.name, rois.name],
+        pooled_width=pooled_width,
+        pooled_height=pooled_height,
+        spatial_scale=spatial_scale,
+        num_channels=num_channels)
+    return LayerOutput(
+        name, LayerType.ROI_POOL_LAYER, parents=[input, rois], size=size)
 
 
 @wrap_name_default("cross_channel_norm")
@@ -5518,7 +5567,11 @@ def crf_decoding_layer(input,
     return LayerOutput(name, LayerType.CRF_DECODING_LAYER, parents, size=1)
 
 
-@wrap_act_default(act=SigmoidActivation())
+"""
+Following are cost Layers.
+"""
+
+
 @wrap_bias_attr_default(has_bias=True)
 @wrap_param_attr_default()
 @wrap_name_default()
@@ -5526,7 +5579,6 @@ def crf_decoding_layer(input,
 def nce_layer(input,
               label,
               num_classes=None,
-              act=None,
               param_attr=None,
               weight=None,
               num_neg_samples=10,
@@ -5538,8 +5590,8 @@ def nce_layer(input,
     Noise-contrastive estimation.
 
     Reference:
-        A fast and simple algorithm for training neural probabilistic language models.
-        http://www.icml.cc/2012/papers/855.pdf
+        A fast and simple algorithm for training neural probabilistic language
+        models. https://www.cs.toronto.edu/~amnih/papers/ncelm.pdf
 
     The example usage is:
 
@@ -5555,7 +5607,8 @@ def nce_layer(input,
     :type input: LayerOutput | list | tuple | collections.Sequence
     :param label: The input label.
     :type label: LayerOutput
-    :param weight: The scale of the cost. It is optional.
+    :param weight: The weight layer defines a weight for each sample in the
+                   mini-batch. The default value is None.
     :type weight: LayerOutput
     :param num_classes: The number of classes.
     :type num_classes: int
@@ -5564,15 +5617,20 @@ def nce_layer(input,
     :param param_attr: The parameter attribute. See ParameterAttribute for
                        details.
     :type param_attr: ParameterAttribute
-    :param num_neg_samples: The number of negative samples. 10 is the default.
+    :param num_neg_samples: The number of sampled negative labels. 10 is the default.
     :type num_neg_samples: int
-    :param neg_distribution: The probability distribution for generating the random negative
-                             labels. If this parameter is not set, a uniform distribution will
-                             be used. If not None, its length must be equal to num_classes.
+    :param neg_distribution: The discrete noisy distribution over the output
+                             space from which num_neg_samples negative labels
+                             are sampled. If this parameter is not set, a
+                             uniform distribution will be used. A user-defined
+                             distribution is a list whose length must be equal
+                             to the num_classes. Each member of the list defines
+                             the probability of a class given input x.
     :type neg_distribution: list | tuple | collections.Sequence | None
-    :param bias_attr: The bias attribute. If the parameter is set to False or an object
-                      whose type is not ParameterAttribute, no bias is defined. If the
-                      parameter is set to True, the bias is initialized to zero.
+    :param bias_attr: The attribute for bias. If this parameter is set False or
+                      any object whose type is not ParameterAttribute, no bias
+                      is added. If this parameter is set True, the bias is
+                      initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
     :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
                        details.
@@ -5600,8 +5658,6 @@ def nce_layer(input,
         assert isinstance(neg_distribution, collections.Sequence)
         assert len(neg_distribution) == num_classes
         assert abs(sum(neg_distribution) - 1.0) < 1e-5
-    if not isinstance(act, BaseActivation):
-        raise TypeError()
 
     ipts_for_layer = []
     parents = []
@@ -5623,7 +5679,7 @@ def nce_layer(input,
         type=LayerType.NCE_LAYER,
         num_classes=num_classes,
         neg_sampling_dist=neg_distribution,
-        active_type=act.name,
+        active_type=SigmoidActivation().name,
         num_neg_samples=num_neg_samples,
         inputs=ipts_for_layer,
         bias=ParamAttr.to_bias(bias_attr),
@@ -5633,12 +5689,7 @@ def nce_layer(input,
         LayerType.NCE_LAYER,
         parents=parents,
         size=l.config.size,
-        activation=act)
-
-
-"""
-following are cost Layers.
-"""
+        activation=SigmoidActivation())
 
 
 @wrap_name_default()
@@ -7083,4 +7134,55 @@ def sub_seq_layer(input, offsets, sizes, act=None, bias_attr=None, name=None):
         name,
         LayerType.SUB_SEQ_LAYER,
         parents=[input, offsets, sizes],
+        size=input.size)
+
+
+@wrap_name_default('scale_sub_region')
+def scale_sub_region_layer(input, indices, value, name=None):
+    """
+    Given an image or feature map with CHW information, scale_sub_region_layer
+    can be used to multiply a real value to values of a sub continuous region.
+    You can provide start and end indices of CHW for each instance.
+    Please notice that all start indices are counting from 1.
+    The shape of indices should be [batch_size, 6] and the layout for each row
+    is [C_Start, C_End, H_Start, H_End, W_Start, W_End].
+
+    .. code-block:: python
+
+        scale_sub_region = scale_sub_region_layer(input=input,
+                                                  indices=indices,
+                                                  value=value)
+
+    :param name: The name of this layer. It is optional.
+    :type name: basestring
+    :param input: The input of this layer which should contains CHW information.
+    :type input: LayerOutput
+    :param indices: Start index and end index for C H W, the input value should
+                    be a 2-D matrix with shape [batch_size, 6].
+    :type indices: LayerOutput.
+    :param value: value to multiply.
+    :type value: float
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+
+    assert isinstance(input, LayerOutput), (
+        'The first input of scale_sub_region_layer, '
+        'must be a PaddlePaddle layer.')
+    assert isinstance(indices, LayerOutput), (
+        'The start and end indices for CHW, must be a PaddlePaddle layer.')
+    assert isinstance(value, float), (
+        'The value to multiply, must be a real value.')
+
+    Layer(
+        name=name,
+        type=LayerType.SCALE_SUB_REGION_LAYER,
+        inputs=[input.name, indices.name],
+        value=value)
+
+    return LayerOutput(
+        name,
+        LayerType.SCALE_SUB_REGION_LAYER,
+        parents=[input, indices],
+        num_filters=input.num_filters,
         size=input.size)
