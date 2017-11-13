@@ -471,7 +471,7 @@ endfunction()
 
 function(grpc_library TARGET_NAME)
   set(oneValueArgs PROTO)
-  set(multiValueArgs SRCS)
+  set(multiValueArgs SRCS DEPS)
   set(options "")
   cmake_parse_arguments(grpc_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -484,6 +484,7 @@ function(grpc_library TARGET_NAME)
   protobuf_generate_cpp(grpc_proto_srcs grpc_proto_hdrs "${ABS_PROTO}")
   set(grpc_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_WE}.grpc.pb.cc")
   set(grpc_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_WE}.grpc.pb.h")
+  cc_library("${TARGET_NAME}_proto" SRCS "${grpc_proto_srcs}")
 
   add_custom_command(
           OUTPUT "${grpc_grpc_srcs}" "${grpc_grpc_hdrs}"
@@ -492,5 +493,12 @@ function(grpc_library TARGET_NAME)
           --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN}" "${ABS_PROTO}"
           DEPENDS "${ABS_PROTO}")
 
-  cc_library("${TARGET_NAME}" SRCS "${SRCS}" "${grpc_grpc_srcs}" "${grpc_proto_srcs}"  DEPS protobuf grpc)
+  SET(default_cxx_flags ${CMAKE_CXX_FLAGS})
+  STRING(REPLACE "-Werror=non-virtual-dtor" "" no_warn_flags ${CMAKE_CXX_FLAGS})
+  SET(CMAKE_CXX_FLAGS "${no_warn_flags}" CACHE STRING "Compiler flags")
+  cc_library("${TARGET_NAME}_grpc" SRCS "${grpc_grpc_srcs}" DEPS grpc)
+  message("grpc flags: ${no_warn_flags}")
+
+  cc_library("${TARGET_NAME}" SRCS "${grpc_library_SRCS}" DEPS "${TARGET_NAME}_grpc" "${TARGET_NAME}_proto" "${grpc_library_DEPS}")
+  SET(CMAKE_CXX_FLAGS "${default_cxx_flags}" CACHE STRING "Compiler flags")
 endfunction()

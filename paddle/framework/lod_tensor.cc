@@ -187,7 +187,8 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
   }
 }
 
-void SerializeToStream(std::ostream &os, const LoDTensor &tensor) {
+void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
+                       const platform::DeviceContext &dev_ctx) {
   // TODO(typhoonzero): serialize to ostream
   {  // the 1st field, uint32_t version
     constexpr uint32_t version = 0;

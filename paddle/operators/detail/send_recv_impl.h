@@ -16,50 +16,60 @@
 
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/scope.h"
+#include "paddle/framework/selected_rows.h"
 #include "paddle/operators/detail/simple_block_queue.h"
 
-#include <grpc++/channel.h>
-#include <grpc++/client_context.h>
-#include <grpc++/create_channel.h>
-#include <grpc++/security/credentials.h>
-#include <grpc/grpc.h>
-#include "paddle/operators/send_recv.grpc.pb.h"
+// #include <grpc++/channel.h>
+// #include <grpc++/client_context.h>
+// #include <grpc++/create_channel.h>
+// #include <grpc++/security/credentials.h>
+#include "paddle/operators/detail/send_recv.grpc.pb.h"
+#include "paddle/operators/detail/send_recv.pb.h"
+
+#include <grpc++/grpc++.h>
 
 using grpc::Channel;
+using grpc::ServerContext;
+using grpc::ServerReader;
+
 using grpc::ClientContext;
 using grpc::ClientReader;
 using grpc::ClientReaderWriter;
 using grpc::ClientWriter;
 using grpc::Status;
-using sendrecv::SendRecvOp;
-using sendrecv::SendTensor;
+using sendrecv::SendRecvService;
+using sendrecv::VariableMessage;
+using sendrecv::VoidMessage;
 
 namespace paddle {
 namespace operators {
 namespace detail {
 
-class SendRecvServerImpl final : public SendRecvOp::Service {
+class SendRecvServerImpl final : public SendRecvService::Service {
  public:
   explicit SendRecvServerImpl() {}
 
   void SetScope(framework::Scope *scope) { scope_ = scope; }
 
   Status InitVariables(ServerContext *context,
-                       ServerReader<VariableMessage> *in_var_reader) override;
+                       ServerReader<VariableMessage> *in_var_reader,
+                       VoidMessage *void_ret) override;
 
-  Status SendTensor(ServerContext *context, const std::string *in_tensor,
-                    std::string *out_tensor) override;
+  Status SendVariable(ServerContext *context, const VariableMessage *in_var,
+                      VariableMessage *out_var) override;
 
-  const framework::LodTensor &Get() const { return lodtensor_queue_.Pop(); }
+  const framework::LoDTensor Get() { return this->lodtensor_queue_.Pop(); }
 
-  void Push(framework::LodTensor &tensor) {
-    lodtensor_return_queue_.Push(tensor);
+  void Push(const framework::LoDTensor &tensor) {
+    this->lodtensor_return_queue_.Push(tensor);
   }
 
  private:
+  // Scope for send recv to run.
   framework::Scope *scope_;
-  SimpleBlockQueue<framework::LodTensor> lodtensor_queue_;
-  SimpleBlockQueue<framework::LodTensor> lodtensor_return_queue_;
+  SimpleBlockQueue<framework::LoDTensor> lodtensor_queue_;
+  SimpleBlockQueue<framework::LoDTensor> lodtensor_return_queue_;
   SimpleBlockQueue<framework::SelectedRows> selected_rows_queue_;
   SimpleBlockQueue<framework::SelectedRows> selected_rows_return_queue_;
 };
@@ -69,12 +79,12 @@ class SendRecvServerImpl final : public SendRecvOp::Service {
 class RPCClient {
  public:
   RPCClient(std::shared_ptr<Channel> channel)
-      : stub_(SendRecvOp::NewStub(channel)) {}
+      : stub_(SendRecvService::NewStub(channel)) {}
 
   bool SendTensor(const framework::LoDTensor &tensor);
 
  private:
-  std::unique_ptr<SendRecvOp::Stub> stub_;
+  std::unique_ptr<SendRecvService::Stub> stub_;
 };
 
 }  // namespace detail

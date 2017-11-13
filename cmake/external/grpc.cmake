@@ -30,7 +30,7 @@ ExternalProject_Add(
     UPDATE_COMMAND  ""
     # TODO(jhseu): Remove this PATCH_COMMAND once grpc removes the dependency
     # on "grpc" from the "grpc++_unsecure" rule.
-    PATCH_COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/patches/grpc/CMakeLists.txt ${GRPC_SOURCES_DIR}/src/extern_grpc/
+    # PATCH_COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/patches/grpc/CMakeLists.txt ${GRPC_SOURCES_DIR}/src/extern_grpc/
     # BUILD_COMMAND ${CMAKE_COMMAND} --build . --config Release --target grpc_cpp_plugin
     # COMMAND ${CMAKE_COMMAND} --build . --config Release --target  grpc++_unsecure
     # INSTALL_COMMAND ""
