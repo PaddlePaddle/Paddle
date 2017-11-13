@@ -62,15 +62,20 @@ class MergeLoDTensorOp : public framework::OperatorBase {
 
     // Build LoDTensor `out`
 
+    size_t in_true_idx = 0;
+    size_t in_false_idx = 0;
     for (size_t i = 0; i < static_cast<size_t>(mask_dim[0]); i++) {
       const framework::LoDTensor *input = nullptr;
+      size_t *in_idx = nullptr;
       if (static_cast<int>(mask_data[i]) == 0) {
         input = &in_false;
+        in_idx = &in_false_idx;
       } else {
         input = &in_true;
+        in_idx = &in_true_idx;
       }
-      auto lod_and_offset =
-          framework::GetSubLoDAndAbsoluteOffset(input->lod(), i, i + 1, 0);
+      auto lod_and_offset = framework::GetSubLoDAndAbsoluteOffset(
+          input->lod(), *in_idx, (*in_idx) + 1, 0);
       auto &lod_length = lod_and_offset.first;
 
       framework::AppendLoD(out_lod, lod_length);
@@ -86,9 +91,10 @@ class MergeLoDTensorOp : public framework::OperatorBase {
       out->Slice(out_offset, out_offset + len)
           .CopyFrom(input->Slice(start_offset, end_offset), place, dev_ctx);
       out_offset += len;
+      (*in_idx) += 1;
     }
 
-    for (int i = 0; i < level; i++) {
+    for (size_t i = 0; i < level; i++) {
       out_lod->insert(out_lod->begin(), x.lod()[i]);
     }
   }
