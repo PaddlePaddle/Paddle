@@ -717,7 +717,7 @@ class StaticRNNGuard(BlockGuard):
 
     def __init__(self, rnn):
         if not isinstance(rnn, StaticRNN):
-            raise TypeError("StaticRNNGuard takes an StaticRNN")
+            raise TypeError("StaticRNNGuard takes a StaticRNN")
         super(StaticRNNGuard, self).__init__(rnn.helper.main_program)
         self.rnn = rnn
 
@@ -964,6 +964,82 @@ class StaticRNN(object):
             })
 
 
+class WhileGuard(BlockGuard):
+    def __init__(self, while_op):
+        if not isinstance(while_op, While):
+            raise TypeError("WhileGuard takes a while op")
+        super(WhileGuard, self).__init__(while_op.helper.main_program)
+        self.while_op = while_op
+
+    def __enter__(self):
+        self.while_op.status = While.IN_WHILE_BLOCK
+        return super(WhileGuard, self).__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            return False
+        self.while_op.status = While.AFTER_WHILE_BLOCK
+        self.while_op.complete()
+        return super(WhileGuard, self).__exit__(exc_type, exc_val, exc_tb)
+
+
+class While(object):
+    BEFORE_WHILE_BLOCK = 0
+    IN_WHILE_BLOCK = 1
+    AFTER_WHILE_BLOCK = 2
+
+    def __init__(self, cond, name=None, main_program=None):
+        self.helper = LayerHelper("while", name=name, main_program=main_program)
+        self.status = While.BEFORE_WHILE_BLOCK
+        if not isinstance(cond, Variable):
+            raise TypeError("condition should be a variable")
+        assert isinstance(cond, Variable)
+        if cond.data_type != core.DataType.BOOL:
+            raise TypeError("condition should be a bool variable")
+        if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
+            raise TypeError("condition should be a bool scalar")
+        self.cond_var = cond
+
+    def block(self):
+        return WhileGuard(self)
+
+    def complete(self):
+        main_program = self.helper.main_program
+        while_block = main_program.current_block()
+        parent_block = main_program.block(main_program.current_block()
+                                          .parent_idx)
+
+        inner_outputs = {self.cond_var.name}
+        x_name_list = set()
+        for op in while_block.ops:
+            for iname in op.input_names:
+                for in_var_name in op.input(iname):
+                    if in_var_name not in inner_outputs:
+                        x_name_list.add(in_var_name)
+
+            for oname in op.output_names:
+                for out_var_name in op.output(oname):
+                    inner_outputs.add(out_var_name)
+
+        out_vars = []
+        for inner_out_name in inner_outputs:
+            if inner_out_name in parent_block.vars:
+                out_vars.append(parent_block.var(inner_out_name))
+
+        step_scope = parent_block.create_var(
+            type=core.VarDesc.VarType.STEP_SCOPES)
+
+        parent_block.append_op(
+            type='while',
+            inputs={
+                'X': [parent_block.var(x_name) for x_name in x_name_list],
+                'Condition': [self.cond_var]
+            },
+            outputs={'Out': out_vars,
+                     'StepScopes': [step_scope]},
+            attrs={'step_block': while_block})
+
+
 def lstm(x,
          c_pre_init,
          hidden_dim,
@@ -1102,10 +1178,10 @@ def increment(x, value=1.0, in_place=True, main_program=None):
     operation is performed in-place by default.
     """
     helper = LayerHelper("increment", **locals())
-    if in_place:
-        out = x
-    else:
+    if not in_place:
         out = helper.create_tmp_variable(dtype=x.data_type)
+    else:
+        out = x
     helper.append_op(
         type='increment',
         inputs={'X': [x]},
@@ -1131,6 +1207,26 @@ def array_write(x, i, array=None, main_program=None):
                 'I': [i]},
         outputs={'Out': [array]})
     return array
+
+
+def create_array(dtype, main_program=None):
+    helper = LayerHelper("array", **locals())
+    return helper.create_variable(
+        name="{0}.out".format(helper.name),
+        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+        dtype=dtype)
+
+
+def less_than(x, y, cond=None, main_program=None):
+    helper = LayerHelper("less_than", **locals())
+    if cond is None:
+        cond = helper.create_tmp_variable(dtype='bool')
+        cond.stop_gradient = True
+
+    helper.append_op(
+        type='less_than', inputs={'X': [x],
+                                  'Y': [y]}, outputs={'Out': [cond]})
+    return cond
 
 
 def array_read(array, i, main_program=None):
