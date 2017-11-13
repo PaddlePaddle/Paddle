@@ -27,20 +27,22 @@ namespace platform {
 
  This wrap is a hack to avoid this bug.
 */
-template <class Callable, class... Args>
+template <typename Callable, typename... Args>
 inline void call_once(std::once_flag& flag, Callable&& f, Args&&... args) {
   bool good = false;
   std::exception ex;
-  std::call_once(flag, [&]() {
-    try {
-      f(args...);
-      good = true;
-    } catch (const std::exception& e) {
-      ex = e;
-    } catch (...) {
-      ex = std::runtime_error("excption caught in call_once");
-    }
-  });
+  std::call_once(flag,
+                 [&](Args&&... args) {
+                   try {
+                     f(args...);
+                     good = true;
+                   } catch (const std::exception& e) {
+                     ex = e;
+                   } catch (...) {
+                     ex = std::runtime_error("excption caught in call_once");
+                   }
+                 },
+                 args...);
   if (!good) {
     throw std::exception(ex);
   }
