@@ -21,16 +21,12 @@
 namespace paddle {
 namespace operators {
 
-bool BeamSearch::operator()(framework::LoDTensor *selected_ids,
+void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
+                            framework::LoDTensor *selected_ids,
                             framework::LoDTensor *selected_scores) {
-  ToLoDTensor(selected_ids, selected_scores);
-  return true;
-}
-
-void BeamSearch::ToLoDTensor(framework::LoDTensor *selected_ids,
-                             framework::LoDTensor *selected_scores) {
   auto items = SelectTopBeamSizeItems();
   auto selected_items = ToMap(items);
+  PruneEndidCandidates(pre_ids, &selected_items);
   // calculate the output tensor's height
   size_t num_instances = std::accumulate(
       std::begin(items), std::end(items), 0,
@@ -60,12 +56,24 @@ void BeamSearch::ToLoDTensor(framework::LoDTensor *selected_ids,
   }
   // fill lod
   auto abs_lod = framework::ToAbsOffset(ids_->lod());
-  auto& high_level = abs_lod[lod_level_];
+  auto &high_level = abs_lod[lod_level_];
   framework::LoD lod(2);
   lod[0].assign(high_level.begin(), high_level.end());
   lod[1].assign(low_level.begin(), low_level.end());
   selected_ids->set_lod(lod);
   selected_scores->set_lod(lod);
+}
+
+void BeamSearch::PruneEndidCandidates(const framework::LoDTensor &pre_ids,
+                                      std::vector<std::vector<Item>> *items) {
+  auto *pre_ids_data = pre_ids.data<int>();
+
+  for (size_t offset = 0; offset < items->size(); offset++) {
+    auto prefix_id = pre_ids_data[offset];
+    if (prefix_id == end_id_) {
+      items->at(offset).clear();
+    }
+  }
 }
 
 std::vector<std::vector<BeamSearch::Item>> BeamSearch::ToMap(
@@ -149,6 +157,7 @@ class BeamSearchProtoAndCheckerMaker
                                  framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     // inputs and outputs stored in proto
+    AddInput("pre_ids", "ids in previous step");
     AddInput("ids", "a LoDTensor of shape of [None,k]");
     AddInput("scores",
              "a LoDTensor that has the same shape and LoD with `ids`");
@@ -161,6 +170,8 @@ class BeamSearchProtoAndCheckerMaker
     // Attributes stored in AttributeMap
     AddAttr<int>("level", "the level of LoDTensor");
     AddAttr<int>("beam_size", "beam size for beam search");
+    AddAttr<int>("end_id",
+                 "the token id which indicates the end of a sequence");
 
     AddComment(
         "This is a beam search operator that help to generate sequences.");

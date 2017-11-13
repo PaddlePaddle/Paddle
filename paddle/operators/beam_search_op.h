@@ -90,11 +90,13 @@ class BeamSearch {
    * Input the arguments that needed by this class.
    */
   BeamSearch(const framework::LoDTensor& ids,
-             const framework::LoDTensor& scores, size_t level, size_t beam_size)
+             const framework::LoDTensor& scores, size_t level, size_t beam_size,
+             int end_id)
       : beam_size_(beam_size),
         ids_(&ids),
         scores_(&scores),
-        lod_level_(level) {}
+        lod_level_(level),
+        end_id_(end_id) {}
 
   /*
    * The main function of beam search.
@@ -119,7 +121,8 @@ class BeamSearch {
    * Return false if all the input tensor is empty, in machine translation task
    * that means no candidates is provided, and the task will stop running.
    */
-  bool operator()(framework::LoDTensor* selected_ids,
+  void operator()(const framework::LoDTensor& pre_ids,
+                  framework::LoDTensor* selected_ids,
                   framework::LoDTensor* selected_scores);
 
  protected:
@@ -138,12 +141,8 @@ class BeamSearch {
     score_t score;
   };
 
-  /*
-   * Collect the ids that is selected by beam search and store them
-   * into a LoDTensor.
-   */
-  void ToLoDTensor(framework::LoDTensor* selected_ids,
-                   framework::LoDTensor* selected_scores);
+  void PruneEndidCandidates(const framework::LoDTensor& pre_ids,
+                            std::vector<std::vector<Item>>* items);
 
   /*
    * Transform the items into a map whose key is offset, value is the items.
@@ -163,20 +162,12 @@ class BeamSearch {
   bool NextItemSet(std::vector<Item>* items);
 
  private:
-  /* #ifdef PADDLE_WITH_TESTING */
-  /* friend class BeamSearchTestHelper; */
-  /* FRIEND_TEST(BeamSearchTestHelper, SelectTopBeamSizeItems); */
-  /* FRIEND_TEST(NextItemSet); */
-  /* FRIEND_TEST(ToMap); */
-  /* FRIEND_TEST(ToLoDTensor); */
-  /* #endif */
-
- private:
   size_t beam_size_;
   const framework::LoDTensor* ids_;
   const framework::LoDTensor* scores_;
   size_t lod_level_{0};
   size_t sent_offset_{0};
+  int end_id_{0};
 };
 
 class BeamSearchOp : public framework::OperatorBase {
@@ -198,15 +189,19 @@ class BeamSearchOp : public framework::OperatorBase {
     LOG(INFO) << "run beam search op";
     auto ids_var = scope.FindVar(Input("ids"));
     auto scores_var = scope.FindVar(Input("scores"));
+    auto pre_ids_var = scope.FindVar(Input("pre_ids"));
     PADDLE_ENFORCE_NOT_NULL(ids_var);
     PADDLE_ENFORCE_NOT_NULL(scores_var);
+    PADDLE_ENFORCE_NOT_NULL(pre_ids_var);
 
     auto& ids = ids_var->Get<framework::LoDTensor>();
     auto& scores = scores_var->Get<framework::LoDTensor>();
+    auto& pre_ids = pre_ids_var->Get<framework::LoDTensor>();
     size_t level = Attr<int>("level");
     size_t beam_size = Attr<int>("beam_size");
+    int end_id = Attr<int>("end_id");
     LOG(INFO) << "init beam search";
-    BeamSearch alg(ids, scores, level, beam_size);
+    BeamSearch alg(ids, scores, level, beam_size, end_id);
 
     LOG(INFO) << "after beam search";
     auto selected_ids_var = scope.FindVar(Output("selected_ids"));
@@ -218,7 +213,7 @@ class BeamSearchOp : public framework::OperatorBase {
     auto& selected_scores_tensor =
         *selected_scores_var->GetMutable<framework::LoDTensor>();
     LOG(INFO) << "run beam search";
-    alg(&selected_ids_tensor, &selected_scores_tensor);
+    alg(pre_ids, &selected_ids_tensor, &selected_scores_tensor);
     LOG(INFO) << "finish beam search";
   }
 };
