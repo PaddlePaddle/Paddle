@@ -47,19 +47,19 @@ class SequenceConcatOpMaker : public framework::OpProtoAndCheckerMaker {
                         framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
-             "(A vector of LoDTensor), the input is a vector of LoDTensor, "
+             "(LodTensorArray) Input is a vector of LoDTensor, "
              "each of which is a variable-length sequence or nested sequence.")
         .AsDuplicable();
     AddOutput("Out",
-              "(A LoDTensor), the variable-length output of "
+              "(LoDTensor), Variable-length output of "
               "sequence_concat Op.");
     AddAttr<int>("axis",
-                 "(int, default 0)"
-                 "The axis which the inputs will be joined with. "
+                 "(int, default 0) "
+                 "The axis along which the inputs will be joined. "
                  "If axis is 0, the inputs will be joined with LoD index.")
         .SetDefault(0);
     AddAttr<int>("level",
-                 "(int, default 0)"
+                 "(int, default 0) "
                  "The level at which the inputs will be joined. "
                  "If the level is 0, the inputs will be joined at the nested "
                  "sequence level. "
@@ -68,34 +68,42 @@ class SequenceConcatOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The level should be less than the level number of inputs.")
         .SetDefault(0);
     AddComment(R"DOC(
-    The sequence_concat operator concatenates multiple LoDTensors. 
-    It only supports sequence (LoD Tensor with level number is 1) 
-    or a nested sequence (LoD tensor with level number is 2) as its input.
-    - Case1:
-      If the axis is other than 0(here, axis is 1 and level is 1),
-      each input should have the same LoD information and the LoD 
-      information of the output keeps the same as the input.
+The sequence_concat operator concatenates multiple LoDTensors. 
+It only supports sequence (LoD Tensor with level number is 1) 
+or a nested sequence (LoD tensor with level number is 2) as its input.
+- Case1:
+  If the axis is other than 0(here, axis is 1 and level is 1),
+  each input should have the same LoD information and the LoD 
+  information of the output keeps the same as the input.
 
-      LoD(x0) = {{0,2,4}, {0,1,2,3,4}}; Dims(x0) = (4,3,4)
-      LoD(x1) = {{0,2,4}, {0,1,2,3,4}}; Dims(x1) = (4,4,4)
-      LoD(Out) = {{0,2,4}, {0,1,2,3,4}}; Dims(Out) = (4,7,4)
+  LoD(x0) = {{0,2,4}, {0,1,2,3,4}}; Dims(x0) = (4,3,4)
+  LoD(x1) = {{0,2,4}, {0,1,2,3,4}}; Dims(x1) = (4,4,4)
+  LoD(Out) = {{0,2,4}, {0,1,2,3,4}}; Dims(Out) = (4,7,4)
 
-    - Case2:
-      If the axis is 0(here, leve is 0), the inputs are concatenated along 
-      time steps, the LoD information of the output need to re-compute.
+- Case2:
+  If the axis is 0(here, leve is 0), the inputs are concatenated along 
+  time steps, the LoD information of the output need to re-compute.
+  The LoD information of level-1 should be same.
 
-      LoD(x0) = {{0,2,4}, {0,1,2,3,4}}; Dims(x0) = (4,3,4)
-      LoD(x1) = {{0,3,5}, {0,1,2,3,5}}; Dims(x1) = (5,3,4)
-      LoD(Out) = {{0,5,9}, {0,1,2,3,4,5,6,7,9}}; Dims(Out) = (9,3,4)
+  LoD(x0) = {{0,2,4}, {0,1,2,3,4}}; Dims(x0) = (4,3,4)
+  LoD(x1) = {{0,2,4}, {0,1,3,5,7}}; Dims(x1) = (7,3,4)
+  LoD(Out) = {{0,2,4}, {0,2,5,8,11}}; Dims(Out) = (11,3,4)
 
-    - Case3:
-      If the axis is 0(here, level is 1).
+- Case3:
+  If the axis is 0(here, level is 1).
 
-      LoD(x0) = {{0,2,4}, {0,1,2,3,4}}; Dims(x0) = (4,3,4)
-      LoD(x1) = {{0,3,5}, {0,1,3,4,5}}; Dims(x1) = (5,3,4)
-      LoD(Out) = {{0,5,9}, {0,2,5,7,9}}; Dims(Out) = (9,3,4)
-      
-    NOTE: The levels of all the inputs should be the same.
+  LoD(x0) = {{0,2,4}, {0,1,2,3,4}}; Dims(x0) = (4,3,4)
+  LoD(x1) = {{0,3,4}, {0,1,3,5,7}}; Dims(x1) = (7,3,4)
+  LoD(Out) = {{0,5,8}, {0,1,2,3,5,7,8,9,11}}; Dims(Out) = (11,3,4)
+
+- Case4:
+  If the LoD number is 1, axis is 0, level is 0
+
+  LoD(x0) = {{0,1,2,3,4}}; Dims(x0) = (4,3,4)
+  LoD(x1) = {{0,1,3,5,7}}; Dims(x1) = (7,3,4)
+  LoD(Out) = {{0,2,5,8,11}}; Dims(Out) = (11,3,4)
+
+NOTE: The levels of all the inputs should be the same.
     )DOC");
   }
 };

@@ -1969,6 +1969,18 @@ class DetectionOutputLayer(LayerBase):
         self.config.size = size
 
 
+@config_layer('roi_pool')
+class ROIPoolLayer(LayerBase):
+    def __init__(self, name, inputs, pooled_width, pooled_height, spatial_scale,
+                 num_channels, **xargs):
+        super(ROIPoolLayer, self).__init__(name, 'roi_pool', 0, inputs)
+        config_assert(len(inputs) == 2, 'ROIPoolLayer must have 2 inputs')
+        self.config.inputs[0].roi_pool_conf.pooled_width = pooled_width
+        self.config.inputs[0].roi_pool_conf.pooled_height = pooled_height
+        self.config.inputs[0].roi_pool_conf.spatial_scale = spatial_scale
+        self.set_cnn_layer(name, pooled_height, pooled_width, num_channels)
+
+
 @config_layer('data')
 class DataLayer(LayerBase):
     def __init__(self,
@@ -2420,6 +2432,7 @@ class BatchNormLayer(LayerBase):
         # If not use is_static, even set learning_rate = 0, decay_rate = 0,
         # these paras will change if set average_window in configure.
         use_gpu = bool(int(g_command_config_args.get("use_gpu", 0)))
+        use_mkldnn = bool(int(g_command_config_args.get("use_mkldnn", 0)))
         is_shared = True if not use_gpu else False
         for i in xrange(2):
             inputs.append(
@@ -2433,11 +2446,17 @@ class BatchNormLayer(LayerBase):
 
         parallel_nn = bool(int(g_command_config_args.get("parallel_nn", 0)))
         cudnn_version = int(g_command_config_args.get("cudnn_version", 0))
-        # Automatically select cudnn_batch_norm for GPU and batch_norm for CPU.
-        # Also based on cudnn version.
+        # Automatically select cudnn_batch_norm for GPU, batch_norm for CPU
+        # and mkldnn_batch_norm for MKLDNN. Also based on cudnn version.
+        if batch_norm_type == "mkldnn_batch_norm":
+            config_assert(use_mkldnn, "mkldnn_batch_norm only support MKLDNN")
         use_cudnn = use_gpu and batch_norm_type != "batch_norm" and \
+                not use_mkldnn and batch_norm_type != "mkldnn_batch_norm" and \
                 ((not parallel_nn) or self.config.device > -1)
-        self.layer_type = "cudnn_batch_norm" if use_cudnn else "batch_norm"
+        if use_cudnn:
+            self.layer_type = "cudnn_batch_norm"
+        else:
+            self.layer_type = "mkldnn_batch_norm" if use_mkldnn else "batch_norm"
         super(BatchNormLayer, self).__init__(
             name, self.layer_type, 0, inputs=inputs, **xargs)
 
@@ -2768,9 +2787,15 @@ class NCELayer(LayerBase):
 
 @config_layer('addto')
 class AddToLayer(LayerBase):
+    layer_type = 'addto'
+
     def __init__(self, name, inputs, bias=True, **xargs):
+        use_mkldnn = bool(int(g_command_config_args.get("use_mkldnn", 0)))
+        if self.layer_type == "mkldnn_addto":
+            config_assert(use_mkldnn, "mkldnn_addto only support MKLDNN")
+        self.layer_type = 'mkldnn_addto' if use_mkldnn else 'addto'
         super(AddToLayer, self).__init__(
-            name, 'addto', 0, inputs=inputs, **xargs)
+            name, self.layer_type, 0, inputs=inputs, **xargs)
         config_assert(len(inputs) > 0, 'inputs cannot be empty for AddToLayer')
 
         if len(self.inputs) > 1:
@@ -2787,6 +2812,11 @@ class AddToLayer(LayerBase):
                                         self.get_input_layer(0).width)
         self.set_layer_depth(self.get_input_layer(0).depth)
         self.create_bias_parameter(bias, self.config.size)
+
+
+@config_layer('mkldnn_addto')
+class MKLDNNAddtoLayer(AddToLayer):
+    layer_type = 'mkldnn_addto'
 
 
 @config_layer('agent')
@@ -3781,6 +3811,25 @@ class SwitchOrderLayer(LayerBase):
             name, 'switch_order', 0, inputs=inputs, **xargs)
         self.config.reshape_conf.height_axis.extend(reshape['height'])
         self.config.reshape_conf.width_axis.extend(reshape['width'])
+
+
+@config_layer('scale_sub_region')
+class ScaleSubRegionLayer(LayerBase):
+    def __init__(self, name, inputs, value, **xargs):
+        super(ScaleSubRegionLayer, self).__init__(
+            name, 'scale_sub_region', 0, inputs=inputs, **xargs)
+        scale_sub_region_conf = self.config.inputs[0].scale_sub_region_conf
+        scale_sub_region_conf.value = value
+
+        # get channel, width and height from input_0 layer
+        input_layer = self.get_input_layer(0)
+        image_conf = scale_sub_region_conf.image_conf
+        image_conf.img_size = input_layer.width
+        image_conf.img_size_y = input_layer.height
+        image_conf.channels = input_layer.size / (input_layer.width *
+                                                  input_layer.height)
+        self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
+                           image_conf.channels)
 
 
 @config_layer('factorization_machine')

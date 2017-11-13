@@ -1,5 +1,1 @@
-if(WITH_AVX)
-    cc_library(activation_functions SRCS hl_cpu_functions.cc hl_avx_functions.cc)
-else()
-    cc_library(activation_functions SRCS hl_cpu_functions.cc)
-endif()
+cc_library(activation_functions SRCS avx_functions.cc)

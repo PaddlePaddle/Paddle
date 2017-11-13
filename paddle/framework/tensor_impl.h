@@ -52,7 +52,7 @@ struct SizeOfTypeFunctor<HEAD, TAIL...> {
 };
 
 static inline size_t SizeOfType(std::type_index type) {
-  SizeOfTypeFunctor<int, float, double, int16_t, int64_t> functor;
+  SizeOfTypeFunctor<int, float, double, int16_t, int64_t, bool> functor;
   size_t size = functor(type);
   PADDLE_ENFORCE(size != 0UL, "Cannot get size of type %s", type.name());
   return size;
@@ -62,10 +62,14 @@ inline void Tensor::check_memory_size() const {
   PADDLE_ENFORCE_NOT_NULL(
       holder_, "Tensor holds no memory. Call Tensor::mutable_data first.");
   PADDLE_ENFORCE_GE(
-      holder_->size(), numel() * SizeOfType(type()) + offset_,
+      holder_->size(), memory_size() + offset_,
       "Tensor's dims_ is out of bound. Call Tensor::mutable_data "
       "first to re-allocate memory.\n"
       "or maybe the required data-type mismatches the data already stored.");
+}
+
+inline size_t Tensor::memory_size() const {
+  return holder_ == nullptr ? 0UL : numel() * SizeOfType(type());
 }
 
 template <typename T>
@@ -108,9 +112,10 @@ inline void* Tensor::mutable_data(platform::Place place, std::type_index type) {
   if (holder_ != nullptr) {
     holder_->set_type(type);
   }
-  PADDLE_ENFORCE_GT(numel(), 0,
-                    "Tensor's numel must be larger than zero to call "
-                    "Tensor::mutable_data. Call Tensor::set_dim first.");
+  PADDLE_ENFORCE_GT(
+      numel(), 0,
+      "When calling this method, the Tensor's numel must be larger than zero. "
+      "Please check Tensor::Resize has been called first.");
   int64_t size = numel() * SizeOfType(type);
   /* some versions of boost::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
@@ -223,12 +228,14 @@ inline void Tensor::CopyFromVector(const std::vector<T>& src,
 #endif
 }
 
-inline Tensor Tensor::Slice(const int& begin_idx, const int& end_idx) const {
+inline Tensor Tensor::Slice(int begin_idx, int end_idx) const {
   check_memory_size();
-  PADDLE_ENFORCE_GE(begin_idx, 0, "Slice begin index is less than zero.");
-  PADDLE_ENFORCE_LE(end_idx, dims_[0], "Slice end index is out of bound.");
-  PADDLE_ENFORCE_LT(begin_idx, end_idx,
-                    "Begin index must be less than end index.");
+  PADDLE_ENFORCE_GE(begin_idx, 0,
+                    "The start row index must be greater than 0.");
+  PADDLE_ENFORCE_LE(end_idx, dims_[0], "The end row index is out of bound.");
+  PADDLE_ENFORCE_LT(
+      begin_idx, end_idx,
+      "The start row index must be lesser than the end row index.");
 
   if (dims_[0] == 1) {
     return *this;

@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 TEST(ProgramDesc, copy_ctor) {
   ProgramDescBind program;
-  auto* global_block = program.Block(0);
+  auto* global_block = program.MutableBlock(0);
   auto* x = global_block->Var("X");
   x->SetType(VarDesc_VarType_LOD_TENSOR);
   x->SetLoDLevel(0);
@@ -44,7 +44,7 @@ TEST(ProgramDesc, copy_ctor) {
 
   ProgramDescBind program_copy(program);
 
-  auto* global_block_copy = program_copy.Block(0);
+  auto* global_block_copy = program_copy.MutableBlock(0);
   ASSERT_NE(global_block, global_block_copy);
 
   auto assert_same_var = [&](const std::string& name, VarDescBind* var_before) {
@@ -59,7 +59,7 @@ TEST(ProgramDesc, copy_ctor) {
   };
 
   ASSERT_EQ(global_block->LocalVarNames(), global_block_copy->LocalVarNames());
-  ASSERT_EQ(3, global_block_copy->LocalVarNames().size());
+  ASSERT_EQ(3UL, global_block_copy->LocalVarNames().size());
   assert_same_var("X", x);
   assert_same_var("Y", y);
   assert_same_var("Out", out);
@@ -78,6 +78,68 @@ TEST(ProgramDesc, copy_ctor) {
 
   // Not check block's protostr are same it because the order of vars could be
   // different and it is correct.
+}
+
+TEST(ProgramDescBind, serialize_and_deserialize) {
+  ProgramDescBind program_origin;
+  auto* global_block = program_origin.MutableBlock(0);
+  auto* x = global_block->Var("X");
+  x->SetType(VarDesc_VarType_LOD_TENSOR);
+  x->SetLoDLevel(0);
+  x->SetDataType(FP32);
+  x->SetShape({1000, 784});
+
+  auto* y = global_block->Var("Y");
+  y->SetType(VarDesc_VarType_LOD_TENSOR);
+  y->SetLoDLevel(0);
+  y->SetDataType(FP32);
+  y->SetShape({784, 100});
+
+  auto* op = global_block->AppendOp();
+  op->SetType("mul");
+  op->SetInput("X", {x->Name()});
+  op->SetInput("Y", {y->Name()});
+
+  auto* out = global_block->Var("Out");
+  out->SetType(VarDesc_VarType_LOD_TENSOR);
+  op->SetOutput("Y", {out->Name()});
+
+  std::string binary_str;
+  program_origin.Proto()->SerializeToString(&binary_str);
+
+  ProgramDescBind program_restored(binary_str);
+  auto* global_block_restored = program_restored.MutableBlock(0);
+  ASSERT_NE(global_block, global_block_restored);
+
+  auto assert_same_var = [&](const std::string& name, VarDescBind* var_before) {
+    ASSERT_TRUE(global_block_restored->HasVar(name));
+    auto* restored = global_block_restored->Var(name);
+    ASSERT_NE(restored, var_before);
+    ASSERT_EQ(restored->Name(), var_before->Name());
+    ASSERT_EQ(restored->GetType(), var_before->GetType());
+    ASSERT_EQ(restored->Shape(), var_before->Shape());
+    ASSERT_EQ(restored->Proto()->SerializeAsString(),
+              var_before->Proto()->SerializeAsString());
+  };
+
+  ASSERT_EQ(global_block->LocalVarNames(),
+            global_block_restored->LocalVarNames());
+  ASSERT_EQ(3UL, global_block_restored->LocalVarNames().size());
+  assert_same_var("X", x);
+  assert_same_var("Y", y);
+  assert_same_var("Out", out);
+
+  for (size_t i = 0; i < global_block->OpSize(); ++i) {
+    auto op_origin = global_block->Op(i);
+    auto op_restored = global_block->Op(i);
+
+    ASSERT_EQ(op_origin->Type(), op_restored->Type());
+    ASSERT_EQ(op_origin->Inputs(), op_restored->Inputs());
+    ASSERT_EQ(op_origin->Outputs(), op_restored->Outputs());
+
+    ASSERT_EQ(op_restored->Proto()->SerializeAsString(),
+              op_origin->Proto()->SerializeAsString());
+  }
 }
 }  // namespace framework
 }  // namespace paddle

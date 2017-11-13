@@ -109,17 +109,26 @@ message LoDTensorDesc {
   optional int32 lod_level = 2 [ default = 0 ];
 }
 
+message LoDTensorArrayDesc {
+  required TensorDesc tensor = 1;
+  optional int32 lod_level = 2 [ default = 0 ];
+}
+
 message VarDesc {
   enum VarType {
     LOD_TENSOR = 1;
     SELECTED_ROWS = 2;
     FEED_MINIBATCH = 3;
     FETCH_LIST = 4;
+    STEP_SCOPES = 5;
+    LOD_RANK_TABLE = 6;
+    LOD_TENSOR_ARRAY = 7;
   }
   required string name = 1;
   required VarType type = 2;
   optional LoDTensorDesc lod_tensor = 3;
   optional TensorDesc selected_rows = 4;
+  optional LoDTensorArrayDesc tensor_array = 6;
   optional bool persistable = 5 [ default = false ];
 }
 

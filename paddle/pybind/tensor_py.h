@@ -85,7 +85,8 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
 }  // namespace details
 inline py::buffer_info CastToPyBuffer(framework::Tensor &tensor) {
   auto buffer_info =
-      details::CastToPyBufferImpl<true, 0, float, int, double>()(tensor);
+      details::CastToPyBufferImpl<true, 0, float, int, double, int64_t, bool>()(
+          tensor);
   return buffer_info;
 }
 

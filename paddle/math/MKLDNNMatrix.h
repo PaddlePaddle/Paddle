@@ -24,6 +24,12 @@ namespace paddle {
 class MKLDNNMatrix;
 typedef std::shared_ptr<MKLDNNMatrix> MKLDNNMatrixPtr;
 
+#define CHECK_PRIMITIVE_DESC_EQ(MAT, PD, ...)                        \
+  CHECK(MAT) << " can not be empty.";                                \
+  CHECK(MAT->getPrimitiveDesc() == PD)                               \
+      << #MAT "->getPrimitiveDesc() and " #PD " should be equal.\n " \
+      << "" __VA_ARGS__;
+
 /**
  * @brief MKLDNN Matrix.
  *
@@ -91,6 +97,16 @@ public:
       const MKLDNNMatrixPtr& dst,
       bool checkData = true);
 
+  void copyFrom(const Matrix& src) {
+    // TODO(TJ): reorder data if this format is not nchw or x
+    m_->copyFrom(src);
+  }
+
+  void copyTo(Matrix& dst) {
+    // TODO(TJ): reorder data if this format is not nchw or x
+    dst.copyFrom(*m_);
+  }
+
 public:
   /**
    * Reorder this MKLDNNMatrix from other format.
@@ -127,6 +143,27 @@ public:
     set_data_handle(data);
     CpuMatrix::setData(data);
     m_.reset();
+  }
+
+  /**
+   * override the CpuMatrix::resize
+   */
+  void resize(size_t newHeight, size_t newWidth) override {
+    m_->resize(newHeight, newWidth);
+    if (data_ == m_->getData() && elementCnt_ == newHeight * newWidth) {
+      return;
+    }
+    CpuMatrix::setData(data_);
+    height_ = newHeight;
+    width_ = newWidth;
+    elementCnt_ = newHeight * newWidth;
+    stride_ = width_;
+    auto pd = mkldnn::memory::primitive_desc(
+        mkldnn::memory::desc({(int)newHeight, (int)newWidth},
+                             getDtype(),
+                             mkldnn::memory::format::nc),
+        getEngine());
+    resetMKLDNNMemory(pd, data_);
   }
 
   /**
@@ -199,6 +236,17 @@ protected:
                    memory::format srcFmt,
                    memory::format dstFmt,
                    memory::dims dm);
+  /**
+   * reset this MKLDNN Memory from primitve desc
+   */
+  void resetMKLDNNMemory(memory::primitive_desc pd, real* data) {
+    mkldnn_primitive_t result;
+    mkldnn::error::wrap_c_api(
+        mkldnn_primitive_create(&result, pd.get(), nullptr, nullptr),
+        "could not create a memory primitive");
+    reset(result);
+    set_data_handle(data);
+  }
 
 private:
   // save the CpuMatrixPtr in case the buffer released outside
