@@ -14,9 +14,13 @@ limitations under the License. */
 
 #include "paddle/utils/Excepts.h"
 
-#if (defined(__APPLE__) || defined(__OSX__)) && !defined(__arm__) && \
-    !defined(__aarch64__)
-
+#if defined(__APPLE__) || defined(__OSX__)
+#if defined(__arm__) || defined(__arm64__)
+// TODO(liuyiqun): implement the arm version
+int fegetexcept(void) { return -1; }
+int feenableexcept(unsigned int excepts) { return -1; }
+int fedisableexcept(unsigned int excepts) { return -1; }
+#else
 int fegetexcept(void) {
   static fenv_t fenv;
   return fegetenv(&fenv) ? -1 : (fenv.__control & FE_ALL_EXCEPT);
@@ -49,5 +53,5 @@ int fedisableexcept(unsigned int excepts) {
 
   return (fesetenv(&fenv) ? -1 : old_excepts);
 }
-
+#endif
 #endif
