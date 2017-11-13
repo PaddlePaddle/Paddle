@@ -107,7 +107,8 @@ class WhileGradOp : public framework::OperatorBase {
 
     for (auto cur_scope_iter = step_scopes->rbegin();
          cur_scope_iter != step_scopes->rend(); ++cur_scope_iter) {
-      executor.Run(*program, *cur_scope_iter, block->ID(), false);
+      executor.Run(*program, *cur_scope_iter, block->ID(),
+                   false /* create local scope */);
 
       auto &pg_names = Outputs(kParamGrads);
       auto &p_names = Inputs(kParameters);

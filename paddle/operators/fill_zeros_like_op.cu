@@ -17,5 +17,8 @@
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
-    fill_zeros_like,
-    ops::FillZerosLikeKernel<paddle::platform::GPUPlace, float>);
+    fill_zeros_like, ops::FillZerosLikeKernel<paddle::platform::GPUPlace, int>,
+    ops::FillZerosLikeKernel<paddle::platform::GPUPlace, int64_t>,
+    ops::FillZerosLikeKernel<paddle::platform::GPUPlace, float>,
+    ops::FillZerosLikeKernel<paddle::platform::GPUPlace, double>,
+    ops::FillZerosLikeKernel<paddle::platform::GPUPlace, bool>);

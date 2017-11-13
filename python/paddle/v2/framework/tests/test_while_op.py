@@ -43,7 +43,14 @@ class TestWhileOp(unittest.TestCase):
             layers.array_write(result, i=i, array=mem_array)
 
             layers.less_than(x=i, y=array_len, cond=cond)
-        sum_result = layers.array_read(mem_array, i=array_len)
+
+        i = layers.zeros(shape=[1], dtype='int64')
+        m_0 = layers.array_read(array=mem_array, i=i)
+        i = layers.increment(i)
+        m_1 = layers.array_read(array=mem_array, i=i)
+        i = layers.increment(i)
+        m_2 = layers.array_read(array=mem_array, i=i)
+        sum_result = layers.sums(input=[m_0, m_1, m_2])
 
         loss = layers.mean(x=sum_result)
         print loss
