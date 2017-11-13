@@ -12,10 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <stdint.h>
-#include <sys/stat.h>
 #include <ostream>
-#include <thread>
 
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/framework.pb.h"
@@ -43,8 +40,6 @@ class SendOp : public framework::OperatorBase {
       // TODO(typhoonzero): how to call InitVariables
     }
   }
-  SendOp(const SendOp &) = delete;
-  SendOp &operator=(const SendOp &) = delete;
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
     auto iname = Input("X");
