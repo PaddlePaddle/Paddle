@@ -63,9 +63,10 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
     }                                                             \
   } while (false)
 
-enum class DataLayout {
+enum class DataLayout {  // Not use
   kNHWC,
   kNCHW,
+  kNCDHW,
   kNCHW_VECT_C,
 };
 
@@ -107,12 +108,15 @@ class CudnnDataType<double> {
   }
 };
 
-inline cudnnTensorFormat_t GetCudnnTensorFormat(const DataLayout& order) {
+inline cudnnTensorFormat_t GetCudnnTensorFormat(
+    const DataLayout& order) {  // Not use
   switch (order) {
     case DataLayout::kNHWC:
       return CUDNN_TENSOR_NHWC;
     case DataLayout::kNCHW:
       return CUDNN_TENSOR_NCHW;
+    case DataLayout::kNCDHW:
+      return CUDNN_TENSOR_NCHW;  // TODO(chengduoZH) : add CUDNN_TENSOR_NCDHW
     default:
       PADDLE_THROW("Unknown cudnn equivalent for order");
   }
