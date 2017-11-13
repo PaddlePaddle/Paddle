@@ -426,12 +426,15 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
     const std::vector<size_t> dup_op = dup.second;
     if (out_name != kEmptyVarName && dup_op.size() > 1) {
       std::vector<std::string> sum_op_inputs;
+      std::string next_g_name = out_name;
       for (size_t i = 0; i < dup_op.size(); ++i) {
         VLOG(10) << backward_descs[dup_op[i]]->Type() << " has " << out_name
                  << " duplicated";
         std::string new_name = out_name + "@RENAME@" + std::to_string(i);
-        backward_descs[dup_op[i]]->Rename(out_name, new_name);
+        backward_descs[dup_op[i]]->RenameOutput(out_name, new_name);
+        backward_descs[dup_op[i]]->RenameInput(out_name, next_g_name);
         sum_op_inputs.emplace_back(new_name);
+        next_g_name = sum_op_inputs.back();
       }
       std::unique_ptr<OpDescBind> sum_op(new OpDescBind(
           "sum", {{"X", sum_op_inputs}}, {{"Out", {out_name}}}, {}));

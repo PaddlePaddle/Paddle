@@ -42,7 +42,6 @@ class TestWhileOp(unittest.TestCase):
 
             i = layers.increment(x=i, in_place=True)
             layers.array_write(result, i=i, array=mem_array)
-
             layers.less_than(x=i, y=array_len, cond=cond)
         sum_result = layers.array_read(mem_array, i=array_len)
 
@@ -52,7 +51,7 @@ class TestWhileOp(unittest.TestCase):
         # import paddle.v2.framework.net_drawer as drawer
         # print drawer.draw_graph(g_startup_program, g_main_program)
         # exit(0)
-
+        print g_main_program
         print "-" * 10
 
         cpu = core.CPUPlace()

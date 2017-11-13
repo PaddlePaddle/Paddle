@@ -14,6 +14,7 @@
 
 #include <vector>
 #include "paddle/framework/executor.h"
+#include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
 #include "paddle/operators/detail/safe_ref.h"
@@ -106,8 +107,50 @@ class WhileGradOp : public framework::OperatorBase {
     auto *step_scopes =
         scope.FindVar(Input(kStepScopes))->GetMutable<StepScopeVar>();
 
+    auto outside_og_names = Inputs(framework::GradVarName(kOutputs));
+    auto inside_og_names =
+        Attr<std::vector<std::string>>("original_output_grad");
+
+    PADDLE_ENFORCE_EQ(outside_og_names.size(), inside_og_names.size());
+
     for (auto cur_scope_iter = step_scopes->rbegin();
          cur_scope_iter != step_scopes->rend(); ++cur_scope_iter) {
+      framework::Scope &cur_scope = **cur_scope_iter;
+      // Link OG from outside to inside
+      for (size_t i = 0; i < outside_og_names.size(); ++i) {
+        auto outside_og_name = outside_og_names[i];
+        auto inside_og_name = inside_og_names[i];
+        VLOG(10) << "Linking outside " << outside_og_name << " --> inside "
+                 << inside_og_name;
+        auto &og_outside = detail::Ref(scope.FindVar(outside_og_name));
+        auto &og_inside = detail::Ref(cur_scope.Var(inside_og_name));
+        if (og_outside.Type().hash_code() ==
+            typeid(framework::LoDTensor).hash_code()) {
+          auto &outside_tensor = og_outside.Get<framework::LoDTensor>();
+          auto &inside_tensor =
+              detail::Ref(og_inside.GetMutable<framework::LoDTensor>());
+          inside_tensor.set_lod(outside_tensor.lod());
+          inside_tensor.ShareDataWith(outside_tensor);
+        } else if (og_outside.Type().hash_code() ==
+                   typeid(framework::LoDTensorArray).hash_code()) {
+          auto &outside_array = og_outside.Get<framework::LoDTensorArray>();
+          auto &inside_array =
+              detail::Ref(og_inside.GetMutable<framework::LoDTensorArray>());
+          VLOG(10) << "Array size = " << outside_array.size();
+          inside_array.resize(outside_array.size());
+
+          for (size_t j = 0; j < inside_array.size(); ++j) {
+            if (outside_array[i].numel() != 0) {
+              VLOG(10) << i;
+              inside_array[i].set_lod(outside_array[i].lod());
+              inside_array[i].ShareDataWith(outside_array[i]);
+            } else {
+              PADDLE_ENFORCE_EQ(inside_array[i].numel(), 0);
+            }
+          }
+        }
+      }
+
       executor.Run(*program, *cur_scope_iter, block->ID(), false);
 
       auto &pg_names = Outputs(kParamGrads);
@@ -177,12 +220,42 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
         InputGrad(kParameters, /*do not drop empty gradient*/ false));
     grad->SetInput(kOutputs, Output(kOutputs));
 
-    // OG should be re-calculated by step blocks
-    //    grad->SetInput(framework::GradVarName(kOutputs),
-    //    OutputGrad(kOutputs));
+    // OG should be re-calculated by step blocks, since many outputs of while op
+    // do not need to calculate gradients.
+    std::unordered_set<std::string> block_ins;
+    {
+      for (auto &p : Input(kParameters)) {
+        block_ins.insert(p);
+      }
+      for (auto &o : Output(kOutputs)) {
+        block_ins.insert(o);
+      }
+    }
+    std::unordered_set<std::string> extra_inputs;
+    for (size_t i = 0; i < grad_block_[0]->OpSize(); ++i) {
+      for (auto &input_name : grad_block_[0]->Op(i)->InputArgumentNames()) {
+        if (block_ins.find(input_name) != block_ins.end()) {
+          continue;
+        }
+        extra_inputs.insert(input_name);
+      }
+
+      for (auto &output_name : grad_block_[0]->Op(i)->OutputArgumentNames()) {
+        block_ins.insert(output_name);
+      }
+    }
+
+    std::vector<std::string> extra_inputs_list;
+    extra_inputs_list.resize(extra_inputs.size());
+    std::copy(extra_inputs.begin(), extra_inputs.end(),
+              extra_inputs_list.begin());
+    grad->SetInput(framework::GradVarName(kOutputs), extra_inputs_list);
     grad->SetInput(kStepScopes, Output(kStepScopes));
     grad->SetAttrMap(this->Attrs());
     grad->SetBlockAttr(kStepBlock, *grad_block_[0]);
+    // record the original output gradient names, since the gradient name of
+    // while operator could be renamed.
+    grad->SetAttr("original_output_grad", extra_inputs_list);
 
     return std::unique_ptr<framework::OpDescBind>(grad);
   }
@@ -214,7 +287,7 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
     ctx->HasInputs(kParameters);
     ctx->HasOutputs(framework::GradVarName(kParameters));
     ctx->HasInputs(kOutputs);
-    //    ctx->HasOutputs()
+    ctx->HasInputs(framework::GradVarName(kOutputs));
 
     auto p_names = ctx->Inputs(kParameters);
     auto pg_names = ctx->Outputs(kParamGrads);

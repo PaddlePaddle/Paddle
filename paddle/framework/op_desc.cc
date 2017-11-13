@@ -235,6 +235,23 @@ void OpDescBind::Rename(const std::string &old_name,
   need_update_ = true;
 }
 
+void OpDescBind::RenameOutput(const std::string &old_name,
+                              const std::string &new_name) {
+  for (auto &output : outputs_) {
+    std::replace(output.second.begin(), output.second.end(), old_name,
+                 new_name);
+  }
+  need_update_ = true;
+}
+
+void OpDescBind::RenameInput(const std::string &old_name,
+                             const std::string &new_name) {
+  for (auto &input : inputs_) {
+    std::replace(input.second.begin(), input.second.end(), old_name, new_name);
+  }
+  need_update_ = true;
+}
+
 struct SetAttrDescVisitor : public boost::static_visitor<void> {
   explicit SetAttrDescVisitor(OpDesc::Attr *attr) : attr_(attr) {}
   mutable OpDesc::Attr *attr_;
