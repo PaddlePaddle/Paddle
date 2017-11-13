@@ -93,5 +93,11 @@ class TestConv3dTransposeOp(OpTest):
         self.op_type = "conv3d_transpose"
 
 
+# ------------ test_cudnn ------------
+class TestCudnn(TestConv3dTransposeOp):
+    def init_op_type(self):
+        self.op_type = "conv3d_transpose_cudnn"
+
+
 if __name__ == '__main__':
     unittest.main()
