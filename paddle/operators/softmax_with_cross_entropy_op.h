@@ -4,13 +4,13 @@
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 #include "paddle/framework/eigen.h"
@@ -60,25 +60,25 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
     logit_grad->ShareDataWith(*context.Input<Tensor>("Softmax"));
 
     const int class_num = logit_grad->dims()[1];
-    if (context.Attr<bool>("soft_label")) {
-      auto out_grad_mat = EigenMatrix<T>::From(*out_grad);
-      auto logit_grad_mat = EigenMatrix<T>::From(*logit_grad);
-      auto lbl_mat = EigenMatrix<T>::From(*labels);
+    auto out_grad_mat = EigenMatrix<T>::From(*out_grad);
+    auto logit_grad_mat = EigenMatrix<T>::From(*logit_grad);
 
+    if (context.Attr<bool>("soft_label")) {
+      auto lbl_mat = EigenMatrix<T>::From(*labels);
+      logit_grad_mat.device(context.GetEigenDevice<platform::CPUPlace>()) =
+          out_grad_mat.broadcast(Eigen::DSizes<int, 2>(1, class_num)) *
+          (logit_grad_mat - lbl_mat);
+    } else {
       logit_grad_mat.device(context.GetEigenDevice<platform::CPUPlace>()) =
           logit_grad_mat *
-              out_grad_mat.broadcast(Eigen::DSizes<int, 2>(1, class_num)) -
-          lbl_mat;
-    } else {
-      const int batch_size = logit_grad->dims()[0];
-      const int* label_data = labels->data<int>();
-      const T* out_grad_data = out_grad->data<T>();
-      T* logit_grad_data = logit_grad->data<T>();
+          out_grad_mat.broadcast(Eigen::DSizes<int, 2>(1, class_num));
 
+      const int batch_size = logit_grad->dims()[0];
+      const int64_t* label_data = labels->data<int64_t>();
+      T* logit_grad_data = logit_grad->data<T>();
+      const T* out_grad_data = out_grad->data<T>();
       for (int i = 0; i < batch_size; ++i) {
-        int index = i * class_num + label_data[i];
-        logit_grad_data[index] =
-            (out_grad_data[i] * logit_grad_data[index] - 1.);
+        logit_grad_data[i * class_num + label_data[i]] -= out_grad_data[i];
       }
     }
   }

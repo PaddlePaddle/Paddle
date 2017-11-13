@@ -20,7 +20,10 @@ limitations under the License. */
 #include <set>
 #include <vector>
 
+#include "paddle/framework/feed_fetch_type.h"
+#include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/scope.h"
 
@@ -30,7 +33,7 @@ namespace framework {
 const std::string kFeedOpType = "feed";
 const std::string kFetchOpType = "fetch";
 
-Executor::Executor(const std::vector<platform::Place>& places) {
+Executor::Executor(const std::vector<platform::Place>& places) : own_(true) {
   PADDLE_ENFORCE_GT(places.size(), 0);
   device_contexts_.resize(places.size());
   for (size_t i = 0; i < places.size(); i++) {
@@ -51,41 +54,81 @@ Executor::Executor(const std::vector<platform::Place>& places) {
 }
 
 Executor::~Executor() {
-  for (auto& device_context : device_contexts_) {
-    delete device_context;
+  if (own_) {
+    for (auto& device_context : device_contexts_) {
+      delete device_context;
+    }
   }
 }
 
-void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id) {
+static void CreateTensor(Variable* var, VarDesc::VarType var_type) {
+  if (var_type == VarDesc::LOD_TENSOR) {
+    var->GetMutable<LoDTensor>();
+  } else if (var_type == VarDesc::SELECTED_ROWS) {
+    var->GetMutable<SelectedRows>();
+  } else if (var_type == VarDesc::FEED_MINIBATCH) {
+    var->GetMutable<FeedFetchList>();
+  } else if (var_type == VarDesc::FETCH_LIST) {
+    var->GetMutable<FeedFetchList>();
+  } else if (var_type == VarDesc::STEP_SCOPES) {
+    var->GetMutable<std::vector<framework::Scope>>();
+  } else if (var_type == VarDesc::LOD_RANK_TABLE) {
+    var->GetMutable<LoDRankTable>();
+  } else if (var_type == VarDesc::LOD_TENSOR_ARRAY) {
+    var->GetMutable<LoDTensorArray>();
+  } else {
+    PADDLE_THROW(
+        "Variable type %d is not in "
+        "[LoDTensor, SelectedRows, FEED_MINIBATCH, FETCH_LIST, LOD_RANK_TABLE]",
+        var_type);
+  }
+}
+
+void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id,
+                   bool create_local_scope) {
   // TODO(tonyyang-svail):
   //    - only runs on the first device (i.e. no interdevice communication)
   //    - will change to use multiple blocks for RNN op and Cond Op
-  PADDLE_ENFORCE_GT(pdesc.blocks_size(), block_id);
-  auto& block = pdesc.blocks(block_id);
+  PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), pdesc.Size());
+  auto& block = pdesc.Block(block_id);
   auto& device = device_contexts_[0];
 
-  Scope& local_scope = scope->NewScope();
-
-  for (auto& var : block.vars()) {
-    if (var.persistable()) {
-      auto* ptr = scope->Var(var.name());
-      VLOG(3) << "Create Variable " << var.name()
-              << " global, which pointer is " << ptr;
-    } else {
-      auto* ptr = local_scope.Var(var.name());
-      VLOG(3) << "Create Variable " << var.name()
-              << " locally, which pointer is " << ptr;
+  Scope* local_scope = scope;
+  if (create_local_scope) {
+    local_scope = &scope->NewScope();
+    for (auto& var : block.AllVars()) {
+      if (var->Persistable()) {
+        auto* ptr = scope->Var(var->Name());
+        CreateTensor(ptr, var->GetType());
+        VLOG(3) << "Create Variable " << var->Name()
+                << " global, which pointer is " << ptr;
+      } else {
+        auto* ptr = local_scope->Var(var->Name());
+        CreateTensor(ptr, var->GetType());
+        VLOG(3) << "Create Variable " << var->Name()
+                << " locally, which pointer is " << ptr;
+      }
+    }
+  } else {
+    for (auto& var : block.AllVars()) {
+      auto* ptr = local_scope->Var(var->Name());
+      CreateTensor(ptr, var->GetType());
+      VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
+              << ptr;
     }
   }
 
-  for (auto& op_desc : block.ops()) {
-    auto op = paddle::framework::OpRegistry::CreateOp(
-        op_desc, const_cast<ProgramDesc*>(&pdesc));
-    op->Run(local_scope, *device);
+  for (auto& op_desc : block.AllOps()) {
+    auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
+    op->Run(*local_scope, *device);
   }
-
-  scope->DeleteScope(&local_scope);
+  if (create_local_scope) {
+    scope->DeleteScope(local_scope);
+  }
 }
+
+Executor::Executor(const platform::DeviceContext& device)
+    : device_contexts_({&device}), own_(false) {}
 
 }  // namespace framework
 }  // namespace paddle

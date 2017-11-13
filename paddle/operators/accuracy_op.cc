@@ -22,22 +22,36 @@ class AccuracyOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Inference"),
-                   "Input(Inference) of AccuracyOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Out"),
+                   "Input (Out) of accuracy op should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Indices"),
+                   "Input (Indices) of accuracy op should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"),
-                   "Input(Label) of AccuracyOp should not be null.");
+                   "Input (Label) of accuracy op should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Accuracy"),
-                   "Output(Accuracy) of AccuracyOp should not be null.");
+                   "Output (Accuracy) of AccuracyOp should not be null.");
 
-    auto inference_dim = ctx->GetInputDim("Inference");
+    auto inference_dim = ctx->GetInputDim("Out");
     auto label_dim = ctx->GetInputDim("Label");
+    // Assume indices has same shape as inference, because
+    // it's the output of topk.
 
-    PADDLE_ENFORCE_EQ(label_dim.size(), 1, "label must be a vector");
+    PADDLE_ENFORCE_EQ(label_dim.size(), 2, "label's rank must be 2.");
+    PADDLE_ENFORCE_EQ(label_dim[1], 1, "label's second dimension must be 1");
     PADDLE_ENFORCE_EQ(inference_dim[0], label_dim[0],
-                      "inference size must be the same as label size");
+                      "the inference tensor's num_rows must be"
+                      " the same as label.");
 
     ctx->SetOutputDim("Accuracy", {1});
-    ctx->ShareLoD("Inference", /*->*/ "Accuracy");
+    ctx->ShareLoD("Out", /*->*/ "Accuracy");
+  }
+
+ protected:
+  framework::OpKernelType GetKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("Out")->type()),
+        ctx.device_context());
   }
 };
 
@@ -47,19 +61,24 @@ class AccuracyOpMaker : public framework::OpProtoAndCheckerMaker {
                   framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     // TODO(typhoonzero): support both inference value and indices.
-    AddInput("Inference", "topk(indices) the network output");
+    AddInput("Out", "The network output of topk (inferences)");
+    AddInput("Indices", "The the network output of topk (indices)");
     AddInput("Label", "Label of the training data");
     // TODO(typhoonzero): AddInput("Weight", ...
     AddOutput("Accuracy", "The accuracy of current batch");
 
     AddComment(R"DOC(
-Accuracy. It will print accuracy rate for classification.
-The accuracy is:
-..  math::
-accuracy = \\frac{NumOfCorrectPredicts}{NumOfAllSamples})
+Accuracy Operator. 
 
-Both the input `Inference` and `Label` can carry the LoD (Level of Details)
-information, or not. But the output only shares the LoD with input `Inference`.
+It will print accuracy rate for classification.
+The accuracy is calculated as follows:
+
+$$accuracy = \frac{NumOfCorrectPredicts}{NumOfAllSamples}$$
+
+Both the input Out and Label can carry the LoD (Level of Details)
+information, or not. But the output only shares the LoD information 
+with the input Out(Inference).
+
 )DOC");
   }
 };
@@ -68,9 +87,10 @@ information, or not. But the output only shares the LoD with input `Inference`.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(accuracy, ops::AccuracyOp, ops::AccuracyOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    accuracy, ops::AccuracyKernel<paddle::platform::CPUPlace, float>,
-    ops::AccuracyKernel<paddle::platform::CPUPlace, int>,
-    ops::AccuracyKernel<paddle::platform::CPUPlace, double>,
-    ops::AccuracyKernel<paddle::platform::CPUPlace, int64_t>);
+REGISTER_OPERATOR(accuracy, ops::AccuracyOp, ops::AccuracyOpMaker,
+                  paddle::framework::EmptyGradOpMaker);
+// FIXME(typhoonzero): types of T is for infernece data.
+// label data is always int.
+REGISTER_OP_CPU_KERNEL(accuracy,
+                       ops::AccuracyKernel<paddle::platform::CPUPlace, float>,
+                       ops::AccuracyKernel<paddle::platform::CPUPlace, double>);

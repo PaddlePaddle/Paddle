@@ -15,6 +15,7 @@
 #pragma once
 #include <typeindex>
 #include "paddle/framework/framework.pb.h"
+#include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -30,6 +31,41 @@ inline DataType ToDataType(std::type_index type) {
     return DataType::INT64;
   } else {
     PADDLE_THROW("Not supported");
+  }
+}
+
+inline std::type_index ToTypeIndex(DataType type) {
+  switch (type) {
+    case DataType::FP32:
+      return typeid(float);
+    case DataType::FP64:
+      return typeid(double);
+    case DataType::INT32:
+      return typeid(int);
+    case DataType::INT64:
+      return typeid(int64_t);
+    default:
+      PADDLE_THROW("Not support type %d", type);
+  }
+}
+
+template <typename Visitor>
+inline void VisitDataType(DataType type, Visitor visitor) {
+  switch (type) {
+    case DataType::FP32:
+      visitor.template operator()<float>();
+      break;
+    case DataType::FP64:
+      visitor.template operator()<double>();
+      break;
+    case DataType::INT32:
+      visitor.template operator()<int>();
+      break;
+    case DataType::INT64:
+      visitor.template operator()<int64_t>();
+      break;
+    default:
+      PADDLE_THROW("Not supported");
   }
 }
 

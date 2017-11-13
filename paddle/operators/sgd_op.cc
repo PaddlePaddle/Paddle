@@ -45,15 +45,17 @@ class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SGDOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("Param", "Input parameter");
-    AddInput("LearningRate", "Learning rate of SGD");
-    AddInput("Grad", "Input gradient");
-    AddOutput("ParamOut", "output parameter");
+    AddInput("Param", "(Tensor) Input parameter");
+    AddInput("LearningRate", "(Tensor) Learning rate of SGD");
+    AddInput("Grad", "(Tensor) Input gradient");
+    AddOutput("ParamOut", "(Tensor) Output parameter");
     AddComment(R"DOC(
 
-Simplest sgd algorithm.
+SGD operator
 
-param_out = param - learning_rate * grad;
+This operator implements one step of the stochastic gradient descent algorithm.
+
+$$param_out = param - learning_rate * grad$$
 
 )DOC");
   }
@@ -89,11 +91,12 @@ struct SparseSGDFunctor<platform::CPUPlace, T> {
 };
 
 template struct SparseSGDFunctor<platform::CPUPlace, float>;
+template struct SparseSGDFunctor<platform::CPUPlace, double>;
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(sgd, ops::SGDOp, ops::SGDOpMaker);
-REGISTER_OP_CPU_KERNEL(sgd,
-                       ops::SGDOpKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(sgd, ops::SGDOpKernel<paddle::platform::CPUPlace, float>,
+                       ops::SGDOpKernel<paddle::platform::CPUPlace, double>);

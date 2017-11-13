@@ -49,7 +49,7 @@ def save_model(parameters, path):
                             ' in environment variable.')
 
         etcd_ip = os.environ.get(etcd_name)
-        client = master.client("http://" + etcd_ip + ":2379", 5, 0)
+        client = paddle.v2.master.client("http://" + etcd_ip + ":2379", 5, 0)
         r = client.request_save_model(trainer_id, 5000)
         if r == 0:
             # do not need to save

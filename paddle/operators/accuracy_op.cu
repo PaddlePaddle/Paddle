@@ -21,9 +21,10 @@ namespace paddle {
 namespace operators {
 using platform::PADDLE_CUDA_NUM_THREADS;
 
-template <typename T, int BlockSize>
-__global__ void AccuracyCudaKernel(const int N, const int D, const T* Xdata,
-                                   const T* labeldata, float* accuracy) {
+template <int BlockSize>
+__global__ void AccuracyCudaKernel(const int N, const int D,
+                                   const int64_t* Xdata,
+                                   const int64_t* labeldata, float* accuracy) {
   int count = 0;
   __shared__ int total[BlockSize];
 
@@ -52,36 +53,34 @@ class AccuracyOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "It must use GPUPlace.");
-    auto* inference = ctx.Input<Tensor>("Inference");
+    auto* inference = ctx.Input<Tensor>("Out");
+    auto* indices = ctx.Input<Tensor>("Indices");
     auto* label = ctx.Input<Tensor>("Label");
     auto* accuracy = ctx.Output<Tensor>("Accuracy");
     // FIXME(typhoonzero): only support indices currently
     // if add support for output values, how to detect the data type?
-    const T* inference_data = inference->data<T>();
-    const T* label_data = label->data<T>();
+    const int64_t* indices_data = indices->data<int64_t>();
+    const int64_t* label_data = label->data<int64_t>();
     float* accuracy_data = accuracy->mutable_data<float>(ctx.GetPlace());
 
     size_t num_samples = inference->dims()[0];
     size_t infer_width = inference->dims()[1];
-    cudaMemset((void**)&accuracy_data, 0, sizeof(float));
+    PADDLE_ENFORCE(cudaMemset(accuracy_data, 0, sizeof(float)));
 
     if (num_samples == 0) {
       return;
     }
 
-    AccuracyCudaKernel<T, PADDLE_CUDA_NUM_THREADS><<<
-        1, PADDLE_CUDA_NUM_THREADS, 0,
-        reinterpret_cast<const platform::CUDADeviceContext&>(
-            ctx.device_context())
-            .stream()>>>(num_samples, infer_width, inference_data, label_data,
-                         accuracy_data);
+    AccuracyCudaKernel<PADDLE_CUDA_NUM_THREADS><<<
+        1, PADDLE_CUDA_NUM_THREADS, 0, ctx.cuda_device_context().stream()>>>(
+        num_samples, infer_width, indices_data, label_data, accuracy_data);
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
+// FIXME(typhoonzero): types of T is for infernece data.
+// label data is always int
 REGISTER_OP_GPU_KERNEL(accuracy, paddle::operators::AccuracyOpCUDAKernel<float>,
-                       paddle::operators::AccuracyOpCUDAKernel<double>,
-                       paddle::operators::AccuracyOpCUDAKernel<int>,
-                       paddle::operators::AccuracyOpCUDAKernel<int64_t>);
+                       paddle::operators::AccuracyOpCUDAKernel<double>);

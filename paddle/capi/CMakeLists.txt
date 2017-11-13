@@ -29,32 +29,32 @@ add_style_check_target(paddle_capi ${CAPI_SOURCES} ${CAPI_HEADER}
 add_dependencies(paddle_capi paddle_proto)
 
 # TODO: paddle_capi_whole will be removed.
+set(PADDLE_CAPI_LAYERS_LIBS
+    paddle_function
+    paddle_gserver)
 if(MOBILE_INFERENCE)
-    set(PADDLE_CAPI_INFER_LIBS
-        paddle_utils
-        paddle_parameter
-        paddle_math
-        paddle_cuda
-        paddle_function
-        paddle_gserver
-        paddle_proto)
+  set(PADDLE_CAPI_ENGINE_LIBS
+      paddle_utils
+      paddle_parameter
+      paddle_math
+      paddle_cuda
+      paddle_proto)
 else()
-    set(PADDLE_CAPI_INFER_LIBS
-        paddle_utils
-        paddle_parameter
-        paddle_math
-        paddle_cuda
-        paddle_function
-        paddle_gserver
-        paddle_proto
-        paddle_pserver
-        paddle_network)
+  set(PADDLE_CAPI_ENGINE_LIBS
+      paddle_utils
+      paddle_parameter
+      paddle_math
+      paddle_cuda
+      paddle_proto
+      paddle_pserver
+      paddle_network)
 endif()
+set(PADDLE_CAPI_INFER_LIBS ${PADDLE_CAPI_LAYERS_LIBS} ${PADDLE_CAPI_ENGINE_LIBS})
 cc_library(paddle_capi_whole DEPS paddle_capi ${PADDLE_CAPI_INFER_LIBS})
 
 # Link the static library for inference
-cc_library(paddle_capi_engine DEPS paddle_capi paddle_utils paddle_parameter paddle_math paddle_cuda paddle_proto)
-cc_library(paddle_capi_layers DEPS paddle_function paddle_gserver)
+cc_library(paddle_capi_engine DEPS paddle_capi ${PADDLE_CAPI_ENGINE_LIBS})
+cc_library(paddle_capi_layers DEPS ${PADDLE_CAPI_LAYERS_LIBS})
 
 # Link the shared library for inference
 if(NOT IOS)

@@ -1,5 +1,5 @@
 import paddle.v2.framework.core as core
-from paddle.v2.framework.framework import Block, Program
+from paddle.v2.framework.framework import Block, Program, g_main_program
 
 g_scope = core.Scope()
 
@@ -18,12 +18,20 @@ class Executor(object):
         self.executor = core.Executor(act_places)
 
     def run(self,
-            program,
-            feed,
-            fetch_list,
+            program=None,
+            feed=None,
+            fetch_list=None,
             feed_var_name='feed',
             fetch_var_name='fetch',
             scope=None):
+        if feed is None:
+            feed = {}
+        if fetch_list is None:
+            fetch_list = []
+
+        if program is None:
+            program = g_main_program
+
         if not isinstance(program, Program):
             raise TypeError()
 
@@ -57,7 +65,7 @@ class Executor(object):
                 outputs={'Out': [fetch_var]},
                 attrs={'col': i})
 
-        self.executor.run(program.desc, scope, 0)
+        self.executor.run(program.desc, scope, 0, True)
         return [
             core.get_fetch_variable(scope, fetch_var_name, i)
             for i in xrange(len(fetch_list))

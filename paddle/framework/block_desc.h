@@ -36,8 +36,7 @@ class ProgramDescBind;
 
 class BlockDescBind {
  public:
-  BlockDescBind(ProgramDescBind *prog, BlockDesc *desc)
-      : prog_(prog), desc_(desc), need_update_(false) {}
+  BlockDescBind(ProgramDescBind *prog, BlockDesc *desc);
 
   BlockDescBind(const BlockDescBind &other, BlockDesc *desc,
                 ProgramDescBind *prog);
@@ -58,6 +57,8 @@ class BlockDescBind {
   bool HasVar(const std::string &var_name) const;
 
   VarDescBind *FindVarRecursive(const std::string &name_bytes) const;
+
+  VarDescBind *FindRecursiveOrCreateVar(const std::string &name_bytes);
 
   bool HasVarRecursive(const std::string &var_name) const;
 
@@ -88,6 +89,8 @@ class BlockDescBind {
   void Flush();
 
   BlockDesc *Proto();
+
+  ProgramDescBind *Program() { return this->prog_; }
 
  private:
   void ClearPBOps();

@@ -35,12 +35,18 @@ import (
 	"unsafe"
 
 	"github.com/PaddlePaddle/Paddle/go/master"
-	log "github.com/sirupsen/logrus"
+	log "github.com/inconshreveable/log15"
 )
 
 var mu sync.Mutex
 var handleMap = make(map[C.paddle_master_client]*master.Client)
 var curHandle C.paddle_master_client
+
+func init() {
+	log.Root().SetHandler(
+		log.LvlFilterHandler(log.LvlWarn, log.CallerStackHandler("%+v", log.StderrHandler)),
+	)
+}
 
 func add(c *master.Client) C.paddle_master_client {
 	mu.Lock()
@@ -117,7 +123,8 @@ func paddle_set_dataset(client C.paddle_master_client, path **C.char, size C.int
 	}
 	err := c.SetDataset(paths)
 	if err != nil {
-		log.Errorln(err)
+		log.Error("error set dataset",
+			log.Ctx{"error": err, "paths": paths})
 		return C.PADDLE_MASTER_ERROR
 	}
 
@@ -167,7 +174,7 @@ func paddle_request_save_model(client C.paddle_master_client, trainerID string, 
 	c := get(client)
 	need, err := c.RequestSaveModel(trainerID, time.Duration(blockMS)*time.Millisecond)
 	if err != nil {
-		log.Errorln(err)
+		log.Error("error request save model", log.Ctx{"error": err})
 		return C.PADDLE_MASTER_ERROR
 	}
 

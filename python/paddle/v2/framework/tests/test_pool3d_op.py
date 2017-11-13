@@ -54,10 +54,13 @@ def avg_pool3D_forward_naive(x, ksize, strides, paddings=[0, 0], global_pool=0):
 
 class TestPool3d_Op(OpTest):
     def setUp(self):
-        self.initTestCase()
+        self.init_test_case()
+        if self.global_pool:
+            self.paddings = [0 for _ in range(len(self.paddings))]
         input = np.random.random(self.shape).astype("float32")
         output = self.pool3D_forward_naive(input, self.ksize, self.strides,
-                                           self.paddings, self.global_pool)
+                                           self.paddings,
+                                           self.global_pool).astype("float32")
         self.inputs = {'X': input}
 
         self.attrs = {
@@ -68,7 +71,7 @@ class TestPool3d_Op(OpTest):
             'global_pooling': self.global_pool,
         }
 
-        self.outputs = {'Out': output}
+        self.outputs = {'Out': output.astype('float32')}
 
     def test_check_output(self):
         self.check_output()
@@ -77,7 +80,7 @@ class TestPool3d_Op(OpTest):
         if self.pool_type != "max":
             self.check_grad(set(['X']), 'Out', max_relative_error=0.07)
 
-    def initTestCase(self):
+    def init_test_case(self):
         self.global_pool = True
         self.op_type = "pool3d"
         self.pool_type = "avg"
@@ -89,7 +92,7 @@ class TestPool3d_Op(OpTest):
 
 
 class TestCase1(TestPool3d_Op):
-    def initTestCase(self):
+    def init_test_case(self):
         self.global_pool = False
         self.op_type = "pool3d"
         self.pool_type = "avg"
@@ -101,7 +104,7 @@ class TestCase1(TestPool3d_Op):
 
 
 class TestCase2(TestPool3d_Op):
-    def initTestCase(self):
+    def init_test_case(self):
         self.global_pool = False
         self.op_type = "pool3d"
         self.pool_type = "avg"
@@ -113,7 +116,7 @@ class TestCase2(TestPool3d_Op):
 
 
 class TestCase3(TestPool3d_Op):
-    def initTestCase(self):
+    def init_test_case(self):
         self.global_pool = True
         self.op_type = "pool3d"
         self.pool_type = "max"
@@ -125,7 +128,7 @@ class TestCase3(TestPool3d_Op):
 
 
 class TestCase4(TestPool3d_Op):
-    def initTestCase(self):
+    def init_test_case(self):
         self.global_pool = False
         self.op_type = "pool3d"
         self.pool_type = "max"
@@ -137,7 +140,7 @@ class TestCase4(TestPool3d_Op):
 
 
 class TestCase5(TestPool3d_Op):
-    def initTestCase(self):
+    def init_test_case(self):
         self.global_pool = False
         self.op_type = "pool3d"
         self.pool_type = "max"

@@ -41,7 +41,7 @@ class FeedOp : public framework::OperatorBase {
 
     auto col = Attr<int>("col");
 
-    VLOG(3) << "Feed Var " << feed_var_name << "'s " << col << " column to var"
+    VLOG(3) << "Feed Var " << feed_var_name << "'s " << col << " column to var "
             << out_name;
 
     auto &feed_list = feed_var->Get<framework::FeedFetchList>();
@@ -59,8 +59,13 @@ class FeedOpInfoMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of feed op");
     AddOutput("Out", "The output of feed op");
-    AddComment("feed op, it should not be configured by users directly");
-    AddAttr<int>("col", "column of feed");
+    AddAttr<int>("col", "(int) The column of feed");
+    AddComment(R"DOC(
+Feed Operator.
+
+It should not be configured by users directly.
+
+)DOC");
   }
 };
 
