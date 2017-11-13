@@ -21,6 +21,7 @@
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/detail/send_recv_impl.h"
 #include "paddle/operators/detail/simple_block_queue.h"
 
 namespace paddle {
@@ -33,30 +34,30 @@ class SendOp : public framework::OperatorBase {
   SendOp(const std::string &type, const framework::VariableNameMap &inputs,
          const framework::VariableNameMap &outputs,
          const framework::AttributeMap &attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+      : OperatorBase(type, inputs, outputs, attrs) {
+    // init client when the operator is created at runtime.
+    if (!client_) {
+      std::string endpoint = Attr<std::string>("endpoint");
+      client_.reset(new detail::RPCClient(
+          grpc::CreateChannel(endpoint, grpc::InsecureChannelCredentials())));
+      // TODO(typhoonzero): how to call InitVariables
+    }
+  }
+  SendOp(const SendOp &) = delete;
+  SendOp &operator=(const SendOp &) = delete;
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
-    constexpr SendOpName = "SendOp@RPCClient";
-    auto *var = scope.FindVar(SendOpName);
-    if (var == nullptr) {
-      // create RPC server object if it is not inited.
-      std::string endpoint = Attr<std::string>("endpoint");
-      var = scope.Var(SendOpName);
-      RPCClient *client = var->GetMutable<RPCClient>();
-    }
-    RPCClient *client = var->Get<RPCClient>();
-
     auto iname = Input("X");
     auto oname = Output("Out");
-    auto *var = scope.FindVar(iname);
-    auto *tensor = var->Get<framework::LoDTensor>();
-    // call sync send
-    auto *optimized_tensor = client->SendTensor(*tensor);
-    // FIXME(typhoonzero): do not copy
-    auto *out_var = scope.FindVar(oname);
-    out_var->GetMutable<framework::LoDTensor>();
-    out_var->CopyFrom(*optimized_tensor, dev_ctx.GetPlace(), dev_ctx);
+    // TODO(typhoonzero): block until server has initalized.
+    bool ret = client_->SendVariable(scope, iname, oname);
+    if (!ret) {
+      LOG(ERROR) << "send variable error";
+    }
   }
+
+ private:
+  std::unique_ptr<detail::RPCClient> client_{nullptr};
 };
 
 class SendOpMaker : public framework::OpProtoAndCheckerMaker {

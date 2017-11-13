@@ -18,8 +18,8 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-bool RPCClient::InitVariables(const std::vector<std::string>& var_list) {
-  PADDLE_ENFORCE(scope_);
+bool RPCClient::InitVariables(const framework::Scope& scope,
+                              const std::vector<std::string>& var_list) {
   // write streams of Variable to server
   ClientContext context;
   VoidMessage void_ret;
@@ -27,7 +27,7 @@ bool RPCClient::InitVariables(const std::vector<std::string>& var_list) {
       stub_->InitVariables(&context, &void_ret));
   // send vars in scope to server using this stream.
   for (auto n = var_list.begin(); n != var_list.end(); n++) {
-    auto* var = scope_->FindVar(*n);
+    auto* var = scope.FindVar(*n);
     // TODO(typhoonzero): support SelectedRows
     PADDLE_ENFORCE(var->IsType<framework::LoDTensor>(),
                    "Only support LoDTensor, %s has wrong type", *n);
@@ -43,13 +43,14 @@ bool RPCClient::InitVariables(const std::vector<std::string>& var_list) {
   return true;
 }
 
-bool RPCClient::SendVariable(const std::string& inname,
+bool RPCClient::SendVariable(const framework::Scope& scope,
+                             const std::string& inname,
                              const std::string& outname) {
   ClientContext context;
   VariableMessage msg, out_msg;
   // FIXME(typhoonzero): pass device context to here.
   auto ctx = platform::CPUDeviceContext();
-  auto* var = scope_->FindVar(inname);
+  auto* var = scope.FindVar(inname);
   PADDLE_ENFORCE(var);
   // TODO(typhoonzero): support SelectedRows
   PADDLE_ENFORCE(var->IsType<framework::LoDTensor>(),
@@ -66,7 +67,7 @@ bool RPCClient::SendVariable(const std::string& inname,
   std::istringstream iss(out_msg.serialized());
   framework::LoDTensor ret_tensor;
   framework::DeserializeFromStream(iss, &ret_tensor);
-  auto* outvar = scope_->FindVar(outname);
+  auto* outvar = scope.FindVar(outname);
   framework::LoDTensor* out_tensor = outvar->GetMutable<framework::LoDTensor>();
   // FIXME(typhoonzero): do not copy.
   out_tensor->CopyFrom(ret_tensor, ctx.GetPlace(), ctx);
