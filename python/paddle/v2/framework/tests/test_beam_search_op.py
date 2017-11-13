@@ -17,6 +17,7 @@ class BeamSearchOpTester(unittest.TestCase):
         self.ctx = core.DeviceContext.create(core.CPUPlace())
         self._create_ids()
         self._create_scores()
+        self._create_pre_ids()
         self.scope.var('selected_ids')
         self.scope.var('selected_scores')
 
@@ -37,7 +38,7 @@ class BeamSearchOpTester(unittest.TestCase):
         print 'lod', selected_ids.lod()
 
     def _create_pre_ids(self):
-        np_data = np.array([[1, 2, 3, 4]])
+        np_data = np.array([[1, 2, 3, 4]], dtype='int32')
         tensor = create_tensor(self.scope, "pre_ids", np_data)
 
     def _create_ids(self):
