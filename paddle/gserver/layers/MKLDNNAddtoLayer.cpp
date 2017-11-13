@@ -54,7 +54,6 @@ void MKLDNNAddtoLayer::reshape(
   ow = iw;
   reshapeOutput(oh, ow);
   resizeOutput(bs, oc * oh * ow);
-  printSizeInfo();
 }
 
 void MKLDNNAddtoLayer::resetFwd(std::vector<primitive>& pipeline,
