@@ -171,16 +171,23 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
     auto *grad = new framework::OpDescBind();
     grad->SetType("while_grad");
     for (auto &input_param : this->InputNames()) {
-      grad->SetInput(input_param, this->Input(input_param));
-      grad->SetOutput(framework::GradVarName(input_param),
-                      this->InputGrad(input_param));
+      if (input_param != kCondition) {
+        grad->SetInput(input_param, this->Input(input_param));
+        grad->SetOutput(framework::GradVarName(input_param),
+                        this->InputGrad(input_param));
+      }
     }
 
     for (auto &output_param : this->OutputNames()) {
       grad->SetInput(output_param, this->Output(output_param));
       if (output_param != kStepScopes) {
-        grad->SetInput(framework::GradVarName(output_param),
-                       this->OutputGrad(output_param));
+        auto in_args = this->OutputGrad(output_param);
+        auto it = std::find(in_args.begin(), in_args.end(),
+                            framework::GradVarName(this->Input(kCondition)[0]));
+        if (it != in_args.end()) {
+          in_args.erase(it);
+        }
+        grad->SetInput(framework::GradVarName(output_param), in_args);
       }
     }
     grad->SetAttrMap(this->Attrs());
