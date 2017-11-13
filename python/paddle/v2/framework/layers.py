@@ -16,7 +16,7 @@ __all__ = [
 def fc(input,
        size,
        param_attr=None,
-       bias_attr=True,
+       bias_attr=None,
        name=None,
        act=None,
        num_flatten_dims=1,
@@ -123,6 +123,55 @@ def embedding(input,
         outputs={'Out': tmp},
         attrs={'is_sparse': is_sparse})
     return tmp
+
+
+# TODO(qijun): expose H0 and C0
+def dynamic_lstm(input,
+                 size,
+                 data_type='float32',
+                 param_attr=None,
+                 bias_attr=None,
+                 use_peepholes=True,
+                 is_reverse=False,
+                 gate_activation='sigmoid',
+                 cell_activation='tanh',
+                 candidate_activation='tanh',
+                 main_program=None,
+                 startup_program=None):
+    helper = LayerHelper('lstm', **locals())
+    size = size / 4
+    weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[size, 4 * size], dtype=data_type)
+    bias_size = [1, 7 * size]
+    if not use_peepholes:
+        bias_size[1] = 4 * size
+    bias = helper.create_parameter(
+        attr=helper.bias_attr, shape=bias_size, dtype=data_type, suffix='b')
+
+    hidden = helper.create_tmp_variable(data_type)
+    cell = helper.create_tmp_variable(data_type)
+    batch_gate = helper.create_tmp_variable(data_type)
+    batch_cell_pre_act = helper.create_tmp_variable(data_type)
+
+    helper.append_op(
+        type='lstm',
+        inputs={'Input': input,
+                'Weight': weight,
+                'Bias': bias},
+        outputs={
+            'Hidden': hidden,
+            'Cell': cell,
+            'BatchGate': batch_gate,
+            'BatchCellPreAct': batch_cell_pre_act
+        },
+        attrs={
+            'use_peepholes': use_peepholes,
+            'is_reverse': is_reverse,
+            'gate_activation': gate_activation,
+            'cell_activation': cell_activation,
+            'candidate_activation': candidate_activation
+        })
+    return hidden, cell
 
 
 def data(name,
