@@ -15,13 +15,16 @@ limitations under the License. */
 #define EIGEN_USE_GPU
 
 #include "paddle/operators/math/softmax.h"
+#include "paddle/operators/math/softmax_impl.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
 
 template class SoftmaxFunctor<platform::GPUPlace, float>;
+template class SoftmaxFunctor<platform::GPUPlace, double>;
 template class SoftmaxGradFunctor<platform::GPUPlace, float>;
+template class SoftmaxGradFunctor<platform::GPUPlace, double>;
 
 }  // namespace math
 }  // namespace operators

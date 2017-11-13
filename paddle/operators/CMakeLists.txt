@@ -168,11 +168,12 @@ set(DEPS_OPS
     recurrent_op
     dynamic_recurrent_op
     softmax_with_cross_entropy_op
+    softmax_op
+    sequence_softmax_op
     sum_op
     pool_op
     pool_with_index_op
     conv_op
-    lstm_op
     conv_transpose_op
     nccl_op
     sequence_conv_op
@@ -187,6 +188,8 @@ set(DEPS_OPS
 op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
 op_library(cross_entropy_op DEPS cross_entropy)
 op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
+op_library(softmax_op DEPS softmax)
+op_library(sequence_softmax_op DEPS softmax)
 op_library(conv_op DEPS vol2col)
 op_library(sum_op DEPS net_op selected_rows_functor)
 op_library(pool_op DEPS pooling)
