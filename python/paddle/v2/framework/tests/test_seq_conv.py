@@ -122,7 +122,7 @@ class TestSeqProject(OpTest):
                 max_relative_error=0.05,
                 no_grad_set=set(['X', 'Filter']))
 
-    def not_test_check_grad_Filter(self):
+    def test_check_grad_Filter(self):
         self.check_grad(
             ['Filter'],
             'Out',
@@ -165,33 +165,34 @@ class TestSeqProject(OpTest):
         self.output_represention = 8  # output feature size
 
 
-#class TestSeqProjectCase1(TestSeqProject):
-#    def init_test_case(self):
-#        self.input_row = 11
-#        self.context_start = -1
-#        self.context_length = 3
-#        self.padding_trainable = True
-#        self.context_stride = 1
-#
-#        self.input_size = [self.input_row, 23]
-#        self.lod = [[0, 4, 5, 8, self.input_row]]
-#        self.output_represention = 8  # output feature size
-#
-#
-#class TestSeqProjectCase2(TestSeqProject):
-#    def init_test_case(self):
-#        self.input_row = 25
-#        self.context_start = 2
-#        self.context_length = 3
-#        self.padding_trainable = True
-#        self.context_stride = 1
-#
-#        self.input_size = [self.input_row, 23]
-#        idx = range(self.input_size[0])
-#        del idx[0]
-#        self.lod = [[0] + np.sort(random.sample(idx, 8)).tolist() +
-#                    [self.input_size[0]]]
-#        self.output_represention = 8  # output feature size
+class TestSeqProjectCase1(TestSeqProject):
+    def init_test_case(self):
+        self.input_row = 11
+        self.context_start = -1
+        self.context_length = 3
+        self.padding_trainable = True
+        self.context_stride = 1
+
+        self.input_size = [self.input_row, 23]
+        self.lod = [[0, 4, 5, 8, self.input_row]]
+        self.output_represention = 8  # output feature size
+
+
+class TestSeqProjectCase2(TestSeqProject):
+    def init_test_case(self):
+        self.input_row = 25
+        self.context_start = 2
+        self.context_length = 3
+        self.padding_trainable = True
+        self.context_stride = 1
+
+        self.input_size = [self.input_row, 23]
+        idx = range(self.input_size[0])
+        del idx[0]
+        self.lod = [[0] + np.sort(random.sample(idx, 8)).tolist() +
+                    [self.input_size[0]]]
+        self.output_represention = 8  # output feature size
+
 
 if __name__ == '__main__':
     unittest.main()

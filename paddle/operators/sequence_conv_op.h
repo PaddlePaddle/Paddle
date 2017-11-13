@@ -65,10 +65,8 @@ class SequenceConvKernel : public framework::OpKernel<T> {
                         padding_trainable, context_start, context_length,
                         context_stride, up_pad, down_pad);
 
-    context.device_context().Finish();
     math::matmul<Place, T>(context.device_context(), col, false, filter, false,
                            static_cast<T>(1.0), out, static_cast<T>(0.0));
-    context.device_context().Finish();
   }
 };
 
