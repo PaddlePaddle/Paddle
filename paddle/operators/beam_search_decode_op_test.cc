@@ -136,21 +136,26 @@ TEST(BeamSearchDecodeOp, PackTwoSteps) {
 
   // first source has three prefix
   BeamNodeVector<float> source0_prefixes;
-  source0_prefixes.push_back(new BeamNode<float>(1, 1));
-  source0_prefixes.push_back(new BeamNode<float>(0, 0));
-  source0_prefixes.push_back(new BeamNode<float>(3, 3));
+  source0_prefixes.push_back(
+      std::unique_ptr<BeamNode<float>>(new BeamNode<float>(1, 1)));
+  source0_prefixes.push_back(
+      std::unique_ptr<BeamNode<float>>(new BeamNode<float>(0, 0)));
+  source0_prefixes.push_back(
+      std::unique_ptr<BeamNode<float>>(new BeamNode<float>(3, 3)));
 
   // second source has two prefix
   BeamNodeVector<float> source1_prefixes;
-  source1_prefixes.push_back(new BeamNode<float>(4, 4));
-  source1_prefixes.push_back(new BeamNode<float>(5, 5));
+  source1_prefixes.push_back(
+      std::unique_ptr<BeamNode<float>>(new BeamNode<float>(4, 4)));
+  source1_prefixes.push_back(
+      std::unique_ptr<BeamNode<float>>(new BeamNode<float>(5, 5)));
 
   std::vector<BeamNodeVector<float>> beamnode_vector_list;
   std::vector<SentenceVector<float>> sentence_vector_list(
       2, SentenceVector<float>());
 
-  beamnode_vector_list.push_back(source0_prefixes);
-  beamnode_vector_list.push_back(source1_prefixes);
+  beamnode_vector_list.push_back(std::move(source0_prefixes));
+  beamnode_vector_list.push_back(std::move(source1_prefixes));
 
   // generate data for one step
   LoDTensorArray ids;

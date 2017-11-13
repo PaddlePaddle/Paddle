@@ -58,7 +58,7 @@ struct BeamNode {
 };
 
 template <typename T>
-using BeamNodeVector = std::vector<BeamNode<T>*>;
+using BeamNodeVector = std::vector<std::unique_ptr<BeamNode<T>>>;
 
 template <typename T>
 struct Sentence {
@@ -87,7 +87,7 @@ struct BeamSearchDecoder {
    */
   std::vector<BeamNodeVector<T>> PackTwoSteps(
       const LoDTensor& cur_ids, const LoDTensor& cur_scores,
-      const std::vector<BeamNodeVector<T>>& prefixes_list,
+      std::vector<BeamNodeVector<T>>& prefixes_list,
       std::vector<SentenceVector<T>>* sentence_vector_list) const;
 
   /**
@@ -140,7 +140,7 @@ Sentence<T> BeamSearchDecoder<T>::MakeSentence(const BeamNode<T>* node) const {
 template <typename T>
 std::vector<BeamNodeVector<T>> BeamSearchDecoder<T>::PackTwoSteps(
     const LoDTensor& cur_ids, const LoDTensor& cur_scores,
-    const std::vector<BeamNodeVector<T>>& prefixes_list,
+    std::vector<BeamNodeVector<T>>& prefixes_list,
     std::vector<SentenceVector<T>>* sentence_vector_list) const {
   std::vector<BeamNodeVector<T>> result;
 
@@ -158,11 +158,11 @@ std::vector<BeamNodeVector<T>> BeamSearchDecoder<T>::PackTwoSteps(
                         cur_ids.lod().at(kSentenceLevel).back(),
                         "in the first step");
       for (size_t id_idx = src_start; id_idx < src_end; ++id_idx) {
-        beam_nodes.push_back(new BeamNode<T>(cur_ids.data<int64_t>()[id_idx],
-                                             cur_scores.data<T>()[id_idx]));
+        beam_nodes.push_back(std::unique_ptr<BeamNode<T>>(new BeamNode<T>(
+            cur_ids.data<int64_t>()[id_idx], cur_scores.data<T>()[id_idx])));
       }
     } else {
-      const BeamNodeVector<T>& prefixes = prefixes_list[src_idx];
+      BeamNodeVector<T>& prefixes = prefixes_list[src_idx];
       SentenceVector<T>& sentence_vector = (*sentence_vector_list)[src_idx];
 
       PADDLE_ENFORCE_EQ(src_end - src_start, prefixes.size(),
@@ -170,27 +170,28 @@ std::vector<BeamNodeVector<T>> BeamSearchDecoder<T>::PackTwoSteps(
 
       std::vector<size_t> candidate_offset = cur_ids.lod()[kSentenceLevel];
       for (size_t prefix_idx = 0; prefix_idx < prefixes.size(); ++prefix_idx) {
-        auto* prefix = prefixes[prefix_idx];
+        std::unique_ptr<BeamNode<T>>& prefix = prefixes[prefix_idx];
         size_t candidate_start = candidate_offset[src_start + prefix_idx];
         size_t candidate_end = candidate_offset[src_start + prefix_idx + 1];
         if (candidate_start == candidate_end) {
           VLOG(3) << "this sentence has no more candidate, "
                      "add to result sentence and rm it from beam tree";
-          sentence_vector.push_back(MakeSentence(prefix));
-          delete prefix;
+          sentence_vector.push_back(MakeSentence(prefix.get()));
+          prefix.reset();
         } else {
           for (size_t candidate_idx = candidate_start;
                candidate_idx < candidate_end; ++candidate_idx) {
             auto* candidate =
                 new BeamNode<T>(cur_ids.data<int64_t>()[candidate_idx],
                                 cur_scores.data<T>()[candidate_idx]);
-            candidate->AppendTo(prefix);
-            beam_nodes.push_back(candidate);
+            candidate->AppendTo(prefix.get());
+            beam_nodes.push_back(std::unique_ptr<BeamNode<T>>(candidate));
           }
+          prefix.release();
         }
       }
     }
-    result.push_back(beam_nodes);
+    result.push_back(std::move(beam_nodes));
   }
   return result;
 }
@@ -265,9 +266,9 @@ void BeamSearchDecoder<T>::PackAllSteps(const LoDTensorArray& step_ids,
   }
   // append last beam_node to result
   for (size_t src_idx = 0; src_idx < src_num; ++src_idx) {
-    for (auto* beam_node : beamnode_vector_list.at(src_idx)) {
-      sentence_vector_list[src_idx].push_back(MakeSentence(beam_node));
-      delete beam_node;
+    for (auto& beam_node : beamnode_vector_list.at(src_idx)) {
+      sentence_vector_list[src_idx].push_back(MakeSentence(beam_node.get()));
+      beam_node.reset();
     }
   }
 
