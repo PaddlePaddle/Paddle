@@ -83,7 +83,7 @@ class RPCClient {
 
   void SetScope(framework::Scope *scope) { scope_ = scope; }
   bool InitVariables(const std::vector<std::string> &var_list);
-  bool SendVariable(const framework::Variable *var);
+  bool SendVariable(const std::string &inname, const std::string &outname);
 
  private:
   std::unique_ptr<SendRecvService::Stub> stub_;

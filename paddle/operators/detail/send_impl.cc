@@ -18,7 +18,8 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-bool InitVariables(const std::vector<std::string>& var_list) {
+bool RPCClient::InitVariables(const std::vector<std::string>& var_list) {
+  PADDLE_ENFORCE(scope_);
   // write streams of Variable to server
   ClientContext context;
   VoidMessage void_ret;
@@ -26,23 +27,49 @@ bool InitVariables(const std::vector<std::string>& var_list) {
       stub_->InitVariables(&context, &void_ret));
   // send vars in scope to server using this stream.
   for (auto n = var_list.begin(); n != var_list.end(); n++) {
-    auto* var = scope_.FindVar(*n);
-    // TODO(typhoonzero): serialize by type.
-    auto* tensor = var->Get<framework::LoDTensor>();
+    auto* var = scope_->FindVar(*n);
+    // TODO(typhoonzero): support SelectedRows
+    PADDLE_ENFORCE(var->IsType<framework::LoDTensor>(),
+                   "Only support LoDTensor, %s has wrong type", *n);
+    auto& tensor = var->Get<framework::LoDTensor>();
     VariableMessage msg;
-    msg.varname = *n;
+    msg.set_varname(*n);
     std::ostringstream oss;
-    framework::SerializeToStream(oss, *tensor);
+    framework::SerializeToStream(oss, tensor, platform::CPUDeviceContext());
     // FIXME(typhoonzero): no copy
-    msg.serialized = oss.str();
+    msg.set_serialized(oss.str());
     writer->Write(msg);
   }
   return true;
 }
 
-bool SendVariable(const framework::Variable* var) {
-  // ClientContext context;
-  // stub_->SendVariable(&context, )
+bool RPCClient::SendVariable(const std::string& inname,
+                             const std::string& outname) {
+  ClientContext context;
+  VariableMessage msg, out_msg;
+  // FIXME(typhoonzero): pass device context to here.
+  auto ctx = platform::CPUDeviceContext();
+  auto* var = scope_->FindVar(inname);
+  PADDLE_ENFORCE(var);
+  // TODO(typhoonzero): support SelectedRows
+  PADDLE_ENFORCE(var->IsType<framework::LoDTensor>(),
+                 "Only support LoDTensor, %s has wrong type", inname);
+  const framework::LoDTensor& tensor = var->Get<framework::LoDTensor>();
+  std::ostringstream oss;
+  framework::SerializeToStream(oss, tensor, ctx);
+  msg.set_varname(inname);
+  msg.set_serialized(oss.str());
+  Status status = stub_->SendVariable(&context, msg, &out_msg);
+  if (status.ok()) {
+    return false;
+  }
+  std::istringstream iss(out_msg.serialized());
+  framework::LoDTensor ret_tensor;
+  framework::DeserializeFromStream(iss, &ret_tensor);
+  auto* outvar = scope_->FindVar(outname);
+  framework::LoDTensor* out_tensor = outvar->GetMutable<framework::LoDTensor>();
+  // FIXME(typhoonzero): do not copy.
+  out_tensor->CopyFrom(ret_tensor, ctx.GetPlace(), ctx);
   return true;
 }
 
