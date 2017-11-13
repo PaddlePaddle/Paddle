@@ -261,6 +261,26 @@ def split_lod_tensor(input,
     return out_true, out_false
 
 
+def merge_lod_tensor(in_true,
+                     in_false,
+                     x,
+                     mask,
+                     level,
+                     main_program=None,
+                     startup_program=None):
+    helper = LayerHelper('merge_lod_tensor', **locals())
+    out = helper.create_tmp_variable(dtype=x.data_type)
+    helper.append_op(
+        type='merge_lod_tensor',
+        inputs={'X': x,
+                'Mask': mask,
+                'InTrue': in_true,
+                'InFalse': in_false},
+        outputs={'Out': out},
+        attrs={'level': level})
+    return out
+
+
 def cos_sim(X, Y, **kwargs):
     helper = LayerHelper('cos_sim', **kwargs)
     out = helper.create_tmp_variable(dtype=X.data_type)

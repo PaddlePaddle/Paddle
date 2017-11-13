@@ -11,7 +11,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
     def place(self):
         return core.CPUPlace()
 
-    def test_lod_tensor_to_array_no_lod(self):
+    def test_split_and_merge_lod_tensor_no_lod(self):
         tensor = core.LoDTensor()
         tensor.set(np.arange(10).reshape(10, 1).astype('int32'), self.place())
 
@@ -36,9 +36,10 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
             tensor=tensor,
             mask=mask,
             expect_true=expect_true,
-            expect_false=expect_false)
+            expect_false=expect_false,
+            expect_out=tensor)
 
-    def test_lod_tensor_to_array_level_0(self):
+    def test_split_and_merge_lod_tensor_level_0(self):
         tensor = core.LoDTensor()
         tensor.set(np.arange(10).reshape(10, 1).astype('int32'), self.place())
         tensor.set_lod([[0, 3, 9, 10]])
@@ -67,9 +68,11 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
             tensor=tensor,
             mask=mask,
             expect_true=expect_true,
-            expect_false=expect_false)
+            expect_false=expect_false,
+            expect_out=tensor)
 
-    def main(self, tensor, mask, expect_true, expect_false, level=0):
+    def main(self, tensor, mask, expect_true, expect_false, expect_out,
+             level=0):
         place = self.place()
         program = Program()
         x = layers.data(name='x', shape=[1], main_program=program)
@@ -83,6 +86,16 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         out_true.persistable = True
         out_false.persistable = True
 
+        out = layers.merge_lod_tensor(
+            in_true=out_true,
+            in_false=out_false,
+            mask=mask,
+            x=x,
+            level=level,
+            main_program=program)
+
+        out.persistable = True
+
         exe = Executor(place)
         scope = core.Scope()
         exe.run(program, feed={'x': tensor, 'y': mask}, scope=scope)
@@ -91,8 +104,11 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
 
         var_false = scope.find_var(out_false.name).get_tensor()
 
+        var_out = scope.find_var(out.name).get_tensor()
+
         self.check_tensor_same(var_true, expect_true)
         self.check_tensor_same(var_false, expect_false)
+        self.check_tensor_same(var_out, expect_out)
 
     def check_tensor_same(self, actual, expect):
         self.assertTrue(np.allclose(np.array(actual), np.array(expect)))
