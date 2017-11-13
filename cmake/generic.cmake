@@ -493,12 +493,16 @@ function(grpc_library TARGET_NAME)
           --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN}" "${ABS_PROTO}"
           DEPENDS "${ABS_PROTO}")
 
-  SET(default_cxx_flags ${CMAKE_CXX_FLAGS})
-  STRING(REPLACE "-Werror=non-virtual-dtor" "" no_warn_flags ${CMAKE_CXX_FLAGS})
-  SET(CMAKE_CXX_FLAGS "${no_warn_flags}" CACHE STRING "Compiler flags")
+  # NOTE: grpc generated code do not generate virtual-dtor
+  set_source_files_properties(
+    ${grpc_grpc_srcs}
+    PROPERTIES
+    COMPILE_FLAGS  "-Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
   cc_library("${TARGET_NAME}_grpc" SRCS "${grpc_grpc_srcs}" DEPS grpc)
-  message("grpc flags: ${no_warn_flags}")
 
+  set_source_files_properties(
+    ${grpc_library_SRCS}
+    PROPERTIES
+    COMPILE_FLAGS  "-Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
   cc_library("${TARGET_NAME}" SRCS "${grpc_library_SRCS}" DEPS "${TARGET_NAME}_grpc" "${TARGET_NAME}_proto" "${grpc_library_DEPS}")
-  SET(CMAKE_CXX_FLAGS "${default_cxx_flags}" CACHE STRING "Compiler flags")
 endfunction()

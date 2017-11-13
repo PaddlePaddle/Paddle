@@ -18,28 +18,17 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-bool RPCClient::SendTensor(const framework::LoDTensor &tensor, ) {
-  ClientContext context;
-  Status status = stub_->SendTensor(&context, tensor);
-  if (!status.ok()) {
-    std::cout << "SendTensor rpc failed." << std::endl;
-    return false;
-  }
-  return true;
-}
-
-Status RPCClient::InitVariables() {
+bool InitVariables(const std::vector<std::string>& var_list) {
   // write streams of Variable to server
   ClientContext context;
   VoidMessage void_ret;
   std::unique_ptr<ClientWriter<VariableMessage>> writer(
       stub_->InitVariables(&context, &void_ret));
   // send vars in scope to server using this stream.
-  std::vector<std::string> names = scope_.GetAllNames();
-  for (auto n = names.begin(); n != names.end(); n++) {
-    auto *var = scope_.FindVar(*n);
+  for (auto n = var_list.begin(); n != var_list.end(); n++) {
+    auto* var = scope_.FindVar(*n);
     // TODO(typhoonzero): serialize by type.
-    auto *tensor = var->Get<framework::LoDTensor>();
+    auto* tensor = var->Get<framework::LoDTensor>();
     VariableMessage msg;
     msg.varname = *n;
     std::ostringstream oss;
@@ -48,14 +37,13 @@ Status RPCClient::InitVariables() {
     msg.serialized = oss.str();
     writer->Write(msg);
   }
-  return Status::OK;
+  return true;
 }
 
-Status SendVariable(const framework::Variable *var,
-                    framework::Variable *out_var) {
+bool SendVariable(const framework::Variable* var) {
   // ClientContext context;
   // stub_->SendVariable(&context, )
-  return Status::OK;
+  return true;
 }
 
 }  // namespace detail

@@ -81,10 +81,14 @@ class RPCClient {
   RPCClient(std::shared_ptr<Channel> channel)
       : stub_(SendRecvService::NewStub(channel)) {}
 
-  bool SendTensor(const framework::LoDTensor &tensor);
+  void SetScope(framework::Scope *scope) { scope_ = scope; }
+  bool InitVariables(const std::vector<std::string> &var_list);
+  bool SendVariable(const framework::Variable *var);
 
  private:
   std::unique_ptr<SendRecvService::Stub> stub_;
+  // FIXME(typhoonzero): borrow scope pointer, this is not thread-safe!
+  framework::Scope *scope_;
 };
 
 }  // namespace detail
