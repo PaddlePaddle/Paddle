@@ -527,7 +527,7 @@ class Program(object):
         try:
             param_to_grad_info = self.desc.append_backward(target.desc,
                                                            no_grad_set)
-        except core.EnforceNotMet as e:
+        except Exception as e:
             raise core.EnforceNotMet(
                 str(e) + "\nCurrent protobuf is\n{0}".format(
                     self.to_string(False)))

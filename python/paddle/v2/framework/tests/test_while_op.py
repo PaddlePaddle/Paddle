@@ -31,6 +31,7 @@ class TestWhileOp(unittest.TestCase):
         i.stop_gradient = True
 
         array_len = layers.fill_constant(shape=[1], dtype='int64', value=3)
+        array_len.stop_gradient = True
         cond = layers.less_than(x=i, y=array_len)
 
         while_op = layers.While(cond=cond)
@@ -46,7 +47,6 @@ class TestWhileOp(unittest.TestCase):
         sum_result = layers.array_read(mem_array, i=array_len)
 
         loss = layers.mean(x=sum_result)
-        print loss
 
         append_backward_ops(loss)
         # import paddle.v2.framework.net_drawer as drawer
