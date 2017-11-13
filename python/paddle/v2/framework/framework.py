@@ -12,9 +12,9 @@ def unique_name(prefix):
     return "_".join([prefix, str(uid)])
 
 
-def _debug_string_(proto):
+def _debug_string_(proto, throw_on_error=True):
     error_fields = list()
-    if not proto.IsInitialized(error_fields):
+    if not proto.IsInitialized(error_fields) and throw_on_error:
         raise ValueError("{0} are not initialized\nThe message is {1}".format(
             error_fields, proto))
     return proto.__str__()
@@ -101,9 +101,12 @@ class Variable(object):
         self.stop_gradient = stop_gradient
 
     def __str__(self):
+        return self.to_string(True)
+
+    def to_string(self, throw_on_error):
         protostr = self.desc.serialize_to_string()
         proto = framework_pb2.VarDesc.FromString(str(protostr))
-        return _debug_string_(proto)
+        return _debug_string_(proto, throw_on_error)
 
     __repr__ = __str__
 
@@ -291,10 +294,13 @@ class Operator(object):
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
 
-    def __str__(self):
+    def to_string(self, throw_on_error):
         protostr = self.desc.serialize_to_string()
         proto = framework_pb2.OpDesc.FromString(str(protostr))
-        return _debug_string_(proto)
+        return _debug_string_(proto, throw_on_error)
+
+    def __str__(self):
+        return self.to_string(True)
 
     __repr__ = __str__
 
@@ -349,9 +355,12 @@ class Block(object):
         self.program = program
 
     def __str__(self):
+        return self.to_string(True)
+
+    def to_string(self, throw_on_error):
         protostr = self.desc.serialize_to_string()
         proto = framework_pb2.BlockDesc.FromString(str(protostr))
-        return _debug_string_(proto)
+        return _debug_string_(proto, throw_on_error)
 
     __repr__ = __str__
 
@@ -454,9 +463,12 @@ class Program(object):
         self.current_block_idx = 0
 
     def __str__(self):
+        return self.to_string(True)
+
+    def to_string(self, throw_on_error):
         protostr = self.desc.serialize_to_string()
         proto = framework_pb2.ProgramDesc.FromString(str(protostr))
-        return _debug_string_(proto)
+        return _debug_string_(proto, throw_on_error)
 
     def clone(self):
         p = Program()
@@ -512,7 +524,14 @@ class Program(object):
         assert isinstance(target, Variable)
         if no_grad_set is None:
             no_grad_set = set()
-        param_to_grad_info = self.desc.append_backward(target.desc, no_grad_set)
+        try:
+            param_to_grad_info = self.desc.append_backward(target.desc,
+                                                           no_grad_set)
+        except Exception as e:
+            raise core.EnforceNotMet(
+                str(e) + "\nCurrent protobuf is\n{0}".format(
+                    self.to_string(False)))
+
         self.sync_with_cpp()
         return param_to_grad_info
 

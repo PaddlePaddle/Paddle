@@ -60,8 +60,7 @@ void make_ddim(DDim& ddim, const int64_t* dims, int n) {
       ddim = make_dim<9>(dims);
       break;
     default:
-      throw std::invalid_argument(
-          "Dynamic dimensions must have between [1, 9] dimensions.");
+      PADDLE_THROW("Dynamic dimensions must have between [1, 9] dimensions.");
   }
 }
 

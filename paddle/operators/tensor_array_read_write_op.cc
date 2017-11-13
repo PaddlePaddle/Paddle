@@ -12,7 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 #include "paddle/operators/array_operator.h"
-
+#include "paddle/operators/detail/safe_ref.h"
 namespace paddle {
 namespace operators {
 
@@ -87,11 +87,15 @@ class WriteToArrayInferVarType : public framework::VarTypeInference {
  public:
   void operator()(const framework::OpDescBind &op_desc,
                   framework::BlockDescBind *block) const override {
-    for (auto &out_var : op_desc.OutputArgumentNames()) {
-      VLOG(10) << "Set Variable " << out_var << " as LOD_TENSOR_ARRAY";
-      block->FindRecursiveOrCreateVar(out_var)->SetType(
-          framework::VarDesc::LOD_TENSOR_ARRAY);
-    }
+    auto x_name = op_desc.Input("X")[0];
+    auto out_name = op_desc.Output("Out")[0];
+    VLOG(10) << "Set Variable " << out_name << " as LOD_TENSOR_ARRAY";
+    auto &out = detail::Ref(block->FindRecursiveOrCreateVar(out_name),
+                            "Cannot found %s", out_name);
+    out.SetType(framework::VarDesc::LOD_TENSOR_ARRAY);
+    auto &x =
+        detail::Ref(block->FindVarRecursive(x_name), "Cannot found %s", x_name);
+    out.SetDataType(x.GetDataType());
   }
 };
 
