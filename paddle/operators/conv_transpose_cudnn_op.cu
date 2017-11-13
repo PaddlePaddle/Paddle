@@ -237,3 +237,8 @@ REGISTER_OP_GPU_KERNEL(conv2d_transpose_cudnn,
                        ops::CudnnConvTransposeOpKernel<float>);
 REGISTER_OP_GPU_KERNEL(conv2d_transpose_cudnn_grad,
                        ops::CudnnConvTransposeGradOpKernel<float>);
+
+REGISTER_OP_GPU_KERNEL(conv3d_transpose_cudnn,
+                       ops::CudnnConvTransposeOpKernel<float>);
+REGISTER_OP_GPU_KERNEL(conv3d_transpose_cudnn_grad,
+                       ops::CudnnConvTransposeGradOpKernel<float>);
