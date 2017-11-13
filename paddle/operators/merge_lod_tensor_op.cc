@@ -140,11 +140,27 @@ class MergeLoDTensorInferShape : public framework::InferShapeBase {
   }
 };
 
+class MergeLoDTensorGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDescBind> Apply() const override {
+    auto *grad_op = new framework::OpDescBind();
+    grad_op->SetType("split_lod_tensor");
+    grad_op->SetInput("X", OutputGrad("Out"));
+    grad_op->SetInput("Mask", Input("Mask"));
+    grad_op->SetOutput("OutTrue", InputGrad("InTrue"));
+    grad_op->SetOutput("OutFalse", InputGrad("InFalse"));
+    grad_op->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDescBind>(grad_op);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(merge_lod_tensor, ops::MergeLoDTensorOp,
                   ops::MergeLoDTensorOpProtoMaker,
-                  ops::MergeLoDTensorInferShape,
-                  paddle::framework::EmptyGradOpMaker);
+                  ops::MergeLoDTensorInferShape, ops::MergeLoDTensorGradMaker);

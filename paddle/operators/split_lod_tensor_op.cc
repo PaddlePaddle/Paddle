@@ -142,6 +142,24 @@ class SplitLoDTensorInferShape : public framework::InferShapeBase {
   }
 };
 
+class SplitLoDTensorArrayGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDescBind> Apply() const override {
+    auto *grad_op = new framework::OpDescBind();
+    grad_op->SetType("merge_lod_tensor");
+    grad_op->SetInput("InTrue", OutputGrad("OutTrue"));
+    grad_op->SetInput("InFalse", OutputGrad("OutFalse"));
+    grad_op->SetInput("Mask", Input("Mask"));
+    grad_op->SetInput("X", Input("X"));
+    grad_op->SetOutput("Out", InputGrad("X"));
+    grad_op->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDescBind>(grad_op);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -149,4 +167,4 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(split_lod_tensor, ops::SplitLoDTensorOp,
                   ops::SplitLoDTensorOpProtoMaker,
                   ops::SplitLoDTensorInferShape,
-                  paddle::framework::EmptyGradOpMaker);
+                  ops::SplitLoDTensorArrayGradMaker);

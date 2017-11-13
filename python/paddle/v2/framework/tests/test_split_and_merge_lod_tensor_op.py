@@ -115,5 +115,67 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         self.assertEqual(actual.lod(), expect.lod())
 
 
+class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
+    def test_grad(self):
+        place = core.CPUPlace()
+        program = Program()
+
+        x = layers.data(
+            name='x',
+            shape=[1],
+            data_type='float32',
+            main_program=program,
+            stop_gradient=False)
+        y = layers.data(
+            name='y',
+            shape=[1],
+            data_type='bool',
+            main_program=program,
+            stop_gradient=False)
+
+        level = 0
+
+        out_true, out_false = layers.split_lod_tensor(
+            input=x, mask=y, level=level, main_program=program)
+        out = layers.merge_lod_tensor(
+            in_true=out_true,
+            in_false=out_false,
+            mask=y,
+            x=x,
+            level=level,
+            main_program=program)
+        mean = layers.mean(x=out, main_program=program)
+
+        append_backward_ops(mean)
+
+        tensor = core.LoDTensor()
+        tensor.set(np.arange(10).reshape(10, 1).astype('float32'), place)
+        tensor.set_lod([[0, 3, 9, 10]])
+
+        mask_np = np.array([0, 1, 0]).astype('bool')
+        mask_np = np.expand_dims(mask_np, axis=1)
+
+        mask = core.LoDTensor()
+        mask.set(mask_np, place)
+
+        exe = Executor(place)
+        scope = core.Scope()
+
+        g_vars = program.global_block().var(x.name + "@GRAD")
+        g_out = [
+            item.sum()
+            for item in map(np.array,
+                            exe.run(program,
+                                    feed={'x': tensor,
+                                          'y': mask},
+                                    fetch_list=[g_vars],
+                                    scope=scope))
+        ]
+
+        g_out_sum = np.array(g_out).sum()
+
+        self.assertAlmostEqual(1.0, g_out_sum, delta=0.1)
+
+
 if __name__ == '__main__':
     unittest.main()
