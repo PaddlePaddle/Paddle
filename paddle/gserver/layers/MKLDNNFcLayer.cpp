@@ -84,8 +84,6 @@ void MKLDNNFcLayer::reshape(
 
   reshapeOutput(oh, ow);
   resizeOutput(bs, oc);
-
-  printSizeInfo();
 }
 
 void MKLDNNFcLayer::resetFwd(std::vector<primitive>& pipeline,
