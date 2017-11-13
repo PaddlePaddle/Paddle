@@ -240,7 +240,7 @@ void axpy<platform::GPUPlace, float>(const platform::DeviceContext& context,
   PADDLE_ENFORCE(platform::dynload::cublasSaxpy(
       reinterpret_cast<const platform::CUDADeviceContext&>(context)
           .cublas_handle(),
-      n, alpha, x, 1, y, 1));
+      n, &alpha, x, 1, y, 1));
 }
 
 template <>
@@ -250,7 +250,7 @@ void axpy<platform::GPUPlace, double>(const platform::DeviceContext& context,
   PADDLE_ENFORCE(platform::dynload::cublasDaxpy(
       reinterpret_cast<const platform::CUDADeviceContext&>(context)
           .cublas_handle(),
-      n, alpha, x, 1, y, 1));
+      n, &alpha, x, 1, y, 1));
 }
 
 template struct SetConstant<platform::GPUPlace, float>;
@@ -270,7 +270,7 @@ DEFINE_GPU_TRANS(6);
 
 struct TensorSetConstantGPU {
   TensorSetConstantGPU(const platform::DeviceContext& context,
-                    framework::Tensor* tensor, float value)
+                       framework::Tensor* tensor, float value)
       : context_(context), tensor_(tensor), value_(value) {}
 
   template <typename T>
