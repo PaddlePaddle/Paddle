@@ -37,6 +37,7 @@ public:
   static PoolProjection* create(const ProjectionConfig& config,
                                 ParameterPtr parameter,
                                 bool useGpu);
+
   const std::string& getPoolType() const { return poolType_; }
 
   size_t getSize();
@@ -63,5 +64,4 @@ public:
   virtual void forward();
   virtual void backward(const UpdateCallback& callback = nullptr);
 };
-
 }  // namespace paddle

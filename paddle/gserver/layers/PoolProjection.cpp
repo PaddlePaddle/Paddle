@@ -84,7 +84,6 @@ void MaxPoolProjection::forward() {
   CHECK_EQ(width, out_->value->getWidth());
   MatrixPtr inputV = in_->value;
   MatrixPtr outV = out_->value;
-
   outV->maxPoolForward(*inputV,
                        imgSizeY_,
                        imgSize_,

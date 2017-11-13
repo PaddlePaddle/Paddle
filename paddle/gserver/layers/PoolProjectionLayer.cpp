@@ -51,7 +51,6 @@ void PoolProjectionLayer::forward(PassType passType) {
   const Argument& in = getInput(0);
   int batchSize = in.value->getHeight();
   int size = getSize();
-
   resetOutput(batchSize, size);
   poolProjection_->forward(&in, &output_, passType);
 }
