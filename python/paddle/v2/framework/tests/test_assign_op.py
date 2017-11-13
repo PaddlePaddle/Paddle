@@ -3,7 +3,7 @@ import numpy
 import unittest
 
 
-class TestAccuracyOp(op_test.OpTest):
+class TestAssignOp(op_test.OpTest):
     def setUp(self):
         self.op_type = "assign"
         x = numpy.random.random(size=(100, 10))
