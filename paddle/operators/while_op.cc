@@ -115,6 +115,8 @@ class WhileGradOp : public framework::OperatorBase {
 
     for (auto cur_scope_iter = step_scopes->rbegin();
          cur_scope_iter != step_scopes->rend(); ++cur_scope_iter) {
+      VLOG(3) << "Start backward at time_step "
+              << cur_scope_iter - step_scopes->rbegin();
       framework::Scope &cur_scope = **cur_scope_iter;
       // Link OG from outside to inside
       for (size_t i = 0; i < outside_og_names.size(); ++i) {
@@ -156,8 +158,11 @@ class WhileGradOp : public framework::OperatorBase {
       auto &pg_names = Outputs(kParamGrads);
       auto &p_names = Inputs(kParameters);
       PADDLE_ENFORCE_EQ(pg_names.size(), p_names.size());
-      for (size_t prog_id = 0; prog_id < pg_names.size(); ++prog_id) {
-        auto inside_grad_name = framework::GradVarName(p_names[prog_id]);
+      for (size_t param_id = 0; param_id < pg_names.size(); ++param_id) {
+        if (pg_names[param_id] == framework::kEmptyVarName) {
+          continue;  // iterator doesn't have gradient
+        }
+        auto inside_grad_name = framework::GradVarName(p_names[param_id]);
 
         //  // TODO(tonyyang-svail): Not sure we need the following
         //  // If does not compute gradient of that variable inside rnn,
@@ -171,7 +176,7 @@ class WhileGradOp : public framework::OperatorBase {
         // zero gradient variable in step 0
         if (cur_scope_iter == step_scopes->rbegin()) {
           auto *var = (*cur_scope_iter)->FindVar(inside_grad_name);
-          PADDLE_ENFORCE_NOT_NULL(var);
+          PADDLE_ENFORCE_NOT_NULL(var, "Can not find var %s", inside_grad_name);
           if (var->IsType<LoDTensor>()) {
             auto &inside_tensor = var->Get<framework::LoDTensor>();
             framework::AttributeMap attrs;
@@ -180,27 +185,54 @@ class WhileGradOp : public framework::OperatorBase {
             attrs["value"] = 0.0f;
 
             auto zero_op = framework::OpRegistry::CreateOp(
-                "fill_constant", {}, {{"Out", {pg_names[prog_id]}}}, attrs);
+                "fill_constant", {}, {{"Out", {pg_names[param_id]}}}, attrs);
             zero_op->Run(scope, dev_ctx);
           }
         }
 
         // sum gradient
-        auto *outside_var = scope.FindVar(pg_names[prog_id]);
-        PADDLE_ENFORCE_NOT_NULL(outside_var);
-        auto &outside_tensor = *outside_var->GetMutable<framework::LoDTensor>();
-
-        std::string result_var_name;
-        auto *local_result_var = (*cur_scope_iter)->Var(&result_var_name);
-        auto &local_result_tensor =
-            *local_result_var->GetMutable<framework::LoDTensor>();
-
-        local_result_tensor.ShareDataWith(outside_tensor);
-
+        auto new_inside_name = cur_scope.Rename(inside_grad_name);
+        LOG(INFO) << new_inside_name << " ";
+        LOG(INFO) << cur_scope.FindVar(new_inside_name)->Type().name();
+        LOG(INFO) << pg_names[param_id] << " ";
+        LOG(INFO) << cur_scope.FindVar(pg_names[param_id])->Type().name();
+        PADDLE_ENFORCE(cur_scope.FindVar(new_inside_name)
+                           ->IsType<framework::LoDTensorArray>());
+        PADDLE_ENFORCE(cur_scope.FindVar(pg_names[param_id])
+                           ->IsType<framework::LoDTensorArray>());
         auto sum_op = framework::OpRegistry::CreateOp(
-            "sum", {{"X", {result_var_name, inside_grad_name}}},
-            {{"Out", {result_var_name}}}, {});
-        sum_op->Run(**cur_scope_iter, dev_ctx);
+            "sum", {{"X", {pg_names[param_id], new_inside_name}}},
+            {{"Out", {pg_names[param_id]}}}, {});
+        sum_op->Run(cur_scope, dev_ctx);
+        cur_scope.Rename(new_inside_name, inside_grad_name);
+
+        //        // sum gradient
+        //        auto outside_var_name = pg_names[param_id];
+        //        auto *outside_var = scope.FindVar(outside_var_name);
+        //        PADDLE_ENFORCE_NOT_NULL(outside_var,
+        //                                "Can not find var %s",
+        //                                outside_var_name);
+        //        if (outside_var->IsType<framework::LoDTensorArray>()) {
+        //        } else {
+        //          PADDLE_THROW("Not Implement var type %s",
+        //          outside_var->Type());
+        //        }
+        //        auto &outside_tensor =
+        //              *outside_var->GetMutable<framework::LoDTensor>();
+        //
+        //        std::string result_var_name;
+        //        auto *local_result_var =
+        //        (*cur_scope_iter)->Var(&result_var_name);
+        //        auto &local_result_tensor =
+        //            *local_result_var->GetMutable<framework::LoDTensor>();
+        //        LOG(INFO) << "---------------";
+        //        local_result_tensor.ShareDataWith(outside_tensor);
+        //        LOG(INFO) << "---------------";
+        //
+        //        auto sum_op = framework::OpRegistry::CreateOp(
+        //            "sum", {{"X", {result_var_name, inside_grad_name}}},
+        //            {{"Out", {result_var_name}}}, {});
+        //        sum_op->Run(**cur_scope_iter, dev_ctx);
       }
     }
   }
