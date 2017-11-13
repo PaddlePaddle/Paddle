@@ -120,7 +120,6 @@ void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id,
 
   for (auto& op_desc : block.AllOps()) {
     auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
-    VLOG(5) << "Run operator " << op->Type();
     VLOG(10) << op->DebugString();
     op->Run(*local_scope, *device);
   }

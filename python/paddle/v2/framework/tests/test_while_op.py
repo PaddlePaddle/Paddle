@@ -50,7 +50,9 @@ class TestWhileOp(unittest.TestCase):
         m_1 = layers.array_read(array=mem_array, i=i)
         i = layers.increment(i)
         m_2 = layers.array_read(array=mem_array, i=i)
-        sum_result = layers.sums(input=[m_0, m_1, m_2])
+        i = layers.increment(i)
+        m_3 = layers.array_read(array=mem_array, i=i)
+        sum_result = layers.sums(input=[m_0, m_1, m_2, m_3])
 
         loss = layers.mean(x=sum_result)
 
@@ -58,8 +60,8 @@ class TestWhileOp(unittest.TestCase):
         # import paddle.v2.framework.net_drawer as drawer
         # print drawer.draw_graph(g_startup_program, g_main_program)
         # exit(0)
-        print g_main_program
-        print "-" * 10
+        # print g_main_program
+        # print "-" * 10
 
         cpu = core.CPUPlace()
         exe = Executor(cpu)
