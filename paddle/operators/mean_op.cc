@@ -36,7 +36,11 @@ class MeanOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of mean op");
     AddOutput("Out", "The output of mean op");
-    AddComment(R"DOC( Mean Operator
+    AddComment(R"DOC(
+Mean Operator.
+
+Out is a scalar which is the mean of all elements in X. 
+
 )DOC");
   }
 };
@@ -47,6 +51,7 @@ class MeanGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", framework::GradVarName("X"));
   }
 };
 
