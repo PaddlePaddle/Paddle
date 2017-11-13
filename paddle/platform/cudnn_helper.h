@@ -143,7 +143,7 @@ class ScopedTensorDescriptor {
       strides[i] = dims[i + 1] * strides[i + 1];
     }
     // Update tensor descriptor dims setting if groups > 1
-    // FIXME(typhoonzero): Assume using NCHW order
+    // FIXME(typhoonzero): Assume using NCHW or NCDHW order
     std::vector<int> dims_with_group(dims.begin(), dims.end());  // copy
     if (groups > 1) {
       dims_with_group[1] = dims_with_group[1] / groups;
