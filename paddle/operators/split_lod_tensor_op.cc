@@ -120,15 +120,20 @@ class SplitLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   SplitLoDTensorOpProtoMaker(framework::OpProto *proto,
                              framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "");
-    AddInput("Mask", "");
-    AddOutput("OutTrue", "");
-    AddOutput("OutFalse", "");
-    AddAttr<int>("level", "(int) the specific lod level to rank.")
+    AddInput("X", "The input LoDTensor");
+    AddInput("Mask", "A bool column vector which mask the input");
+    AddOutput("OutTrue", "True branch of input LoDTensor");
+    AddOutput("OutFalse", "False branch of input LoDTensor");
+    AddAttr<int>("level", "(int) the specific lod level to split.")
         .SetDefault(0)
         .EqualGreaterThan(0);
     AddComment(
-        R"DOC()DOC");
+        R"DOC(
+        Split a LoDTensor with a Mask at certain level. The input LoDTensor
+        has 3 sequence at certain lod level. The Mask is a bool column vector,
+        such as [0, 1, 0] at the same level. The first and third sequence will
+        be send to False Output LoDTensor; whereas the second sequence will
+        be send to True Output LoDTensor. Please refer to MergeLoDTensorOp.)DOC");
   }
 };
 

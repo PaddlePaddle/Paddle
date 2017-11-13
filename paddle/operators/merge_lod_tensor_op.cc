@@ -116,16 +116,21 @@ class MergeLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   MergeLoDTensorOpProtoMaker(framework::OpProto *proto,
                              framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "");
-    AddInput("Mask", "");
-    AddInput("InTrue", "");
-    AddInput("InFalse", "");
-    AddOutput("Out", "");
+    AddInput("X",
+             "The input LoDTensor, contains complete lod information to "
+             "construct the output");
+    AddInput("Mask", "A bool column vector which mask the input");
+    AddInput("InTrue", "The True branch to be merged");
+    AddInput("InFalse", "The False branch to be merged");
+    AddOutput("Out", "The merged output LoDTensor");
     AddAttr<int>("level", "(int) the specific lod level to rank.")
         .SetDefault(0)
         .EqualGreaterThan(0);
     AddComment(
-        R"DOC()DOC");
+        R"DOC(
+        Merge True and False branches of LoDTensor into a single Output,
+        with a mask at certain lod level. X is used to obtain complete
+        lod information. Please refer to SplitLoDTensorOp.)DOC");
   }
 };
 
