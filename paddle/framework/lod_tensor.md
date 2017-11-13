@@ -140,19 +140,9 @@ Similarly, the lengths in the top level LoD
 are transformed into offsets of elements/words as follows:
 
 ```
-0 9     10  15
-  =     =   =
-  3+2+4 1+9 2+3+10
-```
-
-so we can tell that the first article is from word 0 to word 9, and the second article is from word 9 to word 10.
-
-The complete offset representation is as follows:
-
-```
-0           9 10       15
-0   3  5    9 10  12   15
- ||| || |||| |  ||  |||
+0 3 4   6
+  = =   =
+  3 3+1 4+2
 ```
 
 ## Slicing of LoD Tensors

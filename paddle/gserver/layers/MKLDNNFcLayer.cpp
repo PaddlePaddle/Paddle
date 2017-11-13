@@ -60,18 +60,16 @@ void MKLDNNFcLayer::convertWeightsFromPaddle() {
   }
 
   CHECK(wgtVal_) << "should have been initialized";
-  bool hasNoSpatial_ = ih_ == 1 && iw_ == 1;
   auto targetDim = wgtVal_->getDims();
-  auto srcFmt = hasNoSpatial_ ? format::io : format::ihwo;
+  auto srcFmt = targetDim.size() == 2 ? format::io : format::ihwo;
   wgtVal_->reorderDataFrom(wgtVal_, srcFmt, targetDim);
   hasInitedWgt_ = true;
 }
 
 void MKLDNNFcLayer::convertWeightsToPaddle() {
   CHECK(wgtVal_) << "should have been initialized";
-  bool hasNoSpatial_ = ih_ == 1 && iw_ == 1;
   auto targetDim = wgtVal_->getDims();
-  auto dstFmt = hasNoSpatial_ ? format::io : format::ihwo;
+  auto dstFmt = targetDim.size() == 2 ? format::io : format::ihwo;
   wgtVal_->reorderDataTo(wgtVal_, dstFmt, targetDim);
 }
 
@@ -86,8 +84,6 @@ void MKLDNNFcLayer::reshape(
 
   reshapeOutput(oh, ow);
   resizeOutput(bs, oc);
-
-  printSizeInfo();
 }
 
 void MKLDNNFcLayer::resetFwd(std::vector<primitive>& pipeline,
