@@ -39,7 +39,18 @@ class MergeLoDTensorOp : public framework::OperatorBase {
     auto level = static_cast<size_t>(Attr<int>("level"));
 
     auto &mask_dim = mask.dims();
-    auto *mask_data = mask.data<bool>();
+
+    std::unique_ptr<framework::LoDTensor> cpu_mask{new framework::LoDTensor()};
+    if (platform::is_cpu_place(mask.place())) {
+      cpu_mask->ShareDataWith(mask);
+    } else if (platform::is_gpu_place(mask.place())) {
+#ifdef PADDLE_WITH_CUDA
+      cpu_mask->CopyFrom(mask, platform::CPUPlace(), dev_ctx);
+#else
+      PADDLE_THROW("Not supported GPU, Please compile WITH_GPU option");
+#endif
+    }
+    auto *mask_data = cpu_mask->data<bool>();
 
     int rank = in_true.dims().size();
     platform::Place place = in_true.place();
