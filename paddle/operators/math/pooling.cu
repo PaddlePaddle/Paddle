@@ -21,13 +21,13 @@ namespace math {
 
 template <typename PoolProcess, typename T>
 __global__ void KernelPool2D(const int nthreads, const T* input_data,
-                             T* output_data, const int channels,
-                             const int input_height, const int input_width,
-                             const int output_height, const int output_width,
-                             const int ksize_height, const int ksize_width,
-                             const int stride_height, const int stride_width,
-                             const int padding_height, const int padding_width,
-                             PoolProcess pool_process) {
+                             const int channels, const int input_height,
+                             const int input_width, const int output_height,
+                             const int output_width, const int ksize_height,
+                             const int ksize_width, const int stride_height,
+                             const int stride_width, const int padding_height,
+                             const int padding_width, PoolProcess pool_process,
+                             T* output_data) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int pw = index % output_width;
@@ -59,11 +59,11 @@ __global__ void KernelPool2D(const int nthreads, const T* input_data,
 template <typename PoolProcess, typename T>
 __global__ void KernelPool2DGrad(
     const int nthreads, const T* input_data, const T* output_data,
-    const T* output_grad, T* input_grad, const int channels,
-    const int input_height, const int input_width, const int output_height,
-    const int output_width, const int ksize_height, const int ksize_width,
-    const int stride_height, const int stride_width, const int padding_height,
-    const int padding_width, PoolProcess pool_process) {
+    const T* output_grad, const int channels, const int input_height,
+    const int input_width, const int output_height, const int output_width,
+    const int ksize_height, const int ksize_width, const int stride_height,
+    const int stride_width, const int padding_height, const int padding_width,
+    PoolProcess pool_process, T* input_grad) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int offsetW = index % input_width + padding_width;
@@ -107,11 +107,11 @@ __global__ void KernelPool2DGrad(
 template <typename T>
 __global__ void KernelMaxPool2DGrad(
     const int nthreads, const T* input_data, const T* output_data,
-    const T* output_grad, T* input_grad, const int channels,
-    const int input_height, const int input_width, const int output_height,
-    const int output_width, const int ksize_height, const int ksize_width,
-    const int stride_height, const int stride_width, const int padding_height,
-    const int padding_width) {
+    const T* output_grad, const int channels, const int input_height,
+    const int input_width, const int output_height, const int output_width,
+    const int ksize_height, const int ksize_width, const int stride_height,
+    const int stride_width, const int padding_height, const int padding_width,
+    T* input_grad) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int pw = index % output_width;
@@ -158,16 +158,16 @@ template <typename PoolProcess, typename T>
 class Pool2dFunctor<platform::GPUPlace, PoolProcess, T> {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, framework::Tensor& output,
-                  std::vector<int>& ksize, std::vector<int>& strides,
-                  std::vector<int>& paddings, PoolProcess pool_process) {
+                  const framework::Tensor& input, std::vector<int>& ksize,
+                  std::vector<int>& strides, std::vector<int>& paddings,
+                  PoolProcess pool_process, framework::Tensor* output) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
-    const int output_channels = output.dims()[1];
-    const int output_height = output.dims()[2];
-    const int output_width = output.dims()[3];
+    const int output_channels = output->dims()[1];
+    const int output_height = output->dims()[2];
+    const int output_width = output->dims()[3];
     const int ksize_height = ksize[0];
     const int ksize_width = ksize[1];
     const int stride_height = strides[0];
@@ -176,7 +176,7 @@ class Pool2dFunctor<platform::GPUPlace, PoolProcess, T> {
     const int padding_width = paddings[1];
 
     const T* input_data = input.data<T>();
-    T* output_data = output.mutable_data<T>(context.GetPlace());
+    T* output_data = output->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * output_channels * output_height * output_width;
     int blocks = (nthreads + 1024 - 1) / 1024;
@@ -187,11 +187,10 @@ class Pool2dFunctor<platform::GPUPlace, PoolProcess, T> {
         PoolProcess,
         T><<<grid, threads, 0,
              reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                 .stream()>>>(nthreads, input_data, output_data, input_channels,
-                              input_height, input_width, output_height,
-                              output_width, ksize_height, ksize_width,
-                              stride_height, stride_width, padding_height,
-                              padding_width, pool_process);
+                 .stream()>>>(
+        nthreads, input_data, input_channels, input_height, input_width,
+        output_height, output_width, ksize_height, ksize_width, stride_height,
+        stride_width, padding_height, padding_width, pool_process, output_data);
   }
 };
 
@@ -204,11 +203,11 @@ template <typename PoolProcess, typename T>
 class Pool2dGradFunctor<platform::GPUPlace, PoolProcess, T> {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, framework::Tensor& input_grad,
+                  const framework::Tensor& input,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_process) {
+                  PoolProcess pool_process, framework::Tensor* input_grad) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_height = input.dims()[2];
@@ -225,7 +224,7 @@ class Pool2dGradFunctor<platform::GPUPlace, PoolProcess, T> {
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad.mutable_data<T>(context.GetPlace());
+    T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * input_channels * input_height * input_width;
     int blocks = (nthreads + 1024 - 1) / 1024;
@@ -237,10 +236,10 @@ class Pool2dGradFunctor<platform::GPUPlace, PoolProcess, T> {
         T><<<grid, threads, 0,
              reinterpret_cast<const platform::CUDADeviceContext&>(context)
                  .stream()>>>(
-        nthreads, input_data, output_data, output_grad_data, input_grad_data,
-        input_channels, input_height, input_width, output_height, output_width,
-        ksize_height, ksize_width, stride_height, stride_width, padding_height,
-        padding_width, pool_process);
+        nthreads, input_data, output_data, output_grad_data, input_channels,
+        input_height, input_width, output_height, output_width, ksize_height,
+        ksize_width, stride_height, stride_width, padding_height, padding_width,
+        pool_process, input_grad_data);
   }
 };
 
@@ -253,10 +252,11 @@ template <typename T>
 class MaxPool2dGradFunctor<platform::GPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, framework::Tensor& input_grad,
+                  const framework::Tensor& input,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
-                  std::vector<int>& strides, std::vector<int>& paddings) {
+                  std::vector<int>& strides, std::vector<int>& paddings,
+                  framework::Tensor* input_grad) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_height = input.dims()[2];
@@ -274,7 +274,7 @@ class MaxPool2dGradFunctor<platform::GPUPlace, T> {
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad.mutable_data<T>(context.GetPlace());
+    T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * output_channels * output_height * output_width;
     int blocks = (nthreads + 1024 - 1) / 1024;
@@ -285,10 +285,10 @@ class MaxPool2dGradFunctor<platform::GPUPlace, T> {
         T><<<grid, threads, 0,
              reinterpret_cast<const platform::CUDADeviceContext&>(context)
                  .stream()>>>(
-        nthreads, input_data, output_data, output_grad_data, input_grad_data,
-        input_channels, input_height, input_width, output_height, output_width,
-        ksize_height, ksize_width, stride_height, stride_width, padding_height,
-        padding_width);
+        nthreads, input_data, output_data, output_grad_data, input_channels,
+        input_height, input_width, output_height, output_width, ksize_height,
+        ksize_width, stride_height, stride_width, padding_height, padding_width,
+        input_grad_data);
   }
 };
 
@@ -313,14 +313,16 @@ template class Pool2dGradFunctor<
     platform::GPUPlace, paddle::operators::math::AvgPoolGrad<double>, double>;
 
 template <typename PoolProcess, typename T>
-__global__ void KernelPool3D(
-    const int nthreads, const T* input_data, T* output_data, const int channels,
-    const int input_depth, const int input_height, const int input_width,
-    const int output_depth, const int output_height, const int output_width,
-    const int ksize_depth, const int ksize_height, const int ksize_width,
-    const int stride_depth, const int stride_height, const int stride_width,
-    const int padding_depth, const int padding_height, const int padding_width,
-    PoolProcess pool_process) {
+__global__ void KernelPool3D(const int nthreads, const T* input_data,
+                             const int channels, const int input_depth,
+                             const int input_height, const int input_width,
+                             const int output_depth, const int output_height,
+                             const int output_width, const int ksize_depth,
+                             const int ksize_height, const int ksize_width,
+                             const int stride_depth, const int stride_height,
+                             const int stride_width, const int padding_depth,
+                             const int padding_height, const int padding_width,
+                             PoolProcess pool_process, T* output_data) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int pw = index % output_width;
@@ -358,13 +360,13 @@ __global__ void KernelPool3D(
 template <typename PoolProcess, typename T>
 __global__ void KernelPool3DGrad(
     const int nthreads, const T* input_data, const T* output_data,
-    const T* output_grad, T* input_grad, const int channels,
-    const int input_depth, const int input_height, const int input_width,
-    const int output_depth, const int output_height, const int output_width,
-    const int ksize_depth, const int ksize_height, const int ksize_width,
-    const int stride_depth, const int stride_height, const int stride_width,
-    const int padding_depth, const int padding_height, const int padding_width,
-    PoolProcess pool_process) {
+    const T* output_grad, const int channels, const int input_depth,
+    const int input_height, const int input_width, const int output_depth,
+    const int output_height, const int output_width, const int ksize_depth,
+    const int ksize_height, const int ksize_width, const int stride_depth,
+    const int stride_height, const int stride_width, const int padding_depth,
+    const int padding_height, const int padding_width, PoolProcess pool_process,
+    T* input_grad) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int offsetW = index % input_width + padding_width;
@@ -422,13 +424,12 @@ __global__ void KernelPool3DGrad(
 template <typename T>
 __global__ void KernelMaxPool3DGrad(
     const int nthreads, const T* input_data, const T* output_data,
-    const T* output_grad, T* input_grad, const int channels,
-    const int input_depth, const int input_height, const int input_width,
-    const int output_depth, const int output_height, const int output_width,
-    const int ksize_depth, const int ksize_height, const int ksize_width,
-    const int stride_depth, const int stride_height, const int stride_width,
-    const int padding_depth, const int padding_height,
-    const int padding_width) {
+    const T* output_grad, const int channels, const int input_depth,
+    const int input_height, const int input_width, const int output_depth,
+    const int output_height, const int output_width, const int ksize_depth,
+    const int ksize_height, const int ksize_width, const int stride_depth,
+    const int stride_height, const int stride_width, const int padding_depth,
+    const int padding_height, const int padding_width, T* input_grad) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int pw = index % output_width;
@@ -480,18 +481,18 @@ template <typename PoolProcess, class T>
 class Pool3dFunctor<platform::GPUPlace, PoolProcess, T> {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, framework::Tensor& output,
-                  std::vector<int>& ksize, std::vector<int>& strides,
-                  std::vector<int>& paddings, PoolProcess pool_process) {
+                  const framework::Tensor& input, std::vector<int>& ksize,
+                  std::vector<int>& strides, std::vector<int>& paddings,
+                  PoolProcess pool_process, framework::Tensor* output) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_depth = input.dims()[2];
     const int input_height = input.dims()[3];
     const int input_width = input.dims()[4];
-    const int output_channels = output.dims()[1];
-    const int output_depth = output.dims()[2];
-    const int output_height = output.dims()[3];
-    const int output_width = output.dims()[4];
+    const int output_channels = output->dims()[1];
+    const int output_depth = output->dims()[2];
+    const int output_height = output->dims()[3];
+    const int output_width = output->dims()[4];
     const int ksize_depth = ksize[0];
     const int ksize_height = ksize[1];
     const int ksize_width = ksize[2];
@@ -503,7 +504,7 @@ class Pool3dFunctor<platform::GPUPlace, PoolProcess, T> {
     const int padding_width = paddings[2];
 
     const T* input_data = input.data<T>();
-    T* output_data = output.mutable_data<T>(context.GetPlace());
+    T* output_data = output->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * output_channels * output_depth * output_height *
                    output_width;
@@ -516,11 +517,11 @@ class Pool3dFunctor<platform::GPUPlace, PoolProcess, T> {
         T><<<grid, threads, 0,
              reinterpret_cast<const platform::CUDADeviceContext&>(context)
                  .stream()>>>(
-        nthreads, input_data, output_data, input_channels, input_depth,
-        input_height, input_width, output_depth, output_height, output_width,
-        ksize_depth, ksize_height, ksize_width, stride_depth, stride_height,
-        stride_width, padding_depth, padding_height, padding_width,
-        pool_process);
+        nthreads, input_data, input_channels, input_depth, input_height,
+        input_width, output_depth, output_height, output_width, ksize_depth,
+        ksize_height, ksize_width, stride_depth, stride_height, stride_width,
+        padding_depth, padding_height, padding_width, pool_process,
+        output_data);
   }
 };
 
@@ -533,11 +534,11 @@ template <typename PoolProcess, class T>
 class Pool3dGradFunctor<platform::GPUPlace, PoolProcess, T> {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, framework::Tensor& input_grad,
+                  const framework::Tensor& input,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_process) {
+                  PoolProcess pool_process, framework::Tensor* input_grad) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_depth = input.dims()[2];
@@ -560,7 +561,7 @@ class Pool3dGradFunctor<platform::GPUPlace, PoolProcess, T> {
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad.mutable_data<T>(context.GetPlace());
+    T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
     int nthreads =
         batch_size * input_channels * input_depth * input_height * input_width;
@@ -573,11 +574,11 @@ class Pool3dGradFunctor<platform::GPUPlace, PoolProcess, T> {
         T><<<grid, threads, 0,
              reinterpret_cast<const platform::CUDADeviceContext&>(context)
                  .stream()>>>(
-        nthreads, input_data, output_data, output_grad_data, input_grad_data,
-        input_channels, input_depth, input_height, input_width, output_depth,
-        output_height, output_width, ksize_depth, ksize_height, ksize_width,
-        stride_depth, stride_height, stride_width, padding_depth,
-        padding_height, padding_width, pool_process);
+        nthreads, input_data, output_data, output_grad_data, input_channels,
+        input_depth, input_height, input_width, output_depth, output_height,
+        output_width, ksize_depth, ksize_height, ksize_width, stride_depth,
+        stride_height, stride_width, padding_depth, padding_height,
+        padding_width, pool_process, input_grad_data);
   }
 };
 
@@ -590,10 +591,11 @@ template <class T>
 class MaxPool3dGradFunctor<platform::GPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, framework::Tensor& input_grad,
+                  const framework::Tensor& input,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
-                  std::vector<int>& strides, std::vector<int>& paddings) {
+                  std::vector<int>& strides, std::vector<int>& paddings,
+                  framework::Tensor* input_grad) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_depth = input.dims()[2];
@@ -616,7 +618,7 @@ class MaxPool3dGradFunctor<platform::GPUPlace, T> {
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad.mutable_data<T>(context.GetPlace());
+    T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * output_channels * output_depth * output_height *
                    output_width;
@@ -628,11 +630,11 @@ class MaxPool3dGradFunctor<platform::GPUPlace, T> {
         T><<<grid, threads, 0,
              reinterpret_cast<const platform::CUDADeviceContext&>(context)
                  .stream()>>>(
-        nthreads, input_data, output_data, output_grad_data, input_grad_data,
-        input_channels, input_depth, input_height, input_width, output_depth,
-        output_height, output_width, ksize_depth, ksize_height, ksize_width,
-        stride_depth, stride_height, stride_width, padding_depth,
-        padding_height, padding_width);
+        nthreads, input_data, output_data, output_grad_data, input_channels,
+        input_depth, input_height, input_width, output_depth, output_height,
+        output_width, ksize_depth, ksize_height, ksize_width, stride_depth,
+        stride_height, stride_width, padding_depth, padding_height,
+        padding_width, input_grad_data);
   }
 };
 
@@ -658,11 +660,11 @@ template class Pool3dGradFunctor<
 
 template <typename T>
 __global__ void KernelMaxPool2dWithIdx(
-    const int nthreads, const T* input_data, T* output_data, T* mask_data,
-    const int channels, const int input_height, const int input_width,
-    const int output_height, const int output_width, const int ksize_height,
-    const int ksize_width, const int stride_height, const int stride_width,
-    const int padding_height, const int padding_width) {
+    const int nthreads, const T* input_data, const int channels,
+    const int input_height, const int input_width, const int output_height,
+    const int output_width, const int ksize_height, const int ksize_width,
+    const int stride_height, const int stride_width, const int padding_height,
+    const int padding_width, T* output_data, T* mask_data) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int pw = index % output_width;
@@ -697,11 +699,11 @@ __global__ void KernelMaxPool2dWithIdx(
 
 template <typename T>
 __global__ void KernelMaxPool2DWithIdxGrad(
-    const int nthreads, T* input_grad, const T* output_grad, const T* mask_data,
+    const int nthreads, const T* output_grad, const T* mask_data,
     const int channels, const int input_height, const int input_width,
     const int output_height, const int output_width, const int ksize_height,
     const int ksize_width, const int stride_height, const int stride_width,
-    const int padding_height, const int padding_width) {
+    const int padding_height, const int padding_width, T* input_grad) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int w_offset = index % input_width;
@@ -748,16 +750,16 @@ template <typename T>
 class MaxPool2dWithIndexFunctor<platform::GPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, framework::Tensor& output,
-                  framework::Tensor& mask, std::vector<int>& ksize,
-                  std::vector<int>& strides, std::vector<int>& paddings) {
+                  const framework::Tensor& input, std::vector<int>& ksize,
+                  std::vector<int>& strides, std::vector<int>& paddings,
+                  framework::Tensor* output, framework::Tensor* mask) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
-    const int output_channels = output.dims()[1];
-    const int output_height = output.dims()[2];
-    const int output_width = output.dims()[3];
+    const int output_channels = output->dims()[1];
+    const int output_height = output->dims()[2];
+    const int output_width = output->dims()[3];
     const int ksize_height = ksize[0];
     const int ksize_width = ksize[1];
     const int stride_height = strides[0];
@@ -766,8 +768,8 @@ class MaxPool2dWithIndexFunctor<platform::GPUPlace, T> {
     const int padding_width = paddings[1];
 
     const T* input_data = input.data<T>();
-    T* output_data = output.mutable_data<T>(context.GetPlace());
-    T* mask_data = mask.mutable_data<T>(context.GetPlace());
+    T* output_data = output->mutable_data<T>(context.GetPlace());
+    T* mask_data = mask->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * output_channels * output_height * output_width;
     int blocks = (nthreads + 1024 - 1) / 1024;
@@ -777,11 +779,10 @@ class MaxPool2dWithIndexFunctor<platform::GPUPlace, T> {
     KernelMaxPool2dWithIdx<
         T><<<grid, threads, 0,
              reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                 .stream()>>>(nthreads, input_data, output_data, mask_data,
-                              input_channels, input_height, input_width,
-                              output_height, output_width, ksize_height,
-                              ksize_width, stride_height, stride_width,
-                              padding_height, padding_width);
+                 .stream()>>>(
+        nthreads, input_data, input_channels, input_height, input_width,
+        output_height, output_width, ksize_height, ksize_width, stride_height,
+        stride_width, padding_height, padding_width, output_data, mask_data);
   }
 };
 
@@ -794,14 +795,14 @@ template <typename T>
 class MaxPool2dWithIndexGradFunctor<platform::GPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
-                  framework::Tensor& input_grad,
                   const framework::Tensor& output_grad,
                   const framework::Tensor& mask, std::vector<int>& ksize,
-                  std::vector<int>& strides, std::vector<int>& paddings) {
-    const int batch_size = input_grad.dims()[0];
-    const int input_channels = input_grad.dims()[1];
-    const int input_height = input_grad.dims()[2];
-    const int input_width = input_grad.dims()[3];
+                  std::vector<int>& strides, std::vector<int>& paddings,
+                  framework::Tensor* input_grad) {
+    const int batch_size = input_grad->dims()[0];
+    const int input_channels = input_grad->dims()[1];
+    const int input_height = input_grad->dims()[2];
+    const int input_width = input_grad->dims()[3];
     const int output_height = output_grad.dims()[2];
     const int output_width = output_grad.dims()[3];
     const int ksize_height = ksize[0];
@@ -813,7 +814,7 @@ class MaxPool2dWithIndexGradFunctor<platform::GPUPlace, T> {
 
     const T* mask_data = mask.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad.mutable_data<T>(context.GetPlace());
+    T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * input_channels * input_height * input_width;
     int blocks = (nthreads + 1024 - 1) / 1024;
@@ -823,11 +824,11 @@ class MaxPool2dWithIndexGradFunctor<platform::GPUPlace, T> {
     KernelMaxPool2DWithIdxGrad<
         T><<<grid, threads, 0,
              reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                 .stream()>>>(nthreads, input_grad_data, output_grad_data,
-                              mask_data, input_channels, input_height,
-                              input_width, output_height, output_width,
-                              ksize_height, ksize_width, stride_height,
-                              stride_width, padding_height, padding_width);
+                 .stream()>>>(nthreads, output_grad_data, mask_data,
+                              input_channels, input_height, input_width,
+                              output_height, output_width, ksize_height,
+                              ksize_width, stride_height, stride_width,
+                              padding_height, padding_width, input_grad_data);
   }
 };
 
@@ -838,13 +839,13 @@ template class MaxPool2dWithIndexGradFunctor<platform::GPUPlace, double>;
 
 template <typename T>
 __global__ void KernelMaxPool3DWithIdx(
-    const int nthreads, const T* input_data, T* output_data, T* mask_data,
-    const int channels, const int input_depth, const int input_height,
-    const int input_width, const int output_depth, const int output_height,
-    const int output_width, const int ksize_depth, const int ksize_height,
-    const int ksize_width, const int stride_depth, const int stride_height,
-    const int stride_width, const int padding_depth, const int padding_height,
-    const int padding_width) {
+    const int nthreads, const T* input_data, const int channels,
+    const int input_depth, const int input_height, const int input_width,
+    const int output_depth, const int output_height, const int output_width,
+    const int ksize_depth, const int ksize_height, const int ksize_width,
+    const int stride_depth, const int stride_height, const int stride_width,
+    const int padding_depth, const int padding_height, const int padding_width,
+    T* output_data, T* mask_data) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int pw = index % output_width;
@@ -886,13 +887,13 @@ __global__ void KernelMaxPool3DWithIdx(
 
 template <typename T>
 __global__ void KernelMaxPool3DWithIdxGrad(
-    const int nthreads, T* input_grad, const T* output_grad, const T* mask,
-    const int channels, const int input_depth, const int input_height,
-    const int input_width, const int output_depth, const int output_height,
-    const int output_width, const int ksize_depth, const int ksize_height,
-    const int ksize_width, const int stride_depth, const int stride_height,
-    const int stride_width, const int padding_depth, const int padding_height,
-    const int padding_width) {
+    const int nthreads, const T* output_grad, const T* mask, const int channels,
+    const int input_depth, const int input_height, const int input_width,
+    const int output_depth, const int output_height, const int output_width,
+    const int ksize_depth, const int ksize_height, const int ksize_width,
+    const int stride_depth, const int stride_height, const int stride_width,
+    const int padding_depth, const int padding_height, const int padding_width,
+    T* input_grad) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int w_offset = index % input_width;
@@ -952,18 +953,18 @@ template <typename T>
 class MaxPool3dWithIndexFunctor<platform::GPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, framework::Tensor& output,
-                  framework::Tensor& mask, std::vector<int>& ksize,
-                  std::vector<int>& strides, std::vector<int>& paddings) {
+                  const framework::Tensor& input, std::vector<int>& ksize,
+                  std::vector<int>& strides, std::vector<int>& paddings,
+                  framework::Tensor* output, framework::Tensor* mask) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_depth = input.dims()[2];
     const int input_height = input.dims()[3];
     const int input_width = input.dims()[4];
-    const int output_channels = output.dims()[1];
-    const int output_depth = output.dims()[2];
-    const int output_height = output.dims()[3];
-    const int output_width = output.dims()[4];
+    const int output_channels = output->dims()[1];
+    const int output_depth = output->dims()[2];
+    const int output_height = output->dims()[3];
+    const int output_width = output->dims()[4];
     const int ksize_depth = ksize[0];
     const int ksize_height = ksize[1];
     const int ksize_width = ksize[2];
@@ -975,8 +976,8 @@ class MaxPool3dWithIndexFunctor<platform::GPUPlace, T> {
     const int padding_width = paddings[2];
 
     const T* input_data = input.data<T>();
-    T* output_data = output.mutable_data<T>(context.GetPlace());
-    T* mask_data = mask.mutable_data<T>(context.GetPlace());
+    T* output_data = output->mutable_data<T>(context.GetPlace());
+    T* mask_data = mask->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * output_channels * output_depth * output_height *
                    output_width;
@@ -988,11 +989,10 @@ class MaxPool3dWithIndexFunctor<platform::GPUPlace, T> {
         T><<<grid, threads, 0,
              reinterpret_cast<const platform::CUDADeviceContext&>(context)
                  .stream()>>>(
-        nthreads, input_data, output_data, mask_data, input_channels,
-        input_depth, input_height, input_width, output_depth, output_height,
-        output_width, ksize_depth, ksize_height, ksize_width, stride_depth,
-        stride_height, stride_width, padding_depth, padding_height,
-        padding_width);
+        nthreads, input_data, input_channels, input_depth, input_height,
+        input_width, output_depth, output_height, output_width, ksize_depth,
+        ksize_height, ksize_width, stride_depth, stride_height, stride_width,
+        padding_depth, padding_height, padding_width, output_data, mask_data);
   }
 };
 
@@ -1005,15 +1005,15 @@ template <typename T>
 class MaxPool3dWithIndexGradFunctor<platform::GPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
-                  framework::Tensor& input_grad,
                   const framework::Tensor& output_grad,
                   const framework::Tensor& mask, std::vector<int>& ksize,
-                  std::vector<int>& strides, std::vector<int>& paddings) {
-    const int batch_size = input_grad.dims()[0];
-    const int input_channels = input_grad.dims()[1];
-    const int input_depth = input_grad.dims()[2];
-    const int input_height = input_grad.dims()[3];
-    const int input_width = input_grad.dims()[4];
+                  std::vector<int>& strides, std::vector<int>& paddings,
+                  framework::Tensor* input_grad) {
+    const int batch_size = input_grad->dims()[0];
+    const int input_channels = input_grad->dims()[1];
+    const int input_depth = input_grad->dims()[2];
+    const int input_height = input_grad->dims()[3];
+    const int input_width = input_grad->dims()[4];
     const int output_depth = output_grad.dims()[2];
     const int output_height = output_grad.dims()[3];
     const int output_width = output_grad.dims()[4];
@@ -1029,7 +1029,7 @@ class MaxPool3dWithIndexGradFunctor<platform::GPUPlace, T> {
 
     const T* output_grad_data = output_grad.data<T>();
     const T* mask_data = mask.data<T>();
-    T* input_grad_data = input_grad.mutable_data<T>(context.GetPlace());
+    T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
     int nthreads =
         batch_size * input_channels * input_depth * input_height * input_width;
@@ -1041,11 +1041,11 @@ class MaxPool3dWithIndexGradFunctor<platform::GPUPlace, T> {
         T><<<grid, threads, 0,
              reinterpret_cast<const platform::CUDADeviceContext&>(context)
                  .stream()>>>(
-        nthreads, input_grad_data, output_grad_data, mask_data, input_channels,
-        input_depth, input_height, input_width, output_depth, output_height,
-        output_width, ksize_depth, ksize_height, ksize_width, stride_depth,
-        stride_height, stride_width, padding_depth, padding_height,
-        padding_width);
+        nthreads, output_grad_data, mask_data, input_channels, input_depth,
+        input_height, input_width, output_depth, output_height, output_width,
+        ksize_depth, ksize_height, ksize_width, stride_depth, stride_height,
+        stride_width, padding_depth, padding_height, padding_width,
+        input_grad_data);
   }
 };
 
