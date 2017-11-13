@@ -26,5 +26,4 @@ class TestAccuracyOp(OpTest):
 
 
 if __name__ == '__main__':
-    exit(0)
     unittest.main()

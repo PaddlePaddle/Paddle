@@ -86,7 +86,7 @@ IF(NOT ${CBLAS_FOUND})
         UPDATE_COMMAND      ""
         CONFIGURE_COMMAND   ""
     )
-
+    SET(CBLAS_PROVIDER openblas)
     IF(WITH_C_API)
         INSTALL(DIRECTORY ${CBLAS_INC_DIR} DESTINATION third_party/openblas)
         # Because libopenblas.a is a symbolic link of another library, thus need to
@@ -115,7 +115,7 @@ INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
 # linear algebra libraries for cc_library(xxx SRCS xxx.c DEPS cblas)
 SET(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/cblas_dummy.c)
 FILE(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
-IF(${CBLAS_PROVIDER} MATCHES MKL)
+IF("${CBLAS_PROVIDER}" STREQUAL "MKLML")
     ADD_LIBRARY(cblas SHARED ${dummyfile})
 ELSE()
     ADD_LIBRARY(cblas STATIC ${dummyfile})
