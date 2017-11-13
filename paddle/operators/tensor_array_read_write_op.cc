@@ -33,6 +33,7 @@ class WriteToArrayOp : public ArrayOp {
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensorArray>();
     if (offset >= out->size()) {
+      VLOG(10) << "Resize from " << out->size() << " to " << offset + 1;
       out->resize(offset + 1);
     }
     auto *out_tensor = &out->at(offset);
@@ -116,6 +117,7 @@ class ReadFromArrayOp : public ArrayOp {
     auto *out_tensor = out->GetMutable<framework::LoDTensor>();
     size_t offset = GetOffset(scope, dev_ctx);
     PADDLE_ENFORCE_LT(offset, x_array.size());
+    LOG(INFO) << "ptr at " << x;
     out_tensor->CopyFrom(x_array[offset], dev_ctx.GetPlace(), dev_ctx);
     out_tensor->set_lod(x_array[offset].lod());
   }

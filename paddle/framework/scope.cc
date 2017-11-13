@@ -38,6 +38,7 @@ Scope& Scope::NewScope() const {
 Variable* Scope::Var(const std::string& name) {
   auto iter = vars_.find(name);
   if (iter != vars_.end()) {
+    VLOG(3) << "Get existing variable " << name << " on scope";
     return iter->second;
   }
   Variable* v = new Variable();

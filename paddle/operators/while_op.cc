@@ -136,16 +136,16 @@ class WhileGradOp : public framework::OperatorBase {
           auto &outside_array = og_outside.Get<framework::LoDTensorArray>();
           auto &inside_array =
               detail::Ref(og_inside.GetMutable<framework::LoDTensorArray>());
-          VLOG(10) << "Array size = " << outside_array.size();
+          VLOG(10) << outside_og_name << " size = " << outside_array.size();
           inside_array.resize(outside_array.size());
 
           for (size_t j = 0; j < inside_array.size(); ++j) {
-            if (outside_array[i].numel() != 0) {
-              VLOG(10) << i;
-              inside_array[i].set_lod(outside_array[i].lod());
-              inside_array[i].ShareDataWith(outside_array[i]);
+            VLOG(10) << j << " " << outside_array[j].numel();
+            if (outside_array[j].numel() != 0) {
+              inside_array[j].set_lod(outside_array[j].lod());
+              inside_array[j].ShareDataWith(outside_array[j]);
             } else {
-              PADDLE_ENFORCE_EQ(inside_array[i].numel(), 0);
+              PADDLE_ENFORCE_EQ(inside_array[j].numel(), 0);
             }
           }
         }
@@ -159,7 +159,7 @@ class WhileGradOp : public framework::OperatorBase {
       for (size_t prog_id = 0; prog_id < pg_names.size(); ++prog_id) {
         auto inside_grad_name = framework::GradVarName(p_names[prog_id]);
 
-        //  // TODO(tonyyang-savil: Not sure we need the following
+        //  // TODO(tonyyang-svail): Not sure we need the following
         //  // If does not compute gradient of that variable inside rnn,
         //  just
         //  // continue
