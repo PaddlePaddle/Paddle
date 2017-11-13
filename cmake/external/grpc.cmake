@@ -28,13 +28,8 @@ ExternalProject_Add(
     GIT_TAG "v1.7.x"
     PREFIX          ${GRPC_SOURCES_DIR}
     UPDATE_COMMAND  ""
-    # TODO(jhseu): Remove this PATCH_COMMAND once grpc removes the dependency
-    # on "grpc" from the "grpc++_unsecure" rule.
-    # PATCH_COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/patches/grpc/CMakeLists.txt ${GRPC_SOURCES_DIR}/src/extern_grpc/
-    # BUILD_COMMAND ${CMAKE_COMMAND} --build . --config Release --target grpc_cpp_plugin
-    # COMMAND ${CMAKE_COMMAND} --build . --config Release --target  grpc++_unsecure
-    # INSTALL_COMMAND ""
     BUILD_COMMAND   make grpc_cpp_plugin grpc++_unsecure
+    # TODO(typhoonzero): install into third_party/install
     INSTALL_COMMAND ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
@@ -60,10 +55,3 @@ SET_PROPERTY(TARGET grpc PROPERTY IMPORTED_LOCATION ${GRPC_LIBRARIES})
 include_directories(${GRPC_INCLUDE_DIR})
 ADD_DEPENDENCIES(grpc extern_grpc)
 
-# grpc/src/core/ext/census/tracing.c depends on the existence of openssl/rand.h.
-# ExternalProject_Add_Step(grpc copy_rand
-#     COMMAND ${CMAKE_COMMAND} -E copy
-#     ${CMAKE_SOURCE_DIR}/patches/grpc/rand.h ${GRPC_INCLUDE_DIR}/openssl/rand.h
-#     DEPENDEES patch
-#     DEPENDERS build
-# )
