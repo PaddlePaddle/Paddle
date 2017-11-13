@@ -146,8 +146,8 @@ std::vector<BeamNodeVector<T>> BeamSearchDecoder<T>::PackTwoSteps(
 
   for (size_t src_idx = 0; src_idx < cur_ids.lod()[kSourceLevel].size() - 1;
        ++src_idx) {
-    size_t src_start = cur_ids.lod().at(kSourceLevel).at(src_idx);
-    size_t src_end = cur_ids.lod().at(kSourceLevel).at(src_idx + 1);
+    size_t src_start = cur_ids.lod().at(kSourceLevel)[src_idx];
+    size_t src_end = cur_ids.lod().at(kSourceLevel)[src_idx + 1];
 
     BeamNodeVector<T> beam_nodes;
 
@@ -168,7 +168,7 @@ std::vector<BeamNodeVector<T>> BeamSearchDecoder<T>::PackTwoSteps(
       PADDLE_ENFORCE_EQ(src_end - src_start, prefixes.size(),
                         "prefix and candidate set number should be the same");
 
-      std::vector<size_t> candidate_offset = cur_ids.lod()[kSentenceLevel];
+      auto candidate_offset = cur_ids.lod()[kSentenceLevel];
       for (size_t prefix_idx = 0; prefix_idx < prefixes.size(); ++prefix_idx) {
         std::unique_ptr<BeamNode<T>>& prefix = prefixes[prefix_idx];
         size_t candidate_start = candidate_offset[src_start + prefix_idx];
