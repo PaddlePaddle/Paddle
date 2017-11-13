@@ -24,13 +24,13 @@ def stacked_lstm_net(input_dim,
 
     # TODO(qijun) linear act
     fc1 = layers.fc(input=emb, size=hid_dim)
-    lstm1 = layers.dynamic_lstm(input=fc1, size=hid_dim)
+    lstm1, cell1 = layers.dynamic_lstm(input=fc1, size=hid_dim)
 
     inputs = [fc1, lstm1]
 
     for i in range(2, stacked_num + 1):
         fc = layers.fc(input=inputs, size=hid_dim)
-        lstm = layers.dynamic_lstm(
+        lstm, cell = layers.dynamic_lstm(
             input=fc, size=hid_dim, is_reverse=(i % 2) == 0)
         inputs = [fc, lstm]
 

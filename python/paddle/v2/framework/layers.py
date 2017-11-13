@@ -121,13 +121,13 @@ def dynamic_lstm(input,
             'BatchCellPreAct': batch_cell_pre_act
         },
         attrs={
-            'usePeepholes': use_peepholes,
-            'isReverse': is_reverse,
-            'gateActivation': gate_activation,
-            'cellActivation': cell_activation,
-            'candidateActivation': candidate_activation
+            'use_peepholes': use_peepholes,
+            'is_reverse': is_reverse,
+            'gate_activation': gate_activation,
+            'cell_activation': cell_activation,
+            'candidate_activation': candidate_activation
         })
-    return hidden
+    return hidden, cell
 
 
 def data(name,
