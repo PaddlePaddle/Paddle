@@ -80,6 +80,10 @@ namespace operators {
  * 0.9,
  * 0.7
  * ]]
+ *
+ * TODO all the prune operations should be in the beam search, so it is better
+ * to split the beam search algorithm into a sequence of smaller operators, and
+ * the prune operators can be inserted in this sequence.
  */
 class BeamSearch {
  public:
