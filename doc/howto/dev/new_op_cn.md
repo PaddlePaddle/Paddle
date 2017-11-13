@@ -214,7 +214,7 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
 
     ```cpp
     // if use Eigen unsupported module before include head files
-    #define EIGEN_USE_GPU
+    // #define EIGEN_USE_GPU
 
     namespace ops = paddle::operators;
     REGISTER_OP_GPU_KERNEL(mul, ops::MulKernel<paddle::platform::GPUPlace, float>);
