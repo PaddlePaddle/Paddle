@@ -321,8 +321,6 @@ static void CreateGradVarInBlock(
         auto* param = block_desc->FindVarRecursive(pname);
         auto* grad = block_desc->FindVar(arg);
         if (param == nullptr) {
-          LOG(WARNING) << "Cannot find forward variable of " << arg
-                       << ". Set its gradient to FP32";
           grad->SetDataType(DataType::FP32);
         } else {
           grad->SetDataType(param->GetDataType());
@@ -408,6 +406,11 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
 
     for (const auto& desc : op_grads) {
       for (const std::string& out_name : desc->OutputArgumentNames()) {
+        if (out_name.find("@GRAD") == std::string::npos) {
+          // Not all outputs of a backward operator is a gradient. Only gradient
+          // need to be sum. Skip variables are not gradient.
+          continue;
+        }
         dup_out_ops[out_name].emplace_back(grad_desc_idx);
       }
       ++grad_desc_idx;

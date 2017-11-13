@@ -12,26 +12,60 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/increment_op.h"
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
-class IncrementOp : public framework::OperatorWithKernel {
+class IncrementInferShape : public framework::InferShapeBase {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
+  void operator()(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of IncrementOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of IncrementOp should not be null.");
+    PADDLE_ENFORCE_EQ(1, framework::product(ctx->GetInputDim("X")));
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
-template <typename AttrType>
+struct IncrementFunctor {
+  IncrementFunctor(const framework::LoDTensor &x, framework::LoDTensor *out,
+                   float value)
+      : x_(x), out_(out), value_(value) {}
+
+  template <typename T>
+  void operator()() const {
+    *out_->data<T>() = *x_.data<T>() + static_cast<T>(value_);
+  }
+
+  const framework::LoDTensor &x_;
+  framework::LoDTensor *out_;
+  float value_;
+};
+
+class IncrementOp : public framework::OperatorBase {
+ public:
+  IncrementOp(const std::string &type, const framework::VariableNameMap &inputs,
+              const framework::VariableNameMap &outputs,
+              const framework::AttributeMap &attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+
+  void Run(const framework::Scope &scope,
+           const platform::DeviceContext &dev_ctx) const override {
+    auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
+    auto &out =
+        *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
+
+    PADDLE_ENFORCE(platform::is_cpu_place(x.place()));
+    out.Resize(x.dims());
+    out.mutable_data(x.place(), x.type());
+    float value = Attr<float>("step");
+    framework::VisitDataType(framework::ToDataType(out.type()),
+                             IncrementFunctor(x, &out, value));
+  }
+};
+
 class IncrementOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   IncrementOpMaker(framework::OpProto *proto,
@@ -39,14 +73,18 @@ class IncrementOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) The input tensor of increment operator");
     AddOutput("Out", "(Tensor) The output tensor of increment operator.");
-    AddComment(R"DOC(Increment operator
-
-The equation is: Out = X + step
-)DOC");
-    AddAttr<AttrType>("step",
-                      "The step size by which the "
-                      "input tensor will be incremented.")
+    AddAttr<float>("step",
+                   "(float, default 1.0) "
+                   "The step size by which the "
+                   "input tensor will be incremented.")
         .SetDefault(1.0);
+    AddComment(R"DOC(
+Increment Operator.
+
+The equation is: 
+$$Out = X + step$$
+
+)DOC");
   }
 };
 
@@ -56,10 +94,10 @@ class IncrementGradOpMaker : public framework::SingleGradOpDescMaker {
 
   std::unique_ptr<framework::OpDescBind> Apply() const override {
     auto *grad_op = new framework::OpDescBind();
-    grad_op->SetType("scale");
-    grad_op->SetInput("X", OutputGrad("Out"));
-    grad_op->SetOutput("Out", InputGrad("X"));
-    grad_op->SetAttr("scale", 1.0f);
+    grad_op->SetType("increment");
+    grad_op->SetInput("X", Output("Out"));
+    grad_op->SetOutput("Out", Input("X"));
+    grad_op->SetAttr("step", -boost::get<float>(GetAttr("step")));
     return std::unique_ptr<framework::OpDescBind>(grad_op);
   }
 };
@@ -68,8 +106,5 @@ class IncrementGradOpMaker : public framework::SingleGradOpDescMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-
-REGISTER_OPERATOR(increment, ops::IncrementOp, ops::IncrementOpMaker<float>,
-                  ops::IncrementGradOpMaker);
-REGISTER_OP_CPU_KERNEL(increment,
-                       ops::IncrementKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OPERATOR(increment, ops::IncrementOp, ops::IncrementInferShape,
+                  ops::IncrementOpMaker, ops::IncrementGradOpMaker);

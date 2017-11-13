@@ -64,16 +64,15 @@ class AdadeltaOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param", "(Tensor) Input parameter");
     AddInput("Grad", "(Tensor) Input gradient");
-    AddInput("AvgSquaredGrad",
-             "(Tensor) Input expectation of squared gradient");
+    AddInput("AvgSquaredGrad", "(Tensor) Input average of squared gradient");
     AddInput("AvgSquaredUpdate",
-             "(Tensor) Input expectation of squared parameter updates");
+             "(Tensor) Input average of squared parameter updates");
 
     AddOutput("ParamOut", "(Tensor) Output parameter");
     AddOutput("AvgSquaredGradOut",
-              "(Tensor) Output expectation of squared gradient");
+              "(Tensor) Output average of squared gradient");
     AddOutput("AvgSquaredUpdateOut",
-              "(Tensor) Output expectation of squared parameter updates");
+              "(Tensor) Output average of squared parameter updates");
 
     AddAttr<float>("rho",
                    "(float, default 0.95) Exponential decay rate "
@@ -84,22 +83,21 @@ class AdadeltaOpMaker : public framework::OpProtoAndCheckerMaker {
                    "numerical stability")
         .SetDefault(1.0e-6f);
     AddComment(R"DOC(
-Adadelta Updates Operator.
+Adadelta Optimizer.
 
-This implements the Adadelta optimizer[1]. Adadelta is a per-dimension
-adaptive learning rate method for gradient descent.
+Adadelta optimizer is implemented as explained in:
+https://arxiv.org/abs/1212.5701
+Adadelta is a per-dimension adaptive learning rate method used
+for gradient descent.
 
-Adadelta updates:
+Adadelta updates are as follows:
 
-avg_squared_grad_out = rho * avg_squared_grad + (1 - rho) * grad * grad
-param_update =  - sqrt((avg_squared_update + epsilon) /
-                       (avg_squared_grad_out + epsilon)) * grad
-avg_squared_update_out = rho * avg_squared_update + (1 - rho) * param_update**2
-param_out = param + param_update
-
-References:
-  [1] ADADELTA: An Adaptive Learning Rate Method
-      https://arxiv.org/abs/1212.5701
+$$avgSquaredGradOut = \rho * avgSquaredGrad + (1 - \rho) * grad * grad \break
+paramUpdate =  - $\sqrt{((avgSquaredUpdate + \epsilon) /
+                       (avgSquaredGrad_out + \epsilon))}$ * grad \break
+avgSquaredUpdateOut = \rho * avgSquaredUpdate + (1 - \rho) *
+                                  {(paramUpdate)}^2 \break
+paramOut = param + paramUpdate$$
 
 )DOC");
   }

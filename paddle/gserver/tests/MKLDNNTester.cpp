@@ -132,7 +132,7 @@ void MKLDNNTester::checkForward() {
   VLOG(MKLDNN_TESTS) << "Check Forward";
   printTopDatas();
   double delta =
-      compareMatrix(dnnLayer_->getOutputValue(), refLayer_->getOutputValue());
+      compareMatrix(refLayer_->getOutputValue(), dnnLayer_->getOutputValue());
   EXPECT_LE(fabs(delta), eps_);
 }
 
@@ -147,7 +147,7 @@ void MKLDNNTester::checkBackwardData() {
     VLOG(MKLDNN_ALL) << "Reference Backward Result: InputGrad " << i;
     printMatrix(refDiff);
 
-    double delta = compareMatrix(dnnDiff, refDiff);
+    double delta = compareMatrix(refDiff, dnnDiff);
     EXPECT_LE(fabs(delta), eps_);
     if (isBN) {
       // the other two inputs in batch norm are for moving mean and var
@@ -177,7 +177,7 @@ void MKLDNNTester::checkBackwardWgts() {
                      << parameters_[REF][i]->getName();
     printVector(ref);
 
-    double delta = compareVector(dnn, ref);
+    double delta = compareVector(ref, dnn);
     EXPECT_LE(fabs(delta), eps_);
   }
 
