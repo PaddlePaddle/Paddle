@@ -27,15 +27,15 @@ using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
 
 int main(int argc, char** argv) {
+  initMain(argc, argv);
+  initPython(argc, argv);
+
   if (FLAGS_model_dir.empty() || FLAGS_config_file.empty() ||
       FLAGS_model_file.empty()) {
     LOG(INFO) << "Usage: ./paddle_merge_model --model_dir=pass-00000 "
                  "--config_file=config.py --model_file=out.paddle";
     return 0;
   }
-
-  initMain(argc, argv);
-  initPython(argc, argv);
 
   string confFile = FLAGS_config_file;
 #ifndef PADDLE_WITH_CUDA
