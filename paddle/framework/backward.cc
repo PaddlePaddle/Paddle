@@ -290,14 +290,12 @@ static void CreateGradVarInBlock(
   auto ops = block_desc->AllOps();
   for (size_t op_index = grad_op_start_index; op_index < ops.size();
        ++op_index) {
-    bool need_infer_shape = false;
     std::unordered_set<std::string> new_vars;
     ForEachVarName(ops[op_index]->Outputs(),
                    [&](const std::string& grad_var_name) {
                      if (block_desc->HasVar(grad_var_name)) {
                        return false;
                      }
-                     need_infer_shape = true;
                      auto var = block_desc->Var(grad_var_name);
                      new_vars.insert(var->Name());
                      auto it = param_name_map.find(grad_var_name);
@@ -311,23 +309,21 @@ static void CreateGradVarInBlock(
                      grad_record.op_idx_ = static_cast<int>(op_index);
                      return false; /* not break */
                    });
-    if (need_infer_shape) {
-      ops[op_index]->InferVarType(block_desc);
-      for (auto& arg : ops[op_index]->OutputArgumentNames()) {
-        if (new_vars.find(arg) == new_vars.end()) {
-          continue;
-        }
-        auto pname = FwdName(arg);
-        auto* param = block_desc->FindVarRecursive(pname);
-        auto* grad = block_desc->FindVar(arg);
-        if (param == nullptr) {
-          grad->SetDataType(DataType::FP32);
-        } else {
-          grad->SetDataType(param->GetDataType());
-        }
+    ops[op_index]->InferVarType(block_desc);
+    for (auto& arg : ops[op_index]->OutputArgumentNames()) {
+      if (new_vars.find(arg) == new_vars.end()) {
+        continue;
       }
-      ops[op_index]->InferShape(*block_desc);
+      auto pname = FwdName(arg);
+      auto* param = block_desc->FindVarRecursive(pname);
+      auto* grad = block_desc->FindVar(arg);
+      if (param == nullptr) {
+        grad->SetDataType(DataType::FP32);
+      } else {
+        grad->SetDataType(param->GetDataType());
+      }
     }
+    ops[op_index]->InferShape(*block_desc);
   }
 }
 
@@ -430,12 +426,15 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
     const std::vector<size_t> dup_op = dup.second;
     if (out_name != kEmptyVarName && dup_op.size() > 1) {
       std::vector<std::string> sum_op_inputs;
+      std::string next_g_name = out_name;
       for (size_t i = 0; i < dup_op.size(); ++i) {
         VLOG(10) << backward_descs[dup_op[i]]->Type() << " has " << out_name
                  << " duplicated";
         std::string new_name = out_name + "@RENAME@" + std::to_string(i);
-        backward_descs[dup_op[i]]->Rename(out_name, new_name);
+        backward_descs[dup_op[i]]->RenameOutput(out_name, new_name);
+        backward_descs[dup_op[i]]->RenameInput(out_name, next_g_name);
         sum_op_inputs.emplace_back(new_name);
+        next_g_name = sum_op_inputs.back();
       }
       std::unique_ptr<OpDescBind> sum_op(new OpDescBind(
           "sum", {{"X", sum_op_inputs}}, {{"Out", {out_name}}}, {}));
