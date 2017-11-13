@@ -89,7 +89,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         out = layers.merge_lod_tensor(
             in_true=out_true,
             in_false=out_false,
-            mask=mask,
+            mask=y,
             x=x,
             level=level,
             main_program=program)
