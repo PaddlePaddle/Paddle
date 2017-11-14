@@ -839,6 +839,23 @@ def batch_norm(input,
     return helper.append_activation(batch_norm_out)
 
 
+def beam_search_decode(ids, scores, main_program=None, startup_program=None):
+    helper = LayerHelper('beam_search_decode', **locals())
+    sentence_ids = helper.create_tmp_variable(dtype=ids.data_type)
+    sentence_scores = helper.create_tmp_variable(dtype=ids.data_type)
+
+    helper.append_op(
+        type="beam_search_decode",
+        inputs={"Ids": ids,
+                "Scores": scores},
+        outputs={
+            "SentenceIds": sentence_ids,
+            "SentenceScores": sentence_scores
+        })
+
+    return sentence_ids, sentence_scores
+
+
 class BlockGuard(object):
     """
     BlockGuard class.
