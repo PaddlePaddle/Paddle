@@ -28,24 +28,22 @@ using Tensor = framework::Tensor;
 // Base convolution operator definations for other conv
 // like operators to reuse the implementation.
 inline int OutputSize(int input_size, int filter_size, int dilation,
-                      int padding_up, int padding_down, int stride) {
-  int output_size = (input_size + padding_up + padding_down -
-                     (dilation * (filter_size - 1) + 1)) /
-                        stride +
-                    1;
+                      int padding, int stride) {
+  const int dkernel = dilation * (filter_size - 1) + 1;
+  const int output_size = (input_size + 2 * padding - dkernel) / stride + 1;
   return output_size;
 }
-inline bool NotExpand(std::vector<int64_t>& filter_dim,
-                      std::vector<int>& strides, std::vector<int>& paddings,
-                      std::vector<int>& dilations) {
+inline bool IsExpand(std::vector<int64_t>& filter_dim,
+                     std::vector<int>& strides, std::vector<int>& paddings,
+                     std::vector<int>& dilations) {
   bool filter_1 = true, strides_1 = true, padding_0 = true, dilation_1 = true;
   for (size_t j = 0; j < strides.size(); ++j) {
-    filter_1 &= (static_cast<int>(filter_dim[j]) == 1);
-    strides_1 &= (strides[j] == 1);
-    padding_0 &= (paddings[j] == 0);
-    dilation_1 &= (dilations[j] == 1);
+    filter_1 = filter_1 && (static_cast<int>(filter_dim[j]) == 1);
+    strides_1 = strides_1 && (strides[j] == 1);
+    padding_0 = padding_0 && (paddings[j] == 0);
+    dilation_1 = dilation_1 && (dilations[j] == 1);
   }
-  return filter_1 && strides_1 && padding_0 && dilation_1;
+  return !(filter_1 && strides_1 && padding_0 && dilation_1);
 }
 
 // Define Op classes in .h file so that other conv
@@ -65,14 +63,12 @@ class Conv3DOpMaker : public framework::OpProtoAndCheckerMaker {
 class ConvOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
   void InferShape(framework::InferShapeContext* ctx) const override;
 };
 
 class ConvOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
   void InferShape(framework::InferShapeContext* ctx) const override;
 };
 
@@ -88,9 +84,9 @@ class GemmConvKernel : public framework::OpKernel<T> {
     Tensor* output = context.Output<Tensor>("Output");
     output->mutable_data<T>(context.GetPlace());
 
+    int groups = context.Attr<int>("groups");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
-    int groups = context.Attr<int>("groups");
     std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
 
     const int batch_size = static_cast<int>(input->dims()[0]);
@@ -122,13 +118,13 @@ class GemmConvKernel : public framework::OpKernel<T> {
     framework::DDim col_matrix_shape =
         framework::flatten_to_2d(col_shape, filter_shape_vec.size() + 1);
 
-    bool not_expand = NotExpand(filter_shape_vec, strides, paddings, dilations);
+    bool is_expand = IsExpand(filter_shape_vec, strides, paddings, dilations);
     Tensor col;
     // col_matrix shares the same piece of data with col,
     // but will be reshaped into a two-dimensional matrix shape
     // to call the matrix multiplication interface.
     Tensor col_matrix;
-    if (!not_expand) {
+    if (is_expand) {
       col.mutable_data<T>(col_shape, context.GetPlace());
       col_matrix.ShareDataWith(col);
       col_matrix.Resize(col_matrix_shape);
@@ -149,51 +145,37 @@ class GemmConvKernel : public framework::OpKernel<T> {
     int in_step = static_cast<int>(input->dims()[1]) / groups;
     int out_step = static_cast<int>(output->dims()[1]) / groups;
 
-    if (!not_expand) {
-      for (int i = 0; i < batch_size; i++) {
-        Tensor in_batch = input->Slice(i, i + 1).Resize(input_shape);
-        Tensor out_batch = output->Slice(i, i + 1).Resize(output_matrix_shape);
-        for (int g = 0; g < groups; g++) {
-          Tensor in_slice = in_batch.Slice(g * in_step, (g + 1) * in_step);
+    math::Vol2ColFunctor<Place, T> vol2col;
+    math::Im2ColFunctor<math::ColFormat::kCFO, Place, T> im2col;
 
-          if (filter_shape_vec.size() == 2) {
-            // im2col
-            math::Im2ColFunctor<math::ColFormat::kCFO, Place, T> im2col;
-            im2col(context.device_context(), in_slice, col, dilations[0],
-                   dilations[1], strides[0], strides[1], paddings[0],
-                   paddings[0], paddings[1], paddings[1]);
-          } else if (filter_shape_vec.size() == 3) {
-            // vol2col
-            math::Vol2ColFunctor<Place, T> vol2col;
-            vol2col(context.device_context(), in_slice, col, dilations[0],
-                    dilations[1], dilations[2], strides[0], strides[1],
-                    strides[2], paddings[0], paddings[1], paddings[2]);
-          }
+    for (int i = 0; i < batch_size; i++) {
+      Tensor in_batch = input->Slice(i, i + 1).Resize(input_shape);
+      Tensor out_batch = output->Slice(i, i + 1).Resize(output_matrix_shape);
 
-          // gemm
-          Tensor out_slice = out_batch.Slice(g * out_step, (g + 1) * out_step);
-          Tensor filter_slice = filter.Slice(g * out_step, (g + 1) * out_step);
-          math::matmul<Place, T>(context.device_context(), filter_slice, false,
-                                 col_matrix, false, T(1.0), &out_slice, T(0.0));
-        }
-      }
-    } else {
-      for (int i = 0; i < batch_size; i++) {
-        Tensor in_batch = input->Slice(i, i + 1).Resize(input_shape);
-        Tensor out_batch = output->Slice(i, i + 1).Resize(output_matrix_shape);
-        for (int g = 0; g < groups; g++) {
-          Tensor in_slice = in_batch.Slice(g * in_step, (g + 1) * in_step);
+      for (int g = 0; g < groups; g++) {
+        Tensor in_slice = in_batch.Slice(g * in_step, (g + 1) * in_step);
 
+        if (!is_expand) {
           col.ShareDataWith(in_slice);
           col_matrix.ShareDataWith(col);
           col_matrix.Resize(col_matrix_shape);
-
-          // gemm
-          Tensor out_slice = out_batch.Slice(g * out_step, (g + 1) * out_step);
-          Tensor filter_slice = filter.Slice(g * out_step, (g + 1) * out_step);
-          math::matmul<Place, T>(context.device_context(), filter_slice, false,
-                                 col_matrix, false, T(1.0), &out_slice, T(0.0));
+        } else if (filter_shape_vec.size() == 2) {
+          // im2col
+          im2col(context.device_context(), in_slice, dilations, strides,
+                 std::vector<int>{paddings[0], paddings[1], paddings[0],
+                                  paddings[1]},
+                 &col);
+        } else if (filter_shape_vec.size() == 3) {
+          // vol2col
+          vol2col(context.device_context(), in_slice, dilations, strides,
+                  paddings, &col);
         }
+
+        // gemm
+        Tensor out_slice = out_batch.Slice(g * out_step, (g + 1) * out_step);
+        Tensor filter_slice = filter.Slice(g * out_step, (g + 1) * out_step);
+        math::matmul<Place, T>(context.device_context(), filter_slice, false,
+                               col_matrix, false, T(1.0), &out_slice, T(0.0));
       }
     }
   }
@@ -217,9 +199,9 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
 
     if (!input_grad && !filter_grad) return;
 
+    int groups = context.Attr<int>("groups");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
-    int groups = context.Attr<int>("groups");
     std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
 
     const int batch_size = static_cast<int>(input->dims()[0]);
@@ -270,13 +252,13 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
     int in_step = static_cast<int>(input->dims()[1]) / groups;
     int out_step = static_cast<int>(output_grad->dims()[1]) / groups;
 
-    bool not_expand = NotExpand(filter_shape_vec, strides, paddings, dilations);
+    bool is_expand = IsExpand(filter_shape_vec, strides, paddings, dilations);
     Tensor col;
     // col_matrix shares the same piece of data with col,
     // but will be reshaped into a two-dimensional matrix shape
     // to call the matrix multiplication interface.
     Tensor col_matrix;
-    if (!not_expand) {
+    if (is_expand) {
       col.mutable_data<T>(col_shape, context.GetPlace());
       col_matrix.ShareDataWith(col);
       col_matrix.Resize(col_matrix_shape);
@@ -288,61 +270,38 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
       input_grad->mutable_data<T>(context.GetPlace());
       set_zero(context.device_context(), input_grad, static_cast<T>(0));
 
-      if (!not_expand) {
-        for (int i = 0; i < batch_size; i++) {
-          Tensor out_grad_batch =
-              output_grad->Slice(i, i + 1).Resize(output_matrix_shape);
-          Tensor in_grad_batch =
-              input_grad->Slice(i, i + 1).Resize(input_shape);
-          for (int g = 0; g < groups; g++) {
-            // gemm
-            Tensor out_grad_slice =
-                out_grad_batch.Slice(g * out_step, (g + 1) * out_step);
-            Tensor filter_slice =
-                filter.Slice(g * out_step, (g + 1) * out_step);
-            math::matmul<Place, T>(context.device_context(), filter_slice, true,
-                                   out_grad_slice, false, T(1.0), &col_matrix,
-                                   T(0.0));
-            Tensor in_grad_slice =
-                in_grad_batch.Slice(g * in_step, (g + 1) * in_step);
+      math::Col2VolFunctor<Place, T> col2vol;
+      math::Col2ImFunctor<math::ColFormat::kCFO, Place, T> col2im;
 
-            if (filter_shape_vec.size() == 2) {
-              math::Col2ImFunctor<math::ColFormat::kCFO, Place, T> col2im;
-              col2im(context.device_context(), in_grad_slice, col, dilations[0],
-                     dilations[1], strides[0], strides[1], paddings[0],
-                     paddings[0], paddings[1], paddings[1]);
+      for (int i = 0; i < batch_size; i++) {
+        Tensor out_grad_batch =
+            output_grad->Slice(i, i + 1).Resize(output_matrix_shape);
+        Tensor in_grad_batch = input_grad->Slice(i, i + 1).Resize(input_shape);
+        for (int g = 0; g < groups; g++) {
+          // gemm
+          Tensor out_grad_slice =
+              out_grad_batch.Slice(g * out_step, (g + 1) * out_step);
+          Tensor filter_slice = filter.Slice(g * out_step, (g + 1) * out_step);
 
-            } else if (filter_shape_vec.size() == 3) {
-              math::Col2VolFunctor<Place, T> col2vol;
-              col2vol(context.device_context(), in_grad_slice, col,
-                      dilations[0], dilations[1], dilations[2], strides[0],
-                      strides[1], strides[2], paddings[0], paddings[1],
-                      paddings[2]);
-            }
-          }
-        }
-      } else {
-        for (int i = 0; i < batch_size; i++) {
-          Tensor out_grad_batch =
-              output_grad->Slice(i, i + 1).Resize(output_matrix_shape);
-          Tensor in_grad_batch =
-              input_grad->Slice(i, i + 1).Resize(input_shape);
-          for (int g = 0; g < groups; g++) {
-            // gemm
-            Tensor out_grad_slice =
-                out_grad_batch.Slice(g * out_step, (g + 1) * out_step);
-            Tensor filter_slice =
-                filter.Slice(g * out_step, (g + 1) * out_step);
+          Tensor in_grad_slice =
+              in_grad_batch.Slice(g * in_step, (g + 1) * in_step);
 
-            Tensor in_grad_slice =
-                in_grad_batch.Slice(g * in_step, (g + 1) * in_step);
-
+          if (!is_expand) {
             col_matrix.ShareDataWith(in_grad_slice);
             col_matrix.Resize(col_matrix_shape);
+          }
+          math::matmul<Place, T>(context.device_context(), filter_slice, true,
+                                 out_grad_slice, false, T(1.0), &col_matrix,
+                                 T(0.0));
 
-            math::matmul<Place, T>(context.device_context(), filter_slice, true,
-                                   out_grad_slice, false, T(1.0), &col_matrix,
-                                   T(0.0));
+          if (is_expand && filter_shape_vec.size() == 2) {
+            col2im(context.device_context(), col, dilations, strides,
+                   std::vector<int>{paddings[0], paddings[1], paddings[0],
+                                    paddings[1]},
+                   &in_grad_slice);
+          } else if (is_expand && filter_shape_vec.size() == 3) {
+            col2vol(context.device_context(), col, dilations, strides, paddings,
+                    &in_grad_slice);
           }
         }
       }
@@ -353,60 +312,38 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
       Tensor filter_grad_ = *filter_grad;
       filter_grad_.Resize(filter_matrix_shape);
       set_zero(context.device_context(), filter_grad, static_cast<T>(0));
+      math::Im2ColFunctor<math::ColFormat::kCFO, Place, T> im2col;
+      math::Vol2ColFunctor<Place, T> vol2col;
+      for (int i = 0; i < batch_size; i++) {
+        Tensor out_grad_batch =
+            output_grad->Slice(i, i + 1).Resize(output_matrix_shape);
+        Tensor in_batch = input->Slice(i, i + 1).Resize(input_shape);
+        for (int g = 0; g < groups; g++) {
+          // im2col
+          Tensor out_grad_slice =
+              out_grad_batch.Slice(g * out_step, (g + 1) * out_step);
+          Tensor in_slice = in_batch.Slice(g * in_step, (g + 1) * in_step);
 
-      if (!not_expand) {
-        for (int i = 0; i < batch_size; i++) {
-          Tensor out_grad_batch =
-              output_grad->Slice(i, i + 1).Resize(output_matrix_shape);
-          Tensor in_batch = input->Slice(i, i + 1).Resize(input_shape);
-          for (int g = 0; g < groups; g++) {
-            // im2col
-            Tensor out_grad_slice =
-                out_grad_batch.Slice(g * out_step, (g + 1) * out_step);
-            Tensor in_slice = in_batch.Slice(g * in_step, (g + 1) * in_step);
-
-            if (filter_shape_vec.size() == 2) {
-              math::Im2ColFunctor<math::ColFormat::kCFO, Place, T> im2col;
-              im2col(context.device_context(), in_slice, col, dilations[0],
-                     dilations[1], strides[0], strides[1], paddings[0],
-                     paddings[0], paddings[1], paddings[1]);
-            } else if (filter_shape_vec.size() == 3) {
-              math::Vol2ColFunctor<Place, T> vol2col;
-              vol2col(context.device_context(), in_slice, col, dilations[0],
-                      dilations[1], dilations[2], strides[0], strides[1],
-                      strides[2], paddings[0], paddings[1], paddings[2]);
-            }
-
-            // gemm
-            Tensor filter_grad_slice =
-                filter_grad_.Slice(g * out_step, (g + 1) * out_step);
-            math::matmul<Place, T>(context.device_context(), out_grad_slice,
-                                   false, col_matrix, true, T(1.0),
-                                   &filter_grad_slice, T(1.0));
-          }
-        }
-      } else {
-        for (int i = 0; i < batch_size; i++) {
-          Tensor out_grad_batch =
-              output_grad->Slice(i, i + 1).Resize(output_matrix_shape);
-          Tensor in_batch = input->Slice(i, i + 1).Resize(input_shape);
-          for (int g = 0; g < groups; g++) {
-            // im2col
-            Tensor out_grad_slice =
-                out_grad_batch.Slice(g * out_step, (g + 1) * out_step);
-            Tensor in_slice = in_batch.Slice(g * in_step, (g + 1) * in_step);
-
+          if (!is_expand) {
             col.ShareDataWith(in_slice);
             col_matrix.ShareDataWith(col);
             col_matrix.Resize(col_matrix_shape);
-
-            // gemm
-            Tensor filter_grad_slice =
-                filter_grad_.Slice(g * out_step, (g + 1) * out_step);
-            math::matmul<Place, T>(context.device_context(), out_grad_slice,
-                                   false, col_matrix, true, T(1.0),
-                                   &filter_grad_slice, T(1.0));
+          } else if (filter_shape_vec.size() == 2) {
+            im2col(context.device_context(), in_slice, dilations, strides,
+                   std::vector<int>{paddings[0], paddings[1], paddings[0],
+                                    paddings[1]},
+                   &col);
+          } else if (filter_shape_vec.size() == 3) {
+            vol2col(context.device_context(), in_slice, dilations, strides,
+                    paddings, &col);
           }
+
+          // gemm
+          Tensor filter_grad_slice =
+              filter_grad_.Slice(g * out_step, (g + 1) * out_step);
+          math::matmul<Place, T>(context.device_context(), out_grad_slice,
+                                 false, col_matrix, true, T(1.0),
+                                 &filter_grad_slice, T(1.0));
         }
       }
     }

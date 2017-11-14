@@ -71,42 +71,42 @@ template <class T>
 class Vol2ColFunctor<platform::GPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& vol, framework::Tensor& col,
-                  int dilation_d, int dilation_h, int dilation_w,
-                  int stride_depth, int stride_height, int stride_width,
-                  int padding_depth, int padding_height,
-                  int padding_width) const {
+                  const framework::Tensor& vol,
+                  const std::vector<int>& dilations,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  framework::Tensor* col) const {
     PADDLE_ENFORCE(vol.dims().size() == 4);
-    PADDLE_ENFORCE(col.dims().size() == 7);
+    PADDLE_ENFORCE(col->dims().size() == 7);
 
     int input_channels = vol.dims()[0];
     int input_depth = vol.dims()[1];
     int input_height = vol.dims()[2];
     int input_width = vol.dims()[3];
-    int filter_depth = col.dims()[1];
-    int filter_height = col.dims()[2];
-    int filter_width = col.dims()[3];
-    int output_depth = col.dims()[4];
-    int output_height = col.dims()[5];
-    int output_width = col.dims()[6];
+    int filter_depth = col->dims()[1];
+    int filter_height = col->dims()[2];
+    int filter_width = col->dims()[3];
+    int output_depth = col->dims()[4];
+    int output_height = col->dims()[5];
+    int output_width = col->dims()[6];
 
-    PADDLE_ENFORCE_EQ((input_depth + 2 * padding_depth -
-                       ((dilation_d * (filter_depth - 1) + 1))) /
-                              stride_depth +
+    PADDLE_ENFORCE_EQ((input_depth + 2 * paddings[0] -
+                       ((dilations[0] * (filter_depth - 1) + 1))) /
+                              strides[0] +
                           1,
                       output_depth,
                       "input_depth and output_depth are "
                       "Mismatching.");
-    PADDLE_ENFORCE_EQ((input_height + 2 * padding_height -
-                       ((dilation_h * (filter_height - 1) + 1))) /
-                              stride_height +
+    PADDLE_ENFORCE_EQ((input_height + 2 * paddings[1] -
+                       ((dilations[1] * (filter_height - 1) + 1))) /
+                              strides[1] +
                           1,
                       output_height,
                       "input_height and output_height are "
                       "Mismatching.");
-    PADDLE_ENFORCE_EQ((input_width + 2 * padding_width -
-                       ((dilation_w * (filter_width - 1) + 1))) /
-                              stride_width +
+    PADDLE_ENFORCE_EQ((input_width + 2 * paddings[2] -
+                       ((dilations[2] * (filter_width - 1) + 1))) /
+                              strides[2] +
                           1,
                       output_width,
                       "input_width and output_width are "
@@ -121,10 +121,10 @@ class Vol2ColFunctor<platform::GPUPlace, T> {
                  reinterpret_cast<const platform::CUDADeviceContext&>(context)
                      .stream()>>>(
         num_outputs, vol.data<T>(), input_depth, input_height, input_width,
-        dilation_d, dilation_h, dilation_w, filter_depth, filter_height,
-        filter_width, stride_depth, stride_height, stride_width, padding_depth,
-        padding_height, padding_width, output_depth, output_height,
-        output_width, col.data<T>());
+        dilations[0], dilations[1], dilations[2], filter_depth, filter_height,
+        filter_width, strides[0], strides[1], strides[2], paddings[0],
+        paddings[1], paddings[2], output_depth, output_height, output_width,
+        col->data<T>());
   }
 };
 
@@ -200,18 +200,18 @@ template <class T>
 class Col2VolFunctor<platform::GPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
-                  framework::Tensor& vol, const framework::Tensor& col,
-                  int dilation_d, int dilation_h, int dilation_w,
-                  int stride_depth, int stride_height, int stride_width,
-                  int padding_depth, int padding_height,
-                  int padding_width) const {
-    PADDLE_ENFORCE(vol.dims().size() == 4);
+                  const framework::Tensor& col,
+                  const std::vector<int>& dilations,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  framework::Tensor* vol) const {
+    PADDLE_ENFORCE(vol->dims().size() == 4);
     PADDLE_ENFORCE(col.dims().size() == 7);
 
-    int input_channels = vol.dims()[0];
-    int input_depth = vol.dims()[1];
-    int input_height = vol.dims()[2];
-    int input_width = vol.dims()[3];
+    int input_channels = vol->dims()[0];
+    int input_depth = vol->dims()[1];
+    int input_height = vol->dims()[2];
+    int input_width = vol->dims()[3];
     int filter_depth = col.dims()[1];
     int filter_height = col.dims()[2];
     int filter_width = col.dims()[3];
@@ -219,23 +219,23 @@ class Col2VolFunctor<platform::GPUPlace, T> {
     int output_height = col.dims()[5];
     int output_width = col.dims()[6];
 
-    PADDLE_ENFORCE_EQ((input_depth + 2 * padding_depth -
-                       ((dilation_d * (filter_depth - 1) + 1))) /
-                              stride_depth +
+    PADDLE_ENFORCE_EQ((input_depth + 2 * paddings[0] -
+                       ((dilations[0] * (filter_depth - 1) + 1))) /
+                              strides[0] +
                           1,
                       output_depth,
                       "input_depth and output_depth are "
                       "Mismatching.");
-    PADDLE_ENFORCE_EQ((input_height + 2 * padding_height -
-                       ((dilation_h * (filter_height - 1) + 1))) /
-                              stride_height +
+    PADDLE_ENFORCE_EQ((input_height + 2 * paddings[1] -
+                       ((dilations[1] * (filter_height - 1) + 1))) /
+                              strides[1] +
                           1,
                       output_height,
                       "input_height and output_height are "
                       "Mismatching.");
-    PADDLE_ENFORCE_EQ((input_width + 2 * padding_width -
-                       ((dilation_w * (filter_width - 1) + 1))) /
-                              stride_width +
+    PADDLE_ENFORCE_EQ((input_width + 2 * paddings[2] -
+                       ((dilations[2] * (filter_width - 1) + 1))) /
+                              strides[2] +
                           1,
                       output_width,
                       "input_width and output_width are "
@@ -250,10 +250,10 @@ class Col2VolFunctor<platform::GPUPlace, T> {
                  reinterpret_cast<const platform::CUDADeviceContext&>(context)
                      .stream()>>>(
         num_kernels, col.data<T>(), input_depth, input_height, input_width,
-        dilation_d, dilation_h, dilation_w, filter_depth, filter_height,
-        filter_width, stride_depth, stride_height, stride_width, padding_depth,
-        padding_height, padding_width, output_depth, output_height,
-        output_width, vol.data<T>());
+        dilations[0], dilations[1], dilations[2], filter_depth, filter_height,
+        filter_width, strides[0], strides[1], strides[2], paddings[0],
+        paddings[1], paddings[2], output_depth, output_height, output_width,
+        vol->data<T>());
   }
 };
 

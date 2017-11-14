@@ -95,8 +95,9 @@ class ContextProjectFunctor {
 
     math::Im2ColFunctor<math::ColFormat::kOCF, Place, float> im2col_ocf;
 
-    int dilation_h = 1;
-    int dilation_w = 1;
+    std::vector<int> dilation({1, 1});
+    std::vector<int> padding({up_pad, 0, down_pad, 0});
+    std::vector<int> stride({context_stride, 1});
 
     int input_row_begin, input_row_end;
     int sequence_height, sequence_width;
@@ -126,10 +127,7 @@ class ContextProjectFunctor {
             {1, input_row_end - input_row_begin,
              sequence_width});  // input_channels, input_height, input_width
         in_t.Resize(framework::make_ddim(input_shape));
-
-        im2col_ocf(context, in_t, out_t, dilation_h, dilation_w,
-                   /*stride_height*/ context_stride, /*stride_width*/ 1, up_pad,
-                   down_pad, 0, 0);
+        im2col_ocf(context, in_t, dilation, stride, padding, &out_t);
         out_t.Resize({sequence_height, context_length * sequence_width});
       }
     }
@@ -207,8 +205,9 @@ class ContextProjectGradFunctor {
 
     math::Col2ImFunctor<math::ColFormat::kOCF, Place, float> col2im_ocf;
 
-    int dilation_h = 1;
-    int dilation_w = 1;
+    std::vector<int> dilation({1, 1});
+    std::vector<int> padding({up_pad, 0, down_pad, 0});
+    std::vector<int> stride({context_stride, 1});
 
     int input_row_begin, input_row_end;
     int sequence_height, sequence_width;
@@ -240,9 +239,7 @@ class ContextProjectGradFunctor {
                sequence_width});  // input_channels, input_height, input_width
           in_t.Resize(framework::make_ddim(input_shape));
 
-          col2im_ocf(context, in_t, out_t, dilation_h, dilation_w,
-                     /*stride_height*/ context_stride, /*stride_width*/ 1,
-                     up_pad, down_pad, 0, 0);
+          col2im_ocf(context, out_t, dilation, stride, padding, &in_t);
           out_t.Resize({sequence_height, context_length * sequence_width});
         }
       }

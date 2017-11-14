@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "paddle/operators/conv_op.h"
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -53,7 +54,7 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
       "The number of output channels should be divided by groups.");
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[0]});
-  for (size_t i = 0; i < paddings.size(); ++i) {
+  for (size_t i = 0; i < strides.size(); ++i) {
     PADDLE_ENFORCE(in_dims[i + 2] + 2 * paddings[i] -
                            (dilations[i] * (filter_dims[i + 2] - 1) + 1) >
                        0,
@@ -61,8 +62,7 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
                    "dilations, the output size is less than 0, please check "
                    "again.");
     output_shape.push_back(OutputSize(in_dims[i + 2], filter_dims[i + 2],
-                                      dilations[i], paddings[i], paddings[i],
-                                      strides[i]));
+                                      dilations[i], paddings[i], strides[i]));
   }
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
 }
@@ -86,9 +86,15 @@ Conv2DOpMaker::Conv2DOpMaker(framework::OpProto* proto,
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator. "
             "The format of output tensor is also NCHW.");
-  AddAttr<std::vector<int>>("strides", "strides of convolution operator.")
+  AddAttr<std::vector<int>>("strides",
+                            "(vector<int> default:{1, 1}), the "
+                            "strides(h_stride, w_stride) of "
+                            "convolution operator.")
       .SetDefault({1, 1});
-  AddAttr<std::vector<int>>("paddings", "paddings of convolution operator.")
+  AddAttr<std::vector<int>>("paddings",
+                            "(vector<int> default:{0, 0}), the "
+                            "paddings(h_pad, w_pad) of "
+                            "convolution operator.")
       .SetDefault({0, 0});
   AddAttr<int>(
       "groups",
@@ -99,9 +105,10 @@ Conv2DOpMaker::Conv2DOpMaker(framework::OpProto* proto,
       "is only connected to the second half of the input channels.")
       .SetDefault(1);
   AddAttr<std::vector<int>>("dilations",
-                            "(vector default:{1, 1}), the dilations of "
+                            "(vector<int> default:{1, 1}), the "
+                            "dilations(h_dilation, w_dilation) of "
                             "convolution operator.")
-      .SetDefault(std::vector<int>{1, 1});
+      .SetDefault({1, 1});
   AddComment(R"DOC(
 Convolution Operator.
 
@@ -147,13 +154,15 @@ Conv3DOpMaker::Conv3DOpMaker(framework::OpProto* proto,
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator."
             "The format of output tensor is also NCDHW.");
-  AddAttr<std::vector<int>>(
-      "strides",
-      "(vector, default:{0, 0, 0}), the strides of convolution operator.")
+  AddAttr<std::vector<int>>("strides",
+                            "(vector<int>, default:{1, 1, 1}), the "
+                            "strides(d_stride, h_stride, w_stride) of "
+                            "convolution operator.")
       .SetDefault({1, 1, 1});
-  AddAttr<std::vector<int>>(
-      "paddings",
-      "(vector, default:{0, 0, 0}), the paddings of convolution operator.")
+  AddAttr<std::vector<int>>("paddings",
+                            "(vector<int>, default:{0, 0, 0}), the "
+                            "paddings(d_pad, h_pad, w_pad) of convolution "
+                            "operator.")
       .SetDefault({0, 0, 0});
   AddAttr<int>(
       "groups",
@@ -164,10 +173,11 @@ Conv3DOpMaker::Conv3DOpMaker(framework::OpProto* proto,
       "is only connected to the second half of the input channels.")
       .SetDefault(1);
   AddAttr<std::vector<int>>("dilations",
-                            "(vector default:{1, 1, 1}), the dilations of "
+                            "(vector<int> default:{1, 1, 1}), the "
+                            "dilations(d_dilation, h_dilation, w_dilation) of "
                             "convolution operator. Currently, conv3d doesn't "
                             "support dilation.")
-      .SetDefault(std::vector<int>{1, 1, 1});
+      .SetDefault({1, 1, 1});
 
   AddComment(R"DOC(
 Convolution3D Operator.
