@@ -42,6 +42,9 @@ limitations under the License. */
 #include "paddle/platform/gpu_info.h"
 #endif
 
+// disable auto conversion to list in Python
+PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
+
 namespace paddle {
 namespace pybind {
 static size_t UniqueIntegerGenerator(const std::string &prefix) {
