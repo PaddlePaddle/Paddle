@@ -1,22 +1,24 @@
 import paddle.v2.framework.core as core
+import paddle.v2.framework.proto.framework_pb2 as framework_pb2
 from paddle.v2.framework.framework import OpProtoHolder, Variable, Program, \
     Operator
 from paddle.v2.framework.initializer import ConstantInitializer, \
     NormalInitializer
 from paddle.v2.framework.layer_helper import LayerHelper, unique_name
 import re
+import cStringIO
 
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
     'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool', 'sums', 'cos_sim',
-    'batch_norm', 'accuracy'
+    'batch_norm', 'accuracy', 'split_lod_tensor'
 ]
 
 
 def fc(input,
        size,
        param_attr=None,
-       bias_attr=True,
+       bias_attr=None,
        name=None,
        act=None,
        num_flatten_dims=1,
@@ -125,6 +127,55 @@ def embedding(input,
     return tmp
 
 
+# TODO(qijun): expose H0 and C0
+def dynamic_lstm(input,
+                 size,
+                 data_type='float32',
+                 param_attr=None,
+                 bias_attr=None,
+                 use_peepholes=True,
+                 is_reverse=False,
+                 gate_activation='sigmoid',
+                 cell_activation='tanh',
+                 candidate_activation='tanh',
+                 main_program=None,
+                 startup_program=None):
+    helper = LayerHelper('lstm', **locals())
+    size = size / 4
+    weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[size, 4 * size], dtype=data_type)
+    bias_size = [1, 7 * size]
+    if not use_peepholes:
+        bias_size[1] = 4 * size
+    bias = helper.create_parameter(
+        attr=helper.bias_attr, shape=bias_size, dtype=data_type, suffix='b')
+
+    hidden = helper.create_tmp_variable(data_type)
+    cell = helper.create_tmp_variable(data_type)
+    batch_gate = helper.create_tmp_variable(data_type)
+    batch_cell_pre_act = helper.create_tmp_variable(data_type)
+
+    helper.append_op(
+        type='lstm',
+        inputs={'Input': input,
+                'Weight': weight,
+                'Bias': bias},
+        outputs={
+            'Hidden': hidden,
+            'Cell': cell,
+            'BatchGate': batch_gate,
+            'BatchCellPreAct': batch_cell_pre_act
+        },
+        attrs={
+            'use_peepholes': use_peepholes,
+            'is_reverse': is_reverse,
+            'gate_activation': gate_activation,
+            'cell_activation': cell_activation,
+            'candidate_activation': candidate_activation
+        })
+    return hidden, cell
+
+
 def data(name,
          shape,
          data_type='float32',
@@ -175,6 +226,11 @@ def data(name,
         stop_gradient=stop_gradient)
 
 
+def create_tensor(dtype, name=None, main_program=None):
+    helper = LayerHelper("create_tensor", **locals())
+    return helper.create_variable(name=helper.name, dtype=dtype)
+
+
 def _convert_(name):
     """
     Formatting.
@@ -189,6 +245,58 @@ def _convert_(name):
     """
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
+
+def _generate_doc_string_(op_proto):
+    """
+    Generate docstring by OpProto
+    
+    Args:
+        op_proto (framework_pb2.OpProto): a protobuf message typed OpProto
+
+    Returns:
+        str: the document string
+    """
+
+    def _type_to_str_(tp):
+        return framework_pb2.AttrType.Name(tp)
+
+    if not isinstance(op_proto, framework_pb2.OpProto):
+        raise TypeError("OpProto should be `framework_pb2.OpProto`")
+
+    buf = cStringIO.StringIO()
+    buf.write(op_proto.comment)
+    buf.write('\nArgs:\n')
+    for each_input in op_proto.inputs:
+        line_begin = '    {0}: '.format(_convert_(each_input.name))
+        buf.write(line_begin)
+        buf.write(each_input.comment)
+        buf.write('\n')
+        buf.write(' ' * len(line_begin))
+        buf.write('Duplicable: ')
+        buf.write(str(each_input.duplicable))
+        buf.write('  Optional: ')
+        buf.write(str(each_input.dispensable))
+        buf.write('\n')
+
+    for each_attr in op_proto.attrs:
+        buf.write('    ')
+        buf.write(each_attr.name)
+        buf.write(' (')
+        buf.write(_type_to_str_(each_attr.type))
+        buf.write('): ')
+        buf.write(each_attr.comment)
+        buf.write('\n')
+
+    if len(op_proto.outputs) != 0:
+        buf.write('\nReturns:\n')
+        buf.write('    ')
+        for each_opt in op_proto.outputs:
+            if not each_opt.intermediate:
+                break
+        buf.write(each_opt.comment)
+
+    return buf.getvalue()
 
 
 def _create_op_func_(op_type):
@@ -249,11 +357,6 @@ def _create_op_func_(op_type):
         return dtype
 
     def func(**kwargs):
-        """
-        This function implements the function for the operator. This process
-        involves doing the sanity check (using the function above), reading
-        inputs from protobuf and applying the activations on top.
-        """
         helper = LayerHelper(op_type, **kwargs)
 
         dtype = infer_and_check_data_type(op_proto, **kwargs)
@@ -277,6 +380,7 @@ def _create_op_func_(op_type):
 
     func.__name__ = op_type
     globals()[op_type] = func
+    func.__doc__ = _generate_doc_string_(op_proto)
     global __all__
     __all__.append(op_type)
 
@@ -349,6 +453,56 @@ def sums(input, main_program=None, startup_program=None):
     helper = LayerHelper('sum', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(type='sum', inputs={'X': input}, outputs={'Out': out})
+    return out
+
+
+def assign(input, output, main_program=None):
+    helper = LayerHelper('assign', **locals())
+    helper.append_op(
+        type='scale',
+        inputs={'X': [input]},
+        outputs={'Out': [output]},
+        attrs={'scale': 1.0})
+    return output
+
+
+def split_lod_tensor(input,
+                     mask,
+                     level,
+                     main_program=None,
+                     startup_program=None):
+    helper = LayerHelper('split_lod_tensor', **locals())
+    out_true = helper.create_tmp_variable(dtype=input.data_type)
+    out_false = helper.create_tmp_variable(dtype=input.data_type)
+    helper.append_op(
+        type='split_lod_tensor',
+        inputs={
+            'X': input,
+            'Mask': mask,
+        },
+        outputs={'OutTrue': out_true,
+                 'OutFalse': out_false},
+        attrs={'level': level})
+    return out_true, out_false
+
+
+def merge_lod_tensor(in_true,
+                     in_false,
+                     x,
+                     mask,
+                     level,
+                     main_program=None,
+                     startup_program=None):
+    helper = LayerHelper('merge_lod_tensor', **locals())
+    out = helper.create_tmp_variable(dtype=x.data_type)
+    helper.append_op(
+        type='merge_lod_tensor',
+        inputs={'X': x,
+                'Mask': mask,
+                'InTrue': in_true,
+                'InFalse': in_false},
+        outputs={'Out': out},
+        attrs={'level': level})
     return out
 
 
@@ -1276,3 +1430,73 @@ def array_length(array, main_program=None):
     helper.append_op(
         type='lod_array_length', inputs={'X': [array]}, outputs={'Out': [tmp]})
     return tmp
+
+
+class ConditionalBlockGuard(BlockGuard):
+    def __init__(self, block):
+        if not isinstance(block, ConditionalBlock):
+            raise TypeError("block should be conditional block")
+        super(ConditionalBlockGuard, self).__init__(block.helper.main_program)
+        self.block = block
+
+    def __enter__(self):
+        return super(ConditionalBlockGuard, self).__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.block.complete()
+        return super(ConditionalBlockGuard, self).__exit__(exc_type, exc_val,
+                                                           exc_tb)
+
+
+class ConditionalBlock(object):
+    def __init__(self, inputs, name=None, main_program=None):
+        for each_input in inputs:
+            if not isinstance(each_input, Variable):
+                raise TypeError("Each input should be variable")
+        self.inputs = inputs
+        self.helper = LayerHelper(
+            'conditional_block', name=name, main_program=main_program)
+
+    def block(self):
+        return ConditionalBlockGuard(self)
+
+    def complete(self):
+        inside_block = self.helper.main_program.current_block()
+        parent_block = self.helper.main_program.block(inside_block.parent_idx)
+
+        intermediate = set()
+        params = set()
+
+        for each_op in inside_block.ops:
+            assert isinstance(each_op, Operator)
+            for iname in each_op.input_names:
+                for in_var_name in each_op.input(iname):
+                    if in_var_name not in intermediate:
+                        params.add(in_var_name)
+
+            for oname in each_op.output_names:
+                for out_var_name in each_op.output(oname):
+                    intermediate.add(out_var_name)
+        input_set = set([ipt.name for ipt in self.inputs])
+
+        param_list = [
+            parent_block.var(each_name) for each_name in params
+            if each_name not in input_set
+        ]
+
+        out_list = [
+            parent_block.var(var_name) for var_name in parent_block.vars
+            if var_name not in intermediate
+        ]
+
+        step_scope = parent_block.create_var(
+            type=core.VarDesc.VarType.STEP_SCOPES)
+        parent_block.append_op(
+            type='conditional_block',
+            inputs={
+                'X': self.inputs,
+                'Params': param_list,
+            },
+            outputs={'Out': out_list,
+                     'Scope': [step_scope]},
+            attrs={'block': inside_block})
