@@ -681,34 +681,42 @@ def lstmemory_unit(input,
                                    state_act=TanhActivation())
 
 
-    :param input: input layer.
+    :param input: Input layer.
     :type input: LayerOutput
-    :param out_memory: output of previous time step
+    :param out_memory: The output of previous time step.
     :type out_memory: LayerOutput | None
-    :param name: lstmemory unit name.
+    :param name: The lstmemory unit name.
     :type name: basestring
-    :param size: lstmemory unit size.
+    :param size: The lstmemory unit size.
     :type size: int
-    :param param_attr: parameter attribute, None means default attribute.
+    :param param_attr: The parameter attribute for the weights in
+                     input to hidden projection.
+                     None means default attribute.
     :type param_attr: ParameterAttribute
-    :param act: last activiation type of lstm.
+    :param act: The last activiation type of lstm.
     :type act: BaseActivation
-    :param gate_act: gate activiation type of lstm.
+    :param gate_act: The gate activiation type of lstm.
     :type gate_act: BaseActivation
-    :param state_act: state activiation type of lstm.
+    :param state_act: The state activiation type of lstm.
     :type state_act: BaseActivation
-    :param input_proj_bias_attr: bias attribute for input to hidden projection.
-                False means no bias, None means default bias.
-    :type input_proj_bias_attr: ParameterAttribute|False|None
-    :param input_proj_layer_attr: extra layer attribute for input to hidden
-                projection of the LSTM unit, such as dropout, error clipping.
+    :param input_proj_bias_attr: The parameter attribute for the bias in
+                      input to hidden projection.
+                      False or None means no bias.
+                      If this parameter is set to True,
+                      the bias is initialized to zero.
+    :type input_proj_bias_attr: ParameterAttribute|bool|None
+    :param input_proj_layer_attr: The extra layer attribute for
+                     input to hidden projection of the LSTM unit,
+                     such as dropout, error clipping.
     :type input_proj_layer_attr: ExtraLayerAttribute
-    :param lstm_bias_attr: bias parameter attribute of lstm layer.
-                False means no bias, None means default bias.
-    :type lstm_bias_attr: ParameterAttribute|False|None
-    :param lstm_layer_attr: extra attribute of lstm layer.
+    :param lstm_bias_attr: The parameter attribute for the bias in lstm layer.
+                      False or None means no bias.
+                      If this parameter is set to True,
+                      the bias is initialized to zero.
+    :type lstm_bias_attr: ParameterAttribute|True|None
+    :param lstm_layer_attr: The extra attribute of lstm layer.
     :type lstm_layer_attr: ExtraLayerAttribute
-    :return: lstmemory unit name.
+    :return: The lstmemory unit name.
     :rtype: LayerOutput
     """
     if size is None:
@@ -786,34 +794,42 @@ def lstmemory_group(input,
                                     gate_act=SigmoidActivation(),
                                     state_act=TanhActivation())
 
-    :param input: input layer.
+    :param input: Input layer.
     :type input: LayerOutput
-    :param size: lstmemory group size.
+    :param size: The lstmemory group size.
     :type size: int
-    :param name: name of lstmemory group.
+    :param name: The name of lstmemory group.
     :type name: basestring
-    :param out_memory: output of previous time step.
+    :param out_memory: The output of previous time step.
     :type out_memory: LayerOutput | None
-    :param reverse: process the input in a reverse order or not.
+    :param reverse: Process the input in a reverse order or not.
     :type reverse: bool
-    :param param_attr: parameter attribute, None means default attribute.
+    :param param_attr: The parameter attribute for the weights in
+                     input to hidden projection.
+                     None means default attribute.
     :type param_attr: ParameterAttribute
-    :param act: last activiation type of lstm.
+    :param act: The last activiation type of lstm.
     :type act: BaseActivation
-    :param gate_act: gate activiation type of lstm.
+    :param gate_act: The gate activiation type of lstm.
     :type gate_act: BaseActivation
-    :param state_act: state activiation type of lstm.
+    :param state_act: The state activiation type of lstm.
     :type state_act: BaseActivation
-    :param lstm_bias_attr: bias parameter attribute of lstm layer.
-                           False means no bias, None means default bias.
-    :type lstm_bias_attr: ParameterAttribute|False|None
-    :param input_proj_bias_attr: bias attribute for input to hidden projection.
-                False means no bias, None means default bias.
-    :type input_proj_bias_attr: ParameterAttribute|False|None
-    :param input_proj_layer_attr: extra layer attribute for input to hidden
-                projection of the LSTM unit, such as dropout, error clipping.
+    :param input_proj_bias_attr: The parameter attribute for the bias in
+                      input to hidden projection.
+                      False or None means no bias.
+                      If this parameter is set to True,
+                      the bias is initialized to zero.
+    :type input_proj_bias_attr: ParameterAttribute|bool|None
+    :param input_proj_layer_attr: The extra layer attribute for
+                     input to hidden projection of the LSTM unit,
+                     such as dropout, error clipping.
     :type input_proj_layer_attr: ExtraLayerAttribute
-    :param lstm_layer_attr: lstm layer's extra attribute.
+    :param lstm_bias_attr: The parameter attribute for the bias in lstm layer.
+                      False or None means no bias.
+                      If this parameter is set to True,
+                      the bias is initialized to zero.
+    :type lstm_bias_attr: ParameterAttribute|True|None
+    :param lstm_layer_attr: The extra attribute of lstm layer.
     :type lstm_layer_attr: ExtraLayerAttribute
     :return: the lstmemory group.
     :rtype: LayerOutput
