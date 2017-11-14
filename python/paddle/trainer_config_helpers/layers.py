@@ -6442,9 +6442,9 @@ def prelu_layer(input,
     """
 
     assert isinstance(input, LayerOutput), 'prelu_layer accepts only one input.'
+
     if not param_attr:
-        param_attr = ParamAttr(initial_mean=0.25,
-                               initial_std=0.0)
+        param_attr = ParamAttr(initial_mean=0.25, initial_std=0.0)
     else:
         assert isinstance(param_attr, ParameterAttribute)
 
@@ -6469,7 +6469,7 @@ def prelu_layer(input,
         name=name,
         layer_type=LayerType.PRELU,
         parents=input,
-        num_filters = num_channels,
+        num_filters=num_channels,
         size=l.config.size)
 
 
