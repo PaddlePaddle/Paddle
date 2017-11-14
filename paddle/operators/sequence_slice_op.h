@@ -87,9 +87,10 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
 
     out->mutable_data<T>(ctx.GetPlace());
     auto out_lod = SequenceSliceLoD(*in, offset_data, length_data);
+    auto out_dims = in->dims();
+    out_dims[0] = out_lod[0][out_lod[0].size() - 1];
+    out->Resize(out_dims);
     out->set_lod(out_lod);
-    math::SetConstant<Place, T> set_zero;
-    set_zero(ctx.device_context(), out, static_cast<T>(0));
 
     auto in_stride = framework::stride(in->dims());
     auto out_stride = framework::stride(out->dims());

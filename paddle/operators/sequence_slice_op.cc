@@ -75,14 +75,17 @@ class SequenceSliceOpMaker : public framework::OpProtoAndCheckerMaker {
              "the input of SequenceSliceOp.");
     AddInput("Offset",
              "(Tensor), "
-             "A vector<int> to describes offset for sub sequence item.");
+             "a vector<int> to describe the offset of every input sequence for "
+             "sub sequence item.");
     AddInput("Length",
              "(Tensor), "
-             "A vector<int> to describes length for sub sequence item.");
+             "a vector<int> to describe the length of every input sequence for "
+             "sub sequence item.");
     AddOutput("Out",
-              "(LoDTensor), output of sequence slice Op.");
+              "(LoDTensor), The output of SequenceSliceOp.");
     AddComment(R"DOC(
 Sequence slice operator
+
 The operator crop a subsequence from given sequence with given start offset and subsequence length.
 It only supports sequence (LoD Tensor with level number is 1).
 - Case:
@@ -91,13 +94,13 @@ It only supports sequence (LoD Tensor with level number is 1).
         c1, c2]
        [d1, d2;
         e1, e2]]
-    LoD(X) = {{0, 3, 5}}; Dims(X) = (4, 1, 2)
-    Offset = (0, 1); Length = (2, 1)
+    LoD(X) = {{0, 3, 5}}; Dims(X) = (5, 2)
+    Offset = [0, 1]; Length = [2, 1]
 
     Out = [[a1, a2;
             b1, b2]
             [e1, e2]]
-    LoD(Out) = {{0, 2, 3}}
+    LoD(Out) = {{0, 2, 3}}; Dims(Out) = (3, 2)
 NOTE: The length of the input, offset and length should be the same. The offset start from 0.
     )DOC");
   }
