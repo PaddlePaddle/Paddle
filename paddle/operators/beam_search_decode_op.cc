@@ -27,6 +27,7 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
     framework::ExecutionContext ctx(*this, scope, dev_ctx);
+
     const LoDTensorArray* ids = ctx.Input<LoDTensorArray>("Ids");
     const LoDTensorArray* scores = ctx.Input<LoDTensorArray>("Scores");
     const size_t step_num = ids->size();
