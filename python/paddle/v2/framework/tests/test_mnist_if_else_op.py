@@ -17,13 +17,7 @@ class TestMNISTIfElseOp(unittest.TestCase):
         label = layers.data(name='y', shape=[1], data_type='int64', **kwargs)
 
         limit = layers.fill_constant_batch_size_like(
-            input=label,
-            data_type=int(core.DataType.INT64),
-            shape=[1],
-            value=5.0,
-            input_dim_idx=int(0),
-            output_dim_idx=int(0),
-            **kwargs)
+            input=label, dtype='int64', shape=[1], value=5.0, **kwargs)
 
         cond = layers.less_than(x=label, y=limit, **kwargs)
         true_image, false_image = layers.split_lod_tensor(

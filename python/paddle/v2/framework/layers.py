@@ -394,7 +394,6 @@ _create_op_func_('sigmoid')
 _create_op_func_('scale')
 _create_op_func_('reshape')
 _create_op_func_('transpose')
-_create_op_func_('fill_constant_batch_size_like')
 
 
 def cast(x, data_type, main_program=None):
@@ -1287,6 +1286,31 @@ def fill_constant(shape, dtype, value, main_program=None, startup_program=None):
             'shape': shape,
             'data_type': out.data_type,
             'value': float(value)
+        })
+    out.stop_gradient = True
+    return out
+
+
+def fill_constant_batch_size_like(input,
+                                  shape,
+                                  dtype,
+                                  value,
+                                  input_dim_idx=0,
+                                  output_dim_idx=0,
+                                  main_program=None,
+                                  startup_program=None):
+    helper = LayerHelper("fill_constant_batch_size_like", **locals())
+    out = helper.create_tmp_variable(dtype=dtype)
+    helper.append_op(
+        type='fill_constant_batch_size_like',
+        inputs={'Input': input},
+        outputs={'Out': [out]},
+        attrs={
+            'shape': shape,
+            'data_type': out.data_type,
+            'value': float(value),
+            'input_dim_idx': input_dim_idx,
+            'output_dim_idx': output_dim_idx
         })
     out.stop_gradient = True
     return out
