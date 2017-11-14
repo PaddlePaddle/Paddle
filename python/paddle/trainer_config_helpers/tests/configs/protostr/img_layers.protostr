@@ -28,6 +28,8 @@ layers {
       stride_y: 1
       output_y: 227
       img_size_y: 256
+      dilation: 1
+      dilation_y: 1
     }
   }
   bias_parameter_name: "___conv_0__.wbias"

@@ -434,7 +434,7 @@ void testConvLayer(const string& type, bool trans, bool useGpu) {
   config.layerConfig.set_partial_sum(1);
   config.layerConfig.set_shared_biases(true);
 
-  int dilation = 1;
+  int dilation = 2;
   if (type == "cudnn_conv") {
 #if CUDNN_VERSION >= 6000
     dilation = 2;
