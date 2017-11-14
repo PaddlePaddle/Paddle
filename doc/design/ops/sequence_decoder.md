@@ -154,7 +154,7 @@ In this way, users can customize anything on the input or output of beam search,
 2. Remove some specific candidate in `selected_ids`.
 3. Get the final `translation_ids`, remove the translation sequence in it.
 
-The implementation of sequence decoder can reuse the C++ class [RNNAlgorithm](https://github.com/Superjom/Paddle/blob/68cac3c0f8451fe62a4cdf156747d6dc0ee000b3/paddle/operators/dynamic_recurrent_op.h#L30),
+The implementation of sequence decoder can reuse the C++ class:  [RNNAlgorithm](https://github.com/Superjom/Paddle/blob/68cac3c0f8451fe62a4cdf156747d6dc0ee000b3/paddle/operators/dynamic_recurrent_op.h#L30),
 so the python syntax is quite similar to that of an  [RNN](https://github.com/Superjom/Paddle/blob/68cac3c0f8451fe62a4cdf156747d6dc0ee000b3/doc/design/block.md#blocks-with-for-and-rnnop).
 
 Both of them are two-level `LoDTensors`:
