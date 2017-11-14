@@ -32,7 +32,8 @@ void TestIm2ColFunctor() {
                 for (size_t dilation : {1, 3}) {
                   size_t filterSizeH = (filterHeight - 1) * dilation + 1;
                   size_t filterSizeW = (filterWidth - 1) * dilation + 1;
-                  if (inputHeight <= filterSizeH || inputWidth <= filterSizeW)
+                  if (inputHeight + 2 * padding < filterSizeH ||
+                      inputWidth + 2 * padding < filterSizeW)
                     break;
                   if (padding >= filterSizeH || padding >= filterSizeW) break;
                   size_t outputHeight =

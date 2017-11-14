@@ -81,8 +81,13 @@ void Convolution(const std::string& conv1,
               for (size_t padding : {0, 1}) {
                 for (size_t dilation : {1, 3}) {
                   if (padding >= filterSize) break;
+                  size_t filterS = (filterSize - 1) * dilation + 1;
 
-                  if ((conv1 == "NaiveConv-CPU" || conv2 == "NaiveConv-CPU") &&
+                  if (inputSize + 2 * padding < filterS) break;
+
+                  if ((conv1 == "NaiveConv-CPU" || conv2 == "NaiveConv-CPU" ||
+                       conv1 == "NNPACKConv-CPU" ||
+                       conv2 == "NNPACKConv-CPU") &&
                       dilation > 1)
                     break;
 
@@ -93,7 +98,7 @@ void Convolution(const std::string& conv1,
                     break;
 
                   size_t outputSize =
-                      (inputSize - filterSize + 2 * padding + stride) / stride;
+                      (inputSize - filterS + 2 * padding + stride) / stride;
                   VLOG(3) << " batchSize=" << batchSize
                           << " inputChannels=" << inputChannels
                           << " inputHeight=" << inputSize
