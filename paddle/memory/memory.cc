@@ -82,6 +82,17 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
 
 template <>
 void* Alloc<platform::GPUPlace>(platform::GPUPlace place, size_t size) {
+  auto* buddy_allocator = GetGPUBuddyAllocator(place.device);
+  auto* ptr = buddy_allocator->Alloc(size);
+  if (ptr == nullptr) {
+    int cur_dev = platform::GetCurrentDeviceId();
+    platform::SetDeviceId(place.device);
+    size_t avail, total;
+    platform::GpuMemoryUsage(avail, total);
+    LOG(WARNING) << "Cannot allocate " << size << " bytes in GPU "
+                 << place.device << ", available " << avail << " bytes";
+    platform::SetDeviceId(cur_dev);
+  }
   return GetGPUBuddyAllocator(place.device)->Alloc(size);
 }
 
