@@ -226,7 +226,7 @@ def data(name,
         stop_gradient=stop_gradient)
 
 
-def create_tensor(dtype, name=None, main_program=None):
+def create_tensor(dtype, name=None, main_program=None, startup_program=None):
     helper = LayerHelper("create_tensor", **locals())
     return helper.create_variable(name=helper.name, dtype=dtype)
 
@@ -390,28 +390,11 @@ _create_op_func_('mul')
 _create_op_func_('elementwise_add')
 _create_op_func_('dropout')
 _create_op_func_('reshape')
-_create_op_func_('elementwise_add')
 _create_op_func_('sigmoid')
 _create_op_func_('scale')
 _create_op_func_('reshape')
 _create_op_func_('transpose')
-
-
-def fill_constant(data_type, shape, value=None, program=None):
-    """
-    This function creates a tensor , with shape as mentioned in the input and
-    specified data_type and fills this up with a constant value that
-    comes in the input.
-    """
-    helper = LayerHelper('fill_constant', **locals())
-    out = helper.create_tmp_variable(dtype=data_type)
-    helper.append_op(
-        type='fill_constant',
-        outputs={'Out': [out]},
-        attrs={'data_type': data_type,
-               'shape': shape,
-               'value': value})
-    return out
+_create_op_func_('fill_constant_batch_size_like')
 
 
 def cast(x, data_type, main_program=None):
@@ -456,7 +439,7 @@ def sums(input, main_program=None, startup_program=None):
     return out
 
 
-def assign(input, output, main_program=None):
+def assign(input, output, main_program=None, startup_program=None):
     helper = LayerHelper('assign', **locals())
     helper.append_op(
         type='scale',
@@ -468,7 +451,7 @@ def assign(input, output, main_program=None):
 
 def split_lod_tensor(input,
                      mask,
-                     level,
+                     level=0,
                      main_program=None,
                      startup_program=None):
     helper = LayerHelper('split_lod_tensor', **locals())
@@ -490,7 +473,7 @@ def merge_lod_tensor(in_true,
                      in_false,
                      x,
                      mask,
-                     level,
+                     level=0,
                      main_program=None,
                      startup_program=None):
     helper = LayerHelper('merge_lod_tensor', **locals())
@@ -1288,7 +1271,7 @@ def array_to_lod_tensor(x, table, main_program=None):
     return tmp
 
 
-def fill_constant(shape, dtype, value, main_program=None):
+def fill_constant(shape, dtype, value, main_program=None, startup_program=None):
     """
     This function creates a tensor , with shape as mentioned in the input and
     specified data_type and fills this up with a constant value that
@@ -1371,7 +1354,7 @@ def create_array(dtype, main_program=None):
         dtype=dtype)
 
 
-def less_than(x, y, cond=None, main_program=None):
+def less_than(x, y, cond=None, main_program=None, **ignored):
     helper = LayerHelper("less_than", **locals())
     if cond is None:
         cond = helper.create_tmp_variable(dtype='bool')
@@ -1449,13 +1432,20 @@ class ConditionalBlockGuard(BlockGuard):
 
 
 class ConditionalBlock(object):
-    def __init__(self, inputs, name=None, main_program=None):
+    def __init__(self,
+                 inputs,
+                 name=None,
+                 main_program=None,
+                 startup_program=None):
         for each_input in inputs:
             if not isinstance(each_input, Variable):
                 raise TypeError("Each input should be variable")
         self.inputs = inputs
         self.helper = LayerHelper(
-            'conditional_block', name=name, main_program=main_program)
+            'conditional_block',
+            name=name,
+            main_program=main_program,
+            startup_program=startup_program)
 
     def block(self):
         return ConditionalBlockGuard(self)
