@@ -254,7 +254,7 @@ def main():
         place = core.CPUPlace()
 
     exe = Executor(place)
-    exe.run(startup_program, feed={}, fetch_list=[])
+    exe.run(startup_program)
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
