@@ -225,7 +225,7 @@ train_reader = paddle.batch(
 place = core.CPUPlace()
 exe = Executor(place)
 
-exe.run(g_startup_program, feed={}, fetch_list=[])
+exe.run(g_startup_program)
 
 for pass_id in range(PASS_NUM):
     batch_id = 0
