@@ -12,14 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#define EIGEN_USE_GPU
-
-#include "paddle/operators/sub_sequence_op.h"
+#include "paddle/operators/sequence_slice_op.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
-    sub_sequence,
-    ops::SubSequenceOpKernel<paddle::platform::GPUPlace, float>);
+    sequence_slice,
+    ops::SequenceSliceOpKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
-    sub_sequence_grad,
-    ops::SubSequenceGradOpKernel<paddle::platform::GPUPlace, float>);
+    sequence_slice_grad,
+    ops::SequenceSliceGradOpKernel<paddle::platform::GPUPlace, float>);
