@@ -94,14 +94,14 @@ class CompareOp : public framework::OperatorWithKernel {
 
 REGISTER_LOGICAL_OP(less_than, "Out = X < Y");
 REGISTER_LOGICAL_KERNEL(less_than, CPU, paddle::operators::LessThanFunctor);
-REGISTER_LOGICAL_OP(less_than_equal, "Out = X <= Y");
-REGISTER_LOGICAL_KERNEL(less_than_equal, CPU,
+REGISTER_LOGICAL_OP(less_equal, "Out = X <= Y");
+REGISTER_LOGICAL_KERNEL(less_equal, CPU,
                         paddle::operators::LessThanEqualFunctor);
 REGISTER_LOGICAL_OP(greater_than, "Out = X > Y");
 REGISTER_LOGICAL_KERNEL(greater_than, CPU,
                         paddle::operators::GreaterThanFunctor);
-REGISTER_LOGICAL_OP(greater_than_equal, "Out = X >= Y");
-REGISTER_LOGICAL_KERNEL(greater_than_equal, CPU,
+REGISTER_LOGICAL_OP(greater_equal, "Out = X >= Y");
+REGISTER_LOGICAL_KERNEL(greater_equal, CPU,
                         paddle::operators::GreaterThanEqualFunctor);
 REGISTER_LOGICAL_OP(equal, "Out = X == Y");
 REGISTER_LOGICAL_KERNEL(equal, CPU, paddle::operators::EqualFunctor);
