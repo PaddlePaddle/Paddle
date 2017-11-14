@@ -19,9 +19,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename T>
 using EigenArrayMap =

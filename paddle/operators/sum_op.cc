@@ -99,11 +99,12 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
 
     bool any_input_is_lod_tensor = std::any_of(
         inputs.begin(), inputs.end(), [block](const std::string& name) {
-          return block->Var(name)->GetType() == framework::VarDesc::LOD_TENSOR;
+          return block->FindRecursiveOrCreateVar(name)->GetType() ==
+                 framework::VarDesc::LOD_TENSOR;
         });
 
     auto is_tensor_array = [block](const std::string& name) {
-      return block->Var(name)->GetType() ==
+      return block->FindRecursiveOrCreateVar(name)->GetType() ==
              framework::VarDesc::LOD_TENSOR_ARRAY;
     };
 
@@ -120,7 +121,7 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
     }
 
     auto out_var_name = op_desc.Output("Out").front();
-    block->Var(out_var_name)->SetType(var_type);
+    block->FindRecursiveOrCreateVar(out_var_name)->SetType(var_type);
   }
 };
 

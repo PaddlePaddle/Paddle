@@ -29,7 +29,7 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
 
   auto in_x_dims = ctx->GetInputDim("X");
 
-  std::string pooling_type = ctx->Attrs().Get<std::string>("poolingType");
+  std::string pooling_type = ctx->Attrs().Get<std::string>("pooling_type");
   std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
@@ -37,7 +37,7 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
   PADDLE_ENFORCE(in_x_dims.size() == 4 || in_x_dims.size() == 5,
                  "Pooling intput should be 4-D or 5-D tensor.");
 
-  if (ctx->Attrs().Get<bool>("globalPooling")) {
+  if (ctx->Attrs().Get<bool>("global_pooling")) {
     ksize.resize(static_cast<size_t>(in_x_dims.size()) - 2);
     for (size_t i = 0; i < ksize.size(); ++i) {
       paddings[i] = 0;
@@ -83,20 +83,20 @@ Pool2dOpMaker::Pool2dOpMaker(framework::OpProto *proto,
             "H is the height of the feature, "
             "and W is the width of the feature.");
 
-  AddAttr<std::string>("poolingType",
+  AddAttr<std::string>("pooling_type",
                        "(string), pooling type, can be \"max\" for max-pooling "
                        "and \"avg\" for average-pooling.")
       .InEnum({"max", "avg"});
   AddAttr<std::vector<int>>("ksize",
                             "(vector<int>) The pooling window "
                             "size(height, width) of the pooling operator. "
-                            "If globalPooling = true, ksize and paddings will "
+                            "If global_pooling = true, ksize and paddings will "
                             "be ignored.");  // TODO(Chengduo): Add checker.
                                              // (Currently,
   // TypedAttrChecker don't support vector type.)
-  AddAttr<bool>("globalPooling",
+  AddAttr<bool>("global_pooling",
                 "(bool, default false) Whether to use the global pooling. "
-                "If globalPooling = true, ksize and paddings will be ignored.")
+                "If global_pooling = true, ksize and paddings will be ignored.")
       .SetDefault(false);
   AddAttr<std::vector<int>>("strides",
                             "(vector<int>, default {1, 1}), strides(height, "
@@ -107,7 +107,7 @@ Pool2dOpMaker::Pool2dOpMaker(framework::OpProto *proto,
       "paddings",
       "(vector<int>, defalut {0,0}), paddings(height, width) of pooling "
       "operator."
-      "If globalPooling = true, paddings and ksize will be ignored.")
+      "If global_pooling = true, paddings and ksize will be ignored.")
       .SetDefault({0, 0});  // TODO(Chengduo): Add checker. (Currently,
   // TypedAttrChecker don't support vector type.)
 
@@ -115,7 +115,7 @@ Pool2dOpMaker::Pool2dOpMaker(framework::OpProto *proto,
 Pool2d Operator.
 
 The pooling2d operation calculates the output based on
-the input, poolingType and ksize, strides, paddings parameters.
+the input, pooling_type and ksize, strides, paddings parameters.
 Input(X) and output(Out) are in NCHW format, where N is batch size, C is the
 number of channels, H is the height of the feature, and W is the width of the feature.
 Parameters(ksize, strides, paddings) are two elements.
@@ -152,7 +152,7 @@ Pool3dOpMaker::Pool3dOpMaker(framework::OpProto *proto,
             "the number of channels, and D, H and W is the depth, height and "
             "width of the feature, respectively.");
 
-  AddAttr<std::string>("poolingType",
+  AddAttr<std::string>("pooling_type",
                        "(string) Pooling type, can be \"max\" for max-pooling "
                        "and \"avg\" for average-pooling.")
       .InEnum({"max", "avg"});
@@ -160,13 +160,14 @@ Pool3dOpMaker::Pool3dOpMaker(framework::OpProto *proto,
       "ksize",
       "(vector<int>) The pooling window size(depth, height, "
       "width) of pooling operator. "
-      "If globalPooling = true, ksize and paddings will "
+      "If global_pooling = true, ksize and paddings will "
       "be ignored.");  // TODO(Chengduo): Add checker.
                        // (Currently,
   // TypedAttrChecker don't support vector type.)
-  AddAttr<bool>("globalPooling",
-                "(bool, default false) Whether to use the global pooling. "
-                "If globalPooling = true, ksize and paddings wille be ignored.")
+  AddAttr<bool>(
+      "global_pooling",
+      "(bool, default false) Whether to use the global pooling. "
+      "If global_pooling = true, ksize and paddings wille be ignored.")
       .SetDefault(false);
   AddAttr<std::vector<int>>(
       "strides",
@@ -178,7 +179,7 @@ Pool3dOpMaker::Pool3dOpMaker(framework::OpProto *proto,
       "paddings",
       "(vector<int>, defalut {0,0,0}), paddings(depth, height, "
       "width) of pooling operator. "
-      "If globalPooling = true, ksize and paddings will be ignored.")
+      "If global_pooling = true, ksize and paddings will be ignored.")
       .SetDefault({0, 0, 0});  // TODO(Chengduo): Add checker. (Currently,
                                // TypedAttrChecker don't support vector type.)
 
@@ -186,7 +187,7 @@ Pool3dOpMaker::Pool3dOpMaker(framework::OpProto *proto,
 Pool3d Operator.
 
 The pooling3d operation calculates the output based on
-the input, poolingType, ksize, strides, and paddings parameters.
+the input, pooling_type, ksize, strides, and paddings parameters.
 Input(X) and output(Out) are in NCDHW format, where N is batch
 size, C is the number of channels, and D, H and W are the depth, height and
 width of the feature, respectively. Parameters(ksize, strides, paddings) 

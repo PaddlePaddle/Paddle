@@ -37,7 +37,7 @@ class TestMomentumOp1(OpTest):
 
 
 class TestMomentumOp2(OpTest):
-    '''Test Momentum with defaukt values for attributes
+    '''Test Momentum with default values for attributes
     '''
 
     def setUp(self):
@@ -57,7 +57,7 @@ class TestMomentumOp2(OpTest):
             'LearningRate': learning_rate
         }
 
-        self.attrs = {'mu': mu, 'useNesterov': use_nesterov}
+        self.attrs = {'mu': mu, 'use_nesterov': use_nesterov}
 
         velocity_out = mu * velocity + grad
         if use_nesterov:
