@@ -1514,3 +1514,58 @@ class ConditionalBlock(object):
             outputs={'Out': out_list,
                      'Scope': [step_scope]},
             attrs={'block': inside_block})
+
+
+class IfElse(object):
+    BEFORE_IF_ELSE_BLOCKS = 0
+    IN_IF_ELSE_TRUE_BLOCKS = 1
+    AFTER_IF_ELSE_BLOCKS = 2
+    IN_IF_ELSE_FALSE_BLOCKS = 3
+
+    def __init__(self, cond, name=None, main_program=None,
+                 startup_program=None):
+        if not isinstance(cond, Variable):
+            raise TypeError("cond must be a Variable")
+        self.helper = LayerHelper(
+            'ifelse',
+            name=name,
+            main_program=main_program,
+            startup_program=startup_program)
+        self.cond = cond
+        self.input_table = {}
+        self.status = IfElse.BEFORE_IF_ELSE_BLOCKS
+
+    def input(self, x, level=0):
+        if self.status not in (IfElse.IN_IF_ELSE_TRUE_BLOCKS,
+                               IfElse.IN_IF_ELSE_FALSE_BLOCKS):
+            raise Exception("input must in true/false blocks")
+        if id(x) not in self.input_table:
+            parent_block = self.parent_block()
+            out_true = parent_block.create_var(
+                name=unique_name('ifelse_input' + self.helper.name),
+                dtype=x.data_type)
+
+            out_false = parent_block.create_var(
+                name=unique_name('ifelse_input' + self.helper.name),
+                dtype=x.data_type)
+            parent_block.append_op(
+                type='split_lod_tensor',
+                inputs={
+                    'X': x,
+                    'Mask': self.cond,
+                },
+                outputs={'OutTrue': out_true,
+                         'OutFalse': out_false},
+                attrs={'level': level})
+            self.input_table[id(x)] = (out_true, out_false)
+        else:
+            out_true, out_false = self.input_table[id(x)]
+
+        if self.status == IfElse.IN_IF_ELSE_TRUE_BLOCKS:
+            return out_true
+        else:
+            return out_false
+
+    def parent_block(self):
+        current_block = self.helper.main_program.current_block()
+        return self.helper.main_program.block(current_block.parent_idx)
