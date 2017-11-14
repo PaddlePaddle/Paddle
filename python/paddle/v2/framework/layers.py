@@ -476,7 +476,7 @@ def merge_lod_tensor(in_true,
                      main_program=None,
                      startup_program=None):
     helper = LayerHelper('merge_lod_tensor', **locals())
-    out = helper.create_tmp_variable(dtype=x.data_type)
+    out = helper.create_tmp_variable(dtype=in_true.data_type)
     helper.append_op(
         type='merge_lod_tensor',
         inputs={'X': x,
@@ -1544,7 +1544,7 @@ class IfElseBlockGuard(object):
         if not self.cond_block.__exit__(exc_type, exc_val, exc_tb):
             # re-raise inside exception
             return False
-        if len(self.ie.outupt_table[1 if self.is_true else 0]) == 0:
+        if len(self.ie.output_table[1 if self.is_true else 0]) == 0:
             raise ValueError("Must set output inside block")
         self.ie.status = IfElse.OUT_IF_ELSE_BLOCKS
 
@@ -1655,5 +1655,7 @@ class IfElse(object):
                     in_false=false_var,
                     mask=self.cond,
                     x=self.cond,
-                    level=0))
+                    level=0,
+                    main_program=self.helper.main_program,
+                    startup_program=self.helper.startup_program))
         return rlist
