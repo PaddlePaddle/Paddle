@@ -27,8 +27,30 @@ inline VarDesc::VarType ToVarType(std::type_index type) {
     return VarDesc_VarType_LOD_RANK_TABLE;
   } else if (type.hash_code() == typeid(LoDTensorArray).hash_code()) {
     return VarDesc_VarType_LOD_TENSOR_ARRAY;
+  } else if (type.hash_code() == typeid(SelectedRows).hash_code()) {
+    return VarDesc_VarType_SELECTED_ROWS;
   } else {
     PADDLE_THROW("ToVarType:Unsupported type %s", type.name());
+  }
+}
+
+template <typename Visitor>
+inline void VisitVarType(const Variable& var, Visitor visitor) {
+  switch (ToVarType(var.Type())) {
+    case VarDesc_VarType_LOD_TENSOR:
+      visitor(var.Get<framework::LoDTensor>());
+      return;
+    case VarDesc_VarType_LOD_RANK_TABLE:
+      visitor(var.Get<LoDRankTable>());
+      return;
+    case VarDesc_VarType_LOD_TENSOR_ARRAY:
+      visitor(var.Get<LoDTensorArray>());
+      return;
+    case VarDesc_VarType_SELECTED_ROWS:
+      visitor(var.Get<SelectedRows>());
+      return;
+    default:
+      PADDLE_THROW("Not supported visit type, %d", ToVarType(var.Type()));
   }
 }
 
