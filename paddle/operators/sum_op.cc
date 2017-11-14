@@ -12,6 +12,7 @@ limitations under the License. */
 #include "paddle/operators/sum_op.h"
 #include <vector>
 #include "paddle/framework/var_type_inference.h"
+#include "paddle/operators/detail/safe_ref.h"
 #include "paddle/operators/net_op.h"
 
 namespace paddle {
@@ -104,7 +105,7 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
         });
 
     auto is_tensor_array = [block](const std::string& name) {
-      return block->FindRecursiveOrCreateVar(name)->GetType() ==
+      return detail::Ref(block->FindRecursiveOrCreateVar(name)).GetType() ==
              framework::VarDesc::LOD_TENSOR_ARRAY;
     };
 
@@ -114,14 +115,26 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
         std::all_of(inputs.begin(), inputs.end(), is_tensor_array);
 
     if (any_input_is_tensor_array) {
-      PADDLE_ENFORCE(all_inputs_are_tensor_array);
+      if (!all_inputs_are_tensor_array) {
+        std::ostringstream os;
+        for (auto& each : inputs) {
+          os << "    " << each << " type is "
+             << detail::Ref(block->FindRecursiveOrCreateVar(each)).GetType()
+             << "\n";
+        }
+        PADDLE_ENFORCE(all_inputs_are_tensor_array,
+                       "Not all inputs are tensor array:\n%s", os.str());
+      }
       var_type = framework::VarDesc::LOD_TENSOR_ARRAY;
     } else if (any_input_is_lod_tensor) {
       var_type = framework::VarDesc::LOD_TENSOR;
     }
 
     auto out_var_name = op_desc.Output("Out").front();
-    block->FindRecursiveOrCreateVar(out_var_name)->SetType(var_type);
+    auto& out_var = detail::Ref(block->FindRecursiveOrCreateVar(out_var_name));
+    out_var.SetType(var_type);
+    auto& in_var = detail::Ref(block->FindVarRecursive(inputs.front()));
+    out_var.SetDataType(in_var.GetDataType());
   }
 };
 
