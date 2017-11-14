@@ -74,37 +74,6 @@ template class LoDTensor2BatchFunctor<platform::GPUPlace, double>;
 template class Batch2LoDTensorFunctor<platform::GPUPlace, float>;
 template class Batch2LoDTensorFunctor<platform::GPUPlace, double>;
 
-template <typename T>
-__global__ void RowwiseAddKernel(const T* src, const T* b, T* dst,
-                                 int64_t height, int64_t width) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < height * width;
-       i += blockDim.x * gridDim.x) {
-    int64_t h = i / width;
-    int64_t w = i % width;
-    dst[h * width + w] = src[h * width + w] + b[w];
-  }
-}
-
-template <typename T>
-struct RowwiseAdd<platform::GPUPlace, T> {
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, const framework::Tensor& bias,
-                  framework::Tensor* output) {
-    auto in_dims = input.dims();
-    auto size = input.numel() / in_dims[0];
-    PADDLE_ENFORCE_EQ(bias.numel(), size);
-    PADDLE_ENFORCE_EQ(output->dims(), in_dims);
-    int block = 512;
-    int grid = (input.numel() + block - 1) / block;
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(context).stream();
-    RowwiseAddKernel<T><<<grid, block, 0, stream>>>(
-        input.data<T>(), bias.data<T>(), output->data<T>(), in_dims[0], size);
-  }
-};
-
-template struct RowwiseAdd<platform::GPUPlace, float>;
-template struct RowwiseAdd<platform::GPUPlace, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

@@ -164,13 +164,6 @@ class Batch2LoDTensorFunctor {
   }
 };
 
-template <typename Place, typename T>
-struct RowwiseAdd {
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, const framework::Tensor& bias,
-                  framework::Tensor* output);
-};
-
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

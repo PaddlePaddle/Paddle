@@ -341,16 +341,11 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     }
     if (bias && bias_g) {
       /* backward bias */
-      int m = static_cast<int>(batch_gate_g.dims()[0]);
-      int n = static_cast<int>(batch_gate_g.dims()[1]);
-
-      Tensor ones;
-      ones.mutable_data<T>({m}, ctx.GetPlace());
-      math::SetConstant<Place, T> set;
-      set(device_ctx, &ones, static_cast<T>(1.0));
-
-      math::gemv<Place, T>(device_ctx, true, m, n, 1., batch_gate_g.data<T>(),
-                           ones.data<T>(), 0., bias_g->data<T>());
+      Tensor b_g = *bias_g;
+      b_g.Resize({bias_g->numel(), 1});
+      Tensor gate_bias_g = b_g.Slice(0, 4 * frame_size);
+      math::ColwiseSum<Place, T> col_sum;
+      col_sum(device_ctx, batch_gate_g, &gate_bias_g);
     }
 
     if (h0 && h0_g) {
