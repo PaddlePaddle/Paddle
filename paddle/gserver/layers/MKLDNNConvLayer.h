@@ -92,7 +92,7 @@ public:
   void printSizeInfo() override {
     MKLDNNLayer::printSizeInfo();
     VLOG(MKLDNN_SIZES) << getName() << ": fh: " << fh_ << ", fw: " << fw_
-                       << ": ph: " << ph_ << ", pw: " << pw_ << ", sh: " << sh_
+                       << ", ph: " << ph_ << ", pw: " << pw_ << ", sh: " << sh_
                        << ", sw: " << sw_ << ", dh: " << dh_ << ", dw: " << dw_;
   }
 
