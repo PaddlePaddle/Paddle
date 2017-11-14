@@ -861,7 +861,8 @@ public:
 
   /**
    * Pooling forward operation, pick out the largest element
-   * in the sizeX of value
+   * in the sizeX of value, if the maskMatP is not NULL, it will
+   * also caculate the location indices.
    */
   virtual void maxPoolForward(Matrix& inputMat,
                               size_t imgSizeH,
@@ -874,7 +875,8 @@ public:
                               size_t outputH,
                               size_t outputW,
                               size_t paddingH,
-                              size_t paddingW) {
+                              size_t paddingW,
+                              MatrixPtr maskMatP = NULL) {
     LOG(FATAL) << "Not implemeted";
   }
 
@@ -1426,7 +1428,8 @@ public:
                       size_t outputH,
                       size_t outputW,
                       size_t paddingH,
-                      size_t paddingW);
+                      size_t paddingW,
+                      MatrixPtr maskMatP);
 
   void maxPoolBackward(Matrix& image,
                        size_t imgSizeH,
@@ -1697,7 +1700,8 @@ public:
                       size_t outputH,
                       size_t outputW,
                       size_t paddingH,
-                      size_t paddingW);
+                      size_t paddingW,
+                      MatrixPtr maskMatP);
 
   void maxPoolBackward(Matrix& image,
                        size_t imgSizeH,

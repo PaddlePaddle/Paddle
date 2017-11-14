@@ -1234,6 +1234,7 @@ void testPoolLayer2(const string& poolType, bool trans, bool useGpu) {
 TEST(Layer, PoolLayer) {
   testPoolLayer("avg-projection", /* trans= */ false, /* useGpu= */ false);
   testPoolLayer("max-projection", /* trans= */ false, /* useGpu= */ false);
+  testPoolLayer("max-pool-with-mask", /* trans= */ false, /* useGpu= */ false);
 
 #ifdef PADDLE_WITH_CUDA
   testPoolLayer("avg-projection", /* trans= */ false, /* useGpu= */ true);
@@ -1242,6 +1243,7 @@ TEST(Layer, PoolLayer) {
   testPoolLayer("cudnn-avg-pool", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer2("cudnn-max-pool", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer2("cudnn-avg-pool", /* trans= */ false, /* useGpu= */ true);
+  testPoolLayer("max-pool-with-mask", /* trans= */ false, /* useGpu= */ true);
 #endif
 }
 
