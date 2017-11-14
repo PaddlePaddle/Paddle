@@ -236,6 +236,15 @@ public:
               const unsigned int* cols,
               const real* values);
 
+  /**
+   * @brief this_row = b_row * c_row[cCol]
+   *
+   * @param[in]  cCol   the column of matrix c used to scale each row of b
+   * @param[in]  b      CpuSparseMatrix
+   * @param[in]  c      Matrix
+   */
+  void rowScale(size_t cCol, CpuSparseMatrix& b, Matrix& c);
+
   void randomizeUniform();
 
   void copyFrom(const GpuSparseMatrix& src, hl_stream_t stream);
