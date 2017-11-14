@@ -61,13 +61,16 @@ class SumOp : public framework::OperatorWithKernel {
               x_vars[0]->Get<framework::SelectedRows>().value().type()),
           ctx.device_context());
     } else if (x_vars[0]->IsType<framework::LoDTensorArray>()) {
-      auto& array = x_vars[0]->Get<framework::LoDTensorArray>();
-      for (auto& each : array) {
-        if (each.numel() != 0) {
-          return framework::OpKernelType(framework::ToDataType(each.type()),
-                                         ctx.device_context());
+      for (auto& x_var : x_vars) {
+        auto& array = x_var->Get<framework::LoDTensorArray>();
+        for (auto& each : array) {
+          if (each.numel() != 0) {
+            return framework::OpKernelType(framework::ToDataType(each.type()),
+                                           ctx.device_context());
+          }
         }
       }
+      PADDLE_THROW("Cannot find the input data type by all input data");
     }
     PADDLE_THROW("Unexpected branch. Input type is %s",
                  x_vars[0]->Type().name());
