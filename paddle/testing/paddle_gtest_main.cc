@@ -12,27 +12,24 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <cstring>
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/memory/memory.h"
 
 int main(int argc, char** argv) {
-  std::vector<const char*> new_argv;
+  std::vector<char*> new_argv;
   std::string gflags_env;
   new_argv.push_back(argv[0]);
 #ifdef PADDLE_WITH_CUDA
   new_argv.push_back(
-      "--tryfromenv=fraction_of_gpu_memory_to_use,use_pinned_memory");
+      strdup("--tryfromenv=fraction_of_gpu_memory_to_use,use_pinned_memory"));
 #else
-  new_argv.push_back("--tryfromenv=use_pinned_memory");
+  new_argv.push_back(strdup("--tryfromenv=use_pinned_memory"));
 #endif
-  int new_argc = 2;
-  char** new_argv_address = const_cast<char**>(new_argv.data());
-  google::ParseCommandLineFlags(&new_argc, &new_argv_address, true);
+  int new_argc = static_cast<int>(new_argv.size());
+  char** new_argv_address = new_argv.data();
+  google::ParseCommandLineFlags(&new_argc, &new_argv_address, false);
   testing::InitGoogleTest(&argc, argv);
-  paddle::memory::Used(paddle::platform::CPUPlace());
-#ifdef PADDLE_WITH_CUDA
-  paddle::memory::Used(paddle::platform::GPUPlace(0));
-#endif
   return RUN_ALL_TESTS();
 }
