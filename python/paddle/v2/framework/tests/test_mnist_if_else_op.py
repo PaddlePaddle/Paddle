@@ -1,6 +1,7 @@
 import paddle.v2.framework.layers as layers
 from paddle.v2.framework.framework import Program
 from paddle.v2.framework.executor import Executor
+from paddle.v2.framework.optimizer import MomentumOptimizer
 import paddle.v2.framework.core as core
 import paddle.v2 as paddle
 import unittest
@@ -52,6 +53,9 @@ class TestMNISTIfElseOp(unittest.TestCase):
         loss = layers.cross_entropy(input=prob, label=label, **kwargs)
         avg_loss = layers.mean(x=loss, **kwargs)
 
+        optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
+        optimizer.minimize(avg_loss, kwargs['startup_program'])
+
         train_reader = paddle.batch(
             paddle.reader.shuffle(
                 paddle.dataset.mnist.train(), buf_size=8192),
@@ -61,24 +65,28 @@ class TestMNISTIfElseOp(unittest.TestCase):
         exe = Executor(place)
 
         exe.run(kwargs['startup_program'])
+        PASS_NUM = 100
+        for pass_id in range(PASS_NUM):
+            for data in train_reader():
+                x_data = np.array(map(lambda x: x[0], data)).astype("float32")
+                y_data = np.array(map(lambda x: x[1], data)).astype("int64")
+                y_data = np.expand_dims(y_data, axis=1)
 
-        data = next(train_reader())
-        x_data = np.array(map(lambda x: x[0], data)).astype("float32")
-        y_data = np.array(map(lambda x: x[1], data)).astype("int64")
-        y_data = np.expand_dims(y_data, axis=1)
+                tensor_x = core.LoDTensor()
+                tensor_x.set(x_data, place)
 
-        tensor_x = core.LoDTensor()
-        tensor_x.set(x_data, place)
+                tensor_y = core.LoDTensor()
+                tensor_y.set(y_data, place)
 
-        tensor_y = core.LoDTensor()
-        tensor_y.set(y_data, place)
-
-        outs = map(np.array,
-                   exe.run(kwargs['main_program'],
-                           feed={'x': tensor_x,
-                                 'y': tensor_y},
-                           fetch_list=[avg_loss]))
-        print outs[0]
+                outs = map(np.array,
+                           exe.run(kwargs['main_program'],
+                                   feed={'x': tensor_x,
+                                         'y': tensor_y},
+                                   fetch_list=[avg_loss]))
+                print outs[0]
+                if outs[0] < 1.0:
+                    return
+        self.assertFalse(True)
 
 
 if __name__ == '__main__':
