@@ -95,3 +95,15 @@ add_test(NAME test_PyDataProvider2
    COMMAND .set_python_path.sh -d ${PADDLE_SOURCE_DIR}/paddle/gserver/tests:${PADDLE_SOURCE_DIR}/python ${CMAKE_CURRENT_BINARY_DIR}/test_PyDataProvider2
         WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle
 )
+
+################# test_CompareSparse ##################
+add_unittest_without_exec(test_CompareSparse
+    test_CompareSparse.cpp)
+if(NOT ON_TRAVIS)
+  add_test(NAME test_CompareSparse
+    COMMAND ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d
+          ${PADDLE_SOURCE_DIR}/python:${PADDLE_SOURCE_DIR}/paddle/gserver/tests
+              ./.set_port.sh -p port -n 6
+                  ${CMAKE_CURRENT_BINARY_DIR}/test_CompareSparse
+    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
+endif()

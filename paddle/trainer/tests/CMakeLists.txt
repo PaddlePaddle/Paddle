@@ -47,16 +47,6 @@ add_test(NAME test_CompareTwoOpts
             --num_passes=1 --need_high_accuracy=0
     WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
 
-################# test_CompareSparse ##################
-add_unittest_without_exec(test_CompareSparse
-    test_CompareSparse.cpp)
-if(NOT ON_TRAVIS)
-  add_test(NAME test_CompareSparse
-    COMMAND ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d ${PADDLE_SOURCE_DIR}/python/
-              ./.set_port.sh -p port -n 6
-                  ${CMAKE_CURRENT_BINARY_DIR}/test_CompareSparse
-    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
-endif()
 ################# test_recurrent_machine_generation ###############
 add_unittest_without_exec(test_recurrent_machine_generation
     test_recurrent_machine_generation.cpp)
