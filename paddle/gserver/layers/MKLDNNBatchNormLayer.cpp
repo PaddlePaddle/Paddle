@@ -125,7 +125,6 @@ void MKLDNNBatchNormLayer::reshape(
       << "Input channel can not be changed";
   reshapeOutput(oh, ow);
   resizeOutput(bs, oc * oh * ow);
-  printSizeInfo();
 }
 
 void MKLDNNBatchNormLayer::resetFwd(std::vector<primitive>& pipeline,
