@@ -78,7 +78,7 @@ train_reader = paddle.batch(
 place = core.CPUPlace()
 exe = Executor(place)
 
-exe.run(startup_program, feed={}, fetch_list=[])
+exe.run(startup_program)
 
 PASS_NUM = 100
 for pass_id in range(PASS_NUM):
