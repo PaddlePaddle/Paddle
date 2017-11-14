@@ -3,7 +3,6 @@ import paddle.v2.framework.layers as layers
 from paddle.v2.framework.executor import Executor
 import paddle.v2.framework.core as core
 from paddle.v2.framework.backward import append_backward_ops
-from paddle.v2.framework.framework import g_main_program, g_startup_program
 import numpy
 
 
@@ -44,26 +43,10 @@ class TestWhileOp(unittest.TestCase):
             layers.array_write(result, i=i, array=mem_array)
             layers.less_than(x=i, y=array_len, cond=cond)
 
-        # i = layers.zeros(shape=[1], dtype='int64')
-        # m_0 = layers.array_read(array=mem_array, i=i)
-        # i = layers.increment(i)
-        # m_1 = layers.array_read(array=mem_array, i=i)
-        # i = layers.increment(i)
-        # m_2 = layers.array_read(array=mem_array, i=i)
-        # i = layers.increment(i)
-        # m_3 = layers.array_read(array=mem_array, i=i)
-        # sum_result = layers.sums(input=[m_0, m_1, m_2, m_3])
-        # loss = layers.mean(x=sum_result)
-
         sum_result = layers.array_read(array=mem_array, i=i)
         loss = layers.mean(x=sum_result)
 
         append_backward_ops(loss)
-        # import paddle.v2.framework.net_drawer as drawer
-        # print drawer.draw_graph(g_startup_program, g_main_program)
-        # exit(0)
-        # print g_main_program
-        # print "-" * 10
 
         cpu = core.CPUPlace()
         exe = Executor(cpu)

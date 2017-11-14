@@ -192,47 +192,11 @@ class WhileGradOp : public framework::OperatorBase {
 
         // sum gradient
         auto new_inside_name = cur_scope.Rename(inside_grad_name);
-        LOG(INFO) << new_inside_name << " ";
-        LOG(INFO) << cur_scope.FindVar(new_inside_name)->Type().name();
-        LOG(INFO) << pg_names[param_id] << " ";
-        LOG(INFO) << cur_scope.FindVar(pg_names[param_id])->Type().name();
-        PADDLE_ENFORCE(cur_scope.FindVar(new_inside_name)
-                           ->IsType<framework::LoDTensorArray>());
-        PADDLE_ENFORCE(cur_scope.FindVar(pg_names[param_id])
-                           ->IsType<framework::LoDTensorArray>());
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {pg_names[param_id], new_inside_name}}},
             {{"Out", {pg_names[param_id]}}}, {});
         sum_op->Run(cur_scope, dev_ctx);
         cur_scope.Rename(new_inside_name, inside_grad_name);
-
-        //        // sum gradient
-        //        auto outside_var_name = pg_names[param_id];
-        //        auto *outside_var = scope.FindVar(outside_var_name);
-        //        PADDLE_ENFORCE_NOT_NULL(outside_var,
-        //                                "Can not find var %s",
-        //                                outside_var_name);
-        //        if (outside_var->IsType<framework::LoDTensorArray>()) {
-        //        } else {
-        //          PADDLE_THROW("Not Implement var type %s",
-        //          outside_var->Type());
-        //        }
-        //        auto &outside_tensor =
-        //              *outside_var->GetMutable<framework::LoDTensor>();
-        //
-        //        std::string result_var_name;
-        //        auto *local_result_var =
-        //        (*cur_scope_iter)->Var(&result_var_name);
-        //        auto &local_result_tensor =
-        //            *local_result_var->GetMutable<framework::LoDTensor>();
-        //        LOG(INFO) << "---------------";
-        //        local_result_tensor.ShareDataWith(outside_tensor);
-        //        LOG(INFO) << "---------------";
-        //
-        //        auto sum_op = framework::OpRegistry::CreateOp(
-        //            "sum", {{"X", {result_var_name, inside_grad_name}}},
-        //            {{"Out", {result_var_name}}}, {});
-        //        sum_op->Run(**cur_scope_iter, dev_ctx);
       }
     }
   }

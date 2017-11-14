@@ -102,8 +102,8 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
     auto var_type = framework::VarDesc::SELECTED_ROWS;
 
     for (auto& name : op_desc.Input("X")) {
-      LOG(INFO) << name << " "
-                << block->FindRecursiveOrCreateVar(name)->GetType();
+      VLOG(10) << name << " "
+               << block->FindRecursiveOrCreateVar(name)->GetType();
     }
 
     bool any_input_is_lod_tensor = std::any_of(

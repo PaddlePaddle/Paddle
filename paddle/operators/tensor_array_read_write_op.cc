@@ -72,9 +72,7 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
                       "The number of element of subscript index must be 1");
     PADDLE_ENFORCE(context->HasInput("X"), NotHasXError());
     PADDLE_ENFORCE(context->HasOutput("Out"), NotHasOutError());
-    VLOG(10) << "---------------------";
     context->SetOutputDim("Out", context->GetInputDim("X"));
-    VLOG(10) << "---------------------";
   }
 
  protected:
