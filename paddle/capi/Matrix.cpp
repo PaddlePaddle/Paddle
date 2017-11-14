@@ -54,6 +54,46 @@ paddle_error paddle_matrix_set_row(paddle_matrix mat,
   return kPD_NO_ERROR;
 }
 
+PD_API paddle_error paddle_matrix_set_value(paddle_matrix mat,
+                                          paddle_real* value) {
+  if (mat == nullptr || value == nullptr) return kPD_NULLPTR;
+  auto ptr = cast(mat);
+  if (ptr->mat == nullptr) return kPD_NULLPTR;
+  paddle::real* buf = ptr->mat->getRowBuf(0);
+  size_t width = ptr->mat->getWidth();
+  size_t height = ptr->mat->getHeight();
+  if (ptr->mat->useGpu()) {
+#ifdef PADDLE_WITH_CUDA
+    hl_memcpy(buf, value, sizeof(paddle::real) * width * height);
+#else
+    return kPD_NOT_SUPPORTED;
+#endif
+  } else {
+    std::copy(value, value + width * height, buf);
+  }
+  return kPD_NO_ERROR;
+}
+
+PD_API paddle_error paddle_matrix_get_value(paddle_matrix mat,
+                                          paddle_real* result) {
+  if (mat == nullptr || result == nullptr) return kPD_NULLPTR;
+  auto ptr = cast(mat);
+  if (ptr->mat == nullptr) return kPD_NULLPTR;
+  paddle::real* buf = ptr->mat->getRowBuf(0);
+  size_t width = ptr->mat->getWidth();
+  size_t height = ptr->mat->getHeight();
+  if (ptr->mat->useGpu()) {
+#ifdef PADDLE_WITH_CUDA
+    hl_memcpy(result, buf, width * height * sizeof(paddle::real));
+#else
+    return kPD_NOT_SUPPORTED;
+#endif
+  } else {
+    std::copy(buf, buf + width * height, result);
+  }
+  return kPD_NO_ERROR;
+}
+
 paddle_error paddle_matrix_get_row(paddle_matrix mat,
                                    uint64_t rowID,
                                    paddle_real** rawRowBuffer) {
