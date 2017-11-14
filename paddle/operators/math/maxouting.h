@@ -48,20 +48,6 @@ class MaxOutGrad {
 };
 
 
-/*
- * \brief Getting pooling results, and calculating gradient.
- *
- * In pool2d, all tensors are in NCHW format. Where N is batch size, C is the
- * number of channels, H and W is the height and width of feature.
- * In pool3d, all tensors are in NCDHW format. Where N is batch size, C is the
- * number of channels, D, H and W is the depth, height and width of feature.
- *
- * In max pooling, it is possible that the pooling region has multiple maximum
- * elements. In this case, we should compute the gradient of the first maximum
- * element.
- * This is different from average pooling. So we rewrite the max_pool_grad:
- * MaxPool2dGradFunctor, MaxPool3dGradFunctor.
- */
 template <typename Place, typename MaxOutProcess, typename T>
 
 class MaxOutFunctor {
