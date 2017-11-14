@@ -55,6 +55,8 @@ cost = layers.cross_entropy(
     main_program=main_program,
     startup_program=startup_program)
 avg_cost = layers.mean(x=cost, main_program=main_program)
+# optimizer = optimizer.MomentumOptimizer(learning_rate=0.1 / 128.0,
+# momentum=0.9)
 optimizer = optimizer.AdamOptimizer(learning_rate=0.01, beta1=0.9, beta2=0.999)
 opts = optimizer.minimize(avg_cost, startup_program)
 
@@ -64,11 +66,6 @@ accuracy, acc_out = evaluator.accuracy(
     main_program=main_program,
     startup_program=startup_program)
 
-# optimizer = optimizer.MomentumOptimizer(learning_rate=0.1 / 128.0,
-# momentum=0.9)
-optimizer = optimizer.AdamOptimizer(learning_rate=0.01, beta1=0.9, beta2=0.999)
-opts = optimizer.minimize(avg_cost, startup_program)
-
 BATCH_SIZE = 128
 PASS_NUM = 5
 train_reader = paddle.batch(
@@ -77,6 +74,7 @@ train_reader = paddle.batch(
     batch_size=BATCH_SIZE)
 
 place = core.CPUPlace()
+# place = core.GPUPlace(2)
 exe = Executor(place)
 
 exe.run(startup_program, feed={}, fetch_list=[])
@@ -88,7 +86,7 @@ for pass_id in range(PASS_NUM):
         img_data = np.array(map(lambda x: x[0].reshape([1, 28, 28]),
                                 data)).astype("float32")
         y_data = np.array(map(lambda x: x[1], data)).astype("int64")
-        y_data = y_data.reshape([BATCH_SIZE, 1])
+        y_data = y_data.reshape([len(y_data), 1])
 
         tensor_img = core.LoDTensor()
         tensor_y = core.LoDTensor()
