@@ -38,8 +38,10 @@ class AssignFunctor {
   }
 
   void operator()(const framework::SelectedRows &rows) const {
-    auto &out_rows = *out_->GetMutable<framework::SelectedRows>();
-    *out_rows.mutable_rows() = rows.rows();
+    framework::SelectedRows &out_rows =
+        *out_->GetMutable<framework::SelectedRows>();
+    out_rows.set_rows(rows.rows());
+    out_rows.set_height(rows.height());
     auto &t = rows.value();
     out_rows.mutable_value()->CopyFrom(t, t.place(), dev_ctx_);
   }
@@ -74,7 +76,9 @@ class AssignOp : public framework::OperatorBase {
       return;
     }
     auto *out = scope.FindVar(Output("Out"));
-    PADDLE_ENFORCE(out != nullptr, "Must set output if x is set");
+    PADDLE_ENFORCE(
+        out != nullptr,
+        "The Output(Out) should not be null if the Input(X) is set.");
     framework::VisitVarType(*x, AssignFunctor(out, dev_ctx));
   }
 };
@@ -84,14 +88,17 @@ class AssignOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   AssignOpProtoMaker(framework::OpProto *proto,
                      framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput(
-        "X",
-        "The input variable. Could be LoDTensor/SelectedRows/LoDTensorArray.")
+    AddInput("X",
+             "(LoDTensor, SelectedRows or LoDTensorArray) The input variable "
+             "could be LoDTensor, SelectedRows or LoDTensorArray.")
         .AsDispensable();
-    AddOutput("Out", "The output variable. Its type will be set as same as X");
+    AddOutput("Out",
+              "(LoDTensor, SelectedRows or LoDTensorArray) The type of output "
+              "is the same as input X.");
     AddComment(R"DOC(Assign Operator
 
 Out = X,  when type in [LoDTensor/SelectedRows/LoDTensorArray]
+raise error if the type is not listed above.
 )DOC");
   }
 };
