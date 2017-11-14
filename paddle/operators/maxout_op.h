@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/math/math_function.h"
 #include "paddle/operators/math/maxouting.h"
@@ -32,14 +31,13 @@ class MaxOutKernel : public framework::OpKernel<T> {
     Tensor* out = context.Output<Tensor>("Out");
 
     int groups = context.template Attr<int>("groups");
-    int num_channels = context.template Attr<int>("num_channels");
 
 
     paddle::operators::math::MaxOutFunctor<
     Place, paddle::operators::math::MaxOut<T>, T>
     maxout_forward;
     paddle::operators::math::MaxOut<T> maxout_process;
-    maxout_forward(context.device_context(), *in_x, *out, groups, num_channels,
+    maxout_forward(context.device_context(), *in_x, out, groups,
     maxout_process);
   }
 };
@@ -55,7 +53,6 @@ class MaxOutGradKernel : public framework::OpKernel<T> {
     Tensor* in_x_grad = context.Output<Tensor>(framework::GradVarName("X"));
 
     int groups = context.template Attr<int>("groups");
-    int num_channels = context.template Attr<int>("num_channels");
 
 
 
@@ -68,7 +65,7 @@ class MaxOutGradKernel : public framework::OpKernel<T> {
       paddle::operators::math::MaxOutGradFunctor<Place, T>
       maxout_backward;
       maxout_backward(context.device_context(), *in_x, *in_x_grad, *out,
-      *out_grad, groups, num_channels);
+      *out_grad, groups);
     }
   }
 };

@@ -22,26 +22,20 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+
 #define FLT_MAX \
-  __FLT_MAX__  // It might need to be placed in another file, but I'm still
-               // wondering where to put it.
+    __FLT_MAX__
 
 /*
- * \brief Extracting simple operations from pooling.
- *        Both MaxPool and AvgPool need "initial", "compute" and "finalize"
+ * \brief Extracting simple operations from maxout.
+ *        need "initial", "compute"
  * operation.
- *        MaxPool initializes temp variable to the negative maximum to find the
- * maximum value in the pooling field.
- *        AvgPool initializes temp variable to the zero to accumulate all values
- * in pool pooling, and finally takes the average.
- *        MaxPoolGrad and AvgPoolGrad are gradient operations respectively.
  */
 template <class T>
 class MaxOut {
  public:
   DEVICE inline T initial() { return static_cast<T>(-FLT_MAX); }
   DEVICE inline void compute(T& y, const T& x) { y = y > x ? y : x; }
-  DEVICE inline void finalize(T& y, const T& group) {}
 };
 
 template <class T>
@@ -69,11 +63,12 @@ class MaxOutGrad {
  * MaxPool2dGradFunctor, MaxPool3dGradFunctor.
  */
 template <typename Place, typename MaxOutProcess, typename T>
+
 class MaxOutFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, framework::Tensor& output,
-                  int groups, int num_channels, MaxOutProcess maxout_compute);
+                  const framework::Tensor& input, framework::Tensor * output,
+                  int groups, MaxOutProcess maxout_compute);
 };
 
 
@@ -84,8 +79,7 @@ class MaxOutGradFunctor {
                   const framework::Tensor& input,
                   framework::Tensor& input_grad,
                   const framework::Tensor& output,
-                  const framework::Tensor& output_grad, int groups,
-                  int num_channels);
+                  const framework::Tensor& output_grad, int groups);
 };
 
 

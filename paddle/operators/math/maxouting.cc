@@ -20,25 +20,27 @@ namespace math {
 
 /*
  * All tensors are in NCHW format.
- * Ksize, strides, paddings are two elements. These two elements represent
- * height and width, respectively.
+ * groups mustbe > 1
  */
 template <typename MaxOutProcess, typename T>
 class MaxOutFunctor<platform::CPUPlace, MaxOutProcess, T> {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, framework::Tensor& output,
-                  int groups, int num_channels, MaxOutProcess maxout_process) {
+                  const framework::Tensor& input,
+                  framework::Tensor * output,
+                  int groups,
+                  MaxOutProcess maxout_process) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
-    const int output_channels = num_channels/groups;
+    const int output_channels = output->dims()[1];
 
     int fea_size = input_height * input_width;
+    // c_size mean output one batch size
     int c_size = fea_size * output_channels;
 
     const T* input_data = input.data<T>();
-    T* output_data = output.mutable_data<T>(context.GetPlace());
+    T* output_data = output->mutable_data<T>(context.GetPlace());
 
     for (int i = 0; i < batch_size; i++) {
       int new_bindex =  c_size * i;
@@ -50,7 +52,6 @@ class MaxOutFunctor<platform::CPUPlace, MaxOutProcess, T> {
             maxout_process.compute(ele,
               input_data[(new_bindex+new_cindex) * groups+ph*fea_size+f]);
           }
-          maxout_process.finalize(ele, (static_cast<T>(groups)));
           output_data[(new_bindex+new_cindex+f)] = ele;
         }
       }
@@ -68,11 +69,11 @@ public:
                   framework::Tensor& input_grad,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad,
-                  int groups, int num_channels) {
+                  int groups) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
-    const int output_channels = num_channels / groups;
+    const int output_channels = output.dims()[1];
 
     int fea_size = input_height * input_width;
 
@@ -95,8 +96,6 @@ public:
               if (input_data[input_idx] == output_data[output_idx]) {
                 input_grad_data[input_idx] += output_grad_data[output_idx];
                 stop = true;
-              } else {
-                input_grad_data[input_idx] = 0;
               }
           }
         }
@@ -108,9 +107,9 @@ public:
 template class MaxOutGradFunctor<platform::CPUPlace, float>;
 template class MaxOutGradFunctor<platform::CPUPlace, double>;
 template class MaxOutFunctor<platform::CPUPlace,
-                             paddle::operators::math::MaxOut<float>, float>;
+                             math::MaxOut<float>, float>;
 template class MaxOutFunctor<platform::CPUPlace,
-                             paddle::operators::math::MaxOut<double>, double>;
+                             math::MaxOut<double>, double>;
 
 }  // namespace math
 }  // namespace operators

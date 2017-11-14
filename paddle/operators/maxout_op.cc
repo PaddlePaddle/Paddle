@@ -19,17 +19,16 @@ namespace operators {
 
 using framework::Tensor;
 
-/********first define ProtoMaker类 ***************/
 class MaxOutOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   MaxOutOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
-        "(Tensor) The input tensor of pooling operator. "
+        "(Tensor) The input tensor of maxout operator. "
         "The format of input tensor is NCHW. Where N is batch size, C is the "
         "number of channels, H and W is the height and width of feature.");
     AddOutput("Out",
-        "(Tensor) The output tensor of pooling operator."
+        "(Tensor) The output tensor of maxout operator."
         "The format of output tensor is also NCHW."
         "Where N is batch size, C is "
         "the number of channels, H and W is the height and "
@@ -38,23 +37,53 @@ class MaxOutOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>(
         "groups",
         R"DOC(The group number of input layer.
-        )DOC")
-        .SetDefault(2);
-    AddAttr<int>(
-        "num_channels",
-        R"DOC(The channel number of input layer.
-        )DOC")
-        .SetDefault(0);
-    AddComment(R"DOC(A layer to do max out on conv layer output.
-        - Input: output of a conv layer.
+        )DOC");
+    AddComment(R"DOC(
+        - Input: NCHW.
         - Output: feature map size same as input. Channel is (input channel) / groups.
         So groups should be larger than 1, and the num of channels should be able
         to devided by groups.
+
+    .. math::
+       y_{si+j} = \max_k x_{gsi + sk + j}
+       g = groups
+       s = input.size / num_channels
+       0 \le i < num_channels / groups
+       0 \le j < s
+       0 \le k < groups
+
+    Please refer to Paper:
+      - Maxout Networks: http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf
+      - Multi-digit Number Recognition from Street View \
+        Imagery using Deep Convolutional Neural Networks: \
+        https://arxiv.org/pdf/1312.6082v4.pdf
+
+    The simple usage is:
+
+    .. code-block:: python
+
+       maxout = maxout_layer(input,
+                             num_channels=128,
+                             groups=4)
+
+    :param input: The input of this layer.
+    :type input: LayerOutput
+    :param num_channels: The channel number of input layer. If None will be set
+                     automatically from previous output.
+    :type num_channels: int | None
+    :param groups: The group number of input layer.
+    :type groups: int
+    :param name: The name of this layer. It is optional.
+    :type name: None | basestring.
+    :param layer_attr: Extra Layer attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+
         )DOC");
   }
 };
 
-/******************2nd **********************************/
 
 class MaxOutOp : public framework::OperatorWithKernel {
  public:
@@ -67,20 +96,14 @@ class MaxOutOp : public framework::OperatorWithKernel {
                    "Output(Out) of maxoutOp should not be null.");
     auto in_x_dims = ctx->GetInputDim("X");
     int groups = ctx->Attrs().Get<int>("groups");
-    int num_channels = ctx->Attrs().Get<int>("num_channels");
 
     // check groups > 1
     PADDLE_ENFORCE_GT(
         groups, 1,
         "in maxoutop  groups should be larger than 1");
-    // check num_channels%groups=0
-    PADDLE_ENFORCE_EQ(num_channels % groups, 0,
-                      "the num of channels should be able"
-    "to devided by groups");
 
-    int out_num_channels = num_channels / groups;
 
-    std::vector<int64_t> output_shape({in_x_dims[0], out_num_channels});
+    std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1] / groups});
     output_shape.push_back(in_x_dims[2]);
     output_shape.push_back(in_x_dims[3]);
 
