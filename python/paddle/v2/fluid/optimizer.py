@@ -525,6 +525,7 @@ class DecayedAdagradOptimizer(Optimizer):
         assert learning_rate is not None
         assert decay is not None
         assert epsilon is not None
+
         super(DecayedAdagradOptimizer, self).__init__(global_step)
         self.type = "decayed_adagrad"
         self._learning_rate = learning_rate
