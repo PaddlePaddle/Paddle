@@ -117,6 +117,19 @@ void set_constant_with_place(const platform::DeviceContext& context,
 void set_constant(const platform::DeviceContext& context,
                   framework::Tensor* tensor, float value);
 
+template <typename Place, typename T>
+struct RowwiseAdd {
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& input, const framework::Tensor& vec,
+                  framework::Tensor* output);
+};
+
+template <typename Place, typename T>
+struct ColwiseSum {
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor* vec);
+};
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

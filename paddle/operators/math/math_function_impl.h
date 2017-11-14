@@ -43,6 +43,41 @@ void Transpose<Place, T, Rank>::operator()(
   auto* dev = context.GetEigenDevice<Place>();
   eigen_out.device(*dev) = eigen_in.shuffle(permute);
 }
+
+template <typename Place, typename T>
+void RowwiseAdd<Place, T>::operator()(const platform::DeviceContext& context,
+                                      const framework::Tensor& input,
+                                      const framework::Tensor& vector,
+                                      framework::Tensor* output) {
+  auto in_dims = input.dims();
+  auto size = input.numel() / in_dims[0];
+  PADDLE_ENFORCE_EQ(vector.numel(), size);
+  PADDLE_ENFORCE_EQ(output->dims(), in_dims);
+
+  auto in = framework::EigenMatrix<T>::From(input);
+  auto vec = framework::EigenMatrix<T>::From(vector);
+  auto out = framework::EigenMatrix<T>::From(*output);
+  Eigen::array<int, 2> shape({{1, static_cast<int>(size)}});
+  Eigen::array<int, 2> bcast({{static_cast<int>(in_dims[0]), 1}});
+  out.device(*context.GetEigenDevice<Place>()) =
+      in + vec.reshape(shape).broadcast(bcast);
 }
+
+template <typename Place, typename T>
+void ColwiseSum<Place, T>::operator()(const platform::DeviceContext& context,
+                                      const framework::Tensor& input,
+                                      framework::Tensor* vector) {
+  auto in_dims = input.dims();
+  auto size = input.numel() / in_dims[0];
+  PADDLE_ENFORCE_EQ(vector->numel(), size);
+
+  auto vec = framework::EigenMatrix<T>::From(*vector);
+  auto in = framework::EigenMatrix<T>::From(input);
+  Eigen::array<int, 2> shape({{1, static_cast<int>(size)}});
+  vec.reshape(shape).device(*context.GetEigenDevice<Place>()) =
+      in.sum(Eigen::array<int, 1>({{0}})).reshape(shape);
 }
-}
+
+}  // namespace math
+}  // namespace operators
+}  // namespace paddle

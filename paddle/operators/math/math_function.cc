@@ -308,6 +308,11 @@ void set_constant(const platform::DeviceContext& context,
 #endif
 }
 
+template struct RowwiseAdd<platform::CPUPlace, float>;
+template struct RowwiseAdd<platform::CPUPlace, double>;
+template struct ColwiseSum<platform::CPUPlace, float>;
+template struct ColwiseSum<platform::CPUPlace, double>;
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

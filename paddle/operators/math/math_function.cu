@@ -292,6 +292,11 @@ void set_constant_with_place<platform::GPUPlace>(
                            TensorSetConstantGPU(context, tensor, value));
 }
 
+template struct RowwiseAdd<platform::GPUPlace, float>;
+template struct RowwiseAdd<platform::GPUPlace, double>;
+template struct ColwiseSum<platform::GPUPlace, float>;
+template struct ColwiseSum<platform::GPUPlace, double>;
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

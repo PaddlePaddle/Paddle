@@ -205,14 +205,8 @@ class GRUGradKernel : public framework::OpKernel<T> {
     }
     if (bias_grad) {
       bias_grad->mutable_data<T>(context.GetPlace());
-      int m = static_cast<int>(batch_gate_grad.dims()[0]);
-      int n = static_cast<int>(batch_gate_grad.dims()[1]);
-      Tensor ones;
-      ones.mutable_data<T>({m}, context.GetPlace());
-      math::SetConstant<Place, T> set;
-      set(dev_ctx, &ones, static_cast<T>(1));
-      math::gemv<Place, T>(dev_ctx, true, m, n, 1., batch_gate_grad.data<T>(),
-                           ones.data<T>(), 0., bias_grad->data<T>());
+      math::ColwiseSum<Place, T> col_sum;
+      col_sum(dev_ctx, batch_gate_grad, bias_grad);
     }
   }
 
