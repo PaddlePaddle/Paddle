@@ -698,14 +698,16 @@ def lstmemory_unit(input,
     :param state_act: state activiation type of lstm.
     :type state_act: BaseActivation
     :param input_proj_bias_attr: bias attribute for input to hidden projection.
-                False means no bias, None means default bias.
-    :type input_proj_bias_attr: ParameterAttribute|False|None
+                False or None means no bias. If the parameter is set to True,
+                the bias is initialized to zero.
+    :type input_proj_bias_attr: ParameterAttribute|bool|None
     :param input_proj_layer_attr: extra layer attribute for input to hidden
                 projection of the LSTM unit, such as dropout, error clipping.
     :type input_proj_layer_attr: ExtraLayerAttribute
     :param lstm_bias_attr: bias parameter attribute of lstm layer.
-                False means no bias, None means default bias.
-    :type lstm_bias_attr: ParameterAttribute|False|None
+                If the parameter is set to True or None,
+                the bias is initialized to zero.
+    :type lstm_bias_attr: ParameterAttribute|True|None
     :param lstm_layer_attr: extra attribute of lstm layer.
     :type lstm_layer_attr: ExtraLayerAttribute
     :return: lstmemory unit name.
@@ -805,11 +807,13 @@ def lstmemory_group(input,
     :param state_act: state activiation type of lstm.
     :type state_act: BaseActivation
     :param lstm_bias_attr: bias parameter attribute of lstm layer.
-                           False means no bias, None means default bias.
-    :type lstm_bias_attr: ParameterAttribute|False|None
+                If the parameter is set to True or None, the bias is
+                initialized to zero.
+    :type lstm_bias_attr: ParameterAttribute|True|None
     :param input_proj_bias_attr: bias attribute for input to hidden projection.
-                False means no bias, None means default bias.
-    :type input_proj_bias_attr: ParameterAttribute|False|None
+                False or None means no bias. If the parameter is set to True,
+                the bias is initialized to zero.
+    :type input_proj_bias_attr: ParameterAttribute|bool|None
     :param input_proj_layer_attr: extra layer attribute for input to hidden
                 projection of the LSTM unit, such as dropout, error clipping.
     :type input_proj_layer_attr: ExtraLayerAttribute
