@@ -2,6 +2,7 @@ import unittest
 import paddle.v2.fluid.layers as layers
 from paddle.v2.fluid.executor import Executor
 import paddle.v2.fluid.core as core
+from paddle.v2.fluid.backward import append_backward_ops
 import numpy
 
 
