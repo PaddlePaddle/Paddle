@@ -37,11 +37,13 @@ class FillZerosLikeOpMaker : public framework::OpProtoAndCheckerMaker {
                        framework::OpAttrChecker *op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of fill-zeros-like op.");
-    AddOutput("Y", "The varibale will be filled up with zeros.");
+    AddOutput("Y", "The variable will be filled up with zeros.");
     AddComment(R"DOC(
-Fill up a vriable with zeros.
+FillZerosLike Operator.
 
-The output will have the same size with input.
+Fill up a variable with zeros.
+The output will have the same size as the input.
+
 )DOC");
   }
 };

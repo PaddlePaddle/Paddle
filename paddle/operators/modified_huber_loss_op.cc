@@ -43,27 +43,35 @@ class ModifiedHuberLossOpMaker : public framework::OpProtoAndCheckerMaker {
                            framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
-             "The input tensor of modified huber loss op."
+             "The input tensor of modified huber loss op. "
              "X is 2-D tensor with shape [batch_size, 1].");
     AddInput("Y",
-             "The target labels of modified huber loss op."
-             "The shape of Y is same as X. Values of Y must be 0 or 1.");
+             "The target labels of modified huber loss op. "
+             "The shape of Y is the same as X. Values of Y must be 0 or 1.");
     AddOutput("IntermediateVal",
               "Variable to save intermediate result which will be reused in "
               "backward processing.")
         .AsIntermediate();
     AddOutput("Out", "Classification loss for X.");
     AddComment(R"DOC(
-Modified huber loss is used in binary classification problem. The shape of
-input X and target Y are both [N, 1] and so is the shape of output loss.
-Since target Y is not differentiable, cacluating gradient for Y is illegal.
-The formulation of modified huber loss is:
+Modified Huber Loss Operator.
 
-L(y, f(x)) = max(0, 1 - yf(x))^2  for yf(x) >= -1,
-             -4yf(x)              otherwise.
+This operator is used in binary classification problem. The shape of
+input X and target Y are both [N, 1] and so is the shape of the output loss.
+Since target Y is not differentiable, calculating gradient for Y is illegal.
+The formula of modified huber loss is:
 
-Make sure the values of target label Y are in {0, 1} here. The operator will
+$$
+L(y, f(x)) = 
+\begin{cases}
+(\max(0, 1 - yf(x)))^2,  \text{if} \  yf(x) >= -1    \\
+             -4yf(x),    \quad \text{otherwise}
+\end{cases}
+$$
+
+Make sure the values of target label Y are in {0, 1} here. This operator will
 scale values of Y to {-1, +1} when computing losses and gradients.
+
 )DOC");
   }
 };

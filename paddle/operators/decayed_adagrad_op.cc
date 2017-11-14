@@ -75,11 +75,18 @@ class DecayedAdagradOpMaker : public framework::OpProtoAndCheckerMaker {
                    "Constant for numerical stability")
         .SetDefault(1.0e-6f);
     AddComment(R"DOC(
+Decayed Adagrad Optimizer.
 
-Decayed Adagrad
+The update is done as follows:
 
-moment_out = decay * moment + (1 - decay) * grad * grad
-param_out = param - learning_rate * grad / (sqrt(moment_out) + epsilon)
+$$
+moment\_out = decay * moment + (1 - decay) * grad * grad \\
+param\_out = param - \frac{learning\_rate * grad}{\sqrt{moment\_out} + epsilon}
+$$
+
+The original paper(http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
+does not have an epsilon attribute. It is added here for numerical
+stability to avoid the division by zero error.
 
 )DOC");
   }

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <type_traits>
-#include "paddle/operators/math/detail/hl_activation_functions.h"
+#include "paddle/operators/math/detail/activation_functions.h"
 #include "paddle/operators/math/lstm_compute.h"
 
 namespace paddle {
@@ -26,7 +26,10 @@ namespace detail {
 
 template <class T, class Op>
 void naive_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
-                                     int frameSize) {
+                                     int frameSize,
+                                     activation_mode_t active_node,
+                                     activation_mode_t active_gate,
+                                     activation_mode_t active_state) {
   T rValueIn;
   T rValueIg;
   T rValueFg;
@@ -49,16 +52,16 @@ void naive_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
     rValueIg = valueIg[i];
     rValueFg = valueFg[i];
     rValueOg = valueOg[i];
-    rCheckI = value.checkIg[i];
-    rCheckF = value.checkFg[i];
-    rCheckO = value.checkOg[i];
+    rCheckI = value.checkIg ? value.checkIg[i] : 0;
+    rCheckF = value.checkFg ? value.checkFg[i] : 0;
+    rCheckO = value.checkOg ? value.checkOg[i] : 0;
 
     if (value.prevStateValue) {
       rPrevState = value.prevStateValue[i];
     }
 
     op(rValueIn, rValueIg, rValueFg, rValueOg, rPrevState, rState, rStateAtv,
-       rOut, rCheckI, rCheckF, rCheckO);
+       rOut, rCheckI, rCheckF, rCheckO, active_node, active_gate, active_state);
 
     valueIn[i] = rValueIn;
     valueIg[i] = rValueIg;
@@ -72,7 +75,10 @@ void naive_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
 
 template <class T, class Op>
 void naive_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
-                                      LstmMetaGrad<T> grad, int frameSize) {
+                                      LstmMetaGrad<T> grad, int frameSize,
+                                      activation_mode_t active_node,
+                                      activation_mode_t active_gate,
+                                      activation_mode_t active_state) {
   T rValueIn;
   T rValueIg;
   T rValueFg;
@@ -108,9 +114,9 @@ void naive_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
     rValueIg = valueIg[i];
     rValueFg = valueFg[i];
     rValueOg = valueOg[i];
-    rCheckI = value.checkIg[i];
-    rCheckF = value.checkFg[i];
-    rCheckO = value.checkOg[i];
+    rCheckI = value.checkIg ? value.checkIg[i] : 0;
+    rCheckF = value.checkFg ? value.checkFg[i] : 0;
+    rCheckO = value.checkOg ? value.checkOg[i] : 0;
     rState = value.stateValue[i];
     rStateAtv = value.stateActiveValue[i];
     rOutputGrad = grad.outputGrad[i];
@@ -122,7 +128,7 @@ void naive_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
     op(rValueIn, rValueIg, rValueFg, rValueOg, rGradIn, rGradIg, rGradFg,
        rGradOg, rPrevState, rPrevStateGrad, rState, rStateGrad, rStateAtv,
        rOutputGrad, rCheckI, rCheckF, rCheckO, rCheckIGrad, rCheckFGrad,
-       rCheckOGrad);
+       rCheckOGrad, active_node, active_gate, active_state);
 
     gradIn[i] = rGradIn;
     gradIg[i] = rGradIg;
@@ -149,9 +155,9 @@ void avx_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value, int frameSize,
   __m256 rValueIg;
   __m256 rValueFg;
   __m256 rValueOg;
-  __m256 rCheckI;
-  __m256 rCheckF;
-  __m256 rCheckO;
+  __m256 rCheckI = _mm256_set1_ps(0.0f);
+  __m256 rCheckF = _mm256_set1_ps(0.0f);
+  __m256 rCheckO = _mm256_set1_ps(0.0f);
   __m256 rState;
   __m256 rPrevState = _mm256_set1_ps(0.0f);
   __m256 rStateAtv;
@@ -167,17 +173,18 @@ void avx_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value, int frameSize,
     rValueIg = valueIg[i];
     rValueFg = valueFg[i];
     rValueOg = valueOg[i];
-    rCheckI = ((__m256 *)value.checkIg)[i];
-    rCheckF = ((__m256 *)value.checkFg)[i];
-    rCheckO = ((__m256 *)value.checkOg)[i];
+    if (value.checkIg) {
+      rCheckI = ((__m256 *)value.checkIg)[i];
+      rCheckF = ((__m256 *)value.checkFg)[i];
+      rCheckO = ((__m256 *)value.checkOg)[i];
+    }
 
     if (value.prevStateValue) {
       rPrevState = ((__m256 *)value.prevStateValue)[i];
     }
 
     op(rValueIn, rValueIg, rValueFg, rValueOg, rPrevState, rState, rStateAtv,
-       rOut, rCheckI, rCheckF, rCheckO, hppl::avx::forward[active_node],
-       hppl::avx::forward[active_gate], hppl::avx::forward[active_state]);
+       rOut, rCheckI, rCheckF, rCheckO, active_node, active_gate, active_state);
 
     valueIn[i] = rValueIn;
     valueIg[i] = rValueIg;
@@ -211,9 +218,9 @@ void avx_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
   __m256 rState;
   __m256 rStateAtv;
   __m256 rOutputGrad;
-  __m256 rCheckI;
-  __m256 rCheckF;
-  __m256 rCheckO;
+  __m256 rCheckI = _mm256_set1_ps(0.0f);
+  __m256 rCheckF = _mm256_set1_ps(0.0f);
+  __m256 rCheckO = _mm256_set1_ps(0.0f);
   __m256 rCheckIGrad;
   __m256 rCheckFGrad;
   __m256 rCheckOGrad;
@@ -232,9 +239,11 @@ void avx_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
     rValueIg = valueIg[i];
     rValueFg = valueFg[i];
     rValueOg = valueOg[i];
-    rCheckI = ((__m256 *)value.checkIg)[i];
-    rCheckF = ((__m256 *)value.checkFg)[i];
-    rCheckO = ((__m256 *)value.checkOg)[i];
+    if (value.checkIg) {
+      rCheckI = ((__m256 *)value.checkIg)[i];
+      rCheckF = ((__m256 *)value.checkFg)[i];
+      rCheckO = ((__m256 *)value.checkOg)[i];
+    }
     rState = ((__m256 *)value.stateValue)[i];
     rStateAtv = ((__m256 *)value.stateActiveValue)[i];
     rOutputGrad = ((__m256 *)grad.outputGrad)[i];
@@ -246,8 +255,7 @@ void avx_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
     op(rValueIn, rValueIg, rValueFg, rValueOg, rGradIn, rGradIg, rGradFg,
        rGradOg, rPrevState, rPrevStateGrad, rState, rStateGrad, rStateAtv,
        rOutputGrad, rCheckI, rCheckF, rCheckO, rCheckIGrad, rCheckFGrad,
-       rCheckOGrad, hppl::avx::backward[active_node],
-       hppl::avx::backward[active_gate], hppl::avx::backward[active_state]);
+       rCheckOGrad, active_node, active_gate, active_state);
 
     gradIn[i] = rGradIn;
     gradIg[i] = rGradIg;
@@ -274,7 +282,8 @@ void cpu_lstm_forward(Op op, LstmMetaValue<T> value, int frameSize,
     avx_lstm_forward_one_sequence<T>(op, value, frameSize, active_node,
                                      active_gate, active_state);
   } else {
-    naive_lstm_forward_one_sequence<T>(op, value, frameSize);
+    naive_lstm_forward_one_sequence<T>(op, value, frameSize, active_node,
+                                       active_gate, active_state);
   }
 }
 
@@ -287,7 +296,8 @@ void cpu_lstm_backward(Op op, LstmMetaValue<T> value, LstmMetaGrad<T> grad,
     avx_lstm_backward_one_sequence<T>(op, value, grad, frameSize, active_node,
                                       active_gate, active_state);
   } else {
-    naive_lstm_backward_one_sequence<T>(op, value, grad, frameSize);
+    naive_lstm_backward_one_sequence<T>(op, value, grad, frameSize, active_node,
+                                        active_gate, active_state);
   }
 }
 
