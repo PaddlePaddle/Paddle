@@ -3592,10 +3592,9 @@ def lstm_step_layer(input,
     :type gate_act: BaseActivation
     :param state_act: State Activation Type. TanhActivation is the default.
     :type state_act: BaseActivation
-    :param bias_attr: The bias attribute. If the parameter is set to False or an object
-                      whose type is not ParameterAttribute, no bias is defined. If the
-                      parameter is set to True, the bias is initialized to zero.
-    :type bias_attr: ParameterAttribute | None | bool | Any
+    :param bias_attr: The bias attribute. If the parameter is set to
+                     True or None, the bias is initialized to zero.
+    :type bias_attr: ParameterAttribute | None | True
     :param layer_attr: layer's extra attribute.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
