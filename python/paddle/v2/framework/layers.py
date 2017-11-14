@@ -226,6 +226,11 @@ def data(name,
         stop_gradient=stop_gradient)
 
 
+def create_tensor(dtype, name=None, main_program=None):
+    helper = LayerHelper("create_tensor", **locals())
+    return helper.create_variable(name=helper.name, dtype=dtype)
+
+
 def _convert_(name):
     """
     Formatting.
@@ -449,6 +454,16 @@ def sums(input, main_program=None, startup_program=None):
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(type='sum', inputs={'X': input}, outputs={'Out': out})
     return out
+
+
+def assign(input, output, main_program=None):
+    helper = LayerHelper('assign', **locals())
+    helper.append_op(
+        type='scale',
+        inputs={'X': [input]},
+        outputs={'Out': [output]},
+        attrs={'scale': 1.0})
+    return output
 
 
 def split_lod_tensor(input,
@@ -1432,3 +1447,73 @@ def array_length(array, main_program=None):
     helper.append_op(
         type='lod_array_length', inputs={'X': [array]}, outputs={'Out': [tmp]})
     return tmp
+
+
+class ConditionalBlockGuard(BlockGuard):
+    def __init__(self, block):
+        if not isinstance(block, ConditionalBlock):
+            raise TypeError("block should be conditional block")
+        super(ConditionalBlockGuard, self).__init__(block.helper.main_program)
+        self.block = block
+
+    def __enter__(self):
+        return super(ConditionalBlockGuard, self).__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.block.complete()
+        return super(ConditionalBlockGuard, self).__exit__(exc_type, exc_val,
+                                                           exc_tb)
+
+
+class ConditionalBlock(object):
+    def __init__(self, inputs, name=None, main_program=None):
+        for each_input in inputs:
+            if not isinstance(each_input, Variable):
+                raise TypeError("Each input should be variable")
+        self.inputs = inputs
+        self.helper = LayerHelper(
+            'conditional_block', name=name, main_program=main_program)
+
+    def block(self):
+        return ConditionalBlockGuard(self)
+
+    def complete(self):
+        inside_block = self.helper.main_program.current_block()
+        parent_block = self.helper.main_program.block(inside_block.parent_idx)
+
+        intermediate = set()
+        params = set()
+
+        for each_op in inside_block.ops:
+            assert isinstance(each_op, Operator)
+            for iname in each_op.input_names:
+                for in_var_name in each_op.input(iname):
+                    if in_var_name not in intermediate:
+                        params.add(in_var_name)
+
+            for oname in each_op.output_names:
+                for out_var_name in each_op.output(oname):
+                    intermediate.add(out_var_name)
+        input_set = set([ipt.name for ipt in self.inputs])
+
+        param_list = [
+            parent_block.var(each_name) for each_name in params
+            if each_name not in input_set
+        ]
+
+        out_list = [
+            parent_block.var(var_name) for var_name in parent_block.vars
+            if var_name not in intermediate
+        ]
+
+        step_scope = parent_block.create_var(
+            type=core.VarDesc.VarType.STEP_SCOPES)
+        parent_block.append_op(
+            type='conditional_block',
+            inputs={
+                'X': self.inputs,
+                'Params': param_list,
+            },
+            outputs={'Out': out_list,
+                     'Scope': [step_scope]},
+            attrs={'block': inside_block})
