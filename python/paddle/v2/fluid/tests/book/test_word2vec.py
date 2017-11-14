@@ -122,7 +122,7 @@ exe = Executor(place)
 # below exit line.
 exit(0)
 
-exe.run(startup_program, feed={}, fetch_list=[])
+exe.run(startup_program)
 PASS_NUM = 100
 for pass_id in range(PASS_NUM):
     for data in train_reader():
