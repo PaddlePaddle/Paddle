@@ -65,8 +65,8 @@ accuracy = layers.accuracy(
 optimizer = optimizer.AdamOptimizer(learning_rate=0.01, beta1=0.9, beta2=0.999)
 opts = optimizer.minimize(avg_cost, startup_program)
 
-BATCH_SIZE = 50
-PASS_NUM = 3
+BATCH_SIZE = 128
+PASS_NUM = 5
 train_reader = paddle.batch(
     paddle.reader.shuffle(
         paddle.dataset.mnist.train(), buf_size=500),
@@ -96,6 +96,9 @@ for pass_id in range(PASS_NUM):
                        fetch_list=[avg_cost, accuracy])
         loss = np.array(outs[0])
         acc = np.array(outs[1])
+        count += 1
+        print "pass=%d, batch=%d, loss=%f, accuracy=%f" % (pass_id, count, loss,
+                                                           acc)
 
         if loss < 10.0 and acc > 0.9:
             # if avg cost less than 10.0 and accuracy is larger than 0.9, we think our code is good.
