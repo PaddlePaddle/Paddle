@@ -138,7 +138,7 @@ void testIm2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
-    input_tmp.CopyFrom(input, paddle::platform::CPUPlace(), *context);
+    CopyFrom(input, paddle::platform::CPUPlace(), *context, &input_tmp);
     in_ptr = input_tmp.data<float>();
   }
   for (int i = 0; i < 6; ++i) {

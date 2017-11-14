@@ -46,47 +46,50 @@ TEST(CopyFrom, Tensor) {
     EXPECT_EQ(dst_ptr[i], slice_ptr[i]);
   }
 #ifdef PADDLE_WITH_CUDA
-  Tensor src_tensor;
-  Tensor gpu_tensor;
-  Tensor dst_tensor;
+  {
+    Tensor src_tensor;
+    Tensor gpu_tensor;
+    Tensor dst_tensor;
 
-  int* src_ptr = src_tensor.mutable_data<int>(make_ddim({3, 3}), CPUPlace());
+    int* src_ptr =
+        src_tensor.mutable_data<int>(make_ddim({3, 3}), platform::CPUPlace());
 
-  int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-  memcpy(src_ptr, arr, 9 * sizeof(int));
+    int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    memcpy(src_ptr, arr, 9 * sizeof(int));
 
-  // CPU Tensor to GPU Tensor
-  auto gpu_place = new platform::GPUPlace(0);
-  platform::CUDADeviceContext gpu_ctx(*gpu_place);
-  CopyFrom(src_tensor, *gpu_place, gpu_ctx, &gpu_tensor);
+    // CPU Tensor to GPU Tensor
+    auto gpu_place = new platform::GPUPlace(0);
+    platform::CUDADeviceContext gpu_ctx(*gpu_place);
+    CopyFrom(src_tensor, *gpu_place, gpu_ctx, &gpu_tensor);
 
-  // GPU Tensor to CPU Tensor
-  auto cpu_place = new platform::CPUPlace();
-  CopyFrom(gpu_tensor, *cpu_place, gpu_ctx, &gpu_tensor);
+    // GPU Tensor to CPU Tensor
+    auto cpu_place = new platform::CPUPlace();
+    CopyFrom(gpu_tensor, *cpu_place, gpu_ctx, &gpu_tensor);
 
-  // Sync before Compare Tensors
-  gpu_ctx.Wait();
-  const int* dst_ptr = dst_tensor.data<int>();
-  ASSERT_NE(src_ptr, dst_ptr);
-  for (size_t i = 0; i < 9; ++i) {
-    EXPECT_EQ(src_ptr[i], dst_ptr[i]);
-  }
+    // Sync before Compare Tensors
+    gpu_ctx.Wait();
+    const int* dst_ptr = dst_tensor.data<int>();
+    ASSERT_NE(src_ptr, dst_ptr);
+    for (size_t i = 0; i < 9; ++i) {
+      EXPECT_EQ(src_ptr[i], dst_ptr[i]);
+    }
 
-  Tensor slice_tensor = src_tensor.Slice(1, 2);
+    Tensor slice_tensor = src_tensor.Slice(1, 2);
 
-  // CPU Slice Tensor to GPU Tensor
-  CopyFrom(slice_tensor, *gpu_place, gpu_ctx, &gpu_tensor);
+    // CPU Slice Tensor to GPU Tensor
+    CopyFrom(slice_tensor, *gpu_place, gpu_ctx, &gpu_tensor);
 
-  // GPU Tensor to CPU Tensor
-  CopyFrom(gpu_tensor, *cpu_place, gpu_ctx, &gpu_tensor);
+    // GPU Tensor to CPU Tensor
+    CopyFrom(gpu_tensor, *cpu_place, gpu_ctx, &gpu_tensor);
 
-  // Sync before Compare Slice Tensors
-  gpu_ctx.Wait();
-  const int* slice_ptr = slice_tensor.data<int>();
-  dst_ptr = dst_tensor.data<int>();
-  ASSERT_NE(dst_ptr, slice_ptr);
-  for (size_t i = 0; i < 3; ++i) {
-    EXPECT_EQ(dst_ptr[i], slice_ptr[i]);
+    // Sync before Compare Slice Tensors
+    gpu_ctx.Wait();
+    const int* slice_ptr = slice_tensor.data<int>();
+    dst_ptr = dst_tensor.data<int>();
+    ASSERT_NE(dst_ptr, slice_ptr);
+    for (size_t i = 0; i < 3; ++i) {
+      EXPECT_EQ(dst_ptr[i], slice_ptr[i]);
+    }
   }
 #endif
 }
@@ -144,7 +147,7 @@ TEST(CopyFromVector, Tensor) {
     CUDADeviceContext gpu_ctx(*gpu_place);
     CopyFromVector<int>(src_vec, gpu_ctx, &gpu_tensor);
     // Copy from GPU to CPU tensor for comparison
-    dst_tensor.CopyFrom(gpu_tensor, *cpu_place, gpu_ctx);
+    CopyFrom(gpu_tensor, *cpu_place, gpu_ctx, &dst_tensor);
 
     // Sync before Compare Tensors
     gpu_ctx.Wait();
@@ -212,7 +215,7 @@ TEST(CopyToVector, Tensor) {
     CopyFromVector<int>(src_vec, gpu_ctx, &gpu_tensor);
 
     std::vector<int> dst;
-    CopyToVector<int>(src, gpu_ctx, &dst);
+    CopyToVector<int>(gpu_tensor, gpu_ctx, &dst);
 
     for (int i = 0; i < 3 * 3; ++i) {
       EXPECT_EQ(src_vec[i], dst[i]);

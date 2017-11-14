@@ -232,12 +232,12 @@ void BeamSearchDecoder<T>::ConvertSentenceVectorToLodTensor(
   id_tensor->set_lod(lod);
   id_tensor->Resize({static_cast<int64_t>(id_data.size())});
   id_tensor->mutable_data<int64_t>(paddle::platform::CPUPlace());
-  id_tensor->CopyFromVector<int64_t>(id_data, cpu_ctx);
+  framework::CopyFromVector<int64_t>(id_data, cpu_ctx, id_tensor);
 
   score_tensor->set_lod(lod);
   score_tensor->Resize({static_cast<int64_t>(score_data.size())});
   score_tensor->mutable_data<T>(paddle::platform::CPUPlace());
-  score_tensor->CopyFromVector<T>(score_data, cpu_ctx);
+  framework::CopyFromVector<T>(score_data, cpu_ctx, &score_tensor);
 }
 
 template <typename T>
