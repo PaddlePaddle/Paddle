@@ -456,7 +456,6 @@ def sums(input, main_program=None, startup_program=None):
     return out
 
 
-
 def assign(input, output, main_program=None):
     helper = LayerHelper('assign', **locals())
     helper.append_op(
@@ -466,7 +465,7 @@ def assign(input, output, main_program=None):
         attrs={'scale': 1.0})
     return output
 
-  
+
 def split_lod_tensor(input,
                      mask,
                      level,

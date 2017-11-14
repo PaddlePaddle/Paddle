@@ -3,7 +3,6 @@ import numpy
 import unittest
 
 
-
 class TestAssignOp(op_test.OpTest):
     def setUp(self):
         self.op_type = "assign"
