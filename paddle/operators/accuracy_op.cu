@@ -65,7 +65,7 @@ class AccuracyOpCUDAKernel : public framework::OpKernel<T> {
 
     size_t num_samples = inference->dims()[0];
     size_t infer_width = inference->dims()[1];
-    cudaMemset((void**)&accuracy_data, 0, sizeof(float));
+    PADDLE_ENFORCE(cudaMemset(accuracy_data, 0, sizeof(float)));
 
     if (num_samples == 0) {
       return;
