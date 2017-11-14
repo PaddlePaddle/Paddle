@@ -77,12 +77,23 @@ class ConditionalBlockOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   ConditionalBlockOpProtoMaker(framework::OpProto *proto,
                                framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "").AsDuplicable();
-    AddInput("Params", "").AsDuplicable();
-    AddOutput("Out", "").AsDuplicable();
-    AddOutput("Scope", "");
-    AddAttr<framework::BlockDescBind *>("block", "");
-    AddComment("");
+    AddInput("X",
+             "The conditional variable of this operator. If X is empty, the "
+             "whole sub-block will not be executed.")
+        .AsDuplicable();
+    AddInput("Params", "The input variables of the sub-block.").AsDuplicable();
+    AddOutput("Out", "The output variables of the sub-block.").AsDuplicable();
+    AddOutput("Scope",
+              "(std::vector<Scope*>) The step scope of conditional block. To "
+              "unify the conditional block, rnn and while op, the type of "
+              "scope is std::vector<Scope*>");
+    AddAttr<framework::BlockDescBind *>(
+        "block", "The step block of conditional block operator");
+    AddComment(R"DOC(Conditional block operator
+
+Run the sub-block if X is not empty. Params is the other inputs and Out is the
+outputs of the sub-block.
+)DOC");
   }
 };
 
