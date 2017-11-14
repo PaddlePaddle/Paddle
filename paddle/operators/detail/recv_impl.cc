@@ -22,14 +22,13 @@ Status SendRecvServerImpl::InitVariables(
     ServerContext *context, ServerReader<VariableMessage> *in_var_reader,
     VoidMessage *void_ret) {
   // set up all variables to run server side block
-  PADDLE_ENFORCE(scope_);
   VariableMessage in_buf;
   while (in_var_reader->Read(&in_buf)) {
     // create var if not exist
-    auto *var = scope_->Var(in_buf.varname());
-    auto *tensor = var->GetMutable<framework::LoDTensor>();
-    std::istringstream iss(in_buf.serialized());
-    framework::DeserializeFromStream(iss, tensor);
+    // auto *var = scope_->Var(in_buf.varname());
+    // auto *tensor = var->GetMutable<framework::LoDTensor>();
+    // std::istringstream iss(in_buf.serialized());
+    // framework::DeserializeFromStream(iss, tensor);
   }
   *void_ret = VoidMessage();
   return Status::OK;

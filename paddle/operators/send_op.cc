@@ -18,6 +18,7 @@
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
+
 #include "paddle/operators/detail/send_recv_impl.h"
 #include "paddle/operators/detail/simple_block_queue.h"
 
@@ -51,8 +52,8 @@ class SendOp : public framework::OperatorBase {
     }
   }
 
- private:
-  std::unique_ptr<detail::RPCClient> client_{nullptr};
+ protected:
+  std::shared_ptr<detail::RPCClient> client_{nullptr};
 };
 
 class SendOpMaker : public framework::OpProtoAndCheckerMaker {

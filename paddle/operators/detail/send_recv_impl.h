@@ -30,8 +30,10 @@
 #include <grpc++/grpc++.h>
 
 using grpc::Channel;
+using grpc::Server;
 using grpc::ServerContext;
 using grpc::ServerReader;
+using grpc::ServerBuilder;
 
 using grpc::ClientContext;
 using grpc::ClientReader;
@@ -50,8 +52,6 @@ class SendRecvServerImpl final : public SendRecvService::Service {
  public:
   explicit SendRecvServerImpl() {}
 
-  void SetScope(framework::Scope *scope) { scope_ = scope; }
-
   Status InitVariables(ServerContext *context,
                        ServerReader<VariableMessage> *in_var_reader,
                        VoidMessage *void_ret) override;
@@ -66,8 +66,6 @@ class SendRecvServerImpl final : public SendRecvService::Service {
   }
 
  private:
-  // Scope for send recv to run.
-  framework::Scope *scope_;
   SimpleBlockQueue<framework::LoDTensor> lodtensor_queue_;
   SimpleBlockQueue<framework::LoDTensor> lodtensor_return_queue_;
   SimpleBlockQueue<framework::SelectedRows> selected_rows_queue_;

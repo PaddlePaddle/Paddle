@@ -18,48 +18,43 @@
 #include <thread>
 
 #include "paddle/framework/data_type.h"
+#include "paddle/framework/executer.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/detail/send_recv_impl.h"
 #include "paddle/operators/detail/simple_block_queue.h"
 
-void RunServer(const SendRecvServerImpl &service,
+namespace paddle {
+namespace operators {
+
+void RunServer(std::shared_ptr<detail::SendRecvServerImpl> service,
                const std::string &server_address) {
   ServerBuilder builder;
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
-  builder.RegisterService(&service);
+  builder.RegisterService(service.get());
   std::unique_ptr<Server> server(builder.BuildAndStart());
   LOG(INFO) << "Server listening on " << server_address << std::endl;
   server->Wait();
 }
-
-namespace paddle {
-namespace operators {
 
 class RecvOp : public framework::OperatorBase {
  public:
   RecvOp(const std::string &type, const framework::VariableNameMap &inputs,
          const framework::VariableNameMap &outputs,
          const framework::AttributeMap &attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+      : OperatorBase(type, inputs, outputs, attrs) {
+    if (!rpc_service_) {
+      std::string endpoint = Attr<std::string>("endpoint");
+      std::thread server_thread(RunServer(rpc_service_, endpoint));
+    }
+  }
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
-    constexpr RecvOpName = "RecvOp@SendRecvServerImpl";
-    auto *var = scope.FindVar(RecvOpName);
-    if (var == nullptr) {
-      // create RPC server object if it is not inited.
-      std::string endpoint = Attr<std::string>("endpoint");
-      var = scope.Var(RecvOpName);
-      SendRecvServerImpl *service = var->GetMutable<SendRecvServerImpl>();
-
-      // start server in a thread in background
-      std::thread server_thread(RunServer(*service, endpoit));
-    }
-    SendRecvServerImpl *service = var->Get<SendRecvServerImpl>();
-    framework::LoDTensor &t = service->Get();
+    // blocking get one var from client.
+    const framework::LoDTensor &t = rpc_service_->Get();
     // set graph input var
-    auto *var = scope.Var(Input("X"));
+    auto *var = scope.FindVar(Input("X"));
     auto *tensor = var->GetMutable<framework::LoDTensor>();
     // FIXME(typhoonzero): do not copy
     tensor->CopyFrom(t, dev_ctx.GetPlace(), dev_ctx);
@@ -71,8 +66,12 @@ class RecvOp : public framework::OperatorBase {
     executor.Run(*program, &scope, block->ID(), false /*create_local_scope*/);
 
     auto *out_var = scope.FindVar("Out");
-    service->Push(out_var->Get<framework::LoDTensor>());
+    // push back
+    rpc_service_->Push(out_var->Get<framework::LoDTensor>());
   }
+
+ protected:
+  std::shared_ptr<detail::SendRecvServerImpl> rpc_service_;
 };
 
 class RecvOpMaker : public framework::OpProtoAndCheckerMaker {
