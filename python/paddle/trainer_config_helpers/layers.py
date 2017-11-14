@@ -888,7 +888,7 @@ def mixed_layer(size=0,
     :type size: int
     :param input: The input of this layer. It is an optional parameter. If set,
                   then this function will just return layer's name.
-    :param act: Activation Type. LinearActivation is the default.
+    :param act: Activation Type. LinearActivation is the default activation.
     :type act: BaseActivation
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
@@ -1030,7 +1030,7 @@ def fc_layer(input,
     :type input: LayerOutput | list | tuple
     :param size: The layer dimension.
     :type size: int
-    :param act: Activation Type. TanhActivation is the default.
+    :param act: Activation Type. TanhActivation is the default activation.
     :type act: BaseActivation
     :param param_attr: The Parameter Attribute|list.
     :type param_attr: ParameterAttribute
@@ -1527,7 +1527,7 @@ def lstmemory(input,
     :type input: LayerOutput
     :param reverse: is sequence process reversed or not.
     :type reverse: bool
-    :param act: Activation type. TanhActivation is the default. :math:`h_t`
+    :param act: Activation type. TanhActivation is the default activation.
     :type act: BaseActivation
     :param gate_act: gate activation type, SigmoidActivation by default.
     :type gate_act: BaseActivation
@@ -1920,7 +1920,7 @@ def repeat_layer(input,
                           False for treating input as column vector and repeating
                           in the row direction.
     :type as_row_vector: bool
-    :param act: Activation type. IdentityActivation is the default.
+    :param act: Activation type. IdentityActivation is the default activation.
     :type act: BaseActivation
     :type name: basestring
     :param layer_attr: extra layer attributes.
@@ -1974,7 +1974,7 @@ def seq_reshape_layer(input,
     :type reshape_size: int
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param act: Activation type. IdentityActivation is the default.
+    :param act: Activation type. IdentityActivation is the default activation.
     :type act: BaseActivation
     :param layer_attr: extra layer attributes.
     :type layer_attr: ExtraLayerAttribute.
@@ -2487,7 +2487,7 @@ def img_conv_layer(input,
                         shape will be (filter_size, filter_size_y).
     :type filter_size_y: int | None
     :param num_filters: Each filter group's number of filter
-    :param act: Activation type. ReluActivation is the default.
+    :param act: Activation type. ReluActivation is the default activation.
     :type act: BaseActivation
     :param groups: Group size of filters.
     :type groups: int
@@ -3253,7 +3253,7 @@ def addto_layer(input, act=None, name=None, bias_attr=None, layer_attr=None):
     :param input: Input layers. It could be a LayerOutput or list/tuple of
                  LayerOutput.
     :type input: LayerOutput | list | tuple
-    :param act: Activation Type. LinearActivation is the default.
+    :param act: Activation Type. LinearActivation is the default activation.
     :type act: BaseActivation
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
@@ -3311,7 +3311,7 @@ def concat_layer(input, act=None, name=None, layer_attr=None, bias_attr=None):
     :type name: basestring
     :param input: input layers or projections
     :type input: list | tuple | collections.Sequence
-    :param act: Activation type. IdentityActivation is the default.
+    :param act: Activation type. IdentityActivation is the default activation.
     :type act: BaseActivation
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
@@ -3406,7 +3406,7 @@ def seq_concat_layer(a, b, act=None, name=None, layer_attr=None,
     :type a: LayerOutput
     :param b: input sequence layer
     :type b: LayerOutput
-    :param act: Activation type. IdentityActivation is the default.
+    :param act: Activation type. IdentityActivation is the default activation.
     :type act: BaseActivation
     :param layer_attr: Extra Layer Attribute.
     :type layer_attr: ExtraLayerAttribute
@@ -3572,7 +3572,7 @@ def lstm_step_layer(input,
         ...
 
 
-    This layer has two outputs. Default output is :math:`h_t`. The other
+    This layer has two outputs. The default output is :math:`h_t`. The other
     output is :math:`o_t`, whose name is 'state' and users can use
     :code:`get_output_layer` to extract this output.
 
@@ -3583,13 +3583,15 @@ def lstm_step_layer(input,
     :type size: int
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param state: The state of a lstm.
+    :param state: The state of the LSTM unit.
     :type state: LayerOutput
-    :param act: Activation type. TanhActivation is the default.
+    :param act: Activation type. TanhActivation is the default activation.
     :type act: BaseActivation
-    :param gate_act: Activation type of the gate. SigmoidActivation is the default.
+    :param gate_act: Activation type of the gate. SigmoidActivation is the
+                     default activation.
     :type gate_act: BaseActivation
-    :param state_act: Activation type of the state. TanhActivation is the default.
+    :param state_act: Activation type of the state. TanhActivation is the
+                      default activation.
     :type state_act: BaseActivation
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
@@ -3648,12 +3650,13 @@ def gru_step_layer(input,
     :param size: The dimension of this layer's output. If it is not set or set to None,
                  it will be set to one-third of the dimension of the input automatically.
     :type size: int
-    :param act: Activation type of this layer's output. SigmoidActivation
-                is the default.
+    :param act: Activation type of this layer's output. TanhActivation
+                is the default activation.
     :type act: BaseActivation
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param gate_act: Activation type of this layer's two gates. Default is Sigmoid.
+    :param gate_act: Activation type of this layer's two gates. SigmoidActivation is
+                     the default activation.
     :type gate_act: BaseActivation
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
@@ -3707,10 +3710,10 @@ def gru_step_naive_layer(input,
                          param_attr=None,
                          layer_attr=None):
     """
-    GRU Step Layer, but using MixedLayer to generate. It supports ERROR_CLIPPING
+    GRU Step Layer, which is realized using PaddlePaddle API. It supports ERROR_CLIPPING
     and DROPOUT.
 
-    :param input: The input of this layer, whose dimension can be divided by 3.
+    :param input: The input of this layer, whose dimensionality can be divided by 3.
     :param output_mem: A memory which memorizes the output of this layer at previous
                        time step.
     :type output_mem: LayerOutput
@@ -3719,11 +3722,11 @@ def gru_step_naive_layer(input,
     :type size: int
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param act: Activation type of this layer's output. SigmoidActivation
-                is the default.
+    :param act: Activation type of this layer's output. TanhActivation
+                is the default activation.
     :type act: BaseActivation
-    :param gate_act: Activation type of this layer's two gates. TanhActivation
-                     is the default.
+    :param gate_act: Activation type of this layer's two gates. SigmoidActivation
+                     is the default activation.
     :type gate_act: BaseActivation
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
@@ -3798,7 +3801,7 @@ def get_output_layer(input, arg_name, name=None, layer_attr=None):
     :param input: The input layer. And this layer should contain
                    multiple outputs.
     :type input: LayerOutput
-    :param arg_name: The name of the output of the input layer.
+    :param arg_name: The name of the output to be extracted from the input layer.
     :type arg_name: basestring
     :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
                        details.
@@ -3858,7 +3861,7 @@ def recurrent_layer(input,
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param act: Activation type. TanhActivation is the default.
+    :param act: Activation type. TanhActivation is the default activation.
     :type act: BaseActivation
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
@@ -3928,8 +3931,8 @@ def recurrent_group(step, input, reverse=False, name=None, targetInlink=None):
     Recurrent layer group is an extremely flexible recurrent unit in
     PaddlePaddle. As long as the user defines the calculation done within a
     time step, PaddlePaddle will iterate such a recurrent calculation over
-    sequence input. This is extremely useful for attention-based models, or
-    Neural Turning Machine like models.
+    sequence input. This is useful for attention-based models, or Neural
+    Turning Machine like models.
 
     The basic usage (time steps) is:
 
@@ -3951,9 +3954,8 @@ def recurrent_group(step, input, reverse=False, name=None, targetInlink=None):
                   demo/seqToseq/seqToseq_net.py
     - sequence steps: paddle/gserver/tests/sequence_nest_layer_group.conf
 
-    :param step: A step function which will be executed every step. The input
-                 of this function is the input of the group. The return of
-                 this function will be recurrent group's return value.
+    :param step: A step function which takes the input of recurrent_group as its own
+                 input and returns values as recurrent_group's output every time step.
 
                  The recurrent group scatters a sequence into time steps. And
                  for each time step, it will invoke step function, and return
@@ -4251,8 +4253,8 @@ def beam_search(step,
     - machine translation : demo/seqToseq/translation/gen.conf \
                             demo/seqToseq/seqToseq_net.py
 
-    :param name: The name of the recurrent unit that generates sequences.
-                 It is optional.
+    :param name: The name of the recurrent unit that is responsible for
+                 generating sequences. It is optional.
     :type name: basestring
     :param step: A callable function that defines the calculation in a time
                  step, and it is applied to sequences with arbitrary length by
@@ -4386,7 +4388,7 @@ def square_error_cost(input,
                    mini-batch. It is optional.
     :type weight: LayerOutput
     :param coeff: The weight of the gradient in the back propagation.
-                  1.0 is the default.
+                  1.0 is the default value.
     :type coeff: float
     :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
                        details.
@@ -4435,7 +4437,7 @@ def classification_cost(input,
                        details.
     :type layer_attr: ExtraLayerAttribute
     :param coeff: The weight of the gradient in the back propagation.
-                  1.0 is the default.
+                  1.0 is the default value.
     :type coeff: float
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -4878,7 +4880,7 @@ def tensor_layer(a,
     :type b: LayerOutput
     :param size: The dimension of this layer.
     :type size: int
-    :param act: Activation type. LinearActivation is the default.
+    :param act: Activation type. LinearActivation is the default activation.
     :type act: BaseActivation
     :param param_attr: The parameter attribute. See ParameterAttribute for
                        details.
@@ -4946,7 +4948,7 @@ def selective_fc_layer(input,
     :param size: The dimension of this layer, which should be equal to that of
                  the layer 'select'.
     :type size: int
-    :param act: Activation type. TanhActivation is the default.
+    :param act: Activation type. TanhActivation is the default activation.
     :type act: BaseActivation
     :param pass_generation: The flag which indicates whether it is during generation.
     :type pass_generation: bool
@@ -5498,7 +5500,7 @@ def crf_layer(input,
     :param name: The name of this layer. It is optional.
     :type name: basestring
     :param coeff: The weight of the gradient in the back propagation.
-                  1.0 is the default.
+                  1.0 is the default value.
     :type coeff: float
     :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
                        details.
@@ -5644,12 +5646,13 @@ def nce_layer(input,
     :type weight: LayerOutput
     :param num_classes: The number of classes.
     :type num_classes: int
-    :param act: Activation type. SigmoidActivation is the default.
+    :param act: Activation type. SigmoidActivation is the default activation.
     :type act: BaseActivation
     :param param_attr: The parameter attribute. See ParameterAttribute for
                        details.
     :type param_attr: ParameterAttribute
-    :param num_neg_samples: The number of sampled negative labels. 10 is the default.
+    :param num_neg_samples: The number of sampled negative labels. 10 is the
+                            default value.
     :type num_neg_samples: int
     :param neg_distribution: The discrete noisy distribution over the output
                              space from which num_neg_samples negative labels
@@ -5775,7 +5778,7 @@ def rank_cost(left,
     :param name: The name of this layer. It is optional.
     :type name: basestring
     :param coeff: The weight of the gradient in the back propagation.
-                  1.0 is the default.
+                  1.0 is the default value.
     :type coeff: float
     :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
                        details.
@@ -5886,7 +5889,7 @@ def cross_entropy(input,
     :param name: The name of this layer. It is optional.
     :type name: basestring
     :param coeff: The weight of the gradient in the back propagation.
-                  1.0 is the default.
+                  1.0 is the default value.
     :type coeff: float
     :param weight: The weight layer defines a weight for each sample in the
                    mini-batch. It is optional.
@@ -5934,7 +5937,7 @@ def cross_entropy_with_selfnorm(input,
     :param name: The name of this layer. It is optional.
     :type name: basestring
     :param coeff: The weight of the gradient in the back propagation.
-                  1.0 is the default.
+                  1.0 is the default value.
     :type coeff: float
     :param softmax_selfnorm_alpha: The scale factor affects the cost.
     :type softmax_selfnorm_alpha: float
@@ -6024,7 +6027,7 @@ def huber_regression_cost(input,
     :param delta: The difference between the observed and predicted values.
     :type delta: float
     :param coeff: The weight of the gradient in the back propagation.
-                  1.0 is the default.
+                  1.0 is the default value.
     :type coeff: float
     :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
                        details.
@@ -6074,7 +6077,7 @@ def huber_classification_cost(input,
     :param name: The name of this layer. It is optional.
     :type name: basestring
     :param coeff: The weight of the gradient in the back propagation.
-                  1.0 is the default.
+                  1.0 is the default value.
     :type coeff: float
     :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
                        details.
@@ -6119,7 +6122,7 @@ def multi_binary_label_cross_entropy(input,
     :param name: The name of this layer. It is optional.
     :type name: basestring
     :param coeff: The weight of the gradient in the back propagation.
-                  1.0 is the default.
+                  1.0 is the default value.
     :type coeff: float
     :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
                        details.
@@ -6290,7 +6293,7 @@ def smooth_l1_cost(input, label, name=None, coeff=1.0, layer_attr=None):
     :param name: The name of this layer. It is optional.
     :type name: basestring
     :param coeff: The weight of the gradient in the back propagation.
-                  1.0 is the default.
+                  1.0 is the default value.
     :type coeff: float
     :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
                        details.
@@ -6442,7 +6445,7 @@ def row_conv_layer(input,
     :param context_len: The context length equals the lookahead step number
                         plus one.
     :type context_len: int
-    :param act: Activation Type. LinearActivation is the default.
+    :param act: Activation Type. LinearActivation is the default activation.
     :type act: BaseActivation
     :param param_attr: The parameter attribute. See ParameterAttribute for
                        details.
@@ -6564,7 +6567,8 @@ def gated_unit_layer(input,
     :type input: LayerOutput
     :param size: The dimension of this layer's output.
     :type size: int
-    :param act: Activation type of the projection. LinearActivation is the default.
+    :param act: Activation type of the projection. LinearActivation is the default
+                activation.
     :type act: BaseActivation
     :param name: The name of this layer. It is optional.
     :type name: basestring
@@ -6945,7 +6949,7 @@ def img_conv3d_layer(input,
     :type filter_size: int | tuple | list
     :param num_filters: The number of filters in each group.
     :type num_filters: int
-    :param act: Activation type. ReluActivation is the default.
+    :param act: Activation type. ReluActivation is the default activation.
     :type act: BaseActivation
     :param groups: The number of the filter groups.
     :type groups: int
@@ -7137,7 +7141,7 @@ def sub_seq_layer(input, offsets, sizes, act=None, bias_attr=None, name=None):
     :type offsets: LayerOutput
     :param sizes: The sizes of the sub-sequences, which should be sequence type.
     :type sizes: LayerOutput
-    :param act: Activation type, LinearActivation is the default.
+    :param act: Activation type, LinearActivation is the default activation.
     :type act: BaseActivation.
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
