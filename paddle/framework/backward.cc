@@ -377,6 +377,12 @@ std::vector<std::unique_ptr<OpDescBind>> MakeOpGrad(
   return grad_op_descs;
 }
 
+static BlockDescBind* CreateStepBlock(
+    ProgramDescBind& program_desc,
+    std::unordered_set<std::string>* no_grad_vars,
+    std::unordered_map<std::string, std::string>* grad_to_var,
+    int step_block_idx);
+
 std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
     ProgramDescBind& program_desc, int block_idx,
     std::unordered_set<std::string>* no_grad_vars,
@@ -392,13 +398,13 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
 
     if ((*it)->Type() == "recurrent") {
       int step_block_idx = (*it)->GetBlockAttr("step_block");
-      auto backward_block_op_descs = MakeBlockBackward(
-          program_desc, step_block_idx, no_grad_vars, grad_to_var);
+      BlockDescBind* backward_block = CreateStepBlock(
+          program_desc, no_grad_vars, grad_to_var, step_block_idx);
+      op_grads = MakeOpGrad(*it, no_grad_vars, grad_to_var, {backward_block});
+    } else if ((*it)->Type() == "conditional_block") {
       BlockDescBind* backward_block =
-          program_desc.AppendBlock(*program_desc.MutableBlock(step_block_idx));
-      for (auto& ptr : backward_block_op_descs) {
-        backward_block->AppendAllocatedOp(std::move(ptr));
-      }
+          CreateStepBlock(program_desc, no_grad_vars, grad_to_var,
+                          (*it)->GetBlockAttr("block"));
       op_grads = MakeOpGrad(*it, no_grad_vars, grad_to_var, {backward_block});
     } else {
       op_grads = MakeOpGrad(*it, no_grad_vars, grad_to_var);
@@ -447,6 +453,21 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
   }
 
   return backward_descs;
+}
+
+static BlockDescBind* CreateStepBlock(
+    ProgramDescBind& program_desc,
+    std::unordered_set<std::string>* no_grad_vars,
+    std::unordered_map<std::string, std::string>* grad_to_var,
+    int step_block_idx) {
+  auto backward_block_op_descs = MakeBlockBackward(program_desc, step_block_idx,
+                                                   no_grad_vars, grad_to_var);
+  BlockDescBind* backward_block =
+      program_desc.AppendBlock(*program_desc.MutableBlock(step_block_idx));
+  for (auto& ptr : backward_block_op_descs) {
+    backward_block->AppendAllocatedOp(move(ptr));
+  }
+  return backward_block;
 }
 
 ParamGradInfoMap AppendBackward(
