@@ -51,8 +51,8 @@ __global__ void KeMaxPoolForward(const int nthreads,
     for (int h = hstart; h < hend; ++h) {
       for (int w = wstart; w < wend; ++w) {
         if (maxval < inputData[h * width + w]) {
-          maxval = inputData[h * width + w];
           max_index = h * width + w;
+          maxval = inputData[max_index];
         }
       }
     }

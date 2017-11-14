@@ -2701,7 +2701,7 @@ def img_pool_layer(input,
 
     assert type(pool_type) in [AvgPooling, MaxPooling, MaxWithMaskPooling, CudnnAvgPooling,
                                CudnnMaxPooling], \
-        "only (Cudnn)AvgPooling, (Cudnn)MaxPooling MaxWithMaskPooling are supported"
+        "only (Cudnn)AvgPooling, (Cudnn)MaxPooling, MaxWithMaskPooling are supported"
 
     type_name = pool_type.name + '-projection' \
         if (

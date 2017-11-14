@@ -2021,7 +2021,7 @@ void CpuMatrix::maxPoolForward(Matrix& inputMat,
           int wstart = pw * strideW - paddingW;
           int wend = std::min(wstart + sizeX, imgSizeW);
           wstart = std::max(wstart, 0);
-          if (maskMatP == NULL) {
+          if (maskData == NULL) {
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {
                 outData[ph * outputW + pw] = std::max(
@@ -2044,7 +2044,7 @@ void CpuMatrix::maxPoolForward(Matrix& inputMat,
       inputData += inLength;
       outData += outLength;
 
-      if (maskMatP != NULL) maskData += outLength;
+      if (maskData != NULL) maskData += outLength;
     }
   }
 }
