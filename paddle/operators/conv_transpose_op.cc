@@ -51,7 +51,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                     "as the number of filters.");
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[1]});
-  for (size_t i = 0; i < paddings.size(); ++i) {
+  for (size_t i = 0; i < strides.size(); ++i) {
     output_shape.push_back((in_dims[i + 2] - 1) * strides[i] +
                            filter_dims[i + 2]);
   }
@@ -77,13 +77,14 @@ Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(
   AddOutput("Output",
             "(Tensor) The output tensor of convolution transpose operator. "
             "The format of output tensor is also NCHW.");
-  AddAttr<std::vector<int>>(
-      "strides",
-      "(vector defalut:{1, 1}), strides of convolution transpose operator.")
+  AddAttr<std::vector<int>>("strides",
+                            "(vector<int> defalut:{1, 1}), strides of "
+                            "convolution transpose operator.")
       .SetDefault({1, 1});
   AddAttr<std::vector<int>>(
       "paddings",
-      "(vector defalut:{0, 0}), paddings of convolution transpose operator.")
+      "(vector<int> defalut:{0, 0}), paddings(h_pad, w_pad) of convolution "
+      "transpose operator.")
       .SetDefault({0, 0});
   AddComment(R"DOC(
 Convolution2D Transpose Operator.
@@ -132,13 +133,13 @@ Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(
             "Where N is batch size, C is "
             "the number of channels, D is the depth of the feature, H is the "
             "height of the feature, and W is the width of the feature.");
-  AddAttr<std::vector<int>>(
-      "strides",
-      "(vector defalut:{1, 1, 1}), strides of convolution transpose operator.")
+  AddAttr<std::vector<int>>("strides",
+                            "(vector<int> defalut:{1, 1, 1}), strides of "
+                            "convolution transpose operator.")
       .SetDefault({1, 1, 1});
-  AddAttr<std::vector<int>>(
-      "paddings",
-      "(vector defalut:{0, 0, 0}), paddings of convolution transpose operator.")
+  AddAttr<std::vector<int>>("paddings",
+                            "(vector<int> defalut:{0, 0, 0}), paddings(d_pad, "
+                            "h_pad, w_pad) of convolution transpose operator.")
       .SetDefault({0, 0, 0});
   AddComment(R"DOC(
 Convolution3D Transpose Operator.

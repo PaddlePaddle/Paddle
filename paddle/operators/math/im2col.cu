@@ -61,31 +61,30 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
                     platform::GPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& im, framework::Tensor& col,
-                  int dilation_h, int dilation_w, int stride_height,
-                  int stride_width, int padding_up, int padding_down,
-                  int padding_left, int padding_right) {
+                  const framework::Tensor& im, const std::vector<int>& dilation,
+                  const std::vector<int>& stride,
+                  const std::vector<int>& padding, framework::Tensor* col) {
     PADDLE_ENFORCE(im.dims().size() == 3);
-    PADDLE_ENFORCE(col.dims().size() == 5);
+    PADDLE_ENFORCE(col->dims().size() == 5);
 
     int im_channels = im.dims()[0];
     int im_height = im.dims()[1];
     int im_width = im.dims()[2];
-    int filter_height = col.dims()[1];
-    int filter_width = col.dims()[2];
-    int col_height = col.dims()[3];
-    int col_width = col.dims()[4];
+    int filter_height = col->dims()[1];
+    int filter_width = col->dims()[2];
+    int col_height = col->dims()[3];
+    int col_width = col->dims()[4];
 
-    PADDLE_ENFORCE_EQ((im_height + padding_up + padding_down -
-                       (dilation_h * (filter_height - 1) + 1)) /
-                              stride_height +
+    PADDLE_ENFORCE_EQ((im_height + padding[0] + padding[2] -
+                       (dilation[0] * (filter_height - 1) + 1)) /
+                              stride[0] +
                           1,
                       col_height,
                       "Output_height and padding(padding_up, padding_down) are "
                       "inconsistent.");
-    PADDLE_ENFORCE_EQ((im_width + padding_left + padding_right -
-                       (dilation_w * (filter_width - 1) + 1)) /
-                              stride_width +
+    PADDLE_ENFORCE_EQ((im_width + padding[1] + padding[3] -
+                       (dilation[1] * (filter_width - 1) + 1)) /
+                              stride[1] +
                           1,
                       col_width,
                       "col_width and padding(padding_left, padding_right) are "
@@ -100,9 +99,9 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
     im2col<T><<<grid, threads, 0,
                 reinterpret_cast<const platform::CUDADeviceContext&>(context)
                     .stream()>>>(
-        im.data<T>(), num_outputs, im_height, im_width, dilation_h, dilation_w,
-        filter_height, filter_width, stride_height, stride_width, padding_up,
-        padding_left, col_height, col_width, col.data<T>());
+        im.data<T>(), num_outputs, im_height, im_width, dilation[0],
+        dilation[1], filter_height, filter_width, stride[0], stride[1],
+        padding[0], padding[1], col_height, col_width, col->data<T>());
   }
 };
 
@@ -163,31 +162,32 @@ template <class T>
 class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
                     platform::GPUPlace, T> {
  public:
-  void operator()(const platform::DeviceContext& context, framework::Tensor& im,
-                  const framework::Tensor& col, int dilation_h, int dilation_w,
-                  int stride_height, int stride_width, int padding_up,
-                  int padding_down, int padding_left, int padding_right) {
-    PADDLE_ENFORCE(im.dims().size() == 3);
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& col,
+                  const std::vector<int>& dilation,
+                  const std::vector<int>& stride,
+                  const std::vector<int>& padding, framework::Tensor* im) {
+    PADDLE_ENFORCE(im->dims().size() == 3);
     PADDLE_ENFORCE(col.dims().size() == 5);
 
-    int im_channels = im.dims()[0];
-    int im_height = im.dims()[1];
-    int im_width = im.dims()[2];
+    int im_channels = im->dims()[0];
+    int im_height = im->dims()[1];
+    int im_width = im->dims()[2];
     int filter_height = col.dims()[1];
     int filter_width = col.dims()[2];
     int col_height = col.dims()[3];
     int col_width = col.dims()[4];
 
-    PADDLE_ENFORCE_EQ((im_height + padding_up + padding_down -
-                       (dilation_h * (filter_height - 1) + 1)) /
-                              stride_height +
+    PADDLE_ENFORCE_EQ((im_height + padding[0] + padding[2] -
+                       (dilation[0] * (filter_height - 1) + 1)) /
+                              stride[0] +
                           1,
                       col_height,
                       "Output_height and padding(padding_up, padding_down) are "
                       "inconsistent.");
-    PADDLE_ENFORCE_EQ((im_width + padding_left + padding_right -
-                       (dilation_w * (filter_width - 1) + 1)) /
-                              stride_width +
+    PADDLE_ENFORCE_EQ((im_width + padding[1] + padding[3] -
+                       (dilation[1] * (filter_width - 1) + 1)) /
+                              stride[1] +
                           1,
                       col_width,
                       "col_width and padding(padding_left, padding_right) are "
@@ -206,9 +206,9 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
     col2im<T><<<grid, threads, 0,
                 reinterpret_cast<const platform::CUDADeviceContext&>(context)
                     .stream()>>>(
-        num_kernels, col.data<T>(), im_height, im_width, dilation_h, dilation_w,
-        filter_height, filter_width, stride_height, stride_width, padding_up,
-        padding_left, col_height, col_width, im.data<T>());
+        num_kernels, col.data<T>(), im_height, im_width, dilation[0],
+        dilation[1], filter_height, filter_width, stride[0], stride[1],
+        padding[0], padding[2], col_height, col_width, im->data<T>());
   }
 };
 
@@ -222,11 +222,11 @@ template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
                              platform::GPUPlace, double>;
 
 template <class T>
-__global__ void im2colOCF(const T* im_data, T* col_data, int im_channels,
-                          int im_height, int im_width, int filter_height,
-                          int filter_width, int stride_height, int stride_width,
+__global__ void im2colOCF(const T* im_data, int im_channels, int im_height,
+                          int im_width, int filter_height, int filter_width,
+                          int stride_height, int stride_width,
                           int padding_height, int padding_width, int col_height,
-                          int col_width) {
+                          int col_width, T* col_data) {
   int swid = blockIdx.x;
   int shid = blockIdx.y;
   for (int channelid = threadIdx.z; channelid < im_channels;
@@ -263,30 +263,29 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
                     platform::GPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& im, framework::Tensor& col,
-                  int dilation_h, int dilation_w, int stride_height,
-                  int stride_width, int padding_up, int padding_down,
-                  int padding_left, int padding_right) {
+                  const framework::Tensor& im, const std::vector<int>& dilation,
+                  const std::vector<int>& stride,
+                  const std::vector<int>& padding, framework::Tensor* col) {
     PADDLE_ENFORCE(im.dims().size() == 3);
-    PADDLE_ENFORCE(col.dims().size() == 5);
+    PADDLE_ENFORCE(col->dims().size() == 5);
     int im_channels = im.dims()[0];
     int im_height = im.dims()[1];
     int im_width = im.dims()[2];
-    int filter_height = col.dims()[3];
-    int filter_width = col.dims()[4];
-    int col_height = col.dims()[0];
-    int col_width = col.dims()[1];
+    int filter_height = col->dims()[3];
+    int filter_width = col->dims()[4];
+    int col_height = col->dims()[0];
+    int col_width = col->dims()[1];
 
-    PADDLE_ENFORCE_EQ((im_height + padding_up + padding_down -
-                       (dilation_h * (filter_height - 1) + 1)) /
-                              stride_height +
+    PADDLE_ENFORCE_EQ((im_height + padding[0] + padding[2] -
+                       (dilation[0] * (filter_height - 1) + 1)) /
+                              stride[0] +
                           1,
                       col_height,
                       "Output_height and padding(padding_up, padding_down) are "
                       "inconsistent.");
-    PADDLE_ENFORCE_EQ((im_width + padding_left + padding_right -
-                       (dilation_w * (filter_width - 1) + 1)) /
-                              stride_width +
+    PADDLE_ENFORCE_EQ((im_width + padding[1] + padding[3] -
+                       (dilation[1] * (filter_width - 1) + 1)) /
+                              stride[1] +
                           1,
                       col_width,
                       "col_width and padding(padding_left, padding_right) are "
@@ -314,18 +313,18 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
     im2colOCF<T><<<grid, threads, 0,
                    reinterpret_cast<const platform::CUDADeviceContext&>(context)
                        .stream()>>>(
-        im.data<T>(), col.data<T>(), im_channels, im_height, im_width,
-        filter_height, filter_width, stride_height, stride_width, padding_up,
-        padding_left, col_height, col_width);
+        im.data<T>(), im_channels, im_height, im_width, filter_height,
+        filter_width, stride[0], stride[1], padding[0], padding[1], col_height,
+        col_width, col->data<T>());
   }
 };
 
 template <class T>
-__global__ void col2imOCF(T* im_data, const T* col_data, int im_channels,
-                          int im_height, int im_width, int filter_height,
-                          int filter_width, int stride_height, int stride_width,
+__global__ void col2imOCF(const T* col_data, int im_channels, int im_height,
+                          int im_width, int filter_height, int filter_width,
+                          int stride_height, int stride_width,
                           int padding_height, int padding_width, int col_height,
-                          int col_width) {
+                          int col_width, T* im_data) {
   int swid = blockIdx.x;
   int shid = blockIdx.y;
   for (int channelid = threadIdx.z; channelid < im_channels;
@@ -361,30 +360,31 @@ template <class T>
 class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
                     platform::GPUPlace, T> {
  public:
-  void operator()(const platform::DeviceContext& context, framework::Tensor& im,
-                  const framework::Tensor& col, int dilation_h, int dilation_w,
-                  int stride_height, int stride_width, int padding_up,
-                  int padding_down, int padding_left, int padding_right) {
-    PADDLE_ENFORCE(im.dims().size() == 3);
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& col,
+                  const std::vector<int>& dilation,
+                  const std::vector<int>& stride,
+                  const std::vector<int>& padding, framework::Tensor* im) {
+    PADDLE_ENFORCE(im->dims().size() == 3);
     PADDLE_ENFORCE(col.dims().size() == 5);
-    int im_channels = im.dims()[0];
-    int im_height = im.dims()[1];
-    int im_width = im.dims()[2];
+    int im_channels = im->dims()[0];
+    int im_height = im->dims()[1];
+    int im_width = im->dims()[2];
     int filter_height = col.dims()[3];
     int filter_width = col.dims()[4];
     int col_height = col.dims()[0];
     int col_width = col.dims()[1];
 
-    PADDLE_ENFORCE_EQ((im_height + padding_up + padding_down -
-                       (dilation_h * (filter_height - 1) + 1)) /
-                              stride_height +
+    PADDLE_ENFORCE_EQ((im_height + padding[0] + padding[2] -
+                       (dilation[0] * (filter_height - 1) + 1)) /
+                              stride[0] +
                           1,
                       col_height,
                       "Output_height and padding(padding_up, padding_down) are "
                       "inconsistent.");
-    PADDLE_ENFORCE_EQ((im_width + padding_left + padding_right -
-                       (dilation_w * (filter_width - 1) + 1)) /
-                              stride_width +
+    PADDLE_ENFORCE_EQ((im_width + padding[1] + padding[3] -
+                       (dilation[1] * (filter_width - 1) + 1)) /
+                              stride[1] +
                           1,
                       col_width,
                       "col_width and padding(padding_left, padding_right) are "
@@ -412,9 +412,9 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
     col2imOCF<T><<<grid, threads, 0,
                    reinterpret_cast<const platform::CUDADeviceContext&>(context)
                        .stream()>>>(
-        im.data<T>(), col.data<T>(), im_channels, im_height, im_width,
-        filter_height, filter_width, stride_height, stride_width, padding_up,
-        padding_left, col_height, col_width);
+        col.data<T>(), im_channels, im_height, im_width, filter_height,
+        filter_width, stride[0], stride[1], padding[0], padding[1], col_height,
+        col_width, im->data<T>());
   }
 };
 
