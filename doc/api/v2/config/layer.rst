@@ -82,6 +82,11 @@ maxout
 ..  autoclass:: paddle.v2.layer.maxout
     :noindex:
 
+roi_pool
+--------
+..  autoclass:: paddle.v2.layer.roi_pool
+    :noindex:
+
 Norm Layer
 ==========
 
