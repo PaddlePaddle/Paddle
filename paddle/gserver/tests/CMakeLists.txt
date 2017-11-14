@@ -24,6 +24,7 @@ gserver_test(test_ConvUnify)
 gserver_test(test_BatchNorm)
 gserver_test(test_KmaxSeqScore)
 gserver_test(test_Expand)
+gserver_test(test_MaxPoolingWithMaskOutput)
 
 ########## test_Mkldnn layers and activations ##########
 if(WITH_MKLDNN)
