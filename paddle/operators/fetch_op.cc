@@ -66,8 +66,13 @@ class FetchOpInfoMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of fetch op");
     AddOutput("Out", "The output of fetch op");
-    AddComment("fetch op, it should not be configured by users directly");
-    AddAttr<int>("col", "column of fetch");
+    AddAttr<int>("col", "(int) The column of fetch");
+    AddComment(R"DOC(
+Fetch Operator.
+
+It should not be configured by users directly.
+
+)DOC");
   }
 };
 }  // namespace operators

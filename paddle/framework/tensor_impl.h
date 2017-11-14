@@ -52,7 +52,7 @@ struct SizeOfTypeFunctor<HEAD, TAIL...> {
 };
 
 static inline size_t SizeOfType(std::type_index type) {
-  SizeOfTypeFunctor<int, float, double, int16_t, int64_t> functor;
+  SizeOfTypeFunctor<int, float, double, int16_t, int64_t, bool> functor;
   size_t size = functor(type);
   PADDLE_ENFORCE(size != 0UL, "Cannot get size of type %s", type.name());
   return size;
@@ -228,7 +228,7 @@ inline void Tensor::CopyFromVector(const std::vector<T>& src,
 #endif
 }
 
-inline Tensor Tensor::Slice(const int& begin_idx, const int& end_idx) const {
+inline Tensor Tensor::Slice(int begin_idx, int end_idx) const {
   check_memory_size();
   PADDLE_ENFORCE_GE(begin_idx, 0,
                     "The start row index must be greater than 0.");

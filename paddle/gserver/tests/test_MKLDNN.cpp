@@ -234,8 +234,7 @@ static void getMKLDNNBatchNormConfig(TestConfig& cfg,
   cfg.inputDefs.push_back({INPUT_DATA, "layer_2_moving_var", 1, size_t(pm.ic)});
   cfg.inputDefs.back().isStatic = true;
   LayerInputConfig* input = cfg.layerConfig.add_inputs();
-  // TODO(TJ): uncomment me when refine and support comparing all zeroes vector
-  // cfg.layerConfig.set_active_type("relu");
+  cfg.layerConfig.set_active_type("relu");
   cfg.layerConfig.add_inputs();
   cfg.layerConfig.add_inputs();
   ImageConfig* img_conf = input->mutable_image_conf();
@@ -270,22 +269,51 @@ void testBatchNormLayer(const testBatchNormDesc& pm) {
 TEST(MKLDNNLayer, BatchNormLayer) {
   testBatchNormLayer({4, 10, 6, 6});
   testBatchNormLayer({16, 32, 16, 16});
+  testBatchNormLayer({4, 16, 8, 10});
 }
 
-struct testActDesc {
+struct testImageDesc {
   int bs, ic, ih, iw;
 };
 
-static void getAddtoConfig(TestConfig& cfg, const testActDesc& pm) {
+static void getAddtoConfig(TestConfig& cfg,
+                           const testImageDesc& pm,
+                           const size_t nInputs = 1) {
   cfg.biasSize = 0;
   cfg.layerConfig.set_type("addto");
   size_t layerSize = pm.ic * pm.ih * pm.iw;
   cfg.layerConfig.set_size(layerSize);
-  cfg.inputDefs.push_back({INPUT_DATA, "layer_0", layerSize, 0});
-  cfg.layerConfig.add_inputs();
+  cfg.layerConfig.set_active_type("relu");
+  for (size_t i = 0; i < nInputs; ++i) {
+    std::stringstream ss;
+    ss << "layer_" << i;
+    cfg.inputDefs.push_back({INPUT_DATA, ss.str(), layerSize, 0});
+    LayerInputConfig* input = cfg.layerConfig.add_inputs();
+    ImageConfig* img_conf = input->mutable_image_conf();
+    img_conf->set_channels(pm.ic);
+    img_conf->set_img_size_y(pm.ih);
+    img_conf->set_img_size(pm.iw);
+  }
 }
 
-void testActivation(std::string actType, const testActDesc& pm) {
+void testAddtoLayer(const testImageDesc& pm, const size_t nInputs) {
+  CHECK_GE(nInputs, 1UL);
+  TestConfig dnnConfig;
+  getAddtoConfig(dnnConfig, pm, nInputs);
+  dnnConfig.layerConfig.set_type("mkldnn_addto");
+  for (auto withBias : {false, true}) {
+    dnnConfig.biasSize = withBias ? pm.ic * pm.ih * pm.iw : 0;
+    RUN_MKLDNN_TEST_LAYER(dnnConfig, "addto", pm)
+  }
+}
+
+TEST(MKLDNNLayer, AddtoLayer) {
+  testAddtoLayer({16, 5, 14, 14}, 1);
+  testAddtoLayer({8, 10, 8, 8}, 2);
+  testAddtoLayer({4, 12, 1, 1}, 3);
+}
+
+void testActivation(std::string actType, const testImageDesc& pm) {
   // TODO(TJ): remove me when paddle support elu activation
   if (actType == "mkldnn_elu") {
     return;
@@ -309,15 +337,15 @@ TEST(MKLDNNActivation, Activations) {
 }
 
 DECLARE_string(config_args);
-TEST(MKLDNNLayer, branches) {
-  std::vector<std::string> cases = {"conv", "pool", "fc"};
+TEST(MKLDNNNet, net) {
+  std::vector<std::string> cases = {"simple", "branch"};
   for (auto name : cases) {
-    std::string config = "./gserver/tests/mkldnn_branches_" + name + ".conf";
+    std::string config = "./gserver/tests/mkldnn_" + name + "_net.conf";
     for (auto channels : {2, 32}) {
       std::ostringstream oss;
       oss << "channels=" << channels;
       FLAGS_config_args = oss.str();
-      MKLDNNTester::runBranchesTest(config);
+      MKLDNNTester::runNetTest(config);
     }
   }
 }

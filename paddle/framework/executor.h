@@ -25,6 +25,7 @@ namespace framework {
 class Executor {
  public:
   explicit Executor(const std::vector<platform::Place>& places);
+  explicit Executor(const platform::DeviceContext& devices);
   ~Executor();
 
   /* @Brief
@@ -34,10 +35,11 @@ class Executor {
    *  ProgramDesc
    *  Scope
    */
-  void Run(const ProgramDescBind&, Scope*, int);
+  void Run(const ProgramDescBind&, Scope*, int, bool create_local_scope = true);
 
  private:
-  std::vector<platform::DeviceContext*> device_contexts_;
+  std::vector<const platform::DeviceContext*> device_contexts_;
+  bool own_;
 };
 
 }  // namespace framework
