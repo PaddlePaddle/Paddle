@@ -18,7 +18,7 @@
 #include <thread>
 
 #include "paddle/framework/data_type.h"
-#include "paddle/framework/executer.h"
+#include "paddle/framework/executor.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
@@ -46,15 +46,16 @@ class RecvOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {
     if (!rpc_service_) {
       std::string endpoint = Attr<std::string>("endpoint");
-      std::thread server_thread(RunServer(rpc_service_, endpoint));
+      std::thread server_thread(RunServer, rpc_service_, endpoint);
     }
   }
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
     // blocking get one var from client.
     const framework::LoDTensor &t = rpc_service_->Get();
+    framework::Scope &recv_scope = scope.NewScope();
     // set graph input var
-    auto *var = scope.FindVar(Input("X"));
+    auto *var = recv_scope.FindVar(Input("X"));
     auto *tensor = var->GetMutable<framework::LoDTensor>();
     // FIXME(typhoonzero): do not copy
     tensor->CopyFrom(t, dev_ctx.GetPlace(), dev_ctx);
@@ -63,9 +64,10 @@ class RecvOp : public framework::OperatorBase {
     auto *program = block->Program();
     framework::Executor executor(dev_ctx);
     // Run sub graph to get optimized tensor
-    executor.Run(*program, &scope, block->ID(), false /*create_local_scope*/);
+    executor.Run(*program, &recv_scope, block->ID(),
+                 false /*create_local_scope*/);
 
-    auto *out_var = scope.FindVar("Out");
+    auto *out_var = recv_scope.FindVar("Out");
     // push back
     rpc_service_->Push(out_var->Get<framework::LoDTensor>());
   }
@@ -89,6 +91,8 @@ This operator will recv tensor from send_op
                          "IP address to listen on.")
         .SetDefault("127.0.0.1:6164")
         .AddCustomChecker([](const std::string &ip) { return !ip.empty(); });
+    AddAttr<framework::BlockDescBind *>("OptimizeBlock", "type BlockDescBind*",
+                                        "optimize network run in server");
   }
 };
 
