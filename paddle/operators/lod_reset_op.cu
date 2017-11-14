@@ -12,11 +12,13 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/increment_op.h"
+#include "paddle/operators/lod_reset_op.h"
 
+namespace ops = paddle::operators;
+
+REGISTER_OP_GPU_KERNEL(lod_reset,
+                       ops::LoDResetKernel<paddle::platform::GPUPlace, float>,
+                       ops::LoDResetKernel<paddle::platform::GPUPlace, double>);
 REGISTER_OP_GPU_KERNEL(
-    increment,
-    paddle::operators::IncrementKernel<paddle::platform::GPUPlace, float>,
-    paddle::operators::IncrementKernel<paddle::platform::GPUPlace, double>,
-    paddle::operators::IncrementKernel<paddle::platform::GPUPlace, int>,
-    paddle::operators::IncrementKernel<paddle::platform::GPUPlace, int64_t>);
+    lod_reset_grad, ops::LoDResetGradKernel<paddle::platform::GPUPlace, float>,
+    ops::LoDResetGradKernel<paddle::platform::GPUPlace, double>);
