@@ -4,7 +4,7 @@ import paddle.v2.fluid.nets as nets
 import paddle.v2.fluid.core as core
 import paddle.v2.fluid.optimizer as optimizer
 import paddle.v2.fluid.evaluator as evaluator
-from paddle.v2.fluid.framework import Program
+import paddle.v2.fluid.framework as framework
 from paddle.v2.fluid.executor import Executor
 
 import numpy as np
