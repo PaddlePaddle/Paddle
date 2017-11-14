@@ -9,7 +9,7 @@ from paddle.v2.fluid.layer_helper import LayerHelper
 
 __all__ = [
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
-    'AdamaxOptimizer'
+    'AdamaxOptimizer', 'DecayedAdagradOptimizer'
 ]
 
 
@@ -85,7 +85,7 @@ class Optimizer(object):
         """
         if (name in self._accumulators and
                 param.name in self._accumulators[name]):
-            raise Exception("Accumulator {} already exists for parmeter {}".
+            raise Exception("Accumulator {} already exists for parameter {}".
                             format(name, param.name))
 
         assert isinstance(self.helper, LayerHelper)
@@ -307,7 +307,7 @@ class AdagradOptimizer(Optimizer):
         moment_acc = self._get_accumulator(self._moment_acc_str,
                                            param_and_grad[0])
 
-        # create the adagrad optimizer op
+        # Create the adagrad optimizer op
         adagrad_op = block.append_op(
             type=self.type,
             inputs={
@@ -321,6 +321,53 @@ class AdagradOptimizer(Optimizer):
             attrs={"epsilon": self._epsilon})
 
         return adagrad_op
+
+
+class DecayedAdagradOptimizer(Optimizer):
+    """Simple Decayed Adagrad optimizer with moment state
+    """
+    _moment_acc_str = "moment"
+
+    def __init__(self,
+                 learning_rate,
+                 decay=0.95,
+                 epsilon=1.0e-6,
+                 global_step=None):
+        assert learning_rate is not None
+        assert decay is not None
+        assert epsilon is not None
+        super(DecayedAdagradOptimizer, self).__init__(global_step)
+        self.type = "decayed_adagrad"
+        self._learning_rate = learning_rate
+        self._decay = decay
+        self._epsilon = epsilon
+
+    def _create_accumulators(self, block, parameters):
+        assert isinstance(block, framework.Block)
+
+        for p in parameters:
+            self._add_accumulator(self._moment_acc_str, p)
+
+    def _append_optimize_op(self, block, param_and_grad):
+        assert isinstance(block, framework.Block)
+
+        moment_acc = self._get_accumulator(self._moment_acc_str,
+                                           param_and_grad[0])
+
+        # Create the decayed adagrad optimizer op
+        decayed_adagrad_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "Moment": moment_acc,
+                "LearningRate": self._create_param_lr(param_and_grad)
+            },
+            outputs={"ParamOut": param_and_grad[0],
+                     "MomentOut": moment_acc},
+            attrs={"epsilon": self._epsilon})
+
+        return decayed_adagrad_op
 
 
 class AdamOptimizer(Optimizer):

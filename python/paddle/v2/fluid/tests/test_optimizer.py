@@ -198,11 +198,65 @@ class TestAdagradOptimizer(unittest.TestCase):
         adagrad_op = opts[0]
         self.assertEqual(adagrad_op.type, "adagrad")
 
-        # check accumulators
+        # Check accumulators
         accumulators = adagrad_optimizer.get_accumulators()
         self.assertEqual(len(accumulators), 1)
         self.assertTrue(adagrad_optimizer.get_moment_str() in accumulators)
         moment_acc = accumulators[adagrad_optimizer.get_moment_str()]
+        self.assertEqual(len(moment_acc), 1)
+        self.assertTrue(mul_x.name in moment_acc)
+
+        # Check init_program
+        init_ops = init_program.global_block().ops
+        self.assertEqual(len(init_ops), 2)
+        self.assertEqual(init_ops[0].type, "fill_constant")
+        self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
+        self.assertEqual(init_ops[1].type, "fill_constant")
+        self.assertAlmostEqual(init_ops[1].attr('value'), 0.0)
+
+
+class TestDecayedAdagradOptimizer(unittest.TestCase):
+    class MockDecayedAdagrad(optimizer.DecayedAdagradOptimzier):
+        def get_accumulators(self):
+            return self._accumulators
+
+        def get_moment_str(self):
+            return self._moment_acc_str
+
+    def test_decayed_adagrad_optimizer(self):
+        init_program = framework.Program()
+        program = framework.Program()
+        block = program.global_block()
+        mul_x = block.create_parameter(
+            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
+        block.append_op(
+            type="mul",
+            inputs={"X": mul_x,
+                    "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1})
+        learning_rate = 0.01
+        decayed_adagrad_optimizer = self.MockDecayedAdagrad(
+            learning_rate=learning_rate, decay=0.95, epsilon=1.0e-6)
+        params_grads = append_backward_ops(mul_out)
+        self.assertEqual(len(params_grads), 1)
+        self.assertEqual(len(decayed_adagrad_optimizer.get_accumulators()), 0)
+        opts = decayed_adagrad_optimizer.create_optimization_pass(
+            params_grads, mul_out, init_program)
+        self.assertEqual(len(opts), 1)
+        decayed_adagrad_op = opts[0]
+        self.assertEqual(decayed_adagrad_op.type, "decayed_adagrad")
+
+        # Check accumulators
+        accumulators = decayed_adagrad_optimizer.get_accumulators()
+        self.assertEqual(len(accumulators), 1)
+        self.assertTrue(
+            decayed_adagrad_optimizer.get_moment_str() in accumulators)
+        moment_acc = accumulators[decayed_adagrad_optimizer.get_moment_str()]
         self.assertEqual(len(moment_acc), 1)
         self.assertTrue(mul_x.name in moment_acc)
 
