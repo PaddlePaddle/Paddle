@@ -13,8 +13,8 @@ packages=['paddle',
           'paddle.v2.reader',
           'paddle.v2.master',
           'paddle.v2.plot',
-          'paddle.v2.framework',
-          'paddle.v2.framework.proto',
+          'paddle.v2.fluid',
+          'paddle.v2.fluid.proto',
           'py_paddle']
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
@@ -44,14 +44,14 @@ setup(name='paddlepaddle',
       ext_modules=[Extension('_foo', ['stub.cc'])],
       package_data={
         'paddle.v2.master': ['libpaddle_master.so'],
-        'paddle.v2.framework': ['core.so'],
+        'paddle.v2.fluid': ['core.so'],
         'py_paddle':['*.py','_swig_paddle.so']
       },
       package_dir={
           '': '${CMAKE_CURRENT_SOURCE_DIR}',
-          # The paddle.v2.framework.proto will be generated while compiling.
+          # The paddle.v2.fluid.proto will be generated while compiling.
           # So that package points to other directory.
-          'paddle.v2.framework.proto': '${PADDLE_BINARY_DIR}/paddle/framework',
+          'paddle.v2.fluid.proto': '${PADDLE_BINARY_DIR}/paddle/fluid',
           'py_paddle': '${PADDLE_SOURCE_DIR}/paddle/py_paddle'
       },
       scripts=paddle_bins,

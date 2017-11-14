@@ -21,7 +21,7 @@ third_party/
 cmake-build-*
 
 # generated while compiling
-python/paddle/v2/framework/core.so
+python/paddle/v2/fluid/core.so
 paddle/pybind/pybind.h
 CMakeFiles
 cmake_install.cmake
