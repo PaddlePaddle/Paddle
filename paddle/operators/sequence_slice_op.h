@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/math/math_function.h"
 #include "paddle/operators/strided_memcpy.h"
 
 namespace paddle {
@@ -25,109 +25,124 @@ using LoDTensor = framework::LoDTensor;
 using LoD = framework::LoD;
 
 template <typename T>
-LoD subsequenceLoD(const T* in, const std::vector<int> offsets,
-                   const std::vector<int> sizes) {
-  auto out_lod = in->lod();
+LoD SequenceSliceLoD(const T& in, const int64_t* offset_data,
+                     const int64_t* length_data) {
+  auto out_lod = in.lod();
   size_t lod_offset = 0;
 
-  auto n = in->lod()[0].size() - 1;
+  auto n = in.lod()[0].size() - 1;
   out_lod[0][0] = 0;
   for (size_t i = 0; i < n; ++i) {
-    lod_offset += sizes[i];
+    lod_offset += length_data[i];
     out_lod[0][i+1] = lod_offset;
   }
   return out_lod;
 }
 
 template <typename Place, typename T>
-class SubSequenceOpKernel : public framework::OpKernel<T> {
+class SequenceSliceOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<LoDTensor>("X");
-    std::vector<int> offsets = ctx.Attr<std::vector<int>>("offset");
-    std::vector<int> sizes = ctx.Attr<std::vector<int>>("size");
+    auto* offset = ctx.Input<Tensor>("Offset");
+    auto* length = ctx.Input<Tensor>("Length");
     auto* out = ctx.Output<LoDTensor>("Out");
 
-    auto offset_len = offsets.size();
-    auto size_len = sizes.size();
+    const int64_t* offset_data = offset->data<int64_t>();
+    const int64_t* length_data = length->data<int64_t>();
+
+    if (platform::is_gpu_place(ctx.GetPlace())) {
+      framework::Tensor offset_cpu;
+      offset_cpu.mutable_data<T>(offset->dims(), platform::CPUPlace());
+      offset_cpu.CopyFrom(*offset, platform::CPUPlace(), ctx.device_context());
+      offset_data = offset_cpu.data<int64_t>();
+
+      framework::Tensor length_cpu;
+      length_cpu.mutable_data<T>(length->dims(), platform::CPUPlace());
+      length_cpu.CopyFrom(*length, platform::CPUPlace(), ctx.device_context());
+      length_data = length_cpu.data<int64_t>();
+    }
 
     auto lod = in->lod();
     auto n = lod[0].size() - 1;
 
     PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
-    PADDLE_ENFORCE_EQ(n, offset_len,
-                      "The length of input and offset should be the same")
-    PADDLE_ENFORCE_EQ(n, size_len,
-                      "The length of input and size should be the same")
+    PADDLE_ENFORCE_EQ(offset->dims().size(), 1UL,
+                      "Only support one level sequence now.");
+    PADDLE_ENFORCE_EQ(length->dims().size(), 1UL,
+                      "Only support one level sequence now.");
+    PADDLE_ENFORCE_EQ(
+        n, length->dims()[0],
+        "The size of input-sequence and length-array should be the same")
+    PADDLE_ENFORCE_EQ(
+        n, offset->dims()[0],
+        "The size of input-sequence and offset-array should be the same")
 
     for (size_t i = 0; i < n; ++i) {
-      auto offset = offsets[i];
-      auto size = sizes[i];
-      PADDLE_ENFORCE_LT(lod[0][i] + offset + size, lod[0][i + 1],
-                        "The target tensor's length overflow")
+      PADDLE_ENFORCE_LT(0, offset_data[i], "The offset must greater than zero")
+      PADDLE_ENFORCE_LT(0, length_data[i], "The length must greater than zero")
+      PADDLE_ENFORCE_LT(lod[0][i] + offset_data[i] + length_data[i],
+                        lod[0][i + 1], "The target tensor's length overflow")
     }
 
     out->mutable_data<T>(ctx.GetPlace());
-    auto out_lod = subsequenceLoD(in, offsets, sizes);
+    auto out_lod = SequenceSliceLoD(*in, offset_data, length_data);
     out->set_lod(out_lod);
+    math::SetConstant<Place, T> set_zero;
+    set_zero(ctx.device_context(), out, static_cast<T>(0));
 
     auto in_stride = framework::stride(in->dims());
     auto out_stride = framework::stride(out->dims());
 
     size_t out_offset = 0;
     for (size_t i = 0; i < n; ++i) {
-      auto offset = offsets[i];
-      auto size = sizes[i];
-
-      Tensor in_t = in->Slice(static_cast<int>(lod[0][i] + offset),
-                               static_cast<int>(lod[0][i] + offset + size));
+      Tensor in_t =
+          in->Slice(static_cast<int>(lod[0][i] + offset_data[i]),
+                    static_cast<int>(lod[0][i] + offset_data[i] +
+                    length_data[i]));
 
       StridedMemcpy<T>(ctx.device_context(), in_t.data<T>(),
                        in_stride, in_t.dims(), out_stride,
                        out->data<T>() + out_offset);
-      out_offset += size * in_stride[0];
+      out_offset += length_data[i] * in_stride[0];
     }
   }
 };
 
 template <typename Place, typename T>
-class SubSequenceGradOpKernel : public framework::OpKernel<T> {
+class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<LoDTensor>("X");
-    std::vector<int> offsets = ctx.Attr<std::vector<int>>("offset");
-    std::vector<int> sizes = ctx.Attr<std::vector<int>>("size");
+    auto* offset = ctx.Input<Tensor>("Offset");
+    auto* length = ctx.Input<Tensor>("Length");
     auto* out_grad =
         ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
     auto* x_grad =
         ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
 
-    auto offset_len = offsets.size();
-    auto size_len = sizes.size();
+    const int64_t* offset_data = offset->data<int64_t>();
+    const int64_t* length_data = length->data<int64_t>();
 
-    auto lod = in->lod();
-    auto n = lod[0].size() - 1;
+    if (platform::is_gpu_place(ctx.GetPlace())) {
+      framework::Tensor offset_cpu;
+      offset_cpu.mutable_data<T>(offset->dims(), platform::CPUPlace());
+      offset_cpu.CopyFrom(*offset, platform::CPUPlace(), ctx.device_context());
+      offset_data = offset_cpu.data<int64_t>();
 
-    // check input data format
-    PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
-    PADDLE_ENFORCE_EQ(n, offset_len,
-                      "The length of input and offset should be the same")
-    PADDLE_ENFORCE_EQ(n, size_len,
-                      "The length of input and size should be the same")
-
-    for (size_t i = 0; i < n; ++i) {
-      auto offset = offsets[i];
-      auto size = sizes[i];
-      PADDLE_ENFORCE_LT(lod[0][i] + offset + size, lod[0][i + 1],
-                        "The target tensor's length overflow")
+      framework::Tensor length_cpu;
+      length_cpu.mutable_data<T>(length->dims(), platform::CPUPlace());
+      length_cpu.CopyFrom(*length, platform::CPUPlace(), ctx.device_context());
+      length_data = length_cpu.data<int64_t>();
     }
 
-    auto out_lod = subsequenceLoD(in, offsets, sizes);
+    auto lod = in->lod();
+    auto out_lod = SequenceSliceLoD(*in, offset_data, length_data);
 
     x_grad->set_lod(lod);
     x_grad->mutable_data<T>(ctx.GetPlace());
-    auto temp = framework::EigenVector<T>::Flatten(*x_grad);
-    temp.device(ctx.GetEigenDevice<Place>()) = temp.constant(static_cast<T>(0));
+    math::SetConstant<Place, T> set_zero;
+    set_zero(ctx.device_context(), x_grad, static_cast<T>(0));
 
     auto out_grad_stride = framework::stride(out_grad->dims());
 
@@ -139,11 +154,9 @@ class SubSequenceGradOpKernel : public framework::OpKernel<T> {
 
       auto x_grad_stride = framework::stride(x_grad->dims());
 
-      auto offset = offsets[i];
-      auto size = sizes[i];
-
-      Tensor x_grad_t = x_grad->Slice(static_cast<int>(lod[0][i] + offset),
-                         static_cast<int>(lod[0][i] + offset + size));
+      Tensor x_grad_t = x_grad->Slice(
+          static_cast<int>(lod[0][i] + offset_data[i]),
+          static_cast<int>(lod[0][i] + offset_data[i] + length_data[i]));
 
       StridedMemcpy<T>(ctx.device_context(), out_grad_t.data<T>(),
                        out_grad_stride, out_grad_t.dims(), x_grad_stride,
