@@ -43,7 +43,7 @@ class Evaluator(object):
         """
         Clear metric states at the begin of each pass/user specified batch
         """
-        if program == None:
+        if reset_program == None:
             reset_program = Program()
         else:
             reset_program = program
@@ -147,9 +147,9 @@ class Accuracy(Evaluator):
 
         return acc_out
 
-    def eval(self, executor, program=None):
-        if program != None:
-            eval_program = program
+    def eval(self, executor, eval_program=None):
+        if eval_program != None:
+            eval_program = eval_program
         else:
             eval_program = Program()
         block = eval_program.global_block()
