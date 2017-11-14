@@ -2048,6 +2048,7 @@ class ParameterReluLayer(LayerBase):
     def __init__(self, name, inputs, partial_sum=1, **args):
         super(ParameterReluLayer, self).__init__(
             name, self.layer_type, 0, inputs=inputs, **args)
+
         input_layer = self.get_input_layer(0)
         config_assert(len(self.inputs) == 1, "prelu layer has only one input.")
         config_assert(input_layer.size % partial_sum == 0,
