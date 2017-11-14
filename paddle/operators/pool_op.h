@@ -57,11 +57,11 @@ class PoolKernel : public framework::OpKernel<T> {
     const Tensor* in_x = context.Input<Tensor>("X");
     Tensor* out = context.Output<Tensor>("Out");
 
-    std::string pooling_type = context.Attr<std::string>("poolingType");
+    std::string pooling_type = context.Attr<std::string>("pooling_type");
     std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
-    if (context.Attr<bool>("globalPooling")) {
+    if (context.Attr<bool>("global_pooling")) {
       for (size_t i = 0; i < ksize.size(); ++i) {
         paddings[i] = 0;
         ksize[i] = static_cast<int>(in_x->dims()[i + 2]);
@@ -119,12 +119,12 @@ class PoolGradKernel : public framework::OpKernel<T> {
         context.Input<Tensor>(framework::GradVarName("Out"));
     Tensor* in_x_grad = context.Output<Tensor>(framework::GradVarName("X"));
 
-    std::string pooling_type = context.Attr<std::string>("poolingType");
+    std::string pooling_type = context.Attr<std::string>("pooling_type");
     std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
 
-    if (context.Attr<bool>("globalPooling")) {
+    if (context.Attr<bool>("global_pooling")) {
       for (size_t i = 0; i < ksize.size(); ++i) {
         paddings[i] = 0;
         ksize[i] = static_cast<int>(in_x->dims()[i + 2]);

@@ -1,10 +1,10 @@
 import copy
 import itertools
 
-from paddle.v2.framework.framework import Variable, g_program, \
-    g_init_program, unique_name, Program
+from paddle.v2.framework.framework import Variable, g_main_program, \
+    g_startup_program, unique_name, Program
 from paddle.v2.framework.initializer import ConstantInitializer, \
-    UniformInitializer
+    UniformInitializer, XavierInitializer
 
 
 class LayerHelper(object):
@@ -20,23 +20,23 @@ class LayerHelper(object):
         return self.kwargs['name']
 
     @property
-    def program(self):
-        prog = self.kwargs.get('program', None)
+    def main_program(self):
+        prog = self.kwargs.get('main_program', None)
         if prog is None:
-            return g_program
+            return g_main_program
         else:
             return prog
 
     @property
-    def init_program(self):
-        prog = self.kwargs.get('init_program', None)
+    def startup_program(self):
+        prog = self.kwargs.get('startup_program', None)
         if prog is None:
-            return g_init_program
+            return g_startup_program
         else:
             return prog
 
     def append_op(self, *args, **kwargs):
-        return self.program.current_block().append_op(*args, **kwargs)
+        return self.main_program.current_block().append_op(*args, **kwargs)
 
     def multiple_input(self, input_param_name='input'):
         inputs = self.kwargs.get(input_param_name, [])
@@ -61,7 +61,7 @@ class LayerHelper(object):
 
     @property
     def param_attr(self):
-        default = {'name': None, 'initializer': UniformInitializer()}
+        default = {'name': None, 'initializer': XavierInitializer()}
         actual = self.kwargs.get('param_attr', None)
         if actual is None:
             actual = default
@@ -70,10 +70,11 @@ class LayerHelper(object):
                 actual[default_field] = default[default_field]
         return actual
 
+    @property
     def bias_attr(self):
-        default = {'name': None, 'initializer': ConstantInitializer()}
+        default = {'name': None, 'initializer': XavierInitializer()}
         bias_attr = self.kwargs.get('bias_attr', None)
-        if bias_attr is True:
+        if bias_attr is None:
             bias_attr = default
 
         if isinstance(bias_attr, dict):
@@ -120,27 +121,27 @@ class LayerHelper(object):
             attr_copy['initializer'] = initializer
         if attr_copy['name'] is None:
             attr_copy['name'] = unique_name(".".join([self.name, suffix]))
-        self.init_program.global_block().create_parameter(
+        self.startup_program.global_block().create_parameter(
             dtype=dtype, shape=shape, **attr_copy)
-        return self.program.global_block().create_parameter(
+        return self.main_program.global_block().create_parameter(
             name=attr_copy['name'], dtype=dtype, shape=shape)
 
     def create_tmp_variable(self, dtype):
-        return self.program.current_block().create_var(
+        return self.main_program.current_block().create_var(
             name=unique_name(".".join([self.name, 'tmp'])),
             dtype=dtype,
             persistable=False)
 
     def create_variable(self, *args, **kwargs):
-        return self.program.current_block().create_var(*args, **kwargs)
+        return self.main_program.current_block().create_var(*args, **kwargs)
 
     def create_global_variable(self, persistable=False, *args, **kwargs):
-        return self.program.global_block().create_var(
+        return self.main_program.global_block().create_var(
             *args, persistable=persistable, **kwargs)
 
     def set_variable_initializer(self, var, initializer):
         assert isinstance(var, Variable)
-        self.init_program.global_block().create_var(
+        self.startup_program.global_block().create_var(
             name=var.name,
             type=var.type,
             dtype=var.data_type,
@@ -166,7 +167,7 @@ class LayerHelper(object):
                 num_flatten_dims = 1
 
         size = list(input_var.shape[num_flatten_dims:])
-        bias_attr = self.bias_attr()
+        bias_attr = self.bias_attr
         if not bias_attr:
             return input_var
 
