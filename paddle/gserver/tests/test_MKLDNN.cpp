@@ -297,7 +297,7 @@ static void getAddtoConfig(TestConfig& cfg,
 }
 
 void testAddtoLayer(const testImageDesc& pm, const size_t nInputs) {
-  CHECK_GE(nInputs, 1);
+  CHECK_GE(nInputs, 1UL);
   TestConfig dnnConfig;
   getAddtoConfig(dnnConfig, pm, nInputs);
   dnnConfig.layerConfig.set_type("mkldnn_addto");
