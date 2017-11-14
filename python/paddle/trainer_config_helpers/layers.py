@@ -3573,30 +3573,29 @@ def lstm_step_layer(input,
 
 
     This layer has two outputs. Default output is :math:`h_t`. The other
-    output is :math:`o_t`, whose name is 'state' and can use
+    output is :math:`o_t`, whose name is 'state' and users can use
     :code:`get_output_layer` to extract this output.
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param size: Layer's size. NOTE: lstm layer's size, should be equal to
-                 :code:`input.size/4`, and should be equal to
-                 :code:`state.size`.
+    :param size: The dimension of this layer's output, which must be
+                 equal to the dimension of the state.
     :type size: int
-    :param input: input layer. :math:`Wx_t + Wh_{t-1}`
+    :param input: The input of this layer.
     :type input: LayerOutput
-    :param state: State Layer. :math:`c_{t-1}`
+    :param state: The state of a lstm.
     :type state: LayerOutput
     :param act: Activation type. TanhActivation is the default.
     :type act: BaseActivation
-    :param gate_act: Gate Activation Type. SigmoidActivation is the default.
+    :param gate_act: Activation type of the gate. SigmoidActivation is the default.
     :type gate_act: BaseActivation
-    :param state_act: State Activation Type. TanhActivation is the default.
+    :param state_act: Activation type of the state. TanhActivation is the default.
     :type state_act: BaseActivation
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param layer_attr: layer's extra attribute.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -3641,22 +3640,29 @@ def gru_step_layer(input,
                    layer_attr=None):
     """
 
-    :param input:
+    :param input: The input of this layer, whose dimension can be divided by 3.
     :type input: LayerOutput
-    :param output_mem:
-    :param size:
-    :param act:
+    :param output_mem: A memory which memorizes the output of this layer at previous
+                       time step.
+    :type output_mem: LayerOutput
+    :param size: The dimension of this layer's output. If it is not set or set to None,
+                 it will be set to one-third of the dimension of the input automatically.
+    :type size: int
+    :param act: Activation type of this layer's output. SigmoidActivation
+                is the default.
     :type act: BaseActivation
     :param name: The name of this layer. It is optional.
+    :type name: basestring
     :param gate_act: Activation type of this layer's two gates. Default is Sigmoid.
     :type gate_act: BaseActivation
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param param_attr: the parameter_attribute for transforming the output_mem
-                       from previous step.
-    :param layer_attr:
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
+    :type param_attr: ParameterAttribute
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for details.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -3701,24 +3707,33 @@ def gru_step_naive_layer(input,
                          param_attr=None,
                          layer_attr=None):
     """
-    GRU Step Layer, but using MixedLayer to generate. It support ERROR_CLIPPING
+    GRU Step Layer, but using MixedLayer to generate. It supports ERROR_CLIPPING
     and DROPOUT.
 
-    :param input:
-    :param output_mem:
-    :param size:
+    :param input: The input of this layer, whose dimension can be divided by 3.
+    :param output_mem: A memory which memorizes the output of this layer at previous
+                       time step.
+    :type output_mem: LayerOutput
+    :param size: The dimension of this layer's output. If it is not set or set to None,
+                 it will be set to one-third of the dimension of the input automatically.
+    :type size: int
     :param name: The name of this layer. It is optional.
-    :param act:
+    :type name: basestring
+    :param act: Activation type of this layer's output. SigmoidActivation
+                is the default.
     :type act: BaseActivation
-    :param gate_act: Activation type of this layer's two gates. Default is Sigmoid.
+    :param gate_act: Activation type of this layer's two gates. TanhActivation
+                     is the default.
     :type gate_act: BaseActivation
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param param_attr:
-    :param layer_attr:
-    :return:
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
+    :type param_attr: ParameterAttribute
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for details.
+    :type layer_attr: ExtraLayerAttribute
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     if input.size % 3 != 0:
@@ -3780,12 +3795,13 @@ def get_output_layer(input, arg_name, name=None, layer_attr=None):
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param input: get output layer's input. And this layer should contains
+    :param input: The input layer. And this layer should contain
                    multiple outputs.
     :type input: LayerOutput
-    :param arg_name: Output name from input.
+    :param arg_name: The name of the output of the input layer.
     :type arg_name: basestring
-    :param layer_attr: Layer's extra attribute.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -3848,11 +3864,13 @@ def recurrent_layer(input,
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param param_attr: parameter attribute.
+    :param param_attr: The parameter attribute. See ParameterAttribute for
+                       details.
     :type param_attr: ParameterAttribute
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param layer_attr: Layer Attribute.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -3877,7 +3895,7 @@ def recurrent_layer(input,
 class StaticInput(object):
     """
     StaticInput is only used in recurrent_group which defines a read-only memory
-    that can be a sequence or non-sequence.
+    and can be a sequence or non-sequence.
     :param size: DEPRECATED
     :param is_seq: DEPRECATED
     """
@@ -3910,7 +3928,7 @@ def recurrent_group(step, input, reverse=False, name=None, targetInlink=None):
     Recurrent layer group is an extremely flexible recurrent unit in
     PaddlePaddle. As long as the user defines the calculation done within a
     time step, PaddlePaddle will iterate such a recurrent calculation over
-    sequence input. This is extremely usefull for attention based model, or
+    sequence input. This is extremely useful for attention-based models, or
     Neural Turning Machine like models.
 
     The basic usage (time steps) is:
@@ -3933,18 +3951,18 @@ def recurrent_group(step, input, reverse=False, name=None, targetInlink=None):
                   demo/seqToseq/seqToseq_net.py
     - sequence steps: paddle/gserver/tests/sequence_nest_layer_group.conf
 
-    :param step: recurrent one time step function.The input of this function is
-                 input of the group. The return of this function will be
-                 recurrent group's return value.
+    :param step: A step function which will be executed every step. The input
+                 of this function is the input of the group. The return of
+                 this function will be recurrent group's return value.
 
-                 The recurrent group scatter a sequence into time steps. And
-                 for each time step, will invoke step function, and return
-                 a time step result. Then gather each time step of output into
+                 The recurrent group scatters a sequence into time steps. And
+                 for each time step, it will invoke step function, and return
+                 a time step result. Then gather outputs of each time step into
                  layer group's output.
 
     :type step: callable
 
-    :param name: recurrent_group's name.
+    :param name: The recurrent_group's name. It is optional.
     :type name: basestring
 
     :param input: Input links array.
@@ -3952,11 +3970,11 @@ def recurrent_group(step, input, reverse=False, name=None, targetInlink=None):
                   LayerOutput will be scattered into time steps.
                   SubsequenceInput will be scattered into sequence steps.
                   StaticInput will be imported to each time step, and doesn't change
-                  through time. It's a mechanism to access layer outside step function.
+                  over time. It's a mechanism to access layer outside step function.
 
     :type input: LayerOutput | StaticInput | SubsequenceInput | list | tuple
 
-    :param reverse: If reverse is set true, the recurrent unit will process the
+    :param reverse: If reverse is set to True, the recurrent unit will process the
                     input sequence in a reverse order.
     :type reverse: bool
 
@@ -4091,7 +4109,8 @@ def maxid_layer(input, name=None, layer_attr=None):
     :type input: LayerOutput
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param layer_attr: extra layer attributes.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -4124,11 +4143,12 @@ def out_prod_layer(input1, input2, name=None, layer_attr=None):
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param input1: The first input layer name.
+    :param input1: The first input layer.
     :type input: LayerOutput
-    :param input2: The second input layer name.
+    :param input2: The second input layer.
     :type input2: LayerOutput
-    :param layer_attr: extra layer attributes.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -4167,9 +4187,10 @@ def eos_layer(input, eos_id, name=None, layer_attr=None):
     :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param eos_id: end id of sequence
+    :param eos_id: End id of sequence
     :type eos_id: int
-    :param layer_attr: extra layer attributes.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -4230,8 +4251,9 @@ def beam_search(step,
     - machine translation : demo/seqToseq/translation/gen.conf \
                             demo/seqToseq/seqToseq_net.py
 
-    :param name: Name of the recurrent unit that generates sequences.
-    :type name: base string
+    :param name: The name of the recurrent unit that generates sequences.
+                 It is optional.
+    :type name: basestring
     :param step: A callable function that defines the calculation in a time
                  step, and it is applied to sequences with arbitrary length by
                  sharing a same set of weights.
@@ -4356,16 +4378,18 @@ def square_error_cost(input,
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param input: Network prediction.
+    :param input: The first input layer.
     :type input: LayerOutput
-    :param label: Data label.
+    :param label: The input label.
     :type label: LayerOutput
-    :param weight: The weight affects the cost, namely the scale of cost.
-                   It is an optional argument.
+    :param weight: The weight layer defines a weight for each sample in the
+                   mini-batch. It is optional.
     :type weight: LayerOutput
-    :param coeff: The coefficient affects the gradient in the backward.
+    :param coeff: The weight of the gradient in the back propagation.
+                  1.0 is the default.
     :type coeff: float
-    :param layer_attr: layer's extra attribute.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -4398,17 +4422,20 @@ def classification_cost(input,
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param input: input layer name. network output.
+    :param input: The first input layer.
     :type input: LayerOutput
-    :param label: label layer name. data_layer often.
+    :param label: The input label.
     :type label: LayerOutput
-    :param weight: The weight affects the cost, namely the scale of cost.
-                   It is an optional argument.
+    :param weight: The weight layer defines a weight for each sample in the
+                   mini-batch. It is optional.
     :type weight: LayerOutput
-    :param evaluator: Evaluator method.
-    :param layer_attr: layer's extra attribute.
+    :param evaluator: Evaluator method. classification_error_evaluator is the default.
+    :type evaluator: Evaluator method
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
-    :param coeff: The coefficient affects the gradient in the backward.
+    :param coeff: The weight of the gradient in the back propagation.
+                  1.0 is the default.
     :type coeff: float
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -4461,7 +4488,7 @@ def conv_operator(img,
     Different from img_conv_layer, conv_op is an Operator, which can be used
     in mixed_layer. And conv_op takes two inputs to perform convolution.
     The first input is the image and the second is filter kernel. It only
-    support GPU mode.
+    supports GPU mode.
 
     The example usage is:
 
@@ -4473,27 +4500,31 @@ def conv_operator(img,
                           num_filters=64,
                           num_channels=64)
 
-    :param img: input image
+    :param img: The input image.
     :type img: LayerOutput
-    :param filter: input filter
+    :param filter: The input filter.
     :type filter: LayerOutput
-    :param filter_size: The x dimension of a filter kernel.
+    :param filter_size: The dimension of the filter kernel on the x axis.
     :type filter_size: int
-    :param filter_size_y: The y dimension of a filter kernel. Since
-                        PaddlePaddle now supports rectangular filters,
-                        the filter's shape can be (filter_size, filter_size_y).
+    :param filter_size_y: The dimension of the filter kernel on the y axis.
+                          If the parameter is not set or set to None, it will
+                          set to 'filter_size' automatically.
     :type filter_size_y: int
-    :param num_filters: channel of output data.
+    :param num_filters: The number of the output channels.
     :type num_filters: int
-    :param num_channels: channel of input data.
+    :param num_channels: The number of the input channels. If the parameter is not set
+                         or set to None, it will be automatically set to the channel
+                         number of the 'img'.
     :type num_channels: int
-    :param stride: The x dimension of the stride.
+    :param stride: The stride on the x axis.
     :type stride: int
-    :param stride_y: The y dimension of the stride.
+    :param stride_y: The stride on the y axis. If the parameter is not set or
+                     set to None, it will be set to 'stride' automatically.
     :type stride_y: int
-    :param padding: The x dimension of padding.
+    :param padding: The padding size on the x axis.
     :type padding: int
-    :param padding_y: The y dimension of padding.
+    :param padding_y: The padding size on the y axis. If the parameter is not set
+                      or set to None, it will be set to 'padding' automatically.
     :type padding_y: int
     :return: A ConvOperator Object.
     :rtype: ConvOperator
@@ -5458,7 +5489,8 @@ def crf_layer(input,
     :type label: LayerOutput
     :param size: The category number.
     :type size: int
-    :param weight: The scale of the cost of each sample. It is optional.
+    :param weight: The weight layer defines a weight for each sample in the
+                   mini-batch. It is optional.
     :type weight: LayerOutput
     :param param_attr: The parameter attribute. See ParameterAttribute for
                        details.
@@ -5608,7 +5640,7 @@ def nce_layer(input,
     :param label: The input label.
     :type label: LayerOutput
     :param weight: The weight layer defines a weight for each sample in the
-                   mini-batch. The default value is None.
+                   mini-batch. It is optional.
     :type weight: LayerOutput
     :param num_classes: The number of classes.
     :type num_classes: int
@@ -5737,7 +5769,8 @@ def rank_cost(left,
     :type right: LayerOutput
     :param label: Label is 1 or 0, means positive order and reverse order.
     :type label: LayerOutput
-    :param weight: The scale of cost. It is optional.
+    :param weight: The weight layer defines a weight for each sample in the
+                   mini-batch. It is optional.
     :type weight: LayerOutput
     :param name: The name of this layer. It is optional.
     :type name: basestring
@@ -5855,9 +5888,8 @@ def cross_entropy(input,
     :param coeff: The weight of the gradient in the back propagation.
                   1.0 is the default.
     :type coeff: float
-    :param weight: The cost of each sample is multiplied with each weight.
-                   The weight should be a layer with size=1. Note that gradient
-                   will not be calculated for weight.
+    :param weight: The weight layer defines a weight for each sample in the
+                   mini-batch. It is optional.
     :type weight: LayerOutout
     :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
                        details.
