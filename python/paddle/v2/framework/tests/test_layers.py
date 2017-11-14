@@ -1,6 +1,6 @@
 import paddle.v2.framework.layers as layers
 import paddle.v2.framework.nets as nets
-from paddle.v2.framework.framework import Program, g_main_program
+from paddle.v2.framework.framework import Program
 import paddle.v2.framework.core as core
 import unittest
 
