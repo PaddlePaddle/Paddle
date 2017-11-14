@@ -2052,9 +2052,15 @@ class ParameterReluLayer(LayerBase):
         config_assert(len(self.inputs) == 1, "prelu layer has only one input.")
         config_assert(input_layer.size % partial_sum == 0,
                       "a wrong setting for partial_sum")
+
+        dims = [1, input_layer.size / partial_sum]
         self.set_layer_size(input_layer.size)
         self.config.partial_sum = partial_sum
-        self.create_input_parameter(0, input_layer.size / partial_sum)
+        self.create_input_parameter(0, input_layer.size / partial_sum, dims)
+
+        self.set_layer_height_width(self.get_input_layer(0).height, \
+                                        self.get_input_layer(0).width)
+        self.set_layer_depth(self.get_input_layer(0).depth)
 
 
 @config_layer('conv')
