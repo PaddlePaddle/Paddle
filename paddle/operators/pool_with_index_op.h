@@ -35,7 +35,7 @@ class MaxPoolWithIndexKernel : public framework::OpKernel<T> {
     std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
-    if (context.Attr<bool>("globalPooling")) {
+    if (context.Attr<bool>("global_pooling")) {
       for (size_t i = 0; i < ksize.size(); ++i) {
         paddings[i] = 0;
         ksize[i] = static_cast<int>(in_x->dims()[i + 2]);
@@ -72,7 +72,7 @@ class MaxPoolWithIndexGradKernel : public framework::OpKernel<T> {
     std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
-    if (context.Attr<bool>("globalPooling")) {
+    if (context.Attr<bool>("global_pooling")) {
       for (size_t i = 0; i < ksize.size(); ++i) {
         paddings[i] = 0;
         ksize[i] = static_cast<int>(in_x_grad->dims()[i + 2]);

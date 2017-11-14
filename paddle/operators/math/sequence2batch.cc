@@ -22,8 +22,8 @@ template <typename T>
 class CopyMatrixRowsFunctor<platform::CPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::LoDTensor& src, const size_t* index,
-                  framework::LoDTensor& dst, bool is_src_index) {
+                  const framework::Tensor& src, const size_t* index,
+                  framework::Tensor& dst, bool is_src_index) {
     auto src_dims = src.dims();
     auto dst_dims = dst.dims();
     PADDLE_ENFORCE_EQ(src_dims.size(), 2UL,

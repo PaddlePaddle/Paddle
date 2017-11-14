@@ -321,8 +321,6 @@ static void CreateGradVarInBlock(
         auto* param = block_desc->FindVarRecursive(pname);
         auto* grad = block_desc->FindVar(arg);
         if (param == nullptr) {
-          LOG(WARNING) << "Cannot find forward variable of " << arg
-                       << ". Set its gradient to FP32";
           grad->SetDataType(DataType::FP32);
         } else {
           grad->SetDataType(param->GetDataType());
@@ -379,6 +377,12 @@ std::vector<std::unique_ptr<OpDescBind>> MakeOpGrad(
   return grad_op_descs;
 }
 
+static BlockDescBind* CreateStepBlock(
+    ProgramDescBind& program_desc,
+    std::unordered_set<std::string>* no_grad_vars,
+    std::unordered_map<std::string, std::string>* grad_to_var,
+    int step_block_idx);
+
 std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
     ProgramDescBind& program_desc, int block_idx,
     std::unordered_set<std::string>* no_grad_vars,
@@ -394,13 +398,13 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
 
     if ((*it)->Type() == "recurrent") {
       int step_block_idx = (*it)->GetBlockAttr("step_block");
-      auto backward_block_op_descs = MakeBlockBackward(
-          program_desc, step_block_idx, no_grad_vars, grad_to_var);
+      BlockDescBind* backward_block = CreateStepBlock(
+          program_desc, no_grad_vars, grad_to_var, step_block_idx);
+      op_grads = MakeOpGrad(*it, no_grad_vars, grad_to_var, {backward_block});
+    } else if ((*it)->Type() == "conditional_block") {
       BlockDescBind* backward_block =
-          program_desc.AppendBlock(*program_desc.MutableBlock(step_block_idx));
-      for (auto& ptr : backward_block_op_descs) {
-        backward_block->AppendAllocatedOp(std::move(ptr));
-      }
+          CreateStepBlock(program_desc, no_grad_vars, grad_to_var,
+                          (*it)->GetBlockAttr("block"));
       op_grads = MakeOpGrad(*it, no_grad_vars, grad_to_var, {backward_block});
     } else {
       op_grads = MakeOpGrad(*it, no_grad_vars, grad_to_var);
@@ -408,6 +412,11 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
 
     for (const auto& desc : op_grads) {
       for (const std::string& out_name : desc->OutputArgumentNames()) {
+        if (out_name.find("@GRAD") == std::string::npos) {
+          // Not all outputs of a backward operator is a gradient. Only gradient
+          // need to be sum. Skip variables are not gradient.
+          continue;
+        }
         dup_out_ops[out_name].emplace_back(grad_desc_idx);
       }
       ++grad_desc_idx;
@@ -444,6 +453,21 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
   }
 
   return backward_descs;
+}
+
+static BlockDescBind* CreateStepBlock(
+    ProgramDescBind& program_desc,
+    std::unordered_set<std::string>* no_grad_vars,
+    std::unordered_map<std::string, std::string>* grad_to_var,
+    int step_block_idx) {
+  auto backward_block_op_descs = MakeBlockBackward(program_desc, step_block_idx,
+                                                   no_grad_vars, grad_to_var);
+  BlockDescBind* backward_block =
+      program_desc.AppendBlock(*program_desc.MutableBlock(step_block_idx));
+  for (auto& ptr : backward_block_op_descs) {
+    backward_block->AppendAllocatedOp(move(ptr));
+  }
+  return backward_block;
 }
 
 ParamGradInfoMap AppendBackward(
