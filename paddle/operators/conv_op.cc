@@ -13,7 +13,6 @@
    limitations under the License. */
 
 #include "paddle/operators/conv_op.h"
-#include <vector>
 
 namespace paddle {
 namespace operators {

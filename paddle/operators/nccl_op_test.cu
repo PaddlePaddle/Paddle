@@ -26,7 +26,6 @@
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/program_desc.h"
 #include "paddle/framework/var_desc.h"
-#include "paddle/operators/math/math_function.h"
 #include "paddle/operators/nccl/nccl_gpu_common.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/enforce.h"

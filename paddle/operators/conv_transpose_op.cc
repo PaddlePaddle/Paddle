@@ -77,13 +77,14 @@ Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(
   AddOutput("Output",
             "(Tensor) The output tensor of convolution transpose operator. "
             "The format of output tensor is also NCHW.");
-  AddAttr<std::vector<int>>("strides",
-                            "(vector<int> defalut:{1, 1}), strides of "
-                            "convolution transpose operator.")
+  AddAttr<std::vector<int>>(
+      "strides",
+      "(vector<int> defalut:{1, 1}), the strides(h_stride, w_stride) of "
+      "convolution transpose operator.")
       .SetDefault({1, 1});
   AddAttr<std::vector<int>>(
       "paddings",
-      "(vector<int> defalut:{0, 0}), paddings(h_pad, w_pad) of convolution "
+      "(vector<int> defalut:{0, 0}), the paddings(h_pad, w_pad) of convolution "
       "transpose operator.")
       .SetDefault({0, 0});
   AddComment(R"DOC(
@@ -134,7 +135,8 @@ Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(
             "the number of channels, D is the depth of the feature, H is the "
             "height of the feature, and W is the width of the feature.");
   AddAttr<std::vector<int>>("strides",
-                            "(vector<int> defalut:{1, 1, 1}), strides of "
+                            "(vector<int> defalut:{1, 1, 1}), the "
+                            "strides{d_stride, h_stride, w_stride} of "
                             "convolution transpose operator.")
       .SetDefault({1, 1, 1});
   AddAttr<std::vector<int>>("paddings",
