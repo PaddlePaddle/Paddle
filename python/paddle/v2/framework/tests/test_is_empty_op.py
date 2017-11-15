@@ -32,7 +32,7 @@ class TestIsEmptyOp(unittest.TestCase):
         self.one_case("X1", True)
 
     def one_case(self, input, target):
-        op = Operator(type="is_empty", X=input, Y="out")
+        op = Operator(type="is_empty", X=input, Out="out")
         ctx = core.DeviceContext.create(core.CPUPlace())
         op.run(self.scope, ctx)
         out = self.scope.var("out").get_tensor()

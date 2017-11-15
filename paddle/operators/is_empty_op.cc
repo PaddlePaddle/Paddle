@@ -18,6 +18,9 @@
 namespace paddle {
 namespace operators {
 
+constexpr char kInput[] = "X";
+constexpr char kOutput[] = "Out";
+
 class IsEmptyOp : public framework::OperatorBase {
  public:
   IsEmptyOp(const std::string &type, const framework::VariableNameMap &inputs,
@@ -28,15 +31,15 @@ class IsEmptyOp : public framework::OperatorBase {
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
     // get input
-    auto *var = scope.FindVar(Input("X"));
+    auto *var = scope.FindVar(Input(kInput));
     PADDLE_ENFORCE_NOT_NULL(var);
     auto &tensor = var->Get<framework::LoDTensor>();
     // get output
-    auto *out = scope.FindVar(Output("Y"));
+    auto *out = scope.FindVar(Output(kOutput));
     PADDLE_ENFORCE_NOT_NULL(out);
     auto *out_tensor = out->GetMutable<framework::LoDTensor>();
 
-    out_tensor->Resize(framework::make_ddim(std::vector<int>({1})));
+    out_tensor->Resize({1});
     out_tensor->mutable_data<bool>(platform::CPUPlace())[0] =
         framework::product(tensor.dims()) == 0;
   }
@@ -47,8 +50,8 @@ class IsEmptyOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   IsEmptyOpProtoMaker(framework::OpProto *proto,
                       framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "the tensor to check whether is empty");
-    AddOutput("Y",
+    AddInput(kInput, "the tensor to check whether is empty");
+    AddOutput(kOutput,
               "a boolean variable that indicate whether the tensor is empty");
     AddComment(R"DOC(
 IsEmpty Operator which checks whether a tensor is empty.
