@@ -6438,6 +6438,8 @@ def prelu_layer(input,
         - channel_shared = True, we set the partial_sum to the number of outputs.
         - channel_shared = False, we set the partial_sum to the number of elements in one channel.
     :type channel_shared: bool
+    :param num_channels: number of input channel.
+    :type num_channels: int
     :param param_attr: The parameter attribute. See ParameterAttribute for details.
     :type param_attr: ParameterAttribute
     :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
@@ -6455,11 +6457,14 @@ def prelu_layer(input,
         assert isinstance(param_attr, ParameterAttribute)
 
     if num_channels is None:
-        assert input.num_filters is not None
+        assert input.num_filters is not None, \
+                'the input channel cannot be detected, please specify the num_channels parameter'
         num_channels = input.num_filters
 
     if channel_shared is not None:
         assert isinstance(channel_shared, bool)
+        assert (input.height != 0 and input.width != 0), \
+            'input height and widht must be setted'
         if channel_shared:
             partial_sum = input.height * input.width * num_channels
         else:
