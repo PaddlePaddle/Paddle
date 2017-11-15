@@ -5,7 +5,13 @@ g_scope = core.Scope()
 
 
 class Executor(object):
-    def __init__(self, places):
+    def __init__(self, places=None):
+        if places is None:
+            if core.is_compile_gpu():
+                places = [core.GPUPlace()]
+            else:
+                places = [core.CPUPlace()]
+
         if not isinstance(places, list) and not isinstance(places, tuple):
             places = [places]
 
