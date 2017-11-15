@@ -110,7 +110,7 @@ void GpuMemcpyPeer(void *dst, int dst_device, const void *src, int src_device,
       "cudaMemcpyPeerAsync failed in paddle::platform::GpuMemcpyPeer");
 }
 
-void GpuMemsetAsync(void *dst, int value, , size_t count, cudaStream_t stream) {
+void GpuMemsetAsync(void *dst, int value, size_t count, cudaStream_t stream) {
   PADDLE_ENFORCE(cudaMemsetAsync(dst, value, count, stream),
                  "cudaMemsetAsync failed in paddle::platform::GpuMemsetAsync");
 }
