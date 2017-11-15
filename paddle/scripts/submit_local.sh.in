@@ -79,7 +79,10 @@ function threads_config() {
   if [ -z $trainers ]; then
     trainers=1
   fi
-  threads=$((processors / trainers)) 
+  threads=$((processors / trainers))
+  if [ $threads -eq 0 ]; then
+    threads=1
+  fi
   if [ -z "$OMP_NUM_THREADS" ]; then
     export OMP_NUM_THREADS=$threads
   fi
