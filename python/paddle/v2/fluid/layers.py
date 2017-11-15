@@ -250,7 +250,7 @@ def _convert_(name):
 def _generate_doc_string_(op_proto):
     """
     Generate docstring by OpProto
-    
+
     Args:
         op_proto (framework_pb2.OpProto): a protobuf message typed OpProto
 
@@ -676,6 +676,7 @@ def conv2d(input,
     filter_shape = [num_filters, num_filter_channels] + filter_size
 
     std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
+    print 'name=', name, 'std=', std
     filter = helper.create_parameter(
         attr=helper.param_attr,
         shape=filter_shape,
@@ -694,7 +695,7 @@ def conv2d(input,
                'paddings': padding,
                'groups': groups})
 
-    pre_act = helper.append_bias_op(pre_bias, 1)
+    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
 
     return helper.append_activation(pre_act)
 

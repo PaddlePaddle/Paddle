@@ -35,7 +35,7 @@ def save_vars(executor, dirname, main_program=None, vars=None, predicate=None):
 
     :param executor: executor that save variable
     :param dirname: directory path
-    :param main_program: program. If vars is None, then filter all variables in this 
+    :param main_program: program. If vars is None, then filter all variables in this
     program which fit `predicate`. Default g_program.
     :param predicate: The Predicate describes a callable that returns a variable
     as a bool. If it returns true, the variables will be saved.
@@ -96,11 +96,11 @@ def load_vars(executor, dirname, main_program=None, vars=None, predicate=None):
 
     :param executor: executor that save variable
     :param dirname: directory path
-    :param main_program: program. If vars is None, then filter all variables in this 
+    :param main_program: program. If vars is None, then filter all variables in this
     program which fit `predicate`. Default g_program.
     :param predicate: The Predicate describes a callable that returns a variable
     as a bool. If it returns true, the variables will be loaded.
-    :param vars: variables need to be loaded. If specify vars, program & 
+    :param vars: variables need to be loaded. If specify vars, program &
     predicate will be ignored
     :return: None
     """
@@ -157,15 +157,15 @@ def save_inference_model(dirname,
                          executor,
                          main_program=None):
     """
-    Build a model especially for inference, 
+    Build a model especially for inference,
     and save it to directory by the executor.
 
     :param dirname: directory path
     :param feeded_var_names: Names of variables that need to be feeded data during inference
     :param target_vars: Variables from which we can get inference results.
     :param executor: executor that save inference model
-    :param main_program: original program, which will be pruned to build the inference model. 
-    Default g_program.
+    :param main_program: original program, which will be pruned to build the inference model.
+    Default g_main_program.
 
     :return: None
     """
@@ -234,3 +234,34 @@ def load_inference_model(dirname, executor):
     fetch_vars = [program.global_block().var(name) for name in fetch_var_names]
 
     return [program, feed_var_names, fetch_vars]
+
+
+def get_parameter_value(para, executor):
+    """
+    Get the LoDTensor for the parameter
+
+    :param executor: executor for retrieving the value
+    :param para: the given parameter
+    :return: the LoDTensor for the parameter
+    """
+    get_program = Program()
+    block = get_program.global_block()
+    new_var = _clone_var_in_block_(block, para)
+    return executor.run(get_program, feed={}, fetch_list=[new_var])[0]
+
+
+def get_parameter_value_by_name(name, executor, program=None):
+    """
+    Get the LoDTensor for paramter with the given name
+
+    :param executor: executor for retrieving the value
+    :param name: the name of the parameter
+    :param program: the program where the variable is found
+    Default g_main_program.
+    :return: the LoDTensor for the variable
+    """
+    if program is None:
+        program = g_main_program
+    var = program.global_block().var(name)
+    assert is_parameter(var)
+    return get_parameter_value(var, executor)

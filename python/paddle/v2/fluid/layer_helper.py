@@ -72,7 +72,7 @@ class LayerHelper(object):
 
     @property
     def bias_attr(self):
-        default = {'name': None, 'initializer': XavierInitializer()}
+        default = {'name': None, 'initializer': ConstantInitializer()}
         bias_attr = self.kwargs.get('bias_attr', None)
         if bias_attr is None:
             bias_attr = default
@@ -149,24 +149,19 @@ class LayerHelper(object):
             persistable=True,
             initializer=initializer)
 
-    def append_bias_op(self, input_var, num_flatten_dims=None):
+    def append_bias_op(self, input_var, dim_start=1, dim_end=None):
         """
-        Append bias operator and return its output. If the user does not set 
+        Append bias operator and return its output. If the user does not set
         bias_attr, append_bias_op will return input_var
-         
+
         :param input_var: the input variable. The len(input_var.shape) is larger
         or equal than 2.
-        :param num_flatten_dims: The input tensor will be flatten as a matrix 
-        when adding bias.
-        `matrix.shape = product(input_var.shape[0:num_flatten_dims]), product(
-                input_var.shape[num_flatten_dims:])`
+        :param dim_start:
+        :param dim_end: the shape of the bias will be
+        input_var.shape(dim_start:dim_end). The bias is broadcast to other
+        dimensions and added to input_var to get the output
         """
-        if num_flatten_dims is None:
-            num_flatten_dims = self.kwargs.get('num_flatten_dims', None)
-            if num_flatten_dims is None:
-                num_flatten_dims = 1
-
-        size = list(input_var.shape[num_flatten_dims:])
+        size = list(input_var.shape[dim_start:dim_end])
         bias_attr = self.bias_attr
         if not bias_attr:
             return input_var
@@ -178,7 +173,8 @@ class LayerHelper(object):
             type='elementwise_add',
             inputs={'X': [input_var],
                     'Y': [b]},
-            outputs={'Out': [tmp]})
+            outputs={'Out': [tmp]},
+            attrs={'axis': dim_start})
         return tmp
 
     def append_activation(self, input_var):
