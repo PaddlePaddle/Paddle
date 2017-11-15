@@ -19,9 +19,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename T>
 using EigenArrayMap =
@@ -303,7 +300,8 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("Bias"), {C});
   }
 
-  framework::DataType IndicateDataType(
+ protected:
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext &ctx) const override {
     const auto *var = ctx.InputVar(framework::GradVarName("Y"));
     if (var == nullptr) {
@@ -318,7 +316,8 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
     if (t == nullptr) {
       PADDLE_THROW("can't find Y@GRAD");
     }
-    return framework::ToDataType(t->type());
+    return framework::OpKernelType(framework::ToDataType(t->type()),
+                                   ctx.device_context());
   }
 };
 

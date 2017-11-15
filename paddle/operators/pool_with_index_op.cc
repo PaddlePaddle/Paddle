@@ -44,7 +44,7 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(in_x_dims.size() == 4 || in_x_dims.size() == 5,
                    "Pooling intput should be 4-D or 5-D tensor.");
 
-    if (ctx->Attrs().Get<bool>("globalPooling")) {
+    if (ctx->Attrs().Get<bool>("global_pooling")) {
       ksize.resize(static_cast<size_t>(in_x_dims.size()) - 2);
       for (size_t i = 0; i < ksize.size(); ++i) {
         paddings[i] = 0;
@@ -110,14 +110,14 @@ class MaxPool2dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("ksize",
                               "(vector<int>) The pooling window size(height, "
                               "width) of pooling operator. "
-                              "If globalPooling = true, ksize and paddings "
+                              "If global_pooling = true, ksize and paddings "
                               "will be ignored.");  // TODO(Chengduo): Add
                                                     // checker. (Currently,
     // TypedAttrChecker don't support vector type.)
     AddAttr<bool>(
-        "globalPooling",
+        "global_pooling",
         "(bool, default false) Whether to use the global pooling. "
-        "If globalPooling = true, ksize and paddings will be ignored.")
+        "If global_pooling = true, ksize and paddings will be ignored.")
         .SetDefault(false);
     AddAttr<std::vector<int>>("strides",
                               "(vector<int>, default {1, 1}), strides(height, "
@@ -128,7 +128,7 @@ class MaxPool2dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
         "paddings",
         "(vector<int>, defalut {0, 0}), paddings(height, width) of pooling "
         "operator. "
-        "If globalPooling = true, paddings and will be ignored.")
+        "If global_pooling = true, paddings and will be ignored.")
         .SetDefault({0, 0});  // TODO(Chengduo): Add checker. (Currently,
     // TypedAttrChecker don't support vector type.)
 
@@ -188,14 +188,14 @@ class MaxPool3dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("ksize",
                               "(vector<int>) The pooling window size(depth, "
                               "height, width) of pooling operator. "
-                              "If globalPooling = true, ksize and paddings "
+                              "If global_pooling = true, ksize and paddings "
                               "will be ignored.");  // TODO(Chengduo): Add
                                                     // checker. (Currently,
     // TypedAttrChecker don't support vector type.)
     AddAttr<bool>(
-        "globalPooling",
+        "global_pooling",
         "(bool, default false) Whether to use the global pooling. "
-        "If globalPooling = true, ksize and paddings will be ignored.")
+        "If global_pooling = true, ksize and paddings will be ignored.")
         .SetDefault(false);
     AddAttr<std::vector<int>>("strides",
                               "(vector<int>, default {1,1,1}), strides(depth, "
@@ -206,7 +206,7 @@ class MaxPool3dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
         "paddings",
         "(vector, defalut {0,0,0}), paddings(depth, "
         "height, width) of pooling operator. "
-        "If globalPooling = true, paddings and ksize will be ignored.")
+        "If global_pooling = true, paddings and ksize will be ignored.")
         .SetDefault({0, 0, 0});  // TODO(Chengduo): Add checker. (Currently,
     // TypedAttrChecker don't support vector type.)
 

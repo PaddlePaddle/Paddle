@@ -55,6 +55,6 @@ After float16 class is available, some of the future items are below:
 
 - Update pybind/tensor_py.h to bind c++ float16 with numpy float16. 
 
-- Modify `IndicateDataType()` method in `framework/operator.h` to make it compatible with float16.
+- Modify `GetKernelType()` method in `framework/operator.h` to make it compatible with float16.
 
 - Create a type-casting operator that can convert the data type in tensor between float16 and other types.

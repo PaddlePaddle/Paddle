@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/framework/data_type.h"
 #include "paddle/operators/math/math_function.h"
 
 namespace paddle {
@@ -231,6 +232,30 @@ void gemv<platform::GPUPlace, double>(const platform::DeviceContext& context,
 }
 
 template struct SetConstant<platform::GPUPlace, float>;
+
+struct TensorSetConstantGPU {
+  TensorSetConstantGPU(const platform::DeviceContext& context,
+                    framework::Tensor* tensor, float value)
+      : context_(context), tensor_(tensor), value_(value) {}
+
+  template <typename T>
+  void operator()() const {
+    SetConstant<platform::GPUPlace, T> functor;
+    functor(context_, tensor_, static_cast<T>(value_));
+  }
+
+  const platform::DeviceContext& context_;
+  framework::Tensor* tensor_;
+  float value_;
+};
+
+template <>
+void set_constant_with_place<platform::GPUPlace>(
+    const platform::DeviceContext& context, framework::Tensor* tensor,
+    float value) {
+  framework::VisitDataType(framework::ToDataType(tensor->type()),
+                           TensorSetConstantGPU(context, tensor, value));
+}
 
 }  // namespace math
 }  // namespace operators

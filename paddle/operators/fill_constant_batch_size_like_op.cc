@@ -49,9 +49,11 @@ class FillConstantBatchSizeLikeOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::DataType IndicateDataType(
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return static_cast<framework::DataType>(ctx.Attr<int>("data_type"));
+    return framework::OpKernelType(
+        static_cast<framework::DataType>(ctx.Attr<int>("data_type")),
+        ctx.device_context());
   }
 };
 
@@ -73,10 +75,10 @@ class FillConstantBatchSizeLikeOpMaker
               "with the specified value");
     AddAttr<std::vector<int>>("shape", "(vector<int>) The shape of the output");
     AddAttr<int>("input_dim_idx",
-                 "(int, default 0) the index of input's batch size dimension")
+                 "(int, default 0) The index of input's batch size dimension")
         .SetDefault(0);
     AddAttr<int>("output_dim_idx",
-                 "(int, default 0) the index of output's batch size dimension")
+                 "(int, default 0) The index of output's batch size dimension")
         .SetDefault(0);
     AddAttr<float>("value", "(float, default 0) The value to be filled")
         .SetDefault(0.0f);
