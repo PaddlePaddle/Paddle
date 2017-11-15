@@ -174,10 +174,9 @@ __global__ void col2vol(int num_kernels, const T* data_col, int depth,
             int data_col_index =
                 (((((c * filter_depth + d_off) * filter_height + h_off) *
                        filter_width +
-                   w_off) *
-                      output_detph +
-                  d_col) *
-                     output_height +
+                   w_off)));
+            data_col_index =
+                ((data_col_index * output_detph + d_col) * output_height +
                  h_col) *
                     output_width +
                 w_col;
