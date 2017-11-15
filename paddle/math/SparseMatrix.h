@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
+#ifndef PADDLE_MOBILE_INFERENCE
+
 #include <cstddef>
 #include "CpuSparseMatrix.h"
 #include "Matrix.h"
@@ -237,3 +240,47 @@ private:
 };
 
 }  // namespace paddle
+
+#else
+
+#include "CpuSparseMatrix.h"
+
+namespace paddle {
+
+class GpuSparseMatrix : public Matrix {
+public:
+  GpuSparseMatrix(size_t height,
+                  size_t width,
+                  size_t nnz, /* used to allocate space */
+                  SparseValueType valueType = FLOAT_VALUE,
+                  SparseFormat format_ = SPARSE_CSR,
+                  bool trans = false)
+      : Matrix(NULL, height, width, trans, false) {}
+
+  GpuSparseMatrix(real* value,
+                  int* rows,
+                  int* cols,
+                  size_t height,
+                  size_t width,
+                  size_t nnz,
+                  SparseValueType valueType,
+                  SparseFormat format,
+                  bool trans)
+      : Matrix(NULL, height, width, trans, true) {}
+
+  void resize(size_t newHeight,
+              size_t newWidth,
+              size_t newNnz, /* used to allocate space */
+              SparseValueType valueType,
+              SparseFormat format) {}
+  void resize(size_t newHeight, size_t newWidth) {}
+  MatrixPtr getTranspose() { return nullptr; }
+  void setRow(size_t row,
+              size_t colNum,
+              const unsigned int* cols,
+              const real* values) {}
+};
+
+}  // namespace paddle
+
+#endif
