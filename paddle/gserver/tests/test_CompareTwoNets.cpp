@@ -30,8 +30,6 @@ DECLARE_bool(use_gpu);
 DECLARE_string(config);
 DECLARE_string(nics);
 
-DEFINE_string(config_file_a, "", "config of one network to compare");
-DEFINE_string(config_file_b, "", "config of another network to compare");
 DEFINE_bool(need_high_accuracy,
             false,
             "whether need to run in double accuracy");
@@ -41,6 +39,10 @@ DEFINE_double(
     "max diff ratio allowed for outputs and parameters (value/gradient)");
 DECLARE_bool(thread_local_rand_use_global_seed);
 DECLARE_int32(seed);
+
+static const string& config_file_a = "gserver/tests/sequence_recurrent.py";
+static const string& config_file_b =
+    "gserver/tests/sequence_recurrent_group.py";
 
 struct ComData {
   vector<Argument> outArgs;
@@ -66,6 +68,7 @@ void calcGradient(ComData& data, const string configFile) {
   DataBatch dataBatch;
   int32_t batchSize = trainer.getConfig().opt_config().batch_size();
 
+  trainer.getDataProvider()->reset();
   trainer.getDataProvider()->setSkipShuffle();
   trainer.getDataProvider()->getNextBatch(batchSize, &dataBatch);
 
@@ -167,11 +170,11 @@ void compareGradient(ComData& comDataA, ComData& comDataB) {
 
 TEST(Trainer, create) {
   ComData dataA;
-  calcGradient(dataA, FLAGS_config_file_a);
+  calcGradient(dataA, config_file_a);
   LOG(INFO) << "\n\nforwardBackward of Network A is finished\n\n";
 
   ComData dataB;
-  calcGradient(dataB, FLAGS_config_file_b);
+  calcGradient(dataB, config_file_b);
   LOG(INFO) << "\n\nforwardBackward of the Network B is finished\n\n";
 
   compareGradient(dataA, dataB);
