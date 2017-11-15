@@ -287,7 +287,7 @@ void MKLDNNLayer::resetMergeGrad(MKLDNNMatrixPtr& out) {
     return;
   }
   CHECK(out) << "should have reset internal ouput grad";
-  std::vector<double> scales(outputMap_.size(), 1.0);
+  std::vector<float> scales(outputMap_.size(), 1.0);
   std::vector<memory::primitive_desc> srcPDs;
   std::vector<primitive::at> srcs;
   for (auto it = outputMap_.begin(); it != outputMap_.end(); ++it) {

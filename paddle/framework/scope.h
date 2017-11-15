@@ -68,11 +68,18 @@ class Scope {
   // enumerate all the variables current contains.
   std::vector<std::string> GetAllNames(bool recursive = false) const;
 
+  // Rename variable to a new name
+  void Rename(const std::string& origin_name,
+              const std::string& new_name) const;
+
+  // Rename variable to a new name and return the new name
+  std::string Rename(const std::string& origin_name) const;
+
  private:
   // Call Scope::NewScope for a sub-scope.
   explicit Scope(Scope const* parent) : parent_(parent) {}
 
-  std::unordered_map<std::string, Variable*> vars_;
+  mutable std::unordered_map<std::string, Variable*> vars_;
   mutable std::list<Scope*> kids_;
   Scope const* parent_{nullptr};
 
