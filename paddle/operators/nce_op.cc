@@ -23,37 +23,51 @@ class NCEOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"));
+    PADDLE_ENFORCE(ctx->HasInput("Input"));
     PADDLE_ENFORCE(ctx->HasInput("Label"));
-    PADDLE_ENFORCE(ctx->HasInput("W"));
-    PADDLE_ENFORCE(ctx->HasOutput("Out"));
+    PADDLE_ENFORCE(ctx->HasInput("Weight"));
+    PADDLE_ENFORCE(ctx->HasOutput("Cost"));
     PADDLE_ENFORCE(ctx->HasOutput("SampleLogits"));
     PADDLE_ENFORCE(ctx->HasOutput("SampleLabels"));
 
-    auto x_dims = ctx->GetInputDim("X");
+    auto x_dims = ctx->GetInputDim("Input");
     auto label_dims = ctx->GetInputDim("Label");
     PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0]);
-    if (ctx->HasInput("B")) {
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("W")[0], ctx->GetInputDim("B")[0]);
+    int num_true_classes = label_dims.size() == 2 ? label_dims[1] : 1;
+    if (ctx->HasInput("Bias")) {
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Weight")[0],
+                        ctx->GetInputDim("Bias")[0]);
     }
-    int num_sampled_classes = ctx->Attrs().Get<int>("num_sampled_classes");
-    int num_classes = ctx->Attrs().Get<int>("num_classes");
-    PADDLE_ENFORCE_EQ(num_classes, ctx->GetInputDim("W")[0]);
+    auto num_sampled_classes = ctx->Attrs().Get<int>("num_sampled_classes");
+    auto num_classes = ctx->Attrs().Get<int>("num_classes");
+    std::vector<int> sampled_labels =
+        ctx->Attrs().Get<std::vector<int>>("sampled_labels");
+    PADDLE_ENFORCE_EQ(num_classes, ctx->GetInputDim("Weight")[0]);
     PADDLE_ENFORCE_LT(num_sampled_classes, num_classes);
-
+    if (sampled_labels.size() > 0) {
+      PADDLE_ENFORCE_EQ(sampled_labels.size(),
+                        static_cast<size_t>(num_sampled_classes));
+    }
     // set dims of output(Out)
-    std::vector<int64_t> out_dims(1);
+    std::vector<int64_t> out_dims;
     out_dims.push_back(x_dims[0]);
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+    ctx->SetOutputDim("Cost", framework::make_ddim(out_dims));
 
     // set dims of output(SampleOut)
-    std::vector<int64_t> sample_out_dims(2);
+    std::vector<int64_t> sample_out_dims;
     sample_out_dims.push_back(x_dims[0]);
-    sample_out_dims.push_back(num_sampled_classes + 1);
+    sample_out_dims.push_back(num_sampled_classes + num_true_classes);
     ctx->SetOutputDim("SampleLogits", framework::make_ddim(sample_out_dims));
     ctx->SetOutputDim("SampleLabels", framework::make_ddim(sample_out_dims));
+  }
+
+ protected:
+  framework::OpKernelType GetKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("Input")->type()),
+        ctx.device_context());
   }
 };
 
@@ -61,19 +75,35 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   NCEOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "");
-    AddInput("Label", "");
-    AddInput("W", "");
-    AddInput("B", "");
-    AddInput("SampleWeight", "");
-    AddOutput("Out", "");
-    AddOutput("SampleLogits", "");
-    AddOutput("SampleLabels", "");
-    AddAttr<int>("num_classes", "");
-    AddAttr<int>("num_sampled_classes", "").SetDefault(10);
+    AddInput("Input", "(Tensor) A tensor of shape [batch_size, dim].");
+    AddInput("Label",
+             "(Tensor) A tensor of shape [batch_size, num_true_class]. "
+             "'num_true_class' is the number of target class in each sample.");
+    AddInput("Weight",
+             "(Tensor) A tensor of shape [num_class, dim]. 'num_class' is the "
+             "total number of class.");
+    AddInput("Bias",
+             "(Tensor) A tensor of shape [num_class]. 'num_class' is the total "
+             "number of class. It is a dispensable input.")
+        .AsDispensable();
+    AddInput("SampleWeight",
+             "(Tensor) A tensor of shape [batch_size] storing a weight for "
+             "each sample. And it is a dispensable input. The default value of "
+             "sample is 1.")
+        .AsDispensable();
+    AddOutput("Cost",
+              "(Tensor) A tensor of shape [batch_size]. Cost of samples.");
+    AddOutput("SampleLogits", "An intermediate tensor.").AsIntermediate();
+    AddOutput("SampleLabels", "An intermediate tensor.").AsIntermediate();
+    AddAttr<int>("num_classes", "Total number of classes.");
+    AddAttr<int>("num_sampled_classes", "The number of negative classes.")
+        .SetDefault(10);
+    AddAttr<std::vector<int>>("sampled_labels", "");
     AddComment(R"DOC(
-Expand input(X) according to LOD of input(Y).
-
+Computes and returns the noise-contrastive estimation training loss.
+See [Noise-contrastive estimation: A new estimation principle for unnormalized statistical models](http://www.jmlr.org/proceedings/papers/v9/gutmann10a/gutmann10a.pdf).
+By default this uses a uniform distribution for sampling.
+The number of target classes per example should be same. If you have a variable number of target classes, you can pad them out to a constant number by either repeating them or by padding with an otherwise unused class.
 )DOC");
   }
 };
@@ -82,31 +112,40 @@ class NCEOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"));
-    PADDLE_ENFORCE(ctx->HasInput("W"));
-    PADDLE_ENFORCE(ctx->HasInput("Out"));
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+    PADDLE_ENFORCE(ctx->HasInput("Input"));
+    PADDLE_ENFORCE(ctx->HasInput("Weight"));
+    PADDLE_ENFORCE(ctx->HasInput("Cost"));
+    PADDLE_ENFORCE(ctx->HasInput("SampleLogits"));
+    PADDLE_ENFORCE(ctx->HasInput("SampleLabels"));
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Cost")),
                    "The input(Out@GRAD) should not be null");
 
-    auto x_dims = ctx->GetInputDim("X");
-    auto x_grad_name = framework::GradVarName("X");
+    auto x_dims = ctx->GetInputDim("Input");
+    auto x_grad_name = framework::GradVarName("Input");
     if (ctx->HasOutput(x_grad_name)) {
       ctx->SetOutputDim(x_grad_name, x_dims);
     }
 
-    auto w_dims = ctx->GetInputDim("W");
-    auto w_grad_name = framework::GradVarName("W");
+    auto w_dims = ctx->GetInputDim("Weight");
+    auto w_grad_name = framework::GradVarName("Weight");
     if (ctx->HasOutput(w_grad_name)) {
       ctx->SetOutputDim(w_grad_name, w_dims);
     }
 
-    auto bias_grad_name = framework::GradVarName("B");
+    auto bias_grad_name = framework::GradVarName("Bias");
     if (ctx->HasOutput(bias_grad_name)) {
-      auto bias_dims = ctx->GetInputDim("B");
+      auto bias_dims = ctx->GetInputDim("Bias");
       ctx->SetOutputDim(bias_grad_name, bias_dims);
     }
+  }
+
+ protected:
+  framework::OpKernelType GetKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("Input")->type()),
+        ctx.device_context());
   }
 };
 
