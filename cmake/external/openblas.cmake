@@ -98,7 +98,7 @@ IF(NOT ${CBLAS_FOUND})
         ENDIF()
         INSTALL(CODE "execute_process(
             COMMAND ${CMAKE_COMMAND} -E copy_directory ${CBLAS_INSTALL_DIR}/lib
-                    destination ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}
+                    ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}
             )"
         )
         INSTALL(CODE "MESSAGE(STATUS \"Installing: \"
