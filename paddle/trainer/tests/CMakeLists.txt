@@ -28,14 +28,6 @@ if(WITH_PYTHON)
           ${PADDLE_SOURCE_DIR}/paddle/.set_port.sh -p port ${CMAKE_CURRENT_BINARY_DIR}/test_TrainerOnePass
       WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
 endif()
-################ test_CompareTwoNets ######################
-add_unittest_without_exec(test_CompareTwoNets
-    test_CompareTwoNets.cpp)
-add_test(NAME test_CompareTwoNets
-  COMMAND ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d ${PADDLE_SOURCE_DIR}/python/
-        ${CMAKE_CURRENT_BINARY_DIR}/test_CompareTwoNets
-            --config_file_a=trainer/tests/sample_trainer_config_qb_rnn.conf --config_file_b=trainer/tests/sample_trainer_config_rnn.conf
-    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
 
 ############### test_CompareTwoOpts ###################
 add_unittest_without_exec(test_CompareTwoOpts

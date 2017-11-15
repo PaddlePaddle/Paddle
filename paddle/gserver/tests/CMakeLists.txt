@@ -111,3 +111,12 @@ if(NOT ON_TRAVIS)
                   ${CMAKE_CURRENT_BINARY_DIR}/test_CompareSparse
     WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
 endif()
+
+################ test_CompareTwoNets ######################
+add_unittest_without_exec(test_CompareTwoNets
+    test_CompareTwoNets.cpp)
+add_test(NAME test_CompareTwoNets
+  COMMAND ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d
+        ${PADDLE_SOURCE_DIR}/python:${PADDLE_SOURCE_DIR}/paddle/gserver/tests
+        ${CMAKE_CURRENT_BINARY_DIR}/test_CompareTwoNets
+    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
