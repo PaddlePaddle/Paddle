@@ -2,45 +2,33 @@ import paddle.v2 as paddle
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.core as core
 import paddle.v2.fluid.optimizer as optimizer
-
-from paddle.v2.fluid.framework import Program
+import paddle.v2.fluid.framework as framework
 from paddle.v2.fluid.io import save_persistables, load_persistables
 from paddle.v2.fluid.executor import Executor
 
 import numpy as np
 
-startup_program = Program()
-main_program = Program()
 x = layers.data(
     name='x',
     shape=[13],
-    data_type='float32',
-    main_program=main_program,
-    startup_program=startup_program)
+    data_type='float32')
 
 y_predict = layers.fc(input=x,
                       size=1,
-                      act=None,
-                      main_program=main_program,
-                      startup_program=startup_program)
+                      act=None)
 
 y = layers.data(
     name='y',
     shape=[1],
-    data_type='float32',
-    main_program=main_program,
-    startup_program=startup_program)
+    data_type='float32')
 
 cost = layers.square_error_cost(
     input=y_predict,
-    label=y,
-    main_program=main_program,
-    startup_program=startup_program)
-avg_cost = layers.mean(
-    x=cost, main_program=main_program, startup_program=startup_program)
+    label=y)
+avg_cost = layers.mean(x=cost)
 
 sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
-opts = sgd_optimizer.minimize(avg_cost, startup_program)
+opts = sgd_optimizer.minimize(avg_cost)
 
 BATCH_SIZE = 20
 
@@ -52,12 +40,12 @@ train_reader = paddle.batch(
 place = core.CPUPlace()
 exe = Executor(place)
 
-exe.run(startup_program, feed={}, fetch_list=[])
+exe.run(framework.default_startup_program())
 
 PASS_NUM = 100
 for pass_id in range(PASS_NUM):
-    save_persistables(exe, "./fit_a_line.model/", main_program=main_program)
-    load_persistables(exe, "./fit_a_line.model/", main_program=main_program)
+    save_persistables(exe, "./fit_a_line.model/")
+    load_persistables(exe, "./fit_a_line.model/")
     for data in train_reader():
         x_data = np.array(map(lambda x: x[0], data)).astype("float32")
         y_data = np.array(map(lambda x: x[1], data)).astype("float32")
@@ -69,7 +57,7 @@ for pass_id in range(PASS_NUM):
         tensor_y = core.LoDTensor()
         tensor_y.set(y_data, place)
         # print tensor_y.get_dims()
-        outs = exe.run(main_program,
+        outs = exe.run(framework.default_main_program(),
                        feed={'x': tensor_x,
                              'y': tensor_y},
                        fetch_list=[avg_cost])
