@@ -45,7 +45,8 @@ class SendOp : public framework::OperatorBase {
            const platform::DeviceContext &dev_ctx) const override {
     auto iname = Input("X");
     auto oname = Output("Out");
-    // TODO(typhoonzero): block until server has initalized.
+    // TODO(typhoonzero): currently it's non-blocking,
+    // should block until server responds.
     bool ret = client_->SendVariable(scope, iname, oname);
     if (!ret) {
       LOG(ERROR) << "send variable error";

@@ -63,7 +63,7 @@ class RecvOp : public framework::OperatorBase {
     const framework::LoDTensor &t = rpc_service_->Get();
     framework::Scope &recv_scope = scope.NewScope();
     // set graph input var
-    auto *var = recv_scope.FindVar(Input("X"));
+    auto *var = recv_scope.Var(Input("RX"));
     auto *tensor = var->GetMutable<framework::LoDTensor>();
     // FIXME(typhoonzero): do not copy
     tensor->CopyFrom(t, dev_ctx.GetPlace(), dev_ctx);
@@ -89,7 +89,7 @@ class RecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   RecvOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "(Tensor) Input tensor to be saved");
+    AddInput("RX", "(Tensor) Input tensor to be saved");
     AddComment(R"DOC(
 Recv operator
 

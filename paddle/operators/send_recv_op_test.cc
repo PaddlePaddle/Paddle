@@ -26,6 +26,7 @@
 
 USE_NO_KERNEL_OP(send);
 USE_NO_KERNEL_OP(recv);
+USE_OP(sum)
 
 void InitTensorsInScope(paddle::framework::Scope &scope,
                         paddle::platform::CPUPlace &place) {

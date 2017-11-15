@@ -61,7 +61,7 @@ bool RPCClient::SendVariable(const framework::Scope& scope,
   msg.set_varname(inname);
   msg.set_serialized(oss.str());
   Status status = stub_->SendVariable(&context, msg, &out_msg);
-  if (status.ok()) {
+  if (!status.ok()) {
     return false;
   }
   std::istringstream iss(out_msg.serialized());
