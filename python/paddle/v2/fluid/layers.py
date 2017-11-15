@@ -60,8 +60,13 @@ def fc(input,
         param_shape = [
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
         ] + [size]
+
+        std = (2.0 / (param_shape[0]**2 * size))**0.5
         w = helper.create_parameter(
-            attr=param_attr, shape=param_shape, dtype=dtype)
+            attr=param_attr,
+            shape=param_shape,
+            dtype=dtype,
+            initializer=NormalInitializer(0.0, std, 1))
         tmp = helper.create_tmp_variable(dtype)
         helper.append_op(
             type="mul",
@@ -82,9 +87,9 @@ def fc(input,
         helper.append_op(
             type="sum", inputs={"X": mul_results}, outputs={"Out": pre_bias})
     # add bias
-    pre_activation = helper.append_bias_op(pre_bias)
+    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
     # add activation
-    return helper.append_activation(pre_activation)
+    return helper.append_activation(pre_act)
 
 
 def embedding(input,
@@ -680,7 +685,7 @@ def conv2d(input,
         attr=helper.param_attr,
         shape=filter_shape,
         dtype=dtype,
-        initializer=NormalInitializer(0.0, std, 0))
+        initializer=NormalInitializer(0.0, std, 1))
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(

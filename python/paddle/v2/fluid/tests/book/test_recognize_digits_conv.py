@@ -36,10 +36,11 @@ opts = optimizer.minimize(avg_cost)
 
 accuracy, acc_out = evaluator.accuracy(input=predict, label=label)
 
-train_reader = paddle.batch(
-    paddle.reader.shuffle(
-        paddle.dataset.mnist.train(), buf_size=500),
-    batch_size=BATCH_SIZE)
+# train_reader = paddle.batch(
+#     paddle.reader.shuffle(
+#         paddle.dataset.mnist.train(), buf_size=500),
+#     batch_size=BATCH_SIZE)
+train_reader = paddle.batch(paddle.dataset.mnist.train(), batch_size=BATCH_SIZE)
 
 place = core.CPUPlace()
 # place = core.GPUPlace(2)
