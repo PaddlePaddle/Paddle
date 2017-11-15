@@ -8,7 +8,11 @@ class Executor(object):
     def __init__(self, places=None):
         if places is None:
             if core.is_compile_gpu():
-                places = [core.GPUPlace()]
+                if core.get_cude_device_count() > 0:
+                    places = [core.GPUPlace()]
+                else:
+                    # TODO(tonyyang-svail): print warning here
+                    places = [core.CPUPlace()]
             else:
                 places = [core.CPUPlace()]
 

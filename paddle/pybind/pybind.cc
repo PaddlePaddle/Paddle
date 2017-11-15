@@ -78,6 +78,14 @@ bool IsCompileGPU() {
 #endif
 }
 
+int GetCUDADeviceCount() {
+#ifndef PADDLE_WITH_CUDA
+  return 0;
+#else
+  return paddle::platform::GetCUDADeviceCount();
+#endif
+}
+
 PYBIND11_PLUGIN(core) {
   py::module m("core", "C++ core of PaddlePaddle");
 
@@ -497,6 +505,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_gflags", InitGflags);
 
   m.def("is_compile_gpu", IsCompileGPU);
+  m.def("get_cuda_device_count", GetCUDADeviceCount());
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
 
