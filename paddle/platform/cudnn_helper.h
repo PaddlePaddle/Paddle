@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -63,9 +60,10 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
     }                                                             \
   } while (false)
 
-enum class DataLayout {
+enum class DataLayout {  // Not use
   kNHWC,
   kNCHW,
+  kNCDHW,
   kNCHW_VECT_C,
 };
 
@@ -107,12 +105,15 @@ class CudnnDataType<double> {
   }
 };
 
-inline cudnnTensorFormat_t GetCudnnTensorFormat(const DataLayout& order) {
+inline cudnnTensorFormat_t GetCudnnTensorFormat(
+    const DataLayout& order) {  // Not use
   switch (order) {
     case DataLayout::kNHWC:
       return CUDNN_TENSOR_NHWC;
     case DataLayout::kNCHW:
       return CUDNN_TENSOR_NCHW;
+    case DataLayout::kNCDHW:
+      return CUDNN_TENSOR_NCHW;  // TODO(chengduoZH) : add CUDNN_TENSOR_NCDHW
     default:
       PADDLE_THROW("Unknown cudnn equivalent for order");
   }
@@ -139,7 +140,7 @@ class ScopedTensorDescriptor {
       strides[i] = dims[i + 1] * strides[i + 1];
     }
     // Update tensor descriptor dims setting if groups > 1
-    // FIXME(typhoonzero): Assume using NCHW order
+    // FIXME(typhoonzero): Assume using NCHW or NCDHW order
     std::vector<int> dims_with_group(dims.begin(), dims.end());  // copy
     if (groups > 1) {
       dims_with_group[1] = dims_with_group[1] / groups;

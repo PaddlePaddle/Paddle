@@ -54,15 +54,21 @@ class CudnnConvTransposeOpKernel : public framework::OpKernel<T> {
     ScopedTensorDescriptor output_desc;
     ScopedFilterDescriptor filter_desc;
     ScopedConvolutionDescriptor conv_desc;
-    DataLayout layout = DataLayout::kNCHW;
+    DataLayout layout;
 
-    // N, M, H, W
+    if (strides.size() == 2U) {
+      layout = DataLayout::kNCHW;
+    } else {
+      layout = DataLayout::kNCDHW;
+    }
+
+    // (N, M, H, W) or (N, M, D, H, W)
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
         layout, framework::vectorize2int(input->dims()));
-    // N, C, O_h, O_w
+    // (N, C, O_h, O_w) or (N, C, O_d, O_h, O_w)
     cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
         layout, framework::vectorize2int(output->dims()));
-    // M, C, K_h, K_w
+    // (M, C, K_h, K_w) or (M, C, K_d, K_h, K_w)
     cudnnFilterDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
         layout, framework::vectorize2int(filter->dims()));
     cudnnConvolutionDescriptor_t cudnn_conv_desc =
@@ -136,13 +142,13 @@ class CudnnConvTransposeGradOpKernel : public framework::OpKernel<T> {
     ScopedConvolutionDescriptor conv_desc;
     DataLayout layout = DataLayout::kNCHW;
 
-    // Input: (N, M, H, W)
+    // Input: (N, M, H, W) or (N, M, D, H, W)
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
         layout, framework::vectorize2int(input->dims()));
-    // Output: (N, C, O_H, O_W)
+    // Output: (N, C, O_h, O_w) or (N, C, O_d, O_h, O_w)
     cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
         layout, framework::vectorize2int(output_grad->dims()));
-    // Filter (M, C, K_H, K_W)
+    // Filter (M, C, K_h, K_w) or (M, C, K_d K_h, K_w)
     cudnnFilterDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
         layout, framework::vectorize2int(filter->dims()));
 
