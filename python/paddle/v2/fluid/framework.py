@@ -4,7 +4,7 @@ import collections
 import numpy as np
 import copy
 
-__all__ = ['Block', 'Variable', 'Program', 'Operator']
+__all__ = ['Block', 'Variable', 'Program', 'Operator', 'default_startup_program', 'default_main_program']
 
 
 def unique_name(prefix):
@@ -562,3 +562,9 @@ class Parameter(Variable):
 # program is a global instance.
 g_main_program = Program()
 g_startup_program = Program()
+
+def default_startup_program():
+    return g_startup_program
+
+def default_main_program():
+    return g_main_program

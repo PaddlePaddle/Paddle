@@ -2,8 +2,7 @@ import paddle.v2 as paddle
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.core as core
 import paddle.v2.fluid.optimizer as optimizer
-
-from paddle.v2.fluid.framework import g_main_program, g_startup_program
+import paddle.v2.fluid.framework as framework
 from paddle.v2.fluid.executor import Executor
 
 import numpy as np
@@ -88,10 +87,10 @@ def main():
     place = core.CPUPlace()
     tensor_words, tensor_label = prepare_feed_data(data, place)
     exe = Executor(place)
-    exe.run(g_startup_program)
+    exe.run(framework.default_startup_program())
 
     while True:
-        outs = exe.run(g_main_program,
+        outs = exe.run(framework.default_main_program(),
                        feed={"words": tensor_words,
                              "label": tensor_label},
                        fetch_list=[cost, acc])
