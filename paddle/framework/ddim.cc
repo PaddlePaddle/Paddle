@@ -79,6 +79,13 @@ DDim make_ddim(const std::vector<int64_t>& dims) {
   return result;
 }
 
+DDim make_ddim(const std::vector<int>& dims) {
+  std::vector<int64_t> res(dims.size());
+  std::transform(dims.begin(), dims.end(), res.begin(),
+                 [](int d) { return static_cast<int64_t>(d); });
+  return make_ddim(res);
+}
+
 /// @cond HIDDEN
 // XXX For some reason, putting this in an anonymous namespace causes errors
 class DynamicMutableIndexer : public boost::static_visitor<int64_t&> {

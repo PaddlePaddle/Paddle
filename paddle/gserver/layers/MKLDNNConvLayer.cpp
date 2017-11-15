@@ -102,8 +102,6 @@ void MKLDNNConvLayer::reshape(
 
   reshapeOutput(oh, ow);
   resizeOutput(bs, oc * oh * ow);
-
-  printSizeInfo();
 }
 
 void MKLDNNConvLayer::resetFwd(std::vector<primitive>& pipeline,
