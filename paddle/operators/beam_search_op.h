@@ -42,7 +42,7 @@ namespace operators {
  *
  * ids:
  * LoD (should have 2 levels)
- * first level: [0, 1, 3]
+ * first level: [0, 1, 4]
  * second level: [0, 1, 2, 3, 4]
  *
  * tensor's data
