@@ -35,6 +35,11 @@ DEFINE_string(warpctc_dir, "", "Specify path for loading libwarpctc.so.");
 
 DEFINE_string(lapack_dir, "", "Specify path for loading liblapack.so.");
 
+DEFINE_string(nccl_dir, "",
+              "Specify path for loading nccl library, such as libcublas, "
+              "libcurand. For instance, /usr/local/cuda/lib64. If default, "
+              "dlopen will search cuda from LD_LIBRARY_PATH");
+
 namespace paddle {
 namespace platform {
 namespace dynload {
@@ -154,6 +159,14 @@ void GetLapackDsoHandle(void** dso_handle) {
   GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapacke.dylib", dso_handle);
 #else
   GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapacke.so", dso_handle);
+#endif
+}
+
+void GetNCCLDsoHandle(void** dso_handle) {
+#if defined(__APPLE__) || defined(__OSX__)
+  GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.dylib", dso_handle);
+#else
+  GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.so", dso_handle);
 #endif
 }
 

@@ -27,11 +27,11 @@ import (
 	"github.com/topicai/candy"
 
 	"github.com/PaddlePaddle/Paddle/go/pserver"
-	log "github.com/sirupsen/logrus"
+	log "github.com/inconshreveable/log15"
 )
 
 func main() {
-	port := flag.Int("port", 0, "port of the pserver")
+	port := flag.Int("port", 8001, "port of the pserver")
 	index := flag.Int("index", -1, "index of the pserver, set to -1 if use etcd for auto pserver index registry")
 	etcdEndpoint := flag.String("etcd-endpoint", "http://127.0.0.1:2379",
 		"comma separated endpoint string for pserver to connect to etcd")
@@ -41,13 +41,17 @@ func main() {
 	checkpointPath := flag.String("checkpoint-path", "/checkpoints/", "save checkpoint path")
 	checkpointInterval := flag.Duration("checkpoint-interval", 600*time.Second, "save checkpoint per interval seconds")
 	logLevel := flag.String("log-level", "info",
-		"log level, possible values: debug, info, warning, error, fatal, panic")
+		"log level, possible values: debug, info, warn, error, crit")
 	flag.Parse()
 
-	level, err := log.ParseLevel(*logLevel)
-	candy.Must(err)
+	lvl, err := log.LvlFromString(*logLevel)
+	if err != nil {
+		panic(err)
+	}
 
-	log.SetLevel(level)
+	log.Root().SetHandler(
+		log.LvlFilterHandler(lvl, log.CallerStackHandler("%+v", log.StderrHandler)),
+	)
 
 	var idx int
 
@@ -63,7 +67,7 @@ func main() {
 		cp, err = pserver.LoadCheckpoint(e, idx)
 		if err != nil {
 			if err == pserver.ErrCheckpointNotFound {
-				log.Infof("Could not find the pserver checkpoint.")
+				log.Info("load checkpoint error", "error", err)
 			} else {
 				panic(err)
 			}
@@ -71,10 +75,10 @@ func main() {
 	}
 
 	shutdown := func() {
-		log.Infoln("shutting down gracefully")
+		log.Info("shutting down gracefully")
 		sErr := e.Shutdown()
 		if sErr != nil {
-			log.Errorln(sErr)
+			log.Error("error shutting down", log.Ctx{"error": sErr})
 		}
 	}
 
@@ -95,7 +99,7 @@ func main() {
 	candy.Must(err)
 
 	go func() {
-		log.Infof("start pserver at port %d", *port)
+		log.Info("serving pserver", log.Ctx{"port": *port})
 		err = http.Serve(l, nil)
 		candy.Must(err)
 	}()

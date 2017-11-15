@@ -21,7 +21,7 @@ import (
 	"github.com/PaddlePaddle/Paddle/go/connection"
 	"github.com/PaddlePaddle/recordio"
 	"github.com/coreos/etcd/clientv3"
-	log "github.com/sirupsen/logrus"
+	log "github.com/inconshreveable/log15"
 )
 
 // Client is the client of the master server.
@@ -75,7 +75,7 @@ func WithEtcd(endpoints []string, timeout time.Duration) func(*Client) error {
 		for {
 			err := f()
 			if err != nil {
-				log.Warningln(err)
+				log.Warn("create etcd client error", log.Ctx{"error": err})
 			} else {
 				break
 			}
@@ -121,6 +121,7 @@ func (c *Client) StartGetRecords(passID int) {
 }
 
 func (c *Client) getRecords(passID int) {
+	i := 0
 	for {
 		t, err := c.getTask(passID)
 		if err != nil {
@@ -130,18 +131,26 @@ func (c *Client) getRecords(passID int) {
 				c.ch <- record{nil, err}
 				break
 			}
-			if err.Error() == ErrPassAfter.Error() {
-				// wait util last pass finishes
-				time.Sleep(time.Second * 3)
-				continue
+
+			if i%60 == 0 {
+				log.Debug("getTask of passID error.",
+					log.Ctx{"error": err, "passID": passID})
+				i = 0
 			}
-			log.Errorf("getTask error: %s", err)
+
+			// if err.Error() == ErrPassAfter.Error()
+			//   wait util last pass finishes
+			// if other error such as network error
+			//   wait to reconnect or task time out
+			time.Sleep(time.Second * 3)
+			i += 3
+			continue
 		}
 
 		for _, chunk := range t.Chunks {
 			f, e := os.Open(chunk.Path)
 			if e != nil {
-				log.Errorln(e)
+				log.Error("error open chunk", log.Ctx{"error": e})
 				continue
 			}
 
@@ -152,12 +161,15 @@ func (c *Client) getRecords(passID int) {
 
 			if s.Err() != nil {
 				c.ch <- record{nil, s.Err()}
-				log.Errorln(err, chunk.Path)
+				log.Error(
+					"error scan chunk",
+					log.Ctx{"error": err, "path": chunk.Path},
+				)
 			}
 
 			err = f.Close()
 			if err != nil {
-				log.Errorln(err)
+				log.Error("error close record file", log.Ctx{"error": err})
 			}
 		}
 
@@ -166,7 +178,7 @@ func (c *Client) getRecords(passID int) {
 		// correct, but a reasonable approximation.
 		err = c.taskFinished(t.Meta.ID)
 		if err != nil {
-			log.Errorln(err)
+			log.Error("task finish callback error.", log.Ctx{"error": err})
 		}
 	}
 }
@@ -179,12 +191,12 @@ func (c *Client) monitorMaster(addrCh <-chan string) {
 			if curMaster == "" {
 				err := c.conn.Close()
 				if err != nil {
-					log.Errorln(err)
+					log.Error("close old master addr error", log.Ctx{"error": err})
 				}
 			} else {
 				err := c.conn.Connect(curMaster)
 				if err != nil {
-					log.Errorln(err)
+					log.Error("connect to new master addr error", log.Ctx{"error": err})
 
 					// connect to addr failed, set
 					// to last known addr in order

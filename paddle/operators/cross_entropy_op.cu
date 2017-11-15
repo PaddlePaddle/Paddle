@@ -21,7 +21,7 @@ namespace {
 
 template <typename T>
 __global__ void CrossEntropyGradientKernel(T* dX, const T* dY, const T* X,
-                                           const int* label, const int N,
+                                           const int64_t* label, const int N,
                                            const int D) {
   // TOOD(qingqing) define CUDA_1D_KERNEL_LOOP macro in a common file.
   // CUDA_1D_KERNEL_LOOP(i, N) {
@@ -77,29 +77,24 @@ class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel<T> {
     T* dx_data = dx->mutable_data<T>(ctx.GetPlace());
     const T* x_data = x->data<T>();
 
-    int batch_size = x->dims()[0];
-    int class_num = x->dims()[1];
+    int64_t batch_size = x->dims()[0];
+    int64_t class_num = x->dims()[1];
 
     int block = 512;
     int grid = (batch_size * class_num + block - 1) / block;
+    auto stream = ctx.cuda_device_context().stream();
 
     if (ctx.Attr<bool>("soft_label")) {
       auto* label_data = label->data<T>();
-      SoftCrossEntropyGradientKernel<T><<<
-          grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                              ctx.device_context())
-                              .stream()>>>(dx_data, dy_data, x_data, label_data,
-                                           batch_size, class_num);
+      SoftCrossEntropyGradientKernel<T><<<grid, block, 0, stream>>>(
+          dx_data, dy_data, x_data, label_data, batch_size, class_num);
     } else {
       math::SetConstant<platform::GPUPlace, T> functor;
       functor(ctx.device_context(), dx, 0);
-      auto* label_data = label->data<int>();
+      auto* label_data = label->data<int64_t>();
       grid = (batch_size + block - 1) / block;
-      CrossEntropyGradientKernel<T><<<
-          grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                              ctx.device_context())
-                              .stream()>>>(dx_data, dy_data, x_data, label_data,
-                                           batch_size, class_num);
+      CrossEntropyGradientKernel<T><<<grid, block, 0, stream>>>(
+          dx_data, dy_data, x_data, label_data, batch_size, class_num);
     }
   }
 };
@@ -108,6 +103,8 @@ class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(cross_entropy, ops::CrossEntropyOpCUDAKernel<float>);
+REGISTER_OP_GPU_KERNEL(cross_entropy, ops::CrossEntropyOpCUDAKernel<float>,
+                       ops::CrossEntropyOpCUDAKernel<double>);
 REGISTER_OP_GPU_KERNEL(cross_entropy_grad,
-                       ops::CrossEntropyGradientOpCUDAKernel<float>);
+                       ops::CrossEntropyGradientOpCUDAKernel<float>,
+                       ops::CrossEntropyGradientOpCUDAKernel<double>);

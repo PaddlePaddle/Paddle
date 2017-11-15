@@ -85,9 +85,49 @@ if(MOBILE_INFERENCE)
          gradientmachines/GradientMachineMode.cpp
          gradientmachines/MultiGradientMachine.cpp)
 
-    # Remove useless layers
+    # Remove layers that used in training
     list(REMOVE_ITEM GSERVER_SOURCES
-    	 layers/RecurrentLayerGroup.cpp)
+    	 layers/RecurrentLayerGroup.cpp
+         layers/CostLayer.cpp
+         layers/MultiBoxLossLayer.cpp
+         layers/WarpCTCLayer.cpp
+         layers/CTCLayer.cpp
+         layers/LinearChainCTC.cpp
+         layers/PrintLayer.cpp)
+    list(REMOVE_ITEM GSERVER_SOURCES
+         layers/OuterProdLayer.cpp
+         layers/SumToOneNormLayer.cpp
+         layers/ConvShiftLayer.cpp
+         layers/InterpolationLayer.cpp
+         layers/AgentLayer.cpp
+         layers/DotMulOperator.cpp
+         layers/GruStepLayer.cpp
+         layers/LstmStepLayer.cpp
+         layers/ConvexCombinationLayer.cpp
+         layers/Conv3DLayer.cpp
+         layers/DeConv3DLayer.cpp
+         layers/CropLayer.cpp
+         layers/CrossEntropyOverBeam.cpp
+         layers/DataNormLayer.cpp
+         layers/FeatureMapExpandLayer.cpp
+         layers/HierarchicalSigmoidLayer.cpp
+         layers/MultinomialSampler.cpp
+         layers/NCELayer.cpp
+         layers/KmaxSeqScoreLayer.cpp
+         layers/MDLstmLayer.cpp
+         layers/MultiplexLayer.cpp
+         layers/PadLayer.cpp
+         layers/Pool3DLayer.cpp
+         layers/ResizeLayer.cpp
+         layers/RotateLayer.cpp
+         layers/RowConvLayer.cpp
+         layers/RowL2NormLayer.cpp
+         layers/SamplingIdLayer.cpp
+         layers/ScaleShiftLayer.cpp
+         layers/SelectiveFullyConnectedLayer.cpp
+         layers/SpatialPyramidPoolLayer.cpp
+         layers/BilinearInterpLayer.cpp
+         layers/ClipLayer.cpp)
 endif()
 
 if(WITH_GPU)

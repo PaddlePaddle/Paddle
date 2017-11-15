@@ -1,0 +1,25 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: mpi-header
+  labels:
+    app: mpi-header
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mpi-header
+    spec:
+      containers:
+      - image: typhoon1986/paddle-openmpi
+        name : mpi-header
+        resources:
+          limits:
+            cpu: 500m
+            memory: 2Gi
+          requests:
+            cpu: 500m
+            memory: 2Gi
+        ports:
+        - containerPort: 22

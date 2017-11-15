@@ -77,6 +77,10 @@ extern void *cublas_dso_handle;
   __macro(cublasDgemmBatched);            \
   __macro(cublasCgemmBatched);            \
   __macro(cublasZgemmBatched);            \
+  __macro(cublasSgemmStridedBatched);     \
+  __macro(cublasDgemmStridedBatched);     \
+  __macro(cublasCgemmStridedBatched);     \
+  __macro(cublasZgemmStridedBatched);     \
   __macro(cublasSgetrfBatched);           \
   __macro(cublasSgetriBatched);           \
   __macro(cublasDgetrfBatched);           \

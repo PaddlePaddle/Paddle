@@ -31,7 +31,8 @@ inline void hl_maxpool_forward(const int frameCnt,
                                const int paddingH,
                                const int paddingW,
                                real* tgtData,
-                               const int tgtStride) {}
+                               const int tgtStride,
+                               real* MaskData) {}
 
 inline void hl_maxpool_backward(const int frameCnt,
                                 const real* inputData,

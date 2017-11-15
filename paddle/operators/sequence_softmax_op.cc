@@ -43,20 +43,24 @@ class SequenceSoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
               "(LoDTensor) 1-D or 2-D output LoDTensor with the 2-nd dimension "
               "of length 1.");
     AddComment(R"DOC(
-SequenceSoftmaxOp computes softmax activation among all time-steps for each
-sequence. The dimension of each time-step should be 1. Thus, the shape of
-input Tensor can be either [N, 1] or [N], where N is the sum of all sequences'
-lengths.
+Sequence Softmax Operator.
 
-Equation:
+SequenceSoftmaxOp computes the softmax activation among all time-steps for each
+sequence. The dimension of each time-step should be 1. Thus, the shape of
+input Tensor can be either [N, 1] or [N], where N is the sum of the length
+of all sequences.
+
+The algorithm works as follows:
     for i-th sequence in a mini-batch:
-        Out(X[lod[i]:lod[i+1]], :) =
-            exp(X[lod[i]:lod[i+1], :]) / sum(exp(X[lod[i]:lod[i+1], :]))
+        $$Out(X[lod[i]:lod[i+1]], :) =
+            \frac{\exp(X[lod[i]:lod[i+1], :])}
+            {\sum(\exp(X[lod[i]:lod[i+1], :]))}$$
 
 For example, for a mini-batch of 3 sequences with variable-length,
 each containing 2, 3, 2 time-steps, the lod of which is [0, 2, 5, 7],
 then softmax will be computed among X[0:2, :], X[2:5, :], X[5:7, :]
 and N turns out to be 7.
+
 )DOC");
   }
 };

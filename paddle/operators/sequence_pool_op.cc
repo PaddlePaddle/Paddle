@@ -27,6 +27,11 @@ class SequencePoolOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SequencePoolOp should not be null.");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    if (ctx->Attrs().Get<std::string>("pooltype") == "MAX") {
+      PADDLE_ENFORCE(ctx->HasOutput("MaxIndex"),
+                     "Output(MaxIndex) of SequencePoolOp should not be null.");
+      ctx->SetOutputDim("MaxIndex", ctx->GetInputDim("X"));
+    }
   }
 };
 
@@ -35,34 +40,50 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
   SequencePoolOpMaker(framework::OpProto* proto,
                       framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "(LoDTensor), the variable-length input of SequencePoolOp");
+    AddInput("X", "(LoDTensor) The variable-length input of SequencePoolOp");
     AddOutput("Out",
-              "(Tensor), output of SequencePoolOp, which does not contain LoD "
+              "(Tensor) The output of SequencePoolOp does not contain LoD "
               "infomation.");
-    AddAttr<int>(
-        "strategy",
-        "(int, default AVERAGE) the pooling strategy of SequencePoolOp.")
-        .SetDefault(AVERAGE)
-        .InEnum({AVERAGE, SUM, SQRT, MAX, LAST, FIRST});
+    AddOutput("MaxIndex",
+              "(Tensor<int>) This tensor is used for the sequence max-pooling "
+              "to record the max indexes.")
+        .AsIntermediate();
+    AddAttr<std::string>(
+        "pooltype",
+        "(int, default AVERAGE) the pooling pooltype of SequencePoolOp.")
+        .SetDefault("AVERAGE")
+        .InEnum({"AVERAGE", "SUM", "SQRT", "LAST", "FIRST", "MAX"});
     AddComment(R"DOC(
-    SequencePoolOp pools features of all time-steps of each instance.
+Sequence Pool Operator.
 
-    For a mini-batch of 3 variable-length sentences, containing 2, 3, and 2 time-steps:
+The SequencePoolOp pools features of all time-steps of each instance.
+It supports six pooling types:
+1. AVERAGE: Out[i] = $$avg(X_i)$$
+2. SUM:     Out[i] = $$\sum_jX_{ij}$$
+3. SQRT:    Out[i] = $$\frac{\sum_jX_{ij}}{\sqrt{len(X_i)}}$$
+4. LAST:    Out[i] = last instance in i-th sequence X[i]
+5. FIRST:   Out[i] = first instance in i-th sequence X[i]
+6. MAX:     Out[i] = $$max(X_i)$$
 
-    Assume X is a [7,M,N] LoDTensor, and X->lod()[0] = [0, 2, 5, 7], 7=2+3+2.
-    Besides, for the sake of simplicity, we assume M=1 and N=1,
-    and the value of X = [[1, 3], [2, 4, 6], [5, 1]].
+The following example explains how this works:
+For a mini-batch of 3 variable-length sentences,
+containing 2, 3, and 2 time-steps:
 
-    Thus, Out is a [3,1,1] Tensor without LoD infomation.
-    And for different strategy, the value of Out is as follows:
+Assume X is a [7,M,N] LoDTensor, and X->lod()[0] = [0, 2, 5, 7], 7=2+3+2.
+Besides, for the sake of simplicity, we assume M=1 and N=1,
+and the value of X = [[1, 3], [2, 4, 6], [5, 1]].
 
-    - AVERAGE: [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
-    - SUM: [4, 12, 6], where 4=1+3, 12=2+4+6, 6=5+1
-    - SQRT: [2.82, 6.93, 4.24], where 2.82=(1+3)/sqrt(2),
+Thus, Out is a [3,1,1] Tensor without LoD infomation.
+And for different pooltype, the value of Out is as follows:
+
+- AVERAGE: [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
+- SUM: [4, 12, 6], where 4=1+3, 12=2+4+6, 6=5+1
+- SQRT: [2.82, 6.93, 4.24], where 2.82=(1+3)/sqrt(2),
            6.93=(2+4+6)/sqrt(3), 4.24=(5+1)/sqrt(2)
-    - MAX: [3, 6, 5], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
-    - LAST: [3, 6, 1], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
-    - FIRST: [1, 2, 5], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
+- MAX: [3, 6, 5], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
+- LAST: [3, 6, 1], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
+- FIRST: [1, 2, 5], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
+
     )DOC");
   }
 };
@@ -83,6 +104,14 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(og_dims[i], x_dims[i], "The dimension mismatch.");
     }
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+  }
+
+ protected:
+  framework::OpKernelType GetKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()),
+        ctx.device_context());
   }
 };
 

@@ -1,3 +1,17 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License. */
+
 #include <cmath>
 
 #include "adagrad_optimizer.h"
@@ -17,17 +31,15 @@ void AdagradOptimizer::Update(const Tensor* gradient) {
                 learning_rate * decay_ * param[i];
   }
 }
-const char* AdagradOptimizer::SerializeState(int* state_len) {
+std::string AdagradOptimizer::SerializeState() {
   AdagradOptimizerState state;
   state.set_num_sample_passed(num_sample_passed_);
-  std::string lr_str = this->lr_policy_->SerializeState(state_len);
+  std::string lr_str = this->lr_policy_->SerializeState();
   state.mutable_lr_state()->ParseFromString(lr_str);
 
   TensorToProto(*parameter_, state.mutable_parameter());
   TensorToProto(*accum_gradient_, state.mutable_accum_gradient());
-  auto str = state.SerializeAsString();
-  *state_len += str.size();
-  return str.c_str();
+  return state.SerializeAsString();
 }
 
 void AdagradOptimizer::DeserializeState(const std::string& str) {

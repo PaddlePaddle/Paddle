@@ -79,9 +79,8 @@ if(NOT DEFINED IOS_ARCH)
     # FIXME(liuyiqun): support "armv7;armv7s;arm64" future
     set(IOS_ARCH "arm64")
   elseif(IOS_PLATFORM STREQUAL "SIMULATOR")
-    set(IOS_ARCH "i386;x86_64")
-  elseif(IOS_PLATFORM STREQUAL "WATCHOS")
-    set(IOS_ARCH armv7k)
+    # FIXME(liuyiqun): support "i386;x86_64" future
+    set(IOS_ARCH "x86_64")
   endif()
 endif()
 set(CMAKE_OSX_ARCHITECTURES ${IOS_ARCH} CACHE string  "Build architecture for iOS")

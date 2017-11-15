@@ -1,5 +1,5 @@
-hash: 328e7b9b7306b45e7b9879139a9f86698115981f6283032e1312093a6a6ddb04
-updated: 2017-10-16T08:00:23.484693528Z
+hash: 107c058cf5c9163a75d40eef2273a793c36112683c25d72aa8288827fdde3a19
+updated: 2017-10-30T03:46:19.137696069Z
 imports:
 - name: github.com/alecthomas/gometalinter
   version: bae2f1293d092fd8167939d5108d1b025eaef9de
@@ -99,6 +99,8 @@ imports:
   version: d2709f9f1f31ebcda9651b03077758c1f3a0018c
 - name: github.com/ghodss/yaml
   version: 0ca9ea5df5451ffdf184b4428c902747c2c11cd7
+- name: github.com/go-stack/stack
+  version: 817915b46b97fd7bb80e8ab6b69f01a53ac3eebf
 - name: github.com/gogo/protobuf
   version: 909568be09de550ed094403c2bf8a261b5bb730a
   subpackages:
@@ -120,8 +122,14 @@ imports:
   - runtime
   - runtime/internal
   - utilities
+- name: github.com/inconshreveable/log15
+  version: 0decfc6c20d9ca0ad143b0e89dcaa20f810b4fb3
 - name: github.com/jonboulle/clockwork
   version: 2eee05ed794112d45db504eb05aa693efd2b8b09
+- name: github.com/mattn/go-colorable
+  version: 5411d3eea5978e6cdc258b30de592b60df6aba96
+- name: github.com/mattn/go-isatty
+  version: 57fdcb988a5c543893cc61bce354a6e24ab70022
 - name: github.com/matttproud/golang_protobuf_extensions
   version: c12348ce28de40eed0136aa2b644d0ee0650e56c
   subpackages:
@@ -179,11 +187,12 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: 0f826bdd13b500be0f1d4004938ad978fcc6031e
+  version: e48874b42435b4347fc52bdee0424a52abc974d7
   repo: https://github.com/golang/sys.git
   vcs: git
   subpackages:
   - unix
+  - windows
 - name: golang.org/x/text
   version: 836efe42bb4aa16aaa17b9c155d8813d336ed720
   repo: https://github.com/golang/text.git
@@ -222,4 +231,3 @@ testImports:
   version: 05e8a0eda380579888eb53c394909df027f06991
   subpackages:
   - assert
-

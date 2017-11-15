@@ -1,3 +1,17 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License. */
+
 #include <glog/logging.h>
 #include "adadelta_optimizer.h"
 #include "adagrad_optimizer.h"
@@ -32,6 +46,7 @@ ParameterOptimizer *ParameterOptimizer::Create(const std::string &config_proto,
       Tensor *parameter,
       const OptimizerConfig &config) -> ParameterOptimizer * {
     if (config.optimizer() == OptimizerConfig::SGD) {
+      LOG(INFO) << "creating SGD optimizer";
       return new SGDOptimizer(parameter,
                               lr,
                               config.sgd().momentum(),
@@ -39,6 +54,7 @@ ParameterOptimizer *ParameterOptimizer::Create(const std::string &config_proto,
                               config.sgd().nesterov());
     }
     if (config.optimizer() == OptimizerConfig::Adadelta) {
+      LOG(INFO) << "creating Adadelta optimizer";
       return new AdadeltaOptimizer(parameter,
                                    lr,
                                    config.adadelta().rho(),
@@ -46,10 +62,12 @@ ParameterOptimizer *ParameterOptimizer::Create(const std::string &config_proto,
                                    config.adadelta().decay());
     }
     if (config.optimizer() == OptimizerConfig::Adagrad) {
+      LOG(INFO) << "creating Adagrad optimizer";
       return new AdagradOptimizer(
           parameter, lr, config.adagrad().epsilon(), config.adagrad().decay());
     }
     if (config.optimizer() == OptimizerConfig::Adam) {
+      LOG(INFO) << "creating Adam optimizer";
       return new AdamOptimizer(parameter,
                                lr,
                                config.adam().beta_1(),

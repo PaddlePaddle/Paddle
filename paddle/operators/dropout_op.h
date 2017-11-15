@@ -33,7 +33,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
     auto* y = context.Output<Tensor>("Out");
     const auto* x_data = x->data<T>();
     auto* y_data = y->mutable_data<T>(context.GetPlace());
-    AttrType dropout_prob = context.Attr<AttrType>("dropout_prob");
+    float dropout_prob = context.Attr<float>("dropout_prob");
 
     if (context.Attr<bool>("is_training")) {
       auto* mask = context.Output<Tensor>("Mask");
@@ -41,7 +41,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
       int seed = context.Attr<int>("seed");
       std::minstd_rand engine;
       engine.seed(seed);
-      std::uniform_real_distribution<AttrType> dist(0, 1);
+      std::uniform_real_distribution<float> dist(0, 1);
       size_t size = framework::product(mask->dims());
       for (size_t i = 0; i < size; ++i) {
         if (dist(engine) < dropout_prob) {
