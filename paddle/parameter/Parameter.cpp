@@ -200,7 +200,10 @@ void Parameter::setMat(ParameterType pType, int matType) {
                                      false,
                                      useGpu_);
     }
-  } else if (matType == MAT_NORMAL_SHARED) {
+  }
+#ifndef PADDLE_MOBILE_INFERENCE
+  // NOLINTNEXTLINE
+  else if (matType == MAT_NORMAL_SHARED) {
     CHECK_EQ(height * width, bufs_[pType]->getSize());
     size_t blockNum = 0;
     CHECK(isGradShared(&blockNum));
@@ -259,7 +262,10 @@ void Parameter::setMat(ParameterType pType, int matType) {
   } else if (matType == MAT_SPARSE_ROW_AUTO_GROW) {
     CHECK(isGradSparseUpdate());
     mats_[pType] = std::make_shared<SparseAutoGrowRowCpuMatrix>(height, width);
-  } else {
+  }
+#endif
+  // NOLINTNEXTLINE
+  else {
     LOG(FATAL) << "Unsupported mat type" << matType;
   }
 }
