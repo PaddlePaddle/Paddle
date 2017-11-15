@@ -676,7 +676,6 @@ def conv2d(input,
     filter_shape = [num_filters, num_filter_channels] + filter_size
 
     std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
-    print 'name=', name, 'std=', std
     filter = helper.create_parameter(
         attr=helper.param_attr,
         shape=filter_shape,

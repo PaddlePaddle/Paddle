@@ -244,6 +244,8 @@ def get_parameter_value(para, executor):
     :param para: the given parameter
     :return: the LoDTensor for the parameter
     """
+    assert is_parameter(para)
+
     get_program = Program()
     block = get_program.global_block()
     new_var = _clone_var_in_block_(block, para)
@@ -263,5 +265,4 @@ def get_parameter_value_by_name(name, executor, program=None):
     if program is None:
         program = g_main_program
     var = program.global_block().var(name)
-    assert is_parameter(var)
     return get_parameter_value(var, executor)

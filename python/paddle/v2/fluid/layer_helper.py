@@ -158,7 +158,7 @@ class LayerHelper(object):
         or equal than 2.
         :param dim_start:
         :param dim_end: the shape of the bias will be
-        input_var.shape(dim_start:dim_end). The bias is broadcast to other
+        input_var.shape[dim_start:dim_end]. The bias is broadcasted to other
         dimensions and added to input_var to get the output
         """
         size = list(input_var.shape[dim_start:dim_end])
