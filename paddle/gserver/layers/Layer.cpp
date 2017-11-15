@@ -98,6 +98,7 @@ ClassRegistrar<Layer, LayerConfig> Layer::registrar_;
 LayerPtr Layer::create(const LayerConfig& config) {
   std::string type = config.type();
 
+#ifndef PADDLE_MOBILE_INFERENCE
   // NOTE: As following types have illegal character '-',
   // they can not use REGISTER_LAYER to registrar.
   // Besides, to fit with old training models,
@@ -106,7 +107,6 @@ LayerPtr Layer::create(const LayerConfig& config) {
     return LayerPtr(new MultiClassCrossEntropy(config));
   else if (type == "rank-cost")
     return LayerPtr(new RankingCost(config));
-#ifndef PADDLE_MOBILE_INFERENCE
   else if (type == "auc-validation")
     return LayerPtr(new AucValidation(config));
   else if (type == "pnpair-validation")

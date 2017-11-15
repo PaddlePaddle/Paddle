@@ -100,7 +100,9 @@ public:
                  strideH(),
                  strideW(),
                  paddingH(),
-                 paddingW());
+                 paddingW(),
+                 dilationH(),
+                 dilationW());
         } else {
           colData = inputData + g * inputOffset;
         }
@@ -223,7 +225,9 @@ public:
                  strideH(),
                  strideW(),
                  paddingH(),
-                 paddingW());
+                 paddingW(),
+                 dilationH(),
+                 dilationW());
         }
       }
       inputGrad += inputChannels * inputHeight * inputWidth;
@@ -310,7 +314,9 @@ public:
                  strideH(),
                  strideW(),
                  paddingH(),
-                 paddingW());
+                 paddingW(),
+                 dilationH(),
+                 dilationW());
         } else {
           colData = inputData + g * inputOffset;
         }
