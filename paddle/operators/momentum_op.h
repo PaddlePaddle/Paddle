@@ -34,7 +34,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
     velocity_out->mutable_data<T>(ctx.GetPlace());
 
     float mu = ctx.Attr<float>("mu");
-    bool use_nesterov = ctx.Attr<bool>("useNesterov");
+    bool use_nesterov = ctx.Attr<bool>("use_nesterov");
 
     auto p_out = framework::EigenVector<T>::Flatten(*param_out);
     auto v_out = framework::EigenVector<T>::Flatten(*velocity_out);

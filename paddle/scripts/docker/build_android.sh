@@ -44,7 +44,7 @@ if [ $ANDROID_ABI == "armeabi-v7a" ]; then
         -DHOST_C_COMPILER=/usr/bin/gcc \
         -DHOST_CXX_COMPILER=/usr/bin/g++ \
         -DCMAKE_INSTALL_PREFIX=$DEST_ROOT \
-        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_BUILD_TYPE=MinSizeRel \
         -DUSE_EIGEN_FOR_BLAS=ON \
         -DWITH_C_API=ON \
         -DWITH_SWIG_PY=OFF \
@@ -58,7 +58,7 @@ elif [ $ANDROID_ABI == "arm64-v8a" ]; then
         -DHOST_C_COMPILER=/usr/bin/gcc \
         -DHOST_CXX_COMPILER=/usr/bin/g++ \
         -DCMAKE_INSTALL_PREFIX=$DEST_ROOT \
-        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_BUILD_TYPE=MinSizeRel \
         -DUSE_EIGEN_FOR_BLAS=OFF \
         -DWITH_C_API=ON \
         -DWITH_SWIG_PY=OFF \
@@ -72,7 +72,7 @@ elif [ $ANDROID_ABI == "armeabi" ]; then
         -DHOST_C_COMPILER=/usr/bin/gcc \
         -DHOST_CXX_COMPILER=/usr/bin/g++ \
         -DCMAKE_INSTALL_PREFIX=$DEST_ROOT \
-        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_BUILD_TYPE=MinSizeRel \
         -DWITH_C_API=ON \
         -DWITH_SWIG_PY=OFF \
         -DWITH_STYLE_CHECK=OFF \

@@ -5,22 +5,23 @@ function train() {
   export OMP_DYNAMIC="FALSE"
   export KMP_AFFINITY="granularity=fine,compact,0,0"
   topology=$1
-  bs=$2
-  use_mkldnn=$3
-  if [ $3 == "True" ]; then
+  layer_num=$2
+  bs=$3
+  use_mkldnn=$4
+  if [ $4 == "True" ]; then
     thread=1
-    log="logs/${topology}-mkldnn-${bs}.log"
-  elif [ $3 == "False" ]; then
+    log="logs/${topology}-${layer_num}-mkldnn-${bs}.log"
+  elif [ $4 == "False" ]; then
     thread=`nproc`
     # each trainer_count use only 1 core to avoid conflict
     export OMP_NUM_THREADS=1
     export MKL_NUM_THREADS=1
-    log="logs/${topology}-${thread}mklml-${bs}.log"
+    log="logs/${topology}-${layer_num}-${thread}mklml-${bs}.log"
   else
     echo "Wrong input $3, use True or False."
     exit 0
   fi
-  args="batch_size=${bs}"
+  args="batch_size=${bs},layer_num=${layer_num}"
   config="${topology}.py"
   paddle train --job=time \
     --config=$config \
@@ -40,12 +41,9 @@ if [ ! -d "logs" ]; then
   mkdir logs
 fi
 
-#========== mkldnn ==========#
-train vgg 64 True
-train vgg 128 True
-train vgg 256 True
-
-#========== mklml ===========#
-train vgg 64 False
-train vgg 128 False
-train vgg 256 False
+for use_mkldnn in True False; do
+  for batchsize in 64 128 256; do
+    train vgg 19 $batchsize $use_mkldnn
+    train resnet 50  $batchsize $use_mkldnn
+  done
+done

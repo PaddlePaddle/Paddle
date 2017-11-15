@@ -102,7 +102,7 @@ class Momentum(Optimizer):
 
     ..  math::
 
-        v_{t} &= k * v_{t-1} - \\gamma_t / (g_{t} + \\lambda w_{t-1}) \\\\
+        v_{t} &= k * v_{t-1} - \\gamma_t (g_{t} + \\lambda w_{t-1}) \\\\
         w_{t} &= w_{t-1} + v_{t} \\\\
 
     where, :math:`k` is momentum, :math:`\\lambda` is decay rate,

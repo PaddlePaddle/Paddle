@@ -51,9 +51,11 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
  protected:
   // Explicitly set that the data type of computation kernel of cross_entropy
   // is determined by its input "X".
-  framework::DataType IndicateDataType(
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()),
+        ctx.device_context());
   }
 };
 
@@ -98,9 +100,11 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
  protected:
   // Explicitly set that the data type of computation kernel of cross_entropy
   // is determined by its input "X".
-  framework::DataType IndicateDataType(
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()),
+        ctx.device_context());
   }
 };
 

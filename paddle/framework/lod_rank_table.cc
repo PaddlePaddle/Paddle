@@ -31,6 +31,7 @@ void LoDRankTable::Reset(const LoD& lod, size_t level) {
     TableItem item;
     item.index = i;
     item.length = vec[i + 1] - vec[i];
+    VLOG(10) << "Add item to rank table " << item.index << " " << item.length;
     items_.emplace_back(item);
   }
   // NOTE(yuyang18):
