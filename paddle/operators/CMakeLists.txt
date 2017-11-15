@@ -239,4 +239,8 @@ if(WITH_GPU)
   nv_test(nccl_op_test SRCS nccl_op_test.cu DEPS nccl_op gpu_info device_context)
 endif()
 cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)
-cc_test(test_send_recv SRCS send_recv_op_test.cc DEPS send_op recv_op grpc)
+cc_test(test_send_recv SRCS send_recv_op_test.cc DEPS send_op recv_op executor grpc++_unsecure grpc_unsecure gpr protobuf cares zlib_target)
+
+
+cc_binary(test_send_recv_server SRCS send_recv_op_main_server.cc DEPS send_op recv_op executor grpc++_unsecure grpc_unsecure gpr protobuf cares zlib_target)
+cc_binary(test_send_recv_client SRCS send_recv_op_main_client.cc DEPS send_op recv_op executor grpc++_unsecure grpc_unsecure gpr protobuf cares zlib_target)

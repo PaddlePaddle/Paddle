@@ -17,6 +17,9 @@
 #include <ostream>
 #include <thread>
 
+#include <unistd.h>
+#include <iostream>
+
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/framework.pb.h"
@@ -45,13 +48,18 @@ class RecvOp : public framework::OperatorBase {
          const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {
     if (!rpc_service_) {
+      rpc_service_.reset(new detail::SendRecvServerImpl());
       std::string endpoint = Attr<std::string>("endpoint");
-      std::thread server_thread(RunServer, rpc_service_, endpoint);
+      server_thread_.reset(new std::thread(RunServer, rpc_service_, endpoint));
     }
   }
+
+  virtual ~RecvOp() { server_thread_->join(); }
+
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
     // blocking get one var from client.
+    std::cout << "before get from client..." << std::endl;
     const framework::LoDTensor &t = rpc_service_->Get();
     framework::Scope &recv_scope = scope.NewScope();
     // set graph input var
@@ -74,6 +82,7 @@ class RecvOp : public framework::OperatorBase {
 
  protected:
   std::shared_ptr<detail::SendRecvServerImpl> rpc_service_;
+  std::shared_ptr<std::thread> server_thread_;
 };
 
 class RecvOpMaker : public framework::OpProtoAndCheckerMaker {

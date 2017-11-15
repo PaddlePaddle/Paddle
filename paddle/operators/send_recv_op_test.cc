@@ -15,6 +15,8 @@
 // TODO(typhoonzero): add python bindings for this test as
 // a RemoteOptimizer.
 
+#include <unistd.h>
+#include <iostream>
 #include <thread>
 
 #include "gtest/gtest.h"
@@ -68,27 +70,34 @@ void AddOp(const std::string &type,
 }
 
 void StartServerNet() {
+  std::cout << "starting rpc server..." << std::endl;
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace place;
   InitTensorsInScope(scope, place);
 
   // sub program run in recv_op, for simple test we use sum
+  std::cout << "before creating block..." << std::endl;
   paddle::framework::ProgramDescBind program;
   paddle::framework::BlockDescBind *block = program.MutableBlock(0);
+  std::cout << "adding op..." << std::endl;
   AddOp("sum", {{"X", {"X"}}}, {{"Out", {"Out"}}}, {}, block);
 
   paddle::framework::AttributeMap attrs;
   attrs.insert({"endpoint", std::string("127.0.0.1:6174")});
   attrs.insert({"OptimizeBlock", block});
+  std::cout << "create recv op..." << std::endl;
   auto recv_op = paddle::framework::OpRegistry::CreateOp(
       "recv", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
   paddle::platform::CPUDeviceContext ctx(place);
+  std::cout << "before run..." << std::endl;
   recv_op->Run(scope, ctx);
 }
 
 TEST(SendRecvOp, CPU) {
   std::thread server_thread(StartServerNet);
-
+  std::cout << "####server thread started..." << std::endl;
+  sleep(10);
+  std::cout << "####starting trainer..." << std::endl;
   // local net
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace place;
@@ -101,6 +110,7 @@ TEST(SendRecvOp, CPU) {
   auto send_op = paddle::framework::OpRegistry::CreateOp(
       "send", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
   paddle::platform::CPUDeviceContext ctx(place);
+  std::cout << "####before send..." << std::endl;
   send_op->Run(scope, ctx);
 
   auto in_var = scope.Var("X");

@@ -498,7 +498,7 @@ function(grpc_library TARGET_NAME)
     ${grpc_grpc_srcs}
     PROPERTIES
     COMPILE_FLAGS  "-Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
-  cc_library("${TARGET_NAME}_grpc" SRCS "${grpc_grpc_srcs}" DEPS grpc)
+  cc_library("${TARGET_NAME}_grpc" SRCS "${grpc_grpc_srcs}")
 
   set_source_files_properties(
     ${grpc_library_SRCS}

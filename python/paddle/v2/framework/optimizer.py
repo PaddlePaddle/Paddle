@@ -21,7 +21,7 @@ class Optimizer(object):
     but need to use one of it's implementation.
     """
 
-    def __init__(self, global_step=None):
+    def __init__(self, global_step=None, server_list=None):
         self._global_step = global_step
         # Dictionary of accumulators. Some optimizer subclasses need to
         # allocate and manage extra variables associated with the parameters
@@ -29,6 +29,12 @@ class Optimizer(object):
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
+        # server_list for send parameter to remote side optimization.
+        # for parameter server, create local optimization net inside recv_op.
+        # for trainers, create a single send_op as optimization net.
+        self._server_list = server_list
+        if server_list:
+            self.remote_optimize = True
 
     def _append_optimize_op(self, block, param_and_grad):
         """ append optimize operator to block and return all the added optimize_op
@@ -129,6 +135,21 @@ class Optimizer(object):
 
         return increment_op
 
+    def _create_remote_optimization_pass(self, block, parameters_and_grads):
+        send_op_list = []
+        for param_and_grad in parameters_and_grads:
+            if param_and_grad[1] is not None:
+                send_op = block.append_op(
+                    type="send",
+                    inputs={
+                        "Param": param_and_grad[0],
+                        "Grad": param_and_grad[1],
+                        "LearningRate": self._lr
+                    },
+                    outputs={"ParamOut": param_and_grad[0]})
+                send_op_list.append(send_op)
+        return send_op_list
+
     def create_optimization_pass(self,
                                  parameters_and_grads,
                                  loss,
@@ -152,6 +173,12 @@ class Optimizer(object):
         #  _initialize_tensors method. The subclass can extend the
         # _create_accumulators method if it needs to create accumulators
         # for parameters and extend _finish_update method to add custom ops.
+
+        # NOTE: for remote updates, we only create a send_op here, instead, 
+        # optimization pass will be created at parameter server side.
+        if self.remote_optimize:
+            return self._create_remote_optimization_pass(loss.block,
+                                                         parameters_and_grads)
 
         # Create any accumulators
         program = loss.block.program
