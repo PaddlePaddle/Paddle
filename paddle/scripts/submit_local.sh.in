@@ -43,6 +43,51 @@ function ver2num() {
   set +e
 }
 
+function cpu_config() {
+  # auto set KMP_AFFINITY and OMP_DYNAMIC from Hyper Threading Status
+  # only when MKLDNN or MKLML enabled
+  if [ "@WITH_MKLDNN@" == "OFF" ] && [ "@WITH_MKLML@" == "OFF"]; then
+    return 0
+  fi
+  ht=`lscpu |grep "per core"|awk -F':' '{print $2}'|xargs`
+  if [ $ht -eq 1 ]; then # HT is OFF
+    if [ -z "$KMP_AFFINITY" ]; then
+      export KMP_AFFINITY="granularity=fine,compact,0,0"
+    fi
+    if [ -z "$OMP_DYNAMIC" ]; then
+      export OMP_DYNAMIC="FALSE"
+    fi
+  else # HT is ON
+    if [ -z "$KMP_AFFINITY" ]; then
+      export KMP_AFFINITY="granularity=fine,compact,1,0"
+    fi
+    if [ -z "$OMP_DYNAMIC" ]; then
+      export OMP_DYNAMIC="True"
+    fi
+  fi
+}
+
+function threads_config() {
+  # auto set OMP_NUM_THREADS and MKL_NUM_THREADS
+  # according to trainer_count and total processors
+  # only when MKLDNN or MKLML enabled
+  if [ "@WITH_MKLDNN@" == "OFF" ] && [ "@WITH_MKLML@" == "OFF"]; then
+    return 0
+  fi
+  processors=`grep "processor" /proc/cpuinfo|sort -u|wc -l`
+  trainers=`grep -Eo 'trainer_count.[0-9]+' <<< "$@" |grep -Eo '[0-9]+'|xargs`
+  if [ -z $trainers ]; then
+    trainers=1
+  fi
+  threads=$((processors / trainers)) 
+  if [ -z "$OMP_NUM_THREADS" ]; then
+    export OMP_NUM_THREADS=$threads
+  fi
+  if [ -z "$MKL_NUM_THREADS" ]; then
+    export MKL_NUM_THREADS=$threads
+  fi
+}
+
 PADDLE_CONF_HOME="$HOME/.config/paddle"
 mkdir -p ${PADDLE_CONF_HOME}
 
@@ -92,9 +137,11 @@ else:
   sys.exit(0)
 EOF
 
+cpu_config
 
 case "$1" in
     "train")
+        threads_config $@
         ${DEBUGGER} $PADDLE_BIN_PATH/paddle_trainer ${@:2}
         ;;
     "merge_model")
