@@ -1,3 +1,4 @@
+import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.nets as nets
@@ -8,7 +9,8 @@ import paddle.v2.fluid.evaluator as evaluator
 from paddle.v2.fluid.framework import Program
 from paddle.v2.fluid.executor import Executor
 
-import numpy as np
+BATCH_SIZE = 128
+PASS_NUM = 5
 
 startup_program = Program()
 main_program = Program()
@@ -66,8 +68,6 @@ accuracy, acc_out = evaluator.accuracy(
     main_program=main_program,
     startup_program=startup_program)
 
-BATCH_SIZE = 128
-PASS_NUM = 5
 train_reader = paddle.batch(
     paddle.reader.shuffle(
         paddle.dataset.mnist.train(), buf_size=500),
