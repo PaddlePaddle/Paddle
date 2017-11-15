@@ -1,8 +1,11 @@
 # gserver pacakge unittests
 
 add_simple_unittest(test_LinearChainCRF)
-add_simple_unittest(test_MultinomialSampler)
 add_simple_unittest(test_RecurrentLayer)
+
+if(NOT MOBILE_INFERENCE)
+  add_simple_unittest(test_MultinomialSampler)
+endif()
 
 function(gserver_test TARGET)
   add_unittest_without_exec(${TARGET}
@@ -24,6 +27,7 @@ gserver_test(test_ConvUnify)
 gserver_test(test_BatchNorm)
 gserver_test(test_KmaxSeqScore)
 gserver_test(test_Expand)
+gserver_test(test_MaxPoolingWithMaskOutput)
 
 ########## test_Mkldnn layers and activations ##########
 if(WITH_MKLDNN)
@@ -48,7 +52,7 @@ if(WITH_PYTHON)
 endif()
 
 ############### test_WarpCTCLayer #######################
-if(NOT WITH_DOUBLE)
+if(NOT WITH_DOUBLE AND NOT MOBILE_INFERENCE)
     add_unittest_without_exec(test_WarpCTCLayer
         test_WarpCTCLayer.cpp)
 
