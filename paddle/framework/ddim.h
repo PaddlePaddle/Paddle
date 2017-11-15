@@ -71,7 +71,7 @@ struct DDim {
 
   DDim operator*(DDim d) const;
 
-  int64_t size() const;
+  int size() const;
 };
 
 /**
@@ -80,6 +80,8 @@ struct DDim {
  * \param dims An vector of ints. Must be sized between [1, 9]
  */
 DDim make_ddim(const std::vector<int64_t>& dims);
+
+DDim make_ddim(const std::vector<int>& dims);
 
 /**
  * \brief Make a DDim from an initializer list

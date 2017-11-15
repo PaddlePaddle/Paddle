@@ -199,7 +199,8 @@ protected:
    */
   void resetInValue(
       MKLDNNMatrixPtr& in,
-      const std::shared_ptr<mkldnn::memory::primitive_desc>& intPD = nullptr);
+      const std::shared_ptr<mkldnn::memory::primitive_desc>& intPD = nullptr,
+      size_t inputIdx = 0);
 
   /**
    * reset output value from internal primitive desc.
@@ -212,7 +213,9 @@ protected:
    * reset input grad from internal primitive desc.
    * reset both internal and external buffer and create reorder if necessary.
    */
-  void resetInGrad(MKLDNNMatrixPtr& in, mkldnn::memory::primitive_desc intPD);
+  void resetInGrad(MKLDNNMatrixPtr& in,
+                   mkldnn::memory::primitive_desc intPD,
+                   size_t inputIdx = 0);
 
   /**
    * reset output grad from internal primitive desc.

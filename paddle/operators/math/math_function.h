@@ -19,11 +19,6 @@ limitations under the License. */
 #include <mkl_vml_functions.h>
 #endif
 
-#ifdef PADDLE_USE_MKL
-#include <mkl.h>
-#include <mkl_lapacke.h>
-#endif
-
 #ifdef PADDLE_USE_ATLAS
 extern "C" {
 #include <cblas.h>
@@ -107,6 +102,13 @@ struct SetConstant {
         t.constant(static_cast<T>(num));
   }
 };
+
+template <typename Place>
+void set_constant_with_place(const platform::DeviceContext& context,
+                             framework::Tensor* tensor, float value);
+
+void set_constant(const platform::DeviceContext& context,
+                  framework::Tensor* tensor, float value);
 
 }  // namespace math
 }  // namespace operators

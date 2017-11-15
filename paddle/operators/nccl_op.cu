@@ -64,9 +64,7 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
 
     auto* comm = ctx.Input<Communicator>("Communicator");
 
-    auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(
-                      ctx.device_context())
-                      .stream();
+    auto stream = ctx.cuda_device_context().stream();
 
     // device id
     int gpu_id = boost::get<platform::GPUPlace>(ctx.GetPlace()).GetDeviceId();
