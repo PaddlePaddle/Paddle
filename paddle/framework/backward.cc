@@ -270,6 +270,19 @@ static bool AllGradInSet(const std::vector<std::string>& names,
       return false;
     }
   }
+  if (VLOG_IS_ON(10)) {
+    std::ostringstream sout;
+    sout << "All input {";
+    for (auto& name : names) {
+      sout << name << ",";
+    }
+    sout << "} is in {";
+    for (auto& name : set) {
+      sout << name << ",";
+    }
+    sout << "}";
+    VLOG(10) << sout.str();
+  }
   return true;
 }
 
@@ -406,6 +419,15 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
       op_grads = MakeOpGrad(*it, no_grad_vars, grad_to_var, {backward_block});
     } else {
       op_grads = MakeOpGrad(*it, no_grad_vars, grad_to_var);
+    }
+
+    if (VLOG_IS_ON(10)) {
+      std::ostringstream sout;
+      sout << "Made ";
+      for (auto& op_grad : op_grads) {
+        sout << op_grad->Type() << " ";
+      }
+      VLOG(10) << sout.str();
     }
 
     for (const auto& desc : op_grads) {
