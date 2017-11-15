@@ -121,6 +121,7 @@ paddle_error paddle_matrix_get_shape(paddle_matrix mat,
 
 paddle_matrix paddle_matrix_create_sparse(
     uint64_t height, uint64_t width, uint64_t nnz, bool isBinary, bool useGpu) {
+#ifndef PADDLE_MOBILE_INFERENCE
   auto ptr = new paddle::capi::CMatrix();
   ptr->mat = paddle::Matrix::createSparseMatrix(
       height,
@@ -131,6 +132,9 @@ paddle_matrix paddle_matrix_create_sparse(
       false,
       useGpu);
   return ptr;
+#else
+  return nullptr;
+#endif
 }
 
 paddle_error paddle_matrix_sparse_copy_from(paddle_matrix mat,
@@ -140,6 +144,7 @@ paddle_error paddle_matrix_sparse_copy_from(paddle_matrix mat,
                                             uint64_t colSize,
                                             float* valueArray,
                                             uint64_t valueSize) {
+#ifndef PADDLE_MOBILE_INFERENCE
   if (mat == nullptr) return kPD_NULLPTR;
   auto ptr = cast(mat);
   if (rowArray == nullptr || colArray == nullptr ||
@@ -160,4 +165,7 @@ paddle_error paddle_matrix_sparse_copy_from(paddle_matrix mat,
   } else {
     return kPD_NOT_SUPPORTED;
   }
+#else
+  return kPD_NOT_SUPPORTED;
+#endif
 }

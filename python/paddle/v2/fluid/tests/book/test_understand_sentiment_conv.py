@@ -3,8 +3,7 @@ import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.nets as nets
 import paddle.v2.fluid.core as core
 import paddle.v2.fluid.optimizer as optimizer
-
-from paddle.v2.fluid.framework import Program, g_main_program, g_startup_program
+import paddle.v2.fluid.framework as framework
 from paddle.v2.fluid.executor import Executor
 
 import numpy as np
@@ -70,7 +69,7 @@ def main():
     place = core.CPUPlace()
     exe = Executor(place)
 
-    exe.run(g_startup_program)
+    exe.run(framework.default_startup_program())
 
     for pass_id in xrange(PASS_NUM):
         for data in train_data():
@@ -82,7 +81,7 @@ def main():
             tensor_label = core.LoDTensor()
             tensor_label.set(label, place)
 
-            outs = exe.run(g_main_program,
+            outs = exe.run(framework.default_main_program(),
                            feed={"words": tensor_words,
                                  "label": tensor_label},
                            fetch_list=[cost, acc])

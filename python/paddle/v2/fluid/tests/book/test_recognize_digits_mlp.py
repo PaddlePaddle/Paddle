@@ -2,8 +2,7 @@ import paddle.v2 as paddle
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.core as core
 import paddle.v2.fluid.optimizer as optimizer
-
-from paddle.v2.fluid.framework import Program
+import paddle.v2.fluid.framework as framework
 from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.regularizer import L2DecayRegularizer
 from paddle.v2.fluid.initializer import UniformInitializer
@@ -11,14 +10,10 @@ from paddle.v2.fluid.initializer import UniformInitializer
 import numpy as np
 
 BATCH_SIZE = 128
-startup_program = Program()
-main_program = Program()
 image = layers.data(
     name='x',
     shape=[784],
-    data_type='float32',
-    main_program=main_program,
-    startup_program=startup_program)
+    data_type='float32')
 
 param_attr = {
     'name': None,
@@ -30,45 +25,30 @@ param_attr = {
 hidden1 = layers.fc(input=image,
                     size=128,
                     act='relu',
-                    main_program=main_program,
-                    startup_program=startup_program,
                     param_attr=param_attr)
 hidden2 = layers.fc(input=hidden1,
                     size=64,
                     act='relu',
-                    main_program=main_program,
-                    startup_program=startup_program,
                     param_attr=param_attr)
 
 predict = layers.fc(input=hidden2,
                     size=10,
                     act='softmax',
-                    main_program=main_program,
-                    startup_program=startup_program,
                     param_attr=param_attr)
 
 label = layers.data(
     name='y',
     shape=[1],
-    data_type='int64',
-    main_program=main_program,
-    startup_program=startup_program)
+    data_type='int64')
 
-cost = layers.cross_entropy(
-    input=predict,
-    label=label,
-    main_program=main_program,
-    startup_program=startup_program)
-avg_cost = layers.mean(
-    x=cost, main_program=main_program, startup_program=startup_program)
+cost = layers.cross_entropy(input=predict, label=label)
+avg_cost = layers.mean(x=cost)
 accuracy = layers.accuracy(
     input=predict,
-    label=label,
-    main_program=main_program,
-    startup_program=startup_program)
+    label=label)
 
 optimizer = optimizer.MomentumOptimizer(learning_rate=0.001, momentum=0.9)
-opts = optimizer.minimize(avg_cost, startup_program)
+opts = optimizer.minimize(avg_cost)
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
@@ -78,7 +58,7 @@ train_reader = paddle.batch(
 place = core.CPUPlace()
 exe = Executor(place)
 
-exe.run(startup_program, feed={}, fetch_list=[])
+exe.run(framework.default_startup_program())
 
 PASS_NUM = 100
 for pass_id in range(PASS_NUM):
@@ -93,7 +73,7 @@ for pass_id in range(PASS_NUM):
         tensor_y = core.LoDTensor()
         tensor_y.set(y_data, place)
 
-        outs = exe.run(main_program,
+        outs = exe.run(framework.default_main_program(),
                        feed={'x': tensor_x,
                              'y': tensor_y},
                        fetch_list=[avg_cost, accuracy])

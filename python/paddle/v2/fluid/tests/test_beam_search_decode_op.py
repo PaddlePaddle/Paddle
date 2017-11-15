@@ -1,8 +1,8 @@
 import unittest
 
 import numpy as np
-import paddle.v2.framework.core as core
-from paddle.v2.framework.op import Operator
+import paddle.v2.fluid.core as core
+from paddle.v2.fluid.op import Operator
 
 
 class TestBeamSearchDecodeOp(unittest.TestCase):
