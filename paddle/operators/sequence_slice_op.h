@@ -25,8 +25,8 @@ using LoDTensor = framework::LoDTensor;
 using LoD = framework::LoD;
 
 template <typename T>
-LoD SequenceSliceLoD(const T& in, const int64_t* offset_data,
-                     const int64_t* length_data) {
+inline LoD SequenceSliceLoD(const T& in, const int64_t* offset_data,
+                           const int64_t* length_data) {
   auto out_lod = in.lod();
   size_t lod_offset = 0;
 
@@ -138,9 +138,8 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
     }
 
     auto lod = in->lod();
-    auto out_lod = SequenceSliceLoD(*in, offset_data, length_data);
+    auto out_lod = out_grad->lod();
 
-    x_grad->set_lod(lod);
     x_grad->mutable_data<T>(ctx.GetPlace());
     math::SetConstant<Place, T> set_zero;
     set_zero(ctx.device_context(), x_grad, static_cast<T>(0));
