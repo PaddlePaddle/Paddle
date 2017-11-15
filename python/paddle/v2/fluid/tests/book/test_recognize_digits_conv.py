@@ -4,65 +4,45 @@ import paddle.v2.fluid.nets as nets
 import paddle.v2.fluid.core as core
 import paddle.v2.fluid.optimizer as optimizer
 import paddle.v2.fluid.evaluator as evaluator
-
-from paddle.v2.fluid.framework import Program
+import paddle.v2.fluid.framework as framework
 from paddle.v2.fluid.executor import Executor
 
 import numpy as np
 
-startup_program = Program()
-main_program = Program()
-
 images = layers.data(
     name='pixel',
     shape=[1, 28, 28],
-    data_type='float32',
-    main_program=main_program,
-    startup_program=startup_program)
+    data_type='float32')
 label = layers.data(
     name='label',
     shape=[1],
-    data_type='int64',
-    main_program=main_program,
-    startup_program=startup_program)
+    data_type='int64')
 conv_pool_1 = nets.simple_img_conv_pool(
     input=images,
     filter_size=5,
     num_filters=20,
     pool_size=2,
     pool_stride=2,
-    act="relu",
-    main_program=main_program,
-    startup_program=startup_program)
+    act="relu")
 conv_pool_2 = nets.simple_img_conv_pool(
     input=conv_pool_1,
     filter_size=5,
     num_filters=50,
     pool_size=2,
     pool_stride=2,
-    act="relu",
-    main_program=main_program,
-    startup_program=startup_program)
+    act="relu")
 
 predict = layers.fc(input=conv_pool_2,
                     size=10,
-                    act="softmax",
-                    main_program=main_program,
-                    startup_program=startup_program)
-cost = layers.cross_entropy(
-    input=predict,
-    label=label,
-    main_program=main_program,
-    startup_program=startup_program)
-avg_cost = layers.mean(x=cost, main_program=main_program)
+                    act="softmax")
+cost = layers.cross_entropy(input=predict, label=label)
+avg_cost = layers.mean(x=cost)
 optimizer = optimizer.AdamOptimizer(learning_rate=0.01, beta1=0.9, beta2=0.999)
-opts = optimizer.minimize(avg_cost, startup_program)
+opts = optimizer.minimize(avg_cost)
 
 accuracy, acc_out = evaluator.accuracy(
     input=predict,
-    label=label,
-    main_program=main_program,
-    startup_program=startup_program)
+    label=label)
 
 BATCH_SIZE = 50
 PASS_NUM = 3
@@ -74,7 +54,7 @@ train_reader = paddle.batch(
 place = core.CPUPlace()
 exe = Executor(place)
 
-exe.run(startup_program, feed={}, fetch_list=[])
+exe.run(framework.default_startup_program())
 
 for pass_id in range(PASS_NUM):
     count = 0
@@ -90,7 +70,7 @@ for pass_id in range(PASS_NUM):
         tensor_img.set(img_data, place)
         tensor_y.set(y_data, place)
 
-        outs = exe.run(main_program,
+        outs = exe.run(framework.default_main_program(),
                        feed={"pixel": tensor_img,
                              "label": tensor_y},
                        fetch_list=[avg_cost, acc_out])
