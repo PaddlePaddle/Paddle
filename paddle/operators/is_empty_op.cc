@@ -50,9 +50,8 @@ class IsEmptyOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   IsEmptyOpProtoMaker(framework::OpProto *proto,
                       framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput(kInput, "the tensor to check whether is empty");
-    AddOutput(kOutput,
-              "a boolean variable that indicate whether the tensor is empty");
+    AddInput(kInput, "(Tensor) Tensor which is to be checked.");
+    AddOutput(kOutput, "(Tensor) a boolean Tensor that indicate empty or not.");
     AddComment(R"DOC(
 IsEmpty Operator which checks whether a tensor is empty.
 
