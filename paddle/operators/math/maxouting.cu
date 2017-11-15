@@ -21,9 +21,10 @@ namespace math {
 
 template <typename MaxOutProcess, typename T>
 __global__ void KernelMaxOut(const int nthreads, const T* input_data,
-                             T* output_data, const int channels,
+                            const int channels,
                              const int input_height, const int input_width,
-                             int groups, MaxOutProcess maxout_process) {
+                             int groups, T* output_data,
+                             MaxOutProcess maxout_process) {
   const int size = input_height * input_width * channels / groups;
   const int feat_len = input_height * input_width;
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
@@ -58,7 +59,7 @@ __global__ void KernelMaxoutGrad(
         (batch_idx * size + channel_idx * feat_len) * groups + feat_idx;
       int maxIndex = -1;
       bool stop = false;
-      for (int g = 0; g < groups && !stop; g++) {
+      for (int g = 0; g < groups && !stop; ++g) {
         if (input_data[data_idx + g * feat_len] == output_data[index]) {
           maxIndex = data_idx + g * feat_len;
           stop = true;
@@ -99,9 +100,9 @@ class MaxOutFunctor<platform::GPUPlace, MaxOutProcess, T> {
         MaxOutProcess,
         T><<<grid, threads, 0,
              reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                 .stream()>>>(nthreads, input_data, output_data, input_channels,
+                 .stream()>>>(nthreads, input_data, input_channels,
                               input_height, input_width, groups,
-                              maxout_process);
+                              output_data, maxout_process);
   }
 };
 /*

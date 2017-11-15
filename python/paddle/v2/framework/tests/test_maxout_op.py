@@ -26,8 +26,6 @@ class TestMaxOutOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        print self.inputs
-        print self.outputs
         self.check_grad(['X'], 'Out')
 
     def init_test_case(self):
