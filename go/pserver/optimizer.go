@@ -25,7 +25,7 @@ import (
 	"fmt"
 	"unsafe"
 
-	log "github.com/sirupsen/logrus"
+	log "github.com/inconshreveable/log15"
 )
 
 type optimizer struct {
@@ -56,12 +56,12 @@ func newOptimizer(paramWithConfigs ParameterWithConfig, State []byte) *optimizer
 	c := paramWithConfigs.Config
 	s := State
 	paramBufferSize := C.size_t(len(p.Content))
-	log.WithFields(log.Fields{
+	log.Info("New Optimizer Created with config", log.Ctx{
 		"ElementType": p.ElementType,
 		"ParamSize":   paramBufferSize,
 		"ConfigSize":  len(c),
 		"StateSize":   len(s),
-	}).Info("New Optimizer Created with config:")
+	})
 	var cbuffer unsafe.Pointer
 	cbuffer = C.malloc(paramBufferSize)
 
@@ -71,22 +71,41 @@ func newOptimizer(paramWithConfigs ParameterWithConfig, State []byte) *optimizer
 		cstate = unsafe.Pointer(&s[0])
 	}
 
+	var cptr (*C.uchar)
+	if len(c) > 0 {
+		cptr = (*C.uchar)(&c[0])
+	} else {
+		log.Error("empty config", "param name", paramWithConfigs.Param.Name)
+	}
 	o.config = c
-	o.opt = C.paddle_create_optimizer((*C.uchar)(&c[0]), C.int(len(c)),
-		C.paddle_element_type(p.ElementType), cbuffer, C.int(paramBufferSize), (*C.char)(cstate), C.int(len(s)))
+	o.opt = C.paddle_create_optimizer(
+		cptr,
+		C.int(len(c)),
+		C.paddle_element_type(p.ElementType),
+		cbuffer,
+		C.int(paramBufferSize),
+		(*C.char)(cstate),
+		C.int(len(s)),
+	)
 	return o
 }
 
 func (o *optimizer) GetWeights() []byte {
 	var buffer unsafe.Pointer
+	// we do not own the buffer, no need to free later.
 	bufferLen := C.paddle_optimizer_get_weights(o.opt, &buffer)
 	return cArrayToSlice(buffer, int(bufferLen)*C.sizeof_float)
 }
 
 func (o *optimizer) GetStates() []byte {
 	var cbuffer *C.char
+	// we owns the state buffer, need to free later.
 	cbufferLen := C.paddle_optimizer_get_state(o.opt, &cbuffer)
-	return cArrayToSlice(unsafe.Pointer(cbuffer), int(cbufferLen))
+	buf := cArrayToSlice(unsafe.Pointer(cbuffer), int(cbufferLen))
+	cpy := make([]byte, len(buf))
+	copy(cpy, buf)
+	C.free(unsafe.Pointer(cbuffer))
+	return cpy
 }
 
 func (o *optimizer) UpdateParameter(g Gradient) error {

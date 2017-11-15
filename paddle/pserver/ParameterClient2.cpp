@@ -186,6 +186,7 @@ void ParameterClient2::sendParallel(int tid,
             parameter->getMat(recvParameterType).get());
         CHECK(recvMat);
         size_t width = parameter->getConfig().dims(1);
+        // TODO(wuyi): need add lock here? may also cause resize.
         buf = recvMat->getLocalRow(block.begin_pos() / width);
       }
       /// sparse_id is not useful while receiving data since sparse data
@@ -265,9 +266,9 @@ void ParameterClient2::prepareSendData(
         uint64_t beginDim = 0;
         uint64_t endDim = 0;
 
-        // FIXME(typhoonzero): let it resize first
-        prefetchMat->getLocalRow(nLocalBlocks + 1);
-        sendMat->getLocalRow(nLocalBlocks + 1);
+        // HACK(typhoonzero): let it resize first
+        prefetchMat->getLocalRow(nLocalBlocks);
+        sendMat->getLocalRow(nLocalBlocks);
 
         for (size_t row = 0; row < nLocalBlocks; ++row) {
           int64_t blockId = localIndices[row];  // local row -> sparse row

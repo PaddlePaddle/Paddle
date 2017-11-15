@@ -79,6 +79,13 @@ DDim make_ddim(const std::vector<int64_t>& dims) {
   return result;
 }
 
+DDim make_ddim(const std::vector<int>& dims) {
+  std::vector<int64_t> res(dims.size());
+  std::transform(dims.begin(), dims.end(), res.begin(),
+                 [](int d) { return static_cast<int64_t>(d); });
+  return make_ddim(res);
+}
+
 /// @cond HIDDEN
 // XXX For some reason, putting this in an anonymous namespace causes errors
 class DynamicMutableIndexer : public boost::static_visitor<int64_t&> {
@@ -117,7 +124,7 @@ int64_t DDim::operator[](int idx) const {
   return boost::apply_visitor(DynamicConstIndexer(idx), var);
 }
 
-int64_t DDim::size() const { return arity(*this); }
+int DDim::size() const { return arity(*this); }
 
 bool DDim::operator==(DDim d) const {
   if (var.which() != d.getVar().which()) {
@@ -192,6 +199,14 @@ std::vector<int64_t> vectorize(const DDim& ddim) {
   std::vector<int64_t> result;
   VectorizeVisitor visitor(result);
   boost::apply_visitor(visitor, ddim);
+  return result;
+}
+
+// NOTE: framework::vectorize converts to type int64_t
+//       which does not fit cudnn inputs.
+std::vector<int> vectorize2int(const DDim& ddim) {
+  std::vector<int64_t> temp = vectorize(ddim);
+  std::vector<int> result(temp.begin(), temp.end());
   return result;
 }
 

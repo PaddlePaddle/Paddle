@@ -89,3 +89,65 @@ TEST(math_function, zero) {
   EXPECT_EQ(t[2], 1);
   EXPECT_EQ(t[3], 1);
 }
+
+template <typename T>
+void GemvTest(int m, int n, bool trans) {
+  paddle::framework::Tensor mat_a;
+  paddle::framework::Tensor vec_b;
+  paddle::framework::Tensor vec_c;
+  auto* cpu_place = new paddle::platform::CPUPlace();
+  int b_num = trans ? m : n;
+  int c_num = trans ? n : m;
+
+  T* data_a = mat_a.mutable_data<T>({m, n}, *cpu_place);
+  T* data_b = vec_b.mutable_data<T>({b_num}, *cpu_place);
+  T* data_c = vec_c.mutable_data<T>({c_num}, *cpu_place);
+  for (int i = 0; i < mat_a.numel(); ++i) {
+    data_a[i] = static_cast<T>(i);
+  }
+  for (int i = 0; i < vec_b.numel(); ++i) {
+    data_b[i] = static_cast<T>(i);
+  }
+
+  paddle::platform::CPUDeviceContext context(*cpu_place);
+  paddle::operators::math::gemv<paddle::platform::CPUPlace, T>(
+      context, trans, static_cast<int>(m), static_cast<int>(n), 1., data_a,
+      data_b, 0., data_c);
+
+  if (!trans) {
+    for (int i = 0; i < m; ++i) {
+      T sum = 0.0;
+      for (int j = 0; j < n; ++j) {
+        sum += data_a[i * n + j] * data_b[j];
+      }
+      ASSERT_FLOAT_EQ(data_c[i], sum);
+    }
+  } else {
+    for (int i = 0; i < n; ++i) {
+      T sum = 0.0;
+      for (int j = 0; j < m; ++j) {
+        sum += data_a[j * n + i] * data_b[j];
+      }
+      ASSERT_FLOAT_EQ(data_c[i], sum);
+    }
+  }
+}
+
+TEST(math_function, gemv) {
+  GemvTest<float>(3, 13, false);
+  GemvTest<double>(4, 5, false);
+  GemvTest<float>(12, 7, true);
+  GemvTest<double>(7, 9, true);
+}
+
+TEST(math_funciton, set_constant) {
+  paddle::framework::Tensor t;
+  t.Resize({10, 10});
+  t.mutable_data<int>(paddle::platform::CPUPlace());
+  auto* ctx = new paddle::platform::CPUDeviceContext();
+  paddle::operators::math::set_constant(*ctx, &t, 10);
+  for (int64_t i = 0; i < t.numel(); ++i) {
+    PADDLE_ENFORCE_EQ(10, t.data<int>()[i]);
+  }
+  delete ctx;
+}

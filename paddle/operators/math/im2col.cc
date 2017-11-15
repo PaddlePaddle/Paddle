@@ -29,8 +29,8 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& im, framework::Tensor& col,
-                  int stride_height, int stride_width, int padding_height,
-                  int padding_width) {
+                  int stride_height, int stride_width, int padding_up,
+                  int padding_down, int padding_left, int padding_right) {
     PADDLE_ENFORCE(im.dims().size() == 3);
     PADDLE_ENFORCE(col.dims().size() == 5);
 
@@ -41,6 +41,22 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
     int filter_width = col.dims()[2];
     int output_height = col.dims()[3];
     int output_width = col.dims()[4];
+
+    PADDLE_ENFORCE_EQ(
+        (input_height + padding_up + padding_down - filter_height) /
+                stride_height +
+            1,
+        output_height,
+        "Output_height and padding(padding_up, padding_down) are "
+        "inconsistent.");
+    PADDLE_ENFORCE_EQ(
+        (input_width + padding_left + padding_right - filter_width) /
+                stride_width +
+            1,
+        output_width,
+        "output_width and padding(padding_left, padding_right) are "
+        "inconsistent.");
+
     int channels_col = input_channels * filter_height * filter_width;
 
     const T* im_data = im.data<T>();
@@ -52,16 +68,14 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
       int c_im = c / filter_width / filter_height;
       for (int h = 0; h < output_height; ++h) {
         for (int w = 0; w < output_width; ++w) {
-          int im_row_idx = h * stride_height + h_offset;
-          int im_col_idx = w * stride_width + w_offset;
-          if ((im_row_idx - padding_height) < 0 ||
-              (im_row_idx - padding_height) >= input_height ||
-              (im_col_idx - padding_width) < 0 ||
-              (im_col_idx - padding_width) >= input_width) {
+          int im_row_idx = h * stride_height + h_offset - padding_up;
+          int im_col_idx = w * stride_width + w_offset - padding_left;
+
+          if (im_row_idx < 0 || im_row_idx >= input_height || im_col_idx < 0 ||
+              im_col_idx >= input_width) {
             col_data[(c * output_height + h) * output_width + w] = T(0);
           } else {
-            im_row_idx += c_im * input_height - padding_height;
-            im_col_idx -= padding_width;
+            im_row_idx += c_im * input_height;
             col_data[(c * output_height + h) * output_width + w] =
                 im_data[im_row_idx * input_width + im_col_idx];
           }
@@ -82,7 +96,8 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
  public:
   void operator()(const platform::DeviceContext& context, framework::Tensor& im,
                   const framework::Tensor& col, int stride_height,
-                  int stride_width, int padding_height, int padding_width) {
+                  int stride_width, int padding_up, int padding_down,
+                  int padding_left, int padding_right) {
     PADDLE_ENFORCE(im.dims().size() == 3);
     PADDLE_ENFORCE(col.dims().size() == 5);
     int input_channels = im.dims()[0];
@@ -92,6 +107,22 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
     int filter_width = col.dims()[2];
     int output_height = col.dims()[3];
     int output_width = col.dims()[4];
+
+    PADDLE_ENFORCE_EQ(
+        (input_height + padding_up + padding_down - filter_height) /
+                stride_height +
+            1,
+        output_height,
+        "Output_height and padding(padding_up, padding_down) are "
+        "inconsistent.");
+    PADDLE_ENFORCE_EQ(
+        (input_width + padding_left + padding_right - filter_width) /
+                stride_width +
+            1,
+        output_width,
+        "output_width and padding(padding_left, padding_right) are "
+        "inconsistent.");
+
     int channels_col = input_channels * filter_height * filter_width;
 
     T* im_data = im.data<T>();
@@ -103,14 +134,12 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
       int c_im = c / filter_width / filter_height;
       for (int h = 0; h < output_height; ++h) {
         for (int w = 0; w < output_width; ++w) {
-          int im_row_idx = h * stride_height + h_offset;
-          int im_col_idx = w * stride_width + w_offset;
-          if ((im_row_idx - padding_height) >= 0 &&
-              (im_row_idx - padding_height) < input_height &&
-              (im_col_idx - padding_width) >= 0 &&
-              (im_col_idx - padding_width) < input_width) {
-            im_row_idx += c_im * input_height - padding_height;
-            im_col_idx -= padding_width;
+          int im_row_idx = h * stride_height + h_offset - padding_up;
+          int im_col_idx = w * stride_width + w_offset - padding_left;
+
+          if ((im_row_idx) >= 0 && (im_row_idx) < input_height &&
+              (im_col_idx) >= 0 && (im_col_idx) < input_width) {
+            im_row_idx += c_im * input_height;
             im_data[im_row_idx * input_width + im_col_idx] +=
                 col_data[(c * output_height + h) * output_width + w];
           }
@@ -140,8 +169,8 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& im, framework::Tensor& col,
-                  int stride_height, int stride_width, int padding_height,
-                  int padding_width) {
+                  int stride_height, int stride_width, int padding_up,
+                  int padding_down, int padding_left, int padding_right) {
     PADDLE_ENFORCE(im.dims().size() == 3);
     PADDLE_ENFORCE(col.dims().size() == 5);
     int input_channels = im.dims()[0];
@@ -151,6 +180,21 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
     int filter_width = col.dims()[4];
     int output_height = col.dims()[0];
     int output_width = col.dims()[1];
+
+    PADDLE_ENFORCE_EQ(
+        (input_height + padding_up + padding_down - filter_height) /
+                stride_height +
+            1,
+        output_height,
+        "Output_height and padding(padding_up, padding_down) are "
+        "inconsistent.");
+    PADDLE_ENFORCE_EQ(
+        (input_width + padding_left + padding_right - filter_width) /
+                stride_width +
+            1,
+        output_width,
+        "output_width and padding(padding_left, padding_right) are "
+        "inconsistent.");
 
     const T* im_data = im.data<T>();
     T* col_data = col.data<T>();
@@ -163,10 +207,10 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
             for (int filter_col_idx = 0; filter_col_idx < filter_width;
                  ++filter_col_idx) {
               int im_row_offset =
-                  col_row_idx * stride_height + filter_row_idx - padding_height;
+                  col_row_idx * stride_height + filter_row_idx - padding_up;
               int im_col_offset =
-                  col_col_idx * stride_width + filter_col_idx - padding_width;
-              int col_offset = (((col_row_idx * output_width + col_col_idx) *
+                  col_col_idx * stride_width + filter_col_idx - padding_left;
+              int col_offset = ((((col_row_idx)*output_width + col_col_idx) *
                                      input_channels +
                                  channel) *
                                     filter_height +
@@ -201,7 +245,8 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
  public:
   void operator()(const platform::DeviceContext& context, framework::Tensor& im,
                   const framework::Tensor& col, int stride_height,
-                  int stride_width, int padding_height, int padding_width) {
+                  int stride_width, int padding_up, int padding_down,
+                  int padding_left, int padding_right) {
     PADDLE_ENFORCE(im.dims().size() == 3);
     PADDLE_ENFORCE(col.dims().size() == 5);
     int input_channels = im.dims()[0];
@@ -211,6 +256,21 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
     int filter_width = col.dims()[4];
     int output_height = col.dims()[0];
     int output_width = col.dims()[1];
+
+    PADDLE_ENFORCE_EQ(
+        (input_height + padding_up + padding_down - filter_height) /
+                stride_height +
+            1,
+        output_height,
+        "Output_height and padding(padding_up, padding_down) are "
+        "inconsistent.");
+    PADDLE_ENFORCE_EQ(
+        (input_width + padding_left + padding_right - filter_width) /
+                stride_width +
+            1,
+        output_width,
+        "output_width and padding(padding_left, padding_right) are "
+        "inconsistent.");
 
     T* im_data = im.data<T>();
     const T* col_data = col.data<T>();
@@ -223,9 +283,9 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
             for (int filter_col_idx = 0; filter_col_idx < filter_width;
                  ++filter_col_idx) {
               int im_row_offset =
-                  col_row_idx * stride_height + filter_row_idx - padding_height;
+                  col_row_idx * stride_height + filter_row_idx - padding_up;
               int im_col_offset =
-                  col_col_idx * stride_width + filter_col_idx - padding_width;
+                  col_col_idx * stride_width + filter_col_idx - padding_left;
               int col_offset = (((col_row_idx * output_width + col_col_idx) *
                                      input_channels +
                                  channel) *

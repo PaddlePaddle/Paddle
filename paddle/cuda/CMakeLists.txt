@@ -27,7 +27,9 @@ if(WITH_GPU)
     set_source_files_properties(${CUDA_CXX_SOURCES}
                                 PROPERTIES COMPILE_FLAGS "-D__NVCC__")
 else()
+    if (NOT MOBILE_INFERENCE)
     set(CUDA_CXX_SOURCES src/hl_warpctc_wrap.cc)
+    endif()
 endif()
 
 set(CUDA_CU_SOURCES

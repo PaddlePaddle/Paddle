@@ -46,16 +46,20 @@ IF(${CBLAS_PROVIDER} STREQUAL "MKLML")
     MESSAGE(STATUS "Build MKLDNN with ${MKLDNN_MKLROOT}")
 ENDIF()
 
+SET(MKLDNN_CFLAG "${CMAKE_C_FLAGS} -Wno-error=strict-overflow")
+SET(MKLDNN_CXXFLAG "${CMAKE_CXX_FLAGS} -Wno-error=strict-overflow")
 ExternalProject_Add(
     ${MKLDNN_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
     DEPENDS             ${MKLDNN_DEPENDS}
     GIT_REPOSITORY      "https://github.com/01org/mkl-dnn.git"
-    GIT_TAG             "v0.10"
+    GIT_TAG             "v0.11"
     PREFIX              ${MKLDNN_SOURCES_DIR}
     UPDATE_COMMAND      ""
     CMAKE_ARGS          -DCMAKE_INSTALL_PREFIX=${MKLDNN_INSTALL_DIR}
     CMAKE_ARGS          -DMKLROOT=${MKLDNN_MKLROOT}
+    CMAKE_ARGS          -DCMAKE_C_FLAGS=${MKLDNN_CFLAG}
+    CMAKE_ARGS          -DCMAKE_CXX_FLAGS=${MKLDNN_CXXFLAG}
     CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${MKLDNN_INSTALL_DIR}
                         -DMKLROOT:PATH=${MKLDNN_MKLROOT}
 )

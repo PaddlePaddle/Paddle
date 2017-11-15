@@ -28,23 +28,37 @@ add_style_check_target(paddle_capi ${CAPI_SOURCES} ${CAPI_HEADER}
 
 add_dependencies(paddle_capi paddle_proto)
 
-# combine all paddle static libraries together, into libpaddle_capi_whole.a
-# user should use PaddleCAPI as -lpaddle_capi_whole
-set(PADDLE_CAPI_INFER_LIBS
-    paddle_utils
-    paddle_parameter
-    paddle_math
-    paddle_cuda
+# TODO: paddle_capi_whole will be removed.
+set(PADDLE_CAPI_LAYERS_LIBS
     paddle_function
-    paddle_gserver
-    paddle_proto)
-
+    paddle_gserver)
+if(MOBILE_INFERENCE)
+  set(PADDLE_CAPI_ENGINE_LIBS
+      paddle_utils
+      paddle_parameter
+      paddle_math
+      paddle_cuda
+      paddle_proto)
+else()
+  set(PADDLE_CAPI_ENGINE_LIBS
+      paddle_utils
+      paddle_parameter
+      paddle_math
+      paddle_cuda
+      paddle_proto
+      paddle_pserver
+      paddle_network)
+endif()
+set(PADDLE_CAPI_INFER_LIBS ${PADDLE_CAPI_LAYERS_LIBS} ${PADDLE_CAPI_ENGINE_LIBS})
 cc_library(paddle_capi_whole DEPS paddle_capi ${PADDLE_CAPI_INFER_LIBS})
 
-# No shared library for iOS
+# Link the static library for inference
+cc_library(paddle_capi_engine DEPS paddle_capi ${PADDLE_CAPI_ENGINE_LIBS})
+cc_library(paddle_capi_layers DEPS ${PADDLE_CAPI_LAYERS_LIBS})
+
+# Link the shared library for inference
 if(NOT IOS)
-  set(LINK_FLAGS " -Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/export.sym -Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/export.map")
-  # TODO: merge mkl into paddle_capi_shared
+  set(LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_capi.map")
   add_library(paddle_capi_shared SHARED ${CAPI_SOURCES})
   set_target_properties(paddle_capi_shared	PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
   target_include_directories(paddle_capi_shared PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
@@ -53,9 +67,10 @@ endif()
 
 # install library & headers.
 install(FILES ${CAPI_HEADERS} DESTINATION include/paddle)
+install(FILES paddle_capi.map DESTINATION include/paddle)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/config.h DESTINATION include/paddle)
 if(ANDROID)
-  install(TARGETS paddle_capi_whole paddle_capi_shared
+  install(TARGETS paddle_capi_whole paddle_capi_engine paddle_capi_layers paddle_capi_shared
           ARCHIVE DESTINATION lib/${ANDROID_ABI}
           LIBRARY DESTINATION lib/${ANDROID_ABI})
   execute_process(
@@ -80,7 +95,7 @@ if(ANDROID)
       )"
   )
 else(ANDROID)
-  install(TARGETS paddle_capi_whole ARCHIVE DESTINATION lib)
+  install(TARGETS paddle_capi_whole paddle_capi_engine paddle_capi_layers ARCHIVE DESTINATION lib)
   if(NOT IOS)
     install(TARGETS paddle_capi_shared DESTINATION lib)
   endif()

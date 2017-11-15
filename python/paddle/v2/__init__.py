@@ -37,6 +37,8 @@ import model
 import paddle.trainer.config_parser as cp
 
 __all__ = [
+    'default_startup_program',
+    'default_main_program',
     'optimizer',
     'layer',
     'activation',

@@ -4,6 +4,10 @@ set -xe
 
 if [ $ANDROID_ABI == "arm64-v8a" ]; then
   ANDROID_ARCH=arm64
+  if [ $ANDROID_API -lt 21 ]; then
+    echo "Warning: arm64-v8a requires ANDROID_API >= 21."
+    ANDROID_API=21
+  fi
 else # armeabi, armeabi-v7a
   ANDROID_ARCH=arm
 fi

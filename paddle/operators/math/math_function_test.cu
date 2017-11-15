@@ -16,15 +16,15 @@ TEST(math_function, notrans_mul_trans) {
   auto* gpu_place = new paddle::platform::GPUPlace(0);
   paddle::platform::CUDADeviceContext context(*gpu_place);
 
-  input1_gpu.CopyFrom<float>(input1, *gpu_place, context);
-  input2_gpu.CopyFrom<float>(input1, *gpu_place, context);
+  input1_gpu.CopyFrom(input1, *gpu_place, context);
+  input2_gpu.CopyFrom(input1, *gpu_place, context);
 
   out_gpu.mutable_data<float>({2, 2}, *gpu_place);
 
   paddle::operators::math::matmul<paddle::platform::GPUPlace, float>(
       context, input1_gpu, false, input2_gpu, true, 1, &out_gpu, 0);
 
-  out.CopyFrom<float>(out_gpu, *cpu_place, context);
+  out.CopyFrom(out_gpu, *cpu_place, context);
 
   float* out_ptr = out.data<float>();
   context.Wait();
@@ -50,15 +50,15 @@ TEST(math_function, trans_mul_notrans) {
   auto* gpu_place = new paddle::platform::GPUPlace(0);
   paddle::platform::CUDADeviceContext context(*gpu_place);
 
-  input1_gpu.CopyFrom<float>(input1, *gpu_place, context);
-  input2_gpu.CopyFrom<float>(input1, *gpu_place, context);
+  input1_gpu.CopyFrom(input1, *gpu_place, context);
+  input2_gpu.CopyFrom(input1, *gpu_place, context);
 
   out_gpu.mutable_data<float>({3, 3}, *gpu_place);
 
   paddle::operators::math::matmul<paddle::platform::GPUPlace, float>(
       context, input1_gpu, true, input2_gpu, false, 1, &out_gpu, 0);
 
-  out.CopyFrom<float>(out_gpu, *cpu_place, context);
+  out.CopyFrom(out_gpu, *cpu_place, context);
 
   float* out_ptr = out.data<float>();
   context.Wait();
@@ -99,9 +99,9 @@ TEST(math_function, gemm_notrans_cublas) {
   auto* gpu_place = new paddle::platform::GPUPlace(0);
   paddle::platform::CUDADeviceContext context(*gpu_place);
 
-  input1_gpu.CopyFrom<float>(input1, *gpu_place, context);
-  input2_gpu.CopyFrom<float>(input2, *gpu_place, context);
-  input3_gpu.CopyFrom<float>(input3, *gpu_place, context);
+  input1_gpu.CopyFrom(input1, *gpu_place, context);
+  input2_gpu.CopyFrom(input2, *gpu_place, context);
+  input3_gpu.CopyFrom(input3, *gpu_place, context);
   float* a = input1_gpu.data<float>();
   float* b = input2_gpu.data<float>();
   float* c = input3_gpu.mutable_data<float>(*gpu_place);
@@ -109,7 +109,7 @@ TEST(math_function, gemm_notrans_cublas) {
   paddle::operators::math::gemm<paddle::platform::GPUPlace, float>(
       context, false, false, m, n, k, 1, a, 3, b + 1, 4, 1, c + 1, 4);
 
-  input3.CopyFrom<float>(input3_gpu, *cpu_place, context);
+  input3.CopyFrom(input3_gpu, *cpu_place, context);
 
   // numpy code:
   // a = np.arange(6).reshape(2, 3)
@@ -154,9 +154,9 @@ TEST(math_function, gemm_trans_cublas) {
   auto* gpu_place = new paddle::platform::GPUPlace(0);
   paddle::platform::CUDADeviceContext context(*gpu_place);
 
-  input1_gpu.CopyFrom<float>(input1, *gpu_place, context);
-  input2_gpu.CopyFrom<float>(input2, *gpu_place, context);
-  input3_gpu.CopyFrom<float>(input3, *gpu_place, context);
+  input1_gpu.CopyFrom(input1, *gpu_place, context);
+  input2_gpu.CopyFrom(input2, *gpu_place, context);
+  input3_gpu.CopyFrom(input3, *gpu_place, context);
   float* a = input1_gpu.data<float>();
   float* b = input2_gpu.data<float>();
   float* c = input3_gpu.mutable_data<float>(*gpu_place);
@@ -164,7 +164,7 @@ TEST(math_function, gemm_trans_cublas) {
   paddle::operators::math::gemm<paddle::platform::GPUPlace, float>(
       context, false, true, m, n, k, 1, a, 3, b + 3, 3, 1, c + 1, 4);
 
-  input3.CopyFrom<float>(input3_gpu, *cpu_place, context);
+  input3.CopyFrom(input3_gpu, *cpu_place, context);
   context.Wait();
 
   EXPECT_EQ(input3_ptr[0], 0);
@@ -176,4 +176,66 @@ TEST(math_function, gemm_trans_cublas) {
   EXPECT_EQ(input3_ptr[6], 86);
   EXPECT_EQ(input3_ptr[7], 99);
   delete gpu_place;
+}
+
+template <typename T>
+void GemvTest(int m, int n, bool trans) {
+  paddle::framework::Tensor mat_a;
+  paddle::framework::Tensor vec_b;
+  paddle::framework::Tensor vec_c;
+  auto* cpu_place = new paddle::platform::CPUPlace();
+
+  T* data_a = mat_a.mutable_data<T>({m, n}, *cpu_place);
+  T* data_b = vec_b.mutable_data<T>({trans ? m : n}, *cpu_place);
+  T* data_c = vec_c.mutable_data<T>({trans ? n : m}, *cpu_place);
+
+  auto* gpu_place = new paddle::platform::GPUPlace(0);
+  paddle::framework::Tensor g_mat_a;
+  paddle::framework::Tensor g_vec_b;
+  paddle::framework::Tensor g_vec_c;
+  T* g_data_a = g_mat_a.mutable_data<T>(mat_a.dims(), *gpu_place);
+  T* g_data_b = g_vec_b.mutable_data<T>(vec_b.dims(), *gpu_place);
+  T* g_data_c = g_vec_c.mutable_data<T>(vec_c.dims(), *gpu_place);
+
+  for (int i = 0; i < mat_a.numel(); ++i) {
+    data_a[i] = static_cast<T>(i);
+  }
+  for (int i = 0; i < vec_b.numel(); ++i) {
+    data_b[i] = static_cast<T>(i);
+  }
+
+  paddle::platform::CUDADeviceContext context(*gpu_place);
+  g_mat_a.CopyFrom(mat_a, *gpu_place, context);
+  g_vec_b.CopyFrom(vec_b, *gpu_place, context);
+
+  paddle::operators::math::gemv<paddle::platform::GPUPlace, T>(
+      context, trans, static_cast<int>(m), static_cast<int>(n), 1., g_data_a,
+      g_data_b, 0., g_data_c);
+
+  vec_c.CopyFrom(g_vec_c, paddle::platform::CPUPlace(), context);
+
+  if (!trans) {
+    for (int i = 0; i < m; ++i) {
+      T sum = 0.0;
+      for (int j = 0; j < n; ++j) {
+        sum += data_a[i * n + j] * data_b[j];
+      }
+      ASSERT_FLOAT_EQ(data_c[i], sum);
+    }
+  } else {
+    for (int i = 0; i < n; ++i) {
+      T sum = 0.0;
+      for (int j = 0; j < m; ++j) {
+        sum += data_a[j * n + i] * data_b[j];
+      }
+      ASSERT_FLOAT_EQ(data_c[i], sum);
+    }
+  }
+}
+
+TEST(math_function, gemv) {
+  GemvTest<float>(3, 13, false);
+  GemvTest<double>(3, 13, false);
+  GemvTest<float>(3, 13, true);
+  GemvTest<double>(3, 13, true);
 }

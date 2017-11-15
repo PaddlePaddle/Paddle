@@ -66,8 +66,6 @@ public:
                 MKLDNNMatrixPtr& bias,
                 MKLDNNMatrixPtr& out) override;
 
-  void updateInputData() override;
-
   void updateWeights(const UpdateCallback& callback) override;
 
   void convertWeightsFromPaddle() override;
@@ -84,9 +82,6 @@ protected:
                        MKLDNNMatrixPtr& wgt,
                        MKLDNNMatrixPtr& bias,
                        MKLDNNMatrixPtr& out);
-  void resetInValue(MKLDNNMatrixPtr& in);
-  void resetWgtBiasValue(MKLDNNMatrixPtr& wgt, MKLDNNMatrixPtr& bias);
-  void resetOutValue(MKLDNNMatrixPtr& out);
   void resetFwdPD(std::shared_ptr<fc_fwd::primitive_desc>& pd,
                   MKLDNNMatrixPtr in,
                   MKLDNNMatrixPtr wgt,
@@ -109,9 +104,6 @@ protected:
                        MKLDNNMatrixPtr& wgt,
                        MKLDNNMatrixPtr& bias,
                        MKLDNNMatrixPtr& out);
-  void resetOutGrad(MKLDNNMatrixPtr& out);
-  void resetWgtBiasGrad(MKLDNNMatrixPtr& wgt, MKLDNNMatrixPtr& bias);
-  void resetInGrad(MKLDNNMatrixPtr& in);
   void resetBwdWgtPD(std::shared_ptr<fc_bwdWgt::primitive_desc>& pd,
                      MKLDNNMatrixPtr& wgt,
                      MKLDNNMatrixPtr& bias,

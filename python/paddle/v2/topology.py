@@ -19,6 +19,7 @@ import paddle.trainer_config_helpers as conf_helps
 import layer as v2_layer
 import config_base
 import cPickle
+from paddle.trainer import config_parser as cp
 
 __all__ = ['Topology']
 
@@ -49,6 +50,35 @@ class Topology(object):
             self.layers.extend(extra_layers)
 
         assert isinstance(self.__model_config__, ModelConfig)
+
+    def update_from_default(self):
+        # HACK(typhoonzero): update ParameterConfig(proto) in case of
+        # optimizers are defined after layers, or between layers.
+        # Must be called from trainer.__init__()
+        for parameter in self.__model_config__.parameters:
+            if parameter.momentum == 0.0 and cp.g_default_momentum:
+                parameter.momentum = cp.g_default_momentum
+            if parameter.decay_rate == 0.0 and cp.g_default_decay_rate:
+                parameter.decay_rate = cp.g_default_decay_rate
+            if parameter.initial_mean == 0.0:
+                parameter.initial_mean = cp.g_default_initial_mean
+            if parameter.initial_std == 0.01:
+                parameter.initial_std = cp.g_default_initial_std
+            if parameter.initial_strategy == 0:
+                parameter.initial_strategy = cp.g_default_initial_strategy
+            if parameter.initial_smart == False:
+                parameter.initial_smart = cp.g_default_initial_smart
+            if parameter.num_batches_regularization == 1 and \
+                cp.g_default_num_batches_regularization:
+                parameter.num_batches_regularization = \
+                    cp.g_default_num_batches_regularization
+            if parameter.gradient_clipping_threshold == 0.0 and \
+                cp.g_default_gradient_clipping_threshold:
+                parameter.gradient_clipping_threshold = \
+                    cp.g_default_gradient_clipping_threshold
+            if parameter.device == -1 and cp.g_default_device:
+                parameter.device = cp.g_default_device
+            # FIXME(typhoonzero): ignored: update_hooks, g_default_compact_func
 
     def use_sparse_updater(self):
         """
