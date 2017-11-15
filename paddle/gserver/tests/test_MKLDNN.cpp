@@ -269,6 +269,7 @@ void testBatchNormLayer(const testBatchNormDesc& pm) {
 TEST(MKLDNNLayer, BatchNormLayer) {
   testBatchNormLayer({4, 10, 6, 6});
   testBatchNormLayer({16, 32, 16, 16});
+  testBatchNormLayer({4, 16, 8, 10});
 }
 
 struct testImageDesc {
@@ -296,17 +297,12 @@ static void getAddtoConfig(TestConfig& cfg,
 }
 
 void testAddtoLayer(const testImageDesc& pm, const size_t nInputs) {
-  CHECK_GE(nInputs, 1);
+  CHECK_GE(nInputs, 1UL);
   TestConfig dnnConfig;
   getAddtoConfig(dnnConfig, pm, nInputs);
   dnnConfig.layerConfig.set_type("mkldnn_addto");
-  // TODO(TJ): test with bias
-  for (auto withBias : {false}) {
-    if (withBias) {
-      dnnConfig.biasSize = pm.ic * pm.ih * pm.iw;
-    } else {
-      dnnConfig.biasSize = 0;
-    }
+  for (auto withBias : {false, true}) {
+    dnnConfig.biasSize = withBias ? pm.ic * pm.ih * pm.iw : 0;
     RUN_MKLDNN_TEST_LAYER(dnnConfig, "addto", pm)
   }
 }

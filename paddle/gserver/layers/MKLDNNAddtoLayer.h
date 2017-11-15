@@ -32,8 +32,14 @@ protected:
   // layer size == ic * ih * iw == oc * oh *ow, and can not be changed
   size_t layerSize_;
 
-  // TODO(TJ): this part has not been optimized by MKL-DNN
   std::unique_ptr<Weight> biases_;
+
+  // buffers for adding bias
+  std::vector<MKLDNNMatrixPtr> vals_;
+  std::vector<MKLDNNMatrixPtr> grads_;
+  // primitives for adding bias
+  std::vector<std::shared_ptr<mkldnn::primitive>> fwdBias_;
+  std::shared_ptr<mkldnn::primitive> bwdBias_;
 
 public:
   explicit MKLDNNAddtoLayer(const LayerConfig& config) : MKLDNNLayer(config) {}
@@ -91,20 +97,34 @@ protected:
    *                    reset pipeline.
    */
   void resetFwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
+                       MKLDNNMatrixPtr& bias,
                        MKLDNNMatrixPtr& out);
   void resetFwdPD(std::shared_ptr<mkldnn::sum::primitive_desc>& pd,
+                  std::shared_ptr<mkldnn::sum::primitive_desc>& biasPD,
                   std::vector<MKLDNNMatrixPtr>& inputs,
+                  MKLDNNMatrixPtr bias,
                   MKLDNNMatrixPtr out);
   void resetFwdPipeline(std::vector<mkldnn::primitive>& pipeline,
                         std::shared_ptr<mkldnn::sum::primitive_desc>& pd,
+                        std::shared_ptr<mkldnn::sum::primitive_desc>& biasPD,
                         std::vector<MKLDNNMatrixPtr>& inputs,
+                        MKLDNNMatrixPtr& bias,
                         MKLDNNMatrixPtr& out);
 
   /**
    * Backward functions: reset buffers(inputs, output, bias)
    */
   void resetBwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
+                       MKLDNNMatrixPtr& bias,
                        MKLDNNMatrixPtr& out);
+
+  /**
+   * prepare for bias
+   */
+  void prepareBias(MKLDNNMatrixPtr& bias,
+                   const MatrixPtr& biasMat,
+                   const MKLDNNMatrixPtr& out,
+                   std::vector<MKLDNNMatrixPtr>& outs);
 };
 
 }  // namespace paddle

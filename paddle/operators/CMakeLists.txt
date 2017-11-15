@@ -195,8 +195,13 @@ op_library(sequence_pool_op DEPS sequence_pooling)
 op_library(lstm_op DEPS sequence2batch lstm_compute)
 op_library(conv_transpose_op DEPS vol2col)
 op_library(gru_op DEPS sequence2batch gru_compute)
-op_library(dynamic_recurrent_op SRCS dynamic_recurrent_op.cc rnn/recurrent_op_utils.cc
-        DEPS net_op tensor_array)
+if(WITH_TESTING)
+    op_library(dynamic_recurrent_op SRCS dynamic_recurrent_op.cc rnn/recurrent_op_utils.cc
+        DEPS net_op tensor_array gtest)
+else()
+    op_library(dynamic_recurrent_op SRCS dynamic_recurrent_op.cc rnn/recurrent_op_utils.cc
+            DEPS net_op tensor_array)
+endif()
 op_library(recurrent_op SRCS recurrent_op.cc DEPS executor)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
@@ -209,6 +214,7 @@ set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 cc_test(net_op_test SRCS net_op_test.cc DEPS net_op)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor)
+cc_test(beam_search_decode_op_test SRCS beam_search_decode_op_test.cc DEPS lod_tensor)
 cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor paddle_memory)
 cc_test(dynamic_recurrent_op_test SRCS dynamic_recurrent_op_test.cc
         rnn/recurrent_op_utils.cc

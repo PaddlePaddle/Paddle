@@ -50,6 +50,15 @@ VarDescBind *BlockDescBind::FindVarRecursive(const std::string &name) const {
   return it->second.get();
 }
 
+VarDescBind *BlockDescBind::FindRecursiveOrCreateVar(
+    const std::string &name_bytes) {
+  VarDescBind *res = FindVarRecursive(name_bytes);
+  if (res == nullptr) {
+    res = Var(name_bytes);
+  }
+  return res;
+}
+
 bool BlockDescBind::HasVarRecursive(const std::string &name) const {
   return FindVarRecursive(name) != nullptr;
 }
