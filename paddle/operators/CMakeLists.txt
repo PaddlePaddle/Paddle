@@ -178,6 +178,7 @@ set(DEPS_OPS
     adagrad_op
     sgd_op)
 
+
 op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
 op_library(cross_entropy_op DEPS cross_entropy)
 op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
