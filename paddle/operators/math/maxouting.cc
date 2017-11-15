@@ -42,11 +42,11 @@ class MaxOutFunctor<platform::CPUPlace, MaxOutProcess, T> {
     const T* input_data = input.data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
-    for (int i = 0; i < batch_size; i++) {
+    for (int i = 0; i < batch_size; ++i) {
       int new_bindex =  c_size * i;
       for (int c = 0; c < output_channels; ++c) {
         int new_cindex = fea_size * c;
-        for (int f = 0; f < fea_size; f++) {
+        for (int f = 0; f < fea_size; ++f) {
           T ele = maxout_process.initial();
           for (int ph = 0; ph < groups; ++ph) {
             maxout_process.compute(ele,
@@ -82,15 +82,15 @@ public:
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = input_grad.mutable_data<T>(context.GetPlace());
 
-    for (int i = 0; i < batch_size; i++) {
+    for (int i = 0; i < batch_size; ++i) {
       int blen = fea_size * output_channels * i;
       for (int c = 0; c < output_channels; ++c) {
         int clen = fea_size * c;
-        for (int f = 0; f < fea_size; f++) {
+        for (int f = 0; f < fea_size; ++f) {
           int input_idx = 0;
           bool stop = false;
           int output_idx = blen + clen + f;
-          for (int g = 0; g < groups && !stop; g++) {
+          for (int g = 0; g < groups && !stop; ++g) {
               input_idx = (blen + clen) * groups + fea_size * g + f;
               input_grad_data[input_idx] = 0;
               if (input_data[input_idx] == output_data[output_idx]) {

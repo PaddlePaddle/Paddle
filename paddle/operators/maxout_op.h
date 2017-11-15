@@ -54,13 +54,11 @@ class MaxOutGradKernel : public framework::OpKernel<T> {
 
     int groups = context.template Attr<int>("groups");
 
-
-
+    auto& device_ctx = context.device_context();
+    math::SetConstant<Place, T> zero;
     if (in_x_grad) {
       in_x_grad->mutable_data<T>(context.GetPlace());
-      auto temp = framework::EigenVector<T>::Flatten(*in_x_grad);
-      temp.device(context.GetEigenDevice<Place>()) =
-      temp.constant(static_cast<T>(0));
+      zero(device_ctx, in_x_grad, static_cast<T>(0.0));
 
       paddle::operators::math::MaxOutGradFunctor<Place, T>
       maxout_backward;
