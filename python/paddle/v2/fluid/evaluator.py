@@ -111,5 +111,5 @@ class Accuracy(Evaluator):
         correct = _clone_var_(block, self.correct)
         total = layers.cast(total, data_type='float32', **kwargs)
         correct = layers.cast(correct, data_type='float32', **kwargs)
-        out = layers.elementwise_add(x=correct, y=total, **kwargs)
+        out = layers.elementwise_div(x=correct, y=total, **kwargs)
         return np.array(executor.run(eval_program, fetch_list=[out])[0])
