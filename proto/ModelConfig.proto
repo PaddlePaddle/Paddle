@@ -540,6 +540,10 @@ message LayerConfig {
 
   // for switch order layer
   optional ReshapeConfig reshape_conf = 59;
+
+  // for batch normalization layer
+  // small constant added to the variance to avoid numerical problems.
+  optional double epsilon = 60 [ default = 0.00001 ];
 }
 
 message EvaluatorConfig {

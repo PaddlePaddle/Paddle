@@ -47,11 +47,14 @@ public:
 
 protected:
   /**
-   * Epsilon value used in the batch normalization formula.
    * Minimum allowed value is CUDNN_BN_MIN_EPSILON defined in cudnn.h.
    * Same epsilon value should be used in forward and backward functions.
    */
-  static const double EPS;
+  static const double MIN_EPS;
+
+  /// Epsilon value used in the batch normalization formula.
+  /// If EPS_ is smaller than MIN_EPS, MIN_EPS will be used.
+  double EPS_;
 
   /// Input/output tensor descriptor desc
   hl_tensor_descriptor ioDesc_;

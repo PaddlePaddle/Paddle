@@ -21,8 +21,6 @@ namespace paddle {
 
 REGISTER_LAYER(mkldnn_batch_norm, MKLDNNBatchNormLayer);
 
-const real MKLDNNBatchNormLayer::EPS = 1E-5;
-
 bool MKLDNNBatchNormLayer::init(const LayerMap& layerMap,
                                 const ParameterMap& parameterMap) {
   if (!MKLDNNLayer::init(layerMap, parameterMap)) {
@@ -50,6 +48,8 @@ bool MKLDNNBatchNormLayer::init(const LayerMap& layerMap,
     useGlobalStats_ = config_.use_global_stats();
   }
   movingAvgFraction_ = config_.moving_average_fraction();
+  EPS = config_.epsilon();
+
   VLOG(MKLDNN_BASE) << "--- " << (useGlobalStats_ ? "use" : "do not use")
                     << " --- global stats";
   VLOG(MKLDNN_BASE) << "Moving average fraction: " << movingAvgFraction_;

@@ -22,8 +22,6 @@ namespace paddle {
 
 REGISTER_LAYER(batch_norm, BatchNormalizationLayer);
 
-const real BatchNormalizationLayer::EPS = 1E-5;
-
 bool BatchNormalizationLayer::init(const LayerMap& layerMap,
                                    const ParameterMap& parameterMap) {
   /* Initialize the basic parent class */

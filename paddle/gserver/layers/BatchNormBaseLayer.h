@@ -94,6 +94,8 @@ protected:
   bool useGlobalStats_;
   // use to compute moving mean and variance.
   real movingAvgFraction_;
+  // Epsilon value used in the batch normalization formula.
+  real EPS;
 };
 
 }  // namespace paddle
