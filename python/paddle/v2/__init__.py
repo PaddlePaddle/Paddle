@@ -33,7 +33,6 @@ import networks
 import minibatch
 import plot
 import image
-import model
 import paddle.trainer.config_parser as cp
 
 __all__ = [
@@ -58,7 +57,6 @@ __all__ = [
     'evaluator',
     'image',
     'master',
-    'model',
 ]
 
 cp.begin_parse()
