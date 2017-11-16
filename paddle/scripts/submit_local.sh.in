@@ -141,10 +141,12 @@ else:
 EOF
 
 cpu_config
+# echo $KMP_AFFINITY $OMP_DYNAMIC
 
 case "$1" in
     "train")
         threads_config $@
+        # echo $OMP_NUM_THREADS $MKL_NUM_THREADS
         ${DEBUGGER} $PADDLE_BIN_PATH/paddle_trainer ${@:2}
         ;;
     "merge_model")
