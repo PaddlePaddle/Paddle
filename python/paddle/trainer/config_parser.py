@@ -3488,11 +3488,17 @@ def ExpressionLayer(name, inputs, **xargs):
 
 @config_layer('concat')
 class ConcatenateLayer(LayerBase):
+    layer_type = 'concat'
+
     def __init__(self, name, inputs, bias=False, **xargs):
         config_assert(inputs, 'inputs cannot be empty')
         config_assert(not bias, 'ConcatenateLayer cannot support bias.')
+        use_mkldnn = bool(int(g_command_config_args.get("use_mkldnn", 0)))
+        if self.layer_type == "mkldnn_concat":
+            config_assert(use_mkldnn, "mkldnn_concat only support MKLDNN")
+        self.layer_type = 'mkldnn_concat' if use_mkldnn else 'concat'
         super(ConcatenateLayer, self).__init__(
-            name, 'concat', 0, inputs=inputs, **xargs)
+            name, self.layer_type, 0, inputs=inputs, **xargs)
         size = 0
         for input_index in xrange(len(self.inputs)):
             assert self.get_input_layer(0).height == self.get_input_layer(
@@ -3510,6 +3516,11 @@ class ConcatenateLayer(LayerBase):
                                     self.get_input_layer(0).width)
         self.set_layer_depth(self.get_input_layer(0).depth)
         self.set_layer_size(size)
+
+
+@config_layer('mkldnn_concat')
+class MKLDNNConcatLayer(ConcatenateLayer):
+    layer_type = 'mkldnn_concat'
 
 
 # like concat layer, but each input layer was processed by a Projection.
