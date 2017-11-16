@@ -9,14 +9,8 @@ from paddle.v2.fluid.executor import Executor
 
 import numpy as np
 
-images = layers.data(
-    name='pixel',
-    shape=[1, 28, 28],
-    data_type='float32')
-label = layers.data(
-    name='label',
-    shape=[1],
-    data_type='int64')
+images = layers.data(name='pixel', shape=[1, 28, 28], data_type='float32')
+label = layers.data(name='label', shape=[1], data_type='int64')
 conv_pool_1 = nets.simple_img_conv_pool(
     input=images,
     filter_size=5,
@@ -32,17 +26,13 @@ conv_pool_2 = nets.simple_img_conv_pool(
     pool_stride=2,
     act="relu")
 
-predict = layers.fc(input=conv_pool_2,
-                    size=10,
-                    act="softmax")
+predict = layers.fc(input=conv_pool_2, size=10, act="softmax")
 cost = layers.cross_entropy(input=predict, label=label)
 avg_cost = layers.mean(x=cost)
 optimizer = optimizer.AdamOptimizer(learning_rate=0.01, beta1=0.9, beta2=0.999)
 opts = optimizer.minimize(avg_cost)
 
-accuracy, acc_out = evaluator.accuracy(
-    input=predict,
-    label=label)
+accuracy = evaluator.Accuracy(input=predict, label=label)
 
 BATCH_SIZE = 50
 PASS_NUM = 3
@@ -73,7 +63,7 @@ for pass_id in range(PASS_NUM):
         outs = exe.run(framework.default_main_program(),
                        feed={"pixel": tensor_img,
                              "label": tensor_y},
-                       fetch_list=[avg_cost, acc_out])
+                       fetch_list=[avg_cost] + accuracy.metrics)
         loss = np.array(outs[0])
         acc = np.array(outs[1])
         pass_acc = accuracy.eval(exe)

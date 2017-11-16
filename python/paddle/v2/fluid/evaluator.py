@@ -1,9 +1,14 @@
 import numpy as np
-from paddle.v2.fluid.framework import Program, g_main_program, unique_name, Variable
-import paddle.v2.fluid.core as core
+
+import paddle.v2.fluid.layers as layers
+from paddle.v2.fluid.framework import Program, unique_name, \
+    Variable
+from paddle.v2.fluid.layer_helper import LayerHelper
+
+__all__ = ['Accuracy']
 
 
-def _clone_var_in_block_(block, var):
+def _clone_var_(block, var):
     assert isinstance(var, Variable)
     return block.create_var(
         name=var.name,
@@ -27,41 +32,28 @@ class Evaluator(object):
         """
         init the global states
         """
-        self._states = {}
-        if kwargs.has_key("main_program"):
-            self._main_program = kwargs.get("main_program")
-        else:
-            self._main_program = g_main_program
-
-    def _update_ops(self, *args, **kwargs):
-        """
-        append update ops to the global states
-        """
-        raise NotImplementedError()
+        self.states = []
+        self.metrics = []
+        self.helper = LayerHelper(name, **kwargs)
 
     def reset(self, executor, reset_program=None):
         """
         Clear metric states at the begin of each pass/user specified batch
         """
-        if reset_program == None:
+        if reset_program is None:
             reset_program = Program()
-        else:
-            reset_program = program
-        block = reset_program.global_block()
-        for k, var in self._states.iteritems():
-            g_var = _clone_var_in_block_(block, var)
-            zeros = block.create_var(dtype="float32", persistable=True)
-            block.append_op(
-                type="fill_constant",
-                outputs={"Out": [zeros]},
-                attrs={
-                    "shape": g_var.shape,
-                    "value": .0,
-                    "data_type": 5,
-                })
-            block.append_op(
-                type="scale", inputs={"X": zeros}, outputs={"Out": g_var})
-        executor.run(reset_program, fetch_list=self._states.values())
+
+        for var in self.states:
+            assert isinstance(var, Variable)
+            g_var = _clone_var_(reset_program.current_block(), var)
+            layers.fill_constant(
+                shape=g_var.shape,
+                value=0.0,
+                dtype=g_var.data_type,
+                out=g_var,
+                main_program=reset_program)
+
+        executor.run(reset_program)
 
     def eval(self, executor, eval_program=None):
         """
@@ -69,119 +61,55 @@ class Evaluator(object):
         """
         raise NotImplementedError()
 
+    def create_state(self, suffix, dtype, shape):
+        state = self.helper.create_variable(
+            name="_".join([unique_name(self.helper.name), suffix]),
+            persistable=True,
+            dtype=dtype,
+            shape=shape)
+        self.states.append(state)
+        return state
+
 
 class Accuracy(Evaluator):
     """
     Accuracy need two state variable Total, Correct
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, input, label, k=1, **kwargs):
         super(Accuracy, self).__init__("accuracy", **kwargs)
-        block = self._main_program.global_block()
-        g_total = block.create_var(
-            name=unique_name("Total"),
-            persistable=True,
-            dtype="int64",
-            shape=[1])
-        g_correct = block.create_var(
-            name=unique_name("Correct"),
-            persistable=True,
-            dtype="int64",
-            shape=[1])
-        self._states["Total"] = g_total
-        self._states["Correct"] = g_correct
+        main_program = self.helper.main_program
+        if main_program.current_block().idx != 0:
+            raise ValueError("You can only invoke Evaluator in root block")
 
-    def _update_ops(self, input, label, k=1, **kwargs):
-        block = self._main_program.global_block()
-        topk_out = block.create_var(dtype=input.data_type)
-        topk_indices = block.create_var(dtype="int64")
-        block.append_op(
-            type="top_k",
-            inputs={"X": [input]},
-            outputs={"Out": [topk_out],
-                     "Indices": [topk_indices]},
-            attrs={"k": k})
-        acc_out = block.create_var(dtype=kwargs.get("out_dtype", "float32"))
-        correct = block.create_var(dtype="int64", persistable=True)
-        total = block.create_var(dtype="int64", persistable=True)
-        block.append_op(
-            type="accuracy",
-            inputs={
-                "Out": [topk_out],
-                "Indices": [topk_indices],
-                "Label": [label]
-            },
-            outputs={
-                "Accuracy": [acc_out],
-                "Correct": [correct],
-                "Total": [total],
-            })
+        self.total = self.create_state(dtype='int64', shape=[1], suffix='total')
+        self.correct = self.create_state(
+            dtype='int64', shape=[1], suffix='correct')
+        kwargs = {'main_program': main_program}
+        total = self.helper.create_tmp_variable(dtype='int')
+        correct = self.helper.create_tmp_variable(dtype='int')
+        acc = layers.accuracy(
+            input=input,
+            label=label,
+            k=k,
+            total=total,
+            correct=correct,
+            **kwargs)
+        total = layers.cast(x=total, data_type='int64', **kwargs)
+        correct = layers.cast(x=correct, data_type='int64', **kwargs)
+        layers.sums(input=[self.total, total], out=self.total, **kwargs)
+        layers.sums(input=[self.correct, correct], out=self.correct, **kwargs)
 
-        block.append_op(
-            type="cast",
-            inputs={"X": [self._states["Total"]]},
-            outputs={"Out": [self._states["Total"]]},
-            attrs={
-                "in_data_type": 5,  # float32
-                "out_data_type": 2,  #int32
-            })
-        block.append_op(
-            type="cast",
-            inputs={"X": [self._states["Correct"]]},
-            outputs={"Out": [self._states["Correct"]]},
-            attrs={
-                "in_data_type": 5,
-                "out_data_type": 2,
-            })
-
-        block.append_op(
-            type="elementwise_add",
-            inputs={"X": [self._states["Total"]],
-                    "Y": [total]},
-            outputs={"Out": [self._states["Total"]]})
-        block.append_op(
-            type="elementwise_add",
-            inputs={"X": [self._states["Correct"]],
-                    "Y": [correct]},
-            outputs={"Out": [self._states["Correct"]]})
-
-        return acc_out
+        self.metrics.append(acc)
 
     def eval(self, executor, eval_program=None):
-        if eval_program != None:
-            eval_program = eval_program
-        else:
+        if eval_program is None:
             eval_program = Program()
-        block = eval_program.global_block()
-        eval_out = block.create_var(dtype=self._states["Total"].data_type)
-        e_total = _clone_var_in_block_(block, self._states["Total"])
-        e_correct = _clone_var_in_block_(block, self._states["Correct"])
-        block.append_op(
-            type="cast",
-            inputs={"X": [e_total]},
-            outputs={"Out": [e_total]},
-            attrs={
-                "in_data_type": 2,  #int32
-                "out_data_type": 5,  #float32
-            })
-        block.append_op(
-            type="cast",
-            inputs={"X": [e_correct]},
-            outputs={"Out": [e_correct]},
-            attrs={
-                "in_data_type": 2,
-                "out_data_type": 5,
-            })
-        block.append_op(
-            type="elementwise_div",
-            inputs={"X": e_correct,
-                    "Y": e_total},
-            outputs={"Out": eval_out})
-        out = executor.run(eval_program, fetch_list=[eval_out])
-        return np.array(out[0])
-
-
-def accuracy(*args, **kwargs):
-    cls = Accuracy(*args, **kwargs)
-    out = cls._update_ops(*args, **kwargs)
-    return cls, out
+        block = eval_program.current_block()
+        kwargs = {'main_program': eval_program}
+        total = _clone_var_(block, self.total)
+        correct = _clone_var_(block, self.correct)
+        total = layers.cast(total, data_type='float32', **kwargs)
+        correct = layers.cast(correct, data_type='float32', **kwargs)
+        out = layers.elementwise_add(x=correct, y=total, **kwargs)
+        return np.array(executor.run(eval_program, fetch_list=[out])[0])
