@@ -256,6 +256,8 @@ void axpy<platform::GPUPlace, double>(const platform::DeviceContext& context,
 template struct SetConstant<platform::GPUPlace, float>;
 template struct SetConstant<platform::GPUPlace, double>;
 template struct SetConstant<platform::GPUPlace, int>;
+template struct SetConstant<platform::GPUPlace, int64_t>;
+template struct SetConstant<platform::GPUPlace, bool>;
 
 #define DEFINE_GPU_TRANS(RANK)                                \
   template struct Transpose<platform::GPUPlace, float, RANK>; \
