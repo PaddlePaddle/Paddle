@@ -118,8 +118,8 @@ struct PADDLE_ALIGN(2) float16 {
   PADDLE_HOSTDEVICE inline float16(const Eigen::half& h) : x(h.x) {}
 #endif  // USE_EIGEN
 
-#if (PADDLE_GNUC_VER >= 61 || PADDLE_CLANG_VER >= 34) && \
-    defined(PADDLE_NEON) && defined(PADDLE_ARM_FP16)
+#if defined(PADDLE_NEON) && defined(PADDLE_ARM_FP16) && \
+    (PADDLE_GNUC_VER >= 61 || PADDLE_CLANG_VER >= 34)
   // __fp16 is a native half precision data type for arm cpu,
   // float16_t is an alias for __fp16 in arm_fp16.h,
   // which is included in arm_neon.h.
@@ -207,8 +207,8 @@ struct PADDLE_ALIGN(2) float16 {
   }
 #endif  // USE_EIGEN
 
-#if (PADDLE_GNUC_VER >= 61 || PADDLE_CLANG_VER >= 34) && \
-    defined(PADDLE_NEON) && defined(PADDLE_ARM_FP16)
+#if defined(PADDLE_NEON) && defined(PADDLE_ARM_FP16) && \
+    (PADDLE_GNUC_VER >= 61 || PADDLE_CLANG_VER >= 34)
   PADDLE_HOSTDEVICE inline float16& operator=(const float16_t* rhs) {
     x = *reinterpret_cast<uint16_t*>(rhs);
     return *this;
@@ -302,8 +302,8 @@ struct PADDLE_ALIGN(2) float16 {
   }
 #endif  // USE_EIGEN
 
-#if (PADDLE_GNUC_VER >= 61 || PADDLE_CLANG_VER >= 34) && \
-    defined(PADDLE_NEON) && defined(PADDLE_ARM_FP16)
+#if defined(PADDLE_NEON) && defined(PADDLE_ARM_FP16) && \
+    (PADDLE_GNUC_VER >= 61 || PADDLE_CLANG_VER >= 34)
   // check whether it works or not
   PADDLE_HOSTDEVICE inline operator float16_t() const {
     float16 h = *this;
