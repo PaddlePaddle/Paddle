@@ -75,7 +75,7 @@ class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("VelocityOut", "(Tensor) Output updated velocity");
 
     AddAttr<float>("mu", "(float) Momentum coefficient");
-    AddAttr<bool>("useNesterov",
+    AddAttr<bool>("use_nesterov",
                   "(bool, default false) "
                   "Use Nesterov Momentum")
         .SetDefault(false);

@@ -269,6 +269,7 @@ void testBatchNormLayer(const testBatchNormDesc& pm) {
 TEST(MKLDNNLayer, BatchNormLayer) {
   testBatchNormLayer({4, 10, 6, 6});
   testBatchNormLayer({16, 32, 16, 16});
+  testBatchNormLayer({4, 16, 8, 10});
 }
 
 struct testImageDesc {
@@ -296,7 +297,7 @@ static void getAddtoConfig(TestConfig& cfg,
 }
 
 void testAddtoLayer(const testImageDesc& pm, const size_t nInputs) {
-  CHECK_GE(nInputs, 1);
+  CHECK_GE(nInputs, 1UL);
   TestConfig dnnConfig;
   getAddtoConfig(dnnConfig, pm, nInputs);
   dnnConfig.layerConfig.set_type("mkldnn_addto");
