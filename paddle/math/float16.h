@@ -23,7 +23,7 @@ limitations under the License. */
 #define USE_EIGEN
 
 #ifdef USE_EIGEN  // delete this #if macro
-#include "Eigen/src/Core/arch/CUDA/Half.h"
+#include "unsupported/Eigen/CXX11/Tensor"
 #endif
 
 #ifdef __GNUC__
@@ -126,7 +126,7 @@ struct PADDLE_ALIGN(2) float16 {
   // According to gcc, __fp16 can only be used as an argument to fp16
   // intrinsic defined in arm_neon.h or as a storage type. It cannot
   // be used as a formal function argument.
-  // TODO (kexinzhao): test it on RPI
+  // TODO(kexinzhao): test it on RPI
   PADDLE_HOSTDEVICE inline float16(const float16_t* h) {
     x = *reinterpret_cast<uint16_t*>(h);
   }
@@ -564,7 +564,7 @@ PADDLE_HOSTDEVICE inline bool operator>=(const float16& a, const float16& b) {
 
 namespace fp16_impl {
 
-Union Bits {
+union Bits {
   float f;
   int32_t si;
   uint32_t ui;
@@ -584,7 +584,7 @@ constexpr int32_t maxC = maxN >> shift;
 constexpr int32_t minC = minN >> shift;
 constexpr int32_t sigC = sigN >> shiftSign;
 
-const int32_t mulN = 0x52000000;  //(1 << 23) / minN
+const int32_t mulN = 0x52000000;  // (1 << 23) / minN
 const int32_t mulC = 0x33800000;  // minN / (1 << (23 - shift))
 const int32_t subC = 0x003FF;     // max flt32 subnormal downshifted
 const int32_t norC = 0x00400;     // min flt32 normal downshifted
@@ -693,7 +693,7 @@ PADDLE_HOSTDEVICE inline float half_to_float(float16 h) {
   // Conversion routine adapted from
   // http://stackoverflow.com/questions/1659440/32-bit-to-16-bit-floating-point-conversion
   Bits v;
-  v.ui = x;
+  v.ui = h.x;
   int32_t sign = v.si & sigC;
   v.si ^= sign;
   sign <<= shiftSign;
@@ -711,6 +711,6 @@ PADDLE_HOSTDEVICE inline float half_to_float(float16 h) {
 #endif
 }
 
-}  // namespace half_impl
+}  // namespace fp16_impl
 
 }  // namespace paddle
