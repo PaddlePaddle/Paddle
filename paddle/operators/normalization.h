@@ -49,6 +49,61 @@ using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
 
 template <typename T>
+void BatchedMoments(const platform::Place place, const Tensor& x,
+                    const TensorFormat& tensor_format, const int N, const int C,
+                    const int sample_size, EigenVectorArrayMap<T>& saved_mean_e,
+                    EigenVectorArrayMap<T>& saved_variance_e) {
+  switch (tensor_format) {
+    case TensorFormat::NCHW: {
+      ConstEigenArrayMap<T> x_arr(x.data<T>(), sample_size, N * C);
+      for (int nc = 0; nc < N * C; ++nc) {
+        saved_mean_e(nc % C) += x_arr.col(nc).sum();
+      }
+      saved_mean_e /= N * sample_size;
+      for (int nc = 0; nc < N * C; ++nc) {
+        saved_variance_e(nc % C) +=
+            (x_arr.col(nc) - saved_mean_e(nc % C)).matrix().squaredNorm();
+      }
+      saved_variance_e /= N * sample_size;
+      break;
+    }
+    case TensorFormat::NHWC: {
+      ConstEigenArrayMap<T> x_arr(x.data<T>(), C, N * sample_size);
+      for (int i = 0; i < N * sample_size; ++i) {
+        saved_mean_e += x_arr.col(i);
+      }
+      saved_mean_e /= N * sample_size;
+      for (int i = 0; i < N * sample_size; ++i) {
+        saved_variance_e +=
+            (x_arr.col(i) - saved_mean_e) * (x_arr.col(i) - saved_mean_e);
+      }
+      saved_variance_e /= N * sample_size;
+      break;
+    }
+    default:
+      PADDLE_THROW("Unknown storage order: %d", tensor_format);
+  }
+}
+
+template <typename T>
+void LayerMoments(const platform::Place place, const Tensor& x,
+                  const TensorFormat& tensor_format, const int N, const int C,
+                  const int sample_size, EigenVectorArrayMap<T>& saved_mean_e,
+                  EigenVectorArrayMap<T>& saved_variance_e) {
+  ConstEigenArrayMap<T> x_arr(x.data<T>(), C * sample_size, N);
+  for (auto i = 0; i < N; ++i) {
+    saved_mean_e(i) = x_arr.row(i).sum();
+  }
+  saved_mean_e /= C * sample_size;
+
+  for (auto i = 0; i < N; ++i) {
+    saved_variance_e(i) =
+        (x_arr.row(i) - saved_mean_e(i)).matrix().squaredNorm();
+  }
+  saved_variance_e /= C * sample_size - 1;
+}
+
+template <typename T>
 void BatchNormalizeForward(const platform::Place place, const Tensor& x,
                            const Tensor& scale, const Tensor& bias,
                            const Tensor& mean_input,
@@ -67,44 +122,14 @@ void BatchNormalizeForward(const platform::Place place, const Tensor& x,
   const int sample_size = x.numel() / N / C;
 
   if (!is_test) {
-    // saved_xx are estimated using current batch
     EigenVectorArrayMap<T> saved_mean_e(saved_mean->mutable_data<T>(place), C);
     EigenVectorArrayMap<T> saved_variance_e(
         saved_variance->mutable_data<T>(place), C);
     saved_mean_e.setZero();
     saved_variance_e.setZero();
-
-    switch (tensor_format) {
-      case TensorFormat::NCHW: {
-        ConstEigenArrayMap<T> x_arr(x.data<T>(), sample_size, N * C);
-        for (int nc = 0; nc < N * C; ++nc) {
-          saved_mean_e(nc % C) += x_arr.col(nc).sum();
-        }
-        saved_mean_e /= N * sample_size;
-        for (int nc = 0; nc < N * C; ++nc) {
-          saved_variance_e(nc % C) +=
-              (x_arr.col(nc) - saved_mean_e(nc % C)).matrix().squaredNorm();
-        }
-        saved_variance_e /= N * sample_size;
-        break;
-      }
-      case TensorFormat::NHWC: {
-        ConstEigenArrayMap<T> x_arr(x.data<T>(), C, N * sample_size);
-        for (int i = 0; i < N * sample_size; ++i) {
-          saved_mean_e += x_arr.col(i);
-        }
-        saved_mean_e /= N * sample_size;
-        for (int i = 0; i < N * sample_size; ++i) {
-          saved_variance_e +=
-              (x_arr.col(i) - saved_mean_e) * (x_arr.col(i) - saved_mean_e);
-        }
-        saved_variance_e /= N * sample_size;
-        break;
-      }
-      default:
-        PADDLE_THROW("Unknown storage order: %d", tensor_format);
-    }
-
+    // saved_xx are estimated using current batch
+    BatchedMoments<T>(place, x, tensor_format, N, C, sample_size, saved_mean_e,
+                      saved_variance_e);
     EigenVectorArrayMap<T> running_mean_arr(mean_out->mutable_data<T>(place),
                                             C);
     EigenVectorArrayMap<T> running_var_arr(variance_out->mutable_data<T>(place),
