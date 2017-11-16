@@ -15,7 +15,7 @@ limitations under the License. */
 namespace paddle {
 
 #ifdef PADDLE_CUDA_FP16
-TEST(float16, gpu) {
+TEST(float16, conversion_gpu) {
   // Conversion to and from cuda half
   float16 v1 = half(float16(1.0f));
   EXPECT_EQ(v1.x, 0x3c00);
