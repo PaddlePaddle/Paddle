@@ -250,6 +250,7 @@ void axpy<platform::CPUPlace, double>(const platform::DeviceContext& context,
 template struct SetConstant<platform::CPUPlace, float>;
 template struct SetConstant<platform::CPUPlace, double>;
 template struct SetConstant<platform::CPUPlace, int>;
+template struct SetConstant<platform::CPUPlace, int64_t>;
 
 #define DEFINE_CPU_TRANS(RANK)                                \
   template struct Transpose<platform::CPUPlace, float, RANK>; \
