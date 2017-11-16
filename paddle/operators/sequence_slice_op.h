@@ -54,10 +54,10 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(lod.size(), 1UL,
                       "Only support one level sequence now.");
     PADDLE_ENFORCE_EQ(
-        n, length->dims()[0],
+        n, static_cast<size_t>(length->dims()[0]),
         "The size of input-sequence and length-array should be the same")
     PADDLE_ENFORCE_EQ(
-        n, offset->dims()[0],
+        n, static_cast<size_t>(offset->dims()[0]),
         "The size of input-sequence and offset-array should be the same")
 
     const int64_t* offset_data = offset->data<int64_t>();
