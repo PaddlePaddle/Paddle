@@ -1,6 +1,6 @@
 digraph G {
 
-  rnn [label="1-th level RNN" shape=box]
+  rnn [label="1st level RNN" shape=box]
 
   subgraph cluster0 {
     label = "time step 0"
@@ -8,7 +8,7 @@ digraph G {
     sent0 [label="sentence"]
     sent1 [label="sentence"]
 
-    rnn1 [label="2-th level RNN" shape=box]
+    rnn1 [label="2nd level RNN" shape=box]
 
     sent0 -> rnn1
     sent1 -> rnn1
@@ -20,7 +20,7 @@ digraph G {
     sent2 [label="sentence"]
     sent3 [label="sentence"]
 
-    rnn2 [label="2-th level RNN" shape=box]
+    rnn2 [label="2nd level RNN" shape=box]
 
     sent2 -> rnn2
     sent3 -> rnn2
@@ -32,7 +32,7 @@ digraph G {
     sent4 [label="sentence"]
     sent5 [label="sentence"]
 
-    rnn3 [label="2-th level RNN" shape=box]
+    rnn3 [label="2nd level RNN" shape=box]
 
     sent4 -> rnn3
     sent5 -> rnn3
