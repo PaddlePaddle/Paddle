@@ -12,13 +12,10 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#define EIGEN_USE_GPU
-
-#include "paddle/operators/sequence_conv_op.h"
+#include "paddle/operators/fill_zeros_like_op.h"
+#include "paddle/framework/op_registry.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
-    sequence_conv, ops::SequenceConvKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
-    sequence_conv_grad,
-    ops::SequenceConvGradKernel<paddle::platform::GPUPlace, float>);
+    fill_zeros_like,
+    ops::FillZerosLikeKernel<paddle::platform::GPUPlace, float>);

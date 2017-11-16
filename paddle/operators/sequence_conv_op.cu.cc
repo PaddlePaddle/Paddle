@@ -12,14 +12,11 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/fill_constant_batch_size_like_op.h"
+#include "paddle/operators/sequence_conv_op.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
-    fill_constant_batch_size_like,
-    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::GPUPlace, float>,
-    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::GPUPlace, double>,
-    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::GPUPlace, int>,
-    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::GPUPlace,
-                                           int64_t>);
+    sequence_conv, ops::SequenceConvKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(
+    sequence_conv_grad,
+    ops::SequenceConvGradKernel<paddle::platform::GPUPlace, float>);
