@@ -20,7 +20,7 @@ limitations under the License. */
 #include <istream>
 #include <ostream>
 
-#include <cuda.h>
+#define USE_EIGEN
 
 #ifdef USE_EIGEN  // delete this #if macro
 #include "Eigen/src/Core/arch/CUDA/Half.h"
@@ -100,8 +100,6 @@ PADDLE_HOSTDEVICE inline float half_to_float(float16 h);
 struct PADDLE_ALIGN(2) float16 {
   uint16_t x;
 
-  // explicit for different types, implicit for half and Eigen::half
-
   PADDLE_HOSTDEVICE inline float16() {}
 
   PADDLE_HOSTDEVICE inline float16(const float16& h) : x(h.x) {}
@@ -120,7 +118,8 @@ struct PADDLE_ALIGN(2) float16 {
   PADDLE_HOSTDEVICE inline float16(const Eigen::half& h) : x(h.x) {}
 #endif  // USE_EIGEN
 
-#ifdef PADDLE_NEON
+#if (PADDLE_GNUC_VER >= 61 || PADDLE_CLANG_VER >= 34) && \
+    defined(PADDLE_NEON) && defined(PADDLE_ARM_FP16)
   // __fp16 is a native half precision data type for arm cpu,
   // float16_t is an alias for __fp16 in arm_fp16.h,
   // which is included in arm_neon.h.
@@ -208,7 +207,8 @@ struct PADDLE_ALIGN(2) float16 {
   }
 #endif  // USE_EIGEN
 
-#ifdef PADDLE_NEON
+#if (PADDLE_GNUC_VER >= 61 || PADDLE_CLANG_VER >= 34) && \
+    defined(PADDLE_NEON) && defined(PADDLE_ARM_FP16)
   PADDLE_HOSTDEVICE inline float16& operator=(const float16_t* rhs) {
     x = *reinterpret_cast<uint16_t*>(rhs);
     return *this;
@@ -302,7 +302,8 @@ struct PADDLE_ALIGN(2) float16 {
   }
 #endif  // USE_EIGEN
 
-#ifdef PADDLE_NEON
+#if (PADDLE_GNUC_VER >= 61 || PADDLE_CLANG_VER >= 34) && \
+    defined(PADDLE_NEON) && defined(PADDLE_ARM_FP16)
   // check whether it works or not
   PADDLE_HOSTDEVICE inline operator float16_t() const {
     float16 h = *this;
@@ -371,7 +372,6 @@ __device__ inline float16 operator*(const float16& a, const float16& b) {
 
 __device__ inline float16 operator/(const float16& a, const float16& b) {
   // TODO(kexinzhao): check the cuda version that starts to support __hdiv
-  // instinsic
   float num = __half2float(half(a));
   float denom = __half2float(half(b));
   return float16(num / denom);
@@ -595,7 +595,7 @@ constexpr int32_t minD = minC - subC - 1;
 PADDLE_HOSTDEVICE inline float16 float_to_half_rn(float f) {
 #if defined(PADDLE_CUDA_FP16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300
   half tmp = __float2half(f);
-  return *reinterpret_cast<float16*>(&(tmp));
+  return *reinterpret_cast<float16*>(&tmp);
 
 #elif defined(PADDLE_NEON_64)  // test on RPI
   float16 res;
