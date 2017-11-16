@@ -12,8 +12,6 @@ limitations under the License. */
 #include "paddle/operators/sum_op.h"
 #include <vector>
 #include "paddle/framework/var_type_inference.h"
-#include "paddle/operators/detail/safe_ref.h"
-#include "paddle/operators/net_op.h"
 
 namespace paddle {
 namespace operators {
