@@ -40,7 +40,9 @@ void MKLDNNConcatLayer::reshape(
   CHECK_GT(inputLayers_.size(), 1UL);
   channels_.resize(inputLayers_.size());
   channels_[0] = ic;
-  oc = ic;
+  // need change the output channel, so use oc_ instead
+  // TODO(TJ): change API, use &oc
+  oc_ = ic;
   for (size_t i = 1; i < inputLayers_.size(); i++) {
     int batchsize, height, witdh;
     reshapeInput(batchsize, height, witdh, i);
@@ -50,12 +52,12 @@ void MKLDNNConcatLayer::reshape(
 
     channels_[i] = inputLayers_[i]->getSize() / height / witdh;
     CHECK_EQ((size_t)channels_[i] * height * witdh, inputLayers_[i]->getSize());
-    oc += channels_[i];
+    oc_ += channels_[i];
   }
   oh = ih;
   ow = iw;
   reshapeOutput(oh, ow);
-  resizeOutput(bs, oc * oh * ow);
+  resizeOutput(bs, oc_ * oh * ow);
 }
 
 void MKLDNNConcatLayer::resetFwd(std::vector<primitive>& pipeline,
@@ -88,6 +90,9 @@ void MKLDNNConcatLayer::resetFwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
   inputs.resize(inputLayers_.size());
   bool has8c = false, has16c = false, hasnc = false;
   for (size_t i = 0; i < inputs.size(); i++) {
+    // resetInValue will use ic_ so temporary change as current input's channel
+    // TODO(TJ): change ic_ as vector then can remove channels_
+    ic_ = channels_[i];
     resetInValue(inputs[i], nullptr, i);
     CHECK(inputs[i]);
     auto dm = inputs[i]->getDims();
@@ -109,6 +114,8 @@ void MKLDNNConcatLayer::resetFwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
       has16c = true;
     }
   }
+  // change back, ic_ always save the input 0 size
+  ic_ = channels_[0];
 
   format outFmt;
   if (has16c && oc_ % 16 == 0) {
@@ -161,9 +168,14 @@ void MKLDNNConcatLayer::resetBwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
   inputs.resize(inputLayers_.size());
   for (size_t i = 0; i < inputs.size(); i++) {
     CHECK(inVals_[i]);
+    // resetInGrad will use inVal_
+    // TODO(TJ): change move inVals_ to MKLDNNLayer ans remove inVal_
+    inVal_ = inVals_[i];
     resetInGrad(inputs[i], inVals_[i]->getPrimitiveDesc(), i);
     CHECK_PRIMITIVE_DESC_EQ(inputs[i], inVals_[i]->getPrimitiveDesc());
   }
+  // change back, inVal_ always save the input 0
+  inVal_ = inVals_[0];
 }
 
 void MKLDNNConcatLayer::resetBwdPipeline(

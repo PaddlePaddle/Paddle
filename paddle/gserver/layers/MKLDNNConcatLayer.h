@@ -74,8 +74,8 @@ public:
 
   void printValueFormat() override {
     for (size_t i = 0; i < inVals_.size(); ++i) {
-      VLOG(MKLDNN_FMTS) << "Input " << i << inputLayers_[i]->getName() << ": "
-                        << inVals_[i]->getFormat() << " >>>";
+      VLOG(MKLDNN_FMTS) << "Input " << i << ", " << inputLayers_[i]->getName()
+                        << ": " << inVals_[i]->getFormat() << " >>>";
     }
     if (outVal_) {
       VLOG(MKLDNN_FMTS) << outVal_->getFormat() << " >>> ";
@@ -93,8 +93,8 @@ public:
       VLOG(MKLDNN_FMTS) << outGrad_->getFormat() << " <<< ";
     }
     for (size_t i = 0; i < inGrads_.size(); ++i) {
-      VLOG(MKLDNN_FMTS) << "Input " << i << inputLayers_[i]->getName() << ": "
-                        << inGrads_[i]->getFormat() << "<<<";
+      VLOG(MKLDNN_FMTS) << "Input " << i << ", " << inputLayers_[i]->getName()
+                        << ": " << inGrads_[i]->getFormat() << "<<<";
     }
   }
 
