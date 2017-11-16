@@ -255,6 +255,9 @@ void hl_matrix_mul(real *A_d,
     return;
   }
 
+  if (t_resource.handle == NULL) {
+    hl_set_device(0);
+  }
   cublasStatus_t stat;
   if ((HPPL_OP_N == transa) && (HPPL_OP_N == transb)) {
     stat = CUBLAS_GEMM(t_resource.handle,
