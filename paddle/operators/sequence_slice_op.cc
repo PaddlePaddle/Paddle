@@ -35,11 +35,14 @@ class SequenceSliceOp : public framework::OperatorWithKernel {
     auto offset_dim = ctx->GetInputDim("Offset");
     auto length_dim = ctx->GetInputDim("Length");
 
-    PADDLE_ENFORCE_EQ(offset_dim.size(), 2UL,
-                      "Only support one level sequence now.");
-    PADDLE_ENFORCE_EQ(length_dim.size(), 2UL,
-                      "Only support one level sequence now.");
+    PADDLE_ENFORCE_EQ(
+        offset_dim.size(), 2UL,
+        "Only support one level sequence now, The rank of offset must be 2.");
+    PADDLE_ENFORCE_EQ(
+        length_dim.size(), 2UL,
+        "Only support one level sequence now, The rank of Length must be 2.");
 
+    // Initialize the output's dims to maximum
     ctx->SetOutputDim("Out", input_dims);
     }
 
