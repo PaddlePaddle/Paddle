@@ -1,6 +1,6 @@
 import logging
-from paddle.v2.framework.op import Operator, DynamicRecurrentOp
-import paddle.v2.framework.core as core
+from paddle.v2.fluid.op import Operator, DynamicRecurrentOp
+import paddle.v2.fluid.core as core
 import unittest
 import numpy as np
 

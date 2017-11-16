@@ -32,6 +32,14 @@ class SequenceSliceOp : public framework::OperatorWithKernel {
                    "Output(Out) of SequenceSliceOp should not be null.");
     auto input_dims = ctx->GetInputDim("X");
 
+    auto offset_dim = ctx->GetInputDim("Offset");
+    auto length_dim = ctx->GetInputDim("Length");
+
+    PADDLE_ENFORCE_EQ(offset_dim.size(), 2UL,
+                      "Only support one level sequence now.");
+    PADDLE_ENFORCE_EQ(length_dim.size(), 2UL,
+                      "Only support one level sequence now.");
+
     ctx->SetOutputDim("Out", input_dims);
     }
 
@@ -95,7 +103,7 @@ It only supports sequence (LoD Tensor with level number is 1).
        [d1, d2;
         e1, e2]]
     LoD(X) = {{0, 3, 5}}; Dims(X) = (5, 2)
-    Offset = [0, 1]; Length = [2, 1]
+    Offset = [[0], [1]]; Length = [[2], [1]]
 
     Out = [[a1, a2;
             b1, b2]

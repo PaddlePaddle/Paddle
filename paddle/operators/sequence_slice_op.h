@@ -48,28 +48,10 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
     auto* length = ctx.Input<Tensor>("Length");
     auto* out = ctx.Output<LoDTensor>("Out");
 
-    const int64_t* offset_data = offset->data<int64_t>();
-    const int64_t* length_data = length->data<int64_t>();
-
-    if (platform::is_gpu_place(ctx.GetPlace())) {
-      framework::Tensor offset_cpu;
-      offset_cpu.mutable_data<T>(offset->dims(), platform::CPUPlace());
-      offset_cpu.CopyFrom(*offset, platform::CPUPlace(), ctx.device_context());
-      offset_data = offset_cpu.data<int64_t>();
-
-      framework::Tensor length_cpu;
-      length_cpu.mutable_data<T>(length->dims(), platform::CPUPlace());
-      length_cpu.CopyFrom(*length, platform::CPUPlace(), ctx.device_context());
-      length_data = length_cpu.data<int64_t>();
-    }
-
     auto lod = in->lod();
     auto n = lod[0].size() - 1;
 
-    PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
-    PADDLE_ENFORCE_EQ(offset->dims().size(), 1UL,
-                      "Only support one level sequence now.");
-    PADDLE_ENFORCE_EQ(length->dims().size(), 1UL,
+    PADDLE_ENFORCE_EQ(lod.size(), 1UL,
                       "Only support one level sequence now.");
     PADDLE_ENFORCE_EQ(
         n, length->dims()[0],
@@ -78,12 +60,30 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
         n, offset->dims()[0],
         "The size of input-sequence and offset-array should be the same")
 
-    for (size_t i = 0; i < n; ++i) {
-      PADDLE_ENFORCE_LT(0, offset_data[i], "The offset must greater than zero")
-      PADDLE_ENFORCE_LT(0, length_data[i], "The length must greater than zero")
-      PADDLE_ENFORCE_LT(lod[0][i] + offset_data[i] + length_data[i],
-                        lod[0][i + 1], "The target tensor's length overflow")
+    const int64_t* offset_data = offset->data<int64_t>();
+    const int64_t* length_data = length->data<int64_t>();
+    framework::Tensor offset_cpu;
+    framework::Tensor length_cpu;
+
+    if (platform::is_gpu_place(ctx.GetPlace())) {
+      offset_cpu.mutable_data<T>(offset->dims(), platform::CPUPlace());
+      offset_cpu.CopyFrom(*offset, platform::CPUPlace(), ctx.device_context());
+      offset_data = offset_cpu.data<int64_t>();
+
+      length_cpu.mutable_data<T>(length->dims(), platform::CPUPlace());
+      length_cpu.CopyFrom(*length, platform::CPUPlace(), ctx.device_context());
+      length_data = length_cpu.data<int64_t>();
     }
+
+    for (size_t i = 0; i < n; ++i) {
+      PADDLE_ENFORCE_LT(0, offset_data[i],
+                "The offset must greater than zero")
+      PADDLE_ENFORCE_LT(0, length_data[i],
+                "The length must greater than zero")
+      PADDLE_ENFORCE_LT(
+          lod[0][i] + offset_data[i] + length_data[i],
+          lod[0][i + 1],
+          "The target tensor's length overflow")}
 
     out->mutable_data<T>(ctx.GetPlace());
     auto out_lod = SequenceSliceLoD(*in, offset_data, length_data);
@@ -100,7 +100,7 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
       Tensor in_t =
           in->Slice(static_cast<int>(lod[0][i] + offset_data[i]),
                     static_cast<int>(lod[0][i] + offset_data[i] +
-                    length_data[i]));
+                                     length_data[i]));
 
       StridedMemcpy<T>(ctx.device_context(), in_t.data<T>(),
                        in_stride, in_t.dims(), out_stride,
