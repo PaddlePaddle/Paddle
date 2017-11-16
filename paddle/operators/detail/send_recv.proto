@@ -31,7 +31,7 @@ service SendRecvService {
 // SelectedRows
 message VariableMessage {
   string varname = 1;
-  string serialized = 2;
+  bytes serialized = 2;
 }
 
 message VoidMessage {

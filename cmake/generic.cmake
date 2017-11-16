@@ -475,7 +475,7 @@ function(grpc_library TARGET_NAME)
   set(options "")
   cmake_parse_arguments(grpc_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-  message("processing ${grpc_library_PROTO}")
+  message(STATUS "generating grpc ${grpc_library_PROTO}")
 
   get_filename_component(ABS_PROTO ${grpc_library_PROTO} ABSOLUTE)
   get_filename_component(PROTO_WE ${grpc_library_PROTO} NAME_WE)
@@ -493,7 +493,8 @@ function(grpc_library TARGET_NAME)
           --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN}" "${ABS_PROTO}"
           DEPENDS "${ABS_PROTO}")
 
-  # NOTE: grpc generated code do not generate virtual-dtor
+  # FIXME(typhoonzero): grpc generated code do not generate virtual-dtor, mark it
+  # as compiler warnings instead of error. Should try remove the warnings also.
   set_source_files_properties(
     ${grpc_grpc_srcs}
     PROPERTIES

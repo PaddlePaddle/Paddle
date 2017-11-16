@@ -18,7 +18,6 @@
 #include <thread>
 
 #include <unistd.h>
-#include <iostream>
 
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/executor.h"
@@ -31,12 +30,15 @@
 namespace paddle {
 namespace operators {
 
-void RunServer(std::shared_ptr<detail::SendRecvServerImpl> service,
+void RunServer(Server **rpc_server,
+               std::shared_ptr<detail::SendRecvServerImpl> service,
                const std::string &server_address) {
   ServerBuilder builder;
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   builder.RegisterService(service.get());
+  // rpc_server.reset(new Server(builder.BuildAndStart());
   std::unique_ptr<Server> server(builder.BuildAndStart());
+  *rpc_server = server.get();
   LOG(INFO) << "Server listening on " << server_address << std::endl;
   server->Wait();
 }
@@ -50,16 +52,19 @@ class RecvOp : public framework::OperatorBase {
     if (!rpc_service_) {
       rpc_service_.reset(new detail::SendRecvServerImpl());
       std::string endpoint = Attr<std::string>("endpoint");
-      server_thread_.reset(new std::thread(RunServer, rpc_service_, endpoint));
+      server_thread_.reset(
+          new std::thread(RunServer, &rpc_server_, rpc_service_, endpoint));
     }
   }
 
-  virtual ~RecvOp() { server_thread_->join(); }
+  virtual ~RecvOp() {
+    rpc_server_->Shutdown();
+    server_thread_->join();
+  }
 
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
     // blocking get one var from client.
-    std::cout << "before get from client..." << std::endl;
     const framework::LoDTensor &t = rpc_service_->Get();
     framework::Scope &recv_scope = scope.NewScope();
     // set graph input var
@@ -81,6 +86,10 @@ class RecvOp : public framework::OperatorBase {
   }
 
  protected:
+  // grpc server instance to track status and gracefully shutdown.
+  // borrow an pointer from server thread.
+  Server *rpc_server_{nullptr};
+  // grpc send/recv service implement to register.
   std::shared_ptr<detail::SendRecvServerImpl> rpc_service_;
   std::shared_ptr<std::thread> server_thread_;
 };

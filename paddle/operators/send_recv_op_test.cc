@@ -16,7 +16,6 @@
 // a RemoteOptimizer.
 
 #include <unistd.h>
-#include <iostream>
 #include <thread>
 
 #include "gtest/gtest.h"
@@ -26,7 +25,10 @@
 
 USE_NO_KERNEL_OP(send);
 USE_NO_KERNEL_OP(recv);
-USE_OP(sum)
+USE_OP(sum);
+
+// global for simplicity.
+std::unique_ptr<paddle::framework::OperatorBase> recv_op;
 
 void InitTensorsInScope(paddle::framework::Scope &scope,
                         paddle::platform::CPUPlace &place) {
@@ -34,15 +36,15 @@ void InitTensorsInScope(paddle::framework::Scope &scope,
   auto var = scope.Var("X");
   auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
   tensor->Resize({10, 10});
-  int *expect = tensor->mutable_data<int>(place);
+  float *expect = tensor->mutable_data<float>(place);
   for (int64_t i = 0; i < tensor->numel(); ++i) {
-    expect[i] = static_cast<int>(i);
+    expect[i] = static_cast<float>(i);
   }
 
   auto out_var = scope.Var("Out");
   auto out_tensor = out_var->GetMutable<paddle::framework::LoDTensor>();
   out_tensor->Resize({10, 10});
-  tensor->mutable_data<int>(place);  // allocate
+  tensor->mutable_data<float>(place);  // allocate
 }
 
 void AddOp(const std::string &type,
@@ -71,39 +73,32 @@ void AddOp(const std::string &type,
 }
 
 void StartServerNet() {
-  std::cout << "starting rpc server..." << std::endl;
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace place;
   InitTensorsInScope(scope, place);
 
   // sub program run in recv_op, for simple test we use sum
-  std::cout << "before creating block..." << std::endl;
   paddle::framework::ProgramDescBind program;
   paddle::framework::BlockDescBind *block = program.MutableBlock(0);
-  std::cout << "adding op..." << std::endl;
-  AddOp("sum", {{"X", {"X"}}}, {{"Out", {"Out"}}}, {}, block);
+  // X for server side tensors, RX for received tensers, must be of same shape.
+  AddOp("sum", {{"X", {"X", "RX"}}}, {{"Out", {"Out"}}}, {}, block);
 
   paddle::framework::AttributeMap attrs;
   attrs.insert({"endpoint", std::string("127.0.0.1:6174")});
   attrs.insert({"OptimizeBlock", block});
-  std::cout << "create recv op..." << std::endl;
-  auto recv_op = paddle::framework::OpRegistry::CreateOp(
-      "recv", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
+  recv_op = paddle::framework::OpRegistry::CreateOp("recv", {{"RX", {"RX"}}},
+                                                    {{"Out", {"Out"}}}, attrs);
   paddle::platform::CPUDeviceContext ctx(place);
-  std::cout << "before run..." << std::endl;
   recv_op->Run(scope, ctx);
 }
 
 TEST(SendRecvOp, CPU) {
   std::thread server_thread(StartServerNet);
-  std::cout << "####server thread started..." << std::endl;
-  sleep(10);
-  std::cout << "####starting trainer..." << std::endl;
+  sleep(5);  // wait server to start
   // local net
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace place;
   InitTensorsInScope(scope, place);
-  // FIXME(typhoonzero): call client side init tensors here.
 
   paddle::framework::AttributeMap attrs;
   attrs.insert({"endpoint", std::string("127.0.0.1:6174")});
@@ -111,19 +106,20 @@ TEST(SendRecvOp, CPU) {
   auto send_op = paddle::framework::OpRegistry::CreateOp(
       "send", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
   paddle::platform::CPUDeviceContext ctx(place);
-  std::cout << "####before send..." << std::endl;
   send_op->Run(scope, ctx);
 
   auto in_var = scope.Var("X");
   auto tensor = in_var->GetMutable<paddle::framework::LoDTensor>();
-  int *expected = tensor->data<int>();
+  float *expected = tensor->data<float>();
 
   auto out_var = scope.Var("Out");
   auto target = out_var->GetMutable<paddle::framework::LoDTensor>();
-  int *actual = target->data<int>();
+  // send fail cause output is none.
+  EXPECT_NE(target->memory_size(), size_t(0));
+  float *actual = target->data<float>();
   for (int64_t i = 0; i < target->numel(); ++i) {
-    // sumed value
     EXPECT_EQ(expected[i] * 2, actual[i]);
   }
+  recv_op.reset();  // dtor can shutdown and join server thread.
   server_thread.join();
 }
