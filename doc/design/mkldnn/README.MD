@@ -15,6 +15,7 @@
  	- [CMake](#cmake)
 	- [Layers](#layers)
 	- [Activations](#activations)
+	- [Weights](#weights)
 	- [Unit Tests](#unit-tests)
 	- [Protobuf Messages](#protobuf-messages)
 	- [Python API](#python-api)
@@ -45,17 +46,23 @@ Figure 1. PaddlePaddle on IA.
 
 ### Layers
 所有MKL-DNN相关的C++ layers，都会按照PaddlePaddle的目录结构存放在
-`paddle/gserver/layers`中，并且文件名都会一以*Mkldnn*开头。
+`paddle/gserver/layers`中，并且文件名都会一以*MKLDNN*开头。
 
-所有MKL-DNN的layers都会继承于一个叫做`MkldnnLayer`的父类，该父类继承于PaddlePaddle的基类`Layer`。
+所有MKL-DNN的layers都会继承于一个叫做`MKLDNNLayer`的父类，该父类继承于PaddlePaddle的基类`Layer`。
+
+在`MKLDNNLayer`中会提供一些必要的接口和函数，并且会写好`forward`和`backward`的基本逻辑。部分函数定义为纯虚函数，子类只需要实现这些函数即可。
 
 ### Activations
-由于在PaddlePaddle中，激活函数是独立于layer概念的，所以会在`paddle/gserver/activations`目录下添加一个`MkldnnActivation.h`文件定义一些用于MKL-DNN的接口，实现方法还是会在`ActivationFunction.cpp`文件。
+由于在PaddlePaddle中，激活函数是独立于layer概念的，所以会在`paddle/gserver/activations`目录下添加`MKLDNNActivation.h`和`MKLDNNActivation.cpp`文件用于定义和使用MKL-DNN的接口。
+
+### Weights
+由于有些layer是含有参数的，我们会尽量让MKL-DNN的参数与PaddlePaddle中`parameter`共享一块内存。
+同时，由于MKL-DNN在训练时使用的参数layout可能与PaddlePaddle默认的`nchw`不一致，我们会在网络训练的开始和结束时分别转换这个layout，使得最终保存的参数格式与PaddlePaddle一致。
 
 ### Unit Tests
-会在`paddle/gserver/test`目录下添加`test_Mkldnn.cpp`和`MkldnnTester.*`用于MKL-DNN的测试。
-
-Activation的测试，计划在PaddlePaddle原有的测试文件上直接添加新的测试type。
+会在`paddle/gserver/test`目录下添加`test_MKLDNN.cpp`和`MKLDNNTester.*`用于MKL-DNN的测试。
+测试分为每个layer(或activation)的单元测试和简单网络的整体测试。
+每个测试会对比PaddlePaddle中CPU算出的结果与MKL-DNN的结果，小于某个比较小的阈值认为通过。
 
 ### Protobuf Messages
 根据具体layer的需求可能会在`proto/ModelConfig.proto`里面添加必要的选项。
@@ -82,7 +89,7 @@ if use_mkldnn
 会在`v1_api_demo`目录下添加一个`mkldnn`的文件夹，里面放入一些用于MKL-DNN测试的demo脚本。
 
 ### Benchmarking
-会考虑添加部分逻辑在`benchmark/paddle/image/run.sh`，添加使用MKL-DNN的测试。
+会添加`benchmark/paddle/image/run_mkldnn.sh`，用于测试使用MKL-DNN之后的性能。
 
 ### Others
 1. 如果在使用MKL-DNN的情况下，会把CPU的Buffer对齐为64。
@@ -94,14 +101,16 @@ if use_mkldnn
 
 我们总结出一些特别需要注意的点：
 
-1. 使用**deviceId_**。为了尽可能少的在父类Layer中添加变量或者函数，我们决定使用已有的`deviceId_`变量来区分layer的属性，定义`-2`为`MkldnnLayer`特有的设备ID。
+1. 使用**deviceId_**。为了尽可能少的在父类Layer中添加变量或者函数，我们决定使用已有的`deviceId_`变量来区分layer的属性，定义`-2`为`MKLDNNLayer`特有的设备ID。
 2. 重写父类Layer的**init**函数，修改`deviceId_`为`-2`，代表这个layer是用于跑在MKL-DNN的环境下。
-3. 创建`MkldnnMatrix`，用于管理MKL-DNN会用到的相关memory函数、接口以及会用的到格式信息。
-4. 创建`MkldnnBase`，定义一些除了layer和memory相关的类和函数。包括MKL-DNN会用到`MkldnnStream`和`CpuEngine`，和未来可能还会用到`FPGAEngine`等。
-5. 在**Argument**里添加两个`MkldnnMatrixPtr`，取名为`mkldnnValue`和`mkldnnGrad`，用于存放`MkldnnLayer`会用到的memory buffer。 并且添加函数cvt(会修改为一个更加合适的函数名)，用于处理"CPU device"和"MKL-DNN device"之间memory的相互转化。
-6. 在父类`Layer`中的`getOutput`函数中添加一段逻辑，用于判断`deviceId`，并针对device在MKL-DNN和CPU之间不统一的情况，做一个前期转换。 也就是调用`Argument`的cvt函数把output统一到需要的device上。
-7. 在原来的`FLAGS`中添加一个`use_mkldnn`的flag，用于选择是否使用MKL-DNN的相关功能。
-8. 关于MKLDNN参数的保存。由于MKLDNN参数的格式与PaddlePaddle原有的格式存在不一样的情况，所以需要在保存参数时同时保存该格式信息。目前准备扩展[Header](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/parameter/Parameter.h#L247)里面的`int32_t version`。这个值不管是在v1还是在v2里面，一直保存的是0，所以可以充分利用这个信息，定义一个枚举处理所有MKLDNN的参数格式，从而`MKLDNNLayer`就可以从输入的参数中获取需要的格式信息。
+3. 创建`MKLDNNMatrix`，同时继承`CpuMatrix`和`mkldnn::memory`。用于管理MKL-DNN会用到的相关memory函数、接口以及会用的到格式信息。
+4. 创建`MKLDNNBase`，定义一些除了layer和memory相关的类和函数。包括MKL-DNN会用到`MKLDNNStream`和`CPUEngine`，和未来可能还会用到`FPGAEngine`等。
+5. 每个`MKLDNNlayer`都会有`inVal_`,`inGrad_`,`outVal_`和`outGrad_`，分别代表input value， input gradient，output value和output gradient。他们会存放MKL-DNN用到的internal memory。同时还会定义以*ext*开头的`MKLDNNMatrix`(表示external的memory)，主要是在格式与PaddlePaddle默认的`nchw`格式不匹配时，用于转换内存的工作。必要的转换函数也会在`MKLDNNLayer`中提前定义好，每个子类只需要调用定义好的reset buffer函数即可。
+6. 每个`MKLDNNlayer`的resetbuffer相关的函数（包括reset input、output的Value和grad），他们会根据输入参数reset internal和external的memory，当然这两者也可以相等，即表示不需要转换。只需要把握一个原则，每个`MKLDNNlayer`的子类，只需要使用internal的memory就可以了，所有external的转换工作在父类的reset函数中都提前准备好了。
+7. 一般来说，external的memory会尽量与PaddlePaddle中的`value`和`grad`共享内存。同时每个`MKLDNNLayer`中的external output value和gradient(也就是`extOutVal_`和`extOutGrad_`)必须分别与`output_.value`和`output_.grad`共享内存，因为PaddlePaddle的activation会直接使用`output_.value`和`output_.grad`。如果不需要external的buffer用于转换，那么internal的buffer也会与他们共享内存。
+8. 如果MKL-DNN layer的后面接有cpu device，那么就会使`output_.value`与`extOutVal_`共享内存，同时数据格式就是`nchw`，这样下一个cpu device就能拿到正确的数据。在有cpu device的时候，external的memory的格式始终是`nchw`或者`nc`。
+9. 由于MKL-DNN的输出操作都是覆盖data的，不是在原来的数据上累加，所以当网络出现分支时，在`backward`时会需要merge不同layer的梯度。`MKLDNNlayer`中会实现merge的方法，此时每个小分支的input gradient会先临时保存在一个`MKLDNNMatrix`中，由分支处的layer负责求和，并把结果放到这个layer的`output_.grad`中。所以整体上，每个子类并不会需要关心分支的事情，也是在父类都实现好了。
+10. 在原来的`FLAGS`中添加一个`use_mkldnn`的flag，用于选择是否使用MKL-DNN的相关功能。
 
 ## References
 

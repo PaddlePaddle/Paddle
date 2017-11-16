@@ -33,10 +33,11 @@ import networks
 import minibatch
 import plot
 import image
-import model
 import paddle.trainer.config_parser as cp
 
 __all__ = [
+    'default_startup_program',
+    'default_main_program',
     'optimizer',
     'layer',
     'activation',
@@ -56,7 +57,6 @@ __all__ = [
     'evaluator',
     'image',
     'master',
-    'model',
 ]
 
 cp.begin_parse()
