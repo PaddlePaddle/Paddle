@@ -426,8 +426,8 @@ __device__ inline bool operator>=(const float16& a, const float16& b) {
 }
 
 // On ARMv8.2-A CPU
-#elif (PADDLE_GNUC_VER >= 71 || PADDLE_CLANG_VER >= 39) && \
-    defined(PADDLE_NEON_64) && defined(PADDLE_ARM_FP16)
+#elif defined(PADDLE_NEON_64) && defined(PADDLE_ARM_FP16) && \
+    (PADDLE_GNUC_VER >= 71 || PADDLE_CLANG_VER >= 39)
 __host__ inline float16 operator+(const float16& a, const float16& b) {
   return float16(vaddh_f16(float16_t(a), float16_t(b)));
 }
