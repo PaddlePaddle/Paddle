@@ -2442,6 +2442,7 @@ void testFactorizationMachineLayer(InputType type, bool useGpu) {
 TEST(Layer, FactorizationMachineLayer) {
   for (auto useGpu : {false, true}) {
     testFactorizationMachineLayer(INPUT_DATA, useGpu);
+    testFactorizationMachineLayer(INPUT_SPARSE_FLOAT_VALUE_DATA, useGpu);
   }
 }
 

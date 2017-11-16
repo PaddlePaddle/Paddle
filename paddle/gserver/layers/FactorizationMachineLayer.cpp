@@ -32,12 +32,10 @@ bool FactorizationMachineLayer::init(const LayerMap& layerMap,
 
   /* initialize the latentVectors_ */
   CHECK_EQ(inputLayers_.size(), 1UL);
-  size_t height = inputLayers_[0]->getSize();
-  CHECK_EQ(parameters_[0]->getSize(), height * factorSize_);
-  latentVectors_ =
-      std::unique_ptr<Weight>(new Weight(height, factorSize_, parameters_[0]));
-
-  v2_ = Matrix::create(height, factorSize_, false, useGpu_);
+  size_t inputSize = inputLayers_[0]->getSize();
+  CHECK_EQ(parameters_[0]->getSize(), inputSize * factorSize_);
+  latentVectors_ = std::unique_ptr<Weight>(
+      new Weight(inputSize, factorSize_, parameters_[0]));
 
   return true;
 }
@@ -48,79 +46,85 @@ void FactorizationMachineLayer::forward(PassType passType) {
   const MatrixPtr& inputV = getInputValue(0);
 
   size_t batchSize = inputV->getHeight();
-  size_t size = getSize();
-  reserveOutput(batchSize, size);
+  size_t outputSize = getSize();
+  size_t inputSize = inputLayers_[0]->getSize();
+  reserveOutput(batchSize, outputSize);
 
   MatrixPtr outV = getOutputValue();
 
-  Matrix::resizeOrCreate(tmpMul_, batchSize, factorSize_, false, useGpu_);
+  Matrix::resizeOrCreate(
+      latentVectorsSquare_, inputSize, factorSize_, false, useGpu_);
+  Matrix::resizeOrCreate(
+      inputMulFactor_, batchSize, factorSize_, false, useGpu_);
   Matrix::resizeOrCreate(tmpOut_, batchSize, factorSize_, false, useGpu_);
 
-  REGISTER_TIMER_INFO("FwMulTimer", getName().c_str());
-  tmpMul_->mul(*inputV, *latentVectors_->getW());
-  tmpMul_->square2(*tmpOut_);
+  REGISTER_TIMER_INFO("InputMulFactorTimer", getName().c_str());
+  inputMulFactor_->mul(*inputV, *latentVectors_->getW());
+  inputMulFactor_->square2(*tmpOut_);
   outV->sumRows(*tmpOut_, 0.5, 0);
 
-  x2_ = inputV->clone(0, 0, useGpu_);
-  if (dynamic_cast<CpuSparseMatrix*>(x2_.get())) {
-    x2_->copyFrom(*inputV);
-    (dynamic_cast<CpuSparseMatrix*>(x2_.get()))->square2();
+  inputSquare_ = inputV->clone(0, 0, useGpu_);
+  if (dynamic_cast<CpuSparseMatrix*>(inputSquare_.get())) {
+    inputSquare_->copyFrom(*inputV);
+    (dynamic_cast<CpuSparseMatrix*>(inputSquare_.get()))->square2();
   } else {
-    inputV->square2(*x2_);
+    inputV->square2(*inputSquare_);
   }
-  latentVectors_->getW()->square2(*v2_);
-  tmpOut_->mul(*x2_, *v2_);
+  latentVectors_->getW()->square2(*latentVectorsSquare_);
+  tmpOut_->mul(*inputSquare_, *latentVectorsSquare_);
   outV->sumRows(*tmpOut_, -0.5, 1.0);
 
   /* activation */ {
-    REGISTER_TIMER_INFO("FwAtvTimer", getName().c_str());
+    REGISTER_TIMER_INFO("FmAtvTimer", getName().c_str());
     forwardActivation();
   }
 }
 
 void FactorizationMachineLayer::backward(const UpdateCallback& callback) {
-  /* Do derivation */ {
-    REGISTER_TIMER_INFO("BpAvtTimer", getName().c_str());
-    backwardActivation();
-  }
+  /* Do derivation */ { backwardActivation(); }
 
   const MatrixPtr& inputV = getInputValue(0);
   const MatrixPtr& oGrad = getOutputGrad();
 
-  MatrixPtr tmpSum =
-      Matrix::create(1, latentVectors_->getW()->getHeight(), false, useGpu_);
-  MatrixPtr tmpSum_T = Matrix::create(tmpSum->getRowBuf(0),
-                                      latentVectors_->getW()->getHeight(),
-                                      1,
-                                      false,
-                                      useGpu_);
+  Matrix::resizeOrCreate(
+      tmpSum_, 1, latentVectors_->getW()->getHeight(), false, useGpu_);
+  MatrixPtr tmpSumTrans = Matrix::create(tmpSum_->getRowBuf(0),
+                                         latentVectors_->getW()->getHeight(),
+                                         1,
+                                         false,
+                                         useGpu_);
 
   /* Calculate the gradients of the latentVectors_ matrix */
   if (latentVectors_->getWGrad()) {
-    MatrixPtr tmpIn = inputV->clone(0, 0, useGpu_);
+    MatrixPtr tmpInput = inputV->clone(0, 0, useGpu_);
     if (dynamic_cast<CpuSparseMatrix*>(inputV.get())) {
-      CpuSparseMatrix* inputV_s = dynamic_cast<CpuSparseMatrix*>(inputV.get());
-      CpuSparseMatrix* x2_s = dynamic_cast<CpuSparseMatrix*>(x2_.get());
-      CpuSparseMatrix* tmpIn_s = dynamic_cast<CpuSparseMatrix*>(tmpIn.get());
-      tmpIn_s->copyFrom(*inputV_s);
-      tmpIn_s->rowScale(0, *inputV_s, *oGrad);
-      latentVectors_->getWGrad()->mul(*tmpIn_s->getTranspose(), *tmpMul_, 1, 1);
-      tmpIn_s->rowScale(0, *x2_s, *oGrad);
+      CpuSparseMatrix* sparseInputV =
+          dynamic_cast<CpuSparseMatrix*>(inputV.get());
+      CpuSparseMatrix* sparseInputSquare =
+          dynamic_cast<CpuSparseMatrix*>(inputSquare_.get());
+      CpuSparseMatrix* sparseTmpInput =
+          dynamic_cast<CpuSparseMatrix*>(tmpInput.get());
+      sparseTmpInput->copyFrom(*sparseInputV);
+      sparseTmpInput->rowScale(0, *sparseInputV, *oGrad);
+      latentVectors_->getWGrad()->mul(
+          *sparseTmpInput->getTranspose(), *inputMulFactor_, 1, 1);
+      sparseTmpInput->rowScale(0, *sparseInputSquare, *oGrad);
 
-      MatrixPtr ones = Matrix::create(1, inputV->getHeight(), false, useGpu_);
-      ones->zeroMem();
-      ones->add(-1);
-      tmpSum->mul(*ones, *tmpIn_s, 1, 0);
+      Matrix::resizeOrCreate(negOnes_, 1, inputV->getHeight(), false, useGpu_);
+      negOnes_->zeroMem();
+      negOnes_->add(-1);
+      tmpSum_->mul(*negOnes_, *sparseTmpInput, 1, 0);
     } else {
-      tmpIn->rowScale(0, *inputV, *oGrad);
-      latentVectors_->getWGrad()->mul(*tmpIn->getTranspose(), *tmpMul_, 1, 1);
-      tmpIn->rowScale(0, *x2_, *oGrad);
+      tmpInput->rowScale(0, *inputV, *oGrad);
+      latentVectors_->getWGrad()->mul(
+          *tmpInput->getTranspose(), *inputMulFactor_, 1, 1);
+      tmpInput->rowScale(0, *inputSquare_, *oGrad);
 
-      tmpSum->sumCols(*tmpIn, -1, 0);
+      tmpSum_->sumCols(*tmpInput, -1, 0);
     }
 
     latentVectors_->getWGrad()->addRowScale(
-        0, *latentVectors_->getW(), *tmpSum_T);
+        0, *latentVectors_->getW(), *tmpSumTrans);
 
     /* Increasing the number of gradient */
     latentVectors_->getParameterPtr()->incUpdate(callback);
@@ -129,10 +133,10 @@ void FactorizationMachineLayer::backward(const UpdateCallback& callback) {
   /* Calculate the input layers gradient */
   MatrixPtr inGrad = getInputGrad(0);
   if (inGrad != NULL) {
-    MatrixPtr latentVectors_T = latentVectors_->getW()->getTranspose();
-    inGrad->mul(*tmpMul_, *latentVectors_T, 1, 1);
-    tmpSum_T->sumRows(*v2_, -1, 0);
-    inGrad->addColScale(0, *inputV, *tmpSum);
+    inGrad->mul(
+        *inputMulFactor_, *latentVectors_->getW()->getTranspose(), 1, 1);
+    tmpSumTrans->sumRows(*latentVectorsSquare_, -1, 0);
+    inGrad->addColScale(0, *inputV, *tmpSum_);
     inGrad->rowScale(0, *inGrad, *oGrad);
   }
 }

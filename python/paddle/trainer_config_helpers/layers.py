@@ -7161,16 +7161,26 @@ def factorization_machine(input,
     The Factorization Machine models pairwise feature interactions as inner
     product of the learned latent vectors corresponding to each input feature.
     The Factorization Machine can effectively capture feature interactions
-    especially when the input is sparse. In practice, usually order 2 feature
-    interactions are considered using Factorization Machine with the formula:
+    especially when the input is sparse.
+
+    This implementation only consider the 2-order feature interactions using
+    Factorization Machine with the formula:
+
     .. math::
         y = \sum_{i=1}^{n-1}\sum_{j=i+1}^n\langle v_i, v_j \rangle x_i x_j
+
     Note:
         X is the input vector with size n. V is the factor matrix. Each row of V
         is the latent vector corresponding to each input dimesion. The size of
         each latent vector is k.
+
+    For details of Factorization Machine, please refer to the paper:
+        Rendle, Steffen. Factorization machines. IEEE 10th International
+        Conference on Data Mining (ICDM). IEEE, 2010.
+
     .. code-block:: python
        factor_machine = factorization_machine(input=input_layer, factor_size=10)
+
     :param input: The input layer.
     :type input: LayerOutput
     :param factor_size: The hyperparameter that defines the dimensionality of

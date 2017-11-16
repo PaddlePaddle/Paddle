@@ -34,27 +34,36 @@ namespace paddle {
  *     y = \sum_{i=1}^{n-1}\sum_{j=i+1}^n\langle v_i, v_j \rangle x_i x_j
  * \f]
  *
+ * The detailed calculation for forward and backward can be found at this paper:
+ *
+ *     Rendle, Steffen. Factorization machines. IEEE 10th International
+ *     Conference on Data Mining (ICDM). IEEE, 2010.
+ *
  * The config file api is factorization_machine.
  */
 
 class FactorizationMachineLayer : public Layer {
 protected:
-  /// The latent vectors, shape: (size, factorSize_)
-  /// Each row of the latentVectors_ matrix is the latent vector
-  /// corresponding to one input feature dimension
+  // The latent vectors, shape: (size, factorSize_)
+  // Each row of the latentVectors_ matrix is the latent vector
+  // corresponding to one input feature dimension
   std::unique_ptr<Weight> latentVectors_;
-  /// The hyperparameter that defines the dimensionality of the factorization
+  // The hyperparameter that defines the dimensionality of the factorization
   size_t factorSize_;
 
 private:
-  /// The result of input matrix * letent vector matrix that will be used in
-  /// both forward and backward step
-  MatrixPtr tmpMul_;
+  // Store the square values of the letent vectors matrix
+  MatrixPtr latentVectorsSquare_;
+  // Store the square values of input matrix
+  MatrixPtr inputSquare_;
+  // The result of input matrix * latent vector matrix that will be used in
+  // both forward and backward step
+  MatrixPtr inputMulFactor_;
+  // Temporary calculation result store
   MatrixPtr tmpOut_;
-  /// Store the square values of the letent vectors matrix
-  MatrixPtr v2_;
-  /// Store the square values of input matrix
-  MatrixPtr x2_;
+  MatrixPrt tmpSum_;
+  // Negative identity matrix
+  MatrixPtr negOnes_;
 
 public:
   explicit FactorizationMachineLayer(const LayerConfig& config)
