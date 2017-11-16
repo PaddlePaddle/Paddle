@@ -138,8 +138,11 @@ void MKLDNNLayer::backward(const UpdateCallback& callback) {
   }
 }
 
-void MKLDNNLayer::reshapeInput(int& batchsize, int& height, int& width) {
-  const Argument& input = inputLayers_[0]->getOutput();
+void MKLDNNLayer::reshapeInput(int& batchsize,
+                               int& height,
+                               int& width,
+                               size_t inputIdx) {
+  const Argument& input = inputLayers_[inputIdx]->getOutput();
   batchsize = input.getBatchSize();
   int h = input.getFrameHeight();
   int w = input.getFrameWidth();
