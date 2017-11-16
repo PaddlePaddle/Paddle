@@ -149,7 +149,7 @@ class TestGRUOpReverse(TestGRUOp):
         self.is_reverse = True
         self.attrs = {
             'activation': 'tanh',
-            'gate_activation': 'tanh',
+            'gate_activation': 'sigmoid',
             'is_reverse': self.is_reverse
         }
 
