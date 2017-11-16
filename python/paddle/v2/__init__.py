@@ -33,10 +33,11 @@ import networks
 import minibatch
 import plot
 import image
-import model
 import paddle.trainer.config_parser as cp
 
 __all__ = [
+    'default_startup_program',
+    'default_main_program',
     'optimizer',
     'layer',
     'activation',
@@ -56,7 +57,6 @@ __all__ = [
     'evaluator',
     'image',
     'master',
-    'model',
 ]
 
 cp.begin_parse()
@@ -75,6 +75,31 @@ def init(**kwargs):
     # NOTE: overwrite arguments from ENV if it is in kwargs
     for key in args_dict.keys():
         args.append('--%s=%s' % (key, str(args_dict[key])))
+
+    # auto set cpu environment
+    def set_env(key, value):
+        '''If the key has not been set in the environment, set it with value.'''
+        assert isinstance(key, str)
+        assert isinstance(value, str)
+        envset = os.environ.get(key)
+        if envset is None:
+            os.environ[key] = value
+
+    ht = os.popen("lscpu |grep \"per core\"|awk -F':' '{print $2}'|xargs")
+    ht = int(ht.read())
+    if ht == 1:  # ht is off
+        set_env("OMP_DYNAMIC", "false")
+        set_env("KMP_AFFINITY", "granularity=fine,compact,0,0")
+    else:
+        set_env("OMP_DYNAMIC", "true")
+        set_env("KMP_AFFINITY", "granularity=fine,compact,1,0")
+    processors = os.popen("grep \"processor\" /proc/cpuinfo|sort -u|wc -l")
+    processors = int(processors.read())
+    trainers = kwargs.get('trainer_count', 1)
+    threads = processors / trainers
+    threads = '1' if threads < 1 else str(threads)
+    set_env("OMP_NUM_THREADS", threads)
+    set_env("MKL_NUM_THREADS", threads)
 
     if 'use_gpu' in kwargs:
         cp.g_command_config_args['use_gpu'] = kwargs['use_gpu']
