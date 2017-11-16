@@ -1,8 +1,8 @@
-import paddle.v2.framework.layers as layers
-from paddle.v2.framework.framework import Program
-from paddle.v2.framework.executor import Executor
-from paddle.v2.framework.optimizer import MomentumOptimizer
-import paddle.v2.framework.core as core
+import paddle.v2.fluid.layers as layers
+from paddle.v2.fluid.framework import Program
+from paddle.v2.fluid.executor import Executor
+from paddle.v2.fluid.optimizer import MomentumOptimizer
+import paddle.v2.fluid.core as core
 import paddle.v2 as paddle
 import unittest
 import numpy as np
