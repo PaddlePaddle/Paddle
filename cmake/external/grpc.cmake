@@ -22,7 +22,7 @@ SET(GRPC_CPP_PLUGIN "${GRPC_SOURCES_DIR}/src/extern_grpc-build/grpc_cpp_plugin" 
 
 ExternalProject_Add(
     extern_grpc
-    # DEPENDS protobuf zlib
+    DEPENDS protobuf zlib
     GIT_REPOSITORY "https://github.com/grpc/grpc.git"
     GIT_TAG "v1.7.x"
     PREFIX          ${GRPC_SOURCES_DIR}

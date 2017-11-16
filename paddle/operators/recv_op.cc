@@ -36,7 +36,6 @@ void RunServer(Server **rpc_server,
   ServerBuilder builder;
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   builder.RegisterService(service.get());
-  // rpc_server.reset(new Server(builder.BuildAndStart());
   std::unique_ptr<Server> server(builder.BuildAndStart());
   *rpc_server = server.get();
   LOG(INFO) << "Server listening on " << server_address << std::endl;
