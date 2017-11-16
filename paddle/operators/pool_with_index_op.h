@@ -46,14 +46,14 @@ class MaxPoolWithIndexKernel : public framework::OpKernel<T> {
       case 2: {
         paddle::operators::math::MaxPool2dWithIndexFunctor<Place, T>
             pool2d_forward;
-        pool2d_forward(context.device_context(), *in_x, *out, *mask, ksize,
-                       strides, paddings);
+        pool2d_forward(context.device_context(), *in_x, ksize, strides,
+                       paddings, out, mask);
       } break;
       case 3: {
         paddle::operators::math::MaxPool3dWithIndexFunctor<Place, T>
             pool3d_forward;
-        pool3d_forward(context.device_context(), *in_x, *out, *mask, ksize,
-                       strides, paddings);
+        pool3d_forward(context.device_context(), *in_x, ksize, strides,
+                       paddings, out, mask);
       } break;
       default: { PADDLE_THROW("Pool op only supports 2D and 3D input."); }
     }
@@ -81,22 +81,21 @@ class MaxPoolWithIndexGradKernel : public framework::OpKernel<T> {
 
     if (in_x_grad) {
       in_x_grad->mutable_data<T>(context.GetPlace());
-      auto temp = framework::EigenVector<T>::Flatten(*in_x_grad);
-      temp.device(context.GetEigenDevice<Place>()) =
-          temp.constant(static_cast<T>(0));
+      auto& device_ctx = context.device_context();
+      math::set_constant(device_ctx, in_x_grad, 0);
 
       switch (ksize.size()) {
         case 2: {
           paddle::operators::math::MaxPool2dWithIndexGradFunctor<Place, T>
               pool2d_backward;
-          pool2d_backward(context.device_context(), *in_x_grad, *out_grad,
-                          *mask, ksize, strides, paddings);
+          pool2d_backward(device_ctx, *out_grad, *mask, ksize, strides,
+                          paddings, in_x_grad);
         } break;
         case 3: {
           paddle::operators::math::MaxPool3dWithIndexGradFunctor<Place, T>
               pool3d_backward;
-          pool3d_backward(context.device_context(), *in_x_grad, *out_grad,
-                          *mask, ksize, strides, paddings);
+          pool3d_backward(device_ctx, *out_grad, *mask, ksize, strides,
+                          paddings, in_x_grad);
         } break;
         default: { PADDLE_THROW("Pool op only supports 2D and 3D input."); }
       }

@@ -43,16 +43,12 @@ class Conv3DTransposeOpMaker : public framework::OpProtoAndCheckerMaker {
 class ConvTransposeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override;
 };
 
 class ConvTransposeOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
   void InferShape(framework::InferShapeContext* ctx) const override;
 };
 
@@ -66,6 +62,8 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     Tensor* output = context.Output<Tensor>("Output");
 
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
+    // Actually, no paddings and groups allowed in conv transpose.
+    std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     // TODO(Zhuoyuan): Paddings can be added in future.
     // groups will alway be disabled in conv2dtranspose.
 
@@ -120,6 +118,10 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     math::SetConstant<Place, T> set_zero;
     set_zero(context.device_context(), output, static_cast<T>(0));
 
+    math::Col2ImFunctor<math::ColFormat::kCFO, Place, T> col2im;
+    math::Col2VolFunctor<Place, T> col2vol;
+    std::vector<int> dilations({1, 1, 1});
+
     // convolution transpose: gemm + col2im or col2vol (similar to conv-backward
     // on input)
     for (int i = 0; i < batch_size; i++) {
@@ -138,16 +140,16 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
       if (filter_shape_vec.size() == 2) {
         // col2im: col_matrix -> dy
         // from (c * k_h * k_w, h * w) to (c, o_h, o_w)
-        math::Col2ImFunctor<math::ColFormat::kCFO, Place, T> col2im;
-
-        col2im(context.device_context(), output_batch, col, strides[0],
-               strides[1], 0, 0, 0, 0);
+        col2im(context.device_context(), col,
+               std::vector<int>{dilations[0], dilations[1]}, strides,
+               std::vector<int>{paddings[0], paddings[1], paddings[0],
+                                paddings[1]},
+               &output_batch);
       } else if (filter_shape_vec.size() == 3) {
         // col2vol: col_matrix -> dy
         // from (c * k_d * k_h * k_w, d * h * w) to (c, o_d, o_h, o_w)
-        math::Col2VolFunctor<Place, T> col2vol;
-        col2vol(context.device_context(), output_batch, col, strides[0],
-                strides[1], strides[2], 0, 0, 0);
+        col2vol(context.device_context(), col, dilations, strides,
+                std::vector<int>{0, 0, 0}, &output_batch);
       }
     }
   }
@@ -228,6 +230,10 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
       Tensor filter_grad_;
       math::SetConstant<Place, T> set_zero;
 
+      math::Im2ColFunctor<math::ColFormat::kCFO, Place, T> im2col;
+      math::Vol2ColFunctor<Place, T> vol2col;
+      std::vector<int> dilations({1, 1, 1});
+
       if (input_grad) {
         input_grad->mutable_data<T>(context.GetPlace());
         set_zero(context.device_context(), input_grad, static_cast<T>(0));
@@ -247,17 +253,16 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
         if (filter_shape_vec.size() == 2) {
           // im2col: dy -> col matrix
           // from (c, o_h, o_w) to (c * k_h * k_w, h * w)
-          math::Im2ColFunctor<math::ColFormat::kCFO, Place, T> im2col;
-          im2col(context.device_context(), output_grad_batch, col, strides[0],
-                 strides[1], paddings[0], paddings[0], paddings[1],
-                 paddings[1]);
+          im2col(context.device_context(), output_grad_batch,
+                 std::vector<int>{dilations[0], dilations[1]}, strides,
+                 std::vector<int>{paddings[0], paddings[1], paddings[0],
+                                  paddings[1]},
+                 &col);
         } else if (filter_shape_vec.size() == 3) {
           // vol2col: dy -> col_matrix
           // from (c, o_d, o_h, o_w) to (c * k_d * k_h * k_w, d * h * w)
-          math::Vol2ColFunctor<Place, T> vol2col;
-          vol2col(context.device_context(), output_grad_batch, col, strides[0],
-                  strides[1], strides[2], paddings[0], paddings[1],
-                  paddings[2]);
+          vol2col(context.device_context(), output_grad_batch, dilations,
+                  strides, paddings, &col);
         }
 
         if (input_grad) {
