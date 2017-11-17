@@ -4,9 +4,7 @@ from op_test import OpTest
 
 
 def conv2dtranspose_forward_naive(input_, filter_, conv2dtranspose_param):
-    # [2, 3, 5, 5]
     in_n, in_c, in_h, in_w = input_.shape
-    # [3, 6, 3, 3]
     f_c, out_c, f_h, f_w = filter_.shape
     assert in_c == f_c
 
@@ -29,6 +27,7 @@ def conv2dtranspose_forward_naive(input_, filter_, conv2dtranspose_param):
                     j1, j2 = j * stride[0], j * stride[0] + f_w
                     out[n, k, i1:i2, j1:j2] += tmp_out
 
+    out = out[:, :, pad[0]:out_h - pad[0], pad[1]:out_w - pad[1]]
     return out
 
 
@@ -36,8 +35,6 @@ class TestConv2dTransposeOp(OpTest):
     def setUp(self):
         # init as conv transpose
         self.init_op_type()
-
-        # [2, 3, 5, 5] -> kernel [3, 6, 3, 3] -> output [2, 6, 7, 7]
         self.init_test_case()
 
         conv2dtranspose_param = {'stride': self.stride, 'pad': self.pad}
@@ -55,7 +52,6 @@ class TestConv2dTransposeOp(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        print 'check output here for', self.op_type
         self.check_output()
 
     def test_check_grad_no_input(self):
@@ -86,6 +82,26 @@ class TestConv2dTransposeOp(OpTest):
 
     def init_op_type(self):
         self.op_type = "conv2d_transpose"
+
+
+class TestWithPad(TestConv2dTransposeOp):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.dilations = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        f_c = self.input_size[1]
+        self.filter_size = [f_c, 6, 3, 3]
+
+
+class TestWithStride(TestConv2dTransposeOp):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [2, 2]
+        self.dilations = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        f_c = self.input_size[1]
+        self.filter_size = [f_c, 6, 3, 3]
 
 
 # ------------ test_cudnn ------------

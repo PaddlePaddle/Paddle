@@ -110,12 +110,29 @@ class TestConv2dOp(OpTest):
         self.op_type = "conv2d"
 
 
+class TestWithPad(TestConv2dOp):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] / self.groups
+        self.filter_size = [6, f_c, 3, 3]
+
+
+class TestWithStride(TestConv2dOp):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [2, 2]
+        self.input_size = [2, 3, 6, 6]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] / self.groups
+        self.filter_size = [6, f_c, 3, 3]
+
+
 class TestWithGroup(TestConv2dOp):
     def init_group(self):
         self.groups = 3
-
-    def init_op_type(self):
-        self.op_type = "conv2d"
 
 
 class TestWith1x1(TestConv2dOp):
@@ -127,14 +144,8 @@ class TestWith1x1(TestConv2dOp):
         f_c = self.input_size[1] / self.groups
         self.filter_size = [6, f_c, 1, 1]
 
-    def init_dilation(self):
-        self.dilations = [1, 1]
-
     def init_group(self):
         self.groups = 3
-
-    def init_op_type(self):
-        self.op_type = "conv2d"
 
 
 class TestWithDilation(TestConv2dOp):
@@ -152,14 +163,19 @@ class TestWithDilation(TestConv2dOp):
     def init_group(self):
         self.groups = 3
 
-    def init_op_type(self):
-        self.op_type = "conv2d"
-
 
 #----------------Conv2dCudnn----------------
-
-
 class TestCudnn(TestConv2dOp):
+    def init_op_type(self):
+        self.op_type = "conv_cudnn"
+
+
+class TestCudnnWithPad(TestWithPad):
+    def init_op_type(self):
+        self.op_type = "conv_cudnn"
+
+
+class TestCudnnWithStride(TestWithStride):
     def init_op_type(self):
         self.op_type = "conv_cudnn"
 
