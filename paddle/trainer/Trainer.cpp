@@ -137,8 +137,8 @@ void Trainer::init(const std::shared_ptr<TrainerConfigHelper>& config,
     }
   }
 
-  if (FLAGS_trainer_count > 1) {
-    CHECK(!FLAGS_use_mkldnn) << "MKLDNN only need 1 trainer";
+  if (FLAGS_use_mkldnn) {
+    CHECK_EQ(FLAGS_trainer_count, 1UL) << "MKLDNN only need 1 trainer";
   }
 
   if (testing) {
