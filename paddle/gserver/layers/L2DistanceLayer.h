@@ -16,12 +16,11 @@ limitations under the License. */
 
 #include "Layer.h"
 #include "paddle/math/Matrix.h"
-#include "paddle/utils/ThreadLocal.h"
 
 namespace paddle {
 
 /**
- * @brief A layer for calculating l2 distance between the two input vectors.
+ * @brief The layer calculates the l2 distance between two input vectors.
  * \f[
  * f(\bf{x}, \bf{y}) = \sqrt{\sum_{i=1}^D(x_i - y_i)}
  * \f]
@@ -30,13 +29,12 @@ namespace paddle {
  * - Input2: A vector (batchSize * dataDim)
  * - Output: A vector (batchSize * 1)
  *
- * The config file api is l2_distance.
+ * The configuration api is: l2_distance_layer.
  */
 
 class L2DistanceLayer : public Layer {
 public:
   explicit L2DistanceLayer(const LayerConfig& config) : Layer(config) {}
-
   ~L2DistanceLayer() {}
 
   bool init(const LayerMap& layerMap,
@@ -46,7 +44,8 @@ public:
   void backward(const UpdateCallback& callback = nullptr) override;
 
 private:
-  // Store result of subtracting Input2 from Input1.
+  // Store the result of subtracting Input2 from Input1 in forward computation,
+  // which will be reused in backward computation.
   MatrixPtr inputSub_;
 };
 

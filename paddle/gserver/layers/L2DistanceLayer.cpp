@@ -25,9 +25,9 @@ bool L2DistanceLayer::init(const LayerMap& layerMap,
   /* Initialize the basic parent class */
   Layer::init(layerMap, parameterMap);
 
-  CHECK_EQ(inputLayers_.size(), 2UL) << "The L2 distance layer accepts two and "
+  CHECK_EQ(inputLayers_.size(), 2UL) << "The L2DistanceLayer accepts two and "
                                      << "only two inputs.";
-  CHECK_EQ(getSize(), 1UL) << "The output dimensionality of L2 distance"
+  CHECK_EQ(getSize(), 1UL) << "The output dimensionality of L2DistanceLayer "
                            << "is fixed to be 1.";
 
   return true;
@@ -41,9 +41,9 @@ void L2DistanceLayer::forward(PassType passType) {
 
   CHECK(inV1 && inV2);
   CHECK_EQ(inV1->getHeight(), inV2->getHeight())
-      << "The height of two inputs to this layer must be the same.";
+      << "The height of two inputs of this layer must be the same.";
   CHECK_EQ(inV1->getWidth(), inV2->getWidth())
-      << "The width of two inputs to this layer must be the same.";
+      << "The width of two inputs of this layer must be the same.";
 
   int batchSize = inV1->getHeight();
   int output_dim = getSize();
@@ -66,21 +66,20 @@ void L2DistanceLayer::forward(PassType passType) {
 void L2DistanceLayer::backward(const UpdateCallback& callback) {
   const auto outG = getOutputGrad();
   const auto outV = getOutputValue();
-  const auto inV1 = getInputValue(0);
-  const auto inV2 = getInputValue(1);
+  CHECK(outG && outV);
+
   auto inGrad1 = getInputGrad(0);
   auto inGrad2 = getInputGrad(1);
-  CHECK(outG && outV && inV1 && inV2 && inGrad1 && inGrad2);
 
   {
     REGISTER_TIMER_INFO("L2DistanceBpAtvTimer", getName().c_str());
 
-    outV->scalarDiv(*outV, 1.);
-    outV->dotMul(*outG, *outV);
-
-    if (inGrad1) {
-      inGrad1->addRowScale(0, *inputSub_, *outV);
+    if (inGrad1 || inGrad2) {
+      outV->scalarDiv(*outV, 1.);
+      outV->dotMul(*outG, *outV);
     }
+
+    if (inGrad1) inGrad1->addRowScale(0, *inputSub_, *outV);
 
     if (inGrad2) {
       inputSub_->mulScalar(-1.);
