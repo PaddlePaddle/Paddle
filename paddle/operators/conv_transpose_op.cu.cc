@@ -18,14 +18,18 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_GPU_KERNEL(
     conv2d_transpose,
-    ops::GemmConvTransposeKernel<paddle::platform::GPUPlace, float>);
+    ops::GemmConvTransposeKernel<paddle::platform::GPUPlace, float>,
+    ops::GemmConvTransposeKernel<paddle::platform::GPUPlace, double>);
 REGISTER_OP_GPU_KERNEL(
     conv2d_transpose_grad,
-    ops::GemmConvTransposeGradKernel<paddle::platform::GPUPlace, float>);
+    ops::GemmConvTransposeGradKernel<paddle::platform::GPUPlace, float>,
+    ops::GemmConvTransposeGradKernel<paddle::platform::GPUPlace, double>);
 
 REGISTER_OP_GPU_KERNEL(
     conv3d_transpose,
-    ops::GemmConvTransposeKernel<paddle::platform::GPUPlace, float>);
+    ops::GemmConvTransposeKernel<paddle::platform::GPUPlace, float>,
+    ops::GemmConvTransposeKernel<paddle::platform::GPUPlace, double>);
 REGISTER_OP_GPU_KERNEL(
     conv3d_transpose_grad,
-    ops::GemmConvTransposeGradKernel<paddle::platform::GPUPlace, float>);
+    ops::GemmConvTransposeGradKernel<paddle::platform::GPUPlace, float>,
+    ops::GemmConvTransposeGradKernel<paddle::platform::GPUPlace, double>);
