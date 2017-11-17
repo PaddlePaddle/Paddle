@@ -235,6 +235,23 @@ void OpDescBind::Rename(const std::string &old_name,
   need_update_ = true;
 }
 
+void OpDescBind::RenameOutput(const std::string &old_name,
+                              const std::string &new_name) {
+  for (auto &output : outputs_) {
+    std::replace(output.second.begin(), output.second.end(), old_name,
+                 new_name);
+  }
+  need_update_ = true;
+}
+
+void OpDescBind::RenameInput(const std::string &old_name,
+                             const std::string &new_name) {
+  for (auto &input : inputs_) {
+    std::replace(input.second.begin(), input.second.end(), old_name, new_name);
+  }
+  need_update_ = true;
+}
+
 struct SetAttrDescVisitor : public boost::static_visitor<void> {
   explicit SetAttrDescVisitor(OpDesc::Attr *attr) : attr_(attr) {}
   mutable OpDesc::Attr *attr_;
@@ -448,7 +465,12 @@ const std::vector<std::string> &CompileTimeInferShapeContext::Outputs(
 DDim CompileTimeInferShapeContext::GetDim(const std::string &name) const {
   auto var = block_.FindVarRecursive(name);
   PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
-  return framework::make_ddim(var->Shape());
+  try {
+    return framework::make_ddim(var->Shape());
+  } catch (...) {
+    VLOG(5) << "GetDim of variable " << name << " error";
+    std::rethrow_exception(std::current_exception());
+  }
 }
 
 void CompileTimeInferShapeContext::SetDim(const std::string &name,

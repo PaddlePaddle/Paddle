@@ -1082,6 +1082,21 @@ TEST(Layer, InterpolationLayer) {
   }
 }
 
+TEST(Layer, DotProdLayer) {
+  TestConfig config;
+  config.layerConfig.set_type("dot_prod");
+  config.layerConfig.set_size(1);
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 10, 0});
+  config.layerConfig.add_inputs();
+  config.inputDefs.push_back({INPUT_DATA, "layer_1", 10, 0});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "dot_prod", 10, false, useGpu);
+  }
+}
+
 TEST(Layer, OuterProdLayer) {
   TestConfig config;
   config.layerConfig.set_type("out_prod");

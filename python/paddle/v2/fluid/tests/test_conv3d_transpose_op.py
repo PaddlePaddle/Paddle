@@ -4,9 +4,7 @@ from op_test import OpTest
 
 
 def conv3dtranspose_forward_naive(input_, filter_, conv3dtranspose_param):
-    # [2, 3, 5, 5, 5]
     in_n, in_c, in_d, in_h, in_w = input_.shape
-    # [3, 6, 3, 3, 3]
     f_c, out_c, f_d, f_h, f_w = filter_.shape
     assert in_c == f_c
 
@@ -14,7 +12,6 @@ def conv3dtranspose_forward_naive(input_, filter_, conv3dtranspose_param):
     out_d = (in_d - 1) * stride[0] + f_d
     out_h = (in_h - 1) * stride[1] + f_h
     out_w = (in_w - 1) * stride[2] + f_w
-
     out = np.zeros((in_n, out_c, out_d, out_h, out_w))
 
     for n in range(in_n):
@@ -33,6 +30,8 @@ def conv3dtranspose_forward_naive(input_, filter_, conv3dtranspose_param):
                         j1, j2 = j * stride[2], j * stride[2] + f_w
                         out[n, k, d1:d2, i1:i2, j1:j2] += tmp_out
 
+    out = out[:, :, pad[0]:out_d - pad[0], pad[1]:out_h - pad[1], pad[2]:out_w -
+              pad[2]]
     return out
 
 
@@ -40,8 +39,6 @@ class TestConv3dTransposeOp(OpTest):
     def setUp(self):
         # init as conv transpose
         self.init_op_type()
-
-        # [2, 3, 5, 5, 5] -> kernel [3, 6, 3, 3, 3] -> output [2, 6, 7, 7, 7]
         self.init_test_case()
 
         conv3dtranspose_param = {'stride': self.stride, 'pad': self.pad}
@@ -49,7 +46,6 @@ class TestConv3dTransposeOp(OpTest):
         filter_ = np.random.random(self.filter_size).astype("float32")
         output = conv3dtranspose_forward_naive(
             input_, filter_, conv3dtranspose_param).astype("float32")
-        # print 'deconv output py', output, output.shape
 
         self.inputs = {'Input': input_, 'Filter': filter_}
         self.attrs = {
@@ -60,7 +56,6 @@ class TestConv3dTransposeOp(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        print 'check output here'
         self.check_output()
 
     def test_check_grad(self):
@@ -85,12 +80,32 @@ class TestConv3dTransposeOp(OpTest):
         self.pad = [0, 0, 0]
         self.stride = [1, 1, 1]
         self.dilations = [1, 1, 1]
-        self.input_size = [2, 3, 5, 5, 5]  # NCHW
+        self.input_size = [2, 3, 5, 5, 5]  # NCDHW
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 3, 3, 3]
 
     def init_op_type(self):
         self.op_type = "conv3d_transpose"
+
+
+class TestWithPad(TestConv3dTransposeOp):
+    def init_test_case(self):
+        self.pad = [1, 1, 1]
+        self.stride = [1, 1, 1]
+        self.dilations = [1, 1, 1]
+        self.input_size = [2, 3, 5, 5, 5]  # NCDHW
+        f_c = self.input_size[1]
+        self.filter_size = [f_c, 6, 3, 3, 3]
+
+
+class TestWithStride(TestConv3dTransposeOp):
+    def init_test_case(self):
+        self.pad = [1, 1, 1]
+        self.stride = [2, 2, 2]
+        self.dilations = [1, 1, 1]
+        self.input_size = [2, 3, 5, 5, 5]  # NCDHW
+        f_c = self.input_size[1]
+        self.filter_size = [f_c, 6, 3, 3, 3]
 
 
 if __name__ == '__main__':
