@@ -2,9 +2,9 @@ if(NOT WITH_GPU)
     return()
 endif()
 
-set(paddle_known_gpu_archs "20 21(20) 30 35 50 52 60 61 70")
-set(paddle_known_gpu_archs7 "20 21(20) 30 35 50 52")
-set(paddle_known_gpu_archs8 "20 21(20) 30 35 50 52 60 61")
+set(paddle_known_gpu_archs "30 35 50 52 60 61 70")
+set(paddle_known_gpu_archs7 "30 35 50 52")
+set(paddle_known_gpu_archs8 "30 35 50 52 60 61")
 
 ######################################################################################
 # A function for automatic detection of GPUs installed  (if autodetection is enabled)
@@ -40,7 +40,7 @@ function(detect_installed_gpus out_variable)
       STRING(REGEX REPLACE "\n" ";" nvcc_out "${nvcc_out}")
       list(GET nvcc_out -1 nvcc_out)
       string(REPLACE "2.1" "2.1(2.0)" nvcc_out "${nvcc_out}")
-      set(CUDA_gpu_detect_output ${nvcc_out} CACHE INTERNAL "Returned GPU architetures from caffe_detect_gpus tool" FORCE)
+      set(CUDA_gpu_detect_output ${nvcc_out} CACHE INTERNAL "Returned GPU architetures from detect_installed_gpus tool" FORCE)
     endif()
   endif()
 
@@ -137,10 +137,6 @@ function(select_nvcc_arch_flags out_variable)
   set(${out_variable}_readable ${nvcc_archs_readable} PARENT_SCOPE)
 endfunction()
 
-if(NOT CUDA_FOUND)
-  return()
-endif()
-
 message(STATUS "CUDA detected: " ${CUDA_VERSION})
 if (${CUDA_VERSION} LESS 7.0)
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs})
@@ -163,36 +159,10 @@ if(NOT WITH_DSO)
     list(APPEND EXTERNAL_LIBS ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${NCCL_LIBRARY})
 endif(NOT WITH_DSO)
 
-# find libcuda.so and lbnvrtc.so
-# For libcuda.so, we will find it under lib, lib64, and then the
-# stubs folder, in case we are building on a system that does not
-# have cuda driver installed. On windows, we also search under the
-# folder lib/x64.
-
-find_library(CUDA_CUDA_LIB cuda
-    PATHS ${CUDA_TOOLKIT_ROOT_DIR}
-    PATH_SUFFIXES lib lib64 lib/stubs lib64/stubs lib/x64)
-find_library(CUDA_NVRTC_LIB nvrtc
-    PATHS ${CUDA_TOOLKIT_ROOT_DIR}
-    PATH_SUFFIXES lib lib64 lib/x64)
-
 # setting nvcc arch flags
 select_nvcc_arch_flags(NVCC_FLAGS_EXTRA)
 list(APPEND CUDA_NVCC_FLAGS ${NVCC_FLAGS_EXTRA})
 message(STATUS "Added CUDA NVCC flags for: ${NVCC_FLAGS_EXTRA_readable}")
-
-if(CUDA_CUDA_LIB)
-    # message(STATUS "Found libcuda: ${CUDA_CUDA_LIB}")
-    list(APPEND Caffe2_DEPENDENCY_LIBS ${CUDA_CUDA_LIB})
-else()
-    message(FATAL_ERROR "Cannot find libcuda.so.")
-endif()
-if(CUDA_NVRTC_LIB)
-  # message(STATUS "Found libnvrtc: ${CUDA_NVRTC_LIB}")
-  list(APPEND Caffe2_DEPENDENCY_LIBS ${CUDA_NVRTC_LIB})
-else()
-    message(FATAL_ERROR "Cannot find libnvrtc.so.")
-endif()
 
 # Set C++11 support
 set(CUDA_PROPAGATE_HOST_FLAGS OFF)
