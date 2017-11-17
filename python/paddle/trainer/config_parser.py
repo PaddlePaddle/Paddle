@@ -3338,7 +3338,7 @@ class CosSimLayer(LayerBase):
         config_assert(len(self.inputs) == 2, 'CosSimLayer must have 2 inputs')
         config_assert(
             self.get_input_layer(0).size == self.get_input_layer(1).size,
-            'inputs of CosSimLayer must have same dim')
+            'The two inputs of CosSimLayer must have the same dimensionality.')
         self.config.cos_scale = cos_scale
 
 

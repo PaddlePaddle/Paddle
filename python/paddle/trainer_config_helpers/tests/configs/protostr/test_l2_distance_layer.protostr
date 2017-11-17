@@ -20,7 +20,7 @@ layers {
     input_layer_name: "x"
   }
   inputs {
-    input_layer_name: "x"
+    input_layer_name: "y"
   }
 }
 input_layer_names: "x"
