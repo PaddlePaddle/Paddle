@@ -71,15 +71,6 @@ void prune_impl(const ProgramDesc& input, ProgramDesc* output, int block_id,
     expect_fetch = (op_desc.type() == kFetchOpType);
   }
 
-  if (is_test) {
-    for (auto& op_desc : ops) {
-      if (op_desc.type() == kDropOutOpType ||
-          op_desc.type() == kBatchNormOpType) {
-        op_desc.SetAttr("is_test", true);
-      }
-    }
-  }
-
   std::set<std::string> dependent_vars;
   std::vector<bool> should_run;
   for (auto op_iter = ops.rbegin(); op_iter != ops.rend(); ++op_iter) {
@@ -109,6 +100,18 @@ void prune_impl(const ProgramDesc& input, ProgramDesc* output, int block_id,
   for (size_t i = 0; i < should_run.size(); ++i) {
     if (should_run[i]) {
       *op_field->Add() = input.blocks(block_id).ops(i);
+    }
+  }
+  if (is_test) {
+    for (auto& op_desc : *op_field) {
+      if (op_desc.type() == kDropOutOpType ||
+          op_desc.type() == kBatchNormOpType) {
+        for (auto& attr : *op_desc.mutable_attrs()) {
+          if (attr.name() == "is_test") {
+            attr.set_b(true);
+          }
+        }
+      }
     }
   }
 }
