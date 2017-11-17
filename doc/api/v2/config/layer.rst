@@ -335,6 +335,16 @@ bilinear_interp
 ..  autoclass:: paddle.v2.layer.bilinear_interp
     :noindex:
 
+dot_prod
+---------
+.. autoclass:: paddle.v2.layer.dot_prod
+    :noindex:
+
+out_prod
+--------
+.. autoclass:: paddle.v2.layer.out_prod
+    :noindex:
+
 power
 -----
 ..  autoclass:: paddle.v2.layer.power
