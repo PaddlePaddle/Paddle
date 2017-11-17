@@ -20,6 +20,10 @@ limitations under the License. */
 #include <istream>
 #include <ostream>
 
+#include <cuda.h>
+
+#include "paddle/utils/Logging.h"
+
 #define USE_EIGEN
 
 #ifdef USE_EIGEN  // delete this #if macro
@@ -47,6 +51,27 @@ limitations under the License. */
 #else
 #define PADDLE_HOSTDEVICE
 #endif  // __CUDACC__
+
+#define STR(x) #x
+#define XSTR(x) STR(x)
+
+#ifndef __CUDACC__
+#pragma message "__CUDACC__ not defined"
+#else
+#pragma message "__CUDACC__ defined"
+#endif
+
+#ifndef CUDA_VERSION
+#pragma message "CUDA_VERSION not defined"
+#else
+#pragma message "CUDA_VERSION defined: " XSTR(CUDA_VERSION)
+#endif
+
+#ifdef __CUDA_ARCH__
+#pragma message "The value of CUDA_ARCH: " XSTR(__CUDA_ARCH__)
+#else
+#pragma message "CUDA ARCH NOT DEFINED!"
+#endif
 
 #ifdef __arm__
 #define PADDLE_ARM_32
@@ -359,6 +384,7 @@ struct PADDLE_ALIGN(2) float16 {
 // arithmetic operators
 #if defined(PADDLE_CUDA_FP16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
 __device__ inline float16 operator+(const float16& a, const float16& b) {
+  printf("GPU Intrinsic used!");
   return float16(__hadd(half(a), half(b)));
 }
 
@@ -495,6 +521,7 @@ __host__ inline bool operator>=(const float16& a, const float16& b) {
 
 #else  // software emulation on other cpu
 PADDLE_HOSTDEVICE inline float16 operator+(const float16& a, const float16& b) {
+  LOG(INFO) << "CPU emulation used";
   return float16(float(a) + float(b));
 }
 
@@ -656,7 +683,7 @@ PADDLE_HOSTDEVICE inline float16 float_to_half_rn(float f) {
 PADDLE_HOSTDEVICE inline float half_to_float(float16 h) {
 #if defined(PADDLE_CUDA_FP16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300
   half tmp = *reinterpret_cast<half*>(&h);
-  return __half2float(h);
+  return __half2float(tmp);
 
 #elif defined(PADDLE_NEON_64)
   float res;

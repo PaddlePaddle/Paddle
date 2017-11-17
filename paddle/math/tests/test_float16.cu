@@ -16,6 +16,8 @@ namespace paddle {
 
 #ifdef PADDLE_CUDA_FP16
 TEST(float16, conversion_gpu) {
+  LOG(INFO) << "GPU tests started";
+
   // Conversion to and from cuda half
   float16 v1 = half(float16(1.0f));
   EXPECT_EQ(v1.x, 0x3c00);
