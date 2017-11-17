@@ -94,8 +94,8 @@ protected:
   bool useGlobalStats_;
   // use to compute moving mean and variance.
   real movingAvgFraction_;
-  // Epsilon value used in the batch normalization formula.
-  real EPS;
+  // Epsilon is a small random noise used in batch normalization for stability.
+  real epsilon_;
 };
 
 }  // namespace paddle

@@ -51,7 +51,7 @@ void BatchNormalizationLayer::calMeanAndStd(const MatrixPtr& mat) {
 
   calMovingMeanAndVar();
 
-  savedInvVar_->subScalar(-EPS);
+  savedInvVar_->subScalar(-epsilon_);
   savedInvVar_->sqrt2(*savedInvVar_);
 }
 
@@ -72,7 +72,7 @@ void BatchNormalizationLayer::setMeanAndStd() {
   savedInvVar_->copyFrom(*(movingVar_->getW()));
   savedInvVar_->downClip(real(0.0));
 
-  savedInvVar_->subScalar(-EPS);
+  savedInvVar_->subScalar(-epsilon_);
   savedInvVar_->sqrt2(*savedInvVar_);
 }
 

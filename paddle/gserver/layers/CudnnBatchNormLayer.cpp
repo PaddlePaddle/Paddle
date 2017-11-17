@@ -60,7 +60,15 @@ void CudnnBatchNormLayer::forward(PassType passType) {
   real* beta = biases_->getW()->getData();
   real* movingMean = movingMean_->getW()->getData();
   real* movingVar = movingVar_->getW()->getData();
-  EPS_ = std::max(MIN_EPS, static_cast<double>(EPS));
+
+  /**
+  * If epsilon_ equals to 1e-5 and eps_ is assigned the value of
+  * static_cast<double>(epsilon_), The CUDNN_STATUS_BAD_PARAM error
+  * will occur due to eps_ value is less than
+  * CUDNN_BN_MIN_EPSILON.
+  * The following code is to ensure that the eps_ meets requirement.
+  */
+  eps_ = std::max(MIN_EPS, static_cast<double>(epsilon_));
 
   if (!useGlobalStats_) {
     REGISTER_TIMER_INFO("CudnnBatchFwTimer", getName().c_str());
@@ -76,7 +84,7 @@ void CudnnBatchNormLayer::forward(PassType passType) {
                                    1.0 - movingAvgFraction_,
                                    movingMean,
                                    movingVar,
-                                   EPS_,
+                                   eps_,
                                    savedMean,
                                    savedInvVar);
   } else {
@@ -91,7 +99,7 @@ void CudnnBatchNormLayer::forward(PassType passType) {
                                       beta,
                                       movingMean,
                                       movingVar,
-                                      EPS_);
+                                      eps_);
     } else {
       // There is a limitation in cudnn library.
       // When the batch size is larger than 1024 in cuDNN v5.1,
@@ -102,7 +110,7 @@ void CudnnBatchNormLayer::forward(PassType passType) {
                                    beta,
                                    movingMean,
                                    movingVar,
-                                   EPS_,
+                                   eps_,
                                    batchSize,
                                    channels_,
                                    imageH_ * imageD_,
@@ -128,7 +136,15 @@ void CudnnBatchNormLayer::backward(const UpdateCallback& callback) {
   real* gamma = weight_->getW()->getData();
   real* savedMean = savedMean_->getData();
   real* savedInvVar = savedInvVar_->getData();
-  EPS_ = std::max(MIN_EPS, static_cast<double>(EPS));
+
+  /**
+  * If epsilon_ equals to 1e-5 and eps_ is assigned the value of
+  * static_cast<double>(epsilon_), The CUDNN_STATUS_BAD_PARAM error
+  * will occur due to eps_ value is less than
+  * CUDNN_BN_MIN_EPSILON.
+  * The following code is to ensure that the eps_ meets requirement.
+  */
+  eps_ = std::max(MIN_EPS, static_cast<double>(epsilon_));
 
   auto create = [](MatrixPtr& m, size_t h, size_t w, real** p) {
     Matrix::resizeOrCreate(m, h, w, false, true);
@@ -159,7 +175,7 @@ void CudnnBatchNormLayer::backward(const UpdateCallback& callback) {
                          gamma,
                          gammaGrad,
                          betaGrad,
-                         EPS_,
+                         eps_,
                          savedMean,
                          savedInvVar);
 
