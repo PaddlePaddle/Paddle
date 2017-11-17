@@ -1,11 +1,10 @@
-import paddle.v2 as paddle
-import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid.optimizer as optimizer
-import paddle.v2.fluid.framework as framework
-from paddle.v2.fluid.executor import Executor
-
 import numpy as np
+import paddle.v2 as paddle
+import paddle.v2.fluid.core as core
+import paddle.v2.fluid.framework as framework
+import paddle.v2.fluid.layers as layers
+from paddle.v2.fluid.executor import Executor
+from paddle.v2.fluid.optimizer import AdamOptimizer
 
 
 def lstm_net(dict_dim, class_dim=2, emb_dim=32, seq_len=80, batch_size=50):
@@ -33,7 +32,7 @@ def lstm_net(dict_dim, class_dim=2, emb_dim=32, seq_len=80, batch_size=50):
     cost = layers.cross_entropy(input=prediction, label=label)
 
     avg_cost = layers.mean(x=cost)
-    adam_optimizer = optimizer.AdamOptimizer(learning_rate=0.002)
+    adam_optimizer = AdamOptimizer(learning_rate=0.002)
     opts = adam_optimizer.minimize(avg_cost)
     acc = layers.accuracy(input=prediction, label=label)
 

@@ -18,8 +18,8 @@ function version(){
         echo "PaddlePaddle @PADDLE_VERSION@, compiled with"
         echo "    with_avx: @WITH_AVX@"
         echo "    with_gpu: @WITH_GPU@"
+        echo "    with_mkl: @WITH_MKL@"
         echo "    with_mkldnn: @WITH_MKLDNN@"
-        echo "    with_mklml: @WITH_MKLML@"
         echo "    with_double: @WITH_DOUBLE@"
         echo "    with_python: @WITH_PYTHON@"
         echo "    with_rdma: @WITH_RDMA@"
@@ -45,8 +45,8 @@ function ver2num() {
 
 function cpu_config() {
   # auto set KMP_AFFINITY and OMP_DYNAMIC from Hyper Threading Status
-  # only when MKLDNN or MKLML enabled
-  if [ "@WITH_MKLDNN@" == "OFF" ] && [ "@WITH_MKLML@" == "OFF"]; then
+  # only when MKL enabled
+  if [ "@WITH_MKL@" == "OFF" ]; then
     return 0
   fi
   ht=`lscpu |grep "per core"|awk -F':' '{print $2}'|xargs`
@@ -70,8 +70,8 @@ function cpu_config() {
 function threads_config() {
   # auto set OMP_NUM_THREADS and MKL_NUM_THREADS
   # according to trainer_count and total processors
-  # only when MKLDNN or MKLML enabled
-  if [ "@WITH_MKLDNN@" == "OFF" ] && [ "@WITH_MKLML@" == "OFF"]; then
+  # only when MKL enabled
+  if [ "@WITH_MKL@" == "OFF" ]; then
     return 0
   fi
   processors=`grep "processor" /proc/cpuinfo|sort -u|wc -l`
