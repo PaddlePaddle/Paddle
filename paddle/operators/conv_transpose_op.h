@@ -62,7 +62,6 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     Tensor* output = context.Output<Tensor>("Output");
 
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
-    // Actually, no paddings and groups allowed in conv transpose.
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     // TODO(Zhuoyuan): Paddings can be added in future.
     // groups will alway be disabled in conv2dtranspose.
@@ -148,8 +147,8 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
       } else if (filter_shape_vec.size() == 3) {
         // col2vol: col_matrix -> dy
         // from (c * k_d * k_h * k_w, d * h * w) to (c, o_d, o_h, o_w)
-        col2vol(context.device_context(), col, dilations, strides,
-                std::vector<int>{0, 0, 0}, &output_batch);
+        col2vol(context.device_context(), col, dilations, strides, paddings,
+                &output_batch);
       }
     }
   }
@@ -173,7 +172,6 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
     if ((!input_grad) && (!filter_grad)) return;
 
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
-    // Actually, no paddings and groups allowed in conv transpose.
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
 
     const int batch_size = static_cast<int>(input->dims()[0]);
