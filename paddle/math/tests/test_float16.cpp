@@ -15,6 +15,8 @@ limitations under the License. */
 namespace paddle {
 
 TEST(float16, conversion_cpu) {
+  LOG(INFO) << "cpu test started!";
+
   // Conversion to and from Eigen::half
   EXPECT_EQ(float16(Eigen::half(float16(1.0f))).x, 0x3c00);
   EXPECT_EQ(float16(Eigen::half(float16(0.5f))).x, 0x3800);
