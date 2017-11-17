@@ -151,6 +151,15 @@ def load_persistables(executor, dirname, main_program=None):
         predicate=is_persistable)
 
 
+def get_inference_program(target_vars, main_program=None):
+    if main_program is None:
+        main_program = g_main_program
+    if not isinstance(target_vars, list):
+        target_vars = [target_vars]
+
+    return main_program.prune(targets=target_vars, is_test=True)
+
+
 def save_inference_model(dirname,
                          feeded_var_names,
                          target_vars,
