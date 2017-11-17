@@ -116,6 +116,7 @@ __all__ = [
     'huber_classification_cost',
     'block_expand_layer',
     'maxout_layer',
+    'dot_prod_layer',
     'out_prod_layer',
     'printer_layer',
     'print_layer',
@@ -199,6 +200,7 @@ class LayerType(object):
     SCALING_LAYER = 'scaling'
     TRANS_LAYER = 'trans'
     ROTATE_LAYER = 'rotate'
+    DOT_PROD_LAYER = 'dot_prod'
     OUT_PROD_LAYER = 'out_prod'
     FEATURE_MAP_EXPAND_LAYER = 'featmap_expand'
 
@@ -3034,8 +3036,10 @@ def img_cmrnorm_layer(input,
                       layer_attr=None):
     """
     Response normalization across feature maps.
-    The details please refer to
-    `Alex's paper <http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf>`_.
+
+    Reference:
+        ImageNet Classification with Deep Convolutional Neural Networks
+        http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf
 
     The example usage is:
 
@@ -3044,7 +3048,7 @@ def img_cmrnorm_layer(input,
         norm = img_cmrnorm_layer(input=net, size=5)
 
     :param name: The name of this layer. It is optional.
-    :type name: None | basestring
+    :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput
     :param size: Normalize in number of :math:`size` feature maps.
@@ -3053,9 +3057,11 @@ def img_cmrnorm_layer(input,
     :type scale: float
     :param power: The hyper-parameter.
     :type power: float
-    :param num_channels: input layer's filers number or channels. If
-                         num_channels is None, it will be set automatically.
-    :param layer_attr: Extra Layer Attribute.
+    :param num_channels: The number of input channels. If the parameter is not set or
+                         set to None, its actual value will be automatically set to
+                         the channels number of the input.
+    :param layer_attr: The extra layer attributes. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -3083,7 +3089,7 @@ def batch_norm_layer(input,
                      use_global_stats=None,
                      mean_var_names=None):
     """
-    Batch Normalization Layer. The notation of this layer as follow.
+    Batch Normalization Layer. The notation of this layer is as follows.
 
     :math:`x` is the input features over a mini-batch.
 
@@ -3097,8 +3103,10 @@ def batch_norm_layer(input,
         \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
         y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
 
-    The details of batch normalization please refer to this
-    `paper <http://arxiv.org/abs/1502.03167>`_.
+    Reference:
+        Batch Normalization: Accelerating Deep Network Training by Reducing
+        Internal Covariate Shift
+        http://arxiv.org/abs/1502.03167
 
     The example usage is:
 
@@ -3108,48 +3116,47 @@ def batch_norm_layer(input,
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param input: batch normalization input. Better be linear activation.
-                Because there is an activation inside batch_normalization.
+    :param input: This layer's input which is to be performed batch normalization on.
     :type input: LayerOutput
     :param batch_norm_type: We have batch_norm, mkldnn_batch_norm and cudnn_batch_norm.
                             batch_norm supports CPU, MKLDNN and GPU. cudnn_batch_norm
                             requires cuDNN version greater or equal to v4 (>=v4).
                             But cudnn_batch_norm is faster and needs less
                             memory than batch_norm. mkldnn_batch_norm requires
-                            enable use_mkldnn. By default (None), we will
-                            automaticly select cudnn_batch_norm for GPU,
+                            use_mkldnn is enabled. By default (None), we will
+                            automatically select cudnn_batch_norm for GPU,
                             mkldnn_batch_norm for MKLDNN and batch_norm for CPU.
-                            Otherwise, select batch norm type based on the
-                            specified type. If you use cudnn_batch_norm,
-                            we suggested you use latest version, such as v5.1.
+                            Users can specify the batch norm type. If you use
+                            cudnn_batch_norm, we suggested you use latest version,
+                            such as v5.1.
     :type batch_norm_type: None | string, None or "batch_norm" or "cudnn_batch_norm"
                            or "mkldnn_batch_norm"
-    :param act: Activation Type. Better be relu. Because batch
-                     normalization will normalize input near zero.
+    :param act: Activation type. ReluActivation is the default activation.
     :type act: BaseActivation
-    :param num_channels: num of image channels or previous layer's number of
-                         filters. None will automatically get from layer's
-                         input.
+    :param num_channels: The number of input channels. If the parameter is not set or
+                         set to None, its actual value will be automatically set to
+                         the channels number of the input.
     :type num_channels: int
-    :param bias_attr: :math:`\\beta`, better be zero when initialize. So the
-                      initial_std=0, initial_mean=1 is best practice.
+    :param bias_attr: :math:`\\beta`. The bias attribute. If the parameter is set to
+                      False or an object whose type is not ParameterAttribute, no
+                      bias is defined. If the parameter is set to True, the bias is
+                      initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param param_attr: :math:`\\gamma`, better be one when initialize. So the
-                       initial_std=0, initial_mean=1 is best practice.
+    :param param_attr: :math:`\\gamma`. The parameter attribute. See ParameterAttribute
+                       for details.
     :type param_attr: ParameterAttribute
-    :param layer_attr: Extra Layer Attribute.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
-    :param use_global_stats: whether use moving mean/variance statistics
-                             during testing peroid. If None or True,
-                             it will use moving mean/variance statistics during
-                             testing. If False, it will use the mean
-                             and variance of current batch of test data for
-                             testing.
+    :param use_global_stats: Whether use moving mean/variance statistics during
+                             testing peroid. If the parameter is set to None or
+                             True, it will use moving mean/variance statistics
+                             during testing. If the parameter is set to False, it
+                             will use the mean and variance of the current batch
+                             of test data.
     :type use_global_stats: bool | None.
-    :param moving_average_fraction: Factor used in the moving average
-                                   computation, referred to as facotr,
-                                   :math:`runningMean = newMean*(1-factor)
-                                   + runningMean*factor`
+    :param moving_average_fraction: Factor used in the moving average computation.
+                                   :math:`runningMean = newMean*(1-factor) + runningMean*factor`
     :type moving_average_fraction: float.
     :param mean_var_names: [mean name, variance name]
     :type mean_var_names: string list
@@ -3211,8 +3218,9 @@ def sum_to_one_norm_layer(input, name=None, layer_attr=None):
     :type input: LayerOutput
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param layer_attr: extra layer attributes.
-    :type layer_attr: ExtraLayerAttribute.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute
+                       for details.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -3247,7 +3255,8 @@ def row_l2_norm_layer(input, name=None, layer_attr=None):
     :type input: LayerOutput
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param layer_attr: extra layer attributes.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute
+                       for details.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -3284,22 +3293,17 @@ def addto_layer(input, act=None, name=None, bias_attr=None, layer_attr=None):
                             act=ReluActivation(),
                             bias_attr=False)
 
-    This layer just simply add all input layers together, then activate the sum
-    inputs. Each input of this layer should be the same size, which is also the
-    output size of this layer.
+    This layer just simply adds all input layers together, then activates the
+    sum. All inputs should share the same dimension, which is also the dimension
+    of this layer's output.
 
     There is no weight matrix for each input, because it just a simple add
     operation. If you want a complicated operation before add, please use
     mixed_layer.
 
-    It is a very good way to set dropout outside the layers. Since not all
-    PaddlePaddle layer support dropout, you can add an add_to layer, set
-    dropout here.
-    Please refer to dropout_layer for details.
-
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param input: Input layers. It could be a LayerOutput or list/tuple of
+    :param input: The input layers. It could be a LayerOutput or list/tuple of
                  LayerOutput.
     :type input: LayerOutput | list | tuple
     :param act: Activation Type. LinearActivation is the default activation.
@@ -3308,7 +3312,8 @@ def addto_layer(input, act=None, name=None, bias_attr=None, layer_attr=None):
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param layer_attr: Extra Layer attribute.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -3347,8 +3352,8 @@ def addto_layer(input, act=None, name=None, bias_attr=None, layer_attr=None):
 @layer_support(DROPOUT, ERROR_CLIPPING)
 def concat_layer(input, act=None, name=None, layer_attr=None, bias_attr=None):
     """
-    Concat all input vector into one huge vector.
-    Inputs can be list of LayerOutput or list of projection.
+    Concatenate all input vectors to one vector.
+    Inputs can be a list of LayerOutput or a list of projection.
 
     The example usage is:
 
@@ -3358,11 +3363,12 @@ def concat_layer(input, act=None, name=None, layer_attr=None, bias_attr=None):
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param input: input layers or projections
+    :param input: The input layers or projections
     :type input: list | tuple | collections.Sequence
     :param act: Activation type. IdentityActivation is the default activation.
     :type act: BaseActivation
-    :param layer_attr: Extra Layer Attribute.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -3432,7 +3438,7 @@ def concat_layer(input, act=None, name=None, layer_attr=None, bias_attr=None):
 def seq_concat_layer(a, b, act=None, name=None, layer_attr=None,
                      bias_attr=None):
     """
-    Concat sequence a with sequence b.
+    Concatenate sequence a and sequence b.
 
     Inputs:
       - a = [a1, a2, ..., am]
@@ -3451,13 +3457,14 @@ def seq_concat_layer(a, b, act=None, name=None, layer_attr=None,
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param a: input sequence layer
+    :param a: The first input sequence layer
     :type a: LayerOutput
-    :param b: input sequence layer
+    :param b: The second input sequence layer
     :type b: LayerOutput
     :param act: Activation type. IdentityActivation is the default activation.
     :type act: BaseActivation
-    :param layer_attr: Extra Layer Attribute.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
@@ -3494,31 +3501,25 @@ def memory(name,
            boot_bias_active_type=None,
            boot_with_const_id=None):
     """
-    The memory layers is a layer cross each time step. Reference this output
-    as previous time step layer :code:`name` 's output.
+    The memory takes a layer's output at previous time step as its own output.
 
-    The default memory is zero in first time step, previous time step's
-    output in the rest time steps.
+    If boot_bias, the activation of the bias is the initial value of the memory.
 
-    If boot_bias, the first time step value is this bias and
-    with activation.
+    If boot_with_const_id is set, then the memory's output at the first time step
+    is a IndexSlot, the Arguments.ids()[0] is this :code:`cost_id`.
 
-    If boot_with_const_id, then the first time stop is a IndexSlot, the
-    Arguments.ids()[0] is this :code:`cost_id`.
+    If boot_layer is specified, the memory's output at the first time step will
+    be the boot_layer's output.
 
-    If boot_layer is not null, the memory is just the boot_layer's output.
-    Set :code:`is_seq` is true boot layer is sequence.
-
-    The same name layer in recurrent group will set memory on each time
-    step.
+    In other case, the default memory's output at the first time step is zero.
 
     .. code-block:: python
 
        mem = memory(size=256, name='state')
        state = fc_layer(input=mem, size=256, name='state')
 
-    If you do not want to specify the name, you can equivalently use set_input()
-    to specify the layer needs to be remembered as the following:
+    If you do not want to specify the name, you can also use set_input()
+    to specify the layer to be remembered as the following:
 
     .. code-block:: python
 
@@ -3526,26 +3527,31 @@ def memory(name,
        state = fc_layer(input=mem, size=256)
        mem.set_input(mem)
 
-    :param name: the name of the layer which this memory remembers.
+    :param name: The name of the layer which this memory remembers.
                  If name is None, user should call set_input() to specify the
                  name of the layer which this memory remembers.
     :type name: basestring
-    :param size: size of memory.
+    :param size: The dimensionality of memory.
     :type size: int
-    :param memory_name: the name of the memory.
-                        It is ignored when name is provided.
+    :param memory_name: The name of the memory. It is ignored when name is provided.
     :type memory_name: basestring
     :param is_seq: DEPRECATED. is sequence for boot_layer
     :type is_seq: bool
-    :param boot_layer: boot layer of memory.
+    :param boot_layer: This parameter specifies memory's output at the first time
+                       step and the output is boot_layer's output.
     :type boot_layer: LayerOutput | None
-    :param boot_bias: boot layer's bias
+    :param boot_bias: The bias attribute of memory's output at the first time step.
+                      If the parameter is set to False or an object whose type is not
+                      ParameterAttribute, no bias is defined. If the parameter is set
+                      to True, the bias is initialized to zero.
     :type boot_bias: ParameterAttribute | None
-    :param boot_bias_active_type: boot layer's active type.
+    :param boot_bias_active_type: Activation type for memory's bias at the first time
+                                  step. LinearActivation is the default activation.
     :type boot_bias_active_type: BaseActivation
-    :param boot_with_const_id: boot layer's id.
+    :param boot_with_const_id: This parameter specifies memory's output at the first
+                               time step and the output is an index.
     :type boot_with_const_id: int
-    :return: LayerOutput object which is a memory.
+    :return: LayerOutput object.
     :rtype: LayerOutput
     """
     if boot_bias_active_type is None:
@@ -4180,6 +4186,45 @@ def maxid_layer(input, name=None, layer_attr=None):
         name=name,
         layer_type=LayerType.MAXID_LAYER,
         parents=[input],
+        size=l.config.size)
+
+
+@wrap_name_default()
+def dot_prod_layer(input1, input2, name=None, layer_attr=None):
+    """
+    A layer for computing the dot product of two vectors.
+
+    The example usage is:
+
+    .. code-block:: python
+
+        dot_prod = dot_prod_layer(input1=vec1, input2=vec2)
+
+    :param name: The name of this layer. It is optional.
+    :type name: basestring
+    :param input1: The first input layer.
+    :type input: LayerOutput
+    :param input2: The second input layer.
+    :type input2: LayerOutput
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
+    :type layer_attr: ExtraLayerAttribute.
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input1, LayerOutput)
+    assert isinstance(input2, LayerOutput)
+    assert input1.size == input2.size, ("Two inputs should have the same size.")
+
+    l = Layer(
+        name=name,
+        type=LayerType.DOT_PROD_LAYER,
+        inputs=[input1.name, input2.name],
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name=name,
+        layer_type=LayerType.DOT_PROD_LAYER,
+        parents=[input1, input2],
         size=l.config.size)
 
 
