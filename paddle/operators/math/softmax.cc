@@ -13,13 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/math/softmax.h"
+#include "paddle/operators/math/softmax_impl.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
 
 template class SoftmaxFunctor<platform::CPUPlace, float>;
+template class SoftmaxFunctor<platform::CPUPlace, double>;
 template class SoftmaxGradFunctor<platform::CPUPlace, float>;
+template class SoftmaxGradFunctor<platform::CPUPlace, double>;
 
 }  // namespace math
 }  // namespace operators
