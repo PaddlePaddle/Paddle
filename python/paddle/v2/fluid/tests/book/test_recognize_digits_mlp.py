@@ -1,19 +1,15 @@
-import paddle.v2 as paddle
-import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid.optimizer as optimizer
-import paddle.v2.fluid.framework as framework
-from paddle.v2.fluid.executor import Executor
-from paddle.v2.fluid.regularizer import L2DecayRegularizer
-from paddle.v2.fluid.initializer import UniformInitializer
-
 import numpy as np
+import paddle.v2 as paddle
+import paddle.v2.fluid.core as core
+import paddle.v2.fluid.framework as framework
+import paddle.v2.fluid.layers as layers
+from paddle.v2.fluid.executor import Executor
+from paddle.v2.fluid.initializer import UniformInitializer
+from paddle.v2.fluid.optimizer import MomentumOptimizer
+from paddle.v2.fluid.regularizer import L2DecayRegularizer
 
 BATCH_SIZE = 128
-image = layers.data(
-    name='x',
-    shape=[784],
-    data_type='float32')
+image = layers.data(name='x', shape=[784], data_type='float32')
 
 param_attr = {
     'name': None,
@@ -22,32 +18,21 @@ param_attr = {
     'regularization': L2DecayRegularizer(0.0005 * BATCH_SIZE)
 }
 
-hidden1 = layers.fc(input=image,
-                    size=128,
-                    act='relu',
-                    param_attr=param_attr)
-hidden2 = layers.fc(input=hidden1,
-                    size=64,
-                    act='relu',
-                    param_attr=param_attr)
+hidden1 = layers.fc(input=image, size=128, act='relu', param_attr=param_attr)
+hidden2 = layers.fc(input=hidden1, size=64, act='relu', param_attr=param_attr)
 
 predict = layers.fc(input=hidden2,
                     size=10,
                     act='softmax',
                     param_attr=param_attr)
 
-label = layers.data(
-    name='y',
-    shape=[1],
-    data_type='int64')
+label = layers.data(name='y', shape=[1], data_type='int64')
 
 cost = layers.cross_entropy(input=predict, label=label)
 avg_cost = layers.mean(x=cost)
-accuracy = layers.accuracy(
-    input=predict,
-    label=label)
+accuracy = layers.accuracy(input=predict, label=label)
 
-optimizer = optimizer.MomentumOptimizer(learning_rate=0.001, momentum=0.9)
+optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
 opts = optimizer.minimize(avg_cost)
 
 train_reader = paddle.batch(
