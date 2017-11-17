@@ -29,16 +29,6 @@ if(WITH_PYTHON)
       WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
 endif()
 
-############### test_CompareTwoOpts ###################
-add_unittest_without_exec(test_CompareTwoOpts
-    test_CompareTwoOpts.cpp)
-add_test(NAME test_CompareTwoOpts
-  COMMAND ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d ${PADDLE_SOURCE_DIR}/python/
-        ${CMAKE_CURRENT_BINARY_DIR}/test_CompareTwoOpts
-            --config_file_a=trainer/tests/sample_trainer_config_opt_a.conf --config_file_b=trainer/tests/sample_trainer_config_opt_b.conf
-            --num_passes=1 --need_high_accuracy=0
-    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
-
 ################# test_recurrent_machine_generation ###############
 add_unittest_without_exec(test_recurrent_machine_generation
     test_recurrent_machine_generation.cpp)
