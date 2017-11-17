@@ -59,6 +59,10 @@ struct SimpleCodeTable {
   int max_code_length_;
 };
 
+template <typename T>
+void AddByBitCode(size_t num_classes, const framework::Tensor& codes,
+                  framework::Tensor& a, const framework::Tensor& b);
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
