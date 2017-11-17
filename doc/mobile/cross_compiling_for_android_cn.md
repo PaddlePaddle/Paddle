@@ -1,4 +1,4 @@
-# 构建Android平台上的PaddlePaddle库
+# Android平台编译指南
 
 用户可通过如下两种方式，交叉编译Android平台上适用的PaddlePaddle库：
 - 基于Docker容器的编译方式

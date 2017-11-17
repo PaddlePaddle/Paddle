@@ -1,4 +1,4 @@
-# 构建Raspberry Pi平台上的PaddlePaddle库
+# Raspberry Pi平台编译指南
 
 通常有两个方法来构建基于 Rasspberry Pi 的版本：
 
