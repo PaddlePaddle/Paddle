@@ -1,12 +1,11 @@
+import numpy as np
 import paddle.v2 as paddle
+import paddle.v2.fluid.core as core
+import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.nets as nets
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid.optimizer as optimizer
-import paddle.v2.fluid.framework as framework
 from paddle.v2.fluid.executor import Executor
-
-import numpy as np
+from paddle.v2.fluid.optimizer import AdamOptimizer
 
 
 def convolution_net(input_dim, class_dim=2, emb_dim=32, hid_dim=32):
@@ -31,7 +30,7 @@ def convolution_net(input_dim, class_dim=2, emb_dim=32, hid_dim=32):
                            act="softmax")
     cost = layers.cross_entropy(input=prediction, label=label)
     avg_cost = layers.mean(x=cost)
-    adam_optimizer = optimizer.AdamOptimizer(learning_rate=0.002)
+    adam_optimizer = AdamOptimizer(learning_rate=0.002)
     opts = adam_optimizer.minimize(avg_cost)
     acc = layers.accuracy(input=prediction, label=label)
     return avg_cost, acc
