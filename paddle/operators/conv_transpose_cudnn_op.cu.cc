@@ -235,11 +235,15 @@ class CudnnConvTransposeGradOpKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_GPU_KERNEL(conv2d_transpose_cudnn,
-                       ops::CudnnConvTransposeOpKernel<float>);
+                       ops::CudnnConvTransposeOpKernel<float>,
+                       ops::CudnnConvTransposeOpKernel<double>);
 REGISTER_OP_GPU_KERNEL(conv2d_transpose_cudnn_grad,
-                       ops::CudnnConvTransposeGradOpKernel<float>);
+                       ops::CudnnConvTransposeGradOpKernel<float>,
+                       ops::CudnnConvTransposeGradOpKernel<double>);
 
 REGISTER_OP_GPU_KERNEL(conv3d_transpose_cudnn,
-                       ops::CudnnConvTransposeOpKernel<float>);
+                       ops::CudnnConvTransposeOpKernel<float>,
+                       ops::CudnnConvTransposeOpKernel<double>);
 REGISTER_OP_GPU_KERNEL(conv3d_transpose_cudnn_grad,
-                       ops::CudnnConvTransposeGradOpKernel<float>);
+                       ops::CudnnConvTransposeGradOpKernel<float>,
+                       ops::CudnnConvTransposeGradOpKernel<double>);

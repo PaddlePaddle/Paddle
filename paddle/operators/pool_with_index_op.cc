@@ -250,10 +250,12 @@ REGISTER_OP(max_pool2d_with_index, ops::MaxPoolWithIndexOp,
 
 REGISTER_OP_CPU_KERNEL(
     max_pool2d_with_index,
-    ops::MaxPoolWithIndexKernel<paddle::platform::CPUPlace, float>);
+    ops::MaxPoolWithIndexKernel<paddle::platform::CPUPlace, float>,
+    ops::MaxPoolWithIndexKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
     max_pool2d_with_index_grad,
-    ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUPlace, float>)
+    ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUPlace, float>,
+    ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUPlace, double>)
 
 REGISTER_OP(max_pool3d_with_index, ops::MaxPoolWithIndexOp,
             ops::MaxPool3dWithIndexOpMaker, max_pool3d_with_index_grad,
@@ -261,7 +263,9 @@ REGISTER_OP(max_pool3d_with_index, ops::MaxPoolWithIndexOp,
 
 REGISTER_OP_CPU_KERNEL(
     max_pool3d_with_index,
-    ops::MaxPoolWithIndexKernel<paddle::platform::CPUPlace, float>);
+    ops::MaxPoolWithIndexKernel<paddle::platform::CPUPlace, float>,
+    ops::MaxPoolWithIndexKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
     max_pool3d_with_index_grad,
-    ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUPlace, float>)
+    ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUPlace, float>,
+    ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUPlace, double>)
