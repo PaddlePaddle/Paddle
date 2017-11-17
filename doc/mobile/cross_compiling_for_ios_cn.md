@@ -1,4 +1,4 @@
-# 构建iOS平台上的PaddlePaddle库
+# iOS平台编译指南
 交叉编译iOS平台上适用的PaddlePaddle库，需要在MacOS系统上进行。本文的将介绍在MacOS上，从源码交叉编译iOS平台上适用的PaddlePaddle库。
 
 ## 准备交叉编译环境
@@ -25,7 +25,7 @@ iOS平台可选配置参数：
 - `IOS_PLATFORM`，可设置为`OS/SIMULATOR`，默认值为`OS`。
   - `OS`，构建目标为`arm`架构的iPhone或者iPad等物理设备。
   - `SIMULATOR`，构建目标为`x86`架构的模拟器平台。
-- `IOS_ARCH`，目标架构。针对不同的`IOS_PLATFORM`，可设置的目标架构如下表所示：
+- `IOS_ARCH`，目标架构。针对不同的`IOS_PLATFORM`，可设置的目标架构如下表所示，默认编译所有架构：
 
     <table class="docutils">
     <colgroup>
@@ -41,11 +41,11 @@ iOS平台可选配置参数：
     <tbody valign="top">
       <tr class="row-even">
       <td>OS</td>
-      <td>armv7, armv7s, arm64 (默认)</td>
+      <td>armv7, armv7s, arm64 </td>
     </tr>
     <tr class="row-odd">
       <td>SIMULATOR</td>
-      <td>i386, x86_64 (默认)</td>
+      <td>i386, x86_64 </td>
     </tr>
     </tbody>
     </table>
@@ -66,7 +66,7 @@ iOS平台可选配置参数：
 ```bash
 cmake -DCMAKE_SYSTEM_NAME=iOS \
       -DIOS_PLATFORM=OS \
-      -DIOS_ARCH="arm64" \
+      -DIOS_ARCH="armv7;arm64" \
       -DIOS_ENABLE_BITCODE=ON \
       -DIOS_USE_VECLIB_FOR_BLAS=ON \
       -DCMAKE_INSTALL_PREFIX=your/path/to/install \
@@ -112,6 +112,6 @@ $ make install
 - `lib`目录，其中包含PaddlePaddle的C-API静态库
 - `third_party`目录，其中包含所依赖的所有第三方库
 
-注意，不同架构的PaddlePaddle库建议安装到不同的目录下，然后使用`lipo`工具将多个静态库合并成一个支持多个架构的fat库。
+注意，如果PaddlePaddle库需要同时支持真机和模拟器，则需要分别编译真机和模拟器版本，然后使用`lipo`工具合并fat库。
 
 自此，PaddlePaddle库已经安装完成，用户可将合成的fat库用于深度学习相关的iOS App中，调用方法见C-API文档。
