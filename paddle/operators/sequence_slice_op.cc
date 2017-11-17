@@ -42,7 +42,8 @@ class SequenceSliceOp : public framework::OperatorWithKernel {
         length_dim.size(), 2UL,
         "Only support one level sequence now, The rank of Length must be 2.");
 
-    // Initialize the output's dims to maximum
+    // Initialize the output's dims to maximum,
+    // and re-set to real dims by the value of Offset and Length at kernel
     ctx->SetOutputDim("Out", input_dims);
     }
 

@@ -143,6 +143,7 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
 
     if (x_grad) {
       x_grad->mutable_data<T>(ctx.GetPlace());
+      x_grad->set_lod(in->lod());
       math::SetConstant<Place, T> set_zero;
       set_zero(ctx.device_context(), x_grad, static_cast<T>(0));
 
