@@ -22,7 +22,21 @@ template <typename Place, typename T>
 
 class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {}
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto ins = ctx.MultiInput<framework::Tensor>("X");
+    auto* label = ctx.Input<framework::Tensor>("Label");
+    auto* bias = ctx.Input<framework::Tensor>("Bias");
+    size_t num_classes = static_cast<size_t>(ctx.Attr<int>("num_classes"));
+    int64_t batch_size = ins[0]->dims()[0];
+    int64_t size = ins.size();
+    framework::Tensor pre_out;
+    std::vector<int64_t> pre_out_dims({batch_size, size});
+    pre_out.mutable_data<T>(framework::make_ddim(pre_out_dims), ctx.GetPlace());
+
+    if (bias != NULL) {
+      math::AddByBitCode<T>(num_classes, *label, pre_out, *bias);
+    }
+  }
 };
 
 template <typename Place, typename T>

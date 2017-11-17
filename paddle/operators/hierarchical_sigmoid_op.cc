@@ -83,19 +83,18 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(TensorArray, required) The input array. Each Tensor has the "
-             "same shape with [N * D]."
-             .AsDuplicable();
+             "same shape with [N * D].")
+        .AsDuplicable();
     AddInput("Label",
              "(Tensor, required), The labels of training data. It's a"
              "1-D tensor.");
     AddInput("Bias",
              "(Tensor, optional), The bias is a 1-D tensor, "
              "which is applied to the output");
-    AddOutput("Out",
-             "(Tensor, required) The output of hierarchical sigmoid operator.");
-    AddAttr<int>("num_classes",
-                "(int, required)",
-                "The number of classes");
+    AddOutput(
+        "Out",
+        "(Tensor, required) The output of hierarchical sigmoid operator.");
+    AddAttr<int>("num_classes", "(int, required)", "The number of classes");
     AddComment(R"DOC(
 The hierarchical sigmoid operator organize the classes into a binary tree.
 At each node, a sigmoid function is used to caculate the probability of 
