@@ -27,7 +27,7 @@ def append_regularization_ops(parameters_and_grads):
     for param, grad in parameters_and_grads:
         # If no gradient or no regularization specified,
         # then we don't need to do anything
-        if grad is None or param.regularizer is None:
+        if grad is None or getattr(param, 'regularizer', None) is None:
             params_and_grads.append((param, grad))
             continue
 

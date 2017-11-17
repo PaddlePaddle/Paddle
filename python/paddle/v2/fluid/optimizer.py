@@ -38,7 +38,8 @@ class Optimizer(object):
     def _create_param_lr(self, param_and_grad):
         # create learning rate variable for every parameter
         param = param_and_grad[0]
-        param_lr = param.optimize_attr['learning_rate']
+        param_lr = getattr(param, 'optimize_attr',
+                           {'learning_rate': 1.0})['learning_rate']
         param_lr_shape = [1]
         param_lr_var = self.helper.create_global_variable(
             name=unique_name("learning_rate"),

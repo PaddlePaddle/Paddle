@@ -99,7 +99,7 @@ class SigmoidCrossEntropyWithLogitsOpMaker
              "log(p/(1-p)).");
     AddInput("Labels",
              "(Tensor, default Tensor<float>), a 2-D tensor of the same type "
-             "and shape as X. This input is a tensor of probabalistic labels "
+             "and shape as X. This input is a tensor of probabilistic labels "
              "for each logit");
     AddOutput("Out",
               "(Tensor, default Tensor<float>), a 2-D tensor with shape N x D "

@@ -395,6 +395,9 @@ _create_op_func_('sigmoid')
 _create_op_func_('scale')
 _create_op_func_('reshape')
 _create_op_func_('transpose')
+_create_op_func_('sigmoid_cross_entropy_with_logits')
+_create_op_func_('log')
+_create_op_func_('sigmoid')
 
 
 def fill_constant(data_type, shape, value=None, program=None):
