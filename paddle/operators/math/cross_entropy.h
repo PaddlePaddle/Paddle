@@ -14,7 +14,6 @@
 
 #pragma once
 #include "paddle/framework/eigen.h"
-#include "paddle/framework/operator.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/hostdevice.h"
 
