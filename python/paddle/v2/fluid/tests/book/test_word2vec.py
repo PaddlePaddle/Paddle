@@ -1,11 +1,10 @@
-import paddle.v2 as paddle
-import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid.optimizer as optimizer
-import paddle.v2.fluid.framework as framework
-from paddle.v2.fluid.executor import Executor
-
 import numpy as np
+import paddle.v2 as paddle
+import paddle.v2.fluid.core as core
+import paddle.v2.fluid.framework as framework
+import paddle.v2.fluid.layers as layers
+from paddle.v2.fluid.executor import Executor
+from paddle.v2.fluid.optimizer import SGDOptimizer
 
 PASS_NUM = 100
 EMBED_SIZE = 32
@@ -17,26 +16,11 @@ IS_SPARSE = True
 word_dict = paddle.dataset.imikolov.build_dict()
 dict_size = len(word_dict)
 
-first_word = layers.data(
-    name='firstw',
-    shape=[1],
-    data_type='int64')
-second_word = layers.data(
-    name='secondw',
-    shape=[1],
-    data_type='int64')
-third_word = layers.data(
-    name='thirdw',
-    shape=[1],
-    data_type='int64')
-forth_word = layers.data(
-    name='forthw',
-    shape=[1],
-    data_type='int64')
-next_word = layers.data(
-    name='nextw',
-    shape=[1],
-    data_type='int64')
+first_word = layers.data(name='firstw', shape=[1], data_type='int64')
+second_word = layers.data(name='secondw', shape=[1], data_type='int64')
+third_word = layers.data(name='thirdw', shape=[1], data_type='int64')
+forth_word = layers.data(name='forthw', shape=[1], data_type='int64')
+next_word = layers.data(name='nextw', shape=[1], data_type='int64')
 
 embed_first = layers.embedding(
     input=first_word,
@@ -64,19 +48,12 @@ embed_forth = layers.embedding(
     param_attr={'name': 'shared_w'})
 
 concat_embed = layers.concat(
-    input=[embed_first, embed_second, embed_third, embed_forth],
-    axis=1)
-hidden1 = layers.fc(input=concat_embed,
-                    size=HIDDEN_SIZE,
-                    act='sigmoid')
-predict_word = layers.fc(input=hidden1,
-                         size=dict_size,
-                         act='softmax')
-cost = layers.cross_entropy(
-    input=predict_word,
-    label=next_word)
+    input=[embed_first, embed_second, embed_third, embed_forth], axis=1)
+hidden1 = layers.fc(input=concat_embed, size=HIDDEN_SIZE, act='sigmoid')
+predict_word = layers.fc(input=hidden1, size=dict_size, act='softmax')
+cost = layers.cross_entropy(input=predict_word, label=next_word)
 avg_cost = layers.mean(x=cost)
-sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
+sgd_optimizer = SGDOptimizer(learning_rate=0.001)
 opts = sgd_optimizer.minimize(avg_cost)
 
 train_reader = paddle.batch(

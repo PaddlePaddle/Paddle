@@ -34,9 +34,7 @@ function cmake_gen() {
         ${PYTHON_FLAGS}
         -DWITH_DOC=OFF
         -DWITH_GPU=${WITH_GPU:-OFF}
-        -DCUDA_ARCH_NAME=All
-        -DWITH_MKLDNN=${WITH_MKLDNN:-ON}
-        -DWITH_MKLML=${WITH_MKLML:-ON}
+        -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DWITH_GOLANG=${WITH_GOLANG:-ON}
         -DWITH_SWIG_PY=ON
@@ -57,9 +55,7 @@ EOF
         ${PYTHON_FLAGS} \
         -DWITH_DOC=OFF \
         -DWITH_GPU=${WITH_GPU:-OFF} \
-        -DCUDA_ARCH_NAME=All \
-        -DWITH_MKLDNN=${WITH_MKLDNN:-ON} \
-        -DWITH_MKLML=${WITH_MKLML:-ON} \
+        -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DWITH_GOLANG=${WITH_GOLANG:-ON} \
         -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON} \
