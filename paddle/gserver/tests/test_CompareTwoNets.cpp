@@ -30,15 +30,19 @@ DECLARE_bool(use_gpu);
 DECLARE_string(config);
 DECLARE_string(nics);
 
-DEFINE_string(config_file_a, "", "config of one network to compare");
-DEFINE_string(config_file_b, "", "config of another network to compare");
 DEFINE_bool(need_high_accuracy,
-            true,
-            "whether need to run in double accuracy (recommended)");
+            false,
+            "whether need to run in double accuracy");
 DEFINE_double(
     max_diff_ratio,
     0.0f,
     "max diff ratio allowed for outputs and parameters (value/gradient)");
+DECLARE_bool(thread_local_rand_use_global_seed);
+DECLARE_int32(seed);
+
+static const string& config_file_a = "gserver/tests/sequence_recurrent.py";
+static const string& config_file_b =
+    "gserver/tests/sequence_recurrent_group.py";
 
 struct ComData {
   vector<Argument> outArgs;
@@ -53,15 +57,29 @@ void calcGradient(ComData& data, const string configFile) {
 
   FLAGS_nics = "";
 
-  *ThreadLocalRand::getSeed() = 0;
-  srand(0);
+  *ThreadLocalRand::getSeed() = FLAGS_seed;
+  srand(FLAGS_seed);
 
   Trainer trainer;
   trainer.init(TrainerConfigHelper::createFromFlagConfig(), false);
 
   data.parameters = trainer.getGradientMachine()->getParameters();
+
+  DataBatch dataBatch;
+  int32_t batchSize = trainer.getConfig().opt_config().batch_size();
+
+  trainer.getDataProvider()->reset();
   trainer.getDataProvider()->setSkipShuffle();
-  trainer.train();
+  trainer.getDataProvider()->getNextBatch(batchSize, &dataBatch);
+
+  CHECK(dataBatch.getSize()) << "No data from data provider";
+  vector<Argument>& inArgs = dataBatch.getStreams();
+
+  trainer.getGradientMachine()->start();
+  trainer.getGradientMachine()->forwardBackward(
+      inArgs, &data.outArgs, PASS_TRAIN);
+
+  trainer.getGradientMachine()->finish();
 }
 
 void checkBuffer(real* A,
@@ -71,17 +89,22 @@ void checkBuffer(real* A,
                  size_t len,
                  size_t width = 1) {
   int nNum = 0;
+  real maxVal = 0;
+  for (size_t i = 0; i < len; ++i) {
+    maxVal = std::max(maxVal, std::max(A[i], B[i]));
+  }
+  real maxDiff = 0;
   for (size_t i = 0; i < len; ++i) {
     real diff = fabs(A[i] - B[i]);
-    if (diff > 0.0f &&
-        diff / std::max(fabs(A[i]), fabs(B[i])) > FLAGS_max_diff_ratio) {
+    maxDiff = std::max(maxDiff, diff);
+    if (diff > maxVal * FLAGS_max_diff_ratio) {
       nNum++;
-      LOG(INFO) << "Row: " << i / width << ", " << desA << " : " << A[i]
-                << "    " << desB << " : " << B[i];
+      VLOG(1) << "Row: " << i / width << ", " << desA << " : " << A[i] << "    "
+              << desB << " : " << B[i] << " diff=" << diff;
     }
   }
   EXPECT_EQ(0, nNum);
-  LOG(INFO) << "\n\n";
+  LOG(INFO) << "maxValue=" << maxVal << " maxDiff=" << maxDiff << "\n\n";
 }
 
 void compareGradient(ComData& comDataA, ComData& comDataB) {
@@ -147,17 +170,18 @@ void compareGradient(ComData& comDataA, ComData& comDataB) {
 
 TEST(Trainer, create) {
   ComData dataA;
-  calcGradient(dataA, FLAGS_config_file_a);
-  LOG(INFO) << "\n\ntraining of Network A is finished\n\n";
+  calcGradient(dataA, config_file_a);
+  LOG(INFO) << "\n\nforwardBackward of Network A is finished\n\n";
 
   ComData dataB;
-  calcGradient(dataB, FLAGS_config_file_b);
-  LOG(INFO) << "\n\ntraining of the Network B is finished\n\n";
+  calcGradient(dataB, config_file_b);
+  LOG(INFO) << "\n\nforwardBackward of the Network B is finished\n\n";
 
   compareGradient(dataA, dataB);
 }
 
 int main(int argc, char** argv) {
+  FLAGS_thread_local_rand_use_global_seed = true;
   paddle::initMain(argc, argv);
   testing::InitGoogleTest(&argc, argv);
   initPython(argc, argv);
@@ -168,17 +192,18 @@ int main(int argc, char** argv) {
     return 0;
   }
   if (FLAGS_max_diff_ratio == 0.0f) {
-    FLAGS_max_diff_ratio = 2e-4;
+    FLAGS_max_diff_ratio = 1e-5;
     LOG(INFO) << "auto set max_diff_ratio " << FLAGS_max_diff_ratio
               << " in low accuracy mode";
   }
 #else
   if (FLAGS_max_diff_ratio == 0.0f) {
-    FLAGS_max_diff_ratio = 2e-7;
+    FLAGS_max_diff_ratio = 1e-10;
     LOG(INFO) << "auto set max_diff_ratio " << FLAGS_max_diff_ratio
               << " in high accuracy mode";
   }
 #endif
+
   int ret = RUN_ALL_TESTS();
   return ret;
 }
