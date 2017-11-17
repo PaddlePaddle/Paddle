@@ -514,7 +514,6 @@ ParamGradInfoMap AppendBackward(
   auto root_block = program_desc.MutableBlock(root_block_idx);
 
   std::string fill_one_op_out = GradVarName(target.Name());
-  //  std::vector<int64_t> scalar_shape = {1};
   bool is_scalar = target.Shape() == std::vector<int64_t>{1};
   PADDLE_ENFORCE(is_scalar, "target should be scalar");
   VLOG(3) << "backward from loss=" << target.Name()
