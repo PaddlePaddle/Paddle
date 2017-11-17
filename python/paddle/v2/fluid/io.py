@@ -177,7 +177,7 @@ def save_inference_model(dirname,
     if not os.path.isdir(dirname):
         os.makedirs(dirname)
 
-    pruned_program = main_program.prune(target_vars)
+    pruned_program = main_program.prune(targets=target_vars, is_test=True)
     fetch_var_names = [v.name for v in target_vars]
 
     model_file_name = dirname + "/__model__"

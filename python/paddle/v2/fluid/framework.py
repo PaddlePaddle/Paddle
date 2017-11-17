@@ -4,7 +4,10 @@ import collections
 import numpy as np
 import copy
 
-__all__ = ['Block', 'Variable', 'Program', 'Operator', 'default_startup_program', 'default_main_program']
+__all__ = [
+    'Block', 'Variable', 'Program', 'Operator', 'default_startup_program',
+    'default_main_program'
+]
 
 
 def unique_name(prefix):
@@ -477,7 +480,7 @@ class Program(object):
         p.sync_with_cpp()
         return p
 
-    def prune(self, targets):
+    def prune(self, targets, is_test=False):
         if not isinstance(targets, list):
             targets = [targets]
         targets_idx = []
@@ -492,7 +495,7 @@ class Program(object):
 
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
-        res.desc = core.prune(self.desc, targets_idx)
+        res.desc = core.prune(self.desc, targets_idx, is_test)
         res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
         res.sync_with_cpp()
         return res
@@ -582,8 +585,10 @@ class Parameter(Variable):
 g_main_program = Program()
 g_startup_program = Program()
 
+
 def default_startup_program():
     return g_startup_program
+
 
 def default_main_program():
     return g_main_program

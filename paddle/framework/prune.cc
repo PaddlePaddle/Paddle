@@ -26,6 +26,8 @@ namespace framework {
 
 const std::string kFeedOpType = "feed";
 const std::string kFetchOpType = "fetch";
+const std::string kDropOutOpType = "dropout";
+const std::string kBatchNormOpType = "batch_norm";
 
 bool HasDependentVar(const OpDesc& op_desc,
                      const std::set<std::string>& dependent_vars) {
@@ -46,7 +48,8 @@ bool IsTarget(const OpDesc& op_desc) {
   return false;
 }
 
-void prune_impl(const ProgramDesc& input, ProgramDesc* output, int block_id) {
+void prune_impl(const ProgramDesc& input, ProgramDesc* output, int block_id,
+                bool is_test) {
   // TODO(tonyyang-svail):
   //    - will change to use multiple blocks for RNN op and Cond Op
 
@@ -66,6 +69,15 @@ void prune_impl(const ProgramDesc& input, ProgramDesc* output, int block_id) {
     PADDLE_ENFORCE(op_desc.type() != kFetchOpType || expect_fetch,
                    "All FetchOps must at the end of the ProgramDesc");
     expect_fetch = (op_desc.type() == kFetchOpType);
+  }
+
+  if (is_test) {
+    for (auto& op_desc : ops) {
+      if (op_desc.type() == kDropOutOpType ||
+          op_desc.type() == kBatchNormOpType) {
+        op_desc.SetAttr("is_test", true);
+      }
+    }
   }
 
   std::set<std::string> dependent_vars;
@@ -102,8 +114,8 @@ void prune_impl(const ProgramDesc& input, ProgramDesc* output, int block_id) {
 }
 
 // TODO(fengjiayi): Prune() could be inplaced to avoid unnecessary copies
-void Prune(const ProgramDesc& input, ProgramDesc* output) {
-  prune_impl(input, output, 0);
+void Prune(const ProgramDesc& input, ProgramDesc* output, bool is_test) {
+  prune_impl(input, output, 0, is_test);
 }
 
 }  // namespace framework
