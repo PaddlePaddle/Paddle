@@ -3214,7 +3214,10 @@ class DotProdLayer(LayerBase):
     def __init__(self, name, inputs, device=None):
         super(DotProdLayer, self).__init__(
             name, 'dot_prod', 0, inputs, device=device)
-        config_assert(len(inputs) == 2, 'DotProdLayer must have 2 inputs')
+        config_assert(len(inputs) == 2, 'DotProdLayer must have 2 inputs.')
+        config_assert(
+            self.get_input_layer(0).size == self.get_input_layer(1).size,
+            "Two inputs should have the same size.")
         self.set_layer_size(1)
 
 

@@ -1092,7 +1092,7 @@ TEST(Layer, DotProdLayer) {
   config.layerConfig.add_inputs();
 
   for (auto useGpu : {false, true}) {
-    testLayerGrad(config, "dot_prod", 100, false, useGpu);
+    testLayerGrad(config, "dot_prod", 10, false, useGpu);
   }
 }
 
