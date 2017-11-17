@@ -30,11 +30,6 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
 
-  for (size_t i = 0; i < paddings.size(); ++i) {
-    PADDLE_ENFORCE_EQ(paddings[i], 0,
-                      "No Padding allowed in conv transpose op.");
-  }
-
   PADDLE_ENFORCE(in_dims.size() == 4 || in_dims.size() == 5,
                  "ConvTransposeOp intput should be 4-D or 5-D tensor.");
   PADDLE_ENFORCE_EQ(in_dims.size(), filter_dims.size(),
@@ -52,7 +47,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[1]});
   for (size_t i = 0; i < strides.size(); ++i) {
-    output_shape.push_back((in_dims[i + 2] - 1) * strides[i] +
+    output_shape.push_back((in_dims[i + 2] - 1) * strides[i] - 2 * paddings[i] +
                            filter_dims[i + 2]);
   }
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
