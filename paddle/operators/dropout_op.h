@@ -65,7 +65,7 @@ template <typename Place, typename T>
 class DropoutGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(context.Attr<bool>("is_test"),
+    PADDLE_ENFORCE(!context.Attr<bool>("is_test"),
                    "GradOp is only callable when is_test is false");
 
     auto* grad_x = context.Output<Tensor>(framework::GradVarName("X"));
