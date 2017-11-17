@@ -73,7 +73,6 @@ if(MOBILE_INFERENCE)
     list(REMOVE_ITEM GSERVER_SOURCES
          dataproviders/DataProvider.cpp
          dataproviders/MultiDataProvider.cpp
-         dataproviders/ProtoDataProvider.cpp
          dataproviders/PyDataProvider2.cpp
          dataproviders/PyDataProvider.cpp)
 

@@ -115,6 +115,7 @@ __all__ = [
     'huber_classification_cost',
     'block_expand_layer',
     'maxout_layer',
+    'dot_prod_layer',
     'out_prod_layer',
     'printer_layer',
     'print_layer',
@@ -197,6 +198,7 @@ class LayerType(object):
     SCALING_LAYER = 'scaling'
     TRANS_LAYER = 'trans'
     ROTATE_LAYER = 'rotate'
+    DOT_PROD_LAYER = 'dot_prod'
     OUT_PROD_LAYER = 'out_prod'
     FEATURE_MAP_EXPAND_LAYER = 'featmap_expand'
 
@@ -4137,6 +4139,45 @@ def maxid_layer(input, name=None, layer_attr=None):
         name=name,
         layer_type=LayerType.MAXID_LAYER,
         parents=[input],
+        size=l.config.size)
+
+
+@wrap_name_default()
+def dot_prod_layer(input1, input2, name=None, layer_attr=None):
+    """
+    A layer for computing the dot product of two vectors.
+
+    The example usage is:
+
+    .. code-block:: python
+
+        dot_prod = dot_prod_layer(input1=vec1, input2=vec2)
+
+    :param name: The name of this layer. It is optional.
+    :type name: basestring
+    :param input1: The first input layer.
+    :type input: LayerOutput
+    :param input2: The second input layer.
+    :type input2: LayerOutput
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
+    :type layer_attr: ExtraLayerAttribute.
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input1, LayerOutput)
+    assert isinstance(input2, LayerOutput)
+    assert input1.size == input2.size, ("Two inputs should have the same size.")
+
+    l = Layer(
+        name=name,
+        type=LayerType.DOT_PROD_LAYER,
+        inputs=[input1.name, input2.name],
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name=name,
+        layer_type=LayerType.DOT_PROD_LAYER,
+        parents=[input1, input2],
         size=l.config.size)
 
 

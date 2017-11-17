@@ -147,8 +147,7 @@ class PoolCudnnGradOpKernel : public framework::OpKernel<T> {
 
     if (input_grad) {
       T *input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
-      math::SetConstant<paddle::platform::GPUPlace, T> set_zero;
-      set_zero(ctx.device_context(), input_grad, static_cast<T>(0));
+      // Because beta is zero, it is unnecessary to reset input_grad.
 
       PADDLE_ENFORCE(platform::dynload::cudnnPoolingBackward(
           handle, cudnn_pool_desc, &alpha, cudnn_output_desc, output_data,
