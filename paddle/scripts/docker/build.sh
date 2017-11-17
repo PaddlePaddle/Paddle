@@ -34,6 +34,7 @@ function cmake_gen() {
         ${PYTHON_FLAGS}
         -DWITH_DOC=OFF
         -DWITH_GPU=${WITH_GPU:-OFF}
+        -DCUDA_ARCH_NAME=All
         -DWITH_MKLDNN=${WITH_MKLDNN:-ON}
         -DWITH_MKLML=${WITH_MKLML:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
@@ -56,6 +57,7 @@ EOF
         ${PYTHON_FLAGS} \
         -DWITH_DOC=OFF \
         -DWITH_GPU=${WITH_GPU:-OFF} \
+        -DCUDA_ARCH_NAME=All \
         -DWITH_MKLDNN=${WITH_MKLDNN:-ON} \
         -DWITH_MKLML=${WITH_MKLML:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
