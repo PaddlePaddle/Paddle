@@ -33,8 +33,8 @@ class AdadeltaOpKernel : public framework::OpKernel<T> {
     avg_squared_grad_out_tensor->mutable_data<T>(ctx.GetPlace());
     avg_squared_update_out_tensor->mutable_data<T>(ctx.GetPlace());
 
-    float rho = ctx.Attr<float>("rho");
-    float epsilon = ctx.Attr<float>("epsilon");
+    T rho = static_cast<T>(ctx.Attr<float>("rho"));
+    T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
 
     auto param = framework::EigenVector<T>::Flatten(
         *ctx.Input<framework::Tensor>("Param"));
