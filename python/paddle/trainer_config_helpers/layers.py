@@ -2338,7 +2338,7 @@ def cos_sim(a, b, scale=1, size=1, name=None, layer_attr=None):
 @layer_support()
 def l2_distance_layer(x, y, name=None, layer_attr=None):
     """
-    This layer calculate and return the Euclidean distance between two input
+    This layer calculates and returns the Euclidean distance between two input
     vectors a and b. The equation is as follows:
 
     ..  math::
@@ -2374,7 +2374,7 @@ def l2_distance_layer(x, y, name=None, layer_attr=None):
     Layer(
         name=name,
         type=LayerType.L2_DISTANCE,
-        inputs=[x.name, x.name],
+        inputs=[x.name, y.name],
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(name, LayerType.L2_DISTANCE, parents=[x, y], size=1)
 
