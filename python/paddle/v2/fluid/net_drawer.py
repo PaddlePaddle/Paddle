@@ -66,10 +66,13 @@ def parse_graph(program, graph, var_dict, **kwargs):
             if not var_dict.has_key(var):
                 var_dict[var] = "Feed"
 
+    temp_id = 0
     proto = framework_pb2.ProgramDesc.FromString(
         program.desc.serialize_to_string())
     for block in proto.blocks:
         for op in block.ops:
+            op.type = op.type + "_" + str(temp_id)
+            temp_id += 1
             graph.node(**draw_node(op))
             for o in op.outputs:
                 for arg in o.arguments:
@@ -78,6 +81,7 @@ def parse_graph(program, graph, var_dict, **kwargs):
                 for arg in e.arguments:
                     if var_dict.has_key(arg):
                         graph.edge(**draw_edge(var_dict, op, e, arg))
+        break  # only plot the first block
 
 
 def draw_graph(startup_program, main_program, **kwargs):

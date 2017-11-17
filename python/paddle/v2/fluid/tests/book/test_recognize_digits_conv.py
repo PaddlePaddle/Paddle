@@ -1,22 +1,15 @@
+import numpy as np
 import paddle.v2 as paddle
-import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.nets as nets
 import paddle.v2.fluid.core as core
-import paddle.v2.fluid.optimizer as optimizer
 import paddle.v2.fluid.evaluator as evaluator
 import paddle.v2.fluid.framework as framework
+import paddle.v2.fluid.layers as layers
+import paddle.v2.fluid.nets as nets
 from paddle.v2.fluid.executor import Executor
+from paddle.v2.fluid.optimizer import AdamOptimizer
 
-import numpy as np
-
-images = layers.data(
-    name='pixel',
-    shape=[1, 28, 28],
-    data_type='float32')
-label = layers.data(
-    name='label',
-    shape=[1],
-    data_type='int64')
+images = layers.data(name='pixel', shape=[1, 28, 28], data_type='float32')
+label = layers.data(name='label', shape=[1], data_type='int64')
 conv_pool_1 = nets.simple_img_conv_pool(
     input=images,
     filter_size=5,
@@ -32,17 +25,13 @@ conv_pool_2 = nets.simple_img_conv_pool(
     pool_stride=2,
     act="relu")
 
-predict = layers.fc(input=conv_pool_2,
-                    size=10,
-                    act="softmax")
+predict = layers.fc(input=conv_pool_2, size=10, act="softmax")
 cost = layers.cross_entropy(input=predict, label=label)
 avg_cost = layers.mean(x=cost)
-optimizer = optimizer.AdamOptimizer(learning_rate=0.01, beta1=0.9, beta2=0.999)
+optimizer = AdamOptimizer(learning_rate=0.01, beta1=0.9, beta2=0.999)
 opts = optimizer.minimize(avg_cost)
 
-accuracy, acc_out = evaluator.accuracy(
-    input=predict,
-    label=label)
+accuracy, acc_out = evaluator.accuracy(input=predict, label=label)
 
 BATCH_SIZE = 50
 PASS_NUM = 3

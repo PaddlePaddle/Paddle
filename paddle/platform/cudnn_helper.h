@@ -1,8 +1,11 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -177,9 +180,10 @@ class ScopedFilterDescriptor {
                                             const cudnnDataType_t type,
                                             const std::vector<int>& kernel,
                                             const int groups = 1) {
-    // filter layout: MCHW, where M is the number of
+    // filter layout: MCHW(MCDHW), where M is the number of
     // output image channels, C is the number of input image channels,
-    // H and W is height and width of filter.
+    // D is the depth of the filter, H is the height of the filter, and W is the
+    // width of the filter.
     std::vector<int> kernel_with_group(kernel.begin(), kernel.end());
     if (groups > 1) {
       // M /= groups
