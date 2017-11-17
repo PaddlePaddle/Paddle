@@ -34,7 +34,7 @@ PaddlePaddle的文档构建有两种方式。
     cd TO_YOUR_PADDLE_CLONE_PATH
     mkdir -p build
     cd build
-    cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_MKLDNN=OFF -DWITH_MKLML=OFF -DWITH_DOC=ON
+    cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_MKL=OFF -DWITH_DOC=ON
     make gen_proto_py
     make paddle_docs paddle_docs_cn
 
