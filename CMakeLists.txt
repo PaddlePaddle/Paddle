@@ -36,8 +36,7 @@ include(simd)
 ################################ Configurations #######################################
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
-option(WITH_MKLDNN      "Compile PaddlePaddle with mkl-dnn support."    ${AVX_FOUND})
-option(WITH_MKLML       "Compile PaddlePaddle with mklml package."      ${AVX_FOUND})
+option(WITH_MKL         "Compile PaddlePaddle with MKL support."        ${AVX_FOUND})
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        ON)
 option(WITH_SWIG_PY     "Compile PaddlePaddle with inference api"       ON)
@@ -82,10 +81,8 @@ if(ANDROID OR IOS)
         "Disable PYTHON when cross-compiling for Android and iOS" FORCE)
     set(WITH_RDMA OFF CACHE STRING
         "Disable RDMA when cross-compiling for Android and iOS" FORCE)
-    set(WITH_MKLDNN OFF CACHE STRING
-        "Disable MKLDNN when cross-compiling for Android and iOS" FORCE)
-    set(WITH_MKLML OFF CACHE STRING
-        "Disable MKLML package when cross-compiling for Android and iOS" FORCE)
+    set(WITH_MKL OFF CACHE STRING
+        "Disable MKL when cross-compiling for Android and iOS" FORCE)
 
     # Compile PaddlePaddle mobile inference library
     if (NOT WITH_C_API)
@@ -109,6 +106,17 @@ if(MOBILE_INFERENCE)
     set(THIRD_PARTY_BUILD_TYPE MinSizeRel)
 else()
     set(THIRD_PARTY_BUILD_TYPE Release)
+endif()
+
+if(WITH_MKL)
+    set(WITH_MKLML ON)
+    set(WITH_MKLDNN ${AVX2_FOUND})
+    if(NOT WITH_MKLDNN)
+        message(WARNING "Do not have AVX2 intrinsics and disabled MKL-DNN")
+    endif()
+else()
+    set(WITH_MKLML OFF)
+    set(WITH_MKLDNN OFF)
 endif()
 
 ########################################################################################
@@ -161,8 +169,12 @@ if(WITH_GPU)
   include(cuda)
 endif(WITH_GPU)
 
+if(WITH_MKLML)
+    list(APPEND EXTERNAL_LIBS ${MKLML_IOMP_LIB})
+endif()
+
 if(WITH_MKLDNN)
-    list(APPEND EXTERNAL_LIBS ${MKLDNN_LIB} ${MKLDNN_IOMP_LIB})
+    list(APPEND EXTERNAL_LIBS ${MKLDNN_LIB})
 endif()
 
 if(USE_NNPACK)

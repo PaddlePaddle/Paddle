@@ -63,7 +63,6 @@ function(select_nvcc_arch_flags out_variable)
   set(archs_name_default "All")
   if(NOT CMAKE_CROSSCOMPILING)
     list(APPEND archs_names "Auto")
-    set(archs_name_default "Auto")
   endif()
 
   # set CUDA_ARCH_NAME strings (so it will be seen as dropbox in CMake-Gui)
