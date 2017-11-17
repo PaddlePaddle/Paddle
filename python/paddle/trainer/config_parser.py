@@ -3209,6 +3209,15 @@ class SubNestedSequenceLayer(LayerBase):
         self.set_layer_size(size)
 
 
+@config_layer('dot_prod')
+class DotProdLayer(LayerBase):
+    def __init__(self, name, inputs, device=None):
+        super(DotProdLayer, self).__init__(
+            name, 'dot_prod', 0, inputs, device=device)
+        config_assert(len(inputs) == 2, 'DotProdLayer must have 2 inputs')
+        self.set_layer_size(1)
+
+
 @config_layer('out_prod')
 class OuterProdLayer(LayerBase):
     def __init__(self, name, inputs, device=None):
