@@ -3127,7 +3127,7 @@ def batch_norm_layer(input,
            (batch_norm_type == "mkldnn_batch_norm") or \
            (batch_norm_type == "cudnn_batch_norm")
 
-    assert epsilon >= 1e-5, "Parameter epsilon must be no less than 1e-5."
+    assert epsilon >= 1e-5, "epsilon must be no less than 1e-5."
 
     l = Layer(
         name=name,

@@ -46,15 +46,12 @@ public:
   void backward(const UpdateCallback& callback = nullptr) override;
 
 protected:
-  /**
-   * Minimum allowed value is CUDNN_BN_MIN_EPSILON defined in cudnn.h.
-   * Same epsilon value should be used in forward and backward functions.
-   */
+  /// Minimum allowed value is CUDNN_BN_MIN_EPSILON defined in cudnn.h.
   static const double MIN_EPS;
 
   /// Epsilon value used in the batch normalization formula.
-  /// If EPS_ is smaller than MIN_EPS, MIN_EPS will be used.
-  double EPS_;
+  /// Same epsilon value should be used in forward and backward functions.
+  double eps_;
 
   /// Input/output tensor descriptor desc
   hl_tensor_descriptor ioDesc_;

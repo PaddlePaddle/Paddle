@@ -32,7 +32,7 @@ protected:
   std::shared_ptr<bn_fwd::primitive_desc> fwdPD_;
 
   // Epsilon value used in the batch normalization formula.
-  real EPS;
+  real epsilon_;
 
   // weight and bias in paddle
   std::unique_ptr<Weight> weight_;

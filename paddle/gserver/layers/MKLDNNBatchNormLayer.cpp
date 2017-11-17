@@ -48,7 +48,7 @@ bool MKLDNNBatchNormLayer::init(const LayerMap& layerMap,
     useGlobalStats_ = config_.use_global_stats();
   }
   movingAvgFraction_ = config_.moving_average_fraction();
-  EPS = config_.epsilon();
+  epsilon_ = config_.epsilon();
 
   VLOG(MKLDNN_BASE) << "--- " << (useGlobalStats_ ? "use" : "do not use")
                     << " --- global stats";
@@ -213,7 +213,7 @@ void MKLDNNBatchNormLayer::resetFwdPD(
   if (wgt) {
     flags_ = (flags_ | batch_normalization_flag::use_scale_shift);
   }
-  auto fwdDesc = bn_fwd::desc(pk, in->getMemoryDesc(), EPS, flags_);
+  auto fwdDesc = bn_fwd::desc(pk, in->getMemoryDesc(), epsilon_, flags_);
   pd.reset(new bn_fwd::primitive_desc(fwdDesc, engine_));
   CHECK_PRIMITIVE_DESC_EQ(out, pd->dst_primitive_desc());
   if (wgt) {
@@ -280,7 +280,7 @@ void MKLDNNBatchNormLayer::resetBwdPD(
   }
   CHECK_PRIMITIVE_DESC_EQ(out, in->getPrimitiveDesc());
   auto md = in->getMemoryDesc();
-  auto bwdDesc = bn_bwd::desc(prop_kind::backward, md, md, EPS, flags_);
+  auto bwdDesc = bn_bwd::desc(prop_kind::backward, md, md, epsilon_, flags_);
   pd.reset(new bn_bwd::primitive_desc(bwdDesc, engine_, *fwdPD_));
   CHECK(pd->weights_primitive_desc() == fwdPD_->weights_primitive_desc());
   CHECK_PRIMITIVE_DESC_EQ(wgt, pd->diff_weights_primitive_desc());
