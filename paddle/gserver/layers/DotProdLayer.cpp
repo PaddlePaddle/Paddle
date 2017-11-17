@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * @brief A layer for computing the dot product of two vectors
+ * @brief A layer for computing the dot product of two vectors.
  * Input1: vector (batchSize * dim)
  * Input2: vector (batchSize * dim)
  * Output: a matrix: (batchSize * 1)
@@ -46,7 +46,8 @@ bool DotProdLayer::init(const LayerMap& layerMap,
   Layer::init(layerMap, parameterMap);
 
   CHECK_EQ(inputLayers_.size(), 2U);
-  CHECK_EQ(1, getSize()) << "Dimension mismatch";
+  CHECK_EQ(1UL, getSize())
+      << "The output dimensionality of this layer should be fixed to 1.";
 
   return true;
 }
@@ -59,6 +60,7 @@ void DotProdLayer::forward(PassType passType) {
 
   size_t batchSize = inV0->getHeight();
   CHECK_EQ(inV1->getHeight(), batchSize);
+  CHECK_EQ(inV0->getWidth(), inV1->getWidth());
 
   {
     REGISTER_TIMER_INFO("FwResetTimer", getName().c_str());
