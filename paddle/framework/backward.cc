@@ -513,19 +513,14 @@ ParamGradInfoMap AppendBackward(
   const int root_block_idx = 0;
   auto root_block = program_desc.MutableBlock(root_block_idx);
 
-  // insert fill one op for target
-  // TODO(qiao) add some check to the target.
   std::string fill_one_op_out = GradVarName(target.Name());
-  std::vector<int64_t> target_shape_desc = target.Shape();
-  std::vector<int> target_shape;
-  std::transform(target_shape_desc.begin(), target_shape_desc.end(),
-                 std::back_inserter(target_shape),
-                 [](int64_t dim) { return static_cast<int>(dim); });
+  bool is_scalar = target.Shape() == std::vector<int64_t>{1};
+  PADDLE_ENFORCE(is_scalar, "target should be scalar");
   VLOG(3) << "backward from loss=" << target.Name()
           << " data_type=" << target.GetDataType();
   std::unique_ptr<OpDescBind> fill_one_op(
       new OpDescBind("fill_constant", {}, {{"Out", {fill_one_op_out}}},
-                     {{"shape", target_shape},
+                     {{"shape", std::vector<int>{1}},
                       {"value", static_cast<float>(1.0)},
                       {"data_type", target.GetDataType()}}));
   // infer var type of fill_one_op
