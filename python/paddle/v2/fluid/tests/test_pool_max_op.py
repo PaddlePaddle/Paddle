@@ -151,7 +151,7 @@ class TestCase4(TestMaxPoolWithIndex_Op):
         self.global_pool = True
 
 
-class TestCase5(TestMaxPoolWithIndex_Op):
+class TestCase5(TestCase4):
     def init_global(self):
         self.global_pool = False
 
