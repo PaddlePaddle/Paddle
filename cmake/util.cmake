@@ -115,8 +115,8 @@ function(link_paddle_exe TARGET_NAME)
         target_link_libraries(${TARGET_NAME} log)
     endif(ANDROID)
 
-    if(WITH_MKLDNN AND WITH_MKLML AND MKLDNN_IOMP_DIR)
-      target_link_libraries(${TARGET_NAME} "-L${MKLDNN_IOMP_DIR} -liomp5 -Wl,--as-needed")
+    if(WITH_MKLML AND MKLML_LIB_DIR AND MKLML_IOMP_LIB)
+      target_link_libraries(${TARGET_NAME} "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
     endif()
 
     add_dependencies(${TARGET_NAME} ${external_project_dependencies})
