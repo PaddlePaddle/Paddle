@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/framework/eigen.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/hostdevice.h"
@@ -22,41 +21,17 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-
 #define FLT_MAX \
     __FLT_MAX__
 
-/*
- * \brief Extracting simple operations from maxout.
- *        need "initial", "compute"
- * operation.
- */
-template <class T>
-class MaxOut {
- public:
-  DEVICE inline T initial() { return static_cast<T>(-FLT_MAX); }
-  DEVICE inline void compute(T& y, const T& x) { y = y > x ? y : x; }
-};
-
-template <class T>
-class MaxOutGrad {
- public:
-  DEVICE inline void compute(const T& x, const T& y, const T& dy, T& dx,
-                             T scale) {
-    dx += dy * (x == y);
-  }
-};
-
-
-template <typename Place, typename MaxOutProcess, typename T>
+template <typename Place, typename T>
 
 class MaxOutFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input, framework::Tensor * output,
-                  int groups, MaxOutProcess maxout_compute);
+                  int groups );
 };
-
 
 template <typename Place, class T>
 class MaxOutGradFunctor {
@@ -67,13 +42,6 @@ class MaxOutGradFunctor {
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, int groups);
 };
-
-
-
-
-
-
-
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
