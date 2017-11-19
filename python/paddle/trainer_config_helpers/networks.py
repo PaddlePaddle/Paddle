@@ -1586,9 +1586,9 @@ def multi_head_attention(query,
                 value_proj, offset=value_proj_size * i, size=value_proj_size)
 
         if attention_type == 'dot-product attention':
-            m = linear_comb_layer(
-                weights=sub_query_proj,
-                vectors=sub_key_proj,
+            m = dot_prod_layer(
+                input1=sub_query_proj,
+                input2=sub_key_proj,
                 name='%s_dot-product_%d' % (name, i))
             m = slope_intercept_layer(
                 input=m,
