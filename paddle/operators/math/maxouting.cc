@@ -22,23 +22,20 @@ namespace math {
  * All tensors are in NCHW format.
  * groups mustbe > 1
  */
-template <typename MaxOutProcess, typename T>
-class MaxOutFunctor<platform::CPUPlace, MaxOutProcess, T> {
+template <typename T>
+class MaxOutFunctor<platform::CPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input,
                   framework::Tensor * output,
-                  int groups,
-                  MaxOutProcess maxout_process) {
+                  int groups) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
     const int output_channels = output->dims()[1];
-
     int fea_size = input_height * input_width;
-    // c_size mean output one batch size
+    // c_size means the output size of each sample
     int c_size = fea_size * output_channels;
-
     const T* input_data = input.data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
@@ -47,10 +44,11 @@ class MaxOutFunctor<platform::CPUPlace, MaxOutProcess, T> {
       for (int c = 0; c < output_channels; ++c) {
         int new_cindex = fea_size * c;
         for (int f = 0; f < fea_size; ++f) {
-          T ele = maxout_process.initial();
+          // T ele = maxout_process.initial();
+          T ele = static_cast<T>(-FLT_MAX);
           for (int ph = 0; ph < groups; ++ph) {
-            maxout_process.compute(ele,
-              input_data[(new_bindex+new_cindex) * groups+ph*fea_size+f]);
+            T x=input_data[(new_bindex+new_cindex) * groups+ph*fea_size+f];
+            ele = ele > x ? ele : x;
           }
           output_data[(new_bindex+new_cindex+f)] = ele;
         }
@@ -74,9 +72,7 @@ public:
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
     const int output_channels = output.dims()[1];
-
     int fea_size = input_height * input_width;
-
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
@@ -87,15 +83,15 @@ public:
       for (int c = 0; c < output_channels; ++c) {
         int clen = fea_size * c;
         for (int f = 0; f < fea_size; ++f) {
-          int input_idx = 0;
-          bool stop = false;
+          int input_idx0 = (blen + clen) * groups + f;
+          bool continue_match = true;
           int output_idx = blen + clen + f;
-          for (int g = 0; g < groups && !stop; ++g) {
-              input_idx = (blen + clen) * groups + fea_size * g + f;
+          for (int g = 0; g < groups && continue_match; ++g) {
+              int input_idx = input_idx0 + fea_size * g;
               input_grad_data[input_idx] = 0;
               if (input_data[input_idx] == output_data[output_idx]) {
                 input_grad_data[input_idx] += output_grad_data[output_idx];
-                stop = true;
+                continue_match = false;
               }
           }
         }
@@ -106,10 +102,8 @@ public:
 
 template class MaxOutGradFunctor<platform::CPUPlace, float>;
 template class MaxOutGradFunctor<platform::CPUPlace, double>;
-template class MaxOutFunctor<platform::CPUPlace,
-                             math::MaxOut<float>, float>;
-template class MaxOutFunctor<platform::CPUPlace,
-                             math::MaxOut<double>, double>;
+template class MaxOutFunctor<platform::CPUPlace, float>;
+template class MaxOutFunctor<platform::CPUPlace, double>;
 
 }  // namespace math
 }  // namespace operators

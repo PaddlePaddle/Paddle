@@ -29,16 +29,12 @@ class MaxOutKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* in_x = context.Input<Tensor>("X");
     Tensor* out = context.Output<Tensor>("Out");
-
     int groups = context.template Attr<int>("groups");
 
-
     paddle::operators::math::MaxOutFunctor<
-    Place, paddle::operators::math::MaxOut<T>, T>
+    Place, T>
     maxout_forward;
-    paddle::operators::math::MaxOut<T> maxout_process;
-    maxout_forward(context.device_context(), *in_x, out, groups,
-    maxout_process);
+    maxout_forward(context.device_context(), *in_x, out, groups);
   }
 };
 
@@ -51,15 +47,12 @@ class MaxOutGradKernel : public framework::OpKernel<T> {
     const Tensor* out_grad =
         context.Input<Tensor>(framework::GradVarName("Out"));
     Tensor* in_x_grad = context.Output<Tensor>(framework::GradVarName("X"));
-
     int groups = context.template Attr<int>("groups");
-
     auto& device_ctx = context.device_context();
     math::SetConstant<Place, T> zero;
     if (in_x_grad) {
       in_x_grad->mutable_data<T>(context.GetPlace());
       zero(device_ctx, in_x_grad, static_cast<T>(0.0));
-
       paddle::operators::math::MaxOutGradFunctor<Place, T>
       maxout_backward;
       maxout_backward(context.device_context(), *in_x, *in_x_grad, *out,
