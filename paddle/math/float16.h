@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-// need to define PADDLE_ARM_FP16
-
 #pragma once
 
 #include <cstdint>
@@ -21,14 +19,7 @@ limitations under the License. */
 #include <ostream>
 
 #include <cuda.h>
-
-#include "paddle/utils/Logging.h"
-
-#define USE_EIGEN
-
-#ifdef USE_EIGEN  // delete this #if macro
 #include "unsupported/Eigen/CXX11/Tensor"
-#endif
 
 #ifdef __GNUC__
 #define PADDLE_GNUC_VER (__GNUC__ * 10 + __GNUC_MINOR__)
@@ -51,27 +42,6 @@ limitations under the License. */
 #else
 #define PADDLE_HOSTDEVICE
 #endif  // __CUDACC__
-
-#define STR(x) #x
-#define XSTR(x) STR(x)
-
-#ifndef __CUDACC__
-#pragma message "__CUDACC__ not defined"
-#else
-#pragma message "__CUDACC__ defined"
-#endif
-
-#ifndef CUDA_VERSION
-#pragma message "CUDA_VERSION not defined"
-#else
-#pragma message "CUDA_VERSION defined: " XSTR(CUDA_VERSION)
-#endif
-
-#ifdef __CUDA_ARCH__
-#pragma message "The value of CUDA_ARCH: " XSTR(__CUDA_ARCH__)
-#else
-#pragma message "CUDA ARCH NOT DEFINED!"
-#endif
 
 #ifdef __arm__
 #define PADDLE_ARM_32
@@ -113,7 +83,7 @@ namespace paddle {
 struct float16;
 
 namespace fp16_impl {
-// convert from float to half precision in round-to-nearest-even mode
+// Convert from float to half precision in round-to-nearest-even mode
 PADDLE_HOSTDEVICE inline float16 float_to_half_rn(float f);
 PADDLE_HOSTDEVICE inline float half_to_float(float16 h);
 }  // namespace fp16_impl
@@ -125,7 +95,7 @@ PADDLE_HOSTDEVICE inline float half_to_float(float16 h);
 struct PADDLE_ALIGN(2) float16 {
   uint16_t x;
 
-  PADDLE_HOSTDEVICE inline float16() {}
+  PADDLE_HOSTDEVICE inline float16() : x(0) {}
 
   PADDLE_HOSTDEVICE inline float16(const float16& h) : x(h.x) {}
 
@@ -139,21 +109,15 @@ struct PADDLE_ALIGN(2) float16 {
   }
 #endif  // PADDLE_CUDA_FP16
 
-#ifdef USE_EIGEN
   PADDLE_HOSTDEVICE inline float16(const Eigen::half& h) : x(h.x) {}
-#endif  // USE_EIGEN
 
 #if defined(PADDLE_NEON) && defined(PADDLE_ARM_FP16) && \
     (PADDLE_GNUC_VER >= 61 || PADDLE_CLANG_VER >= 34)
   // __fp16 is a native half precision data type for arm cpu,
   // float16_t is an alias for __fp16 in arm_fp16.h,
   // which is included in arm_neon.h.
-  // According to gcc, __fp16 can only be used as an argument to fp16
-  // intrinsic defined in arm_neon.h or as a storage type. It cannot
-  // be used as a formal function argument.
-  // TODO(kexinzhao): test it on RPI
-  PADDLE_HOSTDEVICE inline float16(const float16_t* h) {
-    x = *reinterpret_cast<uint16_t*>(h);
+  PADDLE_HOSTDEVICE inline float16(const float16_t& h) {
+    x = *reinterpret_cast<uint16_t*>(&h);
   }
 #endif
 
@@ -225,17 +189,15 @@ struct PADDLE_ALIGN(2) float16 {
   }
 #endif
 
-#ifdef USE_EIGEN
   PADDLE_HOSTDEVICE inline float16& operator=(const Eigen::half& rhs) {
     x = rhs.x;
     return *this;
   }
-#endif  // USE_EIGEN
 
 #if defined(PADDLE_NEON) && defined(PADDLE_ARM_FP16) && \
     (PADDLE_GNUC_VER >= 61 || PADDLE_CLANG_VER >= 34)
-  PADDLE_HOSTDEVICE inline float16& operator=(const float16_t* rhs) {
-    x = *reinterpret_cast<uint16_t*>(rhs);
+  PADDLE_HOSTDEVICE inline float16& operator=(const float16_t& rhs) {
+    x = *reinterpret_cast<uint16_t*>(&rhs);
     return *this;
   }
 #endif
@@ -319,17 +281,14 @@ struct PADDLE_ALIGN(2) float16 {
   }
 #endif  // PADDLE_CUDA_FP16
 
-#ifdef USE_EIGEN
   PADDLE_HOSTDEVICE inline operator Eigen::half() const {
     Eigen::half h;
     h.x = x;
     return h;
   }
-#endif  // USE_EIGEN
 
 #if defined(PADDLE_NEON) && defined(PADDLE_ARM_FP16) && \
     (PADDLE_GNUC_VER >= 61 || PADDLE_CLANG_VER >= 34)
-  // check whether it works or not
   PADDLE_HOSTDEVICE inline operator float16_t() const {
     float16 h = *this;
     return *reinterpret_cast<float16_t*>(&h);
@@ -381,10 +340,9 @@ struct PADDLE_ALIGN(2) float16 {
   }
 };
 
-// arithmetic operators
+// Arithmetic operators
 #if defined(PADDLE_CUDA_FP16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
 __device__ inline float16 operator+(const float16& a, const float16& b) {
-  printf("GPU Intrinsic used!");
   return float16(__hadd(half(a), half(b)));
 }
 
@@ -452,7 +410,7 @@ __device__ inline bool operator>=(const float16& a, const float16& b) {
 }
 
 // On ARMv8.2-A CPU
-#elif defined(PADDLE_NEON_64) && defined(PADDLE_ARM_FP16) && \
+#elif defined(PADDLE_NEON) && defined(PADDLE_ARM_FP16) && \
     (PADDLE_GNUC_VER >= 71 || PADDLE_CLANG_VER >= 39)
 __host__ inline float16 operator+(const float16& a, const float16& b) {
   return float16(vaddh_f16(float16_t(a), float16_t(b)));
@@ -502,7 +460,7 @@ __host__ inline bool operator!=(const float16& a, const float16& b) {
   return !(a == b);
 }
 
-// compare only available in NEON_64
+#ifdef PADDLE_NEON_64
 __host__ inline bool operator<(const float16& a, const float16& b) {
   return static_cast<bool>(vclth_f16(float16_t(a), float16_t(b)));
 }
@@ -518,10 +476,10 @@ __host__ inline bool operator>(const float16& a, const float16& b) {
 __host__ inline bool operator>=(const float16& a, const float16& b) {
   return static_cast<bool>(vcgeh_f16(float16_t(a), float16_t(b)));
 }
+#endif  // PADDLE_NEON_64
 
-#else  // software emulation on other cpu
+#else  // Software emulation on other cpu
 PADDLE_HOSTDEVICE inline float16 operator+(const float16& a, const float16& b) {
-  LOG(INFO) << "CPU emulation used";
   return float16(float(a) + float(b));
 }
 
@@ -624,7 +582,7 @@ PADDLE_HOSTDEVICE inline float16 float_to_half_rn(float f) {
   half tmp = __float2half(f);
   return *reinterpret_cast<float16*>(&tmp);
 
-#elif defined(PADDLE_NEON_64)  // test on RPI
+#elif defined(PADDLE_NEON_64)
   float16 res;
   asm volatile(
       "ld1 {v0.s}[0], [%[float_ptr]]\n"
@@ -638,7 +596,7 @@ PADDLE_HOSTDEVICE inline float16 float_to_half_rn(float f) {
       "memory", "v0");
   return res;
 
-#elif defined(PADDLE_NEON_32)  // test on RPI
+#elif defined(PADDLE_NEON_32)
   float16 res;
   asm volatile(
       "vld1.32 {d0[0]}, [%[float_ptr]]\n"
@@ -689,7 +647,7 @@ PADDLE_HOSTDEVICE inline float half_to_float(float16 h) {
   float res;
   asm volatile(
       "ld1 {v0.h}[0], [%[half_ptr]]\n"
-      "FCVT s0, h0\n"
+      "fcvt s0, h0\n"
       "st1 {v0.s}[0], [%[float_ptr]]\n"
       :  // outputs
       :  // inputs
@@ -739,5 +697,4 @@ PADDLE_HOSTDEVICE inline float half_to_float(float16 h) {
 }
 
 }  // namespace fp16_impl
-
 }  // namespace paddle
