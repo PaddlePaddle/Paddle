@@ -178,7 +178,10 @@ protected:
   /**
    * reshape the input image sizes and input batchsize
    */
-  void reshapeInput(int& batchsize, int& height, int& width);
+  void reshapeInput(int& batchsize,
+                    int& height,
+                    int& width,
+                    size_t inputIdx = 0);
 
   /**
    * reshape output image sizes

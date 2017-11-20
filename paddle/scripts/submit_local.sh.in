@@ -18,8 +18,8 @@ function version(){
         echo "PaddlePaddle @PADDLE_VERSION@, compiled with"
         echo "    with_avx: @WITH_AVX@"
         echo "    with_gpu: @WITH_GPU@"
+        echo "    with_mkl: @WITH_MKL@"
         echo "    with_mkldnn: @WITH_MKLDNN@"
-        echo "    with_mklml: @WITH_MKLML@"
         echo "    with_double: @WITH_DOUBLE@"
         echo "    with_python: @WITH_PYTHON@"
         echo "    with_rdma: @WITH_RDMA@"
@@ -41,6 +41,54 @@ function ver2num() {
     fi
   fi
   set +e
+}
+
+function cpu_config() {
+  # auto set KMP_AFFINITY and OMP_DYNAMIC from Hyper Threading Status
+  # only when MKL enabled
+  if [ "@WITH_MKL@" == "OFF" ]; then
+    return 0
+  fi
+  ht=`lscpu |grep "per core"|awk -F':' '{print $2}'|xargs`
+  if [ $ht -eq 1 ]; then # HT is OFF
+    if [ -z "$KMP_AFFINITY" ]; then
+      export KMP_AFFINITY="granularity=fine,compact,0,0"
+    fi
+    if [ -z "$OMP_DYNAMIC" ]; then
+      export OMP_DYNAMIC="FALSE"
+    fi
+  else # HT is ON
+    if [ -z "$KMP_AFFINITY" ]; then
+      export KMP_AFFINITY="granularity=fine,compact,1,0"
+    fi
+    if [ -z "$OMP_DYNAMIC" ]; then
+      export OMP_DYNAMIC="True"
+    fi
+  fi
+}
+
+function threads_config() {
+  # auto set OMP_NUM_THREADS and MKL_NUM_THREADS
+  # according to trainer_count and total processors
+  # only when MKL enabled
+  if [ "@WITH_MKL@" == "OFF" ]; then
+    return 0
+  fi
+  processors=`grep "processor" /proc/cpuinfo|sort -u|wc -l`
+  trainers=`grep -Eo 'trainer_count.[0-9]+' <<< "$@" |grep -Eo '[0-9]+'|xargs`
+  if [ -z $trainers ]; then
+    trainers=1
+  fi
+  threads=$((processors / trainers))
+  if [ $threads -eq 0 ]; then
+    threads=1
+  fi
+  if [ -z "$OMP_NUM_THREADS" ]; then
+    export OMP_NUM_THREADS=$threads
+  fi
+  if [ -z "$MKL_NUM_THREADS" ]; then
+    export MKL_NUM_THREADS=$threads
+  fi
 }
 
 PADDLE_CONF_HOME="$HOME/.config/paddle"
@@ -92,9 +140,13 @@ else:
   sys.exit(0)
 EOF
 
+cpu_config
+# echo $KMP_AFFINITY $OMP_DYNAMIC
 
 case "$1" in
     "train")
+        threads_config $@
+        # echo $OMP_NUM_THREADS $MKL_NUM_THREADS
         ${DEBUGGER} $PADDLE_BIN_PATH/paddle_trainer ${@:2}
         ;;
     "merge_model")
