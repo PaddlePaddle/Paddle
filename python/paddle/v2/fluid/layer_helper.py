@@ -120,7 +120,7 @@ class LayerHelper(object):
         if initializer is not None:
             attr_copy['initializer'] = initializer
         else:
-            attr_copy['initializer'] = _get_default_initializer(dtype)
+            attr_copy['initializer'] = self._get_default_initializer(dtype)
         if attr_copy['name'] is None:
             attr_copy['name'] = unique_name(".".join([self.name, suffix]))
         self.startup_program.global_block().create_parameter(
@@ -204,8 +204,8 @@ class LayerHelper(object):
             attrs=act)
         return tmp
 
-    def _get_default_initializer(dtype):
-        if dtype is None or dtype_is_floating(dtype) == True:
+    def _get_default_initializer(self, dtype):
+        if dtype is None or dtype_is_floating(dtype) is True:
             return XavierInitializer()
         else:
             # For integer and boolean types, initialize with all zeros

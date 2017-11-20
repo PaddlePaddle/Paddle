@@ -39,7 +39,7 @@ def dtype_is_floating(dtype):
     if not isinstance(dtype, core.DataType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if (dtype == core.DataType.FP16 or dtype == core.DataType.FP16 or
+    if (dtype == core.DataType.FP16 or dtype == core.DataType.FP32 or
             dtype == core.DataType.FP64):
         return True
     else:
