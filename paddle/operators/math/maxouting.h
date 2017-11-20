@@ -30,7 +30,7 @@ class MaxOutFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input, framework::Tensor * output,
-                  int groups );
+                  int groups);
 };
 
 template <typename Place, class T>
