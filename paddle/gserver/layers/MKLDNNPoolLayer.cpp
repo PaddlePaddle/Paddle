@@ -58,7 +58,7 @@ bool MKLDNNPoolLayer::init(const LayerMap& layerMap,
 }
 
 void MKLDNNPoolLayer::reshape(
-    int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) {
+    int& bs, int& ic, int& ih, int& iw, int& oc, int& oh, int& ow) {
   reshapeInput(bs, ih, iw);
   // ic_ and oc can not be changed
   CHECK_EQ(inputElemenCnt_ / bs / ih / iw, (size_t)ic)

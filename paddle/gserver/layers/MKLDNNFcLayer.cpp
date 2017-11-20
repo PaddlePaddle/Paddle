@@ -74,7 +74,7 @@ void MKLDNNFcLayer::convertWeightsToPaddle() {
 }
 
 void MKLDNNFcLayer::reshape(
-    int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) {
+    int& bs, int& ic, int& ih, int& iw, int& oc, int& oh, int& ow) {
   reshapeInput(bs, ih, iw);
 
   CHECK_EQ(iLayerSize_, inputLayers_[0]->getSize());

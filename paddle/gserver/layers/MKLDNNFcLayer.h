@@ -52,7 +52,7 @@ public:
             const ParameterMap& parameterMap) override;
 
   void reshape(
-      int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) override;
+      int& bs, int& ic, int& ih, int& iw, int& oc, int& oh, int& ow) override;
 
   void resetFwd(std::vector<mkldnn::primitive>& pipeline,
                 MKLDNNMatrixPtr& in,

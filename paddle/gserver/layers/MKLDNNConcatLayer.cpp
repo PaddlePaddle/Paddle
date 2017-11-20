@@ -32,7 +32,7 @@ bool MKLDNNConcatLayer::init(const LayerMap& layerMap,
 }
 
 void MKLDNNConcatLayer::reshape(
-    int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) {
+    int& bs, int& ic, int& ih, int& iw, int& oc, int& oh, int& ow) {
   reshapeInput(bs, ih, iw);
   ic = inputLayers_[0]->getSize() / ih / iw;
   CHECK_EQ((size_t)ic * ih * iw, inputLayers_[0]->getSize());
@@ -40,9 +40,7 @@ void MKLDNNConcatLayer::reshape(
   CHECK_GT(inputLayers_.size(), 1UL);
   channels_.resize(inputLayers_.size());
   channels_[0] = ic;
-  // need change the output channel, so use oc_ instead
-  // TODO(TJ): change API, use &oc
-  oc_ = ic;
+  oc = ic;
   for (size_t i = 1; i < inputLayers_.size(); i++) {
     int batchsize, height, witdh;
     reshapeInput(batchsize, height, witdh, i);
@@ -52,12 +50,12 @@ void MKLDNNConcatLayer::reshape(
 
     channels_[i] = inputLayers_[i]->getSize() / height / witdh;
     CHECK_EQ((size_t)channels_[i] * height * witdh, inputLayers_[i]->getSize());
-    oc_ += channels_[i];
+    oc += channels_[i];
   }
   oh = ih;
   ow = iw;
   reshapeOutput(oh, ow);
-  resizeOutput(bs, oc_ * oh * ow);
+  resizeOutput(bs, oc * oh * ow);
 }
 
 void MKLDNNConcatLayer::resetFwd(std::vector<primitive>& pipeline,
