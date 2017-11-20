@@ -23,7 +23,24 @@ class CudnnConv2DTransposeOpMaker : public Conv2DTransposeOpMaker {
                               framework::OpAttrChecker* op_checker)
       : Conv2DTransposeOpMaker(proto, op_checker) {
     AddAttr<std::vector<int>>("dilations", "dilations of convolution operator.")
-        .SetDefault(std::vector<int>{1, 1});
+        .SetDefault({1, 1});
+    AddAttr<int>("workspace_size_MB",
+                 "workspace size for cudnn, in MB, "
+                 "workspace is a section of GPU memory which will be "
+                 "allocated/freed each time the operator runs, larger "
+                 "workspace size can increase performance but also requires "
+                 "better hardward. This size should be carefully setted.")
+        .SetDefault(4096);
+  }
+};
+
+class CudnnConv3DTransposeOpMaker : public Conv3DTransposeOpMaker {
+ public:
+  CudnnConv3DTransposeOpMaker(framework::OpProto* proto,
+                              framework::OpAttrChecker* op_checker)
+      : Conv3DTransposeOpMaker(proto, op_checker) {
+    AddAttr<std::vector<int>>("dilations", "dilations of convolution operator.")
+        .SetDefault({1, 1, 1});
     AddAttr<int>("workspace_size_MB",
                  "workspace size for cudnn, in MB, "
                  "workspace is a section of GPU memory which will be "
@@ -47,4 +64,15 @@ REGISTER_OP_CPU_KERNEL(
     ops::GemmConvTransposeKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
     conv2d_transpose_cudnn_grad,
+    ops::GemmConvTransposeGradKernel<paddle::platform::CPUPlace, float>);
+
+REGISTER_OP(conv3d_transpose_cudnn, ops::ConvTransposeOp,
+            ops::CudnnConv3DTransposeOpMaker, conv3d_transpose_cudnn_grad,
+            ops::ConvTransposeOpGrad);
+
+REGISTER_OP_CPU_KERNEL(
+    conv3d_transpose_cudnn,
+    ops::GemmConvTransposeKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    conv3d_transpose_cudnn_grad,
     ops::GemmConvTransposeGradKernel<paddle::platform::CPUPlace, float>);
