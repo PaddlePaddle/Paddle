@@ -1,8 +1,11 @@
 # gserver pacakge unittests
 
 add_simple_unittest(test_LinearChainCRF)
-add_simple_unittest(test_MultinomialSampler)
 add_simple_unittest(test_RecurrentLayer)
+
+if(NOT MOBILE_INFERENCE)
+  add_simple_unittest(test_MultinomialSampler)
+endif()
 
 function(gserver_test TARGET)
   add_unittest_without_exec(${TARGET}
@@ -24,8 +27,9 @@ gserver_test(test_ConvUnify)
 gserver_test(test_BatchNorm)
 gserver_test(test_KmaxSeqScore)
 gserver_test(test_Expand)
+gserver_test(test_MaxPoolingWithMaskOutput)
 
-########## test_Mkldnn layers and activations ##########
+########## test_MKLDNN layers and activations ##########
 if(WITH_MKLDNN)
     add_unittest_without_exec(test_MKLDNN
         test_MKLDNN.cpp
@@ -48,7 +52,7 @@ if(WITH_PYTHON)
 endif()
 
 ############### test_WarpCTCLayer #######################
-if(NOT WITH_DOUBLE)
+if(NOT WITH_DOUBLE AND NOT MOBILE_INFERENCE)
     add_unittest_without_exec(test_WarpCTCLayer
         test_WarpCTCLayer.cpp)
 
@@ -58,17 +62,6 @@ if(NOT WITH_DOUBLE)
 endif()
 
 if(NOT MOBILE_INFERENCE)
-################### test_ProtoDataProvider ############
-    add_unittest_without_exec(test_ProtoDataProvider
-        test_ProtoDataProvider.cpp)
-
-    # test_ProtoDataProvider will mkdir as same name,
-    # so if WORKING_DIRECTORY is default directory, then
-    # mkdir will get error.
-    add_test(NAME test_ProtoDataProvider
-        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/test_ProtoDataProvider
-        WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle)
-
 ################## test_Evaluator #######################
     add_unittest(test_Evaluator
         test_Evaluator.cpp)
@@ -106,3 +99,24 @@ add_test(NAME test_PyDataProvider2
    COMMAND .set_python_path.sh -d ${PADDLE_SOURCE_DIR}/paddle/gserver/tests:${PADDLE_SOURCE_DIR}/python ${CMAKE_CURRENT_BINARY_DIR}/test_PyDataProvider2
         WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle
 )
+
+################# test_CompareSparse ##################
+add_unittest_without_exec(test_CompareSparse
+    test_CompareSparse.cpp)
+if(NOT ON_TRAVIS)
+  add_test(NAME test_CompareSparse
+    COMMAND ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d
+          ${PADDLE_SOURCE_DIR}/python:${PADDLE_SOURCE_DIR}/paddle/gserver/tests
+              ./.set_port.sh -p port -n 6
+                  ${CMAKE_CURRENT_BINARY_DIR}/test_CompareSparse
+    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
+endif()
+
+################ test_CompareTwoNets ######################
+add_unittest_without_exec(test_CompareTwoNets
+    test_CompareTwoNets.cpp)
+add_test(NAME test_CompareTwoNets
+  COMMAND ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d
+        ${PADDLE_SOURCE_DIR}/python:${PADDLE_SOURCE_DIR}/paddle/gserver/tests
+        ${CMAKE_CURRENT_BINARY_DIR}/test_CompareTwoNets
+    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
