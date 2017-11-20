@@ -75,8 +75,6 @@ void MKLDNNPoolLayer::reshape(
 
 void MKLDNNPoolLayer::resetFwd(std::vector<primitive>& pipeline,
                                MKLDNNMatrixPtr& in,
-                               MKLDNNMatrixPtr& wgt,
-                               MKLDNNMatrixPtr& bias,
                                MKLDNNMatrixPtr& out) {
   resetFwdBuffers(in, out);
 
@@ -87,8 +85,6 @@ void MKLDNNPoolLayer::resetFwd(std::vector<primitive>& pipeline,
 
 void MKLDNNPoolLayer::resetBwd(std::vector<primitive>& pipeline,
                                MKLDNNMatrixPtr& in,
-                               MKLDNNMatrixPtr& wgt,
-                               MKLDNNMatrixPtr& bias,
                                MKLDNNMatrixPtr& out) {
   std::shared_ptr<pool_bwd::primitive_desc> pd;
 

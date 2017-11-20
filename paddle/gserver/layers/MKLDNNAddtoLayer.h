@@ -54,14 +54,10 @@ public:
 
   void resetFwd(std::vector<mkldnn::primitive>& pipeline,
                 MKLDNNMatrixPtr& in,
-                MKLDNNMatrixPtr& wgt,
-                MKLDNNMatrixPtr& bias,
                 MKLDNNMatrixPtr& out) override;
 
   void resetBwd(std::vector<mkldnn::primitive>& pipeline,
                 MKLDNNMatrixPtr& in,
-                MKLDNNMatrixPtr& wgt,
-                MKLDNNMatrixPtr& bias,
                 MKLDNNMatrixPtr& out) override;
 
   void updateWeights(const UpdateCallback& callback) override;
@@ -91,11 +87,6 @@ public:
   }
 
 protected:
-  /**
-   * Forward functions: reset buffers(inputs, output, bias),
-   *                    reset primitive descriptor,
-   *                    reset pipeline.
-   */
   void resetFwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
                        MKLDNNMatrixPtr& bias,
                        MKLDNNMatrixPtr& out);
@@ -110,17 +101,10 @@ protected:
                         std::vector<MKLDNNMatrixPtr>& inputs,
                         MKLDNNMatrixPtr& bias,
                         MKLDNNMatrixPtr& out);
-
-  /**
-   * Backward functions: reset buffers(inputs, output, bias)
-   */
   void resetBwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
                        MKLDNNMatrixPtr& bias,
                        MKLDNNMatrixPtr& out);
 
-  /**
-   * prepare for bias
-   */
   void prepareBias(MKLDNNMatrixPtr& bias,
                    const MatrixPtr& biasMat,
                    const MKLDNNMatrixPtr& out,

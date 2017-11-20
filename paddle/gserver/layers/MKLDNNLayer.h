@@ -134,21 +134,19 @@ public:
   /**
    * reset the mkldnn forward primitve and memories
    * only would be called when input size changes
+   * weight and bias buffers should be coverd by child class itself
    */
   virtual void resetFwd(std::vector<mkldnn::primitive>& pipeline,
                         MKLDNNMatrixPtr& in,
-                        MKLDNNMatrixPtr& wgt,
-                        MKLDNNMatrixPtr& bias,
                         MKLDNNMatrixPtr& out) = 0;
 
   /**
    * reset the mkldnn backward primitve and memories
    * only would be called when needed
+   * weight and bias buffers should be coverd by child class itself
    */
   virtual void resetBwd(std::vector<mkldnn::primitive>& pipeline,
                         MKLDNNMatrixPtr& in,
-                        MKLDNNMatrixPtr& wgt,
-                        MKLDNNMatrixPtr& bias,
                         MKLDNNMatrixPtr& out) = 0;
 
   /**

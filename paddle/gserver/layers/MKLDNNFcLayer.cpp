@@ -88,31 +88,27 @@ void MKLDNNFcLayer::reshape(
 
 void MKLDNNFcLayer::resetFwd(std::vector<primitive>& pipeline,
                              MKLDNNMatrixPtr& in,
-                             MKLDNNMatrixPtr& wgt,
-                             MKLDNNMatrixPtr& bias,
                              MKLDNNMatrixPtr& out) {
-  resetFwdBuffers(in, wgt, bias, out);
+  resetFwdBuffers(in, wgtVal_, biasVal_, out);
 
-  resetFwdPD(fwdPD_, in, wgt, bias, out);
+  resetFwdPD(fwdPD_, in, wgtVal_, biasVal_, out);
 
-  resetFwdPipeline(pipeline, fwdPD_, in, wgt, bias, out);
+  resetFwdPipeline(pipeline, fwdPD_, in, wgtVal_, biasVal_, out);
 }
 
 void MKLDNNFcLayer::resetBwd(std::vector<primitive>& pipeline,
                              MKLDNNMatrixPtr& in,
-                             MKLDNNMatrixPtr& wgt,
-                             MKLDNNMatrixPtr& bias,
                              MKLDNNMatrixPtr& out) {
   std::shared_ptr<fc_bwdWgt::primitive_desc> bwdWgtPD;
   std::shared_ptr<fc_bwdData::primitive_desc> bwdDataPD;
 
-  resetBwdBuffers(in, wgt, bias, out);
+  resetBwdBuffers(in, wgtGrad_, biasGrad_, out);
 
-  resetBwdWgtPD(bwdWgtPD, wgt, bias, out);
+  resetBwdWgtPD(bwdWgtPD, wgtGrad_, biasGrad_, out);
 
   resetBwdDataPD(bwdDataPD, in, out);
 
-  resetBwdPipeline(pipeline, bwdWgtPD, bwdDataPD, in, wgt, bias, out);
+  resetBwdPipeline(pipeline, bwdWgtPD, bwdDataPD, in, wgtGrad_, biasGrad_, out);
 }
 
 void MKLDNNFcLayer::updateWeights(const UpdateCallback& callback) {

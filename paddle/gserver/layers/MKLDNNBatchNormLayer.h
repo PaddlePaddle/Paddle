@@ -77,14 +77,10 @@ public:
 
   void resetFwd(std::vector<mkldnn::primitive>& pipeline,
                 MKLDNNMatrixPtr& in,
-                MKLDNNMatrixPtr& wgt,
-                MKLDNNMatrixPtr& bias,
                 MKLDNNMatrixPtr& out) override;
 
   void resetBwd(std::vector<mkldnn::primitive>& pipeline,
                 MKLDNNMatrixPtr& in,
-                MKLDNNMatrixPtr& wgt,
-                MKLDNNMatrixPtr& bias,
                 MKLDNNMatrixPtr& out) override;
 
   void updateWeights(const UpdateCallback& callback) override;
@@ -98,11 +94,7 @@ protected:
    * moving = moving * AvgFraction + local * (1 - AvgFraction)
    */
   void calMovingMeanAndVar();
-  /**
-   * Forward functions: reset buffers(input, weight, output),
-   *                    reset primitive descriptor,
-   *                    reset pipeline.
-   */
+
   void resetFwdBuffers(MKLDNNMatrixPtr& in,
                        MKLDNNMatrixPtr& wgt,
                        MKLDNNMatrixPtr& out);
@@ -115,12 +107,6 @@ protected:
                         MKLDNNMatrixPtr& in,
                         MKLDNNMatrixPtr& wgt,
                         MKLDNNMatrixPtr& out);
-
-  /**
-   * Backward functions: reset buffers(input, weight, output),
-   *                     reset primitive descriptor,
-   *                     reset pipeline.
-   */
   void resetBwdBuffers(MKLDNNMatrixPtr& in,
                        MKLDNNMatrixPtr& wgt,
                        MKLDNNMatrixPtr& out);

@@ -58,7 +58,7 @@ void MKLDNNLayer::forward(PassType passType) {
       printSizeInfo();
       // all cpu device output grad or value share output's
       shareCPUDevice();
-      resetFwd(pipelineFwd_, inVal_, wgtVal_, biasVal_, outVal_);
+      resetFwd(pipelineFwd_, inVal_, outVal_);
       // MKLDNNLayer output value should be MKLDNNMatrix
       // so external output value is necessary.
       // Then external input value is not necessary,
@@ -101,7 +101,7 @@ void MKLDNNLayer::backward(const UpdateCallback& callback) {
     pipelineBwd_.clear();
     pipelineMergeGrad_.clear();
     mergeGrad_ = nullptr;
-    resetBwd(pipelineBwd_, inGrad_, wgtGrad_, biasGrad_, outGrad_);
+    resetBwd(pipelineBwd_, inGrad_, outGrad_);
     // external output grad is not necessary
     // since output may be mkldnn internal buffer or merge them directly.
     CHECK(outGrad_) << "internal output grad is necessary";
