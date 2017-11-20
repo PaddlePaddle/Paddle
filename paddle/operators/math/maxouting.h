@@ -38,7 +38,7 @@ class MaxOutGradFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input,
-                  framework::Tensor& input_grad,
+                  framework::Tensor * input_grad,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, int groups);
 };

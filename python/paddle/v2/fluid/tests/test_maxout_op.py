@@ -3,7 +3,7 @@ import numpy as np
 from op_test import OpTest
 
 
-def maxout_forward_naive(input, groups,num_channels):
+def maxout_forward_naive(input, groups):
     s0, s1, s2, s3 = input.shape
     return np.ndarray([s0, s1 / groups, groups, s2, s3], \
         buffer = input, dtype=input.dtype).max(axis=(2))
@@ -18,7 +18,7 @@ class TestMaxOutOp(OpTest):
                 self.num_channels).astype("float32")
 
         self.inputs = {'X': input}
-        self.attrs = {'groups': self.groups, 'num_channels': self.num_channels}
+        self.attrs = {'groups': self.groups}
 
         self.outputs = {'Out': output.astype('float32')}
 
@@ -32,7 +32,6 @@ class TestMaxOutOp(OpTest):
         self.MaxOut_forward_naive = maxout_forward_naive
         self.shape = [100, 6, 2, 2]
         self.groups=2
-        self.num_channels=6
 
 
 

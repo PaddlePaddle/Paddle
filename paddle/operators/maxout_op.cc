@@ -34,14 +34,13 @@ class MaxOutOpMaker : public framework::OpProtoAndCheckerMaker {
         "width of feature.");
     AddAttr<int>(
         "groups",
-        R"DOC(The group number of input layer.
+        R"DOC("Specifies how many groups the input tensor will be split"
+        "in the channel dimension. And the number of output channel is "
+        "the number of channels divided by groups.."
         )DOC");
     AddComment(R"DOC(
-        - Input: NCHW.
-        - Output: The feature map size of output is the same as the input.
-        The output_channel is (input channel) / groups
-        So groups should be larger than 1, and the num of channels should be able
-        to be devided by groups.
+        Assumed the input shape is (N, Ci, H, W).
+        The output shape is (N, Co, H, W). Then `Co = Ci / groups`.
 
        math:
        y_{si+j} = \max_k x_{gsi + sk + j}
@@ -65,10 +64,10 @@ class MaxOutOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of maxoutOp"
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of MaxoutOp"
                    "should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of maxoutOp should not be null.");
+                   "Output(Out) of MaxoutOp should not be null.");
     auto in_x_dims = ctx->GetInputDim("X");
     int groups = ctx->Attrs().Get<int>("groups");
     // check groups > 1

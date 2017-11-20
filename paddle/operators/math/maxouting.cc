@@ -18,10 +18,7 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-/*
- * All tensors are in NCHW format.
- * groups mustbe > 1
- */
+// All tensors are in NCHW format, and the groups must be greater than 1
 template <typename T>
 class MaxOutFunctor<platform::CPUPlace, T> {
  public:
@@ -44,7 +41,6 @@ class MaxOutFunctor<platform::CPUPlace, T> {
       for (int c = 0; c < output_channels; ++c) {
         int new_cindex = fea_size * c;
         for (int f = 0; f < fea_size; ++f) {
-          // T ele = maxout_process.initial();
           T ele = static_cast<T>(-FLT_MAX);
           for (int ph = 0; ph < groups; ++ph) {
             T x = input_data[(new_bindex + new_cindex) * groups
@@ -65,7 +61,7 @@ class MaxOutGradFunctor<platform::CPUPlace, T> {
 public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input,
-                  framework::Tensor& input_grad,
+                  framework::Tensor * input_grad,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad,
                   int groups) {
@@ -77,7 +73,7 @@ public:
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad.mutable_data<T>(context.GetPlace());
+    T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
     for (int i = 0; i < batch_size; ++i) {
       int blen = fea_size * output_channels * i;
