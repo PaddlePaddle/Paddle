@@ -2306,7 +2306,7 @@ def cos_sim(a, b, scale=1, size=1, name=None, layer_attr=None):
     :type a: LayerOutput
     :param b: input layer b
     :type b: LayerOutput
-    :param scale: scale for cosine value. default is 5.
+    :param scale: scale for cosine value. default is 1.
     :type scale: float
     :param size: layer size. NOTE size_a * size should equal size_b.
     :type size: int
