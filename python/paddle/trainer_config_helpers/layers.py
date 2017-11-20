@@ -3876,7 +3876,7 @@ def recurrent_layer(input,
     :type input: LayerOutput
     :param act: Activation type. TanhActivation is the default activation.
     :type act: BaseActivation
-    :param bias_attr: The parameter attribute for bias. If this parameter is set to 
+    :param bias_attr: The parameter attribute for bias. If this parameter is set to
                       False or an object whose type is not ParameterAttribute,
                       no bias is defined. If the parameter is set to True,
                       the bias is initialized to zero.
@@ -7307,8 +7307,7 @@ def factorization_machine(input,
         each latent vector is k.
 
     For details of Factorization Machine, please refer to the paper:
-        Rendle, Steffen. Factorization machines. IEEE 10th International
-        Conference on Data Mining (ICDM). IEEE, 2010.
+    Factorization machines.
 
     .. code-block:: python
        factor_machine = factorization_machine(input=input_layer, factor_size=10)
