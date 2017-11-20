@@ -46,7 +46,6 @@ exe = Executor(place)
 exe.run(framework.default_startup_program())
 
 for pass_id in range(PASS_NUM):
-    count = 0
     accuracy.reset(exe)
     for data in train_reader():
         img_data = np.array(map(lambda x: x[0].reshape([1, 28, 28]),
@@ -66,13 +65,14 @@ for pass_id in range(PASS_NUM):
         loss = np.array(outs[0])
         acc = np.array(outs[1])
         pass_acc = accuracy.eval(exe)
-        print "pass id : ", pass_id, pass_acc
+        print("pass_id=" + str(pass_id) + " acc=" + str(acc) + " pass_acc=" +
+              str(pass_acc))
         # print loss, acc
-        if loss < 10.0 and acc > 0.9:
+        if loss < 10.0 and pass_acc > 0.9:
             # if avg cost less than 10.0 and accuracy is larger than 0.9, we think our code is good.
             exit(0)
 
     pass_acc = accuracy.eval(exe)
-    print "pass id : ", pass_id, pass_acc
+    print("pass_id=" + str(pass_id) + " pass_acc=" + str(pass_acc))
 
 exit(1)
