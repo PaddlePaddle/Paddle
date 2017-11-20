@@ -3,6 +3,7 @@ import numpy as np
 import sys
 from op_test import OpTest
 
+
 class TestSequenceSliceOp(OpTest):
     def set_data(self):
         self.init_test_case()
@@ -13,12 +14,12 @@ class TestSequenceSliceOp(OpTest):
         length = np.array(self.length).astype("int64")
 
         self.inputs = {'X': (x, lod), 'Offset': offset, 'Length': length}
-        outs = [] #np.zeros((100, 3, 2)).astype('float32')
+        outs = []  #np.zeros((100, 3, 2)).astype('float32')
         out_lod = [[0]]
         out_lod_offset = 0
         for i in range(len(offset)):
-            sub_x = x[lod[0][i] + offset[i, 0]: lod[0]
-                      [i] + offset[i, 0] + length[i, 0], :]
+            sub_x = x[lod[0][i] + offset[i, 0]:lod[0][i] + offset[i, 0] +
+                      length[i, 0], :]
             out_lod_offset = out_lod_offset + len(sub_x)
             outs.append(sub_x)
             out_lod[0].append(out_lod_offset)
@@ -40,6 +41,7 @@ class TestSequenceSliceOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
 
 if __name__ == '__main__':
     unittest.main()
