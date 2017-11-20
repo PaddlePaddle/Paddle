@@ -84,15 +84,15 @@ void MKLDNNPoolLayer::resetFwd(std::vector<primitive>& pipeline,
 }
 
 void MKLDNNPoolLayer::resetBwd(std::vector<primitive>& pipeline,
-                               MKLDNNMatrixPtr& in,
+                               std::vector<MKLDNNMatrixPtr>& inputs,
                                MKLDNNMatrixPtr& out) {
   std::shared_ptr<pool_bwd::primitive_desc> pd;
 
-  resetBwdBuffers(in, out);
+  resetBwdBuffers(inputs[0], out);
 
-  resetBwdPD(pd, in, out);
+  resetBwdPD(pd, inputs[0], out);
 
-  resetBwdPipeline(pipeline, pd, in, out);
+  resetBwdPipeline(pipeline, pd, inputs[0], out);
 }
 
 void MKLDNNPoolLayer::resetFwdBuffers(MKLDNNMatrixPtr& in,

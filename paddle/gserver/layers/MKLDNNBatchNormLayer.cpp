@@ -146,15 +146,15 @@ void MKLDNNBatchNormLayer::resetFwd(std::vector<primitive>& pipeline,
 }
 
 void MKLDNNBatchNormLayer::resetBwd(std::vector<primitive>& pipeline,
-                                    MKLDNNMatrixPtr& in,
+                                    std::vector<MKLDNNMatrixPtr>& inputs,
                                     MKLDNNMatrixPtr& out) {
   std::shared_ptr<bn_bwd::primitive_desc> pd;
 
-  resetBwdBuffers(in, wgtGrad_, out);
+  resetBwdBuffers(inputs[0], wgtGrad_, out);
 
-  resetBwdPD(pd, in, wgtGrad_, out);
+  resetBwdPD(pd, inputs[0], wgtGrad_, out);
 
-  resetBwdPipeline(pipeline, pd, in, wgtGrad_, out);
+  resetBwdPipeline(pipeline, pd, inputs[0], wgtGrad_, out);
 }
 
 void MKLDNNBatchNormLayer::forward(PassType passType) {

@@ -91,22 +91,13 @@ void MKLDNNLayer::backward(const UpdateCallback& callback) {
   if (needResetBwd_) {
     VLOG(MKLDNN_BASE) << getName() << " reset mkldnn backward";
     pipelineBwd_.clear();
+    inGrads_.resize(inputLayers_.size(), nullptr);
+    extInGrads_.resize(inputLayers_.size(), nullptr);
+    cvtInGrads_.resize(inputLayers_.size(), nullptr);
     pipelineMergeGrad_.clear();
     mergeGrad_ = nullptr;
-    resetBwd(pipelineBwd_, inGrad_, outGrad_);
-    // external output grad is not necessary
-    // since output may be mkldnn internal buffer or merge them directly.
-    CHECK(outGrad_) << "internal output grad is necessary";
-    if (extOutGrad_) {
-      CHECK_EQ(extOutGrad_->getData(), output_.grad->getData())
-          << "the external buffer should share the same data with output_.grad";
-    }
-    if (cvtOutGrad_) {
-      pipelineBwd_.insert(pipelineBwd_.begin(), *cvtOutGrad_);
-    }
-    if (cvtInGrad_) {
-      pipelineBwd_.push_back(*cvtInGrad_);
-    }
+    resetBwd(pipelineBwd_, inGrads_, outGrad_);
+    prepareGradConversions(pipelineBwd_);
     printGradFormat();
     needResetBwd_ = false;
   }
@@ -214,8 +205,8 @@ void MKLDNNLayer::resetOutValue(MKLDNNMatrixPtr& out,
 void MKLDNNLayer::resetInGrad(MKLDNNMatrixPtr& in,
                               memory::primitive_desc intPD,
                               size_t idx) {
-  cvtInGrad_ = nullptr;
-  extInGrad_ = nullptr;
+  cvtInGrads_[idx] = nullptr;
+  extInGrads_[idx] = nullptr;
   in = nullptr;
   LayerPtr& input = inputLayers_[idx];
   if (input->getOutputGrad() == nullptr) {
@@ -237,19 +228,20 @@ void MKLDNNLayer::resetInGrad(MKLDNNMatrixPtr& in,
     return;
   }
 
-  extInGrad_ = in;
-  if (isPaddleFormat(extInGrad_->getFormat())) {
+  extInGrads_[idx] = in;
+  if (isPaddleFormat(extInGrads_[idx]->getFormat())) {
     return;
   }
   // need create reorder
   CHECK(extInVals_[idx] != nullptr &&
         isPaddleFormat(extInVals_[idx]->getFormat()))
       << "should have external input value and the format must be nchw(nc)";
-  extInGrad_ = MKLDNNMatrix::create(extInVals_[idx]->getPrimitiveDesc(), inMat);
+  extInGrads_[idx] =
+      MKLDNNMatrix::create(extInVals_[idx]->getPrimitiveDesc(), inMat);
   CHECK_PRIMITIVE_DESC_EQ(inVals_[idx], intPD);
   in = MKLDNNMatrix::create(intPD);
-  cvtInGrad_ = MKLDNNMatrix::createReorder(in, extInGrad_);
-  CHECK(cvtInGrad_);
+  cvtInGrads_[idx] = MKLDNNMatrix::createReorder(in, extInGrads_[idx]);
+  CHECK(cvtInGrads_[idx]);
 }
 
 void MKLDNNLayer::resetOutGrad(MKLDNNMatrixPtr& out,

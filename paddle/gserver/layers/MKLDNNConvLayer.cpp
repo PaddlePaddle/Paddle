@@ -115,7 +115,7 @@ void MKLDNNConvLayer::resetFwd(std::vector<primitive>& pipeline,
 }
 
 void MKLDNNConvLayer::resetBwd(std::vector<primitive>& pipeline,
-                               MKLDNNMatrixPtr& in,
+                               std::vector<MKLDNNMatrixPtr>& inputs,
                                MKLDNNMatrixPtr& out) {
   std::shared_ptr<conv_bwdWgt::primitive_desc> bwdWgtPD;
   std::shared_ptr<conv_bwdData::primitive_desc> bwdDataPD;
@@ -124,9 +124,10 @@ void MKLDNNConvLayer::resetBwd(std::vector<primitive>& pipeline,
 
   resetBwdDataPD(bwdDataPD);
 
-  resetBwdBuffers(bwdWgtPD, bwdDataPD, in, wgtGrad_, biasGrad_, out);
+  resetBwdBuffers(bwdWgtPD, bwdDataPD, inputs[0], wgtGrad_, biasGrad_, out);
 
-  resetBwdPipeline(pipeline, bwdWgtPD, bwdDataPD, in, wgtGrad_, biasGrad_, out);
+  resetBwdPipeline(
+      pipeline, bwdWgtPD, bwdDataPD, inputs[0], wgtGrad_, biasGrad_, out);
 }
 
 void MKLDNNConvLayer::updateWeights(const UpdateCallback& callback) {
