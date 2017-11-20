@@ -17,11 +17,15 @@ limitations under the License. */
 namespace ops = paddle::operators;
 
 REGISTER_OP_GPU_KERNEL(pool2d,
-                       ops::PoolKernel<paddle::platform::GPUPlace, float>);
+                       ops::PoolKernel<paddle::platform::GPUPlace, float>,
+                       ops::PoolKernel<paddle::platform::GPUPlace, double>);
 REGISTER_OP_GPU_KERNEL(pool2d_grad,
-                       ops::PoolGradKernel<paddle::platform::GPUPlace, float>);
+                       ops::PoolGradKernel<paddle::platform::GPUPlace, float>,
+                       ops::PoolGradKernel<paddle::platform::GPUPlace, double>);
 
 REGISTER_OP_GPU_KERNEL(pool3d,
-                       ops::PoolKernel<paddle::platform::GPUPlace, float>);
+                       ops::PoolKernel<paddle::platform::GPUPlace, float>,
+                       ops::PoolKernel<paddle::platform::GPUPlace, double>);
 REGISTER_OP_GPU_KERNEL(pool3d_grad,
-                       ops::PoolGradKernel<paddle::platform::GPUPlace, float>);
+                       ops::PoolGradKernel<paddle::platform::GPUPlace, float>,
+                       ops::PoolGradKernel<paddle::platform::GPUPlace, double>);

@@ -52,7 +52,13 @@ class PoolCudnnOpKernel : public framework::OpKernel<T> {
     ScopedTensorDescriptor input_desc;
     ScopedTensorDescriptor output_desc;
     ScopedPoolingDescriptor pool_desc;
-    DataLayout layout = DataLayout::kNCHW;
+    DataLayout layout;
+
+    if (strides.size() == 2U) {
+      layout = DataLayout::kNCHW;
+    } else {
+      layout = DataLayout::kNCDHW;
+    }
 
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
         layout, framework::vectorize2int(input->dims()));
@@ -112,7 +118,13 @@ class PoolCudnnGradOpKernel : public framework::OpKernel<T> {
     ScopedTensorDescriptor input_desc;
     ScopedTensorDescriptor output_desc;
     ScopedPoolingDescriptor pool_desc;
-    DataLayout layout = DataLayout::kNCHW;
+    DataLayout layout;
+
+    if (strides.size() == 2U) {
+      layout = DataLayout::kNCHW;
+    } else {
+      layout = DataLayout::kNCDHW;
+    }
 
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
         layout, framework::vectorize2int(input->dims()));
@@ -135,8 +147,7 @@ class PoolCudnnGradOpKernel : public framework::OpKernel<T> {
 
     if (input_grad) {
       T *input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
-      math::SetConstant<paddle::platform::GPUPlace, T> set_zero;
-      set_zero(ctx.device_context(), input_grad, static_cast<T>(0));
+      // Because beta is zero, it is unnecessary to reset input_grad.
 
       PADDLE_ENFORCE(platform::dynload::cudnnPoolingBackward(
           handle, cudnn_pool_desc, &alpha, cudnn_output_desc, output_data,
@@ -151,5 +162,12 @@ class PoolCudnnGradOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(pool2d_cudnn, ops::PoolCudnnOpKernel<float>);
-REGISTER_OP_GPU_KERNEL(pool2d_cudnn_grad, ops::PoolCudnnGradOpKernel<float>);
+REGISTER_OP_GPU_KERNEL(pool2d_cudnn, ops::PoolCudnnOpKernel<float>,
+                       ops::PoolCudnnOpKernel<double>);
+REGISTER_OP_GPU_KERNEL(pool2d_cudnn_grad, ops::PoolCudnnGradOpKernel<float>,
+                       ops::PoolCudnnGradOpKernel<double>);
+
+REGISTER_OP_GPU_KERNEL(pool3d_cudnn, ops::PoolCudnnOpKernel<float>,
+                       ops::PoolCudnnOpKernel<double>);
+REGISTER_OP_GPU_KERNEL(pool3d_cudnn_grad, ops::PoolCudnnGradOpKernel<float>,
+                       ops::PoolCudnnGradOpKernel<double>);

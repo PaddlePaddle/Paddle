@@ -51,6 +51,7 @@ __all__ = [
     'last_seq',
     'first_seq',
     'cos_sim',
+    'l2_distance_layer',
     'hsigmoid',
     'conv_projection',
     'square_error_cost',
@@ -115,6 +116,7 @@ __all__ = [
     'huber_classification_cost',
     'block_expand_layer',
     'maxout_layer',
+    'dot_prod_layer',
     'out_prod_layer',
     'printer_layer',
     'print_layer',
@@ -167,6 +169,7 @@ class LayerType(object):
     COST = 'cost'
     COSINE_SIM_VEC = 'cos_vm'
     COSINE_SIM = 'cos'
+    L2_DISTANCE = 'l2_distance'
     HSIGMOID = 'hsigmoid'
     CONV_LAYER = 'conv'
     CONVTRANS_LAYER = 'convt'
@@ -197,6 +200,7 @@ class LayerType(object):
     SCALING_LAYER = 'scaling'
     TRANS_LAYER = 'trans'
     ROTATE_LAYER = 'rotate'
+    DOT_PROD_LAYER = 'dot_prod'
     OUT_PROD_LAYER = 'out_prod'
     FEATURE_MAP_EXPAND_LAYER = 'featmap_expand'
 
@@ -2333,6 +2337,51 @@ def cos_sim(a, b, scale=1, size=1, name=None, layer_attr=None):
 
 
 @wrap_name_default()
+@layer_support()
+def l2_distance_layer(x, y, name=None, layer_attr=None):
+    """
+    This layer calculates and returns the Euclidean distance between two input
+    vectors x and y. The equation is as follows:
+
+    ..  math::
+        l2_distance(\\mathbf{x}, \\mathbf{y}) = \\sqrt{\\sum_{i=1}^D(x_i - y_i)}
+
+    The output size of this layer is fixed to be 1. Note that the above
+    computation is for one sample. Multiple samples are processed in one batch.
+
+    The example usage is:
+
+    .. code-block:: python
+
+       l2_sim = l2_distance(x=layer1, y=layer2)
+
+    :param name: The name of this layer. It is optional.
+    :type name: basestring
+    :param x: The first input x for this layer, whose output is a matrix with
+              dimensionality N x D. N is the sample number in a mini-batch.
+              D is the dimensionality of x's output.
+    :type x: LayerOutput
+    :param y: The second input y for this layer, whose output is a matrix with
+              dimensionality N x D. N is the sample number in a mini-batch.
+              D is the dimensionality of y's output.
+    :type y: LayerOutput
+    :param layer_attr: The extra layer attributes, for example, drop rate.
+                       See ExtraLayerAttribute for more details.
+    :type layer_attr: ExtraLayerAttribute
+    :return: The returned LayerOutput object.
+    :rtype: LayerOutput
+    """
+
+    assert isinstance(x, LayerOutput) and isinstance(y, LayerOutput)
+    Layer(
+        name=name,
+        type=LayerType.L2_DISTANCE,
+        inputs=[x.name, y.name],
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(name, LayerType.L2_DISTANCE, parents=[x, y], size=1)
+
+
+@wrap_name_default()
 @wrap_bias_attr_default(has_bias=True)
 @wrap_param_attr_default()
 @layer_support()
@@ -3871,7 +3920,7 @@ def recurrent_layer(input,
     :type input: LayerOutput
     :param act: Activation type. TanhActivation is the default activation.
     :type act: BaseActivation
-    :param bias_attr: The parameter attribute for bias. If this parameter is set to 
+    :param bias_attr: The parameter attribute for bias. If this parameter is set to
                       False or an object whose type is not ParameterAttribute,
                       no bias is defined. If the parameter is set to True,
                       the bias is initialized to zero.
@@ -4137,6 +4186,45 @@ def maxid_layer(input, name=None, layer_attr=None):
         name=name,
         layer_type=LayerType.MAXID_LAYER,
         parents=[input],
+        size=l.config.size)
+
+
+@wrap_name_default()
+def dot_prod_layer(input1, input2, name=None, layer_attr=None):
+    """
+    A layer for computing the dot product of two vectors.
+
+    The example usage is:
+
+    .. code-block:: python
+
+        dot_prod = dot_prod_layer(input1=vec1, input2=vec2)
+
+    :param name: The name of this layer. It is optional.
+    :type name: basestring
+    :param input1: The first input layer.
+    :type input: LayerOutput
+    :param input2: The second input layer.
+    :type input2: LayerOutput
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
+    :type layer_attr: ExtraLayerAttribute.
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input1, LayerOutput)
+    assert isinstance(input2, LayerOutput)
+    assert input1.size == input2.size, ("Two inputs should have the same size.")
+
+    l = Layer(
+        name=name,
+        type=LayerType.DOT_PROD_LAYER,
+        inputs=[input1.name, input2.name],
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name=name,
+        layer_type=LayerType.DOT_PROD_LAYER,
+        parents=[input1, input2],
         size=l.config.size)
 
 
