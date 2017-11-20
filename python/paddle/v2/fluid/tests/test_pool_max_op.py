@@ -3,11 +3,13 @@ import numpy as np
 from op_test import OpTest
 
 
-def max_pool3D_forward_naive(x, ksize, strides, paddings, global_pool=0):
+def max_pool3D_forward_naive(x, ksize, strides, paddings, global_pool=False):
 
     N, C, D, H, W = x.shape
-    if global_pool == 1:
+    if global_pool:
         ksize = [D, H, W]
+        paddings = [0, 0, 0]
+
     D_out = (D - ksize[0] + 2 * paddings[0]) / strides[0] + 1
     H_out = (H - ksize[1] + 2 * paddings[1]) / strides[1] + 1
     W_out = (W - ksize[2] + 2 * paddings[2]) / strides[2] + 1
@@ -40,11 +42,13 @@ def max_pool3D_forward_naive(x, ksize, strides, paddings, global_pool=0):
     return out, mask
 
 
-def max_pool2D_forward_naive(x, ksize, strides, paddings, global_pool=0):
+def max_pool2D_forward_naive(x, ksize, strides, paddings, global_pool=False):
 
     N, C, H, W = x.shape
-    if global_pool == 1:
+    if global_pool:
         ksize = [H, W]
+        paddings = [0, 0]
+
     H_out = (H - ksize[0] + 2 * paddings[0]) / strides[0] + 1
     W_out = (W - ksize[1] + 2 * paddings[1]) / strides[1] + 1
     out = np.zeros((N, C, H_out, W_out))
@@ -74,13 +78,13 @@ def max_pool2D_forward_naive(x, ksize, strides, paddings, global_pool=0):
 class TestMaxPoolWithIndex_Op(OpTest):
     def setUp(self):
         self.init_test_case()
-        if self.global_pool:
-            self.paddings = [0 for _ in range(len(self.paddings))]
+        self.init_global()
+
         input = np.random.random(self.shape).astype("float32")
         output, mask = self.pool_forward_naive(input, self.ksize, self.strides,
                                                self.paddings, self.global_pool)
         output = output.astype("float32")
-        mask = mask.astype("float32")
+        mask = mask.astype("int32")
 
         self.attrs = {
             'strides': self.strides,
@@ -99,41 +103,24 @@ class TestMaxPoolWithIndex_Op(OpTest):
     #     self.check_grad(set(['X']), ['Out'], max_relative_error=0.07)
 
     def init_test_case(self):
-        self.global_pool = True
-        self.index = "max_pool3d_with_index"
-        self.op_type = "%s" % self.index
-        self.pool_forward_naive = max_pool3D_forward_naive
-        self.shape = [2, 3, 5, 5, 5]
-        self.ksize = [3, 3, 3]
-        self.strides = [1, 1, 1]
-        self.paddings = [1, 1, 1]
-
-
-class TestCase1(TestMaxPoolWithIndex_Op):
-    def init_test_case(self):
-        self.global_pool = True
         self.op_type = "max_pool3d_with_index"
         self.pool_forward_naive = max_pool3D_forward_naive
         self.shape = [2, 3, 5, 5, 5]
         self.ksize = [3, 3, 3]
         self.strides = [1, 1, 1]
         self.paddings = [1, 1, 1]
+
+    def init_global(self):
+        self.global_pool = False
+
+
+class TestCase1(TestMaxPoolWithIndex_Op):
+    def init_global(self):
+        self.global_pool = True
 
 
 class TestCase2(TestMaxPoolWithIndex_Op):
     def init_test_case(self):
-        self.global_pool = False
-        self.op_type = "max_pool3d_with_index"
-        self.pool_forward_naive = max_pool3D_forward_naive
-        self.shape = [2, 3, 7, 7, 7]
-        self.ksize = [3, 3, 3]
-        self.strides = [1, 1, 1]
-        self.paddings = [1, 1, 1]
-
-
-class TestCase3(TestMaxPoolWithIndex_Op):
-    def init_test_case(self):
-        self.global_pool = False
         self.op_type = "max_pool3d_with_index"
         self.pool_forward_naive = max_pool3D_forward_naive
         self.shape = [2, 3, 7, 7, 7]
@@ -141,43 +128,36 @@ class TestCase3(TestMaxPoolWithIndex_Op):
         self.strides = [2, 2, 2]
         self.paddings = [0, 0, 0]
 
+    def init_global(self):
+        self.global_pool = True
 
+
+class TestCase3(TestCase2):
+    def init_global(self):
+        self.global_pool = False
+
+
+#----------------max_pool2d_with_index----------------
 class TestCase4(TestMaxPoolWithIndex_Op):
     def init_test_case(self):
+        self.op_type = "max_pool2d_with_index"
+        self.pool_forward_naive = max_pool2D_forward_naive
+        self.shape = [2, 3, 7, 7]
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [1, 1]
+
+    def init_global(self):
         self.global_pool = True
-        self.op_type = "max_pool3d_with_index"
-        self.pool_forward_naive = max_pool3D_forward_naive
-        self.shape = [2, 3, 5, 5, 5]
-        self.ksize = [3, 3, 3]
-        self.strides = [1, 1, 1]
-        self.paddings = [1, 1, 1]
 
 
-class TestCase5(TestMaxPoolWithIndex_Op):
-    def init_test_case(self):
-        self.global_pool = True
-        self.op_type = "max_pool3d_with_index"
-        self.pool_forward_naive = max_pool3D_forward_naive
-        self.shape = [2, 3, 5, 5, 5]
-        self.ksize = [3, 3, 3]
-        self.strides = [2, 2, 2]
-        self.paddings = [0, 0, 0]
+class TestCase5(TestCase4):
+    def init_global(self):
+        self.global_pool = False
 
 
 class TestCase6(TestMaxPoolWithIndex_Op):
     def init_test_case(self):
-        self.global_pool = False
-        self.op_type = "max_pool2d_with_index"
-        self.pool_forward_naive = max_pool2D_forward_naive
-        self.shape = [2, 3, 7, 7]
-        self.ksize = [3, 3]
-        self.strides = [1, 1]
-        self.paddings = [1, 1]
-
-
-class TestCase7(TestMaxPoolWithIndex_Op):
-    def init_test_case(self):
-        self.global_pool = False
         self.op_type = "max_pool2d_with_index"
         self.pool_forward_naive = max_pool2D_forward_naive
         self.shape = [2, 3, 7, 7]
@@ -185,27 +165,13 @@ class TestCase7(TestMaxPoolWithIndex_Op):
         self.strides = [2, 2]
         self.paddings = [0, 0]
 
-
-class TestCase8(TestMaxPoolWithIndex_Op):
-    def init_test_case(self):
+    def init_global(self):
         self.global_pool = True
-        self.op_type = "max_pool2d_with_index"
-        self.pool_forward_naive = max_pool2D_forward_naive
-        self.shape = [2, 3, 5, 5]
-        self.ksize = [3, 3]
-        self.strides = [1, 1]
-        self.paddings = [1, 1]
 
 
-class TestCase9(TestMaxPoolWithIndex_Op):
-    def init_test_case(self):
-        self.global_pool = True
-        self.op_type = "max_pool2d_with_index"
-        self.pool_forward_naive = max_pool2D_forward_naive
-        self.shape = [2, 3, 5, 5]
-        self.ksize = [3, 3]
-        self.strides = [2, 2]
-        self.paddings = [0, 0]
+class TestCase7(TestCase6):
+    def init_global(self):
+        self.global_pool = False
 
 
 if __name__ == '__main__':
