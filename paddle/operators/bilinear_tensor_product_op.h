@@ -174,7 +174,7 @@ class BilinearTensorProductGradKernel : public framework::OpKernel<T> {
     // Caculate the gradient of Input(Bias).
     if (d_bias) {
       d_bias->mutable_data<T>(ctx.GetPlace());
-      auto d_bias_mat = EigenMatrix<T>::From(*d_bias);
+      auto d_bias_mat = framework::EigenVector<T>::Flatten(*d_bias);
       d_bias_mat.device(place) = d_out_mat.sum(Eigen::DSizes<int, 1>(0));
     }
   }

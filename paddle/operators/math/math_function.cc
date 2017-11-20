@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/operators/math/math_function.h"
 #include "paddle/framework/data_type.h"
+#include "paddle/operators/math/math_function_impl.h"
 
 namespace paddle {
 namespace operators {
@@ -232,7 +233,36 @@ void gemv<platform::CPUPlace, double>(const platform::DeviceContext& context,
   cblas_dgemv(CblasRowMajor, transA, M, N, alpha, A, N, B, 1, beta, C, 1);
 }
 
+template <>
+void axpy<platform::CPUPlace, float>(const platform::DeviceContext& context,
+                                     const int n, const float alpha,
+                                     const float* x, float* y) {
+  cblas_saxpy(n, alpha, x, 1, y, 1);
+}
+
+template <>
+void axpy<platform::CPUPlace, double>(const platform::DeviceContext& context,
+                                      const int n, const double alpha,
+                                      const double* x, double* y) {
+  cblas_daxpy(n, alpha, x, 1, y, 1);
+}
+
 template struct SetConstant<platform::CPUPlace, float>;
+template struct SetConstant<platform::CPUPlace, double>;
+template struct SetConstant<platform::CPUPlace, int>;
+template struct SetConstant<platform::CPUPlace, int64_t>;
+template struct SetConstant<platform::CPUPlace, bool>;
+
+#define DEFINE_CPU_TRANS(RANK)                                \
+  template struct Transpose<platform::CPUPlace, float, RANK>; \
+  template struct Transpose<platform::CPUPlace, double, RANK>;
+
+DEFINE_CPU_TRANS(1);
+DEFINE_CPU_TRANS(2);
+DEFINE_CPU_TRANS(3);
+DEFINE_CPU_TRANS(4);
+DEFINE_CPU_TRANS(5);
+DEFINE_CPU_TRANS(6);
 
 struct TensorSetConstantCPU {
   TensorSetConstantCPU(framework::Tensor* tensor, float value)
@@ -279,6 +309,11 @@ void set_constant(const platform::DeviceContext& context,
   func(platform::CPUPlace());
 #endif
 }
+
+template struct RowwiseAdd<platform::CPUPlace, float>;
+template struct RowwiseAdd<platform::CPUPlace, double>;
+template struct ColwiseSum<platform::CPUPlace, float>;
+template struct ColwiseSum<platform::CPUPlace, double>;
 
 }  // namespace math
 }  // namespace operators

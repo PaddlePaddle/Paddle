@@ -23,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 
 /**
- * @brief test the functionality of Mkldnnlayers
+ * @brief test the functionality of MKLDNNlayers and MKLDNNActivations
  * refer to paddle original function
  */
 class MKLDNNTester {

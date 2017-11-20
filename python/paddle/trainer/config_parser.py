@@ -1834,7 +1834,7 @@ class FCLayer(LayerBase):
             self.layer_type = 'mkldnn_fc'
             config_assert(
                 len(inputs) == 1,
-                "MkldnnFCLayer support one and only one input!")
+                "MKLDNNFCLayer support one and only one input!")
         super(FCLayer, self).__init__(
             name, self.layer_type, size, inputs=inputs, **xargs)
         for input_index in xrange(len(self.inputs)):
@@ -1845,7 +1845,7 @@ class FCLayer(LayerBase):
             sparse = format == "csr" or format == "csc"
             if use_mkldnn:
                 config_assert(not sparse,
-                              "MkldnnFCLayer do not support sparse format yet")
+                              "MKLDNNFCLayer do not support sparse format yet")
                 if use_mkldnn_wgt:
                     dims = [self.config.size, input_layer.size]
             if sparse:
@@ -1861,7 +1861,7 @@ class FCLayer(LayerBase):
 
 
 @config_layer('mkldnn_fc')
-class MkldnnFcLayer(FCLayer):
+class MKLDNNFcLayer(FCLayer):
     layer_type = 'mkldnn_fc'
 
 
@@ -3257,6 +3257,18 @@ class SubNestedSequenceLayer(LayerBase):
         self.set_layer_size(size)
 
 
+@config_layer('dot_prod')
+class DotProdLayer(LayerBase):
+    def __init__(self, name, inputs, device=None):
+        super(DotProdLayer, self).__init__(
+            name, 'dot_prod', 0, inputs, device=device)
+        config_assert(len(inputs) == 2, 'DotProdLayer must have 2 inputs.')
+        config_assert(
+            self.get_input_layer(0).size == self.get_input_layer(1).size,
+            "Two inputs should have the same size.")
+        self.set_layer_size(1)
+
+
 @config_layer('out_prod')
 class OuterProdLayer(LayerBase):
     def __init__(self, name, inputs, device=None):
@@ -3378,6 +3390,20 @@ class RowL2NormLayer(LayerBase):
         self.set_layer_size(input_layer.size)
 
 
+@config_layer('cos')
+class CosSimLayer(LayerBase):
+    def __init__(self, name, inputs, cos_scale=1, device=None):
+        super(CosSimLayer, self).__init__(
+            name, 'cos', 1, inputs=inputs, device=device)
+        config_assert(
+            len(self.inputs) == 2,
+            'The CosSimLayer expects two and only two inputs.')
+        config_assert(
+            self.get_input_layer(0).size == self.get_input_layer(1).size,
+            'The two inputs of CosSimLayer must have the same dimensionality.')
+        self.config.cos_scale = cos_scale
+
+
 @config_layer('cos_vm')
 class CosSimVecMatLayer(LayerBase):
     def __init__(self, name, size, inputs, cos_scale=1.0, device=None):
@@ -3385,10 +3411,24 @@ class CosSimVecMatLayer(LayerBase):
             name, 'cos_vm', size, inputs=inputs, device=device)
         self.config.cos_scale = cos_scale
         config_assert(
-            len(self.inputs) == 2, 'CosSimVecMatLayer must have 2 inputs')
+            len(self.inputs) == 2, 'The CosSimVecMatLayer must have 2 inputs.')
         config_assert(
             size * self.get_input_layer(0).size == self.get_input_layer(1).size,
-            'Wrong input size for CosSimVecMatLayer')
+            'Wrong input size for CosSimVecMatLayer.')
+
+
+@config_layer('l2_distance')
+class L2DistanceLayer(LayerBase):
+    def __init__(self, name, inputs, device=None):
+        super(L2DistanceLayer, self).__init__(
+            name, 'l2_distance', 1, inputs=inputs, device=device)
+        config_assert(
+            len(self.inputs) == 2, ('The L2DistanceLayer must have '
+                                    'and only have 2 inputs.'))
+        config_assert(
+            self.get_input_layer(0).size == self.get_input_layer(1).size,
+            ('Two inputs of the L2DistanceLayer must have '
+             'the same dimensionality.'))
 
 
 @config_layer('sampling_id')
@@ -3430,18 +3470,6 @@ class AverageLayer(LayerBase):
             input_layer = self.get_input_layer(input_index)
             self.set_layer_size(input_layer.size)
         self.create_bias_parameter(bias, self.config.size)
-
-
-@config_layer('cos')
-class CosSimLayer(LayerBase):
-    def __init__(self, name, inputs, cos_scale=1, device=None):
-        super(CosSimLayer, self).__init__(
-            name, 'cos', 1, inputs=inputs, device=device)
-        config_assert(len(self.inputs) == 2, 'CosSimLayer must have 2 inputs')
-        config_assert(
-            self.get_input_layer(0).size == self.get_input_layer(1).size,
-            'inputs of CosSimLayer must have same dim')
-        self.config.cos_scale = cos_scale
 
 
 @config_layer('tensor')
@@ -3554,11 +3582,17 @@ def ExpressionLayer(name, inputs, **xargs):
 
 @config_layer('concat')
 class ConcatenateLayer(LayerBase):
+    layer_type = 'concat'
+
     def __init__(self, name, inputs, bias=False, **xargs):
         config_assert(inputs, 'inputs cannot be empty')
         config_assert(not bias, 'ConcatenateLayer cannot support bias.')
+        use_mkldnn = bool(int(g_command_config_args.get("use_mkldnn", 0)))
+        if self.layer_type == "mkldnn_concat":
+            config_assert(use_mkldnn, "mkldnn_concat only support MKLDNN")
+        self.layer_type = 'mkldnn_concat' if use_mkldnn else 'concat'
         super(ConcatenateLayer, self).__init__(
-            name, 'concat', 0, inputs=inputs, **xargs)
+            name, self.layer_type, 0, inputs=inputs, **xargs)
         size = 0
         for input_index in xrange(len(self.inputs)):
             assert self.get_input_layer(0).height == self.get_input_layer(
@@ -3576,6 +3610,11 @@ class ConcatenateLayer(LayerBase):
                                     self.get_input_layer(0).width)
         self.set_layer_depth(self.get_input_layer(0).depth)
         self.set_layer_size(size)
+
+
+@config_layer('mkldnn_concat')
+class MKLDNNConcatLayer(ConcatenateLayer):
+    layer_type = 'mkldnn_concat'
 
 
 # like concat layer, but each input layer was processed by a Projection.
