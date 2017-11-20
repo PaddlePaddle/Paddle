@@ -89,6 +89,7 @@ public:
               if (input_data[input_idx] == output_data[output_idx]) {
                 input_grad_data[input_idx] += output_grad_data[output_idx];
                 continue_match = false;
+                break;
               }
           }
         }
