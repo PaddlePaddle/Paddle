@@ -21,8 +21,8 @@ namespace paddle {
 
 bool MKLDNNLayer::init(const LayerMap& layerMap,
                        const ParameterMap& parameterMap) {
-  CHECK(FLAGS_use_mkldnn) << "MkldnnLayers only support use_mkldnn."
-                          << "Please set WITH_MKLDNN=ON "
+  CHECK(FLAGS_use_mkldnn) << "MKLDNNLayers only support use_mkldnn."
+                          << "Please set WITH_MKL=ON "
                           << "and set use_mkldnn=True";
   CHECK(!useGpu_) << "Do not support GPU yet";
 
@@ -138,8 +138,11 @@ void MKLDNNLayer::backward(const UpdateCallback& callback) {
   }
 }
 
-void MKLDNNLayer::reshapeInput(int& batchsize, int& height, int& width) {
-  const Argument& input = inputLayers_[0]->getOutput();
+void MKLDNNLayer::reshapeInput(int& batchsize,
+                               int& height,
+                               int& width,
+                               size_t inputIdx) {
+  const Argument& input = inputLayers_[inputIdx]->getOutput();
   batchsize = input.getBatchSize();
   int h = input.getFrameHeight();
   int w = input.getFrameWidth();

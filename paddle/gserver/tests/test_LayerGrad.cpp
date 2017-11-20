@@ -434,7 +434,7 @@ void testConvLayer(const string& type, bool trans, bool useGpu) {
   config.layerConfig.set_partial_sum(1);
   config.layerConfig.set_shared_biases(true);
 
-  int dilation = 1;
+  int dilation = 2;
   if (type == "cudnn_conv") {
 #if CUDNN_VERSION >= 6000
     dilation = 2;
@@ -583,6 +583,7 @@ TEST(Layer, maxoutLayer) {
     testLayerGrad(config, "maxout", 10, false, useGpu);
   }
 }
+
 void testFcLayer(string format, size_t nnz) {
   TestConfig config;
   config.biasSize = 1024;
@@ -1081,6 +1082,21 @@ TEST(Layer, InterpolationLayer) {
   }
 }
 
+TEST(Layer, DotProdLayer) {
+  TestConfig config;
+  config.layerConfig.set_type("dot_prod");
+  config.layerConfig.set_size(1);
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 10, 0});
+  config.layerConfig.add_inputs();
+  config.inputDefs.push_back({INPUT_DATA, "layer_1", 10, 0});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "dot_prod", 10, false, useGpu);
+  }
+}
+
 TEST(Layer, OuterProdLayer) {
   TestConfig config;
   config.layerConfig.set_type("out_prod");
@@ -1234,6 +1250,7 @@ void testPoolLayer2(const string& poolType, bool trans, bool useGpu) {
 TEST(Layer, PoolLayer) {
   testPoolLayer("avg-projection", /* trans= */ false, /* useGpu= */ false);
   testPoolLayer("max-projection", /* trans= */ false, /* useGpu= */ false);
+  testPoolLayer("max-pool-with-mask", /* trans= */ false, /* useGpu= */ false);
 
 #ifdef PADDLE_WITH_CUDA
   testPoolLayer("avg-projection", /* trans= */ false, /* useGpu= */ true);
@@ -1242,6 +1259,7 @@ TEST(Layer, PoolLayer) {
   testPoolLayer("cudnn-avg-pool", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer2("cudnn-max-pool", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer2("cudnn-avg-pool", /* trans= */ false, /* useGpu= */ true);
+  testPoolLayer("max-pool-with-mask", /* trans= */ false, /* useGpu= */ true);
 #endif
 }
 
@@ -2424,6 +2442,25 @@ TEST(Layer, ScaleSubRegionLayer) {
 
   for (auto useGpu : {false, true}) {
     testLayerGrad(config, "scale_sub_region", batchSize, false, useGpu, false);
+  }
+}
+
+TEST(Layer, L2DistanceLayer) {
+  TestConfig config;
+  config.layerConfig.set_type("l2_distance");
+  config.layerConfig.set_size(1);
+  config.biasSize = 0;
+
+  const size_t input_dim = 27;
+  const size_t batch_size = 11;
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", input_dim, 0});
+  config.inputDefs.push_back({INPUT_DATA, "layer_1", input_dim, 0});
+  config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "l2_distance", batch_size, false, useGpu);
   }
 }
 

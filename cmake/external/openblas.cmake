@@ -29,7 +29,7 @@ IF(NOT ${CBLAS_FOUND})
         "${CBLAS_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}openblas${CMAKE_STATIC_LIBRARY_SUFFIX}"
         CACHE FILEPATH "openblas library." FORCE)
 
-    SET(OPENBLAS_CC "${CMAKE_C_COMPILER}")
+    SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -Wno-unused-but-set-variable -Wno-unused-variable")
 
     IF(CMAKE_CROSSCOMPILING)
         SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER})
@@ -45,15 +45,14 @@ IF(NOT ${CBLAS_FOUND})
                 SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV8 BINARY=64 USE_THREAD=0)
             ENDIF()
         ELSEIF(IOS)
-            # FIXME(liuyiqun): support multiple architectures
-            SET(OPENBLAS_COMMIT "b5c96fcfcdc82945502a2303116a64d89985daf5")
-            SET(OPENBLAS_CC "${OPENBLAS_CC} ${CMAKE_C_FLAGS} -isysroot ${CMAKE_OSX_SYSROOT}")
-            IF(CMAKE_OSX_ARCHITECTURES MATCHES "armv7")
-                SET(OPENBLAS_CC "${OPENBLAS_CC} -arch armv7")
-                SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV7 ARM_SOFTFP_ABI=1 USE_THREAD=0)
-            ELSEIF(CMAKE_OSX_ARCHITECTURES MATCHES "arm64")
+            IF(CMAKE_OSX_ARCHITECTURES MATCHES "arm64")
+                SET(OPENBLAS_COMMIT "b5c96fcfcdc82945502a2303116a64d89985daf5")
+                SET(OPENBLAS_CC "${OPENBLAS_CC} ${CMAKE_C_FLAGS} -isysroot ${CMAKE_OSX_SYSROOT}")
                 SET(OPENBLAS_CC "${OPENBLAS_CC} -arch arm64")
                 SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV8 BINARY=64 USE_THREAD=0 CROSS_SUFFIX=${CROSS_SUFFIX})
+            ELSE()
+                MESSAGE(FATAL_ERROR "OpenBLAS only support arm64 architectures on iOS. "
+                       "You can set IOS_USE_VECLIB_FOR_BLAS=ON or USE_EIGEN_FOR_BLAS=ON to use other blas library instead.")
             ENDIF()
         ELSEIF(RPI)
             # use hardfp
@@ -98,7 +97,7 @@ IF(NOT ${CBLAS_FOUND})
         ENDIF()
         INSTALL(CODE "execute_process(
             COMMAND ${CMAKE_COMMAND} -E copy_directory ${CBLAS_INSTALL_DIR}/lib
-                    destination ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}
+                    ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}
             )"
         )
         INSTALL(CODE "MESSAGE(STATUS \"Installing: \"
