@@ -10,9 +10,6 @@
 pthread_mutex_t mutex;
 
 void* thread_main(void* gm_ptr) {
-  // Initialize the thread environment of Paddle.
-  CHECK(paddle_init_thread());
-
   paddle_gradient_machine machine = (paddle_gradient_machine)(gm_ptr);
   paddle_arguments in_args = paddle_arguments_create_none();
   // Create input matrix.

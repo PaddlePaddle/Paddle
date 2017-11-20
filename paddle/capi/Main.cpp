@@ -45,14 +45,9 @@ paddle_error paddle_init(int argc, char** argv) {
 }
 
 paddle_error paddle_init_thread() {
-  static __thread bool isInit = false;
-  if (isInit) return kPD_NO_ERROR;
-
   if (FLAGS_use_gpu) {
     hl_init(FLAGS_gpu_id);
   }
-
-  isInit = true;
   return kPD_NO_ERROR;
 }
 }

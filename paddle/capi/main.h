@@ -28,6 +28,7 @@ PD_API paddle_error paddle_init(int argc, char** argv);
 
 /**
  * Initialize the thread environment of Paddle.
+ * @note it is requisite for GPU runs but optional for CPU runs.
  */
 PD_API paddle_error paddle_init_thread();
 
