@@ -40,7 +40,8 @@ REGISTER_OP(conv_cudnn, ops::ConvOp, ops::CudnnConvOpMaker, conv_cudnn_grad,
             ops::ConvOpGrad);
 
 REGISTER_OP_CPU_KERNEL(conv_cudnn,
-                       ops::GemmConvKernel<paddle::platform::CPUPlace, float>);
+                       ops::GemmConvKernel<paddle::platform::CPUPlace, float>,
+                       ops::GemmConvKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
-    conv_cudnn_grad,
-    ops::GemmConvGradKernel<paddle::platform::CPUPlace, float>);
+    conv_cudnn_grad, ops::GemmConvGradKernel<paddle::platform::CPUPlace, float>,
+    ops::GemmConvGradKernel<paddle::platform::CPUPlace, double>);
