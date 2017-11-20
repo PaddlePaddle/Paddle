@@ -69,13 +69,22 @@ class CudnnConvOpKernel : public framework::OpKernel<T> {
     int input_channels = input->dims()[1];
     int input_height = input->dims()[2];
     int input_width = input->dims()[3];
+    int input_depth = 1;
+    if (input->dims().size() == 5) {
+      input_depth = input->dims()[4];
+    }
     int output_channels = output->dims()[1];
     int output_height = output->dims()[2];
     int output_width = output->dims()[3];
+    int output_depth = 1;
+    if (output->dims().size() == 5) {
+      output_depth = output->dims()[4];
+    }
 
-    int group_offset_in = input_channels / groups * input_height * input_width;
+    int group_offset_in =
+        input_channels / groups * input_height * input_width * input_depth;
     int group_offset_out =
-        output_channels / groups * output_height * output_width;
+        output_channels / groups * output_height * output_width * output_depth;
     int group_offset_filter = filter->numel() / groups;
     // ------------------- cudnn conv workspace ---------------------
     void* cudnn_workspace = nullptr;
@@ -161,13 +170,22 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
     int input_channels = input->dims()[1];
     int input_height = input->dims()[2];
     int input_width = input->dims()[3];
+    int input_depth = 1;
+    if (input->dims().size() == 5) {
+      input_depth = input->dims()[4];
+    }
     int output_grad_channels = filter->dims()[0];
     int output_grad_height = output_grad->dims()[2];
     int output_grad_width = output_grad->dims()[3];
+    int output_grad_depth = 1;
+    if (output_grad->dims().size() == 5) {
+      output_grad_depth = output_grad->dims()[4];
+    }
 
-    int group_offset_in = input_channels / groups * input_height * input_width;
-    int group_offset_out =
-        output_grad_channels / groups * output_grad_height * output_grad_width;
+    int group_offset_in =
+        input_channels / groups * input_height * input_width * input_depth;
+    int group_offset_out = output_grad_channels / groups * output_grad_height *
+                           output_grad_width * output_grad_depth;
     int group_offset_filter = filter->numel() / groups;
     // ------------------- cudnn backward algorithm ---------------------
     cudnnConvolutionBwdDataAlgo_t data_algo;

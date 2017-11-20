@@ -169,5 +169,20 @@ class TestWithDilation(TestConv3dOp):
         self.groups = 3
 
 
+def TestCase1Cudnn(TestCase1):
+    def init_op_type(self):
+        self.op_type = "conv_cudnn"
+
+
+def TestWithGroup1Cudnn(TestWithGroup1):
+    def init_op_type(self):
+        self.op_type = "conv_cudnn"
+
+
+def TestWithGroup2Cudnn(TestWithGroup2):
+    def init_op_type(self):
+        self.op_type = "conv_cudnn"
+
+
 if __name__ == '__main__':
     unittest.main()
