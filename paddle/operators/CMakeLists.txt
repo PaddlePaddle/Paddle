@@ -87,6 +87,11 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(pool2d_cudnn);\n")
     endif()
 
+    if ("${TARGET}" STREQUAL "logical_op")
+        set(pybind_flag 1)
+        file(APPEND ${pybind_file} "USE_OP(logical_and);\n")
+    endif()
+
     # pool_with_index_op contains several operators
     if ("${TARGET}" STREQUAL "pool_with_index_op")
         set(pybind_flag 1)

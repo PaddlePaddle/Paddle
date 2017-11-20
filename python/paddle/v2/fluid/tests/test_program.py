@@ -1,6 +1,5 @@
 import unittest
 
-import paddle.v2.fluid.core as core
 from paddle.v2.fluid.framework import Program
 from paddle.v2.fluid.framework import g_main_program
 
@@ -98,21 +97,26 @@ class TestProgram(unittest.TestCase):
                     "Y": add_y},
             outputs={"Out": add_out},
             attrs={"x_num_col_dims": 1})
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out")
+        block.append_op(
+            type="mean", inputs={"X": add_out}, outputs={"Out": mean_out})
 
         self.assertEqual(mul_op.idx, 0)
         self.assertEqual(add_op.idx, 1)
-        param_to_grad = prog.append_backward(add_out, set())
+        param_to_grad = prog.append_backward(mean_out, set())
 
         def grad_name(name):
             return name + "@GRAD"
 
-        for var_name in ("mul.x", "mul.y", "mul.out", "add.y", "add.out"):
+        for var_name in ("mul.x", "mul.y", "mul.out", "add.y", "add.out",
+                         "mean.out"):
             self.assertEqual(param_to_grad[var_name][0], grad_name(var_name))
             self.assertEqual(param_to_grad[var_name][1], 0)
 
         expect_ops = [
-            "mul", "elementwise_add", "fill_constant", "elementwise_add_grad",
-            "mul_grad"
+            "mul", "elementwise_add", "mean", "fill_constant", "mean_grad",
+            "elementwise_add_grad", "mul_grad"
         ]
         actual_ops = []
         for op in block.ops:
