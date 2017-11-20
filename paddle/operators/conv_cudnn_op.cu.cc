@@ -72,7 +72,7 @@ class CudnnConvOpKernel : public framework::OpKernel<T> {
       input_depth = input->dims()[2];
       input_height = input->dims()[3];
       input_width = input->dims()[4];
-    } else if (input->dims().size() == 4) {
+    } else {
       input_depth = 1;
       input_height = input->dims()[2];
       input_width = input->dims()[3];
@@ -83,7 +83,7 @@ class CudnnConvOpKernel : public framework::OpKernel<T> {
       output_depth = output->dims()[2];
       output_height = output->dims()[3];
       output_width = output->dims()[4];
-    } else if (output->dims().size() == 4) {
+    } else {  // dim size is enforced in InferShape
       output_depth = 1;
       output_height = output->dims()[2];
       output_width = output->dims()[3];
@@ -181,7 +181,7 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
       input_depth = input->dims()[2];
       input_height = input->dims()[3];
       input_width = input->dims()[4];
-    } else if (input->dims().size() == 4) {
+    } else {  // dim size is enforced in InferShape
       input_depth = 1;
       input_height = input->dims()[2];
       input_width = input->dims()[3];
@@ -193,7 +193,7 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
       output_grad_depth = output_grad->dims()[2];
       output_grad_height = output_grad->dims()[3];
       output_grad_width = output_grad->dims()[4];
-    } else if (output_grad->dims().size() == 4) {
+    } else {
       output_grad_depth = 1;
       output_grad_height = output_grad->dims()[2];
       output_grad_width = output_grad->dims()[3];
