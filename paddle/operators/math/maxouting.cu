@@ -37,7 +37,7 @@ __global__ void KernelMaxOut(const int nthreads, const T* input_data,
       (batch_idx * size + channel_idx * feat_len) * groups + feat_idx;
     T ele = static_cast<T>(-FLT_MAX);
     for (int g = 0; g < groups; ++g) {
-      T x=input_data[data_idx + g * feat_len];
+      T x = input_data[data_idx + g * feat_len];
       ele = ele > x ? ele : x;
     }
     output_data[i] = ele;
