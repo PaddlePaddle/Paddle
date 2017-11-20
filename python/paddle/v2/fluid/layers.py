@@ -661,7 +661,7 @@ def conv2d(input,
     if groups is None:
         num_filter_channels = num_channels
     else:
-        if num_channels % groups is not 0:
+        if num_channels % groups != 0:
             raise ValueError("num_channels must be divisible by groups.")
         num_filter_channels = num_channels / groups
 
