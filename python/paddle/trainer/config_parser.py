@@ -3342,6 +3342,20 @@ class RowL2NormLayer(LayerBase):
         self.set_layer_size(input_layer.size)
 
 
+@config_layer('cos')
+class CosSimLayer(LayerBase):
+    def __init__(self, name, inputs, cos_scale=1, device=None):
+        super(CosSimLayer, self).__init__(
+            name, 'cos', 1, inputs=inputs, device=device)
+        config_assert(
+            len(self.inputs) == 2,
+            'The CosSimLayer expects two and only two inputs.')
+        config_assert(
+            self.get_input_layer(0).size == self.get_input_layer(1).size,
+            'The two inputs of CosSimLayer must have the same dimensionality.')
+        self.config.cos_scale = cos_scale
+
+
 @config_layer('cos_vm')
 class CosSimVecMatLayer(LayerBase):
     def __init__(self, name, size, inputs, cos_scale=1.0, device=None):
@@ -3349,10 +3363,24 @@ class CosSimVecMatLayer(LayerBase):
             name, 'cos_vm', size, inputs=inputs, device=device)
         self.config.cos_scale = cos_scale
         config_assert(
-            len(self.inputs) == 2, 'CosSimVecMatLayer must have 2 inputs')
+            len(self.inputs) == 2, 'The CosSimVecMatLayer must have 2 inputs.')
         config_assert(
             size * self.get_input_layer(0).size == self.get_input_layer(1).size,
-            'Wrong input size for CosSimVecMatLayer')
+            'Wrong input size for CosSimVecMatLayer.')
+
+
+@config_layer('l2_distance')
+class L2DistanceLayer(LayerBase):
+    def __init__(self, name, inputs, device=None):
+        super(L2DistanceLayer, self).__init__(
+            name, 'l2_distance', 1, inputs=inputs, device=device)
+        config_assert(
+            len(self.inputs) == 2, ('The L2DistanceLayer must have '
+                                    'and only have 2 inputs.'))
+        config_assert(
+            self.get_input_layer(0).size == self.get_input_layer(1).size,
+            ('Two inputs of the L2DistanceLayer must have '
+             'the same dimensionality.'))
 
 
 @config_layer('sampling_id')
@@ -3394,18 +3422,6 @@ class AverageLayer(LayerBase):
             input_layer = self.get_input_layer(input_index)
             self.set_layer_size(input_layer.size)
         self.create_bias_parameter(bias, self.config.size)
-
-
-@config_layer('cos')
-class CosSimLayer(LayerBase):
-    def __init__(self, name, inputs, cos_scale=1, device=None):
-        super(CosSimLayer, self).__init__(
-            name, 'cos', 1, inputs=inputs, device=device)
-        config_assert(len(self.inputs) == 2, 'CosSimLayer must have 2 inputs')
-        config_assert(
-            self.get_input_layer(0).size == self.get_input_layer(1).size,
-            'inputs of CosSimLayer must have same dim')
-        self.config.cos_scale = cos_scale
 
 
 @config_layer('tensor')
