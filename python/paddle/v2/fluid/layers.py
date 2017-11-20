@@ -456,6 +456,32 @@ def sums(input, main_program=None, startup_program=None):
     return out
 
 
+def linear_chain_crf(input, label, main_program=None, startup_program=None):
+    helper = LayerHelper('linear_chain_crf', **locals())
+    size = input.shape[1]
+    transition = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=[size + 2, size],
+        dtype=helper.input_dtype())
+    alpha = helper.create_tmp_variable(dtype=helper.input_dtype())
+    emission_exps = helper.create_tmp_variable(dtype=helper.input_dtype())
+    transition_exps = helper.create_tmp_variable(dtype=helper.input_dtype())
+    log_likelihood = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='linear_chain_crf',
+        inputs={"Emission": [input],
+                "Transition": transition,
+                "Label": label},
+        outputs={
+            "Alpha": [alpha],
+            "EmissionExps": [emission_exps],
+            "TransitionExps": transition_exps,
+            "LogLikelihood": log_likelihood
+        })
+
+    return log_likelihood
+
+
 def assign(input, output, main_program=None):
     helper = LayerHelper('assign', **locals())
     helper.append_op(
