@@ -670,7 +670,7 @@ def sequence_conv(input,
             'contextStart': -int(filter_size / 2),
             'contextLength': filter_size
         })
-    pre_act = helper.append_bias_op(pre_bias, _get_default_bias_initializer)
+    pre_act = helper.append_bias_op(pre_bias, bias_initializer)
     return helper.append_activation(pre_act)
 
 
