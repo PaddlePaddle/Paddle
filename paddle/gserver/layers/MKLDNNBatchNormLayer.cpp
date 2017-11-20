@@ -121,7 +121,8 @@ void MKLDNNBatchNormLayer::reshape(
   oh = ih;
   ow = iw;
   // ic_ and oc can not be changed
-  CHECK_EQ(inputElemenCnt_ / bs / ih / iw, (size_t)ic)
+  CHECK_EQ((size_t)ic,
+           inputLayers_[0]->getOutputValue()->getElementCnt() / bs / ih / iw)
       << "Input channel can not be changed";
   reshapeOutput(oh, ow);
   resizeOutput(bs, oc * oh * ow);

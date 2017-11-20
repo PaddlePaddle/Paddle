@@ -48,16 +48,13 @@ void MKLDNNLayer::forward(PassType passType) {
     REGISTER_TIMER_INFO("mkldnn_FwdTimer", getName().c_str());
     CHECK(!inputLayers_.empty());
     copySeqInfoToOutputs();
-    size_t elemenCnt = inputLayers_[0]->getOutputValue()->getElementCnt();
-    if (inputElemenCnt_ != elemenCnt) {
+    if (condition_ != keepCondition()) {
       VLOG(MKLDNN_BASE) << getName() << " reset mkldnn forward";
-      // reset when input total sizes changed, not only the batchsize
-      inputElemenCnt_ = elemenCnt;
+      condition_ = keepCondition();
       reshape(bs_, ic_, ih_, iw_, oc_, oh_, ow_);
       printSizeInfo();
       // the output_.value and output_.grad are shared with CPU device
       shareCPUDevice();
-
       pipelineFwd_.clear();
       inVals_.resize(inputLayers_.size(), nullptr);
       extInVals_.resize(inputLayers_.size(), nullptr);

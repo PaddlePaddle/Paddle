@@ -66,6 +66,15 @@ public:
                        << ", " << ow_;
   }
 
+  size_t keepCondition() {
+    // reset when the total element size of all inputs changed
+    size_t totalSize = inputLayers_[0]->getOutputValue()->getElementCnt();
+    for (size_t i = 1; i < inputLayers_.size(); ++i) {
+      totalSize += inputLayers_[i]->getOutputValue()->getElementCnt();
+    }
+    return totalSize;
+  }
+
 protected:
   void resetFwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
                        MKLDNNMatrixPtr& out);

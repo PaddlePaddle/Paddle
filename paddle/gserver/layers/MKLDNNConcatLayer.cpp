@@ -36,7 +36,8 @@ void MKLDNNConcatLayer::reshape(
   reshapeInput(bs, ih, iw);
   ic = inputLayers_[0]->getSize() / ih / iw;
   CHECK_EQ((size_t)ic * ih * iw, inputLayers_[0]->getSize());
-  CHECK_EQ(inputElemenCnt_, (size_t)bs * ic * ih * iw);
+  CHECK_EQ(inputLayers_[0]->getOutputValue()->getElementCnt(),
+           (size_t)bs * ic * ih * iw);
   CHECK_GT(inputLayers_.size(), 1UL);
   channels_.resize(inputLayers_.size());
   channels_[0] = ic;
