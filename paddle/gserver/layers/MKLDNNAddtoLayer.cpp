@@ -38,7 +38,7 @@ bool MKLDNNAddtoLayer::init(const LayerMap& layerMap,
 }
 
 void MKLDNNAddtoLayer::reshape(
-    int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) {
+    int& bs, int& ic, int& ih, int& iw, int& oc, int& oh, int& ow) {
   CHECK_EQ(layerSize_, getSize()) << "this layer size can not be changed";
   reshapeInput(bs, ih, iw);
   ic = inputLayers_[0]->getSize() / ih / iw;

@@ -116,7 +116,7 @@ void MKLDNNBatchNormLayer::calMovingMeanAndVar() {
 }
 
 void MKLDNNBatchNormLayer::reshape(
-    int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) {
+    int& bs, int& ic, int& ih, int& iw, int& oc, int& oh, int& ow) {
   reshapeInput(bs, ih, iw);
   oh = ih;
   ow = iw;

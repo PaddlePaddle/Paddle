@@ -125,12 +125,11 @@ public:
   virtual void backward(const UpdateCallback& callback);
 
   /**
-   * reshape the input image sizes
-   * and reset output image and buffer size
-   * output channel can not be changed
+   * reshape the input and output channels and image sizes
+   * and reset output buffer size
    */
   virtual void reshape(
-      int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) = 0;
+      int& bs, int& ic, int& ih, int& iw, int& oc, int& oh, int& ow) = 0;
 
   /**
    * reset the mkldnn forward primitve and memories

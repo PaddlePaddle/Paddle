@@ -55,6 +55,7 @@ void MKLDNNLayer::forward(PassType passType) {
       inputElemenCnt_ = elemenCnt;
       pipelineFwd_.clear();
       reshape(bs_, ic_, ih_, iw_, oc_, oh_, ow_);
+      printSizeInfo();
       // all cpu device output grad or value share output's
       shareCPUDevice();
       resetFwd(pipelineFwd_, inVal_, wgtVal_, biasVal_, outVal_);
@@ -72,7 +73,6 @@ void MKLDNNLayer::forward(PassType passType) {
         pipelineFwd_.push_back(*cvtOutVal_);
       }
       convertWeightsFromPaddle();
-      printSizeInfo();
       printValueFormat();
       needResetBwd_ = true;
     }
