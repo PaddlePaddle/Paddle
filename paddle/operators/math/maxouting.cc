@@ -47,7 +47,8 @@ class MaxOutFunctor<platform::CPUPlace, T> {
           // T ele = maxout_process.initial();
           T ele = static_cast<T>(-FLT_MAX);
           for (int ph = 0; ph < groups; ++ph) {
-            T x = input_data[(new_bindex+new_cindex) * groups+ph*fea_size+f];
+            T x = input_data[(new_bindex + new_cindex) * groups
+              + ph * fea_size + f];
             ele = ele > x ? ele : x;
           }
           output_data[(new_bindex+new_cindex+f)] = ele;
