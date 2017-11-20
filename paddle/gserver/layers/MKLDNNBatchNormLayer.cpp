@@ -128,7 +128,7 @@ void MKLDNNBatchNormLayer::reshape(
 }
 
 void MKLDNNBatchNormLayer::resetFwd(std::vector<primitive>& pipeline,
-                                    MKLDNNMatrixPtr& in,
+                                    std::vector<MKLDNNMatrixPtr>& inputs,
                                     MKLDNNMatrixPtr& out) {
   // In training phase, it will always calculate mean and var,
   // so useGlobalStats must be false.
@@ -138,11 +138,11 @@ void MKLDNNBatchNormLayer::resetFwd(std::vector<primitive>& pipeline,
     useGlobalStats_ = false;
   }
 
-  resetFwdBuffers(in, wgtVal_, out);
+  resetFwdBuffers(inputs[0], wgtVal_, out);
 
-  resetFwdPD(fwdPD_, in, wgtVal_, out);
+  resetFwdPD(fwdPD_, inputs[0], wgtVal_, out);
 
-  resetFwdPipeline(pipeline, fwdPD_, in, wgtVal_, out);
+  resetFwdPipeline(pipeline, fwdPD_, inputs[0], wgtVal_, out);
 }
 
 void MKLDNNBatchNormLayer::resetBwd(std::vector<primitive>& pipeline,
@@ -256,9 +256,9 @@ void MKLDNNBatchNormLayer::resetFwdPipeline(
 void MKLDNNBatchNormLayer::resetBwdBuffers(MKLDNNMatrixPtr& in,
                                            MKLDNNMatrixPtr& wgt,
                                            MKLDNNMatrixPtr& out) {
-  CHECK(inVal_ && outVal_);
+  CHECK(inVals_[0] && outVal_);
   resetOutGrad(out, outVal_->getPrimitiveDesc());
-  resetInGrad(in, inVal_->getPrimitiveDesc());
+  resetInGrad(in, inVals_[0]->getPrimitiveDesc());
   if (gradScaleShift_) {
     CHECK(wgtVal_);
     resetWithMatrix(wgt, gradScaleShift_, wgtVal_->getPrimitiveDesc());
@@ -293,11 +293,12 @@ void MKLDNNBatchNormLayer::resetBwdPipeline(
   if (pd == nullptr) {
     return;
   }
-  CHECK(inVal_);
+  CHECK(inVals_[0]);
   bwdData_.reset(
       wgt && wgtVal_
-          ? new bn_bwd(*pd, *inVal_, *mean_, *var_, *out, *wgtVal_, *in, *wgt)
-          : new bn_bwd(*pd, *inVal_, *mean_, *var_, *out, *in));
+          ? new bn_bwd(
+                *pd, *inVals_[0], *mean_, *var_, *out, *wgtVal_, *in, *wgt)
+          : new bn_bwd(*pd, *inVals_[0], *mean_, *var_, *out, *in));
   pipeline.push_back(*bwdData_);
 }
 

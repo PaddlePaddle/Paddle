@@ -59,15 +59,14 @@ void MKLDNNConcatLayer::reshape(
 }
 
 void MKLDNNConcatLayer::resetFwd(std::vector<primitive>& pipeline,
-                                 MKLDNNMatrixPtr& in,
+                                 std::vector<MKLDNNMatrixPtr>& inputs,
                                  MKLDNNMatrixPtr& out) {
-  resetFwdBuffers(inVals_, out);
-  in = inVals_[0];
+  resetFwdBuffers(inputs, out);
 
   std::shared_ptr<concat::primitive_desc> fwdPD;
-  resetFwdPD(fwdPD, inVals_, out);
+  resetFwdPD(fwdPD, inputs, out);
 
-  resetFwdPipeline(pipeline, fwdPD, inVals_, out);
+  resetFwdPipeline(pipeline, fwdPD, inputs, out);
 }
 
 void MKLDNNConcatLayer::resetBwd(std::vector<primitive>& pipeline,
@@ -157,14 +156,9 @@ void MKLDNNConcatLayer::resetBwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
   inputs.resize(inputLayers_.size());
   for (size_t i = 0; i < inputs.size(); i++) {
     CHECK(inVals_[i]);
-    // resetInGrad will use inVal_
-    // TODO(TJ): change move inVals_ to MKLDNNLayer ans remove inVal_
-    inVal_ = inVals_[i];
     resetInGrad(inputs[i], inVals_[i]->getPrimitiveDesc(), i);
     CHECK_PRIMITIVE_DESC_EQ(inputs[i], inVals_[i]->getPrimitiveDesc());
   }
-  // change back, inVal_ always save the input 0
-  inVal_ = inVals_[0];
 }
 
 void MKLDNNConcatLayer::resetBwdPipeline(

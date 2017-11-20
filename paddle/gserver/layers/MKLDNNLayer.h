@@ -68,17 +68,17 @@ protected:
    * When all layers are mkldnn layers, they could save internal data.
    */
   // below MKLDNNMatrix buffers are all internal buffers
-  MKLDNNMatrixPtr inVal_;
+  std::vector<MKLDNNMatrixPtr> inVals_;
   MKLDNNMatrixPtr inGrad_;
   MKLDNNMatrixPtr outVal_;
   MKLDNNMatrixPtr outGrad_;
   // below are external value and grad
-  MKLDNNMatrixPtr extInVal_;
+  std::vector<MKLDNNMatrixPtr> extInVals_;
   MKLDNNMatrixPtr extInGrad_;
   MKLDNNMatrixPtr extOutVal_;
   MKLDNNMatrixPtr extOutGrad_;
   // convert handle between external and internal buffers
-  std::shared_ptr<mkldnn::reorder> cvtInVal_;
+  std::vector<std::shared_ptr<mkldnn::reorder>> cvtInVals_;
   std::shared_ptr<mkldnn::reorder> cvtInGrad_;
   std::shared_ptr<mkldnn::reorder> cvtOutVal_;
   std::shared_ptr<mkldnn::reorder> cvtOutGrad_;
@@ -138,7 +138,7 @@ public:
    * weight and bias buffers should be coverd by child class itself
    */
   virtual void resetFwd(std::vector<mkldnn::primitive>& pipeline,
-                        MKLDNNMatrixPtr& in,
+                        std::vector<MKLDNNMatrixPtr>& inputs,
                         MKLDNNMatrixPtr& out) = 0;
 
   /**
@@ -176,10 +176,7 @@ protected:
   /**
    * reshape the input image sizes and input batchsize
    */
-  void reshapeInput(int& batchsize,
-                    int& height,
-                    int& width,
-                    size_t inputIdx = 0);
+  void reshapeInput(int& batchsize, int& height, int& width, size_t idx = 0);
 
   /**
    * reshape output image sizes
@@ -202,7 +199,7 @@ protected:
   void resetInValue(
       MKLDNNMatrixPtr& in,
       const std::shared_ptr<mkldnn::memory::primitive_desc>& intPD = nullptr,
-      size_t inputIdx = 0,
+      size_t idx = 0,
       int inputChannel = 0);
 
   /**
@@ -218,7 +215,7 @@ protected:
    */
   void resetInGrad(MKLDNNMatrixPtr& in,
                    mkldnn::memory::primitive_desc intPD,
-                   size_t inputIdx = 0);
+                   size_t idx = 0);
 
   /**
    * reset output grad from internal primitive desc.
@@ -296,17 +293,19 @@ protected:
    * print the mkldnn memory format of value
    */
   virtual void printValueFormat() {
-    if (extInVal_) {
-      VLOG(MKLDNN_FMTS) << extInVal_->getFormat() << " >>> ";
-    }
-    if (inVal_) {
-      VLOG(MKLDNN_FMTS) << inVal_->getFormat() << " >>>";
+    for (size_t i = 0; i < inVals_.size(); ++i) {
+      if (!inVals_[i]) {
+        continue;
+      }
+      VLOG(MKLDNN_FMTS) << "Input " << i << ", " << inputLayers_[i]->getName()
+                        << ": " << (extInVals_[i] ? extInVals_[i]->getFormat()
+                                                  : inVals_[i]->getFormat())
+                        << " >>> " << inVals_[i]->getFormat() << " >>>";
     }
     if (outVal_) {
-      VLOG(MKLDNN_FMTS) << outVal_->getFormat() << " >>> ";
-    }
-    if (extOutVal_) {
-      VLOG(MKLDNN_FMTS) << extOutVal_->getFormat();
+      VLOG(MKLDNN_FMTS) << outVal_->getFormat() << " >>> "
+                        << (extOutVal_ ? extOutVal_->getFormat()
+                                       : outVal_->getFormat());
     }
     if (wgtVal_) {
       VLOG(MKLDNN_FMTS) << "Weight value format: " << wgtVal_->getFormat();
@@ -435,6 +434,24 @@ private:
       outputOtherDevice_[i].subSequenceStartPositions =
           output_.subSequenceStartPositions;
       outputOtherDevice_[i].cpuSequenceDims = output_.cpuSequenceDims;
+    }
+  }
+
+  void prepareValueConversions(std::vector<mkldnn::primitive>& pipeline) {
+    // MKLDNNLayer output value should be MKLDNNMatrix
+    // so external output value is necessary.
+    // Then external input value is not necessary,
+    // since input may be mkldnn internal buffer.
+    CHECK(extOutVal_) << "external output value is necessary";
+    output_.value = std::dynamic_pointer_cast<Matrix>(extOutVal_);
+    CHECK(inVals_[0] && outVal_) << "internal memories are necessary";
+    for (size_t i = 0; i < cvtInVals_.size(); ++i) {
+      if (cvtInVals_[i]) {
+        pipeline.insert(pipeline.begin(), *cvtInVals_[i]);
+      }
+    }
+    if (cvtOutVal_) {
+      pipeline.push_back(*cvtOutVal_);
     }
   }
 };
