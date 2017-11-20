@@ -198,17 +198,19 @@ set(DEPS_OPS
     gru_op
     adagrad_op
     sgd_op
+    save_op
+    load_op
     send_op
     recv_op)
 
 add_subdirectory(detail)
-op_library(send_op SRCS send_op.cc DEPS sendrecvop_grpc)
+op_library(send_op SRCS send_op.cc DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib_target protobuf)
 set_source_files_properties(
     send_op.cc
     PROPERTIES
     COMPILE_FLAGS  "-Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
 
-op_library(recv_op SRCS recv_op.cc DEPS sendrecvop_grpc)
+op_library(recv_op SRCS recv_op.cc DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib_target protobuf)
 set_source_files_properties(
     recv_op.cc
     PROPERTIES
@@ -237,6 +239,9 @@ op_library(sequence_pool_op DEPS sequence_pooling)
 op_library(lstm_op DEPS sequence2batch lstm_compute)
 op_library(conv_transpose_op DEPS vol2col)
 op_library(gru_op DEPS sequence2batch gru_compute)
+# FIXME(typhoonzero): save/load depends lodtensor serialization functions
+op_library(save_op DEPS lod_tensor)
+op_library(load_op DEPS lod_tensor)
 if(WITH_TESTING)
     op_library(dynamic_recurrent_op SRCS dynamic_recurrent_op.cc rnn/recurrent_op_utils.cc
         DEPS net_op tensor_array gtest)
@@ -267,4 +272,4 @@ if(WITH_GPU)
   cc_test(nccl_op_test SRCS nccl_op_test.cu.cc DEPS nccl_op gpu_info device_context)
 endif()
 cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)
-cc_test(test_send_recv SRCS send_recv_op_test.cc DEPS send_op recv_op sum_op executor grpc++_unsecure grpc_unsecure gpr protobuf cares zlib_target)
+cc_test(test_send_recv SRCS send_recv_op_test.cc DEPS send_op recv_op sum_op executor)
