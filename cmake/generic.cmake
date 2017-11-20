@@ -491,7 +491,7 @@ function(grpc_library TARGET_NAME)
           COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
           ARGS --grpc_out "${CMAKE_CURRENT_BINARY_DIR}" -I "${PROTO_PATH}"
           --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN}" "${ABS_PROTO}"
-          DEPENDS "${ABS_PROTO}" ${PROTOBUF_PROTOC_EXECUTABLE} ${GRPC_CPP_PLUGIN})
+          DEPENDS "${ABS_PROTO}" ${PROTOBUF_PROTOC_EXECUTABLE} extern_grpc)
 
   # FIXME(typhoonzero): grpc generated code do not generate virtual-dtor, mark it
   # as compiler warnings instead of error. Should try remove the warnings also.
