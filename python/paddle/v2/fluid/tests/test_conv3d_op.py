@@ -184,5 +184,15 @@ def TestWithGroup2Cudnn(TestWithGroup2):
         self.op_type = "conv_cudnn"
 
 
+def TestWith1x1Cudnn(TestWith1x1):
+    def init_op_type(self):
+        self.op_type = "conv_cudnn"
+
+
+def TestWithDilationCudnn(TestWithDilation):
+    def init_op_type(self):
+        self.op_type = "conv_cudnn"
+
+
 if __name__ == '__main__':
     unittest.main()
