@@ -53,25 +53,17 @@ void MKLDNNLayer::forward(PassType passType) {
       VLOG(MKLDNN_BASE) << getName() << " reset mkldnn forward";
       // reset when input total sizes changed, not only the batchsize
       inputElemenCnt_ = elemenCnt;
-      pipelineFwd_.clear();
       reshape(bs_, ic_, ih_, iw_, oc_, oh_, ow_);
       printSizeInfo();
-      // all cpu device output grad or value share output's
+      // the output_.value and output_.grad are shared with CPU device
       shareCPUDevice();
-      resetFwd(pipelineFwd_, inVal_, outVal_);
-      // MKLDNNLayer output value should be MKLDNNMatrix
-      // so external output value is necessary.
-      // Then external input value is not necessary,
-      // since input may be mkldnn internal buffer.
-      CHECK(extOutVal_) << "external output value is necessary";
-      output_.value = std::dynamic_pointer_cast<Matrix>(extOutVal_);
-      CHECK(inVal_ && outVal_) << "internal memories are necessary";
-      if (cvtInVal_) {
-        pipelineFwd_.insert(pipelineFwd_.begin(), *cvtInVal_);
-      }
-      if (cvtOutVal_) {
-        pipelineFwd_.push_back(*cvtOutVal_);
-      }
+
+      pipelineFwd_.clear();
+      inVals_.resize(inputLayers_.size(), nullptr);
+      extInVals_.resize(inputLayers_.size(), nullptr);
+      cvtInVals_.resize(inputLayers_.size(), nullptr);
+      resetFwd(pipelineFwd_, inVals_, outVal_);
+      prepareValueConversions(pipelineFwd_);
       convertWeightsFromPaddle();
       printValueFormat();
       needResetBwd_ = true;
@@ -80,8 +72,8 @@ void MKLDNNLayer::forward(PassType passType) {
     if (inputLayers_[0]->getType() == "data" && inputLayers_.size() == 1) {
       // Update input value data when input layer is "data" type,
       // since the input value data address might be changed.
-      CHECK(extInVal_);
-      extInVal_->setData(getInputValue(0, CPU_DEVICE)->getData());
+      CHECK(extInVals_[0]);
+      extInVals_[0]->setData(getInputValue(0, CPU_DEVICE)->getData());
     }
 
     if (!outputOnlyMKLDNN_) {
@@ -141,8 +133,8 @@ void MKLDNNLayer::backward(const UpdateCallback& callback) {
 void MKLDNNLayer::reshapeInput(int& batchsize,
                                int& height,
                                int& width,
-                               size_t inputIdx) {
-  const Argument& input = inputLayers_[inputIdx]->getOutput();
+                               size_t idx) {
+  const Argument& input = inputLayers_[idx]->getOutput();
   batchsize = input.getBatchSize();
   int h = input.getFrameHeight();
   int w = input.getFrameWidth();
@@ -176,29 +168,30 @@ void MKLDNNLayer::resetWithMatrix(MKLDNNMatrixPtr& dnn,
 void MKLDNNLayer::resetInValue(
     MKLDNNMatrixPtr& in,
     const std::shared_ptr<memory::primitive_desc>& intPD,
-    size_t inputIdx,
+    size_t idx,
     int inputChannel) {
-  cvtInVal_ = nullptr;
-  extInVal_ = nullptr;
+  cvtInVals_[idx] = nullptr;
+  extInVals_[idx] = nullptr;
   in = nullptr;
   inputChannel = inputChannel == 0 ? ic_ : inputChannel;
   CHECK_GT(bs_ * inputChannel * ih_ * iw_, 0);
   auto extPD = MKLDNNMatrix::createPrimitiveDesc(
       {bs_, inputChannel, ih_, iw_}, format::nchw, engine_);
-  const MatrixPtr& inMat = inputLayers_[inputIdx]->getOutputValue();
-  extInVal_ = std::dynamic_pointer_cast<MKLDNNMatrix>(inMat);
-  CHECK_EQ(inputIsOnlyMKLDNN(), extInVal_ != nullptr);
-  if (extInVal_ == nullptr || extInVal_->getFormat() == format::nc) {
-    extInVal_ = MKLDNNMatrix::create(extPD, inMat);
+  const MatrixPtr& inMat = inputLayers_[idx]->getOutputValue();
+  extInVals_[idx] = std::dynamic_pointer_cast<MKLDNNMatrix>(inMat);
+  CHECK_EQ(inputIsOnlyMKLDNN(), extInVals_[idx] != nullptr);
+  if (extInVals_[idx] == nullptr ||
+      extInVals_[idx]->getFormat() == format::nc) {
+    extInVals_[idx] = MKLDNNMatrix::create(extPD, inMat);
   }
-  in = extInVal_;
+  in = extInVals_[idx];
   if (nullptr == intPD || in->getPrimitiveDesc() == *intPD) {
     return;
   }
   // need create reorder
   in = MKLDNNMatrix::create(*intPD);
-  cvtInVal_ = MKLDNNMatrix::createReorder(extInVal_, in);
-  CHECK(cvtInVal_) << "should not be emptry";
+  cvtInVals_[idx] = MKLDNNMatrix::createReorder(extInVals_[idx], in);
+  CHECK(cvtInVals_[idx]) << "should not be emptry";
 }
 
 void MKLDNNLayer::resetOutValue(MKLDNNMatrixPtr& out,
@@ -220,11 +213,11 @@ void MKLDNNLayer::resetOutValue(MKLDNNMatrixPtr& out,
 
 void MKLDNNLayer::resetInGrad(MKLDNNMatrixPtr& in,
                               memory::primitive_desc intPD,
-                              size_t inputIdx) {
+                              size_t idx) {
   cvtInGrad_ = nullptr;
   extInGrad_ = nullptr;
   in = nullptr;
-  LayerPtr& input = inputLayers_[inputIdx];
+  LayerPtr& input = inputLayers_[idx];
   if (input->getOutputGrad() == nullptr) {
     // no need input grad
     return;
@@ -239,7 +232,7 @@ void MKLDNNLayer::resetInGrad(MKLDNNMatrixPtr& in,
   in = MKLDNNMatrix::create(intPD, inMat);
   Argument& arg = input->getOutput(this->getName());
   arg.grad = std::dynamic_pointer_cast<Matrix>(in);
-  CHECK_PRIMITIVE_DESC_EQ(inVal_, intPD);
+  CHECK_PRIMITIVE_DESC_EQ(inVals_[idx], intPD);
   if (inputIsOnlyMKLDNN()) {
     return;
   }
@@ -249,10 +242,11 @@ void MKLDNNLayer::resetInGrad(MKLDNNMatrixPtr& in,
     return;
   }
   // need create reorder
-  CHECK(extInVal_ != nullptr && isPaddleFormat(extInVal_->getFormat()))
+  CHECK(extInVals_[idx] != nullptr &&
+        isPaddleFormat(extInVals_[idx]->getFormat()))
       << "should have external input value and the format must be nchw(nc)";
-  extInGrad_ = MKLDNNMatrix::create(extInVal_->getPrimitiveDesc(), inMat);
-  CHECK_PRIMITIVE_DESC_EQ(inVal_, intPD);
+  extInGrad_ = MKLDNNMatrix::create(extInVals_[idx]->getPrimitiveDesc(), inMat);
+  CHECK_PRIMITIVE_DESC_EQ(inVals_[idx], intPD);
   in = MKLDNNMatrix::create(intPD);
   cvtInGrad_ = MKLDNNMatrix::createReorder(in, extInGrad_);
   CHECK(cvtInGrad_);

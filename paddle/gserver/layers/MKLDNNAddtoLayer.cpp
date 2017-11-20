@@ -57,16 +57,15 @@ void MKLDNNAddtoLayer::reshape(
 }
 
 void MKLDNNAddtoLayer::resetFwd(std::vector<primitive>& pipeline,
-                                MKLDNNMatrixPtr& in,
+                                std::vector<MKLDNNMatrixPtr>& inputs,
                                 MKLDNNMatrixPtr& out) {
-  resetFwdBuffers(inVals_, biasVal_, out);
-  in = inVals_[0];
+  resetFwdBuffers(inputs, biasVal_, out);
 
   std::shared_ptr<sum::primitive_desc> fwdPD;
   std::shared_ptr<sum::primitive_desc> biasPD;
-  resetFwdPD(fwdPD, biasPD, inVals_, biasVal_, out);
+  resetFwdPD(fwdPD, biasPD, inputs, biasVal_, out);
 
-  resetFwdPipeline(pipeline, fwdPD, biasPD, inVals_, biasVal_, out);
+  resetFwdPipeline(pipeline, fwdPD, biasPD, inputs, biasVal_, out);
 }
 
 void MKLDNNAddtoLayer::resetBwd(std::vector<primitive>& pipeline,
@@ -206,7 +205,7 @@ void MKLDNNAddtoLayer::resetBwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
 
   inputs.resize(inputLayers_.size());
   for (size_t i = 0; i < inputs.size(); i++) {
-    resetInGrad(inputs[i], inVal_->getPrimitiveDesc(), i);
+    resetInGrad(inputs[i], inVals_[i]->getPrimitiveDesc(), i);
     CHECK_PRIMITIVE_DESC_EQ(inputs[i], out->getPrimitiveDesc());
   }
 
