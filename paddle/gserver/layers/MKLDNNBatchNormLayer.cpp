@@ -129,8 +129,6 @@ void MKLDNNBatchNormLayer::reshape(
 
 void MKLDNNBatchNormLayer::resetFwd(std::vector<primitive>& pipeline,
                                     MKLDNNMatrixPtr& in,
-                                    MKLDNNMatrixPtr& wgt,
-                                    MKLDNNMatrixPtr& bias,
                                     MKLDNNMatrixPtr& out) {
   // In training phase, it will always calculate mean and var,
   // so useGlobalStats must be false.
@@ -140,25 +138,23 @@ void MKLDNNBatchNormLayer::resetFwd(std::vector<primitive>& pipeline,
     useGlobalStats_ = false;
   }
 
-  resetFwdBuffers(in, wgt, out);
+  resetFwdBuffers(in, wgtVal_, out);
 
-  resetFwdPD(fwdPD_, in, wgt, out);
+  resetFwdPD(fwdPD_, in, wgtVal_, out);
 
-  resetFwdPipeline(pipeline, fwdPD_, in, wgt, out);
+  resetFwdPipeline(pipeline, fwdPD_, in, wgtVal_, out);
 }
 
 void MKLDNNBatchNormLayer::resetBwd(std::vector<primitive>& pipeline,
                                     MKLDNNMatrixPtr& in,
-                                    MKLDNNMatrixPtr& wgt,
-                                    MKLDNNMatrixPtr& bias,
                                     MKLDNNMatrixPtr& out) {
   std::shared_ptr<bn_bwd::primitive_desc> pd;
 
-  resetBwdBuffers(in, wgt, out);
+  resetBwdBuffers(in, wgtGrad_, out);
 
-  resetBwdPD(pd, in, wgt, out);
+  resetBwdPD(pd, in, wgtGrad_, out);
 
-  resetBwdPipeline(pipeline, pd, in, wgt, out);
+  resetBwdPipeline(pipeline, pd, in, wgtGrad_, out);
 }
 
 void MKLDNNBatchNormLayer::forward(PassType passType) {

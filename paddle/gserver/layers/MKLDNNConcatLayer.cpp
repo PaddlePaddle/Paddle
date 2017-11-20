@@ -60,8 +60,6 @@ void MKLDNNConcatLayer::reshape(
 
 void MKLDNNConcatLayer::resetFwd(std::vector<primitive>& pipeline,
                                  MKLDNNMatrixPtr& in,
-                                 MKLDNNMatrixPtr& wgt,
-                                 MKLDNNMatrixPtr& bias,
                                  MKLDNNMatrixPtr& out) {
   resetFwdBuffers(inVals_, out);
   in = inVals_[0];
@@ -74,8 +72,6 @@ void MKLDNNConcatLayer::resetFwd(std::vector<primitive>& pipeline,
 
 void MKLDNNConcatLayer::resetBwd(std::vector<primitive>& pipeline,
                                  MKLDNNMatrixPtr& in,
-                                 MKLDNNMatrixPtr& wgt,
-                                 MKLDNNMatrixPtr& bias,
                                  MKLDNNMatrixPtr& out) {
   resetBwdBuffers(inGrads_, out);
   in = inGrads_[0];

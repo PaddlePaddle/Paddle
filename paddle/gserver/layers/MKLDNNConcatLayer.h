@@ -51,14 +51,10 @@ public:
 
   void resetFwd(std::vector<mkldnn::primitive>& pipeline,
                 MKLDNNMatrixPtr& in,
-                MKLDNNMatrixPtr& wgt,
-                MKLDNNMatrixPtr& bias,
                 MKLDNNMatrixPtr& out) override;
 
   void resetBwd(std::vector<mkldnn::primitive>& pipeline,
                 MKLDNNMatrixPtr& in,
-                MKLDNNMatrixPtr& wgt,
-                MKLDNNMatrixPtr& bias,
                 MKLDNNMatrixPtr& out) override;
 
   void printSizeInfo() override {
@@ -99,11 +95,6 @@ public:
   }
 
 protected:
-  /**
-   * Forward functions: reset buffers(inputs, output, bias),
-   *                    reset primitive descriptor,
-   *                    reset pipeline.
-   */
   void resetFwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
                        MKLDNNMatrixPtr& out);
   void resetFwdPD(std::shared_ptr<mkldnn::concat::primitive_desc>& pd,
@@ -113,11 +104,6 @@ protected:
                         std::shared_ptr<mkldnn::concat::primitive_desc>& pd,
                         std::vector<MKLDNNMatrixPtr>& inputs,
                         MKLDNNMatrixPtr& out);
-
-  /**
-   * Backward functions: reset buffers(inputs, output, bias)
-   *                     reset primitives and pipeline
-   */
   void resetBwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
                        MKLDNNMatrixPtr& out);
   void resetBwdPipeline(std::vector<mkldnn::primitive>& pipeline,
