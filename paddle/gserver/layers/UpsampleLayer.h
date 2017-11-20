@@ -32,7 +32,6 @@ namespace paddle {
 class UpsampleLayer : public Layer {
 public:
   explicit UpsampleLayer(const LayerConfig& config) : Layer(config) {}
-
   ~UpsampleLayer() {}
 
   bool init(const LayerMap& layerMap,

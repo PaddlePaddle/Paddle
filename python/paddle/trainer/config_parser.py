@@ -978,11 +978,13 @@ class Pad(Cfg):
     def __init__(self, channels, pad_c, pad_h, pad_w):
         self.add_keys(locals())
 
+
 @config_class
 class Upsample(Cfg):
     def __init__(self, scale, scale_y, pad_out_x, pad_out_y, upsample_size,
                  upsample_size_y):
         self.add_keys(locals())
+
 
 @config_class
 class Norm(Cfg):
@@ -2393,6 +2395,7 @@ class SpatialPyramidPoolLayer(LayerBase):
             output_x = (pow(4, spp_conf.pyramid_height) - 1) / (4 - 1)
             self.set_cnn_layer(name, 1, output_x, spp_conf.image_conf.channels)
 
+
 @config_layer('upsample')
 class UpsampleLayer(LayerBase):
     def __init__(self, name, inputs, **xargs):
@@ -2407,9 +2410,10 @@ class UpsampleLayer(LayerBase):
                                                   input_layer.height)
 
         upsample = self.inputs[0].upsample
-        output_x = 0 
+        output_x = 0
         output_y = 0
         output_size = 0
+
         if upsample.scale:
             self.config.inputs[0].upsample_conf.scale = upsample.scale
             self.config.inputs[0].upsample_conf.scale_y = upsample.scale_y
@@ -2427,10 +2431,10 @@ class UpsampleLayer(LayerBase):
 
         output_size = image_conf.channels * output_x * output_y
 
-
         self.set_layer_height_width(output_y, output_x)
         self.set_layer_depth(input_layer.depth)
         self.set_layer_size(output_size)
+
 
 @config_layer('pad')
 class PadLayer(LayerBase):

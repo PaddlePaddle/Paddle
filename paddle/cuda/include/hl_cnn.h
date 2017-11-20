@@ -378,14 +378,15 @@ extern void hl_maxout_backward(real* inGrad,
  * @param[in]   outputW     the output widht.
  * @param[out]  outputData  output data.
  */
-extern void hl_upsample_forward(real *inputData, real *maskData,
-                        size_t batchSize,
-                        size_t imgSizeH,
-                        size_t imgSizeW,
-                        size_t channels,
-                        size_t outputH,
-                        size_t outputW,
-                        real *outputData);
+extern void hl_upsample_forward(real* inputData,
+                                real* maskData,
+                                size_t batchSize,
+                                size_t imgSizeH,
+                                size_t imgSizeW,
+                                size_t channels,
+                                size_t outputH,
+                                size_t outputW,
+                                real* outputData);
 
 /**
  * @brief   Upsample backward.
@@ -399,13 +400,14 @@ extern void hl_upsample_forward(real *inputData, real *maskData,
  * @param[in]   outputW         the output widht.
  * @param[out]  inputGradData   the input grad data.
  */
-extern void hl_upsample_backward(real *outputGradData, real *maskData,
-                        size_t batchSize,
-                        size_t imgSizeH,
-                        size_t imgSizeW,
-                        size_t channels,
-                        size_t outputH,
-                        size_t outputW,
-                        real *inputGradData);
+extern void hl_upsample_backward(real* outputGradData,
+                                 real* maskData,
+                                 size_t batchSize,
+                                 size_t imgSizeH,
+                                 size_t imgSizeW,
+                                 size_t channels,
+                                 size_t outputH,
+                                 size_t outputW,
+                                 real* inputGradData);
 
 #endif  // HL_CNN_H_
