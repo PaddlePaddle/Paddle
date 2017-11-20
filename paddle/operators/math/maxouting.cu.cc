@@ -112,7 +112,8 @@ template <typename T>
 class MaxOutGradFunctor<platform::GPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, framework::Tensor& input_grad,
+                  const framework::Tensor& input,
+                  framework::Tensor * input_grad,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad,
                   int groups) {
@@ -127,7 +128,7 @@ class MaxOutGradFunctor<platform::GPUPlace, T> {
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad.mutable_data<T>(context.GetPlace());
+    T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
     int nthreads =  output.numel();
     int blocks = (nthreads + 1024 - 1) / 1024;
     dim3 threads(1024, 1);

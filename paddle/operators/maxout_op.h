@@ -31,9 +31,7 @@ class MaxOutKernel : public framework::OpKernel<T> {
     Tensor* out = context.Output<Tensor>("Out");
     int groups = context.template Attr<int>("groups");
 
-    paddle::operators::math::MaxOutFunctor<
-    Place, T>
-    maxout_forward;
+    math::MaxOutFunctor<Place, T> maxout_forward;
     maxout_forward(context.device_context(), *in_x, out, groups);
   }
 };
@@ -53,10 +51,9 @@ class MaxOutGradKernel : public framework::OpKernel<T> {
     if (in_x_grad) {
       in_x_grad->mutable_data<T>(context.GetPlace());
       zero(device_ctx, in_x_grad, static_cast<T>(0.0));
-      paddle::operators::math::MaxOutGradFunctor<Place, T>
-      maxout_backward;
-      maxout_backward(context.device_context(), *in_x, *in_x_grad, *out,
-      *out_grad, groups);
+      math::MaxOutGradFunctor<Place, T> maxout_backward;
+      maxout_backward(context.device_context(), *in_x, in_x_grad, *out,
+        *out_grad, groups);
     }
   }
 };
