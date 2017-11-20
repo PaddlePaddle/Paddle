@@ -4,6 +4,7 @@ import paddle.v2.fluid.core as core
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.nets as nets
+import paddle.v2.fluid.evaluator as evaluator
 from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.initializer import XavierInitializer
 from paddle.v2.fluid.optimizer import AdamOptimizer
@@ -103,11 +104,12 @@ net = vgg16_bn_drop(images)
 predict = layers.fc(input=net, size=classdim, act='softmax')
 cost = layers.cross_entropy(input=predict, label=label)
 avg_cost = layers.mean(x=cost)
-accuracy = layers.accuracy(input=predict, label=label)
 
 # optimizer = SGDOptimizer(learning_rate=0.001)
 optimizer = AdamOptimizer(learning_rate=0.001)
 opts = optimizer.minimize(avg_cost)
+
+accuracy, acc_out = evaluator.accuracy(input=predict, label=label)
 
 BATCH_SIZE = 128
 PASS_NUM = 1
@@ -124,6 +126,7 @@ exe.run(framework.default_startup_program())
 
 for pass_id in range(PASS_NUM):
     batch_id = 0
+    accuracy.reset(exe)
     for data in train_reader():
         img_data = np.array(map(lambda x: x[0].reshape(data_shape),
                                 data)).astype("float32")
@@ -141,12 +144,14 @@ for pass_id in range(PASS_NUM):
         outs = exe.run(framework.default_main_program(),
                        feed={"pixel": tensor_img,
                              "label": tensor_y},
-                       fetch_list=[avg_cost, accuracy])
+                       fetch_list=[avg_cost, acc_out])
 
         loss = np.array(outs[0])
         acc = np.array(outs[1])
+        pass_acc = accuracy.eval(exe)
         print("pass_id:" + str(pass_id) + " batch_id:" + str(batch_id) +
-              " loss:" + str(loss) + " acc:" + str(acc))
+              " loss:" + str(loss) + " acc:" + str(acc) + " pass_acc:" + str(
+                  pass_acc))
         batch_id = batch_id + 1
 
         if batch_id > 1:
