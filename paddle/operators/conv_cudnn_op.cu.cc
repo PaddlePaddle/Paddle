@@ -67,18 +67,26 @@ class CudnnConvOpKernel : public framework::OpKernel<T> {
         conv_desc.descriptor<T>(paddings, strides, dilations);
 
     int input_channels = input->dims()[1];
-    int input_height = input->dims()[2];
-    int input_width = input->dims()[3];
-    int input_depth = 1;
+    int input_height, input_width, input_depth;
     if (input->dims().size() == 5) {
-      input_depth = input->dims()[4];
+      input_depth = input->dims()[2];
+      input_height = input->dims()[3];
+      input_width = input->dims()[4];
+    } else if (input->dims().size() == 4) {
+      input_depth = 1;
+      input_height = input->dims()[2];
+      input_width = input->dims()[3];
     }
     int output_channels = output->dims()[1];
-    int output_height = output->dims()[2];
-    int output_width = output->dims()[3];
-    int output_depth = 1;
+    int output_height, output_width, output_depth;
     if (output->dims().size() == 5) {
-      output_depth = output->dims()[4];
+      output_depth = output->dims()[2];
+      output_height = output->dims()[3];
+      output_width = output->dims()[4];
+    } else if (output->dims().size() == 4) {
+      output_depth = 1;
+      output_height = output->dims()[2];
+      output_width = output->dims()[3];
     }
 
     int group_offset_in =
@@ -168,18 +176,27 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
         conv_desc.descriptor<T>(paddings, strides, dilations);
 
     int input_channels = input->dims()[1];
-    int input_height = input->dims()[2];
-    int input_width = input->dims()[3];
-    int input_depth = 1;
+    int input_height, input_width, input_depth;
     if (input->dims().size() == 5) {
-      input_depth = input->dims()[4];
+      input_depth = input->dims()[2];
+      input_height = input->dims()[3];
+      input_width = input->dims()[4];
+    } else if (input->dims().size() == 4) {
+      input_depth = 1;
+      input_height = input->dims()[2];
+      input_width = input->dims()[3];
     }
+
     int output_grad_channels = filter->dims()[0];
-    int output_grad_height = output_grad->dims()[2];
-    int output_grad_width = output_grad->dims()[3];
-    int output_grad_depth = 1;
+    int output_grad_height, output_grad_width, output_grad_depth;
     if (output_grad->dims().size() == 5) {
-      output_grad_depth = output_grad->dims()[4];
+      output_grad_depth = output_grad->dims()[2];
+      output_grad_height = output_grad->dims()[3];
+      output_grad_width = output_grad->dims()[4];
+    } else if (output_grad->dims().size() == 4) {
+      output_grad_depth = 1;
+      output_grad_height = output_grad->dims()[2];
+      output_grad_width = output_grad->dims()[3];
     }
 
     int group_offset_in =
