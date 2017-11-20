@@ -36,8 +36,7 @@ namespace paddle {
  *
  * The detailed calculation for forward and backward can be found at this paper:
  *
- *     Rendle, Steffen. Factorization machines. IEEE 10th International
- *     Conference on Data Mining (ICDM). IEEE, 2010.
+ *     Factorization machines.
  *
  * The config file api is factorization_machine.
  */
@@ -59,7 +58,7 @@ private:
   // The result of input matrix * latent vector matrix that will be used in
   // both forward and backward step
   MatrixPtr inputMulFactor_;
-  // Temporary calculation result store
+  // Store temporary calculation result
   MatrixPtr tmpOut_;
   MatrixPtr tmpSum_;
   // Negative identity matrix
