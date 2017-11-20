@@ -259,6 +259,8 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_GPU_KERNEL(conv_cudnn, paddle::operators::CudnnConvOpKernel<float>);
+REGISTER_OP_GPU_KERNEL(conv_cudnn, paddle::operators::CudnnConvOpKernel<float>,
+                       paddle::operators::CudnnConvOpKernel<double>);
 REGISTER_OP_GPU_KERNEL(conv_cudnn_grad,
-                       paddle::operators::CudnnConvGradOpKernel<float>);
+                       paddle::operators::CudnnConvGradOpKernel<float>,
+                       paddle::operators::CudnnConvGradOpKernel<double>);
