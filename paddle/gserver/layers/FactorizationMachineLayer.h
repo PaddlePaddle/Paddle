@@ -61,6 +61,7 @@ private:
   // Store temporary calculation result
   MatrixPtr tmpOut_;
   MatrixPtr tmpSum_;
+  MatrixPtr tmpInput_;
   // Negative identity matrix
   MatrixPtr negOnes_;
 
