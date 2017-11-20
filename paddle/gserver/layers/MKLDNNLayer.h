@@ -38,6 +38,7 @@ protected:
   size_t inputElemenCnt_;
   // batch size
   int bs_;
+  // they sizes are always from the first input layer
   // input image channel, height and width
   int ic_, ih_, iw_;
   // output image channel, height and width
@@ -196,11 +197,13 @@ protected:
   /**
    * reset input value from input MKLDNNMatrix and internal primitive desc.
    * reset both internal and external buffer and create reorder if necessary.
+   * input channel may be different in concat.
    */
   void resetInValue(
       MKLDNNMatrixPtr& in,
       const std::shared_ptr<mkldnn::memory::primitive_desc>& intPD = nullptr,
-      size_t inputIdx = 0);
+      size_t inputIdx = 0,
+      int inputChannel = 0);
 
   /**
    * reset output value from internal primitive desc.

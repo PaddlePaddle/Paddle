@@ -176,13 +176,15 @@ void MKLDNNLayer::resetWithMatrix(MKLDNNMatrixPtr& dnn,
 void MKLDNNLayer::resetInValue(
     MKLDNNMatrixPtr& in,
     const std::shared_ptr<memory::primitive_desc>& intPD,
-    size_t inputIdx) {
+    size_t inputIdx,
+    int inputChannel) {
   cvtInVal_ = nullptr;
   extInVal_ = nullptr;
   in = nullptr;
-  CHECK_GT(bs_ * ic_ * ih_ * iw_, 0);
+  inputChannel = inputChannel == 0 ? ic_ : inputChannel;
+  CHECK_GT(bs_ * inputChannel * ih_ * iw_, 0);
   auto extPD = MKLDNNMatrix::createPrimitiveDesc(
-      {bs_, ic_, ih_, iw_}, format::nchw, engine_);
+      {bs_, inputChannel, ih_, iw_}, format::nchw, engine_);
   const MatrixPtr& inMat = inputLayers_[inputIdx]->getOutputValue();
   extInVal_ = std::dynamic_pointer_cast<MKLDNNMatrix>(inMat);
   CHECK_EQ(inputIsOnlyMKLDNN(), extInVal_ != nullptr);

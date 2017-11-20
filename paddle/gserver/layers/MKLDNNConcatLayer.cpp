@@ -84,10 +84,7 @@ void MKLDNNConcatLayer::resetFwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
   inputs.resize(inputLayers_.size());
   bool has8c = false, has16c = false, hasnc = false;
   for (size_t i = 0; i < inputs.size(); i++) {
-    // resetInValue will use ic_ so temporary change as current input's channel
-    // TODO(TJ): change ic_ as vector then can remove channels_
-    ic_ = channels_[i];
-    resetInValue(inputs[i], nullptr, i);
+    resetInValue(inputs[i], nullptr, i, channels_[i]);
     CHECK(inputs[i]);
     auto dm = inputs[i]->getDims();
     // inputs format can be different, but ndims must equal
@@ -108,8 +105,6 @@ void MKLDNNConcatLayer::resetFwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
       has16c = true;
     }
   }
-  // change back, ic_ always save the input 0 size
-  ic_ = channels_[0];
 
   format outFmt;
   if (has16c && oc_ % 16 == 0) {
