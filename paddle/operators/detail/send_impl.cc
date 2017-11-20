@@ -18,31 +18,6 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-bool RPCClient::InitVariables(const framework::Scope& scope,
-                              const std::vector<std::string>& var_list) {
-  // write streams of Variable to server
-  ClientContext context;
-  VoidMessage void_ret;
-  std::unique_ptr<ClientWriter<VariableMessage>> writer(
-      stub_->InitVariables(&context, &void_ret));
-  // send vars in scope to server using this stream.
-  for (auto n = var_list.begin(); n != var_list.end(); n++) {
-    auto* var = scope.FindVar(*n);
-    // TODO(typhoonzero): support SelectedRows
-    PADDLE_ENFORCE(var->IsType<framework::LoDTensor>(),
-                   "Only support LoDTensor, %s has wrong type", *n);
-    auto& tensor = var->Get<framework::LoDTensor>();
-    VariableMessage msg;
-    msg.set_varname(*n);
-    std::ostringstream oss;
-    framework::SerializeToStream(oss, tensor, platform::CPUDeviceContext());
-    // FIXME(typhoonzero): no copy
-    msg.set_serialized(oss.str());
-    writer->Write(msg);
-  }
-  return true;
-}
-
 bool RPCClient::SendVariable(const framework::Scope& scope,
                              const std::string& inname,
                              const std::string& outname) {

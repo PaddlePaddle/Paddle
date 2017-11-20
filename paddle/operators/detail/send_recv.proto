@@ -17,8 +17,6 @@ syntax = "proto3";
 package sendrecv;
 
 service SendRecvService {
-  // Init Variables before running server side block.
-  rpc InitVariables(stream VariableMessage) returns (VoidMessage) {}
   // For parameter server round-robin like hashing, do not split tensors. 
   // Send and recv only one tensor
   rpc SendVariable(VariableMessage) returns (VariableMessage) {}

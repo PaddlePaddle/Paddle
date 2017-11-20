@@ -88,7 +88,7 @@ class SaveOp : public framework::OperatorBase {
                    "SaveOp only support LoDTensor, %s has wrong type", iname);
 
     auto &tensor = var->Get<framework::LoDTensor>();
-    framework::SerializeToStream(fout, tensor);
+    framework::SerializeToStream(fout, tensor, dev_ctx);
   }
 };
 

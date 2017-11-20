@@ -18,22 +18,6 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-Status SendRecvServerImpl::InitVariables(
-    ServerContext *context, ServerReader<VariableMessage> *in_var_reader,
-    VoidMessage *void_ret) {
-  // set up all variables to run server side block
-  VariableMessage in_buf;
-  while (in_var_reader->Read(&in_buf)) {
-    // create var if not exist
-    // auto *var = scope_->Var(in_buf.varname());
-    // auto *tensor = var->GetMutable<framework::LoDTensor>();
-    // std::istringstream iss(in_buf.serialized());
-    // framework::DeserializeFromStream(iss, tensor);
-  }
-  *void_ret = VoidMessage();
-  return Status::OK;
-}
-
 Status SendRecvServerImpl::SendVariable(ServerContext *context,
                                         const VariableMessage *in_var,
                                         VariableMessage *out_var) {

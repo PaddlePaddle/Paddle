@@ -18,7 +18,7 @@ include (ExternalProject)
 SET(GRPC_SOURCES_DIR ${THIRD_PARTY_PATH}/grpc)
 SET(GRPC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/grpc)
 SET(GRPC_INCLUDE_DIR "${GRPC_INSTALL_DIR}/include/" CACHE PATH "grpc include directory." FORCE)
-SET(GRPC_CPP_PLUGIN "${GRPC_SOURCES_DIR}/src/extern_grpc-build/grpc_cpp_plugin" CACHE FILEPATH "GRPC_CPP_PLUGIN" FORCE)
+SET(GRPC_CPP_PLUGIN "${GRPC_INSTALL_DIR}/bin/grpc_cpp_plugin" CACHE FILEPATH "GRPC_CPP_PLUGIN" FORCE)
 
 ExternalProject_Add(
     extern_grpc

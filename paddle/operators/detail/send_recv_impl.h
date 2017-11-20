@@ -52,10 +52,6 @@ class SendRecvServerImpl final : public SendRecvService::Service {
  public:
   explicit SendRecvServerImpl() {}
 
-  Status InitVariables(ServerContext *context,
-                       ServerReader<VariableMessage> *in_var_reader,
-                       VoidMessage *void_ret) override;
-
   Status SendVariable(ServerContext *context, const VariableMessage *in_var,
                       VariableMessage *out_var) override;
 
@@ -79,8 +75,6 @@ class RPCClient {
   RPCClient(std::shared_ptr<Channel> channel)
       : stub_(SendRecvService::NewStub(channel)) {}
 
-  bool InitVariables(const framework::Scope &scope,
-                     const std::vector<std::string> &var_list);
   bool SendVariable(const framework::Scope &scope, const std::string &inname,
                     const std::string &outname);
 
