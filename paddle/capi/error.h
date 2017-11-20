@@ -27,4 +27,21 @@ typedef enum {
   kPD_UNDEFINED_ERROR = -1,
 } paddle_error;
 
+static const char* paddle_error_string(paddle_error err) {
+  switch (err) {
+    case kPD_NULLPTR:
+      return "nullptr error";
+    case kPD_OUT_OF_RANGE:
+      return "out of range error";
+    case kPD_PROTOBUF_ERROR:
+      return "protobuf error";
+    case kPD_NOT_SUPPORTED:
+      return "not supported error";
+    case kPD_UNDEFINED_ERROR:
+      return "undefined error";
+    default:
+      return "";
+  }
+}
+
 #endif
