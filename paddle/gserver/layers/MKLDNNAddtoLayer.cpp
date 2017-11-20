@@ -43,7 +43,8 @@ void MKLDNNAddtoLayer::reshape(
   reshapeInput(bs, ih, iw);
   ic = inputLayers_[0]->getSize() / ih / iw;
   CHECK_EQ((size_t)ic * ih * iw, inputLayers_[0]->getSize());
-  CHECK_EQ(inputElemenCnt_, (size_t)bs * ic * ih * iw);
+  CHECK_EQ(inputLayers_[0]->getOutputValue()->getElementCnt(),
+           (size_t)bs * ic * ih * iw);
   for (size_t i = 0; i < inputLayers_.size(); i++) {
     CHECK_EQ(int64_t(bs), inputLayers_[i]->getOutput().getBatchSize());
     CHECK_EQ(layerSize_, inputLayers_[i]->getSize());

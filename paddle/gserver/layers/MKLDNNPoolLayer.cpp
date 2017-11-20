@@ -61,7 +61,8 @@ void MKLDNNPoolLayer::reshape(
     int& bs, int& ic, int& ih, int& iw, int& oc, int& oh, int& ow) {
   reshapeInput(bs, ih, iw);
   // ic_ and oc can not be changed
-  CHECK_EQ(inputElemenCnt_ / bs / ih / iw, (size_t)ic)
+  CHECK_EQ((size_t)ic,
+           inputLayers_[0]->getOutputValue()->getElementCnt() / bs / ih / iw)
       << "Input channel can not be changed";
 
   // cal output sizes

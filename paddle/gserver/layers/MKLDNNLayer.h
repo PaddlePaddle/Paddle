@@ -34,8 +34,6 @@ typedef std::shared_ptr<MKLDNNLayer> MKLDNNLayerPtr;
  */
 class MKLDNNLayer : public Layer {
 protected:
-  // input value element count
-  size_t inputElemenCnt_;
   // batch size
   int bs_;
   // they sizes are always from the first input layer
@@ -44,6 +42,8 @@ protected:
   // output image channel, height and width
   int oc_, oh_, ow_;
 
+  // the condition that forward need be reset
+  size_t condition_;
   // backward also need reset after reset forward handle
   bool needResetBwd_;
 
@@ -103,14 +103,7 @@ protected:
 public:
   explicit MKLDNNLayer(const LayerConfig& config)
       : Layer(config),
-        inputElemenCnt_(0),
-        bs_(0),
-        ic_(0),
-        ih_(0),
-        iw_(0),
-        oc_(0),
-        oh_(0),
-        ow_(0),
+        condition_(0),
         needResetBwd_(true),
         outputOnlyMKLDNN_(false),
         engine_(mkldnn::engine::cpu, 0),
@@ -173,6 +166,15 @@ public:
   void addOutputArgument(int deviceId) { Layer::addOutputArgument(deviceId); }
 
 protected:
+  /**
+   * Some layers may have different condition to reset the forward.
+   * The function returns the condition that do not need reset forward.
+   */
+  inline virtual size_t keepCondition() {
+    // reset when the first input element size changed, not only the batchsize
+    return inputLayers_[0]->getOutputValue()->getElementCnt();
+  }
+
   /**
    * reshape the input image sizes and input batchsize
    */
