@@ -65,6 +65,7 @@ __global__ void KernelMaxoutGrad(
         if (input_data[data_idx + g * feat_len] == output_data[i]) {
           max_index = data_idx + g * feat_len;
           continue_match = false;
+          break;
         }
       }
       if (max_index != -1) {
