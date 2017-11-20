@@ -29,7 +29,7 @@ gserver_test(test_KmaxSeqScore)
 gserver_test(test_Expand)
 gserver_test(test_MaxPoolingWithMaskOutput)
 
-########## test_Mkldnn layers and activations ##########
+########## test_MKLDNN layers and activations ##########
 if(WITH_MKLDNN)
     add_unittest_without_exec(test_MKLDNN
         test_MKLDNN.cpp
