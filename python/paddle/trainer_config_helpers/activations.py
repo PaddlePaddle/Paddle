@@ -256,7 +256,7 @@ class SoftSignActivation(BaseActivation):
     SoftSign Activation.
 
     .. math::
-       f(z)=\\frac{1}{1 + |z|}
+       f(z)=\\frac{z}{1 + |z|}
     """
 
     def __init__(self):
