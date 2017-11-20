@@ -64,29 +64,31 @@ the cases - the compiler will optimize the IR:
 
 <img src="src/compiler.png"/>
 
-We can have our own IR too: PaddlePaddle can support model parallel by
+We can have our own IR which is called [Program](../program.md).
+PaddlePaddle can support model parallel by
 converting the IR so the user no longer need to manually do it in
 Python:
 
 <img src="src/paddle-compile.png"/>
 
-The IR for PaddlePaddle after refactor is called `Block`, it specifies
-the computation dependency graph and the variables used in the
-computation.
 
 ### Limitation 3
 
 The user can not directly specify the parameter update rule for the
-parameter server because the parameter server does not use the same
-computation definition as the trainer. Instead, the update rule is
-baked in the parameter server. The user can not specify the update
-rule in the same way of specifying the trainer computation.
+parameter server because the previous implementaion hard coded that
+parameter server only do vector's optimization algorithm by
+configuration. The user can not specify the parameter server's
+computation layer by layer.
 
-This could be fixed by making the parameter server run the same
+This could be fixed by making the parameter server run a separated
+IR according to the trainer's varialble (tensors, selectedrows)
+defination.
+
+the same
 computation definition as the trainer. For a detailed explanation,
 please
 see
-[Design Doc: Operation Graph Based Parameter Server](./dist_train.md)
+[Design Doc: Operation Graph Based Parameter Server](./parameter_server.md)
 
 ## Distributed Training Architecture
 
@@ -110,30 +112,63 @@ img, label = input[0], input[1]
 hidden = paddle.layer.fc(input=img, size=200, act=paddle.activation.Tanh())
 prediction = paddle.layer.fc(input=img, size=10, act=paddle.activation.Softmax())
 cost = paddle.layer.classification_cost(input=prediction, label=label)
-optimizer = paddle.optimizer.SGD(cost, learning_rate=0.01)
-session = paddle.session.NewRemote(num_trainer=3, num_ps=2, GPU_per_trainer=1)
+optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+opts = optimizer.minimize(cost)
+exe = RemoteExecutor(num_trainer=3, num_ps=2, GPU_per_trainer=2, sync_batches=1)
+# this will init variable data on both server and trainer
+exe.run(framework.default_startup_program())
+exe.sync()
+
 for i in range(1000):
-	_, cost_val = session.eval(targets=[cost, optimizer])
-	print cost_val
+  # feed data
+  ...
+  cost, acc = exe.run(framework.default_main_program(),
+                      fetch_list=[avg_cost, acc_out])
+  print cost, acc
 ```
 
 The code above is a typical Python trainer code, the neural network
 topology is built using helper functions such as
-`paddle.layer.fc`. The training is done by calling `session.eval`
+`paddle.layer.fc`. The training is done by calling `Executor.run`
 iteratively.
 
-#### session.eval
+#### RemoteExecutor
 
-As shown in the graph, `session.eval` sends the IR and the evaluation
-inputs/targets to the PaddlePaddle cluster for evaluation. The
-targets can be any variable in the computation graph. When the target
-is the `optimizer` variable, the neural network will be optimized
-once. When the target is the `cost` variable, `session.eval` returns
-the cost value.
+As shown in the graph, `RemoteExecutor.run` sends the IR to the
+PaddlePaddle cluster for Execution. You can also use parameter
+`fetch_list` to interactively fetch varirable back to local for
+log printing.
 
-The Python `session` is a wrapper of the C++ `Session` class. For more
-information about `Session`, please
-see [Design Doc: Session](./session.md).
+The Python `RemoteExecutor` is derived from `Executor` class.
+For more information about `RemoteExecutor`, please
+see [Design Doc: RemoteExecutor](./remote_executor.md).
+
+By default, `Executor.run` starts a PaddlePaddle Cloud
+[TrainingJob](https://github.com/PaddlePaddle/cloud/blob/develop/doc/autoscale/README.md#training-job-resource), or you can run each component in the
+executor by your own method:
+
+- Data Parrallelism
+  ```python
+  if os.getenv('PLACE_PSERVER'):
+    exe.run_pserver()
+  elif os.getenv('PLACE_TRAINER'):
+    exe.run_trainer()
+  ```
+- Model Parrallelism
+  ```python
+  for part in exe.get_parralle_parts():
+    exe.run_part(part)
+  ```
+
+#### Program and Executor
+
+As mentioned above, the implementation of IR is [Program](../program.md).
+
+[Executor](../executor.md) converts and parses the IR to a prefered
+graph for final execution. For local training you generally use
+`Executor` to run the graph locally. For any kind of distributed
+training, you can use `RemoteExecutor` to specify desired distributed 
+training method with some optional arguments.
 
 ### PaddlePaddle Converter
 
@@ -183,13 +218,6 @@ device computation time and device communication time. Model
 parallelism requires the general placement algorithm.
 
 
-### PaddlePaddle Runtime
-
-The PaddlePaddle runtime owns multiple devices (e.g., CPUs, GPUs) and
-runs the IR. The runtime does not need to do OP placement since it's
-already done by the converter.
-
-
 ### Local Training Architecture
 
 The local training architecture will be the same as the distributed
@@ -210,7 +238,7 @@ the Python reader will need to read from the distributed filesystem
 network traffic.
 
 When doing distributed training, the user can still use Python data
-reader: the training data are sent with `session.eval`. However should
+reader: the training data are sent with `Executor.run`. However should
 be used for debugging purpose only. The users are encouraged to use
 the read data OPs.
 
