@@ -1116,35 +1116,6 @@ def PyData(files=None,
     return data_config
 
 
-@config_func
-def ProtoData(files=None,
-              type=None,
-              file_group_queue_capacity=None,
-              load_file_count=None,
-              constant_slots=None,
-              load_thread_num=None,
-              **xargs):
-    data_config = create_data_config_proto(**xargs)
-    if type is None:
-        data_config.type = 'proto'
-    else:
-        data_config.type = type
-    data_config.files = files
-
-    # When type="proto_group", one data provider contains at most
-    # load_file_count files, and there are at most
-    # (queue_capacity + load_thread_num + 1) data providers in memory
-    if file_group_queue_capacity is not None:
-        data_config.file_group_conf.queue_capacity = file_group_queue_capacity
-    if load_file_count is not None:
-        data_config.file_group_conf.load_file_count = load_file_count
-    if load_thread_num is not None:
-        data_config.file_group_conf.load_thread_num = load_thread_num
-    if constant_slots:
-        data_config.constant_slots.extend(constant_slots)
-    return data_config
-
-
 #real data for training is actually provided by "sub_data" data providers.
 @config_func
 def MultiData(sub_data=[]):
@@ -2714,7 +2685,7 @@ Usage:
              max_sort_size = -1, inputs = ["output", "score"])
 
   Input data: Samples of the same query should be loaded as a sequence,
-          by ProtoDataProvider or PyDataProvider etc.. User should provide
+          by PyDataProvider etc.. User should provide
           scores for each sample. The score slot should be the 2nd
           input of lambdaRank layer.
 
