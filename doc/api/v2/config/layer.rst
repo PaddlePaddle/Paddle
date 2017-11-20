@@ -382,6 +382,11 @@ cos_sim
 ..  autoclass:: paddle.v2.layer.cos_sim
     :noindex:
 
+l2_distance
+-----------
+..  autoclass:: paddle.v2.layer.l2_distance
+    :noindex:
+
 trans
 -----
 ..  autoclass:: paddle.v2.layer.trans
