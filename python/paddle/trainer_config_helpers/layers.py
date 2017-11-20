@@ -2881,6 +2881,7 @@ def img_pool3d_layer(input,
         num_filters=num_channels,
         size=l.config.size)
 
+
 @wrap_name_default("upsample")
 @layer_support()
 def upsample_layer(input,
@@ -2930,6 +2931,7 @@ def upsample_layer(input,
             'scale or upsample_size, there must be one to be designated'
 
     assert len(input) == 2, 'layer input size must be 2'
+
     assert input[1].layer_type == LayerType.POOL_LAYER, \
             'the second input should be the MaxPoolWithMaskLayer'
 

@@ -30,6 +30,7 @@ size_t UpsampleLayer::getOutputSize() {
 bool UpsampleLayer::init(const LayerMap& layerMap,
                          const ParameterMap& parameterMap) {
   Layer::init(layerMap, parameterMap);
+
   CHECK_EQ(inputLayers_.size(), 2U);
   CHECK_EQ(config_.inputs_size(), 2);
   const auto& conf = config_.inputs(0).upsample_conf();
