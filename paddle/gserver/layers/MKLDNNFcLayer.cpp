@@ -97,18 +97,19 @@ void MKLDNNFcLayer::resetFwd(std::vector<primitive>& pipeline,
 }
 
 void MKLDNNFcLayer::resetBwd(std::vector<primitive>& pipeline,
-                             MKLDNNMatrixPtr& in,
+                             std::vector<MKLDNNMatrixPtr>& inputs,
                              MKLDNNMatrixPtr& out) {
   std::shared_ptr<fc_bwdWgt::primitive_desc> bwdWgtPD;
   std::shared_ptr<fc_bwdData::primitive_desc> bwdDataPD;
 
-  resetBwdBuffers(in, wgtGrad_, biasGrad_, out);
+  resetBwdBuffers(inputs[0], wgtGrad_, biasGrad_, out);
 
   resetBwdWgtPD(bwdWgtPD, wgtGrad_, biasGrad_, out);
 
-  resetBwdDataPD(bwdDataPD, in, out);
+  resetBwdDataPD(bwdDataPD, inputs[0], out);
 
-  resetBwdPipeline(pipeline, bwdWgtPD, bwdDataPD, in, wgtGrad_, biasGrad_, out);
+  resetBwdPipeline(
+      pipeline, bwdWgtPD, bwdDataPD, inputs[0], wgtGrad_, biasGrad_, out);
 }
 
 void MKLDNNFcLayer::updateWeights(const UpdateCallback& callback) {

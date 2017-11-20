@@ -26,8 +26,6 @@ namespace paddle {
  */
 class MKLDNNAddtoLayer : public MKLDNNLayer {
 protected:
-  std::vector<MKLDNNMatrixPtr> inGrads_;
-
   // layer size == ic * ih * iw == oc * oh *ow, and can not be changed
   size_t layerSize_;
 
@@ -56,22 +54,10 @@ public:
                 MKLDNNMatrixPtr& out) override;
 
   void resetBwd(std::vector<mkldnn::primitive>& pipeline,
-                MKLDNNMatrixPtr& in,
+                std::vector<MKLDNNMatrixPtr>& inputs,
                 MKLDNNMatrixPtr& out) override;
 
   void updateWeights(const UpdateCallback& callback) override;
-
-  void printGradFormat() override {
-    if (extOutGrad_) {
-      VLOG(MKLDNN_FMTS) << extOutGrad_->getFormat();
-    }
-    if (outGrad_) {
-      VLOG(MKLDNN_FMTS) << outGrad_->getFormat() << " <<< ";
-    }
-    for (size_t i = 0; i < inGrads_.size(); ++i) {
-      VLOG(MKLDNN_FMTS) << i << " input: " << inGrads_[i]->getFormat() << "<<<";
-    }
-  }
 
 protected:
   void resetFwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,

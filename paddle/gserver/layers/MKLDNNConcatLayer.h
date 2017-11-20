@@ -26,7 +26,6 @@ namespace paddle {
  */
 class MKLDNNConcatLayer : public MKLDNNLayer {
 protected:
-  std::vector<MKLDNNMatrixPtr> inGrads_;
   std::vector<std::shared_ptr<mkldnn::primitive>> bwds_;
   // input channel numbers
   std::vector<int> channels_;
@@ -53,7 +52,7 @@ public:
                 MKLDNNMatrixPtr& out) override;
 
   void resetBwd(std::vector<mkldnn::primitive>& pipeline,
-                MKLDNNMatrixPtr& in,
+                std::vector<MKLDNNMatrixPtr>& inputs,
                 MKLDNNMatrixPtr& out) override;
 
   void printSizeInfo() override {
@@ -65,19 +64,6 @@ public:
     }
     VLOG(MKLDNN_SIZES) << "Output: " << bs_ << ", " << oc_ << ", " << oh_
                        << ", " << ow_;
-  }
-
-  void printGradFormat() override {
-    if (extOutGrad_) {
-      VLOG(MKLDNN_FMTS) << extOutGrad_->getFormat();
-    }
-    if (outGrad_) {
-      VLOG(MKLDNN_FMTS) << outGrad_->getFormat() << " <<< ";
-    }
-    for (size_t i = 0; i < inGrads_.size(); ++i) {
-      VLOG(MKLDNN_FMTS) << "Input " << i << ", " << inputLayers_[i]->getName()
-                        << ": " << inGrads_[i]->getFormat() << "<<<";
-    }
   }
 
 protected:

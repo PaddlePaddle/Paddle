@@ -70,12 +70,11 @@ void MKLDNNConcatLayer::resetFwd(std::vector<primitive>& pipeline,
 }
 
 void MKLDNNConcatLayer::resetBwd(std::vector<primitive>& pipeline,
-                                 MKLDNNMatrixPtr& in,
+                                 std::vector<MKLDNNMatrixPtr>& inputs,
                                  MKLDNNMatrixPtr& out) {
-  resetBwdBuffers(inGrads_, out);
-  in = inGrads_[0];
+  resetBwdBuffers(inputs, out);
 
-  resetBwdPipeline(pipeline, bwds_, inGrads_, out);
+  resetBwdPipeline(pipeline, bwds_, inputs, out);
 }
 
 void MKLDNNConcatLayer::resetFwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,

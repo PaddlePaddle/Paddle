@@ -60,7 +60,7 @@ public:
                 MKLDNNMatrixPtr& out) override;
 
   void resetBwd(std::vector<mkldnn::primitive>& pipeline,
-                MKLDNNMatrixPtr& in,
+                std::vector<MKLDNNMatrixPtr>& inputs,
                 MKLDNNMatrixPtr& out) override;
 
   void printSizeInfo() override {

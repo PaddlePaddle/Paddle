@@ -69,17 +69,17 @@ protected:
    */
   // below MKLDNNMatrix buffers are all internal buffers
   std::vector<MKLDNNMatrixPtr> inVals_;
-  MKLDNNMatrixPtr inGrad_;
+  std::vector<MKLDNNMatrixPtr> inGrads_;
   MKLDNNMatrixPtr outVal_;
   MKLDNNMatrixPtr outGrad_;
   // below are external value and grad
   std::vector<MKLDNNMatrixPtr> extInVals_;
-  MKLDNNMatrixPtr extInGrad_;
+  std::vector<MKLDNNMatrixPtr> extInGrads_;
   MKLDNNMatrixPtr extOutVal_;
   MKLDNNMatrixPtr extOutGrad_;
   // convert handle between external and internal buffers
   std::vector<std::shared_ptr<mkldnn::reorder>> cvtInVals_;
-  std::shared_ptr<mkldnn::reorder> cvtInGrad_;
+  std::vector<std::shared_ptr<mkldnn::reorder>> cvtInGrads_;
   std::shared_ptr<mkldnn::reorder> cvtOutVal_;
   std::shared_ptr<mkldnn::reorder> cvtOutGrad_;
 
@@ -147,7 +147,7 @@ public:
    * weight and bias buffers should be coverd by child class itself
    */
   virtual void resetBwd(std::vector<mkldnn::primitive>& pipeline,
-                        MKLDNNMatrixPtr& in,
+                        std::vector<MKLDNNMatrixPtr>& inputs,
                         MKLDNNMatrixPtr& out) = 0;
 
   /**
@@ -319,17 +319,19 @@ protected:
    * print the mkldnn memory format of grad
    */
   virtual void printGradFormat() {
-    if (extOutGrad_) {
-      VLOG(MKLDNN_FMTS) << extOutGrad_->getFormat();
-    }
     if (outGrad_) {
-      VLOG(MKLDNN_FMTS) << outGrad_->getFormat() << " <<< ";
+      VLOG(MKLDNN_FMTS) << outGrad_->getFormat() << " <<< "
+                        << (extOutGrad_ ? extOutGrad_->getFormat()
+                                        : outGrad_->getFormat());
     }
-    if (inGrad_) {
-      VLOG(MKLDNN_FMTS) << inGrad_->getFormat() << " <<<";
-    }
-    if (extInGrad_) {
-      VLOG(MKLDNN_FMTS) << extInGrad_->getFormat() << " <<< ";
+    for (size_t i = 0; i < inGrads_.size(); ++i) {
+      if (!inGrads_[i]) {
+        continue;
+      }
+      VLOG(MKLDNN_FMTS) << "Input " << i << ", " << inputLayers_[i]->getName()
+                        << ": " << (extInGrads_[i] ? extInGrads_[i]->getFormat()
+                                                   : inGrads_[i]->getFormat())
+                        << " <<< " << inGrads_[i]->getFormat() << " <<<";
     }
     if (wgtGrad_) {
       VLOG(MKLDNN_FMTS) << "Weight grad format: " << wgtGrad_->getFormat();
@@ -452,6 +454,23 @@ private:
     }
     if (cvtOutVal_) {
       pipeline.push_back(*cvtOutVal_);
+    }
+  }
+  void prepareGradConversions(std::vector<mkldnn::primitive>& pipeline) {
+    // external output grad is not necessary
+    // since output may be mkldnn internal buffer or merge them directly.
+    CHECK(outGrad_) << "internal output grad is necessary";
+    if (extOutGrad_) {
+      CHECK_EQ(extOutGrad_->getData(), output_.grad->getData())
+          << "the external buffer should share the same data with output_.grad";
+    }
+    if (cvtOutGrad_) {
+      pipeline.insert(pipeline.begin(), *cvtOutGrad_);
+    }
+    for (size_t i = 0; i < cvtInGrads_.size(); ++i) {
+      if (cvtInGrads_[i]) {
+        pipeline.push_back(*cvtInGrads_[i]);
+      }
     }
   }
 };

@@ -69,16 +69,15 @@ void MKLDNNAddtoLayer::resetFwd(std::vector<primitive>& pipeline,
 }
 
 void MKLDNNAddtoLayer::resetBwd(std::vector<primitive>& pipeline,
-                                MKLDNNMatrixPtr& in,
+                                std::vector<MKLDNNMatrixPtr>& inputs,
                                 MKLDNNMatrixPtr& out) {
-  resetBwdBuffers(inGrads_, biasGrad_, out);
-  in = inGrads_[0];
+  resetBwdBuffers(inputs, biasGrad_, out);
 
   // backward only need share output grad to input grad
-  for (size_t i = 0; i < inGrads_.size(); i++) {
-    if (inGrads_[i] != nullptr) {
-      inGrads_[i] = out;
-      inputLayers_[i]->getOutputGrad()->setData(inGrads_[i]->getData());
+  for (size_t i = 0; i < inputs.size(); i++) {
+    if (inputs[i] != nullptr) {
+      inputs[i] = out;
+      inputLayers_[i]->getOutputGrad()->setData(inputs[i]->getData());
     }
   }
 
