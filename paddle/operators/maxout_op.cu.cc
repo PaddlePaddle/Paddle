@@ -15,13 +15,11 @@
 #include "paddle/operators/maxout_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(maxout, ops::MaxOutKernel<paddle::platform::GPUPlace,
-                       float>);
-REGISTER_OP_GPU_KERNEL(maxout, ops::MaxOutKernel<paddle::platform::GPUPlace,
-                       double>);
+REGISTER_OP_GPU_KERNEL(maxout,
+                       ops::MaxOutKernel<paddle::platform::GPUPlace, float>,
+                       ops::MaxOutKernel<paddle::platform::GPUPlace, double>);
 REGISTER_OP_GPU_KERNEL(maxout_grad,
                        ops::MaxOutGradKernel<paddle::platform::GPUPlace,
-                       float>);
-REGISTER_OP_GPU_KERNEL(maxout_grad,
+                        float>,
                        ops::MaxOutGradKernel<paddle::platform::GPUPlace,
-                       double>);
+                        double>);
