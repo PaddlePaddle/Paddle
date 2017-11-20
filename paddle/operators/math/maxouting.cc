@@ -85,11 +85,9 @@ public:
           int output_idx = blen + clen + f;
           for (int g = 0; g < groups && continue_match; ++g) {
               int input_idx = input_idx0 + fea_size * g;
-              input_grad_data[input_idx] = 0;
               if (input_data[input_idx] == output_data[output_idx]) {
                 input_grad_data[input_idx] += output_grad_data[output_idx];
                 continue_match = false;
-                break;
               }
           }
         }

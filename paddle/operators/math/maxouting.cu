@@ -69,8 +69,7 @@ __global__ void KernelMaxoutGrad(
         }
       }
       if (max_index != -1) {
-        // atomic add
-        platform::CudaAtomicAdd(input_grad + max_index, output_grad[index]);
+        input_grad[max_index] += output_grad[index];
       }
     }
 }
