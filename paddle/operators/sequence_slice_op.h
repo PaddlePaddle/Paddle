@@ -77,13 +77,13 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
 
     for (size_t i = 0; i < n; ++i) {
       PADDLE_ENFORCE_LT(0, offset_data[i],
-                "The offset must greater than zero")
+                "The offset[%d] must greater than zero.")
       PADDLE_ENFORCE_LT(0, length_data[i],
-                "The length must greater than zero")
+                        "The length[%d] must greater than zero.")
       PADDLE_ENFORCE_LT(
           lod[0][i] + offset_data[i] + length_data[i],
           lod[0][i + 1],
-          "The target tensor's length overflow")
+          "The target tensor's length overflow.")
     }
 
     out->mutable_data<T>(ctx.GetPlace());
