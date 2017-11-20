@@ -14,8 +14,7 @@ class TestMaxOutOp(OpTest):
         self.op_type = "maxout"
         self.init_test_case()
         input = np.random.random(self.shape).astype("float32")
-        output = self.MaxOut_forward_naive(input, self.groups,
-                self.num_channels).astype("float32")
+        output = self.MaxOut_forward_naive(input, self.groups).astype("float32")
 
         self.inputs = {'X': input}
         self.attrs = {'groups': self.groups}
