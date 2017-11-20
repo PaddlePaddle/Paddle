@@ -16,9 +16,9 @@ limitations:
   write the inter-model-shard communication code.
 
 3. The user can not directly specify the parameter update rule: need
-   to modify the parameter server C++ code and compile a new
-   binary. This adds complication for researchers: A lot of extra
-   effort is required. Besides, the training job submission program
+   to modify the parameter server C++ code and compile a new binary.
+   This adds complication for researchers: A lot of extra effort is
+   required. Besides, the training job submission program
    may not allow running arbitrary binaries.
 
 This design doc discusses PaddlePaddle's new distributed training
@@ -44,7 +44,7 @@ replicated Python instances are running on different nodes: both the
 training logic and the neural network computation is replicated.
 
 The tasks that should only run once all belong to the training logic,
-if we only replicate the neural network computation, but do **not**
+if we only replicate the neural network computation but do **not**
 replicate the training logic, the limitation could be solved.
 
 ### Limitation 2
@@ -53,13 +53,13 @@ Model parallelism means running a single model on multiple nodes by
 partitioning the model onto different nodes and managing the
 inter-model-shard communications.
 
-PaddlePaddle should be able to modify the nerual network computation
+PaddlePaddle should be able to modify the neural network computation
 definition to support model parallelism automatically. However, the
-computation is only specified in Python code, and PaddlePaddle can not
+computation is only specified in Python code, and PaddlePaddle cannot
 modify Python code.
 
-Just like compiler uses a intermediate representation (IR) so that
-programmer does not need to manually optimize their code in most of
+Just like compiler uses an intermediate representation (IR) so that
+the programmer does not need to manually optimize their code in most of
 the cases - the compiler will optimize the IR:
 
 <img src="src/compiler.png"/>
@@ -75,20 +75,20 @@ Python:
 ### Limitation 3
 
 The user can not directly specify the parameter update rule for the
-parameter server because the previous implementaion hard coded that
+parameter server because the previous implementation hard coded that
 parameter server only do vector's optimization algorithm by
 configuration. The user can not specify the parameter server's
 computation layer by layer.
 
 This could be fixed by making the parameter server run a separated
-IR according to the trainer's varialble (tensors, selectedrows)
-defination.
+IR according to the trainer's variable (tensors, selectedrows)
+definition.
 
 the same
-computation definition as the trainer. For a detailed explanation,
+computation definition of the trainer. For a detailed explanation,
 please
 see
-[Design Doc: Operation Graph Based Parameter Server](./parameter_server.md)
+[Design Doc: Operation Graph-Based Parameter Server](./parameter_server.md)
 
 ## Distributed Training Architecture
 
@@ -136,18 +136,43 @@ iteratively.
 
 As shown in the graph, `RemoteExecutor.run` sends the IR to the
 PaddlePaddle cluster for Execution. You can also use parameter
-`fetch_list` to interactively fetch varirable back to local for
+`fetch_list` to interactively fetch variable back to local for
 log printing.
 
 The Python `RemoteExecutor` is derived from `Executor` class.
 For more information about `RemoteExecutor`, please
 see [Design Doc: RemoteExecutor](./remote_executor.md).
 
+The `RemoteExecutor.run` interface defination is:
+
+```python
+run(self,
+    program=None,
+    feed=None,
+    fetch_list=None,
+    feed_var_name='feed',
+    fetch_var_name='fetch',
+    job_desc=JobDesc(
+      jobname,
+      num_trainer,
+      num_pserver,
+      cpu_per_trainer,
+      gpu_per_trainer,
+      mem_per_trainer,
+      cpu_per_pserver,
+      mem_per_pserver
+    ))
+```
+
+`JobDesc` object describe the distributed job resource specification to run on
+Cluster environment.
+
 By default, `Executor.run` starts a PaddlePaddle Cloud
-[TrainingJob](https://github.com/PaddlePaddle/cloud/blob/develop/doc/autoscale/README.md#training-job-resource), or you can run each component in the
+[TrainingJob](https://github.com/PaddlePaddle/cloud/blob/develop/doc/autoscale/README.md#training-job-resource),
+or you can run each component in the
 executor by your own method:
 
-- Data Parrallelism
+- Data Parallelism
   ```python
   if os.getenv('PLACE_PSERVER'):
     exe.run_pserver()
@@ -164,10 +189,10 @@ executor by your own method:
 
 As mentioned above, the implementation of IR is [Program](../program.md).
 
-[Executor](../executor.md) converts and parses the IR to a prefered
+[Executor](../executor.md) converts and parses the IR to a preferred
 graph for final execution. For local training you generally use
 `Executor` to run the graph locally. For any kind of distributed
-training, you can use `RemoteExecutor` to specify desired distributed 
+training, you can use `RemoteExecutor` to specify desired distributed
 training method with some optional arguments.
 
 ### PaddlePaddle Converter
@@ -182,7 +207,7 @@ to different PaddlePaddle runtimes. Below are the steps:
 
 1. Extract a new computation (sub)graph with `feed` and `fetch` OP as
    the boundary. The runtime does not need to run the OP that is not
-   dependent by the `fetch` OP.
+   dependent on the `fetch` OP.
 
 1. Optimizes the computation graph.
 
@@ -238,7 +263,7 @@ the Python reader will need to read from the distributed filesystem
 network traffic.
 
 When doing distributed training, the user can still use Python data
-reader: the training data are sent with `Executor.run`. However should
+reader: the training data are sent with `Executor.run`. However, should
 be used for debugging purpose only. The users are encouraged to use
 the read data OPs.
 
