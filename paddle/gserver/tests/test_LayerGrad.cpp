@@ -583,6 +583,7 @@ TEST(Layer, maxoutLayer) {
     testLayerGrad(config, "maxout", 10, false, useGpu);
   }
 }
+
 void testFcLayer(string format, size_t nnz) {
   TestConfig config;
   config.biasSize = 1024;
@@ -1078,6 +1079,21 @@ TEST(Layer, InterpolationLayer) {
 
   for (auto useGpu : {false, true}) {
     testLayerGrad(config, "interpolation", 100, false, useGpu);
+  }
+}
+
+TEST(Layer, DotProdLayer) {
+  TestConfig config;
+  config.layerConfig.set_type("dot_prod");
+  config.layerConfig.set_size(1);
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 10, 0});
+  config.layerConfig.add_inputs();
+  config.inputDefs.push_back({INPUT_DATA, "layer_1", 10, 0});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "dot_prod", 10, false, useGpu);
   }
 }
 
@@ -2426,6 +2442,25 @@ TEST(Layer, ScaleSubRegionLayer) {
 
   for (auto useGpu : {false, true}) {
     testLayerGrad(config, "scale_sub_region", batchSize, false, useGpu, false);
+  }
+}
+
+TEST(Layer, L2DistanceLayer) {
+  TestConfig config;
+  config.layerConfig.set_type("l2_distance");
+  config.layerConfig.set_size(1);
+  config.biasSize = 0;
+
+  const size_t input_dim = 27;
+  const size_t batch_size = 11;
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", input_dim, 0});
+  config.inputDefs.push_back({INPUT_DATA, "layer_1", input_dim, 0});
+  config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "l2_distance", batch_size, false, useGpu);
   }
 }
 

@@ -226,9 +226,8 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
     T alpha = 1.0f, beta = 0.0f;
     if (input_grad) {
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
-      auto t = framework::EigenVector<T>::Flatten(*input_grad);
-      t.device(ctx.GetEigenDevice<platform::GPUPlace>()) =
-          t.constant(static_cast<T>(0));
+      // Because beta is zero, it is unnecessary to reset input_grad.
+
       for (int i = 0; i < groups; i++) {
         PADDLE_ENFORCE(platform::dynload::cudnnConvolutionBackwardData(
             handle, &alpha, cudnn_filter_desc,
@@ -241,9 +240,8 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
     // ------------------- cudnn conv backward filter ---------------------
     if (filter_grad) {
       T* filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace());
-      auto t = framework::EigenVector<T>::Flatten(*filter_grad);
-      t.device(ctx.GetEigenDevice<platform::GPUPlace>()) =
-          t.constant(static_cast<T>(0));
+      // Because beta is zero, it is unnecessary to reset filter_grad.
+
       for (int i = 0; i < groups; i++) {
         PADDLE_ENFORCE(platform::dynload::cudnnConvolutionBackwardFilter(
             handle, &alpha, cudnn_input_desc, input_data + i * group_offset_in,
@@ -261,6 +259,8 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_GPU_KERNEL(conv_cudnn, paddle::operators::CudnnConvOpKernel<float>);
+REGISTER_OP_GPU_KERNEL(conv_cudnn, paddle::operators::CudnnConvOpKernel<float>,
+                       paddle::operators::CudnnConvOpKernel<double>);
 REGISTER_OP_GPU_KERNEL(conv_cudnn_grad,
-                       paddle::operators::CudnnConvGradOpKernel<float>);
+                       paddle::operators::CudnnConvGradOpKernel<float>,
+                       paddle::operators::CudnnConvGradOpKernel<double>);
