@@ -62,6 +62,64 @@ __all__ = [
 cp.begin_parse()
 
 
+def auto_set_cpu_env(trainer_count):
+    '''Auto set CPU environment if have not set before.
+       export KMP_AFFINITY, OMP_DYNAMIC according to the Hyper Threading status.
+       export OMP_NUM_THREADS, MKL_NUM_THREADS according to trainer_count.
+    '''
+    import platform
+    if platform.system() != "Linux" and platform.system() != "Darwin":
+        return
+
+    def set_env(key, value):
+        '''If the key has not been set in the environment, set it with value.'''
+        assert isinstance(key, str)
+        assert isinstance(value, str)
+        envset = os.environ.get(key)
+        if envset is None:
+            os.environ[key] = value
+
+    def is_hyperthreading_enabled():
+        '''If Hyper Threading is enabled.'''
+        if platform.system() == "Linux":
+            percore = os.popen(
+                "lscpu |grep \"per core\"|awk -F':' '{print $2}'|xargs")
+            return int(percore.read()) != 1
+        elif platform.system() == "Darwin":
+            physical = int(os.popen("sysctl hw.physicalcpu").read())
+            logical = int(os.popen("sysctl hw.logicalcpu").read())
+            return logical > physical
+        else:
+            # do not support on other platform yet
+            return False
+
+    def get_logical_processors():
+        '''Get the logical processors number'''
+        import platform
+        if platform.system() == "Linux":
+            processors = os.popen(
+                "grep \"processor\" /proc/cpuinfo|sort -u|wc -l")
+            return int(processors.read())
+        elif platform.system() == "Darwin":
+            processors = os.popen("sysctl hw.logicalcpu")
+            return int(processors.read())
+        else:
+            # do not support on other platform yet
+            return 1
+
+    if is_hyperthreading_enabled():
+        set_env("OMP_DYNAMIC", "true")
+        set_env("KMP_AFFINITY", "granularity=fine,compact,1,0")
+    else:
+        set_env("OMP_DYNAMIC", "false")
+        set_env("KMP_AFFINITY", "granularity=fine,compact,0,0")
+    processors = get_logical_processors()
+    threads = processors / trainer_count
+    threads = '1' if threads < 1 else str(threads)
+    set_env("OMP_NUM_THREADS", threads)
+    set_env("MKL_NUM_THREADS", threads)
+
+
 def init(**kwargs):
     import py_paddle.swig_paddle as api
     args = []
@@ -76,30 +134,7 @@ def init(**kwargs):
     for key in args_dict.keys():
         args.append('--%s=%s' % (key, str(args_dict[key])))
 
-    # auto set cpu environment
-    def set_env(key, value):
-        '''If the key has not been set in the environment, set it with value.'''
-        assert isinstance(key, str)
-        assert isinstance(value, str)
-        envset = os.environ.get(key)
-        if envset is None:
-            os.environ[key] = value
-
-    ht = os.popen("lscpu |grep \"per core\"|awk -F':' '{print $2}'|xargs")
-    ht = int(ht.read())
-    if ht == 1:  # ht is off
-        set_env("OMP_DYNAMIC", "false")
-        set_env("KMP_AFFINITY", "granularity=fine,compact,0,0")
-    else:
-        set_env("OMP_DYNAMIC", "true")
-        set_env("KMP_AFFINITY", "granularity=fine,compact,1,0")
-    processors = os.popen("grep \"processor\" /proc/cpuinfo|sort -u|wc -l")
-    processors = int(processors.read())
-    trainers = kwargs.get('trainer_count', 1)
-    threads = processors / trainers
-    threads = '1' if threads < 1 else str(threads)
-    set_env("OMP_NUM_THREADS", threads)
-    set_env("MKL_NUM_THREADS", threads)
+    auto_set_cpu_env(kwargs.get('trainer_count', 1))
 
     if 'use_gpu' in kwargs:
         cp.g_command_config_args['use_gpu'] = kwargs['use_gpu']
