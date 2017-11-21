@@ -96,14 +96,13 @@ as used in the Neural Turing Machine: https://arxiv.org/abs/1410.5401
 
 The equation is:
 
-  \f[
-      Out[i] = \sum_{j=-(N-1)/2}^{(N-1)/2} X_{i+j} * Y_{j}
-  \f]
+$$Out[i] = \sum_{j=-(N-1)/2}^{(N-1)/2} X_{i+j} * Y_{j}$$
 
-where X's index is computed modulo M, and b's index is computed modulo N.
+where X's index is computed modulo M, and Y's index is computed modulo N.
 
-Both of the input `X` and `Y` can carry LoD (Level of Details) information.
-However, the output only shares the LoD information with input `X`.
+Both inputs X and Y can carry LoD (Level of Details) information.
+However, the output only shares the LoD information with input X.
+
 )DOC");
   }
 };

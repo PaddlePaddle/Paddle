@@ -19,7 +19,7 @@ import "ModelConfig.proto";
 package paddle;
 
 message OptimizationConfig {
-  required int32 batch_size = 3;
+  optional int32 batch_size = 3 [ default = 1 ];
   required string algorithm = 4 [ default = "async_sgd" ];
   optional int32 num_batches_per_send_parameter = 5 [ default = 1 ];
   optional int32 num_batches_per_get_parameter = 6 [ default = 1 ];

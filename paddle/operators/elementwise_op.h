@@ -46,37 +46,42 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
   ElementwiseOpMaker(framework::OpProto* proto,
                      framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", R"DOC(
-The first input of elementwise op, it's a tensor of any dimensions.
-)DOC");
-    AddInput("Y", R"DOC(
-The sencond input of elementwise op, it's a tensor and it's dimensions
-must be small or equal to X's dimensions.
-)DOC");
+    AddInput("X", "(Tensor) The first input tensor of elementwise op");
+    AddInput("Y", "(Tensor) The second input tensor of elementwise op");
+    AddOutput("Out", "The output of elementwise op");
     AddAttr<int>("axis",
-                 R"DOC(
-When the shape(Y) does not equal the shape(X),Y will be broadcasted
-to match the shape of X and axis should be dimension index Y in X
-        )DOC")
+                 "(int, default -1) The starting dimension index "
+                 "for broadcasting Y onto X")
         .SetDefault(-1)
         .EqualGreaterThan(-1);
-
-    AddOutput("Out", "The output of elementwise op");
     comment_ = R"DOC(
-Limited elementwise {name} operator.The equation is: Out = {equation}.
-1. The shape of Y should be same with X or
-2. Y's shape is a subset of X.
-   Y will be broadcasted to match the shape of X and axis should be dimension index Y in X.
+Limited Elementwise {name} Operator.
 
-   example:
-      shape(X) = (2, 3, 4, 5), shape(Y) = (,)
-      shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
-      shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5)
-      shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
-      shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
+The equation is:
+
+{equation}
+
+X is a tensor of any dimension and the dimensions of tensor Y must be smaller than
+or equal to the dimensions of X. 
+
+There are two cases for this operator:
+1. The shape of Y is same with X;
+2. The shape of Y is a subset of X.
+
+For case 2:
+Y will be broadcasted to match the shape of X and axis should be 
+the starting dimension index for broadcasting Y onto X.
+
+example:
+  shape(X) = (2, 3, 4, 5), shape(Y) = (,)
+  shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
+  shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5)
+  shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
+  shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
 
 Both the input X and Y can carry the LoD (Level of Details) information,
-or not. But the output only shares the LoD with input X.
+or not. But the output only shares the LoD information with input X.
+
 )DOC";
     AddComment(comment_);
   }

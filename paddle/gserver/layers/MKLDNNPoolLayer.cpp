@@ -58,10 +58,11 @@ bool MKLDNNPoolLayer::init(const LayerMap& layerMap,
 }
 
 void MKLDNNPoolLayer::reshape(
-    int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) {
+    int& bs, int& ic, int& ih, int& iw, int& oc, int& oh, int& ow) {
   reshapeInput(bs, ih, iw);
   // ic_ and oc can not be changed
-  CHECK_EQ(inputElemenCnt_ / bs / ih / iw, (size_t)ic)
+  CHECK_EQ((size_t)ic,
+           inputLayers_[0]->getOutputValue()->getElementCnt() / bs / ih / iw)
       << "Input channel can not be changed";
 
   // cal output sizes
@@ -71,94 +72,44 @@ void MKLDNNPoolLayer::reshape(
   reshapeOutput(oh, ow);
 
   resizeOutput(bs, oc * oh * ow);
-
-  printSizeInfo();
 }
 
 void MKLDNNPoolLayer::resetFwd(std::vector<primitive>& pipeline,
-                               MKLDNNMatrixPtr& in,
-                               MKLDNNMatrixPtr& wgt,
-                               MKLDNNMatrixPtr& bias,
+                               std::vector<MKLDNNMatrixPtr>& inputs,
                                MKLDNNMatrixPtr& out) {
-  resetFwdBuffers(in, out);
+  resetFwdBuffers(inputs[0], out);
 
-  resetFwdPD(fwdPD_, in, out);
+  resetFwdPD(fwdPD_, inputs[0], out);
 
-  resetFwdPipeline(pipeline, fwdPD_, in, out);
-
-  printValueFormatFlow();
+  resetFwdPipeline(pipeline, fwdPD_, inputs[0], out);
 }
 
 void MKLDNNPoolLayer::resetBwd(std::vector<primitive>& pipeline,
-                               MKLDNNMatrixPtr& in,
-                               MKLDNNMatrixPtr& wgt,
-                               MKLDNNMatrixPtr& bias,
+                               std::vector<MKLDNNMatrixPtr>& inputs,
                                MKLDNNMatrixPtr& out) {
   std::shared_ptr<pool_bwd::primitive_desc> pd;
 
-  resetBwdBuffers(in, out);
+  resetBwdBuffers(inputs[0], out);
 
-  resetBwdPD(pd, in, out);
+  resetBwdPD(pd, inputs[0], out);
 
-  resetBwdPipeline(pipeline, pd, in, out);
-
-  printGradFormatFlow();
-}
-
-void MKLDNNPoolLayer::updateInputData() {
-  inVal_->setData(getInputValue(0, CPU_DEVICE)->getData());
+  resetBwdPipeline(pipeline, pd, inputs[0], out);
 }
 
 void MKLDNNPoolLayer::resetFwdBuffers(MKLDNNMatrixPtr& in,
                                       MKLDNNMatrixPtr& out) {
   resetInValue(in);
 
-  resetOutValue(out);
-}
-
-void MKLDNNPoolLayer::resetInValue(MKLDNNMatrixPtr& in) {
-  if (inputIsOnlyMKLDNN()) {
-    const MatrixPtr& dnnIn = getInputValue(0);
-    in = std::dynamic_pointer_cast<MKLDNNMatrix>(dnnIn);
-    CHECK(in) << "Input should be MKLDNNMatrix";
-  } else {
-    CHECK_EQ(getPrev(0)->getDeviceId(), CPU_DEVICE) << "Only support CPU yet";
-    const MatrixPtr& cpuIn = getInputValue(0, CPU_DEVICE);
-    in = MKLDNNMatrix::create(
-        cpuIn, {bs_, ic_, ih_, iw_}, format::nchw, engine_);
-  }
-}
-
-void MKLDNNPoolLayer::resetOutValue(MKLDNNMatrixPtr& out) {
-  CHECK(inVal_) << "Should reset input value first";
   memory::dims outDims = memory::dims{bs_, oc_, oh_, ow_};
-  out = MKLDNNMatrix::create(
-      output_.value, outDims, inVal_->getFormat(), engine_);
-
-  // create reorder if output value has cpu device and pd do not match
-  cpuOutVal_ = nullptr;
-  cvtOutVal_ = nullptr;
-  if (!outputIsOnlyMKLDNN()) {
-    const MatrixPtr& cpuOut = getOutput(CPU_DEVICE).value;
-    cpuOutVal_ = MKLDNNMatrix::create(cpuOut, outDims, format::nchw, engine_);
-    if (cpuOutVal_->getPrimitiveDesc() != out->getPrimitiveDesc()) {
-      out = MKLDNNMatrix::create(nullptr, out->getPrimitiveDesc());
-      cvtOutVal_ = MKLDNNMatrix::createReorder(out, cpuOutVal_);
-      CHECK(cvtOutVal_) << "should not be emptry";
-    } else {
-      cpuOutVal_ = out;
-    }
-    output_.value = std::dynamic_pointer_cast<Matrix>(cpuOutVal_);
-    return;
-  }
-  output_.value = std::dynamic_pointer_cast<Matrix>(outVal_);
+  CHECK(in);
+  auto outPD =
+      MKLDNNMatrix::createPrimitiveDesc(outDims, in->getFormat(), engine_);
+  resetOutValue(out, outPD);
 }
 
 void MKLDNNPoolLayer::resetFwdPD(std::shared_ptr<pool_fwd::primitive_desc>& pd,
                                  MKLDNNMatrixPtr in,
                                  MKLDNNMatrixPtr out) {
-  memory::dims inDims = memory::dims{bs_, ic_, ih_, iw_};
-  memory::dims outDims = memory::dims{bs_, oc_, oh_, ow_};
   memory::dims kernels = memory::dims{fh_, fw_};
   memory::dims strides = memory::dims{sh_, sw_};
   memory::dims padL = memory::dims{ph_, pw_};
@@ -193,57 +144,26 @@ void MKLDNNPoolLayer::resetFwdPipeline(
              ? std::make_shared<pool_fwd>(pool_fwd(*pd, *in, *out, *workspace_))
              : std::make_shared<pool_fwd>(pool_fwd(*pd, *in, *out));
   pipeline.push_back(*fwd_);
-
-  if (cvtOutVal_) {
-    pipeline.push_back(*cvtOutVal_);
-  }
 }
 
 void MKLDNNPoolLayer::resetBwdBuffers(MKLDNNMatrixPtr& in,
                                       MKLDNNMatrixPtr& out) {
-  resetOutGrad(out);
-
-  resetInGrad(in);
-}
-void MKLDNNPoolLayer::resetOutGrad(MKLDNNMatrixPtr& out) {
-  cpuOutGrad_ = nullptr;
-  cvtOutGrad_ = nullptr;
-  CHECK(outVal_);
-  if (outputIsOnlyMKLDNN()) {
-    MKLDNNLayer::resetOutGrad(out, outVal_->getPrimitiveDesc());
-  } else {
-    const MatrixPtr& cpuOut = getOutput(CPU_DEVICE).grad;
-    cpuOutGrad_ = MKLDNNMatrix::create(
-        cpuOut, memory::dims{bs_, oc_, oh_, ow_}, format::nchw, engine_);
-    if (cpuOutGrad_->getPrimitiveDesc() != outVal_->getPrimitiveDesc()) {
-      out = MKLDNNMatrix::create(output_.grad, outVal_->getPrimitiveDesc());
-      cvtOutGrad_ = MKLDNNMatrix::createReorder(cpuOutGrad_, out);
-      CHECK(cvtOutGrad_) << "should not be emptry";
-    } else {
-      // share the same data of CPU output
-      output_.grad->setData(cpuOut->getData());
-      out = cpuOutGrad_;
-    }
-  }
-}
-
-void MKLDNNPoolLayer::resetInGrad(MKLDNNMatrixPtr& in) {
-  in = nullptr;
-  if (inputLayers_[0]->getOutput().grad == nullptr) {
-    return;
-  }
-  CHECK(inVal_);
-  MKLDNNLayer::resetInGrad(in, inVal_->getPrimitiveDesc());
+  CHECK(inVals_[0] && outVal_);
+  resetOutGrad(out, outVal_->getPrimitiveDesc());
+  resetInGrad(in, inVals_[0]->getPrimitiveDesc());
 }
 
 void MKLDNNPoolLayer::resetBwdPD(std::shared_ptr<pool_bwd::primitive_desc>& pd,
                                  MKLDNNMatrixPtr& in,
                                  MKLDNNMatrixPtr& out) {
+  pd = nullptr;
+  if (in == nullptr) {
+    return;
+  }
   memory::dims kernels = memory::dims{fh_, fw_};
   memory::dims strides = memory::dims{sh_, sw_};
   memory::dims padL = memory::dims{ph_, pw_};
   memory::dims padR = getPaddingR();
-  CHECK(in);
   CHECK(out);
   auto bwdDesc = pool_bwd::desc(poolAlgo_,
                                 in->getMemoryDesc(),
@@ -261,8 +181,8 @@ void MKLDNNPoolLayer::resetBwdPipeline(
     std::shared_ptr<pool_bwd::primitive_desc>& pd,
     MKLDNNMatrixPtr& in,
     MKLDNNMatrixPtr& out) {
-  if (cvtOutGrad_) {
-    pipeline.push_back(*cvtOutGrad_);
+  if (pd == nullptr) {
+    return;
   }
 
   bwdData_ =

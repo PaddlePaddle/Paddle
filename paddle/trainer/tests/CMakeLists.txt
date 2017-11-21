@@ -11,7 +11,6 @@ add_unittest_without_exec(test_Trainer
     test_Trainer.cpp)
 add_test(NAME test_Trainer
   COMMAND ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d ${PADDLE_SOURCE_DIR}/python/
-        ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/paddle/trainer/tests/gen_proto_data.py &&
         ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d ${PADDLE_SOURCE_DIR}/python/
         ${CMAKE_CURRENT_BINARY_DIR}/test_Trainer
     WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
@@ -28,51 +27,7 @@ if(WITH_PYTHON)
           ${PADDLE_SOURCE_DIR}/paddle/.set_port.sh -p port ${CMAKE_CURRENT_BINARY_DIR}/test_TrainerOnePass
       WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
 endif()
-################ test_CompareTwoNets ######################
-add_unittest_without_exec(test_CompareTwoNets
-    test_CompareTwoNets.cpp)
-add_test(NAME test_CompareTwoNets
-  COMMAND ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d ${PADDLE_SOURCE_DIR}/python/
-        ${CMAKE_CURRENT_BINARY_DIR}/test_CompareTwoNets
-            --config_file_a=trainer/tests/sample_trainer_config_qb_rnn.conf --config_file_b=trainer/tests/sample_trainer_config_rnn.conf
-    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
 
-################ test_CompareMKLDNNandCPU ######################
-if(WITH_MKLDNN)
-  macro(gen_command VAR_NAME CONFIG_FILE)
-    set(${VAR_NAME} "${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh" "-d" "${PADDLE_SOURCE_DIR}/python/"
-                    "${CMAKE_CURRENT_BINARY_DIR}/test_CompareMKLDNNandCPU --use_gpu=False"
-                    "--config_file_a=trainer/tests/${CONFIG_FILE} --use_mkldnn_a=True"
-                    "--config_file_b=trainer/tests/${CONFIG_FILE} --use_mkldnn_b=False"
-                    "WORKING_DIRECTORY" "${PADDLE_SOURCE_DIR}/paddle/")
-  endmacro()
-  add_unittest_without_exec(test_CompareMKLDNNandCPU test_CompareTwoNets.cpp)
-  gen_command(compare_simple_net "sample_trainer_config_simple_net.conf")
-  gen_command(compare_branch_net "sample_trainer_config_branch_net.conf")
-  add_test(NAME test_CompareMKLDNNandCPU_simple_net COMMAND ${compare_simple_net})
-  add_test(NAME test_CompareMKLDNNandCPU_branch_net COMMAND ${compare_branch_net})
-endif()
-
-############### test_CompareTwoOpts ###################
-add_unittest_without_exec(test_CompareTwoOpts
-    test_CompareTwoOpts.cpp)
-add_test(NAME test_CompareTwoOpts
-  COMMAND ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d ${PADDLE_SOURCE_DIR}/python/
-        ${CMAKE_CURRENT_BINARY_DIR}/test_CompareTwoOpts
-            --config_file_a=trainer/tests/sample_trainer_config_opt_a.conf --config_file_b=trainer/tests/sample_trainer_config_opt_b.conf
-            --num_passes=1 --need_high_accuracy=0
-    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
-
-################# test_CompareSparse ##################
-add_unittest_without_exec(test_CompareSparse
-    test_CompareSparse.cpp)
-if(NOT ON_TRAVIS)
-  add_test(NAME test_CompareSparse
-    COMMAND ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d ${PADDLE_SOURCE_DIR}/python/
-              ./.set_port.sh -p port -n 6
-                  ${CMAKE_CURRENT_BINARY_DIR}/test_CompareSparse
-    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
-endif()
 ################# test_recurrent_machine_generation ###############
 add_unittest_without_exec(test_recurrent_machine_generation
     test_recurrent_machine_generation.cpp)

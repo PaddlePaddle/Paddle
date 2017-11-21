@@ -35,6 +35,15 @@ enum class ColFormat { kCFO = 0, kOCF = 1 };
  * \param colData  Column data.
  * \param colShape The shape of colData.
  *
+ * \param dilations    dilation data.
+ * \param 2-dimension  [dilation_height, dilation_width].
+ *
+ * \param strides      stride data.
+ * \param 2-dimension  [stride_height, stride_width].
+ *
+ * \param paddings     padding data.
+ * \param 4-dimension  [up_pad, left_pad, down_pad, right_pad].
+ *
  * If the template argument Format is kCFO, the shape of colData is:
  * [input_channels, filter_height, filter_width, output_height, output_width]
  * So, it is easy to reshape into a convolution matrix for convolution
@@ -73,17 +82,19 @@ template <ColFormat Format, typename Place, typename T>
 class Im2ColFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& im, framework::Tensor& col,
-                  int stride_height, int stride_width, int padding_height,
-                  int padding_width);
+                  const framework::Tensor& im, const std::vector<int>& dilation,
+                  const std::vector<int>& stride,
+                  const std::vector<int>& padding, framework::Tensor* col);
 };
 
 template <ColFormat Format, typename Place, typename T>
 class Col2ImFunctor {
  public:
-  void operator()(const platform::DeviceContext& context, framework::Tensor& im,
-                  const framework::Tensor& col, int stride_height,
-                  int stride_width, int padding_height, int padding_width);
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& col,
+                  const std::vector<int>& dilation,
+                  const std::vector<int>& stride,
+                  const std::vector<int>& padding, framework::Tensor* im);
 };
 
 }  // namespace math

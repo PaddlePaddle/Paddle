@@ -265,6 +265,10 @@ public:
     addParameterType(PARAMETER_SECOND_MOMENTUM);
   }
 
+  virtual void startBatch(int64_t numSamplesProcessed) {
+    learningRate_ = calcLearningRate(numSamplesProcessed, pass_);
+  }
+
   virtual void finishBatch() { ++step_; }
 
   virtual void update(const VectorPtr vecs[],

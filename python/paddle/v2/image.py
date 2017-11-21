@@ -1,3 +1,21 @@
+"""
+This file contains some common interfaces for image preprocess.
+Many users are confused about the image layout. We introduce
+the image layout as follows.
+
+- CHW Layout
+
+  - The abbreviations: C=channel, H=Height, W=Width
+  - The default layout of image opened by cv2 or PIL is HWC.
+    PaddlePaddle only supports the CHW layout. And CHW is simply
+    a transpose of HWC. It must transpose the input image.
+
+- Color format: RGB or BGR
+
+  OpenCV use BGR color format. PIL use RGB color format. Both
+  formats can be used for training. Noted that, the format should
+  be keep consistent between the training and inference peroid.
+"""
 import numpy as np
 try:
     import cv2
@@ -12,22 +30,6 @@ __all__ = [
     "random_crop", "left_right_flip", "simple_transform", "load_and_transform",
     "batch_images_from_tar"
 ]
-"""
-This file contains some common interfaces for image preprocess.
-Many users are confused about the image layout. We introduce
-the image layout as follows.
-
-- CHW Layout
-  - The abbreviations: C=channel, H=Height, W=Width
-  - The default layout of image opened by cv2 or PIL is HWC.
-    PaddlePaddle only supports the CHW layout. And CHW is simply
-    a transpose of HWC. It must transpose the input image.
-
-- Color format: RGB or BGR
-  OpenCV use BGR color format. PIL use RGB color format. Both
-  formats can be used for training. Noted that, the format should
-  be keep consistent between the training and inference peroid.
-"""
 
 
 def batch_images_from_tar(data_file,
@@ -36,17 +38,18 @@ def batch_images_from_tar(data_file,
                           num_per_batch=1024):
     """
     Read images from tar file and batch them into batch file.
-    param data_file: path of image tar file
-    type data_file: string
-    param dataset_name: 'train','test' or 'valid'
-    type dataset_name: string
-    param img2label: a dic with image file name as key 
+
+    :param data_file: path of image tar file
+    :type data_file: string
+    :param dataset_name: 'train','test' or 'valid'
+    :type dataset_name: string
+    :param img2label: a dic with image file name as key 
                     and image's label as value
-    type img2label: dic
-    param num_per_batch: image number per batch file
-    type num_per_batch: int
-    return: path of list file containing paths of batch file
-    rtype: string
+    :type img2label: dic
+    :param num_per_batch: image number per batch file
+    :type num_per_batch: int
+    :return: path of list file containing paths of batch file
+    :rtype: string
     """
     batch_dir = data_file + "_batch"
     out_path = "%s/%s" % (batch_dir, dataset_name)
@@ -99,14 +102,16 @@ def load_image_bytes(bytes, is_color=True):
     Example usage:
     
     .. code-block:: python
+
         with open('cat.jpg') as f:
             im = load_image_bytes(f.read())
 
     :param bytes: the input image bytes array.
-    :type file: str
+    :type bytes: str
     :param is_color: If set is_color True, it will load and
                      return a color image. Otherwise, it will
                      load and return a gray image.
+    :type is_color: bool
     """
     flag = 1 if is_color else 0
     file_bytes = np.asarray(bytearray(bytes), dtype=np.uint8)
@@ -121,6 +126,7 @@ def load_image(file, is_color=True):
     Example usage:
     
     .. code-block:: python
+
         im = load_image('cat.jpg')
 
     :param file: the input image path.
@@ -128,6 +134,7 @@ def load_image(file, is_color=True):
     :param is_color: If set is_color True, it will load and
                      return a color image. Otherwise, it will
                      load and return a gray image.
+    :type is_color: bool
     """
     # cv2.IMAGE_COLOR for OpenCV3
     # cv2.CV_LOAD_IMAGE_COLOR for older OpenCV Version
@@ -147,6 +154,7 @@ def resize_short(im, size):
     Example usage:
     
     .. code-block:: python
+
         im = load_image('cat.jpg')
         im = resize_short(im, 256)
     
@@ -175,6 +183,7 @@ def to_chw(im, order=(2, 0, 1)):
     Example usage:
     
     .. code-block:: python
+
         im = load_image('cat.jpg')
         im = resize_short(im, 256)
         im = to_chw(im)
@@ -196,6 +205,7 @@ def center_crop(im, size, is_color=True):
     Example usage:
     
     .. code-block:: python
+
         im = center_crop(im, 224)
     
     :param im: the input image with HWC layout.
@@ -223,6 +233,7 @@ def random_crop(im, size, is_color=True):
     Example usage:
     
     .. code-block:: python
+
         im = random_crop(im, 224)
     
     :param im: the input image with HWC layout.
@@ -251,6 +262,7 @@ def left_right_flip(im):
     Example usage:
     
     .. code-block:: python
+
         im = left_right_flip(im)
     
     :paam im: input image with HWC layout
@@ -275,6 +287,7 @@ def simple_transform(im,
     Example usage:
     
     .. code-block:: python
+
         im = simple_transform(im, 256, 224, True)
 
     :param im: The input image with HWC layout.
@@ -285,6 +298,11 @@ def simple_transform(im,
     :type crop_size: int
     :param is_train: Whether it is training or not.
     :type is_train: bool
+    :param is_color: whether the image is color or not.
+    :type is_color: bool
+    :param mean: the mean values, which can be element-wise mean values or 
+                 mean values per channel.
+    :type mean: numpy array | list
     """
     im = resize_short(im, resize_size)
     if is_train:
@@ -324,6 +342,7 @@ def load_and_transform(filename,
     Example usage:
     
     .. code-block:: python
+
         im = load_and_transform('cat.jpg', 256, 224, True)
 
     :param filename: The file name of input image.
@@ -334,6 +353,11 @@ def load_and_transform(filename,
     :type crop_size: int
     :param is_train: Whether it is training or not.
     :type is_train: bool
+    :param is_color: whether the image is color or not.
+    :type is_color: bool
+    :param mean: the mean values, which can be element-wise mean values or 
+                 mean values per channel.
+    :type mean: numpy array | list
     """
     im = load_image(filename)
     im = simple_transform(im, resize_size, crop_size, is_train, is_color, mean)

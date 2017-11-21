@@ -65,7 +65,14 @@ def download(url, module_name, md5sum):
         os.makedirs(dirname)
 
     filename = os.path.join(dirname, url.split('/')[-1])
-    if not (os.path.exists(filename) and md5file(filename) == md5sum):
+    retry = 0
+    retry_limit = 3
+    while not (os.path.exists(filename) and md5file(filename) == md5sum):
+        if retry < retry_limit:
+            retry += 1
+        else:
+            raise RuntimeError("Cannot download {0} within retry limit {2}".
+                               format(url, retry_limit))
         print "Cache file %s not found, downloading %s" % (filename, url)
         r = requests.get(url, stream=True)
         total_length = r.headers.get('content-length')

@@ -26,12 +26,10 @@ class AdamaxOpKernel : public framework::OpKernel<T> {
     auto param_out_tensor = ctx.Output<framework::Tensor>("ParamOut");
     auto moment_out_tensor = ctx.Output<framework::Tensor>("MomentOut");
     auto inf_norm_out_tensor = ctx.Output<framework::Tensor>("InfNormOut");
-    auto beta1_pow_out_tensor = ctx.Output<framework::Tensor>("Beta1PowOut");
 
     param_out_tensor->mutable_data<T>(ctx.GetPlace());
     moment_out_tensor->mutable_data<T>(ctx.GetPlace());
     inf_norm_out_tensor->mutable_data<T>(ctx.GetPlace());
-    beta1_pow_out_tensor->mutable_data<T>(ctx.GetPlace());
 
     float beta1 = ctx.Attr<float>("beta1");
     float beta2 = ctx.Attr<float>("beta2");
@@ -53,15 +51,12 @@ class AdamaxOpKernel : public framework::OpKernel<T> {
     auto moment_out = framework::EigenVector<T>::Flatten(*moment_out_tensor);
     auto inf_norm_out =
         framework::EigenVector<T>::Flatten(*inf_norm_out_tensor);
-    auto beta1_pow_out =
-        framework::EigenVector<T>::Flatten(*beta1_pow_out_tensor);
     auto place = ctx.GetEigenDevice<Place>();
 
     moment_out.device(place) = beta1 * moment + (1 - beta1) * grad;
     inf_norm_out.device(place) =
         grad.abs().cwiseMax((beta2 * inf_norm) + epsilon);
-    beta1_pow_out.device(place) = beta1_pow * beta1;
-    auto lr_t = lr / (1 - beta1_pow_out);
+    auto lr_t = lr / (1 - beta1_pow);
     Eigen::DSizes<int, 1> m_dsize(moment_out_tensor->numel());
     param_out.device(place) =
         param - lr_t.broadcast(m_dsize) * (moment_out / inf_norm_out);

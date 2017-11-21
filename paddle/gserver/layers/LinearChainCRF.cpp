@@ -102,7 +102,6 @@ real LinearChainCRF::forward(real* x, int* s, int length) {
 }
 
 void LinearChainCRF::backward(real* x, int* s, int length, bool needWGrad) {
-  MatrixPtr matX = Matrix::create(x, length, numClasses_);
   Matrix::resizeOrCreate(matGrad_, length, numClasses_);
   Matrix::resizeOrCreate(beta_, length, numClasses_);
   real* b = b_->getData();

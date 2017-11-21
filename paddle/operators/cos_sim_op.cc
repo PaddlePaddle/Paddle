@@ -79,15 +79,16 @@ class CosSimOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Cosine Similarity Operator.
 
-The equation is: Out = X^T * Y / (sqrt(X^T * X) * sqrt(Y^T * Y)).
+$Out = X^T * Y / (\sqrt{X^T * X} * \sqrt{Y^T * Y})$
 
-The input `X` and `Y` must have the same shape, except that the 1st dimension
-of input `Y` could be just 1 (different from input `X`), which will be
-broadcasted to match the shape of input `X` before computing their cosine
+The input X and Y must have the same shape, except that the 1st dimension
+of input Y could be just 1 (different from input X), which will be
+broadcasted to match the shape of input X before computing their cosine
 similarity.
 
-Both the input `X` and `Y` can carry the LoD (Level of Details) information,
-or not. But the output only shares the LoD with input `X`.
+Both the input X and Y can carry the LoD (Level of Details) information,
+or not. But the output only shares the LoD information with input X.
+
 )DOC");
   }
 };
