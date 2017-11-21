@@ -26,8 +26,6 @@ namespace paddle {
  */
 class MKLDNNConcatLayer : public MKLDNNLayer {
 protected:
-  std::vector<MKLDNNMatrixPtr> inVals_;
-  std::vector<MKLDNNMatrixPtr> inGrads_;
   std::vector<std::shared_ptr<mkldnn::primitive>> bwds_;
   // input channel numbers
   std::vector<int> channels_;
@@ -47,18 +45,14 @@ public:
             const ParameterMap& parameterMap) override;
 
   void reshape(
-      int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) override;
+      int& bs, int& ic, int& ih, int& iw, int& oc, int& oh, int& ow) override;
 
   void resetFwd(std::vector<mkldnn::primitive>& pipeline,
-                MKLDNNMatrixPtr& in,
-                MKLDNNMatrixPtr& wgt,
-                MKLDNNMatrixPtr& bias,
+                std::vector<MKLDNNMatrixPtr>& inputs,
                 MKLDNNMatrixPtr& out) override;
 
   void resetBwd(std::vector<mkldnn::primitive>& pipeline,
-                MKLDNNMatrixPtr& in,
-                MKLDNNMatrixPtr& wgt,
-                MKLDNNMatrixPtr& bias,
+                std::vector<MKLDNNMatrixPtr>& inputs,
                 MKLDNNMatrixPtr& out) override;
 
   void printSizeInfo() override {
@@ -72,38 +66,16 @@ public:
                        << ", " << ow_;
   }
 
-  void printValueFormat() override {
-    for (size_t i = 0; i < inVals_.size(); ++i) {
-      VLOG(MKLDNN_FMTS) << "Input " << i << ", " << inputLayers_[i]->getName()
-                        << ": " << inVals_[i]->getFormat() << " >>>";
+  size_t keepCondition() {
+    // reset when the total element size of all inputs changed
+    size_t totalSize = inputLayers_[0]->getOutputValue()->getElementCnt();
+    for (size_t i = 1; i < inputLayers_.size(); ++i) {
+      totalSize += inputLayers_[i]->getOutputValue()->getElementCnt();
     }
-    if (outVal_) {
-      VLOG(MKLDNN_FMTS) << outVal_->getFormat() << " >>> ";
-    }
-    if (extOutVal_) {
-      VLOG(MKLDNN_FMTS) << extOutVal_->getFormat();
-    }
-  }
-
-  void printGradFormat() override {
-    if (extOutGrad_) {
-      VLOG(MKLDNN_FMTS) << extOutGrad_->getFormat();
-    }
-    if (outGrad_) {
-      VLOG(MKLDNN_FMTS) << outGrad_->getFormat() << " <<< ";
-    }
-    for (size_t i = 0; i < inGrads_.size(); ++i) {
-      VLOG(MKLDNN_FMTS) << "Input " << i << ", " << inputLayers_[i]->getName()
-                        << ": " << inGrads_[i]->getFormat() << "<<<";
-    }
+    return totalSize;
   }
 
 protected:
-  /**
-   * Forward functions: reset buffers(inputs, output, bias),
-   *                    reset primitive descriptor,
-   *                    reset pipeline.
-   */
   void resetFwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
                        MKLDNNMatrixPtr& out);
   void resetFwdPD(std::shared_ptr<mkldnn::concat::primitive_desc>& pd,
@@ -113,11 +85,6 @@ protected:
                         std::shared_ptr<mkldnn::concat::primitive_desc>& pd,
                         std::vector<MKLDNNMatrixPtr>& inputs,
                         MKLDNNMatrixPtr& out);
-
-  /**
-   * Backward functions: reset buffers(inputs, output, bias)
-   *                     reset primitives and pipeline
-   */
   void resetBwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
                        MKLDNNMatrixPtr& out);
   void resetBwdPipeline(std::vector<mkldnn::primitive>& pipeline,
