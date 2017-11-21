@@ -99,9 +99,9 @@ for pass_id in range(PASS_NUM):
             acc = np.array(outs[1])
 
         test_pass_acc = test_accuracy.eval(exe)
-        print("pass_id=" + str(pass_id) + " train_cost=" + str(
-            out) + " train_acc=" + str(acc) + " train_pass_acc=" + str(pass_acc)
-              + " test_acc=" + str(test_pass_acc))
+        # print("pass_id=" + str(pass_id) + " train_cost=" + str(
+        #     out) + " train_acc=" + str(acc) + " train_pass_acc=" + str(pass_acc)
+        #       + " test_acc=" + str(test_pass_acc))
 
         if test_pass_acc > 0.7:
             exit(0)
