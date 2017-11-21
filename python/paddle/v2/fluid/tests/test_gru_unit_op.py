@@ -28,8 +28,8 @@ def relu(x):
 
 
 class TestGRUUnitOp(OpTest):
-    batch_size = 3
-    frame_size = 5
+    batch_size = 5
+    frame_size = 10
     activate = {
         GRUActivationType.identity: identity,
         GRUActivationType.sigmoid: sigmoid,
@@ -92,9 +92,7 @@ class TestGRUUnitOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['Input', 'HiddenPrev', 'Weight'], ['Hidden'],
-            max_relative_error=0.007)
+        self.check_grad(['Input', 'HiddenPrev', 'Weight'], ['Hidden'])
 
 
 class TestGRUUnitOpWithBias(TestGRUUnitOp):
@@ -110,9 +108,12 @@ class TestGRUUnitOpWithBias(TestGRUUnitOp):
         }
 
     def test_check_grad(self):
+        self.check_grad(['Input', 'HiddenPrev', 'Weight', 'Bias'], ['Hidden'])
+
+    def test_check_grad_ingore_input(self):
         self.check_grad(
-            ['Input', 'HiddenPrev', 'Weight', 'Bias'], ['Hidden'],
-            max_relative_error=0.007)
+            ['HiddenPrev', 'Weight', 'Bias'], ['Hidden'],
+            no_grad_set=set('Input'))
 
 
 if __name__ == '__main__':
