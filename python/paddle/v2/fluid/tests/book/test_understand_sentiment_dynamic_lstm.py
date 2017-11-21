@@ -1,6 +1,7 @@
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid.core as core
+import paddle.v2.fluid.evaluator as evaluator
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.layers as layers
 from paddle.v2.fluid.executor import Executor
@@ -41,8 +42,8 @@ def stacked_lstm_net(input_dim,
     avg_cost = layers.mean(x=cost)
     adam_optimizer = AdamOptimizer(learning_rate=0.002)
     opts = adam_optimizer.minimize(avg_cost)
-    acc = layers.accuracy(input=prediction, label=label)
-    return avg_cost, acc
+    accuracy, acc_out = evaluator.accuracy(input=prediction, label=label)
+    return avg_cost, accuracy, acc_out
 
 
 def to_lodtensor(data, place):
@@ -69,7 +70,8 @@ def main():
     dict_dim = len(word_dict)
     class_dim = 2
 
-    cost, acc = stacked_lstm_net(input_dim=dict_dim, class_dim=class_dim)
+    cost, accuracy, acc_out = stacked_lstm_net(
+        input_dim=dict_dim, class_dim=class_dim)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
@@ -81,6 +83,7 @@ def main():
     exe.run(framework.default_startup_program())
 
     for pass_id in xrange(PASS_NUM):
+        accuracy.reset(exe)
         for data in train_data():
             tensor_words = to_lodtensor(map(lambda x: x[0], data), place)
 
@@ -93,12 +96,13 @@ def main():
             outs = exe.run(framework.default_main_program(),
                            feed={"words": tensor_words,
                                  "label": tensor_label},
-                           fetch_list=[cost, acc])
+                           fetch_list=[cost, acc_out])
             cost_val = np.array(outs[0])
             acc_val = np.array(outs[1])
-
-            print("cost=" + str(cost_val) + " acc=" + str(acc_val))
-            if cost_val < 1.0 and acc_val > 0.7:
+            pass_acc = accuracy.eval(exe)
+            print("cost=" + str(cost_val) + " acc=" + str(acc_val) +
+                  " pass_acc=" + str(pass_acc))
+            if cost_val < 1.0 and acc_val > 0.8:
                 exit(0)
     exit(1)
 

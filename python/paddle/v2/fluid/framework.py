@@ -15,6 +15,37 @@ def unique_name(prefix):
     return "_".join([prefix, str(uid)])
 
 
+def convert_np_dtype_to_dtype_(np_dtype):
+    dtype = np.dtype(np_dtype)
+    if dtype == np.float32:
+        return core.DataType.FP32
+    elif dtype == np.float64:
+        return core.DataType.FP64
+    elif dtype == np.float16:
+        return core.DataType.FP16
+    elif dtype == np.int32:
+        return core.DataType.INT32
+    elif dtype == np.int16:
+        return core.DataType.INT16
+    elif dtype == np.int64:
+        return core.DataType.INT64
+    elif dtype == np.bool:
+        return core.DataType.BOOL
+    else:
+        raise ValueError("Not supported numpy dtype " + str(dtype))
+
+
+def dtype_is_floating(dtype):
+    if not isinstance(dtype, core.DataType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if (dtype == core.DataType.FP16 or dtype == core.DataType.FP32 or
+            dtype == core.DataType.FP64):
+        return True
+    else:
+        return False
+
+
 def _debug_string_(proto, throw_on_error=True):
     error_fields = list()
     if not proto.IsInitialized(error_fields) and throw_on_error:
@@ -66,7 +97,7 @@ class Variable(object):
                         "matched.".format(self.name, old_shape, shape))
         if dtype is not None:
             if not isinstance(dtype, core.DataType):
-                dtype = Variable._convert_np_dtype_to_dtype_(dtype)
+                dtype = convert_np_dtype_to_dtype_(dtype)
             if is_new_var:
                 self.desc.set_data_type(dtype)
             else:
@@ -147,26 +178,6 @@ class Variable(object):
         prefix = "_generated_var"
         uid = core.unique_integer(prefix)  # unique during whole process.
         return "_".join([prefix, str(uid)])
-
-    @staticmethod
-    def _convert_np_dtype_to_dtype_(np_dtype):
-        dtype = np.dtype(np_dtype)
-        if dtype == np.float32:
-            return core.DataType.FP32
-        elif dtype == np.float64:
-            return core.DataType.FP64
-        elif dtype == np.float16:
-            return core.DataType.FP16
-        elif dtype == np.int32:
-            return core.DataType.INT32
-        elif dtype == np.int16:
-            return core.DataType.INT16
-        elif dtype == np.int64:
-            return core.DataType.INT64
-        elif dtype == np.bool:
-            return core.DataType.BOOL
-        else:
-            raise ValueError("Not supported numpy dtype " + str(dtype))
 
 
 def get_all_op_protos():

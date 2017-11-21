@@ -2,7 +2,7 @@ import copy
 import itertools
 
 from paddle.v2.fluid.framework import Variable, g_main_program, \
-    g_startup_program, unique_name, Program
+    g_startup_program, unique_name, Program, dtype_is_floating
 from paddle.v2.fluid.initializer import ConstantInitializer, \
     UniformInitializer, XavierInitializer
 
@@ -61,7 +61,7 @@ class LayerHelper(object):
 
     @property
     def param_attr(self):
-        default = {'name': None, 'initializer': XavierInitializer()}
+        default = {'name': None}
         actual = self.kwargs.get('param_attr', None)
         if actual is None:
             actual = default
@@ -72,7 +72,7 @@ class LayerHelper(object):
 
     @property
     def bias_attr(self):
-        default = {'name': None, 'initializer': ConstantInitializer()}
+        default = {'name': None}
         bias_attr = self.kwargs.get('bias_attr', None)
         if bias_attr is None:
             bias_attr = default
@@ -119,6 +119,8 @@ class LayerHelper(object):
         attr_copy = copy.deepcopy(attr)
         if initializer is not None:
             attr_copy['initializer'] = initializer
+        else:
+            attr_copy['initializer'] = self._get_default_initializer(dtype)
         if attr_copy['name'] is None:
             attr_copy['name'] = unique_name(".".join([self.name, suffix]))
         self.startup_program.global_block().create_parameter(
@@ -149,13 +151,19 @@ class LayerHelper(object):
             persistable=True,
             initializer=initializer)
 
-    def append_bias_op(self, input_var, dim_start=1, dim_end=None):
+    def append_bias_op(self,
+                       input_var,
+                       bias_initializer,
+                       dim_start=1,
+                       dim_end=None):
         """
         Append bias operator and return its output. If the user does not set
         bias_attr, append_bias_op will return input_var
 
-        :param input_var: the input variable. The len(input_var.shape) is larger
-        or equal than 2.
+        :param input_var: the input variable. The len(input_var.shape) is
+        larger or equal than 2.
+        :bias_initializer: an instance of a subclass of Initializer used to
+        initialize the bias
         :param dim_start:
         :param dim_end: the shape of the bias will be
         input_var.shape[dim_start:dim_end]. The bias is broadcasted to other
@@ -167,7 +175,11 @@ class LayerHelper(object):
             return input_var
 
         b = self.create_parameter(
-            attr=bias_attr, shape=size, dtype=input_var.data_type, suffix='b')
+            attr=bias_attr,
+            shape=size,
+            dtype=input_var.data_type,
+            suffix='b',
+            initializer=bias_initializer)
         tmp = self.create_tmp_variable(dtype=input_var.data_type)
         self.append_op(
             type='elementwise_add',
@@ -191,3 +203,10 @@ class LayerHelper(object):
             outputs={"Y": [tmp]},
             attrs=act)
         return tmp
+
+    def _get_default_initializer(self, dtype):
+        if dtype is None or dtype_is_floating(dtype) is True:
+            return XavierInitializer()
+        else:
+            # For integer and boolean types, initialize with all zeros
+            return ConstantInitializer()
