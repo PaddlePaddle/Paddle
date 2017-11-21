@@ -80,6 +80,13 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(pool2d);\n")
     endif()
 
+    # unpool_op contains several operators
+    if ("${TARGET}" STREQUAL "unpool_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_OP(unpool2d);\n")
+    endif()
+
     # pool_cudnn_op contains several operators
     if ("${TARGET}" STREQUAL "pool_cudnn_op")
         set(pybind_flag 1)

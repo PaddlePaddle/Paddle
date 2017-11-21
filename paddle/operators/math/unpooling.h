@@ -26,7 +26,7 @@ namespace math {
 
 template <typename Place, typename T>
 
-class Unpool2d_Max_Functor {
+class Unpool2d_MaxFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input,
@@ -35,10 +35,11 @@ class Unpool2d_Max_Functor {
 };
 
 template <typename Place, class T>
-class Unpool2d_Max_GradFunctor {
+class Unpool2d_MaxGradFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input,
+                  const framework::Tensor& indices,
                   framework::Tensor * input_grad,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad);
