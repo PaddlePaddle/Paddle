@@ -117,18 +117,18 @@ def db_lstm():
 
         input_tmp = [mix_hidden, lstm]
 
-        feature_out = layers.sums(input=[
-            layers.fc(input=input_tmp[0],
-                      size=label_dict_len,
-                      bias_attr=std_default,
-                      param_attr=hidden_para_attr),
-            layers.fc(input=input_tmp[1],
-                      size=label_dict_len,
-                      bias_attr=std_default,
-                      param_attr=lstm_para_attr)
-        ])
+    feature_out = layers.sums(input=[
+        layers.fc(input=input_tmp[0],
+                  size=label_dict_len,
+                  bias_attr=std_default,
+                  param_attr=hidden_para_attr),
+        layers.fc(input=input_tmp[1],
+                  size=label_dict_len,
+                  bias_attr=std_default,
+                  param_attr=lstm_para_attr)
+    ])
 
-        return feature_out
+    return feature_out
 
 
 def to_lodtensor(data, place):
@@ -195,10 +195,12 @@ def main():
                                'mark_data': mark_data,
                                'target': target
                            },
-                           fetch_list=[avg_cost])
+                           fetch_list=[avg_cost, crf_cost])
             avg_cost_val = np.array(outs[0])
+            crf_cost_val = np.array(outs[1])
 
-            print("cost=" + str(avg_cost_val))
+            print("avg_cost=" + str(avg_cost_val))
+            print("crf_cost=" + str(crf_cost_val))
 
 
 if __name__ == '__main__':
