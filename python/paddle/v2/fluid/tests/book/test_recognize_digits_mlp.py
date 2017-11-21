@@ -3,6 +3,7 @@ import paddle.v2 as paddle
 import paddle.v2.fluid.core as core
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.layers as layers
+import paddle.v2.fluid.evaluator as evaluator
 from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.initializer import UniformInitializer
 from paddle.v2.fluid.optimizer import MomentumOptimizer
@@ -30,10 +31,11 @@ label = layers.data(name='y', shape=[1], data_type='int64')
 
 cost = layers.cross_entropy(input=predict, label=label)
 avg_cost = layers.mean(x=cost)
-accuracy = layers.accuracy(input=predict, label=label)
 
 optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
 opts = optimizer.minimize(avg_cost)
+
+accuracy, acc_out = evaluator.accuracy(input=predict, label=label)
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
@@ -47,6 +49,7 @@ exe.run(framework.default_startup_program())
 
 PASS_NUM = 100
 for pass_id in range(PASS_NUM):
+    accuracy.reset(exe)
     for data in train_reader():
         x_data = np.array(map(lambda x: x[0], data)).astype("float32")
         y_data = np.array(map(lambda x: x[1], data)).astype("int64")
@@ -61,9 +64,13 @@ for pass_id in range(PASS_NUM):
         outs = exe.run(framework.default_main_program(),
                        feed={'x': tensor_x,
                              'y': tensor_y},
-                       fetch_list=[avg_cost, accuracy])
+                       fetch_list=[avg_cost, acc_out])
         out = np.array(outs[0])
         acc = np.array(outs[1])
-        if out[0] < 5.0:
-            exit(0)  # if avg cost less than 5.0, we think our code is good.
+        pass_acc = accuracy.eval(exe)
+
+        if pass_acc > 0.7:
+            exit(0)
+            # print("pass_id=" + str(pass_id) + " auc=" +
+            #      str(acc) + " pass_acc=" + str(pass_acc))
 exit(1)

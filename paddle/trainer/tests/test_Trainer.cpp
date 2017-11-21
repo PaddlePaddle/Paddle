@@ -24,7 +24,6 @@ using namespace std;     // NOLINT
 static const string& configFile1 = "trainer/tests/sample_trainer_config.conf";
 static const string& configFile2 =
     "trainer/tests/sample_trainer_config_hsigmoid.conf";
-static const string& configFile3 = "trainer/tests/chunking.conf";
 static const string& configFile4 =
     "trainer/tests/sample_trainer_config_parallel.conf";
 
@@ -94,13 +93,6 @@ TEST(checkGradient, multi) {
 }
 
 TEST(checkGradient, hsigmoid) { checkGradientTest(configFile2, false, false); }
-
-TEST(checkGradient, chunk) {
-  checkGradientTest(configFile3, false, false);
-#ifdef PADDLE_WITH_CUDA
-  checkGradientTest(configFile3, true, true);
-#endif
-}
 
 TEST(checkGradient, non_parallel) {
   checkGradientTest(configFile4, false, false);
