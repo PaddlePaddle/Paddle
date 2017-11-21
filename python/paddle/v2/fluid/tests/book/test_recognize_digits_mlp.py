@@ -76,8 +76,7 @@ for pass_id in range(PASS_NUM):
             input=predict, label=label)
 
         test_target = [avg_cost, test_acc_out] + test_accuracy.states().values()
-        inference_program = get_inference_program(
-            [avg_cost, test_acc_out] + test_accuracy.states().values())
+        inference_program = get_inference_program(test_target)
 
         test_accuracy.reset(exe)
         for data in test_reader():
