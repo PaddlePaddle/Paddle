@@ -22,9 +22,6 @@ namespace math {
 
 template class ContextProjectFunctor<platform::GPUPlace, float>;
 template class ContextProjectFunctor<platform::GPUPlace, double>;
-template class ContextProjectFunctor<platform::GPUPlace, int>;
-template class ContextProjectFunctor<platform::GPUPlace, int64_t>;
-template class ContextProjectFunctor<platform::GPUPlace, bool>;
 
 }  // namespace math
 }  // namespace operators

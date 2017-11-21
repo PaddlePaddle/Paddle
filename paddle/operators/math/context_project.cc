@@ -20,9 +20,6 @@ namespace math {
 
 template class ContextProjectFunctor<platform::CPUPlace, float>;
 template class ContextProjectFunctor<platform::CPUPlace, double>;
-template class ContextProjectFunctor<platform::CPUPlace, int>;
-template class ContextProjectFunctor<platform::CPUPlace, int64_t>;
-template class ContextProjectFunctor<platform::CPUPlace, bool>;
 
 }  // namespace math
 }  // namespace operators
