@@ -2,9 +2,13 @@ import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.framework as framework
 from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.optimizer import AdamOptimizer
+from paddle.v2.fluid.io import save_params
 import paddle.v2.fluid.core as core
 import paddle.v2 as paddle
 import numpy
+import math
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 
 class Counter(object):
@@ -40,6 +44,12 @@ def G(x, main_program, startup_program):
     c = Counter()
     kwargs = {'main_program': main_program, 'startup_program': startup_program}
     hidden = layers.fc(input=x,
+                       size=100,
+                       act='tanh',
+                       param_attr={"name": "G_%d" % c()},
+                       bias_attr={"name": "G_%d" % c()},
+                       **kwargs)
+    hidden = layers.fc(input=hidden,
                        size=200,
                        act='tanh',
                        param_attr={"name": "G_%d" % c()},
@@ -52,6 +62,24 @@ def G(x, main_program, startup_program):
                     bias_attr={"name": "G_%d" % c()},
                     **kwargs)
     return out
+
+
+def plot(gen_data):
+    gen_data.resize(gen_data.shape[0], 28, 28)
+    n = int(math.ceil(math.sqrt(gen_data.shape[0])))
+    fig = plt.figure(figsize=(n, n))
+    gs = gridspec.GridSpec(n, n)
+    gs.update(wspace=0.05, hspace=0.05)
+
+    for i, sample in enumerate(gen_data):
+        ax = plt.subplot(gs[i])
+        plt.axis('off')
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        ax.set_aspect('equal')
+        plt.imshow(sample.reshape(28, 28), cmap='Greys_r')
+
+    return fig
 
 
 def main():
@@ -84,7 +112,7 @@ def main():
     dg_loss = layers.scale(
         x=layers.log(x=dg_prob, **dg_kwargs), scale=-1.0, **dg_kwargs)
     dg_loss = layers.mean(x=dg_loss, **dg_kwargs)
-    opt = AdamOptimizer()
+    opt = AdamOptimizer(learning_rate=1e-5)
 
     opt.minimize(loss=d_loss, startup_program=startup_program)
     # only optimize G when optimize dg_loss
@@ -99,15 +127,24 @@ def main():
     exe = Executor(cpu)
     exe.run(startup_program)
 
-    num_true = 16
+    num_true = 36
     train_reader = paddle.batch(
         paddle.reader.shuffle(
-            paddle.dataset.mnist.train(), buf_size=500),
+            paddle.dataset.mnist.train(), buf_size=60000),
         batch_size=num_true)
 
-    for pass_id in xrange(10):
+    for pass_id in xrange(1000):
+        save_params(
+            main_program=d_program,
+            dirname='model_{0}'.format(str(pass_id).zfill(3)),
+            executor=exe)
+        save_params(
+            main_program=g_program,
+            dirname='model_{0}'.format(str(pass_id).zfill(3)),
+            executor=exe)
         for batch_id, data in enumerate(train_reader()):
             # Generate Fake Data
+            num_true = len(data)
             n = numpy.random.uniform(
                 low=-1.0, high=1.0,
                 size=[num_true]).astype('float32').reshape([num_true, 1])
@@ -120,7 +157,7 @@ def main():
 
             # Train D
             real_data = numpy.array(map(lambda x: x[0], data)).astype('float32')
-            total_data = numpy.concatenate([gen_data, real_data])
+            total_data = numpy.concatenate([real_data, gen_data])
             total_label = numpy.concatenate([
                 numpy.ones(
                     shape=[real_data.shape[0], 1], dtype='float32'),
@@ -141,18 +178,28 @@ def main():
                         fetch_list=[d_loss])[0])
 
             # Train D(G(x))
-            n = numpy.random.uniform(
-                low=-1.0, high=1.0,
-                size=[num_true]).astype('float32').reshape([num_true, 1])
-            n_tensor = core.LoDTensor()
-            n_tensor.set(n, cpu)
+            # Train D(G) twice, D once.
+            for _ in xrange(2):
+                n = numpy.random.uniform(
+                    low=-1.0, high=1.0,
+                    size=[num_true]).astype('float32').reshape([num_true, 1])
+                n_tensor = core.LoDTensor()
+                n_tensor.set(n, cpu)
 
-            dg_loss_np = numpy.array(
-                exe.run(dg_program,
-                        feed={'noise': n_tensor},
-                        fetch_list=[dg_loss])[0])
+                dg_loss_np = numpy.array(
+                    exe.run(dg_program,
+                            feed={'noise': n_tensor},
+                            fetch_list=[dg_loss])[0])
 
-            print d_loss_np, dg_loss_np
+            print "PassID {0}, BatchID {1}, D-Loss {2}, D(G)-Loss {3}, " \
+                  "total-loss {4}".format(
+                str(pass_id), str(batch_id), str(d_loss_np), str(dg_loss_np),
+                str(d_loss_np + dg_loss_np))
+
+        fig = plot(gen_data)
+        plt.savefig(
+            'out/{0}.png'.format(str(pass_id).zfill(3)), bbox_inches='tight')
+        plt.close(fig)
 
 
 if __name__ == '__main__':
