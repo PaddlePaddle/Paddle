@@ -139,6 +139,7 @@ set(DEPS_OPS
     sum_op
     pool_op
     maxout_op
+    unpool_op
     pool_with_index_op
     nccl_op
     sequence_conv_op
@@ -151,6 +152,7 @@ op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
 op_library(sum_op DEPS net_op selected_rows_functor)
 op_library(pool_op DEPS pooling)
 op_library(maxout_op DEPS maxouting)
+op_library(unpool_op DEPS unpooling)
 op_library(pool_with_index_op DEPS pooling)
 op_library(lod_rank_table_op SRCS lod_rank_table_op.cc DEPS lod_rank_table)
 if(WITH_GPU)
