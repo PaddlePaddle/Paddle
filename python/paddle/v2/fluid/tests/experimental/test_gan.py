@@ -1,14 +1,21 @@
-import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.framework as framework
-from paddle.v2.fluid.executor import Executor
-from paddle.v2.fluid.optimizer import AdamOptimizer
-from paddle.v2.fluid.io import save_params
-import paddle.v2.fluid.core as core
-import paddle.v2 as paddle
-import numpy
 import math
+
+import matplotlib
+import numpy
+import paddle.v2.fluid.core as core
+
+import paddle.v2 as paddle
+import paddle.v2.fluid.framework as framework
+import paddle.v2.fluid.layers as layers
+from paddle.v2.fluid.executor import Executor
+from paddle.v2.fluid.io import save_params
+from paddle.v2.fluid.optimizer import AdamOptimizer
+
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+
+NOISE_WIDTH = 10
 
 
 class Counter(object):
@@ -100,7 +107,7 @@ def main():
     d_loss = layers.mean(x=d_loss, **d_kwargs)
 
     noise = layers.data(
-        name='noise', shape=[1], data_type='float32', **g_kwargs)
+        name='noise', shape=[NOISE_WIDTH], data_type='float32', **g_kwargs)
     g_data = G(noise, **g_kwargs)
 
     dg_program = g_program.clone()
@@ -145,9 +152,11 @@ def main():
         for batch_id, data in enumerate(train_reader()):
             # Generate Fake Data
             num_true = len(data)
+
             n = numpy.random.uniform(
                 low=-1.0, high=1.0,
-                size=[num_true]).astype('float32').reshape([num_true, 1])
+                size=[num_true * NOISE_WIDTH]).astype('float32').reshape(
+                    [num_true, NOISE_WIDTH])
             n_tensor = core.LoDTensor()
             n_tensor.set(n, cpu)
             gen_data = numpy.array(
@@ -182,7 +191,8 @@ def main():
             for _ in xrange(2):
                 n = numpy.random.uniform(
                     low=-1.0, high=1.0,
-                    size=[num_true]).astype('float32').reshape([num_true, 1])
+                    size=[num_true * NOISE_WIDTH]).astype('float32').reshape(
+                        [num_true, NOISE_WIDTH])
                 n_tensor = core.LoDTensor()
                 n_tensor.set(n, cpu)
 
