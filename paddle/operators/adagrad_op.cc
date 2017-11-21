@@ -163,6 +163,9 @@ struct SparseAdagradFunctor<platform::CPUPlace, T> {
     }
   }
 };
+
+template struct SparseAdagradFunctor<platform::CPUPlace, float>;
+template struct SparseAdagradFunctor<platform::CPUPlace, double>;
 }  // namespace operators
 }  // namespace paddle
 

@@ -139,6 +139,9 @@ struct SparseAdagradFunctor<platform::GPUPlace, T> {
   }
 };
 
+template struct SparseAdagradFunctor<platform::GPUPlace, float>;
+template struct SparseAdagradFunctor<platform::GPUPlace, double>;
+
 }  // namespace operators
 }  // namespace paddle
 
