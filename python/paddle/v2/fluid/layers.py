@@ -248,7 +248,7 @@ def data(name,
         stop_gradient=stop_gradient)
 
 
-def create_tensor(dtype, name=None, main_program=None):
+def create_tensor(dtype, name=None, main_program=None, startup_program=None):
     helper = LayerHelper("create_tensor", **locals())
     return helper.create_variable(name=helper.name, dtype=dtype)
 
@@ -412,28 +412,10 @@ _create_op_func_('mul')
 _create_op_func_('elementwise_add')
 _create_op_func_('dropout')
 _create_op_func_('reshape')
-_create_op_func_('elementwise_add')
 _create_op_func_('sigmoid')
 _create_op_func_('scale')
 _create_op_func_('reshape')
 _create_op_func_('transpose')
-
-
-def fill_constant(data_type, shape, value=None, program=None):
-    """
-    This function creates a tensor , with shape as mentioned in the input and
-    specified data_type and fills this up with a constant value that
-    comes in the input.
-    """
-    helper = LayerHelper('fill_constant', **locals())
-    out = helper.create_tmp_variable(dtype=data_type)
-    helper.append_op(
-        type='fill_constant',
-        outputs={'Out': [out]},
-        attrs={'data_type': data_type,
-               'shape': shape,
-               'value': value})
-    return out
 
 
 def cast(x, data_type, main_program=None):
@@ -478,7 +460,7 @@ def sums(input, main_program=None, startup_program=None):
     return out
 
 
-def assign(input, output, main_program=None):
+def assign(input, output, main_program=None, startup_program=None):
     helper = LayerHelper('assign', **locals())
     helper.append_op(
         type='scale',
@@ -490,7 +472,7 @@ def assign(input, output, main_program=None):
 
 def split_lod_tensor(input,
                      mask,
-                     level,
+                     level=0,
                      main_program=None,
                      startup_program=None):
     helper = LayerHelper('split_lod_tensor', **locals())
@@ -512,11 +494,11 @@ def merge_lod_tensor(in_true,
                      in_false,
                      x,
                      mask,
-                     level,
+                     level=0,
                      main_program=None,
                      startup_program=None):
     helper = LayerHelper('merge_lod_tensor', **locals())
-    out = helper.create_tmp_variable(dtype=x.data_type)
+    out = helper.create_tmp_variable(dtype=in_true.data_type)
     helper.append_op(
         type='merge_lod_tensor',
         inputs={'X': x,
@@ -1366,7 +1348,7 @@ def array_to_lod_tensor(x, table, main_program=None):
     return tmp
 
 
-def fill_constant(shape, dtype, value, main_program=None):
+def fill_constant(shape, dtype, value, main_program=None, startup_program=None):
     """
     This function creates a tensor , with shape as mentioned in the input and
     specified data_type and fills this up with a constant value that
@@ -1382,6 +1364,31 @@ def fill_constant(shape, dtype, value, main_program=None):
             'shape': shape,
             'data_type': out.data_type,
             'value': float(value)
+        })
+    out.stop_gradient = True
+    return out
+
+
+def fill_constant_batch_size_like(input,
+                                  shape,
+                                  dtype,
+                                  value,
+                                  input_dim_idx=0,
+                                  output_dim_idx=0,
+                                  main_program=None,
+                                  startup_program=None):
+    helper = LayerHelper("fill_constant_batch_size_like", **locals())
+    out = helper.create_tmp_variable(dtype=dtype)
+    helper.append_op(
+        type='fill_constant_batch_size_like',
+        inputs={'Input': input},
+        outputs={'Out': [out]},
+        attrs={
+            'shape': shape,
+            'data_type': out.data_type,
+            'value': float(value),
+            'input_dim_idx': input_dim_idx,
+            'output_dim_idx': output_dim_idx
         })
     out.stop_gradient = True
     return out
@@ -1449,7 +1456,7 @@ def create_array(dtype, main_program=None):
         dtype=dtype)
 
 
-def less_than(x, y, cond=None, main_program=None):
+def less_than(x, y, cond=None, main_program=None, **ignored):
     helper = LayerHelper("less_than", **locals())
     if cond is None:
         cond = helper.create_tmp_variable(dtype='bool')
@@ -1527,13 +1534,20 @@ class ConditionalBlockGuard(BlockGuard):
 
 
 class ConditionalBlock(object):
-    def __init__(self, inputs, name=None, main_program=None):
+    def __init__(self,
+                 inputs,
+                 name=None,
+                 main_program=None,
+                 startup_program=None):
         for each_input in inputs:
             if not isinstance(each_input, Variable):
                 raise TypeError("Each input should be variable")
         self.inputs = inputs
         self.helper = LayerHelper(
-            'conditional_block', name=name, main_program=main_program)
+            'conditional_block',
+            name=name,
+            main_program=main_program,
+            startup_program=startup_program)
 
     def block(self):
         return ConditionalBlockGuard(self)
@@ -1578,3 +1592,148 @@ class ConditionalBlock(object):
             outputs={'Out': out_list,
                      'Scope': [step_scope]},
             attrs={'block': inside_block})
+
+
+class IfElseBlockGuard(object):
+    def __init__(self, is_true, ifelse):
+        if not isinstance(ifelse, IfElse):
+            raise TypeError("ifelse must be an instance of IfElse class")
+
+        if ifelse.status != IfElse.OUT_IF_ELSE_BLOCKS:
+            raise ValueError("You cannot invoke IfElse.block() inside a block")
+
+        self.is_true = is_true
+        self.ie = ifelse
+        if is_true:
+            self.cond_block = ifelse.conditional_true_block
+        else:
+            self.cond_block = ifelse.conditional_false_block
+
+        if not isinstance(self.cond_block, ConditionalBlock):
+            raise TypeError("Unexpected situation")
+
+        self.cond_block = self.cond_block.block()
+
+    def __enter__(self):
+        self.ie.status = IfElse.IN_IF_ELSE_TRUE_BLOCKS if self.is_true else IfElse.IN_IF_ELSE_FALSE_BLOCKS
+        self.cond_block.__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if not self.cond_block.__exit__(exc_type, exc_val, exc_tb):
+            # re-raise inside exception
+            return False
+        if len(self.ie.output_table[1 if self.is_true else 0]) == 0:
+            raise ValueError("Must set output inside block")
+        self.ie.status = IfElse.OUT_IF_ELSE_BLOCKS
+
+
+class IfElse(object):
+    OUT_IF_ELSE_BLOCKS = 0
+    IN_IF_ELSE_TRUE_BLOCKS = 1
+    IN_IF_ELSE_FALSE_BLOCKS = 2
+
+    def __init__(self, cond, name=None, main_program=None,
+                 startup_program=None):
+        if not isinstance(cond, Variable):
+            raise TypeError("cond must be a Variable")
+        self.helper = LayerHelper(
+            'ifelse',
+            name=name,
+            main_program=main_program,
+            startup_program=startup_program)
+        self.cond = cond
+        self.input_table = {}
+        self.status = IfElse.OUT_IF_ELSE_BLOCKS
+        self.conditional_true_block = ConditionalBlock(inputs=[self.cond])
+        self.conditional_false_block = ConditionalBlock(inputs=[self.cond])
+        self.output_table = ([], [])  # (true_outs, false_outs)
+
+    def input(self, x):
+        if self.status == IfElse.OUT_IF_ELSE_BLOCKS:
+            raise ValueError("input must in true/false blocks")
+        if id(x) not in self.input_table:
+            parent_block = self.parent_block()
+            out_true = parent_block.create_var(
+                name=unique_name('ifelse_input' + self.helper.name),
+                dtype=x.data_type)
+
+            out_false = parent_block.create_var(
+                name=unique_name('ifelse_input' + self.helper.name),
+                dtype=x.data_type)
+            parent_block.append_op(
+                type='split_lod_tensor',
+                inputs={
+                    'X': x,
+                    'Mask': self.cond,
+                },
+                outputs={'OutTrue': out_true,
+                         'OutFalse': out_false},
+                attrs={'level': 0})
+            self.input_table[id(x)] = (out_true, out_false)
+        else:
+            out_true, out_false = self.input_table[id(x)]
+
+        if self.status == IfElse.IN_IF_ELSE_TRUE_BLOCKS:
+            return out_true
+        else:
+            return out_false
+
+    def parent_block(self):
+        current_block = self.helper.main_program.current_block()
+        return self.helper.main_program.block(current_block.parent_idx)
+
+    def true_block(self):
+        return IfElseBlockGuard(True, self)
+
+    def false_block(self):
+        return IfElseBlockGuard(False, self)
+
+    def output(self, *outs):
+        if self.status == self.OUT_IF_ELSE_BLOCKS:
+            raise ValueError("output can only be invoked in the sub-block")
+
+        out_table = self.output_table[1 if self.status ==
+                                      self.IN_IF_ELSE_TRUE_BLOCKS else 0]
+        parent_block = self.parent_block()
+        for each_out in outs:
+            if not isinstance(each_out, Variable):
+                raise TypeError("Each output should be a variable")
+            # create outside tensor
+            outside_out = parent_block.create_var(
+                name=unique_name("_".join([self.helper.name, 'output'])),
+                dtype=each_out.data_type)
+            out_table.append(outside_out)
+
+            # assign local var to outside
+            assign(
+                input=each_out,
+                output=outside_out,
+                main_program=self.helper.main_program,
+                startup_program=self.helper.startup_program)
+
+    def __call__(self):
+        if self.status != self.OUT_IF_ELSE_BLOCKS:
+            raise ValueError("IfElse::__call__ must be out of sub-block")
+        false_len, true_len = map(len, self.output_table)
+        if false_len == 0 and true_len == 0:
+            raise ValueError("Must invoke true_block/false_block before "
+                             "__call__")
+        elif false_len != true_len and false_len != 0 and true_len != 0:
+            raise ValueError("The output side must be same")
+        elif false_len == 0 or true_len == 0:
+            return self.output_table[0 if false_len != 0 else 1]
+
+        # else none of false_len/true_len is zero
+        # merge together
+        rlist = []
+        for false_var, true_var in zip(*self.output_table):
+            rlist.append(
+                merge_lod_tensor(
+                    in_true=true_var,
+                    in_false=false_var,
+                    mask=self.cond,
+                    x=self.cond,
+                    level=0,
+                    main_program=self.helper.main_program,
+                    startup_program=self.helper.startup_program))
+        return rlist
