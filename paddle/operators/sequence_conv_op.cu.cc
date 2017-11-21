@@ -16,7 +16,9 @@
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
-    sequence_conv, ops::SequenceConvKernel<paddle::platform::GPUPlace, float>);
+    sequence_conv, ops::SequenceConvKernel<paddle::platform::GPUPlace, float>,
+    ops::SequenceConvKernel<paddle::platform::GPUPlace, double>);
 REGISTER_OP_GPU_KERNEL(
     sequence_conv_grad,
-    ops::SequenceConvGradKernel<paddle::platform::GPUPlace, float>);
+    ops::SequenceConvGradKernel<paddle::platform::GPUPlace, float>,
+    ops::SequenceConvGradKernel<paddle::platform::GPUPlace, double>);
