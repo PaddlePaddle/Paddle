@@ -456,7 +456,11 @@ def sums(input, main_program=None, startup_program=None):
     return out
 
 
-def linear_chain_crf(input, label, main_program=None, startup_program=None):
+def linear_chain_crf(input,
+                     label,
+                     param_attr,
+                     main_program=None,
+                     startup_program=None):
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[1]
     transition = helper.create_parameter(
