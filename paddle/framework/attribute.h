@@ -26,9 +26,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-
-ProgramDesc& GetProgramDesc();
-
 template <typename T>
 inline AttrType AttrTypeID() {
   Attribute tmp = T();

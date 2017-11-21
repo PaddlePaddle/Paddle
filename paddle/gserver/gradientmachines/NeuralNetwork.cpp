@@ -16,14 +16,18 @@ limitations under the License. */
 
 #include "NeuralNetwork.h"
 #include "hl_gpu.h"
-#include "paddle/gserver/layers/AgentLayer.h"
 #include "paddle/utils/CustomStackTrace.h"
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
+#ifdef PADDLE_USE_MKLDNN
+#include "paddle/gserver/layers/MKLDNNLayer.h"
+#endif
+
 #ifndef PADDLE_MOBILE_INFERENCE
 #include "MultiNetwork.h"
 #include "RecurrentGradientMachine.h"
+#include "paddle/gserver/layers/AgentLayer.h"
 #endif
 
 namespace paddle {
@@ -188,9 +192,11 @@ void NeuralNetwork::init(const ModelConfig& config,
 void NeuralNetwork::connect(LayerPtr agentLayer,
                             LayerPtr realLayer,
                             int height) {
+#ifndef PADDLE_MOBILE_INFERENCE
   AgentLayer* agent = dynamic_cast<AgentLayer*>(agentLayer.get());
   CHECK_NOTNULL(agent);
   agent->setRealLayer(realLayer, height);
+#endif
 }
 
 void NeuralNetwork::connect(std::string agentLayerName,
@@ -298,6 +304,17 @@ void NeuralNetwork::backward(const UpdateCallback& callback) {
     }
     gLayerStackTrace.pop((*layer)->getName());
   }
+}
+
+void NeuralNetwork::finish() {
+#ifdef PADDLE_USE_MKLDNN
+  FOR_EACH_R(layer, layers_) {
+    MKLDNNLayerPtr dnnLayer = std::dynamic_pointer_cast<MKLDNNLayer>(*layer);
+    if (dnnLayer) {
+      dnnLayer->convertWeightsToPaddle();
+    }
+  }
+#endif
 }
 
 Argument NeuralNetwork::getLayerOutput(const std::string& layerName) {

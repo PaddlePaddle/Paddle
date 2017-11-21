@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#ifndef PADDLE_MOBILE_INFERENCE
+
 #include <gflags/gflags.h>
 #include <string.h>
 #include <algorithm>
@@ -313,3 +315,27 @@ private:
 };
 
 }  // namespace paddle
+
+#else
+namespace paddle {
+
+class SparseRowCpuMatrix : public CpuMatrix {
+public:
+  void reserveStore() {}
+  void clearIndices() {}
+};
+
+class SparsePrefetchRowCpuMatrix : public SparseRowCpuMatrix {
+public:
+  void setupIndices() {}
+  void addRows(MatrixPtr input) {}
+  void addRows(IVectorPtr ids) {}
+};
+
+class SparseAutoGrowRowCpuMatrix : public SparseRowCpuMatrix {};
+class CacheRowCpuMatrix : public SparseAutoGrowRowCpuMatrix {};
+class SparseRowIdsCpuMatrix : public CpuMatrix {};
+
+}  // namespace paddle
+
+#endif

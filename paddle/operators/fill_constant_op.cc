@@ -12,30 +12,41 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/fill_constant_op.h"
+#include "paddle/framework/data_type.h"
+#include "paddle/framework/op_registry.h"
+#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
 
-class FillConstantOp : public framework::OperatorWithKernel {
+class FillConstantInferShape : public framework::InferShapeBase {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
+  void operator()(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of FillConstantOp should not be null.");
     auto &shape = ctx->Attrs().Get<std::vector<int>>("shape");
-    std::vector<int64_t> shape_int64(shape.size(), 0);
-    std::transform(shape.begin(), shape.end(), shape_int64.begin(),
-                   [](int a) { return static_cast<int64_t>(a); });
-    auto dims = framework::make_ddim(shape_int64);
-    ctx->SetOutputDim("Out", dims);
+    ctx->SetOutputDim("Out", framework::make_ddim(shape));
   }
+};
 
- protected:
-  framework::DataType IndicateDataType(
-      const framework::ExecutionContext &ctx) const override {
-    return static_cast<framework::DataType>(ctx.Attr<int>("data_type"));
+class FillConstantOp : public framework::OperatorBase {
+ public:
+  using framework::OperatorBase::OperatorBase;
+  void Run(const framework::Scope &scope,
+           const platform::DeviceContext &dev_ctx) const override {
+    auto data_type = static_cast<framework::DataType>(Attr<int>("data_type"));
+    auto value = Attr<float>("value");
+    auto force_cpu = Attr<bool>("force_cpu");
+    auto &out =
+        *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
+    out.Resize(framework::make_ddim(Attr<std::vector<int>>("shape")));
+    if (force_cpu) {
+      auto cpu = platform::CPUPlace();
+      out.mutable_data(cpu, framework::ToTypeIndex(data_type));
+    } else {
+      out.mutable_data(dev_ctx.GetPlace(), framework::ToTypeIndex(data_type));
+    }
+    math::set_constant(dev_ctx, &out, value);
   }
 };
 
@@ -51,18 +62,26 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("shape", "(vector<int>) The shape of the output");
     AddAttr<float>("value", "(float, default 0) The value to be filled")
         .SetDefault(0.0f);
+    AddAttr<bool>("force_cpu",
+                  "(bool, default false) Force fill output variable to cpu "
+                  "memory. Otherwise, fill output variable to the running "
+                  "device")
+        .SetDefault(false);
     AddOutput("Out",
               "(Tensor) Tensor of specified shape will be filled "
               "with the specified value");
-    AddComment(R"DOC(Fill up a variable with specified constant value.)DOC");
+    AddComment(R"DOC(
+FillConstantBatchSizeLike Operator.
+
+Fill up a variable with specified constant value.
+
+)DOC");
   }
 };
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(fill_constant, ops::FillConstantOp,
-                             ops::FillConstantOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    fill_constant,
-    ops::FillConstantOpKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OPERATOR(fill_constant, ops::FillConstantOp,
+                  ops::FillConstantInferShape, ops::FillConstantOpMaker,
+                  paddle::framework::EmptyGradOpMaker);

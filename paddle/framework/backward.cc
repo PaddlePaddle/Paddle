@@ -18,11 +18,12 @@
 #include <deque>
 #include <list>
 #include <memory>
+#include <unordered_set>
 
 #include "paddle/framework/block_desc.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/dynamic_recurrent_op.h"
 #include "paddle/operators/net_op.h"
-#include "paddle/operators/recurrent_op.h"
 
 namespace paddle {
 namespace framework {
@@ -36,7 +37,7 @@ static inline std::unique_ptr<OperatorBase> CreateGradOp(
   op_desc.SetType(op.Type());
   op_desc.SetAttrMap(op.Attrs());
   auto& info = OpInfoMap::Instance().Get(op.Type());
-  auto grad_descs = info.GradOpMaker()(op_desc, no_grad_set, grad_to_var);
+  auto grad_descs = info.GradOpMaker()(op_desc, no_grad_set, grad_to_var, {});
   std::vector<std::unique_ptr<OperatorBase>> grad_ops;
   grad_ops.reserve(grad_descs.size());
   std::transform(grad_descs.begin(), grad_descs.end(),
@@ -218,18 +219,17 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
                    });
 
     // process recurrent gradient op as a special operator.
-    if (forwardOp.Type() == "recurrent") {
+    if (forwardOp.Type() == "dynamic_recurrent") {
       // NOTE clean up cycle call somewhere (RNN's stepnet constains itself),
-      // or
-      // this will result in infinite loop.
+      // or this will result in infinite loop.
       const auto& rnnop =
-          *static_cast<const operators::RecurrentOp*>(&forwardOp);
+          *static_cast<const operators::DynamicRecurrentOp*>(&forwardOp);
       auto rnn_grad_op =
-          static_cast<operators::RecurrentGradientOp*>(grad_op.get());
+          static_cast<operators::DynamicRecurrentGradientOp*>(grad_op.get());
       const auto& stepnet_op =
-          *static_cast<const OperatorBase*>(&rnnop.stepnet());
+          *static_cast<const OperatorBase*>(&rnnop.rnn.GetStepUnit());
       // create stepnet's gradient op
-      rnn_grad_op->set_stepnet(
+      rnn_grad_op->rnn.SetStepUnit(
           BackwardRecursive(stepnet_op, no_grad_names, grad_to_var, uniq_id));
     }
 
@@ -270,7 +270,29 @@ static bool AllGradInSet(const std::vector<std::string>& names,
       return false;
     }
   }
+  if (VLOG_IS_ON(10)) {
+    std::ostringstream sout;
+    sout << "All input {";
+    for (auto& name : names) {
+      sout << name << ",";
+    }
+    sout << "} is in {";
+    for (auto& name : set) {
+      sout << name << ",";
+    }
+    sout << "}";
+    VLOG(10) << sout.str();
+  }
   return true;
+}
+
+static std::string FwdName(const std::string& grad_name) {
+  auto pos = grad_name.find("@GRAD");
+  if (pos == std::string::npos) {
+    return "";
+  } else {
+    return grad_name.substr(0, pos);
+  }
 }
 
 static void CreateGradVarInBlock(
@@ -281,12 +303,14 @@ static void CreateGradVarInBlock(
   auto ops = block_desc->AllOps();
   for (size_t op_index = grad_op_start_index; op_index < ops.size();
        ++op_index) {
+    std::unordered_set<std::string> new_vars;
     ForEachVarName(ops[op_index]->Outputs(),
                    [&](const std::string& grad_var_name) {
                      if (block_desc->HasVar(grad_var_name)) {
                        return false;
                      }
-                     block_desc->Var(grad_var_name);
+                     auto var = block_desc->Var(grad_var_name);
+                     new_vars.insert(var->Name());
                      auto it = param_name_map.find(grad_var_name);
                      if (it == param_name_map.end()) {
                        return false;
@@ -298,13 +322,29 @@ static void CreateGradVarInBlock(
                      grad_record.op_idx_ = static_cast<int>(op_index);
                      return false; /* not break */
                    });
+    ops[op_index]->InferVarType(block_desc);
+    for (auto& arg : ops[op_index]->OutputArgumentNames()) {
+      if (new_vars.find(arg) == new_vars.end()) {
+        continue;
+      }
+      auto pname = FwdName(arg);
+      auto* param = block_desc->FindVarRecursive(pname);
+      auto* grad = block_desc->FindVar(arg);
+      if (param == nullptr) {
+        grad->SetDataType(DataType::FP32);
+      } else {
+        grad->SetDataType(param->GetDataType());
+      }
+    }
+    ops[op_index]->InferShape(*block_desc);
   }
 }
 
 std::vector<std::unique_ptr<OpDescBind>> MakeOpGrad(
-    const std::unique_ptr<OpDescBind>& op_desc,
-    std::unordered_set<std::string>* no_grad_vars,
-    std::unordered_map<std::string, std::string>* grad_to_var) {
+    const OpDescBind* op_desc, std::unordered_set<std::string>* no_grad_vars,
+    std::unordered_map<std::string, std::string>* grad_to_var,
+    const std::vector<BlockDescBind*>& grad_block =
+        std::vector<BlockDescBind*>()) {
   std::vector<std::unique_ptr<OpDescBind>> grad_op_descs;
   // All input gradients of forwarding operator do not need to calculate.
   const std::vector<std::string>& inputs = op_desc->InputArgumentNames();
@@ -320,9 +360,10 @@ std::vector<std::unique_ptr<OpDescBind>> MakeOpGrad(
     return grad_op_descs;  // empty vector
   }
 
-  grad_op_descs = OpInfoMap::Instance()
-                      .Get(op_desc->Type())
-                      .GradOpMaker()(*op_desc, *no_grad_vars, grad_to_var);
+  grad_op_descs =
+      OpInfoMap::Instance()
+          .Get(op_desc->Type())
+          .GradOpMaker()(*op_desc, *no_grad_vars, grad_to_var, grad_block);
 
   std::list<std::unique_ptr<OpDescBind>> pending_fill_zeros_ops;
   for (auto& desc : grad_op_descs) {
@@ -345,36 +386,57 @@ std::vector<std::unique_ptr<OpDescBind>> MakeOpGrad(
   return grad_op_descs;
 }
 
+static BlockDescBind* CreateStepBlock(
+    ProgramDescBind& program_desc,
+    std::unordered_set<std::string>* no_grad_vars,
+    std::unordered_map<std::string, std::string>* grad_to_var,
+    int step_block_idx);
+
 std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
     ProgramDescBind& program_desc, int block_idx,
     std::unordered_set<std::string>* no_grad_vars,
     std::unordered_map<std::string, std::string>* grad_to_var) {
-  BlockDescBind* cur_block = program_desc.Block(block_idx);
-  std::deque<std::unique_ptr<OpDescBind>>& op_descs = cur_block->ops_;
+  VLOG(5) << "MakeBlockBackward";
+  BlockDescBind* cur_block = program_desc.MutableBlock(block_idx);
+  std::vector<OpDescBind*> op_descs = cur_block->AllOps();
   std::unordered_map<std::string, std::vector<size_t>> dup_out_ops;
   size_t grad_desc_idx = 0;
   std::vector<std::unique_ptr<OpDescBind>> backward_descs;
 
   for (auto it = op_descs.rbegin(); it != op_descs.rend(); ++it) {
-    std::vector<std::unique_ptr<OpDescBind>> op_grads =
-        MakeOpGrad(*it, no_grad_vars, grad_to_var);
+    VLOG(5) << "Making backward " << (*it)->Type() << " op";
+    std::vector<std::unique_ptr<OpDescBind>> op_grads;
 
-    if ((*it)->Type() == "recurrent") {
-      PADDLE_ENFORCE_EQ(
-          op_grads.size(), static_cast<size_t>(1),
-          "rnn_op's gradient process should contain only one op.");
+    if ((*it)->Type() == "recurrent" || (*it)->Type() == "while") {
       int step_block_idx = (*it)->GetBlockAttr("step_block");
-      auto backward_block_op_descs = MakeBlockBackward(
-          program_desc, step_block_idx, no_grad_vars, grad_to_var);
-      BlockDescBind* backward_block = program_desc.AppendBlock(*cur_block);
-      for (auto& ptr : backward_block_op_descs) {
-        backward_block->ops_.push_back(std::move(ptr));
+      BlockDescBind* backward_block = CreateStepBlock(
+          program_desc, no_grad_vars, grad_to_var, step_block_idx);
+      op_grads = MakeOpGrad(*it, no_grad_vars, grad_to_var, {backward_block});
+    } else if ((*it)->Type() == "conditional_block") {
+      BlockDescBind* backward_block =
+          CreateStepBlock(program_desc, no_grad_vars, grad_to_var,
+                          (*it)->GetBlockAttr("block"));
+      op_grads = MakeOpGrad(*it, no_grad_vars, grad_to_var, {backward_block});
+    } else {
+      op_grads = MakeOpGrad(*it, no_grad_vars, grad_to_var);
+    }
+
+    if (VLOG_IS_ON(10)) {
+      std::ostringstream sout;
+      sout << "Made ";
+      for (auto& op_grad : op_grads) {
+        sout << op_grad->Type() << " ";
       }
-      op_grads[0]->SetBlockAttr("step_block", *backward_block);
+      VLOG(10) << sout.str();
     }
 
     for (const auto& desc : op_grads) {
       for (const std::string& out_name : desc->OutputArgumentNames()) {
+        if (out_name.find("@GRAD") == std::string::npos) {
+          // Not all outputs of a backward operator is a gradient. Only gradient
+          // need to be sum. Skip variables are not gradient.
+          continue;
+        }
         dup_out_ops[out_name].emplace_back(grad_desc_idx);
       }
       ++grad_desc_idx;
@@ -383,6 +445,8 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
         op_grads.begin(), op_grads.end(), std::back_inserter(backward_descs),
         [](std::unique_ptr<OpDescBind>& ptr) { return std::move(ptr); });
   }
+
+  VLOG(5) << "Appending Sums";
   // Check whether some variables are written more than once
   std::list<std::pair<size_t, std::unique_ptr<OpDescBind>>> pending_sum_ops;
   for (const auto& dup : dup_out_ops) {
@@ -390,16 +454,22 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
     const std::vector<size_t> dup_op = dup.second;
     if (out_name != kEmptyVarName && dup_op.size() > 1) {
       std::vector<std::string> sum_op_inputs;
+      std::string next_g_name = out_name;
       for (size_t i = 0; i < dup_op.size(); ++i) {
+        VLOG(10) << backward_descs[dup_op[i]]->Type() << " has " << out_name
+                 << " duplicated";
         std::string new_name = out_name + "@RENAME@" + std::to_string(i);
-        backward_descs[dup_op[i]]->Rename(out_name, new_name);
+        backward_descs[dup_op[i]]->RenameOutput(out_name, new_name);
+        backward_descs[dup_op[i]]->RenameInput(out_name, next_g_name);
         sum_op_inputs.emplace_back(new_name);
+        next_g_name = sum_op_inputs.back();
       }
       std::unique_ptr<OpDescBind> sum_op(new OpDescBind(
           "sum", {{"X", sum_op_inputs}}, {{"Out", {out_name}}}, {}));
       pending_sum_ops.push_back({dup_op.back(), std::move(sum_op)});
     }
   }
+
   pending_sum_ops.sort(
       [](const std::pair<size_t, std::unique_ptr<OpDescBind>>& a,
          const std::pair<size_t, std::unique_ptr<OpDescBind>>& b) {
@@ -410,7 +480,24 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
                           std::move(p.second));
   }
 
+  VLOG(5) << "MakeBlockBackward Finished";
+
   return backward_descs;
+}
+
+static BlockDescBind* CreateStepBlock(
+    ProgramDescBind& program_desc,
+    std::unordered_set<std::string>* no_grad_vars,
+    std::unordered_map<std::string, std::string>* grad_to_var,
+    int step_block_idx) {
+  auto backward_block_op_descs = MakeBlockBackward(program_desc, step_block_idx,
+                                                   no_grad_vars, grad_to_var);
+  BlockDescBind* backward_block =
+      program_desc.AppendBlock(*program_desc.MutableBlock(step_block_idx));
+  for (auto& ptr : backward_block_op_descs) {
+    backward_block->AppendAllocatedOp(move(ptr));
+  }
+  return backward_block;
 }
 
 ParamGradInfoMap AppendBackward(
@@ -424,18 +511,23 @@ ParamGradInfoMap AppendBackward(
   }
 
   const int root_block_idx = 0;
-  auto root_block = program_desc.Block(root_block_idx);
-  auto& all_ops = root_block->ops_;
+  auto root_block = program_desc.MutableBlock(root_block_idx);
 
-  // insert fill one op for target
   std::string fill_one_op_out = GradVarName(target.Name());
+  bool is_scalar = target.Shape() == std::vector<int64_t>{1};
+  PADDLE_ENFORCE(is_scalar, "target should be scalar");
+  VLOG(3) << "backward from loss=" << target.Name()
+          << " data_type=" << target.GetDataType();
   std::unique_ptr<OpDescBind> fill_one_op(
       new OpDescBind("fill_constant", {}, {{"Out", {fill_one_op_out}}},
                      {{"shape", std::vector<int>{1}},
                       {"value", static_cast<float>(1.0)},
-                      {"data_type", framework::DataType::FP32}}));
-  all_ops.push_back(std::move(fill_one_op));
-  size_t forward_op_num = all_ops.size();
+                      {"data_type", target.GetDataType()}}));
+  // infer var type of fill_one_op
+  fill_one_op->InferVarType(root_block);
+
+  root_block->AppendAllocatedOp(std::move(fill_one_op));
+  size_t forward_op_num = root_block->OpSize();
   size_t forward_block_num = program_desc.Size();
 
   // Insert backward operators
@@ -443,19 +535,27 @@ ParamGradInfoMap AppendBackward(
   auto backward_op_descs = MakeBlockBackward(program_desc, root_block_idx,
                                              &no_grad_var_names, &grad_to_var);
 
+  for (auto& ptr : backward_op_descs) {
+    root_block->AppendAllocatedOp(std::move(ptr));
+  }
+  // Create Variable
+
+  // Create target gradient variable
   std::unordered_map<std::string, GradVarInfo> retv;
 
-  // Create Variable
-  for (auto& ptr : backward_op_descs) {
-    all_ops.push_back(std::move(ptr));
-  }
-  root_block->Var(fill_one_op_out);
+  auto var = root_block->Var(fill_one_op_out);
+  var->SetDataType(target.GetDataType());
+  var->SetShape(target.Shape());
+  auto& target_grad = retv[target.Name()];
+  target_grad.name_ = fill_one_op_out;
+  target_grad.block_idx_ = root_block_idx;
+  target_grad.op_idx_ = static_cast<int>(forward_op_num);
 
   // create grad_var for all blocks in this program
   CreateGradVarInBlock(forward_op_num, grad_to_var, root_block, &retv);
   for (size_t block_index = forward_block_num;
        block_index < program_desc.Size(); ++block_index) {
-    CreateGradVarInBlock(0, grad_to_var, program_desc.Block(block_index),
+    CreateGradVarInBlock(0, grad_to_var, program_desc.MutableBlock(block_index),
                          &retv);
   }
   return retv;

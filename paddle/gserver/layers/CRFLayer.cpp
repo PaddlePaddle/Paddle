@@ -101,8 +101,10 @@ void CRFLayer::backward(const UpdateCallback& callback) {
                               : real(1.0f);
     instanceWeight *= coeff_;
 
-    MatrixPtr grad = output.grad->subRowMatrix(starts[i], starts[i + 1]);
-    grad->add(*crfs_[i].getXGrad(), real(1.0f), instanceWeight);
+    if (output.grad) {
+      MatrixPtr grad = output.grad->subRowMatrix(starts[i], starts[i + 1]);
+      grad->add(*crfs_[i].getXGrad(), real(1.0f), instanceWeight);
+    }
     if (needWGrad) {
       weight_->getWGrad()->add(
           *crfs_[i].getWGrad(), real(1.0f), instanceWeight);

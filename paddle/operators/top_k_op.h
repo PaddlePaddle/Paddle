@@ -40,7 +40,7 @@ class TopkKernel : public framework::OpKernel<T> {
     const size_t k = static_cast<int>(ctx.Attr<int>("k"));
 
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
-    T* indices_data = indices->mutable_data<T>(ctx.GetPlace());
+    int64_t* indices_data = indices->mutable_data<int64_t>(ctx.GetPlace());
 
     auto eg_input = EigenMatrix<T>::From(*input);
 
@@ -66,7 +66,7 @@ class TopkKernel : public framework::OpKernel<T> {
           });
       for (size_t j = 0; j < k; j++) {
         output_data[i * k + j] = vec[j].first;
-        indices_data[i * k + j] = vec[j].second;
+        indices_data[i * k + j] = int64_t(vec[j].second);
       }
     }
   }

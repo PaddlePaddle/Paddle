@@ -27,11 +27,11 @@ BuddyAllocator::BuddyAllocator(SystemAllocator* system_allocator,
       system_allocator_(std::move(system_allocator)) {}
 
 BuddyAllocator::~BuddyAllocator() {
-  VLOG(3) << "BuddyAllocator Disconstructor makes sure that all of these "
-             "have actually been freed";
+  VLOG(10) << "BuddyAllocator Disconstructor makes sure that all of these "
+              "have actually been freed";
   while (!pool_.empty()) {
     auto block = static_cast<MemoryBlock*>(std::get<2>(*pool_.begin()));
-    VLOG(3) << "Free from block (" << block << ", " << max_chunk_size_ << ")";
+    VLOG(10) << "Free from block (" << block << ", " << max_chunk_size_ << ")";
 
     system_allocator_->Free(block, max_chunk_size_, block->index(cache_));
     cache_.invalidate(block);
@@ -51,11 +51,12 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
   // acquire the allocator lock
   std::lock_guard<std::mutex> lock(mutex_);
 
-  VLOG(3) << "Allocate " << unaligned_size << " bytes from chunk size " << size;
+  VLOG(10) << "Allocate " << unaligned_size << " bytes from chunk size "
+           << size;
 
   // if the allocation is huge, send directly to the system allocator
   if (size > max_chunk_size_) {
-    VLOG(3) << "Allocate from system allocator.";
+    VLOG(10) << "Allocate from system allocator.";
     return SystemAlloc(size);
   }
 
@@ -70,9 +71,9 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
       return nullptr;
     }
   } else {
-    VLOG(3) << "Allocation from existing memory block " << std::get<2>(*it)
-            << " at address "
-            << reinterpret_cast<MemoryBlock*>(std::get<2>(*it))->data();
+    VLOG(10) << "Allocation from existing memory block " << std::get<2>(*it)
+             << " at address "
+             << reinterpret_cast<MemoryBlock*>(std::get<2>(*it))->data();
   }
 
   total_used_ += size;
@@ -89,10 +90,10 @@ void BuddyAllocator::Free(void* p) {
   // Acquire the allocator lock
   std::lock_guard<std::mutex> lock(mutex_);
 
-  VLOG(3) << "Free from address " << block;
+  VLOG(10) << "Free from address " << block;
 
   if (block->type(cache_) == MemoryBlock::HUGE_CHUNK) {
-    VLOG(3) << "Free directly from system allocator";
+    VLOG(10) << "Free directly from system allocator";
     system_allocator_->Free(block, block->total_size(cache_),
                             block->index(cache_));
 
@@ -109,8 +110,8 @@ void BuddyAllocator::Free(void* p) {
 
   // Trying to merge the right buddy
   if (block->has_right_buddy(cache_)) {
-    VLOG(3) << "Merging this block " << block << " with its right buddy "
-            << block->right_buddy(cache_);
+    VLOG(10) << "Merging this block " << block << " with its right buddy "
+             << block->right_buddy(cache_);
 
     auto right_buddy = block->right_buddy(cache_);
 
@@ -127,8 +128,8 @@ void BuddyAllocator::Free(void* p) {
 
   // Trying to merge the left buddy
   if (block->has_left_buddy(cache_)) {
-    VLOG(3) << "Merging this block " << block << " with its left buddy "
-            << block->left_buddy(cache_);
+    VLOG(10) << "Merging this block " << block << " with its left buddy "
+             << block->left_buddy(cache_);
 
     auto left_buddy = block->left_buddy(cache_);
 
@@ -144,8 +145,8 @@ void BuddyAllocator::Free(void* p) {
   }
 
   // Dumping this block into pool
-  VLOG(3) << "Inserting free block (" << block << ", "
-          << block->total_size(cache_) << ")";
+  VLOG(10) << "Inserting free block (" << block << ", "
+           << block->total_size(cache_) << ")";
   pool_.insert(
       IndexSizeAddress(block->index(cache_), block->total_size(cache_), block));
 
@@ -164,7 +165,7 @@ void* BuddyAllocator::SystemAlloc(size_t size) {
   size_t index = 0;
   void* p = system_allocator_->Alloc(index, size);
 
-  VLOG(3) << "Allocated " << p << " from system allocator.";
+  VLOG(10) << "Allocated " << p << " from system allocator.";
 
   if (p == nullptr) return nullptr;
 
@@ -190,8 +191,8 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool() {
 
   if (p == nullptr) return pool_.end();
 
-  VLOG(3) << "Creating and inserting new block " << p
-          << " from system allocator";
+  VLOG(10) << "Creating and inserting new block " << p
+           << " from system allocator";
 
   static_cast<MemoryBlock*>(p)->init(cache_, MemoryBlock::FREE_CHUNK, index,
                                      max_chunk_size_, nullptr, nullptr);
@@ -235,19 +236,19 @@ void* BuddyAllocator::SplitToAlloc(BuddyAllocator::PoolSet::iterator it,
   auto block = static_cast<MemoryBlock*>(std::get<2>(*it));
   pool_.erase(it);
 
-  VLOG(3) << "Split block (" << block << ", " << block->total_size(cache_)
-          << ") into";
+  VLOG(10) << "Split block (" << block << ", " << block->total_size(cache_)
+           << ") into";
   block->split(cache_, size);
 
-  VLOG(3) << "Left block (" << block << ", " << block->total_size(cache_)
-          << ")";
+  VLOG(10) << "Left block (" << block << ", " << block->total_size(cache_)
+           << ")";
   block->set_type(cache_, MemoryBlock::ARENA_CHUNK);
 
   // the rest of memory if exist
   if (block->has_right_buddy(cache_)) {
     if (block->right_buddy(cache_)->type(cache_) == MemoryBlock::FREE_CHUNK) {
-      VLOG(3) << "Insert right block (" << block->right_buddy(cache_) << ", "
-              << block->right_buddy(cache_)->total_size(cache_) << ")";
+      VLOG(10) << "Insert right block (" << block->right_buddy(cache_) << ", "
+               << block->right_buddy(cache_)->total_size(cache_) << ")";
 
       pool_.insert(
           IndexSizeAddress(block->right_buddy(cache_)->index(cache_),
@@ -274,7 +275,7 @@ void BuddyAllocator::CleanIdleFallBackAlloc() {
       return;
     }
 
-    VLOG(3) << "Return block " << block << " to fallback allocator.";
+    VLOG(10) << "Return block " << block << " to fallback allocator.";
 
     system_allocator_->Free(block, max_chunk_size_, block->index(cache_));
     cache_.invalidate(block);
@@ -310,7 +311,7 @@ void BuddyAllocator::CleanIdleNormalAlloc() {
 
     MemoryBlock* block = static_cast<MemoryBlock*>(std::get<2>(*pool));
 
-    VLOG(3) << "Return block " << block << " to base allocator.";
+    VLOG(10) << "Return block " << block << " to base allocator.";
 
     system_allocator_->Free(block, max_chunk_size_, block->index(cache_));
     cache_.invalidate(block);

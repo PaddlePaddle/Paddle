@@ -26,14 +26,9 @@ class ReshapeKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* out = ctx.Output<framework::Tensor>("Out");
     auto* in = ctx.Input<framework::Tensor>("X");
+    auto out_dims = out->dims();
     out->mutable_data<T>(ctx.GetPlace());
-
-    auto shape = ctx.Attr<std::vector<int>>("shape");
-    std::vector<int64_t> shape_int64(shape.size(), 0);
-    std::transform(shape.begin(), shape.end(), shape_int64.begin(),
-                   [](int a) { return static_cast<int64_t>(a); });
-    auto out_dims = framework::make_ddim(shape_int64);
-    out->CopyFrom<T>(*in, ctx.GetPlace(), ctx.device_context());
+    out->CopyFrom(*in, ctx.GetPlace(), ctx.device_context());
     out->Resize(out_dims);
   }
 };
@@ -47,7 +42,7 @@ class ReshapeGradKernel : public framework::OpKernel<T> {
     d_x->mutable_data<T>(ctx.GetPlace());
 
     auto in_dims = d_x->dims();
-    d_x->CopyFrom<T>(*d_out, ctx.GetPlace(), ctx.device_context());
+    d_x->CopyFrom(*d_out, ctx.GetPlace(), ctx.device_context());
     d_x->Resize(in_dims);
   }
 };

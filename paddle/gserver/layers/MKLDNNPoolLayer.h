@@ -38,13 +38,6 @@ protected:
   // pooling_avg or pooling_max
   mkldnn::algorithm poolAlgo_;
 
-  // MKLDNNMatrixPtr which should be created from CPU Device
-  MKLDNNMatrixPtr cpuOutVal_;
-  MKLDNNMatrixPtr cpuOutGrad_;
-  // convert handle between CPU device and MKLDNN device
-  std::shared_ptr<mkldnn::reorder> cvtOutVal_;
-  std::shared_ptr<mkldnn::reorder> cvtOutGrad_;
-
   // save forward primitive_desc, which can be used backward
   std::shared_ptr<pool_fwd::primitive_desc> fwdPD_;
   // according to https://github.com/01org/mkl-dnn/blob/master/tests/gtests/
@@ -60,21 +53,15 @@ public:
             const ParameterMap& parameterMap) override;
 
   void reshape(
-      int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) override;
+      int& bs, int& ic, int& ih, int& iw, int& oc, int& oh, int& ow) override;
 
   void resetFwd(std::vector<mkldnn::primitive>& pipeline,
-                MKLDNNMatrixPtr& in,
-                MKLDNNMatrixPtr& wgt,
-                MKLDNNMatrixPtr& bias,
+                std::vector<MKLDNNMatrixPtr>& inputs,
                 MKLDNNMatrixPtr& out) override;
 
   void resetBwd(std::vector<mkldnn::primitive>& pipeline,
-                MKLDNNMatrixPtr& in,
-                MKLDNNMatrixPtr& wgt,
-                MKLDNNMatrixPtr& bias,
+                std::vector<MKLDNNMatrixPtr>& inputs,
                 MKLDNNMatrixPtr& out) override;
-
-  void updateInputData() override;
 
   void printSizeInfo() override {
     MKLDNNLayer::printSizeInfo();
@@ -84,14 +71,7 @@ public:
   }
 
 protected:
-  /**
-   * Forward functions: reset buffers(input, output),
-   *                    reset primitive descriptor,
-   *                    reset pipeline.
-   */
   void resetFwdBuffers(MKLDNNMatrixPtr& in, MKLDNNMatrixPtr& out);
-  void resetInValue(MKLDNNMatrixPtr& in);
-  void resetOutValue(MKLDNNMatrixPtr& out);
   void resetFwdPD(std::shared_ptr<pool_fwd::primitive_desc>& pd,
                   MKLDNNMatrixPtr in,
                   MKLDNNMatrixPtr out);
@@ -99,15 +79,7 @@ protected:
                         std::shared_ptr<pool_fwd::primitive_desc>& pd,
                         MKLDNNMatrixPtr& in,
                         MKLDNNMatrixPtr& out);
-
-  /**
-   * Backward functions: reset buffers(input, output),
-   *                     reset primitive descriptor,
-   *                     reset pipeline.
-   */
   void resetBwdBuffers(MKLDNNMatrixPtr& in, MKLDNNMatrixPtr& out);
-  void resetOutGrad(MKLDNNMatrixPtr& out);
-  void resetInGrad(MKLDNNMatrixPtr& in);
   void resetBwdPD(std::shared_ptr<pool_bwd::primitive_desc>& pd,
                   MKLDNNMatrixPtr& in,
                   MKLDNNMatrixPtr& out);

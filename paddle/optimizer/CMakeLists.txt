@@ -1,5 +1,3 @@
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
-
 set(OPITMIZER_SRCS
     adadelta_optimizer.cc
     adagrad_optimizer.cc
@@ -9,11 +7,6 @@ set(OPITMIZER_SRCS
     sgd_optimizer.cc
   )
 
-add_library(paddle_optimizer STATIC ${OPITMIZER_SRCS})
-add_dependencies(paddle_optimizer paddle_proto ${external_project_dependencies})
-
-
-if(WITH_TESTING)
-  add_simple_unittest(serialization_test)
-  add_simple_unittest(parameter_optimizer_test)
-endif()
+cc_library(paddle_optimizer STATIC SRCS ${OPITMIZER_SRCS} DEPS paddle_proto glog)
+cc_test(serialization_test SRCS serialization_test.cc DEPS paddle_proto)
+cc_test(parameter_optimizer_test SRCS parameter_optimizer_test.cc DEPS paddle_optimizer)

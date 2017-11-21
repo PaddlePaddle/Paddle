@@ -28,8 +28,9 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     auto label_dims = ctx->GetInputDim("Label");
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(label_dims.size(), 2, "Input(Label)'s rank should be 2.");
+    PADDLE_ENFORCE_EQ(x_dims.size(), 2UL, "Input(X)'s rank should be 2.");
+    PADDLE_ENFORCE_EQ(label_dims.size(), 2UL,
+                      "Input(Label)'s rank should be 2.");
     PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0],
                       "The 1st dimension of Input(X) and Input(Label) should "
                       "be equal.");
@@ -38,8 +39,8 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
                         "If Attr(soft_label) == true, the 2nd dimension of "
                         "Input(X) and Input(Label) should be equal.");
     } else {
-      PADDLE_ENFORCE_EQ(label_dims[1], 1,
-                        "If Attr(soft_label) == false, the 2nd dimension of "
+      PADDLE_ENFORCE_EQ(label_dims[1], 1UL,
+                        "If Attr(softLabel) == false, the 2nd dimension of "
                         "Input(Label) should be 1.");
     }
 
@@ -48,10 +49,13 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  // CrossEntropy's data type just determined by "X"
-  framework::DataType IndicateDataType(
+  // Explicitly set that the data type of computation kernel of cross_entropy
+  // is determined by its input "X".
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()),
+        ctx.device_context());
   }
 };
 
@@ -94,10 +98,13 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  // CrossEntropy's data type just determined by "X"
-  framework::DataType IndicateDataType(
+  // Explicitly set that the data type of computation kernel of cross_entropy
+  // is determined by its input "X".
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()),
+        ctx.device_context());
   }
 };
 
@@ -111,21 +118,17 @@ class CrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
              "where N is the batch size and D is the number of classes. "
              "This input is a probability computed by the previous operator, "
              "which is almost always the result of a softmax operator.");
-    AddInput(
-        "Label",
-        "(Tensor, default Tensor<int>), the ground truth which is "
-        "a 2-D tensor. "
-        "When soft_label is set to false, `Label` is a Tensor<int> with shape "
-        "[N x 1]. "
-        "When soft_label is set to true, `Label` is a Tensor<float/double> "
-        "with shape [N x K].");
+    AddInput("Label",
+             "(Tensor), the ground truth which is a 2-D tensor. When "
+             "soft_label is set to false, Label is a Tensor<int64> with shape "
+             "[N x 1]. When soft_label is set to true, Label is a "
+             "Tensor<float/double> with shape [N x K].");
     AddOutput("Y",
-              "(Tensor, default Tensor<float>), a 2-D tensor "
-              "with shape [N x 1]. The cross entropy loss.");
-    AddAttr<bool>(
-        "soft_label",
-        "(bool, default false), a flag to indicate whether to interpretate "
-        "the given labels as soft labels.")
+              "(Tensor, default Tensor<float>), a 2-D tensor with shape "
+              "[N x 1]. The cross entropy loss.");
+    AddAttr<bool>("soft_label",
+                  "(bool, default false), a flag indicating whether to "
+                  "interpretate the given labels as soft labels.")
         .SetDefault(false);
     AddComment(R"DOC(
 CrossEntropy Operator.
@@ -135,13 +138,13 @@ computation.
 1) One-hot cross-entropy:
     soft_label = false, Label[i, 0] indicates the class index for sample i:
 
-                Y[i] = -log(X[i, Label[i]])
+                $Y[i] = -\log(X[i, Label[i]])$
 
 2) Soft-label cross-entropy:
     soft_label = true, Label[i, j] indicates the soft label of class j
     for sample i:
 
-                Y[i] = \sum_j{-Label[i, j] * log(X[i, j])}
+                $Y[i] = \sum_j{-Label[i, j] * log(X[i, j])}$
 
    Please make sure that in this case the summuation of each row of Label
    equals one.
@@ -151,8 +154,9 @@ computation.
      non-zero element (equals 1), soft-label cross-entropy degenerates to a
      one-hot cross-entropy with one-hot label representation.
 
-Both the input `X` and `Label` can carry the LoD (Level of Details) information,
-or not. But the output only shares the LoD with input `X`.
+Both the input X and Label can carry the LoD (Level of Details) information,
+or not. But the output only shares the LoD information with input X.
+
 )DOC");
   }
 };
@@ -162,6 +166,8 @@ or not. But the output only shares the LoD with input `X`.
 namespace ops = paddle::operators;
 REGISTER_OP(cross_entropy, ops::CrossEntropyOp, ops::CrossEntropyOpMaker,
             cross_entropy_grad, ops::CrossEntropyGradientOp);
-REGISTER_OP_CPU_KERNEL(cross_entropy, ops::CrossEntropyOpKernel<float>);
+REGISTER_OP_CPU_KERNEL(cross_entropy, ops::CrossEntropyOpKernel<float>,
+                       ops::CrossEntropyOpKernel<double>);
 REGISTER_OP_CPU_KERNEL(cross_entropy_grad,
-                       ops::CrossEntropyGradientOpKernel<float>);
+                       ops::CrossEntropyGradientOpKernel<float>,
+                       ops::CrossEntropyGradientOpKernel<double>);

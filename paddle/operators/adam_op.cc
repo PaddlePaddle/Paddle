@@ -43,10 +43,6 @@ class AdamOp : public framework::OperatorWithKernel {
                    "Output(Moment1Out) of AdamOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Moment2Out"),
                    "Output(Moment2Out) of AdamOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Beta1PowOut"),
-                   "Output(Beta1PowOut) of AdamOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Beta2PowOut"),
-                   "Output(Beta2PowOut) of AdamOp should not be null.");
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
@@ -55,8 +51,8 @@ class AdamOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(framework::product(beta1_pow_dims), 1,
                       "Beta1 power accumulator should have 1 dimension");
     auto beta2_pow_dims = ctx->GetInputDim("Beta2Pow");
-    PADDLE_ENFORCE_EQ(framework::product(beta1_pow_dims), 1,
-                      "Beta1 power accumulator should have 1 dimension");
+    PADDLE_ENFORCE_EQ(framework::product(beta2_pow_dims), 1,
+                      "Beta2 power accumulator should have 1 dimension");
 
     auto param_dims = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(
@@ -64,16 +60,14 @@ class AdamOp : public framework::OperatorWithKernel {
         "Param and Grad input of AdamOp should have same dimension");
     PADDLE_ENFORCE_EQ(
         param_dims, ctx->GetInputDim("Moment1"),
-        "Param and Moment input of AdamOp should have same dimension");
+        "Param and Moment1 input of AdamOp should have same dimension");
     PADDLE_ENFORCE_EQ(
         param_dims, ctx->GetInputDim("Moment2"),
-        "Param and InfNorm input of AdamOp should have same dimension");
+        "Param and Moment2 input of AdamOp should have same dimension");
 
     ctx->SetOutputDim("ParamOut", param_dims);
     ctx->SetOutputDim("Moment1Out", param_dims);
     ctx->SetOutputDim("Moment2Out", param_dims);
-    ctx->SetOutputDim("Beta1PowOut", beta1_pow_dims);
-    ctx->SetOutputDim("Beta2PowOut", beta2_pow_dims);
   }
 };
 
@@ -92,8 +86,6 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("ParamOut", "(Tensor) Output parameter");
     AddOutput("Moment1Out", "(Tensor) Output first moment");
     AddOutput("Moment2Out", "(Tensor) Output second moment");
-    AddOutput("Beta1PowOut", "(Tensor) Output beta1 power accumulator");
-    AddOutput("Beta2PowOut", "(Tensor) Output beta2 power accumulator");
 
     AddAttr<float>("beta1",
                    "(float, default 0.9) "
@@ -111,25 +103,20 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1.0e-8f);
 
     AddComment(R"DOC(
-Adam Updates Operator.
+Adam Optimizer.
 
 This implements the Adam optimizer from Section 2 of the Adam
-paper[1]. Adam is a first-order gradient-based optimization
-method based on adaptive estimates of lower-order moments.
+paper : https://arxiv.org/abs/1412.6980.
+Adam is a first-order gradient-based optimization method based on
+adaptive estimates of lower-order moments.
 
 Adam updates:
 
-moment1_out = beta1 * moment1 + (1 − beta1) * grad
-moment2_out = beta2 * moment2 + (1 − beta2) * grad * grad
-beta1_pow_out = beta1_pow * beta1
-beta2_pow_out = beta2_pow * beta2
-learning_rate_t = learning_rate_t *
-                  sqrt(1 - beta2_pow_out) / (1 - beta1_pow_out)
-param_out = param - learning_rate_t * moment1/ (sqrt(moment2) + epsilon)
-
-References:
-  [1] Adam: A Method for Stochastic Optimization
-      (https://arxiv.org/abs/1412.6980)
+$$moment_1_{out} = \beta_1 * moment_1 + (1 - \beta_1) * grad \break
+moment_2_{out} = \beta_2 * moment_2 + (1 - \beta_2) * grad * grad \break
+learningRate = learningRate *
+                  $\sqrt{(1 - \beta_2_{pow})}$ / (1 - \beta_1_{pow}) \break
+paramOut = param - learningRate * moment_1/ ($\sqrt{(moment_2)} + \epsilon)$$
 
 )DOC");
   }

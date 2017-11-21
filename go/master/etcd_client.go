@@ -20,7 +20,7 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/concurrency"
-	log "github.com/sirupsen/logrus"
+	log "github.com/inconshreveable/log15"
 )
 
 const (
@@ -44,7 +44,7 @@ type EtcdClient struct {
 
 // NewEtcdClient creates a new EtcdClient.
 func NewEtcdClient(endpoints []string, addr string, lockPath, addrPath, statePath string, ttlSec int) (*EtcdClient, error) {
-	log.Debugf("Connecting to etcd at %v", endpoints)
+	log.Debug("Connecting to etcd", log.Ctx{"endpoint": endpoints})
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
@@ -64,12 +64,12 @@ func NewEtcdClient(endpoints []string, addr string, lockPath, addrPath, statePat
 	// one master running, but split-brain problem may cause
 	// multiple master servers running), and the cluster management
 	// software will kill one of them.
-	log.Infof("Trying to acquire lock at %s.", lockPath)
+	log.Info("Trying to acquire lock.", log.Ctx{"path": lockPath})
 	err = lock.Lock(context.TODO())
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("Successfully acquired lock at %s.", lockPath)
+	log.Info("Successfully acquired lock at %s.", log.Ctx{"path": lockPath})
 
 	put := clientv3.OpPut(addrPath, addr)
 	resp, err := cli.Txn(context.Background()).If(lock.IsOwner()).Then(put).Commit()
@@ -78,7 +78,8 @@ func NewEtcdClient(endpoints []string, addr string, lockPath, addrPath, statePat
 	}
 
 	if !resp.Succeeded {
-		log.Fatal("No longer owns the master lock. Exiting.")
+		log.Crit("No longer owns the master lock. Exiting.")
+		panic("No longer owns the master lock. Exiting.")
 	}
 
 	e := &EtcdClient{
@@ -102,7 +103,7 @@ func (e *EtcdClient) Save(state []byte) error {
 	}
 
 	if !resp.Succeeded {
-		log.Errorln("No longer owns the lock, trying to lock again")
+		log.Error("No longer owns the lock, trying to lock again")
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		err := e.lock.Lock(ctx)
 		cancel()
@@ -116,9 +117,10 @@ func (e *EtcdClient) Save(state []byte) error {
 			// to kill current master server. The current
 			// state is not saved, but the trainer's RPC
 			// call will fail, so the trainer will retry.
-			log.Fatalf("Could not acquire the lock at %s: %v. Exiting.", e.lockPath, err)
+			log.Crit("Could not acquire the lock at %s: %v. Exiting.", log.Ctx{"path": e.lockPath, "error": err})
+			panic("Could not acquire the lock at %s: %v. Exiting.")
 		}
-		log.Infof("Successfully acquired lock at %s.", e.lockPath)
+		log.Info("Successfully acquired lock at %s.", e.lockPath)
 		return e.Save(state)
 	}
 
@@ -136,7 +138,7 @@ func (e *EtcdClient) Load() ([]byte, error) {
 	}
 
 	if !resp.Succeeded {
-		log.Errorln("No longer owns the lock, trying to lock and load again.")
+		log.Error("No longer owns the lock, trying to lock and load again.")
 		err = e.lock.Lock(context.Background())
 		if err != nil {
 			return nil, err
@@ -163,7 +165,7 @@ func (e *EtcdClient) Shutdown() error {
 		if err == nil {
 			err = newErr
 		} else {
-			log.Errorln(newErr)
+			log.Error("shutdown error", log.Ctx{"error": newErr})
 		}
 	}
 
@@ -192,7 +194,7 @@ func watchKey(c *clientv3.Client, key string, valChan chan<- string) {
 	for wresp := range rch {
 		for _, ev := range wresp.Events {
 			// if received event is DELETE, the value will be an empty string
-			log.Infof("received event %s, %q : %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
+			log.Info("received event.", log.Ctx{"type": ev.Type, "key": ev.Kv.Key, "value": ev.Kv.Value})
 			valChan <- string(ev.Kv.Value)
 		}
 	}

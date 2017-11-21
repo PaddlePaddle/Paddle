@@ -15,4 +15,5 @@
 #include "paddle/operators/scale_op.h"
 
 REGISTER_OP_GPU_KERNEL(
-    scale, paddle::operators::ScaleKernel<paddle::platform::GPUPlace, float>);
+    scale, paddle::operators::ScaleKernel<paddle::platform::GPUPlace, float>,
+    paddle::operators::ScaleKernel<paddle::platform::GPUPlace, double>);

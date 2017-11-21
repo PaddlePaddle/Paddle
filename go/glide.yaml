@@ -26,3 +26,8 @@ import:
   version: v1.1.0
 - package: github.com/alecthomas/gometalinter
   version: v1.2.1
+- package: github.com/inconshreveable/log15
+  version: v2.13
+- package: github.com/go-stack/stack
+  version: v1.6.0
+- package: github.com/golang/protobuf
