@@ -108,5 +108,11 @@ class TestWithStride(TestConv3dTransposeOp):
         self.filter_size = [f_c, 6, 3, 3, 3]
 
 
+# ------------ test_cudnn ------------
+class TestCudnn(TestConv3dTransposeOp):
+    def init_op_type(self):
+        self.op_type = "conv3d_transpose_cudnn"
+
+
 if __name__ == '__main__':
     unittest.main()

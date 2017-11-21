@@ -3,7 +3,7 @@ import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 from paddle.v2.fluid.framework import OpProtoHolder, Variable, Program, \
     Operator
 from paddle.v2.fluid.initializer import ConstantInitializer, \
-    NormalInitializer
+    NormalInitializer, XavierInitializer
 from paddle.v2.fluid.layer_helper import LayerHelper, unique_name
 import re
 import cStringIO
@@ -18,7 +18,9 @@ __all__ = [
 def fc(input,
        size,
        param_attr=None,
+       param_initializer=None,
        bias_attr=None,
+       bias_initializer=None,
        name=None,
        act=None,
        num_flatten_dims=1,
@@ -31,7 +33,11 @@ def fc(input,
        input: The input tensor to the function
        size: The size of the layer
        param_attr: The parameters/weights to the FC Layer
+       param_initializer: Initializer used for the weight/parameter.
+       If None, XavierInitializer() is used
        bias_attr: The bias parameter for the FC layer
+       bias_initializer: Initializer used for the bias.
+       If None, then ConstantInitializer() is used
        name: Name/alias of the function
        act: Activation to be applied to the output of FC layer
        num_flatten_dims: Number of columns in input
@@ -50,9 +56,22 @@ def fc(input,
     to the LayerHelper constructor.
 
     """
+
+    def _get_default_param_initializer():
+        return XavierInitializer()
+
+    def _get_default_bias_initializer():
+        return ConstantInitializer()
+
     helper = LayerHelper('fc', **locals())
 
     dtype = helper.input_dtype()
+
+    if param_initializer is None:
+        param_initializer = _get_default_param_initializer()
+
+    if bias_initializer is None:
+        bias_initializer = _get_default_bias_initializer()
 
     mul_results = []
     for input_var, param_attr in helper.iter_inputs_and_params():
@@ -61,7 +80,10 @@ def fc(input,
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
         ] + [size]
         w = helper.create_parameter(
-            attr=param_attr, shape=param_shape, dtype=dtype)
+            attr=param_attr,
+            initializer=param_initializer,
+            shape=param_shape,
+            dtype=dtype)
         tmp = helper.create_tmp_variable(dtype)
         helper.append_op(
             type="mul",
@@ -82,7 +104,7 @@ def fc(input,
         helper.append_op(
             type="sum", inputs={"X": mul_results}, outputs={"Out": pre_bias})
     # add bias
-    pre_activation = helper.append_bias_op(pre_bias)
+    pre_activation = helper.append_bias_op(pre_bias, bias_initializer)
     # add activation
     return helper.append_activation(pre_activation)
 
@@ -602,7 +624,9 @@ def sequence_conv(input,
                   act=None,
                   padding=None,
                   bias_attr=None,
+                  bias_initializer=None,
                   param_attr=None,
+                  param_initializer=None,
                   main_program=None,
                   startup_program=None):
     """
@@ -610,6 +634,13 @@ def sequence_conv(input,
     other convolutional configurations for the filters and stride as given
     in the input parameters to the function.
     """
+
+    def _get_default_bias_initializer():
+        return ConstantInitializer()
+
+    def _get_default_param_initializer():
+        return XavierInitializer()
+
     # FIXME(dzh) : want to unify the argument of python layer
     # function. So we ignore some unecessary attributes.
     # such as, padding_trainable, context_start.
@@ -617,9 +648,17 @@ def sequence_conv(input,
     helper = LayerHelper('sequence_conv', **locals())
     dtype = helper.input_dtype()
 
+    if param_initializer is None:
+        param_initializer = _get_default_param_initializer()
+    if bias_initializer is None:
+        bias_initializer = _get_default_bias_initializer()
+
     filter_shape = [filter_size * input.shape[1], num_filters]
     filter = helper.create_parameter(
-        attr=helper.param_attr, shape=filter_shape, dtype=dtype)
+        attr=helper.param_attr,
+        shape=filter_shape,
+        dtype=dtype,
+        initializer=param_initializer)
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
@@ -634,7 +673,7 @@ def sequence_conv(input,
             'contextStart': -int(filter_size / 2),
             'contextLength': filter_size
         })
-    pre_act = helper.append_bias_op(pre_bias)
+    pre_act = helper.append_bias_op(pre_bias, bias_initializer)
     return helper.append_activation(pre_act)
 
 
@@ -647,7 +686,9 @@ def conv2d(input,
            stride=[1, 1],
            padding=None,
            bias_attr=None,
+           bias_initializer=None,
            param_attr=None,
+           param_initializer=None,
            main_program=None,
            startup_program=None):
     """
@@ -657,6 +698,14 @@ def conv2d(input,
     This funciton can also append an activation on top of the
     conv-2d output, if mentioned in the input parameters.
     """
+
+    def _get_default_bias_initializer():
+        return ConstantInitializer()
+
+    def _get_default_param_initializer(filter_size, num_channels):
+        std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
+        return NormalInitializer(0.0, std, 0)
+
     helper = LayerHelper('conv2d', **locals())
     dtype = helper.input_dtype()
 
@@ -664,7 +713,7 @@ def conv2d(input,
     if groups is None:
         num_filter_channels = num_channels
     else:
-        if num_channels % groups is not 0:
+        if num_channels % groups != 0:
             raise ValueError("num_channels must be divisible by groups.")
         num_filter_channels = num_channels / groups
 
@@ -678,12 +727,17 @@ def conv2d(input,
     input_shape = input.shape
     filter_shape = [num_filters, num_filter_channels] + filter_size
 
-    std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
+    if param_initializer is None:
+        param_initializer = _get_default_param_initializer(filter_size,
+                                                           num_channels)
+    if bias_initializer is None:
+        bias_initializer = _get_default_bias_initializer()
+
     filter = helper.create_parameter(
         attr=helper.param_attr,
         shape=filter_shape,
         dtype=dtype,
-        initializer=NormalInitializer(0.0, std, 0))
+        initializer=param_initializer)
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
@@ -697,7 +751,8 @@ def conv2d(input,
                'paddings': padding,
                'groups': groups})
 
-    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    pre_act = helper.append_bias_op(
+        pre_bias, bias_initializer, dim_start=1, dim_end=2)
 
     return helper.append_activation(pre_act)
 

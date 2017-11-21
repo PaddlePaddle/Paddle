@@ -21,7 +21,7 @@ namespace paddle {
 
 bool MKLDNNLayer::init(const LayerMap& layerMap,
                        const ParameterMap& parameterMap) {
-  CHECK(FLAGS_use_mkldnn) << "MkldnnLayers only support use_mkldnn."
+  CHECK(FLAGS_use_mkldnn) << "MKLDNNLayers only support use_mkldnn."
                           << "Please set WITH_MKL=ON "
                           << "and set use_mkldnn=True";
   CHECK(!useGpu_) << "Do not support GPU yet";

@@ -46,6 +46,8 @@ inline std::type_index ToTypeIndex(DataType type) {
       return typeid(int);
     case DataType::INT64:
       return typeid(int64_t);
+    case DataType::BOOL:
+      return typeid(bool);
     default:
       PADDLE_THROW("Not support type %d", type);
   }
@@ -65,6 +67,9 @@ inline void VisitDataType(DataType type, Visitor visitor) {
       break;
     case DataType::INT64:
       visitor.template operator()<int64_t>();
+      break;
+    case DataType::BOOL:
+      visitor.template operator()<bool>();
       break;
     default:
       PADDLE_THROW("Not supported");
