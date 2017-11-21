@@ -69,18 +69,14 @@ public:
             const ParameterMap& parameterMap) override;
 
   void reshape(
-      int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) override;
+      int& bs, int& ic, int& ih, int& iw, int& oc, int& oh, int& ow) override;
 
   void resetFwd(std::vector<mkldnn::primitive>& pipeline,
-                MKLDNNMatrixPtr& in,
-                MKLDNNMatrixPtr& wgt,
-                MKLDNNMatrixPtr& bias,
+                std::vector<MKLDNNMatrixPtr>& inputs,
                 MKLDNNMatrixPtr& out) override;
 
   void resetBwd(std::vector<mkldnn::primitive>& pipeline,
-                MKLDNNMatrixPtr& in,
-                MKLDNNMatrixPtr& wgt,
-                MKLDNNMatrixPtr& bias,
+                std::vector<MKLDNNMatrixPtr>& inputs,
                 MKLDNNMatrixPtr& out) override;
 
   void updateWeights(const UpdateCallback& callback) override;
@@ -107,48 +103,26 @@ protected:
                         mkldnn::memory::dims& padL,
                         mkldnn::memory::dims& padR);
 
-  /**
-   * reset the forward primitive descriptor.
-   */
   void resetFwdPD(std::shared_ptr<conv_fwd::primitive_desc>& pd);
-  /**
-   * reset the MKLDNNMatrix buffers used in forward.
-   */
   void resetFwdBuffers(std::shared_ptr<conv_fwd::primitive_desc>& pd,
                        MKLDNNMatrixPtr& in,
                        MKLDNNMatrixPtr& wgt,
                        MKLDNNMatrixPtr& bias,
                        MKLDNNMatrixPtr& out);
-  /**
-   * reset the forward pipeline.
-   */
   void resetFwdPipeline(std::vector<mkldnn::primitive>& pipeline,
                         std::shared_ptr<conv_fwd::primitive_desc>& pd,
                         MKLDNNMatrixPtr& in,
                         MKLDNNMatrixPtr& wgt,
                         MKLDNNMatrixPtr& bias,
                         MKLDNNMatrixPtr& out);
-
-  /**
-   * reset the backward weight primitive descriptor.
-   */
   void resetBwdWgtPD(std::shared_ptr<conv_bwdWgt::primitive_desc>& pd);
-  /**
-   * reset the backward data primitive descriptor.
-   */
   void resetBwdDataPD(std::shared_ptr<conv_bwdData::primitive_desc>& pd);
-  /**
-   * reset the MKLDNNMatrix buffers used in backward.
-   */
   void resetBwdBuffers(std::shared_ptr<conv_bwdWgt::primitive_desc>& wgtPD,
                        std::shared_ptr<conv_bwdData::primitive_desc>& dataPD,
                        MKLDNNMatrixPtr& in,
                        MKLDNNMatrixPtr& wgt,
                        MKLDNNMatrixPtr& bias,
                        MKLDNNMatrixPtr& out);
-  /**
-   * reset the backward pipeline.
-   */
   void resetBwdPipeline(std::vector<mkldnn::primitive>& pipeline,
                         std::shared_ptr<conv_bwdWgt::primitive_desc>& wgtPD,
                         std::shared_ptr<conv_bwdData::primitive_desc>& dataPD,
