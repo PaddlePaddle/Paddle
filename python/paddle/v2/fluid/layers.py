@@ -113,6 +113,7 @@ def embedding(input,
               size,
               data_type='float32',
               is_sparse=False,
+              param_initializer=None,
               param_attr=None,
               main_program=None,
               startup_program=None):
@@ -136,9 +137,16 @@ def embedding(input,
     to the LayerHelper constructor.
 
     """
+
+    def _get_default_param_initializer():
+        return XavierInitializer()
+
     helper = LayerHelper('embedding', **locals())
     w = helper.create_parameter(
-        attr=helper.param_attr, shape=size, dtype=data_type)
+        attr=helper.param_attr,
+        shape=size,
+        dtype=data_type,
+        initializer=param_initializer or _get_default_param_initializer())
     tmp = helper.create_tmp_variable(data_type)
     helper.append_op(
         type='lookup_table',
