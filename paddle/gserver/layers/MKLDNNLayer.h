@@ -36,7 +36,7 @@ class MKLDNNLayer : public Layer {
 protected:
   // batch size
   int bs_;
-  // they sizes are always from the first input layer
+  // their sizes are always from the first input layer
   // input image channel, height and width
   int ic_, ih_, iw_;
   // output image channel, height and width
