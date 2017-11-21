@@ -15,8 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
-#include <istream>
-#include <ostream>
 
 #include <cuda.h>
 #include "unsupported/Eigen/CXX11/Tensor"
@@ -117,7 +115,8 @@ struct PADDLE_ALIGN(2) float16 {
   // float16_t is an alias for __fp16 in arm_fp16.h,
   // which is included in arm_neon.h.
   PADDLE_HOSTDEVICE inline float16(const float16_t& h) {
-    x = *reinterpret_cast<uint16_t*>(&h);
+    float16_t tmp = h;
+    x = *reinterpret_cast<uint16_t*>(&tmp);
   }
 #endif
 
@@ -197,7 +196,8 @@ struct PADDLE_ALIGN(2) float16 {
 #if defined(PADDLE_NEON) && defined(PADDLE_ARM_FP16) && \
     (PADDLE_GNUC_VER >= 61 || PADDLE_CLANG_VER >= 34)
   PADDLE_HOSTDEVICE inline float16& operator=(const float16_t& rhs) {
-    x = *reinterpret_cast<uint16_t*>(&rhs);
+    float16_t tmp = rhs;
+    x = *reinterpret_cast<uint16_t*>(&tmp);
     return *this;
   }
 #endif
@@ -460,23 +460,37 @@ __host__ inline bool operator!=(const float16& a, const float16& b) {
   return !(a == b);
 }
 
-#ifdef PADDLE_NEON_64
 __host__ inline bool operator<(const float16& a, const float16& b) {
+#ifdef PADDLE_NEON_64
   return static_cast<bool>(vclth_f16(float16_t(a), float16_t(b)));
+#else
+  return float(a) < float(b);
+#endif  // PADDLE_NEON_64
 }
 
 __host__ inline bool operator<=(const float16& a, const float16& b) {
+#ifdef PADDLE_NEON_64
   return static_cast<bool>(vcleh_f16(float16_t(a), float16_t(b)));
+#else
+  return float(a) <= float(b);
+#endif  // PADDLE_NEON_64
 }
 
 __host__ inline bool operator>(const float16& a, const float16& b) {
+#ifdef PADDLE_NEON_64
   return static_cast<bool>(vcgth_f16(float16_t(a), float16_t(b)));
+#else
+  return float(a) > float(b);
+#endif  // PADDLE_NEON_64
 }
 
 __host__ inline bool operator>=(const float16& a, const float16& b) {
+#ifdef PADDLE_NEON_64
   return static_cast<bool>(vcgeh_f16(float16_t(a), float16_t(b)));
-}
+#else
+  return float(a) >= float(b);
 #endif  // PADDLE_NEON_64
+}
 
 #else  // Software emulation on other cpu
 PADDLE_HOSTDEVICE inline float16 operator+(const float16& a, const float16& b) {
