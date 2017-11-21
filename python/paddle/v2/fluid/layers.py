@@ -481,14 +481,19 @@ def sums(input, main_program=None, startup_program=None):
 def linear_chain_crf(input,
                      label,
                      param_attr,
+                     param_initializer=None,
                      main_program=None,
                      startup_program=None):
+    def _get_default_param_initializer():
+        return XavierInitializer()
+
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[1]
     transition = helper.create_parameter(
         attr=helper.param_attr,
         shape=[size + 2, size],
-        dtype=helper.input_dtype())
+        dtype=helper.input_dtype(),
+        initializer=param_initializer or _get_default_param_initializer())
     alpha = helper.create_tmp_variable(dtype=helper.input_dtype())
     emission_exps = helper.create_tmp_variable(dtype=helper.input_dtype())
     transition_exps = helper.create_tmp_variable(dtype=helper.input_dtype())

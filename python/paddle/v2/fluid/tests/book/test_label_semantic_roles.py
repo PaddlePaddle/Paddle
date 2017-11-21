@@ -7,7 +7,7 @@ import paddle.v2.fluid.core as core
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.layers as layers
 from paddle.v2.fluid.executor import Executor
-from paddle.v2.fluid.optimizer import MomentumOptimizer
+from paddle.v2.fluid.optimizer import MomentumOptimizer, AdamOptimizer
 
 word_dict, verb_dict, label_dict = conll05.get_dict()
 word_dict_len = len(word_dict)
@@ -24,7 +24,7 @@ mix_hidden_lr = 1e-3
 
 IS_SPARSE = True
 PASS_NUM = 1
-BATCH_SIZE = 20
+BATCH_SIZE = 5
 
 
 def db_lstm():
@@ -38,71 +38,47 @@ def db_lstm():
     ctx_p2 = layers.data(name='ctx_p2_data', shape=[1], data_type='int64')
     mark = layers.data(name='mark_data', shape=[1], data_type='int64')
 
-    emb_para = {'name': 'emb', 'initial_std': 0., 'is_static': True}
-    std_0 = {'initial_std': 0.}
-    std_default = {'initial_std': default_std}
-
     predicate_embedding = layers.embedding(
         input=predicate,
         size=[pred_len, word_dim],
         data_type='float32',
         is_sparse=IS_SPARSE,
-        param_attr={'name': 'vemb',
-                    'initial_std': default_std})
+        param_attr={'name': 'vemb'})
 
     mark_embedding = layers.embedding(
         input=mark,
         size=[mark_dict_len, mark_dim],
         data_type='float32',
-        is_sparse=IS_SPARSE,
-        param_attr=std_0)
+        is_sparse=IS_SPARSE)
 
     word_input = [word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2]
     emb_layers = [
         layers.embedding(
-            size=[word_dict_len, word_dim], input=x, param_attr=emb_para)
-        for x in word_input
+            size=[word_dict_len, word_dim], input=x) for x in word_input
     ]
     emb_layers.append(predicate_embedding)
     emb_layers.append(mark_embedding)
 
     hidden_0_layers = [
-        layers.fc(input=emb,
-                  size=hidden_dim,
-                  bias_attr=std_default,
-                  param_attr=std_default) for emb in emb_layers
+        layers.fc(input=emb, size=hidden_dim) for emb in emb_layers
     ]
 
     hidden_0 = layers.sums(input=hidden_0_layers)
-
-    lstm_para_attr = {'initial_std': 0.0, 'learning_rate': 1.0}
-    hidden_para_attr = {
-        'initial_std': default_std,
-        'learning_rate': mix_hidden_lr
-    }
 
     lstm_0 = layers.dynamic_lstm(
         input=hidden_0,
         size=hidden_dim,
         candidate_activation='relu',
         gate_activation='sigmoid',
-        cell_activation='sigmoid',
-        bias_attr=std_0,
-        param_attr=lstm_para_attr)
+        cell_activation='sigmoid')
 
     # stack L-LSTM and R-LSTM with direct edges
     input_tmp = [hidden_0, lstm_0]
 
     for i in range(1, depth):
         mix_hidden = layers.sums(input=[
-            layers.fc(input=input_tmp[0],
-                      param_attr=hidden_para_attr,
-                      size=hidden_dim,
-                      bias_attr=std_default),
-            layers.fc(input=input_tmp[1],
-                      param_attr=lstm_para_attr,
-                      size=hidden_dim,
-                      bias_attr=std_default)
+            layers.fc(input=input_tmp[0], size=hidden_dim),
+            layers.fc(input=input_tmp[1], size=hidden_dim)
         ])
 
         lstm = layers.dynamic_lstm(
@@ -111,21 +87,13 @@ def db_lstm():
             candidate_activation='relu',
             gate_activation='sigmoid',
             cell_activation='sigmoid',
-            is_reverse=((i % 2) == 1),
-            bias_attr=std_0,
-            param_attr=lstm_para_attr)
+            is_reverse=((i % 2) == 1))
 
         input_tmp = [mix_hidden, lstm]
 
     feature_out = layers.sums(input=[
-        layers.fc(input=input_tmp[0],
-                  size=label_dict_len,
-                  bias_attr=std_default,
-                  param_attr=hidden_para_attr),
-        layers.fc(input=input_tmp[1],
-                  size=label_dict_len,
-                  bias_attr=std_default,
-                  param_attr=lstm_para_attr)
+        layers.fc(input=input_tmp[0], size=label_dict_len),
+        layers.fc(input=input_tmp[1], size=label_dict_len)
     ])
 
     return feature_out
@@ -153,13 +121,11 @@ def main():
     crf_cost = layers.linear_chain_crf(
         input=feature_out,
         label=target,
-        param_attr={
-            "name": 'crfw',
-            "initial_std": default_std,
-            "learning_rate": mix_hidden_lr
-        })
+        param_attr={"name": 'crfw',
+                    "learning_rate": mix_hidden_lr})
     avg_cost = layers.mean(x=crf_cost)
-    adam_optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
+    # adam_optimizer = MomentumOptimizer(learning_rate=0.00001, momentum=1.0)
+    adam_optimizer = AdamOptimizer(learning_rate=0.0001)
     opts = adam_optimizer.minimize(avg_cost)
 
     train_data = paddle.batch(
