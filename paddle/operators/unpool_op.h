@@ -37,9 +37,8 @@ class UnpoolKernel : public framework::OpKernel<T> {
     switch (ksize.size()) {
     case 2: {
       if (pooling_type == "max") {
-        math::Unpool2d_Max_Functor<Place, T> unpool2d_max_forward;
-        unpool2d_max_forward(context.device_context(), *in_x, *in_y,
-                             ksize, strides, paddings, out);
+        math::Unpool2d_MaxFunctor<Place, T> unpool2d_max_forward;
+        unpool2d_max_forward(context.device_context(), *in_x, *in_y, out);
       }
     } break;
     default: { PADDLE_THROW("Pool op only supports 2D input."); }
@@ -71,12 +70,12 @@ class UnpoolGradKernel : public framework::OpKernel<T> {
     switch (ksize.size()) {
     case 2: {
     if (pooling_type == "max") {
-      math::UnpoolGradFunctor<Place, T> maxout_backward;
-      maxout_backward(context.device_context(), *in_x, *in_y, in_x_grad, *out,
-                      *out_grad, ksize, strides, paddings);
+      math::Unpool2d_MaxGradFunctor<Place, T> unpool2d_max_backward;
+      unpool2d_max_backward(context.device_context(), *in_x, *in_y, in_x_grad,
+                            *out, *out_grad);
       }
     } break;
-    default: { PADDLE_THROW("Pool op only supports 2D input."); }
+    default: { PADDLE_THROW("Unpool op only supports 2D input."); }
     }
   }
 };

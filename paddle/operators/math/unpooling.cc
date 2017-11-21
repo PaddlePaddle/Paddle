@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/math/maxouting.h"
+#include "paddle/operators/math/unpooling.h"
 
 namespace paddle {
 namespace operators {
@@ -20,7 +20,7 @@ namespace math {
 
 // All tensors are in NCHW format
 template <typename T>
-class Unpool2d_Max_Functor<platform::CPUPlace, T> {
+class Unpool2d_MaxFunctor<platform::CPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input,
@@ -36,16 +36,14 @@ class Unpool2d_Max_Functor<platform::CPUPlace, T> {
     int input_feasize = input_height * input_width;
     int output_feasize = output_height * output_width;
     const T* input_data = input.data<T>();
-    const T* indices_data = indices.data<T>();
+    const int * indices_data = indices.data<int>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
     for (int b = 0; b < batch_size; ++b) {
       for (int c = 0; c < output_channels; ++c) {
         for (int i = 0; i < input_feasize; ++i) {
           int index =  indices_data[i];
-          if(index > output_feasize) {
-            //抛一个异常！
-          }
+          // PADDLE_ENFORCE(index < output_feasize, "err index in unpooling!");
           output_data[index] = input_data[i];
         }
         input_data += input_feasize;
@@ -70,26 +68,22 @@ public:
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
-    const int output_channels = output->dims()[1];
-    const int output_height = output->dims()[2];
-    const int output_width = output->dims()[3];
+    const int output_channels = output.dims()[1];
+    const int output_height = output.dims()[2];
+    const int output_width = output.dims()[3];
 
     int input_feasize = input_height * input_width;
     int output_feasize = output_height * output_width;
-    const T* input_data = input.data<T>();
-    const T* indices_data = indices.data<T>();
-    const T* output_data = output.data<T>();
+    const int* indices_data = indices.data<int>();
     const T* output_grad_data = output_grad.data<T>();
 
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
     for (int b = 0; b < batch_size; ++b) {
       for (int c = 0; c < output_channels; ++c) {
-        for (int f = 0; f < input_feasize; ++f) {
+        for (int i = 0; i < input_feasize; ++i) {
           int index = indices_data[i];
-          if(index > output_feasize) {
-            //抛一个异常！
-          }
+          // PADDLE_ENFORCE(index < output_feasize, "err index in unpooling!");
           input_grad_data[i] = output_grad_data[index];
         }
         input_grad_data += input_feasize;

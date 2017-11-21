@@ -20,7 +20,8 @@ using framework::Tensor;
 
 class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  UnpoolOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  Unpool2dOpMaker(framework::OpProto* proto,  \
+                  framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
         "(Tensor) The input tensor of unpool operator. "
@@ -39,10 +40,12 @@ class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("ksize",
         "(vector ), the unpooling window size(height, width) "
         "of unpooling operator.");
-    AddAttr<std::vector<int>>("strides",                                                                        "(vector, default:{1, 1}), "
+    AddAttr<std::vector<int>>("strides",
+        "(vector, default:{1, 1}), "
         "strides(height, width) of unpooling operator.")
         .SetDefault({1, 1});
-    AddAttr<std::vector<int>>("paddings",                                                                       "(vector defalut:{0,0}), "
+    AddAttr<std::vector<int>>("paddings",
+        "(vector defalut:{0,0}), "
         "paddings(height, width) of unpooling operator.")
         .SetDefault({0, 0});
     AddAttr<std::string>("unpoolingType",
@@ -73,7 +76,8 @@ class UnpoolOp : public framework::OperatorWithKernel {
 
     auto in_x_dims = ctx->GetInputDim("X");
     auto in_y_dims = ctx->GetInputDim("Y");
-    std::string unpooling_type = ctx->Attrs().Get<std::string>("unpooling_type");
+    std::string unpooling_type =  \
+      ctx->Attrs().Get<std::string>("unpooling_type");
     std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
     std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
     std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
@@ -95,7 +99,7 @@ class UnpoolOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(X) must not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) must not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                                   "Input(Out@GRAD) should not be null");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
@@ -109,8 +113,11 @@ class UnpoolOpGrad : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(unpool2d, ops::UnpoolOp, ops::Unpool2dOpMaker, unpool2d_grad,
             ops::UnpoolOpGrad);
-REGISTER_OP_CPU_KERNEL(unpool2d, ops::UnpoolKernel<paddle::platform::CPUPlace,
-                        float>);
+REGISTER_OP_CPU_KERNEL(unpool2d,
+                       ops::UnpoolKernel<paddle::platform::CPUPlace, float>,
+                       ops::UnpoolKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(unpool2d_grad,
-                        ops::UnpoolGradKernel<paddle::platform::CPUPlace,
-                        float>);
+                      ops::UnpoolGradKernel<paddle::platform::CPUPlace,
+                      float>,
+                      ops::UnpoolGradKernel<paddle::platform::CPUPlace,
+                      double>);
