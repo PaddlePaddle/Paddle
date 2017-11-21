@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/math/math_function.h"
+#include "paddle/framework/data_type.h"
+#include "paddle/operators/math/math_function_impl.h"
 
 namespace paddle {
 namespace operators {
@@ -231,7 +233,87 @@ void gemv<platform::CPUPlace, double>(const platform::DeviceContext& context,
   cblas_dgemv(CblasRowMajor, transA, M, N, alpha, A, N, B, 1, beta, C, 1);
 }
 
+template <>
+void axpy<platform::CPUPlace, float>(const platform::DeviceContext& context,
+                                     const int n, const float alpha,
+                                     const float* x, float* y) {
+  cblas_saxpy(n, alpha, x, 1, y, 1);
+}
+
+template <>
+void axpy<platform::CPUPlace, double>(const platform::DeviceContext& context,
+                                      const int n, const double alpha,
+                                      const double* x, double* y) {
+  cblas_daxpy(n, alpha, x, 1, y, 1);
+}
+
 template struct SetConstant<platform::CPUPlace, float>;
+template struct SetConstant<platform::CPUPlace, double>;
+template struct SetConstant<platform::CPUPlace, int>;
+template struct SetConstant<platform::CPUPlace, int64_t>;
+template struct SetConstant<platform::CPUPlace, bool>;
+
+#define DEFINE_CPU_TRANS(RANK)                                \
+  template struct Transpose<platform::CPUPlace, float, RANK>; \
+  template struct Transpose<platform::CPUPlace, double, RANK>;
+
+DEFINE_CPU_TRANS(1);
+DEFINE_CPU_TRANS(2);
+DEFINE_CPU_TRANS(3);
+DEFINE_CPU_TRANS(4);
+DEFINE_CPU_TRANS(5);
+DEFINE_CPU_TRANS(6);
+
+struct TensorSetConstantCPU {
+  TensorSetConstantCPU(framework::Tensor* tensor, float value)
+      : tensor_(tensor), value_(value) {}
+  template <typename T>
+  void operator()() const {
+    auto cpu = platform::CPUPlace();
+    auto* begin = tensor_->mutable_data<T>(cpu);
+    std::fill(begin, begin + tensor_->numel(), static_cast<T>(value_));
+  }
+  framework::Tensor* tensor_;
+  float value_;
+};
+
+template <>
+void set_constant_with_place<platform::CPUPlace>(
+    const platform::DeviceContext& context, framework::Tensor* tensor,
+    float value) {
+  framework::VisitDataType(framework::ToDataType(tensor->type()),
+                           TensorSetConstantCPU(tensor, value));
+}
+
+struct TensorSetConstantWithPlace : public boost::static_visitor<void> {
+  TensorSetConstantWithPlace(const platform::DeviceContext& context,
+                             framework::Tensor* tensor, float value)
+      : context_(context), tensor_(tensor), value_(value) {}
+
+  template <typename Place>
+  void operator()(Place place) const {
+    set_constant_with_place<Place>(context_, tensor_, value_);
+  }
+
+  const platform::DeviceContext& context_;
+  framework::Tensor* tensor_;
+  float value_;
+};
+
+void set_constant(const platform::DeviceContext& context,
+                  framework::Tensor* tensor, float value) {
+  TensorSetConstantWithPlace func(context, tensor, value);
+#ifdef PADDLE_WITH_CUDA
+  tensor->place().apply_visitor(func);
+#else
+  func(platform::CPUPlace());
+#endif
+}
+
+template struct RowwiseAdd<platform::CPUPlace, float>;
+template struct RowwiseAdd<platform::CPUPlace, double>;
+template struct ColwiseSum<platform::CPUPlace, float>;
+template struct ColwiseSum<platform::CPUPlace, double>;
 
 }  // namespace math
 }  // namespace operators

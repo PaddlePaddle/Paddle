@@ -56,6 +56,8 @@ using Vector = thrust::host_vector<
  */
 using LoD = std::vector<Vector<size_t>>;
 
+std::ostream& operator<<(std::ostream& os, const LoD& lod);
+
 /*
  * Slice levels from a LoD.
  * NOTE the lowest level should always be the absolute offsets of the underlying
@@ -180,6 +182,11 @@ LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
   }
   return tensor;
 }
+
+std::pair<LoD, std::pair<size_t, size_t>> GetSubLoDAndAbsoluteOffset(
+    const LoD& lod, size_t start_idx, size_t end_idx, size_t start_level);
+
+void AppendLoD(LoD* lod, const LoD& lod_length);
 
 }  // namespace framework
 }  // namespace paddle

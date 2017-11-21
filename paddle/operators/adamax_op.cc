@@ -99,26 +99,22 @@ class AdamaxOpMaker : public framework::OpProtoAndCheckerMaker {
                    "Constant for numerical stability")
         .SetDefault(1.0e-8f);
     AddComment(R"DOC(
-Adamax Updates Operator.
+Adamax Optimizer.
 
-This implements the Adamax optimizer from Section 7 of the Adam
-paper[1]. Adamax is a variant of the
+We implement the Adamax optimizer from Section 7 of the Adam
+paper: https://arxiv.org/abs/1412.6980. Adamax is a variant of the
 Adam algorithm based on the infinity norm.
 
 Adamax updates:
 
-moment_out = beta1 * moment + (1 - beta1) * grad
-inf_norm_out = max(beta2 * inf_norm + epsilon, abs(grad))
-learning_rate_t = learning_rate/(1 - beta1_pow)
-param_out = param - learning_rate_t * moment_out/inf_norm_out
+$$momentOut = \beta_1 * moment + (1 - \beta_1) * grad \break
+infNormOut = max(\beta_2 * infNorm + \epsilon, |grad|) \break
+learningRate = learningRate /(1 - \beta_1_{pow}) \break
+paramOut = param - learningRate * momentPut / infNormOut$$
 
 The original paper does not have an epsilon attribute.
-However, it is added here for numerical stability
-by preventing divide by 0.
-
-References:
-  [1] Adam: A Method for Stochastic Optimization
-      (https://arxiv.org/abs/1412.6980)
+However, it is added here for numerical stability to prevent the
+division by 0 error.
 
 )DOC");
   }

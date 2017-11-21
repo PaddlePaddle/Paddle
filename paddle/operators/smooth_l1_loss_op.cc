@@ -77,14 +77,17 @@ class SmoothL1LossOpMaker : public framework::OpProtoAndCheckerMaker {
                       "A float scalar with default value 3.0.")
         .SetDefault(3.0);
     AddComment(R"DOC(
-Compute smooth l1 loss for input and target. The operator take the 1st
-dimension of input as batch size. For each instance, it will compute
-smooth l1 loss element by element first and sum all losses to one value.
-So the output shape is [batch_size, 1].
+Smooth L1 Loss Operator.
+
+This operator computes the smooth l1 loss for input and target.
+The operator takes the first dimension of input as the batch size.
+For each instance, it computes the smooth l1 loss element by element first
+and then sums all the losses. So the resulting output shape
+is [batch_size, 1].
 
 The equation is:
-loss = 0.5 * (sigma * (x-y))^2    if abs(x - y) < 1 / sigma^2
-       abs(x - y) - 0.5 / sigma^2 otherwise
+loss = $$0.5 * (\sigma * (x-y))^2$$   if $$|x - y| < 1 /({\sigma}^2)$$
+       $$\frac{|x - y| - 0.5}{{\sigma}^2}$$ otherwise
 
 )DOC");
   }

@@ -29,7 +29,7 @@ class L1NormKernel : public framework::OpKernel<T> {
     Out->mutable_data<T>(context.GetPlace());
 
     auto x = framework::EigenVector<T>::Flatten(*X);
-    auto out = framework::EigenVector<T>::Flatten(*Out);
+    auto out = framework::EigenScalar<T>::From(*Out);
     auto place = context.GetEigenDevice<Place>();
 
     out.device(place) = x.abs().sum();

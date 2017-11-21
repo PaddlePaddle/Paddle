@@ -12,7 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/conv2d_op.h"
+#include "paddle/operators/conv_op.h"
 
 namespace paddle {
 namespace operators {
@@ -22,8 +22,6 @@ class CudnnConvOpMaker : public Conv2DOpMaker {
   CudnnConvOpMaker(framework::OpProto* proto,
                    framework::OpAttrChecker* op_checker)
       : Conv2DOpMaker(proto, op_checker) {
-    AddAttr<std::vector<int>>("dilations", "dilations of convolution operator.")
-        .SetDefault(std::vector<int>{1, 1});
     AddAttr<int>("workspace_size_MB",
                  "workspace size for cudnn, in MB, "
                  "workspace is a section of GPU memory which will be "
@@ -38,10 +36,12 @@ class CudnnConvOpMaker : public Conv2DOpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(conv_cudnn, ops::Conv2DOp, ops::CudnnConvOpMaker, conv_cudnn_grad,
-            ops::Conv2DOpGrad);
+REGISTER_OP(conv_cudnn, ops::ConvOp, ops::CudnnConvOpMaker, conv_cudnn_grad,
+            ops::ConvOpGrad);
+
+REGISTER_OP_CPU_KERNEL(conv_cudnn,
+                       ops::GemmConvKernel<paddle::platform::CPUPlace, float>,
+                       ops::GemmConvKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
-    conv_cudnn, ops::GemmConv2DKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(
-    conv_cudnn_grad,
-    ops::GemmConvGrad2DKernel<paddle::platform::CPUPlace, float>);
+    conv_cudnn_grad, ops::GemmConvGradKernel<paddle::platform::CPUPlace, float>,
+    ops::GemmConvGradKernel<paddle::platform::CPUPlace, double>);

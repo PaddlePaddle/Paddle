@@ -59,10 +59,12 @@ class HuberLossOpMaker : public framework::OpProtoAndCheckerMaker {
               "The shape is same as Input(X) and will be reused in backward.")
         .AsIntermediate();
     AddOutput("Out",
-              "The output tensor with shape [batch_size, 1] which represents "
-              "the huber loss.");
+              "The output tensor with shape [batch_size, 1] "
+              "which represents the huber loss.");
     AddAttr<AttrType>("delta", "Hyper parameter in huber loss.");
     AddComment(R"DOC(
+HuberLoss Operator.
+
 Huber loss is a loss function used in robust regression. We define X as the
 input value and Y as the target value. Huber loss can evaluate the fitness of
 X to Y. Different from MSE loss, Huber loss is more robust for outliers. The

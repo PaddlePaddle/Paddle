@@ -73,18 +73,14 @@ public:
   void forward(PassType passType) override;
 
   void reshape(
-      int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) override;
+      int& bs, int& ic, int& ih, int& iw, int& oc, int& oh, int& ow) override;
 
   void resetFwd(std::vector<mkldnn::primitive>& pipeline,
-                MKLDNNMatrixPtr& in,
-                MKLDNNMatrixPtr& wgt,
-                MKLDNNMatrixPtr& bias,
+                std::vector<MKLDNNMatrixPtr>& inputs,
                 MKLDNNMatrixPtr& out) override;
 
   void resetBwd(std::vector<mkldnn::primitive>& pipeline,
-                MKLDNNMatrixPtr& in,
-                MKLDNNMatrixPtr& wgt,
-                MKLDNNMatrixPtr& bias,
+                std::vector<MKLDNNMatrixPtr>& inputs,
                 MKLDNNMatrixPtr& out) override;
 
   void updateWeights(const UpdateCallback& callback) override;
@@ -98,11 +94,7 @@ protected:
    * moving = moving * AvgFraction + local * (1 - AvgFraction)
    */
   void calMovingMeanAndVar();
-  /**
-   * Forward functions: reset buffers(input, weight, output),
-   *                    reset primitive descriptor,
-   *                    reset pipeline.
-   */
+
   void resetFwdBuffers(MKLDNNMatrixPtr& in,
                        MKLDNNMatrixPtr& wgt,
                        MKLDNNMatrixPtr& out);
@@ -115,12 +107,6 @@ protected:
                         MKLDNNMatrixPtr& in,
                         MKLDNNMatrixPtr& wgt,
                         MKLDNNMatrixPtr& out);
-
-  /**
-   * Backward functions: reset buffers(input, weight, output),
-   *                     reset primitive descriptor,
-   *                     reset pipeline.
-   */
   void resetBwdBuffers(MKLDNNMatrixPtr& in,
                        MKLDNNMatrixPtr& wgt,
                        MKLDNNMatrixPtr& out);

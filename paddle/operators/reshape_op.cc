@@ -71,8 +71,11 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input tensor of reshape operator.");
     AddOutput("Out", "The output tensor of reshape operator.");
-    AddAttr<std::vector<int>>("shape", "Target shape of reshape operator.");
-    AddComment(R"DOC(Reshape operator
+    AddAttr<std::vector<int>>("shape",
+                              "(vector<int>) "
+                              "Target shape of reshape operator.");
+    AddComment(R"DOC(
+Reshape Operator.
 
 Reshape Input(X) into the shape specified by Attr(shape).
 
@@ -81,7 +84,7 @@ Given a 2-D tensor X with 2 rows and 2 columns
 
     [[1, 2], [3, 4]]
 
-with target shape = [1, 4], the reshape operator will transform
+and target shape = [1, 4], the reshape operator will transform
 the tensor X into a 1-D tensor:
 
     [1, 2, 3, 4]
