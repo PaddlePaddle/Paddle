@@ -12,11 +12,11 @@ Machine:
 
 System: CentOS release 6.3 (Final), Docker 1.12.1.
 
-PaddlePaddle: paddlepaddle/paddle:latest (TODO: will rerun after 0.11.0)
-
-- MKL-DNN tag v0.10
-- MKLML 2018.0.20170720
+PaddlePaddle: paddlepaddle/paddle:latest (for MKLML and MKL-DNN), paddlepaddle/paddle:latest-openblas (for OpenBLAS)
+- MKL-DNN tag v0.11
+- MKLML 2018.0.1.20171007
 - OpenBLAS v0.2.20
+(TODO: will rerun after 0.11.0)
 	 
 On each machine, we will test and compare the performance of training on single node using MKL-DNN / MKLML / OpenBLAS respectively.
 
@@ -31,9 +31,9 @@ Input image size - 3 * 224 * 224, Time: images/second
 
 | BatchSize    | 64    | 128  | 256     |
 |--------------|-------| -----| --------|
-| OpenBLAS     | 7.82  | 8.62  | 10.34  | 
-| MKLML        | 11.02 | 12.86 | 15.33  |
-| MKL-DNN      | 27.69 | 28.8 | 29.27  |
+| OpenBLAS     | 7.80  | 9.00  | 10.80  | 
+| MKLML        | 12.12 | 13.70 | 16.18  |
+| MKL-DNN      | 28.46 | 29.83 | 30.44  |
 
 
 chart on batch size 128
@@ -43,9 +43,9 @@ TBD
 
 | BatchSize    | 64    | 128   | 256    |
 |--------------|-------| ------| -------|
-| OpenBLAS     | 22.90 | 23.10 | 25.59  | 
-| MKLML        | 29.81 | 30.18 | 32.77  |
-| MKL-DNN      | 80.49 | 82.89 | 83.13  |
+| OpenBLAS     | 25.22 | 25.68 | 27.12  | 
+| MKLML        | 32.52 | 31.89 | 33.12  |
+| MKL-DNN      | 81.69 | 82.35 | 84.08  |
 
 
 chart on batch size 128
