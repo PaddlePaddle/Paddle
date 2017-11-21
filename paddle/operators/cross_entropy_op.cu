@@ -23,8 +23,6 @@ template <typename T>
 __global__ void CrossEntropyGradientKernel(T* dX, const T* dY, const T* X,
                                            const int64_t* label, const int N,
                                            const int D) {
-  // TOOD(qingqing) define CUDA_1D_KERNEL_LOOP macro in a common file.
-  // CUDA_1D_KERNEL_LOOP(i, N) {
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
     int idx = i * D + label[i];
@@ -82,24 +80,19 @@ class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel<T> {
 
     int block = 512;
     int grid = (batch_size * class_num + block - 1) / block;
+    auto stream = ctx.cuda_device_context().stream();
 
     if (ctx.Attr<bool>("soft_label")) {
       auto* label_data = label->data<T>();
-      SoftCrossEntropyGradientKernel<T><<<
-          grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                              ctx.device_context())
-                              .stream()>>>(dx_data, dy_data, x_data, label_data,
-                                           batch_size, class_num);
+      SoftCrossEntropyGradientKernel<T><<<grid, block, 0, stream>>>(
+          dx_data, dy_data, x_data, label_data, batch_size, class_num);
     } else {
       math::SetConstant<platform::GPUPlace, T> functor;
       functor(ctx.device_context(), dx, 0);
       auto* label_data = label->data<int64_t>();
       grid = (batch_size + block - 1) / block;
-      CrossEntropyGradientKernel<T><<<
-          grid, block, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                              ctx.device_context())
-                              .stream()>>>(dx_data, dy_data, x_data, label_data,
-                                           batch_size, class_num);
+      CrossEntropyGradientKernel<T><<<grid, block, 0, stream>>>(
+          dx_data, dy_data, x_data, label_data, batch_size, class_num);
     }
   }
 };

@@ -145,7 +145,7 @@ PaddlePaddle发布新版本的时候都会发布对应版本的生产镜像以�
 
 Jupyter Notebook是一个开源的web程序，大家可以通过它制作和分享带有代码、公式、图表、文字的交互式文档。用户可以通过网页浏览文档。
 
-PaddlePaddle Book是为用户和开发者制作的一个交互式的Jupyter Nodebook。
+PaddlePaddle Book是为用户和开发者制作的一个交互式的Jupyter Notebook。
 如果您想要更深入了解deep learning，PaddlePaddle Book一定是您最好的选择。
 
 我们提供可以直接运行PaddlePaddle Book的Docker镜像，直接运行：

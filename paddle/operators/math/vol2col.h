@@ -31,6 +31,15 @@ namespace math {
  * \param colData  Column data.
  * \param colShape The shape of colData.
  *
+ * \param dilations    dilation data.
+ * \param 3-dimension  [dilation_depth, dilation_height, dilation_width].
+ *
+ * \param strides      stride data.
+ * \param 3-dimension  [stride_depth, stride_height, stride_width].
+ *
+ * \param paddings     padding data.
+ * \param 3-dimension  [d_pad, h_pad, w_pad].
+ *
  * The shape of colData is:
  * [input_channels, filter_depth, filter_height, filter_width, output_depth,
  * output_height, output_width]
@@ -57,20 +66,22 @@ template <typename Place, typename T>
 class Vol2ColFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& vol, framework::Tensor& col,
-                  int stride_depth, int stride_height, int stride_width,
-                  int padding_depth, int padding_height,
-                  int padding_width) const;
+                  const framework::Tensor& vol,
+                  const std::vector<int>& dilations,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  framework::Tensor* col) const;
 };
 
 template <typename Place, typename T>
 class Col2VolFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
-                  framework::Tensor& vol, const framework::Tensor& col,
-                  int stride_depth, int stride_height, int stride_width,
-                  int padding_depth, int padding_height,
-                  int padding_width) const;
+                  const framework::Tensor& col,
+                  const std::vector<int>& dilations,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  framework::Tensor* vol) const;
 };
 
 }  // namespace math

@@ -105,10 +105,10 @@ class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(
         "X",
-        "(LoDTensor) the input(X) is a LodTensor, which support "
+        "(LoDTensor) the input(X) is a LodTensor, which supports "
         "variable-time length input sequence. The underlying tensor in "
-        "this LoDTensor is a matrix with shape (T, N), where, T is the "
-        "total time steps in this mini-batch, N is the input_hidden_size.");
+        "this LoDTensor is a matrix with shape (T, N), where T is the "
+        "total time steps in this mini-batch and N is the input_hidden_size.");
     AddInput("PaddingData",
              "(Tensor, optional) the input(PaddingData) is an optional "
              "parameter, and it is learnable. "
@@ -157,14 +157,16 @@ class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
         .GreaterThan(0);
 
     AddComment(R"DOC(
-    SequenceConvOp performs convolution operation on features of
-    contextLength time-steps of each instance.
-    The convolution operation calculates the output based on the input, filter
-    and strides, paddings parameters. The size of each dimension of the
-    parameters is checked in the infer-shape. In order to ensure the equal
-    length of sequence before and after convolution, it is necessary to fill
-    the top and bottom of each sequence according to context_length,
-    context_stride and context_start.
+Sequence Conv Operator.
+
+SequenceConvOp performs convolution operation on features of contextLength
+time-steps of each instance. The convolution operation calculates the output
+based on the input, filter, strides and paddings parameters.
+The size of each dimension of the parameters is checked during infer-shape.
+In order to ensure the equal length of sequence before and after convolution,
+it is necessary to fill the top and bottom of each sequence based on
+context_length, context_stride and context_start.
+
     )DOC");
   }
 };

@@ -82,6 +82,11 @@ maxout
 ..  autoclass:: paddle.v2.layer.maxout
     :noindex:
 
+roi_pool
+--------
+..  autoclass:: paddle.v2.layer.roi_pool
+    :noindex:
+
 Norm Layer
 ==========
 
@@ -330,6 +335,16 @@ bilinear_interp
 ..  autoclass:: paddle.v2.layer.bilinear_interp
     :noindex:
 
+dot_prod
+---------
+.. autoclass:: paddle.v2.layer.dot_prod
+    :noindex:
+
+out_prod
+--------
+.. autoclass:: paddle.v2.layer.out_prod
+    :noindex:
+
 power
 -----
 ..  autoclass:: paddle.v2.layer.power
@@ -365,6 +380,11 @@ tensor
 cos_sim
 -------
 ..  autoclass:: paddle.v2.layer.cos_sim
+    :noindex:
+
+l2_distance
+-----------
+..  autoclass:: paddle.v2.layer.l2_distance
     :noindex:
 
 trans

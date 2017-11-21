@@ -44,7 +44,7 @@ class SigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of Sigmoid operator");
     AddOutput("Y", "Output of Sigmoid operator");
     AddComment(R"DOC(
-Sigmoid activation operator.
+Sigmoid Activation Operator.
 
 $y = 1 / (1 + e^{-x})$
 
@@ -60,7 +60,7 @@ class LogSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of LogSigmoid operator");
     AddOutput("Y", "Output of LogSigmoid operator");
     AddComment(R"DOC(
-Logsigmoid activation operator.
+Logsigmoid Activation Operator.
 
 $y = \log(1 / (1 + e^{-x}))$
 
@@ -75,7 +75,7 @@ class ExpOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of Exp operator");
     AddOutput("Y", "Output of Exp operator");
     AddComment(R"DOC(
-Exp activation operator.
+Exp Activation Operator.
 
 $y = e^x$
 
@@ -90,7 +90,7 @@ class ReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of Relu operator");
     AddOutput("Y", "Output of Relu operator");
     AddComment(R"DOC(
-Relu activation operator.
+Relu Activation Operator.
 
 $y = \max(x, 0)$
 
@@ -109,7 +109,7 @@ class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<AttrType>("alpha", "The small negative slope")
         .SetDefault(static_cast<AttrType>(0.02f));
     AddComment(R"DOC(
-LeakyRelu activation operator.
+LeakyRelu Activation Operator.
 
 $y = \max(x, \alpha * x)$
 
@@ -128,7 +128,7 @@ class SoftShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<AttrType>("lambda", "non-negative offset")
         .SetDefault(static_cast<AttrType>(0.5f));
     AddComment(R"DOC(
-Softshrink activation operator.
+Softshrink Activation Operator.
 
 $$
 y = \begin{cases} 
@@ -149,7 +149,7 @@ class TanhOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of Tanh operator");
     AddOutput("Y", "Output of Tanh operator");
     AddComment(R"DOC(
-Tanh activation operator.
+Tanh Activation Operator.
 
 $$y = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 
@@ -165,7 +165,7 @@ class TanhShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of TanhShrink operator");
     AddOutput("Y", "Output of TanhShrink operator");
     AddComment(R"DOC(
-TanhShrink activation operator.
+TanhShrink Activation Operator.
 
 $$y = x - \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 
@@ -184,7 +184,7 @@ class HardShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<AttrType>("threshold", "The value of threshold for HardShrink")
         .SetDefault(static_cast<AttrType>(0.5));
     AddComment(R"DOC(
-HardShrink activation operator.
+HardShrink Activation Operator.
 
 $$
 y = \begin{cases} 
@@ -205,7 +205,7 @@ class SqrtOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of Sqrt operator");
     AddOutput("Y", "Output of Sqrt operator");
     AddComment(R"DOC(
-Sqrt activation operator.
+Sqrt Activation Operator.
 
 $y = \sqrt{x}$
 
@@ -220,7 +220,7 @@ class AbsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of Abs operator");
     AddOutput("Y", "Output of Abs operator");
     AddComment(R"DOC(
-Abs activation operator.
+Abs Activation Operator.
 
 $y = |x|$
 
@@ -236,7 +236,7 @@ class ReciprocalOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of Reciprocal operator");
     AddOutput("Y", "Output of Reciprocal operator");
     AddComment(R"DOC(
-Reciprocal activation operator.
+Reciprocal Activation Operator.
 
 $$y = \frac{1}{x}$$
 
@@ -251,7 +251,7 @@ class LogOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of Log operator");
     AddOutput("Y", "Output of Log operator");
     AddComment(R"DOC(
-Log activation operator.
+Log Activation Operator.
 
 $y = \ln(x)$
 
@@ -268,7 +268,7 @@ class SquareOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of Square operator");
     AddOutput("Y", "Output of Square operator");
     AddComment(R"DOC(
-Square activation operator.
+Square Activation Operator.
 
 $y = x^2$
 
@@ -284,7 +284,7 @@ class SoftplusOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of Softplus operator");
     AddOutput("Y", "Output of Softplus operator");
     AddComment(R"DOC(
-Softplus activation operator.
+Softplus Activation Operator.
 
 $y = \ln(1 + e^{x})$
 
@@ -300,7 +300,7 @@ class SoftsignOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of Softsign operator");
     AddOutput("Y", "Output of Softsign operator");
     AddComment(R"DOC(
-Softsign activation operator.
+Softsign Activation Operator.
 
 $$y = \frac{x}{1 + |x|}$$
 
@@ -320,7 +320,7 @@ class BReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<AttrType>("t_max", "The max marginal value of BRelu")
         .SetDefault(static_cast<AttrType>(24));
     AddComment(R"DOC(
-BRelu activation operator.
+BRelu Activation Operator.
 
 $y = \max(\min(x, t_{min}), t_{max})$
 
@@ -339,7 +339,7 @@ class SoftReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<AttrType>("threshold", "The threshold value of SoftRelu")
         .SetDefault(static_cast<AttrType>(40));
     AddComment(R"DOC(
-SoftRelu activation operator.
+SoftRelu Activation Operator.
 
 $y = \ln(1 + \exp(\max(\min(x, threshold), threshold))$
 
@@ -357,7 +357,7 @@ class ELUOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<AttrType>("alpha", "The alpha value of ELU")
         .SetDefault(static_cast<AttrType>(1.0f));
     AddComment(R"DOC(
-ELU activation operator.
+ELU Activation Operator.
 
 Applies the following element-wise computation on the input according to
 https://arxiv.org/abs/1511.07289.
@@ -378,7 +378,7 @@ class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<AttrType>("threshold", "The threshold value of Relu6")
         .SetDefault(static_cast<AttrType>(6));
     AddComment(R"DOC(
-Relu6 activation operator.
+Relu6 Activation Operator.
 
 $y = \min(\max(0, x), 6)$
 
@@ -396,7 +396,7 @@ class PowOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<AttrType>("factor", "The exponential factor of Pow")
         .SetDefault(static_cast<AttrType>(1));
     AddComment(R"DOC(
-Pow activation operator.
+Pow Activation Operator.
 
 $y = x^{factor}$
 
@@ -416,7 +416,7 @@ class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<AttrType>("scale_b", "The scale parameter of b for the input")
         .SetDefault(static_cast<AttrType>(1.7159));
     AddComment(R"DOC(
-STanh activation operator.
+STanh Activation Operator.
 
 $$y = b * \frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}$$
 
@@ -435,7 +435,7 @@ class ThresholdedReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<AttrType>("threshold", "The threshold location of activation")
         .SetDefault(static_cast<AttrType>(1.0));
     AddComment(R"DOC(
-ThresholdedRelu activation operator.
+ThresholdedRelu Activation Operator.
 
 $$
 y = \begin{cases} 
@@ -461,7 +461,7 @@ class HardSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<AttrType>("offset", "Offset for linear approximation of sigmoid")
         .SetDefault(static_cast<AttrType>(0.5));
     AddComment(R"DOC(
-HardSigmoid activation operator.
+HardSigmoid Activation Operator.
 
 Segment-wise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391), 
 which is much faster than sigmoid.

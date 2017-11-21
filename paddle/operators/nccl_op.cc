@@ -48,12 +48,17 @@ class NCCLInitOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddOutput("Communicator",
               "Create Communicator for communicating between gpus");
-    AddAttr<std::vector<int>>("gpus", "gpu id lists");
-    AddAttr<int>("data_type", "output data type")
+    AddAttr<std::vector<int>>("gpus", "(vector<int>) GPU id lists");
+    AddAttr<int>("data_type",
+                 "(int, default 5 (FP32)) "
+                 "Output data type")
         .SetDefault(framework::DataType::FP32);
     AddComment(R"DOC(
-               create communicator.
-        )DOC");
+NCCLInit Operator.
+
+Create communicator.
+
+)DOC");
   }
 };
 
@@ -143,11 +148,15 @@ class NCCLAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Communicator", "Communicator for communicating between gpus");
     AddOutput("Out", "The output of AllReduce op");
     AddAttr<std::string>("reduction",
+                         "(string, default 'ncclSum') "
                          "{'ncclMin', 'ncclMax', 'ncclProd', 'ncclSum'}.")
         .SetDefault("ncclSum");
     AddComment(R"DOC(
-            AllReduce the input tensors.
-        )DOC");
+NCCLAllReduce Operator.
+
+AllReduce the input tensors.
+
+)DOC");
   }
 };
 
@@ -161,14 +170,20 @@ class NCCLReduceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Communicator", "Communicator for communicating between gpus");
     AddOutput("Out", "The output of Reduce op");
     AddAttr<std::string>("reduction",
+                         "(string, default 'ncclSum') "
                          "{'ncclMin', 'ncclMax', 'ncclProd', 'ncclSum'}.")
         .SetDefault("ncclSum");
     AddAttr<int>("root",
-                 "root gpu of the parameter. if not "
-                 "set(platform::kInvalidGPUId). hashed by name.")
+                 "(int, default kInvalidGPUId) "
+                 "Root gpu of the parameter. If not, "
+                 "set(platform::kInvalidGPUId). Hashed by name.")
         .SetDefault(platform::kInvalidGPUId);
     AddComment(R"DOC(
-            Reduce the tensors)DOC");
+NCCLReduce Operator.
+
+Reduce the tensors.
+
+)DOC");
   }
 };
 
@@ -182,12 +197,16 @@ class NCCLBcastOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Communicator", "Communicator for communicating between gpus");
     AddOutput("Out", "The output of Bcast");
     AddAttr<int>("root",
-                 "root gpu of the parameter. if not "
-                 "set(platform::kInvalidGPUId). hashed by name.")
+                 "(int, default kInvalidGPUId) "
+                 "Root gpu of the parameter. If not, "
+                 "set(platform::kInvalidGPUId). Hashed by name.")
         .SetDefault(platform::kInvalidGPUId);
     AddComment(R"DOC(
-            Bcast the tensors.
-        )DOC");
+NCCLBcast Operator.
+
+Bcast the tensors.
+
+)DOC");
   }
 };
 

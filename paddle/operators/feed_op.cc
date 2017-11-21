@@ -59,8 +59,13 @@ class FeedOpInfoMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of feed op");
     AddOutput("Out", "The output of feed op");
-    AddComment("feed op, it should not be configured by users directly");
-    AddAttr<int>("col", "column of feed");
+    AddAttr<int>("col", "(int) The column of feed");
+    AddComment(R"DOC(
+Feed Operator.
+
+It should not be configured by users directly.
+
+)DOC");
   }
 };
 

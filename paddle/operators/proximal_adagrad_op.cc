@@ -83,22 +83,26 @@ class ProximalAdagradOpMaker : public framework::OpProtoAndCheckerMaker {
                    "L1 regularization strength.")
         .SetDefault(0.0f);
     AddAttr<float>("l2",
-                   "(float, default 0.0)"
+                   "(float, default 0.0) "
                    "L2 regularization strength.")
         .SetDefault(0.0f);
     AddComment(R"DOC(
+Proximal Adagrad Optimizer.
 
-Optimizer that implements the proximal adagrad algorithm.
+Optimizer that implements the proximal adagrad algorithm:
 
-moment = moment + grad * grad
-prox_param = param - learning_rate * grad * (1 / sqrt(moment))
-param = sign(prox_param) / (1 + learning_rate * l2) *
-        max { |prox_param| - learning_rate * l1 , 0 }
+$$
+moment = moment + grad * grad \\
+prox\_param = param - learning\_rate * grad * (1 / \sqrt{moment}) \\
+param = sign(prox\_param) / (1 + learning\_rate * l2) *
+        \max(|prox\_param| - learning\_rate * l1 , 0)
+$$
 
 The paper that proposed Proximal GD: 
 (http://papers.nips.cc/paper/3793-efficient-learning-using-forward-backward-splitting.pdf)
 Here, we use the adagrad learning rate as specified here: 
 (http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
+
 )DOC");
   }
 };

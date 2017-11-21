@@ -55,8 +55,6 @@ class MarginRankLossOpMaker : public framework::OpProtoAndCheckerMaker {
              "(2-D tensor with shape [batch_size x 1]) "
              "The label indicating X1 ranked higher than X2 or not, "
              "can only be +1 or -1.");
-    AddAttr<T>("margin", "(scalar, default 0) Margin for MarginRankLossOp.")
-        .SetDefault(static_cast<T>(0));
     AddOutput("Activated",
               "(2-D tensor with shape [batch_size x 1]) Intermediate tensor "
               "to indicate whether each element of Output(Out) is activated.")
@@ -64,23 +62,26 @@ class MarginRankLossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "(2-D tensor with shape [batch_size x 1]) "
               "The output loss of MarginRankLoss operator.");
+    AddAttr<T>("margin", "(scalar, default 0) Margin for MarginRankLossOp.")
+        .SetDefault(static_cast<T>(0));
     AddComment(R"DOC(
+MarginRankLoss Operator.
 
-MarginRankLoss operator measures the loss given a pair of training sample
+This operator measures the loss given a pair of training sample
 {`X1`, `X2`} and the `Label` with attribute `margin`, where `Label = +1` 
-indicating X1 is ranked higher than `X2`, otherwise `Label = -1`. The loss 
-turns out
+indicating X1 is ranked higher than `X2` and `Label = -1` otherwise. The loss 
+is calculated as:
 
-loss(X1, X2, Label) = max(0, -Label * (X1 - X2) + margin).
+$loss(X1, X2, Label) = \max(0, -Label * (X1 - X2) + margin)$
 
-The attribute `margin` involved here helps make the predictions more robust.
+The attribute `margin` here helps make the predictions more robust.
 Denote the item ranked higher as the positive sample, otherwise the negative 
 sample. If the score of the two samples satisfies 
 
-positive sample - negative sample < margin,
+$positive sample - negative sample < margin$
 
-the pair of samples will contribute to the final loss, which will backpropogate 
-and train the ranking model to enlarge the difference of the two score.
+the pair of samples will contribute to the final loss, which will backpropagate 
+and train the ranking model to enlarge the difference between the two scores.
 
 For batch input with size `batch_size`, `X1`, `X2` and `Label`
 all have the same shape [batch_size x 1].

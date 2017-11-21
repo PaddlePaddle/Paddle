@@ -12,87 +12,78 @@
  *     See the License for the specific language governing permissions and
  *     limitations under the License. */
 
-
 #include "paddle/operators/maxout_op.h"
 namespace paddle {
 namespace operators {
 
 using framework::Tensor;
 
-/********first define ProtoMaker类 ***************/
 class MaxOutOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   MaxOutOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
-        "(Tensor) The input tensor of pooling operator. "
+        "(Tensor) The input tensor of maxout operator. "
         "The format of input tensor is NCHW. Where N is batch size, C is the "
         "number of channels, H and W is the height and width of feature.");
     AddOutput("Out",
-        "(Tensor) The output tensor of pooling operator."
+        "(Tensor) The output tensor of maxout operator."
         "The format of output tensor is also NCHW."
         "Where N is batch size, C is "
         "the number of channels, H and W is the height and "
         "width of feature.");
-
     AddAttr<int>(
         "groups",
-        R"DOC(The group number of input layer.
-        )DOC")
-        .SetDefault(2);
-    AddAttr<int>(
-        "num_channels",
-        R"DOC(The channel number of input layer.
-        )DOC")
-        .SetDefault(0);
-    AddComment(R"DOC(A layer to do max out on conv layer output.
-        - Input: output of a conv layer.
-        - Output: feature map size same as input. Channel is (input channel) / groups.
-        So groups should be larger than 1, and the num of channels should be able
-        to devided by groups.
+        R"DOC("Specifies how many groups the input tensor will be split"
+        "in the channel dimension. And the number of output channel is "
+        "the number of channels divided by groups.."
+        )DOC");
+    AddComment(R"DOC(
+        Assumed the input shape is (N, Ci, H, W).
+        The output shape is (N, Co, H, W). Then `Co = Ci / groups`.
+
+       math:
+       y_{si+j} = \max_k x_{gsi + sk + j}
+       g = groups
+       s = input.size / num_channels
+       0 \le i < num_channels / groups
+       0 \le j < s
+       0 \le k < groups
+
+    Please refer to Paper:
+      - Maxout Networks: http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf
+      - Multi-digit Number Recognition from Street View \
+        Imagery using Deep Convolutional Neural Networks: \
+        https://arxiv.org/pdf/1312.6082v4.pdf
         )DOC");
   }
 };
 
-/******************2nd **********************************/
 
 class MaxOutOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of maxoutOp"
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of MaxoutOp"
                    "should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of maxoutOp should not be null.");
+                   "Output(Out) of MaxoutOp should not be null.");
     auto in_x_dims = ctx->GetInputDim("X");
     int groups = ctx->Attrs().Get<int>("groups");
-    int num_channels = ctx->Attrs().Get<int>("num_channels");
-
     // check groups > 1
     PADDLE_ENFORCE_GT(
         groups, 1,
-        "in maxoutop  groups should be larger than 1");
-    // check num_channels%groups=0
-    PADDLE_ENFORCE_EQ(num_channels % groups, 0,
-                      "the num of channels should be able"
-    "to devided by groups");
-
-    int out_num_channels = num_channels / groups;
-
-    std::vector<int64_t> output_shape({in_x_dims[0], out_num_channels});
+        "groups should be larger than 1 in maxoutop");
+    std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1] / groups});
     output_shape.push_back(in_x_dims[2]);
     output_shape.push_back(in_x_dims[3]);
-
     ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
   }
 };
 
-
 class MaxOutOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
@@ -106,8 +97,6 @@ class MaxOutOpGrad : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(maxout, ops::MaxOutOp, ops::MaxOutOpMaker, maxout_grad,
                         ops::MaxOutOpGrad);
-
-
 REGISTER_OP_CPU_KERNEL(maxout, ops::MaxOutKernel<paddle::platform::CPUPlace,
                        float>);
 REGISTER_OP_CPU_KERNEL(maxout_grad,

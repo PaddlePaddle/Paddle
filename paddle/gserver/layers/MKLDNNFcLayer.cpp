@@ -60,23 +60,21 @@ void MKLDNNFcLayer::convertWeightsFromPaddle() {
   }
 
   CHECK(wgtVal_) << "should have been initialized";
-  bool hasNoSpatial_ = ih_ == 1 && iw_ == 1;
   auto targetDim = wgtVal_->getDims();
-  auto srcFmt = hasNoSpatial_ ? format::io : format::ihwo;
+  auto srcFmt = targetDim.size() == 2 ? format::io : format::ihwo;
   wgtVal_->reorderDataFrom(wgtVal_, srcFmt, targetDim);
   hasInitedWgt_ = true;
 }
 
 void MKLDNNFcLayer::convertWeightsToPaddle() {
   CHECK(wgtVal_) << "should have been initialized";
-  bool hasNoSpatial_ = ih_ == 1 && iw_ == 1;
   auto targetDim = wgtVal_->getDims();
-  auto dstFmt = hasNoSpatial_ ? format::io : format::ihwo;
+  auto dstFmt = targetDim.size() == 2 ? format::io : format::ihwo;
   wgtVal_->reorderDataTo(wgtVal_, dstFmt, targetDim);
 }
 
 void MKLDNNFcLayer::reshape(
-    int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) {
+    int& bs, int& ic, int& ih, int& iw, int& oc, int& oh, int& ow) {
   reshapeInput(bs, ih, iw);
 
   CHECK_EQ(iLayerSize_, inputLayers_[0]->getSize());
@@ -86,37 +84,32 @@ void MKLDNNFcLayer::reshape(
 
   reshapeOutput(oh, ow);
   resizeOutput(bs, oc);
-
-  printSizeInfo();
 }
 
 void MKLDNNFcLayer::resetFwd(std::vector<primitive>& pipeline,
-                             MKLDNNMatrixPtr& in,
-                             MKLDNNMatrixPtr& wgt,
-                             MKLDNNMatrixPtr& bias,
+                             std::vector<MKLDNNMatrixPtr>& inputs,
                              MKLDNNMatrixPtr& out) {
-  resetFwdBuffers(in, wgt, bias, out);
+  resetFwdBuffers(inputs[0], wgtVal_, biasVal_, out);
 
-  resetFwdPD(fwdPD_, in, wgt, bias, out);
+  resetFwdPD(fwdPD_, inputs[0], wgtVal_, biasVal_, out);
 
-  resetFwdPipeline(pipeline, fwdPD_, in, wgt, bias, out);
+  resetFwdPipeline(pipeline, fwdPD_, inputs[0], wgtVal_, biasVal_, out);
 }
 
 void MKLDNNFcLayer::resetBwd(std::vector<primitive>& pipeline,
-                             MKLDNNMatrixPtr& in,
-                             MKLDNNMatrixPtr& wgt,
-                             MKLDNNMatrixPtr& bias,
+                             std::vector<MKLDNNMatrixPtr>& inputs,
                              MKLDNNMatrixPtr& out) {
   std::shared_ptr<fc_bwdWgt::primitive_desc> bwdWgtPD;
   std::shared_ptr<fc_bwdData::primitive_desc> bwdDataPD;
 
-  resetBwdBuffers(in, wgt, bias, out);
+  resetBwdBuffers(inputs[0], wgtGrad_, biasGrad_, out);
 
-  resetBwdWgtPD(bwdWgtPD, wgt, bias, out);
+  resetBwdWgtPD(bwdWgtPD, wgtGrad_, biasGrad_, out);
 
-  resetBwdDataPD(bwdDataPD, in, out);
+  resetBwdDataPD(bwdDataPD, inputs[0], out);
 
-  resetBwdPipeline(pipeline, bwdWgtPD, bwdDataPD, in, wgt, bias, out);
+  resetBwdPipeline(
+      pipeline, bwdWgtPD, bwdDataPD, inputs[0], wgtGrad_, biasGrad_, out);
 }
 
 void MKLDNNFcLayer::updateWeights(const UpdateCallback& callback) {
@@ -197,9 +190,9 @@ void MKLDNNFcLayer::resetBwdBuffers(MKLDNNMatrixPtr& in,
                                     MKLDNNMatrixPtr& wgt,
                                     MKLDNNMatrixPtr& bias,
                                     MKLDNNMatrixPtr& out) {
-  CHECK(inVal_ && outVal_);
+  CHECK(inVals_[0] && outVal_);
   resetOutGrad(out, outVal_->getPrimitiveDesc());
-  resetInGrad(in, inVal_->getPrimitiveDesc());
+  resetInGrad(in, inVals_[0]->getPrimitiveDesc());
 
   CHECK(wgtVal_);
   resetWithMatrix(wgt, weight_->getWGrad(), wgtVal_->getPrimitiveDesc());
@@ -216,14 +209,15 @@ void MKLDNNFcLayer::resetBwdWgtPD(
     MKLDNNMatrixPtr& wgt,
     MKLDNNMatrixPtr& bias,
     MKLDNNMatrixPtr& out) {
-  CHECK(inVal_);
-  fc_bwdWgt::desc bwdWgtDesc = bias ? fc_bwdWgt::desc(inVal_->getMemoryDesc(),
-                                                      wgt->getMemoryDesc(),
-                                                      bias->getMemoryDesc(),
-                                                      out->getMemoryDesc())
-                                    : fc_bwdWgt::desc(inVal_->getMemoryDesc(),
-                                                      wgt->getMemoryDesc(),
-                                                      out->getMemoryDesc());
+  CHECK(inVals_[0]);
+  fc_bwdWgt::desc bwdWgtDesc =
+      bias ? fc_bwdWgt::desc(inVals_[0]->getMemoryDesc(),
+                             wgt->getMemoryDesc(),
+                             bias->getMemoryDesc(),
+                             out->getMemoryDesc())
+           : fc_bwdWgt::desc(inVals_[0]->getMemoryDesc(),
+                             wgt->getMemoryDesc(),
+                             out->getMemoryDesc());
   pd.reset(new fc_bwdWgt::primitive_desc(bwdWgtDesc, engine_, *fwdPD_));
 }
 
@@ -249,11 +243,11 @@ void MKLDNNFcLayer::resetBwdPipeline(
     MKLDNNMatrixPtr& wgt,
     MKLDNNMatrixPtr& bias,
     MKLDNNMatrixPtr& out) {
-  CHECK(inVal_);
+  CHECK(inVals_[0]);
   if (bias) {
-    bwdWgt_.reset(new fc_bwdWgt(*bwdWgtPD, *inVal_, *out, *wgt, *bias));
+    bwdWgt_.reset(new fc_bwdWgt(*bwdWgtPD, *inVals_[0], *out, *wgt, *bias));
   } else {
-    bwdWgt_.reset(new fc_bwdWgt(*bwdWgtPD, *inVal_, *out, *wgt));
+    bwdWgt_.reset(new fc_bwdWgt(*bwdWgtPD, *inVals_[0], *out, *wgt));
   }
   pipeline.push_back(*bwdWgt_);
 
