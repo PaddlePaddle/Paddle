@@ -49,11 +49,15 @@ class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
         "paddings(height, width) of unpooling operator.")
         .SetDefault({0, 0});
     AddAttr<std::string>("unpoolingType",
-        "(string), unpooling type, can be \"max\" for max-unpooling "
-        "and \"avg\" for average-unpooling.")
-        .InEnum({"max", "avg"});
+        "(string), unpooling type, can be \"max\" for max-unpooling ")
+        .InEnum({"max"});
     AddComment(R"DOC(
-
+          "input: the input Tensor to invert"
+          "indices: the indices given out by MaxPool2d"
+          "ksize  – Size of the max pooling window."
+          "stride – Stride of the max pooling window."
+                   "It is set to kernel_size by default."
+          "padding – Padding that was added to the input"
         )DOC");
   }
 };
@@ -82,8 +86,13 @@ class UnpoolOp : public framework::OperatorWithKernel {
     std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
     std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
 
-    PADDLE_ENFORCE(in_x_dims.size() == 4 || in_x_dims.size() == 5,
-                    "Unpooling intput should be 4-D or 5-D tensor.");
+    PADDLE_ENFORCE(in_x_dims.size() == 4,
+                    "Unpooling intput should be 4-D.");
+    for (int i = 0; i < 4; ++i) {
+      PADDLE_ENFORCE(in_x_dims[i] == in_y_dims[i],
+                     "X size must be eq Y size!");
+    }
+
 
     std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
     for (size_t i = 0; i < ksize.size(); ++i) {

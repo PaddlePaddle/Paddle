@@ -30,12 +30,11 @@ __global__ void KernelUnpool2dMax(const int nthreads,
                                   const int output_width) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
-  // int output_feasize = output_height * output_width;
   for (int i = index; i < nthreads; i += offset) {
     int out_offset =  i / (input_height * input_width) \
                       * output_height * output_width;
     int out_index = indices_data[i];
-    // PADDLE_ENFORCE(out_index < output_feasize, "err index in unpooling!");
+    PADDLE_ASSERT(out_index < (output_height * output_width));
     output_data[out_offset + out_index] = input_data[i];
   }
 }
@@ -52,13 +51,11 @@ __global__ void KernelUnpool2dMaxGrad(const int nthreads,
                                       T* input_grad) {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     int offset = blockDim.x * gridDim.x;
-    // int output_feasize = output_height * output_width;
     for (int i = index; i < nthreads; i += offset) {
         int out_offset =  i / (input_height * input_width) \
                           * output_height * output_width;
         int out_index = indices_data[i];
-        // PADDLE_ENFORCE(out_index < output_feasize,
-         //                   "err index in unpooling!");
+        PADDLE_ASSERT(out_index < (output_height * output_width));
         input_grad[i] = output_grad[out_offset + out_index];
     }
 }
@@ -66,7 +63,7 @@ __global__ void KernelUnpool2dMaxGrad(const int nthreads,
  * All tensors are in NCHW format.
  */
 template <typename T>
-class Unpool2d_MaxFunctor<platform::GPUPlace, T> {
+class Unpool2dMaxFunctor<platform::GPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input,
@@ -99,7 +96,7 @@ class Unpool2d_MaxFunctor<platform::GPUPlace, T> {
  * All tensors are in NCHW format.
  */
 template <typename T>
-class Unpool2d_MaxGradFunctor<platform::GPUPlace, T> {
+class Unpool2dMaxGradFunctor<platform::GPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input,
@@ -135,11 +132,11 @@ class Unpool2d_MaxGradFunctor<platform::GPUPlace, T> {
   }
 };
 
-template class Unpool2d_MaxGradFunctor<platform::GPUPlace, float>;
-template class Unpool2d_MaxGradFunctor<platform::GPUPlace, double>;
+template class Unpool2dMaxGradFunctor<platform::GPUPlace, float>;
+template class Unpool2dMaxGradFunctor<platform::GPUPlace, double>;
 
-template class Unpool2d_MaxFunctor<platform::GPUPlace, float>;
-template class Unpool2d_MaxFunctor<platform::GPUPlace, double>;
+template class Unpool2dMaxFunctor<platform::GPUPlace, float>;
+template class Unpool2dMaxFunctor<platform::GPUPlace, double>;
 
 }  // namespace math
 }  // namespace operators

@@ -37,7 +37,7 @@ class UnpoolKernel : public framework::OpKernel<T> {
     switch (ksize.size()) {
     case 2: {
       if (pooling_type == "max") {
-        math::Unpool2d_MaxFunctor<Place, T> unpool2d_max_forward;
+        math::Unpool2dMaxFunctor<Place, T> unpool2d_max_forward;
         unpool2d_max_forward(context.device_context(), *in_x, *in_y, out);
       }
     } break;
@@ -70,7 +70,7 @@ class UnpoolGradKernel : public framework::OpKernel<T> {
     switch (ksize.size()) {
     case 2: {
     if (pooling_type == "max") {
-      math::Unpool2d_MaxGradFunctor<Place, T> unpool2d_max_backward;
+      math::Unpool2dMaxGradFunctor<Place, T> unpool2d_max_backward;
       unpool2d_max_backward(context.device_context(), *in_x, *in_y, in_x_grad,
                             *out, *out_grad);
       }
