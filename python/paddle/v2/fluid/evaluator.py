@@ -33,6 +33,9 @@ class Evaluator(object):
         else:
             self._main_program = g_main_program
 
+    def states(self):
+        return self._states
+
     def _update_ops(self, *args, **kwargs):
         """
         append update ops to the global states

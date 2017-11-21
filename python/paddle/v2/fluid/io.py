@@ -6,7 +6,8 @@ from paddle.v2.fluid.framework import Program, Parameter, g_main_program, \
 
 __all__ = [
     'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
-    'load_persistables', "save_inference_model", "load_inference_model"
+    'load_persistables', "save_inference_model", "load_inference_model",
+    "get_inference_program"
 ]
 
 
