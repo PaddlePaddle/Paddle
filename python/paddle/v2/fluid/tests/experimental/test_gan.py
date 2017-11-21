@@ -15,7 +15,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
-NOISE_WIDTH = 10
+NOISE_WIDTH = 100
 
 
 class Counter(object):
@@ -51,12 +51,6 @@ def G(x, main_program, startup_program):
     c = Counter()
     kwargs = {'main_program': main_program, 'startup_program': startup_program}
     hidden = layers.fc(input=x,
-                       size=100,
-                       act='tanh',
-                       param_attr={"name": "G_%d" % c()},
-                       bias_attr={"name": "G_%d" % c()},
-                       **kwargs)
-    hidden = layers.fc(input=hidden,
                        size=200,
                        act='tanh',
                        param_attr={"name": "G_%d" % c()},
@@ -114,10 +108,12 @@ def main():
     dg_kwargs = {'main_program': dg_program, 'startup_program': startup_program}
 
     dg_data = dg_program.global_block().var(g_data.name)
-    dg_prob = layers.sigmoid(x=D(dg_data, **dg_kwargs), **dg_kwargs)
-    # dg_loss = -log(prob)
-    dg_loss = layers.scale(
-        x=layers.log(x=dg_prob, **dg_kwargs), scale=-1.0, **dg_kwargs)
+    dg_prob = D(dg_data, **dg_kwargs)
+    dg_label = layers.fill_constant_batch_size_like(
+        input=noise, shape=[-1, 1], dtype='float32', value=1.0, **dg_kwargs)
+
+    dg_loss = layers.sigmoid_cross_entropy_with_logits(
+        x=dg_prob, labels=dg_label, **dg_kwargs)
     dg_loss = layers.mean(x=dg_loss, **dg_kwargs)
     opt = AdamOptimizer(learning_rate=1e-5)
 
@@ -134,7 +130,7 @@ def main():
     exe = Executor(cpu)
     exe.run(startup_program)
 
-    num_true = 36
+    num_true = 121
     train_reader = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.mnist.train(), buf_size=60000),
