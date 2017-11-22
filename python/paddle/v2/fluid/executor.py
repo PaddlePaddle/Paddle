@@ -17,7 +17,7 @@ class Executor(object):
             act_places.append(p)
 
         self.executor = core.Executor(act_places)
-        self.places = act_places
+        self.places = places
 
     def aslodtensor(self, data):
         def accumulate(data):
@@ -38,8 +38,7 @@ class Executor(object):
         if not isinstance(data, list):
             # pure tensor case
             tensor = core.LoDTensor()
-            numpy_data = np.array(data).reshape([len(data), 1])
-            tensor.set(numpy_data, self.places[0])
+            tensor.set(data, self.places[0])
             return tensor
         else:
             # lodtensor case
@@ -121,8 +120,10 @@ class Executor(object):
                 inputs={'X': [feed_var]},
                 outputs={'Out': [out]},
                 attrs={'col': i})
-            # core.set_feed_variable(scope, self.aslodtensor(feed[name]), feed_var.name, i)
-            core.set_feed_variable(scope, feed[name], feed_var.name, i)
+            cur_feed = feed[name]
+            if not isinstance(cur_feed, core.LoDTensor):
+                cur_feed = self.aslodtensor(cur_feed)
+            core.set_feed_variable(scope, cur_feed, feed_var.name, i)
 
         fetch_var = global_block.create_var(
             name=fetch_var_name,

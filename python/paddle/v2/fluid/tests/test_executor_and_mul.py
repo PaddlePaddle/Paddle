@@ -41,15 +41,15 @@ class TestExecutor2(unittest.TestCase):
     def test_asnumpy(self):
         seq = data(name='seq', shape=[784], data_type='float32')
         out = sequence_pool(seq, "sum")
-        x = np.ones(shape=(3, 5)).astype('float32')
+        x = numpy.ones(shape=(3, 5)).astype('float32')
         lod = [[0, 2, 3]]
         tensor = core.LoDTensor()
         place = core.CPUPlace()
         tensor.set(x, place)
         tensor.set_lod(lod)
         exe = Executor(place)
-        outs = exe.run(g_main_program, feed={"seq": tensor}, fetch_list=out)
-        self.assertTrue(np.allclose(outs[0], sequence_sum(lod, x)))
+        outs = exe.run(g_main_program, feed={"seq": tensor}, fetch_list=[out])
+        self.assertTrue(numpy.allclose(outs[0], sequence_sum(lod, x)))
 
 
 if __name__ == '__main__':
