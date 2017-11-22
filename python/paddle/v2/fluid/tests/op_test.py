@@ -261,7 +261,10 @@ class OpTest(unittest.TestCase):
         feed_map = self.feed_var(inputs, place)
 
         exe = Executor(place)
-        outs = exe.run(program, feed=feed_map, fetch_list=fetch_list)
+        outs = exe.run(program,
+                       feed=feed_map,
+                       fetch_list=fetch_list,
+                       return_numpy=False)
 
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
@@ -501,5 +504,4 @@ class OpTest(unittest.TestCase):
 
         fetch_list = [g for p, g in param_grad_list]
         executor = Executor(place)
-        result = executor.run(prog, feed_dict, fetch_list)
-        return map(np.array, result)
+        return executor.run(prog, feed_dict, fetch_list, return_numpy=False)

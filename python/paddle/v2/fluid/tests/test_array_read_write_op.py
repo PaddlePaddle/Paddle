@@ -52,15 +52,13 @@ class TestArrayReadWrite(unittest.TestCase):
 
         exe = Executor(cpu)
 
-        tensor = core.LoDTensor()
-        tensor.set(numpy.random.random(size=(100, 100)).astype('float32'), cpu)
+        tensor = numpy.random.random(size=(100, 100)).astype('float32')
 
-        outs = map(numpy.array,
-                   exe.run(feed={'x0': tensor,
-                                 'x1': tensor,
-                                 'x2': tensor},
-                           fetch_list=[a_sum, x_sum],
-                           scope=scope))
+        outs = exe.run(feed={'x0': tensor,
+                             'x1': tensor,
+                             'x2': tensor},
+                       fetch_list=[a_sum, x_sum],
+                       scope=scope)
         self.assertEqual(outs[0], outs[1])
 
         total_sum = layers.sums(input=[a_sum, x_sum])
@@ -72,12 +70,11 @@ class TestArrayReadWrite(unittest.TestCase):
                      [each_x.name + "@GRAD" for each_x in x])
         g_out = [
             item.sum()
-            for item in map(
-                numpy.array,
-                exe.run(feed={'x0': tensor,
-                              'x1': tensor,
-                              'x2': tensor},
-                        fetch_list=g_vars))
+            for item in exe.run(
+                feed={'x0': tensor,
+                      'x1': tensor,
+                      'x2': tensor},
+                fetch_list=g_vars)
         ]
         g_out_sum = numpy.array(g_out).sum()
 

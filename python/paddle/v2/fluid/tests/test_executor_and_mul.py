@@ -28,29 +28,5 @@ class TestExecutor(unittest.TestCase):
         self.assertTrue(numpy.allclose(out, numpy.dot(a_np, b_np)))
 
 
-def sequence_sum(lod, x):
-    N = len(lod[0]) - 1
-    out = [None for i in range(N)]
-    for i in range(N):
-        sub_x = x[lod[0][i]:lod[0][i + 1], :]
-        out[i] = sub_x.sum(axis=0)
-    return out
-
-
-class TestExecutor2(unittest.TestCase):
-    def test_asnumpy(self):
-        seq = data(name='seq', shape=[784], data_type='float32')
-        out = sequence_pool(seq, "sum")
-        x = numpy.ones(shape=(3, 5)).astype('float32')
-        lod = [[0, 2, 3]]
-        tensor = core.LoDTensor()
-        place = core.CPUPlace()
-        tensor.set(x, place)
-        tensor.set_lod(lod)
-        exe = Executor(place)
-        outs = exe.run(g_main_program, feed={"seq": tensor}, fetch_list=[out])
-        self.assertTrue(numpy.allclose(outs[0], sequence_sum(lod, x)))
-
-
 if __name__ == '__main__':
     unittest.main()

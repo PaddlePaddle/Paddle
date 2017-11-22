@@ -66,17 +66,10 @@ class TestMNISTIfElseOp(unittest.TestCase):
                 y_data = np.array(map(lambda x: x[1], data)).astype("int64")
                 y_data = np.expand_dims(y_data, axis=1)
 
-                tensor_x = core.LoDTensor()
-                tensor_x.set(x_data, place)
-
-                tensor_y = core.LoDTensor()
-                tensor_y.set(y_data, place)
-
-                outs = map(np.array,
-                           exe.run(kwargs['main_program'],
-                                   feed={'x': tensor_x,
-                                         'y': tensor_y},
-                                   fetch_list=[avg_loss]))
+                outs = exe.run(kwargs['main_program'],
+                               feed={'x': x_data,
+                                     'y': y_data},
+                               fetch_list=[avg_loss])
                 print outs[0]
                 if outs[0] < 1.0:
                     return
@@ -131,19 +124,12 @@ class TestMNISTIfElseOp(unittest.TestCase):
             for data in train_reader():
                 x_data = np.array(map(lambda x: x[0], data)).astype("float32")
                 y_data = np.array(map(lambda x: x[1], data)).astype("int64")
-                y_data = np.expand_dims(y_data, axis=1)
+                y_data = y_data.reshape((y_data.shape[0], 1))
 
-                tensor_x = core.LoDTensor()
-                tensor_x.set(x_data, place)
-
-                tensor_y = core.LoDTensor()
-                tensor_y.set(y_data, place)
-
-                outs = map(np.array,
-                           exe.run(kwargs['main_program'],
-                                   feed={'x': tensor_x,
-                                         'y': tensor_y},
-                                   fetch_list=[avg_loss]))
+                outs = exe.run(kwargs['main_program'],
+                               feed={'x': x_data,
+                                     'y': y_data},
+                               fetch_list=[avg_loss])
                 print outs[0]
                 if outs[0] < 1.0:
                     return

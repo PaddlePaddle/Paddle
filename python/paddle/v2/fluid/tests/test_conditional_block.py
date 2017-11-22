@@ -21,18 +21,15 @@ class ConditionalBlock(unittest.TestCase):
         exe = Executor(cpu)
         exe.run(g_startup_program)
 
-        x = core.LoDTensor()
-        x.set(numpy.random.random(size=(10, 1)).astype('float32'), cpu)
+        x = numpy.random.random(size=(10, 1)).astype('float32')
 
-        outs = map(numpy.array, exe.run(feed={'X': x}, fetch_list=[out]))[0]
+        outs = exe.run(feed={'X': x}, fetch_list=[out])[0]
         print outs
         loss = layers.mean(x=out)
         append_backward_ops(loss=loss)
-        outs = map(numpy.array,
-                   exe.run(feed={'X': x},
-                           fetch_list=[
-                               g_main_program.block(0).var(data.name + "@GRAD")
-                           ]))[0]
+        outs = exe.run(
+            feed={'X': x},
+            fetch_list=[g_main_program.block(0).var(data.name + "@GRAD")])[0]
         print outs
 
 

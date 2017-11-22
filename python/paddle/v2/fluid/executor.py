@@ -5,6 +5,34 @@ from paddle.v2.fluid.framework import Block, Program, g_main_program
 g_scope = core.Scope()
 
 
+def as_numpy(tensor):
+    if isinstance(tensor, list):
+        return [as_numpy(t) for t in tensor]
+    assert isinstance(tensor, core.LoDTensor)
+    lod = tensor.lod()
+    tensor_data = np.array(tensor)
+    if len(lod) == 0:
+        ans = tensor_data
+    else:
+        raise RuntimeError("LoD Calculate lacks unit tests and buggy")
+    # elif len(lod) == 1:
+    #     ans = []
+    #     idx = 0
+    #     while idx < len(lod) - 1:
+    #         ans.append(tensor_data[lod[idx]:lod[idx + 1]])
+    #         idx += 1
+    # else:
+    #     for l in reversed(lod):
+    #         ans = []
+    #         idx = 0
+    #         while idx < len(l) - 1:
+    #             ans.append(tensor_data[l[idx]:l[idx + 1]])
+    #             idx += 1
+    #         tensor_data = ans
+    #     ans = tensor_data
+    return ans
+
+
 class Executor(object):
     def __init__(self, places):
         if not isinstance(places, list) and not isinstance(places, tuple):
@@ -41,9 +69,9 @@ class Executor(object):
             tensor.set(data, self.places[0])
             return tensor
         else:
+            raise RuntimeError("Current implementation lacks unittests")
             # lodtensor case
             lod = []
-            flattened_data = None
             if not isinstance(data[0], list):
                 lod.append(parselod(data))
                 flattened_data = np.concatenate(data, axis=0).astype("int64")
@@ -59,39 +87,14 @@ class Executor(object):
             tensor.set_lod(lod)
             return tensor
 
-    def asnumpy(self, tensor):
-        if isinstance(tensor, list):
-            return [self.asnumpy(t) for t in tensor]
-        assert isinstance(tensor, core.LoDTensor)
-        lod = tensor.lod()
-        ans = None
-        tensor_data = np.array(tensor)
-        if len(lod) == 0:
-            ans = tensor_data
-        elif len(lod) == 1:
-            ans = []
-            idx = 0
-            while idx < len(lod) - 1:
-                ans.append(tensor_data[lod[idx]:lod[idx + 1]])
-                idx += 1
-        else:
-            for l in reversed(lod):
-                ans = []
-                idx = 0
-                while idx < len(l) - 1:
-                    ans.append(tensor_data[l[idx]:l[idx + 1]])
-                    idx += 1
-                tensor_data = ans
-            ans = tensor_data
-        return ans
-
     def run(self,
             program=None,
             feed=None,
             fetch_list=None,
             feed_var_name='feed',
             fetch_var_name='fetch',
-            scope=None):
+            scope=None,
+            return_numpy=True):
         if feed is None:
             feed = {}
         if fetch_list is None:
@@ -141,4 +144,7 @@ class Executor(object):
             core.get_fetch_variable(scope, fetch_var_name, i)
             for i in xrange(len(fetch_list))
         ]
-        return [self.asnumpy(out) for out in outs]
+
+        if return_numpy:
+            outs = as_numpy(outs)
+        return outs
