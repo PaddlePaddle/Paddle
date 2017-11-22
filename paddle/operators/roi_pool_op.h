@@ -25,24 +25,17 @@ using LoDTensor = framework::LoDTensor;
 using LoD = framework::LoD;
 
 template <typename Place, typename T>
-class CPURoiPoolOpKernel : public framework::OpKernel<T> {
+class CPUROIPoolOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<Tensor>("X");
-    auto* rois = ctx.Input<Tensor>("Rois");
+    auto* rois = ctx.Input<Tensor>("ROIs");
     auto* out = ctx.Output<Tensor>("Out");
     auto* argmax = ctx.Output<Tensor>("Argmax");
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
-
-    PADDLE_ENFORCE_GT(pooled_height, 0,
-                      "The pooled output height must greater than 0");
-    PADDLE_ENFORCE_GT(pooled_width, 0,
-                      "The pooled output width must greater than 0");
-    PADDLE_ENFORCE_GT(spatial_scale, 0,
-                      "The spatial scale must greater than 0");
 
     auto in_dims = in->dims();
     int batch_size = in_dims[0];
@@ -51,18 +44,10 @@ class CPURoiPoolOpKernel : public framework::OpKernel<T> {
     int width = in_dims[3];
     int rois_num = rois->dims()[0];
 
-    auto out_dims = in_dims;
-    out_dims[0] = rois_num;
-    out_dims[1] = channels;
-    out_dims[2] = pooled_height;
-    out_dims[3] = pooled_width;
-    out->Resize(out_dims);
-    argmax->Resize(out->dims());
-
     auto in_stride = framework::stride(in_dims);
     auto argmax_stride = framework::stride(argmax->dims());
     auto roi_stride = framework::stride(rois->dims());
-    auto out_stride = framework::stride(out_dims);
+    auto out_stride = framework::stride(out->dims());
 
     const T* input_data = in->data<T>();
     const int64_t* rois_data = rois->data<int64_t>();
@@ -124,7 +109,8 @@ class CPURoiPoolOpKernel : public framework::OpKernel<T> {
 
             // Define an empty pooling region to be zero
             bool is_empty = (hend <= hstart) || (wend <= wstart);
-            output_data[pool_index] = is_empty ? 0 : -__FLT_MAX__;
+            output_data[pool_index] =
+                is_empty ? 0 : -std::numeric_limits<float>::max();
 
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {
@@ -150,11 +136,11 @@ class CPURoiPoolOpKernel : public framework::OpKernel<T> {
 };
 
 template <typename Place, typename T>
-class CPURoiPoolGradOpKernel : public framework::OpKernel<T> {
+class CPUROIPoolGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<Tensor>("X");
-    auto* rois = ctx.Input<Tensor>("Rois");
+    auto* rois = ctx.Input<Tensor>("ROIs");
     auto* argmax = ctx.Input<Tensor>("Argmax");
 
     auto* out_grad =
@@ -188,9 +174,9 @@ class CPURoiPoolGradOpKernel : public framework::OpKernel<T> {
       for (size_t n = 0; n < rois_num; ++n) {
         size_t roi_batch_idx = rois_data[0];
         T* batch_grad_data = x_grad_data + batch_offset * roi_batch_idx;
-        for (size_t c = 0; c < channels; ++c) {
-          for (size_t ph = 0; ph < pooled_height; ++ph) {
-            for (size_t pw = 0; pw < pooled_width; ++pw) {
+        for (int c = 0; c < channels; ++c) {
+          for (int ph = 0; ph < pooled_height; ++ph) {
+            for (int pw = 0; pw < pooled_width; ++pw) {
               size_t pool_index = ph * pooled_width + pw;
 
               if (argmax_data[pool_index] >= 0) {

@@ -17,24 +17,47 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class RoiPoolOp : public framework::OperatorWithKernel {
+class ROIPoolOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of RoiPoolOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Rois"),
-                   "Input(Rois) of RoiPoolOp should not be null.");
+                   "Input(X) of ROIPoolOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("ROIs"),
+                   "Input(ROIs) of ROIPoolOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of RoiPoolOp should not be null.");
+                   "Output(Out) of ROIPoolOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Argmax"),
-                   "Output(Argmax) of RoiPoolOp should not be null.");
+                   "Output(Argmax) of ROIPoolOp should not be null.");
     auto input_dims = ctx->GetInputDim("X");
+    auto rois_dims = ctx->GetInputDim("ROIs");
 
-    // Initialize the output's dims to maximum,
-    // and re-set to real dims by the value of Rois at kernel
-    ctx->SetOutputDim("Out", input_dims);
+    PADDLE_ENFORCE(input_dims.size() == 4,
+                   "The format of input tensor is NCHW.");
+    PADDLE_ENFORCE(rois_dims.size() == 2,
+                   "ROIs should be a 2-D tensor of shape (num_rois, 5)"
+                   "given as [[batch_id, x1, y1, x2, y2], …].");
+
+    int pooled_height = ctx->Attrs().Get<int>("pooled_height");
+    int pooled_width = ctx->Attrs().Get<int>("pooled_width");
+    float spatial_scale = ctx->Attrs().Get<float>("spatial_scale");
+
+    PADDLE_ENFORCE_GT(pooled_height, 0,
+                      "The pooled output height must greater than 0");
+    PADDLE_ENFORCE_GT(pooled_width, 0,
+                      "The pooled output width must greater than 0");
+    PADDLE_ENFORCE_GT(spatial_scale, 0.0f,
+                      "The spatial scale must greater than 0");
+
+    auto out_dims = input_dims;
+    out_dims[0] = rois_dims[0];
+    out_dims[1] = input_dims[1];
+    out_dims[2] = pooled_height;
+    out_dims[3] = pooled_width;
+
+    ctx->SetOutputDim("Out", out_dims);
+    ctx->SetOutputDim("Argmax", out_dims);
     }
 
  protected:
@@ -46,7 +69,7 @@ class RoiPoolOp : public framework::OperatorWithKernel {
   }
 };
 
-class RoiPoolGradOp : public framework::OperatorWithKernel {
+class ROIPoolGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -67,44 +90,51 @@ class RoiPoolGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class RoiPoolOpMaker : public framework::OpProtoAndCheckerMaker {
+class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RoiPoolOpMaker(framework::OpProto* proto,
+  ROIPoolOpMaker(framework::OpProto* proto,
                        framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor), "
-             "the input of RoiPoolOp.");
-    AddInput("Rois",
+             "the input of ROIPoolOp. "
+             "The format of input tensor is NCHW. Where N is batch size, "
+             "C is the number of input channels, "
+             "H is the height of the feature, and "
+             "W is the width of the feature.");
+    AddInput("ROIs",
              "(Tensor), "
-             "RoIs (Regions of Interest) to pool over. "
-             "Should be a 2-D tensor of shape (num_rois, 5)"
-             "given as [[batch_id, x1, y1, x2, y2], …].");
+             "ROIs (Regions of Interest) to pool over. "
+             "should be a 2-D tensor of shape (num_rois, 5)"
+             "given as [[batch_id, x1, y1, x2, y2], …]. "
+             "Where batch_id is the id of the data, "
+             "(x1, y1) is the top left coordinates, and "
+             "(x2, y2) is the bottom right coordinates.");
     AddOutput("Out",
               "(Tensor), "
-             "RoI pooled output 4-D tensor of shape "
-             "(num_rois, channels, pooled_h, pooled_w).");
+              "The output of ROIPoolOp is a 4-D tensor with shape "
+              "(num_rois, channels, pooled_h, pooled_w).");
     AddOutput("Argmax",
               "(Tensor), "
               "Argmaxes corresponding to indices in X used "
               "for gradient computation. Only output "
               "if arg “is_test” is false.").AsIntermediate();
     AddAttr<float>("spatial_scale",
-                      "(float, default 1.0), "
-                      "Multiplicative spatial scale factor "
-                      "to translate ROI coords from their input scale "
-                      "to the scale used when pooling.")
-                      .SetDefault(1.0);
+                   "(float, default 1.0), "
+                   "Multiplicative spatial scale factor "
+                   "to translate ROI coords from their input scale "
+                   "to the scale used when pooling.")
+                   .SetDefault(1.0);
     AddAttr<int>("pooled_height",
-                      "(int, default 1), "
-                      "The pooled output height.")
-                    .SetDefault(1);
+                 "(int, default 1), "
+                 "The pooled output height.")
+                 .SetDefault(1);
     AddAttr<int>("pooled_width",
-                      "(int, default 1), "
-                      "The pooled output width.")
-                    .SetDefault(1);
+                 "(int, default 1), "
+                 "The pooled output width.")
+                 .SetDefault(1);
     AddComment(R"DOC(
-RoiPool operator
+ROIPool operator
 
 ROI Pooling for Faster-RCNN. The link below is a further introduction: 
 https://stackoverflow.com/questions/43430056/what-is-roi-layer-in-fast-rcnn
@@ -116,11 +146,11 @@ https://stackoverflow.com/questions/43430056/what-is-roi-layer-in-fast-rcnn
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(roi_pool, ops::RoiPoolOp, ops::RoiPoolOpMaker,
-            roi_pool_grad, ops::RoiPoolGradOp);
+REGISTER_OP(roi_pool, ops::ROIPoolOp, ops::ROIPoolOpMaker,
+            roi_pool_grad, ops::ROIPoolGradOp);
 REGISTER_OP_CPU_KERNEL(
     roi_pool,
-    ops::CPURoiPoolOpKernel<paddle::platform::CPUPlace, float>);
+    ops::CPUROIPoolOpKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
     roi_pool_grad,
-    ops::CPURoiPoolGradOpKernel<paddle::platform::CPUPlace, float>);
+    ops::CPUROIPoolGradOpKernel<paddle::platform::CPUPlace, float>);
