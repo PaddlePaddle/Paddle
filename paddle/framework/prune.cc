@@ -48,8 +48,7 @@ bool IsTarget(const OpDesc& op_desc) {
   return false;
 }
 
-void prune_impl(const ProgramDesc& input, ProgramDesc* output, int block_id,
-                bool is_test) {
+void prune_impl(const ProgramDesc& input, ProgramDesc* output, int block_id) {
   // TODO(tonyyang-svail):
   //    - will change to use multiple blocks for RNN op and Cond Op
 
@@ -102,23 +101,32 @@ void prune_impl(const ProgramDesc& input, ProgramDesc* output, int block_id,
       *op_field->Add() = input.blocks(block_id).ops(i);
     }
   }
-  if (is_test) {
-    for (auto& op_desc : *op_field) {
-      if (op_desc.type() == kDropOutOpType ||
-          op_desc.type() == kBatchNormOpType) {
-        for (auto& attr : *op_desc.mutable_attrs()) {
-          if (attr.name() == "is_test") {
-            attr.set_b(true);
-          }
+}
+
+// TODO(fengjiayi): Prune() could be inplaced to avoid unnecessary copies
+void Prune(const ProgramDesc& input, ProgramDesc* output) {
+  prune_impl(input, output, 0);
+}
+
+void inference_optimize_impl(const ProgramDesc& input, ProgramDesc* output,
+                             int block_id) {
+  *output = input;
+  auto* op_field = output->mutable_blocks(block_id)->mutable_ops();
+  for (auto& op_desc : *op_field) {
+    if (op_desc.type() == kDropOutOpType ||
+        op_desc.type() == kBatchNormOpType) {
+      for (auto& attr : *op_desc.mutable_attrs()) {
+        if (attr.name() == "is_test") {
+          attr.set_b(true);
+          break;
         }
       }
     }
   }
 }
 
-// TODO(fengjiayi): Prune() could be inplaced to avoid unnecessary copies
-void Prune(const ProgramDesc& input, ProgramDesc* output, bool is_test) {
-  prune_impl(input, output, 0, is_test);
+void InferenceOptimize(const ProgramDesc& input, ProgramDesc* output) {
+  inference_optimize_impl(input, output, 0);
 }
 
 }  // namespace framework

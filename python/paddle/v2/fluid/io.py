@@ -158,7 +158,9 @@ def get_inference_program(target_vars, main_program=None):
     if not isinstance(target_vars, list):
         target_vars = [target_vars]
 
-    return main_program.prune(targets=target_vars, is_test=True)
+    pruned_program = main_program.prune(targets=target_vars)
+    inference_program = pruned_program.inference_optimize()
+    return inference_program
 
 
 def save_inference_model(dirname,
@@ -187,13 +189,14 @@ def save_inference_model(dirname,
     if not os.path.isdir(dirname):
         os.makedirs(dirname)
 
-    pruned_program = main_program.prune(targets=target_vars, is_test=True)
+    pruned_program = main_program.prune(targets=target_vars)
+    inference_program = pruned_program.inference_optimize()
     fetch_var_names = [v.name for v in target_vars]
 
     model_file_name = dirname + "/__model__"
     with open(model_file_name, "w") as f:
         pickle.dump({
-            "program_desc_str": pruned_program.desc.serialize_to_string(),
+            "program_desc_str": inference_program.desc.serialize_to_string(),
             "feed_var_names": feeded_var_names,
             "fetch_var_names": fetch_var_names
         }, f, -1)

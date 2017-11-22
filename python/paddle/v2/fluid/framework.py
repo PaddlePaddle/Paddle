@@ -491,7 +491,7 @@ class Program(object):
         p.sync_with_cpp()
         return p
 
-    def prune(self, targets, is_test=False):
+    def prune(self, targets):
         if not isinstance(targets, list):
             targets = [targets]
         targets_idx = []
@@ -506,7 +506,14 @@ class Program(object):
 
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
-        res.desc = core.prune(self.desc, targets_idx, is_test)
+        res.desc = core.prune(self.desc, targets_idx)
+        res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
+        res.sync_with_cpp()
+        return res
+
+    def inference_optimize(self):
+        res = Program()
+        res.desc = core.inference_optimize(self.desc)
         res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
         res.sync_with_cpp()
         return res

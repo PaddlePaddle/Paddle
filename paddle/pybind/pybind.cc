@@ -283,17 +283,21 @@ All parameter, weight, gradient are variables in Paddle.
     }
     return ret_values;
   });
-  m.def("prune",
-        [](const ProgramDescBind &origin,
-           const std::vector<std::array<size_t, 2>> &targets, bool is_test) {
-          ProgramDescBind prog_with_targets(origin);
-          for (const auto &t : targets) {
-            prog_with_targets.MutableBlock(t[0])->Op(t[1])->MarkAsTarget();
-          }
-          ProgramDesc pruned_desc;
-          Prune(*prog_with_targets.Proto(), &pruned_desc, is_test);
-          return new ProgramDescBind(pruned_desc);
-        });
+  m.def("prune", [](const ProgramDescBind &origin,
+                    const std::vector<std::array<size_t, 2>> &targets) {
+    ProgramDescBind prog_with_targets(origin);
+    for (const auto &t : targets) {
+      prog_with_targets.MutableBlock(t[0])->Op(t[1])->MarkAsTarget();
+    }
+    ProgramDesc pruned_desc;
+    Prune(*prog_with_targets.Proto(), &pruned_desc);
+    return new ProgramDescBind(pruned_desc);
+  });
+  m.def("inference_optimize", [](ProgramDescBind &origin) {
+    ProgramDesc pruned_desc;
+    InferenceOptimize(*(origin.Proto()), &pruned_desc);
+    return new ProgramDescBind(pruned_desc);
+  });
   m.def_submodule(
        "var_names",
        "The module will return special predefined variable name in Paddle")
