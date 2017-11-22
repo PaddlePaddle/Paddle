@@ -37,8 +37,6 @@ class Unpool2dMaxFunctor<platform::CPUPlace, T> {
     const T* input_data = input.data<T>();
     const T * indices_data = indices.data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
-    memset(output_data, 0, \
-           sizeof(T) * output_feasize * output_channels * batch_size);
     for (int b = 0; b < batch_size; ++b) {
       for (int c = 0; c < output_channels; ++c) {
         for (int i = 0; i < input_feasize; ++i) {
