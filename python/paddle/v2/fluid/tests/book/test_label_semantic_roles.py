@@ -6,8 +6,8 @@ import paddle.v2.dataset.conll05 as conll05
 import paddle.v2.fluid.core as core
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.layers as layers
-from paddle.v2.fluid.executor import Executor
-from paddle.v2.fluid.optimizer import MomentumOptimizer, AdamOptimizer
+from paddle.v2.fluid.executor import Executor, g_scope
+from paddle.v2.fluid.optimizer import SGDOptimizer
 
 word_dict, verb_dict, label_dict = conll05.get_dict()
 word_dict_len = len(word_dict)
@@ -23,8 +23,16 @@ default_std = 1 / math.sqrt(hidden_dim) / 3.0
 mix_hidden_lr = 1e-3
 
 IS_SPARSE = True
-PASS_NUM = 1
-BATCH_SIZE = 5
+PASS_NUM = 10
+BATCH_SIZE = 20
+
+embedding_name = 'emb'
+
+
+def load_parameter(file_name, h, w):
+    with open(file_name, 'rb') as f:
+        f.read(16)  # skip header.
+        return np.fromfile(f, dtype=np.float32).reshape(h, w)
 
 
 def db_lstm():
@@ -54,7 +62,10 @@ def db_lstm():
     word_input = [word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2]
     emb_layers = [
         layers.embedding(
-            size=[word_dict_len, word_dim], input=x) for x in word_input
+            size=[word_dict_len, word_dim],
+            input=x,
+            param_attr={'name': embedding_name,
+                        'trainable': False}) for x in word_input
     ]
     emb_layers.append(predicate_embedding)
     emb_layers.append(mark_embedding)
@@ -124,9 +135,8 @@ def main():
         param_attr={"name": 'crfw',
                     "learning_rate": mix_hidden_lr})
     avg_cost = layers.mean(x=crf_cost)
-    # adam_optimizer = MomentumOptimizer(learning_rate=0.00001, momentum=1.0)
-    adam_optimizer = AdamOptimizer(learning_rate=0.0001)
-    opts = adam_optimizer.minimize(avg_cost)
+    sgd_optimizer = SGDOptimizer(learning_rate=0.0001)
+    opts = sgd_optimizer.minimize(avg_cost)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
@@ -137,6 +147,11 @@ def main():
 
     exe.run(framework.default_startup_program())
 
+    embedding_param = g_scope.find_var(embedding_name).get_tensor()
+    embedding_param.set(
+        load_parameter(conll05.get_embedding(), word_dict_len, word_dim), place)
+
+    batch_id = 0
     for pass_id in xrange(PASS_NUM):
         for data in train_data():
             word_data = to_lodtensor(map(lambda x: x[0], data), place)
@@ -161,12 +176,16 @@ def main():
                                'mark_data': mark_data,
                                'target': target
                            },
-                           fetch_list=[avg_cost, crf_cost])
+                           fetch_list=[avg_cost])
             avg_cost_val = np.array(outs[0])
-            crf_cost_val = np.array(outs[1])
 
-            print("avg_cost=" + str(avg_cost_val))
-            print("crf_cost=" + str(crf_cost_val))
+            if batch_id % 10 == 0:
+                print("avg_cost=" + str(avg_cost_val))
+
+            # exit early for CI
+            exit(0)
+
+            batch_id = batch_id + 1
 
 
 if __name__ == '__main__':

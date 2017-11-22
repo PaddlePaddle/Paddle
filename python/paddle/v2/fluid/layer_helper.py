@@ -113,7 +113,12 @@ class LayerHelper(object):
                 raise ValueError("Data Type mismatch")
         return dtype
 
-    def create_parameter(self, attr, shape, dtype, suffix='w',
+    def create_parameter(self,
+                         attr,
+                         shape,
+                         dtype,
+                         suffix='w',
+                         trainable=True,
                          initializer=None):
         # Deepcopy the attr so that parameters can be shared in program
         attr_copy = copy.deepcopy(attr)
@@ -126,7 +131,10 @@ class LayerHelper(object):
         self.startup_program.global_block().create_parameter(
             dtype=dtype, shape=shape, **attr_copy)
         return self.main_program.global_block().create_parameter(
-            name=attr_copy['name'], dtype=dtype, shape=shape)
+            name=attr_copy['name'],
+            dtype=dtype,
+            shape=shape,
+            trainable=attr_copy.get('trainable', True))
 
     def create_tmp_variable(self, dtype):
         return self.main_program.current_block().create_var(
