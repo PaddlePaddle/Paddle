@@ -30,6 +30,21 @@ using DataLayout = platform::DataLayout;
 
 static constexpr size_t kCONV_CUDNN_WORKSPACE_LIMIT_BYTES = 1024 * 1024 * 1024;
 
+inline void SetTensorGroups(std::vector<int>& dims, int groups) {
+  // std::vector<int> dims_with_group(dims.begin(), dims.end());  // copy
+  if (groups > 1) {
+    dims[1] /= groups;
+  }
+}
+
+inline void SetFilterGroups(std::vector<int>& dims, int groups) {
+  // std::vector<int> kernel_with_group(kernel.begin(), kernel.end());
+  if (groups > 1) {
+    // M /= groups
+    dims[0] /= groups;
+  }
+}
+
 template <typename T>
 class CudnnConvOpKernel : public framework::OpKernel<T> {
  public:
@@ -56,15 +71,33 @@ class CudnnConvOpKernel : public framework::OpKernel<T> {
     ScopedFilterDescriptor filter_desc;
     ScopedConvolutionDescriptor conv_desc;
     DataLayout layout = DataLayout::kNCHW;
+    if (input->dims().size() == 5) {
+      layout = DataLayout::kNCDHW;
+    }
 
-    cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-        layout, framework::vectorize2int(input->dims()), groups);
-    cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-        layout, framework::vectorize2int(output->dims()), groups);
-    cudnnFilterDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
-        layout, framework::vectorize2int(filter->dims()), groups);
     cudnnConvolutionDescriptor_t cudnn_conv_desc =
         conv_desc.descriptor<T>(paddings, strides, dilations);
+
+#if CUDNN_VERSION > 6000
+    // cudnn 7 can support groups, no need to do it mannually
+    // FIXME(typhoonzero): find a better way to disable groups
+    // rather than setting it to 1.
+    PADDLE_ENFORCE(cudnnSetConvolutionGroupCount(cudnn_conv_desc, groups));
+    groups = 1;
+#endif
+
+    auto input_dim_vec = framework::vectorize2int(input->dims());
+    SetTensorGroups(input_dim_vec, groups);
+    cudnnTensorDescriptor_t cudnn_input_desc =
+        input_desc.descriptor<T>(layout, input_dim_vec);
+    auto output_dim_vec = framework::vectorize2int(output->dims());
+    SetTensorGroups(output_dim_vec, groups);
+    cudnnTensorDescriptor_t cudnn_output_desc =
+        output_desc.descriptor<T>(layout, output_dim_vec);
+    auto filter_dim_vec = framework::vectorize2int(filter->dims());
+    SetFilterGroups(filter_dim_vec, groups);
+    cudnnFilterDescriptor_t cudnn_filter_desc =
+        filter_desc.descriptor<T>(layout, filter_dim_vec);
 
     int input_channels = input->dims()[1];
     int input_height, input_width, input_depth;
@@ -162,13 +195,18 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
     ScopedConvolutionDescriptor conv_desc;
     DataLayout layout = DataLayout::kNCHW;
 
-    cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-        layout, framework::vectorize2int(input->dims()), groups);
+    auto input_dim_vec = framework::vectorize2int(input->dims());
+    SetTensorGroups(input_dim_vec, groups);
+    cudnnTensorDescriptor_t cudnn_input_desc =
+        input_desc.descriptor<T>(layout, input_dim_vec);
+    auto output_grad_dim_vec = framework::vectorize2int(output_grad->dims());
+    SetTensorGroups(output_grad_dim_vec, groups);
     cudnnTensorDescriptor_t cudnn_output_grad_desc =
-        output_grad_desc.descriptor<T>(
-            layout, framework::vectorize2int(output_grad->dims()), groups);
-    cudnnFilterDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
-        layout, framework::vectorize2int(filter->dims()), groups);
+        output_grad_desc.descriptor<T>(layout, output_grad_dim_vec);
+    auto filter_dims_vec = framework::vectorize2int(filter->dims());
+    SetFilterGroups(filter_dims_vec, groups);
+    cudnnFilterDescriptor_t cudnn_filter_desc =
+        filter_desc.descriptor<T>(layout, filter_dims_vec);
     cudnnTensorDescriptor_t cudnn_input_grad_desc = nullptr;
     cudnnFilterDescriptor_t cudnn_filter_grad_desc = nullptr;
 
@@ -215,8 +253,10 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
 
     auto handle = ctx.cuda_device_context().cudnn_handle();
     if (input_grad) {
-      cudnn_input_grad_desc = input_grad_desc.descriptor<T>(
-          layout, framework::vectorize2int(input_grad->dims()), groups);
+      auto input_grad_dim_vec = framework::vectorize2int(input_grad->dims());
+      SetTensorGroups(input_grad_dim_vec, groups);
+      cudnn_input_grad_desc =
+          input_grad_desc.descriptor<T>(layout, input_grad_dim_vec);
       PADDLE_ENFORCE(
           platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
               handle, cudnn_filter_desc,
@@ -236,8 +276,10 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
     }
 
     if (filter_grad) {
-      cudnn_filter_grad_desc = filter_grad_desc.descriptor<T>(
-          layout, framework::vectorize2int(filter_grad->dims()), groups);
+      auto filter_grad_dim_vec = framework::vectorize2int(filter_grad->dims());
+      SetFilterGroups(filter_grad_dim_vec, groups);
+      cudnn_filter_grad_desc =
+          filter_grad_desc.descriptor<T>(layout, filter_grad_dim_vec);
       PADDLE_ENFORCE(
           platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
               handle, cudnn_input_desc, cudnn_output_grad_desc, cudnn_conv_desc,
