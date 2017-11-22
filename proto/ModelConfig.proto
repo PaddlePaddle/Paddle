@@ -542,7 +542,7 @@ message LayerConfig {
   optional ReshapeConfig reshape_conf = 59;
 
   // for batch normalization layer
-  // small constant added to the variance to avoid numerical problems.
+  // The small constant added to the variance to improve numeric stability.
   optional double epsilon = 60 [ default = 0.00001 ];
 }
 
