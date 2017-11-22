@@ -3107,7 +3107,7 @@ def batch_norm_layer(input,
                              will use the mean and variance of the current batch
                              of test data.
     :type use_global_stats: bool | None.
-    :param epsilon: Small constant added to the variance to avoid numerical problems.
+    :param epsilon: The small constant added to the variance to improve numeric stability.
     :type epsilon: float.
     :param moving_average_fraction: Factor used in the moving average computation.
                                    :math:`runningMean = newMean*(1-factor) + runningMean*factor`
@@ -3126,8 +3126,6 @@ def batch_norm_layer(input,
     assert (batch_norm_type is None) or (batch_norm_type == "batch_norm") or \
            (batch_norm_type == "mkldnn_batch_norm") or \
            (batch_norm_type == "cudnn_batch_norm")
-
-    assert epsilon >= 1e-5, "epsilon must be no less than 1e-5."
 
     l = Layer(
         name=name,
