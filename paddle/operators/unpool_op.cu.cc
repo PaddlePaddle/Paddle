@@ -15,10 +15,10 @@
 #include "paddle/operators/unpool_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(unpool2d,
+REGISTER_OP_GPU_KERNEL(unpool,
                        ops::UnpoolKernel<paddle::platform::GPUPlace, float>,
                        ops::UnpoolKernel<paddle::platform::GPUPlace, double>);
-REGISTER_OP_GPU_KERNEL(unpool2d_grad,
+REGISTER_OP_GPU_KERNEL(unpool_grad,
                        ops::UnpoolGradKernel<paddle::platform::GPUPlace,
                         float>,
                        ops::UnpoolGradKernel<paddle::platform::GPUPlace,

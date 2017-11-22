@@ -48,7 +48,7 @@ class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
         "(vector defalut:{0,0}), "
         "paddings(height, width) of unpooling operator.")
         .SetDefault({0, 0});
-    AddAttr<std::string>("unpoolingType",
+    AddAttr<std::string>("unpoolingtype",
         "(string), unpooling type, can be \"max\" for max-unpooling ")
         .InEnum({"max"});
     AddComment(R"DOC(
@@ -80,8 +80,8 @@ class UnpoolOp : public framework::OperatorWithKernel {
 
     auto in_x_dims = ctx->GetInputDim("X");
     auto in_y_dims = ctx->GetInputDim("Y");
-    std::string unpooling_type =  \
-      ctx->Attrs().Get<std::string>("unpooling_type");
+    std::string unpoolingtype =  \
+      ctx->Attrs().Get<std::string>("unpoolingtype");
     std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
     std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
     std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
@@ -108,9 +108,9 @@ class UnpoolOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) must not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                                  "Input(Out@GRAD) should not be null");
+    // PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) must not be null.");
+    // PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+    //                           "Input(Out@GRAD) should not be null");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
                                   "Input(X@GRAD) should not be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
@@ -120,13 +120,12 @@ class UnpoolOpGrad : public framework::OperatorWithKernel {
 }    // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(unpool2d, ops::UnpoolOp, ops::Unpool2dOpMaker, unpool2d_grad,
+REGISTER_OP(unpool, ops::UnpoolOp, ops::Unpool2dOpMaker, unpool_grad,
             ops::UnpoolOpGrad);
-REGISTER_OP_CPU_KERNEL(unpool2d,
+REGISTER_OP_CPU_KERNEL(unpool,
                        ops::UnpoolKernel<paddle::platform::CPUPlace, float>,
                        ops::UnpoolKernel<paddle::platform::CPUPlace, double>);
-REGISTER_OP_CPU_KERNEL(unpool2d_grad,
-                      ops::UnpoolGradKernel<paddle::platform::CPUPlace,
-                      float>,
-                      ops::UnpoolGradKernel<paddle::platform::CPUPlace,
-                      double>);
+REGISTER_OP_CPU_KERNEL(unpool_grad,
+                    ops::UnpoolGradKernel<paddle::platform::CPUPlace, float>,
+                    ops::UnpoolGradKernel<paddle::platform::CPUPlace, double>);
+

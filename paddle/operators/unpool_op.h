@@ -30,13 +30,13 @@ class UnpoolKernel : public framework::OpKernel<T> {
     const Tensor* in_x = context.Input<Tensor>("X");
     const Tensor* in_y = context.Input<Tensor>("Y");
     Tensor* out = context.Output<Tensor>("Out");
-    std::string pooling_type = context.Attr<std::string>("unpooling_type");
+    std::string unpoolingtype = context.Attr<std::string>("unpoolingtype");
     std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     switch (ksize.size()) {
     case 2: {
-      if (pooling_type == "max") {
+      if (unpoolingtype == "max") {
         math::Unpool2dMaxFunctor<Place, T> unpool2d_max_forward;
         unpool2d_max_forward(context.device_context(), *in_x, *in_y, out);
       }
@@ -56,7 +56,7 @@ class UnpoolGradKernel : public framework::OpKernel<T> {
     const Tensor* out_grad =
         context.Input<Tensor>(framework::GradVarName("Out"));
     Tensor* in_x_grad = context.Output<Tensor>(framework::GradVarName("X"));
-    std::string pooling_type = context.Attr<std::string>("unpooling_type");
+    std::string unpoolingtype = context.Attr<std::string>("unpoolingtype");
     std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
@@ -69,7 +69,7 @@ class UnpoolGradKernel : public framework::OpKernel<T> {
           }
     switch (ksize.size()) {
     case 2: {
-    if (pooling_type == "max") {
+    if (unpoolingtype == "max") {
       math::Unpool2dMaxGradFunctor<Place, T> unpool2d_max_backward;
       unpool2d_max_backward(context.device_context(), *in_x, *in_y, in_x_grad,
                             *out, *out_grad);
