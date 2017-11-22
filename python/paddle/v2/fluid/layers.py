@@ -417,6 +417,10 @@ _create_op_func_('sigmoid')
 _create_op_func_('scale')
 _create_op_func_('reshape')
 _create_op_func_('transpose')
+_create_op_func_('reduce_sum')
+_create_op_func_('reduce_mean')
+_create_op_func_('reduce_max')
+_create_op_func_('reduce_min')
 
 
 def fill_constant(data_type, shape, value=None, program=None):
