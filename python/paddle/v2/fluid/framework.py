@@ -4,7 +4,10 @@ import collections
 import numpy as np
 import copy
 
-__all__ = ['Block', 'Variable', 'Program', 'Operator']
+__all__ = [
+    'Block', 'Variable', 'Program', 'Operator', 'default_startup_program',
+    'default_main_program'
+]
 
 
 def unique_name(prefix):
@@ -12,9 +15,40 @@ def unique_name(prefix):
     return "_".join([prefix, str(uid)])
 
 
-def _debug_string_(proto):
+def convert_np_dtype_to_dtype_(np_dtype):
+    dtype = np.dtype(np_dtype)
+    if dtype == np.float32:
+        return core.DataType.FP32
+    elif dtype == np.float64:
+        return core.DataType.FP64
+    elif dtype == np.float16:
+        return core.DataType.FP16
+    elif dtype == np.int32:
+        return core.DataType.INT32
+    elif dtype == np.int16:
+        return core.DataType.INT16
+    elif dtype == np.int64:
+        return core.DataType.INT64
+    elif dtype == np.bool:
+        return core.DataType.BOOL
+    else:
+        raise ValueError("Not supported numpy dtype " + str(dtype))
+
+
+def dtype_is_floating(dtype):
+    if not isinstance(dtype, core.DataType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if (dtype == core.DataType.FP16 or dtype == core.DataType.FP32 or
+            dtype == core.DataType.FP64):
+        return True
+    else:
+        return False
+
+
+def _debug_string_(proto, throw_on_error=True):
     error_fields = list()
-    if not proto.IsInitialized(error_fields):
+    if not proto.IsInitialized(error_fields) and throw_on_error:
         raise ValueError("{0} are not initialized\nThe message is {1}".format(
             error_fields, proto))
     return proto.__str__()
@@ -63,7 +97,7 @@ class Variable(object):
                         "matched.".format(self.name, old_shape, shape))
         if dtype is not None:
             if not isinstance(dtype, core.DataType):
-                dtype = Variable._convert_np_dtype_to_dtype_(dtype)
+                dtype = convert_np_dtype_to_dtype_(dtype)
             if is_new_var:
                 self.desc.set_data_type(dtype)
             else:
@@ -101,9 +135,12 @@ class Variable(object):
         self.stop_gradient = stop_gradient
 
     def __str__(self):
+        return self.to_string(True)
+
+    def to_string(self, throw_on_error):
         protostr = self.desc.serialize_to_string()
         proto = framework_pb2.VarDesc.FromString(str(protostr))
-        return _debug_string_(proto)
+        return _debug_string_(proto, throw_on_error)
 
     __repr__ = __str__
 
@@ -141,26 +178,6 @@ class Variable(object):
         prefix = "_generated_var"
         uid = core.unique_integer(prefix)  # unique during whole process.
         return "_".join([prefix, str(uid)])
-
-    @staticmethod
-    def _convert_np_dtype_to_dtype_(np_dtype):
-        dtype = np.dtype(np_dtype)
-        if dtype == np.float32:
-            return core.DataType.FP32
-        elif dtype == np.float64:
-            return core.DataType.FP64
-        elif dtype == np.float16:
-            return core.DataType.FP16
-        elif dtype == np.int32:
-            return core.DataType.INT32
-        elif dtype == np.int16:
-            return core.DataType.INT16
-        elif dtype == np.int64:
-            return core.DataType.INT64
-        elif dtype == np.bool:
-            return core.DataType.BOOL
-        else:
-            raise ValueError("Not supported numpy dtype " + str(dtype))
 
 
 def get_all_op_protos():
@@ -229,17 +246,17 @@ class Operator(object):
                     in_proto.name)
 
                 if found:
-                    in_argus = inputs[in_proto.name]
-                    if not isinstance(in_argus, list):
-                        in_argus = [in_argus]
-                    if not in_proto.duplicable and len(in_argus) > 1:
+                    in_args = inputs[in_proto.name]
+                    if not isinstance(in_args, list):
+                        in_args = [in_args]
+                    if not in_proto.duplicable and len(in_args) > 1:
                         raise ValueError(
                             "Input %s expects only one input, but %d are given."
-                            % (in_proto.name, len(in_argus)))
-                    in_argu_names = []
-                    for argu in in_argus:
-                        in_argu_names.append(argu.name)
-                    self.desc.set_input(in_proto.name, in_argu_names)
+                            % (in_proto.name, len(in_args)))
+                    in_arg_names = []
+                    for arg in in_args:
+                        in_arg_names.append(arg.name)
+                    self.desc.set_input(in_proto.name, in_arg_names)
                 else:
                     self.desc.set_input(in_proto.name, [])
 
@@ -257,18 +274,18 @@ class Operator(object):
                         str(e) for e in given)))
 
             for out_proto in proto.outputs:
-                out_argus = outputs[out_proto.name]
-                if not isinstance(out_argus, list):
-                    out_argus = [out_argus]
-                if not out_proto.duplicable and len(out_argus) > 1:
+                out_args = outputs[out_proto.name]
+                if not isinstance(out_args, list):
+                    out_args = [out_args]
+                if not out_proto.duplicable and len(out_args) > 1:
                     raise ValueError(
                         "Output %s expects only one output, but %d are given." %
-                        (out_proto.name, len(out_argus)))
-                out_argu_names = []
-                for argu in out_argus:
-                    out_argu_names.append(argu.name)
-                    argu.op = self
-                self.desc.set_output(out_proto.name, out_argu_names)
+                        (out_proto.name, len(out_args)))
+                out_arg_names = []
+                for arg in out_args:
+                    out_arg_names.append(arg.name)
+                    arg.op = self
+                self.desc.set_output(out_proto.name, out_arg_names)
 
         if attrs is not None:
             if not isinstance(attrs, dict):
@@ -291,10 +308,13 @@ class Operator(object):
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
 
-    def __str__(self):
+    def to_string(self, throw_on_error):
         protostr = self.desc.serialize_to_string()
         proto = framework_pb2.OpDesc.FromString(str(protostr))
-        return _debug_string_(proto)
+        return _debug_string_(proto, throw_on_error)
+
+    def __str__(self):
+        return self.to_string(True)
 
     __repr__ = __str__
 
@@ -349,9 +369,12 @@ class Block(object):
         self.program = program
 
     def __str__(self):
+        return self.to_string(True)
+
+    def to_string(self, throw_on_error):
         protostr = self.desc.serialize_to_string()
         proto = framework_pb2.BlockDesc.FromString(str(protostr))
-        return _debug_string_(proto)
+        return _debug_string_(proto, throw_on_error)
 
     __repr__ = __str__
 
@@ -454,9 +477,12 @@ class Program(object):
         self.current_block_idx = 0
 
     def __str__(self):
+        return self.to_string(True)
+
+    def to_string(self, throw_on_error):
         protostr = self.desc.serialize_to_string()
         proto = framework_pb2.ProgramDesc.FromString(str(protostr))
-        return _debug_string_(proto)
+        return _debug_string_(proto, throw_on_error)
 
     def clone(self):
         p = Program()
@@ -512,7 +538,14 @@ class Program(object):
         assert isinstance(target, Variable)
         if no_grad_set is None:
             no_grad_set = set()
-        param_to_grad_info = self.desc.append_backward(target.desc, no_grad_set)
+        try:
+            param_to_grad_info = self.desc.append_backward(target.desc,
+                                                           no_grad_set)
+        except Exception as e:
+            raise core.EnforceNotMet(
+                str(e) + "\nCurrent protobuf is\n{0}".format(
+                    self.to_string(False)))
+
         self.sync_with_cpp()
         return param_to_grad_info
 
@@ -562,3 +595,11 @@ class Parameter(Variable):
 # program is a global instance.
 g_main_program = Program()
 g_startup_program = Program()
+
+
+def default_startup_program():
+    return g_startup_program
+
+
+def default_main_program():
+    return g_main_program

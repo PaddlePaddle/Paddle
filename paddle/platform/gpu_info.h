@@ -60,6 +60,9 @@ void GpuMemcpySync(void *dst, const void *src, size_t count,
 void GpuMemcpyPeer(void *dst, int dst_device, const void *src, int src_device,
                    size_t count, cudaStream_t stream);
 
+//! Set memory dst with value count size asynchronously
+void GpuMemsetAsync(void *dst, int value, size_t count, cudaStream_t stream);
+
 }  // namespace platform
 }  // namespace paddle
 
