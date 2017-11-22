@@ -170,7 +170,8 @@ class Optimizer(object):
 
         optimize_ops = []
         for param_and_grad in parameters_and_grads:
-            if param_and_grad[1] is not None:
+            if param_and_grad[0].trainable is True and param_and_grad[
+                    1] is not None:
                 optimize_op = self._append_optimize_op(loss.block,
                                                        param_and_grad)
                 optimize_ops.append(optimize_op)
