@@ -191,7 +191,6 @@ class BeamSearchOp : public framework::OperatorBase {
 
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
-    LOG(INFO) << "run beam search op";
     auto ids_var = scope.FindVar(Input("ids"));
     auto scores_var = scope.FindVar(Input("scores"));
     auto pre_ids_var = scope.FindVar(Input("pre_ids"));
@@ -205,10 +204,9 @@ class BeamSearchOp : public framework::OperatorBase {
     size_t level = Attr<int>("level");
     size_t beam_size = Attr<int>("beam_size");
     int end_id = Attr<int>("end_id");
-    LOG(INFO) << "init beam search";
+
     BeamSearch<size_t, float> alg(ids, scores, level, beam_size, end_id);
 
-    LOG(INFO) << "after beam search";
     auto selected_ids_var = scope.FindVar(Output("selected_ids"));
     auto selected_scores_var = scope.FindVar(Output("selected_scores"));
     PADDLE_ENFORCE_NOT_NULL(selected_ids_var);
@@ -217,9 +215,7 @@ class BeamSearchOp : public framework::OperatorBase {
         *selected_ids_var->GetMutable<framework::LoDTensor>();
     auto& selected_scores_tensor =
         *selected_scores_var->GetMutable<framework::LoDTensor>();
-    LOG(INFO) << "run beam search";
     alg(pre_ids, &selected_ids_tensor, &selected_scores_tensor);
-    LOG(INFO) << "finish beam search";
   }
 };
 
