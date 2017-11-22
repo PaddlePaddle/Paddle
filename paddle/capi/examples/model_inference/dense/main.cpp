@@ -2,6 +2,7 @@
 #include <time.h>
 #include <iostream>
 #include <vector>
+
 #include "../common/common.h"
 
 #define CONFIG_BIN "./trainer_config.bin"
@@ -40,7 +41,7 @@ int main() {
   for (int i = 0; i < input.size(); ++i) {
     input[i] = rand() / ((float)RAND_MAX);
   }
-  
+
   // Set value for the input matrix
   CHECK(paddle_matrix_set_value(mat, input.data()));
 
@@ -66,7 +67,7 @@ int main() {
   printf("Prob: \n");
   for (int i = 0; i < height * width; ++i) {
     printf("%.4f ", result[i]);
-    if ((i + 1) % width == 0){
+    if ((i + 1) % width == 0) {
       printf("\n");
     }
   }
