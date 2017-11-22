@@ -42,7 +42,6 @@ __global__ void KernelUnpool2dMax(const int nthreads,
     int out_offset = bidx * out_bsize + cidx * out_csize;
     int out_index = indices_data[i];
     PADDLE_ASSERT(out_index < (output_height * output_width));
-    printf("-------%d------[%f]\n", out_offset + out_index, input_data[i]);
     output_data[out_offset + out_index] = input_data[i];
   }
 }
