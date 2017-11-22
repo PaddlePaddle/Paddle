@@ -1,69 +1,37 @@
+import numpy as np
 import paddle.v2 as paddle
+import paddle.v2.fluid.core as core
+import paddle.v2.fluid.evaluator as evaluator
+import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.nets as nets
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid.optimizer as optimizer
-
-from paddle.v2.fluid.framework import Program
 from paddle.v2.fluid.executor import Executor
+from paddle.v2.fluid.optimizer import AdamOptimizer
 
-import numpy as np
-
-startup_program = Program()
-main_program = Program()
-
-images = layers.data(
-    name='pixel',
-    shape=[1, 28, 28],
-    data_type='float32',
-    main_program=main_program,
-    startup_program=startup_program)
-label = layers.data(
-    name='label',
-    shape=[1],
-    data_type='int64',
-    main_program=main_program,
-    startup_program=startup_program)
+images = layers.data(name='pixel', shape=[1, 28, 28], data_type='float32')
+label = layers.data(name='label', shape=[1], data_type='int64')
 conv_pool_1 = nets.simple_img_conv_pool(
     input=images,
     filter_size=5,
     num_filters=20,
     pool_size=2,
     pool_stride=2,
-    act="relu",
-    main_program=main_program,
-    startup_program=startup_program)
+    act="relu")
 conv_pool_2 = nets.simple_img_conv_pool(
     input=conv_pool_1,
     filter_size=5,
     num_filters=50,
     pool_size=2,
     pool_stride=2,
-    act="relu",
-    main_program=main_program,
-    startup_program=startup_program)
+    act="relu")
 
-predict = layers.fc(input=conv_pool_2,
-                    size=10,
-                    act="softmax",
-                    main_program=main_program,
-                    startup_program=startup_program)
-cost = layers.cross_entropy(
-    input=predict,
-    label=label,
-    main_program=main_program,
-    startup_program=startup_program)
-avg_cost = layers.mean(x=cost, main_program=main_program)
-accuracy = layers.accuracy(
-    input=predict,
-    label=label,
-    main_program=main_program,
-    startup_program=startup_program)
+predict = layers.fc(input=conv_pool_2, size=10, act="softmax")
+cost = layers.cross_entropy(input=predict, label=label)
+avg_cost = layers.mean(x=cost)
+optimizer = AdamOptimizer(learning_rate=0.01, beta1=0.9, beta2=0.999)
+opts = optimizer.minimize(avg_cost)
 
-# optimizer = optimizer.MomentumOptimizer(learning_rate=0.1 / 128.0,
-# momentum=0.9)
-optimizer = optimizer.AdamOptimizer(learning_rate=0.01, beta1=0.9, beta2=0.999)
-opts = optimizer.minimize(avg_cost, startup_program)
+accuracy, acc_out = evaluator.accuracy(input=predict, label=label)
 
 BATCH_SIZE = 50
 PASS_NUM = 3
@@ -75,10 +43,10 @@ train_reader = paddle.batch(
 place = core.CPUPlace()
 exe = Executor(place)
 
-exe.run(startup_program, feed={}, fetch_list=[])
+exe.run(framework.default_startup_program())
 
 for pass_id in range(PASS_NUM):
-    count = 0
+    accuracy.reset(exe)
     for data in train_reader():
         img_data = np.array(map(lambda x: x[0].reshape([1, 28, 28]),
                                 data)).astype("float32")
@@ -90,14 +58,21 @@ for pass_id in range(PASS_NUM):
         tensor_img.set(img_data, place)
         tensor_y.set(y_data, place)
 
-        outs = exe.run(main_program,
+        outs = exe.run(framework.default_main_program(),
                        feed={"pixel": tensor_img,
                              "label": tensor_y},
-                       fetch_list=[avg_cost, accuracy])
+                       fetch_list=[avg_cost, acc_out])
         loss = np.array(outs[0])
         acc = np.array(outs[1])
-
-        if loss < 10.0 and acc > 0.9:
+        pass_acc = accuracy.eval(exe)
+        print("pass_id=" + str(pass_id) + " acc=" + str(acc) + " pass_acc=" +
+              str(pass_acc))
+        # print loss, acc
+        if loss < 10.0 and pass_acc > 0.9:
             # if avg cost less than 10.0 and accuracy is larger than 0.9, we think our code is good.
             exit(0)
+
+    pass_acc = accuracy.eval(exe)
+    print("pass_id=" + str(pass_id) + " pass_acc=" + str(pass_acc))
+
 exit(1)
