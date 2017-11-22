@@ -504,4 +504,6 @@ class OpTest(unittest.TestCase):
 
         fetch_list = [g for p, g in param_grad_list]
         executor = Executor(place)
-        return executor.run(prog, feed_dict, fetch_list, return_numpy=False)
+        return map(
+            np.array,
+            executor.run(prog, feed_dict, fetch_list, return_numpy=False))
