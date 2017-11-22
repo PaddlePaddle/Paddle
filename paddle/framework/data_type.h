@@ -68,9 +68,9 @@ inline void VisitDataType(DataType type, Visitor visitor) {
     case DataType::INT64:
       visitor.template operator()<int64_t>();
       break;
-    case DataType::BOOL:
-      visitor.template operator()<bool>();
-      break;
+    //    case DataType::BOOL:
+    //      visitor.template operator()<bool>();
+    //      break;
     default:
       PADDLE_THROW("Not supported");
   }
