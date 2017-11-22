@@ -22,6 +22,14 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
+struct LRNFunctor {
+  void operator()(const platform::DeviceContext& ctx,
+                  const framework::Tensor* input, int N, int C, int H, int W,
+                  int n, T alpha, T beta, T k, framework::Tensor* mid,
+                  framework::Tensor* out);
+};
+
+template <typename Place, typename T>
 class LRNKernel : public framework::OpKernel<T> {
  public:
   using Tensor = framework::Tensor;
@@ -57,35 +65,8 @@ class LRNKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(beta >= 0.0, "beta should >= 0.0");
     PADDLE_ENFORCE(k >= 0.0, "k should >= 0.0");
 
-    auto x_v = framework::EigenVector<T>::Flatten(*x);
-
-    const int start = -(n - 1) / 2;
-    const int end = start + n;
-
-    auto e_mid = framework::EigenTensor<T, 4>::From(*mid);
-    e_mid.device(ctx.GetEigenDevice<Place>()) = e_mid.constant(k);
-
-    auto e_x = framework::EigenTensor<T, 4>::From(*x);
-    for (int m = 0; m < N; m++) {
-      for (int i = 0; i < C; i++) {
-        for (int c = start; c <= end; c++) {
-          int ch = i + c;
-          if (ch >= 0 && ch < C) {
-            auto s = e_mid.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
-                                 Eigen::array<int, 4>({{1, 1, H, W}}));
-
-            auto r = e_x.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
-                               Eigen::array<int, 4>({{1, 1, H, W}}));
-
-            s.device(ctx.GetEigenDevice<Place>()) += alpha * r.square();
-          }
-        }
-      }
-    }
-
-    auto out_e = framework::EigenVector<T>::Flatten(*out);
-    out_e.device(ctx.GetEigenDevice<Place>()) =
-        x_v * e_mid.reshape(Eigen::DSizes<int, 1>(e_mid.size())).pow(-beta);
+    LRNFunctor<Place, T> f;
+    f(x, N, C, H, W, n, alpha, beta, k, mid, out);
   }
 };
 
