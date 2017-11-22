@@ -1,5 +1,3 @@
-import math
-
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.dataset.conll05 as conll05
