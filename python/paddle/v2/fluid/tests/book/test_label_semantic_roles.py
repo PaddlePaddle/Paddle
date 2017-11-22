@@ -132,6 +132,9 @@ def main():
         param_attr={"name": 'crfw',
                     "learning_rate": mix_hidden_lr})
     avg_cost = layers.mean(x=crf_cost)
+    # TODO(qiao)
+    #   1. add crf_decode_layer and evaluator
+    #   2. use other optimizer and check why out will be NAN
     sgd_optimizer = SGDOptimizer(learning_rate=0.0001)
     opts = sgd_optimizer.minimize(avg_cost)
 
