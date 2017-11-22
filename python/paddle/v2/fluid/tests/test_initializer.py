@@ -223,5 +223,109 @@ class TestXavierInitializer(unittest.TestCase):
         self.assertEqual(init_op.attr('seed'), 134)
 
 
+class TestMSRAInitializer(unittest.TestCase):
+    def test_uniform_msra_initializer(self):
+        """Test MSRA initializer with uniform distribution on
+           for matrix multiply.
+        """
+        program = framework.Program()
+        block = program.global_block()
+        param = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.MSRAInitializer())
+        self.assertEqual(len(block.ops), 1)
+        init_op = block.ops[0]
+        self.assertEqual(init_op.type, 'uniform_random')
+        limit = np.sqrt(6.0 / param.shape[0])
+        self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
+        self.assertEqual(init_op.attr('seed'), 0)
+
+    def test_uniform_msra_initializer_conv(self):
+        """Test MSRA initializer with uniform distribution on
+           for convolutions.
+        """
+        program = framework.Program()
+        block = program.global_block()
+        param = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10, 15, 20],
+            lod_level=0,
+            name="param",
+            initializer=initializer.MSRAInitializer())
+        self.assertEqual(len(block.ops), 1)
+        init_op = block.ops[0]
+        self.assertEqual(init_op.type, 'uniform_random')
+        receptive_field_size = float(15 * 20)
+        limit = np.sqrt(6.0 / (param.shape[1] * receptive_field_size))
+        self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
+        self.assertEqual(init_op.attr('seed'), 0)
+
+    def test_normal_msra_initializer(self):
+        """Test MSRA initializer with normal distribution on
+           for matrix multiply.
+        """
+        program = framework.Program()
+        block = program.global_block()
+        param = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.MSRAInitializer(uniform=False))
+        self.assertEqual(len(block.ops), 1)
+        init_op = block.ops[0]
+        self.assertEqual(init_op.type, 'gaussian_random')
+        std = np.sqrt(2.0 / param.shape[0])
+        self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
+        self.assertEqual(init_op.attr('seed'), 0)
+
+    def test_normal_msra_initializer_conv(self):
+        """Test MSRA initializer with normal distribution on
+           for convolutions.
+        """
+        program = framework.Program()
+        block = program.global_block()
+        param = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10, 15, 20],
+            lod_level=0,
+            name="param",
+            initializer=initializer.MSRAInitializer(uniform=False))
+        self.assertEqual(len(block.ops), 1)
+        init_op = block.ops[0]
+        self.assertEqual(init_op.type, 'gaussian_random')
+        receptive_field_size = float(15 * 20)
+        std = np.sqrt(2.0 / (param.shape[1] * receptive_field_size))
+        self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
+        self.assertEqual(init_op.attr('seed'), 0)
+
+    def test_msra_initializer_supplied_arguments(self):
+        """Test the MSRA initializer with supplied arguments
+        """
+        program = framework.Program()
+        block = program.global_block()
+        block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.MSRAInitializer(
+                fan_in=12, seed=134))
+        self.assertEqual(len(block.ops), 1)
+        init_op = block.ops[0]
+        self.assertEqual(init_op.type, 'uniform_random')
+        limit = np.sqrt(6.0 / 12)
+        self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
+        self.assertEqual(init_op.attr('seed'), 134)
+
+
 if __name__ == '__main__':
     unittest.main()
