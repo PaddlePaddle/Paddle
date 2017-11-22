@@ -178,10 +178,7 @@ class TestBook(unittest.TestCase):
             main_program=program)
         label = layers.data(
             name='label', shape=[1], data_type='int32', main_program=program)
-        hidden = layers.fc(input=images,
-                           size=128,
-                           act='relu',
-                           main_program=program)
+        hidden = layers.fc(input=images, size=128, main_program=program)
         crf = layers.linear_chain_crf(
             input=hidden, label=label, main_program=program)
 
