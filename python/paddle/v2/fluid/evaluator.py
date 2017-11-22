@@ -21,11 +21,21 @@ def _clone_var_(block, var):
 
 class Evaluator(object):
     """
-    Evalutor Base class.
-
-    create metric states
-    add mini-batch evaluator caculate operator
-    add increment operator to accumulate the metric states
+    Base Class for all evaluators
+    
+    Args:
+        name(str): The name of evaluator. such as, "accuracy". Used for generate 
+            temporary variable name.
+        main_program(Program, optional): The evaluator should be added to this 
+            main_program. Default g_main_program 
+        startup_program(Program, optional):The parameter should be added to this 
+            startup_program. Default g_startup_program
+            
+    Attributes:
+        states(list): The list of state variables. states will be reset to zero 
+            when `reset` is invoked.
+        metrics(list): The list of metrics variables. They will be calculate 
+            every mini-batch
     """
 
     def __init__(self, name, **kwargs):
@@ -38,7 +48,7 @@ class Evaluator(object):
 
     def reset(self, executor, reset_program=None):
         """
-        Clear metric states at the begin of each pass/user specified batch
+        reset metric states at the begin of each pass/user specified batch
         """
         if reset_program is None:
             reset_program = Program()
@@ -57,11 +67,24 @@ class Evaluator(object):
 
     def eval(self, executor, eval_program=None):
         """
-        Merge the mini-batch statistics to form the evaluation result for multiple mini-batches.
+        Evaluate the statistics merged by multiple mini-batches.
         """
         raise NotImplementedError()
 
     def create_state(self, suffix, dtype, shape):
+        """
+        Create state variable. 
+        
+        NOTE: It is not a public API.
+        
+        Args:
+            suffix(str): the state suffix. 
+            dtype(str|core.DataType): the state data type 
+            shape(tuple|list): the shape of state 
+
+        Returns: State variable
+
+        """
         state = self.helper.create_variable(
             name="_".join([unique_name(self.helper.name), suffix]),
             persistable=True,
@@ -73,7 +96,7 @@ class Evaluator(object):
 
 class Accuracy(Evaluator):
     """
-    Accuracy need two state variable Total, Correct
+    Average Accuracy for multiple mini-batches.
     """
 
     def __init__(self, input, label, k=1, **kwargs):
