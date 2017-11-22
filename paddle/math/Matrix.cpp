@@ -451,6 +451,7 @@ void GpuMatrix::addSharedBias(Matrix& b, real scale) {
 }
 
 void GpuMatrix::collectBias(Matrix& a, real scale) {
+#ifdef PADDLE_WITH_CUDA
   CHECK_EQ(getHeight(), (size_t)1);
   CHECK_EQ(width_, a.getWidth());
   GpuSparseMatrix* sMatPtr = dynamic_cast<GpuSparseMatrix*>(&a);
@@ -461,6 +462,7 @@ void GpuMatrix::collectBias(Matrix& a, real scale) {
     hl_sparse_matrix_s A_d = sMatPtr->sMatrix_.get();
     hl_sparse_matrix_column_sum(data, A_d, sMatPtr->getHeight(), width_, scale);
   }
+#endif
 }
 
 void GpuMatrix::collectSharedBias(Matrix& a, real scale) {
@@ -552,6 +554,7 @@ void GpuMatrix::mul(const GpuSparseMatrix& a,
                     const GpuMatrix& b,
                     real scaleAB,
                     real scaleT) {
+#ifdef PADDLE_WITH_CUDA
   CHECK(isContiguous());
   CHECK(b.isContiguous());
   CHECK(b.useGpu_ == true) << "Matrix type are not equal";
@@ -578,12 +581,14 @@ void GpuMatrix::mul(const GpuSparseMatrix& a,
                           b.height_,
                           scaleAB,
                           scaleT);
+#endif
 }
 
 void GpuMatrix::mul(const GpuMatrix& a,
                     const GpuSparseMatrix& b,
                     real scaleAB,
                     real scaleT) {
+#ifdef PADDLE_WITH_CUDA
   CHECK(isContiguous());
   CHECK(a.isContiguous());
   CHECK(a.useGpu_ == true) << "Matrix type are not equal";
@@ -622,6 +627,7 @@ void GpuMatrix::mul(const GpuMatrix& a,
                             scaleAB,
                             scaleT);
   }
+#endif
 }
 
 /* this = a*b */
@@ -1028,14 +1034,22 @@ void GpuMatrix::maxPoolForward(Matrix& inputMat,
                                size_t outputH,
                                size_t outputW,
                                size_t paddingH,
-                               size_t paddingW) {
+                               size_t paddingW,
+                               MatrixPtr maskMatP) {
   CHECK(inputMat.useGpu_ == true) << "Matrix type are not equal";
 
   real* inputData = inputMat.getData();
+  real* maskData = NULL;
   size_t frameNum = inputMat.getHeight();
   CHECK(imgSizeH * imgSizeW * channels == inputMat.getWidth());
   CHECK(height_ == inputMat.getHeight());
   CHECK(width_ == outputH * outputW * channels);
+
+  if (maskMatP != NULL) {
+    CHECK(maskMatP->useGpu_ == true) << "Matrix type are not equal";
+    CHECK(outputH * outputW * channels == maskMatP->getWidth());
+    maskData = maskMatP->getData();
+  }
 
   hl_maxpool_forward(frameNum,
                      inputData,
@@ -1051,7 +1065,8 @@ void GpuMatrix::maxPoolForward(Matrix& inputMat,
                      paddingH,
                      paddingW,
                      data_,
-                     getStride());
+                     getStride(),
+                     maskData);
 }
 
 void GpuMatrix::maxPoolBackward(Matrix& inputMat,
@@ -1548,6 +1563,7 @@ void GpuMatrix::bilinearBackward(const Matrix& out,
 }
 
 void GpuMatrix::multiBinaryLabelCrossEntropy(Matrix& output, Matrix& label) {
+#ifdef PADDLE_WITH_CUDA
   GpuMatrix* outputPtr = dynamic_cast<GpuMatrix*>(&output);
   auto labelPtr = dynamic_cast<GpuSparseMatrix*>(&label);
 
@@ -1563,9 +1579,11 @@ void GpuMatrix::multiBinaryLabelCrossEntropy(Matrix& output, Matrix& label) {
   hl_sparse_matrix_s mat_d = labelPtr->sMatrix_.get();
   hl_matrix_multi_binary_cross_entropy(
       output_d, entropy_d, mat_d, height_, outputPtr->width_);
+#endif
 }
 
 void GpuMatrix::multiBinaryLabelCrossEntropyBp(Matrix& output, Matrix& label) {
+#ifdef PADDLE_WITH_CUDA
   GpuMatrix* outputPtr = dynamic_cast<GpuMatrix*>(&output);
   auto labelPtr = dynamic_cast<GpuSparseMatrix*>(&label);
 
@@ -1581,6 +1599,7 @@ void GpuMatrix::multiBinaryLabelCrossEntropyBp(Matrix& output, Matrix& label) {
   hl_sparse_matrix_s mat_d = labelPtr->sMatrix_.get();
   hl_matrix_multi_binary_cross_entropy_bp(
       output_d, grad_d, mat_d, height_, width_);
+#endif
 }
 
 void GpuMatrix::vol2Col(real* dataSrc,
@@ -1973,9 +1992,11 @@ void CpuMatrix::maxPoolForward(Matrix& inputMat,
                                size_t outputH,
                                size_t outputW,
                                size_t paddingH,
-                               size_t paddingW) {
+                               size_t paddingW,
+                               MatrixPtr maskMatP) {
   real* inputData = inputMat.getData();
   real* outData = data_;
+  real* maskData = NULL;
   size_t num = inputMat.getHeight();
   size_t inLength = imgSizeH * imgSizeW;
   size_t outLength = outputH * outputW;
@@ -1983,6 +2004,11 @@ void CpuMatrix::maxPoolForward(Matrix& inputMat,
   CHECK_EQ(num, this->getHeight());
   CHECK_EQ(channels * outLength, this->getWidth());
   size_t outStride = getStride();
+
+  if (maskMatP != NULL) {
+    maskData = maskMatP->getData();
+    CHECK_EQ(channels * outLength, maskMatP->getWidth());
+  }
 
   /* initialize the data_ */
   for (size_t i = 0; i < height_; i++) {
@@ -2005,10 +2031,21 @@ void CpuMatrix::maxPoolForward(Matrix& inputMat,
           int wstart = pw * strideW - paddingW;
           int wend = std::min(wstart + sizeX, imgSizeW);
           wstart = std::max(wstart, 0);
-          for (int h = hstart; h < hend; ++h) {
-            for (int w = wstart; w < wend; ++w) {
-              outData[ph * outputW + pw] = std::max(
-                  outData[ph * outputW + pw], inputData[h * imgSizeW + w]);
+          if (maskData == NULL) {
+            for (int h = hstart; h < hend; ++h) {
+              for (int w = wstart; w < wend; ++w) {
+                outData[ph * outputW + pw] = std::max(
+                    outData[ph * outputW + pw], inputData[h * imgSizeW + w]);
+              }
+            }
+          } else {
+            for (int h = hstart; h < hend; ++h) {
+              for (int w = wstart; w < wend; ++w) {
+                if (outData[ph * outputW + pw] < inputData[h * imgSizeW + w]) {
+                  outData[ph * outputW + pw] = inputData[h * imgSizeW + w];
+                  maskData[ph * outputW + pw] = h * imgSizeW + w;
+                }
+              }
             }
           }
         }
@@ -2016,6 +2053,8 @@ void CpuMatrix::maxPoolForward(Matrix& inputMat,
       // compute offset
       inputData += inLength;
       outData += outLength;
+
+      if (maskData != NULL) maskData += outLength;
     }
   }
 }
@@ -3226,6 +3265,7 @@ template void CpuMatrix::mul<CpuMatrix, CacheRowCpuMatrix>(CpuSparseMatrix* a,
                                                            real scaleAB,
                                                            real scaleT);
 
+#ifndef PADDLE_MOBILE_INFERENCE
 void SharedCpuMatrix::mul(CpuSparseMatrix* a,
                           CpuMatrix* b,
                           real scaleAB,
@@ -3354,6 +3394,7 @@ void SharedCpuMatrix::initBlock(int blockNum) {
   }
 }
 
+#endif
 /* Add a (column) vector b to matrix a, column by column */
 void CpuMatrix::addColumnVector(const Matrix& b) {
   BaseMatrix::addColVector(const_cast<Matrix&>(b));
