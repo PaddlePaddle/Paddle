@@ -38,7 +38,7 @@ typedef struct __align__(2) {
 
 typedef __half half;
 ```
-This struct does not define any overloaded arithmetic operators. So you have to directly use '__hadd' instead of '+' to correctly add two half types:
+This struct does not define any overloaded arithmetic operators. So you have to directly use `__hadd` instead of `+` to correctly add two half types:
 ```
 __global__ void Add() {
   half a, b, c;
