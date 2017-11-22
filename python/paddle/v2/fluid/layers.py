@@ -470,7 +470,7 @@ def sums(input, main_program=None, startup_program=None):
 
 def linear_chain_crf(input,
                      label,
-                     param_attr,
+                     param_attr=None,
                      param_initializer=None,
                      main_program=None,
                      startup_program=None):
