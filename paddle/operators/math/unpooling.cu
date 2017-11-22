@@ -29,21 +29,21 @@ __global__ void KernelUnpool2dMax(const int nthreads,
                                   T* output_data,
                                   const int output_height,
                                   const int output_width) {
-  int bsize = input_height * input_width * channels;
-  int csize = input_height * input_width;
-  int out_bsize = output_height * output_width * channels;
-  int out_csize = output_height * output_width;
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
-  int offset = blockDim.x * gridDim.x;
-  for (int i = index; i < nthreads; i += offset) {
-    int bidx = i / bsize;
-    int boffset = i % bsize;
-    int cidx = boffset / csize;
-    int out_offset = bidx * out_bsize + cidx * out_csize;
-    int out_index = indices_data[i];
-    PADDLE_ASSERT(out_index < (output_height * output_width));
-    output_data[out_offset + out_index] = input_data[i];
-  }
+    int bsize = input_height * input_width * channels;
+    int csize = input_height * input_width;
+    int out_bsize = output_height * output_width * channels;
+    int out_csize = output_height * output_width;
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int offset = blockDim.x * gridDim.x;
+    for (int i = index; i < nthreads; i += offset) {
+      int bidx = i / bsize;
+      int boffset = i % bsize;
+      int cidx = boffset / csize;
+      int out_offset = bidx * out_bsize + cidx * out_csize;
+      int out_index = indices_data[i];
+      PADDLE_ASSERT(out_index < (output_height * output_width));
+      output_data[out_offset + out_index] = input_data[i];
+    }
 }
 template <typename T>
 __global__ void KernelUnpool2dMaxGrad(const int nthreads,

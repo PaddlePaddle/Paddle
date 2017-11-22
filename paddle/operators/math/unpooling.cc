@@ -69,7 +69,6 @@ public:
     const int output_channels = output.dims()[1];
     const int output_height = output.dims()[2];
     const int output_width = output.dims()[3];
-
     int input_feasize = input_height * input_width;
     int output_feasize = output_height * output_width;
     const T* indices_data = indices.data<T>();
