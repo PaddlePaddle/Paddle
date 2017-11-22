@@ -54,9 +54,6 @@ class TestUnpoolOp(OpTest):
         self.outputs = {'Out': output.astype('float32')}
 
     def test_check_output(self):
-        print self.inputs['X']
-        print self.inputs['Y']
-        print self.outputs['Out']
         self.check_output()
 
     def test_check_grad(self):
