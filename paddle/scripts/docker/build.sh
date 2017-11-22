@@ -34,8 +34,7 @@ function cmake_gen() {
         ${PYTHON_FLAGS}
         -DWITH_DOC=OFF
         -DWITH_GPU=${WITH_GPU:-OFF}
-        -DWITH_MKLDNN=${WITH_MKLDNN:-ON}
-        -DWITH_MKLML=${WITH_MKLML:-ON}
+        -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DWITH_GOLANG=${WITH_GOLANG:-ON}
         -DWITH_SWIG_PY=ON
@@ -56,8 +55,7 @@ EOF
         ${PYTHON_FLAGS} \
         -DWITH_DOC=OFF \
         -DWITH_GPU=${WITH_GPU:-OFF} \
-        -DWITH_MKLDNN=${WITH_MKLDNN:-ON} \
-        -DWITH_MKLML=${WITH_MKLML:-ON} \
+        -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DWITH_GOLANG=${WITH_GOLANG:-ON} \
         -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON} \
@@ -146,7 +144,7 @@ function gen_dockerfile() {
     DOCKERFILE_GPU_ENV=""
     DOCKERFILE_CUDNN_DSO=""
     if [[ ${WITH_GPU:-OFF} == 'ON' ]]; then
-        DOCKERFILE_GPU_ENV="ENV LD_LIBRARY_PATH /usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
+        DOCKERFILE_GPU_ENV="ENV LD_LIBRARY_PATH /usr/lib/x86_64-linux-gnu:\${LD_LIBRARY_PATH}"
         DOCKERFILE_CUDNN_DSO="RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.5 /usr/lib/x86_64-linux-gnu/libcudnn.so"
     fi
 

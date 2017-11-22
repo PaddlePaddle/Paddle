@@ -1116,35 +1116,6 @@ def PyData(files=None,
     return data_config
 
 
-@config_func
-def ProtoData(files=None,
-              type=None,
-              file_group_queue_capacity=None,
-              load_file_count=None,
-              constant_slots=None,
-              load_thread_num=None,
-              **xargs):
-    data_config = create_data_config_proto(**xargs)
-    if type is None:
-        data_config.type = 'proto'
-    else:
-        data_config.type = type
-    data_config.files = files
-
-    # When type="proto_group", one data provider contains at most
-    # load_file_count files, and there are at most
-    # (queue_capacity + load_thread_num + 1) data providers in memory
-    if file_group_queue_capacity is not None:
-        data_config.file_group_conf.queue_capacity = file_group_queue_capacity
-    if load_file_count is not None:
-        data_config.file_group_conf.load_file_count = load_file_count
-    if load_thread_num is not None:
-        data_config.file_group_conf.load_thread_num = load_thread_num
-    if constant_slots:
-        data_config.constant_slots.extend(constant_slots)
-    return data_config
-
-
 #real data for training is actually provided by "sub_data" data providers.
 @config_func
 def MultiData(sub_data=[]):
@@ -1826,7 +1797,7 @@ class FCLayer(LayerBase):
             self.layer_type = 'mkldnn_fc'
             config_assert(
                 len(inputs) == 1,
-                "MkldnnFCLayer support one and only one input!")
+                "MKLDNNFCLayer support one and only one input!")
         super(FCLayer, self).__init__(
             name, self.layer_type, size, inputs=inputs, **xargs)
         for input_index in xrange(len(self.inputs)):
@@ -1837,7 +1808,7 @@ class FCLayer(LayerBase):
             sparse = format == "csr" or format == "csc"
             if use_mkldnn:
                 config_assert(not sparse,
-                              "MkldnnFCLayer do not support sparse format yet")
+                              "MKLDNNFCLayer do not support sparse format yet")
                 if use_mkldnn_wgt:
                     dims = [self.config.size, input_layer.size]
             if sparse:
@@ -1853,7 +1824,7 @@ class FCLayer(LayerBase):
 
 
 @config_layer('mkldnn_fc')
-class MkldnnFcLayer(FCLayer):
+class MKLDNNFcLayer(FCLayer):
     layer_type = 'mkldnn_fc'
 
 
@@ -2066,13 +2037,20 @@ class ParameterReluLayer(LayerBase):
     def __init__(self, name, inputs, partial_sum=1, **args):
         super(ParameterReluLayer, self).__init__(
             name, self.layer_type, 0, inputs=inputs, **args)
+
         input_layer = self.get_input_layer(0)
         config_assert(len(self.inputs) == 1, "prelu layer has only one input.")
         config_assert(input_layer.size % partial_sum == 0,
                       "a wrong setting for partial_sum")
+
+        dims = [1, input_layer.size / partial_sum]
         self.set_layer_size(input_layer.size)
         self.config.partial_sum = partial_sum
-        self.create_input_parameter(0, input_layer.size / partial_sum)
+        self.create_input_parameter(0, input_layer.size / partial_sum, dims)
+
+        self.set_layer_height_width(self.get_input_layer(0).height, \
+                                        self.get_input_layer(0).width)
+        self.set_layer_depth(self.get_input_layer(0).depth)
 
 
 @config_layer('conv')
@@ -2718,7 +2696,7 @@ Usage:
              max_sort_size = -1, inputs = ["output", "score"])
 
   Input data: Samples of the same query should be loaded as a sequence,
-          by ProtoDataProvider or PyDataProvider etc.. User should provide
+          by PyDataProvider etc.. User should provide
           scores for each sample. The score slot should be the 2nd
           input of lambdaRank layer.
 
@@ -3213,6 +3191,18 @@ class SubNestedSequenceLayer(LayerBase):
         self.set_layer_size(size)
 
 
+@config_layer('dot_prod')
+class DotProdLayer(LayerBase):
+    def __init__(self, name, inputs, device=None):
+        super(DotProdLayer, self).__init__(
+            name, 'dot_prod', 0, inputs, device=device)
+        config_assert(len(inputs) == 2, 'DotProdLayer must have 2 inputs.')
+        config_assert(
+            self.get_input_layer(0).size == self.get_input_layer(1).size,
+            "Two inputs should have the same size.")
+        self.set_layer_size(1)
+
+
 @config_layer('out_prod')
 class OuterProdLayer(LayerBase):
     def __init__(self, name, inputs, device=None):
@@ -3334,6 +3324,20 @@ class RowL2NormLayer(LayerBase):
         self.set_layer_size(input_layer.size)
 
 
+@config_layer('cos')
+class CosSimLayer(LayerBase):
+    def __init__(self, name, inputs, cos_scale=1, device=None):
+        super(CosSimLayer, self).__init__(
+            name, 'cos', 1, inputs=inputs, device=device)
+        config_assert(
+            len(self.inputs) == 2,
+            'The CosSimLayer expects two and only two inputs.')
+        config_assert(
+            self.get_input_layer(0).size == self.get_input_layer(1).size,
+            'The two inputs of CosSimLayer must have the same dimensionality.')
+        self.config.cos_scale = cos_scale
+
+
 @config_layer('cos_vm')
 class CosSimVecMatLayer(LayerBase):
     def __init__(self, name, size, inputs, cos_scale=1.0, device=None):
@@ -3341,10 +3345,24 @@ class CosSimVecMatLayer(LayerBase):
             name, 'cos_vm', size, inputs=inputs, device=device)
         self.config.cos_scale = cos_scale
         config_assert(
-            len(self.inputs) == 2, 'CosSimVecMatLayer must have 2 inputs')
+            len(self.inputs) == 2, 'The CosSimVecMatLayer must have 2 inputs.')
         config_assert(
             size * self.get_input_layer(0).size == self.get_input_layer(1).size,
-            'Wrong input size for CosSimVecMatLayer')
+            'Wrong input size for CosSimVecMatLayer.')
+
+
+@config_layer('l2_distance')
+class L2DistanceLayer(LayerBase):
+    def __init__(self, name, inputs, device=None):
+        super(L2DistanceLayer, self).__init__(
+            name, 'l2_distance', 1, inputs=inputs, device=device)
+        config_assert(
+            len(self.inputs) == 2, ('The L2DistanceLayer must have '
+                                    'and only have 2 inputs.'))
+        config_assert(
+            self.get_input_layer(0).size == self.get_input_layer(1).size,
+            ('Two inputs of the L2DistanceLayer must have '
+             'the same dimensionality.'))
 
 
 @config_layer('sampling_id')
@@ -3386,18 +3404,6 @@ class AverageLayer(LayerBase):
             input_layer = self.get_input_layer(input_index)
             self.set_layer_size(input_layer.size)
         self.create_bias_parameter(bias, self.config.size)
-
-
-@config_layer('cos')
-class CosSimLayer(LayerBase):
-    def __init__(self, name, inputs, cos_scale=1, device=None):
-        super(CosSimLayer, self).__init__(
-            name, 'cos', 1, inputs=inputs, device=device)
-        config_assert(len(self.inputs) == 2, 'CosSimLayer must have 2 inputs')
-        config_assert(
-            self.get_input_layer(0).size == self.get_input_layer(1).size,
-            'inputs of CosSimLayer must have same dim')
-        self.config.cos_scale = cos_scale
 
 
 @config_layer('tensor')
@@ -3510,11 +3516,17 @@ def ExpressionLayer(name, inputs, **xargs):
 
 @config_layer('concat')
 class ConcatenateLayer(LayerBase):
+    layer_type = 'concat'
+
     def __init__(self, name, inputs, bias=False, **xargs):
         config_assert(inputs, 'inputs cannot be empty')
         config_assert(not bias, 'ConcatenateLayer cannot support bias.')
+        use_mkldnn = bool(int(g_command_config_args.get("use_mkldnn", 0)))
+        if self.layer_type == "mkldnn_concat":
+            config_assert(use_mkldnn, "mkldnn_concat only support MKLDNN")
+        self.layer_type = 'mkldnn_concat' if use_mkldnn else 'concat'
         super(ConcatenateLayer, self).__init__(
-            name, 'concat', 0, inputs=inputs, **xargs)
+            name, self.layer_type, 0, inputs=inputs, **xargs)
         size = 0
         for input_index in xrange(len(self.inputs)):
             assert self.get_input_layer(0).height == self.get_input_layer(
@@ -3532,6 +3544,11 @@ class ConcatenateLayer(LayerBase):
                                     self.get_input_layer(0).width)
         self.set_layer_depth(self.get_input_layer(0).depth)
         self.set_layer_size(size)
+
+
+@config_layer('mkldnn_concat')
+class MKLDNNConcatLayer(ConcatenateLayer):
+    layer_type = 'mkldnn_concat'
 
 
 # like concat layer, but each input layer was processed by a Projection.
