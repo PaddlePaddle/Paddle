@@ -15,7 +15,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
-NOISE_WIDTH = 100
+NOISE_WIDTH = 200
 
 
 class Counter(object):
@@ -184,7 +184,7 @@ def main():
 
             # Train D(G(x))
             # Train D(G) twice, D once.
-            for _ in xrange(2):
+            for _ in xrange(10):
                 n = numpy.random.uniform(
                     low=-1.0, high=1.0,
                     size=[num_true * NOISE_WIDTH]).astype('float32').reshape(
