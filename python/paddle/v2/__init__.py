@@ -62,13 +62,13 @@ __all__ = [
 cp.begin_parse()
 
 
-def auto_set_cpu_env(trainer_count):
+def set_omp_mkl_env_vars(trainer_count):
     '''Auto set CPU environment if have not set before.
        export KMP_AFFINITY, OMP_DYNAMIC according to the Hyper Threading status.
        export OMP_NUM_THREADS, MKL_NUM_THREADS according to trainer_count.
     '''
     import platform
-    if platform.system() != "Linux" and platform.system() != "Darwin":
+    if not platform.system() in ['Linux', 'Darwin']:
         return
 
     def set_env(key, value):
@@ -79,42 +79,38 @@ def auto_set_cpu_env(trainer_count):
         if envset is None:
             os.environ[key] = value
 
-    def is_hyperthreading_enabled():
-        '''If Hyper Threading is enabled.'''
+    def num_physical_cores():
+        '''Get the number of physical cores'''
         if platform.system() == "Linux":
-            percore = os.popen(
-                "lscpu |grep \"per core\"|awk -F':' '{print $2}'|xargs")
-            return int(percore.read()) != 1
-        elif platform.system() == "Darwin":
-            physical = int(os.popen("sysctl hw.physicalcpu").read())
-            logical = int(os.popen("sysctl hw.logicalcpu").read())
-            return logical > physical
+            num_sockets = int(
+                os.popen("lscpu |grep \"Socket\" |awk -F':' '{print $2}'|xargs")
+                .read())
+            num_cores_per_socket = int(
+                os.popen(
+                    "lscpu |grep \"per socket\" |awk -F':' '{print $2}'|xargs")
+                .read())
+            return num_sockets * num_cores_per_socket
         else:
-            # do not support on other platform yet
-            return False
+            cmds = {"Darwin": "sysctl hw.physicalcpu"}
+            return int(os.popen(cmds.get(platform.system(), "expr 1")).read())
 
-    def get_logical_processors():
-        '''Get the logical processors number'''
-        import platform
-        if platform.system() == "Linux":
-            processors = os.popen(
-                "grep \"processor\" /proc/cpuinfo|sort -u|wc -l")
-            return int(processors.read())
-        elif platform.system() == "Darwin":
-            processors = os.popen("sysctl hw.logicalcpu")
-            return int(processors.read())
-        else:
-            # do not support on other platform yet
-            return 1
+    def num_logical_processors():
+        '''Get the number of logical processors'''
+        cmds = {
+            "Linux": "grep \"processor\" /proc/cpuinfo|sort -u|wc -l",
+            "Darwin": "sysctl hw.logicalcpu"
+        }
+        return int(os.popen(cmds.get(platform.system(), "expr 1")).read())
 
-    if is_hyperthreading_enabled():
+    num_cores = num_physical_cores()
+    num_processors = num_logical_processors()
+    if num_processors > num_cores:  # Hyper Threading is enabled
         set_env("OMP_DYNAMIC", "true")
         set_env("KMP_AFFINITY", "granularity=fine,compact,1,0")
     else:
         set_env("OMP_DYNAMIC", "false")
         set_env("KMP_AFFINITY", "granularity=fine,compact,0,0")
-    processors = get_logical_processors()
-    threads = processors / trainer_count
+    threads = num_processors / trainer_count
     threads = '1' if threads < 1 else str(threads)
     set_env("OMP_NUM_THREADS", threads)
     set_env("MKL_NUM_THREADS", threads)
@@ -134,7 +130,7 @@ def init(**kwargs):
     for key in args_dict.keys():
         args.append('--%s=%s' % (key, str(args_dict[key])))
 
-    auto_set_cpu_env(kwargs.get('trainer_count', 1))
+    set_omp_mkl_env_vars(kwargs.get('trainer_count', 1))
 
     if 'use_gpu' in kwargs:
         cp.g_command_config_args['use_gpu'] = kwargs['use_gpu']
