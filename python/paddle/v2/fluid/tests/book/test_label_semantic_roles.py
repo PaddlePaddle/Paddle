@@ -19,7 +19,6 @@ word_dim = 32
 mark_dim = 5
 hidden_dim = 512
 depth = 8
-default_std = 1 / math.sqrt(hidden_dim) / 3.0
 mix_hidden_lr = 1e-3
 
 IS_SPARSE = True
