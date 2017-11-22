@@ -90,7 +90,7 @@ void MKLDNNConvLayer::convertWeightsToPaddle() {
 }
 
 void MKLDNNConvLayer::reshape(
-    int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) {
+    int& bs, int& ic, int& ih, int& iw, int& oc, int& oh, int& ow) {
   reshapeInput(bs, ih, iw);
 
   // cal output sizes
@@ -105,21 +105,17 @@ void MKLDNNConvLayer::reshape(
 }
 
 void MKLDNNConvLayer::resetFwd(std::vector<primitive>& pipeline,
-                               MKLDNNMatrixPtr& in,
-                               MKLDNNMatrixPtr& wgt,
-                               MKLDNNMatrixPtr& bias,
+                               std::vector<MKLDNNMatrixPtr>& inputs,
                                MKLDNNMatrixPtr& out) {
   resetFwdPD(fwdPD_);
 
-  resetFwdBuffers(fwdPD_, in, wgt, bias, out);
+  resetFwdBuffers(fwdPD_, inputs[0], wgtVal_, biasVal_, out);
 
-  resetFwdPipeline(pipeline, fwdPD_, in, wgt, bias, out);
+  resetFwdPipeline(pipeline, fwdPD_, inputs[0], wgtVal_, biasVal_, out);
 }
 
 void MKLDNNConvLayer::resetBwd(std::vector<primitive>& pipeline,
-                               MKLDNNMatrixPtr& in,
-                               MKLDNNMatrixPtr& wgt,
-                               MKLDNNMatrixPtr& bias,
+                               std::vector<MKLDNNMatrixPtr>& inputs,
                                MKLDNNMatrixPtr& out) {
   std::shared_ptr<conv_bwdWgt::primitive_desc> bwdWgtPD;
   std::shared_ptr<conv_bwdData::primitive_desc> bwdDataPD;
@@ -128,9 +124,10 @@ void MKLDNNConvLayer::resetBwd(std::vector<primitive>& pipeline,
 
   resetBwdDataPD(bwdDataPD);
 
-  resetBwdBuffers(bwdWgtPD, bwdDataPD, in, wgt, bias, out);
+  resetBwdBuffers(bwdWgtPD, bwdDataPD, inputs[0], wgtGrad_, biasGrad_, out);
 
-  resetBwdPipeline(pipeline, bwdWgtPD, bwdDataPD, in, wgt, bias, out);
+  resetBwdPipeline(
+      pipeline, bwdWgtPD, bwdDataPD, inputs[0], wgtGrad_, biasGrad_, out);
 }
 
 void MKLDNNConvLayer::updateWeights(const UpdateCallback& callback) {
@@ -236,14 +233,14 @@ void MKLDNNConvLayer::resetBwdWgtPD(
   loadConvSettings(wgtDims, biasDims, strides, dilations, padL, padR);
 
   // create backward weight using input, output and weight value memory desc
-  CHECK(inVal_) << "Should have internal input value";
+  CHECK(inVals_[0]) << "Should have internal input value";
   CHECK(outVal_) << "Should have internal output value";
   CHECK(wgtVal_) << "Should have weight value";
   algorithm algo = algorithm::convolution_direct;
   padding_kind padKind = padding_kind::zero;
   auto bwdWgtDesc = biasVal_ != nullptr
                         ? conv_bwdWgt::desc(algo,
-                                            inVal_->getMemoryDesc(),
+                                            inVals_[0]->getMemoryDesc(),
                                             wgtVal_->getMemoryDesc(),
                                             biasVal_->getMemoryDesc(),
                                             outVal_->getMemoryDesc(),
@@ -252,7 +249,7 @@ void MKLDNNConvLayer::resetBwdWgtPD(
                                             padR,
                                             padKind)
                         : conv_bwdWgt::desc(algo,
-                                            inVal_->getMemoryDesc(),
+                                            inVals_[0]->getMemoryDesc(),
                                             wgtVal_->getMemoryDesc(),
                                             outVal_->getMemoryDesc(),
                                             strides,
@@ -260,7 +257,7 @@ void MKLDNNConvLayer::resetBwdWgtPD(
                                             padR,
                                             padKind);
   pd.reset(new conv_bwdWgt::primitive_desc(bwdWgtDesc, engine_, *fwdPD_));
-  CHECK_PRIMITIVE_DESC_EQ(inVal_, pd->src_primitive_desc());
+  CHECK_PRIMITIVE_DESC_EQ(inVals_[0], pd->src_primitive_desc());
   CHECK_PRIMITIVE_DESC_EQ(
       outVal_,
       pd->diff_dst_primitive_desc(),
@@ -280,12 +277,12 @@ void MKLDNNConvLayer::resetBwdDataPD(
 
   memory::dims wgtDims, biasDims, strides, dilations, padL, padR;
   loadConvSettings(wgtDims, biasDims, strides, dilations, padL, padR);
-  CHECK(inVal_) << "Should have internal input value";
+  CHECK(inVals_[0]) << "Should have internal input value";
   CHECK(outVal_) << "Should have internal output value";
   // create backward data using input and output value memory desc
   // but using weight memory desc with any format
   auto bwdDataDesc = conv_bwdData::desc(algorithm::convolution_direct,
-                                        inVal_->getMemoryDesc(),
+                                        inVals_[0]->getMemoryDesc(),
                                         MKLDNNMatrix::createMemoryDesc(wgtDims),
                                         outVal_->getMemoryDesc(),
                                         strides,
@@ -294,7 +291,7 @@ void MKLDNNConvLayer::resetBwdDataPD(
                                         padding_kind::zero);
   pd.reset(new conv_bwdData::primitive_desc(bwdDataDesc, engine_, *fwdPD_));
   CHECK_PRIMITIVE_DESC_EQ(
-      inVal_,
+      inVals_[0],
       pd->diff_src_primitive_desc(),
       "primitive desc of in value and grad should be equal");
   CHECK_PRIMITIVE_DESC_EQ(
@@ -346,12 +343,12 @@ void MKLDNNConvLayer::resetBwdPipeline(
     MKLDNNMatrixPtr& wgt,
     MKLDNNMatrixPtr& bias,
     MKLDNNMatrixPtr& out) {
-  CHECK(inVal_);
+  CHECK(inVals_[0]);
   // add bwdWgt handle
   if (bias) {
-    bwdWgt_.reset(new conv_bwdWgt(*wgtPD, *inVal_, *out, *wgt, *bias));
+    bwdWgt_.reset(new conv_bwdWgt(*wgtPD, *inVals_[0], *out, *wgt, *bias));
   } else {
-    bwdWgt_.reset(new conv_bwdWgt(*wgtPD, *inVal_, *out, *wgt));
+    bwdWgt_.reset(new conv_bwdWgt(*wgtPD, *inVals_[0], *out, *wgt));
   }
   pipeline.push_back(*bwdWgt_);
 

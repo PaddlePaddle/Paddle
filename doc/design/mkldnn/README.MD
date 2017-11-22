@@ -36,13 +36,13 @@ Figure 1. PaddlePaddle on IA.
 我们把集成方案大致分为了如下几个方面。
 
 ### CMake
-我们会在`CMakeLists.txt`中会添加`WITH_MKLDNN`的选项，当设置这个值为`ON`的时候会启用编译MKL-DNN功能。同时会自动开启OpenMP用于提高MKL-DNN的性能。
+我们会在`CMakeLists.txt`中会给用户添加一个`WITH_MKL`的开关，他是负责`WITH_MKLML`和`WITH_MKLDNN`的总开关。
 
-同时，我们会引入`WITH_MKLML`选项，用于选择是否使用MKL-DNN自带的MKLML安装包。这个安装包可以独立于MKL-DNN使用，但是建议在开启MKL-DNN的同时也打开MKLML的开关，这样才能发挥最好的性能。
+当打开`WITH_MKL`时，会开启MKLML的功能，作为PaddlePaddle的CBLAS和LAPACK库，同时会开启Intel OpenMP用于提高MKLML的性能。 如果系统支持AVX2指令集及以上，同时会开启MKL-DNN功能。
+
+当关闭`WITH_MKL`时，MKLML和MKL-DNN功能会同时关闭。
 
 所以，我们会在`cmake/external`目录新建`mkldnn.cmake`和`mklml.cmake`文件，它们会在编译PaddlePaddle的时候下载对应的软件包，并放到PaddlePaddle的third party目录中。
-
-**备注**：当`WITH_MKLML=ON`的时候，会优先使用这个包作为PaddlePaddle的CBLAS和LAPACK库，所以会稍微改动`cmake/cblas.cmake`中的逻辑。
 
 ### Layers
 所有MKL-DNN相关的C++ layers，都会按照PaddlePaddle的目录结构存放在

@@ -17,4 +17,5 @@
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(adamax,
-                       ops::AdamaxOpKernel<paddle::platform::GPUPlace, float>);
+                       ops::AdamaxOpKernel<paddle::platform::GPUPlace, float>,
+                       ops::AdamaxOpKernel<paddle::platform::GPUPlace, double>);
