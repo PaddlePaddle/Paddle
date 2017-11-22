@@ -31,14 +31,26 @@ For users in China, we provide a faster mirror:
 Download GPU version images:
 
   .. code-block:: bash
+
      docker pull paddlepaddle/paddle:latest-gpu
      docker pull docker.paddlepaddle.org/paddle:latest-gpu
+
+Choose between different BLAS version:
+
+  .. code-block:: bash
+
+     # image using MKL by default
+     docker pull paddlepaddle/paddle
+     # image using OpenBLAS
+     docker pull paddlepaddle/paddle:latest-openblas
+
 
 If you want to use legacy versions, choose a tag from
 `DockerHub <https://hub.docker.com/r/paddlepaddle/paddle/tags/>`_
 and run:
 
   .. code-block:: bash
+
      docker pull paddlepaddle/paddle:[tag]
      # i.e.
      docker pull docker.paddlepaddle.org/paddle:0.10.0-gpu
@@ -49,11 +61,13 @@ Launch your training program in Docker
 ------------------------------
 
 Assume that you have already written a PaddlePaddle program
-named :code:`train.py` (refer to 
+named :code:`train.py` under directory :code:`/home/work` (refer to 
 `PaddlePaddleBook <http://www.paddlepaddle.org/docs/develop/book/01.fit_a_line/index.cn.html>`_
 for more samples), then run the following command:
 
   .. code-block:: bash
+
+     cd /home/work
      docker run -it -v $PWD:/work paddlepaddle/paddle /work/train.py
 
 In the above command, :code:`-it` means run the container interactively;
@@ -77,22 +91,22 @@ interactively:
 PaddlePaddle Book
 ------------------
 
-You can create a container serving PaddlePaddle Book using Jupiter Notebook in
+You can create a container serving PaddlePaddle Book using Jupyter Notebook in
 one minute using Docker. PaddlePaddle Book is an interactive Jupyter Notebook
 for users and developers.If you want to
 dig deeper into deep learning, PaddlePaddle Book definitely is your best choice.
 
 We provide a packaged book image, simply issue the command:
 
-.. code-block:: bash
+  .. code-block:: bash
 
-    docker run -p 8888:8888 paddlepaddle/book
+     docker run -p 8888:8888 paddlepaddle/book
 
 Then, you would back and paste the address into the local browser:
 
-.. code-block:: text
+  .. code-block:: text
 
-    http://localhost:8888/
+     http://localhost:8888/
 
 That's all. Enjoy your journey!
 
@@ -106,19 +120,19 @@ We recommend using
 to run GPU training jobs. Please ensure you have latest
 GPU driver installed before move on.
 
-.. code-block:: bash
+  .. code-block:: bash
 
-  nvidia-docker run -it -v $PWD:/work paddledev/paddle:latest-gpu /bin/bash
+     nvidia-docker run -it -v $PWD:/work paddledev/paddle:latest-gpu /bin/bash
 
 **NOTE: If you don't have nvidia-docker installed, try the following method to mount CUDA libs and devices into the container.**
 
-.. code-block:: bash
+  .. code-block:: bash
 
-  export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
-  export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-  docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:latest-gpu
+     export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
+     export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
+     docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:latest-gpu
 
-About AVX:
+**About AVX:**
 
 AVX is a kind of CPU instruction can accelerate PaddlePaddle's calculations.
 The latest PaddlePaddle Docker image turns AVX on by default, so, if your

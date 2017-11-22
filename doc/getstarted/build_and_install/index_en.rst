@@ -1,26 +1,6 @@
 Install and Build
 =================
 
-.. _quick_install:
-
-Quick Install
-----------------------
-
-You can use pip to install PaddlePaddle using a single command, supports
-CentOS 6 above, Ubuntu 14.04 above or MacOS 10.12, with Python 2.7 installed.
-Simply run the following command to install:
-
-  .. code-block:: bash
-
-     pip install paddlepaddle
-
-If you need to install GPU version, run:
-
-  .. code-block:: bash
-
-     pip install paddlepaddle-gpu
-
-
 .. _install_steps:
 
 Install Steps
@@ -46,3 +26,8 @@ Build from Source
     :maxdepth: 1
 
     build_from_source_en.md
+
+FAQ
+++++++++++
+
+`FAQ <http://www.paddlepaddle.org/docs/develop/documentation/zh/faq/build_and_install/index_en.html>`_

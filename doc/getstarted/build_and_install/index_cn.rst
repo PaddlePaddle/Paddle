@@ -1,24 +1,6 @@
 安装与编译
 ==========
 
-.. _quick_install:
-
-快速安装
-++++++++
-
-PaddlePaddle支持使用pip快速安装，目前支持CentOS 6以上, Ubuntu 14.04以及MacOS 10.12，并安装有Python2.7。
-执行下面的命令完成快速安装：
-
-  .. code-block:: bash
-
-     pip install paddlepaddle
-
-如果需要安装支持GPU的版本，需要执行：
-
-  .. code-block:: bash
-
-     pip install paddlepaddle-gpu
-
 .. _install_steps:
 
 安装流程
@@ -44,3 +26,8 @@ PaddlePaddle提供pip和Docker的安装方式：
     :maxdepth: 1
 
     build_from_source_cn.rst
+
+常见问题解答
+++++++++++
+
+`常见问题解答 <http://www.paddlepaddle.org/docs/develop/documentation/zh/faq/build_and_install/index_cn.html>`_
