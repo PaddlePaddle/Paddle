@@ -76,19 +76,18 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     // use col_shape in the im2col and col2im (or vol2col and col2vol)
     // calculation
     // col_shape_vec: {c, k_h, k_w, h, w} or {c, k_d, k_h, k_w, d, h, w}
-    std::vector<int64_t> col_shape_vec(filter_shape_vec.size() +
-                                       input_shape_vec.size() - 3);
-    col_shape_vec.assign(1, output->dims()[1]);
-    col_shape_vec.insert(col_shape_vec.end(), filter_shape_vec.begin() + 2,
-                         filter_shape_vec.end());
-    col_shape_vec.insert(col_shape_vec.end(), input_shape_vec.begin() + 2,
-                         input_shape_vec.end());
+    size_t data_dim = filter_shape_vec.size() - 2;
+    std::vector<int64_t> col_shape_vec(1 + 2 * data_dim);
+    col_shape_vec[0] = output->dims()[1];
+    for (size_t j = 0; j < data_dim; ++j) {
+      col_shape_vec[j + 1] = filter_shape_vec[j + 2];
+      col_shape_vec[j + 1 + data_dim] = input_shape_vec[j + 2];
+    }
     DDim col_shape(framework::make_ddim(col_shape_vec));
 
     // use col_matrix_shape in the gemm calculation
     // size: (c * k_h * k_w, h * w) or (c * k_d * k_h * k_w, d * h * w)
-    DDim col_matrix_shape =
-        framework::flatten_to_2d(col_shape, filter_shape_vec.size() - 2 + 1);
+    DDim col_matrix_shape = framework::flatten_to_2d(col_shape, data_dim + 1);
 
     Tensor col;
     col.mutable_data<T>(col_shape, context.GetPlace());
@@ -133,7 +132,7 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
                              input_batch, false, static_cast<T>(1.0),
                              &col_matrix, static_cast<T>(0.0));
 
-      if (filter_shape_vec.size() == 4) {
+      if (data_dim == 2U) {
         // col2im: col_matrix -> dy
         // from (c * k_h * k_w, h * w) to (c, o_h, o_w)
         col2im(context.device_context(), col,
@@ -141,7 +140,7 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
                std::vector<int>{paddings[0], paddings[1], paddings[0],
                                 paddings[1]},
                &output_batch);
-      } else if (filter_shape_vec.size() == 5) {
+      } else if (data_dim == 3U) {
         // col2vol: col_matrix -> dy
         // from (c * k_d * k_h * k_w, d * h * w) to (c, o_d, o_h, o_w)
         col2vol(context.device_context(), col, dilations, strides, paddings,
@@ -181,19 +180,18 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
     // use col_shape in the im2col and col2im (or vol2col and col2vol)
     // calculation
     // col_shape_vec: {c, k_h, k_w, h, w} or {c, k_d, k_h, k_w, d, h, w}
-    std::vector<int64_t> col_shape_vec(filter_shape_vec.size() +
-                                       input_shape_vec.size() - 3);
-    col_shape_vec.assign(1, output_grad->dims()[1]);
-    col_shape_vec.insert(col_shape_vec.end(), filter_shape_vec.begin() + 2,
-                         filter_shape_vec.end());
-    col_shape_vec.insert(col_shape_vec.end(), input_shape_vec.begin() + 2,
-                         input_shape_vec.end());
+    size_t data_dim = filter_shape_vec.size() - 2;
+    std::vector<int64_t> col_shape_vec(1 + 2 * data_dim);
+    col_shape_vec[0] = output_grad->dims()[1];
+    for (size_t j = 0; j < data_dim; ++j) {
+      col_shape_vec[j + 1] = filter_shape_vec[j + 2];
+      col_shape_vec[j + 1 + data_dim] = input_shape_vec[j + 2];
+    }
     DDim col_shape(framework::make_ddim(col_shape_vec));
 
     // use col_matrix_shape in the gemm calculation
     // size: (c * k_h * k_w, h * w) or (c * k_d * k_h * k_w, d * h * w)
-    DDim col_matrix_shape =
-        framework::flatten_to_2d(col_shape, filter_shape_vec.size() - 2 + 1);
+    DDim col_matrix_shape = framework::flatten_to_2d(col_shape, data_dim + 1);
 
     // output size: (c, o_h, o_w) or (c, o_d, o_h, o_w)
     DDim output_shape = framework::slice_ddim(output_grad->dims(), 1,
@@ -242,7 +240,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
         Tensor output_grad_batch =
             output_grad->Slice(i, i + 1).Resize(output_shape);
 
-        if (filter_shape_vec.size() == 4) {
+        if (data_dim == 2U) {
           // im2col: dy -> col matrix
           // from (c, o_h, o_w) to (c * k_h * k_w, h * w)
           im2col(context.device_context(), output_grad_batch,
@@ -250,7 +248,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
                  std::vector<int>{paddings[0], paddings[1], paddings[0],
                                   paddings[1]},
                  &col);
-        } else if (filter_shape_vec.size() == 5) {
+        } else if (data_dim == 3U) {
           // vol2col: dy -> col_matrix
           // from (c, o_d, o_h, o_w) to (c * k_d * k_h * k_w, d * h * w)
           vol2col(context.device_context(), output_grad_batch, dilations,
