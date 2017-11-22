@@ -117,10 +117,10 @@ PASS_NUM = 1
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
-        paddle.dataset.cifar.train10(), buf_size=128 * 10),
+        paddle.dataset.cifar.train10(), buf_size=BATCH_SIZE * 10),
     batch_size=BATCH_SIZE)
 
-test_reader = paddle.batch(paddle.dataset.mnist.test(), batch_size=128)
+test_reader = paddle.batch(paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE)
 
 place = core.CPUPlace()
 exe = Executor(place)
