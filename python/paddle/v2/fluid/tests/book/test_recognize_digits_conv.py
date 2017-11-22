@@ -1,13 +1,12 @@
+import numpy as np
 import paddle.v2 as paddle
-import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.nets as nets
 import paddle.v2.fluid.core as core
-import paddle.v2.fluid.optimizer as optimizer
 import paddle.v2.fluid.evaluator as evaluator
 import paddle.v2.fluid.framework as framework
+import paddle.v2.fluid.layers as layers
+import paddle.v2.fluid.nets as nets
 from paddle.v2.fluid.executor import Executor
-
-import numpy as np
+from paddle.v2.fluid.optimizer import AdamOptimizer
 
 images = layers.data(name='pixel', shape=[1, 28, 28], data_type='float32')
 label = layers.data(name='label', shape=[1], data_type='int64')
@@ -29,7 +28,7 @@ conv_pool_2 = nets.simple_img_conv_pool(
 predict = layers.fc(input=conv_pool_2, size=10, act="softmax")
 cost = layers.cross_entropy(input=predict, label=label)
 avg_cost = layers.mean(x=cost)
-optimizer = optimizer.AdamOptimizer(learning_rate=0.01, beta1=0.9, beta2=0.999)
+optimizer = AdamOptimizer(learning_rate=0.01, beta1=0.9, beta2=0.999)
 opts = optimizer.minimize(avg_cost)
 
 accuracy = evaluator.Accuracy(input=predict, label=label)
@@ -47,7 +46,6 @@ exe = Executor(place)
 exe.run(framework.default_startup_program())
 
 for pass_id in range(PASS_NUM):
-    count = 0
     accuracy.reset(exe)
     for data in train_reader():
         img_data = np.array(map(lambda x: x[0].reshape([1, 28, 28]),
@@ -67,13 +65,14 @@ for pass_id in range(PASS_NUM):
         loss = np.array(outs[0])
         acc = np.array(outs[1])
         pass_acc = accuracy.eval(exe)
-        print "pass id : ", pass_id, pass_acc
+        print("pass_id=" + str(pass_id) + " acc=" + str(acc) + " pass_acc=" +
+              str(pass_acc))
         # print loss, acc
-        if loss < 10.0 and acc > 0.9:
+        if loss < 10.0 and pass_acc > 0.9:
             # if avg cost less than 10.0 and accuracy is larger than 0.9, we think our code is good.
             exit(0)
 
     pass_acc = accuracy.eval(exe)
-    print "pass id : ", pass_id, pass_acc
+    print("pass_id=" + str(pass_id) + " pass_acc=" + str(pass_acc))
 
 exit(1)

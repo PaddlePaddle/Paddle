@@ -1,33 +1,22 @@
-import paddle.v2 as paddle
-import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid.optimizer as optimizer
-import paddle.v2.fluid.framework as framework
-from paddle.v2.fluid.io import save_persistables, load_persistables
-from paddle.v2.fluid.executor import Executor
-
 import numpy as np
+import paddle.v2 as paddle
+import paddle.v2.fluid.core as core
+import paddle.v2.fluid.framework as framework
+import paddle.v2.fluid.layers as layers
+from paddle.v2.fluid.executor import Executor
+from paddle.v2.fluid.io import save_persistables, load_persistables
+from paddle.v2.fluid.optimizer import SGDOptimizer
 
-x = layers.data(
-    name='x',
-    shape=[13],
-    data_type='float32')
+x = layers.data(name='x', shape=[13], data_type='float32')
 
-y_predict = layers.fc(input=x,
-                      size=1,
-                      act=None)
+y_predict = layers.fc(input=x, size=1, act=None)
 
-y = layers.data(
-    name='y',
-    shape=[1],
-    data_type='float32')
+y = layers.data(name='y', shape=[1], data_type='float32')
 
-cost = layers.square_error_cost(
-    input=y_predict,
-    label=y)
+cost = layers.square_error_cost(input=y_predict, label=y)
 avg_cost = layers.mean(x=cost)
 
-sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
+sgd_optimizer = SGDOptimizer(learning_rate=0.001)
 opts = sgd_optimizer.minimize(avg_cost)
 
 BATCH_SIZE = 20

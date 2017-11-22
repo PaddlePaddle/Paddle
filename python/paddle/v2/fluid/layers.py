@@ -3,7 +3,7 @@ import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 from paddle.v2.fluid.framework import OpProtoHolder, Variable, Program, \
     Operator
 from paddle.v2.fluid.initializer import ConstantInitializer, \
-    NormalInitializer
+    NormalInitializer, XavierInitializer
 from paddle.v2.fluid.layer_helper import LayerHelper, unique_name
 import re
 import cStringIO
@@ -17,11 +17,13 @@ __all__ = [
 
 def fc(input,
        size,
-       param_attr=None,
-       bias_attr=None,
-       name=None,
-       act=None,
        num_flatten_dims=1,
+       param_attr=None,
+       param_initializer=None,
+       bias_attr=None,
+       bias_initializer=None,
+       act=None,
+       name=None,
        main_program=None,
        startup_program=None):
     """
@@ -30,11 +32,15 @@ def fc(input,
     Args:
        input: The input tensor to the function
        size: The size of the layer
-       param_attr: The parameters/weights to the FC Layer
-       bias_attr: The bias parameter for the FC layer
-       name: Name/alias of the function
-       act: Activation to be applied to the output of FC layer
        num_flatten_dims: Number of columns in input
+       param_attr: The parameters/weights to the FC Layer
+       param_initializer: Initializer used for the weight/parameter.
+       If None, XavierInitializer() is used
+       bias_attr: The bias parameter for the FC layer
+       bias_initializer: Initializer used for the bias.
+       If None, then ConstantInitializer() is used
+       act: Activation to be applied to the output of FC layer
+       name: Name/alias of the function
        main_program: Name of the main program that calls this
        startup_program: Name of the startup program
 
@@ -50,9 +56,22 @@ def fc(input,
     to the LayerHelper constructor.
 
     """
+
+    def _get_default_param_initializer():
+        return XavierInitializer()
+
+    def _get_default_bias_initializer():
+        return ConstantInitializer()
+
     helper = LayerHelper('fc', **locals())
 
     dtype = helper.input_dtype()
+
+    if param_initializer is None:
+        param_initializer = _get_default_param_initializer()
+
+    if bias_initializer is None:
+        bias_initializer = _get_default_bias_initializer()
 
     mul_results = []
     for input_var, param_attr in helper.iter_inputs_and_params():
@@ -61,7 +80,10 @@ def fc(input,
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
         ] + [size]
         w = helper.create_parameter(
-            attr=param_attr, shape=param_shape, dtype=dtype)
+            attr=param_attr,
+            initializer=param_initializer,
+            shape=param_shape,
+            dtype=dtype)
         tmp = helper.create_tmp_variable(dtype)
         helper.append_op(
             type="mul",
@@ -82,16 +104,17 @@ def fc(input,
         helper.append_op(
             type="sum", inputs={"X": mul_results}, outputs={"Out": pre_bias})
     # add bias
-    pre_activation = helper.append_bias_op(pre_bias)
+    pre_activation = helper.append_bias_op(pre_bias, bias_initializer)
     # add activation
     return helper.append_activation(pre_activation)
 
 
 def embedding(input,
               size,
-              data_type='float32',
               is_sparse=False,
+              param_initializer=None,
               param_attr=None,
+              data_type='float32',
               main_program=None,
               startup_program=None):
     """
@@ -100,9 +123,9 @@ def embedding(input,
     Args:
        input: The input to the function
        size: The size of the layer
-       data_type: The type of data : float32, float_16, int etc
        is_sparse: A flag that decleares whether the input is sparse
        param_attr: Parameters for this layer
+       data_type: The type of data : float32, float_16, int etc
        main_program: Name of the main program that calls this
        startup_program: Name of the startup program
 
@@ -114,9 +137,16 @@ def embedding(input,
     to the LayerHelper constructor.
 
     """
+
+    def _get_default_param_initializer():
+        return XavierInitializer()
+
     helper = LayerHelper('embedding', **locals())
     w = helper.create_parameter(
-        attr=helper.param_attr, shape=size, dtype=data_type)
+        attr=helper.param_attr,
+        shape=size,
+        dtype=data_type,
+        initializer=param_initializer or _get_default_param_initializer())
     tmp = helper.create_tmp_variable(data_type)
     helper.append_op(
         type='lookup_table',
@@ -130,7 +160,6 @@ def embedding(input,
 # TODO(qijun): expose H0 and C0
 def dynamic_lstm(input,
                  size,
-                 data_type='float32',
                  param_attr=None,
                  bias_attr=None,
                  use_peepholes=True,
@@ -138,6 +167,7 @@ def dynamic_lstm(input,
                  gate_activation='sigmoid',
                  cell_activation='tanh',
                  candidate_activation='tanh',
+                 data_type='float32',
                  main_program=None,
                  startup_program=None):
     helper = LayerHelper('lstm', **locals())
@@ -178,9 +208,9 @@ def dynamic_lstm(input,
 
 def data(name,
          shape,
+         append_batch_size=True,
          data_type='float32',
          type=core.VarDesc.VarType.LOD_TENSOR,
-         append_batch_size=True,
          main_program=None,
          startup_program=None,
          stop_gradient=True):
@@ -190,9 +220,9 @@ def data(name,
     Args:
        name: The name/alias of the function
        shape: Tuple declaring the shape.
+       append_batch_size: Whether or not to append the data as a batch.
        data_type: The type of data : float32, float_16, int etc
        type: The output type. By default it is LOD_TENSOR.
-       append_batch_size: Whether or not to append the data as a batch.
        main_program: Name of the main program that calls this
        startup_program: Name of the startup program
        stop_gradient: A boolean that mentions whether gradient should flow.
@@ -226,7 +256,7 @@ def data(name,
         stop_gradient=stop_gradient)
 
 
-def create_tensor(dtype, name=None, main_program=None):
+def create_tensor(dtype, name=None, main_program=None, startup_program=None):
     helper = LayerHelper("create_tensor", **locals())
     return helper.create_variable(name=helper.name, dtype=dtype)
 
@@ -397,23 +427,6 @@ _create_op_func_('reshape')
 _create_op_func_('transpose')
 
 
-def fill_constant(data_type, shape, value=None, program=None):
-    """
-    This function creates a tensor , with shape as mentioned in the input and
-    specified data_type and fills this up with a constant value that
-    comes in the input.
-    """
-    helper = LayerHelper('fill_constant', **locals())
-    out = helper.create_tmp_variable(dtype=data_type)
-    helper.append_op(
-        type='fill_constant',
-        outputs={'Out': [out]},
-        attrs={'data_type': data_type,
-               'shape': shape,
-               'value': value})
-    return out
-
-
 def cast(x, data_type, main_program=None):
     """
     This function takes in the input with input_data_type
@@ -457,7 +470,42 @@ def sums(input, out=None, main_program=None, startup_program=None):
     return out
 
 
-def assign(input, output, main_program=None):
+def linear_chain_crf(input,
+                     label,
+                     param_attr=None,
+                     param_initializer=None,
+                     main_program=None,
+                     startup_program=None):
+    def _get_default_param_initializer():
+        return XavierInitializer()
+
+    helper = LayerHelper('linear_chain_crf', **locals())
+    size = input.shape[1]
+    transition = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=[size + 2, size],
+        dtype=helper.input_dtype(),
+        initializer=param_initializer or _get_default_param_initializer())
+    alpha = helper.create_tmp_variable(dtype=helper.input_dtype())
+    emission_exps = helper.create_tmp_variable(dtype=helper.input_dtype())
+    transition_exps = helper.create_tmp_variable(dtype=helper.input_dtype())
+    log_likelihood = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='linear_chain_crf',
+        inputs={"Emission": [input],
+                "Transition": transition,
+                "Label": label},
+        outputs={
+            "Alpha": [alpha],
+            "EmissionExps": [emission_exps],
+            "TransitionExps": transition_exps,
+            "LogLikelihood": log_likelihood
+        })
+
+    return log_likelihood
+
+
+def assign(input, output, main_program=None, startup_program=None):
     helper = LayerHelper('assign', **locals())
     helper.append_op(
         type='scale',
@@ -469,7 +517,7 @@ def assign(input, output, main_program=None):
 
 def split_lod_tensor(input,
                      mask,
-                     level,
+                     level=0,
                      main_program=None,
                      startup_program=None):
     helper = LayerHelper('split_lod_tensor', **locals())
@@ -491,11 +539,11 @@ def merge_lod_tensor(in_true,
                      in_false,
                      x,
                      mask,
-                     level,
+                     level=0,
                      main_program=None,
                      startup_program=None):
     helper = LayerHelper('merge_lod_tensor', **locals())
-    out = helper.create_tmp_variable(dtype=x.data_type)
+    out = helper.create_tmp_variable(dtype=in_true.data_type)
     helper.append_op(
         type='merge_lod_tensor',
         inputs={'X': x,
@@ -598,10 +646,12 @@ def sequence_conv(input,
                   num_filters,
                   filter_size=3,
                   filter_stride=1,
-                  act=None,
                   padding=None,
                   bias_attr=None,
+                  bias_initializer=None,
                   param_attr=None,
+                  param_initializer=None,
+                  act=None,
                   main_program=None,
                   startup_program=None):
     """
@@ -609,6 +659,13 @@ def sequence_conv(input,
     other convolutional configurations for the filters and stride as given
     in the input parameters to the function.
     """
+
+    def _get_default_bias_initializer():
+        return ConstantInitializer()
+
+    def _get_default_param_initializer():
+        return XavierInitializer()
+
     # FIXME(dzh) : want to unify the argument of python layer
     # function. So we ignore some unecessary attributes.
     # such as, padding_trainable, context_start.
@@ -616,9 +673,17 @@ def sequence_conv(input,
     helper = LayerHelper('sequence_conv', **locals())
     dtype = helper.input_dtype()
 
+    if param_initializer is None:
+        param_initializer = _get_default_param_initializer()
+    if bias_initializer is None:
+        bias_initializer = _get_default_bias_initializer()
+
     filter_shape = [filter_size * input.shape[1], num_filters]
     filter = helper.create_parameter(
-        attr=helper.param_attr, shape=filter_shape, dtype=dtype)
+        attr=helper.param_attr,
+        shape=filter_shape,
+        dtype=dtype,
+        initializer=param_initializer)
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
@@ -633,20 +698,22 @@ def sequence_conv(input,
             'contextStart': -int(filter_size / 2),
             'contextLength': filter_size
         })
-    pre_act = helper.append_bias_op(pre_bias)
+    pre_act = helper.append_bias_op(pre_bias, bias_initializer)
     return helper.append_activation(pre_act)
 
 
 def conv2d(input,
            num_filters,
-           name=None,
-           filter_size=[1, 1],
-           act=None,
-           groups=None,
+           filter_size,
            stride=[1, 1],
            padding=None,
-           bias_attr=None,
+           groups=None,
            param_attr=None,
+           param_initializer=None,
+           bias_attr=None,
+           bias_initializer=None,
+           act=None,
+           name=None,
            main_program=None,
            startup_program=None):
     """
@@ -656,6 +723,14 @@ def conv2d(input,
     This funciton can also append an activation on top of the
     conv-2d output, if mentioned in the input parameters.
     """
+
+    def _get_default_bias_initializer():
+        return ConstantInitializer()
+
+    def _get_default_param_initializer(filter_size, num_channels):
+        std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
+        return NormalInitializer(0.0, std, 0)
+
     helper = LayerHelper('conv2d', **locals())
     dtype = helper.input_dtype()
 
@@ -663,7 +738,7 @@ def conv2d(input,
     if groups is None:
         num_filter_channels = num_channels
     else:
-        if num_channels % groups is not 0:
+        if num_channels % groups != 0:
             raise ValueError("num_channels must be divisible by groups.")
         num_filter_channels = num_channels / groups
 
@@ -677,12 +752,17 @@ def conv2d(input,
     input_shape = input.shape
     filter_shape = [num_filters, num_filter_channels] + filter_size
 
-    std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
+    if param_initializer is None:
+        param_initializer = _get_default_param_initializer(filter_size,
+                                                           num_channels)
+    if bias_initializer is None:
+        bias_initializer = _get_default_bias_initializer()
+
     filter = helper.create_parameter(
         attr=helper.param_attr,
         shape=filter_shape,
         dtype=dtype,
-        initializer=NormalInitializer(0.0, std, 0))
+        initializer=param_initializer)
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
@@ -696,7 +776,8 @@ def conv2d(input,
                'paddings': padding,
                'groups': groups})
 
-    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    pre_act = helper.append_bias_op(
+        pre_bias, bias_initializer, dim_start=1, dim_end=2)
 
     return helper.append_activation(pre_act)
 
@@ -1326,7 +1407,12 @@ def array_to_lod_tensor(x, table, main_program=None):
     return tmp
 
 
-def fill_constant(shape, dtype, value, out=None, main_program=None):
+def fill_constant(shape,
+                  dtype,
+                  value,
+                  out=None,
+                  main_program=None,
+                  startup_program=None):
     """
     This function creates a tensor , with shape as mentioned in the input and
     specified data_type and fills this up with a constant value that
@@ -1343,6 +1429,31 @@ def fill_constant(shape, dtype, value, out=None, main_program=None):
             'shape': shape,
             'data_type': out.data_type,
             'value': float(value)
+        })
+    out.stop_gradient = True
+    return out
+
+
+def fill_constant_batch_size_like(input,
+                                  shape,
+                                  dtype,
+                                  value,
+                                  input_dim_idx=0,
+                                  output_dim_idx=0,
+                                  main_program=None,
+                                  startup_program=None):
+    helper = LayerHelper("fill_constant_batch_size_like", **locals())
+    out = helper.create_tmp_variable(dtype=dtype)
+    helper.append_op(
+        type='fill_constant_batch_size_like',
+        inputs={'Input': input},
+        outputs={'Out': [out]},
+        attrs={
+            'shape': shape,
+            'data_type': out.data_type,
+            'value': float(value),
+            'input_dim_idx': input_dim_idx,
+            'output_dim_idx': output_dim_idx
         })
     out.stop_gradient = True
     return out
@@ -1410,7 +1521,7 @@ def create_array(dtype, main_program=None):
         dtype=dtype)
 
 
-def less_than(x, y, cond=None, main_program=None):
+def less_than(x, y, cond=None, main_program=None, **ignored):
     helper = LayerHelper("less_than", **locals())
     if cond is None:
         cond = helper.create_tmp_variable(dtype='bool')
@@ -1488,13 +1599,20 @@ class ConditionalBlockGuard(BlockGuard):
 
 
 class ConditionalBlock(object):
-    def __init__(self, inputs, name=None, main_program=None):
+    def __init__(self,
+                 inputs,
+                 name=None,
+                 main_program=None,
+                 startup_program=None):
         for each_input in inputs:
             if not isinstance(each_input, Variable):
                 raise TypeError("Each input should be variable")
         self.inputs = inputs
         self.helper = LayerHelper(
-            'conditional_block', name=name, main_program=main_program)
+            'conditional_block',
+            name=name,
+            main_program=main_program,
+            startup_program=startup_program)
 
     def block(self):
         return ConditionalBlockGuard(self)
@@ -1539,3 +1657,148 @@ class ConditionalBlock(object):
             outputs={'Out': out_list,
                      'Scope': [step_scope]},
             attrs={'block': inside_block})
+
+
+class IfElseBlockGuard(object):
+    def __init__(self, is_true, ifelse):
+        if not isinstance(ifelse, IfElse):
+            raise TypeError("ifelse must be an instance of IfElse class")
+
+        if ifelse.status != IfElse.OUT_IF_ELSE_BLOCKS:
+            raise ValueError("You cannot invoke IfElse.block() inside a block")
+
+        self.is_true = is_true
+        self.ie = ifelse
+        if is_true:
+            self.cond_block = ifelse.conditional_true_block
+        else:
+            self.cond_block = ifelse.conditional_false_block
+
+        if not isinstance(self.cond_block, ConditionalBlock):
+            raise TypeError("Unexpected situation")
+
+        self.cond_block = self.cond_block.block()
+
+    def __enter__(self):
+        self.ie.status = IfElse.IN_IF_ELSE_TRUE_BLOCKS if self.is_true else IfElse.IN_IF_ELSE_FALSE_BLOCKS
+        self.cond_block.__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if not self.cond_block.__exit__(exc_type, exc_val, exc_tb):
+            # re-raise inside exception
+            return False
+        if len(self.ie.output_table[1 if self.is_true else 0]) == 0:
+            raise ValueError("Must set output inside block")
+        self.ie.status = IfElse.OUT_IF_ELSE_BLOCKS
+
+
+class IfElse(object):
+    OUT_IF_ELSE_BLOCKS = 0
+    IN_IF_ELSE_TRUE_BLOCKS = 1
+    IN_IF_ELSE_FALSE_BLOCKS = 2
+
+    def __init__(self, cond, name=None, main_program=None,
+                 startup_program=None):
+        if not isinstance(cond, Variable):
+            raise TypeError("cond must be a Variable")
+        self.helper = LayerHelper(
+            'ifelse',
+            name=name,
+            main_program=main_program,
+            startup_program=startup_program)
+        self.cond = cond
+        self.input_table = {}
+        self.status = IfElse.OUT_IF_ELSE_BLOCKS
+        self.conditional_true_block = ConditionalBlock(inputs=[self.cond])
+        self.conditional_false_block = ConditionalBlock(inputs=[self.cond])
+        self.output_table = ([], [])  # (true_outs, false_outs)
+
+    def input(self, x):
+        if self.status == IfElse.OUT_IF_ELSE_BLOCKS:
+            raise ValueError("input must in true/false blocks")
+        if id(x) not in self.input_table:
+            parent_block = self.parent_block()
+            out_true = parent_block.create_var(
+                name=unique_name('ifelse_input' + self.helper.name),
+                dtype=x.data_type)
+
+            out_false = parent_block.create_var(
+                name=unique_name('ifelse_input' + self.helper.name),
+                dtype=x.data_type)
+            parent_block.append_op(
+                type='split_lod_tensor',
+                inputs={
+                    'X': x,
+                    'Mask': self.cond,
+                },
+                outputs={'OutTrue': out_true,
+                         'OutFalse': out_false},
+                attrs={'level': 0})
+            self.input_table[id(x)] = (out_true, out_false)
+        else:
+            out_true, out_false = self.input_table[id(x)]
+
+        if self.status == IfElse.IN_IF_ELSE_TRUE_BLOCKS:
+            return out_true
+        else:
+            return out_false
+
+    def parent_block(self):
+        current_block = self.helper.main_program.current_block()
+        return self.helper.main_program.block(current_block.parent_idx)
+
+    def true_block(self):
+        return IfElseBlockGuard(True, self)
+
+    def false_block(self):
+        return IfElseBlockGuard(False, self)
+
+    def output(self, *outs):
+        if self.status == self.OUT_IF_ELSE_BLOCKS:
+            raise ValueError("output can only be invoked in the sub-block")
+
+        out_table = self.output_table[1 if self.status ==
+                                      self.IN_IF_ELSE_TRUE_BLOCKS else 0]
+        parent_block = self.parent_block()
+        for each_out in outs:
+            if not isinstance(each_out, Variable):
+                raise TypeError("Each output should be a variable")
+            # create outside tensor
+            outside_out = parent_block.create_var(
+                name=unique_name("_".join([self.helper.name, 'output'])),
+                dtype=each_out.data_type)
+            out_table.append(outside_out)
+
+            # assign local var to outside
+            assign(
+                input=each_out,
+                output=outside_out,
+                main_program=self.helper.main_program,
+                startup_program=self.helper.startup_program)
+
+    def __call__(self):
+        if self.status != self.OUT_IF_ELSE_BLOCKS:
+            raise ValueError("IfElse::__call__ must be out of sub-block")
+        false_len, true_len = map(len, self.output_table)
+        if false_len == 0 and true_len == 0:
+            raise ValueError("Must invoke true_block/false_block before "
+                             "__call__")
+        elif false_len != true_len and false_len != 0 and true_len != 0:
+            raise ValueError("The output side must be same")
+        elif false_len == 0 or true_len == 0:
+            return self.output_table[0 if false_len != 0 else 1]
+
+        # else none of false_len/true_len is zero
+        # merge together
+        rlist = []
+        for false_var, true_var in zip(*self.output_table):
+            rlist.append(
+                merge_lod_tensor(
+                    in_true=true_var,
+                    in_false=false_var,
+                    mask=self.cond,
+                    x=self.cond,
+                    level=0,
+                    main_program=self.helper.main_program,
+                    startup_program=self.helper.startup_program))
+        return rlist
