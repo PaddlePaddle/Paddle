@@ -17,13 +17,13 @@ __all__ = [
 
 def fc(input,
        size,
+       num_flatten_dims=1,
        param_attr=None,
        param_initializer=None,
        bias_attr=None,
        bias_initializer=None,
-       name=None,
        act=None,
-       num_flatten_dims=1,
+       name=None,
        main_program=None,
        startup_program=None):
     """
@@ -32,15 +32,15 @@ def fc(input,
     Args:
        input: The input tensor to the function
        size: The size of the layer
+       num_flatten_dims: Number of columns in input
        param_attr: The parameters/weights to the FC Layer
        param_initializer: Initializer used for the weight/parameter.
        If None, XavierInitializer() is used
        bias_attr: The bias parameter for the FC layer
        bias_initializer: Initializer used for the bias.
        If None, then ConstantInitializer() is used
-       name: Name/alias of the function
        act: Activation to be applied to the output of FC layer
-       num_flatten_dims: Number of columns in input
+       name: Name/alias of the function
        main_program: Name of the main program that calls this
        startup_program: Name of the startup program
 
@@ -111,9 +111,9 @@ def fc(input,
 
 def embedding(input,
               size,
-              data_type='float32',
               is_sparse=False,
               param_attr=None,
+              data_type='float32',
               main_program=None,
               startup_program=None):
     """
@@ -122,9 +122,9 @@ def embedding(input,
     Args:
        input: The input to the function
        size: The size of the layer
-       data_type: The type of data : float32, float_16, int etc
        is_sparse: A flag that decleares whether the input is sparse
        param_attr: Parameters for this layer
+       data_type: The type of data : float32, float_16, int etc
        main_program: Name of the main program that calls this
        startup_program: Name of the startup program
 
@@ -152,7 +152,6 @@ def embedding(input,
 # TODO(qijun): expose H0 and C0
 def dynamic_lstm(input,
                  size,
-                 data_type='float32',
                  param_attr=None,
                  bias_attr=None,
                  use_peepholes=True,
@@ -160,6 +159,7 @@ def dynamic_lstm(input,
                  gate_activation='sigmoid',
                  cell_activation='tanh',
                  candidate_activation='tanh',
+                 data_type='float32',
                  main_program=None,
                  startup_program=None):
     helper = LayerHelper('lstm', **locals())
@@ -200,9 +200,9 @@ def dynamic_lstm(input,
 
 def data(name,
          shape,
+         append_batch_size=True,
          data_type='float32',
          type=core.VarDesc.VarType.LOD_TENSOR,
-         append_batch_size=True,
          main_program=None,
          startup_program=None,
          stop_gradient=True):
@@ -212,9 +212,9 @@ def data(name,
     Args:
        name: The name/alias of the function
        shape: Tuple declaring the shape.
+       append_batch_size: Whether or not to append the data as a batch.
        data_type: The type of data : float32, float_16, int etc
        type: The output type. By default it is LOD_TENSOR.
-       append_batch_size: Whether or not to append the data as a batch.
        main_program: Name of the main program that calls this
        startup_program: Name of the startup program
        stop_gradient: A boolean that mentions whether gradient should flow.
@@ -600,12 +600,12 @@ def sequence_conv(input,
                   num_filters,
                   filter_size=3,
                   filter_stride=1,
-                  act=None,
                   padding=None,
                   bias_attr=None,
                   bias_initializer=None,
                   param_attr=None,
                   param_initializer=None,
+                  act=None,
                   main_program=None,
                   startup_program=None):
     """
@@ -658,16 +658,16 @@ def sequence_conv(input,
 
 def conv2d(input,
            num_filters,
-           name=None,
-           filter_size=[1, 1],
-           act=None,
-           groups=None,
+           filter_size,
            stride=[1, 1],
            padding=None,
-           bias_attr=None,
-           bias_initializer=None,
+           groups=None,
            param_attr=None,
            param_initializer=None,
+           bias_attr=None,
+           bias_initializer=None,
+           act=None,
+           name=None,
            main_program=None,
            startup_program=None):
     """
