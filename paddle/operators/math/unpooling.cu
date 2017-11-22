@@ -76,7 +76,7 @@ class Unpool2dMaxFunctor<platform::GPUPlace, T> {
     const int output_height = output->dims()[2];
     const int output_width = output->dims()[3];
     const T* input_data = input.data<T>();
-    const int* indices_data = indices.data<int>();
+    const T* indices_data = indices.data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
     int nthreads =  output->numel();
@@ -111,7 +111,7 @@ class Unpool2dMaxGradFunctor<platform::GPUPlace, T> {
     const int output_height = output.dims()[2];
     const int output_width = output.dims()[3];
     const T* input_data = input.data<T>();
-    const int* indices_data = indices.data<int>();
+    const T* indices_data = indices.data<T>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
