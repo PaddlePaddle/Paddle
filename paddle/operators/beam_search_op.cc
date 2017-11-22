@@ -139,7 +139,7 @@ bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
   items->reserve(framework::product(ids.dims()));
   for (size_t offset = abs_lod[lod_level_][sent_offset_];
        offset < abs_lod[lod_level_][sent_offset_ + 1]; offset++) {
-    for (int d = 0; d < instance_dim; d++) {
+    for (size_t d = 0; d < instance_dim; d++) {
       const size_t dim_offset = offset * instance_dim + d;
       items->emplace_back(offset, ids_data[dim_offset],
                           scores_data[dim_offset]);
