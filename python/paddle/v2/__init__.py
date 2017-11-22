@@ -91,14 +91,14 @@ def set_omp_mkl_env_vars(trainer_count):
                 .read())
             return num_sockets * num_cores_per_socket
         else:
-            cmds = {"Darwin": "sysctl hw.physicalcpu"}
+            cmds = {"Darwin": "sysctl -n hw.physicalcpu"}
             return int(os.popen(cmds.get(platform.system(), "expr 1")).read())
 
     def num_logical_processors():
         '''Get the number of logical processors'''
         cmds = {
             "Linux": "grep \"processor\" /proc/cpuinfo|sort -u|wc -l",
-            "Darwin": "sysctl hw.logicalcpu"
+            "Darwin": "sysctl -n hw.logicalcpu"
         }
         return int(os.popen(cmds.get(platform.system(), "expr 1")).read())
 
