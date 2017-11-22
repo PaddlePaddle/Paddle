@@ -45,21 +45,30 @@ int main() {
                                         in_args,
                                         out_args,
                                         /* isTrain */ false));
-  paddle_matrix prob = paddle_matrix_create_none();
 
-  CHECK(paddle_arguments_get_value(out_args, 0, prob));
+  int not_empty = 0;
+  CHECK(paddle_check_args_empty(out_args, &not_empty));
 
-  paddle_real* array;
+  if (not_empty) {
+    paddle_matrix prob = paddle_matrix_create_none();
 
-  CHECK(paddle_matrix_get_row(prob, 0, &array));
+    CHECK(paddle_arguments_get_value(out_args, 0, prob));
 
-  printf("Prob: ");
-  for (int i = 0; i < 2; ++i) {
-    printf("%.2f ", array[i]);
+    paddle_real* array;
+
+    CHECK(paddle_matrix_get_row(prob, 0, &array));
+
+    printf("Prob: ");
+    for (int i = 0; i < 2; ++i) {
+      printf("%.2f ", array[i]);
+    }
+    printf("\n");
+
+    CHECK(paddle_matrix_destroy(prob));
+  } else {
+    printf("Result is empty.\n");
   }
-  printf("\n");
 
-  CHECK(paddle_matrix_destroy(prob));
   CHECK(paddle_arguments_destroy(out_args));
   CHECK(paddle_ivector_destroy(seq_pos));
   CHECK(paddle_ivector_destroy(sentence));

@@ -113,6 +113,15 @@ paddle_gradient_machine_get_layer_output(paddle_gradient_machine machine,
                                          const char* layerName,
                                          paddle_arguments args);
 
+/**
+ * @brief Check whether the args is empty.
+ * @param [in] args output of the specified layer
+ * @param [out] notEmpty whether the args is empty,
+ * @return paddle_error
+ */
+PD_API paddle_error paddle_check_args_empty(paddle_arguments inArgs,
+                                            int* notEmpty);
+
 #ifdef __cplusplus
 }
 #endif

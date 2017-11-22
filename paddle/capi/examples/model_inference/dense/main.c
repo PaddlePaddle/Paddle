@@ -38,7 +38,7 @@ int main() {
   for (int i = 0; i < input.size(); ++i) {
     input[i] = rand() / ((float)RAND_MAX);
   }
-  
+
   // Set value for the input matrix
   CHECK(paddle_matrix_set_value(mat, input.data()));
 
@@ -49,25 +49,32 @@ int main() {
                                         in_args,
                                         out_args,
                                         /* isTrain */ false));
-  paddle_matrix prob = paddle_matrix_create_none();
 
-  CHECK(paddle_arguments_get_value(out_args, 0, prob));
+  int not_empty = 0;
+  CHECK(paddle_check_args_empty(out_args, &not_empty));
+  if (not_empty) {
+    paddle_matrix prob = paddle_matrix_create_none();
 
-  std::std::vector<paddle_real> result;
-  int height;
-  int width;
+    CHECK(paddle_arguments_get_value(out_args, 0, prob));
 
-  CHECK(paddle_matrix_get_shape(prob, &height, &width);
-  result.resize(height * width);
-  CHECK(paddle_matrix_get_value(prob, result.data()));
+    std::std::vector<paddle_real> result;
+    int height;
+    int width;
 
-  printf("Prob: ");
-  for (int i = 0; i < height * width; ++i) {
-    printf("%.2f ", result[i]);
+    CHECK(paddle_matrix_get_shape(prob, &height, &width));
+    result.resize(height * width);
+    CHECK(paddle_matrix_get_value(prob, result.data()));
+
+    printf("Prob: ");
+    for (int i = 0; i < height * width; ++i) {
+      printf("%.2f ", result[i]);
+    }
+    printf("\n");
+    CHECK(paddle_matrix_destroy(prob));
+  } else {
+    printf("Result is empty.\n");
   }
-  printf("\n");
 
-  CHECK(paddle_matrix_destroy(prob));
   CHECK(paddle_arguments_destroy(out_args));
   CHECK(paddle_matrix_destroy(mat));
   CHECK(paddle_arguments_destroy(in_args));

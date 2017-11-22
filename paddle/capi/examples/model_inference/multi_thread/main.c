@@ -38,17 +38,24 @@ void* thread_main(void* gm_ptr) {
                                           out_args,
                                           /* isTrain */ false));
 
-    CHECK(paddle_arguments_get_value(out_args, 0, prob));
+    int not_empty = 0;
+    CHECK(paddle_check_args_empty(out_args, &not_empty));
 
-    CHECK(paddle_matrix_get_row(prob, 0, &array));
+    if (not_empty) {
+      CHECK(paddle_arguments_get_value(out_args, 0, prob));
 
-    pthread_mutex_lock(&mutex);
-    printf("Prob: ");
-    for (int i = 0; i < 10; ++i) {
-      printf("%.2f ", array[i]);
+      CHECK(paddle_matrix_get_row(prob, 0, &array));
+
+      pthread_mutex_lock(&mutex);
+      printf("Prob: ");
+      for (int i = 0; i < 10; ++i) {
+        printf("%.2f ", array[i]);
+      }
+      printf("\n");
+      pthread_mutex_unlock(&mutex);
+    } else {
+      printf("Result is empty.\n");
     }
-    printf("\n");
-    pthread_mutex_unlock(&mutex);
   }
 
   CHECK(paddle_matrix_destroy(prob));
