@@ -54,6 +54,8 @@ class TestUnpoolOp(OpTest):
         self.outputs = {'Out': output.astype('float32')}
 
     def test_check_output(self):
+        print self.inputs['X']
+        print self.inputs['Y']
         print self.outputs['Out']
         self.check_output()
 
@@ -63,7 +65,7 @@ class TestUnpoolOp(OpTest):
     def init_test_case(self):
         self.Unpool2d_forward_naive = unpool2dmax_forward_naive
         self.unpoolingtype = "max"
-        self.shape = [10, 2, 5, 5]
+        self.shape = [6, 4, 5, 5]
         self.ksize = [3, 3]
         self.strides = [2, 2]
         self.paddings = [0, 0]

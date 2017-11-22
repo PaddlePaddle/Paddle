@@ -22,41 +22,56 @@ namespace math {
 template <typename T>
 __global__ void KernelUnpool2dMax(const int nthreads,
                                   const T* input_data,
-                                  const int* indices_data,
+                                  const T* indices_data,
                                   const int input_height,
                                   const int input_width,
+                                  const int channels,
                                   T* output_data,
                                   const int output_height,
                                   const int output_width) {
+  int bsize = input_height * input_width * channels;
+  int csize = input_height * input_width;
+  int out_bsize = output_height * output_width * channels;
+  int out_csize = output_height * output_width;
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
   for (int i = index; i < nthreads; i += offset) {
-    int out_offset =  i / (input_height * input_width) \
-                      * output_height * output_width;
+    int bidx = i / bsize;
+    int boffset = i % bsize;
+    int cidx = boffset / csize;
+    int out_offset = bidx * out_bsize + cidx * out_csize;
     int out_index = indices_data[i];
     PADDLE_ASSERT(out_index < (output_height * output_width));
+    printf("-------%d------[%f]\n", out_offset + out_index, input_data[i]);
     output_data[out_offset + out_index] = input_data[i];
   }
 }
 template <typename T>
 __global__ void KernelUnpool2dMaxGrad(const int nthreads,
                                       const T* input_data,
-                                      const int* indices_data,
+                                      const T* indices_data,
                                       const int input_height,
                                       const int input_width,
+                                      const int channels,
                                       const T* output_data,
                                       const T* output_grad,
                                       const int output_height,
                                       const int output_width,
                                       T* input_grad) {
+    int bsize = input_height * input_width * channels;
+    int csize = input_height * input_width;
+    int out_bsize = output_height * output_width * channels;
+    int out_csize = output_height * output_width;
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     int offset = blockDim.x * gridDim.x;
     for (int i = index; i < nthreads; i += offset) {
-        int out_offset =  i / (input_height * input_width) \
-                          * output_height * output_width;
-        int out_index = indices_data[i];
-        PADDLE_ASSERT(out_index < (output_height * output_width));
-        input_grad[i] = output_grad[out_offset + out_index];
+      int bidx = i / bsize;
+      int boffset = i % bsize;
+      int cidx = boffset / csize;
+      int out_offset = bidx * out_bsize + cidx * out_csize;
+      int out_index = indices_data[i];
+      PADDLE_ASSERT(out_index < (output_height * output_width));
+      input_grad[i] = output_grad[out_offset + out_index];
     }
 }
 /*
@@ -78,8 +93,7 @@ class Unpool2dMaxFunctor<platform::GPUPlace, T> {
     const T* input_data = input.data<T>();
     const T* indices_data = indices.data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
-
-    int nthreads =  output->numel();
+    int nthreads = batch_size * output_channels * input_height * input_width;
     int blocks = (nthreads + 1024 - 1) / 1024;
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
@@ -88,7 +102,7 @@ class Unpool2dMaxFunctor<platform::GPUPlace, T> {
         T><<<grid, threads, 0,
              reinterpret_cast<const platform::CUDADeviceContext&>(context)
                  .stream()>>>(nthreads, input_data, indices_data,
-                              input_height, input_width,
+                              input_height, input_width, output_channels,
                               output_data, output_height, output_width);
   }
 };
@@ -115,7 +129,7 @@ class Unpool2dMaxGradFunctor<platform::GPUPlace, T> {
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
-    int nthreads =  output.numel();
+    int nthreads = batch_size * output_channels * input_height * input_width;
     int blocks = (nthreads + 1024 - 1) / 1024;
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
@@ -125,7 +139,7 @@ class Unpool2dMaxGradFunctor<platform::GPUPlace, T> {
              reinterpret_cast<const platform::CUDADeviceContext&>(context)
                  .stream()>>>(
                               nthreads, input_data, indices_data,
-                              input_height, input_width,
+                              input_height, input_width, output_channels,
                               output_data, output_grad_data,
                               output_height, output_width,
                               input_grad_data);

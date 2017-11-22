@@ -29,11 +29,16 @@ class UnpoolKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* in_x = context.Input<Tensor>("X");
     const Tensor* in_y = context.Input<Tensor>("Y");
-    Tensor* out = context.Output<Tensor>("Out");
+    auto * out = context.Output<Tensor>("Out");
     std::string unpoolingtype = context.Attr<std::string>("unpoolingtype");
     std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
+    T* output_data = out->mutable_data<T>(context.GetPlace());
+    if (output_data) {
+      math::SetConstant<Place, T> set_zero;
+      set_zero(context.device_context(), out, static_cast<T>(0));
+    }
     switch (ksize.size()) {
     case 2: {
       if (unpoolingtype == "max") {
@@ -66,7 +71,7 @@ class UnpoolGradKernel : public framework::OpKernel<T> {
     if (in_x_grad) {
       in_x_grad->mutable_data<T>(context.GetPlace());
       zero(device_ctx, in_x_grad, static_cast<T>(0.0));
-          }
+    }
     switch (ksize.size()) {
     case 2: {
     if (unpoolingtype == "max") {

@@ -21,9 +21,6 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-#define FLT_MAX \
-    __FLT_MAX__
-
 template <typename Place, typename T>
 
 class Unpool2dMaxFunctor {
