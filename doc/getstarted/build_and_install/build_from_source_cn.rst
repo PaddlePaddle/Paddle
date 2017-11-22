@@ -15,12 +15,12 @@ PaddlePaddle主要使用 `CMake <https://cmake.org>`_ 以及GCC, G++作为编译
 
    git clone https://github.com/PaddlePaddle/Paddle.git
    cd Paddle
-   # 如果使用Docker编译环境，执行下面的命令
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=ON" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x paddle/scripts/docker/build.sh
+   # 如果使用Docker编译环境，执行下面的命令编译CPU-Only的二进制
+   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x paddle/scripts/docker/build.sh
    # 如果不使用Docker编译环境，执行下面的命令
    mkdir build
    cd build
-   cmake -DWITH_GPU=ON -DWITH_TESTING=OFF ..
+   cmake -DWITH_GPU=OFF -DWITH_TESTING=OFF ..
    make
    
 
@@ -56,64 +56,57 @@ PaddlePaddle编译需要使用到下面的依赖（包含但不限于），其�
 编译选项
 ----------------
 
-PaddlePaddle的编译选项，包括生成CPU/GPU二进制文件、链接何种BLAS库等。用户可在调用cmake的时候设置它们，详细的cmake使用方法可以参考 `官方文档 <https://cmake.org/cmake-tutorial>`_ 。
+PaddlePaddle的编译选项，包括生成CPU/GPU二进制文件、链接何种BLAS库等。
+用户可在调用cmake的时候设置它们，详细的cmake使用方法可以参考
+`官方文档 <https://cmake.org/cmake-tutorial>`_ 。
 
-.. _build_options_bool:
-
-Bool型的编译选项
-----------------
-
-用户可在cmake的命令行中，通过使用 ``-D`` 命令设置该类编译选项，例如
+在cmake的命令行中，通过使用 ``-D`` 命令设置该类编译选项，例如：
 
 ..  code-block:: bash
 
     cmake .. -DWITH_GPU=OFF
 
-..  csv-table:: Bool型的编译选项
+..  csv-table:: 编译选项说明
     :header: "选项", "说明", "默认值"
     :widths: 1, 7, 2
 
-    "WITH_GPU", "是否支持GPU。", "是"
-    "WITH_DOUBLE", "是否使用双精度浮点数。", "否"
-    "WITH_DSO", "是否运行时动态加载CUDA动态库，而非静态加载CUDA动态库。", "是"
-    "WITH_AVX", "是否编译含有AVX指令集的PaddlePaddle二进制文件", "是"
-    "WITH_PYTHON", "是否内嵌PYTHON解释器。", "是"
-    "WITH_STYLE_CHECK", "是否编译时进行代码风格检查", "是"
-    "WITH_TESTING", "是否开启单元测试", "是"
-    "WITH_DOC", "是否编译中英文文档", "否"
-    "WITH_SWIG_PY", "是否编译PYTHON的SWIG接口，该接口可用于预测和定制化训练", "自动"
-    "WITH_GOLANG", "是否编译go语言的可容错parameter server", "是"
+    "WITH_GPU", "是否支持GPU", "ON"
+    "WITH_C_API", "是否仅编译CAPI", "OFF"
+    "WITH_DOUBLE", "是否使用双精度浮点数", "OFF"
+    "WITH_DSO", "是否运行时动态加载CUDA动态库，而非静态加载CUDA动态库。", "ON"
+    "WITH_AVX", "是否编译含有AVX指令集的PaddlePaddle二进制文件", "ON"
+    "WITH_PYTHON", "是否内嵌PYTHON解释器", "ON"
+    "WITH_STYLE_CHECK", "是否编译时进行代码风格检查", "ON"
+    "WITH_TESTING", "是否开启单元测试", "ON"
+    "WITH_DOC", "是否编译中英文文档", "OFF"
+    "WITH_SWIG_PY", "是否编译PYTHON的SWIG接口，该接口可用于预测和定制化训练", "Auto"
+    "WITH_GOLANG", "是否编译go语言的可容错parameter server", "ON"
+    "WITH_MKL", "是否使用MKL数学库，如果为否则是用OpenBLAS", "ON"
 
-.. _build_options_blas:
-
-BLAS/CUDA/Cudnn的编译选项
---------------------------
 BLAS
 +++++
 
-PaddlePaddle支持以下任意一种BLAS库：`MKL <https://software.intel.com/en-us/intel-mkl>`_ ，`ATLAS <http://math-atlas.sourceforge.net/>`_ ，`OpenBlAS <http://www.openblas.net/>`_ 和 `REFERENCE BLAS <http://www.netlib.org/blas/>`_ 。
+PaddlePaddle支持 `MKL <https://software.intel.com/en-us/intel-mkl>`_ 和
+`OpenBlAS <http://www.openblas.net/>`_ 两种BLAS库。默认使用MKL。如果使用MKL并且机器含有AVX2指令集，
+还会下载MKL-DNN数学库，详细参考 `这里 <https://github.com/PaddlePaddle/Paddle/tree/develop/doc/design/mkldnn#cmake>`_ 。
 
-..  csv-table:: BLAS路径相关的编译选项
-    :header: "编译选项", "描述", "注意"
-    :widths: 1, 2, 7
-    
-    "MKL_ROOT", "${MKL_ROOT}/include下需要包含mkl.h，${MKL_ROOT}/lib目录下需要包含mkl_core，mkl_sequential和mkl_intel_lp64三个库。"
-    "ATLAS_ROOT", "${ATLAS_ROOT}/include下需要包含cblas.h，${ATLAS_ROOT}/lib下需要包含cblas和atlas两个库。"
-    "OPENBLAS_ROOT", "${OPENBLAS_ROOT}/include下需要包含cblas.h，${OPENBLAS_ROOT}/lib下需要包含openblas库。"
-    "REFERENCE_CBLAS_ROOT", "${REFERENCE_CBLAS_ROOT}/include下需要包含cblas.h，${REFERENCE_CBLAS_ROOT}/lib下需要包含cblas库。"
+如果关闭MKL，则会使用OpenBLAS作为BLAS库。
 
-CUDA/Cudnn
+CUDA/cuDNN
 +++++++++++
 
-PaddlePaddle可以使用cudnn v2之后的任何一个版本来编译运行，但尽量请保持编译和运行使用的cudnn是同一个版本。 我们推荐使用最新版本的cudnn v5.1。
+PaddlePaddle在编译时/运行时会自动找到系统中安装的CUDA和cuDNN库进行编译和执行。
+
+PaddlePaddle可以使用cuDNN v5.1之后的任何一个版本来编译运行，但尽量请保持编译和运行使用的cuDNN是同一个版本。
+我们推荐使用最新版本的cuDNN。
 
 编译选项的设置
 ++++++++++++++
 
-PaddePaddle通过编译时指定路径来实现引用各种BLAS/CUDA/Cudnn库。cmake编译时，首先在系统路径(/usr/lib\:/usr/local/lib)中搜索这几个库，同时也会读取相关路径变量来进行搜索。 通过使用 ``-D`` 命令可以设置，例如 
+PaddePaddle通过编译时指定路径来实现引用各种BLAS/CUDA/cuDNN库。cmake编译时，首先在系统路径(/usr/lib\:/usr/local/lib)中搜索这几个库，同时也会读取相关路径变量来进行搜索。 通过使用 ``-D`` 命令可以设置，例如 
 
 ..  code-block:: bash
 
-    cmake .. -DMKL_ROOT=/opt/mkl/ -DCUDNN_ROOT=/opt/cudnnv5
+    cmake .. -DWITH_GPU=ON -DWITH_TESTING=OFF -DCUDNN_ROOT=/opt/cudnnv5
 
 注意：这几个编译选项的设置，只在第一次cmake的时候有效。如果之后想要重新设置，推荐清理整个编译目录（``rm -rf``）后，再指定。

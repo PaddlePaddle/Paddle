@@ -16,12 +16,12 @@ Then run:
 
    git clone https://github.com/PaddlePaddle/Paddle.git
    cd Paddle
-   # run the following command if you are using docker
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=ON" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x paddle/scripts/docker/build.sh
+   # run the following command to build CPU-Only binaries if you are using docker
+   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x paddle/scripts/docker/build.sh
    # else run these commands
    mkdir build
    cd build
-   cmake -DWITH_GPU=ON -DWITH_TESTING=OFF ..
+   cmake -DWITH_GPU=OFF -DWITH_TESTING=OFF ..
    make
 
 When the compile finishes, you can get the output whl package under
@@ -78,6 +78,7 @@ You can add :code:`-D` argument to pass such options, like:
     :widths: 1, 7, 2
 
     "WITH_GPU", "Build with GPU support", "ON"
+    "WITH_C_API", "Build only CAPI", "OFF"
     "WITH_DOUBLE", "Build with double precision", "OFF"
     "WITH_DSO", "Dynamically load CUDA libraries", "ON"
     "WITH_AVX", "Build with AVX support", "ON"
@@ -87,34 +88,26 @@ You can add :code:`-D` argument to pass such options, like:
     "WITH_DOC", "Build documentaions", "OFF"
     "WITH_SWIG_PY", "Build Python SWIG interface for V2 API", "Auto"
     "WITH_GOLANG", "Build fault-tolerant parameter server written in go", "ON"
+    "WITH_MKL", "Use MKL as BLAS library, else use OpenBLAS", "ON"
 
-.. _build_options_blas:
 
-BLAS/CUDA/Cudnn Options
---------------------------
 BLAS
 +++++
 
-You can build PaddlePaddle with any of the below BLAS libraries:
-`MKL <https://software.intel.com/en-us/intel-mkl>`_ ,
-`ATLAS <http://math-atlas.sourceforge.net/>`_ ,
-`OpenBlAS <http://www.openblas.net/>`_ and
-`REFERENCE BLAS <http://www.netlib.org/blas/>`_ .
+PaddlePaddle supports `MKL <https://software.intel.com/en-us/intel-mkl>`_ and
+`OpenBlAS <http://www.openblas.net/>`_ as BLAS library。By default it uses MKL.
+If you are using MKL and your machine supports AVX2, MKL-DNN will also be downloaded
+and used, for more `details <https://github.com/PaddlePaddle/Paddle/tree/develop/doc/design/mkldnn#cmake>`_ .
 
-..  csv-table:: BLAS Options
-    :header: "Option", "Description"
-    :widths: 1, 7
-    
-    "MKL_ROOT", "${MKL_ROOT}/include must have mkl.h, ${MKL_ROOT}/lib must have mkl_core, mkl_sequential and mkl_intel_lp64 libs."
-    "ATLAS_ROOT", "${ATLAS_ROOT}/include must have cblas.h，${ATLAS_ROOT}/lib must have cblas and atlas libs"
-    "OPENBLAS_ROOT", "${OPENBLAS_ROOT}/include must have cblas.h，${OPENBLAS_ROOT}/lib must have OpenBlas libs."
-    "REFERENCE_CBLAS_ROOT", "${REFERENCE_CBLAS_ROOT}/include must have cblas.h，${REFERENCE_CBLAS_ROOT}/lib must have cblas lib."
+If you choose not to use MKL, then OpenBlAS will be used.
 
-CUDA/Cudnn
+CUDA/cuDNN
 +++++++++++
 
-PaddlePaddle can build with any version later than Cudnn v2, and we intend to
-keep on with latest cudnn versions. Be sure to run with the same version of cudnn
+PaddlePaddle will automatically find CUDA and cuDNN when compiling and running.
+
+PaddlePaddle can build with any version later than cuDNN v5.1, and we intend to
+keep on with latest cuDNN versions. Be sure to run with the same version of cuDNN
 you built.
 
 Pass Compile Options
@@ -127,7 +120,7 @@ passed to cmake, i.e.
 
 ..  code-block:: bash
 
-    cmake .. -DMKL_ROOT=/opt/mkl/ -DCUDNN_ROOT=/opt/cudnnv5
+    cmake .. -DWITH_GPU=ON -DWITH_TESTING=OFF -DCUDNN_ROOT=/opt/cudnnv5
 
 **NOTE: These options only take effect when running cmake for the first time, you need to clean the cmake cache or clean the build directory if you want to change it.**
 
