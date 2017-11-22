@@ -4,8 +4,7 @@ import math
 import sys
 from op_test import OpTest
 
-
-class TestSequenceSliceOp(OpTest):
+class TestROIPoolOp(OpTest):
     def set_data(self):
         self.init_test_case()
         self.make_rois()
@@ -13,7 +12,7 @@ class TestSequenceSliceOp(OpTest):
 
         self.inputs = {
             'X': self.x, 
-            'Rois': self.rois}
+            'ROIs': self.rois}
         
         self.attrs = {
             'spatial_scale': self.spatial_scale,
