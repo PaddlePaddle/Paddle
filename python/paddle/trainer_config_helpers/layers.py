@@ -6640,8 +6640,10 @@ def prelu_layer(input,
 
     :type partial_sum: int
     :param channel_shared: whether or not the parameter are shared across channels.
+
         - channel_shared = True, we set the partial_sum to the number of outputs.
         - channel_shared = False, we set the partial_sum to the number of elements in one channel.
+
     :type channel_shared: bool
     :param num_channels: number of input channel.
     :type num_channels: int
