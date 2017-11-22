@@ -6604,10 +6604,11 @@ def row_conv_layer(input,
 
 @layer_support()
 @wrap_name_default()
-@wrap_param_attr_default()
 def prelu_layer(input,
                 name=None,
                 partial_sum=1,
+                channel_shared=None,
+                num_channels=None,
                 param_attr=None,
                 layer_attr=None):
     """
@@ -6638,6 +6639,14 @@ def prelu_layer(input,
         - partial_sum = number of outputs, indicates all elements share the same weight.
 
     :type partial_sum: int
+    :param channel_shared: whether or not the parameter are shared across channels.
+
+        - channel_shared = True, we set the partial_sum to the number of outputs.
+        - channel_shared = False, we set the partial_sum to the number of elements in one channel.
+
+    :type channel_shared: bool
+    :param num_channels: number of input channel.
+    :type num_channels: int
     :param param_attr: The parameter attribute. See ParameterAttribute for details.
     :type param_attr: ParameterAttribute
     :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
@@ -6648,7 +6657,25 @@ def prelu_layer(input,
     """
 
     assert isinstance(input, LayerOutput), 'prelu_layer accepts only one input.'
-    assert isinstance(param_attr, ParameterAttribute)
+
+    if not param_attr:
+        param_attr = ParamAttr(initial_mean=0.25, initial_std=0.0)
+    else:
+        assert isinstance(param_attr, ParameterAttribute)
+
+    if num_channels is None:
+        assert input.num_filters is not None, \
+                'the input channel cannot be detected, please specify the num_channels parameter'
+        num_channels = input.num_filters
+
+    if channel_shared is not None:
+        assert isinstance(channel_shared, bool)
+        assert (input.height != 0 and input.width != 0), \
+            'input height and widht must be setted'
+        if channel_shared:
+            partial_sum = input.height * input.width * num_channels
+        else:
+            partial_sum = input.height * input.width
 
     l = Layer(
         name=name,
@@ -6660,6 +6687,7 @@ def prelu_layer(input,
         name=name,
         layer_type=LayerType.PRELU,
         parents=input,
+        num_filters=num_channels,
         size=l.config.size)
 
 
