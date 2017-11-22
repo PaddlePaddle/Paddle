@@ -94,11 +94,6 @@ protected:
   std::vector<mkldnn::primitive> pipelineMergeGrad_;
   // tmp input argument to save input grad, only used to merge grad
   Argument tmpInArg_;
-  // since mkldnn sum do not support different formats:
-  // can refer to https://github.com/01org/mkl-dnn/issues/134
-  // so need create reorder manually and save tmp MKLDNNMatrix
-  MKLDNNMatrixPtr tmpOutGrad_;
-  std::shared_ptr<mkldnn::primitive> tmpCvt_;
 
 public:
   explicit MKLDNNLayer(const LayerConfig& config)
