@@ -85,11 +85,12 @@ namespace operators {
  * to split the beam search algorithm into a sequence of smaller operators, and
  * the prune operators can be inserted in this sequence.
  */
+template <typename D, typename S>
 class BeamSearch {
  public:
   // TODO(superjom) make type customizable
-  using id_t = size_t;
-  using score_t = float;
+  using id_t = D;
+  using score_t = S;
   /*
    * Input the arguments that needed by this class.
    */
@@ -135,7 +136,7 @@ class BeamSearch {
    */
   struct Item {
     Item() {}
-    Item(size_t offset, size_t id, float score)
+    Item(id_t offset, id_t id, score_t score)
         : offset(offset), id(id), score(score) {}
     // offset in the lod_level_+1
     size_t offset;
@@ -205,7 +206,7 @@ class BeamSearchOp : public framework::OperatorBase {
     size_t beam_size = Attr<int>("beam_size");
     int end_id = Attr<int>("end_id");
     LOG(INFO) << "init beam search";
-    BeamSearch alg(ids, scores, level, beam_size, end_id);
+    BeamSearch<size_t, float> alg(ids, scores, level, beam_size, end_id);
 
     LOG(INFO) << "after beam search";
     auto selected_ids_var = scope.FindVar(Output("selected_ids"));
