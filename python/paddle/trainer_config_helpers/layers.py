@@ -2507,12 +2507,12 @@ def img_conv_layer(input,
     input is raw pixels of image(mono or RGB), or it may be the previous layer's
     num_filters * num_group.
 
-    There are several group of filter in PaddlePaddle implementation.
-    Each group will process some channel of the inputs. For example, if an input
+    There are several groups of filters in PaddlePaddle implementation.
+    Each group will process some channels of the input. For example, if
     num_channel = 256, group = 4, num_filter=32, the PaddlePaddle will create
-    32*4 = 128 filters to process inputs. The channels will be split into 4
-    pieces. First 256/4 = 64 channels will process by first 32 filters. The
-    rest channels will be processed by rest group of filters.
+    32*4 = 128 filters to process the input. The channels will be split into 4
+    pieces. First 256/4 = 64 channels will be processed by first 32 filters. The
+    rest channels will be processed by the rest groups of filters.
 
     The example usage is:
 
@@ -2528,53 +2528,68 @@ def img_conv_layer(input,
     :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param filter_size: The x dimension of a filter kernel. Or input a tuple for
-                        two image dimension.
+    :param filter_size: The dimensions of the filter kernel. If the parameter is
+                        set to one integer, the two dimensions on x and y axises
+                        will be same when filter_size_y is not set. If it is set
+                        to a list, the first element indicates the dimension on
+                        the x axis, and the second is used to specify the dimension
+                        on the y axis when filter_size_y is not provided.
     :type filter_size: int | tuple | list
-    :param filter_size_y: The y dimension of a filter kernel. Since PaddlePaddle
-                        currently supports rectangular filters, the filter's
-                        shape will be (filter_size, filter_size_y).
-    :type filter_size_y: int | None
+    :param filter_size_y: The dimension of the filter kernel on the y axis. If the parameter
+                          is not set, it will be set automatically according to filter_size.
+    :type filter_size_y: int
     :param num_filters: Each filter group's number of filter
     :param act: Activation type. ReluActivation is the default activation.
     :type act: BaseActivation
-    :param groups: Group size of filters.
+    :param groups: The group number. 1 is the default group number.
     :type groups: int
-    :param stride: The x dimension of the stride. Or input a tuple for two image
-                   dimension.
+    :param stride: The strides. If the parameter is set to one integer, the strides
+                   on x and y axises will be same when stride_y is not set. If it is
+                   set to a list, the first element indicates the stride on the x axis,
+                   and the second is used to specify the stride on the y axis when
+                   stride_y is not provided. 1 is the default value.
     :type stride: int | tuple | list
-    :param stride_y: The y dimension of the stride.
+    :param stride_y: The stride on the y axis.
     :type stride_y: int
-    :param padding: The x dimension of the padding. Or input a tuple for two
-                    image dimension
+    :param padding: The padding sizes. If the parameter is set to one integer, the padding
+                    sizes on x and y axises will be same when padding_y is not set. If it
+                    is set to a list, the first element indicates the padding size on the
+                    x axis, and the second is used to specify the padding size on the y axis
+                    when padding_y is not provided. 0 is the default padding size.
     :type padding: int | tuple | list
-    :param padding_y: The y dimension of the padding.
+    :param padding_y: The padding size on the y axis.
     :type padding_y: int
-    :param dilation: The x dimension of the dilation. Or input a tuple for two
-                    image dimension
+    :param dilation: The dimensions of the dilation. If the parameter is set to one integer,
+                     the two dimensions on x and y axises will be same when dilation_y is not
+                     set. If it is set to a list, the first element indicates the dimension
+                     on the x axis, and the second is used to specify the dimension on the y
+                     axis when dilation_y is not provided. 1 is the default dimension.
     :type dilation: int | tuple | list
-    :param dilation_y: The y dimension of the dilation.
+    :param dilation_y: The dimension of the dilation on the y axis.
     :type dilation_y: int
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param num_channels: number of input channels. If None will be set
-                        automatically from previous output.
+    :param num_channels: The number of input channels. If the parameter is not set or
+                         set to None, its actual value will be automatically set to
+                         the channel number of the input.
     :type num_channels: int
-    :param param_attr: Convolution param attribute. None means default attribute
+    :param param_attr: The parameter attribute. See ParameterAttribute for
+                       details.
     :type param_attr: ParameterAttribute
-    :param shared_biases: Is biases will be shared between filters or not.
+    :param shared_biases: Whether biases will be shared between filters or not.
     :type shared_biases: bool
-    :param layer_attr: Layer Extra Attribute.
+    :param layer_attr: The extra layer attributes. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
-    :param trans: true if it is a convTransLayer, false if it is a convLayer
+    :param trans: True if it is a convTransLayer, False if it is a convLayer
     :type trans: bool
-    :param layer_type: specify the layer_type, default is None. If trans=True,
-                       layer_type has to be "exconvt" or "cudnn_convt",
-                       otherwise layer_type has to be either "exconv" or
-                       "cudnn_conv"
-    :type layer_type: String
+    :param layer_type: Specify the layer type. If the dilation's dimension on one axis is
+                       larger than 1, layer_type has to be "cudnn_conv" or "cudnn_convt".
+                       If trans=True, layer_type has to be "exconvt" or "cudnn_convt",
+                       otherwise layer_type has to be either "exconv" or "cudnn_conv".
+    :type layer_type: basestring
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -2679,7 +2694,7 @@ def img_pool_layer(input,
     """
     Image pooling Layer.
 
-    The details of pooling layer, please refer ufldl's pooling_ .
+    The details of pooling layer, please refer to ufldl's pooling_ .
 
     .. _pooling: http://ufldl.stanford.edu/tutorial/supervised/Pooling/
 
@@ -2711,32 +2726,37 @@ def img_pool_layer(input,
                                  padding_y=2,
                                  pool_type=MaxPooling())
 
-    :param padding: pooling padding width.
+    :param padding: The padding size on the x axis. 0 is the default padding size.
     :type padding: int
-    :param padding_y: pooling padding height. It's equal to padding by default.
-    :type padding_y: int | None
-    :param name: name of pooling layer
-    :type name: basestring.
+    :param padding_y: The padding size on the y axis. If the parameter is not set
+                      or set to None, it will be set to 'padding' automatically.
+    :param name: The name of this layer. It is optional.
+    :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param pool_size: pooling window width
+    :param pool_size: The pooling window length on the x axis.
     :type pool_size: int
-    :param pool_size_y: pooling window height. It's eaqual to pool_size by default.
-    :type pool_size_y: int | None
-    :param num_channels: number of input channel.
+    :param pool_size_y: The pooling window length on the y axis. If the parameter is
+                        not set or set to None, its actual value will be automatically
+                        set to pool_size.
+    :type pool_size_y: int
+    :param num_channels: The number of input channels. If the parameter is not set or
+                         set to None, its actual value will be automatically set to
+                         the channels number of the input.
     :type num_channels: int
-    :param pool_type: pooling type. MaxPooling or AvgPooling. Default is
-                      MaxPooling.
+    :param pool_type: Pooling type. MaxPooling is the default pooling.
     :type pool_type: BasePoolingType
-    :param stride: stride width of pooling.
+    :param stride: The stride on the x axis. 1 is the default value.
     :type stride: int
-    :param stride_y: stride height of pooling. It is equal to stride by default.
-    :type stride_y: int | None
-    :param layer_attr: Extra Layer attribute.
+    :param stride_y: The stride on the y axis. If the parameter is not set or set to
+                     None, its actual value will be automatically set to 'stride'.
+    :type stride_y: int
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
-    :param ceil_mode: Wether to use ceil mode to calculate output height and with.
-                      Defalut is True. If set false, Otherwise use floor.
-
+    :param ceil_mode: Wether to use the ceil function to calculate output height and width.
+                      True is the default. If it is set to False, the floor function will
+                      be used.
     :type ceil_mode: bool
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2842,24 +2862,32 @@ def img_pool3d_layer(input,
 
     :param padding: pooling padding width.
     :type padding: int | tuple | list
-    :param name: name of pooling layer
+    :param name: The name of this layer. It is optional.
     :type name: basestring.
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param pool_size: pooling window width
+    :param pool_size: The pooling window lengths along three axises. If the parameter
+                      is set to one integer, the three lengths will be same.
     :type pool_size: int | tuple | list
-    :param num_channels: number of input channel.
+    :param num_channels: The number of input channels. If the parameter is not set or
+                         set to None, its actual value will be automatically set to
+                         the channels number of the input.
     :type num_channels: int
-    :param pool_type: pooling type. MaxPooling or AvgPooling. Default is
-                      MaxPooling.
+    :param pool_type: Pooling type. MaxPooling is the default pooling.
     :type pool_type: BasePoolingType
-    :param stride: stride width of pooling.
+    :param stride: The strides of the pooling along three axises. If the parameter
+                   is set to one integer, the three strides will be same. 1 is the
+                   default value.
     :type stride: int | tuple | list
-    :param layer_attr: Extra Layer attribute.
+    :param padding: The sizes of padding along three axises. If the parameter is set to
+                    one integer, they will be same. 0 is the default padding size.
+    :type padding: int | tuple | list
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
-    :param ceil_mode: Wether to use ceil mode to calculate output height and with.
-                      Defalut is True. If set false, Otherwise use floor.
-
+    :param ceil_mode: Wether to use the ceil function to calculate output height and width.
+                      True is the default. If it is set to False, the floor function will
+                      be used.
     :type ceil_mode: bool
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2938,9 +2966,11 @@ def spp_layer(input,
               pyramid_height=None,
               layer_attr=None):
     """
-    Spatial Pyramid Pooling in Deep Convolutional Networks for Visual Recognition.
-    The details please refer to
-    `Kaiming He's paper <https://arxiv.org/abs/1406.4729>`_.
+    A layer performs spatial pyramid pooling.
+
+    Reference:
+        Spatial Pyramid Pooling in Deep Convolutional Networks for Visual Recognition
+        https://arxiv.org/abs/1406.4729
 
     The example usage is:
 
@@ -2955,13 +2985,16 @@ def spp_layer(input,
     :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param num_channels: number of input channel.
+    :param num_channels: The number of input channels. If the parameter is not set or
+                         set to None, its actual value will be automatically set to
+                         the channels number of the input.
     :type num_channels: int
-    :param pool_type: Pooling type. MaxPooling or AveragePooling. Default is MaxPooling.
+    :param pool_type: Pooling type. MaxPooling is the default pooling.
     :type scale: BasePoolingType
-    :param pyramid_height: pyramid height.
+    :param pyramid_height: The pyramid height of this pooling.
     :type pyramid_height: int
-    :param layer_attr: Extra Layer Attribute.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -4694,7 +4727,7 @@ def conv_projection(input,
                         will be same when filter_size_y is not set. If it is set
                         to a list, the first element indicates the dimension on
                         the x axis, and the second is used to specify the dimension
-                        on the y axis when filter_size is not provided.
+                        on the y axis when filter_size_y is not provided.
     :type filter_size: int | tuple | list
     :param filter_size_y: The dimension of the filter kernel on the y axis. If the parameter
                           is not set, it will be set automatically according to filter_size.
@@ -6571,10 +6604,11 @@ def row_conv_layer(input,
 
 @layer_support()
 @wrap_name_default()
-@wrap_param_attr_default()
 def prelu_layer(input,
                 name=None,
                 partial_sum=1,
+                channel_shared=None,
+                num_channels=None,
                 param_attr=None,
                 layer_attr=None):
     """
@@ -6605,6 +6639,14 @@ def prelu_layer(input,
         - partial_sum = number of outputs, indicates all elements share the same weight.
 
     :type partial_sum: int
+    :param channel_shared: whether or not the parameter are shared across channels.
+
+        - channel_shared = True, we set the partial_sum to the number of outputs.
+        - channel_shared = False, we set the partial_sum to the number of elements in one channel.
+
+    :type channel_shared: bool
+    :param num_channels: number of input channel.
+    :type num_channels: int
     :param param_attr: The parameter attribute. See ParameterAttribute for details.
     :type param_attr: ParameterAttribute
     :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
@@ -6615,7 +6657,25 @@ def prelu_layer(input,
     """
 
     assert isinstance(input, LayerOutput), 'prelu_layer accepts only one input.'
-    assert isinstance(param_attr, ParameterAttribute)
+
+    if not param_attr:
+        param_attr = ParamAttr(initial_mean=0.25, initial_std=0.0)
+    else:
+        assert isinstance(param_attr, ParameterAttribute)
+
+    if num_channels is None:
+        assert input.num_filters is not None, \
+                'the input channel cannot be detected, please specify the num_channels parameter'
+        num_channels = input.num_filters
+
+    if channel_shared is not None:
+        assert isinstance(channel_shared, bool)
+        assert (input.height != 0 and input.width != 0), \
+            'input height and widht must be setted'
+        if channel_shared:
+            partial_sum = input.height * input.width * num_channels
+        else:
+            partial_sum = input.height * input.width
 
     l = Layer(
         name=name,
@@ -6627,6 +6687,7 @@ def prelu_layer(input,
         name=name,
         layer_type=LayerType.PRELU,
         parents=input,
+        num_filters=num_channels,
         size=l.config.size)
 
 
@@ -7076,7 +7137,7 @@ def img_conv3d_layer(input,
     :type layer_attr: ExtraLayerAttribute
     :param trans: True if it is a convTransLayer, False if it is a convLayer
     :type trans: bool
-    :param layer_type: Specify the layer_type. If the parameter is set, it must be "deconv3d"
+    :param layer_type: Specify the layer type. If the parameter is set, it must be "deconv3d"
                        when trans=True. If not set, it will be automatically set to "deconv3d"
                        when trans=True and "conv3d" when trans=False.
     :type layer_type: basestring
