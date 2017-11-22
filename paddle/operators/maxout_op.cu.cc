@@ -12,10 +12,14 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#define EIGEN_USE_GPU
-#include "paddle/operators/adamax_op.h"
+#include "paddle/operators/maxout_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(adamax,
-                       ops::AdamaxOpKernel<paddle::platform::GPUPlace, float>,
-                       ops::AdamaxOpKernel<paddle::platform::GPUPlace, double>);
+REGISTER_OP_GPU_KERNEL(maxout,
+                       ops::MaxOutKernel<paddle::platform::GPUPlace, float>,
+                       ops::MaxOutKernel<paddle::platform::GPUPlace, double>);
+REGISTER_OP_GPU_KERNEL(maxout_grad,
+                       ops::MaxOutGradKernel<paddle::platform::GPUPlace,
+                        float>,
+                       ops::MaxOutGradKernel<paddle::platform::GPUPlace,
+                        double>);

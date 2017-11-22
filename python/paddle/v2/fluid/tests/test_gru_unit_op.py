@@ -28,8 +28,8 @@ def relu(x):
 
 
 class TestGRUUnitOp(OpTest):
-    batch_size = 3
-    frame_size = 5
+    batch_size = 5
+    frame_size = 10
     activate = {
         GRUActivationType.identity: identity,
         GRUActivationType.sigmoid: sigmoid,
@@ -77,7 +77,7 @@ class TestGRUUnitOp(OpTest):
         c = self.activate[self.attrs['activation']](np.dot(r_h_p, w_c) +
                                                     g[:, frame_size * 2:])
         g = np.hstack((u_r, c))
-        h = u * h_p + (1 - u) * c
+        h = u * c + (1 - u) * h_p
         self.outputs = {
             'Gate': g.astype('float64'),
             'ResetHiddenPrev': r_h_p.astype('float64'),
@@ -92,10 +92,7 @@ class TestGRUUnitOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['Input', 'HiddenPrev', 'Weight'],
-            ['Hidden', 'ResetHiddenPrev', 'Gate'],
-            max_relative_error=0.007)
+        self.check_grad(['Input', 'HiddenPrev', 'Weight'], ['Hidden'])
 
 
 class TestGRUUnitOpWithBias(TestGRUUnitOp):
@@ -104,18 +101,20 @@ class TestGRUUnitOpWithBias(TestGRUUnitOp):
         frame_size = self.frame_size
         super(TestGRUUnitOpWithBias, self).set_inputs()
         self.inputs['Bias'] = np.random.uniform(
-            -0.1, 0.1, (1, frame_size * 3)).astype('float32')
+            -0.1, 0.1, (1, frame_size * 3)).astype('float64')
         self.attrs = {
             'activation': GRUActivationType.identity,
             'gate_activation': GRUActivationType.sigmoid
         }
 
     def test_check_grad(self):
+        self.check_grad(['Input', 'HiddenPrev', 'Weight', 'Bias'], ['Hidden'])
+
+    def test_check_grad_ingore_input(self):
         self.check_grad(
-            ['Input', 'HiddenPrev', 'Weight', 'Bias'], ['Hidden'],
-            max_relative_error=0.007)
+            ['HiddenPrev', 'Weight', 'Bias'], ['Hidden'],
+            no_grad_set=set('Input'))
 
 
 if __name__ == '__main__':
-    exit(0)  # FIXME(yuyang18): This unittest is not pass. Fix it later
     unittest.main()
