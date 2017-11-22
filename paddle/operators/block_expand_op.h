@@ -68,13 +68,16 @@ class BlockExpandKernel : public framework::OpKernel<T> {
         img_height, img_width, block_height, block_width, stride_height,
         stride_width, padding_height, padding_width, outputHeight, outputWidth);
 
+    std::vector<int> stride({stride_height, stride_width});
+    std::vector<int> padding({padding_height, padding_width});
+
     for (int i = 0; i < N; i++) {
-      Tensor src = in->Slice<T>(i, i + 1).Resize({C, img_height, img_width});
-      Tensor dst = out->Slice<T>(i, i + 1).Resize(
+      Tensor src = in->Slice(i, i + 1).Resize({C, img_height, img_width});
+      Tensor dst = out->Slice(i, i + 1).Resize(
           {outputHeight, outputWidth, C, block_height, block_width});
+
       math::Im2ColFunctor<math::ColFormat::kOCF, Place, T> f;
-      f(ctx.device_context(), src, dst, stride_height, stride_width,
-        padding_height, padding_width);
+      f(ctx.device_context(), src, stride, padding, &dst);
     }
   }
 };
@@ -112,13 +115,16 @@ class BlockExpandGradKernel : public framework::OpKernel<T> {
         img_height, img_width, block_height, block_width, stride_height,
         stride_width, padding_height, padding_width, outputHeight, outputWidth);
 
+    std::vector<int> stride({stride_height, stride_width});
+    std::vector<int> padding({padding_height, padding_width});
+    // std::vector<int> stride({stride_height, stride_width});
+
     for (int i = 0; i < N; i++) {
-      Tensor dst = d_x->Slice<T>(i, i + 1).Resize({C, img_height, img_width});
-      Tensor src = d_out->Slice<T>(i, i + 1).Resize(
+      Tensor dst = d_x->Slice(i, i + 1).Resize({C, img_height, img_width});
+      Tensor src = d_out->Slice(i, i + 1).Resize(
           {outputHeight, outputWidth, C, block_height, block_width});
       math::Col2ImFunctor<math::ColFormat::kOCF, Place, T> f;
-      f(ctx.device_context(), dst, src, stride_height, stride_width,
-        padding_height, padding_width);
+      f(ctx.device_context(), dst, stride, padding, &src);
     }
   }
 };

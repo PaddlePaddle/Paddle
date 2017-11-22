@@ -30,7 +30,8 @@ class BlockExpandOp : public framework::OperatorWithKernel {
                    "Output of BlockExpandOp op should not be null.");
 
     auto in_dim = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(in_dim.size(), 4, "Input format  must be NCHW.");
+    PADDLE_ENFORCE_EQ(in_dim.size(), 4,
+                      "Input(X) format  must be 4D tensor, eg., NCHW.");
     PADDLE_ENFORCE_GE(in_dim[0], 1, "Input batchsize must >= 1.");
 
     int block_height = ctx->Attrs().Get<int>("blockHeight");
