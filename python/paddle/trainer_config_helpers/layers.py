@@ -3118,6 +3118,7 @@ def batch_norm_layer(input,
                      param_attr=None,
                      layer_attr=None,
                      batch_norm_type=None,
+                     epsilon=1e-5,
                      moving_average_fraction=0.9,
                      use_global_stats=None,
                      mean_var_names=None):
@@ -3188,6 +3189,8 @@ def batch_norm_layer(input,
                              will use the mean and variance of the current batch
                              of test data.
     :type use_global_stats: bool | None.
+    :param epsilon: The small constant added to the variance to improve numeric stability.
+    :type epsilon: float.
     :param moving_average_fraction: Factor used in the moving average computation.
                                    :math:`runningMean = newMean*(1-factor) + runningMean*factor`
     :type moving_average_fraction: float.
@@ -3205,6 +3208,7 @@ def batch_norm_layer(input,
     assert (batch_norm_type is None) or (batch_norm_type == "batch_norm") or \
            (batch_norm_type == "mkldnn_batch_norm") or \
            (batch_norm_type == "cudnn_batch_norm")
+
     l = Layer(
         name=name,
         img3D=img3D,
@@ -3214,6 +3218,7 @@ def batch_norm_layer(input,
         type=LayerType.BATCH_NORM_LAYER,
         batch_norm_type=batch_norm_type,
         bias=ParamAttr.to_bias(bias_attr),
+        epsilon=epsilon,
         moving_average_fraction=moving_average_fraction,
         use_global_stats=use_global_stats,
         mean_var_names=mean_var_names,
