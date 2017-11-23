@@ -10,8 +10,10 @@ from paddle.v2.fluid.executor import Executor
 
 BATCH_SIZE = 128
 PASS_NUM = 5
+SEED = 1
+DTYPE = "float32"
 
-images = layers.data(name='pixel', shape=[1, 28, 28], data_type='float32')
+images = layers.data(name='pixel', shape=[1, 28, 28], data_type=DTYPE)
 label = layers.data(name='label', shape=[1], data_type='int64')
 conv_pool_1 = nets.simple_img_conv_pool(
     input=images,
@@ -29,21 +31,18 @@ conv_pool_2 = nets.simple_img_conv_pool(
     act="relu")
 
 predict = layers.fc(input=conv_pool_2, size=10, act="softmax")
+
 cost = layers.cross_entropy(input=predict, label=label)
 avg_cost = layers.mean(x=cost)
-optimizer = optimizer.AdamOptimizer(learning_rate=0.01, beta1=0.9, beta2=0.999)
+optimizer = optimizer.AdamOptimizer(learning_rate=0.001, beta1=0.9, beta2=0.999)
 opts = optimizer.minimize(avg_cost)
 
 accuracy, acc_out = evaluator.accuracy(input=predict, label=label)
 
-# train_reader = paddle.batch(
-#     paddle.reader.shuffle(
-#         paddle.dataset.mnist.train(), buf_size=500),
-#     batch_size=BATCH_SIZE)
 train_reader = paddle.batch(paddle.dataset.mnist.train(), batch_size=BATCH_SIZE)
 
 place = core.CPUPlace()
-# place = core.GPUPlace(2)
+# place = core.GPUPlace(0)
 exe = Executor(place)
 
 exe.run(framework.default_startup_program())
@@ -51,9 +50,9 @@ exe.run(framework.default_startup_program())
 for pass_id in range(PASS_NUM):
     count = 0
     accuracy.reset(exe)
-    for data in train_reader():
+    for batch_id, data in enumerate(train_reader()):
         img_data = np.array(map(lambda x: x[0].reshape([1, 28, 28]),
-                                data)).astype("float32")
+                                data)).astype(DTYPE)
         y_data = np.array(map(lambda x: x[1], data)).astype("int64")
         y_data = y_data.reshape([len(y_data), 1])
 
@@ -69,12 +68,12 @@ for pass_id in range(PASS_NUM):
         loss = np.array(outs[0])
         acc = np.array(outs[1])
         count += 1
-        print "pass=%d, batch=%d, loss=%f, error=%f" % (pass_id, count, loss,
+        print "pass=%d, batch=%d, loss=%f, error=%f" % (pass_id, batch_id, loss,
                                                         1 - acc)
 
-        # if loss < 10.0 and acc > 0.9:
-        #     # if avg cost less than 10.0 and accuracy is larger than 0.9, we think our code is good.
-        #     exit(0)
+        if loss < 10.0 and acc > 0.9:
+            # if avg cost less than 10.0 and accuracy is larger than 0.9, we think our code is good.
+            exit(0)
 
     pass_acc = accuracy.eval(exe)
     print "\n"
