@@ -88,12 +88,10 @@ This operator comes from the paper
 
 The original formula is:
 
-$$
-Output(i, x, y) = Input(i, x, y) / \left(
+$$ Output(i, x, y) = Input(i, x, y) / \left(
 k + \alpha \sum\limits^{\min(C, c + n/2)}_{j = \max(0, c - n/2)}
 (Input(j, x, y))^2
-\right)^{\beta}
-$$
+\right)^{\beta} $$
 
 Function implementation:
 
@@ -107,7 +105,7 @@ Input(i, x, y), Output(i, x, y) represents an element in an image.
 C is the number of feature maps of one image. n is a hyper-parameter
 configured when operator is initialized. The sum in the denominator
 is the sum of the same positions in the neighboring maps.
-    
+
 )DOC");
   }
 };
