@@ -8,7 +8,12 @@ cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
 add_subdirectory(dynload)
 
-cc_test(enforce_test SRCS enforce_test.cc DEPS stringpiece)
+if(WITH_GPU)
+    cc_library(enforce SRCS enforce.cc DEPS nccl)
+else()
+    cc_library(enforce SRCS enforce.cc)
+endif()
+cc_test(enforce_test SRCS enforce_test.cc DEPS stringpiece enforce)
 
 IF(WITH_GPU)
     set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
