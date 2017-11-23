@@ -2,7 +2,6 @@ import paddle.v2.fluid.core as core
 import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 import collections
 import numpy as np
-import six.moves as six
 import copy
 
 __all__ = [
@@ -618,9 +617,7 @@ class Program(object):
         if len(self.blocks) != len(other.blocks):
             raise ValueError("copy_param_info_from should be invoked with two "
                              "program, with represent the same topology")
-
-        for dst_block, src_block in six.zip(self.blocks, other.blocks):
-            dst_block.copy_param_info_from(src_block)
+        self.global_block().copy_param_info_from(other.global_block())
 
     def list_vars(self):
         for each_block in self.blocks:
