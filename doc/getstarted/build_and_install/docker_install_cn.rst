@@ -56,7 +56,7 @@
 在Docker中执行PaddlePaddle训练程序
 ------------------------------
 
-假设您已经在当前目录（比如在/home/work）编写了一个PaddlePaddle的程序 :code:`train.py`（可以参考
+假设您已经在当前目录（比如在/home/work）编写了一个PaddlePaddle的程序 :code:`train.py` （可以参考
 `PaddlePaddleBook <http://www.paddlepaddle.org/docs/develop/book/01.fit_a_line/index.cn.html>`_
 编写），就可以使用下面的命令开始执行训练：
 
