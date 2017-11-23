@@ -71,14 +71,17 @@ X to Y. Different from MSE loss, Huber loss is more robust for outliers. The
 shape of X and Y are [batch_size, 1]. The equation is:
 
 $$
-Out_{\delta}(i, x, y) =
+Out_{\delta}(X, Y)_i =
 \begin{cases}
-0.5 * (Input(i, y) - Input(i, x))^2,
-\quad |Input(i, y) - Input(i, x)| \leq \delta \\
-\delta * (|Input(i, y) - Input(i, x)| - 0.5 * \delta),
+0.5 * (Y_i - X_i)^2,
+\quad |Y_i - X_i| \leq \delta \\
+\delta * (|Y_i - X_i| - 0.5 * \delta),
 \quad otherwise
 \end{cases}
 $$
+
+In the above equation, $Out_\delta(X, Y)_i$, $X_i$ and $Y_i$ represent the ith
+element of Out, X and Y.
 
 )DOC");
   }
