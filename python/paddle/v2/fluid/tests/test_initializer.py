@@ -58,7 +58,7 @@ class TestUniformInitializer(unittest.TestCase):
         self.assertEqual(init_op.type, 'uniform_random')
         self.assertAlmostEqual(init_op.attr('min'), -1.0, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('max'), 1.0, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 0)
+        self.assertEqual(init_op.attr('seed'), 1)
 
     def test_uniform_initializer(self):
         """Test uniform initializer with supplied attributes
@@ -96,7 +96,7 @@ class TestNormalInitializer(unittest.TestCase):
         self.assertEqual(init_op.type, 'gaussian_random')
         self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('std'), 1.0, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 0)
+        self.assertEqual(init_op.attr('seed'), 1)
 
     def test_normal_initializer(self):
         """Test normal initializer with supplied attributes
@@ -136,7 +136,7 @@ class TestXavierInitializer(unittest.TestCase):
         limit = np.sqrt(6.0 / (param.shape[0] + param.shape[1]))
         self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 0)
+        self.assertEqual(init_op.attr('seed'), 1)
 
     def test_uniform_xavier_initializer_conv(self):
         """Test Xavier initializer with uniform distribution on
@@ -158,7 +158,7 @@ class TestXavierInitializer(unittest.TestCase):
             (param.shape[0] + param.shape[1]) * receptive_field_size))
         self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 0)
+        self.assertEqual(init_op.attr('seed'), 1)
 
     def test_normal_xavier_initializer(self):
         """Test Xavier initializer with normal distribution on
@@ -178,7 +178,7 @@ class TestXavierInitializer(unittest.TestCase):
         std = np.sqrt(2.0 / (param.shape[0] + param.shape[1]))
         self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 0)
+        self.assertEqual(init_op.attr('seed'), 1)
 
     def test_normal_xavier_initializer_conv(self):
         """Test Xavier initializer with normal distribution on
@@ -200,7 +200,7 @@ class TestXavierInitializer(unittest.TestCase):
             (param.shape[0] + param.shape[1]) * receptive_field_size))
         self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 0)
+        self.assertEqual(init_op.attr('seed'), 1)
 
     def test_xavier_initializer_supplied_arguments(self):
         """Test the Xavier initializer with supplied arguments
@@ -242,7 +242,7 @@ class TestMSRAInitializer(unittest.TestCase):
         limit = np.sqrt(6.0 / param.shape[0])
         self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 0)
+        self.assertEqual(init_op.attr('seed'), 1)
 
     def test_uniform_msra_initializer_conv(self):
         """Test MSRA initializer with uniform distribution on
@@ -263,7 +263,7 @@ class TestMSRAInitializer(unittest.TestCase):
         limit = np.sqrt(6.0 / (param.shape[1] * receptive_field_size))
         self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 0)
+        self.assertEqual(init_op.attr('seed'), 1)
 
     def test_normal_msra_initializer(self):
         """Test MSRA initializer with normal distribution on
@@ -283,7 +283,7 @@ class TestMSRAInitializer(unittest.TestCase):
         std = np.sqrt(2.0 / param.shape[0])
         self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 0)
+        self.assertEqual(init_op.attr('seed'), 1)
 
     def test_normal_msra_initializer_conv(self):
         """Test MSRA initializer with normal distribution on
@@ -304,7 +304,7 @@ class TestMSRAInitializer(unittest.TestCase):
         std = np.sqrt(2.0 / (param.shape[1] * receptive_field_size))
         self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 0)
+        self.assertEqual(init_op.attr('seed'), 1)
 
     def test_msra_initializer_supplied_arguments(self):
         """Test the MSRA initializer with supplied arguments
