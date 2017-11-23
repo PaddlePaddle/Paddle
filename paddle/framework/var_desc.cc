@@ -26,15 +26,15 @@ void VarDescBind::SetShape(const std::vector<int64_t> &dims) {
   VectorToRepeated(dims, mutable_tensor_desc()->mutable_dims());
 }
 
-void VarDescBind::SetDataType(DataType data_type) {
-  mutable_tensor_desc()->set_data_type(data_type);
+void VarDescBind::SetDataType(DataType dtype) {
+  mutable_tensor_desc()->set_dtype(dtype);
 }
 
 std::vector<int64_t> VarDescBind::Shape() const {
   return RepeatedToVector(tensor_desc().dims());
 }
 
-DataType VarDescBind::GetDataType() const { return tensor_desc().data_type(); }
+DataType VarDescBind::GetDataType() const { return tensor_desc().dtype(); }
 
 void VarDescBind::SetLoDLevel(int32_t lod_level) {
   switch (desc_.type()) {

@@ -60,7 +60,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        static_cast<framework::DataType>(ctx.Attr<int>("data_type")),
+        static_cast<framework::DataType>(ctx.Attr<int>("dtype")),
         ctx.device_context());
   }
 };
@@ -88,7 +88,7 @@ class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
                  "Random seed of generator."
                  "0 means use system wide seed.")
         .SetDefault(0);
-    AddAttr<int>("data_type",
+    AddAttr<int>("dtype",
                  "(int, default 5(FP32)) "
                  "Output data type.")
         .SetDefault(framework::DataType::FP32);

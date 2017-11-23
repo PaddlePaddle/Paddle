@@ -54,7 +54,7 @@ class MergeLoDTensorOp : public framework::OperatorBase {
 
     int rank = in_true.dims().size();
     platform::Place place = in_true.place();
-    std::type_index data_type = in_true.type();
+    std::type_index dtype = in_true.type();
     framework::DDim in_true_dims =
         framework::slice_ddim(in_true.dims(), 1, rank);
 
@@ -65,7 +65,7 @@ class MergeLoDTensorOp : public framework::OperatorBase {
 
     framework::DDim out_dims = framework::make_ddim(in_true_dim_vec);
     out->Resize(out_dims);
-    out->mutable_data(place, data_type);
+    out->mutable_data(place, dtype);
 
     auto *out_lod = out->mutable_lod();
     out_lod->clear();

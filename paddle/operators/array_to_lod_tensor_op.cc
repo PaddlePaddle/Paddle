@@ -42,7 +42,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     PADDLE_ENFORCE(!x.empty(), "There's no element in the input array.");
     int rank = x[0].dims().size();
     platform::Place place = x[0].place();
-    std::type_index data_type = x[0].type();
+    std::type_index dtype = x[0].type();
     framework::DDim ins_dims = framework::slice_ddim(x[0].dims(), 1, rank);
     int64_t batch_size = x[0].dims()[0];
     for (size_t i = 1; i < x.size(); ++i) {
@@ -54,7 +54,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
                      "The place class of the %zu'th element in LoDTensorArray "
                      "differs from previous ones.",
                      i);
-      PADDLE_ENFORCE(x[i].type() == data_type,
+      PADDLE_ENFORCE(x[i].type() == dtype,
                      "The date type of the %zu'th element in LoDTensorArray "
                      "differs from previous ones.",
                      i);
@@ -64,7 +64,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     ins_dim_vec.insert(ins_dim_vec.begin(), batch_size);
     framework::DDim out_dims = framework::make_ddim(ins_dim_vec);
     out->Resize(out_dims);
-    out->mutable_data(place, data_type);
+    out->mutable_data(place, dtype);
 
     auto &table_items = rank_table.items();
     std::vector<size_t> table_item_idx(table_items.size());

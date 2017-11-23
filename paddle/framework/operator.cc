@@ -255,8 +255,7 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
 }
 
 std::ostream& operator<<(std::ostream& os, const OpKernelType& kernel_key) {
-  os << "place[" << kernel_key.place_ << "]:data_type[" << kernel_key.data_type_
-     << "]";
+  os << "place[" << kernel_key.place_ << "]:dtype[" << kernel_key.dtype_ << "]";
   return os;
 }
 
@@ -437,7 +436,7 @@ OpKernelType OperatorWithKernel::GetKernelType(
 DataType OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
   auto& scope = ctx.scope();
-  int data_type = -1;
+  int dtype = -1;
   for (auto& input : this->inputs_) {
     for (auto& ipt_name : input.second) {
       auto* var = scope.FindVar(ipt_name);
@@ -452,15 +451,15 @@ DataType OperatorWithKernel::IndicateDataType(
         }
         if (t != nullptr) {
           int tmp = static_cast<int>(ToDataType(t->type()));
-          PADDLE_ENFORCE(tmp == data_type || data_type == -1,
+          PADDLE_ENFORCE(tmp == dtype || dtype == -1,
                          "DataType of Paddle Op %s must be the same.", Type());
-          data_type = tmp;
+          dtype = tmp;
         }
       }
     }
   }
-  PADDLE_ENFORCE(data_type != -1, "DataType should be indicated by input");
-  return static_cast<DataType>(data_type);
+  PADDLE_ENFORCE(dtype != -1, "DataType should be indicated by input");
+  return static_cast<DataType>(dtype);
 }
 
 }  // namespace framework
