@@ -179,7 +179,9 @@ REGISTER_OP(sequence_conv, ops::SequenceConvOp, ops::SequenceConvOpMaker,
             sequence_conv_grad, ops::SequenceConvGradOp);
 
 REGISTER_OP_CPU_KERNEL(
-    sequence_conv, ops::SequenceConvKernel<paddle::platform::CPUPlace, float>);
+    sequence_conv, ops::SequenceConvKernel<paddle::platform::CPUPlace, float>,
+    ops::SequenceConvKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
     sequence_conv_grad,
-    ops::SequenceConvGradKernel<paddle::platform::CPUPlace, float>);
+    ops::SequenceConvGradKernel<paddle::platform::CPUPlace, float>,
+    ops::SequenceConvGradKernel<paddle::platform::CPUPlace, double>);

@@ -62,6 +62,8 @@ extern void *cublas_dso_handle;
   DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)
 
 #define CUBLAS_BLAS_ROUTINE_EACH(__macro) \
+  __macro(cublasSaxpy_v2);                \
+  __macro(cublasDaxpy_v2);                \
   __macro(cublasSgemv_v2);                \
   __macro(cublasDgemv_v2);                \
   __macro(cublasSgemm_v2);                \

@@ -12,7 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 #include "paddle/operators/array_operator.h"
-
+#include "paddle/operators/detail/safe_ref.h"
 namespace paddle {
 namespace operators {
 
@@ -33,6 +33,8 @@ class WriteToArrayOp : public ArrayOp {
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensorArray>();
     if (offset >= out->size()) {
+      VLOG(10) << "Resize " << Output("Out") << " from " << out->size()
+               << " to " << offset + 1;
       out->resize(offset + 1);
     }
     auto *out_tensor = &out->at(offset);
@@ -85,11 +87,15 @@ class WriteToArrayInferVarType : public framework::VarTypeInference {
  public:
   void operator()(const framework::OpDescBind &op_desc,
                   framework::BlockDescBind *block) const override {
-    for (auto &out_var : op_desc.OutputArgumentNames()) {
-      VLOG(10) << "Set Variable " << out_var << " as LOD_TENSOR_ARRAY";
-      block->FindRecursiveOrCreateVar(out_var)->SetType(
-          framework::VarDesc::LOD_TENSOR_ARRAY);
-    }
+    auto x_name = op_desc.Input("X")[0];
+    auto out_name = op_desc.Output("Out")[0];
+    VLOG(10) << "Set Variable " << out_name << " as LOD_TENSOR_ARRAY";
+    auto &out = detail::Ref(block->FindRecursiveOrCreateVar(out_name),
+                            "Cannot found %s", out_name);
+    out.SetType(framework::VarDesc::LOD_TENSOR_ARRAY);
+    auto &x =
+        detail::Ref(block->FindVarRecursive(x_name), "Cannot found %s", x_name);
+    out.SetDataType(x.GetDataType());
   }
 };
 
@@ -107,7 +113,7 @@ class ReadFromArrayOp : public ArrayOp {
     auto &x_array = x->Get<framework::LoDTensorArray>();
     auto *out = scope.FindVar(Output("Out"));
     PADDLE_ENFORCE(out != nullptr, "Out must be set");
-    auto *out_tesnor = out->GetMutable<framework::LoDTensor>();
+    auto *out_tensor = out->GetMutable<framework::LoDTensor>();
     size_t offset = GetOffset(scope, dev_ctx);
     PADDLE_ENFORCE_LT(offset, x_array.size());
     CopyFrom(x_array[offset], dev_ctx.GetPlace(), dev_ctx, out_tesnor);

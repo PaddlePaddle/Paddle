@@ -23,8 +23,6 @@ template <typename T>
 __global__ void CrossEntropyGradientKernel(T* dX, const T* dY, const T* X,
                                            const int64_t* label, const int N,
                                            const int D) {
-  // TOOD(qingqing) define CUDA_1D_KERNEL_LOOP macro in a common file.
-  // CUDA_1D_KERNEL_LOOP(i, N) {
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
     int idx = i * D + label[i];
