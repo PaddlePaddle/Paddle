@@ -80,7 +80,6 @@ def fc(input,
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
         ] + [size]
 
-        std = (2.0 / (param_shape[0]**2 * size))**0.5
         w = helper.create_parameter(
             attr=param_attr,
             initializer=param_initializer,
@@ -728,7 +727,7 @@ def conv2d(input,
 
     def _get_default_param_initializer(filter_size, num_channels):
         std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
-        return NormalInitializer(0.0, std, 0)
+        return NormalInitializer(0.0, std, 1)
 
     helper = LayerHelper('conv2d', **locals())
     dtype = helper.input_dtype()

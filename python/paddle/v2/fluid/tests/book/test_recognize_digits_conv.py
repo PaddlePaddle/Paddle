@@ -7,6 +7,7 @@ import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.nets as nets
 from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.optimizer import AdamOptimizer
+from paddle.v2.fluid.initializer import NormalInitializer
 import numpy as np
 import time
 
@@ -32,7 +33,17 @@ conv_pool_2 = nets.simple_img_conv_pool(
     pool_stride=2,
     act="relu")
 
-predict = layers.fc(input=conv_pool_2, size=10, act="softmax")
+# TODO(dzhwinter) : refine the initializer and random seed settting
+SIZE = 10
+input_shape = conv_pool_2.shape
+param_shape = [reduce(lambda a, b: a * b, input_shape[1:], 1)] + [SIZE]
+scale = (2.0 / (param_shape[0]**2 * SIZE))**0.5
+
+predict = layers.fc(input=conv_pool_2,
+                    size=SIZE,
+                    act="softmax",
+                    param_initializer=NormalInitializer(
+                        loc=0.0, scale=scale, seed=SEED))
 
 cost = layers.cross_entropy(input=predict, label=label)
 avg_cost = layers.mean(x=cost)
