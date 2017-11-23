@@ -1,4 +1,3 @@
-import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.nets as nets
@@ -7,6 +6,8 @@ import paddle.v2.fluid.optimizer as optimizer
 import paddle.v2.fluid.evaluator as evaluator
 import paddle.v2.fluid.framework as framework
 from paddle.v2.fluid.executor import Executor
+import numpy as np
+import time
 
 BATCH_SIZE = 128
 PASS_NUM = 5
@@ -48,8 +49,8 @@ exe = Executor(place)
 exe.run(framework.default_startup_program())
 
 for pass_id in range(PASS_NUM):
-    count = 0
     accuracy.reset(exe)
+    pass_start = time.clock()
     for batch_id, data in enumerate(train_reader()):
         img_data = np.array(map(lambda x: x[0].reshape([1, 28, 28]),
                                 data)).astype(DTYPE)
@@ -61,22 +62,23 @@ for pass_id in range(PASS_NUM):
         tensor_img.set(img_data, place)
         tensor_y.set(y_data, place)
 
+        start = time.clock()
         outs = exe.run(framework.default_main_program(),
                        feed={"pixel": tensor_img,
                              "label": tensor_y},
                        fetch_list=[avg_cost, acc_out])
+        end = time.clock()
         loss = np.array(outs[0])
         acc = np.array(outs[1])
-        count += 1
-        print "pass=%d, batch=%d, loss=%f, error=%f" % (pass_id, batch_id, loss,
-                                                        1 - acc)
+        print "pass=%d, batch=%d, loss=%f, error=%f, elapse=%f" % (
+            pass_id, batch_id, loss, 1 - acc, (end - start) / 1000)
 
-        if loss < 10.0 and acc > 0.9:
-            # if avg cost less than 10.0 and accuracy is larger than 0.9, we think our code is good.
-            exit(0)
+        # if loss < 10.0 and acc > 0.9:
+        #     # if avg cost less than 10.0 and accuracy is larger than 0.9, we think our code is good.
+        #     exit(0)
 
     pass_acc = accuracy.eval(exe)
-    print "\n"
-    print "pass=%d, pass accuracy=%f" % (pass_id, pass_acc)
+    print "pass=%d, accuracy=%f, elapse=%f" % (pass_id, pass_acc, (
+        time.clock() - pass_start) / 1000)
 
 exit(1)

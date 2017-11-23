@@ -6,6 +6,7 @@ import paddle.v2.fluid.initializer as initializer
 import paddle.v2.fluid.core as core
 from paddle.v2.fluid.executor import Executor
 import numpy as np
+import time
 
 BATCH_SIZE = 128
 PASS_NUM = 5
@@ -88,7 +89,7 @@ fc_weights = tf.Variable(arg, dtype=DTYPE)
 fc_bias = tf.Variable(tf.zeros([10]), dtype=DTYPE)
 logits = tf.matmul(reshape, fc_weights) + fc_bias
 
-# # cross entropy
+# cross entropy
 
 prediction = tf.nn.softmax(logits)
 
@@ -104,17 +105,25 @@ optimizer = tf.train.AdamOptimizer(learning_rate=0.001, beta1=0.9, beta2=0.999)
 train_op = optimizer.minimize(avg_cost)
 
 with tf.Session() as sess:
-    tf.global_variables_initializer().run()
+    init_g = tf.global_variables_initializer()
+    init_l = tf.local_variables_initializer()
+    sess.run(init_g)
+    sess.run(init_l)
+    pass_start = time.clock()
     for pass_id in range(PASS_NUM):
         for batch_id, data in enumerate(train_reader()):
             images_data = np.array(
                 map(lambda x: np.transpose(x[0].reshape([1, 28, 28]), axes=[1,2,0]), data)).astype("float32")
             labels_data = np.array(map(lambda x: x[1], data)).astype("int64")
-            _, loss, acc, conv1_out = sess.run(
-                [train_op, avg_cost, accuracy, logits],
+            start = time.clock()
+            _, loss, acc, g_acc = sess.run(
+                [train_op, avg_cost, accuracy, g_accuracy],
                 feed_dict={images: images_data,
                            labels: labels_data})
+            end = time.clock()
+            # print g_acc
 
-            print "pass=%d, batch=%d, loss=%f, error=%f" % (pass_id, batch_id,
-                                                            loss, 1 - acc)
-        print "pass=%d, accuracy=%f" % (pass_id, sess.run(g_accuracy))
+            print "pass=%d, batch=%d, loss=%f, error=%f, elapse=%f" % (
+                pass_id, batch_id, loss, 1 - acc, (end - start) / 1000)
+        print "pass=%d, accuracy=%f, elapse=%f" % (pass_id, g_acc[0], (
+            time.clock() - pass_start) / 1000)
