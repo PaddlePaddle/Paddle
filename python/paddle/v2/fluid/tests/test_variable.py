@@ -1,5 +1,5 @@
 import unittest
-from paddle.v2.fluid.framework import Variable, g_main_program, Program
+from paddle.v2.fluid.framework import g_main_program, Program, convert_np_dtype_to_dtype_
 import paddle.v2.fluid.core as core
 import numpy as np
 
@@ -7,7 +7,7 @@ import numpy as np
 class TestVariable(unittest.TestCase):
     def test_np_dtype_convert(self):
         DT = core.DataType
-        convert = Variable._convert_np_dtype_to_dtype_
+        convert = convert_np_dtype_to_dtype_
         self.assertEqual(DT.FP32, convert(np.float32))
         self.assertEqual(DT.FP16, convert("float16"))
         self.assertEqual(DT.FP64, convert("float64"))
