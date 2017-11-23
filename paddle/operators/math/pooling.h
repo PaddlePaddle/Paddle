@@ -153,7 +153,7 @@ class MaxPool3dGradFunctor {
  * In pool2d, all tensors are in NCHW format. In pool3d, all tensors are in
  * NCDHW format.
  */
-template <typename Place, typename T>
+template <typename Place, typename T1, typename T2>
 class MaxPool2dWithIndexFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
@@ -162,7 +162,7 @@ class MaxPool2dWithIndexFunctor {
                   framework::Tensor* output, framework::Tensor* mask);
 };
 
-template <typename Place, typename T>
+template <typename Place, typename T1, typename T2>
 class MaxPool2dWithIndexGradFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
@@ -172,7 +172,7 @@ class MaxPool2dWithIndexGradFunctor {
                   framework::Tensor* input_grad);
 };
 
-template <typename Place, typename T>
+template <typename Place, typename T1, typename T2>
 class MaxPool3dWithIndexFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
@@ -181,7 +181,7 @@ class MaxPool3dWithIndexFunctor {
                   framework::Tensor* output, framework::Tensor* mask);
 };
 
-template <typename Place, typename T>
+template <typename Place, typename T1, typename T2>
 class MaxPool3dWithIndexGradFunctor {
  public:
   void operator()(const platform::DeviceContext& context,

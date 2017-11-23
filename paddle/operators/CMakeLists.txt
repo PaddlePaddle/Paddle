@@ -9,6 +9,7 @@ function(op_library TARGET)
     set(OP_LIBRARY ${TARGET} ${OP_LIBRARY} PARENT_SCOPE)
     set(cc_srcs)
     set(cu_srcs)
+    set(cu_cc_srcs)
     set(op_common_deps operator op_registry math_function)
     set(options "")
     set(oneValueArgs "")
@@ -22,6 +23,9 @@ function(op_library TARGET)
         if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.cc)
             list(APPEND cc_srcs ${TARGET}.cc)
         endif()
+        if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.cu.cc)
+            list(APPEND cu_cc_srcs ${TARGET}.cu.cc)
+        endif()
         if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.cu)
             list(APPEND cu_srcs ${TARGET}.cu)
         endif()
@@ -29,6 +33,8 @@ function(op_library TARGET)
         foreach(src ${op_library_SRCS})
             if (${src} MATCHES ".*\\.cu$")
                 list(APPEND cu_srcs ${src})
+            elseif(${src} MATCHES ".*\\.cu.cc$")
+                list(APPEND cu_cc_srcs ${src})
             elseif(${src} MATCHES ".*\\.cc$")
                 list(APPEND cc_srcs ${src})
             else()
@@ -43,7 +49,7 @@ function(op_library TARGET)
     endif()
 
     if (WITH_GPU)
-        nv_library(${TARGET} SRCS ${cc_srcs} ${cu_srcs} DEPS ${op_library_DEPS}
+        nv_library(${TARGET} SRCS ${cc_srcs} ${cu_cc_srcs} ${cu_srcs} DEPS ${op_library_DEPS}
                 ${op_common_deps})
     else()
         cc_library(${TARGET} SRCS ${cc_srcs} DEPS ${op_library_DEPS}
@@ -55,23 +61,9 @@ function(op_library TARGET)
         set(pybind_flag 1)
     endif()
 
-    # pool_op contains several operators
-    if ("${TARGET}" STREQUAL "pool_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(pool2d);\n")
-    endif()
-
     if ("${TARGET}" STREQUAL "compare_op")
         set(pybind_flag 1)
         file(APPEND ${pybind_file} "USE_OP(less_than);\nUSE_OP(equal);\n")
-    endif()
-
-    # pool_with_index_op contains several operators
-    if ("${TARGET}" STREQUAL "pool_with_index_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(max_pool2d_with_index);\n")
     endif()
 
     # conv_op contains several operators
@@ -81,18 +73,44 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(conv2d);\n")
     endif()
 
+    # pool_op contains several operators
+    if ("${TARGET}" STREQUAL "pool_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_OP(pool2d);\n")
+    endif()
+
+    # pool_cudnn_op contains several operators
+    if ("${TARGET}" STREQUAL "pool_cudnn_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_OP(pool2d_cudnn);\n")
+    endif()
+
+    if ("${TARGET}" STREQUAL "logical_op")
+        set(pybind_flag 1)
+        file(APPEND ${pybind_file} "USE_OP(logical_and);\n")
+    endif()
+
+    # pool_with_index_op contains several operators
+    if ("${TARGET}" STREQUAL "pool_with_index_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_OP(max_pool2d_with_index);\n")
+    endif()
+
     # conv_transpose_op contains several operators
     if ("${TARGET}" STREQUAL "conv_transpose_op")
         set(pybind_flag 1)
         # It's enough to just adding one operator to pybind
         file(APPEND ${pybind_file} "USE_OP(conv2d_transpose);\n")
     endif()
-    
-    # pool_cudnn_op contains several operators
-    if ("${TARGET}" STREQUAL "pool_cudnn_op")
+
+    # conv_transpose_cudnn_op contains two operators
+    if ("${TARGET}" STREQUAL "conv_transpose_cudnn_op")
         set(pybind_flag 1)
         # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(pool2d_cudnn);\n")
+        file(APPEND ${pybind_file} "USE_OP(conv2d_transpose_cudnn);\n")
     endif()
 
     # save_restore_op contains several operators
@@ -140,7 +158,9 @@ function(op_library TARGET)
 
     # pybind USE_CPU_ONLY_OP
     list(LENGTH cu_srcs cu_srcs_len)
-    if (${pybind_flag} EQUAL 0 AND ${cu_srcs_len} EQUAL 0)
+    list(LENGTH cu_cc_srcs cu_cc_srcs_len)
+
+    if (${pybind_flag} EQUAL 0 AND ${cu_srcs_len} EQUAL 0 AND ${cu_cc_srcs_len} EQUAL 0)
         file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(${TARGET});\n")
         set(pybind_flag 1)
     endif()
@@ -160,11 +180,13 @@ set(DEPS_OPS
     recurrent_op
     dynamic_recurrent_op
     softmax_with_cross_entropy_op
+    softmax_op
+    sequence_softmax_op
     sum_op
     pool_op
+    maxout_op
     pool_with_index_op
     conv_op
-    lstm_op
     conv_transpose_op
     nccl_op
     sequence_conv_op
@@ -174,14 +196,22 @@ set(DEPS_OPS
     array_to_lod_tensor_op
     lstm_op
     tensor_array_read_write_op
-    gru_op)
+    gru_op
+    adagrad_op
+    sgd_op)
+
 
 op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
 op_library(cross_entropy_op DEPS cross_entropy)
 op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
+op_library(softmax_op DEPS softmax)
+op_library(sequence_softmax_op DEPS softmax)
+op_library(sum_op DEPS selected_rows_functor)
+op_library(sgd_op DEPS selected_rows_functor)
+op_library(adagrad_op DEPS selected_rows_functor)
 op_library(conv_op DEPS vol2col)
-op_library(sum_op DEPS net_op selected_rows_functor)
 op_library(pool_op DEPS pooling)
+op_library(maxout_op DEPS maxouting)
 op_library(pool_with_index_op DEPS pooling)
 op_library(lod_rank_table_op SRCS lod_rank_table_op.cc DEPS lod_rank_table)
 op_library(lod_tensor_to_array_op SRCS lod_tensor_to_array_op.cc DEPS lod_rank_table_op)
@@ -220,6 +250,6 @@ cc_test(dynamic_recurrent_op_test SRCS dynamic_recurrent_op_test.cc
         rnn/recurrent_op_utils.cc
         DEPS dynamic_recurrent_op)
 if(WITH_GPU)
-  nv_test(nccl_op_test SRCS nccl_op_test.cu DEPS nccl_op gpu_info device_context)
+  cc_test(nccl_op_test SRCS nccl_op_test.cu.cc DEPS nccl_op gpu_info device_context)
 endif()
 cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)

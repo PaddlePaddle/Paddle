@@ -508,6 +508,7 @@ TEST(Backward, simple_single_op) {
   op->SetOutput("Out", {"out"});
 
   auto target = f::VarDescBind("out");
+  target.SetShape({1});
   auto var_to_grad = AppendBackward(program, target, {});
 
   ASSERT_EQ(block->AllOps().size(), 3UL);
@@ -544,6 +545,7 @@ TEST(Backward, default_attribute) {
   op->CheckAttrs();
 
   auto target = f::VarDescBind("out");
+  target.SetShape({1});
   AppendBackward(program, target, {});
 
   ASSERT_EQ(block->AllOps().size(), 3UL);
@@ -581,6 +583,7 @@ TEST(Backward, simple_mult_op) {
   op3->SetOutput("Out", {"out3"});
 
   auto target = f::VarDescBind("out3");
+  target.SetShape({1});
   size_t forward_len = block->AllOps().size();
   auto var_to_grad = AppendBackward(program, target, {});
 
@@ -670,6 +673,7 @@ TEST(Backward, intermedia_var_no_grad) {
   op4->SetOutput("Out", {"out4"});
 
   auto target = f::VarDescBind("out4");
+  target.SetShape({1});
   size_t forward_len = block->AllOps().size();
   auto var_to_grad = AppendBackward(program, target, {"out3"});
 
@@ -730,6 +734,7 @@ TEST(Backward, var_no_grad) {
   op2->SetOutput("Z", {"z2"});
 
   auto target = f::VarDescBind("z2");
+  target.SetShape({1});
   size_t forward_len = block->AllOps().size();
   auto var_to_grad = AppendBackward(program, target, {"z1"});
 
@@ -810,6 +815,7 @@ TEST(Backward, shared_var) {
   op3->SetOutput("Out", {"out3"});
 
   auto target = f::VarDescBind("out3");
+  target.SetShape({1});
   size_t forward_len = block->AllOps().size();
   auto var_to_grad = AppendBackward(program, target, {});
 
@@ -888,6 +894,7 @@ TEST(Backward, half_backward) {
   op1->SetOutput("Out", {"out"});
 
   auto target = f::VarDescBind("out");
+  target.SetShape({1});
   size_t forward_len = block->AllOps().size();
   auto var_to_grad = AppendBackward(program, target, {"b"});
   f::OpDescBind *fill_op = block->AllOps()[forward_len];

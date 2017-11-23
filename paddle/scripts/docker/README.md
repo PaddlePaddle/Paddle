@@ -57,8 +57,7 @@ Users can specify the following Docker build arguments with either "ON" or "OFF"
 | `WITH_GPU` | OFF | Generates NVIDIA CUDA GPU code and relies on CUDA libraries. |
 | `WITH_AVX` | OFF | Set to "ON" to enable AVX support. |
 | `WITH_TESTING` | ON | Build unit tests binaries. |
-| `WITH_MKLDNN` | ON | Build with [Intel® MKL DNN](https://github.com/01org/mkl-dnn) support. |
-| `WITH_MKLML` | ON | Build with [Intel® MKL](https://software.intel.com/en-us/mkl) support. |
+| `WITH_MKL` | ON | Build with [Intel® MKL](https://software.intel.com/en-us/mkl) and [Intel® MKL-DNN](https://github.com/01org/mkl-dnn) support. |
 | `WITH_GOLANG` | ON | Build fault-tolerant parameter server written in go. |
 | `WITH_SWIG_PY` | ON | Build with SWIG python API support. |
 | `WITH_C_API` | OFF | Build capi libraries for inference. |

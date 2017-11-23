@@ -285,3 +285,86 @@ class XavierInitializer(Initializer):
                 })
         var.op = op
         return op
+
+
+class MSRAInitializer(Initializer):
+    """Implements the MSRA initializer a.k.a. Kaiming Initializer
+
+    This class implements the weight initialization from the paper
+    Delving Deep into Rectifiers: Surpassing Human-Level Performance on
+    ImageNet Classification[1] by Kaiming He, Xiangyu Zhang, Shaoqing Ren
+    and Jian Sun. This is a robust initialization method that particularly
+    considers the rectifier nonlinearities. In case of Uniform distribution,
+    the range is [-x, x], where x = sqrt(6 / fan_in). In case of Normal
+    distribution, the mean is 0 and the standard deviation
+    is sqrt(2/ fan_in).
+
+    References:
+        [1] Delving Deep into Rectifiers: Surpassing Human-Level Performance
+            on ImageNet Classification
+            (https://arxiv.org/abs/1502.01852)
+    """
+
+    def __init__(self, uniform=True, fan_in=None, seed=0):
+        """Constructor for MSRAInitializer
+
+        Args:
+            uniform: whether to use uniform or normal distribution
+            fan_in: fan_in for MSRAInitializer. If None, it is
+                    inferred from the variable.
+            seed: random seed
+
+        Note: It is recommended to set fan_in to None for most cases.
+        """
+        assert uniform is not None
+        assert seed is not None
+        super(MSRAInitializer, self).__init__()
+        self._uniform = uniform
+        self._fan_in = fan_in
+        self._seed = seed
+
+    def __call__(self, var, block):
+        """Add MSRA initialization ops for a variable
+
+        Args:
+            var: Variable that needs to be initialized
+            block: The block in which initialization ops
+                   should be added
+
+        Returns:
+            the initialization op
+        """
+        assert isinstance(var, framework.Variable)
+        assert isinstance(block, framework.Block)
+        f_in, f_out = self._compute_fans(var)
+
+        # If fan_in is passed, use it
+        fan_in = f_in if self._fan_in is None else self._fan_in
+
+        if self._uniform:
+            limit = np.sqrt(6.0 / float(fan_in))
+            op = block.prepend_op(
+                type="uniform_random",
+                outputs={"Out": var},
+                attrs={
+                    "shape": var.shape,
+                    "data_type": int(var.data_type),
+                    "min": -limit,
+                    "max": limit,
+                    "seed": self._seed
+                })
+
+        else:
+            std = np.sqrt(2.0 / float(fan_in))
+            op = block.prepend_op(
+                type="gaussian_random",
+                outputs={"Out": var},
+                attrs={
+                    "shape": var.shape,
+                    "data_type": int(var.data_type),
+                    "mean": 0.0,
+                    "std": std,
+                    "seed": self._seed
+                })
+        var.op = op
+        return op
