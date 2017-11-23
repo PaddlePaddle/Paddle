@@ -14,10 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_TESTING
-#include "gtest/gtest.h"
-#endif
-
+#include "paddle/framework/data_type.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/operator.h"
 
@@ -204,9 +201,6 @@ class BeamSearchOp : public framework::OperatorBase {
     size_t level = Attr<int>("level");
     size_t beam_size = Attr<int>("beam_size");
     int end_id = Attr<int>("end_id");
-
-    BeamSearch<size_t, float> alg(ids, scores, level, beam_size, end_id);
-
     auto selected_ids_var = scope.FindVar(Output("selected_ids"));
     auto selected_scores_var = scope.FindVar(Output("selected_scores"));
     PADDLE_ENFORCE_NOT_NULL(selected_ids_var);
@@ -215,7 +209,27 @@ class BeamSearchOp : public framework::OperatorBase {
         *selected_ids_var->GetMutable<framework::LoDTensor>();
     auto& selected_scores_tensor =
         *selected_scores_var->GetMutable<framework::LoDTensor>();
-    alg(pre_ids, &selected_ids_tensor, &selected_scores_tensor);
+
+    const auto ids_type = framework::ToDataType(ids.type());
+    const auto scores_type = framework::ToDataType(scores.type());
+
+    if (ids_type == framework::DataType::INT32) {
+      if (scores_type == framework::DataType::FP32) {
+        BeamSearch<uint32_t, float> alg(ids, scores, level, beam_size, end_id);
+        alg(pre_ids, &selected_ids_tensor, &selected_scores_tensor);
+      } else if (scores_type == framework::DataType::FP64) {
+        BeamSearch<uint32_t, double> alg(ids, scores, level, beam_size, end_id);
+        alg(pre_ids, &selected_ids_tensor, &selected_scores_tensor);
+      }
+    } else if (ids_type == framework::DataType::INT64) {
+      if (scores_type == framework::DataType::FP32) {
+        BeamSearch<uint64_t, float> alg(ids, scores, level, beam_size, end_id);
+        alg(pre_ids, &selected_ids_tensor, &selected_scores_tensor);
+      } else if (scores_type == framework::DataType::FP64) {
+        BeamSearch<uint64_t, double> alg(ids, scores, level, beam_size, end_id);
+        alg(pre_ids, &selected_ids_tensor, &selected_scores_tensor);
+      }
+    }
   }
 };
 
