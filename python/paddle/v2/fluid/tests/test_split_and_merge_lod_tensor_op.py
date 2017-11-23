@@ -123,13 +123,13 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
         x = layers.data(
             name='x',
             shape=[1],
-            data_type='float32',
+            dtype='float32',
             main_program=program,
             stop_gradient=False)
         y = layers.data(
             name='y',
             shape=[1],
-            data_type='bool',
+            dtype='bool',
             main_program=program,
             stop_gradient=False)
 

@@ -32,7 +32,7 @@ class TestLayer(unittest.TestCase):
         images = layers.data(
             name='pixel',
             shape=[3, 48, 48],
-            data_type='float32',
+            dtype='float32',
             main_program=main_program)
         layers.batch_norm(
             input=images,
@@ -47,7 +47,7 @@ class TestLayer(unittest.TestCase):
         images = layers.data(
             name='pixel',
             shape=[3, 48, 48],
-            data_type='float32',
+            dtype='float32',
             main_program=main_program)
         layers.dropout(
             x=images,
@@ -64,7 +64,7 @@ class TestLayer(unittest.TestCase):
         images = layers.data(
             name='pixel',
             shape=[3, 48, 48],
-            data_type='float32',
+            dtype='float32',
             main_program=main_program,
             startup_program=startup_program)
         conv1 = conv_block(images, 64, 2, [0.3, 0], main_program,
@@ -80,13 +80,13 @@ class TestLayer(unittest.TestCase):
         image1 = layers.data(
             name='pixel1',
             shape=[3, 48, 48],
-            data_type='float32',
+            dtype='float32',
             main_program=main_program,
             startup_program=startup_program)
         image2 = layers.data(
             name='pixel2',
             shape=[3, 48, 48],
-            data_type='float32',
+            dtype='float32',
             main_program=main_program,
             startup_program=startup_program)
         out = layers.elementwise_add(
