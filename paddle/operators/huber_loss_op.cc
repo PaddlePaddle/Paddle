@@ -70,11 +70,15 @@ input value and Y as the target value. Huber loss can evaluate the fitness of
 X to Y. Different from MSE loss, Huber loss is more robust for outliers. The
 shape of X and Y are [batch_size, 1]. The equation is:
 
-L_{\delta}(y, f(x)) =
+$$
+Out_{\delta}(i, x, y) =
 \begin{cases}
-0.5 * (y - f(x))^2, \quad |y - f(x)| \leq \delta \\
-\delta * (|y - f(x)| - 0.5 * \delta),   \quad otherwise
+0.5 * (Input(i, y) - Input(i, x))^2,
+\quad |Input(i, y) - Input(i, x)| \leq \delta \\
+\delta * (|Input(i, y) - Input(i, x)| - 0.5 * \delta),
+\quad otherwise
 \end{cases}
+$$
 
 )DOC");
   }
