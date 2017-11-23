@@ -25,24 +25,29 @@ class ReshapeOp : public framework::OperatorWithKernel {
             const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
- protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     // input check
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "Input(X) of ReshapeOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
-                            "Output(Out) of ReshapeOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of ReshapeOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of ReshapeOp should not be null.");
 
-    auto shape = ctx.Attr<std::vector<int>>("shape");
+    auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
     PADDLE_ENFORCE(shape.size() > 0, "Attr(shape) shouldn't be empty.");
-    for (auto dim : shape) {
-      PADDLE_ENFORCE(dim > 0, "Each dimension of shape must be positive.");
+    auto x_dims = ctx->GetInputDim("X");
+    // TODO(qiao) change batch_size
+    for (size_t i = 1; i < shape.size(); ++i) {
+      PADDLE_ENFORCE(shape[i] > 0,
+                     "Each dimension of shape "
+                     "must be positiv except the first.");
+    }
+    if (shape[0] < 0) {
+      shape[0] = x_dims[0];
     }
     // capacity check
     int64_t capacity =
         std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
-    auto *in = ctx.Input<framework::Tensor>("X");
-    int64_t in_size = framework::product(in->dims());
+    int64_t in_size = framework::product(x_dims);
     PADDLE_ENFORCE_EQ(capacity, in_size,
                       "The size of Input(X) mismatches with Attr(shape).");
     // resize output
@@ -50,7 +55,12 @@ class ReshapeOp : public framework::OperatorWithKernel {
     std::transform(shape.begin(), shape.end(), shape_int64.begin(),
                    [](int a) { return static_cast<int64_t>(a); });
     auto out_dims = framework::make_ddim(shape_int64);
-    ctx.Output<framework::LoDTensor>("Out")->Resize(out_dims);
+    ctx->SetOutputDim("Out", out_dims);
+    if (shape[0] == x_dims[0]) {
+      // Only pass LoD when the first dimension is equal between
+      // output and input.
+      ctx->ShareLoD("X", /*->*/ "Out");
+    }
   }
 };
 
@@ -61,8 +71,11 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input tensor of reshape operator.");
     AddOutput("Out", "The output tensor of reshape operator.");
-    AddAttr<std::vector<int>>("shape", "Target shape of reshape operator.");
-    AddComment(R"DOC(Reshape operator
+    AddAttr<std::vector<int>>("shape",
+                              "(vector<int>) "
+                              "Target shape of reshape operator.");
+    AddComment(R"DOC(
+Reshape Operator.
 
 Reshape Input(X) into the shape specified by Attr(shape).
 
@@ -71,7 +84,7 @@ Given a 2-D tensor X with 2 rows and 2 columns
 
     [[1, 2], [3, 4]]
 
-with target shape = [1, 4], the reshape operator will transform 
+and target shape = [1, 4], the reshape operator will transform
 the tensor X into a 1-D tensor:
 
     [1, 2, 3, 4]
@@ -88,14 +101,11 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
                 const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
- protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) shouldn't be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
-                            "Input(Out@GRAD) shouldn't be null.");
-    auto dims = ctx.Input<framework::Tensor>("X")->dims();
-    auto *d_in = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    d_in->Resize(dims);
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shouldn't be null.");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) shouldn't be null.");
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
 

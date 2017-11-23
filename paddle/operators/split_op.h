@@ -16,44 +16,29 @@ limitations under the License. */
 
 #include <vector>
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/strided_memcpy.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class SplitKernel : public framework::OpKernel {
+class SplitOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
     auto outs = ctx.MultiOutput<framework::Tensor>("Out");
+    auto in_stride = framework::stride(in->dims());
     int64_t axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
-    size_t before = 1, after = 1;
     const size_t n = outs.size();
-    size_t input_axis_dim = in->dims()[axis];
-
-    for (int64_t i = 0; i < in->dims().size(); ++i) {
-      if (i == axis) {
-        continue;
-      }
-      if (i < axis) {
-        before *= in->dims()[i];
-      } else {
-        after *= in->dims()[i];
-      }
-    }
     size_t input_offset = 0;
     for (size_t i = 0; i < n; i++) {
       auto& out = outs[i];
+      out->mutable_data<T>(ctx.GetPlace());
       size_t axis_dim = out->dims()[axis];
-      for (size_t j = 0; j < before; j++) {
-        size_t len = axis_dim * after * sizeof(T);
-        T* dest =
-            out->mutable_data<T>(platform::CPUPlace()) + axis_dim * after * j;
-        const T* src =
-            in->data<T>() + input_offset + input_axis_dim * after * j;
-        memcpy(dest, src, len);
-      }
-      input_offset += axis_dim * after;
+      auto out_stride = framework::stride(out->dims());
+      StridedMemcpy<T>(ctx.device_context(), in->data<T>() + input_offset,
+                       in_stride, out->dims(), out_stride, out->data<T>());
+      input_offset += axis_dim * in_stride[axis];
     }
   }
 };

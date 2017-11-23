@@ -17,12 +17,15 @@ limitations under the License. */
 #include <fstream>
 #include "paddle/utils/Logging.h"
 
+#include "NeuralNetwork.h"
+#include "hl_gpu.h"
+
+#ifndef PADDLE_MOBILE_INFERENCE
 #include "GradientMachineMode.h"
 #include "MultiGradientMachine.h"
 #include "MultiNetwork.h"
-#include "NeuralNetwork.h"
 #include "ParallelNeuralNetwork.h"
-#include "hl_gpu.h"
+#endif
 
 namespace paddle {
 
@@ -30,13 +33,16 @@ GradientMachine* GradientMachine::create(
     const ModelConfig& config,
     int mode,
     const std::vector<ParameterType>& parameterTypes) {
+#ifndef PADDLE_MOBILE_INFERENCE
   if (auto gm = IGradientMachineMode::tryCreateGradientMachine(mode, config)) {
     return gm;
   }
   if (FLAGS_trainer_count > 1) {
     return new MultiGradientMachine(config, FLAGS_use_gpu);
   }
+#endif
   if (FLAGS_trainer_count == 1) {  // single
+#ifndef PADDLE_MOBILE_INFERENCE
     NeuralNetwork* nn;
     if (config.type() == "multi_nn") {
       /* multi submodel calculate, thread(s) will be initialized inside */
@@ -48,6 +54,9 @@ GradientMachine* GradientMachine::create(
       /* single thread calculate */
       nn = NeuralNetwork::create(config);
     }
+#else
+    NeuralNetwork* nn = NeuralNetwork::create(config);
+#endif
     ParamInitCallback testParamInitCb = [](int paramId, Parameter* para) {
       para->enableType(PARAMETER_VALUE);
     };

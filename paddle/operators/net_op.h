@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <set>
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/op_registry.h"
 
@@ -51,16 +52,6 @@ class NetOp : public framework::OperatorBase {
           return std::unique_ptr<framework::OperatorBase>(op->Clone());
         });
     this->CompleteAddOp();
-  }
-
-  /**
-   * Infer all the operators' input and output variables' shapes, will be called
-   * before every mini-batch
-   */
-  void InferShape(const framework::Scope& scope) const override {
-    for (auto& op : ops_) {
-      op->InferShape(scope);
-    }
   }
 
   /**

@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class MinusKernel : public framework::OpKernel {
+class MinusKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* left_tensor = context.Input<framework::Tensor>("X");

@@ -1,11 +1,11 @@
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -42,11 +42,11 @@ ExternalProject_Add(
                     -DBUILD_SHARED_LIBS=OFF
                     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                     -DCMAKE_MACOSX_RPATH=ON
-                    -DCMAKE_BUILD_TYPE=Release
+                    -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
                     ${EXTERNAL_OPTIONAL_ARGS}
     CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${ZLIB_INSTALL_DIR}
                      -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
-                     -DCMAKE_BUILD_TYPE:STRING=Release
+                     -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
 )
 
 LIST(APPEND external_project_dependencies zlib)

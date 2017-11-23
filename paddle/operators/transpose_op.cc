@@ -23,18 +23,16 @@ class TransposeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
-                            "Output(Out) should not be null");
-    auto x_dims = ctx.Input<Tensor>("X")->dims();
-    std::vector<int> axis = ctx.Attr<std::vector<int>>("axis");
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null");
+    auto x_dims = ctx->GetInputDim("X");
+    std::vector<int> axis = ctx->Attrs().Get<std::vector<int>>("axis");
     size_t x_rank = x_dims.size();
     size_t axis_size = axis.size();
 
     PADDLE_ENFORCE_EQ(x_rank, axis_size,
-                      "the input tensor's rank(%d) "
+                      "The input tensor's rank(%d) "
                       "should be equal to the axis's size(%d)",
                       x_rank, axis_size);
 
@@ -51,14 +49,14 @@ class TransposeOp : public framework::OperatorWithKernel {
     for (size_t i = 0; i < axis_size; i++) {
       out_dims[i] = x_dims[axis[i]];
     }
-    ctx.Output<framework::LoDTensor>("Out")->Resize(out_dims);
+    ctx->SetOutputDim("Out", out_dims);
   }
 };
 
 class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  TransposeOpMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  TransposeOpMaker(framework::OpProto* proto,
+                   framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(
         "X",
@@ -66,12 +64,14 @@ class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor)The output tensor");
     AddAttr<std::vector<int>>(
         "axis",
-        "(vector<int>)a list of values, and the size of the list should be "
+        "(vector<int>)A list of values, and the size of the list should be "
         "the same with the input tensor rank, the tensor will "
         "permute the axes according the the values given");
     AddComment(R"DOC(
-The Tensor will be permuted according to the axis values given.
-The op is very much like the numpy.transpose function in python
+Transpose Operator.
+
+The input tensor will be permuted according to the axis values given.
+The op functions similar to how numpy.transpose works in python.
 For example:
  >> input = numpy.arange(6).reshape((2,3))
  >> input
@@ -79,12 +79,13 @@ For example:
         [3, 4, 5]])
  >> axis = [1, 0]
  >> output = input.transpose(axis)
- >> output 
+ >> output
  array([[0, 3],
         [1, 4],
 		[2, 5]])
 So, given a input tensor of shape(N, C, H, W) and the axis is {0, 2, 3, 1},
 the output tensor shape will be (N, H, W, C)
+
 )DOC");
   }
 };
@@ -93,16 +94,15 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
-                            "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx.Input<Tensor>("X")->dims();
-    auto *x_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-
-    if (x_grad) x_grad->Resize(x_dims);
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) should not be null");
+    auto x_dims = ctx->GetInputDim("X");
+    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+    if (ctx->HasOutput(framework::GradVarName("X"))) {
+      ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+    }
   }
 };
 

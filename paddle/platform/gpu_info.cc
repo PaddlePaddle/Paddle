@@ -17,7 +17,6 @@ limitations under the License. */
 #include "gflags/gflags.h"
 
 #include "paddle/platform/enforce.h"
-#include "paddle/platform/environment.h"
 
 DEFINE_double(fraction_of_gpu_memory_to_use, 0.95,
               "Default use 95% of GPU memory for PaddlePaddle,"
@@ -26,11 +25,11 @@ DEFINE_double(fraction_of_gpu_memory_to_use, 0.95,
 namespace paddle {
 namespace platform {
 
-int GetDeviceCount() {
+int GetCUDADeviceCount() {
   int count;
   PADDLE_ENFORCE(
       cudaGetDeviceCount(&count),
-      "cudaGetDeviceCount failed in paddle::platform::GetDeviceCount");
+      "cudaGetDeviceCount failed in paddle::platform::GetCUDADeviceCount");
   return count;
 }
 
@@ -43,6 +42,8 @@ int GetCurrentDeviceId() {
 }
 
 void SetDeviceId(int id) {
+  // TODO(qijun): find a better way to cache the cuda device count
+  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   PADDLE_ENFORCE(cudaSetDevice(id),
                  "cudaSetDevice failed in paddle::platform::SetDeviceId");
 }
@@ -72,13 +73,6 @@ size_t GpuMaxChunkSize() {
   size_t available = 0;
 
   GpuMemoryUsage(available, total);
-
-  if (IsEnvVarDefined(kEnvFractionGpuMemoryToUse)) {
-    auto val = std::stod(GetEnvValue(kEnvFractionGpuMemoryToUse));
-    PADDLE_ENFORCE_GT(val, 0.0);
-    PADDLE_ENFORCE_LE(val, 1.0);
-    FLAGS_fraction_of_gpu_memory_to_use = val;
-  }
 
   // Reserving the rest memory for page tables, etc.
   size_t reserving = (1 - FLAGS_fraction_of_gpu_memory_to_use) * total;
@@ -114,6 +108,11 @@ void GpuMemcpyPeer(void *dst, int dst_device, const void *src, int src_device,
   PADDLE_ENFORCE(
       cudaMemcpyPeerAsync(dst, dst_device, src, src_device, count, stream),
       "cudaMemcpyPeerAsync failed in paddle::platform::GpuMemcpyPeer");
+}
+
+void GpuMemsetAsync(void *dst, int value, size_t count, cudaStream_t stream) {
+  PADDLE_ENFORCE(cudaMemsetAsync(dst, value, count, stream),
+                 "cudaMemsetAsync failed in paddle::platform::GpuMemsetAsync");
 }
 }  // namespace platform
 }  // namespace paddle

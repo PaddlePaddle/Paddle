@@ -72,7 +72,7 @@ void testLazyAssign(int height, int width) {
 
 TEST(lazyAssign, CPU) { testMatrixCase(testLazyAssign<CpuMatrix>); }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
 TEST(lazyAssign, GPU) { testMatrixCase(testLazyAssign<GpuMatrix>); }
 #endif
 
@@ -142,6 +142,6 @@ void testSgdUpdate(int height, int width) {
 
 TEST(sgdUpdate, CPU) { testMatrixCase(testSgdUpdate<CpuMatrix>); }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
 TEST(sgdUpdate, GPU) { testMatrixCase(testSgdUpdate<GpuMatrix>); }
 #endif

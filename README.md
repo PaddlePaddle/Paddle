@@ -51,19 +51,19 @@ Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddl
 - **Connected to Products**
 
     In addition, PaddlePaddle is also designed to be easily deployable. At Baidu,
-    PaddlePaddle has been deployed into products or service with a vast number
+    PaddlePaddle has been deployed into products and services with a vast number
     of users, including ad click-through rate (CTR) prediction, large-scale image
     classification, optical character recognition(OCR), search ranking, computer
     virus detection, recommendation, etc. It is widely utilized in products at
-    Baidu and it has achieved a significant impact. We hope you can also exploit
-    the capability of PaddlePaddle to make a huge impact for your product.
+    Baidu and it has achieved a significant impact. We hope you can also explore
+    the capability of PaddlePaddle to make an impact on your product.
 
 ## Installation
 
 It is recommended to check out the
 [Docker installation guide](http://doc.paddlepaddle.org/develop/doc/getstarted/build_and_install/docker_install_en.html)
 before looking into the
-[build from source guide](http://doc.paddlepaddle.org/develop/doc/getstarted/build_and_install/build_from_source_en.html)
+[build from source guide](http://doc.paddlepaddle.org/develop/doc/getstarted/build_and_install/build_from_source_en.html).
 
 ## Documentation
 
@@ -72,7 +72,7 @@ We provide [English](http://doc.paddlepaddle.org/develop/doc/) and
 
 - [Deep Learning 101](http://book.paddlepaddle.org/index.html)
 
-  You might want to start from this online interactive book that can run in Jupyter Notebook.
+  You might want to start from this online interactive book that can run in a Jupyter Notebook.
 
 - [Distributed Training](http://doc.paddlepaddle.org/develop/doc/howto/usage/cluster/cluster_train_en.html)
 

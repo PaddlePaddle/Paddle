@@ -7,14 +7,12 @@ namespace operators {
 using Scope = framework::Scope;
 using DeviceContext = platform::DeviceContext;
 
-static int infer_shape_cnt = 0;
 static int run_cnt = 0;
 
 class TestOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
   DEFINE_OP_CLONE_METHOD(TestOp);
-  void InferShape(const Scope& scope) const override { ++infer_shape_cnt; }
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
     ++run_cnt;

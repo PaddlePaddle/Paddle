@@ -15,7 +15,6 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include "ModelConfig.pb.h"
 #include "paddle/gserver/layers/DataLayer.h"
-#include "paddle/trainer/Trainer.h"
 
 #include "LayerGradUtil.h"
 #include "paddle/testing/TestUtil.h"
@@ -195,7 +194,7 @@ TEST(Layer, SeqSliceLayer) {
   vector<vector<real>> ends;
 
   std::vector<bool> mode = {false};
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   mode.push_back(true);
 #endif
   genSeqInfo(seqStartPos, subSeqStartPos);

@@ -39,7 +39,7 @@ struct ModifiedHuberLossBackward {
 };
 
 template <typename T>
-class ModifiedHuberLossGradGPUKernel : public framework::OpKernel {
+class ModifiedHuberLossGradGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in0 = context.Input<Tensor>("Y");

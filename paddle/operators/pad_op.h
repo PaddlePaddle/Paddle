@@ -47,7 +47,7 @@ void PadFunction(const framework::ExecutionContext& context) {
 }
 
 template <typename Place, typename T>
-class PadKernel : public framework::OpKernel {
+class PadKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     int rank = context.Input<Tensor>("X")->dims().size();
@@ -97,7 +97,7 @@ void PadGradFunction(const framework::ExecutionContext& context) {
 }
 
 template <typename Place, typename T>
-class PadGradKernel : public framework::OpKernel {
+class PadGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     size_t rank =

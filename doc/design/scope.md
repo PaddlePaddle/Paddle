@@ -37,7 +37,7 @@ Scope is an association of a name to variable. All variables belong to `Scope`. 
 ```cpp
 class Scope {
  public:
-  Variable* NewVar(const std::string& name);
+  Variable* Var(const std::string& name);
   const Variable* FindVar(const std::string& name) const;
 
  private:
@@ -98,7 +98,7 @@ class Scope {
   Variable* FindVar(const std::string& name) const;
 
   // return if already contains same name variable.
-  Variable* NewVar(const std::string& name);
+  Variable* Var(const std::string& name);
 
  private:
   std::shared_ptr<Scope> parent_;
@@ -107,7 +107,7 @@ class Scope {
 ```
 ## Only scope can create a variable
 
-To ensure `only scope can create a variable`, we should mark `Variable`'s constructor as a private member function, and Scope is a friend class of Variable. And then only `NewVar` can construct `Variable`.
+To ensure `only scope can create a variable`, we should mark `Variable`'s constructor as a private member function, and Scope is a friend class of Variable. And then only `Var` can construct `Variable`.
 
 ## When scope destroyed, all variables inside this scope should be destroyed together
 
@@ -121,4 +121,4 @@ Also, as the parent scope is a `shared_ptr`, we can only `Create()` a scope shar
 
 ## Orthogonal interface
 
-`FindVar` will return `nullptr` when `name` is not found. It can be used as `Contains` method. `NewVar` will return an `Error` when there is a name conflict locally. Combine `FindVar` and `NewVar`, we can implement `NewVar` easily.
+`FindVar` will return `nullptr` when `name` is not found. It can be used as `Contains` method. `Var` will return an `Error` when there is a name conflict locally. Combine `FindVar` and `Var`, we can implement `Var` easily.

@@ -462,8 +462,8 @@ void LambdaCost::calcGrad(const real* outputScore,
       real score_j = score[index_j];
       real dcgDif = 0;
       if (j < sortSize) {
-        dcgDif = (std::pow(2, score_i) - std::pow(2, score_j)) /
-                 (std::log(i + 2) - std::log(j + 2));
+        dcgDif = (std::pow(2, score_i) - std::pow(2, score_j)) *
+                 (1 / std::log(i + 2) - 1 / std::log(j + 2));
       } else {
         dcgDif =
             (std::pow(2, score_i) - std::pow(2, score_j)) / std::log(i + 2);

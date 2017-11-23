@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 #include <cudnn.h>
 #endif
 #include <gtest/gtest.h>
@@ -21,7 +21,6 @@ limitations under the License. */
 #include "ModelConfig.pb.h"
 #include "paddle/gserver/layers/DataLayer.h"
 #include "paddle/math/MathUtils.h"
-#include "paddle/trainer/Trainer.h"
 
 #include "LayerGradUtil.h"
 #include "paddle/testing/TestUtil.h"
@@ -54,7 +53,7 @@ TEST(Operator, dot_mul) {
 TEST(Projection, context) {
   for (auto contextStart : {-5, -3, -1, 0, 3}) {
     for (auto contextLength : {1, 2, 5, 7}) {
-      for (auto batchSize : {1, 2, 5, 20, 50}) {
+      for (auto batchSize : {1, 2, 5, 20}) {
         for (auto trainablePadding : {false, true}) {
           LOG(INFO) << " contextStart=" << contextStart
                     << " contextLength=" << contextLength
@@ -258,7 +257,7 @@ void testProjectionConv(size_t groups, bool isDeconv) {
                      true);
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 TEST(Projection, conv) {
   /// test ConvProjection
   testProjectionConv(1, false);
@@ -422,7 +421,7 @@ TEST(Layer, depthwiseConvLayer) {
   //  'depthwise_conv' is a sepecial case of 'exconv' whose
   //  groups size equals to the input channels size.
   testDepthwiseConvLayer("exconv", /* useGpu= */ false);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   testDepthwiseConvLayer("exconv", /* useGpu= */ true);
 #endif
 }
@@ -435,7 +434,7 @@ void testConvLayer(const string& type, bool trans, bool useGpu) {
   config.layerConfig.set_partial_sum(1);
   config.layerConfig.set_shared_biases(true);
 
-  int dilation = 1;
+  int dilation = 2;
   if (type == "cudnn_conv") {
 #if CUDNN_VERSION >= 6000
     dilation = 2;
@@ -480,7 +479,7 @@ void testConvLayer(const string& type, bool trans, bool useGpu) {
 
 TEST(Layer, convLayer) {
   testConvLayer("exconv", /* trans= */ false, /* useGpu= */ false);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   testConvLayer("exconv", /* trans= */ false, /* useGpu= */ true);
   testConvLayer("cudnn_conv", /* trans= */ false, /* useGpu= */ true);
 #endif
@@ -525,7 +524,7 @@ TEST(Layer, convTransLayer) {
   for (auto useGpu : {false, true}) {
     testConvTransLayer("exconvt", /* trans= */ false, /* useGpu= */ useGpu);
   }
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   testConvTransLayer("cudnn_convt", /* trans= */ false, /* useGpu= */ true);
 #endif
 }
@@ -584,16 +583,17 @@ TEST(Layer, maxoutLayer) {
     testLayerGrad(config, "maxout", 10, false, useGpu);
   }
 }
+
 void testFcLayer(string format, size_t nnz) {
   TestConfig config;
-  config.biasSize = 4096;
+  config.biasSize = 1024;
   config.layerConfig.set_type("fc");
-  config.layerConfig.set_size(4096);
+  config.layerConfig.set_size(1024);
   config.layerConfig.set_active_type("sigmoid");
   config.layerConfig.set_drop_rate(0.1);
 
   config.inputDefs.push_back(
-      {INPUT_DATA, "layer_0", 8192, nnz, ParaSparse(format)});
+      {INPUT_DATA, "layer_0", 2048, nnz, ParaSparse(format)});
   config.layerConfig.add_inputs();
 
   LOG(INFO) << config.inputDefs[0].sparse.sparse << " "
@@ -610,9 +610,9 @@ void testFcLayer(string format, size_t nnz) {
 }
 
 TEST(Layer, fcLayer) {
-  testFcLayer("", 4096 * 4096 * 2);
-  testFcLayer("csc", 4096 * 40);
-  testFcLayer("csr", 4096 * 40);
+  testFcLayer("", 1024 * 1024 * 2);
+  testFcLayer("csc", 1024 * 10);
+  testFcLayer("csr", 1024 * 10);
 }
 
 TEST(Layer, SelectiveFullyConnectedLayer) {
@@ -638,7 +638,7 @@ TEST(Layer, SelectiveFullyConnectedLayer) {
                 /* trans= */ false,
                 /* useGup= */ false,
                 false);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   testLayerGrad(config,
                 "selective_fc",
                 100,
@@ -1082,6 +1082,21 @@ TEST(Layer, InterpolationLayer) {
   }
 }
 
+TEST(Layer, DotProdLayer) {
+  TestConfig config;
+  config.layerConfig.set_type("dot_prod");
+  config.layerConfig.set_size(1);
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 10, 0});
+  config.layerConfig.add_inputs();
+  config.inputDefs.push_back({INPUT_DATA, "layer_1", 10, 0});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "dot_prod", 10, false, useGpu);
+  }
+}
+
 TEST(Layer, OuterProdLayer) {
   TestConfig config;
   config.layerConfig.set_type("out_prod");
@@ -1210,7 +1225,7 @@ void testPoolLayer(const string& poolType, bool trans, bool useGpu) {
   testLayerGrad(config, "pool", 100, trans, useGpu);
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 void testPoolLayer2(const string& poolType, bool trans, bool useGpu) {
   TestConfig config;
   config.inputDefs.push_back({INPUT_DATA, "layer_0", 3200, 0});
@@ -1235,14 +1250,16 @@ void testPoolLayer2(const string& poolType, bool trans, bool useGpu) {
 TEST(Layer, PoolLayer) {
   testPoolLayer("avg-projection", /* trans= */ false, /* useGpu= */ false);
   testPoolLayer("max-projection", /* trans= */ false, /* useGpu= */ false);
+  testPoolLayer("max-pool-with-mask", /* trans= */ false, /* useGpu= */ false);
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   testPoolLayer("avg-projection", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer("max-projection", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer("cudnn-max-pool", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer("cudnn-avg-pool", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer2("cudnn-max-pool", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer2("cudnn-avg-pool", /* trans= */ false, /* useGpu= */ true);
+  testPoolLayer("max-pool-with-mask", /* trans= */ false, /* useGpu= */ true);
 #endif
 }
 
@@ -1309,7 +1326,7 @@ void testPool3DLayer(const string& poolType, bool trans, bool useGpu) {
 TEST(Layer, Pool3DLayer) {
   testPool3DLayer("avg", /* trans= */ false, /* useGpu= */ false);
   testPool3DLayer("max", /* trans= */ false, /* useGpu= */ false);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   testPool3DLayer("avg", /* trans= */ false, /* useGpu= */ true);
   testPool3DLayer("max", /* trans= */ false, /* useGpu= */ true);
 #endif
@@ -1695,7 +1712,7 @@ void testBatchNormLayer(const string& type, bool trans, bool useGpu) {
 
 TEST(Layer, BatchNormalizationLayer) {
   testBatchNormLayer("batch_norm", false, false);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   testBatchNormLayer("batch_norm", false, true);
   if (hl_get_cudnn_lib_version() >= int(4000)) {
     testBatchNormLayer("cudnn_batch_norm", false, true);
@@ -1744,7 +1761,7 @@ void testBatchNorm3DLayer(const string& type, bool trans, bool useGpu) {
 
 TEST(Layer, testBatchNorm3DLayer) {
   testBatchNorm3DLayer("batch_norm", false, false);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   testBatchNorm3DLayer("batch_norm", false, true);
   if (hl_get_cudnn_lib_version() >= int(4000)) {
     testBatchNorm3DLayer("cudnn_batch_norm", false, true);
@@ -1996,7 +2013,7 @@ TEST(Layer, multibox_loss) {
 TEST(Layer, TransLayer) {
   TestConfig config;
   const int height = 128;
-  const int width = 1028;
+  const int width = 256;
   config.layerConfig.set_type("trans");
   config.layerConfig.set_size(width);
 
@@ -2054,6 +2071,43 @@ TEST(Layer, CropLayer) {
 
   for (auto useGpu : {false, true}) {
     testLayerGrad(config, "crop", 100, false, useGpu, false);
+  }
+}
+
+TEST(Layer, roi_pool) {
+  TestConfig config;
+  config.layerConfig.set_type("roi_pool");
+  config.biasSize = 0;
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ROIPoolConfig* roiPoolConf = input->mutable_roi_pool_conf();
+  roiPoolConf->set_pooled_width(7);
+  roiPoolConf->set_pooled_height(7);
+  roiPoolConf->set_spatial_scale(1. / 16);
+  roiPoolConf->set_width(14);
+  roiPoolConf->set_height(14);
+
+  const size_t roiNum = 10;
+  const size_t roiDim = 10;
+  const size_t batchSize = 5;
+  MatrixPtr roiValue = Matrix::create(roiNum, roiDim, false, false);
+  roiValue->zeroMem();
+  real* roiData = roiValue->getData();
+  for (size_t i = 0; i < roiNum; ++i) {
+    roiData[i * roiDim + 0] = std::rand() % batchSize;
+    roiData[i * roiDim + 1] = std::rand() % 224;  // xMin
+    roiData[i * roiDim + 2] = std::rand() % 224;  // yMin
+    size_t xMin = static_cast<size_t>(roiData[i * roiDim + 1]);
+    size_t yMin = static_cast<size_t>(roiData[i * roiDim + 2]);
+    roiData[i * roiDim + 3] = xMin + std::rand() % (224 - xMin);  // xMax
+    roiData[i * roiDim + 4] = yMin + std::rand() % (224 - yMin);  // yMax
+  }
+
+  config.inputDefs.push_back({INPUT_DATA, "input", 3 * 14 * 14, {}});
+  config.inputDefs.push_back({INPUT_SELF_DEFINE_DATA, "rois", roiValue, {}});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "roi_pool", batchSize, false, useGpu, false);
   }
 }
 
@@ -2262,7 +2316,7 @@ void test3DConvLayer(const string& type, bool trans, bool useGpu) {
 
 TEST(Layer, test3DConvLayer) {
   test3DConvLayer("conv3d", /* trans= */ false, /* useGpu= */ false);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   test3DConvLayer("conv3d", /* trans= */ false, /* useGpu= */ true);
 #endif
 }
@@ -2339,7 +2393,7 @@ void test3DDeConvLayer(const string& type, bool trans, bool useGpu) {
 
 TEST(Layer, test3DDeConvLayer) {
   test3DDeConvLayer("deconv3d", /* trans= */ false, /* useGpu= */ false);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   test3DDeConvLayer("deconv3d", /* trans= */ false, /* useGpu= */ true);
 #endif
 }
@@ -2356,6 +2410,57 @@ TEST(Layer, ScaleShiftLayer) {
   config.layerConfig.add_inputs();
   for (auto useGpu : {false, true}) {
     testLayerGrad(config, "scale_shift", batchSize, false, useGpu, false);
+  }
+}
+
+TEST(Layer, ScaleSubRegionLayer) {
+  const size_t batchSize = 64;
+  const size_t size = 4096;
+  TestConfig config;
+  config.layerConfig.set_type("scale_sub_region");
+  config.inputDefs.push_back({INPUT_DATA, "input", size, 0});
+  MatrixPtr indicesV = Matrix::create(batchSize, 6, false, false);
+  auto* data = indicesV->getData();
+  for (size_t i = 0; i < batchSize; ++i) {
+    data[i * 2] = 2;
+    data[i * 2 + 1] = 4;
+    data[i * 2 + 2] = 16;
+    data[i * 2 + 3] = 32;
+    data[i * 2 + 4] = 16;
+    data[i * 2 + 5] = 32;
+  }
+  config.inputDefs.push_back({INPUT_SELF_DEFINE_DATA, "indices", indicesV, {}});
+  LayerInputConfig* input = config.layerConfig.add_inputs();
+  ScaleSubRegionConfig* scaleSubRegionConf =
+      input->mutable_scale_sub_region_conf();
+  ImageConfig* imgConf = scaleSubRegionConf->mutable_image_conf();
+  imgConf->set_img_size(32);
+  imgConf->set_img_size_y(32);
+  imgConf->set_channels(4);
+  scaleSubRegionConf->set_value(2.0);
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "scale_sub_region", batchSize, false, useGpu, false);
+  }
+}
+
+TEST(Layer, L2DistanceLayer) {
+  TestConfig config;
+  config.layerConfig.set_type("l2_distance");
+  config.layerConfig.set_size(1);
+  config.biasSize = 0;
+
+  const size_t input_dim = 27;
+  const size_t batch_size = 11;
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", input_dim, 0});
+  config.inputDefs.push_back({INPUT_DATA, "layer_1", input_dim, 0});
+  config.layerConfig.add_inputs();
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "l2_distance", batch_size, false, useGpu);
   }
 }
 

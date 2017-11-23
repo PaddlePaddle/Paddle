@@ -40,7 +40,7 @@ class CPUAllocator : public SystemAllocator {
   virtual bool UseGpu() const;
 };
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 class GPUAllocator : public SystemAllocator {
  public:
   virtual void* Alloc(size_t& index, size_t size);
@@ -51,7 +51,7 @@ class GPUAllocator : public SystemAllocator {
   size_t gpu_alloc_size_ = 0;
   size_t fallback_alloc_size_ = 0;
 };
-#endif  // PADDLE_ONLY_CPU
+#endif
 
 }  // namespace detail
 }  // namespace memory

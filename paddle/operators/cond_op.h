@@ -40,8 +40,7 @@ class CondOp : public framework::OperatorBase {
          const framework::VariableNameMap& outputs,
          const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {
-    index_.resize(2);
-    sub_net_op_.resize(2);
+    sub_net_op_.resize(BRANCH_NUM);
   }
 
   CondOp(const CondOp& o)
@@ -51,40 +50,44 @@ class CondOp : public framework::OperatorBase {
     PADDLE_THROW("Not implemented");
   }
 
-  void CreateScope(const framework::Scope& scope) const;
+  framework::Scope& AddSubScope(const framework::Scope& scope) const;
+  std::vector<framework::Scope*>& GetSubScopes(
+      const framework::Scope& scope) const;
 
-  void CreateIndexTensor(const framework::Scope& scope) const;
+  framework::LoDTensor& AddIndexTensor(const framework::Scope& scope) const;
+  std::vector<framework::LoDTensor>& GetIndexTensors(
+      const framework::Scope& scope) const;
 
-  /*
-   * InferShape must be called before Run.
-   */
-  void InferShape(const framework::Scope& scope) const override;
+  void PrepareDataForSubnet(const framework::Scope& scope,
+                            const platform::DeviceContext& dev_ctx) const;
+  void MergeDataFromSubnet(const framework::Scope& scope,
+                           const platform::DeviceContext& dev_ctx) const;
 
   /*
    * Set True Block
    */
   void set_truenet(std::unique_ptr<OperatorBase>&& net) {
-    sub_net_op_[0] = std::move(net);
+    sub_net_op_[TRUE_BRANCH] = std::move(net);
   }
 
   /*
    * Set False Block
    */
   void set_falsenet(std::unique_ptr<OperatorBase>&& net) {
-    sub_net_op_[1] = std::move(net);
+    sub_net_op_[FALSE_BRANCH] = std::move(net);
   }
 
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override;
 
  private:
+  const int TRUE_BRANCH = 0;
+  const int FALSE_BRANCH = 1;
+  const int BRANCH_NUM = 2;
+
   // sub_net_op_[0]: subnet_t
   // sub_net_op_[1]: subnet_f
   std::vector<std::unique_ptr<framework::OperatorBase>> sub_net_op_;
-
-  // index_[0]: True_index;
-  // index_[1]: False_index;
-  mutable std::vector<std::vector<int>> index_;
 };
 
 }  // namespace operators

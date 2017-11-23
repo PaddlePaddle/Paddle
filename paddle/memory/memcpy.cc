@@ -29,7 +29,7 @@ void Copy<platform::CPUPlace, platform::CPUPlace>(platform::CPUPlace, void* dst,
   std::memcpy(dst, src, num);
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 template <>
 void Copy<platform::CPUPlace, platform::GPUPlace>(platform::CPUPlace dst_place,
                                                   void* dst,
@@ -83,7 +83,16 @@ void Copy<platform::GPUPlace, platform::CPUPlace>(platform::GPUPlace dst_place,
   platform::GpuMemcpySync(dst, src, num, cudaMemcpyHostToDevice);
 }
 
-#endif  // PADDLE_ONLY_CPU
+template <>
+void Copy<platform::GPUPlace, platform::GPUPlace>(platform::GPUPlace dst_place,
+                                                  void* dst,
+                                                  platform::GPUPlace src_place,
+                                                  const void* src, size_t num) {
+  platform::SetDeviceId(dst_place.device);
+  platform::GpuMemcpySync(dst, src, num, cudaMemcpyDeviceToDevice);
+}
+
+#endif
 
 #ifdef PADDLE_WITH_FPGA
 template <>

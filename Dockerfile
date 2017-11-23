@@ -22,7 +22,7 @@ COPY ./paddle/scripts/docker/root/ /root/
 
 RUN apt-get update && \
     apt-get install -y \
-    git python-pip python-dev openssh-server bison  \
+    git python-pip python-dev openssh-server bison libnccl-dev \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-matplotlib gcc-4.8 g++-4.8 \

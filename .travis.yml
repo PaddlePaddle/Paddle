@@ -30,6 +30,7 @@ addons:
       - automake
       - libtool
       - ccache
+  ssh_known_hosts: 52.76.173.135
 before_install:
   - if [[ "$JOB" == "check_style" ]]; then sudo ln -s /usr/bin/clang-format-3.8 /usr/bin/clang-format; fi
   # Paddle is using protobuf 3.1 currently. Protobuf 3.2 breaks the compatibility. So we specify the python
@@ -42,6 +43,14 @@ script:
   - |
     timeout 2580 paddle/scripts/travis/${JOB}.sh # 43min timeout
     RESULT=$?; if [ $RESULT -eq 0 ] || [ $RESULT -eq 142 ]; then true; else false; fi;
+  - |
+    if [[ "$JOB" != "build_doc" ]]; then exit 0; fi;
+    if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then exit 0; fi;
+    if [[ "$TRAVIS_BRANCH" != "develop"  && ! "$TRAVIS_BRANCH" =~ ^v[[:digit:]]+\.[[:digit:]]+(\.[[:digit:]]+)?(-\S*)?$ ]]; then exit 0; fi;
+    export DEPLOY_DOCS_SH=https://raw.githubusercontent.com/PaddlePaddle/PaddlePaddle.org/master/scripts/deploy/deploy_docs.sh
+    export DOCS_DIR=`pwd`
+    cd ..
+    curl $DEPLOY_DOCS_SH | bash -s $CONTENT_DEC_PASSWD $TRAVIS_BRANCH $DOCS_DIR $DOCS_DIR/build/doc   
 notifications:
   email:
     on_success: change

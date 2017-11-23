@@ -10,7 +10,8 @@ There are:
 * EndPass
 """
 __all__ = [
-    'EndIteration', 'BeginIteration', 'BeginPass', 'EndPass', 'TestResult'
+    'EndIteration', 'BeginIteration', 'BeginPass', 'EndPass', 'TestResult',
+    'EndForwardBackward'
 ]
 
 
@@ -71,6 +72,17 @@ class BeginIteration(object):
     def __init__(self, pass_id, batch_id):
         self.pass_id = pass_id
         self.batch_id = batch_id
+
+
+class EndForwardBackward(object):
+    """
+    Event On One Batch ForwardBackward Complete.
+    """
+
+    def __init__(self, pass_id, batch_id, gm):
+        self.pass_id = pass_id
+        self.batch_id = batch_id
+        self.gm = gm
 
 
 class EndIteration(WithMetric):

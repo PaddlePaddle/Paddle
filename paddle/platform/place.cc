@@ -57,6 +57,7 @@ bool places_are_same_class(const Place &p1, const Place &p2) {
   return (is_gpu_place(p1) && is_gpu_place(p2)) ||
          (is_cpu_place(p1) && is_cpu_place(p2)) ||
          (is_fpga_place(p1) && is_fpga_place(p2));
+
 }
 
 std::ostream &operator<<(std::ostream &os, const Place &p) {

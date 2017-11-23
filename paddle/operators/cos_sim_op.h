@@ -28,7 +28,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
-class CosSimKernel : public framework::OpKernel {
+class CosSimKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     // get Tensor
@@ -67,7 +67,7 @@ class CosSimKernel : public framework::OpKernel {
 };
 
 template <typename Place, typename T>
-class CosSimGradKernel : public framework::OpKernel {
+class CosSimGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     // get Tensor
@@ -132,7 +132,7 @@ class CosSimGradKernel : public framework::OpKernel {
       // compute dy
       if (out_grad_y) {
         out_grad_y->mutable_data<T>(context.GetPlace());
-        auto dy = EigenMatrix<T>::Reshape(*out_grad_y, 1);
+        auto dy = EigenVector<T>::Flatten(*out_grad_y);
         auto grad = x / norm_prod_bcast - z_bcast * y_bcast / y_snorm_bcast;
         dy.device(place) = (dz_bcast * grad).sum(Eigen::array<int, 1>({{0}}));
       }

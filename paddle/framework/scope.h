@@ -17,8 +17,10 @@ limitations under the License. */
 #include <list>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "paddle/framework/variable.h"
+#include "paddle/platform/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -38,21 +40,16 @@ class Scope {
   Scope() {}
   ~Scope();
 
-  // Disable Copy, Assign, Move.
-  Scope(const Scope& other) = delete;
-  Scope& operator=(const Scope& other) = delete;
-  Scope(Scope&& other) = delete;
-
   /// Create a sub-scope. Returns a reference other than a pointer so
   /// to prevent from manual deletion.
   /// Mark it to const because that new kid scope cannot change parent scope.
   Scope& NewScope() const;
 
   /// Create a variable with given name if it doesn't exist.
-  Variable* NewVar(const std::string& name);
+  Variable* Var(const std::string& name);
 
   /// Create a variable with a scope-unique name.
-  Variable* NewVar();
+  Variable* Var(std::string* name = nullptr);
 
   /// Find a variable in the scope or any of its ancestors.  Returns
   /// nullptr if cannot find.
@@ -63,17 +60,30 @@ class Scope {
   /// Find the scope or an ancestor scope that contains the given variable.
   const Scope* FindScope(const Variable* var) const;
 
+  void DeleteScope(Scope* scope);
+
   /// Drop all kids scopes belonged to this scope.
   void DropKids();
+
+  // enumerate all the variables current contains.
+  std::vector<std::string> GetAllNames(bool recursive = false) const;
+
+  // Rename variable to a new name
+  void Rename(const std::string& origin_name,
+              const std::string& new_name) const;
+
+  // Rename variable to a new name and return the new name
+  std::string Rename(const std::string& origin_name) const;
 
  private:
   // Call Scope::NewScope for a sub-scope.
   explicit Scope(Scope const* parent) : parent_(parent) {}
 
-  std::unordered_map<std::string, Variable*> vars_;
+  mutable std::unordered_map<std::string, Variable*> vars_;
   mutable std::list<Scope*> kids_;
   Scope const* parent_{nullptr};
-};
 
+  DISABLE_COPY_AND_ASSIGN(Scope);
+};
 }  // namespace framework
 }  // namespace paddle

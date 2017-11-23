@@ -19,8 +19,8 @@ namespace paddle {
 namespace platform {
 
 template <>
-Eigen::DefaultDevice* DeviceContext::get_eigen_device<Eigen::DefaultDevice>()
-    const {
+Eigen::DefaultDevice* DeviceContext::GetEigenDevice<
+    platform::CPUPlace, Eigen::DefaultDevice>() const {
   return reinterpret_cast<const CPUDeviceContext*>(this)->eigen_device();
 }
 
@@ -56,7 +56,14 @@ PolarisContext* FPGADeviceContext::polaris_context() {
 Place FPGADeviceContext::GetPlace() const { return place_; }
 #endif
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
+
+template <>
+Eigen::GpuDevice*
+DeviceContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
+  return reinterpret_cast<const CUDADeviceContext*>(this)->eigen_device();
+}
+
 
 class EigenCudaStreamDevice : public Eigen::StreamInterface {
  public:
@@ -111,11 +118,6 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   mutable unsigned int* semaphore_;
 };
 
-template <>
-Eigen::GpuDevice* DeviceContext::get_eigen_device<Eigen::GpuDevice>() const {
-  return reinterpret_cast<const CUDADeviceContext*>(this)->eigen_device();
-}
-
 CUDADeviceContext::CUDADeviceContext(GPUPlace place) : place_(place) {
   SetDeviceId(place_.device);
   PADDLE_ENFORCE(cudaStreamCreate(&stream_));
@@ -144,6 +146,11 @@ void CUDADeviceContext::Wait() const {
   PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
 }
 
+void CUDADeviceContext::Finish() const {
+  Wait();
+  PADDLE_ENFORCE(cudaGetLastError());
+}
+
 Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
   return eigen_device_.get();
 }
@@ -156,7 +163,7 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
-#endif  // PADDLE_ONLY_CPU
+#endif
 
 }  // namespace platform
 }  // namespace paddle

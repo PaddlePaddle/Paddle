@@ -22,9 +22,51 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-enum class DataLayout {
+inline const char* cudnnGetErrorString(cudnnStatus_t status) {
+  switch (status) {
+    case CUDNN_STATUS_SUCCESS:
+      return "CUDNN_STATUS_SUCCESS";
+    case CUDNN_STATUS_NOT_INITIALIZED:
+      return "CUDNN_STATUS_NOT_INITIALIZED";
+    case CUDNN_STATUS_ALLOC_FAILED:
+      return "CUDNN_STATUS_ALLOC_FAILED";
+    case CUDNN_STATUS_BAD_PARAM:
+      return "CUDNN_STATUS_BAD_PARAM";
+    case CUDNN_STATUS_INTERNAL_ERROR:
+      return "CUDNN_STATUS_INTERNAL_ERROR";
+    case CUDNN_STATUS_INVALID_VALUE:
+      return "CUDNN_STATUS_INVALID_VALUE";
+    case CUDNN_STATUS_ARCH_MISMATCH:
+      return "CUDNN_STATUS_ARCH_MISMATCH";
+    case CUDNN_STATUS_MAPPING_ERROR:
+      return "CUDNN_STATUS_MAPPING_ERROR";
+    case CUDNN_STATUS_EXECUTION_FAILED:
+      return "CUDNN_STATUS_EXECUTION_FAILED";
+    case CUDNN_STATUS_NOT_SUPPORTED:
+      return "CUDNN_STATUS_NOT_SUPPORTED";
+    case CUDNN_STATUS_LICENSE_ERROR:
+      return "CUDNN_STATUS_LICENSE_ERROR";
+    default:
+      return "Unknown cudnn error number";
+  }
+}
+
+#define CUDNN_VERSION_MIN(major, minor, patch) \
+  (CUDNN_VERSION >= ((major)*1000 + (minor)*100 + (patch)))
+
+#define CUDNN_ENFORCE(condition)                                  \
+  do {                                                            \
+    cudnnStatus_t status = condition;                             \
+    if (status != CUDNN_STATUS_SUCCESS) {                         \
+      VLOG(1) << ::paddle::platform::cudnnGetErrorString(status); \
+      PADDLE_THROW("cuDNN call failed");                          \
+    }                                                             \
+  } while (false)
+
+enum class DataLayout {  // Not use
   kNHWC,
   kNCHW,
+  kNCDHW,
   kNCHW_VECT_C,
 };
 
@@ -40,20 +82,41 @@ template <>
 class CudnnDataType<float> {
  public:
   static const cudnnDataType_t type = CUDNN_DATA_FLOAT;
+  typedef const float ScalingParamType;
+  static ScalingParamType* kOne() {
+    static ScalingParamType v = 1.0;
+    return &v;
+  }
+  static ScalingParamType* kZero() {
+    static ScalingParamType v = 0.0;
+    return &v;
+  }
 };
 
 template <>
 class CudnnDataType<double> {
  public:
   static const cudnnDataType_t type = CUDNN_DATA_DOUBLE;
+  typedef const double ScalingParamType;
+  static ScalingParamType* kOne() {
+    static ScalingParamType v = 1.0;
+    return &v;
+  }
+  static ScalingParamType* kZero() {
+    static ScalingParamType v = 0.0;
+    return &v;
+  }
 };
 
-inline cudnnTensorFormat_t GetCudnnTensorFormat(const DataLayout& order) {
+inline cudnnTensorFormat_t GetCudnnTensorFormat(
+    const DataLayout& order) {  // Not use
   switch (order) {
     case DataLayout::kNHWC:
       return CUDNN_TENSOR_NHWC;
     case DataLayout::kNCHW:
       return CUDNN_TENSOR_NCHW;
+    case DataLayout::kNCDHW:
+      return CUDNN_TENSOR_NCHW;  // TODO(chengduoZH) : add CUDNN_TENSOR_NCDHW
     default:
       PADDLE_THROW("Unknown cudnn equivalent for order");
   }
@@ -71,23 +134,32 @@ class ScopedTensorDescriptor {
 
   inline cudnnTensorDescriptor_t descriptor(const cudnnTensorFormat_t format,
                                             const cudnnDataType_t type,
-                                            const std::vector<int>& dims) {
-    // the format is not used now, but it maybe useful feature
+                                            const std::vector<int>& dims,
+                                            const int groups = 1) {
+    // the format is not used now, will add later
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
     for (int i = dims.size() - 2; i >= 0; i--) {
       strides[i] = dims[i + 1] * strides[i + 1];
     }
+    // Update tensor descriptor dims setting if groups > 1
+    // FIXME(typhoonzero): Assume using NCHW or NCDHW order
+    std::vector<int> dims_with_group(dims.begin(), dims.end());  // copy
+    if (groups > 1) {
+      dims_with_group[1] = dims_with_group[1] / groups;
+    }
     PADDLE_ENFORCE(dynload::cudnnSetTensorNdDescriptor(
-        desc_, type, dims.size(), dims.data(), strides.data()));
+        desc_, type, dims_with_group.size(), dims_with_group.data(),
+        strides.data()));
     return desc_;
   }
 
   template <typename T>
   inline cudnnTensorDescriptor_t descriptor(const DataLayout& order,
-                                            const std::vector<int>& dims) {
-    return descriptor(GetCudnnTensorFormat(order), CudnnDataType<T>::type,
-                      dims);
+                                            const std::vector<int>& dims,
+                                            const int groups = 1) {
+    return descriptor(GetCudnnTensorFormat(order), CudnnDataType<T>::type, dims,
+                      groups);
   }
 
  private:
@@ -106,18 +178,30 @@ class ScopedFilterDescriptor {
 
   inline cudnnFilterDescriptor_t descriptor(const cudnnTensorFormat_t format,
                                             const cudnnDataType_t type,
-                                            const std::vector<int>& kernel) {
-    // filter layout: output input spatial_dim_y spatial_dim_x
+                                            const std::vector<int>& kernel,
+                                            const int groups = 1) {
+    // filter layout: MCHW(MCDHW), where M is the number of
+    // output image channels, C is the number of input image channels,
+    // D is the depth of the filter, H is the height of the filter, and W is the
+    // width of the filter.
+    std::vector<int> kernel_with_group(kernel.begin(), kernel.end());
+    if (groups > 1) {
+      // M /= groups
+      kernel_with_group[0] /= groups;
+      // NOTE: input filter(C) of the filter is already asserted to be C/groups.
+    }
     PADDLE_ENFORCE(dynload::cudnnSetFilterNdDescriptor(
-        desc_, type, format, kernel.size(), kernel.data()));
+        desc_, type, format, kernel_with_group.size(),
+        kernel_with_group.data()));
     return desc_;
   }
 
   template <typename T>
   inline cudnnFilterDescriptor_t descriptor(const DataLayout& order,
-                                            const std::vector<int>& kernel) {
+                                            const std::vector<int>& kernel,
+                                            const int groups = 1) {
     return descriptor(GetCudnnTensorFormat(order), CudnnDataType<T>::type,
-                      kernel);
+                      kernel, groups);
   }
 
  private:
@@ -140,13 +224,15 @@ class ScopedConvolutionDescriptor {
     PADDLE_ENFORCE_EQ(pads.size(), strides.size());
     PADDLE_ENFORCE_EQ(pads.size(), dilations.size());
 
-#if CUDNN_VERSION < 6000
+#if !CUDNN_VERSION_MIN(6, 0, 0)
     // cudnn v5 does not support dilation conv, the argument is called upscale
     // instead of dilations and it is must be one.
     for (size_t i = 0; i < dilations.size(); ++i) {
       PADDLE_ENFORCE_EQ(
           dilations[i], 1,
-          "Dilations conv is not supported in this cuDNN version");
+          "Dilations conv is not supported in this cuDNN version(%d.%d.%d).",
+          CUDNN_VERSION / 1000, CUDNN_VERSION % 1000 / 100,
+          CUDNN_VERSION % 100);
     }
 #endif
 

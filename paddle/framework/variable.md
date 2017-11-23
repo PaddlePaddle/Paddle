@@ -7,7 +7,7 @@ Variable is also known as *blob* in MxNet and Caffe2.  It is the input and outpu
 
 For the flexibility of a DL system, a variable should be able to contain any typed value -- a tensor in most cases, but could also be some integer IDs or a scope of other variables in the case of RNN.
 
-To use the minimum amount of memory, we'd like that a variable to allocate memory when it has to, or, lazy memory allocation.  Let's take the following example:
+To use the minimum amount of memory, we would like that a variable allocates memory only when it has to, or, lazy memory allocation.  Let's take the following example:
 
 ```cpp
 Variable vr, v1, v2;
@@ -38,7 +38,7 @@ This syntax for lazy memory allocation when we call `Randomize` and `Mult`, thos
 
 To make memory allocation lazy, we cannot assume that we know the type held by a variable at definition time.  In other words, `class Variable` cannot be a template `template <T> class Variable`.
 
-Because we don't know the type `T`, we cannot save a `T*` as `Variable's` data member.  Instead, we save an interface object `Placeholder`, who can return the pointer to the saved object via `Placeholder::Ptr()` as `void*`.
+Because we don't know the type `T`, we cannot save a `T*` as `Variable's` data member.  Instead, we save an interface object `Placeholder`, which can return the pointer to the saved object via `Placeholder::Ptr()` as `void*`.
 
 But anyway, Variable needs to know `T` so could it `delete<T>(ptr)` and so could `Variable::Get` checks the expected type and the saved object's type.
 
@@ -49,4 +49,4 @@ Because `PlaceholderImpl` knows `T`, it can save and return `typeid(T)` for the 
 
 ## Conclusion
 
-The technique type hiding utilizes C++ class templates, interface and derivation, and C++ RTTI (typeid).  This combination saves us from definition something like `caffe2::TypeMata`, which takes hundreds of lines of C++ code.
+The technique type hiding utilizes C++ class templates, interface and derivation, and C++ RTTI (typeid).  This combination saves us from defining something like `caffe2::TypeMeta`, which takes hundreds of lines of C++ code.

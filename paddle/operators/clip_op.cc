@@ -17,42 +17,43 @@
 namespace paddle {
 namespace operators {
 
-using framework::LoDTensor;
-
 class ClipOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "Input(X) of ClipOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
-                            "Output(Out) of ClipOp should not be null.");
-    auto x_dims = ctx.Input<LoDTensor>("X")->dims();
-    auto max = Attr<float>("max");
-    auto min = Attr<float>("min");
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of ClipOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of ClipOp should not be null.");
+    auto x_dims = ctx->GetInputDim("X");
+    auto max = ctx->Attrs().Get<float>("max");
+    auto min = ctx->Attrs().Get<float>("min");
     PADDLE_ENFORCE_LT(min, max, "max should be greater than min.");
-    ctx.Output<LoDTensor>("Out")->Resize(x_dims);
+    ctx->SetOutputDim("Out", x_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
 template <typename AttrType>
 class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ClipOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  ClipOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor)The input of clip op."
-             "The input should be a k-D tensor(k > 0 and k < 7)");
+             "The number of dimensions must be between [1, 9].");
     AddOutput("Out", "(Tensor)The output of clip op with shape as input(X)");
     AddAttr<AttrType>(
         "min", "(float)Minimum value, under which element is replaced by min.");
     AddAttr<AttrType>(
         "max", "(float)Maximum value, above which element is replaced by max");
     AddComment(R"DOC(
-Clip operator limits the given input within an interval. The interval is
+Clip Operator.
+
+The clip operator limits the value of given input within an interval. The interval is
 specified with arguments 'min' and 'max'.
+
 )DOC");
   }
 };
@@ -61,15 +62,13 @@ class ClipOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
-                            "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx.Input<LoDTensor>("X")->dims();
-    auto *x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
-    if (x_grad != nullptr) {
-      x_grad->Resize(x_dims);
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) should not be null");
+    auto x_dims = ctx->GetInputDim("X");
+    if (ctx->HasOutput(framework::GradVarName("X"))) {
+      ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     }
   }
 };

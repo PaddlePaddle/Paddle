@@ -19,23 +19,19 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
-using framework::LoDTensor;
 
 class CropOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"),
-                            "Input(X) of CropOp should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx.OutputVar("Out"),
-                            "Output(Out) of CropOp should not be null.");
-    auto x_dim = ctx.Input<LoDTensor>("X")->dims();
-    auto *y = ctx.Input<LoDTensor>("Y");
-    auto *out = ctx.Output<LoDTensor>("Out");
-    if (y == nullptr) {
-      auto shape = Attr<std::vector<int>>("shape");
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of CropOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of CropOp should not be null.");
+    auto x_dim = ctx->GetInputDim("X");
+    if (!ctx->HasInput("Y")) {
+      auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
       PADDLE_ENFORCE_EQ(
           int64_t(shape.size()), x_dim.size(),
           "Shape size should be equal to dimention size of input tensor.");
@@ -43,49 +39,52 @@ class CropOp : public framework::OperatorWithKernel {
       for (size_t i = 0; i < shape.size(); ++i) {
         tensor_shape[i] = static_cast<int64_t>(shape[i]);
       }
-      out->Resize(framework::make_ddim(tensor_shape));
+      ctx->SetOutputDim("Out", framework::make_ddim(tensor_shape));
     } else {
-      PADDLE_ENFORCE_EQ(framework::arity(x_dim), framework::arity(y->dims()),
+      auto y_dim = ctx->GetInputDim("Y");
+      PADDLE_ENFORCE_EQ(framework::arity(x_dim), framework::arity(y_dim),
                         "Tensor rank of both CropOp's "
                         "inputs must be same.");
-      out->Resize(y->dims());
+      ctx->SetOutputDim("Out", y_dim);
     }
   }
 };
 
 class CropOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CropOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  CropOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "The input of pad op. "
-             "The input should be a k-D tensor(k > 0 and k < 7)");
+             "The input should be a k-D tensor(k > 0 and k < 7).");
     AddInput("Y",
-             "The input used as reference for cropping"
-             " with the same dimension as X. ");
+             "The input used as reference for cropping, "
+             "which is of the same dimensions as X.")
+        .AsDispensable();
     AddOutput("Out",
-              "The output of crop op "
-              "with the same dimension as X.");
+              "The output of crop op, "
+              "which is of the same dimensions as X.");
     AddAttr<std::vector<int>>("offsets",
-                              "A list<int> describing offsets to be cropped."
-                              "The size of offsets list should be as same as "
-                              "dimension size of  input X.");
+                              "A list<int> describing offsets to be cropped. "
+                              "The size of offsets list should be the same as "
+                              "the dimension size of input X.");
     AddAttr<std::vector<int>>("shape",
-                              "A list<int> describing the shape of output."
-                              "The size of shape list should be as same as "
-                              "dimension size of  input X.")
+                              "A list<int> describing the shape of output. "
+                              "The size of shape list should be the same as "
+                              "the dimension size of input X.")
         .SetDefault(std::vector<int>());
     AddComment(R"DOC(
 Crop Operator.
+
 Crop input into output, as specified by offsets and shape.
 
-There are two ways to set shape: 
-1. referenc input: crop input X as shape as reference input.
-                    The dimension of reference input should 
-                    be as same as input X.
-2. shape list: crop input X by shape described by a list<int>.
-               The size of shape list should be as same as 
-               dimension size of  input X.
+There are two ways to set shape:
+1. reference input: crop input X into the same shape as reference input.
+                    The dimension of reference input should
+                    be the same as the dimension of input X.
+2. shape list: crop input X into the shape described by a list<int>.
+               The size of shape list should be the same as
+               the dimension size of input X.
 
 The input should be a k-D tensor(k > 0 and k < 7). As an example:
 
@@ -93,20 +92,20 @@ Given:
 
     X = [[0, 1, 2, 0, 0]
          [0, 3, 4, 0, 0]
-         [0, 0, 0, 0, 0]]
-
-and 
-
-    offsets = [0, 1]
+         [0, 0, 0, 0, 0]],
 
 and
- 
-    shape = [2, 2]
 
-then we get 
+    offsets = [0, 1],
+
+and
+
+    shape = [2, 2],
+
+we get:
 
     Out = [[1, 2],
-           [3, 4]]
+           [3, 4]].
 
 )DOC");
   }
@@ -116,15 +115,14 @@ class CropOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx.InputVar(framework::GradVarName("Out")),
-                            "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx.Input<LoDTensor>("X")->dims();
-    auto *x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
-    if (x_grad != nullptr) {
-      x_grad->Resize(x_dims);
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) should not be null");
+    auto x_dims = ctx->GetInputDim("X");
+    auto x_grad_name = framework::GradVarName("X");
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, x_dims);
     }
   }
 };
