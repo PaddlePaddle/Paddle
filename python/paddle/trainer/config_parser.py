@@ -2412,6 +2412,7 @@ class BatchNormLayer(LayerBase):
                  bias=True,
                  img3D=False,
                  use_global_stats=True,
+                 epsilon=1e-5,
                  moving_average_fraction=0.9,
                  batch_norm_type=None,
                  mean_var_names=None,
@@ -2460,6 +2461,9 @@ class BatchNormLayer(LayerBase):
             self.config.use_global_stats = use_global_stats
         if moving_average_fraction is not None:
             self.config.moving_average_fraction = moving_average_fraction
+        if epsilon is not None:
+            assert epsilon >= 1e-5, "epsilon must be no less than 1e-5."
+            self.config.epsilon = epsilon
 
         input_layer = self.get_input_layer(0)
         image_conf = self.config.inputs[0].image_conf

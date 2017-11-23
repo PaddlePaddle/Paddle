@@ -112,6 +112,7 @@ def fc(input,
 def embedding(input,
               size,
               is_sparse=False,
+              param_initializer=None,
               param_attr=None,
               data_type='float32',
               main_program=None,
@@ -136,9 +137,16 @@ def embedding(input,
     to the LayerHelper constructor.
 
     """
+
+    def _get_default_param_initializer():
+        return XavierInitializer()
+
     helper = LayerHelper('embedding', **locals())
     w = helper.create_parameter(
-        attr=helper.param_attr, shape=size, dtype=data_type)
+        attr=helper.param_attr,
+        shape=size,
+        dtype=data_type,
+        initializer=param_initializer or _get_default_param_initializer())
     tmp = helper.create_tmp_variable(data_type)
     helper.append_op(
         type='lookup_table',
@@ -458,6 +466,41 @@ def sums(input, main_program=None, startup_program=None):
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(type='sum', inputs={'X': input}, outputs={'Out': out})
     return out
+
+
+def linear_chain_crf(input,
+                     label,
+                     param_attr=None,
+                     param_initializer=None,
+                     main_program=None,
+                     startup_program=None):
+    def _get_default_param_initializer():
+        return XavierInitializer()
+
+    helper = LayerHelper('linear_chain_crf', **locals())
+    size = input.shape[1]
+    transition = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=[size + 2, size],
+        dtype=helper.input_dtype(),
+        initializer=param_initializer or _get_default_param_initializer())
+    alpha = helper.create_tmp_variable(dtype=helper.input_dtype())
+    emission_exps = helper.create_tmp_variable(dtype=helper.input_dtype())
+    transition_exps = helper.create_tmp_variable(dtype=helper.input_dtype())
+    log_likelihood = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='linear_chain_crf',
+        inputs={"Emission": [input],
+                "Transition": transition,
+                "Label": label},
+        outputs={
+            "Alpha": [alpha],
+            "EmissionExps": [emission_exps],
+            "TransitionExps": transition_exps,
+            "LogLikelihood": log_likelihood
+        })
+
+    return log_likelihood
 
 
 def assign(input, output, main_program=None, startup_program=None):
