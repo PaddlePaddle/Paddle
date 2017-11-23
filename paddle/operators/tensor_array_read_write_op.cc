@@ -118,7 +118,7 @@ class ReadFromArrayOp : public ArrayOp {
     PADDLE_ENFORCE_LT(offset, x_array.size());
     framework::CopyFrom(x_array[offset], dev_ctx.GetPlace(), dev_ctx,
                         out_tensor);
-    out_tesnor->set_lod(x_array[offset].lod());
+    out_tensor->set_lod(x_array[offset].lod());
   }
 };
 
