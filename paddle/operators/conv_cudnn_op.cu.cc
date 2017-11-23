@@ -194,6 +194,20 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
     ScopedFilterDescriptor filter_grad_desc;
     ScopedConvolutionDescriptor conv_desc;
     DataLayout layout = DataLayout::kNCHW;
+    if (input->dims().size() == 5) {
+      layout = DataLayout::kNCDHW;
+    }
+
+    cudnnConvolutionDescriptor_t cudnn_conv_desc =
+        conv_desc.descriptor<T>(paddings, strides, dilations);
+
+#if CUDNN_VERSION > 6000
+    // cudnn 7 can support groups, no need to do it mannually
+    // FIXME(typhoonzero): find a better way to disable groups
+    // rather than setting it to 1.
+    PADDLE_ENFORCE(cudnnSetConvolutionGroupCount(cudnn_conv_desc, groups));
+    groups = 1;
+#endif
 
     auto input_dim_vec = framework::vectorize2int(input->dims());
     SetTensorGroups(input_dim_vec, groups);
@@ -209,9 +223,6 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
         filter_desc.descriptor<T>(layout, filter_dims_vec);
     cudnnTensorDescriptor_t cudnn_input_grad_desc = nullptr;
     cudnnFilterDescriptor_t cudnn_filter_grad_desc = nullptr;
-
-    cudnnConvolutionDescriptor_t cudnn_conv_desc =
-        conv_desc.descriptor<T>(paddings, strides, dilations);
 
     int input_channels = input->dims()[1];
     int input_height, input_width, input_depth;
