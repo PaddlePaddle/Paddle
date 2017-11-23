@@ -23,7 +23,7 @@ namespace operators {
 
 template <typename Place, typename T>
 struct LRNFunctor {
-  void operator()(const platform::DeviceContext& ctx,
+  void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor* input, int N, int C, int H, int W,
                   int n, T alpha, T beta, T k, framework::Tensor* mid,
                   framework::Tensor* out);
@@ -66,7 +66,7 @@ class LRNKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(k >= 0.0, "k should >= 0.0");
 
     LRNFunctor<Place, T> f;
-    f(x, N, C, H, W, n, alpha, beta, k, mid, out);
+    f(ctx, x, out, mid, N, C, H, W, n, k, alpha, beta);
   }
 };
 

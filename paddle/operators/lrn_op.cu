@@ -44,7 +44,7 @@ __global__ void KeCMRNormFillScale(int img_size, const T* in, T* mid, int C,
         accum -= in[(index - size) * step] * in[(index - size) * step];
       }
       if (index >= post_pad) {
-        scale[(index - post_pad) * step] = k + accum * alpha;
+        mid[(index - post_pad) * step] = k + accum * alpha;
       }
       ++index;
     }
@@ -61,38 +61,40 @@ __global__ void KeCMRNormOutput(int input_size, const T* in, const T* mid,
 }
 
 template <typename T>
-void CrossMapNormal(const T* inputs, T* outputs, T* mid, int N, int C, int H,
-                    int W, int n, T k, T alpha, T beta) {
+void CrossMapNormal(const framework::ExecutionContext& ctx, const T* inputs,
+                    T* outputs, T* mid, int N, int C, int H, int W, int n, T k,
+                    T alpha, T beta) {
   int img_size = N * H * W;
   int block_size = 1024;
   int grid_size = (img_size + 1024 - 1) / 1024;
 
-  auto& stream =
+  const auto& stream =
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx.device_context())
           .stream();
-    KeCMRNormFillScale<T><<<grid_size, block_size, 0,stream>>>
-            img_size, inputs, mid, C, H, W, n, k, alpha);
+  KeCMRNormFillScale<T><<<grid_size, block_size, 0, stream>>>(
+      img_size, inputs, mid, C, H, W, n, k, alpha);
 
-    int input_size = N * H * W * C;
-    blockSize = 1024;
-    gridSize = (input_size + 1024 - 1) / 1024;
-    KeCMRNormOutput<T><<<grid_size, block_size, 0, stream>>>(
-        input_size, inputs, mid, -beta, outputs);
+  int input_size = N * H * W * C;
+  block_size = 1024;
+  grid_size = (input_size + 1024 - 1) / 1024;
+  KeCMRNormOutput<T><<<grid_size, block_size, 0, stream>>>(input_size, inputs,
+                                                           mid, -beta, outputs);
 }
 
 template <typename T>
 struct LRNFunctor<platform::GPUPlace, T> {
-  void operator()(const platform::DeviceContext& ctx,
+  void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor* input, framework::Tensor* mid,
-                  framework::Tensor* out int N, int C, int H, int W, int n, T k,
-                  T alpha, T beta) {
-    CrossMapNormal(input->data<T>(), out->mutable_data<T>(platform::GPUPlace),
-                   mid->mutable_data<T>(platform::GPUPlace), N, C, H, W, n, k,
-                   alpha, beta);
+                  framework::Tensor* out, int N, int C, int H, int W, int n,
+                  T k, T alpha, T beta) {
+    CrossMapNormal<T>(
+        ctx, input->data<T>(), out->mutable_data<T>(ctx.GetPlace()),
+        mid->mutable_data<T>(ctx.GetPlace()), N, C, H, W, n, k, alpha, beta);
   }
+};
 
-  template struct LRNFunctor<platform::GPUPlace, float>;
-  template struct LRNFunctor<platform::GPUPlace, double>;
+template struct LRNFunctor<platform::GPUPlace, float>;
+template struct LRNFunctor<platform::GPUPlace, double>;
 }  // namespace operators
 }  // namespace paddle
 

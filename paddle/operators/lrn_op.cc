@@ -21,17 +21,19 @@ using framework::Tensor;
 
 template <typename T>
 struct LRNFunctor<platform::CPUPlace, T> {
-  void operator()(const platform::DeviceContext& ctx,
-                  const framework::Tensor* input, int N, int C, int H, int W,
-                  int n, T alpha, T beta, T k, framework::Tensor* mid,
-                  framework::Tensor* out) {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor* input, framework::Tensor* out,
+                  framework::Tensor* mid, int N, int C, int H, int W, int n,
+                  T k, T alpha, T beta) {
     auto x_v = framework::EigenVector<T>::Flatten(*input);
 
     const int start = -(n - 1) / 2;
     const int end = start + n;
 
     auto e_mid = framework::EigenTensor<T, 4>::From(*mid);
-    e_mid.device(ctx.GetEigenDevice<Place>()) = e_mid.constant(k);
+    // e_mid.device(dev_ctx.GetEigenDevice<platform::CPUPlace>()) =
+    // e_mid.constant(k);
+    e_mid.device(ctx.GetEigenDevice<platform::CPUPlace>()) = e_mid.constant(k);
 
     auto e_x = framework::EigenTensor<T, 4>::From(*input);
     for (int m = 0; m < N; m++) {
@@ -45,14 +47,15 @@ struct LRNFunctor<platform::CPUPlace, T> {
             auto r = e_x.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
                                Eigen::array<int, 4>({{1, 1, H, W}}));
 
-            s.device(ctx.GetEigenDevice<Place>()) += alpha * r.square();
+            s.device(ctx.GetEigenDevice<platform::CPUPlace>()) +=
+                alpha * r.square();
           }
         }
       }
     }
 
     auto out_e = framework::EigenVector<T>::Flatten(*out);
-    out_e.device(ctx.GetEigenDevice<Place>()) =
+    out_e.device(ctx.GetEigenDevice<platform::CPUPlace>()) =
         x_v * e_mid.reshape(Eigen::DSizes<int, 1>(e_mid.size())).pow(-beta);
   }
 };
