@@ -350,25 +350,25 @@ struct OpKernelType {
     std::hash<int> hash_;
     size_t operator()(const OpKernelType& key) const {
       int place = key.place_.which();
-      int dtype = static_cast<int>(key.dtype_);
-      int pre_hash = dtype << NUM_PLACE_TYPE_LIMIT_IN_BIT |
+      int data_type = static_cast<int>(key.data_type_);
+      int pre_hash = data_type << NUM_PLACE_TYPE_LIMIT_IN_BIT |
                      (place & ((1 << NUM_PLACE_TYPE_LIMIT_IN_BIT) - 1));
       return hash_(pre_hash);
     }
   };
 
   platform::Place place_;
-  DataType dtype_;
+  DataType data_type_;
 
-  OpKernelType(DataType dtype, platform::Place place)
-      : place_(place), dtype_(dtype) {}
+  OpKernelType(DataType data_type, platform::Place place)
+      : place_(place), data_type_(data_type) {}
 
-  OpKernelType(DataType dtype, const platform::DeviceContext& dev_ctx)
-      : place_(dev_ctx.GetPlace()), dtype_(dtype) {}
+  OpKernelType(DataType data_type, const platform::DeviceContext& dev_ctx)
+      : place_(dev_ctx.GetPlace()), data_type_(data_type) {}
 
   bool operator==(const OpKernelType& o) const {
     return platform::places_are_same_class(place_, o.place_) &&
-           dtype_ == o.dtype_;
+           data_type_ == o.data_type_;
   }
 };
 

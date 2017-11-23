@@ -517,7 +517,7 @@ ParamGradInfoMap AppendBackward(
   bool is_scalar = target.Shape() == std::vector<int64_t>{1};
   PADDLE_ENFORCE(is_scalar, "target should be scalar");
   VLOG(3) << "backward from loss=" << target.Name()
-          << " dtype=" << target.GetDataType();
+          << " data_type=" << target.GetDataType();
   std::unique_ptr<OpDescBind> fill_one_op(
       new OpDescBind("fill_constant", {}, {{"Out", {fill_one_op_out}}},
                      {{"shape", std::vector<int>{1}},

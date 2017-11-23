@@ -68,7 +68,7 @@ class VarDescBind {
 
   void SetShape(const std::vector<int64_t> &dims);
 
-  void SetDataType(DataType dtype);
+  void SetDataType(DataType data_type);
 
   std::vector<int64_t> Shape() const;
 

@@ -97,7 +97,7 @@ class SaveOp : public framework::OperatorBase {
        // int32_t  size
        // void*    protobuf message
       framework::TensorDesc desc;
-      desc.set_dtype(framework::ToDataType(tensor.type()));
+      desc.set_data_type(framework::ToDataType(tensor.type()));
       auto dims = framework::vectorize(tensor.dims());
       auto *pb_dims = desc.mutable_dims();
       pb_dims->Resize(static_cast<int>(dims.size()), 0);

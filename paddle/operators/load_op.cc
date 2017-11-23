@@ -61,7 +61,7 @@ class LoadOp : public framework::OperatorBase {
 
       void *buf;
       platform::Place cpu = platform::CPUPlace();
-      switch (desc.dtype()) {
+      switch (desc.data_type()) {
         case framework::FP32:
           buf = tensor->mutable_data<float>(cpu);
           break;
@@ -75,7 +75,7 @@ class LoadOp : public framework::OperatorBase {
           buf = tensor->mutable_data<int64_t>(cpu);
           break;
         default:
-          PADDLE_THROW("DataType %d not supported", desc.dtype());
+          PADDLE_THROW("DataType %d not supported", desc.data_type());
       }
       fin.read(static_cast<char *>(buf), tensor->memory_size());
     }

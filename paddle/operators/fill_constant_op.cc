@@ -34,7 +34,7 @@ class FillConstantOp : public framework::OperatorBase {
   using framework::OperatorBase::OperatorBase;
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
-    auto dtype = static_cast<framework::DataType>(Attr<int>("dtype"));
+    auto data_type = static_cast<framework::DataType>(Attr<int>("dtype"));
     auto value = Attr<float>("value");
     auto force_cpu = Attr<bool>("force_cpu");
     auto &out =
@@ -42,9 +42,9 @@ class FillConstantOp : public framework::OperatorBase {
     out.Resize(framework::make_ddim(Attr<std::vector<int>>("shape")));
     if (force_cpu) {
       auto cpu = platform::CPUPlace();
-      out.mutable_data(cpu, framework::ToTypeIndex(dtype));
+      out.mutable_data(cpu, framework::ToTypeIndex(data_type));
     } else {
-      out.mutable_data(dev_ctx.GetPlace(), framework::ToTypeIndex(dtype));
+      out.mutable_data(dev_ctx.GetPlace(), framework::ToTypeIndex(data_type));
     }
     math::set_constant(dev_ctx, &out, value);
   }
