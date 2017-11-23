@@ -71,8 +71,8 @@ void ConcatOutputs(const std::vector<Scope*>& step_scopes,
           step_scopes[j]->FindVar(outlinks[i])->GetMutable<LoDTensor>();
       // TODO(luotao02) data type and platform::DeviceContext() should set
       // correctly
-      (output->Slice(j, j + 1))
-          .CopyFrom(*step_output, platform::CPUPlace(), ctx);
+      auto slice = output->Slice(j, j + 1);
+      framework::CopyFrom(*step_output, platform::CPUPlace(), ctx, &slice);
     }
   }
 }
