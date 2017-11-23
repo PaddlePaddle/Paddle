@@ -21,7 +21,7 @@ class TestBook(unittest.TestCase):
         self.assertIsNotNone(avg_cost)
         program.append_backward(avg_cost)
 
-        # print str(program)
+        print str(program)
 
     def test_recognize_digits_mlp(self):
         program = Program()
@@ -50,7 +50,8 @@ class TestBook(unittest.TestCase):
             input=predict, label=label, main_program=program)
         avg_cost = layers.mean(x=cost, main_program=program)
         self.assertIsNotNone(avg_cost)
-        # print str(program)
+
+        print str(program)
 
     def test_simple_conv2d(self):
         program = Program()
@@ -65,7 +66,7 @@ class TestBook(unittest.TestCase):
             filter_size=[4, 4],
             main_program=program)
 
-        # print str(program)
+        print str(program)
 
     def test_recognize_digits_conv(self):
         program = Program()
@@ -104,7 +105,7 @@ class TestBook(unittest.TestCase):
 
         program.append_backward(avg_cost)
 
-        # print str(program)
+        print str(program)
 
     def test_word_embedding(self):
         program = Program()
@@ -165,7 +166,7 @@ class TestBook(unittest.TestCase):
         avg_cost = layers.mean(x=cost, main_program=program)
         self.assertIsNotNone(avg_cost)
 
-        # print str(program)
+        print str(program)
 
     def test_linear_chain_crf(self):
         program = Program()
@@ -182,7 +183,7 @@ class TestBook(unittest.TestCase):
         crf = layers.linear_chain_crf(
             input=hidden, label=label, main_program=program)
 
-        # print str(program)
+        print str(program)
 
 
 if __name__ == '__main__':
