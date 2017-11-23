@@ -2401,6 +2401,15 @@ class CropLayer(LayerBase):
         image_conf.channels = input_layer.size / (input_layer.width *
                                                   input_layer.height)
 
+        if (len(self.config.inputs) == 2):
+            self.set_layer_height_width(
+                self.get_input_layer(1).height, self.get_input_layer(1).width)
+            self.set_layer_size(self.get_input_layer(1).size)
+        else:
+            # NCHW order
+            self.set_layer_height_width(shape[-2], shape[-1])
+            self.set_layer_size(reduce(lambda x, y: x * y, shape))
+
 
 @config_layer('batch_norm')
 class BatchNormLayer(LayerBase):
@@ -3850,6 +3859,16 @@ class SwitchOrderLayer(LayerBase):
             name, 'switch_order', 0, inputs=inputs, **xargs)
         self.config.reshape_conf.height_axis.extend(reshape['height'])
         self.config.reshape_conf.width_axis.extend(reshape['width'])
+        input_layer = self.get_input_layer(0)
+        if reshape is None:
+            self.set_layer_size(input_layer.size)
+        else:
+            inH = input_layer.height
+            inW = input_layer.width
+            inC = input_layer.size / inH / inW
+            out_dims = [0, inH, inW, inC]
+            size = reduce(lambda x, y: x * y, out_dims[reshape['width'][0]:])
+            self.set_layer_size(size)
 
 
 @config_layer('scale_sub_region')
