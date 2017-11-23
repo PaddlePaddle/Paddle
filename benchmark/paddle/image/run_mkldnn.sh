@@ -1,9 +1,7 @@
 set -e
 
 function train() {
-  unset OMP_NUM_THREADS MKL_NUM_THREADS
-  export OMP_DYNAMIC="FALSE"
-  export KMP_AFFINITY="granularity=fine,compact,0,0"
+  unset OMP_NUM_THREADS MKL_NUM_THREADS OMP_DYNAMIC KMP_AFFINITY
   topology=$1
   layer_num=$2
   bs=$3
@@ -14,8 +12,6 @@ function train() {
   elif [ $4 == "False" ]; then
     thread=`nproc`
     # each trainer_count use only 1 core to avoid conflict
-    export OMP_NUM_THREADS=1
-    export MKL_NUM_THREADS=1
     log="logs/${topology}-${layer_num}-${thread}mklml-${bs}.log"
   else
     echo "Wrong input $3, use True or False."
@@ -44,6 +40,7 @@ fi
 for use_mkldnn in True False; do
   for batchsize in 64 128 256; do
     train vgg 19 $batchsize $use_mkldnn
-    train resnet 50  $batchsize $use_mkldnn
+    train resnet 50 $batchsize $use_mkldnn
+    train googlenet v1 $batchsize $use_mkldnn
   done
 done

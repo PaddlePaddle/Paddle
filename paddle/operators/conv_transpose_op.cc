@@ -30,11 +30,6 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
 
-  for (size_t i = 0; i < paddings.size(); ++i) {
-    PADDLE_ENFORCE_EQ(paddings[i], 0,
-                      "No Padding allowed in conv transpose op.");
-  }
-
   PADDLE_ENFORCE(in_dims.size() == 4 || in_dims.size() == 5,
                  "ConvTransposeOp intput should be 4-D or 5-D tensor.");
   PADDLE_ENFORCE_EQ(in_dims.size(), filter_dims.size(),
@@ -52,7 +47,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[1]});
   for (size_t i = 0; i < strides.size(); ++i) {
-    output_shape.push_back((in_dims[i + 2] - 1) * strides[i] +
+    output_shape.push_back((in_dims[i + 2] - 1) * strides[i] - 2 * paddings[i] +
                            filter_dims[i + 2]);
   }
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
@@ -190,17 +185,21 @@ REGISTER_OP(conv2d_transpose, ops::ConvTransposeOp, ops::Conv2DTransposeOpMaker,
 
 REGISTER_OP_CPU_KERNEL(
     conv2d_transpose,
-    ops::GemmConvTransposeKernel<paddle::platform::CPUPlace, float>);
+    ops::GemmConvTransposeKernel<paddle::platform::CPUPlace, float>,
+    ops::GemmConvTransposeKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
     conv2d_transpose_grad,
-    ops::GemmConvTransposeGradKernel<paddle::platform::CPUPlace, float>);
+    ops::GemmConvTransposeGradKernel<paddle::platform::CPUPlace, float>,
+    ops::GemmConvTransposeGradKernel<paddle::platform::CPUPlace, double>);
 
 REGISTER_OP(conv3d_transpose, ops::ConvTransposeOp, ops::Conv3DTransposeOpMaker,
             conv3d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     conv3d_transpose,
-    ops::GemmConvTransposeKernel<paddle::platform::CPUPlace, float>);
+    ops::GemmConvTransposeKernel<paddle::platform::CPUPlace, float>,
+    ops::GemmConvTransposeKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
     conv3d_transpose_grad,
-    ops::GemmConvTransposeGradKernel<paddle::platform::CPUPlace, float>);
+    ops::GemmConvTransposeGradKernel<paddle::platform::CPUPlace, float>,
+    ops::GemmConvTransposeGradKernel<paddle::platform::CPUPlace, double>);
