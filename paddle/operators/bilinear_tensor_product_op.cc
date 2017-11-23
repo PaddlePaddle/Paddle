@@ -78,18 +78,18 @@ class BilinearTensorProductOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Bilinear Tensor Product operator.
 Given input X and Y, a 3D tensor Weight and a Bias. Each column of the
-Output is computed by one slice i = 1, . . . , k of the tensor:
+Output is computed by one slice $i = 1, . . . , k$ of the tensor:
 
 $$
 M =  (X W_i) * Y \\
 Out_i = \sum_j {M_j} + Bias_i
 $$
 
-Where $$W_i$$ is the i-th slice of Input(Weight);
-      $$M_j$$ is the j-th column of $$M$$;
-      $$Out_i$$ is the i-th column of Output(Out);
-      $$Bias_i$$ is a column vector, each element of it is equal to
-        the i-th element of $$Bias$$;
+Where $W_i$ is the $i$-th slice of Input(Weight);
+      $M_j$ is the $j$-th column of $M$;
+      $Out_i$ is the $i$-th column of Output(Out);
+      $Bias_i$ is a column vector, each element of it is equal to
+        the $i$-th element of $Bias$;
 
 )DOC");
   }
