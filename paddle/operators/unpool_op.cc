@@ -16,11 +16,9 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Unpool2dOpMaker(framework::OpProto* proto,  \
+  Unpool2dOpMaker(framework::OpProto* proto,
                   framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
@@ -38,26 +36,26 @@ class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
         "the number of channels, H and W is the height and "
         "width of feature.");
     AddAttr<std::vector<int>>("ksize",
-        "(vector ), the unpooling window size(height, width) "
+        "(vector), the unpooling window size(height, width) "
         "of unpooling operator.");
     AddAttr<std::vector<int>>("strides",
         "(vector, default:{1, 1}), "
-        "strides(height, width) of unpooling operator.")
+        "strides (height, width) of unpooling operator.")
         .SetDefault({1, 1});
     AddAttr<std::vector<int>>("paddings",
         "(vector defalut:{0,0}), "
-        "paddings(height, width) of unpooling operator.")
+        "paddings (height, width) of unpooling operator.")
         .SetDefault({0, 0});
     AddAttr<std::string>("unpoolingtype",
         "(string), unpooling type, can be \"max\" for max-unpooling ")
         .InEnum({"max"});
     AddComment(R"DOC(
-          "input: the input Tensor to invert"
-          "indices: the indices given out by MaxPool2d"
-          "ksize  – Size of the max pooling window."
-          "stride – Stride of the max pooling window."
-                   "It is set to kernel_size by default."
-          "padding – Padding that was added to the input"
+          "input: the input Tensor to invert
+          indices: the indices given out by MaxPool2d
+          ksize  – Size of the max pooling window.
+          stride – Stride of the max pooling window.
+                   "It is set to kernel_size by default.
+          padding – Padding that was added to the input"
         )DOC");
   }
 };
@@ -80,14 +78,14 @@ class UnpoolOp : public framework::OperatorWithKernel {
 
     auto in_x_dims = ctx->GetInputDim("X");
     auto in_y_dims = ctx->GetInputDim("Y");
-    std::string unpoolingtype =  \
+    std::string unpoolingtype =
       ctx->Attrs().Get<std::string>("unpoolingtype");
     std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
     std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
     std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
 
     PADDLE_ENFORCE(in_x_dims.size() == 4,
-                    "Unpooling intput should be 4-D.");
+                    "Unpooling intput must be of 4-dimensional.");
     for (int i = 0; i < 4; ++i) {
       PADDLE_ENFORCE(in_x_dims[i] == in_y_dims[i],
                      "X size must be eq Y size!");
