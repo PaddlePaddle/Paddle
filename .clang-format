@@ -24,8 +24,4 @@ Standard:  Cpp11
 AllowAllParametersOfDeclarationOnNextLine: true
 BinPackParameters: false
 BinPackArguments: false
----
-Language: Proto
-# Don't format .proto files.
-DisableFormat: true
 ...

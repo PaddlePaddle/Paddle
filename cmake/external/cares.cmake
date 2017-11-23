@@ -13,6 +13,10 @@
 # limitations under the License.
 #
 
+IF(MOBILE_INFERENCE)
+    return()
+ENDIF()
+
 include (ExternalProject)
 
 # NOTE: c-ares is needed when linking with grpc.

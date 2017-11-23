@@ -468,6 +468,13 @@ function(py_test TARGET_NAME)
   endif()
 endfunction()
 
+# grpc_library generate grpc code using grpc_cpp_plugin and protoc
+# then build the generated protobuf code and grpc code with your
+# implementation source codes together. Use SRCS argument for your
+# implementation source files and PROTO argument for your .proto
+# files.
+#
+# Usage: grpc_library(my_target SRCS my_client.cc PROTO my_target.proto DEPS my_dep)
 
 function(grpc_library TARGET_NAME)
   set(oneValueArgs PROTO)

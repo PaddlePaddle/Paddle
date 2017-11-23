@@ -13,6 +13,10 @@
 # limitations under the License.
 #
 
+IF(MOBILE_INFERENCE)
+    return()
+ENDIF()
+
 include (ExternalProject)
 
 SET(GRPC_SOURCES_DIR ${THIRD_PARTY_PATH}/grpc)
