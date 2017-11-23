@@ -126,7 +126,10 @@ class LayerHelper(object):
         self.startup_program.global_block().create_parameter(
             dtype=dtype, shape=shape, **attr_copy)
         return self.main_program.global_block().create_parameter(
-            name=attr_copy['name'], dtype=dtype, shape=shape)
+            name=attr_copy['name'],
+            dtype=dtype,
+            shape=shape,
+            trainable=attr_copy.get('trainable', True))
 
     def create_tmp_variable(self, dtype):
         return self.main_program.current_block().create_var(
