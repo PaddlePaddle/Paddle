@@ -177,8 +177,8 @@ struct SelectedRowsAddToTensor<platform::CPUPlace, T> {
 
 template struct SelectedRowsAddToTensor<platform::CPUPlace, float>;
 template struct SelectedRowsAddToTensor<platform::CPUPlace, double>;
-template struct SelectedRowsAddToTensor<platform::CPUPlace, int64_t>;
 template struct SelectedRowsAddToTensor<platform::CPUPlace, int>;
+template struct SelectedRowsAddToTensor<platform::CPUPlace, int64_t>;
 
 }  // namespace math
 }  // namespace operators
