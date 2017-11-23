@@ -271,7 +271,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     ll -= std::log(sum);
     // Now ll is equal to -log(Z).
 
-    const int* lbl = label.data<int>();
+    const int64_t* lbl = label.data<int64_t>();
     PADDLE_ENFORCE_LT(
         static_cast<size_t>(*std::max_element(lbl, lbl + seq_length)), tag_num,
         "An invalid tag label that execesses the largest tag number.");
@@ -449,7 +449,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
                            Tensor* emission_grad) const {
     const T* w_exps = transition_exps.data<T>();
     const T* x_exps = emission_exps.data<T>();
-    const int* label_value = label.data<int>();
+    const int64_t* label_value = label.data<int64_t>();
     T* beta_value = beta->data<T>();
 
     auto x_dims = emission_exps.dims();

@@ -61,23 +61,9 @@ function(op_library TARGET)
         set(pybind_flag 1)
     endif()
 
-    # pool_op contains several operators
-    if ("${TARGET}" STREQUAL "pool_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(pool2d);\n")
-    endif()
-
     if ("${TARGET}" STREQUAL "compare_op")
         set(pybind_flag 1)
         file(APPEND ${pybind_file} "USE_OP(less_than);\nUSE_OP(equal);\n")
-    endif()
-
-    # pool_with_index_op contains several operators
-    if ("${TARGET}" STREQUAL "pool_with_index_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(max_pool2d_with_index);\n")
     endif()
 
     # conv_op contains several operators
@@ -87,18 +73,44 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(conv2d);\n")
     endif()
 
+    # pool_op contains several operators
+    if ("${TARGET}" STREQUAL "pool_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_OP(pool2d);\n")
+    endif()
+
+    # pool_cudnn_op contains several operators
+    if ("${TARGET}" STREQUAL "pool_cudnn_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_OP(pool2d_cudnn);\n")
+    endif()
+
+    if ("${TARGET}" STREQUAL "logical_op")
+        set(pybind_flag 1)
+        file(APPEND ${pybind_file} "USE_OP(logical_and);\n")
+    endif()
+
+    # pool_with_index_op contains several operators
+    if ("${TARGET}" STREQUAL "pool_with_index_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_OP(max_pool2d_with_index);\n")
+    endif()
+
     # conv_transpose_op contains several operators
     if ("${TARGET}" STREQUAL "conv_transpose_op")
         set(pybind_flag 1)
         # It's enough to just adding one operator to pybind
         file(APPEND ${pybind_file} "USE_OP(conv2d_transpose);\n")
     endif()
-    
-    # pool_cudnn_op contains several operators
-    if ("${TARGET}" STREQUAL "pool_cudnn_op")
+
+    # conv_transpose_cudnn_op contains two operators
+    if ("${TARGET}" STREQUAL "conv_transpose_cudnn_op")
         set(pybind_flag 1)
         # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(pool2d_cudnn);\n")
+        file(APPEND ${pybind_file} "USE_OP(conv2d_transpose_cudnn);\n")
     endif()
 
     # save_restore_op contains several operators
@@ -172,6 +184,7 @@ set(DEPS_OPS
     sequence_softmax_op
     sum_op
     pool_op
+    maxout_op
     pool_with_index_op
     conv_op
     conv_transpose_op
@@ -198,6 +211,7 @@ op_library(sgd_op DEPS selected_rows_functor)
 op_library(adagrad_op DEPS selected_rows_functor)
 op_library(conv_op DEPS vol2col)
 op_library(pool_op DEPS pooling)
+op_library(maxout_op DEPS maxouting)
 op_library(pool_with_index_op DEPS pooling)
 op_library(lod_rank_table_op SRCS lod_rank_table_op.cc DEPS lod_rank_table)
 op_library(lod_tensor_to_array_op SRCS lod_tensor_to_array_op.cc DEPS lod_rank_table_op)

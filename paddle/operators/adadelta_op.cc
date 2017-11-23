@@ -109,4 +109,5 @@ paramOut = param + paramUpdate$$
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(adadelta, ops::AdadeltaOp, ops::AdadeltaOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    adadelta, ops::AdadeltaOpKernel<paddle::platform::CPUPlace, float>);
+    adadelta, ops::AdadeltaOpKernel<paddle::platform::CPUPlace, float>,
+    ops::AdadeltaOpKernel<paddle::platform::CPUPlace, double>);
