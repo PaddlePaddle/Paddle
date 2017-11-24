@@ -77,7 +77,12 @@ class TestROIPoolOp(OpTest):
                         wstart = min(max(wstart + roi_start_w, 0), self.width)
                         wend = min(max(wend + roi_start_w, 0), self.width)
 
-                        out_data[i, c, ph, pw] = 0
+                        is_empty = (hend <= hstart) or (wend <= wstart)
+                        if is_empty:
+                            out_data[i, c, ph, pw] = 0
+                        else:
+                            out_data[i, c, ph, pw] = -sys.float_info.max
+
                         argmax_data[i, c, ph, pw] = -1
                         
                         for h in range(hstart, hend):
