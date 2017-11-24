@@ -9,7 +9,7 @@ import numpy
 
 class ConditionalBlock(unittest.TestCase):
     def test_forward(self):
-        data = layers.data(name='X', shape=[1], data_type='float32')
+        data = layers.data(name='X', shape=[1], dtype='float32')
         data.stop_gradient = False
         cond = layers.ConditionalBlock(inputs=[data])
         out = layers.create_tensor(dtype='float32')
