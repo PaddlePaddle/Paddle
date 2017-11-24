@@ -196,7 +196,6 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
             layout, framework::vectorize2int(output_grad->dims()), groups);
     cudnnFilterDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
         layout, framework::vectorize2int(filter->dims()), groups);
-    cudnnFilterDescriptor_t cudnn_filter_grad_desc = nullptr;
 
     int input_channels = input->dims()[1];
     int input_height, input_width, input_depth;
@@ -257,8 +256,6 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
     }
 
     if (filter_grad) {
-      cudnn_filter_grad_desc = filter_grad_desc.descriptor<T>(
-          layout, framework::vectorize2int(filter_grad->dims()), groups);
       PADDLE_ENFORCE(
           platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
               handle, cudnn_input_desc, cudnn_output_grad_desc, cudnn_conv_desc,
@@ -301,7 +298,7 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
             handle, &alpha, cudnn_input_desc, input_data + i * group_offset_in,
             cudnn_output_grad_desc, output_grad_data + i * group_offset_out,
             cudnn_conv_desc, filter_algo, cudnn_workspace,
-            workspace_size_in_bytes, &beta, cudnn_filter_grad_desc,
+            workspace_size_in_bytes, &beta, cudnn_filter_desc,
             filter_grad_data + i * group_offset_filter));
       }
     }
