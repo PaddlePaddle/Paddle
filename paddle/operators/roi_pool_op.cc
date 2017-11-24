@@ -17,6 +17,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
+static constexpr int kROISize = 5;
+
 class ROIPoolOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -38,6 +42,9 @@ class ROIPoolOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(rois_dims.size() == 2,
                    "ROIs should be a 2-D tensor of shape (num_rois, 5)"
                    "given as [[batch_id, x1, y1, x2, y2], …].");
+    PADDLE_ENFORCE(rois_dims[1] == kROISize,
+                "ROIs should be a 2-D tensor of shape (num_rois, 5)"
+                "given as [[batch_id, x1, y1, x2, y2], …].");
 
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
@@ -150,7 +157,9 @@ REGISTER_OP(roi_pool, ops::ROIPoolOp, ops::ROIPoolOpMaker,
             roi_pool_grad, ops::ROIPoolGradOp);
 REGISTER_OP_CPU_KERNEL(
     roi_pool,
-    ops::CPUROIPoolOpKernel<paddle::platform::CPUPlace, float>);
+    ops::CPUROIPoolOpKernel<paddle::platform::CPUPlace, float>,
+    ops::CPUROIPoolOpKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
     roi_pool_grad,
-    ops::CPUROIPoolGradOpKernel<paddle::platform::CPUPlace, float>);
+    ops::CPUROIPoolGradOpKernel<paddle::platform::CPUPlace, float>,
+    ops::CPUROIPoolOpKernel<paddle::platform::CPUPlace, double>);

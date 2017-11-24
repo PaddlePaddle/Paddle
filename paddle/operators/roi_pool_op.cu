@@ -18,6 +18,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaxinumNumBlocks = 4096;
 static constexpr int kROISize = 5;
@@ -25,7 +27,7 @@ static constexpr int kROISize = 5;
 static inline int NumBlocks(const int N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
                   kNumMaxinumNumBlocks);
-  }
+}
 
   template <typename T>
   __global__ void GPUROIPoolForward(
@@ -64,7 +66,7 @@ static inline int NumBlocks(const int N) {
       wend = min(max(wend + roi_start_w, 0), width);
       bool is_empty = (hend <= hstart) || (wend <= wstart);
 
-      T maxval = is_empty ? 0 : -std::numeric_limits<float>::max();
+      T maxval = is_empty ? 0 : -std::numeric_limits<T>::max();
       int maxidx = -1;
       const T* offset_input_data =
           input_data + (roi_batch_ind * channels + c) * height * width;
@@ -143,14 +145,6 @@ class GPUROIPoolOpKernel : public framework::OpKernel<T> {
     int width = in_dims[3];
 
     size_t rois_num = rois->dims()[0];
-
-    out->mutable_data<T>(ctx.GetPlace());
-    math::SetConstant<Place, T> set_zero;
-    set_zero(ctx.device_context(), out, static_cast<T>(0));
-    argmax->mutable_data<int64_t>(ctx.GetPlace());
-    math::SetConstant<Place, int64_t> set_init;
-    set_init(ctx.device_context(), argmax, static_cast<int64_t>(-1));
-
     if (rois_num== 0) return;
 
     int output_size = out->numel();
@@ -230,7 +224,9 @@ class GPUROIPoolGradOpKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
     roi_pool,
-    ops::GPUROIPoolOpKernel<paddle::platform::GPUPlace, float>);
+    ops::GPUROIPoolOpKernel<paddle::platform::GPUPlace, float>,
+    ops::GPUROIPoolOpKernel<paddle::platform::GPUPlace, double>);
 REGISTER_OP_GPU_KERNEL(
     roi_pool_grad,
-    ops::GPUROIPoolGradOpKernel<paddle::platform::GPUPlace, float>);
+    ops::GPUROIPoolGradOpKernel<paddle::platform::GPUPlace, float>,
+    ops::GPUROIPoolOpKernel<paddle::platform::GPUPlace, double>);

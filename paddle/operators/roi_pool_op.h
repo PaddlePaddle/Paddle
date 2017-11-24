@@ -15,23 +15,18 @@ limitations under the License. */
 #pragma once
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/math/math_function.h"
-#include "paddle/operators/strided_memcpy.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-using LoD = framework::LoD;
 
 template <typename Place, typename T>
 class CPUROIPoolOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<Tensor>("X");
-    auto* rois = ctx.Input<Tensor>("ROIs");
-    auto* out = ctx.Output<Tensor>("Out");
-    auto* argmax = ctx.Output<Tensor>("Argmax");
+    auto* in = ctx.Input<framework::Tensor>("X");
+    auto* rois = ctx.Input<framework::Tensor>("ROIs");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* argmax = ctx.Output<framework::Tensor>("Argmax");
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
@@ -53,11 +48,6 @@ class CPUROIPoolOpKernel : public framework::OpKernel<T> {
     const int64_t* rois_data = rois->data<int64_t>();
     T* output_data = out->mutable_data<T>(ctx.GetPlace());
     int64_t* argmax_data = argmax->mutable_data<int64_t>(ctx.GetPlace());
-
-    math::SetConstant<Place, T> set_zero;
-    set_zero(ctx.device_context(), out, static_cast<T>(0));
-    math::SetConstant<Place, int64_t> set_init;
-    set_init(ctx.device_context(), argmax, static_cast<int64_t>(-1));
 
     for (int n = 0; n < rois_num; ++n) {
       int roi_batch_id = rois_data[0];
@@ -83,7 +73,7 @@ class CPUROIPoolOpKernel : public framework::OpKernel<T> {
       const float bin_size_w =
           static_cast<float>(roi_width) / static_cast<float>(pooled_width);
 
-      const float* batch_data = input_data + roi_batch_id * in_stride[0];
+      const T* batch_data = input_data + roi_batch_id * in_stride[0];
 
       for (int c = 0; c < channels; ++c) {
         for (int ph = 0; ph < pooled_height; ++ph) {
@@ -110,7 +100,8 @@ class CPUROIPoolOpKernel : public framework::OpKernel<T> {
             // Define an empty pooling region to be zero
             bool is_empty = (hend <= hstart) || (wend <= wstart);
             output_data[pool_index] =
-                is_empty ? 0 : -std::numeric_limits<float>::max();
+                is_empty ? 0 : -std::numeric_limits<T>::max();
+            argmax_data[pool_index] = -1;
 
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {
@@ -139,14 +130,14 @@ template <typename Place, typename T>
 class CPUROIPoolGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<Tensor>("X");
-    auto* rois = ctx.Input<Tensor>("ROIs");
-    auto* argmax = ctx.Input<Tensor>("Argmax");
+    auto* in = ctx.Input<framework::Tensor>("X");
+    auto* rois = ctx.Input<framework::Tensor>("ROIs");
+    auto* argmax = ctx.Input<framework::Tensor>("Argmax");
 
     auto* out_grad =
-        ctx.Input<Tensor>(framework::GradVarName("Out"));
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* x_grad =
-        ctx.Output<Tensor>(framework::GradVarName("X"));
+        ctx.Output<framework::Tensor>(framework::GradVarName("X"));
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
