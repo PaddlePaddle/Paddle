@@ -305,7 +305,7 @@ class MSRAInitializer(Initializer):
             (https://arxiv.org/abs/1502.01852)
     """
 
-    def __init__(self, uniform=True, fan_in=None, seed=0):
+    def __init__(self, uniform=True, fan_in=None, seed=1):
         """Constructor for MSRAInitializer
 
         Args:
