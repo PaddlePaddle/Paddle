@@ -1358,6 +1358,20 @@ def lod_rank_table(x, level=0, main_program=None):
     return table
 
 
+def max_sequence_len(rank_table, main_program=None):
+    """
+    This function creates an operator to calculate the length of 
+    max seqence through input rank_table(should be a lod_rank_table)
+    """
+    helper = LayerHelper("max_seqence_len", **locals())
+    res = helper.create_tmp_variable(dtype="int64")
+    helper.append_op(
+        type="max_sequence_len",
+        inputs={"RankTable": rank_table},
+        outputs={"Out": res})
+    return res
+
+
 def lod_tensor_to_array(x, table, main_program=None):
     """
     This function creates an operator to convert an LOD_Tensor to
