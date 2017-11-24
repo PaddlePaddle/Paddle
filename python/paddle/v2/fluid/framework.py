@@ -511,6 +511,13 @@ class Program(object):
         res.sync_with_cpp()
         return res
 
+    def inference_optimize(self):
+        res = Program()
+        res.desc = core.inference_optimize(self.desc)
+        res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
+        res.sync_with_cpp()
+        return res
+
     @staticmethod
     def parse_from_string(binary_str):
         p = Program()
