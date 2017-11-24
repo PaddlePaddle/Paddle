@@ -16,8 +16,8 @@ PASS_NUM = 5
 SEED = 1
 DTYPE = "float32"
 
-images = layers.data(name='pixel', shape=[1, 28, 28], data_type=DTYPE)
-label = layers.data(name='label', shape=[1], data_type='int64')
+images = layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
+label = layers.data(name='label', shape=[1], dtype='int64')
 conv_pool_1 = nets.simple_img_conv_pool(
     input=images,
     filter_size=5,
