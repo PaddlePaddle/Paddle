@@ -31,6 +31,22 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
 
+struct ProdFunctor {
+  template <typename Place, typename X, typename Y, typename Dim>
+  void operator()(const Place& place, X& x, Y& y, const Dim& dim) {
+    y.device(place) = x.prod(dim);
+  }
+};
+
+struct ProdGradFunctor {
+  template <typename Place, typename X, typename Y, typename DX, typename DY,
+            typename Dim>
+  void operator()(const Place& place, X& x, Y& y, DX& dx, DY& dy,
+                  const Dim& dim, int size) {
+    dx.device(place) = dy.broadcast(dim) * dx;
+  }
+};
+
 struct SumFunctor {
   template <typename Place, typename X, typename Y, typename Dim>
   void operator()(const Place& place, X& x, Y& y, const Dim& dim) {
@@ -213,6 +229,7 @@ class ReduceGradKernel : public framework::OpKernel<T> {
 
 #define FOR_EACH_KERNEL_FUNCTOR(__macro)                \
   __macro(reduce_sum, SumFunctor, SumGradFunctor);      \
+  __macro(reduce_prod, ProdFunctor, ProdGradFunctor);   \
   __macro(reduce_mean, MeanFunctor, MeanGradFunctor);   \
   __macro(reduce_max, MaxFunctor, MaxOrMinGradFunctor); \
   __macro(reduce_min, MinFunctor, MaxOrMinGradFunctor);

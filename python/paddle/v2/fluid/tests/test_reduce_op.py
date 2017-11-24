@@ -3,6 +3,19 @@ import numpy as np
 from op_test import OpTest
 
 
+class TestProdOp(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_prod"
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
+        self.outputs = {'Out': self.inputs['X'].prod(axis=0)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestSumOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"

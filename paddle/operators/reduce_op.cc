@@ -123,6 +123,16 @@ The result tensor has 1 fewer dimension than the input unless keep_dim is true.
   }
 };
 
+class ReduceProdOpMaker : public ReduceOpMaker {
+ public:
+  ReduceProdOpMaker(framework::OpProto *proto,
+                    framework::OpAttrChecker *op_checker)
+      : ReduceOpMaker(proto, op_checker) {
+    SetComment("ReduceProd", "prod");
+    AddComment(comment_);
+  }
+};
+
 class ReduceSumOpMaker : public ReduceOpMaker {
  public:
   ReduceSumOpMaker(framework::OpProto *proto,
@@ -167,6 +177,8 @@ class ReduceMinOpMaker : public ReduceOpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+REGISTER_OP(reduce_prod, ops::ReduceOp, ops::ReduceProdOpMaker,
+            reduce_prod_grad, ops::ReduceGradOp);
 
 REGISTER_OP(reduce_sum, ops::ReduceOp, ops::ReduceSumOpMaker, reduce_sum_grad,
             ops::ReduceGradOp);
