@@ -34,26 +34,26 @@ def load_parameter(file_name, h, w):
 
 def db_lstm():
     # 8 features
-    word = layers.data(name='word_data', shape=[1], data_type='int64')
-    predicate = layers.data(name='verb_data', shape=[1], data_type='int64')
-    ctx_n2 = layers.data(name='ctx_n2_data', shape=[1], data_type='int64')
-    ctx_n1 = layers.data(name='ctx_n1_data', shape=[1], data_type='int64')
-    ctx_0 = layers.data(name='ctx_0_data', shape=[1], data_type='int64')
-    ctx_p1 = layers.data(name='ctx_p1_data', shape=[1], data_type='int64')
-    ctx_p2 = layers.data(name='ctx_p2_data', shape=[1], data_type='int64')
-    mark = layers.data(name='mark_data', shape=[1], data_type='int64')
+    word = layers.data(name='word_data', shape=[1], dtype='int64')
+    predicate = layers.data(name='verb_data', shape=[1], dtype='int64')
+    ctx_n2 = layers.data(name='ctx_n2_data', shape=[1], dtype='int64')
+    ctx_n1 = layers.data(name='ctx_n1_data', shape=[1], dtype='int64')
+    ctx_0 = layers.data(name='ctx_0_data', shape=[1], dtype='int64')
+    ctx_p1 = layers.data(name='ctx_p1_data', shape=[1], dtype='int64')
+    ctx_p2 = layers.data(name='ctx_p2_data', shape=[1], dtype='int64')
+    mark = layers.data(name='mark_data', shape=[1], dtype='int64')
 
     predicate_embedding = layers.embedding(
         input=predicate,
         size=[pred_len, word_dim],
-        data_type='float32',
+        dtype='float32',
         is_sparse=IS_SPARSE,
         param_attr={'name': 'vemb'})
 
     mark_embedding = layers.embedding(
         input=mark,
         size=[mark_dict_len, mark_dim],
-        data_type='float32',
+        dtype='float32',
         is_sparse=IS_SPARSE)
 
     word_input = [word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2]
@@ -125,7 +125,7 @@ def to_lodtensor(data, place):
 def main():
     # define network topology
     feature_out = db_lstm()
-    target = layers.data(name='target', shape=[1], data_type='int64')
+    target = layers.data(name='target', shape=[1], dtype='int64')
     crf_cost = layers.linear_chain_crf(
         input=feature_out,
         label=target,

@@ -302,7 +302,7 @@ LoDTensor TensorArray::Stack() const {
 
   const auto& first_dims = values_.front().dims();
   // check all the values have the same shape
-  // TODO(superjom) check the same dtypes
+  // TODO(superjom) check the same data_type
   for (size_t idx = 1; idx < size(); idx++) {
     const auto& value_dims = values_[idx].dims();
     PADDLE_ENFORCE_EQ(first_dims, value_dims);

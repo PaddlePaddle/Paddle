@@ -23,7 +23,7 @@ def _clone_var_in_block_(block, var):
     return block.create_var(
         name=var.name,
         shape=var.shape,
-        dtype=var.data_type,
+        dtype=var.dtype,
         type=var.type,
         lod_level=var.lod_level,
         persistable=True)

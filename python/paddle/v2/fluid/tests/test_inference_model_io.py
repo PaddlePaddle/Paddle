@@ -19,13 +19,13 @@ class TestBook(unittest.TestCase):
         x = layers.data(
             name='x',
             shape=[2],
-            data_type='float32',
+            dtype='float32',
             main_program=program,
             startup_program=init_program)
         y = layers.data(
             name='y',
             shape=[1],
-            data_type='float32',
+            dtype='float32',
             main_program=program,
             startup_program=init_program)
 

@@ -10,7 +10,7 @@ from paddle.v2.fluid.optimizer import MomentumOptimizer
 from paddle.v2.fluid.regularizer import L2DecayRegularizer
 
 BATCH_SIZE = 128
-image = layers.data(name='x', shape=[784], data_type='float32')
+image = layers.data(name='x', shape=[784], dtype='float32')
 
 param_attr = {
     'name': None,
@@ -27,7 +27,7 @@ predict = layers.fc(input=hidden2,
                     act='softmax',
                     param_attr=param_attr)
 
-label = layers.data(name='y', shape=[1], data_type='int64')
+label = layers.data(name='y', shape=[1], dtype='int64')
 
 cost = layers.cross_entropy(input=predict, label=label)
 avg_cost = layers.mean(x=cost)

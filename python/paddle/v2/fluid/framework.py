@@ -99,9 +99,9 @@ class Variable(object):
             if not isinstance(dtype, core.DataType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
             if is_new_var:
-                self.desc.set_data_type(dtype)
+                self.desc.set_dtype(dtype)
             else:
-                old_dtype = self.data_type
+                old_dtype = self.dtype
                 if dtype != old_dtype:
                     raise ValueError("Variable {0} has been created before. "
                                      "The previous data type is {1}; the new "
@@ -162,8 +162,8 @@ class Variable(object):
         return tuple(self.desc.shape())
 
     @property
-    def data_type(self):
-        return self.desc.data_type()
+    def dtype(self):
+        return self.desc.dtype()
 
     @property
     def lod_level(self):
