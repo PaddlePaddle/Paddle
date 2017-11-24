@@ -67,7 +67,7 @@ TEST(selected_rows_functor, gpu_add) {
   EXPECT_EQ(out_rows[6], 9);
 
   Tensor out_cpu;
-  framework::CopyFrom(*out_value, cpu_place, ctx, &out_cpu);
+  CopyFrom(*out_value, cpu_place, ctx, &out_cpu);
   ctx.Wait();
 
   auto* out_cpu_data = out_cpu.data<float>();

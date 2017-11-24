@@ -156,7 +156,7 @@ TEST(math_function, gemm_trans_cublas) {
 
   paddle::framework::CopyFrom(input1, *gpu_place, context, &input1_gpu);
   paddle::framework::CopyFrom(input2, *gpu_place, context, &input2_gpu);
-  paddle::framework::CopyFrom(input3, *gpu_place, context, &input2_gpu);
+  paddle::framework::CopyFrom(input3, *gpu_place, context, &input3_gpu);
   float* a = input1_gpu.data<float>();
   float* b = input2_gpu.data<float>();
   float* c = input3_gpu.mutable_data<float>(*gpu_place);
