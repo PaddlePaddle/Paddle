@@ -63,7 +63,7 @@ class CudnnConvOpKernel : public framework::OpKernel<T> {
     cudnnConvolutionDescriptor_t cudnn_conv_desc =
         conv_desc.descriptor<T>(paddings, strides, dilations);
 
-#if CUDNN_VERSION > 6000
+#if CUDNN_VERSION_MIN(7, 0, 0)
     // cudnn 7 can support groups, no need to do it mannually
     // FIXME(typhoonzero): find a better way to disable groups
     // rather than setting it to 1.
@@ -168,7 +168,6 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
     // ------------------- cudnn descriptors ---------------------
     ScopedTensorDescriptor input_desc;
     ScopedTensorDescriptor output_grad_desc;
-    ScopedTensorDescriptor input_grad_desc;
 
     ScopedFilterDescriptor filter_desc;
     ScopedFilterDescriptor filter_grad_desc;
@@ -181,7 +180,7 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
     cudnnConvolutionDescriptor_t cudnn_conv_desc =
         conv_desc.descriptor<T>(paddings, strides, dilations);
 
-#if CUDNN_VERSION > 6000
+#if CUDNN_VERSION_MIN(7, 0, 0)
     // cudnn 7 can support groups, no need to do it mannually
     // FIXME(typhoonzero): find a better way to disable groups
     // rather than setting it to 1.
@@ -197,7 +196,6 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
             layout, framework::vectorize2int(output_grad->dims()), groups);
     cudnnFilterDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
         layout, framework::vectorize2int(filter->dims()), groups);
-    cudnnTensorDescriptor_t cudnn_input_grad_desc = nullptr;
     cudnnFilterDescriptor_t cudnn_filter_grad_desc = nullptr;
 
     int input_channels = input->dims()[1];
@@ -240,8 +238,6 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
 
     auto handle = ctx.cuda_device_context().cudnn_handle();
     if (input_grad) {
-      cudnn_input_grad_desc = input_grad_desc.descriptor<T>(
-          layout, framework::vectorize2int(input_grad->dims()), groups);
       PADDLE_ENFORCE(
           platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
               handle, cudnn_filter_desc,
@@ -250,13 +246,13 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
               cudnn_output_grad_desc, cudnn_conv_desc,
               // dxDesc: Handle to the previously initialized output tensor
               // descriptor.
-              cudnn_input_grad_desc,
+              cudnn_input_desc,
               CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
               workspace_size_limit, &data_algo));
       PADDLE_ENFORCE(
           platform::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
               handle, cudnn_filter_desc, cudnn_output_grad_desc,
-              cudnn_conv_desc, cudnn_input_grad_desc, data_algo, &tmp_size));
+              cudnn_conv_desc, cudnn_input_desc, data_algo, &tmp_size));
       workspace_size_in_bytes = std::max(workspace_size_in_bytes, tmp_size);
     }
 
