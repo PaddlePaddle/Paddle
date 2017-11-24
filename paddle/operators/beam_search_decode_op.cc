@@ -13,12 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/beam_search_decode_op.h"
-#include "paddle/framework/framework.pb.h"
 
 namespace paddle {
 namespace operators {
-
-using DataType = framework::DataType;
 
 struct BeamSearchDecodeFunctor {
   BeamSearchDecodeFunctor(const LoDTensorArray& step_ids,
@@ -42,18 +39,9 @@ struct BeamSearchDecodeFunctor {
   LoDTensor* score_tensor_;
 };
 
-template <typename Visitor>
-inline void VisitDataType(DataType type, Visitor visitor) {
-  switch (type) {
-    case DataType::FP32:
-      visitor.template operator()<float>();
-      break;
-    case DataType::FP64:
-      visitor.template operator()<double>();
-      break;
-    default:
-      PADDLE_THROW("Not supported");
-  }
+template <>
+void BeamSearchDecodeFunctor::operator()<bool>() const {
+  PADDLE_THROW("beam search decode op does not support bool!");
 }
 
 class BeamSearchDecodeOp : public framework::OperatorBase {
@@ -84,7 +72,7 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
     LoDTensor* sentenceIds = ctx.Output<LoDTensor>("SentenceIds");
     LoDTensor* sentenceScores = ctx.Output<LoDTensor>("SentenceScores");
 
-    operators::VisitDataType(
+    framework::VisitDataType(
         framework::ToDataType(scores->at(0).type()),
         BeamSearchDecodeFunctor(*ids, *scores, sentenceIds, sentenceScores));
   }
