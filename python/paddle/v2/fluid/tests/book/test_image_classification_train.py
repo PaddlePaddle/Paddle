@@ -90,8 +90,8 @@ def vgg16_bn_drop(input):
 classdim = 10
 data_shape = [3, 32, 32]
 
-images = layers.data(name='pixel', shape=data_shape, data_type='float32')
-label = layers.data(name='label', shape=[1], data_type='int64')
+images = layers.data(name='pixel', shape=data_shape, dtype='float32')
+label = layers.data(name='label', shape=[1], dtype='int64')
 
 # Add neural network config
 # option 1. resnet

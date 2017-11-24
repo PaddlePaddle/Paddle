@@ -8,7 +8,7 @@ def _clone_var_in_block_(block, var):
     return block.create_var(
         name=var.name,
         shape=var.shape,
-        dtype=var.data_type,
+        dtype=var.dtype,
         type=var.type,
         lod_level=var.lod_level,
         persistable=True)
@@ -57,7 +57,7 @@ class Evaluator(object):
                 attrs={
                     "shape": g_var.shape,
                     "value": .0,
-                    "data_type": 5,
+                    "dtype": 5,
                 })
             block.append_op(
                 type="scale", inputs={"X": zeros}, outputs={"Out": g_var})
@@ -93,7 +93,7 @@ class Accuracy(Evaluator):
 
     def _update_ops(self, input, label, k=1, **kwargs):
         block = self._main_program.global_block()
-        topk_out = block.create_var(dtype=input.data_type)
+        topk_out = block.create_var(dtype=input.dtype)
         topk_indices = block.create_var(dtype="int64")
         block.append_op(
             type="top_k",
@@ -122,16 +122,16 @@ class Accuracy(Evaluator):
             inputs={"X": [self._states["Total"]]},
             outputs={"Out": [self._states["Total"]]},
             attrs={
-                "in_data_type": 5,  # float32
-                "out_data_type": 2,  #int32
+                "in_dtype": 5,  # float32
+                "out_dtype": 2,  # int32
             })
         block.append_op(
             type="cast",
             inputs={"X": [self._states["Correct"]]},
             outputs={"Out": [self._states["Correct"]]},
             attrs={
-                "in_data_type": 5,
-                "out_data_type": 2,
+                "in_dtype": 5,
+                "out_dtype": 2,
             })
 
         block.append_op(
@@ -153,7 +153,7 @@ class Accuracy(Evaluator):
         else:
             eval_program = Program()
         block = eval_program.global_block()
-        eval_out = block.create_var(dtype=self._states["Total"].data_type)
+        eval_out = block.create_var(dtype=self._states["Total"].dtype)
         e_total = _clone_var_in_block_(block, self._states["Total"])
         e_correct = _clone_var_in_block_(block, self._states["Correct"])
         block.append_op(
@@ -161,16 +161,16 @@ class Accuracy(Evaluator):
             inputs={"X": [e_total]},
             outputs={"Out": [e_total]},
             attrs={
-                "in_data_type": 2,  #int32
-                "out_data_type": 5,  #float32
+                "in_dtype": 2,  # int32
+                "out_dtype": 5,  # float32
             })
         block.append_op(
             type="cast",
             inputs={"X": [e_correct]},
             outputs={"Out": [e_correct]},
             attrs={
-                "in_data_type": 2,
-                "out_data_type": 5,
+                "in_dtype": 2,
+                "out_dtype": 5,
             })
         block.append_op(
             type="elementwise_div",

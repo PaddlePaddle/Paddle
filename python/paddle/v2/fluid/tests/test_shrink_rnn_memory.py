@@ -9,7 +9,7 @@ import numpy
 
 class TestShrinkRNNMemory(unittest.TestCase):
     def test_shrink_rnn_memory(self):
-        x = layers.data('x', shape=[100], data_type='float32')
+        x = layers.data('x', shape=[100], dtype='float32')
         x.stop_gradient = False
         table = layers.lod_rank_table(x=x)
         i = layers.zeros(dtype='int64', shape=[1])

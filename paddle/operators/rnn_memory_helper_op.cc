@@ -62,7 +62,7 @@ class RNNMemoryHelperOpInfoMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "");
     AddOutput("Out", "");
-    AddAttr<int>("data_type",
+    AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
         .SetDefault(framework::DataType::FP32);
@@ -95,7 +95,7 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
       auto &in_var_tensor = in_var->Get<framework::LoDTensor>();
 
       framework::AttributeMap attrs;
-      attrs["data_type"] = framework::ToDataType(in_var_tensor.type());
+      attrs["dtype"] = framework::ToDataType(in_var_tensor.type());
       attrs["shape"] = framework::vectorize2int(in_var_tensor.dims());
       attrs["value"] = 0.0f;
 
@@ -121,7 +121,7 @@ class RNNMemoryHelperGradOpInfoMaker
     AddInput("X", "");
     AddInput("Out", "");
     AddOutput(framework::GradVarName("X"), "");
-    AddAttr<int>("data_type",
+    AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
         .SetDefault(framework::DataType::FP32);

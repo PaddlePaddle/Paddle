@@ -14,8 +14,8 @@ def stacked_lstm_net(input_dim,
                      hid_dim=512,
                      stacked_num=3):
     assert stacked_num % 2 == 1
-    data = layers.data(name="words", shape=[1], data_type="int64")
-    label = layers.data(name="label", shape=[1], data_type="int64")
+    data = layers.data(name="words", shape=[1], dtype="int64")
+    label = layers.data(name="label", shape=[1], dtype="int64")
 
     emb = layers.embedding(input=data, size=[input_dim, emb_dim])
     # add bias attr

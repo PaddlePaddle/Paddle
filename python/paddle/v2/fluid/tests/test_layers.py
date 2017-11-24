@@ -9,11 +9,11 @@ class TestBook(unittest.TestCase):
     def test_fit_a_line(self):
         program = Program()
         x = layers.data(
-            name='x', shape=[13], data_type='float32', main_program=program)
+            name='x', shape=[13], dtype='float32', main_program=program)
         y_predict = layers.fc(input=x, size=1, act=None, main_program=program)
 
         y = layers.data(
-            name='y', shape=[1], data_type='float32', main_program=program)
+            name='y', shape=[1], dtype='float32', main_program=program)
         cost = layers.square_error_cost(
             input=y_predict, label=y, main_program=program)
 
@@ -28,12 +28,9 @@ class TestBook(unittest.TestCase):
 
         # Change g_program, so the rest layers use `g_program`
         images = layers.data(
-            name='pixel',
-            shape=[784],
-            data_type='float32',
-            main_program=program)
+            name='pixel', shape=[784], dtype='float32', main_program=program)
         label = layers.data(
-            name='label', shape=[1], data_type='int32', main_program=program)
+            name='label', shape=[1], dtype='int32', main_program=program)
         hidden1 = layers.fc(input=images,
                             size=128,
                             act='relu',
@@ -58,7 +55,7 @@ class TestBook(unittest.TestCase):
         images = layers.data(
             name='pixel',
             shape=[3, 48, 48],
-            data_type='int32',
+            dtype='int32',
             main_program=program)
         layers.conv2d(
             input=images,
@@ -74,10 +71,10 @@ class TestBook(unittest.TestCase):
         images = layers.data(
             name='pixel',
             shape=[1, 28, 28],
-            data_type='float32',
+            dtype='float32',
             main_program=program)
         label = layers.data(
-            name='label', shape=[1], data_type='int32', main_program=program)
+            name='label', shape=[1], dtype='int32', main_program=program)
         conv_pool_1 = nets.simple_img_conv_pool(
             input=images,
             filter_size=5,
@@ -112,39 +109,39 @@ class TestBook(unittest.TestCase):
         dict_size = 10000
         embed_size = 32
         first_word = layers.data(
-            name='firstw', shape=[1], data_type='int64', main_program=program)
+            name='firstw', shape=[1], dtype='int64', main_program=program)
         second_word = layers.data(
-            name='secondw', shape=[1], data_type='int64', main_program=program)
+            name='secondw', shape=[1], dtype='int64', main_program=program)
         third_word = layers.data(
-            name='thirdw', shape=[1], data_type='int64', main_program=program)
+            name='thirdw', shape=[1], dtype='int64', main_program=program)
         forth_word = layers.data(
-            name='forthw', shape=[1], data_type='int64', main_program=program)
+            name='forthw', shape=[1], dtype='int64', main_program=program)
         next_word = layers.data(
-            name='nextw', shape=[1], data_type='int64', main_program=program)
+            name='nextw', shape=[1], dtype='int64', main_program=program)
 
         embed_first = layers.embedding(
             input=first_word,
             size=[dict_size, embed_size],
-            data_type='float32',
+            dtype='float32',
             param_attr={'name': 'shared_w'},
             main_program=program)
         embed_second = layers.embedding(
             input=second_word,
             size=[dict_size, embed_size],
-            data_type='float32',
+            dtype='float32',
             param_attr={'name': 'shared_w'},
             main_program=program)
 
         embed_third = layers.embedding(
             input=third_word,
             size=[dict_size, embed_size],
-            data_type='float32',
+            dtype='float32',
             param_attr={'name': 'shared_w'},
             main_program=program)
         embed_forth = layers.embedding(
             input=forth_word,
             size=[dict_size, embed_size],
-            data_type='float32',
+            dtype='float32',
             param_attr={'name': 'shared_w'},
             main_program=program)
 
@@ -173,12 +170,9 @@ class TestBook(unittest.TestCase):
 
         # Change g_program, so the rest layers use `g_program`
         images = layers.data(
-            name='pixel',
-            shape=[784],
-            data_type='float32',
-            main_program=program)
+            name='pixel', shape=[784], dtype='float32', main_program=program)
         label = layers.data(
-            name='label', shape=[1], data_type='int32', main_program=program)
+            name='label', shape=[1], dtype='int32', main_program=program)
         hidden = layers.fc(input=images, size=128, main_program=program)
         crf = layers.linear_chain_crf(
             input=hidden, label=label, main_program=program)
