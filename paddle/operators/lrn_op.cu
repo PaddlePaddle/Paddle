@@ -95,6 +95,84 @@ struct LRNFunctor<platform::GPUPlace, T> {
 
 template struct LRNFunctor<platform::GPUPlace, float>;
 template struct LRNFunctor<platform::GPUPlace, double>;
+
+template <typename T>
+__global__ void KeCMRNormDiff(int img_size, const T* x, const T* out,
+                              const T* mid, T* x_g, const T* out_g, int C,
+                              int H, int W, int size, T negative_beta,
+                              T ratio) {
+  const int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx < img_size) {
+    const int w = idx % W;
+    const int h = (idx / W) % H;
+    const int n = idx / W / H;
+    const int offset = (n * C * H + h) * W + w;
+    x += offset;
+    out += offset;
+    mid += offset;
+    out_g += offset;
+    x_g += offset;
+
+    const int step = H * W;
+    const int pre_pad = size - (size + 1) / 2;
+    const int post_pad = size - pre_pad - 1;
+
+    int index = 0;
+    T accum = 0;
+    // TODO(gongwb): optimize this with thread shared array.
+    while (index < C + post_pad) {
+      if (index < C) {
+        x_g[index * step] = 0.0;
+        accum += out_g[index * step] * out[index * step] / mid[index * step];
+      }
+      if (index >= size) {
+        accum -= out_g[(index - size) * step] * out[(index - size) * step] /
+                 mid[(index - size) * step];
+      }
+      if (index >= post_pad) {
+        x_g[(index - post_pad) * step] +=
+            out_g[(index - post_pad) * step] *
+                pow(mid[(index - post_pad) * step], negative_beta) -
+            ratio * x[(index - post_pad) * step] * accum;
+      }
+      ++index;
+    }
+  }
+}
+
+template <typename T>
+void CrossMapNormalGrad(const framework::ExecutionContext& ctx, const T* x,
+                        const T* out, const T* mid, T* x_g, const T* out_g,
+                        int N, int C, int H, int W, int n, T alpha, T beta) {
+  int img_size = N * H * W;
+
+  int block_size = 1024;
+  int grid_size = (img_size + 1024 - 1) / 1024;
+
+  const auto& stream =
+      reinterpret_cast<const platform::CUDADeviceContext&>(ctx.device_context())
+          .stream();
+
+  KeCMRNormDiff<T><<<grid_size, block_size, 0, stream>>>(
+      img_size, x, out, mid, x_g, out_g, C, H, W, n, -beta,
+      2.0f * alpha * beta);
+}
+
+template <typename T>
+struct LRNGradFunctor<platform::GPUPlace, T> {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor* x, const framework::Tensor* out,
+                  const framework::Tensor* mid, framework::Tensor* x_g,
+                  const framework::Tensor* out_g, int N, int C, int H, int W,
+                  int n, T alpha, T beta) {
+    CrossMapNormalGrad<T>(ctx, x->data<T>(), out->data<T>(), mid->data<T>(),
+                          x_g->mutable_data<T>(ctx.GetPlace()),
+                          out_g->data<T>(), N, C, H, W, n, alpha, beta);
+  }
+};
+
+template struct LRNGradFunctor<platform::GPUPlace, float>;
+template struct LRNGradFunctor<platform::GPUPlace, double>;
 }  // namespace operators
 }  // namespace paddle
 

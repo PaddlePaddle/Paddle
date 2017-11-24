@@ -23,7 +23,7 @@ class TestLRNOp(OpTest):
         start = -(self.n - 1) / 2
         end = start + self.n
 
-        mid = np.empty((self.N, self.C, self.H, self.W), dtype=float)
+        mid = np.empty((self.N, self.C, self.H, self.W)).astype("float32")
         mid.fill(self.k)
         for m in range(0, self.N):
             for i in range(0, self.C):
@@ -69,8 +69,8 @@ class TestLRNOp(OpTest):
     def test_check_output(self):
         self.check_output()
 
-    #def test_check_grad_normal(self):
-    #    self.check_grad(['X'], 'Out', max_relative_error=0.01)
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out', max_relative_error=0.01)
 
 
 if __name__ == "__main__":

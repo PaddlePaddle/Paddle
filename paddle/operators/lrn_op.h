@@ -21,12 +21,12 @@
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename place, typename T>
 struct LRNFunctor {
   void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* input, int N, int C, int H, int W,
-                  int n, T alpha, T beta, T k, framework::Tensor* mid,
-                  framework::Tensor* out);
+                  const framework::Tensor* input, framework::Tensor* out,
+                  framework::Tensor* mid, int N, int C, int H, int W, int n,
+                  T k, T alpha, T beta);
 };
 
 template <typename Place, typename T>
@@ -73,9 +73,10 @@ class LRNKernel : public framework::OpKernel<T> {
 template <typename Place, typename T>
 struct LRNGradFunctor {
   void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* input, int N, int C, int H, int W,
-                  int n, T alpha, T beta, T k, framework::Tensor* mid,
-                  framework::Tensor* out);
+                  const framework::Tensor* x, const framework::Tensor* out,
+                  const framework::Tensor* mid, framework::Tensor* x_g,
+                  const framework::Tensor* out_g, int N, int C, int H, int W,
+                  int n, T alpha, T beta);
 };
 
 /**
@@ -110,9 +111,6 @@ class LRNGradKernel : public framework::OpKernel<T> {
     auto x_g = ctx.Output<Tensor>(framework::GradVarName("X"));
     x_g->mutable_data<T>(ctx.GetPlace());
 
-    auto x_g_e = framework::EigenVector<T>::Flatten(*x_g);
-    x_g_e.device(ctx.GetEigenDevice<Place>()) = x_g_e.constant(0.0);
-
     auto x_dims = x->dims();
     int N = x_dims[0];
     int C = x_dims[1];
@@ -122,51 +120,9 @@ class LRNGradKernel : public framework::OpKernel<T> {
     int n = ctx.Attr<int>("n");
     T alpha = ctx.Attr<T>("alpha");
     T beta = ctx.Attr<T>("beta");
-    T ratio = -2 * alpha * beta;
 
-    auto e_x = framework::EigenTensor<T, 4>::From(*x);
-    auto e_x_g = framework::EigenTensor<T, 4>::From(*x_g);
-    auto e_out = framework::EigenTensor<T, 4>::From(*out);
-    auto e_out_g = framework::EigenTensor<T, 4>::From(*out_g);
-    auto e_mid = framework::EigenTensor<T, 4>::From(*mid);
-
-    const int start = -(n - 1) / 2;
-    const int end = start + n;
-    for (int m = 0; m < N; m++) {
-      for (int i = 0; i < C; i++) {
-        auto i_x = e_x.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
-                             Eigen::array<int, 4>({{1, 1, H, W}}));
-
-        auto i_x_g = e_x_g.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
-                                 Eigen::array<int, 4>({{1, 1, H, W}}));
-
-        auto i_out_g = e_out_g.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
-                                     Eigen::array<int, 4>({{1, 1, H, W}}));
-
-        auto i_mid = e_mid.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
-                                 Eigen::array<int, 4>({{1, 1, H, W}}));
-
-        i_x_g.device(ctx.GetEigenDevice<Place>()) = i_mid.pow(-beta) * i_out_g;
-        for (int c = start; c <= end; c++) {
-          int ch = i + c;
-          if (ch < 0 || ch >= C) {
-            continue;
-          }
-
-          auto c_out = e_out.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
-                                   Eigen::array<int, 4>({{1, 1, H, W}}));
-
-          auto c_mid = e_mid.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
-                                   Eigen::array<int, 4>({{1, 1, H, W}}));
-
-          auto c_out_g = e_out_g.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
-                                       Eigen::array<int, 4>({{1, 1, H, W}}));
-
-          i_x_g.device(ctx.GetEigenDevice<Place>()) +=
-              ratio * c_out_g * c_out * i_x / c_mid;
-        }
-      }
-    }
+    LRNGradFunctor<Place, T> f;
+    f(ctx, x, out, mid, x_g, out_g, N, C, H, W, n, alpha, beta);
   }
 };
 

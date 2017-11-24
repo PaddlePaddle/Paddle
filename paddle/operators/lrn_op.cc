@@ -60,6 +60,67 @@ struct LRNFunctor<platform::CPUPlace, T> {
 template struct LRNFunctor<platform::CPUPlace, float>;
 template struct LRNFunctor<platform::CPUPlace, double>;
 
+template <typename T>
+struct LRNGradFunctor<platform::CPUPlace, T> {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor* x, const framework::Tensor* out,
+                  const framework::Tensor* mid, framework::Tensor* x_g,
+                  const framework::Tensor* out_g, int N, int C, int H, int W,
+                  int n, T alpha, T beta) {
+    T ratio = -2 * alpha * beta;
+    auto x_g_e = framework::EigenVector<T>::Flatten(*x_g);
+    x_g_e.device(ctx.GetEigenDevice<platform::CPUPlace>()) =
+        x_g_e.constant(0.0);
+
+    auto e_x = framework::EigenTensor<T, 4>::From(*x);
+    auto e_x_g = framework::EigenTensor<T, 4>::From(*x_g);
+    auto e_out = framework::EigenTensor<T, 4>::From(*out);
+    auto e_out_g = framework::EigenTensor<T, 4>::From(*out_g);
+    auto e_mid = framework::EigenTensor<T, 4>::From(*mid);
+
+    const int start = -(n - 1) / 2;
+    const int end = start + n;
+    for (int m = 0; m < N; m++) {
+      for (int i = 0; i < C; i++) {
+        auto i_x = e_x.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
+                             Eigen::array<int, 4>({{1, 1, H, W}}));
+
+        auto i_x_g = e_x_g.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
+                                 Eigen::array<int, 4>({{1, 1, H, W}}));
+
+        auto i_out_g = e_out_g.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
+                                     Eigen::array<int, 4>({{1, 1, H, W}}));
+
+        auto i_mid = e_mid.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
+                                 Eigen::array<int, 4>({{1, 1, H, W}}));
+
+        i_x_g.device(ctx.GetEigenDevice<platform::CPUPlace>()) =
+            i_mid.pow(-beta) * i_out_g;
+        for (int c = start; c <= end; c++) {
+          int ch = i + c;
+          if (ch < 0 || ch >= C) {
+            continue;
+          }
+
+          auto c_out = e_out.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
+                                   Eigen::array<int, 4>({{1, 1, H, W}}));
+
+          auto c_mid = e_mid.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
+                                   Eigen::array<int, 4>({{1, 1, H, W}}));
+
+          auto c_out_g = e_out_g.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
+                                       Eigen::array<int, 4>({{1, 1, H, W}}));
+
+          i_x_g.device(ctx.GetEigenDevice<platform::CPUPlace>()) +=
+              ratio * c_out_g * c_out * i_x / c_mid;
+        }
+      }
+    }
+  }
+};
+template struct LRNGradFunctor<platform::CPUPlace, float>;
+template struct LRNGradFunctor<platform::CPUPlace, double>;
+
 class LRNOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -160,8 +221,7 @@ class LRNOpGrad : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("MidOut")),
-                   "Input(MidOut@GRAD) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("MidOut"), "Input(MidOut) should not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null");
 
