@@ -59,7 +59,7 @@ Then the ratio of the exponential of the given dimension and the sum of
 exponential values of all the other dimensions is the output of the softmax
 operator.
 
-For each row `i` and each column `j` in input X, we have:
+For each row $i$ and each column $j$ in Input(X), we have:
     $$Y[i, j] = \frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])}$$
 
 )DOC");

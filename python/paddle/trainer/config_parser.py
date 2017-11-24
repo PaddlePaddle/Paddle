@@ -1116,35 +1116,6 @@ def PyData(files=None,
     return data_config
 
 
-@config_func
-def ProtoData(files=None,
-              type=None,
-              file_group_queue_capacity=None,
-              load_file_count=None,
-              constant_slots=None,
-              load_thread_num=None,
-              **xargs):
-    data_config = create_data_config_proto(**xargs)
-    if type is None:
-        data_config.type = 'proto'
-    else:
-        data_config.type = type
-    data_config.files = files
-
-    # When type="proto_group", one data provider contains at most
-    # load_file_count files, and there are at most
-    # (queue_capacity + load_thread_num + 1) data providers in memory
-    if file_group_queue_capacity is not None:
-        data_config.file_group_conf.queue_capacity = file_group_queue_capacity
-    if load_file_count is not None:
-        data_config.file_group_conf.load_file_count = load_file_count
-    if load_thread_num is not None:
-        data_config.file_group_conf.load_thread_num = load_thread_num
-    if constant_slots:
-        data_config.constant_slots.extend(constant_slots)
-    return data_config
-
-
 #real data for training is actually provided by "sub_data" data providers.
 @config_func
 def MultiData(sub_data=[]):
@@ -2066,13 +2037,20 @@ class ParameterReluLayer(LayerBase):
     def __init__(self, name, inputs, partial_sum=1, **args):
         super(ParameterReluLayer, self).__init__(
             name, self.layer_type, 0, inputs=inputs, **args)
+
         input_layer = self.get_input_layer(0)
         config_assert(len(self.inputs) == 1, "prelu layer has only one input.")
         config_assert(input_layer.size % partial_sum == 0,
                       "a wrong setting for partial_sum")
+
+        dims = [1, input_layer.size / partial_sum]
         self.set_layer_size(input_layer.size)
         self.config.partial_sum = partial_sum
-        self.create_input_parameter(0, input_layer.size / partial_sum)
+        self.create_input_parameter(0, input_layer.size / partial_sum, dims)
+
+        self.set_layer_height_width(self.get_input_layer(0).height, \
+                                        self.get_input_layer(0).width)
+        self.set_layer_depth(self.get_input_layer(0).depth)
 
 
 @config_layer('conv')
@@ -2434,6 +2412,7 @@ class BatchNormLayer(LayerBase):
                  bias=True,
                  img3D=False,
                  use_global_stats=True,
+                 epsilon=1e-5,
                  moving_average_fraction=0.9,
                  batch_norm_type=None,
                  mean_var_names=None,
@@ -2482,6 +2461,9 @@ class BatchNormLayer(LayerBase):
             self.config.use_global_stats = use_global_stats
         if moving_average_fraction is not None:
             self.config.moving_average_fraction = moving_average_fraction
+        if epsilon is not None:
+            assert epsilon >= 1e-5, "epsilon must be no less than 1e-5."
+            self.config.epsilon = epsilon
 
         input_layer = self.get_input_layer(0)
         image_conf = self.config.inputs[0].image_conf
@@ -2714,7 +2696,7 @@ Usage:
              max_sort_size = -1, inputs = ["output", "score"])
 
   Input data: Samples of the same query should be loaded as a sequence,
-          by ProtoDataProvider or PyDataProvider etc.. User should provide
+          by PyDataProvider etc.. User should provide
           scores for each sample. The score slot should be the 2nd
           input of lambdaRank layer.
 

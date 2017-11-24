@@ -191,6 +191,7 @@ set(DEPS_OPS
     sequence_softmax_op
     sum_op
     pool_op
+    maxout_op
     pool_with_index_op
     conv_op
     conv_transpose_op
@@ -217,6 +218,7 @@ op_library(sgd_op DEPS selected_rows_functor)
 op_library(adagrad_op DEPS selected_rows_functor)
 op_library(conv_op DEPS vol2col)
 op_library(pool_op DEPS pooling)
+op_library(maxout_op DEPS maxouting)
 op_library(pool_with_index_op DEPS pooling)
 op_library(lod_rank_table_op SRCS lod_rank_table_op.cc DEPS lod_rank_table)
 op_library(lod_tensor_to_array_op SRCS lod_tensor_to_array_op.cc DEPS lod_rank_table_op)

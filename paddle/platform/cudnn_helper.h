@@ -223,13 +223,15 @@ class ScopedConvolutionDescriptor {
     PADDLE_ENFORCE_EQ(pads.size(), strides.size());
     PADDLE_ENFORCE_EQ(pads.size(), dilations.size());
 
-#if CUDNN_VERSION < 6000
+#if !CUDNN_VERSION_MIN(6, 0, 0)
     // cudnn v5 does not support dilation conv, the argument is called upscale
     // instead of dilations and it is must be one.
     for (size_t i = 0; i < dilations.size(); ++i) {
       PADDLE_ENFORCE_EQ(
           dilations[i], 1,
-          "Dilations conv is not supported in this cuDNN version");
+          "Dilations conv is not supported in this cuDNN version(%d.%d.%d).",
+          CUDNN_VERSION / 1000, CUDNN_VERSION % 1000 / 100,
+          CUDNN_VERSION % 100);
     }
 #endif
 

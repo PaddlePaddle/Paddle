@@ -1,8 +1,8 @@
+import unittest
+
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.nets as nets
 from paddle.v2.fluid.framework import Program
-import paddle.v2.fluid.core as core
-import unittest
 
 
 class TestBook(unittest.TestCase):
@@ -20,6 +20,7 @@ class TestBook(unittest.TestCase):
         avg_cost = layers.mean(x=cost, main_program=program)
         self.assertIsNotNone(avg_cost)
         program.append_backward(avg_cost)
+
         print str(program)
 
     def test_recognize_digits_mlp(self):
@@ -49,6 +50,7 @@ class TestBook(unittest.TestCase):
             input=predict, label=label, main_program=program)
         avg_cost = layers.mean(x=cost, main_program=program)
         self.assertIsNotNone(avg_cost)
+
         print str(program)
 
     def test_simple_conv2d(self):
@@ -163,6 +165,23 @@ class TestBook(unittest.TestCase):
             input=predict_word, label=next_word, main_program=program)
         avg_cost = layers.mean(x=cost, main_program=program)
         self.assertIsNotNone(avg_cost)
+
+        print str(program)
+
+    def test_linear_chain_crf(self):
+        program = Program()
+
+        # Change g_program, so the rest layers use `g_program`
+        images = layers.data(
+            name='pixel',
+            shape=[784],
+            data_type='float32',
+            main_program=program)
+        label = layers.data(
+            name='label', shape=[1], data_type='int32', main_program=program)
+        hidden = layers.fc(input=images, size=128, main_program=program)
+        crf = layers.linear_chain_crf(
+            input=hidden, label=label, main_program=program)
 
         print str(program)
 

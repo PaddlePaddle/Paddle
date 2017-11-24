@@ -21,8 +21,6 @@ namespace paddle {
 
 REGISTER_LAYER(mkldnn_batch_norm, MKLDNNBatchNormLayer);
 
-const real MKLDNNBatchNormLayer::EPS = 1E-5;
-
 bool MKLDNNBatchNormLayer::init(const LayerMap& layerMap,
                                 const ParameterMap& parameterMap) {
   if (!MKLDNNLayer::init(layerMap, parameterMap)) {
@@ -50,6 +48,8 @@ bool MKLDNNBatchNormLayer::init(const LayerMap& layerMap,
     useGlobalStats_ = config_.use_global_stats();
   }
   movingAvgFraction_ = config_.moving_average_fraction();
+  epsilon_ = config_.epsilon();
+
   VLOG(MKLDNN_BASE) << "--- " << (useGlobalStats_ ? "use" : "do not use")
                     << " --- global stats";
   VLOG(MKLDNN_BASE) << "Moving average fraction: " << movingAvgFraction_;
@@ -116,21 +116,20 @@ void MKLDNNBatchNormLayer::calMovingMeanAndVar() {
 }
 
 void MKLDNNBatchNormLayer::reshape(
-    int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) {
+    int& bs, int& ic, int& ih, int& iw, int& oc, int& oh, int& ow) {
   reshapeInput(bs, ih, iw);
   oh = ih;
   ow = iw;
   // ic_ and oc can not be changed
-  CHECK_EQ(inputElemenCnt_ / bs / ih / iw, (size_t)ic)
+  CHECK_EQ((size_t)ic,
+           inputLayers_[0]->getOutputValue()->getElementCnt() / bs / ih / iw)
       << "Input channel can not be changed";
   reshapeOutput(oh, ow);
   resizeOutput(bs, oc * oh * ow);
 }
 
 void MKLDNNBatchNormLayer::resetFwd(std::vector<primitive>& pipeline,
-                                    MKLDNNMatrixPtr& in,
-                                    MKLDNNMatrixPtr& wgt,
-                                    MKLDNNMatrixPtr& bias,
+                                    std::vector<MKLDNNMatrixPtr>& inputs,
                                     MKLDNNMatrixPtr& out) {
   // In training phase, it will always calculate mean and var,
   // so useGlobalStats must be false.
@@ -140,25 +139,23 @@ void MKLDNNBatchNormLayer::resetFwd(std::vector<primitive>& pipeline,
     useGlobalStats_ = false;
   }
 
-  resetFwdBuffers(in, wgt, out);
+  resetFwdBuffers(inputs[0], wgtVal_, out);
 
-  resetFwdPD(fwdPD_, in, wgt, out);
+  resetFwdPD(fwdPD_, inputs[0], wgtVal_, out);
 
-  resetFwdPipeline(pipeline, fwdPD_, in, wgt, out);
+  resetFwdPipeline(pipeline, fwdPD_, inputs[0], wgtVal_, out);
 }
 
 void MKLDNNBatchNormLayer::resetBwd(std::vector<primitive>& pipeline,
-                                    MKLDNNMatrixPtr& in,
-                                    MKLDNNMatrixPtr& wgt,
-                                    MKLDNNMatrixPtr& bias,
+                                    std::vector<MKLDNNMatrixPtr>& inputs,
                                     MKLDNNMatrixPtr& out) {
   std::shared_ptr<bn_bwd::primitive_desc> pd;
 
-  resetBwdBuffers(in, wgt, out);
+  resetBwdBuffers(inputs[0], wgtGrad_, out);
 
-  resetBwdPD(pd, in, wgt, out);
+  resetBwdPD(pd, inputs[0], wgtGrad_, out);
 
-  resetBwdPipeline(pipeline, pd, in, wgt, out);
+  resetBwdPipeline(pipeline, pd, inputs[0], wgtGrad_, out);
 }
 
 void MKLDNNBatchNormLayer::forward(PassType passType) {
@@ -213,7 +210,7 @@ void MKLDNNBatchNormLayer::resetFwdPD(
   if (wgt) {
     flags_ = (flags_ | batch_normalization_flag::use_scale_shift);
   }
-  auto fwdDesc = bn_fwd::desc(pk, in->getMemoryDesc(), EPS, flags_);
+  auto fwdDesc = bn_fwd::desc(pk, in->getMemoryDesc(), epsilon_, flags_);
   pd.reset(new bn_fwd::primitive_desc(fwdDesc, engine_));
   CHECK_PRIMITIVE_DESC_EQ(out, pd->dst_primitive_desc());
   if (wgt) {
@@ -260,9 +257,9 @@ void MKLDNNBatchNormLayer::resetFwdPipeline(
 void MKLDNNBatchNormLayer::resetBwdBuffers(MKLDNNMatrixPtr& in,
                                            MKLDNNMatrixPtr& wgt,
                                            MKLDNNMatrixPtr& out) {
-  CHECK(inVal_ && outVal_);
+  CHECK(inVals_[0] && outVal_);
   resetOutGrad(out, outVal_->getPrimitiveDesc());
-  resetInGrad(in, inVal_->getPrimitiveDesc());
+  resetInGrad(in, inVals_[0]->getPrimitiveDesc());
   if (gradScaleShift_) {
     CHECK(wgtVal_);
     resetWithMatrix(wgt, gradScaleShift_, wgtVal_->getPrimitiveDesc());
@@ -280,7 +277,7 @@ void MKLDNNBatchNormLayer::resetBwdPD(
   }
   CHECK_PRIMITIVE_DESC_EQ(out, in->getPrimitiveDesc());
   auto md = in->getMemoryDesc();
-  auto bwdDesc = bn_bwd::desc(prop_kind::backward, md, md, EPS, flags_);
+  auto bwdDesc = bn_bwd::desc(prop_kind::backward, md, md, epsilon_, flags_);
   pd.reset(new bn_bwd::primitive_desc(bwdDesc, engine_, *fwdPD_));
   CHECK(pd->weights_primitive_desc() == fwdPD_->weights_primitive_desc());
   CHECK_PRIMITIVE_DESC_EQ(wgt, pd->diff_weights_primitive_desc());
@@ -297,11 +294,12 @@ void MKLDNNBatchNormLayer::resetBwdPipeline(
   if (pd == nullptr) {
     return;
   }
-  CHECK(inVal_);
+  CHECK(inVals_[0]);
   bwdData_.reset(
       wgt && wgtVal_
-          ? new bn_bwd(*pd, *inVal_, *mean_, *var_, *out, *wgtVal_, *in, *wgt)
-          : new bn_bwd(*pd, *inVal_, *mean_, *var_, *out, *in));
+          ? new bn_bwd(
+                *pd, *inVals_[0], *mean_, *var_, *out, *wgtVal_, *in, *wgt)
+          : new bn_bwd(*pd, *inVals_[0], *mean_, *var_, *out, *in));
   pipeline.push_back(*bwdData_);
 }
 
