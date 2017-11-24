@@ -185,7 +185,8 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
     // cudnn 7 can support groups, no need to do it mannually
     // FIXME(typhoonzero): find a better way to disable groups
     // rather than setting it to 1.
-    PADDLE_ENFORCE(cudnnSetConvolutionGroupCount(cudnn_conv_desc, groups));
+    PADDLE_ENFORCE(platform::dynload::cudnnSetConvolutionGroupCount(
+        cudnn_conv_desc, groups));
     groups = 1;
 #endif
 
