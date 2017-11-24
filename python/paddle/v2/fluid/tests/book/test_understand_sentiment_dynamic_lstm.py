@@ -41,9 +41,9 @@ def stacked_lstm_net(input_dim,
     cost = layers.cross_entropy(input=prediction, label=label)
     avg_cost = layers.mean(x=cost)
     adam_optimizer = AdamOptimizer(learning_rate=0.002)
-    opts = adam_optimizer.minimize(avg_cost)
-    accuracy, acc_out = evaluator.accuracy(input=prediction, label=label)
-    return avg_cost, accuracy, acc_out
+    adam_optimizer.minimize(avg_cost)
+    accuracy = evaluator.Accuracy(input=prediction, label=label)
+    return avg_cost, accuracy, accuracy.metrics[0]
 
 
 def to_lodtensor(data, place):

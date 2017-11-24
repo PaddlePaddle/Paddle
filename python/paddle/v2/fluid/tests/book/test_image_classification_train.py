@@ -109,7 +109,7 @@ avg_cost = layers.mean(x=cost)
 optimizer = AdamOptimizer(learning_rate=0.001)
 opts = optimizer.minimize(avg_cost)
 
-accuracy, acc_out = evaluator.accuracy(input=predict, label=label)
+accuracy = evaluator.Accuracy(input=predict, label=label)
 
 BATCH_SIZE = 128
 PASS_NUM = 1
@@ -144,7 +144,7 @@ for pass_id in range(PASS_NUM):
         outs = exe.run(framework.default_main_program(),
                        feed={"pixel": tensor_img,
                              "label": tensor_y},
-                       fetch_list=[avg_cost, acc_out])
+                       fetch_list=[avg_cost] + accuracy.metrics)
 
         loss = np.array(outs[0])
         acc = np.array(outs[1])

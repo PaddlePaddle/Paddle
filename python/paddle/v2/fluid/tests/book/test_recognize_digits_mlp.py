@@ -35,7 +35,7 @@ avg_cost = layers.mean(x=cost)
 optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
 opts = optimizer.minimize(avg_cost)
 
-accuracy, acc_out = evaluator.accuracy(input=predict, label=label)
+accuracy = evaluator.Accuracy(input=predict, label=label)
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
@@ -64,13 +64,11 @@ for pass_id in range(PASS_NUM):
         outs = exe.run(framework.default_main_program(),
                        feed={'x': tensor_x,
                              'y': tensor_y},
-                       fetch_list=[avg_cost, acc_out])
+                       fetch_list=[avg_cost] + accuracy.metrics)
         out = np.array(outs[0])
         acc = np.array(outs[1])
         pass_acc = accuracy.eval(exe)
 
         if pass_acc > 0.7:
             exit(0)
-            # print("pass_id=" + str(pass_id) + " auc=" +
-            #      str(acc) + " pass_acc=" + str(pass_acc))
 exit(1)
