@@ -1775,3 +1775,149 @@ class IfElse(object):
                     main_program=self.helper.main_program,
                     startup_program=self.helper.startup_program))
         return rlist
+
+
+class DynamicRNNGuard(object):
+    def __init__(self, rnn):
+        if not isinstance(rnn, DynamicRNN):
+            raise TypeError("rnn must be an instance of DynamicRNN.")
+        self.while_block = rnn.while_op.block()
+        self.rnn = rnn
+
+    def __enter__(self):
+        self.rnn.status = DynamicRNN.IN_RNN_BLOCK
+        self.while_block.__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if not self.while_block.__exit__(exc_type, exc_val, exc_tb):
+            return False
+        self.rnn.status = DynamicRNN.AFTER_RNN_BLOCK
+        self.rnn.complete_rnn_op()
+
+
+class DynamicRNN(object):
+    """
+    DynamicRNN class
+
+    DynamicRNN class is used to create a dynamic RNN. 
+    In static RNN, all sequence instances must have the same length,
+    while dynamic RNN can handle sequence instances of different lengths.
+    """
+    BEFORE_RNN_BLOCK = 0
+    IN_RNN_BLOCK = 1
+    AFTER_RNN_BLOCK = 2
+
+    def __init__(self, name=None, main_program=None):
+        self.helper = LayerHelper(
+            "dynamic_rnn", name=name, main_program=main_program)
+        self.inputs = []
+        self.outputs = []
+        self.status = DynamicRNN.BEFORE_RNN_BLOCK
+        self.step_idx = layers.fill_constant(shape=[1], dtype='int64', value=0)
+        self.while_cond = self.helper.create_tmp_variable(dtype="bool")
+        self.while_op = While(self.while_cond)
+
+        self.lod_rank_table = None
+        self.mem_array = None
+        self.outputs = []
+
+    def step(self):
+        return DynamicRNNGuard(self)
+
+    def _assert_in_rnn_block_(self, method):
+        if self.status != DynamicRNN.IN_RNN_BLOCK:
+            raise ValueError("{0} can only be invoked inside rnn block.".format(
+                method))
+
+    def _parent_block_():
+        prog = self.helper.main_program
+        parent_idx = prog.current_block().parent_idx
+        assert parent_idx >= 0
+        parent_block = prog.block(parent_idx)
+        return parent_block
+
+    def step_input(self, x):
+        self._assert_in_rnn_block_("step_input")
+        if not isinstance(x, Variable):
+            raise TypeError("step_input() can only takes an Variable as input.")
+        parent_block = self._parent_block_()
+        self.lod_rank_table = parent_block.create_var(
+            name=unique_name("lod_rank_table"),
+            type=core.VarDesc.VarType.LOD_RANK_TABLE)
+        parent_block.append_op(
+            type="lod_rank_table",
+            inputs={"X": x},
+            outputs={"Out": self.lod_rank_table},
+            attrs={"level": 0})
+        input_array = parent_block.create_var(
+            name=unique_name("dynamic_rnn_input_array"),
+            type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+            dtype=x.dtype)
+        parent_block.append_op(
+            type="lod_tensor_to_array",
+            inputs={"X": x,
+                    "RankTable": self.lod_rank_table},
+            outputs={"Out": input_array})
+        return array_read(array=input_array, i=self.step_idx)
+
+    def memory(self, init):
+        self._assert_in_rnn_block_("memory")
+        if not isinstance(init, Variable):
+            raise TypeError(
+                "The input arg 'init' of memory() must be an Variable.")
+        parent_block = self._parent_block_()
+        self.mem_array = parent_block.create_var(
+            name=unique_name("dynamic_rnn_mem_array"),
+            type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+            dtype=init.dtype)
+        parent_block.append_op(
+            type="write_to_array",
+            inputs={"X": [init],
+                    "I": [self.step_idx]},
+            outputs={"Out": [self.mem_array]})
+        return array_read(array=self.mem_array, i=self.step_idx)
+        # 什么时候shrink_memory？在返回之前吗？？
+
+    def update_memory(self, var):
+        self._assert_in_rnn_block_("update_memory")
+        if not isinstance(var, Variable):
+            raise TypeError(
+                "The input arg 'var' of memory() must be an Variable.")
+        if self.mem_array is None:
+            raise ValueError(
+                "Dynamic RNN memory must be initialized before update it.")
+        array_write(x=var, i=self.step_idx, array=self.mem_array)
+        # 这里的step_idx谁来更新？？？
+
+    def output(self, *outputs):
+        self._assert_in_rnn_block_("output")
+        if self.lod_rank_table is None:
+            raise ValueError("Please invoke 'step_input()' before 'output'.")
+        parent_block = self._parent_block_()
+        for o in outputs:
+            o_array = parent_block.create_var(
+                name=unique_name("dynamic_rnn_output_array@" + o.name),
+                type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+                dtype=o.dtype)
+            array_write(x=o, i=self.step_idx, array=o_array)
+            o_rnn_out = parent_block.create_var(
+                name=unique_name("dynamic_rnn_out@" + o.name),
+                dtype=o.dtype,
+                persistable=False)
+            parent_block.append_op(
+                type="array_to_lod_tensor",
+                inputs={"X": o_array,
+                        "RankTable": self.lod_rank_table},
+                outputs={"Out": o_rnn_out})
+            self.outputs.append(o_rnn_out)
+
+    def __call__(self, *args, **kwargs):
+        if self.status != DynamicRNN.AFTER_RNN_BLOCK:
+            raise ValueError(
+                "Dynamic RNN output can only be retrieved after rnn block.")
+        if len(self.outputs) == 0:
+            raise ValueError("Your Dynamic RNN has no output.")
+        elif len(self.outputs) == 1:
+            return self.outputs[0]
+        else:
+            return self.outputs
