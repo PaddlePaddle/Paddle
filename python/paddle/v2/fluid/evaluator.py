@@ -13,7 +13,7 @@ def _clone_var_(block, var):
     return block.create_var(
         name=var.name,
         shape=var.shape,
-        dtype=var.data_type,
+        dtype=var.dtype,
         type=var.type,
         lod_level=var.lod_level,
         persistable=True)
@@ -59,7 +59,7 @@ class Evaluator(object):
             layers.fill_constant(
                 shape=g_var.shape,
                 value=0.0,
-                dtype=g_var.data_type,
+                dtype=g_var.dtype,
                 out=g_var,
                 main_program=reset_program)
 
@@ -118,8 +118,8 @@ class Accuracy(Evaluator):
             total=total,
             correct=correct,
             **kwargs)
-        total = layers.cast(x=total, data_type='int64', **kwargs)
-        correct = layers.cast(x=correct, data_type='int64', **kwargs)
+        total = layers.cast(x=total, dtype='int64', **kwargs)
+        correct = layers.cast(x=correct, dtype='int64', **kwargs)
         layers.sums(input=[self.total, total], out=self.total, **kwargs)
         layers.sums(input=[self.correct, correct], out=self.correct, **kwargs)
 
@@ -132,7 +132,7 @@ class Accuracy(Evaluator):
         kwargs = {'main_program': eval_program}
         total = _clone_var_(block, self.total)
         correct = _clone_var_(block, self.correct)
-        total = layers.cast(total, data_type='float32', **kwargs)
-        correct = layers.cast(correct, data_type='float32', **kwargs)
+        total = layers.cast(total, dtype='float32', **kwargs)
+        correct = layers.cast(correct, dtype='float32', **kwargs)
         out = layers.elementwise_div(x=correct, y=total, **kwargs)
         return np.array(executor.run(eval_program, fetch_list=[out])[0])
