@@ -39,9 +39,6 @@ class Evaluator(object):
     """
 
     def __init__(self, name, **kwargs):
-        """
-        init the global states
-        """
         self.states = []
         self.metrics = []
         self.helper = LayerHelper(name, **kwargs)
