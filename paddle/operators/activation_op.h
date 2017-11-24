@@ -296,7 +296,7 @@ template <typename T>
 struct ZeroGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Y, typename dY, typename dX>
   void operator()(Device d, X x, Y y, dY dy, dX dx) const {
-    dx.device(d) = static_cast<T>(0);
+    dx.device(d) = static_cast<T>(0) / x;
   }
 };
 
