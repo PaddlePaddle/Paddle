@@ -27,17 +27,20 @@ struct BeamSearchDecodeFunctor {
         score_tensor_(score_tensor) {}
 
   template <typename T>
-  void operator()() const {
-    BeamSearchDecoder<T> beam_search_decoder;
-    beam_search_decoder.PackAllSteps(step_ids_, step_scores_, id_tensor_,
-                                     score_tensor_);
-  }
+  void operator()() const;
 
   const LoDTensorArray& step_ids_;
   const LoDTensorArray& step_scores_;
   LoDTensor* id_tensor_;
   LoDTensor* score_tensor_;
 };
+
+template <typename T>
+void BeamSearchDecodeFunctor::operator()() const {
+  BeamSearchDecoder<T> beam_search_decoder;
+  beam_search_decoder.PackAllSteps(step_ids_, step_scores_, id_tensor_,
+                                   score_tensor_);
+}
 
 template <>
 void BeamSearchDecodeFunctor::operator()<bool>() const {
