@@ -270,6 +270,7 @@ void AdamParameterOptimizer::update(const VectorPtr vecs[],
   real beta1_power = std::pow(beta1_, step_);
   real beta2_power = std::pow(beta2_, step_);
   real learningRate = config.learning_rate() * learningRate_;
+  real decayRate = applyDecay_ ? config.decay_rate() : 0;
 
   BaseMatrix& value = *vecs[PARAMETER_VALUE];
   BaseMatrix& grad = *vecs[PARAMETER_GRADIENT];
@@ -285,7 +286,8 @@ void AdamParameterOptimizer::update(const VectorPtr vecs[],
             beta1_power,
             beta2_power,
             epsilon_,
-            learningRate);
+            learningRate,
+            decayRate);
 }
 
 void AdamaxParameterOptimizer::update(const VectorPtr vecs[],
@@ -293,13 +295,15 @@ void AdamaxParameterOptimizer::update(const VectorPtr vecs[],
                                       size_t sparseId) const {
   CHECK(sparseId == -1UL) << "Sparse update is not supported";
   real learningRate = config.learning_rate() * learningRate_;
+  real decayRate = applyDecay_ ? config.decay_rate() : 0;
 
   BaseMatrix& value = *vecs[PARAMETER_VALUE];
   BaseMatrix& grad = *vecs[PARAMETER_GRADIENT];
   BaseMatrix& mom = *vecs[PARAMETER_MOMENTUM];
   BaseMatrix& u = *vecs[PARAMETER_WEIGHTED_INFINITY_NORM];
 
-  adamaxApply(value, grad, mom, u, beta1_, beta2_, step_, learningRate);
+  adamaxApply(
+      value, grad, mom, u, beta1_, beta2_, step_, learningRate, decayRate);
 }
 
 void OptimizerWithGradientClipping::update(const VectorPtr vecs[],

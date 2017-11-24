@@ -97,26 +97,30 @@ extern void decayedAdagradApply(BaseMatrix& value,
 /**
  * \brief Adam optimizer.
  */
-extern void adamApply(BaseMatrix& value,
-                      BaseMatrix& grad,
-                      BaseMatrix& mom,
-                      BaseMatrix& v,
-                      real beta1,
-                      real beta2,
-                      real beta1_power,
-                      real beta2_power,
-                      real epsilon,
-                      real learningRate);
+extern void adamApply(
+    BaseMatrix& value,
+    BaseMatrix& grad,
+    BaseMatrix& mom,  // estimation of the first order momentum
+    BaseMatrix& v,    // estimation of the second order momentum
+    real beta1,
+    real beta2,
+    real beta1_power,
+    real beta2_power,
+    real epsilon,
+    real learningRate,
+    real decayRate);
 
 /**
  * \brief AdaMax optimizer.
  */
-extern void adamaxApply(BaseMatrix& value,
-                        BaseMatrix& grad,
-                        BaseMatrix& mom,  // firse moment
-                        BaseMatrix& u,    // weighted infinity norm
-                        real beta1,
-                        real beta2,
-                        int64_t step,
-                        real alpha);
+extern void adamaxApply(
+    BaseMatrix& value,
+    BaseMatrix& grad,
+    BaseMatrix& mom,  // estimation of the first order momentum
+    BaseMatrix& u,    // the weighted infinity norm
+    real beta1,
+    real beta2,
+    int64_t step,
+    real alpha,
+    real decayRate);
 }  // namespace paddle
