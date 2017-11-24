@@ -93,7 +93,7 @@ class ConstantInitializer(Initializer):
             outputs={"Out": var},
             attrs={
                 "shape": var.shape,
-                "data_type": int(var.data_type),
+                "dtype": int(var.dtype),
                 "value": self._value
             })
         var.op = op
@@ -140,7 +140,7 @@ class UniformInitializer(Initializer):
             outputs={"Out": var},
             attrs={
                 "shape": var.shape,
-                "data_type": int(var.data_type),
+                "dtype": int(var.dtype),
                 "min": self._low,
                 "max": self._high,
                 "seed": self._seed
@@ -188,7 +188,7 @@ class NormalInitializer(Initializer):
             outputs={"Out": var},
             attrs={
                 "shape": var.shape,
-                "data_type": int(var.data_type),
+                "dtype": int(var.dtype),
                 "mean": self._mean,
                 "std": self._std_dev,
                 "seed": self._seed
@@ -265,7 +265,7 @@ class XavierInitializer(Initializer):
                 outputs={"Out": var},
                 attrs={
                     "shape": var.shape,
-                    "data_type": int(var.data_type),
+                    "dtype": int(var.dtype),
                     "min": -limit,
                     "max": limit,
                     "seed": self._seed
@@ -278,7 +278,7 @@ class XavierInitializer(Initializer):
                 outputs={"Out": var},
                 attrs={
                     "shape": var.shape,
-                    "data_type": int(var.data_type),
+                    "dtype": int(var.dtype),
                     "mean": 0.0,
                     "std": std,
                     "seed": self._seed
@@ -348,7 +348,7 @@ class MSRAInitializer(Initializer):
                 outputs={"Out": var},
                 attrs={
                     "shape": var.shape,
-                    "data_type": int(var.data_type),
+                    "dtype": int(var.dtype),
                     "min": -limit,
                     "max": limit,
                     "seed": self._seed
@@ -361,7 +361,7 @@ class MSRAInitializer(Initializer):
                 outputs={"Out": var},
                 attrs={
                     "shape": var.shape,
-                    "data_type": int(var.data_type),
+                    "dtype": int(var.dtype),
                     "mean": 0.0,
                     "std": std,
                     "seed": self._seed

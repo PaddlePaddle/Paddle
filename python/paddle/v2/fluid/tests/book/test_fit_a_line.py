@@ -7,11 +7,11 @@ from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.io import save_persistables, load_persistables
 from paddle.v2.fluid.optimizer import SGDOptimizer
 
-x = layers.data(name='x', shape=[13], data_type='float32')
+x = layers.data(name='x', shape=[13], dtype='float32')
 
 y_predict = layers.fc(input=x, size=1, act=None)
 
-y = layers.data(name='y', shape=[1], data_type='float32')
+y = layers.data(name='y', shape=[1], dtype='float32')
 
 cost = layers.square_error_cost(input=y_predict, label=y)
 avg_cost = layers.mean(x=cost)

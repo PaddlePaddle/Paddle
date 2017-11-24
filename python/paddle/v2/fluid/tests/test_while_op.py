@@ -9,11 +9,11 @@ import numpy
 class TestWhileOp(unittest.TestCase):
     def test_simple_forward(self):
         d0 = layers.data(
-            "d0", shape=[10], append_batch_size=False, data_type='float32')
+            "d0", shape=[10], append_batch_size=False, dtype='float32')
         d1 = layers.data(
-            "d1", shape=[10], append_batch_size=False, data_type='float32')
+            "d1", shape=[10], append_batch_size=False, dtype='float32')
         d2 = layers.data(
-            "d2", shape=[10], append_batch_size=False, data_type='float32')
+            "d2", shape=[10], append_batch_size=False, dtype='float32')
         i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
         init = layers.zeros(shape=[10], dtype='float32')
