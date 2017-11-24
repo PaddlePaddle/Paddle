@@ -49,7 +49,7 @@ class NCCLInitOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Communicator",
               "Create Communicator for communicating between gpus");
     AddAttr<std::vector<int>>("gpus", "(vector<int>) GPU id lists");
-    AddAttr<int>("data_type",
+    AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
         .SetDefault(framework::DataType::FP32);

@@ -101,13 +101,13 @@ class TestVarDesc(unittest.TestCase):
         self.assertEqual(src_shape, res_shape)
         self.assertEqual(core.VarDesc.VarType.SELECTED_ROWS, var.type())
 
-    def test_data_type(self):
+    def test_dtype(self):
         program_desc = core.ProgramDesc()
         block = program_desc.block(0)
         var = block.var('my_var')
         var.set_type(core.VarDesc.VarType.LOD_TENSOR)
-        var.set_data_type(core.DataType.INT32)
-        self.assertEqual(core.DataType.INT32, var.data_type())
+        var.set_dtype(core.DataType.INT32)
+        self.assertEqual(core.DataType.INT32, var.dtype())
         self.assertEqual(core.VarDesc.VarType.LOD_TENSOR, var.type())
 
 

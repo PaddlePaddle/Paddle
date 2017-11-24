@@ -10,8 +10,8 @@ from paddle.v2.fluid.optimizer import AdamOptimizer
 
 
 def convolution_net(input_dim, class_dim=2, emb_dim=32, hid_dim=32):
-    data = layers.data(name="words", shape=[1], data_type="int64")
-    label = layers.data(name="label", shape=[1], data_type="int64")
+    data = layers.data(name="words", shape=[1], dtype="int64")
+    label = layers.data(name="label", shape=[1], dtype="int64")
 
     emb = layers.embedding(input=data, size=[input_dim, emb_dim])
     conv_3 = nets.sequence_conv_pool(

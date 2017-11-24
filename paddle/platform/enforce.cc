@@ -12,17 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
-#include "paddle/framework/framework.pb.h"
 #include "paddle/platform/enforce.h"
 
 namespace paddle {
-namespace framework {
-
-void Prune(const ProgramDesc& input, ProgramDesc* output);
-
-void InferenceOptimize(const ProgramDesc& input, ProgramDesc* output);
-
-}  // namespace framework
+namespace platform {}  // namespace platform
 }  // namespace paddle

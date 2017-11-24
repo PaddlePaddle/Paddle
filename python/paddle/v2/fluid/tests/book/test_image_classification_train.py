@@ -5,6 +5,7 @@ import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.nets as nets
 import paddle.v2.fluid.evaluator as evaluator
+from paddle.v2.fluid.io import get_inference_program
 from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.initializer import XavierInitializer
 from paddle.v2.fluid.optimizer import AdamOptimizer
@@ -90,8 +91,8 @@ def vgg16_bn_drop(input):
 classdim = 10
 data_shape = [3, 32, 32]
 
-images = layers.data(name='pixel', shape=data_shape, data_type='float32')
-label = layers.data(name='label', shape=[1], data_type='int64')
+images = layers.data(name='pixel', shape=data_shape, dtype='float32')
+label = layers.data(name='label', shape=[1], dtype='int64')
 
 # Add neural network config
 # option 1. resnet
@@ -116,8 +117,10 @@ PASS_NUM = 1
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
-        paddle.dataset.cifar.train10(), buf_size=128 * 10),
+        paddle.dataset.cifar.train10(), buf_size=BATCH_SIZE * 10),
     batch_size=BATCH_SIZE)
+
+test_reader = paddle.batch(paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE)
 
 place = core.CPUPlace()
 exe = Executor(place)
@@ -149,10 +152,41 @@ for pass_id in range(PASS_NUM):
         loss = np.array(outs[0])
         acc = np.array(outs[1])
         pass_acc = accuracy.eval(exe)
+
+        batch_id = batch_id + 1
+
+        test_accuracy, test_acc_out = evaluator.accuracy(
+            input=predict, label=label)
+
+        test_target = [avg_cost, test_acc_out] + test_accuracy.states().values()
+        inference_program = get_inference_program(test_target)
+
+        test_accuracy.reset(exe)
+
+        for data in test_reader():
+            x_data = np.array(map(lambda x: x[0].reshape(data_shape),
+                                  data)).astype("float32")
+            y_data = np.array(map(lambda x: x[1], data)).astype("int64")
+            y_data = np.expand_dims(y_data, axis=1)
+
+            tensor_x = core.LoDTensor()
+            tensor_x.set(x_data, place)
+
+            tensor_y = core.LoDTensor()
+            tensor_y.set(y_data, place)
+
+            outs = exe.run(inference_program,
+                           feed={'pixel': tensor_x,
+                                 'label': tensor_y},
+                           fetch_list=[avg_cost, test_acc_out])
+            out = np.array(outs[0])
+            acc = np.array(outs[1])
+
+        test_pass_acc = test_accuracy.eval(exe)
+
         print("pass_id:" + str(pass_id) + " batch_id:" + str(batch_id) +
               " loss:" + str(loss) + " acc:" + str(acc) + " pass_acc:" + str(
-                  pass_acc))
-        batch_id = batch_id + 1
+                  pass_acc) + " test_pass_acc:" + str(test_pass_acc))
 
         if batch_id > 1:
             # this model is slow, so if we can train two mini batch, we think it works properly.
