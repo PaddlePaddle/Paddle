@@ -70,6 +70,14 @@ class LRNKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename Place, typename T>
+struct LRNGradFunctor {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor* input, int N, int C, int H, int W,
+                  int n, T alpha, T beta, T k, framework::Tensor* mid,
+                  framework::Tensor* out);
+};
+
 /**
  * \brief Backward calculation for normalization with across maps.
  *
@@ -78,7 +86,7 @@ class LRNKernel : public framework::OpKernel<T> {
  * The implementation of this Function is derived from the
  * CrossMapNormalFunc implementation.
  *
- * InputGrad = OutputGrad * denoms ^ (-beta)
+ * InputGrad = OutputGrad * mid ^ (-beta)
  *    -- upper
  *  + > (OutputGrad * OutputValue * (-2 * alpha * beta) / MidOut) * InputValue
  *    -- lower

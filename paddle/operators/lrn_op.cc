@@ -31,8 +31,6 @@ struct LRNFunctor<platform::CPUPlace, T> {
     const int end = start + n;
 
     auto e_mid = framework::EigenTensor<T, 4>::From(*mid);
-    // e_mid.device(dev_ctx.GetEigenDevice<platform::CPUPlace>()) =
-    // e_mid.constant(k);
     e_mid.device(ctx.GetEigenDevice<platform::CPUPlace>()) = e_mid.constant(k);
 
     auto e_x = framework::EigenTensor<T, 4>::From(*input);

@@ -84,8 +84,8 @@ void CrossMapNormal(const framework::ExecutionContext& ctx, const T* inputs,
 template <typename T>
 struct LRNFunctor<platform::GPUPlace, T> {
   void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* input, framework::Tensor* mid,
-                  framework::Tensor* out, int N, int C, int H, int W, int n,
+                  const framework::Tensor* input, framework::Tensor* out,
+                  framework::Tensor* mid, int N, int C, int H, int W, int n,
                   T k, T alpha, T beta) {
     CrossMapNormal<T>(
         ctx, input->data<T>(), out->mutable_data<T>(ctx.GetPlace()),
