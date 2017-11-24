@@ -494,7 +494,7 @@ class Block(object):
             new_p = Parameter(
                 block=self,
                 shape=v.shape,
-                dtype=v.data_type,
+                dtype=v.dtype,
                 type=v.type,
                 lod_level=v.lod_level,
                 stop_gradient=p.stop_gradient,
