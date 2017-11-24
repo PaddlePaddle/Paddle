@@ -97,7 +97,7 @@ class NCCLTester : public ::testing::Test {
       send_tensor->mutable_data<T>(kDims, place);
 
       std::vector<T> send_vector(f::product(kDims), gpu_id);
-      f::CopyFromVector<T>(send_vector, *ctx, &send_vector);
+      paddle::framework::CopyFromVector<T>(send_vector, *ctx, send_tensor);
       ctx->Wait();
       VLOG(1) << "Send Tensor filled with elements " << send_tensor->numel();
     }
