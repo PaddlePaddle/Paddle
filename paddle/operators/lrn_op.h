@@ -87,7 +87,7 @@ struct LRNGradFunctor {
  * The implementation of this Function is derived from the
  * CrossMapNormalFunc implementation.
  *
- * InputGrad = OutputGrad * mid ^ (-beta)
+ * InputGrad = OutputGrad * MidOut ^ (-beta)
  *    -- upper
  *  + > (OutputGrad * OutputValue * (-2 * alpha * beta) / MidOut) * InputValue
  *    -- lower

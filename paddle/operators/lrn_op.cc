@@ -185,8 +185,8 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Local Response Normalization Operator.
 
-This operator comes from the paper
-"ImageNet Classification with Deep Convolutional Neural Networks".
+This operator comes from the paper:
+<<ImageNet Classification with Deep Convolutional Neural Networks>>.
 
 The original formula is:
 
