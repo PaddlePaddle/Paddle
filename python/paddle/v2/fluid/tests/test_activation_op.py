@@ -171,7 +171,8 @@ class TestFloor(OpTest):
         self.op_type = "floor"
         x = np.random.uniform(-1, 1, [4, 4]).astype("float32")
         self.inputs = {'X': x}
-        self.outputs = {'Y': np.floor(self.inputs['X'])}
+        # numpy floor need +1
+        self.outputs = {'Y': np.floor(self.inputs['X']) + 1.0}
 
     def test_check_output(self):
         self.check_output()
