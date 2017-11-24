@@ -522,7 +522,7 @@ ParamGradInfoMap AppendBackward(
       new OpDescBind("fill_constant", {}, {{"Out", {fill_one_op_out}}},
                      {{"shape", std::vector<int>{1}},
                       {"value", static_cast<float>(1.0)},
-                      {"data_type", target.GetDataType()}}));
+                      {"dtype", target.GetDataType()}}));
   // infer var type of fill_one_op
   fill_one_op->InferVarType(root_block);
 

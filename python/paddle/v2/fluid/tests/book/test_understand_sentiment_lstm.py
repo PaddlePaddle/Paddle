@@ -12,19 +12,19 @@ def lstm_net(dict_dim, class_dim=2, emb_dim=32, seq_len=80, batch_size=50):
         name="words",
         shape=[seq_len * batch_size, 1],
         append_batch_size=False,
-        data_type="int64")
+        dtype="int64")
     label = layers.data(
         name="label",
         shape=[batch_size, 1],
         append_batch_size=False,
-        data_type="int64")
+        dtype="int64")
 
     emb = layers.embedding(input=data, size=[dict_dim, emb_dim])
     emb = layers.reshape(x=emb, shape=[batch_size, seq_len, emb_dim])
     emb = layers.transpose(x=emb, axis=[1, 0, 2])
 
     c_pre_init = layers.fill_constant(
-        dtype=emb.data_type, shape=[batch_size, emb_dim], value=0.0)
+        dtype=emb.dtype, shape=[batch_size, emb_dim], value=0.0)
     layer_1_out = layers.lstm(emb, c_pre_init=c_pre_init, hidden_dim=emb_dim)
     layer_1_out = layers.transpose(x=layer_1_out, axis=[1, 0, 2])
 

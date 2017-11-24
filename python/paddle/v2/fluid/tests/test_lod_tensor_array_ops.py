@@ -132,7 +132,7 @@ class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
         x = layers.data(
             name='x',
             shape=[1],
-            data_type='float32',
+            dtype='float32',
             main_program=program,
             stop_gradient=False)
         table = layers.lod_rank_table(x, level=0, main_program=program)

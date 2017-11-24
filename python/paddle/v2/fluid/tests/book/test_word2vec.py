@@ -16,34 +16,34 @@ IS_SPARSE = True
 word_dict = paddle.dataset.imikolov.build_dict()
 dict_size = len(word_dict)
 
-first_word = layers.data(name='firstw', shape=[1], data_type='int64')
-second_word = layers.data(name='secondw', shape=[1], data_type='int64')
-third_word = layers.data(name='thirdw', shape=[1], data_type='int64')
-forth_word = layers.data(name='forthw', shape=[1], data_type='int64')
-next_word = layers.data(name='nextw', shape=[1], data_type='int64')
+first_word = layers.data(name='firstw', shape=[1], dtype='int64')
+second_word = layers.data(name='secondw', shape=[1], dtype='int64')
+third_word = layers.data(name='thirdw', shape=[1], dtype='int64')
+forth_word = layers.data(name='forthw', shape=[1], dtype='int64')
+next_word = layers.data(name='nextw', shape=[1], dtype='int64')
 
 embed_first = layers.embedding(
     input=first_word,
     size=[dict_size, EMBED_SIZE],
-    data_type='float32',
+    dtype='float32',
     is_sparse=IS_SPARSE,
     param_attr={'name': 'shared_w'})
 embed_second = layers.embedding(
     input=second_word,
     size=[dict_size, EMBED_SIZE],
-    data_type='float32',
+    dtype='float32',
     is_sparse=IS_SPARSE,
     param_attr={'name': 'shared_w'})
 embed_third = layers.embedding(
     input=third_word,
     size=[dict_size, EMBED_SIZE],
-    data_type='float32',
+    dtype='float32',
     is_sparse=IS_SPARSE,
     param_attr={'name': 'shared_w'})
 embed_forth = layers.embedding(
     input=forth_word,
     size=[dict_size, EMBED_SIZE],
-    data_type='float32',
+    dtype='float32',
     is_sparse=IS_SPARSE,
     param_attr={'name': 'shared_w'})
 
