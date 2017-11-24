@@ -35,15 +35,15 @@ class TestBeamSearchDecodeOp(unittest.TestCase):
         self.append_lod_tensor(
             scores, [[0, 3, 6], [0, 1, 2, 3, 4, 5, 6]],
             np.array(
-                [1, 2, 3, 4, 5, 6], dtype="float32"))
+                [1, 2, 3, 4, 5, 6], dtype="float64"))
         self.append_lod_tensor(
             scores, [[0, 3, 6], [0, 1, 1, 3, 5, 5, 6]],
             np.array(
-                [0, 1, 2, 3, 4, 5], dtype="float32"))
+                [0, 1, 2, 3, 4, 5], dtype="float64"))
         self.append_lod_tensor(
             scores, [[0, 3, 6], [0, 0, 1, 2, 3, 4, 5]],
             np.array(
-                [0, 1, 2, 3, 4], dtype="float32"))
+                [0, 1, 2, 3, 4], dtype="float64"))
 
         sentence_ids = self.scope.var("sentence_ids").get_tensor()
         sentence_scores = self.scope.var("sentence_scores").get_tensor()

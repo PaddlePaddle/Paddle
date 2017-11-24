@@ -403,7 +403,7 @@ class RecurrentGradOp : public RecurrentBase {
             auto &inside_tensor = cur_scope.FindVar(inside_grad_name)
                                       ->Get<framework::LoDTensor>();
             framework::AttributeMap attrs;
-            attrs["data_type"] = framework::ToDataType(inside_tensor.type());
+            attrs["dtype"] = framework::ToDataType(inside_tensor.type());
             attrs["shape"] = framework::vectorize2int(inside_tensor.dims());
             attrs["value"] = 0.0f;
 
