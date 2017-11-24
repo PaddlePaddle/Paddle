@@ -104,7 +104,7 @@ class UniformInitializer(Initializer):
     """Implements the random uniform distribution initializer
     """
 
-    def __init__(self, low=-1.0, high=1.0, seed=0):
+    def __init__(self, low=-1.0, high=1.0, seed=1):
         """Constructor for UniformInitializer
 
         Args:
@@ -153,7 +153,7 @@ class NormalInitializer(Initializer):
     """Implements the  random Normal(Gaussian) distribution initializer
     """
 
-    def __init__(self, loc=0.0, scale=1.0, seed=0):
+    def __init__(self, loc=0.0, scale=1.0, seed=1):
         """Constructor for NormalInitializer
 
         Args:
@@ -217,7 +217,7 @@ class XavierInitializer(Initializer):
             (http://proceedings.mlr.press/v9/glorot10a.html)
     """
 
-    def __init__(self, uniform=True, fan_in=None, fan_out=None, seed=0):
+    def __init__(self, uniform=True, fan_in=None, fan_out=None, seed=1):
         """Constructor for XavierInitializer
 
         Args:
@@ -305,7 +305,7 @@ class MSRAInitializer(Initializer):
             (https://arxiv.org/abs/1502.01852)
     """
 
-    def __init__(self, uniform=True, fan_in=None, seed=0):
+    def __init__(self, uniform=True, fan_in=None, seed=1):
         """Constructor for MSRAInitializer
 
         Args:

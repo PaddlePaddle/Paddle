@@ -79,6 +79,7 @@ def fc(input,
         param_shape = [
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
         ] + [size]
+
         w = helper.create_parameter(
             attr=param_attr,
             initializer=param_initializer,
@@ -104,9 +105,9 @@ def fc(input,
         helper.append_op(
             type="sum", inputs={"X": mul_results}, outputs={"Out": pre_bias})
     # add bias
-    pre_activation = helper.append_bias_op(pre_bias, bias_initializer)
+    pre_act = helper.append_bias_op(pre_bias, bias_initializer)
     # add activation
-    return helper.append_activation(pre_activation)
+    return helper.append_activation(pre_act)
 
 
 def embedding(input,
@@ -726,7 +727,7 @@ def conv2d(input,
 
     def _get_default_param_initializer(filter_size, num_channels):
         std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
-        return NormalInitializer(0.0, std, 0)
+        return NormalInitializer(0.0, std, 1)
 
     helper = LayerHelper('conv2d', **locals())
     dtype = helper.input_dtype()
