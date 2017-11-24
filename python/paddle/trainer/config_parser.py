@@ -3865,9 +3865,18 @@ class SwitchOrderLayer(LayerBase):
         else:
             inH = input_layer.height
             inW = input_layer.width
-            inC = input_layer.size / inH / inW
-            out_dims = [0, inH, inW, inC]
-            size = reduce(lambda x, y: x * y, out_dims[reshape['width'][0]:])
+            if input_layer.has_depth():
+                inD = input_layer.depth
+                inC = input_layer.size / inH / inW / inD
+                out_dims = [0, inD, inH, inW, inC]
+                size = reduce(lambda x, y: x * y,
+                              out_dims[reshape['width'][0]:])
+            else:
+                inC = input_layer.size / inH / inW
+                out_dims = [0, inH, inW, inC]
+                size = reduce(lambda x, y: x * y,
+                              out_dims[reshape['width'][0]:])
+
             self.set_layer_size(size)
 
 
