@@ -3863,17 +3863,17 @@ class SwitchOrderLayer(LayerBase):
         if reshape is None:
             self.set_layer_size(input_layer.size)
         else:
-            inH = input_layer.height
-            inW = input_layer.width
+            in_h = input_layer.height
+            in_w = input_layer.width
             if input_layer.has_depth():
-                inD = input_layer.depth
-                inC = input_layer.size / inH / inW / inD
-                out_dims = [0, inD, inH, inW, inC]
+                in_d = input_layer.depth
+                in_c = input_layer.size / in_h / in_w / in_d
+                out_dims = [0, in_d, in_h, in_w, in_c]
                 size = reduce(lambda x, y: x * y,
                               out_dims[reshape['width'][0]:])
             else:
-                inC = input_layer.size / inH / inW
-                out_dims = [0, inH, inW, inC]
+                in_c = input_layer.size / in_h / in_w
+                out_dims = [0, in_h, in_w, in_c]
                 size = reduce(lambda x, y: x * y,
                               out_dims[reshape['width'][0]:])
 
