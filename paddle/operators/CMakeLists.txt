@@ -73,6 +73,13 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(conv2d);\n")
     endif()
 
+    # conv2d_cudnn_op contains several operators
+    if ("${TARGET}" STREQUAL "conv_cudnn_op")
+    set(pybind_flag 1)
+    # It's enough to just adding one operator to pybind
+    file(APPEND ${pybind_file} "USE_OP(conv2d_cudnn);\n")
+endif()
+
     # pool_op contains several operators
     if ("${TARGET}" STREQUAL "pool_op")
         set(pybind_flag 1)
