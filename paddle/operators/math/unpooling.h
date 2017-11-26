@@ -14,8 +14,6 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/framework/tensor.h"
-#include "paddle/platform/device_context.h"
-#include "paddle/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {
@@ -37,9 +35,9 @@ class Unpool2dMaxGradFunctor {
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& indices,
-                  framework::Tensor * input_grad,
                   const framework::Tensor& output,
-                  const framework::Tensor& output_grad);
+                  const framework::Tensor& output_grad,
+                  framework::Tensor * input_grad);
 };
 }  // namespace math
 }  // namespace operators

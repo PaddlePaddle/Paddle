@@ -114,9 +114,9 @@ class Unpool2dMaxGradFunctor<platform::GPUPlace, T> {
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& indices,
-                  framework::Tensor * input_grad,
                   const framework::Tensor& output,
-                  const framework::Tensor& output_grad) {
+                  const framework::Tensor& output_grad,
+                  framework::Tensor * input_grad) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
