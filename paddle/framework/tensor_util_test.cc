@@ -64,7 +64,7 @@ TEST(CopyFrom, Tensor) {
 
     // GPU Tensor to CPU Tensor
     auto cpu_place = new platform::CPUPlace();
-    CopyFrom(gpu_tensor, *cpu_place, gpu_ctx, &gpu_tensor);
+    CopyFrom(gpu_tensor, *cpu_place, gpu_ctx, &dst_tensor);
 
     // Sync before Compare Tensors
     gpu_ctx.Wait();
@@ -80,7 +80,7 @@ TEST(CopyFrom, Tensor) {
     CopyFrom(slice_tensor, *gpu_place, gpu_ctx, &gpu_tensor);
 
     // GPU Tensor to CPU Tensor
-    CopyFrom(gpu_tensor, *cpu_place, gpu_ctx, &gpu_tensor);
+    CopyFrom(gpu_tensor, *cpu_place, gpu_ctx, &dst_tensor);
 
     // Sync before Compare Slice Tensors
     gpu_ctx.Wait();

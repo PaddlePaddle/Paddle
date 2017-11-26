@@ -97,6 +97,7 @@ inline void CopyFromVector(const std::vector<T>& src,
   auto dst_place = ctx.GetPlace();
   auto src_ptr = static_cast<const void*>(src.data());
   platform::CPUPlace src_place;
+  dst->Resize({static_cast<int64_t>(src.size())});
   auto dst_ptr = static_cast<void*>(dst->mutable_data<T>(dst_place));
   auto size = src.size() * sizeof(T);
 
@@ -127,25 +128,25 @@ template <typename T>
 inline void CopyToVector(const Tensor& src, const platform::DeviceContext& ctx,
                          std::vector<T>* dst) {
   auto src_ptr = static_cast<const void*>(src.data<T>());
-  platform::CPUPlace src_place = boost::get<platform::CPUPlace>(src.place());
   auto size = src.numel() * sizeof(T);
 
-  auto dst_place = ctx.GetPlace();
+  platform::CPUPlace dst_place;
   dst->resize(src.numel());
   auto dst_ptr = static_cast<void*>(dst->data());
 
-  if (platform::is_cpu_place(src_place)) {
-    memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr, src_place,
-                 src_ptr, size);
+  if (platform::is_cpu_place(src.place())) {
+    memory::Copy(dst_place, dst_ptr, boost::get<platform::CPUPlace>(src.place()), 
+		    src_ptr, size);
   }
 #ifdef PADDLE_WITH_CUDA
-  else if (platform::is_gpu_place(src_place)) {  // NOLINT
+  else if (platform::is_gpu_place(src.place())) {  // NOLINT
     memory::Copy(
-        boost::get<platform::GPUPlace>(dst_place), dst_ptr, src_place, src_ptr,
+        dst_place, dst_ptr, boost::get<platform::GPUPlace>(src.place()), src_ptr,
         size,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
   }
 #endif
+
 }
 
 }  // namespace framework
