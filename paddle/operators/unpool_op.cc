@@ -78,7 +78,7 @@ class UnpoolOp : public framework::OperatorWithKernel {
 
     auto in_x_dims = ctx->GetInputDim("X");
     auto in_y_dims = ctx->GetInputDim("Y");
-    std::string unpoolingtype =
+    std::string unpooling_type =
       ctx->Attrs().Get<std::string>("unpoolingtype");
     std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
     std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
