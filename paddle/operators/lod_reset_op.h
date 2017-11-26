@@ -33,7 +33,8 @@ class LoDResetKernel : public framework::OpKernel<T> {
       auto* lod = lod_t->data<int>();
       if (platform::is_gpu_place(ctx.GetPlace())) {
         framework::Tensor lod_cpu;
-        lod_cpu.CopyFrom(*lod_t, platform::CPUPlace(), ctx.device_context());
+        framework::CopyFrom(*lod_t, platform::CPUPlace(), ctx.device_context(),
+                            &lod_cpu);
         lod = lod_cpu.data<int>();
       }
       level0 = std::vector<int>(lod, lod + lod_t->numel());
