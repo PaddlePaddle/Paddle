@@ -11,10 +11,9 @@ import numpy as np
 class TestMNISTIfElseOp(unittest.TestCase):
     def test_raw_api(self):
         kwargs = {'startup_program': Program(), 'main_program': Program()}
-        image = layers.data(
-            name='x', shape=[784], data_type='float32', **kwargs)
+        image = layers.data(name='x', shape=[784], dtype='float32', **kwargs)
 
-        label = layers.data(name='y', shape=[1], data_type='int64', **kwargs)
+        label = layers.data(name='y', shape=[1], dtype='int64', **kwargs)
 
         limit = layers.fill_constant_batch_size_like(
             input=label, dtype='int64', shape=[1], value=5.0, **kwargs)
@@ -84,10 +83,9 @@ class TestMNISTIfElseOp(unittest.TestCase):
 
     def test_ifelse(self):
         kwargs = {'startup_program': Program(), 'main_program': Program()}
-        image = layers.data(
-            name='x', shape=[784], data_type='float32', **kwargs)
+        image = layers.data(name='x', shape=[784], dtype='float32', **kwargs)
 
-        label = layers.data(name='y', shape=[1], data_type='int64', **kwargs)
+        label = layers.data(name='y', shape=[1], dtype='int64', **kwargs)
 
         limit = layers.fill_constant_batch_size_like(
             input=label, dtype='int64', shape=[1], value=5.0, **kwargs)

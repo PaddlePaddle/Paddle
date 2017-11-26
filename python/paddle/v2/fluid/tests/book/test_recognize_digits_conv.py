@@ -8,8 +8,8 @@ import paddle.v2.fluid.nets as nets
 from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.optimizer import AdamOptimizer
 
-images = layers.data(name='pixel', shape=[1, 28, 28], data_type='float32')
-label = layers.data(name='label', shape=[1], data_type='int64')
+images = layers.data(name='pixel', shape=[1, 28, 28], dtype='float32')
+label = layers.data(name='label', shape=[1], dtype='int64')
 conv_pool_1 = nets.simple_img_conv_pool(
     input=images,
     filter_size=5,

@@ -38,7 +38,7 @@ class WriteToArrayOp : public ArrayOp {
       out->resize(offset + 1);
     }
     auto *out_tensor = &out->at(offset);
-    out_tensor->CopyFrom(x_tensor, dev_ctx.GetPlace(), dev_ctx);
+    CopyFrom(x_tensor, dev_ctx.GetPlace(), dev_ctx, out_tensor);
     out_tensor->set_lod(x_tensor.lod());
   }
 };
@@ -116,7 +116,8 @@ class ReadFromArrayOp : public ArrayOp {
     auto *out_tensor = out->GetMutable<framework::LoDTensor>();
     size_t offset = GetOffset(scope, dev_ctx);
     PADDLE_ENFORCE_LT(offset, x_array.size());
-    out_tensor->CopyFrom(x_array[offset], dev_ctx.GetPlace(), dev_ctx);
+    framework::CopyFrom(x_array[offset], dev_ctx.GetPlace(), dev_ctx,
+                        out_tensor);
     out_tensor->set_lod(x_array[offset].lod());
   }
 };

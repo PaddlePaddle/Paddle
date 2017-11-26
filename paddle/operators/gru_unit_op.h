@@ -28,6 +28,10 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+
 enum GRUActivationType { identity = 0, sigmoid = 1, tanh = 2, relu = 3 };
 
 template <typename Place, typename T>
@@ -226,7 +230,7 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
     // backward for bias
     if (bias_grad) {
       bias_grad->mutable_data<T>(context.GetPlace());
-      auto d_b = EigenMatrix<T>::From(*bias_grad);
+      auto d_b = EigenVector<T>::Flatten(*bias_grad);
       d_b.device(place) = d_g.sum(Eigen::array<int, 1>({{0}}));
     }
   }

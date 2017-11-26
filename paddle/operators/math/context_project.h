@@ -149,7 +149,7 @@ class ContextProjectFunctor {
             Tensor out_t_sub = out_t.Slice(k * context_length,
                                            k * context_length + padding_size);
             Tensor w_sub = padding_data.Slice(k, k + padding_size);
-            out_t_sub.CopyFrom(w_sub, context.GetPlace(), context);
+            framework::CopyFrom(w_sub, context.GetPlace(), context, &out_t_sub);
           }
         }
         if (down_pad > 0) {  // add down pad
@@ -179,7 +179,7 @@ class ContextProjectFunctor {
                 (down_pad_begin_row + t) * context_length);
             Tensor w_sub = padding_data.Slice(
                 up_pad + padding_idx, up_pad + padding_idx + padding_size);
-            out_t_sub.CopyFrom(w_sub, context.GetPlace(), context);
+            framework::CopyFrom(w_sub, context.GetPlace(), context, &out_t_sub);
           }
         }
         out_t.Resize({sequence_height, context_length * sequence_width});

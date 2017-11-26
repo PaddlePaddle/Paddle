@@ -92,7 +92,7 @@ class Optimizer(object):
         var = self.helper.create_global_variable(
             name=unique_name(name),
             persistable=True,
-            dtype=dtype or param.data_type,
+            dtype=dtype or param.dtype,
             type=param.type,
             shape=param.shape)
         self.helper.set_variable_initializer(
@@ -202,7 +202,7 @@ class Optimizer(object):
         """
         params_grads = append_backward_ops(loss, parameter_list, no_grad_set or
                                            set())
-        # Add regularization if any 
+        # Add regularization if any
         params_grads = append_regularization_ops(params_grads)
         optimize_ops = self.create_optimization_pass(params_grads, loss,
                                                      startup_program)

@@ -24,6 +24,7 @@
 #include <glog/logging.h>
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/tensor.h"
+#include "paddle/framework/tensor_util.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 
@@ -175,9 +176,9 @@ LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
   PADDLE_ENFORCE_EQ(num_instances, lod_level.size() - 1);
   for (size_t ins = 0; ins < num_instances; ins++) {
     for (size_t elem = lod_level[ins]; elem < lod_level[ins + 1]; elem++) {
-      tensor.Slice(elem, elem + 1)
-          .CopyFrom(source.Slice(ins, ins + 1), platform::CPUPlace(),
-                    platform::CPUDeviceContext());
+      auto slice = tensor.Slice(elem, elem + 1);
+      CopyFrom(source.Slice(ins, ins + 1), platform::CPUPlace(),
+               platform::CPUDeviceContext(), &slice);
     }
   }
   return tensor;
