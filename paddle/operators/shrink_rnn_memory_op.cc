@@ -101,8 +101,8 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
     } else {
       auto &dout_tensor = dout_var->Get<framework::LoDTensor>();
       auto height = dout_tensor.dims()[0];
-      dx_tensor.Slice(0, static_cast<int>(height))
-          .CopyFrom(dout_tensor, dout_tensor.place(), dev_ctx);
+      auto slice = dx_tensor.Slice(0, static_cast<int>(height));
+      framework::CopyFrom(dout_tensor, dout_tensor.place(), dev_ctx, &slice);
       if (dx_tensor.dims()[0] < height) {
         auto rest_tensor = dx_tensor.Slice(
             static_cast<int>(height), static_cast<int>(dout_tensor.dims()[0]));

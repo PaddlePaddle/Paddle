@@ -67,15 +67,15 @@ The equation is as follows:
 
 1) Hard label (one-hot label, so every sample has exactly one class)
 
-$$Loss_j = \f$ -\text{Logit}_{Label_j} +
+$$Loss_j =  -\text{Logit}_{Label_j} +
 \log\left(\sum_{i=0}^{K}\exp(\text{Logit}_i)\right),
-j = 1, ..., K $\f$$
+j = 1,..., K$$
 
 2) Soft label (each sample can have a distribution over all classes)
 
-$$Loss_j = \f$ -\sum_{i=0}^{K}\text{Label}_i\left(\text{Logit}_i -
+$$Loss_j =  -\sum_{i=0}^{K}\text{Label}_i \left(\text{Logit}_i -
 \log\left(\sum_{i=0}^{K}\exp(\text{Logit}_i)\right)\right),
-j = 1,...,K $\f$$
+j = 1,...,K$$
 
 )DOC");
   }

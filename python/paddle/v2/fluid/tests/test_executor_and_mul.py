@@ -8,11 +8,11 @@ import numpy
 
 class TestExecutor(unittest.TestCase):
     def test_mul(self):
-        a = data(name='a', shape=[784], data_type='float32')
+        a = data(name='a', shape=[784], dtype='float32')
         b = data(
             name='b',
             shape=[784, 100],
-            data_type='float32',
+            dtype='float32',
             append_batch_size=False)
         out = mul(x=a, y=b)
         place = core.CPUPlace()

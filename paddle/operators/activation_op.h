@@ -283,6 +283,41 @@ struct SqrtGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+// ceil(x) = ceiling(x)
+template <typename T>
+struct CeilFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) const {
+    y.device(d) = x.ceil();
+  }
+};
+
+template <typename T>
+struct ZeroGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) const {
+    dx.device(d) = static_cast<T>(0) / x;
+  }
+};
+
+// floor(x) = flooring(x)
+template <typename T>
+struct FloorFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) const {
+    y.device(d) = x.ceil();
+  }
+};
+
+// round(x) = [x]
+template <typename T>
+struct RoundFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) const {
+    y.device(d) = x.round();
+  }
+};
+
 // abs(x) = |x|
 template <typename T>
 struct AbsFunctor : public BaseActivationFunctor<T> {
@@ -677,6 +712,9 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   __macro(softshrink, SoftShrinkFunctor, SoftShrinkGradFunctor);     \
   __macro(sqrt, SqrtFunctor, SqrtGradFunctor);                       \
   __macro(abs, AbsFunctor, AbsGradFunctor);                          \
+  __macro(ceil, CeilFunctor, ZeroGradFunctor);                       \
+  __macro(floor, FloorFunctor, ZeroGradFunctor);                     \
+  __macro(round, RoundFunctor, ZeroGradFunctor);                     \
   __macro(reciprocal, ReciprocalFunctor, ReciprocalGradFunctor);     \
   __macro(log, LogFunctor, LogGradFunctor);                          \
   __macro(square, SquareFunctor, SquareGradFunctor);                 \
