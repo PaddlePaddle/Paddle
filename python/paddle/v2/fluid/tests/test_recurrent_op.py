@@ -156,7 +156,7 @@ class RecurrentOpTest1(unittest.TestCase):
                       feed=self.feed_map,
                       fetch_list=[self.output])
 
-        return np.array(out[0])
+        return out[0]
 
     def backward(self):
         self.feed_map = {
@@ -171,7 +171,8 @@ class RecurrentOpTest1(unittest.TestCase):
         exe = Executor(self.place)
         return exe.run(self.main_program,
                        feed=self.feed_map,
-                       fetch_list=fetch_list)
+                       fetch_list=fetch_list,
+                       return_numpy=False)
 
     def test_backward(self):
         self.check_forward()
