@@ -17,4 +17,5 @@
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(adam,
-                       ops::AdamOpKernel<paddle::platform::GPUPlace, float>);
+                       ops::AdamOpKernel<paddle::platform::GPUPlace, float>,
+                       ops::AdamOpKernel<paddle::platform::GPUPlace, double>);

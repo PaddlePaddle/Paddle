@@ -34,15 +34,16 @@ typedef std::shared_ptr<MKLDNNLayer> MKLDNNLayerPtr;
  */
 class MKLDNNLayer : public Layer {
 protected:
-  // input value element count
-  size_t inputElemenCnt_;
   // batch size
   int bs_;
+  // their sizes are always from the first input layer
   // input image channel, height and width
   int ic_, ih_, iw_;
   // output image channel, height and width
   int oc_, oh_, ow_;
 
+  // the condition that forward need be reset
+  size_t condition_;
   // backward also need reset after reset forward handle
   bool needResetBwd_;
 
@@ -67,18 +68,18 @@ protected:
    * When all layers are mkldnn layers, they could save internal data.
    */
   // below MKLDNNMatrix buffers are all internal buffers
-  MKLDNNMatrixPtr inVal_;
-  MKLDNNMatrixPtr inGrad_;
+  std::vector<MKLDNNMatrixPtr> inVals_;
+  std::vector<MKLDNNMatrixPtr> inGrads_;
   MKLDNNMatrixPtr outVal_;
   MKLDNNMatrixPtr outGrad_;
   // below are external value and grad
-  MKLDNNMatrixPtr extInVal_;
-  MKLDNNMatrixPtr extInGrad_;
+  std::vector<MKLDNNMatrixPtr> extInVals_;
+  std::vector<MKLDNNMatrixPtr> extInGrads_;
   MKLDNNMatrixPtr extOutVal_;
   MKLDNNMatrixPtr extOutGrad_;
   // convert handle between external and internal buffers
-  std::shared_ptr<mkldnn::reorder> cvtInVal_;
-  std::shared_ptr<mkldnn::reorder> cvtInGrad_;
+  std::vector<std::shared_ptr<mkldnn::reorder>> cvtInVals_;
+  std::vector<std::shared_ptr<mkldnn::reorder>> cvtInGrads_;
   std::shared_ptr<mkldnn::reorder> cvtOutVal_;
   std::shared_ptr<mkldnn::reorder> cvtOutGrad_;
 
@@ -93,23 +94,11 @@ protected:
   std::vector<mkldnn::primitive> pipelineMergeGrad_;
   // tmp input argument to save input grad, only used to merge grad
   Argument tmpInArg_;
-  // since mkldnn sum do not support different formats:
-  // can refer to https://github.com/01org/mkl-dnn/issues/134
-  // so need create reorder manually and save tmp MKLDNNMatrix
-  MKLDNNMatrixPtr tmpOutGrad_;
-  std::shared_ptr<mkldnn::primitive> tmpCvt_;
 
 public:
   explicit MKLDNNLayer(const LayerConfig& config)
       : Layer(config),
-        inputElemenCnt_(0),
-        bs_(0),
-        ic_(0),
-        ih_(0),
-        iw_(0),
-        oc_(0),
-        oh_(0),
-        ow_(0),
+        condition_(0),
         needResetBwd_(true),
         outputOnlyMKLDNN_(false),
         engine_(mkldnn::engine::cpu, 0),
@@ -125,31 +114,28 @@ public:
   virtual void backward(const UpdateCallback& callback);
 
   /**
-   * reshape the input image sizes
-   * and reset output image and buffer size
-   * output channel can not be changed
+   * reshape the input and output channels and image sizes
+   * and reset output buffer size
    */
   virtual void reshape(
-      int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) = 0;
+      int& bs, int& ic, int& ih, int& iw, int& oc, int& oh, int& ow) = 0;
 
   /**
    * reset the mkldnn forward primitve and memories
    * only would be called when input size changes
+   * weight and bias buffers should be coverd by child class itself
    */
   virtual void resetFwd(std::vector<mkldnn::primitive>& pipeline,
-                        MKLDNNMatrixPtr& in,
-                        MKLDNNMatrixPtr& wgt,
-                        MKLDNNMatrixPtr& bias,
+                        std::vector<MKLDNNMatrixPtr>& inputs,
                         MKLDNNMatrixPtr& out) = 0;
 
   /**
    * reset the mkldnn backward primitve and memories
    * only would be called when needed
+   * weight and bias buffers should be coverd by child class itself
    */
   virtual void resetBwd(std::vector<mkldnn::primitive>& pipeline,
-                        MKLDNNMatrixPtr& in,
-                        MKLDNNMatrixPtr& wgt,
-                        MKLDNNMatrixPtr& bias,
+                        std::vector<MKLDNNMatrixPtr>& inputs,
                         MKLDNNMatrixPtr& out) = 0;
 
   /**
@@ -176,12 +162,18 @@ public:
 
 protected:
   /**
+   * Some layers may have different condition to reset the forward.
+   * The function returns the condition that do not need reset forward.
+   */
+  inline virtual size_t keepCondition() {
+    // reset when the first input element size changed, not only the batchsize
+    return inputLayers_[0]->getOutputValue()->getElementCnt();
+  }
+
+  /**
    * reshape the input image sizes and input batchsize
    */
-  void reshapeInput(int& batchsize,
-                    int& height,
-                    int& width,
-                    size_t inputIdx = 0);
+  void reshapeInput(int& batchsize, int& height, int& width, size_t idx = 0);
 
   /**
    * reshape output image sizes
@@ -199,11 +191,13 @@ protected:
   /**
    * reset input value from input MKLDNNMatrix and internal primitive desc.
    * reset both internal and external buffer and create reorder if necessary.
+   * input channel may be different in concat.
    */
   void resetInValue(
       MKLDNNMatrixPtr& in,
       const std::shared_ptr<mkldnn::memory::primitive_desc>& intPD = nullptr,
-      size_t inputIdx = 0);
+      size_t idx = 0,
+      int inputChannel = 0);
 
   /**
    * reset output value from internal primitive desc.
@@ -218,7 +212,7 @@ protected:
    */
   void resetInGrad(MKLDNNMatrixPtr& in,
                    mkldnn::memory::primitive_desc intPD,
-                   size_t inputIdx = 0);
+                   size_t idx = 0);
 
   /**
    * reset output grad from internal primitive desc.
@@ -296,17 +290,19 @@ protected:
    * print the mkldnn memory format of value
    */
   virtual void printValueFormat() {
-    if (extInVal_) {
-      VLOG(MKLDNN_FMTS) << extInVal_->getFormat() << " >>> ";
-    }
-    if (inVal_) {
-      VLOG(MKLDNN_FMTS) << inVal_->getFormat() << " >>>";
+    for (size_t i = 0; i < inVals_.size(); ++i) {
+      if (!inVals_[i]) {
+        continue;
+      }
+      VLOG(MKLDNN_FMTS) << "Input " << i << ", " << inputLayers_[i]->getName()
+                        << ": " << (extInVals_[i] ? extInVals_[i]->getFormat()
+                                                  : inVals_[i]->getFormat())
+                        << " >>> " << inVals_[i]->getFormat() << " >>>";
     }
     if (outVal_) {
-      VLOG(MKLDNN_FMTS) << outVal_->getFormat() << " >>> ";
-    }
-    if (extOutVal_) {
-      VLOG(MKLDNN_FMTS) << extOutVal_->getFormat();
+      VLOG(MKLDNN_FMTS) << outVal_->getFormat() << " >>> "
+                        << (extOutVal_ ? extOutVal_->getFormat()
+                                       : outVal_->getFormat());
     }
     if (wgtVal_) {
       VLOG(MKLDNN_FMTS) << "Weight value format: " << wgtVal_->getFormat();
@@ -320,17 +316,19 @@ protected:
    * print the mkldnn memory format of grad
    */
   virtual void printGradFormat() {
-    if (extOutGrad_) {
-      VLOG(MKLDNN_FMTS) << extOutGrad_->getFormat();
-    }
     if (outGrad_) {
-      VLOG(MKLDNN_FMTS) << outGrad_->getFormat() << " <<< ";
+      VLOG(MKLDNN_FMTS) << outGrad_->getFormat() << " <<< "
+                        << (extOutGrad_ ? extOutGrad_->getFormat()
+                                        : outGrad_->getFormat());
     }
-    if (inGrad_) {
-      VLOG(MKLDNN_FMTS) << inGrad_->getFormat() << " <<<";
-    }
-    if (extInGrad_) {
-      VLOG(MKLDNN_FMTS) << extInGrad_->getFormat() << " <<< ";
+    for (size_t i = 0; i < inGrads_.size(); ++i) {
+      if (!inGrads_[i]) {
+        continue;
+      }
+      VLOG(MKLDNN_FMTS) << "Input " << i << ", " << inputLayers_[i]->getName()
+                        << ": " << (extInGrads_[i] ? extInGrads_[i]->getFormat()
+                                                   : inGrads_[i]->getFormat())
+                        << " <<< " << inGrads_[i]->getFormat() << " <<<";
     }
     if (wgtGrad_) {
       VLOG(MKLDNN_FMTS) << "Weight grad format: " << wgtGrad_->getFormat();
@@ -435,6 +433,41 @@ private:
       outputOtherDevice_[i].subSequenceStartPositions =
           output_.subSequenceStartPositions;
       outputOtherDevice_[i].cpuSequenceDims = output_.cpuSequenceDims;
+    }
+  }
+
+  void prepareValueConversions(std::vector<mkldnn::primitive>& pipeline) {
+    // MKLDNNLayer output value should be MKLDNNMatrix
+    // so external output value is necessary.
+    // Then external input value is not necessary,
+    // since input may be mkldnn internal buffer.
+    CHECK(extOutVal_) << "external output value is necessary";
+    output_.value = std::dynamic_pointer_cast<Matrix>(extOutVal_);
+    CHECK(inVals_[0] && outVal_) << "internal memories are necessary";
+    for (size_t i = 0; i < cvtInVals_.size(); ++i) {
+      if (cvtInVals_[i]) {
+        pipeline.insert(pipeline.begin(), *cvtInVals_[i]);
+      }
+    }
+    if (cvtOutVal_) {
+      pipeline.push_back(*cvtOutVal_);
+    }
+  }
+  void prepareGradConversions(std::vector<mkldnn::primitive>& pipeline) {
+    // external output grad is not necessary
+    // since output may be mkldnn internal buffer or merge them directly.
+    CHECK(outGrad_) << "internal output grad is necessary";
+    if (extOutGrad_) {
+      CHECK_EQ(extOutGrad_->getData(), output_.grad->getData())
+          << "the external buffer should share the same data with output_.grad";
+    }
+    if (cvtOutGrad_) {
+      pipeline.insert(pipeline.begin(), *cvtOutGrad_);
+    }
+    for (size_t i = 0; i < cvtInGrads_.size(); ++i) {
+      if (cvtInGrads_[i]) {
+        pipeline.push_back(*cvtInGrads_[i]);
+      }
     }
   }
 };

@@ -145,6 +145,8 @@ struct SelectedRowsAddTo<platform::CPUPlace, T> {
 
 template struct SelectedRowsAddTo<platform::CPUPlace, float>;
 template struct SelectedRowsAddTo<platform::CPUPlace, double>;
+template struct SelectedRowsAddTo<platform::CPUPlace, int>;
+template struct SelectedRowsAddTo<platform::CPUPlace, int64_t>;
 
 template <typename T>
 struct SelectedRowsAddToTensor<platform::CPUPlace, T> {
@@ -175,6 +177,8 @@ struct SelectedRowsAddToTensor<platform::CPUPlace, T> {
 
 template struct SelectedRowsAddToTensor<platform::CPUPlace, float>;
 template struct SelectedRowsAddToTensor<platform::CPUPlace, double>;
+template struct SelectedRowsAddToTensor<platform::CPUPlace, int>;
+template struct SelectedRowsAddToTensor<platform::CPUPlace, int64_t>;
 
 }  // namespace math
 }  // namespace operators

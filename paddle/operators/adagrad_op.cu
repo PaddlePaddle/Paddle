@@ -14,8 +14,8 @@
 
 #define EIGEN_USE_GPU
 #include "paddle/operators/adagrad_op.h"
-#include "paddle/operators/math/selected_rows_functor.h"
 #include "paddle/operators/math/math_function.h"
+#include "paddle/operators/math/selected_rows_functor.h"
 #include "paddle/platform/cuda_helper.h"
 
 namespace paddle {
@@ -134,8 +134,8 @@ struct SparseAdagradFunctor<platform::GPUPlace, T> {
         T, 256><<<grid2, threads, 0,
                   reinterpret_cast<const platform::CUDADeviceContext&>(context)
                       .stream()>>>(grad_merge_data, grad_merge->rows().data(),
-                                   lr, param_data,
-                                   moment_data, grad_width, epsilon);
+                                   lr, param_data, moment_data, grad_width,
+                                   epsilon);
   }
 };
 

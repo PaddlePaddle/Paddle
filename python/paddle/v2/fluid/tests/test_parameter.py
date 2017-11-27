@@ -20,11 +20,11 @@ class TestParameter(unittest.TestCase):
         self.assertIsNotNone(param)
         self.assertEqual('fc.w', param.name)
         self.assertEqual((784, 100), param.shape)
-        self.assertEqual(core.DataType.FP32, param.data_type)
+        self.assertEqual(core.DataType.FP32, param.dtype)
         self.assertEqual(0, param.block.idx)
         exe = Executor(core.CPUPlace())
         p = exe.run(g_main_program, fetch_list=[param])[0]
-        self.assertTrue(np.allclose(np.array(p), np.ones(shape) * val))
+        self.assertTrue(np.allclose(p, np.ones(shape) * val))
         p = io.get_parameter_value_by_name('fc.w', exe, g_main_program)
         self.assertTrue(np.allclose(np.array(p), np.ones(shape) * val))
 
