@@ -105,6 +105,8 @@ CUDA/cuDNN
 +++++++++++
 
 PaddlePaddle will automatically find CUDA and cuDNN when compiling and running.
+parameter :code:`-DCUDA_ARCH_NAME=Auto` can be used to detect SM architecture
+automatically in order to speed up the build.
 
 PaddlePaddle can build with any version later than cuDNN v5.1, and we intend to
 keep on with latest cuDNN versions. Be sure to run with the same version of cuDNN
