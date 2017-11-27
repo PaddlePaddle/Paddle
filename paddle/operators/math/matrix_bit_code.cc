@@ -53,18 +53,18 @@ namespace math {
 template <class CodeTable, class Op, typename T>
 static void AddByBitCodeT(Op op, CodeTable code_table,
                           const framework::Tensor& codes, framework::Tensor& a,
-                          framework::Tensor& b) {
+                          const framework::Tensor& b) {
   size_t num_classes = code_table.size();
   size_t max_code_length = code_table.get_max_code_length();
-  size_t num_sample = a.dims()[0].size();
-  size_t width = a.dims()[1].size();
+  size_t num_sample = a.dims()[0];
+  size_t width = a.dims()[1];
 
   for (size_t i = 0; i < num_sample; ++i) {
-    auto code = code_table(codes.data<T>()[i]) int code_length =
-        code.get_length();
+    auto code = code_table(codes.data<T>()[i]);
+    int code_length = code.get_length();
     for (int j = 0; j < code_length; + j) {
       size_t index = code.calc_index(j);
-      op(a<T>.data()[i * width + j], b<T>.data()[index]);
+      op(a.data<T>()[i * width + j], b.data<T>()[index]);
     }
   }
 }
@@ -79,6 +79,71 @@ void AddByBitCode(size_t num_classes, const framework::Tensor& codes,
   AddByBitCodeT<T>(op, SimpleCodeTable(num_classes), codes, a, b);
 }
 
+template <class CodeTable, typename T>
+void SumByBitCodeT(CodeTable code_table, const framework::Tensor& codes,
+                   framework::Tensor& tmat, framework::Tensor& sum,
+                   const T& scale_sum) {
+  size_t max_code_length = code_table.get_max_code_length();
+  size_t num_samples = tmat.dims()[0];
+  size_t o_width = tmat.dims()[1];
+  for (size_t i = 0; i < num_samples; ++i) {
+    T sm = 0;
+    auto code = code_table(codes.data<T>()[i]);
+    int code_length = code.get_length();
+    for (int j = 0; j < code_length; ++j) {
+      if (code.calc_bit(j)) {
+        sm += tmat.data<T>()[i * o_width + j];
+      }
+    }
+    sum.data<T>()[i] = scale_sum * sm;
+  }
+}
+/* For j < codeLength:
+    sum(i, 0) = \sum_j bit(i, j) * input(i, j)
+*/
+template <typename T>
+void SumByBitCode(size_t num_classes, const framework::Tensor& codes,
+                  framework::Tensor& tmat, framework::Tensor& sum,
+                  T scale_sum) {
+  SumByBitCodeT(SimpleCodeTable(num_classes), codes, tmat, scale_sum);
+}
+
+template <class Op, class CodeTable, typename T>
+void MulByBitCodeT(Op op, CodeTable code_table, const framework::Tensor& codes,
+                   framework::Tensor& tmat, framework::Tensor& weight,
+                   framework::Tensor& input) {
+  size_t num_classes = code_table.size();
+  size_t max_code_length = code_table.get_max_code_length();
+  size_t num_samples = tmat.dims()[0];
+  size_t input_dim = input.dims()[1];
+  size_t o_width = tmat.dims()[1];
+
+  for (size_t i = 0; i < num_samples; ++i) {
+    auto code = code_table(codes.data<T>()[i]);
+    int code_length = code.get_length();
+    for (int j = 0; j < code_length; ++j) {
+      size_t index = code.calc_index(j);
+      op(tmat.data<T>()[i * o_width + j],
+         weight.data<T>() + index * weight.dims()[1],
+         input.data<T>() + i * input.dims()[1], input_dim);
+    }
+  }
+}
+
+template <typename T>
+void MulByBitCode(size_t num_classes, const framework::Tensor& codes,
+                  framework::Tensor& tmat, const framework::Tensor& weight,
+                  const framework::Tensor& input) {
+  auto op = [](T& t, const T* weight_row, const T* input_row,
+               size_t input_dim) {
+    T sum = 0;
+    for (size_t k = 0; k < input_dim; ++k) {
+      sum += weight_row[k] * input_row[k];
+    }
+    t += sum;
+  };
+  MulByBitCode(op, SimpleCodeTable(num_classes), codes, tmat, weight, input);
+}
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

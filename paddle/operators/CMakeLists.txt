@@ -185,7 +185,8 @@ set(DEPS_OPS
     tensor_array_read_write_op
     gru_op
     adagrad_op
-    sgd_op)
+    sgd_op
+    hierarchical_sigmoid_op)
 
 
 op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
@@ -203,6 +204,7 @@ op_library(lod_rank_table_op SRCS lod_rank_table_op.cc DEPS lod_rank_table)
 op_library(lod_tensor_to_array_op SRCS lod_tensor_to_array_op.cc DEPS lod_rank_table_op)
 op_library(array_to_lod_tensor_op SRCS array_to_lod_tensor_op.cc DEPS lod_rank_table_op)
 op_library(tensor_array_read_write_op SRCS tensor_array_read_write_op.cc)
+op_library(hierarchical_sigmoid_op DEPS matrix_bit_code)
 if(WITH_GPU)
 op_library(nccl_op DEPS nccl_common)
 endif()
