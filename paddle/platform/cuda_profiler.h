@@ -14,33 +14,15 @@ limitations under the License. */
 
 #pragma once
 #include <cuda_profiler_api.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 namespace paddle {
 namespace platform {
 
-static std::vector<std::string> kCudaProfileConfiguration = {
-    "gpustarttimestamp",
-    "gpuendtimestamp",
-    "gridsize3d",
-    "threadblocksize",
-    "dynsmemperblock",
-    "stasmemperblock",
-    "regperthread",
-    "memtransfersize",
-    "memtransferdir",
-    "memtransferhostmemtype",
-    "streamid",
-    "cacheconfigrequested",
-    "cacheconfigexecuted",
-    "countermodeaggregate",
-    "enableonstart 0",
-    "active_warps",
-    "active_cycles",
-};
-
-void CudaProfilerInit(std::string output_file, std::string output_mode) {
+void CudaProfilerInit(std::string output_file, std::string output_mode,
+                      std::vector<std::string> config_flags) {
   std::array<char, 128> buf;
   std::string tmpl = "/tmp/cuda_profile_config.XXXXXX";
   PADDLE_ENFORCE_LT(tmpl.size(), buf.size());
@@ -52,12 +34,12 @@ void CudaProfilerInit(std::string output_file, std::string output_mode) {
   {
     std::ofstream ofs(config, std::ios::out | std::ios::trunc);
     PADDLE_ENFORCE(ofs.is_open(), "ofstream: ", ofs.rdstate());
-    for (const auto& line : kCudaProfileConfiguration) {
+    for (const auto& line : config_flags) {
       ofs << line << std::endl;
     }
   }
 
-  PADDLE_ENFORCE(output_mode == "key_value" || output_mode == "csv");
+  PADDLE_ENFORCE(output_mode == "kvp" || output_mode == "csv");
   cudaOutputMode_t mode = output_mode == "csv" ? cudaCSV : cudaKeyValuePair;
   PADDLE_ENFORCE(
       cudaProfilerInitialize(config.c_str(), output_file.c_str(), mode));
@@ -66,5 +48,6 @@ void CudaProfilerInit(std::string output_file, std::string output_mode) {
 void CudaProfilerStart() { PADDLE_ENFORCE(cudaProfilerStart()); }
 
 void CudaProfilerStop() { PADDLE_ENFORCE((cudaProfilerStop())); }
-}
-}
+
+}  // namespace platform
+}  // namespace paddle
