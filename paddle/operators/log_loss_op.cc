@@ -38,7 +38,6 @@ class LogLossOp : public framework::OperatorWithKernel {
                       "Each row of Input(Predicted) contains a real value, "
                       "so the 2nd dimension of Input(X) must be 1.");
 
-    // ctx->SetOutputDim("Residual", x_dims);
     ctx->SetOutputDim("Loss", {pred_dims[0], 1});
     ctx->ShareLoD("Predicted", "Loss");
   }
@@ -56,11 +55,6 @@ class LogLossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Labels",
              "The target value (Labels) of Log loss op."
              "Labels is a 2-D tensor with shape [batch_size, 1].");
-    // AddOutput("Residual",
-    //           "Intermediate tensor to cache residual value between Y and X."
-    //           "The shape is same as Input(X) and will be reused in
-    //           backward.")
-    //     .AsIntermediate();
     AddOutput("Loss",
               "The output tensor with shape [batch_size, 1] "
               "which represents the log loss.");
@@ -94,8 +88,6 @@ class LogLossGradOp : public framework::OperatorWithKernel {
                    "Input(Predicted) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Labels"),
                    "Input(Labels) should not be null.");
-    // PADDLE_ENFORCE(ctx->HasInput("Residual"),
-    //                "Input(Residual) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Loss")),
                    "Input(Loss@GRAD) should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Predicted")),
@@ -104,9 +96,6 @@ class LogLossGradOp : public framework::OperatorWithKernel {
     auto pred_dims = ctx->GetInputDim("Predicted");
     auto label_dims = ctx->GetInputDim("Labels");
     auto loss_grad_dims = ctx->GetInputDim(framework::GradVarName("Loss"));
-    // auto residual_dims = ctx->GetInputDim("Residual");
-
-    // PADDLE_ENFORCE_EQ(residual_dims, x_dims);
     PADDLE_ENFORCE_EQ(loss_grad_dims, pred_dims);
 
     auto pred_grad_name = framework::GradVarName("Predicted");
