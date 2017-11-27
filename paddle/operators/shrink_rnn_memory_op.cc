@@ -57,13 +57,12 @@ class ShrinkRNNMemoryOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   ShrinkRNNMemoryOpProtoMaker(framework::OpProto *proto,
                               framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The RNN step memory to be shrinked.");
-    AddInput("RankTable", "The lod_rank_table of dynamic RNN.");
-    AddInput(
-        "I",
-        "The step index. The RNN step memory 'X' will be shrinked to match "
-        "the size of the input of the index'th step.");
-    AddOutput("Out", "The shrinked RNN step memory.");
+    AddInput("X", "(LoDTensor) The RNN step memory to be shrinked.");
+    AddInput("RankTable", "(LoDRankTable) The lod_rank_table of dynamic RNN.");
+    AddInput("I",
+             "(LoDTensor) The step index. The RNN step memory 'X' will be "
+             "shrinked to match the size of the input of the index'th step.");
+    AddOutput("Out", "(LoDTensor) The shrinked RNN step memory.");
     AddComment(
         R"DOC(
         In dynamic RNN, we are able to handle sequences of different lengths. 
