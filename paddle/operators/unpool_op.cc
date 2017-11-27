@@ -66,7 +66,15 @@ int OutputSize(int input_size, int ksize, int padding, int stride) {
 }
 
 class UnpoolOp : public framework::OperatorWithKernel {
- public:
+protected:
+  framework::OpKernelType GetKernelType(
+    const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+      framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
+      ctx.device_context());
+  }
+
+public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of UnpoolOp"
@@ -102,6 +110,14 @@ class UnpoolOp : public framework::OperatorWithKernel {
 };
 
 class UnpoolOpGrad : public framework::OperatorWithKernel {
+ protected:
+  framework::OpKernelType GetKernelType(
+    const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+      framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
+      ctx.device_context());
+  }
+
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
@@ -118,9 +134,9 @@ namespace ops = paddle::operators;
 REGISTER_OP(unpool, ops::UnpoolOp, ops::Unpool2dOpMaker, unpool_grad,
             ops::UnpoolOpGrad);
 REGISTER_OP_CPU_KERNEL(unpool,
-                       ops::UnpoolKernel<paddle::platform::CPUPlace, float>,
-                       ops::UnpoolKernel<paddle::platform::CPUPlace, double>);
+              ops::UnpoolKernel<paddle::platform::CPUPlace, float, int>,
+              ops::UnpoolKernel<paddle::platform::CPUPlace, double, int>);
 REGISTER_OP_CPU_KERNEL(unpool_grad,
-                    ops::UnpoolGradKernel<paddle::platform::CPUPlace, float>,
-                    ops::UnpoolGradKernel<paddle::platform::CPUPlace, double>);
+            ops::UnpoolGradKernel<paddle::platform::CPUPlace, float, int>,
+            ops::UnpoolGradKernel<paddle::platform::CPUPlace, double, int>);
 

@@ -19,7 +19,7 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-template <typename Place, typename T>
+template <typename Place, typename T, typename T2>
 
 class Unpool2dMaxFunctor {
  public:
@@ -29,7 +29,7 @@ class Unpool2dMaxFunctor {
                   framework::Tensor * output);
 };
 
-template <typename Place, class T>
+template <typename Place, class T, typename T2>
 class Unpool2dMaxGradFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
