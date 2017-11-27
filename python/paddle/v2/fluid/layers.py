@@ -1821,6 +1821,7 @@ class DynamicRNNGuard(object):
         self.while_block.__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        self.append_cond_op()
         if not self.while_block.__exit__(exc_type, exc_val, exc_tb):
             return False
         self.rnn.status = DynamicRNN.AFTER_RNN_BLOCK
@@ -1850,6 +1851,7 @@ class DynamicRNN(object):
         self.step_num = None
         self.lod_rank_table = None
         self.mem_array = None
+        self.step_output_names = None
         self.outputs = []
 
     def step(self):
@@ -1911,7 +1913,6 @@ class DynamicRNN(object):
                     "I": [self.step_idx]},
             outputs={"Out": [self.mem_array]})
         return array_read(array=self.mem_array, i=self.step_idx)
-        # 什么时候shrink_memory？在返回之前吗？？
 
     def update_memory(self, var):
         self._assert_in_rnn_block_("update_memory")
@@ -1921,25 +1922,49 @@ class DynamicRNN(object):
         if self.mem_array is None:
             raise ValueError(
                 "Dynamic RNN memory must be initialized before update it.")
-        array_write(x=var, i=self.step_idx, array=self.mem_array)
-        # 这里的step_idx谁来更新？？？
+        if self.lod_rank_table is None:
+            raise ValueError("Please invoke 'step_input()' before 'output'.")
+        next_step_idx = increment(x=self.step_idx, value=1, in_place=False)
+        shrinked_mem = shrink_memory(
+            x=var, i=next_step_idx, table=self.lod_rank_table)
+        array_write(x=shrinked_mem, i=next_step_idx, array=self.mem_array)
 
     def output(self, *outputs):
         self._assert_in_rnn_block_("output")
+        self.step_output_names = []
+        for each in outputs:
+            self.step_output_names(each.name)
+
+    def append_cond_op():
+        self._assert_in_rnn_block_("append_cond_op")
+        increment(x=self.step_idx)
+        less_than(x=self.step_idx, y=self.step_num, cand=self.while_cond)
+
+    def complete_rnn_op():
+        if self.status != DynamicRNN.AFTER_RNN_BLOCK:
+            raise ValueError(
+                "'complete_rnn_op()' can only be invoked after rnn block.")
         if self.lod_rank_table is None:
-            raise ValueError("Please invoke 'step_input()' before 'output'.")
-        parent_block = self._parent_block_()
-        for o in outputs:
-            o_array = parent_block.create_var(
-                name=unique_name("dynamic_rnn_output_array@" + o.name),
+            raise ValueError(
+                "Please invoke 'step_input()' in Dynamic RNN block.")
+        if self.step_output_names is None:
+            raise ValueError(
+                "Please invoke 'output()' in Dynamic RNN block to specify the RNN outputs."
+            )
+        prog = self.helper.main_program
+        block = prog.current_block()
+        for o_name in self.step_output_names:
+            o_var = block.var(o_name)
+            o_array = block.create_var(
+                name=unique_name("dynamic_rnn_output_array@" + o_name),
                 type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-                dtype=o.dtype)
-            array_write(x=o, i=self.step_idx, array=o_array)
-            o_rnn_out = parent_block.create_var(
-                name=unique_name("dynamic_rnn_out@" + o.name),
-                dtype=o.dtype,
+                dtype=o_var.dtype)
+            array_write(x=o_var, i=self.step_idx, array=o_array)
+            o_rnn_out = block.create_var(
+                name=unique_name("dynamic_rnn_out@" + o_name),
+                dtype=o_var.dtype,
                 persistable=False)
-            parent_block.append_op(
+            block.append_op(
                 type="array_to_lod_tensor",
                 inputs={"X": o_array,
                         "RankTable": self.lod_rank_table},
