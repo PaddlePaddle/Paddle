@@ -151,10 +151,11 @@ class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
 
         exe = Executor(place)
         g_out = [
-            item.sum()
-            for item in map(
-                numpy.array,
-                exe.run(program, feed={'x': tensor}, fetch_list=[g_vars]))
+            numpy.array(item).sum()
+            for item in exe.run(program,
+                                feed={'x': tensor},
+                                fetch_list=[g_vars],
+                                return_numpy=False)
         ]
         g_out_sum = numpy.array(g_out).sum()
 
