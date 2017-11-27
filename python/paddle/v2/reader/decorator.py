@@ -14,13 +14,16 @@
 
 __all__ = [
     'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
-    'ComposeNotAligned', 'firstn', 'xmap_readers'
+    'ComposeNotAligned', 'firstn', 'xmap_readers', 'pipe_reader'
 ]
 
+from threading import Thread
+import subprocess
+
+from Queue import Queue
 import itertools
 import random
-from Queue import Queue
-from threading import Thread
+import zlib
 
 
 def map_readers(func, *readers):
