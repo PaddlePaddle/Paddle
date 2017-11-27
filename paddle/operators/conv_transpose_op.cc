@@ -74,12 +74,12 @@ Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(
             "The format of output tensor is also NCHW.");
   AddAttr<std::vector<int>>(
       "strides",
-      "(vector<int> defalut:{1, 1}), the strides(h_stride, w_stride) of "
+      "(vector<int> default:{1, 1}), the strides(h_stride, w_stride) of "
       "convolution transpose operator.")
       .SetDefault({1, 1});
   AddAttr<std::vector<int>>(
       "paddings",
-      "(vector<int> defalut:{0, 0}), the paddings(h_pad, w_pad) of convolution "
+      "(vector<int> default:{0, 0}), the paddings(h_pad, w_pad) of convolution "
       "transpose operator.")
       .SetDefault({0, 0});
   AddComment(R"DOC(
@@ -101,8 +101,8 @@ Example:
   Output:
        Output shape: (N, C_out, H_out, W_out)
   where
-       H_out = (H_in - 1) * strides[0] - 2 * paddings[0] + filter_size[0];
-       W_out = (W_in - 1) * strides[1] - 2 * paddings[1] + filter_size[1];
+       H_out = (H_in - 1) * strides[0] - 2 * paddings[0] + H_f;
+       W_out = (W_in - 1) * strides[1] - 2 * paddings[1] + W_f;
 )DOC");
 }
 
@@ -130,12 +130,12 @@ Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(
             "the number of channels, D is the depth of the feature, H is the "
             "height of the feature, and W is the width of the feature.");
   AddAttr<std::vector<int>>("strides",
-                            "(vector<int> defalut:{1, 1, 1}), the "
+                            "(vector<int> default:{1, 1, 1}), the "
                             "strides{d_stride, h_stride, w_stride} of "
                             "convolution transpose operator.")
       .SetDefault({1, 1, 1});
   AddAttr<std::vector<int>>("paddings",
-                            "(vector<int> defalut:{0, 0, 0}), paddings(d_pad, "
+                            "(vector<int> default:{0, 0, 0}), paddings(d_pad, "
                             "h_pad, w_pad) of convolution transpose operator.")
       .SetDefault({0, 0, 0});
   AddComment(R"DOC(
@@ -158,9 +158,9 @@ Example:
   Output:
        Output shape: (N, C_out, D_out, H_out, W_out)
   where
-       D_out = (D_in - 1) * strides[0] - 2 * paddings[0] + filter_size[0];
-       H_out = (H_in - 1) * strides[1] - 2 * paddings[1] + filter_size[1];
-       W_out = (W_in - 1) * strides[2] - 2 * paddings[2] + filter_size[2];
+       D_out = (D_in - 1) * strides[0] - 2 * paddings[0] + D_f;
+       H_out = (H_in - 1) * strides[1] - 2 * paddings[1] + H_f;
+       W_out = (W_in - 1) * strides[2] - 2 * paddings[2] + W_f;
 )DOC");
 }
 

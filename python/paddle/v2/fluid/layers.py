@@ -1,7 +1,7 @@
 from . import core
 import proto.framework_pb2 as framework_pb2
 from framework import OpProtoHolder, Variable, Program, Operator
-from initializer import Constant, Normal, Xavier
+from initializer import Constant, Normal, Xavier, Initializer
 from paddle.v2.fluid.layer_helper import LayerHelper, unique_name
 import re
 import cStringIO
@@ -1585,6 +1585,97 @@ def array_length(array, main_program=None):
     helper.append_op(
         type='lod_array_length', inputs={'X': [array]}, outputs={'Out': [tmp]})
     return tmp
+
+
+def conv2d_transpose(input,
+                     num_filter,
+                     output_size=None,
+                     filter_size=None,
+                     padding=None,
+                     stride=None,
+                     param_attr=None,
+                     param_initializer=None,
+                     main_program=None,
+                     startup_program=None):
+    """
+    The transpose of conv2d layer.
+    
+    This layer is also known as deconvolution layer.
+    
+    Args:
+        input(Variable): The input image. [N, C, H, W].
+        num_filter(int): The number of filter. It is as same as the output image 
+            channel.
+        output_size(int|tuple|None): The output image size. If output size is a
+            tuple, it must contain two integers, (image_H, image_W). This 
+            parameter only works when filter_size is None.
+        filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
+            it must contain two integers, (filter_size_H, filter_size_W).
+            Otherwise, the filter will be a square.  None if use output size to
+            calculate filter_size
+        padding(int|tuple): The padding size. If padding is a tuple, it must
+            contain two integers, (padding_H, padding_W). Otherwise, the 
+            padding_H = padding_W = padding.
+        stride(int|tuple): The stride size. If stride is a tuple, it must
+            contain two integers, (stride_H, stride_W). Otherwise, the
+            stride_H = stride_W = stride.
+        param_attr: Parameter Attribute.
+        param_initializer(Initializer): Parameter Initializer. Default is Xavier
+        main_program(Program): the main program
+        startup_program(Program): the startup program 
+
+    Returns:
+        Variable: Output image.
+    """
+    helper = LayerHelper("conv2d_transpose", **locals())
+    if not isinstance(input, Variable):
+        raise TypeError("Input of conv2d_transpose must be Variable")
+    input_channel = input.shape[1]
+
+    op_attr = dict()
+
+    if isinstance(padding, int):
+        op_attr['paddings'] = [padding, padding]
+    elif padding is not None:
+        op_attr['paddings'] = padding
+
+    if isinstance(stride, int):
+        op_attr['strides'] = stride
+    elif stride is not None:
+        op_attr['strides'] = stride
+
+    if filter_size is None:
+        if output_size is None:
+            raise ValueError("output_size must be set when filter_size is None")
+        if isinstance(output_size, int):
+            output_size = [output_size, output_size]
+
+        padding = op_attr.get('paddings', [0, 0])
+        stride = op_attr.get('strides', [1, 1])
+
+        h_in = input.shape[2]
+        w_in = input.shape[3]
+        filter_size_h = output_size[0] - (h_in - 1) * stride[0] + 2 * padding[0]
+        filter_size_w = output_size[1] - (w_in - 1) * stride[1] + 2 * padding[1]
+        filter_size = [filter_size_h, filter_size_w]
+    elif isinstance(filter_size, int):
+        filter_size = [filter_size, filter_size]
+
+    filter_shape = [input_channel, num_filter] + filter_size
+    img_filter = helper.create_parameter(
+        dtype=input.dtype,
+        shape=filter_shape,
+        attr=helper.param_attr,
+        initializer=param_initializer)
+
+    out = helper.create_tmp_variable(dtype=input.dtype)
+    helper.append_op(
+        type='conv2d_transpose',
+        inputs={'Input': [input],
+                'Filter': [img_filter]},
+        outputs={'Output': out},
+        attrs=op_attr)
+    return out
 
 
 class ConditionalBlockGuard(BlockGuard):
