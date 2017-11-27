@@ -127,4 +127,5 @@ paramOut = param - learningRate * moment_1/ ($\sqrt{(moment_2)} + \epsilon)$$
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(adam, ops::AdamOp, ops::AdamOpMaker);
 REGISTER_OP_CPU_KERNEL(adam,
-                       ops::AdamOpKernel<paddle::platform::CPUPlace, float>);
+                       ops::AdamOpKernel<paddle::platform::CPUPlace, float>,
+                       ops::AdamOpKernel<paddle::platform::CPUPlace, double>);
