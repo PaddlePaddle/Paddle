@@ -2985,8 +2985,8 @@ def spp_layer(input,
     A layer performs spatial pyramid pooling.
 
     Reference:
-        Spatial Pyramid Pooling in Deep Convolutional Networks for Visual Recognition
-        https://arxiv.org/abs/1406.4729
+        `Spatial Pyramid Pooling in Deep Convolutional Networks for Visual Recognition
+        https://arxiv.org/abs/1406.4729`_
 
     The example usage is:
 
@@ -3087,8 +3087,8 @@ def img_cmrnorm_layer(input,
     Response normalization across feature maps.
 
     Reference:
-        ImageNet Classification with Deep Convolutional Neural Networks
-        http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf
+        `ImageNet Classification with Deep Convolutional Neural Networks
+        http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf`_
 
     The example usage is:
 
@@ -3154,9 +3154,9 @@ def batch_norm_layer(input,
         y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
 
     Reference:
-        Batch Normalization: Accelerating Deep Network Training by Reducing
+        `Batch Normalization: Accelerating Deep Network Training by Reducing
         Internal Covariate Shift
-        http://arxiv.org/abs/1502.03167
+        http://arxiv.org/abs/1502.03167`_
 
     The example usage is:
 
@@ -5413,10 +5413,10 @@ def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
     to be devided by groups.
 
     Reference:
-        Maxout Networks
-        http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf
-        Multi-digit Number Recognition from Street View Imagery using Deep Convolutional Neural Networks
-        https://arxiv.org/pdf/1312.6082v4.pdf
+        `Maxout Networks
+        http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf`_
+        `Multi-digit Number Recognition from Street View Imagery using Deep Convolutional Neural Networks
+        https://arxiv.org/pdf/1312.6082v4.pdf`_
 
     .. math::
        y_{si+j} = \max_k x_{gsi + sk + j}
@@ -5481,9 +5481,9 @@ def ctc_layer(input,
     alignment between the inputs and the target labels is unknown.
 
     Reference:
-        Connectionist Temporal Classification: Labelling Unsegmented Sequence Data
+        `Connectionist Temporal Classification: Labelling Unsegmented Sequence Data
         with Recurrent Neural Networks
-        http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf
+        http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf`_
 
     Note:
         Considering the 'blank' label needed by CTC, you need to use (num_classes + 1)
@@ -5555,9 +5555,9 @@ def warp_ctc_layer(input,
     install it to :code:`third_party/install/warpctc` directory.
 
     Reference:
-        Connectionist Temporal Classification: Labelling Unsegmented Sequence Data
+        `Connectionist Temporal Classification: Labelling Unsegmented Sequence Data
         with Recurrent Neural Networks
-        http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf
+        http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf`_
 
     Note:
         - Let num_classes represents the category number. Considering the 'blank'
@@ -5777,8 +5777,8 @@ def nce_layer(input,
     Noise-contrastive estimation.
 
     Reference:
-        A fast and simple algorithm for training neural probabilistic language
-        models. https://www.cs.toronto.edu/~amnih/papers/ncelm.pdf
+        `A fast and simple algorithm for training neural probabilistic language
+        models. https://www.cs.toronto.edu/~amnih/papers/ncelm.pdf`_
 
     The example usage is:
 
@@ -5893,8 +5893,8 @@ def rank_cost(left,
     A cost Layer for learning to rank using gradient descent.
 
     Reference:
-        Learning to Rank using Gradient Descent
-        http://research.microsoft.com/en-us/um/people/cburges/papers/ICML_ranking.pdf
+        `Learning to Rank using Gradient Descent
+        http://research.microsoft.com/en-us/um/people/cburges/papers/ICML_ranking.pdf`_
 
     .. math::
 
@@ -6429,8 +6429,8 @@ def smooth_l1_cost(input, label, name=None, coeff=1.0, layer_attr=None):
         smooth_{L1}(x) = \\begin{cases} 0.5x^2& \\text{if}  \\ |x| < 1 \\\\ |x|-0.5& \\text{otherwise} \end{cases}
 
     Reference:
-        Fast R-CNN
-        https://arxiv.org/pdf/1504.08083v2.pdf
+        `Fast R-CNN
+        https://arxiv.org/pdf/1504.08083v2.pdf`_
 
     The example usage is:
 
@@ -6636,8 +6636,8 @@ def prelu_layer(input,
     The Parametric Relu activation that actives outputs with a learnable weight.
 
     Reference:
-        Delving Deep into Rectifiers: Surpassing Human-Level Performance on
-        ImageNet Classification http://arxiv.org/pdf/1502.01852v1.pdf
+        `Delving Deep into Rectifiers: Surpassing Human-Level Performance on
+        ImageNet Classification http://arxiv.org/pdf/1502.01852v1.pdf`_
 
     .. math::
        z_i &\\quad if \\quad z_i > 0 \\\\
@@ -6733,8 +6733,8 @@ def gated_unit_layer(input,
     product between :match:`X'` and :math:`\sigma` is finally returned.
 
     Reference:
-        Language Modeling with Gated Convolutional Networks
-        https://arxiv.org/abs/1612.08083
+        `Language Modeling with Gated Convolutional Networks
+        https://arxiv.org/abs/1612.08083`_
 
     .. math::
        y=\\text{act}(X \cdot W + b)\otimes \sigma(X \cdot V + c)
