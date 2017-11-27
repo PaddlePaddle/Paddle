@@ -30,6 +30,10 @@ you can download the latest whl package from our CI system. Access
 the below links, log in as guest, then click at the "Artifact"
 tab, you'll find the download link of whl packages.
 
+If the links below shows up the login form, just click "Log in as guest" to start the download:
+
+.. image:: paddleci.png
+
 ..  csv-table:: whl package of each version
     :header: "version", "cp27-cp27mu", "cp27-cp27mu", "C-API"
     :widths: 1, 3, 3, 3
@@ -46,7 +50,7 @@ Runtime Dependency
 ------------------------------
 
 PaddlePaddle installation packages (whl) does not only contain .py files,
-but also binaries built from C++ code, we ensure that PaddlePaddle can
+but also binaries built from C++ code. We ensure that PaddlePaddle can
 run on current mainline Linux distributions, like CentOS 6, Ubuntu 14.04
 and MacOS 10.12.
 
