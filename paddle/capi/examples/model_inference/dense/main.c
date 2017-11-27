@@ -1,5 +1,6 @@
 #include <paddle/capi.h>
 #include <time.h>
+
 #include "../common/common.h"
 
 #define CONFIG_BIN "./trainer_config.bin"
@@ -27,20 +28,19 @@ int main() {
   CHECK(paddle_arguments_resize(in_args, 1));
 
   // Create input matrix.
-  paddle_matrix mat = paddle_matrix_create(/* sample_num */ 10,
+  paddle_matrix mat = paddle_matrix_create(/* sample_num */ 1,
                                            /* size */ 784,
                                            /* useGPU */ false);
   srand(time(0));
 
-  std::vector<paddle_real> input;
-  input.resize(784 * 10);
+  paddle_real* array;
 
-  for (int i = 0; i < input.size(); ++i) {
-    input[i] = rand() / ((float)RAND_MAX);
+  // Get First row.
+  CHECK(paddle_matrix_get_row(mat, 0, &array));
+
+  for (int i = 0; i < 784; ++i) {
+    array[i] = rand() / ((float)RAND_MAX);
   }
-  
-  // Set value for the input matrix
-  CHECK(paddle_matrix_set_value(mat, input.data()));
 
   CHECK(paddle_arguments_set_value(in_args, 0, mat));
 
@@ -53,17 +53,18 @@ int main() {
 
   CHECK(paddle_arguments_get_value(out_args, 0, prob));
 
-  std::std::vector<paddle_real> result;
-  int height;
-  int width;
+  uint64_t height;
+  uint64_t width;
 
-  CHECK(paddle_matrix_get_shape(prob, &height, &width);
-  result.resize(height * width);
-  CHECK(paddle_matrix_get_value(prob, result.data()));
+  CHECK(paddle_matrix_get_shape(prob, &height, &width));
+  CHECK(paddle_matrix_get_row(prob, 0, &array));
 
-  printf("Prob: ");
+  printf("Prob: \n");
   for (int i = 0; i < height * width; ++i) {
-    printf("%.2f ", result[i]);
+    printf("%.4f ", array[i]);
+    if ((i + 1) % width == 0) {
+      printf("\n");
+    }
   }
   printf("\n");
 

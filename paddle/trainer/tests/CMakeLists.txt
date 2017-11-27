@@ -11,7 +11,6 @@ add_unittest_without_exec(test_Trainer
     test_Trainer.cpp)
 add_test(NAME test_Trainer
   COMMAND ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d ${PADDLE_SOURCE_DIR}/python/
-        ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/paddle/trainer/tests/gen_proto_data.py &&
         ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d ${PADDLE_SOURCE_DIR}/python/
         ${CMAKE_CURRENT_BINARY_DIR}/test_Trainer
     WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)

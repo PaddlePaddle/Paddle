@@ -52,7 +52,13 @@ class PoolCudnnOpKernel : public framework::OpKernel<T> {
     ScopedTensorDescriptor input_desc;
     ScopedTensorDescriptor output_desc;
     ScopedPoolingDescriptor pool_desc;
-    DataLayout layout = DataLayout::kNCHW;
+    DataLayout layout;
+
+    if (strides.size() == 2U) {
+      layout = DataLayout::kNCHW;
+    } else {
+      layout = DataLayout::kNCDHW;
+    }
 
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
         layout, framework::vectorize2int(input->dims()));
@@ -112,7 +118,13 @@ class PoolCudnnGradOpKernel : public framework::OpKernel<T> {
     ScopedTensorDescriptor input_desc;
     ScopedTensorDescriptor output_desc;
     ScopedPoolingDescriptor pool_desc;
-    DataLayout layout = DataLayout::kNCHW;
+    DataLayout layout;
+
+    if (strides.size() == 2U) {
+      layout = DataLayout::kNCHW;
+    } else {
+      layout = DataLayout::kNCDHW;
+    }
 
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
         layout, framework::vectorize2int(input->dims()));
@@ -150,5 +162,12 @@ class PoolCudnnGradOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(pool2d_cudnn, ops::PoolCudnnOpKernel<float>);
-REGISTER_OP_GPU_KERNEL(pool2d_cudnn_grad, ops::PoolCudnnGradOpKernel<float>);
+REGISTER_OP_GPU_KERNEL(pool2d_cudnn, ops::PoolCudnnOpKernel<float>,
+                       ops::PoolCudnnOpKernel<double>);
+REGISTER_OP_GPU_KERNEL(pool2d_cudnn_grad, ops::PoolCudnnGradOpKernel<float>,
+                       ops::PoolCudnnGradOpKernel<double>);
+
+REGISTER_OP_GPU_KERNEL(pool3d_cudnn, ops::PoolCudnnOpKernel<float>,
+                       ops::PoolCudnnOpKernel<double>);
+REGISTER_OP_GPU_KERNEL(pool3d_cudnn_grad, ops::PoolCudnnGradOpKernel<float>,
+                       ops::PoolCudnnGradOpKernel<double>);
