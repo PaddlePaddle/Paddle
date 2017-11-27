@@ -365,8 +365,14 @@ void testAdam(size_t size, bool useGpu) {
   real learningRate = (real)rand() / (real)RAND_MAX;  // NOLINT
   real decayRate = (real)rand() / (real)RAND_MAX;     // NOLINT
 
-  EXPRESSION_PERFORMANCE(AdamParameterOptimizer(
-      bufs1, beta1, beta2, beta1_power, beta2_power, epsilon, learningRate));
+  EXPRESSION_PERFORMANCE(AdamParameterOptimizer(bufs1,
+                                                beta1,
+                                                beta2,
+                                                beta1_power,
+                                                beta2_power,
+                                                epsilon,
+                                                learningRate,
+                                                decayRate));
 
   BaseMatrix& value = *bufs2[PARAMETER_VALUE];
   BaseMatrix& grad = *bufs2[PARAMETER_GRADIENT];
@@ -401,24 +407,25 @@ void testAdamax(size_t size, bool useGpu) {
   INIT_VECTOR(bufs1, bufs2, PARAMETER_MOMENTUM, size, useGpu);
   INIT_VECTOR(bufs1, bufs2, PARAMETER_WEIGHTED_INFINITY_NORM, size, useGpu);
 
-  real beta1 = (real)rand() / (real)RAND_MAX;      // NOLINT
-  real beta2 = (real)rand() / (real)RAND_MAX;      // NOLINT
-  real alpha = (real)rand() / (real)RAND_MAX;      // NOLINT
-  real decayRate = (real)rand() / (real)RAND_MAX;  // NOLINT
+  real beta1 = (real)rand() / (real)RAND_MAX;         // NOLINT
+  real beta2 = (real)rand() / (real)RAND_MAX;         // NOLINT
+  real learningRate = (real)rand() / (real)RAND_MAX;  // NOLINT
+  real decayRate = (real)rand() / (real)RAND_MAX;     // NOLINT
   int64_t step = 2;
 
-  EXPRESSION_PERFORMANCE(
-      AdamaxParameterOptimizer(bufs1, beta1, beta2, step, alpha));
+  EXPRESSION_PERFORMANCE(AdamaxParameterOptimizer(
+      bufs1, beta1, beta2, step, learningRate, decayRate));
 
   BaseMatrix& value = *bufs2[PARAMETER_VALUE];
   BaseMatrix& grad = *bufs2[PARAMETER_GRADIENT];
   BaseMatrix& mom = *bufs2[PARAMETER_MOMENTUM];
   BaseMatrix& u = *bufs2[PARAMETER_WEIGHTED_INFINITY_NORM];
 
-  EXPRESSION_PERFORMANCE(
-      adamaxApply(value, grad, mom, u, beta1, beta2, step, alpha, decayRate));
+  EXPRESSION_PERFORMANCE(adamaxApply(
+      value, grad, mom, u, beta1, beta2, step, learningRate, decayRate));
 
   CHECK_VECTORPTR(bufs1[PARAMETER_VALUE], bufs2[PARAMETER_VALUE]);
+
   CHECK_VECTORPTR(bufs1[PARAMETER_MOMENTUM], bufs2[PARAMETER_MOMENTUM]);
   CHECK_VECTORPTR(bufs1[PARAMETER_WEIGHTED_INFINITY_NORM],
                   bufs2[PARAMETER_WEIGHTED_INFINITY_NORM]);

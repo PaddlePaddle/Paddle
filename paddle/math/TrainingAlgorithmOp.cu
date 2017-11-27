@@ -159,8 +159,8 @@ void adamApply(BaseMatrix& value,
 
   auto expr1 = mom.lazyAssign(beta1 * mom + ((real)1 - beta1) * grad);
   auto expr2 = v.lazyAssign(beta2 * v + ((real)1 - beta2) * grad.square());
-  auto expr3 = value.lazyAssign(value - (mom * alpha) / (v.sqrt() + epsilon) -
-                                alpha * value * decayRate);
+  auto expr3 = value.lazyAssign(value * ((real)1 - learningRate * decayRate) -
+                                (mom * alpha) / (v.sqrt() + epsilon));
 
   AssignEvaluate(expr1, expr2, expr3);
 }
@@ -178,8 +178,8 @@ void adamaxApply(BaseMatrix& value,
   auto expr2 =
       u.lazyAssign((beta2 * u > grad.abs()).condition(beta2 * u, grad.abs()));
   auto expr3 = value.lazyAssign(
-      value - (alpha / ((real)1 - (real)std::pow(beta1, step))) * (mom / u) -
-      alpha * value * decayRate);
+      value * ((real)1 - alpha * decayRate) -
+      (alpha / ((real)1 - (real)std::pow(beta1, step))) * (mom / u));
 
   AssignEvaluate(expr1, expr2, expr3);
 }
@@ -335,7 +335,8 @@ void adamApply(BaseMatrix& value,
   // v_t = \beta_2 * v_{t-1} + (1-\beta_2)* g_{t-1}^2
   v = beta2 * v + ((real)1 - beta2) * grad.square();
 
-  value -= ((mom * alpha) / (v.sqrt() + epsilon) + alpha * decayRate * value);
+  value -=
+      ((mom * alpha) / (v.sqrt() + epsilon) + learningRate * decayRate * value);
 }
 
 void adamaxApply(BaseMatrix& value,
@@ -354,7 +355,7 @@ void adamaxApply(BaseMatrix& value,
   u = (beta2 * u > grad.abs()).condition(beta2 * u, grad.abs());
 
   // \theta_t = \theta_{t-1} - (\alpha/(1-\beta_1^t))*m_t/u_t
-  value -= ((alpha / ((real)1 - (real)std::pow(beta1, step))) * (mom / u) -
+  value -= ((alpha / ((real)1 - (real)std::pow(beta1, step))) * (mom / u) +
             alpha * decayRate * value);
 }
 

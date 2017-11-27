@@ -157,7 +157,8 @@ void AdamParameterOptimizer(const VectorPtr vecs[],
                             real beta1_power,
                             real beta2_power,
                             real epsilon,
-                            real learningRate) {
+                            real learningRate,
+                            real decayRate) {
   Vector* m = vecs[PARAMETER_MOMENTUM].get();
   Vector* g = vecs[PARAMETER_GRADIENT].get();
   Vector* v = vecs[PARAMETER_SECOND_MOMENTUM].get();
@@ -172,15 +173,20 @@ void AdamParameterOptimizer(const VectorPtr vecs[],
 
   // tmp = m_t / ( \sqrt{v_t} + \epsilon )
   // \theta_t = \theta_{t-1} - \alpha * \sqrt(1-\beta_2^t) / (1-\beta_1^t) * tmp
+  // - learningRate * decayRate * \theta_{t-1}
   g->sqrt2(*v);
   g->dotDiv(*m, *g, 0., epsilon);
   real alpha =
       learningRate * std::sqrt((real)1 - beta2_power) / ((real)1 - beta1_power);
-  theta->add(*theta, 1.0, *g, -alpha);
+  theta->add(*theta, 1. - learningRate * decayRate, *g, -alpha);
 }
 
-void AdamaxParameterOptimizer(
-    const VectorPtr vecs[], real beta1, real beta2, int64_t step, real alpha) {
+void AdamaxParameterOptimizer(const VectorPtr vecs[],
+                              real beta1,
+                              real beta2,
+                              int64_t step,
+                              real learningRate,
+                              real decayRate) {
   Vector* m = vecs[PARAMETER_MOMENTUM].get();
   Vector* g = vecs[PARAMETER_GRADIENT].get();
   Vector* u = vecs[PARAMETER_WEIGHTED_INFINITY_NORM].get();
@@ -194,8 +200,9 @@ void AdamaxParameterOptimizer(
   g->abs2();
   u->max2(*u, *g);
 
-  // \theta_t = \theta_{t-1} - (\alpha/(1-\beta_1^t))*m_t/u_t
+  // \theta_t = \theta_{t-1} - (\alpha/(1-\beta_1^t))*m_t/u_t - decayRate *
+  // learningRate * \theta_t
   g->dotDiv(*m, *u);
-  real learningRate = alpha / (1 - std::pow(beta1, step));
-  theta->add(*theta, 1.0, *g, -learningRate);
+  real alpha = learningRate / (1 - std::pow(beta1, step));
+  theta->add(*theta, 1. - learningRate * decayRate, *g, -alpha);
 }
