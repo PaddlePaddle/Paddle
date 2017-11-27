@@ -55,7 +55,7 @@ SGD operator
 
 This operator implements one step of the stochastic gradient descent algorithm.
 
-$$param\textunderscore out = param - learning\textunderscore rate * grad$$
+$$param\_out = param - learning\_rate * grad$$
 
 )DOC");
   }
