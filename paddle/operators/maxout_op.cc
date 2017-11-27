@@ -22,16 +22,17 @@ class MaxOutOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   MaxOutOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X",
+    AddInput(
+        "X",
         "(Tensor) The input tensor of maxout operator. "
         "The format of input tensor is NCHW. Where N is batch size, C is the "
         "number of channels, H and W is the height and width of feature.");
     AddOutput("Out",
-        "(Tensor) The output tensor of maxout operator."
-        "The format of output tensor is also NCHW."
-        "Where N is batch size, C is "
-        "the number of channels, H and W is the height and "
-        "width of feature.");
+              "(Tensor) The output tensor of maxout operator."
+              "The format of output tensor is also NCHW."
+              "Where N is batch size, C is "
+              "the number of channels, H and W is the height and "
+              "width of feature.");
     AddAttr<int>(
         "groups",
         R"DOC("Specifies how many groups the input tensor will be split"
@@ -59,21 +60,19 @@ class MaxOutOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-
 class MaxOutOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of MaxoutOp"
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of MaxoutOp"
                    "should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of MaxoutOp should not be null.");
     auto in_x_dims = ctx->GetInputDim("X");
     int groups = ctx->Attrs().Get<int>("groups");
     // check groups > 1
-    PADDLE_ENFORCE_GT(
-        groups, 1,
-        "groups should be larger than 1 in maxoutop");
+    PADDLE_ENFORCE_GT(groups, 1, "groups should be larger than 1 in maxoutop");
     std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1] / groups});
     output_shape.push_back(in_x_dims[2]);
     output_shape.push_back(in_x_dims[3]);
@@ -87,18 +86,17 @@ class MaxOutOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-    "Input(X@GRAD) should not be null.");
+                   "Input(X@GRAD) should not be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
-}    // namespace operators
-}    // namespace paddle
+}  // namespace operators
+}  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP(maxout, ops::MaxOutOp, ops::MaxOutOpMaker, maxout_grad,
-                        ops::MaxOutOpGrad);
-REGISTER_OP_CPU_KERNEL(maxout, ops::MaxOutKernel<paddle::platform::CPUPlace,
-                       float>);
-REGISTER_OP_CPU_KERNEL(maxout_grad,
-                       ops::MaxOutGradKernel<paddle::platform::CPUPlace,
-                       float>);
+            ops::MaxOutOpGrad);
+REGISTER_OP_CPU_KERNEL(maxout,
+                       ops::MaxOutKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    maxout_grad, ops::MaxOutGradKernel<paddle::platform::CPUPlace, float>);

@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/framework/tensor.h"
+#include "paddle/framework/tensor_util.h"
 #include "paddle/platform/device_context.h"
 
 namespace paddle {

@@ -1,10 +1,9 @@
 import copy
 import itertools
 
-from paddle.v2.fluid.framework import Variable, g_main_program, \
-    g_startup_program, unique_name, Program, dtype_is_floating
-from paddle.v2.fluid.initializer import ConstantInitializer, \
-    UniformInitializer, XavierInitializer
+from framework import Variable, g_main_program, \
+    g_startup_program, unique_name, dtype_is_floating
+from paddle.v2.fluid.initializer import Constant, Xavier
 
 
 class LayerHelper(object):
@@ -108,8 +107,8 @@ class LayerHelper(object):
         dtype = None
         for each in inputs:
             if dtype is None:
-                dtype = each.data_type
-            elif dtype != each.data_type:
+                dtype = each.dtype
+            elif dtype != each.dtype:
                 raise ValueError("Data Type mismatch")
         return dtype
 
@@ -149,7 +148,7 @@ class LayerHelper(object):
         self.startup_program.global_block().create_var(
             name=var.name,
             type=var.type,
-            dtype=var.data_type,
+            dtype=var.dtype,
             shape=var.shape,
             persistable=True,
             initializer=initializer)
@@ -180,10 +179,10 @@ class LayerHelper(object):
         b = self.create_parameter(
             attr=bias_attr,
             shape=size,
-            dtype=input_var.data_type,
+            dtype=input_var.dtype,
             suffix='b',
             initializer=bias_initializer)
-        tmp = self.create_tmp_variable(dtype=input_var.data_type)
+        tmp = self.create_tmp_variable(dtype=input_var.dtype)
         self.append_op(
             type='elementwise_add',
             inputs={'X': [input_var],
@@ -198,7 +197,7 @@ class LayerHelper(object):
             return input_var
         if isinstance(act, basestring):
             act = {'type': act}
-        tmp = self.create_tmp_variable(dtype=input_var.data_type)
+        tmp = self.create_tmp_variable(dtype=input_var.dtype)
         act_type = act.pop('type')
         self.append_op(
             type=act_type,
@@ -209,7 +208,7 @@ class LayerHelper(object):
 
     def _get_default_initializer(self, dtype):
         if dtype is None or dtype_is_floating(dtype) is True:
-            return XavierInitializer()
+            return Xavier()
         else:
             # For integer and boolean types, initialize with all zeros
-            return ConstantInitializer()
+            return Constant()

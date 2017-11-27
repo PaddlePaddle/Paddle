@@ -11,10 +11,9 @@ import numpy as np
 class TestMNISTIfElseOp(unittest.TestCase):
     def test_raw_api(self):
         kwargs = {'startup_program': Program(), 'main_program': Program()}
-        image = layers.data(
-            name='x', shape=[784], data_type='float32', **kwargs)
+        image = layers.data(name='x', shape=[784], dtype='float32', **kwargs)
 
-        label = layers.data(name='y', shape=[1], data_type='int64', **kwargs)
+        label = layers.data(name='y', shape=[1], dtype='int64', **kwargs)
 
         limit = layers.fill_constant_batch_size_like(
             input=label, dtype='int64', shape=[1], value=5.0, **kwargs)
@@ -66,17 +65,10 @@ class TestMNISTIfElseOp(unittest.TestCase):
                 y_data = np.array(map(lambda x: x[1], data)).astype("int64")
                 y_data = np.expand_dims(y_data, axis=1)
 
-                tensor_x = core.LoDTensor()
-                tensor_x.set(x_data, place)
-
-                tensor_y = core.LoDTensor()
-                tensor_y.set(y_data, place)
-
-                outs = map(np.array,
-                           exe.run(kwargs['main_program'],
-                                   feed={'x': tensor_x,
-                                         'y': tensor_y},
-                                   fetch_list=[avg_loss]))
+                outs = exe.run(kwargs['main_program'],
+                               feed={'x': x_data,
+                                     'y': y_data},
+                               fetch_list=[avg_loss])
                 print outs[0]
                 if outs[0] < 1.0:
                     return
@@ -84,10 +76,9 @@ class TestMNISTIfElseOp(unittest.TestCase):
 
     def test_ifelse(self):
         kwargs = {'startup_program': Program(), 'main_program': Program()}
-        image = layers.data(
-            name='x', shape=[784], data_type='float32', **kwargs)
+        image = layers.data(name='x', shape=[784], dtype='float32', **kwargs)
 
-        label = layers.data(name='y', shape=[1], data_type='int64', **kwargs)
+        label = layers.data(name='y', shape=[1], dtype='int64', **kwargs)
 
         limit = layers.fill_constant_batch_size_like(
             input=label, dtype='int64', shape=[1], value=5.0, **kwargs)
@@ -131,19 +122,12 @@ class TestMNISTIfElseOp(unittest.TestCase):
             for data in train_reader():
                 x_data = np.array(map(lambda x: x[0], data)).astype("float32")
                 y_data = np.array(map(lambda x: x[1], data)).astype("int64")
-                y_data = np.expand_dims(y_data, axis=1)
+                y_data = y_data.reshape((y_data.shape[0], 1))
 
-                tensor_x = core.LoDTensor()
-                tensor_x.set(x_data, place)
-
-                tensor_y = core.LoDTensor()
-                tensor_y.set(y_data, place)
-
-                outs = map(np.array,
-                           exe.run(kwargs['main_program'],
-                                   feed={'x': tensor_x,
-                                         'y': tensor_y},
-                                   fetch_list=[avg_loss]))
+                outs = exe.run(kwargs['main_program'],
+                               feed={'x': x_data,
+                                     'y': y_data},
+                               fetch_list=[avg_loss])
                 print outs[0]
                 if outs[0] < 1.0:
                     return
