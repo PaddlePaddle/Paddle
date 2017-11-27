@@ -115,12 +115,11 @@ Pass Compile Options
 
 You can pass compile options to use intended BLAS/CUDA/Cudnn libraries.
 When running cmake command, it will search system paths like
-:code:`/usr/lib\:/usr/local/lib` and then search paths that you
+:code:`/usr/lib:/usr/local/lib` and then search paths that you
 passed to cmake, i.e.
 
 ..  code-block:: bash
 
     cmake .. -DWITH_GPU=ON -DWITH_TESTING=OFF -DCUDNN_ROOT=/opt/cudnnv5
 
-**NOTE: These options only take effect when running cmake for the first time, you need to clean the cmake cache or clean the build directory if you want to change it.**
-
+**NOTE: These options only take effect when running cmake for the first time, you need to clean the cmake cache or clean the build directory (** :code:`rm -rf` **) if you want to change it.**

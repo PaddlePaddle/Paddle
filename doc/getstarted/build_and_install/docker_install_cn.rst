@@ -57,7 +57,7 @@
 ------------------------------
 
 假设您已经在当前目录（比如在/home/work）编写了一个PaddlePaddle的程序 :code:`train.py` （可以参考
-`PaddlePaddleBook <http://www.paddlepaddle.org/docs/develop/book/01.fit_a_line/index.cn.html>`_
+`PaddlePaddleBook <http://www.paddlepaddle.org/docs/develop/book/01.fit_a_line/index.cn.html>`_ 
 编写），就可以使用下面的命令开始执行训练：
 
   .. code-block:: bash
@@ -77,7 +77,7 @@
      cd /work
      python train.py
 
-**注：PaddlePaddle Docker镜像为了减小体积，默认没有安装vim，您可以在容器中执行 :code:`apt-get install -y vim` 安装后，在容器中编辑代码。**
+**注：PaddlePaddle Docker镜像为了减小体积，默认没有安装vim，您可以在容器中执行** :code:`apt-get install -y vim` **安装后，在容器中编辑代码。**
 
 .. _docker_run_book:
 

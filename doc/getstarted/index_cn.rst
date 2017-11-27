@@ -31,9 +31,7 @@ PaddlePaddle支持使用pip快速安装，目前支持CentOS 6以上, Ubuntu 14.
 快速开始
 ++++++++
 
-下载 `房价模型文件 <https://raw.githubusercontent.com/PaddlePaddle/book/develop/01.fit_a_line/fit_a_line.tar>`_
-
-创建一个 housing.py 并粘贴此Python代码 (请确保fit_a_line.tar 是在正确的路径上)
+创建一个 housing.py 并粘贴此Python代码：
 
   .. code-block:: python
 
@@ -46,16 +44,14 @@ PaddlePaddle支持使用pip快速安装，目前支持CentOS 6以上, Ubuntu 14.
      x = paddle.layer.data(name='x', type=paddle.data_type.dense_vector(13))
      y_predict = paddle.layer.fc(input=x, size=1, act=paddle.activation.Linear())
 
-     with open('fit_a_line.tar', 'r') as f:
-         parameters = paddle.parameters.Parameters.from_tar(f)
-
      # Infer using provided test data.
      probs = paddle.infer(
-          output_layer=y_predict, parameters=parameters,
-          input=[item for item in paddle.dataset.uci_housing.test()()])
+         output_layer=y_predict,
+         parameters=paddle.dataset.uci_housing.model(),
+         input=[item for item in paddle.dataset.uci_housing.test()()])
 
      for i in xrange(len(probs)):
-          print 'Predicted price: ${:,.2f}'.format(probs[i][0] * 1000)
+         print 'Predicted price: ${:,.2f}'.format(probs[i][0] * 1000)
 
 执行 :code:`python housing.py` 瞧！ 它应该打印出预测住房数据的清单。
 

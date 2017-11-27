@@ -62,7 +62,7 @@ Launch your training program in Docker
 
 Assume that you have already written a PaddlePaddle program
 named :code:`train.py` under directory :code:`/home/work` (refer to 
-`PaddlePaddleBook <http://www.paddlepaddle.org/docs/develop/book/01.fit_a_line/index.cn.html>`_
+`PaddlePaddleBook <http://www.paddlepaddle.org/docs/develop/book/01.fit_a_line/index.cn.html>`_ 
 for more samples), then run the following command:
 
   .. code-block:: bash
@@ -84,7 +84,7 @@ interactively:
      cd /work
      python train.py
 
-**NOTE: We did not install vim in the default docker image to reduce the image size, you can run :code:`apt-get install -y vim` to install it if you need to edit python files.**
+**NOTE: We did not install vim in the default docker image to reduce the image size, you can run** :code:`apt-get install -y vim` **to install it if you need to edit python files.**
 
 .. _docker_run_book:
 

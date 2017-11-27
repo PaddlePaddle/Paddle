@@ -27,6 +27,10 @@ PaddlePaddle可以使用常用的Python包管理工具
 如果需要获取并安装最新的（开发分支）PaddlePaddle，可以从我们的CI系统中下载最新的whl安装包和c-api开发包并安装，
 您可以从下面的表格中找到需要的版本：
 
+如果在点击下面链接时出现如下登陆界面，点击“Log in as guest”即可开始下载：
+
+.. image:: paddleci.png
+
 ..  csv-table:: 各个版本最新的whl包
     :header: "版本说明", "cp27-cp27mu", "cp27-cp27mu", "C-API"
     :widths: 1, 3, 3, 3
