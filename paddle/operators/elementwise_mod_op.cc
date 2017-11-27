@@ -17,12 +17,25 @@
 
 namespace paddle {
 namespace operators {
+
+// the fundamental operator in program language is + - * / %
+// https://softwareengineering.stackexchange.com/questions/206293/why-is-mod-a-fundamental-mathematical-operator-in-many-programming-languages
+
 class ElementwiseModOpMaker : public ElementwiseOpMaker {
  public:
   ElementwiseModOpMaker(framework::OpProto* proto,
                         framework::OpAttrChecker* op_checker)
       : ElementwiseOpMaker(proto, op_checker) {
-    SetComment("Mod", "$Out = X % Y$");
+    SetComment("Mod", R"DOC(
+ElementwiseMod Operator.
+
+X is a Tensor, Y is a Scalar. Note that Y only can be int(int32).
+And Gradient of Y at int position is undefined.
+Out is a Tensor which is mod elementwise of Y.
+
+$Out = X % Y$
+
+)DOC");
     AddComment(comment_);
   }
 };

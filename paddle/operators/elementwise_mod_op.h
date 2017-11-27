@@ -21,11 +21,20 @@
 namespace paddle {
 namespace operators {
 
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
+
+using framework::Tensor;
+
 template <typename Place, typename T>
 class ElementwiseModKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using Tensor = framework::Tensor;
 
     // only support Tensor % Scalar
     auto* x = ctx.Input<Tensor>("X");
@@ -38,14 +47,16 @@ class ElementwiseModKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
                       "Rank of first input must >= rank of second input.");
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE(
         y_dims[0] == 1,
-        " ElementwiseModOp Input(Y) must be scalar, shape equal 1.");
+        " ElementwiseModOp Input(Y) must be Scalar, shape equal 1.");
 
     auto x_e = framework::EigenVector<T>::Flatten(*x);
-    auto y_e = framework::Scalar<T, 1>::From(*y);
+    // std::vector<int> y_e(0);
+    // framework::CopyToVector(*y, ctx.device_context(), &y_e);
+    auto y_e = framework::EigenScalar<int>::From(*y);
     auto z_e = framework::EigenVector<T>::Flatten(*z);
-    z_e.device(ctx.GetEigenDevice<Place>()) = x_e % static_cast<int>(5);
+    z_e.device(ctx.GetEigenDevice<Place>()) = x_e % y_e(0);
   }
 };
 
@@ -53,8 +64,6 @@ template <typename Place, typename T>
 class ElementwiseModGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using Tensor = framework::Tensor;
-
     // at integer point, the gradient is undefined.
     // https://math.stackexchange.com/questions/1849280/derivative-of-remainder-function-wrt-denominator
     auto* x = ctx.Input<Tensor>("X");
@@ -63,8 +72,8 @@ class ElementwiseModGradKernel : public framework::OpKernel<T> {
 
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    auto y_e = framework::EigenVector<T>::Flatten(*y);
     auto x_e = framework::EigenVector<T>::Flatten(*x);
+    auto y_e = framework::EigenScalar<int>::From(*y);
     auto dz_e = framework::EigenVector<T>::Flatten(*dz);
 
     auto place = ctx.GetEigenDevice<Place>();
@@ -77,7 +86,7 @@ class ElementwiseModGradKernel : public framework::OpKernel<T> {
 
     if (dy) {
       dy->mutable_data<T>(ctx.GetPlace());
-      auto dy_e = framework::EigenVector<T>::Flatten(*dy);
+      auto dy_e = framework::EigenScalar<int>::From(*dy);
       auto floor_div = x_e / y_e;
       dy_e.device(place) = -1.0 * dz_e * floor_div.floor();
     }
