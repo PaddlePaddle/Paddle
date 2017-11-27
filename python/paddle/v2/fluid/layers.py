@@ -1,4 +1,4 @@
-from . import core
+import core
 import proto.framework_pb2 as framework_pb2
 from framework import OpProtoHolder, Variable, Program, Operator
 from initializer import Constant, Normal, Xavier

@@ -1,35 +1,36 @@
 import unittest
 
-from paddle.v2.fluid.framework import Program
-from paddle.v2.fluid.framework import g_main_program
+from paddle.v2.fluid.framework import Program, default_main_program
+
+main_program = default_main_program()
 
 
 class TestProgram(unittest.TestCase):
     def test_program(self):
-        b = g_main_program.current_block()
+        b = main_program.current_block()
         self.assertEqual(-1, b.parent_idx)
         self.assertEqual(0, b.idx)
 
-        b = g_main_program.create_block()
+        b = main_program.create_block()
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
 
-        b = g_main_program.create_block()
+        b = main_program.create_block()
         self.assertEqual(2, b.idx)
         self.assertEqual(1, b.parent_idx)
 
-        g_main_program.rollback()
+        main_program.rollback()
 
-        b = g_main_program.current_block()
+        b = main_program.current_block()
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
 
-        b = g_main_program.create_block()
+        b = main_program.create_block()
         self.assertEqual(3, b.idx)
         self.assertEqual(1, b.parent_idx)
 
-        g_main_program.rollback()
-        b = g_main_program.current_block()
+        main_program.rollback()
+        b = main_program.current_block()
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
 

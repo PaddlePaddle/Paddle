@@ -6,7 +6,7 @@ import proto.framework_pb2 as framework_pb2
 
 __all__ = [
     'Block', 'Variable', 'Program', 'Operator', 'default_startup_program',
-    'default_main_program', 'g_startup_program', 'g_main_program'
+    'default_main_program'
 ]
 
 
@@ -600,13 +600,13 @@ class Parameter(Variable):
 
 
 # program is a global instance.
-g_main_program = Program()
-g_startup_program = Program()
+_main_program_ = Program()
+_startup_program_ = Program()
 
 
 def default_startup_program():
-    return g_startup_program
+    return _main_program_
 
 
 def default_main_program():
-    return g_main_program
+    return _startup_program_
