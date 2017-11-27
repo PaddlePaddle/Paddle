@@ -1,5 +1,5 @@
 import unittest
-from paddle.v2.fluid.layers import mul, data
+from paddle.v2.fluid.layers import mul, data, sequence_pool
 import paddle.v2.fluid.core as core
 from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.framework import g_main_program
@@ -17,17 +17,13 @@ class TestExecutor(unittest.TestCase):
         out = mul(x=a, y=b)
         place = core.CPUPlace()
         a_np = numpy.random.random((100, 784)).astype('float32')
-        tensor_a = core.LoDTensor()
-        tensor_a.set(a_np, place)
         b_np = numpy.random.random((784, 100)).astype('float32')
-        tensor_b = core.LoDTensor()
-        tensor_b.set(b_np, place)
         exe = Executor(place)
         outs = exe.run(g_main_program,
-                       feed={'a': tensor_a,
-                             'b': tensor_b},
+                       feed={'a': a_np,
+                             'b': b_np},
                        fetch_list=[out])
-        out = numpy.array(outs[0])
+        out = outs[0]
         self.assertEqual((100, 100), out.shape)
         self.assertTrue(numpy.allclose(out, numpy.dot(a_np, b_np)))
 
