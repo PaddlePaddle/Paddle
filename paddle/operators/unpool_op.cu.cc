@@ -16,10 +16,10 @@
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(unpool,
-                       ops::UnpoolKernel<paddle::platform::GPUPlace, float>,
-                       ops::UnpoolKernel<paddle::platform::GPUPlace, double>);
+                ops::UnpoolKernel<paddle::platform::GPUPlace, float, int>,
+                ops::UnpoolKernel<paddle::platform::GPUPlace, double, int>);
 REGISTER_OP_GPU_KERNEL(unpool_grad,
                        ops::UnpoolGradKernel<paddle::platform::GPUPlace,
-                        float>,
+                        float, int>,
                        ops::UnpoolGradKernel<paddle::platform::GPUPlace,
-                        double>);
+                        double, int>);

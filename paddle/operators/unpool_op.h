@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename Place, typename T, typename T2>
 class UnpoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -37,12 +37,12 @@ class UnpoolKernel : public framework::OpKernel<T> {
       math::SetConstant<Place, T> set_zero;
       set_zero(context.device_context(), out, static_cast<T>(0));
     }
-    math::Unpool2dMaxFunctor<Place, T> unpool2d_max_forward;
+    math::Unpool2dMaxFunctor<Place, T, T2> unpool2d_max_forward;
     unpool2d_max_forward(context.device_context(), *in_x, *in_y, out);
   }
 };
 
-template <typename Place, typename T>
+template <typename Place, typename T, typename T2>
 class UnpoolGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -64,7 +64,7 @@ class UnpoolGradKernel : public framework::OpKernel<T> {
       in_x_grad->mutable_data<T>(context.GetPlace());
       zero(device_ctx, in_x_grad, static_cast<T>(0));
     }
-    math::Unpool2dMaxGradFunctor<Place, T> unpool2d_max_backward;
+    math::Unpool2dMaxGradFunctor<Place, T, T2> unpool2d_max_backward;
     unpool2d_max_backward(context.device_context(), *in_x, *in_y,
                           *out, *out_grad, in_x_grad);
   }

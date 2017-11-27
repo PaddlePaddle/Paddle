@@ -53,7 +53,7 @@ class TestUnpoolOp(OpTest):
         output = self.Unpool2d_forward_naive(input, indices, self.ksize, \
                 self.strides, self.paddings).astype("float32")
         self.inputs = {'X': input.astype('float32'),
-                       'Y': indices.astype('int16')}
+                       'Y': indices.astype('int32')}
         self.attrs = {
                  'strides': self.strides,
                  'paddings': self.paddings,
