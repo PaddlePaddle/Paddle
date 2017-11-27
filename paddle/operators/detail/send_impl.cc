@@ -45,7 +45,7 @@ bool RPCClient::SendVariable(const framework::Scope& scope,
   auto* outvar = scope.FindVar(outname);
   framework::LoDTensor* out_tensor = outvar->GetMutable<framework::LoDTensor>();
   // FIXME(typhoonzero): do not copy.
-  out_tensor->CopyFrom(ret_tensor, ctx.GetPlace(), ctx);
+  framework::CopyFrom(ret_tensor, ctx.GetPlace(), ctx, out_tensor);
   return true;
 }
 

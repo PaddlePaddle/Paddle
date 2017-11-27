@@ -70,7 +70,7 @@ class RecvOp : public framework::OperatorBase {
     auto *var = recv_scope.Var(Input("RX"));
     auto *tensor = var->GetMutable<framework::LoDTensor>();
     // FIXME(typhoonzero): do not copy
-    tensor->CopyFrom(t, dev_ctx.GetPlace(), dev_ctx);
+    framework::CopyFrom(t, dev_ctx.GetPlace(), dev_ctx, tensor);
 
     auto *block = Attr<framework::BlockDescBind *>("OptimizeBlock");
     auto *program = block->Program();
