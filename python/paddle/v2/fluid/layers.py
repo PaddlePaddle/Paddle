@@ -1,9 +1,7 @@
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
-from paddle.v2.fluid.framework import OpProtoHolder, Variable, Program, \
-    Operator
-from paddle.v2.fluid.initializer import ConstantInitializer, \
-    NormalInitializer, XavierInitializer
+from . import core
+import proto.framework_pb2 as framework_pb2
+from framework import OpProtoHolder, Variable, Program, Operator
+from initializer import Constant, Normal, Xavier
 from paddle.v2.fluid.layer_helper import LayerHelper, unique_name
 import re
 import cStringIO
@@ -58,10 +56,10 @@ def fc(input,
     """
 
     def _get_default_param_initializer():
-        return XavierInitializer()
+        return Xavier()
 
     def _get_default_bias_initializer():
-        return ConstantInitializer()
+        return Constant()
 
     helper = LayerHelper('fc', **locals())
 
@@ -139,7 +137,7 @@ def embedding(input,
     """
 
     def _get_default_param_initializer():
-        return XavierInitializer()
+        return Xavier()
 
     helper = LayerHelper('embedding', **locals())
     w = helper.create_parameter(
@@ -477,7 +475,7 @@ def linear_chain_crf(input,
                      main_program=None,
                      startup_program=None):
     def _get_default_param_initializer():
-        return XavierInitializer()
+        return Xavier()
 
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[1]
@@ -661,10 +659,10 @@ def sequence_conv(input,
     """
 
     def _get_default_bias_initializer():
-        return ConstantInitializer()
+        return Constant()
 
     def _get_default_param_initializer():
-        return XavierInitializer()
+        return Xavier()
 
     # FIXME(dzh) : want to unify the argument of python layer
     # function. So we ignore some unecessary attributes.
@@ -725,11 +723,11 @@ def conv2d(input,
     """
 
     def _get_default_bias_initializer():
-        return ConstantInitializer()
+        return Constant()
 
     def _get_default_param_initializer(filter_size, num_channels):
         std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
-        return NormalInitializer(0.0, std, 0)
+        return Normal(0.0, std, 0)
 
     helper = LayerHelper('conv2d', **locals())
     dtype = helper.input_dtype()
@@ -878,22 +876,20 @@ def batch_norm(input,
         attr=helper.param_attr,
         shape=param_shape,
         dtype=dtype,
-        initializer=ConstantInitializer(1.0))
+        initializer=Constant(1.0))
     bias = helper.create_parameter(
         attr=helper.param_attr,
         shape=param_shape,
         dtype=dtype,
-        initializer=ConstantInitializer(0.0))
+        initializer=Constant(0.0))
 
     mean = helper.create_global_variable(
         dtype=input.dtype, shape=param_shape, persistable=True)
-    helper.set_variable_initializer(
-        var=mean, initializer=ConstantInitializer(0.0))
+    helper.set_variable_initializer(var=mean, initializer=Constant(0.0))
 
     variance = helper.create_global_variable(
         dtype=input.dtype, shape=param_shape, persistable=True)
-    helper.set_variable_initializer(
-        var=variance, initializer=ConstantInitializer(1.0))
+    helper.set_variable_initializer(var=variance, initializer=Constant(1.0))
 
     # create output
     # mean and mean_out share the same memory
@@ -1356,6 +1352,20 @@ def lod_rank_table(x, level=0, main_program=None):
         outputs={'Out': table},
         attrs={'level': level})
     return table
+
+
+def max_sequence_len(rank_table, main_program=None):
+    """
+    This function creates an operator to calculate the length of 
+    max seqence through input rank_table(should be a lod_rank_table)
+    """
+    helper = LayerHelper("max_seqence_len", **locals())
+    res = helper.create_tmp_variable(dtype="int64")
+    helper.append_op(
+        type="max_sequence_len",
+        inputs={"RankTable": rank_table},
+        outputs={"Out": res})
+    return res
 
 
 def topk(input, k, main_program=None, startup_program=None):

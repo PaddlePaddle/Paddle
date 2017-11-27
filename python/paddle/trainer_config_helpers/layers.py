@@ -1900,9 +1900,12 @@ def repeat_layer(input,
     A layer for repeating the input for num_repeats times.
 
     If as_row_vector:
+
     .. math::
        y  = [x_1,\cdots, x_n, \cdots, x_1, \cdots, x_n]
+
     If not as_row_vector:
+
     .. math::
        y  = [x_1,\cdots, x_1, \cdots, x_n, \cdots, x_n]
 
@@ -1915,19 +1918,19 @@ def repeat_layer(input,
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param num_repeats: Repeat the input so many times
+    :param num_repeats: The times of repeating the input.
     :type num_repeats: int
     :param name: The name of this layer. It is optional.
-    :param as_row_vector: True for treating input as row vector and repeating
-                          in the column direction.  This is equivalent to apply
-                          concat_layer() with num_repeats same input.
-                          False for treating input as column vector and repeating
-                          in the row direction.
+    :type name: basestring
+    :param as_row_vector: Whether to treat the input as row vectors or not. If
+                          the parameter is set to True, the repeating operation
+                          will be performed in the column direction. Otherwise,
+                          it will be performed in the row direction.
     :type as_row_vector: bool
     :param act: Activation type. IdentityActivation is the default activation.
     :type act: BaseActivation
-    :type name: basestring
-    :param layer_attr: extra layer attributes.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -1974,13 +1977,14 @@ def seq_reshape_layer(input,
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param reshape_size: the size of reshaped sequence.
+    :param reshape_size: The dimension of the reshaped sequence.
     :type reshape_size: int
     :param name: The name of this layer. It is optional.
     :type name: basestring
     :param act: Activation type. IdentityActivation is the default activation.
     :type act: BaseActivation
-    :param layer_attr: extra layer attributes.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
@@ -2008,7 +2012,7 @@ def seq_reshape_layer(input,
 @layer_support()
 def interpolation_layer(input, weight, name=None, layer_attr=None):
     """
-    This layer is for linear interpolation with two inputs,
+    This layer performs linear interpolation on two inputs,
     which is used in NEURAL TURING MACHINE.
 
     .. math::
@@ -2030,7 +2034,8 @@ def interpolation_layer(input, weight, name=None, layer_attr=None):
     :type weight: LayerOutput
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param layer_attr: extra layer attributes.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2064,7 +2069,7 @@ def bilinear_interp_layer(input,
                           name=None,
                           layer_attr=None):
     """
-    This layer is to implement bilinear interpolation on conv layer output.
+    This layer implements bilinear interpolation on convolutional layer's output.
 
     Please refer to Wikipedia: https://en.wikipedia.org/wiki/Bilinear_interpolation
 
@@ -2074,18 +2079,19 @@ def bilinear_interp_layer(input,
 
        bilinear = bilinear_interp_layer(input=layer1, out_size_x=64, out_size_y=64)
 
-    :param   input:        A input layer.
-    :type    input:        LayerOutput.
-    :param   out_size_x:   bilinear interpolation output width.
-    :type    out_size_x:   int | None
-    :param   out_size_y:   bilinear interpolation output height.
-    :type    out_size_y:   int | None
-    :param   name:         The layer's name, which cna not be specified.
-    :type    name:         None | basestring
-    :param   layer_attr:   Extra Layer attribute.
-    :type    layer_attr:   ExtraLayerAttribute
+    :param input: The input of this layer.
+    :type input: LayerOutput.
+    :param out_size_x: The width of the output.
+    :type out_size_x: int
+    :param out_size_y: The height of the output.
+    :type out_size_y: int
+    :param name: The name of this layer. It is optional.
+    :type name: basestring
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
-    :rtype:  LayerOutput
+    :rtype: LayerOutput
     """
     assert input.layer_type == LayerType.CONV_LAYER
     assert isinstance(input.activation, LinearActivation)
@@ -2120,8 +2126,8 @@ def power_layer(input, weight, name=None, layer_attr=None):
     .. math::
        y = x^w
 
-    where :math:`x` is a input vector, :math:`w` is scalar weight,
-    and :math:`y` is a output vector.
+    where :math:`x` is an input vector, :math:`w` is a scalar exponent,
+    and :math:`y` is an output vector.
 
     The example usage is:
 
@@ -2131,11 +2137,12 @@ def power_layer(input, weight, name=None, layer_attr=None):
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param weight: Weight layer.
+    :param weight: The exponent of the power.
     :type weight: LayerOutput
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param layer_attr: extra layer attributes.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2175,11 +2182,12 @@ def scaling_layer(input, weight, name=None, layer_attr=None):
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param weight: Weight layer.
+    :param weight: The weight of each sample.
     :type weight: LayerOutput
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param layer_attr: extra layer attributes.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2217,7 +2225,8 @@ def trans_layer(input, name=None, layer_attr=None):
     :type input: LayerOutput
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param layer_attr: extra layer attributes.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2253,11 +2262,14 @@ def rotate_layer(input, height, width, name=None, layer_attr=None):
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param height: The height of the sample matrix
+    :param height: The height of the sample matrix.
     :type height: int
+    :param width: The width of the sample matrix.
+    :type width: int
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param layer_attr: extra layer attributes.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2302,15 +2314,15 @@ def cos_sim(a, b, scale=1, size=1, name=None, layer_attr=None):
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param a: input layer a
+    :param a: The first input of this layer.
     :type a: LayerOutput
-    :param b: input layer b
+    :param b: The second input of this layer.
     :type b: LayerOutput
-    :param scale: scale for cosine value. default is 5.
+    :param scale: The scale of the cosine similarity. 1 is the default value.
     :type scale: float
-    :param size: layer size. NOTE size_a * size should equal size_b.
+    :param size: The dimension of this layer. NOTE size_a * size should equal size_b.
     :type size: int
-    :param layer_attr: Extra Layer Attribute.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2395,8 +2407,10 @@ def hsigmoid(input,
     """
     Organize the classes into a binary tree. At each node, a sigmoid function
     is used to calculate the probability of belonging to the right branch.
-    This idea is from "F. Morin, Y. Bengio (AISTATS 05):
-    Hierarchical Probabilistic Neural Network Language Model."
+
+    Reference:
+        `Hierarchical Probabilistic Neural Network Language Model
+        <http://www.gatsby.ucl.ac.uk/aistats/fullpapers/208.pdf>`_
 
     The example usage is:
 
@@ -2407,19 +2421,21 @@ def hsigmoid(input,
 
     :param input: The input of this layer.
     :type input: LayerOutput | list | tuple
-    :param label: Label layer.
+    :param label: The input label.
     :type label: LayerOutput
-    :param num_classes: number of classes.
-    :type num_classes: int | None
+    :param num_classes: The number of classes. And it should be larger than 2. If the parameter
+                        is not set or set to None, its actual value will be automatically set to
+                        the number of labels.
+    :type num_classes: int
     :param name: The name of this layer. It is optional.
     :type name: basestring
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param param_attr: Parameter Attribute. None means default parameter.
-    :type param_attr: ParameterAttribute | None
-    :param layer_attr: Extra Layer Attribute.
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
+    :type param_attr: ParameterAttribute
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -4241,7 +4257,7 @@ def dot_prod_layer(input1, input2, name=None, layer_attr=None):
     :param name: The name of this layer. It is optional.
     :type name: basestring
     :param input1: The first input layer.
-    :type input: LayerOutput
+    :type input1: LayerOutput
     :param input2: The second input layer.
     :type input2: LayerOutput
     :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
