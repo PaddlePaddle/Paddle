@@ -10,8 +10,8 @@ class TestCastOp(op_test.OpTest):
         self.inputs = {'X': ipt.astype('float32')}
         self.outputs = {'Out': ipt.astype('float64')}
         self.attrs = {
-            'in_data_type': int(core.DataType.FP32),
-            'out_data_type': int(core.DataType.FP64)
+            'in_dtype': int(core.DataType.FP32),
+            'out_dtype': int(core.DataType.FP64)
         }
         self.op_type = 'cast'
 
