@@ -9,7 +9,7 @@ import numpy
 
 class TestShrinkRNNMemory(unittest.TestCase):
     def test_shrink_rnn_memory(self):
-        x = layers.data('x', shape=[100], data_type='float32')
+        x = layers.data('x', shape=[100], dtype='float32')
         x.stop_gradient = False
         table = layers.lod_rank_table(x=x)
         i = layers.zeros(dtype='int64', shape=[1])
@@ -27,19 +27,16 @@ class TestShrinkRNNMemory(unittest.TestCase):
         tensor_np = numpy.random.random(size=(3, 100)).astype('float32')
         tensor.set(tensor_np, cpu)
         exe = Executor(cpu)
-        outs = map(numpy.array,
-                   exe.run(feed={'x': tensor}, fetch_list=[mem1, mem2, mem3]))
+        outs = exe.run(feed={'x': tensor}, fetch_list=[mem1, mem2, mem3])
         self.assertTrue(numpy.allclose(tensor_np[0:3], outs[0]))
         self.assertTrue(numpy.allclose(tensor_np[0:2], outs[1]))
         self.assertTrue(numpy.allclose(tensor_np[0:1], outs[2]))
 
         mem3_mean = layers.mean(x=mem3)
         append_backward_ops(loss=mem3_mean)
-        x_grad = map(numpy.array,
-                     exe.run(feed={'x': tensor},
-                             fetch_list=[
-                                 g_main_program.global_block().var('x@GRAD')
-                             ]))[0]
+        x_grad = exe.run(
+            feed={'x': tensor},
+            fetch_list=[g_main_program.global_block().var('x@GRAD')])[0]
         self.assertAlmostEqual(1.0, x_grad.sum(), delta=0.1)
 
 
