@@ -6,7 +6,7 @@ import proto.framework_pb2 as framework_pb2
 
 __all__ = [
     'Block', 'Variable', 'Program', 'Operator', 'default_startup_program',
-    'default_main_program'
+    'default_main_program', 'g_startup_program', 'g_main_program'
 ]
 
 
