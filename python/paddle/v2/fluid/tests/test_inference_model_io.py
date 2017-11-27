@@ -1,13 +1,13 @@
-import paddle.v2 as paddle
-import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid.optimizer as optimizer
+import unittest
 
+import numpy as np
+import paddle.v2.fluid.core as core
+
+import paddle.v2.fluid.executor as executor
+import paddle.v2.fluid.layers as layers
+import paddle.v2.fluid.optimizer as optimizer
 from paddle.v2.fluid.framework import Program
 from paddle.v2.fluid.io import save_inference_model, load_inference_model
-import paddle.v2.fluid.executor as executor
-import unittest
-import numpy as np
 
 
 class TestBook(unittest.TestCase):
@@ -19,13 +19,13 @@ class TestBook(unittest.TestCase):
         x = layers.data(
             name='x',
             shape=[2],
-            data_type='float32',
+            dtype='float32',
             main_program=program,
             startup_program=init_program)
         y = layers.data(
             name='y',
             shape=[1],
-            data_type='float32',
+            dtype='float32',
             main_program=program,
             startup_program=init_program)
 
@@ -44,7 +44,7 @@ class TestBook(unittest.TestCase):
             x=cost, main_program=program, startup_program=init_program)
 
         sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
-        opts = sgd_optimizer.minimize(avg_cost, init_program)
+        sgd_optimizer.minimize(avg_cost, init_program)
 
         place = core.CPUPlace()
         exe = executor.Executor(place)
@@ -52,25 +52,20 @@ class TestBook(unittest.TestCase):
         exe.run(init_program, feed={}, fetch_list=[])
 
         for i in xrange(100):
-            x_data = np.array(
+            tensor_x = np.array(
                 [[1, 1], [1, 2], [3, 4], [5, 2]]).astype("float32")
-            y_data = np.array([[-2], [-3], [-7], [-7]]).astype("float32")
+            tensor_y = np.array([[-2], [-3], [-7], [-7]]).astype("float32")
 
-            tensor_x = core.LoDTensor()
-            tensor_x.set(x_data, place)
-            tensor_y = core.LoDTensor()
-            tensor_y.set(y_data, place)
             exe.run(program,
                     feed={'x': tensor_x,
                           'y': tensor_y},
                     fetch_list=[avg_cost])
 
         save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, program)
-        outs = exe.run(program,
-                       feed={'x': tensor_x,
-                             'y': tensor_y},
-                       fetch_list=[avg_cost])
-        expected = np.array(outs[0])
+        expected = exe.run(program,
+                           feed={'x': tensor_x,
+                                 'y': tensor_y},
+                           fetch_list=[avg_cost])[0]
 
         reload(executor)  # reload to build a new scope
         exe = executor.Executor(place)
@@ -83,7 +78,7 @@ class TestBook(unittest.TestCase):
             feed={feed_var_names[0]: tensor_x,
                   feed_var_names[1]: tensor_y},
             fetch_list=fetch_vars)
-        actual = np.array(outs[0])
+        actual = outs[0]
 
         self.assertEqual(feed_var_names, ["x", "y"])
         self.assertEqual(len(fetch_vars), 1)

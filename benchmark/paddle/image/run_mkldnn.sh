@@ -40,6 +40,7 @@ fi
 for use_mkldnn in True False; do
   for batchsize in 64 128 256; do
     train vgg 19 $batchsize $use_mkldnn
-    train resnet 50  $batchsize $use_mkldnn
+    train resnet 50 $batchsize $use_mkldnn
+    train googlenet v1 $batchsize $use_mkldnn
   done
 done

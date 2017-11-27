@@ -33,7 +33,7 @@ class MultiplexGPUKernel : public framework::OpKernel<T> {
     auto cols = ins[0]->numel() / rows;
     // copy index to cpu
     Tensor index_t_cpu;
-    index_t_cpu.CopyFrom(*ids, platform::CPUPlace(), ctx.device_context());
+    CopyFrom(*ids, platform::CPUPlace(), ctx.device_context(), &index_t_cpu);
     auto* index = index_t_cpu.data<int32_t>();
     auto stream = ctx.cuda_device_context().stream();
     Place place = boost::get<Place>(ctx.GetPlace());
@@ -68,7 +68,7 @@ class MultiplexGradGPUKernel : public framework::OpKernel<T> {
     auto cols = ins[0]->numel() / rows;
     // copy index to cpu
     Tensor index_t_cpu;
-    index_t_cpu.CopyFrom(*ids, platform::CPUPlace(), ctx.device_context());
+    CopyFrom(*ids, platform::CPUPlace(), ctx.device_context(), &index_t_cpu);
     auto* index = index_t_cpu.data<int32_t>();
 
     auto stream = ctx.cuda_device_context().stream();
