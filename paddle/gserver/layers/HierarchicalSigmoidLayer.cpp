@@ -75,10 +75,10 @@ void HierarchicalSigmoidLayer::forward(PassType passType) {
 
   if (useGpu_) {
     Matrix::resizeOrCreate(cpuOutput_,
-                         output_.value->getHeight(),
-                         output_.value->getWidth(),
-                          /* trans */ false,
-                          false);
+                           output_.value->getHeight(),
+                           output_.value->getWidth(),
+                           /* trans */ false,
+                           false);
     IVector::resizeOrCreate(cpuLabel_, label->getSize(), false);
     cpuLabel_->copyFrom(*label);
     cpuOutput_->copyFrom(*output_.value);
@@ -90,10 +90,10 @@ void HierarchicalSigmoidLayer::forward(PassType passType) {
   if (biases_.get() != NULL) {
     if (useGpu_) {
       Matrix::resizeOrCreate(cpuBias_,
-                          1,
-                          numClasses_ - 1,
-                          /* trans */ false,
-                          false);
+                             1,
+                             numClasses_ - 1,
+                             /* trans */ false,
+                             false);
       cpuBias_->copyFrom(*biases_->getW());
     } else {
       cpuBias_ = biases_->getW();
@@ -104,15 +104,15 @@ void HierarchicalSigmoidLayer::forward(PassType passType) {
     MatrixPtr input = getInputValue(i);
     if (useGpu_) {
       Matrix::resizeOrCreate(cpuInput_,
-                          input->getHeight(),
-                          input->getWidth(),
-                          /* trans */ false,
-                          false);
+                             input->getHeight(),
+                             input->getWidth(),
+                             /* trans */ false,
+                             false);
       Matrix::resizeOrCreate(cpuWeight_,
-                          weights_[i]->getW()->getHeight(),
-                          weights_[i]->getW()->getWidth(),
-                          /* trans */ false,
-                          false);
+                             weights_[i]->getW()->getHeight(),
+                             weights_[i]->getW()->getWidth(),
+                             /* trans */ false,
+                             false);
       cpuInput_->copyFrom(*input);
       cpuWeight_->copyFrom(*weights_[i]->getW());
     } else {
@@ -129,8 +129,7 @@ void HierarchicalSigmoidLayer::forward(PassType passType) {
                                  *cpuOutput_,
                                  -1);  // scaleSum
   preOutput_.value->softrelu(*preOutput_.value);
-  MatrixPtr sum =
-      Matrix::create(batchSize, 1, /* trans= */ false, false);
+  MatrixPtr sum = Matrix::create(batchSize, 1, /* trans= */ false, false);
   preOutput_.value->rowSum(*sum);
   cpuOutput_->add(*sum);
   if (useGpu_) {
@@ -156,16 +155,15 @@ void HierarchicalSigmoidLayer::backward(const UpdateCallback& callback) {
     MatrixPtr biases_grad = biases_->getWGrad();
     if (useGpu_) {
       Matrix::resizeOrCreate(cpuBias_,
-                            1,
-                            numClasses_ - 1,
-                            /* trans */ false,
-                            false);
+                             1,
+                             numClasses_ - 1,
+                             /* trans */ false,
+                             false);
       cpuBias_->copyFrom(*biases_grad);
     } else {
       cpuBias_ = biases_grad;
     }
-    preOutput_.grad->addByBitCodeBackward(
-        numClasses_, *cpuLabel_, *cpuBias_);
+    preOutput_.grad->addByBitCodeBackward(numClasses_, *cpuLabel_, *cpuBias_);
     if (useGpu) {
       biases_grad->copyFrom(*cpuBias_);
     } else {
@@ -182,15 +180,15 @@ void HierarchicalSigmoidLayer::backward(const UpdateCallback& callback) {
       MatrixPtr weights_grad = weights_[i]->getWGrad();
       if (useGpu_) {
         Matrix::resizeOrCreate(cpuInput_,
-                              input->getHeight(),
-                              input->getWidth(),
-                              /* trans */ false,
-                              false);
+                               input->getHeight(),
+                               input->getWidth(),
+                               /* trans */ false,
+                               false);
         Matrix::resizeOrCreate(cpuWeightGrad_,
-                            weights_grad->getHeight(),
-                            weights_grad->getWidth(),
-                            /* trans */ false,
-                            false);
+                               weights_grad->getHeight(),
+                               weights_grad->getWidth(),
+                               /* trans */ false,
+                               false);
         cpuInput_->copyFrom(*input);
         cpuWeightGrad_->copyFrom(*weights_grad);
       } else {
@@ -213,15 +211,15 @@ void HierarchicalSigmoidLayer::backward(const UpdateCallback& callback) {
     if (inputGrad) {
       if (useGpu_) {
         Matrix::resizeOrCreate(cpuInputGrad_,
-                              inputGrad->getHeight(),
-                              inputGrad->getWidth(),
-                              /* trans */ false,
-                              false);
+                               inputGrad->getHeight(),
+                               inputGrad->getWidth(),
+                               /* trans */ false,
+                               false);
         Matrix::resizeOrCreate(cpuWeight_,
-                              weights_[i]->getW()->getHeight(),
-                              weights_[i]->getW()->getWidth(),
-                              /* trans */ false,
-                              false);
+                               weights_[i]->getW()->getHeight(),
+                               weights_[i]->getW()->getWidth(),
+                               /* trans */ false,
+                               false);
         cpuInputGrad_->copyFrom(*inputGrad);
         cpuWeight_->copyFrom(*weights_[i]->getW());
       } else {

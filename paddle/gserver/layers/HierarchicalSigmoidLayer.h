@@ -89,7 +89,6 @@ protected:
   MatrixPtr cpuBias_;
   MatrixPtr cpuOutput_;
   IVectorPtr cpuLabel_;
-
 };
 
 }  // namespace paddle
