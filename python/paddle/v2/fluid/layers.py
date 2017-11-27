@@ -1842,13 +1842,12 @@ class DynamicRNN(object):
     def __init__(self, name=None, main_program=None):
         self.helper = LayerHelper(
             "dynamic_rnn", name=name, main_program=main_program)
-        self.inputs = []
-        self.outputs = []
         self.status = DynamicRNN.BEFORE_RNN_BLOCK
         self.step_idx = layers.fill_constant(shape=[1], dtype='int64', value=0)
         self.while_cond = self.helper.create_tmp_variable(dtype="bool")
         self.while_op = While(self.while_cond)
 
+        self.step_num = None
         self.lod_rank_table = None
         self.mem_array = None
         self.outputs = []
@@ -1881,6 +1880,10 @@ class DynamicRNN(object):
             inputs={"X": x},
             outputs={"Out": self.lod_rank_table},
             attrs={"level": 0})
+        parent_block.append_op(
+            type="max_sequence_len",
+            inputs={"RankTable": self.lod_rank_table},
+            outputs={"Out": self.step_num})
         input_array = parent_block.create_var(
             name=unique_name("dynamic_rnn_input_array"),
             type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
