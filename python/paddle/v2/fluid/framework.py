@@ -1,12 +1,12 @@
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 import collections
+
 import numpy as np
-import copy
+from . import core
+import proto.framework_pb2 as framework_pb2
 
 __all__ = [
     'Block', 'Variable', 'Program', 'Operator', 'default_startup_program',
-    'default_main_program'
+    'default_main_program', 'g_startup_program', 'g_main_program'
 ]
 
 

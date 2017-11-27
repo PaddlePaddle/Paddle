@@ -55,19 +55,10 @@ class TestWhileOp(unittest.TestCase):
         for i in xrange(3):
             d.append(numpy.random.random(size=[10]).astype('float32'))
 
-        d_tensor = []
-        for item in d:
-            t = core.LoDTensor()
-            t.set(item, cpu)
-            d_tensor.append(t)
-
-        outs = map(numpy.array,
-                   exe.run(feed={
-                       'd0': d_tensor[0],
-                       'd1': d_tensor[1],
-                       'd2': d_tensor[2]
-                   },
-                           fetch_list=[sum_result]))
+        outs = exe.run(feed={'d0': d[0],
+                             'd1': d[1],
+                             'd2': d[2]},
+                       fetch_list=[sum_result])
         self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 
 
