@@ -148,6 +148,7 @@ __all__ = [
     'resize_layer',
     'sub_seq_layer',
     'scale_sub_region_layer',
+    'factorization_machine',
 ]
 
 
@@ -263,6 +264,8 @@ class LayerType(object):
     SUB_SEQ_LAYER = 'subseq'
 
     SCALE_SUB_REGION_LAYER = 'scale_sub_region'
+
+    FACTORIZATION_MACHINE = 'factorization_machine'
 
     @staticmethod
     def is_layer_type(type_name):
@@ -7403,3 +7406,73 @@ def scale_sub_region_layer(input, indices, value, name=None):
         parents=[input, indices],
         num_filters=input.num_filters,
         size=input.size)
+
+
+@wrap_name_default()
+@wrap_act_default(act=LinearActivation())
+@wrap_param_attr_default()
+@layer_support()
+def factorization_machine(input,
+                          factor_size,
+                          act=None,
+                          name=None,
+                          param_attr=None,
+                          layer_attr=None):
+    """
+    The Factorization Machine models pairwise feature interactions as inner
+    product of the learned latent vectors corresponding to each input feature.
+    The Factorization Machine can effectively capture feature interactions
+    especially when the input is sparse.
+
+    This implementation only consider the 2-order feature interactions using
+    Factorization Machine with the formula:
+
+    .. math::
+        y = \sum_{i=1}^{n-1}\sum_{j=i+1}^n\langle v_i, v_j \rangle x_i x_j
+
+    Note:
+        X is the input vector with size n. V is the factor matrix. Each row of V
+        is the latent vector corresponding to each input dimesion. The size of
+        each latent vector is k.
+
+    For details of Factorization Machine, please refer to the paper:
+    Factorization machines.
+
+    .. code-block:: python
+        first_order = paddle.layer.fc(input=input,
+                                      size=1,
+                                      act=paddle.activation.Linear())
+        second_order = paddle.layer.factorization_machine(input=input,
+                                                          factor_size=10)
+        fm = paddle.layer.addto(input=[first_order, second_order],
+                                act=paddle.activation.Linear(),
+                                bias_attr=False)
+
+    :param input: The input layer. Supported input types: all input data types
+                  on CPU, and only dense input types on GPU.
+    :type input: LayerOutput
+    :param factor_size: The hyperparameter that defines the dimensionality of
+                        the latent vector size.
+    :type context_len: int
+    :param act: Activation Type. Default is linear activation.
+    :type act: BaseActivation
+    :param param_attr: The parameter attribute. See ParameterAttribute for
+                       details.
+    :type param_attr: ParameterAttribute
+    :param layer_attr: Extra Layer config.
+    :type layer_attr: ExtraLayerAttribute|None
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input, LayerOutput)
+    assert factor_size > 0, "the factor_size must be greater than 0."
+
+    Layer(
+        inputs=[Input(input.name, **param_attr.attr)],
+        name=name,
+        factor_size=factor_size,
+        type=LayerType.FACTORIZATION_MACHINE,
+        active_type=act.name,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name, LayerType.FACTORIZATION_MACHINE, input, activation=act, size=1)
