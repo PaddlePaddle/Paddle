@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/eigen.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/operators/math/im2col.h"
+#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -24,9 +24,6 @@ namespace math {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 /*
  * \brief Context projection concatenates features in adjacent time-steps in
@@ -88,12 +85,17 @@ template <typename Place, typename T>
 class ContextProjectFunctor {
  public:
   void operator()(const platform::DeviceContext& context, const LoDTensor& in,
-                  const Tensor& padding_data, Tensor& col,
-                  bool padding_trainable, int context_start, int context_length,
-                  int context_stride, int up_pad, int down_pad) {
+                  const Tensor& padding_data, bool padding_trainable,
+                  const int context_start, const int context_length,
+                  const int context_stride, const int up_pad,
+                  const int down_pad, Tensor* col) {
     auto lod_level_0 = in.lod()[0];
 
     math::Im2ColFunctor<math::ColFormat::kOCF, Place, float> im2col_ocf;
+
+    std::vector<int> dilation({1, 1});
+    std::vector<int> padding({up_pad, 0, down_pad, 0});
+    std::vector<int> stride({context_stride, 1});
 
     int input_row_begin, input_row_end;
     int sequence_height, sequence_width;
@@ -105,8 +107,8 @@ class ContextProjectFunctor {
                             : static_cast<int>(lod_level_0[i]);
       input_row_end = static_cast<int>(lod_level_0[i + 1]);
 
-      Tensor out_t = col.Slice(static_cast<int>(lod_level_0[i]),
-                               static_cast<int>(lod_level_0[i + 1]));
+      Tensor out_t = col->Slice(static_cast<int>(lod_level_0[i]),
+                                static_cast<int>(lod_level_0[i + 1]));
 
       sequence_height = static_cast<int>(out_t.dims()[0]);
 
@@ -123,17 +125,14 @@ class ContextProjectFunctor {
             {1, input_row_end - input_row_begin,
              sequence_width});  // input_channels, input_height, input_width
         in_t.Resize(framework::make_ddim(input_shape));
-
-        im2col_ocf(context, in_t, out_t,
-                   /*stride_height*/ context_stride, /*stride_width*/ 1, up_pad,
-                   down_pad, 0, 0);
+        im2col_ocf(context, in_t, dilation, stride, padding, &out_t);
         out_t.Resize({sequence_height, context_length * sequence_width});
       }
     }
     if (padding_trainable) {
       for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
-        Tensor out_t = col.Slice(static_cast<int>(lod_level_0[i]),
-                                 static_cast<int>(lod_level_0[i + 1]));
+        Tensor out_t = col->Slice(static_cast<int>(lod_level_0[i]),
+                                  static_cast<int>(lod_level_0[i + 1]));
 
         sequence_height = static_cast<int>(out_t.dims()[0]);
 
@@ -150,9 +149,7 @@ class ContextProjectFunctor {
             Tensor out_t_sub = out_t.Slice(k * context_length,
                                            k * context_length + padding_size);
             Tensor w_sub = padding_data.Slice(k, k + padding_size);
-            auto out_t_sub_e = EigenMatrix<T>::From(out_t_sub);
-            auto w_sub_e = EigenMatrix<T>::From(w_sub);
-            out_t_sub_e.device(*context.GetEigenDevice<Place>()) = w_sub_e;
+            framework::CopyFrom(w_sub, context.GetPlace(), context, &out_t_sub);
           }
         }
         if (down_pad > 0) {  // add down pad
@@ -182,9 +179,7 @@ class ContextProjectFunctor {
                 (down_pad_begin_row + t) * context_length);
             Tensor w_sub = padding_data.Slice(
                 up_pad + padding_idx, up_pad + padding_idx + padding_size);
-            auto out_t_sub_e = EigenMatrix<T>::From(out_t_sub);
-            auto w_sub_e = EigenMatrix<T>::From(w_sub);
-            out_t_sub_e.device(*context.GetEigenDevice<Place>()) = w_sub_e;
+            framework::CopyFrom(w_sub, context.GetPlace(), context, &out_t_sub);
           }
         }
         out_t.Resize({sequence_height, context_length * sequence_width});
@@ -196,13 +191,18 @@ class ContextProjectFunctor {
 template <typename Place, typename T>
 class ContextProjectGradFunctor {
  public:
-  void operator()(const platform::DeviceContext& context, LoDTensor& in,
-                  Tensor& padding_data, Tensor& col, bool padding_trainable,
-                  int context_start, int context_length, int context_stride,
-                  int up_pad, int down_pad, bool input_grad, bool pad_grad) {
+  void operator()(const platform::DeviceContext& context, const LoDTensor& in,
+                  bool padding_trainable, const int context_start,
+                  const int context_length, const int context_stride,
+                  const int up_pad, const int down_pad, bool pad_grad,
+                  bool input_grad, Tensor* padding_data, Tensor* col) {
     auto lod_level_0 = in.lod()[0];
 
     math::Col2ImFunctor<math::ColFormat::kOCF, Place, float> col2im_ocf;
+
+    std::vector<int> dilation({1, 1});
+    std::vector<int> padding({up_pad, 0, down_pad, 0});
+    std::vector<int> stride({context_stride, 1});
 
     int input_row_begin, input_row_end;
     int sequence_height, sequence_width;
@@ -215,8 +215,8 @@ class ContextProjectGradFunctor {
                               : static_cast<int>(lod_level_0[i]);
         input_row_end = static_cast<int>(lod_level_0[i + 1]);
 
-        Tensor out_t = col.Slice(static_cast<int>(lod_level_0[i]),
-                                 static_cast<int>(lod_level_0[i + 1]));
+        Tensor out_t = col->Slice(static_cast<int>(lod_level_0[i]),
+                                  static_cast<int>(lod_level_0[i + 1]));
 
         sequence_height = static_cast<int>(out_t.dims()[0]);
 
@@ -234,9 +234,7 @@ class ContextProjectGradFunctor {
                sequence_width});  // input_channels, input_height, input_width
           in_t.Resize(framework::make_ddim(input_shape));
 
-          col2im_ocf(context, in_t, out_t,
-                     /*stride_height*/ context_stride, /*stride_width*/ 1,
-                     up_pad, down_pad, 0, 0);
+          col2im_ocf(context, out_t, dilation, stride, padding, &in_t);
           out_t.Resize({sequence_height, context_length * sequence_width});
         }
       }
@@ -244,8 +242,8 @@ class ContextProjectGradFunctor {
     if (pad_grad) {
       if (padding_trainable) {
         for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
-          Tensor out_t = col.Slice(static_cast<int>(lod_level_0[i]),
-                                   static_cast<int>(lod_level_0[i + 1]));
+          Tensor out_t = col->Slice(static_cast<int>(lod_level_0[i]),
+                                    static_cast<int>(lod_level_0[i + 1]));
 
           sequence_height = static_cast<int>(out_t.dims()[0]);
           out_t.Resize({sequence_height * context_length, sequence_width});
@@ -259,11 +257,9 @@ class ContextProjectGradFunctor {
                   k + context_length < up_pad ? context_length : up_pad - k;
               Tensor out_t_sub = out_t.Slice(k * context_length,
                                              k * context_length + padding_size);
-              Tensor w_sub = padding_data.Slice(k, k + padding_size);
-              auto out_t_sub_e = EigenMatrix<T>::From(out_t_sub);
-              auto w_sub_e = EigenMatrix<T>::From(w_sub);
-              w_sub_e.device(*context.GetEigenDevice<Place>()) =
-                  w_sub_e + out_t_sub_e;
+              Tensor w_sub = padding_data->Slice(k, k + padding_size);
+              axpy<Place, T>(context, w_sub.numel(), static_cast<T>(1),
+                             out_t_sub.data<T>(), w_sub.data<T>());
             }
           }
           if (down_pad > 0) {
@@ -292,12 +288,10 @@ class ContextProjectGradFunctor {
               Tensor out_t_sub = out_t.Slice(
                   (down_pad_begin_row + t) * context_length - padding_size,
                   (down_pad_begin_row + t) * context_length);
-              Tensor w_sub = padding_data.Slice(
+              Tensor w_sub = padding_data->Slice(
                   up_pad + padding_idx, up_pad + padding_idx + padding_size);
-              auto out_t_sub_e = EigenMatrix<T>::From(out_t_sub);
-              auto w_sub_e = EigenMatrix<T>::From(w_sub);
-              w_sub_e.device(*context.GetEigenDevice<Place>()) =
-                  w_sub_e + out_t_sub_e;
+              axpy<Place, T>(context, w_sub.numel(), static_cast<T>(1),
+                             out_t_sub.data<T>(), w_sub.data<T>());
             }
           }
           out_t.Resize({sequence_height, context_length * sequence_width});

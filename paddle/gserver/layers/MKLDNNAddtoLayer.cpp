@@ -38,12 +38,13 @@ bool MKLDNNAddtoLayer::init(const LayerMap& layerMap,
 }
 
 void MKLDNNAddtoLayer::reshape(
-    int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) {
+    int& bs, int& ic, int& ih, int& iw, int& oc, int& oh, int& ow) {
   CHECK_EQ(layerSize_, getSize()) << "this layer size can not be changed";
   reshapeInput(bs, ih, iw);
   ic = inputLayers_[0]->getSize() / ih / iw;
   CHECK_EQ((size_t)ic * ih * iw, inputLayers_[0]->getSize());
-  CHECK_EQ(inputElemenCnt_, (size_t)bs * ic * ih * iw);
+  CHECK_EQ(inputLayers_[0]->getOutputValue()->getElementCnt(),
+           (size_t)bs * ic * ih * iw);
   for (size_t i = 0; i < inputLayers_.size(); i++) {
     CHECK_EQ(int64_t(bs), inputLayers_[i]->getOutput().getBatchSize());
     CHECK_EQ(layerSize_, inputLayers_[i]->getSize());
@@ -54,40 +55,47 @@ void MKLDNNAddtoLayer::reshape(
   ow = iw;
   reshapeOutput(oh, ow);
   resizeOutput(bs, oc * oh * ow);
-  printSizeInfo();
 }
 
 void MKLDNNAddtoLayer::resetFwd(std::vector<primitive>& pipeline,
-                                MKLDNNMatrixPtr& in,
-                                MKLDNNMatrixPtr& wgt,
-                                MKLDNNMatrixPtr& bias,
+                                std::vector<MKLDNNMatrixPtr>& inputs,
                                 MKLDNNMatrixPtr& out) {
-  if (biases_) {
-    LOG(FATAL) << "not implemented yet";
-  }
-  resetFwdBuffers(inVals_, out);
-  in = inVals_[0];
+  resetFwdBuffers(inputs, biasVal_, out);
 
   std::shared_ptr<sum::primitive_desc> fwdPD;
-  resetFwdPD(fwdPD, inVals_, out);
+  std::shared_ptr<sum::primitive_desc> biasPD;
+  resetFwdPD(fwdPD, biasPD, inputs, biasVal_, out);
 
-  resetFwdPipeline(pipeline, fwdPD, inVals_, out);
+  resetFwdPipeline(pipeline, fwdPD, biasPD, inputs, biasVal_, out);
 }
 
 void MKLDNNAddtoLayer::resetBwd(std::vector<primitive>& pipeline,
-                                MKLDNNMatrixPtr& in,
-                                MKLDNNMatrixPtr& wgt,
-                                MKLDNNMatrixPtr& bias,
+                                std::vector<MKLDNNMatrixPtr>& inputs,
                                 MKLDNNMatrixPtr& out) {
-  resetBwdBuffers(inGrads_, out);
-  in = inGrads_[0];
+  resetBwdBuffers(inputs, biasGrad_, out);
 
   // backward only need share output grad to input grad
-  for (size_t i = 0; i < inGrads_.size(); i++) {
-    if (inGrads_[i] != nullptr) {
-      inGrads_[i] = out;
-      inputLayers_[i]->getOutputGrad()->setData(inGrads_[i]->getData());
+  for (size_t i = 0; i < inputs.size(); i++) {
+    if (inputs[i] != nullptr) {
+      inputs[i] = out;
+      inputLayers_[i]->getOutputGrad()->setData(inputs[i]->getData());
     }
+  }
+
+  // backward bias
+  bwdBias_ = nullptr;
+  if (biasGrad_) {
+    std::vector<float> scales(bs_, 1.0);
+    std::vector<memory::primitive_desc> srcPDs(bs_,
+                                               biasGrad_->getPrimitiveDesc());
+    auto biasPD =
+        sum::primitive_desc(biasGrad_->getMemoryDesc(), scales, srcPDs);
+    std::vector<primitive::at> srcs;
+    for (size_t i = 0; i < grads_.size(); ++i) {
+      srcs.push_back(*(grads_[i]));
+    }
+    bwdBias_.reset(new sum(biasPD, srcs, *biasGrad_));
+    pipeline.push_back(*bwdBias_);
   }
 }
 
@@ -97,7 +105,25 @@ void MKLDNNAddtoLayer::updateWeights(const UpdateCallback& callback) {
   }
 }
 
+void MKLDNNAddtoLayer::prepareBias(MKLDNNMatrixPtr& bias,
+                                   const MatrixPtr& biasMat,
+                                   const MKLDNNMatrixPtr& out,
+                                   std::vector<MKLDNNMatrixPtr>& outs) {
+  auto pd = MKLDNNMatrix::createPrimitiveDesc(
+      {(int)layerSize_}, memory::format::x, engine_);
+  bias = MKLDNNMatrix::create(pd, biasMat);
+  outs.clear();
+  real* data = out->getData();
+  CHECK_EQ(bs_ * layerSize_, out->getElementCnt());
+  for (int i = 0; i < bs_; ++i) {
+    MatrixPtr tmp =
+        Matrix::create(data + i * layerSize_, 1, layerSize_, false, false);
+    outs.push_back(MKLDNNMatrix::create(bias->getPrimitiveDesc(), tmp));
+  }
+}
+
 void MKLDNNAddtoLayer::resetFwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
+                                       MKLDNNMatrixPtr& bias,
                                        MKLDNNMatrixPtr& out) {
   inputs.resize(inputLayers_.size());
   for (size_t i = 0; i < inputs.size(); i++) {
@@ -110,12 +136,20 @@ void MKLDNNAddtoLayer::resetFwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
   }
 
   resetOutValue(out, inputs[0]->getPrimitiveDesc());
+
+  if (biases_ && biases_->getW()) {
+    prepareBias(bias, biases_->getW(), out, vals_);
+  } else {
+    bias = nullptr;
+  }
 }
 
 void MKLDNNAddtoLayer::resetFwdPD(std::shared_ptr<sum::primitive_desc>& pd,
+                                  std::shared_ptr<sum::primitive_desc>& biasPD,
                                   std::vector<MKLDNNMatrixPtr>& inputs,
+                                  MKLDNNMatrixPtr bias,
                                   MKLDNNMatrixPtr out) {
-  std::vector<double> scales(inputs.size(), 1.0);
+  std::vector<float> scales(inputs.size(), 1.0);
   std::vector<memory::primitive_desc> srcPDs;
   for (size_t i = 0; i < inputs.size(); i++) {
     srcPDs.push_back(inputs[i]->getPrimitiveDesc());
@@ -123,12 +157,23 @@ void MKLDNNAddtoLayer::resetFwdPD(std::shared_ptr<sum::primitive_desc>& pd,
   CHECK(out);
   pd.reset(new sum::primitive_desc(out->getMemoryDesc(), scales, srcPDs));
   CHECK_PRIMITIVE_DESC_EQ(out, pd->dst_primitive_desc());
+
+  biasPD = nullptr;
+  if (bias) {
+    std::vector<float> scales(2, 1.0);
+    std::vector<memory::primitive_desc> srcPDs(2, bias->getPrimitiveDesc());
+    biasPD.reset(
+        new sum::primitive_desc(bias->getMemoryDesc(), scales, srcPDs));
+    CHECK_PRIMITIVE_DESC_EQ(bias, biasPD->dst_primitive_desc());
+  }
 }
 
 void MKLDNNAddtoLayer::resetFwdPipeline(
     std::vector<primitive>& pipeline,
     std::shared_ptr<sum::primitive_desc>& pd,
+    std::shared_ptr<sum::primitive_desc>& biasPD,
     std::vector<MKLDNNMatrixPtr>& inputs,
+    MKLDNNMatrixPtr& bias,
     MKLDNNMatrixPtr& out) {
   std::vector<primitive::at> srcs;
   for (size_t i = 0; i < inputs.size(); i++) {
@@ -136,9 +181,23 @@ void MKLDNNAddtoLayer::resetFwdPipeline(
   }
   fwd_.reset(new sum(*pd, srcs, *out));
   pipeline.push_back(*fwd_);
+
+  fwdBias_.clear();
+  if (biasPD == nullptr || bias == nullptr) {
+    return;
+  }
+  fwdBias_.resize(vals_.size());
+  for (size_t i = 0; i < vals_.size(); ++i) {
+    std::vector<primitive::at> srcs;
+    srcs.push_back(*(vals_[i]));
+    srcs.push_back(*bias);
+    fwdBias_[i].reset(new sum(*biasPD, srcs, *vals_[i]));
+    pipeline.push_back(*fwdBias_[i]);
+  }
 }
 
 void MKLDNNAddtoLayer::resetBwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
+                                       MKLDNNMatrixPtr& bias,
                                        MKLDNNMatrixPtr& out) {
   CHECK(outVal_);
   resetOutGrad(out, outVal_->getPrimitiveDesc());
@@ -146,8 +205,14 @@ void MKLDNNAddtoLayer::resetBwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
 
   inputs.resize(inputLayers_.size());
   for (size_t i = 0; i < inputs.size(); i++) {
-    resetInGrad(inputs[i], inVal_->getPrimitiveDesc(), i);
+    resetInGrad(inputs[i], inVals_[i]->getPrimitiveDesc(), i);
     CHECK_PRIMITIVE_DESC_EQ(inputs[i], out->getPrimitiveDesc());
+  }
+
+  if (biases_ && biases_->getWGrad()) {
+    prepareBias(bias, biases_->getWGrad(), out, grads_);
+  } else {
+    bias = nullptr;
   }
 }
 

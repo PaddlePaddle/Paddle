@@ -12,7 +12,7 @@ limitations under the License. */
 #include "paddle/operators/sum_op.h"
 #include <vector>
 #include "paddle/framework/var_type_inference.h"
-#include "paddle/operators/net_op.h"
+#include "paddle/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {
@@ -47,22 +47,29 @@ class SumOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::DataType IndicateDataType(
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto x_vars = ctx.MultiInputVar("X");
     if (x_vars[0]->IsType<framework::LoDTensor>()) {
-      return framework::ToDataType(
-          x_vars[0]->Get<framework::LoDTensor>().type());
+      return framework::OpKernelType(
+          framework::ToDataType(x_vars[0]->Get<framework::LoDTensor>().type()),
+          ctx.device_context());
     } else if (x_vars[0]->IsType<framework::SelectedRows>()) {
-      return framework::ToDataType(
-          x_vars[0]->Get<framework::SelectedRows>().value().type());
+      return framework::OpKernelType(
+          framework::ToDataType(
+              x_vars[0]->Get<framework::SelectedRows>().value().type()),
+          ctx.device_context());
     } else if (x_vars[0]->IsType<framework::LoDTensorArray>()) {
-      auto& array = x_vars[0]->Get<framework::LoDTensorArray>();
-      for (auto& each : array) {
-        if (each.numel() != 0) {
-          return framework::ToDataType(each.type());
+      for (auto& x_var : x_vars) {
+        auto& array = x_var->Get<framework::LoDTensorArray>();
+        for (auto& each : array) {
+          if (each.numel() != 0) {
+            return framework::OpKernelType(framework::ToDataType(each.type()),
+                                           ctx.device_context());
+          }
         }
       }
+      PADDLE_THROW("Cannot find the input data type by all input data");
     }
     PADDLE_THROW("Unexpected branch. Input type is %s",
                  x_vars[0]->Type().name());
@@ -93,13 +100,19 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
     auto& inputs = op_desc.Input("X");
     auto var_type = framework::VarDesc::SELECTED_ROWS;
 
+    for (auto& name : op_desc.Input("X")) {
+      VLOG(10) << name << " "
+               << block->FindRecursiveOrCreateVar(name)->GetType();
+    }
+
     bool any_input_is_lod_tensor = std::any_of(
         inputs.begin(), inputs.end(), [block](const std::string& name) {
-          return block->Var(name)->GetType() == framework::VarDesc::LOD_TENSOR;
+          return block->FindRecursiveOrCreateVar(name)->GetType() ==
+                 framework::VarDesc::LOD_TENSOR;
         });
 
     auto is_tensor_array = [block](const std::string& name) {
-      return block->Var(name)->GetType() ==
+      return detail::Ref(block->FindRecursiveOrCreateVar(name)).GetType() ==
              framework::VarDesc::LOD_TENSOR_ARRAY;
     };
 
@@ -109,14 +122,26 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
         std::all_of(inputs.begin(), inputs.end(), is_tensor_array);
 
     if (any_input_is_tensor_array) {
-      PADDLE_ENFORCE(all_inputs_are_tensor_array);
+      if (!all_inputs_are_tensor_array) {
+        std::ostringstream os;
+        for (auto& each : inputs) {
+          os << "    " << each << " type is "
+             << detail::Ref(block->FindRecursiveOrCreateVar(each)).GetType()
+             << "\n";
+        }
+        PADDLE_ENFORCE(all_inputs_are_tensor_array,
+                       "Not all inputs are tensor array:\n%s", os.str());
+      }
       var_type = framework::VarDesc::LOD_TENSOR_ARRAY;
     } else if (any_input_is_lod_tensor) {
       var_type = framework::VarDesc::LOD_TENSOR;
     }
 
     auto out_var_name = op_desc.Output("Out").front();
-    block->Var(out_var_name)->SetType(var_type);
+    auto& out_var = detail::Ref(block->FindRecursiveOrCreateVar(out_var_name));
+    out_var.SetType(var_type);
+    auto& in_var = detail::Ref(block->FindVarRecursive(inputs.front()));
+    out_var.SetDataType(in_var.GetDataType());
   }
 };
 
@@ -151,4 +176,6 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sum, ops::SumOp, ops::SumOpMaker, ops::SumGradMaker,
                   ops::SumOpVarTypeInference);
 REGISTER_OP_CPU_KERNEL(sum, ops::SumKernel<paddle::platform::CPUPlace, float>,
-                       ops::SumKernel<paddle::platform::CPUPlace, double>);
+                       ops::SumKernel<paddle::platform::CPUPlace, double>,
+                       ops::SumKernel<paddle::platform::CPUPlace, int>,
+                       ops::SumKernel<paddle::platform::CPUPlace, int64_t>);

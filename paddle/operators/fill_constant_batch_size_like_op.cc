@@ -49,9 +49,11 @@ class FillConstantBatchSizeLikeOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::DataType IndicateDataType(
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return static_cast<framework::DataType>(ctx.Attr<int>("data_type"));
+    return framework::OpKernelType(
+        static_cast<framework::DataType>(ctx.Attr<int>("dtype")),
+        ctx.device_context());
   }
 };
 
@@ -61,7 +63,7 @@ class FillConstantBatchSizeLikeOpMaker
   FillConstantBatchSizeLikeOpMaker(framework::OpProto *proto,
                                    framework::OpAttrChecker *op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddAttr<int>("data_type",
+    AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
         .SetDefault(framework::DataType::FP32);
@@ -73,10 +75,10 @@ class FillConstantBatchSizeLikeOpMaker
               "with the specified value");
     AddAttr<std::vector<int>>("shape", "(vector<int>) The shape of the output");
     AddAttr<int>("input_dim_idx",
-                 "(int, default 0) the index of input's batch size dimension")
+                 "(int, default 0) The index of input's batch size dimension")
         .SetDefault(0);
     AddAttr<int>("output_dim_idx",
-                 "(int, default 0) the index of output's batch size dimension")
+                 "(int, default 0) The index of output's batch size dimension")
         .SetDefault(0);
     AddAttr<float>("value", "(float, default 0) The value to be filled")
         .SetDefault(0.0f);
@@ -99,4 +101,7 @@ REGISTER_OPERATOR(fill_constant_batch_size_like,
 REGISTER_OP_CPU_KERNEL(
     fill_constant_batch_size_like,
     ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUPlace, float>,
-    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUPlace, double>);
+    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUPlace, double>,
+    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUPlace, int>,
+    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUPlace,
+                                           int64_t>);

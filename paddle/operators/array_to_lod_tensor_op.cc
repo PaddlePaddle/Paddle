@@ -102,8 +102,9 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
         if (len == 0) {
           continue;
         }
-        out->Slice(out_offset, out_offset + len)
-            .CopyFrom(x[x_idx].Slice(start_offset, end_offset), place, dev_ctx);
+        auto slice = out->Slice(out_offset, out_offset + len);
+        framework::CopyFrom(x[x_idx].Slice(start_offset, end_offset), place,
+                            dev_ctx, &slice);
         out_offset += len;
       }
     }
@@ -140,6 +141,23 @@ class ArrayToLoDTensorInferShape : public framework::InferShapeBase {
                    "ArrayToLoDTensorOp must has input X.");
     PADDLE_ENFORCE(context->HasInput("RankTable"),
                    "ArrayToLoDTensorOp must has input RankTable.");
+    context->SetOutputDim("Out", context->GetInputDim("X"));
+  }
+};
+
+class ArrayToLoDTensorGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDescBind> Apply() const override {
+    auto *grad_op = new framework::OpDescBind();
+    grad_op->SetType("lod_tensor_to_array");
+    grad_op->SetInput("X", OutputGrad("Out"));
+    grad_op->SetInput("RankTable", Input("RankTable"));
+    grad_op->SetOutput("Out", InputGrad("X"));
+    grad_op->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDescBind>(grad_op);
   }
 };
 
@@ -149,4 +167,5 @@ class ArrayToLoDTensorInferShape : public framework::InferShapeBase {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(array_to_lod_tensor, ops::ArrayToLoDTensorOp,
                   ops::ArrayToLoDTensorOpProtoMaker,
-                  ops::ArrayToLoDTensorInferShape);
+                  ops::ArrayToLoDTensorInferShape,
+                  ops::ArrayToLoDTensorGradMaker);

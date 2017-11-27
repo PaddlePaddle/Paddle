@@ -60,8 +60,7 @@ void make_ddim(DDim& ddim, const int64_t* dims, int n) {
       ddim = make_dim<9>(dims);
       break;
     default:
-      throw std::invalid_argument(
-          "Dynamic dimensions must have between [1, 9] dimensions.");
+      PADDLE_THROW("Dynamic dimensions must have between [1, 9] dimensions.");
   }
 }
 
@@ -77,6 +76,13 @@ DDim make_ddim(const std::vector<int64_t>& dims) {
   DDim result(make_dim(0));
   make_ddim(result, &dims[0], dims.size());
   return result;
+}
+
+DDim make_ddim(const std::vector<int>& dims) {
+  std::vector<int64_t> res(dims.size());
+  std::transform(dims.begin(), dims.end(), res.begin(),
+                 [](int d) { return static_cast<int64_t>(d); });
+  return make_ddim(res);
 }
 
 /// @cond HIDDEN

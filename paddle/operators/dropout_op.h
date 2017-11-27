@@ -35,7 +35,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
     auto* y_data = y->mutable_data<T>(context.GetPlace());
     float dropout_prob = context.Attr<float>("dropout_prob");
 
-    if (context.Attr<bool>("is_training")) {
+    if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
       auto* mask_data = mask->mutable_data<T>(context.GetPlace());
       int seed = context.Attr<int>("seed");
@@ -65,8 +65,8 @@ template <typename Place, typename T>
 class DropoutGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(context.Attr<bool>("is_training"),
-                   "GradOp is only callable when is_training is true");
+    PADDLE_ENFORCE(!context.Attr<bool>("is_test"),
+                   "GradOp is only callable when is_test is false");
 
     auto* grad_x = context.Output<Tensor>(framework::GradVarName("X"));
     auto* grad_y = context.Input<Tensor>(framework::GradVarName("Out"));

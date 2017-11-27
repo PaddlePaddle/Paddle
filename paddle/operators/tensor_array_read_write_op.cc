@@ -11,48 +11,18 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
-#include "paddle/framework/lod_tensor_array.h"
-#include "paddle/framework/op_registry.h"
-
+#include "paddle/operators/array_operator.h"
+#include "paddle/operators/detail/safe_ref.h"
 namespace paddle {
 namespace operators {
-class ArrayOpBase : public framework::OperatorBase {
- public:
-  ArrayOpBase(const std::string &type, const framework::VariableNameMap &inputs,
-              const framework::VariableNameMap &outputs,
-              const framework::AttributeMap &attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {}
 
- protected:
-  size_t GetOffset(const framework::Scope &scope,
-                   const platform::DeviceContext &dev_ctx) const {
-    auto *i = scope.FindVar(Input("I"));
-    PADDLE_ENFORCE(i != nullptr, "I must be set");
-    auto &i_tensor = i->Get<framework::LoDTensor>();
-    PADDLE_ENFORCE_EQ(i_tensor.numel(), 1);
-    size_t offset;
-    if (platform::is_gpu_place(i_tensor.place())) {
-      // FIXME: Avoid copy from GPU to CPU
-      framework::Tensor t;
-      t.CopyFrom(i_tensor, platform::CPUPlace(), dev_ctx);
-      dev_ctx.Wait();
-      offset = static_cast<size_t>(*t.data<int64_t>());
-    } else {
-      offset = static_cast<size_t>(*i_tensor.data<int64_t>());
-    }
-    return offset;
-  }
-};
-
-class WriteToArrayOp : public ArrayOpBase {
+class WriteToArrayOp : public ArrayOp {
  public:
   WriteToArrayOp(const std::string &type,
                  const framework::VariableNameMap &inputs,
                  const framework::VariableNameMap &outputs,
                  const framework::AttributeMap &attrs)
-      : ArrayOpBase(type, inputs, outputs, attrs) {}
+      : ArrayOp(type, inputs, outputs, attrs) {}
 
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
@@ -63,10 +33,12 @@ class WriteToArrayOp : public ArrayOpBase {
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensorArray>();
     if (offset >= out->size()) {
+      VLOG(10) << "Resize " << Output("Out") << " from " << out->size()
+               << " to " << offset + 1;
       out->resize(offset + 1);
     }
     auto *out_tensor = &out->at(offset);
-    out_tensor->CopyFrom(x_tensor, dev_ctx.GetPlace(), dev_ctx);
+    CopyFrom(x_tensor, dev_ctx.GetPlace(), dev_ctx, out_tensor);
     out_tensor->set_lod(x_tensor.lod());
   }
 };
@@ -115,20 +87,25 @@ class WriteToArrayInferVarType : public framework::VarTypeInference {
  public:
   void operator()(const framework::OpDescBind &op_desc,
                   framework::BlockDescBind *block) const override {
-    for (auto &out_var : op_desc.OutputArgumentNames()) {
-      VLOG(10) << "Set Variable " << out_var << " as LOD_TENSOR_ARRAY";
-      block->Var(out_var)->SetType(framework::VarDesc::LOD_TENSOR_ARRAY);
-    }
+    auto x_name = op_desc.Input("X")[0];
+    auto out_name = op_desc.Output("Out")[0];
+    VLOG(10) << "Set Variable " << out_name << " as LOD_TENSOR_ARRAY";
+    auto &out = detail::Ref(block->FindRecursiveOrCreateVar(out_name),
+                            "Cannot found %s", out_name);
+    out.SetType(framework::VarDesc::LOD_TENSOR_ARRAY);
+    auto &x =
+        detail::Ref(block->FindVarRecursive(x_name), "Cannot found %s", x_name);
+    out.SetDataType(x.GetDataType());
   }
 };
 
-class ReadFromArrayOp : public ArrayOpBase {
+class ReadFromArrayOp : public ArrayOp {
  public:
   ReadFromArrayOp(const std::string &type,
                   const framework::VariableNameMap &inputs,
                   const framework::VariableNameMap &outputs,
                   const framework::AttributeMap &attrs)
-      : ArrayOpBase(type, inputs, outputs, attrs) {}
+      : ArrayOp(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
     auto *x = scope.FindVar(Input("X"));
@@ -136,11 +113,12 @@ class ReadFromArrayOp : public ArrayOpBase {
     auto &x_array = x->Get<framework::LoDTensorArray>();
     auto *out = scope.FindVar(Output("Out"));
     PADDLE_ENFORCE(out != nullptr, "Out must be set");
-    auto *out_tesnor = out->GetMutable<framework::LoDTensor>();
+    auto *out_tensor = out->GetMutable<framework::LoDTensor>();
     size_t offset = GetOffset(scope, dev_ctx);
     PADDLE_ENFORCE_LT(offset, x_array.size());
-    out_tesnor->CopyFrom(x_array[offset], dev_ctx.GetPlace(), dev_ctx);
-    out_tesnor->set_lod(x_array[offset].lod());
+    framework::CopyFrom(x_array[offset], dev_ctx.GetPlace(), dev_ctx,
+                        out_tensor);
+    out_tensor->set_lod(x_array[offset].lod());
   }
 };
 
