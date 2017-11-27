@@ -300,4 +300,12 @@ extern void hl_matrix_col2Vol(real* dataDst,
                               real alpha,
                               real beta);
 
+/**
+ * @brief  Matrix col2Vol: Convert col matrix into 3D volume
+ * @param[out]  out     output int vector.
+ * @param[in]   vec     input float vector.
+ * @param[in]   size    size of the vector.
+ */
+extern void hl_vector_cast2int(int* out, real* vec, int size);
+
 #endif /* HL_MATRIX_H_ */

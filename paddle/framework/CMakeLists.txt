@@ -6,7 +6,10 @@ cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
 
 cc_library(tensor SRCS tensor.cc DEPS ddim place paddle_memory device_context)
+
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
+cc_test(tensor_util_test SRCS tensor_util_test.cc DEPS tensor)
+
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
 cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto)
@@ -20,7 +23,8 @@ cc_test(scope_test SRCS scope_test.cc DEPS scope)
 
 
 cc_library(attribute SRCS attribute.cc DEPS framework_proto)
-cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc)
+cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc
+device_context)
 cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute)
 cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
@@ -37,22 +41,19 @@ py_proto_compile(framework_py_proto SRCS framework.proto)
 add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
 add_dependencies(framework_py_proto framework_py_proto_init)
 add_custom_command(TARGET framework_py_proto POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_SOURCE_DIR}/python/paddle/v2/framework/proto
-    COMMAND cp *.py ${PADDLE_SOURCE_DIR}/python/paddle/v2/framework/proto/
-    COMMENT "Copy generated python proto into directory paddle/v2/framework/proto."
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_SOURCE_DIR}/python/paddle/v2/fluid/proto
+    COMMAND cp *.py ${PADDLE_SOURCE_DIR}/python/paddle/v2/fluid/proto/
+    COMMENT "Copy generated python proto into directory paddle/v2/fluid/proto."
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 cc_library(backward SRCS backward.cc DEPS net_op)
 cc_test(backward_test SRCS backward_test.cc DEPS backward recurrent_op device_context fill_constant_op)
+cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 
-cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto backward glog)
+cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto backward glog lod_rank_table)
 
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
-
-cc_library(tensor_array SRCS tensor_array.cc DEPS lod_tensor)
-cc_test(tensor_array_test SRCS tensor_array_test.cc DEPS tensor_array place)
-
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
         proto_desc)
 cc_library(selected_rows SRCS selected_rows.cc DEPS tensor)

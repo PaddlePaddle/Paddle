@@ -90,40 +90,14 @@ class Tensor {
   inline Tensor& ShareDataWith(const Tensor& src);
 
   /**
-   * @brief   Copy the content of external tensor to a new place.
+   * @brief  Return a sub-tensor of the given tensor.
    *
-   * @param[in] src        The external tensor.
-   * @param[in] dst_place  The dst place.
-   * @param[in] ctx        The device context contains device resources.
-   *
-   * @note    CopyFrom supports CPU <-> GPU, GPU <-> GPU.
+   * @param[in] begin_idx   The index of the start row(inclusive) to slice.
+   *                        The index number begins from 0.
+   * @param[in] end_idx     The index of the end row(exclusive) to slice.
+   *                        The index number begins from 0.
    */
-  // TODO(qijun): https://github.com/PaddlePaddle/Paddle/issues/4647
-  // Remove `CopyFrom` and `CopyFromVector` from Tensor interface
-  // and make them global functions
-  inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
-                       const platform::DeviceContext& ctx);
-
-  /**
-   * @brief   Copy the content of an external vector to a tensor.
-   *
-   * @param[in] src        The external tensor.
-   * @param[in] ctx        The device context contains device resources.
-   *
-   * * @note    CopyFromVector assumes that the tensor has been resized
-   *            before invoking.
-   */
-  template <typename T>
-  inline void CopyFromVector(const std::vector<T>& src,
-                             const platform::DeviceContext& ctx);
-
-  /**
-   * @brief   Return the slice of the tensor.
-   *
-   * @param[in] begin_idx   The begin index of the slice.
-   * @param[in] end_idx     The end index of the slice.
-   */
-  inline Tensor Slice(const int& begin_idx, const int& end_idx) const;
+  inline Tensor Slice(int begin_idx, int end_idx) const;
 
   platform::Place place() const {
     PADDLE_ENFORCE_NOT_NULL(
@@ -139,7 +113,6 @@ class Tensor {
 
   size_t memory_size() const;
 
- private:
   inline void check_memory_size() const;
 
  private:

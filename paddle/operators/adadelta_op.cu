@@ -17,4 +17,5 @@
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
-    adadelta, ops::AdadeltaOpKernel<paddle::platform::GPUPlace, float>);
+    adadelta, ops::AdadeltaOpKernel<paddle::platform::GPUPlace, float>,
+    ops::AdadeltaOpKernel<paddle::platform::GPUPlace, double>);

@@ -45,72 +45,70 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   LRNOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", R"DOC(
- (Tensor) The input of LRN operator. It must be a 4D tenor with NCHW format.
- )DOC");
-
+    AddInput("X",
+             "(Tensor) The input of LRN operator. "
+             "It must be a 4D tenor with NCHW format.");
     AddOutput("Out",
               "(Tensor) The output of LRN operator, which is also the 4D "
               "tensor with NCHW format.");
-    AddOutput("MidOut", R"Doc(
-(Tensor)Middle result of lrn op.It's computed in forward process 
-and also used in backward process.
-    )Doc");
+    AddOutput("MidOut",
+              "(Tensor) Middle result of LRN operator. It's computed in "
+              "forward process and also used in backward process.");
 
-    AddAttr<int>("n", R"DOC(
-(int, default 5)n is “adjacent” kernel maps at the same spatial position.
-        )DOC")
+    AddAttr<int>("n",
+                 "(int default 5) "
+                 "n is the \"adjacent\" kernel that maps "
+                 "at the same spatial position.")
         .SetDefault(5)
         .GreaterThan(0);
 
-    AddAttr<T>("k", R"DOC(
-(float, default 2.0)k is the bias.
-        )DOC")
+    AddAttr<T>("k",
+               "(float, default 2.0) "
+               "k is the bias.")
         .SetDefault(2.0)
         .GreaterThan(0.0);
 
-    AddAttr<T>("alpha", R"DOC(
-(float, default 0.0001)alpha is the scale number.
-        )DOC")
+    AddAttr<T>("alpha",
+               "(float, default 0.0001) "
+               "alpha is the scale number.")
         .SetDefault(0.0001)
         .GreaterThan(0.0);
 
-    AddAttr<T>("beta", R"DOC(
-(float, default 0.75)beta is the power number.
-        )DOC")
+    AddAttr<T>("beta",
+               "(float, default 0.75) "
+               "beta is the power number.")
         .SetDefault(0.75)
         .GreaterThan(0.0);
 
     AddComment(R"DOC(
- Local Response Normalization.
+Local Response Normalization Operator.
 
- This Function comes from the paper
- "ImageNet Classification with Deep Convolutional Neural Networks".
+This operator comes from the paper
+"ImageNet Classification with Deep Convolutional Neural Networks".
 
- The original formula is:
+The original formula is:
 
-                                Input(i, x, y)
- Output(i, x, y) = ----------------------------------------------
-                                 -- upper
-                    (k + alpha * >  (Input(j, x, y))^2) ^ (beta)
-                                 -- j = lower
+$$
+Output(i, x, y) = Input(i, x, y) / \left(
+k + \alpha \sum\limits^{\min(C, c + n/2)}_{j = \max(0, c - n/2)}
+(Input(j, x, y))^2
+\right)^{\beta}
+$$
 
- upper is `min(C, c + n/2)`
- lower if `max(0, c - n/2)`
+Function implementation:
 
- Function implementation:
+Inputs and outpus are in NCHW format, while input.shape.ndims() equals 4.
+And dimensions 0 ~ 3 represent batch size, feature maps, rows,
+and columns, respectively.
 
- inputs and outpus is NCHW format, while input.shape.ndims() is equal 4.
- And the meaning of each dimension(0-3) is respectively batch size,
- feature maps, rows and columns.
+Input and Output in the formula above is for each map(i) of one image, and
+Input(i, x, y), Output(i, x, y) represents an element in an image.
 
- Input and Output in the above formula is for each map(i) of one image, and
- Input(i, x, y), Output(i, x, y) represents an element in an image.
-
- C is the number of feature maps of one image, and n is a hyper-parameters
- is configured when Function is initialized. The sum in the denominator
- is the sum of the same position in the neighboring maps.
-    )DOC");
+C is the number of feature maps of one image. n is a hyper-parameter
+configured when operator is initialized. The sum in the denominator
+is the sum of the same positions in the neighboring maps.
+    
+)DOC");
   }
 };
 

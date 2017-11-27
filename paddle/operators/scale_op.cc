@@ -40,13 +40,16 @@ class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ScaleOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The input tensor of scale operator.");
-    AddOutput("Out", "The output tensor of scale operator.");
-    AddComment(R"DOC(Scale operator
+    AddInput("X", "(Tensor) Input tensor of scale operator.");
+    AddOutput("Out", "(Tensor) Output tensor of scale operator.");
+    AddComment(R"DOC(
+Scale operator
 
-The equation is: Out = scale*X
+$$Out = scale*X$$
 )DOC");
-    AddAttr<AttrType>("scale", "The scaling factor of the scale operator.")
+    AddAttr<AttrType>("scale",
+                      "(float, default 0)"
+                      "The scaling factor of the scale operator.")
         .SetDefault(1.0);
   }
 };

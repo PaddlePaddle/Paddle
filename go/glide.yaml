@@ -30,3 +30,4 @@ import:
   version: v2.13
 - package: github.com/go-stack/stack
   version: v1.6.0
+- package: github.com/golang/protobuf

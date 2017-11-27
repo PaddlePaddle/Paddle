@@ -49,8 +49,11 @@ class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<AttrType>(
         "max", "(float)Maximum value, above which element is replaced by max");
     AddComment(R"DOC(
-Clip operator limits the given input within an interval. The interval is
+Clip Operator.
+
+The clip operator limits the value of given input within an interval. The interval is
 specified with arguments 'min' and 'max'.
+
 )DOC");
   }
 };

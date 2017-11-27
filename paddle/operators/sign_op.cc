@@ -38,9 +38,10 @@ class SignOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) Input tensor of sign operator.");
     AddOutput("Out", "(Tensor) Output tensor of sign operator.");
-    AddComment(R"DOC(Sign operator
+    AddComment(R"DOC(
+Sign operator
 
-The equation is: Out = X.sign()
+$$Out = X.sign()$$
 )DOC");
   }
 };

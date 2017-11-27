@@ -52,13 +52,13 @@ class SquaredL2NormOpMaker : public framework::OpProtoAndCheckerMaker {
                        framework::OpAttrChecker* op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) The input of squared_l2_norm op.");
-    AddOutput("Out", "(Float) The output of squared_l2_norm op.");
+    AddOutput("Out", "(Scalar) The output of squared_l2_norm op.");
     AddComment(R"DOC(
 SquaredL2Norm Operator.
 
 Computes the squared L2 norm of a tensor.
 
-Out = sum (X ** 2)
+$$Out = \sum_{i} X_{i}^2$$
 
 )DOC");
   }

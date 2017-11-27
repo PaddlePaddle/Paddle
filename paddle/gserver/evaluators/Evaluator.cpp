@@ -395,14 +395,24 @@ real AucEvaluator::evalImp(std::vector<Argument>& arguments) {
   CHECK_LE(arguments.size(), (size_t)3);
   MatrixPtr output = arguments[0].value;
   IVectorPtr label = arguments[1].ids;
+  MatrixPtr labelval = arguments[1].value;
   bool supportWeight = (3 == arguments.size()) ? true : false;
   MatrixPtr weight = supportWeight ? arguments[2].value : nullptr;
-  if (nullptr == output || nullptr == label ||
-      (supportWeight && nullptr == weight)) {
+
+  if (nullptr == output || (supportWeight && nullptr == weight)) {
     return 0;
   }
   size_t insNum = output->getHeight();
   size_t outputDim = output->getWidth();
+  // Copy label from value to a vector.
+  if (nullptr == label && nullptr != labelval) {
+    // label width is 1
+    CHECK_EQ(1U, labelval->getWidth());
+    VectorPtr vec =
+        Vector::create(labelval->getData(), insNum, output->useGpu());
+    label = vec->castToInt();
+  }
+
   CHECK_EQ(insNum, label->getSize());
   if (supportWeight) {
     CHECK_EQ(insNum, weight->getHeight());
@@ -443,6 +453,7 @@ real AucEvaluator::evalImp(std::vector<Argument>& arguments) {
   int* labelD = label->getData();
   real* weightD = supportWeight ? weight->getData() : nullptr;
   size_t pos = realColumnIdx_;
+
   for (size_t i = 0; i < insNum; ++i) {
     real value = outputD[pos];
     uint32_t binIdx = static_cast<uint32_t>(value * kBinNum_);

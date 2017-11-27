@@ -37,7 +37,9 @@ class ProgramDescBind {
 
   BlockDescBind *AppendBlock(const BlockDescBind &parent);
 
-  BlockDescBind *Block(size_t idx) { return blocks_[idx].get(); }
+  BlockDescBind *MutableBlock(size_t idx) { return blocks_[idx].get(); }
+
+  const BlockDescBind &Block(size_t idx) const { return *blocks_[idx]; }
 
   size_t Size() const { return blocks_.size(); }
 

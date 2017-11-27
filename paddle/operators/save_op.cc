@@ -163,14 +163,19 @@ class SaveOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   SaveOpProtoMaker(framework::OpProto *proto,
                    framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The tensor need to be saved");
-    AddComment(R"DOC(Save operator
-Save operator will serialize and write a tensor variable to disk file.
+    AddInput("X", "(Tensor ) Input tensor to be saved");
+    AddComment(R"DOC(
+Save operator
+
+This operator will serialize and write a tensor variable to file on disk.
 )DOC");
-    AddAttr<bool>("overwrite", "Overwrite the output file if exist")
+    AddAttr<bool>("overwrite",
+                  "(boolean, default true)"
+                  "Overwrite the output file if exist")
         .SetDefault(true);
     AddAttr<std::string>("file_path",
-                         "Variable will be saved to \"file_path\".")
+                         "(string)"
+                         "The \"file_path\" where the variable will be saved.")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
   }

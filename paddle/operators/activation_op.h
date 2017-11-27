@@ -232,7 +232,7 @@ struct HardShrinkGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-// softshrink(x) = x - lambda, if x > lambda; x + lambda, if x < lambda; 0
+// softshrink(x) = x - lambda, if x > lambda; x + lambda, if x < -lambda; 0
 // otherwise
 template <typename T>
 struct SoftShrinkFunctor : public BaseActivationFunctor<T> {
@@ -280,6 +280,41 @@ struct SqrtGradFunctor : public BaseActivationFunctor<T> {
   void operator()(Device d, X x, Y y, dY dy, dX dx) const {
     const Y y_conj = Eigen::numext::conj(y);
     dx.device(d) = static_cast<T>(0.5) * dy / y_conj;
+  }
+};
+
+// ceil(x) = ceiling(x)
+template <typename T>
+struct CeilFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) const {
+    y.device(d) = x.ceil();
+  }
+};
+
+template <typename T>
+struct ZeroGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) const {
+    dx.device(d) = static_cast<T>(0) / x;
+  }
+};
+
+// floor(x) = flooring(x)
+template <typename T>
+struct FloorFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) const {
+    y.device(d) = x.ceil();
+  }
+};
+
+// round(x) = [x]
+template <typename T>
+struct RoundFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) const {
+    y.device(d) = x.round();
   }
 };
 
@@ -547,6 +582,7 @@ struct ELUGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+// FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5198
 template <typename T>
 struct PowFunctor : public BaseActivationFunctor<T> {
   float factor;
@@ -676,6 +712,9 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   __macro(softshrink, SoftShrinkFunctor, SoftShrinkGradFunctor);     \
   __macro(sqrt, SqrtFunctor, SqrtGradFunctor);                       \
   __macro(abs, AbsFunctor, AbsGradFunctor);                          \
+  __macro(ceil, CeilFunctor, ZeroGradFunctor);                       \
+  __macro(floor, FloorFunctor, ZeroGradFunctor);                     \
+  __macro(round, RoundFunctor, ZeroGradFunctor);                     \
   __macro(reciprocal, ReciprocalFunctor, ReciprocalGradFunctor);     \
   __macro(log, LogFunctor, LogGradFunctor);                          \
   __macro(square, SquareFunctor, SquareGradFunctor);                 \

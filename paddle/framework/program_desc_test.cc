@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 TEST(ProgramDesc, copy_ctor) {
   ProgramDescBind program;
-  auto* global_block = program.Block(0);
+  auto* global_block = program.MutableBlock(0);
   auto* x = global_block->Var("X");
   x->SetType(VarDesc_VarType_LOD_TENSOR);
   x->SetLoDLevel(0);
@@ -44,7 +44,7 @@ TEST(ProgramDesc, copy_ctor) {
 
   ProgramDescBind program_copy(program);
 
-  auto* global_block_copy = program_copy.Block(0);
+  auto* global_block_copy = program_copy.MutableBlock(0);
   ASSERT_NE(global_block, global_block_copy);
 
   auto assert_same_var = [&](const std::string& name, VarDescBind* var_before) {
@@ -82,7 +82,7 @@ TEST(ProgramDesc, copy_ctor) {
 
 TEST(ProgramDescBind, serialize_and_deserialize) {
   ProgramDescBind program_origin;
-  auto* global_block = program_origin.Block(0);
+  auto* global_block = program_origin.MutableBlock(0);
   auto* x = global_block->Var("X");
   x->SetType(VarDesc_VarType_LOD_TENSOR);
   x->SetLoDLevel(0);
@@ -108,7 +108,7 @@ TEST(ProgramDescBind, serialize_and_deserialize) {
   program_origin.Proto()->SerializeToString(&binary_str);
 
   ProgramDescBind program_restored(binary_str);
-  auto* global_block_restored = program_restored.Block(0);
+  auto* global_block_restored = program_restored.MutableBlock(0);
   ASSERT_NE(global_block, global_block_restored);
 
   auto assert_same_var = [&](const std::string& name, VarDescBind* var_before) {

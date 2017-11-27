@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#define EIGEN_USE_GPU
 #include "paddle/operators/math/sequence2batch.h"
 
 namespace paddle {
@@ -41,8 +42,8 @@ template <typename T>
 class CopyMatrixRowsFunctor<platform::GPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::LoDTensor& src, const size_t* index,
-                  framework::LoDTensor& dst, bool is_src_index) {
+                  const framework::Tensor& src, const size_t* index,
+                  framework::Tensor& dst, bool is_src_index) {
     auto src_dims = src.dims();
     auto dst_dims = dst.dims();
     PADDLE_ENFORCE_EQ(src_dims.size(), 2,
