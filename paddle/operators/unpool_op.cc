@@ -46,7 +46,7 @@ class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
         "(vector defalut:{0,0}), "
         "paddings (height, width) of unpooling operator.")
         .SetDefault({0, 0});
-    AddAttr<std::string>("unpoolingtype",
+    AddAttr<std::string>("unpooling_type",
         "(string), unpooling type, can be \"max\" for max-unpooling ")
         .InEnum({"max"});
     AddComment(R"DOC(
@@ -87,7 +87,7 @@ public:
     auto in_x_dims = ctx->GetInputDim("X");
     auto in_y_dims = ctx->GetInputDim("Y");
     std::string unpooling_type =
-      ctx->Attrs().Get<std::string>("unpoolingtype");
+      ctx->Attrs().Get<std::string>("unpooling_type");
     std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
     std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
     std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");

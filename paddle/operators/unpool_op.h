@@ -28,7 +28,7 @@ class UnpoolKernel : public framework::OpKernel<T> {
     const framework::Tensor* in_x = context.Input<framework::Tensor>("X");
     const framework::Tensor* in_y = context.Input<framework::Tensor>("Y");
     auto * out = context.Output<framework::Tensor>("Out");
-    std::string unpooling_type = context.Attr<std::string>("unpoolingtype");
+    std::string unpooling_type = context.Attr<std::string>("unpooling_type");
     std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
@@ -53,7 +53,7 @@ class UnpoolGradKernel : public framework::OpKernel<T> {
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
     framework::Tensor* in_x_grad =
       context.Output<framework::Tensor>(framework::GradVarName("X"));
-    std::string unpooling_type = context.Attr<std::string>("unpoolingtype");
+    std::string unpooling_type = context.Attr<std::string>("unpooling_type");
     std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
