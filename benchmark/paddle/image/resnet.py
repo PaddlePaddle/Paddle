@@ -10,7 +10,7 @@ is_test = get_config_arg("is_test", bool, False)
 
 args = {'height': height, 'width': width, 'color': True, 'num_class': num_class}
 define_py_data_sources2(
-    "train.list", None, module="provider", obj="process", args=args)
+    "train.list", "test.list", module="provider", obj="process", args=args)
 
 settings(
     batch_size=batch_size,
