@@ -28,9 +28,6 @@ void InferShapeContext::SetOutputsDim(
   SetDims(names, dims);
 }
 
-void InferShapeContext::ShareLoD(const std::string &in, const std::string &out,
-                                 size_t i, size_t j) const {}
-
 std::vector<framework::DDim> InferShapeContext::GetDims(
     const std::vector<std::string> &names) const {
   std::vector<framework::DDim> ret;
@@ -48,6 +45,23 @@ void InferShapeContext::SetDims(const std::vector<std::string> &names,
   for (size_t i = 0; i < length; ++i) {
     SetDim(names[i], dims[i]);
   }
+}
+std::vector<VarDesc::VarType> InferShapeContext::GetInputsVarType(
+    const std::string &name) const {
+  return GetVarTypes(Inputs(name));
+}
+std::vector<VarDesc::VarType> InferShapeContext::GetOutputsVarType(
+    const std::string &name) const {
+  return GetVarTypes(Outputs(name));
+}
+std::vector<VarDesc::VarType> InferShapeContext::GetVarTypes(
+    const std::vector<std::string> &names) const {
+  std::vector<VarDesc::VarType> retv;
+  retv.resize(names.size());
+  std::transform(names.begin(), names.end(), retv.begin(),
+                 std::bind(std::mem_fn(&InferShapeContext::GetVarType), this,
+                           std::placeholders::_1));
+  return retv;
 }
 
 }  // namespace framework

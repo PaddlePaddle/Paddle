@@ -105,7 +105,7 @@ class LoadOp : public framework::OperatorBase {
       out_var->Clear();
       tensor = out_var->GetMutable<framework::LoDTensor>();
       tensor->set_lod(cpu_tensor.lod());
-      tensor->CopyFrom(cpu_tensor, place, dev_ctx);
+      CopyFrom(cpu_tensor, place, dev_ctx, tensor);
     }
   }
 };
@@ -115,14 +115,18 @@ class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   LoadOpProtoMaker(framework::OpProto *proto,
                    framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddOutput("Out", "The tensor need to be loaded");
-    AddComment(R"DOC(Load Operator
-Load operator will load a tensor variable from disk file.
-)DOC");
+    AddOutput("Out", "(Tensor) The tensor need to be loaded");
     AddAttr<std::string>("file_path",
+                         "(string) "
                          "Variable will be loaded from \"file_path\".")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
+    AddComment(R"DOC(
+Load Operator.
+
+Load operator will load a tensor variable from disk file.
+
+)DOC");
   }
 };
 }  // namespace operators

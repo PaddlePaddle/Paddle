@@ -29,7 +29,7 @@ template <typename Place, typename T>
 class AucKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* inference = ctx.Input<Tensor>("Inference");
+    auto* inference = ctx.Input<Tensor>("Out");
     auto* label = ctx.Input<Tensor>("Label");
     auto* auc = ctx.Output<Tensor>("AUC");
 
@@ -46,18 +46,11 @@ class AucKernel : public framework::OpKernel<T> {
     thresholds_list[0] = 0.0f - kEpsilon;
     thresholds_list[num_thresholds - 1] = 1.0f + kEpsilon;
 
-    size_t num_samples = inference->numel();
+    size_t batch_size = inference->dims()[0];
+    size_t inference_width = inference->dims()[1];
 
     const T* inference_data = inference->data<T>();
-    Tensor label_casted;
-    label_casted.Resize(label->dims());
-    bool* label_casted_data = label_casted.mutable_data<bool>(ctx.GetPlace());
-
-    const int* label_data = label->data<int>();
-    // cast label_data to bool
-    for (size_t i = 0; i < num_samples; i++) {
-      label_casted_data[i] = static_cast<bool>(label_data[i]);
-    }
+    const int64_t* label_data = label->data<int64_t>();
 
     // Create local tensor for storing the curve: TP, FN, TN, FP
     // TODO(typhoonzero): use eigen op to caculate these values.
@@ -68,23 +61,27 @@ class AucKernel : public framework::OpKernel<T> {
     true_negative.Resize({num_thresholds});
     false_positive.Resize({num_thresholds});
 
-    int* tp_data = true_positive.mutable_data<int>(ctx.GetPlace());
-    int* fn_data = false_negative.mutable_data<int>(ctx.GetPlace());
-    int* tn_data = true_negative.mutable_data<int>(ctx.GetPlace());
-    int* fp_data = false_positive.mutable_data<int>(ctx.GetPlace());
+    int64_t* tp_data = true_positive.mutable_data<int64_t>(ctx.GetPlace());
+    int64_t* fn_data = false_negative.mutable_data<int64_t>(ctx.GetPlace());
+    int64_t* tn_data = true_negative.mutable_data<int64_t>(ctx.GetPlace());
+    int64_t* fp_data = false_positive.mutable_data<int64_t>(ctx.GetPlace());
 
     for (int idx_thresh = 0; idx_thresh < num_thresholds; idx_thresh++) {
       // caculate TP, FN, TN, FP for current thresh
-      int tp = 0, fn = 0, tn = 0, fp = 0;
-      for (size_t i = 0; i < num_samples; i++) {
-        if (label_casted_data[i]) {
-          if (inference_data[i] >= (thresholds_list[idx_thresh])) {
+      int64_t tp = 0, fn = 0, tn = 0, fp = 0;
+      for (size_t i = 0; i < batch_size; i++) {
+        // NOTE: label_data used as bool, labels >0 will be treated as true.
+        if (label_data[i]) {
+          // use first(max) data in each row
+          if (inference_data[i * inference_width] >=
+              (thresholds_list[idx_thresh])) {
             tp++;
           } else {
             fn++;
           }
         } else {
-          if (inference_data[i] >= (thresholds_list[idx_thresh])) {
+          if (inference_data[i * inference_width] >=
+              (thresholds_list[idx_thresh])) {
             fp++;
           } else {
             tn++;

@@ -80,24 +80,27 @@ class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ReduceOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput(
-        "X",
-        "(Tensor) The input tensor. Tensors with rank at most 6 are supported");
+    AddInput("X",
+             "(Tensor) The input tensor. Tensors with rank at most 6 are "
+             "supported.");
     AddOutput("Out", "(Tensor) The result tensor.");
     AddAttr<int>(
         "dim",
-        "(int, default 1) The dimension to reduce. "
+        "(int, default 0) The dimension to reduce. "
         "Must be in the range [-rank(input), rank(input)). "
         "If `dim < 0`, the dim to reduce is `rank + dim`. "
-        "Noting that reducing on the first dim will make the LoD info lost.")
+        "Note that reducing on the first dim will make the LoD info lost.")
         .SetDefault(0);
     AddAttr<bool>("keep_dim",
                   "(bool, default false) "
                   "If true, retain the reduced dimension with length 1.")
         .SetDefault(false);
     comment_ = R"DOC(
-{ReduceOP} operator computes the {reduce} of input tensor along the given dimension. 
-The result tensor has 1 fewer dimension than the input unless `keep_dim` is true.
+{ReduceOp} Operator.
+
+This operator computes the {reduce} of input tensor along the given dimension. 
+The result tensor has 1 fewer dimension than the input unless keep_dim is true.
+
 )DOC";
     AddComment(comment_);
   }

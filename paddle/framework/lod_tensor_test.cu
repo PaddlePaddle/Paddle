@@ -36,8 +36,8 @@ TEST(LoDTensor, LoDInGPU) {
   lod_tensor.mutable_data<float>(place);
 
   lod_tensor.set_lod(src_lod);
-  CHECK_EQ(lod_tensor.lod_element(0, 2).first, 4UL);
-  CHECK_EQ(lod_tensor.lod_element(0, 4).first, 8UL);
+  EXPECT_EQ(lod_tensor.lod_element(0, 2).first, 4UL);
+  EXPECT_EQ(lod_tensor.lod_element(0, 4).first, 8UL);
 
   auto lod = lod_tensor.lod();
 
@@ -45,6 +45,6 @@ TEST(LoDTensor, LoDInGPU) {
   cudaDeviceSynchronize();
 
   for (size_t i = 0; i < src_lod[0].size(); ++i) {
-    CHECK_EQ(lod[0].data()[i], src_lod[0].data()[i] * 2);
+    EXPECT_EQ(lod[0].data()[i], src_lod[0].data()[i] * 2);
   }
 }

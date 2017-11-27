@@ -41,9 +41,11 @@ class LookupTableOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::DataType IndicateDataType(
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("W")->type());
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<LoDTensor>("W")->type()),
+        ctx.device_context());
   }
 };
 
@@ -53,21 +55,27 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
                      framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("W",
-             "An input represents embedding tensors,"
-             " which is a learnable parameter.");
+             "An input represents embedding tensors, "
+             "which is a learnable parameter.");
     AddInput("Ids",
-             "An input with type int32 or int64"
-             "contains the ids to be looked up in W."
-             "Ids must be a column vector with rank = 2."
-             "The 2nd dimension size must be 1");
-    AddOutput("Out", "The lookup results, which have the same type with W.");
-    AddAttr<bool>("is_sparse", "Sparse update").SetDefault(false);
+             "An input with type int32 or int64 "
+             "contains the ids to be looked up in W. "
+             "Ids must be a column vector with rank = 2. "
+             "The 2nd dimension size must be 1.");
+    AddOutput("Out", "The lookup results, which have the same type as W.");
+    AddAttr<bool>("is_sparse",
+                  "(boolean, default false) "
+                  "Sparse update")
+        .SetDefault(false);
     AddComment(R"DOC(
+Lookup Table Operator.
+
 This operator is used to perform lookups on the parameter W,
 then concatenated into a dense tensor.
 
-The input `Ids` can carry the LoD (Level of Details) information,
-or not. And the output only shares the LoD with input `Ids`.
+The input Ids can carry the LoD (Level of Details) information,
+or not. And the output only shares the LoD information with input Ids.
+
 )DOC");
   }
 };
@@ -91,9 +99,11 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::DataType IndicateDataType(
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("W")->type());
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<LoDTensor>("W")->type()),
+        ctx.device_context());
   }
 };
 

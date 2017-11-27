@@ -1,5 +1,6 @@
 #include <paddle/capi.h>
 #include <time.h>
+
 #include "../common/common.h"
 
 #define CONFIG_BIN "./trainer_config.bin"
@@ -31,6 +32,7 @@ int main() {
                                            /* size */ 784,
                                            /* useGPU */ false);
   srand(time(0));
+
   paddle_real* array;
 
   // Get First row.
@@ -51,11 +53,18 @@ int main() {
 
   CHECK(paddle_arguments_get_value(out_args, 0, prob));
 
+  uint64_t height;
+  uint64_t width;
+
+  CHECK(paddle_matrix_get_shape(prob, &height, &width));
   CHECK(paddle_matrix_get_row(prob, 0, &array));
 
-  printf("Prob: ");
-  for (int i = 0; i < 10; ++i) {
-    printf("%.2f ", array[i]);
+  printf("Prob: \n");
+  for (int i = 0; i < height * width; ++i) {
+    printf("%.4f ", array[i]);
+    if ((i + 1) % width == 0) {
+      printf("\n");
+    }
   }
   printf("\n");
 

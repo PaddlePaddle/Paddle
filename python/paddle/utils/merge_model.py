@@ -23,32 +23,32 @@ from paddle.v2.topology import Topology
 
 
 def merge_v2_model(net, param_file, output_file):
-    '''Integrate the model config and model parameters into one file.
-    
+    '''Merge the model config and parameters into one file.
+
     The model configuration file describes the model structure which
     ends with .py. The parameters file stores the parameters of the model
     which ends with .tar.gz.
-    
-    @param  net            The output layer of the network.
-    @param  param_file     Path of the model parameters(.tar.gz) which is stored by v2 api.
+
+    @param  net            The output layer of the network for inference.
+    @param  param_file     Path of the parameters (.tar.gz) which is stored by v2 api.
     @param  output_file    Path of the merged file which will be generated.
-    
+
     Usage:
 
-        from paddle.util.merge_model import merge_v2_model
+        from paddle.utils.merge_model import merge_v2_model
         # import your network configuration
-        from mobilenet import mobile_net
-        
-        net = mobile_net(3*224*224, 102)
+        from example_net import net_conf
+
+        net = net_conf(is_predict=True)
         param_file = './param_pass_00000.tar.gz'
         output_file = './output.paddle'
-        
+
         merge_v2_model(net, param_file, output_file)
 
     '''
 
     assert isinstance(net, LayerOutput), \
-            "The net should be the output of the network"
+            "The net should be the output of the network for inference"
     assert os.path.exists(param_file), \
             "The model parameters file %s does not exists " % (param_file)
 

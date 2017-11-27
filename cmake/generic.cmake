@@ -93,7 +93,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 if(NOT APPLE AND NOT ANDROID)
     find_package(Threads REQUIRED)
     link_libraries(${CMAKE_THREAD_LIBS_INIT})
-    set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -ldl -lrt")
+    set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt")
 endif(NOT APPLE AND NOT ANDROID)
 
 function(merge_static_libs TARGET_NAME)
@@ -459,11 +459,11 @@ function(py_test TARGET_NAME)
   if(WITH_TESTING)
     set(options STATIC static SHARED shared)
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS)
-    cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})  
+    set(multiValueArgs SRCS DEPS ARGS)
+    cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_test(NAME ${TARGET_NAME}
              COMMAND env PYTHONPATH=${PADDLE_PYTHON_BUILD_DIR}/lib-python
-             python2 ${py_test_SRCS}
+             ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
              WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   endif()
 endfunction()

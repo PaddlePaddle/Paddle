@@ -34,10 +34,10 @@ class LstmUnitOp : public framework::OperatorWithKernel {
     auto c_prev_dims = ctx->GetInputDim("C_prev");
 
     PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank must be 2.");
-    PADDLE_ENFORCE(x_dims[0] == c_prev_dims[0],
-                   "Batch size of inputs and states must be equal");
-    PADDLE_ENFORCE(x_dims[1] == c_prev_dims[1] * 4,
-                   "Dimension of FC should equal to prev state * 4");
+    PADDLE_ENFORCE_EQ(x_dims[0], c_prev_dims[0],
+                      "Batch size of inputs and states must be equal");
+    PADDLE_ENFORCE_EQ(x_dims[1], c_prev_dims[1] * 4,
+                      "Dimension of FC should equal to prev state * 4");
 
     int b_size = c_prev_dims[0];  // batch size
     int s_dim = c_prev_dims[1];   // state dim
@@ -57,17 +57,22 @@ class LstmUnitOpMaker : public framework::OpProtoAndCheckerMaker {
         "The cell state tensor of last time-step in the Lstm Unit operator.");
     AddOutput("C", "The cell tensor of Lstm Unit operator.");
     AddOutput("H", "The hidden state tensor of Lstm Unit operator.");
-
-    AddComment(R"DOC(Lstm-Unit Operator
+    AddAttr<float>("forget_bias",
+                   "(float, default 0.0) "
+                   "The forget bias of Lstm Unit.")
+        .SetDefault(0.0);
+    AddComment(R"DOC(
+Lstm Unit Operator
 
 Equation:
-  i, f, o, j = split(X)
-  C = C_prev * sigm(f + forget_bias) + sigm(i) * tanh(j)
-  H = C * sigm(o)
+
+$$
+i, f, o, j = split(X) \\
+C = C_{prev} * sigm(f + forget\_bias) + sigm(i) * tanh(j) \\
+H = C * sigm(o)
+$$
 
 )DOC");
-    AddAttr<float>("forget_bias", "The forget bias of Lstm Unit.")
-        .SetDefault(0.0);
   }
 };
 

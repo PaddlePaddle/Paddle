@@ -50,6 +50,15 @@ VarDescBind *BlockDescBind::FindVarRecursive(const std::string &name) const {
   return it->second.get();
 }
 
+VarDescBind *BlockDescBind::FindRecursiveOrCreateVar(
+    const std::string &name_bytes) {
+  VarDescBind *res = FindVarRecursive(name_bytes);
+  if (res == nullptr) {
+    res = Var(name_bytes);
+  }
+  return res;
+}
+
 bool BlockDescBind::HasVarRecursive(const std::string &name) const {
   return FindVarRecursive(name) != nullptr;
 }
@@ -113,7 +122,7 @@ BlockDescBind *BlockDescBind::ParentBlock() const {
   if (this->desc_->parent_idx() == kNoneBlockIndex) {
     return nullptr;
   }
-  return prog_->Block(static_cast<size_t>(this->desc_->parent_idx()));
+  return prog_->MutableBlock(static_cast<size_t>(this->desc_->parent_idx()));
 }
 
 BlockDesc *BlockDescBind::Proto() {

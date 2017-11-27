@@ -34,7 +34,7 @@ TEST(SaveLoadOp, CPU) {
 
   tensor->set_lod(expect_lod);
   int* expect = tensor->mutable_data<int>(place);
-  for (size_t i = 0; i < paddle::framework::product(tensor->dims()); ++i) {
+  for (int64_t i = 0; i < tensor->numel(); ++i) {
     expect[i] = static_cast<int>(i);
   }
   paddle::framework::AttributeMap attrs;
@@ -50,7 +50,7 @@ TEST(SaveLoadOp, CPU) {
       "load", {}, {{"Out", {"out_var"}}}, attrs);
   load_op->Run(scope, ctx);
   int* actual = target->data<int>();
-  for (size_t i = 0; i < paddle::framework::product(tensor->dims()); ++i) {
+  for (int64_t i = 0; i < tensor->numel(); ++i) {
     EXPECT_EQ(expect[i], actual[i]);
   }
   auto& actual_lod = target->lod();

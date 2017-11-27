@@ -163,6 +163,13 @@ public:
   std::shared_ptr<Matrix> toOneHotSparseMatrix(size_t idRange, bool useGpu);
 
   /**
+   * @brief cast vector of "real" elements to "int" elements.
+   *
+   * @note: float -> int must be casted, or you'll get wrong data.
+   */
+  std::shared_ptr<VectorT<int>> castToInt();
+
+  /**
    * This function will crash if the size of src and dest is different.
    */
   virtual void copyFrom(const VectorT<T>& src) = 0;

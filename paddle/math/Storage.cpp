@@ -17,9 +17,13 @@ limitations under the License. */
 #include "paddle/utils/StringUtil.h"
 #include "paddle/utils/Util.h"
 
+#ifndef PADDLE_MOBILE_INFERENCE
 DEFINE_int32(pool_limit_size,
              536870912,
              "maximum memory size managed by a memory pool, default is 512M");
+#else
+DEFINE_int32(pool_limit_size, 0, "default is 0");
+#endif
 
 namespace paddle {
 

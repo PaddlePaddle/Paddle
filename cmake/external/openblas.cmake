@@ -1,11 +1,11 @@
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,7 +29,7 @@ IF(NOT ${CBLAS_FOUND})
         "${CBLAS_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}openblas${CMAKE_STATIC_LIBRARY_SUFFIX}"
         CACHE FILEPATH "openblas library." FORCE)
 
-    SET(OPENBLAS_CC "${CMAKE_C_COMPILER}")
+    SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -Wno-unused-but-set-variable -Wno-unused-variable")
 
     IF(CMAKE_CROSSCOMPILING)
         SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER})
@@ -45,15 +45,14 @@ IF(NOT ${CBLAS_FOUND})
                 SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV8 BINARY=64 USE_THREAD=0)
             ENDIF()
         ELSEIF(IOS)
-            # FIXME(liuyiqun): support multiple architectures
-            SET(OPENBLAS_COMMIT "b5c96fcfcdc82945502a2303116a64d89985daf5")
-            SET(OPENBLAS_CC "${OPENBLAS_CC} ${CMAKE_C_FLAGS} -isysroot ${CMAKE_OSX_SYSROOT}")
-            IF(CMAKE_OSX_ARCHITECTURES MATCHES "armv7")
-                SET(OPENBLAS_CC "${OPENBLAS_CC} -arch armv7")
-                SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV7 ARM_SOFTFP_ABI=1 USE_THREAD=0)
-            ELSEIF(CMAKE_OSX_ARCHITECTURES MATCHES "arm64")
+            IF(CMAKE_OSX_ARCHITECTURES MATCHES "arm64")
+                SET(OPENBLAS_COMMIT "b5c96fcfcdc82945502a2303116a64d89985daf5")
+                SET(OPENBLAS_CC "${OPENBLAS_CC} ${CMAKE_C_FLAGS} -isysroot ${CMAKE_OSX_SYSROOT}")
                 SET(OPENBLAS_CC "${OPENBLAS_CC} -arch arm64")
                 SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV8 BINARY=64 USE_THREAD=0 CROSS_SUFFIX=${CROSS_SUFFIX})
+            ELSE()
+                MESSAGE(FATAL_ERROR "OpenBLAS only support arm64 architectures on iOS. "
+                       "You can set IOS_USE_VECLIB_FOR_BLAS=ON or USE_EIGEN_FOR_BLAS=ON to use other blas library instead.")
             ENDIF()
         ELSEIF(RPI)
             # use hardfp
@@ -86,7 +85,7 @@ IF(NOT ${CBLAS_FOUND})
         UPDATE_COMMAND      ""
         CONFIGURE_COMMAND   ""
     )
-
+    SET(CBLAS_PROVIDER openblas)
     IF(WITH_C_API)
         INSTALL(DIRECTORY ${CBLAS_INC_DIR} DESTINATION third_party/openblas)
         # Because libopenblas.a is a symbolic link of another library, thus need to
@@ -98,7 +97,7 @@ IF(NOT ${CBLAS_FOUND})
         ENDIF()
         INSTALL(CODE "execute_process(
             COMMAND ${CMAKE_COMMAND} -E copy_directory ${CBLAS_INSTALL_DIR}/lib
-                    destination ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}
+                    ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}
             )"
         )
         INSTALL(CODE "MESSAGE(STATUS \"Installing: \"
@@ -115,7 +114,7 @@ INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
 # linear algebra libraries for cc_library(xxx SRCS xxx.c DEPS cblas)
 SET(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/cblas_dummy.c)
 FILE(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
-IF(${CBLAS_PROVIDER} MATCHES MKL)
+IF("${CBLAS_PROVIDER}" STREQUAL "MKLML")
     ADD_LIBRARY(cblas SHARED ${dummyfile})
 ELSE()
     ADD_LIBRARY(cblas STATIC ${dummyfile})

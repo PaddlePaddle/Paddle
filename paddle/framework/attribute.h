@@ -32,7 +32,7 @@ inline AttrType AttrTypeID() {
   return static_cast<AttrType>(tmp.which() - 1);
 }
 
-Attribute GetAttrValue(const OpDesc::Attr& attr_desc, ProgramDesc* desc);
+Attribute GetAttrValue(const OpDesc::Attr& attr_desc);
 
 class AttrReader {
  public:

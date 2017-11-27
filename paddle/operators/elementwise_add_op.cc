@@ -22,7 +22,7 @@ class ElementwiseAddOpMaker : public ElementwiseOpMaker {
   ElementwiseAddOpMaker(framework::OpProto* proto,
                         framework::OpAttrChecker* op_checker)
       : ElementwiseOpMaker(proto, op_checker) {
-    SetComment("add", "Out = X + Y");
+    SetComment("Add", "$Out = X + Y$");
     AddComment(comment_);
   }
 };
@@ -34,7 +34,13 @@ REGISTER_OP(elementwise_add, ops::ElementwiseOp, ops::ElementwiseAddOpMaker,
             elementwise_add_grad, ops::ElementwiseOpGrad);
 REGISTER_OP_CPU_KERNEL(
     elementwise_add,
-    ops::ElementwiseAddKernel<paddle::platform::CPUPlace, float>);
+    ops::ElementwiseAddKernel<paddle::platform::CPUPlace, float>,
+    ops::ElementwiseAddKernel<paddle::platform::CPUPlace, double>,
+    ops::ElementwiseAddKernel<paddle::platform::CPUPlace, int>,
+    ops::ElementwiseAddKernel<paddle::platform::CPUPlace, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_add_grad,
-    ops::ElementwiseAddGradKernel<paddle::platform::CPUPlace, float>);
+    ops::ElementwiseAddGradKernel<paddle::platform::CPUPlace, float>,
+    ops::ElementwiseAddGradKernel<paddle::platform::CPUPlace, double>,
+    ops::ElementwiseAddGradKernel<paddle::platform::CPUPlace, int>,
+    ops::ElementwiseAddGradKernel<paddle::platform::CPUPlace, int64_t>);

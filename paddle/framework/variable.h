@@ -48,6 +48,11 @@ class Variable {
 
   void Clear() { holder_.reset(); }
 
+  std::type_index Type() const {
+    PADDLE_ENFORCE(holder_ != nullptr, "Must hold memory");
+    return holder_->Type();
+  }
+
  private:
   struct Placeholder {
     virtual ~Placeholder() {}

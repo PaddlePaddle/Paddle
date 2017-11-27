@@ -59,7 +59,7 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
     auto Y = EigenMatrix<T>::Reshape(*y, 1);
 
     auto place = context.GetEigenDevice<Place>();
-    if (context.Attr<bool>("is_training")) {
+    if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
       auto* mask_data = mask->mutable_data<T>(context.GetPlace());
       int size = framework::product(mask->dims());
