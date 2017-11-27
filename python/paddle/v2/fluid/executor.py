@@ -1,6 +1,8 @@
 import numpy as np
-import paddle.v2.fluid.core as core
-from paddle.v2.fluid.framework import Block, Program, g_main_program
+from . import core
+from framework import Program, g_main_program
+
+__all__ = ['Executor', 'g_scope']
 
 g_scope = core.Scope()
 

@@ -1,10 +1,7 @@
-import paddle.v2.fluid.framework as framework
+import framework
 import numpy as np
 
-__all__ = [
-    'ConstantInitializer', 'UniformInitializer', 'NormalInitializer',
-    'XavierInitializer'
-]
+__all__ = ['Constant', 'Uniform', 'Normal', 'Xavier']
 
 
 class Initializer(object):
@@ -368,3 +365,19 @@ class MSRAInitializer(Initializer):
                 })
         var.op = op
         return op
+
+
+# We short the class name, since users will use the initializer with the package
+# name. The sample code:
+#
+# import paddle.fluid as fluid
+#
+# hidden = fluid.layers.fc(...,
+#                          param_attr=ParamAttr(fluid.initializer.Xavier()))
+#
+# It is no need to add an `Initializer` as the class suffix
+Constant = ConstantInitializer
+Uniform = UniformInitializer
+Normal = NormalInitializer
+Xavier = XavierInitializer
+MSRA = MSRAInitializer

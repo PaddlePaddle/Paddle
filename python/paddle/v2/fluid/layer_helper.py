@@ -1,10 +1,9 @@
 import copy
 import itertools
 
-from paddle.v2.fluid.framework import Variable, g_main_program, \
-    g_startup_program, unique_name, Program, dtype_is_floating
-from paddle.v2.fluid.initializer import ConstantInitializer, \
-    UniformInitializer, XavierInitializer
+from framework import Variable, g_main_program, \
+    g_startup_program, unique_name, dtype_is_floating
+from paddle.v2.fluid.initializer import Constant, Xavier
 
 
 class LayerHelper(object):
@@ -209,7 +208,7 @@ class LayerHelper(object):
 
     def _get_default_initializer(self, dtype):
         if dtype is None or dtype_is_floating(dtype) is True:
-            return XavierInitializer()
+            return Xavier()
         else:
             # For integer and boolean types, initialize with all zeros
-            return ConstantInitializer()
+            return Constant()
