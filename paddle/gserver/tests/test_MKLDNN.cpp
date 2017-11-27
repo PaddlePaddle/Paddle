@@ -315,7 +315,7 @@ TEST(MKLDNNLayer, AddtoLayer) {
 
 static void getMKLDNNConcatConfig(TestConfig& cfg,
                                   const std::vector<testImageDesc>& inputs) {
-  CHECK_GE(inputs.size(), 2) << "at least two inputs";
+  CHECK_GE(inputs.size(), 2UL) << "at least two inputs";
   int oc = inputs[0].ic;
   for (size_t i = 1; i < inputs.size(); ++i) {
     CHECK_EQ(inputs[i].bs, inputs[0].bs);

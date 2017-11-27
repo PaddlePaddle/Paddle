@@ -463,7 +463,7 @@ function(py_test TARGET_NAME)
     cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})  
     add_test(NAME ${TARGET_NAME}
              COMMAND env PYTHONPATH=${PADDLE_PYTHON_BUILD_DIR}/lib-python
-             python2 ${py_test_SRCS}
+             ${PYTHON_EXECUTABLE} ${py_test_SRCS}
              WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   endif()
 endfunction()

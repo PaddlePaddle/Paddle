@@ -15,6 +15,37 @@ def unique_name(prefix):
     return "_".join([prefix, str(uid)])
 
 
+def convert_np_dtype_to_dtype_(np_dtype):
+    dtype = np.dtype(np_dtype)
+    if dtype == np.float32:
+        return core.DataType.FP32
+    elif dtype == np.float64:
+        return core.DataType.FP64
+    elif dtype == np.float16:
+        return core.DataType.FP16
+    elif dtype == np.int32:
+        return core.DataType.INT32
+    elif dtype == np.int16:
+        return core.DataType.INT16
+    elif dtype == np.int64:
+        return core.DataType.INT64
+    elif dtype == np.bool:
+        return core.DataType.BOOL
+    else:
+        raise ValueError("Not supported numpy dtype " + str(dtype))
+
+
+def dtype_is_floating(dtype):
+    if not isinstance(dtype, core.DataType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if (dtype == core.DataType.FP16 or dtype == core.DataType.FP32 or
+            dtype == core.DataType.FP64):
+        return True
+    else:
+        return False
+
+
 def _debug_string_(proto, throw_on_error=True):
     error_fields = list()
     if not proto.IsInitialized(error_fields) and throw_on_error:
@@ -66,11 +97,11 @@ class Variable(object):
                         "matched.".format(self.name, old_shape, shape))
         if dtype is not None:
             if not isinstance(dtype, core.DataType):
-                dtype = Variable._convert_np_dtype_to_dtype_(dtype)
+                dtype = convert_np_dtype_to_dtype_(dtype)
             if is_new_var:
-                self.desc.set_data_type(dtype)
+                self.desc.set_dtype(dtype)
             else:
-                old_dtype = self.data_type
+                old_dtype = self.dtype
                 if dtype != old_dtype:
                     raise ValueError("Variable {0} has been created before. "
                                      "The previous data type is {1}; the new "
@@ -131,8 +162,8 @@ class Variable(object):
         return tuple(self.desc.shape())
 
     @property
-    def data_type(self):
-        return self.desc.data_type()
+    def dtype(self):
+        return self.desc.dtype()
 
     @property
     def lod_level(self):
@@ -147,26 +178,6 @@ class Variable(object):
         prefix = "_generated_var"
         uid = core.unique_integer(prefix)  # unique during whole process.
         return "_".join([prefix, str(uid)])
-
-    @staticmethod
-    def _convert_np_dtype_to_dtype_(np_dtype):
-        dtype = np.dtype(np_dtype)
-        if dtype == np.float32:
-            return core.DataType.FP32
-        elif dtype == np.float64:
-            return core.DataType.FP64
-        elif dtype == np.float16:
-            return core.DataType.FP16
-        elif dtype == np.int32:
-            return core.DataType.INT32
-        elif dtype == np.int16:
-            return core.DataType.INT16
-        elif dtype == np.int64:
-            return core.DataType.INT64
-        elif dtype == np.bool:
-            return core.DataType.BOOL
-        else:
-            raise ValueError("Not supported numpy dtype " + str(dtype))
 
 
 def get_all_op_protos():
@@ -496,6 +507,13 @@ class Program(object):
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
         res.desc = core.prune(self.desc, targets_idx)
+        res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
+        res.sync_with_cpp()
+        return res
+
+    def inference_optimize(self):
+        res = Program()
+        res.desc = core.inference_optimize(self.desc)
         res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
         res.sync_with_cpp()
         return res

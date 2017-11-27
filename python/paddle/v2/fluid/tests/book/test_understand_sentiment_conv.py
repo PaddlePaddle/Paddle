@@ -1,6 +1,7 @@
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid.core as core
+import paddle.v2.fluid.evaluator as evaluator
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.nets as nets
@@ -9,8 +10,8 @@ from paddle.v2.fluid.optimizer import AdamOptimizer
 
 
 def convolution_net(input_dim, class_dim=2, emb_dim=32, hid_dim=32):
-    data = layers.data(name="words", shape=[1], data_type="int64")
-    label = layers.data(name="label", shape=[1], data_type="int64")
+    data = layers.data(name="words", shape=[1], dtype="int64")
+    label = layers.data(name="label", shape=[1], dtype="int64")
 
     emb = layers.embedding(input=data, size=[input_dim, emb_dim])
     conv_3 = nets.sequence_conv_pool(
@@ -31,9 +32,9 @@ def convolution_net(input_dim, class_dim=2, emb_dim=32, hid_dim=32):
     cost = layers.cross_entropy(input=prediction, label=label)
     avg_cost = layers.mean(x=cost)
     adam_optimizer = AdamOptimizer(learning_rate=0.002)
-    opts = adam_optimizer.minimize(avg_cost)
-    acc = layers.accuracy(input=prediction, label=label)
-    return avg_cost, acc
+    adam_optimizer.minimize(avg_cost)
+    accuracy = evaluator.Accuracy(input=prediction, label=label)
+    return avg_cost, accuracy, accuracy.metrics[0]
 
 
 def to_lodtensor(data, place):
@@ -59,7 +60,8 @@ def main():
     dict_dim = len(word_dict)
     class_dim = 2
 
-    cost, acc = convolution_net(input_dim=dict_dim, class_dim=class_dim)
+    cost, accuracy, acc_out = convolution_net(
+        input_dim=dict_dim, class_dim=class_dim)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
@@ -71,6 +73,7 @@ def main():
     exe.run(framework.default_startup_program())
 
     for pass_id in xrange(PASS_NUM):
+        accuracy.reset(exe)
         for data in train_data():
             tensor_words = to_lodtensor(map(lambda x: x[0], data), place)
 
@@ -83,12 +86,13 @@ def main():
             outs = exe.run(framework.default_main_program(),
                            feed={"words": tensor_words,
                                  "label": tensor_label},
-                           fetch_list=[cost, acc])
+                           fetch_list=[cost, acc_out])
             cost_val = np.array(outs[0])
             acc_val = np.array(outs[1])
-
-            print("cost=" + str(cost_val) + " acc=" + str(acc_val))
-            if cost_val < 1.0 and acc_val > 0.7:
+            pass_acc = accuracy.eval(exe)
+            print("cost=" + str(cost_val) + " acc=" + str(acc_val) +
+                  " pass_acc=" + str(pass_acc))
+            if cost_val < 1.0 and pass_acc > 0.8:
                 exit(0)
     exit(1)
 

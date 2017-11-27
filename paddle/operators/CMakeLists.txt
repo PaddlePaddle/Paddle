@@ -73,6 +73,13 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(conv2d);\n")
     endif()
 
+    # conv_cudnn_op contains several operators
+    if ("${TARGET}" STREQUAL "conv_cudnn_op")
+        set(pybind_flag 1)
+        # It's enough to just adding one operator to pybind
+        file(APPEND ${pybind_file} "USE_OP(conv2d_cudnn);\n")
+    endif()
+
     # pool_op contains several operators
     if ("${TARGET}" STREQUAL "pool_op")
         set(pybind_flag 1)
@@ -178,12 +185,12 @@ set(DEPS_OPS
     cond_op
     cross_entropy_op
     recurrent_op
-    dynamic_recurrent_op
     softmax_with_cross_entropy_op
     softmax_op
     sequence_softmax_op
     sum_op
     pool_op
+    maxout_op
     pool_with_index_op
     conv_op
     conv_transpose_op
@@ -226,6 +233,7 @@ op_library(sgd_op DEPS selected_rows_functor)
 op_library(adagrad_op DEPS selected_rows_functor)
 op_library(conv_op DEPS vol2col)
 op_library(pool_op DEPS pooling)
+op_library(maxout_op DEPS maxouting)
 op_library(pool_with_index_op DEPS pooling)
 op_library(lod_rank_table_op SRCS lod_rank_table_op.cc DEPS lod_rank_table)
 op_library(lod_tensor_to_array_op SRCS lod_tensor_to_array_op.cc DEPS lod_rank_table_op)
@@ -239,6 +247,8 @@ op_library(sequence_pool_op DEPS sequence_pooling)
 op_library(lstm_op DEPS sequence2batch lstm_compute)
 op_library(conv_transpose_op DEPS vol2col)
 op_library(gru_op DEPS sequence2batch gru_compute)
+op_library(recurrent_op SRCS recurrent_op.cc DEPS executor)
+
 # FIXME(typhoonzero): save/load depends lodtensor serialization functions
 op_library(save_op DEPS lod_tensor)
 op_library(load_op DEPS lod_tensor)
@@ -249,7 +259,6 @@ else()
     op_library(dynamic_recurrent_op SRCS dynamic_recurrent_op.cc rnn/recurrent_op_utils.cc
             DEPS net_op tensor_array)
 endif()
-op_library(recurrent_op SRCS recurrent_op.cc DEPS executor)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
@@ -265,9 +274,6 @@ cc_test(net_op_test SRCS net_op_test.cc DEPS net_op)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor)
 cc_test(beam_search_decode_op_test SRCS beam_search_decode_op_test.cc DEPS lod_tensor)
 cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor paddle_memory)
-cc_test(dynamic_recurrent_op_test SRCS dynamic_recurrent_op_test.cc
-        rnn/recurrent_op_utils.cc
-        DEPS dynamic_recurrent_op)
 if(WITH_GPU)
   cc_test(nccl_op_test SRCS nccl_op_test.cu.cc DEPS nccl_op gpu_info device_context)
 endif()
