@@ -36,7 +36,7 @@ avg_cost = layers.mean(x=cost)
 optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
 opts = optimizer.minimize(avg_cost)
 
-accuracy, acc_out = evaluator.accuracy(input=predict, label=label)
+accuracy = evaluator.Accuracy(input=predict, label=label)
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
@@ -67,15 +67,14 @@ for pass_id in range(PASS_NUM):
         outs = exe.run(framework.default_main_program(),
                        feed={'x': tensor_x,
                              'y': tensor_y},
-                       fetch_list=[avg_cost, acc_out])
+                       fetch_list=[avg_cost] + accuracy.metrics)
         out = np.array(outs[0])
         acc = np.array(outs[1])
         pass_acc = accuracy.eval(exe)
 
-        test_accuracy, test_acc_out = evaluator.accuracy(
-            input=predict, label=label)
+        test_accuracy = evaluator.Accuracy(input=predict, label=label)
 
-        test_target = [avg_cost, test_acc_out] + test_accuracy.states().values()
+        test_target = [avg_cost] + test_accuracy.metrics + test_accuracy.states
         inference_program = get_inference_program(test_target)
 
         test_accuracy.reset(exe)
@@ -93,7 +92,7 @@ for pass_id in range(PASS_NUM):
             outs = exe.run(inference_program,
                            feed={'x': tensor_x,
                                  'y': tensor_y},
-                           fetch_list=[avg_cost, test_acc_out])
+                           fetch_list=[avg_cost] + test_accuracy.metrics)
             out = np.array(outs[0])
             acc = np.array(outs[1])
 
