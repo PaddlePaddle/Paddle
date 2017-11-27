@@ -132,7 +132,7 @@ class TestProgram(unittest.TestCase):
             'main_program': main_program,
             'startup_program': startup_program
         }
-        d = layers.data(name='x', shape=[784], data_type='float32', **kwargs)
+        d = layers.data(name='x', shape=[784], dtype='float32', **kwargs)
         hidden = layers.fc(input=d, size=100, **kwargs)
         layers.fc(input=hidden, size=100, **kwargs)
 
