@@ -1,10 +1,7 @@
-import paddle.v2.fluid.framework as framework
+import framework
 import numpy as np
 
-__all__ = [
-    'ConstantInitializer', 'UniformInitializer', 'NormalInitializer',
-    'XavierInitializer'
-]
+__all__ = ['Constant', 'Uniform', 'Normal', 'Xavier']
 
 
 class Initializer(object):
@@ -93,7 +90,7 @@ class ConstantInitializer(Initializer):
             outputs={"Out": var},
             attrs={
                 "shape": var.shape,
-                "data_type": int(var.data_type),
+                "dtype": int(var.dtype),
                 "value": self._value
             })
         var.op = op
@@ -140,7 +137,7 @@ class UniformInitializer(Initializer):
             outputs={"Out": var},
             attrs={
                 "shape": var.shape,
-                "data_type": int(var.data_type),
+                "dtype": int(var.dtype),
                 "min": self._low,
                 "max": self._high,
                 "seed": self._seed
@@ -188,7 +185,7 @@ class NormalInitializer(Initializer):
             outputs={"Out": var},
             attrs={
                 "shape": var.shape,
-                "data_type": int(var.data_type),
+                "dtype": int(var.dtype),
                 "mean": self._mean,
                 "std": self._std_dev,
                 "seed": self._seed
@@ -265,7 +262,7 @@ class XavierInitializer(Initializer):
                 outputs={"Out": var},
                 attrs={
                     "shape": var.shape,
-                    "data_type": int(var.data_type),
+                    "dtype": int(var.dtype),
                     "min": -limit,
                     "max": limit,
                     "seed": self._seed
@@ -278,7 +275,7 @@ class XavierInitializer(Initializer):
                 outputs={"Out": var},
                 attrs={
                     "shape": var.shape,
-                    "data_type": int(var.data_type),
+                    "dtype": int(var.dtype),
                     "mean": 0.0,
                     "std": std,
                     "seed": self._seed
@@ -348,7 +345,7 @@ class MSRAInitializer(Initializer):
                 outputs={"Out": var},
                 attrs={
                     "shape": var.shape,
-                    "data_type": int(var.data_type),
+                    "dtype": int(var.dtype),
                     "min": -limit,
                     "max": limit,
                     "seed": self._seed
@@ -361,10 +358,26 @@ class MSRAInitializer(Initializer):
                 outputs={"Out": var},
                 attrs={
                     "shape": var.shape,
-                    "data_type": int(var.data_type),
+                    "dtype": int(var.dtype),
                     "mean": 0.0,
                     "std": std,
                     "seed": self._seed
                 })
         var.op = op
         return op
+
+
+# We short the class name, since users will use the initializer with the package
+# name. The sample code:
+#
+# import paddle.fluid as fluid
+#
+# hidden = fluid.layers.fc(...,
+#                          param_attr=ParamAttr(fluid.initializer.Xavier()))
+#
+# It is no need to add an `Initializer` as the class suffix
+Constant = ConstantInitializer
+Uniform = UniformInitializer
+Normal = NormalInitializer
+Xavier = XavierInitializer
+MSRA = MSRAInitializer

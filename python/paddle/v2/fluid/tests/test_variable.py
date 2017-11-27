@@ -22,13 +22,13 @@ class TestVariable(unittest.TestCase):
         w = b.create_var(
             dtype="float64", shape=[784, 100], lod_level=0, name="fc.w")
         self.assertNotEqual(str(w), "")
-        self.assertEqual(core.DataType.FP64, w.data_type)
+        self.assertEqual(core.DataType.FP64, w.dtype)
         self.assertEqual((784, 100), w.shape)
         self.assertEqual("fc.w", w.name)
         self.assertEqual(0, w.lod_level)
 
         w = b.create_var(name='fc.w')
-        self.assertEqual(core.DataType.FP64, w.data_type)
+        self.assertEqual(core.DataType.FP64, w.dtype)
         self.assertEqual((784, 100), w.shape)
         self.assertEqual("fc.w", w.name)
         self.assertEqual(0, w.lod_level)

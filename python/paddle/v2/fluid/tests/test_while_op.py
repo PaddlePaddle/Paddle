@@ -9,11 +9,11 @@ import numpy
 class TestWhileOp(unittest.TestCase):
     def test_simple_forward(self):
         d0 = layers.data(
-            "d0", shape=[10], append_batch_size=False, data_type='float32')
+            "d0", shape=[10], append_batch_size=False, dtype='float32')
         d1 = layers.data(
-            "d1", shape=[10], append_batch_size=False, data_type='float32')
+            "d1", shape=[10], append_batch_size=False, dtype='float32')
         d2 = layers.data(
-            "d2", shape=[10], append_batch_size=False, data_type='float32')
+            "d2", shape=[10], append_batch_size=False, dtype='float32')
         i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
         init = layers.zeros(shape=[10], dtype='float32')
@@ -55,19 +55,10 @@ class TestWhileOp(unittest.TestCase):
         for i in xrange(3):
             d.append(numpy.random.random(size=[10]).astype('float32'))
 
-        d_tensor = []
-        for item in d:
-            t = core.LoDTensor()
-            t.set(item, cpu)
-            d_tensor.append(t)
-
-        outs = map(numpy.array,
-                   exe.run(feed={
-                       'd0': d_tensor[0],
-                       'd1': d_tensor[1],
-                       'd2': d_tensor[2]
-                   },
-                           fetch_list=[sum_result]))
+        outs = exe.run(feed={'d0': d[0],
+                             'd1': d[1],
+                             'd2': d[2]},
+                       fetch_list=[sum_result])
         self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 
 
