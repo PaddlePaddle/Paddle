@@ -1,10 +1,11 @@
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid.core as core
+import paddle.v2.fluid.evaluator as evaluator
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.nets as nets
-import paddle.v2.fluid.evaluator as evaluator
+import sys
 from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.initializer import XavierInitializer
 from paddle.v2.fluid.optimizer import AdamOptimizer
@@ -22,10 +23,9 @@ def resnet_cifar10(input, depth=32):
             bias_attr=False)
         return layers.batch_norm(input=tmp, act=act)
 
-    def shortcut(input, ch_in, ch_out, stride, program, init_program):
+    def shortcut(input, ch_in, ch_out, stride):
         if ch_in != ch_out:
-            return conv_bn_layer(input, ch_out, 1, stride, 0, None, program,
-                                 init_program)
+            return conv_bn_layer(input, ch_out, 1, stride, 0, None)
         else:
             return input
 
@@ -93,11 +93,18 @@ data_shape = [3, 32, 32]
 images = layers.data(name='pixel', shape=data_shape, dtype='float32')
 label = layers.data(name='label', shape=[1], dtype='int64')
 
-# Add neural network config
-# option 1. resnet
-# net = resnet_cifar10(images, 32)
-# option 2. vgg
-net = vgg16_bn_drop(images)
+net_type = "vgg"
+if len(sys.argv) >= 2:
+    net_type = sys.argv[1]
+
+if net_type == "vgg":
+    print("train vgg net")
+    net = vgg16_bn_drop(images)
+elif net_type == "resnet":
+    print("train resnet")
+    net = resnet_cifar10(images, 32)
+else:
+    raise ValueError("%s network is not supported" % net_type)
 
 # print(program)
 
