@@ -126,10 +126,8 @@ void ROIPoolLayer::forward(PassType passType) {
 
           bool isEmpty = (hend <= hstart) || (wend <= wstart);
           size_t poolIndex = ph * pooledWidth_ + pw;
-          if (isEmpty) {
-            outputData[poolIndex] = 0;
-            argmaxData[poolIndex] = -1;
-          }
+          outputData[poolIndex] = isEmpty ? 0 : -FLT_MAX;
+          argmaxData[poolIndex] = -1;
 
           for (size_t h = hstart; h < hend; ++h) {
             for (size_t w = wstart; w < wend; ++w) {
