@@ -1,8 +1,6 @@
-import paddle.v2.fluid.framework as framework
+import framework
 
-__all__ = [
-    'append_regularization_ops', 'L2DecayRegularizer', 'L1DecayRegularizer'
-]
+__all__ = ['append_regularization_ops', 'L1Decay', 'L2Decay']
 
 
 def append_regularization_ops(parameters_and_grads):
@@ -139,3 +137,16 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             attrs={"scale": self._regularization_coeff})
 
         return decay
+
+
+# We short the class name, since users will use the regulaizer with the package
+# name. The sample code:
+#
+# import paddle.fluid as fluid
+#
+# hidden = fluid.layers.fc(...,
+#                          param_attr=ParamAttr(fluid.regularizer.Xavier()))
+#
+# It is no need to add a `Regularizer` as the class suffix
+L1Decay = L1DecayRegularizer
+L2Decay = L2DecayRegularizer
