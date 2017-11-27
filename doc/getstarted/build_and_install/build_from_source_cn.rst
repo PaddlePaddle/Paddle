@@ -96,6 +96,7 @@ CUDA/cuDNN
 +++++++++++
 
 PaddlePaddle在编译时/运行时会自动找到系统中安装的CUDA和cuDNN库进行编译和执行。
+使用参数 :code:`-DCUDA_ARCH_NAME=Auto` 可以指定开启自动检测SM架构，加速编译。
 
 PaddlePaddle可以使用cuDNN v5.1之后的任何一个版本来编译运行，但尽量请保持编译和运行使用的cuDNN是同一个版本。
 我们推荐使用最新版本的cuDNN。

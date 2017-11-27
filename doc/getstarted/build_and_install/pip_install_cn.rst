@@ -30,13 +30,15 @@ PaddlePaddle可以使用常用的Python包管理工具
 如果在点击下面链接时出现如下登陆界面，点击“Log in as guest”即可开始下载：
 
 .. image:: paddleci.png
+   :scale: 50 %
+   :align: center
 
 ..  csv-table:: 各个版本最新的whl包
     :header: "版本说明", "cp27-cp27mu", "cp27-cp27mu", "C-API"
     :widths: 1, 3, 3, 3
 
     "cpu_avx_mkl", "`paddlepaddle-0.10.0-cp27-cp27mu-linux_x86_64.whl <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxCp27cp27mu/.lastSuccessful/paddlepaddle-0.10.0-cp27-cp27mu-linux_x86_64.whl>`_", "`paddlepaddle-0.10.0-cp27-cp27m-linux_x86_64.whl <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxCp27cp27mu/.lastSuccessful/paddlepaddle-0.10.0-cp27-cp27m-linux_x86_64.whl>`_", "`paddle.tgz <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxCp27cp27mu/.lastSuccessful/paddle.tgz>`_"
-    "cpu_avx_openblas", "`paddlepaddle-0.10.0-cp27-cp27mu-linux_x86_64.whl <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxOpenblas/.lastSuccessful/paddlepaddle-0.10.0-cp27-cp27mu-linux_x86_64.whl>`_", "`paddlepaddle-0.10.0-cp27-cp27m-linux_x86_64.whl <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxOpenblas/.lastSuccessful/paddlepaddle-0.10.0-cp27-cp27m-linux_x86_64.whl>`_", "-"
+    "cpu_avx_openblas", "`paddlepaddle-0.10.0-cp27-cp27mu-linux_x86_64.whl <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxOpenblas/.lastSuccessful/paddlepaddle-0.10.0-cp27-cp27mu-linux_x86_64.whl>`_", "`paddlepaddle-0.10.0-cp27-cp27m-linux_x86_64.whl <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxOpenblas/.lastSuccessful/paddlepaddle-0.10.0-cp27-cp27m-linux_x86_64.whl>`_", "暂无"
     "cuda7.5_cudnn5_avx_mkl", "`paddlepaddle-0.10.0-cp27-cp27mu-linux_x86_64.whl <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_Cuda75cudnn5cp27cp27mu/.lastSuccessful/paddlepaddle-0.10.0-cp27-cp27mu-linux_x86_64.whl>`_", "`paddlepaddle-0.10.0-cp27-cp27m-linux_x86_64.whl <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_Cuda75cudnn5cp27cp27mu/.lastSuccessful/paddlepaddle-0.10.0-cp27-cp27m-linux_x86_64.whl>`_", "`paddle.tgz <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_Cuda75cudnn5cp27cp27mu/.lastSuccessful/paddle.tgz>`_"
     "cuda8.0_cudnn5_avx_mkl", "`paddlepaddle-0.10.0-cp27-cp27mu-linux_x86_64.whl <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_Cuda80cudnn5cp27cp27mu/.lastSuccessful/paddlepaddle-0.10.0-cp27-cp27mu-linux_x86_64.whl>`_", "`paddlepaddle-0.10.0-cp27-cp27m-linux_x86_64.whl <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_Cuda80cudnn5cp27cp27mu/.lastSuccessful/paddlepaddle-0.10.0-cp27-cp27m-linux_x86_64.whl>`_", "`paddle.tgz <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_Cuda80cudnn5cp27cp27mu/.lastSuccessful/paddle.tgz>`_"
     "cuda8.0_cudnn7_avx_mkl", "`paddlepaddle-0.10.0-cp27-cp27mu-linux_x86_64.whl <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_Cuda8cudnn7cp27cp27mu/.lastSuccessful/paddlepaddle-0.10.0-cp27-cp27mu-linux_x86_64.whl>`_", "`paddlepaddle-0.10.0-cp27-cp27m-linux_x86_64.whl <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_Cuda8cudnn7cp27cp27mu/.lastSuccessful/paddlepaddle-0.10.0-cp27-cp27m-linux_x86_64.whl>`_", "`paddle.tgz <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_Cuda8cudnn7cp27cp27mu/.lastSuccessful/paddle.tgz>`_"
