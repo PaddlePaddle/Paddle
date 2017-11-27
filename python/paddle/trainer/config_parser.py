@@ -2798,19 +2798,18 @@ class AddToLayer(LayerBase):
             name, self.layer_type, 0, inputs=inputs, **xargs)
         config_assert(len(inputs) > 0, 'inputs cannot be empty for AddToLayer')
 
-        if len(self.inputs) > 1:
-            for input_index in xrange(len(self.inputs)):
-                assert self.get_input_layer(0).height == self.get_input_layer(
-                    input_index).height
-                assert self.get_input_layer(0).width == self.get_input_layer(
-                    input_index).width
-                assert self.get_input_layer(0).depth == self.get_input_layer(
-                    input_index).depth
+        layer_size = self.get_input_layer(0).size
+        # To reserve heght, width, depth.
+        layer_with_hwc = self.get_input_layer(0)
+        for input_index in xrange(len(self.inputs)):
+            input_layer = self.get_input_layer(input_index)
+            assert layer_size == input_layer.size
+            if input_layer.height and input_layer.height and input_layer.height:
+                layer_with_hwc = input_layer
 
-        self.set_layer_size(self.get_input_layer(0).size)
-        self.set_layer_height_width(self.get_input_layer(0).height, \
-                                        self.get_input_layer(0).width)
-        self.set_layer_depth(self.get_input_layer(0).depth)
+        self.set_layer_size(layer_with_hwc.size)
+        self.set_layer_height_width(layer_with_hwc.height, layer_with_hwc.width)
+        self.set_layer_depth(layer_with_hwc.depth)
         self.create_bias_parameter(bias, self.config.size)
 
 
