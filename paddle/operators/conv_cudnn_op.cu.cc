@@ -285,8 +285,8 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
             handle, &alpha, cudnn_filter_desc,
             filter_data + i * group_offset_filter, cudnn_output_grad_desc,
             output_grad_data + i * group_offset_out, cudnn_conv_desc, data_algo,
-            cudnn_workspace, workspace_size_in_bytes, &beta,
-            cudnn_input_grad_desc, input_grad_data + i * group_offset_in));
+            cudnn_workspace, workspace_size_in_bytes, &beta, cudnn_input_desc,
+            input_grad_data + i * group_offset_in));
       }
     }
     // ------------------- cudnn conv backward filter ---------------------
