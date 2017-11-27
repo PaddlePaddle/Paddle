@@ -20,7 +20,6 @@ namespace operators {
 class ActivationOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
   void InferShape(framework::InferShapeContext *ctx) const override {
     ctx->SetOutputDim("Y", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Y");
