@@ -163,7 +163,7 @@ class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
         x = layers.data(
             name='x',
             shape=[1],
-            data_type='float32',
+            dtype='float32',
             main_program=program,
             stop_gradient=False)
         table = layers.lod_rank_table(x, level=0, main_program=program)
@@ -182,10 +182,11 @@ class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
 
         exe = Executor(place)
         g_out = [
-            item.sum()
-            for item in map(
-                numpy.array,
-                exe.run(program, feed={'x': tensor}, fetch_list=[g_vars]))
+            numpy.array(item).sum()
+            for item in exe.run(program,
+                                feed={'x': tensor},
+                                fetch_list=[g_vars],
+                                return_numpy=False)
         ]
         g_out_sum = numpy.array(g_out).sum()
 
