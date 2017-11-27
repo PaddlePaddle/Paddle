@@ -252,13 +252,6 @@ op_library(recurrent_op SRCS recurrent_op.cc DEPS executor)
 # FIXME(typhoonzero): save/load depends lodtensor serialization functions
 op_library(save_op DEPS lod_tensor)
 op_library(load_op DEPS lod_tensor)
-if(WITH_TESTING)
-    op_library(dynamic_recurrent_op SRCS dynamic_recurrent_op.cc rnn/recurrent_op_utils.cc
-        DEPS net_op tensor_array gtest)
-else()
-    op_library(dynamic_recurrent_op SRCS dynamic_recurrent_op.cc rnn/recurrent_op_utils.cc
-            DEPS net_op tensor_array)
-endif()
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
