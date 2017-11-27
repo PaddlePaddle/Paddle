@@ -1,4 +1,4 @@
-import paddle.v2.fluid.layers as layers
+import layers
 
 __all__ = ["simple_img_conv_pool", "sequence_conv_pool"]
 
