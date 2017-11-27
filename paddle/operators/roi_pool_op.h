@@ -136,8 +136,7 @@ class CPUROIPoolGradOpKernel : public framework::OpKernel<T> {
 
     auto* out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* x_grad =
-        ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
