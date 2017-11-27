@@ -7,12 +7,6 @@ import numpy as np
 import paddle.v2.fluid.core as core
 
 
-def create_tensor(np_data, place):
-    tensor = core.LoDTensor()
-    tensor.set(np_data, place)
-    return tensor
-
-
 class RNNMemoryHelperOpTest(unittest.TestCase):
     def setUp(self):
         self.program = Program()
@@ -30,13 +24,13 @@ class RNNMemoryHelperOpTest(unittest.TestCase):
 
     def test_forward(self):
         x_np = np.random.normal(size=(2, 3)).astype("float32")
-        self.feed_map = {'X': create_tensor(x_np, self.place)}
+        self.feed_map = {'X': x_np}
         self.fetch_list = [self.Out]
         exe = Executor(self.place)
         out = exe.run(self.program,
                       feed=self.feed_map,
                       fetch_list=self.fetch_list)
-        np.isclose(np.array(out[0]), x_np, rtol=1e-5)
+        self.assertTrue(np.allclose(out[0], x_np, rtol=1e-5))
 
 
 class RNNMemoryHelperGradOpTest(unittest.TestCase):
@@ -66,8 +60,7 @@ class RNNMemoryHelperGradOpTest(unittest.TestCase):
 
     def test_backward(self):
         self.feed_map = {
-            name: create_tensor(
-                np.random.normal(size=(2, 3)).astype("float32"), self.place)
+            name: np.random.normal(size=(2, 3)).astype("float32")
             for name in self.input_names
         }
         self.fetch_list = [self.output_vars['X@GRAD']]
@@ -76,7 +69,7 @@ class RNNMemoryHelperGradOpTest(unittest.TestCase):
         out = exe.run(self.program,
                       feed=self.feed_map,
                       fetch_list=self.fetch_list)
-        np.isclose(np.array(out[0]), self.feed_map['Out@GRAD'], rtol=1e-5)
+        np.isclose(out[0], self.feed_map['Out@GRAD'], rtol=1e-5)
 
 
 class RNNMemoryHelperGradOpWithoutInputTest(unittest.TestCase):
@@ -110,8 +103,7 @@ class RNNMemoryHelperGradOpWithoutInputTest(unittest.TestCase):
 
     def test_backward(self):
         self.feed_map = {
-            name: create_tensor(
-                np.random.normal(size=(2, 3)).astype("float32"), self.place)
+            name: np.random.normal(size=(2, 3)).astype("float32")
             for name in ['X', 'Out']
         }
         self.fetch_list = [self.output_vars['X@GRAD']]
@@ -120,10 +112,9 @@ class RNNMemoryHelperGradOpWithoutInputTest(unittest.TestCase):
         out = exe.run(self.program,
                       feed=self.feed_map,
                       fetch_list=self.fetch_list)
-        np.isclose(
-            np.array(out[0]),
-            np.zeros(shape=(2, 3)).astype("float32"),
-            rtol=1e-5)
+        self.assertTrue(
+            np.allclose(
+                out[0], np.zeros(shape=(2, 3)).astype("float32"), rtol=1e-5))
 
 
 if __name__ == '__main__':
