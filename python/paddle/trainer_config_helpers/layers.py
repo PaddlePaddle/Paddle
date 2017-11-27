@@ -7423,18 +7423,25 @@ def factorization_machine(input,
     Factorization machines.
 
     .. code-block:: python
-       factor_machine = factorization_machine(input=input_layer, factor_size=10)
+        first_order = paddle.layer.fc(input=input,
+                                      size=1,
+                                      act=paddle.activation.Linear())
+        second_order = paddle.layer.factorization_machine(input=input,
+                                                          factor_size=10)
+        fm = paddle.layer.addto(input=[first_order, second_order],
+                                act=paddle.activation.Linear(),
+                                bias_attr=False)
 
-    :param input: The input layer.
+    :param input: The input layer. Supported input types: all input data types
+                  on CPU, and only dense input types on GPU.
     :type input: LayerOutput
     :param factor_size: The hyperparameter that defines the dimensionality of
-                        the latent vector size
+                        the latent vector size.
     :type context_len: int
     :param act: Activation Type. Default is linear activation.
     :type act: BaseActivation
-    :param param_attr: The Parameter Attribute. If None, the latent vectors will
-                       be initialized smartly. It's better to set it by
-                       yourself.
+    :param param_attr: The parameter attribute. See ParameterAttribute for
+                       details.
     :type param_attr: ParameterAttribute
     :param layer_attr: Extra Layer config.
     :type layer_attr: ExtraLayerAttribute|None
