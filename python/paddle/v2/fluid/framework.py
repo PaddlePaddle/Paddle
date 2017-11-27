@@ -605,8 +605,8 @@ _startup_program_ = Program()
 
 
 def default_startup_program():
-    return _main_program_
+    return _startup_program_
 
 
 def default_main_program():
-    return _startup_program_
+    return _main_program_
