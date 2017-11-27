@@ -98,7 +98,11 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
 
         exe = Executor(place)
         scope = core.Scope()
-        exe.run(program, feed={'x': tensor, 'y': mask}, scope=scope)
+        exe.run(program,
+                feed={'x': tensor,
+                      'y': mask},
+                scope=scope,
+                return_numpy=False)
 
         var_true = scope.find_var(out_true.name).get_tensor()
 
@@ -169,7 +173,8 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
                                     feed={'x': tensor,
                                           'y': mask},
                                     fetch_list=[g_vars],
-                                    scope=scope))
+                                    scope=scope,
+                                    return_numpy=False))
         ]
 
         g_out_sum = np.array(g_out).sum()
