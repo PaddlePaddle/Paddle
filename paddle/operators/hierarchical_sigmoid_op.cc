@@ -85,12 +85,16 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
              "(TensorArray, required) The input array. Each Tensor has the "
              "same shape with [N * D].")
         .AsDuplicable();
+    AddInput("Parameters",
+             "(Tensor, required), The parameters of hierarchical "
+             "sigmoid operator, each of them is s a 2-D tensor.")
+        .AsDuplicable();
     AddInput("Label",
              "(Tensor, required), The labels of training data. It's a"
              "1-D tensor.");
     AddInput("Bias",
              "(Tensor, optional), The bias is a 1-D tensor, "
-             "which is applied to the output");
+             "which is applied to the output.");
     AddOutput(
         "Out",
         "(Tensor, required) The output of hierarchical sigmoid operator.");

@@ -59,10 +59,27 @@ struct SimpleCodeTable {
   int max_code_length_;
 };
 
+/* For j < codeLength
+    tmat(i, j) += vec(0, index(i, j))
+*/
 template <typename T>
 void AddByBitCode(size_t num_classes, const framework::Tensor& codes,
-                  framework::Tensor& a, const framework::Tensor& b);
+                  framework::Tensor& tmat, const framework::Tensor& vec);
 
+/* For j < codeLength
+    sum(i, 0) = \sum_j bit(i, j) * tmat(i, j)
+*/
+template <typename T>
+void SumByBitCode(size_t num_classes, const framework::Tensor& codes,
+                  framework::Tensor& tmat, framework::Tensor& sum, T scale_sum);
+
+/* For j < codeLength
+    input.row(i) += tmat(i, j) * weight.row(index(i, j))
+*/
+template <typename T>
+void MulByBitCode(size_t num_classes, const framework::Tensor& codes,
+                  framework::Tensor& tmat, const framework::Tensor& weight,
+                  const framework::Tensor& input);
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

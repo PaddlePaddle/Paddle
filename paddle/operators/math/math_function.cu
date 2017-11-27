@@ -298,6 +298,8 @@ template struct RowwiseAdd<platform::GPUPlace, float>;
 template struct RowwiseAdd<platform::GPUPlace, double>;
 template struct ColwiseSum<platform::GPUPlace, float>;
 template struct ColwiseSum<platform::GPUPlace, double>;
+template struct RowwiseSum<platform::GPUPlace, float>;
+template struct RowwiseSum<platform::GPUPlace, float>;
 
 }  // namespace math
 }  // namespace operators

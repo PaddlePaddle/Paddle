@@ -314,6 +314,8 @@ template struct RowwiseAdd<platform::CPUPlace, float>;
 template struct RowwiseAdd<platform::CPUPlace, double>;
 template struct ColwiseSum<platform::CPUPlace, float>;
 template struct ColwiseSum<platform::CPUPlace, double>;
+template struct RowwiseSum<platform::CPUPlace, float>;
+template struct RowwiseSum<platform::CPUPlace, double>;
 
 }  // namespace math
 }  // namespace operators

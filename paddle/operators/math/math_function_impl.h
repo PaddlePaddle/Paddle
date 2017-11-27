@@ -78,6 +78,20 @@ void ColwiseSum<Place, T>::operator()(const platform::DeviceContext& context,
       in.sum(Eigen::array<int, 1>({{0}})).reshape(shape);
 }
 
+template <typename Place, typename T>
+void RowwiseSum<Place, T>::operator()(const platform::DeviceContext& context,
+                                      const framework::Tensor& input,
+                                      framework::Tensor* vector) {
+  auto in_dims = input.dims();
+  auto size = input.numel() / in_dims[1];
+  PADDLE_ENFORCE_EQ(vector->numel(), size);
+
+  auto in = framework::EigenMatrix<T>::From(input);
+  auto vec = framework::EigenMatrix<T>::From(*vector);
+  Eigen::array<int, 2> shape({{static_cast<int>(size), 1}});
+  vec.reshape(shape).device(*context.GetEigenDevice<Place>()) =
+      in.sum(Eigen::array<int, 1>({{0}})).reshape(shape);
+}
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
