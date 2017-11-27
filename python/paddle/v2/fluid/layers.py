@@ -418,6 +418,7 @@ def _create_op_func_(op_type):
 _create_op_func_('mean')
 _create_op_func_('mul')
 _create_op_func_('elementwise_add')
+_create_op_func_('elementwise_div')
 _create_op_func_('dropout')
 _create_op_func_('reshape')
 _create_op_func_('sigmoid')
@@ -457,13 +458,14 @@ def concat(input, axis, main_program=None, startup_program=None):
     return out
 
 
-def sums(input, main_program=None, startup_program=None):
+def sums(input, out=None, main_program=None, startup_program=None):
     """
     This function takes in the input and performs the sum operation on it
     and returns that as the output.
     """
     helper = LayerHelper('sum', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    if out is None:
+        out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(type='sum', inputs={'X': input}, outputs={'Out': out})
     return out
 
@@ -606,7 +608,7 @@ def square_error_cost(input, label, **kwargs):
     return square_out
 
 
-def accuracy(input, label, k=1, **kwargs):
+def accuracy(input, label, k=1, correct=None, total=None, **kwargs):
     """
     This function computes the accuracy using the input and label.
     The output is the top_k inputs and their indices.
@@ -620,10 +622,11 @@ def accuracy(input, label, k=1, **kwargs):
         outputs={"Out": [topk_out],
                  "Indices": [topk_indices]},
         attrs={"k": k})
-    acc_out_dtype = kwargs.get("out_dtype", "float32")
     acc_out = helper.create_tmp_variable(dtype="float32")
-    correct = helper.create_tmp_variable(dtype="int64")
-    total = helper.create_tmp_variable(dtype="int64")
+    if correct is None:
+        correct = helper.create_tmp_variable(dtype="int64")
+    if total is None:
+        total = helper.create_tmp_variable(dtype="int64")
     helper.append_op(
         type="accuracy",
         inputs={
@@ -1355,6 +1358,19 @@ def lod_rank_table(x, level=0, main_program=None):
     return table
 
 
+def topk(input, k, main_program=None, startup_program=None):
+    helper = LayerHelper('topk', **locals())
+    topk_out = helper.create_tmp_variable(dtype=input.data_type)
+    topk_indices = helper.create_tmp_variable(dtype='int64')
+    helper.append_op(
+        type='top_k',
+        inputs={'X': [input]},
+        outputs={'Out': [topk_out],
+                 'Indices': [topk_indices]},
+        attrs={'k': k})
+    return topk_out, topk_indices
+
+
 def lod_tensor_to_array(x, table, main_program=None):
     """
     This function creates an operator to convert an LOD_Tensor to
@@ -1388,14 +1404,20 @@ def array_to_lod_tensor(x, table, main_program=None):
     return tmp
 
 
-def fill_constant(shape, dtype, value, main_program=None, startup_program=None):
+def fill_constant(shape,
+                  dtype,
+                  value,
+                  out=None,
+                  main_program=None,
+                  startup_program=None):
     """
     This function creates a tensor , with shape as mentioned in the input and
     specified dtype and fills this up with a constant value that
     comes in the input. It also sets the stop_gradient to be True.
     """
     helper = LayerHelper("fill_constant", **locals())
-    out = helper.create_tmp_variable(dtype=dtype)
+    if out is None:
+        out = helper.create_tmp_variable(dtype=dtype)
     helper.append_op(
         type='fill_constant',
         inputs={},
