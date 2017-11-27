@@ -49,7 +49,6 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-namespace {
 #ifdef __GNUC__
 inline std::string demangle(std::string name) {
   int status = -4;  // some arbitrary value to eliminate the compiler warning
@@ -60,7 +59,6 @@ inline std::string demangle(std::string name) {
 #else
 inline std::string demangle(std::string name) { return name; }
 #endif
-}
 
 struct EnforceNotMet : public std::exception {
   std::exception_ptr exp_;

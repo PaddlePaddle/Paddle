@@ -1,12 +1,12 @@
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 import collections
+
 import numpy as np
-import copy
+from . import core
+import proto.framework_pb2 as framework_pb2
 
 __all__ = [
     'Block', 'Variable', 'Program', 'Operator', 'default_startup_program',
-    'default_main_program'
+    'default_main_program', 'g_startup_program', 'g_main_program'
 ]
 
 
@@ -507,6 +507,13 @@ class Program(object):
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
         res.desc = core.prune(self.desc, targets_idx)
+        res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
+        res.sync_with_cpp()
+        return res
+
+    def inference_optimize(self):
+        res = Program()
+        res.desc = core.inference_optimize(self.desc)
         res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
         res.sync_with_cpp()
         return res

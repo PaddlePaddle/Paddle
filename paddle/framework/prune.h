@@ -22,5 +22,7 @@ namespace framework {
 
 void Prune(const ProgramDesc& input, ProgramDesc* output);
 
+void InferenceOptimize(const ProgramDesc& input, ProgramDesc* output);
+
 }  // namespace framework
 }  // namespace paddle
