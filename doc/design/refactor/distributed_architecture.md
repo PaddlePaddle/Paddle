@@ -86,7 +86,7 @@ This could be fixed by making the parameter server run the same
 computation definition as the trainer. For a detailed explanation,
 please
 see
-[Design Doc: Operation Graph Based Parameter Server](./dist_train.md)
+[Design Doc: Operation Graph Based Parameter Server](./parameter_server.md)
 
 ## Distributed Training Architecture
 
