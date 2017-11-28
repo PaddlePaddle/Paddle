@@ -12,7 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#undef PADDLE_WITH_CUDA
+
 #include <glog/logging.h>
+#include "paddle/math/MemoryHandle.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
@@ -61,11 +64,10 @@ struct EigenBlasGemm {
     sizeC[1] = N;
     T* gemmC = C;
     if (N != ldc) {
-      // TODO(liuyiqun): enable strided use of Eigen.
       // A temporary memory to carry the result of gemm.
-      void* ptr = nullptr;
-      CHECK_EQ(posix_memalign(&ptr, 32ul, M * N * sizeof(T)), 0);
-      gemmC = reinterpret_cast<T*>(ptr);
+      MemoryHandlePtr memory =
+          std::make_shared<CpuMemoryHandle>(M * N * sizeof(T));
+      gemmC = reinterpret_cast<T*>(memory->getBuf());
       for (int i = 0; i < M; ++i) {
         memcpy(gemmC + i * N, C + i * ldc, N * sizeof(T));
       }
@@ -93,9 +95,6 @@ struct EigenBlasGemm {
       // Copy the result back to C
       for (int i = 0; i < M; ++i) {
         memcpy(C + i * ldc, gemmC + i * N, N * sizeof(T));
-      }
-      if (gemmC && gemmC != C) {
-        ::free(gemmC);
       }
     }
   }

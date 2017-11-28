@@ -38,7 +38,11 @@ MemoryHandle::MemoryHandle(size_t size) : size_(size), buf_(nullptr) {
 
 GpuMemoryHandle::GpuMemoryHandle(size_t size) : MemoryHandle(size) {
   CHECK(size != 0) << " allocate 0 bytes";
+#ifdef PADDLE_WITH_CUDA
   deviceId_ = hl_get_device();
+#else
+  deviceId_ = 0;
+#endif
   allocator_ = StorageEngine::singleton()->getGpuAllocator(deviceId_);
   buf_ = allocator_->alloc(allocSize_);
 }
