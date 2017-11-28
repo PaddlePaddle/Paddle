@@ -35,7 +35,6 @@ template <typename Place, typename T>
 class ElementwiseModKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-
     // only support Tensor % Scalar
     auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Input<Tensor>("Y");
@@ -77,6 +76,7 @@ class ElementwiseModGradKernel : public framework::OpKernel<T> {
     auto dz_e = framework::EigenVector<T>::Flatten(*dz);
 
     auto place = ctx.GetEigenDevice<Place>();
+
 
     if (dx) {
       dx->mutable_data<T>(ctx.GetPlace());
