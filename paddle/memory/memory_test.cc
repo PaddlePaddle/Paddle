@@ -89,12 +89,21 @@ size_t align(size_t size, paddle::platform::GPUPlace place) {
   return remaining == 0 ? size : size + (alignment - remaining);
 }
 
-// Since GPUBuddyAllocator will not be freed until the test process shutdown.
-// There must be only one GPU memory unittest here. Otherwise, the remaining
-// GPU memory allocated by the former unittest will break the next.
+TEST(BuddyAllocator, GPUAllocation) {
+  void *p = nullptr;
+
+  EXPECT_EQ(p, nullptr);
+
+  paddle::platform::GPUPlace gpu(0);
+  p = paddle::memory::Alloc(gpu, 4096);
+
+  EXPECT_NE(p, nullptr);
+
+  paddle::memory::Free(gpu, p);
+}
 
 TEST(BuddyAllocator, GPUMultAlloc) {
-  paddle::platform::GPUPlace gpu(0);
+  paddle::platform::GPUPlace gpu;
 
   std::unordered_map<void *, size_t> ps;
 

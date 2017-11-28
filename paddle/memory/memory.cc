@@ -93,7 +93,7 @@ void* Alloc<platform::GPUPlace>(platform::GPUPlace place, size_t size) {
                  << place.device << ", available " << avail << " bytes";
     platform::SetDeviceId(cur_dev);
   }
-  return GetGPUBuddyAllocator(place.device)->Alloc(size);
+  return ptr;
 }
 
 template <>
