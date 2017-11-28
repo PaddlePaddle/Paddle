@@ -33,7 +33,11 @@ ExternalProject_Add(
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND   make
+    # NOTE(yuyang18):
+    # Disable -Werror, otherwise the compile will fail in MacOS.
+    # It seems that we cannot configure that by make command.
+    # Just dry run make command and remove `-Werror`, then use a shell to run make commands
+    BUILD_COMMAND   make -n | sed "s/-Werror//g" | sh
     INSTALL_COMMAND make prefix=${GRPC_INSTALL_DIR} install
 )
 
@@ -55,4 +59,3 @@ SET_PROPERTY(TARGET grpc_unsecure PROPERTY IMPORTED_LOCATION
 
 include_directories(${GRPC_INCLUDE_DIR})
 ADD_DEPENDENCIES(grpc++_unsecure extern_grpc)
-
