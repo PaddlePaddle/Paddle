@@ -28,12 +28,12 @@ class TestDynamicRNN(unittest.TestCase):
     # 2 3 4
     # 5
     def test_simple_forward(self):
-        in_data = fluid.layers.data("in_data", shape=[1], dtype="int32")
+        in_data = fluid.layers.data("in_data", shape=[1], dtype="int64")
         seq = [[1, 2, 3, 4], [2, 3, 4], [5]]
         input_tensor = to_lodtensor(seq, self.place)
         rnn = fluid.layers.DynamicRNN()
         i = 1.0
-        init = fluid.layers.fill_constant(shape=[3, 1], dtype="int32", value=0)
+        init = fluid.layers.fill_constant(shape=[3, 1], dtype="int64", value=0)
         with rnn.step():
             xt = rnn.step_input(in_data)
             mem = rnn.memory(init=init)
