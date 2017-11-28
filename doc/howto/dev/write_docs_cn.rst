@@ -8,7 +8,26 @@ PaddlePaddle的文档包括英文文档 ``doc`` 和中文文档 ``doc_cn`` 两�
 如何构建文档
 ============
 
-PaddlePaddle的文档构建有两种方式。
+PaddlePaddle的文档构建有三种方式。
+
+
+使用PaddlePaddle.org工具
+--------------
+这个是目前推荐的使用方法。除了可以自动编役文档，也可以直接在网页预览文档。
+
+文件工具是使用Docker，需要在系统里先安装好Docker工具包。Docker安装请参考Docker的官网。安装好Docker之后及可用以下命令启动工具
+
+..  code-block:: bash
+
+    mkdir paddlepaddle
+    cd paddlepaddle
+    git clone git@github.com:PaddlePaddle/Paddle.git
+    git clone git@github.com:PaddlePaddle/book.git
+    git clone git@github.com:PaddlePaddle/models.git
+
+    docker run -it -p 8000:8000 paddlepaddle/paddlepaddle.org:latest
+
+之后再用网页连到http://localhost:8000就可以在网页上生成需要的文档
 
 使用Docker构建
 --------------
