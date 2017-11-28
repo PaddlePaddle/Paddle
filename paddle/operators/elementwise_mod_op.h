@@ -51,8 +51,6 @@ class ElementwiseModKernel : public framework::OpKernel<T> {
         " ElementwiseModOp Input(Y) must be Scalar, shape equal 1.");
 
     auto x_e = framework::EigenVector<T>::Flatten(*x);
-    // std::vector<int> y_e(0);
-    // framework::CopyToVector(*y, ctx.device_context(), &y_e);
     auto y_e = framework::EigenScalar<int>::From(*y);
     auto z_e = framework::EigenVector<T>::Flatten(*z);
     z_e.device(ctx.GetEigenDevice<Place>()) = x_e % y_e(0);
@@ -76,7 +74,6 @@ class ElementwiseModGradKernel : public framework::OpKernel<T> {
     auto dz_e = framework::EigenVector<T>::Flatten(*dz);
 
     auto place = ctx.GetEigenDevice<Place>();
-
 
     if (dx) {
       dx->mutable_data<T>(ctx.GetPlace());
