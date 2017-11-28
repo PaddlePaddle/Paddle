@@ -43,8 +43,8 @@ class ROIPoolOp : public framework::OperatorWithKernel {
                    "ROIs should be a 2-D tensor of shape (num_rois, 5)"
                    "given as [[batch_id, x1, y1, x2, y2], …].");
     PADDLE_ENFORCE(rois_dims[1] == kROISize,
-                "ROIs should be a 2-D tensor of shape (num_rois, 5)"
-                "given as [[batch_id, x1, y1, x2, y2], …].");
+                   "ROIs should be a 2-D tensor of shape (num_rois, 5)"
+                   "given as [[batch_id, x1, y1, x2, y2], …].");
 
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
@@ -65,7 +65,7 @@ class ROIPoolOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("Out", out_dims);
     ctx->SetOutputDim("Argmax", out_dims);
-    }
+  }
 
  protected:
   framework::OpKernelType GetKernelType(
@@ -100,7 +100,7 @@ class ROIPoolGradOp : public framework::OperatorWithKernel {
 class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ROIPoolOpMaker(framework::OpProto* proto,
-                       framework::OpAttrChecker* op_checker)
+                 framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor), "
@@ -125,21 +125,22 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor), "
               "Argmaxes corresponding to indices in X used "
               "for gradient computation. Only output "
-              "if arg “is_test” is false.").AsIntermediate();
+              "if arg “is_test” is false.")
+        .AsIntermediate();
     AddAttr<float>("spatial_scale",
                    "(float, default 1.0), "
                    "Multiplicative spatial scale factor "
                    "to translate ROI coords from their input scale "
                    "to the scale used when pooling.")
-                   .SetDefault(1.0);
+        .SetDefault(1.0);
     AddAttr<int>("pooled_height",
                  "(int, default 1), "
                  "The pooled output height.")
-                 .SetDefault(1);
+        .SetDefault(1);
     AddAttr<int>("pooled_width",
                  "(int, default 1), "
                  "The pooled output width.")
-                 .SetDefault(1);
+        .SetDefault(1);
     AddComment(R"DOC(
 ROIPool operator
 
@@ -153,11 +154,10 @@ https://stackoverflow.com/questions/43430056/what-is-roi-layer-in-fast-rcnn
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(roi_pool, ops::ROIPoolOp, ops::ROIPoolOpMaker,
-            roi_pool_grad, ops::ROIPoolGradOp);
+REGISTER_OP(roi_pool, ops::ROIPoolOp, ops::ROIPoolOpMaker, roi_pool_grad,
+            ops::ROIPoolGradOp);
 REGISTER_OP_CPU_KERNEL(
-    roi_pool,
-    ops::CPUROIPoolOpKernel<paddle::platform::CPUPlace, float>,
+    roi_pool, ops::CPUROIPoolOpKernel<paddle::platform::CPUPlace, float>,
     ops::CPUROIPoolOpKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
     roi_pool_grad,
