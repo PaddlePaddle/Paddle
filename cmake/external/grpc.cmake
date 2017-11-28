@@ -23,6 +23,11 @@ SET(GRPC_SOURCES_DIR ${THIRD_PARTY_PATH}/grpc)
 SET(GRPC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/grpc)
 SET(GRPC_INCLUDE_DIR "${GRPC_INSTALL_DIR}/include/" CACHE PATH "grpc include directory." FORCE)
 SET(GRPC_CPP_PLUGIN "${GRPC_INSTALL_DIR}/bin/grpc_cpp_plugin" CACHE FILEPATH "GRPC_CPP_PLUGIN" FORCE)
+IF(APPLE)
+  SET(BUILD_CMD make -n | sed "s/-Werror//g" | sh)
+ELSE()
+  SET(BUILD_CMD make)
+ENDIF()
 
 ExternalProject_Add(
     extern_grpc
@@ -37,7 +42,7 @@ ExternalProject_Add(
     # Disable -Werror, otherwise the compile will fail in MacOS.
     # It seems that we cannot configure that by make command.
     # Just dry run make command and remove `-Werror`, then use a shell to run make commands
-    BUILD_COMMAND   make -n | sed "s/-Werror//g" | sh
+    BUILD_COMMAND  ${BUILD_CMD}
     INSTALL_COMMAND make prefix=${GRPC_INSTALL_DIR} install
 )
 
