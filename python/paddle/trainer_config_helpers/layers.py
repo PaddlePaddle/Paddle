@@ -2986,7 +2986,7 @@ def spp_layer(input,
 
     Reference:
         `Spatial Pyramid Pooling in Deep Convolutional Networks for Visual Recognition
-        https://arxiv.org/abs/1406.4729`_
+        <https://arxiv.org/abs/1406.4729>`_
 
     The example usage is:
 
@@ -3088,7 +3088,7 @@ def img_cmrnorm_layer(input,
 
     Reference:
         `ImageNet Classification with Deep Convolutional Neural Networks
-        http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf`_
+        <http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf>`_
 
     The example usage is:
 
@@ -3156,7 +3156,7 @@ def batch_norm_layer(input,
     Reference:
         `Batch Normalization: Accelerating Deep Network Training by Reducing
         Internal Covariate Shift
-        http://arxiv.org/abs/1502.03167`_
+        <http://arxiv.org/abs/1502.03167>`_
 
     The example usage is:
 
@@ -5414,9 +5414,9 @@ def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
 
     Reference:
         `Maxout Networks
-        http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf`_
+        <http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf>`_
         `Multi-digit Number Recognition from Street View Imagery using Deep Convolutional Neural Networks
-        https://arxiv.org/pdf/1312.6082v4.pdf`_
+        <https://arxiv.org/pdf/1312.6082v4.pdf>`_
 
     .. math::
        y_{si+j} = \max_k x_{gsi + sk + j}
@@ -5483,7 +5483,7 @@ def ctc_layer(input,
     Reference:
         `Connectionist Temporal Classification: Labelling Unsegmented Sequence Data
         with Recurrent Neural Networks
-        http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf`_
+        <http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf>`_
 
     Note:
         Considering the 'blank' label needed by CTC, you need to use (num_classes + 1)
@@ -5557,7 +5557,7 @@ def warp_ctc_layer(input,
     Reference:
         `Connectionist Temporal Classification: Labelling Unsegmented Sequence Data
         with Recurrent Neural Networks
-        http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf`_
+        <http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf>`_
 
     Note:
         - Let num_classes represents the category number. Considering the 'blank'
@@ -5778,7 +5778,7 @@ def nce_layer(input,
 
     Reference:
         `A fast and simple algorithm for training neural probabilistic language
-        models. https://www.cs.toronto.edu/~amnih/papers/ncelm.pdf`_
+        models. <https://www.cs.toronto.edu/~amnih/papers/ncelm.pdf>`_
 
     The example usage is:
 
@@ -5894,7 +5894,7 @@ def rank_cost(left,
 
     Reference:
         `Learning to Rank using Gradient Descent
-        http://research.microsoft.com/en-us/um/people/cburges/papers/ICML_ranking.pdf`_
+        <http://research.microsoft.com/en-us/um/people/cburges/papers/ICML_ranking.pdf>`_
 
     .. math::
 
@@ -6430,7 +6430,7 @@ def smooth_l1_cost(input, label, name=None, coeff=1.0, layer_attr=None):
 
     Reference:
         `Fast R-CNN
-        https://arxiv.org/pdf/1504.08083v2.pdf`_
+        <https://arxiv.org/pdf/1504.08083v2.pdf>`_
 
     The example usage is:
 
@@ -6637,7 +6637,7 @@ def prelu_layer(input,
 
     Reference:
         `Delving Deep into Rectifiers: Surpassing Human-Level Performance on
-        ImageNet Classification http://arxiv.org/pdf/1502.01852v1.pdf`_
+        ImageNet Classification <http://arxiv.org/pdf/1502.01852v1.pdf>`_
 
     .. math::
        z_i &\\quad if \\quad z_i > 0 \\\\
@@ -6734,7 +6734,7 @@ def gated_unit_layer(input,
 
     Reference:
         `Language Modeling with Gated Convolutional Networks
-        https://arxiv.org/abs/1612.08083`_
+        <https://arxiv.org/abs/1612.08083>`_
 
     .. math::
        y=\\text{act}(X \cdot W + b)\otimes \sigma(X \cdot V + c)
