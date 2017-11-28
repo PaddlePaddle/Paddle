@@ -155,7 +155,7 @@ def main():
             print("Pass ID={0}, Batch ID={1}, D-Loss={2}, DG-Loss={3}".format(
                 pass_id, batch_id, d_loss_np, dg_loss_np))
         os.makedirs("./out/")
-        fig = plot(gen_data)
+        fig = plot(generated_img)
         plt.savefig(
             'out/{0}.png'.format(str(pass_id).zfill(3)), bbox_inches='tight')
         plt.close(fig)
