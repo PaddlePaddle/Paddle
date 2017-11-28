@@ -3,7 +3,7 @@ import paddle.v2.fluid.core as core
 import paddle.v2.fluid.layers as layers
 from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.backward import append_backward_ops
-from paddle.v2.fluid.framework import g_main_program
+from paddle.v2.fluid.framework import default_main_program
 import numpy
 
 
@@ -66,7 +66,7 @@ class TestArrayReadWrite(unittest.TestCase):
 
         append_backward_ops(total_sum_scaled)
 
-        g_vars = map(g_main_program.global_block().var,
+        g_vars = map(default_main_program().global_block().var,
                      [each_x.name + "@GRAD" for each_x in x])
         g_out = [
             item.sum()
