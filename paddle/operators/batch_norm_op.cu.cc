@@ -29,14 +29,21 @@ void ExtractNCWHD(const framework::DDim &dims,
                   const TensorFormat &tensor_format, int *N, int *C, int *H,
                   int *W, int *D) {
   *N = dims[0];
-  *C = tensor_format == TensorFormat::NCHW ? dims[1] : dims[dims.size() - 1];
-  *H = tensor_format == TensorFormat::NCHW ? dims[2] : dims[1];
-  *W = dims.size() > 3
-           ? (tensor_format == TensorFormat::NCHW ? dims[3] : dims[2])
-           : 1;
-  *D = dims.size() > 4
-           ? (tensor_format == TensorFormat::NCHW ? dims[4] : dims[3])
-           : 1;
+  if (dims.size() == 2) {
+    *C = dims[1];
+    *H = 1;
+    *W = 1;
+    *D = 1;
+  } else {
+    *C = tensor_format == TensorFormat::NCHW ? dims[1] : dims[dims.size() - 1];
+    *H = tensor_format == TensorFormat::NCHW ? dims[2] : dims[1];
+    *W = dims.size() > 3
+             ? (tensor_format == TensorFormat::NCHW ? dims[3] : dims[2])
+             : 1;
+    *D = dims.size() > 4
+             ? (tensor_format == TensorFormat::NCHW ? dims[4] : dims[3])
+             : 1;
+  }
 }
 
 template <typename T>
@@ -56,8 +63,8 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     // NCHW [batch_size, in_channels, in_height, in_width]
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
-                   "The Input dim size should be between 3 and 5");
+    PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
+                   "The Input dim size should be between 2 and 5");
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, tensor_format, &N, &C, &H, &W, &D);
 
@@ -180,8 +187,8 @@ class BatchNormGradKernel<platform::GPUPlace, T>
 
     const auto &x_dims = x->dims();
 
-    PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
-                   "The Input dim size should be between 3 and 5");
+    PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
+                   "The Input dim size should be between 2 and 5");
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, tensor_format, &N, &C, &H, &W, &D);
 
