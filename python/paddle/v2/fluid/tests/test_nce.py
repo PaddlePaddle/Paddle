@@ -18,25 +18,25 @@ def nce(input, weight, bias, sample_weight, labels, num_classes,
             samples.append((i, num, False, w))
             sample_labels.append(num)
     # forward bias
-    sampleOut = np.zeros(len(samples)).astype(np.float32)
+    sample_out = np.zeros(len(samples)).astype(np.float32)
     if bias is not None:
         for i in range(len(samples)):
-            sampleOut[i] = bias[samples[i][1]]
+            sample_out[i] = bias[samples[i][1]]
     # forward weight
     for i in range(len(samples)):
-        sampleOut[i] += np.dot(input[samples[i][0]], weight[samples[i][1]])
+        sample_out[i] += np.dot(input[samples[i][0]], weight[samples[i][1]])
 
     # forward activation
-    sampleOut = 1.0 / (1.0 + np.exp(-sampleOut))
+    sample_out = 1.0 / (1.0 + np.exp(-sample_out))
     # forward cost
     out = np.zeros(batch_size).astype(np.float32)
     b = 1.0 / num_classes * num_sample_class
     for i in range(len(samples)):
-        o = sampleOut[i]
+        o = sample_out[i]
         cost = -np.log(o / (o + b)) if samples[i][2] else -np.log(b / (o + b))
         out[samples[i][0]] += cost * samples[i][3]
-    return (out, np.array(sampleOut).reshape(batch_size,
-                                             num_sample_class + num_true_class),
+    return (out, np.array(sample_out).reshape(
+        batch_size, num_sample_class + num_true_class),
             np.array(sample_labels).reshape(batch_size,
                                             num_sample_class + num_true_class))
 
