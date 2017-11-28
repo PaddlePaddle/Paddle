@@ -56,8 +56,8 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     // NCHW [batch_size, in_channels, in_height, in_width]
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
-                   "The Input dim size should be between 3 and 5");
+    PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
+                   "The Input dim size should be between 2 and 5");
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, tensor_format, &N, &C, &H, &W, &D);
 
@@ -180,8 +180,8 @@ class BatchNormGradKernel<platform::GPUPlace, T>
 
     const auto &x_dims = x->dims();
 
-    PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
-                   "The Input dim size should be between 3 and 5");
+    PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
+                   "The Input dim size should be between 2 and 5");
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, tensor_format, &N, &C, &H, &W, &D);
 
