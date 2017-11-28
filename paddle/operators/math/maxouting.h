@@ -21,15 +21,14 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-#define FLT_MAX \
-    __FLT_MAX__
+#define FLT_MAX __FLT_MAX__
 
 template <typename Place, typename T>
 
 class MaxOutFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, framework::Tensor * output,
+                  const framework::Tensor& input, framework::Tensor* output,
                   int groups);
 };
 
@@ -37,8 +36,7 @@ template <typename Place, class T>
 class MaxOutGradFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input,
-                  framework::Tensor * input_grad,
+                  const framework::Tensor& input, framework::Tensor* input_grad,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, int groups);
 };
