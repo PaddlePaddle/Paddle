@@ -38,11 +38,11 @@ void ExtractNCWHD(const framework::DDim &dims,
     *C = tensor_format == TensorFormat::NCHW ? dims[1] : dims[dims.size() - 1];
     *H = tensor_format == TensorFormat::NCHW ? dims[2] : dims[1];
     *W = dims.size() > 3
-           ? (tensor_format == TensorFormat::NCHW ? dims[3] : dims[2])
-           : 1;
+             ? (tensor_format == TensorFormat::NCHW ? dims[3] : dims[2])
+             : 1;
     *D = dims.size() > 4
-           ? (tensor_format == TensorFormat::NCHW ? dims[4] : dims[3])
-           : 1;
+             ? (tensor_format == TensorFormat::NCHW ? dims[4] : dims[3])
+             : 1;
   }
 }
 
