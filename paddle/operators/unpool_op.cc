@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *     Unless required by applicable law or agreed to in writing, software
- *     distributed under the License is distributed on an "AS IS" BASIS,
- *     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *     See the License for the specific language governing permissions and
- *     limitations under the License. */
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+Indicesou may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/unpool_op.h"
 namespace paddle {
@@ -25,7 +25,7 @@ class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
         "(Tensor) The input tensor of unpool operator. "
         "The format of input tensor is NCHW. Where N is batch size, C is the "
         "number of channels, H and W is the height and width of feature.");
-    AddInput("Y",
+    AddInput("Indices",
         "(Tensor) The input tensor of the indices given out by MaxPool2d. "
         "The format of input tensor is NCHW. Where N is batch size, C is the "
         "number of channels, H and W is the height and width of feature.");
@@ -50,12 +50,10 @@ class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
         "(string), unpooling type, can be \"max\" for max-unpooling ")
         .InEnum({"max"});
     AddComment(R"DOC(
-          "input: the input Tensor to invert
-          indices: the indices given out by MaxPool2d
-          ksize  – Size of the max pooling window.
-          stride – Stride of the max pooling window.
-                   "It is set to kernel_size by default.
-          padding – Padding that was added to the input"
+          "Paper: http://www.matthewzeiler.com/wp-content/uploads/2017
+          /07/iccv2011.pdf
+          PyTorch: http://pytorch.org/docs/master/nn.html?highlight=unpool#
+          torch.nn.MaxUnpool2d"
         )DOC");
   }
 };
@@ -79,27 +77,20 @@ public:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of UnpoolOp"
                    "should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) of UnpoolOp"
+    PADDLE_ENFORCE(ctx->HasInput("Indices"), "Input(Indices) of UnpoolOp"
                    "should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of UnpoolOp should not be null.");
-
     auto in_x_dims = ctx->GetInputDim("X");
-    auto in_y_dims = ctx->GetInputDim("Y");
+    auto in_y_dims = ctx->GetInputDim("Indices");
     std::string unpooling_type =
       ctx->Attrs().Get<std::string>("unpooling_type");
     std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
     std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
     std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-
     PADDLE_ENFORCE(in_x_dims.size() == 4,
                     "Unpooling intput must be of 4-dimensional.");
-    for (int i = 0; i < 4; ++i) {
-      PADDLE_ENFORCE(in_x_dims[i] == in_y_dims[i],
-                     "X size must be eq Y size!");
-    }
-
-
+    PADDLE_ENFORCE_EQ(in_x_dims, in_y_dims);
     std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
     for (size_t i = 0; i < ksize.size(); ++i) {
       output_shape.push_back(

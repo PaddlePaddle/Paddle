@@ -2,7 +2,7 @@
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+Indicesou may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
 
@@ -26,7 +26,7 @@ class UnpoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const framework::Tensor* in_x = context.Input<framework::Tensor>("X");
-    const framework::Tensor* in_y = context.Input<framework::Tensor>("Y");
+    const framework::Tensor* in_y = context.Input<framework::Tensor>("Indices");
     auto * out = context.Output<framework::Tensor>("Out");
     std::string unpooling_type = context.Attr<std::string>("unpooling_type");
     std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
@@ -47,7 +47,7 @@ class UnpoolGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const framework::Tensor* in_x = context.Input<framework::Tensor>("X");
-    const framework::Tensor* in_y = context.Input<framework::Tensor>("Y");
+    const framework::Tensor* in_y = context.Input<framework::Tensor>("Indices");
     const framework::Tensor* out = context.Input<framework::Tensor>("Out");
     const framework::Tensor* out_grad =
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
