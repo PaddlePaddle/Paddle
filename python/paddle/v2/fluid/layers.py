@@ -1588,7 +1588,7 @@ def array_length(array, main_program=None):
 
 
 def conv2d_transpose(input,
-                     num_filter,
+                     num_filters,
                      output_size=None,
                      filter_size=None,
                      padding=None,
@@ -1603,9 +1603,9 @@ def conv2d_transpose(input,
     This layer is also known as deconvolution layer.
     
     Args:
-        input(Variable): The input image. [N, C, H, W].
-        num_filter(int): The number of filter. It is as same as the output image 
-            channel.
+        input(Variable): The input image with [N, C, H, W] format.
+        num_filters(int): The number of filter. It is as same as the output
+            image channel.
         output_size(int|tuple|None): The output image size. If output size is a
             tuple, it must contain two integers, (image_H, image_W). This 
             parameter only works when filter_size is None.
@@ -1661,7 +1661,7 @@ def conv2d_transpose(input,
     elif isinstance(filter_size, int):
         filter_size = [filter_size, filter_size]
 
-    filter_shape = [input_channel, num_filter] + filter_size
+    filter_shape = [input_channel, num_filters] + filter_size
     img_filter = helper.create_parameter(
         dtype=input.dtype,
         shape=filter_shape,
