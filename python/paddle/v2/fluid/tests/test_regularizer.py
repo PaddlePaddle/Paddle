@@ -29,7 +29,11 @@ class TestL2DecayRegularizer(unittest.TestCase):
                     "Y": mul_y},
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1})
-        params_grads = append_backward_ops(mul_out)
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out")
+        block.append_op(
+            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
+        params_grads = append_backward_ops(mean_out)
         self.assertEqual(len(params_grads), 1)
         count_ops = len(block.ops)
         params_grads = optimizer.append_regularization_ops(params_grads)
@@ -62,7 +66,11 @@ class TestL1DecayRegularizer(unittest.TestCase):
                     "Y": mul_y},
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1})
-        params_grads = append_backward_ops(mul_out)
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out")
+        block.append_op(
+            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
+        params_grads = append_backward_ops(mean_out)
         self.assertEqual(len(params_grads), 1)
         count_ops = len(block.ops)
         params_grads = optimizer.append_regularization_ops(params_grads)
