@@ -49,6 +49,7 @@ int LAPACKE_dgetri(int matrix_layout, int n, double* a, int lda,
 
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/tensor.h"
+#include "paddle/framework/tensor_util.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/enforce.h"
 

@@ -1,42 +1,46 @@
+from __future__ import print_function
 import numpy as np
 import paddle.v2 as paddle
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid.framework as framework
-import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.evaluator as evaluator
-from paddle.v2.fluid.io import get_inference_program
-from paddle.v2.fluid.executor import Executor
-from paddle.v2.fluid.initializer import UniformInitializer
-from paddle.v2.fluid.optimizer import MomentumOptimizer
-from paddle.v2.fluid.regularizer import L2DecayRegularizer
+import paddle.v2.fluid as fluid
 
 BATCH_SIZE = 128
-image = layers.data(name='x', shape=[784], dtype='float32')
+image = fluid.layers.data(name='x', shape=[784], dtype='float32')
 
 param_attr = {
     'name': None,
-    'initializer': UniformInitializer(
-        low=-1.0, high=1.0),
-    'regularization': L2DecayRegularizer(0.0005 * BATCH_SIZE)
+    'regularization': fluid.regularizer.L2Decay(0.0005 * BATCH_SIZE)
 }
 
-hidden1 = layers.fc(input=image, size=128, act='relu', param_attr=param_attr)
-hidden2 = layers.fc(input=hidden1, size=64, act='relu', param_attr=param_attr)
+hidden1 = fluid.layers.fc(input=image,
+                          size=128,
+                          act='relu',
+                          param_attr=param_attr)
+hidden2 = fluid.layers.fc(input=hidden1,
+                          size=64,
+                          act='relu',
+                          param_attr=param_attr)
 
-predict = layers.fc(input=hidden2,
-                    size=10,
-                    act='softmax',
-                    param_attr=param_attr)
+predict = fluid.layers.fc(input=hidden2,
+                          size=10,
+                          act='softmax',
+                          param_attr=param_attr)
 
-label = layers.data(name='y', shape=[1], dtype='int64')
+label = fluid.layers.data(name='y', shape=[1], dtype='int64')
 
-cost = layers.cross_entropy(input=predict, label=label)
-avg_cost = layers.mean(x=cost)
+cost = fluid.layers.cross_entropy(input=predict, label=label)
+avg_cost = fluid.layers.mean(x=cost)
 
-optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
+optimizer = fluid.optimizer.Momentum(learning_rate=0.001, momentum=0.9)
 opts = optimizer.minimize(avg_cost)
 
-accuracy, acc_out = evaluator.accuracy(input=predict, label=label)
+accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
+
+inference_program = fluid.default_main_program().clone()
+test_accuracy = fluid.evaluator.Accuracy(
+    input=predict, label=label, main_program=inference_program)
+test_target = [avg_cost] + test_accuracy.metrics + test_accuracy.states
+inference_program = fluid.io.get_inference_program(
+    test_target, main_program=inference_program)
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
@@ -45,10 +49,10 @@ train_reader = paddle.batch(
 
 test_reader = paddle.batch(paddle.dataset.mnist.test(), batch_size=128)
 
-place = core.CPUPlace()
-exe = Executor(place)
+place = fluid.CPUPlace()
+exe = fluid.Executor(place)
 
-exe.run(framework.default_startup_program())
+exe.run(fluid.default_startup_program())
 
 PASS_NUM = 100
 for pass_id in range(PASS_NUM):
@@ -58,25 +62,19 @@ for pass_id in range(PASS_NUM):
         y_data = np.array(map(lambda x: x[1], data)).astype("int64")
         y_data = np.expand_dims(y_data, axis=1)
 
-        tensor_x = core.LoDTensor()
+        tensor_x = fluid.LoDTensor()
         tensor_x.set(x_data, place)
 
-        tensor_y = core.LoDTensor()
+        tensor_y = fluid.LoDTensor()
         tensor_y.set(y_data, place)
 
-        outs = exe.run(framework.default_main_program(),
+        outs = exe.run(fluid.default_main_program(),
                        feed={'x': tensor_x,
                              'y': tensor_y},
-                       fetch_list=[avg_cost, acc_out])
+                       fetch_list=[avg_cost] + accuracy.metrics)
         out = np.array(outs[0])
         acc = np.array(outs[1])
         pass_acc = accuracy.eval(exe)
-
-        test_accuracy, test_acc_out = evaluator.accuracy(
-            input=predict, label=label)
-
-        test_target = [avg_cost, test_acc_out] + test_accuracy.states().values()
-        inference_program = get_inference_program(test_target)
 
         test_accuracy.reset(exe)
         for data in test_reader():
@@ -84,18 +82,10 @@ for pass_id in range(PASS_NUM):
             y_data = np.array(map(lambda x: x[1], data)).astype("int64")
             y_data = np.expand_dims(y_data, axis=1)
 
-            tensor_x = core.LoDTensor()
-            tensor_x.set(x_data, place)
-
-            tensor_y = core.LoDTensor()
-            tensor_y.set(y_data, place)
-
-            outs = exe.run(inference_program,
-                           feed={'x': tensor_x,
-                                 'y': tensor_y},
-                           fetch_list=[avg_cost, test_acc_out])
-            out = np.array(outs[0])
-            acc = np.array(outs[1])
+            out, acc = exe.run(inference_program,
+                               feed={'x': x_data,
+                                     'y': y_data},
+                               fetch_list=[avg_cost] + test_accuracy.metrics)
 
         test_pass_acc = test_accuracy.eval(exe)
         print("pass_id=" + str(pass_id) + " train_cost=" + str(
