@@ -44,11 +44,14 @@ def D(x):
 
 
 def G(x):
-    c = Counter()
     conv1 = fluid.layers.conv2d_transpose(
-        input=x, num_filters=10, output_size=14, act='relu')
+        input=x, num_filters=10, output_size=14, act='relu', param_attr="G_0")
     conv2 = fluid.layers.conv2d_transpose(
-        input=conv1, num_filters=1, output_size=28, act='tanh')
+        input=conv1,
+        num_filters=1,
+        output_size=28,
+        act='tanh',
+        param_attr='G_1')
     return conv2
 
 
