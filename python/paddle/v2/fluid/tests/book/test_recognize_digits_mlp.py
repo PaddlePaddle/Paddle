@@ -35,6 +35,13 @@ opts = optimizer.minimize(avg_cost)
 
 accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
 
+inference_program = fluid.default_main_program().clone()
+test_accuracy = fluid.evaluator.Accuracy(
+    input=predict, label=label, main_program=inference_program)
+test_target = [avg_cost] + test_accuracy.metrics + test_accuracy.states
+inference_program = fluid.io.get_inference_program(
+    test_target, main_program=inference_program)
+
 train_reader = paddle.batch(
     paddle.reader.shuffle(
         paddle.dataset.mnist.train(), buf_size=8192),
@@ -68,11 +75,6 @@ for pass_id in range(PASS_NUM):
         out = np.array(outs[0])
         acc = np.array(outs[1])
         pass_acc = accuracy.eval(exe)
-
-        test_accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
-
-        test_target = [avg_cost] + test_accuracy.metrics + test_accuracy.states
-        inference_program = fluid.io.get_inference_program(test_target)
 
         test_accuracy.reset(exe)
         for data in test_reader():
