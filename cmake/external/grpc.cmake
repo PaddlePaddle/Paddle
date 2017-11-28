@@ -33,7 +33,7 @@ ExternalProject_Add(
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND   make HAS_SYSTEM_PROTOBUF=false -j8
+    BUILD_COMMAND   make HAS_SYSTEM_PROTOBUF=false -j8 static grpc_cpp_plugin
     INSTALL_COMMAND make prefix=${GRPC_INSTALL_DIR} install
 )
 
