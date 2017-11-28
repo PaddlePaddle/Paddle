@@ -21,12 +21,15 @@ namespace operators {
 // the fundamental operator in program language is + - * / %
 // https://softwareengineering.stackexchange.com/questions/206293/why-is-mod-a-fundamental-mathematical-operator-in-many-programming-languages
 
-class ElementwiseModOpMaker : public ElementwiseOpMaker {
+class ElementwiseModOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ElementwiseModOpMaker(framework::OpProto* proto,
                         framework::OpAttrChecker* op_checker)
-      : ElementwiseOpMaker(proto, op_checker) {
-    SetComment("Mod", R"DOC(
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "(Tensor) The first input tensor of elementwise op");
+    AddInput("Y", "(Tensor) The second input tensor of elementwise op");
+    AddOutput("Out", "The output of elementwise op");
+    AddComment(R"DOC(
 ElementwiseMod Operator.
 
 X is a Tensor, Y is a Scalar. Note that Y only can be int(int32).
@@ -36,7 +39,6 @@ Out is a Tensor which is mod elementwise of Y.
 $Out = X % Y$
 
 )DOC");
-    AddComment(comment_);
   }
 };
 }  // namespace operators
@@ -47,7 +49,7 @@ REGISTER_OP(elementwise_mod, ops::ElementwiseOp, ops::ElementwiseModOpMaker,
             elementwise_mod_grad, ops::ElementwiseOpGrad);
 REGISTER_OP_CPU_KERNEL(
     elementwise_mod,
-    ops::ElementwiseModKernel<paddle::platform::CPUPlace, int>);
+    ops::ElementwiseModKernel<paddle::platform::CPUPlace, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_mod_grad,
-    ops::ElementwiseModGradKernel<paddle::platform::CPUPlace, int>);
+    ops::ElementwiseModGradKernel<paddle::platform::CPUPlace, int64_t>);

@@ -70,7 +70,7 @@ class ElementwiseModGradKernel : public framework::OpKernel<T> {
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     auto x_e = framework::EigenVector<T>::Flatten(*x);
-    auto y_e = framework::EigenScalar<int>::From(*y);
+    auto y_e = framework::EigenScalar<int64_t>::From(*y);
     auto dz_e = framework::EigenVector<T>::Flatten(*dz);
 
     auto place = ctx.GetEigenDevice<Place>();
@@ -83,7 +83,7 @@ class ElementwiseModGradKernel : public framework::OpKernel<T> {
 
     if (dy) {
       dy->mutable_data<T>(ctx.GetPlace());
-      auto dy_e = framework::EigenScalar<int>::From(*dy);
+      auto dy_e = framework::EigenScalar<int64_t>::From(*dy);
       auto floor_div = x_e / y_e;
       dy_e.device(place) = -1.0 * dz_e * floor_div.floor();
     }

@@ -19,7 +19,7 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_GPU_KERNEL(
     elementwise_mod,
-    ops::ElementwiseModKernel<paddle::platform::GPUPlace, int>);
+    ops::ElementwiseModKernel<paddle::platform::GPUPlace, int64_t>);
 REGISTER_OP_GPU_KERNEL(
     elementwise_mod_grad,
-    ops::ElementwiseModGradKernel<paddle::platform::GPUPlace, int>);
+    ops::ElementwiseModGradKernel<paddle::platform::GPUPlace, int64_t>);
