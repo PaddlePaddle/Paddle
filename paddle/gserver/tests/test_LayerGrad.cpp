@@ -685,8 +685,8 @@ TEST(Layer, hsigmoidLayer) {
     testLayerGrad(config,
                   "hsigmoid",
                   100,
-                  /* trans */ false, /* useGpu */
-                  useGpu);
+                  /* trans */ false,
+                  /* useGpu */ useGpu);
   }
 }
 
