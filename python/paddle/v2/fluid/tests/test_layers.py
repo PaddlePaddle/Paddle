@@ -43,6 +43,15 @@ class TestBook(unittest.TestCase):
 
         print(str(program))
 
+    def test_conv2d_transpose(self):
+        program = Program()
+        kwargs = {'main_program': program}
+        img = layers.data(
+            name='pixel', shape=[3, 2, 2], dtype='float32', **kwargs)
+        layers.conv2d_transpose(
+            input=img, num_filters=10, output_size=28, **kwargs)
+        print str(program)
+
     def test_recognize_digits_conv(self):
         program = Program()
         with program_guard(program, startup_program=Program()):
