@@ -16,14 +16,18 @@ class TestOptimizer(unittest.TestCase):
             dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
         mul_out = block.create_var(
             dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out")
         block.append_op(
             type="mul",
             inputs={"X": mul_x,
                     "Y": mul_y},
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1})
+        block.append_op(
+            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
         sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.01)
-        opts = sgd_optimizer.minimize(mul_out, init_program)
+        opts = sgd_optimizer.minimize(mean_out, init_program)
         self.assertEqual(len(opts), 1)
         sgd_op = opts[0]
         self.assertEqual(sgd_op.type, "sgd")
@@ -44,12 +48,16 @@ class TestOptimizer(unittest.TestCase):
                     "Y": mul_y},
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1})
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out")
+        block.append_op(
+            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
         global_step = block.create_var(
             dtype="float32", shape=[1], lod_level=0, name="step")
         learning_rate = 0.01
         sgd_optimizer = optimizer.SGDOptimizer(
             learning_rate=learning_rate, global_step=global_step)
-        opts = sgd_optimizer.minimize(mul_out, init_program)
+        opts = sgd_optimizer.minimize(mean_out, init_program)
         self.assertEqual(len(opts), 2)
         sgd_op = opts[0]
         self.assertEqual(sgd_op.type, "sgd")
@@ -90,7 +98,11 @@ class TestMomentumOptimizer(unittest.TestCase):
         learning_rate = 0.01
         momentum_optimizer = self.MockMomentum(
             learning_rate=learning_rate, momentum=0.2)
-        params_grads = append_backward_ops(mul_out)
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out")
+        block.append_op(
+            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
+        params_grads = append_backward_ops(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(momentum_optimizer.get_accumulators()), 0)
         opts = momentum_optimizer.create_optimization_pass(
@@ -132,10 +144,14 @@ class TestMomentumOptimizer(unittest.TestCase):
                     "Y": mul_y},
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1})
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out")
+        block.append_op(
+            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
         learning_rate = 0.01
         momentum_optimizer = self.MockMomentum(
             learning_rate=learning_rate, momentum=0.2, use_nesterov=True)
-        params_grads = append_backward_ops(mul_out)
+        params_grads = append_backward_ops(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(momentum_optimizer.get_accumulators()), 0)
         opts = momentum_optimizer.create_optimization_pass(
@@ -186,10 +202,14 @@ class TestAdagradOptimizer(unittest.TestCase):
                     "Y": mul_y},
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1})
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out")
+        block.append_op(
+            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
         learning_rate = 0.01
         adagrad_optimizer = self.MockAdagrad(
             learning_rate=learning_rate, epsilon=1.0e-6)
-        params_grads = append_backward_ops(mul_out)
+        params_grads = append_backward_ops(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(adagrad_optimizer.get_accumulators()), 0)
         opts = adagrad_optimizer.create_optimization_pass(params_grads, mul_out,
@@ -242,10 +262,14 @@ class TestAdamOptimizer(unittest.TestCase):
                     "Y": mul_y},
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1})
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out")
+        block.append_op(
+            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
         learning_rate = 0.01
         adam_optimizer = self.MockAdam(
             learning_rate=learning_rate, beta1=0.9, beta2=0.999)
-        params_grads = append_backward_ops(mul_out)
+        params_grads = append_backward_ops(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(adam_optimizer.get_accumulators()), 0)
         opts = adam_optimizer.create_optimization_pass(params_grads, mul_out,
@@ -300,10 +324,14 @@ class TestAdamaxOptimizer(unittest.TestCase):
                     "Y": mul_y},
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1})
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out")
+        block.append_op(
+            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
         learning_rate = 0.01
         adamax_optimizer = self.MockAdamax(
             learning_rate=learning_rate, beta1=0.9, beta2=0.999)
-        params_grads = append_backward_ops(mul_out)
+        params_grads = append_backward_ops(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(adamax_optimizer.get_accumulators()), 0)
         opts = adamax_optimizer.create_optimization_pass(params_grads, mul_out,
@@ -355,10 +383,14 @@ class TestDecayedAdagradOptimizer(unittest.TestCase):
                     "Y": mul_y},
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1})
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out")
+        block.append_op(
+            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
         learning_rate = 0.01
         decayed_adagrad_optimizer = self.MockDecayedAdagrad(
             learning_rate=learning_rate, decay=0.95, epsilon=1.0e-6)
-        params_grads = append_backward_ops(mul_out)
+        params_grads = append_backward_ops(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(decayed_adagrad_optimizer.get_accumulators()), 0)
         opts = decayed_adagrad_optimizer.create_optimization_pass(

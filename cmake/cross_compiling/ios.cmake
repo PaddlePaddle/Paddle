@@ -76,11 +76,9 @@ set(IOS_PLATFORM ${IOS_PLATFORM} CACHE STRING "Type of iOS Platform")
 # Set the architecture for iOS
 if(NOT DEFINED IOS_ARCH)
   if(IOS_PLATFORM STREQUAL "OS")
-    # FIXME(liuyiqun): support "armv7;armv7s;arm64" future
-    set(IOS_ARCH "arm64")
+    set(IOS_ARCH "armv7;armv7s;arm64")
   elseif(IOS_PLATFORM STREQUAL "SIMULATOR")
-    # FIXME(liuyiqun): support "i386;x86_64" future
-    set(IOS_ARCH "x86_64")
+    set(IOS_ARCH "i386;x86_64")
   endif()
 endif()
 set(CMAKE_OSX_ARCHITECTURES ${IOS_ARCH} CACHE string  "Build architecture for iOS")
@@ -248,7 +246,7 @@ set(IOS_COMPILER_FLAGS "${XCODE_IOS_PLATFORM_VERSION_FLAGS} ${XCODE_IOS_BITCODE_
 
 # Hidden visibilty is required for cxx on iOS 
 set(CMAKE_C_FLAGS "${IOS_COMPILER_FLAGS} ${CMAKE_C_FLAGS}" CACHE STRING "C flags")
-set(CMAKE_CXX_FLAGS "${IOS_COMPILER_FLAGS} -fvisibility-inlines-hidden ${CMAKE_CXX_FLAGS}" CACHE STRING "CXX flags")
+set(CMAKE_CXX_FLAGS "${IOS_COMPILER_FLAGS} -fvisibility=hidden -fvisibility-inlines-hidden ${CMAKE_CXX_FLAGS}" CACHE STRING "CXX flags")
 
 set(IOS_LINK_FLAGS "${XCODE_IOS_PLATFORM_VERSION_FLAGS} -Wl,-search_paths_first")
 
