@@ -1,9 +1,9 @@
 import paddle.v2.fluid.core as core
-import subprocess
+from contextlib import contextmanager
 
 __all__ = ['CudaProfiler']
 
-NV_FLAGS = [
+NVPROF_CONFIG = [
     "gpustarttimestamp",
     "gpuendtimestamp",
     "gridsize3d",
@@ -14,61 +14,33 @@ NV_FLAGS = [
 ]
 
 
-def nvporf_init(output_file, output_mode=None, flags=None):
-    """
-    Initialize the CUDA profiler.
-    This methods must be called before nvprof_start.
+@contextmanager
+def cuda_profiler(output_file, output_mode=None, config=None):
+    """The CUDA profiler.
+    This fuctions is used to profile CUDA program by CUDA runtime application
+    programming interface. The profiling result will be written into
+    `output_file` with Key-Value pair format or Comma separated values format.
+    The user can set the output mode by `output_mode` argument and set the
+    counters/options for profiling by `config` argument. The default config
+    is ['gpustarttimestamp', 'gpustarttimestamp', 'gridsize3d',
+    'threadblocksize', 'streamid', 'enableonstart 0', 'conckerneltrace'].
 
-    :param output_file: The output file name.
-    :type output_file: string
-    :param output_mode: The output mode has Key-Value pair format and
-                        Comma separated values format.
-                        It should be 'kv' or 'csv'.
-    :type output_mode: string
+    Args:
+        output_file (string) : The output file name, the result will be
+            written into this file.
+        output_mode (string) : The output mode has Key-Value pair format and
+            Comma separated values format. It should be 'kvp' or 'csv'.
+        config (string) : The profiler options and counters can refer to
+            "Compute Command Line Profiler User Guide".
     """
     if output_mode is None:
         output_mode = 'csv'
-    if output_mode not in ['kv', 'csv']:
-        raise ValueError("The output mode must be 'key-value' or 'csv'.")
-    flags = NV_FLAGS if flags is None else flags
-    core.nvprof_init(output_file, output_mode, flags)
-
-
-def nvporf_start():
-    """
-    Enables profiler collection by the active CUDA profiling tool.
-    """
+    if output_mode not in ['kvp', 'csv']:
+        raise ValueError("The output mode must be 'kvp' or 'csv'.")
+    config = NVPROF_CONFIG if config is None else config
+    core.nvprof_init(output_file, output_mode, config)
+    # Enables profiler collection by the active CUDA profiling tool.
     core.nvprof_start()
-
-
-def nvporf_stop():
-    """
-    Disables profiler collection.
-    """
+    yield
+    # Disables profiler collection.
     core.nvprof_stop()
-
-
-class CudaProfiler(object):
-    def __init__(self, output_file, output_mode=None, flags=None, enabled=True):
-        self.enabled = enabled
-        if not self.enabled:
-            return
-        self.entered = False
-        self.out_file = output_file
-        nvporf_init(output_file, output_mode, flags)
-
-    def __enter__(self):
-        if not self.enabled:
-            return
-        if self.entered:
-            raise RuntimeError("The profiler traces are not reentrant")
-        self.entered = True
-        nvporf_start()
-        return self
-
-    def __exit__(self, exc_type, exc_value, tb):
-        if exc_value is not None:
-            raise exc_value
-        if not self.enabled:
-            return
-        nvporf_stop()
