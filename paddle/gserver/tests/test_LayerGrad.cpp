@@ -681,12 +681,13 @@ TEST(Layer, hsigmoidLayer) {
   config.layerConfig.add_inputs();
   config.layerConfig.add_inputs();
 
-  // Not support GPU now
-  testLayerGrad(config,
-                "hsigmoid",
-                100,
-                /* trans */ false, /* useGpu */
-                false);
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config,
+                  "hsigmoid",
+                  100,
+                  /* trans */ false,
+                  /* useGpu */ useGpu);
+  }
 }
 
 TEST(Layer, multi_cross) {
