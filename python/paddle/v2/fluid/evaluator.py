@@ -1,9 +1,8 @@
 import numpy as np
 
-import paddle.v2.fluid.layers as layers
-from paddle.v2.fluid.framework import Program, unique_name, \
-    Variable
-from paddle.v2.fluid.layer_helper import LayerHelper
+import layers
+from framework import Program, unique_name, Variable
+from layer_helper import LayerHelper
 
 __all__ = ['Accuracy']
 

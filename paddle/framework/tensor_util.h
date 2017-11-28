@@ -135,18 +135,17 @@ inline void CopyToVector(const Tensor& src, const platform::DeviceContext& ctx,
   auto dst_ptr = static_cast<void*>(dst->data());
 
   if (platform::is_cpu_place(src.place())) {
-    memory::Copy(dst_place, dst_ptr, boost::get<platform::CPUPlace>(src.place()), 
-		    src_ptr, size);
+    memory::Copy(dst_place, dst_ptr,
+                 boost::get<platform::CPUPlace>(src.place()), src_ptr, size);
   }
 #ifdef PADDLE_WITH_CUDA
   else if (platform::is_gpu_place(src.place())) {  // NOLINT
     memory::Copy(
-        dst_place, dst_ptr, boost::get<platform::GPUPlace>(src.place()), src_ptr,
-        size,
+        dst_place, dst_ptr, boost::get<platform::GPUPlace>(src.place()),
+        src_ptr, size,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
   }
 #endif
-
 }
 
 }  // namespace framework
