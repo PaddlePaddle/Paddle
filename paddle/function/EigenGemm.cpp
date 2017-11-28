@@ -21,7 +21,7 @@ template <class T>
 struct EigenBlasGemm {
   typedef Eigen::TensorMap<Eigen::Tensor<T, 2, Eigen::RowMajor, int>,
                            Eigen::Aligned>
-      Matrix;
+      EigenMatrix;
 
   static void compute(const bool transA,
                       const bool transB,
@@ -59,11 +59,21 @@ struct EigenBlasGemm {
     Eigen::array<int, 2> sizeC;
     sizeC[0] = M;
     sizeC[1] = N;
-    CHECK_EQ(N, ldc);
+    T* gemmC = C;
+    if (N != ldc) {
+      // TODO(liuyiqun): enable strided use of Eigen.
+      // A temporary memory to carry the result of gemm.
+      void* ptr = nullptr;
+      CHECK_EQ(posix_memalign(&ptr, 32ul, M * N * sizeof(T)), 0);
+      gemmC = reinterpret_cast<T*>(ptr);
+      for (int i = 0; i < M; ++i) {
+        memcpy(gemmC + i * N, C + i * ldc, N * sizeof(T));
+      }
+    }
 
-    const Matrix a(const_cast<T*>(A), sizeA);
-    const Matrix b(const_cast<T*>(B), sizeB);
-    Matrix c(C, sizeC);
+    const EigenMatrix a(const_cast<T*>(A), sizeA);
+    const EigenMatrix b(const_cast<T*>(B), sizeB);
+    EigenMatrix c(gemmC, sizeC);
 
     typedef typename Eigen::Tensor<T, 2>::DimensionPair DimPair;
     Eigen::array<DimPair, 1> dims;
@@ -78,6 +88,15 @@ struct EigenBlasGemm {
       c.device(device) += a.contract(b, dims);
     } else {
       c.device(device) = alpha * a.contract(b, dims) + beta * c;
+    }
+    if (N != ldc) {
+      // Copy the result back to C
+      for (int i = 0; i < M; ++i) {
+        memcpy(C + i * ldc, gemmC + i * N, N * sizeof(T));
+      }
+      if (gemmC && gemmC != C) {
+        ::free(gemmC);
+      }
     }
   }
 };
