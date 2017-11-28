@@ -22,7 +22,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using framework::Tensor;
 
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -35,8 +35,8 @@ void PrepareSamples(const framework::ExecutionContext& context) {
   auto label_dims = label->dims();
   int num_classes = context.Attr<int>("num_classes");
   // for unitest
-  std::vector<int> sampled_labels =
-      context.Attr<std::vector<int>>("sampled_labels");
+  std::vector<int> custom_neg_classes =
+      context.Attr<std::vector<int>>("custom_neg_classes");
   // random machine
   std::random_device rd;
   std::mt19937 rng(rd());
@@ -54,12 +54,13 @@ void PrepareSamples(const framework::ExecutionContext& context) {
     for (; j < num_label; ++j) {
       sample_labels_data[index++] = label_data[i * num_label + j];
     }
-    if (sampled_labels.size() > 0) {
-      for (auto label : sampled_labels) {
+    if (custom_neg_classes.size() > 0) {
+      for (auto label : custom_neg_classes) {
         sample_labels_data[index++] = label;
       }
     } else {
       for (; j < sample_labels_dims[1]; ++j) {
+        // TODO: support more distribution sampling
         sample_labels_data[index++] = rand(rng);
       }
     }
@@ -176,6 +177,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
     auto d_bias = context.Output<Tensor>(framework::GradVarName("Bias"));
     if (d_bias != nullptr) {
       T* d_bias_data = d_bias->mutable_data<T>(context.GetPlace());
+      std::fill(d_bias_data, d_bias_data + d_bias->numel(), 0.0);
       for (size_t i = 0; i < sample_labels->numel(); ++i) {
         d_bias_data[sample_labels_data[i]] += sample_grad_data[i];
       }
@@ -183,7 +185,8 @@ class NCEGradKernel : public framework::OpKernel<T> {
     // get d_w
     auto d_w = context.Output<Tensor>(framework::GradVarName("Weight"));
     if (d_w != nullptr) {
-      d_w->mutable_data<T>(context.GetPlace());
+      auto d_w_data = d_w->mutable_data<T>(context.GetPlace());
+      std::fill(d_w_data, d_w_data + d_w->numel(), 0.0);
       auto d_w_matrix = EigenMatrix<T>::From(*d_w);
       auto x_matrix = EigenMatrix<T>::From(*(context.Input<Tensor>("Input")));
       for (size_t i = 0; i < sample_labels->numel(); ++i) {

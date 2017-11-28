@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/nce_op.h"
 
@@ -39,25 +39,25 @@ class NCEOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("Weight")[0],
                         ctx->GetInputDim("Bias")[0]);
     }
-    auto num_sampled_classes = ctx->Attrs().Get<int>("num_sampled_classes");
-    auto num_classes = ctx->Attrs().Get<int>("num_classes");
+    auto num_neg_samples = ctx->Attrs().Get<int>("num_neg_samples");
+    auto num_total_classes = ctx->Attrs().Get<int>("num_total_classes");
     std::vector<int> sampled_labels =
         ctx->Attrs().Get<std::vector<int>>("sampled_labels");
-    PADDLE_ENFORCE_EQ(num_classes, ctx->GetInputDim("Weight")[0]);
-    PADDLE_ENFORCE_LT(num_sampled_classes, num_classes);
+    PADDLE_ENFORCE_EQ(num_total_classes, ctx->GetInputDim("Weight")[0]);
     if (sampled_labels.size() > 0) {
       PADDLE_ENFORCE_EQ(sampled_labels.size(),
-                        static_cast<size_t>(num_sampled_classes));
+                        static_cast<size_t>(num_neg_samples));
     }
     // set dims of output(Out)
     std::vector<int64_t> out_dims;
     out_dims.push_back(x_dims[0]);
+    out_dims.push_back(1);
     ctx->SetOutputDim("Cost", framework::make_ddim(out_dims));
 
     // set dims of output(SampleOut)
     std::vector<int64_t> sample_out_dims;
     sample_out_dims.push_back(x_dims[0]);
-    sample_out_dims.push_back(num_sampled_classes + num_true_classes);
+    sample_out_dims.push_back(num_neg_samples + num_true_classes);
     ctx->SetOutputDim("SampleLogits", framework::make_ddim(sample_out_dims));
     ctx->SetOutputDim("SampleLabels", framework::make_ddim(sample_out_dims));
   }
@@ -76,34 +76,59 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
   NCEOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Input", "(Tensor) A tensor of shape [batch_size, dim].");
-    AddInput("Label",
-             "(Tensor) A tensor of shape [batch_size, num_true_class]. "
-             "'num_true_class' is the number of target class in each sample.");
+    AddInput(
+        "Label",
+        "(Tensor) A tensor of shape [batch_size, num_true_class]. "
+        "'num_true_class' is the number of target classes in each sample."
+        "The number of target classes per sample should be same. "
+        "If you have a variable number of target classes, "
+        "you can pad them out to a constant number by either repeating them"
+        " or by padding with an otherwise unused class.)");
     AddInput("Weight",
              "(Tensor) A tensor of shape [num_class, dim]. 'num_class' is the "
              "total number of class.");
-    AddInput("Bias",
-             "(Tensor) A tensor of shape [num_class]. 'num_class' is the total "
-             "number of class. It is a dispensable input.")
+    AddInput(
+        "Bias",
+        "(Tensor) A tensor of shape [num_class, 1]. 'num_class' is the total "
+        "number of class. It is a dispensable input.")
         .AsDispensable();
     AddInput("SampleWeight",
-             "(Tensor) A tensor of shape [batch_size] storing a weight for "
+             "(Tensor) A tensor of shape [batch_size, 1] storing a weight for "
              "each sample. And it is a dispensable input. The default value of "
              "sample is 1.")
         .AsDispensable();
     AddOutput("Cost",
-              "(Tensor) A tensor of shape [batch_size]. Cost of samples.");
-    AddOutput("SampleLogits", "An intermediate tensor.").AsIntermediate();
-    AddOutput("SampleLabels", "An intermediate tensor.").AsIntermediate();
-    AddAttr<int>("num_classes", "Total number of classes.");
-    AddAttr<int>("num_sampled_classes", "The number of negative classes.")
+              "(Tensor) A tensor of shape [batch_size, 1]. Cost of samples.");
+    AddOutput("SampleLogits",
+              "An intermediate tensor of shape[batch_size, num_neg_samples + "
+              "num_pos_samples]."
+              "This tensor is output of forward kernel and used in backward "
+              "kernel to compute grads."
+              "Given X is  the dot product of input tensor and sampled labels' "
+              "weights."
+              "Then 'SampleLogits' is sigmoid(X).")
+        .AsIntermediate();
+    AddOutput("SampleLabels",
+              "An intermediate tensor of shape[batch_size, num_neg_samples + "
+              "num_pos_samples]."
+              "This tensor is output of forward kernel and used in backward "
+              "kernel to compute grads."
+              "")
+        .AsIntermediate();
+    AddAttr<int>("num_total_classes",
+                 "Total number of classes in all samples.");
+    AddAttr<int>("num_neg_samples",
+                 "The number of negative classes. The default value is 10.")
         .SetDefault(10);
-    AddAttr<std::vector<int>>("sampled_labels", "");
+    AddAttr<std::vector<int>>("custom_neg_classes",
+                              "This attribute only be used in unitest. Classes "
+                              "in this list wiil be used as negative classes "
+                              "for every samples. Under normal conditions, "
+                              "user should avoid setting this attribute.");
     AddComment(R"DOC(
-Computes and returns the noise-contrastive estimation training loss.
+Compute and return the noise-contrastive estimation training loss.
 See [Noise-contrastive estimation: A new estimation principle for unnormalized statistical models](http://www.jmlr.org/proceedings/papers/v9/gutmann10a/gutmann10a.pdf).
-By default this uses a uniform distribution for sampling.
-The number of target classes per example should be same. If you have a variable number of target classes, you can pad them out to a constant number by either repeating them or by padding with an otherwise unused class.
+By default this operator uses a uniform distribution for sampling.
 )DOC");
   }
 };
@@ -119,7 +144,7 @@ class NCEOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("SampleLogits"));
     PADDLE_ENFORCE(ctx->HasInput("SampleLabels"));
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Cost")),
-                   "The input(Out@GRAD) should not be null");
+                   "The input(Out@GRAD) should not be null.");
 
     auto x_dims = ctx->GetInputDim("Input");
     auto x_grad_name = framework::GradVarName("Input");
@@ -154,6 +179,8 @@ class NCEOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OP(nce, ops::NCEOp, ops::NCEOpMaker, nce_grad, ops::NCEOpGrad);
-REGISTER_OP_CPU_KERNEL(nce, ops::NCEKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(nce, ops::NCEKernel<paddle::platform::CPUPlace, float>,
+                       ops::NCEKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(nce_grad,
-                       ops::NCEGradKernel<paddle::platform::CPUPlace, float>);
+                       ops::NCEGradKernel<paddle::platform::CPUPlace, float>,
+                       ops::NCEGradKernel<paddle::platform::CPUPlace, double>);
