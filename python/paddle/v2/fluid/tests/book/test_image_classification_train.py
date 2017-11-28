@@ -69,8 +69,7 @@ def vgg16_bn_drop(input):
 
     drop = fluid.layers.dropout(x=conv5, dropout_prob=0.5)
     fc1 = fluid.layers.fc(input=drop, size=512, act=None)
-    reshape1 = fluid.layers.reshape(x=fc1, shape=list(fc1.shape + (1, 1)))
-    bn = fluid.layers.batch_norm(input=reshape1, act='relu')
+    bn = fluid.layers.batch_norm(input=fc1, act='relu')
     drop2 = fluid.layers.dropout(x=bn, dropout_prob=0.5)
     fc2 = fluid.layers.fc(input=drop2, size=512, act=None)
     return fc2
