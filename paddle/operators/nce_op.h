@@ -60,7 +60,7 @@ void PrepareSamples(const framework::ExecutionContext& context) {
       }
     } else {
       for (; j < sample_labels_dims[1]; ++j) {
-        // TODO: support more distribution sampling
+        // TODO(wanghaoshuang): support more distribution sampling
         sample_labels_data[index++] = rand(rng);
       }
     }
