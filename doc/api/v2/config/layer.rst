@@ -54,7 +54,7 @@ img_conv
 
 ..  _api_v2.layer_context_projection:
 
-context_projection 
+context_projection
 ------------------
 ..  autoclass:: paddle.v2.layer.context_projection
     :noindex:
@@ -70,7 +70,7 @@ Image Pooling Layer
 img_pool
 --------
 ..  autoclass:: paddle.v2.layer.img_pool
-    :noindex:   
+    :noindex:
 
 spp
 ---
@@ -104,7 +104,7 @@ sum_to_one_norm
 ---------------
 ..  autoclass:: paddle.v2.layer.sum_to_one_norm
     :noindex:
-    
+
 cross_channel_norm
 ------------------
 ..  autoclass:: paddle.v2.layer.cross_channel_norm
@@ -114,7 +114,7 @@ row_l2_norm
 -----------
 ..  autoclass:: paddle.v2.layer.row_l2_norm
     :noindex:
-    
+
 Recurrent Layers
 ================
 
@@ -335,6 +335,16 @@ bilinear_interp
 ..  autoclass:: paddle.v2.layer.bilinear_interp
     :noindex:
 
+dot_prod
+---------
+.. autoclass:: paddle.v2.layer.dot_prod
+    :noindex:
+
+out_prod
+--------
+.. autoclass:: paddle.v2.layer.out_prod
+    :noindex:
+
 power
 -----
 ..  autoclass:: paddle.v2.layer.power
@@ -372,6 +382,11 @@ cos_sim
 ..  autoclass:: paddle.v2.layer.cos_sim
     :noindex:
 
+l2_distance
+-----------
+..  autoclass:: paddle.v2.layer.l2_distance
+    :noindex:
+
 trans
 -----
 ..  autoclass:: paddle.v2.layer.trans
@@ -400,6 +415,13 @@ multiplex
 ..  autoclass:: paddle.v2.layer.multiplex
     :noindex:
 
+Factorization Machine Layer
+============================
+
+factorization_machine
+---------------------
+..  autoclass:: paddle.v2.layer.factorization_machine
+    :noindex:
 
 Slicing and Joining Layers
 ==========================

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "ROIPoolLayer.h"
+#include <cfloat>
 
 namespace paddle {
 
@@ -100,8 +101,9 @@ void ROIPoolLayer::forward(PassType passType) {
     size_t roiEndH = round(bottomROIs[4] * spatialScale_);
     CHECK_GE(roiBatchIdx, 0UL);
     CHECK_LT(roiBatchIdx, batchSize);
-    size_t roiHeight = std::max(roiEndH - roiStartH + 1, 1UL);
-    size_t roiWidth = std::max(roiEndW - roiStartW + 1, 1UL);
+    size_t roiHeight =
+        std::max(roiEndH - roiStartH + 1, static_cast<size_t>(1));
+    size_t roiWidth = std::max(roiEndW - roiStartW + 1, static_cast<size_t>(1));
     real binSizeH =
         static_cast<real>(roiHeight) / static_cast<real>(pooledHeight_);
     real binSizeW =
@@ -114,17 +116,19 @@ void ROIPoolLayer::forward(PassType passType) {
           size_t wstart = static_cast<size_t>(std::floor(pw * binSizeW));
           size_t hend = static_cast<size_t>(std::ceil((ph + 1) * binSizeH));
           size_t wend = static_cast<size_t>(std::ceil((pw + 1) * binSizeW));
-          hstart = std::min(std::max(hstart + roiStartH, 0UL), height_);
-          wstart = std::min(std::max(wstart + roiStartW, 0UL), width_);
-          hend = std::min(std::max(hend + roiStartH, 0UL), height_);
-          wend = std::min(std::max(wend + roiStartW, 0UL), width_);
+          hstart = std::min(
+              std::max(hstart + roiStartH, static_cast<size_t>(0)), height_);
+          wstart = std::min(
+              std::max(wstart + roiStartW, static_cast<size_t>(0)), width_);
+          hend = std::min(std::max(hend + roiStartH, static_cast<size_t>(0)),
+                          height_);
+          wend = std::min(std::max(wend + roiStartW, static_cast<size_t>(0)),
+                          width_);
 
           bool isEmpty = (hend <= hstart) || (wend <= wstart);
           size_t poolIndex = ph * pooledWidth_ + pw;
-          if (isEmpty) {
-            outputData[poolIndex] = 0;
-            argmaxData[poolIndex] = -1;
-          }
+          outputData[poolIndex] = isEmpty ? 0 : -FLT_MAX;
+          argmaxData[poolIndex] = -1;
 
           for (size_t h = hstart; h < hend; ++h) {
             for (size_t w = wstart; w < wend; ++w) {

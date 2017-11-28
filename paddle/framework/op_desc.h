@@ -73,6 +73,10 @@ class OpDescBind {
 
   void Rename(const std::string &old_name, const std::string &new_name);
 
+  void RenameOutput(const std::string &old_name, const std::string &new_name);
+
+  void RenameInput(const std::string &old_name, const std::string &new_name);
+
   // Only be used in C++
   const AttributeMap &GetAttrMap() const;
 

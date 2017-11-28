@@ -48,6 +48,7 @@ PD_API paddle_matrix paddle_matrix_create(uint64_t height,
  * @param isBinary is binary (either 1 or 0 in matrix) or not.
  * @param useGpu is using GPU or not.
  * @return paddle_matrix.
+ * @note Mobile inference does not support this interface.
  */
 PD_API paddle_matrix paddle_matrix_create_sparse(
     uint64_t height, uint64_t width, uint64_t nnz, bool isBinary, bool useGpu);
@@ -78,7 +79,7 @@ PD_API paddle_error paddle_matrix_set_row(paddle_matrix mat,
  * @note  value should contain enough element of data to init the mat
  */
 PD_API paddle_error paddle_matrix_set_value(paddle_matrix mat,
-                                          paddle_real* value);
+                                            paddle_real* value);
 
 /**
  * @brief PDMatGetRow Get raw row buffer from matrix
@@ -92,14 +93,14 @@ PD_API paddle_error paddle_matrix_get_row(paddle_matrix mat,
                                           paddle_real** rawRowBuffer);
 
 /**
- * @brief copy data from the matrix 
+ * @brief copy data from the matrix
  * @param [in] mat Target matrix
- * @param [out] result pointer to store the matrix data 
+ * @param [out] result pointer to store the matrix data
  * @return paddle_error
  * @note the space of the result should allocated before invoke this API
  */
 PD_API paddle_error paddle_matrix_get_value(paddle_matrix mat,
-                                          paddle_real* result);
+                                            paddle_real* result);
 /**
  * @brief PDMatCreateNone Create None Matrix
  * @return
@@ -129,6 +130,7 @@ PD_API paddle_error paddle_matrix_get_shape(paddle_matrix mat,
  * NULL if the matrix is binary.
  * @param [in] valueSize length of value array. Zero if the matrix is binary.
  * @return paddle_error
+ * @note Mobile inference does not support this interface.
  */
 PD_API paddle_error paddle_matrix_sparse_copy_from(paddle_matrix mat,
                                                    int* rowArray,

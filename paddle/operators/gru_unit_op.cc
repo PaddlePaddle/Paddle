@@ -114,18 +114,19 @@ class GRUUnitOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(sigmoid)
         .InEnum({identity, sigmoid, tanh, relu});
     AddComment(R"DOC(
-GRUUnit Operator.
-
-This operator implements partial calculations of the GRU unit as follows:
+GRUUnit Operator implements partial calculations of the GRU unit as following:
 
 $$
-update \ gate: u_t = actGate(xu_t + W_u * hidden_{prev} + bias_u) \\
-reset \ gate: r_t = actGate(xr_t + W_r * hidden_{prev} + bias_r)  \\
-output \ candidate: {h}_t = actNode({xc}_t + W_c * dot(r_t, hidden_{prev}) + bias_c) \\
-output: h_t = dot((1-u_t), {h}_t) + dot(u_t, hidden_{prev})
+update \ gate: u_t = actGate(xu_t + W_u * h_{t-1} + b_u) \\
+reset \ gate: r_t = actGate(xr_t + W_r * h_{t-1} + b_r)  \\
+output \ candidate: {h}_t = actNode(xc_t + W_c * dot(r_t, h_{t-1}) + b_c) \\
+output: h_t = dot((1 - u_t), h_{t-1}) + dot(u_t, {h}_t)
 $$
 
-The rest of GRU unit can be completed by using FCOp's output as the input of GRUUnitOp.
+which is same as one time step of GRU Operator.
+
+@note To implement the complete GRU unit, fully-connected operator must be 
+used before to feed xu, xr and xc as the Input of GRUUnit operator.
 
 )DOC");
   }
@@ -150,12 +151,6 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
                    "ResetHiddenPrev");
     PADDLE_ENFORCE(ctx->HasInput("Hidden"),
                    "Input(%s) of GRUUnitGradOp should not be null.", "Hidden");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Gate")),
-                   "Input(%s@GRAD) of GRUUnitGradOp should not be null.",
-                   "Gate");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("ResetHiddenPrev")),
-                   "Input(%s@GRAD) of GRUUnitGradOp should not be null.",
-                   "ResetHiddenPrev");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Hidden")),
                    "Input(%s@GRAD) of GRUUnitGradOp should not be null.",
                    "Hidden");
