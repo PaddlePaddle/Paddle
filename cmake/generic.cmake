@@ -459,11 +459,11 @@ function(py_test TARGET_NAME)
   if(WITH_TESTING)
     set(options STATIC static SHARED shared)
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS)
-    cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})  
+    set(multiValueArgs SRCS DEPS ARGS)
+    cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_test(NAME ${TARGET_NAME}
              COMMAND env PYTHONPATH=${PADDLE_PYTHON_BUILD_DIR}/lib-python
-             ${PYTHON_EXECUTABLE} ${py_test_SRCS}
+             ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
              WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   endif()
 endfunction()
