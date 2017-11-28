@@ -50,8 +50,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
 
     v_out.device(place) = v * mu + g;
     if (use_nesterov) {
-      p_out.device(place) = p - g * lr.broadcast(grad_dsize) +
-                            v_out * mu * lr.broadcast(grad_dsize);
+      p_out.device(place) = p - (g - v_out * mu) * lr.broadcast(grad_dsize);
     } else {
       p_out.device(place) = p - lr.broadcast(grad_dsize) * v_out;
     }
