@@ -19,8 +19,8 @@ namespace operators {
 namespace math {
 
 // All tensors are in NCHW format
-template <typename T, typename T2>
-class Unpool2dMaxFunctor<platform::CPUPlace, T, T2> {
+template <typename T>
+class Unpool2dMaxFunctor<platform::CPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input,
@@ -35,7 +35,7 @@ class Unpool2dMaxFunctor<platform::CPUPlace, T, T2> {
     int input_feasize = input_height * input_width;
     int output_feasize = output_height * output_width;
     const T* input_data = input.data<T>();
-    const T2 * indices_data = indices.data<T2>();
+    const int * indices_data = indices.data<int>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
     for (int b = 0; b < batch_size; ++b) {
       for (int c = 0; c < output_channels; ++c) {
@@ -54,8 +54,8 @@ class Unpool2dMaxFunctor<platform::CPUPlace, T, T2> {
 
 
 
-template <class T, typename T2>
-class Unpool2dMaxGradFunctor<platform::CPUPlace, T, T2> {
+template <class T>
+class Unpool2dMaxGradFunctor<platform::CPUPlace, T> {
 public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input,
@@ -71,7 +71,7 @@ public:
     const int output_width = output.dims()[3];
     int input_feasize = input_height * input_width;
     int output_feasize = output_height * output_width;
-    const T2 * indices_data = indices.data<T2>();
+    const int * indices_data = indices.data<int>();
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
@@ -90,10 +90,10 @@ public:
   }
 };
 
-template class Unpool2dMaxGradFunctor<platform::CPUPlace, float, int>;
-template class Unpool2dMaxGradFunctor<platform::CPUPlace, double, int>;
-template class Unpool2dMaxFunctor<platform::CPUPlace, float, int>;
-template class Unpool2dMaxFunctor<platform::CPUPlace, double, int>;
+template class Unpool2dMaxGradFunctor<platform::CPUPlace, float>;
+template class Unpool2dMaxGradFunctor<platform::CPUPlace, double>;
+template class Unpool2dMaxFunctor<platform::CPUPlace, float>;
+template class Unpool2dMaxFunctor<platform::CPUPlace, double>;
 
 }  // namespace math
 }  // namespace operators

@@ -50,7 +50,7 @@ class TestUnpoolOp(OpTest):
                         indices[nidx, cidx, i, j] = \
                                 (r_start + arg / self.ksize[1]) * wsize + \
                                 c_start + arg % self.ksize[1]
-        output = self.Unpool2d_forward_naive(input, indices, self.ksize, \
+        output = self.unpool2d_forward_naive(input, indices, self.ksize, \
                 self.strides, self.paddings).astype("float32")
         self.inputs = {'X': input.astype('float32'),
                        'Indices': indices.astype('int32')}
@@ -69,7 +69,7 @@ class TestUnpoolOp(OpTest):
         self.check_grad(['X'], 'Out')
 
     def init_test_case(self):
-        self.Unpool2d_forward_naive = unpool2dmax_forward_naive
+        self.unpool2d_forward_naive = unpool2dmax_forward_naive
         self.unpooling_type = "max"
         self.shape = [6, 4, 5, 5]
         self.ksize = [3, 3]
