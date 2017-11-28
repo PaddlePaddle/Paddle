@@ -29,14 +29,21 @@ void ExtractNCWHD(const framework::DDim &dims,
                   const TensorFormat &tensor_format, int *N, int *C, int *H,
                   int *W, int *D) {
   *N = dims[0];
-  *C = tensor_format == TensorFormat::NCHW ? dims[1] : dims[dims.size() - 1];
-  *H = tensor_format == TensorFormat::NCHW ? dims[2] : dims[1];
-  *W = dims.size() > 3
+  if (dims.size() == 2) {
+    *C = dims[1];
+    *H = 1;
+    *W = 1;
+    *D = 1;
+  } else {
+    *C = tensor_format == TensorFormat::NCHW ? dims[1] : dims[dims.size() - 1];
+    *H = tensor_format == TensorFormat::NCHW ? dims[2] : dims[1];
+    *W = dims.size() > 3
            ? (tensor_format == TensorFormat::NCHW ? dims[3] : dims[2])
            : 1;
-  *D = dims.size() > 4
+    *D = dims.size() > 4
            ? (tensor_format == TensorFormat::NCHW ? dims[4] : dims[3])
            : 1;
+  }
 }
 
 template <typename T>
