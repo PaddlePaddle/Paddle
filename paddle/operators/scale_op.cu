@@ -16,4 +16,6 @@
 
 REGISTER_OP_GPU_KERNEL(
     scale, paddle::operators::ScaleKernel<paddle::platform::GPUPlace, float>,
-    paddle::operators::ScaleKernel<paddle::platform::GPUPlace, double>);
+    paddle::operators::ScaleKernel<paddle::platform::GPUPlace, double>,
+    paddle::operators::ScaleKernel<paddle::platform::GPUPlace, int>,
+    paddle::operators::ScaleKernel<paddle::platform::GPUPlace, int64_t>);
