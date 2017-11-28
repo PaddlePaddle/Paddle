@@ -26,6 +26,7 @@ UNSET_VAR(PROTOBUF_PROTOC_LIBRARY)
 UNSET_VAR(PROTOBUF_LITE_LIBRARY)
 UNSET_VAR(PROTOBUF_LIBRARY)
 UNSET_VAR(PROTOBUF_INCLUDE_DIR)
+UNSET_VAR(Protobuf_PROTOC_EXECUTABLE)
 
 if(NOT COMMAND protobuf_generate_python)  # before cmake 3.4, protobuf_genrerate_python is not defined.
     function(protobuf_generate_python SRCS)
@@ -120,7 +121,6 @@ macro(PROMPT_PROTOBUF_LIB)
     # FIND_Protobuf.cmake uses `Protobuf_PROTOC_EXECUTABLE`.
     # make `protobuf_generate_cpp` happy.
     SET(Protobuf_PROTOC_EXECUTABLE ${PROTOBUF_PROTOC_EXECUTABLE})
-
     FOREACH(dep ${protobuf_DEPS})
         ADD_DEPENDENCIES(protobuf ${dep})
         ADD_DEPENDENCIES(protobuf_lite ${dep})
