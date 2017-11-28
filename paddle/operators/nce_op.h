@@ -22,7 +22,7 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
+using Tensor = framework::Tensor;
 
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -107,12 +107,11 @@ class NCEKernel : public framework::OpKernel<T> {
     auto input_mat = EigenMatrix<T>::From(*(context.Input<Tensor>("Input")));
     auto weight_mat = EigenMatrix<T>::From(*(context.Input<Tensor>("Weight")));
     for (size_t i = 0; i < sample_labels->numel(); ++i) {
-      Eigen::Tensor<float, 0, Eigen::RowMajor, Eigen::DenseIndex> result =
+      Eigen::Tensor<T, 0, Eigen::RowMajor, Eigen::DenseIndex> result =
           (input_mat.chip((int)(i / sample_labels->dims()[1]), 0) *
            weight_mat.chip(sample_labels_data[i], 0))
               .sum();
       sample_out_data[i] += result(0);
-      // activation_->forward
       sample_out_data[i] = (1. / (1. + exp(-sample_out_data[i])));
     }
     // forward cost
