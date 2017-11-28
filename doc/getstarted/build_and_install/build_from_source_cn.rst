@@ -10,7 +10,7 @@ PaddlePaddle主要使用 `CMake <https://cmake.org>`_ 以及GCC, G++作为编译
 我们推荐您使用PaddlePaddle Docker编译环境镜像完成编译，这样可以免去单独安装编译依赖的步骤，可选的不同编译环境Docker镜像
 可以在 `这里 <https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/>`_ 找到。
 
-如果您选择不使用Docker镜像，则需要在本机安装下面章节列出的“编译依赖”之后才能开始编译的步骤。
+如果您选择不使用Docker镜像，则需要在本机安装下面章节列出的 compile_deps_ 之后才能开始编译的步骤。
 
 编译PaddlePaddle，需要执行：
 
@@ -40,11 +40,12 @@ PaddlePaddle主要使用 `CMake <https://cmake.org>`_ 以及GCC, G++作为编译
 
 如果您期望在编译完成后立即执行所有的单元测试，可以按照下面的方法：
 
-使用Docker的情况下，设置 :code:`RUN_TEST=ON` 就会在完成编译之后，立即执行单元测试。
+使用Docker的情况下，设置 :code:`RUN_TEST=ON` 和 :code:`WITH_TESTING=ON` 就会在完成编译之后，立即执行单元测试。
+开启 :code:`WITH_GPU=ON` 可以指定同时执行GPU上的单元测试。
 
 .. code-block:: bash
 
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" -e "RUN_TEST=ON" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x paddle/scripts/docker/build.sh
+   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=ON" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x paddle/scripts/docker/build.sh
 
 如果不使用Docker，可以执行ctest命令即可：
 
@@ -55,6 +56,8 @@ PaddlePaddle主要使用 `CMake <https://cmake.org>`_ 以及GCC, G++作为编译
    cmake -DWITH_GPU=OFF -DWITH_TESTING=OFF ..
    make
    ctest
+   # run a single test like test_mul_op
+   ctest -R test_mul_op
 
 .. _compile_deps:
 

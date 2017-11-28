@@ -12,7 +12,7 @@ to avoid installing dependencies by yourself. We have several build environment
 Docker images `here <https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/>`_ .
 
 If you choose not to use Docker image for your build, you need to install the
-below "Compile Dependencies" before run the build.
+below compile_deps_ before run the build.
 
 Then run:
 
@@ -44,11 +44,12 @@ Run Tests
 
 If you wish to run the tests, you may follow the below steps:
 
-When using Docker, set :code:`RUN_TEST=ON` will run test immediately after the build.
+When using Docker, set :code:`RUN_TEST=ON` and :code:`WITH_TESTING=ON` will run test immediately after the build.
+Set :code:`WITH_GPU=ON` Can also run tests on GPU.
 
 .. code-block:: bash
 
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" -e "RUN_TEST=ON" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x paddle/scripts/docker/build.sh
+   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=ON" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x paddle/scripts/docker/build.sh
 
 If you don't use Docker, just run ctest will start the tests:
 
@@ -56,9 +57,11 @@ If you don't use Docker, just run ctest will start the tests:
 
    mkdir build
    cd build
-   cmake -DWITH_GPU=OFF -DWITH_TESTING=OFF ..
+   cmake -DWITH_GPU=OFF -DWITH_TESTING=ON ..
    make
    ctest
+   # run a single test like test_mul_op
+   ctest -R test_mul_op
 
 
 .. _compile_deps:
