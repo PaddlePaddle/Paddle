@@ -164,7 +164,7 @@ void HierarchicalSigmoidLayer::backward(const UpdateCallback& callback) {
       cpuBias_ = biases_grad;
     }
     preOutput_.grad->addByBitCodeBackward(numClasses_, *cpuLabel_, *cpuBias_);
-    if (useGpu) {
+    if (useGpu_) {
       biases_grad->copyFrom(*cpuBias_);
     } else {
       biases_grad = cpuBias_;
