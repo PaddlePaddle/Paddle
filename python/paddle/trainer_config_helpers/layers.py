@@ -6854,6 +6854,7 @@ def crop_layer(input, offset, axis=2, shape=None, name=None, layer_attr=None):
 
     :param input: The input of this layer. If two inputs are given, the second one
                   will be regarded as the reference.
+                  And the input must be 4-dims and in NCHW order.
     :type input: LayerOutput | Sequence
     :param offset: The crop offset.
     :type offset: Sequence
