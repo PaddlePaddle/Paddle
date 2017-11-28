@@ -31,5 +31,9 @@ int main(int argc, char** argv) {
   char** new_argv_address = new_argv.data();
   google::ParseCommandLineFlags(&new_argc, &new_argv_address, false);
   testing::InitGoogleTest(&argc, argv);
+  paddle::memory::Used(paddle::platform::CPUPlace());
+#ifdef PADDLE_WITH_CUDA
+  paddle::memory::Used(paddle::platform::GPUPlace(0));
+#endif
   return RUN_ALL_TESTS();
 }
