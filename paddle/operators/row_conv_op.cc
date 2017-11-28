@@ -121,49 +121,37 @@ class RowConvKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
     context.ShareLoD("X", "Out");
 
-    PADDLE_ENFORCE_EQ(in->lod().size(), 1UL,
-                      "Only support one level sequence now.");
-
     auto batch_indices = in->lod()[0];
-    auto input_dim = in->dims()[1];  // in is of size T x N
+    auto input_dim = in->dims()[1];  // 'in' is of size T x N
     size_t num_sequences = batch_indices.size() - 1;
 
-    filter->mutable_data<T>(ctx.GetPlace());
-    auto context_length =
-        filter->dims()[0];  // filter if of size context_length x N
-    auto weights = filter->data<T>();
+    auto context_length = filter->dims()[0];
+    auto weights = EigenMatrix<T>::From(*filter);
 
     for (size_t i = 0; i < num_sequences; i++) {
       int start = static_cast<int>(batch_indices[i]);
       int end = static_cast<int>(batch_indices[i + 1]);
-
+      int current_timesteps = end - start + 1;
       Tensor cur_input_sequence =
           in->Slice(start, end);  // Current input sequence
       Tensor cur_output_sequence =
           out->Slice(start, end);  // Current output sequence
-      auto cip_seq = cur_input_sequence.data<T>();
-      auto cot_seq = cur_output_sequence.data<T>();
+      auto cip_seq = EigenMatrix<T>::From(cur_input_seqeunce);
+      auto cot_seq = EigenMatrix<T>::From(cur_output_sequence);
 
-      int current_timesteps = end - start + 1;
-
-      if (current_timesteps == 0)
-        continue
-
-            for (size_t k = 0; k < current_timesteps;
-                 k++) {  // For different time steps in the same sequence
-          for (size_t w = 0;
-               (w < context_length) && ((k + w) < current_timesteps);
-               w++) {  // For summing over context_length vectors in the weight
-                       // matrix
-            for (size_t d = 0; d < input_dim; d++) {
-              if (w == 0) {  // TODO: Add ternary operator here
-                cot_seq(k, d) = weights(w, d) * cip_seq(k + w, d);
-              } else {
-                cot_seq(k, d) += weights(w, d) * cip_seq(k + w, d);
-              }
+      for (size_t k = 0; k < current_timesteps;
+           k++) {  // For different time steps in the same sequence
+        for (size_t w = 0;
+             (w < context_length) && ((k + w) < current_timesteps); w++) {
+          for (size_t d = 0; d < input_dim; d++) {
+            if (w == 0) {
+              cot_seq(k, d) = weights(w, d) * cip_seq(k + w, d);
+            } else {
+              cot_seq(k, d) += weights(w, d) * cip_seq(k + w, d);
             }
           }
         }
+      }
     }
   };
 
@@ -173,75 +161,82 @@ class RowConvKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
    public:
     void Compute(const framework::ExecutionContext &context) const override {
       auto *in = context.Input<LoDTensor>("X");
-      auto *filter = context.Input<LoDTensor>("Filter");
+      auto *filter = context.Input<Tensor>("Filter");
       auto *dOut = context.Input<LoDTensor>(framework::GradVarName("Out"));
-      auto *din = context.Output<Tensor>(framework::GradVarName("X"));
+      auto *din = context.Output<LoDTensor>(framework::GradVarName("X"));
       auto *dfilter = context.Output<Tensor>(framework::GradVarName("Filter"));
 
-      din->mutable_data<T>(context.GetPlace());
-      dfilter->mutable_data<T>(context.GetPlace());
-
-      auto batch_indices = in->lod()[0];
-      auto input_dim = in->dims()[1];  // in is of size T x N
+      if (din) din->mutable_data<T>(context.GetPlace());
+      if (dfilter) auto batch_indices = in->lod()[0];
+      auto input_dim = in->dims()[1];  // 'in' is of size T x N
       size_t num_sequences = batch_indices.size() - 1;
 
-      auto context_length =
-          filter->dims()[0];  // filter if of size context_length x N
-      auto weights = filter->data<T>();
+      auto context_length = filter->dims()[0];
 
-      auto dweights = dfilter->data<T>();  // Gradient of weight matrix
+      if (dfilter) {
+        dfilter->mutable_data<T>(context.GetPlace());
+        auto dweights =
+            EigenMatrix<T>::From(*dfilter);  // Gradient of weight matrix
+        dweights.setZero();
 
-      for (size_t i = 0; i < num_sequences; i++) {  // For different sequences
-        int start = static_cast<int>(batch_indices[i]);
-        int end = static_cast<int>(batch_indices[i + 1]);
+        for (size_t i = 0; i < num_sequences; i++) {  // For different sequences
+          int start = static_cast<int>(batch_indices[i]);
+          int end = static_cast<int>(batch_indices[i + 1]);
 
-        Tensor cur_input_sequence =
-            in->Slice(start, end);  // Current input sequence
-        Tensor cur_output_sequence =
-            out->Slice(start, end);  // Current output sequence
+          Tensor cur_input = in->Slice(start, end);  // Current input sequence
+          Tensor cur_doutput =
+              dOut->Slice(start, end);  // Current output grad sequence
 
-        Tensor cur_dinput =
-            din->Slice(start, end);  // Current input grad sequence
-        Tensor cur_doutput =
-            dOut->Slice(start, end);  // Current output grad sequence
+          auto cur_ip = EigenMatrix<T>::From(cur_input);
+          auto cur_dout = EigenMatrix<T>::From(cur_doutput);
+          int current_timesteps = end - start + 1;
 
-        auto cip_seq = cur_input_sequence.data<T>();
-        auto cot_seq = cur_output_sequence.data<T>();
-
-        auto cur_dip = cur_dinput.data<T>();
-        auto cur_dout = cur_doutput.data<T>();
-
-        int current_timesteps = end - start + 1;
-
-        for (size_t k = 0; k < current_timesteps;
-             k++) {  // For different time steps in the same sequence
-          for (size_t w = 0;
-               (w < context_length) && ((k + w) < current_timesteps);
-               w++) {  // For summing over context_length vectors in the weight
-                       // matrix
-
-            // For dweights (Updating the gradient of weights matrix)
-            for (size_t d = 0; d < input_dim; d++) {
-              if (k < context_length && i == 0) {  // CHECK ME
-                dweights(w, d) = cip_seq(k, d) * cur_dout(k, d);
-              } else {
-                dweights(w, d) += cip_seq(k, d) * cur_dout(k, d);
-              }
-            }
-
-            // For dinput (Updating the gradient wrt input)
-            for (size_t d = 0; d < input_dim; d++) {
-              if () {
-                cur_dip(k, d) = weights(w, d) * cur_dout(k, d);
-              } else {
-                cur_dip(k, d) += weights(w, d) * cur_dout(k, d);
+          for (size_t k = 0; k < current_timesteps;
+               k++) {  // For different time steps in the same sequence
+            for (size_t w = 0;
+                 (w < context_length) && ((k + w) < current_timesteps); w++) {
+              int start = k + w;
+              // For dweights (Updating the gradient of weight matrix)
+              for (size_t d = 0; d < input_dim; d++) {
+                dweights(w, d) += cip_seq(start, d) * cur_dout(k, d);
               }
             }
           }
         }
       }
-    };
-  }  // namespace operators
+
+      if (din) {
+        auto weights = EigenMatrix<T>::From(*filter);
+        for (size_t i = 0; i < num_sequences; i++) {  // For different sequences
+          int start = static_cast<int>(batch_indices[i]);
+          int end = static_cast<int>(batch_indices[i + 1]);
+
+          Tensor cur_doutput =
+              dOut->Slice(start, end);  // Current output grad sequence
+          Tensor cur_dinput =
+              din->Slice(start, end);  // Current input grad sequence
+
+          auto cur_dout = EigenMatrix<T>::From(cur_doutput);
+          auto cur_dip = EigenMatrix<T>::From(cur_dinput);
+          cur_dip.setZero();
+          int current_timesteps = end - start + 1;
+
+          for (size_t k = 0; k < current_timesteps;
+               k++) {  // For different time steps in the same sequence
+            for (size_t w = 0;
+                 (w < context_length) && ((k + w) < current_timesteps); w++) {
+              int start = k + w;
+              // For dinput (Updating the gradient wrt input)
+              for (size_t d = 0; d < input_dim; d++) {
+                cur_dip(start, d) += weights(w, d) * cur_dout(k, d);
+              }
+            }
+          }
+        }
+      }
+    }
+  };
+}  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;

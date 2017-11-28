@@ -12,8 +12,8 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/conv_shift_op.h"
 #include "paddle/operators/math/math_function.h"
+#include "paddle/operators/row_conv_op.h"
 #include "paddle/platform/cuda_helper.h"
 
 namespace paddle {
@@ -34,9 +34,8 @@ inline int DivUp(int x, int y) { return (x + y - 1) / y; }
 // y is fairly small. For large y, it would probably be more efficient
 // to also tile across y.
 template <typename T>
-__global__ void ConvShiftForward(const T *x, const T *y, int x_width,
-                                 int y_width, int y_half_width, int batch_size,
-                                 T *out) {
+__global__ void RowConvForward(const T *x, const T *y, int x_width, int y_width,
+                               int y_half_width, int batch_size, T *out) {
   extern __shared__ T mem[];
 
   int tx = threadIdx.x;
@@ -80,9 +79,9 @@ __global__ void ConvShiftForward(const T *x, const T *y, int x_width,
 
 // Compute x gradient - initial naive implementation with atomic add.
 template <typename T>
-__global__ void ConvShiftGradX(const T *dout, const T *y, int x_width,
-                               int y_width, int y_half_width, int batch_size,
-                               T *dx) {
+__global__ void RowConvGradX(const T *dout, const T *y, int x_width,
+                             int y_width, int y_half_width, int batch_size,
+                             T *dx) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;  // x index
   int j = blockIdx.y;                             // y index
   int k = blockIdx.z;                             // batch index
@@ -96,8 +95,8 @@ __global__ void ConvShiftGradX(const T *dout, const T *y, int x_width,
 
 // Compute y gradient - initial naive implementation with atomic add.
 template <typename T>
-__global__ void ConvShiftDy(const T *x, const T *dout, int x_width, int y_width,
-                            int y_half_width, int batch_size, T *dy) {
+__global__ void RowConvDy(const T *x, const T *dout, int x_width, int y_width,
+                          int y_half_width, int batch_size, T *dy) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;  // x index
   int j = blockIdx.y;                             // y index
   int k = blockIdx.z;                             // batch index
@@ -111,7 +110,7 @@ __global__ void ConvShiftDy(const T *x, const T *dout, int x_width, int y_width,
 }  // namespace
 
 template <typename T>
-class ConvShiftKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
+class RowConvKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     const Tensor *X = context.Input<Tensor>("X");
@@ -134,14 +133,13 @@ class ConvShiftKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
 
     auto stream = context.cuda_device_context().stream();
 
-    ConvShiftForward<T><<<grid_dim, x_per_block, mem_per_block, stream>>>(
+    RowConvForward<T><<<grid_dim, x_per_block, mem_per_block, stream>>>(
         x_data, y_data, x_width, y_width, y_half_width, batch_size, out_data);
   }
 };
 
 template <typename T>
-class ConvShiftGradKernel<platform::GPUPlace, T>
-    : public framework::OpKernel<T> {
+class RowConvGradKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     const Tensor *X = context.Input<Tensor>("X");
@@ -169,14 +167,14 @@ class ConvShiftGradKernel<platform::GPUPlace, T>
     if (dX) {
       T *dx_data = dX->mutable_data<T>(context.GetPlace());
       zero(device_ctx, dX, static_cast<T>(0.0));
-      ConvShiftGradX<T><<<grid_dim, x_per_block, 0, device_ctx.stream()>>>(
+      RowConvGradX<T><<<grid_dim, x_per_block, 0, device_ctx.stream()>>>(
           dout_data, y_data, x_width, y_width, y_half_width, batch_size,
           dx_data);
     }
     if (dY) {
       T *dy_data = dY->mutable_data<T>(context.GetPlace());
       zero(device_ctx, dY, static_cast<T>(0.0));
-      ConvShiftDy<T><<<grid_dim, x_per_block, 0, device_ctx.stream()>>>(
+      RowConvDy<T><<<grid_dim, x_per_block, 0, device_ctx.stream()>>>(
           x_data, dout_data, x_width, y_width, y_half_width, batch_size,
           dy_data);
     }
@@ -186,8 +184,7 @@ class ConvShiftGradKernel<platform::GPUPlace, T>
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(conv_shift,
-                       ops::ConvShiftKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_GPU_KERNEL(row_conv,
+                       ops::RowConvKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
-    conv_shift_grad,
-    ops::ConvShiftGradKernel<paddle::platform::GPUPlace, float>);
+    row_conv_grad, ops::RowConvGradKernel<paddle::platform::GPUPlace, float>);
