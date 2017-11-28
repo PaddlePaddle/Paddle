@@ -1,7 +1,7 @@
 import unittest
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.core as core
-from paddle.v2.fluid.framework import g_startup_program, g_main_program
+from paddle.v2.fluid.framework import default_startup_program, default_main_program
 from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.backward import append_backward_ops
 import numpy
@@ -19,7 +19,7 @@ class ConditionalBlock(unittest.TestCase):
 
         cpu = core.CPUPlace()
         exe = Executor(cpu)
-        exe.run(g_startup_program)
+        exe.run(default_startup_program())
 
         x = numpy.random.random(size=(10, 1)).astype('float32')
 
@@ -29,7 +29,9 @@ class ConditionalBlock(unittest.TestCase):
         append_backward_ops(loss=loss)
         outs = exe.run(
             feed={'X': x},
-            fetch_list=[g_main_program.block(0).var(data.name + "@GRAD")])[0]
+            fetch_list=[
+                default_main_program().block(0).var(data.name + "@GRAD")
+            ])[0]
         print outs
 
 
