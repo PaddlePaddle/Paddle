@@ -1,12 +1,12 @@
 import os
 import cPickle as pickle
 
-from paddle.v2.fluid.framework import Program, Parameter, g_main_program, \
-    Variable
+from paddle.v2.fluid.framework import Program, Parameter, default_main_program, Variable
 
 __all__ = [
     'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
-    'load_persistables', "save_inference_model", "load_inference_model"
+    'load_persistables', "save_inference_model", "load_inference_model",
+    "get_inference_program"
 ]
 
 
@@ -23,7 +23,7 @@ def _clone_var_in_block_(block, var):
     return block.create_var(
         name=var.name,
         shape=var.shape,
-        dtype=var.data_type,
+        dtype=var.dtype,
         type=var.type,
         lod_level=var.lod_level,
         persistable=True)
@@ -45,7 +45,7 @@ def save_vars(executor, dirname, main_program=None, vars=None, predicate=None):
     """
     if vars is None:
         if main_program is None:
-            main_program = g_main_program
+            main_program = default_main_program()
         if not isinstance(main_program, Program):
             raise TypeError("program should be as Program type or None")
 
@@ -97,7 +97,7 @@ def load_vars(executor, dirname, main_program=None, vars=None, predicate=None):
     :param executor: executor that save variable
     :param dirname: directory path
     :param main_program: program. If vars is None, then filter all variables in this
-    program which fit `predicate`. Default g_program.
+    program which fit `predicate`. Default default_main_program().
     :param predicate: The Predicate describes a callable that returns a variable
     as a bool. If it returns true, the variables will be loaded.
     :param vars: variables need to be loaded. If specify vars, program &
@@ -106,7 +106,7 @@ def load_vars(executor, dirname, main_program=None, vars=None, predicate=None):
     """
     if vars is None:
         if main_program is None:
-            main_program = g_main_program
+            main_program = default_main_program()
         if not isinstance(main_program, Program):
             raise TypeError("program's type should be Program")
 
@@ -151,6 +151,17 @@ def load_persistables(executor, dirname, main_program=None):
         predicate=is_persistable)
 
 
+def get_inference_program(target_vars, main_program=None):
+    if main_program is None:
+        main_program = default_main_program()
+    if not isinstance(target_vars, list):
+        target_vars = [target_vars]
+
+    pruned_program = main_program.prune(targets=target_vars)
+    inference_program = pruned_program.inference_optimize()
+    return inference_program
+
+
 def save_inference_model(dirname,
                          feeded_var_names,
                          target_vars,
@@ -165,25 +176,26 @@ def save_inference_model(dirname,
     :param target_vars: Variables from which we can get inference results.
     :param executor: executor that save inference model
     :param main_program: original program, which will be pruned to build the inference model.
-    Default g_main_program.
+            Default default_main_program().
 
     :return: None
     """
     if main_program is None:
-        main_program = g_main_program
+        main_program = default_main_program()
     if not isinstance(target_vars, list):
         target_vars = [target_vars]
 
     if not os.path.isdir(dirname):
         os.makedirs(dirname)
 
-    pruned_program = main_program.prune(target_vars)
+    pruned_program = main_program.prune(targets=target_vars)
+    inference_program = pruned_program.inference_optimize()
     fetch_var_names = [v.name for v in target_vars]
 
     model_file_name = dirname + "/__model__"
     with open(model_file_name, "w") as f:
         pickle.dump({
-            "program_desc_str": pruned_program.desc.serialize_to_string(),
+            "program_desc_str": inference_program.desc.serialize_to_string(),
             "feed_var_names": feeded_var_names,
             "fetch_var_names": fetch_var_names
         }, f, -1)
@@ -259,10 +271,10 @@ def get_parameter_value_by_name(name, executor, program=None):
     :param executor: executor for retrieving the value
     :param name: the name of the parameter
     :param program: the program where the variable is found
-    Default g_main_program.
+            Default default_main_program().
     :return: the LoDTensor for the variable
     """
     if program is None:
-        program = g_main_program
+        program = default_main_program()
     var = program.global_block().var(name)
     return get_parameter_value(var, executor)
