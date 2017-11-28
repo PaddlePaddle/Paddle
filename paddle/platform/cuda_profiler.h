@@ -29,10 +29,10 @@ void CudaProfilerInit(std::string output_file, std::string output_mode,
   memcpy(buf.data(), tmpl.data(), tmpl.size());
   auto result = mktemp(buf.data());
   PADDLE_ENFORCE(strlen(result) != 0);
-  std::string config = result;
+  std::string config_file = result;
 
   {
-    std::ofstream ofs(config, std::ios::out | std::ios::trunc);
+    std::ofstream ofs(config_file, std::ios::out | std::ios::trunc);
     PADDLE_ENFORCE(ofs.is_open(), "ofstream: ", ofs.rdstate());
     for (const auto& line : config_flags) {
       ofs << line << std::endl;
@@ -42,12 +42,12 @@ void CudaProfilerInit(std::string output_file, std::string output_mode,
   PADDLE_ENFORCE(output_mode == "kvp" || output_mode == "csv");
   cudaOutputMode_t mode = output_mode == "csv" ? cudaCSV : cudaKeyValuePair;
   PADDLE_ENFORCE(
-      cudaProfilerInitialize(config.c_str(), output_file.c_str(), mode));
+      cudaProfilerInitialize(config_file.c_str(), output_file.c_str(), mode));
 }
 
 void CudaProfilerStart() { PADDLE_ENFORCE(cudaProfilerStart()); }
 
-void CudaProfilerStop() { PADDLE_ENFORCE((cudaProfilerStop())); }
+void CudaProfilerStop() { PADDLE_ENFORCE(cudaProfilerStop()); }
 
 }  // namespace platform
 }  // namespace paddle
