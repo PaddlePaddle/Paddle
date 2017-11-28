@@ -51,7 +51,7 @@ class ElementwiseModKernel : public framework::OpKernel<T> {
         " ElementwiseModOp Input(Y) must be Scalar, shape equal 1.");
 
     auto x_e = framework::EigenVector<T>::Flatten(*x);
-    auto y_e = framework::EigenScalar<int>::From(*y);
+    auto y_e = framework::EigenScalar<int64_t>::From(*y);
     auto z_e = framework::EigenVector<T>::Flatten(*z);
     z_e.device(ctx.GetEigenDevice<Place>()) = x_e % y_e(0);
   }

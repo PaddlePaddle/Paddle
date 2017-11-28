@@ -13,7 +13,7 @@ class ElementwiseModOp(OpTest):
         """
         self.inputs = {
             'X': np.random.randint(1, 10, [13, 17]).astype("int64"),
-            'Y': np.int64(np.random.randint(1, 10))
+            'Y': np.random.randint(1, 10, [1,]).astype("int64")
         }
         self.outputs = {'Out': np.mod(self.inputs['X'], self.inputs['Y'])}
 
