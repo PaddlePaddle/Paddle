@@ -2400,15 +2400,14 @@ class CropLayer(LayerBase):
         image_conf.img_size_y = input_layer.height
         image_conf.channels = input_layer.size / (input_layer.width *
                                                   input_layer.height)
-
+        # only support for 4-dims inputs and NCHW order
         if (len(self.config.inputs) == 2):
             self.set_layer_height_width(
                 self.get_input_layer(1).height, self.get_input_layer(1).width)
             self.set_layer_size(self.get_input_layer(1).size)
         else:
-            # NCHW order
             self.set_layer_height_width(shape[-2], shape[-1])
-            self.set_layer_size(reduce(lambda x, y: x * y, shape))
+            self.set_layer_size(reduce(lambda x, y: x * y, shape[1:]))
 
 
 @config_layer('batch_norm')
@@ -3865,18 +3864,19 @@ class SwitchOrderLayer(LayerBase):
         else:
             in_h = input_layer.height
             in_w = input_layer.width
+            out_dims = None
             if input_layer.has_depth():
                 in_d = input_layer.depth
                 in_c = input_layer.size / in_h / in_w / in_d
+                # batch_size, depth, height, width, channel
                 out_dims = [0, in_d, in_h, in_w, in_c]
-                size = reduce(lambda x, y: x * y,
-                              out_dims[reshape['width'][0]:])
             else:
                 in_c = input_layer.size / in_h / in_w
+                # batch_size, height, width, channel
                 out_dims = [0, in_h, in_w, in_c]
-                size = reduce(lambda x, y: x * y,
-                              out_dims[reshape['width'][0]:])
-
+            # Because (reshape['width'][0] > 0) always be true.
+            # So out_dims[0] won't be used.
+            size = reduce(lambda x, y: x * y, out_dims[reshape['width'][0]:])
             self.set_layer_size(size)
 
 
