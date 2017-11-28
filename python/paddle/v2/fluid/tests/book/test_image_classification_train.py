@@ -1,7 +1,9 @@
 from __future__ import print_function
+
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
+import sys
 
 
 def resnet_cifar10(input, depth=32):
@@ -80,11 +82,18 @@ data_shape = [3, 32, 32]
 images = fluid.layers.data(name='pixel', shape=data_shape, dtype='float32')
 label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
-# Add neural network config
-# option 1. resnet
-# net = resnet_cifar10(images, 32)
-# option 2. vgg
-net = vgg16_bn_drop(images)
+net_type = "vgg"
+if len(sys.argv) >= 2:
+    net_type = sys.argv[1]
+
+if net_type == "vgg":
+    print("train vgg net")
+    net = vgg16_bn_drop(images)
+elif net_type == "resnet":
+    print("train resnet")
+    net = resnet_cifar10(images, 32)
+else:
+    raise ValueError("%s network is not supported" % net_type)
 
 predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
 cost = fluid.layers.cross_entropy(input=predict, label=label)

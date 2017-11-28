@@ -189,5 +189,14 @@ std::pair<LoD, std::pair<size_t, size_t>> GetSubLoDAndAbsoluteOffset(
 
 void AppendLoD(LoD* lod, const LoD& lod_length);
 
+/*
+ * Serialize/Desiralize LoDTensor to std::ostream
+ * You can pass ofstream or ostringstream to serilize to file
+ * or to a in memory string. GPU tensor will be copied to CPU.
+ */
+void SerializeToStream(std::ostream& os, const LoDTensor& tensor,
+                       const platform::DeviceContext& dev_ctx);
+void DeserializeFromStream(std::istream& is, LoDTensor* tensor);
+
 }  // namespace framework
 }  // namespace paddle
