@@ -50,10 +50,15 @@ class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
         "(string), unpooling type, can be \"max\" for max-unpooling ")
         .InEnum({"max"});
     AddComment(R"DOC(
-          "Paper: http://www.matthewzeiler.com/wp-content/uploads/2017
+          "Input shape: $(N, C_{in}, H_{in}, W_{in})$
+          Output shape: $(N, C_{out}, H_{out}, W_{out})$
+          Where
+          $$
+            H_{out} = (H_{in}−1) * strides[0] − 2 * paddings[0] + ksize[0] \\
+            W_{out} = (W_{in}−1) * strides[1] − 2 * paddings[1] + ksize[1]
+          $$
+          Paper: http://www.matthewzeiler.com/wp-content/uploads/2017
           /07/iccv2011.pdf
-          PyTorch: http://pytorch.org/docs/master/nn.html?highlight=unpool#
-          torch.nn.MaxUnpool2d"
         )DOC");
   }
 };
@@ -125,9 +130,9 @@ namespace ops = paddle::operators;
 REGISTER_OP(unpool, ops::UnpoolOp, ops::Unpool2dOpMaker, unpool_grad,
             ops::UnpoolOpGrad);
 REGISTER_OP_CPU_KERNEL(unpool,
-              ops::UnpoolKernel<paddle::platform::CPUPlace, float, int>,
-              ops::UnpoolKernel<paddle::platform::CPUPlace, double, int>);
+              ops::UnpoolKernel<paddle::platform::CPUPlace, float>,
+              ops::UnpoolKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(unpool_grad,
-            ops::UnpoolGradKernel<paddle::platform::CPUPlace, float, int>,
-            ops::UnpoolGradKernel<paddle::platform::CPUPlace, double, int>);
+            ops::UnpoolGradKernel<paddle::platform::CPUPlace, float>,
+            ops::UnpoolGradKernel<paddle::platform::CPUPlace, double>);
 
