@@ -681,12 +681,13 @@ TEST(Layer, hsigmoidLayer) {
   config.layerConfig.add_inputs();
   config.layerConfig.add_inputs();
 
-  // Not support GPU now
-  testLayerGrad(config,
-                "hsigmoid",
-                100,
-                /* trans */ false, /* useGpu */
-                false);
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config,
+                  "hsigmoid",
+                  100,
+                  /* trans */ false,
+                  /* useGpu */ useGpu);
+  }
 }
 
 TEST(Layer, multi_cross) {
@@ -2462,6 +2463,25 @@ TEST(Layer, L2DistanceLayer) {
   for (auto useGpu : {false, true}) {
     testLayerGrad(config, "l2_distance", batch_size, false, useGpu);
   }
+}
+
+void testFactorizationMachineLayer(InputType type, bool useGpu) {
+  const int FACTOR_SIZE = 10;
+  TestConfig config;
+  config.layerConfig.set_type("factorization_machine");
+  config.layerConfig.set_factor_size(FACTOR_SIZE);
+  config.layerConfig.set_size(1);
+  config.biasSize = 0;
+  config.inputDefs.push_back({type, "layer_0", 128, 1280});
+  config.layerConfig.add_inputs();
+  testLayerGrad(config, "factorization_machine", 16, false, useGpu, false);
+}
+
+TEST(Layer, FactorizationMachineLayer) {
+  for (auto useGpu : {false, true}) {
+    testFactorizationMachineLayer(INPUT_DATA, useGpu);
+  }
+  testFactorizationMachineLayer(INPUT_SPARSE_FLOAT_VALUE_DATA, false);
 }
 
 int main(int argc, char** argv) {
