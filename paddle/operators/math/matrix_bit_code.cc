@@ -69,19 +69,23 @@ static void AddByBitCodeT(Op op, CodeTable code_table,
   }
 }
 
-/* For j < codeLength:
-   a(i, j) += b(0, index(i, j))
-*/
 template <typename T>
 void AddByBitCode(size_t num_classes, const framework::Tensor& codes,
-                  framework::Tensor& a, const framework::Tensor& b) {
+                  framework::Tensor& tmat, const framework::Tensor& vec) {
   auto op = [](T& t, T& v) { t += v; };
-  AddByBitCodeT<T>(op, SimpleCodeTable(num_classes), codes, a, b);
+  AddByBitCodeT<T>(op, SimpleCodeTable(num_classes), codes, tmat, vec);
+}
+
+template <typename T>
+void AddByBitCodeGrad(size_t num_classes, const framework::Tensor& codes,
+                      const framework::Tensor& tmat, framework::Tensor& vec) {
+  auto op = [](T& t, T& v) { v += t; };
+  AddByBitCode<T>(op, SimpleCodeTable(num_classes), codes, tmat, vec);
 }
 
 template <class CodeTable, typename T>
 void SumByBitCodeT(CodeTable code_table, const framework::Tensor& codes,
-                   framework::Tensor& tmat, framework::Tensor& sum,
+                   framework::Tensor& tmat, const framework::Tensor& sum,
                    const T& scale_sum) {
   size_t max_code_length = code_table.get_max_code_length();
   size_t num_samples = tmat.dims()[0];
@@ -142,8 +146,61 @@ void MulByBitCode(size_t num_classes, const framework::Tensor& codes,
     }
     t += sum;
   };
-  MulByBitCode(op, SimpleCodeTable(num_classes), codes, tmat, weight, input);
+  MulByBitCodeT<T>(op, SimpleCodeTable(num_classes), codes, tmat, weight,
+                   input);
 }
+
+template <typename T>
+void MulByBitCodeGradWeight(size_t num_classes, const framework::Tensor& codes,
+                            const framework::Tensor& tmat,
+                            framework::Tensor& weight,
+                            const framework::Tensor& input) {
+  auto op = [](const T t, T* weight_row, const T* input_row, size_t input_dim) {
+    for (size_t k = 0; k < input_dim; ++k) {
+      weight_row[k] += t * input_row[k];
+    }
+  };
+  MulByBitCodeT<T>(op, SimpleCodeTable(num_classes), codes, tmat, weight,
+                   input);
+}
+
+template <typename T>
+void MulByBitCodeGradError(size_t num_classes, const framework::Tensor& codes,
+                           const framework::Tensor& tmat,
+                           const framework::Tensor& weight,
+                           framework::Tensor& input) {
+  auto op = [](const T t, const T* weight_row, T* input_row, size_t input_dim) {
+    for (size_t k = 0; k < input_dim; ++k) {
+      input_row[k] += t * weight_row[k];
+    }
+  };
+  MulByBitCodeT<T>(op, SimpleCodeTable(num_classes), codes, tmat, weight,
+                   input);
+}
+
+template <class CodeTable, typename T>
+void SubByBitCodeT(CodeTable code_table, const framework::Tensor& codes,
+                   framework::Tensor& tmat) {
+  size_t max_code_length = code_table.get_max_code_length();
+  size_t num_samples = tmat.dims()[0];
+  size_t o_width = tmat.dims()[1];
+  for (size_t i = 0; i < num_samples; ++i) {
+    auto code = code_table(codes.data<T>()[i]);
+    int code_length = code.get_length();
+    for (int j = 0; j < code_length; ++j) {
+      if (code.calc_bit(j)) {
+        tmat.data<T>()[i * o_width + j] -= 1;
+      }
+    }
+  }
+}
+
+template <typename T>
+void SubByBitCode(size_t num_classes, const framework::Tensor& codes,
+                  framework::Tensor& tmat) {
+  SubByBitCodeT<T>(SimpleCodeTable(num_classes), codes, tmat);
+}
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

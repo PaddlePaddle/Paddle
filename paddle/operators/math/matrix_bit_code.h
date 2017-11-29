@@ -59,27 +59,57 @@ struct SimpleCodeTable {
   int max_code_length_;
 };
 
-/* For j < codeLength
+/* For j < code_length
     tmat(i, j) += vec(0, index(i, j))
 */
 template <typename T>
 void AddByBitCode(size_t num_classes, const framework::Tensor& codes,
                   framework::Tensor& tmat, const framework::Tensor& vec);
 
-/* For j < codeLength
+/* For j < code_length
+    vec(0, index(i, j)) += tmat(i, j)
+*/
+template <typename T>
+void AddByBitCodeGrad(size_t num_classes, const framework::Tensor& codes,
+                      const framework::Tensor& tmat, framework::Tensor& vec);
+/* For j < code_length
     sum(i, 0) = \sum_j bit(i, j) * tmat(i, j)
 */
 template <typename T>
 void SumByBitCode(size_t num_classes, const framework::Tensor& codes,
                   framework::Tensor& tmat, framework::Tensor& sum, T scale_sum);
 
-/* For j < codeLength
+/* For j < code_length
     input.row(i) += tmat(i, j) * weight.row(index(i, j))
 */
 template <typename T>
 void MulByBitCode(size_t num_classes, const framework::Tensor& codes,
                   framework::Tensor& tmat, const framework::Tensor& weight,
                   const framework::Tensor& input);
+
+/* For index(i, j) >= 0:
+    weight.row(index(i, j)) += tmat(i, j) * input.row(i)
+*/
+template <typename T>
+void MulByBitCodeGradWeight(size_t num_classes, const framework::Tensor& codes,
+                            const framework::Tensor& tmat,
+                            framework::Tensor& weight,
+                            const framework::Tensor& input);
+/* For j < code_length
+  input.row(i) += tmat(i, j) * weight.row(index(i, j))
+*/
+template <typename T>
+void MulByBitCodeGradError(size_t num_classes, const framework::Tensor& codes,
+                           const framework::Tensor& tmat,
+                           const framework::Tensor& weight,
+                           framework::Tensor& input);
+
+/* For j < code_length
+    tmat(i, j) -= bit(i, j)
+*/
+template <typename T>
+void SubByBitCode(size_t num_classes, const framework::Tensor& codes,
+                  framework::Tensor& tmat);
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
