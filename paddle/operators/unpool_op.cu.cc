@@ -16,8 +16,8 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
-  unpool, ops::UnpoolKernel<paddle::platform::GPUPlace, float>,
-  ops::UnpoolKernel<paddle::platform::GPUPlace, double>);
+    unpool, ops::UnpoolKernel<paddle::platform::GPUPlace, float>,
+    ops::UnpoolKernel<paddle::platform::GPUPlace, double>);
 REGISTER_OP_GPU_KERNEL(
-  unpool_grad, ops::UnpoolGradKernel<paddle::platform::GPUPlace, float>,
-  ops::UnpoolGradKernel<paddle::platform::GPUPlace, double>);
+    unpool_grad, ops::UnpoolGradKernel<paddle::platform::GPUPlace, float>,
+    ops::UnpoolGradKernel<paddle::platform::GPUPlace, double>);
