@@ -42,7 +42,7 @@ ExternalProject_Add(
     # Disable -Werror, otherwise the compile will fail in MacOS.
     # It seems that we cannot configure that by make command.
     # Just dry run make command and remove `-Werror`, then use a shell to run make commands
-    BUILD_COMMAND  ${BUILD_CMD} HAS_SYSTEM_PROTOBUF=false -j8 static grpc_cpp_plugin
+    BUILD_COMMAND  ${BUILD_CMD} HAS_SYSTEM_PROTOBUF=false -s -j8 static grpc_cpp_plugin
     INSTALL_COMMAND make prefix=${GRPC_INSTALL_DIR} install
 )
 
