@@ -24,7 +24,7 @@ def get_usr_combined_features():
         input=uid,
         dtype='float32',
         size=[USR_DICT_SIZE, 32],
-        param_attr={'name': 'user_table'},
+        param_attr='user_table',
         is_sparse=IS_SPARSE)
 
     usr_fc = layers.fc(input=usr_emb, size=32)
@@ -36,7 +36,7 @@ def get_usr_combined_features():
     usr_gender_emb = layers.embedding(
         input=usr_gender_id,
         size=[USR_GENDER_DICT_SIZE, 16],
-        param_attr={'name': 'gender_table'},
+        param_attr='gender_table',
         is_sparse=IS_SPARSE)
 
     usr_gender_fc = layers.fc(input=usr_gender_emb, size=16)
@@ -48,7 +48,7 @@ def get_usr_combined_features():
         input=usr_age_id,
         size=[USR_AGE_DICT_SIZE, 16],
         is_sparse=IS_SPARSE,
-        param_attr={'name': 'age_table'})
+        param_attr='age_table')
 
     usr_age_fc = layers.fc(input=usr_age_emb, size=16)
 
@@ -58,7 +58,7 @@ def get_usr_combined_features():
     usr_job_emb = layers.embedding(
         input=usr_job_id,
         size=[USR_JOB_DICT_SIZE, 16],
-        param_attr={'name': 'job_table'},
+        param_attr='job_table',
         is_sparse=IS_SPARSE)
 
     usr_job_fc = layers.fc(input=usr_job_emb, size=16)
@@ -81,7 +81,7 @@ def get_mov_combined_features():
         input=mov_id,
         dtype='float32',
         size=[MOV_DICT_SIZE, 32],
-        param_attr={'name': 'movie_table'},
+        param_attr='movie_table',
         is_sparse=IS_SPARSE)
 
     mov_fc = layers.fc(input=mov_emb, size=32)

@@ -44,7 +44,7 @@ def db_lstm():
         size=[pred_len, word_dim],
         dtype='float32',
         is_sparse=IS_SPARSE,
-        param_attr={'name': 'vemb'})
+        param_attr='vemb')
 
     mark_embedding = fluid.layers.embedding(
         input=mark,
@@ -57,8 +57,8 @@ def db_lstm():
         fluid.layers.embedding(
             size=[word_dict_len, word_dim],
             input=x,
-            param_attr={'name': embedding_name,
-                        'trainable': False}) for x in word_input
+            param_attr=fluid.ParamAttr(
+                name=embedding_name, trainable=False)) for x in word_input
     ]
     emb_layers.append(predicate_embedding)
     emb_layers.append(mark_embedding)
@@ -125,8 +125,8 @@ def main():
     crf_cost = fluid.layers.linear_chain_crf(
         input=feature_out,
         label=target,
-        param_attr={"name": 'crfw',
-                    "learning_rate": mix_hidden_lr})
+        param_attr=fluid.ParamAttr(
+            name='crfw', learning_rate=mix_hidden_lr))
     avg_cost = fluid.layers.mean(x=crf_cost)
     # TODO(qiao)
     #   1. add crf_decode_layer and evaluator
