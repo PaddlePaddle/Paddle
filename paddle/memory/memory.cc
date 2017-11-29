@@ -91,6 +91,7 @@ void* Alloc<platform::GPUPlace>(platform::GPUPlace place, size_t size) {
     platform::GpuMemoryUsage(avail, total);
     LOG(WARNING) << "Cannot allocate " << size << " bytes in GPU "
                  << place.device << ", available " << avail << " bytes";
+    LOG(WARNING) << "GPU memory used: " << Used(place);
     platform::SetDeviceId(cur_dev);
   }
   return ptr;
