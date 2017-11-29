@@ -17,15 +17,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 namespace math {
-
 // All tensors are in NCHW format
 template <typename T>
 class Unpool2dMaxFunctor<platform::CPUPlace, T> {
- public:
+public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& indices,
-                  framework::Tensor * output) {
+              const framework::Tensor& input,
+              const framework::Tensor& indices, framework::Tensor* output) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
@@ -40,7 +38,7 @@ class Unpool2dMaxFunctor<platform::CPUPlace, T> {
     for (int b = 0; b < batch_size; ++b) {
       for (int c = 0; c < output_channels; ++c) {
         for (int i = 0; i < input_feasize; ++i) {
-          int index =  indices_data[i];
+          int index = indices_data[i];
           PADDLE_ENFORCE(index < output_feasize, "err index in unpooling!");
           output_data[index] = input_data[i];
         }
@@ -51,9 +49,6 @@ class Unpool2dMaxFunctor<platform::CPUPlace, T> {
     }
   }
 };
-
-
-
 template <class T>
 class Unpool2dMaxGradFunctor<platform::CPUPlace, T> {
 public:
@@ -62,7 +57,7 @@ public:
                   const framework::Tensor& indices,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad,
-                  framework::Tensor * input_grad) {
+                  framework::Tensor* input_grad) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
@@ -89,12 +84,10 @@ public:
     }
   }
 };
-
 template class Unpool2dMaxGradFunctor<platform::CPUPlace, float>;
 template class Unpool2dMaxGradFunctor<platform::CPUPlace, double>;
 template class Unpool2dMaxFunctor<platform::CPUPlace, float>;
 template class Unpool2dMaxFunctor<platform::CPUPlace, double>;
-
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
