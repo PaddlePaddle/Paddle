@@ -74,9 +74,9 @@ __global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
       for (int w = 0; (w < context_length) && ((k + w) < current_timesteps);
            w++) {
         // cur_dip(start + k + w, d) += wt(w, d) * dout(start + k, d);
-        sum += wt[w * input_dim + d] * dout[(start + k) * input_dim + d];
+        din[(start + k + w) * input_dim + d] +=
+            wt[w * input_dim + d] * dout[(start + k) * input_dim + d];
       }
-      din[(start + k + w) * input_dim + d] = sum;
     }
   }
 }
@@ -158,8 +158,8 @@ class RowConvGradKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
       zero(device_ctx, dFilter, static_cast<T>(0.0));  // May not need, CHECK ME
 
       dim3 block_dim = dim3(32, 32);
-      dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), DivUp(context_length),
-                           block_dim.y);
+      dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x),
+                           DivUp(context_length, block_dim.y));
 
       RowConvGradFilter<T><<<grid_dim, block_dim, 0, device_ctx.stream()>>>(
           in, dout, num_sequence, input_dim, context_length, batch_indices,
