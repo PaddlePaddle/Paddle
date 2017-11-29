@@ -41,11 +41,11 @@ class NCEOp : public framework::OperatorWithKernel {
     }
     auto num_neg_samples = ctx->Attrs().Get<int>("num_neg_samples");
     auto num_total_classes = ctx->Attrs().Get<int>("num_total_classes");
-    std::vector<int> sampled_labels =
-        ctx->Attrs().Get<std::vector<int>>("sampled_labels");
+    std::vector<int> custom_neg_classes =
+        ctx->Attrs().Get<std::vector<int>>("custom_neg_classes");
     PADDLE_ENFORCE_EQ(num_total_classes, ctx->GetInputDim("Weight")[0]);
-    if (sampled_labels.size() > 0) {
-      PADDLE_ENFORCE_EQ(sampled_labels.size(),
+    if (custom_neg_classes.size() > 0) {
+      PADDLE_ENFORCE_EQ(custom_neg_classes.size(),
                         static_cast<size_t>(num_neg_samples));
     }
     // set dims of output(Out)
