@@ -43,7 +43,8 @@ class OpTest(unittest.TestCase):
         self.op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         self.program = Program()
         self.block = self.program.global_block()
-        # If operator performs in place computation on a variable, in_place_map maps both input and output to the same variable .
+        # If operator performs in place computation on a variable, in_place_map 
+        # maps both input and output to the same variable .
         self.cached_var = {}
         if not hasattr(self, "in_place_map"):
             self.in_place_map = {}
@@ -63,7 +64,9 @@ class OpTest(unittest.TestCase):
         :param name: variable name. 
         :type name: basestring.
         :param feed_value: tensor value and shape that used to initialize the variable. 
-        :type feed_value: 1) numpy `array`, in which case lod_level is 0; 2) 2d tuple, where the first element is numpy `array` and the second element is a `list` specifying the lod_level.
+        :type feed_value: 1) numpy `array`, in which case lod_level is 0; 
+                          2) 2d tuple, where the first element is numpy `array` and 
+                          the second element is a `list` specifying the lod_level.
         :param dtype: data type of tensor. 
         :type dtype: basestring or one of numpy data types.
         :return: variable in current block.
@@ -184,7 +187,8 @@ class OpTest(unittest.TestCase):
 
         :param place: Gpu or Cpu place. 
         :type name: Place.
-        :return: 3d tuple (operator, input variable descriptions, output variable descriptions) 
+        :return: 3d tuple (operator, input variable descriptions, 
+                 output variable descriptions) 
         :rtype: tuple.
         """
         # compile time prepare
@@ -424,10 +428,8 @@ class OpTest(unittest.TestCase):
         tensor_size = np.prod(tensor_to_check.get_dims())
         gradient_flat = np.zeros(
             shape=(tensor_size, ), dtype=tensor_to_check_dtype)
-        # print "Joe:_num_grad:output_names", output_names
         fetch_list = self._get_fetch_list(
             output_var_descs, place, filter=output_names)
-        # output_var_descs, place, filter=output_names)
         exe = Executor(place)
 
         def __get_elem__(tensor, i):
