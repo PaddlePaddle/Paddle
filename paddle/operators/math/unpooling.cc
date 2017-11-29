@@ -19,9 +19,9 @@ namespace math {
 template <typename T>
 class Unpool2dMaxFunctor<platform::CPUPlace, T> {
  public:
-  void operator()(
-    const platform::DeviceContext& context, const framework::Tensor& input,
-    const framework::Tensor& indices, framework::Tensor* output) {
+  void operator()(const platform::DeviceContext& context,
+                const framework::Tensor& input,
+                const framework::Tensor& indices, framework::Tensor* output) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
@@ -50,10 +50,12 @@ class Unpool2dMaxFunctor<platform::CPUPlace, T> {
 template <class T>
 class Unpool2dMaxGradFunctor<platform::CPUPlace, T> {
  public:
-  void operator()(
-    const platform::DeviceContext& context, const framework::Tensor& input,
-    const framework::Tensor& indices, const framework::Tensor& output,
-    const framework::Tensor& output_grad, framework::Tensor* input_grad) {
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& input,
+                  const framework::Tensor& indices,
+                  const framework::Tensor& output,
+                  const framework::Tensor& output_grad,
+                  framework::Tensor* input_grad) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
