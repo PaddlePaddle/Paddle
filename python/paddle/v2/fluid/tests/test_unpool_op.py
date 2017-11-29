@@ -52,14 +52,16 @@ class TestUnpoolOp(OpTest):
                                 c_start + arg % self.ksize[1]
         output = self.unpool2d_forward_naive(input, indices, self.ksize, \
                 self.strides, self.paddings).astype("float32")
-        self.inputs = {'X': input.astype('float32'),
-                       'Indices': indices.astype('int32')}
+        self.inputs = {
+            'X': input.astype('float32'),
+            'Indices': indices.astype('int32')
+            }
         self.attrs = {
-                 'strides': self.strides,
-                 'paddings': self.paddings,
-                 'ksize': self.ksize,
-                 'unpooling_type': self.unpooling_type,
-                 }
+            'strides': self.strides,
+            'paddings': self.paddings,
+            'ksize': self.ksize,
+            'unpooling_type': self.unpooling_type,
+            }
         self.outputs = {'Out': output.astype('float32')}
 
     def test_check_output(self):
@@ -75,8 +77,6 @@ class TestUnpoolOp(OpTest):
         self.ksize = [3, 3]
         self.strides = [2, 2]
         self.paddings = [0, 0]
-
-
 
 if __name__ == '__main__':
     unittest.main()
