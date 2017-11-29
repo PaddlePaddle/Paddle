@@ -39,7 +39,7 @@ __global__ void FillFirstColumn(T* dist, const int M, const int N) {
 }
 
 template <typename T>
-__global__ void Levenshtein(T* dist, const T* x1, const T* x2, const int M,
+__global__ void Levenshtein(T* dist, const int* x1, const int* x2, const int M,
                             const int N, const int start) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   int offset = N;
@@ -55,6 +55,15 @@ __global__ void Levenshtein(T* dist, const T* x1, const T* x2, const int M,
   }
 }
 
+template <typename T>
+__global__ void SetOutput(T* out, const T* dist, const int M, const int N,
+                          bool normalized) {
+  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  if (idx == 0) {
+    out[0] = normalized ? dist[M * (N + 1) + N] / N : dist[M * (N + 1) + N];
+  }
+}
+
 template <typename Place, typename T>
 class CTCEditDistanceGPUKernel : public framework::OpKernel<T> {
  public:
@@ -64,7 +73,8 @@ class CTCEditDistanceGPUKernel : public framework::OpKernel<T> {
     auto* x1_t = ctx.Input<framework::Tensor>("X1");
     auto* x2_t = ctx.Input<framework::Tensor>("X2");
 
-    out_t->mutable_data<float>(ctx.GetPlace());
+    out_t->mutable_data<T>(ctx.GetPlace());
+    auto out = out_t->data<T>();
 
     auto normalized = ctx.Attr<bool>("normalized");
     auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(
@@ -73,49 +83,41 @@ class CTCEditDistanceGPUKernel : public framework::OpKernel<T> {
 
     auto m = x1_t->numel();
     auto n = x2_t->numel();
-    T distance = 0;
-    if (m == 0) {
-      distance = n;
-    } else if (n == 0) {
-      distance = m;
+    T distance = 0.0;
+    if (m == 0 || n == 0) {
+      distance = std::max(m, n);
+      if (normalized) {
+        distance = distance / n;
+      }
+      memory::Copy(boost::get<Place>(ctx.GetPlace()), out, platform::CPUPlace(),
+                   &distance, sizeof(T), stream);
     } else {
       framework::Tensor dist_t;
       dist_t.Resize({m + 1, n + 1});
       dist_t.mutable_data<T>(ctx.GetPlace());
       auto dist = dist_t.data<T>();
-      auto x1 = x1_t->data<T>();
-      auto x2 = x2_t->data<T>();
+      auto x1 = x1_t->data<int>();
+      auto x2 = x2_t->data<int>();
 
       FillFirstColumn<T><<<1 + m / PADDLE_CUDA_NUM_THREADS,
                            PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, m, n);
 
       FillFirstRow<T><<<1 + n / PADDLE_CUDA_NUM_THREADS,
                         PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, n);
-      // compute the elements of distance matrix in the anti-diagonal diretion
-      for (size_t slice = 2; slice < m + n + 1; ++slice) {
+      // Compute the elements of distance matrix in the anti-diagonal diretion
+      for (int64_t slice = 2; slice < m + n + 1; ++slice) {
         int z_m = slice < m + 1 ? 0 : slice - m;
         int z_n = slice < n + 1 ? 0 : slice - n;
-        // number of elments in the same anti-diagonal line
-        int size = slice - (z_m + z_n) + 1;
-        int start = slice < n + 1 ? slice : z_n * (n + 1) - 1;
+        int size = slice - (z_m + z_n) + 1;  // number of elments in the same
+                                             // anti-diagonal line to update
+        int start = slice < n + 1 ? slice : z_n * (n + 1) - 1;  // start index
+
         Levenshtein<T><<<1 + (size - 1) / PADDLE_CUDA_NUM_THREADS,
                          PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, x1, x2, m,
                                                                n, start);
       }
-
-      Place gpu_place = boost::get<Place>(ctx.GetPlace());
-      memory::Copy(platform::CPUPlace(), &distance, gpu_place,
-                   dist + m * (n + 1) + n, sizeof(T), stream);
+      SetOutput<T><<<1, 1, 0, stream>>>(out, dist, m, n, normalized);
     }
-
-    if (normalized) {
-      distance = distance / n;
-    }
-    auto out = out_t->data<float>();
-    Place gpu_place = boost::get<Place>(ctx.GetPlace());
-    float dist_f = distance;
-    memory::Copy(gpu_place, out, platform::CPUPlace(), &dist_f, sizeof(float),
-                 stream);
   }
 };
 
@@ -126,5 +128,4 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_GPU_KERNEL(
     ctc_edit_distance,
-    ops::CTCEditDistanceGPUKernel<paddle::platform::GPUPlace, int>,
-    ops::CTCEditDistanceGPUKernel<paddle::platform::GPUPlace, int64_t>);
+    ops::CTCEditDistanceGPUKernel<paddle::platform::GPUPlace, float>);

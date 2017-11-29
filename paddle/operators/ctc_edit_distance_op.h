@@ -35,7 +35,7 @@ class CTCEditDistanceKernel : public framework::OpKernel<T> {
 
     auto m = x1_t->numel();
     auto n = x2_t->numel();
-    float distance = 0.0;
+    T distance = 0.0;
     if (m == 0) {
       distance = n;
     } else if (n == 0) {
@@ -45,16 +45,16 @@ class CTCEditDistanceKernel : public framework::OpKernel<T> {
       dist_t.Resize({m + 1, n + 1});
       dist_t.mutable_data<T>(ctx.GetPlace());
       auto dist = dist_t.data<T>();
-      auto x1 = x1_t->data<T>();
-      auto x2 = x2_t->data<T>();
-      for (size_t i = 0; i < m + 1; ++i) {
+      auto x1 = x1_t->data<int>();
+      auto x2 = x2_t->data<int>();
+      for (int64_t i = 0; i < m + 1; ++i) {
         dist[i * (n + 1)] = i;
       }
-      for (size_t j = 0; j < n + 1; ++j) {
+      for (int64_t j = 0; j < n + 1; ++j) {
         dist[j] = j;
       }
-      for (size_t i = 1; i < m + 1; ++i) {
-        for (size_t j = 1; j < n + 1; ++j) {
+      for (int64_t i = 1; i < m + 1; ++i) {
+        for (int64_t j = 1; j < n + 1; ++j) {
           int cost = x1[i - 1] == x2[j - 1] ? 0 : 1;
           int dels = dist[(i - 1) * (n + 1) + j] + 1;
           int ins = dist[i * (n + 1) + (j - 1)] + 1;
@@ -68,7 +68,7 @@ class CTCEditDistanceKernel : public framework::OpKernel<T> {
     if (normalized) {
       distance = distance / n;
     }
-    auto out = out_t->data<float>();
+    auto out = out_t->data<T>();
     out[0] = distance;
   }
 };
