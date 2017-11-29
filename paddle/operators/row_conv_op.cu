@@ -58,23 +58,23 @@ template <typename T>
 __global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
                                  int input_dim, int context_length,
                                  size_t *batch_indices, T *din) {
-  int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
+  int d_idx = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
   int bly = blockDim.y;
   int thy = threadIdx.y;
-  if (d >= input_dim) return;
-
+  if (d_idx != 0 && thy != 0) return;
   for (size_t i = 0; i < num_sequence; i++) {
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
     int current_timesteps = end - start;
-    for (int k = thy; k < current_timesteps; k += bly) {
+    for (int k = 0; k < current_timesteps; k += 1) {
       T sum = 0;
       for (int w = 0; (w < context_length) && ((k + w) < current_timesteps);
            w++) {
-        // cur_dip(start + k + w, d) += wt(w, d) * dout(start + k, d);
-        sum += wt[w * input_dim + d] * dout[(start + k) * input_dim + d];
+        for (int d = 0; d < input_dim; d++) {
+          din[(start + k + w) * input_dim + d] +=
+              wt[w * input_dim + d] * dout[(start + k) * input_dim + d];
+        }
       }
-      din[(start + k) * input_dim + d] += sum;
     }
   }
 }
