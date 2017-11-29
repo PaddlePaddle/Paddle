@@ -26,9 +26,9 @@ class Evaluator(object):
         name(str): The name of evaluator. such as, "accuracy". Used for generate 
             temporary variable name.
         main_program(Program, optional): The evaluator should be added to this 
-            main_program. Default g_main_program 
+            main_program. Default default_main_program()
         startup_program(Program, optional):The parameter should be added to this 
-            startup_program. Default g_startup_program
+            startup_program. Default default_startup_program()
             
     Attributes:
         states(list): The list of state variables. states will be reset to zero 

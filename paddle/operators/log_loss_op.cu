@@ -12,10 +12,11 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/scale_op.h"
+#define EIGEN_USE_GPU
+#include "paddle/operators/log_loss_op.h"
 
+namespace ops = paddle::operators;
+REGISTER_OP_GPU_KERNEL(log_loss,
+                       ops::LogLossKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
-    scale, paddle::operators::ScaleKernel<paddle::platform::GPUPlace, float>,
-    paddle::operators::ScaleKernel<paddle::platform::GPUPlace, double>,
-    paddle::operators::ScaleKernel<paddle::platform::GPUPlace, int>,
-    paddle::operators::ScaleKernel<paddle::platform::GPUPlace, int64_t>);
+    log_loss_grad, ops::LogLossGradKernel<paddle::platform::GPUPlace, float>);
