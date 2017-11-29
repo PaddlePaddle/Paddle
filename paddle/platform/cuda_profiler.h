@@ -27,7 +27,7 @@ void CudaProfilerInit(std::string output_file, std::string output_mode,
   std::string tmpl = "/tmp/cuda_profile_config.XXXXXX";
   PADDLE_ENFORCE_LT(tmpl.size(), buf.size());
   memcpy(buf.data(), tmpl.data(), tmpl.size());
-  auto result = mktemp(buf.data());
+  auto result = mkstemp(buf.data());
   PADDLE_ENFORCE(strlen(result) != 0);
   std::string config_file = result;
 
