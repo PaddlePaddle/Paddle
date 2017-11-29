@@ -1,10 +1,11 @@
-from . import core
+import core
 import proto.framework_pb2 as framework_pb2
 from framework import OpProtoHolder, Variable, Program, Operator
-from initializer import Constant, Normal, Xavier
+from initializer import Constant, Normal, Xavier, Initializer
 from paddle.v2.fluid.layer_helper import LayerHelper, unique_name
 import re
 import cStringIO
+from param_attr import ParamAttr
 
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
@@ -17,9 +18,7 @@ def fc(input,
        size,
        num_flatten_dims=1,
        param_attr=None,
-       param_initializer=None,
        bias_attr=None,
-       bias_initializer=None,
        act=None,
        name=None,
        main_program=None,
@@ -54,22 +53,9 @@ def fc(input,
     to the LayerHelper constructor.
 
     """
-
-    def _get_default_param_initializer():
-        return Xavier()
-
-    def _get_default_bias_initializer():
-        return Constant()
-
     helper = LayerHelper('fc', **locals())
 
     dtype = helper.input_dtype()
-
-    if param_initializer is None:
-        param_initializer = _get_default_param_initializer()
-
-    if bias_initializer is None:
-        bias_initializer = _get_default_bias_initializer()
 
     mul_results = []
     for input_var, param_attr in helper.iter_inputs_and_params():
@@ -78,10 +64,7 @@ def fc(input,
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
         ] + [size]
         w = helper.create_parameter(
-            attr=param_attr,
-            initializer=param_initializer,
-            shape=param_shape,
-            dtype=dtype)
+            attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
         tmp = helper.create_tmp_variable(dtype)
         helper.append_op(
             type="mul",
@@ -102,7 +85,7 @@ def fc(input,
         helper.append_op(
             type="sum", inputs={"X": mul_results}, outputs={"Out": pre_bias})
     # add bias
-    pre_activation = helper.append_bias_op(pre_bias, bias_initializer)
+    pre_activation = helper.append_bias_op(pre_bias)
     # add activation
     return helper.append_activation(pre_activation)
 
@@ -110,7 +93,6 @@ def fc(input,
 def embedding(input,
               size,
               is_sparse=False,
-              param_initializer=None,
               param_attr=None,
               dtype='float32',
               main_program=None,
@@ -119,6 +101,7 @@ def embedding(input,
     Embedding Layer.
 
     Args:
+       param_initializer:
        input: The input to the function
        size: The size of the layer
        is_sparse: A flag that decleares whether the input is sparse
@@ -136,15 +119,9 @@ def embedding(input,
 
     """
 
-    def _get_default_param_initializer():
-        return Xavier()
-
     helper = LayerHelper('embedding', **locals())
     w = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=size,
-        dtype=dtype,
-        initializer=param_initializer or _get_default_param_initializer())
+        attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False)
     tmp = helper.create_tmp_variable(dtype)
     helper.append_op(
         type='lookup_table',
@@ -176,7 +153,7 @@ def dynamic_lstm(input,
     if not use_peepholes:
         bias_size[1] = 4 * size
     bias = helper.create_parameter(
-        attr=helper.bias_attr, shape=bias_size, dtype=dtype, suffix='b')
+        attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
 
     hidden = helper.create_tmp_variable(dtype)
     cell = helper.create_tmp_variable(dtype)
@@ -471,19 +448,14 @@ def sums(input, out=None, main_program=None, startup_program=None):
 def linear_chain_crf(input,
                      label,
                      param_attr=None,
-                     param_initializer=None,
                      main_program=None,
                      startup_program=None):
-    def _get_default_param_initializer():
-        return Xavier()
-
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[1]
     transition = helper.create_parameter(
         attr=helper.param_attr,
         shape=[size + 2, size],
-        dtype=helper.input_dtype(),
-        initializer=param_initializer or _get_default_param_initializer())
+        dtype=helper.input_dtype())
     alpha = helper.create_tmp_variable(dtype=helper.input_dtype())
     emission_exps = helper.create_tmp_variable(dtype=helper.input_dtype())
     transition_exps = helper.create_tmp_variable(dtype=helper.input_dtype())
@@ -646,9 +618,7 @@ def sequence_conv(input,
                   filter_stride=1,
                   padding=None,
                   bias_attr=None,
-                  bias_initializer=None,
                   param_attr=None,
-                  param_initializer=None,
                   act=None,
                   main_program=None,
                   startup_program=None):
@@ -658,30 +628,15 @@ def sequence_conv(input,
     in the input parameters to the function.
     """
 
-    def _get_default_bias_initializer():
-        return Constant()
-
-    def _get_default_param_initializer():
-        return Xavier()
-
     # FIXME(dzh) : want to unify the argument of python layer
     # function. So we ignore some unecessary attributes.
     # such as, padding_trainable, context_start.
 
     helper = LayerHelper('sequence_conv', **locals())
     dtype = helper.input_dtype()
-
-    if param_initializer is None:
-        param_initializer = _get_default_param_initializer()
-    if bias_initializer is None:
-        bias_initializer = _get_default_bias_initializer()
-
     filter_shape = [filter_size * input.shape[1], num_filters]
     filter = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=filter_shape,
-        dtype=dtype,
-        initializer=param_initializer)
+        attr=helper.param_attr, shape=filter_shape, dtype=dtype)
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
@@ -696,7 +651,7 @@ def sequence_conv(input,
             'contextStart': -int(filter_size / 2),
             'contextLength': filter_size
         })
-    pre_act = helper.append_bias_op(pre_bias, bias_initializer)
+    pre_act = helper.append_bias_op(pre_bias)
     return helper.append_activation(pre_act)
 
 
@@ -707,9 +662,7 @@ def conv2d(input,
            padding=None,
            groups=None,
            param_attr=None,
-           param_initializer=None,
            bias_attr=None,
-           bias_initializer=None,
            act=None,
            name=None,
            main_program=None,
@@ -721,13 +674,6 @@ def conv2d(input,
     This funciton can also append an activation on top of the
     conv-2d output, if mentioned in the input parameters.
     """
-
-    def _get_default_bias_initializer():
-        return Constant()
-
-    def _get_default_param_initializer(filter_size, num_channels):
-        std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
-        return Normal(0.0, std, 0)
 
     helper = LayerHelper('conv2d', **locals())
     dtype = helper.input_dtype()
@@ -750,17 +696,16 @@ def conv2d(input,
     input_shape = input.shape
     filter_shape = [num_filters, num_filter_channels] + filter_size
 
-    if param_initializer is None:
-        param_initializer = _get_default_param_initializer(filter_size,
-                                                           num_channels)
-    if bias_initializer is None:
-        bias_initializer = _get_default_bias_initializer()
+    def _get_default_param_initializer():
+        std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
+        return Normal(0.0, std, 0)
 
     filter = helper.create_parameter(
         attr=helper.param_attr,
         shape=filter_shape,
         dtype=dtype,
-        initializer=param_initializer)
+        default_initializer=_get_default_param_initializer())
+
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
@@ -774,8 +719,7 @@ def conv2d(input,
                'paddings': padding,
                'groups': groups})
 
-    pre_act = helper.append_bias_op(
-        pre_bias, bias_initializer, dim_start=1, dim_end=2)
+    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
 
     return helper.append_activation(pre_act)
 
@@ -876,12 +820,10 @@ def batch_norm(input,
         attr=helper.param_attr,
         shape=param_shape,
         dtype=dtype,
-        initializer=Constant(1.0))
+        default_initializer=Constant(1.0))
+
     bias = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=param_shape,
-        dtype=dtype,
-        initializer=Constant(0.0))
+        attr=helper.param_attr, shape=param_shape, dtype=dtype, is_bias=True)
 
     mean = helper.create_global_variable(
         dtype=input.dtype, shape=param_shape, persistable=True)
@@ -1356,7 +1298,7 @@ def lod_rank_table(x, level=0, main_program=None):
 
 def max_sequence_len(rank_table, main_program=None):
     """
-    This function creates an operator to calculate the length of 
+    This function creates an operator to calculate the length of
     max seqence through input rank_table(should be a lod_rank_table)
     """
     helper = LayerHelper("max_seqence_len", **locals())
@@ -1585,6 +1527,93 @@ def array_length(array, main_program=None):
     helper.append_op(
         type='lod_array_length', inputs={'X': [array]}, outputs={'Out': [tmp]})
     return tmp
+
+
+def conv2d_transpose(input,
+                     num_filters,
+                     output_size=None,
+                     filter_size=None,
+                     padding=None,
+                     stride=None,
+                     param_attr=None,
+                     main_program=None,
+                     startup_program=None):
+    """
+    The transpose of conv2d layer.
+
+    This layer is also known as deconvolution layer.
+
+    Args:
+        input(Variable): The input image with [N, C, H, W] format.
+        num_filters(int): The number of filter. It is as same as the output
+            image channel.
+        output_size(int|tuple|None): The output image size. If output size is a
+            tuple, it must contain two integers, (image_H, image_W). This
+            parameter only works when filter_size is None.
+        filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
+            it must contain two integers, (filter_size_H, filter_size_W).
+            Otherwise, the filter will be a square.  None if use output size to
+            calculate filter_size
+        padding(int|tuple): The padding size. If padding is a tuple, it must
+            contain two integers, (padding_H, padding_W). Otherwise, the
+            padding_H = padding_W = padding.
+        stride(int|tuple): The stride size. If stride is a tuple, it must
+            contain two integers, (stride_H, stride_W). Otherwise, the
+            stride_H = stride_W = stride.
+        param_attr: Parameter Attribute.
+        main_program(Program): the main program
+        startup_program(Program): the startup program
+
+    Returns:
+        Variable: Output image.
+    """
+    helper = LayerHelper("conv2d_transpose", **locals())
+    if not isinstance(input, Variable):
+        raise TypeError("Input of conv2d_transpose must be Variable")
+    input_channel = input.shape[1]
+
+    op_attr = dict()
+
+    if isinstance(padding, int):
+        op_attr['paddings'] = [padding, padding]
+    elif padding is not None:
+        op_attr['paddings'] = padding
+
+    if isinstance(stride, int):
+        op_attr['strides'] = stride
+    elif stride is not None:
+        op_attr['strides'] = stride
+
+    if filter_size is None:
+        if output_size is None:
+            raise ValueError("output_size must be set when filter_size is None")
+        if isinstance(output_size, int):
+            output_size = [output_size, output_size]
+
+        padding = op_attr.get('paddings', [0, 0])
+        stride = op_attr.get('strides', [1, 1])
+
+        h_in = input.shape[2]
+        w_in = input.shape[3]
+        filter_size_h = output_size[0] - (h_in - 1) * stride[0] + 2 * padding[0]
+        filter_size_w = output_size[1] - (w_in - 1) * stride[1] + 2 * padding[1]
+        filter_size = [filter_size_h, filter_size_w]
+    elif isinstance(filter_size, int):
+        filter_size = [filter_size, filter_size]
+
+    filter_shape = [input_channel, num_filters] + filter_size
+    img_filter = helper.create_parameter(
+        dtype=input.dtype, shape=filter_shape, attr=helper.param_attr)
+
+    out = helper.create_tmp_variable(dtype=input.dtype)
+    helper.append_op(
+        type='conv2d_transpose',
+        inputs={'Input': [input],
+                'Filter': [img_filter]},
+        outputs={'Output': out},
+        attrs=op_attr)
+
+    return out
 
 
 class ConditionalBlockGuard(BlockGuard):

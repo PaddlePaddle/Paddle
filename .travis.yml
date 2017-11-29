@@ -42,7 +42,7 @@ before_install:
 script:
   - |
     timeout 2580 paddle/scripts/travis/${JOB}.sh # 43min timeout
-    RESULT=$?; if [ $RESULT -eq 0 ] || [ $RESULT -eq 142 ]; then true; else false; fi;
+    RESULT=$?; if [ $RESULT -eq 0 ] || [ $RESULT -eq 142 ]; then true ;else exit 1; fi;
   - |
     if [[ "$JOB" != "build_doc" ]]; then exit 0; fi;
     if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then exit 0; fi;

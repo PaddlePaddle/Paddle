@@ -65,6 +65,15 @@ class TestBook(unittest.TestCase):
 
         print str(program)
 
+    def test_conv2d_transpose(self):
+        program = Program()
+        kwargs = {'main_program': program}
+        img = layers.data(
+            name='pixel', shape=[3, 2, 2], dtype='float32', **kwargs)
+        layers.conv2d_transpose(
+            input=img, num_filters=10, output_size=28, **kwargs)
+        print str(program)
+
     def test_recognize_digits_conv(self):
         program = Program()
 
@@ -123,26 +132,26 @@ class TestBook(unittest.TestCase):
             input=first_word,
             size=[dict_size, embed_size],
             dtype='float32',
-            param_attr={'name': 'shared_w'},
+            param_attr='shared_w',
             main_program=program)
         embed_second = layers.embedding(
             input=second_word,
             size=[dict_size, embed_size],
             dtype='float32',
-            param_attr={'name': 'shared_w'},
+            param_attr='shared_w',
             main_program=program)
 
         embed_third = layers.embedding(
             input=third_word,
             size=[dict_size, embed_size],
             dtype='float32',
-            param_attr={'name': 'shared_w'},
+            param_attr='shared_w',
             main_program=program)
         embed_forth = layers.embedding(
             input=forth_word,
             size=[dict_size, embed_size],
             dtype='float32',
-            param_attr={'name': 'shared_w'},
+            param_attr='shared_w',
             main_program=program)
 
         concat_embed = layers.concat(
