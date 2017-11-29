@@ -94,12 +94,11 @@ class UnpoolOp : public framework::OperatorWithKernel {
                    "Output(Out) of UnpoolOp should not be null.");
     auto in_x_dims = ctx->GetInputDim("X");
     auto in_y_dims = ctx->GetInputDim("Indices");
-    std::string unpooling_type = ctx->Attrs()
-                                 .Get<std::string>("unpooling_type");
+    std::string unpooling_type =
+        ctx->Attrs().Get<std::string>("unpooling_type");
     std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
     std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
-    std::vector<int> paddings =
-        ctx->Attrs().Get<std::vector<int>>("paddings");
+    std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
     PADDLE_ENFORCE(in_x_dims.size() == 4,
                    "Unpooling intput must be of 4-dimensional.");
     PADDLE_ENFORCE_EQ(in_x_dims, in_y_dims);
@@ -142,4 +141,3 @@ REGISTER_OP_CPU_KERNEL(unpool,
 REGISTER_OP_CPU_KERNEL(
     unpool_grad, ops::UnpoolGradKernel<paddle::platform::CPUPlace, float>,
     ops::UnpoolGradKernel<paddle::platform::CPUPlace, double>);
-
