@@ -139,7 +139,7 @@ class RowConvGradKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     const T *dout = dOut->data<T>();
 
     Tensor *dX = context.Output<LoDTensor>(framework::GradVarName("X"));
-    Tensor *dFilter = context.Output<LoDTensor>(framework::GradVarName("Y"));
+    Tensor *dFilter = context.Output<Tensor>(framework::GradVarName("Filter"));
 
     auto batch_indices = X->lod()[0];
     int input_dim = X->dims()[1];
