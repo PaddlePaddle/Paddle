@@ -19,92 +19,84 @@
 namespace paddle {
 namespace operators {
 
+using LoDTensor = framework::LoDTensor;
 using framework::Tensor;
 
 namespace {
 
 inline int DivUp(int x, int y) { return (x + y - 1) / y; }
 
-// Some notes on the design:
-//
-// Each thread is responsible for computing a single output out[k, i].
-// Thread blocks are based on tiles of x with height 1 in the batch dimension.
-//
-// This design is based on the typical use case where the filter
-// y is fairly small. For large y, it would probably be more efficient
-// to also tile across y.
 template <typename T>
-__global__ void RowConvForward(const T *x, const T *y, int x_width, int y_width,
-                               int y_half_width, int batch_size, T *out) {
-  extern __shared__ T mem[];
+__global__ void RowConvForward(const T *in, const T *wt, int num_sequence,
+                               int input_dim, int context_length,
+                               vector<size_t> &batch_indices, T *out) {
+  int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
+  int bly = blockDim.y;
+  int thy = threadIdx.y;
 
-  int tx = threadIdx.x;
-  int i = blockIdx.x * blockDim.x + tx;  // global x index
-  int k = blockIdx.y;                    // batch index
+  if (d >= input_dim) return;
 
-  // Check if we are in a boundary block with fewer x's to process than
-  // blockDim.x.
-  int num_x =
-      (blockIdx.x == gridDim.x - 1) ? (x_width % blockDim.x) : blockDim.x;
-
-  T *sx = mem;
-  T *sx_pad = &mem[num_x];
-  T *sy = &mem[blockDim.x + y_width];
-
-  // Collaboratively load y[k, :] and length-y padding of x into shared memory.
-  int pad_start = blockIdx.x * blockDim.x + num_x + x_width - y_half_width;
-  for (int j = tx; j < y_width; j += blockDim.x) {
-    sy[j] = y[k * y_width + j];
-    sx_pad[j] = x[k * x_width + (pad_start + j) % x_width];
-  }
-
-  // Load a cyclically shifted slice of x into shared memory.
-  if (tx < num_x) {
-    int load_i = (i - y_half_width + x_width) % x_width;
-    sx[tx] = x[k * x_width + load_i];
-  }
-  __syncthreads();
-
-  if (tx < num_x) {
-    // Compute dot product of sx[tx:tx + y_width] and sy.
-    T sum = 0;
-    for (int j = 0; j < y_width; ++j) {
-      sum += sx[tx + j] * sy[j];
+  for (size_t i = 0; i < num_sequence; i++) {
+    int start = static_cast<int>(batch_indices[i]);
+    int end = static_cast<int>(batch_indices[i + 1]);
+    int current_timesteps = end - start;
+    for (int k = thy; k < current_timesteps; k += bly) {
+      T sum = 0;
+      for (int w = 0; (w < context_length) && ((k + w) < current_timesteps);
+           w++) {
+        // sum += wt[w, d] * in[start + k + w, d];
+        sum += wt[w * input_dim + d] * in[(start + k + w) * input_dim + d];
+      }
+      // out[start + k, d] = sum;
+      out[(start + k) * input_dim + d] = sum;
     }
-
-    // Save to out[k, i].
-    out[k * x_width + i] = sum;
   }
 }
 
-// Compute x gradient - initial naive implementation with atomic add.
+// Compute input gradient
 template <typename T>
-__global__ void RowConvGradX(const T *dout, const T *y, int x_width,
-                             int y_width, int y_half_width, int batch_size,
-                             T *dx) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;  // x index
-  int j = blockIdx.y;                             // y index
-  int k = blockIdx.z;                             // batch index
+__global__ void RowConvGradInp(const T *dout, const T *wt, int num_sequence,
+                               int input_dim, int context_length,
+                               vector<size_t> &batch_indices, T *din) {
+  int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
+  int bly = blockDim.y;
+  int thy = threadIdx.y;
+  if (d >= input_dim) return;
 
-  if (i < x_width) {
-    int index = (i + j - y_half_width + x_width) % x_width;
-    atomicAdd(&dx[k * x_width + index],
-              dout[k * x_width + i] * y[k * y_width + j]);
+  for (size_t i = 0; i < num_sequence; i++) {
+    int start = static_cast<int>(batch_indices[i]);
+    int end = static_cast<int>(batch_indices[i + 1]);
+    int current_timesteps = end - start;
+    for (int k = thy; k < current_timesteps; k += bly) {
+      T sum = 0;
+      for (int w = 0; (w < context_length) && ((k + w) < current_timesteps);
+           w++) {
+        // cur_dip(start + k + w, d) += wt(w, d) * dout(start + k, d);
+        sum += wt[w * input_dim + d] * dout[(start + k) * input_dim + d];
+      }
+      din[(start + k + w) * input_dim + d] = sum;
+    }
   }
 }
 
-// Compute y gradient - initial naive implementation with atomic add.
+// Compute weight gradient
 template <typename T>
-__global__ void RowConvDy(const T *x, const T *dout, int x_width, int y_width,
-                          int y_half_width, int batch_size, T *dy) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;  // x index
-  int j = blockIdx.y;                             // y index
-  int k = blockIdx.z;                             // batch index
+__global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
+                                  int context_length,
+                                  vector<size_t> &batch_indices, T *dfilter) {
+  int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
+  int w = blockIdx.y * blockDim.y + threadIdx.y;  // index along context_length
 
-  if (i < x_width) {
-    int index = (i + j - y_half_width + x_width) % x_width;
-    atomicAdd(&dy[k * y_width + j],
-              x[k * x_width + index] * dout[k * x_width + i]);
+  if (d >= input_dim || w >= context_length) return;
+  for (size_t i = 0; i < num_sequence; i++) {  // For different sequences
+    int start = static_cast<int>(batch_indices[i]);
+    int end = static_cast<int>(batch_indices[i + 1]);
+    int current_timesteps = end - start;
+    for (int k = 0; k < current_timesteps; k++) {
+      if ((k + w) > current_timesteps) return;
+      dfilter[w * input_dim + d] += in[(start + k + w) * input_dim + d] *
+                                    dout[(start + k) * input_dim + d];
+    }
   }
 }
 }  // namespace
@@ -113,28 +105,26 @@ template <typename T>
 class RowConvKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const Tensor *X = context.Input<Tensor>("X");
-    const Tensor *Y = context.Input<Tensor>("Y");
-    Tensor *Out = context.Output<Tensor>("Out");
-    const T *x_data = X->data<T>();
-    const T *y_data = Y->data<T>();
-    T *out_data = Out->mutable_data<T>(context.GetPlace());
+    auto *X = context.Input<LoDTensor>("X");
+    auto *Filter = context.Input<Tensor>("Filter");
+    auto *Out = context.Output<LoDTensor>("Out");
 
-    int batch_size = X->dims()[0];
-    int x_width = X->dims()[1];
-    int y_width = Y->dims()[1];
-    int y_half_width = (y_width - 1) / 2;
+    const T *in = X->data<T>();
+    const T *weight = Filter->data<T>();
+    T *out = Out->mutable_data<T>(context.GetPlace());
 
-    const int x_per_block = 256;
-    int num_x_blocks = DivUp(x_width, x_per_block);
-    int mem_per_block = (x_per_block + 2 * y_width) * sizeof(T);
-
-    dim3 grid_dim(num_x_blocks, batch_size);
+    auto batch_indices = X->lod()[0];
+    int input_dim = X->dims()[1];
+    int num_sequence = batch_indices.size() - 1;
+    int context_length = Filter->dims()[0];
 
     auto stream = context.cuda_device_context().stream();
+    dim3 block_dim = dim3(32, 32);
+    dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
 
-    RowConvForward<T><<<grid_dim, x_per_block, mem_per_block, stream>>>(
-        x_data, y_data, x_width, y_width, y_half_width, batch_size, out_data);
+    RowConvForward<T><<<grid_dim, block_dim, 0, stream>>>(
+        in, weight, num_sequence, input_dim, context_length, batch_indices,
+        out);
   }
 };
 
@@ -142,41 +132,45 @@ template <typename T>
 class RowConvGradKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const Tensor *X = context.Input<Tensor>("X");
-    const Tensor *Y = context.Input<Tensor>("Y");
-    const Tensor *dOut = context.Input<Tensor>(framework::GradVarName("Out"));
-    const T *x_data = X->data<T>();
-    const T *y_data = Y->data<T>();
-    const T *dout_data = dOut->data<T>();
+    auto *X = context.Input<LoDTensor>("X");
+    auto *Filter = context.Input<Tensor>("Filter");
+    auto *dOut = context.Input<LoDTensor>(framework::GradVarName("Out"));
+    const T *in = X->data<T>();
+    const T *weights = Filter->data<T>();
+    const T *dout = dOut->data<T>();
 
-    Tensor *dX = context.Output<Tensor>(framework::GradVarName("X"));
-    Tensor *dY = context.Output<Tensor>(framework::GradVarName("Y"));
+    Tensor *dX = context.Output<LoDTensor>(framework::GradVarName("X"));
+    Tensor *dFilter = context.Output<LoDTensor>(framework::GradVarName("Y"));
 
-    int batch_size = X->dims()[0];
-    int x_width = X->dims()[1];
-    int y_width = Y->dims()[1];
-    int y_half_width = (y_width - 1) / 2;
+    auto batch_indices = X->lod()[0];
+    int input_dim = X->dims()[1];
+    int num_sequence = batch_indices.size() - 1;
+    int context_length = Filter->dims()[0];
 
     auto &device_ctx = context.cuda_device_context();
     math::SetConstant<platform::GPUPlace, T> zero;
 
-    const int x_per_block = 256;
-    int num_x_blocks = DivUp(x_width, x_per_block);
-    dim3 grid_dim(num_x_blocks, y_width, batch_size);
+    if (dFilter) {
+      T *dfilter = dFilter->mutable_data<T>(context.GetPlace());
+      zero(device_ctx, dFilter, static_cast<T>(0.0));  // May not need, CHECK ME
+
+      dim3 block_dim = dim3(32, 32);
+      dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), DivUp(context_length),
+                           block_dim.y);
+
+      RowConvGradFilter<T><<<grid_dim, block_dim, 0, device_ctx.stream()>>>(
+          in, dout, num_sequence, input_dim, context_length, batch_indices,
+          dfilter);
+    }
 
     if (dX) {
-      T *dx_data = dX->mutable_data<T>(context.GetPlace());
+      T *din = dX->mutable_data<T>(context.GetPlace());
       zero(device_ctx, dX, static_cast<T>(0.0));
-      RowConvGradX<T><<<grid_dim, x_per_block, 0, device_ctx.stream()>>>(
-          dout_data, y_data, x_width, y_width, y_half_width, batch_size,
-          dx_data);
-    }
-    if (dY) {
-      T *dy_data = dY->mutable_data<T>(context.GetPlace());
-      zero(device_ctx, dY, static_cast<T>(0.0));
-      RowConvDy<T><<<grid_dim, x_per_block, 0, device_ctx.stream()>>>(
-          x_data, dout_data, x_width, y_width, y_half_width, batch_size,
-          dy_data);
+      dim3 block_dim = dim3(32, 32);
+      dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
+      RowConvGradInput<T><<<grid_dim, block_dim, 0, device_ctx.stream()>>>(
+          dout, weights, num_sequence, input_dim, context_length, batch_indices,
+          din);
     }
   }
 };

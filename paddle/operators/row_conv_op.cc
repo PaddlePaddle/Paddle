@@ -18,7 +18,9 @@
 namespace paddle {
 namespace operators {
 
+using LoDTensor = framework::LoDTensor;
 using framework::Tensor;
+
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
@@ -114,36 +116,36 @@ template <typename T>
 class RowConvKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *in = context.Input<LoDTensor>("X");
-    auto *filter = context.Input<Tensor>("Filter");
-    auto *out = context.Output<LoDTensor>("Out");
+    auto *X = context.Input<LoDTensor>("X");
+    auto *Filter = context.Input<Tensor>("Filter");
+    auto *Out = context.Output<LoDTensor>("Out");
 
-    out->mutable_data<T>(context.GetPlace());
+    Out->mutable_data<T>(context.GetPlace());
     context.ShareLoD("X", "Out");
 
-    auto batch_indices = in->lod()[0];
-    auto input_dim = in->dims()[1];  // 'in' is of size T x N
-    size_t num_sequences = batch_indices.size() - 1;
+    auto batch_indices = X->lod()[0];
+    auto input_dim = X->dims()[1];  // 'in' is of size T x N
+    size_t num_sequence = batch_indices.size() - 1;
 
-    auto context_length = filter->dims()[0];
-    auto weights = EigenMatrix<T>::From(*filter);
+    auto context_length = Filter->dims()[0];
+    auto weights = EigenMatrix<T>::From(*Filter);
 
-    for (size_t i = 0; i < num_sequences; i++) {
+    for (size_t i = 0; i < num_sequence; i++) {
       int start = static_cast<int>(batch_indices[i]);
       int end = static_cast<int>(batch_indices[i + 1]);
-      int current_timesteps = end - start + 1;
+      int current_timesteps = end - start;
       Tensor cur_input_sequence =
-          in->Slice(start, end);  // Current input sequence
+          X->Slice(start, end);  // Current input sequence
       Tensor cur_output_sequence =
-          out->Slice(start, end);  // Current output sequence
-      auto cip_seq = EigenMatrix<T>::From(cur_input_seqeunce);
+          Out->Slice(start, end);  // Current output sequence
+      auto cip_seq = EigenMatrix<T>::From(cur_input_sequence);
       auto cot_seq = EigenMatrix<T>::From(cur_output_sequence);
 
-      for (size_t k = 0; k < current_timesteps;
+      for (int k = 0; k < current_timesteps;
            k++) {  // For different time steps in the same sequence
-        for (size_t w = 0;
-             (w < context_length) && ((k + w) < current_timesteps); w++) {
-          for (size_t d = 0; d < input_dim; d++) {
+        for (int w = 0; (w < context_length) && ((k + w) < current_timesteps);
+             w++) {
+          for (int d = 0; d < input_dim; d++) {
             if (w == 0) {
               cot_seq(k, d) = weights(w, d) * cip_seq(k + w, d);
             } else {
@@ -153,89 +155,86 @@ class RowConvKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
         }
       }
     }
-  };
+  }
+};
 
-  template <typename T>
-  class RowConvGradKernel<platform::CPUPlace, T>
-      : public framework::OpKernel<T> {
-   public:
-    void Compute(const framework::ExecutionContext &context) const override {
-      auto *in = context.Input<LoDTensor>("X");
-      auto *filter = context.Input<Tensor>("Filter");
-      auto *dOut = context.Input<LoDTensor>(framework::GradVarName("Out"));
-      auto *din = context.Output<LoDTensor>(framework::GradVarName("X"));
-      auto *dfilter = context.Output<Tensor>(framework::GradVarName("Filter"));
+template <typename T>
+class RowConvGradKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &context) const override {
+    auto *X = context.Input<LoDTensor>("X");
+    auto *Filter = context.Input<Tensor>("Filter");
+    auto *dOut = context.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto *dX = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto *dFilter = context.Output<Tensor>(framework::GradVarName("Filter"));
 
-      if (din) din->mutable_data<T>(context.GetPlace());
-      if (dfilter) auto batch_indices = in->lod()[0];
-      auto input_dim = in->dims()[1];  // 'in' is of size T x N
-      size_t num_sequences = batch_indices.size() - 1;
+    auto input_dim = X->dims()[1];  // 'in' is of size T x N
+    auto batch_indices = X->lod()[0];
+    size_t num_sequence = batch_indices.size() - 1;
+    auto context_length = Filter->dims()[0];
 
-      auto context_length = filter->dims()[0];
+    if (dFilter) {
+      dFilter->mutable_data<T>(context.GetPlace());
+      auto dweights =
+          EigenMatrix<T>::From(*dFilter);  // Gradient of weight matrix
+      dweights.setZero();
 
-      if (dfilter) {
-        dfilter->mutable_data<T>(context.GetPlace());
-        auto dweights =
-            EigenMatrix<T>::From(*dfilter);  // Gradient of weight matrix
-        dweights.setZero();
+      for (size_t i = 0; i < num_sequence; i++) {  // For different sequences
+        int start = static_cast<int>(batch_indices[i]);
+        int end = static_cast<int>(batch_indices[i + 1]);
 
-        for (size_t i = 0; i < num_sequences; i++) {  // For different sequences
-          int start = static_cast<int>(batch_indices[i]);
-          int end = static_cast<int>(batch_indices[i + 1]);
+        Tensor cur_input = X->Slice(start, end);  // Current input sequence
+        Tensor cur_doutput =
+            dOut->Slice(start, end);  // Current output grad sequence
 
-          Tensor cur_input = in->Slice(start, end);  // Current input sequence
-          Tensor cur_doutput =
-              dOut->Slice(start, end);  // Current output grad sequence
+        auto cur_ip = EigenMatrix<T>::From(cur_input);
+        auto cur_dout = EigenMatrix<T>::From(cur_doutput);
+        int current_timesteps = end - start;
 
-          auto cur_ip = EigenMatrix<T>::From(cur_input);
-          auto cur_dout = EigenMatrix<T>::From(cur_doutput);
-          int current_timesteps = end - start + 1;
-
-          for (size_t k = 0; k < current_timesteps;
-               k++) {  // For different time steps in the same sequence
-            for (size_t w = 0;
-                 (w < context_length) && ((k + w) < current_timesteps); w++) {
-              int start = k + w;
-              // For dweights (Updating the gradient of weight matrix)
-              for (size_t d = 0; d < input_dim; d++) {
-                dweights(w, d) += cip_seq(start, d) * cur_dout(k, d);
-              }
-            }
-          }
-        }
-      }
-
-      if (din) {
-        auto weights = EigenMatrix<T>::From(*filter);
-        for (size_t i = 0; i < num_sequences; i++) {  // For different sequences
-          int start = static_cast<int>(batch_indices[i]);
-          int end = static_cast<int>(batch_indices[i + 1]);
-
-          Tensor cur_doutput =
-              dOut->Slice(start, end);  // Current output grad sequence
-          Tensor cur_dinput =
-              din->Slice(start, end);  // Current input grad sequence
-
-          auto cur_dout = EigenMatrix<T>::From(cur_doutput);
-          auto cur_dip = EigenMatrix<T>::From(cur_dinput);
-          cur_dip.setZero();
-          int current_timesteps = end - start + 1;
-
-          for (size_t k = 0; k < current_timesteps;
-               k++) {  // For different time steps in the same sequence
-            for (size_t w = 0;
-                 (w < context_length) && ((k + w) < current_timesteps); w++) {
-              int start = k + w;
-              // For dinput (Updating the gradient wrt input)
-              for (size_t d = 0; d < input_dim; d++) {
-                cur_dip(start, d) += weights(w, d) * cur_dout(k, d);
-              }
+        for (int k = 0; k < current_timesteps;
+             k++) {  // For different time steps in the same sequence
+          for (int w = 0; (w < context_length) && ((k + w) < current_timesteps);
+               w++) {
+            // For dweights (Updating the gradient of weight matrix)
+            for (int d = 0; d < input_dim; d++) {
+              dweights(w, d) += cur_ip(k + w, d) * cur_dout(k, d);
             }
           }
         }
       }
     }
-  };
+
+    if (dX) {
+      dX->mutable_data<T>(context.GetPlace());
+      auto weights = EigenMatrix<T>::From(*Filter);
+      for (size_t i = 0; i < num_sequence; i++) {  // For different sequences
+        int start = static_cast<int>(batch_indices[i]);
+        int end = static_cast<int>(batch_indices[i + 1]);
+
+        Tensor cur_doutput =
+            dOut->Slice(start, end);  // Current output grad sequence
+        Tensor cur_dinput =
+            dX->Slice(start, end);  // Current input grad sequence
+
+        auto cur_dout = EigenMatrix<T>::From(cur_doutput);
+        auto cur_dip = EigenMatrix<T>::From(cur_dinput);
+        cur_dip.setZero();
+        int current_timesteps = end - start;
+
+        for (int k = 0; k < current_timesteps;
+             k++) {  // For different time steps in the same sequence
+          for (int w = 0; (w < context_length) && ((k + w) < current_timesteps);
+               w++) {
+            // For dinput (Updating the gradient wrt input)
+            for (int d = 0; d < input_dim; d++) {
+              cur_dip(k + w, d) += weights(w, d) * cur_dout(k, d);
+            }
+          }
+        }
+      }
+    }
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
