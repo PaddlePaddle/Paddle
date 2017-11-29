@@ -176,4 +176,6 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sum, ops::SumOp, ops::SumOpMaker, ops::SumGradMaker,
                   ops::SumOpVarTypeInference);
 REGISTER_OP_CPU_KERNEL(sum, ops::SumKernel<paddle::platform::CPUPlace, float>,
-                       ops::SumKernel<paddle::platform::CPUPlace, double>);
+                       ops::SumKernel<paddle::platform::CPUPlace, double>,
+                       ops::SumKernel<paddle::platform::CPUPlace, int>,
+                       ops::SumKernel<paddle::platform::CPUPlace, int64_t>);

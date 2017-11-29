@@ -26,6 +26,8 @@ namespace framework {
 
 const std::string kFeedOpType = "feed";
 const std::string kFetchOpType = "fetch";
+const std::string kDropOutOpType = "dropout";
+const std::string kBatchNormOpType = "batch_norm";
 
 bool HasDependentVar(const OpDesc& op_desc,
                      const std::set<std::string>& dependent_vars) {
@@ -104,6 +106,27 @@ void prune_impl(const ProgramDesc& input, ProgramDesc* output, int block_id) {
 // TODO(fengjiayi): Prune() could be inplaced to avoid unnecessary copies
 void Prune(const ProgramDesc& input, ProgramDesc* output) {
   prune_impl(input, output, 0);
+}
+
+void inference_optimize_impl(const ProgramDesc& input, ProgramDesc* output,
+                             int block_id) {
+  *output = input;
+  auto* op_field = output->mutable_blocks(block_id)->mutable_ops();
+  for (auto& op_desc : *op_field) {
+    if (op_desc.type() == kDropOutOpType ||
+        op_desc.type() == kBatchNormOpType) {
+      for (auto& attr : *op_desc.mutable_attrs()) {
+        if (attr.name() == "is_test") {
+          attr.set_b(true);
+          break;
+        }
+      }
+    }
+  }
+}
+
+void InferenceOptimize(const ProgramDesc& input, ProgramDesc* output) {
+  inference_optimize_impl(input, output, 0);
 }
 
 }  // namespace framework

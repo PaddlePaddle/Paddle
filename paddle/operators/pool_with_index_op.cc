@@ -29,11 +29,11 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "X(Input) of Pooling should not be null.");
+                   "Input(X) of Pooling should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Out(Output) of Pooling should not be null.");
+                   "Output(Out) of Pooling should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Mask"),
-                   "Mask(Output) of Pooling should not be null.");
+                   "Output(Mask) of Pooling should not be null.");
 
     auto in_x_dims = ctx->GetInputDim("X");
 
@@ -67,6 +67,14 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
     ctx->SetOutputDim("Mask", framework::make_ddim(output_shape));
   }
+
+ protected:
+  framework::OpKernelType GetKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
+        ctx.device_context());
+  }
 };
 
 class MaxPoolWithIndexOpGrad : public framework::OperatorWithKernel {
@@ -79,6 +87,14 @@ class MaxPoolWithIndexOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
                    "Input(X@GRAD) should not be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+  }
+
+ protected:
+  framework::OpKernelType GetKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
+        ctx.device_context());
   }
 };
 
@@ -116,7 +132,7 @@ class MaxPool2dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
     // TypedAttrChecker don't support vector type.)
     AddAttr<bool>(
         "global_pooling",
-        "(bool, default false) Whether to use the global pooling. "
+        "(bool, default:false) Whether to use the global pooling. "
         "If global_pooling = true, ksize and paddings will be ignored.")
         .SetDefault(false);
     AddAttr<std::vector<int>>("strides",
@@ -126,7 +142,7 @@ class MaxPool2dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
     // TypedAttrChecker don't support vector type.)
     AddAttr<std::vector<int>>(
         "paddings",
-        "(vector<int>, defalut {0, 0}), paddings(height, width) of pooling "
+        "(vector<int>, default:{0, 0}), paddings(height, width) of pooling "
         "operator. "
         "If global_pooling = true, paddings and will be ignored.")
         .SetDefault({0, 0});  // TODO(Chengduo): Add checker. (Currently,
@@ -150,10 +166,10 @@ Example:
   Output:
        Out shape: $(N, C, H_{out}, W_{out})$
        Mask shape: $(N, C, H_{out}, W_{out})$
-  where
+  Where
        $$
-       H_{out} = (H_{in} - ksize[0] + 2 * paddings[0]) / strides[0] + 1 \\
-       W_{out} = (W_{in} - ksize[1] + 2 * paddings[1]) / strides[1] + 1
+       H_{out} = \frac{(H_{in} - ksize[0] + 2 * paddings[0])}{strides[0]} + 1 \\
+       W_{out} = \frac{(W_{in} - ksize[1] + 2 * paddings[1])}{strides[1]} + 1
        $$
 
 )DOC");
@@ -204,7 +220,7 @@ class MaxPool3dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
     // TypedAttrChecker don't support vector type.)
     AddAttr<std::vector<int>>(
         "paddings",
-        "(vector, defalut {0,0,0}), paddings(depth, "
+        "(vector, default {0,0,0}), paddings(depth, "
         "height, width) of pooling operator. "
         "If global_pooling = true, paddings and ksize will be ignored.")
         .SetDefault({0, 0, 0});  // TODO(Chengduo): Add checker. (Currently,
@@ -228,11 +244,11 @@ Example:
   Output:
        Out shape: $(N, C, D_{out}, H_{out}, W_{out})$
        Mask shape: $(N, C, D_{out}, H_{out}, W_{out})$
-  where
+  Where
        $$
-       D_{out} = (D_{in} - ksize[0] + 2 * paddings[0]) / strides[0] + 1 \\
-       H_{out} = (H_{in} - ksize[1] + 2 * paddings[1]) / strides[1] + 1 \\
-       W_{out} = (W_{in} - ksize[2] + 2 * paddings[2]) / strides[2] + 1
+       D_{out} = \frac{(D_{in} - ksize[0] + 2 * paddings[0])}{strides[0]} + 1 \\
+       H_{out} = \frac{(H_{in} - ksize[1] + 2 * paddings[1])}{strides[1]} + 1 \\
+       W_{out} = \frac{(W_{in} - ksize[2] + 2 * paddings[2])}{strides[2]} + 1
        $$
 
 )DOC");
@@ -250,10 +266,12 @@ REGISTER_OP(max_pool2d_with_index, ops::MaxPoolWithIndexOp,
 
 REGISTER_OP_CPU_KERNEL(
     max_pool2d_with_index,
-    ops::MaxPoolWithIndexKernel<paddle::platform::CPUPlace, float>);
+    ops::MaxPoolWithIndexKernel<paddle::platform::CPUPlace, float, int>,
+    ops::MaxPoolWithIndexKernel<paddle::platform::CPUPlace, double, int>);
 REGISTER_OP_CPU_KERNEL(
     max_pool2d_with_index_grad,
-    ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUPlace, float>)
+    ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUPlace, float, int>,
+    ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUPlace, double, int>)
 
 REGISTER_OP(max_pool3d_with_index, ops::MaxPoolWithIndexOp,
             ops::MaxPool3dWithIndexOpMaker, max_pool3d_with_index_grad,
@@ -261,7 +279,9 @@ REGISTER_OP(max_pool3d_with_index, ops::MaxPoolWithIndexOp,
 
 REGISTER_OP_CPU_KERNEL(
     max_pool3d_with_index,
-    ops::MaxPoolWithIndexKernel<paddle::platform::CPUPlace, float>);
+    ops::MaxPoolWithIndexKernel<paddle::platform::CPUPlace, float, int>,
+    ops::MaxPoolWithIndexKernel<paddle::platform::CPUPlace, double, int>);
 REGISTER_OP_CPU_KERNEL(
     max_pool3d_with_index_grad,
-    ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUPlace, float>)
+    ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUPlace, float, int>,
+    ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUPlace, double, int>)

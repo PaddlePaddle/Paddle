@@ -31,9 +31,9 @@ class AdamaxOpKernel : public framework::OpKernel<T> {
     moment_out_tensor->mutable_data<T>(ctx.GetPlace());
     inf_norm_out_tensor->mutable_data<T>(ctx.GetPlace());
 
-    float beta1 = ctx.Attr<float>("beta1");
-    float beta2 = ctx.Attr<float>("beta2");
-    float epsilon = ctx.Attr<float>("epsilon");
+    T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
+    T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
+    T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
 
     auto param = framework::EigenVector<T>::Flatten(
         *ctx.Input<framework::Tensor>("Param"));

@@ -1,12 +1,11 @@
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
-from paddle.v2.fluid.framework import OpProtoHolder, Variable, Program, \
-    Operator
-from paddle.v2.fluid.initializer import ConstantInitializer, \
-    NormalInitializer
+import core
+import proto.framework_pb2 as framework_pb2
+from framework import OpProtoHolder, Variable, Program, Operator
+from initializer import Constant, Normal, Xavier, Initializer
 from paddle.v2.fluid.layer_helper import LayerHelper, unique_name
 import re
 import cStringIO
+from param_attr import ParamAttr
 
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
@@ -17,11 +16,11 @@ __all__ = [
 
 def fc(input,
        size,
+       num_flatten_dims=1,
        param_attr=None,
        bias_attr=None,
-       name=None,
        act=None,
-       num_flatten_dims=1,
+       name=None,
        main_program=None,
        startup_program=None):
     """
@@ -30,11 +29,15 @@ def fc(input,
     Args:
        input: The input tensor to the function
        size: The size of the layer
-       param_attr: The parameters/weights to the FC Layer
-       bias_attr: The bias parameter for the FC layer
-       name: Name/alias of the function
-       act: Activation to be applied to the output of FC layer
        num_flatten_dims: Number of columns in input
+       param_attr: The parameters/weights to the FC Layer
+       param_initializer: Initializer used for the weight/parameter.
+       If None, XavierInitializer() is used
+       bias_attr: The bias parameter for the FC layer
+       bias_initializer: Initializer used for the bias.
+       If None, then ConstantInitializer() is used
+       act: Activation to be applied to the output of FC layer
+       name: Name/alias of the function
        main_program: Name of the main program that calls this
        startup_program: Name of the startup program
 
@@ -61,7 +64,7 @@ def fc(input,
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
         ] + [size]
         w = helper.create_parameter(
-            attr=param_attr, shape=param_shape, dtype=dtype)
+            attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
         tmp = helper.create_tmp_variable(dtype)
         helper.append_op(
             type="mul",
@@ -89,20 +92,21 @@ def fc(input,
 
 def embedding(input,
               size,
-              data_type='float32',
               is_sparse=False,
               param_attr=None,
+              dtype='float32',
               main_program=None,
               startup_program=None):
     """
     Embedding Layer.
 
     Args:
+       param_initializer:
        input: The input to the function
        size: The size of the layer
-       data_type: The type of data : float32, float_16, int etc
        is_sparse: A flag that decleares whether the input is sparse
        param_attr: Parameters for this layer
+       dtype: The type of data : float32, float_16, int etc
        main_program: Name of the main program that calls this
        startup_program: Name of the startup program
 
@@ -114,10 +118,11 @@ def embedding(input,
     to the LayerHelper constructor.
 
     """
+
     helper = LayerHelper('embedding', **locals())
     w = helper.create_parameter(
-        attr=helper.param_attr, shape=size, dtype=data_type)
-    tmp = helper.create_tmp_variable(data_type)
+        attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False)
+    tmp = helper.create_tmp_variable(dtype)
     helper.append_op(
         type='lookup_table',
         inputs={'Ids': input,
@@ -130,7 +135,6 @@ def embedding(input,
 # TODO(qijun): expose H0 and C0
 def dynamic_lstm(input,
                  size,
-                 data_type='float32',
                  param_attr=None,
                  bias_attr=None,
                  use_peepholes=True,
@@ -138,22 +142,23 @@ def dynamic_lstm(input,
                  gate_activation='sigmoid',
                  cell_activation='tanh',
                  candidate_activation='tanh',
+                 dtype='float32',
                  main_program=None,
                  startup_program=None):
     helper = LayerHelper('lstm', **locals())
     size = size / 4
     weight = helper.create_parameter(
-        attr=helper.param_attr, shape=[size, 4 * size], dtype=data_type)
+        attr=helper.param_attr, shape=[size, 4 * size], dtype=dtype)
     bias_size = [1, 7 * size]
     if not use_peepholes:
         bias_size[1] = 4 * size
     bias = helper.create_parameter(
-        attr=helper.bias_attr, shape=bias_size, dtype=data_type, suffix='b')
+        attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
 
-    hidden = helper.create_tmp_variable(data_type)
-    cell = helper.create_tmp_variable(data_type)
-    batch_gate = helper.create_tmp_variable(data_type)
-    batch_cell_pre_act = helper.create_tmp_variable(data_type)
+    hidden = helper.create_tmp_variable(dtype)
+    cell = helper.create_tmp_variable(dtype)
+    batch_gate = helper.create_tmp_variable(dtype)
+    batch_cell_pre_act = helper.create_tmp_variable(dtype)
 
     helper.append_op(
         type='lstm',
@@ -178,9 +183,9 @@ def dynamic_lstm(input,
 
 def data(name,
          shape,
-         data_type='float32',
-         type=core.VarDesc.VarType.LOD_TENSOR,
          append_batch_size=True,
+         dtype='float32',
+         type=core.VarDesc.VarType.LOD_TENSOR,
          main_program=None,
          startup_program=None,
          stop_gradient=True):
@@ -190,9 +195,9 @@ def data(name,
     Args:
        name: The name/alias of the function
        shape: Tuple declaring the shape.
-       data_type: The type of data : float32, float_16, int etc
-       type: The output type. By default it is LOD_TENSOR.
        append_batch_size: Whether or not to append the data as a batch.
+       dtype: The type of data : float32, float_16, int etc
+       type: The output type. By default it is LOD_TENSOR.
        main_program: Name of the main program that calls this
        startup_program: Name of the startup program
        stop_gradient: A boolean that mentions whether gradient should flow.
@@ -221,12 +226,12 @@ def data(name,
     return helper.create_global_variable(
         name=name,
         shape=shape,
-        dtype=data_type,
+        dtype=dtype,
         type=type,
         stop_gradient=stop_gradient)
 
 
-def create_tensor(dtype, name=None, main_program=None):
+def create_tensor(dtype, name=None, main_program=None, startup_program=None):
     helper = LayerHelper("create_tensor", **locals())
     return helper.create_variable(name=helper.name, dtype=dtype)
 
@@ -332,9 +337,9 @@ def _create_op_func_(op_type):
     o_name = not_intermediate_outputs[0].name
     intermediate_output_names = [output.name for output in intermediate_outputs]
 
-    def infer_and_check_data_type(op_proto, **kwargs):
+    def infer_and_check_dtype(op_proto, **kwargs):
         """
-        This function performs the sanity check for data_type and
+        This function performs the sanity check for dtype and
         instance type.
         """
         dtype = None
@@ -349,8 +354,8 @@ def _create_op_func_(op_type):
                         op_type))
 
                 if dtype is None:
-                    dtype = each.data_type
-                elif dtype != each.data_type:
+                    dtype = each.dtype
+                elif dtype != each.dtype:
                     raise ValueError(
                         "operator {0} must input same dtype".format(op_type))
 
@@ -359,7 +364,7 @@ def _create_op_func_(op_type):
     def func(**kwargs):
         helper = LayerHelper(op_type, **kwargs)
 
-        dtype = infer_and_check_data_type(op_proto, **kwargs)
+        dtype = infer_and_check_dtype(op_proto, **kwargs)
 
         inputs = dict()
         for ipt in op_proto.inputs:
@@ -388,45 +393,28 @@ def _create_op_func_(op_type):
 _create_op_func_('mean')
 _create_op_func_('mul')
 _create_op_func_('elementwise_add')
+_create_op_func_('elementwise_div')
 _create_op_func_('dropout')
 _create_op_func_('reshape')
-_create_op_func_('elementwise_add')
 _create_op_func_('sigmoid')
 _create_op_func_('scale')
 _create_op_func_('reshape')
 _create_op_func_('transpose')
 
 
-def fill_constant(data_type, shape, value=None, program=None):
+def cast(x, dtype, main_program=None):
     """
-    This function creates a tensor , with shape as mentioned in the input and
-    specified data_type and fills this up with a constant value that
-    comes in the input.
-    """
-    helper = LayerHelper('fill_constant', **locals())
-    out = helper.create_tmp_variable(dtype=data_type)
-    helper.append_op(
-        type='fill_constant',
-        outputs={'Out': [out]},
-        attrs={'data_type': data_type,
-               'shape': shape,
-               'value': value})
-    return out
-
-
-def cast(x, data_type, main_program=None):
-    """
-    This function takes in the input with input_data_type
-    and casts it to the output_data_type as the output.
+    This function takes in the input with input_dtype
+    and casts it to the output_dtype as the output.
     """
     helper = LayerHelper('cast', **locals())
-    out = helper.create_tmp_variable(dtype=data_type)
+    out = helper.create_tmp_variable(dtype=dtype)
     helper.append_op(
         type='cast',
         inputs={'X': [x]},
         outputs={'Out': [out]},
-        attrs={'in_data_type': x.data_type,
-               'out_data_type': out.data_type})
+        attrs={'in_dtype': x.dtype,
+               'out_dtype': out.dtype})
     return out
 
 
@@ -445,18 +433,49 @@ def concat(input, axis, main_program=None, startup_program=None):
     return out
 
 
-def sums(input, main_program=None, startup_program=None):
+def sums(input, out=None, main_program=None, startup_program=None):
     """
     This function takes in the input and performs the sum operation on it
     and returns that as the output.
     """
     helper = LayerHelper('sum', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    if out is None:
+        out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(type='sum', inputs={'X': input}, outputs={'Out': out})
     return out
 
 
-def assign(input, output, main_program=None):
+def linear_chain_crf(input,
+                     label,
+                     param_attr=None,
+                     main_program=None,
+                     startup_program=None):
+    helper = LayerHelper('linear_chain_crf', **locals())
+    size = input.shape[1]
+    transition = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=[size + 2, size],
+        dtype=helper.input_dtype())
+    alpha = helper.create_tmp_variable(dtype=helper.input_dtype())
+    emission_exps = helper.create_tmp_variable(dtype=helper.input_dtype())
+    transition_exps = helper.create_tmp_variable(dtype=helper.input_dtype())
+    log_likelihood = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='linear_chain_crf',
+        inputs={"Emission": [input],
+                "Transition": transition,
+                "Label": label},
+        outputs={
+            "Alpha": [alpha],
+            "EmissionExps": [emission_exps],
+            "TransitionExps": transition_exps,
+            "LogLikelihood": log_likelihood
+        })
+
+    return log_likelihood
+
+
+def assign(input, output, main_program=None, startup_program=None):
     helper = LayerHelper('assign', **locals())
     helper.append_op(
         type='scale',
@@ -468,12 +487,12 @@ def assign(input, output, main_program=None):
 
 def split_lod_tensor(input,
                      mask,
-                     level,
+                     level=0,
                      main_program=None,
                      startup_program=None):
     helper = LayerHelper('split_lod_tensor', **locals())
-    out_true = helper.create_tmp_variable(dtype=input.data_type)
-    out_false = helper.create_tmp_variable(dtype=input.data_type)
+    out_true = helper.create_tmp_variable(dtype=input.dtype)
+    out_false = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
         type='split_lod_tensor',
         inputs={
@@ -490,11 +509,11 @@ def merge_lod_tensor(in_true,
                      in_false,
                      x,
                      mask,
-                     level,
+                     level=0,
                      main_program=None,
                      startup_program=None):
     helper = LayerHelper('merge_lod_tensor', **locals())
-    out = helper.create_tmp_variable(dtype=x.data_type)
+    out = helper.create_tmp_variable(dtype=in_true.dtype)
     helper.append_op(
         type='merge_lod_tensor',
         inputs={'X': x,
@@ -512,9 +531,9 @@ def cos_sim(X, Y, **kwargs):
     X and Y and returns that as the output.
     """
     helper = LayerHelper('cos_sim', **kwargs)
-    out = helper.create_tmp_variable(dtype=X.data_type)
-    xnorm = helper.create_tmp_variable(dtype=X.data_type)
-    ynorm = helper.create_tmp_variable(dtype=X.data_type)
+    out = helper.create_tmp_variable(dtype=X.dtype)
+    xnorm = helper.create_tmp_variable(dtype=X.dtype)
+    ynorm = helper.create_tmp_variable(dtype=X.dtype)
     helper.append_op(
         type='cos_sim',
         inputs={'X': [X],
@@ -530,7 +549,7 @@ def cross_entropy(input, label, **kwargs):
     This function computes cross_entropy using the input and label.
     """
     helper = LayerHelper('cross_entropy', **kwargs)
-    out = helper.create_tmp_variable(dtype=input.data_type)
+    out = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
         type='cross_entropy',
         inputs={'X': [input],
@@ -546,26 +565,26 @@ def square_error_cost(input, label, **kwargs):
     The output is appending the op to do the above.
     """
     helper = LayerHelper('square_error_cost', **kwargs)
-    minus_out = helper.create_tmp_variable(dtype=input.data_type)
+    minus_out = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
         type='elementwise_sub',
         inputs={'X': [input],
                 'Y': [label]},
         outputs={'Out': [minus_out]})
 
-    square_out = helper.create_tmp_variable(dtype=input.data_type)
+    square_out = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
         type='square', inputs={'X': [minus_out]}, outputs={'Y': [square_out]})
     return square_out
 
 
-def accuracy(input, label, k=1, **kwargs):
+def accuracy(input, label, k=1, correct=None, total=None, **kwargs):
     """
     This function computes the accuracy using the input and label.
     The output is the top_k inputs and their indices.
     """
     helper = LayerHelper("accuracy", **kwargs)
-    topk_out = helper.create_tmp_variable(dtype=input.data_type)
+    topk_out = helper.create_tmp_variable(dtype=input.dtype)
     topk_indices = helper.create_tmp_variable(dtype="int64")
     helper.append_op(
         type="top_k",
@@ -573,10 +592,11 @@ def accuracy(input, label, k=1, **kwargs):
         outputs={"Out": [topk_out],
                  "Indices": [topk_indices]},
         attrs={"k": k})
-    acc_out_dtype = kwargs.get("out_dtype", "float32")
     acc_out = helper.create_tmp_variable(dtype="float32")
-    correct = helper.create_tmp_variable(dtype="int64")
-    total = helper.create_tmp_variable(dtype="int64")
+    if correct is None:
+        correct = helper.create_tmp_variable(dtype="int64")
+    if total is None:
+        total = helper.create_tmp_variable(dtype="int64")
     helper.append_op(
         type="accuracy",
         inputs={
@@ -596,10 +616,10 @@ def sequence_conv(input,
                   num_filters,
                   filter_size=3,
                   filter_stride=1,
-                  act=None,
                   padding=None,
                   bias_attr=None,
                   param_attr=None,
+                  act=None,
                   main_program=None,
                   startup_program=None):
     """
@@ -607,13 +627,13 @@ def sequence_conv(input,
     other convolutional configurations for the filters and stride as given
     in the input parameters to the function.
     """
+
     # FIXME(dzh) : want to unify the argument of python layer
     # function. So we ignore some unecessary attributes.
     # such as, padding_trainable, context_start.
 
     helper = LayerHelper('sequence_conv', **locals())
     dtype = helper.input_dtype()
-
     filter_shape = [filter_size * input.shape[1], num_filters]
     filter = helper.create_parameter(
         attr=helper.param_attr, shape=filter_shape, dtype=dtype)
@@ -637,14 +657,14 @@ def sequence_conv(input,
 
 def conv2d(input,
            num_filters,
-           name=None,
-           filter_size=[1, 1],
-           act=None,
-           groups=None,
+           filter_size,
            stride=[1, 1],
            padding=None,
-           bias_attr=None,
+           groups=None,
            param_attr=None,
+           bias_attr=None,
+           act=None,
+           name=None,
            main_program=None,
            startup_program=None):
     """
@@ -654,6 +674,7 @@ def conv2d(input,
     This funciton can also append an activation on top of the
     conv-2d output, if mentioned in the input parameters.
     """
+
     helper = LayerHelper('conv2d', **locals())
     dtype = helper.input_dtype()
 
@@ -661,7 +682,7 @@ def conv2d(input,
     if groups is None:
         num_filter_channels = num_channels
     else:
-        if num_channels % groups is not 0:
+        if num_channels % groups != 0:
             raise ValueError("num_channels must be divisible by groups.")
         num_filter_channels = num_channels / groups
 
@@ -675,12 +696,16 @@ def conv2d(input,
     input_shape = input.shape
     filter_shape = [num_filters, num_filter_channels] + filter_size
 
-    std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
+    def _get_default_param_initializer():
+        std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
+        return Normal(0.0, std, 0)
+
     filter = helper.create_parameter(
         attr=helper.param_attr,
         shape=filter_shape,
         dtype=dtype,
-        initializer=NormalInitializer(0.0, std, 0))
+        default_initializer=_get_default_param_initializer())
+
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
@@ -795,22 +820,18 @@ def batch_norm(input,
         attr=helper.param_attr,
         shape=param_shape,
         dtype=dtype,
-        initializer=ConstantInitializer(1.0))
+        default_initializer=Constant(1.0))
+
     bias = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=param_shape,
-        dtype=dtype,
-        initializer=ConstantInitializer(0.0))
+        attr=helper.param_attr, shape=param_shape, dtype=dtype, is_bias=True)
 
     mean = helper.create_global_variable(
-        dtype=input.data_type, shape=param_shape, persistable=True)
-    helper.set_variable_initializer(
-        var=mean, initializer=ConstantInitializer(0.0))
+        dtype=input.dtype, shape=param_shape, persistable=True)
+    helper.set_variable_initializer(var=mean, initializer=Constant(0.0))
 
     variance = helper.create_global_variable(
-        dtype=input.data_type, shape=param_shape, persistable=True)
-    helper.set_variable_initializer(
-        var=variance, initializer=ConstantInitializer(1.0))
+        dtype=input.dtype, shape=param_shape, persistable=True)
+    helper.set_variable_initializer(var=variance, initializer=Constant(1.0))
 
     # create output
     # mean and mean_out share the same memory
@@ -847,8 +868,8 @@ def batch_norm(input,
 
 def beam_search_decode(ids, scores, main_program=None, startup_program=None):
     helper = LayerHelper('beam_search_decode', **locals())
-    sentence_ids = helper.create_tmp_variable(dtype=ids.data_type)
-    sentence_scores = helper.create_tmp_variable(dtype=ids.data_type)
+    sentence_ids = helper.create_tmp_variable(dtype=ids.dtype)
+    sentence_scores = helper.create_tmp_variable(dtype=ids.dtype)
 
     helper.append_op(
         type="beam_search_decode",
@@ -986,7 +1007,7 @@ class StaticRNN(object):
             boot_var = parent_block.create_var(
                 name=var_name,
                 shape=shape,
-                dtype=batch_ref.data_type,
+                dtype=batch_ref.dtype,
                 persistable=False)
 
             parent_block.append_op(
@@ -996,7 +1017,7 @@ class StaticRNN(object):
                 attrs={
                     'value': init_value,
                     'shape': boot_var.shape,
-                    'data_type': boot_var.data_type,
+                    'dtype': boot_var.dtype,
                     'input_dim_idx': ref_batch_dim_idx,
                     'output_dim_idx': init_batch_dim_idx
                 })
@@ -1005,7 +1026,7 @@ class StaticRNN(object):
         else:
             pre_mem = self.helper.create_variable(
                 name=unique_name("@".join([self.helper.name, "mem"])),
-                dtype=init.data_type,
+                dtype=init.dtype,
                 shape=init.shape)
             self.memories[pre_mem.name] = StaticRNNMemoryLink(
                 init=init, pre_mem=pre_mem)
@@ -1021,10 +1042,7 @@ class StaticRNN(object):
             raise ValueError("Static RNN only take fix seq_len input")
 
         ipt = self.helper.create_variable(
-            name=x.name,
-            dtype=x.data_type,
-            shape=list(x.shape[1:]),
-            type=x.type)
+            name=x.name, dtype=x.dtype, shape=list(x.shape[1:]), type=x.type)
         self.inputs.append(ipt)
         return ipt
 
@@ -1033,17 +1051,17 @@ class StaticRNN(object):
         if not isinstance(o, Variable):
             raise TypeError("step output takes a Variable")
 
-        tmp_o = self.helper.create_tmp_variable(dtype=o.data_type)
+        tmp_o = self.helper.create_tmp_variable(dtype=o.dtype)
         self.helper.append_op(
             type='rnn_memory_helper',
             inputs={'X': [o]},
             outputs={'Out': tmp_o},
-            attrs={'data_type': o.data_type})
+            attrs={'dtype': o.dtype})
 
         out_var = self.parent_block().create_var(
             name=tmp_o.name,
             shape=[self.seq_len] + list(tmp_o.shape),
-            dtype=tmp_o.data_type)
+            dtype=tmp_o.dtype)
 
         self.outputs.append(out_var)
 
@@ -1115,13 +1133,13 @@ class StaticRNN(object):
             pre_memories.append(mem.pre_mem.name)
             mem_var = rnn_block.var(mem.mem.name)
             assert isinstance(mem_var, Variable)
-            new_mem = self.helper.create_tmp_variable(dtype=mem_var.data_type)
+            new_mem = self.helper.create_tmp_variable(dtype=mem_var.dtype)
 
             rnn_block.append_op(
                 type='rnn_memory_helper',
                 inputs={'X': [mem_var]},
                 outputs={'Out': [new_mem]},
-                attrs={'data_type': mem_var.data_type})
+                attrs={'dtype': mem_var.dtype})
 
             memories.append(new_mem.name)
 
@@ -1171,7 +1189,7 @@ class While(object):
         if not isinstance(cond, Variable):
             raise TypeError("condition should be a variable")
         assert isinstance(cond, Variable)
-        if cond.data_type != core.DataType.BOOL:
+        if cond.dtype != core.DataType.BOOL:
             raise TypeError("condition should be a bool variable")
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError("condition should be a bool scalar")
@@ -1243,9 +1261,9 @@ def lstm(x,
                       main_program=main_program,
                       startup_program=startup_program)
 
-        data_type = x.data_type
-        c = helper.create_tmp_variable(data_type)
-        h = helper.create_tmp_variable(data_type)
+        dtype = x.dtype
+        c = helper.create_tmp_variable(dtype)
+        h = helper.create_tmp_variable(dtype)
 
         helper.append_op(
             type='lstm_unit',
@@ -1278,6 +1296,33 @@ def lod_rank_table(x, level=0, main_program=None):
     return table
 
 
+def max_sequence_len(rank_table, main_program=None):
+    """
+    This function creates an operator to calculate the length of
+    max seqence through input rank_table(should be a lod_rank_table)
+    """
+    helper = LayerHelper("max_seqence_len", **locals())
+    res = helper.create_tmp_variable(dtype="int64")
+    helper.append_op(
+        type="max_sequence_len",
+        inputs={"RankTable": rank_table},
+        outputs={"Out": res})
+    return res
+
+
+def topk(input, k, main_program=None, startup_program=None):
+    helper = LayerHelper('topk', **locals())
+    topk_out = helper.create_tmp_variable(dtype=input.data_type)
+    topk_indices = helper.create_tmp_variable(dtype='int64')
+    helper.append_op(
+        type='top_k',
+        inputs={'X': [input]},
+        outputs={'Out': [topk_out],
+                 'Indices': [topk_indices]},
+        attrs={'k': k})
+    return topk_out, topk_indices
+
+
 def lod_tensor_to_array(x, table, main_program=None):
     """
     This function creates an operator to convert an LOD_Tensor to
@@ -1287,7 +1332,7 @@ def lod_tensor_to_array(x, table, main_program=None):
     array = helper.create_variable(
         name=unique_name("lod_tensor_to_array"),
         type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-        dtype=x.data_type)
+        dtype=x.dtype)
     helper.append_op(
         type='lod_tensor_to_array',
         inputs={'X': x,
@@ -1302,7 +1347,7 @@ def array_to_lod_tensor(x, table, main_program=None):
     LOD_Tensor.
     """
     helper = LayerHelper("array_to_lod_tensor", **locals())
-    tmp = helper.create_tmp_variable(dtype=x.data_type)
+    tmp = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
         type="array_to_lod_tensor",
         inputs={'X': x,
@@ -1311,22 +1356,51 @@ def array_to_lod_tensor(x, table, main_program=None):
     return tmp
 
 
-def fill_constant(shape, dtype, value, main_program=None):
+def fill_constant(shape,
+                  dtype,
+                  value,
+                  out=None,
+                  main_program=None,
+                  startup_program=None):
     """
     This function creates a tensor , with shape as mentioned in the input and
-    specified data_type and fills this up with a constant value that
+    specified dtype and fills this up with a constant value that
     comes in the input. It also sets the stop_gradient to be True.
     """
     helper = LayerHelper("fill_constant", **locals())
-    out = helper.create_tmp_variable(dtype=dtype)
+    if out is None:
+        out = helper.create_tmp_variable(dtype=dtype)
     helper.append_op(
         type='fill_constant',
         inputs={},
         outputs={'Out': [out]},
+        attrs={'shape': shape,
+               'dtype': out.dtype,
+               'value': float(value)})
+    out.stop_gradient = True
+    return out
+
+
+def fill_constant_batch_size_like(input,
+                                  shape,
+                                  dtype,
+                                  value,
+                                  input_dim_idx=0,
+                                  output_dim_idx=0,
+                                  main_program=None,
+                                  startup_program=None):
+    helper = LayerHelper("fill_constant_batch_size_like", **locals())
+    out = helper.create_tmp_variable(dtype=dtype)
+    helper.append_op(
+        type='fill_constant_batch_size_like',
+        inputs={'Input': input},
+        outputs={'Out': [out]},
         attrs={
             'shape': shape,
-            'data_type': out.data_type,
-            'value': float(value)
+            'dtype': out.dtype,
+            'value': float(value),
+            'input_dim_idx': input_dim_idx,
+            'output_dim_idx': output_dim_idx
         })
     out.stop_gradient = True
     return out
@@ -1356,7 +1430,7 @@ def increment(x, value=1.0, in_place=True, main_program=None):
     """
     helper = LayerHelper("increment", **locals())
     if not in_place:
-        out = helper.create_tmp_variable(dtype=x.data_type)
+        out = helper.create_tmp_variable(dtype=x.dtype)
     else:
         out = x
     helper.append_op(
@@ -1377,7 +1451,7 @@ def array_write(x, i, array=None, main_program=None):
         array = helper.create_variable(
             name="{0}.out".format(helper.name),
             type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-            dtype=x.data_type)
+            dtype=x.dtype)
     helper.append_op(
         type='write_to_array',
         inputs={'X': [x],
@@ -1394,7 +1468,7 @@ def create_array(dtype, main_program=None):
         dtype=dtype)
 
 
-def less_than(x, y, cond=None, main_program=None):
+def less_than(x, y, cond=None, main_program=None, **ignored):
     helper = LayerHelper("less_than", **locals())
     if cond is None:
         cond = helper.create_tmp_variable(dtype='bool')
@@ -1416,7 +1490,7 @@ def array_read(array, i, main_program=None):
             array,
             Variable) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         raise TypeError("array should be tensor array vairable")
-    out = helper.create_tmp_variable(dtype=array.data_type)
+    out = helper.create_tmp_variable(dtype=array.dtype)
     helper.append_op(
         type='read_from_array',
         inputs={'X': [array],
@@ -1431,7 +1505,7 @@ def shrink_memory(x, i, table, main_program=None):
     as mentioned in the input parameter.
     """
     helper = LayerHelper('shrink_memory', **locals())
-    out = helper.create_tmp_variable(dtype=x.data_type)
+    out = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
         type='shrink_rnn_memory',
         inputs={'X': [x],
@@ -1455,6 +1529,93 @@ def array_length(array, main_program=None):
     return tmp
 
 
+def conv2d_transpose(input,
+                     num_filters,
+                     output_size=None,
+                     filter_size=None,
+                     padding=None,
+                     stride=None,
+                     param_attr=None,
+                     main_program=None,
+                     startup_program=None):
+    """
+    The transpose of conv2d layer.
+
+    This layer is also known as deconvolution layer.
+
+    Args:
+        input(Variable): The input image with [N, C, H, W] format.
+        num_filters(int): The number of filter. It is as same as the output
+            image channel.
+        output_size(int|tuple|None): The output image size. If output size is a
+            tuple, it must contain two integers, (image_H, image_W). This
+            parameter only works when filter_size is None.
+        filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
+            it must contain two integers, (filter_size_H, filter_size_W).
+            Otherwise, the filter will be a square.  None if use output size to
+            calculate filter_size
+        padding(int|tuple): The padding size. If padding is a tuple, it must
+            contain two integers, (padding_H, padding_W). Otherwise, the
+            padding_H = padding_W = padding.
+        stride(int|tuple): The stride size. If stride is a tuple, it must
+            contain two integers, (stride_H, stride_W). Otherwise, the
+            stride_H = stride_W = stride.
+        param_attr: Parameter Attribute.
+        main_program(Program): the main program
+        startup_program(Program): the startup program
+
+    Returns:
+        Variable: Output image.
+    """
+    helper = LayerHelper("conv2d_transpose", **locals())
+    if not isinstance(input, Variable):
+        raise TypeError("Input of conv2d_transpose must be Variable")
+    input_channel = input.shape[1]
+
+    op_attr = dict()
+
+    if isinstance(padding, int):
+        op_attr['paddings'] = [padding, padding]
+    elif padding is not None:
+        op_attr['paddings'] = padding
+
+    if isinstance(stride, int):
+        op_attr['strides'] = stride
+    elif stride is not None:
+        op_attr['strides'] = stride
+
+    if filter_size is None:
+        if output_size is None:
+            raise ValueError("output_size must be set when filter_size is None")
+        if isinstance(output_size, int):
+            output_size = [output_size, output_size]
+
+        padding = op_attr.get('paddings', [0, 0])
+        stride = op_attr.get('strides', [1, 1])
+
+        h_in = input.shape[2]
+        w_in = input.shape[3]
+        filter_size_h = output_size[0] - (h_in - 1) * stride[0] + 2 * padding[0]
+        filter_size_w = output_size[1] - (w_in - 1) * stride[1] + 2 * padding[1]
+        filter_size = [filter_size_h, filter_size_w]
+    elif isinstance(filter_size, int):
+        filter_size = [filter_size, filter_size]
+
+    filter_shape = [input_channel, num_filters] + filter_size
+    img_filter = helper.create_parameter(
+        dtype=input.dtype, shape=filter_shape, attr=helper.param_attr)
+
+    out = helper.create_tmp_variable(dtype=input.dtype)
+    helper.append_op(
+        type='conv2d_transpose',
+        inputs={'Input': [input],
+                'Filter': [img_filter]},
+        outputs={'Output': out},
+        attrs=op_attr)
+
+    return out
+
+
 class ConditionalBlockGuard(BlockGuard):
     def __init__(self, block):
         if not isinstance(block, ConditionalBlock):
@@ -1472,13 +1633,20 @@ class ConditionalBlockGuard(BlockGuard):
 
 
 class ConditionalBlock(object):
-    def __init__(self, inputs, name=None, main_program=None):
+    def __init__(self,
+                 inputs,
+                 name=None,
+                 main_program=None,
+                 startup_program=None):
         for each_input in inputs:
             if not isinstance(each_input, Variable):
                 raise TypeError("Each input should be variable")
         self.inputs = inputs
         self.helper = LayerHelper(
-            'conditional_block', name=name, main_program=main_program)
+            'conditional_block',
+            name=name,
+            main_program=main_program,
+            startup_program=startup_program)
 
     def block(self):
         return ConditionalBlockGuard(self)
@@ -1523,3 +1691,148 @@ class ConditionalBlock(object):
             outputs={'Out': out_list,
                      'Scope': [step_scope]},
             attrs={'block': inside_block})
+
+
+class IfElseBlockGuard(object):
+    def __init__(self, is_true, ifelse):
+        if not isinstance(ifelse, IfElse):
+            raise TypeError("ifelse must be an instance of IfElse class")
+
+        if ifelse.status != IfElse.OUT_IF_ELSE_BLOCKS:
+            raise ValueError("You cannot invoke IfElse.block() inside a block")
+
+        self.is_true = is_true
+        self.ie = ifelse
+        if is_true:
+            self.cond_block = ifelse.conditional_true_block
+        else:
+            self.cond_block = ifelse.conditional_false_block
+
+        if not isinstance(self.cond_block, ConditionalBlock):
+            raise TypeError("Unexpected situation")
+
+        self.cond_block = self.cond_block.block()
+
+    def __enter__(self):
+        self.ie.status = IfElse.IN_IF_ELSE_TRUE_BLOCKS if self.is_true else IfElse.IN_IF_ELSE_FALSE_BLOCKS
+        self.cond_block.__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if not self.cond_block.__exit__(exc_type, exc_val, exc_tb):
+            # re-raise inside exception
+            return False
+        if len(self.ie.output_table[1 if self.is_true else 0]) == 0:
+            raise ValueError("Must set output inside block")
+        self.ie.status = IfElse.OUT_IF_ELSE_BLOCKS
+
+
+class IfElse(object):
+    OUT_IF_ELSE_BLOCKS = 0
+    IN_IF_ELSE_TRUE_BLOCKS = 1
+    IN_IF_ELSE_FALSE_BLOCKS = 2
+
+    def __init__(self, cond, name=None, main_program=None,
+                 startup_program=None):
+        if not isinstance(cond, Variable):
+            raise TypeError("cond must be a Variable")
+        self.helper = LayerHelper(
+            'ifelse',
+            name=name,
+            main_program=main_program,
+            startup_program=startup_program)
+        self.cond = cond
+        self.input_table = {}
+        self.status = IfElse.OUT_IF_ELSE_BLOCKS
+        self.conditional_true_block = ConditionalBlock(inputs=[self.cond])
+        self.conditional_false_block = ConditionalBlock(inputs=[self.cond])
+        self.output_table = ([], [])  # (true_outs, false_outs)
+
+    def input(self, x):
+        if self.status == IfElse.OUT_IF_ELSE_BLOCKS:
+            raise ValueError("input must in true/false blocks")
+        if id(x) not in self.input_table:
+            parent_block = self.parent_block()
+            out_true = parent_block.create_var(
+                name=unique_name('ifelse_input' + self.helper.name),
+                dtype=x.dtype)
+
+            out_false = parent_block.create_var(
+                name=unique_name('ifelse_input' + self.helper.name),
+                dtype=x.dtype)
+            parent_block.append_op(
+                type='split_lod_tensor',
+                inputs={
+                    'X': x,
+                    'Mask': self.cond,
+                },
+                outputs={'OutTrue': out_true,
+                         'OutFalse': out_false},
+                attrs={'level': 0})
+            self.input_table[id(x)] = (out_true, out_false)
+        else:
+            out_true, out_false = self.input_table[id(x)]
+
+        if self.status == IfElse.IN_IF_ELSE_TRUE_BLOCKS:
+            return out_true
+        else:
+            return out_false
+
+    def parent_block(self):
+        current_block = self.helper.main_program.current_block()
+        return self.helper.main_program.block(current_block.parent_idx)
+
+    def true_block(self):
+        return IfElseBlockGuard(True, self)
+
+    def false_block(self):
+        return IfElseBlockGuard(False, self)
+
+    def output(self, *outs):
+        if self.status == self.OUT_IF_ELSE_BLOCKS:
+            raise ValueError("output can only be invoked in the sub-block")
+
+        out_table = self.output_table[1 if self.status ==
+                                      self.IN_IF_ELSE_TRUE_BLOCKS else 0]
+        parent_block = self.parent_block()
+        for each_out in outs:
+            if not isinstance(each_out, Variable):
+                raise TypeError("Each output should be a variable")
+            # create outside tensor
+            outside_out = parent_block.create_var(
+                name=unique_name("_".join([self.helper.name, 'output'])),
+                dtype=each_out.dtype)
+            out_table.append(outside_out)
+
+            # assign local var to outside
+            assign(
+                input=each_out,
+                output=outside_out,
+                main_program=self.helper.main_program,
+                startup_program=self.helper.startup_program)
+
+    def __call__(self):
+        if self.status != self.OUT_IF_ELSE_BLOCKS:
+            raise ValueError("IfElse::__call__ must be out of sub-block")
+        false_len, true_len = map(len, self.output_table)
+        if false_len == 0 and true_len == 0:
+            raise ValueError("Must invoke true_block/false_block before "
+                             "__call__")
+        elif false_len != true_len and false_len != 0 and true_len != 0:
+            raise ValueError("The output side must be same")
+        elif false_len == 0 or true_len == 0:
+            return self.output_table[0 if false_len != 0 else 1]
+
+        # else none of false_len/true_len is zero
+        # merge together
+        rlist = []
+        for false_var, true_var in zip(*self.output_table):
+            rlist.append(
+                merge_lod_tensor(
+                    in_true=true_var,
+                    in_false=false_var,
+                    mask=self.cond,
+                    x=self.cond,
+                    level=0,
+                    main_program=self.helper.main_program,
+                    startup_program=self.helper.startup_program))
+        return rlist

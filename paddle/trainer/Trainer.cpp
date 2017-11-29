@@ -137,6 +137,10 @@ void Trainer::init(const std::shared_ptr<TrainerConfigHelper>& config,
     }
   }
 
+  if (FLAGS_use_mkldnn) {
+    CHECK_EQ(FLAGS_trainer_count, 1) << "MKLDNN only need 1 trainer";
+  }
+
   if (testing) {
     LOG(INFO) << "trainer: in testing mode";
     if (config_->getOptConfig().use_sparse_remote_updater() ||
