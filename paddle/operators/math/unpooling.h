@@ -23,8 +23,7 @@ class Unpool2dMaxFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::Tensor& input,
-                  const framework::Tensor& indices,
-                  framework::Tensor* output);
+                  const framework::Tensor& indices, framework::Tensor* output);
 };
 template <typename Place, class T>
 class Unpool2dMaxGradFunctor {
