@@ -20,13 +20,13 @@ if(WITH_PYTHON)
   add_unittest_without_exec(test_TrainerOnePass
       test_TrainerOnePass.cpp)
   add_test(NAME test_TrainerOnePass
-    COMMAND ${PYTHON_PATH} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}
-          ${PADDLE_SOURCE_DIR}/paddle/.set_port.sh -p port ${CMAKE_CURRENT_BINARY_DIR}/test_TrainerOnePass
+    COMMAND ${PYTHON_PATH} ${PADDLE_SOURCE_DIR}/paddle/.set_port.sh -p port 
+          ${CMAKE_CURRENT_BINARY_DIR}/test_TrainerOnePass
       WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
 endif()
 
 #################### test_config_parser #########################
 add_test(NAME test_config_parser
-  COMMAND ${PYTHON_PATH} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}
-        ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/paddle/trainer/tests/config_parser_test.py
+  COMMAND ${PYTHON_PATH} ${PYTHON_EXECUTABLE} 
+        ${PADDLE_SOURCE_DIR}/paddle/trainer/tests/config_parser_test.py
     WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
