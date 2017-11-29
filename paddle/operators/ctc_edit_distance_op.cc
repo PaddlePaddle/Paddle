@@ -27,6 +27,13 @@ class CTCEditDistanceOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) shouldn't be null.");
     ctx->SetOutputDim("Out", {1});
   }
+
+ protected:
+  framework::OpKernelType GetKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(framework::DataType::FP32,
+                                   ctx.device_context());
+  }
 };
 
 class CTCEditDistanceOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -70,5 +77,4 @@ REGISTER_OP_WITHOUT_GRADIENT(ctc_edit_distance, ops::CTCEditDistanceOp,
                              ops::CTCEditDistanceOpMaker);
 REGISTER_OP_CPU_KERNEL(
     ctc_edit_distance,
-    ops::CTCEditDistanceKernel<paddle::platform::CPUPlace, int32_t>,
-    ops::CTCEditDistanceKernel<paddle::platform::CPUPlace, int64_t>);
+    ops::CTCEditDistanceKernel<paddle::platform::CPUPlace, float>);
