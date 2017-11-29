@@ -110,7 +110,6 @@ void Free<platform::GPUPlace>(platform::GPUPlace place, void* p) {
   GetGPUBuddyAllocator(place.device)->Free(p);
 }
 
-
 #endif
 
 }  // namespace memory
