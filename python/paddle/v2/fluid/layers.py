@@ -101,7 +101,7 @@ def embedding(input,
     Embedding Layer.
 
     Args:
-       param_initializer: 
+       param_initializer:
        input: The input to the function
        size: The size of the layer
        is_sparse: A flag that decleares whether the input is sparse
@@ -153,7 +153,7 @@ def dynamic_lstm(input,
     if not use_peepholes:
         bias_size[1] = 4 * size
     bias = helper.create_parameter(
-        attr=helper.bias_attr, shape=bias_size, dtype=dtype, suffix='b')
+        attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
 
     hidden = helper.create_tmp_variable(dtype)
     cell = helper.create_tmp_variable(dtype)
@@ -1298,7 +1298,7 @@ def lod_rank_table(x, level=0, main_program=None):
 
 def max_sequence_len(rank_table, main_program=None):
     """
-    This function creates an operator to calculate the length of 
+    This function creates an operator to calculate the length of
     max seqence through input rank_table(should be a lod_rank_table)
     """
     helper = LayerHelper("max_seqence_len", **locals())
@@ -1540,29 +1540,29 @@ def conv2d_transpose(input,
                      startup_program=None):
     """
     The transpose of conv2d layer.
-    
+
     This layer is also known as deconvolution layer.
-    
+
     Args:
         input(Variable): The input image with [N, C, H, W] format.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
         output_size(int|tuple|None): The output image size. If output size is a
-            tuple, it must contain two integers, (image_H, image_W). This 
+            tuple, it must contain two integers, (image_H, image_W). This
             parameter only works when filter_size is None.
         filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
             it must contain two integers, (filter_size_H, filter_size_W).
             Otherwise, the filter will be a square.  None if use output size to
             calculate filter_size
         padding(int|tuple): The padding size. If padding is a tuple, it must
-            contain two integers, (padding_H, padding_W). Otherwise, the 
+            contain two integers, (padding_H, padding_W). Otherwise, the
             padding_H = padding_W = padding.
         stride(int|tuple): The stride size. If stride is a tuple, it must
             contain two integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride.
         param_attr: Parameter Attribute.
         main_program(Program): the main program
-        startup_program(Program): the startup program 
+        startup_program(Program): the startup program
 
     Returns:
         Variable: Output image.

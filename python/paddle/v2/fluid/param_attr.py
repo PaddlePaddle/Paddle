@@ -36,6 +36,8 @@ class ParamAttr(object):
     def to_attr(arg):
         if arg is None:
             return ParamAttr()
+        elif isinstance(arg, ParamAttr):
+            return arg
         elif isinstance(arg, str) or isinstance(arg, unicode):
             return ParamAttr(name=arg)
         elif isinstance(arg, Initializer):
