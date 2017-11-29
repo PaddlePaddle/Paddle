@@ -29,23 +29,22 @@ inline int DivUp(int x, int y) { return (x + y - 1) / y; }
 template <typename T>
 __global__ void RowConvForward(const T *in, const T *wt, int num_sequence,
                                int input_dim, int context_length,
-                               size_t *batch_indices, T *out) {
-  int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
-  int bly = blockDim.y;
-  int thy = threadIdx.y;
-
-  if (d != 0 && (thy + bly) != 0) return;
+                               const size_t *batch_indices, T *out) {
+  // int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
+  // int bly = blockDim.y;
+  // int thy = threadIdx.y;
 
   for (size_t i = 0; i < num_sequence; i++) {
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
     int current_timesteps = end - start;
-    for (int k = 0; k < current_timesteps; k += 1) {
+
+    for (int k = 0; k < current_timesteps; k++) {
       for (int w = 0; (w < context_length) && ((k + w) < current_timesteps);
            w++) {
         for (int d = 0; d < input_dim; d++) {
           out[(start + k) * input_dim + d] +=
-              wt[w * input_dim + d] * in[(start + k + w) * input_dim + d];
+              (wt[w * input_dim + d] * in[(start + k + w) * input_dim + d]);
         }
       }
     }
@@ -56,23 +55,22 @@ __global__ void RowConvForward(const T *in, const T *wt, int num_sequence,
 template <typename T>
 __global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
                                  int input_dim, int context_length,
-                                 size_t *batch_indices, T *din) {
+                                 const size_t *batch_indices, T *din) {
   int d_idx = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
   int bly = blockDim.y;
   int thy = threadIdx.y;
   if (d_idx != 0 && (thy + bly) != 0) return;
 
-  for (size_t i = 0; i < num_sequence; i++) {
+  for (int i = 0; i < num_sequence; i++) {
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
     int current_timesteps = end - start;
-    for (int k = 0; k < current_timesteps; k += 1) {
-      //      T sum = 0;
+    for (int k = 0; k < current_timesteps; k++) {
       for (int w = 0; (w < context_length) && ((k + w) < current_timesteps);
            w++) {
         for (int d = 0; d < input_dim; d++) {
-          din[(start + k + w) * input_dim + d] +=
-              wt[w * input_dim + d] * dout[(start + k) * input_dim + d];
+          in[(k + w + start) * input_dim + d] +=
+              (wt[w * input_dim + d] * dout[(k + start) * input_dim + d]);
         }
       }
     }
@@ -83,7 +81,7 @@ __global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
 template <typename T>
 __global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
                                   int input_dim, int context_length,
-                                  size_t *batch_indices, T *dfilter) {
+                                  const size_t *batch_indices, T *dfilter) {
   int d_idx = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
   int w_idx =
       blockIdx.y * blockDim.y + threadIdx.y;  // index along context_length
@@ -132,8 +130,10 @@ class RowConvKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     size_t *idx = batch_indices.data();
 
     auto stream = context.cuda_device_context().stream();
-    dim3 block_dim = dim3(32, 32);
-    dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
+    // dim3 block_dim = dim3(32, 32);
+    // dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
+    dim3 block_dim = dim3(1, 1);
+    dim3 grid_dim = dim3(1, 1);
 
     RowConvForward<T><<<grid_dim, block_dim, 0, stream>>>(
         in, weight, num_sequence, input_dim, context_length, idx, out);
@@ -167,9 +167,10 @@ class RowConvGradKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
       T *dfilter = dFilter->mutable_data<T>(context.GetPlace());
       zero(device_ctx, dFilter, static_cast<T>(0.0));  // May not need, CHECK ME
 
-      dim3 block_dim = dim3(32, 32);
-      dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x),
-                           DivUp(context_length, block_dim.y));
+      dim3 block_dim = dim3(1, 1);
+      dim3 grid_dim = dim3(1, 1);
+      //     dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x),
+      //                          DivUp(context_length, block_dim.y));
 
       RowConvGradFilter<T><<<grid_dim, block_dim, 0, device_ctx.stream()>>>(
           in, dout, num_sequence, input_dim, context_length, idx, dfilter);
@@ -178,8 +179,9 @@ class RowConvGradKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     if (dX) {
       T *din = dX->mutable_data<T>(context.GetPlace());
       zero(device_ctx, dX, static_cast<T>(0.0));
-      dim3 block_dim = dim3(32, 32);
-      dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
+      dim3 block_dim = dim3(1, 1);
+      dim3 grid_dim = dim3(1, 1);
+      // dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
       RowConvGradInput<T><<<grid_dim, block_dim, 0, device_ctx.stream()>>>(
           dout, weights, num_sequence, input_dim, context_length, idx, din);
     }
