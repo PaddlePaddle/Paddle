@@ -58,12 +58,19 @@ class CTCEditDistanceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 
 CTCEditDistance operator computes the edit distance of two sequences, one named
-hypothesis and another named reference.
+hypothesis with length M and another named reference with length N.
 
-Edit distance measures how dissimilar two strings, one is hypothesis and another
-is reference, are by counting the minimum number of operations to transform
-one string into anthor.
+Edit distance, also called Levenshtein distance, measures how dissimilar two strings 
+are by counting the minimum number of operations to transform one string into anthor. 
+Here the operations include insertion, deletion, and substitution. For example, 
+given hypothesis string A = "kitten" and reference B = "sitting", the edit distance 
+is 3 for A will be transformed into B at least after two substitutions and one 
+insertion:
+  
+   "kitten" -> "sitten" -> "sittin" -> "sitting"
 
+If Attr(normalized) is true, the edit distance will be divided by the length of 
+reference string N.
 )DOC");
   }
 };
