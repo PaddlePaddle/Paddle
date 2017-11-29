@@ -29,7 +29,8 @@ inline int DivUp(int x, int y) { return (x + y - 1) / y; }
 template <typename T>
 __global__ void RowConvForward(const T *in, const T *wt, int num_sequence,
                                int input_dim, int context_length,
-                               vector<size_t> &batch_indices, T *out) {
+                               framework::Vector<size_t> &batch_indices,
+                               T *out) {
   int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
   int bly = blockDim.y;
   int thy = threadIdx.y;
@@ -55,9 +56,10 @@ __global__ void RowConvForward(const T *in, const T *wt, int num_sequence,
 
 // Compute input gradient
 template <typename T>
-__global__ void RowConvGradInp(const T *dout, const T *wt, int num_sequence,
-                               int input_dim, int context_length,
-                               vector<size_t> &batch_indices, T *din) {
+__global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
+                                 int input_dim, int context_length,
+                                 framework::Vector<size_t> &batch_indices,
+                                 T *din) {
   int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
   int bly = blockDim.y;
   int thy = threadIdx.y;
@@ -82,8 +84,9 @@ __global__ void RowConvGradInp(const T *dout, const T *wt, int num_sequence,
 // Compute weight gradient
 template <typename T>
 __global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
-                                  int context_length,
-                                  vector<size_t> &batch_indices, T *dfilter) {
+                                  int input_dim, int context_length,
+                                  framework::Vector<size_t> &batch_indices,
+                                  T *dfilter) {
   int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
   int w = blockIdx.y * blockDim.y + threadIdx.y;  // index along context_length
 
