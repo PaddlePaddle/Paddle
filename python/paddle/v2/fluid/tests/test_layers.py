@@ -94,23 +94,23 @@ class TestBook(unittest.TestCase):
                 input=first_word,
                 size=[dict_size, embed_size],
                 dtype='float32',
-                param_attr={'name': 'shared_w'})
+                param_attr='shared_w')
             embed_second = layers.embedding(
                 input=second_word,
                 size=[dict_size, embed_size],
                 dtype='float32',
-                param_attr={'name': 'shared_w'})
+                param_attr='shared_w')
 
             embed_third = layers.embedding(
                 input=third_word,
                 size=[dict_size, embed_size],
                 dtype='float32',
-                param_attr={'name': 'shared_w'})
+                param_attr='shared_w')
             embed_forth = layers.embedding(
                 input=forth_word,
                 size=[dict_size, embed_size],
                 dtype='float32',
-                param_attr={'name': 'shared_w'})
+                param_attr='shared_w')
 
             concat_embed = layers.concat(
                 input=[embed_first, embed_second, embed_third, embed_forth],
