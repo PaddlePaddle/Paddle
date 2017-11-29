@@ -65,7 +65,9 @@ Let x be a logit (prediction) and y be the actual label. The logit can
 take any values from (-inf, inf), but the labels should be either -1 or 1.
 Then, the hinge loss is computed as follows:
 
+$$
 L_(x, y) = max(1 - y.x, 0) 
+$$
 
 Note that the labels passed as input will have values as either 0 or 1.
 
