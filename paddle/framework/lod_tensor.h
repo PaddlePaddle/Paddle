@@ -24,6 +24,7 @@
 #include <glog/logging.h>
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/tensor.h"
+#include "paddle/framework/tensor_util.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 
@@ -175,9 +176,9 @@ LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
   PADDLE_ENFORCE_EQ(num_instances, lod_level.size() - 1);
   for (size_t ins = 0; ins < num_instances; ins++) {
     for (size_t elem = lod_level[ins]; elem < lod_level[ins + 1]; elem++) {
-      tensor.Slice(elem, elem + 1)
-          .CopyFrom(source.Slice(ins, ins + 1), platform::CPUPlace(),
-                    platform::CPUDeviceContext());
+      auto slice = tensor.Slice(elem, elem + 1);
+      CopyFrom(source.Slice(ins, ins + 1), platform::CPUPlace(),
+               platform::CPUDeviceContext(), &slice);
     }
   }
   return tensor;
@@ -187,6 +188,15 @@ std::pair<LoD, std::pair<size_t, size_t>> GetSubLoDAndAbsoluteOffset(
     const LoD& lod, size_t start_idx, size_t end_idx, size_t start_level);
 
 void AppendLoD(LoD* lod, const LoD& lod_length);
+
+/*
+ * Serialize/Desiralize LoDTensor to std::ostream
+ * You can pass ofstream or ostringstream to serilize to file
+ * or to a in memory string. GPU tensor will be copied to CPU.
+ */
+void SerializeToStream(std::ostream& os, const LoDTensor& tensor,
+                       const platform::DeviceContext& dev_ctx);
+void DeserializeFromStream(std::istream& is, LoDTensor* tensor);
 
 }  // namespace framework
 }  // namespace paddle

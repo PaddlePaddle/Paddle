@@ -2400,6 +2400,14 @@ class CropLayer(LayerBase):
         image_conf.img_size_y = input_layer.height
         image_conf.channels = input_layer.size / (input_layer.width *
                                                   input_layer.height)
+        # only support for 4-dims inputs and NCHW order
+        if (len(self.config.inputs) == 2):
+            self.set_layer_height_width(
+                self.get_input_layer(1).height, self.get_input_layer(1).width)
+            self.set_layer_size(self.get_input_layer(1).size)
+        else:
+            self.set_layer_height_width(shape[-2], shape[-1])
+            self.set_layer_size(reduce(lambda x, y: x * y, shape[1:]))
 
 
 @config_layer('batch_norm')
@@ -2798,19 +2806,18 @@ class AddToLayer(LayerBase):
             name, self.layer_type, 0, inputs=inputs, **xargs)
         config_assert(len(inputs) > 0, 'inputs cannot be empty for AddToLayer')
 
-        if len(self.inputs) > 1:
-            for input_index in xrange(len(self.inputs)):
-                assert self.get_input_layer(0).height == self.get_input_layer(
-                    input_index).height
-                assert self.get_input_layer(0).width == self.get_input_layer(
-                    input_index).width
-                assert self.get_input_layer(0).depth == self.get_input_layer(
-                    input_index).depth
+        layer_size = self.get_input_layer(0).size
+        # To reserve heght, width, depth.
+        layer_with_hwc = self.get_input_layer(0)
+        for input_index in xrange(len(self.inputs)):
+            input_layer = self.get_input_layer(input_index)
+            assert layer_size == input_layer.size
+            if input_layer.height and input_layer.height and input_layer.height:
+                layer_with_hwc = input_layer
 
-        self.set_layer_size(self.get_input_layer(0).size)
-        self.set_layer_height_width(self.get_input_layer(0).height, \
-                                        self.get_input_layer(0).width)
-        self.set_layer_depth(self.get_input_layer(0).depth)
+        self.set_layer_size(layer_with_hwc.size)
+        self.set_layer_height_width(layer_with_hwc.height, layer_with_hwc.width)
+        self.set_layer_depth(layer_with_hwc.depth)
         self.create_bias_parameter(bias, self.config.size)
 
 
@@ -3850,6 +3857,26 @@ class SwitchOrderLayer(LayerBase):
             name, 'switch_order', 0, inputs=inputs, **xargs)
         self.config.reshape_conf.height_axis.extend(reshape['height'])
         self.config.reshape_conf.width_axis.extend(reshape['width'])
+        input_layer = self.get_input_layer(0)
+        if reshape is None:
+            self.set_layer_size(input_layer.size)
+        else:
+            in_h = input_layer.height
+            in_w = input_layer.width
+            out_dims = None
+            if input_layer.has_depth():
+                in_d = input_layer.depth
+                in_c = input_layer.size / in_h / in_w / in_d
+                # batch_size, depth, height, width, channel
+                out_dims = [0, in_d, in_h, in_w, in_c]
+            else:
+                in_c = input_layer.size / in_h / in_w
+                # batch_size, height, width, channel
+                out_dims = [0, in_h, in_w, in_c]
+            # Because (reshape['width'][0] > 0) always be true.
+            # So out_dims[0] won't be used.
+            size = reduce(lambda x, y: x * y, out_dims[reshape['width'][0]:])
+            self.set_layer_size(size)
 
 
 @config_layer('scale_sub_region')
@@ -3869,6 +3896,21 @@ class ScaleSubRegionLayer(LayerBase):
                                                   input_layer.height)
         self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
                            image_conf.channels)
+
+
+@config_layer('factorization_machine')
+class FactorizationMachineLayer(LayerBase):
+    def __init__(self, name, inputs, factor_size, **xargs):
+        super(FactorizationMachineLayer, self).__init__(
+            name, 'factorization_machine', size=1, inputs=inputs, **xargs)
+        config_assert(
+            len(self.inputs) == 1,
+            'factorization machine layer must have one and only one input.')
+        self.config.factor_size = factor_size
+        input_layer = self.get_input_layer(0)
+        psize = input_layer.size * factor_size
+        dims = [input_layer.size, factor_size]
+        self.create_input_parameter(0, psize, dims)
 
 
 # Deprecated, use a new layer specific class instead

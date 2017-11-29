@@ -32,19 +32,19 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
              "[(D + 2) x D]. The learnable parameter for the linear_chain_crf "
              "operator. See more details in the operator's comments.");
     AddInput("Label",
-             "(LoDTensor, default LoDTensor<int>) A LoDTensor with shape "
+             "(LoDTensor, default LoDTensor<int64_t>) A LoDTensor with shape "
              "[N x 1], where N is the total element number in a mini-batch. "
              "The ground truth.");
     AddOutput(
         "Alpha",
         "(Tensor, default Tensor<float>) A 2-D Tensor with shape [N x D]. "
-        "The forward vectors for the entire batch. Denote it as \f$\alpha\f$. "
-        "\f$\alpha$\f is a memo table used to calculate the normalization "
-        "factor in CRF. \f$\alpha[k, v]$\f stores the unnormalized "
+        "The forward vectors for the entire batch. Denote it as $\alpha$. "
+        "$\alpha$ is a memo table used to calculate the normalization "
+        "factor in CRF. $\alpha[k, v]$ stores the unnormalized "
         "probabilites of all possible unfinished sequences of tags that end at "
-        "position \f$k$\f with tag \f$v$\f. For each \f$k$\f, "
-        "\f$\alpha[k, v]$\f is a vector of length \f$D$\f with a component for "
-        "each tag value \f$v$\f. This vector is called a forward vecotr and "
+        "position $k$ with tag $v$. For each $k$, "
+        "$\alpha[k, v]$ is a vector of length $D$ with a component for "
+        "each tag value $v$. This vector is called a forward vecotr and "
         "will also be used in backward computations.")
         .AsIntermediate();
     AddOutput(
@@ -73,9 +73,9 @@ LinearChainCRF Operator.
 
 Conditional Random Field defines an undirected probabilistic graph with nodes
 denoting random variables and edges denoting dependencies between these
-variables. CRF learns the conditional probability \f$P(Y|X)\f$, where
-\f$X = (x_1, x_2, ... , x_n)\f$ are structured inputs and
-\f$Y = (y_1, y_2, ... , y_n)\f$ are labels for the inputs.
+variables. CRF learns the conditional probability $P(Y|X)$, where
+$X = (x_1, x_2, ... , x_n)$ are structured inputs and
+$Y = (y_1, y_2, ... , y_n)$ are labels for the inputs.
 
 Linear chain CRF is a special case of CRF that is useful for sequence labeling
 task. Sequence labeling tasks do not assume a lot of conditional
@@ -88,21 +88,22 @@ CRF. Please refer to http://www.cs.columbia.edu/~mcollins/fb.pdf and
 http://cseweb.ucsd.edu/~elkan/250Bwinter2012/loglinearCRFs.pdf for details.
 
 Equation:
-1. Denote Input(Emission) to this operator as \f$x\f$ here.
+1. Denote Input(Emission) to this operator as $x$ here.
 2. The first D values of Input(Transition) to this operator are for starting
-weights, denoted as \f$a\f$ here.
+weights, denoted as $a$ here.
 3. The next D values of Input(Transition) of this operator are for ending
-weights, denoted as \f$b\f$ here.
+weights, denoted as $b$ here.
 4. The remaning values of Input(Transition) are for transition weights,
-denoted as \f$w\f$ here.
-5. Denote Input(Label) as \f$s\f$ here.
+denoted as $w$ here.
+5. Denote Input(Label) as $s$ here.
 
-The probability of a sequence \f$s\f$ of length \f$L\f$ is defined as:
-\f$P(s) = (1/Z) \exp(a_{s_1} + b_{s_L}
-                 + \sum_{l=1}^L x_{s_l}
-                 + \sum_{l=2}^L w_{s_{l-1},s_l})\f$
-where \f$Z\f$ is a normalization value so that the sum of \f$P(s)\f$ over
-all possible sequences is \f$1\f$, and \f$x\f$ is the emission feature weight
+The probability of a sequence $s$ of length $L$ is defined as:
+$$P(s) = (1/Z) \exp(a_{s_1} + b_{s_L}
+                + \sum_{l=1}^L x_{s_l}
+                + \sum_{l=2}^L w_{s_{l-1},s_l})$$
+
+where $Z$ is a normalization value so that the sum of $P(s)$ over
+all possible sequences is 1, and $x$ is the emission feature weight
 to the linear chain CRF.
 
 Finally, the linear chain CRF operator outputs the logarithm of the conditional

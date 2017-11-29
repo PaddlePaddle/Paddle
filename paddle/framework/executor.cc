@@ -120,7 +120,7 @@ void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id,
 
   for (auto& op_desc : block.AllOps()) {
     auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
-    VLOG(10) << op->DebugString();
+    VLOG(3) << op->DebugString();
     op->Run(*local_scope, *device);
   }
   if (create_local_scope) {
