@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <cstdint>
+#include <stdint.h>
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
@@ -71,6 +71,7 @@ struct PADDLE_ALIGN(2) float16 {
 public:
   uint16_t x;
 
+  // Constructors
   HOSTDEVICE inline float16() : x(0) {}
 
   HOSTDEVICE inline float16(const float16& h) : x(h.x) {}
@@ -89,8 +90,7 @@ public:
 
 #ifdef PADDLE_WITH_NATIVE_FP16
   // __fp16 is a native half precision data type for arm cpu,
-  // float16_t is an alias for __fp16 in arm_fp16.h,
-  // which is included in arm_neon.h.
+  // float16_t is an alias for __fp16
   HOSTDEVICE inline explicit float16(const float16_t& h) {
     x = *reinterpret_cast<const uint16_t*>(&h);
   }
@@ -141,6 +141,7 @@ public:
     return *this;
   }
 
+// Assignment operators
 #ifdef PADDLE_CUDA_FP16
   HOSTDEVICE inline float16& operator=(const half& rhs) {
 #if CUDA_VERSION >= 9000
@@ -219,6 +220,7 @@ public:
     return *this;
   }
 
+// Conversion opertors
 #ifdef PADDLE_CUDA_FP16
   HOSTDEVICE inline explicit operator half() const {
 #if CUDA_VERSION >= 9000
@@ -353,27 +355,54 @@ private:
 // CUDA 7.5 and 8.0 do not. The arithmetic operators defined here are
 // for users to write similar CUDA code in CUDA 7.5 and 8.0 as in
 // CUDA 9.0 regarding the half data type.
-#if defined(PADDLE_CUDA_FP16) && defined(__CUDA_ARCH__) && \
-    __CUDA_ARCH__ >= 530 && CUDA_VERSION < 9000
+#if defined(PADDLE_CUDA_FP16) && CUDA_VERSION < 9000
+
 DEVICE inline half operator+(const half& a, const half& b) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hadd(a, b);
+#else
+  float res = float(float16(a)) + float(float16(b));
+  return half(float16(res));
+#endif
 }
 
 DEVICE inline half operator-(const half& a, const half& b) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hsub(a, b);
+#else
+  float res = float(float16(a)) - float(float16(b));
+  return half(float16(res));
+#endif
 }
 
 DEVICE inline half operator*(const half& a, const half& b) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hmul(a, b);
+#else
+  float res = float(float16(a)) * float(float16(b));
+  return half(float16(res));
+#endif
 }
 
 DEVICE inline half operator/(const half& a, const half& b) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300
   float num = __half2float(a);
   float denom = __half2float(b);
   return __float2half(num / denom);
+#else
+  float res = float(float16(a)) / float(float16(b));
+  return half(float16(res));
+#endif
 }
 
-DEVICE inline half operator-(const half& a) { return __hneg(a); }
+DEVICE inline half operator-(const half& a) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return __hneg(a);
+#else
+  float res = -float(float16(a));
+  return half(float16(res));
+#endif
+}
 
 DEVICE inline half& operator+=(half& a, const half& b) {
   a = a + b;
@@ -396,99 +425,57 @@ DEVICE inline half& operator/=(half& a, const half& b) {
 }
 
 DEVICE inline bool operator==(const half& a, const half& b) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __heq(a, b);
+#else
+  return float(float16(a)) == float(float16(b));
+#endif
 }
 
 DEVICE inline bool operator!=(const half& a, const half& b) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hne(a, b);
+#else
+  return float(float16(a)) != float(float16(b));
+#endif
 }
 
 DEVICE inline bool operator<(const half& a, const half& b) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hlt(a, b);
+#else
+  return float(float16(a)) < float(float16(b));
+#endif
 }
 
 DEVICE inline bool operator<=(const half& a, const half& b) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hle(a, b);
+#else
+  return float(float16(a)) <= float(float16(b));
+#endif
 }
 
 DEVICE inline bool operator>(const half& a, const half& b) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hgt(a, b);
+#else
+  return float(float16(a)) > float(float16(b));
+#endif
 }
 
 DEVICE inline bool operator>=(const half& a, const half& b) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hge(a, b);
+#else
+  return float(float16(a)) >= float(float16(b));
+#endif
 }
 
-/*
-DEVICE inline float16 operator+(const float16& a, const float16& b) {
-  return float16(__hadd(half(a), half(b)));
-}
-
-DEVICE inline float16 operator-(const float16& a, const float16& b) {
-  return float16(__hsub(half(a), half(b)));
-}
-
-DEVICE inline float16 operator*(const float16& a, const float16& b) {
-  return float16(__hmul(half(a), half(b)));
-}
-
-DEVICE inline float16 operator/(const float16& a, const float16& b) {
-  float num = __half2float(half(a));
-  float denom = __half2float(half(b));
-  return float16(num / denom);
-}
-
-DEVICE inline float16 operator-(const float16& a) {
-  return float16(__hneg(half(a)));
-}
-
-DEVICE inline float16& operator+=(float16& a, const float16& b) {
-  a = a + b;
-  return a;
-}
-
-DEVICE inline float16& operator-=(float16& a, const float16& b) {
-  a = a - b;
-  return a;
-}
-
-DEVICE inline float16& operator*=(float16& a, const float16& b) {
-  a = a * b;
-  return a;
-}
-
-DEVICE inline float16& operator/=(float16& a, const float16& b) {
-  a = a / b;
-  return a;
-}
-
-DEVICE inline bool operator==(const float16& a, const float16& b) {
-  return __heq(half(a), half(b));
-}
-
-DEVICE inline bool operator!=(const float16& a, const float16& b) {
-  return __hne(half(a), half(b));
-}
-
-DEVICE inline bool operator<(const float16& a, const float16& b) {
-  return __hlt(half(a), half(b));
-}
-
-DEVICE inline bool operator<=(const float16& a, const float16& b) {
-  return __hle(half(a), half(b));
-}
-
-DEVICE inline bool operator>(const float16& a, const float16& b) {
-  return __hgt(half(a), half(b));
-}
-
-DEVICE inline bool operator>=(const float16& a, const float16& b) {
-  return __hge(half(a), half(b));
-}
-*/
+#endif  // PADDLE_CUDA_FP16
 
 // Arithmetic operators on ARMv8.2-A CPU
-#elif defined(PADDLE_WITH_NATIVE_FP16)
+#if defined(PADDLE_WITH_NATIVE_FP16)
 HOST inline float16 operator+(const float16& a, const float16& b) {
   float16 res;
   asm volatile(
@@ -680,88 +667,6 @@ HOST inline bool operator>=(const float16& a, const float16& b) {
       "memory", "v0", "v1");
   return (res & 0xffff) != 0;
 }
-
-/*
-HOST inline float16 operator+(const float16& a, const float16& b) {
-  return float16(vaddh_f16(float16_t(a), float16_t(b)));
-}
-
-HOST inline float16 operator-(const float16& a, const float16& b) {
-  return float16(vsubh_f16(float16_t(a), float16_t(b)));
-}
-
-HOST inline float16 operator*(const float16& a, const float16& b) {
-  return float16(vmulh_f16(float16_t(a), float16_t(b)));
-}
-
-HOST inline float16 operator/(const float16& a, const float16& b) {
-  return float16(vdivh_f16(float16_t(a), float16_t(b)));
-}
-
-HOST inline float16 operator-(const float16& a) {
-  return float16(vnegh_f16(float16_t(a)));
-}
-
-HOST inline float16& operator+=(float16& a, const float16& b) {
-  a = a + b;
-  return a;
-}
-
-HOST inline float16& operator-=(float16& a, const float16& b) {
-  a = a - b;
-  return a;
-}
-
-HOST inline float16& operator*=(float16& a, const float16& b) {
-  a = a * b;
-  return a;
-}
-
-HOST inline float16& operator/=(float16& a, const float16& b) {
-  a = a / b;
-  return a;
-}
-
-HOST inline bool operator==(const float16& a, const float16& b) {
-  return static_cast<bool>(vceqh_f16(float16_t(a), float16_t(b)));
-}
-
-HOST inline bool operator!=(const float16& a, const float16& b) {
-  return !(a == b);
-}
-
-HOST inline bool operator<(const float16& a, const float16& b) {
-#ifdef PADDLE_NEON_64
-  return static_cast<bool>(vclth_f16(float16_t(a), float16_t(b)));
-#else
-  return float(a) < float(b);
-#endif  // PADDLE_NEON_64
-}
-
-HOST inline bool operator<=(const float16& a, const float16& b) {
-#ifdef PADDLE_NEON_64
-  return static_cast<bool>(vcleh_f16(float16_t(a), float16_t(b)));
-#else
-  return float(a) <= float(b);
-#endif  // PADDLE_NEON_64
-}
-
-HOST inline bool operator>(const float16& a, const float16& b) {
-#ifdef PADDLE_NEON_64
-  return static_cast<bool>(vcgth_f16(float16_t(a), float16_t(b)));
-#else
-  return float(a) > float(b);
-#endif  // PADDLE_NEON_64
-}
-
-HOST inline bool operator>=(const float16& a, const float16& b) {
-#ifdef PADDLE_NEON_64
-  return static_cast<bool>(vcgeh_f16(float16_t(a), float16_t(b)));
-#else
-  return float(a) >= float(b);
-#endif  // PADDLE_NEON_64
-}
-*/
 
 // Arithmetic operators, software emulated on other CPU
 #else

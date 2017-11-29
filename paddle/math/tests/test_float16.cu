@@ -15,41 +15,38 @@ limitations under the License. */
 
 #include "paddle/utils/Logging.h"
 
-#define ARITHMETIC_KERNEL(op_type, sign)                      \
-  __global__ void op_type(                                    \
-      const float16* in1, const float16* in2, float16* out) { \
-    out[0] = in1[0] sign in2[0];                              \
+#define ARITHMETIC_KERNEL(op_type, sign)                                 \
+  __global__ void op_type(const half* in1, const half* in2, half* out) { \
+    out[0] = in1[0] sign in2[0];                                         \
   }
 
-#define COMPOUND_KERNEL(op_type, sign)                        \
-  __global__ void op_type(float16* in1, const float16* in2) { \
-    in1[0] sign in2[0];                                       \
-  }
+#define COMPOUND_KERNEL(op_type, sign) \
+  __global__ void op_type(half* in1, const half* in2) { in1[0] sign in2[0]; }
 
-#define COMPARISON_KERNEL(op_type, sign)                                       \
-  __global__ void op_type(const float16* in1, const float16* in2, bool* out) { \
-    out[0] = in1[0] sign in2[0];                                               \
+#define COMPARISON_KERNEL(op_type, sign)                                 \
+  __global__ void op_type(const half* in1, const half* in2, bool* out) { \
+    out[0] = in1[0] sign in2[0];                                         \
   }
 
 #define ARITHMETIC_KERNEL_LAUNCH(op_type)                     \
   void Test##op_type(float v_in1, float v_in2, float v_out) { \
     LOG(INFO) << "Test " << #op_type << " on GPU!";           \
-    float16 *in1, *in2, *out;                                 \
-    float16 *d_in1, *d_in2, *d_out;                           \
-    int size = sizeof(float16);                               \
+    half *in1, *in2, *out;                                    \
+    half *d_in1, *d_in2, *d_out;                              \
+    int size = sizeof(half);                                  \
     cudaMalloc((void**)&d_in1, size);                         \
     cudaMalloc((void**)&d_in2, size);                         \
     cudaMalloc((void**)&d_out, size);                         \
-    in1 = (float16*)malloc(size);                             \
-    in2 = (float16*)malloc(size);                             \
-    out = (float16*)malloc(size);                             \
-    in1[0] = float16(v_in1);                                  \
-    in2[0] = float16(v_in2);                                  \
+    in1 = (half*)malloc(size);                                \
+    in2 = (half*)malloc(size);                                \
+    out = (half*)malloc(size);                                \
+    in1[0] = half(float16(v_in1));                            \
+    in2[0] = half(float16(v_in2));                            \
     cudaMemcpy(d_in1, in1, size, cudaMemcpyHostToDevice);     \
     cudaMemcpy(d_in2, in2, size, cudaMemcpyHostToDevice);     \
     op_type<<<1, 1>>>(d_in1, d_in2, d_out);                   \
     cudaMemcpy(out, d_out, size, cudaMemcpyDeviceToHost);     \
-    EXPECT_EQ(float(out[0]), v_out);                          \
+    EXPECT_EQ(float(float16(out[0])), v_out);                 \
     free(in1);                                                \
     free(in2);                                                \
     free(out);                                                \
@@ -61,20 +58,20 @@ limitations under the License. */
 #define COMPOUND_KERNEL_LAUNCH(op_type)                       \
   void Test##op_type(float v_in1, float v_in2, float v_out) { \
     LOG(INFO) << "Test " << #op_type << " on GPU!";           \
-    float16 *in1, *in2;                                       \
-    float16 *d_in1, *d_in2;                                   \
-    int size = sizeof(float16);                               \
+    half *in1, *in2;                                          \
+    half *d_in1, *d_in2;                                      \
+    int size = sizeof(half);                                  \
     cudaMalloc((void**)&d_in1, size);                         \
     cudaMalloc((void**)&d_in2, size);                         \
-    in1 = (float16*)malloc(size);                             \
-    in2 = (float16*)malloc(size);                             \
-    in1[0] = float16(v_in1);                                  \
-    in2[0] = float16(v_in2);                                  \
+    in1 = (half*)malloc(size);                                \
+    in2 = (half*)malloc(size);                                \
+    in1[0] = half(float16(v_in1));                            \
+    in2[0] = half(float16(v_in2));                            \
     cudaMemcpy(d_in1, in1, size, cudaMemcpyHostToDevice);     \
     cudaMemcpy(d_in2, in2, size, cudaMemcpyHostToDevice);     \
     op_type<<<1, 1>>>(d_in1, d_in2);                          \
     cudaMemcpy(in1, d_in1, size, cudaMemcpyDeviceToHost);     \
-    EXPECT_EQ(float(in1[0]), v_out);                          \
+    EXPECT_EQ(float(float16(in1[0])), v_out);                 \
     free(in1);                                                \
     free(in2);                                                \
     cudaFree(d_in1);                                          \
@@ -84,18 +81,18 @@ limitations under the License. */
 #define COMPARISON_KERNEL_LAUNCH(op_type)                    \
   void Test##op_type(float v_in1, float v_in2, bool v_out) { \
     LOG(INFO) << "Test " << #op_type << " on GPU!";          \
-    float16 *in1, *in2;                                      \
-    float16 *d_in1, *d_in2;                                  \
+    half *in1, *in2;                                         \
+    half *d_in1, *d_in2;                                     \
     bool *out, *d_out;                                       \
-    int size = sizeof(float16);                              \
+    int size = sizeof(half);                                 \
     cudaMalloc((void**)&d_in1, size);                        \
     cudaMalloc((void**)&d_in2, size);                        \
     cudaMalloc((void**)&d_out, 1);                           \
-    in1 = (float16*)malloc(size);                            \
-    in2 = (float16*)malloc(size);                            \
+    in1 = (half*)malloc(size);                               \
+    in2 = (half*)malloc(size);                               \
     out = (bool*)malloc(1);                                  \
-    in1[0] = float16(v_in1);                                 \
-    in2[0] = float16(v_in2);                                 \
+    in1[0] = half(float16(v_in1));                           \
+    in2[0] = half(float16(v_in2));                           \
     cudaMemcpy(d_in1, in1, size, cudaMemcpyHostToDevice);    \
     cudaMemcpy(d_in2, in2, size, cudaMemcpyHostToDevice);    \
     op_type<<<1, 1>>>(d_in1, d_in2, d_out);                  \
@@ -112,6 +109,7 @@ limitations under the License. */
 #ifdef PADDLE_CUDA_FP16
 namespace paddle {
 
+#if CUDA_VERSION < 9000
 ARITHMETIC_KERNEL(Add, +)
 ARITHMETIC_KERNEL(Sub, -)
 ARITHMETIC_KERNEL(Mul, *)
@@ -123,19 +121,19 @@ ARITHMETIC_KERNEL_LAUNCH(Mul)
 ARITHMETIC_KERNEL_LAUNCH(Div)
 
 // Negative sign kernel
-__global__ void Neg(float16* in) { in[0] = -in[0]; }
+__global__ void Neg(half* in) { in[0] = -in[0]; }
 
 void TestNeg(float v_in, float v_out) {
   LOG(INFO) << "Test Neg on GPU!";
-  float16 *in, *d_in;
-  int size = sizeof(float16);
+  half *in, *d_in;
+  int size = sizeof(half);
   cudaMalloc((void**)&d_in, size);
-  in = (float16*)malloc(size);
-  in[0] = float16(v_in);
+  in = (half*)malloc(size);
+  in[0] = half(float16(v_in));
   cudaMemcpy(d_in, in, size, cudaMemcpyHostToDevice);
   Neg<<<1, 1>>>(d_in);
   cudaMemcpy(in, d_in, size, cudaMemcpyDeviceToHost);
-  EXPECT_EQ(float(in[0]), v_out);
+  EXPECT_EQ(float(float16(in[0])), v_out);
   free(in);
   cudaFree(d_in);
 }
@@ -193,6 +191,7 @@ TEST(float16, comparision_on_gpu) {
   TestGreaterEqual(4, 4, true);
   TestGreaterEqual(4, 5, false);
 }
+#endif  // CUDA_VERSION
 
 TEST(float16, conversion_on_gpu) {
   // Explicit conversion to and from cuda half
@@ -204,16 +203,11 @@ TEST(float16, conversion_on_gpu) {
   EXPECT_EQ(float16(half(float16(65504.0f))).x, 0x7bff);
   EXPECT_EQ(float16(half(float16(65536.0f))).x, 0x7c00);
 
-  // Implicit conversion to and from cuda half
-  half tmp = float16(1.0f);
-  float16 val = tmp;
-  EXPECT_EQ(val.x, 0x3c00);
-
   // Assignment operator
   float16 v_assign;
-  v_assign = tmp;
+  v_assign = half(float16(1.0f));
   EXPECT_EQ(v_assign.x, 0x3c00);
 }
 
 }  // namespace paddle
-#endif
+#endif  // PADDLE_CUDA_FP16

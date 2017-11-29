@@ -54,14 +54,6 @@ TEST(float16, conversion_cpu) {
   EXPECT_EQ(float16(true).x, 0x3c00);
   EXPECT_EQ(float16(false).x, 0x0000);
 
-  // Implicit conversion to and from Eigen::half
-  /*
-  Eigen::half tmp = float16(1.0f);
-  float16 v_conv = tmp;
-  EXPECT_EQ(tmp.x, 0x3c00);
-  EXPECT_EQ(v_conv.x, 0x3c00);
-  */
-
   // Default constructor
   float16 v_def;
   EXPECT_EQ(v_def.x, 0x0000);
