@@ -16,10 +16,8 @@ limitations under the License. */
 
 #include <stdlib.h>
 #include <mutex>
-#include "paddle/utils/Logging.h"
-#ifdef PADDLE_WITH_CUDA
 #include "hl_gpu.h"
-#endif
+#include "paddle/utils/Logging.h"
 
 namespace paddle {
 
@@ -87,13 +85,9 @@ public:
    * @return Pointer to the allocated memory
    */
   virtual void* alloc(size_t size) {
-#ifdef PADDLE_WITH_CUDA
     void* ptr = hl_malloc_device(size);
     CHECK(ptr) << "Fail to allocate GPU memory " << size << " bytes";
     return ptr;
-#else
-    return nullptr;
-#endif
   }
 
   /**
@@ -101,11 +95,9 @@ public:
    * @param ptr  Pointer to be free.
    */
   virtual void free(void* ptr) {
-#ifdef PADDLE_WITH_CUDA
     if (ptr) {
       hl_free_mem_device(ptr);
     }
-#endif
   }
 
   virtual std::string getName() { return "gpu_alloc"; }
@@ -124,13 +116,9 @@ public:
    * @return Pointer to the allocated memory
    */
   virtual void* alloc(size_t size) {
-#ifdef PADDLE_WITH_CUDA
     void* ptr = hl_malloc_host(size);
     CHECK(ptr) << "Fail to allocate pinned memory " << size << " bytes";
     return ptr;
-#else
-    return nullptr;
-#endif
   }
 
   /**
@@ -138,11 +126,9 @@ public:
    * @param ptr  Pointer to be free.
    */
   virtual void free(void* ptr) {
-#ifdef PADDLE_WITH_CUDA
     if (ptr) {
       hl_free_mem_host(ptr);
     }
-#endif
   }
 
   virtual std::string getName() { return "cuda_host_alloc"; }

@@ -12,10 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#undef PADDLE_WITH_CUDA
-
 #include <glog/logging.h>
-#include "paddle/math/MemoryHandle.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
@@ -59,23 +56,13 @@ struct EigenBlasGemm {
       sizeB[1] = N;
       CHECK_EQ(N, ldb);
     }
-    Eigen::array<int, 2> sizeC;
-    sizeC[0] = M;
-    sizeC[1] = N;
-    T* gemmC = C;
-    if (N != ldc) {
-      // A temporary memory to carry the result of gemm.
-      MemoryHandlePtr memory =
-          std::make_shared<CpuMemoryHandle>(M * N * sizeof(T));
-      gemmC = reinterpret_cast<T*>(memory->getBuf());
-      for (int i = 0; i < M; ++i) {
-        memcpy(gemmC + i * N, C + i * ldc, N * sizeof(T));
-      }
-    }
+    Eigen::array<int, 2> sizeC = {{M, ldc}};
+    Eigen::array<int, 2> offsetC = {{0, 0}};
+    Eigen::array<int, 2> extentC = {{M, N}};
 
     const EigenMatrix a(const_cast<T*>(A), sizeA);
     const EigenMatrix b(const_cast<T*>(B), sizeB);
-    EigenMatrix c(gemmC, sizeC);
+    EigenMatrix c(C, sizeC);
 
     typedef typename Eigen::Tensor<T, 2>::DimensionPair DimPair;
     Eigen::array<DimPair, 1> dims;
@@ -85,17 +72,12 @@ struct EigenBlasGemm {
 
     Eigen::DefaultDevice device;
     if (alpha == T(1) && beta == T(0)) {
-      c.device(device) = a.contract(b, dims);
+      c.slice(offsetC, extentC).device(device) = a.contract(b, dims);
     } else if (alpha == T(1) && beta == T(1)) {
-      c.device(device) += a.contract(b, dims);
+      c.slice(offsetC, extentC).device(device) += a.contract(b, dims);
     } else {
-      c.device(device) = alpha * a.contract(b, dims) + beta * c;
-    }
-    if (N != ldc) {
-      // Copy the result back to C
-      for (int i = 0; i < M; ++i) {
-        memcpy(C + i * ldc, gemmC + i * N, N * sizeof(T));
-      }
+      c.slice(offsetC, extentC).device(device) =
+          alpha * a.contract(b, dims) + beta * c.slice(offsetC, extentC);
     }
   }
 };
