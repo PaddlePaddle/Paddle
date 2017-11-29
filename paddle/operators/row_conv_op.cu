@@ -92,7 +92,7 @@ __global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
     int end = static_cast<int>(batch_indices[i + 1]);
     int current_timesteps = end - start;
     for (int k = 0; k < current_timesteps; k++) {
-      if ((k + w) > current_timesteps) return;
+      if ((k + w) >= current_timesteps) return;
       dfilter[w * input_dim + d] += in[(start + k + w) * input_dim + d] *
                                     dout[(start + k) * input_dim + d];
     }
