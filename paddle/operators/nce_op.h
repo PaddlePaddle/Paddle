@@ -33,14 +33,14 @@ void PrepareSamples(const framework::ExecutionContext& context) {
   auto label = context.Input<Tensor>("Label");
   const int64_t* label_data = label->data<int64_t>();
   auto label_dims = label->dims();
-  int num_classes = context.Attr<int>("num_classes");
+  int num_total_classes = context.Attr<int>("num_total_classes");
   // for unitest
   std::vector<int> custom_neg_classes =
       context.Attr<std::vector<int>>("custom_neg_classes");
   // random machine
   std::random_device rd;
   std::mt19937 rng(rd());
-  std::uniform_int_distribution<int> rand(0, num_classes - 1);
+  std::uniform_int_distribution<int> rand(0, num_total_classes - 1);
 
   auto sample_labels = context.Output<Tensor>("SampleLabels");
   auto sample_labels_dims = sample_labels->dims();
@@ -84,13 +84,13 @@ class NCEKernel : public framework::OpKernel<T> {
     }
     auto out = context.Output<Tensor>("Cost");
     T* out_data = out->mutable_data<T>(context.GetPlace());
-    int num_smalped_classes = context.Attr<int>("num_sampled_classes");
-    int num_classes = context.Attr<int>("num_classes");
+    int num_neg_samples = context.Attr<int>("num_neg_samples");
+    int num_total_classes = context.Attr<int>("num_total_classes");
     int num_true_class = 1;
     if (label != nullptr) {
       num_true_class = label->dims()[1];
     }
-    T b = 1. / num_classes * num_smalped_classes;
+    T b = 1. / num_total_classes * num_neg_samples;
     // forward bias
     auto bias = context.Input<Tensor>("Bias");
     if (bias != nullptr) {
@@ -151,13 +151,13 @@ class NCEGradKernel : public framework::OpKernel<T> {
     if (sample_weight != nullptr) {
       sample_weight_data = sample_weight->data<T>();
     }
-    int num_smalped_classes = context.Attr<int>("num_sampled_classes");
-    int num_classes = context.Attr<int>("num_classes");
+    int num_neg_samples = context.Attr<int>("num_neg_samples");
+    int num_total_classes = context.Attr<int>("num_total_classes");
     int num_true_class = 1;
     if (label != nullptr) {
       num_true_class = label->dims()[1];
     }
-    T b = 1. / num_classes * num_smalped_classes;
+    T b = 1. / num_total_classes * num_neg_samples;
     Tensor sample_grad;  // tmp tensor
     T* sample_grad_data =
         sample_grad.mutable_data<T>(sample_labels->dims(), context.GetPlace());
