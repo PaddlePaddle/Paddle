@@ -20,7 +20,7 @@ class TestProfiler(unittest.TestCase):
 
         with profiler.cuda_profiler("cuda_profiler.txt", 'csv') as nvprof:
             for i in range(epoc):
-                input = np.random.random(dshape).astype("float32")
+                input = np.random.random(dshape).astype('float32')
                 exe.run(fluid.default_main_program(), feed={'data': input})
 
 
