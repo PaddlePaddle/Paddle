@@ -10,7 +10,7 @@ PaddlePaddle主要使用 `CMake <https://cmake.org>`_ 以及GCC, G++作为编译
 我们推荐您使用PaddlePaddle Docker编译环境镜像完成编译，这样可以免去单独安装编译依赖的步骤，可选的不同编译环境Docker镜像
 可以在 `这里 <https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/>`_ 找到。
 
-如果您选择不使用Docker镜像，则需要在本机安装下面章节列出的 compile_deps_ 之后才能开始编译的步骤。
+如果您选择不使用Docker镜像，则需要在本机安装下面章节列出的 `编译依赖`_ 之后才能开始编译的步骤。
 
 编译PaddlePaddle，需要执行：
 
@@ -56,7 +56,7 @@ PaddlePaddle主要使用 `CMake <https://cmake.org>`_ 以及GCC, G++作为编译
    cmake -DWITH_GPU=OFF -DWITH_TESTING=OFF ..
    make
    ctest
-   # run a single test like test_mul_op
+   # 指定执行其中一个单元测试 test_mul_op
    ctest -R test_mul_op
 
 .. _compile_deps:

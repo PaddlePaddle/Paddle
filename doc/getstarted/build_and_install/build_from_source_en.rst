@@ -12,7 +12,7 @@ to avoid installing dependencies by yourself. We have several build environment
 Docker images `here <https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/>`_ .
 
 If you choose not to use Docker image for your build, you need to install the
-below compile_deps_ before run the build.
+below `Compile Dependencies`_ before run the build.
 
 Then run:
 
