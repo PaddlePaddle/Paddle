@@ -29,6 +29,25 @@ PaddlePaddle的文档构建有三种方式。
 
 之后再用网页连到http://localhost:8000就可以在网页上生成需要的文档
 
+如果不想使用 Docker，你还可以通过运行Django框架直接激活工具的服务器。使用下面的命令来运行它。
+
+..  code-block:: bash
+
+    mkdir paddlepaddle
+    cd paddlepaddle
+    git clone git@github.com:PaddlePaddle/Paddle.git
+    git clone git@github.com:PaddlePaddle/book.git
+    git clone git@github.com:PaddlePaddle/models.git
+    git clone git@github.com:PaddlePaddle/PaddlePaddle.org.git
+    export CONTENT_DIR=<path_to_paddlepaddle_working_directory> 
+    export ENV=''
+    cd PaddlePaddle.org/portal/
+    pip install -r requirements.txt
+    python manage.py runserver
+
+之后再用网页连到http://localhost:8000就可以在网页上生成需要的文档。
+想了解更多关於 PaddlePaddle.org 工具，可以 `点击这里 <https://github.com/PaddlePaddle/PaddlePaddle.org/blob/develop/README.cn.md>`_ 。
+
 使用Docker构建
 --------------
 
@@ -71,12 +90,12 @@ PaddlePaddle文档使用 `sphinx`_ 自动生成，用户可以参考sphinx教程
 
 PaddlePaddle文档主题在 `TO_YOUR_PADDLE_CLONE_PATH/doc_theme` 文件夹下，包含所有和前端网页设计相关的文件。
 
-如何更新doc.paddlepaddle.org
+如何更新www.paddlepaddle.org
 ============================
 
-更新的文档以PR的形式提交到github中，提交方式参见 `贡献文档 <http://doc.paddlepaddle.org/develop/doc_cn/howto/dev/contribute_to_paddle_cn.html>`_ 。
-目前PaddlePaddle的develop分支的文档是自动触发更新的，用户可以分别查看最新的 `中文文档 <http://doc.paddlepaddle.org/develop/doc_cn/>`_ 和
-`英文文档 <http://doc.paddlepaddle.org/develop/doc/>`_ 。
+更新的文档以PR的形式提交到github中，提交方式参见 `贡献文档 <http://www.paddlepaddle.org/docs/develop/documentation/en/howto/dev/contribute_to_paddle_en.html>`_ 。
+目前PaddlePaddle的develop分支的文档是自动触发更新的，用户可以分别查看最新的 `中文文档 <http://www.paddlepaddle.org/docs/develop/documentation/zh/getstarted/index_cn.html>`_ 和
+`英文文档 <http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/index_en.html>`_ 。
 
 
 ..  _cmake: https://cmake.org/
