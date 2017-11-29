@@ -104,7 +104,7 @@ class TestLinearChainCrfOp(OpTest):
         transition_exps = np.exp(transition)
 
         labels = np.random.randint(
-            low=0, high=TAG_NUM, size=(lod[-1][-1], 1), dtype="int32")
+            low=0, high=TAG_NUM, size=(lod[-1][-1], 1), dtype="int64")
 
         self.inputs = {
             "Emission": (emission, lod),

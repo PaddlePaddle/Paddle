@@ -52,7 +52,7 @@ class FillConstantBatchSizeLikeOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        static_cast<framework::DataType>(ctx.Attr<int>("data_type")),
+        static_cast<framework::DataType>(ctx.Attr<int>("dtype")),
         ctx.device_context());
   }
 };
@@ -63,7 +63,7 @@ class FillConstantBatchSizeLikeOpMaker
   FillConstantBatchSizeLikeOpMaker(framework::OpProto *proto,
                                    framework::OpAttrChecker *op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddAttr<int>("data_type",
+    AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
         .SetDefault(framework::DataType::FP32);
@@ -101,4 +101,7 @@ REGISTER_OPERATOR(fill_constant_batch_size_like,
 REGISTER_OP_CPU_KERNEL(
     fill_constant_batch_size_like,
     ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUPlace, float>,
-    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUPlace, double>);
+    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUPlace, double>,
+    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUPlace, int>,
+    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUPlace,
+                                           int64_t>);

@@ -63,9 +63,10 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
     }                                                             \
   } while (false)
 
-enum class DataLayout {
+enum class DataLayout {  // Not use
   kNHWC,
   kNCHW,
+  kNCDHW,
   kNCHW_VECT_C,
 };
 
@@ -107,12 +108,15 @@ class CudnnDataType<double> {
   }
 };
 
-inline cudnnTensorFormat_t GetCudnnTensorFormat(const DataLayout& order) {
+inline cudnnTensorFormat_t GetCudnnTensorFormat(
+    const DataLayout& order) {  // Not use
   switch (order) {
     case DataLayout::kNHWC:
       return CUDNN_TENSOR_NHWC;
     case DataLayout::kNCHW:
       return CUDNN_TENSOR_NCHW;
+    case DataLayout::kNCDHW:
+      return CUDNN_TENSOR_NCHW;  // NOTE: cudnn treat NdTensor as the same
     default:
       PADDLE_THROW("Unknown cudnn equivalent for order");
   }
@@ -139,7 +143,7 @@ class ScopedTensorDescriptor {
       strides[i] = dims[i + 1] * strides[i + 1];
     }
     // Update tensor descriptor dims setting if groups > 1
-    // FIXME(typhoonzero): Assume using NCHW order
+    // NOTE: Assume using NCHW or NCDHW order
     std::vector<int> dims_with_group(dims.begin(), dims.end());  // copy
     if (groups > 1) {
       dims_with_group[1] = dims_with_group[1] / groups;
@@ -176,12 +180,12 @@ class ScopedFilterDescriptor {
                                             const cudnnDataType_t type,
                                             const std::vector<int>& kernel,
                                             const int groups = 1) {
-    // filter layout: MCHW, where M is the number of
+    // filter layout: MCHW(MCDHW), where M is the number of
     // output image channels, C is the number of input image channels,
-    // H and W is height and width of filter.
+    // D is the depth of the filter, H is the height of the filter, and W is the
+    // width of the filter.
     std::vector<int> kernel_with_group(kernel.begin(), kernel.end());
     if (groups > 1) {
-      // M /= groups
       kernel_with_group[0] /= groups;
       // NOTE: input filter(C) of the filter is already asserted to be C/groups.
     }
@@ -219,13 +223,15 @@ class ScopedConvolutionDescriptor {
     PADDLE_ENFORCE_EQ(pads.size(), strides.size());
     PADDLE_ENFORCE_EQ(pads.size(), dilations.size());
 
-#if CUDNN_VERSION < 6000
+#if !CUDNN_VERSION_MIN(6, 0, 0)
     // cudnn v5 does not support dilation conv, the argument is called upscale
     // instead of dilations and it is must be one.
     for (size_t i = 0; i < dilations.size(); ++i) {
       PADDLE_ENFORCE_EQ(
           dilations[i], 1,
-          "Dilations conv is not supported in this cuDNN version");
+          "Dilations conv is not supported in this cuDNN version(%d.%d.%d).",
+          CUDNN_VERSION / 1000, CUDNN_VERSION % 1000 / 100,
+          CUDNN_VERSION % 100);
     }
 #endif
 
