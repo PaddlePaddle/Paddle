@@ -18,17 +18,14 @@ def to_lodtensor(data, place):
     return res
 
 
-class TestDynamicRNNForward(unittest.TestCase):
+class TestDynamicRNNBackward(unittest.TestCase):
     def setUp(self):
         self.place = fluid.CPUPlace()
         self.exe = fluid.Executor(self.place)
 
-    # Input sequence data:
-    # 1 2 3 4
-    # 2 3 4
-    # 5
-    def test_simple_forward(self):
-        in_data = fluid.layers.data("in_data", shape=[1], dtype="int64")
+    def test_simple_backward(self):
+        in_data = fluid.layers.data(
+            "in_data", shape=[1], dtype="int64", stop_gradient=False)
         seq = [[1, 2, 3, 4], [2, 3, 4], [5]]
         input_tensor = to_lodtensor(seq, self.place)
         rnn = fluid.layers.DynamicRNN()
@@ -36,19 +33,20 @@ class TestDynamicRNNForward(unittest.TestCase):
         with rnn.step():
             xt = rnn.step_input(in_data)
             mem = rnn.memory(init=init)
-            scaled_xt = fluid.layers.scale(x=xt, scale=2.0)
-            s = fluid.layers.elementwise_add(x=scaled_xt, y=mem)
+            s = fluid.layers.elementwise_add(x=xt, y=mem)
             rnn.update_memory(s)
             rnn.output(s)
-        out_data = rnn()
+        out_data = rnn(s)
+        out_mean = fluid.layers.mean(x=out_data)
 
-        expected_out = [[2], [6], [12], [20], [4], [10], [18], [10]]
-        expected_lod = [[0, 4, 7, 8]]
+        fluid.backward.append_backward_ops(out_mean)
+
+        g_input = fluid.default_main_program().global_block().var(in_data.name +
+                                                                  "@GRAD")
         out = self.exe.run(feed={"in_data": input_tensor},
-                           fetch_list=[out_data],
+                           fetch_list=[g_input],
                            return_numpy=False)
-        np.testing.assert_array_equal(np.array(out[0]), expected_out)
-        self.assertEqual(out[0].lod(), expected_lod)
+        print np.array(out[0])
 
 
 if __name__ == '__main__':

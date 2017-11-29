@@ -1600,9 +1600,9 @@ def conv2d_transpose(input,
                      startup_program=None):
     """
     The transpose of conv2d layer.
-    
+
     This layer is also known as deconvolution layer.
-    
+
     Args:
         input(Variable): The input image with [N, C, H, W] format.
         num_filters(int): The number of filter. It is as same as the output
@@ -1656,8 +1656,10 @@ def conv2d_transpose(input,
 
         h_in = input.shape[2]
         w_in = input.shape[3]
-        filter_size_h = output_size[0] - (h_in - 1) * stride[0] + 2 * padding[0]
-        filter_size_w = output_size[1] - (w_in - 1) * stride[1] + 2 * padding[1]
+        filter_size_h = output_size[0] - \
+            (h_in - 1) * stride[0] + 2 * padding[0]
+        filter_size_w = output_size[1] - \
+            (w_in - 1) * stride[1] + 2 * padding[1]
         filter_size = [filter_size_h, filter_size_w]
     elif isinstance(filter_size, int):
         filter_size = [filter_size, filter_size]
@@ -1968,6 +1970,7 @@ class DynamicRNN(object):
         self.lod_rank_table = parent_block.create_var(
             name=unique_name("lod_rank_table"),
             type=core.VarDesc.VarType.LOD_RANK_TABLE)
+        self.lod_rank_table.stop_gradient = True
         parent_block.append_op(
             type="lod_rank_table",
             inputs={"X": x},
@@ -1975,6 +1978,7 @@ class DynamicRNN(object):
             attrs={"level": 0})
         self.step_num = parent_block.create_var(
             name=unique_name("dynamic_rnn_step_num"), dtype="int32")
+        self.step_num.stop_gradient = True
         parent_block.append_op(
             type="max_sequence_len",
             inputs={"RankTable": self.lod_rank_table},
