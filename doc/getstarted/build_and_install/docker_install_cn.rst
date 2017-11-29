@@ -1,4 +1,4 @@
-使用Docker安装运行PaddlePaddle
+使用Docker安装运行
 ================================
 
 使用Docker安装和运行PaddlePaddle可以无需考虑依赖环境即可运行。并且也可以在Windows的docker中运行。

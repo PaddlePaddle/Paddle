@@ -6,24 +6,21 @@ import paddle.v2.fluid as fluid
 BATCH_SIZE = 128
 image = fluid.layers.data(name='x', shape=[784], dtype='float32')
 
-param_attr = {
-    'name': None,
-    'regularization': fluid.regularizer.L2Decay(0.0005 * BATCH_SIZE)
-}
+regularizer = fluid.regularizer.L2Decay(0.0005 * BATCH_SIZE)
 
 hidden1 = fluid.layers.fc(input=image,
                           size=128,
                           act='relu',
-                          param_attr=param_attr)
+                          param_attr=regularizer)
 hidden2 = fluid.layers.fc(input=hidden1,
                           size=64,
                           act='relu',
-                          param_attr=param_attr)
+                          param_attr=regularizer)
 
 predict = fluid.layers.fc(input=hidden2,
                           size=10,
                           act='softmax',
-                          param_attr=param_attr)
+                          param_attr=regularizer)
 
 label = fluid.layers.data(name='y', shape=[1], dtype='int64')
 
