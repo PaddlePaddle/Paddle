@@ -22,7 +22,6 @@
 
 #include "paddle/framework/block_desc.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/operators/dynamic_recurrent_op.h"
 #include "paddle/operators/net_op.h"
 
 namespace paddle {
@@ -217,21 +216,6 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
                      }
                      return false;
                    });
-
-    // process recurrent gradient op as a special operator.
-    if (forwardOp.Type() == "dynamic_recurrent") {
-      // NOTE clean up cycle call somewhere (RNN's stepnet constains itself),
-      // or this will result in infinite loop.
-      const auto& rnnop =
-          *static_cast<const operators::DynamicRecurrentOp*>(&forwardOp);
-      auto rnn_grad_op =
-          static_cast<operators::DynamicRecurrentGradientOp*>(grad_op.get());
-      const auto& stepnet_op =
-          *static_cast<const OperatorBase*>(&rnnop.rnn.GetStepUnit());
-      // create stepnet's gradient op
-      rnn_grad_op->rnn.SetStepUnit(
-          BackwardRecursive(stepnet_op, no_grad_names, grad_to_var, uniq_id));
-    }
 
     if (net->ops_.empty()) {  // Current no aux op is added to network
       return grad_op;
@@ -513,21 +497,16 @@ ParamGradInfoMap AppendBackward(
   const int root_block_idx = 0;
   auto root_block = program_desc.MutableBlock(root_block_idx);
 
-  // insert fill one op for target
-  // TODO(qiao) add some check to the target.
   std::string fill_one_op_out = GradVarName(target.Name());
-  std::vector<int64_t> target_shape_desc = target.Shape();
-  std::vector<int> target_shape;
-  std::transform(target_shape_desc.begin(), target_shape_desc.end(),
-                 std::back_inserter(target_shape),
-                 [](int64_t dim) { return static_cast<int>(dim); });
+  bool is_scalar = target.Shape() == std::vector<int64_t>{1};
+  PADDLE_ENFORCE(is_scalar, "target should be scalar");
   VLOG(3) << "backward from loss=" << target.Name()
           << " data_type=" << target.GetDataType();
   std::unique_ptr<OpDescBind> fill_one_op(
       new OpDescBind("fill_constant", {}, {{"Out", {fill_one_op_out}}},
-                     {{"shape", target_shape},
+                     {{"shape", std::vector<int>{1}},
                       {"value", static_cast<float>(1.0)},
-                      {"data_type", target.GetDataType()}}));
+                      {"dtype", target.GetDataType()}}));
   // infer var type of fill_one_op
   fill_one_op->InferVarType(root_block);
 

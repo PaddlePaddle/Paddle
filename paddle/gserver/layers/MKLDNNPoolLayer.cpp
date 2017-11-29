@@ -58,10 +58,11 @@ bool MKLDNNPoolLayer::init(const LayerMap& layerMap,
 }
 
 void MKLDNNPoolLayer::reshape(
-    int& bs, int& ic, int& ih, int& iw, int oc, int& oh, int& ow) {
+    int& bs, int& ic, int& ih, int& iw, int& oc, int& oh, int& ow) {
   reshapeInput(bs, ih, iw);
   // ic_ and oc can not be changed
-  CHECK_EQ(inputElemenCnt_ / bs / ih / iw, (size_t)ic)
+  CHECK_EQ((size_t)ic,
+           inputLayers_[0]->getOutputValue()->getElementCnt() / bs / ih / iw)
       << "Input channel can not be changed";
 
   // cal output sizes
@@ -74,29 +75,25 @@ void MKLDNNPoolLayer::reshape(
 }
 
 void MKLDNNPoolLayer::resetFwd(std::vector<primitive>& pipeline,
-                               MKLDNNMatrixPtr& in,
-                               MKLDNNMatrixPtr& wgt,
-                               MKLDNNMatrixPtr& bias,
+                               std::vector<MKLDNNMatrixPtr>& inputs,
                                MKLDNNMatrixPtr& out) {
-  resetFwdBuffers(in, out);
+  resetFwdBuffers(inputs[0], out);
 
-  resetFwdPD(fwdPD_, in, out);
+  resetFwdPD(fwdPD_, inputs[0], out);
 
-  resetFwdPipeline(pipeline, fwdPD_, in, out);
+  resetFwdPipeline(pipeline, fwdPD_, inputs[0], out);
 }
 
 void MKLDNNPoolLayer::resetBwd(std::vector<primitive>& pipeline,
-                               MKLDNNMatrixPtr& in,
-                               MKLDNNMatrixPtr& wgt,
-                               MKLDNNMatrixPtr& bias,
+                               std::vector<MKLDNNMatrixPtr>& inputs,
                                MKLDNNMatrixPtr& out) {
   std::shared_ptr<pool_bwd::primitive_desc> pd;
 
-  resetBwdBuffers(in, out);
+  resetBwdBuffers(inputs[0], out);
 
-  resetBwdPD(pd, in, out);
+  resetBwdPD(pd, inputs[0], out);
 
-  resetBwdPipeline(pipeline, pd, in, out);
+  resetBwdPipeline(pipeline, pd, inputs[0], out);
 }
 
 void MKLDNNPoolLayer::resetFwdBuffers(MKLDNNMatrixPtr& in,
@@ -151,9 +148,9 @@ void MKLDNNPoolLayer::resetFwdPipeline(
 
 void MKLDNNPoolLayer::resetBwdBuffers(MKLDNNMatrixPtr& in,
                                       MKLDNNMatrixPtr& out) {
-  CHECK(inVal_ && outVal_);
+  CHECK(inVals_[0] && outVal_);
   resetOutGrad(out, outVal_->getPrimitiveDesc());
-  resetInGrad(in, inVal_->getPrimitiveDesc());
+  resetInGrad(in, inVals_[0]->getPrimitiveDesc());
 }
 
 void MKLDNNPoolLayer::resetBwdPD(std::shared_ptr<pool_bwd::primitive_desc>& pd,

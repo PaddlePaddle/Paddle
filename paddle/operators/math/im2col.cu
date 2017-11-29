@@ -119,8 +119,8 @@ __global__ void col2im(int n, const T* data_col, int im_height, int im_width,
 
   if (index < n) {
     T val = 0;
-    int w = index % im_width;
-    int h = (index / im_width) % im_height;
+    int w = index % im_width + padding_width;
+    int h = (index / im_width) % im_height + padding_height;
     int c = index / (im_width * im_height);
 
     // compute the start and end of the output

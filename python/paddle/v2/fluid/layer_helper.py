@@ -1,10 +1,10 @@
 import copy
 import itertools
 
-from paddle.v2.fluid.framework import Variable, g_main_program, \
-    g_startup_program, unique_name, Program
-from paddle.v2.fluid.initializer import ConstantInitializer, \
-    UniformInitializer, XavierInitializer
+from framework import Variable, default_main_program, default_startup_program, \
+    unique_name, dtype_is_floating
+from paddle.v2.fluid.initializer import Constant, Xavier
+from param_attr import ParamAttr
 
 
 class LayerHelper(object):
@@ -23,7 +23,7 @@ class LayerHelper(object):
     def main_program(self):
         prog = self.kwargs.get('main_program', None)
         if prog is None:
-            return g_main_program
+            return default_main_program()
         else:
             return prog
 
@@ -31,7 +31,7 @@ class LayerHelper(object):
     def startup_program(self):
         prog = self.kwargs.get('startup_program', None)
         if prog is None:
-            return g_startup_program
+            return default_startup_program()
         else:
             return prog
 
@@ -61,31 +61,15 @@ class LayerHelper(object):
 
     @property
     def param_attr(self):
-        default = {'name': None, 'initializer': XavierInitializer()}
-        actual = self.kwargs.get('param_attr', None)
-        if actual is None:
-            actual = default
-        for default_field in default.keys():
-            if default_field not in actual:
-                actual[default_field] = default[default_field]
-        return actual
+        return ParamAttr.to_attr(self.kwargs.get('param_attr', None))
 
     @property
     def bias_attr(self):
-        default = {'name': None, 'initializer': ConstantInitializer()}
-        bias_attr = self.kwargs.get('bias_attr', None)
-        if bias_attr is None:
-            bias_attr = default
-
-        if isinstance(bias_attr, dict):
-            for default_field in default.keys():
-                if default_field not in bias_attr:
-                    bias_attr[default_field] = default[default_field]
-        return bias_attr
+        return ParamAttr.to_attr(self.kwargs.get('bias_attr', None))
 
     def multiple_param_attr(self, length):
         param_attr = self.param_attr
-        if isinstance(param_attr, dict):
+        if isinstance(param_attr, ParamAttr):
             param_attr = [param_attr]
 
         if len(param_attr) != 1 and len(param_attr) != length:
@@ -108,23 +92,35 @@ class LayerHelper(object):
         dtype = None
         for each in inputs:
             if dtype is None:
-                dtype = each.data_type
-            elif dtype != each.data_type:
+                dtype = each.dtype
+            elif dtype != each.dtype:
                 raise ValueError("Data Type mismatch")
         return dtype
 
-    def create_parameter(self, attr, shape, dtype, suffix='w',
-                         initializer=None):
+    def create_parameter(self,
+                         attr,
+                         shape,
+                         dtype,
+                         is_bias=False,
+                         default_initializer=None):
         # Deepcopy the attr so that parameters can be shared in program
-        attr_copy = copy.deepcopy(attr)
-        if initializer is not None:
-            attr_copy['initializer'] = initializer
-        if attr_copy['name'] is None:
-            attr_copy['name'] = unique_name(".".join([self.name, suffix]))
+        assert isinstance(attr, ParamAttr)
+        suffix = 'b' if is_bias else 'w'
+
+        if default_initializer is None:
+            if is_bias:
+                attr.set_default_bias_initializer()
+            else:
+                attr.set_default_param_initializer()
+        else:
+            attr.set_default_initializer(default_initializer)
+        if attr.name is None:
+            attr.name = unique_name(".".join([self.name, suffix]))
+
         self.startup_program.global_block().create_parameter(
-            dtype=dtype, shape=shape, **attr_copy)
+            dtype=dtype, shape=shape, **attr.to_kwargs(with_initializer=True))
         return self.main_program.global_block().create_parameter(
-            name=attr_copy['name'], dtype=dtype, shape=shape)
+            dtype=dtype, shape=shape, **attr.to_kwargs())
 
     def create_tmp_variable(self, dtype):
         return self.main_program.current_block().create_var(
@@ -144,7 +140,7 @@ class LayerHelper(object):
         self.startup_program.global_block().create_var(
             name=var.name,
             type=var.type,
-            dtype=var.data_type,
+            dtype=var.dtype,
             shape=var.shape,
             persistable=True,
             initializer=initializer)
@@ -154,8 +150,10 @@ class LayerHelper(object):
         Append bias operator and return its output. If the user does not set
         bias_attr, append_bias_op will return input_var
 
-        :param input_var: the input variable. The len(input_var.shape) is larger
-        or equal than 2.
+        :param input_var: the input variable. The len(input_var.shape) is
+        larger or equal than 2.
+        :bias_initializer: an instance of a subclass of Initializer used to
+        initialize the bias
         :param dim_start:
         :param dim_end: the shape of the bias will be
         input_var.shape[dim_start:dim_end]. The bias is broadcasted to other
@@ -167,8 +165,8 @@ class LayerHelper(object):
             return input_var
 
         b = self.create_parameter(
-            attr=bias_attr, shape=size, dtype=input_var.data_type, suffix='b')
-        tmp = self.create_tmp_variable(dtype=input_var.data_type)
+            attr=bias_attr, shape=size, dtype=input_var.dtype, is_bias=True)
+        tmp = self.create_tmp_variable(dtype=input_var.dtype)
         self.append_op(
             type='elementwise_add',
             inputs={'X': [input_var],
@@ -183,7 +181,7 @@ class LayerHelper(object):
             return input_var
         if isinstance(act, basestring):
             act = {'type': act}
-        tmp = self.create_tmp_variable(dtype=input_var.data_type)
+        tmp = self.create_tmp_variable(dtype=input_var.dtype)
         act_type = act.pop('type')
         self.append_op(
             type=act_type,
@@ -191,3 +189,10 @@ class LayerHelper(object):
             outputs={"Y": [tmp]},
             attrs=act)
         return tmp
+
+    def _get_default_initializer(self, dtype):
+        if dtype is None or dtype_is_floating(dtype) is True:
+            return Xavier()
+        else:
+            # For integer and boolean types, initialize with all zeros
+            return Constant()

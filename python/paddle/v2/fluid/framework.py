@@ -1,15 +1,49 @@
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 import collections
-import numpy as np
-import copy
 
-__all__ = ['Block', 'Variable', 'Program', 'Operator', 'default_startup_program', 'default_main_program']
+import numpy as np
+from . import core
+import proto.framework_pb2 as framework_pb2
+
+__all__ = [
+    'Block', 'Variable', 'Program', 'Operator', 'default_startup_program',
+    'default_main_program'
+]
 
 
 def unique_name(prefix):
     uid = core.unique_integer(prefix)  # unique during whole process.
     return "_".join([prefix, str(uid)])
+
+
+def convert_np_dtype_to_dtype_(np_dtype):
+    dtype = np.dtype(np_dtype)
+    if dtype == np.float32:
+        return core.DataType.FP32
+    elif dtype == np.float64:
+        return core.DataType.FP64
+    elif dtype == np.float16:
+        return core.DataType.FP16
+    elif dtype == np.int32:
+        return core.DataType.INT32
+    elif dtype == np.int16:
+        return core.DataType.INT16
+    elif dtype == np.int64:
+        return core.DataType.INT64
+    elif dtype == np.bool:
+        return core.DataType.BOOL
+    else:
+        raise ValueError("Not supported numpy dtype " + str(dtype))
+
+
+def dtype_is_floating(dtype):
+    if not isinstance(dtype, core.DataType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if (dtype == core.DataType.FP16 or dtype == core.DataType.FP32 or
+            dtype == core.DataType.FP64):
+        return True
+    else:
+        return False
 
 
 def _debug_string_(proto, throw_on_error=True):
@@ -63,11 +97,11 @@ class Variable(object):
                         "matched.".format(self.name, old_shape, shape))
         if dtype is not None:
             if not isinstance(dtype, core.DataType):
-                dtype = Variable._convert_np_dtype_to_dtype_(dtype)
+                dtype = convert_np_dtype_to_dtype_(dtype)
             if is_new_var:
-                self.desc.set_data_type(dtype)
+                self.desc.set_dtype(dtype)
             else:
-                old_dtype = self.data_type
+                old_dtype = self.dtype
                 if dtype != old_dtype:
                     raise ValueError("Variable {0} has been created before. "
                                      "The previous data type is {1}; the new "
@@ -128,8 +162,8 @@ class Variable(object):
         return tuple(self.desc.shape())
 
     @property
-    def data_type(self):
-        return self.desc.data_type()
+    def dtype(self):
+        return self.desc.dtype()
 
     @property
     def lod_level(self):
@@ -144,26 +178,6 @@ class Variable(object):
         prefix = "_generated_var"
         uid = core.unique_integer(prefix)  # unique during whole process.
         return "_".join([prefix, str(uid)])
-
-    @staticmethod
-    def _convert_np_dtype_to_dtype_(np_dtype):
-        dtype = np.dtype(np_dtype)
-        if dtype == np.float32:
-            return core.DataType.FP32
-        elif dtype == np.float64:
-            return core.DataType.FP64
-        elif dtype == np.float16:
-            return core.DataType.FP16
-        elif dtype == np.int32:
-            return core.DataType.INT32
-        elif dtype == np.int16:
-            return core.DataType.INT16
-        elif dtype == np.int64:
-            return core.DataType.INT64
-        elif dtype == np.bool:
-            return core.DataType.BOOL
-        else:
-            raise ValueError("Not supported numpy dtype " + str(dtype))
 
 
 def get_all_op_protos():
@@ -232,17 +246,17 @@ class Operator(object):
                     in_proto.name)
 
                 if found:
-                    in_argus = inputs[in_proto.name]
-                    if not isinstance(in_argus, list):
-                        in_argus = [in_argus]
-                    if not in_proto.duplicable and len(in_argus) > 1:
+                    in_args = inputs[in_proto.name]
+                    if not isinstance(in_args, list):
+                        in_args = [in_args]
+                    if not in_proto.duplicable and len(in_args) > 1:
                         raise ValueError(
                             "Input %s expects only one input, but %d are given."
-                            % (in_proto.name, len(in_argus)))
-                    in_argu_names = []
-                    for argu in in_argus:
-                        in_argu_names.append(argu.name)
-                    self.desc.set_input(in_proto.name, in_argu_names)
+                            % (in_proto.name, len(in_args)))
+                    in_arg_names = []
+                    for arg in in_args:
+                        in_arg_names.append(arg.name)
+                    self.desc.set_input(in_proto.name, in_arg_names)
                 else:
                     self.desc.set_input(in_proto.name, [])
 
@@ -260,18 +274,18 @@ class Operator(object):
                         str(e) for e in given)))
 
             for out_proto in proto.outputs:
-                out_argus = outputs[out_proto.name]
-                if not isinstance(out_argus, list):
-                    out_argus = [out_argus]
-                if not out_proto.duplicable and len(out_argus) > 1:
+                out_args = outputs[out_proto.name]
+                if not isinstance(out_args, list):
+                    out_args = [out_args]
+                if not out_proto.duplicable and len(out_args) > 1:
                     raise ValueError(
                         "Output %s expects only one output, but %d are given." %
-                        (out_proto.name, len(out_argus)))
-                out_argu_names = []
-                for argu in out_argus:
-                    out_argu_names.append(argu.name)
-                    argu.op = self
-                self.desc.set_output(out_proto.name, out_argu_names)
+                        (out_proto.name, len(out_args)))
+                out_arg_names = []
+                for arg in out_args:
+                    out_arg_names.append(arg.name)
+                    arg.op = self
+                self.desc.set_output(out_proto.name, out_arg_names)
 
         if attrs is not None:
             if not isinstance(attrs, dict):
@@ -381,7 +395,11 @@ class Block(object):
         return v
 
     def all_parameters(self):
-        return {v for k, v in self.vars.iteritems() if isinstance(v, Parameter)}
+        return list(self.iter_parameters())
+
+    def iter_parameters(self):
+        return (item[1] for item in self.vars.iteritems()
+                if isinstance(item[1], Parameter))
 
     def create_var(self, *args, **kwargs):
         var = Variable(self, *args, **kwargs)
@@ -455,6 +473,37 @@ class Block(object):
         for index in range(len(self.ops)):
             assert self.ops[index].desc == ops_in_cpp[index]
 
+    def copy_param_info_from(self, other):
+        """
+        Copy the information of parameters from other block
+        Args:
+            other(Block): other block 
+
+        Returns:
+            None
+        """
+        if not isinstance(other, Block):
+            raise TypeError("copy_param_info_from should be invoked with Block")
+        for p in other.iter_parameters():
+            assert isinstance(p, Parameter)
+            v = self.vars.get(p.name, None)
+            if v is None:
+                raise ValueError("copy_param_info_from should be invoked with "
+                                 "same topology")
+            assert isinstance(v, Variable)
+            new_p = Parameter(
+                block=self,
+                shape=v.shape,
+                dtype=v.dtype,
+                type=v.type,
+                lod_level=v.lod_level,
+                stop_gradient=p.stop_gradient,
+                trainable=p.trainable,
+                optimize_attr=p.optimize_attr,
+                regularizer=p.regularizer,
+                name=v.name)
+            self.vars[new_p.name] = new_p
+
 
 class Program(object):
     def __init__(self):
@@ -475,6 +524,7 @@ class Program(object):
         p.desc = core.ProgramDesc(self.desc)
         p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
         p.sync_with_cpp()
+        p.copy_param_info_from(self)
         return p
 
     def prune(self, targets):
@@ -493,6 +543,13 @@ class Program(object):
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
         res.desc = core.prune(self.desc, targets_idx)
+        res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
+        res.sync_with_cpp()
+        return res
+
+    def inference_optimize(self):
+        res = Program()
+        res.desc = core.inference_optimize(self.desc)
         res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
         res.sync_with_cpp()
         return res
@@ -551,6 +608,24 @@ class Program(object):
         for block in self.blocks:
             block.sync_with_cpp()
 
+    def copy_param_info_from(self, other):
+        """
+        Copy the information of parameters from other program. 
+        Args:
+            other(Program): Other program
+
+        Returns:
+            None
+        """
+        if not isinstance(other, Program):
+            raise TypeError("copy_param_info_from should be invoked with "
+                            "Program")
+
+        if len(self.blocks) != len(other.blocks):
+            raise ValueError("copy_param_info_from should be invoked with two "
+                             "program, with represent the same topology")
+        self.global_block().copy_param_info_from(other.global_block())
+
     def list_vars(self):
         for each_block in self.blocks:
             for each_var in each_block.vars.itervalues():
@@ -579,11 +654,13 @@ class Parameter(Variable):
 
 
 # program is a global instance.
-g_main_program = Program()
-g_startup_program = Program()
+_main_program_ = Program()
+_startup_program_ = Program()
+
 
 def default_startup_program():
-    return g_startup_program
+    return _startup_program_
+
 
 def default_main_program():
-    return g_main_program
+    return _main_program_

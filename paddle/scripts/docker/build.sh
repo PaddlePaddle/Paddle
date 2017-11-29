@@ -16,11 +16,13 @@ function cmake_gen() {
         echo "using python abi: $1"
         if [ "$1" == "cp27-cp27m" ]; then
             export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs2/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs4/lib:}
+            export PATH=/opt/python/cp27-cp27m/bin/:${PATH}
             PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27m/bin/python
         -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27m/include/python2.7
         -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs2/lib/libpython2.7.so"
         elif [ "$1" == "cp27-cp27mu" ]; then
             export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs2/lib:}
+            export PATH=/opt/python/cp27-cp27mu/bin/:${PATH}
             PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27mu/bin/python
         -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include/python2.7
         -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs4/lib/libpython2.7.so"
@@ -34,8 +36,7 @@ function cmake_gen() {
         ${PYTHON_FLAGS}
         -DWITH_DOC=OFF
         -DWITH_GPU=${WITH_GPU:-OFF}
-        -DWITH_MKLDNN=${WITH_MKLDNN:-ON}
-        -DWITH_MKLML=${WITH_MKLML:-ON}
+        -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DWITH_GOLANG=${WITH_GOLANG:-ON}
         -DWITH_SWIG_PY=ON
@@ -56,8 +57,7 @@ EOF
         ${PYTHON_FLAGS} \
         -DWITH_DOC=OFF \
         -DWITH_GPU=${WITH_GPU:-OFF} \
-        -DWITH_MKLDNN=${WITH_MKLDNN:-ON} \
-        -DWITH_MKLML=${WITH_MKLML:-ON} \
+        -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DWITH_GOLANG=${WITH_GOLANG:-ON} \
         -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON} \
@@ -146,7 +146,7 @@ function gen_dockerfile() {
     DOCKERFILE_GPU_ENV=""
     DOCKERFILE_CUDNN_DSO=""
     if [[ ${WITH_GPU:-OFF} == 'ON' ]]; then
-        DOCKERFILE_GPU_ENV="ENV LD_LIBRARY_PATH /usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
+        DOCKERFILE_GPU_ENV="ENV LD_LIBRARY_PATH /usr/lib/x86_64-linux-gnu:\${LD_LIBRARY_PATH}"
         DOCKERFILE_CUDNN_DSO="RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.5 /usr/lib/x86_64-linux-gnu/libcudnn.so"
     fi
 
