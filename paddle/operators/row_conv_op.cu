@@ -48,7 +48,7 @@ __global__ void RowConvForward(const T *in, const T *wt, int num_sequence,
         sum += wt[w * input_dim + d] * in[(start + k + w) * input_dim + d];
       }
       // out[start + k, d] = sum;
-      out[(start + k) * input_dim + d] = sum;
+      out[(start + k) * input_dim + d] += sum;
     }
   }
 }
@@ -120,6 +120,10 @@ class RowConvKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     const T *in = X->data<T>();
     const T *weight = Filter->data<T>();
     T *out = Out->mutable_data<T>(context.GetPlace());
+
+    auto &device_ctx = context.cuda_device_context();
+    math::SetConstant<platform::GPUPlace, T> zero;
+    zero(device_ctx, out, static_cast<T>(0.0));  // May not need, CHECK ME
 
     auto batch_indices = X->lod()[0];
     int input_dim = X->dims()[1];
