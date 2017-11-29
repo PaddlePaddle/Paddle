@@ -67,7 +67,7 @@ __global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
     int end = static_cast<int>(batch_indices[i + 1]);
     int current_timesteps = end - start;
     for (int k = 0; k < current_timesteps; k += 1) {
-      T sum = 0;
+      //      T sum = 0;
       for (int w = 0; (w < context_length) && ((k + w) < current_timesteps);
            w++) {
         for (int d = 0; d < input_dim; d++) {
@@ -123,7 +123,7 @@ class RowConvKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
 
     auto &device_ctx = context.cuda_device_context();
     math::SetConstant<platform::GPUPlace, T> zero;
-    zero(device_ctx, out, static_cast<T>(0.0));  // May not need, CHECK ME
+    zero(device_ctx, Out, static_cast<T>(0.0));  // May not need, CHECK ME
 
     auto batch_indices = X->lod()[0];
     int input_dim = X->dims()[1];
