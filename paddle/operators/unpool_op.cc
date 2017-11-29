@@ -31,13 +31,12 @@ class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
         "(Tensor) The input tensor of the indices given out by MaxPool2d. "
         "The format of input tensor is NCHW. Where N is batch size, C is the "
         "number of channels, H and W is the height and width of feature.");
-    AddOutput(
-        "Out",
-        "(Tensor) The output tensor of unpool operator."
-        "The format of output tensor is also NCHW."
-        "Where N is batch size, C is "
-        "the number of channels, H and W is the height and "
-        "width of feature.");
+    AddOutput("Out",
+          "(Tensor) The output tensor of unpool operator."
+          "The format of output tensor is also NCHW."
+          "Where N is batch size, C is "
+          "the number of channels, H and W is the height and "
+          "width of feature.");
     AddAttr<std::vector<int>>(
         "ksize",
         "(vector), the unpooling window size(height, width) "
@@ -138,7 +137,7 @@ namespace ops = paddle::operators;
 REGISTER_OP(unpool, ops::UnpoolOp, ops::Unpool2dOpMaker, unpool_grad,
             ops::UnpoolOpGrad);
 REGISTER_OP_CPU_KERNEL(
-  unpool,ops::UnpoolKernel<paddle::platform::CPUPlace, float>,
+  unpool, ops::UnpoolKernel<paddle::platform::CPUPlace, float>,
   ops::UnpoolKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
   unpool_grad, ops::UnpoolGradKernel<paddle::platform::CPUPlace, float>,

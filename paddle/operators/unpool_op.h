@@ -20,7 +20,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-
 template <typename Place, typename T>
 class UnpoolKernel : public framework::OpKernel<T> {
  public:
@@ -41,7 +40,6 @@ class UnpoolKernel : public framework::OpKernel<T> {
     unpool2d_max_forward(context.device_context(), *in_x, *in_y, out);
   }
 };
-
 template <typename Place, typename T>
 class UnpoolGradKernel : public framework::OpKernel<T> {
  public:
@@ -69,6 +67,5 @@ class UnpoolGradKernel : public framework::OpKernel<T> {
                           *out_grad, in_x_grad);
   }
 };
-
 }  // namespace operators
 }  // namespace paddle

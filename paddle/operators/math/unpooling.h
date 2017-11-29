@@ -18,25 +18,20 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 namespace math {
-
 template <typename Place, typename T>
-
 class Unpool2dMaxFunctor {
-public:
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& indices, framework::Tensor* output);
+ public:
+  void operator()(
+    const platform::DeviceContext& context, const framework::Tensor& input,
+    const framework::Tensor& indices, framework::Tensor* output);
 };
-
 template <typename Place, class T>
 class Unpool2dMaxGradFunctor {
-public:
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& indices,
-                  const framework::Tensor& output,
-                  const framework::Tensor& output_grad,
-                  framework::Tensor* input_grad);
+ public:
+  void operator()(
+    const platform::DeviceContext& context, const framework::Tensor& input,
+    const framework::Tensor& indices, const framework::Tensor& output,
+    const framework::Tensor& output_grad, framework::Tensor* input_grad);
 };
 }  // namespace math
 }  // namespace operators
