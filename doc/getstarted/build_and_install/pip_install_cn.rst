@@ -1,4 +1,4 @@
-使用pip安装PaddlePaddle
+使用pip安装
 ================================
 
 PaddlePaddle可以使用常用的Python包管理工具
