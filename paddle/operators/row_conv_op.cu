@@ -29,8 +29,7 @@ inline int DivUp(int x, int y) { return (x + y - 1) / y; }
 template <typename T>
 __global__ void RowConvForward(const T *in, const T *wt, int num_sequence,
                                int input_dim, int context_length,
-                               framework::Vector<size_t> &batch_indices,
-                               T *out) {
+                               size_t *batch_indices, T *out) {
   int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
   int bly = blockDim.y;
   int thy = threadIdx.y;
@@ -58,8 +57,7 @@ __global__ void RowConvForward(const T *in, const T *wt, int num_sequence,
 template <typename T>
 __global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
                                  int input_dim, int context_length,
-                                 framework::Vector<size_t> &batch_indices,
-                                 T *din) {
+                                 size_t *batch_indices, T *din) {
   int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
   int bly = blockDim.y;
   int thy = threadIdx.y;
@@ -70,7 +68,6 @@ __global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
     int end = static_cast<int>(batch_indices[i + 1]);
     int current_timesteps = end - start;
     for (int k = thy; k < current_timesteps; k += bly) {
-      T sum = 0;
       for (int w = 0; (w < context_length) && ((k + w) < current_timesteps);
            w++) {
         // cur_dip(start + k + w, d) += wt(w, d) * dout(start + k, d);
@@ -85,8 +82,7 @@ __global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
 template <typename T>
 __global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
                                   int input_dim, int context_length,
-                                  framework::Vector<size_t> &batch_indices,
-                                  T *dfilter) {
+                                  size_t *batch_indices, T *dfilter) {
   int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
   int w = blockIdx.y * blockDim.y + threadIdx.y;  // index along context_length
 
@@ -120,14 +116,14 @@ class RowConvKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     int input_dim = X->dims()[1];
     int num_sequence = batch_indices.size() - 1;
     int context_length = Filter->dims()[0];
+    size_t *idx = batch_indices.data();
 
     auto stream = context.cuda_device_context().stream();
     dim3 block_dim = dim3(32, 32);
     dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
 
     RowConvForward<T><<<grid_dim, block_dim, 0, stream>>>(
-        in, weight, num_sequence, input_dim, context_length, batch_indices,
-        out);
+        in, weight, num_sequence, input_dim, context_length, idx, out);
   }
 };
 
@@ -149,6 +145,7 @@ class RowConvGradKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     int input_dim = X->dims()[1];
     int num_sequence = batch_indices.size() - 1;
     int context_length = Filter->dims()[0];
+    size_t *idx = batch_indices.data();
 
     auto &device_ctx = context.cuda_device_context();
     math::SetConstant<platform::GPUPlace, T> zero;
@@ -162,8 +159,7 @@ class RowConvGradKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
                            DivUp(context_length, block_dim.y));
 
       RowConvGradFilter<T><<<grid_dim, block_dim, 0, device_ctx.stream()>>>(
-          in, dout, num_sequence, input_dim, context_length, batch_indices,
-          dfilter);
+          in, dout, num_sequence, input_dim, context_length, idx, dfilter);
     }
 
     if (dX) {
@@ -172,8 +168,7 @@ class RowConvGradKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
       dim3 block_dim = dim3(32, 32);
       dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
       RowConvGradInput<T><<<grid_dim, block_dim, 0, device_ctx.stream()>>>(
-          dout, weights, num_sequence, input_dim, context_length, batch_indices,
-          din);
+          dout, weights, num_sequence, input_dim, context_length, idx, din);
     }
   }
 };
