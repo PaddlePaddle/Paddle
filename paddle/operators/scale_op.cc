@@ -77,4 +77,6 @@ REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker<float>,
                   ops::ScaleGradMaker);
 REGISTER_OP_CPU_KERNEL(scale,
                        ops::ScaleKernel<paddle::platform::CPUPlace, float>,
-                       ops::ScaleKernel<paddle::platform::CPUPlace, double>);
+                       ops::ScaleKernel<paddle::platform::CPUPlace, double>,
+                       ops::ScaleKernel<paddle::platform::CPUPlace, int>,
+                       ops::ScaleKernel<paddle::platform::CPUPlace, int64_t>);

@@ -1,8 +1,7 @@
 import copy
 import itertools
 
-from framework import Variable, g_main_program, \
-    g_startup_program, unique_name, dtype_is_floating
+from framework import Variable, default_main_program, default_startup_program, unique_name, dtype_is_floating
 from paddle.v2.fluid.initializer import Constant, Xavier
 
 
@@ -22,7 +21,7 @@ class LayerHelper(object):
     def main_program(self):
         prog = self.kwargs.get('main_program', None)
         if prog is None:
-            return g_main_program
+            return default_main_program()
         else:
             return prog
 
@@ -30,7 +29,7 @@ class LayerHelper(object):
     def startup_program(self):
         prog = self.kwargs.get('startup_program', None)
         if prog is None:
-            return g_startup_program
+            return default_startup_program()
         else:
             return prog
 
