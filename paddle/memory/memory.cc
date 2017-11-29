@@ -81,6 +81,11 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
 }
 
 template <>
+size_t Used<platform::GPUPlace>(platform::GPUPlace place) {
+  return GetGPUBuddyAllocator(place.device)->Used();
+}
+
+template <>
 void* Alloc<platform::GPUPlace>(platform::GPUPlace place, size_t size) {
   auto* buddy_allocator = GetGPUBuddyAllocator(place.device);
   auto* ptr = buddy_allocator->Alloc(size);
@@ -91,7 +96,7 @@ void* Alloc<platform::GPUPlace>(platform::GPUPlace place, size_t size) {
     platform::GpuMemoryUsage(avail, total);
     LOG(WARNING) << "Cannot allocate " << size << " bytes in GPU "
                  << place.device << ", available " << avail << " bytes";
-    LOG(WARNING) << "GPU memory used: " << Used(place);
+    LOG(WARNING) << "GPU memory used: " << Used<platform::GPUPlace>(place);
     platform::SetDeviceId(cur_dev);
   }
   return ptr;
@@ -102,10 +107,6 @@ void Free<platform::GPUPlace>(platform::GPUPlace place, void* p) {
   GetGPUBuddyAllocator(place.device)->Free(p);
 }
 
-template <>
-size_t Used<platform::GPUPlace>(platform::GPUPlace place) {
-  return GetGPUBuddyAllocator(place.device)->Used();
-}
 
 #endif
 
