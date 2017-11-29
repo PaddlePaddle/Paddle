@@ -39,9 +39,6 @@ public:
   void backward(const UpdateCallback& callback = nullptr) override;
 
 protected:
-  /// Epsilon value used in the batch normalization formula.
-  static const real EPS;
-
   /// Load pre-calculated mean and std.
   void setMeanAndStd();
 

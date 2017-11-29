@@ -1,6 +1,6 @@
 import unittest
 
-import paddle.v2.fluid.layers as layers
+import paddle.v2.fluid as fluid
 import paddle.v2.fluid.nets as nets
 from paddle.v2.fluid.framework import Program
 
@@ -29,27 +29,35 @@ class TestLayer(unittest.TestCase):
     def test_batch_norm_layer(self):
         main_program = Program()
         startup_program = Program()
-        images = layers.data(
+        images = fluid.layers.data(
             name='pixel',
             shape=[3, 48, 48],
-            data_type='float32',
+            dtype='float32',
             main_program=main_program)
-        layers.batch_norm(
+        hidden1 = fluid.layers.batch_norm(
             input=images,
             main_program=main_program,
             startup_program=startup_program)
+        hidden2 = fluid.layers.fc(input=hidden1,
+                                  size=128,
+                                  act='relu',
+                                  main_program=main_program)
+        hidden3 = fluid.layers.batch_norm(
+            input=hidden2,
+            main_program=main_program,
+            startup_program=startup_program)
 
-        # print str(main_program)
+        print str(main_program)
 
     def test_dropout_layer(self):
         main_program = Program()
         startup_program = Program()
-        images = layers.data(
+        images = fluid.layers.data(
             name='pixel',
             shape=[3, 48, 48],
-            data_type='float32',
+            dtype='float32',
             main_program=main_program)
-        layers.dropout(
+        fluid.layers.dropout(
             x=images,
             dropout_prob=0.5,
             main_program=main_program,
@@ -61,10 +69,10 @@ class TestLayer(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
 
-        images = layers.data(
+        images = fluid.layers.data(
             name='pixel',
             shape=[3, 48, 48],
-            data_type='float32',
+            dtype='float32',
             main_program=main_program,
             startup_program=startup_program)
         conv1 = conv_block(images, 64, 2, [0.3, 0], main_program,
@@ -77,19 +85,19 @@ class TestLayer(unittest.TestCase):
     def test_elementwise_add_with_act(self):
         main_program = Program()
         startup_program = Program()
-        image1 = layers.data(
+        image1 = fluid.layers.data(
             name='pixel1',
             shape=[3, 48, 48],
-            data_type='float32',
+            dtype='float32',
             main_program=main_program,
             startup_program=startup_program)
-        image2 = layers.data(
+        image2 = fluid.layers.data(
             name='pixel2',
             shape=[3, 48, 48],
-            data_type='float32',
+            dtype='float32',
             main_program=main_program,
             startup_program=startup_program)
-        out = layers.elementwise_add(
+        out = fluid.layers.elementwise_add(
             x=image1,
             y=image2,
             act='relu',

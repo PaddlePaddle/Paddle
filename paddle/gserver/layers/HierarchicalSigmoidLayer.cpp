@@ -64,49 +64,111 @@ void HierarchicalSigmoidLayer::forward(PassType passType) {
                          batchSize,
                          codeLength_,
                          /* trans */ false,
-                         useGpu(deviceId_));
+                         false);
   Matrix::resizeOrCreate(preOutput_.grad,
                          batchSize,
                          codeLength_,
                          /* trans */ false,
-                         useGpu(deviceId_));
-
+                         false);
   IVectorPtr label = getInput(*getLabelLayer()).ids;
-
   preOutput_.value->zeroMem();
 
+  if (useGpu_) {
+    Matrix::resizeOrCreate(cpuOutput_,
+                           output_.value->getHeight(),
+                           output_.value->getWidth(),
+                           /* trans */ false,
+                           false);
+    IVector::resizeOrCreate(cpuLabel_, label->getSize(), false);
+    cpuLabel_->copyFrom(*label);
+    cpuOutput_->copyFrom(*output_.value);
+  } else {
+    cpuOutput_ = output_.value;
+    cpuLabel_ = label;
+  }
   /* add the bias-vector */
   if (biases_.get() != NULL) {
-    preOutput_.value->addByBitCode(numClasses_, *label, *biases_->getW());
+    if (useGpu_) {
+      Matrix::resizeOrCreate(cpuBias_,
+                             1,
+                             numClasses_ - 1,
+                             /* trans */ false,
+                             false);
+      cpuBias_->copyFrom(*biases_->getW());
+    } else {
+      cpuBias_ = biases_->getW();
+    }
+    preOutput_.value->addByBitCode(numClasses_, *cpuLabel_, *cpuBias_);
   }
   for (size_t i = 0; i < inputLayers_.size() - 1; ++i) {
     MatrixPtr input = getInputValue(i);
+    if (useGpu_) {
+      Matrix::resizeOrCreate(cpuInput_,
+                             input->getHeight(),
+                             input->getWidth(),
+                             /* trans */ false,
+                             false);
+      Matrix::resizeOrCreate(cpuWeight_,
+                             weights_[i]->getW()->getHeight(),
+                             weights_[i]->getW()->getWidth(),
+                             /* trans */ false,
+                             false);
+      cpuInput_->copyFrom(*input);
+      cpuWeight_->copyFrom(*weights_[i]->getW());
+    } else {
+      cpuInput_ = input;
+      cpuWeight_ = weights_[i]->getW();
+    }
     preOutput_.value->mulByBitCode(
-        numClasses_, *label, *weights_[i]->getW(), *input);
+        numClasses_, *cpuLabel_, *cpuWeight_, *cpuInput_);
   }
   // keep consistent with the clipping in the following softrelu
   preOutput_.value->clip(-40.0, 40.0);
   preOutput_.value->sumByBitCode(numClasses_,
-                                 *label,
-                                 *output_.value,
+                                 *cpuLabel_,
+                                 *cpuOutput_,
                                  -1);  // scaleSum
   preOutput_.value->softrelu(*preOutput_.value);
-  MatrixPtr sum =
-      Matrix::create(batchSize, 1, /* trans= */ false, useGpu(deviceId_));
+  MatrixPtr sum = Matrix::create(batchSize, 1, /* trans= */ false, false);
   preOutput_.value->rowSum(*sum);
-  output_.value->add(*sum);
+  cpuOutput_->add(*sum);
+  if (useGpu_) {
+    output_.value->copyFrom(*cpuOutput_);
+  } else {
+    output_.value = cpuOutput_;
+  }
 }
 
 void HierarchicalSigmoidLayer::backward(const UpdateCallback& callback) {
   IVectorPtr label = getInput(*getLabelLayer()).ids;
+  if (useGpu_) {
+    IVector::resizeOrCreate(cpuLabel_, label->getSize(), false);
+    cpuLabel_->copyFrom(*label);
+  } else {
+    cpuLabel_ = label;
+  }
   preOutput_.grad->one();
   preOutput_.grad->softreluDerivative(*preOutput_.value);
-  preOutput_.grad->subByBitCode(numClasses_, *label);
+  preOutput_.grad->subByBitCode(numClasses_, *cpuLabel_);
 
   if (biases_ && biases_->getWGrad()) {
-    preOutput_.grad->addByBitCodeBackward(
-        numClasses_, *label, *biases_->getWGrad());
-
+    MatrixPtr biases_grad = biases_->getWGrad();
+    if (useGpu_) {
+      Matrix::resizeOrCreate(cpuBias_,
+                             1,
+                             numClasses_ - 1,
+                             /* trans */ false,
+                             false);
+      cpuBias_->copyFrom(*biases_grad);
+    } else {
+      cpuBias_ = biases_grad;
+    }
+    preOutput_.grad->addByBitCodeBackward(numClasses_, *cpuLabel_, *cpuBias_);
+    if (useGpu_) {
+      biases_grad->copyFrom(*cpuBias_);
+    } else {
+      biases_grad = cpuBias_;
+    }
     /* Increasing the number of gradient */
     biases_->getParameterPtr()->incUpdate(callback);
   }
@@ -115,9 +177,31 @@ void HierarchicalSigmoidLayer::backward(const UpdateCallback& callback) {
     /* Calculate the W-gradient for the current layer */
     MatrixPtr input = getInputValue(i);
     if (weights_[i]->getWGrad()) {
+      MatrixPtr weights_grad = weights_[i]->getWGrad();
+      if (useGpu_) {
+        Matrix::resizeOrCreate(cpuInput_,
+                               input->getHeight(),
+                               input->getWidth(),
+                               /* trans */ false,
+                               false);
+        Matrix::resizeOrCreate(cpuWeightGrad_,
+                               weights_grad->getHeight(),
+                               weights_grad->getWidth(),
+                               /* trans */ false,
+                               false);
+        cpuInput_->copyFrom(*input);
+        cpuWeightGrad_->copyFrom(*weights_grad);
+      } else {
+        cpuInput_ = input;
+        cpuWeightGrad_ = weights_grad;
+      }
       preOutput_.grad->mulByBitCodeBackwardWeight(
-          numClasses_, *label, *weights_[i]->getWGrad(), *input);
-
+          numClasses_, *cpuLabel_, *cpuWeightGrad_, *cpuInput_);
+      if (useGpu_) {
+        weights_grad->copyFrom(*cpuWeightGrad_);
+      } else {
+        weights_grad = cpuWeightGrad_;
+      }
       /* Increasing the number of gradient */
       weights_[i]->getParameterPtr()->incUpdate(callback);
     }
@@ -125,8 +209,30 @@ void HierarchicalSigmoidLayer::backward(const UpdateCallback& callback) {
     /* Calculate the input layers error */
     MatrixPtr inputGrad = getInputGrad(i);
     if (inputGrad) {
+      if (useGpu_) {
+        Matrix::resizeOrCreate(cpuInputGrad_,
+                               inputGrad->getHeight(),
+                               inputGrad->getWidth(),
+                               /* trans */ false,
+                               false);
+        Matrix::resizeOrCreate(cpuWeight_,
+                               weights_[i]->getW()->getHeight(),
+                               weights_[i]->getW()->getWidth(),
+                               /* trans */ false,
+                               false);
+        cpuInputGrad_->copyFrom(*inputGrad);
+        cpuWeight_->copyFrom(*weights_[i]->getW());
+      } else {
+        cpuInputGrad_ = inputGrad;
+        cpuWeight_ = weights_[i]->getW();
+      }
       preOutput_.grad->mulByBitCodeBackwardError(
-          numClasses_, *label, *weights_[i]->getW(), *inputGrad);
+          numClasses_, *cpuLabel_, *cpuWeight_, *cpuInputGrad_);
+      if (useGpu_) {
+        inputGrad->copyFrom(*cpuInputGrad_);
+      } else {
+        inputGrad = cpuInputGrad_;
+      }
     }
   }
 }

@@ -1,16 +1,13 @@
 from collections import defaultdict
 
-import paddle.v2.fluid.framework as framework
-from paddle.v2.fluid.framework import unique_name, Program
-from paddle.v2.fluid.backward import append_backward_ops
-from paddle.v2.fluid.initializer import ConstantInitializer
-from paddle.v2.fluid.regularizer import append_regularization_ops
-from paddle.v2.fluid.layer_helper import LayerHelper
+import framework
+from backward import append_backward_ops
+from framework import unique_name
+from initializer import Constant
+from layer_helper import LayerHelper
+from regularizer import append_regularization_ops
 
-__all__ = [
-    'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
-    'AdamaxOptimizer', 'DecayedAdagradOptimizer'
-]
+__all__ = ['SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad']
 
 
 class Optimizer(object):
@@ -48,7 +45,7 @@ class Optimizer(object):
             persistable=True)
         param_lr = param_lr * self._learning_rate
         self.helper.set_variable_initializer(
-            var=param_lr_var, initializer=ConstantInitializer(param_lr))
+            var=param_lr_var, initializer=Constant(param_lr))
         return param_lr_var
 
     def _create_accumulators(self, block, parameters):
@@ -92,11 +89,11 @@ class Optimizer(object):
         var = self.helper.create_global_variable(
             name=unique_name(name),
             persistable=True,
-            dtype=dtype or param.data_type,
+            dtype=dtype or param.dtype,
             type=param.type,
             shape=param.shape)
         self.helper.set_variable_initializer(
-            var, initializer=ConstantInitializer(value=float(fill_value)))
+            var, initializer=Constant(value=float(fill_value)))
         self._accumulators[name][param.name] = var
 
     def _get_accumulator(self, name, param):
@@ -170,7 +167,8 @@ class Optimizer(object):
 
         optimize_ops = []
         for param_and_grad in parameters_and_grads:
-            if param_and_grad[1] is not None:
+            if param_and_grad[0].trainable is True and param_and_grad[
+                    1] is not None:
                 optimize_op = self._append_optimize_op(loss.block,
                                                        param_and_grad)
                 optimize_ops.append(optimize_op)
@@ -201,7 +199,7 @@ class Optimizer(object):
         """
         params_grads = append_backward_ops(loss, parameter_list, no_grad_set or
                                            set())
-        # Add regularization if any 
+        # Add regularization if any
         params_grads = append_regularization_ops(params_grads)
         optimize_ops = self.create_optimization_pass(params_grads, loss,
                                                      startup_program)
@@ -359,7 +357,7 @@ class AdamOptimizer(Optimizer):
             lod_level=0,
             persistable=True)
         self.helper.set_variable_initializer(
-            self._beta1_pow_acc, initializer=ConstantInitializer(self._beta1))
+            self._beta1_pow_acc, initializer=Constant(self._beta1))
 
         self._beta2_pow_acc = self.helper.create_global_variable(
             name=unique_name('beta2_pow_acc'),
@@ -369,7 +367,7 @@ class AdamOptimizer(Optimizer):
             persistable=True)
 
         self.helper.set_variable_initializer(
-            self._beta2_pow_acc, initializer=ConstantInitializer(self._beta2))
+            self._beta2_pow_acc, initializer=Constant(self._beta2))
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
@@ -461,7 +459,7 @@ class AdamaxOptimizer(Optimizer):
             lod_level=0,
             persistable=True)
         self.helper.set_variable_initializer(
-            self._beta1_pow_acc, initializer=ConstantInitializer(self._beta1))
+            self._beta1_pow_acc, initializer=Constant(self._beta1))
 
         # Create accumulator tensors for first moment and infinity norm
         for p in parameters:
@@ -558,3 +556,19 @@ class DecayedAdagradOptimizer(Optimizer):
             attrs={"epsilon": self._epsilon})
 
         return decayed_adagrad_op
+
+
+# We short the class name, since users will use the optimizer with the package
+# name. The sample code:
+#
+# import paddle.fluid as fluid
+#
+# sgd = fluid.optimizer.SGD(...)
+#
+# It is no need to add an `Optimizer` as the class suffix
+SGD = SGDOptimizer
+Momentum = MomentumOptimizer
+Adagrad = AdagradOptimizer
+Adam = AdamOptimizer
+Adamax = AdamaxOptimizer
+DecayedAdagrad = DecayedAdagradOptimizer

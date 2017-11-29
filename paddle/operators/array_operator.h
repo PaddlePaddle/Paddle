@@ -36,12 +36,13 @@ class ArrayOp : public framework::OperatorBase {
     if (platform::is_gpu_place(i_tensor.place())) {
       // FIXME: Avoid copy from GPU to CPU
       framework::Tensor t;
-      t.CopyFrom(i_tensor, platform::CPUPlace(), dev_ctx);
+      framework::CopyFrom(i_tensor, platform::CPUPlace(), dev_ctx, &t);
       dev_ctx.Wait();
       offset = static_cast<size_t>(*t.data<int64_t>());
     } else {
       offset = static_cast<size_t>(*i_tensor.data<int64_t>());
     }
+    VLOG(10) << " Offset = " << offset;
     return offset;
   }
 };

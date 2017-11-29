@@ -28,23 +28,25 @@ namespace forward {
 template <typename T>
 class gru_resetOutput {
  public:
-  HOSTDEVICE void operator()(T &valueUpdateGate, T &valueResetGate, T &prevOut,
-                             T &valueResetOutput, activation_mode_t actGate) {
-    valueUpdateGate = activation(valueUpdateGate, actGate);
-    valueResetGate = activation(valueResetGate, actGate);
-    valueResetOutput = prevOut * valueResetGate;
+  HOSTDEVICE void operator()(T &value_update_gate, T &value_reset_gate,
+                             T &prev_out, T &value_reset_output,
+                             activation_mode_t act_gate) {
+    value_update_gate = activation(value_update_gate, act_gate);
+    value_reset_gate = activation(value_reset_gate, act_gate);
+    value_reset_output = prev_out * value_reset_gate;
   }
 #ifndef __NVCC__
 #ifndef __AVX__
   static const bool avx = false;
 #else
   static const bool avx = true;
-  HOSTDEVICE void operator()(__m256 &valueUpdateGate, __m256 &valueResetGate,
-                             __m256 &prevOut, __m256 &valueResetOutput,
-                             activation_mode_t actGate) {
-    valueUpdateGate = activation(valueUpdateGate, actGate);
-    valueResetGate = activation(valueResetGate, actGate);
-    valueResetOutput = _mm256_mul_ps(prevOut, valueResetGate);
+  HOSTDEVICE void operator()(__m256 &value_update_gate,
+                             __m256 &value_reset_gate, __m256 &prev_out,
+                             __m256 &value_reset_output,
+                             activation_mode_t act_gate) {
+    value_update_gate = activation(value_update_gate, act_gate);
+    value_reset_gate = activation(value_reset_gate, act_gate);
+    value_reset_output = _mm256_mul_ps(prev_out, value_reset_gate);
   }
 #endif
 #endif
@@ -53,24 +55,26 @@ class gru_resetOutput {
 template <typename T>
 class gru_finalOutput {
  public:
-  HOSTDEVICE void operator()(T &valueUpdateGate, T &valueFrameState, T &prevOut,
-                             T &valueOutput, activation_mode_t actInput) {
-    valueFrameState = activation(valueFrameState, actInput);
-    valueOutput = prevOut - (valueUpdateGate * prevOut) +
-                  (valueUpdateGate * valueFrameState);
+  HOSTDEVICE void operator()(T &value_update_gate, T &value_frame_state,
+                             T &prev_out, T &value_output,
+                             activation_mode_t act_input) {
+    value_frame_state = activation(value_frame_state, act_input);
+    value_output = prev_out - (value_update_gate * prev_out) +
+                   (value_update_gate * value_frame_state);
   }
 #ifndef __NVCC__
 #ifndef __AVX__
   static const bool avx = false;
 #else
   static const bool avx = true;
-  HOSTDEVICE void operator()(__m256 &valueUpdateGate, __m256 &valueFrameState,
-                             __m256 &prevOut, __m256 &valueOutput,
-                             activation_mode_t actInput) {
-    valueFrameState = activation(valueFrameState, actInput);
-    valueOutput = _mm256_add_ps(
-        _mm256_sub_ps(prevOut, _mm256_mul_ps(valueUpdateGate, prevOut)),
-        _mm256_mul_ps(valueUpdateGate, valueFrameState));
+  HOSTDEVICE void operator()(__m256 &value_update_gate,
+                             __m256 &value_frame_state, __m256 &prev_out,
+                             __m256 &value_output,
+                             activation_mode_t act_input) {
+    value_frame_state = activation(value_frame_state, act_input);
+    value_output = _mm256_add_ps(
+        _mm256_sub_ps(prev_out, _mm256_mul_ps(value_update_gate, prev_out)),
+        _mm256_mul_ps(value_update_gate, value_frame_state));
   }
 #endif
 #endif
@@ -82,34 +86,37 @@ namespace backward {
 template <typename T>
 class gru_stateGrad {
  public:
-  HOSTDEVICE void operator()(T &valueUpdateGate, T &gradUpdateGate,
-                             T &valueFrameState, T &gradFrameState,
-                             T &valuePrevOut, T &gradPrevOut, T &gradOutput,
-                             activation_mode_t actInput) {
-    gradUpdateGate = (gradOutput * valueFrameState);
-    gradUpdateGate -= (gradOutput * valuePrevOut);
-    gradPrevOut -= (gradOutput * valueUpdateGate);
-    gradPrevOut += gradOutput;
-    gradFrameState =
-        activation(gradOutput * valueUpdateGate, valueFrameState, actInput);
+  HOSTDEVICE void operator()(T &value_update_gate, T &grad_update_gate,
+                             T &value_frame_state, T &grad_frame_state,
+                             T &value_prev_out, T &grad_prev_out,
+                             T &grad_output, activation_mode_t act_input) {
+    grad_update_gate = (grad_output * value_frame_state);
+    grad_update_gate -= (grad_output * value_prev_out);
+    grad_prev_out -= (grad_output * value_update_gate);
+    grad_prev_out += grad_output;
+    grad_frame_state = activation(grad_output * value_update_gate,
+                                  value_frame_state, act_input);
   }
 #ifndef __NVCC__
 #ifndef __AVX__
   static const bool avx = false;
 #else
   static const bool avx = true;
-  HOSTDEVICE void operator()(__m256 &valueUpdateGate, __m256 &gradUpdateGate,
-                             __m256 &valueFrameState, __m256 &gradFrameState,
-                             __m256 &valuePrevOut, __m256 &gradPrevOut,
-                             __m256 &gradOutput, activation_mode_t actInput) {
-    gradUpdateGate = _mm256_mul_ps(gradOutput, valueFrameState);
-    gradUpdateGate =
-        _mm256_sub_ps(gradUpdateGate, _mm256_mul_ps(gradOutput, valuePrevOut));
-    gradPrevOut = _mm256_add_ps(
-        _mm256_sub_ps(gradPrevOut, _mm256_mul_ps(gradOutput, valueUpdateGate)),
-        gradOutput);
-    gradFrameState = activation(_mm256_mul_ps(gradOutput, valueUpdateGate),
-                                valueFrameState, actInput);
+  HOSTDEVICE void operator()(__m256 &value_update_gate,
+                             __m256 &grad_update_gate,
+                             __m256 &value_frame_state,
+                             __m256 &grad_frame_state, __m256 &value_prev_out,
+                             __m256 &grad_prev_out, __m256 &grad_output,
+                             activation_mode_t act_input) {
+    grad_update_gate = _mm256_mul_ps(grad_output, value_frame_state);
+    grad_update_gate = _mm256_sub_ps(
+        grad_update_gate, _mm256_mul_ps(grad_output, value_prev_out));
+    grad_prev_out = _mm256_add_ps(
+        _mm256_sub_ps(grad_prev_out,
+                      _mm256_mul_ps(grad_output, value_update_gate)),
+        grad_output);
+    grad_frame_state = activation(_mm256_mul_ps(grad_output, value_update_gate),
+                                  value_frame_state, act_input);
   }
 #endif
 #endif
@@ -118,30 +125,32 @@ class gru_stateGrad {
 template <typename T>
 class gru_resetGrad {
  public:
-  HOSTDEVICE void operator()(T &valueUpdateGate, T &gradUpdateGate,
-                             T &valueResetGate, T &gradResetGate,
-                             T &valuePrevOut, T &gradPrevOut,
-                             T &gradResetOutput, activation_mode_t actGate) {
-    gradResetGate = (gradResetOutput * valuePrevOut);
-    gradPrevOut += (gradResetOutput * valueResetGate);
-    gradUpdateGate = activation(gradUpdateGate, valueUpdateGate, actGate);
-    gradResetGate = activation(gradResetGate, valueResetGate, actGate);
+  HOSTDEVICE void operator()(T &value_update_gate, T &grad_update_gate,
+                             T &value_reset_gate, T &grad_reset_gate,
+                             T &value_prev_out, T &grad_prev_out,
+                             T &grad_reset_output, activation_mode_t act_gate) {
+    grad_reset_gate = (grad_reset_output * value_prev_out);
+    grad_prev_out += (grad_reset_output * value_reset_gate);
+    grad_update_gate =
+        activation(grad_update_gate, value_update_gate, act_gate);
+    grad_reset_gate = activation(grad_reset_gate, value_reset_gate, act_gate);
   }
 #ifndef __NVCC__
 #ifndef __AVX__
   static const bool avx = false;
 #else
   static const bool avx = true;
-  HOSTDEVICE void operator()(__m256 &valueUpdateGate, __m256 &gradUpdateGate,
-                             __m256 &valueResetGate, __m256 &gradResetGate,
-                             __m256 &valuePrevOut, __m256 &gradPrevOut,
-                             __m256 &gradResetOutput,
-                             activation_mode_t actGate) {
-    gradResetGate = _mm256_mul_ps(gradResetOutput, valuePrevOut);
-    gradPrevOut = _mm256_add_ps(gradPrevOut,
-                                _mm256_mul_ps(gradResetOutput, valueResetGate));
-    gradUpdateGate = activation(gradUpdateGate, valueUpdateGate, actGate);
-    gradResetGate = activation(gradResetGate, valueResetGate, actGate);
+  HOSTDEVICE void operator()(__m256 &value_update_gate,
+                             __m256 &grad_update_gate, __m256 &value_reset_gate,
+                             __m256 &grad_reset_gate, __m256 &value_prev_out,
+                             __m256 &grad_prev_out, __m256 &grad_reset_output,
+                             activation_mode_t act_gate) {
+    grad_reset_gate = _mm256_mul_ps(grad_reset_output, value_prev_out);
+    grad_prev_out = _mm256_add_ps(
+        grad_prev_out, _mm256_mul_ps(grad_reset_output, value_reset_gate));
+    grad_update_gate =
+        activation(grad_update_gate, value_update_gate, act_gate);
+    grad_reset_gate = activation(grad_reset_gate, value_reset_gate, act_gate);
   }
 #endif
 #endif

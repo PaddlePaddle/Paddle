@@ -1,10 +1,8 @@
 import copy
 import itertools
 
-from paddle.v2.fluid.framework import Variable, g_main_program, \
-    g_startup_program, unique_name, Program
-from paddle.v2.fluid.initializer import ConstantInitializer, \
-    UniformInitializer, XavierInitializer
+from framework import Variable, default_main_program, default_startup_program, unique_name, dtype_is_floating
+from paddle.v2.fluid.initializer import Constant, Xavier
 
 
 class LayerHelper(object):
@@ -23,7 +21,7 @@ class LayerHelper(object):
     def main_program(self):
         prog = self.kwargs.get('main_program', None)
         if prog is None:
-            return g_main_program
+            return default_main_program()
         else:
             return prog
 
@@ -31,7 +29,7 @@ class LayerHelper(object):
     def startup_program(self):
         prog = self.kwargs.get('startup_program', None)
         if prog is None:
-            return g_startup_program
+            return default_startup_program()
         else:
             return prog
 
@@ -61,7 +59,7 @@ class LayerHelper(object):
 
     @property
     def param_attr(self):
-        default = {'name': None, 'initializer': XavierInitializer()}
+        default = {'name': None}
         actual = self.kwargs.get('param_attr', None)
         if actual is None:
             actual = default
@@ -72,7 +70,7 @@ class LayerHelper(object):
 
     @property
     def bias_attr(self):
-        default = {'name': None, 'initializer': XavierInitializer()}
+        default = {'name': None}
         bias_attr = self.kwargs.get('bias_attr', None)
         if bias_attr is None:
             bias_attr = default
@@ -108,8 +106,8 @@ class LayerHelper(object):
         dtype = None
         for each in inputs:
             if dtype is None:
-                dtype = each.data_type
-            elif dtype != each.data_type:
+                dtype = each.dtype
+            elif dtype != each.dtype:
                 raise ValueError("Data Type mismatch")
         return dtype
 
@@ -119,12 +117,17 @@ class LayerHelper(object):
         attr_copy = copy.deepcopy(attr)
         if initializer is not None:
             attr_copy['initializer'] = initializer
+        else:
+            attr_copy['initializer'] = self._get_default_initializer(dtype)
         if attr_copy['name'] is None:
             attr_copy['name'] = unique_name(".".join([self.name, suffix]))
         self.startup_program.global_block().create_parameter(
             dtype=dtype, shape=shape, **attr_copy)
         return self.main_program.global_block().create_parameter(
-            name=attr_copy['name'], dtype=dtype, shape=shape)
+            name=attr_copy['name'],
+            dtype=dtype,
+            shape=shape,
+            trainable=attr_copy.get('trainable', True))
 
     def create_tmp_variable(self, dtype):
         return self.main_program.current_block().create_var(
@@ -144,41 +147,47 @@ class LayerHelper(object):
         self.startup_program.global_block().create_var(
             name=var.name,
             type=var.type,
-            dtype=var.data_type,
+            dtype=var.dtype,
             shape=var.shape,
             persistable=True,
             initializer=initializer)
 
-    def append_bias_op(self, input_var, num_flatten_dims=None):
+    def append_bias_op(self,
+                       input_var,
+                       bias_initializer,
+                       dim_start=1,
+                       dim_end=None):
         """
-        Append bias operator and return its output. If the user does not set 
+        Append bias operator and return its output. If the user does not set
         bias_attr, append_bias_op will return input_var
-         
-        :param input_var: the input variable. The len(input_var.shape) is larger
-        or equal than 2.
-        :param num_flatten_dims: The input tensor will be flatten as a matrix 
-        when adding bias.
-        `matrix.shape = product(input_var.shape[0:num_flatten_dims]), product(
-                input_var.shape[num_flatten_dims:])`
-        """
-        if num_flatten_dims is None:
-            num_flatten_dims = self.kwargs.get('num_flatten_dims', None)
-            if num_flatten_dims is None:
-                num_flatten_dims = 1
 
-        size = list(input_var.shape[num_flatten_dims:])
+        :param input_var: the input variable. The len(input_var.shape) is
+        larger or equal than 2.
+        :bias_initializer: an instance of a subclass of Initializer used to
+        initialize the bias
+        :param dim_start:
+        :param dim_end: the shape of the bias will be
+        input_var.shape[dim_start:dim_end]. The bias is broadcasted to other
+        dimensions and added to input_var to get the output
+        """
+        size = list(input_var.shape[dim_start:dim_end])
         bias_attr = self.bias_attr
         if not bias_attr:
             return input_var
 
         b = self.create_parameter(
-            attr=bias_attr, shape=size, dtype=input_var.data_type, suffix='b')
-        tmp = self.create_tmp_variable(dtype=input_var.data_type)
+            attr=bias_attr,
+            shape=size,
+            dtype=input_var.dtype,
+            suffix='b',
+            initializer=bias_initializer)
+        tmp = self.create_tmp_variable(dtype=input_var.dtype)
         self.append_op(
             type='elementwise_add',
             inputs={'X': [input_var],
                     'Y': [b]},
-            outputs={'Out': [tmp]})
+            outputs={'Out': [tmp]},
+            attrs={'axis': dim_start})
         return tmp
 
     def append_activation(self, input_var):
@@ -187,7 +196,7 @@ class LayerHelper(object):
             return input_var
         if isinstance(act, basestring):
             act = {'type': act}
-        tmp = self.create_tmp_variable(dtype=input_var.data_type)
+        tmp = self.create_tmp_variable(dtype=input_var.dtype)
         act_type = act.pop('type')
         self.append_op(
             type=act_type,
@@ -195,3 +204,10 @@ class LayerHelper(object):
             outputs={"Y": [tmp]},
             attrs=act)
         return tmp
+
+    def _get_default_initializer(self, dtype):
+        if dtype is None or dtype_is_floating(dtype) is True:
+            return Xavier()
+        else:
+            # For integer and boolean types, initialize with all zeros
+            return Constant()

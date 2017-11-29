@@ -5,6 +5,7 @@ height = 224
 width = 224
 num_class = 1000
 batch_size = get_config_arg('batch_size', int, 128)
+use_gpu = get_config_arg('use_gpu', bool, True)
 
 args = {'height': height, 'width': width, 'color': True, 'num_class': num_class}
 define_py_data_sources2(
@@ -15,6 +16,8 @@ settings(
     learning_rate=0.01 / batch_size,
     learning_method=MomentumOptimizer(0.9),
     regularization=L2Regularization(0.0005 * batch_size))
+
+conv_projection = conv_projection if use_gpu else img_conv_layer
 
 def inception2(name, input, channels, \
     filter1,
@@ -138,7 +141,7 @@ def inception(name, input, channels, \
     cat = concat_layer(
         name=name,
         input=[cov1, cov3, cov5, covprj],
-        bias_attr=True,
+        bias_attr=True if use_gpu else False,
         act=ReluActivation())
     return cat
 
