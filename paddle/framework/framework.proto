@@ -143,3 +143,13 @@ message BlockDesc {
 // https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/program.md
 // for more details.
 message ProgramDesc { repeated BlockDesc blocks = 1; }
+
+message OpPlacement {
+  optional string name = 1;
+  optional string device = 2;
+}
+
+message ExecutionPlan {
+  optional ProgramDesc program = 1;
+  repeated OpPlacement op_placement = 2;
+}

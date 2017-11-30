@@ -2,7 +2,7 @@
 
 ## Compile and Execution
 
-A PaddlePaddle program consists of two parts -- the first generates a `ProgramDesc` protobuf message that describes the program, and the second runs this message using a C++ class `Executor`.
+A PaddlePaddle program consists of three parts -- the first generates a `ProgramDesc` protobuf message that describes the program, the second optimizes this message using a C++ class `Optimizer` and generates an `ExecutionPlan` protobuf messages, and the third run the message using a C++ class `Executor`.
 
 A simple example PaddlePaddle program can be found in [graph.md](./graph.md):
 
@@ -15,7 +15,7 @@ optimize(cost)
 train(cost, reader=mnist.train())
 ```
 
-The first five lines of the following PaddlePaddle program generates, or, compiles, the `ProgramDesc` message.  The last line runs it.
+The first five lines of the following PaddlePaddle program generates, or, compiles, the `ProgramDesc` message.  The last line optimizes and runs it.
 
 ## Programs and Blocks
 
@@ -119,6 +119,22 @@ message AttrDesc {
   ...
 }
 ```
+
+## ProgramDesc and ExecutionPlan
+
+The goal of `ProgramDesc` is to describe **what** the user wants to calculate, and the goal of `ExecutionPlan` is to specify **how** to calculate it.
+
+For example, the `ExecutionPlan` has OP placement information to indicate which device the OP will run, but the `ProgramDesc` does not have this information since currently our Python API does not support manually pinning an OP onto a type of device (e.g., GPU or FPGA). On the other hand, the `ProgramDesc` should have information about if an OP belongs to an optimizer, this information is provided by the user and helps to place the OPs onto the parameter servers, but the `ExecutionPlan` does not have this information.
+
+### Optimizer
+
+The optimizer takes `ProgramDesc` as the input and outputs the `ExcutionPlan`, the steps are:
+1. Add the prgram in `ProgramDesc` and the coresponding backward pass program into the `ExecutionPlan`.
+1. Optimizes the program according to the avaiable devices.
+    For example, add data parallelism by spliting the input mini-batches and replicating the OPs onto different GPUs. Note that even if the OPs are replicated on different GPUs, there is still only **one** execution plan. One executor runs and only runs one `ExecutionPlan`.
+1. Place each OP onto available devices, the placement information is written in the `ExecutionPlan`.
+1. In distributed training, split the `ExecutionPlan` into multiple `ExecutionPlans` and add send/recv OP between them. For local training, this step is not necessary since there is only one executor.
+1. Send the `ExecutionPlan` to the executor for execution.
 
 ## InferShape
 
