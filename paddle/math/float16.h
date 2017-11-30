@@ -735,6 +735,5 @@ HOSTDEVICE inline bool operator>(const float16& a, const float16& b) {
 HOSTDEVICE inline bool operator>=(const float16& a, const float16& b) {
   return float(a) >= float(b);
 }
-
 #endif
 }  // namespace paddle
