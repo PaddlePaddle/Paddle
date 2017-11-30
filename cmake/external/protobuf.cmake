@@ -188,14 +188,24 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
         SET(OPTIONAL_CACHE_ARGS "-DZLIB_ROOT:STRING=${ZLIB_ROOT}")
     ENDIF()
 
+    SET(PROTOBUF_REPO "https://github.com/google/protobuf.git")
+    SET(PROTOBUF_TAG "9f75c5aa851cd877fb0d93ccc31b8567a6706546")
+    IF(MOBILE_INFERENCE)
+        SET(PROTOBUF_REPO "https://github.com/qingqing01/protobuf.git")
+        SET(PROTOBUF_TAG "v3.2.0")
+        IF(NOT BUILD_FOR_HOST)
+            SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} "-Dprotobuf_BUILD_PROTOC_BINARIES=OFF")
+        ENDIF()
+    ENDIF()
+
     ExternalProject_Add(
         ${TARGET_NAME}
         ${EXTERNAL_PROJECT_LOG_ARGS}
         PREFIX          ${PROTOBUF_SOURCES_DIR}
         UPDATE_COMMAND  ""
         DEPENDS         zlib
-        GIT_REPOSITORY  "https://github.com/google/protobuf.git"
-        GIT_TAG         "9f75c5aa851cd877fb0d93ccc31b8567a6706546"
+        GIT_REPOSITORY  ${PROTOBUF_REPO}
+        GIT_TAG         ${PROTOBUF_TAG}
         CONFIGURE_COMMAND
         ${CMAKE_COMMAND} ${PROTOBUF_SOURCES_DIR}/src/${TARGET_NAME}/cmake
             ${OPTIONAL_ARGS}
@@ -213,7 +223,11 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     )
 ENDFUNCTION()
 
-SET(PROTOBUF_VERSION 3.1)
+IF(NOT MOBILE_INFERENCE)
+    SET(PROTOBUF_VERSION 3.1)
+ELSE()
+    SET(PROTOBUF_VERSION 3.2)
+ENDIF()
 IF(CMAKE_CROSSCOMPILING)
     build_protobuf(protobuf_host TRUE)
     LIST(APPEND external_project_dependencies protobuf_host)
