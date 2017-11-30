@@ -23,7 +23,7 @@ def initHook(settings, height, width, color, num_class, **kwargs):
 @provider(
     init_hook=initHook, min_pool_size=-1, cache=CacheType.CACHE_PASS_IN_MEM)
 def process(settings, file_list):
-    for i in xrange(1024):
+    for i in xrange(2560 if settings.is_infer else 1024):
         img = np.random.rand(1, settings.data_size).reshape(-1, 1).flatten()
         if settings.is_infer:
             yield img.astype('float32')
