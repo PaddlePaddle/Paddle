@@ -185,6 +185,7 @@ def data(name,
          shape,
          append_batch_size=True,
          dtype='float32',
+         lod_level=0,
          type=core.VarDesc.VarType.LOD_TENSOR,
          main_program=None,
          startup_program=None,
@@ -198,6 +199,7 @@ def data(name,
        append_batch_size: Whether or not to append the data as a batch.
        dtype: The type of data : float32, float_16, int etc
        type: The output type. By default it is LOD_TENSOR.
+       lod_level(int): The LoD Level. 0 means the input data is not a sequence.
        main_program: Name of the main program that calls this
        startup_program: Name of the startup program
        stop_gradient: A boolean that mentions whether gradient should flow.
@@ -228,7 +230,8 @@ def data(name,
         shape=shape,
         dtype=dtype,
         type=type,
-        stop_gradient=stop_gradient)
+        stop_gradient=stop_gradient,
+        lod_level=lod_level)
 
 
 def create_tensor(dtype, name=None, main_program=None, startup_program=None):
