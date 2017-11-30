@@ -1,5 +1,12 @@
 set -e
 
+function clock_to_seconds() {
+  hours=`echo $1 | awk -F ':' '{print $1}'`
+  mins=`echo $1 | awk -F ':' '{print $2}'`
+  secs=`echo $1 | awk -F ':' '{print $3}'`
+  echo `bc -l <<< "$secs + $mins * 60 + $hours * 3600"`
+}
+
 function infer() {
   unset OMP_NUM_THREADS MKL_NUM_THREADS OMP_DYNAMIC KMP_AFFINITY
   topology=$1
@@ -34,15 +41,26 @@ function infer() {
       > /dev/null 2>&1
     echo "Done"
   fi
+  log_period=$((256 / bs))
   paddle train --job=test \
     --config="${topology}.py" \
     --use_mkldnn=$use_mkldnn \
     --use_gpu=False \
     --trainer_count=$thread \
-    --log_period=32 \
+    --log_period=$log_period \
     --config_args="batch_size=${bs},layer_num=${layer_num},is_infer=True" \
     --init_model_path=$models_in \
-    2>&1 | tee ${log} 
+    2>&1 | tee ${log}
+
+  # calculate the last 5 logs period time of 1280 samples,
+  # the time before are burning time.
+  start=`tail ${log} -n 7 | head -n 1 | awk -F ' ' '{print $2}' | xargs`
+  end=`tail ${log} -n 2 | head -n 1 | awk -F ' ' '{print $2}' | xargs`
+  start_sec=`clock_to_seconds $start`
+  end_sec=`clock_to_seconds $end`
+  fps=`bc <<< "scale = 2; 1280 / ($end_sec - $start_sec)"`
+  echo "Last 1280 samples start: ${start}(${start_sec} sec), end: ${end}(${end_sec} sec;" >> ${log}
+  echo "FPS: $fps images/sec" >> ${log}
 }
 
 if [ ! -f "train.list" ]; then
