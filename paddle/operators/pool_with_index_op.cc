@@ -142,7 +142,7 @@ class MaxPool2dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
     // TypedAttrChecker don't support vector type.)
     AddAttr<std::vector<int>>(
         "paddings",
-        "(vector<int>, defalut:{0, 0}), paddings(height, width) of pooling "
+        "(vector<int>, default:{0, 0}), paddings(height, width) of pooling "
         "operator. "
         "If global_pooling = true, paddings and will be ignored.")
         .SetDefault({0, 0});  // TODO(Chengduo): Add checker. (Currently,
@@ -166,10 +166,10 @@ Example:
   Output:
        Out shape: $(N, C, H_{out}, W_{out})$
        Mask shape: $(N, C, H_{out}, W_{out})$
-  where
+  Where
        $$
-       H_{out} = (H_{in} - ksize[0] + 2 * paddings[0]) / strides[0] + 1 \\
-       W_{out} = (W_{in} - ksize[1] + 2 * paddings[1]) / strides[1] + 1
+       H_{out} = \frac{(H_{in} - ksize[0] + 2 * paddings[0])}{strides[0]} + 1 \\
+       W_{out} = \frac{(W_{in} - ksize[1] + 2 * paddings[1])}{strides[1]} + 1
        $$
 
 )DOC");
@@ -220,7 +220,7 @@ class MaxPool3dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
     // TypedAttrChecker don't support vector type.)
     AddAttr<std::vector<int>>(
         "paddings",
-        "(vector, defalut {0,0,0}), paddings(depth, "
+        "(vector, default {0,0,0}), paddings(depth, "
         "height, width) of pooling operator. "
         "If global_pooling = true, paddings and ksize will be ignored.")
         .SetDefault({0, 0, 0});  // TODO(Chengduo): Add checker. (Currently,
@@ -244,11 +244,11 @@ Example:
   Output:
        Out shape: $(N, C, D_{out}, H_{out}, W_{out})$
        Mask shape: $(N, C, D_{out}, H_{out}, W_{out})$
-  where
+  Where
        $$
-       D_{out} = (D_{in} - ksize[0] + 2 * paddings[0]) / strides[0] + 1 \\
-       H_{out} = (H_{in} - ksize[1] + 2 * paddings[1]) / strides[1] + 1 \\
-       W_{out} = (W_{in} - ksize[2] + 2 * paddings[2]) / strides[2] + 1
+       D_{out} = \frac{(D_{in} - ksize[0] + 2 * paddings[0])}{strides[0]} + 1 \\
+       H_{out} = \frac{(H_{in} - ksize[1] + 2 * paddings[1])}{strides[1]} + 1 \\
+       W_{out} = \frac{(W_{in} - ksize[2] + 2 * paddings[2])}{strides[2]} + 1
        $$
 
 )DOC");
