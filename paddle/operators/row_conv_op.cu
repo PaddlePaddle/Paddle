@@ -176,10 +176,11 @@ class RowConvGradKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
 
     if (dX) {
       T *din = dX->mutable_data<T>(context.GetPlace());
-      //      zero(device_ctx, dX, static_cast<T>(0.0));
-      dim3 block_dim = dim3(1, 1);
-      dim3 grid_dim = dim3(1, 1);
-      // dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
+      // dim3 block_dim = dim3(1, 1);
+      // dim3 grid_dim = dim3(1, 1);
+
+      dim3 block_dim = dim3(32, 32);
+      dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
       RowConvGradInput<T><<<grid_dim, block_dim, 0, device_ctx.stream()>>>(
           dout, weights, num_sequence, input_dim, context_length, idx, din);
     }
