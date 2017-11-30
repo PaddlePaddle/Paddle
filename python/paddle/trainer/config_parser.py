@@ -1233,7 +1233,7 @@ def parse_bilinear(bilinear, input_layer_name, bilinear_conf):
     bilinear_conf.out_size_y = bilinear.out_size_y
 
 
-def parse_pool(pool, input_layer_name, pool_conf, ceil_mode):
+def parse_pool(pool, input_layer_name, pool_conf, ceil_mode, exclude_mode):
     pool_conf.pool_type = pool.pool_type
     config_assert(pool.pool_type in [
         'max-projection', 'avg-projection', 'max-pool-with-mask', 'cudnn-max-pool', 'cudnn-avg-pool'
@@ -1262,6 +1262,8 @@ def parse_pool(pool, input_layer_name, pool_conf, ceil_mode):
     pool_conf.output_y = cnn_output_size(pool_conf.img_size_y, pool_conf.size_y,
                                          pool_conf.padding_y,
                                          pool_conf.stride_y, not ceil_mode)
+
+    pool_conf.exclude_mode = exclude_mode
 
 
 def parse_pool3d(pool, input_layer_name, pool_conf, ceil_mode):
@@ -2303,7 +2305,8 @@ class NormLayer(LayerBase):
 class PoolLayer(LayerBase):
     layer_type = 'pool'
 
-    def __init__(self, name, inputs, ceil_mode=True, **xargs):
+    def __init__(self, name, inputs, ceil_mode=True, exclude_mode=True,
+                 **xargs):
         use_mkldnn = int(g_command_config_args.get("use_mkldnn", 0))
         if self.layer_type == "mkldnn_pool":
             config_assert(use_mkldnn, "mkldnn_pool only support MKLDNN")
@@ -2314,7 +2317,7 @@ class PoolLayer(LayerBase):
             input_layer = self.get_input_layer(input_index)
             pool_conf = self.config.inputs[input_index].pool_conf
             parse_pool(self.inputs[input_index].pool, input_layer.name,
-                       pool_conf, ceil_mode)
+                       pool_conf, ceil_mode, exclude_mode)
             self.set_cnn_layer(name, pool_conf.output_y, pool_conf.output_x,
                                pool_conf.channels)
 

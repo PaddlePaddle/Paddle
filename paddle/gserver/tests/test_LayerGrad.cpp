@@ -1211,7 +1211,10 @@ void setPoolConfig(TestConfig* config,
   pool->set_output_y(oh);
 }
 
-void testPoolLayer(const string& poolType, bool trans, bool useGpu) {
+void testPoolLayer(const string& poolType,
+                   bool trans,
+                   bool useGpu,
+                   bool excludeMode = true) {
   TestConfig config;
   config.inputDefs.push_back({INPUT_DATA, "layer_0", 3136, 0});
   LayerInputConfig* input = config.layerConfig.add_inputs();
@@ -1219,6 +1222,7 @@ void testPoolLayer(const string& poolType, bool trans, bool useGpu) {
 
   pool->set_img_size(14);
   pool->set_img_size_y(14);
+  pool->set_exclude_mode(excludeMode);
   setPoolConfig(&config, pool, poolType);
   config.layerConfig.set_size(pool->output_x() * pool->output_y() *
                               pool->channels());
@@ -1250,16 +1254,26 @@ void testPoolLayer2(const string& poolType, bool trans, bool useGpu) {
 
 TEST(Layer, PoolLayer) {
   testPoolLayer("avg-projection", /* trans= */ false, /* useGpu= */ false);
+  testPoolLayer("avg-projection",
+                /* trans= */ false,
+                /* useGpu= */ false,
+                /* excludeMode= */ false);
   testPoolLayer("max-projection", /* trans= */ false, /* useGpu= */ false);
   testPoolLayer("max-pool-with-mask", /* trans= */ false, /* useGpu= */ false);
 
 #ifdef PADDLE_WITH_CUDA
   testPoolLayer("avg-projection", /* trans= */ false, /* useGpu= */ true);
+  testPoolLayer("avg-projection",
+                /* trans= */ false,
+                /* useGpu= */ true,
+                /* excludeMode= */ false);
   testPoolLayer("max-projection", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer("cudnn-max-pool", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer("cudnn-avg-pool", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer2("cudnn-max-pool", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer2("cudnn-avg-pool", /* trans= */ false, /* useGpu= */ true);
+  testPoolLayer2(
+      "cudnn-avg-incl-pad-pool", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer("max-pool-with-mask", /* trans= */ false, /* useGpu= */ true);
 #endif
 }
