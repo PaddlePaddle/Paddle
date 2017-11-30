@@ -27,6 +27,43 @@ namespace {
 inline int DivUp(int x, int y) { return (x + y - 1) / y; }
 
 template <typename T>
+__global__ void RowConvForwardSharedMemory(const T *in, const T *wt,
+                                           int num_sequence, int input_dim,
+                                           int context_length,
+                                           const size_t *batch_indices,
+                                           T *out) {
+  int blx = blockDim.x;
+  int bly = blockDim.y;
+  int thx = threadIdx.x;
+  int thy = threadIdx.y;
+  int d = blockIdx.x * blx + thx;  // index along input dim
+
+  extern __shared__ T mem[];
+  if (thy < context_length) {
+    mem[thy * blx + thx] = (d < input_dim) ? w[tidy * input_dim + d] : 0.0;
+  }
+  __syncthreads();
+
+  for (size_t i = 0; i < num_sequence; i++) {
+    int start = static_cast<int>(batch_indices[i]);
+    int end = static_cast<int>(batch_indices[i + 1]);
+    int current_timesteps = end - start;
+    for (int k = thy; k < current_timesteps; k += bly) {
+      T sum = 0;
+      for (int w = 0; (w < context_length) && ((k + w) < current_timesteps);
+           w++) {
+        sum += (d < input_dim)
+                   ? mem[w * blx + thx] * in[(start + k + w) * input_dim + d]
+                   : 0;
+      }
+      if (d < input_dim) {
+        out[(start + k) * input_dim + d] = sum;
+      }
+    }
+  }
+}
+
+template <typename T>
 __global__ void RowConvForward(const T *in, const T *wt, int num_sequence,
                                int input_dim, int context_length,
                                const size_t *batch_indices, T *out) {
@@ -117,10 +154,6 @@ class RowConvKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     const T *weight = Filter->data<T>();
     T *out = Out->mutable_data<T>(context.GetPlace());
 
-    //    auto &device_ctx = context.cuda_device_context();
-    //    math::SetConstant<platform::GPUPlace, T> zero;
-    //    zero(device_ctx, Out, static_cast<T>(0.0));  // May not need, CHECK ME
-
     auto batch_indices = X->lod()[0];
     int input_dim = X->dims()[1];
     int num_sequence = batch_indices.size() - 1;
@@ -128,13 +161,21 @@ class RowConvKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     size_t *idx = batch_indices.data();
 
     auto stream = context.cuda_device_context().stream();
-    dim3 block_dim = dim3(32, 32);
-    dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
-    // dim3 block_dim = dim3(1, 1);
-    // dim3 grid_dim = dim3(1, 1);
 
-    RowConvForward<T><<<grid_dim, block_dim, 0, stream>>>(
-        in, weight, num_sequence, input_dim, context_length, idx, out);
+    if (context_length <= 32) {
+      dim3 block_dim = dim3(32, 32);
+      dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
+      int mem_per_block = (context_length * block_dim.x) * sizeof(T);
+      RowConvForwardSharedMemory<
+          T><<<grid_dim, block_dim, mem_per_block, stream>>>(
+          in, weight, num_sequence, input_dim, context_length, idx, out);
+
+    } else {
+      dim3 block_dim = dim3(32, 32);
+      dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
+      RowConvForward<T><<<grid_dim, block_dim, 0, stream>>>(
+          in, weight, num_sequence, input_dim, context_length, idx, out);
+    }
   }
 };
 
