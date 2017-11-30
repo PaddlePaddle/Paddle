@@ -16,7 +16,11 @@ args = {
     'is_infer': is_infer
 }
 define_py_data_sources2(
-    "train.list", "test.list", module="provider", obj="process", args=args)
+    "train.list" if not is_infer else None,
+    "test.list" if is_infer else None,
+    module="provider",
+    obj="process",
+    args=args)
 
 settings(
     batch_size=batch_size,
