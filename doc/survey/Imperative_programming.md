@@ -45,7 +45,7 @@ The drawback is also obvious when all the heavy liftings are bind with python, P
 
 ## How to adopt it
 
-We'd like to adopt this feature while avoiding the performance black hole, so we need to differentiate the imperative mode and our current mode during execution, let's name Fluid's current mode as "conventional mode" for now.
+We'd like to adopt this feature while avoiding the performance black hole, so we need to differentiate the imperative mode and our current mode during execution, let's name Fluid's current mode as "conventional mode" for now.
 
 Here are some ultimate targets we'd like to hit when we introduce imperative mode:
 
@@ -100,7 +100,7 @@ with ie.false_block():  // block 2
 o1, o2 = ie(cond)
 ```
 
-## Conclusions
+## Conclusions
 As you see, imperative programming does enhances the machine learning coding experience, and it's the feature which made pyTorch so popular among researchers. But this feature does not come cheap, there are a lot of fundamental changes we need to make to our current API. 
 
 ## References
