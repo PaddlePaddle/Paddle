@@ -77,11 +77,11 @@ The RankLoss operator takes three inputs: Left (o_i), Right (o_j) and Label
 the label respectively, and yields the rank loss C_{i,j} using the following 
 equation:
 
-\f$$
-  C_{i,j} = -\tilde{P_{ij}} * o_{i,j} + log(1 + e^{o_{i,j}}) \\
+$$
+  C_{i,j} = -\tilde{P_{ij}} * o_{i,j} + \log(1 + e^{o_{i,j}}) \\
   o_{i,j} =  o_i - o_j  \\
   \tilde{P_{i,j}} = \left \{0, 0.5, 1 \right \} \ or \ \left \{0, 1 \right \}
-\f$$
+$$
 
 The operator can take batch inputs with size batch_size (batch_size >= 1).
 
