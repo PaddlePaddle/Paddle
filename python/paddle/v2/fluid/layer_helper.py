@@ -15,10 +15,14 @@ class LayerHelper(object):
         if name is None:
             self.kwargs['name'] = unique_name(self.layer_type)
 
-        self.ops = []
+        self.start_prog_ops = []
+        self.main_prog_ops = []
 
-    def ops(self):
-        return self.ops
+    def start_ops(self):
+        return self.start_prog_ops
+
+    def main_ops(self):
+        return self.main_prog_ops
 
     @property
     def name(self):
@@ -42,7 +46,7 @@ class LayerHelper(object):
 
     def append_op(self, *args, **kwargs):
         op = self.main_program.current_block().append_op(*args, **kwargs)
-        self.ops.append(op)
+        self.main_prog_ops.append(op)
         return op
 
     def multiple_input(self, input_param_name='input'):
@@ -126,7 +130,7 @@ class LayerHelper(object):
 
         param = self.startup_program.global_block().create_parameter(
             dtype=dtype, shape=shape, **attr.to_kwargs(with_initializer=True))
-        self.ops.append(param.op)
+        self.start_prog_ops.append(param.op)
         return self.main_program.global_block().create_parameter(
             dtype=dtype, shape=shape, **attr.to_kwargs())
 
@@ -174,7 +178,7 @@ class LayerHelper(object):
 
         b = self.create_parameter(
             attr=bias_attr, shape=size, dtype=input_var.dtype, is_bias=True)
-        self.ops.append(b.op)
+        self.start_prog_ops.append(b.op)
         tmp = self.create_tmp_variable(dtype=input_var.dtype)
         op = self.append_op(
             type='elementwise_add',
@@ -182,7 +186,6 @@ class LayerHelper(object):
                     'Y': [b]},
             outputs={'Out': [tmp]},
             attrs={'axis': dim_start})
-        self.ops.append(op)
         return tmp
 
     def append_activation(self, input_var):
@@ -198,7 +201,6 @@ class LayerHelper(object):
             inputs={"X": [input_var]},
             outputs={"Y": [tmp]},
             attrs=act)
-        self.ops.append(op)
         return tmp
 
     def _get_default_initializer(self, dtype):

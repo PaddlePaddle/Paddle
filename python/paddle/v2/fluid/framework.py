@@ -8,7 +8,8 @@ import contextlib
 __all__ = [
     'Block', 'Variable', 'Program', 'Operator', 'default_startup_program',
     'default_main_program', 'program_guard', 'switch_startup_program',
-    'switch_main_program'
+    'switch_main_program', 'Device', 'main_op_device_vec',
+    'start_op_device_vec', 'append_op_device_vec'
 ]
 
 
@@ -741,3 +742,40 @@ def program_guard(main_program, startup_program=None):
     switch_main_program(main_program)
     if startup_program is not None:
         switch_startup_program(startup_program)
+
+
+_device_stack_ = []
+
+
+class Device(object):
+    def __init__(self, device):
+        self.device = device
+
+    def __enter__(self):
+        _device_stack_.append(self.device)
+
+    def __exit__(self, type, value, traceback):
+        _device_stack_.pop()
+
+
+_start_op_device_vec_ = []
+_main_op_device_vec_ = []
+
+
+def start_op_device_vec():
+    return _start_op_device_vec_
+
+
+def main_op_device_vec():
+    return _main_op_device_vec_
+
+
+def append_op_device_vec(helper):
+    start_ops = helper.start_ops()
+    main_ops = helper.main_ops()
+
+    for op in start_ops:
+        _start_op_device_vec_.append(_device_stack_[-1])
+
+    for op in main_ops:
+        _main_op_device_vec_.append(_device_stack_[-1])

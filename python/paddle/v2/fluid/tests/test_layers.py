@@ -4,6 +4,7 @@ import unittest
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.nets as nets
 from paddle.v2.fluid.framework import Program, program_guard
+from paddle.v2.fluid.framework import Device, start_op_device_vec, main_op_device_vec
 
 
 class TestBook(unittest.TestCase):
@@ -24,16 +25,21 @@ class TestBook(unittest.TestCase):
         program = Program()
         with program_guard(program, startup_program=Program()):
             # Change g_program, so the rest layers use `g_program`
-            images = layers.data(name='pixel', shape=[784], dtype='float32')
-            label = layers.data(name='label', shape=[1], dtype='int32')
-            hidden1 = layers.fc(input=images, size=128, act='relu')
-            hidden2 = layers.fc(input=hidden1, size=64, act='relu')
-            predict = layers.fc(input=hidden2, size=10, act='softmax')
-            cost = layers.cross_entropy(input=predict, label=label)
-            avg_cost = layers.mean(x=cost)
+            with Device("CPU"):
+                images = layers.data(name='pixel', shape=[784], dtype='float32')
+                label = layers.data(name='label', shape=[1], dtype='int32')
+                hidden1 = layers.fc(input=images, size=128, act='relu')
+            with Device("GPU"):
+                hidden2 = layers.fc(input=hidden1, size=64, act='relu')
+                predict = layers.fc(input=hidden2, size=10, act='softmax')
+            with Device("FPGA"):
+                cost = layers.cross_entropy(input=hidden1, label=label)
+            with Device("CPU"):
+                avg_cost = layers.mean(x=cost)
             self.assertIsNotNone(avg_cost)
 
-        print(str(program))
+        # print(str(program))
+        print(main_op_device_vec())
 
     def test_simple_conv2d(self):
         program = Program()

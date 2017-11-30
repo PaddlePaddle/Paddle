@@ -1,6 +1,6 @@
 import core
 import proto.framework_pb2 as framework_pb2
-from framework import OpProtoHolder, Variable, Program, Operator
+from framework import OpProtoHolder, Variable, Program, Operator, append_op_device_vec, main_op_device_vec
 from initializer import Constant, Normal, Xavier, Initializer
 from paddle.v2.fluid.layer_helper import LayerHelper, unique_name
 import re
@@ -86,8 +86,12 @@ def fc(input,
             type="sum", inputs={"X": mul_results}, outputs={"Out": pre_bias})
     # add bias
     pre_activation = helper.append_bias_op(pre_bias)
+
     # add activation
-    return helper.append_activation(pre_activation)
+    act = helper.append_activation(pre_activation)
+
+    append_op_device_vec(helper)
+    return act
 
 
 def embedding(input,
@@ -129,6 +133,7 @@ def embedding(input,
                 'W': w},
         outputs={'Out': tmp},
         attrs={'is_sparse': is_sparse})
+    append_op_device_vec(helper)
     return tmp
 
 
@@ -178,6 +183,7 @@ def dynamic_lstm(input,
             'cell_activation': cell_activation,
             'candidate_activation': candidate_activation
         })
+    append_op_device_vec(helper)
     return hidden, cell
 
 
@@ -381,7 +387,9 @@ def _create_op_func_(op_type):
             outputs[name] = [helper.create_tmp_variable(dtype=dtype)]
         helper.append_op(
             type=op_type, inputs=inputs, outputs=outputs, attrs=kwargs)
-        return helper.append_activation(out)
+        act = helper.append_activation(out)
+        append_op_device_vec(helper)
+        return act
 
     func.__name__ = op_type
     globals()[op_type] = func
@@ -415,6 +423,7 @@ def cast(x, dtype, main_program=None):
         outputs={'Out': [out]},
         attrs={'in_dtype': x.dtype,
                'out_dtype': out.dtype})
+    append_op_device_vec(helper)
     return out
 
 
@@ -430,6 +439,7 @@ def concat(input, axis, main_program=None, startup_program=None):
         inputs={'X': input},
         outputs={'Out': [out]},
         attrs={'axis': axis})
+    append_op_device_vec(helper)
     return out
 
 
@@ -442,6 +452,7 @@ def sums(input, out=None, main_program=None, startup_program=None):
     if out is None:
         out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(type='sum', inputs={'X': input}, outputs={'Out': out})
+    append_op_device_vec(helper)
     return out
 
 
@@ -471,7 +482,7 @@ def linear_chain_crf(input,
             "TransitionExps": transition_exps,
             "LogLikelihood": log_likelihood
         })
-
+    append_op_device_vec(helper)
     return log_likelihood
 
 
@@ -482,6 +493,7 @@ def assign(input, output, main_program=None, startup_program=None):
         inputs={'X': [input]},
         outputs={'Out': [output]},
         attrs={'scale': 1.0})
+    append_op_device_vec(helper)
     return output
 
 
@@ -502,6 +514,7 @@ def split_lod_tensor(input,
         outputs={'OutTrue': out_true,
                  'OutFalse': out_false},
         attrs={'level': level})
+    append_op_device_vec(helper)
     return out_true, out_false
 
 
@@ -522,6 +535,7 @@ def merge_lod_tensor(in_true,
                 'InFalse': in_false},
         outputs={'Out': out},
         attrs={'level': level})
+    append_op_device_vec(helper)
     return out
 
 
@@ -541,6 +555,7 @@ def cos_sim(X, Y, **kwargs):
         outputs={'Out': [out],
                  'XNorm': [xnorm],
                  'YNorm': [ynorm]})
+    append_op_device_vec(helper)
     return out
 
 
@@ -556,6 +571,7 @@ def cross_entropy(input, label, **kwargs):
                 'Label': [label]},
         outputs={'Y': [out]},
         attrs=kwargs)
+    append_op_device_vec(helper)
     return out
 
 
@@ -575,6 +591,7 @@ def square_error_cost(input, label, **kwargs):
     square_out = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
         type='square', inputs={'X': [minus_out]}, outputs={'Y': [square_out]})
+    append_op_device_vec(helper)
     return square_out
 
 
@@ -609,6 +626,7 @@ def accuracy(input, label, k=1, correct=None, total=None, **kwargs):
             "Correct": [correct],
             "Total": [total],
         })
+    append_op_device_vec(helper)
     return acc_out
 
 
@@ -652,6 +670,7 @@ def sequence_conv(input,
             'contextLength': filter_size
         })
     pre_act = helper.append_bias_op(pre_bias)
+    append_op_device_vec(helper)
     return helper.append_activation(pre_act)
 
 
@@ -720,8 +739,9 @@ def conv2d(input,
                'groups': groups})
 
     pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
-
-    return helper.append_activation(pre_act)
+    act = helper.append_activation(pre_act)
+    append_op_device_vec(helper)
+    return act
 
 
 def sequence_pool(input, pool_type, **kwargs):
@@ -742,6 +762,7 @@ def sequence_pool(input, pool_type, **kwargs):
                  "MaxIndex": max_index},
         attrs={"pooltype": pool_type.upper()})
 
+    append_op_device_vec(helper)
     return pool_out
 
 
@@ -783,7 +804,7 @@ def pool2d(input,
             "strides": pool_stride,
             "paddings": pool_padding
         })
-
+    append_op_device_vec(helper)
     return pool_out
 
 
@@ -862,8 +883,9 @@ def batch_norm(input,
         attrs={"momentum": momentum,
                "epsilon": epsilon,
                "is_test": is_test})
-
-    return helper.append_activation(batch_norm_out)
+    act = helper.append_activation(batch_norm_out)
+    append_op_device_vec(helper)
+    return act
 
 
 def beam_search_decode(ids, scores, main_program=None, startup_program=None):
@@ -879,7 +901,7 @@ def beam_search_decode(ids, scores, main_program=None, startup_program=None):
             "SentenceIds": sentence_ids,
             "SentenceScores": sentence_scores
         })
-
+    append_op_device_vec(helper)
     return sentence_ids, sentence_scores
 
 
@@ -1293,6 +1315,7 @@ def lod_rank_table(x, level=0, main_program=None):
         inputs={'X': x},
         outputs={'Out': table},
         attrs={'level': level})
+    append_op_device_vec(helper)
     return table
 
 
@@ -1307,6 +1330,7 @@ def max_sequence_len(rank_table, main_program=None):
         type="max_sequence_len",
         inputs={"RankTable": rank_table},
         outputs={"Out": res})
+    append_op_device_vec(helper)
     return res
 
 
@@ -1320,6 +1344,7 @@ def topk(input, k, main_program=None, startup_program=None):
         outputs={'Out': [topk_out],
                  'Indices': [topk_indices]},
         attrs={'k': k})
+    append_op_device_vec(helper)
     return topk_out, topk_indices
 
 
@@ -1338,6 +1363,7 @@ def lod_tensor_to_array(x, table, main_program=None):
         inputs={'X': x,
                 'RankTable': table},
         outputs={'Out': array})
+    append_op_device_vec(helper)
     return array
 
 
@@ -1353,6 +1379,7 @@ def array_to_lod_tensor(x, table, main_program=None):
         inputs={'X': x,
                 'RankTable': table},
         outputs={'Out': tmp})
+    append_op_device_vec(helper)
     return tmp
 
 
@@ -1378,6 +1405,7 @@ def fill_constant(shape,
                'dtype': out.dtype,
                'value': float(value)})
     out.stop_gradient = True
+    append_op_device_vec(helper)
     return out
 
 
@@ -1403,6 +1431,7 @@ def fill_constant_batch_size_like(input,
             'output_dim_idx': output_dim_idx
         })
     out.stop_gradient = True
+    append_op_device_vec(helper)
     return out
 
 
@@ -1438,6 +1467,7 @@ def increment(x, value=1.0, in_place=True, main_program=None):
         inputs={'X': [x]},
         outputs={'Out': [out]},
         attrs={'step': value})
+    append_op_device_vec(helper)
     return out
 
 
@@ -1457,6 +1487,7 @@ def array_write(x, i, array=None, main_program=None):
         inputs={'X': [x],
                 'I': [i]},
         outputs={'Out': [array]})
+    append_op_device_vec(helper)
     return array
 
 
@@ -1477,6 +1508,7 @@ def less_than(x, y, cond=None, main_program=None, **ignored):
     helper.append_op(
         type='less_than', inputs={'X': [x],
                                   'Y': [y]}, outputs={'Out': [cond]})
+    append_op_device_vec(helper)
     return cond
 
 
@@ -1496,6 +1528,7 @@ def array_read(array, i, main_program=None):
         inputs={'X': [array],
                 'I': [i]},
         outputs={'Out': [out]})
+    append_op_device_vec(helper)
     return out
 
 
@@ -1513,6 +1546,7 @@ def shrink_memory(x, i, table, main_program=None):
                 'RankTable': [table]},
         outputs={'Out': [out]},
         attrs={})
+    append_op_device_vec(helper)
     return out
 
 
@@ -1526,6 +1560,7 @@ def array_length(array, main_program=None):
     tmp.stop_gradient = True
     helper.append_op(
         type='lod_array_length', inputs={'X': [array]}, outputs={'Out': [tmp]})
+    append_op_device_vec(helper)
     return tmp
 
 
@@ -1612,7 +1647,7 @@ def conv2d_transpose(input,
                 'Filter': [img_filter]},
         outputs={'Output': out},
         attrs=op_attr)
-
+    append_op_device_vec(helper)
     return out
 
 
