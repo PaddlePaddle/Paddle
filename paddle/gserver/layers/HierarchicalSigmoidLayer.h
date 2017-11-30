@@ -80,6 +80,15 @@ protected:
   int codeLength_;
   /// temporary result of output_
   Argument preOutput_;
+
+  /// The temporary variables in CPU memory.
+  MatrixPtr cpuWeight_;
+  MatrixPtr cpuWeightGrad_;
+  MatrixPtr cpuInput_;
+  MatrixPtr cpuInputGrad_;
+  MatrixPtr cpuBias_;
+  MatrixPtr cpuOutput_;
+  IVectorPtr cpuLabel_;
 };
 
 }  // namespace paddle

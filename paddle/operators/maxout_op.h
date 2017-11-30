@@ -53,7 +53,7 @@ class MaxOutGradKernel : public framework::OpKernel<T> {
       zero(device_ctx, in_x_grad, static_cast<T>(0.0));
       math::MaxOutGradFunctor<Place, T> maxout_backward;
       maxout_backward(context.device_context(), *in_x, in_x_grad, *out,
-        *out_grad, groups);
+                      *out_grad, groups);
     }
   }
 };

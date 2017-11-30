@@ -19,7 +19,6 @@
 ..  toctree::
   :maxdepth: 1
 
-  dev/build_cn.rst
   dev/write_docs_cn.rst
 
 模型配置
