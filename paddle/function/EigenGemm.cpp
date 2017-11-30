@@ -71,13 +71,23 @@ struct EigenBlasGemm {
     dims[0].second = transB ? 1 : 0;
 
     Eigen::DefaultDevice device;
-    if (alpha == T(1) && beta == T(0)) {
-      c.slice(offsetC, extentC).device(device) = a.contract(b, dims);
-    } else if (alpha == T(1) && beta == T(1)) {
-      c.slice(offsetC, extentC).device(device) += a.contract(b, dims);
+    if (N == ldc) {
+      if (alpha == T(1) && beta == T(0)) {
+        c.device(device) = a.contract(b, dims);
+      } else if (alpha == T(1) && beta == T(1)) {
+        c.device(device) += a.contract(b, dims);
+      } else {
+        c.device(device) = alpha * a.contract(b, dims) + beta * c;
+      }
     } else {
-      c.slice(offsetC, extentC).device(device) =
-          alpha * a.contract(b, dims) + beta * c.slice(offsetC, extentC);
+      if (alpha == T(1) && beta == T(0)) {
+        c.slice(offsetC, extentC).device(device) = a.contract(b, dims);
+      } else if (alpha == T(1) && beta == T(1)) {
+        c.slice(offsetC, extentC).device(device) += a.contract(b, dims);
+      } else {
+        c.slice(offsetC, extentC).device(device) =
+            alpha * a.contract(b, dims) + beta * c.slice(offsetC, extentC);
+      }
     }
   }
 };
