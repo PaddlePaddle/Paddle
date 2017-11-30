@@ -30,7 +30,10 @@ def load_parameter(file_name, h, w):
 
 def db_lstm():
     # 8 features
-    word = fluid.layers.data(name='word_data', shape=[1], dtype='int64')
+    word = fluid.layers.data(
+        name='word_data', shape=[1], dtype='int64', lod_level=1)
+    print(word.lod_level)
+    print(word.lod_level)
     predicate = fluid.layers.data(name='verb_data', shape=[1], dtype='int64')
     ctx_n2 = fluid.layers.data(name='ctx_n2_data', shape=[1], dtype='int64')
     ctx_n1 = fluid.layers.data(name='ctx_n1_data', shape=[1], dtype='int64')
@@ -60,6 +63,8 @@ def db_lstm():
             param_attr=fluid.ParamAttr(
                 name=embedding_name, trainable=False)) for x in word_input
     ]
+    if word.lod_level != 1:
+        raise ValueError("Lod Level should not be changed")
     emb_layers.append(predicate_embedding)
     emb_layers.append(mark_embedding)
 
