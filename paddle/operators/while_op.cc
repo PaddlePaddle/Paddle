@@ -287,7 +287,6 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
 
     auto p_names = ctx->Inputs(kParameters);
     auto pg_names = ctx->Outputs(kParamGrads);
-    // auto dims = ctx->GetInputsDim(kParameters);
     auto var_types = ctx->GetInputsVarType(kParameters);
     std::vector<std::string> names_to_set;
     std::vector<framework::DDim> dims_to_set;

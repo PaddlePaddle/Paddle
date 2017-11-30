@@ -1,4 +1,4 @@
-Install PaddlePaddle Using pip
+Install Using pip
 ================================
 
 You can use current widely used Python package management
