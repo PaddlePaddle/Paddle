@@ -19,28 +19,34 @@ def parse_args():
     parser.add_argument(
         '--model',
         type=str,
+        choices=['resnet'],
         default='resnet',
-        help='The model architecture: (resnet).')
+        help='The model architecture.')
     parser.add_argument(
         '--batch_size', type=int, default=32, help='The minibatch size.')
     parser.add_argument(
-        '--iterations', type=int, default=25, help='The number of minibatches.')
+        '--iterations', type=int, default=50, help='The number of minibatches.')
     parser.add_argument(
-        '--pass_num', type=int, default=100, help='The number of minibatches.')
+        '--pass_num', type=int, default=100, help='The number of passes.')
     parser.add_argument(
         '--order',
         type=str,
         default='NCHW',
-        help='The data order: (NCHW, NHWC).')
+        choices=['NCHW', 'NHWC'],
+        help='The data order, now only support NCHW.')
     parser.add_argument(
-        '--device', type=str, default='GPU', help='The data order: (GPU, CPU).')
+        '--device',
+        type=str,
+        default='GPU',
+        choices=['CPU', 'GPU'],
+        help='The device type.')
     parser.add_argument(
         '--infer_only', action='store_true', help='If set, run forward only.')
     parser.add_argument(
         '--use_cprof', action='store_true', help='If set, use cProfile.')
     parser.add_argument(
         '--use_nvprof',
-        action='store_false',
+        action='store_ture',
         help='If set, use nvprof for CUDA.')
     args = parser.parse_args()
     return args
@@ -138,10 +144,7 @@ def run_benchmark(model, args):
             paddle.dataset.flowers.train(), buf_size=5120),
         batch_size=args.batch_size)
 
-    if args.device == 'CPU':
-        place = fluid.CPUPlace()
-    else:
-        place = fluid.GPUPlace(0)
+    place = fluid.CPUPlace() if args.device == 'CPU' else fluid.GPUPlace(0)
     exe = fluid.Executor(place)
     exe.run(fluid.default_startup_program())
 
