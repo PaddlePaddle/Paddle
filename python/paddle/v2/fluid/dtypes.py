@@ -1,11 +1,11 @@
-import proto.framework_pb2 as framework_pb2
-from . import core
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
+import paddle.v2.fluid.core as core
 
 import numpy as np
 
 __all__ = [
     "Dtype",
-    "as_dtype"
+    "as_dtype",
     "int32",
     "float32",
 ]
@@ -51,7 +51,7 @@ _STRING_DTYPE_ = {"int32": int32, "float32": float32}
 
 
 def as_dtype(dtype):
-    if isinstance(Dtype):
+    if isinstance(dtype, Dtype):
         return dtype
     try:
         return _NP_DTYPE_[dtype]
