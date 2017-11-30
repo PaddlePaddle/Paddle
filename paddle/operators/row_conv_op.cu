@@ -69,7 +69,7 @@ __global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
       for (int w = 0; (w < context_length) && ((k + w) < current_timesteps);
            w++) {
         for (int d = 0; d < input_dim; d++) {
-          in[(k + w + start) * input_dim + d] +=
+          din[(k + w + start) * input_dim + d] +=
               (wt[w * input_dim + d] * dout[(k + start) * input_dim + d]);
         }
       }
