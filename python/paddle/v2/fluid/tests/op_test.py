@@ -562,8 +562,7 @@ class OpTest(unittest.TestCase):
             debug_idx = 0
             for cur_loss in mean_inputs:
                 debug_idx += 1
-                cur_avg_loss = block.create_var(
-                    dtype=cur_loss.data_type, shape=[1])
+                cur_avg_loss = block.create_var(dtype=cur_loss.dtype, shape=[1])
                 op = block.append_op(
                     inputs={"X": [cur_loss]},
                     outputs={"Out": [cur_avg_loss]},
@@ -572,13 +571,13 @@ class OpTest(unittest.TestCase):
                 op.desc.infer_shape(block.desc)
                 avg_sum.append(cur_avg_loss)
 
-            loss_sum = block.create_var(dtype=avg_sum[0].data_type, shape=[1])
+            loss_sum = block.create_var(dtype=avg_sum[0].dtype, shape=[1])
             op_sum = block.append_op(
                 inputs={"X": avg_sum}, outputs={"Out": loss_sum}, type='sum')
             op_sum.desc.infer_var_type(block.desc)
             op_sum.desc.infer_shape(block.desc)
 
-            loss = block.create_var(dtype=loss_sum.data_type, shape=[1])
+            loss = block.create_var(dtype=loss_sum.dtype, shape=[1])
             op_loss = block.append_op(
                 inputs={"X": loss_sum},
                 outputs={"Out": loss},
