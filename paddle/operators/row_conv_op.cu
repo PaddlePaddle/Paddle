@@ -40,7 +40,7 @@ __global__ void RowConvForwardSharedMemory(const T *in, const T *wt,
 
   extern __shared__ T mem[];
   if (thy < context_length) {
-    mem[thy * blx + thx] = (d < input_dim) ? w[tidy * input_dim + d] : 0.0;
+    mem[thy * blx + thx] = (d < input_dim) ? wt[thy * input_dim + d] : 0.0;
   }
   __syncthreads();
 
