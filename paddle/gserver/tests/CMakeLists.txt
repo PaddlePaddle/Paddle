@@ -38,12 +38,12 @@ function(gserver_test2 TARGET)
       WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
 endfunction()
 
-gserver_test2(test_CompareTwoNets)
 gserver_test2(test_PyDataProvider2)
 if(WITH_PYTHON)
     gserver_test2(test_PyDataProvider)
 endif()
 if(NOT MOBILE_INFERENCE)
+    gserver_test2(test_CompareTwoNets)
     # TODO(yuyang18): There is some bug in test_RecurrentGradientMachine, I will fix it.
     gserver_test2(test_RecurrentGradientMachine)
 endif()
@@ -69,11 +69,11 @@ if(NOT WITH_DOUBLE AND NOT MOBILE_INFERENCE)
 endif()
 
 if(NOT MOBILE_INFERENCE)
-################## test_Evaluator #######################
+    ################## test_Evaluator #############
     add_unittest(test_Evaluator
         test_Evaluator.cpp)
       
-############### test_NetworkCompare ###############
+    ########### test_NetworkCompare ###############
     add_unittest_without_exec(test_NetworkCompare
         test_NetworkCompare.cpp)
     if(WITH_GPU)
@@ -84,14 +84,14 @@ if(NOT MOBILE_INFERENCE)
     add_test(NAME test_NetworkCompare
         COMMAND ${PYTHON_PATH} ${CMAKE_CURRENT_BINARY_DIR}/test_NetworkCompare --use_gpu=${use_gpu}
         WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle)
-endif()
 
-################# test_CompareSparse ##################
-add_unittest_without_exec(test_CompareSparse
-    test_CompareSparse.cpp)
-if(NOT ON_TRAVIS)
-  add_test(NAME test_CompareSparse
-    COMMAND ${PYTHON_PATH} ./.set_port.sh -p port -n 6
-            ${CMAKE_CURRENT_BINARY_DIR}/test_CompareSparse
-    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
+    ############ test_CompareSparse ################
+    add_unittest_without_exec(test_CompareSparse
+        test_CompareSparse.cpp)
+    if(NOT ON_TRAVIS)
+      add_test(NAME test_CompareSparse
+        COMMAND ${PYTHON_PATH} ./.set_port.sh -p port -n 6
+                ${CMAKE_CURRENT_BINARY_DIR}/test_CompareSparse
+        WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
+    endif()
 endif()
