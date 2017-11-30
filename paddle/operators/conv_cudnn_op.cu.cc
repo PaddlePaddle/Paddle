@@ -63,7 +63,7 @@ class CudnnConvOpKernel : public framework::OpKernel<T> {
     cudnnConvolutionDescriptor_t cudnn_conv_desc =
         conv_desc.descriptor<T>(paddings, strides, dilations);
 
-#if CUDNN_VERSION_MIN(7, 0, 0)
+#if CUDNN_VERSION_MIN(7, 0, 1)
     // cudnn 7 can support groups, no need to do it mannually
     // FIXME(typhoonzero): find a better way to disable groups
     // rather than setting it to 1.
@@ -180,7 +180,7 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
     cudnnConvolutionDescriptor_t cudnn_conv_desc =
         conv_desc.descriptor<T>(paddings, strides, dilations);
 
-#if CUDNN_VERSION_MIN(7, 0, 0)
+#if CUDNN_VERSION_MIN(7, 0, 1)
     // cudnn 7 can support groups, no need to do it mannually
     // FIXME(typhoonzero): find a better way to disable groups
     // rather than setting it to 1.

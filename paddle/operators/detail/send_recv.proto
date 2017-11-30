@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -12,11 +12,24 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/reshape_op.h"
+syntax = "proto3";
 
-REGISTER_OP_GPU_KERNEL(
-    reshape,
-    paddle::operators::ReshapeKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
-    reshape_grad,
-    paddle::operators::ReshapeGradKernel<paddle::platform::GPUPlace, float>);
+package sendrecv;
+
+service SendRecvService {
+  // For parameter server round-robin like hashing, do not split tensors.
+  // Send and recv only one tensor
+  rpc SendVariable(VariableMessage) returns (VariableMessage) {}
+}
+
+// VariableMessage is serialized paddle variable message.
+// It can be:
+// Tensor
+// LoDTensor
+// SelectedRows
+message VariableMessage {
+  string varname = 1;
+  bytes serialized = 2;
+}
+
+message VoidMessage {}
