@@ -3,6 +3,7 @@ import collections
 import numpy as np
 from . import core
 import proto.framework_pb2 as framework_pb2
+from dtypes import Dtype, as_dtype
 
 __all__ = [
     'Block', 'Variable', 'Program', 'Operator', 'default_startup_program',
@@ -15,35 +16,34 @@ def unique_name(prefix):
     return "_".join([prefix, str(uid)])
 
 
-def convert_np_dtype_to_dtype_(np_dtype):
-    dtype = np.dtype(np_dtype)
-    if dtype == np.float32:
-        return core.DataType.FP32
-    elif dtype == np.float64:
-        return core.DataType.FP64
-    elif dtype == np.float16:
-        return core.DataType.FP16
-    elif dtype == np.int32:
-        return core.DataType.INT32
-    elif dtype == np.int16:
-        return core.DataType.INT16
-    elif dtype == np.int64:
-        return core.DataType.INT64
-    elif dtype == np.bool:
-        return core.DataType.BOOL
-    else:
-        raise ValueError("Not supported numpy dtype " + str(dtype))
+# def convert_np_dtype_to_dtype_(np_dtype):
+#     dtype = np.dtype(np_dtype)
+#     if dtype == np.float32:
+#         return core.DataType.FP32
+#     elif dtype == np.float64:
+#         return core.DataType.FP64
+#     elif dtype == np.float16:
+#         return core.DataType.FP16
+#     elif dtype == np.int32:
+#         return core.DataType.INT32
+#     elif dtype == np.int16:
+#         return core.DataType.INT16
+#     elif dtype == np.int64:
+#         return core.DataType.INT64
+#     elif dtype == np.bool:
+#         return core.DataType.BOOL
+#     else:
+#         raise ValueError("Not supported numpy dtype " + str(dtype))
 
+# def dtype_is_floating(dtype):
+#     if not isinstance(dtype, core.DataType):
+#         dtype = convert_np_dtype_to_dtype_(dtype)
 
-def dtype_is_floating(dtype):
-    if not isinstance(dtype, core.DataType):
-        dtype = convert_np_dtype_to_dtype_(dtype)
-
-    if (dtype == core.DataType.FP16 or dtype == core.DataType.FP32 or
-            dtype == core.DataType.FP64):
-        return True
-    else:
-        return False
+#     if (dtype == core.DataType.FP16 or dtype == core.DataType.FP32 or
+#             dtype == core.DataType.FP64):
+#         return True
+#     else:
+#         return False
 
 
 def _debug_string_(proto, throw_on_error=True):
@@ -96,8 +96,10 @@ class Variable(object):
                         "shape is {1}; the new shape is {2}. They are not "
                         "matched.".format(self.name, old_shape, shape))
         if dtype is not None:
-            if not isinstance(dtype, core.DataType):
-                dtype = convert_np_dtype_to_dtype_(dtype)
+            if not isinstance(dtype, Dtype):
+                # if not isinstance(dtype, core.DataType):
+                dtype = as_dtype(dtype)
+                # dtype = convert_np_dtype_to_dtype_(dtype)
             if is_new_var:
                 self.desc.set_dtype(dtype)
             else:

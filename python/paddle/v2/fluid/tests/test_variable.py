@@ -1,5 +1,6 @@
 import unittest
-from paddle.v2.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_
+from paddle.v2.fluid.framework import default_main_program, Program
+from paddle.v2.fluid.framework import Dtype, as_dtype
 import paddle.v2.fluid.core as core
 import numpy as np
 
@@ -8,10 +9,10 @@ class TestVariable(unittest.TestCase):
     def test_np_dtype_convert(self):
         DT = core.DataType
         convert = convert_np_dtype_to_dtype_
-        self.assertEqual(DT.FP32, convert(np.float32))
+        self.assertEqual(DT.FP32, as_type(np.float32))
         self.assertEqual(DT.FP16, convert("float16"))
         self.assertEqual(DT.FP64, convert("float64"))
-        self.assertEqual(DT.INT32, convert("int32"))
+        self.assertEqual(DT.INT32, as_type("int32"))
         self.assertEqual(DT.INT16, convert("int16"))
         self.assertEqual(DT.INT64, convert("int64"))
         self.assertEqual(DT.BOOL, convert("bool"))
