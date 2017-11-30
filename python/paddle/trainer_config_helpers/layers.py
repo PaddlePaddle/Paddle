@@ -2710,7 +2710,7 @@ def img_pool_layer(input,
                    stride_y=None,
                    padding_y=None,
                    ceil_mode=True,
-                   exclude_mode=True):
+                   exclude_mode=None):
     """
     Image pooling Layer.
 
@@ -2779,8 +2779,9 @@ def img_pool_layer(input,
                       be used.
     :type ceil_mode: bool
     :param exclude_mode: Whether to exclude the padding cells when calculating, but only 
-                         work when pool_type is AvgPooling. If use cudnn, use CudnnAvgPooling 
-                         or CudnnAvgInclPadPooling as pool_type to identify.
+                         work when pool_type is AvgPooling. If None, also exclude the padding 
+                         cells. If use cudnn, use CudnnAvgPooling or CudnnAvgInclPadPooling 
+                         as pool_type to identify the mode.
     :type exclude_mode: bool
     :return: LayerOutput object.
     :rtype: LayerOutput

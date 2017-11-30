@@ -1262,8 +1262,8 @@ def parse_pool(pool, input_layer_name, pool_conf, ceil_mode, exclude_mode):
     pool_conf.output_y = cnn_output_size(pool_conf.img_size_y, pool_conf.size_y,
                                          pool_conf.padding_y,
                                          pool_conf.stride_y, not ceil_mode)
-
-    pool_conf.exclude_mode = exclude_mode
+    if exclude_mode != None:
+        pool_conf.exclude_mode = exclude_mode
 
 
 def parse_pool3d(pool, input_layer_name, pool_conf, ceil_mode):
@@ -2305,7 +2305,7 @@ class NormLayer(LayerBase):
 class PoolLayer(LayerBase):
     layer_type = 'pool'
 
-    def __init__(self, name, inputs, ceil_mode=True, exclude_mode=True,
+    def __init__(self, name, inputs, ceil_mode=True, exclude_mode=None,
                  **xargs):
         use_mkldnn = int(g_command_config_args.get("use_mkldnn", 0))
         if self.layer_type == "mkldnn_pool":
