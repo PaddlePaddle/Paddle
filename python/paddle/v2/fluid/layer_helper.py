@@ -15,6 +15,11 @@ class LayerHelper(object):
         if name is None:
             self.kwargs['name'] = unique_name(self.layer_type)
 
+        self.ops = []
+
+    def ops(self):
+        return self.ops
+
     @property
     def name(self):
         return self.kwargs['name']
@@ -36,7 +41,9 @@ class LayerHelper(object):
             return prog
 
     def append_op(self, *args, **kwargs):
-        return self.main_program.current_block().append_op(*args, **kwargs)
+        op = self.main_program.current_block().append_op(*args, **kwargs)
+        self.ops.append(op)
+        return op
 
     def multiple_input(self, input_param_name='input'):
         inputs = self.kwargs.get(input_param_name, [])
@@ -117,8 +124,9 @@ class LayerHelper(object):
         if attr.name is None:
             attr.name = unique_name(".".join([self.name, suffix]))
 
-        self.startup_program.global_block().create_parameter(
+        param = self.startup_program.global_block().create_parameter(
             dtype=dtype, shape=shape, **attr.to_kwargs(with_initializer=True))
+        self.ops.append(param.op)
         return self.main_program.global_block().create_parameter(
             dtype=dtype, shape=shape, **attr.to_kwargs())
 
@@ -166,13 +174,15 @@ class LayerHelper(object):
 
         b = self.create_parameter(
             attr=bias_attr, shape=size, dtype=input_var.dtype, is_bias=True)
+        self.ops.append(b.op)
         tmp = self.create_tmp_variable(dtype=input_var.dtype)
-        self.append_op(
+        op = self.append_op(
             type='elementwise_add',
             inputs={'X': [input_var],
                     'Y': [b]},
             outputs={'Out': [tmp]},
             attrs={'axis': dim_start})
+        self.ops.append(op)
         return tmp
 
     def append_activation(self, input_var):
@@ -183,11 +193,12 @@ class LayerHelper(object):
             act = {'type': act}
         tmp = self.create_tmp_variable(dtype=input_var.dtype)
         act_type = act.pop('type')
-        self.append_op(
+        op = self.append_op(
             type=act_type,
             inputs={"X": [input_var]},
             outputs={"Y": [tmp]},
             attrs=act)
+        self.ops.append(op)
         return tmp
 
     def _get_default_initializer(self, dtype):
