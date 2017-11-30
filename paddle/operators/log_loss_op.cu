@@ -12,11 +12,11 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/reshape_op.h"
+#define EIGEN_USE_GPU
+#include "paddle/operators/log_loss_op.h"
 
+namespace ops = paddle::operators;
+REGISTER_OP_GPU_KERNEL(log_loss,
+                       ops::LogLossKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
-    reshape,
-    paddle::operators::ReshapeKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
-    reshape_grad,
-    paddle::operators::ReshapeGradKernel<paddle::platform::GPUPlace, float>);
+    log_loss_grad, ops::LogLossGradKernel<paddle::platform::GPUPlace, float>);
