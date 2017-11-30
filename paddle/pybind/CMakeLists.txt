@@ -5,4 +5,6 @@ if(WITH_PYTHON)
     ${GLOB_OP_LIB})
 endif(WITH_PYTHON)
 
-cc_binary(print_operators_doc SRCS print_operators_doc.cc DEPS ${GLOB_OP_LIB})
+if(WITH_DOC)
+  cc_binary(print_operators_doc SRCS print_operators_doc.cc DEPS ${GLOB_OP_LIB})
+endif(WITH_DOC)
