@@ -186,6 +186,7 @@ def data(name,
          append_batch_size=True,
          dtype='float32',
          type=core.VarDesc.VarType.LOD_TENSOR,
+         lod_level=0,
          main_program=None,
          startup_program=None,
          stop_gradient=True):
@@ -228,7 +229,8 @@ def data(name,
         shape=shape,
         dtype=dtype,
         type=type,
-        stop_gradient=stop_gradient)
+        stop_gradient=stop_gradient,
+        lod_level=lod_level)
 
 
 def create_tensor(dtype, name=None, main_program=None, startup_program=None):
