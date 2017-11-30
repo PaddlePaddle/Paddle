@@ -30,23 +30,23 @@ template <typename T>
 __global__ void RowConvForward(const T *in, const T *wt, int num_sequence,
                                int input_dim, int context_length,
                                const size_t *batch_indices, T *out) {
-  // int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
-  // int bly = blockDim.y;
-  // int thy = threadIdx.y;
+  int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
+  int bly = blockDim.y;
+  int thy = threadIdx.y;
+
+  if (d >= input_dim) return;
 
   for (size_t i = 0; i < num_sequence; i++) {
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
     int current_timesteps = end - start;
-
-    for (int k = 0; k < current_timesteps; k++) {
+    for (int k = thy; k < current_timesteps; k += bly) {
+      T sum = 0;
       for (int w = 0; (w < context_length) && ((k + w) < current_timesteps);
            w++) {
-        for (int d = 0; d < input_dim; d++) {
-          out[(start + k) * input_dim + d] +=
-              (wt[w * input_dim + d] * in[(start + k + w) * input_dim + d]);
-        }
+        sum += (wt[w * input_dim + d] * in[(start + k + w) * input_dim + d]);
       }
+      out[(start + k) * input_dim + d] = sum;
     }
   }
 }
@@ -56,23 +56,21 @@ template <typename T>
 __global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
                                  int input_dim, int context_length,
                                  const size_t *batch_indices, T *din) {
-  int d_idx = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
+  int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
   int bly = blockDim.y;
   int thy = threadIdx.y;
-  if (d_idx != 0 && (thy + bly) != 0) return;
 
+  if (d >= input_dim) return;
   for (int i = 0; i < num_sequence; i++) {
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
     int current_timesteps = end - start;
-    for (int k = 0; k < current_timesteps; k++) {
-      for (int w = 0; (w < context_length) && ((k + w) < current_timesteps);
-           w++) {
-        for (int d = 0; d < input_dim; d++) {
-          din[(k + w + start) * input_dim + d] +=
-              (wt[w * input_dim + d] * dout[(k + start) * input_dim + d]);
-        }
+    for (int k = thy; k < current_timesteps; k += bly) {
+      T sum = 0;
+      for (int w = 0; (w < context_length) && ((k - w) >= 0); w++) {
+        sum += (wt[w * input_dim + d] * dout[(k + start - w) * input_dim + d]);
       }
+      din[(k + start) * input_dim + d] = sum;
     }
   }
 }
@@ -119,9 +117,9 @@ class RowConvKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     const T *weight = Filter->data<T>();
     T *out = Out->mutable_data<T>(context.GetPlace());
 
-    auto &device_ctx = context.cuda_device_context();
-    math::SetConstant<platform::GPUPlace, T> zero;
-    zero(device_ctx, Out, static_cast<T>(0.0));  // May not need, CHECK ME
+    //    auto &device_ctx = context.cuda_device_context();
+    //    math::SetConstant<platform::GPUPlace, T> zero;
+    //    zero(device_ctx, Out, static_cast<T>(0.0));  // May not need, CHECK ME
 
     auto batch_indices = X->lod()[0];
     int input_dim = X->dims()[1];
@@ -130,10 +128,10 @@ class RowConvKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     size_t *idx = batch_indices.data();
 
     auto stream = context.cuda_device_context().stream();
-    // dim3 block_dim = dim3(32, 32);
-    // dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
-    dim3 block_dim = dim3(1, 1);
-    dim3 grid_dim = dim3(1, 1);
+    dim3 block_dim = dim3(32, 32);
+    dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
+    // dim3 block_dim = dim3(1, 1);
+    // dim3 grid_dim = dim3(1, 1);
 
     RowConvForward<T><<<grid_dim, block_dim, 0, stream>>>(
         in, weight, num_sequence, input_dim, context_length, idx, out);
@@ -178,7 +176,7 @@ class RowConvGradKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
 
     if (dX) {
       T *din = dX->mutable_data<T>(context.GetPlace());
-      zero(device_ctx, dX, static_cast<T>(0.0));
+      //      zero(device_ctx, dX, static_cast<T>(0.0));
       dim3 block_dim = dim3(1, 1);
       dim3 grid_dim = dim3(1, 1);
       // dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
