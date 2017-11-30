@@ -65,7 +65,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     PADDLE_ENFORCE_EQ(in_var->GetType(), VarDesc::LOD_TENSOR,
                       "The %d-th output of Output(%s) must be LoDTensor.", j,
                       out);
-    in_var->SetLoDLevel(out_var->GetLodLevel());
+    out_var->SetLoDLevel(in_var->GetLodLevel());
   }
   bool IsRuntime() const override;
 
