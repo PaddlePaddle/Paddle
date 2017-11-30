@@ -97,7 +97,7 @@ void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id,
   if (create_local_scope) {
     local_scope = &scope->NewScope();
     for (auto& var : block.AllVars()) {
-      if (var->Name() != kEmptyVarName) {
+      if (var->Name() != "@EMPTY@") {
         if (var->Persistable()) {
           auto* ptr = scope->Var(var->Name());
           CreateTensor(ptr, var->GetType());
@@ -113,7 +113,7 @@ void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id,
     }
   } else {
     for (auto& var : block.AllVars()) {
-      if (var->Name() != kEmptyVarName) {
+      if (var->Name() != "@EMPTY@") {
         auto* ptr = local_scope->Var(var->Name());
         CreateTensor(ptr, var->GetType());
         VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
