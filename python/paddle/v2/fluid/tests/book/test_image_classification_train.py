@@ -1,19 +1,14 @@
+from __future__ import print_function
+
 import numpy as np
 import paddle.v2 as paddle
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid.framework as framework
-import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.nets as nets
-import paddle.v2.fluid.evaluator as evaluator
-from paddle.v2.fluid.io import get_inference_program
-from paddle.v2.fluid.executor import Executor
-from paddle.v2.fluid.initializer import XavierInitializer
-from paddle.v2.fluid.optimizer import AdamOptimizer
+import paddle.v2.fluid as fluid
+import sys
 
 
 def resnet_cifar10(input, depth=32):
     def conv_bn_layer(input, ch_out, filter_size, stride, padding, act='relu'):
-        tmp = layers.conv2d(
+        tmp = fluid.layers.conv2d(
             input=input,
             filter_size=filter_size,
             num_filters=ch_out,
@@ -21,12 +16,11 @@ def resnet_cifar10(input, depth=32):
             padding=padding,
             act=None,
             bias_attr=False)
-        return layers.batch_norm(input=tmp, act=act)
+        return fluid.layers.batch_norm(input=tmp, act=act)
 
-    def shortcut(input, ch_in, ch_out, stride, program, init_program):
+    def shortcut(input, ch_in, ch_out, stride):
         if ch_in != ch_out:
-            return conv_bn_layer(input, ch_out, 1, stride, 0, None, program,
-                                 init_program)
+            return conv_bn_layer(input, ch_out, 1, stride, 0, None)
         else:
             return input
 
@@ -34,7 +28,7 @@ def resnet_cifar10(input, depth=32):
         tmp = conv_bn_layer(input, ch_out, 3, stride, 1)
         tmp = conv_bn_layer(tmp, ch_out, 3, 1, 1, act=None)
         short = shortcut(input, ch_in, ch_out, stride)
-        return layers.elementwise_add(x=tmp, y=short, act='relu')
+        return fluid.layers.elementwise_add(x=tmp, y=short, act='relu')
 
     def layer_warp(block_func, input, ch_in, ch_out, count, stride):
         tmp = block_func(input, ch_in, ch_out, stride)
@@ -49,14 +43,14 @@ def resnet_cifar10(input, depth=32):
     res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
     res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
     res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
-    pool = layers.pool2d(
+    pool = fluid.layers.pool2d(
         input=res3, pool_size=8, pool_type='avg', pool_stride=1)
     return pool
 
 
 def vgg16_bn_drop(input):
     def conv_block(input, num_filter, groups, dropouts):
-        return nets.img_conv_group(
+        return fluid.nets.img_conv_group(
             input=input,
             pool_size=2,
             pool_stride=2,
@@ -73,62 +67,56 @@ def vgg16_bn_drop(input):
     conv4 = conv_block(conv3, 512, 3, [0.4, 0.4, 0])
     conv5 = conv_block(conv4, 512, 3, [0.4, 0.4, 0])
 
-    drop = layers.dropout(x=conv5, dropout_prob=0.5)
-    fc1 = layers.fc(input=drop,
-                    size=512,
-                    act=None,
-                    param_attr={"initializer": XavierInitializer()})
-    reshape1 = layers.reshape(x=fc1, shape=list(fc1.shape + (1, 1)))
-    bn = layers.batch_norm(input=reshape1, act='relu')
-    drop2 = layers.dropout(x=bn, dropout_prob=0.5)
-    fc2 = layers.fc(input=drop2,
-                    size=512,
-                    act=None,
-                    param_attr={"initializer": XavierInitializer()})
+    drop = fluid.layers.dropout(x=conv5, dropout_prob=0.5)
+    fc1 = fluid.layers.fc(input=drop, size=512, act=None)
+    bn = fluid.layers.batch_norm(input=fc1, act='relu')
+    drop2 = fluid.layers.dropout(x=bn, dropout_prob=0.5)
+    fc2 = fluid.layers.fc(input=drop2, size=512, act=None)
     return fc2
 
 
 classdim = 10
 data_shape = [3, 32, 32]
 
-images = layers.data(name='pixel', shape=data_shape, dtype='float32')
-label = layers.data(name='label', shape=[1], dtype='int64')
+images = fluid.layers.data(name='pixel', shape=data_shape, dtype='float32')
+label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
-# Add neural network config
-# option 1. resnet
-# net = resnet_cifar10(images, 32)
-# option 2. vgg
-net = vgg16_bn_drop(images)
+net_type = "vgg"
+if len(sys.argv) >= 2:
+    net_type = sys.argv[1]
 
-# print(program)
+if net_type == "vgg":
+    print("train vgg net")
+    net = vgg16_bn_drop(images)
+elif net_type == "resnet":
+    print("train resnet")
+    net = resnet_cifar10(images, 32)
+else:
+    raise ValueError("%s network is not supported" % net_type)
 
-predict = layers.fc(input=net, size=classdim, act='softmax')
-cost = layers.cross_entropy(input=predict, label=label)
-avg_cost = layers.mean(x=cost)
+predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
+cost = fluid.layers.cross_entropy(input=predict, label=label)
+avg_cost = fluid.layers.mean(x=cost)
 
-# optimizer = SGDOptimizer(learning_rate=0.001)
-optimizer = AdamOptimizer(learning_rate=0.001)
+optimizer = fluid.optimizer.Adam(learning_rate=0.001)
 opts = optimizer.minimize(avg_cost)
 
-accuracy, acc_out = evaluator.accuracy(input=predict, label=label)
+accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
 
 BATCH_SIZE = 128
 PASS_NUM = 1
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
-        paddle.dataset.cifar.train10(), buf_size=BATCH_SIZE * 10),
+        paddle.dataset.cifar.train10(), buf_size=128 * 10),
     batch_size=BATCH_SIZE)
 
-test_reader = paddle.batch(paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE)
+place = fluid.CPUPlace()
+exe = fluid.Executor(place)
 
-place = core.CPUPlace()
-exe = Executor(place)
-
-exe.run(framework.default_startup_program())
+exe.run(fluid.default_startup_program())
 
 for pass_id in range(PASS_NUM):
-    batch_id = 0
     accuracy.reset(exe)
     for data in train_reader():
         img_data = np.array(map(lambda x: x[0].reshape(data_shape),
@@ -139,56 +127,13 @@ for pass_id in range(PASS_NUM):
             batch_size = batch_size * i
         y_data = y_data.reshape([batch_size, 1])
 
-        tensor_img = core.LoDTensor()
-        tensor_y = core.LoDTensor()
-        tensor_img.set(img_data, place)
-        tensor_y.set(y_data, place)
-
-        outs = exe.run(framework.default_main_program(),
-                       feed={"pixel": tensor_img,
-                             "label": tensor_y},
-                       fetch_list=[avg_cost, acc_out])
-
-        loss = np.array(outs[0])
-        acc = np.array(outs[1])
+        loss, acc = exe.run(fluid.default_main_program(),
+                            feed={"pixel": img_data,
+                                  "label": y_data},
+                            fetch_list=[avg_cost] + accuracy.metrics)
         pass_acc = accuracy.eval(exe)
-
-        batch_id = batch_id + 1
-
-        test_accuracy, test_acc_out = evaluator.accuracy(
-            input=predict, label=label)
-
-        test_target = [avg_cost, test_acc_out] + test_accuracy.states().values()
-        inference_program = get_inference_program(test_target)
-
-        test_accuracy.reset(exe)
-
-        for data in test_reader():
-            x_data = np.array(map(lambda x: x[0].reshape(data_shape),
-                                  data)).astype("float32")
-            y_data = np.array(map(lambda x: x[1], data)).astype("int64")
-            y_data = np.expand_dims(y_data, axis=1)
-
-            tensor_x = core.LoDTensor()
-            tensor_x.set(x_data, place)
-
-            tensor_y = core.LoDTensor()
-            tensor_y.set(y_data, place)
-
-            outs = exe.run(inference_program,
-                           feed={'pixel': tensor_x,
-                                 'label': tensor_y},
-                           fetch_list=[avg_cost, test_acc_out])
-            out = np.array(outs[0])
-            acc = np.array(outs[1])
-
-        test_pass_acc = test_accuracy.eval(exe)
-
-        print("pass_id:" + str(pass_id) + " batch_id:" + str(batch_id) +
-              " loss:" + str(loss) + " acc:" + str(acc) + " pass_acc:" + str(
-                  pass_acc) + " test_pass_acc:" + str(test_pass_acc))
-
-        if batch_id > 1:
-            # this model is slow, so if we can train two mini batch, we think it works properly.
-            exit(0)
+        print("loss:" + str(loss) + " acc:" + str(acc) + " pass_acc:" + str(
+            pass_acc))
+        # this model is slow, so if we can train two mini batch, we think it works properly.
+        exit(0)
 exit(1)

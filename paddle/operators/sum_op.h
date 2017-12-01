@@ -84,7 +84,7 @@ class SumKernel : public framework::OpKernel<T> {
       int64_t offset = 0;
       for (int i = 0; i < N; i++) {
         PADDLE_ENFORCE_EQ(out->height(),
-                          in_vars[i]->Get<SelectedRows>().height())
+                          in_vars[i]->Get<SelectedRows>().height());
         functor(context.device_context(), in_vars[i]->Get<SelectedRows>(),
                 offset, out);
         offset += in_vars[i]->Get<SelectedRows>().value().numel();
@@ -102,8 +102,8 @@ class SumKernel : public framework::OpKernel<T> {
               out_array.resize(i + 1);
             }
             if (out_array[i].numel() == 0) {
-              out_array[i].CopyFrom(in_array[i], in_array[i].place(),
-                                    context.device_context());
+              framework::CopyFrom(in_array[i], in_array[i].place(),
+                                  context.device_context(), &out_array[i]);
               out_array[i].set_lod(in_array[i].lod());
             } else {
               PADDLE_ENFORCE(out_array[i].lod() == in_array[i].lod());

@@ -45,7 +45,7 @@ class SequenceSliceOp : public framework::OperatorWithKernel {
     // Initialize the output's dims to maximum,
     // and re-set to real dims by the value of Offset and Length at kernel
     ctx->SetOutputDim("Out", input_dims);
-    }
+  }
 
  protected:
   framework::OpKernelType GetKernelType(
@@ -93,8 +93,7 @@ class SequenceSliceOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor), "
              "a vector<int> to describe the length of every input sequence for "
              "sub sequence item.");
-    AddOutput("Out",
-              "(LoDTensor), the output of SequenceSliceOp.");
+    AddOutput("Out", "(LoDTensor), the output of SequenceSliceOp.");
     AddComment(R"DOC(
 Sequence slice operator
 

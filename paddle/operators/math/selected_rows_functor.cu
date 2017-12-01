@@ -227,7 +227,6 @@ template struct SelectedRowsAddToTensor<platform::GPUPlace, float>;
 template struct SelectedRowsAddToTensor<platform::GPUPlace, double>;
 template struct SelectedRowsAddToTensor<platform::GPUPlace, int>;
 template struct SelectedRowsAddToTensor<platform::GPUPlace, int64_t>;
-
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
