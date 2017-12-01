@@ -22,6 +22,9 @@ class DataToLoDTensorConverter(object):
             self.dtype = 'float64'
         elif dtype == core.DataType.INT32:
             self.dtype = 'int32'
+        else:
+            raise ValueError("dtype must be any of [int32, float32, int64, "
+                             "float64]")
 
         self.data = []
         self.lod = []
@@ -45,7 +48,7 @@ class DataToLoDTensorConverter(object):
         arr = numpy.array(self.data, dtype=self.dtype).reshape(self.shape)
         t = core.LoDTensor()
         t.set(arr, self.place)
-        if self.lod_level != 0:
+        if self.lod_level > 0:
             t.set_lod(self.lod)
         return t
 
