@@ -1,11 +1,7 @@
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.dataset.conll05 as conll05
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid.framework as framework
-import paddle.v2.fluid.layers as layers
-from paddle.v2.fluid.executor import Executor, g_scope
-from paddle.v2.fluid.optimizer import SGDOptimizer
+import paddle.v2.fluid as fluid
 
 word_dict, verb_dict, label_dict = conll05.get_dict()
 word_dict_len = len(word_dict)
@@ -34,23 +30,23 @@ def load_parameter(file_name, h, w):
 
 def db_lstm():
     # 8 features
-    word = layers.data(name='word_data', shape=[1], dtype='int64')
-    predicate = layers.data(name='verb_data', shape=[1], dtype='int64')
-    ctx_n2 = layers.data(name='ctx_n2_data', shape=[1], dtype='int64')
-    ctx_n1 = layers.data(name='ctx_n1_data', shape=[1], dtype='int64')
-    ctx_0 = layers.data(name='ctx_0_data', shape=[1], dtype='int64')
-    ctx_p1 = layers.data(name='ctx_p1_data', shape=[1], dtype='int64')
-    ctx_p2 = layers.data(name='ctx_p2_data', shape=[1], dtype='int64')
-    mark = layers.data(name='mark_data', shape=[1], dtype='int64')
+    word = fluid.layers.data(name='word_data', shape=[1], dtype='int64')
+    predicate = fluid.layers.data(name='verb_data', shape=[1], dtype='int64')
+    ctx_n2 = fluid.layers.data(name='ctx_n2_data', shape=[1], dtype='int64')
+    ctx_n1 = fluid.layers.data(name='ctx_n1_data', shape=[1], dtype='int64')
+    ctx_0 = fluid.layers.data(name='ctx_0_data', shape=[1], dtype='int64')
+    ctx_p1 = fluid.layers.data(name='ctx_p1_data', shape=[1], dtype='int64')
+    ctx_p2 = fluid.layers.data(name='ctx_p2_data', shape=[1], dtype='int64')
+    mark = fluid.layers.data(name='mark_data', shape=[1], dtype='int64')
 
-    predicate_embedding = layers.embedding(
+    predicate_embedding = fluid.layers.embedding(
         input=predicate,
         size=[pred_len, word_dim],
         dtype='float32',
         is_sparse=IS_SPARSE,
-        param_attr={'name': 'vemb'})
+        param_attr='vemb')
 
-    mark_embedding = layers.embedding(
+    mark_embedding = fluid.layers.embedding(
         input=mark,
         size=[mark_dict_len, mark_dim],
         dtype='float32',
@@ -58,22 +54,22 @@ def db_lstm():
 
     word_input = [word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2]
     emb_layers = [
-        layers.embedding(
+        fluid.layers.embedding(
             size=[word_dict_len, word_dim],
             input=x,
-            param_attr={'name': embedding_name,
-                        'trainable': False}) for x in word_input
+            param_attr=fluid.ParamAttr(
+                name=embedding_name, trainable=False)) for x in word_input
     ]
     emb_layers.append(predicate_embedding)
     emb_layers.append(mark_embedding)
 
     hidden_0_layers = [
-        layers.fc(input=emb, size=hidden_dim) for emb in emb_layers
+        fluid.layers.fc(input=emb, size=hidden_dim) for emb in emb_layers
     ]
 
-    hidden_0 = layers.sums(input=hidden_0_layers)
+    hidden_0 = fluid.layers.sums(input=hidden_0_layers)
 
-    lstm_0 = layers.dynamic_lstm(
+    lstm_0 = fluid.layers.dynamic_lstm(
         input=hidden_0,
         size=hidden_dim,
         candidate_activation='relu',
@@ -84,12 +80,12 @@ def db_lstm():
     input_tmp = [hidden_0, lstm_0]
 
     for i in range(1, depth):
-        mix_hidden = layers.sums(input=[
-            layers.fc(input=input_tmp[0], size=hidden_dim),
-            layers.fc(input=input_tmp[1], size=hidden_dim)
+        mix_hidden = fluid.layers.sums(input=[
+            fluid.layers.fc(input=input_tmp[0], size=hidden_dim),
+            fluid.layers.fc(input=input_tmp[1], size=hidden_dim)
         ])
 
-        lstm = layers.dynamic_lstm(
+        lstm = fluid.layers.dynamic_lstm(
             input=mix_hidden,
             size=hidden_dim,
             candidate_activation='relu',
@@ -99,9 +95,9 @@ def db_lstm():
 
         input_tmp = [mix_hidden, lstm]
 
-    feature_out = layers.sums(input=[
-        layers.fc(input=input_tmp[0], size=label_dict_len),
-        layers.fc(input=input_tmp[1], size=label_dict_len)
+    feature_out = fluid.layers.sums(input=[
+        fluid.layers.fc(input=input_tmp[0], size=label_dict_len),
+        fluid.layers.fc(input=input_tmp[1], size=label_dict_len)
     ])
 
     return feature_out
@@ -116,7 +112,7 @@ def to_lodtensor(data, place):
         lod.append(cur_len)
     flattened_data = np.concatenate(data, axis=0).astype("int64")
     flattened_data = flattened_data.reshape([len(flattened_data), 1])
-    res = core.LoDTensor()
+    res = fluid.LoDTensor()
     res.set(flattened_data, place)
     res.set_lod([lod])
     return res
@@ -125,29 +121,29 @@ def to_lodtensor(data, place):
 def main():
     # define network topology
     feature_out = db_lstm()
-    target = layers.data(name='target', shape=[1], dtype='int64')
-    crf_cost = layers.linear_chain_crf(
+    target = fluid.layers.data(name='target', shape=[1], dtype='int64')
+    crf_cost = fluid.layers.linear_chain_crf(
         input=feature_out,
         label=target,
-        param_attr={"name": 'crfw',
-                    "learning_rate": mix_hidden_lr})
-    avg_cost = layers.mean(x=crf_cost)
+        param_attr=fluid.ParamAttr(
+            name='crfw', learning_rate=mix_hidden_lr))
+    avg_cost = fluid.layers.mean(x=crf_cost)
     # TODO(qiao)
     #   1. add crf_decode_layer and evaluator
     #   2. use other optimizer and check why out will be NAN
-    sgd_optimizer = SGDOptimizer(learning_rate=0.0001)
-    opts = sgd_optimizer.minimize(avg_cost)
+    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.0001)
+    sgd_optimizer.minimize(avg_cost)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.conll05.test(), buf_size=8192),
         batch_size=BATCH_SIZE)
-    place = core.CPUPlace()
-    exe = Executor(place)
+    place = fluid.CPUPlace()
+    exe = fluid.Executor(place)
 
-    exe.run(framework.default_startup_program())
+    exe.run(fluid.default_startup_program())
 
-    embedding_param = g_scope.find_var(embedding_name).get_tensor()
+    embedding_param = fluid.g_scope.find_var(embedding_name).get_tensor()
     embedding_param.set(
         load_parameter(conll05.get_embedding(), word_dict_len, word_dim), place)
 
@@ -164,7 +160,7 @@ def main():
             mark_data = to_lodtensor(map(lambda x: x[7], data), place)
             target = to_lodtensor(map(lambda x: x[8], data), place)
 
-            outs = exe.run(framework.default_main_program(),
+            outs = exe.run(fluid.default_main_program(),
                            feed={
                                'word_data': word_data,
                                'ctx_n2_data': ctx_n2_data,

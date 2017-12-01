@@ -16,11 +16,13 @@ function cmake_gen() {
         echo "using python abi: $1"
         if [ "$1" == "cp27-cp27m" ]; then
             export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs2/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs4/lib:}
+            export PATH=/opt/python/cp27-cp27m/bin/:${PATH}
             PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27m/bin/python
         -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27m/include/python2.7
         -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs2/lib/libpython2.7.so"
         elif [ "$1" == "cp27-cp27mu" ]; then
             export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs2/lib:}
+            export PATH=/opt/python/cp27-cp27mu/bin/:${PATH}
             PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27mu/bin/python
         -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include/python2.7
         -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs4/lib/libpython2.7.so"
@@ -181,6 +183,7 @@ EOF
     ${DOCKERFILE_GPU_ENV}
     ADD go/cmd/pserver/pserver /usr/bin/
     ADD go/cmd/master/master /usr/bin/
+    ADD paddle/pybind/print_operators_doc /usr/bin/
     # default command shows the paddle version and exit
     CMD ["paddle", "version"]
 EOF
