@@ -10,7 +10,7 @@ from param_attr import ParamAttr
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
     'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool', 'sums', 'cos_sim',
-    'batch_norm', 'accuracy', 'split_lod_tensor'
+    'batch_norm', 'accuracy', 'split_lod_tensor', 'While'
 ]
 
 
@@ -1440,7 +1440,7 @@ def increment(x, value=1.0, in_place=True, main_program=None):
         type='increment',
         inputs={'X': [x]},
         outputs={'Out': [out]},
-        attrs={'step': value})
+        attrs={'step': float(value)})
     return out
 
 
