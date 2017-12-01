@@ -403,6 +403,7 @@ _create_op_func_('sigmoid')
 _create_op_func_('scale')
 _create_op_func_('reshape')
 _create_op_func_('transpose')
+_create_op_func_('sigmoid_cross_entropy_with_logits')
 
 
 def cast(x, dtype, main_program=None):
