@@ -41,6 +41,7 @@ class SendOp : public framework::OperatorBase {
       // TODO(typhoonzero): how to call InitVariables
     }
   }
+
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
     auto iname = Input("X");
