@@ -61,10 +61,6 @@ feeder = fluid.DataFeeder(
     feed_list=[first_word, second_word, third_word, forth_word, next_word],
     place=place)
 
-# fix https://github.com/PaddlePaddle/Paddle/issues/5434 then remove
-# below exit line.
-exit(0)
-
 exe.run(fluid.default_startup_program())
 
 for pass_id in range(PASS_NUM):
@@ -72,6 +68,6 @@ for pass_id in range(PASS_NUM):
         avg_cost_np = exe.run(fluid.default_main_program(),
                               feed=feeder.feed(data),
                               fetch_list=[avg_cost])
-        if avg_cost_np[0] < 10.0:
+        if avg_cost_np[0] < 5.0:
             exit(0)  # if avg cost less than 10.0, we think our code is good.
 exit(1)

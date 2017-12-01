@@ -84,7 +84,7 @@ class SumKernel : public framework::OpKernel<T> {
       int64_t offset = 0;
       for (int i = 0; i < N; i++) {
         PADDLE_ENFORCE_EQ(out->height(),
-                          in_vars[i]->Get<SelectedRows>().height())
+                          in_vars[i]->Get<SelectedRows>().height());
         functor(context.device_context(), in_vars[i]->Get<SelectedRows>(),
                 offset, out);
         offset += in_vars[i]->Get<SelectedRows>().value().numel();

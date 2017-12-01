@@ -137,6 +137,16 @@ class TestBook(unittest.TestCase):
 
         print(str(program))
 
+    def test_sigmoid_cross_entropy(self):
+        program = Program()
+        with program_guard(program):
+            dat = layers.data(name='data', shape=[10], dtype='float32')
+            lbl = layers.data(name='label', shape=[10], dtype='float32')
+            self.assertIsNotNone(
+                layers.sigmoid_cross_entropy_with_logits(
+                    x=dat, label=lbl))
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()
