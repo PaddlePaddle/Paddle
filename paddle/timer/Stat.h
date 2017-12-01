@@ -27,7 +27,7 @@ limitations under the License. */
 #include "ThreadLocal.h"
 
 namespace paddle {
-namespace framework {
+// namespace framework {
 
 class Stat;
 
@@ -239,28 +239,28 @@ inline StatSet& registerTimerArg2(uint64_t threshold = -1,
 // REGISTER_TIMER(statName, threshold = -1, statSet = globalStat)
 // TODO(yuyang18,wangyanfei01): if UNIQUE_NAME is needed
 #define REGISTER_TIMER(statName, ...)                                        \
-  static ::paddle::framework::StatPtr __stat =                               \
-      ::paddle::framework::registerTimerArg2(__VA_ARGS__).getStat(statName); \
-  ::paddle::framework::TimerOnce __timerOnce(                                \
-      __stat.get(), "", ::paddle::framework::registerTimerArg1(__VA_ARGS__));
+  static ::paddle::StatPtr __stat =                               \
+      ::paddle::registerTimerArg2(__VA_ARGS__).getStat(statName); \
+  ::paddle::TimerOnce __timerOnce(                                \
+      __stat.get(), "", ::paddle::registerTimerArg1(__VA_ARGS__));
 
 #define REGISTER_TIMER_SET(statName, start, ...)                             \
-  static ::paddle::framework::StatPtr __stat =                               \
-      ::paddle::framework::registerTimerArg2(__VA_ARGS__).getStat(statName); \
-  ::paddle::framework::TimerOnce __timerOnce(                                \
+  static ::paddle::StatPtr __stat =                               \
+      ::paddle::registerTimerArg2(__VA_ARGS__).getStat(statName); \
+  ::paddle::TimerOnce __timerOnce(                                \
       __stat.get(),                                                          \
       "",                                                                    \
-      ::paddle::framework::registerTimerArg1(__VA_ARGS__),                   \
+      ::paddle::registerTimerArg1(__VA_ARGS__),                   \
       false,                                                                 \
       start);
 
 #define REGISTER_TIMER_INFO(statName, info)              \
-  static ::paddle::framework::StatPtr __stat =           \
-      ::paddle::framework::globalStat.getStat(statName); \
-  ::paddle::framework::TimerOnce __timerOnce(            \
+  static ::paddle::StatPtr __stat =           \
+      ::paddle::globalStat.getStat(statName); \
+  ::paddle::TimerOnce __timerOnce(            \
       __stat.get(), info, 10 * 1000000LU /*threshold*/);
 
 #endif  // DISABLE_TIMER
 
-}  // namespace framework
+// }  // namespace framework
 }  // namespace paddle

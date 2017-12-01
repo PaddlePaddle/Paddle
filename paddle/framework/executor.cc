@@ -61,7 +61,6 @@ Executor::~Executor() {
       delete device_context;
     }
   }
-  LOG(INFO) << "============";
   FOR_TIMING(globalStat.setThreadInfo(true));
   FOR_TIMING(globalStat.printAllStatus());
   FOR_TIMING(globalStat.reset());

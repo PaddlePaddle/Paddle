@@ -22,7 +22,7 @@ DEFINE_bool(thread_local_rand_use_global_seed,
             "Whether to use global seed in thread local rand.");
 
 namespace paddle {
-namespace framework {
+// namespace framework {
 
 unsigned int ThreadLocalRand::defaultSeed_ = 1;
 ThreadLocal<unsigned int> ThreadLocalRand::seed_;
@@ -75,5 +75,5 @@ pid_t getTID() {
   return tid;
 }
 
-}  // namespace framework
+// }  // namespace framework
 }  // namespace paddle

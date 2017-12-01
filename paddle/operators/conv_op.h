@@ -19,9 +19,11 @@ limitations under the License. */
 #include "paddle/operators/math/im2col.h"
 #include "paddle/operators/math/math_function.h"
 #include "paddle/operators/math/vol2col.h"
+#include "paddle/timer/Stat.h"
 
 namespace paddle {
 namespace operators {
+
 
 using Tensor = framework::Tensor;
 
@@ -157,10 +159,13 @@ class GemmConvKernel : public framework::OpKernel<T> {
           col_matrix.Resize(col_matrix_shape);
         } else if (data_dim == 2U) {
           // im2col
+          {
+          REGISTER_TIMER("Im2ColTimer");
           im2col(context.device_context(), in_slice, dilations, strides,
                  std::vector<int>{paddings[0], paddings[1], paddings[0],
                                   paddings[1]},
                  &col);
+          }
         } else if (data_dim == 3U) {
           // vol2col
           vol2col(context.device_context(), in_slice, dilations, strides,
@@ -168,10 +173,13 @@ class GemmConvKernel : public framework::OpKernel<T> {
         }
 
         // gemm
+        {
+        REGISTER_TIMER("GemmTimer");
         Tensor out_slice = out_batch.Slice(g * out_step, (g + 1) * out_step);
         Tensor filter_slice = filter.Slice(g * out_step, (g + 1) * out_step);
         math::matmul<Place, T>(context.device_context(), filter_slice, false,
                                col_matrix, false, T(1.0), &out_slice, T(0.0));
+        }
       }
     }
   }

@@ -22,7 +22,7 @@ limitations under the License. */
 #include "Common.h"
 
 namespace paddle {
-namespace framework {
+// namespace framework {
 
 /**
  * A simple read-write lock.
@@ -240,5 +240,5 @@ protected:
   std::mutex mutex_;
 };
 
-}  // namespace framework
+// }  // namespace framework
 }  // namespace paddle
