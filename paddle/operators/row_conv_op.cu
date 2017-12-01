@@ -26,6 +26,7 @@ namespace {
 
 inline int DivUp(int x, int y) { return (x + y - 1) / y; }
 
+// Forward prop (shared memory version)
 template <typename T>
 __global__ void RowConvForwardSharedMemory(const T *in, const T *wt,
                                            int num_sequence, int input_dim,
@@ -42,7 +43,8 @@ __global__ void RowConvForwardSharedMemory(const T *in, const T *wt,
   T *sw = mem;
 
   if (thy < context_length) {
-    sw[thy * blx + thx] = (d < input_dim) ? wt[thy * input_dim + d] : 0.0;
+    sw[thy * blx + thx] =
+        (d < input_dim) ? wt[thy * input_dim + d] : static_cast<T>(0);
   }
   __syncthreads();
 
@@ -56,7 +58,7 @@ __global__ void RowConvForwardSharedMemory(const T *in, const T *wt,
            w++) {
         sum += (d < input_dim)
                    ? sw[w * blx + thx] * in[(start + k + w) * input_dim + d]
-                   : 0;
+                   : static_cast<T>(0);
       }
       if (d < input_dim) {
         out[(start + k) * input_dim + d] = sum;
@@ -65,6 +67,7 @@ __global__ void RowConvForwardSharedMemory(const T *in, const T *wt,
   }
 }
 
+// Forward prop (naive version)
 template <typename T>
 __global__ void RowConvForward(const T *in, const T *wt, int num_sequence,
                                int input_dim, int context_length,
@@ -90,7 +93,46 @@ __global__ void RowConvForward(const T *in, const T *wt, int num_sequence,
   }
 }
 
-// Compute input gradient
+// Compute input gradient (shared memory version)
+template <typename T>
+__global__ void RowConvGradInputSharedMemory(const T *dout, const T *wt,
+                                             int num_sequence, int input_dim,
+                                             int context_length,
+                                             const size_t *batch_indices,
+                                             T *din) {
+  int blx = blockDim.x;
+  int bly = blockDim.y;
+  int thx = threadIdx.x;
+  int thy = threadIdx.y;
+  int d = blockIdx.x * blx + thx;  // index along input dim
+
+  extern __shared__ T mem[];
+  T *sw = mem;
+  if (thy < context_length) {
+    sw[thy * blx + thx] =
+        (d < input_dim) ? wt[thy * input_dim + d] : static_cast<T>(0);
+  }
+  __syncthreads();
+
+  for (int i = 0; i < num_sequence; i++) {
+    int start = static_cast<int>(batch_indices[i]);
+    int end = static_cast<int>(batch_indices[i + 1]);
+    int current_timesteps = end - start;
+    for (int k = thy; k < current_timesteps; k += bly) {
+      T sum = 0;
+      for (int w = 0; (w < context_length) && ((k - w) >= 0); w++) {
+        sum += (d < input_dim) ? (sw[w * input_dim + thx] *
+                                  dout[(k + start - w) * input_dim + d])
+                               : static_cast<T>(0);
+      }
+      if (d < input_dim) {
+        din[(k + start) * input_dim + d] = sum;
+      }
+    }
+  }
+}
+
+// Compute input gradient (Naive version)
 template <typename T>
 __global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
                                  int input_dim, int context_length,
@@ -219,13 +261,21 @@ class RowConvGradKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
 
     if (dX) {
       T *din = dX->mutable_data<T>(context.GetPlace());
-      // dim3 block_dim = dim3(1, 1);
-      // dim3 grid_dim = dim3(1, 1);
 
-      dim3 block_dim = dim3(32, 32);
-      dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
-      RowConvGradInput<T><<<grid_dim, block_dim, 0, device_ctx.stream()>>>(
-          dout, weights, num_sequence, input_dim, context_length, idx, din);
+      if (context_length <= 32) {
+        dim3 block_dim = dim3(32, 32);
+        dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
+        int mem_per_block = (context_length * block_dim.x) * sizeof(T);
+        RowConvGradInputSharedMemory<
+            T><<<grid_dim, block_dim, mem_per_block, device_ctx.stream()>>>(
+            dout, weights, num_sequence, input_dim, context_length, idx, din);
+
+      } else {
+        dim3 block_dim = dim3(32, 32);
+        dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
+        RowConvGradInput<T><<<grid_dim, block_dim, 0, device_ctx.stream()>>>(
+            dout, weights, num_sequence, input_dim, context_length, idx, din);
+      }
     }
   }
 };

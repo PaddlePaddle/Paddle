@@ -26,7 +26,7 @@ def row_conv_forward(x, lod, wt):
     return out
 
 
-class TestRowConvOp(OpTest):
+class TestRowConvOp1(OpTest):
     def setUp(self):
 
         self.op_type = "row_conv"
@@ -52,7 +52,38 @@ class TestRowConvOp(OpTest):
         self.check_grad(
             ['Filter'], 'Out', max_relative_error=0.05, no_grad_set=set('X'))
 
-    def test_check_grad_ignore_y(self):
+    def test_check_grad_ignore_wt(self):
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.05, no_grad_set=set('Filter'))
+
+
+class TestRowConvOp2(OpTest):
+    def setUp(self):
+
+        self.op_type = "row_conv"
+        lod = [[0, 20, 50, 70]]
+        T = lod[0][-1]
+        D = 200
+        context_length = 45
+
+        x = np.random.random((T, D)).astype("float32")
+        wt = np.random.random((context_length, D)).astype("float32")
+        self.inputs = {'X': (x, lod), 'Filter': wt}
+
+        out = row_conv_forward(x, lod, wt)
+        self.outputs = {'Out': (out, lod)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Filter'], 'Out', max_relative_error=0.05)
+
+    def test_check_grad_ignore_x(self):
+        self.check_grad(
+            ['Filter'], 'Out', max_relative_error=0.05, no_grad_set=set('X'))
+
+    def test_check_grad_ignore_wt(self):
         self.check_grad(
             ['X'], 'Out', max_relative_error=0.05, no_grad_set=set('Filter'))
 
