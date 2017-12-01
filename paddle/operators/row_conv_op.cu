@@ -172,8 +172,6 @@ __global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
   T *sh_in = mem;
   T *sh_dout = &mem[block_x * block_y];
 
-  //              dweights(w, d) += cur_ip(k + w, d) * cur_dout(k, d);
-
   for (int i = 0; i < num_sequence; i++) {
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
@@ -204,7 +202,7 @@ __global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
         __syncthreads();
 
         if (thx == 0 && (gx + thy) < input_dim) {
-          dfilter[k * input_dim + gx + thy] += val;
+          dfilter[w * input_dim + gx + thy] += val;
         }
       }
     }
