@@ -5,7 +5,7 @@
 充分展现英特尔平台的优势，有效提升PaddlePaddle在英特尔架构上的性能。
 
 <div align="center">
-<img src="image/overview.png" width=410><br/>
+<img src="image/overview.png"><br/>
 Figure 1. PaddlePaddle on IA
 </div>
 
@@ -42,16 +42,16 @@ Figure 1. PaddlePaddle on IA
 
 MKL，MKLML以及MKL-DNN三者关系如下表：
 
-| Name       | Open Source    | License     | Descriptions  |
-|------------|----------------| ------------| --------------|
-| MKL        | No             | Proprietary | Accelerate math processing routines | 
-| MKLML      | No             | Proprietary | Small package of MKL, especially for Machine Learning |
-| MKL-DNN    | Yes            | Apache 2.0  | Accelerate primitives processing routines especially for Deep Neural Networks  |
+| Name        |  Open Source     | License     | Descriptions  |
+| :---------- | :--------------- | :---------- | :------------ |
+|   MKL       |     No           | Proprietary | Accelerate math processing routines | 
+|   MKLML     |     No           | Proprietary | Small package of MKL, especially for Machine Learning |
+|   MKL-DNN   |     Yes          | Apache 2.0  | Accelerate primitives processing routines especially for Deep Neural Networks  |
 
 MKLML可以与MKL-DNN共同使用，以此达到最好的性能。
 
 <div align="center">
-<img src="image/engine.png" width=410><br/>
+<img src="image/engine.png"><br/>
 Figure 2. PaddlePaddle with MKL Engines
 </div>
 
@@ -103,7 +103,7 @@ MKL-DNN的库目前只有动态库`libmkldnn.so`。
 所以我们定义了一个`MKLDNNMatrix`用于管理MKL-DNN数据的不同格式以及相互之间的转换。
 
 <div align="center">
-<img src="image/matrix.png" height=300><br/>
+<img src="image/matrix.png"><br/>
 Figure 3. MKLDNNMatrix
 </div>
 
@@ -113,7 +113,7 @@ Figure 3. MKLDNNMatrix
 子类只需要使用定义好的接口，实现具体的函数功能即可。
 
 <div align="center">
-<img src="image/layers.png" width=410><br/>
+<img src="image/layers.png"><br/>
 Figure 4. MKLDNNLayer
 </div>
 
@@ -150,7 +150,7 @@ Figure 4. MKLDNNLayer
 所以整体上，在实现每个子类的时候就不需要关心分支的事情了。
 
 <div align="center">
-<img src="image/gradients.png" height=300><br/>
+<img src="image/gradients.png"><br/>
 Figure 5. Merge Gradients
 </div>
 
