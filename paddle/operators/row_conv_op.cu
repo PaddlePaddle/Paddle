@@ -160,25 +160,51 @@ __global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
 template <typename T>
 __global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
                                   int input_dim, int context_length,
+                                  int block_x, int block_y,
                                   const size_t *batch_indices, T *dfilter) {
-  int d_idx = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
-  int w_idx =
-      blockIdx.y * blockDim.y + threadIdx.y;  // index along context_length
+  int blx = blockDim.x;
+  int bly = blockDim.y;
+  int thx = threadIdx.x;
+  int thy = threadIdx.y;
+  int gx = blockIdx.x * blx;
+  int d = gx + thx;  // index along input dim
+  extern __shared__ T mem[];
+  T *sh_in = mem;
+  T *sh_dout = &mem[block_x * block_y];
 
-  if (d_idx > 0 || w_idx > 0) return;
+  //              dweights(w, d) += cur_ip(k + w, d) * cur_dout(k, d);
 
-  //  if (d >= input_dim || w >= context_length) return;
-  for (size_t i = 0; i < num_sequence; i++) {  // For different sequences
+  for (int i = 0; i < num_sequence; i++) {
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
     int current_timesteps = end - start;
-    for (int k = 0; k < current_timesteps; k++) {
-      for (int w = 0; (w < context_length) && ((k + w) < current_timesteps);
-           w++) {
-        // For dweights (Updating the gradient of weight matrix)
-        for (int d = 0; d < input_dim; d++) {
-          dfilter[w * input_dim + d] += in[(start + k + w) * input_dim + d] *
-                                        dout[(start + k) * input_dim + d];
+    int scaled_cur_steps =
+        ((current_timesteps + block_x - 1) / block_x) * block_x;
+
+    for (int k = thy; k < scaled_cur_steps; k += block_x) {
+      int pos = start + k;
+      sh_in[thx * block_y + thy] =
+          (d < input_dim && pos < end) ? in[pos * input_dim + d] : 0.0;
+      __syncthreads();
+
+      for (int w = 0; w < context_length; w++) {
+        sh_dout[thx * block_y + thy] =
+            (d < input_dim && (k - w) >= 0 && (k - w) < current_timesteps)
+                ? dout[(pos - w) * width + d]
+                : 0.0;
+        __syncthreads();
+
+        T val = sh_in[thy * block_y + thx] * sh_dout[thy * block_y + thx];
+        __syncthreads();
+
+        for (int offset = 16; offset > 0;
+             offset = offset / 2) {  // warp size and blockDim.x is 32.
+          val += __shfl_down(val, offset);
+        }
+        __syncthreads();
+
+        if (thx == 0 && (gx + thy) < input_dim) {
+          dfilter[k * input_dim + gx + thy] += val;
         }
       }
     }
@@ -246,15 +272,18 @@ class RowConvGradKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
 
     if (dFilter) {
       T *dfilter = dFilter->mutable_data<T>(context.GetPlace());
-      zero(device_ctx, dFilter, static_cast<T>(0.0));  // May not need, CHECK ME
+      zero(device_ctx, dFilter, static_cast<T>(0.0));
 
-      dim3 block_dim = dim3(1, 1);
-      dim3 grid_dim = dim3(1, 1);
-      //     dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x),
-      //                          DivUp(context_length, block_dim.y));
-
-      RowConvGradFilter<T><<<grid_dim, block_dim, 0, device_ctx.stream()>>>(
-          in, dout, num_sequence, input_dim, context_length, idx, dfilter);
+      dim3 block_dim = dim3(32, 32);
+      dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
+      int block_x = block_dim.x;
+      int block_y = block_dim.y;
+      int mem_per_block =
+          (block_x * block_y * 2) * sizeof(T);  // For 2 arrays of size 32x32
+      RowConvGradFilter<
+          T><<<grid_dim, block_dim, mem_per_block, device_ctx.stream()>>>(
+          in, dout, num_sequence, input_dim, context_length, block_x, block_y,
+          idx, dfilter);
     }
 
     if (dX) {
