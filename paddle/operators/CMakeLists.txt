@@ -212,6 +212,7 @@ set(DEPS_OPS
     send_op
     recv_op)
 
+if(WITH_DISTRIBUTE)
 add_subdirectory(detail)
 op_library(send_op SRCS send_op.cc DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib_target protobuf)
 set_source_files_properties(
@@ -224,6 +225,9 @@ set_source_files_properties(
     recv_op.cc
     PROPERTIES
     COMPILE_FLAGS  "-Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+
+cc_test(test_send_recv SRCS send_recv_op_test.cc DEPS send_op recv_op sum_op executor)
+endif()
 
 op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
 op_library(cross_entropy_op DEPS cross_entropy)
@@ -275,4 +279,3 @@ if(WITH_GPU)
   cc_test(nccl_op_test SRCS nccl_op_test.cu.cc DEPS nccl_op gpu_info device_context)
 endif()
 cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)
-cc_test(test_send_recv SRCS send_recv_op_test.cc DEPS send_op recv_op sum_op executor)
