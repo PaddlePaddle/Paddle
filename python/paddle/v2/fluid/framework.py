@@ -3,7 +3,7 @@ import collections
 import numpy as np
 from . import core
 import proto.framework_pb2 as framework_pb2
-from dtypes import Dtype, as_dtype
+from dtypes import Dtype, as_dtype, as_pybind_dtype
 
 __all__ = [
     'Block', 'Variable', 'Program', 'Operator', 'default_startup_program',
@@ -97,9 +97,9 @@ class Variable(object):
                         "matched.".format(self.name, old_shape, shape))
         if dtype is not None:
             if not isinstance(dtype, Dtype):
-                # if not isinstance(dtype, core.DataType):
                 dtype = as_dtype(dtype)
-                # dtype = convert_np_dtype_to_dtype_(dtype)
+                #TODO(dzhwinter) : should be removed and replace pybindc DataType
+                dtype = as_pybind_dtype(dtype)
             if is_new_var:
                 self.desc.set_dtype(dtype)
             else:

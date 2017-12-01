@@ -1,6 +1,5 @@
 import unittest
 from paddle.v2.fluid.framework import default_main_program, Program
-from paddle.v2.fluid.framework import Dtype, as_dtype
 import paddle.v2.fluid.dtypes as dtypes
 import paddle.v2.fluid.core as core
 import numpy as np
@@ -8,17 +7,16 @@ import numpy as np
 
 class TestVariable(unittest.TestCase):
     def test_np_dtype_convert(self):
-        DT = core.DataType
-        # convert = convert_np_dtype_to_dtype_
         self.assertEqual(dtypes.float32, as_dtype(np.float32))
+        self.assertEqual(dtypes.bool, as_dtype("bool"))
+        self.assertEqual(dtypes.int16, as_dtype("int16"))
+        self.assertEqual(dtypes.int32, as_dtype("int32"))
+        self.assertEqual(dtypes.int64, as_dtype("int64"))
+        self.assertEqual(dtypes.float16, as_dtype("float16"))
         self.assertEqual(dtypes.float32, as_dtype("float32"))
-        # self.assertEqual(DT.FP16, convert("float16"))
-        # self.assertEqual(DT.FP64, convert("float64"))
-        # self.assertEqual(DT.INT32, as_dtype("int32"))
-        # self.assertEqual(DT.INT16, convert("int16"))
-        # self.assertEqual(DT.INT64, convert("int64"))
-        # self.assertEqual(DT.BOOL, convert("bool"))
-        # self.assertRaises(ValueError, lambda: convert("int8"))
+        self.assertEqual(dtypes.float64, as_dtype("float64"))
+        self.assertRaises(ValueError, as_dtype("int8"))
+        self.assertRaises(ValueError, as_dtype(np.int8))
 
     def test_var(self):
         b = default_main_program().current_block()
