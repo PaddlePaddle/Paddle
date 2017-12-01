@@ -79,7 +79,9 @@ size_t GpuMaxChunkSize() {
 
   // If available less than minimum chunk size, no usable memory exists.
   available =
-      std::max(available, GpuMinChunkSize()) - GpuMinChunkSize() - reserving;
+      std::max(std::max(available, GpuMinChunkSize()) - GpuMinChunkSize(),
+               reserving) -
+      reserving;
 
   size_t allocating = FLAGS_fraction_of_gpu_memory_to_use * total;
 
