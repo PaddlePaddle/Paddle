@@ -18,37 +18,19 @@ PaddlePaddle为交叉编译提供了工具链配置文档[cmake/cross_compiling/
 
 - `CMAKE_SYSTEM_NAME`，CMake编译的目标平台，必须设置为`iOS`。在设置`CMAKE_SYSTEM_NAME=iOS`后，PaddlePaddle的CMake系统会自动编译所有的第三方依赖库，并且强制设置一些PaddlePaddle参数的值（`WITH_C_API=ON`、`WITH_GPU=OFF`、`WITH_AVX=OFF`、`WITH_PYTHON=OFF`、`WITH_RDMA=OFF`）。
 - `WITH_C_API`，是否编译C-API预测库，必须设置为ON。在iOS平台上只支持使用C-API来预测。
-- `WITH_SWIG_PY`，必须设置为ON。在iOS平台上不支持通过swig调用来训练或者预测。
+- `WITH_SWIG_PY`，必须设置为OFF。在iOS平台上不支持通过swig调用来训练或者预测。
 
 iOS平台可选配置参数：
 
-- `IOS_PLATFORM`，可设置为`OS/SIMULATOR`，默认值为`OS`。
+- `IOS_PLATFORM`，可设置为`OS`或者`SIMULATOR`，默认值为`OS`。
   - `OS`，构建目标为`arm`架构的iPhone或者iPad等物理设备。
   - `SIMULATOR`，构建目标为`x86`架构的模拟器平台。
 - `IOS_ARCH`，目标架构。针对不同的`IOS_PLATFORM`，可设置的目标架构如下表所示，默认编译所有架构：
 
-    <table class="docutils">
-    <colgroup>
-      <col width="35%" />
-      <col width="65%" />
-    </colgroup>
-    <thead valign="bottom">
-      <tr class="row-odd">
-      <th class="head">IOS_PLATFORM</th>
-      <th class="head">IOS_ARCH</th>
-    </tr>
-    </thead>
-    <tbody valign="top">
-      <tr class="row-even">
-      <td>OS</td>
-      <td>armv7, armv7s, arm64 </td>
-    </tr>
-    <tr class="row-odd">
-      <td>SIMULATOR</td>
-      <td>i386, x86_64 </td>
-    </tr>
-    </tbody>
-    </table>
+  | `IOS_PLATFORM` | `IOS_ARCH` |
+  |----------------|------------|
+  | `OS`           | armv7, armv7s, arm64 |
+  | `SIMULATOR`    | i386, x86_64 |
 
 - `IOS_DEPLOYMENT_TARGET`，最小的iOS部署版本，默认值为`7.0`。
 - `IOS_ENABLE_BITCODE`，是否使能[Bitcode](https://developer.apple.com/library/content/documentation/IDEs/Conceptual/AppDistributionGuide/AppThinning/AppThinning.html#//apple_ref/doc/uid/TP40012582-CH35-SW3)，可设置`ON/OFF`，默认值为`ON`。
