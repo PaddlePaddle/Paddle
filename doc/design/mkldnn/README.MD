@@ -5,7 +5,7 @@
 充分展现英特尔平台的优势，有效提升PaddlePaddle在英特尔架构上的性能。
 
 <div align="center">
-<img src="image/overview.png" width=350><br/>
+<img src="image/overview.png" width=410><br/>
 Figure 1. PaddlePaddle on IA
 </div>
 
@@ -28,9 +28,7 @@ Figure 1. PaddlePaddle on IA
 	- [Parameters](#parameters)
 	- [Gradients](#gradients)
 	- [Unit Tests](#unit-tests)
-	- [Protobuf Messages](#protobuf-messages)
 	- [Python API](#python-api)
-	- [Demos](#demos)
 	- [Benchmarking](#benchmarking)
 	- [Others](#others)
 - [Design Concerns](#design-concerns)
@@ -41,10 +39,19 @@ Figure 1. PaddlePaddle on IA
 
 同时，为了进一步提升PaddlePaddle在基本数学运算的计算速度，我们也将MKLML即(MKL small library\[[1](#references)\])
 作为另一个第三方库集成进PaddlePaddle，它只会包括生成好的动态库和头文件。
+
+MKL，MKLML以及MKL-DNN三者关系如下表：
+
+| Name       | Open Source    | License     | Descriptions  |
+|------------|----------------| ------------| --------------|
+| MKL        | No             | Proprietary | Accelerate math processing routines | 
+| MKLML      | No             | Proprietary | Small package of MKL, especially for Machine Learning |
+| MKL-DNN    | Yes            | Apache 2.0  | Accelerate primitives processing routines especially for Deep Neural Networks  |
+
 MKLML可以与MKL-DNN共同使用，以此达到最好的性能。
 
 <div align="center">
-<img src="image/engine.png" width=300><br/>
+<img src="image/engine.png" width=410><br/>
 Figure 2. PaddlePaddle with MKL Engines
 </div>
 
@@ -84,15 +91,19 @@ PaddlePaddle/Paddle
 
 - `WITH_MKLML` 控制是否使用MKLML库。 
 当打开`WITH_MKL`时，会自动使用MKLML库作为PaddlePaddle的CBLAS和LAPACK库，同时会开启Intel OpenMP用于提高MKLML的性能。
+编译时会把对应的头文件和库放在`build/third_party/install/mklml/*`目录下对应的地方。
+MKLML的库目前都是动态库，主要包括`libiomp5.so`和`libmklml_intel.so`。
 - `WITH_MKLDNN` 控制是否使用MKL-DNN。
 当开启`WITH_MKL`时，会自动根据硬件配置[[2](#references)]选择是否编译MKL-DNN。
+编译时会把对应的头文件和库放在`build/third_party/install/mkldnn/*`目录下对应的地方。
+MKL-DNN的库目前只有动态库`libmkldnn.so`。
 
 ### Matrix
-目前在PaddlePaddle中数据都是以`nchw`的格式存储，但是在MKL-DNN中的排列方式不止这一种。
+目前在PaddlePaddle中数据都是以`NCHW`的格式存储，但是在MKL-DNN中的排列方式不止这一种。
 所以我们定义了一个`MKLDNNMatrix`用于管理MKL-DNN数据的不同格式以及相互之间的转换。
 
 <div align="center">
-<img src="image/matrix.png" width=400 height=250><br/>
+<img src="image/matrix.png" height=300><br/>
 Figure 3. MKLDNNMatrix
 </div>
 
@@ -102,29 +113,30 @@ Figure 3. MKLDNNMatrix
 子类只需要使用定义好的接口，实现具体的函数功能即可。
 
 <div align="center">
-<img src="image/layers.png" width=430><br/>
+<img src="image/layers.png" width=410><br/>
 Figure 4. MKLDNNLayer
 </div>
 
-每个`MKLDNNlayer`都会有`inVal_`,`inGrad_`,`outVal_`和`outGrad_`的`MKLDNNMatrix`，
-分别代表input value， input gradient，output value和output gradient。
-它们会存放MKL-DNN用到的internal memory，同时还会定义以*ext*开头的`MKLDNNMatrix`(表示external的memory)。
-他们主要是当数据格式与PaddlePaddle默认的`nchw`格式不匹配时，用于转换内存的工作。
+每个MKLDNNLayer都包含用于内部存储和外部存储的一系列MKLDNNMatrix：
 
-必要的转换函数也会在`MKLDNNLayer`中提前定义好（具体包括reset input、output的value和grad），
-这些函数会根据输入参数重新设置internal和external的memory(当然这两者也可以相等，即表示不需要转换),
-每个`MKLDNNlayer`的子类只需要使用internal的memory就可以了，所有external的转换工作都会在reset函数中都准备好。
+- 内部存储（internel memory）：`inVal_`,`inGrad_`,`outVal_`和`outGrad_`，分别代表输入数据，输入梯度，输出数据和输出梯度。
+- 外部存储（external memory）：都是以ext开头，比如`extInVal_`和`extInGrad_`，它们主要是用于，
+当数据格式与PaddlePaddle默认的`NCHW`格式不匹配时，转换内存的工作。
+需要注意的是，PaddlePaddle的activation会直接使用`output_.value`和`output_.grad`，
+所以`extOutVal_`和`extOutGrad_`必须分别与`output_.value`和`output_.grad`共享内存，
+如果不需要外部存储用于转换，那么对应的内部存储也会与它们共享内存。
+- 转换函数（resetXXX）： 包括`resetInValue`，`resetInGrad`，`resetOutValue`和`resetOutGrad`，
+表示对输入数据，输入梯度，输出数据和输出梯度的转换。
+这些函数会根据输入参数重新设置内部和外部存储，当然这两者也可以相等，即表示不需要转换。
 
-一般来说，每个`MKLDNNLayer`中的`extOutVal_`和`extOutGrad_`必须分别与`output_.value`和`output_.grad`共享内存，
-因为PaddlePaddle的activation会直接使用`output_.value`和`output_.grad`,
-如果不需要external的buffer用于转换，那么internal的buffer也会与它们共享内存。
+注意：每个`MKLDNNlayer`的子类只需要使用内部存储就可以了，所有外部的转换工作都会在reset系列函数中都准备好。
 
 ### Activations
-在重构前的PaddlePaddle中，激活函数是独立于`Layer`的概念，并且输入输出都是公用一块内存，
+在重构前的PaddlePaddle中，激活函数是独立于`Layer`的概念，并且输入输出都是共用一块内存，
 所以添加了对应的`MKLDNNActivation`来实现，方式类似于`MKLDNNLayer`。
 
 ### Parameters
-对于有参数的层，我们会保证`MKLDNNLayer`使用的参数与PaddlePaddle申请的buffer公用一块内存。
+对于有参数的层，我们会保证`MKLDNNLayer`使用的参数与PaddlePaddle申请的buffer共用一块内存。
 如果存在数据排列格式不一样的情况时，我们会在网络训练之前把格式转换为MKL-DNN希望的格式，
 在训练结束的时候再保存为PaddlePaddle的格式，但是整个训练过程中不需要任何转换。
 这样既使得最终保存的参数格式与PaddlePaddle一致，又可以避免不必要的转换。
@@ -138,17 +150,14 @@ Figure 4. MKLDNNLayer
 所以整体上，在实现每个子类的时候就不需要关心分支的事情了。
 
 <div align="center">
-<img src="image/gradients.png" width=600 height=300><br/>
+<img src="image/gradients.png" height=300><br/>
 Figure 5. Merge Gradients
 </div>
 
 ### Unit Tests
 我们会添加`test_MKLDNN.cpp`和`MKLDNNTester.*`用于MKL-DNN的测试。
-测试分为每个Layer(或Activation)的单元测试和简单网络的整体测试。
+测试分为每个Layer（或Activation）的单元测试和简单网络的整体测试。
 每个测试会对比PaddlePaddle中CPU算出的结果与MKL-DNN的结果，小于某个比较小的阈值认为通过。
-
-### Protobuf Messages
-根据具体layer的需求可能会在`proto/ModelConfig.proto`里面添加必要的选项。
 
 ### Python API
 目前只考虑**v1 API**。
@@ -167,11 +176,9 @@ if use_mkldnn
 
 同时,会在`paddle/utils.Flags`中添加一个`use_mkldnn`的flag，用于选择是否使用MKL-DNN的相关功能。
 
-### Demos
-可能会在`v1_api_demo`目录下添加一个`mkldnn`的文件夹，里面放入一些用于MKL-DNN测试的demo脚本。
-
 ### Benchmarking
-会添加`benchmark/paddle/image/run_mkldnn.sh`，用于测试和对比,在使用MKL-DNN前后的性能。
+会添加相应的脚本在[这里](https://github.com/PaddlePaddle/Paddle/tree/develop/benchmark/paddle/image)，用于测试和对比在使用MKL-DNN前后的CNN网络性能。
+测试的性能对比结果会在[IntelOptimizedPaddle.md](https://github.com/PaddlePaddle/Paddle/blob/develop/benchmark/IntelOptimizedPaddle.md)
 
 ### Others
 1. 如果在使用MKL-DNN的情况下，会把CPU的Buffer对齐为4096，具体可以参考MKL-DNN中的[memory](https://github.com/01org/mkl-dnn/blob/master/include/mkldnn.hpp#L673)。
@@ -189,8 +196,8 @@ if use_mkldnn
 3. 创建`MKLDNNBase`，定义一些除了layer和memory相关的类和函数。
 包括MKL-DNN会用到`MKLDNNStream`和`CPUEngine`，和未来可能还会用到`FPGAEngine`等。
 4. 如果MKL-DNN layer的后面接有cpu device，那么就会使`output_.value`与`extOutVal_`共享内存，
-同时数据格式就是`nchw`，这样下一个cpu device就能拿到正确的数据。
-在有cpu device的时候，external的memory的格式始终是`nchw`或者`nc`。
+同时数据格式就是`NCHW`，这样下一个cpu device就能拿到正确的数据。
+在有普通的CPU layer时， `extOutVal_`和`extOutGrad_`的格式始终是`NCHW`或者`NC`。
 
 ## References
 1. [MKL small library](https://github.com/01org/mkl-dnn#linking-your-application)是[Intel MKL](https://software.intel.com/en-us/mkl)的一个子集。
