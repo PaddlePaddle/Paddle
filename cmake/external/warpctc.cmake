@@ -38,8 +38,8 @@ ENDIF()
 ExternalProject_Add(
     extern_warpctc
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    GIT_REPOSITORY  "https://github.com/gangliao/warp-ctc.git"
-    GIT_TAG         b63a0644654a3e0ed624c85a1767bc8193aead09
+    GIT_REPOSITORY  "https://github.com/FDecaYed/warp-ctc.git"
+    GIT_TAG         b63a55685d33f798bc70acb087ced28ebba4a6c8
     PREFIX          ${WARPCTC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}

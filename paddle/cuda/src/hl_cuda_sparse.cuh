@@ -632,62 +632,68 @@ __global__ void KeSMatrixDenseMulCsr(real *C_d,
     }
   }
 
-  for (int csr_i = 0; csr_i < csr_iter; csr_i++) {
-    #pragma unroll
-    for (int i = 0; i < (CU_DM_CSR_SHARED_ELEMENT/CU_DM_CSR_THREAD_Y); i++) {
-      if (VALUE_TYPE != 0) {
-        csr_val_sh[idx][idy + i*CU_DM_CSR_THREAD_Y] = csr_val
-        [csr_index];
+  for (int csr_i = 0; __any_sync(0xffffffff, csr_i < csr_iter); csr_i++) {
+    if(csr_i < csr_iter) {
+      #pragma unroll
+      for (int i = 0; i < (CU_DM_CSR_SHARED_ELEMENT/CU_DM_CSR_THREAD_Y); i++) {
+        if (VALUE_TYPE != 0) {
+          csr_val_sh[idx][idy + i*CU_DM_CSR_THREAD_Y] = csr_val
+              [csr_index];
+        }
+        csr_col_sh[idx][idy + i*CU_DM_CSR_THREAD_Y] = csr_col[csr_index];
+        csr_index += CU_DM_CSR_THREAD_Y;
       }
-      csr_col_sh[idx][idy + i*CU_DM_CSR_THREAD_Y] = csr_col[csr_index];
-      csr_index += CU_DM_CSR_THREAD_Y;
     }
     __syncthreads();
-
-    #pragma unroll
-    for (int index = 0; index < CU_DM_CSR_SHARED_ELEMENT; index++) {
-      index_n = csr_col_sh[idx][index];
-      real b_r = VALUE_TYPE == 0 ? 1.0 : csr_val_sh[idx][index];
-      real *C_d_r = C_d + __mul24(index_m, dimN) + index_n;
-
-      index_m_t = index_m;
+    if(csr_i < csr_iter) {
       #pragma unroll
-      for (int n=0; n < CU_DM_CSR_N; n++) {
-        if (index_m_t++ < dimM) {
-          tmp = alpha * b_r * a_r[n];
-          paddle::paddleAtomicAdd(C_d_r, tmp);
-          C_d_r += dimN;
+      for (int index = 0; index < CU_DM_CSR_SHARED_ELEMENT; index++) {
+        index_n = csr_col_sh[idx][index];
+        real b_r = VALUE_TYPE == 0 ? 1.0 : csr_val_sh[idx][index];
+        real *C_d_r = C_d + __mul24(index_m, dimN) + index_n;
+
+        index_m_t = index_m;
+        #pragma unroll
+        for (int n=0; n < CU_DM_CSR_N; n++) {
+          if (index_m_t++ < dimM) {
+            tmp = alpha * b_r * a_r[n];
+            paddle::paddleAtomicAdd(C_d_r, tmp);
+            C_d_r += dimN;
+          }
         }
       }
     }
     __syncthreads();
   }
 
-  if (csr_rem != 0) {
-    #pragma unroll
-    for (int i = 0; i < (CU_DM_CSR_SHARED_ELEMENT/CU_DM_CSR_THREAD_Y); i++) {
-      if (csr_index < csr_end) {
-        if (VALUE_TYPE !=0) {
-          csr_val_sh[idx][idy + i*CU_DM_CSR_THREAD_Y] = csr_val[csr_index];
+  if (__any_sync(0xffffffff,csr_rem != 0)) {
+    if(csr_rem !=0) {
+      #pragma unroll
+      for (int i = 0; i < (CU_DM_CSR_SHARED_ELEMENT/CU_DM_CSR_THREAD_Y); i++) {
+        if (csr_index < csr_end) {
+          if (VALUE_TYPE !=0) {
+              csr_val_sh[idx][idy + i*CU_DM_CSR_THREAD_Y] = csr_val[csr_index];
+          }
+          csr_col_sh[idx][idy + i*CU_DM_CSR_THREAD_Y] = csr_col[csr_index];
         }
-        csr_col_sh[idx][idy + i*CU_DM_CSR_THREAD_Y] = csr_col[csr_index];
+        csr_index += CU_DM_CSR_THREAD_Y;
       }
-      csr_index += CU_DM_CSR_THREAD_Y;
     }
     __syncthreads();
-
-    #pragma unroll
-    for (int index = 0; index < csr_rem; index++) {
-      index_n = csr_col_sh[idx][index];
-      real b_r = VALUE_TYPE == 0 ? 1.0 : csr_val_sh[idx][index];
-      real *C_d_r = C_d + __mul24(index_m, dimN) + index_n;
-      index_m_t = index_m;
+    if(csr_rem !=0) {
       #pragma unroll
-      for (int n=0; n < CU_DM_CSR_N; n++) {
-        if (index_m_t++ < dimM) {
-          tmp = alpha * b_r * a_r[n];
-          paddle::paddleAtomicAdd(C_d_r, tmp);
-          C_d_r += dimN;
+      for (int index = 0; index < csr_rem; index++) {
+        index_n = csr_col_sh[idx][index];
+        real b_r = VALUE_TYPE == 0 ? 1.0 : csr_val_sh[idx][index];
+        real *C_d_r = C_d + __mul24(index_m, dimN) + index_n;
+        index_m_t = index_m;
+        #pragma unroll
+        for (int n=0; n < CU_DM_CSR_N; n++) {
+          if (index_m_t++ < dimM) {
+            tmp = alpha * b_r * a_r[n];
+            paddle::paddleAtomicAdd(C_d_r, tmp);
+            C_d_r += dimN;
+          }
         }
       }
     }

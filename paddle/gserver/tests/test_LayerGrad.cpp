@@ -196,7 +196,7 @@ void testProjectionConv(size_t groups, bool isDeconv) {
   const int IMAGE_SIZE = 16;
 
 #if CUDNN_VERSION >= 6000
-  const int DILATION = 2;
+  const int DILATION = 1;
 #else
   const int DILATION = 1;
 #endif

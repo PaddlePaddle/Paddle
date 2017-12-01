@@ -5,6 +5,7 @@ endif()
 set(paddle_known_gpu_archs "30 35 50 52 60 61 70")
 set(paddle_known_gpu_archs7 "30 35 50 52")
 set(paddle_known_gpu_archs8 "30 35 50 52 60 61")
+set(paddle_known_gpu_archs9 "52 60 61 70")
 
 ######################################################################################
 # A function for automatic detection of GPUs installed  (if autodetection is enabled)
@@ -150,6 +151,8 @@ elseif (${CUDA_VERSION} LESS 9.0) # CUDA 8.x
   # CUDA 8 may complain that sm_20 is no longer supported. Suppress the
   # warning for now.
   list(APPEND CUDA_NVCC_FLAGS "-Wno-deprecated-gpu-targets")
+else() # CUDA 9.0+
+  set(paddle_known_gpu_archs ${paddle_known_gpu_archs9})
 endif()
 
 include_directories(${CUDA_INCLUDE_DIRS})

@@ -34,6 +34,7 @@ function cmake_gen() {
     Configuring cmake in /paddle/build ...
         -DCMAKE_BUILD_TYPE=Release
         ${PYTHON_FLAGS}
+        -DWITH_DSO=ON
         -DWITH_DOC=OFF
         -DWITH_GPU=${WITH_GPU:-OFF}
         -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF}
@@ -56,6 +57,7 @@ EOF
     cmake .. \
         -DCMAKE_BUILD_TYPE=Release \
         ${PYTHON_FLAGS} \
+        -DWITH_DSO=ON \
         -DWITH_DOC=OFF \
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF} \
@@ -140,7 +142,7 @@ EOF
 function gen_dockerfile() {
     # Set BASE_IMAGE according to env variables
     if [[ ${WITH_GPU} == "ON" ]]; then
-    BASE_IMAGE="nvidia/cuda:8.0-cudnn5-runtime-ubuntu16.04"
+    BASE_IMAGE="nvcr.io/nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04"
     else
     BASE_IMAGE="ubuntu:16.04"
     fi
@@ -167,22 +169,21 @@ EOF
     if [[ ${WITH_GPU} == "ON"  ]]; then
         NCCL_DEPS="apt-get install -y libnccl-dev &&"
     else
-        NCCL_DEPS="" 
+        NCCL_DEPS=""
     fi
 
     cat >> /paddle/build/Dockerfile <<EOF
     ADD python/dist/*.whl /
     # run paddle version to install python packages first
     RUN apt-get update &&\
-        ${NCCL_DEPS}\
         apt-get install -y wget python-pip && pip install -U pip && \
         pip install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
         paddle version && \
         ldconfig
-    ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_GPU_ENV}
+    ENV NCCL_LAUNCH_MODE PARALLEL
     ADD go/cmd/pserver/pserver /usr/bin/
     ADD go/cmd/master/master /usr/bin/
     ADD paddle/pybind/print_operators_doc /usr/bin/

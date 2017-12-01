@@ -29,20 +29,25 @@ namespace platform {
 */
 template <typename Callable, typename... Args>
 inline void call_once(std::once_flag& flag, Callable&& f, Args&&... args) {
-  bool good = false;
+  bool good = true;
   std::exception ex;
-  std::call_once(flag,
-                 [&](Args&&... args) {
-                   try {
-                     f(args...);
-                     good = true;
-                   } catch (const std::exception& e) {
-                     ex = e;
-                   } catch (...) {
-                     ex = std::runtime_error("excption caught in call_once");
-                   }
-                 },
-                 args...);
+  try {
+    std::call_once(flag,
+                   [&](Args&&... args) {
+                     try {
+                       f(args...);
+                     } catch (const std::exception& e) {
+                       ex = e;
+                       good = false;
+                     } catch (...) {
+                       ex = std::runtime_error("excption caught in call_once");
+                       good = false;
+                     }
+                   },
+                   args...);
+  } catch (std::system_error& x) {
+    throw std::runtime_error("call once failed");
+  }
   if (!good) {
     throw std::exception(ex);
   }

@@ -1,6 +1,6 @@
 # A image for building paddle binaries
 # Use cuda devel base image for both cpu and gpu environment
-FROM nvidia/cuda:8.0-cudnn5-devel-ubuntu16.04
+FROM nvcr.io/nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
 ARG UBUNTU_MIRROR
@@ -22,7 +22,7 @@ COPY ./paddle/scripts/docker/root/ /root/
 
 RUN apt-get update && \
     apt-get install -y \
-    git python-pip python-dev openssh-server bison libnccl-dev \
+    git python-pip python-dev openssh-server bison\
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-matplotlib gcc-4.8 g++-4.8 \
