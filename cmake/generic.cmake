@@ -505,12 +505,12 @@ function(grpc_library TARGET_NAME)
   set_source_files_properties(
     ${grpc_grpc_srcs}
     PROPERTIES
-    COMPILE_FLAGS  "-Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+    COMPILE_FLAGS  "-Wnon-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
   cc_library("${TARGET_NAME}_grpc" SRCS "${grpc_grpc_srcs}")
 
   set_source_files_properties(
     ${grpc_library_SRCS}
     PROPERTIES
-    COMPILE_FLAGS  "-Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+    COMPILE_FLAGS  "-Wno-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
   cc_library("${TARGET_NAME}" SRCS "${grpc_library_SRCS}" DEPS "${TARGET_NAME}_grpc" "${TARGET_NAME}_proto" "${grpc_library_DEPS}")
 endfunction()
