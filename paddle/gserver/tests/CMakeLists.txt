@@ -62,11 +62,11 @@ if(NOT WITH_DOUBLE AND NOT MOBILE_INFERENCE)
 endif()
 
 if(NOT MOBILE_INFERENCE)
-################## test_Evaluator #######################
+    ################## test_Evaluator #######################
     add_unittest(test_Evaluator
         test_Evaluator.cpp)
       
-############### test_RecurrentGradientMachine ###############
+    ############### test_RecurrentGradientMachine ###############
     # TODO(yuyang18): There is some bug in test_RecurrentGradientMachine
     # I will fix it.
     add_unittest_without_exec(test_RecurrentGradientMachine
@@ -77,7 +77,7 @@ if(NOT MOBILE_INFERENCE)
                 ${CMAKE_CURRENT_BINARY_DIR}/test_RecurrentGradientMachine
         WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle)
       
-############### test_NetworkCompare ###############
+    ############### test_NetworkCompare ###############
     add_unittest_without_exec(test_NetworkCompare
         test_NetworkCompare.cpp)
     if(WITH_GPU)
@@ -89,34 +89,33 @@ if(NOT MOBILE_INFERENCE)
             COMMAND .set_python_path.sh -d ${PADDLE_SOURCE_DIR}/python ${CMAKE_CURRENT_BINARY_DIR}/test_NetworkCompare --use_gpu=false
             WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle)
     endif()
+
+    ################# test_CompareSparse ##################
+    add_unittest_without_exec(test_CompareSparse
+        test_CompareSparse.cpp)
+    if(NOT ON_TRAVIS)
+      add_test(NAME test_CompareSparse
+        COMMAND ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d
+              ${PADDLE_SOURCE_DIR}/python:${PADDLE_SOURCE_DIR}/paddle/gserver/tests
+                  ./.set_port.sh -p port -n 6
+                      ${CMAKE_CURRENT_BINARY_DIR}/test_CompareSparse
+        WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
+    endif()
+
+    ################ test_CompareTwoNets ######################
+    add_unittest_without_exec(test_CompareTwoNets
+        test_CompareTwoNets.cpp)
+    add_test(NAME test_CompareTwoNets
+      COMMAND ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d
+            ${PADDLE_SOURCE_DIR}/python:${PADDLE_SOURCE_DIR}/paddle/gserver/tests
+            ${CMAKE_CURRENT_BINARY_DIR}/test_CompareTwoNets
+        WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
 endif()
 
-
+################ test_PyDataProvider2 ######################
 add_unittest_without_exec(test_PyDataProvider2
         test_PyDataProvider2.cpp)
-
 add_test(NAME test_PyDataProvider2
    COMMAND .set_python_path.sh -d ${PADDLE_SOURCE_DIR}/paddle/gserver/tests:${PADDLE_SOURCE_DIR}/python ${CMAKE_CURRENT_BINARY_DIR}/test_PyDataProvider2
         WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle
 )
-
-################# test_CompareSparse ##################
-add_unittest_without_exec(test_CompareSparse
-    test_CompareSparse.cpp)
-if(NOT ON_TRAVIS)
-  add_test(NAME test_CompareSparse
-    COMMAND ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d
-          ${PADDLE_SOURCE_DIR}/python:${PADDLE_SOURCE_DIR}/paddle/gserver/tests
-              ./.set_port.sh -p port -n 6
-                  ${CMAKE_CURRENT_BINARY_DIR}/test_CompareSparse
-    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
-endif()
-
-################ test_CompareTwoNets ######################
-add_unittest_without_exec(test_CompareTwoNets
-    test_CompareTwoNets.cpp)
-add_test(NAME test_CompareTwoNets
-  COMMAND ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d
-        ${PADDLE_SOURCE_DIR}/python:${PADDLE_SOURCE_DIR}/paddle/gserver/tests
-        ${CMAKE_CURRENT_BINARY_DIR}/test_CompareTwoNets
-    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)

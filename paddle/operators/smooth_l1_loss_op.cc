@@ -22,22 +22,20 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "X must be initialized.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Y must be initialized.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
-    PADDLE_ENFORCE_EQ(x_dims, y_dims, "The shape of X and Y must be the same.");
+    PADDLE_ENFORCE_EQ(x_dims, y_dims);
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      "The tensor rank of X must be at least 2.");
+                      "The tensor rank of Input(X) should not be less than 2.");
     if (ctx->HasInput("InsideWeight")) {
       PADDLE_ENFORCE(ctx->HasInput("OutsideWeight"),
                      "If weights are provided, must specify both "
                      "inside and outside weights.");
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("InsideWeight"), x_dims,
-                        "The shape of InsideWeight must be same as X.");
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("OutsideWeight"), x_dims,
-                        "The shape of OutsideWeight must be same as X.");
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("InsideWeight"), x_dims);
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("OutsideWeight"), x_dims);
     }
 
     ctx->SetOutputDim("Diff", x_dims);
@@ -53,25 +51,29 @@ class SmoothL1LossOpMaker : public framework::OpProtoAndCheckerMaker {
                       framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
-             "The input tensor of smooth l1 loss op."
-             "The rank should be greater or equal to 2 with shape "
-             "[batch_size, value_dim1, value_dim2, ..., value_dimN]");
+             "(Tensor, default Tensor<float>) A tensor with rank at least 2. "
+             "The input value of smooth l1 loss op with shape "
+             "[batch_size, dim1, ..., dimN].");
     AddInput("Y",
-             "The target tensor of smooth l1 loss op "
-             "with the same shape as X.");
+             "(Tensor, default Tensor<float>) A tensor with rank at least 2. "
+             "The target value of smooth l1 loss op with same shape as X.");
     AddInput("InsideWeight",
-             "Optional input tensor of smooth l1 loss op with the same shape "
-             "as X. If provided, the result of (X - Y) will be multiplied "
+             "(Tensor, default Tensor<float>) A tensor with rank at least 2. "
+             "This input is optional and should have same shape with X. "
+             "If provided, the result of (X - Y) will be multiplied "
              "by this tensor element by element.")
         .AsDispensable();
     AddInput("OutsideWeight",
-             "Optinal input of smooth l1 loss op with the same shape as X."
-             "If provided, the output smooth l1 loss will be multiplied by "
-             "this tensor element by element.")
+             "(Tensor, default Tensor<float>) A tensor with rank at least 2. "
+             "This input is optional and should have same shape with X. "
+             "If provided, the out smooth l1 loss will be multiplied by this "
+             "tensor element by element.")
         .AsDispensable();
-    AddOutput("Diff", "Intermediate variable to cache InsideWeight*(X-Y).")
+    AddOutput("Diff", "Intermediate variable to cache InsideWeight * (X - Y).")
         .AsIntermediate();
-    AddOutput("Out", "Smooth l1 loss.");
+    AddOutput("Out",
+              "(Tensor, default Tensor<float>) A tensor with rank be 2. "
+              "The output smooth l1 loss with shape [batch_size, 1].");
     AddAttr<AttrType>("sigma",
                       "Hyper parameter of smooth l1 loss op."
                       "A float scalar with default value 3.0.")
@@ -79,15 +81,23 @@ class SmoothL1LossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Smooth L1 Loss Operator.
 
-This operator computes the smooth l1 loss for input and target.
-The operator takes the first dimension of input as the batch size.
+This operator computes the smooth l1 loss for X and Y.
+The operator takes the first dimension of X and Y as batch size.
 For each instance, it computes the smooth l1 loss element by element first
-and then sums all the losses. So the resulting output shape
-is [batch_size, 1].
+and then sums all the losses. So the shape of Out is [batch_size, 1].
 
 The equation is:
-loss = $$0.5 * (\sigma * (x-y))^2$$   if $$|x - y| < 1 /({\sigma}^2)$$
-       $$\frac{|x - y| - 0.5}{{\sigma}^2}$$ otherwise
+$$
+Out_{\sigma}(X, Y)_i = \begin{cases}
+0.5 * (\sigma * (X_i - Y_i)) ^ 2
+\quad |X_i - Y_i| \lt \frac{1} {{\sigma} ^ 2} \\
+\frac{|X_i - Y_i| - 0.5}{{\sigma}^2},
+\quad otherwise
+\end{cases}
+$$
+
+In the above equation, $Out_{\sigma}(X, Y)_i$, $X_i$ and $Y_i$ represent the ith
+element of Out, X and Y.
 
 )DOC");
   }
