@@ -190,7 +190,7 @@ __global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
       for (int w = 0; w < context_length; w++) {
         sh_dout[thx * block_y + thy] =
             (d < input_dim && (k - w) >= 0 && (k - w) < current_timesteps)
-                ? dout[(pos - w) * width + d]
+                ? dout[(pos - w) * input_dim + d]
                 : 0.0;
         __syncthreads();
 
@@ -198,7 +198,7 @@ __global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
         __syncthreads();
 
         for (int offset = 16; offset > 0;
-             offset = offset / 2) {  // warp size and blockDim.x is 32.
+             offset = offset / 2) {  // blockDim.x is 32.
           val += __shfl_down(val, offset);
         }
         __syncthreads();
