@@ -223,10 +223,11 @@ class RowConvGradKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
 
         for (int k = 0; k < current_timesteps;
              k++) {  // For different time steps in the same sequence
-          for (int w = 0; (w < context_length) && ((k - w) >= 0); w++) {
+          for (int w = 0; (w < context_length) && ((k + w) < current_timesteps);
+               w++) {
             // For dinput (Updating the gradient wrt input)
             for (int d = 0; d < input_dim; d++) {
-              cur_dip(k, d) += weights(w, d) * cur_dout(k - w, d);
+              cur_dip(k + w, d) += weights(w, d) * cur_dout(k, d);
             }
           }
         }
