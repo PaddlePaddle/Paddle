@@ -1,17 +1,19 @@
 from __future__ import print_function
-from framework import Variable
+
 import core
-import layers
 import numpy
 import six.moves as six
 
+from framework import Variable
+
+__all__ = ['DataFeeder']
+
 
 class DataToLoDTensorConverter(object):
-    def __init__(self, place, lod_level, shape, batch_size_dim, dtype):
+    def __init__(self, place, lod_level, shape, dtype):
         self.place = place
         self.lod_level = lod_level
         self.shape = shape
-        self.batch_size_dim = batch_size_dim
         if dtype == core.DataType.FP32:
             self.dtype = 'float32'
         elif dtype == core.DataType.INT64:
@@ -69,7 +71,7 @@ class DataFeeder(object):
                 raise ValueError("Variable {0} must has a batch size dimension",
                                  each_var.name)
             self.feed_lod_level.append(each_var.lod_level)
-            self.feed_shapes.append((batch_size_dim, shape))
+            self.feed_shapes.append(shape)
 
         self.place = place
 
@@ -77,13 +79,11 @@ class DataFeeder(object):
         converter = []
         for lod_level, shape, dtype in six.zip(
                 self.feed_lod_level, self.feed_shapes, self.feed_dtypes):
-            batch_size_dim, shape = shape
             converter.append(
                 DataToLoDTensorConverter(
                     place=self.place,
                     lod_level=lod_level,
                     shape=shape,
-                    batch_size_dim=batch_size_dim,
                     dtype=dtype))
 
         for each_sample in iterable:
