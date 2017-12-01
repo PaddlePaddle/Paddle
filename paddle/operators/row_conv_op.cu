@@ -39,8 +39,10 @@ __global__ void RowConvForwardSharedMemory(const T *in, const T *wt,
   int d = blockIdx.x * blx + thx;  // index along input dim
 
   extern __shared__ T mem[];
+  T *sw = mem;
+
   if (thy < context_length) {
-    mem[thy * blx + thx] = (d < input_dim) ? wt[thy * input_dim + d] : 0.0;
+    sw[thy * blx + thx] = (d < input_dim) ? wt[thy * input_dim + d] : 0.0;
   }
   __syncthreads();
 
@@ -53,7 +55,7 @@ __global__ void RowConvForwardSharedMemory(const T *in, const T *wt,
       for (int w = 0; (w < context_length) && ((k + w) < current_timesteps);
            w++) {
         sum += (d < input_dim)
-                   ? mem[w * blx + thx] * in[(start + k + w) * input_dim + d]
+                   ? sw[w * blx + thx] * in[(start + k + w) * input_dim + d]
                    : 0;
       }
       if (d < input_dim) {
