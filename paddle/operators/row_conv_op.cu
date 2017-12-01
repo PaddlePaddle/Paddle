@@ -26,7 +26,7 @@ namespace {
 
 inline int DivUp(int x, int y) { return (x + y - 1) / y; }
 
-// Forward prop (shared memory version)
+// Forward prop (shared memory version, for small context_length)
 template <typename T>
 __global__ void RowConvForwardSharedMemory(const T *in, const T *wt,
                                            int num_sequence, int input_dim,
@@ -93,7 +93,7 @@ __global__ void RowConvForward(const T *in, const T *wt, int num_sequence,
   }
 }
 
-// Compute input gradient (shared memory version)
+// Compute input gradient (shared memory version, for small context_length)
 template <typename T>
 __global__ void RowConvGradInputSharedMemory(const T *dout, const T *wt,
                                              int num_sequence, int input_dim,
@@ -121,9 +121,9 @@ __global__ void RowConvGradInputSharedMemory(const T *dout, const T *wt,
     for (int k = thy; k < current_timesteps; k += bly) {
       T sum = 0;
       for (int w = 0; (w < context_length) && ((k - w) >= 0); w++) {
-        sum += (d < input_dim) ? (sw[w * input_dim + thx] *
-                                  dout[(k + start - w) * input_dim + d])
-                               : static_cast<T>(0);
+        sum += (d < input_dim)
+                   ? (sw[w * blx + thx] * dout[(k + start - w) * input_dim + d])
+                   : static_cast<T>(0);
       }
       if (d < input_dim) {
         din[(k + start) * input_dim + d] = sum;
@@ -203,7 +203,6 @@ class RowConvKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     int num_sequence = batch_indices.size() - 1;
     int context_length = Filter->dims()[0];
     size_t *idx = batch_indices.data();
-
     auto stream = context.cuda_device_context().stream();
 
     if (context_length <= 32) {
@@ -213,7 +212,6 @@ class RowConvKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
       RowConvForwardSharedMemory<
           T><<<grid_dim, block_dim, mem_per_block, stream>>>(
           in, weight, num_sequence, input_dim, context_length, idx, out);
-
     } else {
       dim3 block_dim = dim3(32, 32);
       dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
@@ -261,7 +259,6 @@ class RowConvGradKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
 
     if (dX) {
       T *din = dX->mutable_data<T>(context.GetPlace());
-
       if (context_length <= 32) {
         dim3 block_dim = dim3(32, 32);
         dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
@@ -269,7 +266,6 @@ class RowConvGradKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
         RowConvGradInputSharedMemory<
             T><<<grid_dim, block_dim, mem_per_block, device_ctx.stream()>>>(
             dout, weights, num_sequence, input_dim, context_length, idx, din);
-
       } else {
         dim3 block_dim = dim3(32, 32);
         dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);

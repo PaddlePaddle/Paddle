@@ -61,9 +61,9 @@ class TestRowConvOp2(OpTest):
     def setUp(self):
 
         self.op_type = "row_conv"
-        lod = [[0, 20, 50, 70]]
+        lod = [[0, 20, 50, 100]]
         T = lod[0][-1]
-        D = 200
+        D = 100
         context_length = 45
 
         x = np.random.random((T, D)).astype("float32")
