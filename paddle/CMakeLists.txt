@@ -24,6 +24,7 @@ else()
     add_subdirectory(framework)
     add_subdirectory(operators)
     add_subdirectory(pybind)
+    add_subdirectory(timer)
   endif()
 
   if(WITH_SWIG_PY)
