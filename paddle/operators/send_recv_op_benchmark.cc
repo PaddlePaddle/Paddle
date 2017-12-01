@@ -30,13 +30,15 @@ USE_OP(sum);
 
 // global for simplicity.
 std::unique_ptr<paddle::framework::OperatorBase> recv_op;
+int benchmark_count = 100000;
+int mat_size = 10;
 
 void InitTensorsInScope(paddle::framework::Scope &scope,
                         paddle::platform::CPUPlace &place) {
   paddle::platform::CPUDeviceContext ctx(place);
   auto var = scope.Var("X");
   auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
-  tensor->Resize({10, 10});
+  tensor->Resize({mat_size, mat_size});
   float *expect = tensor->mutable_data<float>(place);
   for (int64_t i = 0; i < tensor->numel(); ++i) {
     expect[i] = static_cast<float>(i) / 1000.0f;
@@ -44,7 +46,7 @@ void InitTensorsInScope(paddle::framework::Scope &scope,
 
   auto out_var = scope.Var("Out");
   auto out_tensor = out_var->GetMutable<paddle::framework::LoDTensor>();
-  out_tensor->Resize({10, 10});
+  out_tensor->Resize({mat_size, mat_size});
   tensor->mutable_data<float>(place);  // allocate
 }
 
@@ -90,14 +92,12 @@ void StartServerNet() {
   recv_op = paddle::framework::OpRegistry::CreateOp("recv", {{"RX", {"RX"}}},
                                                     {{"Out", {"Out"}}}, attrs);
   paddle::platform::CPUDeviceContext ctx(place);
-  while (1) {
+  for (int i = 0; i < benchmark_count; ++i) {
     recv_op->Run(scope, ctx);
-    // run once
-    break;
   }
 }
 
-TEST(SendRecvOp, CPU) {
+TEST(SendRecvBenchmark, CPU) {
   std::thread server_thread(StartServerNet);
   sleep(5);  // wait server to start
   // local net
@@ -111,20 +111,11 @@ TEST(SendRecvOp, CPU) {
   auto send_op = paddle::framework::OpRegistry::CreateOp(
       "send", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
   paddle::platform::CPUDeviceContext ctx(place);
-  send_op->Run(scope, ctx);
 
-  auto in_var = scope.Var("X");
-  auto tensor = in_var->GetMutable<paddle::framework::LoDTensor>();
-  float *expected = tensor->data<float>();
-
-  auto out_var = scope.Var("Out");
-  auto target = out_var->GetMutable<paddle::framework::LoDTensor>();
-  // send fail cause output is none.
-  EXPECT_NE(target->memory_size(), size_t(0));
-  float *actual = target->data<float>();
-  for (int64_t i = 0; i < target->numel(); ++i) {
-    EXPECT_EQ(expected[i] * 2, actual[i]);
+  for (int i = 0; i < benchmark_count; ++i) {
+    send_op->Run(scope, ctx);
   }
+
   recv_op.reset();  // dtor can shutdown and join server thread.
   server_thread.join();
 }
