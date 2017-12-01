@@ -81,6 +81,8 @@ if(ANDROID OR IOS)
         "Disable RDMA when cross-compiling for Android and iOS" FORCE)
     set(WITH_MKL OFF CACHE STRING
         "Disable MKL when cross-compiling for Android and iOS" FORCE)
+    set(WITH_GOLANG OFF CACHE STRING
+        "Disable golang when cross-compiling for Android and iOS" FORCE)
 
     # Compile PaddlePaddle mobile inference library
     if (NOT WITH_C_API)
