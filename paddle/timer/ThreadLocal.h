@@ -25,6 +25,9 @@ limitations under the License. */
 #include "glog/logging.h"
 
 namespace paddle {
+namespace framework {
+
+pid_t getTID();
 
 /**
  * Thread local storage for object.
@@ -226,4 +229,5 @@ protected:
   static ThreadLocal<std::default_random_engine> engine_;
 };
 
+}  // namespace framework
 }  // namespace paddle

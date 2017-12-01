@@ -22,6 +22,7 @@ DEFINE_bool(thread_local_rand_use_global_seed,
             "Whether to use global seed in thread local rand.");
 
 namespace paddle {
+namespace framework {
 
 unsigned int ThreadLocalRand::defaultSeed_ = 1;
 ThreadLocal<unsigned int> ThreadLocalRand::seed_;
@@ -57,4 +58,22 @@ std::default_random_engine& ThreadLocalRandomEngine::get() {
   return *engine;
 }
 
+pid_t getTID() {
+#if defined(__APPLE__) || defined(__OSX__)
+  // syscall is deprecated: first deprecated in macOS 10.12.
+  // syscall is unsupported;
+  // syscall pid_t tid = syscall(SYS_thread_selfid);
+  uint64_t tid;
+  pthread_threadid_np(NULL, &tid);
+#else
+#ifndef __NR_gettid
+#define __NR_gettid 224
+#endif
+  pid_t tid = syscall(__NR_gettid);
+#endif
+  CHECK_NE((int)tid, -1);
+  return tid;
+}
+
+}  // namespace framework
 }  // namespace paddle

@@ -27,6 +27,8 @@ limitations under the License. */
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/scope.h"
 
+#include "paddle/timer/Stat.h"
+
 namespace paddle {
 namespace framework {
 
@@ -59,6 +61,10 @@ Executor::~Executor() {
       delete device_context;
     }
   }
+  LOG(INFO) << "============";
+  FOR_TIMING(globalStat.setThreadInfo(true));
+  FOR_TIMING(globalStat.printAllStatus());
+  FOR_TIMING(globalStat.reset());
 }
 
 static void CreateTensor(Variable* var, VarDesc::VarType var_type) {
@@ -86,6 +92,7 @@ static void CreateTensor(Variable* var, VarDesc::VarType var_type) {
 
 void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id,
                    bool create_local_scope) {
+  REGISTER_TIMER("ExecutorRunTimer");
   // TODO(tonyyang-svail):
   //    - only runs on the first device (i.e. no interdevice communication)
   //    - will change to use multiple blocks for RNN op and Cond Op
@@ -95,6 +102,7 @@ void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id,
 
   Scope* local_scope = scope;
   if (create_local_scope) {
+    REGISTER_TIMER("CreateLocalScopeTimer");
     local_scope = &scope->NewScope();
     for (auto& var : block.AllVars()) {
       if (var->Persistable()) {
@@ -110,6 +118,7 @@ void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id,
       }
     }
   } else {
+    REGISTER_TIMER("CreateTensorTimer");
     for (auto& var : block.AllVars()) {
       auto* ptr = local_scope->Var(var->Name());
       CreateTensor(ptr, var->GetType());
@@ -119,11 +128,23 @@ void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id,
   }
 
   for (auto& op_desc : block.AllOps()) {
-    auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
+    std::unique_ptr<OperatorBase> op;
+
+    {
+      REGISTER_TIMER("CreateOpTimer");
+      op = paddle::framework::OpRegistry::CreateOp(*op_desc);
+    }
+
+    auto name = op->Type();
+    auto stat = getStat(name);
+    TimerOnce timer(stat.get(), name.c_str(), 10 * 1000000LU);
+
     VLOG(3) << op->DebugString();
     op->Run(*local_scope, *device);
   }
+
   if (create_local_scope) {
+    REGISTER_TIMER("DeleteLocalScopeTimer");
     scope->DeleteScope(local_scope);
   }
 }

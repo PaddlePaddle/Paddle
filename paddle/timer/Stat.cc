@@ -17,6 +17,7 @@ limitations under the License. */
 #include <iomanip>
 
 namespace paddle {
+namespace framework {
 
 StatSet globalStat("GlobalStatInfo");
 
@@ -144,4 +145,5 @@ StatInfo::~StatInfo() {
   }
 }
 
+}  // namespace framework
 }  // namespace paddle
