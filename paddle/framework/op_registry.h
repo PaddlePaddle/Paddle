@@ -223,23 +223,25 @@ class OpKernelRegistrar : public Registrar {
 // TODO(fengjiayi): The following macros
 // seems ugly, do we have better method?
 
+#define MIN_PRIORITY 0
+
 #ifndef PADDLE_WITH_CUDA
-#define USE_OP_KERNEL(op_type) USE_OP_DEVICE_KERNEL(op_type, CPU)
+#define USE_OP_KERNEL(op_type) USE_OP_DEVICE_KERNEL(op_type, CPU, MIN_PRIORITY)
 #else
-#define USE_OP_KERNEL(op_type)        \
-  USE_OP_DEVICE_KERNEL(op_type, CPU); \
-  USE_OP_DEVICE_KERNEL(op_type, GPU)
+#define USE_OP_KERNEL(op_type)                      \
+  USE_OP_DEVICE_KERNEL(op_type, CPU, MIN_PRIORITY); \
+  USE_OP_DEVICE_KERNEL(op_type, GPU, MIN_PRIORITY)
 #endif
 
 #define USE_NO_KERNEL_OP(op_type) USE_OP_ITSELF(op_type);
 
 #define USE_CPU_ONLY_OP(op_type) \
   USE_OP_ITSELF(op_type);        \
-  USE_OP_DEVICE_KERNEL(op_type, CPU);
+  USE_OP_DEVICE_KERNEL(op_type, CPU, MIN_PRIORITY);
 
 #define USE_GPU_ONLY_OP(op_type) \
   USE_OP_ITSELF(op_type);        \
-  USE_OP_DEVICE_KERNEL(op_type, GPU)
+  USE_OP_DEVICE_KERNEL(op_type, GPU, MIN_PRIORITY)
 
 #define USE_OP(op_type)   \
   USE_OP_ITSELF(op_type); \
