@@ -31,21 +31,21 @@ gserver_test(test_MaxPoolingWithMaskOutput)
 set(PYTHON_PATH 
    ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d 
    ${PADDLE_SOURCE_DIR}/python/:${PADDLE_SOURCE_DIR}/paddle/gserver/tests)
-function(gserver_test2 TARGET)
+function(gserver_test_with_python TARGET)
   add_unittest_without_exec(${TARGET} ${TARGET}.cpp)
   add_test(NAME ${TARGET}
     COMMAND ${PYTHON_PATH} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}
       WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle/)
 endfunction()
 
-gserver_test2(test_PyDataProvider2)
+gserver_test_with_python(test_PyDataProvider2)
 if(WITH_PYTHON)
-    gserver_test2(test_PyDataProvider)
+    gserver_test_with_python(test_PyDataProvider)
 endif()
 if(NOT MOBILE_INFERENCE)
-    gserver_test2(test_CompareTwoNets)
+    gserver_test_with_python(test_CompareTwoNets)
     # TODO(yuyang18): There is some bug in test_RecurrentGradientMachine, I will fix it.
-    gserver_test2(test_RecurrentGradientMachine)
+    gserver_test_with_python(test_RecurrentGradientMachine)
 endif()
 
 ########## test_MKLDNN layers and activations ##########
