@@ -224,6 +224,7 @@ class OpKernelRegistrar : public Registrar {
 // seems ugly, do we have better method?
 
 #define MIN_PRIORITY 0
+#define MAX_PRIORITY 7
 
 #ifndef PADDLE_WITH_CUDA
 #define USE_OP_KERNEL(op_type) USE_OP_DEVICE_KERNEL(op_type, CPU, MIN_PRIORITY)
