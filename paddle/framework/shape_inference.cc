@@ -22,6 +22,12 @@ std::vector<framework::DDim> InferShapeContext::GetInputsDim(
   return GetDims(names);
 }
 
+DDim InferShapeContext::GetInputsElementDim(const std::string &name,
+                                            int idx) const {
+  const std::vector<std::string> &names = Inputs(name);
+  return this->GetDim(names[idx]);
+}
+
 void InferShapeContext::SetOutputsDim(
     const std::string &name, const std::vector<framework::DDim> &dims) {
   auto &names = Outputs(name);

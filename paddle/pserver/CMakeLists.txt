@@ -49,7 +49,7 @@ if(WITH_TESTING)
   add_subdirectory(test)
 endif()
 
-if(NOT WITH_C_API)
+if(NOT MOBILE_INFERENCE)
   add_executable(paddle_pserver_main ${PSERVER_MAIN_SOURCES})
   link_paddle_exe(paddle_pserver_main)
 
