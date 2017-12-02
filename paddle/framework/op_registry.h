@@ -82,37 +82,41 @@ class OpRegistry {
   static std::unique_ptr<OperatorBase> CreateOp(const OpDescBind& op_desc);
 };
 
-template <typename PlaceType, bool at_end, size_t I, typename... KernelType>
+template <typename PlaceType, size_t priority, bool at_end, size_t I,
+          typename... KernelType>
 struct OpKernelRegistrarFunctor;
 
-template <typename PlaceType, size_t I, typename... KernelTypes>
-struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
+template <typename PlaceType, size_t priority, size_t I,
+          typename... KernelTypes>
+struct OpKernelRegistrarFunctor<PlaceType, priority, false, I, KernelTypes...> {
   using KERNEL_TYPE =
       typename std::tuple_element<I, std::tuple<KernelTypes...>>::type;
 
   void operator()(const char* op_type) const {
     using T = typename KERNEL_TYPE::ELEMENT_TYPE;
-    OpKernelType key(ToDataType(std::type_index(typeid(T))), PlaceType());
+    OpKernelType key(ToDataType(std::type_index(typeid(T))), PlaceType(),
+                     priority);
     OperatorWithKernel::AllOpKernels()[op_type][key].reset(new KERNEL_TYPE);
 
     constexpr auto size = std::tuple_size<std::tuple<KernelTypes...>>::value;
-    OpKernelRegistrarFunctor<PlaceType, I + 1 == size, I + 1, KernelTypes...>
+    OpKernelRegistrarFunctor<PlaceType, priority, I + 1 == size, I + 1,
+                             KernelTypes...>
         func;
     func(op_type);
   }
 };
 
-template <typename PlaceType, size_t I, typename... KernelType>
-struct OpKernelRegistrarFunctor<PlaceType, true, I, KernelType...> {
+template <typename PlaceType, size_t priority, size_t I, typename... KernelType>
+struct OpKernelRegistrarFunctor<PlaceType, priority, true, I, KernelType...> {
   void operator()(const char* op_type) const {}
 };
 
 // User can register many kernel in one place. The data type could be different.
-template <typename PlaceType, typename... KernelType>
+template <typename PlaceType, size_t priority, typename... KernelType>
 class OpKernelRegistrar : public Registrar {
  public:
   explicit OpKernelRegistrar(const char* op_type) {
-    OpKernelRegistrarFunctor<PlaceType, false, 0, KernelType...> func;
+    OpKernelRegistrarFunctor<PlaceType, priority, false, 0, KernelType...> func;
     func(op_type);
   }
 };
@@ -170,22 +174,28 @@ class OpKernelRegistrar : public Registrar {
 /**
  * Macro to register OperatorKernel.
  */
-#define REGISTER_OP_KERNEL(op_type, DEVICE_TYPE, place_class, ...)        \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \
-      __reg_op_kernel_##op_type##_##DEVICE_TYPE##__,                      \
-      "REGISTER_OP_KERNEL must be called in global namespace");           \
-  static ::paddle::framework::OpKernelRegistrar<place_class, __VA_ARGS__> \
-      __op_kernel_registrar_##op_type##_##DEVICE_TYPE##__(#op_type);      \
-  int TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE() {                \
-    __op_kernel_registrar_##op_type##_##DEVICE_TYPE##__.Touch();          \
-    return 0;                                                             \
+#define REGISTER_OP_KERNEL(op_type, DEVICE_TYPE, place_class, priority, ...)  \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                             \
+      __reg_op_kernel_##op_type##_##DEVICE_TYPE##_##priority##__,             \
+      "REGISTER_OP_KERNEL must be called in global namespace");               \
+  static ::paddle::framework::OpKernelRegistrar<place_class, priority,        \
+                                                __VA_ARGS__>                  \
+      __op_kernel_registrar_##op_type##_##DEVICE_TYPE##_##priority##__(       \
+          #op_type);                                                          \
+  int TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE##_##priority##__() {   \
+    __op_kernel_registrar_##op_type##_##DEVICE_TYPE##_##priority##__.Touch(); \
+    return 0;                                                                 \
   }
 
 #define REGISTER_OP_GPU_KERNEL(op_type, ...) \
-  REGISTER_OP_KERNEL(op_type, GPU, ::paddle::platform::GPUPlace, __VA_ARGS__)
+  REGISTER_OP_KERNEL(op_type, GPU, ::paddle::platform::GPUPlace, 0, __VA_ARGS__)
 
 #define REGISTER_OP_CPU_KERNEL(op_type, ...) \
-  REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)
+  REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUPlace, 0, __VA_ARGS__)
+
+#define REGISTER_OP_GPU_KERNEL_WITH_PRIORITY(op_type, priority, ...)       \
+  REGISTER_OP_KERNEL(op_type, GPU, ::paddle::platform::GPUPlace, priority, \
+                     __VA_ARGS__)
 
 /**
  * Macro to mark what Operator and Kernel
@@ -200,14 +210,15 @@ class OpKernelRegistrar : public Registrar {
   static int use_op_itself_##op_type##_ __attribute__((unused)) = \
       TouchOpRegistrar_##op_type()
 
-#define USE_OP_DEVICE_KERNEL(op_type, DEVICE_TYPE)               \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                \
-      __use_op_kernel_##op_type##_##DEVICE_TYPE##__,             \
-      "USE_OP_DEVICE_KERNEL must be in global namespace");       \
-  extern int TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE(); \
-  static int use_op_kernel_##op_type##_##DEVICE_TYPE##_          \
-      __attribute__((unused)) =                                  \
-          TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE()
+#define USE_OP_DEVICE_KERNEL(op_type, DEVICE_TYPE, priority)               \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
+      __use_op_kernel_##op_type##_##DEVICE_TYPE##_##priority##__,          \
+      "USE_OP_DEVICE_KERNEL must be in global namespace");                 \
+  extern int                                                               \
+      TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE##_##priority##__(); \
+  static int use_op_kernel_##op_type##_##DEVICE_TYPE##_##priority##_       \
+      __attribute__((unused)) =                                            \
+          TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE##_##priority##__()
 
 // TODO(fengjiayi): The following macros
 // seems ugly, do we have better method?

@@ -95,18 +95,18 @@ class NCEKernel : public framework::OpKernel<T> {
     auto bias = context.Input<Tensor>("Bias");
     if (bias != nullptr) {
       const T* bias_data = bias->data<T>();
-      for (size_t i = 0; i < sample_labels->numel(); ++i) {
+      for (int64_t i = 0; i < sample_labels->numel(); ++i) {
         sample_out_data[i] = bias_data[sample_labels_data[i]];
       }
     } else {
-      for (size_t i = 0; i < sample_labels->numel(); ++i) {
+      for (int64_t i = 0; i < sample_labels->numel(); ++i) {
         sample_out_data[i] = 0;
       }
     }
     // forward mul
     auto input_mat = EigenMatrix<T>::From(*(context.Input<Tensor>("Input")));
     auto weight_mat = EigenMatrix<T>::From(*(context.Input<Tensor>("Weight")));
-    for (size_t i = 0; i < sample_labels->numel(); ++i) {
+    for (int64_t i = 0; i < sample_labels->numel(); ++i) {
       Eigen::Tensor<T, 0, Eigen::RowMajor, Eigen::DenseIndex> result =
           (input_mat.chip((int)(i / sample_labels->dims()[1]), 0) *
            weight_mat.chip(sample_labels_data[i], 0))
@@ -162,7 +162,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
     T* sample_grad_data =
         sample_grad.mutable_data<T>(sample_labels->dims(), context.GetPlace());
     // backward cost
-    for (size_t i = 0; i < sample_labels->numel(); ++i) {
+    for (int64_t i = 0; i < sample_labels->numel(); ++i) {
       T o = sample_out_data[i];
       T w = sample_weight == nullptr
                 ? 1
@@ -177,7 +177,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
     if (d_bias != nullptr) {
       T* d_bias_data = d_bias->mutable_data<T>(context.GetPlace());
       std::fill(d_bias_data, d_bias_data + d_bias->numel(), 0.0);
-      for (size_t i = 0; i < sample_labels->numel(); ++i) {
+      for (int64_t i = 0; i < sample_labels->numel(); ++i) {
         d_bias_data[sample_labels_data[i]] += sample_grad_data[i];
       }
     }
@@ -188,7 +188,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
       std::fill(d_w_data, d_w_data + d_w->numel(), 0.0);
       auto d_w_matrix = EigenMatrix<T>::From(*d_w);
       auto x_matrix = EigenMatrix<T>::From(*(context.Input<Tensor>("Input")));
-      for (size_t i = 0; i < sample_labels->numel(); ++i) {
+      for (int64_t i = 0; i < sample_labels->numel(); ++i) {
         d_w_matrix.chip(sample_labels_data[i], 0) +=
             x_matrix.chip((int)(i / sample_labels->dims()[1]), 0) *
             sample_grad_data[i];
@@ -200,7 +200,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
       d_x->mutable_data<T>(context.GetPlace());
       auto d_x_matrix = EigenMatrix<T>::From(*d_x);
       auto w_matrix = EigenMatrix<T>::From(*(context.Input<Tensor>("Weight")));
-      for (size_t i = 0; i < sample_labels->numel(); ++i) {
+      for (int64_t i = 0; i < sample_labels->numel(); ++i) {
         d_x_matrix.chip((int)(i / sample_labels->dims()[1]), 0) +=
             w_matrix.chip(sample_labels_data[i], 0) * sample_grad_data[i];
       }
