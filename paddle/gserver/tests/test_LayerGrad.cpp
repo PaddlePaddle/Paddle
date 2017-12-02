@@ -238,9 +238,24 @@ void testProjectionConv(size_t groups, bool isDeconv) {
                             /* caffeMode */ true);
   conv->set_output_x(output_x);
   conv->set_output_y(output_y);
+  LOG(INFO) << "DILATION:" << DILATION << "; output_x: " << output_x
+            << "; output_y: " << output_y;
   if (isDeconv) {
+    int deconv_image_x = imageSize(output_x,
+                                   (conv->filter_size() - 1) * DILATION + 1,
+                                   conv->padding(),
+                                   conv->stride(),
+                                   /* caffeMode */ true);
+    int deconv_image_y = imageSize(output_y,
+                                   (conv->filter_size_y() - 1) * DILATION + 1,
+                                   conv->padding_y(),
+                                   conv->stride_y(),
+                                   /* caffeMode */ true);
+
+    LOG(INFO) << " deconv_image_x: " << deconv_image_x
+              << "; deconv_image_y: " << deconv_image_y;
     conf.set_input_size(output_x * output_y * CHANNELS);
-    conf.set_output_size(IMAGE_SIZE * IMAGE_SIZE * NUM_FILTERS);
+    conf.set_output_size(deconv_image_x * deconv_image_y * NUM_FILTERS);
   } else {
     conf.set_input_size(IMAGE_SIZE * IMAGE_SIZE * CHANNELS);
     conf.set_output_size(output_x * output_y * NUM_FILTERS);
@@ -260,11 +275,11 @@ void testProjectionConv(size_t groups, bool isDeconv) {
 #ifdef PADDLE_WITH_CUDA
 TEST(Projection, conv) {
   /// test ConvProjection
-  testProjectionConv(1, false);
-  testProjectionConv(3, false);
+  // testProjectionConv(1, false);
+  // testProjectionConv(3, false);
   /// test ConvTransProjection
   testProjectionConv(1, true);
-  testProjectionConv(3, true);
+  // testProjectionConv(3, true);
 }
 #endif
 
