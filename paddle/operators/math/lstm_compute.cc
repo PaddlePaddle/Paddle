@@ -30,12 +30,12 @@ struct LstmUnitFunctor<platform::CPUPlace, T> {
       detail::cpu_lstm_forward(detail::forward::lstm<T>(), value, frame_size,
                                ActiveType(cand_act), ActiveType(gate_act),
                                ActiveType(cell_act));
-      value.gateValue += frame_size * 4;
-      value.stateValue += frame_size;
-      value.stateActiveValue += frame_size;
-      value.outputValue += frame_size;
-      if (value.prevStateValue) {
-        value.prevStateValue += frame_size;
+      value.gate_value += frame_size * 4;
+      value.state_value += frame_size;
+      value.state_active_value += frame_size;
+      value.output_value += frame_size;
+      if (value.prev_state_value) {
+        value.prev_state_value += frame_size;
       }
     }
   }
@@ -53,20 +53,20 @@ struct LstmUnitGradFunctor<platform::CPUPlace, T> {
                                 frame_size, ActiveType(cand_act),
                                 ActiveType(gate_act), ActiveType(cell_act));
 
-      value.gateValue += frame_size * 4;
-      value.stateValue += frame_size;
-      value.stateActiveValue += frame_size;
-      value.outputValue += frame_size;
-      if (value.prevStateValue) {
-        value.prevStateValue += frame_size;
+      value.gate_value += frame_size * 4;
+      value.state_value += frame_size;
+      value.state_active_value += frame_size;
+      value.output_value += frame_size;
+      if (value.prev_state_value) {
+        value.prev_state_value += frame_size;
       }
 
-      grad.gateGrad += frame_size * 4;
-      grad.stateGrad += frame_size;
-      grad.stateActiveGrad += frame_size;
-      grad.outputGrad += frame_size;
-      if (grad.prevStateGrad) {
-        grad.prevStateGrad += frame_size;
+      grad.gate_grad += frame_size * 4;
+      grad.state_grad += frame_size;
+      grad.state_active_grad += frame_size;
+      grad.output_grad += frame_size;
+      if (grad.prev_state_grad) {
+        grad.prev_state_grad += frame_size;
       }
     }
   }
