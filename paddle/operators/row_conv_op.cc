@@ -97,16 +97,13 @@ class RowConvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Row-convolution Operator.
 
-Give paper reference: 
+This operator was introduced in http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf
+Given an input sequence $in$ of length $t$ and input dimension $d$, and a filter ($W$) of size $context \times d$, 
+the output sequence is convolved in the following manner:
 
-The equation is:
-
-$$Out[i] = \sum_{j=-(N-1)/2}^{(N-1)/2} X_{i+j} * Y_{j}$$
-
-where X's index is computed modulo M, and Y's index is computed modulo N.
-
-Both inputs X and Y can carry LoD (Level of Details) information.
-However, the output only shares the LoD information with input X.
+$$
+out_{i, :} = \sum_{j=i}^{i + context} in_{j,:} \dot W_{i-j, :}
+$$
 
 )DOC");
   }
