@@ -37,11 +37,11 @@ class TestSppOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', max_relative_error=0.05)
 
     def init_test_case(self):
-        self.shape = [1, 1, 2, 2]
-        self.pyramid_height = 2
+        self.shape = [3, 2, 4, 4]
+        self.pyramid_height = 3
 
 
 if __name__ == '__main__':

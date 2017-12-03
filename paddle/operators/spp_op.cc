@@ -29,27 +29,21 @@ class SppOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor) The output tensor of spp operator."
               "N * M."
               "M = C * H * W");
-    AddAttr<int>("pyramid_height", ">= 1");
+    AddAttr<int>("pyramid_height", "int");
     AddComment(R"DOC(
-        "Input shape: $(N, C_{in}, H_{in}, W_{in})$
+        "Does spatial pyramid pooling on the input image by taking the max,
+        etc. within regions so that the result vector of different sized
+        images are of the same size
+        Input shape: $(N, C_{in}, H_{in}, W_{in})$
         Output shape: $(H_{out}, W_{out})$
         Where
           $$
-            H_{out} = (H_{in}−1) * strides[0] − 2 * paddings[0] + ksize[0] \\
-            W_{out} = (W_{in}−1) * strides[1] − 2 * paddings[1] + ksize[1]
+            H_{out} = N \\
+            W_{out} = ((std::pow(4, pyramid_height) - 1) / (4 - 1)) * C_{in}
           $$
         )DOC");
   }
 };
-
-int OutputSize(int pyramid_level, int input_size) {
-  int bins = std::pow(2, pyramid_level);
-  int ksize = std::ceil(input_size / static_cast<double>(bins));
-  int padding = (ksize * bins - input_size + 1) / 2;
-  int output_size = (input_size - ksize + 2 * padding) / ksize + 1;
-  // output_size = bins
-  return output_size;
-}
 
 class SppOp : public framework::OperatorWithKernel {
  public:
@@ -64,13 +58,7 @@ class SppOp : public framework::OperatorWithKernel {
     int pyramid_height = ctx->Attrs().Get<int>("pyramid_height");
     PADDLE_ENFORCE(in_x_dims.size() == 4,
                    "Spping intput must be of 4-dimensional.");
-    int outlen = 0;
-    for (int p = 0; p < pyramid_height; ++p) {
-      int outh = OutputSize(p, in_x_dims[2]);
-      int outw = OutputSize(p, in_x_dims[3]);
-      int p_level_outlen = outh * outw * in_x_dims[1];
-      outlen += p_level_outlen;
-    }
+    int outlen = ((std::pow(4, pyramid_height) - 1) / (4 - 1)) * in_x_dims[1];
     std::vector<int64_t> output_shape({in_x_dims[0], outlen});
     ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
   }
