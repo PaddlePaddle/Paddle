@@ -97,8 +97,10 @@ class RowConvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Row-convolution Operator.
 
-This operator was introduced in http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf
-Given an input sequence $in$ of length $t$ and input dimension $d$, and a filter ($W$) of size $context \times d$, 
+This operator was introduced in the paper:
+http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf
+Given an input sequence $in$ of length $t$ and input dimension $d$, 
+and a filter ($W$) of size $context \times d$, 
 the output sequence is convolved in the following manner:
 
 $$
