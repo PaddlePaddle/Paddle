@@ -311,7 +311,7 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_GPU_KERNEL_WITH_PRIORITY(
-    conv2d, 2, paddle::operators::CudnnConvOpKernel<float>,
+    conv2d, MAX_PRIORITY, paddle::operators::CudnnConvOpKernel<float>,
     paddle::operators::CudnnConvOpKernel<double>);
 
 REGISTER_OP_GPU_KERNEL(conv2d_cudnn,

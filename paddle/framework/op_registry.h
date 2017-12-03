@@ -187,11 +187,16 @@ class OpKernelRegistrar : public Registrar {
     return 0;                                                                 \
   }
 
-#define REGISTER_OP_GPU_KERNEL(op_type, ...) \
-  REGISTER_OP_KERNEL(op_type, GPU, ::paddle::platform::GPUPlace, 0, __VA_ARGS__)
+#define MIN_PRIORITY 0
+#define MAX_PRIORITY 7
 
-#define REGISTER_OP_CPU_KERNEL(op_type, ...) \
-  REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUPlace, 0, __VA_ARGS__)
+#define REGISTER_OP_GPU_KERNEL(op_type, ...)                                   \
+  REGISTER_OP_KERNEL(op_type, GPU, ::paddle::platform::GPUPlace, MIN_PRIORITY, \
+                     __VA_ARGS__)
+
+#define REGISTER_OP_CPU_KERNEL(op_type, ...)                                   \
+  REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUPlace, MIN_PRIORITY, \
+                     __VA_ARGS__)
 
 #define REGISTER_OP_GPU_KERNEL_WITH_PRIORITY(op_type, priority, ...)       \
   REGISTER_OP_KERNEL(op_type, GPU, ::paddle::platform::GPUPlace, priority, \
@@ -222,9 +227,6 @@ class OpKernelRegistrar : public Registrar {
 
 // TODO(fengjiayi): The following macros
 // seems ugly, do we have better method?
-
-#define MIN_PRIORITY 0
-#define MAX_PRIORITY 7
 
 #ifndef PADDLE_WITH_CUDA
 #define USE_OP_KERNEL(op_type) USE_OP_DEVICE_KERNEL(op_type, CPU, MIN_PRIORITY)
