@@ -173,9 +173,9 @@ __global__ void RowConvGradFilterImproved(const T *in, const T *dout,
 
   extern __shared__ T mem[];
 
-  // int xdim_sh_in = block_y;
-  // int xdim_sh_dout = block_y;
-  //  int xdim_sh_dfilter = context_length;
+  int xdim_sh_in = block_y;
+  int xdim_sh_dout = block_y;
+  // int xdim_sh_dfilter = context_length;
   int ydim_sh_in = block_x;
   int ydim_sh_dout = block_x + context_length - 1;
   int ydim_sh_dfilter = block_y;
