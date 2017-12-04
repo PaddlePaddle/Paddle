@@ -1,7 +1,13 @@
 import framework
 import numpy as np
 
-__all__ = ['Constant', 'Uniform', 'Normal', 'Xavier']
+__all__ = ['Constant', 'Uniform', 'Normal', 'Xavier', 'set_random_seed']
+
+
+def set_random_seed(seed=0):
+    if not isinstance(seed, int):
+        raise ValueError("Seed must be a integer.")
+    return seed
 
 
 class Initializer(object):
@@ -101,7 +107,7 @@ class UniformInitializer(Initializer):
     """Implements the random uniform distribution initializer
     """
 
-    def __init__(self, low=-1.0, high=1.0, seed=0):
+    def __init__(self, low=-1.0, high=1.0, seed=set_random_seed(0)):
         """Constructor for UniformInitializer
 
         Args:
@@ -150,7 +156,7 @@ class NormalInitializer(Initializer):
     """Implements the  random Normal(Gaussian) distribution initializer
     """
 
-    def __init__(self, loc=0.0, scale=1.0, seed=0):
+    def __init__(self, loc=0.0, scale=1.0, seed=set_random_seed(0)):
         """Constructor for NormalInitializer
 
         Args:
@@ -214,7 +220,7 @@ class XavierInitializer(Initializer):
             (http://proceedings.mlr.press/v9/glorot10a.html)
     """
 
-    def __init__(self, uniform=True, fan_in=None, fan_out=None, seed=0):
+    def __init__(self, uniform=True, fan_in=None, fan_out=None, seed=seed(0)):
         """Constructor for XavierInitializer
 
         Args:
@@ -302,7 +308,7 @@ class MSRAInitializer(Initializer):
             (https://arxiv.org/abs/1502.01852)
     """
 
-    def __init__(self, uniform=True, fan_in=None, seed=0):
+    def __init__(self, uniform=True, fan_in=None, seed=set_random_seed(0)):
         """Constructor for MSRAInitializer
 
         Args:
