@@ -165,7 +165,7 @@ set(EXTERNAL_LIBS
 )
 
 if(WITH_GPU)
-  include(cuda)
+  #include(cuda)
   include(hip)
 endif(WITH_GPU)
 
