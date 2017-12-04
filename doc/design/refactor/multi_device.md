@@ -36,7 +36,7 @@ class ExecutionPlan {
     the graph in each thread.
 1. Collect the gradients and update the parameters
 
-    After all the threads finished the split mini-batch, the `MultiCPUExecutor` would
+    After all the threads finished their mini-batch, the `MultiCPUExecutor` would
     collect all gradients with `sum/mean/...`, execute the optimizer and then deliver
     the result of parameters in each thread.
     Like [nccl](https://developer.nvidia.com/nccl) on GPU, we can implement the same
