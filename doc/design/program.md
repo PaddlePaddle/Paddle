@@ -21,18 +21,14 @@ generating the `ExecutionPlan` and sending to `Executor` for
 execution.
 
 
-<!-- The message will be the same regardless which devices the program runs -->
-<!-- on: CPU/single GPU/multiple GPU/multiple nodes. The `Planner` will -->
-<!-- take the `ProgramDesc` and the device information as the input, and -->
-<!-- outputs one `ExecutionPlan` per `Executor`. The `ExecutionPlan` will -->
-<!-- be different if the devices are different. -->
-
 ### ProgramDesc
 
-The `ProgramDesc` describes the computation specified by the user, with
-the following requirements:
+The `ProgramDesc` describes the computation specified by the user, it
+will be the same regardless which devices the program runs on
+(CPU/single GPU/multiple GPU/multiple nodes), with the following
+requirements:
 
-1. It should be programming language agnostic. Currently we have a
+	1. It should be programming language agnostic. Currently, we have a
 Python API that generates the `ProgramDesc`, but we could add the
 support for other languages later.
 
@@ -47,7 +43,7 @@ support for other languages later.
 
 The `ExecutionPlan` contains all the details of running the program,
 including which device each OP is placed on. One `Executor` could have
-mutilple devices (e.g, CPU, GPUs), but it runs only one
+multiple devices (e.g, CPU, GPUs), but it runs only one
 `ExecutionPlan`. In distributed training there will be `n`
 `ExecutionPlan` for `n` `Executor`, jointly completes the
 `ProgramDesc` specified by the user.
@@ -64,8 +60,8 @@ The planner takes `ProgramDesc` as the input and outputs the
 1. Prune the unnecessary computations from the `ProgramDesc`.
 
 1. Transforms the `ProgramDesc` given the available devices. E.g., add
-   data parallelism by spliting the input mini-batches and replicating
-   the OPs onto different GPUs.
+   data parallelism by splitting the input mini-batches and
+   replicating the OPs onto different GPUs.
 
 1. Generate `ExecutionPlan` by placing each OP onto available devices,
    the placement information is written in the `ExecutionPlan`.
