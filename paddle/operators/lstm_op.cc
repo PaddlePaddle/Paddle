@@ -181,7 +181,7 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Long-Short Term Memory (LSTM) Operator.
 
-The defalut implementation is diagonal/peephole connection 
+The defalut implementation is diagonal/peephole connection
 (https://arxiv.org/pdf/1402.1128.pdf), the formula is as follows:
 
 $$
@@ -198,27 +198,27 @@ c_t = f_t \odot c_{t-1} + i_t \odot \tilde{c_t} \\
 h_t = o_t \odot act_h(c_t)
 $$
 
-where the W terms denote weight matrices (e.g. \f$W_{xi}\f$ is the matrix
-of weights from the input gate to the input), \f$W_{ic}, W_{fc}, W_{oc}\f$
+where the W terms denote weight matrices (e.g. $W_{xi}$ is the matrix
+of weights from the input gate to the input), $W_{ic}, W_{fc}, W_{oc}$
 are diagonal weight matrices for peephole connections. In our implementation,
 we use vectors to reprenset these diagonal weight matrices. The b terms
-denote bias vectors (\f$b_i\f$ is the input gate bias vector), \f$\sigma\f$
+denote bias vectors ($b_i$ is the input gate bias vector), $\sigma$
 is the non-line activations, such as logistic sigmoid function, and
-\f$i, f, o\f$ and \f$c\f$ are the input gate, forget gate, output gate,
+$i, f, o$ and $c$ are the input gate, forget gate, output gate,
 and cell activation vectors, respectively, all of which have the same size as
-the cell output activation vector \f$h\f$.
+the cell output activation vector $h$.
 
-The \f$\odot\f$ is the element-wise product of the vectors. \f$act_g\f$ and \f$act_h\f$
+The $\odot$ is the element-wise product of the vectors. $act_g$ and $act_h$
 are the cell input and cell output activation functions and `tanh` is usually
-used for them. \f$\tilde{c_t}\f$ is also called candidate hidden state,
+used for them. $\tilde{c_t}$ is also called candidate hidden state,
 which is computed based on the current input and the previous hidden state.
 
-Set `use_peepholes` False to disable peephole connection 
-(http://www.bioinf.jku.at/publications/older/2604.pdf). The formula
-is omitted here.
+Set `use_peepholes` False to disable peephole connection. The formula
+is omitted here, please refer to the paper
+http://www.bioinf.jku.at/publications/older/2604.pdf for details.
 
-Note that these \f$W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}\f$
-operations on the input \f$x_{t}\f$ are NOT included in this operator.
+Note that these $W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}$
+operations on the input $x_{t}$ are NOT included in this operator.
 Users can choose to use fully-connect operator before LSTM operator.
 
 )DOC");
