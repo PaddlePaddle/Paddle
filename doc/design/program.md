@@ -2,7 +2,7 @@
 
 ## Compile and Execution
 
-A PaddlePaddle program consists of three parts -- the first generates a `ProgramDesc` protobuf message that describes the program, the second optimizes this message using a C++ class `Optimizer` and generates an `ExecutionPlan` protobuf messages, and the third run the message using a C++ class `Executor`.
+A PaddlePaddle program consists of three parts -- the first generates a `ProgramDesc` protobuf message that describes the program, the second plans this message using a C++ class `Planner` and generates an `ExecutionPlan` protobuf messages, and the third run the message using a C++ class `Executor`.
 
 A simple example PaddlePaddle program can be found in [graph.md](./graph.md):
 
@@ -15,7 +15,68 @@ optimize(cost)
 train(cost, reader=mnist.train())
 ```
 
-The first five lines of the following PaddlePaddle program generates, or, compiles, the `ProgramDesc` message.  The last line optimizes and runs it.
+The first five lines of the following PaddlePaddle program generates,
+or, compiles, the `ProgramDesc` message. The last line runs it by
+generating the `ExecutionPlan` and sending to `Executor` for
+execution.
+
+
+<!-- The message will be the same regardless which devices the program runs -->
+<!-- on: CPU/single GPU/multiple GPU/multiple nodes. The `Planner` will -->
+<!-- take the `ProgramDesc` and the device information as the input, and -->
+<!-- outputs one `ExecutionPlan` per `Executor`. The `ExecutionPlan` will -->
+<!-- be different if the devices are different. -->
+
+### ProgramDesc
+
+The `ProgramDesc` describes the computation specified by the user, with
+the following requirements:
+
+1. It should be programming language agnostic. Currently we have a
+Python API that generates the `ProgramDesc`, but we could add the
+support for other languages later.
+
+1. It should **not** describe anything that is not specified by the
+   user. For example:
+   1. The OPs for the backward pass added by PaddlePaddle
+   1. Any optimizations to the program.
+   1. OP placement information that is not specified by the user.
+
+
+### ExecutionPlan
+
+The `ExecutionPlan` contains all the details of running the program,
+including which device each OP is placed on. One `Executor` could have
+mutilple devices (e.g, CPU, GPUs), but it runs only one
+`ExecutionPlan`. In distributed training there will be `n`
+`ExecutionPlan` for `n` `Executor`, jointly completes the
+`ProgramDesc` specified by the user.
+
+
+### Planner
+
+The planner takes `ProgramDesc` as the input and outputs the
+`ExcutionPlan`, the steps are:
+
+1. Add necessary OPs that are not specified by the user to the
+   `ProgramDesc`. E.g., add the backward pass.
+
+1. Prune the unnecessary computations from the `ProgramDesc`.
+
+1. Transforms the `ProgramDesc` given the available devices. E.g., add
+   data parallelism by spliting the input mini-batches and replicating
+   the OPs onto different GPUs.
+
+1. Generate `ExecutionPlan` by placing each OP onto available devices,
+   the placement information is written in the `ExecutionPlan`.
+
+1. In distributed training, split the `ExecutionPlan` into multiple
+   `ExecutionPlans` and add send/recv OP between them. For local
+   training, this step is not necessary since there is only one
+   executor.
+
+1. Send the `ExecutionPlan` to the executor for execution.
+
 
 ## Programs and Blocks
 
@@ -119,22 +180,6 @@ message AttrDesc {
   ...
 }
 ```
-
-## ProgramDesc and ExecutionPlan
-
-The goal of `ProgramDesc` is to describe **what** the user wants to calculate, and the goal of `ExecutionPlan` is to specify **how** to calculate it.
-
-For example, the `ExecutionPlan` has OP placement information to indicate which device the OP will run, but the `ProgramDesc` does not have this information since currently our Python API does not support manually pinning an OP onto a type of device (e.g., GPU or FPGA). On the other hand, the `ProgramDesc` should have information about if an OP belongs to an optimizer, this information is provided by the user and helps to place the OPs onto the parameter servers, but the `ExecutionPlan` does not have this information.
-
-### Optimizer
-
-The optimizer takes `ProgramDesc` as the input and outputs the `ExcutionPlan`, the steps are:
-1. Add the prgram in `ProgramDesc` and the coresponding backward pass program into the `ExecutionPlan`.
-1. Optimizes the program according to the avaiable devices.
-    For example, add data parallelism by spliting the input mini-batches and replicating the OPs onto different GPUs. Note that even if the OPs are replicated on different GPUs, there is still only **one** execution plan. One executor runs and only runs one `ExecutionPlan`.
-1. Place each OP onto available devices, the placement information is written in the `ExecutionPlan`.
-1. In distributed training, split the `ExecutionPlan` into multiple `ExecutionPlans` and add send/recv OP between them. For local training, this step is not necessary since there is only one executor.
-1. Send the `ExecutionPlan` to the executor for execution.
 
 ## InferShape
 
