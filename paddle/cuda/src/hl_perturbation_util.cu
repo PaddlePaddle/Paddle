@@ -165,10 +165,10 @@ void hl_generate_disturb_params(real*& gpuAngle,
         int pxY =
             (int)(real(imgSize - 1) * rand() / (RAND_MAX + 1.0));  // NOLINT
 
-        const real H[4] = {cos(-r_angle[i]),
-                           -sin(-r_angle[i]),
-                           sin(-r_angle[i]),
-                           cos(-r_angle[i])};
+        const real H[4] = {(real)cos(-r_angle[i]),
+                           (real)-sin(-r_angle[i]),
+                           (real)sin(-r_angle[i]),
+                           (real)cos(-r_angle[i])};
         real x = pxX - imgCenter;
         real y = pxY - imgCenter;
         real xx = H[0] * x + H[1] * y;
