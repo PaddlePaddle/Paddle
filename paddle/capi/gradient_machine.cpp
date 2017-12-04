@@ -170,23 +170,22 @@ paddle_error paddle_gradient_machine_get_layer_output(
 }
 
 paddle_error paddle_check_args_empty(paddle_arguments inArgs, int* notEmpty) {
-  notEmpty auto in = paddle::capi::cast<paddle::capi::CArguments>(inArgs);
+  auto in = paddle::capi::cast<paddle::capi::CArguments>(inArgs);
   if (in == nullptr || notEmpty == nullptr) return kPD_NULLPTR;
 
   paddle_matrix result = paddle_matrix_create_none();
-
-  int height = 0, width = 0;
-
   paddle_error res_err = paddle_arguments_get_value(in, 0, result);
   if (res_err == kPD_OUT_OF_RANGE || res_err == kPD_NULLPTR) {
     *notEmpty = 0;
     CHECK(paddle_matrix_destroy(result));
+
     return kPD_NO_ERROR;
   }
 
+  int height = 0, width = 0;
   CHECK(paddle_matrix_get_shape(result, &height, &width));
   CHECK(paddle_matrix_destroy(result));
-
   *notEmpty = height;
+
   return kPD_NO_ERROR;
 }
