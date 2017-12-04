@@ -220,7 +220,11 @@ class XavierInitializer(Initializer):
             (http://proceedings.mlr.press/v9/glorot10a.html)
     """
 
-    def __init__(self, uniform=True, fan_in=None, fan_out=None, seed=seed(0)):
+    def __init__(self,
+                 uniform=True,
+                 fan_in=None,
+                 fan_out=None,
+                 seed=set_random_seed(0)):
         """Constructor for XavierInitializer
 
         Args:
