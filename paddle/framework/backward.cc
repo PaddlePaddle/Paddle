@@ -313,6 +313,9 @@ static void CreateGradVarInBlock(
                          return false;
                        }
                      }
+                     if (grad_var_name == framework::kEmptyVarName) {
+                       return false;
+                     }
                      auto var = block_desc->Var(grad_var_name);
                      VLOG(10) << "Creating Variable " << grad_var_name;
                      new_vars.insert(var->Name());
