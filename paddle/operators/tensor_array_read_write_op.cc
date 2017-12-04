@@ -27,7 +27,7 @@ class WriteToArrayOp : public ArrayOp {
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
     auto *x = scope.FindVar(Input("X"));
-    PADDLE_ENFORCE(x != nullptr, "X must be set");
+    if (x == nullptr) return;
     auto &x_tensor = x->Get<framework::LoDTensor>();
     size_t offset = GetOffset(scope, dev_ctx);
     auto *out =
@@ -76,7 +76,9 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE(context->HasInput("I"), "Must set the subscript index");
     PADDLE_ENFORCE_EQ(framework::product(context->GetInputDim("I")), 1,
                       "The number of element of subscript index must be 1");
-    PADDLE_ENFORCE(context->HasInput("X"), NotHasXError());
+    if (!context->HasInput("X")) {
+      return;
+    }
     PADDLE_ENFORCE(context->HasOutput("Out"), NotHasOutError());
     context->SetOutputDim("Out", context->GetInputDim("X"));
   }
@@ -99,9 +101,10 @@ class WriteToArrayInferVarType : public framework::VarTypeInference {
     auto &out = detail::Ref(block->FindRecursiveOrCreateVar(out_name),
                             "Cannot found %s", out_name);
     out.SetType(framework::VarDesc::LOD_TENSOR_ARRAY);
-    auto &x =
-        detail::Ref(block->FindVarRecursive(x_name), "Cannot found %s", x_name);
-    out.SetDataType(x.GetDataType());
+    auto *x = block->FindVarRecursive(x_name);
+    if (x != nullptr) {
+      out.SetDataType(x->GetDataType());
+    }
   }
 };
 
@@ -121,10 +124,13 @@ class ReadFromArrayOp : public ArrayOp {
     PADDLE_ENFORCE(out != nullptr, "Out must be set");
     auto *out_tensor = out->GetMutable<framework::LoDTensor>();
     size_t offset = GetOffset(scope, dev_ctx);
-    PADDLE_ENFORCE_LT(offset, x_array.size());
-    framework::CopyFrom(x_array[offset], dev_ctx.GetPlace(), dev_ctx,
-                        out_tensor);
-    out_tensor->set_lod(x_array[offset].lod());
+    if (offset < x_array.size()) {
+      framework::CopyFrom(x_array[offset], dev_ctx.GetPlace(), dev_ctx,
+                          out_tensor);
+      out_tensor->set_lod(x_array[offset].lod());
+    } else {
+      VLOG(10) << "offset " << offset << " >= " << x_array.size();
+    }
   }
 };
 
