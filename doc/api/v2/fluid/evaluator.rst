@@ -2,8 +2,6 @@
 Evaluator
 ===========
 
-
-
 Evaluator
 -----------
 ..  automodule:: paddle.v2.fluid.evaluator

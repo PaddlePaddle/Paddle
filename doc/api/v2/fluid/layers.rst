@@ -8,16 +8,13 @@ fc
 ..  autofunction:: paddle.v2.fluid.layers.fc
     :noindex:
 
-
 embedding
 ---------
 ..  autofunction:: paddle.v2.fluid.layers.embedding
     :noindex:
 
-
-
 dynamic_lstm
----------
+------------
 ..  autofunction:: paddle.v2.fluid.layers.dynamic_lstm
     :noindex:
 
@@ -26,12 +23,10 @@ data
 ..  autofunction:: paddle.v2.fluid.layers.data
     :noindex:
 
-
 mean
 ---------
 ..  autofunction:: paddle.v2.fluid.layers.mean
     :noindex:
-
 
 mul
 ---------
@@ -39,16 +34,14 @@ mul
     :noindex:
 
 elementwise_add
----------
+---------------
 ..  autofunction:: paddle.v2.fluid.layers.elementwise_add
     :noindex:
 
 elementwise_div
----------
+---------------
 ..  autofunction:: paddle.v2.fluid.layers.elementwise_div
     :noindex:
-
-
 
 
 dropout
@@ -61,7 +54,6 @@ reshape
 ---------
 ..  autofunction:: paddle.v2.fluid.layers.reshape
     :noindex:
-
 
 
 sigmoid
@@ -289,7 +281,6 @@ array_read
 ---------
 ..  autofunction:: paddle.v2.fluid.layers.array_read
     :noindex:
-
 
 
 shrink_memory

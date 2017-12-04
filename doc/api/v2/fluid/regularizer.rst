@@ -2,8 +2,6 @@
 Regularizer
 ===========
 
-
-
 WeightDecayRegularizer
 -----------
 ..  automodule:: paddle.v2.fluid.regularizer

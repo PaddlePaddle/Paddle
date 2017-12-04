@@ -2,7 +2,6 @@
 Optimizer
 ===========
 
-
 Optimizer
 -----------
 ..  automodule:: paddle.v2.fluid.optimizer
