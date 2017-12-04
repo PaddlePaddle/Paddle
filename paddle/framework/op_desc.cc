@@ -466,7 +466,12 @@ DDim CompileTimeInferShapeContext::GetDim(const std::string &name) const {
   auto var = block_.FindVarRecursive(name);
   PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
   try {
-    return framework::make_ddim(var->Shape());
+    auto shape = var->Shape();
+    if (shape.empty()) {
+      return framework::make_ddim({0UL});
+    } else {
+      return framework::make_ddim(var->Shape());
+    }
   } catch (...) {
     VLOG(5) << "GetDim of variable " << name << " error";
     std::rethrow_exception(std::current_exception());

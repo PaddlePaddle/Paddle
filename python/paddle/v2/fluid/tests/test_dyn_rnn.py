@@ -20,7 +20,7 @@ class TestDynRNN(unittest.TestCase):
             sentence = fluid.layers.data(
                 name='word', shape=[1], dtype='int64', lod_level=1)
             sent_emb = fluid.layers.embedding(
-                input=sentence, size=[65535, 32], dtype='float32')
+                input=sentence, size=[len(self.word_dict), 32], dtype='float32')
 
             label = fluid.layers.data(name='label', shape=[1], dtype='float32')
 
@@ -31,6 +31,7 @@ class TestDynRNN(unittest.TestCase):
 
             seq_len = fluid.layers.max_sequence_len(rank_table=rank_table)
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+            i.stop_gradient = False
 
             boot_mem = fluid.layers.fill_constant_batch_size_like(
                 input=fluid.layers.array_read(
@@ -38,10 +39,12 @@ class TestDynRNN(unittest.TestCase):
                 value=0,
                 shape=[-1, 100],
                 dtype='float32')
+            boot_mem.stop_gradient = False
 
             mem_array = fluid.layers.array_write(x=boot_mem, i=i)
 
             cond = fluid.layers.less_than(x=i, y=seq_len)
+            cond.stop_gradient = False
             while_op = fluid.layers.While(cond=cond)
             out = fluid.layers.create_array(dtype='float32')
 
@@ -62,7 +65,11 @@ class TestDynRNN(unittest.TestCase):
             last = fluid.layers.sequence_pool(
                 input=all_timesteps, pool_type='last')
             logits = fluid.layers.fc(input=last, size=1, act=None)
-
+            loss = fluid.layers.sigmoid_cross_entropy_with_logits(
+                x=logits, label=label)
+            loss = fluid.layers.mean(x=loss)
+            sgd = fluid.optimizer.SGD(1e-4)
+            sgd.minimize(loss=loss)
         cpu = fluid.CPUPlace()
         exe = fluid.Executor(cpu)
         exe.run(startup_program)
@@ -70,9 +77,9 @@ class TestDynRNN(unittest.TestCase):
 
         data = next(self.train_data())
         val = exe.run(main_program, feed=feeder.feed(data),
-                      fetch_list=[logits])[0]
-        self.assertEqual((self.BATCH_SIZE, 1), val.shape)
-        val = val.sum()
+                      fetch_list=[loss])[0]
+        self.assertEqual((1, ), val.shape)
+        print(val)
         self.assertFalse(numpy.isnan(val))
 
 
