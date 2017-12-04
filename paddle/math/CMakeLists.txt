@@ -26,8 +26,6 @@ else()
 endif()
 
 if(MOBILE_INFERENCE)
-    list(REMOVE_ITEM MATH_SOURCES
-         ${CMAKE_CURRENT_SOURCE_DIR}/SIMDFunctions.cpp)
     # Remove sparse
     list(REMOVE_ITEM MATH_HEADERS
          ${CMAKE_CURRENT_SOURCE_DIR}/CpuSparseMatrix.h

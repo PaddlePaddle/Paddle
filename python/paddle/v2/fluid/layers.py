@@ -10,7 +10,7 @@ from param_attr import ParamAttr
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
     'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool', 'sums', 'cos_sim',
-    'batch_norm', 'accuracy', 'split_lod_tensor'
+    'batch_norm', 'accuracy', 'split_lod_tensor', 'While'
 ]
 
 
@@ -31,11 +31,9 @@ def fc(input,
        size: The size of the layer
        num_flatten_dims: Number of columns in input
        param_attr: The parameters/weights to the FC Layer
-       param_initializer: Initializer used for the weight/parameter.
-       If None, XavierInitializer() is used
+       param_initializer: Initializer used for the weight/parameter. If None, XavierInitializer() is used
        bias_attr: The bias parameter for the FC layer
-       bias_initializer: Initializer used for the bias.
-       If None, then ConstantInitializer() is used
+       bias_initializer: Initializer used for the bias. If None, then ConstantInitializer() is used
        act: Activation to be applied to the output of FC layer
        name: Name/alias of the function
        main_program: Name of the main program that calls this
@@ -185,6 +183,7 @@ def data(name,
          shape,
          append_batch_size=True,
          dtype='float32',
+         lod_level=0,
          type=core.VarDesc.VarType.LOD_TENSOR,
          main_program=None,
          startup_program=None,
@@ -198,6 +197,7 @@ def data(name,
        append_batch_size: Whether or not to append the data as a batch.
        dtype: The type of data : float32, float_16, int etc
        type: The output type. By default it is LOD_TENSOR.
+       lod_level(int): The LoD Level. 0 means the input data is not a sequence.
        main_program: Name of the main program that calls this
        startup_program: Name of the startup program
        stop_gradient: A boolean that mentions whether gradient should flow.
@@ -228,7 +228,8 @@ def data(name,
         shape=shape,
         dtype=dtype,
         type=type,
-        stop_gradient=stop_gradient)
+        stop_gradient=stop_gradient,
+        lod_level=lod_level)
 
 
 def create_tensor(dtype, name=None, main_program=None, startup_program=None):
@@ -400,6 +401,7 @@ _create_op_func_('sigmoid')
 _create_op_func_('scale')
 _create_op_func_('reshape')
 _create_op_func_('transpose')
+_create_op_func_('sigmoid_cross_entropy_with_logits')
 
 
 def cast(x, dtype, main_program=None):
@@ -1437,7 +1439,7 @@ def increment(x, value=1.0, in_place=True, main_program=None):
         type='increment',
         inputs={'X': [x]},
         outputs={'Out': [out]},
-        attrs={'step': value})
+        attrs={'step': float(value)})
     return out
 
 
