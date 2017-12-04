@@ -113,23 +113,14 @@ train_reader = paddle.batch(
 
 place = fluid.CPUPlace()
 exe = fluid.Executor(place)
-
+feeder = fluid.DataFeeder(place=place, feed_list=[images, label])
 exe.run(fluid.default_startup_program())
 
 for pass_id in range(PASS_NUM):
     accuracy.reset(exe)
     for data in train_reader():
-        img_data = np.array(map(lambda x: x[0].reshape(data_shape),
-                                data)).astype("float32")
-        y_data = np.array(map(lambda x: x[1], data)).astype("int64")
-        batch_size = 1
-        for i in y_data.shape:
-            batch_size = batch_size * i
-        y_data = y_data.reshape([batch_size, 1])
-
         loss, acc = exe.run(fluid.default_main_program(),
-                            feed={"pixel": img_data,
-                                  "label": y_data},
+                            feed=feeder.feed(data),
                             fetch_list=[avg_cost] + accuracy.metrics)
         pass_acc = accuracy.eval(exe)
         print("loss:" + str(loss) + " acc:" + str(acc) + " pass_acc:" + str(
