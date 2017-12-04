@@ -73,15 +73,15 @@ class LSTMKernel : public framework::OpKernel<T> {
       T* bias_data = const_cast<T*>(bias->data<T>());
       // the code style in LstmMetaValue will be updated later.
 
-      lstm_value.checkIg = bias_data + 4 * frame_size;
-      lstm_value.checkFg = lstm_value.checkIg + frame_size;
-      lstm_value.checkOg = lstm_value.checkFg + frame_size;
+      lstm_value.check_ig = bias_data + 4 * frame_size;
+      lstm_value.check_fg = lstm_value.check_ig + frame_size;
+      lstm_value.check_og = lstm_value.check_fg + frame_size;
     } else {
-      lstm_value.checkIg = nullptr;
-      lstm_value.checkFg = nullptr;
-      lstm_value.checkOg = nullptr;
+      lstm_value.check_ig = nullptr;
+      lstm_value.check_fg = nullptr;
+      lstm_value.check_og = nullptr;
     }
-    lstm_value.prevStateValue = nullptr;
+    lstm_value.prev_state_value = nullptr;
     Tensor ordered_c0;
     const size_t* order = batch_gate->lod()[2].data();
     if (cell_t0) {
@@ -90,7 +90,7 @@ class LSTMKernel : public framework::OpKernel<T> {
       // to reorder.
       ReorderInitState<Place, T>(device_ctx, *cell_t0, order, &ordered_c0,
                                  true);
-      lstm_value.prevStateValue = ordered_c0.data<T>();
+      lstm_value.prev_state_value = ordered_c0.data<T>();
     }
 
     // Use the local variable as here.
@@ -140,14 +140,14 @@ class LSTMKernel : public framework::OpKernel<T> {
                                static_cast<T>(1.0));
       }
 
-      lstm_value.gateValue = gate_t.data<T>();
-      lstm_value.outputValue = out_t.data<T>();
-      lstm_value.stateValue = cell_t.data<T>();
-      lstm_value.stateActiveValue = cell_pre_act_t.data<T>();
+      lstm_value.gate_value = gate_t.data<T>();
+      lstm_value.output_value = out_t.data<T>();
+      lstm_value.state_value = cell_t.data<T>();
+      lstm_value.state_active_value = cell_pre_act_t.data<T>();
       math::LstmUnitFunctor<Place, T>::compute(device_ctx, lstm_value,
                                                frame_size, cur_batch_size,
                                                gate_act, cell_act, cand_act);
-      lstm_value.prevStateValue = lstm_value.stateValue;
+      lstm_value.prev_state_value = lstm_value.state_value;
     }
 
     math::Batch2LoDTensorFunctor<Place, T> to_seq;
@@ -214,13 +214,13 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     math::LstmMetaValue<T> lstm_value;
     if (bias && ctx.Attr<bool>("use_peepholes")) {
       T* bias_data = const_cast<T*>(bias->data<T>());
-      lstm_value.checkIg = bias_data + 4 * frame_size;
-      lstm_value.checkFg = lstm_value.checkIg + frame_size;
-      lstm_value.checkOg = lstm_value.checkFg + frame_size;
+      lstm_value.check_ig = bias_data + 4 * frame_size;
+      lstm_value.check_fg = lstm_value.check_ig + frame_size;
+      lstm_value.check_og = lstm_value.check_fg + frame_size;
     } else {
-      lstm_value.checkIg = nullptr;
-      lstm_value.checkFg = nullptr;
-      lstm_value.checkOg = nullptr;
+      lstm_value.check_ig = nullptr;
+      lstm_value.check_fg = nullptr;
+      lstm_value.check_og = nullptr;
     }
 
     math::LstmMetaGrad<T> lstm_grad;
@@ -231,13 +231,13 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     }
     if (bias && bias_g && ctx.Attr<bool>("use_peepholes")) {
       T* bias_g_data = bias_g->data<T>();
-      lstm_grad.checkIgGrad = bias_g_data + 4 * frame_size;
-      lstm_grad.checkFgGrad = lstm_grad.checkIgGrad + frame_size;
-      lstm_grad.checkOgGrad = lstm_grad.checkFgGrad + frame_size;
+      lstm_grad.check_ig_grad = bias_g_data + 4 * frame_size;
+      lstm_grad.check_fg_grad = lstm_grad.check_ig_grad + frame_size;
+      lstm_grad.check_og_grad = lstm_grad.check_fg_grad + frame_size;
     } else {
-      lstm_grad.checkIgGrad = nullptr;
-      lstm_grad.checkFgGrad = nullptr;
-      lstm_grad.checkOgGrad = nullptr;
+      lstm_grad.check_ig_grad = nullptr;
+      lstm_grad.check_fg_grad = nullptr;
+      lstm_grad.check_og_grad = nullptr;
     }
 
     math::LoDTensor2BatchFunctor<Place, T> to_batch;
@@ -276,26 +276,26 @@ class LSTMGradKernel : public framework::OpKernel<T> {
       Tensor gate = batch_gate->Slice(bstart, bend);
       Tensor cell = batch_cell.Slice(bstart, bend);
       Tensor cell_pre_act = batch_cell_pre_act->Slice(bstart, bend);
-      lstm_value.gateValue = gate.data<T>();
-      lstm_value.stateValue = cell.data<T>();
-      lstm_value.stateActiveValue = cell_pre_act.data<T>();
+      lstm_value.gate_value = gate.data<T>();
+      lstm_value.state_value = cell.data<T>();
+      lstm_value.state_active_value = cell_pre_act.data<T>();
 
       Tensor out_g = batch_hidden_g.Slice(bstart, bend);
       Tensor gate_g = batch_gate_g.Slice(bstart, bend);
       Tensor cell_g = batch_cell_g.Slice(bstart, bend);
-      lstm_grad.stateGrad = cell_g.data<T>();
-      lstm_grad.gateGrad = gate_g.data<T>();
-      lstm_grad.outputGrad = out_g.data<T>();
+      lstm_grad.state_grad = cell_g.data<T>();
+      lstm_grad.gate_grad = gate_g.data<T>();
+      lstm_grad.output_grad = out_g.data<T>();
 
       if (n > 0) {
         int bstart_pre = static_cast<int>(batch_starts[n - 1]);
         Tensor cell_pre = batch_cell.Slice(bstart_pre, bstart);
         Tensor cell_pre_g = batch_cell_g.Slice(bstart_pre, bstart);
-        lstm_value.prevStateValue = cell_pre.data<T>();
-        lstm_grad.prevStateGrad = cell_pre_g.data<T>();
+        lstm_value.prev_state_value = cell_pre.data<T>();
+        lstm_grad.prev_state_grad = cell_pre_g.data<T>();
       } else {
-        lstm_value.prevStateValue = c0 ? ordered_c0.data<T>() : nullptr;
-        lstm_grad.prevStateGrad = c0_g ? ordered_c0_g.data<T>() : nullptr;
+        lstm_value.prev_state_value = c0 ? ordered_c0.data<T>() : nullptr;
+        lstm_grad.prev_state_grad = c0_g ? ordered_c0_g.data<T>() : nullptr;
       }
 
       int cur_batch_size = bend - bstart;

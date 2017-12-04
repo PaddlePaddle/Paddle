@@ -57,23 +57,16 @@ train_reader = paddle.batch(
 
 place = fluid.CPUPlace()
 exe = fluid.Executor(place)
+feeder = fluid.DataFeeder(
+    feed_list=[first_word, second_word, third_word, forth_word, next_word],
+    place=place)
 
 exe.run(fluid.default_startup_program())
 
 for pass_id in range(PASS_NUM):
     for data in train_reader():
-        input_data = [[data_idx[idx] for data_idx in data] for idx in xrange(5)]
-        input_data = map(lambda x: np.array(x).astype("int64"), input_data)
-        input_data = map(lambda x: np.expand_dims(x, axis=1), input_data)
-
         avg_cost_np = exe.run(fluid.default_main_program(),
-                              feed={
-                                  'firstw': input_data[0],
-                                  'secondw': input_data[1],
-                                  'thirdw': input_data[2],
-                                  'forthw': input_data[3],
-                                  'nextw': input_data[4]
-                              },
+                              feed=feeder.feed(data),
                               fetch_list=[avg_cost])
         if avg_cost_np[0] < 5.0:
             exit(0)  # if avg cost less than 10.0, we think our code is good.
