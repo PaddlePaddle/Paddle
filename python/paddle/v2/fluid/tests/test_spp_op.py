@@ -13,14 +13,19 @@ class TestSppOp(OpTest):
         out_level_flatten = []
         for i in xrange(self.pyramid_height):
             bins = np.power(2, i)
-            ksize = [0, 0]
+            kernel_size = [0, 0]
             padding = [0, 0]
-            ksize[0] = np.ceil(hsize / bins.astype("double")).astype("int32")
-            padding[0] = ((ksize[0] * bins - hsize + 1) / 2).astype("int32")
+            kernel_size[0] = np.ceil(hsize /
+                                     bins.astype("double")).astype("int32")
+            padding[0] = (
+                (kernel_size[0] * bins - hsize + 1) / 2).astype("int32")
 
-            ksize[1] = np.ceil(wsize / bins.astype("double")).astype("int32")
-            padding[1] = ((ksize[1] * bins - wsize + 1) / 2).astype("int32")
-            out_level = max_pool2D_forward_naive(input, ksize, ksize, padding)
+            kernel_size[1] = np.ceil(wsize /
+                                     bins.astype("double")).astype("int32")
+            padding[1] = (
+                (kernel_size[1] * bins - wsize + 1) / 2).astype("int32")
+            out_level = max_pool2D_forward_naive(input, kernel_size,
+                                                 kernel_size, padding)
             out_level_flatten.append(
                 out_level.reshape(nsize, bins * bins * csize))
             if i == 0:

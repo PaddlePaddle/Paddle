@@ -34,27 +34,27 @@ class SppKernel : public framework::OpKernel<T> {
     size_t output_offset = 0;
     for (int p = 0; p < pyramid_height; ++p) {
       int bins = std::pow(2, p);
-      int ksize_h = std::ceil(input_h / static_cast<double>(bins));
-      int ksize_w = std::ceil(input_w / static_cast<double>(bins));
-      int padding_h = (ksize_h * bins - input_h + 1) / 2;
-      int padding_w = (ksize_w * bins - input_w + 1) / 2;
-      std::vector<int> ksize({ksize_h, ksize_w});
-      std::vector<int> strides({ksize_h, ksize_w});
+      int kernel_size_h = std::ceil(input_h / static_cast<double>(bins));
+      int kernel_size_w = std::ceil(input_w / static_cast<double>(bins));
+      int padding_h = (kernel_size_h * bins - input_h + 1) / 2;
+      int padding_w = (kernel_size_w * bins - input_w + 1) / 2;
+      std::vector<int> kernel_size({kernel_size_h, kernel_size_w});
+      std::vector<int> strides({kernel_size_h, kernel_size_w});
       std::vector<int> paddings({padding_h, padding_w});
       // pooling output shape
       framework::Tensor out_level;
       std::vector<int64_t> output_shape_vec({in_x->dims()[0], in_x->dims()[1]});
-      output_shape_vec.push_back((input_h - ksize_h + 2 * padding_h) / ksize_h +
-                                 1);
-      output_shape_vec.push_back((input_w - ksize_w + 2 * padding_w) / ksize_w +
-                                 1);
+      output_shape_vec.push_back(
+          (input_h - kernel_size_h + 2 * padding_h) / kernel_size_h + 1);
+      output_shape_vec.push_back(
+          (input_w - kernel_size_w + 2 * padding_w) / kernel_size_w + 1);
       framework::DDim output_shape(framework::make_ddim(output_shape_vec));
       out_level.mutable_data<T>(output_shape, context.GetPlace());
       // pooling
       math::Pool2dFunctor<Place, math::MaxPool<T>, T> pool_forward;
       math::MaxPool<T> max_process;
-      pool_forward(context.device_context(), *in_x, ksize, strides, paddings,
-                   max_process, &out_level);
+      pool_forward(context.device_context(), *in_x, kernel_size, strides,
+                   paddings, max_process, &out_level);
       // flatten pooling output shape
       framework::Tensor out_flatten_level;
       int output_flatten_w = in_x->dims()[1] * bins * bins;
@@ -96,12 +96,12 @@ class SppGradKernel : public framework::OpKernel<T> {
     size_t out_offset = 0;
     for (int p = 0; p < pyramid_height; ++p) {
       int bins = std::pow(2, p);
-      int ksize_h = std::ceil(input_h / static_cast<double>(bins));
-      int ksize_w = std::ceil(input_w / static_cast<double>(bins));
-      int padding_h = (ksize_h * bins - input_h + 1) / 2;
-      int padding_w = (ksize_w * bins - input_w + 1) / 2;
-      std::vector<int> ksize({ksize_h, ksize_w});
-      std::vector<int> strides({ksize_h, ksize_w});
+      int kernel_size_h = std::ceil(input_h / static_cast<double>(bins));
+      int kernel_size_w = std::ceil(input_w / static_cast<double>(bins));
+      int padding_h = (kernel_size_h * bins - input_h + 1) / 2;
+      int padding_w = (kernel_size_w * bins - input_w + 1) / 2;
+      std::vector<int> kernel_size({kernel_size_h, kernel_size_w});
+      std::vector<int> strides({kernel_size_h, kernel_size_w});
       std::vector<int> paddings({padding_h, padding_w});
       // split out and outgrad  ...  to flatten
       framework::Tensor out_flatten_level;
@@ -129,10 +129,10 @@ class SppGradKernel : public framework::OpKernel<T> {
       framework::Tensor out_level;
       framework::Tensor outgrad_level;
       std::vector<int64_t> out_shape_vec({in_x->dims()[0], in_x->dims()[1]});
-      out_shape_vec.push_back((input_h - ksize_h + 2 * padding_h) / ksize_h +
-                              1);
-      out_shape_vec.push_back((input_w - ksize_w + 2 * padding_w) / ksize_w +
-                              1);
+      out_shape_vec.push_back(
+          (input_h - kernel_size_h + 2 * padding_h) / kernel_size_h + 1);
+      out_shape_vec.push_back(
+          (input_w - kernel_size_w + 2 * padding_w) / kernel_size_w + 1);
       framework::DDim out_shape(framework::make_ddim(out_shape_vec));
       out_level.ShareDataWith(out_flatten_level);
       out_level.Resize(out_shape);
@@ -141,7 +141,8 @@ class SppGradKernel : public framework::OpKernel<T> {
       // pooling backward
       math::MaxPool2dGradFunctor<Place, T> pool2d_backward;
       pool2d_backward(context.device_context(), *in_x, *&out_level,
-                      *&outgrad_level, ksize, strides, paddings, in_x_grad);
+                      *&outgrad_level, kernel_size, strides, paddings,
+                      in_x_grad);
     }
   }
 };
