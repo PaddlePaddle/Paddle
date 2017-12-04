@@ -1,12 +1,14 @@
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 import collections
+
 import numpy as np
-import copy
+from . import core
+import proto.framework_pb2 as framework_pb2
+import contextlib
 
 __all__ = [
     'Block', 'Variable', 'Program', 'Operator', 'default_startup_program',
-    'default_main_program'
+    'default_main_program', 'program_guard', 'switch_startup_program',
+    'switch_main_program'
 ]
 
 
@@ -99,9 +101,9 @@ class Variable(object):
             if not isinstance(dtype, core.DataType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
             if is_new_var:
-                self.desc.set_data_type(dtype)
+                self.desc.set_dtype(dtype)
             else:
-                old_dtype = self.data_type
+                old_dtype = self.dtype
                 if dtype != old_dtype:
                     raise ValueError("Variable {0} has been created before. "
                                      "The previous data type is {1}; the new "
@@ -162,8 +164,8 @@ class Variable(object):
         return tuple(self.desc.shape())
 
     @property
-    def data_type(self):
-        return self.desc.data_type()
+    def dtype(self):
+        return self.desc.dtype()
 
     @property
     def lod_level(self):
@@ -395,7 +397,11 @@ class Block(object):
         return v
 
     def all_parameters(self):
-        return {v for k, v in self.vars.iteritems() if isinstance(v, Parameter)}
+        return list(self.iter_parameters())
+
+    def iter_parameters(self):
+        return (item[1] for item in self.vars.iteritems()
+                if isinstance(item[1], Parameter))
 
     def create_var(self, *args, **kwargs):
         var = Variable(self, *args, **kwargs)
@@ -469,6 +475,37 @@ class Block(object):
         for index in range(len(self.ops)):
             assert self.ops[index].desc == ops_in_cpp[index]
 
+    def copy_param_info_from(self, other):
+        """
+        Copy the information of parameters from other block
+        Args:
+            other(Block): other block 
+
+        Returns:
+            None
+        """
+        if not isinstance(other, Block):
+            raise TypeError("copy_param_info_from should be invoked with Block")
+        for p in other.iter_parameters():
+            assert isinstance(p, Parameter)
+            v = self.vars.get(p.name, None)
+            if v is None:
+                raise ValueError("copy_param_info_from should be invoked with "
+                                 "same topology")
+            assert isinstance(v, Variable)
+            new_p = Parameter(
+                block=self,
+                shape=v.shape,
+                dtype=v.dtype,
+                type=v.type,
+                lod_level=v.lod_level,
+                stop_gradient=p.stop_gradient,
+                trainable=p.trainable,
+                optimize_attr=p.optimize_attr,
+                regularizer=p.regularizer,
+                name=v.name)
+            self.vars[new_p.name] = new_p
+
 
 class Program(object):
     def __init__(self):
@@ -489,6 +526,7 @@ class Program(object):
         p.desc = core.ProgramDesc(self.desc)
         p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
         p.sync_with_cpp()
+        p.copy_param_info_from(self)
         return p
 
     def prune(self, targets):
@@ -507,6 +545,13 @@ class Program(object):
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
         res.desc = core.prune(self.desc, targets_idx)
+        res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
+        res.sync_with_cpp()
+        return res
+
+    def inference_optimize(self):
+        res = Program()
+        res.desc = core.inference_optimize(self.desc)
         res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
         res.sync_with_cpp()
         return res
@@ -565,6 +610,24 @@ class Program(object):
         for block in self.blocks:
             block.sync_with_cpp()
 
+    def copy_param_info_from(self, other):
+        """
+        Copy the information of parameters from other program. 
+        Args:
+            other(Program): Other program
+
+        Returns:
+            None
+        """
+        if not isinstance(other, Program):
+            raise TypeError("copy_param_info_from should be invoked with "
+                            "Program")
+
+        if len(self.blocks) != len(other.blocks):
+            raise ValueError("copy_param_info_from should be invoked with two "
+                             "program, with represent the same topology")
+        self.global_block().copy_param_info_from(other.global_block())
+
     def list_vars(self):
         for each_block in self.blocks:
             for each_var in each_block.vars.itervalues():
@@ -593,13 +656,88 @@ class Parameter(Variable):
 
 
 # program is a global instance.
-g_main_program = Program()
-g_startup_program = Program()
+_main_program_ = Program()
+_startup_program_ = Program()
 
 
 def default_startup_program():
-    return g_startup_program
+    """
+    Get default startup program. In startup program, Paddle will initialize
+    parameters, initialize nccl handle, etc.
+    
+    Returns:
+        Program: startup program
+    """
+    return _startup_program_
 
 
 def default_main_program():
-    return g_main_program
+    """
+    Get default main program. The main program is used for training or testing.
+    
+    Returns:
+        Program: main program
+    """
+    return _main_program_
+
+
+def switch_main_program(program):
+    """
+    Switch the main program to a new program.
+    
+    Args:
+        program(Program): The new main program
+
+    Returns:
+        Program: The previous main program
+    """
+    global _main_program_
+    prev_program = _main_program_
+    _main_program_ = program
+    return prev_program
+
+
+def switch_startup_program(program):
+    """
+    Switch the startup program to a new program 
+    Args:
+        program(Program): The new startup program
+
+    Returns:
+        Program: The previous startup program
+    """
+    global _startup_program_
+    prev_program = _startup_program_
+    _startup_program_ = program
+    return prev_program
+
+
+@contextlib.contextmanager
+def program_guard(main_program, startup_program=None):
+    """
+    Switch program with `with` statement
+    
+    Examples:
+        >>> with program_guard(Program()):
+        >>>   data = fluid.layers.data(...)
+        >>>   hidden = fluid.layers.fc(...)
+        
+    Args:
+        main_program(Program): New main program inside `with` statement
+        startup_program(Program): New startup program inside `with` statement. 
+            None means do not change startup program.
+
+    Returns:
+        None
+    """
+    if not isinstance(main_program, Program):
+        raise TypeError("main_program should be Program")
+    main_program = switch_main_program(main_program)
+    if startup_program is not None:
+        if not isinstance(startup_program, Program):
+            raise TypeError("startup_program should be Program")
+        startup_program = switch_startup_program(startup_program)
+    yield
+    switch_main_program(main_program)
+    if startup_program is not None:
+        switch_startup_program(startup_program)

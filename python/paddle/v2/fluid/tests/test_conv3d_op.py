@@ -169,5 +169,31 @@ class TestWithDilation(TestConv3dOp):
         self.groups = 3
 
 
+class TestCudnn(TestConv3dOp):
+    def init_op_type(self):
+        self.op_type = "conv3d_cudnn"
+
+
+class TestWithGroup1Cudnn(TestWithGroup1):
+    def init_op_type(self):
+        self.op_type = "conv3d_cudnn"
+
+
+class TestWithGroup2Cudnn(TestWithGroup2):
+    def init_op_type(self):
+        self.op_type = "conv3d_cudnn"
+
+
+class TestWith1x1Cudnn(TestWith1x1):
+    def init_op_type(self):
+        self.op_type = "conv3d_cudnn"
+
+
+# FIXME(typhoonzero): find a way to determine if
+# using cudnn > 6 in python
+# class TestWithDilationCudnn(TestWithDilation):
+#     def init_op_type(self):
+#         self.op_type = "conv3d_cudnn"
+
 if __name__ == '__main__':
     unittest.main()

@@ -223,6 +223,51 @@ $y = |x|$
   }
 };
 
+class CeilOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  CeilOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Ceil operator");
+    AddOutput("Y", "Output of Ceil operator");
+    AddComment(R"DOC(
+Ceil Activation Operator.
+
+$y = ceil(x)$
+
+)DOC");
+  }
+};
+
+class FloorOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  FloorOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Floor operator");
+    AddOutput("Y", "Output of Floor operator");
+    AddComment(R"DOC(
+Floor Activation Operator.
+
+$y = floor(x)$
+
+)DOC");
+  }
+};
+
+class RoundOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  RoundOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Round operator");
+    AddOutput("Y", "Output of Round operator");
+    AddComment(R"DOC(
+Round Activation Operator.
+
+$y = [x]$
+
+)DOC");
+  }
+};
+
 class ReciprocalOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ReciprocalOpMaker(framework::OpProto *proto,
@@ -491,6 +536,15 @@ REGISTER_OP(sqrt, ops::ActivationOp, ops::SqrtOpMaker, sqrt_grad,
             ops::ActivationOpGrad);
 
 REGISTER_OP(abs, ops::ActivationOp, ops::AbsOpMaker, abs_grad,
+            ops::ActivationOpGrad);
+
+REGISTER_OP(ceil, ops::ActivationOp, ops::CeilOpMaker, ceil_grad,
+            ops::ActivationOpGrad);
+
+REGISTER_OP(floor, ops::ActivationOp, ops::FloorOpMaker, floor_grad,
+            ops::ActivationOpGrad);
+
+REGISTER_OP(round, ops::ActivationOp, ops::RoundOpMaker, round_grad,
             ops::ActivationOpGrad);
 
 REGISTER_OP(reciprocal, ops::ActivationOp, ops::ReciprocalOpMaker,

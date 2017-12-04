@@ -261,7 +261,10 @@ class OpTest(unittest.TestCase):
         feed_map = self.feed_var(inputs, place)
 
         exe = Executor(place)
-        outs = exe.run(program, feed=feed_map, fetch_list=fetch_list)
+        outs = exe.run(program,
+                       feed=feed_map,
+                       fetch_list=fetch_list,
+                       return_numpy=False)
 
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
@@ -458,7 +461,7 @@ class OpTest(unittest.TestCase):
         mean_inputs = map(block.var, output_names)
 
         if len(mean_inputs) == 1:
-            loss = block.create_var(dtype=mean_inputs[0].data_type, shape=[1])
+            loss = block.create_var(dtype=mean_inputs[0].dtype, shape=[1])
             op = block.append_op(
                 inputs={"X": mean_inputs}, outputs={"Out": loss}, type='mean')
             op.desc.infer_var_type(block.desc)
@@ -466,8 +469,7 @@ class OpTest(unittest.TestCase):
         else:
             avg_sum = []
             for cur_loss in mean_inputs:
-                cur_avg_loss = block.create_var(
-                    dtype=cur_loss.data_type, shape=[1])
+                cur_avg_loss = block.create_var(dtype=cur_loss.dtype, shape=[1])
                 op = block.append_op(
                     inputs={"X": [cur_loss]},
                     outputs={"Out": [cur_avg_loss]},
@@ -476,13 +478,13 @@ class OpTest(unittest.TestCase):
                 op.desc.infer_shape(block.desc)
                 avg_sum.append(cur_avg_loss)
 
-            loss_sum = block.create_var(dtype=avg_sum[0].data_type, shape=[1])
+            loss_sum = block.create_var(dtype=avg_sum[0].dtype, shape=[1])
             op_sum = block.append_op(
                 inputs={"X": avg_sum}, outputs={"Out": loss_sum}, type='sum')
             op_sum.desc.infer_var_type(block.desc)
             op_sum.desc.infer_shape(block.desc)
 
-            loss = block.create_var(dtype=loss_sum.data_type, shape=[1])
+            loss = block.create_var(dtype=loss_sum.dtype, shape=[1])
             op_loss = block.append_op(
                 inputs={"X": loss_sum},
                 outputs={"Out": loss},
@@ -501,5 +503,6 @@ class OpTest(unittest.TestCase):
 
         fetch_list = [g for p, g in param_grad_list]
         executor = Executor(place)
-        result = executor.run(prog, feed_dict, fetch_list)
-        return map(np.array, result)
+        return map(
+            np.array,
+            executor.run(prog, feed_dict, fetch_list, return_numpy=False))

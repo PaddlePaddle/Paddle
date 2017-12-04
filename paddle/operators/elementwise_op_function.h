@@ -106,7 +106,7 @@ void ElementwiseCompute(const framework::ExecutionContext& ctx) {
   auto x_dims = x->dims();
   auto y_dims = y->dims();
   PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
-                    "Rank of first input must >= rank of second input.")
+                    "Rank of first input must >= rank of second input.");
 
   if (x_dims == y_dims) {
     functor f;

@@ -37,9 +37,15 @@ class WriteToArrayOp : public ArrayOp {
                << " to " << offset + 1;
       out->resize(offset + 1);
     }
-    auto *out_tensor = &out->at(offset);
-    out_tensor->CopyFrom(x_tensor, dev_ctx.GetPlace(), dev_ctx);
-    out_tensor->set_lod(x_tensor.lod());
+    if (x_tensor.memory_size() > 0) {
+      auto *out_tensor = &out->at(offset);
+      CopyFrom(x_tensor, dev_ctx.GetPlace(), dev_ctx, out_tensor);
+      out_tensor->set_lod(x_tensor.lod());
+    } else {
+      VLOG(10) << "WARNING: The input tensor 'x_tensor' holds no memory, so "
+                  "nothing has been written to output array["
+               << offset << "].";
+    }
   }
 };
 
@@ -116,7 +122,8 @@ class ReadFromArrayOp : public ArrayOp {
     auto *out_tensor = out->GetMutable<framework::LoDTensor>();
     size_t offset = GetOffset(scope, dev_ctx);
     PADDLE_ENFORCE_LT(offset, x_array.size());
-    out_tensor->CopyFrom(x_array[offset], dev_ctx.GetPlace(), dev_ctx);
+    framework::CopyFrom(x_array[offset], dev_ctx.GetPlace(), dev_ctx,
+                        out_tensor);
     out_tensor->set_lod(x_array[offset].lod());
   }
 };
