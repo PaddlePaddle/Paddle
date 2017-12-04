@@ -28,7 +28,7 @@ will be the same regardless which devices the program runs on
 (CPU/single GPU/multiple GPU/multiple nodes), with the following
 requirements:
 
-	1. It should be programming language agnostic. Currently, we have a
+1. It should be programming language agnostic. Currently, we have a
 Python API that generates the `ProgramDesc`, but we could add the
 support for other languages later.
 
