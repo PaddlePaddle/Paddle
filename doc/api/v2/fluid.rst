@@ -14,5 +14,5 @@ Fluid
     fluid/optimizer.rst
     fluid/param_attr.rst
     fluid/profiler.rst
-    fluid/regularize.rst
+    fluid/regularizer.rst
 
