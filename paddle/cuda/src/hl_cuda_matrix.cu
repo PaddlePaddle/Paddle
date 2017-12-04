@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -162,7 +163,7 @@ __device__ __forceinline__ void softmax(real* I,
   // sub max Value and do Exp operation
   subMaxAndExp(I, O, base, nextIdx, blockSize, dimN, max);
 
-  // add dimN values into blockDim.x buffer
+  // add dimN values into hipBlockDim_x buffer
   // sum is in dfMax_s[0]
   valueSum(O, dfMax_s, blockSize, base, curIdx, nextIdx, dimN);
 
@@ -172,9 +173,9 @@ __device__ __forceinline__ void softmax(real* I,
 
 template <int blockSize>
 __global__ void KeMatrixSoftMax(real* O, real* I, int dimN) {
-  int base = threadIdx.x;
+  int base = hipThreadIdx_x;
   __shared__ real dfMax_s[blockSize];
-  int nextIdx = blockIdx.x * dimN + base;
+  int nextIdx = hipBlockIdx_x * dimN + base;
   int curIdx = base;
 
   softmax(I, O, dfMax_s, blockSize, base, curIdx, nextIdx, dimN);
@@ -186,14 +187,14 @@ void hl_matrix_softmax(real* A_d, real* C_d, int dimM, int dimN) {
 
   dim3 block(512, 1);
   dim3 grid(dimM, 1);
-  KeMatrixSoftMax<512><<<grid, block, 0, STREAM_DEFAULT>>>(C_d, A_d, dimN);
+  hipLaunchKernelGGL((KeMatrixSoftMax<512>), dim3(grid), dim3(block), 0, STREAM_DEFAULT, C_d, A_d, dimN);
   CHECK_SYNC("hl_matrix_softmax failed");
 }
 
 template <int blockSize>
 __global__ void KeSequenceSoftMax(real* O, real* I, const int* index) {
-  int base = threadIdx.x;
-  int bid = blockIdx.x;
+  int base = hipThreadIdx_x;
+  int bid = hipBlockIdx_x;
   __shared__ real dfMax_s[blockSize];
 
   int start = index[bid];
@@ -214,14 +215,14 @@ void hl_sequence_softmax_forward(real* A_d,
 
   dim3 block(512, 1);
   dim3 grid(numSequence, 1);
-  KeSequenceSoftMax<512><<<grid, block, 0, STREAM_DEFAULT>>>(C_d, A_d, index);
+  hipLaunchKernelGGL((KeSequenceSoftMax<512>), dim3(grid), dim3(block), 0, STREAM_DEFAULT, C_d, A_d, index);
   CHECK_SYNC("hl_sequence_softmax_forward failed");
 }
 
 __global__ void KeMatrixDerivative(
     real* grad_d, real* output_d, real* sftmaxSum_d, int dimM, int dimN) {
-  int rowIdx = blockIdx.x * blockDim.x + threadIdx.x;
-  int colIdx = blockIdx.y * blockDim.y + threadIdx.y;
+  int rowIdx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
+  int colIdx = hipBlockIdx_y * hipBlockDim_y + hipThreadIdx_y;
   int index;
 
   if (rowIdx < dimM && colIdx < dimN) {
@@ -241,14 +242,14 @@ void hl_matrix_softmax_derivative(
   dim3 threads(1, 1024);
   dim3 grid(blocksX, blocksY);
 
-  KeMatrixDerivative<<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMatrixDerivative), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       grad_d, output_d, sftmaxSum_d, dimM, dimN);
   CHECK_SYNC("hl_matrix_softmax_derivative failed");
 }
 
 __global__ void KeMatrixMultiBinaryCrossEntropy(
     real* output, real* entropy, int* row, int* col, int dimM, int dimN) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int index = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   if (index < dimM) {
     for (int i = 0; i < dimN; i++) {
       entropy[index] -= log(1 - output[index * dimN + i]);
@@ -276,14 +277,14 @@ void hl_matrix_multi_binary_cross_entropy(real* output,
   dim3 threads(n_threads);
   dim3 grid(blocks);
   hl_csr_matrix mat = (hl_csr_matrix)(csr_mat->matrix);
-  KeMatrixMultiBinaryCrossEntropy<<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMatrixMultiBinaryCrossEntropy), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       output, entropy, mat->csr_row, mat->csr_col, dimM, dimN);
   CHECK_SYNC("hl_matrix_multi_binary_cross_entropy failed");
 }
 
 __global__ void KeMatrixMultiBinaryCrossEntropyBp(
     real* output, real* grad, int* row, int* col, int dimM, int dimN) {
-  int row_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int row_idx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   if (row_idx < dimM) {
     for (int i = 0; i < dimN; i++) {
       int index = row_idx * dimN + i;
@@ -309,14 +310,14 @@ void hl_matrix_multi_binary_cross_entropy_bp(
   dim3 threads(n_threads);
   dim3 grid(blocks);
   hl_csr_matrix mat = (hl_csr_matrix)(csr_mat->matrix);
-  KeMatrixMultiBinaryCrossEntropyBp<<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMatrixMultiBinaryCrossEntropyBp), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       output, grad, mat->csr_row, mat->csr_col, dimM, dimN);
   CHECK_SYNC("hl_matrix_multi_binary_cross_entropy_bp failed");
 }
 
 __global__ void KeMatrixCrossEntropy(
     real* O, real* E, int* label, int dimM, int dimN) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int index = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   int newBase;
   if (index < dimM) {
     newBase = label[index];
@@ -333,15 +334,15 @@ void hl_matrix_cross_entropy(
   int blocks = (dimM + 1024 - 1) / 1024;
   dim3 threads(1024, 1);
   dim3 grid(blocks, 1);
-  KeMatrixCrossEntropy<<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMatrixCrossEntropy), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       A_d, C_d, label_d, dimM, dimN);
   CHECK_SYNC("hl_matrix_cross_entropy failed");
 }
 
 __global__ void KeMatrixCrossEntropyBp(
     real* grad_d, real* output_d, int* label_d, int dimM, int dimN) {
-  int rowIdx = blockIdx.x * blockDim.x + threadIdx.x;
-  int colIdx = blockIdx.y * blockDim.y + threadIdx.y;
+  int rowIdx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
+  int colIdx = hipBlockIdx_y * hipBlockDim_y + hipThreadIdx_y;
   int index;
   if (rowIdx < dimM && colIdx < dimN) {
     index = rowIdx * dimN + colIdx;
@@ -361,7 +362,7 @@ void hl_matrix_cross_entropy_bp(
   int blocksY = (dimN + 1024 - 1) / 1024;
   dim3 threads(1, 1024);
   dim3 grid(blocksX, blocksY);
-  KeMatrixCrossEntropyBp<<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMatrixCrossEntropyBp), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       grad_d, output_d, label_d, dimM, dimN);
   CHECK_SYNC("hl_matrix_cross_entropy_bp failed");
 }
@@ -376,8 +377,8 @@ __global__ void KeParamReluForward(real* output,
                                    int width,
                                    int height,
                                    int partial_sum) {
-  int tx = blockIdx.x * blockDim.x + threadIdx.x;
-  int ty = blockIdx.y * blockDim.y + threadIdx.y;
+  int tx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
+  int ty = hipBlockIdx_y * hipBlockDim_y + hipThreadIdx_y;
   if (tx < width && ty < height) {
     int index = ty * width + tx;
     output[index] =
@@ -398,7 +399,7 @@ void hl_param_relu_forward(real* output,
   int blockX = (width + 16 - 1) / 16;
   int blockY = (height + 16 - 1) / 16;
   dim3 grid(blockX, blockY);
-  KeParamReluForward<<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeParamReluForward), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       output, input, w, width, height, partial_sum);
   CHECK_SYNC("hl_param_relu_forward failed");
 }
@@ -410,10 +411,10 @@ __global__ void KeParamReluBackWardW(real* grad_w,
                                      int width,
                                      int height,
                                      int partial_sum) {
-  const int tid = threadIdx.x;
+  const int tid = hipThreadIdx_x;
   __shared__ real temp[blockSize];
-  grad_o += partial_sum * blockIdx.x;
-  input += partial_sum * blockIdx.x;
+  grad_o += partial_sum * hipBlockIdx_x;
+  input += partial_sum * hipBlockIdx_x;
   real tmp = 0.0;
   for (int index = tid; index < partial_sum * height; index += blockSize) {
     int row = index / partial_sum;
@@ -431,7 +432,7 @@ __global__ void KeParamReluBackWardW(real* grad_w,
     __syncthreads();
   }
   if (tid == 0) {
-    grad_w[blockIdx.x] += temp[0];
+    grad_w[hipBlockIdx_x] += temp[0];
   }
 }
 
@@ -448,7 +449,7 @@ void hl_param_relu_backward_w(real* grad_w,
   int grid_num = width / partial_sum;
   dim3 threads(blockSize, 1);
   dim3 grid(grid_num, 1);
-  KeParamReluBackWardW<blockSize><<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeParamReluBackWardW<blockSize>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       grad_w, grad_o, input, width, height, partial_sum);
   CHECK_SYNC("hl_param_relu_backward_w failed");
 }
@@ -460,8 +461,8 @@ __global__ void KeParamReluBackwardDiff(real* grad_o,
                                         int width,
                                         int height,
                                         int partial_sum) {
-  int tx = blockIdx.x * blockDim.x + threadIdx.x;
-  int ty = blockIdx.y * blockDim.y + threadIdx.y;
+  int tx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
+  int ty = hipBlockIdx_y * hipBlockDim_y + hipThreadIdx_y;
   if (tx < width && ty < height) {
     int index = ty * width + tx;
     diff[index] += grad_o[index] * (input[index] > 0 ? 1 : w[tx / partial_sum]);
@@ -483,14 +484,14 @@ void hl_param_relu_backward_diff(real* grad_o,
   int blockX = (width + 16 - 1) / 16;
   int blockY = (height + 16 - 1) / 16;
   dim3 grid(blockX, blockY);
-  KeParamReluBackwardDiff<<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeParamReluBackwardDiff), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       grad_o, data, w, diff, width, height, partial_sum);
   CHECK_SYNC("hl_param_relu_backward_diff failed");
 }
 
 __global__ void KeMatrixAddSharedBias(
     real* A, real* B, const int channel, const int M, const int N, real scale) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int index = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   int dim = N / channel;
   if (index < M * N) {
     int i = index % N;
@@ -507,7 +508,7 @@ void hl_matrix_add_shared_bias(real* A_d,
                                real scale) {
   const int blocks = 512;
   const int grids = DIVUP(dimM * dimN, blocks);
-  KeMatrixAddSharedBias<<<grids, blocks, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMatrixAddSharedBias), dim3(grids), dim3(blocks), 0, STREAM_DEFAULT, 
       A_d, B_d, channel, dimM, dimN, scale);
   CHECK_SYNC("hl_matrix_add_shared_bias failed");
 }
@@ -522,7 +523,7 @@ __global__ void KeMatrixCollectSharedBias(real* B,
                                           const int limit,
                                           real scale) {
   if (dim < limit) {
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int index = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
     if (index < channel) {
       real sum = 0.0;
       for (int i = 0; i < M; ++i) {
@@ -533,8 +534,8 @@ __global__ void KeMatrixCollectSharedBias(real* B,
       B[index] += scale * sum;
     }
   } else {
-    const int tid = threadIdx.x;
-    const int bid = blockIdx.x;
+    const int tid = hipThreadIdx_x;
+    const int bid = hipBlockIdx_x;
     __shared__ real smem[blockSize];
     real sum = 0.0;
     for (int j = 0; j < ((dim * M + blockSize - 1) / blockSize); ++j) {
@@ -563,14 +564,14 @@ void hl_matrix_collect_shared_bias(real* B_d,
   const int limit = 64;
   int grids = (dimM * dim) < limit ? DIVUP(channel, blocks) : channel;
 
-  KeMatrixCollectSharedBias<blocks><<<grids, blocks, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMatrixCollectSharedBias<blocks>), dim3(grids), dim3(blocks), 0, STREAM_DEFAULT, 
       B_d, A_d, channel, dimM, dimN, dim, limit, scale);
   CHECK_SYNC("hl_matrix_collect_shared_bias failed");
 }
 
 __global__ void keMatrixRotate(
     real* mat, real* matRot, int dimM, int dimN, bool clockWise) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   if (idx < dimM * dimN) {
     int i = idx / dimN;
     int j = idx % dimN;
@@ -588,7 +589,7 @@ void hl_matrix_rotate(
   CHECK_NOTNULL(matRot);
   const int threads = 512;
   const int blocks = DIVUP(dimM * dimN, threads);
-  keMatrixRotate<<<blocks, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((keMatrixRotate), dim3(blocks), dim3(threads), 0, STREAM_DEFAULT, 
       mat, matRot, dimM, dimN, clockWise);
   CHECK_SYNC("hl_matrix_rotate failed");
 }
@@ -611,8 +612,8 @@ __global__ void keMatrixVol2Col(int num_kernels,
                                 int depth_col,
                                 int height_col,
                                 int width_col) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < num_kernels;
-       index += blockDim.x * gridDim.x) {
+  for (int index = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x; index < num_kernels;
+       index += hipBlockDim_x * hipGridDim_x) {
     int w_out = index % width_col;
     int h_out = (index / width_col) % height_col;
     int d_out = (index / width_col / height_col) % depth_col;
@@ -666,7 +667,7 @@ void hl_matrix_vol2Col(const real* dataSrc,
   const int threads = 512;
   const int blocks = DIVUP(num_kernels, threads);
 
-  keMatrixVol2Col<<<blocks, threads, 0, STREAM_DEFAULT>>>(num_kernels,
+  hipLaunchKernelGGL((keMatrixVol2Col), dim3(blocks), dim3(threads), 0, STREAM_DEFAULT, num_kernels,
                                                           dataSrc,
                                                           dataDst,
                                                           depth,
@@ -707,8 +708,8 @@ __global__ void keMatrixCol2Vol(int num_kernels,
                                 int width_col,
                                 real alpha,
                                 real beta) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < num_kernels;
-       index += blockDim.x * gridDim.x) {
+  for (int index = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x; index < num_kernels;
+       index += hipBlockDim_x * hipGridDim_x) {
     real srcVal = 0;
     real dstVal = dataDst[index];
     int w = index % width + paddingW;
@@ -770,7 +771,7 @@ void hl_matrix_col2Vol(real* dataDst,
   const int threads = 512;
   const int blocks = DIVUP(num_kernels, threads);
 
-  keMatrixCol2Vol<<<blocks, threads, 0, STREAM_DEFAULT>>>(num_kernels,
+  hipLaunchKernelGGL((keMatrixCol2Vol), dim3(blocks), dim3(threads), 0, STREAM_DEFAULT, num_kernels,
                                                           dataDst,
                                                           dataSrc,
                                                           depth,
@@ -795,12 +796,12 @@ void hl_matrix_col2Vol(real* dataDst,
 }
 
 __global__ void keVectorCast2Int(int* out, real* vec, int size) {
-  for (int i = threadIdx.x; i < (size); i += blockDim.x) {
+  for (int i = hipThreadIdx_x; i < (size); i += hipBlockDim_x) {
     out[i] = int(vec[i]);
   }
 }
 
 void hl_vector_cast2int(int* out, real* vec, int size) {
-  keVectorCast2Int<<<1, 512, 0, STREAM_DEFAULT>>>(out, vec, size);
+  hipLaunchKernelGGL((keVectorCast2Int), dim3(1), dim3(512), 0, STREAM_DEFAULT, out, vec, size);
   CHECK_SYNC("hl_vector_cast2int failed");
 }

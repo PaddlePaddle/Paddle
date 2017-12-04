@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,9 +28,9 @@ template <class Agg, int blockSize>
 __global__ void KeMatrixRowOp(Agg agg, real *E, real *Sum, int dimN) {
   __shared__ real sum_s[blockSize];
   int cnt = (dimN + blockSize - 1) / blockSize;
-  int rowId = blockIdx.x + blockIdx.y * gridDim.x;
+  int rowId = hipBlockIdx_x + hipBlockIdx_y * hipGridDim_x;
   int index = rowId * dimN;
-  int tid = threadIdx.x;
+  int tid = hipThreadIdx_x;
   int lmt = tid;
 
   real tmp = agg.init();
@@ -60,7 +61,7 @@ void hl_matrix_row_op(Agg agg, real *A_d, real *C_d, int dimM, int dimN) {
   dim3 threads(128, 1);
   dim3 grid(blocksX, blocksY);
 
-  KeMatrixRowOp<Agg, 128><<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMatrixRowOp<Agg, 128>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       agg, A_d, C_d, dimN);
 }
 
@@ -94,7 +95,7 @@ void hl_matrix_row_min(real *A_d, real *C_d, int dimM, int dimN) {
 template <class Agg>
 __global__ void KeMatrixColumnOp(
     Agg agg, real *E, real *Sum, int dimM, int dimN) {
-  int rowIdx = blockIdx.x * blockDim.x + threadIdx.x;
+  int rowIdx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   real tmp = agg.init();
   if (rowIdx < dimN) {
     for (int index = 0; index < dimM; index++) {
@@ -108,8 +109,8 @@ template <class Agg, int blockDimX, int blockDimY>
 __global__ void KeMatrixColumnOp_S(
     Agg agg, real *E, real *Sum, int dimM, int dimN) {
   __shared__ real _sum[blockDimX * blockDimY];
-  int rowIdx = blockIdx.x * blockDim.x + threadIdx.x;
-  int index = threadIdx.y;
+  int rowIdx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
+  int index = hipThreadIdx_y;
 
   real tmp = agg.init();
   if (rowIdx < dimN) {
@@ -118,14 +119,14 @@ __global__ void KeMatrixColumnOp_S(
       index += blockDimY;
     }
   }
-  _sum[threadIdx.x + threadIdx.y * blockDimX] = tmp;
+  _sum[hipThreadIdx_x + hipThreadIdx_y * blockDimX] = tmp;
   __syncthreads();
 
   if (rowIdx < dimN) {
-    if (threadIdx.y == 0) {
+    if (hipThreadIdx_y == 0) {
       real tmp = agg.init();
       for (int i = 0; i < blockDimY; i++) {
-        tmp = agg(tmp, _sum[threadIdx.x + i * blockDimX]);
+        tmp = agg(tmp, _sum[hipThreadIdx_x + i * blockDimX]);
       }
       Sum[rowIdx] = tmp;
     }
@@ -139,14 +140,14 @@ void hl_matrix_column_op(Agg agg, real *A_d, real *C_d, int dimM, int dimN) {
     int blocksY = 1;
     dim3 threads(128, 1);
     dim3 grid(blocksX, blocksY);
-    KeMatrixColumnOp<Agg><<<grid, threads, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((KeMatrixColumnOp<Agg>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
         agg, A_d, C_d, dimM, dimN);
   } else {
     int blocksX = (dimN + 32 - 1) / 32;
     int blocksY = 1;
     dim3 threads(32, 32);
     dim3 grid(blocksX, blocksY);
-    KeMatrixColumnOp_S<Agg, 32, 32><<<grid, threads, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((KeMatrixColumnOp_S<Agg, 32, 32>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
         agg, A_d, C_d, dimM, dimN);
   }
 
@@ -183,13 +184,13 @@ void hl_matrix_column_min(real *A_d, real *C_d, int dimM, int dimN) {
 template <int blockSize>
 __global__ void KeVectorSum(real *E, real *Sum, int dimM) {
   __shared__ double sum_s[blockSize];
-  int tid = threadIdx.x;
-  int index = blockIdx.y * blockDim.x + threadIdx.x;
+  int tid = hipThreadIdx_x;
+  int index = hipBlockIdx_y * hipBlockDim_x + hipThreadIdx_x;
 
   sum_s[tid] = 0.0f;
   while (index < dimM) {
     sum_s[tid] += E[index];
-    index += blockDim.x * gridDim.y;
+    index += hipBlockDim_x * hipGridDim_y;
   }
   __syncthreads();
 
@@ -202,7 +203,7 @@ __global__ void KeVectorSum(real *E, real *Sum, int dimM) {
   __syncthreads();
 
   if (tid == 0) {
-    Sum[blockIdx.y] = sum_s[0];
+    Sum[hipBlockIdx_y] = sum_s[0];
   }
 }
 
@@ -222,30 +223,30 @@ void hl_vector_sum(real *A_d, real *C_h, int dimM) {
   while (!hl_cuda_event_is_ready(hl_event)) {
   }
 
-  KeVectorSum<128><<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeVectorSum<128>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       A_d, t_resource.gpu_mem, dimM);
-  KeVectorSum<128><<<1, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeVectorSum<128>), dim3(1), dim3(threads), 0, STREAM_DEFAULT, 
       t_resource.gpu_mem, t_resource.cpu_mem, 128);
 
   hl_memcpy_async(C_h, t_resource.cpu_mem, sizeof(real), HPPL_STREAM_DEFAULT);
   hl_stream_record_event(HPPL_STREAM_DEFAULT, hl_event);
 
   hl_stream_synchronize(HPPL_STREAM_DEFAULT);
-  cudaError_t err = (cudaError_t)hl_get_device_last_error();
-  CHECK_EQ(cudaSuccess, err) << "CUDA error: "
+  hipError_t err = (hipError_t)hl_get_device_last_error();
+  CHECK_EQ(hipSuccess, err) << "CUDA error: "
                              << hl_get_device_error_string((size_t)err);
 }
 
 template <int blockSize>
 __global__ void KeVectorAbsSum(real *E, real *Sum, int dimM) {
   __shared__ double sum_s[blockSize];
-  int tid = threadIdx.x;
-  int index = blockIdx.y * blockDim.x + threadIdx.x;
+  int tid = hipThreadIdx_x;
+  int index = hipBlockIdx_y * hipBlockDim_x + hipThreadIdx_x;
 
   sum_s[tid] = 0.0f;
   while (index < dimM) {
     sum_s[tid] += abs(E[index]);
-    index += blockDim.x * gridDim.y;
+    index += hipBlockDim_x * hipGridDim_y;
   }
   __syncthreads();
 
@@ -258,7 +259,7 @@ __global__ void KeVectorAbsSum(real *E, real *Sum, int dimM) {
   __syncthreads();
 
   if (tid == 0) {
-    Sum[blockIdx.y] = sum_s[0];
+    Sum[hipBlockIdx_y] = sum_s[0];
   }
 }
 
@@ -278,16 +279,16 @@ void hl_vector_abs_sum(real *A_d, real *C_h, int dimM) {
   while (!hl_cuda_event_is_ready(hl_event)) {
   }
 
-  KeVectorAbsSum<128><<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeVectorAbsSum<128>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       A_d, t_resource.gpu_mem, dimM);
-  KeVectorAbsSum<128><<<1, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeVectorAbsSum<128>), dim3(1), dim3(threads), 0, STREAM_DEFAULT, 
       t_resource.gpu_mem, t_resource.cpu_mem, 128);
 
   hl_memcpy_async(C_h, t_resource.cpu_mem, sizeof(real), HPPL_STREAM_DEFAULT);
   hl_stream_record_event(HPPL_STREAM_DEFAULT, hl_event);
 
   hl_stream_synchronize(HPPL_STREAM_DEFAULT);
-  cudaError_t err = (cudaError_t)hl_get_device_last_error();
-  CHECK_EQ(cudaSuccess, err) << "CUDA error: "
+  hipError_t err = (hipError_t)hl_get_device_last_error();
+  CHECK_EQ(hipSuccess, err) << "CUDA error: "
                              << hl_get_device_error_string((size_t)err);
 }

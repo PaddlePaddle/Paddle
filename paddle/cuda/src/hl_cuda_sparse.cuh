@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,8 +51,8 @@ __global__ void KeSMatrixCsr2Dense(real * csr_val,
                                    real * C_d,
                                    const int dimM,
                                    const int dimN) {
-  const int row = blockIdx.y*blockDim.y+threadIdx.y;
-  const int col = blockIdx.x*blockDim.x+threadIdx.x;
+  const int row = hipBlockIdx_y*hipBlockDim_y+hipThreadIdx_y;
+  const int col = hipBlockIdx_x*hipBlockDim_x+hipThreadIdx_x;
 
   if (row >= dimM || col >= dimN) {
     return;
@@ -71,8 +72,8 @@ __global__ void KeSMatrixCsc2Dense(real * csc_val,
                                    real * C_d,
                                    const int dimM,
                                    const int dimN) {
-  const int row = blockIdx.y*blockDim.y+threadIdx.y;
-  const int col = blockIdx.x*blockDim.x+threadIdx.x;
+  const int row = hipBlockIdx_y*hipBlockDim_y+hipThreadIdx_y;
+  const int col = hipBlockIdx_x*hipBlockDim_x+hipThreadIdx_x;
 
   if (row >= dimM || col >= dimN) {
     return;
@@ -110,10 +111,10 @@ __global__ void KeSMatrixCsrMulDense(real *C_d,
                                      int dimK,
                                      real alpha,
                                      real beta) {
-  const int idx = threadIdx.x;
-  const int idy = threadIdx.y;
-  const int index_m = blockIdx.y*CU_CSRMM_THREAD_Y+threadIdx.y;
-  int index_n = blockIdx.x*CU_CSRMM_BLOCK_N+threadIdx.x;
+  const int idx = hipThreadIdx_x;
+  const int idy = hipThreadIdx_y;
+  const int index_m = hipBlockIdx_y*CU_CSRMM_THREAD_Y+hipThreadIdx_y;
+  int index_n = hipBlockIdx_x*CU_CSRMM_BLOCK_N+hipThreadIdx_x;
 
   __shared__ real csr_val_sh[CU_CSRMM_THREAD_Y][CU_CSRMM_SHARED_ELEMENT];
   __shared__ int csr_col_sh[CU_CSRMM_THREAD_Y][CU_CSRMM_SHARED_ELEMENT];
@@ -235,10 +236,10 @@ __global__ void KeSMatrixCscMulDense(real *C_d,
                                      int dimK,
                                      real alpha,
                                      real beta) {
-  const int idx = threadIdx.x;
-  const int idy = threadIdx.y;
-  const int index_k = blockIdx.y*CU_CSC_MUL_DENSE_BLOCK_K+threadIdx.y;
-  const int index_n = blockIdx.x*CU_CSC_MUL_DENSE_BLOCK_N+threadIdx.x;
+  const int idx = hipThreadIdx_x;
+  const int idy = hipThreadIdx_y;
+  const int index_k = hipBlockIdx_y*CU_CSC_MUL_DENSE_BLOCK_K+hipThreadIdx_y;
+  const int index_n = hipBlockIdx_x*CU_CSC_MUL_DENSE_BLOCK_N+hipThreadIdx_x;
 
   if (index_k >= dimK) {
     return;
@@ -381,9 +382,9 @@ __global__ void KeSMatrixDenseMulCsc(real *C_d,
 
   int iter_k = dimK/CU_CSCMM_THREAD_Y_BEST;
   int rem_k = dimK%CU_CSCMM_THREAD_Y_BEST;
-  const int idx = threadIdx.x;
-  const int idy = threadIdx.y;
-  const int index_n = blockIdx.y*CU_CSCMM_BLOCK_N_BEST+threadIdx.y;
+  const int idx = hipThreadIdx_x;
+  const int idy = hipThreadIdx_y;
+  const int index_n = hipBlockIdx_y*CU_CSCMM_BLOCK_N_BEST+hipThreadIdx_y;
 
   int csc_start;
   int csc_end;
@@ -407,7 +408,7 @@ __global__ void KeSMatrixDenseMulCsc(real *C_d,
     csc_index += CU_CSCMM_THREAD_X_BEST;
   }
 
-  const int ibx = blockIdx.x * CU_CSCMM_BLOCK_M_BEST;
+  const int ibx = hipBlockIdx_x * CU_CSCMM_BLOCK_M_BEST;
   int dim = ibx+idy;
   A_d += idx + __mul24(dim, dimK);
   #pragma unroll
@@ -559,7 +560,7 @@ TEMP_TEST:
   __syncthreads();
 
   int index_m_c = ibx + idy;
-  int index_n_c = blockIdx.y*CU_CSCMM_BLOCK_N_BEST + idx;
+  int index_n_c = hipBlockIdx_y*CU_CSCMM_BLOCK_N_BEST + idx;
   C_d += index_n_c + __mul24(index_m_c, dimN);
   if (beta == 0.0) {
     for (int m = 0; m < CU_CSCMM_THREAD_M_BEST; m++) {
@@ -597,11 +598,11 @@ __global__ void KeSMatrixDenseMulCsr(real *C_d,
                                      int dimK,
                                      real alpha,
                                      real beta) {
-  const int idx = threadIdx.x;
-  const int idy = threadIdx.y;
-  int index_k = __mul24(blockIdx.x, CU_DM_CSR_THREAD_X) + threadIdx.x;
-  int index_m = __mul24(blockIdx.y, CU_DM_CSR_BLOCK_M) +
-    __mul24(threadIdx.y, CU_DM_CSR_N);
+  const int idx = hipThreadIdx_x;
+  const int idy = hipThreadIdx_y;
+  int index_k = __mul24(hipBlockIdx_x, CU_DM_CSR_THREAD_X) + hipThreadIdx_x;
+  int index_m = __mul24(hipBlockIdx_y, CU_DM_CSR_BLOCK_M) +
+    __mul24(hipThreadIdx_y, CU_DM_CSR_N);
 
   if (index_k >= dimK) {
     return;
@@ -709,8 +710,8 @@ __global__ void KeSMatrixDenseMulDense2CSC(real *csc_val,
                                            real alpha,
                                            real beta) {
   __shared__ real B_s[CU_CSCMM_DMD2CSC_SHARE_X];
-  const int idx = threadIdx.x;  // one block compute one column
-  const int ibx = blockIdx.x;  // col index
+  const int idx = hipThreadIdx_x;  // one block compute one column
+  const int ibx = hipBlockIdx_x;  // col index
   int csc_start;
   int csc_end;
   if (ibx < dimN) {
@@ -800,8 +801,8 @@ __global__ void KeSMatrixDenseMulDense2CSR(real *csr_val,
                                      real alpha,
                                      real beta) {
   __shared__ real A_s[CU_CSCMM_DMD2CSR_SHARE_X];
-  const int idx = threadIdx.x;  // one block comput one row
-  const int ibx = blockIdx.x;  // row index
+  const int idx = hipThreadIdx_x;  // one block comput one row
+  const int ibx = hipBlockIdx_x;  // row index
 
   int csr_start;
   int csr_end;
@@ -916,8 +917,8 @@ int findIndex(int* indice, int num, int index) {
  */
 __global__ void KeSMatrixCsrColumnSum(real* a_val, real* csr_val,
                                       int* csr_col, const int dimNNZ) {
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;
-  for (int idx = gid; idx < dimNNZ; idx += gridDim.x * blockDim.x) {
+  int gid = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
+  for (int idx = gid; idx < dimNNZ; idx += hipGridDim_x * hipBlockDim_x) {
     int colIdx = csr_col[idx];
     real val = csr_val[idx];
     paddle::paddleAtomicAdd(a_val + colIdx, val);
@@ -926,8 +927,8 @@ __global__ void KeSMatrixCsrColumnSum(real* a_val, real* csr_val,
 
 __global__ void KeSMatrixCsrAddBias(real* csr_val, int* csr_col, real* b_d,
                                     real scale, const int nnz) {
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;  // global index
-  for (int idx = gid; idx < nnz; idx += gridDim.x * blockDim.x) {
+  int gid = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;  // global index
+  for (int idx = gid; idx < nnz; idx += hipGridDim_x * hipBlockDim_x) {
     int colIdx = csr_col[idx];
     // not coalesced access to b_d
     csr_val[idx] += scale * b_d[colIdx];
@@ -942,12 +943,12 @@ __global__ void KeSMatrixCsrAddBias(real* csr_val, int* csr_col, real* b_d,
 __global__ void KeSMatrixCsrAddDense(real* csr_val, int* csr_row,
                                      int* csr_col, real* b_d, real alpha,
                                      real beta, int dimM, int dimN) {
-  int gidx = blockIdx.x * blockDim.x + threadIdx.x;
-  int gidy = blockIdx.y;
+  int gidx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
+  int gidy = hipBlockIdx_y;
   if (gidy < dimM) {
     int start = csr_row[gidy];
     int end = csr_row[gidy + 1];
-    for (int x = gidx; x < (end - start); x += gridDim.x * blockDim.x) {
+    for (int x = gidx; x < (end - start); x += hipGridDim_x * hipBlockDim_x) {
       int col = csr_col[start + x];
       real val = csr_val[start + x];
       csr_val[start + x] = beta * val + alpha * b_d[gidy * dimN + col];
@@ -966,11 +967,11 @@ __global__ void KeSMatrixDenseMulDenseTrans2CSR(
   __shared__ real B_s[CU_BLOCK_SIZE][CU_BLOCK_K];
   __shared__ real A_s[CU_BLOCK_K];
 
-  const int idx = threadIdx.x;
+  const int idx = hipThreadIdx_x;
 
-  const int gidx_begin = blockIdx.x * CU_BLOCK_SIZE;
-  const int gidy = blockIdx.y;
-  const int gx_dim = gridDim.x * blockDim.x;
+  const int gidx_begin = hipBlockIdx_x * CU_BLOCK_SIZE;
+  const int gidy = hipBlockIdx_y;
+  const int gx_dim = hipGridDim_x * hipBlockDim_x;
 
   int start = csr_row[gidy];
   int end = csr_row[gidy + 1];

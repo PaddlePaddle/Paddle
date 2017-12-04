@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,10 +50,10 @@ void hl_matrix_csr2dense(hl_sparse_matrix_s A_d,
   dim3 grid(blocksX, blocksY);
 
   if (A_d->type == HL_NO_VALUE) {
-    KeSMatrixCsr2Dense<0><<<grid, threads, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((KeSMatrixCsr2Dense<0>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
         A_d2->csr_val, A_d2->csr_row, A_d2->csr_col, C_d, dimM, dimN);
   } else if (A_d->type == HL_FLOAT_VALUE) {
-    KeSMatrixCsr2Dense<1><<<grid, threads, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((KeSMatrixCsr2Dense<1>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
         A_d2->csr_val, A_d2->csr_row, A_d2->csr_col, C_d, dimM, dimN);
   } else {
   }
@@ -85,10 +86,10 @@ void hl_matrix_csc2dense(hl_sparse_matrix_s A_d,
   dim3 grid(blocksX, blocksY);
 
   if (A_d->type == HL_NO_VALUE) {
-    KeSMatrixCsc2Dense<0><<<grid, threads, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((KeSMatrixCsc2Dense<0>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
         A_d2->csc_val, A_d2->csc_row, A_d2->csc_col, C_d, dimM, dimN);
   } else if (A_d->type == HL_FLOAT_VALUE) {
-    KeSMatrixCsc2Dense<1><<<grid, threads, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((KeSMatrixCsc2Dense<1>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
         A_d2->csc_val, A_d2->csc_row, A_d2->csc_col, C_d, dimM, dimN);
   } else {
   }
@@ -562,7 +563,7 @@ void hl_matrix_csr_mul_dense(hl_sparse_matrix_s A_d,
     /* sparsity pattern */
     // A_d->sparsity;
     if (A_d->type == HL_NO_VALUE) {
-      KeSMatrixCsrMulDense<0><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSMatrixCsrMulDense<0>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
           C_d,
           A_d2->csr_val,
           A_d2->csr_col,
@@ -574,7 +575,7 @@ void hl_matrix_csr_mul_dense(hl_sparse_matrix_s A_d,
           alpha,
           beta);
     } else {
-      KeSMatrixCsrMulDense<1><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSMatrixCsrMulDense<1>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
           C_d,
           A_d2->csr_val,
           A_d2->csr_col,
@@ -596,7 +597,7 @@ void hl_matrix_csr_mul_dense(hl_sparse_matrix_s A_d,
     dim3 threads(CU_CSC_MUL_DENSE_THREAD_X, CU_CSC_MUL_DENSE_THREAD_Y);
     dim3 grid(blocksX, blocksY);
     if (A_d->type == HL_NO_VALUE) {
-      KeSMatrixCscMulDense<0><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSMatrixCscMulDense<0>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
           C_d,
           A_d2->csr_val,
           A_d2->csr_col,
@@ -608,7 +609,7 @@ void hl_matrix_csr_mul_dense(hl_sparse_matrix_s A_d,
           alpha,
           beta);
     } else {
-      KeSMatrixCscMulDense<1><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSMatrixCscMulDense<1>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
           C_d,
           A_d2->csr_val,
           A_d2->csr_col,
@@ -669,7 +670,7 @@ void hl_matrix_dense_mul_csc(real *A_d,
     dim3 grid(blocksX, blocksY);
 
     if (B_d->type == HL_NO_VALUE) {
-      KeSMatrixDenseMulCsc<0><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSMatrixDenseMulCsc<0>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
           C_d,
           A_d,
           B_d2->csc_val,
@@ -681,7 +682,7 @@ void hl_matrix_dense_mul_csc(real *A_d,
           alpha,
           beta);
     } else {
-      KeSMatrixDenseMulCsc<1><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSMatrixDenseMulCsc<1>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
           C_d,
           A_d,
           B_d2->csc_val,
@@ -700,7 +701,7 @@ void hl_matrix_dense_mul_csc(real *A_d,
     dim3 threads(CU_DM_CSR_THREAD_X, CU_DM_CSR_THREAD_Y);
     dim3 grid(blocksX, blocksY);
     if (B_d->type == HL_NO_VALUE) {
-      KeSMatrixDenseMulCsr<0><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSMatrixDenseMulCsr<0>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
           C_d,
           A_d,
           B_d2->csc_val,
@@ -712,7 +713,7 @@ void hl_matrix_dense_mul_csc(real *A_d,
           alpha,
           beta);
     } else {
-      KeSMatrixDenseMulCsr<1><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSMatrixDenseMulCsr<1>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
           C_d,
           A_d,
           B_d2->csc_val,
@@ -773,7 +774,7 @@ void hl_matrix_dense_mul_csr(real *A_d,
     dim3 threads(CU_DM_CSR_THREAD_X, CU_DM_CSR_THREAD_Y);
     dim3 grid(blocksX, blocksY);
     if (B_d->type == HL_NO_VALUE) {
-      KeSMatrixDenseMulCsr<0><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSMatrixDenseMulCsr<0>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
           C_d,
           A_d,
           B_d2->csr_val,
@@ -785,7 +786,7 @@ void hl_matrix_dense_mul_csr(real *A_d,
           alpha,
           beta);
     } else {
-      KeSMatrixDenseMulCsr<1><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSMatrixDenseMulCsr<1>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
           C_d,
           A_d,
           B_d2->csr_val,
@@ -803,7 +804,7 @@ void hl_matrix_dense_mul_csr(real *A_d,
     dim3 threads(CU_CSCMM_THREAD_X_BEST, CU_CSCMM_THREAD_Y_BEST);
     dim3 grid(blocksX, blocksY);
     if (B_d->type == HL_NO_VALUE) {
-      KeSMatrixDenseMulCsc<0><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSMatrixDenseMulCsc<0>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
           C_d,
           A_d,
           B_d2->csr_val,
@@ -815,7 +816,7 @@ void hl_matrix_dense_mul_csr(real *A_d,
           alpha,
           beta);
     } else {
-      KeSMatrixDenseMulCsc<1><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSMatrixDenseMulCsc<1>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
           C_d,
           A_d,
           B_d2->csr_val,
@@ -878,7 +879,7 @@ void hl_matrix_csc_mul_dense(hl_sparse_matrix_s A_d,
     dim3 threads(CU_CSC_MUL_DENSE_THREAD_X, CU_CSC_MUL_DENSE_THREAD_Y);
     dim3 grid(blocksX, blocksY);
     if (A_d->type == HL_NO_VALUE) {
-      KeSMatrixCscMulDense<0><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSMatrixCscMulDense<0>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
           C_d,
           A_d2->csc_val,
           A_d2->csc_row,
@@ -890,7 +891,7 @@ void hl_matrix_csc_mul_dense(hl_sparse_matrix_s A_d,
           alpha,
           beta);
     } else {
-      KeSMatrixCscMulDense<1><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSMatrixCscMulDense<1>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
           C_d,
           A_d2->csc_val,
           A_d2->csc_row,
@@ -911,7 +912,7 @@ void hl_matrix_csc_mul_dense(hl_sparse_matrix_s A_d,
     /* sparsity pattern */
     // A_d->sparsity;
     if (A_d->type == HL_NO_VALUE) {
-      KeSMatrixCsrMulDense<0><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSMatrixCsrMulDense<0>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
           C_d,
           A_d2->csc_val,
           A_d2->csc_row,
@@ -923,7 +924,7 @@ void hl_matrix_csc_mul_dense(hl_sparse_matrix_s A_d,
           alpha,
           beta);
     } else {
-      KeSMatrixCsrMulDense<1><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSMatrixCsrMulDense<1>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
           C_d,
           A_d2->csc_val,
           A_d2->csc_row,
@@ -978,7 +979,7 @@ void hl_sparse_matrix_mul(real *A_d,
     dim3 grid(blocksX, blocksY);
     bool transA = transa == HPPL_OP_T ? 1 : 0;
     bool transB = transb == HPPL_OP_T ? 1 : 0;
-    KeSMatrixDenseMulDense2CSC<<<grid, threads, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((KeSMatrixDenseMulDense2CSC), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
         C_d2->csc_val,
         C_d2->csc_row,
         C_d2->csc_col,
@@ -1012,7 +1013,7 @@ void hl_sparse_matrix_mul(real *A_d,
       dim3 threads(CU_CSCMM_DMD2CSR_THREAD_X, 1);
       dim3 grid(blocksX, blocksY);
 
-      KeSMatrixDenseMulDense2CSR<<<grid, threads, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSMatrixDenseMulDense2CSR), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
           C_d2->csr_val,
           C_d2->csr_row,
           C_d2->csr_col,
@@ -1034,7 +1035,7 @@ void hl_sparse_matrix_mul(real *A_d,
       avgNnzPerRow = avgNnzPerRow > 0 ? avgNnzPerRow : 1;
       int gridx = DIVUP(avgNnzPerRow, CU_BLOCK_SIZE);
       dim3 grid(gridx, dimM);
-      KeSMatrixDenseMulDenseTrans2CSR<<<grid, block, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSMatrixDenseMulDenseTrans2CSR), dim3(grid), dim3(block), 0, STREAM_DEFAULT, 
           C_d2->csr_val,
           C_d2->csr_row,
           C_d2->csr_col,
@@ -1164,7 +1165,7 @@ void hl_matrix_csr_column_sum(
   int nnz = B_d->nnz;
   int block = 512;
   int grid = DIVUP(nnz, 512);
-  KeSMatrixCsrColumnSum<<<grid, block, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeSMatrixCsrColumnSum), dim3(grid), dim3(block), 0, STREAM_DEFAULT, 
       A_d, B_d2->csr_val, B_d2->csr_col, nnz);
 
   CHECK_SYNC("hl_matrix_csr_column_sum failed");
@@ -1193,7 +1194,7 @@ void hl_matrix_csr_add_bias(hl_sparse_matrix_s A_d, real *B_d, real scale) {
   int nnz = A_d->nnz;
   int block = 512;
   int grid = DIVUP(nnz, 512);
-  KeSMatrixCsrAddBias<<<grid, block, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeSMatrixCsrAddBias), dim3(grid), dim3(block), 0, STREAM_DEFAULT, 
       A_d2->csr_val, A_d2->csr_col, B_d, scale, nnz);
 
   CHECK_SYNC("hl_sparse_matrix_add_bias failed");
@@ -1237,7 +1238,7 @@ void hl_matrix_csr_add_dense(hl_sparse_matrix_s A_d,
   gridX = gridX > 0 ? gridX : 1;
   dim3 block(512, 1);
   dim3 grid(gridX, dimM);
-  KeSMatrixCsrAddDense<<<grid, block, 0, STREAM_DEFAULT>>>(A_d2->csr_val,
+  hipLaunchKernelGGL((KeSMatrixCsrAddDense), dim3(grid), dim3(block), 0, STREAM_DEFAULT, A_d2->csr_val,
                                                            A_d2->csr_row,
                                                            A_d2->csr_col,
                                                            B_d,

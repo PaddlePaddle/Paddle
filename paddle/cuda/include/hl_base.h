@@ -207,12 +207,12 @@ typedef struct {
 
 #ifdef __NVCC__
 
-#include "cuda_runtime.h"
+#include <hip/hip_runtime.h>
 #include "hl_cuda.h"
 #include "paddle/utils/Logging.h"
 
 extern __thread bool g_sync_flag;
-extern __thread cudaStream_t default_stream;
+extern __thread hipStream_t default_stream;
 #define STREAM_DEFAULT default_stream
 
 /**
@@ -222,8 +222,8 @@ extern __thread cudaStream_t default_stream;
 #define CHECK_SYNC(msg)                                               \
   if (true == g_sync_flag) {                                          \
     hl_stream_synchronize(HPPL_STREAM_DEFAULT);                       \
-    cudaError_t err = (cudaError_t)hl_get_device_last_error();        \
-    CHECK_EQ(cudaSuccess, err)                                        \
+    hipError_t err = (hipError_t)hl_get_device_last_error();        \
+    CHECK_EQ(hipSuccess, err)                                        \
         << "[" << msg << "] "                                         \
         << "CUDA error: " << hl_get_device_error_string((size_t)err); \
   }
