@@ -97,24 +97,28 @@ void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id,
   if (create_local_scope) {
     local_scope = &scope->NewScope();
     for (auto& var : block.AllVars()) {
-      if (var->Persistable()) {
-        auto* ptr = scope->Var(var->Name());
-        CreateTensor(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " global, which pointer is " << ptr;
-      } else {
-        auto* ptr = local_scope->Var(var->Name());
-        CreateTensor(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " locally, which pointer is " << ptr;
+      if (var->Name() != "@EMPTY@") {
+        if (var->Persistable()) {
+          auto* ptr = scope->Var(var->Name());
+          CreateTensor(ptr, var->GetType());
+          VLOG(3) << "Create Variable " << var->Name()
+                  << " global, which pointer is " << ptr;
+        } else {
+          auto* ptr = local_scope->Var(var->Name());
+          CreateTensor(ptr, var->GetType());
+          VLOG(3) << "Create Variable " << var->Name()
+                  << " locally, which pointer is " << ptr;
+        }
       }
     }
   } else {
     for (auto& var : block.AllVars()) {
-      auto* ptr = local_scope->Var(var->Name());
-      CreateTensor(ptr, var->GetType());
-      VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
-              << ptr;
+      if (var->Name() != "@EMPTY@") {
+        auto* ptr = local_scope->Var(var->Name());
+        CreateTensor(ptr, var->GetType());
+        VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
+                << ptr;
+      }
     }
   }
 

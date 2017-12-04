@@ -463,6 +463,7 @@ const std::vector<std::string> &CompileTimeInferShapeContext::Outputs(
 }
 
 DDim CompileTimeInferShapeContext::GetDim(const std::string &name) const {
+  LOG(INFO) << "fuck " << name;
   auto var = block_.FindVarRecursive(name);
   PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
   try {

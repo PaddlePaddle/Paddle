@@ -42,6 +42,9 @@ bool BlockDescBind::HasVar(const std::string &name) const {
 }
 
 VarDescBind *BlockDescBind::FindVarRecursive(const std::string &name) const {
+  if (name == "@EMPTY@") {
+    return nullptr;
+  }
   auto it = vars_.find(name);
   if (it == vars_.end()) {
     return Parent() == kNoneBlockIndex ? nullptr
