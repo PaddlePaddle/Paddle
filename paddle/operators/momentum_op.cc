@@ -101,5 +101,5 @@ $$
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(momentum, ops::MomentumOp, ops::MomentumOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    momentum, ops::MomentumOpKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(momentum, ops::MomentumOpKernel<float>,
+                       ops::MomentumOpKernel<double>);
