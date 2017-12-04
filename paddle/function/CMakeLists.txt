@@ -11,7 +11,7 @@ endif(USE_EIGEN_FOR_BLAS)
 
 if(WITH_GPU)
     file(GLOB cu_files . *OpGpu.cu)
-    cuda_compile(cu_objs ${cu_files})
+    HIP_ADD_LIBRARY(paddle_function_gpu ${cu_files})
 endif()
 
 if(USE_NNPACK)
@@ -23,9 +23,14 @@ endif()
 
 list(APPEND cpp_files neon/NeonDepthwiseConv.cpp)
 
-add_library(paddle_function STATIC ${cpp_files} ${cu_objs})
-add_dependencies(paddle_function ${external_project_dependencies})
-add_dependencies(paddle_function paddle_proto)
+add_library(paddle_function_cpu STATIC ${cpp_files})
+
+add_dependencies(paddle_function_cpu ${external_project_dependencies})
+add_dependencies(paddle_function_cpu paddle_proto)
+if(WITH_GPU)
+  add_dependencies(paddle_function_gpu ${external_project_dependencies})
+  add_dependencies(paddle_function_gpu paddle_proto)
+endif()
 
 if(WITH_TESTING)
 if(WITH_GPU)
@@ -53,8 +58,8 @@ add_simple_unittest(GemmConvOpTest)
 add_simple_unittest(DepthwiseConvOpTest)
 endif()
 
-add_style_check_target(paddle_function ${h_files})
-add_style_check_target(paddle_function ${cpp_files})
+add_style_check_target(paddle_function_cpu ${h_files})
+add_style_check_target(paddle_function_cpu ${cpp_files})
 if(WITH_GPU)
-    add_style_check_target(paddle_function ${cu_files})
+    add_style_check_target(paddle_function_gpu ${cu_files})
 endif()
