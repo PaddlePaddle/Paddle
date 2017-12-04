@@ -4,6 +4,7 @@ Contribute Documentation
 
 PaddlePaddle supports English documentation ``doc`` and Chinese documentation ``doc_cn``.
 Both are compiled by `cmake`_ and `sphinx`_ , the compiled documentations will be stored under ``doc`` and ``doc_cn`` directories.
+When using the PaddlePaddle.org to compile documentations, the compiled documentations will be stored under a consolidated directory: .ppo_workspace/content
 
 How to Build Documentations
 ============
@@ -19,26 +20,36 @@ The tool uses Docker, please install it on your system. Please check Docker offi
 
 ..  code-block:: bash
 
-    mkdir paddlepaddle
+    mkdir paddlepaddle # Create paddlepaddle working directory
     cd paddlepaddle
-    git clone git@github.com:PaddlePaddle/Paddle.git
-    git clone git@github.com:PaddlePaddle/book.git
-    git clone git@github.com:PaddlePaddle/models.git
+
+    # Clone the content repositories. You may only clone the contents you need
+    git clone https://github.com/PaddlePaddle/Paddle.git
+    git clone https://github.com/PaddlePaddle/book.git
+    git clone https://github.com/PaddlePaddle/models.git
+    git clone https://github.com/PaddlePaddle/Mobile.git
 
     docker run -it -p 8000:8000 paddlepaddle/paddlepaddle.org:latest
 
 Use a web browser and navigate to http://localhost:8000, click the buttons to compile the documentation
+The compiled documentations will be stored in <paddlepaddle working directory>/.ppo_workspace/content
+
 
 If you don't wish to use Docker, you can also activate the tool through Django. Use the following the commands to set up
 
 ..  code-block:: bash
 
-    mkdir paddlepaddle
+    mkdir paddlepaddle # Create paddlepaddle working directory
     cd paddlepaddle
-    git clone git@github.com:PaddlePaddle/Paddle.git
-    git clone git@github.com:PaddlePaddle/book.git
-    git clone git@github.com:PaddlePaddle/models.git
-    git clone git@github.com:PaddlePaddle/PaddlePaddle.org.git
+
+    # Clone the content repositories and PaddlePaddle.org
+    git clone https://github.com/PaddlePaddle/Paddle.git
+    git clone https://github.com/PaddlePaddle/book.git
+    git clone https://github.com/PaddlePaddle/models.git
+    git clone https://github.com/PaddlePaddle/Mobile.git
+    git clone https://github.com/PaddlePaddle/PaddlePaddle.org.git
+
+    # Please specify the PaddlePaddle working directory. In the current setting, it should be pwd
     export CONTENT_DIR=<path_to_paddlepaddle_working_directory>
     export ENV=''
     cd PaddlePaddle.org/portal/
@@ -46,6 +57,8 @@ If you don't wish to use Docker, you can also activate the tool through Django. 
     python manage.py runserver
 
 Use a web browser and navigate to http://localhost:8000, click the buttons to compile the documentation
+The compiled documentations will be stored in <paddlepaddle working directory>/.ppo_workspace/content
+
 If you want to learn more on the PaddlePaddle.org, please `click here <https://github.com/PaddlePaddle/PaddlePaddle.org/blob/develop/README.md>`_ 。
 
 How to write Documentations
