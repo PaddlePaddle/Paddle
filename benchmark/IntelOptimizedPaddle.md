@@ -53,6 +53,15 @@ TBD
 
  - GoogLeNet
 
+| BatchSize    | 64    | 128   | 256    |
+|--------------|-------| ------| -------|
+| OpenBLAS     | 89.52 | 96.97 | 108.25 | 
+| MKLML        | 128.46| 137.89| 158.63 |
+| MKL-DNN      | 250.46| 264.83| 269.50 |
+
+chart on batch size 128
+TBD
+
 ### Laptop
 TBD
 ### Desktop

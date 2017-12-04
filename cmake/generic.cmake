@@ -227,8 +227,8 @@ function(cc_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_executable(${TARGET_NAME} ${cc_test_SRCS})
-    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} gtest gtest_main)
-    add_dependencies(${TARGET_NAME} ${cc_test_DEPS} gtest gtest_main)
+    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main paddle_memory gtest gflags)
+    add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main paddle_memory gtest gflags)
     add_test(NAME ${TARGET_NAME} COMMAND ${TARGET_NAME} WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   endif()
 endfunction(cc_test)
@@ -288,8 +288,8 @@ function(nv_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     cuda_add_executable(${TARGET_NAME} ${nv_test_SRCS})
-    target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} gtest gtest_main)
-    add_dependencies(${TARGET_NAME} ${nv_test_DEPS} gtest gtest_main)
+    target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main paddle_memory gtest gflags)
+    add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main paddle_memory gtest gflags)
     add_test(${TARGET_NAME} ${TARGET_NAME})
   endif()
 endfunction(nv_test)
@@ -459,11 +459,58 @@ function(py_test TARGET_NAME)
   if(WITH_TESTING)
     set(options STATIC static SHARED shared)
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS)
-    cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})  
+    set(multiValueArgs SRCS DEPS ARGS)
+    cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_test(NAME ${TARGET_NAME}
              COMMAND env PYTHONPATH=${PADDLE_PYTHON_BUILD_DIR}/lib-python
-             python2 ${py_test_SRCS}
+             ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
              WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   endif()
+endfunction()
+
+# grpc_library generate grpc code using grpc_cpp_plugin and protoc
+# then build the generated protobuf code and grpc code with your
+# implementation source codes together. Use SRCS argument for your
+# implementation source files and PROTO argument for your .proto
+# files.
+#
+# Usage: grpc_library(my_target SRCS my_client.cc PROTO my_target.proto DEPS my_dep)
+
+function(grpc_library TARGET_NAME)
+  set(oneValueArgs PROTO)
+  set(multiValueArgs SRCS DEPS)
+  set(options "")
+  cmake_parse_arguments(grpc_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+  message(STATUS "generating grpc ${grpc_library_PROTO}")
+
+  get_filename_component(ABS_PROTO ${grpc_library_PROTO} ABSOLUTE)
+  get_filename_component(PROTO_WE ${grpc_library_PROTO} NAME_WE)
+  get_filename_component(PROTO_PATH ${ABS_PROTO} PATH)
+
+  protobuf_generate_cpp(grpc_proto_srcs grpc_proto_hdrs "${ABS_PROTO}")
+  set(grpc_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_WE}.grpc.pb.cc")
+  set(grpc_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_WE}.grpc.pb.h")
+  cc_library("${TARGET_NAME}_proto" SRCS "${grpc_proto_srcs}")
+
+  add_custom_command(
+          OUTPUT "${grpc_grpc_srcs}" "${grpc_grpc_hdrs}"
+          COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
+          ARGS --grpc_out "${CMAKE_CURRENT_BINARY_DIR}" -I "${PROTO_PATH}"
+          --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN}" "${ABS_PROTO}"
+          DEPENDS "${ABS_PROTO}" ${PROTOBUF_PROTOC_EXECUTABLE} extern_grpc)
+
+  # FIXME(typhoonzero): grpc generated code do not generate virtual-dtor, mark it
+  # as compiler warnings instead of error. Should try remove the warnings also.
+  set_source_files_properties(
+    ${grpc_grpc_srcs}
+    PROPERTIES
+    COMPILE_FLAGS  "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+  cc_library("${TARGET_NAME}_grpc" SRCS "${grpc_grpc_srcs}")
+
+  set_source_files_properties(
+    ${grpc_library_SRCS}
+    PROPERTIES
+    COMPILE_FLAGS  "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+  cc_library("${TARGET_NAME}" SRCS "${grpc_library_SRCS}" DEPS "${TARGET_NAME}_grpc" "${TARGET_NAME}_proto" "${grpc_library_DEPS}")
 endfunction()
