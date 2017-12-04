@@ -76,7 +76,7 @@ set(CUDA_HEADERS
     include/hl_cnn.h)
 
 if(WITH_GPU)
-    cuda_add_library(paddle_cuda
+    HIP_ADD_LIBRARY(paddle_cuda
         ${CUDA_SOURCES}
         ${CUDA_CU_SOURCES}
         ${CUDA_CXX_SOURCES})
