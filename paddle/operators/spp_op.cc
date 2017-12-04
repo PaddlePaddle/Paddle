@@ -29,7 +29,7 @@ class SppOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor) The output tensor of spp operator."
               "N * M."
               "M = C * H * W");
-    AddAttr<int>("pyramid_height", "int");
+    AddAttr<int>("pyramid_height", "int", "multi level pooling");
     AddComment(R"DOC(
         "Does spatial pyramid pooling on the input image by taking the max,
         etc. within regions so that the result vector of different sized
@@ -39,7 +39,7 @@ class SppOpMaker : public framework::OpProtoAndCheckerMaker {
         Where
           $$
             H_{out} = N \\
-            W_{out} = ((std::pow(4, pyramid_height) - 1) / (4 - 1)) * C_{in}
+            W_{out} = (((4^pyramid_height) - 1) / (4 - 1))$ * C_{in}
           $$
         )DOC");
   }
