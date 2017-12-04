@@ -30,8 +30,9 @@ USE_OP(sum);
 
 // global for simplicity.
 std::unique_ptr<paddle::framework::OperatorBase> recv_op;
-int benchmark_count = 100000;
-int mat_size = 10;
+int benchmark_count = 1000;
+// FIXME(typhoonzero): protobuf message size limits the maximum tensor size
+int mat_size = 512;
 
 void InitTensorsInScope(paddle::framework::Scope &scope,
                         paddle::platform::CPUPlace &place) {
@@ -47,7 +48,7 @@ void InitTensorsInScope(paddle::framework::Scope &scope,
   auto out_var = scope.Var("Out");
   auto out_tensor = out_var->GetMutable<paddle::framework::LoDTensor>();
   out_tensor->Resize({mat_size, mat_size});
-  tensor->mutable_data<float>(place);  // allocate
+  out_tensor->mutable_data<float>(place);  // allocate
 }
 
 void AddOp(const std::string &type,
