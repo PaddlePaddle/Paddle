@@ -205,7 +205,7 @@ typedef struct {
   size_t nnz;
 } _hl_sparse_matrix_s, *hl_sparse_matrix_s;
 
-#ifdef __NVCC__
+#ifdef __HIPCC__
 
 #include <hip/hip_runtime.h>
 #include "hl_cuda.h"
@@ -228,6 +228,6 @@ extern __thread hipStream_t default_stream;
         << "CUDA error: " << hl_get_device_error_string((size_t)err); \
   }
 
-#endif /* __NVCC__ */
+#endif /* __HIPCC__ */
 
 #endif /* HL_BASE_H_ */

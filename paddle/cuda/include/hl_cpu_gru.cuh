@@ -16,7 +16,7 @@ limitations under the License. */
 #ifndef HL_CPU_GRU_CUH_
 #define HL_CPU_GRU_CUH_
 
-#ifndef __NVCC__
+#ifndef __HIPCC__
 
 template<class OpResetOutput>
 void hl_naive_gru_forward_reset_output(OpResetOutput opResetOutput,

@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/utils/Logging.h"
 #include "hl_base.h"
 
-#ifdef __NVCC__
+#ifdef __HIPCC__
 /* gpu apply interface */
 
 template<class T, class Op>
@@ -322,7 +322,7 @@ void hl_gpu_apply_quaternary_op(Op op,
                                 int ldd) {}
 #endif
 
-#ifdef __NVCC__
+#ifdef __HIPCC__
 /**
  * @brief   matrix row operator.
  */
@@ -524,7 +524,7 @@ void hl_gpu_matrix_row_op(Agg agg, Op op, Saver sv,
                           int dimM, int dimN,
                           real *dst, int ld,
                           real *A, int lda) {
-#ifdef __NVCC__
+#ifdef __HIPCC__
   CHECK_NOTNULL(dst);
   CHECK_NOTNULL(A);
 
@@ -544,7 +544,7 @@ void hl_gpu_matrix_row_op(Agg agg, Op op, Saver sv,
                           real *dst, int ld,
                           real *A, int lda,
                           real *B, int ldb) {
-#ifdef __NVCC__
+#ifdef __HIPCC__
   CHECK_NOTNULL(dst);
   CHECK_NOTNULL(A);
 
@@ -563,7 +563,7 @@ void hl_gpu_matrix_column_op(Agg agg, Op op, Saver sv,
                              int dimM, int dimN,
                              real *dst,
                              real *A, int lda) {
-#ifdef __NVCC__
+#ifdef __HIPCC__
   if (dimN >= 8192) {
     int blocksX = (dimN + 128 -1) / 128;
     int blocksY = 1;
@@ -588,7 +588,7 @@ void hl_gpu_matrix_column_op(Agg agg, Op op, Saver sv,
                              real *dst,
                              real *A, int lda,
                              real *B, int ldb) {
-#ifdef __NVCC__
+#ifdef __HIPCC__
   if (dimN >= 8192) {
     int blocksX = (dimN + 128 -1) / 128;
     int blocksY = 1;

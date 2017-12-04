@@ -17,7 +17,7 @@ limitations under the License. */
 #ifndef HL_GPU_GRU_CUH_
 #define HL_GPU_GRU_CUH_
 
-#ifdef __NVCC__
+#ifdef __HIPCC__
 
 #include "paddle/utils/Logging.h"
 

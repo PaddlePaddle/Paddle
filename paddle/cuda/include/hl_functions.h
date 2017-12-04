@@ -27,7 +27,7 @@ limitations under the License. */
  */
 #define SIGMOID_THRESHOLD_MAX 13.0
 
-#ifndef __NVCC__
+#ifndef __HIPCC__
 namespace hppl {
 /*
  * forward activation

@@ -39,7 +39,7 @@ typedef double2 vecType;
 #elif defined(__SSE3__)
 #include "hl_cpu_simd_sse.cuh"
 #define PADDLE_USE_SSE3
-#elif (defined(__ARM_NEON) || defined(__ARM_NEON__)) && !defined(__NVCC__)
+#elif (defined(__ARM_NEON) || defined(__ARM_NEON__)) && !defined(__HIPCC__)
 // Currently nvcc does not support neon intrinsic.
 // TODO: Extract simd intrinsic implementation from .cu files.
 #include "hl_cpu_simd_neon.cuh"
