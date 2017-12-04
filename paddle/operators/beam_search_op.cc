@@ -21,9 +21,10 @@
 namespace paddle {
 namespace operators {
 
-void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
-                            framework::LoDTensor *selected_ids,
-                            framework::LoDTensor *selected_scores) {
+template <typename D, typename S>
+void BeamSearch<D, S>::operator()(const framework::LoDTensor &pre_ids,
+                                  framework::LoDTensor *selected_ids,
+                                  framework::LoDTensor *selected_scores) {
   auto items = SelectTopBeamSizeItems();
   auto selected_items = ToMap(items);
   PruneEndidCandidates(pre_ids, &selected_items);
@@ -37,15 +38,15 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
   selected_ids->Resize(dims);
   selected_scores->Resize(dims);
 
-  std::map<size_t /*offset*/, std::vector<Item>> hash;
+  std::map<id_t /*offset*/, std::vector<Item>> hash;
   framework::LoD new_lod;
   auto *ids_data = selected_ids->mutable_data<int>(platform::CPUPlace());
   auto *scores_data =
-      selected_scores->mutable_data<float>(platform::CPUPlace());
+      selected_scores->mutable_data<score_t>(platform::CPUPlace());
 
   // fill in data
   std::vector<size_t> low_level;
-  size_t low_offset = 0;
+  id_t low_offset = 0;
   for (auto &items : selected_items) {
     low_level.push_back(low_offset);
     for (auto &item : items) {
@@ -64,11 +65,13 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
   selected_scores->set_lod(lod);
 }
 
-void BeamSearch::PruneEndidCandidates(const framework::LoDTensor &pre_ids,
-                                      std::vector<std::vector<Item>> *items) {
+template <typename D, typename S>
+void BeamSearch<D, S>::PruneEndidCandidates(
+    const framework::LoDTensor &pre_ids,
+    std::vector<std::vector<Item>> *items) {
   auto *pre_ids_data = pre_ids.data<int>();
 
-  for (size_t offset = 0; offset < items->size(); offset++) {
+  for (id_t offset = 0; offset < items->size(); offset++) {
     auto prefix_id = pre_ids_data[offset];
     if (prefix_id == end_id_) {
       items->at(offset).clear();
@@ -76,8 +79,9 @@ void BeamSearch::PruneEndidCandidates(const framework::LoDTensor &pre_ids,
   }
 }
 
-std::vector<std::vector<BeamSearch::Item>> BeamSearch::ToMap(
-    const std::vector<std::vector<Item>> &items) {
+template <typename D, typename S>
+std::vector<std::vector<typename BeamSearch<D, S>::Item>>
+BeamSearch<D, S>::ToMap(const std::vector<std::vector<Item>> &items) {
   std::vector<std::vector<Item>> result;
   for (auto &entries : items) {
     for (const auto &item : entries) {
@@ -90,8 +94,9 @@ std::vector<std::vector<BeamSearch::Item>> BeamSearch::ToMap(
   return result;
 }
 
-std::vector<std::vector<BeamSearch::Item>>
-BeamSearch::SelectTopBeamSizeItems() {
+template <typename D, typename S>
+std::vector<std::vector<typename BeamSearch<D, S>::Item>>
+BeamSearch<D, S>::SelectTopBeamSizeItems() {
   std::vector<std::vector<Item>> result;
   std::vector<Item> items;
   // for each source sentence, select the top beam_size items across all
@@ -113,7 +118,8 @@ BeamSearch::SelectTopBeamSizeItems() {
 }
 
 // the candidates of a source
-bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
+template <typename D, typename S>
+bool BeamSearch<D, S>::NextItemSet(std::vector<BeamSearch::Item> *items) {
   if (sent_offset_ >= ids_->NumElements(lod_level_)) {
     return false;
   }
@@ -128,7 +134,7 @@ bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
   PADDLE_ENFORCE_GE(source_abs_two_level_lod.size(), 2UL);
 
   auto *ids_data = ids.data<int>();
-  auto *scores_data = scores.data<float>();
+  auto *scores_data = scores.data<score_t>();
 
   size_t instance_dim = 1;
   for (int i = 1; i < ids.dims().size(); i++) {
@@ -137,10 +143,10 @@ bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
 
   items->clear();
   items->reserve(framework::product(ids.dims()));
-  for (size_t offset = abs_lod[lod_level_][sent_offset_];
+  for (id_t offset = abs_lod[lod_level_][sent_offset_];
        offset < abs_lod[lod_level_][sent_offset_ + 1]; offset++) {
     for (size_t d = 0; d < instance_dim; d++) {
-      const size_t dim_offset = offset * instance_dim + d;
+      const id_t dim_offset = offset * instance_dim + d;
       items->emplace_back(offset, ids_data[dim_offset],
                           scores_data[dim_offset]);
     }
@@ -149,6 +155,9 @@ bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
   sent_offset_++;
   return true;
 }
+
+template class BeamSearch<size_t, float>;
+template class BeamSearch<size_t, double>;
 
 class BeamSearchProtoAndCheckerMaker
     : public framework::OpProtoAndCheckerMaker {

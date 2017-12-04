@@ -14,10 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_TESTING
-#include "gtest/gtest.h"
-#endif
-
+#include "paddle/framework/data_type.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/operator.h"
 
@@ -85,11 +82,12 @@ namespace operators {
  * to split the beam search algorithm into a sequence of smaller operators, and
  * the prune operators can be inserted in this sequence.
  */
+template <typename D, typename S>
 class BeamSearch {
  public:
   // TODO(superjom) make type customizable
-  using id_t = size_t;
-  using score_t = float;
+  using id_t = D;
+  using score_t = S;
   /*
    * Input the arguments that needed by this class.
    */
@@ -135,7 +133,7 @@ class BeamSearch {
    */
   struct Item {
     Item() {}
-    Item(size_t offset, size_t id, float score)
+    Item(id_t offset, id_t id, score_t score)
         : offset(offset), id(id), score(score) {}
     // offset in the lod_level_+1
     size_t offset;
@@ -190,7 +188,6 @@ class BeamSearchOp : public framework::OperatorBase {
 
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
-    LOG(INFO) << "run beam search op";
     auto ids_var = scope.FindVar(Input("ids"));
     auto scores_var = scope.FindVar(Input("scores"));
     auto pre_ids_var = scope.FindVar(Input("pre_ids"));
@@ -204,10 +201,6 @@ class BeamSearchOp : public framework::OperatorBase {
     size_t level = Attr<int>("level");
     size_t beam_size = Attr<int>("beam_size");
     int end_id = Attr<int>("end_id");
-    LOG(INFO) << "init beam search";
-    BeamSearch alg(ids, scores, level, beam_size, end_id);
-
-    LOG(INFO) << "after beam search";
     auto selected_ids_var = scope.FindVar(Output("selected_ids"));
     auto selected_scores_var = scope.FindVar(Output("selected_scores"));
     PADDLE_ENFORCE_NOT_NULL(selected_ids_var);
@@ -216,9 +209,27 @@ class BeamSearchOp : public framework::OperatorBase {
         *selected_ids_var->GetMutable<framework::LoDTensor>();
     auto& selected_scores_tensor =
         *selected_scores_var->GetMutable<framework::LoDTensor>();
-    LOG(INFO) << "run beam search";
-    alg(pre_ids, &selected_ids_tensor, &selected_scores_tensor);
-    LOG(INFO) << "finish beam search";
+
+    const auto ids_type = framework::ToDataType(ids.type());
+    const auto scores_type = framework::ToDataType(scores.type());
+
+    if (ids_type == framework::DataType::INT32) {
+      if (scores_type == framework::DataType::FP32) {
+        BeamSearch<uint32_t, float> alg(ids, scores, level, beam_size, end_id);
+        alg(pre_ids, &selected_ids_tensor, &selected_scores_tensor);
+      } else if (scores_type == framework::DataType::FP64) {
+        BeamSearch<uint32_t, double> alg(ids, scores, level, beam_size, end_id);
+        alg(pre_ids, &selected_ids_tensor, &selected_scores_tensor);
+      }
+    } else if (ids_type == framework::DataType::INT64) {
+      if (scores_type == framework::DataType::FP32) {
+        BeamSearch<uint64_t, float> alg(ids, scores, level, beam_size, end_id);
+        alg(pre_ids, &selected_ids_tensor, &selected_scores_tensor);
+      } else if (scores_type == framework::DataType::FP64) {
+        BeamSearch<uint64_t, double> alg(ids, scores, level, beam_size, end_id);
+        alg(pre_ids, &selected_ids_tensor, &selected_scores_tensor);
+      }
+    }
   }
 };
 
