@@ -12,6 +12,8 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 #include "paddle/framework/shape_inference.h"
+#include "grad_op_desc_maker.h"
+#include "paddle/framework/operator.h"
 
 namespace paddle {
 namespace framework {
@@ -49,6 +51,9 @@ void InferShapeContext::SetDims(const std::vector<std::string> &names,
   size_t length = names.size();
   PADDLE_ENFORCE_EQ(length, dims.size());
   for (size_t i = 0; i < length; ++i) {
+    if (names[i] == framework::kEmptyVarName) {
+      continue;
+    }
     SetDim(names[i], dims[i]);
   }
 }

@@ -197,8 +197,7 @@ class Optimizer(object):
         This method combines interface `append_backward_ops()` and
         `create_optimization_pass()` into one.
         """
-        params_grads = append_backward_ops(loss, parameter_list, no_grad_set or
-                                           set())
+        params_grads = append_backward_ops(loss, parameter_list, no_grad_set)
         # Add regularization if any
         params_grads = append_regularization_ops(params_grads)
         optimize_ops = self.create_optimization_pass(params_grads, loss,
