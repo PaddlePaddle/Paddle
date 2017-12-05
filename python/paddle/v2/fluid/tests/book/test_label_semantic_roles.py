@@ -146,9 +146,13 @@ def main():
     # TODO(qiao)
     # add dependency track and move this config before optimizer
     crf_decode = fluid.layers.crf_decoding(
-        input=feature_out,
+        input=feature_out, param_attr=fluid.ParamAttr(name='crfw'))
+
+    precision, recall, f1_score = fluid.layers.trunk_evaluator(
+        input=crf_decode,
         label=target,
-        param_attr=fluid.ParamAttr(name='crfw'))
+        chunk_scheme="IOB",
+        num_chunk_types=(label_dict_len - 1) / 2)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
@@ -173,8 +177,10 @@ def main():
         for data in train_data():
             outs = exe.run(fluid.default_main_program(),
                            feed=feeder.feed(data),
-                           fetch_list=[avg_cost])
+                           fetch_list=[avg_cost, precision])
             avg_cost_val = np.array(outs[0])
+            precision_val = np.array(outs[1])
+            print("precision_val:" + str(precision_val))
             if batch_id % 10 == 0:
                 print("avg_cost=" + str(avg_cost_val))
 
