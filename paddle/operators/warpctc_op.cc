@@ -117,6 +117,7 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
                    "Output(Logits@GRAD) of WarpCTCGradOp should not be null.");
     ctx->SetOutputDim(framework::GradVarName("Logits"),
                       ctx->GetInputDim("Logits"));
+    ctx->ShareLoD("Logits", /*->*/ framework::GradVarName("Logits"));
   }
 
  protected:

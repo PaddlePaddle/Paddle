@@ -61,7 +61,7 @@ inline static size_t MaximumSequenceLength(const framework::LoD& lod,
  * \note  transposition is also done in this functor.
  */
 template <typename Place, typename T>
-class PaddingSequenceFunctor {
+class PaddingLoDTensorFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::LoDTensor& seq, framework::Tensor& padding,
@@ -69,7 +69,7 @@ class PaddingSequenceFunctor {
 };
 
 template <typename Place, typename T>
-class UnpaddingSequenceFunctor {
+class UnpaddingLoDTensorFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
                   framework::LoDTensor& seq, const framework::Tensor& padding,

@@ -58,7 +58,7 @@ __global__ void SequencePaddingKernel(T* padding, T* sequence,
 }
 
 template <typename T>
-class PaddingSequenceFunctor<platform::GPUPlace, T> {
+class PaddingLoDTensorFunctor<platform::GPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
                   const framework::LoDTensor& seq, framework::Tensor& padding,
@@ -69,21 +69,31 @@ class PaddingSequenceFunctor<platform::GPUPlace, T> {
 
     const size_t level = 0;
     framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
-    const size_t num_sequences = abs_offset_lod[level].size() - 1;
-
-    // Compute maximum sequence length
-    size_t max_sequence_length = MaximumSequenceLength(lod, level);
 
     auto seq_dims = seq.dims();
     PADDLE_ENFORCE_EQ(seq_dims[0], abs_offset_lod[level].back(),
                       "The first dimension of LoDTensor seq should be "
                       "equal to the sum of all sequences's length.");
 
+    auto padding_dims = padding.dims();
+    PADDLE_ENFORCE_EQ(padding_dims.size(), 3UL,
+                      "The input padding should be a 3-D Tensor of shape "
+                      "[max_sequence_length, num_sequences, sequence_width].");
+
+    size_t max_sequence_length = MaximumSequenceLength(lod, level);
+    PADDLE_ENFORCE_EQ(padding_dims[0], max_sequence_length,
+                      "The first dimension of Tensor padding should be the "
+                      "maximum length of all sequences in LoDTensor seq.");
+
+    const size_t num_sequences = abs_offset_lod[level].size() - 1;
+    PADDLE_ENFORCE_EQ(padding_dims[1], num_sequences,
+                      "The second dimension of Tensor padding should be the "
+                      "number of sequences in LoDTensor seq.");
+
     const size_t sequence_width = seq.numel() / seq_dims[0];
-    auto padding_dims =
-        framework::make_ddim({static_cast<int64_t>(max_sequence_length),
-                              static_cast<int64_t>(num_sequences),
-                              static_cast<int64_t>(sequence_width)});
+    PADDLE_ENFORCE_EQ(padding_dims[2], sequence_width,
+                      "The third dimension of Tensor padding should be the "
+                      "width of sequence in LoDTensor seq.");
 
     if (!norm_by_times && num_sequences == 1UL) {
       CopyFrom(seq, context.GetPlace(), context, &padding);
@@ -106,7 +116,7 @@ class PaddingSequenceFunctor<platform::GPUPlace, T> {
     dim3 grid(grid_dim_x, grid_dim_y);
 
     const T* seq_data = seq.data<T>();
-    T* padding_data = padding.mutable_data<T>(padding_dims, context.GetPlace());
+    T* padding_data = padding.data<T>();
     if (norm_by_times) {
       SequencePaddingKernel<
           T, 1,
@@ -128,7 +138,7 @@ class PaddingSequenceFunctor<platform::GPUPlace, T> {
 };
 
 template <typename T>
-class UnpaddingSequenceFunctor<platform::GPUPlace, T> {
+class UnpaddingLoDTensorFunctor<platform::GPUPlace, T> {
  public:
   void operator()(const platform::DeviceContext& context,
                   framework::LoDTensor& seq, const framework::Tensor& padding,
@@ -139,25 +149,31 @@ class UnpaddingSequenceFunctor<platform::GPUPlace, T> {
 
     const size_t level = 0;
     framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
-    const size_t num_sequences = abs_offset_lod[level].size() - 1;
 
-    // Compute maximum sequence length
-    size_t max_sequence_length = MaximumSequenceLength(lod, level);
+    auto seq_dims = seq.dims();
+    PADDLE_ENFORCE_EQ(seq_dims[0], abs_offset_lod[level].back(),
+                      "The first dimension of LoDTensor seq should be "
+                      "equal to the sum of all sequences's length.");
 
     auto padding_dims = padding.dims();
     PADDLE_ENFORCE_EQ(padding_dims.size(), 3UL,
-                      "The input padding should be a 3-D Tensor.");
+                      "The input padding should be a 3-D Tensor of shape "
+                      "[max_sequnece_length, num_sequences, sequence_width].");
+
+    size_t max_sequence_length = MaximumSequenceLength(lod, level);
     PADDLE_ENFORCE_EQ(padding_dims[0], max_sequence_length,
                       "The first dimension of Tensor padding should be "
-                      "equal to the maximum sequence's length.");
+                      "the maximum length of all sequences in LoDTensor seq.");
+
+    const size_t num_sequences = abs_offset_lod[level].size() - 1;
     PADDLE_ENFORCE_EQ(padding_dims[1], num_sequences,
                       "The second dimension of Tensor padding should be "
-                      "equal to the number of sequences.");
+                      "the number of sequences in LoDTensor seq.");
 
-    const size_t sequence_width = padding_dims[2];
-    auto seq_dims = framework::make_ddim(
-        {static_cast<int64_t>(abs_offset_lod[level].back()),
-         static_cast<int64_t>(sequence_width)});
+    const size_t sequence_width = seq.numel() / seq_dims[0];
+    PADDLE_ENFORCE_EQ(padding_dims[2], sequence_width,
+                      "The third dimension of Tensor padding should be the "
+                      "width of sequence in LoDTensor seq.");
 
     if (!norm_by_times && num_sequences == 1UL) {
       CopyFrom(padding, context.GetPlace(), context, &seq);
@@ -180,7 +196,7 @@ class UnpaddingSequenceFunctor<platform::GPUPlace, T> {
     dim3 grid(grid_dim_x, grid_dim_y);
 
     const T* padding_data = padding.data<T>();
-    T* seq_data = seq.mutable_data<T>(seq_dims, context.GetPlace());
+    T* seq_data = seq.data<T>();
     if (norm_by_times) {
       SequencePaddingKernel<
           T, 1,
@@ -201,8 +217,8 @@ class UnpaddingSequenceFunctor<platform::GPUPlace, T> {
   }
 };
 
-template class PaddingSequenceFunctor<platform::GPUPlace, float>;
-template class UnpaddingSequenceFunctor<platform::GPUPlace, float>;
+template class PaddingLoDTensorFunctor<platform::GPUPlace, float>;
+template class UnpaddingLoDTensorFunctor<platform::GPUPlace, float>;
 
 }  // namespace math
 }  // namespace operators
