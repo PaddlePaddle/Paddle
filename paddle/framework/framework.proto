@@ -150,6 +150,6 @@ message OpPlacement {
 }
 
 message ExecutionPlan {
-  optional ProgramDesc program = 1;
+  repeated BlockDesc blocks = 1;
   repeated OpPlacement op_placement = 2;
 }
