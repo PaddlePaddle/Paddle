@@ -33,8 +33,8 @@ static std::unordered_set<std::string>* g_ctrl_flow_ops_ = nullptr;
 // We should design a better way to backward CtrlFlowOps.
 static std::unordered_set<std::string>& CtrlFlowOps() {
   if (g_ctrl_flow_ops_ == nullptr) {
-    g_ctrl_flow_ops_ =
-        new std::unordered_set<std::string>{"increment", "lod_rank_table"};
+    g_ctrl_flow_ops_ = new std::unordered_set<std::string>{
+        "increment", "lod_rank_table", "less_than"};
   }
   return *g_ctrl_flow_ops_;
 }
