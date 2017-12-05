@@ -8,7 +8,8 @@ def lstm_net(dict_dim, class_dim=2, emb_dim=32, seq_len=80, batch_size=50):
         name="words",
         shape=[seq_len * batch_size, 1],
         append_batch_size=False,
-        dtype="int64")
+        dtype="int64",
+        lod_level=1)
     label = fluid.layers.data(
         name="label",
         shape=[batch_size, 1],
@@ -21,6 +22,7 @@ def lstm_net(dict_dim, class_dim=2, emb_dim=32, seq_len=80, batch_size=50):
 
     c_pre_init = fluid.layers.fill_constant(
         dtype=emb.dtype, shape=[batch_size, emb_dim], value=0.0)
+    c_pre_init.stop_gradient = False
     layer_1_out = fluid.layers.lstm(
         emb, c_pre_init=c_pre_init, hidden_dim=emb_dim)
     layer_1_out = fluid.layers.transpose(x=layer_1_out, axis=[1, 0, 2])

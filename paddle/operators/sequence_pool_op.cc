@@ -104,6 +104,7 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(og_dims[i], x_dims[i], "The dimension mismatch.");
     }
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+    ctx->ShareLoD("X", framework::GradVarName("X"));
   }
 
  protected:

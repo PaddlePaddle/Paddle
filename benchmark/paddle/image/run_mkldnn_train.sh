@@ -8,13 +8,13 @@ function train() {
   use_mkldnn=$4
   if [ $4 == "True" ]; then
     thread=1
-    log="logs/${topology}-${layer_num}-mkldnn-${bs}.log"
+    log="logs/train-${topology}-${layer_num}-mkldnn-${bs}.log"
   elif [ $4 == "False" ]; then
     thread=`nproc`
     # each trainer_count use only 1 core to avoid conflict
-    log="logs/${topology}-${layer_num}-${thread}mklml-${bs}.log"
+    log="logs/train-${topology}-${layer_num}-${thread}mklml-${bs}.log"
   else
-    echo "Wrong input $3, use True or False."
+    echo "Wrong input $4, use True or False."
     exit 0
   fi
   args="batch_size=${bs},layer_num=${layer_num}"
@@ -30,13 +30,14 @@ function train() {
     2>&1 | tee ${log} 
 }
 
-if [ ! -d "train.list" ]; then
+if [ ! -f "train.list" ]; then
   echo " " > train.list
 fi
 if [ ! -d "logs" ]; then
   mkdir logs
 fi
 
+# training benchmark
 for use_mkldnn in True False; do
   for batchsize in 64 128 256; do
     train vgg 19 $batchsize $use_mkldnn

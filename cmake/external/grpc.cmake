@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 
-IF(MOBILE_INFERENCE)
+IF(MOBILE_INFERENCE OR NOT WITH_DISTRIBUTE)
     return()
 ENDIF()
 
@@ -23,6 +23,11 @@ SET(GRPC_SOURCES_DIR ${THIRD_PARTY_PATH}/grpc)
 SET(GRPC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/grpc)
 SET(GRPC_INCLUDE_DIR "${GRPC_INSTALL_DIR}/include/" CACHE PATH "grpc include directory." FORCE)
 SET(GRPC_CPP_PLUGIN "${GRPC_INSTALL_DIR}/bin/grpc_cpp_plugin" CACHE FILEPATH "GRPC_CPP_PLUGIN" FORCE)
+IF(APPLE)
+  SET(BUILD_CMD make -n HAS_SYSTEM_PROTOBUF=false -s -j8 static grpc_cpp_plugin | sed "s/-Werror//g" | sh)
+ELSE()
+  SET(BUILD_CMD make HAS_SYSTEM_PROTOBUF=false -s -j8 static grpc_cpp_plugin)
+ENDIF()
 
 ExternalProject_Add(
     extern_grpc
@@ -33,7 +38,11 @@ ExternalProject_Add(
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND   make
+    # NOTE(yuyang18):
+    # Disable -Werror, otherwise the compile will fail in MacOS.
+    # It seems that we cannot configure that by make command.
+    # Just dry run make command and remove `-Werror`, then use a shell to run make commands
+    BUILD_COMMAND  ${BUILD_CMD}
     INSTALL_COMMAND make prefix=${GRPC_INSTALL_DIR} install
 )
 
@@ -55,4 +64,3 @@ SET_PROPERTY(TARGET grpc_unsecure PROPERTY IMPORTED_LOCATION
 
 include_directories(${GRPC_INCLUDE_DIR})
 ADD_DEPENDENCIES(grpc++_unsecure extern_grpc)
-

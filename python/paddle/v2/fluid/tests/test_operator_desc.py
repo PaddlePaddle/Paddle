@@ -1,11 +1,15 @@
 import unittest
-from paddle.v2.fluid.framework import Variable, Program, g_main_program
+
 import paddle.v2.fluid.core as core
+
+from paddle.v2.fluid.framework import Program, default_startup_program
+
+main_program = default_startup_program()
 
 
 class TestOperator(unittest.TestCase):
     def test_error_type(self):
-        block = g_main_program.create_block()
+        block = main_program.create_block()
         try:
             block.append_op()
             self.assertFail()
