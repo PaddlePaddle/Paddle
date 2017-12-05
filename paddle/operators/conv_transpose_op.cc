@@ -73,6 +73,12 @@ Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(
   AddOutput("Output",
             "(Tensor) The output tensor of convolution transpose operator. "
             "The format of output tensor is also NCHW.");
+
+  AddAttr<std::vector<int>>("dilations",
+                            "(vector<int> default:{1, 1}), the "
+                            "dilations(h_dilation, w_dilation) of convolution "
+                            "transpose operator.")
+      .SetDefault({1, 1});
   AddAttr<std::vector<int>>(
       "strides",
       "(vector<int> default:{1, 1}), the strides(h_stride, w_stride) of "
@@ -87,7 +93,7 @@ Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(
 Convolution2D Transpose Operator.
 
 The convolution transpose operation calculates the output based on the input, filter
-and strides, paddings, groups parameters. The size of each dimension of the
+and dilations, strides, paddings, groups parameters. The size of each dimension of the
 parameters is checked in the infer-shape.
 Input(Input) and output(Output) are in NCHW format. Where N is batchsize, C is the
 number of channels, H is the height of the feature, and W is the width of the feature.
@@ -136,6 +142,13 @@ Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(
             "Where N is batch size, C is "
             "the number of channels, D is the depth of the feature, H is the "
             "height of the feature, and W is the width of the feature.");
+
+  AddAttr<std::vector<int>>(
+      "dilations",
+      "(vector<int> default:{1, 1, 1}), the "
+      "dilations(d_dilation,h_dilation, w_dilation) of convolution "
+      "transpose operator.")
+      .SetDefault({1, 1, 1});
   AddAttr<std::vector<int>>("strides",
                             "(vector<int> default:{1, 1, 1}), the "
                             "strides{d_stride, h_stride, w_stride} of "
@@ -149,7 +162,7 @@ Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(
 Convolution3D Transpose Operator.
 
 The convolution transpose operation calculates the output based on the input, filter
-and strides, paddings, groups parameters. The size of each dimension of the
+and dilations, strides, paddings, groups parameters. The size of each dimension of the
 parameters is checked in the infer-shape.
 Input(Input) and output(Output) are in NCDHW format. Where N is batch size, C is the
 number of channels, D is the depth of the feature, H is the height of the feature,
