@@ -32,11 +32,9 @@ def fc(input,
        size: The size of the layer
        num_flatten_dims: Number of columns in input
        param_attr: The parameters/weights to the FC Layer
-       param_initializer: Initializer used for the weight/parameter.
-       If None, XavierInitializer() is used
+       param_initializer: Initializer used for the weight/parameter. If None, XavierInitializer() is used
        bias_attr: The bias parameter for the FC layer
-       bias_initializer: Initializer used for the bias.
-       If None, then ConstantInitializer() is used
+       bias_initializer: Initializer used for the bias. If None, then ConstantInitializer() is used
        act: Activation to be applied to the output of FC layer
        name: Name/alias of the function
        main_program: Name of the main program that calls this
