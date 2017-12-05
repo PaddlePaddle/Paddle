@@ -27,7 +27,7 @@ for i in xrange(1000):
     train(cost)
 ```
 
-the differences ( fluid v.s. Imperative) are:
+the differences ( fluid v.s. Imperative ) are:
 
 1. variables: network elements v.s. runtime variables
 1. loops: c++ loop v.s. python loop
@@ -45,14 +45,30 @@ The drawback is also obvious when all the heavy liftings are bind with python, P
 
 ## How to adopt it
 
-We'd like to adopt this feature while avoiding the performance black hole, so we need to differentiate the imperative mode and our current mode during execution, let's name Fluid's current mode as "conventional mode" for now.
+There are 2 stages of implementation of this feature as we planed:
+
+1. Log output at any point/stage of execution.
+1. IDE integrated Debuggability
+
+Currently Fluid API provides `print` operator for log output, so that developer can trace and analyze, which fulfills stage 1.
+
+To fully enable Debuggability, we are need to implement stage 2 which is IDE integration.
+
+There are 2 major possible approaches for stage 2:
+
+1. remain current "compile and run" mode, anding extensions in executors to connect IDE and runtime for interception and stepping. (preferred)
+1. Introduce imperative mode and regular mode, making changes to python scripts to fit different modes.(like Tensorflow Eager Execution, trivial but hacky)
+
+*Please Note that following proposal is just for research and record purpose, PaddlePaddle's imperative programming will highly unlikely getting implemented this way.*
+
+For 2nd approach, We'd like to adopt this feature while avoiding the performance black hole, so we need to differentiate the imperative mode and our current mode during execution, let's name Fluid's current mode as "regular mode" for now.
 
 Here are some ultimate targets we'd like to hit when we introduce imperative mode:
 
-1. Conventional mode will still stay the same, "compile and run".
+1. regular mode will still stay the same, "compile and run".
 1. Use the same coding style for both modes.
-1. Provide a switch to toggle between 2 modes, so that the same piece of code can be executed imperatively (for debug) or conventionally (for performance).
-1. No performance compromise in conventional mode.
+1. Provide a switch to toggle between 2 modes, so that the same piece of code can be executed imperatively (for debug) or regularly (for performance).
+1. No performance compromise in regular mode.
 1. Mode switchability during runtime.
 
 ### API updates and challenges
@@ -73,13 +89,13 @@ This is a really tricky part, and there is a lot to discuss about. Here are seve
 
 Let user use python native `if else`, `while`, etc., so that in imperative mode, there is nothing we need to change, works best with IDEs while debugging.
 
-In conventional mode, when we run the same piece of code, we firstly are going to replace these native controls with Paddle flow control OPs.
+In regular mode, when we run the same piece of code, we firstly are going to replace these native controls with Paddle flow control OPs.
 
 the challenging part is not all flow control need to be replaced with Paddle flow control OPs.
 
 ##### Use customized python flow control syntax
 
-We are going to provide customized flow control syntaxes like `pd_if` `pd_while`. So that user can still easily debug in IDEs while in imperative mode, and we can also easily target and replace them in conventional mode.
+We are going to provide customized flow control syntaxes like `pd_if` `pd_while`. So that user can still easily debug in IDEs while in imperative mode, and we can also easily target and replace them in regular mode.
 
 the challenging part is we need to provide a customized python parser.
 
@@ -101,7 +117,7 @@ o1, o2 = ie(cond)
 ```
 
 ## Conclusions
-As you see, imperative programming does enhances the machine learning coding experience, and it's the feature which made pyTorch so popular among researchers. But this feature does not come cheap, there are a lot of fundamental changes we need to make to our current API. 
+As you see, imperative programming does enhances the machine learning coding experience, and it's the feature which made pyTorch so popular among researchers. But this feature does not come cheap, there are a lot of fundamental changes we need to make to our current API to make it fully imperative.
 
 ## References
 
