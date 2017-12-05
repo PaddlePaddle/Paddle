@@ -18,8 +18,8 @@ limitations under the License. */
 
 #include "paddle/platform/enforce.h"
 
-DEFINE_double(fraction_of_gpu_memory_to_use, 0.95,
-              "Default use 95% of GPU memory for PaddlePaddle,"
+DEFINE_double(fraction_of_gpu_memory_to_use, 0.92,
+              "Default use 92% of GPU memory for PaddlePaddle,"
               "reserve the rest for page tables, etc");
 
 namespace paddle {
