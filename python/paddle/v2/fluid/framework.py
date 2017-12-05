@@ -237,7 +237,7 @@ class Operator(object):
 
         def find_name(var_list, name):
             for var_name in var_list:
-                if var_name == name:
+                if var_list[var_name] is not None and var_name == name:
                     return True
             return False
 

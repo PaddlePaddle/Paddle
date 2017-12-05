@@ -36,12 +36,12 @@ class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
         "w. See more details in comments of the linear_chain_crf operator.");
     AddInput(
         "Label",
-        "(LoDTensor,  LoDTensor<int>). The ground truth with shape "
+        "(LoDTensor,  LoDTensor<int64_t>). The ground truth with shape "
         "[N x 1]. This input is optional. See more details in the operator's "
         "comments.")
         .AsDispensable();
     AddOutput("ViterbiPath",
-              "(LoDTensor, LoDTensor<int>). The decoding results. What to "
+              "(LoDTensor, LoDTensor<int64_t>). The decoding results. What to "
               "return changes depending on whether the Input(Label) (the groud "
               "truth) is given. See more details in the operator's comment.");
     AddComment(R"DOC(
