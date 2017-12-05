@@ -88,7 +88,8 @@ class RowConvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Filter",
              "(Tensor), the input(Filter) is a learnable parameter. It "
              "is a 2-D tensor with shape (future_context x N), where, "
-             "future_context is the batch size and N is the data dimension.");
+             "future_context is the future context length and N is the data "
+             "dimension.");
     AddOutput("Out",
               "(LoDTensor), the output(Out) is a LodTensor, which supports "
               "variable time-length input sequences. The underlying tensor "
@@ -97,11 +98,22 @@ class RowConvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Row-convolution Operator.
 
-This operator was introduced in the paper:
-http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf
+The row convolution is called lookahead convolution.  This operator was 
+introduced in the following paper for DeepSpeech2:
+http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf 
+
+The main motivation is that a bidirectional RNN, useful in DeepSpeech 
+like speech models, learns representation for a sequence by performing a 
+forward and a backward pass through the entire sequence. However, unlike 
+unidirectional RNNs, bidirectional RNNs are challenging to deploy in an online
+and low-latency setting. The lookahead convolution incorporates information 
+from future subsequences in a computationally efficient manner to improve 
+unidirectional recurrent neural networks. The row convolution operator is 
+different from the 1D sequence convolution, and is computed as follows:
+
 Given an input sequence $in$ of length $t$ and input dimension $d$, 
 and a filter ($W$) of size $context \times d$, 
-the output sequence is convolved in the following manner:
+the output sequence is convolved as:
 
 $$
 out_{i, :} = \sum_{j=i}^{i + context} in_{j,:} \dot W_{i-j, :}
@@ -115,34 +127,33 @@ template <typename T>
 class RowConvKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *X = context.Input<LoDTensor>("X");
-    auto *Filter = context.Input<Tensor>("Filter");
-    auto *Out = context.Output<LoDTensor>("Out");
+    auto *x = context.Input<LoDTensor>("X");
+    auto *filter = context.Input<Tensor>("Filter");
+    auto *out = context.Output<LoDTensor>("Out");
 
-    Out->mutable_data<T>(context.GetPlace());
-    context.ShareLoD("X", "Out");
+    out->mutable_data<T>(context.GetPlace());
 
-    auto batch_indices = X->lod()[0];
-    auto input_dim = X->dims()[1];  // 'in' is of size T x N
+    auto batch_indices = x->lod()[0];
+    auto input_dim = x->dims()[1];  // 'in' is of size T x N
     size_t num_sequence = batch_indices.size() - 1;
 
-    auto context_length = Filter->dims()[0];
-    auto weights = EigenMatrix<T>::From(*Filter);
+    auto future_context = filter->dims()[0];
+    auto weights = EigenMatrix<T>::From(*filter);
 
     for (size_t i = 0; i < num_sequence; i++) {
       int start = static_cast<int>(batch_indices[i]);
       int end = static_cast<int>(batch_indices[i + 1]);
       int current_timesteps = end - start;
       Tensor cur_input_sequence =
-          X->Slice(start, end);  // Current input sequence
+          x->Slice(start, end);  // Current input sequence
       Tensor cur_output_sequence =
-          Out->Slice(start, end);  // Current output sequence
+          out->Slice(start, end);  // Current output sequence
       auto cip_seq = EigenMatrix<T>::From(cur_input_sequence);
       auto cot_seq = EigenMatrix<T>::From(cur_output_sequence);
 
       for (int k = 0; k < current_timesteps;
            k++) {  // For different time steps in the same sequence
-        for (int w = 0; (w < context_length) && ((k + w) < current_timesteps);
+        for (int w = 0; (w < future_context) && ((k + w) < current_timesteps);
              w++) {
           for (int d = 0; d < input_dim; d++) {
             if (w == 0) {
@@ -161,30 +172,30 @@ template <typename T>
 class RowConvGradKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *X = context.Input<LoDTensor>("X");
-    auto *Filter = context.Input<Tensor>("Filter");
-    auto *dOut = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto *dX = context.Output<LoDTensor>(framework::GradVarName("X"));
-    auto *dFilter = context.Output<Tensor>(framework::GradVarName("Filter"));
+    auto *x = context.Input<LoDTensor>("X");
+    auto *filter = context.Input<Tensor>("Filter");
+    auto *d_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto *dx = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto *d_filter = context.Output<Tensor>(framework::GradVarName("Filter"));
 
-    auto input_dim = X->dims()[1];  // 'in' is of size T x N
-    auto batch_indices = X->lod()[0];
+    auto input_dim = x->dims()[1];  // 'x' is of size T x N
+    auto batch_indices = x->lod()[0];
     size_t num_sequence = batch_indices.size() - 1;
-    auto context_length = Filter->dims()[0];
+    auto future_context = filter->dims()[0];
 
-    if (dFilter) {
-      dFilter->mutable_data<T>(context.GetPlace());
+    if (d_filter) {
+      d_filter->mutable_data<T>(context.GetPlace());
       auto dweights =
-          EigenMatrix<T>::From(*dFilter);  // Gradient of weight matrix
+          EigenMatrix<T>::From(*d_filter);  // Gradient of weight matrix
       dweights.setZero();
 
       for (size_t i = 0; i < num_sequence; i++) {  // For different sequences
         int start = static_cast<int>(batch_indices[i]);
         int end = static_cast<int>(batch_indices[i + 1]);
 
-        Tensor cur_input = X->Slice(start, end);  // Current input sequence
+        Tensor cur_input = x->Slice(start, end);  // Current input sequence
         Tensor cur_doutput =
-            dOut->Slice(start, end);  // Current output grad sequence
+            d_out->Slice(start, end);  // Current output grad sequence
 
         auto cur_ip = EigenMatrix<T>::From(cur_input);
         auto cur_dout = EigenMatrix<T>::From(cur_doutput);
@@ -192,7 +203,7 @@ class RowConvGradKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
 
         for (int k = 0; k < current_timesteps;
              k++) {  // For different time steps in the same sequence
-          for (int w = 0; (w < context_length) && ((k + w) < current_timesteps);
+          for (int w = 0; (w < future_context) && ((k + w) < current_timesteps);
                w++) {
             // For dweights (Updating the gradient of weight matrix)
             for (int d = 0; d < input_dim; d++) {
@@ -203,17 +214,17 @@ class RowConvGradKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
       }
     }
 
-    if (dX) {
-      dX->mutable_data<T>(context.GetPlace());
-      auto weights = EigenMatrix<T>::From(*Filter);
+    if (dx) {
+      dx->mutable_data<T>(context.GetPlace());
+      auto weights = EigenMatrix<T>::From(*filter);
       for (size_t i = 0; i < num_sequence; i++) {  // For different sequences
         int start = static_cast<int>(batch_indices[i]);
         int end = static_cast<int>(batch_indices[i + 1]);
 
         Tensor cur_doutput =
-            dOut->Slice(start, end);  // Current output grad sequence
+            d_out->Slice(start, end);  // Current output grad sequence
         Tensor cur_dinput =
-            dX->Slice(start, end);  // Current input grad sequence
+            dx->Slice(start, end);  // Current input grad sequence
 
         auto cur_dout = EigenMatrix<T>::From(cur_doutput);
         auto cur_dip = EigenMatrix<T>::From(cur_dinput);
@@ -222,7 +233,7 @@ class RowConvGradKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
 
         for (int k = 0; k < current_timesteps;
              k++) {  // For different time steps in the same sequence
-          for (int w = 0; (w < context_length) && ((k + w) < current_timesteps);
+          for (int w = 0; (w < future_context) && ((k + w) < current_timesteps);
                w++) {
             // For dinput (Updating the gradient wrt input)
             for (int d = 0; d < input_dim; d++) {
