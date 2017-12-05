@@ -45,7 +45,7 @@ The drawback is also obvious when all the heavy liftings are bind with python, P
 
 ## How to adopt it
 
-There are 2 stages of implementation of this feature as we planed:
+There are 2 stages of implementation of this feature as we planed:
 
 1. Log output at any point/stage of execution.
 1. IDE integrated Debuggability
