@@ -58,9 +58,10 @@ class ChunkEvalOpMaker : public framework::OpProtoAndCheckerMaker {
                    framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Inference",
-             "(Tensor, default: Tensor<int>). Predictions from the network.");
+             "(Tensor, default: Tensor<int64_t>). "
+             "Predictions from the network.");
     AddInput("Label",
-             "(Tensor, default: Tensor<int>). The true tag sequences.");
+             "(Tensor, default: Tensor<int64_t>). The true tag sequences.");
     AddOutput("Precision",
               "(float). The evaluated precision (called positive predictive "
               "value) of chunks on the given mini-batch.");
