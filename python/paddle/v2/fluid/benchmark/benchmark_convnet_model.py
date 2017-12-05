@@ -25,7 +25,7 @@ def parse_args():
     parser.add_argument(
         '--batch_size', type=int, default=32, help='The minibatch size.')
     parser.add_argument(
-        '--iterations', type=int, default=50, help='The number of minibatches.')
+        '--iterations', type=int, default=80, help='The number of minibatches.')
     parser.add_argument(
         '--pass_num', type=int, default=100, help='The number of passes.')
     parser.add_argument(
@@ -46,7 +46,7 @@ def parse_args():
         '--use_cprof', action='store_true', help='If set, use cProfile.')
     parser.add_argument(
         '--use_nvprof',
-        action='store_ture',
+        action='store_true',
         help='If set, use nvprof for CUDA.')
     args = parser.parse_args()
     return args
@@ -149,6 +149,7 @@ def run_benchmark(model, args):
     exe.run(fluid.default_startup_program())
 
     iter = 0
+    im_num = 0
     for pass_id in range(args.pass_num):
         accuracy.reset(exe)
         if iter == args.iterations:
@@ -168,13 +169,14 @@ def run_benchmark(model, args):
             print("Iter: %d, loss: %s, acc: %s, pass_acc: %s" %
                   (iter, str(loss), str(acc), str(pass_acc)))
             iter += 1
+            im_num += label.shape[0]
+            print(im_num)
 
     duration = time.time() - start_time
-    examples_per_sec = args.iterations * args.batch_size / duration
-    sec_per_batch = duration / args.batch_size
+    examples_per_sec = im_num / duration
+    sec_per_batch = duration / iter
 
-    print('\nTotal examples: %d, total time: %.5f' %
-          (args.iterations * args.batch_size, duration))
+    print('\nTotal examples: %d, total time: %.5f' % (im_num, duration))
     print('%.5f examples/sec, %.5f sec/batch \n' %
           (examples_per_sec, sec_per_batch))
 
