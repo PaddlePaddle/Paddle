@@ -28,8 +28,10 @@ PaddlePaddle的文档构建有三种方式。
     git clone https://github.com/PaddlePaddle/models.git
     git clone https://github.com/PaddlePaddle/Mobile.git
 
-    docker run -it -p 8000:8000 paddlepaddle/paddlepaddle.org:latest
+    # Please specify the working directory through -v
+    docker run -it -p 8000:8000 -v `pwd`:/var/content paddlepaddle/paddlepaddle.org:latest
 
+注意: PaddlePaddle.org 会在 -v (volume) 指定的内容存储库运行命令
 之后再用网页连到http://localhost:8000就可以在网页上生成需要的文档
 编译后的文件将被存储在工作目录 <paddlepaddle working directory>/.ppo_workspace/content。
 
