@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,7 +55,7 @@ inline __device__ double paddleAtomicAdd(double* address, double val) {
  * @param[in,out]  smem       input data, better to use __shared__ memory.
  * @param[in]      tid        thread index.
  * @param[in]      threads    the total thread number used to reduce,
- *                            such as, blockDim.x.
+ *                            such as, hipBlockDim_x.
  *
  * @return smem[0]: the sum of each elements in smem.
  */

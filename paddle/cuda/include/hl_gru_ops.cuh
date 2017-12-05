@@ -43,7 +43,7 @@ public:
     valueResetGate   = actGate(valueResetGate);
     valueResetOutput = prevOut * valueResetGate;
   }
-#ifndef __NVCC__
+#ifndef __HIPCC__
 #ifndef __AVX__
   static const bool avx = false;
 #else
@@ -79,7 +79,7 @@ public:
     valueOutput = prevOut - (valueUpdateGate * prevOut) +
       (valueUpdateGate * valueFrameState);
   }
-#ifndef __NVCC__
+#ifndef __HIPCC__
 #ifndef __AVX__
   static const bool avx = false;
 #else
@@ -126,7 +126,7 @@ public:
     gradPrevOut += gradOutput;
     gradFrameState = actInput(gradOutput * valueUpdateGate, valueFrameState);
   }
-#ifndef __NVCC__
+#ifndef __HIPCC__
 #ifndef __AVX__
   static const bool avx = false;
 #else
@@ -177,7 +177,7 @@ public:
     gradUpdateGate = actGate(gradUpdateGate, valueUpdateGate);
     gradResetGate  = actGate(gradResetGate , valueResetGate);
   }
-#ifndef __NVCC__
+#ifndef __HIPCC__
 #ifndef __AVX__
   static const bool avx = false;
 #else

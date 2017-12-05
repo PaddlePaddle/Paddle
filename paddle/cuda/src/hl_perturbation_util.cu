@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -74,8 +75,8 @@ __global__ void kSamplingPatches(const real* imgs,
                                  const int* centerCs,
                                  const real padValue,
                                  const int numImages) {
-  const int caseIdx = blockIdx.x * 4 + threadIdx.x;
-  const int pxIdx = blockIdx.y * 128 + threadIdx.y;
+  const int caseIdx = hipBlockIdx_x * 4 + hipThreadIdx_x;
+  const int pxIdx = hipBlockIdx_y * 128 + hipThreadIdx_y;
   const int imgPixels = imgSize * imgSize;
   const int tgtPixels = tgtSize * tgtSize;
   const int numPatches = numImages * samplingRate;
@@ -164,10 +165,10 @@ void hl_generate_disturb_params(real*& gpuAngle,
         int pxY =
             (int)(real(imgSize - 1) * rand() / (RAND_MAX + 1.0));  // NOLINT
 
-        const real H[4] = {cos(-r_angle[i]),
-                           -sin(-r_angle[i]),
-                           sin(-r_angle[i]),
-                           cos(-r_angle[i])};
+        const real H[4] = {(real)cos(-r_angle[i]),
+                           (real)-sin(-r_angle[i]),
+                           (real)sin(-r_angle[i]),
+                           (real)cos(-r_angle[i])};
         real x = pxX - imgCenter;
         real y = pxY - imgCenter;
         real xx = H[0] * x + H[1] * y;
@@ -231,7 +232,7 @@ void hl_conv_random_disturb_with_params(const real* images,
   dim3 threadsPerBlock(4, 128);
   dim3 numBlocks(DIVUP(numPatches, 4), DIVUP(targetSize, 128));
 
-  kSamplingPatches<<<numBlocks, threadsPerBlock>>>(images,
+  hipLaunchKernelGGL((kSamplingPatches), dim3(numBlocks), dim3(threadsPerBlock), 0, 0, images,
                                                    target,
                                                    imgSize,
                                                    tgtSize,

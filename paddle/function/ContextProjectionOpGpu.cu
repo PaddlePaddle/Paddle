@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,9 +27,9 @@ __global__ void KeContextProjectionForward(const real* input,
                                            int context_length,
                                            int context_start,
                                            int begin_pad) {
-  int idx = threadIdx.x;
-  int block_size = blockDim.x;
-  int sequenceId = blockIdx.x;
+  int idx = hipThreadIdx_x;
+  int block_size = hipBlockDim_x;
+  int sequenceId = hipBlockIdx_x;
   int seq_start = sequence[sequenceId];
   int seq_end = sequence[sequenceId + 1];
   real value = 0;
@@ -109,7 +110,7 @@ void hl_context_projection_forward(const real* input,
   dim3 grid(blocks_x, blocks_y);
 
   if (weight) {
-    KeContextProjectionForward<true><<<grid, threads, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((KeContextProjectionForward<true>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
         input,
         sequence,
         weight,
@@ -119,7 +120,7 @@ void hl_context_projection_forward(const real* input,
         context_start,
         begin_pad);
   } else {
-    KeContextProjectionForward<false><<<grid, threads, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((KeContextProjectionForward<false>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
         input,
         sequence,
         weight,
@@ -157,9 +158,9 @@ __global__ void KeContextProjectionBackwardData(const real* out_grad,
                                                 size_t input_dim,
                                                 int context_length,
                                                 int context_start) {
-  int idx = threadIdx.x;
-  int block_size = blockDim.x;
-  int sequenceId = blockIdx.x;
+  int idx = hipThreadIdx_x;
+  int block_size = hipBlockDim_x;
+  int sequenceId = hipBlockIdx_x;
   int seq_start = sequence[sequenceId];
   int seq_end = sequence[sequenceId + 1];
   real value = 0;
@@ -224,7 +225,7 @@ void hl_context_projection_backward_data(const real* out_grad,
   int blocks_y = 1;
   dim3 threads(block_size, 1);
   dim3 grid(blocks_x, blocks_y);
-  KeContextProjectionBackwardData<<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeContextProjectionBackwardData), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       out_grad, sequence, input_grad, input_dim, context_length, context_start);
   CHECK_SYNC("hl_context_projection_backward_data failed");
 }
@@ -255,10 +256,10 @@ __global__ void KeContextProjectionBackwardWeight(const real* out_grad,
                                                   int begin_pad) {
   __shared__ real sum_s[THREADS_Y][THREADS_X];
   int pad_of_block = (w_dim + THREADS_X - 1) / THREADS_X;
-  const int idx = threadIdx.x;
-  const int idy = threadIdx.y;
-  int padId = blockIdx.x / pad_of_block;
-  int weight_idx = idx + THREADS_X * (blockIdx.x % pad_of_block);
+  const int idx = hipThreadIdx_x;
+  const int idy = hipThreadIdx_y;
+  int padId = hipBlockIdx_x / pad_of_block;
+  int weight_idx = idx + THREADS_X * (hipBlockIdx_x % pad_of_block);
   int instanceId;
   real value = 0;
   real* output_r;

@@ -87,7 +87,7 @@ void hl_warpctc_init(const size_t blank,
   g_warpctcVersion = WARPCTC_GET_VERSION();
 
   if (useGpu) {
-#ifdef __NVCC__
+#ifdef __HIPCC__
     options->loc = CTC_GPU;
     options->stream = STREAM_DEFAULT;
 #else

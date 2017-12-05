@@ -1,3 +1,6 @@
+#ifdef __HIPCC__
+#include "hip/hip_runtime.h"
+#endif
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,12 +24,12 @@ limitations under the License. */
 #include "paddle/utils/Logging.h"
 #include "hl_base.h"
 
-#ifdef __NVCC__
+#ifdef __HIPCC__
 /* gpu apply interface */
 
 template<class T, class Op>
 __global__ void KeEltWiseUnaryOp(T* A_d, const int border, Op op) {
-  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  const int idx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   if (idx < border) {
     op.gpuOperator(A_d[idx]);
   }
@@ -38,10 +41,10 @@ __global__ void KeEltWiseUnaryOp(T* A_d,
                                  int dimN,
                                  int lda,
                                  Op op) {
-  const int colIdx = blockIdx.x * blockDim.x + threadIdx.x;
-  const int rowIdx = blockIdx.y * blockDim.y + threadIdx.y;
-  for (int i = rowIdx; i < dimM; i += gridDim.y * blockDim.y) {
-    for (int j = colIdx; j < dimN; j += gridDim.x * blockDim.x) {
+  const int colIdx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
+  const int rowIdx = hipBlockIdx_y * hipBlockDim_y + hipThreadIdx_y;
+  for (int i = rowIdx; i < dimM; i += hipGridDim_y * hipBlockDim_y) {
+    for (int j = colIdx; j < dimN; j += hipGridDim_x * hipBlockDim_x) {
       op.gpuOperator(A_d[i * lda + j]);
     }
   }
@@ -49,7 +52,7 @@ __global__ void KeEltWiseUnaryOp(T* A_d,
 
 template<class T, class Op>
 __global__ void KeEltWiseBinaryOp(T* A_d, T *B_d, const int border, Op op) {
-  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  const int idx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   if (idx < border) {
     op.gpuOperator(A_d[idx], B_d[idx]);
   }
@@ -63,10 +66,10 @@ __global__ void KeEltWiseBinaryOp(T *A_d,
                                   int lda,
                                   int ldb,
                                   Op op) {
-  const int colIdx = blockIdx.x * blockDim.x + threadIdx.x;
-  const int rowIdx = blockIdx.y * blockDim.y + threadIdx.y;
-  for (int i = rowIdx; i < dimM; i += gridDim.y * blockDim.y) {
-    for (int j = colIdx; j < dimN; j += gridDim.x * blockDim.x) {
+  const int colIdx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
+  const int rowIdx = hipBlockIdx_y * hipBlockDim_y + hipThreadIdx_y;
+  for (int i = rowIdx; i < dimM; i += hipGridDim_y * hipBlockDim_y) {
+    for (int j = colIdx; j < dimN; j += hipGridDim_x * hipBlockDim_x) {
       if (BAsRowVector == 0 && BAsColVector == 0) {
         op.gpuOperator(A_d[i * lda + j], B_d[i * ldb + j]);
       } else if (BAsRowVector == 1 && BAsColVector == 0) {
@@ -86,7 +89,7 @@ __global__ void KeEltWiseTernaryOp(T* A_d,
                                    T *C_d,
                                    const int border,
                                    Op op) {
-  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  const int idx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   if (idx < border) {
     op.gpuOperator(A_d[idx], B_d[idx], C_d[idx]);
   }
@@ -102,10 +105,10 @@ __global__ void KeEltWiseTernaryOp(T* A_d,
                                    int ldb,
                                    int ldc,
                                    Op op) {
-  const int colIdx = blockIdx.x * blockDim.x + threadIdx.x;
-  const int rowIdx = blockIdx.y * blockDim.y + threadIdx.y;
-  for (int i = rowIdx; i < dimM; i += gridDim.y * blockDim.y) {
-    for (int j = colIdx; j < dimN; j += gridDim.x * blockDim.x) {
+  const int colIdx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
+  const int rowIdx = hipBlockIdx_y * hipBlockDim_y + hipThreadIdx_y;
+  for (int i = rowIdx; i < dimM; i += hipGridDim_y * hipBlockDim_y) {
+    for (int j = colIdx; j < dimN; j += hipGridDim_x * hipBlockDim_x) {
       if (CAsRowVector == 0 && CAsColVector == 0) {
         op.gpuOperator(A_d[i*lda + j], B_d[i*ldb + j], C_d[i*ldc + j]);
       } else if (CAsRowVector == 1 && CAsColVector == 0) {
@@ -126,7 +129,7 @@ __global__ void KeEltWiseQuaternaryOp(T* A_d,
                                       T* D_d,
                                       const int border,
                                       Op op) {
-  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  const int idx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   if (idx < border) {
     op.gpuOperator(A_d[idx], B_d[idx], C_d[idx], D_d[idx]);
   }
@@ -144,10 +147,10 @@ __global__ void KeEltWiseQuaternaryOp(T* A_d,
                                       int ldc,
                                       int ldd,
                                       Op op) {
-  const int colIdx = blockIdx.x * blockDim.x + threadIdx.x;
-  const int rowIdx = blockIdx.y * blockDim.y + threadIdx.y;
-  for (int i = rowIdx; i < dimM; i += gridDim.y * blockDim.y) {
-    for (int j = colIdx; j < dimN; j += gridDim.x * blockDim.x) {
+  const int colIdx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
+  const int rowIdx = hipBlockIdx_y * hipBlockDim_y + hipThreadIdx_y;
+  for (int i = rowIdx; i < dimM; i += hipGridDim_y * hipBlockDim_y) {
+    for (int j = colIdx; j < dimN; j += hipGridDim_x * hipBlockDim_x) {
       op.gpuOperator(A_d[i*lda + j],
         B_d[i*ldb + j], C_d[i*ldc + j], D_d[i*ldd + j]);
     }
@@ -165,8 +168,7 @@ void hl_gpu_apply_unary_op(Op op, T* A_d, int dimM, int dimN, int lda) {
     int size = dimM * dimN;
     int blockSize = size <= 1024 ? size : 1024;
     int gridSize = (size + 1024 - 1) / 1024;
-    KeEltWiseUnaryOp<T, Op><<<gridSize, blockSize, 0, STREAM_DEFAULT>>>
-      (A_d, size, op);
+    hipLaunchKernelGGL((KeEltWiseUnaryOp<T, Op>), dim3(gridSize), dim3(blockSize), 0, STREAM_DEFAULT, A_d, size, op);
   } else {
     int blockSizeY = std::min(32, dimM);
     int blockSizeX = (32 / blockSizeY) * 32;
@@ -174,8 +176,7 @@ void hl_gpu_apply_unary_op(Op op, T* A_d, int dimM, int dimN, int lda) {
     int gridSizeY = std::min(32, (dimM + blockSizeY - 1) / blockSizeY);
     dim3 threads(blockSizeX, blockSizeY);
     dim3 grid(gridSizeX, gridSizeY);
-    KeEltWiseUnaryOp<T, Op><<<grid, threads, 0, STREAM_DEFAULT>>>
-      (A_d, dimM, dimN, lda, op);
+    hipLaunchKernelGGL((KeEltWiseUnaryOp<T, Op>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, A_d, dimM, dimN, lda, op);
   }
 
   CHECK_SYNC("hl_gpu_apply_unary_op failed");
@@ -199,8 +200,7 @@ void hl_gpu_apply_binary_op(Op op,
     int size = dimM * dimN;
     int blockSize = size <= 1024 ? size : 1024;
     int gridSize = (size + 1024 - 1) / 1024;
-    KeEltWiseBinaryOp<T, Op><<<gridSize, blockSize, 0, STREAM_DEFAULT>>>
-      (A_d, B_d, size, op);
+    hipLaunchKernelGGL((KeEltWiseBinaryOp<T, Op>), dim3(gridSize), dim3(blockSize), 0, STREAM_DEFAULT, A_d, B_d, size, op);
   } else {
     int blockSizeY = std::min(32, dimM);
     int blockSizeX = (32 / blockSizeY) * 32;
@@ -208,9 +208,7 @@ void hl_gpu_apply_binary_op(Op op,
     int gridSizeY = std::min(32, (dimM + blockSizeY - 1) / blockSizeY);
     dim3 threads(blockSizeX, blockSizeY);
     dim3 grid(gridSizeX, gridSizeY);
-    KeEltWiseBinaryOp<T, Op, BAsRowVector, BAsColVector>
-      <<<grid, threads, 0, STREAM_DEFAULT>>>
-      (A_d, B_d, dimM, dimN, lda, ldb, op);
+    hipLaunchKernelGGL((KeEltWiseBinaryOp<T, Op, BAsRowVector, BAsColVector>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, A_d, B_d, dimM, dimN, lda, ldb, op);
   }
 
   CHECK_SYNC("hl_gpu_apply_binary_op failed");
@@ -236,8 +234,7 @@ void hl_gpu_apply_ternary_op(Op op,
     int size = dimM * dimN;
     int blockSize = size <= 1024 ? size : 1024;
     int gridSize = (size + 1024 - 1) / 1024;
-    KeEltWiseTernaryOp<T, Op><<<gridSize, blockSize, 0, STREAM_DEFAULT>>>
-      (A_d, B_d, C_d, size, op);
+    hipLaunchKernelGGL((KeEltWiseTernaryOp<T, Op>), dim3(gridSize), dim3(blockSize), 0, STREAM_DEFAULT, A_d, B_d, C_d, size, op);
   } else {
     int blockSizeY = std::min(32, dimM);
     int blockSizeX = (32 / blockSizeY) * 32;
@@ -245,9 +242,7 @@ void hl_gpu_apply_ternary_op(Op op,
     int gridSizeY = std::min(32, (dimM + blockSizeY - 1) / blockSizeY);
     dim3 threads(blockSizeX, blockSizeY);
     dim3 grid(gridSizeX, gridSizeY);
-    KeEltWiseTernaryOp<T, Op, CAsRowVector, CAsColVector>
-      <<<grid, threads, 0, STREAM_DEFAULT>>>
-      (A_d, B_d, C_d, dimM, dimN, lda, ldb, ldc, op);
+    hipLaunchKernelGGL((KeEltWiseTernaryOp<T, Op, CAsRowVector, CAsColVector>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, A_d, B_d, C_d, dimM, dimN, lda, ldb, ldc, op);
   }
 
   CHECK_SYNC("hl_gpu_apply_ternary_op failed");
@@ -276,8 +271,7 @@ void hl_gpu_apply_quaternary_op(Op op,
     int size = dimM * dimN;
     int blockSize = size <= 1024 ? size : 1024;
     int gridSize = (size + 1024 - 1) / 1024;
-    KeEltWiseQuaternaryOp<T, Op><<<gridSize, blockSize, 0, STREAM_DEFAULT>>>
-      (A_d, B_d, C_d, D_d, size, op);
+    hipLaunchKernelGGL((KeEltWiseQuaternaryOp<T, Op>), dim3(gridSize), dim3(blockSize), 0, STREAM_DEFAULT, A_d, B_d, C_d, D_d, size, op);
   } else {
     int blockSizeY = std::min(32, dimM);
     int blockSizeX = (32 / blockSizeY) * 32;
@@ -285,8 +279,7 @@ void hl_gpu_apply_quaternary_op(Op op,
     int gridSizeY = std::min(32, (dimM + blockSizeY - 1) / blockSizeY);
     dim3 threads(blockSizeX, blockSizeY);
     dim3 grid(gridSizeX, gridSizeY);
-    KeEltWiseQuaternaryOp<T, Op><<<grid, threads, 0, STREAM_DEFAULT>>>
-      (A_d, B_d, C_d, D_d, dimM, dimN, lda, ldb, ldc, ldd, op);
+    hipLaunchKernelGGL((KeEltWiseQuaternaryOp<T, Op>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, A_d, B_d, C_d, D_d, dimM, dimN, lda, ldb, ldc, ldd, op);
   }
 
   CHECK_SYNC("hl_gpu_apply_quaternary_op failed");
@@ -331,7 +324,7 @@ void hl_gpu_apply_quaternary_op(Op op,
                                 int ldd) {}
 #endif
 
-#ifdef __NVCC__
+#ifdef __HIPCC__
 /**
  * @brief   matrix row operator.
  */
@@ -378,8 +371,8 @@ __global__ void KeMatrixRowOp(Agg agg, Op op, Saver sv,
                               real *dst, int ld,
                               real *A, int lda) {
   __shared__ real row_s[blockSize];
-  int rowId = blockIdx.x + blockIdx.y*gridDim.x;
-  int tid = threadIdx.x;
+  int rowId = hipBlockIdx_x + hipBlockIdx_y*hipGridDim_x;
+  int tid = hipThreadIdx_x;
 
   A += rowId*lda;
   row_s[tid] = sumRow(agg, op, tid, blockSize, dimN, A);
@@ -400,8 +393,8 @@ __global__ void KeMatrixRowOp(Agg agg, Op op, Saver sv,
                               real *A, int lda,
                               real *B, int ldb) {
   __shared__ real row_s[blockSize];
-  int rowId = blockIdx.x + blockIdx.y*gridDim.x;
-  int tid = threadIdx.x;
+  int rowId = hipBlockIdx_x + hipBlockIdx_y*hipGridDim_x;
+  int tid = hipThreadIdx_x;
 
   A += rowId*lda;
   B += rowId*ldb;
@@ -448,7 +441,7 @@ __global__ void KeMatrixColumnOp(Agg agg, Op op, Saver sv,
                                  int dimM, int dimN,
                                  real *dst,
                                  real *A, int lda) {
-  int rowIdx = blockIdx.x * blockDim.x + threadIdx.x;
+  int rowIdx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   if (rowIdx < dimN) {
     A += rowIdx;
     real tmp = sumCol(agg, op, 0, 1, dimM, A, lda);
@@ -462,20 +455,20 @@ __global__ void KeMatrixColumnOp_S(Agg agg, Op op, Saver sv,
                                    real *dst,
                                    real *A, int lda) {
   __shared__ real col_s[blockDimX*blockDimY];
-  int rowIdx = blockIdx.x * blockDim.x + threadIdx.x;
+  int rowIdx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
 
   if (rowIdx < dimN) {
     A += rowIdx;
-    real tmp = sumCol(agg, op, threadIdx.y, blockDimY, dimM, A, lda);
-    col_s[threadIdx.x + threadIdx.y*blockDimX] = tmp;
+    real tmp = sumCol(agg, op, hipThreadIdx_y, blockDimY, dimM, A, lda);
+    col_s[hipThreadIdx_x + hipThreadIdx_y*blockDimX] = tmp;
   }
   __syncthreads();
 
   if (rowIdx < dimN) {
-    if (threadIdx.y ==0) {
+    if (hipThreadIdx_y ==0) {
       real tmp = agg.init();
       for (int i=0; i < blockDimY; i++) {
-        tmp = agg(tmp, col_s[threadIdx.x + i*blockDimX]);
+        tmp = agg(tmp, col_s[hipThreadIdx_x + i*blockDimX]);
       }
       dst[rowIdx] = sv(dst[rowIdx], tmp);
     }
@@ -488,7 +481,7 @@ __global__ void KeMatrixColumnOp(Agg agg, Op op, Saver sv,
                                  real *dst,
                                  real *A, int lda,
                                  real *B, int ldb) {
-  int rowIdx = blockIdx.x * blockDim.x + threadIdx.x;
+  int rowIdx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   if (rowIdx < dimN) {
     A += rowIdx;
     B += rowIdx;
@@ -504,22 +497,22 @@ __global__ void KeMatrixColumnOp_S(Agg agg, Op op, Saver sv,
                                    real *A, int lda,
                                    real *B, int ldb) {
   __shared__ real col_s[blockDimX*blockDimY];
-  int rowIdx = blockIdx.x * blockDim.x + threadIdx.x;
+  int rowIdx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
 
   if (rowIdx < dimN) {
     A += rowIdx;
     B += rowIdx;
     real tmp = sumCol(agg, op,
-        threadIdx.y, blockDimY, dimM, A, lda, B, ldb);
-    col_s[threadIdx.x + threadIdx.y*blockDimX] = tmp;
+        hipThreadIdx_y, blockDimY, dimM, A, lda, B, ldb);
+    col_s[hipThreadIdx_x + hipThreadIdx_y*blockDimX] = tmp;
   }
   __syncthreads();
 
   if (rowIdx < dimN) {
-    if (threadIdx.y ==0) {
+    if (hipThreadIdx_y ==0) {
       real tmp = agg.init();
       for (int i=0; i < blockDimY; i++) {
-        tmp = agg(tmp, col_s[threadIdx.x + i*blockDimX]);
+        tmp = agg(tmp, col_s[hipThreadIdx_x + i*blockDimX]);
       }
       dst[rowIdx] = sv(dst[rowIdx], tmp);
     }
@@ -533,7 +526,7 @@ void hl_gpu_matrix_row_op(Agg agg, Op op, Saver sv,
                           int dimM, int dimN,
                           real *dst, int ld,
                           real *A, int lda) {
-#ifdef __NVCC__
+#ifdef __HIPCC__
   CHECK_NOTNULL(dst);
   CHECK_NOTNULL(A);
 
@@ -541,8 +534,7 @@ void hl_gpu_matrix_row_op(Agg agg, Op op, Saver sv,
   int blocksY = 1;
   dim3 threads(128, 1);
   dim3 grid(blocksX, blocksY);
-  KeMatrixRowOp<Agg, Op, Saver, 128><<< grid, threads, 0, STREAM_DEFAULT >>>
-      (agg, op, sv, dimN, dst, ld, A, lda);
+  hipLaunchKernelGGL((KeMatrixRowOp<Agg, Op, Saver, 128>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT , agg, op, sv, dimN, dst, ld, A, lda);
 
   CHECK_SYNC("hl_matrix_row_op failed");
 #endif
@@ -554,7 +546,7 @@ void hl_gpu_matrix_row_op(Agg agg, Op op, Saver sv,
                           real *dst, int ld,
                           real *A, int lda,
                           real *B, int ldb) {
-#ifdef __NVCC__
+#ifdef __HIPCC__
   CHECK_NOTNULL(dst);
   CHECK_NOTNULL(A);
 
@@ -562,8 +554,7 @@ void hl_gpu_matrix_row_op(Agg agg, Op op, Saver sv,
   int blocksY = 1;
   dim3 threads(128, 1);
   dim3 grid(blocksX, blocksY);
-  KeMatrixRowOp<Agg, Op, Saver, 128><<< grid, threads, 0, STREAM_DEFAULT >>>
-    (agg, op, sv, dimN, dst, ld, A, lda, B, ldb);
+  hipLaunchKernelGGL((KeMatrixRowOp<Agg, Op, Saver, 128>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT , agg, op, sv, dimN, dst, ld, A, lda, B, ldb);
 
   CHECK_SYNC("hl_matrix_row_op failed");
 #endif
@@ -574,23 +565,19 @@ void hl_gpu_matrix_column_op(Agg agg, Op op, Saver sv,
                              int dimM, int dimN,
                              real *dst,
                              real *A, int lda) {
-#ifdef __NVCC__
+#ifdef __HIPCC__
   if (dimN >= 8192) {
     int blocksX = (dimN + 128 -1) / 128;
     int blocksY = 1;
     dim3 threads(128, 1);
     dim3 grid(blocksX, blocksY);
-    KeMatrixColumnOp<Agg, Op, Saver>
-        <<< grid, threads, 0, STREAM_DEFAULT >>>
-        (agg, op, sv, dimM, dimN, dst, A, lda);
+    hipLaunchKernelGGL((KeMatrixColumnOp<Agg, Op, Saver>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT , agg, op, sv, dimM, dimN, dst, A, lda);
   } else {
     int blocksX = (dimN + 32 -1) / 32;
     int blocksY = 1;
     dim3 threads(32, 32);
     dim3 grid(blocksX, blocksY);
-    KeMatrixColumnOp_S<Agg, Op, Saver, 32, 32>
-        <<< grid, threads, 0, STREAM_DEFAULT>>>
-        (agg, op, sv, dimM, dimN, dst, A, lda);
+    hipLaunchKernelGGL((KeMatrixColumnOp_S<Agg, Op, Saver, 32, 32>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, agg, op, sv, dimM, dimN, dst, A, lda);
   }
 
   CHECK_SYNC("hl_matrix_column_op failed");
@@ -603,23 +590,19 @@ void hl_gpu_matrix_column_op(Agg agg, Op op, Saver sv,
                              real *dst,
                              real *A, int lda,
                              real *B, int ldb) {
-#ifdef __NVCC__
+#ifdef __HIPCC__
   if (dimN >= 8192) {
     int blocksX = (dimN + 128 -1) / 128;
     int blocksY = 1;
     dim3 threads(128, 1);
     dim3 grid(blocksX, blocksY);
-    KeMatrixColumnOp<Agg, Op, Saver>
-        <<< grid, threads, 0, STREAM_DEFAULT >>>
-        (agg, op, sv, dimM, dimN, dst, A, lda, B, ldb);
+    hipLaunchKernelGGL((KeMatrixColumnOp<Agg, Op, Saver>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT , agg, op, sv, dimM, dimN, dst, A, lda, B, ldb);
   } else {
     int blocksX = (dimN + 32 -1) / 32;
     int blocksY = 1;
     dim3 threads(32, 32);
     dim3 grid(blocksX, blocksY);
-    KeMatrixColumnOp_S<Agg, Op, Saver, 32, 32>
-        <<< grid, threads, 0, STREAM_DEFAULT>>>
-        (agg, op, sv, dimM, dimN, dst, A, lda, B, ldb);
+    hipLaunchKernelGGL((KeMatrixColumnOp_S<Agg, Op, Saver, 32, 32>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, agg, op, sv, dimM, dimN, dst, A, lda, B, ldb);
   }
 
   CHECK_SYNC("hl_matrix_column_op failed");

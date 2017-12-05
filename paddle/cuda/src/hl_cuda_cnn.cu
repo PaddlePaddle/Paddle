@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +34,7 @@ __global__ void KeMaxPoolForward(const int nthreads,
                                  real* tgtData,
                                  const int tgtStride,
                                  real* maskData) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int index = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   if (index < nthreads) {
     int pw = index % pooledW;
     int ph = (index / pooledW) % pooledH;
@@ -86,7 +87,7 @@ void hl_maxpool_forward(const int frameCnt,
   dim3 threads(1024, 1);
   dim3 grid(blocks, 1);
 
-  KeMaxPoolForward<<<grid, threads, 0, STREAM_DEFAULT>>>(num_kernels,
+  hipLaunchKernelGGL((KeMaxPoolForward), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, num_kernels,
                                                          inputData,
                                                          channels,
                                                          height,
@@ -124,7 +125,7 @@ __global__ void KeMaxPoolBackward(const int nthreads,
                                   real scaleB,
                                   real* targetGrad,
                                   const int outStride) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int index = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   if (index < nthreads) {
     // find out the local index
     // find out the local offset
@@ -174,7 +175,7 @@ void hl_maxpool_backward(const int frameCnt,
   int num_kernels = height * width * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
 
-  KeMaxPoolBackward<<<blocks, 1024, 0, STREAM_DEFAULT>>>(num_kernels,
+  hipLaunchKernelGGL((KeMaxPoolBackward), dim3(blocks), dim3(1024), 0, STREAM_DEFAULT, num_kernels,
                                                          inputData,
                                                          outData,
                                                          outGrad,
@@ -211,7 +212,7 @@ __global__ void KeAvgPoolForward(const int nthreads,
                                  const int padW,
                                  real* tgtData,
                                  const int tgtStride) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int index = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   if (index < nthreads) {
     int pw = index % pooledW;
     int ph = (index / pooledW) % pooledH;
@@ -256,7 +257,7 @@ void hl_avgpool_forward(const int frameCnt,
                         const int tgtStride) {
   int num_kernels = pooledH * pooledW * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
-  KeAvgPoolForward<<<blocks, 1024, 0, STREAM_DEFAULT>>>(num_kernels,
+  hipLaunchKernelGGL((KeAvgPoolForward), dim3(blocks), dim3(1024), 0, STREAM_DEFAULT, num_kernels,
                                                         inputData,
                                                         channels,
                                                         height,
@@ -291,7 +292,7 @@ __global__ void KeAvgPoolBackward(const int nthreads,
                                   real scaleB,
                                   real* tgtGrad,
                                   const int outStride) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int index = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   if (index < nthreads) {
     int offsetW = index % width + padW;
     int offsetH = (index / width) % height + padH;
@@ -342,7 +343,7 @@ void hl_avgpool_backward(const int frameCnt,
   int num_kernels = height * width * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
 
-  KeAvgPoolBackward<<<blocks, 1024, 0, STREAM_DEFAULT>>>(num_kernels,
+  hipLaunchKernelGGL((KeAvgPoolBackward), dim3(blocks), dim3(1024), 0, STREAM_DEFAULT, num_kernels,
                                                          outGrad,
                                                          channels,
                                                          height,
@@ -383,8 +384,8 @@ __global__ void KeMaxPool3DForward(const int nthreads,
                                    real* tgtData,
                                    real* maxPoolIdxData,
                                    const int tgtStride) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < (nthreads);
-       index += blockDim.x * gridDim.x) {
+  for (int index = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x; index < (nthreads);
+       index += hipBlockDim_x * hipGridDim_x) {
     int pw = index % pooledW;
     int ph = (index / pooledW) % pooledH;
     int pd = (index / pooledW / pooledH) % pooledD;
@@ -445,7 +446,7 @@ void hl_maxpool3D_forward(const int frameCnt,
   dim3 threads(1024, 1);
   dim3 grid(blocks, 1);
 
-  KeMaxPool3DForward<<<grid, threads, 0, STREAM_DEFAULT>>>(num_kernels,
+  hipLaunchKernelGGL((KeMaxPool3DForward), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, num_kernels,
                                                            inputData,
                                                            channels,
                                                            depth,
@@ -492,8 +493,8 @@ __global__ void KeMaxPool3DBackward(const int nthreads,
                                     real* targetGrad,
                                     real* maxPoolIdxData,
                                     const int outStride) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < (nthreads);
-       index += blockDim.x * gridDim.x) {
+  for (int index = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x; index < (nthreads);
+       index += hipBlockDim_x * hipGridDim_x) {
     int offsetW = index % width;
     int offsetH = (index / width) % height;
     int offsetD = (index / width / height) % depth;
@@ -553,7 +554,7 @@ void hl_maxpool3D_backward(const int frameCnt,
   int num_kernels = depth * height * width * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
 
-  KeMaxPool3DBackward<<<blocks, 1024, 0, STREAM_DEFAULT>>>(num_kernels,
+  hipLaunchKernelGGL((KeMaxPool3DBackward), dim3(blocks), dim3(1024), 0, STREAM_DEFAULT, num_kernels,
                                                            outGrad,
                                                            channels,
                                                            depth,
@@ -599,8 +600,8 @@ __global__ void KeAvgPool3DForward(const int nthreads,
                                    const int padW,
                                    real* tgtData,
                                    const int tgtStride) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < (nthreads);
-       index += blockDim.x * gridDim.x) {
+  for (int index = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x; index < (nthreads);
+       index += hipBlockDim_x * hipGridDim_x) {
     int pw = index % pooledW;
     int ph = (index / pooledW) % pooledH;
     int pd = (index / pooledW / pooledH) % pooledD;
@@ -654,7 +655,7 @@ void hl_avgpool3D_forward(const int frameCnt,
                           const int tgtStride) {
   int num_kernels = pooledD * pooledH * pooledW * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
-  KeAvgPool3DForward<<<blocks, 1024, 0, STREAM_DEFAULT>>>(num_kernels,
+  hipLaunchKernelGGL((KeAvgPool3DForward), dim3(blocks), dim3(1024), 0, STREAM_DEFAULT, num_kernels,
                                                           inputData,
                                                           channels,
                                                           depth,
@@ -699,8 +700,8 @@ __global__ void KeAvgPool3DBackward(const int nthreads,
                                     real scaleB,
                                     real* tgtGrad,
                                     const int outStride) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < (nthreads);
-       index += blockDim.x * gridDim.x) {
+  for (int index = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x; index < (nthreads);
+       index += hipBlockDim_x * hipGridDim_x) {
     int offsetW = index % width + padW;
     int offsetH = (index / width) % height + padH;
     int offsetD = (index / width / height) % depth + padD;
@@ -764,7 +765,7 @@ void hl_avgpool3D_backward(const int frameCnt,
   int num_kernels = depth * height * width * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
 
-  KeAvgPool3DBackward<<<blocks, 1024, 0, STREAM_DEFAULT>>>(num_kernels,
+  hipLaunchKernelGGL((KeAvgPool3DBackward), dim3(blocks), dim3(1024), 0, STREAM_DEFAULT, num_kernels,
                                                            outGrad,
                                                            channels,
                                                            depth,
@@ -803,7 +804,7 @@ __global__ void KeBilinearInterpFw(const real* in,
                                    const real ratioH,
                                    const real ratioW) {
   int nthreads = outputH * outputW;
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int tid = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   if (tid < nthreads) {
     int outIdH = tid / outputW;
     int outIdW = tid % outputW;
@@ -850,7 +851,7 @@ void hl_bilinear_forward(const real* inData,
   int threadNum = outputH * outputW;
   int blocks = (threadNum + 1024 - 1) / 1024;
 
-  KeBilinearInterpFw<<<blocks, 1024, 0, STREAM_DEFAULT>>>(inData,
+  hipLaunchKernelGGL((KeBilinearInterpFw), dim3(blocks), dim3(1024), 0, STREAM_DEFAULT, inData,
                                                           inImgH,
                                                           inImgW,
                                                           inputH,
@@ -880,7 +881,7 @@ __global__ void KeBilinearInterpBw(real* in,
                                    const real ratioH,
                                    const real ratioW) {
   int nthreads = outputH * outputW;
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int tid = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   if (tid < nthreads) {
     int outIdH = tid / outputW;
     int outIdW = tid % outputW;
@@ -928,7 +929,7 @@ void hl_bilinear_backward(real* inGrad,
   int threadNum = outputH * outputW;
   int blocks = (threadNum + 1024 - 1) / 1024;
 
-  KeBilinearInterpBw<<<blocks, 1024, 0, STREAM_DEFAULT>>>(inGrad,
+  hipLaunchKernelGGL((KeBilinearInterpBw), dim3(blocks), dim3(1024), 0, STREAM_DEFAULT, inGrad,
                                                           inImgH,
                                                           inImgW,
                                                           inputH,
@@ -951,7 +952,7 @@ __global__ void maxoutFpCompute(size_t nthreads,
                                 size_t size,
                                 size_t featLen,
                                 size_t groups) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int index = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   if (index < nthreads) {
     size_t batch_idx = index / size;
     size_t i = index % size;
@@ -982,7 +983,7 @@ void hl_maxout_forward(const real* inData,
                        size_t groups) {
   int num_kernels = size * batchSize;
   int blocks = (num_kernels + 1024 - 1) / 1024;
-  maxoutFpCompute<<<blocks, 1024, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((maxoutFpCompute), dim3(blocks), dim3(1024), 0, STREAM_DEFAULT, 
       num_kernels, inData, outData, idData, size, featLen, groups);
   CHECK_SYNC("hl_maxout_forward failed");
 }
@@ -994,7 +995,7 @@ __global__ void maxoutBpCompute(size_t nthreads,
                                 size_t size,
                                 size_t featLen,
                                 size_t groups) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int index = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   if (index < nthreads) {
     size_t batch_idx = index / size;
     size_t i = index % size;
@@ -1016,7 +1017,7 @@ void hl_maxout_backward(real* inGrad,
                         size_t groups) {
   int num_kernels = size * batchSize;
   int blocks = (num_kernels + 1024 - 1) / 1024;
-  maxoutBpCompute<<<blocks, 1024, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((maxoutBpCompute), dim3(blocks), dim3(1024), 0, STREAM_DEFAULT, 
       num_kernels, inGrad, outGrad, idData, size, featLen, groups);
   CHECK_SYNC("hl_maxout_backward failed");
 }

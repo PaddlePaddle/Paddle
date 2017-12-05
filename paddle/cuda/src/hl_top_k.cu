@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -273,11 +274,11 @@ __global__ void KeMatrixTopK(real* topVal,
                              int beamSize) {
   __shared__ Pair shTopK[blockSize];
   __shared__ int maxId[blockSize / 2];
-  const int tid = threadIdx.x;
-  const int warp = threadIdx.x / 32;
-  src += blockIdx.x * lds;
-  topVal += blockIdx.x * ldv;
-  topIds += blockIdx.x * beamSize;
+  const int tid = hipThreadIdx_x;
+  const int warp = hipThreadIdx_x / 32;
+  src += hipBlockIdx_x * lds;
+  topVal += hipBlockIdx_x * ldv;
+  topIds += hipBlockIdx_x * beamSize;
 
   Pair topK[maxLength];  // NOLINT
   int beam = maxLength;
@@ -308,10 +309,10 @@ __global__ void KeSMatrixTopK(real* topVal,
                               int beamSize) {
   __shared__ Pair shTopK[blockSize];
   __shared__ int maxId[blockSize / 2];
-  const int tid = threadIdx.x;
-  const int warp = threadIdx.x / 32;
-  topVal += blockIdx.x * ldv;
-  topIds += blockIdx.x * beamSize;
+  const int tid = hipThreadIdx_x;
+  const int warp = hipThreadIdx_x / 32;
+  topVal += hipBlockIdx_x * ldv;
+  topIds += hipBlockIdx_x * beamSize;
 
   Pair topK[maxLength];  // NOLINT
   int beam = maxLength;
@@ -319,8 +320,8 @@ __global__ void KeSMatrixTopK(real* topVal,
   bool isEmpty = false;
   bool firstStep = true;
 
-  int start = row[blockIdx.x];
-  int end = row[blockIdx.x + 1];
+  int start = row[hipBlockIdx_x];
+  int end = row[hipBlockIdx_x + 1];
   int dim = end - start;
   val += start;
   col += start;
@@ -364,7 +365,7 @@ void hl_matrix_top_k(real* topVal,
 
   dim3 threads(256, 1);
   dim3 grid(numSamples, 1);
-  KeMatrixTopK<5, 256><<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMatrixTopK<5, 256>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       topVal, ldv, topIds, src, lds, dim, beamSize);
 
   CHECK_SYNC("hl_matrix_top_k failed");
@@ -388,7 +389,7 @@ void hl_sparse_matrix_top_k(real* topVal,
 
   dim3 threads(256, 1);
   dim3 grid(numSamples, 1);
-  KeSMatrixTopK<5, 256><<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeSMatrixTopK<5, 256>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       topVal, ldv, topIds, csr->csr_val, csr->csr_row, csr->csr_col, beamSize);
 
   CHECK_SYNC("hl_sparse_matrix_top_k failed");
@@ -414,11 +415,11 @@ __global__ void KeMatrixTopKClassificationError(real* topVal,
                                                 real* recResult) {
   __shared__ Pair shTopK[blockSize];
   __shared__ int maxId[blockSize / 2];
-  const int tid = threadIdx.x;
-  const int warp = threadIdx.x / 32;
-  src += blockIdx.x * lds;
-  topVal += blockIdx.x * ldv;
-  topIds += blockIdx.x * beamSize;
+  const int tid = hipThreadIdx_x;
+  const int warp = hipThreadIdx_x / 32;
+  src += hipBlockIdx_x * lds;
+  topVal += hipBlockIdx_x * ldv;
+  topIds += hipBlockIdx_x * beamSize;
 
   Pair topK[maxLength];  // NOLINT
   int beam = maxLength;
@@ -443,11 +444,11 @@ __global__ void KeMatrixTopKClassificationError(real* topVal,
   __syncthreads();
   if (tid == 0) {
     for (int i = 0; i < topkSize; i++) {
-      if (*--topIds == label[blockIdx.x]) {
-        recResult[blockIdx.x] = 0;
+      if (*--topIds == label[hipBlockIdx_x]) {
+        recResult[hipBlockIdx_x] = 0;
         break;
       }
-      recResult[blockIdx.x] = 1.0f;
+      recResult[hipBlockIdx_x] = 1.0f;
     }
   }
 }
@@ -470,7 +471,7 @@ void hl_matrix_classification_error(real* topVal,
 
   dim3 threads(256, 1);
   dim3 grid(numSamples, 1);
-  KeMatrixTopKClassificationError<5, 256><<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMatrixTopKClassificationError<5, 256>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       topVal, ldv, topIds, src, lds, dim, topkSize, label, recResult);
 
   CHECK_SYNC("hl_matrix_top_k classification error failed");

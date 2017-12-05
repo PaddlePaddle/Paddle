@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +26,7 @@ __global__ void KeCMRNormFillScale(size_t imageSize,
                                    size_t width,
                                    size_t size,
                                    real alpha) {
-  const int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  const int idx = hipThreadIdx_x + hipBlockIdx_x * hipBlockDim_x;
   if (idx < imageSize) {
     const int w = idx % width;
     const int h = (idx / width) % height;
@@ -60,7 +61,7 @@ __global__ void KeCMRNormOutput(size_t inputSize,
                                 const real* scale,
                                 real negative_beta,
                                 real* out) {
-  const int index = threadIdx.x + blockIdx.x * blockDim.x;
+  const int index = hipThreadIdx_x + hipBlockIdx_x * hipBlockDim_x;
   if (index < inputSize) {
     out[index] = in[index] * pow(scale[index], negative_beta);
   }
@@ -80,13 +81,13 @@ void CrossMapNormal<DEVICE_TYPE_GPU>(real* outputs,
   size_t imageSize = numSamples * height * width;
   int blockSize = 1024;
   int gridSize = (imageSize + 1024 - 1) / 1024;
-  KeCMRNormFillScale<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeCMRNormFillScale), dim3(gridSize), dim3(blockSize), 0, STREAM_DEFAULT, 
       imageSize, inputs, denoms, channels, height, width, size, scale);
 
   size_t inputSize = numSamples * height * width * channels;
   blockSize = 1024;
   gridSize = (inputSize + 1024 - 1) / 1024;
-  KeCMRNormOutput<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeCMRNormOutput), dim3(gridSize), dim3(blockSize), 0, STREAM_DEFAULT, 
       inputSize, inputs, denoms, -pow, outputs);
 
   CHECK_SYNC("CrossMapNormal");
@@ -104,7 +105,7 @@ __global__ void KeCMRNormDiff(size_t imageSize,
                               real negative_beta,
                               real cache_ratio,
                               real* bottom_diff) {
-  const int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  const int idx = hipThreadIdx_x + hipBlockIdx_x * hipBlockDim_x;
   if (idx < imageSize) {
     const int w = idx % width;
     const int h = (idx / width) % height;
@@ -159,7 +160,7 @@ void CrossMapNormalGrad<DEVICE_TYPE_GPU>(real* inputsGrad,
 
   int blockSize = 1024;
   int gridSize = (imageSize + 1024 - 1) / 1024;
-  KeCMRNormDiff<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(imageSize,
+  hipLaunchKernelGGL((KeCMRNormDiff), dim3(gridSize), dim3(blockSize), 0, STREAM_DEFAULT, imageSize,
                                                             inputsValue,
                                                             outputsValue,
                                                             denoms,

@@ -40,7 +40,8 @@ add_dependencies(paddle_capi paddle_proto)
 
 # TODO: paddle_capi_whole will be removed.
 set(PADDLE_CAPI_LAYERS_LIBS
-    paddle_function
+    paddle_function_cpu
+    paddle_function_gpu
     paddle_gserver)
 if(MOBILE_INFERENCE)
   set(PADDLE_CAPI_ENGINE_LIBS

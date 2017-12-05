@@ -19,7 +19,7 @@ limitations under the License. */
 #include <stdio.h>
 #include <pthread.h>
 #include <cuda.h>
-#include <cuda_runtime.h>
+#include <hip/hip_runtime.h>
 #include <cublas_v2.h>
 #include <curand.h>
 #include <cudnn.h>
@@ -30,7 +30,7 @@ limitations under the License. */
  * @param   cuda event.
  */
 struct _hl_event_st {
-    cudaEvent_t     cu_event;       /* cuda event */
+    hipEvent_t     cu_event;       /* cuda event */
 };
 
 /**
@@ -43,7 +43,7 @@ struct _hl_event_st {
  * @param   *gen_mutex      gen lock.
  */
 typedef struct {
-    cudaStream_t        *stream;
+    hipStream_t        *stream;
     cublasHandle_t      handle;
     curandGenerator_t   gen;
     cudnnHandle_t       cudnn_handle;
@@ -59,10 +59,10 @@ typedef struct {
  * @param    mem_event      device memory lock.
  */
 typedef struct {
-    cudaStream_t   *stream;
+    hipStream_t   *stream;
     real           *gpu_mem;
     real           *cpu_mem;
-    cudaEvent_t    mem_event;
+    hipEvent_t    mem_event;
 }_thread_device_resources, *thread_device_resources;
 
 /*

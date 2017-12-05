@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 Paddle
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +25,7 @@ __global__ void KeNCHW2NHWC(real* outputs,
                             int inW,
                             int nthreads,
                             int argType) {
-  const int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  const int idx = hipThreadIdx_x + hipBlockIdx_x * hipBlockDim_x;
   if (idx < nthreads) {
     const int w = idx % inW;
     const int h = (idx / inW) % inH;
@@ -51,7 +52,7 @@ void NCHW2NHWC<DEVICE_TYPE_GPU>(real* outputs,
   size_t nth = num * inC * inH * inW;
   int blockSize = 1024;
   int gridSize = (nth + 1024 - 1) / 1024;
-  KeNCHW2NHWC<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeNCHW2NHWC), dim3(gridSize), dim3(blockSize), 0, STREAM_DEFAULT, 
       outputs, inputs, inC, inH, inW, nth, argType);
   CHECK_SYNC("NCHW2NHWC");
 }
@@ -63,7 +64,7 @@ __global__ void KeNHWC2NCHW(real* outputs,
                             int inC,
                             int nthreads,
                             int argType) {
-  const int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  const int idx = hipThreadIdx_x + hipBlockIdx_x * hipBlockDim_x;
   if (idx < nthreads) {
     const int c = idx % inC;
     const int w = (idx / inC) % inW;
@@ -90,7 +91,7 @@ void NHWC2NCHW<DEVICE_TYPE_GPU>(real* outputs,
   int nth = num * inC * inH * inW;
   int blockSize = 1024;
   int gridSize = (nth + 1024 - 1) / 1024;
-  KeNHWC2NCHW<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeNHWC2NCHW), dim3(gridSize), dim3(blockSize), 0, STREAM_DEFAULT, 
       outputs, inputs, inH, inW, inC, nth, argType);
   CHECK_SYNC("NHWC2NCHW");
 }

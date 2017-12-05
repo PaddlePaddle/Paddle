@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +26,7 @@ __global__ void KeScaleSubRegion(real* outputs,
                                  int height,
                                  int width,
                                  int nthreads) {
-  const int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  const int idx = hipThreadIdx_x + hipBlockIdx_x * hipBlockDim_x;
   if (idx < nthreads) {
     const int w = idx % width;
     const int h = (idx / width) % height;
@@ -60,7 +61,7 @@ void ScaleSubRegion<DEVICE_TYPE_GPU>(real* outputs,
   int blockSize = 1024;
   int gridSize = (nth + blockSize - 1) / blockSize;
 
-  KeScaleSubRegion<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeScaleSubRegion), dim3(gridSize), dim3(blockSize), 0, STREAM_DEFAULT, 
       outputs, inputs, indices, value, channel, height, width, nth);
   CHECK_SYNC("ScaleSubRegion");
 }
@@ -73,7 +74,7 @@ __global__ void KeScaleSubRegionDiff(const real* inGrad,
                                      int height,
                                      int width,
                                      int nthreads) {
-  const int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  const int idx = hipThreadIdx_x + hipBlockIdx_x * hipBlockDim_x;
   if (idx < nthreads) {
     const int w = idx % width;
     const int h = (idx / width) % height;
@@ -108,7 +109,7 @@ void ScaleSubRegionGrad<DEVICE_TYPE_GPU>(const real* inGrad,
   int blockSize = 1024;
   int gridSize = (nth + blockSize - 1) / blockSize;
 
-  KeScaleSubRegionDiff<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeScaleSubRegionDiff), dim3(gridSize), dim3(blockSize), 0, STREAM_DEFAULT, 
       inGrad, outGrad, indices, value, channel, height, width, nth);
   CHECK_SYNC("ScaleSubRegionGrad");
 }

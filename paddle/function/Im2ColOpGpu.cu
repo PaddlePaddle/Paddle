@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +34,7 @@ __global__ void im2col(const T* data_im,
                        int height_col,
                        int width_col,
                        T* data_col) {
-  int index = (blockIdx.x * gridDim.y + blockIdx.y) * blockDim.x + threadIdx.x;
+  int index = (hipBlockIdx_x * hipGridDim_y + hipBlockIdx_y) * hipBlockDim_x + hipThreadIdx_x;
   if (index < numOuts) {
     int w_out = index % width_col;
     index /= width_col;
@@ -96,7 +97,7 @@ public:
     int blockY = (blocks + 512 - 1) / 512;
     dim3 threads(1024, 1);
     dim3 grid(blockX, blockY);
-    im2col<T><<<grid, threads, 0, STREAM_DEFAULT>>>(imData,
+    hipLaunchKernelGGL((im2col<T>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, imData,
                                                     numKernels,
                                                     inputHeight,
                                                     inputWidth,
@@ -133,7 +134,7 @@ __global__ void col2im(size_t n,
                        size_t width_col,
                        T* data_im) {
   size_t index =
-      (blockIdx.x * gridDim.y + blockIdx.y) * blockDim.x + threadIdx.x;
+      (hipBlockIdx_x * hipGridDim_y + hipBlockIdx_y) * hipBlockDim_x + hipThreadIdx_x;
   if (index < n) {
     T val = 0;
     int w = int(index % width);
@@ -214,7 +215,7 @@ public:
 
     // To avoid involving atomic operations, we will launch one kernel per
     // bottom dimension, and then in the kernel add up the top dimensions.
-    col2im<T><<<grid, threads, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((col2im<T>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
         numKernels,
         colData,
         inputHeight + 2 * paddingHeight,
@@ -256,12 +257,12 @@ __global__ void im2colOCF(const T* imData,
                           int dilationWidth,
                           int outputHeight,
                           int outputWidth) {
-  int swId = blockIdx.x;
-  int shId = blockIdx.y;
-  for (int channelId = threadIdx.z; channelId < inputChannels;
-       channelId += blockDim.z) {
-    for (int idy = threadIdx.y; idy < filterHeight; idy += blockDim.y) {
-      for (int idx = threadIdx.x; idx < filterWidth; idx += blockDim.x) {
+  int swId = hipBlockIdx_x;
+  int shId = hipBlockIdx_y;
+  for (int channelId = hipThreadIdx_z; channelId < inputChannels;
+       channelId += hipBlockDim_z) {
+    for (int idy = hipThreadIdx_y; idy < filterHeight; idy += hipBlockDim_y) {
+      for (int idx = hipThreadIdx_x; idx < filterWidth; idx += hipBlockDim_x) {
         int widthOffset =
             idx * dilationHeight + swId * strideWidth - paddingWidth;
         int heightOffset =
@@ -330,7 +331,7 @@ public:
     int blockDimZ = 1024 / blockDimX / blockDimY;
     dim3 threads(blockDimX, blockDimY, std::min(blockDimZ, inputChannels));
     dim3 grid(outputWidth, outputHeight);
-    im2colOCF<T><<<grid, threads, 0, STREAM_DEFAULT>>>(imData,
+    hipLaunchKernelGGL((im2colOCF<T>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, imData,
                                                        colData,
                                                        inputChannels,
                                                        inputHeight,
@@ -365,12 +366,12 @@ __global__ void col2imOCF(T* imData,
                           int dilationWidth,
                           int outputHeight,
                           int outputWidth) {
-  int swId = blockIdx.x;
-  int shId = blockIdx.y;
-  for (int channelId = threadIdx.z; channelId < inputChannels;
-       channelId += blockDim.z) {
-    for (int idy = threadIdx.y; idy < filterHeight; idy += blockDim.y) {
-      for (int idx = threadIdx.x; idx < filterWidth; idx += blockDim.x) {
+  int swId = hipBlockIdx_x;
+  int shId = hipBlockIdx_y;
+  for (int channelId = hipThreadIdx_z; channelId < inputChannels;
+       channelId += hipBlockDim_z) {
+    for (int idy = hipThreadIdx_y; idy < filterHeight; idy += hipBlockDim_y) {
+      for (int idx = hipThreadIdx_x; idx < filterWidth; idx += hipBlockDim_x) {
         int widthOffset =
             idx * dilationWidth + swId * strideWidth - paddingWidth;
         int heightOffset =
@@ -437,7 +438,7 @@ public:
     int blockDimZ = 1024 / blockDimX / blockDimY;
     dim3 threads(blockDimX, blockDimY, std::min(blockDimZ, inputChannels));
     dim3 grid(outputWidth, outputHeight);
-    col2imOCF<T><<<grid, threads, 0, STREAM_DEFAULT>>>(imData,
+    hipLaunchKernelGGL((col2imOCF<T>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, imData,
                                                        colData,
                                                        inputChannels,
                                                        inputHeight,

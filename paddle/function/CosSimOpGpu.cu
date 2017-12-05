@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,8 +27,8 @@ __global__ void KeCosSim(real* output,
                          int input1_height,
                          int input2_height,
                          real scale) {
-  const int ty = blockIdx.y;
-  int tid = threadIdx.x;
+  const int ty = hipBlockIdx_y;
+  int tid = hipThreadIdx_x;
 
   __shared__ real xx[block_size];
   __shared__ real yy[block_size];
@@ -78,7 +79,7 @@ void hlCossim(real* output,
   dim3 threads(block_size, 1);
   dim3 grid(1, input1_height);
 
-  KeCosSim<block_size><<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeCosSim<block_size>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       output, input1, input2, width, input1_height, input2_height, scale);
   CHECK_SYNC("hlCossim failed");
 }
@@ -110,8 +111,8 @@ __global__ void KeCosSimDerivative(const real* grad,
                                    size_t input1_height,
                                    size_t input2_height,
                                    real scale) {
-  const int ty = blockIdx.y;
-  int tid = threadIdx.x;
+  const int ty = hipBlockIdx_y;
+  int tid = hipThreadIdx_x;
 
   __shared__ real xx[block_size];
   __shared__ real yy[block_size];
@@ -198,7 +199,7 @@ void hlCossimDerivative(const real* grad,
   const int block_size = 256;
   dim3 threads(block_size, 1);
   dim3 grid(1, input1_height);
-  KeCosSimDerivative<block_size><<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeCosSimDerivative<block_size>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       grad,
       output,
       prev_out_x,

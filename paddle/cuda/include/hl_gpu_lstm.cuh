@@ -1,3 +1,6 @@
+#ifdef __HIPCC__
+#include "hip/hip_runtime.h"
+#endif
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +19,7 @@ limitations under the License. */
 #ifndef HL_GPU_LSTM_CUH_
 #define HL_GPU_LSTM_CUH_
 
-#ifdef __NVCC__
+#ifdef __HIPCC__
 
 #include "paddle/utils/Logging.h"
 #include "hl_device_functions.cuh"
@@ -33,12 +36,12 @@ __global__ void KeLstmForward(Op op,
                               hl_activation_mode_t active_node,
                               hl_activation_mode_t active_gate,
                               hl_activation_mode_t active_state) {
-  const int frameIdx = blockIdx.x * blockDim.x + threadIdx.x;
+  const int frameIdx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   if (frameIdx >= frameSize) return;
 
   int batchIdx = 0;
   if (isBatch) {
-    batchIdx = blockIdx.y * blockDim.y + threadIdx.y;
+    batchIdx = hipBlockIdx_y * hipBlockDim_y + hipThreadIdx_y;
     if (batchIdx >= batchSize) return;
     value.gateValue += batchIdx * frameSize * 4;
     value.outputValue += batchIdx * frameSize;
@@ -106,12 +109,12 @@ __global__ void KeLstmBackward(Op op,
                                hl_activation_mode_t active_node,
                                hl_activation_mode_t active_gate,
                                hl_activation_mode_t active_state) {
-  const int frameIdx = blockIdx.x * blockDim.x + threadIdx.x;
+  const int frameIdx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
   if (frameIdx >= frameSize) return;
 
   int batchIdx = 0;
   if (isBatch) {
-    batchIdx = blockIdx.y * blockDim.y + threadIdx.y;
+    batchIdx = hipBlockIdx_y * hipBlockDim_y + hipThreadIdx_y;
     if (batchIdx >= batchSize) return;
     value.gateValue += batchIdx * frameSize * 4;
     value.stateValue += batchIdx * frameSize;
@@ -227,12 +230,10 @@ void hl_gpu_lstm_forward(Op op,
   }
 
   if (batchSize == 1) {
-    KeLstmForward<Op, /* isBatch= */false>
-      <<<grid, threads, 0, STREAM_DEFAULT>>>(op, value,
+    hipLaunchKernelGGL((KeLstmForward<Op, /* isBatch= */false>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, op, value,
       frameSize, batchSize, active_node, active_gate, active_state);
   } else {
-    KeLstmForward<Op, /* isBatch= */true>
-      <<<grid, threads, 0, STREAM_DEFAULT>>>(op, value,
+    hipLaunchKernelGGL((KeLstmForward<Op, /* isBatch= */true>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, op, value,
       frameSize, batchSize, active_node, active_gate, active_state);
   }
 
@@ -262,12 +263,10 @@ void hl_gpu_lstm_backward(Op op,
   }
 
   if (batchSize == 1) {
-    KeLstmBackward<Op, /* isBatch= */false>
-      <<<grid, threads, 0, STREAM_DEFAULT>>>(op, value, grad,
+    hipLaunchKernelGGL((KeLstmBackward<Op, /* isBatch= */false>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, op, value, grad,
       frameSize, batchSize, active_node, active_gate, active_state);
   } else {
-    KeLstmBackward<Op, /* isBatch= */true>
-      <<<grid, threads, 0, STREAM_DEFAULT>>>(op, value, grad,
+    hipLaunchKernelGGL((KeLstmBackward<Op, /* isBatch= */true>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, op, value, grad,
       frameSize, batchSize, active_node, active_gate, active_state);
   }
 

@@ -130,7 +130,7 @@ if(MOBILE_INFERENCE)
 endif()
 
 if(WITH_GPU)
-    cuda_add_library(paddle_gserver ${GSERVER_SOURCES})
+    HIP_ADD_LIBRARY(paddle_gserver ${GSERVER_SOURCES})
 else()
     add_library(paddle_gserver STATIC
         ${GSERVER_SOURCES})

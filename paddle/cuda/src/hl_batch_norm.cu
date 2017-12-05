@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,10 +26,10 @@ __global__ void batchNormInference(real* output,
                                    size_t channel,
                                    size_t height,
                                    size_t width) {
-  const int tid = threadIdx.x;
+  const int tid = hipThreadIdx_x;
   const int num = channel * height * width;
-  const int batch = blockIdx.x;
-  for (int i = tid; i < num; i += blockDim.x) {
+  const int batch = hipBlockIdx_x;
+  for (int i = tid; i < num; i += hipBlockDim_x) {
     const int c = i / (height * width);
     const int id = batch * num + i;
     real val = input[id] - estimatedMean[c];
@@ -50,7 +51,7 @@ void hl_batch_norm_cuda_inference(const real* input,
                                   size_t channel,
                                   size_t height,
                                   size_t width) {
-  batchNormInference<<<batchSize, 256, 0, STREAM_DEFAULT>>>(output,
+  hipLaunchKernelGGL((batchNormInference), dim3(batchSize), dim3(256), 0, STREAM_DEFAULT, output,
                                                             input,
                                                             scale,
                                                             bias,

@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,7 +38,7 @@ __global__ void ConvolutionDepthwiseForward(const int nthreads,
                                             const int paddingH,
                                             const int paddingW,
                                             T* const outputData) {
-  int index = (blockIdx.x * gridDim.y + blockIdx.y) * blockDim.x + threadIdx.x;
+  int index = (hipBlockIdx_x * hipGridDim_y + hipBlockIdx_y) * hipBlockDim_x + hipThreadIdx_x;
 
   if (index < nthreads) {
     const int batch = index / outputChannels / outputHeight / outputWidth;
@@ -107,7 +108,7 @@ __global__ void ConvolutionDepthwiseInputBackward(const int nthreads,
                                                   const int paddingH,
                                                   const int paddingW,
                                                   T* const bottom_diff) {
-  int index = (blockIdx.x * gridDim.y + blockIdx.y) * blockDim.x + threadIdx.x;
+  int index = (hipBlockIdx_x * hipGridDim_y + hipBlockIdx_y) * hipBlockDim_x + hipThreadIdx_x;
   if (index < nthreads) {
     const int batch = index / inputChannels / inputHeight / inputWidth;
     const int c_in = (index / inputHeight / inputWidth) % inputChannels;
@@ -168,7 +169,7 @@ __global__ void ConvolutionDepthwiseFilterBackward(const int num_i,
                                                    const int paddingH,
                                                    const int paddingW,
                                                    T* const buffer_data) {
-  int index = (blockIdx.x * gridDim.y + blockIdx.y) * blockDim.x + threadIdx.x;
+  int index = (hipBlockIdx_x * hipGridDim_y + hipBlockIdx_y) * hipBlockDim_x + hipThreadIdx_x;
   if (index < nthreads) {
     const int h_out = (index / outputWidth) % outputHeight;
     const int w_out = index % outputWidth;
@@ -225,7 +226,7 @@ public:
     dim3 threads(1024, 1);
     dim3 grid(blockX, blockY);
 
-    ConvolutionDepthwiseForward<T><<<grid, threads, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((ConvolutionDepthwiseForward<T>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
         outputSize,
         inputData,
         filterData,
