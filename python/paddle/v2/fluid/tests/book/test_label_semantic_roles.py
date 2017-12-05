@@ -187,6 +187,7 @@ def main():
 
             if batch_id % 10 == 0:
                 print("avg_cost=" + str(avg_cost_val))
+                print("precision_val=" + str(precision_val))
                 print("recall_val:" + str(recall_val))
                 print("f1_score_val:" + str(f1_score_val))
 
