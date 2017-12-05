@@ -17,7 +17,7 @@ syntax = "proto3";
 package sendrecv;
 
 service SendRecvService {
-  // For parameter server round-robin like hashing, do not split tensors. 
+  // For parameter server round-robin like hashing, do not split tensors.
   // Send and recv only one tensor
   rpc SendVariable(VariableMessage) returns (VariableMessage) {}
 }
@@ -32,6 +32,4 @@ message VariableMessage {
   bytes serialized = 2;
 }
 
-message VoidMessage {
-
-}
+message VoidMessage {}

@@ -3,8 +3,10 @@ import paddle.v2.fluid.core as core
 from paddle.v2.fluid.executor import Executor
 import paddle.v2.fluid.layers as layers
 from paddle.v2.fluid.backward import append_backward_ops
-from paddle.v2.fluid.framework import g_main_program
+from paddle.v2.fluid.framework import default_main_program
 import numpy
+
+main_program = default_main_program()
 
 
 class TestShrinkRNNMemory(unittest.TestCase):
@@ -36,7 +38,7 @@ class TestShrinkRNNMemory(unittest.TestCase):
         append_backward_ops(loss=mem3_mean)
         x_grad = exe.run(
             feed={'x': tensor},
-            fetch_list=[g_main_program.global_block().var('x@GRAD')])[0]
+            fetch_list=[main_program.global_block().var('x@GRAD')])[0]
         self.assertAlmostEqual(1.0, x_grad.sum(), delta=0.1)
 
 
