@@ -10,7 +10,7 @@ from param_attr import ParamAttr
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
     'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool', 'sums', 'cos_sim',
-    'batch_norm', 'accuracy', 'split_lod_tensor'
+    'batch_norm', 'accuracy', 'split_lod_tensor', 'While'
 ]
 
 
@@ -31,11 +31,9 @@ def fc(input,
        size: The size of the layer
        num_flatten_dims: Number of columns in input
        param_attr: The parameters/weights to the FC Layer
-       param_initializer: Initializer used for the weight/parameter.
-       If None, XavierInitializer() is used
+       param_initializer: Initializer used for the weight/parameter. If None, XavierInitializer() is used
        bias_attr: The bias parameter for the FC layer
-       bias_initializer: Initializer used for the bias.
-       If None, then ConstantInitializer() is used
+       bias_initializer: Initializer used for the bias. If None, then ConstantInitializer() is used
        act: Activation to be applied to the output of FC layer
        name: Name/alias of the function
        main_program: Name of the main program that calls this
@@ -403,6 +401,7 @@ _create_op_func_('sigmoid')
 _create_op_func_('scale')
 _create_op_func_('reshape')
 _create_op_func_('transpose')
+_create_op_func_('sigmoid_cross_entropy_with_logits')
 
 
 def cast(x, dtype, main_program=None):
@@ -476,6 +475,24 @@ def linear_chain_crf(input,
         })
 
     return log_likelihood
+
+
+def crf_decoding(input,
+                 param_attr,
+                 label=None,
+                 main_program=None,
+                 startup_program=None):
+    helper = LayerHelper('crf_decoding', **locals())
+    transition = helper.get_parameter(param_attr.name)
+    viterbi_path = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='crf_decoding',
+        inputs={"Emission": [input],
+                "Transition": transition,
+                "Label": label},
+        outputs={"ViterbiPath": [viterbi_path]})
+
+    return viterbi_path
 
 
 def assign(input, output, main_program=None, startup_program=None):
@@ -613,6 +630,40 @@ def accuracy(input, label, k=1, correct=None, total=None, **kwargs):
             "Total": [total],
         })
     return acc_out
+
+
+def chunk_eval(input,
+               label,
+               chunk_scheme,
+               num_chunk_types,
+               excluded_chunk_types=None,
+               **kwargs):
+    """
+    This function computes the accuracy using the input and label.
+    The output is the top_k inputs and their indices.
+    """
+    helper = LayerHelper("chunk_eval", **kwargs)
+
+    # prepare output
+    precision = helper.create_tmp_variable(dtype="float32")
+    recall = helper.create_tmp_variable(dtype="float32")
+    f1_score = helper.create_tmp_variable(dtype="float32")
+
+    helper.append_op(
+        type="chunk_eval",
+        inputs={"Inference": [input],
+                "Label": [label]},
+        outputs={
+            "Precision": [precision],
+            "Recall": [recall],
+            "F1-Score": [f1_score]
+        },
+        attrs={
+            "num_chunk_types": num_chunk_types,
+            'chunk_scheme': chunk_scheme,
+            'excluded_chunk_types': excluded_chunk_types or []
+        })
+    return precision, recall, f1_score
 
 
 def sequence_conv(input,
@@ -1440,7 +1491,7 @@ def increment(x, value=1.0, in_place=True, main_program=None):
         type='increment',
         inputs={'X': [x]},
         outputs={'Out': [out]},
-        attrs={'step': value})
+        attrs={'step': float(value)})
     return out
 
 

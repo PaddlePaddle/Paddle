@@ -16,6 +16,8 @@ cmake_minimum_required(VERSION 3.0)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
+SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
+SET(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 
 include(system)
 
@@ -54,6 +56,7 @@ option(WITH_C_API       "Compile PaddlePaddle with C-API(Prediction)"   OFF)
 option(WITH_GOLANG      "Compile PaddlePaddle with GOLANG"              OFF)
 option(GLIDE_INSTALL    "Download and install go dependencies "         ON)
 option(USE_NNPACK       "Compile PaddlePaddle with NNPACK library"      OFF)
+option(WITH_DISTRIBUTE  "Compile with grpc distributed support"         OFF)
 option(USE_EIGEN_FOR_BLAS   "Use matrix multiplication in Eigen"        OFF)
 
 # CMAKE_BUILD_TYPE
@@ -67,9 +70,6 @@ if(ANDROID OR IOS)
     if(ANDROID)
         if(${CMAKE_SYSTEM_VERSION} VERSION_LESS "16")
             message(FATAL_ERROR "Unsupport standalone toolchains with Android API level lower than 16")
-        elseif(${CMAKE_SYSTEM_VERSION} VERSION_LESS "21")
-            # TODO: support glog for Android api 16 ~ 19 in the future
-            message(WARNING "Using the unofficial git repository <https://github.com/Xreki/glog.git> instead")
         endif()
     endif()
 
@@ -83,6 +83,8 @@ if(ANDROID OR IOS)
         "Disable RDMA when cross-compiling for Android and iOS" FORCE)
     set(WITH_MKL OFF CACHE STRING
         "Disable MKL when cross-compiling for Android and iOS" FORCE)
+    set(WITH_GOLANG OFF CACHE STRING
+        "Disable golang when cross-compiling for Android and iOS" FORCE)
 
     # Compile PaddlePaddle mobile inference library
     if (NOT WITH_C_API)

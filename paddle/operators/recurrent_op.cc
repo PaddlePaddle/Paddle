@@ -599,7 +599,9 @@ class RecurrentGradOpShapeInference : public framework::InferShapeBase {
     std::vector<std::string> output{kOutputs};
     for (auto &s : input) {
       PADDLE_ENFORCE(ctx->HasInputs(s));
-      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(s)));
+      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(s)),
+                     "Cannot find the gradient variable %s",
+                     framework::GradVarName(s));
     }
     for (auto &s : output) {
       PADDLE_ENFORCE(ctx->HasInputs(s));

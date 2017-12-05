@@ -99,13 +99,7 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
                    "Output(X@Grad) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null.");
-    std::vector<framework::DDim> d_ins;
-    auto ins = ctx->GetInputsDim("X");
-    // No need to compute gradient for Input(Ids)
-    for (size_t i = 0; i < ins.size(); i++) {
-      d_ins.push_back(ins[i]);
-    }
-    ctx->SetOutputsDim(framework::GradVarName("X"), d_ins);
+    ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
   }
 
  protected:

@@ -36,6 +36,7 @@ function cmake_gen() {
         ${PYTHON_FLAGS}
         -DWITH_DOC=OFF
         -DWITH_GPU=${WITH_GPU:-OFF}
+        -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DWITH_GOLANG=${WITH_GOLANG:-ON}
@@ -57,6 +58,7 @@ EOF
         ${PYTHON_FLAGS} \
         -DWITH_DOC=OFF \
         -DWITH_GPU=${WITH_GPU:-OFF} \
+        -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DWITH_GOLANG=${WITH_GOLANG:-ON} \
@@ -183,7 +185,14 @@ EOF
     ${DOCKERFILE_GPU_ENV}
     ADD go/cmd/pserver/pserver /usr/bin/
     ADD go/cmd/master/master /usr/bin/
-    ADD paddle/pybind/print_operators_doc /usr/bin/
+EOF
+
+    if [[ ${WITH_DOC:-OFF} == 'ON' ]]; then
+        cat >> /paddle/build/Dockerfile <<EOF
+        ADD paddle/pybind/print_operators_doc /usr/bin/
+EOF
+    fi
+    cat >> /paddle/build/Dockerfile <<EOF
     # default command shows the paddle version and exit
     CMD ["paddle", "version"]
 EOF
