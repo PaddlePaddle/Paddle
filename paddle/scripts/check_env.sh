@@ -36,13 +36,39 @@ if [ $numa_nodes -lt $sockets ]; then
 fi
 
 echo "-------------------------- Memory Information --------------------------"
-echo "DIMMs max slots        : `dmidecode | grep "Bank Locator" | wc -l`"
 # dmidecode support start from 2.11
-num_dimms_installed=`dmidecode | grep "Memory Device Mapped" | wc -l`
-num_clock_configed=`dmidecode | grep -i "Configured Clock Speed" |grep -i "Hz" |wc -l`
+max_dimms=0
+num_dimms_installed=0
+for dimm_id in `dmidecode |grep Locator|sort -u | awk -F ':' '{print $2}'`; do
+  num_refered=`dmidecode |grep -c "$dimm_id"`
+  # the acutal dimm id should be refered only once
+  if [ $num_refered -eq 1 ]; then
+    num_unknown=`dmidecode | awk '/'$dimm_id'/ {s=1}; {if (s==1) {a[NR]=$0}};
+      /Manufacturer/ {s=0; for (i in a) print a[i]; delete a}' |grep -ic unknown`
+    if [ $num_unknown -eq 0 ]; then
+      dimms_installed="$dimms_installed \n $dimm_id"
+      ((num_dimms_installed++))
+    else
+      dimms_uninstalled="$dimms_uninstalled \n $dimm_id"
+    fi
+    ((max_dimms++))
+  fi
+done
 echo "Installed DIMM number  : $num_dimms_installed"
+num_dimms_mapped=`dmidecode | grep "Memory Device Mapped" | wc -l`
+if [ $num_dimms_installed -ne $num_dimms_mapped ]; then
+  echo "Error: The installed DIMMs number does ont match the mapped memory device: $num_dimms_mapped"
+fi
+num_clock_configed=`dmidecode | grep -i "Configured Clock Speed" |grep -ic "Hz"`
 if [ $num_dimms_installed -ne $num_clock_configed ]; then
-  echo "Error: installed DIMMs do ont match configured clocks: $num_clock_configed"
+  echo "Error: The installed DIMMs number does ont match configured clocks: $num_clock_configed"
+fi
+echo -e "Installed DIMMs Locator: $dimms_installed"
+echo -e "Not installed DIMMs    : $dimms_uninstalled"
+max_dimm_slots=`dmidecode | grep -c "Bank Locator"`
+echo "DIMMs max slots        : $max_dimm_slots"
+if [ $max_dimms -ne $max_dimm_slots ]; then
+  echo "Error: The max dimm slots do not match the max dimms: $max_dimms"
 fi
 echo "Memory Size            : `free -h |grep -i mem |awk -F' ' '{print $2}'|xargs`"
 echo "Swap Memory Size       : `free -h |grep -i swap |awk -F' ' '{print $2}'|xargs`"
