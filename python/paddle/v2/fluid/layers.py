@@ -435,6 +435,82 @@ def concat(input, axis, main_program=None, startup_program=None):
     return out
 
 
+def seq_expand(X, Y, main_program=None, startup_program=None):
+    """
+    Seq Expand Operator.
+
+    This operator expands input(X) according to LOD of input(Y).
+    Following are cases to better explain how this works:
+    Case 1:
+
+    Given 2-level a LoDTensor input(X)
+        X.lod = [[0,       2, 3],
+                [0, 1,    3, 4]]
+        X.data = [a, b, c, d]
+        X.dims = [4, 1]
+    and input(Y)
+        Y.lod = [[0,    2,    4],
+                [0, 3, 6, 7, 8]]
+    with condition len(Y.lod[-1]) -1 == X.dims[0]
+    then we get 2-level LoDTensor
+        Out.lod = [[0,                2,    4],
+                [0,       3,       6, 7, 8]]
+        Out.data = [a, a, a, b, b, b, c, d]
+        Out.dims = [8, 1]
+
+    Case 2:
+
+    Given a 0-level LoDTensor input(X)
+        X.data = [a, b, c]
+        X.lod = NULL
+        X.dims = [3, 1]
+    and input(Y)
+        Y.lod = [[0, 2, 3, 6]]
+    with condition len(Y.lod[-1]) -1 == X.dims[0]
+    then we get 1-level LoDTensor
+        Out.lod = [[0,    2, 3,      6]]
+        Out.data = [a, a, b, c, c, c]
+        Out.dims = [6, 1]
+
+    Case 3:
+
+    Given a 0-level LoDTensor input(X)
+        X.data = [[a, b], [c, d], [e, f]]
+        X.lod = NULL
+        X.dims = [3, 2]
+    and input(Y)
+        Y.lod = [[0, 2, 3, 6]]
+    with condition len(Y.lod[-1]) -1 == X.dims[0]
+    then we get 1-level LoDTensor
+        Out.lod = [[0,           2,     3,                     6]]
+        Out.data = [[a,b], [a,b] [c,d], [e, f], [e, f], [e, f]]
+        Out.dims = [6, 2]
+
+    Case 4:
+
+    Given 2-level a LoDTensor input(X)
+        X.lod = [[0,       2, 3],
+                [0, 1,    3, 4]]
+        X.data = [a, b, c, d]
+        X.dims = [4, 1]
+    and input(Y)
+        Y.lod = [[0,    2,    4],
+                [0, 3, 6, 6, 8]]
+    with condition len(Y.lod[-1]) -1 == X.dims[0]
+    then we get 2-level LoDTensor
+        Out.lod = [[0,                2,    4],
+                [0,       3,       6, 6, 8]]
+        Out.data = [a, a, a, b, b, b, d, d]
+        Out.dims = [8, 1]
+    """
+    helper = LayerHelper('seq_expand', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='seq_expand', inputs={'X': X,
+                                   'Y': Y}, outputs={'Out': out})
+    return out
+
+
 def sums(input, out=None, main_program=None, startup_program=None):
     """
     This function takes in the input and performs the sum operation on it
@@ -445,6 +521,109 @@ def sums(input, out=None, main_program=None, startup_program=None):
         out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(type='sum', inputs={'X': input}, outputs={'Out': out})
     return out
+
+
+def gru_unit(input,
+             hidden,
+             size,
+             weight=None,
+             bias=None,
+             activation='tanh',
+             gate_activation='sigmoid',
+             main_program=None,
+             startup_program=None):
+    """
+    GRUUnit Operator implements partial calculations of the GRU unit as following:
+
+    $$
+    update \ gate: u_t = actGate(xu_t + W_u * h_{t-1} + b_u) \\
+    reset \ gate: r_t = actGate(xr_t + W_r * h_{t-1} + b_r)  \\
+    output \ candidate: {h}_t = actNode(xc_t + W_c * dot(r_t, h_{t-1}) + b_c) \\
+    output: h_t = dot((1 - u_t), h_{t-1}) + dot(u_t, {h}_t)
+    $$
+
+    which is same as one time step of GRU Operator.
+
+    @note To implement the complete GRU unit, fully-connected operator must be
+    used before to feed xu, xr and xc as the Input of GRUUnit operator.
+
+    TODO(ChunweiYan) add more document here
+    """
+    activation_dict = dict(
+        identity=0,
+        sigmoid=1,
+        tanh=2,
+        relu=3, )
+    activation = activation_dict[activation]
+    gate_activation = activation_dict[gate_activation]
+
+    helper = LayerHelper('gru_unit', **locals())
+    dtype = helper.input_dtype()
+    size = size / 3
+
+    # create weight
+    if weight is None:
+        weight = helper.create_parameter(
+            attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
+
+    # create bias
+    if bias is None:
+        bias_size = [1, 3 * size]
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+
+    gate = helper.create_tmp_variable(dtype)
+    reset_hidden_pre = helper.create_tmp_variable(dtype)
+    updated_hidden = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type='gru_unit',
+        inputs={'Input': input,
+                'HiddenPrev': hidden,
+                'Weight': weight},
+        outputs={
+            'Gate': gate,
+            'ResetHiddenPrev': reset_hidden_pre,
+            'Hidden': updated_hidden,
+        },
+        attrs={
+            'activation': 0,
+            'gate_activation': 1,
+        })
+
+    return updated_hidden, reset_hidden_pre, gate
+
+
+def beam_search(pre_ids, ids, scores, beam_size, end_id):
+    '''
+    This function implements the beam search algorithm.
+    '''
+    helper = LayerHelper('beam_search', **locals())
+    score_type = scores.dtype()
+    id_type = ids.dtype()
+
+    selected_scores = helper.create_tmp_variable(dtype=score_type)
+    selected_ids = helper.create_tmp_variable(dtype=id_type)
+
+    helper.append_op(
+        type='beam_search',
+        inputs={
+            'pre_ids': pre_ids,
+            'ids': ids,
+            'scores': scores,
+        },
+        outputs={
+            'selected_ids': selected_ids,
+            'selected_scores': selected_scores,
+        },
+        attrs={
+            # TODO(ChunweiYan) to assure other value support
+            'level': 0,
+            'beam_size': beam_size,
+            'end_id': end_id,
+        })
+
+    return selected_ids, selected_scores
 
 
 def linear_chain_crf(input,
