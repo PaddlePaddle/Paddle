@@ -34,7 +34,7 @@ PaddlePaddle可以使用常用的Python包管理工具
    :align: center
 
 ..  csv-table:: 各个版本最新的whl包
-    :header: "版本说明", "cp27-cp27mu", "cp27-cp27mu", "C-API"
+    :header: "版本说明", "cp27-cp27mu", "cp27-cp27m", "C-API"
     :widths: 1, 3, 3, 3
 
     "cpu_avx_mkl", "`paddlepaddle-0.10.0-cp27-cp27mu-linux_x86_64.whl <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxCp27cp27mu/.lastSuccessful/paddlepaddle-0.10.0-cp27-cp27mu-linux_x86_64.whl>`_", "`paddlepaddle-0.10.0-cp27-cp27m-linux_x86_64.whl <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxCp27cp27mu/.lastSuccessful/paddlepaddle-0.10.0-cp27-cp27m-linux_x86_64.whl>`_", "`paddle.tgz <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxCp27cp27mu/.lastSuccessful/paddle.tgz>`_"
