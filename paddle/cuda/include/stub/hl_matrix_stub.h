@@ -133,4 +133,6 @@ inline void hl_matrix_col2Vol(real* dataDst,
                               real alpha,
                               real beta) {}
 
+inline void hl_vector_cast2int(int* out, real* vec, int size) {}
+
 #endif  // HL_MATRIX_STUB_H_

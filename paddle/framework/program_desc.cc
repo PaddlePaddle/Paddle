@@ -49,6 +49,13 @@ ProgramDescBind::ProgramDescBind(const ProgramDescBind &o) {
   }
 }
 
+ProgramDescBind::ProgramDescBind(const ProgramDesc &desc) {
+  desc_ = desc;
+  for (auto &block_desc : *desc_.mutable_blocks()) {
+    blocks_.emplace_back(new BlockDescBind(this, &block_desc));
+  }
+}
+
 ProgramDescBind::ProgramDescBind(const std::string &binary_str) {
   PADDLE_ENFORCE(desc_.ParseFromString(binary_str),
                  "Fail to parse program_desc from binary string.");

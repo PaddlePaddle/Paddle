@@ -67,30 +67,38 @@ class SplitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SplitOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "the input tensor of split operator.");
-    AddOutput("Out", "the output tensors of split operator.").AsDuplicable();
+    AddInput("X", "(Tensor) Input tensor of the split operator.");
+    AddOutput("Out", "(Tensor) Output tensors of the split operator.")
+        .AsDuplicable();
     AddComment(R"DOC(
-      Split the input tensor into multiple sub-tensors.
-      Example:
-        Input = [[1,2],
-                 [3,4],
-                 [5,6]]
-        sections = [2,1]
-        axis = 0
-        Output[0] = [[1,2],
-                     [3,4]]
-        Output[1] = [[5,6]]
+Split operator
+
+This operator splits the input tensor into multiple sub-tensors.
+
+Example:
+  Input = [[1,2],
+           [3,4],
+           [5,6]]
+  sections = [2,1]
+  axis = 0
+  Output[0] = [[1,2],
+               [3,4]]
+  Output[1] = [[5,6]]
 
     )DOC");
     AddAttr<std::vector<int>>("sections",
-                              "the length for each"
-                              "output along with the specify axis.")
+                              "(vector<int>) "
+                              "the length of each output along the "
+                              "specified axis.")
         .SetDefault(std::vector<int>{});
     AddAttr<int>("num",
-                 "number of the sub-tensors, it must evenly divide "
+                 "(int, default 0)"
+                 "Number of sub-tensors. This must evenly divide "
                  "Input.dims()[axis]")
         .SetDefault(0);
-    AddAttr<int>("axis", "The axis which the input will be splited on.")
+    AddAttr<int>("axis",
+                 "(int, default 0) "
+                 "The axis which the input will be splited on.")
         .SetDefault(0);
   }
 };

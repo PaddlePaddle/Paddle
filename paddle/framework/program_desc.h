@@ -29,13 +29,17 @@ class ProgramDescBind {
  public:
   ProgramDescBind();
 
+  explicit ProgramDescBind(const ProgramDesc &desc);
+
   ProgramDescBind(const ProgramDescBind &o);
 
   explicit ProgramDescBind(const std::string &binary_str);
 
   BlockDescBind *AppendBlock(const BlockDescBind &parent);
 
-  BlockDescBind *Block(size_t idx) { return blocks_[idx].get(); }
+  BlockDescBind *MutableBlock(size_t idx) { return blocks_[idx].get(); }
+
+  const BlockDescBind &Block(size_t idx) const { return *blocks_[idx]; }
 
   size_t Size() const { return blocks_.size(); }
 

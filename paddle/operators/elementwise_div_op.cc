@@ -22,7 +22,7 @@ class ElementwiseDivOpMaker : public ElementwiseOpMaker {
   ElementwiseDivOpMaker(framework::OpProto* proto,
                         framework::OpAttrChecker* op_checker)
       : ElementwiseOpMaker(proto, op_checker) {
-    SetComment("Div", "Out = X / Y");
+    SetComment("Div", "$Out = X / Y$");
     AddComment(comment_);
   }
 };
@@ -35,7 +35,13 @@ REGISTER_OP(elementwise_div, ops::ElementwiseOp, ops::ElementwiseDivOpMaker,
             elementwise_div_grad, ops::ElementwiseOpGrad);
 REGISTER_OP_CPU_KERNEL(
     elementwise_div,
-    ops::ElementwiseDivKernel<paddle::platform::CPUPlace, float>);
+    ops::ElementwiseDivKernel<paddle::platform::CPUPlace, float>,
+    ops::ElementwiseDivKernel<paddle::platform::CPUPlace, double>,
+    ops::ElementwiseDivKernel<paddle::platform::CPUPlace, int>,
+    ops::ElementwiseDivKernel<paddle::platform::CPUPlace, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_div_grad,
-    ops::ElementwiseDivGradKernel<paddle::platform::CPUPlace, float>);
+    ops::ElementwiseDivGradKernel<paddle::platform::CPUPlace, float>,
+    ops::ElementwiseDivGradKernel<paddle::platform::CPUPlace, double>,
+    ops::ElementwiseDivGradKernel<paddle::platform::CPUPlace, int>,
+    ops::ElementwiseDivGradKernel<paddle::platform::CPUPlace, int64_t>);

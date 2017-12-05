@@ -173,6 +173,8 @@ struct SelectedRowsAddTo<platform::GPUPlace, T> {
 
 template struct SelectedRowsAddTo<platform::GPUPlace, float>;
 template struct SelectedRowsAddTo<platform::GPUPlace, double>;
+template struct SelectedRowsAddTo<platform::GPUPlace, int>;
+template struct SelectedRowsAddTo<platform::GPUPlace, int64_t>;
 
 namespace {
 template <typename T, int block_size>
@@ -223,7 +225,8 @@ struct SelectedRowsAddToTensor<platform::GPUPlace, T> {
 
 template struct SelectedRowsAddToTensor<platform::GPUPlace, float>;
 template struct SelectedRowsAddToTensor<platform::GPUPlace, double>;
-
+template struct SelectedRowsAddToTensor<platform::GPUPlace, int>;
+template struct SelectedRowsAddToTensor<platform::GPUPlace, int64_t>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

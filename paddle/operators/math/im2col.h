@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/framework/tensor.h"
+#include "paddle/framework/tensor_util.h"
 #include "paddle/platform/device_context.h"
 
 namespace paddle {
@@ -34,6 +35,15 @@ enum class ColFormat { kCFO = 0, kOCF = 1 };
  *                 [input_channels, input_height, input_width].
  * \param colData  Column data.
  * \param colShape The shape of colData.
+ *
+ * \param dilations    dilation data.
+ * \param 2-dimension  [dilation_height, dilation_width].
+ *
+ * \param strides      stride data.
+ * \param 2-dimension  [stride_height, stride_width].
+ *
+ * \param paddings     padding data.
+ * \param 4-dimension  [up_pad, left_pad, down_pad, right_pad].
  *
  * If the template argument Format is kCFO, the shape of colData is:
  * [input_channels, filter_height, filter_width, output_height, output_width]
@@ -73,18 +83,19 @@ template <ColFormat Format, typename Place, typename T>
 class Im2ColFunctor {
  public:
   void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& im, framework::Tensor& col,
-                  int stride_height, int stride_width, int padding_up,
-                  int padding_down, int padding_left, int padding_right);
+                  const framework::Tensor& im, const std::vector<int>& dilation,
+                  const std::vector<int>& stride,
+                  const std::vector<int>& padding, framework::Tensor* col);
 };
 
 template <ColFormat Format, typename Place, typename T>
 class Col2ImFunctor {
  public:
-  void operator()(const platform::DeviceContext& context, framework::Tensor& im,
-                  const framework::Tensor& col, int stride_height,
-                  int stride_width, int padding_up, int padding_down,
-                  int padding_left, int padding_right);
+  void operator()(const platform::DeviceContext& context,
+                  const framework::Tensor& col,
+                  const std::vector<int>& dilation,
+                  const std::vector<int>& stride,
+                  const std::vector<int>& padding, framework::Tensor* im);
 };
 
 }  // namespace math

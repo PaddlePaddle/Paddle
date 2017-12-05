@@ -60,8 +60,7 @@ void make_ddim(DDim& ddim, const int64_t* dims, int n) {
       ddim = make_dim<9>(dims);
       break;
     default:
-      throw std::invalid_argument(
-          "Dynamic dimensions must have between [1, 9] dimensions.");
+      PADDLE_THROW("Dynamic dimensions must have between [1, 9] dimensions.");
   }
 }
 
@@ -77,6 +76,13 @@ DDim make_ddim(const std::vector<int64_t>& dims) {
   DDim result(make_dim(0));
   make_ddim(result, &dims[0], dims.size());
   return result;
+}
+
+DDim make_ddim(const std::vector<int>& dims) {
+  std::vector<int64_t> res(dims.size());
+  std::transform(dims.begin(), dims.end(), res.begin(),
+                 [](int d) { return static_cast<int64_t>(d); });
+  return make_ddim(res);
 }
 
 /// @cond HIDDEN
@@ -117,7 +123,7 @@ int64_t DDim::operator[](int idx) const {
   return boost::apply_visitor(DynamicConstIndexer(idx), var);
 }
 
-int64_t DDim::size() const { return arity(*this); }
+int DDim::size() const { return arity(*this); }
 
 bool DDim::operator==(DDim d) const {
   if (var.which() != d.getVar().which()) {
@@ -192,6 +198,14 @@ std::vector<int64_t> vectorize(const DDim& ddim) {
   std::vector<int64_t> result;
   VectorizeVisitor visitor(result);
   boost::apply_visitor(visitor, ddim);
+  return result;
+}
+
+// NOTE: framework::vectorize converts to type int64_t
+//       which does not fit cudnn inputs.
+std::vector<int> vectorize2int(const DDim& ddim) {
+  std::vector<int64_t> temp = vectorize(ddim);
+  std::vector<int> result(temp.begin(), temp.end());
   return result;
 }
 

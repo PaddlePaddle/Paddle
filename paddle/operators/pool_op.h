@@ -63,6 +63,7 @@ class PoolKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     if (context.Attr<bool>("global_pooling")) {
       for (size_t i = 0; i < ksize.size(); ++i) {
+        paddings[i] = 0;
         ksize[i] = static_cast<int>(in_x->dims()[i + 2]);
       }
     }
@@ -74,16 +75,16 @@ class PoolKernel : public framework::OpKernel<T> {
               Place, paddle::operators::math::MaxPool<T>, T>
               pool2d_forward;
           paddle::operators::math::MaxPool<T> pool_process;
-          pool2d_forward(context.device_context(), *in_x, *out, ksize, strides,
-                         paddings, pool_process);
+          pool2d_forward(context.device_context(), *in_x, ksize, strides,
+                         paddings, pool_process, out);
 
         } else if (pooling_type == "avg") {
           paddle::operators::math::Pool2dFunctor<
               Place, paddle::operators::math::AvgPool<T>, T>
               pool2d_forward;
           paddle::operators::math::AvgPool<T> pool_process;
-          pool2d_forward(context.device_context(), *in_x, *out, ksize, strides,
-                         paddings, pool_process);
+          pool2d_forward(context.device_context(), *in_x, ksize, strides,
+                         paddings, pool_process, out);
         }
       } break;
       case 3: {
@@ -92,17 +93,18 @@ class PoolKernel : public framework::OpKernel<T> {
               Place, paddle::operators::math::MaxPool<T>, T>
               pool3d_forward;
           paddle::operators::math::MaxPool<T> pool_process;
-          pool3d_forward(context.device_context(), *in_x, *out, ksize, strides,
-                         paddings, pool_process);
+          pool3d_forward(context.device_context(), *in_x, ksize, strides,
+                         paddings, pool_process, out);
         } else if (pooling_type == "avg") {
           paddle::operators::math::Pool3dFunctor<
               Place, paddle::operators::math::AvgPool<T>, T>
               pool3d_forward;
           paddle::operators::math::AvgPool<T> pool_process;
-          pool3d_forward(context.device_context(), *in_x, *out, ksize, strides,
-                         paddings, pool_process);
+          pool3d_forward(context.device_context(), *in_x, ksize, strides,
+                         paddings, pool_process, out);
         }
       } break;
+      default: { PADDLE_THROW("Pool op only supports 2D and 3D input."); }
     }
   }
 };
@@ -123,8 +125,10 @@ class PoolGradKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
 
     if (context.Attr<bool>("global_pooling")) {
-      for (size_t i = 0; i < ksize.size(); ++i)
+      for (size_t i = 0; i < ksize.size(); ++i) {
+        paddings[i] = 0;
         ksize[i] = static_cast<int>(in_x->dims()[i + 2]);
+      }
     }
 
     if (in_x_grad) {
@@ -138,32 +142,33 @@ class PoolGradKernel : public framework::OpKernel<T> {
           if (pooling_type == "max") {
             paddle::operators::math::MaxPool2dGradFunctor<Place, T>
                 pool2d_backward;
-            pool2d_backward(context.device_context(), *in_x, *in_x_grad, *out,
-                            *out_grad, ksize, strides, paddings);
+            pool2d_backward(context.device_context(), *in_x, *out, *out_grad,
+                            ksize, strides, paddings, in_x_grad);
           } else if (pooling_type == "avg") {
             paddle::operators::math::Pool2dGradFunctor<
                 Place, paddle::operators::math::AvgPoolGrad<T>, T>
                 pool2d_backward;
             paddle::operators::math::AvgPoolGrad<T> pool_process;
-            pool2d_backward(context.device_context(), *in_x, *in_x_grad, *out,
-                            *out_grad, ksize, strides, paddings, pool_process);
+            pool2d_backward(context.device_context(), *in_x, *out, *out_grad,
+                            ksize, strides, paddings, pool_process, in_x_grad);
           }
         } break;
         case 3: {
           if (pooling_type == "max") {
             paddle::operators::math::MaxPool3dGradFunctor<Place, T>
                 pool3d_backward;
-            pool3d_backward(context.device_context(), *in_x, *in_x_grad, *out,
-                            *out_grad, ksize, strides, paddings);
+            pool3d_backward(context.device_context(), *in_x, *out, *out_grad,
+                            ksize, strides, paddings, in_x_grad);
           } else if (pooling_type == "avg") {
             paddle::operators::math::Pool3dGradFunctor<
                 Place, paddle::operators::math::AvgPoolGrad<T>, T>
                 pool3d_backward;
             paddle::operators::math::AvgPoolGrad<T> pool_process;
-            pool3d_backward(context.device_context(), *in_x, *in_x_grad, *out,
-                            *out_grad, ksize, strides, paddings, pool_process);
+            pool3d_backward(context.device_context(), *in_x, *out, *out_grad,
+                            ksize, strides, paddings, pool_process, in_x_grad);
           }
         } break;
+        default: { PADDLE_THROW("Pool op only supports 2D and 3D input."); }
       }
     }
   }

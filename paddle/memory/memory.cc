@@ -39,11 +39,15 @@ BuddyAllocator* GetCPUBuddyAllocator() {
 
 template <>
 void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
-  return GetCPUBuddyAllocator()->Alloc(size);
+  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  void* p = GetCPUBuddyAllocator()->Alloc(size);
+  VLOG(10) << "  pointer=" << p;
+  return p;
 }
 
 template <>
 void Free<platform::CPUPlace>(platform::CPUPlace place, void* p) {
+  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
   GetCPUBuddyAllocator()->Free(p);
 }
 
@@ -65,29 +69,45 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
                                    platform::GpuMinChunkSize(),
                                    platform::GpuMaxChunkSize());
     }
-    VLOG(3) << "\n\nNOTE: each GPU device use "
-            << FLAGS_fraction_of_gpu_memory_to_use * 100 << "% of GPU memory.\n"
-            << "You can set environment variable '"
-            << platform::kEnvFractionGpuMemoryToUse
-            << "' to change the fraction of GPU usage.\n\n";
+    VLOG(10) << "\n\nNOTE: each GPU device use "
+             << FLAGS_fraction_of_gpu_memory_to_use * 100
+             << "% of GPU memory.\n"
+             << "You can set environment variable '"
+             << platform::kEnvFractionGpuMemoryToUse
+             << "' to change the fraction of GPU usage.\n\n";
   }
   platform::SetDeviceId(gpu_id);
   return as[gpu_id];
 }
 
 template <>
+size_t Used<platform::GPUPlace>(platform::GPUPlace place) {
+  return GetGPUBuddyAllocator(place.device)->Used();
+}
+
+template <>
 void* Alloc<platform::GPUPlace>(platform::GPUPlace place, size_t size) {
-  return GetGPUBuddyAllocator(place.device)->Alloc(size);
+  auto* buddy_allocator = GetGPUBuddyAllocator(place.device);
+  auto* ptr = buddy_allocator->Alloc(size);
+  if (ptr == nullptr) {
+    int cur_dev = platform::GetCurrentDeviceId();
+    platform::SetDeviceId(place.device);
+    size_t avail, total;
+    platform::GpuMemoryUsage(avail, total);
+    LOG(WARNING) << "Cannot allocate " << size << " bytes in GPU "
+                 << place.device << ", available " << avail << " bytes";
+    LOG(WARNING) << "total " << total;
+    LOG(WARNING) << "GpuMinChunkSize " << platform::GpuMinChunkSize();
+    LOG(WARNING) << "GpuMaxChunkSize " << platform::GpuMaxChunkSize();
+    LOG(WARNING) << "GPU memory used: " << Used<platform::GPUPlace>(place);
+    platform::SetDeviceId(cur_dev);
+  }
+  return ptr;
 }
 
 template <>
 void Free<platform::GPUPlace>(platform::GPUPlace place, void* p) {
   GetGPUBuddyAllocator(place.device)->Free(p);
-}
-
-template <>
-size_t Used<platform::GPUPlace>(platform::GPUPlace place) {
-  return GetGPUBuddyAllocator(place.device)->Used();
 }
 
 #endif

@@ -73,6 +73,10 @@ class OpDescBind {
 
   void Rename(const std::string &old_name, const std::string &new_name);
 
+  void RenameOutput(const std::string &old_name, const std::string &new_name);
+
+  void RenameInput(const std::string &old_name, const std::string &new_name);
+
   // Only be used in C++
   const AttributeMap &GetAttrMap() const;
 
@@ -106,6 +110,8 @@ class OpDescBind {
   void InferShape(const BlockDescBind &block) const;
 
   void InferVarType(BlockDescBind *block) const;
+
+  void MarkAsTarget() { desc_.set_is_target(true); }
 
   void Flush();
 

@@ -18,9 +18,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+using LoDTensor = framework::LoDTensor;
 
 template <typename T>
 using EigenArrayMap =
@@ -50,6 +48,10 @@ class BatchNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("SavedMean"), "");
     PADDLE_ENFORCE(ctx->HasOutput("SavedVariance"), "");
 
+    const float epsilon = ctx->Attrs().Get<float>("epsilon");
+    PADDLE_ENFORCE_GE(epsilon, 0.0, "epsilon should be larger than 0");
+    PADDLE_ENFORCE_LE(epsilon, 0.001, "epsilon should not be too large");
+
     // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
     PADDLE_ENFORCE_EQ(ctx->Inputs("Mean")[0], ctx->Outputs("MeanOut")[0],
                       "Mean and MeanOut should share the same memory");
@@ -60,6 +62,10 @@ class BatchNormOp : public framework::OperatorWithKernel {
     const auto x_dims = ctx->GetInputDim("X");
     const TensorFormat tensor_format =
         StringToTensorFormat(ctx->Attrs().Get<std::string>("tensor_format"));
+
+    PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
+                   "Input X must have 2 to 5 dimensions.");
+
     const int C =
         (tensor_format == TensorFormat::NCHW ? x_dims[1]
                                              : x_dims[x_dims.size() - 1]);
@@ -89,16 +95,16 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "The input tensor");
     AddInput("Scale",
              "Scale is a 1-dimensional tensor of size C "
-             "to be applied to the output");
+             "that is applied to the output");
     AddInput("Bias",
              "Bias is a 1-dimensional tensor of size C "
-             "to be applied to the output");
+             "that is applied to the output");
     AddInput("Mean",
-             "The global mean (for training) or the "
+             "The global mean (for training) or "
              "estimated mean (for testing)");
     AddInput("Variance",
              "The global variance (for training) "
-             "or the estimated Variance (for testing)");
+             "or estimated Variance (for testing)");
     AddOutput("Y", "result after normalization");
     AddOutput("MeanOut",
               "Share memory with Mean. "
@@ -108,15 +114,21 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
               "Store the global Variance when training");
     AddOutput("SavedMean",
               "Mean of the current mini batch, "
-              "will apply to output when training");
+              "will apply to output when training")
+        .AsIntermediate();
     AddOutput("SavedVariance",
               "Variance of the current mini batch, "
-              "will apply to output when training");
+              "will apply to output when training")
+        .AsIntermediate();
     AddComment(R"DOC(
-https://arxiv.org/pdf/1502.03167.pdf
+Batch Normalization.
 
-NHWC `[batch, in_height, in_width, in_channels]`
-NCHW `[batch, in_channels, in_height, in_width]`
+Batch Norm has been implemented as discussed in the paper:
+https://arxiv.org/pdf/1502.03167.pdf
+Can be used as a normalizer function for conv2d and fully_connected operations.
+The required data format for this layer is one of the following:
+1. NHWC `[batch, in_height, in_width, in_channels]`
+2. NCHW `[batch, in_channels, in_height, in_width]`
 
 )DOC");
   }
@@ -135,9 +147,8 @@ class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
-
-    PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
-                   "The Input dim size should be between 3 and 5");
+    PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
+                   "The Input dim size should be between 2 and 5");
     const int N = x_dims[0];
     const int C =
         (tensor_format == TensorFormat::NCHW ? x_dims[1]
@@ -289,6 +300,26 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
     ctx->SetOutputDim(framework::GradVarName("Bias"), {C});
   }
+
+ protected:
+  framework::OpKernelType GetKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    const auto *var = ctx.InputVar(framework::GradVarName("Y"));
+    if (var == nullptr) {
+      PADDLE_THROW("can't find Y@GRAD");
+    }
+    const Tensor *t = nullptr;
+    if (var->IsType<Tensor>()) {
+      t = &var->Get<Tensor>();
+    } else if (var->IsType<LoDTensor>()) {
+      t = &var->Get<LoDTensor>();
+    }
+    if (t == nullptr) {
+      PADDLE_THROW("can't find Y@GRAD");
+    }
+    return framework::OpKernelType(framework::ToDataType(t->type()),
+                                   ctx.device_context());
+  }
 };
 
 template <typename T>
@@ -309,8 +340,8 @@ class BatchNormGradKernel<platform::CPUPlace, T>
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
-                   "The Input dim size should be between 3 and 5");
+    PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
+                   "The Input dim size should be between 2 and 5");
     const int N = x_dims[0];
     const int C =
         (tensor_format == TensorFormat::NCHW ? x_dims[1]

@@ -58,6 +58,8 @@ class BlockDescBind {
 
   VarDescBind *FindVarRecursive(const std::string &name_bytes) const;
 
+  VarDescBind *FindRecursiveOrCreateVar(const std::string &name_bytes);
+
   bool HasVarRecursive(const std::string &var_name) const;
 
   std::set<std::string> LocalVarNames() const {
@@ -87,6 +89,8 @@ class BlockDescBind {
   void Flush();
 
   BlockDesc *Proto();
+
+  ProgramDescBind *Program() { return this->prog_; }
 
  private:
   void ClearPBOps();

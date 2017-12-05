@@ -123,7 +123,8 @@ func paddle_set_dataset(client C.paddle_master_client, path **C.char, size C.int
 	}
 	err := c.SetDataset(paths)
 	if err != nil {
-		log.Error("error set dataset", log.Ctx{"error": err})
+		log.Error("error set dataset",
+			log.Ctx{"error": err, "paths": paths})
 		return C.PADDLE_MASTER_ERROR
 	}
 
