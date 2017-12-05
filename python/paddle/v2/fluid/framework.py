@@ -512,6 +512,7 @@ class Program(object):
         self.desc = core.ProgramDesc()
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
+        self._seed = 0
 
     def __str__(self):
         return self.to_string(True)
@@ -563,6 +564,16 @@ class Program(object):
         p.blocks = [Block(p, i) for i in xrange(p.desc.num_blocks())]
         p.sync_with_cpp()
         return p
+
+    @property
+    def random_seed(self):
+        return self._seed
+
+    @random_seed.setter
+    def random_seed(self, seed):
+        if not isinstance(seed, int):
+            raise ValueError("Seed must be a integer.")
+        self._seed = seed
 
     def __repr__(self):
         return str(self)
