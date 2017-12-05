@@ -170,7 +170,8 @@ class WarpCTCKernel : public framework::OpKernel<T> {
 
     // warpctc accesses labels in CPU memory
     Tensor warpctc_label;
-    warpctc_label.CopyFrom(*label, platform::CPUPlace(), ctx.device_context());
+    CopyFrom(*label, platform::CPUPlace(), ctx.device_context(),
+             &warpctc_label);
     const int* warpctc_label_data = warpctc_label.data<int>();
 
     // warpctc stores loss in CPU memory
@@ -186,7 +187,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
                             num_sequences, blank, warpctc_loss_data);
 
     // Copy the loss back
-    loss->CopyFrom(warpctc_loss, ctx.GetPlace(), ctx.device_context());
+    CopyFrom(warpctc_loss, ctx.GetPlace(), ctx.device_context(), loss);
   }
 };
 
@@ -198,7 +199,7 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
     auto* logits_grad = ctx.Output<LoDTensor>(framework::GradVarName("Logits"));
     auto* logits = ctx.Input<LoDTensor>("Logits");
 
-    bool norm_by_times = ctx.Attr<bool>("normByTimes");
+    bool norm_by_times = ctx.Attr<bool>("norm_by_times");
 
     logits_grad->set_lod(logits->lod());
     math::UnpaddingSequenceFunctor<Place, T>()(

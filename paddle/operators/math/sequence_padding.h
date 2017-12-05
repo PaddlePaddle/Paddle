@@ -35,7 +35,7 @@ inline static size_t MaximumSequenceLength(const framework::LoD& lod,
 }
 
 /*
- * \brief   Padding/Unpadding sequence to/from normal Tensor of the shape
+ * \brief   Padding/Unpadding LoDTensor to/from normal Tensor of the shape
  *          [max_sequence_length, num_sequences, sequence_width].
  *
  *  Padding sequence:
@@ -43,15 +43,22 @@ inline static size_t MaximumSequenceLength(const framework::LoD& lod,
  *  Unpadding sequence:
  *        seq[lod[level][i]] = padding[i]
  *
- *  All sequences will be padded to the same length.
+ *  All sequences will be padded to the same length and stored in a transposed
+ * shape.
  *  Example:
  *    seq     (s0, s0, s0, s0; s1, s1; s2, s2, s2; s3)
  *    padding (s0, s1, s2, s3; s0, s1, s2, 0; s0, 0, s2, 0; s0, 0, 0, 0)
  *
  * \param context       device context of this functor.
- * \param seq           LoDTensor which is stored in sequence format.
- * \param padding       Tensor which is padded to the same length.
+ * \param seq           LoDTensor which is stored in sequence format, the shape
+ *                      is [total_sequence_length, sequence_width] where
+ *                      total_sequence_length is the sum of all sequences'
+ *                      length.
+ * \param padding       Tensor which is padded to the same length, the shape is
+ *                      [max_sequence_length, num_sequences, sequence_width].
  * \param norm_by_times whether dividing sequence's length.
+ *
+ * \note  transposition is also done in this functor.
  */
 template <typename Place, typename T>
 class PaddingSequenceFunctor {

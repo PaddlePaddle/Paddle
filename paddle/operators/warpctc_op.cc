@@ -31,17 +31,23 @@ class WarpCTCOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Loss"),
                    "Output(Loss) of WarpCTCOp should not be null.");
 
-    auto dims = ctx->GetInputDim("Logits");
-    int sequence_width = static_cast<int>(framework::product(dims) / dims[0]);
+    auto logits_dims = ctx->GetInputDim("Logits");
+    int sequence_width =
+        static_cast<int>(framework::product(logits_dims) / logits_dims[0]);
     int blank = ctx->Attrs().Get<int>("blank");
     PADDLE_ENFORCE((blank >= 0) && (blank < sequence_width),
                    "The value of Attr(blank) should be in interval [0, %d).",
                    sequence_width);
+    // TODO(liuyiqun): it is tricky to set the wrong dimension here.
+    ctx->SetOutputDim("Loss", {logits_dims[0], 1});
   }
 
-  framework::DataType IndicateDataType(
+ protected:
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("Logits")->type());
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("Logits")->type()),
+        ctx.device_context());
   }
 };
 
@@ -53,7 +59,7 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Logits",
              "(LodTensor, default: LoDTensor<float>), the unscaled "
              "probabilities of variable-length sequences, which is a 2-D "
-             "Tensor with LoD information. It is of the shape "
+             "Tensor with LoD information. It's shape is "
              "[Lp, num_classes + 1], where Lp is the sum of all input "
              "sequences' length and num_classes is the true number of classes "
              "(not including the blank label).");
@@ -77,7 +83,7 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
                  "Temporal Classification (CTC) loss, which is in the "
                  "half-opened interval [0, num_classes + 1).")
         .SetDefault(0);
-    AddAttr<bool>("normByTimes",
+    AddAttr<bool>("norm_by_times",
                   "(bool, default: false), whether to "
                   "normalize the gradients by the number of time-step, "
                   "which is also the sequence's length.")
@@ -109,11 +115,16 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
                    "Input(WarpCTCGrad) of WarpCTCGradOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Logits")),
                    "Output(Logits@GRAD) of WarpCTCGradOp should not be null.");
+    ctx->SetOutputDim(framework::GradVarName("Logits"),
+                      ctx->GetInputDim("Logits"));
   }
 
-  framework::DataType IndicateDataType(
+ protected:
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("Logits")->type());
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("Logits")->type()),
+        ctx.device_context());
   }
 };
 

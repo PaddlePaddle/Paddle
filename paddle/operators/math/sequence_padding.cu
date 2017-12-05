@@ -86,7 +86,7 @@ class PaddingSequenceFunctor<platform::GPUPlace, T> {
                               static_cast<int64_t>(sequence_width)});
 
     if (!norm_by_times && num_sequences == 1UL) {
-      padding.CopyFrom(seq, context.GetPlace(), context);
+      CopyFrom(seq, context.GetPlace(), context, &padding);
       padding.Resize(padding_dims);
       return;
     }
@@ -160,7 +160,7 @@ class UnpaddingSequenceFunctor<platform::GPUPlace, T> {
          static_cast<int64_t>(sequence_width)});
 
     if (!norm_by_times && num_sequences == 1UL) {
-      seq.CopyFrom(padding, context.GetPlace(), context);
+      CopyFrom(padding, context.GetPlace(), context, &seq);
       seq.Resize(seq_dims);
       return;
     }

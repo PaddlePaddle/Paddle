@@ -26,7 +26,7 @@ class PaddingSequenceFunctor<platform::CPUPlace, T> {
                   bool norm_by_times) {
     auto lod = seq.lod();
     PADDLE_ENFORCE_GT(lod.size(), 0UL,
-                      "The lod of LoDTensor seq should not be null.");
+                      "The LoD of LoDTensor seq should not be null.");
 
     const size_t level = 0;
     framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);

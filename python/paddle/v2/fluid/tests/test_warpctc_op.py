@@ -186,7 +186,7 @@ class TestWarpCTCOp(OpTest):
             "Label": (labels, labels_lod)
         }
         self.outputs = {"Loss": loss}
-        self.attrs = {"blank": blank, "normByTimes": norm_by_times}
+        self.attrs = {"blank": blank, "norm_by_times": norm_by_times}
 
     def test_check_output(self):
         self.check_output()
