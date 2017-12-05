@@ -59,25 +59,29 @@ class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param",
              "(Tensor, default Tensor<float>) "
-             "Input parameter that has to be updated");
+             "Input parameter that has to be updated.");
     AddInput("Grad",
              "(Tensor, default Tensor<float>) "
-             "Input gradient of the parameter");
-    AddInput("Velocity",
-             "(Tensor, default Tensor<float>) "
-             "Input velocity (corresponding to the parameter) "
-             "that has to be updated");
+             "Input gradient of the parameter.");
+    AddInput(
+        "Velocity",
+        "(Tensor, default Tensor<float>) "
+        "Input velocity (corresponding to the parameter) "
+        "that has to be updated. Velocity and VelocityOut point to the same "
+        "memory.");
     AddInput("LearningRate",
              "(Tensor, default Tensor<float>) "
-             "Input learning rate");
+             "Input learning rate.");
 
-    AddOutput("ParamOut", "(Tensor) Output updated parameter");
-    AddOutput("VelocityOut", "(Tensor) Output updated velocity");
+    AddOutput("ParamOut", "(Tensor) Output updated parameter.");
+    AddOutput("VelocityOut",
+              "(Tensor) Output updated velocity. VelocityOut and Velocity "
+              "point to the same memory.");
 
     AddAttr<float>("mu", "(float) Momentum coefficient");
     AddAttr<bool>("use_nesterov",
                   "(bool, default false) "
-                  "Use Nesterov Momentum")
+                  "Use Nesterov Momentum.")
         .SetDefault(false);
     AddComment(R"DOC(
 Momentum Optimizer.

@@ -55,7 +55,7 @@ class RmspropOpKernel : public framework::OpKernel<T> {
 
     Eigen::DSizes<int, 1> grad_dsize(grad->numel());
 
-    ms_out.device(place) = rho * ms + (1 - rho) * g * g;
+    ms_out.device(place) = rho * ms + static_cast<T>(1 - rho) * g.square();
     mom_out.device(place) =
         momentum * mom +
         lr.broadcast(grad_dsize) * g / (ms_out + epsilon).sqrt();
