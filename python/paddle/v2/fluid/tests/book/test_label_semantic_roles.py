@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.dataset.conll05 as conll05
@@ -146,9 +148,13 @@ def main():
     # TODO(qiao)
     # add dependency track and move this config before optimizer
     crf_decode = fluid.layers.crf_decoding(
-        input=feature_out,
+        input=feature_out, param_attr=fluid.ParamAttr(name='crfw'))
+
+    precision, recall, f1_score = fluid.layers.chunk_eval(
+        input=crf_decode,
         label=target,
-        param_attr=fluid.ParamAttr(name='crfw'))
+        chunk_scheme="IOB",
+        num_chunk_types=int(math.ceil((label_dict_len - 1) / 2.0)))
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
@@ -173,10 +179,17 @@ def main():
         for data in train_data():
             outs = exe.run(fluid.default_main_program(),
                            feed=feeder.feed(data),
-                           fetch_list=[avg_cost])
+                           fetch_list=[avg_cost, precision, recall, f1_score])
             avg_cost_val = np.array(outs[0])
+            precision_val = np.array(outs[1])
+            recall_val = np.array(outs[2])
+            f1_score_val = np.array(outs[3])
+
             if batch_id % 10 == 0:
                 print("avg_cost=" + str(avg_cost_val))
+                print("precision_val=" + str(precision_val))
+                print("recall_val:" + str(recall_val))
+                print("f1_score_val:" + str(f1_score_val))
 
             # exit early for CI
             exit(0)

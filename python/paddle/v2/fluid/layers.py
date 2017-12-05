@@ -632,6 +632,40 @@ def accuracy(input, label, k=1, correct=None, total=None, **kwargs):
     return acc_out
 
 
+def chunk_eval(input,
+               label,
+               chunk_scheme,
+               num_chunk_types,
+               excluded_chunk_types=None,
+               **kwargs):
+    """
+    This function computes the accuracy using the input and label.
+    The output is the top_k inputs and their indices.
+    """
+    helper = LayerHelper("chunk_eval", **kwargs)
+
+    # prepare output
+    precision = helper.create_tmp_variable(dtype="float32")
+    recall = helper.create_tmp_variable(dtype="float32")
+    f1_score = helper.create_tmp_variable(dtype="float32")
+
+    helper.append_op(
+        type="chunk_eval",
+        inputs={"Inference": [input],
+                "Label": [label]},
+        outputs={
+            "Precision": [precision],
+            "Recall": [recall],
+            "F1-Score": [f1_score]
+        },
+        attrs={
+            "num_chunk_types": num_chunk_types,
+            'chunk_scheme': chunk_scheme,
+            'excluded_chunk_types': excluded_chunk_types or []
+        })
+    return precision, recall, f1_score
+
+
 def sequence_conv(input,
                   num_filters,
                   filter_size=3,
