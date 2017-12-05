@@ -4,6 +4,7 @@ import unittest
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.nets as nets
 from paddle.v2.fluid.framework import Program, program_guard
+from paddle.v2.fluid.param_attr import ParamAttr
 
 
 class TestBook(unittest.TestCase):
@@ -132,8 +133,12 @@ class TestBook(unittest.TestCase):
             images = layers.data(name='pixel', shape=[784], dtype='float32')
             label = layers.data(name='label', shape=[1], dtype='int32')
             hidden = layers.fc(input=images, size=128)
-            crf = layers.linear_chain_crf(input=hidden, label=label)
+            crf = layers.linear_chain_crf(
+                input=hidden, label=label, param_attr=ParamAttr(name="crfw"))
+            crf_decode = layers.crf_decoding(
+                input=hidden, param_attr=ParamAttr(name="crfw"))
             self.assertNotEqual(crf, None)
+            self.assertNotEqual(crf_decode, None)
 
         print(str(program))
 

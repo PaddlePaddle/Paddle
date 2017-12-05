@@ -477,6 +477,24 @@ def linear_chain_crf(input,
     return log_likelihood
 
 
+def crf_decoding(input,
+                 param_attr,
+                 label=None,
+                 main_program=None,
+                 startup_program=None):
+    helper = LayerHelper('crf_decoding', **locals())
+    transition = helper.get_parameter(param_attr.name)
+    viterbi_path = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='crf_decoding',
+        inputs={"Emission": [input],
+                "Transition": transition,
+                "Label": label},
+        outputs={"ViterbiPath": [viterbi_path]})
+
+    return viterbi_path
+
+
 def assign(input, output, main_program=None, startup_program=None):
     helper = LayerHelper('assign', **locals())
     helper.append_op(

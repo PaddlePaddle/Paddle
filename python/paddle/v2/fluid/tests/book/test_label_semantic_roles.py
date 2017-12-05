@@ -137,11 +137,18 @@ def main():
         param_attr=fluid.ParamAttr(
             name='crfw', learning_rate=mix_hidden_lr))
     avg_cost = fluid.layers.mean(x=crf_cost)
+
     # TODO(qiao)
-    #   1. add crf_decode_layer and evaluator
-    #   2. use other optimizer and check why out will be NAN
+    # check other optimizers and check why out will be NAN
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.0001)
     sgd_optimizer.minimize(avg_cost)
+
+    # TODO(qiao)
+    # add dependency track and move this config before optimizer
+    crf_decode = fluid.layers.crf_decoding(
+        input=feature_out,
+        label=target,
+        param_attr=fluid.ParamAttr(name='crfw'))
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
@@ -168,7 +175,6 @@ def main():
                            feed=feeder.feed(data),
                            fetch_list=[avg_cost])
             avg_cost_val = np.array(outs[0])
-
             if batch_id % 10 == 0:
                 print("avg_cost=" + str(avg_cost_val))
 
