@@ -632,6 +632,40 @@ def accuracy(input, label, k=1, correct=None, total=None, **kwargs):
     return acc_out
 
 
+def trunk_evaluator(input, label, **kwargs):
+    """
+    This function computes the accuracy using the input and label.
+    The output is the top_k inputs and their indices.
+    """
+    helper = LayerHelper("chunk_eval", **kwargs)
+    topk_out = helper.create_tmp_variable(dtype=input.dtype)
+    topk_indices = helper.create_tmp_variable(dtype="int64")
+    helper.append_op(
+        type="chunk_eval",
+        inputs={"X": [input]},
+        outputs={"Out": [topk_out],
+                 "Indices": [topk_indices]},
+        attrs={"k": k})
+    acc_out = helper.create_tmp_variable(dtype="float32")
+    if correct is None:
+        correct = helper.create_tmp_variable(dtype="int64")
+    if total is None:
+        total = helper.create_tmp_variable(dtype="int64")
+    helper.append_op(
+        type="accuracy",
+        inputs={
+            "Out": [topk_out],
+            "Indices": [topk_indices],
+            "Label": [label]
+        },
+        outputs={
+            "Accuracy": [acc_out],
+            "Correct": [correct],
+            "Total": [total],
+        })
+    return acc_out
+
+
 def sequence_conv(input,
                   num_filters,
                   filter_size=3,
