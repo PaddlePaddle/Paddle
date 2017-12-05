@@ -138,7 +138,7 @@ class TestBook(unittest.TestCase):
                 input=hidden, label=label, param_attr=ParamAttr(name="crfw"))
             crf_decode = layers.crf_decoding(
                 input=hidden, param_attr=ParamAttr(name="crfw"))
-            layers.trunk_evaluator(
+            layers.trunk_eval(
                 input=crf_decode,
                 label=label,
                 chunk_scheme="IOB",

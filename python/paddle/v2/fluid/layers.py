@@ -632,12 +632,12 @@ def accuracy(input, label, k=1, correct=None, total=None, **kwargs):
     return acc_out
 
 
-def trunk_evaluator(input,
-                    label,
-                    chunk_scheme,
-                    num_chunk_types,
-                    excluded_chunk_types=None,
-                    **kwargs):
+def trunk_eval(input,
+               label,
+               chunk_scheme,
+               num_chunk_types,
+               excluded_chunk_types=None,
+               **kwargs):
     """
     This function computes the accuracy using the input and label.
     The output is the top_k inputs and their indices.

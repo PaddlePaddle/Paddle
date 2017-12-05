@@ -150,7 +150,7 @@ def main():
     crf_decode = fluid.layers.crf_decoding(
         input=feature_out, param_attr=fluid.ParamAttr(name='crfw'))
 
-    precision, recall, f1_score = fluid.layers.trunk_evaluator(
+    precision, recall, f1_score = fluid.layers.trunk_eval(
         input=crf_decode,
         label=target,
         chunk_scheme="IOB",
