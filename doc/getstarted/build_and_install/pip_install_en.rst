@@ -37,7 +37,7 @@ If the links below shows up the login form, just click "Log in as guest" to star
    :align: center
 
 ..  csv-table:: whl package of each version
-    :header: "version", "cp27-cp27mu", "cp27-cp27mu", "C-API"
+    :header: "version", "cp27-cp27mu", "cp27-cp27m", "C-API"
     :widths: 1, 3, 3, 3
 
     "cpu_avx_mkl", "`paddlepaddle-0.10.0-cp27-cp27mu-linux_x86_64.whl <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxCp27cp27mu/.lastSuccessful/paddlepaddle-0.10.0-cp27-cp27mu-linux_x86_64.whl>`_", "`paddlepaddle-0.10.0-cp27-cp27m-linux_x86_64.whl <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxCp27cp27mu/.lastSuccessful/paddlepaddle-0.10.0-cp27-cp27m-linux_x86_64.whl>`_", "`paddle.tgz <http://guest@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxCp27cp27mu/.lastSuccessful/paddle.tgz>`_"
