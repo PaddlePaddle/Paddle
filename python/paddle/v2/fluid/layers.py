@@ -632,7 +632,7 @@ def accuracy(input, label, k=1, correct=None, total=None, **kwargs):
     return acc_out
 
 
-def trunk_eval(input,
+def chunk_eval(input,
                label,
                chunk_scheme,
                num_chunk_types,
