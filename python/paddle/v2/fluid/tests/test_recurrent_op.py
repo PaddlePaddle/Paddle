@@ -431,7 +431,6 @@ class RecurrentOpNoMemBootTest(RecurrentOpTest1):
         self.py_rnn = RecurrentOpNoMemBootTest.PySimpleRNN4(self.input_shape,
                                                             self.output_shape)
         self.output = layers.mean(x=self.create_rnn_op(), **self.p_info)
-        print self.main_program
 
     def create_rnn_op(self):
         x = layers.data(
@@ -454,6 +453,4 @@ class RecurrentOpNoMemBootTest(RecurrentOpTest1):
 
 
 if __name__ == '__main__':
-    # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/6152
-    exit(0)
     unittest.main()
