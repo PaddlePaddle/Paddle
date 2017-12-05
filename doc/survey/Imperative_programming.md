@@ -39,7 +39,7 @@ To summarize it: Compiled execution v.s. Interpreted execution
 
 Imperative programming is getting more and more popular in main stream machine learning frameworks. pyTorch is the one who makes this coding style for machine learning known to all. Tensorflow recently also announced their Eager Execution which is similar.
 
-This is not surprising due to the Debuggability brought by it. Since the major part of the logic is defined and run in the scope of python, you can easily debug your training program in any python IDE. Pause at any step any batch, inspect any variable. This is not possible with current design and implementation of fluid.
+This is not surprising due to the Debuggability brought by it. Since the major part of the logic is defined and run in the scope of python, you can easily print some log or debug your training program in any python IDE. Pause at any step any batch, inspect any variable. This is not possible with current design and implementation of fluid.
 
 The drawback is also obvious when all the heavy liftings are bind with python, Performance.
 
