@@ -29,8 +29,10 @@ The tool uses Docker, please install it on your system. Please check Docker offi
     git clone https://github.com/PaddlePaddle/models.git
     git clone https://github.com/PaddlePaddle/Mobile.git
 
-    docker run -it -p 8000:8000 paddlepaddle/paddlepaddle.org:latest
+    # Please specify the working directory through -v
+    docker run -it -p 8000:8000 -v `pwd`:/var/content paddlepaddle/paddlepaddle.org:latest
 
+Note: PaddlePaddle.org will read the content repos specified in the -v (volume) flag of the docker run command
 Use a web browser and navigate to http://localhost:8000, click the buttons to compile the documentation
 The compiled documentations will be stored in <paddlepaddle working directory>/.ppo_workspace/content
 
