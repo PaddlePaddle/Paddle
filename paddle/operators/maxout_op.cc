@@ -40,23 +40,28 @@ class MaxOutOpMaker : public framework::OpProtoAndCheckerMaker {
         "the number of channels divided by groups.."
         )DOC");
     AddComment(R"DOC(
-        Assumed the input shape is (N, Ci, H, W).
-        The output shape is (N, Co, H, W). Then `Co = Ci / groups`.
+MaxOut Operator.
 
-       math:
-       y_{si+j} = \max_k x_{gsi + sk + j}
-       g = groups
-       s = input.size / num_channels
-       0 \le i < num_channels / groups
-       0 \le j < s
-       0 \le k < groups
+Assumed the input shape is (N, Ci, H, W).
+The output shape is (N, Co, H, W).
+Then $Co = Ci / groups$ and the operator formula is as follows:
 
-    Please refer to Paper:
-      - Maxout Networks: http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf
-      - Multi-digit Number Recognition from Street View \
-        Imagery using Deep Convolutional Neural Networks: \
-        https://arxiv.org/pdf/1312.6082v4.pdf
-        )DOC");
+$$
+y_{si+j} = \max_k x_{gsi + sk + j} \\
+g = groups \\
+s = \frac{input.size}{num\_channels} \\
+0 \le i < \frac{num\_channels}{groups} \\
+0 \le j < s \\
+0 \le k < groups
+$$
+
+Please refer to Paper:
+  - Maxout Networks: http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf
+  - Multi-digit Number Recognition from Street View \
+    Imagery using Deep Convolutional Neural Networks: \
+    https://arxiv.org/pdf/1312.6082v4.pdf
+
+)DOC");
   }
 };
 
