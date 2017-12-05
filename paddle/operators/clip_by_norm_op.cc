@@ -47,15 +47,19 @@ class ClipByNormOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor) The output of clip_by_norm op with shape as input(X)");
     AddAttr<float>("max_norm", "(float) The maximum norm value.");
     AddComment(R"DOC(
-ClipByNorm operator limits the L2 norm of the input 'X' within 'max_norm'. 
-If the L2 norm of 'X' is less than or equal to 'max_norm', 'Out' will be 
-the same as 'X'. If the L2 norm of 'X' is greater than 'max_norm', 'X' will 
-be linearly scaled to make the L2 norm of 'Out' equal to 'max_norm', as 
-shown in the following formula：
+ClipByNorm Operator.
 
-'Out' = 'max_norm' * 'X' / norm('X'),
+This operator limits the L2 norm of the input $X$ within $max\_norm$.
+If the L2 norm of $X$ is less than or equal to $max\_norm$, $Out$ will be
+the same as $X$. If the L2 norm of $X$ is greater than $max\_norm$, $X$ will
+be linearly scaled to make the L2 norm of $Out$ equal to $max\_norm$, as
+shown in the following formula:
 
-where norm('X') represents the L2 norm of 'X'.
+$$
+Out = \frac{max\_norm * X}{norm(X)},
+$$
+
+where $norm(X)$ represents the L2 norm of $X$.
 )DOC");
   }
 };
