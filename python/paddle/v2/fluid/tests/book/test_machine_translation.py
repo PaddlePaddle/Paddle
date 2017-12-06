@@ -1,13 +1,10 @@
 import numpy as np
 import paddle.v2 as paddle
-import paddle.v2.dataset.conll05 as conll05
+import paddle.v2.fluid as fluid
 import paddle.v2.fluid.core as core
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.layers as layers
-from paddle.v2.fluid.executor import Executor, g_scope
-from paddle.v2.fluid.optimizer import SGDOptimizer
-import paddle.v2.fluid as fluid
-import paddle.v2.fluid.layers as pd
+from paddle.v2.fluid.executor import Executor
 
 dict_size = 30000
 source_dict_dim = target_dict_dim = dict_size
@@ -19,6 +16,8 @@ batch_size = 50
 max_length = 50
 topk_size = 50
 trg_dic_size = 10000
+
+decoder_size = 512
 
 src_word_id = layers.data(name="src_word_id", shape=[1], dtype='int64')
 src_embedding = layers.embedding(
@@ -53,7 +52,30 @@ def decoder_trainer(context):
     '''
     decoder with trainer
     '''
-    pass
+    trg_language_word = layers.data(
+        name="target_language_word", shape=[1], dtype='int64')
+    trg_embedding = layers.embedding(
+        input=trg_language_word,
+        size=[dict_size, word_dim],
+        dtype='float32',
+        is_sparse=IS_SPARSE,
+        param_attr=fluid.ParamAttr(name='vemb'))
+
+    encoded_proj = layers.fc(size=decoder_size, bias_attr=False, input=context)
+
+    rnn = fluid.layers.DynamicRNN()
+
+    with rnn.block():
+        current_word = rnn.step_input(trg_embedding)
+        encoded_proj_in = rnn.step_input(encoded_proj)
+        mem = rnn.memory(shape=[decoder_size], dtype='float32')
+        out_ = fluid.layers.fc(input=[encoded_proj_in, current_word, mem],
+                               size=target_dict_dim,
+                               act='softmax')
+        rnn.update_memory(mem, out_)
+        rnn.output(out_)
+
+    return rnn()
 
 
 def to_lodtensor(data, place):
@@ -73,8 +95,17 @@ def to_lodtensor(data, place):
 
 def main():
     encoder_out = encoder()
-    # TODO(jacquesqiao) call here
-    decoder_trainer(encoder_out)
+    decoder_out = decoder_trainer(encoder_out)
+    label = layers.data(
+        name="target_language_next_word", shape=[1], dtype='int64')
+
+    cost = layers.cross_entropy(input=decoder_out, label=label)
+
+    avg_cost = fluid.layers.mean(x=cost)
+
+    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+    optimizer.minimize(avg_cost)
+    accuracy = fluid.evaluator.Accuracy(input=decoder_out, label=label)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
@@ -94,9 +125,10 @@ def main():
             batch_id += 1
             if batch_id > 10: break
             word_data = to_lodtensor(map(lambda x: x[0], data), place)
-            outs = exe.run(framework.default_main_program(),
-                           feed={'src_word_id': word_data, },
-                           fetch_list=[encoder_out])
+            outs = exe.run(
+                framework.default_main_program(),
+                feed={'src_word_id': word_data, },
+                fetch_list=[encoder_out, decoder_out, accuracy.metrics[0]])
 
 
 if __name__ == '__main__':
