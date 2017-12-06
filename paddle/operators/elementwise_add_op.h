@@ -21,7 +21,7 @@ namespace operators {
 
 template <typename T>
 struct AddFunctor {
-  HOSTDEVICE T operator()(T a, T b) const { return a + b; }
+  inline HOSTDEVICE T operator()(T a, T b) const { return a + b; }
 };
 
 template <typename Place, typename T>
