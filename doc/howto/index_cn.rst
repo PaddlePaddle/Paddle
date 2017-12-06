@@ -12,6 +12,7 @@
   usage/k8s/k8s_basis_cn.md
   usage/k8s/k8s_cn.md
   usage/k8s/k8s_distributed_cn.md
+  usage/capi/overview.md
 
 开发标准
 --------
