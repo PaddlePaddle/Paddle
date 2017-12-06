@@ -53,72 +53,7 @@ def decoder_trainer(context):
     '''
     decoder with trainer
     '''
-    # TODO(ChunweiYan) add implementation after dynamic rnn is ready
     pass
-
-
-def decoder(context):
-    '''
-    decoder for generation, only used in the inference stage.
-    '''
-    init_state = fluid.layers.fc(context, size=hidden_dim)
-
-    # directly use while_loop
-    # TODO add candidate set check
-    array_len = layers.fill_constant(shape=[1], dtype='int64', value=max_length)
-    counter = layers.zeros(shape=[1], dtype='int64')
-
-    # TODO(ChunweiYan) check the init_state should pass the gradient back
-    mem_array = pd.array_write(init_state, i=counter)
-    # TODO(ChunweiYan) should init to <s>
-    ids_array = pd.create_array('int32')
-    # TODO(ChunweiYan) should init to 1s
-    scores_array = pd.create_array('float32')
-
-    # TODO(ChunweiYan) another stop condition, check candidate set empty should be added
-    cond = layers.less_than(x=counter, y=array_len)
-
-    while_op = layers.While(cond=cond)
-    with while_op.block():
-        pre_state = pd.array_read(array=mem_array, i=counter)
-        # get the words of the previous step
-        target_word = pd.embedding(
-            input=ids_array,
-            size=[dict_size, word_dim],
-            dtype='float32',
-            is_sparse=IS_SPARSE)
-
-        encoder_ctx_expanded = pd.seq_expand(context, target_word)
-
-        # use a simple gru
-        gru_input = pd.fc(
-            act='sigmoid',
-            input=pd.sum([target_word, encoder_ctx_expanded]),
-            # gru has 2 gates and 1 x
-            size=3 * hidden_dim)
-        updated_hidden, _, _ = gru_unit(
-            input=gru_input, hidden=pre_state, size=hidden_dim)
-        scores = pd.fc(updated_hidden,
-                       size=trg_dic_size,
-                       bias=None,
-                       activation='softmax')
-        # use pre_mem to predict candidates
-        scores = pd.fc(pre_state, size=dict_size, act='softmax')
-        topk_scores, topk_indices = pd.topk(scores, k=50)
-        selected_ids, selected_scores = pd.beam_search(topk_indices,
-                                                       topk_scores)
-
-        # update the memories
-        pd.array_write(updated_hidden, array=mem_array, i=counter)
-        pd.array_write(selected_ids, array=ids_array, i=counter)
-        pd.array_write(selected_scores, array=scores_array, i=counter)
-
-    while_op()
-
-    translation_ids, translation_scores = pd.beam_search_decode(
-        ids=ids_array, scores=scores_array)
-
-    return translation_ids, translation_scores
 
 
 def to_lodtensor(data, place):
@@ -138,7 +73,8 @@ def to_lodtensor(data, place):
 
 def main():
     encoder_out = encoder()
-    ids, scores = decoder(encoder_out)
+    # TODO(jacquesqiao) call here
+    decoder_trainer(encoder_out)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
