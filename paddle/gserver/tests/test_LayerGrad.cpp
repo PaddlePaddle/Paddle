@@ -275,11 +275,11 @@ void testProjectionConv(size_t groups, bool isDeconv) {
 #ifdef PADDLE_WITH_CUDA
 TEST(Projection, conv) {
   /// test ConvProjection
-  // testProjectionConv(1, false);
-  // testProjectionConv(3, false);
+  testProjectionConv(1, false);
+  testProjectionConv(3, false);
   /// test ConvTransProjection
   testProjectionConv(1, true);
-  // testProjectionConv(3, true);
+  testProjectionConv(3, true);
 }
 #endif
 
