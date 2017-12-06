@@ -37,10 +37,12 @@ __global__ void KeCMRNormFillScale(int img_size, const T* in, T* mid, int C,
     int index = 0;
     while (index < C + post_pad) {
       if (index < C) {
-        accum += in[index * step] * in[index * step];
+        T val = in[index * step];
+        accum += val * val;
       }
       if (index >= size) {
-        accum -= in[(index - size) * step] * in[(index - size) * step];
+        T val = in[(index - size) * step];
+        accum -= val * val;
       }
       if (index >= post_pad) {
         mid[(index - post_pad) * step] = k + accum * alpha;
@@ -64,7 +66,7 @@ void CrossMapNormal(const framework::ExecutionContext& ctx, const T* inputs,
                     T* outputs, T* mid, int N, int C, int H, int W, int n, T k,
                     T alpha, T beta) {
   int img_size = N * H * W;
-  int block_size = 1024;
+  const int block_size = 1024;
   int grid_size = (img_size + block_size - 1) / block_size;
 
   KeCMRNormFillScale<
@@ -72,7 +74,6 @@ void CrossMapNormal(const framework::ExecutionContext& ctx, const T* inputs,
       img_size, inputs, mid, C, H, W, n, k, alpha);
 
   int input_size = N * H * W * C;
-  block_size = 1024;
   grid_size = (input_size + block_size - 1) / block_size;
   KeCMRNormOutput<
       T><<<grid_size, block_size, 0, ctx.cuda_device_context().stream()>>>(
@@ -144,7 +145,7 @@ void CrossMapNormalGrad(const framework::ExecutionContext& ctx, const T* x,
                         int N, int C, int H, int W, int n, T alpha, T beta) {
   int img_size = N * H * W;
 
-  int block_size = 1024;
+  const int block_size = 1024;
   int grid_size = (img_size + block_size - 1) / block_size;
 
   KeCMRNormDiff<
