@@ -367,6 +367,35 @@ class MSRAInitializer(Initializer):
         return op
 
 
+class OrthogonalInitializer(Initializer):
+    """
+    Implements the orthogonal initializer.
+
+    According to the paper: Exact solutions to the nonlinear dynamics of learning
+    in deep linear neural networks, orthogonal init is a good way of combatting
+    exploding and vanishing gradients. It is a common way to initialize some networks
+    that repeated apply matrix multiplication such RNNs.
+    """
+
+    def __init__(self, seed=0):
+        """
+        Args:
+            seed: random seed
+        """
+        self._seed = seed
+
+    def __call__(self, var, block):
+        """
+        Add orthogonal initialization for a variable
+
+        Args:
+
+            var: Variable that needs to be initialized
+            block: The block in which initialization ops should be added
+        """
+        pass
+
+
 # We short the class name, since users will use the initializer with the package
 # name. The sample code:
 #
