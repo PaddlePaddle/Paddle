@@ -60,12 +60,16 @@ class WriteToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         "(Tensor) the subscript index in tensor array. The number of element "
         "should be 1");
     AddOutput("Out", "(TensorArray) the tensor array will be written");
-    AddComment(R"DOC(Write a LoDTensor to a LoDTensor array.
+    AddComment(R"DOC(
+WriteToArray Operator.
 
-Assume T is LoDTensor, i is the subscript of the array, and A is the array. The
+This operator writes a LoDTensor to a LoDTensor array.
+
+Assume $T$ is LoDTensor, $i$ is the subscript of the array, and $A$ is the array. The
 equation is
 
-A[i] = T
+$$A[i] = T$$
+
 )DOC");
   }
 };
@@ -144,12 +148,16 @@ class ReadFromArrayProtoMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) the subscript index in tensor array. The number of "
              "element should be 1");
     AddOutput("Out", "(LoDTensor) the tensor will be read from.");
-    AddComment(R"DOC(Read a LoDTensor from a LoDTensor Array
+    AddComment(R"DOC(
+ReadFromArray Operator.
 
-Assume T is LoDTensor, i is th e subscript of the array, and A is the array. The
+Read a LoDTensor from a LoDTensor Array.
+
+Assume $T$ is LoDTensor, $i$ is the subscript of the array, and $A$ is the array. The
 equation is
 
-T = A[i]
+$$T = A[i]$$
+
 )DOC");
   }
 };
