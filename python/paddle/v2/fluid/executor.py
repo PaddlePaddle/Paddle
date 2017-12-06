@@ -1,6 +1,7 @@
 import numpy as np
 from . import core
 from framework import Program, default_main_program
+import distribute_planner
 
 __all__ = ['Executor', 'g_scope']
 
@@ -48,6 +49,80 @@ class Executor(object):
 
         self.executor = core.Executor(act_places)
         self.places = places
+
+    def optimize(self, optimize_ops, program=None, **kwargs):
+        """
+            optimize the program for different runtime environment
+
+            :param optimize_ops: op list of optimization, should be the
+                                 return value of Optimizer.minimize
+            :type optimize_ops: list
+            :param program: program to optimize, default default_main_program
+            :param pservers: parameter server endpoints like "m1:6174,m2:6174"
+            :type pservers: string
+
+            :return: return a list of programs
+        """
+        if program is None:
+            program = default_main_program()
+
+        if kwargs.has_key("pservers"):
+            return self._optimize_distributed(optimize_ops, program, **kwargs)
+
+    def _optimize_distributed(self, optimize_ops, program, **kwargs):
+        # remove optimize ops and add a send op to main_program
+        # FIXME(typhoonzero): delete_op only remove the first accurence,
+        # need to consider about multiple same optimize op?
+        for op in optimize_ops:
+            program.global_block().delete_op(op)
+        if kwargs.has_key("split_method"):
+            split_method = kwargs["split_method"]
+        else:
+            split_method = distribute_planner.round_robin
+
+        assert (callable(split_method))
+        pserver_endpoints = kwargs["pservers"].split(",")
+        params = program.global_block().all_parameters()
+        param_map = split_method(params, pserver_endpoints)
+
+        for ep in pserver_endpoints:
+            # FIXME(typhoonzero): send to different servers can run in parrallel.
+            send_op = program.global_block().append_op(
+                type="send",
+                inputs={"X": param_map[ep]
+                        },  # inputs is a list of tensors to be send
+                outputs={"Out": param_map[ep]},
+                attrs={"endpoint": ep})
+        # -------------- generate pserver program --------------
+        self.parameter_server_program_map = dict()
+
+        optimize_sub_program = Program()
+        optimize_ops = self.create_optimization_pass(
+            params_grads, optimize_sub_program, startup_program)
+        param_list = []
+        for param in params:
+            if param.trainable is True:
+                param_list.append(param)
+
+        param_map = split_method(params, pserver_endpoints)
+
+        for ep in pserver_endpoints:
+            pserver_program = Program()
+            self.parameter_server_program_map[ep] = pserver_program
+            pserver_program.global_block().append_op(
+                type="recv",
+                inputs={"RX": param_map[ep]},  # grads to recv
+                outputs={},
+                attrs={
+                    "OptimizeBlock": optimize_sub_program.global_block(),
+                    "endpoint": ep
+                })
+
+    def get_pserver_program(self, endpoint):
+        pass
+
+    def get_trainer_program(self):
+        return default_main_program()
 
     def aslodtensor(self, data):
         def accumulate(data):

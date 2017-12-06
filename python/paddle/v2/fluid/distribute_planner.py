@@ -7,55 +7,40 @@ from layer_helper import LayerHelper
 __all__ = ['SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad']
 
 
-def hash_name_to_server(parameters_and_grads, pserver_endpoints):
+def hash_name_to_server(parameters, pserver_endpoints):
     def _hash_param(param_name, total):
         return hash(param_name) % total
 
     param_map = dict()
-    grad_map = dict()
-    for param_and_grad in parameters_and_grads:
-        if param_and_grad[0].trainable is True and param_and_grad[
-                1] is not None:
-            server_id = _hash_param(param_and_grad[0].name,
-                                    len(pserver_endpoints))
+    for param in parameters:
+        if param.trainable is True:
+            server_id = _hash_param(param.name, len(pserver_endpoints))
             server_for_param = pserver_endpoints[server_id]
             if param_map.has_key(server_for_param):
-                param_map[server_for_param].append(param_and_grad[0])
+                param_map[server_for_param].append(param)
             else:
-                param_map[server_for_param] = [param_and_grad[0]]
+                param_map[server_for_param] = [param]
 
-            if grad_map.has_key(server_for_param):
-                grad_map[server_for_param].append(param_and_grad[1])
-            else:
-                grad_map[server_for_param] = [param_and_grad[1]]
-    return param_map, grad_map
+    return param_map
 
 
-def round_robin(parameters_and_grads, pserver_endpoints):
-    if len(parameters_and_grads) < len(pserver_endpoints):
-        raise Exception("parameters is less than pservers")
+def round_robin(parameters, pserver_endpoints):
+    assert (len(parameters) < len(pserver_endpoints))
 
     param_map = dict()
-    grad_map = dict()
     pserver_idx = 0
-    for param_and_grad in parameters_and_grads:
-        if param_and_grad[0].trainable is True and param_and_grad[
-                1] is not None:
-
+    for param in parameters:
+        if param.trainable is True:
             server_for_param = pserver_endpoints[pserver_idx]
             if param_map.has_key(server_for_param):
-                param_map[server_for_param].append(param_and_grad[0])
+                param_map[server_for_param].append(param)
             else:
-                param_map[server_for_param] = [param_and_grad[0]]
+                param_map[server_for_param] = [param]
 
-            if grad_map.has_key(server_for_param):
-                grad_map[server_for_param].append(param_and_grad[1])
-            else:
-                grad_map[server_for_param] = [param_and_grad[1]]
             pserver_idx += 1
             if pserver_idx > len(pserver_endpoints):
                 pserver_idx = 0
-    return param_map, grad_map
+    return param_map
 
 
 def _append_sendop_for_trainer(loss,
