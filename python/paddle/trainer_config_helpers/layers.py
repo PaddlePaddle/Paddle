@@ -21,7 +21,7 @@ from .activations import LinearActivation, SigmoidActivation, TanhActivation, \
     ReluActivation, IdentityActivation, SoftmaxActivation, BaseActivation
 from .evaluators import *
 from .poolings import MaxPooling, AvgPooling, MaxWithMaskPooling, BasePoolingType, \
-    CudnnAvgPooling, CudnnMaxPooling
+    CudnnAvgPooling, CudnnAvgInclPadPooling, CudnnMaxPooling
 from .attrs import *
 from .default_decorators import *
 
@@ -2709,7 +2709,8 @@ def img_pool_layer(input,
                    pool_size_y=None,
                    stride_y=None,
                    padding_y=None,
-                   ceil_mode=True):
+                   ceil_mode=True,
+                   exclude_mode=None):
     """
     Image pooling Layer.
 
@@ -2773,10 +2774,15 @@ def img_pool_layer(input,
     :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
                        details.
     :type layer_attr: ExtraLayerAttribute
-    :param ceil_mode: Wether to use the ceil function to calculate output height and width.
+    :param ceil_mode: Whether to use the ceil function to calculate output height and width.
                       True is the default. If it is set to False, the floor function will
                       be used.
     :type ceil_mode: bool
+    :param exclude_mode: Whether to exclude the padding cells when calculating, but only 
+                         work when pool_type is AvgPooling. If None, also exclude the padding 
+                         cells. If use cudnn, use CudnnAvgPooling or CudnnAvgInclPadPooling 
+                         as pool_type to identify the mode.
+    :type exclude_mode: bool
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -2790,7 +2796,7 @@ def img_pool_layer(input,
         pool_type.name = 'avg'
 
     assert type(pool_type) in [AvgPooling, MaxPooling, MaxWithMaskPooling, CudnnAvgPooling,
-                               CudnnMaxPooling], \
+                               CudnnMaxPooling, CudnnAvgInclPadPooling], \
         "only (Cudnn)AvgPooling, (Cudnn)MaxPooling, MaxWithMaskPooling are supported"
 
     type_name = pool_type.name + '-projection' \
@@ -2819,6 +2825,7 @@ def img_pool_layer(input,
                     padding_y=padding_y))
         ],
         ceil_mode=ceil_mode,
+        exclude_mode=exclude_mode,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name,
