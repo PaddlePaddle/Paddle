@@ -36,6 +36,11 @@ static Place the_default_place;
 void set_place(const Place &place) { the_default_place = place; }
 const Place &get_place() { return the_default_place; }
 
+template <typename T>
+const T to_place(Place p) {
+  return boost::get<T>(p);
+}
+
 const GPUPlace default_gpu() { return GPUPlace(0); }
 const CPUPlace default_cpu() { return CPUPlace(); }
 
