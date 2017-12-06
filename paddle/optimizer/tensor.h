@@ -15,7 +15,8 @@ template <class T>
 class TensorT {
 public:
   TensorT(size_t size) : height_(1), width_(size) {
-    data_ptr_ = std::shared_ptr<T>(new T[size], std::default_delete<T[]>());
+    // new T[size]() initializes all element to zero value.
+    data_ptr_ = std::shared_ptr<T>(new T[size](), std::default_delete<T[]>());
     data_ = data_ptr_.get();
   }
 

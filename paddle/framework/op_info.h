@@ -25,12 +25,19 @@
 namespace paddle {
 namespace framework {
 
+class InferShapeBase {
+ public:
+  virtual ~InferShapeBase() = default;
+  virtual void operator()(InferShapeContext*) const = 0;
+};
+
 struct OpInfo {
   OpCreator creator_;
   GradOpMakerFN grad_op_maker_;
   OpProto* proto_{nullptr};
   OpAttrChecker* checker_{nullptr};
   InferVarTypeFN infer_var_type_;
+  InferShapeFN infer_shape_;
 
   bool HasOpProtoAndChecker() const {
     return proto_ != nullptr && checker_ != nullptr;
@@ -87,16 +94,13 @@ class OpInfoMap {
     }
   }
 
-  template <typename Callback>
-  void IterAllInfo(Callback callback) {
-    for (auto& it : map_) {
-      callback(it.first, it.second);
-    }
-  }
+  const std::unordered_map<std::string, OpInfo>& map() const { return map_; }
+
+  std::unordered_map<std::string, OpInfo>* mutable_map() { return &map_; }
 
  private:
   OpInfoMap() = default;
-  std::unordered_map<std::string, const OpInfo> map_;
+  std::unordered_map<std::string, OpInfo> map_;
 
   DISABLE_COPY_AND_ASSIGN(OpInfoMap);
 };

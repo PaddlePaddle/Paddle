@@ -24,6 +24,7 @@ namespace paddle {
 namespace framework {
 
 class BlockDescBind;
+class ProgramDescBind;
 
 class OpDescBind {
  public:
@@ -32,11 +33,13 @@ class OpDescBind {
   OpDescBind(const std::string &type, const VariableNameMap &inputs,
              const VariableNameMap &outputs, const AttributeMap &attrs);
 
+  OpDescBind(const OpDesc &desc, ProgramDescBind *prog);
+
   OpDesc *Proto();
 
-  std::string Type() const { return op_desc_.type(); }
+  std::string Type() const { return desc_.type(); }
 
-  void SetType(const std::string &type) { op_desc_.set_type(type); }
+  void SetType(const std::string &type) { desc_.set_type(type); }
 
   const std::vector<std::string> &Input(const std::string &name) const;
 
@@ -69,6 +72,10 @@ class OpDescBind {
   int GetBlockAttr(const std::string &name) const;
 
   void Rename(const std::string &old_name, const std::string &new_name);
+
+  void RenameOutput(const std::string &old_name, const std::string &new_name);
+
+  void RenameInput(const std::string &old_name, const std::string &new_name);
 
   // Only be used in C++
   const AttributeMap &GetAttrMap() const;
@@ -104,6 +111,8 @@ class OpDescBind {
 
   void InferVarType(BlockDescBind *block) const;
 
+  void MarkAsTarget() { desc_.set_is_target(true); }
+
   void Flush();
 
  private:
@@ -117,7 +126,7 @@ class OpDescBind {
     return ret_val;
   }
 
-  OpDesc op_desc_;
+  OpDesc desc_;
   VariableNameMap inputs_;
   VariableNameMap outputs_;
   AttributeMap attrs_;

@@ -33,15 +33,15 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
     auto* y = context.Output<Tensor>("Out");
     const auto* x_data = x->data<T>();
     auto* y_data = y->mutable_data<T>(context.GetPlace());
-    AttrType dropout_prob = context.Attr<AttrType>("dropout_prob");
+    float dropout_prob = context.Attr<float>("dropout_prob");
 
-    if (context.Attr<bool>("is_training")) {
+    if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
       auto* mask_data = mask->mutable_data<T>(context.GetPlace());
       int seed = context.Attr<int>("seed");
       std::minstd_rand engine;
       engine.seed(seed);
-      std::uniform_real_distribution<AttrType> dist(0, 1);
+      std::uniform_real_distribution<float> dist(0, 1);
       size_t size = framework::product(mask->dims());
       for (size_t i = 0; i < size; ++i) {
         if (dist(engine) < dropout_prob) {
@@ -65,8 +65,8 @@ template <typename Place, typename T>
 class DropoutGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(context.Attr<bool>("is_training"),
-                   "GradOp is only callable when is_training is true");
+    PADDLE_ENFORCE(!context.Attr<bool>("is_test"),
+                   "GradOp is only callable when is_test is false");
 
     auto* grad_x = context.Output<Tensor>(framework::GradVarName("X"));
     auto* grad_y = context.Input<Tensor>(framework::GradVarName("Out"));

@@ -19,9 +19,9 @@ namespace paddle {
 namespace framework {
 
 BlockDescBind *ProgramDescBind::AppendBlock(const BlockDescBind &parent) {
-  auto *b = prog_.add_blocks();
+  auto *b = desc_.add_blocks();
   b->set_parent_idx(parent.ID());
-  b->set_idx(prog_.blocks_size() - 1);
+  b->set_idx(desc_.blocks_size() - 1);
   blocks_.emplace_back(new BlockDescBind(this, b));
   return blocks_.back().get();
 }
@@ -30,23 +30,39 @@ ProgramDesc *ProgramDescBind::Proto() {
   for (auto &block : blocks_) {
     block->Flush();
   }
-  return &prog_;
+  return &desc_;
 }
 
 ProgramDescBind::ProgramDescBind() {
-  auto *block = prog_.mutable_blocks()->Add();
+  auto *block = desc_.mutable_blocks()->Add();
   block->set_idx(kRootBlockIndex);
   block->set_parent_idx(kNoneBlockIndex);
   blocks_.emplace_back(new BlockDescBind(this, block));
 }
 
 ProgramDescBind::ProgramDescBind(const ProgramDescBind &o) {
-  prog_ = o.prog_;
+  desc_ = o.desc_;
 
-  for (int i = 0; i < prog_.blocks_size(); ++i) {
-    auto *block = prog_.mutable_blocks(i);
+  for (int i = 0; i < desc_.blocks_size(); ++i) {
+    auto *block = desc_.mutable_blocks(i);
     blocks_.emplace_back(new BlockDescBind(*o.blocks_[i], block, this));
   }
 }
+
+ProgramDescBind::ProgramDescBind(const ProgramDesc &desc) {
+  desc_ = desc;
+  for (auto &block_desc : *desc_.mutable_blocks()) {
+    blocks_.emplace_back(new BlockDescBind(this, &block_desc));
+  }
+}
+
+ProgramDescBind::ProgramDescBind(const std::string &binary_str) {
+  PADDLE_ENFORCE(desc_.ParseFromString(binary_str),
+                 "Fail to parse program_desc from binary string.");
+  for (auto &block_desc : *desc_.mutable_blocks()) {
+    blocks_.emplace_back(new BlockDescBind(this, &block_desc));
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle

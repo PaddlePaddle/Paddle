@@ -40,9 +40,11 @@ class GatherOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::DataType IndicateDataType(
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()),
+        ctx.device_context());
   }
 };
 
@@ -55,9 +57,11 @@ class GatherGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::DataType IndicateDataType(
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()),
+        ctx.device_context());
   }
 };
 
@@ -67,11 +71,28 @@ class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The source input of gather op");
     AddInput("Index", "The index input of gather op");
-    AddOutput("Out", "The output of add op");
+    AddOutput("Out", "The output of gather op");
     AddComment(R"DOC(
-Gather Operator by selecting from the first axis,
+Gather Operator.
 
-Out = X[Index]
+$Out = X[Index]$
+
+Out is obtained by gathering entries of the outer-most dimension 
+of X indexed by Index and concatenate them together.
+
+Example:
+
+X = [[1, 2],
+     [3, 4],
+     [5, 6]]
+
+Index = [[1, 2]]
+
+Then:
+
+Out = [[3, 4],
+       [5, 6]]
+
 )DOC");
   }
 };

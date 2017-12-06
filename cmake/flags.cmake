@@ -111,6 +111,8 @@ set(COMMON_FLAGS
     -Wno-error=sign-compare
     -Wno-error=unused-local-typedefs
     -Wno-error=parentheses-equality # Warnings in pybind11
+    -Wno-error=ignored-attributes  # Warnings in Eigen, gcc 6.3
+    -Wno-error=terminate  # Warning in PADDLE_ENFORCE
 )
 
 set(GPU_COMMON_FLAGS
@@ -149,58 +151,3 @@ endforeach()
 foreach(flag ${GPU_COMMON_FLAGS})
     safe_set_nvflag(${flag})
 endforeach()
-
-
-set(CUDA_PROPAGATE_HOST_FLAGS OFF)
-
-# Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
-# So, don't set these flags here.
-LIST(APPEND CUDA_NVCC_FLAGS -std=c++11)
-LIST(APPEND CUDA_NVCC_FLAGS --use_fast_math)
-
-if(CMAKE_BUILD_TYPE  STREQUAL "Debug")
-    LIST(APPEND CUDA_NVCC_FLAGS  ${CMAKE_CXX_FLAGS_DEBUG})
-elseif(CMAKE_BUILD_TYPE  STREQUAL "Release")
-    LIST(APPEND CUDA_NVCC_FLAGS  ${CMAKE_CXX_FLAGS_RELEASE})
-elseif(CMAKE_BUILD_TYPE  STREQUAL "RelWithDebInfo")
-    LIST(APPEND CUDA_NVCC_FLAGS  ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
-elseif(CMAKE_BUILD_TYPE  STREQUAL "MinSizeRel")
-    LIST(APPEND CUDA_NVCC_FLAGS  ${CMAKE_CXX_FLAGS_MINSIZEREL})
-endif()
-
-function(specify_cuda_arch cuda_version cuda_arch)
-    if(${cuda_version} VERSION_GREATER "8.0")
-        foreach(capability 61 62)
-          if(${cuda_arch} STREQUAL ${capability})
-            list(APPEND __arch_flags " -gencode arch=compute_${cuda_arch},code=sm_${cuda_arch}")
-          endif()
-        endforeach()
-    elseif(${cuda_version} VERSION_GREATER "7.0" and ${cuda_arch} STREQUAL "53")
-        list(APPEND __arch_flags " -gencode arch=compute_${cuda_arch},code=sm_${cuda_arch}")
-    endif()
-endfunction()
-
-# Common gpu architectures: Kepler, Maxwell
-foreach(capability 30 35 50)
-      list(APPEND __arch_flags " -gencode arch=compute_${capability},code=sm_${capability}")
-endforeach()
-
-if (CUDA_VERSION VERSION_GREATER "7.0" OR CUDA_VERSION VERSION_EQUAL "7.0")
-      list(APPEND __arch_flags " -gencode arch=compute_52,code=sm_52")
-endif()
-
-# Modern gpu architectures: Pascal
-if (CUDA_VERSION VERSION_GREATER "8.0" OR CUDA_VERSION VERSION_EQUAL "8.0")
-      list(APPEND __arch_flags " -gencode arch=compute_60,code=sm_60")
-      list(APPEND CUDA_NVCC_FLAGS --expt-relaxed-constexpr)
-endif()
-
-# Custom gpu architecture
-set(CUDA_ARCH)
-
-if(CUDA_ARCH)
-  specify_cuda_arch(${CUDA_VERSION} ${CUDA_ARCH})
-endif()
-
-set(CUDA_NVCC_FLAGS ${__arch_flags} ${CUDA_NVCC_FLAGS})
-

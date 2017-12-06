@@ -41,7 +41,16 @@ void* CPUAllocator::Alloc(size_t& index, size_t size) {
 
   index = 0;  // unlock memory
 
-  void* p = malloc(size);
+  void* p;
+
+#ifdef PADDLE_USE_MKLDNN
+  // refer to https://github.com/01org/mkl-dnn/blob/master/include/mkldnn.hpp
+  // memory alignment
+  PADDLE_ENFORCE_EQ(posix_memalign(&p, 4096ul, size), 0);
+#else
+  PADDLE_ENFORCE_EQ(posix_memalign(&p, 32ul, size), 0);
+#endif
+  PADDLE_ENFORCE(p, "Fail to allocate CPU memory: size = %d .", size);
 
   if (p != nullptr) {
     if (FLAGS_use_pinned_memory) {

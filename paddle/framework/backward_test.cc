@@ -21,6 +21,8 @@
 #include "paddle/framework/var_desc.h"
 #include "paddle/operators/net_op.h"
 
+USE_NO_KERNEL_OP(fill_constant);
+
 namespace paddle {
 namespace framework {
 
@@ -497,7 +499,7 @@ TEST(Backward, linear_net_intermediate_variable_has_no_grad) {
 
 TEST(Backward, simple_single_op) {
   f::ProgramDescBind program;
-  f::BlockDescBind *block = program.Block(0);
+  f::BlockDescBind *block = program.MutableBlock(0);
 
   f::OpDescBind *op = block->AppendOp();
   op->SetType("rowwise_add");
@@ -506,6 +508,7 @@ TEST(Backward, simple_single_op) {
   op->SetOutput("Out", {"out"});
 
   auto target = f::VarDescBind("out");
+  target.SetShape({1});
   auto var_to_grad = AppendBackward(program, target, {});
 
   ASSERT_EQ(block->AllOps().size(), 3UL);
@@ -533,7 +536,7 @@ TEST(Backward, simple_single_op) {
 
 TEST(Backward, default_attribute) {
   f::ProgramDescBind program;
-  f::BlockDescBind *block = program.Block(0);
+  f::BlockDescBind *block = program.MutableBlock(0);
   f::OpDescBind *op = block->AppendOp();
   op->SetType("mul");
   op->SetInput("X", {"x"});
@@ -542,6 +545,7 @@ TEST(Backward, default_attribute) {
   op->CheckAttrs();
 
   auto target = f::VarDescBind("out");
+  target.SetShape({1});
   AppendBackward(program, target, {});
 
   ASSERT_EQ(block->AllOps().size(), 3UL);
@@ -559,7 +563,7 @@ TEST(Backward, default_attribute) {
 
 TEST(Backward, simple_mult_op) {
   f::ProgramDescBind program;
-  f::BlockDescBind *block = program.Block(0);
+  f::BlockDescBind *block = program.MutableBlock(0);
   f::OpDescBind *op1 = block->AppendOp();
   op1->SetType("rowwise_add");
   op1->SetInput("X", {"x1"});
@@ -579,6 +583,7 @@ TEST(Backward, simple_mult_op) {
   op3->SetOutput("Out", {"out3"});
 
   auto target = f::VarDescBind("out3");
+  target.SetShape({1});
   size_t forward_len = block->AllOps().size();
   auto var_to_grad = AppendBackward(program, target, {});
 
@@ -642,7 +647,7 @@ TEST(Backward, simple_mult_op) {
 
 TEST(Backward, intermedia_var_no_grad) {
   f::ProgramDescBind program;
-  f::BlockDescBind *block = program.Block(0);
+  f::BlockDescBind *block = program.MutableBlock(0);
   f::OpDescBind *op1 = block->AppendOp();
   op1->SetType("rowwise_add");
   op1->SetInput("X", {"x1"});
@@ -668,6 +673,7 @@ TEST(Backward, intermedia_var_no_grad) {
   op4->SetOutput("Out", {"out4"});
 
   auto target = f::VarDescBind("out4");
+  target.SetShape({1});
   size_t forward_len = block->AllOps().size();
   auto var_to_grad = AppendBackward(program, target, {"out3"});
 
@@ -712,7 +718,7 @@ TEST(Backward, intermedia_var_no_grad) {
 
 TEST(Backward, var_no_grad) {
   f::ProgramDescBind program;
-  f::BlockDescBind *block = program.Block(0);
+  f::BlockDescBind *block = program.MutableBlock(0);
   f::OpDescBind *op1 = block->AppendOp();
   op1->SetType("mult_in_out");
   op1->SetInput("X", {"x1"});
@@ -728,6 +734,7 @@ TEST(Backward, var_no_grad) {
   op2->SetOutput("Z", {"z2"});
 
   auto target = f::VarDescBind("z2");
+  target.SetShape({1});
   size_t forward_len = block->AllOps().size();
   auto var_to_grad = AppendBackward(program, target, {"z1"});
 
@@ -788,7 +795,7 @@ TEST(Backward, var_no_grad) {
 
 TEST(Backward, shared_var) {
   f::ProgramDescBind program;
-  f::BlockDescBind *block = program.Block(0);
+  f::BlockDescBind *block = program.MutableBlock(0);
   f::OpDescBind *op1 = block->AppendOp();
   op1->SetType("rowwise_add");
   op1->SetInput("X", {"x1"});
@@ -808,6 +815,7 @@ TEST(Backward, shared_var) {
   op3->SetOutput("Out", {"out3"});
 
   auto target = f::VarDescBind("out3");
+  target.SetShape({1});
   size_t forward_len = block->AllOps().size();
   auto var_to_grad = AppendBackward(program, target, {});
 
@@ -878,7 +886,7 @@ TEST(Backward, shared_var) {
 
 TEST(Backward, half_backward) {
   f::ProgramDescBind program;
-  f::BlockDescBind *block = program.Block(0);
+  f::BlockDescBind *block = program.MutableBlock(0);
   auto *op1 = block->AppendOp();
   op1->SetType("minus");
   op1->SetInput("X", {"a"});
@@ -886,6 +894,7 @@ TEST(Backward, half_backward) {
   op1->SetOutput("Out", {"out"});
 
   auto target = f::VarDescBind("out");
+  target.SetShape({1});
   size_t forward_len = block->AllOps().size();
   auto var_to_grad = AppendBackward(program, target, {"b"});
   f::OpDescBind *fill_op = block->AllOps()[forward_len];

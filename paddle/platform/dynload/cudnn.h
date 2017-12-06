@@ -83,6 +83,7 @@ extern void* cudnn_dso_handle;
   __macro(cudnnDestroyConvolutionDescriptor);       \
   __macro(cudnnSetConvolutionNdDescriptor);         \
   __macro(cudnnGetConvolutionNdDescriptor);         \
+  __macro(cudnnDeriveBNTensorDescriptor);           \
   __macro(cudnnCreate);                             \
   __macro(cudnnDestroy);                            \
   __macro(cudnnSetStream);                          \
@@ -132,6 +133,12 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_R4(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(cudnnGetActivationDescriptor);    \
   __macro(cudnnDestroyActivationDescriptor);
 CUDNN_DNN_ROUTINE_EACH_R5(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+#endif
+
+#if CUDNN_VERSION >= 7001
+#define CUDNN_DNN_ROUTINE_EACH_R7(__macro) \
+  __macro(cudnnSetConvolutionGroupCount);
+CUDNN_DNN_ROUTINE_EACH_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
 }  // namespace dynload

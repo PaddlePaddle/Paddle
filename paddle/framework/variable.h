@@ -46,6 +46,13 @@ class Variable {
            std::type_index(typeid(T)) == std::type_index(holder_->Type());
   }
 
+  void Clear() { holder_.reset(); }
+
+  std::type_index Type() const {
+    PADDLE_ENFORCE(holder_ != nullptr, "Must hold memory");
+    return holder_->Type();
+  }
+
  private:
   struct Placeholder {
     virtual ~Placeholder() {}

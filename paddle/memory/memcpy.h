@@ -54,6 +54,5 @@ void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num,
           cudaStream_t stream);
 
 #endif
-
 }  // namespace memory
 }  // namespace paddle

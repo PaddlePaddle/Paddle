@@ -41,13 +41,13 @@ class FeedOp : public framework::OperatorBase {
 
     auto col = Attr<int>("col");
 
-    VLOG(3) << "Feed Var " << feed_var_name << "'s " << col << " column to var"
+    VLOG(3) << "Feed Var " << feed_var_name << "'s " << col << " column to var "
             << out_name;
 
     auto &feed_list = feed_var->Get<framework::FeedFetchList>();
     auto &feed_item = feed_list.at(static_cast<size_t>(col));
     auto *out_item = out_var->GetMutable<framework::FeedFetchType>();
-    out_item->CopyFrom(feed_item, dev_ctx.GetPlace(), dev_ctx);
+    framework::CopyFrom(feed_item, dev_ctx.GetPlace(), dev_ctx, out_item);
     out_item->set_lod(feed_item.lod());
   }
 };
@@ -59,8 +59,13 @@ class FeedOpInfoMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of feed op");
     AddOutput("Out", "The output of feed op");
-    AddComment("feed op, it should not be configured by users directly");
-    AddAttr<int>("col", "column of feed");
+    AddAttr<int>("col", "(int) The column of feed");
+    AddComment(R"DOC(
+Feed Operator.
+
+It should not be configured by users directly.
+
+)DOC");
   }
 };
 

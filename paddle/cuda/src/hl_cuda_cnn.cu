@@ -31,7 +31,8 @@ __global__ void KeMaxPoolForward(const int nthreads,
                                  const int offsetH,
                                  const int offsetW,
                                  real* tgtData,
-                                 const int tgtStride) {
+                                 const int tgtStride,
+                                 real* maskData) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < nthreads) {
     int pw = index % pooledW;
@@ -45,16 +46,22 @@ __global__ void KeMaxPoolForward(const int nthreads,
     hstart = max(hstart, 0);
     wstart = max(wstart, 0);
     real maxval = -FLT_MAX;
+    int max_index = -1;
     inputData += (frameNum * channels + c) * height * width;
     for (int h = hstart; h < hend; ++h) {
       for (int w = wstart; w < wend; ++w) {
-        if (maxval < inputData[h * width + w])
-          maxval = inputData[h * width + w];
+        if (maxval < inputData[h * width + w]) {
+          max_index = h * width + w;
+          maxval = inputData[max_index];
+        }
       }
     }
     int tgtIndex =
         index % (pooledW * pooledH * channels) + frameNum * tgtStride;
     tgtData[tgtIndex] = maxval;
+    if (maskData != NULL) {
+      maskData[tgtIndex] = max_index;
+    }
   }
 }
 
@@ -72,7 +79,8 @@ void hl_maxpool_forward(const int frameCnt,
                         const int paddingH,
                         const int paddingW,
                         real* tgtData,
-                        const int tgtStride) {
+                        const int tgtStride,
+                        real* maskData) {
   int num_kernels = pooledH * pooledW * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
   dim3 threads(1024, 1);
@@ -92,7 +100,8 @@ void hl_maxpool_forward(const int frameCnt,
                                                          paddingH,
                                                          paddingW,
                                                          tgtData,
-                                                         tgtStride);
+                                                         tgtStride,
+                                                         maskData);
   CHECK_SYNC("hl_maxpool_forward failed");
 }
 

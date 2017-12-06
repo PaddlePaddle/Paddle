@@ -83,7 +83,7 @@ TEST(OperatorBase, all) {
   paddle::platform::CPUDeviceContext device_context;
   paddle::framework::Scope scope;
 
-  auto op = paddle::framework::OpRegistry::CreateOp(op_desc, nullptr);
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   scope.Var("OUT1");
   ASSERT_EQ(paddle::framework::op_run_num, 0);
   op->Run(scope, device_context);
@@ -114,8 +114,8 @@ class OpWithKernelTest : public OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {}
-  DataType IndicateDataType(const ExecutionContext& ctx) const override {
-    return DataType::FP32;
+  OpKernelType GetKernelType(const ExecutionContext& ctx) const override {
+    return OpKernelType(DataType::FP32, ctx.device_context());
   }
 };
 
@@ -208,7 +208,7 @@ TEST(OpKernel, all) {
   paddle::platform::CPUDeviceContext cpu_device_context;
   paddle::framework::Scope scope;
 
-  auto op = paddle::framework::OpRegistry::CreateOp(op_desc, nullptr);
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 0);
   op->Run(scope, cpu_device_context);
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 1);
@@ -237,14 +237,14 @@ TEST(OpKernel, multi_inputs) {
 
   paddle::platform::CPUDeviceContext cpu_device_context;
   paddle::framework::Scope scope;
-  scope.Var("x0")->GetMutable<Tensor>();
-  scope.Var("x1")->GetMutable<Tensor>();
-  scope.Var("x2")->GetMutable<Tensor>();
-  scope.Var("k0")->GetMutable<Tensor>();
-  scope.Var("y0")->GetMutable<Tensor>();
-  scope.Var("y1")->GetMutable<Tensor>();
+  scope.Var("x0")->GetMutable<LoDTensor>();
+  scope.Var("x1")->GetMutable<LoDTensor>();
+  scope.Var("x2")->GetMutable<LoDTensor>();
+  scope.Var("k0")->GetMutable<LoDTensor>();
+  scope.Var("y0")->GetMutable<LoDTensor>();
+  scope.Var("y1")->GetMutable<LoDTensor>();
 
-  auto op = paddle::framework::OpRegistry::CreateOp(op_desc, nullptr);
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(scope, cpu_device_context);
 }
 

@@ -51,9 +51,11 @@ class MultiplexOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::DataType IndicateDataType(
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type());
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type()),
+        ctx.device_context());
   }
 };
 
@@ -66,7 +68,8 @@ class MultiplexOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "The candidate tensors of multiplex operator.")
         .AsDuplicable();
     AddOutput("Out", "The output tensor of multiplex operator.");
-    AddComment(R"DOC(Multiplex operator
+    AddComment(R"DOC(
+Multiplex Operator.
 
 Multiplex multiple tensors according to the index provided by the index tensor.
 
@@ -77,10 +80,11 @@ the (Ids[i])-th tensor.
 
 For i-th row of the output tensor:
 
-y[i] = x_{k}[i]
+$$y[i] = x_{k}[i]$$
 
-where y is the output tensor. `x_{k}` is the k-th input tensor
+where `y` is the output tensor, `x_{k}` is the k-th input tensor,
 and `k = Ids[i]`.
+
 )DOC");
   }
 };
@@ -95,19 +99,15 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
                    "Output(X@Grad) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null.");
-    std::vector<framework::DDim> d_ins;
-    auto ins = ctx->GetInputsDim("X");
-    // No need to compute gradient for Input(Ids)
-    for (size_t i = 0; i < ins.size(); i++) {
-      d_ins.push_back(ins[i]);
-    }
-    ctx->SetOutputsDim(framework::GradVarName("X"), d_ins);
+    ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
   }
 
  protected:
-  framework::DataType IndicateDataType(
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type());
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type()),
+        ctx.device_context());
   }
 };
 
