@@ -24,7 +24,7 @@ namespace operators {
 template <typename place, typename T>
 struct LRNFunctor {
   void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* input, framework::Tensor* out,
+                  const framework::Tensor& input, framework::Tensor* out,
                   framework::Tensor* mid, int N, int C, int H, int W, int n,
                   T k, T alpha, T beta);
 };
@@ -39,8 +39,8 @@ class LRNKernel : public framework::OpKernel<T> {
   // f(x) represents outputs
   void Compute(const framework::ExecutionContext& ctx) const override {
     // input
-    const Tensor* x = ctx.Input<Tensor>("X");
-    auto x_dims = x->dims();
+    const Tensor& x = *ctx.Input<Tensor>("X");
+    auto x_dims = x.dims();
 
     // NCHW
     int N = x_dims[0];
@@ -73,9 +73,9 @@ class LRNKernel : public framework::OpKernel<T> {
 template <typename Place, typename T>
 struct LRNGradFunctor {
   void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* x, const framework::Tensor* out,
-                  const framework::Tensor* mid, framework::Tensor* x_g,
-                  const framework::Tensor* out_g, int N, int C, int H, int W,
+                  const framework::Tensor& x, const framework::Tensor& out,
+                  const framework::Tensor& mid, framework::Tensor* x_g,
+                  const framework::Tensor& out_g, int N, int C, int H, int W,
                   int n, T alpha, T beta);
 };
 
@@ -103,15 +103,15 @@ class LRNGradKernel : public framework::OpKernel<T> {
  public:
   using Tensor = framework::Tensor;
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const Tensor* x = ctx.Input<Tensor>("X");
-    const Tensor* out = ctx.Input<Tensor>("Out");
-    const Tensor* out_g = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    const Tensor* mid = ctx.Input<Tensor>("MidOut");
+    const Tensor& x = *ctx.Input<Tensor>("X");
+    const Tensor& out = *ctx.Input<Tensor>("Out");
+    const Tensor& out_g = *ctx.Input<Tensor>(framework::GradVarName("Out"));
+    const Tensor& mid = *ctx.Input<Tensor>("MidOut");
 
     auto x_g = ctx.Output<Tensor>(framework::GradVarName("X"));
     x_g->mutable_data<T>(ctx.GetPlace());
 
-    auto x_dims = x->dims();
+    auto x_dims = x.dims();
     int N = x_dims[0];
     int C = x_dims[1];
     int H = x_dims[2];

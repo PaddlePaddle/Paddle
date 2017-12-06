@@ -22,18 +22,18 @@ using framework::Tensor;
 template <typename T>
 struct LRNFunctor<platform::CPUPlace, T> {
   void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* input, framework::Tensor* out,
+                  const framework::Tensor& input, framework::Tensor* out,
                   framework::Tensor* mid, int N, int C, int H, int W, int n,
                   T k, T alpha, T beta) {
-    auto x_v = framework::EigenVector<T>::Flatten(*input);
+    auto x_v = framework::EigenVector<T>::Flatten(input);
 
     const int start = -(n - 1) / 2;
     const int end = start + n;
 
     auto e_mid = framework::EigenTensor<T, 4>::From(*mid);
-    e_mid.device(ctx.GetEigenDevice<platform::CPUPlace>()) = e_mid.constant(k);
+    e_mid = e_mid.constant(k);
 
-    auto e_x = framework::EigenTensor<T, 4>::From(*input);
+    auto e_x = framework::EigenTensor<T, 4>::From(input);
     for (int m = 0; m < N; m++) {
       for (int i = 0; i < C; i++) {
         for (int c = start; c <= end; c++) {
@@ -45,16 +45,14 @@ struct LRNFunctor<platform::CPUPlace, T> {
             auto r = e_x.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
                                Eigen::array<int, 4>({{1, 1, H, W}}));
 
-            s.device(ctx.GetEigenDevice<platform::CPUPlace>()) +=
-                alpha * r.square();
+            s += alpha * r.square();
           }
         }
       }
     }
 
     auto out_e = framework::EigenVector<T>::Flatten(*out);
-    out_e.device(ctx.GetEigenDevice<platform::CPUPlace>()) =
-        x_v * e_mid.reshape(Eigen::DSizes<int, 1>(e_mid.size())).pow(-beta);
+    out_e = x_v * e_mid.reshape(Eigen::DSizes<int, 1>(e_mid.size())).pow(-beta);
   }
 };
 template struct LRNFunctor<platform::CPUPlace, float>;
@@ -63,20 +61,19 @@ template struct LRNFunctor<platform::CPUPlace, double>;
 template <typename T>
 struct LRNGradFunctor<platform::CPUPlace, T> {
   void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* x, const framework::Tensor* out,
-                  const framework::Tensor* mid, framework::Tensor* x_g,
-                  const framework::Tensor* out_g, int N, int C, int H, int W,
+                  const framework::Tensor& x, const framework::Tensor& out,
+                  const framework::Tensor& mid, framework::Tensor* x_g,
+                  const framework::Tensor& out_g, int N, int C, int H, int W,
                   int n, T alpha, T beta) {
     T ratio = -2 * alpha * beta;
     auto x_g_e = framework::EigenVector<T>::Flatten(*x_g);
-    x_g_e.device(ctx.GetEigenDevice<platform::CPUPlace>()) =
-        x_g_e.constant(0.0);
+    x_g_e = x_g_e.constant(0.0);
 
-    auto e_x = framework::EigenTensor<T, 4>::From(*x);
+    auto e_x = framework::EigenTensor<T, 4>::From(x);
     auto e_x_g = framework::EigenTensor<T, 4>::From(*x_g);
-    auto e_out = framework::EigenTensor<T, 4>::From(*out);
-    auto e_out_g = framework::EigenTensor<T, 4>::From(*out_g);
-    auto e_mid = framework::EigenTensor<T, 4>::From(*mid);
+    auto e_out = framework::EigenTensor<T, 4>::From(out);
+    auto e_out_g = framework::EigenTensor<T, 4>::From(out_g);
+    auto e_mid = framework::EigenTensor<T, 4>::From(mid);
 
     const int start = -(n - 1) / 2;
     const int end = start + n;
@@ -94,8 +91,7 @@ struct LRNGradFunctor<platform::CPUPlace, T> {
         auto i_mid = e_mid.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
                                  Eigen::array<int, 4>({{1, 1, H, W}}));
 
-        i_x_g.device(ctx.GetEigenDevice<platform::CPUPlace>()) =
-            i_mid.pow(-beta) * i_out_g;
+        i_x_g = i_mid.pow(-beta) * i_out_g;
         for (int c = start; c <= end; c++) {
           int ch = i + c;
           if (ch < 0 || ch >= C) {
@@ -111,8 +107,7 @@ struct LRNGradFunctor<platform::CPUPlace, T> {
           auto c_out_g = e_out_g.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
                                        Eigen::array<int, 4>({{1, 1, H, W}}));
 
-          i_x_g.device(ctx.GetEigenDevice<platform::CPUPlace>()) +=
-              ratio * c_out_g * c_out * i_x / c_mid;
+          i_x_g += ratio * c_out_g * c_out * i_x / c_mid;
         }
       }
     }

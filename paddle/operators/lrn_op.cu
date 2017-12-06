@@ -12,7 +12,6 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#define EIGEN_USE_GPU
 #include "paddle/operators/lrn_op.h"
 
 namespace paddle {
@@ -66,29 +65,28 @@ void CrossMapNormal(const framework::ExecutionContext& ctx, const T* inputs,
                     T alpha, T beta) {
   int img_size = N * H * W;
   int block_size = 1024;
-  int grid_size = (img_size + 1024 - 1) / 1024;
+  int grid_size = (img_size + block_size - 1) / block_size;
 
-  const auto& stream =
-      reinterpret_cast<const platform::CUDADeviceContext&>(ctx.device_context())
-          .stream();
-  KeCMRNormFillScale<T><<<grid_size, block_size, 0, stream>>>(
+  KeCMRNormFillScale<
+      T><<<grid_size, block_size, 0, ctx.cuda_device_context().stream()>>>(
       img_size, inputs, mid, C, H, W, n, k, alpha);
 
   int input_size = N * H * W * C;
   block_size = 1024;
-  grid_size = (input_size + 1024 - 1) / 1024;
-  KeCMRNormOutput<T><<<grid_size, block_size, 0, stream>>>(input_size, inputs,
-                                                           mid, -beta, outputs);
+  grid_size = (input_size + block_size - 1) / block_size;
+  KeCMRNormOutput<
+      T><<<grid_size, block_size, 0, ctx.cuda_device_context().stream()>>>(
+      input_size, inputs, mid, -beta, outputs);
 }
 
 template <typename T>
 struct LRNFunctor<platform::GPUPlace, T> {
   void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* input, framework::Tensor* out,
+                  const framework::Tensor& input, framework::Tensor* out,
                   framework::Tensor* mid, int N, int C, int H, int W, int n,
                   T k, T alpha, T beta) {
     CrossMapNormal<T>(
-        ctx, input->data<T>(), out->mutable_data<T>(ctx.GetPlace()),
+        ctx, input.data<T>(), out->mutable_data<T>(ctx.GetPlace()),
         mid->mutable_data<T>(ctx.GetPlace()), N, C, H, W, n, k, alpha, beta);
   }
 };
@@ -147,13 +145,10 @@ void CrossMapNormalGrad(const framework::ExecutionContext& ctx, const T* x,
   int img_size = N * H * W;
 
   int block_size = 1024;
-  int grid_size = (img_size + 1024 - 1) / 1024;
+  int grid_size = (img_size + block_size - 1) / block_size;
 
-  const auto& stream =
-      reinterpret_cast<const platform::CUDADeviceContext&>(ctx.device_context())
-          .stream();
-
-  KeCMRNormDiff<T><<<grid_size, block_size, 0, stream>>>(
+  KeCMRNormDiff<
+      T><<<grid_size, block_size, 0, ctx.cuda_device_context().stream()>>>(
       img_size, x, out, mid, x_g, out_g, C, H, W, n, -beta,
       2.0f * alpha * beta);
 }
@@ -161,13 +156,13 @@ void CrossMapNormalGrad(const framework::ExecutionContext& ctx, const T* x,
 template <typename T>
 struct LRNGradFunctor<platform::GPUPlace, T> {
   void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* x, const framework::Tensor* out,
-                  const framework::Tensor* mid, framework::Tensor* x_g,
-                  const framework::Tensor* out_g, int N, int C, int H, int W,
+                  const framework::Tensor& x, const framework::Tensor& out,
+                  const framework::Tensor& mid, framework::Tensor* x_g,
+                  const framework::Tensor& out_g, int N, int C, int H, int W,
                   int n, T alpha, T beta) {
-    CrossMapNormalGrad<T>(ctx, x->data<T>(), out->data<T>(), mid->data<T>(),
-                          x_g->mutable_data<T>(ctx.GetPlace()),
-                          out_g->data<T>(), N, C, H, W, n, alpha, beta);
+    CrossMapNormalGrad<T>(ctx, x.data<T>(), out.data<T>(), mid.data<T>(),
+                          x_g->mutable_data<T>(ctx.GetPlace()), out_g.data<T>(),
+                          N, C, H, W, n, alpha, beta);
   }
 };
 
