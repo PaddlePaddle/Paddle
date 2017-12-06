@@ -132,6 +132,8 @@ class UniformInitializer(Initializer):
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
         # Initialization Ops should be prepended and not appended
+        if self._seed == 0:
+            self._seed = block.program.random_seed
         op = block.prepend_op(
             type="uniform_random",
             outputs={"Out": var},
@@ -180,6 +182,8 @@ class NormalInitializer(Initializer):
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
         # Initialization Ops should be prepended and not appended
+        if self._seed == 0:
+            self._seed = block.program.random_seed
         op = block.prepend_op(
             type="gaussian_random",
             outputs={"Out": var},
@@ -254,6 +258,9 @@ class XavierInitializer(Initializer):
         # If fan_in and fan_out are passed, use them
         fan_in = f_in if self._fan_in is None else self._fan_in
         fan_out = f_out if self._fan_out is None else self._fan_out
+
+        if self._seed == 0:
+            self._seed = block.program.random_seed
 
         if self._uniform:
             limit = np.sqrt(6.0 / float(fan_in + fan_out))
@@ -337,6 +344,9 @@ class MSRAInitializer(Initializer):
 
         # If fan_in is passed, use it
         fan_in = f_in if self._fan_in is None else self._fan_in
+
+        if self._seed == 0:
+            self._seed = block.program.random_seed
 
         if self._uniform:
             limit = np.sqrt(6.0 / float(fan_in))
