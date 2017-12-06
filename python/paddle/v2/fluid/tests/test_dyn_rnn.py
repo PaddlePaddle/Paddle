@@ -7,7 +7,7 @@ import numpy
 class TestDynRNN(unittest.TestCase):
     def setUp(self):
         self.word_dict = paddle.dataset.imdb.word_dict()
-        self.BATCH_SIZE = 100
+        self.BATCH_SIZE = 2
         self.train_data = paddle.batch(
             paddle.dataset.imdb.train(self.word_dict),
             batch_size=self.BATCH_SIZE)
@@ -55,6 +55,7 @@ class TestDynRNN(unittest.TestCase):
                 mem = fluid.layers.shrink_memory(x=mem, i=i, table=rank_table)
 
                 hidden = fluid.layers.fc(input=[mem, ipt], size=100, act='tanh')
+
                 fluid.layers.array_write(x=hidden, i=i, array=out)
                 fluid.layers.increment(x=i, in_place=True)
                 fluid.layers.array_write(x=hidden, i=i, array=mem_array)
@@ -81,6 +82,48 @@ class TestDynRNN(unittest.TestCase):
         self.assertEqual((1, ), val.shape)
         print(val)
         self.assertFalse(numpy.isnan(val))
+
+    def test_train_dyn_rnn(self):
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(main_program, startup_program):
+            sentence = fluid.layers.data(
+                name='word', shape=[1], dtype='int64', lod_level=1)
+            sent_emb = fluid.layers.embedding(
+                input=sentence, size=[len(self.word_dict), 32], dtype='float32')
+
+            rnn = fluid.layers.DynamicRNN()
+
+            with rnn.block():
+                in_ = rnn.step_input(sent_emb)
+                mem = rnn.memory(shape=[100], dtype='float32')
+                out_ = fluid.layers.fc(input=[in_, mem], size=100, act='tanh')
+                rnn.update_memory(mem, out_)
+                rnn.output(out_)
+
+            last = fluid.layers.sequence_pool(input=rnn(), pool_type='last')
+            logits = fluid.layers.fc(input=last, size=1, act=None)
+            label = fluid.layers.data(name='label', shape=[1], dtype='float32')
+            loss = fluid.layers.sigmoid_cross_entropy_with_logits(
+                x=logits, label=label)
+            loss = fluid.layers.mean(x=loss)
+            sgd = fluid.optimizer.Adam(1e-3)
+            sgd.minimize(loss=loss)
+
+        cpu = fluid.CPUPlace()
+        exe = fluid.Executor(cpu)
+        exe.run(startup_program)
+        feeder = fluid.DataFeeder(feed_list=[sentence, label], place=cpu)
+        data = next(self.train_data())
+        loss_0 = exe.run(main_program,
+                         feed=feeder.feed(data),
+                         fetch_list=[loss])[0]
+        for _ in xrange(100):
+            val = exe.run(main_program,
+                          feed=feeder.feed(data),
+                          fetch_list=[loss])[0]
+        # loss should be small after 100 mini-batch
+        self.assertLess(val[0], loss_0[0])
 
 
 if __name__ == '__main__':
