@@ -41,6 +41,15 @@ CUDNN_DNN_ROUTINE_EACH_R5(DEFINE_WRAP);
 CUDNN_DNN_ROUTINE_EACH_R7(DEFINE_WRAP);
 #endif
 
+#ifdef PADDLE_USE_DSO
+bool HasCUDNN() {
+  std::call_once(cudnn_dso_flag, GetCudnnDsoHandle, &cudnn_dso_handle);
+  return cudnn_dso_handle != nullptr;
+}
+#else
+bool HasCUDNN() { return true; }
+#endif
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
