@@ -943,7 +943,7 @@ def conv2d(input,
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
-        type='conv2d',
+        type='conv2d_cudnn',
         inputs={
             'Input': input,
             'Filter': filter,

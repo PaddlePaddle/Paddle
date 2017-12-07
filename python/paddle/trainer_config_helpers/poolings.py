@@ -16,7 +16,8 @@
 
 __all__ = [
     "BasePoolingType", "MaxPooling", "AvgPooling", "MaxWithMaskPooling",
-    "CudnnMaxPooling", "CudnnAvgPooling", "SumPooling", "SquareRootNPooling"
+    "CudnnMaxPooling", "CudnnAvgPooling", "CudnnAvgInclPadPooling",
+    "SumPooling", "SquareRootNPooling"
 ]
 
 
@@ -86,6 +87,16 @@ class CudnnAvgPooling(BasePoolingType):
 
     def __init__(self):
         BasePoolingType.__init__(self, "cudnn-avg-pool")
+
+
+class CudnnAvgInclPadPooling(BasePoolingType):
+    """
+    Cudnn average pooling only support GPU. Return the average value in the
+    pooling window taking into account the padding cells.
+    """
+
+    def __init__(self):
+        BasePoolingType.__init__(self, "cudnn-avg-incl-pad-pool")
 
 
 class AvgPooling(BasePoolingType):
