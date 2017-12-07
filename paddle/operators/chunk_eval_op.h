@@ -35,10 +35,10 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
     }
   };
 
-  void GetSegments(const int* label, int length, std::vector<Segment>& segments,
-                   int num_chunk_types, int num_tag_types, int other_chunk_type,
-                   int tag_begin, int tag_inside, int tag_end,
-                   int tag_single) const {
+  void GetSegments(const int64_t* label, int length,
+                   std::vector<Segment>& segments, int num_chunk_types,
+                   int num_tag_types, int other_chunk_type, int tag_begin,
+                   int tag_inside, int tag_end, int tag_single) const {
     segments.clear();
     segments.reserve(length);
     int chunk_start = 0;
@@ -152,8 +152,8 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
     auto* recall = context.Output<Tensor>("Recall");
     auto* f1 = context.Output<Tensor>("F1-Score");
 
-    const int* inference_data = inference->data<int>();
-    const int* label_data = label->data<int>();
+    const int64_t* inference_data = inference->data<int64_t>();
+    const int64_t* label_data = label->data<int64_t>();
     T* precision_data = precision->mutable_data<T>(context.GetPlace());
     T* racall_data = recall->mutable_data<T>(context.GetPlace());
     T* f1_data = f1->mutable_data<T>(context.GetPlace());
@@ -179,7 +179,7 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
                                       ((*precision_data) + (*racall_data));
   }
 
-  void EvalOneSeq(const int* output, const int* label, int length,
+  void EvalOneSeq(const int64_t* output, const int64_t* label, int length,
                   std::vector<Segment>& output_segments,
                   std::vector<Segment>& label_segments,
                   int64_t& num_output_segments, int64_t& num_label_segments,

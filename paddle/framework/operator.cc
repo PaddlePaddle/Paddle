@@ -426,9 +426,6 @@ void OperatorWithKernel::Run(const Scope& scope,
   }
 
   kernel_iter->second->Compute(ctx);
-
-  // throws errors if have.
-  dev_ctx.Finish();
 }
 OpKernelType OperatorWithKernel::GetKernelType(
     const ExecutionContext& ctx) const {

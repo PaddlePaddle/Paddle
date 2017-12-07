@@ -43,9 +43,9 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
     const size_t level = 0;
     const size_t seq_num = lod[level].size() - 1;
 
-    int* path = decoded_path->mutable_data<int>(platform::CPUPlace());
-    math::SetConstant<platform::CPUPlace, int>()(ctx.device_context(),
-                                                 decoded_path, 0);
+    int64_t* path = decoded_path->mutable_data<int64_t>(platform::CPUPlace());
+    math::SetConstant<platform::CPUPlace, int64_t>()(ctx.device_context(),
+                                                     decoded_path, 0);
     for (size_t i = 0; i < seq_num; ++i) {
       int start_pos = static_cast<int>(lod[level][i]);
       int end_pos = static_cast<int>(lod[level][i + 1]);
@@ -57,7 +57,7 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
     if (label) {
       PADDLE_ENFORCE_EQ(label->NumLevels(), 1UL,
                         "The Input(Label) should be a sequence.");
-      const int* label_value = label->data<int>();
+      const int64_t* label_value = label->data<int64_t>();
       size_t batch_size = emission_weights->dims()[0];
       for (size_t i = 0; i < batch_size; ++i) {
         path[i] = label_value[i] == path[i] ? 1 : 0;
@@ -76,7 +76,7 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
 
     const T* x = emission_weights.data<T>();
     const T* w = transition_weights.data<T>();
-    int* path = decoded_path->data<int>();
+    int64_t* path = decoded_path->data<int64_t>();
 
     // alpha is a memo table. An element alpha(k, v) records the score of the
     // best sequence of tags from position 1 to position k with v being the end

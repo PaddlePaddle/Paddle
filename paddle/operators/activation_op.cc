@@ -44,9 +44,9 @@ class SigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of Sigmoid operator");
     AddOutput("Y", "Output of Sigmoid operator");
     AddComment(R"DOC(
-Sigmoid Activation Operator.
+Sigmoid Activation Operator
 
-$y = 1 / (1 + e^{-x})$
+$$y = \frac{1}{1 + e^{-x}}$$
 
 )DOC");
   }
@@ -60,9 +60,9 @@ class LogSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of LogSigmoid operator");
     AddOutput("Y", "Output of LogSigmoid operator");
     AddComment(R"DOC(
-Logsigmoid Activation Operator.
+Logsigmoid Activation Operator
 
-$y = \log(1 / (1 + e^{-x}))$
+$$y = \log \frac{1}{1 + e^{-x}}$$
 
 )DOC");
   }

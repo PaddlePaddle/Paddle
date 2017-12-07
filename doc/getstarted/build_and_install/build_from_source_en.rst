@@ -21,7 +21,7 @@ Then run:
    git clone https://github.com/PaddlePaddle/Paddle.git
    cd Paddle
    # run the following command to build a CPU-Only binaries if you are using docker
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x paddle/scripts/docker/build.sh
+   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x /paddle/paddle/scripts/docker/build.sh
    # else run these commands
    mkdir build
    cd build
@@ -34,7 +34,7 @@ machine or copy it to the target machine.
 
 .. code-block:: bash
 
-   pip install python/dist/*.whl
+   pip install build/python/dist/*.whl
 
 
 .. _run_test:
@@ -49,7 +49,7 @@ Set :code:`WITH_GPU=ON` Can also run tests on GPU.
 
 .. code-block:: bash
 
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=ON" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x paddle/scripts/docker/build.sh
+   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=ON" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x paddle/paddle/scripts/docker/build.sh
 
 If you don't use Docker, just run ctest will start the tests:
 
@@ -117,7 +117,7 @@ You can add :code:`-D` argument to pass such options, like:
     "WITH_PYTHON", "Build with integrated Python interpreter", "ON"
     "WITH_STYLE_CHECK", "Check code style when building", "ON"
     "WITH_TESTING", "Build unit tests", "ON"
-    "WITH_DOC", "Build documentaions", "OFF"
+    "WITH_DOC", "Build documentations", "OFF"
     "WITH_SWIG_PY", "Build Python SWIG interface for V2 API", "Auto"
     "WITH_GOLANG", "Build fault-tolerant parameter server written in go", "ON"
     "WITH_MKL", "Use MKL as BLAS library, else use OpenBLAS", "ON"
