@@ -149,6 +149,11 @@ def append_average_ops(parameters_and_grads):
     Returns:
         list of (parameters, gradients)
     """
+    params_and_grads = []
+    for param, grad in parameters_and_grads:
+        if grad is None or param.regularizer is None:
+            params_and_grads.append((param, grad))
+            continue
 
 
 class ParamAverage(object):

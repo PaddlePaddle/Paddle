@@ -27,7 +27,7 @@ class Optimizer(object):
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
 
-    def _append_optimize_op(self, block, param_and_grad):
+    def _append_optimize_ops(self, block, param_and_grad):
         """ append optimize operator to block and return all the added optimize_op
         """
         raise NotImplementedError()
@@ -151,7 +151,7 @@ class Optimizer(object):
         """
         # This is a default implementation of create_optimization_pass that
         # can be shared by most optimizers. This implementation assumes that
-        # the subclass will implement the _append_optimize_op method and the
+        # the subclass will implement the _append_optimize_ops method and the
         #  _initialize_tensors method. The subclass can extend the
         # _create_accumulators method if it needs to create accumulators
         # for parameters and extend _finish_update method to add custom ops.
@@ -169,8 +169,8 @@ class Optimizer(object):
         for param_and_grad in parameters_and_grads:
             if param_and_grad[0].trainable is True and param_and_grad[
                     1] is not None:
-                optimize_op = self._append_optimize_op(loss.block,
-                                                       param_and_grad)
+                optimize_op = self._append_optimize_ops(loss.block,
+                                                        param_and_grad)
                 optimize_ops.append(optimize_op)
 
         # Returned list of ops can include more ops in addition
@@ -215,7 +215,7 @@ class SGDOptimizer(Optimizer):
         self.type = "sgd"
         self._learning_rate = learning_rate
 
-    def _append_optimize_op(self, block, param_and_grad):
+    def _append_optimize_ops(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 
         # create the optimize op
@@ -255,7 +255,7 @@ class MomentumOptimizer(Optimizer):
         for p in parameters:
             self._add_accumulator(self._velocity_acc_str, p)
 
-    def _append_optimize_op(self, block, param_and_grad):
+    def _append_optimize_ops(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
@@ -298,7 +298,7 @@ class AdagradOptimizer(Optimizer):
         for p in parameters:
             self._add_accumulator(self._moment_acc_str, p)
 
-    def _append_optimize_op(self, block, param_and_grad):
+    def _append_optimize_ops(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 
         moment_acc = self._get_accumulator(self._moment_acc_str,
@@ -373,7 +373,7 @@ class AdamOptimizer(Optimizer):
             self._add_accumulator(self._moment1_acc_str, p)
             self._add_accumulator(self._moment2_acc_str, p)
 
-    def _append_optimize_op(self, block, param_and_grad):
+    def _append_optimize_ops(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 
         moment1 = self._get_accumulator(self._moment1_acc_str,
@@ -465,7 +465,7 @@ class AdamaxOptimizer(Optimizer):
             self._add_accumulator(self._moment_acc_str, p)
             self._add_accumulator(self._inf_norm_acc_str, p)
 
-    def _append_optimize_op(self, block, param_and_grad):
+    def _append_optimize_ops(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 
         moment = self._get_accumulator(self._moment_acc_str, param_and_grad[0])
@@ -535,7 +535,7 @@ class DecayedAdagradOptimizer(Optimizer):
         for p in parameters:
             self._add_accumulator(self._moment_acc_str, p)
 
-    def _append_optimize_op(self, block, param_and_grad):
+    def _append_optimize_ops(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 
         moment_acc = self._get_accumulator(self._moment_acc_str,
