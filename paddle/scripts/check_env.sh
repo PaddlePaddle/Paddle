@@ -150,7 +150,12 @@ echo "OS Version             : `cat /etc/redhat-release`"
 echo "Kernel Release Version : `uname -r`"
 echo "Kernel Patch Version   : `uname -v`"
 echo "GCC Version            :`gcc --version | head -n 1|awk -F '\\\(GCC\\\)' '{print $2}'`"
-echo "CMake Version          :`cmake --version | head -n 1 | awk -F 'version' '{print $2}'`"
+if command -v cmake >/dev/null 2>&1; then 
+  cmake_ver=`cmake --version | head -n 1 | awk -F 'version' '{print $2}'`
+else
+  cmake_ver=" Not installed"
+fi
+echo "CMake Version          :$cmake_ver"
 echo "------------------ Environment Variables Information -------------------"
 kmp_affinity=`env | grep KMP_AFFINITY`
 omp_dynamic=`env | grep OMP_DYNAMIC`
