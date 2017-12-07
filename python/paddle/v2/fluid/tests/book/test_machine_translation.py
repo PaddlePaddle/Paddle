@@ -134,7 +134,9 @@ def main():
                                'target_language_word': trg_word,
                                'target_language_next_word': trg_word_next
                            },
-                           fetch_list=[])
+                           fetch_list=[avg_cost])
+            avg_cost_val = np.array(outs[0])
+            print("avg_cost=" + str(avg_cost_val))
             # fetch_list=[encoder_out, decoder_out, accuracy.metrics[0]])
 
 
