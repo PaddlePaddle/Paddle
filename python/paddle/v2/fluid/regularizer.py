@@ -1,4 +1,5 @@
 import framework
+from layer_helper import LayerHelper
 
 __all__ = ['append_regularization_ops', 'L1Decay', 'L2Decay']
 
@@ -137,6 +138,36 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             attrs={"scale": self._regularization_coeff})
 
         return decay
+
+
+def append_average_ops(parameters_and_grads):
+    """
+    Create parameter average Operators
+
+    Args:
+        parameters: A list of (parameters, gradients) pairs
+    Returns:
+        list of (parameters, gradients)
+    """
+
+
+class ParamAverage(object):
+    def __init__(self, name, average_window=0.5, max_average_window=10000):
+        self.states = []
+        self.params = []
+        self.helper = LayerHelper(name)
+
+        self.average_window = average_window
+        self.max_average_window = max_average_window
+
+    def create_state(self, optimizer_ops):
+        pass
+
+    def reset(self):
+        pass
+
+    def eval(self):
+        pass
 
 
 # We short the class name, since users will use the regulaizer with the package
