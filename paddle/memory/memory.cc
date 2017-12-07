@@ -68,9 +68,7 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
     }
   }
   platform::SetDeviceId(gpu_id);
-  if (as[gpu_id]) {
-    return as[gpu_id];
-  } else {
+  if (!as[gpu_id]) {
     as[gpu_id] = new BuddyAllocator(new detail::GPUAllocator,
                                     platform::GpuMinChunkSize(),
                                     platform::GpuMaxChunkSize());
@@ -80,8 +78,8 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
              << "You can set GFlags environment variable '"
              << "FLAGS_fraction_of_gpu_memory_to_use"
              << "' to change the fraction of GPU usage.\n\n";
-    return as[gpu_id];
   }
+  return as[gpu_id];
 }
 
 template <>
