@@ -52,6 +52,7 @@ class ConcatOp : public framework::OperatorWithKernel {
       out_dims[axis] = -1;
     }
     ctx->SetOutputDim("Out", out_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 

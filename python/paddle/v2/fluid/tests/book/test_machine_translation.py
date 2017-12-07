@@ -62,15 +62,16 @@ def decoder_trainer(context):
         is_sparse=IS_SPARSE,
         param_attr=fluid.ParamAttr(name='vemb'))
 
-    # encoded_proj = layers.fc(size=decoder_size, bias_attr=False, input=context)
+    encoded_proj = layers.fc(size=decoder_size, input=context)
 
     rnn = fluid.layers.DynamicRNN()
 
     with rnn.block():
         current_word = rnn.step_input(trg_embedding)
-        # encoded_proj_in = rnn.step_input(encoded_proj)
+        encoded_proj_in = rnn.step_input(encoded_proj)
         mem = rnn.memory(shape=[decoder_size], dtype='float32')
-        fc1 = fluid.layers.fc(input=[current_word, mem], size=decoder_size)
+        fc1 = fluid.layers.fc(input=[encoded_proj_in, current_word, mem],
+                              size=decoder_size)
         out = fluid.layers.fc(input=fc1, size=target_dict_dim, act='softmax')
         rnn.update_memory(mem, fc1)
         rnn.output(out)
@@ -95,6 +96,7 @@ def to_lodtensor(data, place):
 
 def main():
     encoder_out = encoder()
+    print(encoder_out.lod_level)
     decoder_out = decoder_trainer(encoder_out)
     label = layers.data(
         name="target_language_next_word", shape=[1], dtype='int64', lod_level=1)
@@ -104,7 +106,7 @@ def main():
 
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
     optimizer.minimize(avg_cost)
-    accuracy = fluid.evaluator.Accuracy(input=decoder_out, label=label)
+    # accuracy = fluid.evaluator.Accuracy(input=decoder_out, label=label)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
@@ -126,14 +128,14 @@ def main():
             word_data = to_lodtensor(map(lambda x: x[0], data), place)
             trg_word = to_lodtensor(map(lambda x: x[1], data), place)
             trg_word_next = to_lodtensor(map(lambda x: x[2], data), place)
-            outs = exe.run(
-                framework.default_main_program(),
-                feed={
-                    'src_word_id': word_data,
-                    'target_language_word': trg_word,
-                    'target_language_next_word': trg_word_next
-                },
-                fetch_list=[encoder_out, decoder_out, accuracy.metrics[0]])
+            outs = exe.run(framework.default_main_program(),
+                           feed={
+                               'src_word_id': word_data,
+                               'target_language_word': trg_word,
+                               'target_language_next_word': trg_word_next
+                           },
+                           fetch_list=[encoder_out, decoder_out])
+            # fetch_list=[encoder_out, decoder_out, accuracy.metrics[0]])
 
 
 if __name__ == '__main__':
