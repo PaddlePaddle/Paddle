@@ -2722,14 +2722,14 @@ def img_pool_layer(input,
 
     ..  math::
 
-        w = 1 + int(ceil(input\_width + 2 * padding - pool\_size) / float(stride))
+        w = 1 + int(ceil(input\_width + 2 * padding - pool\_size) / float(stride)) \\\\
         h = 1 + int(ceil(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
 
     - ceil_mode=False:
 
     ..  math::
 
-        w = 1 + int(floor(input\_width + 2 * padding - pool\_size) / float(stride))
+        w = 1 + int(floor(input\_width + 2 * padding - pool\_size) / float(stride)) \\\\
         h = 1 + int(floor(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
 
     The example usage is:
@@ -2863,17 +2863,17 @@ def img_pool3d_layer(input,
 
     ..  math::
 
-        w = 1 + int(ceil(input\_width + 2 * padding - pool\_size) / float(stride))
-        h = 1 + int(ceil(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
+        w = 1 + int(ceil(input\_width + 2 * padding - pool\_size) / float(stride)) \\\\
+        h = 1 + int(ceil(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y)) \\\\
         d = 1 + int(ceil(input\_depth + 2 * padding\_z - pool\_size\_z) / float(stride\_z))
 
     - ceil_mode=False:
 
     ..  math::
 
-        w = 1 + int(floor(input\_width + 2 * padding - pool\_size) / float(stride))
-        h = 1 + int(floor(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
-        d = 1 + int(floor(input\_depth + 2 * padding\_z - pool\_size\_z) / float(stride\_z))
+        w = 1 + int(floor(input\_width + 2 * padding - pool\_size) / float(stride)) \\\\
+        h = 1 + int(floor(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y)) \\\\
+        d = 1 + int(floor(input\_depth + 2 * padding\_z - pool\_size\_z) / float(stride\_z)) \\\\
 
     The example usage is:
 
@@ -5429,12 +5429,12 @@ def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
         https://arxiv.org/pdf/1312.6082v4.pdf`_
 
     .. math::
-       y_{si+j} = \max_k x_{gsi + sk + j}
-       g = groups
-       s = input.size / num_channels
-       0 \le i < num_channels / groups
-       0 \le j < s
-       0 \le k < groups
+       y_{si+j} = \max_k x_{gsi + sk + j}    \\\\
+       g = groups                            \\\\
+       s = input.size / num\_channels         \\\\
+       0 \le i < num\_channels / groups       \\\\
+       0 \le j < s                           \\\\
+       0 \le k < groups                      \\\\
 
     The simple usage is:
 
