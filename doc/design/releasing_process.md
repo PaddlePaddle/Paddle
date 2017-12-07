@@ -5,8 +5,9 @@ PaddlePaddle使用git-flow branching model做分支管理，使用[Semantic Vers
 PaddlePaddle每次发新的版本，遵循以下流程:
 
 1. 从`develop`分支派生出新的分支，分支名为`release/版本号`。例如，`release/0.10.0`
-2. 将新分支的版本打上tag，tag为`版本号rc.Patch号`。第一个tag为`0.10.0rc1`，第二个为`0.10.0rc2`，依次类推。
-3. 对这个版本的提交，做如下几个操作:
+1. 将新分支的版本打上tag，tag为`版本号rc.Patch号`。第一个tag为`0.10.0rc1`，第二个为`0.10.0rc2`，依次类推。
+1. 对这个版本的提交，做如下几个操作:
+	* 修改`python/setup.py.in`中的版本信息,并将`istaged`字段设为`True`。
 	* 编译这个版本的Docker发行镜像，发布到dockerhub。如果失败，修复Docker编译镜像问题，Patch号加一，返回第二步
 	* 编译这个版本的Ubuntu Deb包。如果失败，修复Ubuntu Deb包编译问题，Patch号加一，返回第二步。
 	* 使用Regression Test List作为检查列表，测试Docker镜像/ubuntu安装包的功能正确性
@@ -20,9 +21,9 @@ PaddlePaddle每次发新的版本，遵循以下流程:
 			pip install twine
 			twine upload dist/[package to upload]
 			```
-4. 第三步完成后，将`release/版本号`分支合入master分支，并删除`release/版本号`分支。将master分支的合入commit打上tag，tag为`版本号`。同时再将`master`分支合入`develop`分支。最后删除`release/版本号`分支。
-5. 编译master分支的Docker发行镜像，发布到dockerhub。编译ubuntu的deb包，发布到github release页面
-6. 协同完成Release Note的书写
+1. 第三步完成后，将`release/版本号`分支合入master分支，并删除`release/版本号`分支。将master分支的合入commit打上tag，tag为`版本号`。同时再将`master`分支合入`develop`分支。最后删除`release/版本号`分支。
+1. 编译master分支的Docker发行镜像，发布到dockerhub。编译ubuntu的deb包，发布到github release页面
+1. 协同完成Release Note的书写
 
 
 需要注意的是:
@@ -30,7 +31,7 @@ PaddlePaddle每次发新的版本，遵循以下流程:
 * `release/版本号`分支一旦建立，一般不允许再从`develop`分支合入`release/版本号`。这样保证`release/版本号`分支功能的封闭，方便测试人员测试PaddlePaddle的行为。
 * 在`release/版本号`分支存在的时候，如果有bugfix的行为，需要将bugfix的分支同时merge到`master`, `develop`和`release/版本号`这三个分支。
 
-# PaddlePaddle 分支规范
+## PaddlePaddle 分支规范
 
 PaddlePaddle开发过程使用[git-flow](http://nvie.com/posts/a-successful-git-branching-model/)分支规范，并适应github的特性做了一些区别。
 
@@ -47,11 +48,11 @@ PaddlePaddle开发过程使用[git-flow](http://nvie.com/posts/a-successful-git-
 
 * BugFix分支也是在开发者自己的fork版本库维护，与功能分支不同的是，BugFix分支需要分别给主版本库的`master`、`develop`与可能有的`release/版本号`分支，同时提起`Pull Request`。
 
-# PaddlePaddle回归测试列表
+## PaddlePaddle回归测试列表
 
 本列表说明PaddlePaddle发版之前需要测试的功能点。
 
-## PaddlePaddle Book中所有章节
+### PaddlePaddle Book中所有章节
 
 PaddlePaddle每次发版本首先要保证PaddlePaddle Book中所有章节功能的正确性。功能的正确性包括验证PaddlePaddle目前的`paddle_trainer`训练和纯使用`Python`训练模型正确性。
 

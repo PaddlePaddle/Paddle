@@ -191,6 +191,7 @@ set(DEPS_OPS
     sum_op
     pool_op
     maxout_op
+    unpool_op
     pool_with_index_op
     conv_op
     conv_transpose_op
@@ -205,8 +206,28 @@ set(DEPS_OPS
     tensor_array_read_write_op
     gru_op
     adagrad_op
-    sgd_op)
+    sgd_op
+    save_op
+    load_op
+    send_op
+    recv_op)
 
+if(WITH_DISTRIBUTE)
+add_subdirectory(detail)
+op_library(send_op SRCS send_op.cc DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib_target protobuf)
+set_source_files_properties(
+    send_op.cc
+    PROPERTIES
+    COMPILE_FLAGS  "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+
+op_library(recv_op SRCS recv_op.cc DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib_target protobuf)
+set_source_files_properties(
+    recv_op.cc
+    PROPERTIES
+    COMPILE_FLAGS  "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+
+cc_test(test_send_recv SRCS send_recv_op_test.cc DEPS send_op recv_op sum_op executor)
+endif()
 
 op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
 op_library(cross_entropy_op DEPS cross_entropy)
@@ -219,6 +240,7 @@ op_library(adagrad_op DEPS selected_rows_functor)
 op_library(conv_op DEPS vol2col)
 op_library(pool_op DEPS pooling)
 op_library(maxout_op DEPS maxouting)
+op_library(unpool_op DEPS unpooling)
 op_library(pool_with_index_op DEPS pooling)
 op_library(lod_rank_table_op SRCS lod_rank_table_op.cc DEPS lod_rank_table)
 op_library(lod_tensor_to_array_op SRCS lod_tensor_to_array_op.cc DEPS lod_rank_table_op)
@@ -235,12 +257,18 @@ op_library(conv_transpose_op DEPS vol2col)
 op_library(gru_op DEPS sequence2batch gru_compute)
 op_library(recurrent_op SRCS recurrent_op.cc DEPS executor)
 
+# FIXME(typhoonzero): save/load depends lodtensor serialization functions
+op_library(save_op DEPS lod_tensor)
+op_library(load_op DEPS lod_tensor)
+
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
     op_library(${src})
 endforeach()
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
+
+
 
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 cc_test(net_op_test SRCS net_op_test.cc DEPS net_op)

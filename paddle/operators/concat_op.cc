@@ -25,7 +25,7 @@ class ConcatOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
-                      "Inputs(X) of ConcatOp should be empty.")
+                      "Inputs(X) of ConcatOp should be empty.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ConcatOp should not be null.");
 
@@ -45,7 +45,7 @@ class ConcatOp : public framework::OperatorWithKernel {
         }
         PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
                           "Input tensors should have the same "
-                          "elements except the specify axis.")
+                          "elements except the specify axis.");
       }
     }
     ctx->SetOutputDim("Out", out_dims);

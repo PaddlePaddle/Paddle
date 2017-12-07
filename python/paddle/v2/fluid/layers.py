@@ -1,15 +1,17 @@
-from . import core
+import core
 import proto.framework_pb2 as framework_pb2
 from framework import OpProtoHolder, Variable, Program, Operator
-from initializer import Constant, Normal, Xavier
+from initializer import Constant, Normal, Xavier, Initializer
 from paddle.v2.fluid.layer_helper import LayerHelper, unique_name
 import re
 import cStringIO
+from param_attr import ParamAttr
+import contextlib
 
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
     'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool', 'sums', 'cos_sim',
-    'batch_norm', 'accuracy', 'split_lod_tensor'
+    'batch_norm', 'accuracy', 'split_lod_tensor', 'While'
 ]
 
 
@@ -17,9 +19,7 @@ def fc(input,
        size,
        num_flatten_dims=1,
        param_attr=None,
-       param_initializer=None,
        bias_attr=None,
-       bias_initializer=None,
        act=None,
        name=None,
        main_program=None,
@@ -32,11 +32,9 @@ def fc(input,
        size: The size of the layer
        num_flatten_dims: Number of columns in input
        param_attr: The parameters/weights to the FC Layer
-       param_initializer: Initializer used for the weight/parameter.
-       If None, XavierInitializer() is used
+       param_initializer: Initializer used for the weight/parameter. If None, XavierInitializer() is used
        bias_attr: The bias parameter for the FC layer
-       bias_initializer: Initializer used for the bias.
-       If None, then ConstantInitializer() is used
+       bias_initializer: Initializer used for the bias. If None, then ConstantInitializer() is used
        act: Activation to be applied to the output of FC layer
        name: Name/alias of the function
        main_program: Name of the main program that calls this
@@ -54,22 +52,9 @@ def fc(input,
     to the LayerHelper constructor.
 
     """
-
-    def _get_default_param_initializer():
-        return Xavier()
-
-    def _get_default_bias_initializer():
-        return Constant()
-
     helper = LayerHelper('fc', **locals())
 
     dtype = helper.input_dtype()
-
-    if param_initializer is None:
-        param_initializer = _get_default_param_initializer()
-
-    if bias_initializer is None:
-        bias_initializer = _get_default_bias_initializer()
 
     mul_results = []
     for input_var, param_attr in helper.iter_inputs_and_params():
@@ -78,10 +63,7 @@ def fc(input,
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
         ] + [size]
         w = helper.create_parameter(
-            attr=param_attr,
-            initializer=param_initializer,
-            shape=param_shape,
-            dtype=dtype)
+            attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
         tmp = helper.create_tmp_variable(dtype)
         helper.append_op(
             type="mul",
@@ -102,7 +84,7 @@ def fc(input,
         helper.append_op(
             type="sum", inputs={"X": mul_results}, outputs={"Out": pre_bias})
     # add bias
-    pre_activation = helper.append_bias_op(pre_bias, bias_initializer)
+    pre_activation = helper.append_bias_op(pre_bias)
     # add activation
     return helper.append_activation(pre_activation)
 
@@ -110,7 +92,6 @@ def fc(input,
 def embedding(input,
               size,
               is_sparse=False,
-              param_initializer=None,
               param_attr=None,
               dtype='float32',
               main_program=None,
@@ -119,6 +100,7 @@ def embedding(input,
     Embedding Layer.
 
     Args:
+       param_initializer:
        input: The input to the function
        size: The size of the layer
        is_sparse: A flag that decleares whether the input is sparse
@@ -136,15 +118,9 @@ def embedding(input,
 
     """
 
-    def _get_default_param_initializer():
-        return Xavier()
-
     helper = LayerHelper('embedding', **locals())
     w = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=size,
-        dtype=dtype,
-        initializer=param_initializer or _get_default_param_initializer())
+        attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False)
     tmp = helper.create_tmp_variable(dtype)
     helper.append_op(
         type='lookup_table',
@@ -176,7 +152,7 @@ def dynamic_lstm(input,
     if not use_peepholes:
         bias_size[1] = 4 * size
     bias = helper.create_parameter(
-        attr=helper.bias_attr, shape=bias_size, dtype=dtype, suffix='b')
+        attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
 
     hidden = helper.create_tmp_variable(dtype)
     cell = helper.create_tmp_variable(dtype)
@@ -204,10 +180,82 @@ def dynamic_lstm(input,
     return hidden, cell
 
 
+def gru_unit(input,
+             hidden,
+             size,
+             weight=None,
+             bias=None,
+             activation='tanh',
+             gate_activation='sigmoid',
+             main_program=None,
+             startup_program=None):
+    """
+    GRUUnit Operator implements partial calculations of the GRU unit as following:
+
+    $$
+    update \ gate: u_t = actGate(xu_t + W_u * h_{t-1} + b_u) \\
+    reset \ gate: r_t = actGate(xr_t + W_r * h_{t-1} + b_r)  \\
+    output \ candidate: {h}_t = actNode(xc_t + W_c * dot(r_t, h_{t-1}) + b_c) \\
+    output: h_t = dot((1 - u_t), h_{t-1}) + dot(u_t, {h}_t)
+    $$
+
+    which is same as one time step of GRU Operator.
+
+    @note To implement the complete GRU unit, fully-connected operator must be
+    used before to feed xu, xr and xc as the Input of GRUUnit operator.
+
+    TODO(ChunweiYan) add more document here
+    """
+    activation_dict = dict(
+        identity=0,
+        sigmoid=1,
+        tanh=2,
+        relu=3, )
+    activation = activation_dict[activation]
+    gate_activation = activation_dict[gate_activation]
+
+    helper = LayerHelper('gru_unit', **locals())
+    dtype = helper.input_dtype()
+    size = size / 3
+
+    # create weight
+    if weight is None:
+        weight = helper.create_parameter(
+            attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
+
+    # create bias
+    if bias is None:
+        bias_size = [1, 3 * size]
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+
+    gate = helper.create_tmp_variable(dtype)
+    reset_hidden_pre = helper.create_tmp_variable(dtype)
+    updated_hidden = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type='gru_unit',
+        inputs={'Input': input,
+                'HiddenPrev': hidden,
+                'Weight': weight},
+        outputs={
+            'Gate': gate,
+            'ResetHiddenPrev': reset_hidden_pre,
+            'Hidden': updated_hidden,
+        },
+        attrs={
+            'activation': 0,
+            'gate_activation': 1,
+        })
+
+    return updated_hidden, reset_hidden_pre, gate
+
+
 def data(name,
          shape,
          append_batch_size=True,
          dtype='float32',
+         lod_level=0,
          type=core.VarDesc.VarType.LOD_TENSOR,
          main_program=None,
          startup_program=None,
@@ -221,6 +269,7 @@ def data(name,
        append_batch_size: Whether or not to append the data as a batch.
        dtype: The type of data : float32, float_16, int etc
        type: The output type. By default it is LOD_TENSOR.
+       lod_level(int): The LoD Level. 0 means the input data is not a sequence.
        main_program: Name of the main program that calls this
        startup_program: Name of the startup program
        stop_gradient: A boolean that mentions whether gradient should flow.
@@ -251,7 +300,8 @@ def data(name,
         shape=shape,
         dtype=dtype,
         type=type,
-        stop_gradient=stop_gradient)
+        stop_gradient=stop_gradient,
+        lod_level=lod_level)
 
 
 def create_tensor(dtype, name=None, main_program=None, startup_program=None):
@@ -423,6 +473,7 @@ _create_op_func_('sigmoid')
 _create_op_func_('scale')
 _create_op_func_('reshape')
 _create_op_func_('transpose')
+_create_op_func_('sigmoid_cross_entropy_with_logits')
 
 
 def cast(x, dtype, main_program=None):
@@ -471,19 +522,14 @@ def sums(input, out=None, main_program=None, startup_program=None):
 def linear_chain_crf(input,
                      label,
                      param_attr=None,
-                     param_initializer=None,
                      main_program=None,
                      startup_program=None):
-    def _get_default_param_initializer():
-        return Xavier()
-
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[1]
     transition = helper.create_parameter(
         attr=helper.param_attr,
         shape=[size + 2, size],
-        dtype=helper.input_dtype(),
-        initializer=param_initializer or _get_default_param_initializer())
+        dtype=helper.input_dtype())
     alpha = helper.create_tmp_variable(dtype=helper.input_dtype())
     emission_exps = helper.create_tmp_variable(dtype=helper.input_dtype())
     transition_exps = helper.create_tmp_variable(dtype=helper.input_dtype())
@@ -501,6 +547,24 @@ def linear_chain_crf(input,
         })
 
     return log_likelihood
+
+
+def crf_decoding(input,
+                 param_attr,
+                 label=None,
+                 main_program=None,
+                 startup_program=None):
+    helper = LayerHelper('crf_decoding', **locals())
+    transition = helper.get_parameter(param_attr.name)
+    viterbi_path = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='crf_decoding',
+        inputs={"Emission": [input],
+                "Transition": transition,
+                "Label": label},
+        outputs={"ViterbiPath": [viterbi_path]})
+
+    return viterbi_path
 
 
 def assign(input, output, main_program=None, startup_program=None):
@@ -640,15 +704,47 @@ def accuracy(input, label, k=1, correct=None, total=None, **kwargs):
     return acc_out
 
 
+def chunk_eval(input,
+               label,
+               chunk_scheme,
+               num_chunk_types,
+               excluded_chunk_types=None,
+               **kwargs):
+    """
+    This function computes the accuracy using the input and label.
+    The output is the top_k inputs and their indices.
+    """
+    helper = LayerHelper("chunk_eval", **kwargs)
+
+    # prepare output
+    precision = helper.create_tmp_variable(dtype="float32")
+    recall = helper.create_tmp_variable(dtype="float32")
+    f1_score = helper.create_tmp_variable(dtype="float32")
+
+    helper.append_op(
+        type="chunk_eval",
+        inputs={"Inference": [input],
+                "Label": [label]},
+        outputs={
+            "Precision": [precision],
+            "Recall": [recall],
+            "F1-Score": [f1_score]
+        },
+        attrs={
+            "num_chunk_types": num_chunk_types,
+            'chunk_scheme': chunk_scheme,
+            'excluded_chunk_types': excluded_chunk_types or []
+        })
+    return precision, recall, f1_score
+
+
 def sequence_conv(input,
                   num_filters,
                   filter_size=3,
                   filter_stride=1,
                   padding=None,
                   bias_attr=None,
-                  bias_initializer=None,
                   param_attr=None,
-                  param_initializer=None,
                   act=None,
                   main_program=None,
                   startup_program=None):
@@ -658,30 +754,15 @@ def sequence_conv(input,
     in the input parameters to the function.
     """
 
-    def _get_default_bias_initializer():
-        return Constant()
-
-    def _get_default_param_initializer():
-        return Xavier()
-
     # FIXME(dzh) : want to unify the argument of python layer
     # function. So we ignore some unecessary attributes.
     # such as, padding_trainable, context_start.
 
     helper = LayerHelper('sequence_conv', **locals())
     dtype = helper.input_dtype()
-
-    if param_initializer is None:
-        param_initializer = _get_default_param_initializer()
-    if bias_initializer is None:
-        bias_initializer = _get_default_bias_initializer()
-
     filter_shape = [filter_size * input.shape[1], num_filters]
     filter = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=filter_shape,
-        dtype=dtype,
-        initializer=param_initializer)
+        attr=helper.param_attr, shape=filter_shape, dtype=dtype)
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
@@ -696,7 +777,7 @@ def sequence_conv(input,
             'contextStart': -int(filter_size / 2),
             'contextLength': filter_size
         })
-    pre_act = helper.append_bias_op(pre_bias, bias_initializer)
+    pre_act = helper.append_bias_op(pre_bias)
     return helper.append_activation(pre_act)
 
 
@@ -707,9 +788,7 @@ def conv2d(input,
            padding=None,
            groups=None,
            param_attr=None,
-           param_initializer=None,
            bias_attr=None,
-           bias_initializer=None,
            act=None,
            name=None,
            main_program=None,
@@ -721,13 +800,6 @@ def conv2d(input,
     This funciton can also append an activation on top of the
     conv-2d output, if mentioned in the input parameters.
     """
-
-    def _get_default_bias_initializer():
-        return Constant()
-
-    def _get_default_param_initializer(filter_size, num_channels):
-        std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
-        return Normal(0.0, std, 0)
 
     helper = LayerHelper('conv2d', **locals())
     dtype = helper.input_dtype()
@@ -750,21 +822,20 @@ def conv2d(input,
     input_shape = input.shape
     filter_shape = [num_filters, num_filter_channels] + filter_size
 
-    if param_initializer is None:
-        param_initializer = _get_default_param_initializer(filter_size,
-                                                           num_channels)
-    if bias_initializer is None:
-        bias_initializer = _get_default_bias_initializer()
+    def _get_default_param_initializer():
+        std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
+        return Normal(0.0, std, 0)
 
     filter = helper.create_parameter(
         attr=helper.param_attr,
         shape=filter_shape,
         dtype=dtype,
-        initializer=param_initializer)
+        default_initializer=_get_default_param_initializer())
+
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
-        type='conv2d',
+        type='conv2d_cudnn',
         inputs={
             'Input': input,
             'Filter': filter,
@@ -774,8 +845,7 @@ def conv2d(input,
                'paddings': padding,
                'groups': groups})
 
-    pre_act = helper.append_bias_op(
-        pre_bias, bias_initializer, dim_start=1, dim_end=2)
+    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
 
     return helper.append_activation(pre_act)
 
@@ -876,12 +946,10 @@ def batch_norm(input,
         attr=helper.param_attr,
         shape=param_shape,
         dtype=dtype,
-        initializer=Constant(1.0))
+        default_initializer=Constant(1.0))
+
     bias = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=param_shape,
-        dtype=dtype,
-        initializer=Constant(0.0))
+        attr=helper.param_attr, shape=param_shape, dtype=dtype, is_bias=True)
 
     mean = helper.create_global_variable(
         dtype=input.dtype, shape=param_shape, persistable=True)
@@ -1356,7 +1424,7 @@ def lod_rank_table(x, level=0, main_program=None):
 
 def max_sequence_len(rank_table, main_program=None):
     """
-    This function creates an operator to calculate the length of 
+    This function creates an operator to calculate the length of
     max seqence through input rank_table(should be a lod_rank_table)
     """
     helper = LayerHelper("max_seqence_len", **locals())
@@ -1399,7 +1467,7 @@ def lod_tensor_to_array(x, table, main_program=None):
     return array
 
 
-def array_to_lod_tensor(x, table, main_program=None):
+def array_to_lod_tensor(x, table, main_program=None, startup_program=None):
     """
     This function creates an operator to convert an array to a
     LOD_Tensor.
@@ -1480,7 +1548,11 @@ def zeros(shape, dtype, main_program=None):
     return fill_constant(value=0.0, **locals())
 
 
-def increment(x, value=1.0, in_place=True, main_program=None):
+def increment(x,
+              value=1.0,
+              in_place=True,
+              main_program=None,
+              startup_program=None):
     """
     This function creates an operator to increment each value in the input
     `x` by an amount: `value` as mentioned in the input parameter. This
@@ -1495,11 +1567,11 @@ def increment(x, value=1.0, in_place=True, main_program=None):
         type='increment',
         inputs={'X': [x]},
         outputs={'Out': [out]},
-        attrs={'step': value})
+        attrs={'step': float(value)})
     return out
 
 
-def array_write(x, i, array=None, main_program=None):
+def array_write(x, i, array=None, main_program=None, startup_program=None):
     """
     This function creates an operator to write the data out as a
     LOD_TENSOR_ARRAY.
@@ -1538,7 +1610,7 @@ def less_than(x, y, cond=None, main_program=None, **ignored):
     return cond
 
 
-def array_read(array, i, main_program=None):
+def array_read(array, i, main_program=None, startup_program=None):
     """
     This function creates an operator to read the data in as a
     LOD_TENSOR_ARRAY.
@@ -1557,7 +1629,7 @@ def array_read(array, i, main_program=None):
     return out
 
 
-def shrink_memory(x, i, table, main_program=None):
+def shrink_memory(x, i, table, main_program=None, startup_program=None):
     """
     This function creates an operator to shrink_rnn_memory using the RankTable
     as mentioned in the input parameter.
@@ -1585,6 +1657,93 @@ def array_length(array, main_program=None):
     helper.append_op(
         type='lod_array_length', inputs={'X': [array]}, outputs={'Out': [tmp]})
     return tmp
+
+
+def conv2d_transpose(input,
+                     num_filters,
+                     output_size=None,
+                     filter_size=None,
+                     padding=None,
+                     stride=None,
+                     param_attr=None,
+                     main_program=None,
+                     startup_program=None):
+    """
+    The transpose of conv2d layer.
+
+    This layer is also known as deconvolution layer.
+
+    Args:
+        input(Variable): The input image with [N, C, H, W] format.
+        num_filters(int): The number of filter. It is as same as the output
+            image channel.
+        output_size(int|tuple|None): The output image size. If output size is a
+            tuple, it must contain two integers, (image_H, image_W). This
+            parameter only works when filter_size is None.
+        filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
+            it must contain two integers, (filter_size_H, filter_size_W).
+            Otherwise, the filter will be a square.  None if use output size to
+            calculate filter_size
+        padding(int|tuple): The padding size. If padding is a tuple, it must
+            contain two integers, (padding_H, padding_W). Otherwise, the
+            padding_H = padding_W = padding.
+        stride(int|tuple): The stride size. If stride is a tuple, it must
+            contain two integers, (stride_H, stride_W). Otherwise, the
+            stride_H = stride_W = stride.
+        param_attr: Parameter Attribute.
+        main_program(Program): the main program
+        startup_program(Program): the startup program
+
+    Returns:
+        Variable: Output image.
+    """
+    helper = LayerHelper("conv2d_transpose", **locals())
+    if not isinstance(input, Variable):
+        raise TypeError("Input of conv2d_transpose must be Variable")
+    input_channel = input.shape[1]
+
+    op_attr = dict()
+
+    if isinstance(padding, int):
+        op_attr['paddings'] = [padding, padding]
+    elif padding is not None:
+        op_attr['paddings'] = padding
+
+    if isinstance(stride, int):
+        op_attr['strides'] = stride
+    elif stride is not None:
+        op_attr['strides'] = stride
+
+    if filter_size is None:
+        if output_size is None:
+            raise ValueError("output_size must be set when filter_size is None")
+        if isinstance(output_size, int):
+            output_size = [output_size, output_size]
+
+        padding = op_attr.get('paddings', [0, 0])
+        stride = op_attr.get('strides', [1, 1])
+
+        h_in = input.shape[2]
+        w_in = input.shape[3]
+        filter_size_h = output_size[0] - (h_in - 1) * stride[0] + 2 * padding[0]
+        filter_size_w = output_size[1] - (w_in - 1) * stride[1] + 2 * padding[1]
+        filter_size = [filter_size_h, filter_size_w]
+    elif isinstance(filter_size, int):
+        filter_size = [filter_size, filter_size]
+
+    filter_shape = [input_channel, num_filters] + filter_size
+    img_filter = helper.create_parameter(
+        dtype=input.dtype, shape=filter_shape, attr=helper.param_attr)
+
+    out = helper.create_tmp_variable(dtype=input.dtype)
+    helper.append_op(
+        type='conv2d_transpose',
+        inputs={'Input': [input],
+                'Filter': [img_filter]},
+        outputs={'Output': out},
+        attrs=op_attr)
+
+    return out
 
 
 class ConditionalBlockGuard(BlockGuard):
@@ -1807,3 +1966,209 @@ class IfElse(object):
                     main_program=self.helper.main_program,
                     startup_program=self.helper.startup_program))
         return rlist
+
+
+class DynamicRNN(object):
+    BEFORE_RNN = 0
+    IN_RNN = 1
+    AFTER_RNN = 2
+
+    def __init__(self, name=None, main_program=None, startup_program=None):
+        self.helper = LayerHelper(
+            'dynamic_rnn',
+            name=name,
+            main_program=main_program,
+            startup_program=startup_program)
+        self.status = DynamicRNN.BEFORE_RNN
+        self.lod_rank_table = None
+        self.max_seq_len = None
+        self.step_idx = None
+        self.zero_idx = fill_constant(shape=[1], value=0, dtype='int64')
+        self.mem_dict = dict()
+        self.output_array = []
+        self.outputs = []
+        self.cond = self.helper.create_tmp_variable(dtype='bool')
+        self.cond.stop_gradient = False
+        self.while_op = While(self.cond)
+        self.input_array = []
+        self.mem_link = []
+
+    def step_input(self, x):
+        self._assert_in_rnn_block_("step_input")
+        if not isinstance(x, Variable):
+            raise TypeError(
+                "step_input() can only take a Variable as its input")
+        parent_block = self._parent_block_()
+        if self.lod_rank_table is None:
+            self.lod_rank_table = parent_block.create_var(
+                name=unique_name('lod_rank_table'),
+                type=core.VarDesc.VarType.LOD_RANK_TABLE)
+            self.lod_rank_table.stop_gradient = True
+            parent_block.append_op(
+                type='lod_rank_table',
+                inputs={"X": x},
+                outputs={"Out": self.lod_rank_table})
+            self.max_seq_len = parent_block.create_var(
+                name=unique_name('dynamic_rnn_max_seq_len'), dtype='int64')
+            self.max_seq_len.stop_gradient = False
+            parent_block.append_op(
+                type='max_sequence_len',
+                inputs={'RankTable': self.lod_rank_table},
+                outputs={"Out": self.max_seq_len})
+            self.cond.stop_gradient = True
+            parent_block.append_op(
+                type='less_than',
+                inputs={'X': self.step_idx,
+                        'Y': self.max_seq_len},
+                outputs={'Out': self.cond})
+
+        input_array = parent_block.create_var(
+            name=unique_name('dynamic_rnn_input_array'),
+            type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+            dtype=x.dtype)
+        self.input_array.append((input_array, x.dtype))
+        parent_block.append_op(
+            type='lod_tensor_to_array',
+            inputs={'X': x,
+                    'RankTable': self.lod_rank_table},
+            outputs={'Out': input_array})
+        return array_read(
+            array=input_array, i=self.step_idx, **self.helper.to_kwargs)
+
+    @contextlib.contextmanager
+    def block(self):
+        if self.status != DynamicRNN.BEFORE_RNN:
+            raise ValueError("rnn.block() can only be invoke once")
+        self.step_idx = fill_constant(shape=[1], dtype='int64', value=0)
+        self.step_idx.stop_gradient = False
+        self.status = DynamicRNN.IN_RNN
+        with self.while_op.block():
+            yield
+            increment(
+                x=self.step_idx,
+                value=1.0,
+                in_place=True,
+                **self.helper.to_kwargs)
+
+            for new_mem, mem_array in self.mem_link:
+                array_write(
+                    x=new_mem,
+                    i=self.step_idx,
+                    array=mem_array,
+                    **self.helper.to_kwargs)
+
+            less_than(
+                x=self.step_idx,
+                y=self.max_seq_len,
+                cond=self.cond,
+                **self.helper.to_kwargs)
+
+        self.status = DynamicRNN.AFTER_RNN
+        for each_array in self.output_array:
+            self.outputs.append(
+                array_to_lod_tensor(
+                    x=each_array,
+                    table=self.lod_rank_table,
+                    **self.helper.to_kwargs))
+
+    def __call__(self, *args, **kwargs):
+        if self.status != DynamicRNN.AFTER_RNN:
+            raise ValueError(
+                "Dynamic RNN outputs can only be retrieved after rnn block")
+        if len(self.outputs) == 1:
+            return self.outputs[0]
+        else:
+            return self.outputs
+
+    def memory(self, init=None, shape=None, value=0.0, dtype='float32'):
+        self._assert_in_rnn_block_('memory')
+        if init is not None:
+            if not isinstance(init, Variable):
+                raise TypeError(
+                    "The input arg `init` of memory() must be a Variable")
+            parent_block = self._parent_block_()
+            mem_array = parent_block.create_var(
+                name=unique_name('dynamic_rnn_mem_array'),
+                type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+                dtype=init.dtype)
+            parent_block.append_op(
+                type='write_to_array',
+                inputs={'X': init,
+                        'I': self.zero_idx},
+                outputs={'Out': mem_array})
+            retv = array_read(
+                array=mem_array, i=self.step_idx, **self.helper.to_kwargs)
+            retv = shrink_memory(
+                x=retv,
+                i=self.step_idx,
+                table=self.lod_rank_table,
+                **self.helper.to_kwargs)
+            self.mem_dict[retv.name] = mem_array
+            return retv
+        else:
+            if len(self.input_array) == 0:
+                raise ValueError(
+                    "step_input should be invoked before memory(shape=..., value=...)"
+                )
+            parent_block = self._parent_block_()
+            init = parent_block.create_var(
+                name=unique_name('mem_init'), dtype=dtype)
+            arr, dtype = self.input_array[0]
+            in0 = parent_block.create_var(name=unique_name('in0'), dtype=dtype)
+            parent_block.append_op(
+                type='read_from_array',
+                inputs={'X': [arr],
+                        'I': [self.zero_idx]},
+                outputs={'Out': [in0]})
+            parent_block.append_op(
+                type='fill_constant_batch_size_like',
+                inputs={'Input': [in0]},
+                outputs={'Out': [init]},
+                attrs={
+                    'shape': [-1] + shape,
+                    'value': float(value),
+                    'dtype': init.dtype
+                })
+            return self.memory(init=init)
+
+    def update_memory(self, ex_mem, new_mem):
+        self._assert_in_rnn_block_('update_memory')
+        if not isinstance(ex_mem, Variable):
+            raise TypeError("The input arg `ex_mem` of update_memory() must "
+                            "be a Variable")
+        if not isinstance(new_mem, Variable):
+            raise TypeError("The input arg `new_mem` of update_memory() must "
+                            "be a Variable")
+
+        mem_array = self.mem_dict.get(ex_mem.name, None)
+        if mem_array is None:
+            raise ValueError("Please invoke memory before update_memory")
+        if self.lod_rank_table is None:
+            raise ValueError("Please invoke step_input before update_memory")
+
+        self.mem_link.append((new_mem, mem_array))
+
+    def output(self, *outputs):
+        self._assert_in_rnn_block_('output')
+        parent_block = self._parent_block_()
+        for each in outputs:
+            outside_array = parent_block.create_var(
+                name=unique_name("_".join(
+                    [self.helper.name, "output_array", each.name])),
+                type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+                dtype=each.dtype)
+            array_write(x=each, i=self.step_idx, array=outside_array)
+            self.output_array.append(outside_array)
+
+    def _parent_block_(self):
+        prog = self.helper.main_program
+        parent_idx = prog.current_block().parent_idx
+        assert parent_idx >= 0
+        parent_block = prog.block(parent_idx)
+
+        return parent_block
+
+    def _assert_in_rnn_block_(self, method):
+        if self.status != DynamicRNN.IN_RNN:
+            raise ValueError("{0} can only be invoked inside rnn block.".format(
+                method))

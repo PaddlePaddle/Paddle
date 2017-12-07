@@ -53,6 +53,9 @@ class SumKernel : public framework::OpKernel<T> {
       for (int i = in_place ? 1 : 0; i < N; i++) {
         if (in_vars[i]->IsType<framework::LoDTensor>()) {
           auto &in_t = in_vars[i]->Get<framework::LoDTensor>();
+          if (in_t.numel() == 0) {
+            continue;
+          }
           auto in = EigenVector<T>::Flatten(in_t);
           result.device(place) = result + in;
         } else if (in_vars[i]->IsType<framework::SelectedRows>()) {
@@ -84,7 +87,7 @@ class SumKernel : public framework::OpKernel<T> {
       int64_t offset = 0;
       for (int i = 0; i < N; i++) {
         PADDLE_ENFORCE_EQ(out->height(),
-                          in_vars[i]->Get<SelectedRows>().height())
+                          in_vars[i]->Get<SelectedRows>().height());
         functor(context.device_context(), in_vars[i]->Get<SelectedRows>(),
                 offset, out);
         offset += in_vars[i]->Get<SelectedRows>().value().numel();

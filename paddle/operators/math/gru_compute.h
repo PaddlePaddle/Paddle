@@ -22,28 +22,28 @@ namespace math {
 // TODO(guosheng): refine code style in gru_compute
 template <typename T>
 struct hl_gru_value {
-  T *gateWeight;
-  T *stateWeight;
-  T *gateValue;
-  T *resetOutputValue;
-  T *outputValue;
-  T *prevOutValue;
+  T *gate_weight;
+  T *state_weight;
+  T *gate_value;
+  T *reset_output_value;
+  T *output_value;
+  T *prev_out_value;
 };
 
 template <typename T>
 struct hl_gru_grad {
-  T *gateWeightGrad;
-  T *stateWeightGrad;
-  T *gateGrad;
-  T *resetOutputGrad;
-  T *outputGrad;
-  T *prevOutGrad;
+  T *gate_weight_grad;
+  T *state_weight_grad;
+  T *gate_grad;
+  T *reset_output_grad;
+  T *output_grad;
+  T *prev_out_grad;
 };
 
 template <typename Place, typename T>
 struct GRUUnitFunctor {
   static void compute(const platform::DeviceContext &context,
-                      hl_gru_value<T> value, int frameSize, int batchSize,
+                      hl_gru_value<T> value, int frame_size, int batch_size,
                       activation_mode_t active_node,
                       activation_mode_t active_gate);
 };
@@ -51,8 +51,9 @@ struct GRUUnitFunctor {
 template <typename Place, typename T>
 struct GRUUnitGradFunctor {
   static void compute(const platform::DeviceContext &context,
-                      hl_gru_value<T> value, hl_gru_grad<T> grad, int frameSize,
-                      int batchSize, activation_mode_t active_node,
+                      hl_gru_value<T> value, hl_gru_grad<T> grad,
+                      int frame_size, int batch_size,
+                      activation_mode_t active_node,
                       activation_mode_t active_gate);
 };
 

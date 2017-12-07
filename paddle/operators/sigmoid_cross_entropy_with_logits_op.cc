@@ -25,20 +25,19 @@ class SigmoidCrossEntropyWithLogitsOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Labels"),
-                   "Input(Labels) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should be not null.");
 
     auto x_dims = ctx->GetInputDim("X");
-    auto labels_dims = ctx->GetInputDim("Labels");
+    auto labels_dims = ctx->GetInputDim("Label");
     PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
     PADDLE_ENFORCE_EQ(labels_dims.size(), 2,
-                      "Input(Labels)'s rank should be 2.");
+                      "Input(Label)'s rank should be 2.");
     PADDLE_ENFORCE_EQ(x_dims[0], labels_dims[0],
-                      "The 1st dimension of Input(X) and Input(Labels) should "
+                      "The 1st dimension of Input(X) and Input(Label) should "
                       "be equal.");
     PADDLE_ENFORCE_EQ(x_dims[1], labels_dims[1],
-                      "The 2nd dimension of Input(X) and Input(Labels) should "
+                      "The 2nd dimension of Input(X) and Input(Label) should "
                       "be equal.");
 
     ctx->SetOutputDim("Out", x_dims);
@@ -53,26 +52,25 @@ class SigmoidCrossEntropyWithLogitsGradOp
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Labels"),
-                   "Input(Labels) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) shoudl be not null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
                    "Output(X@GRAD) should be not null.");
 
     auto x_dims = ctx->GetInputDim("X");
-    auto labels_dims = ctx->GetInputDim("Labels");
+    auto labels_dims = ctx->GetInputDim("Label");
     auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
     PADDLE_ENFORCE_EQ(labels_dims.size(), 2,
-                      "Input(Labels)'s rank should be 2.");
+                      "Input(Label)'s rank should be 2.");
     PADDLE_ENFORCE_EQ(dout_dims.size(), 2,
                       "Input(Out@Grad)'s rank should be 2.");
     PADDLE_ENFORCE_EQ(x_dims[0], labels_dims[0],
-                      "The 1st dimension of Input(X) and Input(Labels) should "
+                      "The 1st dimension of Input(X) and Input(Label) should "
                       "be equal.");
     PADDLE_ENFORCE_EQ(x_dims[1], labels_dims[1],
-                      "The 2nd dimension of Input(X) and Input(Labels) should "
+                      "The 2nd dimension of Input(X) and Input(Label) should "
                       "be equal.");
     PADDLE_ENFORCE_EQ(x_dims[0], dout_dims[0],
                       "The 1st dimension of Input(X) and Input(Out@Grad) "
@@ -97,7 +95,7 @@ class SigmoidCrossEntropyWithLogitsOpMaker
              "This input is a tensor of logits computed by the previous "
              " operator. Logits are unscaled log probabilities given as "
              "log(p/(1-p)).");
-    AddInput("Labels",
+    AddInput("Label",
              "(Tensor, default Tensor<float>), a 2-D tensor of the same type "
              "and shape as X. This input is a tensor of probabalistic labels "
              "for each logit");

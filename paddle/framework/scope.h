@@ -76,6 +76,8 @@ class Scope {
   std::string Rename(const std::string& origin_name) const;
 
  private:
+  Variable* FindVarLocally(const std::string& name) const;
+
   // Call Scope::NewScope for a sub-scope.
   explicit Scope(Scope const* parent) : parent_(parent) {}
 

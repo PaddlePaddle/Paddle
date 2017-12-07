@@ -1,6 +1,6 @@
 import numpy as np
 from . import core
-from framework import Program, g_main_program
+from framework import Program, default_main_program
 
 __all__ = ['Executor', 'g_scope']
 
@@ -103,7 +103,7 @@ class Executor(object):
             fetch_list = []
 
         if program is None:
-            program = g_main_program
+            program = default_main_program()
 
         if not isinstance(program, Program):
             raise TypeError()

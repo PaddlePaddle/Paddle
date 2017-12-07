@@ -145,7 +145,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
 # import paddle.fluid as fluid
 #
 # hidden = fluid.layers.fc(...,
-#                          param_attr=ParamAttr(fluid.regularizer.Xavier()))
+#                          param_attr=fluid.regularizer.Xavier())
 #
 # It is no need to add a `Regularizer` as the class suffix
 L1Decay = L1DecayRegularizer

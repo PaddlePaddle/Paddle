@@ -107,10 +107,12 @@ Adam algorithm based on the infinity norm.
 
 Adamax updates:
 
-$$momentOut = \beta_1 * moment + (1 - \beta_1) * grad \break
-infNormOut = max(\beta_2 * infNorm + \epsilon, |grad|) \break
-learningRate = learningRate /(1 - \beta_1_{pow}) \break
-paramOut = param - learningRate * momentPut / infNormOut$$
+$$
+  momentOut = \beta_{1} * moment + (1 - \beta_{1}) * grad \\
+  infNormOut = max(\beta_{2} * infNorm + \epsilon, |grad|) \\
+  learningRate = \frac{learningRate}{1 - \beta_{1}^{Beta1Pow}} \\
+  paramOut = param - learningRate * \frac{momentOut}{infNormOut}
+$$
 
 The original paper does not have an epsilon attribute.
 However, it is added here for numerical stability to prevent the
