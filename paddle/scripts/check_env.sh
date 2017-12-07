@@ -12,7 +12,7 @@ ht=`lscpu |grep "per core" |awk -F':' '{print $2}'|xargs`
 physical_cores=$((sockets * cores_per_socket))
 virtual_cores=`grep 'processor' /proc/cpuinfo | sort -u | wc -l`
 numa_nodes=`lscpu |grep "NUMA node(s)"|awk -F':' '{print $2}'|xargs`
-echo "CPU Name               : `lscpu |grep \"name\" |awk -F':' '{print $2}'|xargs`"
+echo "CPU Name               : `cat /proc/cpuinfo |grep -i "model name" |uniq |awk -F ':' '{print $2}'|xargs`"
 echo "CPU Family             : `lscpu |grep \"CPU family\" |awk -F':' '{print $2}'|xargs`"
 echo "Socket Number          : $sockets"
 echo "Cores Per Socket       : $cores_per_socket"
@@ -37,14 +37,24 @@ fi
 
 echo "-------------------------- Memory Information --------------------------"
 # dmidecode support start from 2.11
+dmi_ver=`dmidecode --version|awk -F '.' '{print $1}'|xargs`
+if [ $dmi_ver -lt 2 ]; then
+  echo "Error: dmidecode unknown or version is too old"
+  exit 0
+fi
+if [ `dmidecode | grep -ic "Permission denied"` -ne 0 ]; then
+  echo "Error: need root to run dmidecode"
+  exit 0
+fi
 max_dimms=0
 num_dimms_installed=0
 for dimm_id in `dmidecode |grep Locator|sort -u | awk -F ':' '{print $2}'`; do
-  num_refered=`dmidecode |grep -c "$dimm_id"`
-  # the acutal dimm id should be refered only once
+  num_refered=`dmidecode |grep -wc "$dimm_id"`
+  # the actual dimm id should be refered only once
   if [ $num_refered -eq 1 ]; then
-    num_unknown=`dmidecode | awk '/'$dimm_id'/ {s=1}; {if (s==1) {a[NR]=$0}};
-      /Manufacturer/ {s=0; for (i in a) print a[i]; delete a}' |grep -ic unknown`
+    num_unknown=`dmidecode | awk '/'$dimm_id'/ {s=1; f=0};
+      /Unknown/ {f=1};
+      /Manufacturer/ {if (s==1) {print f; exit 0;}};'`
     if [ $num_unknown -eq 0 ]; then
       dimms_installed="$dimms_installed \n $dimm_id"
       ((num_dimms_installed++))
@@ -70,9 +80,23 @@ echo "DIMMs max slots        : $max_dimm_slots"
 if [ $max_dimms -ne $max_dimm_slots ]; then
   echo "Error: The max dimm slots do not match the max dimms: $max_dimms"
 fi
-echo "Memory Size            : `free -h |grep -i mem |awk -F' ' '{print $2}'|xargs`"
-echo "Swap Memory Size       : `free -h |grep -i swap |awk -F' ' '{print $2}'|xargs`"
-echo "Total Memory Size      : `free -th |grep -i total |tail -n 1| awk -F' ' '{print $2}'|xargs`"
+free_ver_main=`free -V|awk -F ' ' '{print $NF}'|awk -F '.' '{print $1}'`
+free_ver_sub=`free -V|awk -F ' ' '{print $NF}'|awk -F '.' '{print $2}'`
+if [ $free_ver_main -lt 3 ] || [ $free_ver_sub -lt 3 ]; then
+  mem_sz=`free |grep -i mem |awk -F' ' '{print $2}'|xargs`
+  swap_sz=`free |grep -i swap |awk -F' ' '{print $2}'|xargs`
+  total_sz=`free -t |grep -i total |tail -n 1| awk -F' ' '{print $2}'|xargs`
+  mem_sz="`awk 'BEGIN{printf "%.1f\n",('$mem_sz'/1024/1024)}'` GB" 
+  swap_sz="`awk 'BEGIN{printf "%.1f\n",('$swap_sz'/1024/1024)}'` GB"
+  total_sz="`awk 'BEGIN{printf "%.1f\n",('$total_sz'/1024/1024)}'` GB"
+else
+  mem_sz=`free -h |grep -i mem |awk -F' ' '{print $2}'|xargs`
+  swap_sz=`free -h |grep -i swap |awk -F' ' '{print $2}'|xargs`
+  total_sz=`free -th |grep -i total |tail -n 1| awk -F' ' '{print $2}'|xargs`
+fi
+echo "Memory Size            : $mem_sz"
+echo "Swap Memory Size       : $swap_sz"
+echo "Total Memory Size      : $total_sz"
 echo "Max Memory Capacity    : `dmidecode |grep -i \"maximum capacity\"|sort -u|awk -F':' '{print $2}'|xargs`"
 # DIMMs fequency
 clock_speeds=`dmidecode | grep -i "Configured Clock Speed" | grep -i "Hz" |sort -u | awk -F':' '{print $2}'|xargs`
@@ -165,3 +189,68 @@ done
 # dump all details for fully check
 lscpu > lscpu.dump
 dmidecode > dmidecode.dump
+
+# The expected result would be like:
+# ========================= Hardware Information =========================
+# CPU Name               : Intel(R) Xeon(R) Gold 6148M CPU @ 2.40GHz
+# CPU Family             : 6
+# Socket Number          : 2
+# Cores Per Socket       : 20
+# Total Physical Cores   : 40
+# Total Virtual Cores    : 40
+# Hyper Threading        : OFF
+# NUMA Nodes             : 2
+# -------------------------- Memory Information --------------------------
+# Installed DIMM number  : 12
+# Installed DIMMs Locator:
+#  CPU1_DIMM_A1
+#  CPU1_DIMM_B1
+#  CPU1_DIMM_C1
+#  CPU1_DIMM_D1
+#  CPU1_DIMM_E1
+#  CPU1_DIMM_F1
+#  CPU2_DIMM_A1
+#  CPU2_DIMM_B1
+#  CPU2_DIMM_C1
+#  CPU2_DIMM_D1
+#  CPU2_DIMM_E1
+#  CPU2_DIMM_F1
+# Not installed DIMMs    :
+#  CPU1_DIMM_A2
+#  CPU1_DIMM_B2
+#  CPU1_DIMM_C2
+#  CPU1_DIMM_D2
+#  CPU1_DIMM_E2
+#  CPU1_DIMM_F2
+#  CPU2_DIMM_A2
+#  CPU2_DIMM_B2
+#  CPU2_DIMM_C2
+#  CPU2_DIMM_D2
+#  CPU2_DIMM_E2
+#  CPU2_DIMM_F2
+# DIMMs max slots        : 24
+# Memory Size            : 376G
+# Swap Memory Size       : 4.0G
+# Total Memory Size      : 380G
+# Max Memory Capacity    : 2304 GB
+# Configed Clock Speed   : 2666 MHz
+# -------------------------- Turbo Information  --------------------------
+# Scaling Driver         : intel_pstate
+# Turbo Status           : ON
+# CPU Max Frequency      : 3.70 GHz
+# CPU Min Frequency      : 1.00 GHz
+# CPU Freq Governor      : performance
+# ========================= Software Information =========================
+# BIOS Release Date      : 03/10/2017
+# OS Version             : CentOS Linux release 7.3.1611 (Core)
+# Kernel Release Version : 3.10.0-514.el7.x86_64
+# Kernel Patch Version   : #1 SMP Tue Nov 22 16:42:41 UTC 2016
+# GCC Version            : 4.8.5 20150623 (Red Hat 4.8.5-11)
+# CMake Version          : 3.5.2
+# ------------------ Environment Variables Information -------------------
+# KMP_AFFINITY           : unset
+# OMP_DYNAMIC            : unset
+# OMP_NESTED             : unset
+# OMP_NUM_THREADS        : unset
+# MKL_NUM_THREADS        : unset
+# MKL_DYNAMIC            : unset
