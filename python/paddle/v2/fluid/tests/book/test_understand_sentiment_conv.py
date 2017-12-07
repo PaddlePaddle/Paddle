@@ -4,21 +4,25 @@ import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
 
 
-def convolution_net(data, label, input_dim, class_dim=2, emb_dim=32,
-                    hid_dim=32):
+def convolution_net(data,
+                    label,
+                    input_dim,
+                    class_dim=2,
+                    emb_dim=128,
+                    hid_dim=128):
     emb = fluid.layers.embedding(input=data, size=[input_dim, emb_dim])
     conv_3 = fluid.nets.sequence_conv_pool(
         input=emb,
         num_filters=hid_dim,
         filter_size=3,
         act="tanh",
-        pool_type="sqrt")
+        pool_type="max")
     conv_4 = fluid.nets.sequence_conv_pool(
         input=emb,
         num_filters=hid_dim,
         filter_size=4,
         act="tanh",
-        pool_type="sqrt")
+        pool_type="max")
     prediction = fluid.layers.fc(input=[conv_3, conv_4],
                                  size=class_dim,
                                  act="softmax")
