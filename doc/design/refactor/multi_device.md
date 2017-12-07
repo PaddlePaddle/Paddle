@@ -1,30 +1,49 @@
-# Design Doc: How to Execute the ProgramDesc on Multiple Device
+# Design Doc: Execute the Program with Multi Thread
 
-A sequence of optimizers will convert a ProgramDesc to ExecutionPlan, which allow
-the PaddlePaddle program running on multi devices such CPU, GPU or FPGA,
-or multi nodes.
+In PaddlePaddle, the user could declare **wich** operators will be
+execute and **how much** threads will be run in Python code.
 
-## Running with Multi-CPU
+## Python Interface
 
-### Graph Convert
+We can specify the thread count with `parallel.do(thread_count=N)`,
+the following PaddlePaddle program shows the usage of the Parallel operator:
 
-The Multi CPU Optimizer will converts the user-define graph into the ExecutionPlan
+```python
+import paddle.v2.fluid as fluid
+N=4
+parallel = fluid.parallel()
 
-<img src="src/multi-device/single-thread@3x.png" width="300">
-After converting:
-<img src="src/multi-device/multi-cpu@3x.png" width="700">
+x = minibatch([10, 20, 30, 40, 50])
+y = var("y")
+label = var(1)
+w = var("w")
+b = var("b")
 
-1. For the data parallelism, the `Feed` Op will feed the mini-batch
-    according with the thread index, such as set the different
-    `start/end` index for the Op in each thread.
-1. The **Thread0** is the master thread, and it will collect the
-    gradients, execute the optimizer and update the parameter
-    variable W.
-1. We will add a `Reduce` Op, it will collect the gradients with
-    `sum/mean/...` method, and before it execute the collector,
-    the `Reduce` Op should wait for all the threads finish their
-    mini-batch, it's a Sync SGD.
+fluid.split(x, N)
 
-## Running with Multi-GPU
+with parallel.do(thread_count=N):
+    y_predict = fluid.fc(input=x, size=1)
+    cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+    avg_cost = fluid.layers.mean(x=cost)
 
-TODO
+fluid.merge_grad_avg(x, N) # merge gradient with avg/sum/max/min/...
+sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+
+with parallel.do(thread_count=N):
+    sgd_optimizer.minimize(avg_cost)
+
+```
+
+## Operator Kernel
+
+- We need a global threadpool, and initialize the threadpool when the
+    Executor run the Parallel Op for the first time.
+- The Op kernel will create an Executor instance, and send the blocks which number
+    is `thread_count` into the threadpool and run the block for each thread, while
+    all the blocks is done, the Op will exit, it's a sync process.
+
+## Operators
+
+- `Split` Op will split the Tensor into N tensors
+- `MergeGradAvg` Op will merge the gradients with `avg` , we also need to
+    implement other math such as `sum/max/min...`.
