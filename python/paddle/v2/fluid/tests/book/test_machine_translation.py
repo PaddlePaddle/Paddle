@@ -103,7 +103,7 @@ def main():
 
     avg_cost = fluid.layers.mean(x=cost)
 
-    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+    optimizer = fluid.optimizer.SGD(learning_rate=5e-5)
     optimizer.minimize(avg_cost)
 
     # accuracy = fluid.evaluator.Accuracy(input=decoder_out, label=label)
