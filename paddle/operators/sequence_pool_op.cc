@@ -58,12 +58,12 @@ Sequence Pool Operator.
 
 The SequencePoolOp pools features of all time-steps of each instance.
 It supports six pooling types:
-1. AVERAGE: Out[i] = $$avg(X_i)$$
-2. SUM:     Out[i] = $$\sum_jX_{ij}$$
-3. SQRT:    Out[i] = $$\frac{\sum_jX_{ij}}{\sqrt{len(X_i)}}$$
+1. AVERAGE: $$Out[i] = \frac{\sum_i X_i}{N}$$
+2. SUM:     $$Out[i] = \sum_jX_{ij}$$
+3. SQRT:    $$Out[i] = \frac{\sum_jX_{ij}}{\sqrt{len(X_i)}}$$
 4. LAST:    Out[i] = last instance in i-th sequence X[i]
 5. FIRST:   Out[i] = first instance in i-th sequence X[i]
-6. MAX:     Out[i] = $$max(X_i)$$
+6. MAX:     $$Out[i] = max(X_i)$$
 
 The following example explains how this works:
 For a mini-batch of 3 variable-length sentences,

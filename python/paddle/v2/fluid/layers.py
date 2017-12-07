@@ -180,6 +180,77 @@ def dynamic_lstm(input,
     return hidden, cell
 
 
+def gru_unit(input,
+             hidden,
+             size,
+             weight=None,
+             bias=None,
+             activation='tanh',
+             gate_activation='sigmoid',
+             main_program=None,
+             startup_program=None):
+    """
+    GRUUnit Operator implements partial calculations of the GRU unit as following:
+
+    $$
+    update \ gate: u_t = actGate(xu_t + W_u * h_{t-1} + b_u) \\
+    reset \ gate: r_t = actGate(xr_t + W_r * h_{t-1} + b_r)  \\
+    output \ candidate: {h}_t = actNode(xc_t + W_c * dot(r_t, h_{t-1}) + b_c) \\
+    output: h_t = dot((1 - u_t), h_{t-1}) + dot(u_t, {h}_t)
+    $$
+
+    which is same as one time step of GRU Operator.
+
+    @note To implement the complete GRU unit, fully-connected operator must be
+    used before to feed xu, xr and xc as the Input of GRUUnit operator.
+
+    TODO(ChunweiYan) add more document here
+    """
+    activation_dict = dict(
+        identity=0,
+        sigmoid=1,
+        tanh=2,
+        relu=3, )
+    activation = activation_dict[activation]
+    gate_activation = activation_dict[gate_activation]
+
+    helper = LayerHelper('gru_unit', **locals())
+    dtype = helper.input_dtype()
+    size = size / 3
+
+    # create weight
+    if weight is None:
+        weight = helper.create_parameter(
+            attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
+
+    # create bias
+    if bias is None:
+        bias_size = [1, 3 * size]
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+
+    gate = helper.create_tmp_variable(dtype)
+    reset_hidden_pre = helper.create_tmp_variable(dtype)
+    updated_hidden = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type='gru_unit',
+        inputs={'Input': input,
+                'HiddenPrev': hidden,
+                'Weight': weight},
+        outputs={
+            'Gate': gate,
+            'ResetHiddenPrev': reset_hidden_pre,
+            'Hidden': updated_hidden,
+        },
+        attrs={
+            'activation': 0,
+            'gate_activation': 1,
+        })
+
+    return updated_hidden, reset_hidden_pre, gate
+
+
 def data(name,
          shape,
          append_batch_size=True,
@@ -764,7 +835,7 @@ def conv2d(input,
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
-        type='conv2d',
+        type='conv2d_cudnn',
         inputs={
             'Input': input,
             'Filter': filter,

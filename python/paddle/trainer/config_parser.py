@@ -1233,7 +1233,7 @@ def parse_bilinear(bilinear, input_layer_name, bilinear_conf):
     bilinear_conf.out_size_y = bilinear.out_size_y
 
 
-def parse_pool(pool, input_layer_name, pool_conf, ceil_mode):
+def parse_pool(pool, input_layer_name, pool_conf, ceil_mode, exclude_mode):
     pool_conf.pool_type = pool.pool_type
     config_assert(pool.pool_type in [
         'max-projection', 'avg-projection', 'max-pool-with-mask', 'cudnn-max-pool', 'cudnn-avg-pool'
@@ -1262,6 +1262,8 @@ def parse_pool(pool, input_layer_name, pool_conf, ceil_mode):
     pool_conf.output_y = cnn_output_size(pool_conf.img_size_y, pool_conf.size_y,
                                          pool_conf.padding_y,
                                          pool_conf.stride_y, not ceil_mode)
+    if exclude_mode != None:
+        pool_conf.exclude_mode = exclude_mode
 
 
 def parse_pool3d(pool, input_layer_name, pool_conf, ceil_mode):
@@ -2287,11 +2289,17 @@ class Conv3DLayer(Conv3DLayerBase):
 class NormLayer(LayerBase):
     def __init__(self, name, inputs, **xargs):
         super(NormLayer, self).__init__(name, 'norm', 0, inputs=inputs, **xargs)
+        use_mkldnn = bool(int(g_command_config_args.get("use_mkldnn", 0)))
+        use_mkldnn = True if use_mkldnn and self.inputs[
+            0].norm.norm_type == 'cmrnorm-projection' else False
+        self.config.type = 'mkldnn_lrn' if use_mkldnn else self.config.type
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             norm_conf = self.config.inputs[input_index].norm_conf
             parse_norm(self.inputs[input_index].norm, input_layer.name,
                        norm_conf)
+            norm_conf.scale = self.inputs[
+                input_index].norm.scale if use_mkldnn else norm_conf.scale
             self.set_cnn_layer(name, norm_conf.output_y, norm_conf.output_x,
                                norm_conf.channels, False)
             if norm_conf.norm_type == "cross-channel-norm":
@@ -2303,7 +2311,8 @@ class NormLayer(LayerBase):
 class PoolLayer(LayerBase):
     layer_type = 'pool'
 
-    def __init__(self, name, inputs, ceil_mode=True, **xargs):
+    def __init__(self, name, inputs, ceil_mode=True, exclude_mode=None,
+                 **xargs):
         use_mkldnn = int(g_command_config_args.get("use_mkldnn", 0))
         if self.layer_type == "mkldnn_pool":
             config_assert(use_mkldnn, "mkldnn_pool only support MKLDNN")
@@ -2314,7 +2323,7 @@ class PoolLayer(LayerBase):
             input_layer = self.get_input_layer(input_index)
             pool_conf = self.config.inputs[input_index].pool_conf
             parse_pool(self.inputs[input_index].pool, input_layer.name,
-                       pool_conf, ceil_mode)
+                       pool_conf, ceil_mode, exclude_mode)
             self.set_cnn_layer(name, pool_conf.output_y, pool_conf.output_x,
                                pool_conf.channels)
 
