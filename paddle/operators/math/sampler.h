@@ -20,14 +20,21 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-// TODO: Support for GPU
+// TODO(wanghaoshuang): Support for GPU
 
 /**
 * Sample integers from [0, range).
 */
 class Sampler {
  public:
-  explicit Sampler(int64 range) : range_(range) { /* check range > 0*/
+  explicit Sampler(int64 range) : range_(range) {
+    PADDLE_ENFORCE_GT(range, 0);
+    std::random_device r;
+    seed_ = r();
+  }
+  explicit Sampler(int64 range, unsigned int seed)
+      : range_(range), seed_(seed) {
+    PADDLE_ENFORCE_GT(range, 0);
   }
   virtual ~Sampler();
   // Sample a single value
@@ -39,6 +46,7 @@ class Sampler {
 
  protected:
   const int64 range_;
+  unsigned int seed_;
 };
 
 /**
@@ -49,6 +57,8 @@ class Sampler {
 class UniformSampler : public Sampler {
  public:
   explicit UniformSampler(int64 range);
+
+  explicit UniformSampler(int64 range, unsigned int seed);
 
   ~UniformSampler() override {}
 
@@ -70,6 +80,8 @@ class UniformSampler : public Sampler {
 class LogUniformSampler : public Sampler {
  public:
   explicit LogUniformSampler(int64 range);
+
+  explicit LogUniformSampler(int64 range, unsigned int seed);
 
   ~LogUniformSampler() override {}
 

@@ -1,3 +1,17 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
 #include "sampler.h"
 
 namespace paddle {
@@ -7,8 +21,13 @@ Sampler::~Sampler() {}
 
 UniformSampler::UniformSampler(int64 range)
     : Sampler(range), inv_range_(1.0 / range) {
-  std::random_device r;
-  random_engine_ = std::make_shared<std::mt19937>(r());
+  random_engine_ = std::make_shared<std::mt19937>(seed_);
+  dist_ = std::make_shared<std::uniform_int_distribution<>>(0, range);
+}
+
+UniformSampler::UniformSampler(int64 range, unsigned int seed)
+    : Sampler(range, seed), inv_range_(1.0 / range) {
+  random_engine_ = std::make_shared<std::mt19937>(seed_);
   dist_ = std::make_shared<std::uniform_int_distribution<>>(0, range);
 }
 
@@ -18,11 +37,15 @@ float UniformSampler::Probability(int64 value) const { return inv_range_; }
 
 LogUniformSampler::LogUniformSampler(int64 range)
     : Sampler(range), log_range_(log(range + 1)) {
-  std::random_device r;
-  random_engine_ = std::make_shared<std::mt19937>(r());
+  random_engine_ = std::make_shared<std::mt19937>(seed_);
   dist_ = std::make_shared<std::uniform_real_distribution<>>(0, 1);
 }
 
+LogUniformSampler::LogUniformSampler(int64 range, unsigned int seed)
+    : Sampler(range, seed), log_range_(log(range + 1)) {
+  random_engine_ = std::make_shared<std::mt19937>(seed_);
+  dist_ = std::make_shared<std::uniform_real_distribution<>>(0, 1);
+}
 int64 LogUniformSampler::Sample() const {
   // Got Log Uniform distribution from uniform distribution by
   // inverse_transform_sampling method
