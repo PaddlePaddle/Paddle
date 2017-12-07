@@ -41,7 +41,7 @@ nonseq = embedding_layer(input=label, size=word_dim)
 
 
 # This hierarchical RNN is designed to be equivalent to the simple RNN in
-# sequence_rnn_multi_unequalength_inputs.conf
+# sequence_rnn_mixed_inputs.conf
 def outer_step(subseq, seq, nonseq, encoding):
     outer_mem = memory(name="outer_rnn_state", size=hidden_dim)
 

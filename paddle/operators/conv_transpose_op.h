@@ -63,7 +63,6 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
 
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
-    // TODO(Zhuoyuan): Paddings can be added in future.
     // groups will alway be disabled in conv2dtranspose.
 
     const int batch_size = static_cast<int>(input->dims()[0]);

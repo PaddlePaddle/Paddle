@@ -4,24 +4,22 @@ import math
 import sys
 from op_test import OpTest
 
+
 class TestROIPoolOp(OpTest):
     def set_data(self):
         self.init_test_case()
         self.make_rois()
         self.calc_roi_pool()
 
-        self.inputs = {
-            'X': self.x, 
-            'ROIs': self.rois}
-        
+        self.inputs = {'X': self.x, 'ROIs': self.rois}
+
         self.attrs = {
             'spatial_scale': self.spatial_scale,
             'pooled_height': self.pooled_height,
-            'pooled_width': self.pooled_width}
+            'pooled_width': self.pooled_width
+        }
 
-        self.outputs = {
-            'Out': self.outs,
-            'Argmax': self.argmaxes}
+        self.outputs = {'Out': self.outs, 'Argmax': self.argmaxes}
 
     def init_test_case(self):
         self.batch_size = 5
@@ -30,10 +28,9 @@ class TestROIPoolOp(OpTest):
         self.width = 4
 
         # n, c, h, w
-        self.x_dim = (self.batch_size, self.channels,
-                      self.height, self.width)
+        self.x_dim = (self.batch_size, self.channels, self.height, self.width)
 
-        self.spatial_scale = 1.0/4.0
+        self.spatial_scale = 1.0 / 4.0
         self.pooled_height = 2
         self.pooled_width = 2
         self.rois_num = 2
@@ -41,13 +38,11 @@ class TestROIPoolOp(OpTest):
         self.x = np.random.random(self.x_dim).astype('float32')
 
     def calc_roi_pool(self):
-        out_data = np.zeros(
-            (self.rois_num, self.channels,
-            self.pooled_height, self.pooled_width))
-        argmax_data = np.zeros(
-            (self.rois_num, self.channels,
-            self.pooled_height, self.pooled_width))
-            
+        out_data = np.zeros((self.rois_num, self.channels, self.pooled_height,
+                             self.pooled_width))
+        argmax_data = np.zeros((self.rois_num, self.channels,
+                                self.pooled_height, self.pooled_width))
+
         for i in range(self.rois_num):
             roi = self.rois[i]
             roi_batch_id = roi[0]
@@ -56,8 +51,8 @@ class TestROIPoolOp(OpTest):
             roi_end_w = int(round(roi[3] * self.spatial_scale))
             roi_end_h = int(round(roi[4] * self.spatial_scale))
 
-            roi_height = int(max(roi_end_h - roi_start_h + 1, 1));
-            roi_width = int(max(roi_end_w - roi_start_w + 1, 1));
+            roi_height = int(max(roi_end_h - roi_start_h + 1, 1))
+            roi_width = int(max(roi_end_w - roi_start_w + 1, 1))
 
             x_i = self.x[roi_batch_id]
 
@@ -84,7 +79,7 @@ class TestROIPoolOp(OpTest):
                             out_data[i, c, ph, pw] = -sys.float_info.max
 
                         argmax_data[i, c, ph, pw] = -1
-                        
+
                         for h in range(hstart, hend):
                             for w in range(wstart, wend):
                                 if x_i[c, h, w] > out_data[i, c, ph, pw]:
@@ -104,11 +99,11 @@ class TestROIPoolOp(OpTest):
             y1 = np.random.random_integers(
                 0, self.height / self.spatial_scale - self.pooled_height)
 
-            x2 = np.random.random_integers(
-                x1 + self.pooled_width, self.width / self.spatial_scale)
-            y2 = np.random.random_integers(
-                y1 + self.pooled_height, self.height / self.spatial_scale)
-            
+            x2 = np.random.random_integers(x1 + self.pooled_width,
+                                           self.width / self.spatial_scale)
+            y2 = np.random.random_integers(y1 + self.pooled_height,
+                                           self.height / self.spatial_scale)
+
             roi = [batch_ids[i], x1, y1, x2, y2]
             rois.append(roi)
         self.rois = np.array(rois).astype("int64")
@@ -122,6 +117,7 @@ class TestROIPoolOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
 
 if __name__ == '__main__':
     unittest.main()

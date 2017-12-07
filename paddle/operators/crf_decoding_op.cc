@@ -36,17 +36,18 @@ class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
         "w. See more details in comments of the linear_chain_crf operator.");
     AddInput(
         "Label",
-        "(LoDTensor,  LoDTensor<int>). The ground truth with shape "
+        "(LoDTensor,  LoDTensor<int64_t>). The ground truth with shape "
         "[N x 1]. This input is optional. See more details in the operator's "
         "comments.")
         .AsDispensable();
-    AddOutput("ViterbiPath",
-              "(LoDTensor, LoDTensor<int>). The decoding results. What to "
-              "return changes depending on whether the Input(Label) (the groud "
-              "truth) is given. See more details in the operator's comment.");
+    AddOutput(
+        "ViterbiPath",
+        "(LoDTensor, LoDTensor<int64_t>). The decoding results. What to "
+        "return changes depending on whether the Input(Label) (the ground "
+        "truth) is given. See more details in the operator's comment.");
     AddComment(R"DOC(
 The crf_decoding operator reads the emission feature weights and the transition
-freature weights learned by the linear_chain_crf operator. It implements the
+feature weights learned by the linear_chain_crf operator. It implements the
 Viterbi algorithm which is a dynamic programming algorithm for finding the most
 likely sequence of hidden states, called the Viterbi path, that results in a
 sequence of observed tags.
@@ -60,14 +61,14 @@ operator.
 
 When Input(Label) is given, the crf_decoding operator returns a row vector
 with shape [N x 1] whose values are fixed to be 0, indicating an incorrect
-prediction, or 1 indicating a tag is correctly predicted. Such an ouput is the
+prediction, or 1 indicating a tag is correctly predicted. Such an output is the
 input to chunk_eval operator.
 
 2. Input(Label) is not given:
 
 This is the standard decoding process.
 
-The crf_decoding operator returns a row vecotr with shape [N x 1] whose values
+The crf_decoding operator returns a row vector with shape [N x 1] whose values
 range from 0 to maximum tag number - 1. Each element indicates an index of a
 predicted tag.
 )DOC");
