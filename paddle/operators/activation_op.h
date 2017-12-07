@@ -700,6 +700,35 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct SwishFunctor : public BaseActivationFunctor<T> {
+  float beta;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"beta", &beta}};
+  }
+
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) const {
+    y.device(d) = x / (static_cast<T>(1) + (static_cast<T>(-beta) * x).exp());
+  }
+};
+
+template <typename T>
+struct SwishGradFunctor : public BaseActivationFunctor<T> {
+  float beta;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"beta", &beta}};
+  }
+
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) const {
+    auto temp1 = static_cast<T>(1) /
+                 (static_cast<T>(1) + (static_cast<T>(-beta) * x).exp());
+    auto temp2 = temp1 * (static_cast<T>(1) - (beta * y));
+    dx.device(d) = dy * ((beta * y) + temp2);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -730,4 +759,5 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   __macro(elu, ELUFunctor, ELUGradFunctor);                          \
   __macro(hard_shrink, HardShrinkFunctor, HardShrinkGradFunctor);    \
   __macro(hard_sigmoid, HardSigmoidFunctor, HardSigmoidGradFunctor); \
+  __macro(swish, SwishFunctor, SwishGradFunctor);                    \
   __macro(thresholded_relu, ThresholdedReluFunctor, ThresholdedReluGradFunctor);
