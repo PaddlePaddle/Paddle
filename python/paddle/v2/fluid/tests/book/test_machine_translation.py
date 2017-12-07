@@ -96,7 +96,6 @@ def to_lodtensor(data, place):
 
 def main():
     encoder_out = encoder()
-    print(encoder_out.lod_level)
     decoder_out = decoder_trainer(encoder_out)
     label = layers.data(
         name="target_language_next_word", shape=[1], dtype='int64', lod_level=1)
@@ -106,6 +105,7 @@ def main():
 
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
     optimizer.minimize(avg_cost)
+
     # accuracy = fluid.evaluator.Accuracy(input=decoder_out, label=label)
 
     train_data = paddle.batch(
@@ -134,7 +134,7 @@ def main():
                                'target_language_word': trg_word,
                                'target_language_next_word': trg_word_next
                            },
-                           fetch_list=[encoder_out, decoder_out])
+                           fetch_list=[])
             # fetch_list=[encoder_out, decoder_out, accuracy.metrics[0]])
 
 
