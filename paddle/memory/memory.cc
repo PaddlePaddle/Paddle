@@ -72,8 +72,8 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
     return as[gpu_id];
   } else {
     as[gpu_id] = new BuddyAllocator(new detail::GPUAllocator,
-                                 platform::GpuMinChunkSize(),
-                                 platform::GpuMaxChunkSize());
+                                    platform::GpuMinChunkSize(),
+                                    platform::GpuMaxChunkSize());
     VLOG(10) << "\n\nNOTE: each GPU device use "
              << FLAGS_fraction_of_gpu_memory_to_use * 100
              << "% of GPU memory.\n"
