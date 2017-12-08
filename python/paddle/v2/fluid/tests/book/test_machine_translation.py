@@ -106,9 +106,11 @@ def main():
                            },
                            fetch_list=[avg_cost])
             avg_cost_val = np.array(outs[0])
-            batch_id += 1
             print('pass_id=' + pass_id + ' batch=' + batch_id + " avg_cost=" +
                   str(avg_cost_val))
+            if batch_id > 3:
+                exit(0)
+            batch_id += 1
 
 
 if __name__ == '__main__':
