@@ -255,7 +255,7 @@ IF(NOT PROTOBUF_FOUND)
         IF(ANDROID)
             INSTALL(FILES ${PROTOBUF_LITE_LIBRARY} DESTINATION third_party/protobuf/lib/${ANDROID_ABI})
         ELSE()
-            INSTALL(FILES ${PROTOBUF_LITE_LIBRARY} DESTINATION third_party/protobuf/lib/${ANDROID_ABI})
+            INSTALL(FILES ${PROTOBUF_LITE_LIBRARY} DESTINATION third_party/protobuf/lib)
         ENDIF()
     ENDIF()
 
