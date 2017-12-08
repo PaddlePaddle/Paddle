@@ -36,13 +36,11 @@ Scope& Scope::NewScope() const {
 }
 
 Variable* Scope::Var(const std::string& name) {
-  auto iter = vars_.find(name);
-  if (iter != vars_.end()) {
-    return iter->second;
-  }
-  Variable* v = new Variable();
+  auto* v = FindVarLocally(name);
+  if (v != nullptr) return v;
+  v = new Variable();
   vars_[name] = v;
-  VLOG(3) << "Create variable " << name << " on scope";
+  VLOG(3) << "Create variable " << name;
   v->name_ = &(vars_.find(name)->first);
   return v;
 }
@@ -56,8 +54,10 @@ Variable* Scope::Var(std::string* name) {
 }
 
 Variable* Scope::FindVar(const std::string& name) const {
-  auto it = vars_.find(name);
-  if (it != vars_.end()) return it->second;
+  auto var = FindVarLocally(name);
+  if (var != nullptr) {
+    return var;
+  }
   return (parent_ == nullptr) ? nullptr : parent_->FindVar(name);
 }
 
@@ -96,6 +96,29 @@ void Scope::DeleteScope(Scope* scope) {
   PADDLE_ENFORCE(it != this->kids_.end(), "Cannot find %p as kid scope", scope);
   this->kids_.erase(it);
   delete scope;
+}
+
+void Scope::Rename(const std::string& origin_name,
+                   const std::string& new_name) const {
+  auto origin_it = vars_.find(origin_name);
+  PADDLE_ENFORCE(origin_it != vars_.end(),
+                 "Cannot find original variable with name %s", origin_name);
+  auto new_it = vars_.find(new_name);
+  PADDLE_ENFORCE(new_it == vars_.end(),
+                 "The variable with name %s is already in the scope", new_name);
+  vars_[new_name] = origin_it->second;
+  vars_.erase(origin_it);
+}
+
+std::string Scope::Rename(const std::string& origin_name) const {
+  auto var_name = string::Sprintf("%p.%d", this, vars_.size());
+  Rename(origin_name, var_name);
+  return var_name;
+}
+Variable* Scope::FindVarLocally(const std::string& name) const {
+  auto it = vars_.find(name);
+  if (it != vars_.end()) return it->second;
+  return nullptr;
 }
 
 }  // namespace framework

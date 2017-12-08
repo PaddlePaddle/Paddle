@@ -83,7 +83,7 @@ void* GPUAllocator::Alloc(size_t& index, size_t size) {
   paddle::platform::GpuMemoryUsage(available, capacity);
 
   // Reserve memory for page tables, etc.
-  size_t reserving = capacity - paddle::platform::GpuMaxAllocSize();
+  size_t reserving = 0.05 * capacity + paddle::platform::GpuMinChunkSize();
   size_t usable = available > reserving ? available - reserving : 0;
 
   // If remaining size no less than expected size, using general

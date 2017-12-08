@@ -1,11 +1,10 @@
-
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
@@ -38,8 +37,8 @@ class ReshapeOp : public framework::OperatorWithKernel {
     // TODO(qiao) change batch_size
     for (size_t i = 1; i < shape.size(); ++i) {
       PADDLE_ENFORCE(shape[i] > 0,
-                     "Each dimension of shape "
-                     "must be positiv except the first.");
+                     "Each dimension of Attr(shape) "
+                     "must be positive except the first one.");
     }
     if (shape[0] < 0) {
       shape[0] = x_dims[0];
@@ -71,8 +70,11 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input tensor of reshape operator.");
     AddOutput("Out", "The output tensor of reshape operator.");
-    AddAttr<std::vector<int>>("shape", "Target shape of reshape operator.");
-    AddComment(R"DOC(Reshape operator
+    AddAttr<std::vector<int>>("shape",
+                              "(vector<int>) "
+                              "Target shape of reshape operator.");
+    AddComment(R"DOC(
+Reshape Operator.
 
 Reshape Input(X) into the shape specified by Attr(shape).
 
@@ -81,7 +83,7 @@ Given a 2-D tensor X with 2 rows and 2 columns
 
     [[1, 2], [3, 4]]
 
-with target shape = [1, 4], the reshape operator will transform
+and target shape = [1, 4], the reshape operator will transform
 the tensor X into a 1-D tensor:
 
     [1, 2, 3, 4]

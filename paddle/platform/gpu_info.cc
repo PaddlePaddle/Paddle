@@ -18,8 +18,8 @@ limitations under the License. */
 
 #include "paddle/platform/enforce.h"
 
-DEFINE_double(fraction_of_gpu_memory_to_use, 0.95,
-              "Default use 95% of GPU memory for PaddlePaddle,"
+DEFINE_double(fraction_of_gpu_memory_to_use, 0.92,
+              "Default use 92% of GPU memory for PaddlePaddle,"
               "reserve the rest for page tables, etc");
 
 namespace paddle {
@@ -75,15 +75,19 @@ size_t GpuMaxChunkSize() {
   GpuMemoryUsage(available, total);
 
   // Reserving the rest memory for page tables, etc.
-  size_t reserving = (1 - FLAGS_fraction_of_gpu_memory_to_use) * total;
+  size_t reserving = 0.05 * total;
 
   // If available less than minimum chunk size, no usable memory exists.
-  available = std::max(available, GpuMinChunkSize()) - GpuMinChunkSize();
+  available =
+      std::max(std::max(available, GpuMinChunkSize()) - GpuMinChunkSize(),
+               reserving) -
+      reserving;
 
-  // If available less than reserving, no usable memory exists.
-  size_t usable = std::max(available, reserving) - reserving;
+  size_t allocating = FLAGS_fraction_of_gpu_memory_to_use * total;
 
-  return usable;
+  PADDLE_ENFORCE_LT(allocating, available);
+
+  return allocating;
 }
 
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,
@@ -108,6 +112,11 @@ void GpuMemcpyPeer(void *dst, int dst_device, const void *src, int src_device,
   PADDLE_ENFORCE(
       cudaMemcpyPeerAsync(dst, dst_device, src, src_device, count, stream),
       "cudaMemcpyPeerAsync failed in paddle::platform::GpuMemcpyPeer");
+}
+
+void GpuMemsetAsync(void *dst, int value, size_t count, cudaStream_t stream) {
+  PADDLE_ENFORCE(cudaMemsetAsync(dst, value, count, stream),
+                 "cudaMemsetAsync failed in paddle::platform::GpuMemsetAsync");
 }
 }  // namespace platform
 }  // namespace paddle

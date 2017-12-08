@@ -54,41 +54,44 @@ class PadOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input of pad op. "
              "The input should be a k-D tensor(k > 0 and k < 7)");
     AddOutput("Out",
-              "The output of pad op."
+              "The output of pad op. "
               "A tensor with the same shape as X.");
+    AddAttr<std::vector<int>>(
+        "paddings",
+        "(vector<int>) "
+        "A list<int> to describe the padding rules for each dimension. "
+        "For 2-D image tensor, paddings=[0, 1, 2, 3] means "
+        "padding 0 row to top, 1 row to bottom, 2 columns to left "
+        "and 3 columns to right. Size of paddings should be equal to "
+        "2 * dimension size of the input tensor.");
+    AddAttr<float>("pad_value",
+                   "(float, default 0.0) "
+                   "The value to fill the padded areas.")
+        .SetDefault(0.0f);
     AddComment(R"DOC(
-Pad input into output, as specified by paddings and pad_value. The input should be a k-D tensor(k > 0 and k < 7). As an example:
+Pad Operator.
+
+Pad input into output, as specified by paddings and pad_value. 
+The input should be a k-D tensor(k > 0 and k < 7). As an example:
 
 Given:
 
 X = [[1, 2],
-   [3, 4]]
+     [3, 4]],
+
+paddings = [0, 1, 1, 2],
 
 and
 
-paddings = [0, 1, 1, 2]
+pad_value = 0,
 
-and
-
-pad_value = 0
-
-then we get
+we have:
 
 Out = [[0, 1, 2, 0, 0]
        [0, 3, 4, 0, 0]
        [0, 0, 0, 0, 0]]
+
 )DOC");
-    AddAttr<std::vector<int>>(
-        "paddings",
-        "A list<int> to describes padding rules for each dimension."
-        " For 2-D image tensor, paddings=[0, 1, 2, 3] means"
-        " padding 0 row to top, 1 row to bottom, 2 columns to left"
-        " and 3 columns to right.Size of paddings should be equal to"
-        " 2 * dimension size of input tensor.");
-    AddAttr<float>("pad_value",
-                   "(float) default to 0; "
-                   "The value to fill padded areas.")
-        .SetDefault(0.0f);
   }
 };
 

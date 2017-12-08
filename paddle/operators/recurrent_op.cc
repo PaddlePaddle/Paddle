@@ -284,7 +284,8 @@ class RecurrentOp : public RecurrentBase {
             auto dst_out = dst_tensor->Slice(seq_offset, seq_offset + 1);
             // Explicit copy output since the local RNN scope can be destroyed
             // early.
-            dst_out.CopyFrom(src_tensor, dev_ctx.GetPlace(), dev_ctx);
+            framework::CopyFrom(src_tensor, dev_ctx.GetPlace(), dev_ctx,
+                                &dst_out);
           });
 
       scopes.Next();
@@ -365,7 +366,8 @@ class RecurrentGradOp : public RecurrentBase {
           auto *cur_grad_var = cur_scope.Var(cur_grad);
           auto cur_grad_tensor =
               cur_grad_var->GetMutable<framework::LoDTensor>();
-          cur_grad_tensor->CopyFrom(ex_tensor, dev_ctx.GetPlace(), dev_ctx);
+          framework::CopyFrom(ex_tensor, dev_ctx.GetPlace(), dev_ctx,
+                              cur_grad_tensor);
         }
       }
 
@@ -387,8 +389,8 @@ class RecurrentGradOp : public RecurrentBase {
         auto &p_names = Inputs(kParameters);
         PADDLE_ENFORCE_EQ(pg_names.size(), p_names.size());
 
-        for (size_t prog_id = 0; prog_id < pg_names.size(); ++prog_id) {
-          auto inside_grad_name = framework::GradVarName(p_names[prog_id]);
+        for (size_t param_id = 0; param_id < pg_names.size(); ++param_id) {
+          auto inside_grad_name = framework::GradVarName(p_names[param_id]);
 
           // If does not compute gradient of that variable inside rnn, just
           // continue
@@ -401,32 +403,24 @@ class RecurrentGradOp : public RecurrentBase {
             auto &inside_tensor = cur_scope.FindVar(inside_grad_name)
                                       ->Get<framework::LoDTensor>();
             framework::AttributeMap attrs;
-            attrs["data_type"] = framework::ToDataType(inside_tensor.type());
+            attrs["dtype"] = framework::ToDataType(inside_tensor.type());
             attrs["shape"] = framework::vectorize2int(inside_tensor.dims());
             attrs["value"] = 0.0f;
 
             auto zero_op = framework::OpRegistry::CreateOp(
-                "fill_constant", {}, {{"Out", {pg_names[prog_id]}}}, attrs);
+                "fill_constant", {}, {{"Out", {pg_names[param_id]}}}, attrs);
             zero_op->Run(scope, dev_ctx);
           }
 
+          auto new_inside_name = cur_scope.Rename(inside_grad_name);
           // sum gradient
-          auto *outside_var = scope.FindVar(pg_names[prog_id]);
-          PADDLE_ENFORCE(outside_var != nullptr);
-          auto &outside_tensor =
-              *outside_var->GetMutable<framework::LoDTensor>();
-
-          std::string result_var_name;
-          auto *local_result_var = cur_scope.Var(&result_var_name);
-          auto &local_result_tensor =
-              *local_result_var->GetMutable<framework::LoDTensor>();
-
-          local_result_tensor.ShareDataWith(outside_tensor);
 
           auto sum_op = framework::OpRegistry::CreateOp(
-              "sum", {{"X", {result_var_name, inside_grad_name}}},
-              {{"Out", {result_var_name}}}, {});
+              "sum", {{"X", {pg_names[param_id], new_inside_name}}},
+              {{"Out", {pg_names[param_id]}}}, {});
           sum_op->Run(cur_scope, dev_ctx);
+
+          cur_scope.Rename(new_inside_name, inside_grad_name);
         }
       }
       VLOG(5) << "Accumulate Parameter finished ";
@@ -446,7 +440,7 @@ class RecurrentGradOp : public RecurrentBase {
             }
 
             auto dst = outside->Slice(seq_offset, seq_offset + 1);
-            dst.CopyFrom(inside, dev_ctx.GetPlace(), dev_ctx);
+            framework::CopyFrom(inside, dev_ctx.GetPlace(), dev_ctx, &dst);
           });
       VLOG(5) << "Link outside gradient finished ";
 
@@ -459,7 +453,7 @@ class RecurrentGradOp : public RecurrentBase {
                 framework::LoDTensor *outside) {
               outside->Resize(inside.dims());
               outside->mutable_data(dev_ctx.GetPlace(), inside.type());
-              outside->CopyFrom(inside, dev_ctx.GetPlace(), dev_ctx);
+              framework::CopyFrom(inside, dev_ctx.GetPlace(), dev_ctx, outside);
             });
         VLOG(5) << "Link initialize state gradient finished ";
       }
@@ -509,14 +503,14 @@ class RecurrentOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddInput(kInitialStates, "rnn initial states").AsDuplicable();
     AddInput(kParameters,
              "Parameters are used by step block as its input. However, the "
-             "inputs is not a sequence tensor. Every time step, each operator "
-             "in step block just use the parameter directly")
+             "input is not a sequence tensor. Every time step, each operator "
+             "in step block just use the parameter directly.")
         .AsDuplicable();
     AddOutput(kOutputs,
-              "The output sequence of RNN. The sequence length must be same")
+              "The output sequence of RNN. The sequence length must be same.")
         .AsDuplicable();
     AddOutput(kStepScopes,
-              "StepScopes contains all local variables in each time step.");
+              "StepScopes contain all local variables in each time step.");
     AddAttr<std::vector<std::string>>(kExStates,
                                       string::Sprintf(
                                           R"DOC(The ex-state variable names.
@@ -556,10 +550,12 @@ if reverse is True
       o          o          o         o
 )DOC").SetDefault(false);
     AddAttr<bool>(kIsTrain, "").SetDefault(true);
-    AddComment(R"DOC(Static Length Recurrent Operator
+    AddComment(R"DOC(
+Static Length Recurrent Operator.
 
-The static length recurrent operator can only operate on fix sized sequence
-data, i.e. in each mini-batch, the sequence length of all inputs are same.
+The static length recurrent operator can only operate on fixed size sequence
+data, i.e. in each mini-batch, the sequence length of all inputs are the same.
+
 )DOC");
   }
 };
@@ -603,7 +599,9 @@ class RecurrentGradOpShapeInference : public framework::InferShapeBase {
     std::vector<std::string> output{kOutputs};
     for (auto &s : input) {
       PADDLE_ENFORCE(ctx->HasInputs(s));
-      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(s)));
+      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(s)),
+                     "Cannot find the gradient variable %s",
+                     framework::GradVarName(s));
     }
     for (auto &s : output) {
       PADDLE_ENFORCE(ctx->HasInputs(s));
