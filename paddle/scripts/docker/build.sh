@@ -113,7 +113,10 @@ EOF
             -DWITH_SWIG_PY=ON \
             -DWITH_STYLE_CHECK=OFF
         make -j `nproc` gen_proto_py
+        make -j `nproc` paddle_python
         make -j `nproc` paddle_docs paddle_docs_cn
+        make -j `nproc` print_operators_doc
+        paddle/pybind/print_operators_doc > doc/en/html/operators.json
         popd
     fi
 
@@ -185,14 +188,6 @@ EOF
     ${DOCKERFILE_GPU_ENV}
     ADD go/cmd/pserver/pserver /usr/bin/
     ADD go/cmd/master/master /usr/bin/
-EOF
-
-    if [[ ${WITH_DOC:-OFF} == 'ON' ]]; then
-        cat >> /paddle/build/Dockerfile <<EOF
-        ADD paddle/pybind/print_operators_doc /usr/bin/
-EOF
-    fi
-    cat >> /paddle/build/Dockerfile <<EOF
     # default command shows the paddle version and exit
     CMD ["paddle", "version"]
 EOF
