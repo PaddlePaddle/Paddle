@@ -37,24 +37,33 @@ train_reader = paddle.batch(
 
 place = fluid.CPUPlace()
 exe = fluid.Executor(place)
-feeder = fluid.DataFeeder(feed_list=[images, label], place=place)
-exe.run(fluid.default_startup_program())
 
-for pass_id in range(PASS_NUM):
-    accuracy.reset(exe)
-    for data in train_reader():
-        loss, acc = exe.run(fluid.default_main_program(),
-                            feed=feeder.feed(data),
-                            fetch_list=[avg_cost] + accuracy.metrics)
+exe.optimize(pservers="127.0.0.1:6174", trainers=1)
+
+pserver_endpoint = os.getenv("PSERVER")
+if is_pserver:
+    pserver_prog = exe.get_pserver_program(pserver_endpoint)
+    exe.run(fluid.default_startup_program())
+    exe.run(pserver_prog)
+else:
+    feeder = fluid.DataFeeder(feed_list=[images, label], place=place)
+    exe.run(fluid.default_startup_program())
+
+    for pass_id in range(PASS_NUM):
+        accuracy.reset(exe)
+        for data in train_reader():
+            loss, acc = exe.run(fluid.default_main_program(),
+                                feed=feeder.feed(data),
+                                fetch_list=[avg_cost] + accuracy.metrics)
+            pass_acc = accuracy.eval(exe)
+            print("pass_id=" + str(pass_id) + " acc=" + str(acc) + " pass_acc="
+                  + str(pass_acc))
+            # print loss, acc
+            if loss < 10.0 and pass_acc > 0.9:
+                # if avg cost less than 10.0 and accuracy is larger than 0.9, we think our code is good.
+                exit(0)
+
         pass_acc = accuracy.eval(exe)
-        print("pass_id=" + str(pass_id) + " acc=" + str(acc) + " pass_acc=" +
-              str(pass_acc))
-        # print loss, acc
-        if loss < 10.0 and pass_acc > 0.9:
-            # if avg cost less than 10.0 and accuracy is larger than 0.9, we think our code is good.
-            exit(0)
-
-    pass_acc = accuracy.eval(exe)
-    print("pass_id=" + str(pass_id) + " pass_acc=" + str(pass_acc))
+        print("pass_id=" + str(pass_id) + " pass_acc=" + str(pass_acc))
 
 exit(1)
