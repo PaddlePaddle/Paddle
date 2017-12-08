@@ -269,22 +269,137 @@ void testBatchNormLayer(const testBatchNormDesc& pm) {
 TEST(MKLDNNLayer, BatchNormLayer) {
   testBatchNormLayer({4, 10, 6, 6});
   testBatchNormLayer({16, 32, 16, 16});
+  testBatchNormLayer({4, 16, 8, 10});
 }
 
-struct testActDesc {
+struct testLRNDesc {
+  int bs, ic, ih, iw;
+  float scale, pow;
+  int localSize;
+};
+
+void getMKLDNNLRNConfig(TestConfig& cfg, const testLRNDesc& pm) {
+  cfg.layerConfig.set_type("mkldnn_lrn");
+  cfg.layerConfig.set_active_type("relu");
+  size_t layerSize = pm.ic * pm.ih * pm.iw;
+  cfg.inputDefs.push_back({INPUT_DATA, "layer_0", layerSize, 0});
+  LayerInputConfig* input = cfg.layerConfig.add_inputs();
+  NormConfig* norm = input->mutable_norm_conf();
+  norm->set_channels(pm.ic);
+  norm->set_size(pm.localSize);
+  norm->set_scale(pm.scale);
+  norm->set_pow(pm.pow);
+  norm->set_blocked(0);
+  norm->set_img_size(pm.iw);
+  norm->set_img_size_y(pm.ih);
+  norm->set_output_x(norm->img_size());
+  norm->set_output_y(norm->img_size_y());
+  cfg.layerConfig.set_size(layerSize);
+  cfg.biasSize = 0;
+}
+
+void testLRNLayer(const testLRNDesc& pm) {
+  TestConfig dnnConfig;
+  getMKLDNNLRNConfig(dnnConfig, pm);
+  // mkldnn_lrn <==> norm with cmrnorm-projection type
+  TestConfig refConfig = dnnConfig;
+  refConfig.layerConfig.set_type("norm");
+  LayerInputConfig* input = refConfig.layerConfig.mutable_inputs(0);
+  NormConfig* norm = input->mutable_norm_conf();
+  norm->set_norm_type("cmrnorm-projection");
+  norm->set_scale(norm->scale() / norm->size());
+  RUN_MKLDNN_TEST(dnnConfig, refConfig, pm)
+}
+
+TEST(MKLDNNLayer, LRNLayer) {
+  testLRNLayer({4, 10, 12, 12, 0.001f, 0.75f, 5});
+  testLRNLayer({2, 32, 6, 6, 0.001f, 0.75f, 5});
+  testLRNLayer({4, 16, 8, 10, 0.01f, 0.5f, 5});
+}
+
+struct testImageDesc {
   int bs, ic, ih, iw;
 };
 
-static void getAddtoConfig(TestConfig& cfg, const testActDesc& pm) {
+static void getAddtoConfig(TestConfig& cfg,
+                           const testImageDesc& pm,
+                           const size_t nInputs = 1) {
   cfg.biasSize = 0;
   cfg.layerConfig.set_type("addto");
   size_t layerSize = pm.ic * pm.ih * pm.iw;
   cfg.layerConfig.set_size(layerSize);
-  cfg.inputDefs.push_back({INPUT_DATA, "layer_0", layerSize, 0});
-  cfg.layerConfig.add_inputs();
+  cfg.layerConfig.set_active_type("relu");
+  for (size_t i = 0; i < nInputs; ++i) {
+    std::stringstream ss;
+    ss << "layer_" << i;
+    cfg.inputDefs.push_back({INPUT_DATA, ss.str(), layerSize, 0});
+    LayerInputConfig* input = cfg.layerConfig.add_inputs();
+    ImageConfig* img_conf = input->mutable_image_conf();
+    img_conf->set_channels(pm.ic);
+    img_conf->set_img_size_y(pm.ih);
+    img_conf->set_img_size(pm.iw);
+  }
 }
 
-void testActivation(std::string actType, const testActDesc& pm) {
+void testAddtoLayer(const testImageDesc& pm, const size_t nInputs) {
+  CHECK_GE(nInputs, 1UL);
+  TestConfig dnnConfig;
+  getAddtoConfig(dnnConfig, pm, nInputs);
+  dnnConfig.layerConfig.set_type("mkldnn_addto");
+  for (auto withBias : {false, true}) {
+    dnnConfig.biasSize = withBias ? pm.ic * pm.ih * pm.iw : 0;
+    RUN_MKLDNN_TEST_LAYER(dnnConfig, "addto", pm)
+  }
+}
+
+TEST(MKLDNNLayer, AddtoLayer) {
+  testAddtoLayer({16, 5, 14, 14}, 1);
+  testAddtoLayer({8, 10, 8, 8}, 2);
+  testAddtoLayer({4, 12, 1, 1}, 3);
+}
+
+static void getMKLDNNConcatConfig(TestConfig& cfg,
+                                  const std::vector<testImageDesc>& inputs) {
+  CHECK_GE(inputs.size(), 2UL) << "at least two inputs";
+  int oc = inputs[0].ic;
+  for (size_t i = 1; i < inputs.size(); ++i) {
+    CHECK_EQ(inputs[i].bs, inputs[0].bs);
+    CHECK_EQ(inputs[i].ih, inputs[0].ih);
+    CHECK_EQ(inputs[i].iw, inputs[0].iw);
+    oc += inputs[i].ic;
+  }
+  cfg.biasSize = 0;
+  cfg.layerConfig.set_type("mkldnn_concat");
+  cfg.layerConfig.set_size(oc * inputs[0].ih * inputs[0].iw);
+  cfg.layerConfig.set_active_type("relu");
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    std::stringstream ss;
+    ss << "layer_" << i;
+    cfg.inputDefs.push_back(
+        {INPUT_DATA,
+         ss.str(),
+         (size_t)(inputs[i].ic) * inputs[i].ih * inputs[i].iw,
+         0});
+    LayerInputConfig* input = cfg.layerConfig.add_inputs();
+    ImageConfig* img_conf = input->mutable_image_conf();
+    img_conf->set_channels(inputs[i].ic);
+    img_conf->set_img_size_y(inputs[i].ih);
+    img_conf->set_img_size(inputs[i].iw);
+  }
+}
+
+void testConcatLayer(const std::vector<testImageDesc>& inputs) {
+  TestConfig dnnConfig;
+  getMKLDNNConcatConfig(dnnConfig, inputs);
+  RUN_MKLDNN_TEST_LAYER(dnnConfig, "concat", inputs[0])
+}
+
+TEST(MKLDNNLayer, ConcatLayer) {
+  testConcatLayer({{64, 128, 1, 1}, {64, 32, 1, 1}, {64, 64, 1, 1}});
+  testConcatLayer({{32, 100, 8, 8}, {32, 10, 8, 8}});
+}
+
+void testActivation(std::string actType, const testImageDesc& pm) {
   // TODO(TJ): remove me when paddle support elu activation
   if (actType == "mkldnn_elu") {
     return;

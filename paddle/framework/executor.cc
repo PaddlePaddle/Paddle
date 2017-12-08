@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/framework/feed_fetch_type.h"
 #include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/scope.h"
 
@@ -73,6 +74,8 @@ static void CreateTensor(Variable* var, VarDesc::VarType var_type) {
     var->GetMutable<std::vector<framework::Scope>>();
   } else if (var_type == VarDesc::LOD_RANK_TABLE) {
     var->GetMutable<LoDRankTable>();
+  } else if (var_type == VarDesc::LOD_TENSOR_ARRAY) {
+    var->GetMutable<LoDTensorArray>();
   } else {
     PADDLE_THROW(
         "Variable type %d is not in "
@@ -94,6 +97,10 @@ void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id,
   if (create_local_scope) {
     local_scope = &scope->NewScope();
     for (auto& var : block.AllVars()) {
+      if (var->Name() == framework::kEmptyVarName) {
+        continue;
+      }
+
       if (var->Persistable()) {
         auto* ptr = scope->Var(var->Name());
         CreateTensor(ptr, var->GetType());
@@ -117,6 +124,7 @@ void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id,
 
   for (auto& op_desc : block.AllOps()) {
     auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
+    VLOG(3) << op->DebugString();
     op->Run(*local_scope, *device);
   }
   if (create_local_scope) {

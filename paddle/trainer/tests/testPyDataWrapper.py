@@ -20,28 +20,6 @@ import random
 import json
 import string
 
-
-@provider(slots=[
-    SparseNonValueSlot(10), DenseSlot(2), SparseValueSlot(10), StringSlot(1),
-    IndexSlot(3)
-])
-def processNonSequenceData(obj, filename):
-    with open(filename, "rb") as f:
-        for line in f:
-            slots_str = line.split(';')
-            index = int(slots_str[0])
-            non_values = map(int, slots_str[1].split()[1:])
-            dense = map(float, slots_str[2].split()[1:])
-            strs = slots_str[4].strip().split(' ', 1)[1]
-
-            def __values_mapper__(s):
-                s = s.split(":")
-                return int(s[0]), float(s[1])
-
-            values = map(__values_mapper__, slots_str[3].split()[1:])
-            yield [non_values, dense, values, strs, index]
-
-
 SPARSE_ID_LIMIT = 1000
 SPARSE_ID_COUNT = 100
 SEQUENCE_LIMIT = 50
@@ -146,8 +124,6 @@ def processSubSeqAndGenerateData(obj, name):
 
 
 if __name__ == "__main__":
-    pvd = processNonSequenceData("test.txt")
-    print pvd.getNextBatch(100)
     pvd = processSeqAndGenerateData("_")
     print pvd.getNextBatch(100)
     pvd = processSubSeqAndGenerateData("_")

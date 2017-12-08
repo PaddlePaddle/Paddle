@@ -57,7 +57,7 @@ L1 Norm Operator.
 
 Computes the L1 norm of a tensor.
 
-Out = sum (abs(X))
+$$Out = \sum{|X|}$$
 
 )DOC");
   }

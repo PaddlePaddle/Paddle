@@ -14,25 +14,12 @@ limitations under the License. */
 
 #pragma once
 #include <algorithm>
-#include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
 
 template <typename Place, typename T>
 class AccuracyKernel : public framework::OpKernel<T> {
@@ -42,7 +29,11 @@ class AccuracyKernel : public framework::OpKernel<T> {
     auto* indices = ctx.Input<Tensor>("Indices");
     auto* label = ctx.Input<Tensor>("Label");
     auto* accuracy = ctx.Output<Tensor>("Accuracy");
+    auto* correct = ctx.Output<Tensor>("Correct");
+    auto* total = ctx.Output<Tensor>("Total");
 
+    int* correct_data = correct->mutable_data<int>(ctx.GetPlace());
+    int* total_data = total->mutable_data<int>(ctx.GetPlace());
     float* accuracy_data = accuracy->mutable_data<float>(ctx.GetPlace());
 
     const int64_t* indices_data = indices->data<int64_t>();
@@ -68,7 +59,8 @@ class AccuracyKernel : public framework::OpKernel<T> {
       }
     }
 
-    // FIXME(typhoonzero): we don't accumulate the accuracy for now.
+    *correct_data = num_correct;
+    *total_data = num_samples;
     *accuracy_data =
         static_cast<float>(num_correct) / static_cast<float>(num_samples);
   }

@@ -29,8 +29,27 @@ inline DataType ToDataType(std::type_index type) {
     return DataType::INT32;
   } else if (typeid(int64_t).hash_code() == type.hash_code()) {
     return DataType::INT64;
+  } else if (typeid(bool).hash_code() == type.hash_code()) {
+    return DataType::BOOL;
   } else {
     PADDLE_THROW("Not supported");
+  }
+}
+
+inline std::type_index ToTypeIndex(DataType type) {
+  switch (type) {
+    case DataType::FP32:
+      return typeid(float);
+    case DataType::FP64:
+      return typeid(double);
+    case DataType::INT32:
+      return typeid(int);
+    case DataType::INT64:
+      return typeid(int64_t);
+    case DataType::BOOL:
+      return typeid(bool);
+    default:
+      PADDLE_THROW("Not support type %d", type);
   }
 }
 
@@ -48,6 +67,9 @@ inline void VisitDataType(DataType type, Visitor visitor) {
       break;
     case DataType::INT64:
       visitor.template operator()<int64_t>();
+      break;
+    case DataType::BOOL:
+      visitor.template operator()<bool>();
       break;
     default:
       PADDLE_THROW("Not supported");

@@ -71,21 +71,31 @@ class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor, default Tensor<float>) "
              "Input learning rate");
 
-    AddOutput("ParamOut", "(Tensor) Output updated parameter");
-    AddOutput("VelocityOut", "(Tensor) Output updated velocity");
+    AddOutput("ParamOut",
+              "(Tensor) This output is updated parameter. "
+              "It shared memory with Input(Param).");
+    AddOutput("VelocityOut",
+              "(Tensor) This output is updated velocity. "
+              "It shared memory with Input(Velocity).");
 
     AddAttr<float>("mu", "(float) Momentum coefficient");
-    AddAttr<bool>("useNesterov", "(bool) Use Nesterov Momentum")
+    AddAttr<bool>("use_nesterov",
+                  "(bool, default false) "
+                  "Use Nesterov Momentum")
         .SetDefault(false);
     AddComment(R"DOC(
+Momentum Optimizer.
 
-Momentum Algorithm with a flag for Nestrov Moemntum (momentum).
+This optimizer has a flag for Nestrov Momentum.
+The update equations are as follows:
 
-velocity = mu * velocity + gradient
-if (use_nesterov):
-  param = param - gradient * learning_rate + mu * velocity * learning_rate
-else:
-  param = param - learning_rate * velocity
+$$
+velocity = mu * velocity + gradient \\
+if (use\_nesterov):   \\
+  param = param - gradient * learning\_rate + mu * velocity * learning\_rate \\
+else:   \\
+  param = param - learning\_rate * velocity. \\
+$$
 
 )DOC");
   }
@@ -95,5 +105,5 @@ else:
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(momentum, ops::MomentumOp, ops::MomentumOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    momentum, ops::MomentumOpKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(momentum, ops::MomentumOpKernel<float>,
+                       ops::MomentumOpKernel<double>);
