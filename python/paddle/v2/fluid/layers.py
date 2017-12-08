@@ -430,7 +430,8 @@ def _create_op_func_(op_type):
                     dtype = each.dtype
                 elif dtype != each.dtype:
                     raise ValueError(
-                        "operator {0} must input same dtype".format(op_type))
+                        "operator {0} must input same dtype. {1} vs {2}".format(
+                            op_type, dtype, each.dtype))
 
         return dtype
 

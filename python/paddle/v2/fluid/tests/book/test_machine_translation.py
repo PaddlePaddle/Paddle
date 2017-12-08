@@ -1,59 +1,62 @@
 import numpy as np
 import paddle.v2 as paddle
-import paddle.v2.dataset.conll05 as conll05
+import paddle.v2.fluid as fluid
 import paddle.v2.fluid.core as core
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.layers as layers
-from paddle.v2.fluid.executor import Executor, g_scope
-from paddle.v2.fluid.optimizer import SGDOptimizer
-import paddle.v2.fluid as fluid
-import paddle.v2.fluid.layers as pd
+from paddle.v2.fluid.executor import Executor
 
 dict_size = 30000
 source_dict_dim = target_dict_dim = dict_size
 src_dict, trg_dict = paddle.dataset.wmt14.get_dict(dict_size)
-hidden_dim = 512
-word_dim = 512
+hidden_dim = 32
+word_dim = 16
 IS_SPARSE = True
-batch_size = 50
+batch_size = 10
 max_length = 50
 topk_size = 50
 trg_dic_size = 10000
 
-src_word_id = layers.data(name="src_word_id", shape=[1], dtype='int64')
-src_embedding = layers.embedding(
-    input=src_word_id,
-    size=[dict_size, word_dim],
-    dtype='float32',
-    is_sparse=IS_SPARSE,
-    param_attr=fluid.ParamAttr(name='vemb'))
+decoder_size = hidden_dim
 
 
-def encoder():
+def encoder_decoder():
+    # encoder
+    src_word_id = layers.data(
+        name="src_word_id", shape=[1], dtype='int64', lod_level=1)
+    src_embedding = layers.embedding(
+        input=src_word_id,
+        size=[dict_size, word_dim],
+        dtype='float32',
+        is_sparse=IS_SPARSE,
+        param_attr=fluid.ParamAttr(name='vemb'))
 
-    lstm_hidden0, lstm_0 = layers.dynamic_lstm(
-        input=src_embedding,
-        size=hidden_dim,
-        candidate_activation='sigmoid',
-        cell_activation='sigmoid')
+    fc1 = fluid.layers.fc(input=src_embedding, size=hidden_dim * 4, act='tanh')
+    lstm_hidden0, lstm_0 = layers.dynamic_lstm(input=fc1, size=hidden_dim * 4)
+    encoder_out = layers.sequence_pool(input=lstm_hidden0, pool_type="last")
 
-    lstm_hidden1, lstm_1 = layers.dynamic_lstm(
-        input=src_embedding,
-        size=hidden_dim,
-        candidate_activation='sigmoid',
-        cell_activation='sigmoid',
-        is_reverse=True)
+    # decoder
+    trg_language_word = layers.data(
+        name="target_language_word", shape=[1], dtype='int64', lod_level=1)
+    trg_embedding = layers.embedding(
+        input=trg_language_word,
+        size=[dict_size, word_dim],
+        dtype='float32',
+        is_sparse=IS_SPARSE,
+        param_attr=fluid.ParamAttr(name='vemb'))
 
-    bidirect_lstm_out = layers.concat([lstm_hidden0, lstm_hidden1], axis=0)
+    rnn = fluid.layers.DynamicRNN()
+    with rnn.block():
+        current_word = rnn.step_input(trg_embedding)
+        mem = rnn.memory(init=encoder_out)
+        fc1 = fluid.layers.fc(input=[current_word, mem],
+                              size=decoder_size,
+                              act='tanh')
+        out = fluid.layers.fc(input=fc1, size=target_dict_dim, act='softmax')
+        rnn.update_memory(mem, fc1)
+        rnn.output(out)
 
-    return bidirect_lstm_out
-
-
-def decoder_trainer(context):
-    '''
-    decoder with trainer
-    '''
-    pass
+    return rnn()
 
 
 def to_lodtensor(data, place):
@@ -72,13 +75,18 @@ def to_lodtensor(data, place):
 
 
 def main():
-    encoder_out = encoder()
-    # TODO(jacquesqiao) call here
-    decoder_trainer(encoder_out)
+    rnn_out = encoder_decoder()
+    label = layers.data(
+        name="target_language_next_word", shape=[1], dtype='int64', lod_level=1)
+    cost = layers.cross_entropy(input=rnn_out, label=label)
+    avg_cost = fluid.layers.mean(x=cost)
+
+    optimizer = fluid.optimizer.Adagrad(learning_rate=1e-4)
+    optimizer.minimize(avg_cost)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
-            paddle.dataset.wmt14.train(8000), buf_size=1000),
+            paddle.dataset.wmt14.train(dict_size), buf_size=1000),
         batch_size=batch_size)
 
     place = core.CPUPlace()
@@ -88,15 +96,23 @@ def main():
 
     batch_id = 0
     for pass_id in xrange(2):
-        print 'pass_id', pass_id
         for data in train_data():
-            print 'batch', batch_id
-            batch_id += 1
-            if batch_id > 10: break
             word_data = to_lodtensor(map(lambda x: x[0], data), place)
+            trg_word = to_lodtensor(map(lambda x: x[1], data), place)
+            trg_word_next = to_lodtensor(map(lambda x: x[2], data), place)
             outs = exe.run(framework.default_main_program(),
-                           feed={'src_word_id': word_data, },
-                           fetch_list=[encoder_out])
+                           feed={
+                               'src_word_id': word_data,
+                               'target_language_word': trg_word,
+                               'target_language_next_word': trg_word_next
+                           },
+                           fetch_list=[avg_cost])
+            avg_cost_val = np.array(outs[0])
+            print('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
+                  " avg_cost=" + str(avg_cost_val))
+            if batch_id > 3:
+                exit(0)
+            batch_id += 1
 
 
 if __name__ == '__main__':
