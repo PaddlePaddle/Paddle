@@ -69,7 +69,8 @@ class Executor(object):
         if kwargs.has_key("pservers"):
             return self._optimize_distributed(optimize_ops, program, **kwargs)
 
-    def _optimize_distributed(self, optimize_ops, program, **kwargs):
+    def _optimize_distributed(self, optimize_ops, program, params_and_grads,
+                              **kwargs):
         # remove optimize ops and add a send op to main_program
         # FIXME(typhoonzero): delete_op only remove the first accurence,
         # need to consider about multiple same optimize op?
@@ -83,43 +84,36 @@ class Executor(object):
         assert (callable(split_method))
         pserver_endpoints = kwargs["pservers"].split(",")
         params = program.global_block().all_parameters()
-        param_map = split_method(params, pserver_endpoints)
+        self.param_grad_map = split_method(params, pserver_endpoints)
 
         for ep in pserver_endpoints:
             # FIXME(typhoonzero): send to different servers can run in parrallel.
             send_op = program.global_block().append_op(
                 type="send",
-                inputs={"X": param_map[ep]
+                inputs={"X": self.param_grad_map[ep]["params"]
                         },  # inputs is a list of tensors to be send
-                outputs={"Out": param_map[ep]},
+                outputs={"Out": self.param_grad_map[ep]["params"]},
                 attrs={"endpoint": ep})
-        # -------------- generate pserver program --------------
-        self.parameter_server_program_map = dict()
-
-        optimize_sub_program = Program()
-        optimize_ops = self.create_optimization_pass(
-            params_grads, optimize_sub_program, startup_program)
-        param_list = []
-        for param in params:
-            if param.trainable is True:
-                param_list.append(param)
-
-        param_map = split_method(params, pserver_endpoints)
-
-        for ep in pserver_endpoints:
-            pserver_program = Program()
-            self.parameter_server_program_map[ep] = pserver_program
-            pserver_program.global_block().append_op(
-                type="recv",
-                inputs={"RX": param_map[ep]},  # grads to recv
-                outputs={},
-                attrs={
-                    "OptimizeBlock": optimize_sub_program.global_block(),
-                    "endpoint": ep
-                })
+        # -------------- generate optimize sub program --------------
+        self.optimize_sub_program = Program()
+        for opt_op in optimize_ops:
+            self.optimize_sub_program.global_block().ops.append(opt_op)
 
     def get_pserver_program(self, endpoint):
-        pass
+        pserver_program = Program()
+
+        for param in self.param_grad_map[endpoint]["params"]:
+            pserver_program.global_block().create_parameter(**param.__dict__)
+
+        pserver_program.global_block().append_op(
+            type="recv",
+            inputs={"RX":
+                    self.param_grad_map[endpoint]["grads"]},  # grads to recv
+            outputs={},
+            attrs={
+                "OptimizeProgram": self.optimize_sub_program.to_string(),
+                "endpoint": endpoint
+            })
 
     def get_trainer_program(self):
         return default_main_program()
