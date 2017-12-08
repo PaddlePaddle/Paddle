@@ -83,6 +83,7 @@ message ProgramDesc {
   }
   
   block[1] = Block {
+    parent = 0,
     vars = [x, y, index],
     ops = [
       slice(input = [X, index], output = x) # index is initialized by parallel_for
@@ -121,6 +122,7 @@ An explanation of the above program:
   2. creates `len(L)` threads by calling into the `ThreadPool` singleton, each thread  
      1. creates an Executor instance, and
      2. calls `Executor.Run(block)`, where `block` is block 1 as explained above.
+1. Please be aware that block 1 is a sub-block of block 0, so ops in block 1 could refer to variables defined in block 0.
 
 ### The Worker Program
 
