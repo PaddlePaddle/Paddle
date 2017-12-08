@@ -1,7 +1,7 @@
 from __future__ import print_function
 import numpy as np
 import paddle.v2 as paddle
-import paddle.v2.fluid as fluid
+import paddle.v2.fluid as fluid, g_scope
 
 
 def convolution_net(data, label, input_dim, class_dim=2, emb_dim=32,
@@ -68,6 +68,8 @@ def main():
     feeder = fluid.DataFeeder(feed_list=[data, label], place=place)
 
     exe.run(fluid.default_startup_program())
+
+    var_true = g_scope.find_var(out_true.name).get_tensor()
 
     for pass_id in xrange(PASS_NUM):
         accuracy.reset(exe)
