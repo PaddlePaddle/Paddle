@@ -19,28 +19,23 @@ trg_dic_size = 10000
 
 decoder_size = hidden_dim
 
-src_word_id = layers.data(
-    name="src_word_id", shape=[1], dtype='int64', lod_level=1)
-src_embedding = layers.embedding(
-    input=src_word_id,
-    size=[dict_size, word_dim],
-    dtype='float32',
-    is_sparse=IS_SPARSE,
-    param_attr=fluid.ParamAttr(name='vemb'))
 
+def encoder_decoder():
+    # encoder
+    src_word_id = layers.data(
+        name="src_word_id", shape=[1], dtype='int64', lod_level=1)
+    src_embedding = layers.embedding(
+        input=src_word_id,
+        size=[dict_size, word_dim],
+        dtype='float32',
+        is_sparse=IS_SPARSE,
+        param_attr=fluid.ParamAttr(name='vemb'))
 
-def encoder():
     fc1 = fluid.layers.fc(input=src_embedding, size=hidden_dim * 4)
     lstm_hidden0, lstm_0 = layers.dynamic_lstm(input=fc1, size=hidden_dim * 4)
-    pool = layers.sequence_pool(input=lstm_hidden0, pool_type="last")
+    encoder_out = layers.sequence_pool(input=lstm_hidden0, pool_type="last")
 
-    return pool
-
-
-def decoder_trainer(context):
-    """
-    decoder with trainer
-    """
+    # decoder
     trg_language_word = layers.data(
         name="target_language_word", shape=[1], dtype='int64', lod_level=1)
     trg_embedding = layers.embedding(
@@ -53,7 +48,7 @@ def decoder_trainer(context):
     rnn = fluid.layers.DynamicRNN()
     with rnn.block():
         current_word = rnn.step_input(trg_embedding)
-        mem = rnn.memory(init=context)
+        mem = rnn.memory(init=encoder_out)
         fc1 = fluid.layers.fc(input=[current_word, mem], size=decoder_size)
         out = fluid.layers.fc(input=fc1, size=target_dict_dim, act='softmax')
         rnn.update_memory(mem, fc1)
@@ -78,12 +73,10 @@ def to_lodtensor(data, place):
 
 
 def main():
-    encoder_out = encoder()
-    decoder_out = decoder_trainer(encoder_out)
+    rnn_out = encoder_decoder()
     label = layers.data(
         name="target_language_next_word", shape=[1], dtype='int64', lod_level=1)
-    cost = layers.cross_entropy(input=decoder_out, label=label)
-
+    cost = layers.cross_entropy(input=rnn_out, label=label)
     avg_cost = fluid.layers.mean(x=cost)
 
     optimizer = fluid.optimizer.Adagrad(learning_rate=1e-4)
@@ -101,9 +94,7 @@ def main():
 
     batch_id = 0
     for pass_id in xrange(2):
-        print 'pass_id', pass_id
         for data in train_data():
-            print 'batch', batch_id
             word_data = to_lodtensor(map(lambda x: x[0], data), place)
             trg_word = to_lodtensor(map(lambda x: x[1], data), place)
             trg_word_next = to_lodtensor(map(lambda x: x[2], data), place)
@@ -116,7 +107,8 @@ def main():
                            fetch_list=[avg_cost])
             avg_cost_val = np.array(outs[0])
             batch_id += 1
-            print("avg_cost=" + str(avg_cost_val))
+            print('pass_id=' + pass_id + ' batch=' + batch_id + " avg_cost=" +
+                  str(avg_cost_val))
 
 
 if __name__ == '__main__':
