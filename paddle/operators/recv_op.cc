@@ -72,8 +72,10 @@ class RecvOp : public framework::OperatorBase {
     // FIXME(typhoonzero): do not copy
     framework::CopyFrom(t, dev_ctx.GetPlace(), dev_ctx, tensor);
 
-    auto *block = Attr<framework::BlockDescBind *>("OptimizeBlock");
-    auto *program = block->Program();
+    std::string program_str = Attr<std::string>("OptimizeProgram");
+    framework::Program program_desc;
+    program_desc.ParseFromString(program_str);
+    framework::ProgramDescBind program(program_desc);
     framework::Executor executor(dev_ctx);
     // Run sub graph to get optimized tensor
     executor.Run(*program, &recv_scope, block->ID(),
@@ -108,8 +110,9 @@ This operator will recv tensor from send_op
                          "IP address to listen on.")
         .SetDefault("127.0.0.1:6164")
         .AddCustomChecker([](const std::string &ip) { return !ip.empty(); });
-    AddAttr<framework::BlockDescBind *>("OptimizeBlock", "type BlockDescBind*",
-                                        "optimize network run in server");
+    AddAttr<framework::BlockDescBind *>(
+        "OptimizeProgram", "type string",
+        "Serialized ProgramDesc string for recv to run.");
   }
 };
 
