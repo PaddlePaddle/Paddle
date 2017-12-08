@@ -9,6 +9,13 @@
 
 pthread_mutex_t mutex;
 
+/*
+ * @brief It is an simple inference example that runs multi-threads on a GPU.
+ *        Each thread holds it own local gradient_machine but shares the same
+ *        parameters.
+ *        If you want to run on different GPUs, you need to launch
+ *        multi-processes or set trainer_count > 1.
+ */
 void* thread_main(void* gm_ptr) {
   // Initialize the thread environment of Paddle.
   CHECK(paddle_init_thread());
@@ -29,7 +36,7 @@ void* thread_main(void* gm_ptr) {
   paddle_real* cpu_input = (paddle_real*)malloc(784 * sizeof(paddle_real));
   paddle_real* cpu_output = (paddle_real*)malloc(10 * sizeof(paddle_real));
   for (int iter = 0; iter < NUM_ITER; ++iter) {
-    // There is only one input of this network.
+    // There is only one input layer of this network.
     CHECK(paddle_arguments_resize(in_args, 1));
     CHECK(paddle_arguments_set_value(in_args, 0, mat));
 
