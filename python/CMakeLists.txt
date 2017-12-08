@@ -34,7 +34,7 @@ if(WITH_MKLDNN)
 endif()
 
 if(WITH_GPU)
-  SET(PACKAGE_NAME "paddlepaddle_gpu")
+  SET(PACKAGE_NAME "paddlepaddle-gpu")
 else()
   SET(PACKAGE_NAME "paddlepaddle")
 endif()
