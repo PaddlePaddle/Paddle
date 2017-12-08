@@ -29,6 +29,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   auto filter_dims = ctx->GetInputDim("Filter");
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
+  std::vector<int> dilations = ctx->Attrs().Get<std::vector<int>>("dilations");
 
   PADDLE_ENFORCE(in_dims.size() == 4 || in_dims.size() == 5,
                  "ConvTransposeOp intput should be 4-D or 5-D tensor.");
@@ -41,14 +42,18 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(paddings.size(), strides.size(),
                     "ConvTransposeOp paddings dimension and strides "
                     "dimension should be the same.");
+  PADDLE_ENFORCE_EQ(paddings.size(), dilations.size(),
+                    "ConvTransposeOp paddings dimension and dilations "
+                    "dimension should be the same.");
   PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[0],
                     "In ConvTransposeOp, The input channel should be the same "
                     "as the number of filters.");
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[1]});
   for (size_t i = 0; i < strides.size(); ++i) {
+    auto filter_extent = dilations[i] * (filter_dims[i + 2] - 1) + 1;
     output_shape.push_back((in_dims[i + 2] - 1) * strides[i] - 2 * paddings[i] +
-                           filter_dims[i + 2]);
+                           filter_extent);
   }
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
 }
