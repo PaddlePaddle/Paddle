@@ -89,7 +89,7 @@ paddle_rt_libs = ['${WARPCTC_LIBRARIES}']
 if '${MKL_SHARED_LIBS}'!= '':
   paddle_rt_libs += '${MKL_SHARED_LIBS}'.split(';')
 
-setup(name='paddlepaddle',
+setup(name='${PACKAGE_NAME}',
       version='${PADDLE_VERSION}',
       description='Parallel Distributed Deep Learning',
       install_requires=setup_requires,
