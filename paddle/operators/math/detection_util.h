@@ -50,27 +50,23 @@ struct BBox {
 };
 // KNCHW ==> NHWC
 template <typename T>
-int appendWithPermute(const framework::Tensor& input,
-                      framework::Tensor* output) {
-  const int input_nums = input.dims()[0];
-  const int batch_size = input.dims()[1];
-  const int channels = input.dims()[2];
-  const int height = input.dims()[3];
-  const int weight = input.dims()[4];
+int appendWithPermute(const T* input_data, int input_nums, int batch_size,
+                      int channels, int height, int weight, T* output_data) {
   int image_size = height * weight;
+  int numel = input_nums * batch_size * channels * height * weight;
   int offset = 0;
   for (int p = 0; p < input_nums; ++p) {
     int in_p_offset = p * batch_size * channels * image_size;
     for (int n = 0; n < batch_size; ++n) {
       int in_n_offset = n * channels * image_size;
-      int out_n_offset = n * input.numel() / batch_size + offset;
+      int out_n_offset = n * numel / batch_size + offset;
       int in_stride = image_size;
       int out_stride = channels;
-      const T* in_data = input.data<T>() + in_p_offset + in_n_offset;
-      T* out_data = output->data<T>() + out_n_offset;
-      for (int i = 0; i < channels; ++i) {
-        for (int c = 0; c < image_size; ++c) {
-          out_data[out_stride * c + i] = in_data[i * in_stride + c];
+      const T* in_data = input_data + in_p_offset + in_n_offset;
+      T* out_data = output_data + out_n_offset;
+      for (int c = 0; c < channels; ++c) {
+        for (int i = 0; i < image_size; ++i) {
+          out_data[out_stride * i + c] = in_data[c * in_stride + i];
         }
       }
     }

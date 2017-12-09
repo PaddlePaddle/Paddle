@@ -65,17 +65,18 @@ class Detection_output_Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
+    PADDLE_ENFORCE(ctx->HasInput("Loc"),
+                   "Input(X) of Detection_output_Op"
+                   "should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Conf"),
+                   "Input(X) of Detection_output_Op"
+                   "should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("PriorBox"),
                    "Input(X) of Detection_output_Op"
                    "should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of Detection_output_Op should not be null.");
-    auto in_x_dims = ctx->GetInputDim("X");
-    int pyramid_height = ctx->Attrs().Get<int>("pyramid_height");
-    PADDLE_ENFORCE(in_x_dims.size() == 4,
-                   "Detection_output_ing intput must be of 4-dimensional.");
-    int outlen = ((std::pow(4, pyramid_height) - 1) / (4 - 1)) * in_x_dims[1];
-    std::vector<int64_t> output_shape({in_x_dims[0], outlen});
+    std::vector<int64_t> output_shape({1, 7});
     ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
   }
 };
