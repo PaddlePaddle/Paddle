@@ -32,11 +32,11 @@ class MaxOutFunctor {
                   int groups);
 };
 
-template <typename Place, class T>
+template <typename DeviceContext, class T>
 class MaxOutGradFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, framework::Tensor* input_grad,
+  void operator()(const DeviceContext& context, const framework::Tensor& input,
+                  framework::Tensor* input_grad,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, int groups);
 };

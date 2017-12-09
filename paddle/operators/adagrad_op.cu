@@ -72,8 +72,9 @@ __global__ void SparseAdagradFunctorKernel(const T* grad, const int64_t* rows,
 }  // namespace
 
 template <typename T>
-struct SparseAdagradFunctor<platform::GPUPlace, T> {
-  void operator()(const platform::DeviceContext& context,
+struct SparseAdagradFunctor<platform::GPUPlace, T,
+                            platform::CUDADeviceContext> {
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::SelectedRows& grad,
                   const framework::Tensor& learning_rate, T epsilon,
                   framework::Tensor* moment, framework::Tensor* param) {
@@ -92,7 +93,7 @@ struct SparseAdagradFunctor<platform::GPUPlace, T> {
             {static_cast<int64_t>(merge_rows.size()), grad_width}),
         context.GetPlace());
 
-    math::SetConstant<platform::GPUPlace, T> constant_functor;
+    math::SetConstant<platform::CUDADeviceContext, T> constant_functor;
     constant_functor(context, grad_merge->mutable_value(), 0.0);
 
     auto* grad_merge_data = grad_merge->mutable_value()->data<T>();
@@ -119,9 +120,9 @@ struct SparseAdagradFunctor<platform::GPUPlace, T> {
     auto gs =
         framework::EigenVector<T>::Flatten(*(grad_square->mutable_value()));
     auto gm = framework::EigenVector<T>::Flatten(grad_merge->value());
-    gs.device(*context.GetEigenDevice<platform::GPUPlace>()) = gm * gm;
+    gs.device(*context.eigen_device()) = gm * gm;
 
-    math::SelectedRowsAddToTensor<platform::GPUPlace, T> functor;
+    math::SelectedRowsAddToTensor<platform::CUDADeviceContext, T> functor;
     functor(context, *grad_square, moment);
 
     // 3. update parameter

@@ -15,12 +15,6 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-template <>
-Eigen::DefaultDevice* DeviceContext::GetEigenDevice<
-    platform::CPUPlace, Eigen::DefaultDevice>() const {
-  return reinterpret_cast<const CPUDeviceContext*>(this)->eigen_device();
-}
-
 CPUDeviceContext::CPUDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
 }
@@ -36,12 +30,6 @@ Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
 Place CPUDeviceContext::GetPlace() const { return CPUPlace(); }
 
 #ifdef PADDLE_WITH_CUDA
-
-template <>
-Eigen::GpuDevice*
-DeviceContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
-  return reinterpret_cast<const CUDADeviceContext*>(this)->eigen_device();
-}
 
 class EigenCudaStreamDevice : public Eigen::StreamInterface {
  public:
