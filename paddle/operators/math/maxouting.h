@@ -23,13 +23,11 @@ namespace math {
 
 #define FLT_MAX __FLT_MAX__
 
-template <typename Place, typename T>
-
+template <typename DeviceContext, typename T>
 class MaxOutFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, framework::Tensor* output,
-                  int groups);
+  void operator()(const DeviceContext& context, const framework::Tensor& input,
+                  framework::Tensor* output, int groups);
 };
 
 template <typename DeviceContext, class T>

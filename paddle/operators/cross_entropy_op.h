@@ -37,8 +37,9 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
     Tensor* y = ctx.Output<Tensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
 
-    math::CrossEntropyFunctor<platform::CPUPlace, T>()(
-        ctx.device_context(), y, x, labels, ctx.Attr<bool>("soft_label"));
+    math::CrossEntropyFunctor<platform::CPUDeviceContext, T>()(
+        ctx.template device_context<platform::CPUDeviceContext>(), y, x, labels,
+        ctx.Attr<bool>("soft_label"));
   }
 };
 

@@ -58,9 +58,9 @@ class BinaryLogicalOpKernel
     auto* out = context.Output<framework::Tensor>("Out");
     Functor binary_func;
     platform::Transform<Place> trans;
-    trans(context.device_context(), x->data<T>(), x->data<T>() + x->numel(),
-          y->data<T>(), out->mutable_data<bool>(context.GetPlace()),
-          binary_func);
+    trans(context.template device_context<Place>(), x->data<T>(),
+          x->data<T>() + x->numel(), y->data<T>(),
+          out->mutable_data<bool>(context.GetPlace()), binary_func);
   }
 };
 
@@ -74,7 +74,8 @@ class UnaryLogicalOpKernel
     auto* out = context.Output<framework::Tensor>("Out");
     Functor unary_func;
     platform::Transform<Place> trans;
-    trans(context.device_context(), x->data<T>(), x->data<T>() + x->numel(),
+    trans(context.template device_context<Place>(), x->data<T>(),
+          x->data<T>() + x->numel(),
           out->mutable_data<bool>(context.GetPlace()), unary_func);
   }
 };
@@ -85,9 +86,9 @@ class UnaryLogicalOpKernel
 #define REGISTER_BINARY_LOGICAL_KERNEL(op_type, dev, functor) \
   REGISTER_OP_##dev##_KERNEL(                                 \
       op_type, ::paddle::operators::BinaryLogicalOpKernel<    \
-                   ::paddle::platform::dev##Place, functor<bool>>);
+                   ::paddle::platform::dev##DeviceContext, functor<bool>>);
 
 #define REGISTER_UNARY_LOGICAL_KERNEL(op_type, dev, functor) \
   REGISTER_OP_##dev##_KERNEL(                                \
       op_type, ::paddle::operators::UnaryLogicalOpKernel<    \
-                   ::paddle::platform::dev##Place, functor<bool>>);
+                   ::paddle::platform::dev##DeviceContext, functor<bool>>);

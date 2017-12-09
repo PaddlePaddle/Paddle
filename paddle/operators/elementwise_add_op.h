@@ -35,7 +35,7 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
     auto* z = ctx.Output<Tensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
     TransformFunctor<AddFunctor<T>, T, Place> functor(
-        x, y, z, ctx.device_context(), AddFunctor<T>());
+        x, y, z, ctx.template device_context<Place>(), AddFunctor<T>());
 
     auto x_dims = x->dims();
     auto y_dims = y->dims();

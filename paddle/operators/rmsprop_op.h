@@ -51,7 +51,7 @@ class RmspropOpKernel : public framework::OpKernel<T> {
     auto p_out = EigenVector<T>::Flatten(*param_out);
     auto mom_out = EigenVector<T>::Flatten(*moment_out);
     auto ms_out = EigenVector<T>::Flatten(*mean_square_out);
-    auto place = ctx.GetEigenDevice<Place>();
+    auto& place = *ctx.template device_context<Place>().eigen_device();
 
     Eigen::DSizes<int, 1> grad_dsize(grad->numel());
 

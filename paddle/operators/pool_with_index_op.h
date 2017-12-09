@@ -35,6 +35,8 @@ class MaxPoolWithIndexKernel : public framework::OpKernel<T1> {
     std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
+
+    auto& dev_ctx = context.template device_context<Place>();
     if (context.Attr<bool>("global_pooling")) {
       for (size_t i = 0; i < ksize.size(); ++i) {
         paddings[i] = 0;
@@ -46,14 +48,12 @@ class MaxPoolWithIndexKernel : public framework::OpKernel<T1> {
       case 2: {
         paddle::operators::math::MaxPool2dWithIndexFunctor<Place, T1, T2>
             pool2d_forward;
-        pool2d_forward(context.device_context(), *in_x, ksize, strides,
-                       paddings, out, mask);
+        pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings, out, mask);
       } break;
       case 3: {
         paddle::operators::math::MaxPool3dWithIndexFunctor<Place, T1, T2>
             pool3d_forward;
-        pool3d_forward(context.device_context(), *in_x, ksize, strides,
-                       paddings, out, mask);
+        pool3d_forward(dev_ctx, *in_x, ksize, strides, paddings, out, mask);
       } break;
       default: { PADDLE_THROW("Pool op only supports 2D and 3D input."); }
     }
@@ -81,7 +81,7 @@ class MaxPoolWithIndexGradKernel : public framework::OpKernel<T1> {
 
     if (in_x_grad) {
       in_x_grad->mutable_data<T1>(context.GetPlace());
-      auto& device_ctx = context.device_context();
+      auto& device_ctx = context.template device_context<Place>();
       math::set_constant(device_ctx, in_x_grad, 0);
 
       switch (ksize.size()) {

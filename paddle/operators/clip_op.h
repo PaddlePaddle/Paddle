@@ -67,8 +67,8 @@ class ClipKernel : public framework::OpKernel<T> {
     const T* x_data = x->data<T>();
     int64_t numel = x->numel();
     Transform<Place> trans;
-    trans(context.device_context(), x_data, x_data + numel, out_data,
-          ClipFunctor<T>(min, max));
+    trans(context.template device_context<Place>(), x_data, x_data + numel,
+          out_data, ClipFunctor<T>(min, max));
   }
 };
 
@@ -87,8 +87,8 @@ class ClipGradKernel : public framework::OpKernel<T> {
       const T* d_out_data = d_out->data<T>();
       const T* x_data = x->data<T>();
       Transform<Place> trans;
-      trans(context.device_context(), d_out_data, d_out_data + numel, x_data,
-            d_x_data, ClipGradFunctor<T>(min, max));
+      trans(context.template device_context<Place>(), d_out_data,
+            d_out_data + numel, x_data, d_x_data, ClipGradFunctor<T>(min, max));
     }
   }
 };

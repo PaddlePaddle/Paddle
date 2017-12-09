@@ -55,7 +55,7 @@ class PReluKernel : public framework::OpKernel<T> {
     int numel = x->numel();
 
     Transform<Place> trans;
-    trans(context.device_context(), x_ptr, x_ptr + numel, o_ptr,
+    trans(context.template device_context<Place>(), x_ptr, x_ptr + numel, o_ptr,
           PReluFunctor<T>(alpha_ptr));
   }
 };
@@ -93,8 +93,8 @@ class PReluGradKernel : public framework::OpKernel<T> {
     int numel = dx->numel();
 
     Transform<Place> trans;
-    trans(context.device_context(), out_ptr, out_ptr + numel, dout_ptr, dx_ptr,
-          PReluGradFunctor<T>(alpha_ptr));
+    trans(context.template device_context<Place>(), out_ptr, out_ptr + numel,
+          dout_ptr, dx_ptr, PReluGradFunctor<T>(alpha_ptr));
 
     // TODO(Zhuoyuan): add dalpha upgrade when GPU kernels ready
   }

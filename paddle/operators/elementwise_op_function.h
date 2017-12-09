@@ -59,17 +59,17 @@ inline void get_mid_dims(const framework::DDim& x_dims,
   }
 }
 
-template <typename T, typename Place>
+template <typename T, typename DeviceContext>
 class RowwiseTransformIterator;
-template <typename T, typename Place>
+template <typename T, typename DeviceContext>
 class MidWiseTransformIterator;
 
 template <typename T>
-class RowwiseTransformIterator<T, platform::CPUPlace> {
+class RowwiseTransformIterator<T, platform::CPUDeviceContext> {
  public:
   RowwiseTransformIterator(const T* ptr, int n) : ptr_(ptr), i_(0), n_(n) {}
 
-  RowwiseTransformIterator<T, platform::CPUPlace>& operator++() {
+  RowwiseTransformIterator<T, platform::CPUDeviceContext>& operator++() {
     ++i_;
     if (UNLIKELY(i_ == n_)) {
       i_ = 0;
@@ -77,13 +77,13 @@ class RowwiseTransformIterator<T, platform::CPUPlace> {
     return *this;
   }
 
-  bool operator==(
-      const RowwiseTransformIterator<T, platform::CPUPlace>& rhs) const {
+  bool operator==(const RowwiseTransformIterator<T, platform::CPUDeviceContext>&
+                      rhs) const {
     return (ptr_ + i_) == &(*rhs);
   }
 
-  bool operator!=(
-      const RowwiseTransformIterator<T, platform::CPUPlace>& rhs) const {
+  bool operator!=(const RowwiseTransformIterator<T, platform::CPUDeviceContext>&
+                      rhs) const {
     return (ptr_ + i_) != &(*rhs);
   }
 
@@ -96,12 +96,12 @@ class RowwiseTransformIterator<T, platform::CPUPlace> {
 };
 
 template <typename T>
-class MidWiseTransformIterator<T, platform::CPUPlace> {
+class MidWiseTransformIterator<T, platform::CPUDeviceContext> {
  public:
   MidWiseTransformIterator(const T* ptr, int n, int post)
       : ptr_(ptr), i_(0), j_(0), n_(n), post_(post) {}
 
-  MidWiseTransformIterator<T, platform::CPUPlace>& operator++() {
+  MidWiseTransformIterator<T, platform::CPUDeviceContext>& operator++() {
     ++j_;
     i_ = j_ / post_;
     if (UNLIKELY(i_ == n_)) {
@@ -111,13 +111,13 @@ class MidWiseTransformIterator<T, platform::CPUPlace> {
     return *this;
   }
 
-  bool operator==(
-      const MidWiseTransformIterator<T, platform::CPUPlace>& rhs) const {
+  bool operator==(const MidWiseTransformIterator<T, platform::CPUDeviceContext>&
+                      rhs) const {
     return (ptr_ + i_) == &(*rhs);
   }
 
-  bool operator!=(
-      const MidWiseTransformIterator<T, platform::CPUPlace>& rhs) const {
+  bool operator!=(const MidWiseTransformIterator<T, platform::CPUDeviceContext>&
+                      rhs) const {
     return (ptr_ + i_) != &(*rhs);
   }
 
@@ -133,12 +133,12 @@ class MidWiseTransformIterator<T, platform::CPUPlace> {
 
 #ifdef __NVCC__
 template <typename T>
-class RowwiseTransformIterator<T, platform::GPUPlace>
+class RowwiseTransformIterator<T, platform::CUDADeviceContext>
     : public thrust::iterator_adaptor<
-          RowwiseTransformIterator<T, platform::GPUPlace>, const T*> {
+          RowwiseTransformIterator<T, platform::CUDADeviceContext>, const T*> {
  public:
   typedef thrust::iterator_adaptor<
-      RowwiseTransformIterator<T, platform::GPUPlace>, const T*>
+      RowwiseTransformIterator<T, platform::CUDADeviceContext>, const T*>
       super_t;
   HOSTDEVICE RowwiseTransformIterator(const T* x, int n)
       : super_t(x), begin_(x), n_(n){};
@@ -153,12 +153,12 @@ class RowwiseTransformIterator<T, platform::GPUPlace>
 };
 
 template <typename T>
-class MidWiseTransformIterator<T, platform::GPUPlace>
+class MidWiseTransformIterator<T, platform::CUDADeviceContext>
     : public thrust::iterator_adaptor<
-          MidWiseTransformIterator<T, platform::GPUPlace>, const T*> {
+          MidWiseTransformIterator<T, platform::CUDADeviceContext>, const T*> {
  public:
   typedef thrust::iterator_adaptor<
-      MidWiseTransformIterator<T, platform::GPUPlace>, const T*>
+      MidWiseTransformIterator<T, platform::CUDADeviceContext>, const T*>
       super_t;
   HOSTDEVICE MidWiseTransformIterator(const T* x, int n, int post)
       : super_t(x), begin_(x), n_(n), post_(post){};
@@ -174,12 +174,11 @@ class MidWiseTransformIterator<T, platform::GPUPlace>
 };
 #endif
 
-template <typename Functor, typename T, typename Place>
+template <typename Functor, typename T, typename DeviceContext>
 class TransformFunctor {
  public:
   TransformFunctor(const framework::Tensor* x, const framework::Tensor* y,
-                   framework::Tensor* z, const platform::DeviceContext& ctx,
-                   Functor func)
+                   framework::Tensor* z, const DeviceContext& ctx, Functor func)
       : x_(x->data<T>()),
         y_(y->data<T>()),
         z_(z->mutable_data<T>(ctx.GetPlace())),
@@ -188,20 +187,20 @@ class TransformFunctor {
         func_(func) {}
 
   inline void Run() const {
-    platform::Transform<Place> trans;
+    platform::Transform<DeviceContext> trans;
     trans(ctx_, x_, x_ + nx_, y_, z_, func_);
   }
 
   inline void RunRowWise(int n, int pre) const {
-    platform::Transform<Place> trans;
-    trans(ctx_, x_, x_ + nx_, RowwiseTransformIterator<T, Place>(y_, n), z_,
-          func_);
+    platform::Transform<DeviceContext> trans;
+    trans(ctx_, x_, x_ + nx_, RowwiseTransformIterator<T, DeviceContext>(y_, n),
+          z_, func_);
   }
 
   inline void RunMidWise(int n, int pre, int post) const {
-    platform::Transform<Place> trans;
-    trans(ctx_, x_, x_ + nx_, MidWiseTransformIterator<T, Place>(y_, n, post),
-          z_, func_);
+    platform::Transform<DeviceContext> trans;
+    trans(ctx_, x_, x_ + nx_,
+          MidWiseTransformIterator<T, DeviceContext>(y_, n, post), z_, func_);
   }
 
  private:
@@ -209,7 +208,7 @@ class TransformFunctor {
   const T* y_;
   T* z_;
   int64_t nx_;
-  const platform::DeviceContext& ctx_;
+  const DeviceContext& ctx_;
   Functor func_;
 };
 

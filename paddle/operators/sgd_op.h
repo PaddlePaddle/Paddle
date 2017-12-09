@@ -20,9 +20,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 struct SparseSGDFunctor {
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const DeviceContext& context,
                   const framework::SelectedRows& input,
                   const framework::Tensor& learning_rate,
                   framework::Tensor* output);
@@ -46,7 +46,7 @@ class SGDOpKernel : public framework::OpKernel<T> {
       auto g = framework::EigenVector<T>::Flatten(*grad);
       auto o = framework::EigenVector<T>::Flatten(*param_out);
       auto lr = framework::EigenVector<T>::Flatten(*learning_rate);
-      auto place = ctx.GetEigenDevice<Place>();
+      auto& place = *ctx.template device_context<Place>().eigen_device();
 
       Eigen::DSizes<int, 1> grad_dsize(grad->numel());
       o.device(place) = p - lr.broadcast(grad_dsize) * g;
@@ -57,7 +57,8 @@ class SGDOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(param, param_out);
       auto* grad = ctx.Input<framework::SelectedRows>("Grad");
       SparseSGDFunctor<Place, T> functor;
-      functor(ctx.device_context(), *grad, *learning_rate, param_out);
+      functor(ctx.template device_context<Place>(), *grad, *learning_rate,
+              param_out);
     } else {
       PADDLE_THROW("Unsupported Variable Type of Grad");
     }

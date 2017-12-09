@@ -157,7 +157,7 @@ __global__ void KernelMaxPool2DGrad(
 template <typename PoolProcess, typename T>
 class Pool2dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
                   PoolProcess pool_process, framework::Tensor* output) {
@@ -243,7 +243,7 @@ class Pool2dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
 template <typename T>
 class MaxPool2dGradFunctor<platform::CUDADeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,

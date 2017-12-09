@@ -31,7 +31,7 @@ class ScaleKernel : public framework::OpKernel<T> {
 
     auto eigen_out = framework::EigenVector<T>::Flatten(*tensor);
     auto eigen_in = framework::EigenVector<T>::Flatten(*in);
-    auto& dev = context.GetEigenDevice<Place>();
+    auto& dev = *context.template device_context<Place>().eigen_device();
     eigen_out.device(dev) = scale * eigen_in;
   }
 };

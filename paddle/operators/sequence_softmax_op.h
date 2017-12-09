@@ -52,7 +52,8 @@ class SequenceSoftmaxKernel : public framework::OpKernel<T> {
       framework::DDim dims_i = framework::make_ddim({1UL, end_pos - start_pos});
       x_i.Resize(dims_i);
       out_i.Resize(dims_i);
-      math::SoftmaxFunctor<Place, T>()(ctx.device_context(), &x_i, &out_i);
+      math::SoftmaxFunctor<Place, T>()(ctx.template device_context<Place>(),
+                                       &x_i, &out_i);
     }
   }
 };
@@ -83,8 +84,8 @@ class SequenceSoftmaxGradKernel : public framework::OpKernel<T> {
       out_i.Resize(dims_i);
       out_grad_i.Resize(dims_i);
       x_grad_i.Resize(dims_i);
-      math::SoftmaxGradFunctor<Place, T>()(ctx.device_context(), &out_i,
-                                           &out_grad_i, &x_grad_i);
+      math::SoftmaxGradFunctor<Place, T>()(ctx.template device_context<Place>(),
+                                           &out_i, &out_grad_i, &x_grad_i);
     }
   }
 };
