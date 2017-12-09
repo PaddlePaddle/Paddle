@@ -51,7 +51,7 @@ class AdadeltaOpKernel : public framework::OpKernel<T> {
         framework::EigenVector<T>::Flatten(*avg_squared_grad_out_tensor);
     auto avg_squared_update_out =
         framework::EigenVector<T>::Flatten(*avg_squared_update_out_tensor);
-    auto place = ctx.GetEigenDevice<Place>();
+    auto& place = *ctx.template device_context<Place>().eigen_device();
 
     avg_squared_grad_out.device(place) =
         rho * avg_squared_grad + (1 - rho) * grad.square();

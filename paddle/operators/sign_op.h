@@ -29,7 +29,7 @@ class SignKernel : public framework::OpKernel<T> {
 
     auto eigen_out = framework::EigenVector<T>::Flatten(*out);
     auto eigen_in = framework::EigenVector<T>::Flatten(*in);
-    auto& place = context.GetEigenDevice<Place>();
+    auto& place = *context.template device_context<Place>().eigen_device();
     eigen_out.device(place) = eigen_in.sign();
   }
 };

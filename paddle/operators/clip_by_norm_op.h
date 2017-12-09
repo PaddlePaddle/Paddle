@@ -38,7 +38,7 @@ class ClipByNormKernel : public framework::OpKernel<T> {
     auto x = EigenVector<T>::Flatten(*input);
     auto out = EigenVector<T>::Flatten(*output);
     auto x_norm = x.square().sum().sqrt();
-    auto place = context.GetEigenDevice<Place>();
+    auto& place = *context.template device_context<Place>().eigen_device();
 
     auto temp = (x_norm <= max_norm).template cast<T>().eval();
     auto scaling = temp + (static_cast<T>(1) - temp) * max_norm / x_norm;

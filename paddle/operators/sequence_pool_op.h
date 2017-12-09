@@ -30,7 +30,9 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
-template <typename Place, typename T>
+template <typename Place, typename T,
+          typename DeviceContextType =
+              typename platform::PlaceConverter<Place>::DeviceContext>
 class SequencePoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -54,17 +56,17 @@ class SequencePoolKernel : public framework::OpKernel<T> {
     auto lod_level_0 = lod[0];
 
     out->mutable_data<T>(context.GetPlace());
-
+    auto& dev_ctx = context.template device_context<Place>();
     if (pooltype == "MAX") {
-      math::MaxSeqPoolFunctor<Place, T> max_pool;
+      math::MaxSeqPoolFunctor<DeviceContextType, T> max_pool;
       auto* index = context.Output<Tensor>("MaxIndex");
       index->Resize({dims});
       index->mutable_data<int>(context.GetPlace());
-      max_pool(context.device_context(), *in, out, index);
+      max_pool(dev_ctx, *in, out, index);
       return;
     }
 
-    auto place = context.GetEigenDevice<Place>();
+    auto& place = *context.template device_context<Place>().eigen_device();
     for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
       Tensor in_t = in->Slice(static_cast<int>(lod_level_0[i]),
                               static_cast<int>(lod_level_0[i + 1]));
@@ -91,7 +93,9 @@ class SequencePoolKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename Place, typename T,
+          typename DeviceContextType =
+              typename platform::PlaceConverter<Place>::DeviceContext>
 class SequencePoolGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -105,20 +109,22 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
     int64_t w = in->numel() / dims[0];
 
     in_g->mutable_data<T>(context.GetPlace());
+    auto& dev_ctx = context.template device_context<Place>();
 
     if (pooltype == "MAX") {
       math::MaxSeqPoolGradFunctor<Place, T> max_pool_grad;
       auto* index = context.Input<Tensor>("MaxIndex");
-      max_pool_grad(context.device_context(), *out_g, *index, in_g);
+      max_pool_grad(dev_ctx, *out_g, *index, in_g);
       return;
     }
 
     if (pooltype == "LAST" || pooltype == "FIRST") {
       // set X@Grad be zero at first when pooltype is LAST/FIRST
-      math::SetConstant<Place, T> functor;
-      functor(context.device_context(), in_g, 0);
+      math::SetConstant<DeviceContextType, T> functor;
+      functor(dev_ctx, in_g, 0);
     }
-    auto place = context.GetEigenDevice<Place>();
+    auto& place = *context.template device_context<Place>().eigen_device();
+
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       auto in_g_t =
           in_g->Slice(static_cast<int>(lod[i]), static_cast<int>(lod[i + 1]));

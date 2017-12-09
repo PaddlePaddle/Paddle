@@ -60,7 +60,8 @@ class MultiplexGradCPUKernel : public framework::OpKernel<T> {
       if (d_ins[i]) {
         d_ins[i]->mutable_data<T>(ctx.GetPlace());
         auto t = framework::EigenVector<T>::Flatten(*d_ins[i]);
-        t.device(ctx.GetEigenDevice<Place>()) = t.constant(static_cast<T>(0));
+        t.device(*ctx.template device_context<Place>().eigen_device()) =
+            t.constant(static_cast<T>(0));
       }
     }
 

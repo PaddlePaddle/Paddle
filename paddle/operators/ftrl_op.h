@@ -53,7 +53,7 @@ class FTRLOpKernel : public framework::OpKernel<T> {
     auto p_out = EigenVector<T>::Flatten(*param_out);
     auto s_acc_out = EigenVector<T>::Flatten(*sq_accum_out);
     auto l_acc_out = EigenVector<T>::Flatten(*lin_accum_out);
-    auto place = ctx.GetEigenDevice<Place>();
+    auto& place = *ctx.template device_context<Place>().eigen_device();
 
     Eigen::DSizes<int, 1> grad_dsize(grad->numel());
 
