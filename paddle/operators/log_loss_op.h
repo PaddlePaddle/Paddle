@@ -38,7 +38,7 @@ class LogLossKernel : public framework::OpKernel<T> {
     auto label = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Labels"));
 
     auto loss = EigenVector<T>::Flatten(*loss_out);
-    auto place = ctx.GetEigenDevice<Place>();
+    auto& place = *ctx.template device_context<Place>().eigen_device();
 
     loss.device(place) = (-(label * (prediction + epsilon).log()) -
                           ((static_cast<T>(1) - label) *
@@ -59,7 +59,7 @@ class LogLossGradKernel : public framework::OpKernel<T> {
     auto* dpred = ctx.Output<Tensor>(framework::GradVarName("Predicted"));
 
     auto dl = EigenVector<T>::Flatten(*dloss);
-    auto place = ctx.GetEigenDevice<Place>();
+    auto& place = *ctx.template device_context<Place>().eigen_device();
 
     if (dpred) {
       dpred->mutable_data<T>(ctx.GetPlace());

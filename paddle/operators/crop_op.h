@@ -63,7 +63,8 @@ void CropGradFunction(const framework::ExecutionContext& context) {
     }
     auto d_x_tensor = EigenTensor<T, D>::From(*d_x);
     auto d_out_tensor = EigenTensor<T, D>::From(*d_out);
-    d_x_tensor.device(context.GetEigenDevice<Place>()) =
+    d_x_tensor.device(
+        *context.template device_context<Place>().eigen_device()) =
         d_out_tensor.pad(paddings, 0);
   }
 }

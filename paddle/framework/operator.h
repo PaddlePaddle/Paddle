@@ -285,6 +285,10 @@ class ExecutionContext {
     return *reinterpret_cast<const DeviceContextType*>(&device_context_);
   }
 
+  const platform::DeviceContext& device_context() const {
+    return device_context_;
+  }
+
   //! Get actual name vector for this input.
   const std::vector<std::string>& Inputs(const std::string& name) const {
     return op_.Inputs(name);

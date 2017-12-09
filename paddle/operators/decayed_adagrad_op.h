@@ -43,7 +43,7 @@ class DecayedAdagradOpKernel : public framework::OpKernel<T> {
 
     auto param_out = framework::EigenVector<T>::Flatten(*param_out_tensor);
     auto moment_out = framework::EigenVector<T>::Flatten(*moment_out_tensor);
-    auto place = ctx.GetEigenDevice<Place>();
+    auto& place = *ctx.template device_context<Place>().eigen_device();
 
     moment_out.device(place) = decay * moment + (1 - decay) * grad * grad;
     Eigen::DSizes<int, 1> m_dsize(moment_out_tensor->numel());

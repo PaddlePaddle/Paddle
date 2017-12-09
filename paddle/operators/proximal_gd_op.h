@@ -42,7 +42,7 @@ class ProximalGDOpKernel : public framework::OpKernel<T> {
     auto lr = EigenVector<T>::Flatten(*ctx.Input<Tensor>("LearningRate"));
 
     auto p_out = EigenVector<T>::Flatten(*param_out);
-    auto place = ctx.GetEigenDevice<Place>();
+    auto& place = *ctx.template device_context<Place>().eigen_device();
 
     Eigen::DSizes<int, 1> grad_dsize(grad->numel());
 

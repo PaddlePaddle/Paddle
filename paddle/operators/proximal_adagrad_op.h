@@ -45,20 +45,20 @@ class ProximalAdagradOpKernel : public framework::OpKernel<T> {
 
     auto p_out = EigenVector<T>::Flatten(*param_out);
     auto m_out = EigenVector<T>::Flatten(*moment_out);
-    auto place = ctx.GetEigenDevice<Place>();
+    auto* place = ctx.template device_context<Place>().eigen_device();
 
     Eigen::DSizes<int, 1> grad_dsize(grad->numel());
 
-    m_out.device(place) = m + g * g;
+    m_out.device(*place) = m + g * g;
     auto prox_param = p - lr.broadcast(grad_dsize) * g / m_out.sqrt();
     if (l1 > static_cast<T>(0)) {
-      p_out.device(place) =
+      p_out.device(*place) =
           prox_param.sign() *
           (((prox_param.abs() - (lr * l1).broadcast(grad_dsize))
                 .cwiseMax(static_cast<T>(0.0))) /
            (static_cast<T>(1.0) + (lr * l2).broadcast(grad_dsize)));
     } else {
-      p_out.device(place) =
+      p_out.device(*place) =
           prox_param / (static_cast<T>(1.0) + (lr * l2).broadcast(grad_dsize));
     }
   }

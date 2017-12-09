@@ -38,7 +38,7 @@ class MeanKernel : public framework::OpKernel<T> {
 
     auto X = EigenVector<T>::Flatten(*input);
     auto y = EigenScalar<T>::From(*output);
-    auto& place = context.GetEigenDevice<Place>();
+    auto& place = *context.template device_context<Place>().eigen_device();
 
     y.device(place) = X.mean();
   }
@@ -56,7 +56,8 @@ class MeanGradKernel : public framework::OpKernel<T> {
     T ig_size = static_cast<T>(IG->numel());
     Eigen::DSizes<int, 1> bcast(ig_size);
 
-    EigenVector<T>::Flatten(*IG).device(context.GetEigenDevice<Place>()) =
+    EigenVector<T>::Flatten(*IG).device(
+        *context.template device_context<Place>().eigen_device()) =
         (EigenVector<T>::From(*OG) / ig_size).broadcast(bcast);
   }
 };

@@ -55,7 +55,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
     } else {
       auto X = EigenMatrix<T>::Reshape(*x, 1);
       auto Y = EigenMatrix<T>::Reshape(*y, 1);
-      auto place = context.GetEigenDevice<Place>();
+      auto& place = *context.template device_context<Place>().eigen_device();
       Y.device(place) = X * dropout_prob;
     }
   }
@@ -77,7 +77,7 @@ class DropoutGradKernel : public framework::OpKernel<T> {
     auto dX = EigenMatrix<T>::Reshape(*grad_x, 1);
     auto dY = EigenMatrix<T>::Reshape(*grad_y, 1);
 
-    auto place = context.GetEigenDevice<Place>();
+    auto& place = *context.template device_context<Place>().eigen_device();
     dX.device(place) = dY * M;
   }
 };

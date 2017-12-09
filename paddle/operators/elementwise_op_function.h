@@ -222,7 +222,8 @@ class TransformFunctor {
       auto x_e = framework::EigenVector<T>::Flatten(*x);                       \
       auto y_e = framework::EigenVector<T>::Flatten(*y);                       \
       auto z_e = framework::EigenVector<T>::Flatten(*z);                       \
-      z_e.device(ctx.GetEigenDevice<Place>()) = eigen_op(x_e, y_e);            \
+      z_e.device(*ctx.template device_context<Place>().eigen_device()) =       \
+          eigen_op(x_e, y_e);                                                  \
     }                                                                          \
     template <typename Place, typename T>                                      \
     inline void RunBroadCast(const framework::Tensor* x,                       \
@@ -235,7 +236,8 @@ class TransformFunctor {
       auto y_bcast = y_e.reshape(Eigen::DSizes<int, 2>(1, n))                  \
                          .broadcast(Eigen::DSizes<int, 2>(pre, 1))             \
                          .reshape(Eigen::DSizes<int, 1>(x_e.size()));          \
-      z_e.device(ctx.GetEigenDevice<Place>()) = eigen_op(x_e, y_bcast);        \
+      z_e.device(*ctx.template device_context<Place>().eigen_device()) =       \
+          eigen_op(x_e, y_bcast);                                              \
     }                                                                          \
     template <typename Place, typename T>                                      \
     inline void RunBroadCast2(const framework::Tensor* x,                      \
@@ -249,7 +251,8 @@ class TransformFunctor {
       auto y_bcast = y_e.reshape(Eigen::DSizes<int, 3>(1, n, 1))               \
                          .broadcast(Eigen::DSizes<int, 3>(pre, 1, post))       \
                          .reshape(Eigen::DSizes<int, 1>(x_e.size()));          \
-      z_e.device(ctx.GetEigenDevice<Place>()) = eigen_op(x_e, y_bcast);        \
+      z_e.device(*ctx.template device_context<Place>().eigen_device()) =       \
+          eigen_op(x_e, y_bcast);                                              \
     }                                                                          \
   }
 
@@ -313,7 +316,7 @@ void ElementwiseGradCompute(const framework::ExecutionContext& ctx) {
   auto* out = ctx.Input<Tensor>("Out");
   auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
-  auto place = ctx.GetEigenDevice<Place>();
+  auto& place = *ctx.template device_context<Place>().eigen_device();
 
   auto x_dims = x->dims();
   auto y_dims = y->dims();

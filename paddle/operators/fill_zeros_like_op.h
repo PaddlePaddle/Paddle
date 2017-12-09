@@ -19,15 +19,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename Place, typename T,
+          typename DeviceContextType =
+              typename platform::PlaceConverter<Place>::DeviceContext>
 class FillZerosLikeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* out = context.Output<framework::Tensor>("Y");
     out->mutable_data<T>(context.GetPlace());
 
-    math::SetConstant<Place, T> setter;
-    setter(context.device_context(), out, static_cast<T>(0));
+    math::SetConstant<DeviceContextType, T> setter;
+    setter(context.template device_context<Place>(), out, static_cast<T>(0));
   }
 };
 

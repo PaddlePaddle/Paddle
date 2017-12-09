@@ -51,7 +51,7 @@ class SquaredL2DistanceKernel : public framework::OpKernel<T> {
     auto sub_result = EigenMatrix<T>::From(*out0);
     auto z = EigenVector<T>::Flatten(*out1);
 
-    auto place = context.template device_context<Place>().eigen_device();
+    auto& place = *context.template device_context<Place>().eigen_device();
     auto x_dims = x.dimensions();
     auto y_dims = y.dimensions();
     // buffer the substraction result
@@ -89,7 +89,8 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel<T> {
                     sub_result;
 
     // propagate back to input
-    auto eigen_place = context.GetEigenDevice<Place>();
+    auto& eigen_place =
+        *context.template device_context<Place>().eigen_device();
     if (x_g) {
       x_g->mutable_data<T>(context.GetPlace());
       // eigen matrix
