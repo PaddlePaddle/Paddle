@@ -1,4 +1,4 @@
-# Release v0.11.0
+# v0.11.0版本
 
 ## Fluid Python API
 
@@ -33,6 +33,29 @@
 * 增加 [sequence slice layer](http://www.paddlepaddle.org/docs/develop/documentation/zh/api/v2/config/layer.html#seq-slice)
 * 增加 [row convolution layer](http://www.paddlepaddle.org/docs/develop/documentation/zh/api/v2/config/layer.html#row-conv)
 * 增加移动端友好的网页
+
+## 改进
+
+* 使用一个Python`whl`包即可安装.
+* [V2 API可以实现用户定制化评估](https://github.com/PaddlePaddle/models/tree/develop/ltr#训练过程中输出自定义评估指标)。
+* 将 `PADDLE_ONLY_CPU` 改为 `PADDLE_WITH_GPU`, 因为我们会支持多种设备。
+* 删除了有一些bug的BarrierStat。
+* 清理和删除了paddle::Parameter中未使用的函数。
+* 删除了ProtoDataProvider。
+* Huber loss同时支持回归和分类。
+* 为sequence pooling 层增加`stride`参数。
+* v2 API自动使用cudnn batch normalization。
+* 可以使用一个固定的参数名共享BN层的参数。
+* 2D convolution operation支持variable-dimension input特性。
+* 重构cmake中关于CUDA的部分并实现自动检测GPU架构的功能。
+* 优化网页导航。
+
+## 错误修复
+
+* 修复ROI pooling的Bug. cc9a761
+* 修复当label是dense vector是AUC变成0的问题. #5274
+* 修复WarpCTC 层的Bug.
+
 
 # v0.10.0版本
 
