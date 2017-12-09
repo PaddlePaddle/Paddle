@@ -126,9 +126,7 @@ class CPUROIPoolOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T,
-          typename DeviceContexType =
-              typename platform::PlaceConverter<Place>::DeviceContext>
+template <typename Place, typename T>
 class CPUROIPoolGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -147,7 +145,7 @@ class CPUROIPoolGradOpKernel : public framework::OpKernel<T> {
       const T* out_grad_data = out_grad->data<T>();
       const int64_t* argmax_data = argmax->data<int64_t>();
       T* in_grad_data = in_grad->mutable_data<T>(ctx.GetPlace());
-      math::SetConstant<DeviceContexType, T> set_zero;
+      math::SetConstant<Place, T> set_zero;
       set_zero(ctx.template device_context<Place>(), in_grad,
                static_cast<T>(0));
 

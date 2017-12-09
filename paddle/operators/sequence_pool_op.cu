@@ -18,7 +18,8 @@
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
-    sequence_pool, ops::SequencePoolKernel<paddle::platform::GPUPlace, float>);
+    sequence_pool,
+    ops::SequencePoolKernel<paddle::platform::CUDADeviceContext, float>);
 REGISTER_OP_GPU_KERNEL(
     sequence_pool_grad,
-    ops::SequencePoolGradKernel<paddle::platform::GPUPlace, float>);
+    ops::SequencePoolGradKernel<paddle::platform::CUDADeviceContext, float>);

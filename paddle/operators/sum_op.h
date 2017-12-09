@@ -26,9 +26,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
-template <typename Place, typename T,
-          typename DeviceContextType =
-              typename platform::PlaceConverter<Place>::DeviceContext>
+template <typename Place, typename T>
 class SumKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -45,11 +43,11 @@ class SumKernel : public framework::OpKernel<T> {
       auto result = EigenVector<T>::Flatten(*out);
 
       if (!in_place) {
-        math::SetConstant<DeviceContextType, T> constant_functor;
+        math::SetConstant<Place, T> constant_functor;
         constant_functor(context.template device_context<Place>(), out, 0.0);
       }
 
-      math::SelectedRowsAddToTensor<DeviceContextType, T> functor;
+      math::SelectedRowsAddToTensor<Place, T> functor;
       auto &place = *context.template device_context<Place>().eigen_device();
       // If in_place, just skip the first tensor
       for (int i = in_place ? 1 : 0; i < N; i++) {
@@ -84,7 +82,7 @@ class SumKernel : public framework::OpKernel<T> {
       out_value->Resize(framework::make_ddim(in_dim_vec));
       out_value->mutable_data<T>(context.GetPlace());
 
-      math::SelectedRowsAddTo<DeviceContextType, T> functor;
+      math::SelectedRowsAddTo<Place, T> functor;
 
       int64_t offset = 0;
       for (int i = 0; i < N; i++) {

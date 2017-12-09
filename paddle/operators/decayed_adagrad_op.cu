@@ -18,4 +18,4 @@
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
     decayed_adagrad,
-    ops::DecayedAdagradOpKernel<paddle::platform::GPUPlace, float>);
+    ops::DecayedAdagradOpKernel<paddle::platform::CUDADeviceContext, float>);

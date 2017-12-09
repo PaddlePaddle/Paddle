@@ -30,9 +30,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
-template <typename Place, typename T,
-          typename DeviceContextType =
-              typename platform::PlaceConverter<Place>::DeviceContext>
+template <typename Place, typename T>
 class SequencePoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -58,7 +56,7 @@ class SequencePoolKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<Place>();
     if (pooltype == "MAX") {
-      math::MaxSeqPoolFunctor<DeviceContextType, T> max_pool;
+      math::MaxSeqPoolFunctor<Place, T> max_pool;
       auto* index = context.Output<Tensor>("MaxIndex");
       index->Resize({dims});
       index->mutable_data<int>(context.GetPlace());
@@ -93,9 +91,7 @@ class SequencePoolKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T,
-          typename DeviceContextType =
-              typename platform::PlaceConverter<Place>::DeviceContext>
+template <typename Place, typename T>
 class SequencePoolGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -120,7 +116,7 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
 
     if (pooltype == "LAST" || pooltype == "FIRST") {
       // set X@Grad be zero at first when pooltype is LAST/FIRST
-      math::SetConstant<DeviceContextType, T> functor;
+      math::SetConstant<Place, T> functor;
       functor(dev_ctx, in_g, 0);
     }
     auto& place = *context.template device_context<Place>().eigen_device();

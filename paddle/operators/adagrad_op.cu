@@ -72,8 +72,7 @@ __global__ void SparseAdagradFunctorKernel(const T* grad, const int64_t* rows,
 }  // namespace
 
 template <typename T>
-struct SparseAdagradFunctor<platform::GPUPlace, T,
-                            platform::CUDADeviceContext> {
+struct SparseAdagradFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::SelectedRows& grad,
                   const framework::Tensor& learning_rate, T epsilon,
@@ -140,13 +139,13 @@ struct SparseAdagradFunctor<platform::GPUPlace, T,
   }
 };
 
-template struct SparseAdagradFunctor<platform::GPUPlace, float>;
-template struct SparseAdagradFunctor<platform::GPUPlace, double>;
+template struct SparseAdagradFunctor<platform::CUDADeviceContext, float>;
+template struct SparseAdagradFunctor<platform::CUDADeviceContext, double>;
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
-    adagrad, ops::AdagradOpKernel<paddle::platform::GPUPlace, float>,
-    ops::AdagradOpKernel<paddle::platform::GPUPlace, double>);
+    adagrad, ops::AdagradOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::AdagradOpKernel<paddle::platform::CUDADeviceContext, double>);

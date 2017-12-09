@@ -100,7 +100,7 @@ size_t FindPos(const std::vector<int64_t>& rows, int64_t value) {
 }  // namespace
 
 template <typename T>
-struct SparseAdagradFunctor<platform::CPUPlace, T, platform::CPUDeviceContext> {
+struct SparseAdagradFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::SelectedRows& grad,
                   const framework::Tensor& learning_rate, T epsilon,
@@ -164,13 +164,13 @@ struct SparseAdagradFunctor<platform::CPUPlace, T, platform::CPUDeviceContext> {
   }
 };
 
-template struct SparseAdagradFunctor<platform::CPUPlace, float>;
-template struct SparseAdagradFunctor<platform::CPUPlace, double>;
+template struct SparseAdagradFunctor<platform::CPUDeviceContext, float>;
+template struct SparseAdagradFunctor<platform::CPUDeviceContext, double>;
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(adagrad, ops::AdagradOp, ops::AdagradOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    adagrad, ops::AdagradOpKernel<paddle::platform::CPUPlace, float>,
-    ops::AdagradOpKernel<paddle::platform::CPUPlace, double>);
+    adagrad, ops::AdagradOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::AdagradOpKernel<paddle::platform::CPUDeviceContext, double>);

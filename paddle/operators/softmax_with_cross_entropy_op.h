@@ -40,7 +40,8 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
     softmax->mutable_data<T>(context.GetPlace());
     loss->mutable_data<T>(context.GetPlace());
 
-    auto& dev_ctx = context.template device_context<platform::CPUPlace>();
+    auto& dev_ctx =
+        context.template device_context<platform::CPUDeviceContext>();
     math::SoftmaxFunctor<platform::CPUDeviceContext, T>()(dev_ctx, logits,
                                                           softmax);
     math::CrossEntropyFunctor<platform::CPUDeviceContext, T>()(
@@ -62,8 +63,8 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
     const int class_num = logit_grad->dims()[1];
     auto out_grad_mat = EigenMatrix<T>::From(*out_grad);
     auto logit_grad_mat = EigenMatrix<T>::From(*logit_grad);
-    auto& place =
-        *context.template device_context<platform::CPUPlace>().eigen_device();
+    auto& place = *context.template device_context<platform::CPUDeviceContext>()
+                       .eigen_device();
     if (context.Attr<bool>("soft_label")) {
       auto lbl_mat = EigenMatrix<T>::From(*labels);
       logit_grad_mat.device(place) =

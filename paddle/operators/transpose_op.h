@@ -20,35 +20,33 @@
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T,
-          typename DeviceContextType =
-              typename platform::PlaceConverter<Place>::DeviceContext>
-inline void TransCompute(const int dim, const DeviceContextType& dev_ctx,
+template <typename DeviceContext, typename T>
+inline void TransCompute(const int dim, const DeviceContext& dev_ctx,
                          const framework::Tensor& in, framework::Tensor* out,
                          const std::vector<int>& axis) {
   switch (dim) {
     case 1:
-      math::Transpose<DeviceContextType, T, 1> trans1;
+      math::Transpose<DeviceContext, T, 1> trans1;
       trans1(dev_ctx, in, out, axis);
       break;
     case 2:
-      math::Transpose<DeviceContextType, T, 2> trans2;
+      math::Transpose<DeviceContext, T, 2> trans2;
       trans2(dev_ctx, in, out, axis);
       break;
     case 3:
-      math::Transpose<DeviceContextType, T, 3> trans3;
+      math::Transpose<DeviceContext, T, 3> trans3;
       trans3(dev_ctx, in, out, axis);
       break;
     case 4:
-      math::Transpose<DeviceContextType, T, 4> trans4;
+      math::Transpose<DeviceContext, T, 4> trans4;
       trans4(dev_ctx, in, out, axis);
       break;
     case 5:
-      math::Transpose<DeviceContextType, T, 5> trans5;
+      math::Transpose<DeviceContext, T, 5> trans5;
       trans5(dev_ctx, in, out, axis);
       break;
     case 6:
-      math::Transpose<DeviceContextType, T, 6> trans6;
+      math::Transpose<DeviceContext, T, 6> trans6;
       trans6(dev_ctx, in, out, axis);
       break;
     default:

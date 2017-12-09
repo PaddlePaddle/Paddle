@@ -137,8 +137,8 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
         framework::make_ddim({static_cast<int64_t>(batch_size), 1}),
         platform::CPUPlace());
 
-    auto& place =
-        *ctx.template device_context<platform::CPUPlace>().eigen_device();
+    auto& place = *ctx.template device_context<platform::CPUDeviceContext>()
+                       .eigen_device();
     auto x = EigenMatrix<T>::From(*emission_weights);
     auto x_row_max = EigenMatrix<T>::From(emission_row_max);
     x_row_max.device(place) =
@@ -288,9 +288,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T,
-          typename DeviceContextType =
-              typename platform::PlaceConverter<Place>::DeviceContext>
+template <typename Place, typename T>
 class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -362,8 +360,8 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     emission_grad->mutable_data<T>(platform::CPUPlace());
     if (transition_grad) {
       transition_grad->mutable_data<T>(platform::CPUPlace());
-      math::SetConstant<DeviceContextType, T>()(
-          ctx.template device_context<Place>(), transition_grad, 0.);
+      math::SetConstant<Place, T>()(ctx.template device_context<Place>(),
+                                    transition_grad, 0.);
     }
     // Now, all the inputs and outputs should be on the CPU memory.
 

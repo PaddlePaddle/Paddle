@@ -36,13 +36,13 @@ REGISTER_OP(elementwise_mul, ops::ElementwiseOp, ops::ElementwiseMulOpMaker,
             elementwise_mul_grad, ops::ElementwiseOpGrad);
 REGISTER_OP_CPU_KERNEL(
     elementwise_mul,
-    ops::ElementwiseMulKernel<paddle::platform::CPUPlace, float>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUPlace, double>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUPlace, int>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUPlace, int64_t>);
+    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_mul_grad,
-    ops::ElementwiseMulGradKernel<paddle::platform::CPUPlace, float>,
-    ops::ElementwiseMulGradKernel<paddle::platform::CPUPlace, double>,
-    ops::ElementwiseMulGradKernel<paddle::platform::CPUPlace, int>,
-    ops::ElementwiseMulGradKernel<paddle::platform::CPUPlace, int64_t>);
+    ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext, int64_t>);

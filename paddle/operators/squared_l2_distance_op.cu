@@ -19,7 +19,7 @@
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
     squared_l2_distance,
-    ops::SquaredL2DistanceKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
-    squared_l2_distance_grad,
-    ops::SquaredL2DistanceGradKernel<paddle::platform::GPUPlace, float>);
+    ops::SquaredL2DistanceKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_GPU_KERNEL(squared_l2_distance_grad,
+                       ops::SquaredL2DistanceGradKernel<
+                           paddle::platform::CUDADeviceContext, float>);

@@ -34,9 +34,7 @@ using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 enum GRUActivationType { identity = 0, sigmoid = 1, tanh = 2, relu = 3 };
 
-template <typename Place, typename T,
-          typename DeviceContextType =
-              typename platform::PlaceConverter<Place>::DeviceContext>
+template <typename Place, typename T>
 class GRUUnitKernel : public framework::OpKernel<T> {
  public:
   template <typename Device, typename X, typename Y>
@@ -88,10 +86,10 @@ class GRUUnitKernel : public framework::OpKernel<T> {
     const T* weight_data = weight->data<T>();
     T* gate_data = gate->data<T>();
     T* reset_hidden_prev_data = reset_hidden_prev->data<T>();
-    math::gemm<DeviceContextType, T>(
-        context.template device_context<Place>(), false, false, batch_size,
-        2 * frame_size, frame_size, 1, hidden_prev_data, frame_size,
-        weight_data, frame_size * 2, 1, gate_data, frame_size * 3);
+    math::gemm<Place, T>(context.template device_context<Place>(), false, false,
+                         batch_size, 2 * frame_size, frame_size, 1,
+                         hidden_prev_data, frame_size, weight_data,
+                         frame_size * 2, 1, gate_data, frame_size * 3);
 
     // calculate activited gate
     Eigen::array<int, 2> extents({{batch_size, frame_size}});
@@ -104,11 +102,11 @@ class GRUUnitKernel : public framework::OpKernel<T> {
                g.slice(r_offsets, extents), g.slice(r_offsets, extents));
     auto r = g.slice(r_offsets, extents);  // reset gate
     r_h_p.device(place) = r * h_p;         // reset previous hidden state
-    math::gemm<DeviceContextType, T>(
-        context.template device_context<Place>(), false, false, batch_size,
-        frame_size, frame_size, 1, reset_hidden_prev_data, frame_size,
-        weight_data + frame_size * frame_size * 2, frame_size, 1,
-        gate_data + frame_size * 2, frame_size * 3);
+    math::gemm<Place, T>(context.template device_context<Place>(), false, false,
+                         batch_size, frame_size, frame_size, 1,
+                         reset_hidden_prev_data, frame_size,
+                         weight_data + frame_size * frame_size * 2, frame_size,
+                         1, gate_data + frame_size * 2, frame_size * 3);
 
     Eigen::array<int, 2> c_offsets({{0, frame_size * 2}});
     ActCompute(context.Attr<int>("activation"), place,
@@ -120,9 +118,7 @@ class GRUUnitKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T,
-          typename DeviceContextType =
-              typename platform::PlaceConverter<Place>::DeviceContext>
+template <typename Place, typename T>
 class GRUUnitGradKernel : public framework::OpKernel<T> {
  public:
   template <typename Device, typename X, typename Y, typename DX, typename DY>
@@ -190,11 +186,11 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
     ActGradCompute(context.Attr<int>("activation"), place, c, c,
                    d_g.slice(c_offsets, extents), d_h * u);
     // backward for reset_hidden_prev
-    math::gemm<DeviceContextType, T>(
-        context.template device_context<Place>(), false, true, batch_size,
-        frame_size, frame_size, 1, gate_grad_data + frame_size * 2,
-        frame_size * 3, weight_data + frame_size * frame_size * 2, frame_size,
-        0, reset_hidden_prev_grad_data, frame_size);
+    math::gemm<Place, T>(context.template device_context<Place>(), false, true,
+                         batch_size, frame_size, frame_size, 1,
+                         gate_grad_data + frame_size * 2, frame_size * 3,
+                         weight_data + frame_size * frame_size * 2, frame_size,
+                         0, reset_hidden_prev_grad_data, frame_size);
     // backward for unactivated reset gate
     ActGradCompute(context.Attr<int>("gate_activation"), place, r, r,
                    d_g.slice(r_offsets, extents), d_r_h_p * h_p);
@@ -202,17 +198,17 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
     if (weight_grad) {
       T* weight_grad_data = weight_grad->mutable_data<T>(context.GetPlace());
       // backward for state_weight
-      math::gemm<DeviceContextType, T>(
+      math::gemm<Place, T>(
           context.template device_context<Place>(), true, false, frame_size,
           frame_size, batch_size, 1, reset_hidden_prev_data, frame_size,
           gate_grad_data + frame_size * 2, frame_size * 3, 0,
           weight_grad_data + frame_size * frame_size * 2, frame_size);
 
       // backward for update_gate_weight and reset_gate_weight
-      math::gemm<DeviceContextType, T>(
-          context.template device_context<Place>(), true, false, frame_size,
-          frame_size * 2, batch_size, 1, hidden_prev_data, frame_size,
-          gate_grad_data, frame_size * 3, 0, weight_grad_data, frame_size * 2);
+      math::gemm<Place, T>(context.template device_context<Place>(), true,
+                           false, frame_size, frame_size * 2, batch_size, 1,
+                           hidden_prev_data, frame_size, gate_grad_data,
+                           frame_size * 3, 0, weight_grad_data, frame_size * 2);
     }
     // backward for hidden_prev
     if (hidden_prev_grad) {
@@ -220,7 +216,7 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
           hidden_prev_grad->mutable_data<T>(context.GetPlace());
       auto d_h_p = EigenMatrix<T>::From(*hidden_prev_grad);
       d_h_p.device(place) = d_r_h_p * r + d_h * (u.constant(T(1)) - u);
-      math::gemm<DeviceContextType, T>(
+      math::gemm<Place, T>(
           context.template device_context<Place>(), false, true, batch_size,
           frame_size, frame_size * 2, 1, gate_grad_data, frame_size * 3,
           weight_data, frame_size * 2, 1, hidden_prev_grad_data, frame_size);

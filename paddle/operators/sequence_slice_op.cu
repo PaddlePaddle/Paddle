@@ -17,7 +17,7 @@ limitations under the License. */
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
     sequence_slice,
-    ops::SequenceSliceOpKernel<paddle::platform::GPUPlace, float>);
+    ops::SequenceSliceOpKernel<paddle::platform::CUDADeviceContext, float>);
 REGISTER_OP_GPU_KERNEL(
     sequence_slice_grad,
-    ops::SequenceSliceGradOpKernel<paddle::platform::GPUPlace, float>);
+    ops::SequenceSliceGradOpKernel<paddle::platform::CUDADeviceContext, float>);

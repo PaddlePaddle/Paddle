@@ -98,16 +98,18 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
 
     if (context.Attr<bool>("soft_label")) {
       const T* label_data = labels->data<T>();
-      SoftCrossEntropyGradientKernel<T><<<
-          grid, block, 0,
-          context.template device_context<platform::GPUPlace>().stream()>>>(
-          logit_grad_data, loss_grad_data, label_data, batch_size, class_num);
+      SoftCrossEntropyGradientKernel<
+          T><<<grid, block, 0,
+               context.template device_context<platform::CUDADeviceContext>()
+                   .stream()>>>(logit_grad_data, loss_grad_data, label_data,
+                                batch_size, class_num);
     } else {
       const int64_t* label_data = labels->data<int64_t>();
-      CrossEntropyGrad<T><<<
-          grid, block, 0,
-          context.template device_context<platform::GPUPlace>().stream()>>>(
-          logit_grad_data, loss_grad_data, label_data, batch_size, class_num);
+      CrossEntropyGrad<
+          T><<<grid, block, 0,
+               context.template device_context<platform::CUDADeviceContext>()
+                   .stream()>>>(logit_grad_data, loss_grad_data, label_data,
+                                batch_size, class_num);
     }
   }
 };

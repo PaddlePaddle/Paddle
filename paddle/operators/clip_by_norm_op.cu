@@ -16,4 +16,5 @@
 
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
-    clip_by_norm, ops::ClipByNormKernel<paddle::platform::GPUPlace, float>);
+    clip_by_norm,
+    ops::ClipByNormKernel<paddle::platform::CUDADeviceContext, float>);

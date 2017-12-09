@@ -15,7 +15,8 @@
 #include "paddle/operators/prelu_op.h"
 
 REGISTER_OP_GPU_KERNEL(
-    prelu, paddle::operators::PReluKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
-    prelu_grad,
-    paddle::operators::PReluGradKernel<paddle::platform::GPUPlace, float>);
+    prelu,
+    paddle::operators::PReluKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_GPU_KERNEL(prelu_grad,
+                       paddle::operators::PReluGradKernel<
+                           paddle::platform::CUDADeviceContext, float>);

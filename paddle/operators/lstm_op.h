@@ -24,11 +24,11 @@ namespace operators {
 using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 
-template <typename Place, typename T>
-inline void ReorderInitState(const platform::DeviceContext& ctx,
+template <typename DeviceContext, typename T>
+inline void ReorderInitState(const DeviceContext& ctx,
                              const framework::Tensor& src, const size_t* index,
                              framework::Tensor* dst, bool indexed_src) {
-  math::CopyMatrixRowsFunctor<Place, T> row_shuffle;
+  math::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
   row_shuffle(ctx, src, index, *dst, indexed_src);
 }
@@ -53,7 +53,7 @@ class LSTMKernel : public framework::OpKernel<T> {
 
     bool is_reverse = ctx.Attr<bool>("is_reverse");
     math::LoDTensor2BatchFunctor<Place, T> to_batch;
-    auto& device_ctx = ctx.device_context();
+    auto& device_ctx = ctx.template device_context<Place>();
     to_batch(device_ctx, *input, *batch_gate, true, is_reverse);
 
     auto in_dims = input->dims();
@@ -187,7 +187,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     auto* h0_g = ctx.Output<Tensor>(framework::GradVarName("H0"));
     auto* c0_g = ctx.Output<Tensor>(framework::GradVarName("C0"));
 
-    auto& device_ctx = ctx.device_context();
+    auto& device_ctx = ctx.template device_context<Place>();
     math::SetConstant<Place, T> zero;
     if (weight_g) {
       weight_g->mutable_data<T>(ctx.GetPlace());
@@ -243,7 +243,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     math::LoDTensor2BatchFunctor<Place, T> to_batch;
 
     auto ToBatch = [&batch_gate, &to_batch](
-        const platform::DeviceContext& ctx, const framework::LoDTensor& src,
+        const Place& ctx, const framework::LoDTensor& src,
         const framework::DDim& dims, framework::LoDTensor& dst) {
       dst.mutable_data<T>(dims, ctx.GetPlace());
       dst.set_lod(batch_gate->lod());

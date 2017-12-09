@@ -18,7 +18,7 @@
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(sigmoid_cross_entropy_with_logits,
                        ops::SigmoidCrossEntropyWithLogitsKernel<
-                           paddle::platform::GPUPlace, float>);
+                           paddle::platform::CUDADeviceContext, float>);
 REGISTER_OP_GPU_KERNEL(sigmoid_cross_entropy_with_logits_grad,
                        ops::SigmoidCrossEntropyWithLogitsGradKernel<
-                           paddle::platform::GPUPlace, float>);
+                           paddle::platform::CUDADeviceContext, float>);

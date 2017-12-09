@@ -27,9 +27,6 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-template <typename T>
-struct PlaceConverter;
-
 class DeviceContext {
  public:
   virtual ~DeviceContext() {}
@@ -51,11 +48,6 @@ class CPUDeviceContext : public DeviceContext {
 
  private:
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
-};
-
-template <>
-struct PlaceConverter<platform::CPUPlace> {
-  using DeviceContext = CPUDeviceContext;
 };
 
 #ifdef PADDLE_WITH_CUDA
@@ -97,11 +89,6 @@ class CUDADeviceContext : public DeviceContext {
   cudaStream_t stream_;
   cudnnHandle_t cudnn_handle_;
   cublasHandle_t cublas_handle_;
-};
-
-template <>
-struct PlaceConverter<platform::GPUPlace> {
-  using DeviceContext = CUDADeviceContext;
 };
 
 #endif

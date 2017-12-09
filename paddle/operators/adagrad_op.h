@@ -19,11 +19,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T,
-          typename DeviceContextType =
-              typename platform::PlaceConverter<Place>::DeviceContext>
+template <typename DeviceContext, typename T>
 struct SparseAdagradFunctor {
-  void operator()(const DeviceContextType& context,
+  void operator()(const DeviceContext& context,
                   const framework::SelectedRows& grad,
                   const framework::Tensor& learning_rate, T epsilon,
                   framework::Tensor* moment, framework::Tensor* param);

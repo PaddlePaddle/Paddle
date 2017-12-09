@@ -100,8 +100,11 @@ REGISTER_OPERATOR(fill_constant_batch_size_like,
                   ops::FillConstantBatchSizeLikeOpMaker);
 REGISTER_OP_CPU_KERNEL(
     fill_constant_batch_size_like,
-    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUPlace, float>,
-    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUPlace, double>,
-    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUPlace, int>,
-    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUPlace,
+    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,
+                                           float>,
+    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,
+                                           double>,
+    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,
+                                           int>,
+    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,
                                            int64_t>);

@@ -27,9 +27,7 @@ using DDim = framework::DDim;
 using framework::make_ddim;
 using framework::vectorize;
 
-template <typename Place, typename T,
-          typename DeviceContextType =
-              typename platform::PlaceConverter<Place>::DeviceContext>
+template <typename Place, typename T>
 class MatMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -40,9 +38,9 @@ class MatMulKernel : public framework::OpKernel<T> {
     bool transpose_x = context.Attr<bool>("transpose_X");
     bool transpose_y = context.Attr<bool>("transpose_Y");
 
-    math::MatMulFunctor<DeviceContextType, T>()(
-        context.template device_context<Place>(), x, transpose_x, y,
-        transpose_y, T(1), out, T(0));
+    math::MatMulFunctor<Place, T>()(context.template device_context<Place>(), x,
+                                    transpose_x, y, transpose_y, T(1), out,
+                                    T(0));
   }
 };
 
@@ -114,9 +112,7 @@ Tensor CombineBatchAndN(const DeviceContext& context, const Tensor& input) {
 //
 // To handle this sort of scenario, we reshape X : P x M x K, dOut: P x M x N
 // to X: (P * M) x K, dOut: (P * M) x N.
-template <typename Place, typename T,
-          typename DeviceContextType =
-              typename platform::PlaceConverter<Place>::DeviceContext>
+template <typename Place, typename T>
 class MatMulGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -187,18 +183,18 @@ class MatMulGradKernel : public framework::OpKernel<T> {
       dx->mutable_data<T>(context.GetPlace());
       const Tensor& dOut_for_dX =
           (x_dims.size() == 2 && y_dims.size() == 3)
-              ? CombineBatchAndN<DeviceContextType, T>(dev_ctx, dOut)
+              ? CombineBatchAndN<Place, T>(dev_ctx, dOut)
               : dOut;
       if (x_dims.size() == 2 && y_dims.size() == 3) {
         Y = transpose_y ? CombineBatchAndM<T>(Y)
-                        : CombineBatchAndN<DeviceContextType, T>(dev_ctx, Y);
+                        : CombineBatchAndN<Place, T>(dev_ctx, Y);
       }
       if (transpose_x) {
-        math::MatMulFunctor<DeviceContextType, T>()(
-            dev_ctx, Y, transpose_y, dOut_for_dX, transpose_x, T(1), dx, T(0));
+        math::MatMulFunctor<Place, T>()(dev_ctx, Y, transpose_y, dOut_for_dX,
+                                        transpose_x, T(1), dx, T(0));
       } else {
-        math::MatMulFunctor<DeviceContextType, T>()(
-            dev_ctx, dOut_for_dX, transpose_x, Y, !transpose_y, T(1), dx, T(0));
+        math::MatMulFunctor<Place, T>()(dev_ctx, dOut_for_dX, transpose_x, Y,
+                                        !transpose_y, T(1), dx, T(0));
       }
     }
 
@@ -208,16 +204,16 @@ class MatMulGradKernel : public framework::OpKernel<T> {
                                       ? CombineBatchAndM<T>(dOut)
                                       : dOut;
       if (y_dims.size() == 2 && x_dims.size() == 3) {
-        X = transpose_x ? CombineBatchAndN<DeviceContextType, T>(dev_ctx, X)
+        X = transpose_x ? CombineBatchAndN<Place, T>(dev_ctx, X)
                         : CombineBatchAndM<T>(X);
         dOut = CombineBatchAndM<T>(dOut);
       }
       if (transpose_y) {
-        math::MatMulFunctor<DeviceContextType, T>()(
-            dev_ctx, dOut_for_dY, transpose_y, X, transpose_x, T(1), dy, T(0));
+        math::MatMulFunctor<Place, T>()(dev_ctx, dOut_for_dY, transpose_y, X,
+                                        transpose_x, T(1), dy, T(0));
       } else {
-        math::MatMulFunctor<DeviceContextType, T>()(
-            dev_ctx, X, !transpose_x, dOut_for_dY, transpose_y, T(1), dy, T(0));
+        math::MatMulFunctor<Place, T>()(dev_ctx, X, !transpose_x, dOut_for_dY,
+                                        transpose_y, T(1), dy, T(0));
       }
     }
   }

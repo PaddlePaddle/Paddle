@@ -20,9 +20,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-template <typename Place, typename T,
-          typename DeviceContextType =
-              typename platform::PlaceConverter<Place>::DeviceContext>
+template <typename Place, typename T>
 class UnpoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -36,16 +34,14 @@ class UnpoolKernel : public framework::OpKernel<T> {
     T* output_data = out->mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<Place>();
     if (output_data) {
-      math::SetConstant<DeviceContextType, T> set_zero;
+      math::SetConstant<Place, T> set_zero;
       set_zero(dev_ctx, out, static_cast<T>(0));
     }
-    math::Unpool2dMaxFunctor<DeviceContextType, T> unpool2d_max_forward;
+    math::Unpool2dMaxFunctor<Place, T> unpool2d_max_forward;
     unpool2d_max_forward(dev_ctx, *in_x, *in_y, out);
   }
 };
-template <typename Place, typename T,
-          typename DeviceContextType =
-              typename platform::PlaceConverter<Place>::DeviceContext>
+template <typename Place, typename T>
 class UnpoolGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -62,12 +58,12 @@ class UnpoolGradKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
 
     auto& device_ctx = context.template device_context<Place>();
-    math::SetConstant<DeviceContextType, T> zero;
+    math::SetConstant<Place, T> zero;
     if (in_x_grad) {
       in_x_grad->mutable_data<T>(context.GetPlace());
       zero(device_ctx, in_x_grad, static_cast<T>(0));
     }
-    math::Unpool2dMaxGradFunctor<DeviceContextType, T> unpool2d_max_backward;
+    math::Unpool2dMaxGradFunctor<Place, T> unpool2d_max_backward;
     unpool2d_max_backward(device_ctx, *in_x, *in_y, *out, *out_grad, in_x_grad);
   }
 };

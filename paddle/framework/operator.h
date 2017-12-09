@@ -278,9 +278,7 @@ class ExecutionContext {
 
   platform::Place GetPlace() const { return device_context_.GetPlace(); }
 
-  template <typename Place,
-            typename DeviceContextType =
-                typename platform::PlaceConverter<Place>::DeviceContext>
+  template <typename DeviceContextType>
   const DeviceContextType& device_context() const {
     return *reinterpret_cast<const DeviceContextType*>(&device_context_);
   }

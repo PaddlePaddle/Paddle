@@ -139,7 +139,7 @@ class ReduceKernel : public framework::OpKernel<T> {
       dims = framework::make_ddim(dims_vector);
     }
 
-    auto& place = context.GetEigenDevice<Place>();
+    auto& place = *context.template device_context<Place>().eigen_device();
     Functor functor;
 
     if (D == 1) {
@@ -201,7 +201,7 @@ class ReduceGradKernel : public framework::OpKernel<T> {
     Eigen::array<int, D> broadcast_dim;
     for (size_t i = 0; i < D; ++i) broadcast_dim[i] = 1;
     broadcast_dim[dim] = input0->dims()[dim];
-    auto& place = context.GetEigenDevice<Place>();
+    auto& place = *context.template device_context<Place>();
     Functor functor;
     functor(place, x, x_reduce, x_grad, x_reduce_grad, broadcast_dim,
             broadcast_dim[dim]);

@@ -18,9 +18,13 @@ limitations under the License. */
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
     bilinear_tensor_product,
-    ops::BilinearTensorProductKernel<paddle::platform::GPUPlace, float>,
-    ops::BilinearTensorProductKernel<paddle::platform::GPUPlace, double>);
+    ops::BilinearTensorProductKernel<paddle::platform::CUDADeviceContext,
+                                     float>,
+    ops::BilinearTensorProductKernel<paddle::platform::CUDADeviceContext,
+                                     double>);
 REGISTER_OP_GPU_KERNEL(
     bilinear_tensor_product_grad,
-    ops::BilinearTensorProductGradKernel<paddle::platform::GPUPlace, float>,
-    ops::BilinearTensorProductGradKernel<paddle::platform::GPUPlace, double>);
+    ops::BilinearTensorProductGradKernel<paddle::platform::CUDADeviceContext,
+                                         float>,
+    ops::BilinearTensorProductGradKernel<paddle::platform::CUDADeviceContext,
+                                         double>);

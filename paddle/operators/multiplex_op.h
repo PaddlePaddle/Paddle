@@ -35,7 +35,7 @@ class MultiplexCPUKernel : public framework::OpKernel<T> {
     auto rows = ins[0]->dims()[0];
     auto cols = ins[0]->numel() / rows;
     auto index = ids->data<int32_t>();
-    Place place = boost::get<Place>(ctx.GetPlace());
+    platform::CPUPlace place = boost::get<platform::CPUPlace>(ctx.GetPlace());
     for (auto i = 0; i < rows; i++) {
       int32_t k = index[i];
       PADDLE_ENFORCE_GE(k, 0, "index must be nonnegative.");
@@ -68,7 +68,7 @@ class MultiplexGradCPUKernel : public framework::OpKernel<T> {
     auto rows = ins[0]->dims()[0];
     auto cols = ins[0]->numel() / rows;
     auto* index = ids->data<int32_t>();
-    Place place = boost::get<Place>(ctx.GetPlace());
+    platform::CPUPlace place = boost::get<platform::CPUPlace>(ctx.GetPlace());
     for (auto i = 0; i < rows; i++) {
       size_t k = static_cast<size_t>(index[i]);
       if (d_ins[k]) {

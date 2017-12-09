@@ -108,9 +108,7 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T,
-          typename DeviceContextType =
-              typename platform::PlaceConverter<Place>::DeviceContext>
+template <typename Place, typename T>
 class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -145,7 +143,7 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
     if (x_grad) {
       x_grad->mutable_data<T>(ctx.GetPlace());
       x_grad->set_lod(in->lod());
-      math::SetConstant<DeviceContextType, T> set_zero;
+      math::SetConstant<Place, T> set_zero;
       set_zero(ctx.template device_context<Place>(), x_grad, static_cast<T>(0));
 
       auto out_grad_stride = framework::stride(out_grad->dims());

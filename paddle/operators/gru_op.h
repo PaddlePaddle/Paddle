@@ -27,18 +27,16 @@ namespace operators {
 using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 
-template <typename DeviceContextType, typename T>
-inline void ReorderInitState(const DeviceContextType& ctx,
+template <typename DeviceContext, typename T>
+inline void ReorderInitState(const DeviceContext& ctx,
                              const framework::Tensor& src, const size_t* index,
                              framework::Tensor* dst, bool indexed_src) {
-  math::CopyMatrixRowsFunctor<DeviceContextType, T> row_shuffle;
+  math::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
   row_shuffle(ctx, src, index, *dst, indexed_src);
 }
 
-template <typename Place, typename T,
-          typename DeviceContextType =
-              typename platform::PlaceConverter<Place>::DeviceContext>
+template <typename Place, typename T>
 class GRUKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
@@ -62,12 +60,12 @@ class GRUKernel : public framework::OpKernel<T> {
     auto hidden_dims = hidden->dims();
 
     bool is_reverse = context.Attr<bool>("is_reverse");
-    math::LoDTensor2BatchFunctor<DeviceContextType, T> to_batch;
+    math::LoDTensor2BatchFunctor<Place, T> to_batch;
     auto& dev_ctx = context.template device_context<Place>();
     to_batch(dev_ctx, *input, *batch_gate, true, is_reverse);
 
     if (bias) {
-      math::RowwiseAdd<DeviceContextType, T> add_bias;
+      math::RowwiseAdd<Place, T> add_bias;
       add_bias(dev_ctx, *batch_gate, *bias, batch_gate);
     }
 
@@ -82,9 +80,8 @@ class GRUKernel : public framework::OpKernel<T> {
       // Since the batch computing for GRU reorders the input sequences
       // according to their length. The initialized cell state also needs
       // to reorder.
-      ReorderInitState<DeviceContextType, T>(
-          context.template device_context<Place>(), *h0, order, &ordered_h0,
-          true);
+      ReorderInitState<Place, T>(context.template device_context<Place>(), *h0,
+                                 order, &ordered_h0, true);
       gru_value.prev_out_value = ordered_h0.data<T>();
     } else {
       gru_value.prev_out_value = nullptr;
@@ -102,14 +99,14 @@ class GRUKernel : public framework::OpKernel<T> {
       gru_value.output_value = hidden_t.data<T>();
       gru_value.gate_value = gate_t.data<T>();
       gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
-      math::GRUUnitFunctor<DeviceContextType, T>::compute(
+      math::GRUUnitFunctor<Place, T>::compute(
           dev_ctx, gru_value, frame_size, cur_batch_size,
           math::ActiveType(context.Attr<std::string>("activation")),
           math::ActiveType(context.Attr<std::string>("gate_activation")));
       gru_value.prev_out_value = gru_value.output_value;
     }
 
-    math::Batch2LoDTensorFunctor<DeviceContextType, T> to_seq;
+    math::Batch2LoDTensorFunctor<Place, T> to_seq;
     batch_hidden->set_lod(batch_gate->lod());
     to_seq(dev_ctx, *batch_hidden, *hidden);
   }
@@ -119,9 +116,7 @@ class GRUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T,
-          typename DeviceContextType =
-              typename platform::PlaceConverter<Place>::DeviceContext>
+template <typename Place, typename T>
 class GRUGradKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
@@ -146,13 +141,13 @@ class GRUGradKernel : public framework::OpKernel<T> {
     auto hidden_dims = hidden->dims();
     int frame_size = hidden_dims[1];
 
-    math::LoDTensor2BatchFunctor<DeviceContextType, T> to_batch;
+    math::LoDTensor2BatchFunctor<Place, T> to_batch;
     LoDTensor batch_hidden_grad, batch_gate_grad, batch_reset_hidden_prev_grad;
     batch_hidden_grad.mutable_data<T>(hidden_dims, context.GetPlace());
     batch_gate_grad.mutable_data<T>(gate_dims, context.GetPlace());
     batch_reset_hidden_prev_grad.mutable_data<T>(hidden_dims,
                                                  context.GetPlace());
-    math::SetConstant<DeviceContextType, T> zero;
+    math::SetConstant<Place, T> zero;
     auto& dev_ctx = context.template device_context<Place>();
     zero(dev_ctx, &batch_hidden_grad, static_cast<T>(0.0));
     zero(dev_ctx, &batch_gate_grad, static_cast<T>(0.0));
@@ -161,8 +156,7 @@ class GRUGradKernel : public framework::OpKernel<T> {
     Tensor ordered_h0, ordered_h0_grad;
     const size_t* order = batch_gate->lod()[2].data();
     if (h0) {
-      ReorderInitState<DeviceContextType, T>(dev_ctx, *h0, order, &ordered_h0,
-                                             true);
+      ReorderInitState<Place, T>(dev_ctx, *h0, order, &ordered_h0, true);
     }
     if (h0_grad) {
       ordered_h0_grad.mutable_data<T>(h0_grad->dims(), context.GetPlace());
@@ -222,25 +216,25 @@ class GRUGradKernel : public framework::OpKernel<T> {
         gru_grad.prev_out_grad = hidden_prev_grad_t.data<T>();
       }
 
-      math::GRUUnitGradFunctor<DeviceContextType, T>::compute(
+      math::GRUUnitGradFunctor<Place, T>::compute(
           dev_ctx, gru_value, gru_grad, frame_size, cur_batch_size,
           math::ActiveType(context.Attr<std::string>("activation")),
           math::ActiveType(context.Attr<std::string>("gate_activation")));
     }
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
-      math::Batch2LoDTensorFunctor<DeviceContextType, T> to_seq;
+      math::Batch2LoDTensorFunctor<Place, T> to_seq;
       batch_gate_grad.set_lod(batch_gate->lod());
       to_seq(dev_ctx, batch_gate_grad, *input_grad);
     }
     if (bias_grad) {
       bias_grad->mutable_data<T>(context.GetPlace());
-      math::ColwiseSum<DeviceContextType, T> col_sum;
+      math::ColwiseSum<Place, T> col_sum;
       col_sum(dev_ctx, batch_gate_grad, bias_grad);
     }
     if (h0 && h0_grad) {
-      ReorderInitState<DeviceContextType, T>(dev_ctx, ordered_h0_grad, order,
-                                             h0_grad, false);
+      ReorderInitState<Place, T>(dev_ctx, ordered_h0_grad, order, h0_grad,
+                                 false);
     }
   }
 
