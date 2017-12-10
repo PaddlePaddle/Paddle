@@ -26,7 +26,7 @@ that make full use of Intel CPUs.
 
 ## New Features
 
-* Release `Fluid` API.
+* Release `PaddlePaddle Fluid`.
 * Add C-API for model inference
 * Use fluid API to create a simple GAN demo.
 * Add develop guide about performance tunning.
