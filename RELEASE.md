@@ -1,6 +1,6 @@
 # Release v0.11.0
 
-## Fluid Python API
+## PaddlePaddle Fluid
 
 - Release 0.11.0 includes a new feature *PaddlePaddle Fluid*.  Fluid is
   designed to allow users to program like PyTorch and TensorFlow Eager Execution.
