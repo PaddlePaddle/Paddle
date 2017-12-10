@@ -288,12 +288,12 @@ void ColwiseSum<platform::CUDADeviceContext, double>::operator()(
   PADDLE_ENFORCE_EQ(vector->numel(), size);
   framework::Tensor one;
   one.mutable_data<double>({in_dims[0]}, context.GetPlace());
-  SetConstant<platform::GPUPlace, double> set;
+  SetConstant<platform::CUDADeviceContext, double> set;
   set(context, &one, static_cast<double>(1.0));
-  gemv<platform::GPUPlace, double>(context, true, static_cast<int>(in_dims[0]),
-                                   static_cast<int>(in_dims[1]), 1.0,
-                                   input.data<double>(), one.data<double>(),
-                                   0.0, vector->data<double>());
+  gemv<platform::CUDADeviceContext, double>(
+      context, true, static_cast<int>(in_dims[0]), static_cast<int>(in_dims[1]),
+      1.0, input.data<double>(), one.data<double>(), 0.0,
+      vector->data<double>());
 }
 
 }  // namespace math
