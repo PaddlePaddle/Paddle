@@ -160,7 +160,7 @@ template <class T>
 class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
                     platform::CUDADeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,

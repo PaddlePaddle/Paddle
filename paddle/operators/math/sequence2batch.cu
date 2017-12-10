@@ -41,7 +41,7 @@ __global__ void CopyMatrixRowsKernel(const T* src, T* dst, const size_t* index,
 template <typename T>
 class CopyMatrixRowsFunctor<platform::CUDADeviceContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& src, const size_t* index,
                   framework::Tensor& dst, bool is_src_index) {
     auto src_dims = src.dims();
