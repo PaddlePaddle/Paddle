@@ -1,6 +1,6 @@
 # Release v0.11.0
 
-## Fluid Python API
+## PaddlePaddle Fluid
 
 - Release 0.11.0 includes a new feature *PaddlePaddle Fluid*.  Fluid is
   designed to allow users to program like PyTorch and TensorFlow Eager Execution.
@@ -26,7 +26,7 @@ that make full use of Intel CPUs.
 
 ## New Features
 
-* Release `Fluid` API.
+* Release `PaddlePaddle Fluid`.
 * Add C-API for model inference
 * Use fluid API to create a simple GAN demo.
 * Add develop guide about performance tunning.

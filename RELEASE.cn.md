@@ -1,6 +1,6 @@
 # v0.11.0版本
 
-## Fluid Python API
+## PaddlePaddle Fluid
 
 - PaddlePaddle发布版本v0.11.0包含一个新的特性*PaddlePaddle Fluid*. Fluid 是设计用来让用户像Pytorch和Tensorflow Eager Execution一样执行程序。在这些系统中，不再有*模型*这个概念，应用也不再包含一个用于描述Operator图或者一系列层的符号描述，而是像通用程序那样描述训练或者预测的过程。而Fluid与PyTorch或Eager Execution的区别在于Fluid不依赖Python提供的控制流，例如 if-else-then或者for，而是提供了基于C++实现的控制流并暴露了对应的用with语法实现的Python接口。例如：
 
@@ -12,7 +12,7 @@
 
 ## 新特点
 
-* 发布 `Fluid` API。
+* 发布 `PaddlePaddle Fluid`。
 * 增加了用于模型预测的C-API。
 * 用Fluid API实现了一个简单的GAN的例子。
 * 增加了关于性能调优的文档。
