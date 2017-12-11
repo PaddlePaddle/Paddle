@@ -73,32 +73,50 @@ function(link_paddle_exe TARGET_NAME)
         generate_rdma_links()
     endif()
 
-    target_circle_link_libraries(${TARGET_NAME}
-        ARCHIVE_START
-        paddle_gserver
-        paddle_function
-        ARCHIVE_END
-        paddle_pserver
-        paddle_trainer_lib
-        paddle_network
-        paddle_math
-        paddle_utils
-        paddle_parameter
-        paddle_proto
-        paddle_cuda
-        paddle_optimizer
-        ${EXTERNAL_LIBS}
-        ${CMAKE_THREAD_LIBS_INIT}
-        ${CMAKE_DL_LIBS}
-        ${RDMA_LD_FLAGS}
-        ${RDMA_LIBS})
+    if(MOBILE_INFERENCE)
+        target_circle_link_libraries(${TARGET_NAME}
+            ARCHIVE_START
+            paddle_gserver
+            paddle_function
+            ARCHIVE_END
+            paddle_math
+            paddle_utils
+            paddle_parameter
+            paddle_proto
+            paddle_cuda
+            ${EXTERNAL_LIBS}
+            ${CMAKE_THREAD_LIBS_INIT}
+            ${CMAKE_DL_LIBS}
+            ${RDMA_LD_FLAGS}
+            ${RDMA_LIBS})
+    else()
+        target_circle_link_libraries(${TARGET_NAME}
+            ARCHIVE_START
+            paddle_gserver
+            paddle_function
+            ARCHIVE_END
+            paddle_pserver
+            paddle_trainer_lib
+            paddle_network
+            paddle_math
+            paddle_utils
+            paddle_parameter
+            paddle_proto
+            paddle_cuda
+            paddle_optimizer
+            ${EXTERNAL_LIBS}
+            ${CMAKE_THREAD_LIBS_INIT}
+            ${CMAKE_DL_LIBS}
+            ${RDMA_LD_FLAGS}
+            ${RDMA_LIBS})
+    endif()
 
     if(ANDROID)
         target_link_libraries(${TARGET_NAME} log)
     endif(ANDROID)
 
-    if(WITH_MKLDNN AND WITH_MKLML AND MKLDNN_IOMP_DIR)
-      target_link_libraries(${TARGET_NAME} "-L${MKLDNN_IOMP_DIR} -liomp5 -Wl,--as-needed")
+    if(WITH_MKLML AND MKLML_LIB_DIR AND MKLML_IOMP_LIB)
+      target_link_libraries(${TARGET_NAME} "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
     endif()
 
     add_dependencies(${TARGET_NAME} ${external_project_dependencies})
@@ -149,18 +167,4 @@ function(create_resources res_file output_file)
     OUTPUT ${output_file}
     COMMAND python ARGS ${PADDLE_SOURCE_DIR}/cmake/make_resource.py ${res_file} ${output_file}
     DEPENDS ${res_file} ${PADDLE_SOURCE_DIR}/cmake/make_resource.py)
-endfunction()
-
-
-# Create a python unittest using run_python_tests.sh,
-# which takes care of making correct running environment
-function(add_python_test TEST_NAME)
-    foreach(arg ${ARGN})
-        get_filename_component(py_fn ${arg} NAME_WE)
-        set(TRG_NAME ${TEST_NAME}_${py_fn})
-        add_test(NAME ${TRG_NAME}
-                COMMAND env PYTHONPATH=${PADDLE_PYTHON_PACKAGE_DIR}
-                python2 ${arg}
-                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    endforeach()
 endfunction()

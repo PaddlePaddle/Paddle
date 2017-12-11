@@ -25,8 +25,7 @@ class PReluOp : public framework::OperatorWithKernel {
           const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
- protected:
-  void InferShape(framework::InferShapeContextBase *ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
     PADDLE_ENFORCE(ctx->HasInput("Alpha"), "Input(Alpha) should not be null");
     PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == 1,
@@ -42,17 +41,24 @@ class PReluOpMaker : public framework::OpProtoAndCheckerMaker {
   PReluOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input tensor of prelu operator.");
-    AddInput("Alpha", "The alpha weight of PRelu operator.");
-    AddOutput("Out", "The output tensor of PRelu operator.");
-    AddComment(R"DOC(PRelu operator
+    AddInput("Alpha", "The alpha weight of prelu operator.");
+    AddOutput("Out", "The output tensor of prelu operator.");
+    AddComment(R"DOC(
+PRelu Operator.
 
 The equation is:
 
-  f(x) = alpha * x , for x < 0
-  f(x) = x         , for x >= 0
+$$
+f(x) =
+\begin{cases}
+\alpha * x, \quad  \text{if} \ x < 0 \\
+x,         \qquad  \text{if} \ x >= 0
+\end{cases}
+$$
 
 The input `X` can carry the LoD (Level of Details) information,
-or not. And the output shares the LoD with input `X`.
+or not. And the output shares the LoD information with input `X`.
+
 )DOC");
   }
 };
@@ -62,8 +68,7 @@ class PReluGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase *ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null");

@@ -51,7 +51,7 @@ void testEvaluator(TestConfig testConf,
                    string testEvaluatorName,
                    size_t batchSize,
                    bool useGpu) {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
   if (useGpu) return;
 #endif
   FLAGS_use_gpu = useGpu;

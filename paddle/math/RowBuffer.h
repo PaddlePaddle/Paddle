@@ -60,7 +60,7 @@ public:
    */
   inline real* get(int row) const {
     if (preallocatedBuf_) {
-      CHECK_LE((row + 1) * width_ * sizeof(real), preallocatedBuf_->getSize());
+      CHECK_LE((row)*width_ * sizeof(real), preallocatedBuf_->getSize());
       return reinterpret_cast<real*>(preallocatedBuf_->getBuf()) + row * width_;
     } else {
       CHECK_LE((row + 1) * width_, rowStore_.size());

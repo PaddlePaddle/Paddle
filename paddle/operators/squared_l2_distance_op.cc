@@ -21,8 +21,7 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of SquaredL2DistanceOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Y"),
@@ -60,23 +59,26 @@ class SquaredL2DistanceOpMaker : public framework::OpProtoAndCheckerMaker {
   SquaredL2DistanceOpMaker(framework::OpProto* proto,
                            framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of SquaredL2DistanceOp.");
-    AddInput("Y", "Target of SquaredL2DistanceOp.");
+    AddInput("X", "(Tensor) Input of SquaredL2DistanceOp.");
+    AddInput("Y", "(Tensor) Target of SquaredL2DistanceOp.");
     AddOutput("sub_result",
-              "Buffering substraction result which "
+              "(Tensor) Buffering subtraction result which "
               "will be reused in backward.")
         .AsIntermediate();
-    AddOutput("Out", "Squared l2 distance between input and target.");
+    AddOutput("Out", "(Tensor) Squared l2 distance between input and target.");
     AddComment(R"DOC(
-    SquaredL2DistanceOp will cacluate the squared L2 distance for
-    input and target. Number of distance value equals to the
-    first dimension of input. First dimension of target could be equal to
-    input or to 1. If the first dimension of target is 1, SquaredL2DistanceOp
-    will broadcast target's first dimension to input's first dimension.
-    You can decide whether calculate the gradient of input and target.
+SquaredL2Distance operator
 
-    Both the input X and Y can carry the LoD (Level of Details) information,
-    or not. But the output only shares the LoD with input X.
+This operator will cacluate the squared L2 distance for the input and 
+the target. Number of distance value will be equal to the first dimension 
+of input. First dimension of the target could be equal to the input or to 1. 
+If the first dimension of target is 1, the operator will broadcast target's 
+first dimension to input's first dimension. During backward propagation, 
+the user can decide whether to calculate the gradient of the input or 
+the target or both.
+
+Both the input X and Y can carry the LoD (Level of Details) information. 
+However, the output only shares the LoD information with input X.
     )DOC");
   }
 };
@@ -85,8 +87,7 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Gradient of Out should not be null");
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));

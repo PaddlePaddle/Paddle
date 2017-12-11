@@ -126,7 +126,7 @@ void MKLDNNEltwiseActivation::resetFwd(Argument& act) {
   copyInVal_ = nullptr;
   if (act.grad && algo == algorithm::eltwise_tanh) {
     // tanh need save src input for backward
-    inVal_ = MKLDNNMatrix::create(nullptr, val_->getPrimitiveDesc());
+    inVal_ = MKLDNNMatrix::create(val_->getPrimitiveDesc());
     copyInVal_ = std::make_shared<mkldnn::reorder>(*val_, *inVal_);
     CHECK(copyInVal_) << "should not be emptry";
     pipelineFwd_.push_back(*copyInVal_);
@@ -145,7 +145,7 @@ void MKLDNNEltwiseActivation::resetBwd(Argument& act) {
   algorithm algo = getAlgo(this->getName());
   float alpha = getBwdAlpha();
   float beta = getBeta();
-  grad_ = MKLDNNMatrix::create(act.grad, val_->getPrimitiveDesc());
+  grad_ = MKLDNNMatrix::create(val_->getPrimitiveDesc(), act.grad);
   auto eng = CPUEngine::Instance().getEngine();
   auto bwdDesc = eltwise_bwd::desc(
       algo, grad_->getMemoryDesc(), val_->getMemoryDesc(), alpha, beta);
@@ -230,7 +230,7 @@ void MKLDNNActivation::resetFwd(Argument& act) {
     int ic = cnt_ / bs / ih / iw;
     CHECK_EQ(cnt_, (size_t)bs * ic * ih * iw);
     val_ = MKLDNNMatrix::create(
-        act.value, {bs, ic, ih, iw}, mkldnn::memory::format::nchw, *engine_);
+        {bs, ic, ih, iw}, mkldnn::memory::format::nchw, *engine_, act.value);
     CHECK(val_);
     val_->downSpatial();
   }

@@ -21,8 +21,8 @@ namespace paddle {
 typedef enum {
   MKLDNN_BASE = 1,   // basical info of MKLDNN
   MKLDNN_TESTS = 1,  // gtest info of MKLDNN
-  MKLDNN_SIZES = 2,  // size info of MKLDNN
-  MKLDNN_FMTS = 3,   // format info of MKLDNN
+  MKLDNN_FMTS = 2,   // format info of MKLDNN
+  MKLDNN_SIZES = 3,  // size info of MKLDNN
   MKLDNN_ALL = 4,    // show all info of MKLDNN
 } MKLDNN_LOG_LEVEL;
 

@@ -35,7 +35,7 @@ Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
 
 Place CPUDeviceContext::GetPlace() const { return CPUPlace(); }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 
 template <>
 Eigen::GpuDevice*
@@ -122,6 +122,7 @@ Place CUDADeviceContext::GetPlace() const { return place_; }
 
 void CUDADeviceContext::Wait() const {
   PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
+  PADDLE_ENFORCE(cudaGetLastError());
 }
 
 Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
@@ -136,7 +137,7 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
-#endif  // PADDLE_ONLY_CPU
+#endif
 
 }  // namespace platform
 }  // namespace paddle

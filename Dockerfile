@@ -22,14 +22,14 @@ COPY ./paddle/scripts/docker/root/ /root/
 
 RUN apt-get update && \
     apt-get install -y \
-    git python-pip python-dev openssh-server bison  \
+    git python-pip python-dev openssh-server bison libnccl-dev \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-matplotlib gcc-4.8 g++-4.8 \
     automake locales clang-format swig doxygen cmake  \
     liblapack-dev liblapacke-dev libboost-dev \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
-    net-tools && \
+    net-tools libtool && \
     apt-get clean -y
 
 # Install Go and glide

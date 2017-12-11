@@ -94,7 +94,7 @@ void testWrapper(F&& f) {
   }
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 TEST(ExecViaCpu, test1) {
   testWrapper(f);
   testWrapper(&f);

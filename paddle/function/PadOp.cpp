@@ -207,7 +207,7 @@ private:
 
 REGISTER_TYPED_FUNC(Pad, CPU, PadFunc);
 REGISTER_TYPED_FUNC(PadGrad, CPU, PadGradFunc);
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 REGISTER_TYPED_FUNC(Pad, GPU, PadFunc);
 REGISTER_TYPED_FUNC(PadGrad, GPU, PadGradFunc);
 #endif

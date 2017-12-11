@@ -31,7 +31,8 @@ inline void hl_maxpool_forward(const int frameCnt,
                                const int paddingH,
                                const int paddingW,
                                real* tgtData,
-                               const int tgtStride) {}
+                               const int tgtStride,
+                               real* MaskData) {}
 
 inline void hl_maxpool_backward(const int frameCnt,
                                 const real* inputData,
@@ -67,7 +68,8 @@ inline void hl_avgpool_forward(const int frameCnt,
                                const int paddingH,
                                const int paddingW,
                                real* tgtData,
-                               const int tgtStride) {}
+                               const int tgtStride,
+                               const bool excludeMode) {}
 
 inline void hl_avgpool_backward(const int frameCnt,
                                 const real* outGrad,
@@ -85,7 +87,8 @@ inline void hl_avgpool_backward(const int frameCnt,
                                 real scaleA,
                                 real scaleB,
                                 real* backGrad,
-                                const int outStride) {}
+                                const int outStride,
+                                const bool excludeMode) {}
 
 inline void hl_maxpool3D_forward(const int frameCnt,
                                  const real* inputData,

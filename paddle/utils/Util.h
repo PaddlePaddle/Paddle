@@ -218,7 +218,7 @@ protected:
  * *d2* is peer device to enable direct access to by the d1 device.
  */
 inline void enablePeerAccess(int d1, int d2) {
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   if (hl_device_can_access_peer(d1, d2)) {
     SetDevice dev(d1);
     hl_device_enable_peer_access(d2);

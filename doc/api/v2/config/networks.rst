@@ -125,3 +125,8 @@ simple_attention
     :members: simple_attention
     :noindex:
 
+dot_product_attention
+---------------------
+..  automodule:: paddle.v2.networks
+    :members: dot_product_attention
+    :noindex:

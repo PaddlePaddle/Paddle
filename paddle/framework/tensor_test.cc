@@ -74,7 +74,7 @@ TEST(Tensor, MutableData) {
     EXPECT_EQ(p1, p2);
   }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   {
     Tensor src_tensor;
     float* p1 = nullptr;
@@ -108,7 +108,7 @@ TEST(Tensor, ShareDataWith) {
     // Try to share data form uninitialized tensor
     bool caught = false;
     try {
-      dst_tensor.ShareDataWith<float>(src_tensor);
+      dst_tensor.ShareDataWith(src_tensor);
     } catch (paddle::platform::EnforceNotMet err) {
       caught = true;
       std::string msg =
@@ -122,16 +122,16 @@ TEST(Tensor, ShareDataWith) {
     ASSERT_TRUE(caught);
 
     src_tensor.mutable_data<int>(make_ddim({2, 3, 4}), CPUPlace());
-    dst_tensor.ShareDataWith<int>(src_tensor);
+    dst_tensor.ShareDataWith(src_tensor);
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   {
     Tensor src_tensor;
     Tensor dst_tensor;
     src_tensor.mutable_data<int>(make_ddim({2, 3, 4}), GPUPlace());
-    dst_tensor.ShareDataWith<int>(src_tensor);
+    dst_tensor.ShareDataWith(src_tensor);
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
 #endif
@@ -143,7 +143,7 @@ TEST(Tensor, Slice) {
   {
     Tensor src_tensor;
     src_tensor.mutable_data<int>(make_ddim({5, 3, 4}), CPUPlace());
-    Tensor slice_tensor = src_tensor.Slice<int>(1, 3);
+    Tensor slice_tensor = src_tensor.Slice(1, 3);
     DDim slice_dims = slice_tensor.dims();
     ASSERT_EQ(arity(slice_dims), 3);
     EXPECT_EQ(slice_dims[0], 2);
@@ -163,11 +163,11 @@ TEST(Tensor, Slice) {
     EXPECT_EQ(src_data_address + 3 * 4 * 1 * sizeof(int), slice_data_address);
   }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
   {
     Tensor src_tensor;
     src_tensor.mutable_data<double>(make_ddim({6, 9}), GPUPlace());
-    Tensor slice_tensor = src_tensor.Slice<double>(2, 6);
+    Tensor slice_tensor = src_tensor.Slice(2, 6);
     DDim slice_dims = slice_tensor.dims();
     ASSERT_EQ(arity(slice_dims), 2);
     EXPECT_EQ(slice_dims[0], 4);
@@ -188,81 +188,6 @@ TEST(Tensor, Slice) {
 #endif
 }
 
-TEST(Tensor, CopyFrom) {
-  using namespace paddle::framework;
-  using namespace paddle::platform;
-  {
-    Tensor src_tensor;
-    Tensor dst_tensor;
-
-    int* src_ptr = src_tensor.mutable_data<int>(make_ddim({3, 3}), CPUPlace());
-
-    int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-    memcpy(src_ptr, arr, 9 * sizeof(int));
-
-    auto cpu_place = new paddle::platform::CPUPlace();
-    dst_tensor.CopyFrom<int>(src_tensor, *cpu_place);
-
-    const int* dst_ptr = dst_tensor.data<int>();
-    ASSERT_NE(src_ptr, dst_ptr);
-    for (size_t i = 0; i < 9; ++i) {
-      EXPECT_EQ(src_ptr[i], dst_ptr[i]);
-    }
-
-    Tensor slice_tensor = src_tensor.Slice<int>(1, 2);
-    dst_tensor.CopyFrom<int>(slice_tensor, *cpu_place);
-    const int* slice_ptr = slice_tensor.data<int>();
-    dst_ptr = dst_tensor.data<int>();
-    ASSERT_NE(dst_ptr, slice_ptr);
-    for (size_t i = 0; i < 3; ++i) {
-      EXPECT_EQ(dst_ptr[i], slice_ptr[i]);
-    }
-  }
-#ifndef PADDLE_ONLY_CPU
-  {
-    Tensor src_tensor;
-    Tensor gpu_tensor;
-    Tensor dst_tensor;
-
-    int* src_ptr = src_tensor.mutable_data<int>(make_ddim({3, 3}), CPUPlace());
-
-    int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-    memcpy(src_ptr, arr, 9 * sizeof(int));
-
-    // CPU Tensor to GPU Tensor
-    auto gpu_place = new paddle::platform::GPUPlace(0);
-    gpu_tensor.CopyFrom<int>(src_tensor, *gpu_place);
-
-    // GPU Tensor to CPU Tensor
-    auto cpu_place = new paddle::platform::CPUPlace();
-    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place);
-
-    // Compare Tensors
-    const int* dst_ptr = dst_tensor.data<int>();
-    ASSERT_NE(src_ptr, dst_ptr);
-    for (size_t i = 0; i < 9; ++i) {
-      EXPECT_EQ(src_ptr[i], dst_ptr[i]);
-    }
-
-    Tensor slice_tensor = src_tensor.Slice<int>(1, 2);
-
-    // CPU Slice Tensor to GPU Tensor
-    gpu_tensor.CopyFrom<int>(slice_tensor, *gpu_place);
-
-    // GPU Tensor to CPU Tensor
-    dst_tensor.CopyFrom<int>(gpu_tensor, *cpu_place);
-
-    // Compare Slice Tensors
-    const int* slice_ptr = slice_tensor.data<int>();
-    dst_ptr = dst_tensor.data<int>();
-    ASSERT_NE(dst_ptr, slice_ptr);
-    for (size_t i = 0; i < 3; ++i) {
-      EXPECT_EQ(dst_ptr[i], slice_ptr[i]);
-    }
-  }
-#endif
-}
-
 TEST(Tensor, ReshapeToMatrix) {
   using namespace paddle::framework;
   using namespace paddle::platform;
@@ -271,7 +196,7 @@ TEST(Tensor, ReshapeToMatrix) {
   for (int i = 0; i < 2 * 3 * 4 * 9; ++i) {
     src_ptr[i] = i;
   }
-  Tensor res = ReshapeToMatrix<int>(src, 2);
+  Tensor res = ReshapeToMatrix(src, 2);
   ASSERT_EQ(res.dims()[0], 2 * 3);
   ASSERT_EQ(res.dims()[1], 4 * 9);
 }

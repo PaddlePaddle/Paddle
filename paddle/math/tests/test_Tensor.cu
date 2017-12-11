@@ -270,7 +270,7 @@ TEST(Unary, BaseOp) {
   TestUnaryVectorT<CpuIVector, int> testCpuIVector(
       testUnaryBaseOpInt<CpuIVector>);
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
   TestUnaryMatrix<GpuMatrix> testGpuMatrix(testUnaryBaseOp<GpuMatrix>);
   TestUnaryVectorT<GpuVector, real> testGpuVector(testUnaryBaseOp<GpuVector>);
   TestUnaryVectorT<GpuIVector, int> testGpuIVector(
@@ -317,7 +317,7 @@ void testUnayrMathOp(Tensor& A1, Tensor& A2) {
 TEST(Unary, MathOp) {
   TestUnaryMatrix<CpuMatrix> testCpu(testUnayrMathOp<CpuMatrix>);
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
   TestUnaryMatrix<GpuMatrix> testGpu(testUnayrMathOp<GpuMatrix>);
 #endif
 }
@@ -374,7 +374,7 @@ void testUnayrCompareOp(Tensor& A1, Tensor& A2) {
 TEST(Unary, CompareOp) {
   TestUnaryMatrix<CpuMatrix> testCpu(testUnayrCompareOp<CpuMatrix>);
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
   TestUnaryMatrix<GpuMatrix> testGpu(testUnayrCompareOp<GpuMatrix>);
 #endif
 }
@@ -536,7 +536,7 @@ void testBinaryBaseOp(Tensor& A1, Tensor& A2, Tensor& B) {
 TEST(Binary, BaseOp) {
   TestBinaryMatrix<CpuMatrix> testCpu(testBinaryBaseOp<CpuMatrix>);
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
   TestBinaryMatrix<GpuMatrix> testGpu(testBinaryBaseOp<GpuMatrix>);
 #endif
 }
@@ -710,7 +710,7 @@ void testBinaryMathOp(Tensor& A1, Tensor& A2, Tensor& B) {
 TEST(Binary, MathOp) {
   TestBinaryMatrix<CpuMatrix> testCpu(testBinaryMathOp<CpuMatrix>);
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
   TestBinaryMatrix<GpuMatrix> testGpu(testBinaryMathOp<GpuMatrix>);
 #endif
 }
@@ -810,7 +810,7 @@ void testBinaryCompareOp(Tensor& A1, Tensor& A2, Tensor& B) {
 TEST(Binary, CompareOp) {
   TestBinaryMatrix<CpuMatrix> testCpu(testBinaryCompareOp<CpuMatrix>);
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
   TestBinaryMatrix<GpuMatrix> testGpu(testBinaryCompareOp<GpuMatrix>);
 #endif
 }
@@ -955,7 +955,7 @@ void testTernaryBaseOp(Tensor& A1, Tensor& A2, Tensor& B, Tensor& C) {
 TEST(Ternary, BaseOp) {
   TestTernaryMatrix<CpuMatrix> testCpu(testTernaryBaseOp<CpuMatrix>);
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
   TestTernaryMatrix<GpuMatrix> testGpu(testTernaryBaseOp<GpuMatrix>);
 #endif
 }
@@ -1058,7 +1058,7 @@ void testTernaryCompareOp(Tensor& A1, Tensor& A2, Tensor& B, Tensor& C) {
 TEST(Ternary, CompareOp) {
   TestTernaryMatrix<CpuMatrix> testCpu(testTernaryCompareOp<CpuMatrix>);
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
   TestTernaryMatrix<GpuMatrix> testGpu(testTernaryCompareOp<GpuMatrix>);
 #endif
 }
@@ -1086,7 +1086,7 @@ void testQuaternaryAdd(
 TEST(Quaternary, BaseOp) {
   TestQuaternaryMatrix<CpuMatrix> testCpu(testQuaternaryAdd<CpuMatrix>);
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
   TestQuaternaryMatrix<GpuMatrix> testGpu(testQuaternaryAdd<GpuMatrix>);
 #endif
 }
@@ -1156,7 +1156,7 @@ void testQuaternaryCompareOp(
 TEST(Quaternary, CompareOp) {
   TestQuaternaryMatrix<CpuMatrix> testCpu(testQuaternaryCompareOp<CpuMatrix>);
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_GPU
   TestQuaternaryMatrix<GpuMatrix> testGpu(testQuaternaryCompareOp<GpuMatrix>);
 #endif
 }

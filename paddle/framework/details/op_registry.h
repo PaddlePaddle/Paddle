@@ -14,9 +14,11 @@
 
 #pragma once
 
+#include "paddle/framework/grad_op_desc_maker.h"
 #include "paddle/framework/op_info.h"
 #include "paddle/framework/op_proto_maker.h"
 #include "paddle/framework/operator.h"
+#include "paddle/framework/var_type_inference.h"
 
 namespace paddle {
 namespace framework {
@@ -25,7 +27,9 @@ namespace details {
 enum OpInfoFillType {
   kOperator = 0,
   kOpProtoAndCheckerMaker = 1,
-  kGradOpDescMaker = 2
+  kGradOpDescMaker = 2,
+  kVarTypeInference = 3,
+  kShapeInference = 4
 };
 
 template <typename T>
@@ -37,7 +41,12 @@ struct OpInfoFillTypeID {
                       ? kOpProtoAndCheckerMaker
                       : (std::is_base_of<GradOpDescMakerBase, T>::value
                              ? kGradOpDescMaker
-                             : static_cast<OpInfoFillType>(-1)));
+                             : (std::is_base_of<VarTypeInference, T>::value
+                                    ? kVarTypeInference
+                                    : (std::is_base_of<InferShapeBase, T>::value
+                                           ? kShapeInference
+                                           : static_cast<OpInfoFillType>(
+                                                 -1)))));
   }
 };
 
@@ -96,9 +105,37 @@ struct OpInfoFiller<T, kOpProtoAndCheckerMaker> {
 template <typename T>
 struct OpInfoFiller<T, kGradOpDescMaker> {
   void operator()(const char* op_type, OpInfo* info) const {
-    info->grad_op_maker_ = new T();
+    info->grad_op_maker_ = [](
+        const OpDescBind& fwd_op,
+        const std::unordered_set<std::string>& no_grad_set,
+        std::unordered_map<std::string, std::string>* grad_to_var,
+        const std::vector<BlockDescBind*>& grad_block) {
+      T maker(fwd_op, no_grad_set, grad_to_var, grad_block);
+      return maker();
+    };
   }
 };
+
+template <typename T>
+struct OpInfoFiller<T, kVarTypeInference> {
+  void operator()(const char* op_type, OpInfo* info) const {
+    info->infer_var_type_ = [](const OpDescBind& fwd_op, BlockDescBind* block) {
+      T inference;
+      inference(fwd_op, block);
+    };
+  }
+};
+
+template <typename T>
+struct OpInfoFiller<T, kShapeInference> {
+  void operator()(const char* op_type, OpInfo* info) const {
+    info->infer_shape_ = [](InferShapeContext* ctx) {
+      T inference;
+      inference(ctx);
+    };
+  }
+};
+
 }  // namespace details
 
 }  // namespace framework

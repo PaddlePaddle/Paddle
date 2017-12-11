@@ -25,9 +25,8 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/inconshreveable/log15"
 	"github.com/namsral/flag"
-	log "github.com/sirupsen/logrus"
-	"github.com/topicai/candy"
 
 	"github.com/PaddlePaddle/Paddle/go/master"
 	"github.com/PaddlePaddle/Paddle/go/utils/networkhelper"
@@ -41,16 +40,20 @@ func main() {
 	taskTimeoutMax := flag.Int("task-timeout-max", 3, "max timtout count for each task before it being declared failed task.")
 	chunkPerTask := flag.Int("chunk-per-task", 10, "chunk per task.")
 	logLevel := flag.String("log-level", "info",
-		"log level, possible values: debug, info, warning, error, fatal, panic")
+		"log level, possible values: debug, info, warn, error, crit")
 	flag.Parse()
 
-	level, e := log.ParseLevel(*logLevel)
-	candy.Must(e)
+	lvl, err := log.LvlFromString(*logLevel)
+	if err != nil {
+		panic(err)
+	}
 
-	log.SetLevel(level)
+	log.Root().SetHandler(
+		log.LvlFilterHandler(lvl, log.CallerStackHandler("%+v", log.StderrHandler)),
+	)
 
 	if *endpoints == "" {
-		log.Warningln("-endpoints not set, fault tolerance not be enabled.")
+		log.Warn("-endpoints not set, fault tolerance not be enabled.")
 	}
 
 	var store master.Store
@@ -58,23 +61,25 @@ func main() {
 		eps := strings.Split(*endpoints, ",")
 		ip, err := networkhelper.GetExternalIP()
 		if err != nil {
-			log.Fatal(err)
+			log.Crit("get external ip error", log.Ctx{"error": err})
+			panic(err)
 		}
 
 		addr := fmt.Sprintf("%s:%d", ip, *port)
 		store, err = master.NewEtcdClient(eps, addr, master.DefaultLockPath, master.DefaultAddrPath, master.DefaultStatePath, *ttlSec)
 		if err != nil {
-			log.Fatal(err)
+			log.Crit("error creating etcd client.", log.Ctx{"error": err})
+			panic(err)
 		}
 	} else {
 		store = &master.InMemStore{}
 	}
 
 	shutdown := func() {
-		log.Infoln("shutting down gracefully")
+		log.Info("shutting down gracefully")
 		err := store.Shutdown()
 		if err != nil {
-			log.Errorln(err)
+			log.Error("shutdown error", log.Ctx{"error": err})
 		}
 	}
 
@@ -86,24 +91,28 @@ func main() {
 
 	s, err := master.NewService(store, *chunkPerTask, *taskTimeoutDur, *taskTimeoutMax)
 	if err != nil {
-		log.Fatal(err)
+		log.Crit("error creating new service.", log.Ctx{"error": err})
+		panic(err)
 	}
 
 	err = rpc.Register(s)
 	if err != nil {
-		log.Fatal(err)
+		log.Crit("error registering to etcd.", log.Ctx{"error": err})
+		panic(err)
 	}
 
 	rpc.HandleHTTP()
 	l, err := net.Listen("tcp", ":"+strconv.Itoa(*port))
 	if err != nil {
-		log.Fatal(err)
+		log.Crit("error listing to port", log.Ctx{"error": err, "port": *port})
+		panic(err)
 	}
 
 	go func() {
 		err = http.Serve(l, nil)
 		if err != nil {
-			log.Fatal(err)
+			log.Crit("error serving HTTP", log.Ctx{"error": err})
+			panic(err)
 		}
 	}()
 
