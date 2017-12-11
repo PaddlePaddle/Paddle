@@ -87,7 +87,7 @@ no changes added to commit (use "git add" and/or "git commit -a")
 随后可以用这个开发镜像开始build PaddlePaddle的源码。比如如果要build一个不依赖GPU，但是支持AVX指令集，并且包括unit tests的PaddlePaddle，可以：
 
 ```bash
-➜  docker run -v $(pwd):/paddle -e "WITH_GPU=OFF" -e "WITH_AVX=ON" -e "WITH_TEST=ON" paddle:dev
+➜  docker run -v $(pwd):/paddle -e "WITH_GPU=OFF" -e "WITH_AVX=ON" -e "WITH_TESTING=ON" paddle:dev
 ```
 
 这个过程除了编译PaddlePaddle为 `./build/libpaddle.so`，并且输出一个 `./build/paddle.deb`文件之外，还会输出一个 `build/Dockerfile`。我们只需要运行下面命令把编译好的PaddlePaddle打包成一个*生产镜像*（`paddle:prod`）：
