@@ -25,24 +25,15 @@ FILE(GLOB PY_PADDLE_PYTHON_FILES ${PADDLE_SOURCE_DIR}/paddle/py_paddle/*.py)
 
 SET_SOURCE_FILES_PROPERTIES(Paddle.i PROPERTIES CPLUSPLUS ON)
 
-SET(SWIG_CXX_FLAGS "-ftls-model=global-dynamic")
-CHECK_CXX_COMPILER_FLAG(-Wno-parentheses-equality FLAG_Wno-parentheses-equality)
-IF(FLAG_Wno-parentheses-equality)
-    SET(SWIG_CXX_FLAGS "${SWIG_CXX_FLAGS} -Wno-parentheses-equality")
-ENDIF()
-CHECK_CXX_COMPILER_FLAG(-Wno-self-assign FLAG_Wno-self-assign)
-IF(FLAG_Wno-self-assign)
-    SET(SWIG_CXX_FLAGS "${SWIG_CXX_FLAGS} -Wno-self-assign")
-ENDIF()
-CHECK_CXX_COMPILER_FLAG(-Wno-maybe-uninitialized FLAG_Wno-maybe-uninitialized)
-IF(FLAG_Wno-maybe-uninitialized)
-    SET(SWIG_CXX_FLAGS "${SWIG_CXX_FLAGS} -Wno-maybe-uninitialized")
-ENDIF()
-CHECK_CXX_COMPILER_FLAG(-Wno-missing-field-initializers FLAG_Wno-missing-field-initializers)
-IF(FLAG_Wno-missing-field-initializers)
-    SET(SWIG_CXX_FLAGS "${SWIG_CXX_FLAGS} -Wno-missing-field-initializers")
-ENDIF()
-message(STATUS "SWIG_CXX_FLAGS: ${SWIG_CXX_FLAGS}")
+SET(SWIG_NEED_FLAGS
+    -ftls-model=global-dynamic
+    -Wno-parentheses-equality
+    -Wno-self-assign
+    -Wno-maybe-uninitialized
+    -Wno-missing-field-initializers)
+  FOREACH(flag ${SWIG_NEED_FLAGS})
+  safe_set_cxxflag(SWIG_CXX_FLAGS ${flag})
+ENDFOREACH()
 
 SET(CMAKE_SWIG_OUTDIR ${CMAKE_CURRENT_BINARY_DIR})
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SWIG_CXX_FLAGS}")
