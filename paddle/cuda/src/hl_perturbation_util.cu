@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -231,7 +232,7 @@ void hl_conv_random_disturb_with_params(const real* images,
   dim3 threadsPerBlock(4, 128);
   dim3 numBlocks(DIVUP(numPatches, 4), DIVUP(targetSize, 128));
 
-  kSamplingPatches<<<numBlocks, threadsPerBlock>>>(images,
+  hipLaunchKernelGGL((kSamplingPatches), dim3(numBlocks), dim3(threadsPerBlock), 0, 0, images,
                                                    target,
                                                    imgSize,
                                                    tgtSize,

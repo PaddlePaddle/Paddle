@@ -161,7 +161,7 @@ void hl_cudnn_desc_init(cudnnTensorDescriptor_t* cudnn_desc) {
   CHECK_CUDNN(dynload::cudnnCreateTensorDescriptor(cudnn_desc));
 }
 
-void hl_cudnn_init(cudnnHandle_t* cudnn_handle, cudaStream_t stream) {
+void hl_cudnn_init(cudnnHandle_t* cudnn_handle, hipStream_t stream) {
   size_t cudnn_dso_ver = dynload::cudnnGetVersion();
   size_t cudnn_dso_major = cudnn_dso_ver / 1000;
   size_t cudnn_cuh_major = CUDNN_VERSION / 1000;

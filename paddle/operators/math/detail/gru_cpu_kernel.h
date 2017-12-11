@@ -22,7 +22,7 @@ namespace operators {
 namespace math {
 namespace detail {
 
-#ifndef __NVCC__
+#ifndef __HIPCC__
 
 template <class OpResetOutput, typename T>
 void hl_naive_gru_forward_reset_output(OpResetOutput op_reset_output,

@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -112,10 +113,10 @@ void RowConv<DEVICE_TYPE_GPU>(GpuMatrix& out,
   dim3 dimGrid(DIVUP(width, dimBlock.x), 1);
 
   if (contextLength <= 32) {
-    KeRowConv<32, 32><<<dimGrid, dimBlock, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((KeRowConv<32, 32>), dim3(dimGrid), dim3(dimBlock), 0, STREAM_DEFAULT, 
         y, x, w, starts, height, width, numSeq, contextLength);
   } else {
-    KeRowConv2<<<dimGrid, dimBlock, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((KeRowConv2), dim3(dimGrid), dim3(dimBlock), 0, STREAM_DEFAULT, 
         y, x, w, starts, height, width, numSeq, contextLength);
   }
   CHECK_SYNC("RowConv");
@@ -341,10 +342,10 @@ void RowConvGrad<DEVICE_TYPE_GPU>(const GpuMatrix& outG,
     dim3 dimGrid(DIVUP(width, dimBlock.x), 1);
     real* dw = filterG.getData();
     if (contextLength <= 32) {
-      KeRowConvBwWeight<32, 32, 32><<<dimGrid, dimBlock, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeRowConvBwWeight<32, 32, 32>), dim3(dimGrid), dim3(dimBlock), 0, STREAM_DEFAULT, 
           dw, x, dy, starts, height, width, numSeq, contextLength);
     } else {
-      KeRowConvBwWeight2<32, 32><<<dimGrid, dimBlock, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeRowConvBwWeight2<32, 32>), dim3(dimGrid), dim3(dimBlock), 0, STREAM_DEFAULT, 
           dw, x, dy, starts, height, width, numSeq, contextLength);
     }
   }
@@ -354,10 +355,10 @@ void RowConvGrad<DEVICE_TYPE_GPU>(const GpuMatrix& outG,
     dim3 dimBlock2(32, 32);
     dim3 dimGrid2(DIVUP(width, dimBlock2.x), 1);
     if (contextLength <= 64) {
-      KeRowConvBwData<32, 64><<<dimGrid2, dimBlock2, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeRowConvBwData<32, 64>), dim3(dimGrid2), dim3(dimBlock2), 0, STREAM_DEFAULT, 
           dx, w, dy, starts, height, width, numSeq, contextLength);
     } else {
-      KeRowConvBwData2<<<dimGrid2, dimBlock2, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeRowConvBwData2), dim3(dimGrid2), dim3(dimBlock2), 0, STREAM_DEFAULT, 
           dx, w, dy, starts, height, width, numSeq, contextLength);
     }
   }

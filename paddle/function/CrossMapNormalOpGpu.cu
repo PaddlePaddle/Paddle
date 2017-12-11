@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -80,13 +81,13 @@ void CrossMapNormal<DEVICE_TYPE_GPU>(real* outputs,
   size_t imageSize = numSamples * height * width;
   int blockSize = 1024;
   int gridSize = (imageSize + 1024 - 1) / 1024;
-  KeCMRNormFillScale<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeCMRNormFillScale), dim3(gridSize), dim3(blockSize), 0, STREAM_DEFAULT, 
       imageSize, inputs, denoms, channels, height, width, size, scale);
 
   size_t inputSize = numSamples * height * width * channels;
   blockSize = 1024;
   gridSize = (inputSize + 1024 - 1) / 1024;
-  KeCMRNormOutput<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeCMRNormOutput), dim3(gridSize), dim3(blockSize), 0, STREAM_DEFAULT, 
       inputSize, inputs, denoms, -pow, outputs);
 
   CHECK_SYNC("CrossMapNormal");
@@ -159,7 +160,7 @@ void CrossMapNormalGrad<DEVICE_TYPE_GPU>(real* inputsGrad,
 
   int blockSize = 1024;
   int gridSize = (imageSize + 1024 - 1) / 1024;
-  KeCMRNormDiff<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(imageSize,
+  hipLaunchKernelGGL((KeCMRNormDiff), dim3(gridSize), dim3(blockSize), 0, STREAM_DEFAULT, imageSize,
                                                             inputsValue,
                                                             outputsValue,
                                                             denoms,

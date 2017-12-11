@@ -16,7 +16,7 @@ limitations under the License. */
 #ifndef HL_LSTM_OPS_CUH_
 #define HL_LSTM_OPS_CUH_
 
-#ifdef __CUDA_ARCH__
+#ifdef __HIP_DEVICE_COMPILE__
 #define INLINE   __device__ inline
 #else
 #define INLINE   inline
@@ -65,7 +65,7 @@ public:
     stateAtv = actState(state);
     output = valueOg * stateAtv;
   }
-#ifndef __NVCC__
+#ifndef __HIPCC__
 #ifndef __AVX__
   static const bool avx = false;
 #else
@@ -161,7 +161,7 @@ public:
     checkFGrad = gradFg * prevState;
     checkOGrad = gradOg * state;
   }
-#ifndef __NVCC__
+#ifndef __HIPCC__
 #ifndef __AVX__
   static const bool avx = false;
 #else

@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +17,7 @@ limitations under the License. */
 #ifndef HL_GPU_LSTM_CUH_
 #define HL_GPU_LSTM_CUH_
 
-#ifdef __NVCC__
+#ifdef __HIPCC__
 
 #include "paddle/utils/Logging.h"
 #include "hl_device_functions.cuh"
@@ -227,12 +228,10 @@ void hl_gpu_lstm_forward(Op op,
   }
 
   if (batchSize == 1) {
-    KeLstmForward<Op, /* isBatch= */false>
-      <<<grid, threads, 0, STREAM_DEFAULT>>>(op, value,
+    hipLaunchKernelGGL((KeLstmForward<Op, /* isBatch= */false>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, op, value,
       frameSize, batchSize, active_node, active_gate, active_state);
   } else {
-    KeLstmForward<Op, /* isBatch= */true>
-      <<<grid, threads, 0, STREAM_DEFAULT>>>(op, value,
+    hipLaunchKernelGGL((KeLstmForward<Op, /* isBatch= */true>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, op, value,
       frameSize, batchSize, active_node, active_gate, active_state);
   }
 
@@ -262,12 +261,10 @@ void hl_gpu_lstm_backward(Op op,
   }
 
   if (batchSize == 1) {
-    KeLstmBackward<Op, /* isBatch= */false>
-      <<<grid, threads, 0, STREAM_DEFAULT>>>(op, value, grad,
+    hipLaunchKernelGGL((KeLstmBackward<Op, /* isBatch= */false>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, op, value, grad,
       frameSize, batchSize, active_node, active_gate, active_state);
   } else {
-    KeLstmBackward<Op, /* isBatch= */true>
-      <<<grid, threads, 0, STREAM_DEFAULT>>>(op, value, grad,
+    hipLaunchKernelGGL((KeLstmBackward<Op, /* isBatch= */true>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, op, value, grad,
       frameSize, batchSize, active_node, active_gate, active_state);
   }
 

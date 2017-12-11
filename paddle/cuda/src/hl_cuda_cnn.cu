@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -86,7 +87,7 @@ void hl_maxpool_forward(const int frameCnt,
   dim3 threads(1024, 1);
   dim3 grid(blocks, 1);
 
-  KeMaxPoolForward<<<grid, threads, 0, STREAM_DEFAULT>>>(num_kernels,
+  hipLaunchKernelGGL((KeMaxPoolForward), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, num_kernels,
                                                          inputData,
                                                          channels,
                                                          height,
@@ -174,7 +175,7 @@ void hl_maxpool_backward(const int frameCnt,
   int num_kernels = height * width * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
 
-  KeMaxPoolBackward<<<blocks, 1024, 0, STREAM_DEFAULT>>>(num_kernels,
+  hipLaunchKernelGGL((KeMaxPoolBackward), dim3(blocks), dim3(1024), 0, STREAM_DEFAULT, num_kernels,
                                                          inputData,
                                                          outData,
                                                          outGrad,
@@ -256,7 +257,7 @@ void hl_avgpool_forward(const int frameCnt,
                         const int tgtStride) {
   int num_kernels = pooledH * pooledW * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
-  KeAvgPoolForward<<<blocks, 1024, 0, STREAM_DEFAULT>>>(num_kernels,
+  hipLaunchKernelGGL((KeAvgPoolForward), dim3(blocks), dim3(1024), 0, STREAM_DEFAULT, num_kernels,
                                                         inputData,
                                                         channels,
                                                         height,
@@ -342,7 +343,7 @@ void hl_avgpool_backward(const int frameCnt,
   int num_kernels = height * width * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
 
-  KeAvgPoolBackward<<<blocks, 1024, 0, STREAM_DEFAULT>>>(num_kernels,
+  hipLaunchKernelGGL((KeAvgPoolBackward), dim3(blocks), dim3(1024), 0, STREAM_DEFAULT, num_kernels,
                                                          outGrad,
                                                          channels,
                                                          height,
@@ -445,7 +446,7 @@ void hl_maxpool3D_forward(const int frameCnt,
   dim3 threads(1024, 1);
   dim3 grid(blocks, 1);
 
-  KeMaxPool3DForward<<<grid, threads, 0, STREAM_DEFAULT>>>(num_kernels,
+  hipLaunchKernelGGL((KeMaxPool3DForward), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, num_kernels,
                                                            inputData,
                                                            channels,
                                                            depth,
@@ -553,7 +554,7 @@ void hl_maxpool3D_backward(const int frameCnt,
   int num_kernels = depth * height * width * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
 
-  KeMaxPool3DBackward<<<blocks, 1024, 0, STREAM_DEFAULT>>>(num_kernels,
+  hipLaunchKernelGGL((KeMaxPool3DBackward), dim3(blocks), dim3(1024), 0, STREAM_DEFAULT, num_kernels,
                                                            outGrad,
                                                            channels,
                                                            depth,
@@ -654,7 +655,7 @@ void hl_avgpool3D_forward(const int frameCnt,
                           const int tgtStride) {
   int num_kernels = pooledD * pooledH * pooledW * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
-  KeAvgPool3DForward<<<blocks, 1024, 0, STREAM_DEFAULT>>>(num_kernels,
+  hipLaunchKernelGGL((KeAvgPool3DForward), dim3(blocks), dim3(1024), 0, STREAM_DEFAULT, num_kernels,
                                                           inputData,
                                                           channels,
                                                           depth,
@@ -764,7 +765,7 @@ void hl_avgpool3D_backward(const int frameCnt,
   int num_kernels = depth * height * width * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
 
-  KeAvgPool3DBackward<<<blocks, 1024, 0, STREAM_DEFAULT>>>(num_kernels,
+  hipLaunchKernelGGL((KeAvgPool3DBackward), dim3(blocks), dim3(1024), 0, STREAM_DEFAULT, num_kernels,
                                                            outGrad,
                                                            channels,
                                                            depth,
@@ -850,7 +851,7 @@ void hl_bilinear_forward(const real* inData,
   int threadNum = outputH * outputW;
   int blocks = (threadNum + 1024 - 1) / 1024;
 
-  KeBilinearInterpFw<<<blocks, 1024, 0, STREAM_DEFAULT>>>(inData,
+  hipLaunchKernelGGL((KeBilinearInterpFw), dim3(blocks), dim3(1024), 0, STREAM_DEFAULT, inData,
                                                           inImgH,
                                                           inImgW,
                                                           inputH,
@@ -928,7 +929,7 @@ void hl_bilinear_backward(real* inGrad,
   int threadNum = outputH * outputW;
   int blocks = (threadNum + 1024 - 1) / 1024;
 
-  KeBilinearInterpBw<<<blocks, 1024, 0, STREAM_DEFAULT>>>(inGrad,
+  hipLaunchKernelGGL((KeBilinearInterpBw), dim3(blocks), dim3(1024), 0, STREAM_DEFAULT, inGrad,
                                                           inImgH,
                                                           inImgW,
                                                           inputH,
@@ -982,7 +983,7 @@ void hl_maxout_forward(const real* inData,
                        size_t groups) {
   int num_kernels = size * batchSize;
   int blocks = (num_kernels + 1024 - 1) / 1024;
-  maxoutFpCompute<<<blocks, 1024, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((maxoutFpCompute), dim3(blocks), dim3(1024), 0, STREAM_DEFAULT, 
       num_kernels, inData, outData, idData, size, featLen, groups);
   CHECK_SYNC("hl_maxout_forward failed");
 }
@@ -1016,7 +1017,7 @@ void hl_maxout_backward(real* inGrad,
                         size_t groups) {
   int num_kernels = size * batchSize;
   int blocks = (num_kernels + 1024 - 1) / 1024;
-  maxoutBpCompute<<<blocks, 1024, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((maxoutBpCompute), dim3(blocks), dim3(1024), 0, STREAM_DEFAULT, 
       num_kernels, inGrad, outGrad, idData, size, featLen, groups);
   CHECK_SYNC("hl_maxout_backward failed");
 }

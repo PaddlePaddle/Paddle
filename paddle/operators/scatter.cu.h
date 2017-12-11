@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors All Rights Reserve.
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,9 +71,7 @@ void GPUScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
   int n = slice_size * index_size;
   int grid = (n + block - 1) / block;
 
-  ScatterCUDAKernel<T><<<
-      grid, block, 0,
-      reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
+  hipLaunchKernelGGL((ScatterCUDAKernel<T>), dim3(grid), dim3(block), 0, reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream(), 
       p_src, p_index, p_output, index_size, slice_size);
 }
 

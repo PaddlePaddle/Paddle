@@ -74,7 +74,7 @@ bool CPUAllocator::UseGpu() const { return false; }
 #ifdef PADDLE_WITH_CUDA
 
 void* GPUAllocator::Alloc(size_t& index, size_t size) {
-  // CUDA documentation doesn't explain if cudaMalloc returns nullptr
+  // CUDA documentation doesn't explain if hipMalloc returns nullptr
   // if size is 0.  We just make sure it does.
   if (size <= 0) return nullptr;
 
@@ -87,19 +87,19 @@ void* GPUAllocator::Alloc(size_t& index, size_t size) {
   size_t usable = available > reserving ? available - reserving : 0;
 
   // If remaining size no less than expected size, using general
-  // cudaMalloc to allocate GPU memory.
+  // hipMalloc to allocate GPU memory.
   void* p = 0;
   if (size <= usable) {
-    cudaError_t result = cudaMalloc(&p, size);
-    if (result == cudaSuccess) {
+    hipError_t result = hipMalloc(&p, size);
+    if (result == hipSuccess) {
       index = 0;
       gpu_alloc_size_ += size;
       return p;
     }
   }
 
-  // If remaining size less than expected size or cudaMalloc failed,
-  // cudaMallocHost will be considered as a fallback allocator.
+  // If remaining size less than expected size or hipMalloc failed,
+  // hipHostMalloc will be considered as a fallback allocator.
   //
   // NOTE: here, we use GpuMaxAllocSize() as the maximum memory size
   // of host fallback allocation. Allocates too much would reduce
@@ -108,8 +108,8 @@ void* GPUAllocator::Alloc(size_t& index, size_t size) {
 
   if (size > usable) return nullptr;
 
-  cudaError_t result = cudaMallocHost(&p, size);
-  if (result == cudaSuccess) {
+  hipError_t result = hipHostMalloc(&p, size);
+  if (result == hipSuccess) {
     index = 1;
     fallback_alloc_size_ += size;
     return p;
@@ -119,25 +119,25 @@ void* GPUAllocator::Alloc(size_t& index, size_t size) {
 }
 
 void GPUAllocator::Free(void* p, size_t size, size_t index) {
-  cudaError_t err;
+  hipError_t err;
 
   if (index == 0) {
     PADDLE_ASSERT(gpu_alloc_size_ >= size);
     gpu_alloc_size_ -= size;
-    err = cudaFree(p);
+    err = hipFree(p);
   } else {
     PADDLE_ASSERT(fallback_alloc_size_ >= size);
     fallback_alloc_size_ -= size;
-    err = cudaFreeHost(p);
+    err = hipHostFree(p);
   }
 
   // Purposefully allow cudaErrorCudartUnloading, because
-  // that is returned if you ever call cudaFree after the
+  // that is returned if you ever call hipFree after the
   // driver has already shutdown. This happens only if the
   // process is terminating, in which case we don't care if
-  // cudaFree succeeds.
+  // hipFree succeeds.
   if (err != cudaErrorCudartUnloading) {
-    PADDLE_ENFORCE(err, "cudaFree{Host} failed in GPUAllocator::Free.");
+    PADDLE_ENFORCE(err, "hipFree{Host} failed in GPUAllocator::Free.");
   }
 }
 

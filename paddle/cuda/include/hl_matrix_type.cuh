@@ -17,7 +17,7 @@ limitations under the License. */
 
 #include "hl_base.h"
 
-#ifdef __CUDA_ARCH__
+#ifdef __HIP_DEVICE_COMPILE__
 /**
  * CUDA kernel inline function
  */
@@ -29,7 +29,7 @@ limitations under the License. */
 #define INLINE   inline
 #endif
 
-#ifdef __CUDA_ARCH__
+#ifdef __HIP_DEVICE_COMPILE__
 #include <vector_types.h>
 #ifndef PADDLE_TYPE_DOUBLE
 typedef float4 vecType;
@@ -39,7 +39,7 @@ typedef double2 vecType;
 #elif defined(__SSE3__)
 #include "hl_cpu_simd_sse.cuh"
 #define PADDLE_USE_SSE3
-#elif (defined(__ARM_NEON) || defined(__ARM_NEON__)) && !defined(__NVCC__)
+#elif (defined(__ARM_NEON) || defined(__ARM_NEON__)) && !defined(__HIPCC__)
 // Currently nvcc does not support neon intrinsic.
 // TODO: Extract simd intrinsic implementation from .cu files.
 #include "hl_cpu_simd_neon.cuh"

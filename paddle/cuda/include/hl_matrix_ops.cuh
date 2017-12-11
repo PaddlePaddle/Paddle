@@ -18,7 +18,7 @@ limitations under the License. */
 
 #include "hl_base.h"
 
-#ifdef __NVCC__
+#ifdef __HIPCC__
 #define HL_DEVICE   __device__
 #else
 #define HL_DEVICE

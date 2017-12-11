@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -225,7 +226,7 @@ public:
     dim3 threads(1024, 1);
     dim3 grid(blockX, blockY);
 
-    ConvolutionDepthwiseForward<T><<<grid, threads, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((ConvolutionDepthwiseForward<T>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
         outputSize,
         inputData,
         filterData,

@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -364,7 +365,7 @@ void hl_matrix_top_k(real* topVal,
 
   dim3 threads(256, 1);
   dim3 grid(numSamples, 1);
-  KeMatrixTopK<5, 256><<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMatrixTopK<5, 256>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       topVal, ldv, topIds, src, lds, dim, beamSize);
 
   CHECK_SYNC("hl_matrix_top_k failed");
@@ -388,7 +389,7 @@ void hl_sparse_matrix_top_k(real* topVal,
 
   dim3 threads(256, 1);
   dim3 grid(numSamples, 1);
-  KeSMatrixTopK<5, 256><<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeSMatrixTopK<5, 256>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       topVal, ldv, topIds, csr->csr_val, csr->csr_row, csr->csr_col, beamSize);
 
   CHECK_SYNC("hl_sparse_matrix_top_k failed");
@@ -470,7 +471,7 @@ void hl_matrix_classification_error(real* topVal,
 
   dim3 threads(256, 1);
   dim3 grid(numSamples, 1);
-  KeMatrixTopKClassificationError<5, 256><<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMatrixTopKClassificationError<5, 256>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       topVal, ldv, topIds, src, lds, dim, topkSize, label, recResult);
 
   CHECK_SYNC("hl_matrix_top_k classification error failed");

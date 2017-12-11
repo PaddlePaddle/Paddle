@@ -70,7 +70,7 @@ struct Dim<1> {
 
   HOSTDEVICE
   Dim(int idx, const Dim<1>& size) : head(idx) {
-#ifndef __CUDA_ARCH__
+#ifndef __HIP_DEVICE_COMPILE__
     if (idx >= size.head) {
       throw std::invalid_argument("Index out of range.");
     }
@@ -127,7 +127,7 @@ struct DimGetter<0> {
 
 template <int D>
 HOSTDEVICE int64_t& indexer(Dim<D>& dim, int idx) {
-#ifndef __CUDA_ARCH__
+#ifndef __HIP_DEVICE_COMPILE__
   if (idx < 0) {
     throw std::invalid_argument("Tried to access a negative dimension");
   }
@@ -142,7 +142,7 @@ HOSTDEVICE int64_t& indexer(Dim<D>& dim, int idx) {
 
 template <>
 HOSTDEVICE int64_t& indexer<1>(Dim<1>& dim, int idx) {
-#ifndef __CUDA_ARCH__
+#ifndef __HIP_DEVICE_COMPILE__
   if (idx != 0) {
     throw std::invalid_argument("Invalid index");
   }
@@ -154,7 +154,7 @@ HOSTDEVICE int64_t& indexer<1>(Dim<1>& dim, int idx) {
 
 template <int D>
 HOSTDEVICE int64_t indexer(const Dim<D>& dim, int idx) {
-#ifndef __CUDA_ARCH__
+#ifndef __HIP_DEVICE_COMPILE__
   if (idx < 0) {
     throw std::invalid_argument("Tried to access a negative dimension");
   }
@@ -169,7 +169,7 @@ HOSTDEVICE int64_t indexer(const Dim<D>& dim, int idx) {
 
 template <>
 HOSTDEVICE int64_t indexer<1>(const Dim<1>& dim, int idx) {
-#ifndef __CUDA_ARCH__
+#ifndef __HIP_DEVICE_COMPILE__
   if (idx != 0) {
     throw std::invalid_argument("Invalid index");
   }

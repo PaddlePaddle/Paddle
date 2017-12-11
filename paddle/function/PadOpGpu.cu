@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -58,7 +59,7 @@ void Pad<DEVICE_TYPE_GPU>(real* outputs,
   int outC = inC + cstart + cend;
   int outH = inH + hstart + hend;
   int outW = inW + wstart + wend;
-  KePad<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(outputs,
+  hipLaunchKernelGGL((KePad), dim3(gridSize), dim3(blockSize), 0, STREAM_DEFAULT, outputs,
                                                     inputs,
                                                     inC,
                                                     inH,
@@ -114,7 +115,7 @@ void PadGrad<DEVICE_TYPE_GPU>(real* inGrad,
   int outC = inC + cstart + cend;
   int outH = inH + hstart + hend;
   int outW = inW + wstart + wend;
-  KePadDiff<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(inGrad,
+  hipLaunchKernelGGL((KePadDiff), dim3(gridSize), dim3(blockSize), 0, STREAM_DEFAULT, inGrad,
                                                         outGrad,
                                                         inC,
                                                         inH,

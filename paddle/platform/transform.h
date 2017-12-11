@@ -21,7 +21,7 @@
 
 #include <algorithm>
 #include <type_traits>
-#ifdef __NVCC__
+#ifdef __HIPCC__
 #include <thrust/execution_policy.h>
 #include <thrust/transform.h>
 #include "paddle/platform/details/device_ptr_cast.h"
@@ -61,7 +61,7 @@ struct Transform<platform::CPUPlace> {
   }
 };
 
-#ifdef __NVCC__
+#ifdef __HIPCC__
 template <>
 struct Transform<platform::GPUPlace> {
   template <typename InputIter, typename OutputIter, typename UnaryOperation>

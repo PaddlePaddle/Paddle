@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -66,7 +67,7 @@ void Crop<DEVICE_TYPE_GPU>(real* outputs,
   int blockSize = 1024;
   int gridSize = (nth + blockSize - 1) / blockSize;
 
-  KeCrop<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(outputs,
+  hipLaunchKernelGGL((KeCrop), dim3(gridSize), dim3(blockSize), 0, STREAM_DEFAULT, outputs,
                                                      inputs,
                                                      inC,
                                                      inH,
@@ -132,7 +133,7 @@ void CropGrad<DEVICE_TYPE_GPU>(const real* inGrad,
   int blockSize = 1024;
   int gridSize = (nth + blockSize - 1) / blockSize;
 
-  KeCropDiff<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(inGrad,
+  hipLaunchKernelGGL((KeCropDiff), dim3(gridSize), dim3(blockSize), 0, STREAM_DEFAULT, inGrad,
                                                          outGrad,
                                                          inC,
                                                          inH,

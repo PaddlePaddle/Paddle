@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -81,7 +82,7 @@ class AccuracyOpCUDAKernel : public framework::OpKernel<T> {
       return;
     }
     platform::GpuMemcpyAsync(total_data, &num_samples, sizeof(int),
-                             cudaMemcpyHostToDevice, stream);
+                             hipMemcpyHostToDevice, stream);
 
     AccuracyCudaKernel<
         PADDLE_CUDA_NUM_THREADS><<<1, PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
@@ -91,11 +92,11 @@ class AccuracyOpCUDAKernel : public framework::OpKernel<T> {
     int d_num_samples, d_num_correct;
     float d_accuracy;
     platform::GpuMemcpyAsync(&d_num_correct, correct_data, sizeof(int),
-                             cudaMemcpyDeviceToHost, stream);
+                             hipMemcpyDeviceToHost, stream);
     platform::GpuMemcpyAsync(&d_num_samples, total_data, sizeof(int),
-                             cudaMemcpyDeviceToHost, stream);
+                             hipMemcpyDeviceToHost, stream);
     platform::GpuMemcpyAsync(&d_accuracy, accuracy_data, sizeof(float),
-                             cudaMemcpyDeviceToHost, stream);
+                             hipMemcpyDeviceToHost, stream);
   }
 };
 

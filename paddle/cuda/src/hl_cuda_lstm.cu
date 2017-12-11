@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -278,7 +279,7 @@ void hl_lstm_parallel_forward(real *gateValue,
   dim3 grid(numSequences, 1);
   if (!reversed) {
     if (frameSize == 32) {
-      KeLstmForward<128, 32, 0, 128, 256><<<grid, 256, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeLstmForward<128, 32, 0, 128, 256>), dim3(grid), dim3(256), 0, STREAM_DEFAULT, 
           gateValue,
           stateValue,
           outputValue,
@@ -292,7 +293,7 @@ void hl_lstm_parallel_forward(real *gateValue,
           active_gate,
           active_state);
     } else if (frameSize == 64) {
-      KeLstmForward<256, 64, 0, 256, 256><<<grid, 256, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeLstmForward<256, 64, 0, 256, 256>), dim3(grid), dim3(256), 0, STREAM_DEFAULT, 
           gateValue,
           stateValue,
           outputValue,
@@ -308,7 +309,7 @@ void hl_lstm_parallel_forward(real *gateValue,
     }
   } else {
     if (frameSize == 32) {
-      KeLstmForward<128, 32, 1, 128, 256><<<grid, 256, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeLstmForward<128, 32, 1, 128, 256>), dim3(grid), dim3(256), 0, STREAM_DEFAULT, 
           gateValue,
           stateValue,
           outputValue,
@@ -322,7 +323,7 @@ void hl_lstm_parallel_forward(real *gateValue,
           active_gate,
           active_state);
     } else if (frameSize == 64) {
-      KeLstmForward<256, 64, 1, 256, 256><<<grid, 256, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeLstmForward<256, 64, 1, 256, 256>), dim3(grid), dim3(256), 0, STREAM_DEFAULT, 
           gateValue,
           stateValue,
           outputValue,
@@ -643,7 +644,7 @@ void hl_lstm_parallel_backward_data(real *gateValue,
   dim3 grid(numSequences, 1);
   if (!reversed) {
     if (frameSize == 32) {
-      KeLstmBackward<128, 32, 0><<<grid, 128, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeLstmBackward<128, 32, 0>), dim3(grid), dim3(128), 0, STREAM_DEFAULT, 
           gateValue,
           gateGrad,
           stateValue,
@@ -663,7 +664,7 @@ void hl_lstm_parallel_backward_data(real *gateValue,
           active_gate,
           active_state);
     } else if (frameSize == 64) {
-      KeLstmBackward<256, 64, 0><<<grid, 256, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeLstmBackward<256, 64, 0>), dim3(grid), dim3(256), 0, STREAM_DEFAULT, 
           gateValue,
           gateGrad,
           stateValue,
@@ -683,7 +684,7 @@ void hl_lstm_parallel_backward_data(real *gateValue,
           active_gate,
           active_state);
     } else if (frameSize == 128) {
-      KeLstmBackward<512, 128, 0><<<grid, 512, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeLstmBackward<512, 128, 0>), dim3(grid), dim3(512), 0, STREAM_DEFAULT, 
           gateValue,
           gateGrad,
           stateValue,
@@ -703,7 +704,7 @@ void hl_lstm_parallel_backward_data(real *gateValue,
           active_gate,
           active_state);
     } else if (frameSize == 256) {
-      KeLstmBackward<1024, 256, 0><<<grid, 1024, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeLstmBackward<1024, 256, 0>), dim3(grid), dim3(1024), 0, STREAM_DEFAULT, 
           gateValue,
           gateGrad,
           stateValue,
@@ -725,7 +726,7 @@ void hl_lstm_parallel_backward_data(real *gateValue,
     }
   } else {
     if (frameSize == 32) {
-      KeLstmBackward<128, 32, 1><<<grid, 128, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeLstmBackward<128, 32, 1>), dim3(grid), dim3(128), 0, STREAM_DEFAULT, 
           gateValue,
           gateGrad,
           stateValue,
@@ -745,7 +746,7 @@ void hl_lstm_parallel_backward_data(real *gateValue,
           active_gate,
           active_state);
     } else if (frameSize == 64) {
-      KeLstmBackward<256, 64, 1><<<grid, 256, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeLstmBackward<256, 64, 1>), dim3(grid), dim3(256), 0, STREAM_DEFAULT, 
           gateValue,
           gateGrad,
           stateValue,
@@ -765,7 +766,7 @@ void hl_lstm_parallel_backward_data(real *gateValue,
           active_gate,
           active_state);
     } else if (frameSize == 128) {
-      KeLstmBackward<512, 128, 1><<<grid, 512, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeLstmBackward<512, 128, 1>), dim3(grid), dim3(512), 0, STREAM_DEFAULT, 
           gateValue,
           gateGrad,
           stateValue,
@@ -785,7 +786,7 @@ void hl_lstm_parallel_backward_data(real *gateValue,
           active_gate,
           active_state);
     } else if (frameSize == 256) {
-      KeLstmBackward<1024, 256, 1><<<grid, 1024, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeLstmBackward<1024, 256, 1>), dim3(grid), dim3(1024), 0, STREAM_DEFAULT, 
           gateValue,
           gateGrad,
           stateValue,
@@ -842,7 +843,7 @@ void hl_lstm_parallel_backward_weight(real *weightGrad,
   int valueSize = 4 * frameSize;
   dim3 threads(32, 32);
   dim3 grid((valueSize + 32 - 1) / 32, (numSequences + 32 - 1) / 32);
-  KeSetGradZero<32, 32><<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeSetGradZero<32, 32>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       gateGrad, sequence, valueSize, numSequences, reversed);
 
   if (!reversed) {

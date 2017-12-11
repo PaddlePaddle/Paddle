@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -120,7 +121,7 @@ class LstmUnitOpCUDAKernel : public framework::OpKernel<T> {
     int n = b_size * D;
     int grid = (n + block - 1) / block;
 
-    LSTMUnitKernel<T><<<grid, block>>>(n, D, C_prev, X, C, H, forget_bias);
+    hipLaunchKernelGGL((LSTMUnitKernel<T>), dim3(grid), dim3(block), 0, 0, n, D, C_prev, X, C, H, forget_bias);
   }
 };
 
@@ -163,7 +164,7 @@ class LstmUnitGradOpCUDAKernel : public framework::OpKernel<T> {
     int n = N * D;
     int grid = (n + block - 1) / block;
 
-    LSTMUnitGradientKernel<T><<<grid, block>>>(n, D, C_prev, X, C, H, C_diff,
+    hipLaunchKernelGGL((LSTMUnitGradientKernel<T>), dim3(grid), dim3(block), 0, 0, n, D, C_prev, X, C, H, C_diff,
                                                H_diff, C_prev_diff, X_diff,
                                                forget_bias);
   }

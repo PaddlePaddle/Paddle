@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,7 +56,7 @@ void hl_max_sequence_forward(real* input,
 
   dim3 threads(256, 1);
   dim3 grid(numSequences, 1);
-  KeMaxSequenceForward<<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMaxSequenceForward), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       input, sequence, output, index, numSequences, dim);
   CHECK_SYNC("hl_max_sequence_forward failed");
 }
@@ -79,7 +80,7 @@ void hl_max_sequence_backward(
   unsigned int blocks = (numSequences * dim + 128 - 1) / 128;
   dim3 threads(128, 1);
   dim3 grid(blocks, 1);
-  KeMaxSequenceBackward<<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMaxSequenceBackward), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       outputGrad, index, inputGrad, numSequences, dim);
   CHECK_SYNC("hl_max_sequence_backward failed");
 }
@@ -161,10 +162,10 @@ void hl_sequence2batch_copy(real* batch,
   dim3 threads(128, 8);
   dim3 grid(8, 1);
   if (seq2batch) {
-    KeSequence2Batch<128, 8, 8, 1, 0><<<grid, threads, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((KeSequence2Batch<128, 8, 8, 1, 0>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
         batch, sequence, batchIndex, seqWidth, batchCount);
   } else {
-    KeSequence2Batch<128, 8, 8, 0, 0><<<grid, threads, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((KeSequence2Batch<128, 8, 8, 0, 0>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
         batch, sequence, batchIndex, seqWidth, batchCount);
   }
   CHECK_SYNC("hl_sequence2batch_copy failed");
@@ -183,10 +184,10 @@ void hl_sequence2batch_add(real* batch,
   dim3 threads(128, 8);
   dim3 grid(8, 1);
   if (seq2batch) {
-    KeSequence2Batch<128, 8, 8, 1, 1><<<grid, threads, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((KeSequence2Batch<128, 8, 8, 1, 1>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
         batch, sequence, batchIndex, seqWidth, batchCount);
   } else {
-    KeSequence2Batch<128, 8, 8, 0, 1><<<grid, threads, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((KeSequence2Batch<128, 8, 8, 0, 1>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
         batch, sequence, batchIndex, seqWidth, batchCount);
   }
   CHECK_SYNC("hl_sequence2batch_add failed");
@@ -272,7 +273,7 @@ void hl_sequence2batch_copy_padding(real* batch,
   if (seq2batch) {
     /* sequence -> batch */
     if (normByTimes) {
-      KeSequence2BatchPadding<1, 1><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSequence2BatchPadding<1, 1>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
           batch,
           sequence,
           sequenceStartPositions,
@@ -280,7 +281,7 @@ void hl_sequence2batch_copy_padding(real* batch,
           maxSequenceLength,
           numSequences);
     } else {
-      KeSequence2BatchPadding<0, 1><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSequence2BatchPadding<0, 1>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
           batch,
           sequence,
           sequenceStartPositions,
@@ -291,7 +292,7 @@ void hl_sequence2batch_copy_padding(real* batch,
   } else {
     /* batch -> sequence */
     if (normByTimes) {
-      KeSequence2BatchPadding<1, 0><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSequence2BatchPadding<1, 0>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
           batch,
           sequence,
           sequenceStartPositions,
@@ -299,7 +300,7 @@ void hl_sequence2batch_copy_padding(real* batch,
           maxSequenceLength,
           numSequences);
     } else {
-      KeSequence2BatchPadding<0, 0><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      hipLaunchKernelGGL((KeSequence2BatchPadding<0, 0>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
           batch,
           sequence,
           sequenceStartPositions,
@@ -357,7 +358,7 @@ void hl_sequence_avg_forward(real* dst,
   CHECK(mode == 0 || mode == 1 || mode == 2)
       << "mode error in hl_sequence_avg_forward!";
 
-  KeSequenceAvgForward<<<grid, block, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeSequenceAvgForward), dim3(grid), dim3(block), 0, STREAM_DEFAULT, 
       dst, src, starts, height, width, mode);
   CHECK_SYNC("hl_sequence_avg_forward failed");
 }
@@ -402,7 +403,7 @@ void hl_sequence_avg_backward(real* dst,
   CHECK(mode == 0 || mode == 1 || mode == 2)
       << "mode error in hl_sequence_avg_backward!";
 
-  KeSequenceAvgBackward<<<grid, block, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeSequenceAvgBackward), dim3(grid), dim3(block), 0, STREAM_DEFAULT, 
       dst, src, starts, height, width, mode);
   CHECK_SYNC("hl_sequence_avg_backward failed");
 }

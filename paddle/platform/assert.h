@@ -3,7 +3,7 @@
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 
-#if defined(__APPLE__) && defined(__CUDA_ARCH__) && !defined(NDEBUG)
+#if defined(__APPLE__) && defined(__HIP_DEVICE_COMPILE__) && !defined(NDEBUG)
 #include <stdio.h>
 #define PADDLE_ASSERT(e)                                           \
   do {                                                             \

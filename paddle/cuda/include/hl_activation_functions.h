@@ -36,7 +36,7 @@ public:
   typedef T (*backward)(T, T);
 };
 
-#ifdef __NVCC__
+#ifdef __HIPCC__
 namespace gpu {
 static __device__ Active<real>::forward forward[] = HPPL_ACTIVE_FUNCTION;
 static __device__ Active<real>::backward backward[] = HPPL_ACTIVE_FUNCTION;

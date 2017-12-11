@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,7 +53,7 @@ void batchTranspose(
     const real* input, real* output, int width, int height, int batchSize) {
   dim3 dimBlock(TILE_DIM, BLOCK_ROWS, 1);
   dim3 dimGrid(DIVUP(width, TILE_DIM), DIVUP(height, TILE_DIM), batchSize);
-  batchTransposeNoBankConflicts<<<dimGrid, dimBlock, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((batchTransposeNoBankConflicts), dim3(dimGrid), dim3(dimBlock), 0, STREAM_DEFAULT, 
       output, input, batchSize, width, height);
 
   CHECK_SYNC("batchTranspose failed!");

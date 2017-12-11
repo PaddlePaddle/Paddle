@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -84,14 +85,14 @@ class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel<T> {
 
     if (ctx.Attr<bool>("soft_label")) {
       auto* label_data = label->data<T>();
-      SoftCrossEntropyGradientKernel<T><<<grid, block, 0, stream>>>(
+      hipLaunchKernelGGL((SoftCrossEntropyGradientKernel<T>), dim3(grid), dim3(block), 0, stream, 
           dx_data, dy_data, x_data, label_data, batch_size, class_num);
     } else {
       math::SetConstant<platform::GPUPlace, T> functor;
       functor(ctx.device_context(), dx, 0);
       auto* label_data = label->data<int64_t>();
       grid = (batch_size + block - 1) / block;
-      CrossEntropyGradientKernel<T><<<grid, block, 0, stream>>>(
+      hipLaunchKernelGGL((CrossEntropyGradientKernel<T>), dim3(grid), dim3(block), 0, stream, 
           dx_data, dy_data, x_data, label_data, batch_size, class_num);
     }
   }

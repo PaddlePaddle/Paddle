@@ -32,7 +32,7 @@ public:
   }
 };
 
-#ifdef __CUDA_ARCH__
+#ifdef __HIP_DEVICE_COMPILE__
 typedef BaseOp SSESum;
 typedef BaseOp SSEMax;
 typedef BaseOp SSEMin;

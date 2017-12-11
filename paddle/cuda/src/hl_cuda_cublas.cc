@@ -133,7 +133,7 @@ cublasStatus_t g_cublasStat;
   CHECK_EQ(CUBLAS_STATUS_SUCCESS, g_cublasStat) \
       << "Cublas Error: " << hl_cublas_get_error_string(g_cublasStat) << " "
 
-void hl_cublas_init(cublasHandle_t *cublas_handle, cudaStream_t stream) {
+void hl_cublas_init(cublasHandle_t *cublas_handle, hipStream_t stream) {
   CHECK_CUBLAS(dynload::cublasCreate(cublas_handle))
       << "[cublas init] Cublas create handle faild!";
 

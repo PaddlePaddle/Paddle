@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -186,7 +187,7 @@ void hl_matrix_softmax(real* A_d, real* C_d, int dimM, int dimN) {
 
   dim3 block(512, 1);
   dim3 grid(dimM, 1);
-  KeMatrixSoftMax<512><<<grid, block, 0, STREAM_DEFAULT>>>(C_d, A_d, dimN);
+  hipLaunchKernelGGL((KeMatrixSoftMax<512>), dim3(grid), dim3(block), 0, STREAM_DEFAULT, C_d, A_d, dimN);
   CHECK_SYNC("hl_matrix_softmax failed");
 }
 
@@ -214,7 +215,7 @@ void hl_sequence_softmax_forward(real* A_d,
 
   dim3 block(512, 1);
   dim3 grid(numSequence, 1);
-  KeSequenceSoftMax<512><<<grid, block, 0, STREAM_DEFAULT>>>(C_d, A_d, index);
+  hipLaunchKernelGGL((KeSequenceSoftMax<512>), dim3(grid), dim3(block), 0, STREAM_DEFAULT, C_d, A_d, index);
   CHECK_SYNC("hl_sequence_softmax_forward failed");
 }
 
@@ -241,7 +242,7 @@ void hl_matrix_softmax_derivative(
   dim3 threads(1, 1024);
   dim3 grid(blocksX, blocksY);
 
-  KeMatrixDerivative<<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMatrixDerivative), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       grad_d, output_d, sftmaxSum_d, dimM, dimN);
   CHECK_SYNC("hl_matrix_softmax_derivative failed");
 }
@@ -276,7 +277,7 @@ void hl_matrix_multi_binary_cross_entropy(real* output,
   dim3 threads(n_threads);
   dim3 grid(blocks);
   hl_csr_matrix mat = (hl_csr_matrix)(csr_mat->matrix);
-  KeMatrixMultiBinaryCrossEntropy<<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMatrixMultiBinaryCrossEntropy), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       output, entropy, mat->csr_row, mat->csr_col, dimM, dimN);
   CHECK_SYNC("hl_matrix_multi_binary_cross_entropy failed");
 }
@@ -309,7 +310,7 @@ void hl_matrix_multi_binary_cross_entropy_bp(
   dim3 threads(n_threads);
   dim3 grid(blocks);
   hl_csr_matrix mat = (hl_csr_matrix)(csr_mat->matrix);
-  KeMatrixMultiBinaryCrossEntropyBp<<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMatrixMultiBinaryCrossEntropyBp), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       output, grad, mat->csr_row, mat->csr_col, dimM, dimN);
   CHECK_SYNC("hl_matrix_multi_binary_cross_entropy_bp failed");
 }
@@ -333,7 +334,7 @@ void hl_matrix_cross_entropy(
   int blocks = (dimM + 1024 - 1) / 1024;
   dim3 threads(1024, 1);
   dim3 grid(blocks, 1);
-  KeMatrixCrossEntropy<<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMatrixCrossEntropy), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       A_d, C_d, label_d, dimM, dimN);
   CHECK_SYNC("hl_matrix_cross_entropy failed");
 }
@@ -361,7 +362,7 @@ void hl_matrix_cross_entropy_bp(
   int blocksY = (dimN + 1024 - 1) / 1024;
   dim3 threads(1, 1024);
   dim3 grid(blocksX, blocksY);
-  KeMatrixCrossEntropyBp<<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMatrixCrossEntropyBp), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       grad_d, output_d, label_d, dimM, dimN);
   CHECK_SYNC("hl_matrix_cross_entropy_bp failed");
 }
@@ -398,7 +399,7 @@ void hl_param_relu_forward(real* output,
   int blockX = (width + 16 - 1) / 16;
   int blockY = (height + 16 - 1) / 16;
   dim3 grid(blockX, blockY);
-  KeParamReluForward<<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeParamReluForward), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       output, input, w, width, height, partial_sum);
   CHECK_SYNC("hl_param_relu_forward failed");
 }
@@ -448,7 +449,7 @@ void hl_param_relu_backward_w(real* grad_w,
   int grid_num = width / partial_sum;
   dim3 threads(blockSize, 1);
   dim3 grid(grid_num, 1);
-  KeParamReluBackWardW<blockSize><<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeParamReluBackWardW<blockSize>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       grad_w, grad_o, input, width, height, partial_sum);
   CHECK_SYNC("hl_param_relu_backward_w failed");
 }
@@ -483,7 +484,7 @@ void hl_param_relu_backward_diff(real* grad_o,
   int blockX = (width + 16 - 1) / 16;
   int blockY = (height + 16 - 1) / 16;
   dim3 grid(blockX, blockY);
-  KeParamReluBackwardDiff<<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeParamReluBackwardDiff), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       grad_o, data, w, diff, width, height, partial_sum);
   CHECK_SYNC("hl_param_relu_backward_diff failed");
 }
@@ -507,7 +508,7 @@ void hl_matrix_add_shared_bias(real* A_d,
                                real scale) {
   const int blocks = 512;
   const int grids = DIVUP(dimM * dimN, blocks);
-  KeMatrixAddSharedBias<<<grids, blocks, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMatrixAddSharedBias), dim3(grids), dim3(blocks), 0, STREAM_DEFAULT, 
       A_d, B_d, channel, dimM, dimN, scale);
   CHECK_SYNC("hl_matrix_add_shared_bias failed");
 }
@@ -563,7 +564,7 @@ void hl_matrix_collect_shared_bias(real* B_d,
   const int limit = 64;
   int grids = (dimM * dim) < limit ? DIVUP(channel, blocks) : channel;
 
-  KeMatrixCollectSharedBias<blocks><<<grids, blocks, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMatrixCollectSharedBias<blocks>), dim3(grids), dim3(blocks), 0, STREAM_DEFAULT, 
       B_d, A_d, channel, dimM, dimN, dim, limit, scale);
   CHECK_SYNC("hl_matrix_collect_shared_bias failed");
 }
@@ -588,7 +589,7 @@ void hl_matrix_rotate(
   CHECK_NOTNULL(matRot);
   const int threads = 512;
   const int blocks = DIVUP(dimM * dimN, threads);
-  keMatrixRotate<<<blocks, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((keMatrixRotate), dim3(blocks), dim3(threads), 0, STREAM_DEFAULT, 
       mat, matRot, dimM, dimN, clockWise);
   CHECK_SYNC("hl_matrix_rotate failed");
 }
@@ -666,7 +667,7 @@ void hl_matrix_vol2Col(const real* dataSrc,
   const int threads = 512;
   const int blocks = DIVUP(num_kernels, threads);
 
-  keMatrixVol2Col<<<blocks, threads, 0, STREAM_DEFAULT>>>(num_kernels,
+  hipLaunchKernelGGL((keMatrixVol2Col), dim3(blocks), dim3(threads), 0, STREAM_DEFAULT, num_kernels,
                                                           dataSrc,
                                                           dataDst,
                                                           depth,
@@ -770,7 +771,7 @@ void hl_matrix_col2Vol(real* dataDst,
   const int threads = 512;
   const int blocks = DIVUP(num_kernels, threads);
 
-  keMatrixCol2Vol<<<blocks, threads, 0, STREAM_DEFAULT>>>(num_kernels,
+  hipLaunchKernelGGL((keMatrixCol2Vol), dim3(blocks), dim3(threads), 0, STREAM_DEFAULT, num_kernels,
                                                           dataDst,
                                                           dataSrc,
                                                           depth,
@@ -801,6 +802,6 @@ __global__ void keVectorCast2Int(int* out, real* vec, int size) {
 }
 
 void hl_vector_cast2int(int* out, real* vec, int size) {
-  keVectorCast2Int<<<1, 512, 0, STREAM_DEFAULT>>>(out, vec, size);
+  hipLaunchKernelGGL((keVectorCast2Int), dim3(1), dim3(512), 0, STREAM_DEFAULT, out, vec, size);
   CHECK_SYNC("hl_vector_cast2int failed");
 }

@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +17,7 @@ limitations under the License. */
 #ifndef HL_GPU_GRU_CUH_
 #define HL_GPU_GRU_CUH_
 
-#ifdef __NVCC__
+#ifdef __HIPCC__
 
 #include "paddle/utils/Logging.h"
 
@@ -136,13 +137,11 @@ void hl_gpu_gru_forward(OpResetOutput opResetOutput,
   }
 
   if (batchSize == 1) {
-    KeGruForwardResetOutput<OpResetOutput, /* isBatch= */false>
-      <<<grid, threads, 0, STREAM_DEFAULT>>>(opResetOutput,
+    hipLaunchKernelGGL((KeGruForwardResetOutput<OpResetOutput, /* isBatch= */false>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, opResetOutput,
         value.gateValue, value.resetOutputValue, value.prevOutValue,
         frameSize, batchSize, active_gate);
   } else {
-    KeGruForwardResetOutput<OpResetOutput, /* isBatch= */true>
-      <<<grid, threads, 0, STREAM_DEFAULT>>>(opResetOutput,
+    hipLaunchKernelGGL((KeGruForwardResetOutput<OpResetOutput, /* isBatch= */true>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, opResetOutput,
         value.gateValue, value.resetOutputValue, value.prevOutValue,
         frameSize, batchSize, active_gate);
   }
@@ -157,13 +156,11 @@ void hl_gpu_gru_forward(OpResetOutput opResetOutput,
   }
 
   if (batchSize == 1) {
-    KeGruForwardFinalOutput<OpFinalOutput, /* isBatch= */false>
-      <<<grid, threads, 0, STREAM_DEFAULT>>>(opFinalOutput,
+    hipLaunchKernelGGL((KeGruForwardFinalOutput<OpFinalOutput, /* isBatch= */false>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, opFinalOutput,
         value.gateValue, value.prevOutValue, value.outputValue,
         frameSize, batchSize, active_node);
   } else {
-    KeGruForwardFinalOutput<OpFinalOutput, /* isBatch= */true>
-      <<<grid, threads, 0, STREAM_DEFAULT>>>(opFinalOutput,
+    hipLaunchKernelGGL((KeGruForwardFinalOutput<OpFinalOutput, /* isBatch= */true>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, opFinalOutput,
         value.gateValue, value.prevOutValue, value.outputValue,
         frameSize, batchSize, active_node);
   }
@@ -307,13 +304,11 @@ void hl_gpu_gru_backward(OpStateGrad opStateGrad,
   }
 
   if (batchSize == 1) {
-    KeGruBackwardStateGrad<OpStateGrad, /* isBatch= */false>
-      <<<grid, threads, 0, STREAM_DEFAULT>>>(opStateGrad,
+    hipLaunchKernelGGL((KeGruBackwardStateGrad<OpStateGrad, /* isBatch= */false>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, opStateGrad,
         value.gateValue, grad.gateGrad, value.prevOutValue, grad.prevOutGrad,
         grad.outputGrad, frameSize, batchSize, active_node);
   } else {
-    KeGruBackwardStateGrad<OpStateGrad, /* isBatch= */true>
-      <<<grid, threads, 0, STREAM_DEFAULT>>>(opStateGrad,
+    hipLaunchKernelGGL((KeGruBackwardStateGrad<OpStateGrad, /* isBatch= */true>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, opStateGrad,
         value.gateValue, grad.gateGrad, value.prevOutValue, grad.prevOutGrad,
         grad.outputGrad, frameSize, batchSize, active_node);
   }
@@ -336,13 +331,11 @@ void hl_gpu_gru_backward(OpStateGrad opStateGrad,
   }
 
   if (batchSize == 1) {
-    KeGruBackwardResetGrad<OpResetGrad, /* isBatch= */false>
-      <<<grid, threads, 0, STREAM_DEFAULT>>>(opResetGrad,
+    hipLaunchKernelGGL((KeGruBackwardResetGrad<OpResetGrad, /* isBatch= */false>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, opResetGrad,
         value.gateValue, grad.gateGrad, value.prevOutValue, grad.prevOutGrad,
         grad.resetOutputGrad, frameSize, batchSize, active_gate);
   } else {
-    KeGruBackwardResetGrad<OpResetGrad, /* isBatch= */true>
-      <<<grid, threads, 0, STREAM_DEFAULT>>>(opResetGrad,
+    hipLaunchKernelGGL((KeGruBackwardResetGrad<OpResetGrad, /* isBatch= */true>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, opResetGrad,
         value.gateValue, grad.gateGrad, value.prevOutValue, grad.prevOutGrad,
         grad.resetOutputGrad, frameSize, batchSize, active_gate);
   }
