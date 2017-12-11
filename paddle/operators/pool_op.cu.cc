@@ -16,18 +16,18 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     pool2d, ops::PoolKernel<paddle::platform::CUDADeviceContext, float>,
     ops::PoolKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     pool2d_grad,
     ops::PoolGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::PoolGradKernel<paddle::platform::CUDADeviceContext, double>);
 
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     pool3d, ops::PoolKernel<paddle::platform::CUDADeviceContext, float>,
     ops::PoolKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     pool3d_grad,
     ops::PoolGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::PoolGradKernel<paddle::platform::CUDADeviceContext, double>);

@@ -14,7 +14,7 @@
 
 #include "paddle/operators/scale_op.h"
 
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     scale,
     paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext, float>,
     paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext, double>,

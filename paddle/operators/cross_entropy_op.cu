@@ -54,8 +54,8 @@ class CrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(ctx.GetPlace());
 
     math::CrossEntropyFunctor<platform::CUDADeviceContext, T>()(
-        ctx.template device_context<platform::CUDADeviceContext>(),
-        y, x, label, ctx.Attr<bool>("soft_label"));
+        ctx.template device_context<platform::CUDADeviceContext>(), y, x, label,
+        ctx.Attr<bool>("soft_label"));
   }
 };
 
@@ -104,8 +104,8 @@ class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(cross_entropy, ops::CrossEntropyOpCUDAKernel<float>,
-                       ops::CrossEntropyOpCUDAKernel<double>);
-REGISTER_OP_GPU_KERNEL(cross_entropy_grad,
-                       ops::CrossEntropyGradientOpCUDAKernel<float>,
-                       ops::CrossEntropyGradientOpCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(cross_entropy, ops::CrossEntropyOpCUDAKernel<float>,
+                        ops::CrossEntropyOpCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(cross_entropy_grad,
+                        ops::CrossEntropyGradientOpCUDAKernel<float>,
+                        ops::CrossEntropyGradientOpCUDAKernel<double>);

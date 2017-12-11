@@ -16,7 +16,7 @@
 #include "paddle/framework/op_registry.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     fill_constant_batch_size_like,
     ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CUDADeviceContext,
                                            float>,

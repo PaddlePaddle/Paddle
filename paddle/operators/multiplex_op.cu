@@ -88,9 +88,9 @@ class MultiplexGradGPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     multiplex,
     ops::MultiplexGPUKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     multiplex_grad,
     ops::MultiplexGradGPUKernel<paddle::platform::CUDADeviceContext, float>);

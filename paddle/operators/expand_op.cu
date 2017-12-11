@@ -17,8 +17,8 @@
 #include "paddle/operators/expand_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     expand, ops::ExpandKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     expand_grad,
     ops::ExpandGradKernel<paddle::platform::CUDADeviceContext, float>);

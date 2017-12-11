@@ -72,8 +72,8 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
     math::SoftmaxFunctor<platform::CUDADeviceContext, T>()(
         context.cuda_device_context(), logits, softmax);
     math::CrossEntropyFunctor<platform::CUDADeviceContext, T>()(
-        context.cuda_device_context(), loss, softmax,
-        labels, context.Attr<bool>("soft_label"));
+        context.cuda_device_context(), loss, softmax, labels,
+        context.Attr<bool>("soft_label"));
   }
 };
 
@@ -118,9 +118,9 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(softmax_with_cross_entropy,
-                       ops::SoftmaxWithCrossEntropyCUDAKernel<float>,
-                       ops::SoftmaxWithCrossEntropyCUDAKernel<double>);
-REGISTER_OP_GPU_KERNEL(softmax_with_cross_entropy_grad,
-                       ops::SoftmaxWithCrossEntropyGradCUDAKernel<float>,
-                       ops::SoftmaxWithCrossEntropyGradCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(softmax_with_cross_entropy,
+                        ops::SoftmaxWithCrossEntropyCUDAKernel<float>,
+                        ops::SoftmaxWithCrossEntropyCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(softmax_with_cross_entropy_grad,
+                        ops::SoftmaxWithCrossEntropyGradCUDAKernel<float>,
+                        ops::SoftmaxWithCrossEntropyGradCUDAKernel<double>);

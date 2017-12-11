@@ -17,13 +17,13 @@
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     elementwise_add,
     ops::ElementwiseAddKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ElementwiseAddKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseAddKernel<paddle::platform::CUDADeviceContext, int>,
     ops::ElementwiseAddKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     elementwise_add_grad,
     ops::ElementwiseAddGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ElementwiseAddGradKernel<paddle::platform::CUDADeviceContext, double>,

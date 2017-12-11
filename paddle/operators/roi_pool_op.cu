@@ -199,11 +199,11 @@ class GPUROIPoolGradOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     roi_pool,
     ops::GPUROIPoolOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::GPUROIPoolOpKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     roi_pool_grad,
     ops::GPUROIPoolGradOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::GPUROIPoolOpKernel<paddle::platform::CUDADeviceContext, double>);

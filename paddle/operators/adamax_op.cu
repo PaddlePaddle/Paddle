@@ -16,6 +16,6 @@
 #include "paddle/operators/adamax_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     adamax, ops::AdamaxOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::AdamaxOpKernel<paddle::platform::CUDADeviceContext, double>);

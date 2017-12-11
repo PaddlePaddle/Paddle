@@ -16,7 +16,7 @@
 #include "paddle/operators/pad_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     pad, ops::PadKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     pad_grad, ops::PadGradKernel<paddle::platform::CUDADeviceContext, float>);

@@ -18,12 +18,12 @@
 namespace ops = paddle::operators;
 
 #define REGISTER_ACTIVATION_GPU_KERNEL(act_type, functor, grad_functor)    \
-  REGISTER_OP_GPU_KERNEL(                                                  \
+  REGISTER_OP_CUDA_KERNEL(                                                 \
       act_type, ops::ActivationKernel<paddle::platform::CUDADeviceContext, \
                                       ops::functor<float>>,                \
       ops::ActivationKernel<paddle::platform::CUDADeviceContext,           \
                             ops::functor<double>>);                        \
-  REGISTER_OP_GPU_KERNEL(                                                  \
+  REGISTER_OP_CUDA_KERNEL(                                                 \
       act_type##_grad,                                                     \
       ops::ActivationGradKernel<paddle::platform::CUDADeviceContext,       \
                                 ops::grad_functor<float>>,                 \

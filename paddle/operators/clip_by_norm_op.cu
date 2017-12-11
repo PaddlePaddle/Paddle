@@ -15,6 +15,6 @@
 #include "paddle/operators/clip_by_norm_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     clip_by_norm,
     ops::ClipByNormKernel<paddle::platform::CUDADeviceContext, float>);

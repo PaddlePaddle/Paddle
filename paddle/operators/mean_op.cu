@@ -17,9 +17,9 @@
 #include "paddle/operators/mean_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     mean, ops::MeanKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MeanKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     mean_grad, ops::MeanGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MeanGradKernel<paddle::platform::CUDADeviceContext, double>);

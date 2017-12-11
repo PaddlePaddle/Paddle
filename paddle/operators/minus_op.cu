@@ -14,6 +14,6 @@
 
 #include "paddle/operators/minus_op.h"
 
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     minus,
     paddle::operators::MinusKernel<paddle::platform::CUDADeviceContext, float>);

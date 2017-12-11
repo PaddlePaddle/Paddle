@@ -80,9 +80,9 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     dropout,
     ops::GPUDropoutKernel<paddle::platform::CUDADeviceContext, float, float>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     dropout_grad,
     ops::DropoutGradKernel<paddle::platform::CUDADeviceContext, float>);

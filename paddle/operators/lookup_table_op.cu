@@ -85,8 +85,8 @@ template <typename T>
 class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto& dev_ctx = context.
-        template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx =
+        context.template device_context<platform::CUDADeviceContext>();
     bool is_sparse = context.Attr<bool>("is_sparse");
     if (is_sparse) {
       auto* ids = context.Input<LoDTensor>("Ids");
@@ -131,14 +131,11 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       T* d_table = d_table_t->mutable_data<T>(context.GetPlace());
 
       auto t = framework::EigenVector<T>::Flatten(*d_table_t);
-      t.device(*dev_ctx.eigen_device()) =
-          t.constant(static_cast<T>(0));
+      t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
       dim3 threads(128, 8);
       dim3 grids(8, 1);
-      LookupTableGrad<
-          T, 128, 8,
-          8><<<grids, threads, 0, dev_ctx.stream()>>>(
+      LookupTableGrad<T, 128, 8, 8><<<grids, threads, 0, dev_ctx.stream()>>>(
           d_table, d_output, ids, N, K, D);
     }
   }
@@ -148,7 +145,8 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(lookup_table, ops::LookupTableCUDAKernel<float>,
-                       ops::LookupTableCUDAKernel<double>);
-REGISTER_OP_GPU_KERNEL(lookup_table_grad, ops::LookupTableGradCUDAKernel<float>,
-                       ops::LookupTableGradCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(lookup_table, ops::LookupTableCUDAKernel<float>,
+                        ops::LookupTableCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(lookup_table_grad,
+                        ops::LookupTableGradCUDAKernel<float>,
+                        ops::LookupTableGradCUDAKernel<double>);

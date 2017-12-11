@@ -14,6 +14,6 @@
 
 #include "paddle/operators/sign_op.h"
 
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     sign,
     paddle::operators::SignKernel<paddle::platform::CUDADeviceContext, float>);

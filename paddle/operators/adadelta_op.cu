@@ -16,6 +16,6 @@
 #include "paddle/operators/adadelta_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     adadelta, ops::AdadeltaOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::AdadeltaOpKernel<paddle::platform::CUDADeviceContext, double>);

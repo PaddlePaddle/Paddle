@@ -75,6 +75,6 @@ template struct SparseSGDFunctor<platform::CUDADeviceContext, double>;
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     sgd, ops::SGDOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SGDOpKernel<paddle::platform::CUDADeviceContext, double>);

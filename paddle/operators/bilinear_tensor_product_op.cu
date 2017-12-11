@@ -16,13 +16,13 @@ limitations under the License. */
 #include "paddle/operators/bilinear_tensor_product_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     bilinear_tensor_product,
     ops::BilinearTensorProductKernel<paddle::platform::CUDADeviceContext,
                                      float>,
     ops::BilinearTensorProductKernel<paddle::platform::CUDADeviceContext,
                                      double>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     bilinear_tensor_product_grad,
     ops::BilinearTensorProductGradKernel<paddle::platform::CUDADeviceContext,
                                          float>,
