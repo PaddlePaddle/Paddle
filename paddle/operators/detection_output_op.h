@@ -71,10 +71,11 @@ class Detection_output_Kernel : public framework::OpKernel<T> {
         framework::make_ddim(conf_shape_softmax_vec));
     // for knchw => nhwc
     std::vector<int64_t> loc_shape_vec({1, in_loc->dims()[1], in_loc->dims()[3],
-                                        in_loc->dims()[4], in_loc->dims()[2]});
-    std::vector<int64_t> conf_shape_vec({1, in_conf->dims()[1],
-                                         in_conf->dims()[3], in_conf->dims()[4],
-                                         in_conf->dims()[2]});
+                                        in_loc->dims()[4],
+                                        in_loc->dims()[2] * in_loc->dims()[0]});
+    std::vector<int64_t> conf_shape_vec(
+        {1, in_conf->dims()[1], in_conf->dims()[3], in_conf->dims()[4],
+         in_conf->dims()[2] * in_conf->dims()[0]});
     framework::DDim loc_shape(framework::make_ddim(loc_shape_vec));
     framework::DDim conf_shape(framework::make_ddim(conf_shape_vec));
     framework::Tensor loc_tensor;
