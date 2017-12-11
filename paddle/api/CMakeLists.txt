@@ -30,7 +30,8 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-parentheses-equality -Wno-missing-f
 
 SET(SWIG_MODULE_swig_paddle_EXTRA_DEPS
     paddle_parameter
-    paddle_function
+    paddle_function_cpu
+    paddle_function_gpu
     paddle_math
     paddle_utils
     paddle_gserver
@@ -59,7 +60,8 @@ SWIG_LINK_LIBRARIES(swig_paddle
     ${START_GROUP}
     ${ARCHIVE_START}
     paddle_gserver
-    paddle_function
+    paddle_function_cpu
+    paddle_function_gpu
     ${METRIC_LIBS}
     ${ARCHIVE_END}
     paddle_pserver

@@ -25,7 +25,7 @@ if(WITH_GPU)
         ${CUDA_CXX_WITH_GPU_SOURCES})
 
     set_source_files_properties(${CUDA_CXX_SOURCES}
-                                PROPERTIES COMPILE_FLAGS "-D__NVCC__")
+                                PROPERTIES COMPILE_FLAGS "-D__HIPCC__")
 else()
     if (NOT MOBILE_INFERENCE)
     set(CUDA_CXX_SOURCES src/hl_warpctc_wrap.cc)
@@ -76,7 +76,7 @@ set(CUDA_HEADERS
     include/hl_cnn.h)
 
 if(WITH_GPU)
-    cuda_add_library(paddle_cuda
+    HIP_ADD_LIBRARY(paddle_cuda
         ${CUDA_SOURCES}
         ${CUDA_CU_SOURCES}
         ${CUDA_CXX_SOURCES})

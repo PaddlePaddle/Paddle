@@ -68,7 +68,8 @@ EOF
         -DCUDNN_ROOT=/usr/ \
         -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON} \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
 }
 
 function run_build() {

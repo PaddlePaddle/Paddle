@@ -47,7 +47,7 @@ if(NOT WITH_GPU)
     add_library(paddle_math STATIC
         ${MATH_SOURCES})
 else()
-    cuda_add_library(paddle_math ${MATH_SOURCES})
+    HIP_ADD_LIBRARY(paddle_math ${MATH_SOURCES})
 endif()
 
 
