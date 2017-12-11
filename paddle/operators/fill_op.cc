@@ -49,22 +49,26 @@ class FillOp : public framework::OperatorBase {
                         .GetMutable<framework::LoDTensor>());
     out.Resize(framework::make_ddim(Attr<std::vector<int>>("shape")));
     auto dtype = static_cast<framework::DataType>(Attr<int>("dtype"));
-    out.mutable_data(dev_ctx.GetPlace(), framework::ToTypeIndex(dtype));
+    platform::CPUPlace cpu;
+    auto force_cpu = Attr<bool>("force_cpu");
+    out.mutable_data(force_cpu ? cpu : dev_ctx.GetPlace(),
+                     framework::ToTypeIndex(dtype));
 
     framework::LoDTensor tensor;
-    auto force_cpu = Attr<bool>("force_cpu");
 
     if (force_cpu || platform::is_cpu_place(dev_ctx.GetPlace())) {
       tensor.ShareDataWith(out);
     } else {
+      // Always make tensor in CPU memory.
       tensor.Resize(out.dims());
-      tensor.mutable_data(dev_ctx.GetPlace(), framework::ToTypeIndex(dtype));
+      tensor.mutable_data(cpu, framework::ToTypeIndex(dtype));
     }
 
     framework::VisitDataType(
         dtype, FillOpVisitor(&tensor, Attr<std::vector<float>>("value")));
 
     if (!force_cpu && platform::is_gpu_place(dev_ctx.GetPlace())) {
+      // Copy tensor to out
       framework::CopyFrom(tensor, dev_ctx.GetPlace(), dev_ctx, &out);
     }
   }
