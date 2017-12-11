@@ -21,7 +21,7 @@ from .activations import LinearActivation, SigmoidActivation, TanhActivation, \
     ReluActivation, IdentityActivation, SoftmaxActivation, BaseActivation
 from .evaluators import *
 from .poolings import MaxPooling, AvgPooling, MaxWithMaskPooling, BasePoolingType, \
-    CudnnAvgPooling, CudnnMaxPooling
+    CudnnAvgPooling, CudnnAvgInclPadPooling, CudnnMaxPooling
 from .attrs import *
 from .default_decorators import *
 
@@ -148,6 +148,7 @@ __all__ = [
     'resize_layer',
     'sub_seq_layer',
     'scale_sub_region_layer',
+    'factorization_machine',
 ]
 
 
@@ -263,6 +264,8 @@ class LayerType(object):
     SUB_SEQ_LAYER = 'subseq'
 
     SCALE_SUB_REGION_LAYER = 'scale_sub_region'
+
+    FACTORIZATION_MACHINE = 'factorization_machine'
 
     @staticmethod
     def is_layer_type(type_name):
@@ -2713,7 +2716,8 @@ def img_pool_layer(input,
                    pool_size_y=None,
                    stride_y=None,
                    padding_y=None,
-                   ceil_mode=True):
+                   ceil_mode=True,
+                   exclude_mode=None):
     """
     Image pooling Layer.
 
@@ -2725,15 +2729,15 @@ def img_pool_layer(input,
 
     ..  math::
 
-        w = 1 + int(ceil(input\_width + 2 * padding - pool\_size) / float(stride))
-        h = 1 + int(ceil(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
+        w = 1 + \frac{ceil(input\_width + 2 * padding - pool\_size)}{stride} \\\\
+        h = 1 + \frac{ceil(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
 
     - ceil_mode=False:
 
     ..  math::
 
-        w = 1 + int(floor(input\_width + 2 * padding - pool\_size) / float(stride))
-        h = 1 + int(floor(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
+        w = 1 + \frac{floor(input\_width + 2 * padding - pool\_size)}{stride} \\\\
+        h = 1 + \frac{floor(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
 
     The example usage is:
 
@@ -2777,10 +2781,15 @@ def img_pool_layer(input,
     :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
                        details.
     :type layer_attr: ExtraLayerAttribute
-    :param ceil_mode: Wether to use the ceil function to calculate output height and width.
+    :param ceil_mode: Whether to use the ceil function to calculate output height and width.
                       True is the default. If it is set to False, the floor function will
                       be used.
     :type ceil_mode: bool
+    :param exclude_mode: Whether to exclude the padding cells when calculating, but only 
+                         work when pool_type is AvgPooling. If None, also exclude the padding 
+                         cells. If use cudnn, use CudnnAvgPooling or CudnnAvgInclPadPooling 
+                         as pool_type to identify the mode.
+    :type exclude_mode: bool
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -2794,7 +2803,7 @@ def img_pool_layer(input,
         pool_type.name = 'avg'
 
     assert type(pool_type) in [AvgPooling, MaxPooling, MaxWithMaskPooling, CudnnAvgPooling,
-                               CudnnMaxPooling], \
+                               CudnnMaxPooling, CudnnAvgInclPadPooling], \
         "only (Cudnn)AvgPooling, (Cudnn)MaxPooling, MaxWithMaskPooling are supported"
 
     type_name = pool_type.name + '-projection' \
@@ -2823,6 +2832,7 @@ def img_pool_layer(input,
                     padding_y=padding_y))
         ],
         ceil_mode=ceil_mode,
+        exclude_mode=exclude_mode,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name,
@@ -2860,17 +2870,17 @@ def img_pool3d_layer(input,
 
     ..  math::
 
-        w = 1 + int(ceil(input\_width + 2 * padding - pool\_size) / float(stride))
-        h = 1 + int(ceil(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
-        d = 1 + int(ceil(input\_depth + 2 * padding\_z - pool\_size\_z) / float(stride\_z))
+        w = 1 + \frac{ceil(input\_width + 2 * padding - pool\_size)}{stride} \\\\
+        h = 1 + \frac{ceil(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y} \\\\
+        d = 1 + \frac{ceil(input\_depth + 2 * padding\_z - pool\_size\_z)}{stride\_z}
 
     - ceil_mode=False:
 
     ..  math::
 
-        w = 1 + int(floor(input\_width + 2 * padding - pool\_size) / float(stride))
-        h = 1 + int(floor(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
-        d = 1 + int(floor(input\_depth + 2 * padding\_z - pool\_size\_z) / float(stride\_z))
+        w = 1 + \frac{floor(input\_width + 2 * padding - pool\_size)}{stride} \\\\
+        h = 1 + \frac{floor(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y} \\\\
+        d = 1 + \frac{floor(input\_depth + 2 * padding\_z - pool\_size\_z)}{stride\_z} \\\\
 
     The example usage is:
 
@@ -5425,13 +5435,15 @@ def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
         `Multi-digit Number Recognition from Street View Imagery using Deep Convolutional Neural Networks
         <https://arxiv.org/pdf/1312.6082v4.pdf>`_
 
+
     .. math::
-       y_{si+j} = \max_k x_{gsi + sk + j}
-       g = groups
-       s = input.size / num_channels
-       0 \le i < num_channels / groups
-       0 \le j < s
-       0 \le k < groups
+       out = \max_k (in[n, k, o_c , s])   \\\\
+       out_{i * s + j} = \max_k in_{  k * o_{c} * s + i * s + j}  \\\\
+       s = \frac{input.size}{ num\_channels}       \\\\
+       o_{c} =\frac{num\_channels}{groups}         \\\\
+       0 \le i < o_{c}                             \\\\
+       0 \le j < s                                 \\\\
+       0 \le k < groups                            \\\\
 
     The simple usage is:
 
@@ -6881,6 +6893,7 @@ def crop_layer(input, offset, axis=2, shape=None, name=None, layer_attr=None):
 
     :param input: The input of this layer. If two inputs are given, the second one
                   will be regarded as the reference.
+                  And the input must be 4-dims and in NCHW order.
     :type input: LayerOutput | Sequence
     :param offset: The crop offset.
     :type offset: Sequence
@@ -7414,3 +7427,73 @@ def scale_sub_region_layer(input, indices, value, name=None):
         parents=[input, indices],
         num_filters=input.num_filters,
         size=input.size)
+
+
+@wrap_name_default()
+@wrap_act_default(act=LinearActivation())
+@wrap_param_attr_default()
+@layer_support()
+def factorization_machine(input,
+                          factor_size,
+                          act=None,
+                          name=None,
+                          param_attr=None,
+                          layer_attr=None):
+    """
+    The Factorization Machine models pairwise feature interactions as inner
+    product of the learned latent vectors corresponding to each input feature.
+    The Factorization Machine can effectively capture feature interactions
+    especially when the input is sparse.
+
+    This implementation only consider the 2-order feature interactions using
+    Factorization Machine with the formula:
+
+    .. math::
+        y = \sum_{i=1}^{n-1}\sum_{j=i+1}^n\langle v_i, v_j \rangle x_i x_j
+
+    Note:
+        X is the input vector with size n. V is the factor matrix. Each row of V
+        is the latent vector corresponding to each input dimesion. The size of
+        each latent vector is k.
+
+    For details of Factorization Machine, please refer to the paper:
+    Factorization machines.
+
+    .. code-block:: python
+        first_order = paddle.layer.fc(input=input,
+                                      size=1,
+                                      act=paddle.activation.Linear())
+        second_order = paddle.layer.factorization_machine(input=input,
+                                                          factor_size=10)
+        fm = paddle.layer.addto(input=[first_order, second_order],
+                                act=paddle.activation.Linear(),
+                                bias_attr=False)
+
+    :param input: The input layer. Supported input types: all input data types
+                  on CPU, and only dense input types on GPU.
+    :type input: LayerOutput
+    :param factor_size: The hyperparameter that defines the dimensionality of
+                        the latent vector size.
+    :type context_len: int
+    :param act: Activation Type. Default is linear activation.
+    :type act: BaseActivation
+    :param param_attr: The parameter attribute. See ParameterAttribute for
+                       details.
+    :type param_attr: ParameterAttribute
+    :param layer_attr: Extra Layer config.
+    :type layer_attr: ExtraLayerAttribute|None
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input, LayerOutput)
+    assert factor_size > 0, "the factor_size must be greater than 0."
+
+    Layer(
+        inputs=[Input(input.name, **param_attr.attr)],
+        name=name,
+        factor_size=factor_size,
+        type=LayerType.FACTORIZATION_MACHINE,
+        active_type=act.name,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name, LayerType.FACTORIZATION_MACHINE, input, activation=act, size=1)

@@ -25,393 +25,397 @@ namespace detail {
 #ifndef __NVCC__
 
 template <class OpResetOutput, typename T>
-void hl_naive_gru_forward_reset_output(OpResetOutput opResetOutput,
-                                       T *gateValue, T *resetOutputValue,
-                                       T *prevOutputValue, int frameSize,
+void hl_naive_gru_forward_reset_output(OpResetOutput op_reset_output,
+                                       T *gate_value, T *reset_output_value,
+                                       T *prev_output_value, int frame_size,
                                        activation_mode_t active_gate) {
-  T rValueUpdateGate;
-  T rValueResetGate;
-  T rValueResetOutput;
-  T rPrevOut = 0;
-  T *updateGate = gateValue;
-  T *resetGate = gateValue + frameSize;
+  T r_value_update_gate;
+  T r_value_reset_gate;
+  T r_value_reset_output;
+  T r_prev_out = 0;
+  T *update_gate = gate_value;
+  T *reset_gate = gate_value + frame_size;
 
-  for (int i = 0; i < frameSize; i++) {
-    rValueUpdateGate = updateGate[i];
-    rValueResetGate = resetGate[i];
-    if (prevOutputValue) {
-      rPrevOut = prevOutputValue[i];
+  for (int i = 0; i < frame_size; i++) {
+    r_value_update_gate = update_gate[i];
+    r_value_reset_gate = reset_gate[i];
+    if (prev_output_value) {
+      r_prev_out = prev_output_value[i];
     }
 
-    opResetOutput(rValueUpdateGate, rValueResetGate, rPrevOut,
-                  rValueResetOutput, active_gate);
+    op_reset_output(r_value_update_gate, r_value_reset_gate, r_prev_out,
+                    r_value_reset_output, active_gate);
 
-    updateGate[i] = rValueUpdateGate;
-    resetGate[i] = rValueResetGate;
-    resetOutputValue[i] = rValueResetOutput;
+    update_gate[i] = r_value_update_gate;
+    reset_gate[i] = r_value_reset_gate;
+    reset_output_value[i] = r_value_reset_output;
   }
 }
 
 template <class OpFinalOutput, typename T>
-void hl_naive_gru_forward_final_output(OpFinalOutput opFinalOutput,
-                                       T *gateValue, T *prevOutputValue,
-                                       T *outputValue, int frameSize,
+void hl_naive_gru_forward_final_output(OpFinalOutput op_final_output,
+                                       T *gate_value, T *prev_output_value,
+                                       T *output_value, int frame_size,
                                        activation_mode_t active_node) {
-  T rValueUpdateGate;
-  T rValueFrameState;
-  T rPrevOut = 0;
-  T rOutput;
-  T *updateGate = gateValue;
-  T *frameState = gateValue + frameSize * 2;
+  T r_value_update_gate;
+  T r_value_frame_state;
+  T r_prev_out = 0;
+  T r_output;
+  T *update_gate = gate_value;
+  T *frame_state = gate_value + frame_size * 2;
 
-  for (int i = 0; i < frameSize; i++) {
-    rValueUpdateGate = updateGate[i];
-    rValueFrameState = frameState[i];
-    if (prevOutputValue) {
-      rPrevOut = prevOutputValue[i];
+  for (int i = 0; i < frame_size; i++) {
+    r_value_update_gate = update_gate[i];
+    r_value_frame_state = frame_state[i];
+    if (prev_output_value) {
+      r_prev_out = prev_output_value[i];
     }
 
-    opFinalOutput(rValueUpdateGate, rValueFrameState, rPrevOut, rOutput,
-                  active_node);
+    op_final_output(r_value_update_gate, r_value_frame_state, r_prev_out,
+                    r_output, active_node);
 
-    frameState[i] = rValueFrameState;
-    outputValue[i] = rOutput;
+    frame_state[i] = r_value_frame_state;
+    output_value[i] = r_output;
   }
 }
 
 template <class OpResetOutput, typename T>
-void hl_avx_gru_forward_reset_output(OpResetOutput opResetOutput, T *gateValue,
-                                     T *resetOutputValue, T *prevOutputValue,
-                                     int frameSize,
+void hl_avx_gru_forward_reset_output(OpResetOutput op_reset_output,
+                                     T *gate_value, T *reset_output_value,
+                                     T *prev_output_value, int frame_size,
                                      activation_mode_t active_gate) {
 #ifdef __AVX__
-  __m256 rValueUpdateGate;
-  __m256 rValueResetGate;
-  __m256 rValueResetOutput;
-  __m256 rPrevOut = _mm256_set1_ps(0.0f);
-  __m256 *updateGate = (__m256 *)gateValue;
-  __m256 *resetGate = (__m256 *)(gateValue + frameSize);
+  __m256 r_value_update_gate;
+  __m256 r_value_reset_gate;
+  __m256 r_value_reset_output;
+  __m256 r_prev_out = _mm256_set1_ps(0.0f);
+  __m256 *update_gate = (__m256 *)gate_value;
+  __m256 *reset_gate = (__m256 *)(gate_value + frame_size);
 
-  for (int i = 0; i < frameSize / 8; i++) {
-    rValueUpdateGate = updateGate[i];
-    rValueResetGate = resetGate[i];
-    if (prevOutputValue) {
-      rPrevOut = ((__m256 *)prevOutputValue)[i];
+  for (int i = 0; i < frame_size / 8; i++) {
+    r_value_update_gate = update_gate[i];
+    r_value_reset_gate = reset_gate[i];
+    if (prev_output_value) {
+      r_prev_out = ((__m256 *)prev_output_value)[i];
     }
 
-    opResetOutput(rValueUpdateGate, rValueResetGate, rPrevOut,
-                  rValueResetOutput, active_gate);
+    op_reset_output(r_value_update_gate, r_value_reset_gate, r_prev_out,
+                    r_value_reset_output, active_gate);
 
-    updateGate[i] = rValueUpdateGate;
-    resetGate[i] = rValueResetGate;
-    ((__m256 *)resetOutputValue)[i] = rValueResetOutput;
+    update_gate[i] = r_value_update_gate;
+    reset_gate[i] = r_value_reset_gate;
+    ((__m256 *)reset_output_value)[i] = r_value_reset_output;
   }
 #endif
 }
 
 template <class OpFinalOutput, typename T>
-void hl_avx_gru_forward_final_output(OpFinalOutput opFinalOutput, T *gateValue,
-                                     T *prevOutputValue, T *outputValue,
-                                     int frameSize,
+void hl_avx_gru_forward_final_output(OpFinalOutput op_final_output,
+                                     T *gate_value, T *prev_output_value,
+                                     T *output_value, int frame_size,
                                      activation_mode_t active_node) {
 #ifdef __AVX__
-  __m256 rValueUpdateGate;
-  __m256 rValueFrameState;
-  __m256 rPrevOut = _mm256_set1_ps(0.0f);
-  __m256 rOutput;
-  __m256 *updateGate = (__m256 *)gateValue;
-  __m256 *frameState = (__m256 *)(gateValue + frameSize * 2);
+  __m256 r_value_update_gate;
+  __m256 r_value_frame_state;
+  __m256 r_prev_out = _mm256_set1_ps(0.0f);
+  __m256 r_output;
+  __m256 *update_gate = (__m256 *)gate_value;
+  __m256 *frame_state = (__m256 *)(gate_value + frame_size * 2);
 
-  for (int i = 0; i < frameSize / 8; i++) {
-    rValueUpdateGate = updateGate[i];
-    rValueFrameState = frameState[i];
-    if (prevOutputValue) {
-      rPrevOut = ((__m256 *)prevOutputValue)[i];
+  for (int i = 0; i < frame_size / 8; i++) {
+    r_value_update_gate = update_gate[i];
+    r_value_frame_state = frame_state[i];
+    if (prev_output_value) {
+      r_prev_out = ((__m256 *)prev_output_value)[i];
     }
 
-    opFinalOutput(rValueUpdateGate, rValueFrameState, rPrevOut, rOutput,
-                  active_node);
+    op_final_output(r_value_update_gate, r_value_frame_state, r_prev_out,
+                    r_output, active_node);
 
-    frameState[i] = rValueFrameState;
-    ((__m256 *)outputValue)[i] = rOutput;
+    frame_state[i] = r_value_frame_state;
+    ((__m256 *)output_value)[i] = r_output;
   }
 #endif
 }
 
 template <class OpResetOutput, typename T>
-inline void forward_reset_output(OpResetOutput opResetOutput,
-                                 hl_gru_value<T> value, int frameSize,
-                                 int batchSize, activation_mode_t active_gate) {
-  for (int b = 0; b < batchSize; b++) {
-    if (OpResetOutput::avx && !(frameSize & (8 - 1)) && (sizeof(T) == 4)) {
+inline void forward_reset_output(OpResetOutput op_reset_output,
+                                 hl_gru_value<T> value, int frame_size,
+                                 int batch_size,
+                                 activation_mode_t active_gate) {
+  for (int b = 0; b < batch_size; b++) {
+    if (OpResetOutput::avx && !(frame_size & (8 - 1)) && (sizeof(T) == 4)) {
       hl_avx_gru_forward_reset_output(
-          opResetOutput, value.gateValue, value.resetOutputValue,
-          value.prevOutValue, frameSize, active_gate);
+          op_reset_output, value.gate_value, value.reset_output_value,
+          value.prev_out_value, frame_size, active_gate);
     } else {
       hl_naive_gru_forward_reset_output(
-          opResetOutput, value.gateValue, value.resetOutputValue,
-          value.prevOutValue, frameSize, active_gate);
+          op_reset_output, value.gate_value, value.reset_output_value,
+          value.prev_out_value, frame_size, active_gate);
     }
 
-    value.gateValue += frameSize * 3;
-    value.resetOutputValue += frameSize;
-    if (value.prevOutValue) {
-      value.prevOutValue += frameSize;
+    value.gate_value += frame_size * 3;
+    value.reset_output_value += frame_size;
+    if (value.prev_out_value) {
+      value.prev_out_value += frame_size;
     }
   }
 }
 
 template <class OpFinalOutput, typename T>
-inline void forward_final_output(OpFinalOutput opFinalOutput,
-                                 hl_gru_value<T> value, int frameSize,
-                                 int batchSize, activation_mode_t active_node) {
-  for (int b = 0; b < batchSize; b++) {
-    if (OpFinalOutput::avx && !(frameSize & (8 - 1)) && (sizeof(T) == 4)) {
-      hl_avx_gru_forward_final_output(opFinalOutput, value.gateValue,
-                                      value.prevOutValue, value.outputValue,
-                                      frameSize, active_node);
+inline void forward_final_output(OpFinalOutput op_final_output,
+                                 hl_gru_value<T> value, int frame_size,
+                                 int batch_size,
+                                 activation_mode_t active_node) {
+  for (int b = 0; b < batch_size; b++) {
+    if (OpFinalOutput::avx && !(frame_size & (8 - 1)) && (sizeof(T) == 4)) {
+      hl_avx_gru_forward_final_output(op_final_output, value.gate_value,
+                                      value.prev_out_value, value.output_value,
+                                      frame_size, active_node);
     } else {
-      hl_naive_gru_forward_final_output(opFinalOutput, value.gateValue,
-                                        value.prevOutValue, value.outputValue,
-                                        frameSize, active_node);
+      hl_naive_gru_forward_final_output(
+          op_final_output, value.gate_value, value.prev_out_value,
+          value.output_value, frame_size, active_node);
     }
 
-    value.gateValue += frameSize * 3;
-    value.outputValue += frameSize;
-    if (value.prevOutValue) {
-      value.prevOutValue += frameSize;
+    value.gate_value += frame_size * 3;
+    value.output_value += frame_size;
+    if (value.prev_out_value) {
+      value.prev_out_value += frame_size;
     }
   }
 }
 
 template <class OpStateGrad, typename T>
-void hl_naive_gru_backward_state_grad(OpStateGrad opStateGrad, T *gateValue,
-                                      T *gateGrad, T *prevOutValue,
-                                      T *prevOutGrad, T *outputGrad,
-                                      int frameSize,
+void hl_naive_gru_backward_state_grad(OpStateGrad op_state_grad, T *gate_value,
+                                      T *gate_grad, T *prev_out_value,
+                                      T *prev_out_grad, T *output_grad,
+                                      int frame_size,
                                       activation_mode_t active_node) {
-  T rUpdateGateValue;
-  T rUpdateGateGrad;
-  T rFrameStateValue;
-  T rFrameStateGrad;
-  T rOutGrad;
-  T rPrevOutValue = 0;
-  T rPrevOutGrad = 0;
-  T *updateGateValue = gateValue;
-  T *updateGateGrad = gateGrad;
-  T *frameStateValue = gateValue + frameSize * 2;
-  T *frameStateGrad = gateGrad + frameSize * 2;
+  T r_update_gate_value;
+  T r_update_gate_grad;
+  T r_frame_state_value;
+  T r_frame_state_grad;
+  T r_out_grad;
+  T r_prev_out_value = 0;
+  T r_prev_out_grad = 0;
+  T *update_gate_value = gate_value;
+  T *update_gate_grad = gate_grad;
+  T *frame_state_value = gate_value + frame_size * 2;
+  T *frame_state_grad = gate_grad + frame_size * 2;
 
-  for (int i = 0; i < frameSize; i++) {
-    rUpdateGateValue = updateGateValue[i];
-    rFrameStateValue = frameStateValue[i];
-    rOutGrad = outputGrad[i];
-    if (prevOutValue) {
-      rPrevOutValue = prevOutValue[i];
+  for (int i = 0; i < frame_size; i++) {
+    r_update_gate_value = update_gate_value[i];
+    r_frame_state_value = frame_state_value[i];
+    r_out_grad = output_grad[i];
+    if (prev_out_value) {
+      r_prev_out_value = prev_out_value[i];
     }
-    if (prevOutGrad) {
-      rPrevOutGrad = prevOutGrad[i];
+    if (prev_out_grad) {
+      r_prev_out_grad = prev_out_grad[i];
     }
 
-    opStateGrad(rUpdateGateValue, rUpdateGateGrad, rFrameStateValue,
-                rFrameStateGrad, rPrevOutValue, rPrevOutGrad, rOutGrad,
-                active_node);
+    op_state_grad(r_update_gate_value, r_update_gate_grad, r_frame_state_value,
+                  r_frame_state_grad, r_prev_out_value, r_prev_out_grad,
+                  r_out_grad, active_node);
 
-    updateGateGrad[i] = rUpdateGateGrad;
-    frameStateGrad[i] = rFrameStateGrad;
-    if (prevOutGrad) {
-      prevOutGrad[i] = rPrevOutGrad;
+    update_gate_grad[i] = r_update_gate_grad;
+    frame_state_grad[i] = r_frame_state_grad;
+    if (prev_out_grad) {
+      prev_out_grad[i] = r_prev_out_grad;
     }
   }
 }
 
 template <class OpResetGrad, typename T>
-void hl_naive_gru_backward_reset_grad(OpResetGrad opResetGrad, T *gateValue,
-                                      T *gateGrad, T *prevOutValue,
-                                      T *prevOutGrad, T *resetOutputGrad,
-                                      int frameSize,
+void hl_naive_gru_backward_reset_grad(OpResetGrad op_reset_grad, T *gate_value,
+                                      T *gate_grad, T *prev_out_value,
+                                      T *prev_out_grad, T *reset_output_grad,
+                                      int frame_size,
                                       activation_mode_t active_gate) {
-  T rUpdateGateValue;
-  T rUpdateGateGrad;
-  T rResetGateValue;
-  T rResetGateGrad;
-  T rResetOutputGrad = 0;
-  T rPrevOutValue = 0;
-  T rPrevOutGrad = 0;
-  T *updateGateValue = gateValue;
-  T *updateGateGrad = gateGrad;
-  T *resetGateValue = gateValue + frameSize;
-  T *resetGateGrad = gateGrad + frameSize;
+  T r_update_gate_value;
+  T r_update_gate_grad;
+  T r_reset_gate_value;
+  T r_reset_gate_grad;
+  T r_reset_output_grad = 0;
+  T r_prev_out_value = 0;
+  T r_prev_out_grad = 0;
+  T *update_gate_value = gate_value;
+  T *update_gate_grad = gate_grad;
+  T *reset_gate_value = gate_value + frame_size;
+  T *reset_gate_grad = gate_grad + frame_size;
 
-  for (int i = 0; i < frameSize; i++) {
-    rUpdateGateValue = updateGateValue[i];
-    rUpdateGateGrad = updateGateGrad[i];
-    rResetGateValue = resetGateValue[i];
+  for (int i = 0; i < frame_size; i++) {
+    r_update_gate_value = update_gate_value[i];
+    r_update_gate_grad = update_gate_grad[i];
+    r_reset_gate_value = reset_gate_value[i];
 
-    if (prevOutValue && prevOutGrad) {
-      rResetOutputGrad = resetOutputGrad[i];
+    if (prev_out_value && prev_out_grad) {
+      r_reset_output_grad = reset_output_grad[i];
     }
-    if (prevOutValue) {
-      rPrevOutValue = prevOutValue[i];
+    if (prev_out_value) {
+      r_prev_out_value = prev_out_value[i];
     }
-    if (prevOutGrad) {
-      rPrevOutGrad = prevOutGrad[i];
+    if (prev_out_grad) {
+      r_prev_out_grad = prev_out_grad[i];
     }
 
-    opResetGrad(rUpdateGateValue, rUpdateGateGrad, rResetGateValue,
-                rResetGateGrad, rPrevOutValue, rPrevOutGrad, rResetOutputGrad,
-                active_gate);
+    op_reset_grad(r_update_gate_value, r_update_gate_grad, r_reset_gate_value,
+                  r_reset_gate_grad, r_prev_out_value, r_prev_out_grad,
+                  r_reset_output_grad, active_gate);
 
-    updateGateGrad[i] = rUpdateGateGrad;
-    resetGateGrad[i] = rResetGateGrad;
-    if (prevOutGrad) {
-      prevOutGrad[i] = rPrevOutGrad;
+    update_gate_grad[i] = r_update_gate_grad;
+    reset_gate_grad[i] = r_reset_gate_grad;
+    if (prev_out_grad) {
+      prev_out_grad[i] = r_prev_out_grad;
     }
   }
 }
 
 template <class OpStateGrad, typename T>
-void hl_avx_gru_backward_state_grad(OpStateGrad opStateGrad, T *gateValue,
-                                    T *gateGrad, T *prevOutValue,
-                                    T *prevOutGrad, T *outputGrad,
-                                    int frameSize,
+void hl_avx_gru_backward_state_grad(OpStateGrad op_state_grad, T *gate_value,
+                                    T *gate_grad, T *prev_out_value,
+                                    T *prev_out_grad, T *output_grad,
+                                    int frame_size,
                                     activation_mode_t active_node) {
 #ifdef __AVX__
-  __m256 rUpdateGateValue;
-  __m256 rUpdateGateGrad;
-  __m256 rFrameStateValue;
-  __m256 rFrameStateGrad;
-  __m256 rOutGrad;
-  __m256 rPrevOutValue = _mm256_set1_ps(0.0f);
-  __m256 rPrevOutGrad = _mm256_set1_ps(0.0f);
-  __m256 *updateGateValue = (__m256 *)gateValue;
-  __m256 *updateGateGrad = (__m256 *)gateGrad;
-  __m256 *frameStateValue = (__m256 *)(gateValue + frameSize * 2);
-  __m256 *frameStateGrad = (__m256 *)(gateGrad + frameSize * 2);
+  __m256 r_update_gate_value;
+  __m256 r_update_gate_grad;
+  __m256 r_frame_state_value;
+  __m256 r_frame_state_grad;
+  __m256 r_out_grad;
+  __m256 r_prev_out_value = _mm256_set1_ps(0.0f);
+  __m256 r_prev_out_grad = _mm256_set1_ps(0.0f);
+  __m256 *update_gate_value = (__m256 *)gate_value;
+  __m256 *update_gate_grad = (__m256 *)gate_grad;
+  __m256 *frame_state_value = (__m256 *)(gate_value + frame_size * 2);
+  __m256 *frame_state_grad = (__m256 *)(gate_grad + frame_size * 2);
 
-  for (int i = 0; i < frameSize / 8; i++) {
-    rUpdateGateValue = updateGateValue[i];
-    rFrameStateValue = frameStateValue[i];
-    rOutGrad = ((__m256 *)outputGrad)[i];
-    if (prevOutValue) {
-      rPrevOutValue = ((__m256 *)prevOutValue)[i];
+  for (int i = 0; i < frame_size / 8; i++) {
+    r_update_gate_value = update_gate_value[i];
+    r_frame_state_value = frame_state_value[i];
+    r_out_grad = ((__m256 *)output_grad)[i];
+    if (prev_out_value) {
+      r_prev_out_value = ((__m256 *)prev_out_value)[i];
     }
-    if (prevOutGrad) {
-      rPrevOutGrad = ((__m256 *)prevOutGrad)[i];
+    if (prev_out_grad) {
+      r_prev_out_grad = ((__m256 *)prev_out_grad)[i];
     }
 
-    opStateGrad(rUpdateGateValue, rUpdateGateGrad, rFrameStateValue,
-                rFrameStateGrad, rPrevOutValue, rPrevOutGrad, rOutGrad,
-                active_node);
+    op_state_grad(r_update_gate_value, r_update_gate_grad, r_frame_state_value,
+                  r_frame_state_grad, r_prev_out_value, r_prev_out_grad,
+                  r_out_grad, active_node);
 
-    updateGateGrad[i] = rUpdateGateGrad;
-    frameStateGrad[i] = rFrameStateGrad;
-    if (prevOutGrad) {
-      ((__m256 *)prevOutGrad)[i] = rPrevOutGrad;
+    update_gate_grad[i] = r_update_gate_grad;
+    frame_state_grad[i] = r_frame_state_grad;
+    if (prev_out_grad) {
+      ((__m256 *)prev_out_grad)[i] = r_prev_out_grad;
     }
   }
 #endif
 }
 
 template <class OpResetGrad, typename T>
-void hl_avx_gru_backward_reset_grad(OpResetGrad opResetGrad, T *gateValue,
-                                    T *gateGrad, T *prevOutValue,
-                                    T *prevOutGrad, T *resetOutputGrad,
-                                    int frameSize,
+void hl_avx_gru_backward_reset_grad(OpResetGrad op_reset_grad, T *gate_value,
+                                    T *gate_grad, T *prev_out_value,
+                                    T *prev_out_grad, T *reset_output_grad,
+                                    int frame_size,
                                     activation_mode_t active_gate) {
 #ifdef __AVX__
-  __m256 rUpdateGateValue;
-  __m256 rUpdateGateGrad;
-  __m256 rResetGateValue;
-  __m256 rResetGateGrad;
-  __m256 rResetOutputGrad = _mm256_set1_ps(0.0f);
-  __m256 rPrevOutValue = _mm256_set1_ps(0.0f);
-  __m256 rPrevOutGrad = _mm256_set1_ps(0.0f);
-  __m256 *updateGateValue = (__m256 *)gateValue;
-  __m256 *updateGateGrad = (__m256 *)gateGrad;
-  __m256 *resetGateValue = (__m256 *)(gateValue + frameSize);
-  __m256 *resetGateGrad = (__m256 *)(gateGrad + frameSize);
+  __m256 r_update_gate_value;
+  __m256 r_update_gate_grad;
+  __m256 r_reset_gate_value;
+  __m256 r_reset_gate_grad;
+  __m256 r_reset_output_grad = _mm256_set1_ps(0.0f);
+  __m256 r_prev_out_value = _mm256_set1_ps(0.0f);
+  __m256 r_prev_out_grad = _mm256_set1_ps(0.0f);
+  __m256 *update_gate_value = (__m256 *)gate_value;
+  __m256 *update_gate_grad = (__m256 *)gate_grad;
+  __m256 *reset_gate_value = (__m256 *)(gate_value + frame_size);
+  __m256 *reset_gate_grad = (__m256 *)(gate_grad + frame_size);
 
-  for (int i = 0; i < frameSize / 8; i++) {
-    rUpdateGateValue = updateGateValue[i];
-    rUpdateGateGrad = updateGateGrad[i];
-    rResetGateValue = resetGateValue[i];
+  for (int i = 0; i < frame_size / 8; i++) {
+    r_update_gate_value = update_gate_value[i];
+    r_update_gate_grad = update_gate_grad[i];
+    r_reset_gate_value = reset_gate_value[i];
 
-    if (prevOutValue && prevOutGrad) {
-      rResetOutputGrad = ((__m256 *)resetOutputGrad)[i];
+    if (prev_out_value && prev_out_grad) {
+      r_reset_output_grad = ((__m256 *)reset_output_grad)[i];
     }
-    if (prevOutValue) {
-      rPrevOutValue = ((__m256 *)prevOutValue)[i];
+    if (prev_out_value) {
+      r_prev_out_value = ((__m256 *)prev_out_value)[i];
     }
-    if (prevOutGrad) {
-      rPrevOutGrad = ((__m256 *)prevOutGrad)[i];
+    if (prev_out_grad) {
+      r_prev_out_grad = ((__m256 *)prev_out_grad)[i];
     }
 
-    opResetGrad(rUpdateGateValue, rUpdateGateGrad, rResetGateValue,
-                rResetGateGrad, rPrevOutValue, rPrevOutGrad, rResetOutputGrad,
-                active_gate);
+    op_reset_grad(r_update_gate_value, r_update_gate_grad, r_reset_gate_value,
+                  r_reset_gate_grad, r_prev_out_value, r_prev_out_grad,
+                  r_reset_output_grad, active_gate);
 
-    updateGateGrad[i] = rUpdateGateGrad;
-    resetGateGrad[i] = rResetGateGrad;
-    if (prevOutGrad) {
-      ((__m256 *)prevOutGrad)[i] = rPrevOutGrad;
+    update_gate_grad[i] = r_update_gate_grad;
+    reset_gate_grad[i] = r_reset_gate_grad;
+    if (prev_out_grad) {
+      ((__m256 *)prev_out_grad)[i] = r_prev_out_grad;
     }
   }
 #endif
 }
 
 template <class OpStateGrad, typename T>
-inline void backward_state_grad(OpStateGrad opStateGrad, hl_gru_value<T> value,
-                                hl_gru_grad<T> grad, int frameSize,
-                                int batchSize, activation_mode_t active_node) {
-  for (int b = 0; b < batchSize; b++) {
-    if (OpStateGrad::avx && !(frameSize & (8 - 1)) && (sizeof(T) == 4)) {
+inline void backward_state_grad(OpStateGrad op_state_grad,
+                                hl_gru_value<T> value, hl_gru_grad<T> grad,
+                                int frame_size, int batch_size,
+                                activation_mode_t active_node) {
+  for (int b = 0; b < batch_size; b++) {
+    if (OpStateGrad::avx && !(frame_size & (8 - 1)) && (sizeof(T) == 4)) {
       hl_avx_gru_backward_state_grad(
-          opStateGrad, value.gateValue, grad.gateGrad, value.prevOutValue,
-          grad.prevOutGrad, grad.outputGrad, frameSize, active_node);
+          op_state_grad, value.gate_value, grad.gate_grad, value.prev_out_value,
+          grad.prev_out_grad, grad.output_grad, frame_size, active_node);
     } else {
       hl_naive_gru_backward_state_grad(
-          opStateGrad, value.gateValue, grad.gateGrad, value.prevOutValue,
-          grad.prevOutGrad, grad.outputGrad, frameSize, active_node);
+          op_state_grad, value.gate_value, grad.gate_grad, value.prev_out_value,
+          grad.prev_out_grad, grad.output_grad, frame_size, active_node);
     }
 
-    value.gateValue += frameSize * 3;
-    if (value.prevOutValue) {
-      value.prevOutValue += frameSize;
+    value.gate_value += frame_size * 3;
+    if (value.prev_out_value) {
+      value.prev_out_value += frame_size;
     }
 
-    grad.gateGrad += frameSize * 3;
-    grad.outputGrad += frameSize;
-    if (grad.prevOutGrad) {
-      grad.prevOutGrad += frameSize;
+    grad.gate_grad += frame_size * 3;
+    grad.output_grad += frame_size;
+    if (grad.prev_out_grad) {
+      grad.prev_out_grad += frame_size;
     }
   }
 }
 
 template <class OpResetGrad, typename T>
-inline void backward_reset_grad(OpResetGrad opResetGrad, hl_gru_value<T> value,
-                                hl_gru_grad<T> grad, int frameSize,
-                                int batchSize, activation_mode_t active_gate) {
-  for (int b = 0; b < batchSize; b++) {
-    if (OpResetGrad::avx && !(frameSize & (8 - 1)) && (sizeof(T) == 4)) {
+inline void backward_reset_grad(OpResetGrad op_reset_grad,
+                                hl_gru_value<T> value, hl_gru_grad<T> grad,
+                                int frame_size, int batch_size,
+                                activation_mode_t active_gate) {
+  for (int b = 0; b < batch_size; b++) {
+    if (OpResetGrad::avx && !(frame_size & (8 - 1)) && (sizeof(T) == 4)) {
       hl_avx_gru_backward_reset_grad(
-          opResetGrad, value.gateValue, grad.gateGrad, value.prevOutValue,
-          grad.prevOutGrad, grad.resetOutputGrad, frameSize, active_gate);
+          op_reset_grad, value.gate_value, grad.gate_grad, value.prev_out_value,
+          grad.prev_out_grad, grad.reset_output_grad, frame_size, active_gate);
     } else {
       hl_naive_gru_backward_reset_grad(
-          opResetGrad, value.gateValue, grad.gateGrad, value.prevOutValue,
-          grad.prevOutGrad, grad.resetOutputGrad, frameSize, active_gate);
+          op_reset_grad, value.gate_value, grad.gate_grad, value.prev_out_value,
+          grad.prev_out_grad, grad.reset_output_grad, frame_size, active_gate);
     }
 
-    value.gateValue += frameSize * 3;
-    if (value.prevOutValue) {
-      value.prevOutValue += frameSize;
+    value.gate_value += frame_size * 3;
+    if (value.prev_out_value) {
+      value.prev_out_value += frame_size;
     }
 
-    grad.gateGrad += frameSize * 3;
-    grad.resetOutputGrad += frameSize;
-    if (grad.prevOutGrad) {
-      grad.prevOutGrad += frameSize;
+    grad.gate_grad += frame_size * 3;
+    grad.reset_output_grad += frame_size;
+    if (grad.prev_out_grad) {
+      grad.prev_out_grad += frame_size;
     }
   }
 }

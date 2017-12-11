@@ -16,8 +16,8 @@ def conv2d_forward_naive(input, filter, group, conv_param):
     out_w = 1 + (in_w + 2 * pad[1] - (dilation[1] * (f_w - 1) + 1)) / stride[1]
     out = np.zeros((in_n, out_c, out_h, out_w))
 
-    d_bolck_w = (dilation[0] * (f_h - 1) + 1)
-    d_bolck_h = (dilation[1] * (f_w - 1) + 1)
+    d_bolck_h = (dilation[0] * (f_h - 1) + 1)
+    d_bolck_w = (dilation[1] * (f_w - 1) + 1)
 
     input_pad = np.pad(input, ((0, ), (0, ), (pad[0], ), (pad[1], )),
                        mode='constant',
@@ -167,27 +167,27 @@ class TestWithDilation(TestConv2dOp):
 #----------------Conv2dCudnn----------------
 class TestCudnn(TestConv2dOp):
     def init_op_type(self):
-        self.op_type = "conv_cudnn"
+        self.op_type = "conv2d_cudnn"
 
 
 class TestCudnnWithPad(TestWithPad):
     def init_op_type(self):
-        self.op_type = "conv_cudnn"
+        self.op_type = "conv2d_cudnn"
 
 
 class TestCudnnWithStride(TestWithStride):
     def init_op_type(self):
-        self.op_type = "conv_cudnn"
+        self.op_type = "conv2d_cudnn"
 
 
 class TestCudnnWithGroup(TestWithGroup):
     def init_op_type(self):
-        self.op_type = "conv_cudnn"
+        self.op_type = "conv2d_cudnn"
 
 
 class TestCudnnWith1x1(TestWith1x1):
     def init_op_type(self):
-        self.op_type = "conv_cudnn"
+        self.op_type = "conv2d_cudnn"
 
 
 #  cudnn v5 does not support dilation conv.

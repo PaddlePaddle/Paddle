@@ -44,9 +44,9 @@ class SigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of Sigmoid operator");
     AddOutput("Y", "Output of Sigmoid operator");
     AddComment(R"DOC(
-Sigmoid Activation Operator.
+Sigmoid Activation Operator
 
-$y = 1 / (1 + e^{-x})$
+$$y = \frac{1}{1 + e^{-x}}$$
 
 )DOC");
   }
@@ -60,9 +60,9 @@ class LogSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of LogSigmoid operator");
     AddOutput("Y", "Output of LogSigmoid operator");
     AddComment(R"DOC(
-Logsigmoid Activation Operator.
+Logsigmoid Activation Operator
 
-$y = \log(1 / (1 + e^{-x}))$
+$$y = \log \frac{1}{1 + e^{-x}}$$
 
 )DOC");
   }
@@ -218,6 +218,51 @@ class AbsOpMaker : public framework::OpProtoAndCheckerMaker {
 Abs Activation Operator.
 
 $y = |x|$
+
+)DOC");
+  }
+};
+
+class CeilOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  CeilOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Ceil operator");
+    AddOutput("Y", "Output of Ceil operator");
+    AddComment(R"DOC(
+Ceil Activation Operator.
+
+$y = ceil(x)$
+
+)DOC");
+  }
+};
+
+class FloorOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  FloorOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Floor operator");
+    AddOutput("Y", "Output of Floor operator");
+    AddComment(R"DOC(
+Floor Activation Operator.
+
+$y = floor(x)$
+
+)DOC");
+  }
+};
+
+class RoundOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  RoundOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Round operator");
+    AddOutput("Y", "Output of Round operator");
+    AddComment(R"DOC(
+Round Activation Operator.
+
+$y = [x]$
 
 )DOC");
   }
@@ -461,6 +506,22 @@ It is recommended to use the defaults for this activation.
   }
 };
 
+class SwishOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  SwishOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Swish operator");
+    AddOutput("Y", "Output of Swish operator");
+    AddAttr<float>("beta", "Constant beta of swish operator").SetDefault(1.0f);
+    AddComment(R"DOC(
+Swish Activation Operator.
+
+$$y = \frac{x}{1 + e^{- \beta x}}$$
+
+)DOC");
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -491,6 +552,15 @@ REGISTER_OP(sqrt, ops::ActivationOp, ops::SqrtOpMaker, sqrt_grad,
             ops::ActivationOpGrad);
 
 REGISTER_OP(abs, ops::ActivationOp, ops::AbsOpMaker, abs_grad,
+            ops::ActivationOpGrad);
+
+REGISTER_OP(ceil, ops::ActivationOp, ops::CeilOpMaker, ceil_grad,
+            ops::ActivationOpGrad);
+
+REGISTER_OP(floor, ops::ActivationOp, ops::FloorOpMaker, floor_grad,
+            ops::ActivationOpGrad);
+
+REGISTER_OP(round, ops::ActivationOp, ops::RoundOpMaker, round_grad,
             ops::ActivationOpGrad);
 
 REGISTER_OP(reciprocal, ops::ActivationOp, ops::ReciprocalOpMaker,
@@ -537,6 +607,9 @@ REGISTER_OP(thresholded_relu, ops::ActivationOp, ops::ThresholdedReluOpMaker,
 
 REGISTER_OP(hard_sigmoid, ops::ActivationOp, ops::HardSigmoidOpMaker,
             hard_sigmoid_grad, ops::ActivationOpGrad);
+
+REGISTER_OP(swish, ops::ActivationOp, ops::SwishOpMaker, swish_grad,
+            ops::ActivationOpGrad);
 
 #define REGISTER_ACTIVATION_CPU_KERNEL(act_type, functor, grad_functor)       \
   REGISTER_OP_CPU_KERNEL(                                                     \

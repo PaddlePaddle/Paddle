@@ -17,6 +17,36 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+struct BeamSearchDecodeFunctor {
+  BeamSearchDecodeFunctor(const LoDTensorArray& step_ids,
+                          const LoDTensorArray& step_scores,
+                          LoDTensor* id_tensor, LoDTensor* score_tensor)
+      : step_ids_(step_ids),
+        step_scores_(step_scores),
+        id_tensor_(id_tensor),
+        score_tensor_(score_tensor) {}
+
+  template <typename T>
+  void operator()() const;
+
+  const LoDTensorArray& step_ids_;
+  const LoDTensorArray& step_scores_;
+  LoDTensor* id_tensor_;
+  LoDTensor* score_tensor_;
+};
+
+template <typename T>
+void BeamSearchDecodeFunctor::operator()() const {
+  BeamSearchDecoder<T> beam_search_decoder;
+  beam_search_decoder.PackAllSteps(step_ids_, step_scores_, id_tensor_,
+                                   score_tensor_);
+}
+
+template <>
+void BeamSearchDecodeFunctor::operator()<bool>() const {
+  PADDLE_THROW("beam search decode op does not support bool!");
+}
+
 class BeamSearchDecodeOp : public framework::OperatorBase {
  public:
   BeamSearchDecodeOp(const std::string& type,
@@ -45,9 +75,9 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
     LoDTensor* sentenceIds = ctx.Output<LoDTensor>("SentenceIds");
     LoDTensor* sentenceScores = ctx.Output<LoDTensor>("SentenceScores");
 
-    BeamSearchDecoder<float> beam_search_decoder;
-    beam_search_decoder.PackAllSteps(*ids, *scores, sentenceIds,
-                                     sentenceScores);
+    framework::VisitDataType(
+        framework::ToDataType(scores->at(0).type()),
+        BeamSearchDecodeFunctor(*ids, *scores, sentenceIds, sentenceScores));
   }
 };
 
