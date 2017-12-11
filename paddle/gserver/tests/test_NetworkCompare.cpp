@@ -243,7 +243,7 @@ TEST(Compare, concat_slice) {
   compareNetwork(config_file_a, config_file_b);
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 TEST(Compare, img_pool) {
   std::string config_file_a = "./gserver/tests/img_pool_a.conf";
   std::string config_file_b = "./gserver/tests/img_pool_b.conf";

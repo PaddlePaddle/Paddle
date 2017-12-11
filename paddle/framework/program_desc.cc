@@ -18,43 +18,51 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-using ProgDescMap =
-    std::unordered_map<ProgramDesc *, std::unique_ptr<ProgramDescBind>>;
-static ProgDescMap *g_bind_map = nullptr;
-
-ProgramDescBind &ProgramDescBind::Instance(ProgramDesc *prog) {
-  if (g_bind_map == nullptr) {
-    g_bind_map = new ProgDescMap();
-  }
-  auto &map = *g_bind_map;
-  auto &ptr = map[prog];
-
-  if (ptr == nullptr) {
-    ptr.reset(new ProgramDescBind(prog));
-  }
-  return *ptr;
-}
-
 BlockDescBind *ProgramDescBind::AppendBlock(const BlockDescBind &parent) {
-  auto *b = prog_->add_blocks();
+  auto *b = desc_.add_blocks();
   b->set_parent_idx(parent.ID());
-  b->set_idx(prog_->blocks_size() - 1);
+  b->set_idx(desc_.blocks_size() - 1);
   blocks_.emplace_back(new BlockDescBind(this, b));
   return blocks_.back().get();
 }
 
 ProgramDesc *ProgramDescBind::Proto() {
   for (auto &block : blocks_) {
-    block->Sync();
+    block->Flush();
   }
-  return prog_;
+  return &desc_;
 }
 
-ProgramDescBind::ProgramDescBind(ProgramDesc *prog) {
-  prog_ = prog;
-  for (auto &block : *prog->mutable_blocks()) {
-    blocks_.emplace_back(new BlockDescBind(this, &block));
+ProgramDescBind::ProgramDescBind() {
+  auto *block = desc_.mutable_blocks()->Add();
+  block->set_idx(kRootBlockIndex);
+  block->set_parent_idx(kNoneBlockIndex);
+  blocks_.emplace_back(new BlockDescBind(this, block));
+}
+
+ProgramDescBind::ProgramDescBind(const ProgramDescBind &o) {
+  desc_ = o.desc_;
+
+  for (int i = 0; i < desc_.blocks_size(); ++i) {
+    auto *block = desc_.mutable_blocks(i);
+    blocks_.emplace_back(new BlockDescBind(*o.blocks_[i], block, this));
   }
 }
+
+ProgramDescBind::ProgramDescBind(const ProgramDesc &desc) {
+  desc_ = desc;
+  for (auto &block_desc : *desc_.mutable_blocks()) {
+    blocks_.emplace_back(new BlockDescBind(this, &block_desc));
+  }
+}
+
+ProgramDescBind::ProgramDescBind(const std::string &binary_str) {
+  PADDLE_ENFORCE(desc_.ParseFromString(binary_str),
+                 "Fail to parse program_desc from binary string.");
+  for (auto &block_desc : *desc_.mutable_blocks()) {
+    blocks_.emplace_back(new BlockDescBind(this, &block_desc));
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle

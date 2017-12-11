@@ -41,7 +41,9 @@ TEST(Gather, GatherData) {
 
   int* p_output = output->mutable_data<int>(make_ddim({2, 4}), CPUPlace());
 
-  Gather<int>(CPUPlace(), src, index, output);
+  auto* cpu_place = new paddle::platform::CPUPlace();
+  paddle::platform::CPUDeviceContext ctx(*cpu_place);
+  CPUGather<int>(ctx, *src, *index, output);
 
   for (int i = 0; i < 4; ++i) EXPECT_EQ(p_output[i], i + 4);
   for (int i = 4; i < 8; ++i) EXPECT_EQ(p_output[i], i - 4);

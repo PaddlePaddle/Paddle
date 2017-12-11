@@ -36,6 +36,7 @@ layers {
   height: 6
   width: 20
   depth: 3
+  epsilon: 1e-05
 }
 parameters {
   name: "___batch_norm_0__.w0"

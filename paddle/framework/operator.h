@@ -20,13 +20,15 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "op_info.h"
+#include "glog/logging.h"  // For VLOG
 #include "paddle/framework/attribute.h"
+#include "paddle/framework/block_desc.h"
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/op_info.h"
 #include "paddle/framework/scope.h"
-#include "paddle/framework/shape_inference.h"
+#include "paddle/framework/selected_rows.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/place.h"
@@ -56,11 +58,7 @@ inline std::string GradVarName(const std::string& var_name) {
 }
 
 class OperatorBase;
-class InferShapeContext;
 class ExecutionContext;
-
-extern const Tensor* GetTensorFromVar(const Variable* var);
-extern Tensor* GetTensorFromVar(Variable* var);
 
 /**
  * OperatorBase has the basic element that Net will call to do computation.
@@ -124,7 +122,7 @@ class OperatorBase {
  protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
-  // I (Inputs)opear
+  // I (Inputs)
   // O (Outputs)
   // OG (Output Gradients)
   VariableNameMap inputs_;
@@ -142,9 +140,9 @@ class OperatorBase {
 // Macro for define a clone method.
 // If you are writing an kernel operator, `Clone` will be defined when you
 // register it. i.e. `Clone` method is not needed to define by yourself.
-#define DEFINE_OP_CLONE_METHOD(cls)                       \
-  std::unique_ptr<OperatorBase> Clone() const final {     \
-    return std::unique_ptr<OperatorBase>(new cls(*this)); \
+#define DEFINE_OP_CLONE_METHOD(cls)                                            \
+  std::unique_ptr<::paddle::framework::OperatorBase> Clone() const final {     \
+    return std::unique_ptr<::paddle::framework::OperatorBase>(new cls(*this)); \
   }
 
 // Macro for define a default constructor for Operator.
@@ -168,10 +166,11 @@ class NOP : public OperatorBase {
   }
 };
 
-class InferShapeContext {
+class ExecutionContext {
  public:
-  InferShapeContext(const OperatorBase& op, const Scope& scope)
-      : op_(op), scope_(scope) {}
+  ExecutionContext(const OperatorBase& op, const Scope& scope,
+                   const platform::DeviceContext& device_context)
+      : op_(op), scope_(scope), device_context_(device_context) {}
 
   const OperatorBase& op() const { return op_; }
 
@@ -277,31 +276,6 @@ class InferShapeContext {
     out_tensor->set_lod(in_tensor.lod());
   }
 
- private:
-  const OperatorBase& op_;
-  const Scope& scope_;
-};
-
-template <>
-const Tensor* InferShapeContext::Input<Tensor>(const std::string& name) const;
-
-template <>
-const std::vector<const Tensor*> InferShapeContext::MultiInput<Tensor>(
-    const std::string& name) const;
-
-template <>
-Tensor* InferShapeContext::Output<Tensor>(const std::string& name) const;
-
-template <>
-std::vector<Tensor*> InferShapeContext::MultiOutput<Tensor>(
-    const std::string& name) const;
-
-class ExecutionContext : public InferShapeContext {
- public:
-  ExecutionContext(const OperatorBase& op, const Scope& scope,
-                   const platform::DeviceContext& device_context)
-      : InferShapeContext(op, scope), device_context_(device_context) {}
-
   template <typename PlaceType,
             typename DeviceType = typename platform::EigenDeviceConverter<
                 PlaceType>::EigenDeviceType>
@@ -313,107 +287,43 @@ class ExecutionContext : public InferShapeContext {
     return device_context_;
   }
 
- private:
-  const platform::DeviceContext& device_context_;
-};
-
-class RuntimeInferShapeContext : public InferShapeContextBase {
- public:
-  RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope)
-      : op_(op), scope_(scope) {}
-
-  bool HasInput(const std::string& name) const {
-    auto ipt = op_.Input(name);
-    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-    return var != nullptr;
-  }
-
-  bool HasOutput(const std::string& name) const {
-    auto ipt = op_.Output(name);
-    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-    return var != nullptr;
-  }
-
-  bool HasInputs(const std::string& name) const {
-    auto inputs = op_.Inputs(name);
-    if (inputs.size() == 0UL) {
-      return false;
-    }
-    for (auto& input : inputs) {
-      if (scope_.FindVar(input) == nullptr) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  bool HasOutputs(const std::string& name) const {
-    auto outputs = op_.Outputs(name);
-    if (outputs.size() == 0UL) {
-      return false;
-    }
-    for (auto& output : outputs) {
-      if (scope_.FindVar(output) == nullptr) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  DDim GetInputDim(const std::string& name) const {
-    return GetDim(op_.Input(name));
-  }
-
-  void SetInputDim(const std::string& name, const DDim& dim) {
-    SetDim(op_.Input(name), dim);
-  }
-
-  DDim GetOutputDim(const std::string& name) const {
-    return GetDim(op_.Output(name));
-  }
-
-  void SetOutputDim(const std::string& name, const DDim& dim) {
-    SetDim(op_.Output(name), dim);
-  }
-
-  AttrReader Attrs() const { return AttrReader(op_.Attrs()); }
-
+  //! Get actual name vector for this input.
   const std::vector<std::string>& Inputs(const std::string& name) const {
     return op_.Inputs(name);
   }
 
+  //! Get actual name vector for this output.
   const std::vector<std::string>& Outputs(const std::string& name) const {
     return op_.Outputs(name);
   }
 
+#ifdef PADDLE_WITH_CUDA
+  const inline platform::CUDADeviceContext& cuda_device_context() const {
+    PADDLE_ENFORCE(platform::is_gpu_place(device_context_.GetPlace()));
+    return *reinterpret_cast<const platform::CUDADeviceContext*>(
+        &device_context_);
+  }
+#endif
+
  private:
-  template <bool Allocate>
-  Tensor* GetTensor(const std::string& name) const {
-    Tensor* t = nullptr;
-    auto* var = scope_.FindVar(name);
-    if (!var->IsType<LoDTensor>() && !var->IsType<Tensor>()) {
-      if (Allocate) {
-        t = var->GetMutable<LoDTensor>();
-      } else {
-        PADDLE_THROW("Variable(%s) should be tensor", name);
-      }
-    } else {
-      t = GetTensorFromVar(scope_.FindVar(name));
-    }
-    return t;
-  }
-
-  DDim GetDim(const std::string& name) const {
-    return GetTensor<false>(name)->dims();
-  }
-
-  void SetDim(const std::string& name, const DDim& dim) {
-    GetTensor<true>(name)->Resize(dim);
-  }
-
   const OperatorBase& op_;
   const Scope& scope_;
+  const platform::DeviceContext& device_context_;
 };
+
+template <>
+const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const;
+
+template <>
+const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
+    const std::string& name) const;
+
+template <>
+Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const;
+
+template <>
+std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
+    const std::string& name) const;
 
 class OpKernelBase {
  public:
@@ -435,27 +345,10 @@ class OpKernel : public OpKernelBase {
   using ELEMENT_TYPE = T;
 };
 
-class OperatorWithKernel : public OperatorBase {
- public:
-  struct OpKernelKey {
-    platform::Place place_;
-    DataType data_type_;
-
-    OpKernelKey(DataType data_type, platform::Place place)
-        : place_(place), data_type_(data_type) {}
-
-    OpKernelKey(DataType data_type, const platform::DeviceContext& dev_ctx)
-        : place_(dev_ctx.GetPlace()), data_type_(data_type) {}
-
-    bool operator==(const OpKernelKey& o) const {
-      return platform::places_are_same_class(place_, o.place_) &&
-             data_type_ == o.data_type_;
-    }
-  };
-
-  struct OpKernelHash {
+struct OpKernelType {
+  struct Hash {
     std::hash<int> hash_;
-    size_t operator()(const OpKernelKey& key) const {
+    size_t operator()(const OpKernelType& key) const {
       int place = key.place_.which();
       int data_type = static_cast<int>(key.data_type_);
       int pre_hash = data_type << NUM_PLACE_TYPE_LIMIT_IN_BIT |
@@ -464,40 +357,33 @@ class OperatorWithKernel : public OperatorBase {
     }
   };
 
+  platform::Place place_;
+  DataType data_type_;
+
+  OpKernelType(DataType data_type, platform::Place place)
+      : place_(place), data_type_(data_type) {}
+
+  OpKernelType(DataType data_type, const platform::DeviceContext& dev_ctx)
+      : place_(dev_ctx.GetPlace()), data_type_(data_type) {}
+
+  bool operator==(const OpKernelType& o) const {
+    return platform::places_are_same_class(place_, o.place_) &&
+           data_type_ == o.data_type_;
+  }
+};
+
+class OperatorWithKernel : public OperatorBase {
+ public:
   using OpKernelMap =
-      std::unordered_map<OpKernelKey, std::unique_ptr<OpKernelBase>,
-                         OpKernelHash>;
+      std::unordered_map<OpKernelType, std::unique_ptr<OpKernelBase>,
+                         OpKernelType::Hash>;
 
   OperatorWithKernel(const std::string& type, const VariableNameMap& inputs,
                      const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void Run(const Scope& scope,
-           const platform::DeviceContext& dev_ctx) const final {
-    RuntimeInferShapeContext infer_shape_ctx(*this, scope);
-    this->InferShape(&infer_shape_ctx);
-
-    ExecutionContext ctx(*this, scope, dev_ctx);
-
-    // check if op[type] has kernel registered.
-    auto& all_op_kernels = AllOpKernels();
-    auto kernels_iter = all_op_kernels.find(type_);
-    if (kernels_iter == all_op_kernels.end()) {
-      PADDLE_THROW("op[%s] has no kernel", type_);
-    }
-
-    // check if op[type] have kernel for kernel_key
-    OpKernelMap& kernels = kernels_iter->second;
-    auto kernel_key = OpKernelKey(IndicateDataType(ctx), dev_ctx);
-    auto kernel_iter = kernels.find(kernel_key);
-
-    if (kernel_iter == kernels.end()) {
-      PADDLE_THROW("op[%s] has no kernel with kernel_key[%s]", type_,
-                   kernel_key);
-    }
-
-    kernel_iter->second->Compute(ctx);
-  }
+           const platform::DeviceContext& dev_ctx) const final;
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&
   AllOpKernels() {
@@ -513,40 +399,22 @@ class OperatorWithKernel : public OperatorBase {
                        });
   }
 
- protected:
-  virtual void InferShape(InferShapeContextBase* ctx) const = 0;
+  virtual void InferShape(InferShapeContext* ctx) const {
+    OpInfoMap::Instance().Get(Type()).infer_shape_(ctx);
+  }
 
+ protected:
+  virtual OpKernelType GetKernelType(const ExecutionContext& ctx) const;
+
+ private:
   // indicate kernel DataType by input data. Defaultly all input data must be
   // same.
-  virtual DataType IndicateDataType(const ExecutionContext& ctx) const {
-    auto& scope = ctx.scope();
-    int data_type = -1;
-    for (auto& input : this->inputs_) {
-      for (auto& ipt_name : input.second) {
-        auto* var = scope.FindVar(ipt_name);
-        if (var != nullptr) {
-          const Tensor* t = nullptr;
-          if (var->IsType<Tensor>()) {
-            t = &var->Get<Tensor>();
-          } else if (var->IsType<LoDTensor>()) {
-            t = &var->Get<LoDTensor>();
-          }
-          if (t != nullptr) {
-            int tmp = static_cast<int>(ToDataType(t->type()));
-            PADDLE_ENFORCE(tmp == data_type || data_type == -1,
-                           "DataType of Paddle Op must be same.");
-            data_type = tmp;
-          }
-        }
-      }
-    }
-    PADDLE_ENFORCE(data_type != -1, "DataType should be indicated by input");
-    return static_cast<DataType>(data_type);
-  }
+  DataType IndicateDataType(const ExecutionContext& ctx) const;
 };
 
-std::ostream& operator<<(std::ostream& os,
-                         const OperatorWithKernel::OpKernelKey& kernel_key);
+std::ostream& operator<<(std::ostream& os, const OpKernelType& kernel_key);
+
+extern bool OpSupportGPU(const std::string& op_type);
 
 }  // namespace framework
 }  // namespace paddle

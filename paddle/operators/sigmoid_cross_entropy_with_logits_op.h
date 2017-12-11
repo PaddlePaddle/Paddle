@@ -25,8 +25,7 @@ class SigmoidCrossEntropyWithLogitsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     const framework::Tensor *X = context.Input<framework::Tensor>("X");
-    const framework::Tensor *Labels =
-        context.Input<framework::Tensor>("Labels");
+    const framework::Tensor *Labels = context.Input<framework::Tensor>("Label");
     framework::Tensor *Out = context.Output<framework::Tensor>("Out");
     Out->mutable_data<T>(context.GetPlace());
 
@@ -52,8 +51,7 @@ class SigmoidCrossEntropyWithLogitsGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     const framework::Tensor *X = context.Input<framework::Tensor>("X");
-    const framework::Tensor *Labels =
-        context.Input<framework::Tensor>("Labels");
+    const framework::Tensor *Labels = context.Input<framework::Tensor>("Label");
     const framework::Tensor *dOut =
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
     framework::Tensor *dX =

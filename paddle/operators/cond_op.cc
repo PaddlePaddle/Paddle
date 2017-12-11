@@ -126,8 +126,7 @@ void CondOp::PrepareDataForSubnet(
       dim[0] = index_tensors[i].dims()[0];
       tensor_child->mutable_data<float>(dim, platform::CPUPlace());
 
-      Gather<float>(dev_ctx.GetPlace(), tensor_parent, &index_tensors[i],
-                    tensor_child);
+      CPUGather<float>(dev_ctx, *tensor_parent, index_tensors[i], tensor_child);
     }
   }
 
@@ -135,7 +134,7 @@ void CondOp::PrepareDataForSubnet(
   for (int i = 0; i < BRANCH_NUM; ++i) {
     for (auto& output : (*sub_net_op_[i]).Outputs()) {
       for (auto& var_name : output.second) {
-        sub_scopes[i]->NewVar(var_name);
+        sub_scopes[i]->Var(var_name);
       }
     }
   }
@@ -188,7 +187,7 @@ void CondOp::MergeDataFromSubnet(const framework::Scope& scope,
       Variable* var_child = sub_scopes[i]->FindVar(output);
       PADDLE_ENFORCE_NOT_NULL(var_child);
       auto* tensor_child = &var_child->Get<LoDTensor>();
-      ScatterUpdate<float>(dev_ctx.GetPlace(), tensor_child, &index_tensors[i],
+      ScatterAssign<float>(dev_ctx, *tensor_child, index_tensors[i],
                            tensor_parent);
     }
   }
@@ -217,11 +216,12 @@ class CondOpProtoAndCheckerMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("IndexTensors", "Index Tensors contains indices for true/false");
 
     AddComment(R"DOC(
-Sample dependent Cond Operator:
-Given Cond[i] as a 1/0 vector to indicate true/false
-The equation is:
-Out[i] = subnet_t[i], if Cond[i] == true
-Out[i] = subnet_t[i], if Cond[i] == false
+Sample Dependent Conditional Operator.
+
+Given Cond[i] as a 1/0 vector to indicate true/false:
+Out[i] = subnet_true[i], if Cond[i] == true
+Out[i] = subnet_false[i], if Cond[i] == false
+
 )DOC");
   }
 };

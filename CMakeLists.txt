@@ -16,10 +16,14 @@ cmake_minimum_required(VERSION 3.0)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
+SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
+SET(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 
 include(system)
 
 project(paddle CXX C Go)
+message(STATUS "CXX compiler: " ${CMAKE_CXX_COMPILER} ", version: " ${CMAKE_CXX_COMPILER_VERSION})
+message(STATUS "C compiler: " ${CMAKE_C_COMPILER} ", version: " ${CMAKE_C_COMPILER_VERSION})
 
 find_package(Sphinx)
 if(NOT CMAKE_CROSSCOMPILING)
@@ -36,8 +40,7 @@ include(simd)
 ################################ Configurations #######################################
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
-option(WITH_MKLDNN      "Compile PaddlePaddle with mkl-dnn support."    ${AVX_FOUND})
-option(WITH_MKLML       "Compile PaddlePaddle with mklml package."      ${AVX_FOUND})
+option(WITH_MKL         "Compile PaddlePaddle with MKL support."        ${AVX_FOUND})
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        ON)
 option(WITH_SWIG_PY     "Compile PaddlePaddle with inference api"       ON)
@@ -55,7 +58,9 @@ option(WITH_C_API       "Compile PaddlePaddle with C-API(Prediction)"   OFF)
 option(WITH_GOLANG      "Compile PaddlePaddle with GOLANG"              OFF)
 option(GLIDE_INSTALL    "Download and install go dependencies "         ON)
 option(USE_NNPACK       "Compile PaddlePaddle with NNPACK library"      OFF)
+option(WITH_DISTRIBUTE  "Compile with grpc distributed support"         OFF)
 option(USE_EIGEN_FOR_BLAS   "Use matrix multiplication in Eigen"        OFF)
+option(WITH_ARM_FP16    "Use half precision support on armv8.2-a cpu"   OFF)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -68,9 +73,6 @@ if(ANDROID OR IOS)
     if(ANDROID)
         if(${CMAKE_SYSTEM_VERSION} VERSION_LESS "16")
             message(FATAL_ERROR "Unsupport standalone toolchains with Android API level lower than 16")
-        elseif(${CMAKE_SYSTEM_VERSION} VERSION_LESS "21")
-            # TODO: support glog for Android api 16 ~ 19 in the future
-            message(WARNING "Using the unofficial git repository <https://github.com/Xreki/glog.git> instead")
         endif()
     endif()
 
@@ -82,10 +84,18 @@ if(ANDROID OR IOS)
         "Disable PYTHON when cross-compiling for Android and iOS" FORCE)
     set(WITH_RDMA OFF CACHE STRING
         "Disable RDMA when cross-compiling for Android and iOS" FORCE)
-    set(WITH_MKLDNN OFF CACHE STRING
-        "Disable MKLDNN when cross-compiling for Android and iOS" FORCE)
-    set(WITH_MKLML OFF CACHE STRING
-        "Disable MKLML package when cross-compiling for Android and iOS" FORCE)
+    set(WITH_MKL OFF CACHE STRING
+        "Disable MKL when cross-compiling for Android and iOS" FORCE)
+    set(WITH_GOLANG OFF CACHE STRING
+        "Disable golang when cross-compiling for Android and iOS" FORCE)
+
+    # Compile PaddlePaddle mobile inference library
+    if (NOT WITH_C_API)
+        set(WITH_C_API ON CACHE STRING
+            "Always compile the C_API when cross-compiling for Android and iOS" FORCE)
+    endif()
+    set(MOBILE_INFERENCE ON)
+    add_definitions(-DPADDLE_MOBILE_INFERENCE)
 endif()
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
@@ -95,6 +105,20 @@ if (WITH_C_API AND WITH_PYTHON)
   message(WARNING "It is suggest not embedded a python interpreter in Paddle "
     "when using C-API. It will give an unpredictable behavior when using a "
     "different Python interpreter from compiling.")
+endif()
+
+if(MOBILE_INFERENCE)
+    set(THIRD_PARTY_BUILD_TYPE MinSizeRel)
+else()
+    set(THIRD_PARTY_BUILD_TYPE Release)
+endif()
+
+set(WITH_MKLML ${WITH_MKL})
+if (WITH_MKL AND AVX2_FOUND)
+    set(WITH_MKLDNN ON)
+else()
+    message(STATUS "Do not have AVX2 intrinsics and disabled MKL-DNN")
+    set(WITH_MKLDNN OFF)
 endif()
 
 ########################################################################################
@@ -112,7 +136,10 @@ include(external/swig)      # download, build, install swig
 include(external/warpctc)   # download, build, install warpctc
 include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
-include(external/pybind11)    # download pybind11
+include(external/pybind11)  # download pybind11
+include(external/nccl)
+include(external/cares)
+include(external/grpc)
 
 include(cudnn)              # set cudnn libraries, must before configure
 include(configure)          # add paddle env configuration
@@ -143,14 +170,15 @@ set(EXTERNAL_LIBS
 )
 
 if(WITH_GPU)
-    list(APPEND EXTERNAL_LIBS ${CUDA_LIBRARIES} ${CUDA_rt_LIBRARY})
-    if(NOT WITH_DSO)
-        list(APPEND EXTERNAL_LIBS ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
-    endif(NOT WITH_DSO)
+  include(cuda)
 endif(WITH_GPU)
 
+if(WITH_MKLML)
+    list(APPEND EXTERNAL_LIBS ${MKLML_IOMP_LIB})
+endif()
+
 if(WITH_MKLDNN)
-    list(APPEND EXTERNAL_LIBS ${MKLDNN_LIB} ${MKLDNN_IOMP_LIB})
+    list(APPEND EXTERNAL_LIBS ${MKLDNN_LIB})
 endif()
 
 if(USE_NNPACK)
@@ -160,9 +188,11 @@ endif(USE_NNPACK)
 
 add_subdirectory(proto)
 
-# "add_subdirectory(go)" should be placed after the following loine,
-# because it depends on paddle/optimizer.
-add_subdirectory(paddle/optimizer)
+if(NOT MOBILE_INFERENCE)
+    # "add_subdirectory(go)" should be placed after the following loine,
+    # because it depends on paddle/optimizer.
+    add_subdirectory(paddle/optimizer)
+endif()
 
 # "add_subdirectory(paddle)" and "add_subdirectory(python)" should be
 # placed after this block, because they depends on it.

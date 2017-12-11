@@ -5,16 +5,30 @@ height = 224
 width = 224
 num_class = 1000
 batch_size = get_config_arg('batch_size', int, 128)
+use_gpu = get_config_arg('use_gpu', bool, True)
+is_infer = get_config_arg("is_infer", bool, False)
 
-args = {'height': height, 'width': width, 'color': True, 'num_class': num_class}
+args = {
+    'height': height,
+    'width': width,
+    'color': True,
+    'num_class': num_class,
+    'is_infer': is_infer
+}
 define_py_data_sources2(
-    "train.list", None, module="provider", obj="process", args=args)
+    "train.list" if not is_infer else None,
+    "test.list" if is_infer else None,
+    module="provider",
+    obj="process",
+    args=args)
 
 settings(
     batch_size=batch_size,
     learning_rate=0.01 / batch_size,
     learning_method=MomentumOptimizer(0.9),
     regularization=L2Regularization(0.0005 * batch_size))
+
+conv_projection = conv_projection if use_gpu else img_conv_layer
 
 def inception2(name, input, channels, \
     filter1,
@@ -138,12 +152,11 @@ def inception(name, input, channels, \
     cat = concat_layer(
         name=name,
         input=[cov1, cov3, cov5, covprj],
-        bias_attr=True,
+        bias_attr=True if use_gpu else False,
         act=ReluActivation())
     return cat
 
 
-lab = data_layer(name="label", size=1000)
 data = data_layer(name="input", size=3 * height * width)
 
 # stage 1
@@ -221,6 +234,10 @@ pool5 = img_pool_layer(
 dropout = dropout_layer(name="dropout", input=pool5, dropout_rate=0.4)
 out3 = fc_layer(
     name="output3", input=dropout, size=1000, act=SoftmaxActivation())
-loss3 = cross_entropy(name='loss3', input=out3, label=lab)
 
-outputs(loss3)
+if is_infer:
+    outputs(out3)
+else:
+    lab = data_layer(name="label", size=num_class)
+    loss3 = cross_entropy(name='loss3', input=out3, label=lab)
+    outputs(loss3)

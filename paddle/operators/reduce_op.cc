@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "paddle/operators/reduce_op.h"
+#include "paddle/operators/net_op.h"
 
 namespace paddle {
 namespace operators {
@@ -23,8 +24,7 @@ class ReduceOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase *ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of ReduceOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
@@ -57,8 +57,7 @@ class ReduceGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase *ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null.");
@@ -81,24 +80,27 @@ class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ReduceOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput(
-        "X",
-        "(Tensor) The input tensor. Tensors with rank at most 6 are supported");
+    AddInput("X",
+             "(Tensor) The input tensor. Tensors with rank at most 6 are "
+             "supported.");
     AddOutput("Out", "(Tensor) The result tensor.");
     AddAttr<int>(
         "dim",
-        "(int, default 1) The dimension to reduce. "
+        "(int, default 0) The dimension to reduce. "
         "Must be in the range [-rank(input), rank(input)). "
         "If `dim < 0`, the dim to reduce is `rank + dim`. "
-        "Noting that reducing on the first dim will make the LoD info lost.")
+        "Note that reducing on the first dim will make the LoD info lost.")
         .SetDefault(0);
     AddAttr<bool>("keep_dim",
                   "(bool, default false) "
                   "If true, retain the reduced dimension with length 1.")
         .SetDefault(false);
     comment_ = R"DOC(
-{ReduceOP} operator computes the {reduce} of input tensor along the given dimension. 
-The result tensor has 1 fewer dimension than the input unless `keep_dim` is true.
+{ReduceOp} Operator.
+
+This operator computes the {reduce} of input tensor along the given dimension. 
+The result tensor has 1 fewer dimension than the input unless keep_dim is true.
+
 )DOC";
     AddComment(comment_);
   }
@@ -168,36 +170,22 @@ namespace ops = paddle::operators;
 
 REGISTER_OP(reduce_sum, ops::ReduceOp, ops::ReduceSumOpMaker, reduce_sum_grad,
             ops::ReduceGradOp);
-REGISTER_OP_CPU_KERNEL(
-    reduce_sum,
-    ops::ReduceKernel<paddle::platform::CPUPlace, float, ops::SumFunctor>);
-REGISTER_OP_CPU_KERNEL(reduce_sum_grad,
-                       ops::ReduceGradKernel<paddle::platform::CPUPlace, float,
-                                             ops::SumGradFunctor>);
 
 REGISTER_OP(reduce_mean, ops::ReduceOp, ops::ReduceMeanOpMaker,
             reduce_mean_grad, ops::ReduceGradOp);
-REGISTER_OP_CPU_KERNEL(
-    reduce_mean,
-    ops::ReduceKernel<paddle::platform::CPUPlace, float, ops::MeanFunctor>);
-REGISTER_OP_CPU_KERNEL(reduce_mean_grad,
-                       ops::ReduceGradKernel<paddle::platform::CPUPlace, float,
-                                             ops::MeanGradFunctor>);
 
 REGISTER_OP(reduce_max, ops::ReduceOp, ops::ReduceMaxOpMaker, reduce_max_grad,
             ops::ReduceGradOp);
-REGISTER_OP_CPU_KERNEL(
-    reduce_max,
-    ops::ReduceKernel<paddle::platform::CPUPlace, float, ops::MaxFunctor>);
-REGISTER_OP_CPU_KERNEL(reduce_max_grad,
-                       ops::ReduceGradKernel<paddle::platform::CPUPlace, float,
-                                             ops::MaxOrMinGradFunctor>);
 
-REGISTER_OP(reduce_min, ops::ReduceOp, ops::ReduceMaxOpMaker, reduce_min_grad,
+REGISTER_OP(reduce_min, ops::ReduceOp, ops::ReduceMinOpMaker, reduce_min_grad,
             ops::ReduceGradOp);
-REGISTER_OP_CPU_KERNEL(
-    reduce_min,
-    ops::ReduceKernel<paddle::platform::CPUPlace, float, ops::MinFunctor>);
-REGISTER_OP_CPU_KERNEL(reduce_min_grad,
-                       ops::ReduceGradKernel<paddle::platform::CPUPlace, float,
-                                             ops::MaxOrMinGradFunctor>);
+
+#define REGISTER_REDUCE_CPU_KERNEL(reduce_type, functor, grad_functor)     \
+  REGISTER_OP_CPU_KERNEL(                                                  \
+      reduce_type,                                                         \
+      ops::ReduceKernel<paddle::platform::CPUPlace, float, ops::functor>); \
+  REGISTER_OP_CPU_KERNEL(reduce_type##_grad,                               \
+                         ops::ReduceGradKernel<paddle::platform::CPUPlace, \
+                                               float, ops::grad_functor>);
+
+FOR_EACH_KERNEL_FUNCTOR(REGISTER_REDUCE_CPU_KERNEL);

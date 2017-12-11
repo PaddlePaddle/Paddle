@@ -79,7 +79,7 @@ void trainerOnePassTest(const string& configFile,
 // 1. test trainer (cpu, gpu).
 TEST(trainerOnePass, cpu) { trainerOnePassTest(configFile1, false, false); }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 TEST(trainerOnePass, gpu) { trainerOnePassTest(configFile1, true, false); }
 
 TEST(trainerOnePass, gpu2) { trainerOnePassTest(configFile1, true, false, 2); }
@@ -94,7 +94,7 @@ TEST(trainerOnePass, parallel) {
 #endif
 
 // 2. test average_window.
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 TEST(average_window, gpu) {
   trainerOnePassTest(configFile1, true, false, 4, 0.01);
 }
@@ -266,7 +266,7 @@ TEST(checkRemoteUpdater, cpuTrainerOldUpdater) {
   checkRemoteParameterUpdaterTest(configFile1, false, false, 1, true);
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 TEST(checkRemoteUpdater, gpuTrainer) {
   checkRemoteParameterUpdaterTest(configFile1, true, false);
 }

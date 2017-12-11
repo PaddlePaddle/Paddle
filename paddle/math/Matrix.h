@@ -861,7 +861,8 @@ public:
 
   /**
    * Pooling forward operation, pick out the largest element
-   * in the sizeX of value
+   * in the sizeX of value, if the maskMatP is not NULL, it will
+   * also caculate the location indices.
    */
   virtual void maxPoolForward(Matrix& inputMat,
                               size_t imgSizeH,
@@ -874,7 +875,8 @@ public:
                               size_t outputH,
                               size_t outputW,
                               size_t paddingH,
-                              size_t paddingW) {
+                              size_t paddingW,
+                              MatrixPtr maskMatP = NULL) {
     LOG(FATAL) << "Not implemeted";
   }
 
@@ -909,7 +911,8 @@ public:
                               size_t outputH,
                               size_t outputW,
                               size_t paddingH,
-                              size_t paddingW) {
+                              size_t paddingW,
+                              bool excludeMode = true) {
     LOG(FATAL) << "Not implemeted";
   }
 
@@ -925,9 +928,11 @@ public:
                                real scaleTargets,
                                real scaleOutput,
                                size_t paddingH,
-                               size_t paddingW) {
+                               size_t paddingW,
+                               bool excludeMode = true) {
     LOG(FATAL) << "Not implemeted";
   }
+
   /**
    * Pooling 3D forward operation, pick out the largest element
    * in the sizeX of value
@@ -1426,7 +1431,8 @@ public:
                       size_t outputH,
                       size_t outputW,
                       size_t paddingH,
-                      size_t paddingW);
+                      size_t paddingW,
+                      MatrixPtr maskMatP);
 
   void maxPoolBackward(Matrix& image,
                        size_t imgSizeH,
@@ -1455,7 +1461,8 @@ public:
                       size_t outputH,
                       size_t outputW,
                       size_t paddingH,
-                      size_t paddingW);
+                      size_t paddingW,
+                      bool excludeMode = true);
 
   void avgPoolBackward(Matrix& input,
                        size_t imgSizeH,
@@ -1469,7 +1476,8 @@ public:
                        real scaleTargets,
                        real scaleOutput,
                        size_t paddingH,
-                       size_t paddingW);
+                       size_t paddingW,
+                       bool excludeMode = true);
 
   void maxPool3DForward(Matrix& inputMat,
                         Matrix& maxPoolIdx,
@@ -1697,7 +1705,8 @@ public:
                       size_t outputH,
                       size_t outputW,
                       size_t paddingH,
-                      size_t paddingW);
+                      size_t paddingW,
+                      MatrixPtr maskMatP);
 
   void maxPoolBackward(Matrix& image,
                        size_t imgSizeH,
@@ -1726,7 +1735,8 @@ public:
                       size_t outputH,
                       size_t outputW,
                       size_t paddingH,
-                      size_t paddingW);
+                      size_t paddingW,
+                      bool excludeMode = true);
 
   void avgPoolBackward(Matrix& input,
                        size_t imgSizeH,
@@ -1740,7 +1750,8 @@ public:
                        real scaleTargets,
                        real scaleOutput,
                        size_t paddingH,
-                       size_t paddingW);
+                       size_t paddingW,
+                       bool excludeMode = true);
 
   void maxPool3DForward(Matrix& inputMat,
                         Matrix& maxPoolIdx,
@@ -2066,6 +2077,7 @@ public:
 
 class SharedCpuMatrix : public CpuMatrix {
 public:
+#ifndef PADDLE_MOBILE_INFERENCE
   /* blockNum is number of partitions of the matrix  */
   SharedCpuMatrix(int blockNum, size_t height, size_t width, bool trans = false)
       : CpuMatrix(height, width, trans) {
@@ -2111,6 +2123,7 @@ private:
   ThreadLocal<CpuMatrixPtr> localBuf_;
   ThreadLocal<std::vector<int>> localBufRows_;
   ThreadLocal<std::vector<int>> blockSeq_;
+#endif
 };
 
 typedef struct { unsigned int col; } sparse_non_value_t;

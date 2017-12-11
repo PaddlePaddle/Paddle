@@ -793,3 +793,14 @@ void hl_matrix_col2Vol(real* dataDst,
 
   CHECK_SYNC("hl_matrix_col2Vol failed");
 }
+
+__global__ void keVectorCast2Int(int* out, real* vec, int size) {
+  for (int i = threadIdx.x; i < (size); i += blockDim.x) {
+    out[i] = int(vec[i]);
+  }
+}
+
+void hl_vector_cast2int(int* out, real* vec, int size) {
+  keVectorCast2Int<<<1, 512, 0, STREAM_DEFAULT>>>(out, vec, size);
+  CHECK_SYNC("hl_vector_cast2int failed");
+}

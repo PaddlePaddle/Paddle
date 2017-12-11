@@ -15,10 +15,13 @@ limitations under the License. */
 #include "paddle/utils/Util.h"
 
 #include "CostLayer.h"
-#include "ValidationLayer.h"
 #include "paddle/math/SparseMatrix.h"
 #include "paddle/utils/Error.h"
 #include "paddle/utils/Logging.h"
+
+#ifndef PADDLE_MOBILE_INFERENCE
+#include "ValidationLayer.h"
+#endif
 
 DEFINE_bool(log_error_clipping, false, "enable log error clipping or not");
 
@@ -95,6 +98,7 @@ ClassRegistrar<Layer, LayerConfig> Layer::registrar_;
 LayerPtr Layer::create(const LayerConfig& config) {
   std::string type = config.type();
 
+#ifndef PADDLE_MOBILE_INFERENCE
   // NOTE: As following types have illegal character '-',
   // they can not use REGISTER_LAYER to registrar.
   // Besides, to fit with old training models,
@@ -107,6 +111,7 @@ LayerPtr Layer::create(const LayerConfig& config) {
     return LayerPtr(new AucValidation(config));
   else if (type == "pnpair-validation")
     return LayerPtr(new PnpairValidation(config));
+#endif
 
   return LayerPtr(registrar_.createByType(config.type(), config));
 }

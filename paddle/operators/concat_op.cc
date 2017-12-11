@@ -23,10 +23,9 @@ class ConcatOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase *ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
-                      "Inputs(X) of ConcatOp should be empty.")
+                      "Inputs(X) of ConcatOp should be empty.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ConcatOp should not be null.");
 
@@ -42,14 +41,18 @@ class ConcatOp : public framework::OperatorWithKernel {
       for (size_t j = 0; j < in_zero_dims_size; j++) {
         if (j == axis) {
           out_dims[axis] += ins[i][j];
-          continue;
+        } else {
+          PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
+                            "Input tensors should have the same "
+                            "elements except the specify axis.");
         }
-        PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
-                          "Input tensors should have the same "
-                          "elements except the specify axis.")
       }
     }
+    if (out_dims[axis] < 0) {
+      out_dims[axis] = -1;
+    }
     ctx->SetOutputDim("Out", out_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
@@ -57,20 +60,24 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ConcatOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "the input tensors of concat operator.").AsDuplicable();
-    AddOutput("Out", "the output tensor of concat operator.");
-    AddComment(R"DOC(
-            Join the input tensors along with the axis.
-            Examples:
-              Input[0] = [[1,2],[3,4]]
-              Input[1] = [[5,6]]
-              axis = 0
-              Output = [[1,2],
-                        [3,4],
-                        [5,6]]
-        )DOC");
-    AddAttr<int>("axis", "The axis which the inputs will be joined with.")
+    AddInput("X", "Input tensors of concat operator.").AsDuplicable();
+    AddOutput("Out", "Output tensor of concat operator.");
+    AddAttr<int>("axis",
+                 "The axis along which the input tensors will be concatenated.")
         .SetDefault(0);
+    AddComment(R"DOC(
+Concat Operator.
+
+Concatenate the input tensors along dimension axis.
+Examples:
+  Input[0] = [[1,2],[3,4]]
+  Input[1] = [[5,6]]
+  axis = 0
+  Output = [[1,2],
+            [3,4],
+            [5,6]]
+
+)DOC");
   }
 };
 
@@ -82,8 +89,7 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
                const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
- protected:
-  void InferShape(framework::InferShapeContextBase *ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
   }
 };

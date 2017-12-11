@@ -24,30 +24,36 @@ namespace paddle {
 namespace framework {
 
 class BlockDescBind;
+class ProgramDescBind;
 
 class OpDescBind {
  public:
+  OpDescBind() {}
+
+  OpDescBind(const std::string &type, const VariableNameMap &inputs,
+             const VariableNameMap &outputs, const AttributeMap &attrs);
+
+  OpDescBind(const OpDesc &desc, ProgramDescBind *prog);
+
   OpDesc *Proto();
 
-  std::string Type() const { return op_desc_.type(); }
+  std::string Type() const { return desc_.type(); }
 
-  void SetType(const std::string &type) { op_desc_.set_type(type); }
+  void SetType(const std::string &type) { desc_.set_type(type); }
 
   const std::vector<std::string> &Input(const std::string &name) const;
 
-  std::vector<std::string> InputNames() const;
+  std::vector<std::string> InputArgumentNames() const;
 
   void SetInput(const std::string &param_name,
                 const std::vector<std::string> &args);
 
   const std::vector<std::string> &Output(const std::string &name) const;
 
-  std::vector<std::string> OutputNames() const;
+  std::vector<std::string> OutputArgumentNames() const;
 
   void SetOutput(const std::string &param_name,
                  const std::vector<std::string> &args);
-
-  std::string DebugString() { return this->Proto()->DebugString(); }
 
   bool HasAttr(const std::string &name) const {
     return attrs_.find(name) != attrs_.end();
@@ -61,20 +67,66 @@ class OpDescBind {
 
   void SetBlockAttr(const std::string &name, BlockDescBind &block);
 
-  // Only be used in C++
-  void SetAttrMap(const AttributeMap &attr_map);
-
   Attribute GetAttr(const std::string &name) const;
 
   int GetBlockAttr(const std::string &name) const;
 
+  void Rename(const std::string &old_name, const std::string &new_name);
+
+  void RenameOutput(const std::string &old_name, const std::string &new_name);
+
+  void RenameInput(const std::string &old_name, const std::string &new_name);
+
   // Only be used in C++
   const AttributeMap &GetAttrMap() const;
 
- private:
-  void Sync();
+  // Only be used in C++
+  void SetAttrMap(const AttributeMap &attr_map);
 
-  OpDesc op_desc_;
+  std::vector<std::string> InputNames() const { return MapKeys(inputs_); }
+  std::vector<std::string> OutputNames() const { return MapKeys(outputs_); }
+
+  void SetInputMap(const VariableNameMap &input) {
+    this->inputs_ = input;
+    this->need_update_ = true;
+  }
+
+  void SetOutputMap(const VariableNameMap &output) {
+    this->outputs_ = output;
+    this->need_update_ = true;
+  }
+
+  const VariableNameMap &Inputs() const { return inputs_; }
+
+  const VariableNameMap &Outputs() const { return outputs_; }
+
+  AttributeMap *MutableAttrMap() {
+    this->need_update_ = true;
+    return &this->attrs_;
+  }
+
+  void CheckAttrs();
+
+  void InferShape(const BlockDescBind &block) const;
+
+  void InferVarType(BlockDescBind *block) const;
+
+  void MarkAsTarget() { desc_.set_is_target(true); }
+
+  void Flush();
+
+ private:
+  template <typename MapType>
+  static std::vector<typename MapType::key_type> MapKeys(const MapType &map) {
+    std::vector<typename MapType::key_type> ret_val;
+    ret_val.reserve(map.size());
+    std::transform(
+        map.begin(), map.end(), std::back_inserter(ret_val),
+        [](const typename MapType::value_type &pair) { return pair.first; });
+    return ret_val;
+  }
+
+  OpDesc desc_;
   VariableNameMap inputs_;
   VariableNameMap outputs_;
   AttributeMap attrs_;

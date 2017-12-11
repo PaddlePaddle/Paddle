@@ -23,8 +23,7 @@ class PadOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of PadOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of PadOp should not be null.");
@@ -55,42 +54,44 @@ class PadOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input of pad op. "
              "The input should be a k-D tensor(k > 0 and k < 7)");
     AddOutput("Out",
-              "The output of pad op."
-              "A tensor with the same shape as X.")
-        .NotInGradient();
+              "The output of pad op. "
+              "A tensor with the same shape as X.");
+    AddAttr<std::vector<int>>(
+        "paddings",
+        "(vector<int>) "
+        "A list<int> to describe the padding rules for each dimension. "
+        "For 2-D image tensor, paddings=[0, 1, 2, 3] means "
+        "padding 0 row to top, 1 row to bottom, 2 columns to left "
+        "and 3 columns to right. Size of paddings should be equal to "
+        "2 * dimension size of the input tensor.");
+    AddAttr<float>("pad_value",
+                   "(float, default 0.0) "
+                   "The value to fill the padded areas.")
+        .SetDefault(0.0f);
     AddComment(R"DOC(
-Pad input into output, as specified by paddings and pad_value. The input should be a k-D tensor(k > 0 and k < 7). As an example:
+Pad Operator.
+
+Pad input into output, as specified by paddings and pad_value. 
+The input should be a k-D tensor(k > 0 and k < 7). As an example:
 
 Given:
 
 X = [[1, 2],
-   [3, 4]]
+     [3, 4]],
+
+paddings = [0, 1, 1, 2],
 
 and
 
-paddings = [0, 1, 1, 2]
+pad_value = 0,
 
-and
-
-pad_value = 0
-
-then we get
+we have:
 
 Out = [[0, 1, 2, 0, 0]
        [0, 3, 4, 0, 0]
        [0, 0, 0, 0, 0]]
+
 )DOC");
-    AddAttr<std::vector<int>>(
-        "paddings",
-        "A list<int> to describes padding rules for each dimension."
-        " For 2-D image tensor, paddings=[0, 1, 2, 3] means"
-        " padding 0 row to top, 1 row to bottom, 2 columns to left"
-        " and 3 columns to right.Size of paddings should be equal to"
-        " 2 * dimension size of input tensor.");
-    AddAttr<float>("pad_value",
-                   "(float) default to 0; "
-                   "The value to fill padded areas.")
-        .SetDefault(0.0f);
   }
 };
 
@@ -98,8 +99,7 @@ class PadOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null");
@@ -111,11 +111,29 @@ class PadOpGrad : public framework::OperatorWithKernel {
   }
 };
 
+class PadOpGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDescBind> Apply() const override {
+    auto* bind = new framework::OpDescBind();
+    bind->SetInput("X", Input("X"));
+    bind->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    bind->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    bind->SetAttrMap(Attrs());
+    bind->SetType("pad_grad");
+    return std::unique_ptr<framework::OpDescBind>(bind);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(pad, ops::PadOp, ops::PadOpMaker, pad_grad, ops::PadOpGrad);
+
+REGISTER_OPERATOR(pad, ops::PadOp, ops::PadOpMaker, ops::PadOpGradMaker);
+REGISTER_OPERATOR(pad_grad, ops::PadOpGrad);
 REGISTER_OP_CPU_KERNEL(pad, ops::PadKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(pad_grad,
                        ops::PadGradKernel<paddle::platform::CPUPlace, float>);

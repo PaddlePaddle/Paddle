@@ -1,41 +1,51 @@
-IfOp should have only one branch. An IfOp operator takes a `cond` variable whose value must be a vector of N boolean elements. Its return value has N instances. If cond[i] == True, input instance input[i] will go through true_block() and generate output[i]; otherwise it will produce output from false_bloack().
+# The `IfElse` Operator
+
+PaddlePaddle's `IfElse` operator differs from TensorFlow's:
+
+- the TensorFlow version takes a scalar boolean value as the condition so that the whole mini-batch goes to either the true or the false branch, whereas
+- the PaddlePaddle version takes a vector of boolean value as the condition, and instances corresponding to true values go to the true branch, those corresponding to false values go to the false branch.
+
+## Example
+
+The following PaddlePaddle program shows the usage of the IfElse operator:
 
 ```python
 import paddle as pd
 
-x = var()
-y = var()
-cond = var()
-default_value = var()
-b = pd.create_ifelseop(inputs=[x], output_num=1)
-with b.true_block():
-    x = b.inputs(0)
-    z = operator.add(x, y)
-    b.set_output(0, operator.softmax(z))
+x = minibatch([10, 20, 30]) # shape=[None, 1]
+y = var(1) # shape=[1], value=1
+z = minibatch([10, 20, 30]) # shape=[None, 1]
+cond = larger_than(x, 15) # [false, true, true]
 
-with b.false_block():
-    x = b.inputs(0)
-    z = layer.fc(x)
-    b.set_output(0, operator.softmax(z))
-
-out = b(cond)
+ie = pd.ifelse()
+with ie.true_block():
+    d = pd.layer.add(x, y)
+    ie.output(d, pd.layer.softmax(d))
+with ie.false_block():
+    d = pd.layer.fc(z)
+    ie.output(d, d+1)
+o1, o2 = ie(cond)
 ```
 
-If only true_block is set in an IfElseOp, a special case is that we can have a default value for false as:
-```python
-import paddle as pd
+A challenge to implement the `IfElse` operator is to infer those variables to be split, or, say, to identify the variable of the mini-batch or those derived from the mini-batch.
 
-x = var()
-y = var()
-cond = var()
-default_value = var()
-b = pd.create_ifelseop(inputs=[x], output_num=1, default_value)
+An equivalent C++ program is as follows:
 
-with b.true_block():
-    x = b.inputs(0)
-    z = operator.add(x, y)
-    b.set_output(0, operator.softmax(z))
+```c++
+namespace pd = paddle;
 
-out = b(cond)
+int x = 10;
+int y = 1;
+int z = 10;
+bool cond = false;
+int o1, o2;
+if (cond) {
+  int d = x + y;
+  o1 = z;
+  o2 = pd::layer::softmax(z);
+} else {
+  int d = pd::layer::fc(z);
+  o1 = d;
+  o2 = d+1;
+}
 ```
-where default_value is a list of vars for `cond` == False.

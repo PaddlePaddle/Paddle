@@ -22,8 +22,7 @@ class ScatterOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Ref"),
                    "Input(Ref) of ScatterOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Index"),
@@ -49,9 +48,12 @@ class ScatterOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", ref_dims);
   }
 
-  framework::DataType IndicateDataType(
+ protected:
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("Ref")->type());
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("Ref")->type()),
+        ctx.device_context());
   }
 };
 
@@ -59,16 +61,18 @@ class ScatterGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("Updates"),
                       ctx->GetInputDim("Updates"));
     ctx->SetOutputDim(framework::GradVarName("Ref"), ctx->GetInputDim("Ref"));
   }
 
-  framework::DataType IndicateDataType(
+ protected:
+  framework::OpKernelType GetKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::ToDataType(ctx.Input<Tensor>("Ref")->type());
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("Ref")->type()),
+        ctx.device_context());
   }
 };
 
@@ -83,10 +87,15 @@ class ScatterOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Updates", "The updated value of updates op");
     AddOutput("Out", "The output of add op");
     AddComment(R"DOC(
-Scatter Operator by selecting from the first axis,
+Scatter Operator.
 
-Out = Ref
+This operator obtains output by updating the input on selected indices on the first axis:
+
+$$
+Out = Ref \\
 Out[Index] = Ref[Index] + Updates
+$$
+
 )DOC");
   }
 };
@@ -97,8 +106,5 @@ Out[Index] = Ref[Index] + Updates
 namespace ops = paddle::operators;
 REGISTER_OP(scatter, ops::ScatterOp, ops::ScatterOpMaker, scatter_grad,
             ops::ScatterGradOp);
-REGISTER_OP_CPU_KERNEL(scatter,
-                       ops::ScatterOpKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(
-    scatter_grad,
-    ops::ScatterGradientOpKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(scatter, ops::ScatterOpKernel<float>);
+REGISTER_OP_CPU_KERNEL(scatter_grad, ops::ScatterGradientOpKernel<float>);

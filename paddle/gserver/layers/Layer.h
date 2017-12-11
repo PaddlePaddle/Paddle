@@ -86,6 +86,7 @@ protected:
   /// Also used in 'use_mkldnn' case.
   std::vector<Argument> outputOtherDevice_;
   /// If there are several outputs, map them by each name.
+  /// MKLDNNLayer use it only to merge output grad
   std::map<std::string, Argument*> outputMap_;
   /// Used to merge grad on different devices.
   MatrixPtr tmpGrad_;
@@ -324,6 +325,11 @@ public:
   void setOutput(const std::string& name, Argument* output) {
     outputMap_[name] = output;
   }
+
+  /**
+   * Get the output map size, if layer has multi-output.
+   */
+  size_t getOutputMapSize() { return outputMap_.size(); }
 
   /**
    * Get the output based on layer's name.

@@ -21,8 +21,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of SoftmaxOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Y"),
@@ -45,20 +44,23 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
              "2-D with shape [batch_size, input_feature_dimensions].");
     AddOutput("Y", "The normalized values with the same shape as X.");
     AddComment(R"DOC(
-The input of softmax operator is a 2-D tensor with shape N x K (N is the
+Softmax Operator.
+
+The input of the softmax operator is a 2-D tensor with shape N x K (N is the
 batch_size, K is the dimension of input feature). The output tensor has the
 same shape as the input tensor.
 
 For each row of the input tensor, the softmax operator squashes the
 K-dimensional vector of arbitrary real values to a K-dimensional vector of real
-values in the range [0, 1] that add up to 1. Specifically, it computes the
-exponential of the given dimension and the sum of exponential values of all
-the other dimensions in the K-dimensional vector input. Then the ratio of the
-exponential of the given dimension and the sum of exponential values of all
-the other dimensions is the output of the softmax operator.
+values in the range [0, 1] that add up to 1.
+It computes the exponential of the given dimension and the sum of exponential
+values of all the other dimensions in the K-dimensional vector input.
+Then the ratio of the exponential of the given dimension and the sum of
+exponential values of all the other dimensions is the output of the softmax
+operator.
 
-For each row `i` and each column `j` in input X, we have:
-    Y[i, j] = exp(X[i, j]) / sum_j(exp(X[i, j]))
+For each row $i$ and each column $j$ in Input(X), we have:
+    $$Y[i, j] = \frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])}$$
 
 )DOC");
   }
@@ -68,8 +70,7 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
-  void InferShape(framework::InferShapeContextBase* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
                    "Input(Y@GRAD) should be not null.");

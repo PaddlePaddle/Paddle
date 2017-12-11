@@ -16,7 +16,7 @@ limitations under the License. */
 #include "BatchNormalizationLayer.h"
 #include "Layer.h"
 #include "paddle/utils/Stat.h"
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 #include "CudnnBatchNormLayer.h"
 #endif
 
@@ -41,6 +41,7 @@ bool BatchNormBaseLayer::init(const LayerMap& layerMap,
     useGlobalStats_ = config_.use_global_stats();
   }
   movingAvgFraction_ = config_.moving_average_fraction();
+  epsilon_ = config_.epsilon();
 
   weight_.reset(new Weight(1, channels_, parameters_[0]));
   movingMean_.reset(new Weight(1, channels_, parameters_[1]));

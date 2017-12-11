@@ -13,14 +13,122 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/op_desc.h"
+#include <functional>
+#include <mutex>
+#include <unordered_map>
+#include "glog/logging.h"
 #include "paddle/framework/block_desc.h"
+#include "paddle/framework/operator.h"
+#include "paddle/framework/program_desc.h"
+#include "paddle/framework/shape_inference.h"
 
 namespace paddle {
 namespace framework {
 
+class OpDescBind;
+class BlockDescBind;
+class CompileTimeInferShapeContext : public InferShapeContext {
+ public:
+  CompileTimeInferShapeContext(const OpDescBind &op,
+                               const BlockDescBind &block);
+
+  bool HasInput(const std::string &name) const override;
+
+  bool HasOutput(const std::string &name) const override;
+
+  bool HasInputs(const std::string &name) const override;
+
+  bool HasOutputs(const std::string &name) const override;
+
+  DDim GetInputDim(const std::string &name) const override;
+
+  void SetOutputDim(const std::string &name, const DDim &dim) override;
+
+  AttrReader Attrs() const override;
+
+  const std::vector<std::string> &Inputs(
+      const std::string &name) const override;
+
+  const std::vector<std::string> &Outputs(
+      const std::string &name) const override;
+
+  void ShareLoD(const std::string &in, const std::string &out, size_t i = 0,
+                size_t j = 0) const override {
+    PADDLE_ENFORCE_LT(i, Inputs(in).size());
+    PADDLE_ENFORCE_LT(j, Outputs(out).size());
+    auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
+    auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
+    if (in_var->GetType() != VarDesc::LOD_TENSOR) {
+      VLOG(3) << "input " << in << " is not LodTensor";
+      return;
+    }
+    PADDLE_ENFORCE_EQ(in_var->GetType(), VarDesc::LOD_TENSOR,
+                      "The %d-th output of Output(%s) must be LoDTensor.", j,
+                      out);
+    out_var->SetLoDLevel(in_var->GetLodLevel());
+  }
+  bool IsRuntime() const override;
+
+ protected:
+  VarDesc::VarType GetVarType(const std::string &name) const override;
+
+  DDim GetDim(const std::string &name) const override;
+
+  void SetDim(const std::string &name, const DDim &dim) override;
+
+  const OpDescBind &op_;
+  const BlockDescBind &block_;
+};
+
+OpDescBind::OpDescBind(const std::string &type, const VariableNameMap &inputs,
+                       const VariableNameMap &outputs,
+                       const AttributeMap &attrs) {
+  desc_.set_type(type);
+  inputs_ = inputs;
+  outputs_ = outputs;
+  attrs_ = attrs;
+  need_update_ = true;
+}
+
+OpDescBind::OpDescBind(const OpDesc &desc, ProgramDescBind *prog)
+    : desc_(desc), need_update_(false) {
+  // restore inputs_
+  int input_size = desc_.inputs_size();
+  for (int i = 0; i < input_size; ++i) {
+    const OpDesc::Var &var = desc_.inputs(i);
+    std::vector<std::string> &args = inputs_[var.parameter()];
+    int argu_size = var.arguments_size();
+    args.reserve(argu_size);
+    for (int j = 0; j < argu_size; ++j) {
+      args.push_back(var.arguments(j));
+    }
+  }
+  // restore outputs_
+  int output_size = desc_.outputs_size();
+  for (int i = 0; i < output_size; ++i) {
+    const OpDesc::Var &var = desc_.outputs(i);
+    std::vector<std::string> &args = outputs_[var.parameter()];
+    int argu_size = var.arguments_size();
+    args.reserve(argu_size);
+    for (int j = 0; j < argu_size; ++j) {
+      args.push_back(var.arguments(j));
+    }
+  }
+  // restore attrs_
+  for (const OpDesc::Attr &attr : desc_.attrs()) {
+    std::string attr_name = attr.name();
+    if (attr.type() != AttrType::BLOCK) {
+      attrs_[attr_name] = GetAttrValue(attr);
+    } else {
+      auto bid = attr.block_idx();
+      attrs_[attr_name] = prog->MutableBlock(bid);
+    }
+  }
+}
+
 OpDesc *OpDescBind::Proto() {
-  Sync();
-  return &op_desc_;
+  Flush();
+  return &desc_;
 }
 
 const std::vector<std::string> &OpDescBind::Input(
@@ -31,11 +139,10 @@ const std::vector<std::string> &OpDescBind::Input(
   return it->second;
 }
 
-std::vector<std::string> OpDescBind::InputNames() const {
+std::vector<std::string> OpDescBind::InputArgumentNames() const {
   std::vector<std::string> retv;
-  retv.reserve(this->inputs_.size());
   for (auto &ipt : this->inputs_) {
-    retv.push_back(ipt.first);
+    retv.insert(retv.end(), ipt.second.begin(), ipt.second.end());
   }
   return retv;
 }
@@ -54,11 +161,10 @@ const std::vector<std::string> &OpDescBind::Output(
   return it->second;
 }
 
-std::vector<std::string> OpDescBind::OutputNames() const {
+std::vector<std::string> OpDescBind::OutputArgumentNames() const {
   std::vector<std::string> retv;
-  retv.reserve(this->outputs_.size());
   for (auto &ipt : this->outputs_) {
-    retv.push_back(ipt.first);
+    retv.insert(retv.end(), ipt.second.begin(), ipt.second.end());
   }
   return retv;
 }
@@ -89,6 +195,11 @@ void OpDescBind::SetAttr(const std::string &name, const Attribute &v) {
   need_update_ = true;
 }
 
+void OpDescBind::SetBlockAttr(const std::string &name, BlockDescBind &block) {
+  this->attrs_[name] = &block;
+  need_update_ = true;
+}
+
 void OpDescBind::SetAttrMap(
     const std::unordered_map<std::string, Attribute> &attr_map) {
   attrs_ = attr_map;
@@ -104,12 +215,41 @@ Attribute OpDescBind::GetAttr(const std::string &name) const {
 int OpDescBind::GetBlockAttr(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
-  return boost::get<BlockDesc *>(it->second)->idx();
+  return boost::get<BlockDescBind *>(it->second)->ID();
 }
 
 const std::unordered_map<std::string, Attribute> &OpDescBind::GetAttrMap()
     const {
   return attrs_;
+}
+
+void OpDescBind::Rename(const std::string &old_name,
+                        const std::string &new_name) {
+  for (auto &input : inputs_) {
+    std::replace(input.second.begin(), input.second.end(), old_name, new_name);
+  }
+  for (auto &output : outputs_) {
+    std::replace(output.second.begin(), output.second.end(), old_name,
+                 new_name);
+  }
+  need_update_ = true;
+}
+
+void OpDescBind::RenameOutput(const std::string &old_name,
+                              const std::string &new_name) {
+  for (auto &output : outputs_) {
+    std::replace(output.second.begin(), output.second.end(), old_name,
+                 new_name);
+  }
+  need_update_ = true;
+}
+
+void OpDescBind::RenameInput(const std::string &old_name,
+                             const std::string &new_name) {
+  for (auto &input : inputs_) {
+    std::replace(input.second.begin(), input.second.end(), old_name, new_name);
+  }
+  need_update_ = true;
 }
 
 struct SetAttrDescVisitor : public boost::static_visitor<void> {
@@ -136,25 +276,25 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
   void operator()(boost::blank) const { PADDLE_THROW("Unexpected branch"); }
 };
 
-void OpDescBind::Sync() {
+void OpDescBind::Flush() {
   if (need_update_) {
-    this->op_desc_.mutable_inputs()->Clear();
+    this->desc_.mutable_inputs()->Clear();
     for (auto &ipt : inputs_) {
-      auto *input = op_desc_.add_inputs();
+      auto *input = desc_.add_inputs();
       input->set_parameter(ipt.first);
       VectorToRepeated(ipt.second, input->mutable_arguments());
     }
 
-    this->op_desc_.mutable_outputs()->Clear();
+    this->desc_.mutable_outputs()->Clear();
     for (auto &opt : outputs_) {
-      auto *output = op_desc_.add_outputs();
+      auto *output = desc_.add_outputs();
       output->set_parameter(opt.first);
       VectorToRepeated(opt.second, output->mutable_arguments());
     }
 
-    this->op_desc_.mutable_attrs()->Clear();
+    this->desc_.mutable_attrs()->Clear();
     for (auto &attr : attrs_) {
-      auto *attr_desc = op_desc_.add_attrs();
+      auto *attr_desc = desc_.add_attrs();
       attr_desc->set_name(attr.first);
       attr_desc->set_type(
           static_cast<framework::AttrType>(attr.second.which() - 1));
@@ -165,5 +305,189 @@ void OpDescBind::Sync() {
     need_update_ = false;
   }
 }
+
+static std::once_flag init_infer_shape_funcs;
+
+static void InitInferShapeFuncs() {
+  std::call_once(init_infer_shape_funcs, [] {
+    auto &map = OpInfoMap::Instance();
+    auto &info_map = *map.mutable_map();
+
+    for (auto &kern_pair : OperatorWithKernel::AllOpKernels()) {
+      auto op_type = kern_pair.first;
+      auto &op_info = info_map.at(op_type);
+      auto op =
+          static_cast<OperatorWithKernel *>(op_info.Creator()("", {}, {}, {}));
+      if (op_info.infer_shape_) {  // infer_shape has been registered.
+        continue;
+      }
+      op_info.infer_shape_ = [op](InferShapeContext *ctx) {
+        op->InferShape(ctx);
+      };
+    }
+  });
+}
+
+void OpDescBind::CheckAttrs() {
+  PADDLE_ENFORCE(!Type().empty(),
+                 "CheckAttr() can not be called before type is setted.");
+  auto *checker = OpInfoMap::Instance().Get(Type()).Checker();
+  if (checker == nullptr) {
+    // checker is not configured. That operator could be generated by Paddle,
+    // not by users.
+    return;
+  }
+  checker->Check(attrs_);
+}
+
+void OpDescBind::InferShape(const BlockDescBind &block) const {
+  VLOG(3) << "CompileTime infer shape on " << Type();
+  InitInferShapeFuncs();
+  auto &infer_shape = OpInfoMap::Instance().Get(this->Type()).infer_shape_;
+  PADDLE_ENFORCE(static_cast<bool>(infer_shape),
+                 "%s's infer_shape has not been registered", this->Type());
+  CompileTimeInferShapeContext ctx(*this, block);
+  if (VLOG_IS_ON(10)) {
+    std::ostringstream sout;
+    auto inames = this->InputArgumentNames();
+    sout << " From [";
+    std::copy(inames.begin(), inames.end(),
+              std::ostream_iterator<std::string>(sout, ", "));
+    sout << "] to [";
+    auto onames = this->OutputArgumentNames();
+    std::copy(onames.begin(), onames.end(),
+              std::ostream_iterator<std::string>(sout, ", "));
+    sout << "]";
+    VLOG(10) << sout.str();
+  }
+  infer_shape(&ctx);
+}
+
+void OpDescBind::InferVarType(BlockDescBind *block) const {
+  auto &info = OpInfoMap::Instance().Get(this->Type());
+  if (info.infer_var_type_) {
+    info.infer_var_type_(*this, block);
+  } else {
+    // all output type is LoDTensor by default
+    VLOG(10) << this->Type()
+             << " has not registered InferVarType. Set output variables to "
+                "LOD_TENSOR";
+    for (auto &out_pair : this->outputs_) {
+      for (auto &out_var_name : out_pair.second) {
+        block->FindRecursiveOrCreateVar(out_var_name)
+            ->SetType(VarDesc::LOD_TENSOR);
+      }
+    }
+  }
+}
+
+CompileTimeInferShapeContext::CompileTimeInferShapeContext(
+    const OpDescBind &op, const BlockDescBind &block)
+    : op_(op), block_(block) {}
+
+bool CompileTimeInferShapeContext::HasInput(const std::string &name) const {
+  const std::vector<std::string> &input_names = op_.Input(name);
+  auto length = input_names.size();
+  if (length == 0) {
+    return false;
+  }
+  PADDLE_ENFORCE_EQ(length, 1UL,
+                    "Input(%s) should have only one value, "
+                    "but it have %d now",
+                    name, length);
+  return block_.HasVarRecursive(input_names[0]);
+}
+
+bool CompileTimeInferShapeContext::HasOutput(const std::string &name) const {
+  const std::vector<std::string> &output_names = op_.Output(name);
+  auto length = output_names.size();
+  if (length == 0) {
+    return false;
+  }
+  PADDLE_ENFORCE_EQ(length, 1UL,
+                    "Output(%s) should have only one value, "
+                    "but it have %d now",
+                    name, length);
+  return block_.HasVarRecursive(output_names[0]);
+}
+
+bool CompileTimeInferShapeContext::HasInputs(const std::string &name) const {
+  const std::vector<std::string> &input_names = op_.Input(name);
+  if (input_names.empty()) {
+    return false;
+  }
+  for (auto &input : input_names) {
+    if (!block_.HasVarRecursive(input)) return false;
+  }
+  return true;
+}
+
+bool CompileTimeInferShapeContext::HasOutputs(const std::string &name) const {
+  const std::vector<std::string> &output_names = op_.Output(name);
+  if (output_names.empty()) {
+    return false;
+  }
+  for (auto &output : output_names) {
+    if (!block_.HasVarRecursive(output)) return false;
+  }
+  return true;
+}
+
+DDim CompileTimeInferShapeContext::GetInputDim(const std::string &name) const {
+  std::vector<DDim> ddims = GetInputsDim(name);
+  auto length = ddims.size();
+  PADDLE_ENFORCE_EQ(length, 1UL,
+                    "Input(%s) should have 1 value, "
+                    "but it has %d now",
+                    name, length);
+  return ddims[0];
+}
+
+void CompileTimeInferShapeContext::SetOutputDim(const std::string &name,
+                                                const DDim &dim) {
+  SetOutputsDim(name, {dim});
+}
+
+AttrReader CompileTimeInferShapeContext::Attrs() const {
+  return AttrReader(op_.GetAttrMap());
+}
+
+const std::vector<std::string> &CompileTimeInferShapeContext::Inputs(
+    const std::string &name) const {
+  return op_.Input(name);
+}
+
+const std::vector<std::string> &CompileTimeInferShapeContext::Outputs(
+    const std::string &name) const {
+  return op_.Output(name);
+}
+
+DDim CompileTimeInferShapeContext::GetDim(const std::string &name) const {
+  auto var = block_.FindVarRecursive(name);
+  PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
+  try {
+    auto shape = var->Shape();
+    if (shape.empty()) {
+      return framework::make_ddim({0UL});
+    } else {
+      return framework::make_ddim(var->Shape());
+    }
+  } catch (...) {
+    VLOG(5) << "GetDim of variable " << name << " error";
+    std::rethrow_exception(std::current_exception());
+  }
+}
+
+void CompileTimeInferShapeContext::SetDim(const std::string &name,
+                                          const DDim &dim) {
+  block_.FindVarRecursive(name)->SetShape(framework::vectorize(dim));
+}
+bool CompileTimeInferShapeContext::IsRuntime() const { return false; }
+
+VarDesc::VarType CompileTimeInferShapeContext::GetVarType(
+    const std::string &name) const {
+  return block_.FindVarRecursive(name)->GetType();
+}
+
 }  // namespace framework
 }  // namespace paddle

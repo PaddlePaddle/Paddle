@@ -29,11 +29,14 @@ limitations under the License. */
 #include <cxxabi.h>  // for __cxa_demangle
 #endif
 
-#ifndef PADDLE_ONLY_CPU
+#include <glog/logging.h>
+
+#ifdef PADDLE_WITH_CUDA
 
 #include "paddle/platform/dynload/cublas.h"
 #include "paddle/platform/dynload/cudnn.h"
 #include "paddle/platform/dynload/curand.h"
+#include "paddle/platform/dynload/nccl.h"
 
 #include <cublas_v2.h>
 #include <cudnn.h>
@@ -41,12 +44,11 @@ limitations under the License. */
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
 
-#endif  // PADDLE_ONLY_CPU
+#endif
 
 namespace paddle {
 namespace platform {
 
-namespace {
 #ifdef __GNUC__
 inline std::string demangle(std::string name) {
   int status = -4;  // some arbitrary value to eliminate the compiler warning
@@ -57,7 +59,6 @@ inline std::string demangle(std::string name) {
 #else
 inline std::string demangle(std::string name) { return name; }
 #endif
-}
 
 struct EnforceNotMet : public std::exception {
   std::exception_ptr exp_;
@@ -113,7 +114,7 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
   }
 }
 
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 
 template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
@@ -172,6 +173,17 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
   throw std::runtime_error(err + string::Sprintf(args...));
 }
 
+template <typename... Args>
+inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
+    ncclResult_t stat, const Args&... args) {
+  if (stat == ncclSuccess) {
+    return;
+  } else {
+    throw std::runtime_error(platform::dynload::ncclGetErrorString(stat) +
+                             string::Sprintf(args...));
+  }
+}
+
 #endif  // PADDLE_ONLY_CPU
 
 template <typename T>
@@ -222,16 +234,24 @@ inline void throw_on_error(T e) {
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <, >=, __VA_ARGS__)
 #define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
-#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                            \
-  PADDLE_ENFORCE(nullptr != (__VAL), #__VAL " should not be null\n%s", \
-                 paddle::string::Sprintf("" __VA_ARGS__));
+#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                  \
+  do {                                                       \
+    if (UNLIKELY(nullptr == (__VAL))) {                      \
+      PADDLE_THROW(#__VAL " should not be null\n%s",         \
+                   paddle::string::Sprintf("" __VA_ARGS__)); \
+    }                                                        \
+  } while (0)
 
-#define __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, __CMP, __INV_CMP, ...)        \
-  PADDLE_ENFORCE(__VAL0 __CMP __VAL1,                                         \
-                 "enforce %s " #__CMP " %s failed, %s " #__INV_CMP " %s\n%s", \
-                 #__VAL0, #__VAL1, paddle::string::to_string(__VAL0),         \
-                 paddle::string::to_string(__VAL1),                           \
-                 paddle::string::Sprintf("" __VA_ARGS__));
+#define __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, __CMP, __INV_CMP, ...)  \
+  do {                                                                  \
+    if (UNLIKELY(!((__VAL0)__CMP(__VAL1)))) {                           \
+      PADDLE_THROW("enforce %s " #__CMP " %s failed, %s " #__INV_CMP    \
+                   " %s\n%s",                                           \
+                   #__VAL0, #__VAL1, paddle::string::to_string(__VAL0), \
+                   paddle::string::to_string(__VAL1),                   \
+                   paddle::string::Sprintf("" __VA_ARGS__));            \
+    }                                                                   \
+  } while (0)
 
 }  // namespace platform
 }  // namespace paddle
