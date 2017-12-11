@@ -181,11 +181,13 @@ class OpKernelRegistrar : public Registrar {
     return 0;                                                             \
   }
 
-#define REGISTER_OP_CUDA_KERNEL(op_type, ...) \
-  REGISTER_OP_KERNEL(op_type, GPU, ::paddle::platform::GPUPlace, __VA_ARGS__)
+#define REGISTER_OP_CUDA_KERNEL(op_type, ...)                              \
+  REGISTER_OP_KERNEL(op_type, CUDA, ::paddle::platform::CUDADeviceContext, \
+                     __VA_ARGS__)
 
-#define REGISTER_OP_CPU_KERNEL(op_type, ...) \
-  REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)
+#define REGISTER_OP_CPU_KERNEL(op_type, ...)                             \
+  REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUDeviceContext, \
+                     __VA_ARGS__)
 
 /**
  * Macro to mark what Operator and Kernel
@@ -217,7 +219,7 @@ class OpKernelRegistrar : public Registrar {
 #else
 #define USE_OP_KERNEL(op_type)        \
   USE_OP_DEVICE_KERNEL(op_type, CPU); \
-  USE_OP_DEVICE_KERNEL(op_type, GPU)
+  USE_OP_DEVICE_KERNEL(op_type, CUDA)
 #endif
 
 #define USE_NO_KERNEL_OP(op_type) USE_OP_ITSELF(op_type);
@@ -226,9 +228,9 @@ class OpKernelRegistrar : public Registrar {
   USE_OP_ITSELF(op_type);        \
   USE_OP_DEVICE_KERNEL(op_type, CPU);
 
-#define USE_GPU_ONLY_OP(op_type) \
-  USE_OP_ITSELF(op_type);        \
-  USE_OP_DEVICE_KERNEL(op_type, GPU)
+#define USE_CUDA_ONLY_OP(op_type) \
+  USE_OP_ITSELF(op_type);         \
+  USE_OP_DEVICE_KERNEL(op_type, CUDA)
 
 #define USE_OP(op_type)   \
   USE_OP_ITSELF(op_type); \
