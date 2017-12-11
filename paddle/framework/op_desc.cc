@@ -59,7 +59,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
     if (in_var->GetType() != VarDesc::LOD_TENSOR) {
-      VLOG(3) << "input " << in << "is not LodTensor";
+      VLOG(3) << "input " << in << " is not LodTensor";
       return;
     }
     PADDLE_ENFORCE_EQ(in_var->GetType(), VarDesc::LOD_TENSOR,

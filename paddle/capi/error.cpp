@@ -12,29 +12,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef __PADDLE_CAPI_MAIN_H__
-#define __PADDLE_CAPI_MAIN_H__
-#include "config.h"
 #include "error.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/**
- * Initialize Paddle.
- */
-PD_API paddle_error paddle_init(int argc, char** argv);
-
-/**
- * Initialize the thread environment of Paddle.
- * @note it is requisite for GPU runs but optional for CPU runs.
- *       For GPU runs, all threads will run on the same GPU devices.
- */
-PD_API paddle_error paddle_init_thread();
-
-#ifdef __cplusplus
+const char* paddle_error_string(paddle_error err) {
+  switch (err) {
+    case kPD_NULLPTR:
+      return "nullptr error";
+    case kPD_OUT_OF_RANGE:
+      return "out of range error";
+    case kPD_PROTOBUF_ERROR:
+      return "protobuf error";
+    case kPD_NOT_SUPPORTED:
+      return "not supported error";
+    case kPD_UNDEFINED_ERROR:
+      return "undefined error";
+    default:
+      return "";
+  }
 }
-#endif
-
-#endif
