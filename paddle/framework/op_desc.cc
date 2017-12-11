@@ -59,7 +59,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
     if (in_var->GetType() != VarDesc::LOD_TENSOR) {
-      VLOG(3) << "input " << in << "is not LodTensor";
+      VLOG(3) << "input " << in << " is not LodTensor";
       return;
     }
     PADDLE_ENFORCE_EQ(in_var->GetType(), VarDesc::LOD_TENSOR,
@@ -316,8 +316,8 @@ static void InitInferShapeFuncs() {
     for (auto &kern_pair : OperatorWithKernel::AllOpKernels()) {
       auto op_type = kern_pair.first;
       auto &op_info = info_map.at(op_type);
-      auto op =
-          static_cast<OperatorWithKernel *>(op_info.Creator()("", {}, {}, {}));
+      auto op = static_cast<OperatorWithKernel *>(op_info.Creator()(
+          "", VariableNameMap{}, VariableNameMap{}, AttributeMap{}));
       if (op_info.infer_shape_) {  // infer_shape has been registered.
         continue;
       }
@@ -466,7 +466,12 @@ DDim CompileTimeInferShapeContext::GetDim(const std::string &name) const {
   auto var = block_.FindVarRecursive(name);
   PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
   try {
-    return framework::make_ddim(var->Shape());
+    auto shape = var->Shape();
+    if (shape.empty()) {
+      return framework::make_ddim({0UL});
+    } else {
+      return framework::make_ddim(var->Shape());
+    }
   } catch (...) {
     VLOG(5) << "GetDim of variable " << name << " error";
     std::rethrow_exception(std::current_exception());

@@ -53,7 +53,7 @@ The IR for PaddlePaddle after refactoring is called a `Block`, it specifies the 
 The user can not directly specify the parameter update rule for the parameter server in the Python module, since the parameter server does not use the same computation definition as the trainer. Instead, the update rule is baked inside the parameter server. The user can not specify the update rule explicitly.
 
 This could be fixed by making the parameter server run the same computation definition as the trainer (the user's Python module). For a detailed explanation, refer to this document -
-[Design Doc: Operation Graph Based Parameter Server](./dist_train.md)
+[Design Doc: Operation Graph Based Parameter Server](./parameter_server.md)
 
 ## Distributed Training Architecture
 

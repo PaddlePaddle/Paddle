@@ -261,7 +261,9 @@ class OperatorClone : public paddle::framework::OperatorBase {
 };
 
 TEST(Operator, Clone) {
-  OperatorClone a("ABC", {}, {}, {});
+  OperatorClone a("ABC", paddle::framework::VariableNameMap{},
+                  paddle::framework::VariableNameMap{},
+                  paddle::framework::AttributeMap{});
   auto b = a.Clone();
   ASSERT_EQ(a.Type(), b->Type());
 }
