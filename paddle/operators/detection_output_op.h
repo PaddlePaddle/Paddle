@@ -18,9 +18,33 @@ limitations under the License. */
 #include "paddle/operators/math/detection_util.h"
 #include "paddle/operators/math/math_function.h"
 #include "paddle/operators/math/softmax.h"
-
+#include "paddle/operators/strided_memcpy.h"
 namespace paddle {
 namespace operators {
+template <typename Place, typename T>
+void transpose_fun(const platform::DeviceContext& context,
+                   const framework::Tensor& src, framework::Tensor* dst) {
+  int input_nums = src.dims()[0];
+  int offset = 0;
+  for (int j = 0; j < input_nums; ++j) {
+    framework::Tensor in_p_tensor = src.Slice(j, j + 1);
+    std::vector<int64_t> shape_vec(
+        {in_p_tensor.dims()[0], in_p_tensor.dims()[1], in_p_tensor.dims()[3],
+         in_p_tensor.dims()[4], in_p_tensor.dims()[2]});
+    framework::DDim shape(framework::make_ddim(shape_vec));
+    framework::Tensor in_p_tensor_transpose;
+    in_p_tensor_transpose.mutable_data<T>(shape, context.GetPlace());
+    std::vector<int> shape_axis({0, 1, 3, 4, 2});
+    math::Transpose<Place, T, 5> trans5;
+    trans5(context, in_p_tensor, &in_p_tensor_transpose, shape_axis);
+    auto dst_stride = framework::stride(dst->dims());
+    auto src_stride = framework::stride(in_p_tensor_transpose.dims());
+    StridedMemcpy<T>(context, in_p_tensor_transpose.data<T>(), src_stride,
+                     in_p_tensor_transpose.dims(), dst_stride,
+                     dst->data<T>() + offset);
+    offset += in_p_tensor_transpose.dims()[4] * src_stride[4];
+  }
+}
 template <typename Place, typename T>
 class Detection_output_Kernel : public framework::OpKernel<T> {
  public:
@@ -37,77 +61,51 @@ class Detection_output_Kernel : public framework::OpKernel<T> {
     float nms_threshold = context.template Attr<float>("nms_threshold");
     float confidence_threshold =
         context.template Attr<float>("confidence_threshold");
-
-    int input_num = in_loc->dims()[0];
-    int batch_size = in_loc->dims()[1];
-    int channels = in_loc->dims()[2];
-    int height = in_loc->dims()[3];
-    int weight = in_loc->dims()[4];
-    int loc_sum_size = in_loc->numel();
+    int batch_size = in_conf->dims()[1];
     int conf_sum_size = in_conf->numel();
-    std::vector<int64_t> loc_shape_vec({1, loc_sum_size});
-    std::vector<int64_t> conf_shape_vec(
+    // for softmax
+    std::vector<int64_t> conf_shape_softmax_vec(
         {conf_sum_size / num_classes, num_classes});
+    framework::DDim conf_shape_softmax(
+        framework::make_ddim(conf_shape_softmax_vec));
+    // for knchw => nhwc
+    std::vector<int64_t> loc_shape_vec({1, in_loc->dims()[1], in_loc->dims()[3],
+                                        in_loc->dims()[4], in_loc->dims()[2]});
+    std::vector<int64_t> conf_shape_vec({1, in_conf->dims()[1],
+                                         in_conf->dims()[3], in_conf->dims()[4],
+                                         in_conf->dims()[2]});
     framework::DDim loc_shape(framework::make_ddim(loc_shape_vec));
     framework::DDim conf_shape(framework::make_ddim(conf_shape_vec));
     framework::Tensor loc_tensor;
     framework::Tensor conf_tensor;
-    loc_tensor.Resize(loc_shape);
-    conf_tensor.Resize(conf_shape);
     loc_tensor.mutable_data<T>(loc_shape, context.GetPlace());
     conf_tensor.mutable_data<T>(conf_shape, context.GetPlace());
+    // for cpu
     framework::Tensor loc_cpu;
     framework::Tensor conf_cpu;
     framework::Tensor priorbox_cpu;
-    const T* in_loc_data = in_loc->data<T>();
-    const T* in_conf_data = in_conf->data<T>();
-    T* loc_data;
-    T* conf_data;
     const T* priorbox_data = in_priorbox->data<T>();
-
+    transpose_fun<Place, T>(context.device_context(), *in_loc, &loc_tensor);
+    transpose_fun<Place, T>(context.device_context(), *in_conf, &conf_tensor);
+    conf_tensor.Resize(conf_shape_softmax);
+    math::SoftmaxFunctor<Place, T>()(context.device_context(), &conf_tensor,
+                                     &conf_tensor);
+    T* loc_data = loc_tensor.data<T>();
+    T* conf_data = conf_tensor.data<T>();
     if (platform::is_gpu_place(context.GetPlace())) {
-      loc_cpu.mutable_data<T>(in_loc->dims(), platform::CPUPlace());
-      framework::CopyFrom(*in_loc, platform::CPUPlace(),
+      loc_cpu.mutable_data<T>(loc_tensor.dims(), platform::CPUPlace());
+      framework::CopyFrom(loc_tensor, platform::CPUPlace(),
                           context.device_context(), &loc_cpu);
-      in_loc_data = loc_cpu.data<T>();
-      conf_cpu.mutable_data<T>(in_conf->dims(), platform::CPUPlace());
-      framework::CopyFrom(*in_conf, platform::CPUPlace(),
+      loc_data = loc_cpu.data<T>();
+      conf_cpu.mutable_data<T>(conf_tensor.dims(), platform::CPUPlace());
+      framework::CopyFrom(conf_tensor, platform::CPUPlace(),
                           context.device_context(), &conf_cpu);
-      in_conf_data = conf_cpu.data<T>();
+      conf_data = conf_cpu.data<T>();
       priorbox_cpu.mutable_data<T>(in_priorbox->dims(), platform::CPUPlace());
       framework::CopyFrom(*in_priorbox, platform::CPUPlace(),
                           context.device_context(), &priorbox_cpu);
       priorbox_data = priorbox_cpu.data<T>();
-      loc_tensor.mutable_data<T>(loc_shape, platform::CPUPlace());
-      conf_tensor.mutable_data<T>(conf_shape, platform::CPUPlace());
     }
-    T* loc_tensor_data = loc_tensor.data<T>();
-    T* conf_tensor_data = conf_tensor.data<T>();
-    for (int i = 0; i < input_num; ++i) {
-      math::appendWithPermute<T>(in_loc_data, input_num, batch_size, channels,
-                                 height, weight, loc_tensor_data);
-      math::appendWithPermute<T>(in_conf_data, input_num, batch_size, channels,
-                                 height, weight, conf_tensor_data);
-    }
-    loc_data = loc_tensor.data<T>();
-    if (platform::is_gpu_place(context.GetPlace())) {
-      framework::Tensor conf_gpu;
-      conf_gpu.Resize(conf_shape);
-      conf_gpu.mutable_data<T>(conf_shape, context.GetPlace());
-      framework::CopyFrom(conf_tensor, platform::GPUPlace(),
-                          context.device_context(), &conf_gpu);
-      // softmax
-      math::SoftmaxFunctor<Place, T>()(context.device_context(), &conf_gpu,
-                                       &conf_gpu);
-      conf_tensor.mutable_data<T>(conf_gpu.dims(), platform::CPUPlace());
-      framework::CopyFrom(conf_gpu, platform::CPUPlace(),
-                          context.device_context(), &conf_tensor);
-    } else {
-      // softmax
-      math::SoftmaxFunctor<Place, T>()(context.device_context(), &conf_tensor,
-                                       &conf_tensor);
-    }
-    conf_data = conf_tensor.data<T>();
     // get decode bboxes
     size_t num_priors = in_priorbox->numel() / 8;
     std::vector<std::vector<operators::math::BBox<T>>> all_decoded_bboxes;

@@ -12,13 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
+#include <map>
 #include "paddle/framework/selected_rows.h"
 #include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
-
 template <typename T>
 struct BBox {
   BBox(T x_min, T y_min, T x_max, T y_max)
@@ -49,31 +49,47 @@ struct BBox {
   bool is_difficult;
 };
 // KNCHW ==> NHWC
+// template <typename T>
 template <typename T>
-int appendWithPermute(const T* input_data, int input_nums, int batch_size,
-                      int channels, int height, int weight, T* output_data) {
-  int image_size = height * weight;
-  int numel = input_nums * batch_size * channels * height * weight;
-  int offset = 0;
-  for (int p = 0; p < input_nums; ++p) {
-    int in_p_offset = p * batch_size * channels * image_size;
-    for (int n = 0; n < batch_size; ++n) {
-      int in_n_offset = n * channels * image_size;
-      int out_n_offset = n * numel / batch_size + offset;
-      int in_stride = image_size;
-      int out_stride = channels;
-      const T* in_data = input_data + in_p_offset + in_n_offset;
-      T* out_data = output_data + out_n_offset;
-      for (int c = 0; c < channels; ++c) {
-        for (int i = 0; i < image_size; ++i) {
-          out_data[out_stride * i + c] = in_data[c * in_stride + i];
-        }
-      }
-    }
-    offset += image_size * channels;
-  }
-  return 0;
-}
+void getBBoxFromPriorData(const T* prior_data, const size_t num_bboxes,
+                          std::vector<BBox<T>>& bbox_vec);
+template <typename T>
+void getBBoxVarFromPriorData(const T* prior_data, const size_t num,
+                             std::vector<std::vector<T>>& var_vec);
+template <typename T>
+BBox<T> decodeBBoxWithVar(BBox<T>& prior_bbox,
+                          const std::vector<T>& prior_bbox_var,
+                          const std::vector<T>& loc_pred_data);
+template <typename T1, typename T2>
+bool sortScorePairDescend(const std::pair<T1, T2>& pair1,
+                          const std::pair<T1, T2>& pair2);
+template <typename T>
+bool sortScorePairDescend(const std::pair<T, BBox<T>>& pair1,
+                          const std::pair<T, BBox<T>>& pair2);
+template <typename T>
+T jaccardOverlap(const BBox<T>& bbox1, const BBox<T>& bbox2);
+
+template <typename T>
+void applyNMSFast(const std::vector<BBox<T>>& bboxes, const T* conf_score_data,
+                  size_t class_idx, size_t top_k, T conf_threshold,
+                  T nms_threshold, size_t num_priors, size_t num_classes,
+                  std::vector<size_t>* indices);
+template <typename T>
+int getDetectionIndices(
+    const T* conf_data, const size_t num_priors, const size_t num_classes,
+    const size_t background_label_id, const size_t batch_size,
+    const T conf_threshold, const size_t nms_top_k, const T nms_threshold,
+    const size_t top_k,
+    const std::vector<std::vector<BBox<T>>>& all_decoded_bboxes,
+    std::vector<std::map<size_t, std::vector<size_t>>>* all_detection_indices);
+template <typename T>
+BBox<T> clipBBox(const BBox<T>& bbox);
+template <typename T>
+void getDetectionOutput(
+    const T* conf_data, const size_t num_kept, const size_t num_priors,
+    const size_t num_classes, const size_t batch_size,
+    const std::vector<std::map<size_t, std::vector<size_t>>>& all_indices,
+    const std::vector<std::vector<BBox<T>>>& all_decoded_bboxes, T* out_data);
 template <typename T>
 void getBBoxFromPriorData(const T* prior_data, const size_t num_bboxes,
                           std::vector<BBox<T>>& bbox_vec) {
@@ -135,9 +151,6 @@ bool sortScorePairDescend(const std::pair<T1, T2>& pair1,
                           const std::pair<T1, T2>& pair2) {
   return pair1.first > pair2.first;
 }
-template <typename T>
-bool sortScorePairDescend(const std::pair<T, BBox<T>>& pair1,
-                          const std::pair<T, BBox<T>>& pair2);
 template <typename T>
 T jaccardOverlap(const BBox<T>& bbox1, const BBox<T>& bbox2) {
   if (bbox2.x_min > bbox1.x_max || bbox2.x_max < bbox1.x_min ||
@@ -281,7 +294,6 @@ void getDetectionOutput(
       }
     }
   }
-  // out.copyFrom(out_data, num_kept * 7);
 }
 }  // namespace math
 }  // namespace operators
