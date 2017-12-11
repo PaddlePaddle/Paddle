@@ -165,13 +165,20 @@ class ParamAverage(object):
         self.average_window = average_window
         self.max_average_window = max_average_window
 
-    def create_state(self, optimizer_ops):
-        pass
-
-    def reset(self):
-        pass
-
-    def eval(self):
+    def __call__(self, param, block):
+        """
+        Create a duplicate parameter and auto increment operator
+        Args:
+            param: parameter variable for which parameter average is applied
+            block: block in which variable is to be created
+        """
+        assert isinstance(block, framework.Block)
+        param_accum = block.create_var(
+            name=param.name,
+            dtype=param.dtype,
+            shape=param.shape,
+            lod_level=param.lod_level,
+            persistable=True)
         pass
 
 

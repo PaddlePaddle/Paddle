@@ -18,17 +18,24 @@ class Optimizer(object):
     but need to use one of it's implementation.
     """
 
-    def __init__(self, global_step=None):
+    def __init__(self, global_step=None, model_average=None):
         self._global_step = global_step
         # Dictionary of accumulators. Some optimizer subclasses need to
         # allocate and manage extra variables associated with the parameters
         # to train. These variables are called accumulators.
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
+        self.model_average = model_average
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
 
     def _append_optimize_ops(self, block, param_and_grad):
         """ append optimize operator to block and return all the added optimize_op
+        """
+        raise NotImplementedError()
+
+    def _append_model_average_ops(self, block, param_and_grad):
+        """
+        Append parameter average operator to block and return all the added parameter average operator
         """
         raise NotImplementedError()
 
