@@ -360,8 +360,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     emission_grad->mutable_data<T>(platform::CPUPlace());
     if (transition_grad) {
       transition_grad->mutable_data<T>(platform::CPUPlace());
-      math::SetConstant<Place, T>()(ctx.template device_context<Place>(),
-                                    transition_grad, 0.);
+      math::set_constant(ctx.device_context(), transition_grad, 0.);
     }
     // Now, all the inputs and outputs should be on the CPU memory.
 
