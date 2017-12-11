@@ -6,12 +6,13 @@ from framework import OpProtoHolder, Variable, Program, Operator
 from initializer import Constant, Normal, Xavier, Initializer
 from paddle.v2.fluid.layer_helper import LayerHelper, unique_name
 from registry import register_layer
+import registry
 from param_attr import ParamAttr
 
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
     'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool', 'sums', 'cos_sim',
-    'batch_norm', 'accuracy', 'split_lod_tensor', 'While'
+    'batch_norm', 'accuracy', 'split_lod_tensor', 'While', 'mean', 'mul'
 ]
 
 register_layer('mean')

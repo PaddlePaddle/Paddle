@@ -160,10 +160,8 @@ def register_layer(op_type):
         return helper.append_activation(out)
 
     func.__name__ = op_type
-    globals()[op_type] = func
     func.__doc__ = _generate_doc_string_(op_proto)
-    global __all__
-    __all__.append(op_type)
+    return func
 
 
 def deprecated(func_or_class):
