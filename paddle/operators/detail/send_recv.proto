@@ -19,6 +19,7 @@ package sendrecv;
 service SendRecvService {
   // For parameter server round-robin like hashing, do not split tensors.
   // Send and recv only one tensor
+  // TODO(typhoonzero): add streaming API
   rpc SendVariable(VariableMessage) returns (VariableMessage) {}
 }
 

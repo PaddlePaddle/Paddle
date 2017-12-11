@@ -45,7 +45,8 @@ pserver_endpoint = os.getenv("PSERVER")
 if pserver_endpoint:
     pserver_prog = exe.get_pserver_program(pserver_endpoint)
     exe.run(fluid.default_startup_program())
-    exe.run(pserver_prog)
+    while True:
+        exe.run(pserver_prog)
 else:
     feeder = fluid.DataFeeder(feed_list=[images, label], place=place)
     exe.run(fluid.default_startup_program())

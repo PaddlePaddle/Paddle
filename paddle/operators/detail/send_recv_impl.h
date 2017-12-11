@@ -48,6 +48,8 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
+typedef std::pair<std::string, framework::LoDTensor> TensorWithName;
+
 class SendRecvServerImpl final : public SendRecvService::Service {
  public:
   explicit SendRecvServerImpl() {}
@@ -55,17 +57,15 @@ class SendRecvServerImpl final : public SendRecvService::Service {
   Status SendVariable(ServerContext *context, const VariableMessage *in_var,
                       VariableMessage *out_var) override;
 
-  const framework::LoDTensor Get() { return this->lodtensor_queue_.Pop(); }
+  const TensorWithName Get() { return this->var_recv_queue_.Pop(); }
 
-  void Push(const framework::LoDTensor &tensor) {
-    this->lodtensor_return_queue_.Push(tensor);
-  }
+  void Push(const TensorWithName &var) { this->var_return_queue_.Push(var); }
 
  private:
-  SimpleBlockQueue<framework::LoDTensor> lodtensor_queue_;
-  SimpleBlockQueue<framework::LoDTensor> lodtensor_return_queue_;
-  SimpleBlockQueue<framework::SelectedRows> selected_rows_queue_;
-  SimpleBlockQueue<framework::SelectedRows> selected_rows_return_queue_;
+  // received variable from RPC, operators fetch variable from this queue.
+  SimpleBlockQueue<TensorWithName> var_recv_queue_;
+  // calculated variable should push to this queue.
+  SimpleBlockQueue<TensorWithName> var_return_queue_;
 };
 
 // RPCClient is a class to send tensors to pserver sub-network

@@ -1,6 +1,6 @@
 import numpy as np
 from . import core
-from framework import Program, default_main_program
+from framework import Program, default_main_program, Parameter, Variable
 import distribute_planner
 
 __all__ = ['Executor', 'g_scope']
@@ -91,7 +91,7 @@ class Executor(object):
             # FIXME(typhoonzero): send to different servers can run in parrallel.
             send_op = program.global_block().append_op(
                 type="send",
-                inputs={"X": self.param_grad_map[ep]["params"]
+                inputs={"X": self.param_grad_map[ep]["grads"]
                         },  # inputs is a list of tensors to be send
                 outputs={},
                 attrs={"endpoint": ep})
@@ -102,9 +102,20 @@ class Executor(object):
 
     def get_pserver_program(self, endpoint):
         pserver_program = Program()
-
-        for param in self.param_grad_map[endpoint]["params"]:
-            pserver_program.global_block().create_parameter(**param.__dict__)
+        for v in self.param_grad_map[endpoint]["params"]:
+            assert isinstance(v, Parameter)
+            new_p = Parameter(
+                block=pserver_program.global_block(),
+                shape=v.shape,
+                dtype=v.dtype,
+                type=v.type,
+                lod_level=v.lod_level,
+                stop_gradient=v.stop_gradient,
+                trainable=v.trainable,
+                optimize_attr=v.optimize_attr,
+                regularizer=v.regularizer,
+                name=v.name)
+            pserver_program.global_block().vars[new_p.name] = new_p
 
         pserver_program.global_block().append_op(
             type="recv",
@@ -112,12 +123,12 @@ class Executor(object):
                     self.param_grad_map[endpoint]["grads"]},  # grads to recv
             outputs={},
             attrs={
-                "OptimizeProgram": self.optimize_sub_program.to_string(),
-                "endpoint": endpoint
+                "OptimizeProgram": self.optimize_sub_program.to_string(True),
+                "endpoint": endpoint,
+                "ParamList": self.param_grad_map[endpoint]["params"],
+                "GradList": self.param_grad_map[endpoint]["grads"]
             })
-
-    def get_trainer_program(self):
-        return default_main_program()
+        return pserver_program
 
     def aslodtensor(self, data):
         def accumulate(data):
