@@ -25,19 +25,18 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
     """
     params_and_grads = []
     for param, grad in parameters_and_grads:
-        # If no gradient or no regularization specified,
-        # then we don't need to do anything
-        if grad is None or (param.regularizer is None and
-                            regularization is None):
-            params_and_grads.append((param, grad))
-            continue
-
         regularization_term = None
         if param.regularizer is not None:
             # Add variable for regularization term in grad block
             regularization_term = param.regularizer(param, grad.block)
         elif regularization is not None:
             regularization_term = regularization(param, grad.block)
+
+        # If no gradient or no regularization specified,
+        # then we don't need to do anything
+        if grad is None or regularization_term is None:
+            params_and_grads.append((param, grad))
+            continue
 
         assert grad.shape == regularization_term.shape
 
