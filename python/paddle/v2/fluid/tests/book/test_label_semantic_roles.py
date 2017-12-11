@@ -150,7 +150,7 @@ def main():
     crf_decode = fluid.layers.crf_decoding(
         input=feature_out, param_attr=fluid.ParamAttr(name='crfw'))
 
-    precision, recall, f1_score = fluid.layers.chunk_eval(
+    chunk_evaluator = fluid.evaluator.ChunkEvaluator(
         input=crf_decode,
         label=target,
         chunk_scheme="IOB",
@@ -176,14 +176,16 @@ def main():
 
     batch_id = 0
     for pass_id in xrange(PASS_NUM):
+        chunk_evaluator.reset(exe)
         for data in train_data():
             outs = exe.run(fluid.default_main_program(),
                            feed=feeder.feed(data),
-                           fetch_list=[avg_cost, precision, recall, f1_score])
+                           fetch_list=[avg_cost] + chunk_evaluator.metrics)
+            precision, recall, f1_score = chunk_evaluator.eval(exe)
             avg_cost_val = np.array(outs[0])
-            precision_val = np.array(outs[1])
-            recall_val = np.array(outs[2])
-            f1_score_val = np.array(outs[3])
+            precision_val = np.array(precision)
+            recall_val = np.array(recall)
+            f1_score_val = np.array(f1_score)
 
             if batch_id % 10 == 0:
                 print("avg_cost=" + str(avg_cost_val))
