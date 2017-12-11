@@ -24,18 +24,7 @@ void testVol2col() {
   paddle::framework::Tensor output_tmp;
 
   auto* place = new Place();
-  DeviceContext* context;
-  if (paddle::platform::is_cpu_place(*place)) {
-    context =
-        new paddle::platform::CPUDeviceContext(paddle::platform::CPUPlace());
-  } else {
-#ifdef PADDLE_WITH_CUDA
-    context =
-        new paddle::platform::CUDADeviceContext(paddle::platform::GPUPlace());
-#else
-    PADDLE_THROW("no GPU support");
-#endif  // PADDLE_WITH_CUDA
-  }
+  DeviceContext* context = new DeviceContext(*place);
 
   /**
    * input = [[0, 1, 2,

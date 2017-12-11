@@ -204,7 +204,7 @@ Input(i, x, y), Output(i, x, y) represents an element in an image.
 C is the number of feature maps of one image. n is a hyper-parameter
 configured when operator is initialized. The sum in the denominator
 is the sum of the same positions in the neighboring maps.
-    
+
 )DOC");
   }
 };
@@ -230,6 +230,9 @@ class LRNOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OP(lrn, ops::LRNOp, ops::LRNOpMaker<float>, lrn_grad, ops::LRNOpGrad);
-REGISTER_OP_CPU_KERNEL(lrn, ops::LRNKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(lrn_grad,
-                       ops::LRNGradKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    lrn,
+    ops::LRNKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    lrn_grad,
+    ops::LRNGradKernel<paddle::platform::CPUDeviceContext, float>);

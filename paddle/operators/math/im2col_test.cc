@@ -59,18 +59,7 @@ void testIm2col() {
   memcpy(input_ptr, arr, 6 * sizeof(float));
 
   auto* place = new Place();
-  DeviceContext* context;
-  if (paddle::platform::is_cpu_place(*place)) {
-    context =
-        new paddle::platform::CPUDeviceContext(paddle::platform::CPUPlace());
-  } else {
-#ifdef PADDLE_WITH_CUDA
-    context =
-        new paddle::platform::CUDADeviceContext(paddle::platform::GPUPlace());
-#else
-    PADDLE_THROW("no GPU support");
-#endif  // PADDLE_WITH_CUDA
-  }
+  DeviceContext* context = new DeviceContext(*place);
   if (paddle::platform::is_cpu_place(*place)) {
     input = input_tmp;
   } else {

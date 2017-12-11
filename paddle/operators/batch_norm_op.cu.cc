@@ -121,11 +121,12 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     saved_mean->mutable_data<T>(ctx.GetPlace());
     saved_variance->mutable_data<T>(ctx.GetPlace());
 
-    math::SetConstant<platform::GPUPlace, T> functor;
-    functor(ctx.device_context(), saved_mean, 0);
-    functor(ctx.device_context(), saved_variance, 0);
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    math::SetConstant<platform::CUDADeviceContext, T> functor;
+    functor(dev_ctx, saved_mean, 0);
+    functor(dev_ctx, saved_variance, 0);
 
-    auto handle = ctx.cuda_device_context().cudnn_handle();
+    auto handle = dev_ctx.cudnn_handle();
 
     // Now, depending on whether we are running test or not, we have two paths.
     if (is_test) {
@@ -244,8 +245,9 @@ class BatchNormGradKernel<platform::GPUPlace, T>
     const void *saved_mean_data = saved_mean->template data<T>();
     const void *saved_var_data = saved_var->template data<T>();
 
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationBackward(
-        ctx.cuda_device_context().cudnn_handle(), mode_,
+        dev_ctx.cudnn_handle(), mode_,
         CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(),
         CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(), data_desc_,
         x->template data<T>(), data_desc_, d_y->template data<T>(), data_desc_,

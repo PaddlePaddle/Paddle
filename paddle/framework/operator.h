@@ -287,6 +287,14 @@ class ExecutionContext {
     return device_context_;
   }
 
+#ifdef PADDLE_WITH_CUDA
+  const inline platform::CUDADeviceContext& cuda_device_context() const {
+    PADDLE_ENFORCE(platform::is_gpu_place(device_context_.GetPlace()));
+    return *reinterpret_cast<const platform::CUDADeviceContext*>(
+        &device_context_);
+  }
+#endif
+
   //! Get actual name vector for this input.
   const std::vector<std::string>& Inputs(const std::string& name) const {
     return op_.Inputs(name);

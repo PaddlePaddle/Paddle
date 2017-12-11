@@ -385,7 +385,10 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
       Tensor one_seq_beta = beta.Slice(start_pos, end_pos);
       Tensor one_seq_emission_grad = emission_grad->Slice(start_pos, end_pos);
 
-      BackwardOneSequence(ctx.template device_context<Place>(), ll_grad[i],
+      BackwardOneSequence(ctx.
+                          template device_context<
+                          platform::CPUDeviceContext>(),
+                          ll_grad[i],
                           one_seq_emission_exps, *transition_exps,
                           one_seq_alpha, one_seq_label, &one_seq_beta,
                           transition_grad, &one_seq_emission_grad);
