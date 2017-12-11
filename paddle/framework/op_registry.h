@@ -184,6 +184,9 @@ class OpKernelRegistrar : public Registrar {
 #define REGISTER_OP_GPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, GPU, ::paddle::platform::GPUPlace, __VA_ARGS__)
 
+#define REGISTER_OP_CUDA_KERNEL(op_type, ...) \
+  REGISTER_OP_KERNEL(op_type, GPU, ::paddle::platform::GPUPlace, __VA_ARGS__)
+
 #define REGISTER_OP_CPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)
 

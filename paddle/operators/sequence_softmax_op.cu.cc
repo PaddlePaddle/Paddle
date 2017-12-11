@@ -17,7 +17,7 @@ limitations under the License. */
 namespace ops = paddle::operators;
 REGISTER_OP_GPU_KERNEL(
     sequence_softmax,
-    ops::SequenceSoftmaxKernel<paddle::platform::GPUPlace, float>)
+    ops::SequenceSoftmaxKernel<paddle::platform::CUDADeviceContext, float>)
 REGISTER_OP_GPU_KERNEL(
     sequence_softmax_grad,
-    ops::SequenceSoftmaxGradKernel<paddle::platform::GPUPlace, float>);
+    ops::SequenceSoftmaxGradKernel<paddle::platform::CUDADeviceContext, float>);
