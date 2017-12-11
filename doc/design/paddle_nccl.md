@@ -1,15 +1,17 @@
-# Design Doc: Multi-GPU support in Operation Graph
+# Design Doc: NCCL support in Paddle Fluid
 
 ## Abstract
 
-This Design Doc refers to the multi-GPU feature in  paddle.  We propose an approach to support multi-GPU both on a single machine and multiple machines. Every device only run sub-graphs which our framework issued. We use `Broadcast`, `Allreduce` operators to join different device sub-graph to the whole graph.
-
+This Design Doc refers to the NCCL feature in  paddle.  We propose an approach to support NCCL library both on a single machine and multiple machines. We wrapper the NCCL primitives `Broadcast`, `Allreduce`, `Reduce` as operators to utilize Multi-GPU powers in one script.
 
 
 ## Motivation
 
-Paddle supports training with multiple CPUs and GPUs, refer to different physical devices. We need to support multi-GPU training in parallel for acceleration, in detail, there are two aspects. 
+NCCL is a Nvidia library support Multi-GPU communicating. [NCCL](https://developer.nvidia.com/nccl). With NCCL library, we can easily accelerate the training in parallel.
 
+- can easily move the optimize sub-graph to parameter server,  multi-GPU feature can be compatible with distributed support design.
+- easily plug-in with [NCCL2](https://developer.nvidia.com/nccl) library.
+- GPU Model parallelism becomes easier to implement. we only need to replace different GPU's sub-graph with different part of the whole graph.
 - GPU Data Parallelism 
 
   Suppose to we have `n`GPUs, every GPU has `1/n`part of training data, and store a complete model in GPU memory.  
@@ -58,7 +60,3 @@ As it shown in the picture, when each GPU compute the gradient of `W`, followed 
 In fact, in the way of every GPU optimized full batch of data, wasted (n-1) GPU compute resources. We will enhance it in the next stage.
 
 ### Benefits
-
-- can easily move the optimize sub-graph to parameter server,  multi-GPU feature can be  compatible with distributed support design.
-- easily plug-in with [NCCL2](https://developer.nvidia.com/nccl) library.
-- GPU Model parallelism becomes easier to implement. we only need to replace different GPU's sub-graph with different part of the whole graph.
