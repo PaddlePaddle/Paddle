@@ -22,8 +22,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 template <typename Place, typename T>
-void transpose_fun(const platform::DeviceContext& context,
-                   const framework::Tensor& src, framework::Tensor* dst) {
+inline void transpose_fun(const platform::DeviceContext& context,
+                          const framework::Tensor& src,
+                          framework::Tensor* dst) {
   int input_nums = src.dims()[0];
   int offset = 0;
   for (int j = 0; j < input_nums; ++j) {
