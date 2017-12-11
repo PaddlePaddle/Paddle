@@ -259,11 +259,13 @@ def main():
                 break
             batch_id += 1
 
-        print 'to decode'
-        for data in train_data():
-            word_data = to_lodtensor(map(lambda x: x[0], data), place)
-            outs = exe.run(framework.default_main_program(),
-                           feed={'src_word_id': word_data, })
+    print 'to decode'
+    for data in train_data():
+        word_data = to_lodtensor(map(lambda x: x[0], data), place)
+        trg_word = to_lodtensor(map(lambda x: x[1], data), place)
+        trg_word_next = to_lodtensor(map(lambda x: x[2], data), place)
+        outs = exe.run(framework.default_main_program(),
+                       feed={'src_word_id': word_data, })
 
 
 if __name__ == '__main__':
