@@ -431,6 +431,7 @@ OpKernelType OperatorWithKernel::GetKernelType(
     const ExecutionContext& ctx) const {
   return OpKernelType(IndicateDataType(ctx), ctx.device_context());
 }
+
 DataType OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
   auto& scope = ctx.scope();

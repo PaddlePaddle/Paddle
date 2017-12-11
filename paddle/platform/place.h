@@ -21,6 +21,17 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+/**
+ * There is two group of places, called CPUPlace, GPUPlace.
+ * Each library has its identity which inherit from CPUPlace, GPUPlace.
+ *
+ *   CPUPlace -- X32Place
+ *               X64Place -- MKLPlace
+ *               ARMPlace -- NeonPlace
+ *   GPUPlace -- CUDAPlace
+ *               ROCmPlace
+ */
+
 struct CPUPlace {
   // WORKAROUND: for some reason, omitting this constructor
   // causes errors with boost 1.59 and OSX
@@ -43,6 +54,45 @@ struct GPUPlace {
   int device;
 };
 
+// x32
+struct X32Place : public CPUPlace {
+  X32Place() : CPUPlace() {}
+};
+
+// x86_64
+struct X64Place : public CPUPlace {
+  X64Place() : CPUPlace() {}
+};
+
+// ARM
+struct ARMPlace : public CPUPlace {
+  ARMPlace() : CPUPlace() {}
+};
+
+// AMD Device
+struct ROCmPlace final : public GPUPlace {
+  ROCmPlace() : GPUPlace() {}
+  explicit ROCmPlace(int d) : GPUPlace(d) {}
+};
+
+struct MKLPlace final : public X64Place {
+  MKLPlace() : X64Place() {}
+};
+
+struct NeonPlace final : public ARMPlace {
+  NeonPlace() : ARMPlace() {}
+};
+
+struct CUDAPlace final : public GPUPlace {
+  CUDAPlace() : GPUPlace() {}
+  explicit CUDAPlace(int d) : GPUPlace(d) {}
+};
+
+struct NCCLPlace final : public GPUPlace {
+  NCCLPlace() : GPUPlace() {}
+  explicit NCCLPlace(int d) : GPUPlace(d) {}
+};
+
 struct IsGPUPlace : public boost::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
   bool operator()(const GPUPlace &gpu) const { return true; }
@@ -52,7 +102,10 @@ struct IsGPUPlace : public boost::static_visitor<bool> {
 // should be less equal than 2^(NUM_PLACE_TYPE_LIMIT_IN_BIT)
 #define NUM_PLACE_TYPE_LIMIT_IN_BIT 4
 
-typedef boost::variant<GPUPlace, CPUPlace> Place;
+// place should be one of the place
+typedef boost::variant<CPUPlace, GPUPlace, ROCmPlace, CUDAPlace, NCCLPlace,
+                       MKLPlace, NeonPlace>
+    Place;
 
 // static check number of place types is less equal than
 // 2^(NUM_PLACE_TYPE_LIMIT_IN_BIT)
