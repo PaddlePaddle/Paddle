@@ -269,7 +269,8 @@ class BatchNormGradKernel<platform::GPUPlace, T>
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    batch_norm, ops::BatchNormKernel<paddle::platform::GPUPlace, float>);
+    batch_norm,
+    ops::BatchNormKernel<paddle::platform::CUDADeviceContext, float>);
 REGISTER_OP_CUDA_KERNEL(
     batch_norm_grad,
-    ops::BatchNormGradKernel<paddle::platform::GPUPlace, float>);
+    ops::BatchNormGradKernel<paddle::platform::CUDADeviceContext, float>);
