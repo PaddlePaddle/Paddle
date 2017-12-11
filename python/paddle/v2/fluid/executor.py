@@ -50,7 +50,7 @@ class Executor(object):
         self.executor = core.Executor(act_places)
         self.places = places
 
-    def optimize(self, optimize_ops, program=None, **kwargs):
+    def optimize(self, optimize_ops, params_grads, program=None, **kwargs):
         """
             optimize the program for different runtime environment
 
@@ -67,7 +67,8 @@ class Executor(object):
             program = default_main_program()
 
         if kwargs.has_key("pservers"):
-            return self._optimize_distributed(optimize_ops, program, **kwargs)
+            return self._optimize_distributed(optimize_ops, program,
+                                              params_grads, **kwargs)
 
     def _optimize_distributed(self, optimize_ops, program, params_and_grads,
                               **kwargs):
@@ -92,7 +93,7 @@ class Executor(object):
                 type="send",
                 inputs={"X": self.param_grad_map[ep]["params"]
                         },  # inputs is a list of tensors to be send
-                outputs={"Out": self.param_grad_map[ep]["params"]},
+                outputs={},
                 attrs={"endpoint": ep})
         # -------------- generate optimize sub program --------------
         self.optimize_sub_program = Program()

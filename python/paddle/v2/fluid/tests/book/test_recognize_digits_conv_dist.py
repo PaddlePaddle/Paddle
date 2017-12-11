@@ -2,6 +2,7 @@ from __future__ import print_function
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
+import os
 
 images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype='float32')
 label = fluid.layers.data(name='label', shape=[1], dtype='int64')
@@ -24,7 +25,7 @@ predict = fluid.layers.fc(input=conv_pool_2, size=10, act="softmax")
 cost = fluid.layers.cross_entropy(input=predict, label=label)
 avg_cost = fluid.layers.mean(x=cost)
 optimizer = fluid.optimizer.Adam(learning_rate=0.01)
-optimizer.minimize(avg_cost)
+optimize_ops, params_grads = optimizer.minimize(avg_cost)
 
 accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
 
@@ -38,10 +39,10 @@ train_reader = paddle.batch(
 place = fluid.CPUPlace()
 exe = fluid.Executor(place)
 
-exe.optimize(pservers="127.0.0.1:6174", trainers=1)
+exe.optimize(optimize_ops, params_grads, pservers="127.0.0.1:6174", trainers=1)
 
 pserver_endpoint = os.getenv("PSERVER")
-if is_pserver:
+if pserver_endpoint:
     pserver_prog = exe.get_pserver_program(pserver_endpoint)
     exe.run(fluid.default_startup_program())
     exe.run(pserver_prog)
