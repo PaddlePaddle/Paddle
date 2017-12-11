@@ -5,7 +5,7 @@ import core
 from framework import OpProtoHolder, Variable, Program, Operator
 from initializer import Constant, Normal, Xavier, Initializer
 from paddle.v2.fluid.layer_helper import LayerHelper, unique_name
-from registry import layer_registry
+from registry import register_layer
 from param_attr import ParamAttr
 
 __all__ = [
@@ -14,17 +14,17 @@ __all__ = [
     'batch_norm', 'accuracy', 'split_lod_tensor', 'While'
 ]
 
-layer_registry('mean')
-layer_registry('mul')
-layer_registry('elementwise_add')
-layer_registry('elementwise_div')
-layer_registry('dropout')
-layer_registry('reshape')
-layer_registry('sigmoid')
-layer_registry('scale')
-layer_registry('reshape')
-layer_registry('transpose')
-layer_registry('sigmoid_cross_entropy_with_logits')
+register_layer('mean')
+register_layer('mul')
+register_layer('elementwise_add')
+register_layer('elementwise_div')
+register_layer('dropout')
+register_layer('reshape')
+register_layer('sigmoid')
+register_layer('scale')
+register_layer('reshape')
+register_layer('transpose')
+register_layer('sigmoid_cross_entropy_with_logits')
 
 
 def fc(input,

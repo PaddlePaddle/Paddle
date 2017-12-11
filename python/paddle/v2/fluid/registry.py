@@ -79,7 +79,7 @@ def _generate_doc_string_(op_proto):
     return buf.getvalue()
 
 
-def layer_registry(op_type):
+def register_layer(op_type):
     """
     Register an Python layer for an Operator
 
