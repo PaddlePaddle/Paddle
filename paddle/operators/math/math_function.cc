@@ -132,7 +132,7 @@ void matmul<platform::CPUPlace, double>(
       matrix_b.data<double>(), beta, matrix_out->data<double>());
 }
 
-#ifdef PADDLE_USE_MKLML
+#ifdef PADDLE_WITH_MKLML
 // Use cblas_{s,d}gemm_batched if available: Run with 1 group of size batchSize.
 template <>
 void batched_gemm<platform::CPUPlace, float>(
