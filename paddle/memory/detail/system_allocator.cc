@@ -136,9 +136,15 @@ void GPUAllocator::Free(void* p, size_t size, size_t index) {
   // driver has already shutdown. This happens only if the
   // process is terminating, in which case we don't care if
   // hipFree succeeds.
+#if 0
   if (err != cudaErrorCudartUnloading) {
     PADDLE_ENFORCE(err, "hipFree{Host} failed in GPUAllocator::Free.");
   }
+#else
+  if (err != hipSuccess) {
+    err = hipSuccess;
+  }
+#endif
 }
 
 bool GPUAllocator::UseGpu() const { return true; }

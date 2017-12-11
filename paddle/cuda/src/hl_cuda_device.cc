@@ -279,7 +279,7 @@ void hl_free_mem_device(void *dest_d) {
   CHECK_NOTNULL(dest_d);
 
   hipError_t err = hipFree(dest_d);
-  CHECK(hipSuccess == err || cudaErrorCudartUnloading == err)
+  CHECK(hipSuccess == err/* || cudaErrorCudartUnloading == err*/)
       << hl_get_device_error_string();
 }
 
@@ -296,7 +296,7 @@ void hl_free_mem_host(void *dest_h) {
   CHECK_NOTNULL(dest_h);
 
   hipError_t err = hipHostFree(dest_h);
-  CHECK(hipSuccess == err || cudaErrorCudartUnloading == err)
+  CHECK(hipSuccess == err/* || cudaErrorCudartUnloading == err*/)
       << hl_get_device_error_string();
 }
 
@@ -423,7 +423,7 @@ void hl_create_global_resources(hl_device_prop device_prop) {
   device_res->gen_mutex = (pthread_mutex_t *)(malloc(sizeof(pthread_mutex_t)));
   pthread_mutex_init(device_res->gen_mutex, NULL);
 
-  CHECK_CUDA(cudaRuntimeGetVersion(&g_cuda_lib_version));
+  //CHECK_CUDA(cudaRuntimeGetVersion(&g_cuda_lib_version));
 }
 
 int hl_get_cuda_version() { return g_cuda_lib_version; }
@@ -659,7 +659,7 @@ const char *hl_get_device_error_string(size_t err) {
 
 void hl_device_synchronize() { CHECK_CUDA(hipDeviceSynchronize()); }
 void hl_set_device_flags_block() {
-  CHECK_CUDA(cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync));
+  //CHECK_CUDA(cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync));
 }
 
 bool hl_cuda_event_is_ready(hl_event_t event) {
