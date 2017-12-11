@@ -181,13 +181,11 @@ class OpKernelRegistrar : public Registrar {
     return 0;                                                             \
   }
 
-#define REGISTER_OP_CUDA_KERNEL(op_type, ...)                              \
-  REGISTER_OP_KERNEL(op_type, CUDA, ::paddle::platform::CUDADeviceContext, \
-                     __VA_ARGS__)
+#define REGISTER_OP_CUDA_KERNEL(op_type, ...) \
+  REGISTER_OP_KERNEL(op_type, CUDA, ::paddle::platform::GPUPlace, __VA_ARGS__)
 
-#define REGISTER_OP_CPU_KERNEL(op_type, ...)                             \
-  REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUDeviceContext, \
-                     __VA_ARGS__)
+#define REGISTER_OP_CPU_KERNEL(op_type, ...) \
+  REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)
 
 /**
  * Macro to mark what Operator and Kernel
