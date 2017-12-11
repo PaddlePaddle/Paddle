@@ -30,7 +30,7 @@ def hash_name_to_server(params_grads, pserver_endpoints):
 
 
 def round_robin(parameters, pserver_endpoints):
-    assert (len(parameters) < len(pserver_endpoints))
+    assert (len(parameters) > len(pserver_endpoints))
 
     param_grad_map = dict()
     pserver_idx = 0
@@ -44,6 +44,6 @@ def round_robin(parameters, pserver_endpoints):
             param_grad_map[server_for_param]["grads"].append(param)
 
             pserver_idx += 1
-            if pserver_idx > len(pserver_endpoints):
+            if pserver_idx >= len(pserver_endpoints):
                 pserver_idx = 0
     return param_grad_map

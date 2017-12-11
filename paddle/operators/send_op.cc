@@ -43,13 +43,14 @@ class SendOp : public framework::OperatorBase {
   }
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
-    auto iname = Input("X");
-    auto oname = Output("Out");
+    auto ins = Inputs("X");
     // TODO(typhoonzero): currently it's non-blocking,
     // should block until server responds.
-    bool ret = client_->SendVariable(scope, iname, oname);
-    if (!ret) {
-      LOG(ERROR) << "send variable error";
+    for (auto in : ins) {
+      bool ret = client_->SendVariable(scope, in, in);
+      if (!ret) {
+        LOG(ERROR) << "send variable error";
+      }
     }
   }
 
@@ -61,8 +62,7 @@ class SendOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SendOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "(Tensor) Input tensor to be saved");
-    AddOutput("Out", "(Tensor) Output fetched from server");
+    AddInput("X", "(Tensor) Input tensor to be send").AsDuplicable();
     AddComment(R"DOC(
 Recv operator
 

@@ -202,7 +202,7 @@ class Optimizer(object):
         params_grads = append_regularization_ops(params_grads)
         optimize_ops = self.create_optimization_pass(params_grads, loss,
                                                      startup_program)
-        return optimize_ops
+        return optimize_ops, params_grads
 
 
 class SGDOptimizer(Optimizer):
