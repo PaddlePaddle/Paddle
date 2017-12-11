@@ -640,8 +640,8 @@ def chunk_eval(input,
                excluded_chunk_types=None,
                **kwargs):
     """
-    This function computes the accuracy using the input and label.
-    The output is the top_k inputs and their indices.
+    This function computes and outputs the precision, recall and 
+    F1-score of chunk detection.
     """
     helper = LayerHelper("chunk_eval", **kwargs)
 
@@ -649,6 +649,9 @@ def chunk_eval(input,
     precision = helper.create_tmp_variable(dtype="float32")
     recall = helper.create_tmp_variable(dtype="float32")
     f1_score = helper.create_tmp_variable(dtype="float32")
+    num_infer_chunks = helper.create_tmp_variable(dtype="int64")
+    num_label_chunks = helper.create_tmp_variable(dtype="int64")
+    num_correct_chunks = helper.create_tmp_variable(dtype="int64")
 
     helper.append_op(
         type="chunk_eval",
@@ -657,14 +660,17 @@ def chunk_eval(input,
         outputs={
             "Precision": [precision],
             "Recall": [recall],
-            "F1-Score": [f1_score]
+            "F1-Score": [f1_score],
+            "NumInferChunks": [num_infer_chunks],
+            "NumLabelChunks": [num_label_chunks],
+            "NumCorrectChunks": [num_correct_chunks]
         },
         attrs={
             "num_chunk_types": num_chunk_types,
             'chunk_scheme': chunk_scheme,
             'excluded_chunk_types': excluded_chunk_types or []
         })
-    return precision, recall, f1_score
+    return precision, recall, f1_score, num_infer_chunks, num_label_chunks, num_correct_chunks
 
 
 def sequence_conv(input,
