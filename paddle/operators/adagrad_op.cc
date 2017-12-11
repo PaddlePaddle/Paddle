@@ -80,8 +80,8 @@ Adaptive Gradient Algorithm (Adagrad).
 
 The update is done as follows:
 
-$$momentOut = moment + grad * grad \break
-paramOut = param - learningRate * grad / ($\sqrt{momentOut}$ + \epsilon) \break
+$$moment\_out = moment + grad * grad \\
+param\_out = param - \frac{learning\_rate * grad}{\sqrt{moment\_out} + \epsilon}
 $$
 
 The original paper(http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
