@@ -190,8 +190,9 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
       // collect all the offset for each alias,
       // insert a sum operator to add all aliases to output
       insert_position.push_back(
-          {dup_op.back(), OpRegistry::CreateOp("sum", {{"X", dup_outputs}},
-                                               {{"Out", {name}}}, {})});
+          {dup_op.back(),
+           OpRegistry::CreateOp("sum", {{"X", dup_outputs}}, {{"Out", {name}}},
+                                AttributeMap{})});
     }
 
     // make sure the inserted `sum` ops follow the BFS order.
@@ -216,7 +217,8 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
         // If part of input gradient of that operator is not calculated, fill
         // zero variables to that input gradient.
         net->AppendOp(OpRegistry::CreateOp("fill_zeros_like", {{"X", {prefix}}},
-                                           {{"Y", {grad_input}}}, {}));
+                                           {{"Y", {grad_input}}},
+                                           AttributeMap{}));
       }
       return false;
     });
@@ -392,8 +394,9 @@ std::vector<std::unique_ptr<OpDescBind>> MakeOpGrad(
             0, in_name.size() - sizeof(kGradVarSuffix) / sizeof(char) + 1);
         std::string new_name = prefix + kZeroVarSuffix;
         desc->Rename(in_name, new_name);
-        std::unique_ptr<OpDescBind> fill_zeros_op(new OpDescBind(
-            "fill_zeros_like", {{"X", {prefix}}}, {{"Y", {new_name}}}, {}));
+        std::unique_ptr<OpDescBind> fill_zeros_op(
+            new OpDescBind("fill_zeros_like", {{"X", {prefix}}},
+                           {{"Y", {new_name}}}, AttributeMap{}));
         pending_fill_zeros_ops.push_back(std::move(fill_zeros_op));
       }
     }
@@ -483,8 +486,9 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
         sum_op_inputs.emplace_back(new_name);
         next_g_name = sum_op_inputs.back();
       }
-      std::unique_ptr<OpDescBind> sum_op(new OpDescBind(
-          "sum", {{"X", sum_op_inputs}}, {{"Out", {out_name}}}, {}));
+      std::unique_ptr<OpDescBind> sum_op(
+          new OpDescBind("sum", {{"X", sum_op_inputs}}, {{"Out", {out_name}}},
+                         AttributeMap{}));
       pending_sum_ops.push_back({dup_op.back(), std::move(sum_op)});
     }
   }

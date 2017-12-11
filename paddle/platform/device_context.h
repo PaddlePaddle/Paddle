@@ -33,8 +33,6 @@ class DeviceContext {
   virtual Place GetPlace() const = 0;
 
   virtual void Wait() const {}
-
-  virtual void Finish() const {}
 };
 
 class CPUDeviceContext : public DeviceContext {
@@ -61,9 +59,6 @@ class CUDADeviceContext : public DeviceContext {
 
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
-
-  /*! \brief  Check potential errors for the cuda kernel calls. */
-  void Finish() const override;
 
   /*! \brief  Return place in the device context. */
   Place GetPlace() const override;

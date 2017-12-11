@@ -2722,15 +2722,15 @@ def img_pool_layer(input,
 
     ..  math::
 
-        w = 1 + int(ceil(input\_width + 2 * padding - pool\_size) / float(stride))
-        h = 1 + int(ceil(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
+        w = 1 + \frac{ceil(input\_width + 2 * padding - pool\_size)}{stride} \\\\
+        h = 1 + \frac{ceil(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
 
     - ceil_mode=False:
 
     ..  math::
 
-        w = 1 + int(floor(input\_width + 2 * padding - pool\_size) / float(stride))
-        h = 1 + int(floor(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
+        w = 1 + \frac{floor(input\_width + 2 * padding - pool\_size)}{stride} \\\\
+        h = 1 + \frac{floor(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
 
     The example usage is:
 
@@ -2863,17 +2863,17 @@ def img_pool3d_layer(input,
 
     ..  math::
 
-        w = 1 + int(ceil(input\_width + 2 * padding - pool\_size) / float(stride))
-        h = 1 + int(ceil(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
-        d = 1 + int(ceil(input\_depth + 2 * padding\_z - pool\_size\_z) / float(stride\_z))
+        w = 1 + \frac{ceil(input\_width + 2 * padding - pool\_size)}{stride} \\\\
+        h = 1 + \frac{ceil(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y} \\\\
+        d = 1 + \frac{ceil(input\_depth + 2 * padding\_z - pool\_size\_z)}{stride\_z}
 
     - ceil_mode=False:
 
     ..  math::
 
-        w = 1 + int(floor(input\_width + 2 * padding - pool\_size) / float(stride))
-        h = 1 + int(floor(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
-        d = 1 + int(floor(input\_depth + 2 * padding\_z - pool\_size\_z) / float(stride\_z))
+        w = 1 + \frac{floor(input\_width + 2 * padding - pool\_size)}{stride} \\\\
+        h = 1 + \frac{floor(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y} \\\\
+        d = 1 + \frac{floor(input\_depth + 2 * padding\_z - pool\_size\_z)}{stride\_z} \\\\
 
     The example usage is:
 
@@ -2996,7 +2996,7 @@ def spp_layer(input,
 
     Reference:
         `Spatial Pyramid Pooling in Deep Convolutional Networks for Visual Recognition
-        https://arxiv.org/abs/1406.4729`_
+        <https://arxiv.org/abs/1406.4729>`_
 
     The example usage is:
 
@@ -3098,7 +3098,7 @@ def img_cmrnorm_layer(input,
 
     Reference:
         `ImageNet Classification with Deep Convolutional Neural Networks
-        http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf`_
+        <http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf>`_
 
     The example usage is:
 
@@ -3166,7 +3166,7 @@ def batch_norm_layer(input,
     Reference:
         `Batch Normalization: Accelerating Deep Network Training by Reducing
         Internal Covariate Shift
-        http://arxiv.org/abs/1502.03167`_
+        <http://arxiv.org/abs/1502.03167>`_
 
     The example usage is:
 
@@ -5424,17 +5424,19 @@ def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
 
     Reference:
         `Maxout Networks
-        http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf`_
+        <http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf>`_
         `Multi-digit Number Recognition from Street View Imagery using Deep Convolutional Neural Networks
-        https://arxiv.org/pdf/1312.6082v4.pdf`_
+        <https://arxiv.org/pdf/1312.6082v4.pdf>`_
+
 
     .. math::
-       y_{si+j} = \max_k x_{gsi + sk + j}
-       g = groups
-       s = input.size / num_channels
-       0 \le i < num_channels / groups
-       0 \le j < s
-       0 \le k < groups
+       out = \max_k (in[n, k, o_c , s])   \\\\
+       out_{i * s + j} = \max_k in_{  k * o_{c} * s + i * s + j}  \\\\
+       s = \frac{input.size}{ num\_channels}       \\\\
+       o_{c} =\frac{num\_channels}{groups}         \\\\
+       0 \le i < o_{c}                             \\\\
+       0 \le j < s                                 \\\\
+       0 \le k < groups                            \\\\
 
     The simple usage is:
 
@@ -5493,7 +5495,7 @@ def ctc_layer(input,
     Reference:
         `Connectionist Temporal Classification: Labelling Unsegmented Sequence Data
         with Recurrent Neural Networks
-        http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf`_
+        <http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf>`_
 
     Note:
         Considering the 'blank' label needed by CTC, you need to use (num_classes + 1)
@@ -5567,7 +5569,7 @@ def warp_ctc_layer(input,
     Reference:
         `Connectionist Temporal Classification: Labelling Unsegmented Sequence Data
         with Recurrent Neural Networks
-        http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf`_
+        <http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf>`_
 
     Note:
         - Let num_classes represents the category number. Considering the 'blank'
@@ -5788,7 +5790,7 @@ def nce_layer(input,
 
     Reference:
         `A fast and simple algorithm for training neural probabilistic language
-        models. https://www.cs.toronto.edu/~amnih/papers/ncelm.pdf`_
+        models. <https://www.cs.toronto.edu/~amnih/papers/ncelm.pdf>`_
 
     The example usage is:
 
@@ -5904,7 +5906,7 @@ def rank_cost(left,
 
     Reference:
         `Learning to Rank using Gradient Descent
-        http://research.microsoft.com/en-us/um/people/cburges/papers/ICML_ranking.pdf`_
+        <http://research.microsoft.com/en-us/um/people/cburges/papers/ICML_ranking.pdf>`_
 
     .. math::
 
@@ -6440,7 +6442,7 @@ def smooth_l1_cost(input, label, name=None, coeff=1.0, layer_attr=None):
 
     Reference:
         `Fast R-CNN
-        https://arxiv.org/pdf/1504.08083v2.pdf`_
+        <https://arxiv.org/pdf/1504.08083v2.pdf>`_
 
     The example usage is:
 
@@ -6647,7 +6649,7 @@ def prelu_layer(input,
 
     Reference:
         `Delving Deep into Rectifiers: Surpassing Human-Level Performance on
-        ImageNet Classification http://arxiv.org/pdf/1502.01852v1.pdf`_
+        ImageNet Classification <http://arxiv.org/pdf/1502.01852v1.pdf>`_
 
     .. math::
        z_i &\\quad if \\quad z_i > 0 \\\\
@@ -6744,7 +6746,7 @@ def gated_unit_layer(input,
 
     Reference:
         `Language Modeling with Gated Convolutional Networks
-        https://arxiv.org/abs/1612.08083`_
+        <https://arxiv.org/abs/1612.08083>`_
 
     .. math::
        y=\\text{act}(X \cdot W + b)\otimes \sigma(X \cdot V + c)
