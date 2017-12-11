@@ -47,7 +47,8 @@ void ExtractNCWHD(const framework::DDim &dims,
 }
 
 template <typename T>
-class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
+class BatchNormKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -172,7 +173,7 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class BatchNormGradKernel<platform::GPUPlace, T>
+class BatchNormGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
