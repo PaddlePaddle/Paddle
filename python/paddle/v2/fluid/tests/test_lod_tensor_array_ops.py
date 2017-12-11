@@ -18,7 +18,11 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         tensor.set_lod([[0, 3, 9, 10]])
         expect = map(lambda x: numpy.array(x).astype('int32'),
                      [[3, 0, 9], [4, 1], [5, 2], [6], [7], [8]])
-        self.main(tensor=tensor, expect_array=expect, expect_lod=[] * 6)
+        self.main(
+            tensor=tensor,
+            expect_array=expect,
+            expect_lod=[] * 6,
+            expect_max_len=6)
 
     def test_lod_tensor_to_array_level_0_empty_seq(self):
         tensor = core.LoDTensor()
@@ -27,7 +31,11 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         tensor.set_lod([[0, 3, 9, 9, 10]])
         expect = map(lambda x: numpy.array(x).astype('int32'),
                      [[3, 0, 9], [4, 1], [5, 2], [6], [7], [8]])
-        self.main(tensor=tensor, expect_array=expect, expect_lod=[] * 6)
+        self.main(
+            tensor=tensor,
+            expect_array=expect,
+            expect_lod=[] * 6,
+            expect_max_len=6)
 
     def test_lod_tensor_to_array_level_1(self):
         tensor = core.LoDTensor()
@@ -44,7 +52,11 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         ]
 
         lod = [[[0, 2, 5]], [[0, 6, 12]], [[0, 3]]]
-        self.main(tensor=tensor, expect_array=expect, expect_lod=lod)
+        self.main(
+            tensor=tensor,
+            expect_array=expect,
+            expect_lod=lod,
+            expect_max_len=3)
 
     def test_lod_tensor_to_array_level_1_empty_seq(self):
         tensor = core.LoDTensor()
@@ -63,7 +75,11 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         ]
 
         lod = [[[0, 5, 8, 8, 15]], [[0, 2, 6, 7, 8]], [[0, 2, 6]], [[0, 2]]]
-        self.main(tensor=tensor, expect_array=expect, expect_lod=lod)
+        self.main(
+            tensor=tensor,
+            expect_array=expect,
+            expect_lod=lod,
+            expect_max_len=4)
 
     def test_lod_tensor_to_array_level_2(self):
         tensor = core.LoDTensor()
@@ -80,7 +96,11 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         ]
         lod = [[[0, 1, 3, 4], [0, 1, 4, 8, 12]],
                [[0, 4, 7], [0, 1, 5, 9, 17, 21, 27, 31]], [[0, 2], [0, 6, 7]]]
-        self.main(tensor=tensor, expect_array=expect, expect_lod=lod)
+        self.main(
+            tensor=tensor,
+            expect_array=expect,
+            expect_lod=lod,
+            expect_max_len=3)
 
     def test_lod_tensor_to_array_level_2_skip_level(self):
         tensor = core.LoDTensor()
@@ -88,14 +108,21 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
             numpy.arange(50).reshape(50, 1).astype('int32'), self.place())
         tensor.set_lod([[0, 2, 5, 6], [0, 2, 5, 6, 10, 12, 13],
                         [0, 3, 7, 11, 17, 21, 22, 23, 27, 31, 39, 45, 46, 50]])
-        self.main(tensor=tensor, expect_array=None, expect_lod=None, level=1)
+        self.main(
+            tensor=tensor,
+            expect_array=None,
+            expect_lod=None,
+            expect_max_len=4,
+            level=1)
 
-    def main(self, tensor, expect_array, expect_lod, level=0):
+    def main(self, tensor, expect_array, expect_lod, expect_max_len, level=0):
         place = self.place()
         program = Program()
         x = layers.data(name='x', shape=[10], main_program=program)
         x.persistable = True
         table = layers.lod_rank_table(x, level=level, main_program=program)
+        max_len = layers.max_sequence_len(table, main_program=program)
+        max_len.persistable = True
         array = layers.lod_tensor_to_array(x, table, main_program=program)
         array.persistable = True
 
@@ -109,6 +136,10 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         if expect_array is not None and expect_lod is not None:
             self.check_array_same(array, expect_array, expect_lod)
         self.check_tensor_same(scope.find_var(result.name).get_tensor(), tensor)
+
+        self.assertEqual(
+            numpy.array(scope.find_var(max_len.name).get_tensor())[0],
+            expect_max_len)
 
     def check_array_same(self, array, expect_tensor, expect_lod):
         self.assertEqual(len(expect_tensor), len(array))
@@ -132,7 +163,7 @@ class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
         x = layers.data(
             name='x',
             shape=[1],
-            data_type='float32',
+            dtype='float32',
             main_program=program,
             stop_gradient=False)
         table = layers.lod_rank_table(x, level=0, main_program=program)
@@ -151,10 +182,11 @@ class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
 
         exe = Executor(place)
         g_out = [
-            item.sum()
-            for item in map(
-                numpy.array,
-                exe.run(program, feed={'x': tensor}, fetch_list=[g_vars]))
+            numpy.array(item).sum()
+            for item in exe.run(program,
+                                feed={'x': tensor},
+                                fetch_list=[g_vars],
+                                return_numpy=False)
         ]
         g_out_sum = numpy.array(g_out).sum()
 

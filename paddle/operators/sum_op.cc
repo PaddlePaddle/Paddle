@@ -37,10 +37,16 @@ class SumOp : public framework::OperatorWithKernel {
     size_t N = x_dims.size();
     PADDLE_ENFORCE_GT(N, 1, "Input tensors count should > 1.");
 
-    auto in_dim = x_dims[0];
-    for (size_t i = 1; i < N; i++) {
-      auto dim = x_dims[i];
-      PADDLE_ENFORCE_EQ(in_dim, dim, "Input tensors must have same shape");
+    framework::DDim in_dim({0});
+    for (auto& x_dim : x_dims) {
+      if (framework::product(x_dim) == 0) {
+        continue;
+      }
+      if (framework::product(in_dim) == 0) {
+        in_dim = x_dim;
+      } else {
+        PADDLE_ENFORCE_EQ(in_dim, x_dim, "Input tensors must have same shape");
+      }
     }
     ctx->SetOutputDim("Out", in_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -51,9 +57,23 @@ class SumOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto x_vars = ctx.MultiInputVar("X");
     if (x_vars[0]->IsType<framework::LoDTensor>()) {
-      return framework::OpKernelType(
-          framework::ToDataType(x_vars[0]->Get<framework::LoDTensor>().type()),
-          ctx.device_context());
+      int dtype = -1;
+      for (auto& x_var : x_vars) {
+        auto& lod_tensor = x_var->Get<framework::LoDTensor>();
+        if (lod_tensor.numel() == 0) {
+          continue;
+        }
+        if (dtype == -1) {
+          dtype = framework::ToDataType(lod_tensor.type());
+        } else {
+          PADDLE_ENFORCE_EQ(dtype, framework::ToDataType(lod_tensor.type()));
+        }
+      }
+      PADDLE_ENFORCE_NE(dtype, -1,
+                        "Sum operator should have at least one tensor");
+
+      return framework::OpKernelType(static_cast<framework::DataType>(dtype),
+                                     ctx.device_context());
     } else if (x_vars[0]->IsType<framework::SelectedRows>()) {
       return framework::OpKernelType(
           framework::ToDataType(

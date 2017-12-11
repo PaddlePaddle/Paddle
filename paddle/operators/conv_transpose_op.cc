@@ -39,7 +39,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                  "ConvTransposeOp input dimension and strides dimension should "
                  "be consistent.");
   PADDLE_ENFORCE_EQ(paddings.size(), strides.size(),
-                    "ConvTransposeOp paddings dimension and Conv strides "
+                    "ConvTransposeOp paddings dimension and strides "
                     "dimension should be the same.");
   PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[0],
                     "In ConvTransposeOp, The input channel should be the same "
@@ -62,24 +62,25 @@ Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(
       "The format of input tensor is NCHW. Where N is batch size, C is the "
       "number of input channels, H is the height of the feature, and "
       "W is the width of the feature.");
-  AddInput("Filter",
-           "(Tensor) The filter tensor of convolution transpose operator. "
-           "The format of the filter tensor is CMHW, where C is the number of "
-           "output image channels, M is the number of input image channels, "
-           "H is the height of the filter, and W is the width of the filter. "
-           "We enforce groups number == 1 and padding == 0 in "
-           "the convolution transpose scenario.");
+  AddInput(
+      "Filter",
+      "(Tensor) The filter tensor of convolution transpose operator. "
+      "The format of the filter tensor is MCHW, where M is the number of "
+      "input feature channels, C is the number of "
+      "output feature channels,"
+      "H is the height of the filter, and W is the width of the filter. "
+      "We enforce groups number == 1 in the convolution transpose scenario.");
   AddOutput("Output",
             "(Tensor) The output tensor of convolution transpose operator. "
             "The format of output tensor is also NCHW.");
   AddAttr<std::vector<int>>(
       "strides",
-      "(vector<int> defalut:{1, 1}), the strides(h_stride, w_stride) of "
+      "(vector<int> default:{1, 1}), the strides(h_stride, w_stride) of "
       "convolution transpose operator.")
       .SetDefault({1, 1});
   AddAttr<std::vector<int>>(
       "paddings",
-      "(vector<int> defalut:{0, 0}), the paddings(h_pad, w_pad) of convolution "
+      "(vector<int> default:{0, 0}), the paddings(h_pad, w_pad) of convolution "
       "transpose operator.")
       .SetDefault({0, 0});
   AddComment(R"DOC(
@@ -88,21 +89,26 @@ Convolution2D Transpose Operator.
 The convolution transpose operation calculates the output based on the input, filter
 and strides, paddings, groups parameters. The size of each dimension of the
 parameters is checked in the infer-shape.
-
-Input(Input, Filter) and output(Output) are in NCHW format. Where N is batch
-size, C is the number of channels, H is the height of the feature, and 
-W is the width of the feature. Parameters(ksize, strides, paddings) are two elements.
-These two elements represent height and width, respectively.
+Input(Input) and output(Output) are in NCHW format. Where N is batchsize, C is the
+number of channels, H is the height of the feature, and W is the width of the feature.
+Filter(Input) is in MCHW format. Where M is the number of input feature channels,
+C is the number of output feature channels, H is the height of the filter,
+and W is the width of the filter.
+Parameters(strides, paddings) are two elements. These two elements represent height
+and width, respectively.
 The input(X) size and output(Out) size may be different.
+
 Example:
   Input:
-       Input shape: (N, C_in, H_in, W_in)
-       Filter shape: (C_in, C_out, H_f, W_f)
+       Input shape: $(N, C_{in}, H_{in}, W_{in})$
+       Filter shape: $(C_{in}, C_{out}, H_f, W_f)$
   Output:
-       Output shape: (N, C_out, H_out, W_out)
-  where
-       H_out = (H_in - 1) * strides[0] - 2 * paddings[0] + filter_size[0];
-       W_out = (W_in - 1) * strides[1] - 2 * paddings[1] + filter_size[1];
+       Output shape: $(N, C_{out}, H_{out}, W_{out})$
+  Where
+  $$
+       H_{out} = (H_{in} - 1) * strides[0] - 2 * paddings[0] + H_f \\
+       W_{out} = (W_{in} - 1) * strides[1] - 2 * paddings[1] + W_f
+  $$
 )DOC");
 }
 
@@ -117,8 +123,9 @@ Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(
            "W is the width of the feature.");
   AddInput("Filter",
            "(Tensor) The filter tensor of convolution transpose operator."
-           "The format of the filter tensor is CMDHW, where C is the number of "
-           "output image channels, M is the number of input image channels, D "
+           "The format of the filter tensor is MCDHW, where M is the number of "
+           "input feature channels, C is the number of "
+           "output feature channels, D "
            "is the depth of the filter, H is the height of the filter, and "
            "W is the width of the filter."
            "We enforce groups number == 1 and padding == 0 in "
@@ -130,12 +137,12 @@ Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(
             "the number of channels, D is the depth of the feature, H is the "
             "height of the feature, and W is the width of the feature.");
   AddAttr<std::vector<int>>("strides",
-                            "(vector<int> defalut:{1, 1, 1}), the "
+                            "(vector<int> default:{1, 1, 1}), the "
                             "strides{d_stride, h_stride, w_stride} of "
                             "convolution transpose operator.")
       .SetDefault({1, 1, 1});
   AddAttr<std::vector<int>>("paddings",
-                            "(vector<int> defalut:{0, 0, 0}), paddings(d_pad, "
+                            "(vector<int> default:{0, 0, 0}), paddings(d_pad, "
                             "h_pad, w_pad) of convolution transpose operator.")
       .SetDefault({0, 0, 0});
   AddComment(R"DOC(
@@ -144,23 +151,28 @@ Convolution3D Transpose Operator.
 The convolution transpose operation calculates the output based on the input, filter
 and strides, paddings, groups parameters. The size of each dimension of the
 parameters is checked in the infer-shape.
-
-Input(Input, Filter) and output(Output) are in NCDHW format. Where N is batch
-size, C is the number of channels, D is the depth of the feature, 
-H is the height of the feature, and W is the width of the feature. 
-Parameters(ksize, strides, paddings) are three elements.
-These three elements represent depth, height and width, respectively.
+Input(Input) and output(Output) are in NCDHW format. Where N is batch size, C is the
+number of channels, D is the depth of the feature, H is the height of the feature,
+and W is the width of the feature.
+Filter(Input) is in MCDHW format. Where M is the number of input feature channels,
+C is the number of output feature channels, D is the depth of the filter,H is the
+height of the filter, and W is the width of the filter.
+Parameters(strides, paddings) are three elements. These three elements represent
+depth, height and width, respectively.
 The input(X) size and output(Out) size may be different.
-Example:
+
+Example:   
   Input:
-       Input shape: (N, C_in, D_in, H_in, W_in)
-       Filter shape: (C_in, C_out, D_f, H_f, W_f)
+       Input shape: $(N, C_{in}, D_{in}, H_{in}, W_{in})$
+       Filter shape: $(C_{in}, C_{out}, D_f, H_f, W_f)$
   Output:
-       Output shape: (N, C_out, D_out, H_out, W_out)
-  where
-       D_out = (D_in - 1) * strides[0] - 2 * paddings[0] + filter_size[0];
-       H_out = (H_in - 1) * strides[1] - 2 * paddings[1] + filter_size[1];
-       W_out = (W_in - 1) * strides[2] - 2 * paddings[2] + filter_size[2];
+       Output shape: $(N, C_{out}, D_{out}, H_{out}, W_{out})$
+  Where
+  $$
+       D_{out} = (D_{in} - 1) * strides[0] - 2 * paddings[0] + D_f \\
+       H_{out} = (H_{in} - 1) * strides[1] - 2 * paddings[1] + H_f \\
+       W_{out} = (W_{in} - 1) * strides[2] - 2 * paddings[2] + W_f
+  $$
 )DOC");
 }
 

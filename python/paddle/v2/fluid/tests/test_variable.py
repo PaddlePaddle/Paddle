@@ -1,5 +1,5 @@
 import unittest
-from paddle.v2.fluid.framework import g_main_program, Program, convert_np_dtype_to_dtype_
+from paddle.v2.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_
 import paddle.v2.fluid.core as core
 import numpy as np
 
@@ -18,17 +18,17 @@ class TestVariable(unittest.TestCase):
         self.assertRaises(ValueError, lambda: convert("int8"))
 
     def test_var(self):
-        b = g_main_program.current_block()
+        b = default_main_program().current_block()
         w = b.create_var(
             dtype="float64", shape=[784, 100], lod_level=0, name="fc.w")
         self.assertNotEqual(str(w), "")
-        self.assertEqual(core.DataType.FP64, w.data_type)
+        self.assertEqual(core.DataType.FP64, w.dtype)
         self.assertEqual((784, 100), w.shape)
         self.assertEqual("fc.w", w.name)
         self.assertEqual(0, w.lod_level)
 
         w = b.create_var(name='fc.w')
-        self.assertEqual(core.DataType.FP64, w.data_type)
+        self.assertEqual(core.DataType.FP64, w.dtype)
         self.assertEqual((784, 100), w.shape)
         self.assertEqual("fc.w", w.name)
         self.assertEqual(0, w.lod_level)
