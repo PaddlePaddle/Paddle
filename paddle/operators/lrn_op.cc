@@ -20,7 +20,7 @@ namespace operators {
 using framework::Tensor;
 
 template <typename T>
-struct LRNFunctor<platform::CPUPlace, T> {
+struct LRNFunctor<platform::CPUDeviceContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor& input, framework::Tensor* out,
                   framework::Tensor* mid, int N, int C, int H, int W, int n,
@@ -55,11 +55,11 @@ struct LRNFunctor<platform::CPUPlace, T> {
     out_e = x_v * e_mid.reshape(Eigen::DSizes<int, 1>(e_mid.size())).pow(-beta);
   }
 };
-template struct LRNFunctor<platform::CPUPlace, float>;
-template struct LRNFunctor<platform::CPUPlace, double>;
+template struct LRNFunctor<platform::CPUDeviceContext, float>;
+template struct LRNFunctor<platform::CPUDeviceContext, double>;
 
 template <typename T>
-struct LRNGradFunctor<platform::CPUPlace, T> {
+struct LRNGradFunctor<platform::CPUDeviceContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor& x, const framework::Tensor& out,
                   const framework::Tensor& mid, framework::Tensor* x_g,
@@ -113,8 +113,8 @@ struct LRNGradFunctor<platform::CPUPlace, T> {
     }
   }
 };
-template struct LRNGradFunctor<platform::CPUPlace, float>;
-template struct LRNGradFunctor<platform::CPUPlace, double>;
+template struct LRNGradFunctor<platform::CPUDeviceContext, float>;
+template struct LRNGradFunctor<platform::CPUDeviceContext, double>;
 
 class LRNOp : public framework::OperatorWithKernel {
  public:

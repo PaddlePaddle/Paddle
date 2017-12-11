@@ -80,7 +80,7 @@ void CrossMapNormal(const framework::ExecutionContext& ctx, const T* inputs,
 }
 
 template <typename T>
-struct LRNFunctor<platform::GPUPlace, T> {
+struct LRNFunctor<platform::CUDADeviceContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor& input, framework::Tensor* out,
                   framework::Tensor* mid, int N, int C, int H, int W, int n,
@@ -91,8 +91,8 @@ struct LRNFunctor<platform::GPUPlace, T> {
   }
 };
 
-template struct LRNFunctor<platform::GPUPlace, float>;
-template struct LRNFunctor<platform::GPUPlace, double>;
+template struct LRNFunctor<platform::CUDADeviceContext, float>;
+template struct LRNFunctor<platform::CUDADeviceContext, double>;
 
 template <typename T>
 __global__ void KeCMRNormDiff(int img_size, const T* x, const T* out,
