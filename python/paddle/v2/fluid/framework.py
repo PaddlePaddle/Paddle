@@ -47,7 +47,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
         np.bool: core.DataType.BOOL,
     }
 
-    assert dtype in types, "Not supported numpy dtype %s" % str(dtype)
+    assert dtype in types.keys(), "Not supported numpy dtype %s" % str(dtype)
     return types[dtype]
 
 
