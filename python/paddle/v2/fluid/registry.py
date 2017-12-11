@@ -1,9 +1,82 @@
+import re
+import cStringIO
 import warnings
 import functools
 import inspect
 
+import proto.framework_pb2 as framework_pb2
 from framework import OpProtoHolder, Variable, Program, Operator
 from paddle.v2.fluid.layer_helper import LayerHelper, unique_name
+
+__all__ = ['layer_registry', 'deprecated']
+
+
+def _convert_(name):
+    """
+    Formatting.
+
+    Args:
+       name: The name/alias
+
+    This function takes in a name and converts it to a standard format of
+    group1_group2. Where as per the regular expression, group1 can have
+    alphabets and numbers and group2 has capital alphabets.
+
+    """
+    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
+
+def _generate_doc_string_(op_proto):
+    """
+    Generate docstring by OpProto
+
+    Args:
+        op_proto (framework_pb2.OpProto): a protobuf message typed OpProto
+
+    Returns:
+        str: the document string
+    """
+
+    def _type_to_str_(tp):
+        return framework_pb2.AttrType.Name(tp)
+
+    if not isinstance(op_proto, framework_pb2.OpProto):
+        raise TypeError("OpProto should be `framework_pb2.OpProto`")
+
+    buf = cStringIO.StringIO()
+    buf.write(op_proto.comment)
+    buf.write('\nArgs:\n')
+    for each_input in op_proto.inputs:
+        line_begin = '    {0}: '.format(_convert_(each_input.name))
+        buf.write(line_begin)
+        buf.write(each_input.comment)
+        buf.write('\n')
+        buf.write(' ' * len(line_begin))
+        buf.write('Duplicable: ')
+        buf.write(str(each_input.duplicable))
+        buf.write('  Optional: ')
+        buf.write(str(each_input.dispensable))
+        buf.write('\n')
+
+    for each_attr in op_proto.attrs:
+        buf.write('    ')
+        buf.write(each_attr.name)
+        buf.write(' (')
+        buf.write(_type_to_str_(each_attr.type))
+        buf.write('): ')
+        buf.write(each_attr.comment)
+        buf.write('\n')
+
+    if len(op_proto.outputs) != 0:
+        buf.write('\nReturns:\n')
+        buf.write('    ')
+        for each_opt in op_proto.outputs:
+            if not each_opt.intermediate:
+                break
+        buf.write(each_opt.comment)
+
+    return buf.getvalue()
 
 
 def layer_registry(op_type):

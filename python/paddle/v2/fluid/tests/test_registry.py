@@ -1,4 +1,5 @@
 import unittest
+import warnings
 
 import paddle.v2.fluid as fluid
 import paddle.v2.fluid.framework as framework
@@ -19,9 +20,3 @@ class TestRegistry(unittest.TestCase):
         X = np.random.random((10, 10)).astype("float32")
         mean_out = exe.run(program, feed={"X": X}, fetch_list=[output])
         self.assertAlmostEqual(np.mean(X), mean_out)
-
-    # def test_deprecated(self):
-    #     @registry.deprecated
-    #     def foo():
-    #         pass
-    #     self
