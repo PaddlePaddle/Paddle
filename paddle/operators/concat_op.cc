@@ -41,14 +41,18 @@ class ConcatOp : public framework::OperatorWithKernel {
       for (size_t j = 0; j < in_zero_dims_size; j++) {
         if (j == axis) {
           out_dims[axis] += ins[i][j];
-          continue;
+        } else {
+          PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
+                            "Input tensors should have the same "
+                            "elements except the specify axis.");
         }
-        PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
-                          "Input tensors should have the same "
-                          "elements except the specify axis.");
       }
     }
+    if (out_dims[axis] < 0) {
+      out_dims[axis] = -1;
+    }
     ctx->SetOutputDim("Out", out_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 

@@ -122,10 +122,6 @@ Place CUDADeviceContext::GetPlace() const { return place_; }
 
 void CUDADeviceContext::Wait() const {
   PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
-}
-
-void CUDADeviceContext::Finish() const {
-  Wait();
   PADDLE_ENFORCE(cudaGetLastError());
 }
 

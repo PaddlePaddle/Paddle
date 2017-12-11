@@ -430,7 +430,8 @@ def _create_op_func_(op_type):
                     dtype = each.dtype
                 elif dtype != each.dtype:
                     raise ValueError(
-                        "operator {0} must input same dtype".format(op_type))
+                        "operator {0} must input same dtype. {1} vs {2}".format(
+                            op_type, dtype, each.dtype))
 
         return dtype
 
@@ -576,7 +577,7 @@ def seq_expand(X, Y, main_program=None, startup_program=None):
         Out.dims = [8, 1]
     """
     helper = LayerHelper('seq_expand', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    out = helper.create_tmp_variable(dtype=X.dtype)
     helper.append_op(
         type='seq_expand', inputs={'X': X,
                                    'Y': Y}, outputs={'Out': out})
@@ -671,8 +672,8 @@ def beam_search(pre_ids, ids, scores, beam_size, end_id):
     This function implements the beam search algorithm.
     '''
     helper = LayerHelper('beam_search', **locals())
-    score_type = scores.dtype()
-    id_type = ids.dtype()
+    score_type = scores.dtype
+    id_type = ids.dtype
 
     selected_scores = helper.create_tmp_variable(dtype=score_type)
     selected_ids = helper.create_tmp_variable(dtype=id_type)

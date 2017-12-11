@@ -178,8 +178,40 @@ class BeamSearchProtoAndCheckerMaker
   }
 };
 
+class BeamSearchInferShape : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext *context) const override {
+    for (const std::string &arg :
+         std::vector<std::string>({"pre_ids", "ids", "scores"})) {
+      PADDLE_ENFORCE(context->HasInput(arg),
+                     "BeamSearch need input argument '%s'", arg);
+    }
+    for (const std::string &arg :
+         std::vector<std::string>({"selected_ids", "selected_scores"})) {
+      PADDLE_ENFORCE(context->HasOutput(arg),
+                     "BeamSearch need output argument '%s'", arg);
+    }
+  }
+};
+
+class BeamSearchInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDescBind &op_desc,
+                  framework::BlockDescBind *block) const override {
+    for (auto &o : op_desc.Output("selected_ids")) {
+      block->Var(o)->SetType(framework::VarDesc::LOD_TENSOR);
+    }
+    for (auto &o : op_desc.Output("selected_scores")) {
+      block->Var(o)->SetType(framework::VarDesc::LOD_TENSOR);
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_WITHOUT_GRADIENT(beam_search, paddle::operators::BeamSearchOp,
-                             paddle::operators::BeamSearchProtoAndCheckerMaker);
+REGISTER_OPERATOR(beam_search, paddle::operators::BeamSearchOp,
+                  paddle::operators::BeamSearchProtoAndCheckerMaker,
+                  paddle::operators::BeamSearchInferShape,
+                  paddle::operators::BeamSearchInferVarType,
+                  paddle::framework::EmptyGradOpMaker);
