@@ -43,7 +43,7 @@ void* CPUAllocator::Alloc(size_t& index, size_t size) {
 
   void* p;
 
-#ifdef PADDLE_USE_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
   // refer to https://github.com/01org/mkl-dnn/blob/master/include/mkldnn.hpp
   // memory alignment
   PADDLE_ENFORCE_EQ(posix_memalign(&p, 4096ul, size), 0);
