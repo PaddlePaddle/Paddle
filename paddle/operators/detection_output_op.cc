@@ -21,42 +21,37 @@ class Detection_output_OpMaker : public framework::OpProtoAndCheckerMaker {
   Detection_output_OpMaker(framework::OpProto* proto,
                            framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput(
-        "Loc",
-        "(Tensor) The input tensor of detection_output operator. "
-        "The format of input tensor is NCHW. Where N is batch size, C is the "
-        "number of channels, H and W is the height and width of feature.");
-    AddInput(
-        "Conf",
-        "(Tensor) The input tensor of detection_output operator. "
-        "The format of input tensor is NCHW. Where N is batch size, C is the "
-        "number of channels, H and W is the height and width of feature.");
-    AddInput(
-        "PriorBox",
-        "(Tensor) The input tensor of detection_output operator. "
-        "The format of input tensor is NCHW. Where N is batch size, C is the "
-        "number of channels, H and W is the height and width of feature.");
+    AddInput("Loc",
+             "(Tensor) The input tensor of detection_output operator. "
+             "The format of input tensor is kNCHW. Where K is priorbox point "
+             "numbers,"
+             "N is How many boxes are there on each point, "
+             "C is 4, H and W both are 1.");
+    AddInput("Conf",
+             "(Tensor) The input tensor of detection_output operator. "
+             "The format of input tensor is kNCHW. Where K is priorbox point "
+             "numbers,"
+             "N is How many boxes are there on each point, "
+             "C is the number of classes, H and W both are 1.");
+    AddInput("PriorBox",
+             "(Tensor) The input tensor of detection_output operator. "
+             "The format of input tensor is the position and variance "
+             "of the boxes");
     AddOutput("Out",
-              "(Tensor) The output tensor of detection_output operator."
-              "N * M."
-              "M = C * H * W");
-    AddAttr<int>("background_label_id", "(int), multi level pooling");
-    AddAttr<int>("num_classes", "(int), multi level pooling");
-    AddAttr<float>("nms_threshold", "(int), multi level pooling");
-    AddAttr<float>("confidence_threshold", "(int), multi level pooling");
-    AddAttr<int>("top_k", "(int), multi level pooling");
-    AddAttr<int>("nms_top_k", "(int), multi level pooling");
+              "(Tensor) The output tensor of detection_output operator.");
+    AddAttr<int>("background_label_id",
+                 "(int), the attr of detection_output operator");
+    AddAttr<int>("num_classes",
+                 "(int),  the attr of detection_output operator");
+    AddAttr<float>("nms_threshold",
+                   "(float), the attr of detection_output operator");
+    AddAttr<float>("confidence_threshold",
+                   "(float), the attr of detection_output operator");
+    AddAttr<int>("top_k", "(int), the attr of detection_output operator");
+    AddAttr<int>("nms_top_k", "(int), the attr of detection_output operator");
     AddComment(R"DOC(
-        "Does spatial pyramid pooling on the input image by taking the max,
-        etc. within regions so that the result vector of different sized
-        images are of the same size
-        Input shape: $(N, C_{in}, H_{in}, W_{in})$
-        Output shape: $(H_{out}, W_{out})$
-        Where
-          $$
-            H_{out} = N \\
-            W_{out} = (((4^pyramid_height) - 1) / (4 - 1))$ * C_{in}
-          $$
+          detection output for SSD(single shot multibox detector)
+
         )DOC");
   }
 };
