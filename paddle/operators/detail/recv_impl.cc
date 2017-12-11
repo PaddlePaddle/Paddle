@@ -21,16 +21,20 @@ namespace detail {
 Status SendRecvServerImpl::SendVariable(ServerContext *context,
                                         const VariableMessage *in_var,
                                         VariableMessage *out_var) {
-  framework::LoDTensor t;
-  // TODO(typhoonzero): desirealize in_tensor and run pserver network.
+  // TODO(typhoonzero): support different variable types.
   std::istringstream iss(in_var->serialized());
+  framework::LoDTensor t;
   framework::DeserializeFromStream(iss, &t);
-  lodtensor_queue_.Push(std::move(t));
+  TensorWithName tensor_with_name =
+      std::make_pair(in_var->varname(), std::move(t));
+
+  var_recv_queue_.Push(std::move(tensor_with_name));
   // Block util the sub graph is done.
-  t = lodtensor_return_queue_.Pop();
+  auto out_tensor_with_name = var_return_queue_.Pop();
   std::ostringstream oss;
-  // FIXME(typhoonzero): get context from op.
-  framework::SerializeToStream(oss, t, platform::CPUDeviceContext());
+  framework::SerializeToStream(oss, out_tensor_with_name.second,
+                               platform::CPUDeviceContext());
+
   std::string *varname = out_var->mutable_varname();
   *varname = in_var->varname();
   std::string *serialized = out_var->mutable_serialized();
