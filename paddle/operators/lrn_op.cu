@@ -69,19 +69,18 @@ void CrossMapNormal(const framework::ExecutionContext& ctx, const T* inputs,
   const int block_size = 1024;
   int grid_size = (img_size + block_size - 1) / block_size;
 
-  KeCMRNormFillScale<
-      T><<<grid_size, block_size, 0, ctx.cuda_device_context().stream()>>>(
+  auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+  KeCMRNormFillScale<T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
       img_size, inputs, mid, C, H, W, n, k, alpha);
 
   int input_size = N * H * W * C;
   grid_size = (input_size + block_size - 1) / block_size;
-  KeCMRNormOutput<
-      T><<<grid_size, block_size, 0, ctx.cuda_device_context().stream()>>>(
+  KeCMRNormOutput<T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
       input_size, inputs, mid, -beta, outputs);
 }
 
 template <typename T>
-struct LRNFunctor<platform::GPUPlace, T> {
+struct LRNFunctor<platform::CUDADeviceContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor& input, framework::Tensor* out,
                   framework::Tensor* mid, int N, int C, int H, int W, int n,
@@ -92,8 +91,8 @@ struct LRNFunctor<platform::GPUPlace, T> {
   }
 };
 
-template struct LRNFunctor<platform::GPUPlace, float>;
-template struct LRNFunctor<platform::GPUPlace, double>;
+template struct LRNFunctor<platform::CUDADeviceContext, float>;
+template struct LRNFunctor<platform::CUDADeviceContext, double>;
 
 template <typename T>
 __global__ void KeCMRNormDiff(int img_size, const T* x, const T* out,
@@ -148,14 +147,14 @@ void CrossMapNormalGrad(const framework::ExecutionContext& ctx, const T* x,
   const int block_size = 1024;
   int grid_size = (img_size + block_size - 1) / block_size;
 
-  KeCMRNormDiff<
-      T><<<grid_size, block_size, 0, ctx.cuda_device_context().stream()>>>(
+  auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+  KeCMRNormDiff<T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
       img_size, x, out, mid, x_g, out_g, C, H, W, n, -beta,
       2.0f * alpha * beta);
 }
 
 template <typename T>
-struct LRNGradFunctor<platform::GPUPlace, T> {
+struct LRNGradFunctor<platform::CUDADeviceContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor& x, const framework::Tensor& out,
                   const framework::Tensor& mid, framework::Tensor* x_g,
@@ -167,12 +166,13 @@ struct LRNGradFunctor<platform::GPUPlace, T> {
   }
 };
 
-template struct LRNGradFunctor<platform::GPUPlace, float>;
-template struct LRNGradFunctor<platform::GPUPlace, double>;
+template struct LRNGradFunctor<platform::CUDADeviceContext, float>;
+template struct LRNGradFunctor<platform::CUDADeviceContext, double>;
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(lrn, ops::LRNKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(lrn_grad,
-                       ops::LRNGradKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_CUDA_KERNEL(
+    lrn, ops::LRNKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    lrn_grad, ops::LRNGradKernel<paddle::platform::CUDADeviceContext, float>);

@@ -111,7 +111,8 @@ __global__ void ConvShiftDy(const T *x, const T *dout, int x_width, int y_width,
 }  // namespace
 
 template <typename T>
-class ConvShiftKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
+class ConvShiftKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     const Tensor *X = context.Input<Tensor>("X");
@@ -132,7 +133,8 @@ class ConvShiftKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
 
     dim3 grid_dim(num_x_blocks, batch_size);
 
-    auto stream = context.cuda_device_context().stream();
+    auto stream =
+        context.template device_context<platform::CUDADeviceContext>().stream();
 
     ConvShiftForward<T><<<grid_dim, x_per_block, mem_per_block, stream>>>(
         x_data, y_data, x_width, y_width, y_half_width, batch_size, out_data);
@@ -140,7 +142,7 @@ class ConvShiftKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class ConvShiftGradKernel<platform::GPUPlace, T>
+class ConvShiftGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -159,8 +161,9 @@ class ConvShiftGradKernel<platform::GPUPlace, T>
     int y_width = Y->dims()[1];
     int y_half_width = (y_width - 1) / 2;
 
-    auto &device_ctx = context.cuda_device_context();
-    math::SetConstant<platform::GPUPlace, T> zero;
+    auto &device_ctx =
+        context.template device_context<platform::CUDADeviceContext>();
+    math::SetConstant<platform::CUDADeviceContext, T> zero;
 
     const int x_per_block = 256;
     int num_x_blocks = DivUp(x_width, x_per_block);
@@ -186,8 +189,9 @@ class ConvShiftGradKernel<platform::GPUPlace, T>
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(conv_shift,
-                       ops::ConvShiftKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
+    conv_shift,
+    ops::ConvShiftKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
     conv_shift_grad,
-    ops::ConvShiftGradKernel<paddle::platform::GPUPlace, float>);
+    ops::ConvShiftGradKernel<paddle::platform::CUDADeviceContext, float>);

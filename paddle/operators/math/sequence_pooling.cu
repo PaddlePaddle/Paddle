@@ -46,9 +46,9 @@ __global__ void KeMaxSequencePool(const T* input, const size_t* starts,
 }
 
 template <typename T>
-class MaxSeqPoolFunctor<platform::GPUPlace, T> {
+class MaxSeqPoolFunctor<platform::CUDADeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::LoDTensor& input, framework::Tensor* output,
                   framework::Tensor* index) {
     auto in_dims = input.dims();
@@ -71,8 +71,7 @@ class MaxSeqPoolFunctor<platform::GPUPlace, T> {
 
     dim3 threads(256, 1);
     dim3 grid(num_seq, 1);
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(context).stream();
+    auto stream = context.stream();
     KeMaxSequencePool<T><<<grid, threads, 0, stream>>>(
         in_data, starts.data(), out_data, max_index, num_seq, dim);
   }
@@ -91,9 +90,9 @@ __global__ void KeMaxSequencePoolGrad(const T* out_grad, const int* max_index,
 }
 
 template <typename T>
-class MaxSeqPoolGradFunctor<platform::GPUPlace, T> {
+class MaxSeqPoolGradFunctor<platform::CUDADeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& out_grad,
                   const framework::Tensor& index,
                   framework::LoDTensor* in_grad) {
@@ -111,7 +110,7 @@ class MaxSeqPoolGradFunctor<platform::GPUPlace, T> {
     const int* max_index = index.data<int>();
     T* ig_data = in_grad->data<T>();
 
-    SetConstant<platform::GPUPlace, T> set_zero;
+    SetConstant<platform::CUDADeviceContext, T> set_zero;
     set_zero(context, in_grad, static_cast<T>(0.0));
     int64_t num_seq = og_dims[0];
     int64_t dim = out_grad.numel() / num_seq;
@@ -119,17 +118,16 @@ class MaxSeqPoolGradFunctor<platform::GPUPlace, T> {
     unsigned int blocks = (num_seq * dim + 128 - 1) / 128;
     dim3 threads(128, 1);
     dim3 grid(blocks, 1);
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(context).stream();
+    auto stream = context.stream();
     KeMaxSequencePoolGrad<T><<<grid, threads, 0, stream>>>(
         og_data, max_index, ig_data, num_seq, dim);
   }
 };
 
-template class MaxSeqPoolFunctor<platform::GPUPlace, float>;
-template class MaxSeqPoolFunctor<platform::GPUPlace, double>;
-template class MaxSeqPoolGradFunctor<platform::GPUPlace, float>;
-template class MaxSeqPoolGradFunctor<platform::GPUPlace, double>;
+template class MaxSeqPoolFunctor<platform::CUDADeviceContext, float>;
+template class MaxSeqPoolFunctor<platform::CUDADeviceContext, double>;
+template class MaxSeqPoolGradFunctor<platform::CUDADeviceContext, float>;
+template class MaxSeqPoolGradFunctor<platform::CUDADeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators

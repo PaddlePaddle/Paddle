@@ -28,8 +28,8 @@ An operator can be differentiated by whether in has kernel methods. An operator 
 --------------  | :----------------------
 OpProtoMake definition  | `.cc`files, Backward Op does not need an OpProtoMake interface.
 Op definition           | `.cc` files
-Kernel implementation       | The kernel methods shared between CPU and GPU are defined in `.h` files. CPU-specific kernels live in `.cc` files, while GPU-specific kernels are implemented in `.cu`files.
-Registering the Op           | Ops are registered in `.cc` files; For Kernel registration, `.cc` files contain the CPU implementation, while `.cu` files contain the GPU implementation.
+Kernel implementation       | The kernel methods shared between CPU and CUDA are defined in `.h` files. CPU-specific kernels live in `.cc` files, while CUDA-specific kernels are implemented in `.cu`files.
+Registering the Op           | Ops are registered in `.cc` files; For Kernel registration, `.cc` files contain the CPU implementation, while `.cu` files contain the CUDA implementation.
 
 
 New Operator implementations are added to the list [paddle/operators](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators), with file names in the format `*_op.h` (if applicable), `*_op.cc`, `*_op.cu` (if applicable).** The system will use the naming scheme to automatically build operators and their corresponding Python extensions. **
@@ -151,7 +151,7 @@ Usually `OpProtoMaker` and `Op`'s type definitions are written in `.cc` files, w
 
 `MulKernel` inherits `framework::OpKernel`, which includes the following templates:
 
-- `typename  Place` denotes device type. When different devices, namely the CPU and the GPU, share the same kernel, this template needs to be added. If they don't share kernels, this must not be added. An example of a non-sharing kernel is [`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43).
+- `typename  DeviceContext` denotes device context type. When different devices, namely the CPUDeviceContext and the CUDADeviceContext, share the same kernel, this template needs to be added. If they don't share kernels, this must not be added. An example of a non-sharing kernel is [`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43).
 
 - `typename T` denotes data type, such as `float` or `double`.
 
@@ -163,7 +163,7 @@ Usually `OpProtoMaker` and `Op`'s type definitions are written in `.cc` files, w
 `MulKernel`'s implementation of `Compute` is as follows:
 
   ```cpp
-  template <typename Place, typename T>
+  template <typename DeviceContext, typename T>
   class MulKernel : public framework::OpKernel {
   public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -171,16 +171,15 @@ Usually `OpProtoMaker` and `Op`'s type definitions are written in `.cc` files, w
     auto* Y = context.Input<Tensor>("Y");
     auto* Z = context.Output<Tensor>("Out");
     Z->mutable_data<T>(context.GetPlace());
-    auto* device_context =
-        const_cast<platform::DeviceContext*>(context.device_context_);
-    math::matmul<Place, T>(*X, false, *Y, false, 1, Z, 0, device_context);
+    auto& device_context = context.template device_context<DeviceContext>();
+    math::matmul<DeviceContext, T>(*X, false, *Y, false, 1, Z, 0, device_context);
   }
   };
   ```
 
-Note that **different devices (CPU, GPU)share an Op definition; whether or not they share the same `OpKernel` depends on whether `Compute` calls functions that support both devices.**
+Note that **different devices (CPU, CUDA)share an Op definition; whether or not they share the same `OpKernel` depends on whether `Compute` calls functions that support both devices.**
 
-`MulOp`'s CPU and GPU share the same `Kernel`. A non-sharing  `OpKernel` example can be seen in [`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43).
+`MulOp`'s CPU and CUDA share the same `Kernel`. A non-sharing  `OpKernel` example can be seen in [`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43).
 
 To ease the writing of `OpKernel` compute, and for reusing code cross-device, [`Eigen-unsupported Tensor`](https://bitbucket.org/eigen/eigen/src/default/unsupported/Eigen/CXX11/src/Tensor/README.md?fileviewer=file-view-default) module is used to implement `Compute` interface. To learn about how the Eigen library is used in PaddlePaddle, please see [usage document](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/use_eigen_cn.md).
 
@@ -196,9 +195,9 @@ The definition of its corresponding backward operator, if applicable, is similar
     ```cpp
     namespace ops = paddle::operators;
     REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulOpGrad);
-    REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUPlace, float>);
+    REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>);
     REGISTER_OP_CPU_KERNEL(mul_grad,
-                  ops::MulGradKernel<paddle::platform::CPUPlace, float>);
+                  ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>);
     ```
 
    In that code block,
@@ -208,17 +207,17 @@ The definition of its corresponding backward operator, if applicable, is similar
     - `REGISTER_OP_CPU_KERNEL` registers `ops::MulKernel` class and specialized template types `paddle::platform::CPUPlace` and `float`, which also registers `ops::MulGradKernel`.
 
 
-- Registering GPU Kernel in `.cu` files
-    - Note that if GPU Kernel is implemented using the `Eigen unsupported` module, then on top of `.cu`, a macro definition `#define EIGEN_USE_GPU` is needed, such as
+- Registering CUDA Kernel in `.cu` files
+    - Note that if CUDA Kernel is implemented using the `Eigen unsupported` module, then on top of `.cu`, a macro definition `#define EIGEN_USE_GPU` is needed, such as
 
     ```cpp
     // if use Eigen unsupported module before include head files
     #define EIGEN_USE_GPU
 
     namespace ops = paddle::operators;
-    REGISTER_OP_GPU_KERNEL(mul, ops::MulKernel<paddle::platform::GPUPlace, float>);
-    REGISTER_OP_GPU_KERNEL(mul_grad,
-                           ops::MulGradKernel<paddle::platform::GPUPlace, float>);
+    REGISTER_OP_CUDA_KERNEL(mul, ops::MulKernel<paddle::platform::CUDADeviceContext, float>);
+    REGISTER_OP_CUDA_KERNEL(mul_grad,
+                           ops::MulGradKernel<paddle::platform::CUDADeviceContext, float>);
     ```
 
 ### 5. Compilation
@@ -253,62 +252,50 @@ A forward operator unit test inherits `unittest.TestCase` and defines metaclass 
 
 2. Generating random input data.
 
-3. Implementing the same computation logic in a Python script:
+3. Implementing the same computation logic in a Python script.
+
+4. Call check gradient function to check the backward operator.
 
   ```python
   import unittest
   import numpy as np
-  from gradient_checker import GradientChecker, create_op
-  from op_test_util import OpTestMeta
+  from op_test import OpTest
 
-  class TestMulOp(unittest.TestCase):
-      __metaclass__ = OpTestMeta
 
+  class TestMulOp(OpTest):
       def setUp(self):
-          self.type = "mul"
+          self.op_type = "mul"
           self.inputs = {
               'X': np.random.random((32, 84)).astype("float32"),
               'Y': np.random.random((84, 100)).astype("float32")
           }
           self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
-  ```
+
+      def test_check_output(self):
+          self.check_output()
+          
+      def test_check_grad_normal(self):
+          self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.5)
+
+      def test_check_grad_ingore_x(self):
+          self.check_grad(
+              ['Y'], 'Out', max_relative_error=0.5, no_grad_set=set("X"))
+
+      def test_check_grad_ingore_y(self):
+          self.check_grad(
+              ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
+
+    ```
 Get its output, and compare it with the forward operator's own output.
 
 The code above first loads required packages. In addition, we have
 
-- `self.type = "mul" ` defines the type that is identical to what the operator's registered type.
+- `self.op_type = "mul" ` defines the type that is identical to what the operator's registered type.
 - `self.inputs` defines input, with type `numpy.array` and initializes it.
 - `self.outputs` defines output and completes the same operator computation in the Python script, and returns its result from the Python script.
 
-### Testing Backward Operators
+Some key points in checking gradient above include:
 
-A backward operator unit test inherits `GradientChecker`, which inherits `unittest.TestCase`. As a result, **a backward operator unit test needs to be have the prefix `test_`**.
-
-```python
-class TestMulGradOp(GradientChecker):
-    def setUp(self):
-        self.op = create_op("mul")
-        self.inputs = {
-            'X': np.random.random((32, 84)).astype("float32"),
-            'Y': np.random.random((84, 100)).astype("float32")
-        }
-
-    def test_check_grad_normal(self):
-        # mul op will enlarge the relative error
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.5)
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.5, no_grad_set=set("X"))
-
-    def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
-```
-
-Some key points in the code above include:
-
-- `create_op("mul")` creates the backward operator's corresponding forward operator.
 - `test_normal` calls `check_grad` to validate scaling tests' correctness and stability through numeric methods.
   - The first variable `["X", "Y"]` appoints `X` and `Y` to be scale tested.
   - The second variable `"Out"` points to the network's final output target `Out`.
@@ -338,5 +325,5 @@ ctest -R test_mul_op
 
 - Every `*_op.h` (if applicable), `*_op.cc`, and `*_op.cu` (if applicable) must be created for a unique Op. Compiling will fail if multiple operators are included per file.
 - The type with which an operator is registered needs to be identical to the Op's name. Registering `REGISTER_OP(B, ...)` in `A_op.cc` will cause unit testing failures.
-- If the operator does not implement a GPU kernel, please refrain from creating an empty `*_op.cu` file, or else unit tests will fail.
+- If the operator does not implement a CUDA kernel, please refrain from creating an empty `*_op.cu` file, or else unit tests will fail.
 - If multiple operators rely on some shared methods, a file NOT named `*_op.*` can be created to store them, such as `gather.h`.

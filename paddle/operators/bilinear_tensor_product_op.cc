@@ -159,9 +159,12 @@ REGISTER_OP(bilinear_tensor_product, ops::BilinearTensorProductOp,
             ops::BilinearTensorProductOpGrad);
 REGISTER_OP_CPU_KERNEL(
     bilinear_tensor_product,
-    ops::BilinearTensorProductKernel<paddle::platform::CPUPlace, float>,
-    ops::BilinearTensorProductKernel<paddle::platform::CPUPlace, double>);
+    ops::BilinearTensorProductKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::BilinearTensorProductKernel<paddle::platform::CPUDeviceContext,
+                                     double>);
 REGISTER_OP_CPU_KERNEL(
     bilinear_tensor_product_grad,
-    ops::BilinearTensorProductGradKernel<paddle::platform::CPUPlace, float>,
-    ops::BilinearTensorProductGradKernel<paddle::platform::CPUPlace, double>);
+    ops::BilinearTensorProductGradKernel<paddle::platform::CPUDeviceContext,
+                                         float>,
+    ops::BilinearTensorProductGradKernel<paddle::platform::CPUDeviceContext,
+                                         double>);

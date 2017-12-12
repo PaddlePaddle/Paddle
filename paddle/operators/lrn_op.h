@@ -29,7 +29,7 @@ struct LRNFunctor {
                   T k, T alpha, T beta);
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class LRNKernel : public framework::OpKernel<T> {
  public:
   using Tensor = framework::Tensor;
@@ -65,12 +65,12 @@ class LRNKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(beta >= 0.0, "beta should >= 0.0");
     PADDLE_ENFORCE(k >= 0.0, "k should >= 0.0");
 
-    LRNFunctor<Place, T> f;
+    LRNFunctor<DeviceContext, T> f;
     f(ctx, x, out, mid, N, C, H, W, n, k, alpha, beta);
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 struct LRNGradFunctor {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor& x, const framework::Tensor& out,
@@ -98,7 +98,7 @@ struct LRNGradFunctor {
  * The upper and lower is the same as forward. The logic of the sum
  * is also the same as forward.
  */
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class LRNGradKernel : public framework::OpKernel<T> {
  public:
   using Tensor = framework::Tensor;
@@ -121,7 +121,7 @@ class LRNGradKernel : public framework::OpKernel<T> {
     T alpha = ctx.Attr<T>("alpha");
     T beta = ctx.Attr<T>("beta");
 
-    LRNGradFunctor<Place, T> f;
+    LRNGradFunctor<DeviceContext, T> f;
     f(ctx, x, out, mid, x_g, out_g, N, C, H, W, n, alpha, beta);
   }
 };

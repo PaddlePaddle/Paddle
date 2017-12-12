@@ -33,9 +33,9 @@
 #include "paddle/platform/place.h"
 
 USE_NO_KERNEL_OP(ncclInit);
-USE_GPU_ONLY_OP(ncclAllReduce);
-USE_GPU_ONLY_OP(ncclReduce);
-USE_GPU_ONLY_OP(ncclBcast);
+USE_CUDA_ONLY_OP(ncclAllReduce);
+USE_CUDA_ONLY_OP(ncclReduce);
+USE_CUDA_ONLY_OP(ncclBcast);
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;

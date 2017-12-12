@@ -24,7 +24,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class ProximalGDOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -42,7 +42,7 @@ class ProximalGDOpKernel : public framework::OpKernel<T> {
     auto lr = EigenVector<T>::Flatten(*ctx.Input<Tensor>("LearningRate"));
 
     auto p_out = EigenVector<T>::Flatten(*param_out);
-    auto place = ctx.GetEigenDevice<Place>();
+    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
     Eigen::DSizes<int, 1> grad_dsize(grad->numel());
 

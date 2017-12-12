@@ -30,8 +30,8 @@
 --------------  | :----------------------
 OpProtoMake定义  | `.cc`文件，Backward Op不需要定义OpProtoMake
 Op定义           | `.cc`文件
-Kernel实现       | CPU、GPU共享Kernel实现在`.h`文件中，否则，CPU 实现在`.cc`文件中，GPU 实现在`.cu`文件中。
-注册Op           | Op注册实现在`.cc`文件；Kernel注册CPU实现在`.cc`文件中，GPU实现在`.cu`文件中
+Kernel实现       | CPU、CUDA共享Kernel实现在`.h`文件中，否则，CPU 实现在`.cc`文件中，CUDA 实现在`.cu`文件中。
+注册Op           | Op注册实现在`.cc`文件；Kernel注册CPU实现在`.cc`文件中，CUDA实现在`.cu`文件中
 
 
 实现新的op都添加至目录[paddle/operators](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators)下，文件命名以`*_op.h`（如有） 、 `*_op.cc` 、`*_op.cu`（如有）结尾。**系统会根据文件名自动构建op和其对应的Python扩展。**
@@ -153,7 +153,7 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
 
 `MulKernel`继承自`framework::OpKernel`，带有下面两个模板参数:
 
-- `typename  Place`: 表示设备类型，不同设备(CPU、GPU)共享同一个Kernel时，需加该模板参数，不共享则不加，一个不共享的例子是[`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43)。
+- `typename DeviceContext`: 表示设备类型，不同设备(CPU、CUDA)共享同一个Kernel时，需加该模板参数，不共享则不加，一个不共享的例子是[`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43)。
 
 - `typename T` : 表示数据类型，如`float`, `double`等。
 
@@ -165,7 +165,7 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
 下面是 `MulKernel` `Compute`的实现：
 
   ```cpp
-  template <typename Place, typename T>
+  template <typename DeviceContext, typename T>
   class MulKernel : public framework::OpKernel {
   public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -173,18 +173,16 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
     auto* Y = context.Input<Tensor>("Y");
     auto* Z = context.Output<Tensor>("Out");
     Z->mutable_data<T>(context.GetPlace());
-    auto* device_context =
-        const_cast<platform::DeviceContext*>(context.device_context_);
-    math::matmul<Place, T>(*X, false, *Y, false, 1, Z, 0, device_context);
+    auto& device_context = context.template device_context<DeviceContext>();
+    math::matmul<DeviceContext, T>(*X, false, *Y, false, 1, Z, 0, device_context);
   }
   };
-  ```
 
-需要注意：**不同设备(CPU、GPU)共享一个Op定义，是否则共享同一个`OpKernel`，取决于`Compute`调用的函数是否支持不同设备。**
+需要注意：**不同设备(CPU、CUDA)共享一个Op定义，是否则共享同一个`OpKernel`，取决于`Compute`调用的函数是否支持不同设备。**
 
-`MulOp`的CPU、GPU实现共享同一个`Kernel`。`OpKernel`不共享的例子可以参考：[`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43)。
+`MulOp`的CPU、CUDA实现共享同一个`Kernel`。`OpKernel`不共享的例子可以参考：[`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43)。
 
-为了使`OpKernel`的计算过程书写更加简单，并且CPU、GPU的代码可以复用，我们通常借助 Eigen unsupported Tensor模块来实现`Compute`接口。关于在PaddlePaddle中如何使用Eigen库，请参考[使用文档](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/use_eigen_cn.md)。
+为了使`OpKernel`的计算过程书写更加简单，并且CPU、CUDA的代码可以复用，我们通常借助 Eigen unsupported Tensor模块来实现`Compute`接口。关于在PaddlePaddle中如何使用Eigen库，请参考[使用文档](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/use_eigen_cn.md)。
 
 
 到此，前向Op实现完成。接下来，需要在`.cc`文件中注册该op和kernel。
@@ -197,9 +195,9 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
     ```cpp
     namespace ops = paddle::operators;
     REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulOpGrad);
-    REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUPlace, float>);
+    REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>);
     REGISTER_OP_CPU_KERNEL(mul_grad,
-                  ops::MulGradKernel<paddle::platform::CPUPlace, float>);
+                  ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>);
     ```
 
    在上面的代码中：
@@ -209,17 +207,17 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
     - `REGISTER_OP_CPU_KERNEL` ：注册`ops::MulKernel`类，并特化模板参数为`paddle::platform::CPUPlace`和`float`类型，同理，注册`ops::MulGradKernel`类。
 
 
-- 在 `.cu`文件中注册GPU Kernel。
-    - 请注意，如果GPU Kernel的实现基于Eigen unsupported模块，那么在 `.cu`的开始请加上宏定义 `#define EIGEN_USE_GPU`，代码示例如下：
+- 在 `.cu`文件中注册CUDA Kernel。
+    - 请注意，如果CUDA Kernel的实现基于Eigen unsupported模块，那么在 `.cu`的开始请加上宏定义 `#define EIGEN_USE_GPU`，代码示例如下：
 
     ```cpp
     // if use Eigen unsupported module before include head files
-    // #define EIGEN_USE_GPU
+    #define EIGEN_USE_GPU
 
     namespace ops = paddle::operators;
-    REGISTER_OP_GPU_KERNEL(mul, ops::MulKernel<paddle::platform::GPUPlace, float>);
-    REGISTER_OP_GPU_KERNEL(mul_grad,
-                           ops::MulGradKernel<paddle::platform::GPUPlace, float>);
+    REGISTER_OP_CUDA_KERNEL(mul, ops::MulKernel<paddle::platform::CUDADeviceContext, float>);
+    REGISTER_OP_CUDA_KERNEL(mul_grad,
+                           ops::MulGradKernel<paddle::platform::CUDADeviceContext, float>);
     ```
 
 ### 5. 编译
@@ -236,71 +234,55 @@ make mul_op
 
 ## 实现单元测试
 
-单测包括对比前向Op不同设备(CPU、GPU)的实现、对比反向OP不同设备(CPU、GPU)的实现、反向Op的梯度测试。下面介绍介绍[`MulOp`的单元测试](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/test_mul_op.py)。
+单测包括对比前向Op不同设备(CPU、CUDA)的实现、对比反向OP不同设备(CPU、CUDA)的实现、反向Op的梯度测试。下面介绍介绍[`MulOp`的单元测试](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/test_mul_op.py)。
 
-### 前向Operator单元测试
 
-前向Op单元测试继承自`unittest.TestCase`，并定义元类`__metaclass__ = OpTestMeta`。各项更加具体的单元测试在`OpTestMeta`里完成。测试前向Operator，需要：
+Op单元测试继承自`OpTest`。各项更加具体的单元测试在`TestMulOp`里完成。测试Operator，需要：
 
 1. 在`setUp`函数定义输入、输出，以及相关的属性参数。
 2. 生成随机的输入数据。
 3. 在Python脚本中实现与前向operator相同的计算逻辑，得到输出值，与operator前向计算的输出进行对比。
+4. 反向计算已经自动集成进测试框架，直接调用相应接口即可。
 
 
   ```python
   import unittest
   import numpy as np
-  from gradient_checker import GradientChecker, create_op
-  from op_test_util import OpTestMeta
+  from op_test import OpTest
 
-  class TestMulOp(unittest.TestCase):
-      __metaclass__ = OpTestMeta
 
+  class TestMulOp(OpTest):
       def setUp(self):
-          self.type = "mul"
+          self.op_type = "mul"
           self.inputs = {
               'X': np.random.random((32, 84)).astype("float32"),
               'Y': np.random.random((84, 100)).astype("float32")
           }
           self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
-  ```
+
+      def test_check_output(self):
+          self.check_output()
+
+      def test_check_grad_normal(self):
+          self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.5)
+
+      def test_check_grad_ingore_x(self):
+          self.check_grad(
+              ['Y'], 'Out', max_relative_error=0.5, no_grad_set=set("X"))
+
+      def test_check_grad_ingore_y(self):
+          self.check_grad(
+              ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
+
+    ```
 
 上面的代码首先导入依赖的包，下面是对`setUp`函数中操作的重要变量的详细解释：
 
-- `self.type = "mul" ` : 定义类型，与operator注册时注册的类型一致。
+- `self.op_type = "mul" ` : 定义类型，与operator注册时注册的类型一致。
 - `self.inputs` : 定义输入，类型为`numpy.array`，并初始化。
 - `self.outputs` : 定义输出，并在Python脚本中完成与operator同样的计算逻辑，返回Python端的计算结果。
 
-
-### 反向Operator单元测试
-
-反向Op单元测试继承自`GradientChecker`，而`GradientChecker`继承自`unittest.TestCase`，因此，**反向单元测试函数需要以`test_`开头**。
-
-```python
-class TestMulGradOp(GradientChecker):
-    def setUp(self):
-        self.op = create_op("mul")
-        self.inputs = {
-            'X': np.random.random((32, 84)).astype("float32"),
-            'Y': np.random.random((84, 100)).astype("float32")
-        }
-
-    def test_check_grad_normal(self):
-        # mul op will enlarge the relative error
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.5)
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.5, no_grad_set=set("X"))
-
-    def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
-```
-
-下面解释代码中一些关键的地方:
-
-- 调用`create_op("mul")`创建反向Op对应的前向Op。
+而反向测试中：
 - `test_check_grad_normal`中调用`check_grad`使用数值法检测梯度正确性和稳定性。
   - 第一个参数`["X", "Y"]` : 指定对输入变量`X`、`Y`做梯度检测。
   - 第二个参数`"Out"` : 指定前向网络最终的输出目标变量`Out`。
@@ -328,5 +310,5 @@ ctest -R test_mul_op
 
 - 为每个Op创建单独的`*_op.h`（如有）、`*_op.cc`和`*_op.cu`（如有）。不允许一个文件中包含多个Op，这将会导致编译出错。
 - 注册Op时的类型名，需要和该Op的名字一样。即不允许在`A_op.cc`里面，注册`REGISTER_OP(B, ...)`等，这将会导致单元测试出错。
-- 如果Op没有实现GPU Kernel，请不要创建空的`*_op.cu`，这将会导致单元测试出错。
+- 如果Op没有实现CUDA Kernel，请不要创建空的`*_op.cu`，这将会导致单元测试出错。
 - 如果多个Op依赖一些共用的函数，可以创建非`*_op.*`格式的文件来存放，如`gather.h`文件。

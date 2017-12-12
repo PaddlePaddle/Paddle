@@ -85,7 +85,8 @@ namespace ops = paddle::operators;
 
 REGISTER_OP(prelu, ops::PReluOp, ops::PReluOpMaker, prelu_grad,
             ops::PReluGradOp);
-REGISTER_OP_CPU_KERNEL(prelu,
-                       ops::PReluKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(prelu_grad,
-                       ops::PReluGradKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    prelu, ops::PReluKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    prelu_grad,
+    ops::PReluGradKernel<paddle::platform::CPUDeviceContext, float>);

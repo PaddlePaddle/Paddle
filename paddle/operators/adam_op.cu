@@ -16,6 +16,6 @@
 #include "paddle/operators/adam_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(adam,
-                       ops::AdamOpKernel<paddle::platform::GPUPlace, float>,
-                       ops::AdamOpKernel<paddle::platform::GPUPlace, double>);
+REGISTER_OP_CUDA_KERNEL(
+    adam, ops::AdamOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::AdamOpKernel<paddle::platform::CUDADeviceContext, double>);

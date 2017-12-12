@@ -101,7 +101,7 @@ public:
     half tmp = __float2half(val);
     x = *reinterpret_cast<uint16_t*>(&tmp);
 
-#elif defined(PADDLE_NEON)
+#elif defined(PADDLE_WITH_NATIVE_FP16)
     float32x4_t tmp = vld1q_dup_f32(&val);
     float16_t res = vget_lane_f16(vcvt_f16_f32(tmp), 0);
     x = *reinterpret_cast<uint16_t*>(&res);
@@ -252,7 +252,7 @@ public:
     half tmp = *reinterpret_cast<const half*>(this);
     return __half2float(tmp);
 
-#elif defined(PADDLE_NEON)
+#elif defined(PADDLE_WITH_NATIVE_FP16)
     float16x4_t res = vld1_dup_f16(reinterpret_cast<const float16_t*>(this));
     return vgetq_lane_f32(vcvt_f32_f16(res), 0);
 
