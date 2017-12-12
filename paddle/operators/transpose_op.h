@@ -89,7 +89,8 @@ class TransposeGradKernel : public framework::OpKernel<T> {
 
     int ndims = axis.size();
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    TransCompute<DeviceContext, T>(ndims, dev_ctx, *out_grad, x_grad, reversed_axis);
+    TransCompute<DeviceContext, T>(ndims, dev_ctx, *out_grad, x_grad,
+                                   reversed_axis);
   }
 };
 

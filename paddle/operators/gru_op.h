@@ -80,8 +80,9 @@ class GRUKernel : public framework::OpKernel<T> {
       // Since the batch computing for GRU reorders the input sequences
       // according to their length. The initialized cell state also needs
       // to reorder.
-      ReorderInitState<DeviceContext, T>(context.template device_context<DeviceContext>(), *h0,
-                                 order, &ordered_h0, true);
+      ReorderInitState<DeviceContext, T>(
+          context.template device_context<DeviceContext>(), *h0, order,
+          &ordered_h0, true);
       gru_value.prev_out_value = ordered_h0.data<T>();
     } else {
       gru_value.prev_out_value = nullptr;
@@ -156,7 +157,8 @@ class GRUGradKernel : public framework::OpKernel<T> {
     Tensor ordered_h0, ordered_h0_grad;
     const size_t* order = batch_gate->lod()[2].data();
     if (h0) {
-      ReorderInitState<DeviceContext, T>(dev_ctx, *h0, order, &ordered_h0, true);
+      ReorderInitState<DeviceContext, T>(dev_ctx, *h0, order, &ordered_h0,
+                                         true);
     }
     if (h0_grad) {
       ordered_h0_grad.mutable_data<T>(h0_grad->dims(), context.GetPlace());
@@ -233,8 +235,8 @@ class GRUGradKernel : public framework::OpKernel<T> {
       col_sum(dev_ctx, batch_gate_grad, bias_grad);
     }
     if (h0 && h0_grad) {
-      ReorderInitState<DeviceContext, T>(dev_ctx, ordered_h0_grad, order, h0_grad,
-                                 false);
+      ReorderInitState<DeviceContext, T>(dev_ctx, ordered_h0_grad, order,
+                                         h0_grad, false);
     }
   }
 

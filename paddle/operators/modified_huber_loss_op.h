@@ -57,7 +57,8 @@ class ModifiedHuberLossKernel : public framework::OpKernel<T> {
 
     out0->mutable_data<T>(context.GetPlace());
     out1->mutable_data<T>(context.GetPlace());
-    auto& place = *context.template device_context<DeviceContext>().eigen_device();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
 
     auto x = EigenVector<T>::Flatten(*in0);
     auto y = EigenVector<T>::Flatten(*in1);

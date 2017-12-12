@@ -32,7 +32,8 @@ class ActivationKernel
 
     auto x = framework::EigenVector<T>::Flatten(*X);
     auto y = framework::EigenVector<T>::Flatten(*Y);
-    auto* place = context.template device_context<DeviceContext>().eigen_device();
+    auto* place =
+        context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
 
     auto attrs = functor.GetAttrs();
@@ -59,7 +60,8 @@ class ActivationGradKernel
     auto x = framework::EigenVector<T>::Flatten(*X);
     auto y = framework::EigenVector<T>::Flatten(*Y);
     auto dx = framework::EigenVector<T>::Flatten(*dX);
-    auto* place = context.template device_context<DeviceContext>().eigen_device();
+    auto* place =
+        context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
     auto attrs = functor.GetAttrs();
     for (auto& attr : attrs) {

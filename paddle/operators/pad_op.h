@@ -42,7 +42,8 @@ void PadFunction(const framework::ExecutionContext& context) {
 
   auto x_tensor = EigenTensor<T, D>::From(*x);
   auto out_tensor = EigenTensor<T, D>::From(*out);
-  auto& place = *context.template device_context<DeviceContext>().eigen_device();
+  auto& place =
+      *context.template device_context<DeviceContext>().eigen_device();
   out_tensor.device(place) = x_tensor.pad(paddings, pad_value);
 }
 
@@ -91,7 +92,8 @@ void PadGradFunction(const framework::ExecutionContext& context) {
     d_x->mutable_data<T>(context.GetPlace());
     auto d_x_tensor = EigenTensor<T, D>::From(*d_x);
     auto d_out_tensor = EigenTensor<T, D>::From(*d_out);
-    auto& place = *context.template device_context<DeviceContext>().eigen_device();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
     d_x_tensor.device(place) = d_out_tensor.pad(paddings, 0);
   }
 }

@@ -83,7 +83,8 @@ class ExpandKernel : public framework::OpKernel<T> {
     auto x = EigenTensor<T, Rank>::From(*in0);
     out0->mutable_data<T>(context.GetPlace());
     auto y = EigenTensor<T, Rank>::From(*out0);
-    auto& place = *context.template device_context<DeviceContext>().eigen_device();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
     y.device(place) = x.broadcast(bcast_dims);
   }
 };
@@ -164,7 +165,8 @@ class ExpandGradKernel : public framework::OpKernel<T> {
       reduce_dims[i] = reduce_dims_vec[i];
     }
     auto out_grad = EigenVector<T>::Flatten(*in0);
-    x_grad.device(*context.template device_context<DeviceContext>().eigen_device()) =
+    x_grad.device(
+        *context.template device_context<DeviceContext>().eigen_device()) =
         out_grad.reshape(reshape_dims).sum(reduce_dims).reshape(x.dimensions());
   }
 };

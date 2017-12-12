@@ -30,7 +30,8 @@ class SquaredL2NormKernel : public framework::OpKernel<T> {
 
     auto x = framework::EigenVector<T>::Flatten(*X);
     auto out = framework::EigenScalar<T>::From(*Out);
-    auto *place = context.template device_context<DeviceContext>().eigen_device();
+    auto *place =
+        context.template device_context<DeviceContext>().eigen_device();
 
     out.device(*place) = x.square().sum();
   }
@@ -53,7 +54,8 @@ class SquaredL2NormGradKernel : public framework::OpKernel<T> {
     auto x = framework::EigenVector<T>::Flatten(*X);
     auto dout = framework::EigenVector<T>::Flatten(*dOut);
     auto dx = framework::EigenVector<T>::Flatten(*dX);
-    auto *place = context.template device_context<DeviceContext>().eigen_device();
+    auto *place =
+        context.template device_context<DeviceContext>().eigen_device();
 
     Eigen::DSizes<int, 1> x_dsize(X->numel());
     dx.device(*place) = (dout.broadcast(x_dsize) * x) * static_cast<T>(2.0);

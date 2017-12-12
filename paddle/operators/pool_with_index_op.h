@@ -46,12 +46,14 @@ class MaxPoolWithIndexKernel : public framework::OpKernel<T1> {
 
     switch (ksize.size()) {
       case 2: {
-        paddle::operators::math::MaxPool2dWithIndexFunctor<DeviceContext, T1, T2>
+        paddle::operators::math::MaxPool2dWithIndexFunctor<DeviceContext, T1,
+                                                           T2>
             pool2d_forward;
         pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings, out, mask);
       } break;
       case 3: {
-        paddle::operators::math::MaxPool3dWithIndexFunctor<DeviceContext, T1, T2>
+        paddle::operators::math::MaxPool3dWithIndexFunctor<DeviceContext, T1,
+                                                           T2>
             pool3d_forward;
         pool3d_forward(dev_ctx, *in_x, ksize, strides, paddings, out, mask);
       } break;
@@ -86,13 +88,15 @@ class MaxPoolWithIndexGradKernel : public framework::OpKernel<T1> {
 
       switch (ksize.size()) {
         case 2: {
-          paddle::operators::math::MaxPool2dWithIndexGradFunctor<DeviceContext, T1, T2>
+          paddle::operators::math::MaxPool2dWithIndexGradFunctor<DeviceContext,
+                                                                 T1, T2>
               pool2d_backward;
           pool2d_backward(device_ctx, *out_grad, *mask, ksize, strides,
                           paddings, in_x_grad);
         } break;
         case 3: {
-          paddle::operators::math::MaxPool3dWithIndexGradFunctor<DeviceContext, T1, T2>
+          paddle::operators::math::MaxPool3dWithIndexGradFunctor<DeviceContext,
+                                                                 T1, T2>
               pool3d_backward;
           pool3d_backward(device_ctx, *out_grad, *mask, ksize, strides,
                           paddings, in_x_grad);

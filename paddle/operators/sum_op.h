@@ -44,11 +44,13 @@ class SumKernel : public framework::OpKernel<T> {
 
       if (!in_place) {
         math::SetConstant<DeviceContext, T> constant_functor;
-        constant_functor(context.template device_context<DeviceContext>(), out, 0.0);
+        constant_functor(context.template device_context<DeviceContext>(), out,
+                         0.0);
       }
 
       math::SelectedRowsAddToTensor<DeviceContext, T> functor;
-      auto &place = *context.template device_context<DeviceContext>().eigen_device();
+      auto &place =
+          *context.template device_context<DeviceContext>().eigen_device();
       // If in_place, just skip the first tensor
       for (int i = in_place ? 1 : 0; i < N; i++) {
         if (in_vars[i]->IsType<framework::LoDTensor>()) {
@@ -112,9 +114,8 @@ class SumKernel : public framework::OpKernel<T> {
               PADDLE_ENFORCE(out_array[i].lod() == in_array[i].lod());
               auto in = EigenVector<T>::Flatten(in_array[i]);
               auto result = EigenVector<T>::Flatten(out_array[i]);
-              result.device(
-                  *context.template device_context<DeviceContext>().eigen_device()) =
-                  result + in;
+              result.device(*context.template device_context<DeviceContext>()
+                                 .eigen_device()) = result + in;
             }
           }
         }

@@ -67,8 +67,8 @@ class ClipKernel : public framework::OpKernel<T> {
     const T* x_data = x->data<T>();
     int64_t numel = x->numel();
     Transform<DeviceContext> trans;
-    trans(context.template device_context<DeviceContext>(), x_data, x_data + numel,
-          out_data, ClipFunctor<T>(min, max));
+    trans(context.template device_context<DeviceContext>(), x_data,
+          x_data + numel, out_data, ClipFunctor<T>(min, max));
   }
 };
 

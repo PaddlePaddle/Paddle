@@ -62,7 +62,8 @@ class SigmoidCrossEntropyWithLogitsGradKernel : public framework::OpKernel<T> {
     auto labels = framework::EigenVector<T>::Flatten(*Labels);
     auto dout = framework::EigenVector<T>::Flatten(*dOut);
     auto dx = framework::EigenVector<T>::Flatten(*dX);
-    auto &place = *context.template device_context<DeviceContext>().eigen_device();
+    auto &place =
+        *context.template device_context<DeviceContext>().eigen_device();
 
     auto sigmoid_x = static_cast<T>(1) / (static_cast<T>(1) + (-x).exp());
     dx.device(place) = dout * (sigmoid_x - labels);

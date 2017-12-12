@@ -56,8 +56,8 @@ class CastOpKernel : public framework::OpKernel<InT> {
     auto* out = context.Output<framework::Tensor>("Out");
     framework::VisitDataType(
         static_cast<framework::DataType>(context.Attr<int>("out_dtype")),
-        CastOpFunctor<DeviceContext, InT>(in, out,
-                                  context.template device_context<DeviceContext>()));
+        CastOpFunctor<DeviceContext, InT>(
+            in, out, context.template device_context<DeviceContext>()));
   }
 };
 

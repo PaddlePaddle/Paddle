@@ -67,7 +67,8 @@ class SequenceConvKernel : public framework::OpKernel<T> {
                         down_pad, &col);
 
     math::matmul<DeviceContext, T>(dev_ctx, col, false, filter, false,
-                           static_cast<T>(1.0), out, static_cast<T>(0.0));
+                                   static_cast<T>(1.0), out,
+                                   static_cast<T>(0.0));
   }
 };
 
@@ -107,8 +108,8 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       col.mutable_data<T>(col_shape, context.GetPlace());
       // Because if padding_trainable is false, padding data should be zeros.
       set_zero(dev_ctx, &col, static_cast<T>(0));
-      math::matmul<DeviceContext, T>(dev_ctx, *out_g, false, *filter, true, T(1.0),
-                             &col, T(1.0));
+      math::matmul<DeviceContext, T>(dev_ctx, *out_g, false, *filter, true,
+                                     T(1.0), &col, T(1.0));
     }
     math::ContextProjectFunctor<DeviceContext, T> seq_project_functor;
     math::ContextProjectGradFunctor<DeviceContext, T> seq_project_grad_functor;
@@ -149,8 +150,8 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
                           context_start, context_length, context_stride, up_pad,
                           down_pad, &col);
 
-      math::matmul<DeviceContext, T>(dev_ctx, col, true, out_grad, false, T(1.0),
-                             &filter_grad, T(1.0));
+      math::matmul<DeviceContext, T>(dev_ctx, col, true, out_grad, false,
+                                     T(1.0), &filter_grad, T(1.0));
     }
   }
 };

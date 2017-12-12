@@ -38,9 +38,9 @@ class MatMulKernel : public framework::OpKernel<T> {
     bool transpose_x = context.Attr<bool>("transpose_X");
     bool transpose_y = context.Attr<bool>("transpose_Y");
 
-    math::MatMulFunctor<DeviceContext, T>()(context.template device_context<DeviceContext>(), x,
-                                    transpose_x, y, transpose_y, T(1), out,
-                                    T(0));
+    math::MatMulFunctor<DeviceContext, T>()(
+        context.template device_context<DeviceContext>(), x, transpose_x, y,
+        transpose_y, T(1), out, T(0));
   }
 };
 
@@ -190,11 +190,11 @@ class MatMulGradKernel : public framework::OpKernel<T> {
                         : CombineBatchAndN<DeviceContext, T>(dev_ctx, Y);
       }
       if (transpose_x) {
-        math::MatMulFunctor<DeviceContext, T>()(dev_ctx, Y, transpose_y, dOut_for_dX,
-                                        transpose_x, T(1), dx, T(0));
+        math::MatMulFunctor<DeviceContext, T>()(
+            dev_ctx, Y, transpose_y, dOut_for_dX, transpose_x, T(1), dx, T(0));
       } else {
-        math::MatMulFunctor<DeviceContext, T>()(dev_ctx, dOut_for_dX, transpose_x, Y,
-                                        !transpose_y, T(1), dx, T(0));
+        math::MatMulFunctor<DeviceContext, T>()(
+            dev_ctx, dOut_for_dX, transpose_x, Y, !transpose_y, T(1), dx, T(0));
       }
     }
 
@@ -209,11 +209,11 @@ class MatMulGradKernel : public framework::OpKernel<T> {
         dOut = CombineBatchAndM<T>(dOut);
       }
       if (transpose_y) {
-        math::MatMulFunctor<DeviceContext, T>()(dev_ctx, dOut_for_dY, transpose_y, X,
-                                        transpose_x, T(1), dy, T(0));
+        math::MatMulFunctor<DeviceContext, T>()(
+            dev_ctx, dOut_for_dY, transpose_y, X, transpose_x, T(1), dy, T(0));
       } else {
-        math::MatMulFunctor<DeviceContext, T>()(dev_ctx, X, !transpose_x, dOut_for_dY,
-                                        transpose_y, T(1), dy, T(0));
+        math::MatMulFunctor<DeviceContext, T>()(
+            dev_ctx, X, !transpose_x, dOut_for_dY, transpose_y, T(1), dy, T(0));
       }
     }
   }

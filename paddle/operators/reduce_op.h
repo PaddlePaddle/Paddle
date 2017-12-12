@@ -39,8 +39,8 @@ struct SumFunctor {
 };
 
 struct SumGradFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename DX, typename DY,
-            typename Dim>
+  template <typename DeviceContext, typename X, typename Y, typename DX,
+            typename DY, typename Dim>
   void operator()(const DeviceContext& place, X& x, Y& y, DX& dx, DY& dy,
                   const Dim& dim, int size) {
     dx.device(place) = dy.broadcast(dim);
@@ -55,8 +55,8 @@ struct MeanFunctor {
 };
 
 struct MeanGradFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename DX, typename DY,
-            typename Dim>
+  template <typename DeviceContext, typename X, typename Y, typename DX,
+            typename DY, typename Dim>
   void operator()(const DeviceContext& place, X& x, Y& y, DX& dx, DY& dy,
                   const Dim& dim, int size) {
     dx.device(place) = dy.broadcast(dim) / dx.constant(size);
@@ -78,8 +78,8 @@ struct MinFunctor {
 };
 
 struct MaxOrMinGradFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename DX, typename DY,
-            typename Dim>
+  template <typename DeviceContext, typename X, typename Y, typename DX,
+            typename DY, typename Dim>
   void operator()(const DeviceContext& place, X& x, Y& y, DX& dx, DY& dy,
                   const Dim& dim, int size) {
     auto equals = x == y.broadcast(dim);
@@ -139,7 +139,8 @@ class ReduceKernel : public framework::OpKernel<T> {
       dims = framework::make_ddim(dims_vector);
     }
 
-    auto& place = *context.template device_context<DeviceContext>().eigen_device();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
 
     if (D == 1) {
@@ -201,7 +202,8 @@ class ReduceGradKernel : public framework::OpKernel<T> {
     Eigen::array<int, D> broadcast_dim;
     for (size_t i = 0; i < D; ++i) broadcast_dim[i] = 1;
     broadcast_dim[dim] = input0->dims()[dim];
-    auto& place = *context.template device_context<DeviceContext>().eigen_device();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
     functor(place, x, x_reduce, x_grad, x_reduce_grad, broadcast_dim,
             broadcast_dim[dim]);

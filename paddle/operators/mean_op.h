@@ -38,7 +38,8 @@ class MeanKernel : public framework::OpKernel<T> {
 
     auto X = EigenVector<T>::Flatten(*input);
     auto y = EigenScalar<T>::From(*output);
-    auto& place = *context.template device_context<DeviceContext>().eigen_device();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
 
     y.device(place) = X.mean();
   }

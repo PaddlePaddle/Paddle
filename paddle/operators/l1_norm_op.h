@@ -30,7 +30,8 @@ class L1NormKernel : public framework::OpKernel<T> {
 
     auto x = framework::EigenVector<T>::Flatten(*X);
     auto out = framework::EigenScalar<T>::From(*Out);
-    auto &place = *context.template device_context<DeviceContext>().eigen_device();
+    auto &place =
+        *context.template device_context<DeviceContext>().eigen_device();
 
     out.device(place) = x.abs().sum();
   }
@@ -52,7 +53,8 @@ class L1NormGradKernel : public framework::OpKernel<T> {
     auto x_eigen = framework::EigenVector<T>::Flatten(*x);
     auto d_out_eigen = framework::EigenVector<T>::Flatten(*d_out);
     auto dx_eigen = framework::EigenVector<T>::Flatten(*dx);
-    auto &place = *context.template device_context<DeviceContext>().eigen_device();
+    auto &place =
+        *context.template device_context<DeviceContext>().eigen_device();
 
     Eigen::DSizes<int, 1> x_dsize(x->numel());
     dx_eigen.device(place) = d_out_eigen.broadcast(x_dsize) * x_eigen.sign();

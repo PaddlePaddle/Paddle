@@ -64,7 +64,8 @@ class SequencePoolKernel : public framework::OpKernel<T> {
       return;
     }
 
-    auto& place = *context.template device_context<DeviceContext>().eigen_device();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
     for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
       Tensor in_t = in->Slice(static_cast<int>(lod_level_0[i]),
                               static_cast<int>(lod_level_0[i + 1]));
@@ -119,7 +120,8 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
       math::SetConstant<DeviceContext, T> functor;
       functor(dev_ctx, in_g, 0);
     }
-    auto& place = *context.template device_context<DeviceContext>().eigen_device();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
 
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       auto in_g_t =

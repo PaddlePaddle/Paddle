@@ -28,7 +28,8 @@ class MinusKernel : public framework::OpKernel<T> {
     auto* out_tensor = context.Output<framework::Tensor>("Out");
 
     out_tensor->mutable_data<T>(context.GetPlace());
-    auto& dev = *context.template device_context<DeviceContext>().eigen_device();
+    auto& dev =
+        *context.template device_context<DeviceContext>().eigen_device();
     framework::EigenVector<T>::Flatten(*out_tensor).device(dev) =
         framework::EigenVector<T>::Flatten(*left_tensor) -
         framework::EigenVector<T>::Flatten(*right_tensor);

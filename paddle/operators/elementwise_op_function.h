@@ -214,17 +214,18 @@ class TransformFunctor {
 
 #define EIGEN_FUNCTOR(name, eigen_op)                                          \
   struct Eigen##name##Functor {                                                \
-    template <typename DeviceContext, typename T>                                      \
+    template <typename DeviceContext, typename T>                              \
     inline void Run(const framework::Tensor* x, const framework::Tensor* y,    \
                     framework::Tensor* z,                                      \
                     const framework::ExecutionContext& ctx) {                  \
       auto x_e = framework::EigenVector<T>::Flatten(*x);                       \
       auto y_e = framework::EigenVector<T>::Flatten(*y);                       \
       auto z_e = framework::EigenVector<T>::Flatten(*z);                       \
-      z_e.device(*ctx.template device_context<DeviceContext>().eigen_device()) =       \
+      z_e.device(                                                              \
+          *ctx.template device_context<DeviceContext>().eigen_device()) =      \
           eigen_op(x_e, y_e);                                                  \
     }                                                                          \
-    template <typename DeviceContext, typename T>                                      \
+    template <typename DeviceContext, typename T>                              \
     inline void RunBroadCast(const framework::Tensor* x,                       \
                              const framework::Tensor* y, framework::Tensor* z, \
                              const framework::ExecutionContext& ctx, int pre,  \
@@ -235,10 +236,11 @@ class TransformFunctor {
       auto y_bcast = y_e.reshape(Eigen::DSizes<int, 2>(1, n))                  \
                          .broadcast(Eigen::DSizes<int, 2>(pre, 1))             \
                          .reshape(Eigen::DSizes<int, 1>(x_e.size()));          \
-      z_e.device(*ctx.template device_context<DeviceContext>().eigen_device()) =       \
+      z_e.device(                                                              \
+          *ctx.template device_context<DeviceContext>().eigen_device()) =      \
           eigen_op(x_e, y_bcast);                                              \
     }                                                                          \
-    template <typename DeviceContext, typename T>                                      \
+    template <typename DeviceContext, typename T>                              \
     inline void RunBroadCast2(const framework::Tensor* x,                      \
                               const framework::Tensor* y,                      \
                               framework::Tensor* z,                            \
@@ -250,7 +252,8 @@ class TransformFunctor {
       auto y_bcast = y_e.reshape(Eigen::DSizes<int, 3>(1, n, 1))               \
                          .broadcast(Eigen::DSizes<int, 3>(pre, 1, post))       \
                          .reshape(Eigen::DSizes<int, 1>(x_e.size()));          \
-      z_e.device(*ctx.template device_context<DeviceContext>().eigen_device()) =       \
+      z_e.device(                                                              \
+          *ctx.template device_context<DeviceContext>().eigen_device()) =      \
           eigen_op(x_e, y_bcast);                                              \
     }                                                                          \
   }
@@ -305,8 +308,9 @@ EIGEN_FUNCTOR(Mul, EIGEN_MUL);
 #define EIGEN_DIV(x, y) ((x) / (y))
 EIGEN_FUNCTOR(Div, EIGEN_DIV);
 
-template <typename DeviceContext, typename T, typename functor, typename functor1,
-          typename broadcastfunctor, typename broadcast2functor>
+template <typename DeviceContext, typename T, typename functor,
+          typename functor1, typename broadcastfunctor,
+          typename broadcast2functor>
 void ElementwiseGradCompute(const framework::ExecutionContext& ctx) {
   using Tensor = framework::Tensor;
 

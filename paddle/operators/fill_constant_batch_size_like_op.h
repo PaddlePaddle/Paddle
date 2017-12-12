@@ -28,7 +28,8 @@ class FillConstantBatchSizeLikeOpKernel : public framework::OpKernel<T> {
     auto value = ctx.Attr<float>("value");
 
     math::SetConstant<DeviceContext, T> setter;
-    setter(ctx.template device_context<DeviceContext>(), out, static_cast<T>(value));
+    setter(ctx.template device_context<DeviceContext>(), out,
+           static_cast<T>(value));
   }
 };
 

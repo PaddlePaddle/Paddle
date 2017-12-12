@@ -144,7 +144,8 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
       x_grad->mutable_data<T>(ctx.GetPlace());
       x_grad->set_lod(in->lod());
       math::SetConstant<DeviceContext, T> set_zero;
-      set_zero(ctx.template device_context<DeviceContext>(), x_grad, static_cast<T>(0));
+      set_zero(ctx.template device_context<DeviceContext>(), x_grad,
+               static_cast<T>(0));
 
       auto out_grad_stride = framework::stride(out_grad->dims());
 
