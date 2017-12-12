@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+from scipy.special import expit
 
 
 class TestExp(OpTest):
@@ -453,6 +454,21 @@ class TestHardSigmoid(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Y', max_relative_error=0.002)
+
+
+class TestSwish(OpTest):
+    def setUp(self):
+        self.op_type = "swish"
+        X = np.random.uniform(0.1, 1, [11, 17]).astype("float32")
+        self.inputs = {'X': X}
+        self.attrs = {'beta': 2.3}
+        self.outputs = {'Y': X * expit(self.attrs['beta'] * X)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Y', max_relative_error=0.008)
 
 
 if __name__ == "__main__":

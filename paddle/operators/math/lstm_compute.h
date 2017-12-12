@@ -67,21 +67,20 @@ inline activation_mode_t ActiveType(const std::string &type) {
   }
 }
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class LstmUnitFunctor {
  public:
-  static void compute(const platform::DeviceContext &context,
-                      LstmMetaValue<T> value, int frame_size, int batch_size,
+  static void compute(const DeviceContext &context, LstmMetaValue<T> value,
+                      int frame_size, int batch_size,
                       const std::string &gate_act, const std::string &cell_act,
                       const std::string &cand_act);
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class LstmUnitGradFunctor {
  public:
-  static void compute(const platform::DeviceContext &context,
-                      LstmMetaValue<T> value, LstmMetaGrad<T> grad,
-                      int frame_size, int batch_size,
+  static void compute(const DeviceContext &context, LstmMetaValue<T> value,
+                      LstmMetaGrad<T> grad, int frame_size, int batch_size,
                       const std::string &gate_act, const std::string &cell_act,
                       const std::string &cand_act);
 };

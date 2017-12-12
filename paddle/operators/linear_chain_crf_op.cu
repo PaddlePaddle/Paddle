@@ -16,11 +16,12 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     linear_chain_crf,
-    ops::LinearChainCRFOpKernel<paddle::platform::GPUPlace, float>,
-    ops::LinearChainCRFOpKernel<paddle::platform::GPUPlace, double>);
-REGISTER_OP_GPU_KERNEL(
+    ops::LinearChainCRFOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::LinearChainCRFOpKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(
     linear_chain_crf_grad,
-    ops::LinearChainCRFGradOpKernel<paddle::platform::GPUPlace, float>,
-    ops::LinearChainCRFGradOpKernel<paddle::platform::GPUPlace, double>);
+    ops::LinearChainCRFGradOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::LinearChainCRFGradOpKernel<paddle::platform::CUDADeviceContext,
+                                    double>);
