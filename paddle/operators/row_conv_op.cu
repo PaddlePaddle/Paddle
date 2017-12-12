@@ -404,8 +404,8 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     row_conv, ops::RowConvKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     row_conv_grad,
     ops::RowConvGradKernel<paddle::platform::CUDADeviceContext, float>);
