@@ -14,19 +14,98 @@ limitations under the License. */
 
 #pragma once
 
+#include <map>
+#include <unordered_map>
+
 #include "paddle/framework/op_info.h"
 #include "paddle/framework/program_desc.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/tensor.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
 
+class DeviceContextPool {
+ public:
+  static DeviceContextPool& Get() {
+    PADDLE_ENFORCE_NOT_NULL(pool, "Need to Create DeviceContextPool first!");
+    return *pool;
+  }
+
+  static DeviceContextPool& Create(const std::vector<platform::Place>& places) {
+    if (pool == nullptr) {
+      pool = new DeviceContextPool(places);
+    }
+    return *pool;
+  }
+
+  std::vector<const platform::DeviceContext*> Borrow(
+      const std::vector<platform::Place>& places) {
+    PADDLE_ENFORCE_GT(places.size(), 0);
+    PADDLE_ENFORCE_LE(places.size(), device_contexts_.size());
+    std::vector<const platform::DeviceContext*> borrowed_contexts;
+    for (auto& place : places) {
+      auto range = device_contexts_.equal_range(place);
+      if (range.first == range.second) {
+        PADDLE_THROW(
+            "'Place' is not supported, Please re-compile with WITH_GPU "
+            "option");
+      }
+      // TODO(dzhwinter) : assign first find device. Will enhanced later.
+      borrowed_contexts.emplace_back(range.first->second);
+      device_tasks_[place] += 1;
+    }
+    return borrowed_contexts;
+  }
+
+  explicit DeviceContextPool(const std::vector<platform::Place>& places) {
+    PADDLE_ENFORCE_GT(places.size(), 0);
+    // device_contexts_.resize(places.size());
+    for (size_t i = 0; i < places.size(); i++) {
+      if (platform::is_cpu_place(places[i])) {
+        device_contexts_.emplace(
+            places[i], new platform::CPUDeviceContext(
+                           boost::get<platform::CPUPlace>(places[i])));
+      } else if (platform::is_gpu_place(places[i])) {
+#ifdef PADDLE_WITH_CUDA
+        device_contexts_.emplace(
+            places[i], new platform::CUDADeviceContext(
+                           boost::get<platform::GPUPlace>(places[i])));
+#else
+        PADDLE_THROW(
+            "'GPUPlace' is not supported, Please re-compile with WITH_GPU "
+            "option");
+#endif
+      }
+    }
+  }
+
+  ~DeviceContextPool() {
+    // for (auto& device_context : device_contexts_) {
+    //   delete device_context;
+    // }
+  }
+
+ private:
+  static DeviceContextPool* pool;
+  struct Hash {
+    std::hash<int> hash_;
+    size_t operator()(const platform::Place& place) const {
+      return hash_(place.which());
+    }
+  };
+  std::unordered_multimap<const platform::Place, const platform::DeviceContext*,
+                          Hash>
+      device_contexts_;
+  std::unordered_map<const platform::Place, int, Hash> device_tasks_;
+  DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
+};
+
 class Executor {
  public:
   explicit Executor(const std::vector<platform::Place>& places);
-  explicit Executor(const platform::DeviceContext& devices);
-  ~Executor();
+  // ~Executor();
 
   /* @Brief
    * Runtime evaluation of the given ProgramDesc under certain Scope
@@ -39,7 +118,6 @@ class Executor {
 
  private:
   std::vector<const platform::DeviceContext*> device_contexts_;
-  bool own_;
 };
 
 }  // namespace framework
