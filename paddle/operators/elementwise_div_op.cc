@@ -35,13 +35,13 @@ REGISTER_OP(elementwise_div, ops::ElementwiseOp, ops::ElementwiseDivOpMaker,
             elementwise_div_grad, ops::ElementwiseOpGrad);
 REGISTER_OP_CPU_KERNEL(
     elementwise_div,
-    ops::ElementwiseDivKernel<paddle::platform::CPUPlace, float>,
-    ops::ElementwiseDivKernel<paddle::platform::CPUPlace, double>,
-    ops::ElementwiseDivKernel<paddle::platform::CPUPlace, int>,
-    ops::ElementwiseDivKernel<paddle::platform::CPUPlace, int64_t>);
+    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_div_grad,
-    ops::ElementwiseDivGradKernel<paddle::platform::CPUPlace, float>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CPUPlace, double>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CPUPlace, int>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CPUPlace, int64_t>);
+    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, int64_t>);

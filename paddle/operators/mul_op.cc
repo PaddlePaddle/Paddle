@@ -149,6 +149,7 @@ REGISTER_OPERATOR(mul, paddle::framework::OperatorWithKernel, ops::MulOpMaker,
                   ops::MulOpShapeInference,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(mul_grad, ops::MulOpGrad);
-REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(mul_grad,
-                       ops::MulGradKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    mul_grad, ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>);

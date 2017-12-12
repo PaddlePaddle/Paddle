@@ -16,7 +16,7 @@
 
 template <typename T>
 using CastOpKernel =
-    paddle::operators::CastOpKernel<paddle::platform::GPUPlace, T>;
+    paddle::operators::CastOpKernel<paddle::platform::CUDADeviceContext, T>;
 
-REGISTER_OP_GPU_KERNEL(cast, CastOpKernel<float>, CastOpKernel<double>,
-                       CastOpKernel<int>, CastOpKernel<int64_t>);
+REGISTER_OP_CUDA_KERNEL(cast, CastOpKernel<float>, CastOpKernel<double>,
+                        CastOpKernel<int>, CastOpKernel<int64_t>);

@@ -52,7 +52,7 @@ class ConvTransposeOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class GemmConvTransposeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -109,11 +109,12 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     filter.Resize(filter_matrix_shape);
 
     output->mutable_data<T>(context.GetPlace());
-    math::SetConstant<Place, T> set_zero;
-    set_zero(context.device_context(), output, static_cast<T>(0));
+    math::SetConstant<DeviceContext, T> set_zero;
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    set_zero(dev_ctx, output, static_cast<T>(0));
 
-    math::Col2ImFunctor<math::ColFormat::kCFO, Place, T> col2im;
-    math::Col2VolFunctor<Place, T> col2vol;
+    math::Col2ImFunctor<math::ColFormat::kCFO, DeviceContext, T> col2im;
+    math::Col2VolFunctor<DeviceContext, T> col2vol;
     std::vector<int> dilations({1, 1, 1});
 
     // convolution transpose: gemm + col2im or col2vol (similar to conv-backward
@@ -127,29 +128,27 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
 
       // col_matrix = filter * input_batch
       // of shape (c * k_h * k_w, h * w) or (c * k_d * k_h * k_w, d * h * w)
-      math::matmul<Place, T>(context.device_context(), filter, true,
-                             input_batch, false, static_cast<T>(1.0),
-                             &col_matrix, static_cast<T>(0.0));
+      math::matmul<DeviceContext, T>(dev_ctx, filter, true, input_batch, false,
+                                     static_cast<T>(1.0), &col_matrix,
+                                     static_cast<T>(0.0));
 
       if (data_dim == 2U) {
         // col2im: col_matrix -> dy
         // from (c * k_h * k_w, h * w) to (c, o_h, o_w)
-        col2im(context.device_context(), col,
-               std::vector<int>{dilations[0], dilations[1]}, strides,
-               std::vector<int>{paddings[0], paddings[1], paddings[0],
-                                paddings[1]},
+        col2im(dev_ctx, col, std::vector<int>{dilations[0], dilations[1]},
+               strides, std::vector<int>{paddings[0], paddings[1], paddings[0],
+                                         paddings[1]},
                &output_batch);
       } else if (data_dim == 3U) {
         // col2vol: col_matrix -> dy
         // from (c * k_d * k_h * k_w, d * h * w) to (c, o_d, o_h, o_w)
-        col2vol(context.device_context(), col, dilations, strides, paddings,
-                &output_batch);
+        col2vol(dev_ctx, col, dilations, strides, paddings, &output_batch);
       }
     }
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -206,6 +205,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
     // convolution transpose grad on input:
     // im2col + gemm (similar to conv-forward)
     // input need to compute gradient
+    auto& dev_ctx = context.template device_context<DeviceContext>();
     if (input_grad || filter_grad) {
       Tensor col;
       col.mutable_data<T>(col_shape, context.GetPlace());
@@ -217,19 +217,19 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
       col_matrix.Resize(col_matrix_shape);
 
       Tensor filter_grad_;
-      math::SetConstant<Place, T> set_zero;
+      math::SetConstant<DeviceContext, T> set_zero;
 
-      math::Im2ColFunctor<math::ColFormat::kCFO, Place, T> im2col;
-      math::Vol2ColFunctor<Place, T> vol2col;
+      math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
+      math::Vol2ColFunctor<DeviceContext, T> vol2col;
       std::vector<int> dilations({1, 1, 1});
 
       if (input_grad) {
         input_grad->mutable_data<T>(context.GetPlace());
-        set_zero(context.device_context(), input_grad, static_cast<T>(0));
+        set_zero(dev_ctx, input_grad, static_cast<T>(0));
       }
       if (filter_grad) {  // filter size (m, c, k_h, k_w)
         filter_grad->mutable_data<T>(context.GetPlace());
-        set_zero(context.device_context(), filter_grad, static_cast<T>(0));
+        set_zero(dev_ctx, filter_grad, static_cast<T>(0));
         filter_grad_ = *filter_grad;
         filter_grad_.Resize(filter_matrix_shape);
       }
@@ -242,7 +242,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
         if (data_dim == 2U) {
           // im2col: dy -> col matrix
           // from (c, o_h, o_w) to (c * k_h * k_w, h * w)
-          im2col(context.device_context(), output_grad_batch,
+          im2col(dev_ctx, output_grad_batch,
                  std::vector<int>{dilations[0], dilations[1]}, strides,
                  std::vector<int>{paddings[0], paddings[1], paddings[0],
                                   paddings[1]},
@@ -250,8 +250,8 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
         } else if (data_dim == 3U) {
           // vol2col: dy -> col_matrix
           // from (c, o_d, o_h, o_w) to (c * k_d * k_h * k_w, d * h * w)
-          vol2col(context.device_context(), output_grad_batch, dilations,
-                  strides, paddings, &col);
+          vol2col(dev_ctx, output_grad_batch, dilations, strides, paddings,
+                  &col);
         }
 
         if (input_grad) {
@@ -263,9 +263,9 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
           // or
           // (m, c * k_d * k_h * k_w) * (c * k_d * k_h * k_w, d * h * w) -> (m,
           // d, h, w)
-          math::matmul<Place, T>(context.device_context(), filter, false,
-                                 col_matrix, false, static_cast<T>(1.0),
-                                 &input_grad_batch, static_cast<T>(0.0));
+          math::matmul<DeviceContext, T>(
+              dev_ctx, filter, false, col_matrix, false, static_cast<T>(1.0),
+              &input_grad_batch, static_cast<T>(0.0));
         }
         if (filter_grad) {
           // input batch
@@ -275,9 +275,9 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
           // or
           // (m, d * h * w) * (d * h * w, c * k_d * k_h * k_w) -> (m, c * k_d *
           // k_h * k_w)
-          math::matmul<Place, T>(context.device_context(), in_batch, false,
-                                 col_matrix, true, static_cast<T>(1.0),
-                                 &filter_grad_, static_cast<T>(1.0));
+          math::matmul<DeviceContext, T>(dev_ctx, in_batch, false, col_matrix,
+                                         true, static_cast<T>(1.0),
+                                         &filter_grad_, static_cast<T>(1.0));
         }
       }
     }

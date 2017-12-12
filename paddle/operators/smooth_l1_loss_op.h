@@ -44,7 +44,7 @@ struct SmoothL1LossForward {
   T sigma2;
 };
 
-template <typename Place, typename T, typename AttrType = T>
+template <typename DeviceContext, typename T, typename AttrType = T>
 class SmoothL1LossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -57,7 +57,8 @@ class SmoothL1LossKernel : public framework::OpKernel<T> {
 
     out0->mutable_data<T>(context.GetPlace());
     out1->mutable_data<T>(context.GetPlace());
-    auto place = context.GetEigenDevice<Place>();
+    auto* place =
+        context.template device_context<DeviceContext>().eigen_device();
 
     auto sigma = static_cast<T>(context.Attr<AttrType>("sigma"));
     T sigma2 = sigma * sigma;
@@ -67,12 +68,12 @@ class SmoothL1LossKernel : public framework::OpKernel<T> {
     auto y = EigenVector<T>::Flatten(*in1);
     auto diff = EigenVector<T>::Flatten(*out0);
 
-    diff.device(place) = x - y;
+    diff.device(*place) = x - y;
     // multiply inside weight
     if (has_weight) {
       auto inside_weight = EigenVector<T>::Flatten(*in2);
       // cache diff, reused in bp
-      diff.device(place) = diff * inside_weight;
+      diff.device(*place) = diff * inside_weight;
     }
 
     auto in_counts = in0->numel();
@@ -81,12 +82,12 @@ class SmoothL1LossKernel : public framework::OpKernel<T> {
                                    context.GetPlace());
     auto errors = EigenVector<T>::Flatten(ptensor_errors);
     // apply smooth l1 forward
-    errors.device(place) = diff.unaryExpr(SmoothL1LossForward<T>(sigma2));
+    errors.device(*place) = diff.unaryExpr(SmoothL1LossForward<T>(sigma2));
 
     // multiply outside weight
     if (has_weight) {
       auto outside_weight = EigenVector<T>::Flatten(*in3);
-      errors.device(place) = errors * outside_weight;
+      errors.device(*place) = errors * outside_weight;
     }
     auto loss = EigenVector<T>::Flatten(*out1);
     // first dimension of 'X' is the number of samples
@@ -94,7 +95,7 @@ class SmoothL1LossKernel : public framework::OpKernel<T> {
         framework::make_ddim({static_cast<int>(in0->dims()[0]),
                               static_cast<int>(in_counts / in0->dims()[0])});
     auto errors_mat_view = EigenMatrix<T>::From(ptensor_errors, mat_dims);
-    loss.device(place) = errors_mat_view.sum(Eigen::array<int, 1>({{1}}));
+    loss.device(*place) = errors_mat_view.sum(Eigen::array<int, 1>({{1}}));
   }
 };
 
@@ -114,7 +115,7 @@ struct SmoothL1LossBackward {
   T sigma2;
 };
 
-template <typename Place, typename T, typename AttrType = T>
+template <typename DeviceContext, typename T, typename AttrType = T>
 class SmoothL1LossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -126,7 +127,8 @@ class SmoothL1LossGradKernel : public framework::OpKernel<T> {
     T sigma2 = sigma * sigma;
     bool has_weight = (in0 != nullptr) && (in1 != nullptr);
 
-    auto place = context.GetEigenDevice<Place>();
+    auto* place =
+        context.template device_context<DeviceContext>().eigen_device();
 
     auto in_dims = in2->dims();
     auto counts = in2->numel();
@@ -139,7 +141,7 @@ class SmoothL1LossGradKernel : public framework::OpKernel<T> {
                                  context.GetPlace());
     auto diff = EigenVector<T>::Flatten(ptensor_diff);
     // apply smooth l1 backwoard
-    diff.device(place) = EigenVector<T>::Flatten(*in2).unaryExpr(
+    diff.device(*place) = EigenVector<T>::Flatten(*in2).unaryExpr(
         SmoothL1LossBackward<T>(sigma2));
 
     // compute weights
@@ -147,11 +149,11 @@ class SmoothL1LossGradKernel : public framework::OpKernel<T> {
     ptensor_weights.mutable_data<T>(mat_dims, context.GetPlace());
     auto weights = EigenMatrix<T>::From(ptensor_weights);
     // initialize to 1.0
-    weights.device(place) = weights.constant(static_cast<T>(1.0));
+    weights.device(*place) = weights.constant(static_cast<T>(1.0));
     if (has_weight) {
       auto inside_weight = EigenMatrix<T>::From(*in0, mat_dims);
       auto outside_weight = EigenMatrix<T>::From(*in1, mat_dims);
-      weights.device(place) = inside_weight * outside_weight;
+      weights.device(*place) = inside_weight * outside_weight;
     }
 
     // compute gradients
@@ -167,13 +169,13 @@ class SmoothL1LossGradKernel : public framework::OpKernel<T> {
     if (out0) {
       out0->mutable_data<T>(context.GetPlace());
       auto x_grad = EigenMatrix<T>::From(*out0, mat_dims);
-      x_grad.device(place) = gradients;
+      x_grad.device(*place) = gradients;
     }
 
     if (out1) {
       out1->mutable_data<T>(context.GetPlace());
       auto y_grad = EigenMatrix<T>::From(*out1, mat_dims);
-      y_grad.device(place) = -1 * gradients;
+      y_grad.device(*place) = -1 * gradients;
     }
   }
 };
