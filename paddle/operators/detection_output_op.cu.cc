@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/operators/detection_output_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     detection_output,
-    ops::Detection_output_Kernel<paddle::platform::GPUPlace, float>,
-    ops::Detection_output_Kernel<paddle::platform::GPUPlace, double>);
+    ops::Detection_output_Kernel<paddle::platform::CUDADeviceContext, float>,
+    ops::Detection_output_Kernel<paddle::platform::CUDADeviceContext, double>);
