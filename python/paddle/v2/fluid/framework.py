@@ -41,7 +41,6 @@ def convert_np_dtype_to_dtype_(np_dtype):
         np.dtype('float32'): core.DataType.FP32,
         np.dtype('float64'): core.DataType.FP64,
         np.dtype('float16'): core.DataType.FP16,
-        np.dtype('int8'): core.DataType.INT8,
         np.dtype('int32'): core.DataType.INT32,
         np.dtype('int16'): core.DataType.INT16,
         np.dtype('int64'): core.DataType.INT64,
