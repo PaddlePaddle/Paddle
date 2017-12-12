@@ -38,7 +38,10 @@ namespace operators {
 class NetOp : public framework::OperatorBase {
  public:
   static const char kAll[];
-  NetOp() : framework::OperatorBase("plain_net", {}, {}, {}) {}
+  NetOp()
+      : framework::OperatorBase("plain_net", framework::VariableNameMap{},
+                                framework::VariableNameMap{},
+                                framework::AttributeMap{}) {}
 
   NetOp(const std::string& type, const framework::VariableNameMap& inputs,
         const framework::VariableNameMap& outputs,

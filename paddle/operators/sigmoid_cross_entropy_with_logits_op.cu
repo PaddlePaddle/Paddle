@@ -16,9 +16,9 @@
 #include "paddle/operators/sigmoid_cross_entropy_with_logits_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(sigmoid_cross_entropy_with_logits,
-                       ops::SigmoidCrossEntropyWithLogitsKernel<
-                           paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(sigmoid_cross_entropy_with_logits_grad,
-                       ops::SigmoidCrossEntropyWithLogitsGradKernel<
-                           paddle::platform::GPUPlace, float>);
+REGISTER_OP_CUDA_KERNEL(sigmoid_cross_entropy_with_logits,
+                        ops::SigmoidCrossEntropyWithLogitsKernel<
+                            paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(sigmoid_cross_entropy_with_logits_grad,
+                        ops::SigmoidCrossEntropyWithLogitsGradKernel<
+                            paddle::platform::CUDADeviceContext, float>);

@@ -235,16 +235,18 @@ namespace ops = paddle::operators;
 REGISTER_OP(conv3d, ops::ConvOp, ops::Conv3DOpMaker, conv3d_grad,
             ops::ConvOpGrad);
 
-REGISTER_OP_CPU_KERNEL(conv2d,
-                       ops::GemmConvKernel<paddle::platform::CPUPlace, float>,
-                       ops::GemmConvKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
-    conv2d_grad, ops::GemmConvGradKernel<paddle::platform::CPUPlace, float>,
-    ops::GemmConvGradKernel<paddle::platform::CPUPlace, double>);
+    conv2d, ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    conv2d_grad,
+    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);
 
-REGISTER_OP_CPU_KERNEL(conv3d,
-                       ops::GemmConvKernel<paddle::platform::CPUPlace, float>,
-                       ops::GemmConvKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
-    conv3d_grad, ops::GemmConvGradKernel<paddle::platform::CPUPlace, float>,
-    ops::GemmConvGradKernel<paddle::platform::CPUPlace, double>);
+    conv3d, ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    conv3d_grad,
+    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);

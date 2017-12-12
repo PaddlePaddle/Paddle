@@ -316,8 +316,8 @@ static void InitInferShapeFuncs() {
     for (auto &kern_pair : OperatorWithKernel::AllOpKernels()) {
       auto op_type = kern_pair.first;
       auto &op_info = info_map.at(op_type);
-      auto op =
-          static_cast<OperatorWithKernel *>(op_info.Creator()("", {}, {}, {}));
+      auto op = static_cast<OperatorWithKernel *>(op_info.Creator()(
+          "", VariableNameMap{}, VariableNameMap{}, AttributeMap{}));
       if (op_info.infer_shape_) {  // infer_shape has been registered.
         continue;
       }
