@@ -5,6 +5,7 @@ from paddle.v2.fluid.framework import default_startup_program, default_main_prog
 from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.backward import append_backward_ops
 import numpy
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 
 class ConditionalBlock(unittest.TestCase):
@@ -19,7 +20,9 @@ class ConditionalBlock(unittest.TestCase):
 
         cpu = core.CPUPlace()
         exe = Executor(cpu)
-        exe.run(default_startup_program())
+        pdesc = framework_pb2.ProgramDesc.FromString(default_startup_program(
+        ).desc.serialize_to_string())
+        exe.run(pdesc)
 
         x = numpy.random.random(size=(10, 1)).astype('float32')
 

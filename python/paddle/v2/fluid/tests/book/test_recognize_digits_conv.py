@@ -2,6 +2,7 @@ from __future__ import print_function
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype='float32')
 label = fluid.layers.data(name='label', shape=[1], dtype='int64')
@@ -38,12 +39,15 @@ train_reader = paddle.batch(
 place = fluid.CPUPlace()
 exe = fluid.Executor(place)
 feeder = fluid.DataFeeder(feed_list=[images, label], place=place)
-exe.run(fluid.default_startup_program())
+exe.run(
+    framework_pb2.ProgramDesc.FromString(fluid.default_startup_program()
+                                         .desc.serialize_to_string()))
 
 for pass_id in range(PASS_NUM):
     accuracy.reset(exe)
     for data in train_reader():
-        loss, acc = exe.run(fluid.default_main_program(),
+        loss, acc = exe.run(framework_pb2.ProgramDesc.FromString(
+            fluid.default_main_program().desc.serialize_to_string()),
                             feed=feeder.feed(data),
                             fetch_list=[avg_cost] + accuracy.metrics)
         pass_acc = accuracy.eval(exe)

@@ -11,6 +11,7 @@ import paddle.v2.fluid as fluid
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 NOISE_SIZE = 100
 NUM_PASS = 1000
@@ -105,7 +106,9 @@ def main():
             p.name for p in g_program.global_block().all_parameters()
         ])
     exe = fluid.Executor(fluid.CPUPlace())
-    exe.run(startup_program)
+    exe.run(
+        framework_pb2.ProgramDesc.FromString(
+            startup_program.desc.serialize_to_string()))
 
     num_true = NUM_REAL_IMGS_IN_BATCH
     train_reader = paddle.batch(
@@ -120,7 +123,8 @@ def main():
                 low=-1.0, high=1.0,
                 size=[num_true * NOISE_SIZE]).astype('float32').reshape(
                     [num_true, NOISE_SIZE])
-            generated_img = exe.run(g_program,
+            generated_img = exe.run(framework_pb2.ProgramDesc.FromString(
+                g_program.desc.serialize_to_string()),
                                     feed={'noise': n},
                                     fetch_list={g_img})[0]
             real_data = numpy.array(map(lambda x: x[0], data)).astype('float32')
@@ -132,7 +136,8 @@ def main():
                 numpy.zeros(
                     shape=[real_data.shape[0], 1], dtype='float32')
             ])
-            d_loss_np = exe.run(d_program,
+            d_loss_np = exe.run(framework_pb2.ProgramDesc.FromString(
+                d_program.desc.serialize_to_string()),
                                 feed={'img': total_data,
                                       'label': total_label},
                                 fetch_list={d_loss})[0]
@@ -141,7 +146,8 @@ def main():
                     low=-1.0, high=1.0,
                     size=[2 * num_true * NOISE_SIZE]).astype('float32').reshape(
                         [2 * num_true, NOISE_SIZE, 1, 1])
-                dg_loss_np = exe.run(dg_program,
+                dg_loss_np = exe.run(framework_pb2.ProgramDesc.FromString(
+                    dg_program.desc.serialize_to_string()),
                                      feed={'noise': n},
                                      fetch_list={dg_loss})[0]
             print("Pass ID={0}, Batch ID={1}, D-Loss={2}, DG-Loss={3}".format(

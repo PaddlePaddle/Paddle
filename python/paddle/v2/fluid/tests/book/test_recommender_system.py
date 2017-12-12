@@ -6,6 +6,7 @@ import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.nets as nets
 from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.optimizer import SGDOptimizer
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 IS_SPARSE = True
 USE_GPU = False
@@ -146,7 +147,9 @@ def main():
         place = core.CPUPlace()
 
     exe = Executor(place)
-    exe.run(framework.default_startup_program())
+    exe.run(
+        framework_pb2.ProgramDesc.FromString(framework.default_startup_program()
+                                             .desc.serialize_to_string()))
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
@@ -195,7 +198,8 @@ def main():
     PASS_NUM = 100
     for pass_id in range(PASS_NUM):
         for data in train_reader():
-            outs = exe.run(framework.default_main_program(),
+            outs = exe.run(framework_pb2.ProgramDesc.FromString(
+                framework.default_main_program().desc.serialize_to_string()),
                            feed=func_feed(feeding, data),
                            fetch_list=[cost])
             out = np.array(outs[0])

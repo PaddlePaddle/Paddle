@@ -3,6 +3,7 @@ from paddle.v2.fluid.executor import Executor
 import paddle.v2.fluid.core as core
 import numpy
 import unittest
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 
 class TestLoDRankTable(unittest.TestCase):

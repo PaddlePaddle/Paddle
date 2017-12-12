@@ -5,6 +5,7 @@ from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.backward import append_backward_ops
 from paddle.v2.fluid.framework import default_main_program
 import numpy
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 
 class TestArrayReadWrite(unittest.TestCase):

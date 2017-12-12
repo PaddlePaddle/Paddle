@@ -5,6 +5,7 @@ import paddle.v2.fluid.layers as layers
 from paddle.v2.fluid.framework import Program
 from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.backward import append_backward_ops
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 
 class TestCPULoDTensorArrayOps(unittest.TestCase):
@@ -98,7 +99,9 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
 
         exe = Executor(place)
         scope = core.Scope()
-        exe.run(program,
+        pdesc = framework_pb2.ProgramDesc.FromString(
+            program.desc.serialize_to_string())
+        exe.run(pdesc,
                 feed={'x': tensor,
                       'y': mask},
                 scope=scope,
@@ -169,7 +172,8 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
         g_out = [
             item.sum()
             for item in map(np.array,
-                            exe.run(program,
+                            exe.run(framework_pb2.ProgramDesc.FromString(
+                                program.desc.serialize_to_string()),
                                     feed={'x': tensor,
                                           'y': mask},
                                     fetch_list=[g_vars],

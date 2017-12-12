@@ -2,6 +2,7 @@ from __future__ import print_function
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 BATCH_SIZE = 128
 image = fluid.layers.data(name='x', shape=[784], dtype='float32')
@@ -49,20 +50,24 @@ test_reader = paddle.batch(paddle.dataset.mnist.test(), batch_size=128)
 place = fluid.CPUPlace()
 exe = fluid.Executor(place)
 feeder = fluid.DataFeeder(feed_list=[image, label], place=place)
-exe.run(fluid.default_startup_program())
+exe.run(
+    framework_pb2.ProgramDesc.FromString(fluid.default_startup_program()
+                                         .desc.serialize_to_string()))
 
 PASS_NUM = 100
 for pass_id in range(PASS_NUM):
     accuracy.reset(exe)
     for data in train_reader():
-        out, acc = exe.run(fluid.default_main_program(),
+        out, acc = exe.run(framework_pb2.ProgramDesc.FromString(
+            fluid.default_main_program().desc.serialize_to_string()),
                            feed=feeder.feed(data),
                            fetch_list=[avg_cost] + accuracy.metrics)
         pass_acc = accuracy.eval(exe)
 
         test_accuracy.reset(exe)
         for data in test_reader():
-            out, acc = exe.run(inference_program,
+            out, acc = exe.run(framework_pb2.ProgramDesc.FromString(
+                inference_program.desc.serialize_to_string()),
                                feed=feeder.feed(data),
                                fetch_list=[avg_cost] + test_accuracy.metrics)
 

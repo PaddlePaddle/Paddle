@@ -5,6 +5,7 @@ import paddle.v2.fluid.layers as layers
 from paddle.v2.fluid.framework import Program
 from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.backward import append_backward_ops
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 
 class TestCPULoDTensorArrayOps(unittest.TestCase):
@@ -130,7 +131,10 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         result.persistable = True
         exe = Executor(place)
         scope = core.Scope()
-        exe.run(program, feed={'x': tensor}, scope=scope)
+        exe.run(framework_pb2.ProgramDesc.FromString(
+            program.desc.serialize_to_string()),
+                feed={'x': tensor},
+                scope=scope)
         var = scope.find_var(array.name)
         array = var.get_lod_tensor_array()
         if expect_array is not None and expect_lod is not None:
@@ -183,7 +187,8 @@ class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
         exe = Executor(place)
         g_out = [
             numpy.array(item).sum()
-            for item in exe.run(program,
+            for item in exe.run(framework_pb2.ProgramDesc.FromString(
+                program.desc.serialize_to_string()),
                                 feed={'x': tensor},
                                 fetch_list=[g_vars],
                                 return_numpy=False)

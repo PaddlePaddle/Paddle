@@ -2,6 +2,7 @@ import os
 import cPickle as pickle
 
 from paddle.v2.fluid.framework import Program, Parameter, default_main_program, Variable
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 __all__ = [
     'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
@@ -63,7 +64,9 @@ def save_vars(executor, dirname, main_program=None, vars=None, predicate=None):
                 inputs={'X': [new_var]},
                 outputs={},
                 attrs={'file_path': os.path.join(dirname, new_var.name)})
-        executor.run(save_program)
+        pdesc = framework_pb2.ProgramDesc.FromString(
+            save_program.desc.serialize_to_string())
+        executor.run(pdesc)
 
 
 def save_params(executor, dirname, main_program=None):
@@ -126,7 +129,9 @@ def load_vars(executor, dirname, main_program=None, vars=None, predicate=None):
                 outputs={"Out": [new_var]},
                 attrs={'file_path': os.path.join(dirname, new_var.name)})
 
-        executor.run(load_prog)
+        pdesc = framework_pb2.ProgramDesc.FromString(
+            load_prog.desc.serialize_to_string())
+        executor.run(pdesc)
 
 
 def load_params(executor, dirname, main_program=None):
@@ -261,7 +266,9 @@ def get_parameter_value(para, executor):
     get_program = Program()
     block = get_program.global_block()
     new_var = _clone_var_in_block_(block, para)
-    return executor.run(get_program, feed={}, fetch_list=[new_var])[0]
+    pdesc = framework_pb2.ProgramDesc.FromString(
+        get_program.desc.serialize_to_string())
+    return executor.run(pdesc, feed={}, fetch_list=[new_var])[0]
 
 
 def get_parameter_value_by_name(name, executor, program=None):

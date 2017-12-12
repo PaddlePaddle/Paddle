@@ -4,6 +4,7 @@ import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.dataset.conll05 as conll05
 import paddle.v2.fluid as fluid
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 word_dict, verb_dict, label_dict = conll05.get_dict()
 word_dict_len = len(word_dict)
@@ -168,7 +169,9 @@ def main():
         place=place)
     exe = fluid.Executor(place)
 
-    exe.run(fluid.default_startup_program())
+    exe.run(
+        framework_pb2.ProgramDesc.FromString(fluid.default_startup_program()
+                                             .desc.serialize_to_string()))
 
     embedding_param = fluid.g_scope.find_var(embedding_name).get_tensor()
     embedding_param.set(
@@ -177,7 +180,8 @@ def main():
     batch_id = 0
     for pass_id in xrange(PASS_NUM):
         for data in train_data():
-            outs = exe.run(fluid.default_main_program(),
+            outs = exe.run(framework_pb2.ProgramDesc.FromString(
+                fluid.default_main_program().desc.serialize_to_string()),
                            feed=feeder.feed(data),
                            fetch_list=[avg_cost, precision, recall, f1_score])
             avg_cost_val = np.array(outs[0])

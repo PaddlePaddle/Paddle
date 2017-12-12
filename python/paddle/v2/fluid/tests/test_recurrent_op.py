@@ -6,6 +6,7 @@ from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.backward import append_backward_ops
 import numpy as np
 import paddle.v2.fluid.core as core
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 
 class PyRNNBase(object):
@@ -152,9 +153,9 @@ class RecurrentOpTest1(unittest.TestCase):
             for x in self.data_field
         }
         exe = Executor(self.place)
-        out = exe.run(self.main_program,
-                      feed=self.feed_map,
-                      fetch_list=[self.output])
+        pdesc = framework_pb2.ProgramDesc.FromString(
+            self.main_program.desc.serialize_to_string())
+        out = exe.run(pdesc, feed=self.feed_map, fetch_list=[self.output])
 
         return out[0]
 
@@ -169,7 +170,9 @@ class RecurrentOpTest1(unittest.TestCase):
         ]
 
         exe = Executor(self.place)
-        return exe.run(self.main_program,
+        pdesc = framework_pb2.ProgramDesc.FromString(
+            self.main_program.desc.serialize_to_string())
+        return exe.run(pdesc,
                        feed=self.feed_map,
                        fetch_list=fetch_list,
                        return_numpy=False)

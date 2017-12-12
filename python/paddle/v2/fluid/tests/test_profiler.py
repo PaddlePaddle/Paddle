@@ -3,6 +3,7 @@ import numpy as np
 import paddle.v2.fluid as fluid
 import paddle.v2.fluid.profiler as profiler
 import paddle.v2.fluid.layers as layers
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 
 class TestProfiler(unittest.TestCase):
@@ -16,12 +17,16 @@ class TestProfiler(unittest.TestCase):
 
         place = fluid.GPUPlace(0)
         exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        pdesc = framework_pb2.ProgramDesc.FromString(
+            fluid.default_startup_program().desc.serialize_to_string())
+        exe.run(pdesc)
 
         with profiler.cuda_profiler("cuda_profiler.txt", 'csv') as nvprof:
             for i in range(epoc):
                 input = np.random.random(dshape).astype('float32')
-                exe.run(fluid.default_main_program(), feed={'data': input})
+                pdesc = framework_pb2.ProgramDesc.FromString(
+                    fluid.default_main_program().desc.serialize_to_string())
+                exe.run(pdesc, feed={'data': input})
 
 
 if __name__ == '__main__':

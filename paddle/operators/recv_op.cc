@@ -78,7 +78,7 @@ class RecvOp : public framework::OperatorBase {
     framework::ProgramDescBind program(program_desc);
     framework::Executor executor(dev_ctx);
     // Run sub graph to get optimized tensor
-    executor.Run(program, &recv_scope, 0, /*global_block*/
+    executor.Run(*(program->Proto()), &recv_scope, 0,
                  false /*create_local_scope*/);
 
     auto *out_var = recv_scope.FindVar("Out");

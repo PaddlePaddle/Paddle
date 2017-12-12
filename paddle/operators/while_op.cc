@@ -56,7 +56,7 @@ class WhileOp : public framework::OperatorBase {
       auto &current_scope = scope.NewScope();
       step_scopes->push_back(&current_scope);
 
-      executor.Run(*program, &current_scope, block->ID(),
+      executor.Run(*(program->Proto()), &current_scope, block->ID(),
                    false /*create_local_scope*/);
     }
   }
@@ -155,7 +155,7 @@ class WhileGradOp : public framework::OperatorBase {
         }
       }
 
-      executor.Run(*program, *cur_scope_iter, block->ID(), false);
+      executor.Run(*(program->Proto()), *cur_scope_iter, block->ID(), false);
 
       auto &pg_names = Outputs(kParamGrads);
       auto &p_names = Inputs(kParameters);
