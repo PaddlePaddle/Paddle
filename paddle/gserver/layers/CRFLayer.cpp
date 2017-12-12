@@ -72,23 +72,21 @@ void CRFLayer::forward(PassType passType) {
   IVectorPtr label_val = label.ids;
   if (useGpu_) {
     Matrix::resizeOrCreate(cpuWeight_,
-      /* height */ weight_val->getHeight(),
-      /* width */ weight_val->getWidth(),
-      /* trans */ false,
-      /* useGpu */ false);
+                           /* height */ weight_val->getHeight(),
+                           /* width */ weight_val->getWidth(),
+                           /* trans */ false,
+                           /* useGpu */ false);
     Matrix::resizeOrCreate(cpuOutput_,
-        /* height */ output_val->getHeight(),
-        /* width */ output_val->getWidth(),
-        /* trans */ false,
-        /* useGpu */ false);
+                           /* height */ output_val->getHeight(),
+                           /* width */ output_val->getWidth(),
+                           /* trans */ false,
+                           /* useGpu */ false);
     Matrix::resizeOrCreate(cpuOutputArg_,
-          /* height */ output_arg_val->getHeight(),
-          /* width */ output_arg_val->getWidth(),
-          /* trans */ false,
-          /* useGpu */ false);
-    IVector::resizeOrCreate(cpuLabel_,
-                    label_val->getSize(),
-                    false);
+                           /* height */ output_arg_val->getHeight(),
+                           /* width */ output_arg_val->getWidth(),
+                           /* trans */ false,
+                           /* useGpu */ false);
+    IVector::resizeOrCreate(cpuLabel_, label_val->getSize(), false);
     cpuWeight_->copyFrom(*weight_val);
     cpuOutputArg_->copyFrom(*output_arg_val);
     cpuOutput_->copyFrom(*output_val);
@@ -137,18 +135,18 @@ void CRFLayer::backward(const UpdateCallback& callback) {
     cpuLabel_->copyFrom(*label_val);
     if (output_arg_grad) {
       Matrix::resizeOrCreate(cpuOutputArgGrad_,
-        /* height */ output_arg_grad->getHeight(),
-        /* width */ output_arg_grad->getWidth(),
-        /* trans */ false,
-        /* useGpu */ false);
-        cpuOutputArgGrad_->copyFrom(*output_arg_grad);
+                             /* height */ output_arg_grad->getHeight(),
+                             /* width */ output_arg_grad->getWidth(),
+                             /* trans */ false,
+                             /* useGpu */ false);
+      cpuOutputArgGrad_->copyFrom(*output_arg_grad);
     }
     if (needWGrad) {
       Matrix::resizeOrCreate(cpuWeightGrad_,
-        /* height */ weight_grad->getHeight(),
-        /* width */ weight_grad->getWidth(),
-        /* trans */ false,
-        /* useGpu */ false);
+                             /* height */ weight_grad->getHeight(),
+                             /* width */ weight_grad->getWidth(),
+                             /* trans */ false,
+                             /* useGpu */ false);
       cpuWeightGrad_->copyFrom(*weight_grad);
     }
   } else {
@@ -168,13 +166,12 @@ void CRFLayer::backward(const UpdateCallback& callback) {
     instanceWeight *= coeff_;
 
     if (output.grad) {
-      MatrixPtr grad = cpuOutputArgGrad_->subRowMatrix(starts[i],
-                                          starts[i + 1]);
+      MatrixPtr grad =
+          cpuOutputArgGrad_->subRowMatrix(starts[i], starts[i + 1]);
       grad->add(*crfs_[i].getXGrad(), real(1.0f), instanceWeight);
     }
     if (needWGrad) {
-      cpuWeightGrad_->add(
-          *crfs_[i].getWGrad(), real(1.0f), instanceWeight);
+      cpuWeightGrad_->add(*crfs_[i].getWGrad(), real(1.0f), instanceWeight);
     }
   }
   if (useGpu_) {
@@ -184,7 +181,7 @@ void CRFLayer::backward(const UpdateCallback& callback) {
     if (needWGrad) {
       weight_grad->copyFrom(*cpuWeightGrad_);
     }
-      output_arg_val->copyFrom(*cpuOutputArg_);
+    output_arg_val->copyFrom(*cpuOutputArg_);
   } else {
     if (output.grad) {
       output_arg_grad = cpuOutputArgGrad_;
@@ -192,7 +189,7 @@ void CRFLayer::backward(const UpdateCallback& callback) {
     if (needWGrad) {
       weight_grad = cpuWeightGrad_;
     }
-      output_arg_val = cpuOutputArg_;
+    output_arg_val = cpuOutputArg_;
   }
   parameter_->incUpdate(callback);
 }

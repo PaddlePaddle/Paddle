@@ -135,13 +135,13 @@ TEST(Layer, CRFLayer) {
     for (int length : {1, 3, 100}) {
       // Not support GPU now
       for (auto useGpu : {false, true}) {
-      testLayerGrad(config,
-                    "crf",
-                    length,
-                    /* trans= */ false,
-                    /* useGpu= */ useGpu,
-                    /* useWeight= */ false,
-                    epsilon());
+        testLayerGrad(config,
+                      "crf",
+                      length,
+                      /* trans= */ false,
+                      /* useGpu= */ useGpu,
+                      /* useWeight= */ false,
+                      epsilon());
       }
     }
   }
@@ -153,14 +153,14 @@ TEST(Layer, CRFLayerUseWeight) {
     TestConfig config = initTestConfig(numClasses, /* withWeight= */ true);
     for (int length : {1, 3, 100}) {
       // Not support GPU now
-      for (auto useGpu : {false, true}) {
-      testLayerGrad(config,
-                    "crf",
-                    length,
-                    /* trans= */ false,
-                    /* useGpu= */ useGpu,
-                    /* useWeight= */ false,
-                    epsilon());
+      for (auto useGpu : {false}) {
+        testLayerGrad(config,
+                      "crf",
+                      length,
+                      /* trans= */ false,
+                      /* useGpu= */ useGpu,
+                      /* useWeight= */ false,
+                      epsilon());
       }
     }
   }

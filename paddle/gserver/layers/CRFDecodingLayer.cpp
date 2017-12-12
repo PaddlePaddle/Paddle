@@ -25,7 +25,7 @@ bool CRFDecodingLayer::init(const LayerMap& layerMap,
   }
   if (!useGpu_) {
     crf_.reset(new LinearChainCRF(
-     numClasses_, parameter_->getBuf(PARAMETER_VALUE)->getData()));
+        numClasses_, parameter_->getBuf(PARAMETER_VALUE)->getData()));
   }
   return true;
 }
@@ -34,12 +34,10 @@ void CRFDecodingLayer::forward(PassType passType) {
   Layer::forward(passType);
 
   if (useGpu_) {
-    cpuParam = Vector::create(
-      parameter_->getBuf(PARAMETER_VALUE)->getSize(),
-      false);
+    cpuParam =
+        Vector::create(parameter_->getBuf(PARAMETER_VALUE)->getSize(), false);
     cpuParam->copyFrom(*parameter_->getBuf(PARAMETER_VALUE));
-    crf_.reset(new LinearChainCRF(
-      numClasses_, cpuParam->getData()));
+    crf_.reset(new LinearChainCRF(numClasses_, cpuParam->getData()));
   }
   const Argument& output = getInput(0);
   CHECK(output.sequenceStartPositions);
@@ -52,10 +50,10 @@ void CRFDecodingLayer::forward(PassType passType) {
   MatrixPtr output_arg_val = output.value;
   if (useGpu_) {
     Matrix::resizeOrCreate(cpuOutputArg_,
-      /* height */ output_arg_val->getHeight(),
-      /* width */ output_arg_val->getWidth(),
-      /* trans */ false,
-      /* useGpu */ false);
+                           /* height */ output_arg_val->getHeight(),
+                           /* width */ output_arg_val->getWidth(),
+                           /* trans */ false,
+                           /* useGpu */ false);
     IVector::resizeOrCreate(cpuOutputId_, batchSize, false);
     cpuOutputArg_->copyFrom(*output_arg_val);
   } else {
@@ -78,10 +76,10 @@ void CRFDecodingLayer::forward(PassType passType) {
     MatrixPtr output_val = output_.value;
     if (useGpu_) {
       Matrix::resizeOrCreate(cpuOutput_,
-        /* height */ output_val->getHeight(),
-        /* width */ output_val->getWidth(),
-        /* trans */ false,
-        /* useGpu */ false);
+                             /* height */ output_val->getHeight(),
+                             /* width */ output_val->getWidth(),
+                             /* trans */ false,
+                             /* useGpu */ false);
       IVector::resizeOrCreate(cpuLabel_, label.ids->getSize(), false);
       cpuOutput_->copyFrom(*output_val);
       cpuLabel_->copyFrom(*label.ids);
