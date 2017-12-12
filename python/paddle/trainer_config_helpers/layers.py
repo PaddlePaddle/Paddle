@@ -5444,19 +5444,19 @@ def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
 
     .. math::
 
-       out & = \max_k (in[n, k, o_c , s])
+       & out = \max_k (in[n, k, o_c , s])
 
-       out_{i * s + j} & = \max_k in_{  k * o_{c} * s + i * s + j}
+       & out_{i * s + j} = \max_k in_{  k * o_{c} * s + i * s + j}
 
-       s & = \\frac{input.size}{ num\_channels}
+       & s = \\frac{input.size}{ num\_channels}
 
-       o_{c} & = \\frac{num\_channels}{groups}
+       & o_{c} = \\frac{num\_channels}{groups}
 
-       0 \le i & < o_{c}
+       & 0 \le i < o_{c}
 
-       0 \le j & < s
+       & 0 \le j < s
 
-       0 \le k & < groups
+       & 0 \le k < groups
 
 
     The simple usage is:
