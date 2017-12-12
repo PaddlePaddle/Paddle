@@ -37,6 +37,7 @@ bool RPCClient::SendVariable(const framework::Scope& scope,
   msg.set_serialized(oss.str());
   Status status = stub_->SendVariable(&context, msg, &out_msg);
   if (!status.ok()) {
+    LOG(ERROR) << "gRPC error: " << status.error_message();
     return false;
   }
   std::istringstream iss(out_msg.serialized());

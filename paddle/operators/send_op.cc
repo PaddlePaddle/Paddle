@@ -47,6 +47,7 @@ class SendOp : public framework::OperatorBase {
     // TODO(typhoonzero): currently it's non-blocking,
     // should block until server responds.
     for (auto in : ins) {
+      LOG(ERROR) << "sending grad: " << in;
       bool ret = client_->SendVariable(scope, in, in);
       if (!ret) {
         LOG(ERROR) << "send variable error";
