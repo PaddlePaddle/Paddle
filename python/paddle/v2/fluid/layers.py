@@ -1738,8 +1738,10 @@ def conv2d_transpose(input,
 
         h_in = input.shape[2]
         w_in = input.shape[3]
-        filter_size_h = output_size[0] - (h_in - 1) * stride[0] + 2 * padding[0]
-        filter_size_w = output_size[1] - (w_in - 1) * stride[1] + 2 * padding[1]
+        filter_size_h = output_size[0] - \
+            (h_in - 1) * stride[0] + 2 * padding[0]
+        filter_size_w = output_size[1] - \
+            (w_in - 1) * stride[1] + 2 * padding[1]
         filter_size = [filter_size_h, filter_size_w]
     elif isinstance(filter_size, int):
         filter_size = [filter_size, filter_size]
