@@ -22,36 +22,39 @@ class Detection_output_OpMaker : public framework::OpProtoAndCheckerMaker {
                            framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Loc",
-             "(Tensor) The input tensor of detection_output operator. "
+             "(Tensor) The input tensor of detection_output operator."
+             "The input predict locations"
              "The format of input tensor is kNCHW. Where K is priorbox point "
              "numbers,"
              "N is How many boxes are there on each point, "
              "C is 4, H and W both are 1.");
     AddInput("Conf",
-             "(Tensor) The input tensor of detection_output operator. "
+             "(Tensor) The input tensor of detection_output operator."
+             "The input priorbox confidence."
              "The format of input tensor is kNCHW. Where K is priorbox point "
              "numbers,"
              "N is How many boxes are there on each point, "
              "C is the number of classes, H and W both are 1.");
     AddInput("PriorBox",
-             "(Tensor) The input tensor of detection_output operator. "
+             "(Tensor) The input tensor of detection_output operator."
              "The format of input tensor is the position and variance "
              "of the boxes");
     AddOutput("Out",
               "(Tensor) The output tensor of detection_output operator.");
-    AddAttr<int>("background_label_id",
-                 "(int), the attr of detection_output operator");
-    AddAttr<int>("num_classes",
-                 "(int),  the attr of detection_output operator");
+    AddAttr<int>("background_label_id", "(int), The background class index.");
+    AddAttr<int>("num_classes", "(int), The number of the classification.");
     AddAttr<float>("nms_threshold",
-                   "(float), the attr of detection_output operator");
+                   "(float), The Non-maximum suppression threshold.");
     AddAttr<float>("confidence_threshold",
-                   "(float), the attr of detection_output operator");
-    AddAttr<int>("top_k", "(int), the attr of detection_output operator");
-    AddAttr<int>("nms_top_k", "(int), the attr of detection_output operator");
+                   "(float), The classification confidence threshold.");
+    AddAttr<int>("top_k", "(int), The bbox number kept of the layer’s output.");
+    AddAttr<int>("nms_top_k",
+                 "(int), The bbox number kept of the NMS’s output.");
     AddComment(R"DOC(
           detection output for SSD(single shot multibox detector)
-
+          Apply the NMS to the output of network and compute the predict
+          bounding box location. The output’s shape of this layer could
+          be zero if there is no valid bounding box.
         )DOC");
   }
 };
