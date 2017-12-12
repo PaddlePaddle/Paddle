@@ -70,6 +70,31 @@ class Executor(object):
             return self._optimize_distributed(optimize_ops, program,
                                               params_grads, **kwargs)
 
+    def _clone_param(self, block, v):
+        assert isinstance(v, Parameter)
+        new_p = Parameter(
+            block=block,
+            shape=v.shape,
+            dtype=v.dtype,
+            type=v.type,
+            lod_level=v.lod_level,
+            stop_gradient=v.stop_gradient,
+            trainable=v.trainable,
+            optimize_attr=v.optimize_attr,
+            regularizer=v.regularizer,
+            name=v.name)
+        block.vars[new_p.name] = new_p
+
+    def _clone_var(self, block, var):
+        assert isinstance(var, Variable)
+        return block.create_var(
+            name=var.name,
+            shape=var.shape,
+            dtype=var.dtype,
+            type=var.type,
+            lod_level=var.lod_level,
+            persistable=True)
+
     def _optimize_distributed(self, optimize_ops, program, params_and_grads,
                               **kwargs):
         # remove optimize ops and add a send op to main_program
@@ -84,8 +109,7 @@ class Executor(object):
 
         assert (callable(split_method))
         pserver_endpoints = kwargs["pservers"].split(",")
-        params = program.global_block().all_parameters()
-        self.param_grad_map = split_method(params, pserver_endpoints)
+        self.param_grad_map = split_method(params_and_grads, pserver_endpoints)
 
         for ep in pserver_endpoints:
             # FIXME(typhoonzero): send to different servers can run in parrallel.
@@ -95,27 +119,26 @@ class Executor(object):
                         },  # inputs is a list of tensors to be send
                 outputs={},
                 attrs={"endpoint": ep})
-        # -------------- generate optimize sub program --------------
-        self.optimize_sub_program = Program()
-        for opt_op in optimize_ops:
-            self.optimize_sub_program.global_block().ops.append(opt_op)
 
-    def get_pserver_program(self, endpoint):
+    def get_pserver_program(self, endpoint, optimize_ops):
         pserver_program = Program()
         for v in self.param_grad_map[endpoint]["params"]:
-            assert isinstance(v, Parameter)
-            new_p = Parameter(
-                block=pserver_program.global_block(),
-                shape=v.shape,
-                dtype=v.dtype,
-                type=v.type,
-                lod_level=v.lod_level,
-                stop_gradient=v.stop_gradient,
-                trainable=v.trainable,
-                optimize_attr=v.optimize_attr,
-                regularizer=v.regularizer,
-                name=v.name)
-            pserver_program.global_block().vars[new_p.name] = new_p
+            self._clone_param(pserver_program.global_block(), v)
+
+        optimize_sub_program = Program()
+        for opt_op in optimize_ops:
+            for varname, var in opt_op.inputs.iteritems():
+                optimize_sub_program.global_block().create_var(
+                    name=var.name,
+                    persistable=var.persistable,
+                    dtype=var.dtype,
+                    shape=var.shape)
+            optimize_sub_program.global_block().append_op(
+                type=opt_op.type,
+                inputs=opt_op.inputs,
+                outputs=opt_op.outputs,
+                attrs=opt_op.attrs)
+        print("optimize program: ", optimize_sub_program)
 
         pserver_program.global_block().append_op(
             type="recv",
@@ -123,11 +146,14 @@ class Executor(object):
                     self.param_grad_map[endpoint]["grads"]},  # grads to recv
             outputs={},
             attrs={
-                "OptimizeProgram": self.optimize_sub_program.to_string(True),
+                "OptimizeProgram": optimize_sub_program.desc,
                 "endpoint": endpoint,
-                "ParamList": self.param_grad_map[endpoint]["params"],
-                "GradList": self.param_grad_map[endpoint]["grads"]
+                "ParamList":
+                [p.name for p in self.param_grad_map[endpoint]["params"]],
+                "GradList":
+                [p.name for p in self.param_grad_map[endpoint]["grads"]]
             })
+        pserver_program.sync_with_cpp()
         return pserver_program
 
     def aslodtensor(self, data):

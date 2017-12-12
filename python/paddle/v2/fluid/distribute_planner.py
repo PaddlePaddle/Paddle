@@ -29,19 +29,19 @@ def hash_name_to_server(params_grads, pserver_endpoints):
     return param_grad_map
 
 
-def round_robin(parameters, pserver_endpoints):
-    assert (len(parameters) > len(pserver_endpoints))
+def round_robin(params_grads, pserver_endpoints):
+    assert (len(params_grads) > len(pserver_endpoints))
 
     param_grad_map = dict()
     pserver_idx = 0
-    for param in parameters:
+    for param, grad in params_grads:
         if param.trainable is True:
             server_for_param = pserver_endpoints[pserver_idx]
             if not param_grad_map.has_key(server_for_param):
                 param_grad_map[server_for_param] = {"params": [], "grads": []}
 
             param_grad_map[server_for_param]["params"].append(param)
-            param_grad_map[server_for_param]["grads"].append(param)
+            param_grad_map[server_for_param]["grads"].append(grad)
 
             pserver_idx += 1
             if pserver_idx >= len(pserver_endpoints):

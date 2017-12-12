@@ -43,10 +43,11 @@ exe.optimize(optimize_ops, params_grads, pservers="127.0.0.1:6174", trainers=1)
 
 pserver_endpoint = os.getenv("PSERVER")
 if pserver_endpoint:
-    pserver_prog = exe.get_pserver_program(pserver_endpoint)
+    pserver_prog = exe.get_pserver_program(pserver_endpoint, optimize_ops)
     exe.run(fluid.default_startup_program())
     while True:
         exe.run(pserver_prog)
+        print("Run pserver once end...")
 else:
     feeder = fluid.DataFeeder(feed_list=[images, label], place=place)
     exe.run(fluid.default_startup_program())

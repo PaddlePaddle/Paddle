@@ -64,12 +64,12 @@ class RecvOp : public framework::OperatorBase {
 
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
+    // FIXME(typhoonzero): no new scopes for every run.
     framework::Scope &recv_scope = scope.NewScope();
     // blocking get one var from client.
     const detail::TensorWithName &v = rpc_service_->Get();
     auto grad_var_name = v.first;
 
-    // framework::Scope &recv_scope = scope.NewScope();
     auto param_list = Attr<std::vector<std::string>>("ParamList");
     auto grad_list = Attr<std::vector<std::string>>("GradList");
     auto it = std::find(grad_list.begin(), grad_list.end(), grad_var_name);
@@ -77,16 +77,23 @@ class RecvOp : public framework::OperatorBase {
     if (it != grad_list.end()) {
       param_var_name = param_list[it - grad_list.begin()];
     }
-    // set graph input var
-    auto input_grad = Input("RX");
+    // find input by "grad_var_name"
+    // auto inputs = Inputs("RX");
 
     // FIXME(typhoonzero): Find the parameter name from input grad name
     // rename X  -> Param
     // rename RX -> Grad
-    auto *var = recv_scope.FindVar(input_grad);
+
+    LOG(ERROR) << "recved grad: " << grad_var_name
+               << " param: " << param_var_name;
+    auto *var = recv_scope.Var(grad_var_name);
     auto *tensor = var->GetMutable<framework::LoDTensor>();
-    recv_scope.Rename(param_var_name, "Param");
-    recv_scope.Rename("RX", "Grad");
+
+    // Param is in parent scope, put it in current scope.
+    auto *param_var = recv_scope.FindVar(param_var_name);
+    auto param_scope = recv_scope.FindScope(param_var);
+    param_scope->Rename(param_var_name, "Param");
+    recv_scope.Rename(grad_var_name, "Grad");
 
     // FIXME(typhoonzero): do not copy
     framework::CopyFrom(v.second, dev_ctx.GetPlace(), dev_ctx, tensor);
@@ -100,14 +107,14 @@ class RecvOp : public framework::OperatorBase {
     executor.Run(program, &recv_scope, 0, /*global_block*/
                  false /*create_local_scope*/);
 
-    auto *out_var = recv_scope.FindVar("Param");
+    auto *out_var = recv_scope.FindVar("ParamOut");
     detail::TensorWithName out;
     out.first = param_var_name;
     out.second = out_var->Get<framework::LoDTensor>();
     rpc_service_->Push(out);
     // rename back the params
-    recv_scope.Rename("Param", param_var_name);
-    recv_scope.Rename("Grad", "RX");
+    param_scope.Rename("Param", param_var_name);
+    recv_scope.Rename("Grad", grad_var_name);
   }
 
  protected:
@@ -117,7 +124,6 @@ class RecvOp : public framework::OperatorBase {
   // grpc send/recv service implement to register.
   std::shared_ptr<detail::SendRecvServerImpl> rpc_service_;
   std::shared_ptr<std::thread> server_thread_;
-  framework::Scope const *recv_scope_{nullptr};
 };
 
 class RecvOpMaker : public framework::OpProtoAndCheckerMaker {

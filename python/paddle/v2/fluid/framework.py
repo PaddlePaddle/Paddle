@@ -227,6 +227,10 @@ class Operator(object):
                  attrs=None):
         self.block = block
         self.desc = desc
+        # for clone a new operator
+        self.inputs = inputs
+        self.outputs = outputs
+        self.attrs = attrs
         if len(self.desc.type()) != 0:
             return
         if type is None:
@@ -298,6 +302,10 @@ class Operator(object):
                     continue
                 if isinstance(attrs[attr_name], Block):
                     self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
+                elif isinstance(attrs[attr_name], core.BlockDesc) or \
+                   isinstance(attrs[attr_name], core.ProgramDesc):
+                    self.desc.set_serialized_attr(
+                        attr_name, attrs[attr_name].serialize_to_string())
                 else:
                     self.desc.set_attr(attr_name, attrs[attr_name])
 
