@@ -16,6 +16,6 @@
 #include "paddle/operators/crop_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(crop, ops::CropKernel<float>);
-REGISTER_OP_GPU_KERNEL(crop_grad,
-                       ops::CropGradKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_CUDA_KERNEL(crop, ops::CropKernel<float>);
+REGISTER_OP_CUDA_KERNEL(
+    crop_grad, ops::CropGradKernel<paddle::platform::CUDADeviceContext, float>);

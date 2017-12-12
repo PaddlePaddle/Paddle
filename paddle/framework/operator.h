@@ -276,16 +276,24 @@ class ExecutionContext {
     out_tensor->set_lod(in_tensor.lod());
   }
 
-  template <typename PlaceType,
-            typename DeviceType = typename platform::EigenDeviceConverter<
-                PlaceType>::EigenDeviceType>
-  DeviceType& GetEigenDevice() const;
-
   platform::Place GetPlace() const { return device_context_.GetPlace(); }
+
+  template <typename DeviceContextType>
+  const DeviceContextType& device_context() const {
+    return *reinterpret_cast<const DeviceContextType*>(&device_context_);
+  }
 
   const platform::DeviceContext& device_context() const {
     return device_context_;
   }
+
+#ifdef PADDLE_WITH_CUDA
+  const inline platform::CUDADeviceContext& cuda_device_context() const {
+    PADDLE_ENFORCE(platform::is_gpu_place(device_context_.GetPlace()));
+    return *reinterpret_cast<const platform::CUDADeviceContext*>(
+        &device_context_);
+  }
+#endif
 
   //! Get actual name vector for this input.
   const std::vector<std::string>& Inputs(const std::string& name) const {
@@ -296,14 +304,6 @@ class ExecutionContext {
   const std::vector<std::string>& Outputs(const std::string& name) const {
     return op_.Outputs(name);
   }
-
-#ifdef PADDLE_WITH_CUDA
-  const inline platform::CUDADeviceContext& cuda_device_context() const {
-    PADDLE_ENFORCE(platform::is_gpu_place(device_context_.GetPlace()));
-    return *reinterpret_cast<const platform::CUDADeviceContext*>(
-        &device_context_);
-  }
-#endif
 
  private:
   const OperatorBase& op_;

@@ -20,8 +20,8 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-template class ContextProjectFunctor<platform::GPUPlace, float>;
-template class ContextProjectFunctor<platform::GPUPlace, double>;
+template class ContextProjectFunctor<platform::CUDADeviceContext, float>;
+template class ContextProjectFunctor<platform::CUDADeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators

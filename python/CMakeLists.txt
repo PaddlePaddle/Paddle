@@ -33,6 +33,12 @@ if(WITH_MKLDNN)
   list(APPEND MKL_DEPENDS mkldnn)
 endif()
 
+if(WITH_GPU)
+  SET(PACKAGE_NAME "paddlepaddle-gpu")
+else()
+  SET(PACKAGE_NAME "paddlepaddle")
+endif()
+
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
     ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 

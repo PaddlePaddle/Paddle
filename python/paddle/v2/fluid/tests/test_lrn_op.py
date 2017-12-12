@@ -23,7 +23,7 @@ class TestLRNOp(OpTest):
         start = -(self.n - 1) / 2
         end = start + self.n
 
-        mid = np.empty((self.N, self.C, self.H, self.W), dtype=float)
+        mid = np.empty((self.N, self.C, self.H, self.W)).astype("float32")
         mid.fill(self.k)
         for m in range(0, self.N):
             for i in range(0, self.C):
@@ -74,5 +74,4 @@ class TestLRNOp(OpTest):
 
 
 if __name__ == "__main__":
-    exit(0)  # LRN grad implement wrong
     unittest.main()
