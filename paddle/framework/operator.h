@@ -378,7 +378,8 @@ class OperatorWithKernel : public OperatorBase {
       std::unordered_map<OpKernelType, std::unique_ptr<OpKernelBase>,
                          OpKernelType::Hash>;
   static std::vector<paddle::platform::Place> KernelPriorityQueue = {
-      GPUPlace, MKLPlace, CPUPlace};
+      paddle::platform::GPUPlace, paddle::platform::MKLPlace,
+      paddle::platform::CPUPlace};
 
   OperatorWithKernel(const std::string& type, const VariableNameMap& inputs,
                      const VariableNameMap& outputs, const AttributeMap& attrs)
@@ -387,7 +388,8 @@ class OperatorWithKernel : public OperatorBase {
   void Run(const Scope& scope,
            const platform::DeviceContext& dev_ctx) const final;
 
-  static st AllOpKernels() {
+  static std::unordered_map<std::string /* op_type */, OpKernelMap>&
+  AllOpKernels() {
     static std::unordered_map<std::string, OpKernelMap> g_all_op_kernels;
     return g_all_op_kernels;
   }
