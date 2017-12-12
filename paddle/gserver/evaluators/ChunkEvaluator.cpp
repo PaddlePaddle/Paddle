@@ -75,6 +75,8 @@ class ChunkEvaluator : public Evaluator {
   std::vector<Segment> labelSegments_;
   std::vector<Segment> outputSegments_;
   std::set<int> excludedChunkTypes_;
+  IVectorPtr cpuOutput_;
+  IVectorPtr cpuLabel_;
   mutable std::unordered_map<std::string, real> values_;
 
 public:
@@ -142,16 +144,27 @@ public:
     CHECK_EQ(arguments.size(), (size_t)2);
     IVectorPtr& output = arguments[0].ids;
     IVectorPtr& label = arguments[1].ids;
-    CHECK(!output->useGpu() && !label->useGpu()) << "Not supported";
     auto sequenceStartPositions =
         arguments[1].sequenceStartPositions->getVector(false);
     CHECK_EQ(output->getSize(), label->getSize());
     CHECK(sequenceStartPositions);
     size_t numSequences = sequenceStartPositions->getSize() - 1;
     const int* starts = sequenceStartPositions->getData();
+    if (output->useGpu()) {
+      IVector::resizeOrCreate(cpuOutput_, output->getSize(), false);
+      cpuOutput_->copyFrom(*output);
+    } else {
+      cpuOutput_ = output;
+    }
+    if (label->useGpu()) {
+      IVector::resizeOrCreate(cpuLabel_, label->getSize(), false);
+      cpuLabel_->copyFrom(*label);
+    } else {
+      cpuLabel_ = label;
+    }
     for (size_t i = 0; i < numSequences; ++i) {
-      eval1(output->getData() + starts[i],
-            label->getData() + starts[i],
+      eval1(cpuOutput_->getData() + starts[i],
+            cpuLabel_->getData() + starts[i],
             starts[i + 1] - starts[i]);
     }
     return 0;
