@@ -41,6 +41,14 @@ protected:
   LayerPtr weightLayer_;            // weight for each sequence
   std::unique_ptr<Weight> weight_;  // parameters
   real coeff_;                      // weight for the layer
+
+  // The temporary variables in CPU memory.
+  MatrixPtr cpuWeight_;
+  MatrixPtr cpuOutputArg_;
+  MatrixPtr cpuOutput_;
+  MatrixPtr cpuWeightGrad_;
+  MatrixPtr cpuOutputArgGrad_;
+  IVectorPtr cpuLabel_;
 };
 
 }  // namespace paddle

@@ -54,8 +54,6 @@ bool CRFLayer::init(const LayerMap& layerMap,
 void CRFLayer::forward(PassType passType) {
   Layer::forward(passType);
 
-  CHECK(!useGpu_) << "GPU is not supported";
-
   const Argument& output = getInput(0);
   const Argument& label = getInput(1);
   CHECK(label.sequenceStartPositions);
@@ -68,16 +66,55 @@ void CRFLayer::forward(PassType passType) {
   const int* starts = label.sequenceStartPositions->getData(false);
   CHECK_EQ(starts[numSequences], batchSize);
 
+  MatrixPtr weight_val = weight_->getW();
+  MatrixPtr output_val = output_.value;
+  MatrixPtr output_arg_val = output.value;
+  IVectorPtr label_val = label.ids;
+  if (useGpu_) {
+    Matrix::resizeOrCreate(cpuWeight_,
+      /* height */ weight_val->getHeight(),
+      /* width */ weight_val->getWidth(),
+      /* trans */ false,
+      /* useGpu */ false);
+    Matrix::resizeOrCreate(cpuOutput_,
+        /* height */ output_val->getHeight(),
+        /* width */ output_val->getWidth(),
+        /* trans */ false,
+        /* useGpu */ false);
+    Matrix::resizeOrCreate(cpuOutputArg_,
+          /* height */ output_arg_val->getHeight(),
+          /* width */ output_arg_val->getWidth(),
+          /* trans */ false,
+          /* useGpu */ false);
+    IVector::resizeOrCreate(cpuLabel_,
+                    label_val->getSize(),
+                    false);
+    cpuWeight_->copyFrom(*weight_val);
+    cpuOutputArg_->copyFrom(*output_arg_val);
+    cpuOutput_->copyFrom(*output_val);
+    cpuLabel_->copyFrom(*label_val);
+  } else {
+    cpuWeight_ = weight_val;
+    cpuOutputArg_ = output_arg_val;
+    cpuOutput_ = output_val;
+    cpuLabel_ = label_val;
+  }
   for (size_t i = 0; i < numSequences; ++i) {
     if (i >= crfs_.size()) {
-      crfs_.emplace_back(numClasses_, weight_->getW()->getData());
+      crfs_.emplace_back(numClasses_, cpuWeight_->getData());
     }
-    output_.value->getData()[i] =
-        crfs_[i].forward(output.value->getData() + numClasses_ * starts[i],
-                         label.ids->getData() + starts[i],
+    cpuOutput_->getData()[i] =
+        crfs_[i].forward(cpuOutputArg_->getData() + numClasses_ * starts[i],
+                         cpuLabel_->getData() + starts[i],
                          starts[i + 1] - starts[i]);
   }
-
+  if (useGpu_) {
+    output_val->copyFrom(*cpuOutput_);
+    output_arg_val->copyFrom(*cpuOutputArg_);
+  } else {
+    output_val = cpuOutput_;
+    output_arg_val = cpuOutputArg_;
+  }
   if (weightLayer_) {
     const MatrixPtr& weight = getInputValue(*weightLayer_);
     getOutputValue()->dotMul(*getOutputValue(), *weight);
@@ -91,9 +128,38 @@ void CRFLayer::backward(const UpdateCallback& callback) {
   int numSequences = label.sequenceStartPositions->getSize() - 1;
 
   bool needWGrad = weight_->getWGrad() ? true : false;
+  MatrixPtr output_arg_grad = output.grad;
+  MatrixPtr weight_grad = weight_->getWGrad();
+  MatrixPtr output_arg_val = output.value;
+  IVectorPtr label_val = label.ids;
+  if (useGpu_) {
+    cpuOutputArg_->copyFrom(*output_arg_val);
+    cpuLabel_->copyFrom(*label_val);
+    if (output_arg_grad) {
+      Matrix::resizeOrCreate(cpuOutputArgGrad_,
+        /* height */ output_arg_grad->getHeight(),
+        /* width */ output_arg_grad->getWidth(),
+        /* trans */ false,
+        /* useGpu */ false);
+        cpuOutputArgGrad_->copyFrom(*output_arg_grad);
+    }
+    if (needWGrad) {
+      Matrix::resizeOrCreate(cpuWeightGrad_,
+        /* height */ weight_grad->getHeight(),
+        /* width */ weight_grad->getWidth(),
+        /* trans */ false,
+        /* useGpu */ false);
+      cpuWeightGrad_->copyFrom(*weight_grad);
+    }
+  } else {
+    cpuOutputArg_ = output_arg_val;
+    cpuWeightGrad_ = weight_grad;
+    cpuOutputArgGrad_ = output_arg_grad;
+    cpuLabel_ = label_val;
+  }
   for (int i = 0; i < numSequences; ++i) {
-    crfs_[i].backward(output.value->getData() + numClasses_ * starts[i],
-                      label.ids->getData() + starts[i],
+    crfs_[i].backward(cpuOutputArg_->getData() + numClasses_ * starts[i],
+                      cpuLabel_->getData() + starts[i],
                       starts[i + 1] - starts[i],
                       needWGrad);
     real instanceWeight = weightLayer_
@@ -102,15 +168,32 @@ void CRFLayer::backward(const UpdateCallback& callback) {
     instanceWeight *= coeff_;
 
     if (output.grad) {
-      MatrixPtr grad = output.grad->subRowMatrix(starts[i], starts[i + 1]);
+      MatrixPtr grad = cpuOutputArgGrad_->subRowMatrix(starts[i],
+                                          starts[i + 1]);
       grad->add(*crfs_[i].getXGrad(), real(1.0f), instanceWeight);
     }
     if (needWGrad) {
-      weight_->getWGrad()->add(
+      cpuWeightGrad_->add(
           *crfs_[i].getWGrad(), real(1.0f), instanceWeight);
     }
   }
-
+  if (useGpu_) {
+    if (output.grad) {
+      output_arg_grad->copyFrom(*cpuOutputArgGrad_);
+    }
+    if (needWGrad) {
+      weight_grad->copyFrom(*cpuWeightGrad_);
+    }
+      output_arg_val->copyFrom(*cpuOutputArg_);
+  } else {
+    if (output.grad) {
+      output_arg_grad = cpuOutputArgGrad_;
+    }
+    if (needWGrad) {
+      weight_grad = cpuWeightGrad_;
+    }
+      output_arg_val = cpuOutputArg_;
+  }
   parameter_->incUpdate(callback);
 }
 

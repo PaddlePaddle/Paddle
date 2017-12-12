@@ -39,6 +39,12 @@ public:
 
 protected:
   std::unique_ptr<LinearChainCRF> crf_;
+  // The temporary variables in CPU memory.
+  MatrixPtr cpuOutputArg_;
+  MatrixPtr cpuOutput_;
+  IVectorPtr cpuLabel_;
+  IVectorPtr cpuOutputId_;
+  VectorPtr cpuParam;
 };
 
 }  // namespace paddle
