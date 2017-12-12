@@ -363,9 +363,6 @@ struct OpKernelType {
   OpKernelType(DataType data_type, platform::Place place)
       : place_(place), data_type_(data_type) {}
 
-  OpKernelType(DataType data_type, const platform::DeviceContext& dev_ctx)
-      : place_(dev_ctx.GetPlace()), data_type_(data_type) {}
-
   bool operator==(const OpKernelType& o) const {
     return platform::places_are_same_class(place_, o.place_) &&
            data_type_ == o.data_type_;
