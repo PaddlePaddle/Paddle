@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#ifdef PADDLE_USE_MKLML
+#ifdef PADDLE_WITH_MKLML
 #include <mkl_cblas.h>
 #include <mkl_lapacke.h>
 #include <mkl_vml_functions.h>
