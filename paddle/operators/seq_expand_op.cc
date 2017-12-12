@@ -148,8 +148,9 @@ class SeqExpandOpGrad : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(seq_expand, ops::SeqExpandOp, ops::SeqExpandOpMaker,
             seq_expand_grad, ops::SeqExpandOpGrad);
-REGISTER_OP_CPU_KERNEL(seq_expand,
-                       ops::SeqExpandKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    seq_expand,
+    ops::SeqExpandKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     seq_expand_grad,
-    ops::SeqExpandGradKernel<paddle::platform::CPUPlace, float>);
+    ops::SeqExpandGradKernel<paddle::platform::CPUDeviceContext, float>);

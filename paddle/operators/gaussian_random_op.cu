@@ -60,5 +60,5 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_GPU_KERNEL(gaussian_random,
-                       paddle::operators::GPUGaussianRandomKernel<float>);
+REGISTER_OP_CUDA_KERNEL(gaussian_random,
+                        paddle::operators::GPUGaussianRandomKernel<float>);
