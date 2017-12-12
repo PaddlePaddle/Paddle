@@ -59,7 +59,7 @@ struct EqualFunctor {
   }
 };
 
-template <typename Place, typename Functor>
+template <typename DeviceContext, typename Functor>
 class CompareOpKernel
     : public framework::OpKernel<typename Functor::ELEM_TYPE> {
  public:
@@ -69,8 +69,8 @@ class CompareOpKernel
     auto* y = context.Input<framework::Tensor>("Y");
     auto* out = context.Output<framework::Tensor>("Out");
     Functor binary_func;
-    platform::Transform<Place> trans;
-    trans(context.template device_context<Place>(), x->data<T>(),
+    platform::Transform<DeviceContext> trans;
+    trans(context.template device_context<DeviceContext>(), x->data<T>(),
           x->data<T>() + x->numel(), y->data<T>(),
           out->mutable_data<bool>(context.GetPlace()), binary_func);
   }

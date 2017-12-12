@@ -44,7 +44,7 @@ struct SmoothL1LossForward {
   T sigma2;
 };
 
-template <typename Place, typename T, typename AttrType = T>
+template <typename DeviceContext, typename T, typename AttrType = T>
 class SmoothL1LossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -57,7 +57,7 @@ class SmoothL1LossKernel : public framework::OpKernel<T> {
 
     out0->mutable_data<T>(context.GetPlace());
     out1->mutable_data<T>(context.GetPlace());
-    auto* place = context.template device_context<Place>().eigen_device();
+    auto* place = context.template device_context<DeviceContext>().eigen_device();
 
     auto sigma = static_cast<T>(context.Attr<AttrType>("sigma"));
     T sigma2 = sigma * sigma;
@@ -114,7 +114,7 @@ struct SmoothL1LossBackward {
   T sigma2;
 };
 
-template <typename Place, typename T, typename AttrType = T>
+template <typename DeviceContext, typename T, typename AttrType = T>
 class SmoothL1LossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -126,7 +126,7 @@ class SmoothL1LossGradKernel : public framework::OpKernel<T> {
     T sigma2 = sigma * sigma;
     bool has_weight = (in0 != nullptr) && (in1 != nullptr);
 
-    auto* place = context.template device_context<Place>().eigen_device();
+    auto* place = context.template device_context<DeviceContext>().eigen_device();
 
     auto in_dims = in2->dims();
     auto counts = in2->numel();

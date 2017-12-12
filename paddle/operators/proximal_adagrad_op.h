@@ -24,7 +24,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class ProximalAdagradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -45,7 +45,7 @@ class ProximalAdagradOpKernel : public framework::OpKernel<T> {
 
     auto p_out = EigenVector<T>::Flatten(*param_out);
     auto m_out = EigenVector<T>::Flatten(*moment_out);
-    auto* place = ctx.template device_context<Place>().eigen_device();
+    auto* place = ctx.template device_context<DeviceContext>().eigen_device();
 
     Eigen::DSizes<int, 1> grad_dsize(grad->numel());
 

@@ -48,7 +48,7 @@ struct CastOpFunctor {
   }
 };
 
-template <typename Place, typename InT>
+template <typename DeviceContext, typename InT>
 class CastOpKernel : public framework::OpKernel<InT> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -56,8 +56,8 @@ class CastOpKernel : public framework::OpKernel<InT> {
     auto* out = context.Output<framework::Tensor>("Out");
     framework::VisitDataType(
         static_cast<framework::DataType>(context.Attr<int>("out_dtype")),
-        CastOpFunctor<Place, InT>(in, out,
-                                  context.template device_context<Place>()));
+        CastOpFunctor<DeviceContext, InT>(in, out,
+                                  context.template device_context<DeviceContext>()));
   }
 };
 

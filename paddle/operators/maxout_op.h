@@ -23,7 +23,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class MaxOutKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -31,13 +31,13 @@ class MaxOutKernel : public framework::OpKernel<T> {
     Tensor* out = context.Output<Tensor>("Out");
     int groups = context.template Attr<int>("groups");
 
-    math::MaxOutFunctor<Place, T> maxout_forward;
-    maxout_forward(context.template device_context<Place>(), *in_x, out,
+    math::MaxOutFunctor<DeviceContext, T> maxout_forward;
+    maxout_forward(context.template device_context<DeviceContext>(), *in_x, out,
                    groups);
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class MaxOutGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -47,12 +47,12 @@ class MaxOutGradKernel : public framework::OpKernel<T> {
         context.Input<Tensor>(framework::GradVarName("Out"));
     Tensor* in_x_grad = context.Output<Tensor>(framework::GradVarName("X"));
     int groups = context.template Attr<int>("groups");
-    auto& device_ctx = context.template device_context<Place>();
-    math::SetConstant<Place, T> zero;
+    auto& device_ctx = context.template device_context<DeviceContext>();
+    math::SetConstant<DeviceContext, T> zero;
     if (in_x_grad) {
       in_x_grad->mutable_data<T>(context.GetPlace());
       zero(device_ctx, in_x_grad, static_cast<T>(0.0));
-      math::MaxOutGradFunctor<Place, T> maxout_backward;
+      math::MaxOutGradFunctor<DeviceContext, T> maxout_backward;
       maxout_backward(device_ctx, *in_x, in_x_grad, *out, *out_grad, groups);
     }
   }

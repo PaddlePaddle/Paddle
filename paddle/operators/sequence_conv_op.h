@@ -23,7 +23,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SequenceConvKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -56,22 +56,22 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     Tensor col;
     col.mutable_data<T>(col_shape, context.GetPlace());
     // Because if padding_trainable is false, padding data should be zeros.
-    math::SetConstant<Place, T> set_zero;
-    auto& dev_ctx = context.template device_context<Place>();
+    math::SetConstant<DeviceContext, T> set_zero;
+    auto& dev_ctx = context.template device_context<DeviceContext>();
     set_zero(dev_ctx, &col, static_cast<T>(0));
 
-    math::ContextProjectFunctor<Place, T> seq_project_functor;
+    math::ContextProjectFunctor<DeviceContext, T> seq_project_functor;
 
     seq_project_functor(dev_ctx, *in, *padding_data, padding_trainable,
                         context_start, context_length, context_stride, up_pad,
                         down_pad, &col);
 
-    math::matmul<Place, T>(dev_ctx, col, false, filter, false,
+    math::matmul<DeviceContext, T>(dev_ctx, col, false, filter, false,
                            static_cast<T>(1.0), out, static_cast<T>(0.0));
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SequenceConvGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -96,8 +96,8 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
     int down_pad = std::max(0, context_start + context_length - 1);
     int sequence_width = static_cast<int>(in->dims()[1]);
 
-    math::SetConstant<Place, T> set_zero;
-    auto& dev_ctx = context.template device_context<Place>();
+    math::SetConstant<DeviceContext, T> set_zero;
+    auto& dev_ctx = context.template device_context<DeviceContext>();
     // use col_shape in the im2col calculation
     framework::DDim col_shape = {in->dims()[0],
                                  sequence_width * context_length};
@@ -107,11 +107,11 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       col.mutable_data<T>(col_shape, context.GetPlace());
       // Because if padding_trainable is false, padding data should be zeros.
       set_zero(dev_ctx, &col, static_cast<T>(0));
-      math::matmul<Place, T>(dev_ctx, *out_g, false, *filter, true, T(1.0),
+      math::matmul<DeviceContext, T>(dev_ctx, *out_g, false, *filter, true, T(1.0),
                              &col, T(1.0));
     }
-    math::ContextProjectFunctor<Place, T> seq_project_functor;
-    math::ContextProjectGradFunctor<Place, T> seq_project_grad_functor;
+    math::ContextProjectFunctor<DeviceContext, T> seq_project_functor;
+    math::ContextProjectGradFunctor<DeviceContext, T> seq_project_grad_functor;
 
     if (in_g) {
       in_g->mutable_data<T>(context.GetPlace());
@@ -149,7 +149,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
                           context_start, context_length, context_stride, up_pad,
                           down_pad, &col);
 
-      math::matmul<Place, T>(dev_ctx, col, true, out_grad, false, T(1.0),
+      math::matmul<DeviceContext, T>(dev_ctx, col, true, out_grad, false, T(1.0),
                              &filter_grad, T(1.0));
     }
   }

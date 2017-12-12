@@ -52,7 +52,7 @@ class ConvTransposeOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class GemmConvTransposeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -109,12 +109,12 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     filter.Resize(filter_matrix_shape);
 
     output->mutable_data<T>(context.GetPlace());
-    math::SetConstant<Place, T> set_zero;
-    auto& dev_ctx = context.template device_context<Place>();
+    math::SetConstant<DeviceContext, T> set_zero;
+    auto& dev_ctx = context.template device_context<DeviceContext>();
     set_zero(dev_ctx, output, static_cast<T>(0));
 
-    math::Col2ImFunctor<math::ColFormat::kCFO, Place, T> col2im;
-    math::Col2VolFunctor<Place, T> col2vol;
+    math::Col2ImFunctor<math::ColFormat::kCFO, DeviceContext, T> col2im;
+    math::Col2VolFunctor<DeviceContext, T> col2vol;
     std::vector<int> dilations({1, 1, 1});
 
     // convolution transpose: gemm + col2im or col2vol (similar to conv-backward
@@ -128,7 +128,7 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
 
       // col_matrix = filter * input_batch
       // of shape (c * k_h * k_w, h * w) or (c * k_d * k_h * k_w, d * h * w)
-      math::matmul<Place, T>(dev_ctx, filter, true, input_batch, false,
+      math::matmul<DeviceContext, T>(dev_ctx, filter, true, input_batch, false,
                              static_cast<T>(1.0), &col_matrix,
                              static_cast<T>(0.0));
 
@@ -148,7 +148,7 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -205,7 +205,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
     // convolution transpose grad on input:
     // im2col + gemm (similar to conv-forward)
     // input need to compute gradient
-    auto& dev_ctx = context.template device_context<Place>();
+    auto& dev_ctx = context.template device_context<DeviceContext>();
     if (input_grad || filter_grad) {
       Tensor col;
       col.mutable_data<T>(col_shape, context.GetPlace());
@@ -217,10 +217,10 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
       col_matrix.Resize(col_matrix_shape);
 
       Tensor filter_grad_;
-      math::SetConstant<Place, T> set_zero;
+      math::SetConstant<DeviceContext, T> set_zero;
 
-      math::Im2ColFunctor<math::ColFormat::kCFO, Place, T> im2col;
-      math::Vol2ColFunctor<Place, T> vol2col;
+      math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
+      math::Vol2ColFunctor<DeviceContext, T> vol2col;
       std::vector<int> dilations({1, 1, 1});
 
       if (input_grad) {
@@ -263,7 +263,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
           // or
           // (m, c * k_d * k_h * k_w) * (c * k_d * k_h * k_w, d * h * w) -> (m,
           // d, h, w)
-          math::matmul<Place, T>(dev_ctx, filter, false, col_matrix, false,
+          math::matmul<DeviceContext, T>(dev_ctx, filter, false, col_matrix, false,
                                  static_cast<T>(1.0), &input_grad_batch,
                                  static_cast<T>(0.0));
         }
@@ -275,7 +275,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
           // or
           // (m, d * h * w) * (d * h * w, c * k_d * k_h * k_w) -> (m, c * k_d *
           // k_h * k_w)
-          math::matmul<Place, T>(dev_ctx, in_batch, false, col_matrix, true,
+          math::matmul<DeviceContext, T>(dev_ctx, in_batch, false, col_matrix, true,
                                  static_cast<T>(1.0), &filter_grad_,
                                  static_cast<T>(1.0));
         }

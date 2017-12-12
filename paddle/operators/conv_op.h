@@ -72,7 +72,7 @@ class ConvOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class GemmConvKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -141,10 +141,10 @@ class GemmConvKernel : public framework::OpKernel<T> {
     int in_step = static_cast<int>(input->dims()[1]) / groups;
     int out_step = static_cast<int>(output->dims()[1]) / groups;
 
-    math::Vol2ColFunctor<Place, T> vol2col;
-    math::Im2ColFunctor<math::ColFormat::kCFO, Place, T> im2col;
+    math::Vol2ColFunctor<DeviceContext, T> vol2col;
+    math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
 
-    auto& dev_ctx = context.template device_context<Place>();
+    auto& dev_ctx = context.template device_context<DeviceContext>();
     for (int i = 0; i < batch_size; i++) {
       Tensor in_batch = input->Slice(i, i + 1).Resize(input_shape);
       Tensor out_batch = output->Slice(i, i + 1).Resize(output_matrix_shape);
@@ -170,14 +170,14 @@ class GemmConvKernel : public framework::OpKernel<T> {
         // gemm
         Tensor out_slice = out_batch.Slice(g * out_step, (g + 1) * out_step);
         Tensor filter_slice = filter.Slice(g * out_step, (g + 1) * out_step);
-        math::matmul<Place, T>(dev_ctx, filter_slice, false, col_matrix, false,
+        math::matmul<DeviceContext, T>(dev_ctx, filter_slice, false, col_matrix, false,
                                T(1.0), &out_slice, T(0.0));
       }
     }
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class GemmConvGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -256,15 +256,15 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
       col_matrix.Resize(col_matrix_shape);
     }
 
-    math::SetConstant<Place, T> set_zero;
-    auto& dev_ctx = context.template device_context<Place>();
+    math::SetConstant<DeviceContext, T> set_zero;
+    auto& dev_ctx = context.template device_context<DeviceContext>();
 
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
       set_zero(dev_ctx, input_grad, static_cast<T>(0));
 
-      math::Col2VolFunctor<Place, T> col2vol;
-      math::Col2ImFunctor<math::ColFormat::kCFO, Place, T> col2im;
+      math::Col2VolFunctor<DeviceContext, T> col2vol;
+      math::Col2ImFunctor<math::ColFormat::kCFO, DeviceContext, T> col2im;
 
       for (int i = 0; i < batch_size; i++) {
         Tensor out_grad_batch =
@@ -283,7 +283,7 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
             col_matrix.ShareDataWith(in_grad_slice);
             col_matrix.Resize(col_matrix_shape);
           }
-          math::matmul<Place, T>(dev_ctx, filter_slice, true, out_grad_slice,
+          math::matmul<DeviceContext, T>(dev_ctx, filter_slice, true, out_grad_slice,
                                  false, T(1.0), &col_matrix, T(0.0));
 
           if (is_expand && data_dim == 2U) {
@@ -303,8 +303,8 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
       Tensor filter_grad_ = *filter_grad;
       filter_grad_.Resize(filter_matrix_shape);
       set_zero(dev_ctx, filter_grad, static_cast<T>(0));
-      math::Im2ColFunctor<math::ColFormat::kCFO, Place, T> im2col;
-      math::Vol2ColFunctor<Place, T> vol2col;
+      math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
+      math::Vol2ColFunctor<DeviceContext, T> vol2col;
       for (int i = 0; i < batch_size; i++) {
         Tensor out_grad_batch =
             output_grad->Slice(i, i + 1).Resize(output_matrix_shape);
@@ -331,7 +331,7 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
           // gemm
           Tensor filter_grad_slice =
               filter_grad_.Slice(g * out_step, (g + 1) * out_step);
-          math::matmul<Place, T>(dev_ctx, out_grad_slice, false, col_matrix,
+          math::matmul<DeviceContext, T>(dev_ctx, out_grad_slice, false, col_matrix,
                                  true, T(1.0), &filter_grad_slice, T(1.0));
         }
       }

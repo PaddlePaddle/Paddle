@@ -21,7 +21,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SoftmaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -31,12 +31,12 @@ class SoftmaxKernel : public framework::OpKernel<T> {
     // allocate memory on device.
     Y->mutable_data<T>(context.GetPlace());
 
-    math::SoftmaxFunctor<Place, T>()(context.template device_context<Place>(),
+    math::SoftmaxFunctor<DeviceContext, T>()(context.template device_context<DeviceContext>(),
                                      X, Y);
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SoftmaxGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -47,8 +47,8 @@ class SoftmaxGradKernel : public framework::OpKernel<T> {
     // allocate memory on device.
     dX->mutable_data<T>(context.GetPlace());
 
-    math::SoftmaxGradFunctor<Place, T>()(
-        context.template device_context<Place>(), Y, dY, dX);
+    math::SoftmaxGradFunctor<DeviceContext, T>()(
+        context.template device_context<DeviceContext>(), Y, dY, dX);
   }
 };
 

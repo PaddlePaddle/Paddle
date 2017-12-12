@@ -28,7 +28,7 @@ struct SparseSGDFunctor {
                   framework::Tensor* output);
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SGDOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -46,7 +46,7 @@ class SGDOpKernel : public framework::OpKernel<T> {
       auto g = framework::EigenVector<T>::Flatten(*grad);
       auto o = framework::EigenVector<T>::Flatten(*param_out);
       auto lr = framework::EigenVector<T>::Flatten(*learning_rate);
-      auto& place = *ctx.template device_context<Place>().eigen_device();
+      auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
       Eigen::DSizes<int, 1> grad_dsize(grad->numel());
       o.device(place) = p - lr.broadcast(grad_dsize) * g;
@@ -56,8 +56,8 @@ class SGDOpKernel : public framework::OpKernel<T> {
       // It's better to find a more elegant solution.
       PADDLE_ENFORCE_EQ(param, param_out);
       auto* grad = ctx.Input<framework::SelectedRows>("Grad");
-      SparseSGDFunctor<Place, T> functor;
-      functor(ctx.template device_context<Place>(), *grad, *learning_rate,
+      SparseSGDFunctor<DeviceContext, T> functor;
+      functor(ctx.template device_context<DeviceContext>(), *grad, *learning_rate,
               param_out);
     } else {
       PADDLE_THROW("Unsupported Variable Type of Grad");

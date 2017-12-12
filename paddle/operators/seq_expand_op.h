@@ -23,7 +23,7 @@ namespace operators {
 
 using LoDTensor = framework::LoDTensor;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SeqExpandKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -37,7 +37,7 @@ class SeqExpandKernel : public framework::OpKernel<T> {
                       "The size of last lod level in Input(Y)"
                       "must be equal to dims[0] of Input(X).");
     out->set_lod(y->lod());
-    auto* place = context.template device_context<Place>().eigen_device();
+    auto* place = context.template device_context<DeviceContext>().eigen_device();
     size_t element_len = framework::product(x_dims) / x_dims[0];
     T* out_data = out->mutable_data<T>(context.GetPlace());
     auto out_starts = out->lod().back();
@@ -69,7 +69,7 @@ class SeqExpandKernel : public framework::OpKernel<T> {
  *    Grad(X).lod = Input(X).lod
  *
  * */
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SeqExpandGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -89,7 +89,7 @@ class SeqExpandGradKernel : public framework::OpKernel<T> {
       d_out_t(d_out_data, static_cast<int>(repeat), element_len);
       Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>
       d_x_t(d_x_data, static_cast<int>(element_len));
-      auto place = context.template device_context<Place>().eigen_device();
+      auto place = context.template device_context<DeviceContext>().eigen_device();
       d_x_t.device(*place) = d_out_t.sum(Eigen::array<int, 1>({{0}}));
       d_out_data += (repeat * element_len);
       d_x_data += element_len;

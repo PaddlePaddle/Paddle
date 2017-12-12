@@ -54,7 +54,7 @@ inline void TransCompute(const int dim, const DeviceContext& dev_ctx,
   }
 }
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class TransposeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -64,12 +64,12 @@ class TransposeKernel : public framework::OpKernel<T> {
 
     std::vector<int> axis = context.Attr<std::vector<int>>("axis");
     int ndims = axis.size();
-    auto& dev_ctx = context.template device_context<Place>();
-    TransCompute<Place, T>(ndims, dev_ctx, *x, out, axis);
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    TransCompute<DeviceContext, T>(ndims, dev_ctx, *x, out, axis);
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class TransposeGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -88,8 +88,8 @@ class TransposeGradKernel : public framework::OpKernel<T> {
     }
 
     int ndims = axis.size();
-    auto& dev_ctx = context.template device_context<Place>();
-    TransCompute<Place, T>(ndims, dev_ctx, *out_grad, x_grad, reversed_axis);
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    TransCompute<DeviceContext, T>(ndims, dev_ctx, *out_grad, x_grad, reversed_axis);
   }
 };
 

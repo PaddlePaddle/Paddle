@@ -22,7 +22,7 @@
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class MultiplexCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
@@ -47,7 +47,7 @@ class MultiplexCPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class MultiplexGradCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
@@ -60,7 +60,7 @@ class MultiplexGradCPUKernel : public framework::OpKernel<T> {
       if (d_ins[i]) {
         d_ins[i]->mutable_data<T>(ctx.GetPlace());
         auto t = framework::EigenVector<T>::Flatten(*d_ins[i]);
-        t.device(*ctx.template device_context<Place>().eigen_device()) =
+        t.device(*ctx.template device_context<DeviceContext>().eigen_device()) =
             t.constant(static_cast<T>(0));
       }
     }

@@ -47,7 +47,7 @@ struct LogicalXorFunctor {
   }
 };
 
-template <typename Place, typename Functor>
+template <typename DeviceContext, typename Functor>
 class BinaryLogicalOpKernel
     : public framework::OpKernel<typename Functor::ELEM_TYPE> {
  public:
@@ -57,14 +57,14 @@ class BinaryLogicalOpKernel
     auto* y = context.Input<framework::Tensor>("Y");
     auto* out = context.Output<framework::Tensor>("Out");
     Functor binary_func;
-    platform::Transform<Place> trans;
-    trans(context.template device_context<Place>(), x->data<T>(),
+    platform::Transform<DeviceContext> trans;
+    trans(context.template device_context<DeviceContext>(), x->data<T>(),
           x->data<T>() + x->numel(), y->data<T>(),
           out->mutable_data<bool>(context.GetPlace()), binary_func);
   }
 };
 
-template <typename Place, typename Functor>
+template <typename DeviceContext, typename Functor>
 class UnaryLogicalOpKernel
     : public framework::OpKernel<typename Functor::ELEM_TYPE> {
  public:
@@ -73,8 +73,8 @@ class UnaryLogicalOpKernel
     auto* x = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
     Functor unary_func;
-    platform::Transform<Place> trans;
-    trans(context.template device_context<Place>(), x->data<T>(),
+    platform::Transform<DeviceContext> trans;
+    trans(context.template device_context<DeviceContext>(), x->data<T>(),
           x->data<T>() + x->numel(),
           out->mutable_data<bool>(context.GetPlace()), unary_func);
   }

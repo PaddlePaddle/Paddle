@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class AdamOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -52,7 +52,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
     auto param_out = framework::EigenVector<T>::Flatten(*param_out_tensor);
     auto moment1_out = framework::EigenVector<T>::Flatten(*moment1_out_tensor);
     auto moment2_out = framework::EigenVector<T>::Flatten(*moment2_out_tensor);
-    auto* place = ctx.template device_context<Place>().eigen_device();
+    auto* place = ctx.template device_context<DeviceContext>().eigen_device();
 
     moment1_out.device(*place) = beta1 * moment1 + (1 - beta1) * grad;
     moment2_out.device(*place) = beta2 * moment2 + (1 - beta2) * grad.square();

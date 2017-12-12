@@ -19,7 +19,7 @@
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename Functor>
+template <typename DeviceContext, typename Functor>
 class ActivationKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
@@ -32,7 +32,7 @@ class ActivationKernel
 
     auto x = framework::EigenVector<T>::Flatten(*X);
     auto y = framework::EigenVector<T>::Flatten(*Y);
-    auto* place = context.template device_context<Place>().eigen_device();
+    auto* place = context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
 
     auto attrs = functor.GetAttrs();
@@ -43,7 +43,7 @@ class ActivationKernel
   }
 };
 
-template <typename Place, typename Functor>
+template <typename DeviceContext, typename Functor>
 class ActivationGradKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
@@ -59,7 +59,7 @@ class ActivationGradKernel
     auto x = framework::EigenVector<T>::Flatten(*X);
     auto y = framework::EigenVector<T>::Flatten(*Y);
     auto dx = framework::EigenVector<T>::Flatten(*dX);
-    auto* place = context.template device_context<Place>().eigen_device();
+    auto* place = context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
     auto attrs = functor.GetAttrs();
     for (auto& attr : attrs) {

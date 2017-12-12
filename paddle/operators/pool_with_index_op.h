@@ -24,7 +24,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename Place, typename T1, typename T2>
+template <typename DeviceContext, typename T1, typename T2>
 class MaxPoolWithIndexKernel : public framework::OpKernel<T1> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -36,7 +36,7 @@ class MaxPoolWithIndexKernel : public framework::OpKernel<T1> {
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
 
-    auto& dev_ctx = context.template device_context<Place>();
+    auto& dev_ctx = context.template device_context<DeviceContext>();
     if (context.Attr<bool>("global_pooling")) {
       for (size_t i = 0; i < ksize.size(); ++i) {
         paddings[i] = 0;
@@ -46,12 +46,12 @@ class MaxPoolWithIndexKernel : public framework::OpKernel<T1> {
 
     switch (ksize.size()) {
       case 2: {
-        paddle::operators::math::MaxPool2dWithIndexFunctor<Place, T1, T2>
+        paddle::operators::math::MaxPool2dWithIndexFunctor<DeviceContext, T1, T2>
             pool2d_forward;
         pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings, out, mask);
       } break;
       case 3: {
-        paddle::operators::math::MaxPool3dWithIndexFunctor<Place, T1, T2>
+        paddle::operators::math::MaxPool3dWithIndexFunctor<DeviceContext, T1, T2>
             pool3d_forward;
         pool3d_forward(dev_ctx, *in_x, ksize, strides, paddings, out, mask);
       } break;
@@ -60,7 +60,7 @@ class MaxPoolWithIndexKernel : public framework::OpKernel<T1> {
   }
 };
 
-template <typename Place, typename T1, typename T2>
+template <typename DeviceContext, typename T1, typename T2>
 class MaxPoolWithIndexGradKernel : public framework::OpKernel<T1> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -81,18 +81,18 @@ class MaxPoolWithIndexGradKernel : public framework::OpKernel<T1> {
 
     if (in_x_grad) {
       in_x_grad->mutable_data<T1>(context.GetPlace());
-      auto& device_ctx = context.template device_context<Place>();
+      auto& device_ctx = context.template device_context<DeviceContext>();
       math::set_constant(device_ctx, in_x_grad, 0);
 
       switch (ksize.size()) {
         case 2: {
-          paddle::operators::math::MaxPool2dWithIndexGradFunctor<Place, T1, T2>
+          paddle::operators::math::MaxPool2dWithIndexGradFunctor<DeviceContext, T1, T2>
               pool2d_backward;
           pool2d_backward(device_ctx, *out_grad, *mask, ksize, strides,
                           paddings, in_x_grad);
         } break;
         case 3: {
-          paddle::operators::math::MaxPool3dWithIndexGradFunctor<Place, T1, T2>
+          paddle::operators::math::MaxPool3dWithIndexGradFunctor<DeviceContext, T1, T2>
               pool3d_backward;
           pool3d_backward(device_ctx, *out_grad, *mask, ksize, strides,
                           paddings, in_x_grad);
