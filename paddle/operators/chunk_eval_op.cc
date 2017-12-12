@@ -80,14 +80,16 @@ class ChunkEvalOpMaker : public framework::OpProtoAndCheckerMaker {
               "sensitivity) of chunks on the given mini-batch.");
     AddOutput("F1-Score",
               "(float). The evaluated F1-Score on the given mini-batch.");
+    AddOutput("NumInferChunks",
+              "(int64_t). The number of chunks in Inference on the given "
+              "mini-batch.");
     AddOutput(
-        "NumInferChunks",
-        "(int). The number of chunks in Inference on the given mini-batch.");
-    AddOutput("NumLabelChunks",
-              "(int). The number of chunks in Label on the given mini-batch.");
-    AddOutput("NumCorrectChunks",
-              "(int). The number of chunks both in Inference and Label on the "
-              "given mini-batch.");
+        "NumLabelChunks",
+        "(int64_t). The number of chunks in Label on the given mini-batch.");
+    AddOutput(
+        "NumCorrectChunks",
+        "(int64_t). The number of chunks both in Inference and Label on the "
+        "given mini-batch.");
     AddAttr<int>("num_chunk_types",
                  "(int). The number of chunk type. See below for details.");
     AddAttr<std::string>(
