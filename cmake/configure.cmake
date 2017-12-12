@@ -24,6 +24,11 @@ if(WITH_DOUBLE)
     add_definitions(-DPADDLE_TYPE_DOUBLE)
 endif(WITH_DOUBLE)
 
+if(WITH_ARM_FP16)
+    add_definitions(-DPADDLE_ARM_FP16)
+    add_definitions("-march=armv8.2-a+fp16+simd")
+endif(WITH_ARM_FP16)
+
 if(WITH_TESTING)
     add_definitions(-DPADDLE_WITH_TESTING)
 endif(WITH_TESTING)

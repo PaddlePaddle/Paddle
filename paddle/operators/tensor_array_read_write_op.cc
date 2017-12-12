@@ -27,7 +27,7 @@ class WriteToArrayOp : public ArrayOp {
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
     auto *x = scope.FindVar(Input("X"));
-    PADDLE_ENFORCE(x != nullptr, "X must be set");
+    if (x == nullptr) return;
     auto &x_tensor = x->Get<framework::LoDTensor>();
     size_t offset = GetOffset(scope, dev_ctx);
     auto *out =
@@ -60,12 +60,16 @@ class WriteToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         "(Tensor) the subscript index in tensor array. The number of element "
         "should be 1");
     AddOutput("Out", "(TensorArray) the tensor array will be written");
-    AddComment(R"DOC(Write a LoDTensor to a LoDTensor array.
+    AddComment(R"DOC(
+WriteToArray Operator.
 
-Assume T is LoDTensor, i is the subscript of the array, and A is the array. The
+This operator writes a LoDTensor to a LoDTensor array.
+
+Assume $T$ is LoDTensor, $i$ is the subscript of the array, and $A$ is the array. The
 equation is
 
-A[i] = T
+$$A[i] = T$$
+
 )DOC");
   }
 };
@@ -76,7 +80,9 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE(context->HasInput("I"), "Must set the subscript index");
     PADDLE_ENFORCE_EQ(framework::product(context->GetInputDim("I")), 1,
                       "The number of element of subscript index must be 1");
-    PADDLE_ENFORCE(context->HasInput("X"), NotHasXError());
+    if (!context->HasInput("X")) {
+      return;
+    }
     PADDLE_ENFORCE(context->HasOutput("Out"), NotHasOutError());
     context->SetOutputDim("Out", context->GetInputDim("X"));
   }
@@ -99,9 +105,10 @@ class WriteToArrayInferVarType : public framework::VarTypeInference {
     auto &out = detail::Ref(block->FindRecursiveOrCreateVar(out_name),
                             "Cannot found %s", out_name);
     out.SetType(framework::VarDesc::LOD_TENSOR_ARRAY);
-    auto &x =
-        detail::Ref(block->FindVarRecursive(x_name), "Cannot found %s", x_name);
-    out.SetDataType(x.GetDataType());
+    auto *x = block->FindVarRecursive(x_name);
+    if (x != nullptr) {
+      out.SetDataType(x->GetDataType());
+    }
   }
 };
 
@@ -121,10 +128,13 @@ class ReadFromArrayOp : public ArrayOp {
     PADDLE_ENFORCE(out != nullptr, "Out must be set");
     auto *out_tensor = out->GetMutable<framework::LoDTensor>();
     size_t offset = GetOffset(scope, dev_ctx);
-    PADDLE_ENFORCE_LT(offset, x_array.size());
-    framework::CopyFrom(x_array[offset], dev_ctx.GetPlace(), dev_ctx,
-                        out_tensor);
-    out_tensor->set_lod(x_array[offset].lod());
+    if (offset < x_array.size()) {
+      framework::CopyFrom(x_array[offset], dev_ctx.GetPlace(), dev_ctx,
+                          out_tensor);
+      out_tensor->set_lod(x_array[offset].lod());
+    } else {
+      VLOG(10) << "offset " << offset << " >= " << x_array.size();
+    }
   }
 };
 
@@ -138,12 +148,16 @@ class ReadFromArrayProtoMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) the subscript index in tensor array. The number of "
              "element should be 1");
     AddOutput("Out", "(LoDTensor) the tensor will be read from.");
-    AddComment(R"DOC(Read a LoDTensor from a LoDTensor Array
+    AddComment(R"DOC(
+ReadFromArray Operator.
 
-Assume T is LoDTensor, i is th e subscript of the array, and A is the array. The
+Read a LoDTensor from a LoDTensor Array.
+
+Assume $T$ is LoDTensor, $i$ is the subscript of the array, and $A$ is the array. The
 equation is
 
-T = A[i]
+$$T = A[i]$$
+
 )DOC");
   }
 };

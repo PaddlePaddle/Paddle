@@ -27,189 +27,192 @@ namespace math {
 namespace detail {
 
 /*
- * threads(framePerBlock, batchPerBlock)
- * grid(frameBlocks, batchBlocks)
+ * threads(frame_per_block, batch_per_block)
+ * grid(frame_blocks, batch_blocks)
  */
-template <class T, class Op, bool isBatch>
-__global__ void KeLstmForward(Op op, LstmMetaValue<T> value, int frameSize,
-                              int batchSize, activation_mode_t active_node,
+template <class T, class Op, bool is_batch>
+__global__ void KeLstmForward(Op op, LstmMetaValue<T> value, int frame_size,
+                              int batch_size, activation_mode_t active_node,
                               activation_mode_t active_gate,
                               activation_mode_t active_state) {
-  const int frameIdx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (frameIdx >= frameSize) return;
+  const int frame_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (frame_idx >= frame_size) return;
 
-  int batchIdx = 0;
-  if (isBatch) {
-    batchIdx = blockIdx.y * blockDim.y + threadIdx.y;
-    if (batchIdx >= batchSize) return;
-    value.gateValue += batchIdx * frameSize * 4;
-    value.outputValue += batchIdx * frameSize;
-    value.stateValue += batchIdx * frameSize;
-    value.stateActiveValue += batchIdx * frameSize;
+  int batch_idx = 0;
+  if (is_batch) {
+    batch_idx = blockIdx.y * blockDim.y + threadIdx.y;
+    if (batch_idx >= batch_size) return;
+    value.gate_value += batch_idx * frame_size * 4;
+    value.output_value += batch_idx * frame_size;
+    value.state_value += batch_idx * frame_size;
+    value.state_active_value += batch_idx * frame_size;
   }
 
-  T rState;
-  T rPrevState = 0;
-  T rStateAtv;
-  T rOut;
-  T rValueIn;
-  T rValueIg;
-  T rValueFg;
-  T rValueOg;
+  T r_state;
+  T r_prev_state = 0;
+  T r_state_atv;
+  T r_out;
+  T r_value_in;
+  T r_value_ig;
+  T r_value_fg;
+  T r_value_og;
 
-  T rCheckI = value.checkIg ? value.checkIg[frameIdx] : 0;
-  T rCheckF = value.checkFg ? value.checkFg[frameIdx] : 0;
-  T rCheckO = value.checkOg ? value.checkOg[frameIdx] : 0;
+  T r_checkI = value.check_ig ? value.check_ig[frame_idx] : 0;
+  T r_checkF = value.check_fg ? value.check_fg[frame_idx] : 0;
+  T r_checkO = value.check_og ? value.check_og[frame_idx] : 0;
 
-  rValueIn = value.gateValue[frameIdx];
-  rValueIg = value.gateValue[frameIdx + frameSize];
-  rValueFg = value.gateValue[frameIdx + frameSize * 2];
-  rValueOg = value.gateValue[frameIdx + frameSize * 3];
+  r_value_in = value.gate_value[frame_idx];
+  r_value_ig = value.gate_value[frame_idx + frame_size];
+  r_value_fg = value.gate_value[frame_idx + frame_size * 2];
+  r_value_og = value.gate_value[frame_idx + frame_size * 3];
 
-  if (value.prevStateValue) {
-    if (isBatch) value.prevStateValue += batchIdx * frameSize;
-    rPrevState = value.prevStateValue[frameIdx];
+  if (value.prev_state_value) {
+    if (is_batch) value.prev_state_value += batch_idx * frame_size;
+    r_prev_state = value.prev_state_value[frame_idx];
   }
 
-  op(rValueIn, rValueIg, rValueFg, rValueOg, rPrevState, rState, rStateAtv,
-     rOut, rCheckI, rCheckF, rCheckO, active_node, active_gate, active_state);
+  op(r_value_in, r_value_ig, r_value_fg, r_value_og, r_prev_state, r_state,
+     r_state_atv, r_out, r_checkI, r_checkF, r_checkO, active_node, active_gate,
+     active_state);
 
-  value.gateValue[frameIdx] = rValueIn;
-  value.gateValue[frameIdx + frameSize] = rValueIg;
-  value.gateValue[frameIdx + frameSize * 2] = rValueFg;
-  value.gateValue[frameIdx + frameSize * 3] = rValueOg;
+  value.gate_value[frame_idx] = r_value_in;
+  value.gate_value[frame_idx + frame_size] = r_value_ig;
+  value.gate_value[frame_idx + frame_size * 2] = r_value_fg;
+  value.gate_value[frame_idx + frame_size * 3] = r_value_og;
 
-  value.stateValue[frameIdx] = rState;
-  value.stateActiveValue[frameIdx] = rStateAtv;
-  value.outputValue[frameIdx] = rOut;
+  value.state_value[frame_idx] = r_state;
+  value.state_active_value[frame_idx] = r_state_atv;
+  value.output_value[frame_idx] = r_out;
 }
 
 /*
- * threads(framePerBlock, batchPerBlock)
- * grid(frameBlocks, batchBlocks)
+ * threads(frame_per_block, batch_per_block)
+ * grid(frame_blocks, batch_blocks)
  */
-template <class T, class Op, bool isBatch>
+template <class T, class Op, bool is_batch>
 __global__ void KeLstmBackward(Op op, LstmMetaValue<T> value,
-                               LstmMetaGrad<T> grad, int frameSize,
-                               int batchSize, activation_mode_t active_node,
+                               LstmMetaGrad<T> grad, int frame_size,
+                               int batch_size, activation_mode_t active_node,
                                activation_mode_t active_gate,
                                activation_mode_t active_state) {
-  const int frameIdx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (frameIdx >= frameSize) return;
+  const int frame_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (frame_idx >= frame_size) return;
 
-  int batchIdx = 0;
-  if (isBatch) {
-    batchIdx = blockIdx.y * blockDim.y + threadIdx.y;
-    if (batchIdx >= batchSize) return;
-    value.gateValue += batchIdx * frameSize * 4;
-    value.stateValue += batchIdx * frameSize;
-    value.stateActiveValue += batchIdx * frameSize;
-    grad.gateGrad += batchIdx * frameSize * 4;
-    grad.stateGrad += batchIdx * frameSize;
-    grad.outputGrad += batchIdx * frameSize;
+  int batch_idx = 0;
+  if (is_batch) {
+    batch_idx = blockIdx.y * blockDim.y + threadIdx.y;
+    if (batch_idx >= batch_size) return;
+    value.gate_value += batch_idx * frame_size * 4;
+    value.state_value += batch_idx * frame_size;
+    value.state_active_value += batch_idx * frame_size;
+    grad.gate_grad += batch_idx * frame_size * 4;
+    grad.state_grad += batch_idx * frame_size;
+    grad.output_grad += batch_idx * frame_size;
   }
 
-  T rValueIn;
-  T rValueIg;
-  T rValueFg;
-  T rValueOg;
-  T rGradIn;
-  T rGradIg;
-  T rGradFg;
-  T rGradOg;
-  T rPrevState = 0;
-  T rPrevStateGrad;
-  T rState;
-  T rStateGrad;
-  T rStateAtv;
-  T rOutputGrad;
-  T rCheckI = value.checkIg ? value.checkIg[frameIdx] : 0;
-  T rCheckF = value.checkFg ? value.checkFg[frameIdx] : 0;
-  T rCheckO = value.checkOg ? value.checkOg[frameIdx] : 0;
+  T r_value_in;
+  T r_value_ig;
+  T r_value_fg;
+  T r_value_og;
+  T r_grad_in;
+  T r_grad_ig;
+  T r_grad_fg;
+  T r_grad_og;
+  T r_prev_state = 0;
+  T r_prev_state_grad;
+  T r_state;
+  T r_state_grad;
+  T r_state_atv;
+  T r_output_grad;
+  T r_checkI = value.check_ig ? value.check_ig[frame_idx] : 0;
+  T r_checkF = value.check_fg ? value.check_fg[frame_idx] : 0;
+  T r_checkO = value.check_og ? value.check_og[frame_idx] : 0;
 
-  T rCheckIGrad;
-  T rCheckFGrad;
-  T rCheckOGrad;
+  T r_checkIGrad;
+  T r_checkFGrad;
+  T r_checkOGrad;
 
-  rValueIn = value.gateValue[frameIdx];
-  rValueIg = value.gateValue[frameIdx + frameSize];
-  rValueFg = value.gateValue[frameIdx + frameSize * 2];
-  rValueOg = value.gateValue[frameIdx + frameSize * 3];
-  rState = value.stateValue[frameIdx];
-  rStateAtv = value.stateActiveValue[frameIdx];
-  rOutputGrad = grad.outputGrad[frameIdx];
-  rStateGrad = grad.stateGrad[frameIdx];
+  r_value_in = value.gate_value[frame_idx];
+  r_value_ig = value.gate_value[frame_idx + frame_size];
+  r_value_fg = value.gate_value[frame_idx + frame_size * 2];
+  r_value_og = value.gate_value[frame_idx + frame_size * 3];
+  r_state = value.state_value[frame_idx];
+  r_state_atv = value.state_active_value[frame_idx];
+  r_output_grad = grad.output_grad[frame_idx];
+  r_state_grad = grad.state_grad[frame_idx];
 
-  if (value.prevStateValue) {
-    if (isBatch) value.prevStateValue += batchIdx * frameSize;
-    rPrevState = value.prevStateValue[frameIdx];
+  if (value.prev_state_value) {
+    if (is_batch) value.prev_state_value += batch_idx * frame_size;
+    r_prev_state = value.prev_state_value[frame_idx];
   }
 
-  op(rValueIn, rValueIg, rValueFg, rValueOg, rGradIn, rGradIg, rGradFg, rGradOg,
-     rPrevState, rPrevStateGrad, rState, rStateGrad, rStateAtv, rOutputGrad,
-     rCheckI, rCheckF, rCheckO, rCheckIGrad, rCheckFGrad, rCheckOGrad,
-     active_node, active_gate, active_state);
+  op(r_value_in, r_value_ig, r_value_fg, r_value_og, r_grad_in, r_grad_ig,
+     r_grad_fg, r_grad_og, r_prev_state, r_prev_state_grad, r_state,
+     r_state_grad, r_state_atv, r_output_grad, r_checkI, r_checkF, r_checkO,
+     r_checkIGrad, r_checkFGrad, r_checkOGrad, active_node, active_gate,
+     active_state);
 
-  grad.gateGrad[frameIdx] = rGradIn;
-  grad.gateGrad[frameIdx + frameSize] = rGradIg;
-  grad.gateGrad[frameIdx + frameSize * 2] = rGradFg;
-  grad.gateGrad[frameIdx + frameSize * 3] = rGradOg;
-  grad.stateGrad[frameIdx] = rStateGrad;
-  if (grad.prevStateGrad) {
-    if (isBatch) grad.prevStateGrad += batchIdx * frameSize;
-    grad.prevStateGrad[frameIdx] = rPrevStateGrad;
+  grad.gate_grad[frame_idx] = r_grad_in;
+  grad.gate_grad[frame_idx + frame_size] = r_grad_ig;
+  grad.gate_grad[frame_idx + frame_size * 2] = r_grad_fg;
+  grad.gate_grad[frame_idx + frame_size * 3] = r_grad_og;
+  grad.state_grad[frame_idx] = r_state_grad;
+  if (grad.prev_state_grad) {
+    if (is_batch) grad.prev_state_grad += batch_idx * frame_size;
+    grad.prev_state_grad[frame_idx] = r_prev_state_grad;
   }
 
-  if (isBatch) {
-    if (value.prevStateValue) {
-      if (grad.checkIgGrad)
-        paddle::platform::CudaAtomicAdd(grad.checkIgGrad + frameIdx,
-                                        rCheckIGrad);
-      if (grad.checkFgGrad)
-        paddle::platform::CudaAtomicAdd(grad.checkFgGrad + frameIdx,
-                                        rCheckFGrad);
+  if (is_batch) {
+    if (value.prev_state_value) {
+      if (grad.check_ig_grad)
+        paddle::platform::CudaAtomicAdd(grad.check_ig_grad + frame_idx,
+                                        r_checkIGrad);
+      if (grad.check_fg_grad)
+        paddle::platform::CudaAtomicAdd(grad.check_fg_grad + frame_idx,
+                                        r_checkFGrad);
     }
-    if (grad.checkOgGrad)
-      paddle::platform::CudaAtomicAdd(grad.checkOgGrad + frameIdx, rCheckOGrad);
+    if (grad.check_og_grad)
+      paddle::platform::CudaAtomicAdd(grad.check_og_grad + frame_idx,
+                                      r_checkOGrad);
   } else {
-    if (value.prevStateValue) {
-      if (grad.checkIgGrad) grad.checkIgGrad[frameIdx] += rCheckIGrad;
-      if (grad.checkFgGrad) grad.checkFgGrad[frameIdx] += rCheckFGrad;
+    if (value.prev_state_value) {
+      if (grad.check_ig_grad) grad.check_ig_grad[frame_idx] += r_checkIGrad;
+      if (grad.check_fg_grad) grad.check_fg_grad[frame_idx] += r_checkFGrad;
     }
-    if (grad.checkOgGrad) grad.checkOgGrad[frameIdx] += rCheckOGrad;
+    if (grad.check_og_grad) grad.check_og_grad[frame_idx] += r_checkOGrad;
   }
 }
 
 template <class T, class Op>
 void gpu_lstm_forward(const platform::DeviceContext& context, Op op,
-                      LstmMetaValue<T> value, int frameSize, int batchSize,
+                      LstmMetaValue<T> value, int frame_size, int batch_size,
                       activation_mode_t active_node,
                       activation_mode_t active_gate,
                       activation_mode_t active_state) {
   dim3 threads;
   dim3 grid;
-  if (batchSize == 1) {
-    int framePerBlock = frameSize <= 1024 ? frameSize : 1024;
-    int frameBlocks = (frameSize + 1024 - 1) / 1024;
-    threads = dim3(framePerBlock, 1);
-    grid = dim3(frameBlocks, 1);
+  if (batch_size == 1) {
+    int frame_per_block = frame_size <= 1024 ? frame_size : 1024;
+    int frame_blocks = (frame_size + 1024 - 1) / 1024;
+    threads = dim3(frame_per_block, 1);
+    grid = dim3(frame_blocks, 1);
   } else {
-    /* framePerBlock = 32 batchPerBlock = 32 */
+    /* frame_per_block = 32 batch_per_block = 32 */
     threads = dim3(32, 32);
-    grid = dim3((frameSize + 32 - 1) / 32, (batchSize + 32 - 1) / 32);
+    grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 32 - 1) / 32);
   }
 
   auto stream =
       reinterpret_cast<const platform::CUDADeviceContext&>(context).stream();
-  if (batchSize == 1) {
+  if (batch_size == 1) {
     KeLstmForward<T, Op,
-                  /* isBatch= */ false><<<grid, threads, 0, stream>>>(
-        op, value, frameSize, batchSize, active_node, active_gate,
+                  /* is_batch= */ false><<<grid, threads, 0, stream>>>(
+        op, value, frame_size, batch_size, active_node, active_gate,
         active_state);
   } else {
     KeLstmForward<T, Op,
-                  /* isBatch= */ true><<<grid, threads, 0, stream>>>(
-        op, value, frameSize, batchSize, active_node, active_gate,
+                  /* is_batch= */ true><<<grid, threads, 0, stream>>>(
+        op, value, frame_size, batch_size, active_node, active_gate,
         active_state);
   }
 }
@@ -217,34 +220,34 @@ void gpu_lstm_forward(const platform::DeviceContext& context, Op op,
 template <class T, class Op>
 void gpu_lstm_backward(const platform::DeviceContext& context, Op op,
                        LstmMetaValue<T> value, LstmMetaGrad<T> grad,
-                       int frameSize, int batchSize,
+                       int frame_size, int batch_size,
                        activation_mode_t active_node,
                        activation_mode_t active_gate,
                        activation_mode_t active_state) {
   dim3 threads;
   dim3 grid;
-  if (batchSize == 1) {
-    int framePerBlock = frameSize <= 1024 ? frameSize : 1024;
-    int frameBlocks = (frameSize + 1024 - 1) / 1024;
-    threads = dim3(framePerBlock, 1);
-    grid = dim3(frameBlocks, 1);
+  if (batch_size == 1) {
+    int frame_per_block = frame_size <= 1024 ? frame_size : 1024;
+    int frame_blocks = (frame_size + 1024 - 1) / 1024;
+    threads = dim3(frame_per_block, 1);
+    grid = dim3(frame_blocks, 1);
   } else {
-    /* framePerBlock = 32 batchPerBlock = 16 */
+    /* frame_per_block = 32 batch_per_block = 16 */
     threads = dim3(32, 16);
-    grid = dim3((frameSize + 32 - 1) / 32, (batchSize + 16 - 1) / 16);
+    grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 16 - 1) / 16);
   }
 
   auto stream =
       reinterpret_cast<const platform::CUDADeviceContext&>(context).stream();
-  if (batchSize == 1) {
+  if (batch_size == 1) {
     KeLstmBackward<T, Op,
-                   /* isBatch= */ false><<<grid, threads, 0, stream>>>(
-        op, value, grad, frameSize, batchSize, active_node, active_gate,
+                   /* is_batch= */ false><<<grid, threads, 0, stream>>>(
+        op, value, grad, frame_size, batch_size, active_node, active_gate,
         active_state);
   } else {
     KeLstmBackward<T, Op,
-                   /* isBatch= */ true><<<grid, threads, 0, stream>>>(
-        op, value, grad, frameSize, batchSize, active_node, active_gate,
+                   /* is_batch= */ true><<<grid, threads, 0, stream>>>(
+        op, value, grad, frame_size, batch_size, active_node, active_gate,
         active_state);
   }
 }

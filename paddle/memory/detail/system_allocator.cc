@@ -43,7 +43,7 @@ void* CPUAllocator::Alloc(size_t& index, size_t size) {
 
   void* p;
 
-#ifdef PADDLE_USE_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
   // refer to https://github.com/01org/mkl-dnn/blob/master/include/mkldnn.hpp
   // memory alignment
   PADDLE_ENFORCE_EQ(posix_memalign(&p, 4096ul, size), 0);
@@ -83,7 +83,7 @@ void* GPUAllocator::Alloc(size_t& index, size_t size) {
   paddle::platform::GpuMemoryUsage(available, capacity);
 
   // Reserve memory for page tables, etc.
-  size_t reserving = capacity - paddle::platform::GpuMaxAllocSize();
+  size_t reserving = 0.05 * capacity + paddle::platform::GpuMinChunkSize();
   size_t usable = available > reserving ? available - reserving : 0;
 
   // If remaining size no less than expected size, using general

@@ -95,6 +95,7 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
                         "Input(Label) should be 1.");
     }
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+    ctx->ShareLoD("X", framework::GradVarName("X"));
   }
 
  protected:

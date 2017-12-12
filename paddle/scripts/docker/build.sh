@@ -114,7 +114,10 @@ EOF
             -DWITH_SWIG_PY=ON \
             -DWITH_STYLE_CHECK=OFF
         make -j `nproc` gen_proto_py
+        make -j `nproc` paddle_python
         make -j `nproc` paddle_docs paddle_docs_cn
+        make -j `nproc` print_operators_doc
+        paddle/pybind/print_operators_doc > doc/en/html/operators.json
         popd
     fi
 
@@ -176,7 +179,7 @@ EOF
     # run paddle version to install python packages first
     RUN apt-get update &&\
         ${NCCL_DEPS}\
-        apt-get install -y wget python-pip && pip install -U pip && \
+        apt-get install -y wget python-pip dmidecode && pip install -U pip && \
         pip install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
@@ -186,7 +189,6 @@ EOF
     ${DOCKERFILE_GPU_ENV}
     ADD go/cmd/pserver/pserver /usr/bin/
     ADD go/cmd/master/master /usr/bin/
-    ADD paddle/pybind/print_operators_doc /usr/bin/
     # default command shows the paddle version and exit
     CMD ["paddle", "version"]
 EOF

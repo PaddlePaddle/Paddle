@@ -6,11 +6,12 @@ from paddle.v2.fluid.layer_helper import LayerHelper, unique_name
 import re
 import cStringIO
 from param_attr import ParamAttr
+import contextlib
 
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
     'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool', 'sums', 'cos_sim',
-    'batch_norm', 'accuracy', 'split_lod_tensor'
+    'batch_norm', 'accuracy', 'split_lod_tensor', 'While'
 ]
 
 
@@ -31,11 +32,9 @@ def fc(input,
        size: The size of the layer
        num_flatten_dims: Number of columns in input
        param_attr: The parameters/weights to the FC Layer
-       param_initializer: Initializer used for the weight/parameter.
-       If None, XavierInitializer() is used
+       param_initializer: Initializer used for the weight/parameter. If None, XavierInitializer() is used
        bias_attr: The bias parameter for the FC layer
-       bias_initializer: Initializer used for the bias.
-       If None, then ConstantInitializer() is used
+       bias_initializer: Initializer used for the bias. If None, then ConstantInitializer() is used
        act: Activation to be applied to the output of FC layer
        name: Name/alias of the function
        main_program: Name of the main program that calls this
@@ -179,6 +178,77 @@ def dynamic_lstm(input,
             'candidate_activation': candidate_activation
         })
     return hidden, cell
+
+
+def gru_unit(input,
+             hidden,
+             size,
+             weight=None,
+             bias=None,
+             activation='tanh',
+             gate_activation='sigmoid',
+             main_program=None,
+             startup_program=None):
+    """
+    GRUUnit Operator implements partial calculations of the GRU unit as following:
+
+    $$
+    update \ gate: u_t = actGate(xu_t + W_u * h_{t-1} + b_u) \\
+    reset \ gate: r_t = actGate(xr_t + W_r * h_{t-1} + b_r)  \\
+    output \ candidate: {h}_t = actNode(xc_t + W_c * dot(r_t, h_{t-1}) + b_c) \\
+    output: h_t = dot((1 - u_t), h_{t-1}) + dot(u_t, {h}_t)
+    $$
+
+    which is same as one time step of GRU Operator.
+
+    @note To implement the complete GRU unit, fully-connected operator must be
+    used before to feed xu, xr and xc as the Input of GRUUnit operator.
+
+    TODO(ChunweiYan) add more document here
+    """
+    activation_dict = dict(
+        identity=0,
+        sigmoid=1,
+        tanh=2,
+        relu=3, )
+    activation = activation_dict[activation]
+    gate_activation = activation_dict[gate_activation]
+
+    helper = LayerHelper('gru_unit', **locals())
+    dtype = helper.input_dtype()
+    size = size / 3
+
+    # create weight
+    if weight is None:
+        weight = helper.create_parameter(
+            attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
+
+    # create bias
+    if bias is None:
+        bias_size = [1, 3 * size]
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+
+    gate = helper.create_tmp_variable(dtype)
+    reset_hidden_pre = helper.create_tmp_variable(dtype)
+    updated_hidden = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type='gru_unit',
+        inputs={'Input': input,
+                'HiddenPrev': hidden,
+                'Weight': weight},
+        outputs={
+            'Gate': gate,
+            'ResetHiddenPrev': reset_hidden_pre,
+            'Hidden': updated_hidden,
+        },
+        attrs={
+            'activation': 0,
+            'gate_activation': 1,
+        })
+
+    return updated_hidden, reset_hidden_pre, gate
 
 
 def data(name,
@@ -360,7 +430,8 @@ def _create_op_func_(op_type):
                     dtype = each.dtype
                 elif dtype != each.dtype:
                     raise ValueError(
-                        "operator {0} must input same dtype".format(op_type))
+                        "operator {0} must input same dtype. {1} vs {2}".format(
+                            op_type, dtype, each.dtype))
 
         return dtype
 
@@ -477,6 +548,24 @@ def linear_chain_crf(input,
         })
 
     return log_likelihood
+
+
+def crf_decoding(input,
+                 param_attr,
+                 label=None,
+                 main_program=None,
+                 startup_program=None):
+    helper = LayerHelper('crf_decoding', **locals())
+    transition = helper.get_parameter(param_attr.name)
+    viterbi_path = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='crf_decoding',
+        inputs={"Emission": [input],
+                "Transition": transition,
+                "Label": label},
+        outputs={"ViterbiPath": [viterbi_path]})
+
+    return viterbi_path
 
 
 def assign(input, output, main_program=None, startup_program=None):
@@ -616,6 +705,40 @@ def accuracy(input, label, k=1, correct=None, total=None, **kwargs):
     return acc_out
 
 
+def chunk_eval(input,
+               label,
+               chunk_scheme,
+               num_chunk_types,
+               excluded_chunk_types=None,
+               **kwargs):
+    """
+    This function computes the accuracy using the input and label.
+    The output is the top_k inputs and their indices.
+    """
+    helper = LayerHelper("chunk_eval", **kwargs)
+
+    # prepare output
+    precision = helper.create_tmp_variable(dtype="float32")
+    recall = helper.create_tmp_variable(dtype="float32")
+    f1_score = helper.create_tmp_variable(dtype="float32")
+
+    helper.append_op(
+        type="chunk_eval",
+        inputs={"Inference": [input],
+                "Label": [label]},
+        outputs={
+            "Precision": [precision],
+            "Recall": [recall],
+            "F1-Score": [f1_score]
+        },
+        attrs={
+            "num_chunk_types": num_chunk_types,
+            'chunk_scheme': chunk_scheme,
+            'excluded_chunk_types': excluded_chunk_types or []
+        })
+    return precision, recall, f1_score
+
+
 def sequence_conv(input,
                   num_filters,
                   filter_size=3,
@@ -639,7 +762,7 @@ def sequence_conv(input,
     helper = LayerHelper('sequence_conv', **locals())
     dtype = helper.input_dtype()
     filter_shape = [filter_size * input.shape[1], num_filters]
-    filter = helper.create_parameter(
+    filter_param = helper.create_parameter(
         attr=helper.param_attr, shape=filter_shape, dtype=dtype)
     pre_bias = helper.create_tmp_variable(dtype)
 
@@ -647,7 +770,7 @@ def sequence_conv(input,
         type='sequence_conv',
         inputs={
             'X': [input],
-            'Filter': [filter],
+            'Filter': [filter_param],
         },
         outputs={"Out": pre_bias},
         attrs={
@@ -662,7 +785,7 @@ def sequence_conv(input,
 def conv2d(input,
            num_filters,
            filter_size,
-           stride=[1, 1],
+           stride=None,
            padding=None,
            groups=None,
            param_attr=None,
@@ -679,6 +802,8 @@ def conv2d(input,
     conv-2d output, if mentioned in the input parameters.
     """
 
+    if stride is None:
+        stride = [1, 1]
     helper = LayerHelper('conv2d', **locals())
     dtype = helper.input_dtype()
 
@@ -704,7 +829,7 @@ def conv2d(input,
         std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
         return Normal(0.0, std, 0)
 
-    filter = helper.create_parameter(
+    filter_param = helper.create_parameter(
         attr=helper.param_attr,
         shape=filter_shape,
         dtype=dtype,
@@ -713,10 +838,10 @@ def conv2d(input,
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
-        type='conv2d',
+        type='conv2d_cudnn',
         inputs={
             'Input': input,
-            'Filter': filter,
+            'Filter': filter_param,
         },
         outputs={"Output": pre_bias},
         attrs={'strides': stride,
@@ -752,8 +877,8 @@ def sequence_pool(input, pool_type, **kwargs):
 def pool2d(input,
            pool_size,
            pool_type,
-           pool_stride=[1, 1],
-           pool_padding=[0, 0],
+           pool_stride=None,
+           pool_padding=None,
            global_pooling=False,
            main_program=None,
            startup_program=None):
@@ -761,6 +886,10 @@ def pool2d(input,
     This function adds the operator for pooling in 2 dimensions, using the
     pooling configurations mentioned in input parameters.
     """
+    if pool_padding is None:
+        pool_padding = [0, 0]
+    if pool_stride is None:
+        pool_stride = [1, 1]
     if pool_type not in ["max", "avg"]:
         raise ValueError(
             "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
@@ -1345,7 +1474,7 @@ def lod_tensor_to_array(x, table, main_program=None):
     return array
 
 
-def array_to_lod_tensor(x, table, main_program=None):
+def array_to_lod_tensor(x, table, main_program=None, startup_program=None):
     """
     This function creates an operator to convert an array to a
     LOD_Tensor.
@@ -1426,7 +1555,11 @@ def zeros(shape, dtype, main_program=None):
     return fill_constant(value=0.0, **locals())
 
 
-def increment(x, value=1.0, in_place=True, main_program=None):
+def increment(x,
+              value=1.0,
+              in_place=True,
+              main_program=None,
+              startup_program=None):
     """
     This function creates an operator to increment each value in the input
     `x` by an amount: `value` as mentioned in the input parameter. This
@@ -1441,11 +1574,11 @@ def increment(x, value=1.0, in_place=True, main_program=None):
         type='increment',
         inputs={'X': [x]},
         outputs={'Out': [out]},
-        attrs={'step': value})
+        attrs={'step': float(value)})
     return out
 
 
-def array_write(x, i, array=None, main_program=None):
+def array_write(x, i, array=None, main_program=None, startup_program=None):
     """
     This function creates an operator to write the data out as a
     LOD_TENSOR_ARRAY.
@@ -1484,7 +1617,7 @@ def less_than(x, y, cond=None, main_program=None, **ignored):
     return cond
 
 
-def array_read(array, i, main_program=None):
+def array_read(array, i, main_program=None, startup_program=None):
     """
     This function creates an operator to read the data in as a
     LOD_TENSOR_ARRAY.
@@ -1503,7 +1636,7 @@ def array_read(array, i, main_program=None):
     return out
 
 
-def shrink_memory(x, i, table, main_program=None):
+def shrink_memory(x, i, table, main_program=None, startup_program=None):
     """
     This function creates an operator to shrink_rnn_memory using the RankTable
     as mentioned in the input parameter.
@@ -1840,3 +1973,209 @@ class IfElse(object):
                     main_program=self.helper.main_program,
                     startup_program=self.helper.startup_program))
         return rlist
+
+
+class DynamicRNN(object):
+    BEFORE_RNN = 0
+    IN_RNN = 1
+    AFTER_RNN = 2
+
+    def __init__(self, name=None, main_program=None, startup_program=None):
+        self.helper = LayerHelper(
+            'dynamic_rnn',
+            name=name,
+            main_program=main_program,
+            startup_program=startup_program)
+        self.status = DynamicRNN.BEFORE_RNN
+        self.lod_rank_table = None
+        self.max_seq_len = None
+        self.step_idx = None
+        self.zero_idx = fill_constant(shape=[1], value=0, dtype='int64')
+        self.mem_dict = dict()
+        self.output_array = []
+        self.outputs = []
+        self.cond = self.helper.create_tmp_variable(dtype='bool')
+        self.cond.stop_gradient = False
+        self.while_op = While(self.cond)
+        self.input_array = []
+        self.mem_link = []
+
+    def step_input(self, x):
+        self._assert_in_rnn_block_("step_input")
+        if not isinstance(x, Variable):
+            raise TypeError(
+                "step_input() can only take a Variable as its input")
+        parent_block = self._parent_block_()
+        if self.lod_rank_table is None:
+            self.lod_rank_table = parent_block.create_var(
+                name=unique_name('lod_rank_table'),
+                type=core.VarDesc.VarType.LOD_RANK_TABLE)
+            self.lod_rank_table.stop_gradient = True
+            parent_block.append_op(
+                type='lod_rank_table',
+                inputs={"X": x},
+                outputs={"Out": self.lod_rank_table})
+            self.max_seq_len = parent_block.create_var(
+                name=unique_name('dynamic_rnn_max_seq_len'), dtype='int64')
+            self.max_seq_len.stop_gradient = False
+            parent_block.append_op(
+                type='max_sequence_len',
+                inputs={'RankTable': self.lod_rank_table},
+                outputs={"Out": self.max_seq_len})
+            self.cond.stop_gradient = True
+            parent_block.append_op(
+                type='less_than',
+                inputs={'X': self.step_idx,
+                        'Y': self.max_seq_len},
+                outputs={'Out': self.cond})
+
+        input_array = parent_block.create_var(
+            name=unique_name('dynamic_rnn_input_array'),
+            type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+            dtype=x.dtype)
+        self.input_array.append((input_array, x.dtype))
+        parent_block.append_op(
+            type='lod_tensor_to_array',
+            inputs={'X': x,
+                    'RankTable': self.lod_rank_table},
+            outputs={'Out': input_array})
+        return array_read(
+            array=input_array, i=self.step_idx, **self.helper.to_kwargs)
+
+    @contextlib.contextmanager
+    def block(self):
+        if self.status != DynamicRNN.BEFORE_RNN:
+            raise ValueError("rnn.block() can only be invoke once")
+        self.step_idx = fill_constant(shape=[1], dtype='int64', value=0)
+        self.step_idx.stop_gradient = False
+        self.status = DynamicRNN.IN_RNN
+        with self.while_op.block():
+            yield
+            increment(
+                x=self.step_idx,
+                value=1.0,
+                in_place=True,
+                **self.helper.to_kwargs)
+
+            for new_mem, mem_array in self.mem_link:
+                array_write(
+                    x=new_mem,
+                    i=self.step_idx,
+                    array=mem_array,
+                    **self.helper.to_kwargs)
+
+            less_than(
+                x=self.step_idx,
+                y=self.max_seq_len,
+                cond=self.cond,
+                **self.helper.to_kwargs)
+
+        self.status = DynamicRNN.AFTER_RNN
+        for each_array in self.output_array:
+            self.outputs.append(
+                array_to_lod_tensor(
+                    x=each_array,
+                    table=self.lod_rank_table,
+                    **self.helper.to_kwargs))
+
+    def __call__(self, *args, **kwargs):
+        if self.status != DynamicRNN.AFTER_RNN:
+            raise ValueError(
+                "Dynamic RNN outputs can only be retrieved after rnn block")
+        if len(self.outputs) == 1:
+            return self.outputs[0]
+        else:
+            return self.outputs
+
+    def memory(self, init=None, shape=None, value=0.0, dtype='float32'):
+        self._assert_in_rnn_block_('memory')
+        if init is not None:
+            if not isinstance(init, Variable):
+                raise TypeError(
+                    "The input arg `init` of memory() must be a Variable")
+            parent_block = self._parent_block_()
+            mem_array = parent_block.create_var(
+                name=unique_name('dynamic_rnn_mem_array'),
+                type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+                dtype=init.dtype)
+            parent_block.append_op(
+                type='write_to_array',
+                inputs={'X': init,
+                        'I': self.zero_idx},
+                outputs={'Out': mem_array})
+            retv = array_read(
+                array=mem_array, i=self.step_idx, **self.helper.to_kwargs)
+            retv = shrink_memory(
+                x=retv,
+                i=self.step_idx,
+                table=self.lod_rank_table,
+                **self.helper.to_kwargs)
+            self.mem_dict[retv.name] = mem_array
+            return retv
+        else:
+            if len(self.input_array) == 0:
+                raise ValueError(
+                    "step_input should be invoked before memory(shape=..., value=...)"
+                )
+            parent_block = self._parent_block_()
+            init = parent_block.create_var(
+                name=unique_name('mem_init'), dtype=dtype)
+            arr, dtype = self.input_array[0]
+            in0 = parent_block.create_var(name=unique_name('in0'), dtype=dtype)
+            parent_block.append_op(
+                type='read_from_array',
+                inputs={'X': [arr],
+                        'I': [self.zero_idx]},
+                outputs={'Out': [in0]})
+            parent_block.append_op(
+                type='fill_constant_batch_size_like',
+                inputs={'Input': [in0]},
+                outputs={'Out': [init]},
+                attrs={
+                    'shape': [-1] + shape,
+                    'value': float(value),
+                    'dtype': init.dtype
+                })
+            return self.memory(init=init)
+
+    def update_memory(self, ex_mem, new_mem):
+        self._assert_in_rnn_block_('update_memory')
+        if not isinstance(ex_mem, Variable):
+            raise TypeError("The input arg `ex_mem` of update_memory() must "
+                            "be a Variable")
+        if not isinstance(new_mem, Variable):
+            raise TypeError("The input arg `new_mem` of update_memory() must "
+                            "be a Variable")
+
+        mem_array = self.mem_dict.get(ex_mem.name, None)
+        if mem_array is None:
+            raise ValueError("Please invoke memory before update_memory")
+        if self.lod_rank_table is None:
+            raise ValueError("Please invoke step_input before update_memory")
+
+        self.mem_link.append((new_mem, mem_array))
+
+    def output(self, *outputs):
+        self._assert_in_rnn_block_('output')
+        parent_block = self._parent_block_()
+        for each in outputs:
+            outside_array = parent_block.create_var(
+                name=unique_name("_".join(
+                    [self.helper.name, "output_array", each.name])),
+                type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+                dtype=each.dtype)
+            array_write(x=each, i=self.step_idx, array=outside_array)
+            self.output_array.append(outside_array)
+
+    def _parent_block_(self):
+        prog = self.helper.main_program
+        parent_idx = prog.current_block().parent_idx
+        assert parent_idx >= 0
+        parent_block = prog.block(parent_idx)
+
+        return parent_block
+
+    def _assert_in_rnn_block_(self, method):
+        if self.status != DynamicRNN.IN_RNN:
+            raise ValueError("{0} can only be invoked inside rnn block.".format(
+                method))

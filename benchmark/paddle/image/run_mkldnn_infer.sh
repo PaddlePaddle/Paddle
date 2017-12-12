@@ -4,7 +4,7 @@ function clock_to_seconds() {
   hours=`echo $1 | awk -F ':' '{print $1}'`
   mins=`echo $1 | awk -F ':' '{print $2}'`
   secs=`echo $1 | awk -F ':' '{print $3}'`
-  echo `bc -l <<< "$secs + $mins * 60 + $hours * 3600"`
+  echo `awk 'BEGIN{printf "%.2f",('$secs' + '$mins' * 60 + '$hours' * 3600)}'`
 }
 
 function infer() {
@@ -58,9 +58,9 @@ function infer() {
   end=`tail ${log} -n 2 | head -n 1 | awk -F ' ' '{print $2}' | xargs`
   start_sec=`clock_to_seconds $start`
   end_sec=`clock_to_seconds $end`
-  fps=`bc <<< "scale = 2; 1280 / ($end_sec - $start_sec)"`
+  fps=`awk 'BEGIN{printf "%.2f",(1280 / ('$end_sec' - '$start_sec'))}'`
   echo "Last 1280 samples start: ${start}(${start_sec} sec), end: ${end}(${end_sec} sec;" >> ${log}
-  echo "FPS: $fps images/sec" >> ${log}
+  echo "FPS: $fps images/sec" 2>&1 | tee -a ${log}
 }
 
 if [ ! -f "train.list" ]; then

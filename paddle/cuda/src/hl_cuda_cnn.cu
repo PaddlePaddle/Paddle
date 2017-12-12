@@ -211,7 +211,8 @@ __global__ void KeAvgPoolForward(const int nthreads,
                                  const int padH,
                                  const int padW,
                                  real* tgtData,
-                                 const int tgtStride) {
+                                 const int tgtStride,
+                                 const bool excludeMode) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < nthreads) {
     int pw = index % pooledW;
@@ -225,7 +226,8 @@ __global__ void KeAvgPoolForward(const int nthreads,
     int wend = min(wstart + sizeX, width);
     hstart = max(hstart, 0);
     wstart = max(wstart, 0);
-    int pool_size = (hend - hstart) * (wend - wstart);
+    int poolSize =
+        excludeMode ? (hend - hstart) * (wend - wstart) : sizeY * sizeX;
 
     real aveval = 0;
     inputData += (frameNum * channels + c) * height * width;
@@ -236,7 +238,7 @@ __global__ void KeAvgPoolForward(const int nthreads,
     }
     int tgtIndex =
         index % (pooledW * pooledH * channels) + frameNum * tgtStride;
-    tgtData[tgtIndex] = aveval / pool_size;
+    tgtData[tgtIndex] = aveval / poolSize;
   }
 }
 
@@ -254,7 +256,8 @@ void hl_avgpool_forward(const int frameCnt,
                         const int paddingH,
                         const int paddingW,
                         real* tgtData,
-                        const int tgtStride) {
+                        const int tgtStride,
+                        const bool excludeMode) {
   int num_kernels = pooledH * pooledW * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
   hipLaunchKernelGGL((KeAvgPoolForward), dim3(blocks), dim3(1024), 0, STREAM_DEFAULT, num_kernels,
@@ -271,7 +274,8 @@ void hl_avgpool_forward(const int frameCnt,
                                                         paddingH,
                                                         paddingW,
                                                         tgtData,
-                                                        tgtStride);
+                                                        tgtStride,
+                                                        excludeMode);
   CHECK_SYNC("hl_avgpool_forward failed");
 }
 
@@ -291,7 +295,8 @@ __global__ void KeAvgPoolBackward(const int nthreads,
                                   real scaleA,
                                   real scaleB,
                                   real* tgtGrad,
-                                  const int outStride) {
+                                  const int outStride,
+                                  const bool excludeMode) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < nthreads) {
     int offsetW = index % width + padW;
@@ -315,8 +320,9 @@ __global__ void KeAvgPoolBackward(const int nthreads,
         int wstart = pw * strideW - padW;
         int wend = min(wstart + sizeX, width);
         wstart = max(wstart, 0);
-        int poolsize = (hend - hstart) * (wend - wstart);
-        gradient += outGrad[ph * pooledW + pw] / poolsize;
+        int poolSize =
+            excludeMode ? (hend - hstart) * (wend - wstart) : sizeY * sizeX;
+        gradient += outGrad[ph * pooledW + pw] / poolSize;
       }
     }
     tgtGrad[index] = scaleB * tgtGrad[index] + scaleA * gradient;
@@ -339,7 +345,8 @@ void hl_avgpool_backward(const int frameCnt,
                          real scaleA,
                          real scaleB,
                          real* backGrad,
-                         const int outStride) {
+                         const int outStride,
+                         const bool excludeMode) {
   int num_kernels = height * width * channels * frameCnt;
   int blocks = (num_kernels + 1024 - 1) / 1024;
 
@@ -359,7 +366,8 @@ void hl_avgpool_backward(const int frameCnt,
                                                          scaleA,
                                                          scaleB,
                                                          backGrad,
-                                                         outStride);
+                                                         outStride,
+                                                         excludeMode);
   CHECK_SYNC("hl_avgpool_backward failed");
 }
 
