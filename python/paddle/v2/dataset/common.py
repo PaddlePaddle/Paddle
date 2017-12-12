@@ -71,7 +71,7 @@ def download(url, module_name, md5sum):
         if retry < retry_limit:
             retry += 1
         else:
-            raise RuntimeError("Cannot download {0} within retry limit {2}".
+            raise RuntimeError("Cannot download {0} within retry limit {1}".
                                format(url, retry_limit))
         print "Cache file %s not found, downloading %s" % (filename, url)
         r = requests.get(url, stream=True)
