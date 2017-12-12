@@ -62,8 +62,8 @@ $$param\_out = param - learning\_rate * grad$$
 };
 
 template <typename T>
-struct SparseSGDFunctor<platform::CPUPlace, T> {
-  void operator()(const platform::DeviceContext& context,
+struct SparseSGDFunctor<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::SelectedRows& input,
                   const framework::Tensor& learning_rate,
                   framework::Tensor* output) {
@@ -90,13 +90,14 @@ struct SparseSGDFunctor<platform::CPUPlace, T> {
   }
 };
 
-template struct SparseSGDFunctor<platform::CPUPlace, float>;
-template struct SparseSGDFunctor<platform::CPUPlace, double>;
+template struct SparseSGDFunctor<platform::CPUDeviceContext, float>;
+template struct SparseSGDFunctor<platform::CPUDeviceContext, double>;
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(sgd, ops::SGDOp, ops::SGDOpMaker);
-REGISTER_OP_CPU_KERNEL(sgd, ops::SGDOpKernel<paddle::platform::CPUPlace, float>,
-                       ops::SGDOpKernel<paddle::platform::CPUPlace, double>);
+REGISTER_OP_CPU_KERNEL(
+    sgd, ops::SGDOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SGDOpKernel<paddle::platform::CPUDeviceContext, double>);

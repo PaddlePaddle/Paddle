@@ -124,7 +124,8 @@ $$
 };
 
 template <typename T>
-class RowConvKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
+class RowConvKernel<platform::CPUDeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *x = context.Input<LoDTensor>("X");
@@ -169,7 +170,8 @@ class RowConvKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class RowConvGradKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
+class RowConvGradKernel<platform::CPUDeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *x = context.Input<LoDTensor>("X");
@@ -251,7 +253,8 @@ class RowConvGradKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP(row_conv, ops::RowConvOp, ops::RowConvOpMaker, row_conv_grad,
             ops::RowConvGradOp);
-REGISTER_OP_CPU_KERNEL(row_conv,
-                       ops::RowConvKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    row_conv_grad, ops::RowConvGradKernel<paddle::platform::CPUPlace, float>);
+    row_conv, ops::RowConvKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    row_conv_grad,
+    ops::RowConvGradKernel<paddle::platform::CPUDeviceContext, float>);

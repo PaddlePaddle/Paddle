@@ -33,11 +33,11 @@ struct TolerableValue {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class CrossEntropyFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
-                  framework::Tensor* out, const framework::Tensor* prob,
+  void operator()(const DeviceContext& context, framework::Tensor* out,
+                  const framework::Tensor* prob,
                   const framework::Tensor* labels, const bool softLabel);
 };
 }  // namespace math

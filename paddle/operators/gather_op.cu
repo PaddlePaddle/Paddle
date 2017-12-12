@@ -49,7 +49,8 @@ class GatherGradOpCUDAKernel : public framework::OpKernel<T> {
 
     dX->mutable_data<T>(ctx.GetPlace());
     auto dxt = framework::EigenVector<T>::Flatten(*dX);
-    auto place = ctx.GetEigenDevice<platform::GPUPlace>();
+    auto &place = *ctx.template device_context<platform::CUDADeviceContext>()
+                       .eigen_device();
     dxt.device(place) = dxt.constant(static_cast<T>(0));
 
     GPUScatterAssign<T>(ctx.device_context(), *dO, *Index, dX);
@@ -60,5 +61,5 @@ class GatherGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(gather, ops::GatherOpCUDAKernel<float>);
-REGISTER_OP_GPU_KERNEL(gather_grad, ops::GatherGradOpCUDAKernel<float>);
+REGISTER_OP_CUDA_KERNEL(gather, ops::GatherOpCUDAKernel<float>);
+REGISTER_OP_CUDA_KERNEL(gather_grad, ops::GatherGradOpCUDAKernel<float>);

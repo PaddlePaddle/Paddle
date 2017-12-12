@@ -24,9 +24,9 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename T>
-class CrossEntropyFunctor<platform::CPUPlace, T> {
+class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& ctx, framework::Tensor* out,
+  void operator()(const platform::CPUDeviceContext& ctx, framework::Tensor* out,
                   const framework::Tensor* prob,
                   const framework::Tensor* labels, const bool softLabel) {
     const int batch_size = prob->dims()[0];
@@ -35,7 +35,7 @@ class CrossEntropyFunctor<platform::CPUPlace, T> {
       auto lbl = EigenMatrix<T>::From(*labels);
       auto loss = EigenMatrix<T>::From(*out);
 
-      loss.device(*ctx.GetEigenDevice<platform::CPUPlace>()) =
+      loss.device(*ctx.eigen_device()) =
           -((lbl * in.log().unaryExpr(math::TolerableValue<T>()))
                 .sum(Eigen::DSizes<int, 1>(1))
                 .reshape(Eigen::DSizes<int, 2>(batch_size, 1)));
@@ -53,8 +53,8 @@ class CrossEntropyFunctor<platform::CPUPlace, T> {
   }
 };
 
-template class CrossEntropyFunctor<platform::CPUPlace, float>;
-template class CrossEntropyFunctor<platform::CPUPlace, double>;
+template class CrossEntropyFunctor<platform::CPUDeviceContext, float>;
+template class CrossEntropyFunctor<platform::CPUDeviceContext, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

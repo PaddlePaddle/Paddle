@@ -206,7 +206,8 @@ class MatMulOpGrad : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(matmul, ops::MatMulOp, ops::MatMulOpMaker, matmul_grad,
             ops::MatMulOpGrad);
-REGISTER_OP_CPU_KERNEL(matmul,
-                       ops::MatMulKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    matmul_grad, ops::MatMulGradKernel<paddle::platform::CPUPlace, float>);
+    matmul, ops::MatMulKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    matmul_grad,
+    ops::MatMulGradKernel<paddle::platform::CPUDeviceContext, float>);

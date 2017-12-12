@@ -24,16 +24,16 @@ namespace operators {
 using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 
-template <typename Place, typename T>
-inline void ReorderInitState(const platform::DeviceContext& ctx,
+template <typename DeviceContext, typename T>
+inline void ReorderInitState(const DeviceContext& ctx,
                              const framework::Tensor& src, const size_t* index,
                              framework::Tensor* dst, bool indexed_src) {
-  math::CopyMatrixRowsFunctor<Place, T> row_shuffle;
+  math::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
   row_shuffle(ctx, src, index, *dst, indexed_src);
 }
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class LSTMKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -52,8 +52,8 @@ class LSTMKernel : public framework::OpKernel<T> {
     cell_out->mutable_data<T>(ctx.GetPlace());
 
     bool is_reverse = ctx.Attr<bool>("is_reverse");
-    math::LoDTensor2BatchFunctor<Place, T> to_batch;
-    auto& device_ctx = ctx.device_context();
+    math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
+    auto& device_ctx = ctx.template device_context<DeviceContext>();
     to_batch(device_ctx, *input, *batch_gate, true, is_reverse);
 
     auto in_dims = input->dims();
@@ -64,7 +64,7 @@ class LSTMKernel : public framework::OpKernel<T> {
       Tensor b = *bias;
       b.Resize({bias->numel(), 1});
       Tensor gate_bias = b.Slice(0, 4 * frame_size);
-      math::RowwiseAdd<Place, T> add_bias;
+      math::RowwiseAdd<DeviceContext, T> add_bias;
       add_bias(device_ctx, *batch_gate, gate_bias, batch_gate);
     }
 
@@ -88,8 +88,8 @@ class LSTMKernel : public framework::OpKernel<T> {
       // Since the batch computing for LSTM reorders the input sequence
       // according to their length. The initialized cell state also needs
       // to reorder.
-      ReorderInitState<Place, T>(device_ctx, *cell_t0, order, &ordered_c0,
-                                 true);
+      ReorderInitState<DeviceContext, T>(device_ctx, *cell_t0, order,
+                                         &ordered_c0, true);
       lstm_value.prev_state_value = ordered_c0.data<T>();
     }
 
@@ -121,9 +121,9 @@ class LSTMKernel : public framework::OpKernel<T> {
         int pre_h_start = static_cast<int>(batch_starts[n - 1]);
         int pre_h_end = pre_h_start + cur_batch_size;
         auto pre_hidden_t = batch_hidden.Slice(pre_h_start, pre_h_end);
-        math::matmul<Place, T>(device_ctx, pre_hidden_t, false, *weight, false,
-                               static_cast<T>(1.0), &gate_t,
-                               static_cast<T>(1.0));
+        math::matmul<DeviceContext, T>(device_ctx, pre_hidden_t, false, *weight,
+                                       false, static_cast<T>(1.0), &gate_t,
+                                       static_cast<T>(1.0));
       } else if (hidden_t0) {
         // If n == 0 and there is no initialized hidden state, that is to say
         // the H0 is zeros, the calculation W_h * H0 will be skiped.
@@ -133,24 +133,24 @@ class LSTMKernel : public framework::OpKernel<T> {
         // according to their length. The initialized hidden state also needs
         // to reorder.
         Tensor ordered_h0;
-        ReorderInitState<Place, T>(device_ctx, *hidden_t0, order, &ordered_h0,
-                                   true);
-        math::matmul<Place, T>(device_ctx, ordered_h0, false, *weight, false,
-                               static_cast<T>(1.0), &gate_t,
-                               static_cast<T>(1.0));
+        ReorderInitState<DeviceContext, T>(device_ctx, *hidden_t0, order,
+                                           &ordered_h0, true);
+        math::matmul<DeviceContext, T>(device_ctx, ordered_h0, false, *weight,
+                                       false, static_cast<T>(1.0), &gate_t,
+                                       static_cast<T>(1.0));
       }
 
       lstm_value.gate_value = gate_t.data<T>();
       lstm_value.output_value = out_t.data<T>();
       lstm_value.state_value = cell_t.data<T>();
       lstm_value.state_active_value = cell_pre_act_t.data<T>();
-      math::LstmUnitFunctor<Place, T>::compute(device_ctx, lstm_value,
-                                               frame_size, cur_batch_size,
-                                               gate_act, cell_act, cand_act);
+      math::LstmUnitFunctor<DeviceContext, T>::compute(
+          device_ctx, lstm_value, frame_size, cur_batch_size, gate_act,
+          cell_act, cand_act);
       lstm_value.prev_state_value = lstm_value.state_value;
     }
 
-    math::Batch2LoDTensorFunctor<Place, T> to_seq;
+    math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     batch_hidden.set_lod(batch_gate->lod());
     // restore the output hidden in LoDTensor from the batch hidden
     to_seq(device_ctx, batch_hidden, *hidden_out);
@@ -161,7 +161,7 @@ class LSTMKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class LSTMGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -187,8 +187,8 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     auto* h0_g = ctx.Output<Tensor>(framework::GradVarName("H0"));
     auto* c0_g = ctx.Output<Tensor>(framework::GradVarName("C0"));
 
-    auto& device_ctx = ctx.device_context();
-    math::SetConstant<Place, T> zero;
+    auto& device_ctx = ctx.template device_context<DeviceContext>();
+    math::SetConstant<DeviceContext, T> zero;
     if (weight_g) {
       weight_g->mutable_data<T>(ctx.GetPlace());
       zero(device_ctx, weight_g, static_cast<T>(0.0));
@@ -200,7 +200,8 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     Tensor ordered_h0, ordered_c0, ordered_h0_g, ordered_c0_g;
     const size_t* order = batch_gate->lod()[2].data();
     if (c0) {
-      ReorderInitState<Place, T>(device_ctx, *c0, order, &ordered_c0, true);
+      ReorderInitState<DeviceContext, T>(device_ctx, *c0, order, &ordered_c0,
+                                         true);
     }
     if (c0 && c0_g) {
       ordered_c0_g.mutable_data<T>(c0_g->dims(), ctx.GetPlace());
@@ -240,10 +241,10 @@ class LSTMGradKernel : public framework::OpKernel<T> {
       lstm_grad.check_og_grad = nullptr;
     }
 
-    math::LoDTensor2BatchFunctor<Place, T> to_batch;
+    math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
 
     auto ToBatch = [&batch_gate, &to_batch](
-        const platform::DeviceContext& ctx, const framework::LoDTensor& src,
+        const DeviceContext& ctx, const framework::LoDTensor& src,
         const framework::DDim& dims, framework::LoDTensor& dst) {
       dst.mutable_data<T>(dims, ctx.GetPlace());
       dst.set_lod(batch_gate->lod());
@@ -299,7 +300,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
       }
 
       int cur_batch_size = bend - bstart;
-      math::LstmUnitGradFunctor<Place, T>::compute(
+      math::LstmUnitGradFunctor<DeviceContext, T>::compute(
           device_ctx, lstm_value, lstm_grad, frame_size, cur_batch_size,
           gate_act, cell_act, cand_act);
 
@@ -307,33 +308,34 @@ class LSTMGradKernel : public framework::OpKernel<T> {
         int pre_h_start = static_cast<int>(batch_starts[n - 1]);
         int pre_h_end = pre_h_start + cur_batch_size;
         auto pre_hidden_g = batch_hidden_g.Slice(pre_h_start, pre_h_end);
-        math::matmul<Place, T>(device_ctx, gate_g, false, *weight, true,
-                               static_cast<T>(1.0), &pre_hidden_g,
-                               static_cast<T>(1.0));
+        math::matmul<DeviceContext, T>(device_ctx, gate_g, false, *weight, true,
+                                       static_cast<T>(1.0), &pre_hidden_g,
+                                       static_cast<T>(1.0));
         if (weight_g) {
           /* backward weight */
           auto pre_hidden = batch_hidden.Slice(pre_h_start, pre_h_end);
-          math::matmul<Place, T>(device_ctx, pre_hidden, true, gate_g, false,
-                                 static_cast<T>(1.0), weight_g,
-                                 static_cast<T>(1.0));
+          math::matmul<DeviceContext, T>(device_ctx, pre_hidden, true, gate_g,
+                                         false, static_cast<T>(1.0), weight_g,
+                                         static_cast<T>(1.0));
         }
       } else {
         if (h0 && weight_g) {
-          ReorderInitState<Place, T>(device_ctx, *h0, order, &ordered_h0, true);
-          math::matmul<Place, T>(device_ctx, ordered_h0, true, gate_g, false,
-                                 static_cast<T>(1.0), weight_g,
-                                 static_cast<T>(1.0));
+          ReorderInitState<DeviceContext, T>(device_ctx, *h0, order,
+                                             &ordered_h0, true);
+          math::matmul<DeviceContext, T>(device_ctx, ordered_h0, true, gate_g,
+                                         false, static_cast<T>(1.0), weight_g,
+                                         static_cast<T>(1.0));
         }
         if (h0 && h0_g) {
           ordered_h0_g.mutable_data<T>(h0_g->dims(), ctx.GetPlace());
-          math::matmul<Place, T>(device_ctx, gate_g, false, *weight, true,
-                                 static_cast<T>(1.0), &ordered_h0_g,
-                                 static_cast<T>(0.0));
+          math::matmul<DeviceContext, T>(device_ctx, gate_g, false, *weight,
+                                         true, static_cast<T>(1.0),
+                                         &ordered_h0_g, static_cast<T>(0.0));
         }
       }
     }
 
-    math::Batch2LoDTensorFunctor<Place, T> to_seq;
+    math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     if (in_g) {
       /* backward data */
       in_g->mutable_data<T>(ctx.GetPlace());
@@ -344,15 +346,17 @@ class LSTMGradKernel : public framework::OpKernel<T> {
       Tensor b_g = *bias_g;
       b_g.Resize({bias_g->numel(), 1});
       Tensor gate_bias_g = b_g.Slice(0, 4 * frame_size);
-      math::ColwiseSum<Place, T> col_sum;
+      math::ColwiseSum<DeviceContext, T> col_sum;
       col_sum(device_ctx, batch_gate_g, &gate_bias_g);
     }
 
     if (h0 && h0_g) {
-      ReorderInitState<Place, T>(device_ctx, ordered_h0_g, order, h0_g, false);
+      ReorderInitState<DeviceContext, T>(device_ctx, ordered_h0_g, order, h0_g,
+                                         false);
     }
     if (c0 && c0_g) {
-      ReorderInitState<Place, T>(device_ctx, ordered_c0_g, order, c0_g, false);
+      ReorderInitState<DeviceContext, T>(device_ctx, ordered_c0_g, order, c0_g,
+                                         false);
     }
   }
 };
