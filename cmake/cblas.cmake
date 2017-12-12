@@ -17,7 +17,7 @@ if(WITH_MKLML AND MKLML_INC_DIR AND MKLML_LIB)
   set(CBLAS_INC_DIR ${MKLML_INC_DIR})
   set(CBLAS_LIBRARIES ${MKLML_LIB})
 
-  add_definitions(-DPADDLE_USE_MKLML)
+  add_definitions(-DPADDLE_WITH_MKLML)
   add_definitions(-DLAPACK_FOUND)
 
   message(STATUS "Found cblas and lapack in MKLML "
