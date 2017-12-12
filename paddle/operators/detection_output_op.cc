@@ -86,5 +86,5 @@ REGISTER_OP_WITHOUT_GRADIENT(detection_output, ops::Detection_output_Op,
                              ops::Detection_output_OpMaker);
 REGISTER_OP_CPU_KERNEL(
     detection_output,
-    ops::Detection_output_Kernel<paddle::platform::CPUPlace, float>,
-    ops::Detection_output_Kernel<paddle::platform::CPUPlace, double>);
+    ops::Detection_output_Kernel<paddle::platform::CPUDeviceContext, float>,
+    ops::Detection_output_Kernel<paddle::platform::CPUDeviceContext, double>);

@@ -21,8 +21,8 @@ limitations under the License. */
 #include "paddle/operators/strided_memcpy.h"
 namespace paddle {
 namespace operators {
-template <typename Place, typename T>
-inline void transpose_fun(const platform::DeviceContext& context,
+template <typename DeviceContext, typename T>
+inline void transpose_fun(const framework::ExecutionContext& context,
                           const framework::Tensor& src,
                           framework::Tensor* dst) {
   int input_nums = src.dims()[0];
@@ -36,17 +36,18 @@ inline void transpose_fun(const platform::DeviceContext& context,
     framework::Tensor in_p_tensor_transpose;
     in_p_tensor_transpose.mutable_data<T>(shape, context.GetPlace());
     std::vector<int> shape_axis({0, 1, 3, 4, 2});
-    math::Transpose<Place, T, 5> trans5;
-    trans5(context, in_p_tensor, &in_p_tensor_transpose, shape_axis);
+    math::Transpose<DeviceContext, T, 5> trans5;
+    trans5(context.template device_context<DeviceContext>(), in_p_tensor,
+           &in_p_tensor_transpose, shape_axis);
     auto dst_stride = framework::stride(dst->dims());
     auto src_stride = framework::stride(in_p_tensor_transpose.dims());
-    StridedMemcpy<T>(context, in_p_tensor_transpose.data<T>(), src_stride,
-                     in_p_tensor_transpose.dims(), dst_stride,
+    StridedMemcpy<T>(context.device_context(), in_p_tensor_transpose.data<T>(),
+                     src_stride, in_p_tensor_transpose.dims(), dst_stride,
                      dst->data<T>() + offset);
     offset += in_p_tensor_transpose.dims()[4] * src_stride[4];
   }
 }
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class Detection_output_Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -87,11 +88,12 @@ class Detection_output_Kernel : public framework::OpKernel<T> {
     framework::Tensor conf_cpu;
     framework::Tensor priorbox_cpu;
     const T* priorbox_data = in_priorbox->data<T>();
-    transpose_fun<Place, T>(context.device_context(), *in_loc, &loc_tensor);
-    transpose_fun<Place, T>(context.device_context(), *in_conf, &conf_tensor);
+    transpose_fun<DeviceContext, T>(context, *in_loc, &loc_tensor);
+    transpose_fun<DeviceContext, T>(context, *in_conf, &conf_tensor);
     conf_tensor.Resize(conf_shape_softmax);
-    math::SoftmaxFunctor<Place, T>()(context.device_context(), &conf_tensor,
-                                     &conf_tensor);
+    math::SoftmaxFunctor<DeviceContext, T>()(
+        context.template device_context<DeviceContext>(), &conf_tensor,
+        &conf_tensor);
     T* loc_data = loc_tensor.data<T>();
     T* conf_data = conf_tensor.data<T>();
     if (platform::is_gpu_place(context.GetPlace())) {

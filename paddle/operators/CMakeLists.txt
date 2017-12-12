@@ -210,7 +210,8 @@ set(DEPS_OPS
     save_op
     load_op
     send_op
-    recv_op)
+    recv_op
+    detection_output_op)
 
 if(WITH_DISTRIBUTE)
 add_subdirectory(detail)
@@ -233,6 +234,7 @@ op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)
 op_library(cross_entropy_op DEPS cross_entropy)
 op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
 op_library(softmax_op DEPS softmax)
+op_library(detection_output_op DEPS softmax)
 op_library(sequence_softmax_op DEPS softmax)
 op_library(sum_op DEPS selected_rows_functor)
 op_library(sgd_op DEPS selected_rows_functor)
