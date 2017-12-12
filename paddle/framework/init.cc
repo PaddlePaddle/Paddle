@@ -11,8 +11,12 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
+#include <string>
+
 #include "paddle/framework/init.h"
 #include "paddle/platform/place.h"
+#include "paddle/string/piece.h"
+#include "paddle/string/to_string.h"
 
 namespace paddle {
 namespace framework {
@@ -41,7 +45,16 @@ void InitDevices(const std::vector<std::string> &devices) {
   // GPU:1
   // FPGA:2
   std::vector<platform::Place> places;
-  for (auto &device : device) {
+  for (auto &device : devices) {
+    auto p = string::Piece(device);
+    if (string::Find(p, ':', 0) == string::Piece::npos) {
+      places.emplace_back(platform::CPUPlace());
+    }
+    if (string::HasPrefix(p, "GPU")) {
+      auto number = device.substr(string::RFind(p, ':', string::Piece::npos),
+                                  device.size() - 1);
+      places.emplace_back(platform::GPUPlace(std::stoi(number)));
+    }
   }
 }
 

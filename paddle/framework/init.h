@@ -11,14 +11,18 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
+#pragma once
 #include <mutex>
 
 #include "gflags/gflags.h"
+#include "glog/logging.h"
 
 namespace paddle {
 namespace framework {
 
 void InitGflags(std::vector<std::string> &argv);
+
+void InitDevices(const std::vector<std::string> &devices);
 
 }  // namespace framework
 }  // namespace paddle

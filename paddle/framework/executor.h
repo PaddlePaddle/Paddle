@@ -104,6 +104,13 @@ class DeviceContextPool {
 
 class Executor {
  public:
+  // TODO(dzhwinter) : Do not rely on this function, it will be removed
+  explicit Executor(const platform::DeviceContext& device)
+      : Executor({device.GetPlace()}) {}
+
+  explicit Executor(const platform::Place& place)
+      : Executor(std::vector<platform::Place>({place})) {}
+
   explicit Executor(const std::vector<platform::Place>& places);
   // ~Executor();
 

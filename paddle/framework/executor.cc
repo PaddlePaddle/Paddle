@@ -39,6 +39,16 @@ Executor::Executor(const std::vector<platform::Place>& places) {
   device_contexts_.swap(borrowed_contexts);
 }
 
+// Executor::Executor(const platform::DeviceContext& device) {
+//   std::vector<const platform::Place> v = {device.GetPlace()};
+//   Executor(v);
+// }
+
+// Executor::Executor(const platform::Place& place) {
+//   std::vector<const platform::Place> v = {place};
+//   Executor(v);
+// }
+
 // Executor::~Executor() {
 //   if (own_) {
 //     for (auto& device_context : device_contexts_) {

@@ -404,6 +404,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("unique_integer", UniqueIntegerGenerator);
   m.def("init_gflags", framework::InitGflags);
+  m.def("init_devices", framework::InitDevices(const std::vector<std::string>));
 
   m.def("is_compile_gpu", IsCompileGPU);
   m.def("set_feed_variable", framework::SetFeedVariable);

@@ -5,6 +5,7 @@ from framework import Program, default_main_program
 __all__ = ['Executor', 'g_scope']
 
 g_scope = core.Scope()
+g_device_context_pool = core.init_devices(["CPU", "GPU:0", "GPU:1"])
 
 
 def as_numpy(tensor):
