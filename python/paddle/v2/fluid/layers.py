@@ -467,6 +467,9 @@ def _create_op_func_(op_type):
 _create_op_func_('mean')
 _create_op_func_('mul')
 _create_op_func_('elementwise_add')
+_create_op_func_('elementwise_sub')
+_create_op_func_('clip')
+_create_op_func_('abs')
 _create_op_func_('elementwise_div')
 _create_op_func_('dropout')
 _create_op_func_('reshape')
@@ -702,6 +705,7 @@ def accuracy(input, label, k=1, correct=None, total=None, **kwargs):
             "Correct": [correct],
             "Total": [total],
         })
+    acc_out.stop_gradient = True
     return acc_out
 
 

@@ -36,7 +36,8 @@ class Optimizer(object):
     def _create_param_lr(self, param_and_grad):
         # create learning rate variable for every parameter
         param = param_and_grad[0]
-        param_lr = param.optimize_attr['learning_rate']
+        param_lr = getattr(param, 'optimize_attr',
+                           {'learning_rate': 1.0})['learning_rate']
         param_lr_shape = [1]
         param_lr_var = self.helper.create_global_variable(
             name=unique_name("learning_rate"),
@@ -167,11 +168,11 @@ class Optimizer(object):
                                   [p[0] for p in parameters_and_grads])
 
         optimize_ops = []
-        for param_and_grad in parameters_and_grads:
-            if param_and_grad[0].trainable is True and param_and_grad[
-                    1] is not None:
-                optimize_op = self._append_optimize_op(loss.block,
-                                                       param_and_grad)
+        for p, g in parameters_and_grads:
+            is_trainable = getattr(p, 'trainable', True)
+
+            if is_trainable is True and g is not None:
+                optimize_op = self._append_optimize_op(loss.block, (p, g))
                 optimize_ops.append(optimize_op)
 
         # Returned list of ops can include more ops in addition

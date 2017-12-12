@@ -26,7 +26,7 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
     params_and_grads = []
     for param, grad in parameters_and_grads:
         regularization_term = None
-        if param.regularizer is not None:
+        if hasattr(param, 'regularizer') and param.regularizer is not None:
             # Add variable for regularization term in grad block
             regularization_term = param.regularizer(param, grad.block)
         elif regularization is not None:
