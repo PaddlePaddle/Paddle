@@ -252,9 +252,9 @@ A forward operator unit test inherits `unittest.TestCase` and defines metaclass 
 
 2. Generating random input data.
 
-3. Implementing the same computation logic in a Python script
+3. Implementing the same computation logic in a Python script.
 
-4. Call check gradient function to check the backward
+4. Call check gradient function to check the backward operator.
 
   ```python
   import unittest
