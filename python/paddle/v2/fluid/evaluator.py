@@ -3,6 +3,7 @@ import numpy as np
 import layers
 from framework import Program, unique_name, Variable
 from layer_helper import LayerHelper
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 __all__ = ['Accuracy']
 
@@ -59,7 +60,9 @@ class Evaluator(object):
                 out=g_var,
                 main_program=reset_program)
 
-        executor.run(reset_program)
+        pdesc = framework_pb2.ProgramDesc.FromString(
+            reset_program.desc.serialize_to_string())
+        executor.run(pdesc)
 
     def eval(self, executor, eval_program=None):
         """
@@ -131,4 +134,6 @@ class Accuracy(Evaluator):
         total = layers.cast(total, dtype='float32', **kwargs)
         correct = layers.cast(correct, dtype='float32', **kwargs)
         out = layers.elementwise_div(x=correct, y=total, **kwargs)
-        return np.array(executor.run(eval_program, fetch_list=[out])[0])
+        pdesc = framework_pb2.ProgramDesc.FromString(
+            eval_program.desc.serialize_to_string())
+        return np.array(executor.run(pdesc, fetch_list=[out])[0])

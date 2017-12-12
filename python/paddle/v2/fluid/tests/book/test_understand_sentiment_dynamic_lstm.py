@@ -1,6 +1,7 @@
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 
 def stacked_lstm_net(data,
@@ -79,12 +80,15 @@ def main():
     exe = fluid.Executor(place)
     feeder = fluid.DataFeeder(feed_list=[data, label], place=place)
 
-    exe.run(fluid.default_startup_program())
+    exe.run(
+        framework_pb2.ProgramDesc.FromString(fluid.default_startup_program()
+                                             .desc.serialize_to_string()))
 
     for pass_id in xrange(PASS_NUM):
         accuracy.reset(exe)
         for data in train_data():
-            cost_val, acc_val = exe.run(fluid.default_main_program(),
+            cost_val, acc_val = exe.run(framework_pb2.ProgramDesc.FromString(
+                fluid.default_main_program().desc.serialize_to_string()),
                                         feed=feeder.feed(data),
                                         fetch_list=[cost, acc_out])
             pass_acc = accuracy.eval(exe)

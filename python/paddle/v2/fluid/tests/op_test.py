@@ -8,6 +8,7 @@ from paddle.v2.fluid.backward import append_backward_ops
 from paddle.v2.fluid.op import Operator
 from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.framework import Program, OpProtoHolder
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 
 def randomize_probability(batch_size, class_num, dtype='float32'):
@@ -261,7 +262,8 @@ class OpTest(unittest.TestCase):
         feed_map = self.feed_var(inputs, place)
 
         exe = Executor(place)
-        outs = exe.run(program,
+        outs = exe.run(framework_pb2.ProgramDesc.FromString(
+            program.desc.serialize_to_string()),
                        feed=feed_map,
                        fetch_list=fetch_list,
                        return_numpy=False)
@@ -503,6 +505,9 @@ class OpTest(unittest.TestCase):
 
         fetch_list = [g for p, g in param_grad_list]
         executor = Executor(place)
-        return map(
-            np.array,
-            executor.run(prog, feed_dict, fetch_list, return_numpy=False))
+        return map(np.array,
+                   executor.run(framework_pb2.ProgramDesc.FromString(
+                       prog.desc.serialize_to_string()),
+                                feed_dict,
+                                fetch_list,
+                                return_numpy=False))

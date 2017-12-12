@@ -5,6 +5,7 @@ import paddle.v2.fluid.core as core
 
 from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.layers import mul, data
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 
 class TestExecutor(unittest.TestCase):

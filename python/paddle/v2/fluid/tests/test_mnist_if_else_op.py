@@ -6,6 +6,7 @@ import paddle.v2.fluid.core as core
 import paddle.v2 as paddle
 import unittest
 import numpy as np
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 
 class TestMNISTIfElseOp(unittest.TestCase):
@@ -57,7 +58,9 @@ class TestMNISTIfElseOp(unittest.TestCase):
         place = core.CPUPlace()
         exe = Executor(place)
 
-        exe.run(kwargs['startup_program'])
+        pdesc = framework_pb2.ProgramDesc.FromString(kwargs[
+            'startup_program'].desc.serialize_to_string())
+        exe.run(pdesc)
         PASS_NUM = 100
         for pass_id in range(PASS_NUM):
             for data in train_reader():
@@ -65,7 +68,9 @@ class TestMNISTIfElseOp(unittest.TestCase):
                 y_data = np.array(map(lambda x: x[1], data)).astype("int64")
                 y_data = np.expand_dims(y_data, axis=1)
 
-                outs = exe.run(kwargs['main_program'],
+                pdesc = framework_pb2.ProgramDesc.FromString(kwargs[
+                    'main_program'].desc.serialize_to_string())
+                outs = exe.run(pdesc,
                                feed={'x': x_data,
                                      'y': y_data},
                                fetch_list=[avg_loss])
@@ -116,7 +121,9 @@ class TestMNISTIfElseOp(unittest.TestCase):
         place = core.CPUPlace()
         exe = Executor(place)
 
-        exe.run(kwargs['startup_program'])
+        pdesc = framework_pb2.ProgramDesc.FromString(kwargs[
+            'startup_program'].desc.serialize_to_string())
+        exe.run(pdesc)
         PASS_NUM = 100
         for pass_id in range(PASS_NUM):
             for data in train_reader():
@@ -124,7 +131,9 @@ class TestMNISTIfElseOp(unittest.TestCase):
                 y_data = np.array(map(lambda x: x[1], data)).astype("int64")
                 y_data = y_data.reshape((y_data.shape[0], 1))
 
-                outs = exe.run(kwargs['main_program'],
+                pdesc = framework_pb2.ProgramDesc.FromString(kwargs[
+                    'main_program'].desc.serialize_to_string())
+                outs = exe.run(pdesc,
                                feed={'x': x_data,
                                      'y': y_data},
                                fetch_list=[avg_loss])

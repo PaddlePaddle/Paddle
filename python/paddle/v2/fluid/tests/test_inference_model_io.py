@@ -8,6 +8,7 @@ import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.optimizer as optimizer
 from paddle.v2.fluid.framework import Program
 from paddle.v2.fluid.io import save_inference_model, load_inference_model
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 
 class TestBook(unittest.TestCase):
@@ -49,20 +50,25 @@ class TestBook(unittest.TestCase):
         place = core.CPUPlace()
         exe = executor.Executor(place)
 
-        exe.run(init_program, feed={}, fetch_list=[])
+        exe.run(framework_pb2.ProgramDesc.FromString(
+            init_program.desc.serialize_to_string()),
+                feed={},
+                fetch_list=[])
 
         for i in xrange(100):
             tensor_x = np.array(
                 [[1, 1], [1, 2], [3, 4], [5, 2]]).astype("float32")
             tensor_y = np.array([[-2], [-3], [-7], [-7]]).astype("float32")
 
-            exe.run(program,
+            exe.run(framework_pb2.ProgramDesc.FromString(
+                program.desc.serialize_to_string()),
                     feed={'x': tensor_x,
                           'y': tensor_y},
                     fetch_list=[avg_cost])
 
         save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, program)
-        expected = exe.run(program,
+        expected = exe.run(framework_pb2.ProgramDesc.FromString(
+            program.desc.serialize_to_string()),
                            feed={'x': tensor_x,
                                  'y': tensor_y},
                            fetch_list=[avg_cost])[0]
@@ -74,7 +80,8 @@ class TestBook(unittest.TestCase):
             MODEL_DIR, exe)
 
         outs = exe.run(
-            infer_prog,
+            framework_pb2.ProgramDesc.FromString(
+                infer_prog.desc.serialize_to_string()),
             feed={feed_var_names[0]: tensor_x,
                   feed_var_names[1]: tensor_y},
             fetch_list=fetch_vars)

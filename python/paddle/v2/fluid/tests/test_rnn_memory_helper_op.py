@@ -5,6 +5,7 @@ from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.backward import append_backward_ops
 import numpy as np
 import paddle.v2.fluid.core as core
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 
 class RNNMemoryHelperOpTest(unittest.TestCase):
@@ -27,9 +28,9 @@ class RNNMemoryHelperOpTest(unittest.TestCase):
         self.feed_map = {'X': x_np}
         self.fetch_list = [self.Out]
         exe = Executor(self.place)
-        out = exe.run(self.program,
-                      feed=self.feed_map,
-                      fetch_list=self.fetch_list)
+        pdesc = framework_pb2.ProgramDesc.FromString(
+            self.program.desc.serialize_to_string())
+        out = exe.run(pdesc, feed=self.feed_map, fetch_list=self.fetch_list)
         self.assertTrue(np.allclose(out[0], x_np, rtol=1e-5))
 
 
@@ -66,9 +67,9 @@ class RNNMemoryHelperGradOpTest(unittest.TestCase):
         self.fetch_list = [self.output_vars['X@GRAD']]
 
         exe = Executor(self.place)
-        out = exe.run(self.program,
-                      feed=self.feed_map,
-                      fetch_list=self.fetch_list)
+        pdesc = framework_pb2.ProgramDesc.FromString(
+            self.program.desc.serialize_to_string())
+        out = exe.run(pdesc, feed=self.feed_map, fetch_list=self.fetch_list)
         np.isclose(out[0], self.feed_map['Out@GRAD'], rtol=1e-5)
 
 
@@ -109,9 +110,9 @@ class RNNMemoryHelperGradOpWithoutInputTest(unittest.TestCase):
         self.fetch_list = [self.output_vars['X@GRAD']]
 
         exe = Executor(self.place)
-        out = exe.run(self.program,
-                      feed=self.feed_map,
-                      fetch_list=self.fetch_list)
+        pdesc = framework_pb2.ProgramDesc.FromString(
+            self.program.desc.serialize_to_string())
+        out = exe.run(pdesc, feed=self.feed_map, fetch_list=self.fetch_list)
         self.assertTrue(
             np.allclose(
                 out[0], np.zeros(shape=(2, 3)).astype("float32"), rtol=1e-5))

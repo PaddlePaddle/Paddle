@@ -1,6 +1,7 @@
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 x = fluid.layers.data(name='x', shape=[13], dtype='float32')
 
@@ -25,14 +26,17 @@ place = fluid.CPUPlace()
 feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
 exe = fluid.Executor(place)
 
-exe.run(fluid.default_startup_program())
+exe.run(
+    framework_pb2.ProgramDesc.FromString(fluid.default_startup_program()
+                                         .desc.serialize_to_string()))
 
 PASS_NUM = 100
 for pass_id in range(PASS_NUM):
     fluid.io.save_persistables(exe, "./fit_a_line.model/")
     fluid.io.load_persistables(exe, "./fit_a_line.model/")
     for data in train_reader():
-        avg_loss_value, = exe.run(fluid.default_main_program(),
+        avg_loss_value, = exe.run(framework_pb2.ProgramDesc.FromString(
+            fluid.default_main_program().desc.serialize_to_string()),
                                   feed=feeder.feed(data),
                                   fetch_list=[avg_cost])
 

@@ -2,6 +2,7 @@ import paddle.v2.fluid as fluid
 import paddle.v2 as paddle
 import unittest
 import numpy
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 
 class TestDynRNN(unittest.TestCase):
@@ -73,12 +74,15 @@ class TestDynRNN(unittest.TestCase):
             sgd.minimize(loss=loss)
         cpu = fluid.CPUPlace()
         exe = fluid.Executor(cpu)
-        exe.run(startup_program)
+        pdesc = framework_pb2.ProgramDesc.FromString(
+            startup_program.desc.serialize_to_string())
+        exe.run(pdesc)
         feeder = fluid.DataFeeder(feed_list=[sentence, label], place=cpu)
 
         data = next(self.train_data())
-        val = exe.run(main_program, feed=feeder.feed(data),
-                      fetch_list=[loss])[0]
+        pdesc = framework_pb2.ProgramDesc.FromString(
+            main_program.desc.serialize_to_string())
+        val = exe.run(pdesc, feed=feeder.feed(data), fetch_list=[loss])[0]
         self.assertEqual((1, ), val.shape)
         print(val)
         self.assertFalse(numpy.isnan(val))
@@ -112,16 +116,18 @@ class TestDynRNN(unittest.TestCase):
 
         cpu = fluid.CPUPlace()
         exe = fluid.Executor(cpu)
-        exe.run(startup_program)
+        pdesc = framework_pb2.ProgramDesc.FromString(
+            startup_program.desc.serialize_to_string())
+        exe.run(pdesc)
         feeder = fluid.DataFeeder(feed_list=[sentence, label], place=cpu)
         data = next(self.train_data())
-        loss_0 = exe.run(main_program,
-                         feed=feeder.feed(data),
-                         fetch_list=[loss])[0]
+        pdesc = framework_pb2.ProgramDesc.FromString(
+            main_program.desc.serialize_to_string())
+        loss_0 = exe.run(pdesc, feed=feeder.feed(data), fetch_list=[loss])[0]
         for _ in xrange(100):
-            val = exe.run(main_program,
-                          feed=feeder.feed(data),
-                          fetch_list=[loss])[0]
+            pdesc = framework_pb2.ProgramDesc.FromString(
+                main_program.desc.serialize_to_string())
+            val = exe.run(pdesc, feed=feeder.feed(data), fetch_list=[loss])[0]
         # loss should be small after 100 mini-batch
         self.assertLess(val[0], loss_0[0])
 

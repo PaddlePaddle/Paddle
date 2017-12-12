@@ -1,6 +1,7 @@
 import numpy as np
 from . import core
 from framework import Program, default_main_program
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 __all__ = ['Executor', 'g_scope']
 
@@ -141,7 +142,9 @@ class Executor(object):
                 outputs={'Out': [fetch_var]},
                 attrs={'col': i})
 
-        self.executor.run(program.desc, scope, 0, True)
+        pdesc = framework_pb2.ProgramDesc.FromString(
+            program.desc.serialize_to_string())
+        self.executor.run(pdesc, scope, 0, True)
         outs = [
             core.get_fetch_variable(scope, fetch_var_name, i)
             for i in xrange(len(fetch_list))

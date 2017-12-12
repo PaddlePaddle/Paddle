@@ -1,6 +1,7 @@
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 
 def lstm_net(dict_dim, class_dim=2, emb_dim=32, seq_len=80, batch_size=50):
@@ -90,14 +91,17 @@ def main():
     place = fluid.CPUPlace()
     exe = fluid.Executor(place)
 
-    exe.run(fluid.default_startup_program())
+    exe.run(
+        framework_pb2.ProgramDesc.FromString(fluid.default_startup_program()
+                                             .desc.serialize_to_string()))
 
     for pass_id in xrange(PASS_NUM):
         for data in train_data():
             chopped_data = chop_data(data)
             tensor_words, tensor_label = prepare_feed_data(chopped_data, place)
 
-            outs = exe.run(fluid.default_main_program(),
+            outs = exe.run(framework_pb2.ProgramDesc.FromString(
+                fluid.default_main_program().desc.serialize_to_string()),
                            feed={"words": tensor_words,
                                  "label": tensor_label},
                            fetch_list=[cost, acc])

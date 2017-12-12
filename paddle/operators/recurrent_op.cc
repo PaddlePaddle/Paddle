@@ -267,7 +267,7 @@ class RecurrentOp : public RecurrentBase {
       }
 
       // Every inputs are linked now, execute!
-      executor.Run(*program, &cur_scope, block->ID(),
+      executor.Run(*(program->Proto()), &cur_scope, block->ID(),
                    false /*create_local_scope*/);
 
       // Copy inside::output -> outside::output
@@ -373,7 +373,7 @@ class RecurrentGradOp : public RecurrentBase {
 
       VLOG(5) << "Recurrent memory linking finished ";
       // Run step block with cur_scope
-      executor.Run(*program, &cur_scope, block->ID(),
+      executor.Run(*(program->Proto()), &cur_scope, block->ID(),
                    false /*create_local_scope*/);
 
       VLOG(5) << "executor.Run finished ";

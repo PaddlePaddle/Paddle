@@ -5,6 +5,7 @@ import paddle.v2.fluid.core as core
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.layers as layers
 from paddle.v2.fluid.executor import Executor
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 dict_size = 30000
 source_dict_dim = target_dict_dim = dict_size
@@ -92,7 +93,9 @@ def main():
     place = core.CPUPlace()
     exe = Executor(place)
 
-    exe.run(framework.default_startup_program())
+    exe.run(
+        framework_pb2.ProgramDesc.FromString(framework.default_startup_program()
+                                             .desc.serialize_to_string()))
 
     batch_id = 0
     for pass_id in xrange(2):
@@ -100,7 +103,8 @@ def main():
             word_data = to_lodtensor(map(lambda x: x[0], data), place)
             trg_word = to_lodtensor(map(lambda x: x[1], data), place)
             trg_word_next = to_lodtensor(map(lambda x: x[2], data), place)
-            outs = exe.run(framework.default_main_program(),
+            outs = exe.run(framework_pb2.ProgramDesc.FromString(
+                framework.default_main_program().desc.serialize_to_string()),
                            feed={
                                'src_word_id': word_data,
                                'target_language_word': trg_word,

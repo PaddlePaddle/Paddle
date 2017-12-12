@@ -67,7 +67,7 @@ class ConditionalBlockOp : public ConditionalOp {
 
       auto *block = Attr<framework::BlockDescBind *>("block");
       framework::Executor exec(dev_ctx);
-      exec.Run(*block->Program(), &cur_scope, block->ID(), false);
+      exec.Run(*(block->Program()->Proto()), &cur_scope, block->ID(), false);
     }
   }
 };
@@ -119,7 +119,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
 
       auto *block = Attr<framework::BlockDescBind *>("block");
       framework::Executor exec(dev_ctx);
-      exec.Run(*block->Program(), &cur_scope, block->ID(), false);
+      exec.Run(*(block->Program()->Proto()), &cur_scope, block->ID(), false);
 
       AssignLocalGradientToGlobal(dev_ctx, cur_scope, Inputs("Params"),
                                   Outputs(framework::GradVarName("Params")));

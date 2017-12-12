@@ -1,6 +1,7 @@
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
+import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 PASS_NUM = 100
 EMBED_SIZE = 32
@@ -61,11 +62,14 @@ feeder = fluid.DataFeeder(
     feed_list=[first_word, second_word, third_word, forth_word, next_word],
     place=place)
 
-exe.run(fluid.default_startup_program())
+exe.run(
+    framework_pb2.ProgramDesc.FromString(fluid.default_startup_program()
+                                         .desc.serialize_to_string()))
 
 for pass_id in range(PASS_NUM):
     for data in train_reader():
-        avg_cost_np = exe.run(fluid.default_main_program(),
+        avg_cost_np = exe.run(framework_pb2.ProgramDesc.FromString(
+            fluid.default_main_program().desc.serialize_to_string()),
                               feed=feeder.feed(data),
                               fetch_list=[avg_cost])
         if avg_cost_np[0] < 5.0:
