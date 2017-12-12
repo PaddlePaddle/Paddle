@@ -21,33 +21,33 @@ namespace math {
 
 // SelectedRows + SelectedRows will simplely concat value and rows.
 // The real computation happens in dealing with LoDTensor.
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 struct SelectedRowsAdd {
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const DeviceContext& context,
                   const framework::SelectedRows& input1,
                   const framework::SelectedRows& input2,
                   framework::SelectedRows* output);
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 struct SelectedRowsAddTensor {
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const DeviceContext& context,
                   const framework::SelectedRows& input1,
                   const framework::Tensor& input2, framework::Tensor* output);
 };
 
 // input2 = input1 + input2
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 struct SelectedRowsAddTo {
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const DeviceContext& context,
                   const framework::SelectedRows& input1,
                   const int64_t input2_offset, framework::SelectedRows* input2);
 };
 
 // input2 = input1 + input2
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 struct SelectedRowsAddToTensor {
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const DeviceContext& context,
                   const framework::SelectedRows& input1,
                   framework::Tensor* input2);
 };

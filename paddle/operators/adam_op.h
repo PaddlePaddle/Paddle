@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class AdamOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -52,17 +52,17 @@ class AdamOpKernel : public framework::OpKernel<T> {
     auto param_out = framework::EigenVector<T>::Flatten(*param_out_tensor);
     auto moment1_out = framework::EigenVector<T>::Flatten(*moment1_out_tensor);
     auto moment2_out = framework::EigenVector<T>::Flatten(*moment2_out_tensor);
-    auto place = ctx.GetEigenDevice<Place>();
+    auto* place = ctx.template device_context<DeviceContext>().eigen_device();
 
-    moment1_out.device(place) = beta1 * moment1 + (1 - beta1) * grad;
-    moment2_out.device(place) = beta2 * moment2 + (1 - beta2) * grad.square();
+    moment1_out.device(*place) = beta1 * moment1 + (1 - beta1) * grad;
+    moment2_out.device(*place) = beta2 * moment2 + (1 - beta2) * grad.square();
 
     // All of these are tensors of 1 element
     auto lr_t = lr * (1 - beta2_pow).sqrt() / (1 - beta1_pow);
     // Eigen does not support automatic broadcast
     // Get dimensions of moment vector to broadcast lr_t
     Eigen::DSizes<int, 1> m_dsize(moment1_out_tensor->numel());
-    param_out.device(place) =
+    param_out.device(*place) =
         param -
         lr_t.broadcast(m_dsize) *
             (moment1_out / (moment2_out.sqrt() + epsilon));

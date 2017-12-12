@@ -129,7 +129,7 @@ REGISTER_OP(sequence_concat, ops::SequenceConcatOp, ops::SequenceConcatOpMaker,
             sequence_concat_grad, ops::SequenceConcatGradOp);
 REGISTER_OP_CPU_KERNEL(
     sequence_concat,
-    ops::SequenceConcatOpKernel<paddle::platform::CPUPlace, float>);
+    ops::SequenceConcatOpKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     sequence_concat_grad,
-    ops::SequenceConcatGradOpKernel<paddle::platform::CPUPlace, float>);
+    ops::SequenceConcatGradOpKernel<paddle::platform::CPUDeviceContext, float>);

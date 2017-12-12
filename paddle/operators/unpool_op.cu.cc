@@ -15,9 +15,10 @@ limitations under the License. */
 #include "paddle/operators/unpool_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(unpool,
-                       ops::UnpoolKernel<paddle::platform::GPUPlace, float>,
-                       ops::UnpoolKernel<paddle::platform::GPUPlace, double>);
-REGISTER_OP_GPU_KERNEL(
-    unpool_grad, ops::UnpoolGradKernel<paddle::platform::GPUPlace, float>,
-    ops::UnpoolGradKernel<paddle::platform::GPUPlace, double>);
+REGISTER_OP_CUDA_KERNEL(
+    unpool, ops::UnpoolKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::UnpoolKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(
+    unpool_grad,
+    ops::UnpoolGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::UnpoolGradKernel<paddle::platform::CUDADeviceContext, double>);

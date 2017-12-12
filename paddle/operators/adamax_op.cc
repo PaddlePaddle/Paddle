@@ -108,10 +108,10 @@ Adam algorithm based on the infinity norm.
 Adamax updates:
 
 $$
-  momentOut = \beta_{1} * moment + (1 - \beta_{1}) * grad \\
-  infNormOut = max(\beta_{2} * infNorm + \epsilon, |grad|) \\
-  learningRate = \frac{learningRate}{1 - \beta_{1}^{Beta1Pow}} \\
-  paramOut = param - learningRate * \frac{momentOut}{infNormOut}
+moment\_out = \beta_1 * moment + (1 - \beta_1) * grad \\
+inf\_norm\_out = max(\beta_2 * inf\_norm + \epsilon, |grad|) \\
+learning\_rate = \frac{learning\_rate}{1 - \beta_{1\_pow}} \\
+param\_out = param - learning\_rate * \frac{moment\_out}{inf\_norm\_out}
 $$
 
 The original paper does not have an epsilon attribute.
@@ -127,6 +127,6 @@ division by 0 error.
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(adamax, ops::AdamaxOp, ops::AdamaxOpMaker);
-REGISTER_OP_CPU_KERNEL(adamax,
-                       ops::AdamaxOpKernel<paddle::platform::CPUPlace, float>,
-                       ops::AdamaxOpKernel<paddle::platform::CPUPlace, double>);
+REGISTER_OP_CPU_KERNEL(
+    adamax, ops::AdamaxOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::AdamaxOpKernel<paddle::platform::CPUDeviceContext, double>);

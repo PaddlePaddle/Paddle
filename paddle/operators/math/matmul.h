@@ -26,13 +26,12 @@ namespace math {
 //
 // Both a & b can be 1- to 3-dimensional. Higher rank tensors are not supported
 // yet.
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class MatMulFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& a, bool trans_a,
-                  const framework::Tensor& b, bool trans_b, T alpha,
-                  framework::Tensor* out, T beta) {
+  void operator()(const DeviceContext& context, const framework::Tensor& a,
+                  bool trans_a, const framework::Tensor& b, bool trans_b,
+                  T alpha, framework::Tensor* out, T beta) {
     auto dim_a = a.dims();
     auto dim_b = b.dims();
 
@@ -108,13 +107,13 @@ class MatMulFunctor {
 
     if (!batchCount) {
       // regular matrix multiplication
-      gemm<Place, T>(context, transA, transB, M, N, kA, alpha, a.data<T>(),
-                     b.data<T>(), beta, out->data<T>());
+      gemm<DeviceContext, T>(context, transA, transB, M, N, kA, alpha,
+                             a.data<T>(), b.data<T>(), beta, out->data<T>());
     } else {
       // batched matrix multiplication
-      batched_gemm<Place, T>(context, transA, transB, M, N, kA, alpha,
-                             a.data<T>(), b.data<T>(), beta, out->data<T>(),
-                             batchCount, strideA, strideB);
+      batched_gemm<DeviceContext, T>(
+          context, transA, transB, M, N, kA, alpha, a.data<T>(), b.data<T>(),
+          beta, out->data<T>(), batchCount, strideA, strideB);
     }
   }
 };

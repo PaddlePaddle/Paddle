@@ -180,6 +180,77 @@ def dynamic_lstm(input,
     return hidden, cell
 
 
+def gru_unit(input,
+             hidden,
+             size,
+             weight=None,
+             bias=None,
+             activation='tanh',
+             gate_activation='sigmoid',
+             main_program=None,
+             startup_program=None):
+    """
+    GRUUnit Operator implements partial calculations of the GRU unit as following:
+
+    $$
+    update \ gate: u_t = actGate(xu_t + W_u * h_{t-1} + b_u) \\
+    reset \ gate: r_t = actGate(xr_t + W_r * h_{t-1} + b_r)  \\
+    output \ candidate: {h}_t = actNode(xc_t + W_c * dot(r_t, h_{t-1}) + b_c) \\
+    output: h_t = dot((1 - u_t), h_{t-1}) + dot(u_t, {h}_t)
+    $$
+
+    which is same as one time step of GRU Operator.
+
+    @note To implement the complete GRU unit, fully-connected operator must be
+    used before to feed xu, xr and xc as the Input of GRUUnit operator.
+
+    TODO(ChunweiYan) add more document here
+    """
+    activation_dict = dict(
+        identity=0,
+        sigmoid=1,
+        tanh=2,
+        relu=3, )
+    activation = activation_dict[activation]
+    gate_activation = activation_dict[gate_activation]
+
+    helper = LayerHelper('gru_unit', **locals())
+    dtype = helper.input_dtype()
+    size = size / 3
+
+    # create weight
+    if weight is None:
+        weight = helper.create_parameter(
+            attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
+
+    # create bias
+    if bias is None:
+        bias_size = [1, 3 * size]
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+
+    gate = helper.create_tmp_variable(dtype)
+    reset_hidden_pre = helper.create_tmp_variable(dtype)
+    updated_hidden = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type='gru_unit',
+        inputs={'Input': input,
+                'HiddenPrev': hidden,
+                'Weight': weight},
+        outputs={
+            'Gate': gate,
+            'ResetHiddenPrev': reset_hidden_pre,
+            'Hidden': updated_hidden,
+        },
+        attrs={
+            'activation': 0,
+            'gate_activation': 1,
+        })
+
+    return updated_hidden, reset_hidden_pre, gate
+
+
 def data(name,
          shape,
          append_batch_size=True,
@@ -359,7 +430,8 @@ def _create_op_func_(op_type):
                     dtype = each.dtype
                 elif dtype != each.dtype:
                     raise ValueError(
-                        "operator {0} must input same dtype".format(op_type))
+                        "operator {0} must input same dtype. {1} vs {2}".format(
+                            op_type, dtype, each.dtype))
 
         return dtype
 
@@ -696,7 +768,7 @@ def sequence_conv(input,
     helper = LayerHelper('sequence_conv', **locals())
     dtype = helper.input_dtype()
     filter_shape = [filter_size * input.shape[1], num_filters]
-    filter = helper.create_parameter(
+    filter_param = helper.create_parameter(
         attr=helper.param_attr, shape=filter_shape, dtype=dtype)
     pre_bias = helper.create_tmp_variable(dtype)
 
@@ -704,7 +776,7 @@ def sequence_conv(input,
         type='sequence_conv',
         inputs={
             'X': [input],
-            'Filter': [filter],
+            'Filter': [filter_param],
         },
         outputs={"Out": pre_bias},
         attrs={
@@ -719,7 +791,7 @@ def sequence_conv(input,
 def conv2d(input,
            num_filters,
            filter_size,
-           stride=[1, 1],
+           stride=None,
            padding=None,
            groups=None,
            param_attr=None,
@@ -736,6 +808,8 @@ def conv2d(input,
     conv-2d output, if mentioned in the input parameters.
     """
 
+    if stride is None:
+        stride = [1, 1]
     helper = LayerHelper('conv2d', **locals())
     dtype = helper.input_dtype()
 
@@ -761,7 +835,7 @@ def conv2d(input,
         std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
         return Normal(0.0, std, 0)
 
-    filter = helper.create_parameter(
+    filter_param = helper.create_parameter(
         attr=helper.param_attr,
         shape=filter_shape,
         dtype=dtype,
@@ -770,10 +844,10 @@ def conv2d(input,
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
-        type='conv2d',
+        type='conv2d_cudnn',
         inputs={
             'Input': input,
-            'Filter': filter,
+            'Filter': filter_param,
         },
         outputs={"Output": pre_bias},
         attrs={'strides': stride,
@@ -809,8 +883,8 @@ def sequence_pool(input, pool_type, **kwargs):
 def pool2d(input,
            pool_size,
            pool_type,
-           pool_stride=[1, 1],
-           pool_padding=[0, 0],
+           pool_stride=None,
+           pool_padding=None,
            global_pooling=False,
            main_program=None,
            startup_program=None):
@@ -818,6 +892,10 @@ def pool2d(input,
     This function adds the operator for pooling in 2 dimensions, using the
     pooling configurations mentioned in input parameters.
     """
+    if pool_padding is None:
+        pool_padding = [0, 0]
+    if pool_stride is None:
+        pool_stride = [1, 1]
     if pool_type not in ["max", "avg"]:
         raise ValueError(
             "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",

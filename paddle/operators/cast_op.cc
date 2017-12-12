@@ -68,7 +68,7 @@ class CastOpGradMaker : public framework::SingleGradOpDescMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUPlace;
+using CPU = paddle::platform::CPUDeviceContext;
 REGISTER_OP_WITH_KERNEL(cast, ops::CastOpGradMaker, ops::CastOpInferShape,
                         ops::CastOpProtoMaker);
 REGISTER_OP_CPU_KERNEL(cast, ops::CastOpKernel<CPU, float>,
