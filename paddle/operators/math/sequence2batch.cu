@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,7 +62,7 @@ class CopyMatrixRowsFunctor<platform::GPUPlace, T> {
     dim3 grid(8, 1);
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(context).stream();
-    CopyMatrixRowsKernel<T, 128, 8, 8><<<grid, threads, 0, stream>>>(
+    hipLaunchKernelGGL((CopyMatrixRowsKernel<T, 128, 8, 8>), dim3(grid), dim3(threads), 0, stream, 
         src_data, dst_data, index, height, width, is_src_index);
   }
 };

@@ -16,7 +16,7 @@ limitations under the License. */
 #ifndef HL_CPU_LSTM_CUH_
 #define HL_CPU_LSTM_CUH_
 
-#ifndef __NVCC__
+#ifndef __HIPCC__
 
 // using namespace hppl;
 

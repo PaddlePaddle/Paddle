@@ -41,7 +41,7 @@ class lstm {
     stateAtv = activation(state, active_state);
     output = valueOg * stateAtv;
   }
-#ifndef __NVCC__
+#ifndef __HIPCC__
 #ifndef __AVX__  // If not compiled with AVX instructs. Disable AVX by default
   static const bool avx = false;
 #else
@@ -98,7 +98,7 @@ class lstm {
     checkFGrad = gradFg * prevState;
     checkOGrad = gradOg * state;
   }
-#ifndef __NVCC__
+#ifndef __HIPCC__
 #ifndef __AVX__  // If not compiled with AVX instructs. Disable AVX by default
   static const bool avx = false;
 #else

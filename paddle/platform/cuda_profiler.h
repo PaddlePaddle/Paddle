@@ -45,9 +45,9 @@ void CudaProfilerInit(std::string output_file, std::string output_mode,
       cudaProfilerInitialize(config_file.c_str(), output_file.c_str(), mode));
 }
 
-void CudaProfilerStart() { PADDLE_ENFORCE(cudaProfilerStart()); }
+void CudaProfilerStart() { PADDLE_ENFORCE(hipProfilerStart()); }
 
-void CudaProfilerStop() { PADDLE_ENFORCE(cudaProfilerStop()); }
+void CudaProfilerStop() { PADDLE_ENFORCE(hipProfilerStop()); }
 
 }  // namespace platform
 }  // namespace paddle

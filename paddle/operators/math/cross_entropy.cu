@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,7 +51,7 @@ struct SharedMemory {
 template <>
 struct SharedMemory<float> {
   __device__ float* GetPointer() {
-    extern __shared__ float s_float[];
+    HIP_DYNAMIC_SHARED( float, s_float)
     return s_float;
   }
 };
@@ -58,7 +59,7 @@ struct SharedMemory<float> {
 template <>
 struct SharedMemory<double> {
   __device__ double* GetPointer() {
-    extern __shared__ double s_double[];
+    HIP_DYNAMIC_SHARED( double, s_double)
     return s_double;
   }
 };
@@ -110,17 +111,13 @@ class CrossEntropyFunctor<platform::GPUPlace, T> {
       const T* label_data = labels->data<T>();
       int block = class_num > 512 ? 512 : pow(2, int(std::log2(class_num)));
 
-      SoftCrossEntropyKernel<T><<<
-          batch_size, block, block * sizeof(T),
-          reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
+      hipLaunchKernelGGL((SoftCrossEntropyKernel<T>), dim3(batch_size), dim3(block), block * sizeof(T), reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream(), 
           loss_data, prob_data, label_data, class_num);
     } else {
       const int64_t* label_data = labels->data<int64_t>();
       int block = 512;
       int grid = (batch_size + block - 1) / block;
-      CrossEntropyKernel<T><<<
-          grid, block, 0,
-          reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
+      hipLaunchKernelGGL((CrossEntropyKernel<T>), dim3(grid), dim3(block), 0, reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream(), 
           loss_data, prob_data, label_data, batch_size, class_num);
     }
   }

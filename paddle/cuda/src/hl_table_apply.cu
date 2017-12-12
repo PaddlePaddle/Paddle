@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,7 +61,7 @@ void hl_matrix_select_rows(real* output,
 
   dim3 threads(128, 8);
   dim3 grid(8, 1);
-  KeMatrixAddRows<128, 8, 8, 0><<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMatrixAddRows<128, 8, 8, 0>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       output, ldo, table, ldt, ids, numSamples, tableSize, dim);
 
   CHECK_SYNC("hl_matrix_select_rows failed");
@@ -80,7 +81,7 @@ void hl_matrix_add_to_rows(real* table,
 
   dim3 threads(128, 8);
   dim3 grid(8, 1);
-  KeMatrixAddRows<128, 8, 8, 1><<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeMatrixAddRows<128, 8, 8, 1>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       input, ldi, table, ldt, ids, numSamples, tableSize, dim);
 
   CHECK_SYNC("hl_matrix_add_to_rows failed");
@@ -108,7 +109,7 @@ void hl_vector_select_from(
 
   dim3 threads(512, 1);
   dim3 grid(8, 1);
-  KeVectorSelect<T, 512, 8><<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeVectorSelect<T, 512, 8>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       dst, sized, src, sizes, ids, sizei);
 
   CHECK_SYNC("hl_vector_select_from failed");

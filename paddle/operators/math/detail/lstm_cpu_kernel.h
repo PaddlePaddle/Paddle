@@ -22,7 +22,7 @@ namespace operators {
 namespace math {
 namespace detail {
 
-#ifndef __NVCC__
+#ifndef __HIPCC__
 
 template <class T, class Op>
 void naive_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,

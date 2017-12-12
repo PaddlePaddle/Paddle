@@ -14,7 +14,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CUDA
 
-#include <cuda_runtime.h>
+#include <hip/hip_runtime.h>
 #include <gtest/gtest.h>
 #include <cmath>
 #include <vector>

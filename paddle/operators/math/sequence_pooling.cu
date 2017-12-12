@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -73,7 +74,7 @@ class MaxSeqPoolFunctor<platform::GPUPlace, T> {
     dim3 grid(num_seq, 1);
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(context).stream();
-    KeMaxSequencePool<T><<<grid, threads, 0, stream>>>(
+    hipLaunchKernelGGL((KeMaxSequencePool<T>), dim3(grid), dim3(threads), 0, stream, 
         in_data, starts.data(), out_data, max_index, num_seq, dim);
   }
 };
@@ -121,7 +122,7 @@ class MaxSeqPoolGradFunctor<platform::GPUPlace, T> {
     dim3 grid(blocks, 1);
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(context).stream();
-    KeMaxSequencePoolGrad<T><<<grid, threads, 0, stream>>>(
+    hipLaunchKernelGGL((KeMaxSequencePoolGrad<T>), dim3(grid), dim3(threads), 0, stream, 
         og_data, max_index, ig_data, num_seq, dim);
   }
 };

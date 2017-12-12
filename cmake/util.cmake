@@ -93,7 +93,8 @@ function(link_paddle_exe TARGET_NAME)
         target_circle_link_libraries(${TARGET_NAME}
             ARCHIVE_START
             paddle_gserver
-            paddle_function
+            paddle_function_cpu
+            paddle_function_gpu
             ARCHIVE_END
             paddle_pserver
             paddle_trainer_lib

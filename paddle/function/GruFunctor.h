@@ -29,7 +29,7 @@ struct GruFunctor {
                       int batchSize,
                       hl_activation_mode_t active_node,
                       hl_activation_mode_t active_gate) {
-#ifndef __NVCC__
+#ifndef __HIPCC__
     if (value.prevOutValue) {
       BlasGemm<Device, T>::compute(false,
                                    false,
@@ -82,7 +82,7 @@ struct GruGradFunctor {
                       int batchSize,
                       hl_activation_mode_t active_node,
                       hl_activation_mode_t active_gate) {
-#ifndef __NVCC__
+#ifndef __HIPCC__
     backward_state_grad(
         opStateGrad, value, grad, frameSize, batchSize, active_node);
 

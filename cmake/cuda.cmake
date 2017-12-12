@@ -2,6 +2,8 @@ if(NOT WITH_GPU)
     return()
 endif()
 
+include(FindHIP)
+
 set(paddle_known_gpu_archs "30 35 50 52 60 61 70")
 set(paddle_known_gpu_archs7 "30 35 50 52")
 set(paddle_known_gpu_archs8 "30 35 50 52 60 61")
@@ -153,6 +155,8 @@ elseif (${CUDA_VERSION} LESS 9.0) # CUDA 8.x
 endif()
 
 include_directories(${CUDA_INCLUDE_DIRS})
+include_directories("/opt/rocm/include")
+
 list(APPEND EXTERNAL_LIBS ${CUDA_LIBRARIES} ${CUDA_rt_LIBRARY})
 if(NOT WITH_DSO)
     list(APPEND EXTERNAL_LIBS ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${NCCL_LIBRARY})
@@ -173,6 +177,8 @@ list(APPEND CUDA_NVCC_FLAGS "--use_fast_math")
 list(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
 # Set :expt-relaxed-constexpr to suppress Eigen warnings
 list(APPEND CUDA_NVCC_FLAGS "--expt-relaxed-constexpr")
+
+set(HIP_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -DPADDLE_WITH_CUDA" )
 
 if(CMAKE_BUILD_TYPE  STREQUAL "Debug")
     list(APPEND CUDA_NVCC_FLAGS  ${CMAKE_CXX_FLAGS_DEBUG})

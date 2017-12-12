@@ -38,6 +38,7 @@ limitations under the License. */
 #include "paddle/platform/dynload/curand.h"
 #include "paddle/platform/dynload/nccl.h"
 
+#include <hip/hip_runtime_api.h>
 #include <cublas_v2.h>
 #include <cudnn.h>
 #include <curand.h>
@@ -118,7 +119,7 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
 
 template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
-    cudaError_t e, const Args&... args) {
+    hipError_t e, const Args&... args) {
   if (UNLIKELY(e)) {
     throw thrust::system_error(e, thrust::cuda_category(),
                                string::Sprintf(args...));

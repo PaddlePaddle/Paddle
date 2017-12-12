@@ -79,7 +79,7 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
           ins[i]->data<T>(), outs[i]->mutable_data<T>(ctx.GetPlace()),
           outs[i]->numel(), NCCLTypeWrapper<T>::type, reduction_op_,
           comm->comms_[idx], stream));
-      PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+      PADDLE_ENFORCE(hipStreamSynchronize(stream));
 
       VLOG(1) << "gpu : "
               << " finished allreduce. send " << ins[i]->numel() << " recv "
@@ -141,7 +141,7 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
           ins[i]->data<T>(), recvbuffer, ins[i]->numel(),
           NCCLTypeWrapper<T>::type, reduction_op_, root, comm->comms_[idx],
           stream));
-      PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+      PADDLE_ENFORCE(hipStreamSynchronize(stream));
 
       VLOG(1) << "gpu : " << gpu_id << " finished reduce. send "
               << ins[i]->numel() << " recv " << outs[i]->numel();
@@ -178,7 +178,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
             (void*)ins[i]->data<T>(), ins[i]->numel(), NCCLTypeWrapper<T>::type,
             root, comm->comms_[idx], stream));
         VLOG(1) << " after ncclBcast";
-        PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+        PADDLE_ENFORCE(hipStreamSynchronize(stream));
 
         VLOG(1) << "gpu : " << gpu_id << " finished Bcast.";
       }
@@ -191,7 +191,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE(platform::dynload::ncclBcast(
             outs[i]->mutable_data<T>(ctx.GetPlace()), outs[i]->numel(),
             NCCLTypeWrapper<T>::type, root, comm->comms_[idx], stream));
-        PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+        PADDLE_ENFORCE(hipStreamSynchronize(stream));
 
         VLOG(1) << "gpu : " << gpu_id << " finished Bcast. recv "
                 << outs[i]->numel();

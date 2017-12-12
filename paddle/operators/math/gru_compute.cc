@@ -24,7 +24,7 @@ struct GRUUnitFunctor<platform::CPUPlace, T> {
                       hl_gru_value<T> value, int frame_size, int batch_size,
                       activation_mode_t active_node,
                       activation_mode_t active_gate) {
-#ifndef __NVCC__
+#ifndef __HIPCC__
     if (value.prev_out_value) {
       math::gemm<platform::CPUPlace, T>(
           context, false, false, batch_size, frame_size * 2, frame_size, 1,
@@ -55,7 +55,7 @@ struct GRUUnitGradFunctor<platform::CPUPlace, T> {
                       int frame_size, int batch_size,
                       activation_mode_t active_node,
                       activation_mode_t active_gate) {
-#ifndef __NVCC__
+#ifndef __HIPCC__
     detail::backward_state_grad(detail::backward::gru_stateGrad<T>(), value,
                                 grad, frame_size, batch_size, active_node);
 

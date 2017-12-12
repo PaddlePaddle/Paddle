@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +29,7 @@ inline __device__ float paddleAtomicAdd(float* address, float val) {
 
 template <>
 inline __device__ double paddleAtomicAdd(double* address, double val) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
+#if defined(__HIP_DEVICE_COMPILE__) && 0 //  __CUDA_ARCH__ >= 600
   return atomicAdd(address, val);
 #else
   // NOLINTNEXTLINE

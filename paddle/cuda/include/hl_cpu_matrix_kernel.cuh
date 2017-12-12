@@ -18,7 +18,7 @@ limitations under the License. */
 #include <stdio.h>
 #include "hl_base.h"
 
-#ifndef __CUDA_ARCH__
+#ifndef __HIP_DEVICE_COMPILE__
 #include "hl_cpu_matrix_kernel_detail.cuh"
 #endif
 
@@ -118,7 +118,7 @@ void hl_cpu_matrix_row_op(Agg agg, Op op, Saver sv,
                           int dimM, int dimN,
                           real *dst, int ld,
                           real *A, int lda) {
-#ifndef __CUDA_ARCH__
+#ifndef __HIP_DEVICE_COMPILE__
   if (!Agg::sse || !Op::sse || !Saver::sse) {
     hl_matrix_row_op(agg, op, sv, dimM, dimN, dst, ld, A, lda);
   } else {
@@ -137,7 +137,7 @@ void hl_cpu_matrix_row_op(Agg agg, Op op, Saver sv,
                           real *dst, int ld,
                           real *A, int lda,
                           real *B, int ldb) {
-#ifndef __CUDA_ARCH__
+#ifndef __HIP_DEVICE_COMPILE__
   if (!Agg::sse || !Op::sse || !Saver::sse) {
     hl_matrix_row_op(agg, op, sv, dimM, dimN, dst, ld, A, lda, B, ldb);
   } else {
@@ -157,7 +157,7 @@ void hl_cpu_matrix_column_op(Agg agg, Op op, Saver sv,
                              int dimM, int dimN,
                              real *dst,
                              real *A, int lda) {
-#ifndef __CUDA_ARCH__
+#ifndef __HIP_DEVICE_COMPILE__
   if (!Agg::sse || !Op::sse || !Saver::sse) {
     hl_matrix_column_op(agg, op, sv, dimM, dimN, dst, A, lda);
   } else {
@@ -177,7 +177,7 @@ void hl_cpu_matrix_column_op(Agg agg, Op op, Saver sv,
                              real *dst,
                              real *A, int lda,
                              real *B, int ldb) {
-#ifndef __CUDA_ARCH__
+#ifndef __HIP_DEVICE_COMPILE__
   if (!Agg::sse || !Op::sse || !Saver::sse) {
     hl_matrix_column_op(agg, op, sv, dimM, dimN, dst, A, lda, B, ldb);
   } else {

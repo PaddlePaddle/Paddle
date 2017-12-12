@@ -65,7 +65,7 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
         // a Python numpy array. It's better to manage CDUA stream unifiedly.
         paddle::platform::GpuMemcpySync(dst_ptr, src_ptr,
                                         sizeof(CUR_TYPE) * tensor.numel(),
-                                        cudaMemcpyDeviceToHost);
+                                        hipMemcpyDeviceToHost);
 #else
         PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
 #endif
@@ -135,7 +135,7 @@ void PyCUDATensorSetFromArray(
   // TODO(qijun): Here we use default CUDA stream to set a Python numpy
   // array to a GPU Tensor. It's better to manage CDUA stream unifiedly.
   paddle::platform::GpuMemcpySync(dst, array.data(), sizeof(T) * array.size(),
-                                  cudaMemcpyHostToDevice);
+                                  hipMemcpyHostToDevice);
 }
 #endif
 

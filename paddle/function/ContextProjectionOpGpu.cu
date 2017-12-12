@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -109,7 +110,7 @@ void hl_context_projection_forward(const real* input,
   dim3 grid(blocks_x, blocks_y);
 
   if (weight) {
-    KeContextProjectionForward<true><<<grid, threads, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((KeContextProjectionForward<true>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
         input,
         sequence,
         weight,
@@ -119,7 +120,7 @@ void hl_context_projection_forward(const real* input,
         context_start,
         begin_pad);
   } else {
-    KeContextProjectionForward<false><<<grid, threads, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((KeContextProjectionForward<false>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
         input,
         sequence,
         weight,
@@ -224,7 +225,7 @@ void hl_context_projection_backward_data(const real* out_grad,
   int blocks_y = 1;
   dim3 threads(block_size, 1);
   dim3 grid(blocks_x, blocks_y);
-  KeContextProjectionBackwardData<<<grid, threads, 0, STREAM_DEFAULT>>>(
+  hipLaunchKernelGGL((KeContextProjectionBackwardData), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
       out_grad, sequence, input_grad, input_dim, context_length, context_start);
   CHECK_SYNC("hl_context_projection_backward_data failed");
 }

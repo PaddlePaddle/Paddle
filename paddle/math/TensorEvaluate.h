@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,7 +48,7 @@ inline void TensorCpuApply(LeftType& lhs, const RightType& rhs) {
   }
 }
 
-#ifdef __NVCC__
+#ifdef __HIPCC__
 template <typename LeftType, typename RightType>
 __global__ void TensorElementWiseOp(LeftType lhs,
                                     RightType rhs,
@@ -87,7 +88,7 @@ inline void TensorGpuApply(LeftType& lhs, const RightType& rhs) {
     int size = dimM * dimN;
     int blockSize = size <= 1024 ? size : 1024;
     int gridSize = (size + 1024 - 1) / 1024;
-    TensorElementWiseOp<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((TensorElementWiseOp), dim3(gridSize), dim3(blockSize), 0, STREAM_DEFAULT, 
         lhs_, rhs_, size);
   } else {
     int blockSizeY = std::min(32, dimM);
@@ -96,7 +97,7 @@ inline void TensorGpuApply(LeftType& lhs, const RightType& rhs) {
     int gridSizeY = std::min(32, (dimM + blockSizeY - 1) / blockSizeY);
     dim3 threads(blockSizeX, blockSizeY);
     dim3 grid(gridSizeX, gridSizeY);
-    TensorElementWiseOp<<<grid, threads, 0, STREAM_DEFAULT>>>(lhs_, rhs_);
+    hipLaunchKernelGGL((TensorElementWiseOp), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, lhs_, rhs_);
   }
 
   CHECK_SYNC("TensorGpuApply failed");

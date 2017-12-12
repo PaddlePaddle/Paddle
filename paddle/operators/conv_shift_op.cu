@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserve.
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,7 +38,7 @@ template <typename T>
 __global__ void ConvShiftForward(const T *x, const T *y, int x_width,
                                  int y_width, int y_half_width, int batch_size,
                                  T *out) {
-  extern __shared__ T mem[];
+  HIP_DYNAMIC_SHARED( T, mem)
 
   int tx = threadIdx.x;
   int i = blockIdx.x * blockDim.x + tx;  // global x index
@@ -134,7 +135,7 @@ class ConvShiftKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
 
     auto stream = context.cuda_device_context().stream();
 
-    ConvShiftForward<T><<<grid_dim, x_per_block, mem_per_block, stream>>>(
+    hipLaunchKernelGGL((ConvShiftForward<T>), dim3(grid_dim), dim3(x_per_block), mem_per_block, stream, 
         x_data, y_data, x_width, y_width, y_half_width, batch_size, out_data);
   }
 };
@@ -169,14 +170,14 @@ class ConvShiftGradKernel<platform::GPUPlace, T>
     if (dX) {
       T *dx_data = dX->mutable_data<T>(context.GetPlace());
       zero(device_ctx, dX, static_cast<T>(0.0));
-      ConvShiftGradX<T><<<grid_dim, x_per_block, 0, device_ctx.stream()>>>(
+      hipLaunchKernelGGL((ConvShiftGradX<T>), dim3(grid_dim), dim3(x_per_block), 0, device_ctx.stream(), 
           dout_data, y_data, x_width, y_width, y_half_width, batch_size,
           dx_data);
     }
     if (dY) {
       T *dy_data = dY->mutable_data<T>(context.GetPlace());
       zero(device_ctx, dY, static_cast<T>(0.0));
-      ConvShiftDy<T><<<grid_dim, x_per_block, 0, device_ctx.stream()>>>(
+      hipLaunchKernelGGL((ConvShiftDy<T>), dim3(grid_dim), dim3(x_per_block), 0, device_ctx.stream(), 
           x_data, dout_data, x_width, y_width, y_half_width, batch_size,
           dy_data);
     }

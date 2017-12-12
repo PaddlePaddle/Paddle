@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -96,7 +97,7 @@ public:
     int blockY = (blocks + 512 - 1) / 512;
     dim3 threads(1024, 1);
     dim3 grid(blockX, blockY);
-    im2col<T><<<grid, threads, 0, STREAM_DEFAULT>>>(imData,
+    hipLaunchKernelGGL((im2col<T>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, imData,
                                                     numKernels,
                                                     inputHeight,
                                                     inputWidth,
@@ -214,7 +215,7 @@ public:
 
     // To avoid involving atomic operations, we will launch one kernel per
     // bottom dimension, and then in the kernel add up the top dimensions.
-    col2im<T><<<grid, threads, 0, STREAM_DEFAULT>>>(
+    hipLaunchKernelGGL((col2im<T>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, 
         numKernels,
         colData,
         inputHeight + 2 * paddingHeight,
@@ -330,7 +331,7 @@ public:
     int blockDimZ = 1024 / blockDimX / blockDimY;
     dim3 threads(blockDimX, blockDimY, std::min(blockDimZ, inputChannels));
     dim3 grid(outputWidth, outputHeight);
-    im2colOCF<T><<<grid, threads, 0, STREAM_DEFAULT>>>(imData,
+    hipLaunchKernelGGL((im2colOCF<T>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, imData,
                                                        colData,
                                                        inputChannels,
                                                        inputHeight,
@@ -437,7 +438,7 @@ public:
     int blockDimZ = 1024 / blockDimX / blockDimY;
     dim3 threads(blockDimX, blockDimY, std::min(blockDimZ, inputChannels));
     dim3 grid(outputWidth, outputHeight);
-    col2imOCF<T><<<grid, threads, 0, STREAM_DEFAULT>>>(imData,
+    hipLaunchKernelGGL((col2imOCF<T>), dim3(grid), dim3(threads), 0, STREAM_DEFAULT, imData,
                                                        colData,
                                                        inputChannels,
                                                        inputHeight,

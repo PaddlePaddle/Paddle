@@ -122,7 +122,7 @@ public:
   explicit INLINE TensorApply(
       const TensorBinaryOp<OP, LhsType, RhsType, T>& expr)
       : op_(expr.op_), lhs_(expr.lhs_), rhs_(expr.rhs_) {
-#ifndef __CUDA_ARCH__
+#ifndef __HIP_DEVICE_COMPILE__
     CHECK_EQ(lhs_.getWidth(), rhs_.getWidth());
     CHECK_EQ(lhs_.getHeight(), rhs_.getHeight());
     CHECK_EQ(lhs_.useGpu(), rhs_.useGpu());
@@ -157,7 +157,7 @@ public:
   explicit INLINE TensorApply(
       const TensorTernaryOp<ArgType1, ArgType2, ArgType3, T>& expr)
       : expr1_(expr.expr1_), expr2_(expr.expr2_), expr3_(expr.expr3_) {
-#ifndef __CUDA_ARCH__
+#ifndef __HIP_DEVICE_COMPILE__
     CHECK_EQ(expr1_.getWidth(), expr2_.getWidth());
     CHECK_EQ(expr1_.getWidth(), expr3_.getWidth());
     CHECK_EQ(expr1_.getHeight(), expr2_.getHeight());

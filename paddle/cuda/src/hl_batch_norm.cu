@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,7 +51,7 @@ void hl_batch_norm_cuda_inference(const real* input,
                                   size_t channel,
                                   size_t height,
                                   size_t width) {
-  batchNormInference<<<batchSize, 256, 0, STREAM_DEFAULT>>>(output,
+  hipLaunchKernelGGL((batchNormInference), dim3(batchSize), dim3(256), 0, STREAM_DEFAULT, output,
                                                             input,
                                                             scale,
                                                             bias,

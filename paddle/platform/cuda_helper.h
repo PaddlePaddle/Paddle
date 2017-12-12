@@ -42,7 +42,7 @@ CUDA_ATOMIC_WRAPPER(Add, int64_t) {
                        static_cast<unsigned long long int>(val));
 }
 
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
+#if defined(__HIP_DEVICE_COMPILE__) && 0 //__CUDA_ARCH__ >= 600
 USE_CUDA_ATOMIC(Add, double);
 #else
 CUDA_ATOMIC_WRAPPER(Add, double) {
