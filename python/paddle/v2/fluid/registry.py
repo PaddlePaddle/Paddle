@@ -8,7 +8,7 @@ import proto.framework_pb2 as framework_pb2
 from framework import OpProtoHolder, Variable, Program, Operator
 from paddle.v2.fluid.layer_helper import LayerHelper, unique_name
 
-__all__ = ['layer_registry', 'deprecated']
+__all__ = ['deprecated', 'register_layer']
 
 
 def _convert_(name):

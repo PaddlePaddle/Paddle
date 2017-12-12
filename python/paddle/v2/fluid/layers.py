@@ -12,20 +12,17 @@ from param_attr import ParamAttr
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
     'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool', 'sums', 'cos_sim',
-    'batch_norm', 'accuracy', 'split_lod_tensor', 'While', 'mean', 'mul'
+    'batch_norm', 'accuracy', 'split_lod_tensor', 'While'
 ]
 
-register_layer('mean')
-register_layer('mul')
-register_layer('elementwise_add')
-register_layer('elementwise_div')
-register_layer('dropout')
-register_layer('reshape')
-register_layer('sigmoid')
-register_layer('scale')
-register_layer('reshape')
-register_layer('transpose')
-register_layer('sigmoid_cross_entropy_with_logits')
+_REGISTER_LAYER_FROM_OPS = [
+    'mean', 'mul', 'elementwise_add', 'elementwise_div', 'dropout', 'reshape',
+    'sigmoid', 'scale', 'transpose', 'sigmoid_cross_entropy_with_logits'
+]
+
+for _OP in set(_REGISTER_LAYER_FROM_OPS):
+    globals()[_OP] = register_layer(_OP)
+    __all__.append(_OP)
 
 
 def fc(input,
