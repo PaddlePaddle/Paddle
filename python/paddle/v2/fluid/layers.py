@@ -6,7 +6,6 @@ from framework import OpProtoHolder, Variable, Program, Operator
 from initializer import Constant, Normal, Xavier, Initializer
 from paddle.v2.fluid.layer_helper import LayerHelper, unique_name
 from registry import register_layer
-import registry
 from param_attr import ParamAttr
 
 __all__ = [
