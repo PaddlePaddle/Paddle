@@ -611,16 +611,17 @@ REGISTER_OP(hard_sigmoid, ops::ActivationOp, ops::HardSigmoidOpMaker,
 REGISTER_OP(swish, ops::ActivationOp, ops::SwishOpMaker, swish_grad,
             ops::ActivationOpGrad);
 
-#define REGISTER_ACTIVATION_CPU_KERNEL(act_type, functor, grad_functor)       \
-  REGISTER_OP_CPU_KERNEL(                                                     \
-      act_type,                                                               \
-      ops::ActivationKernel<paddle::platform::CPUPlace, ops::functor<float>>, \
-      ops::ActivationKernel<paddle::platform::CPUPlace,                       \
-                            ops::functor<double>>);                           \
-  REGISTER_OP_CPU_KERNEL(                                                     \
-      act_type##_grad, ops::ActivationGradKernel<paddle::platform::CPUPlace,  \
-                                                 ops::grad_functor<float>>,   \
-      ops::ActivationGradKernel<paddle::platform::CPUPlace,                   \
+#define REGISTER_ACTIVATION_CPU_KERNEL(act_type, functor, grad_functor)   \
+  REGISTER_OP_CPU_KERNEL(                                                 \
+      act_type, ops::ActivationKernel<paddle::platform::CPUDeviceContext, \
+                                      ops::functor<float>>,               \
+      ops::ActivationKernel<paddle::platform::CPUDeviceContext,           \
+                            ops::functor<double>>);                       \
+  REGISTER_OP_CPU_KERNEL(                                                 \
+      act_type##_grad,                                                    \
+      ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,       \
+                                ops::grad_functor<float>>,                \
+      ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,       \
                                 ops::grad_functor<double>>);
 
 FOR_EACH_KERNEL_FUNCTOR(REGISTER_ACTIVATION_CPU_KERNEL);

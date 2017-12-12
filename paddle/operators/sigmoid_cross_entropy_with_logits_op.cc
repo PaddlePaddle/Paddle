@@ -142,7 +142,7 @@ REGISTER_OP(sigmoid_cross_entropy_with_logits,
             ops::SigmoidCrossEntropyWithLogitsGradOp);
 REGISTER_OP_CPU_KERNEL(sigmoid_cross_entropy_with_logits,
                        ops::SigmoidCrossEntropyWithLogitsKernel<
-                           paddle::platform::CPUPlace, float>);
+                           paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(sigmoid_cross_entropy_with_logits_grad,
                        ops::SigmoidCrossEntropyWithLogitsGradKernel<
-                           paddle::platform::CPUPlace, float>);
+                           paddle::platform::CPUDeviceContext, float>);

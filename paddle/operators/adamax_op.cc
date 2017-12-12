@@ -127,6 +127,6 @@ division by 0 error.
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(adamax, ops::AdamaxOp, ops::AdamaxOpMaker);
-REGISTER_OP_CPU_KERNEL(adamax,
-                       ops::AdamaxOpKernel<paddle::platform::CPUPlace, float>,
-                       ops::AdamaxOpKernel<paddle::platform::CPUPlace, double>);
+REGISTER_OP_CPU_KERNEL(
+    adamax, ops::AdamaxOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::AdamaxOpKernel<paddle::platform::CPUDeviceContext, double>);

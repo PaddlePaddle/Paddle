@@ -67,7 +67,7 @@ class UniformRandomOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         static_cast<framework::DataType>(ctx.Attr<int>("dtype")),
-        ctx.device_context());
+        ctx.GetPlace());
   }
 };
 

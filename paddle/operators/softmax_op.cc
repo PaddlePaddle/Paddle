@@ -89,7 +89,8 @@ namespace ops = paddle::operators;
 
 REGISTER_OP(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker, softmax_grad,
             ops::SoftmaxOpGrad);
-REGISTER_OP_CPU_KERNEL(softmax,
-                       ops::SoftmaxKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    softmax_grad, ops::SoftmaxGradKernel<paddle::platform::CPUPlace, float>);
+    softmax, ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    softmax_grad,
+    ops::SoftmaxGradKernel<paddle::platform::CPUDeviceContext, float>);

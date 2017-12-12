@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class AdadeltaOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -51,7 +51,7 @@ class AdadeltaOpKernel : public framework::OpKernel<T> {
         framework::EigenVector<T>::Flatten(*avg_squared_grad_out_tensor);
     auto avg_squared_update_out =
         framework::EigenVector<T>::Flatten(*avg_squared_update_out_tensor);
-    auto place = ctx.GetEigenDevice<Place>();
+    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
     avg_squared_grad_out.device(place) =
         rho * avg_squared_grad + (1 - rho) * grad.square();

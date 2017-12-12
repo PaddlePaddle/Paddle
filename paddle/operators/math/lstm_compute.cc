@@ -21,8 +21,8 @@ namespace operators {
 namespace math {
 
 template <class T>
-struct LstmUnitFunctor<platform::CPUPlace, T> {
-  static void compute(const platform::DeviceContext& context,
+struct LstmUnitFunctor<platform::CPUDeviceContext, T> {
+  static void compute(const platform::CPUDeviceContext& context,
                       LstmMetaValue<T> value, int frame_size, int batch_size,
                       const std::string& gate_act, const std::string& cell_act,
                       const std::string& cand_act) {
@@ -42,8 +42,8 @@ struct LstmUnitFunctor<platform::CPUPlace, T> {
 };
 
 template <class T>
-struct LstmUnitGradFunctor<platform::CPUPlace, T> {
-  static void compute(const platform::DeviceContext& context,
+struct LstmUnitGradFunctor<platform::CPUDeviceContext, T> {
+  static void compute(const platform::CPUDeviceContext& context,
                       LstmMetaValue<T> value, LstmMetaGrad<T> grad,
                       int frame_size, int batch_size,
                       const std::string& gate_act, const std::string& cell_act,
@@ -72,10 +72,10 @@ struct LstmUnitGradFunctor<platform::CPUPlace, T> {
   }
 };
 
-template class LstmUnitFunctor<platform::CPUPlace, float>;
-template class LstmUnitFunctor<platform::CPUPlace, double>;
-template class LstmUnitGradFunctor<platform::CPUPlace, float>;
-template class LstmUnitGradFunctor<platform::CPUPlace, double>;
+template class LstmUnitFunctor<platform::CPUDeviceContext, float>;
+template class LstmUnitFunctor<platform::CPUDeviceContext, double>;
+template class LstmUnitGradFunctor<platform::CPUDeviceContext, float>;
+template class LstmUnitGradFunctor<platform::CPUDeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators
