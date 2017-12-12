@@ -292,7 +292,8 @@ __global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
 }  // namespace
 
 template <typename T>
-class RowConvKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
+class RowConvKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *X = context.Input<LoDTensor>("X");
@@ -327,7 +328,8 @@ class RowConvKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class RowConvGradKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
+class RowConvGradKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *X = context.Input<LoDTensor>("X");
@@ -347,7 +349,7 @@ class RowConvGradKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     size_t *idx = batch_indices.data();
 
     auto &device_ctx = context.cuda_device_context();
-    math::SetConstant<platform::GPUPlace, T> zero;
+    math::SetConstant<platform::CUDADeviceContext, T> zero;
 
     if (dFilter) {
       T *dfilter = dFilter->mutable_data<T>(context.GetPlace());
@@ -402,7 +404,8 @@ class RowConvGradKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(row_conv,
-                       ops::RowConvKernel<paddle::platform::GPUPlace, float>);
 REGISTER_OP_GPU_KERNEL(
-    row_conv_grad, ops::RowConvGradKernel<paddle::platform::GPUPlace, float>);
+    row_conv, ops::RowConvKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_GPU_KERNEL(
+    row_conv_grad,
+    ops::RowConvGradKernel<paddle::platform::CUDADeviceContext, float>);
