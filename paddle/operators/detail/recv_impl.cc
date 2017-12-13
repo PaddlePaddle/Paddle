@@ -20,7 +20,7 @@ namespace detail {
 
 Status SendRecvServerImpl::SendVariable(ServerContext *context,
                                         const VariableMessage *in_var,
-                                        VariableMessage *out_var) {
+                                        VoidMessage *out_var) {
   // TODO(typhoonzero): support different variable types.
   std::istringstream iss(in_var->serialized());
   framework::LoDTensor t;
@@ -29,6 +29,12 @@ Status SendRecvServerImpl::SendVariable(ServerContext *context,
       std::make_pair(in_var->varname(), std::move(t));
 
   var_recv_queue_.Push(std::move(tensor_with_name));
+  return Status::OK;
+}
+
+Status SendRecvServerImpl::GetVariable(ServerContext *context,
+                                       const VoidMessage *in_var,
+                                       VariableMessage *out_var) {
   // Block util the sub graph is done.
   auto out_tensor_with_name = var_return_queue_.Pop();
   std::ostringstream oss;
@@ -36,10 +42,9 @@ Status SendRecvServerImpl::SendVariable(ServerContext *context,
                                platform::CPUDeviceContext());
 
   std::string *varname = out_var->mutable_varname();
-  *varname = in_var->varname();
+  *varname = out_tensor_with_name.first;
   std::string *serialized = out_var->mutable_serialized();
   *serialized = oss.str();
-
   return Status::OK;
 }
 

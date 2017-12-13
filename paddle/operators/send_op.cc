@@ -48,9 +48,16 @@ class SendOp : public framework::OperatorBase {
     // should block until server responds.
     for (auto in : ins) {
       LOG(ERROR) << "sending grad: " << in;
-      bool ret = client_->SendVariable(scope, in, in);
+      bool ret = client_->SendVariable(scope, in);
       if (!ret) {
         LOG(ERROR) << "send variable error";
+      }
+    }
+    for (auto in : ins) {
+      LOG(ERROR) << "updating from server...";
+      bool ret = client_->GetVariable(scope);
+      if (!ret) {
+        LOG(ERROR) << "GetVariable error";
       }
     }
   }

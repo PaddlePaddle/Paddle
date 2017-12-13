@@ -19,10 +19,10 @@ namespace operators {
 namespace detail {
 
 bool RPCClient::SendVariable(const framework::Scope& scope,
-                             const std::string& inname,
-                             const std::string& outname) {
+                             const std::string& inname) {
   ClientContext context;
-  VariableMessage msg, out_msg;
+  VariableMessage msg;
+  VoidMessage out_msg;
   // FIXME(typhoonzero): pass device context to here.
   auto ctx = platform::CPUDeviceContext();
   auto* var = scope.FindVar(inname);
@@ -40,7 +40,22 @@ bool RPCClient::SendVariable(const framework::Scope& scope,
     LOG(ERROR) << "gRPC error: " << status.error_message();
     return false;
   }
-  std::istringstream iss(out_msg.serialized());
+  return true;
+}
+
+bool RPCClient::GetVariable(const framework::Scope& scope) {
+  ClientContext context;
+  VariableMessage msg;
+  VoidMessage void_msg;
+  auto ctx = platform::CPUDeviceContext();
+  Status status = stub_->GetVariable(&context, void_msg, &msg);
+  if (!status.ok()) {
+    LOG(ERROR) << "gRPC error: " << status.error_message();
+    return false;
+  }
+
+  std::istringstream iss(msg.serialized());
+  auto outname = msg.varname();
   framework::LoDTensor ret_tensor;
   framework::DeserializeFromStream(iss, &ret_tensor);
   auto* outvar = scope.FindVar(outname);

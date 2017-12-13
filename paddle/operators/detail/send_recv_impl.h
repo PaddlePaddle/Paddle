@@ -55,7 +55,9 @@ class SendRecvServerImpl final : public SendRecvService::Service {
   explicit SendRecvServerImpl() {}
 
   Status SendVariable(ServerContext *context, const VariableMessage *in_var,
-                      VariableMessage *out_var) override;
+                      VoidMessage *out_var) override;
+  Status GetVariable(ServerContext *context, const VoidMessage *in_var,
+                     VariableMessage *out_var) override;
 
   const TensorWithName Get() { return this->var_recv_queue_.Pop(); }
 
@@ -75,8 +77,8 @@ class RPCClient {
   RPCClient(std::shared_ptr<Channel> channel)
       : stub_(SendRecvService::NewStub(channel)) {}
 
-  bool SendVariable(const framework::Scope &scope, const std::string &inname,
-                    const std::string &outname);
+  bool SendVariable(const framework::Scope &scope, const std::string &inname);
+  bool GetVariable(const framework::Scope &scope);
 
  private:
   std::unique_ptr<SendRecvService::Stub> stub_;
