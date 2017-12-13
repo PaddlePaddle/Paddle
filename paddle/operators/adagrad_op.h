@@ -19,15 +19,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 struct SparseAdagradFunctor {
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const DeviceContext& context,
                   const framework::SelectedRows& grad,
                   const framework::Tensor& learning_rate, T epsilon,
                   framework::Tensor* moment, framework::Tensor* param);
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class AdagradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -52,11 +52,11 @@ class AdagradOpKernel : public framework::OpKernel<T> {
 
       auto param_out = framework::EigenVector<T>::Flatten(*param_out_tensor);
       auto moment_out = framework::EigenVector<T>::Flatten(*moment_out_tensor);
-      auto place = ctx.GetEigenDevice<Place>();
+      auto* place = ctx.template device_context<DeviceContext>().eigen_device();
 
-      moment_out.device(place) = moment + grad * grad;
+      moment_out.device(*place) = moment + grad * grad;
       Eigen::DSizes<int, 1> m_dsize(moment_out_tensor->numel());
-      param_out.device(place) =
+      param_out.device(*place) =
           param - lr.broadcast(m_dsize) * grad / (moment_out.sqrt() + epsilon);
     } else if (grad_var->IsType<framework::SelectedRows>()) {
       auto* param_tensor = ctx.Input<framework::Tensor>("Param");
@@ -65,8 +65,9 @@ class AdagradOpKernel : public framework::OpKernel<T> {
       auto* moment_tensor = ctx.Input<framework::Tensor>("Moment");
       PADDLE_ENFORCE_EQ(moment_tensor, moment_out_tensor);
 
-      SparseAdagradFunctor<Place, T> functor;
-      functor(ctx.device_context(), *ctx.Input<framework::SelectedRows>("Grad"),
+      SparseAdagradFunctor<DeviceContext, T> functor;
+      functor(ctx.template device_context<DeviceContext>(),
+              *ctx.Input<framework::SelectedRows>("Grad"),
               *ctx.Input<framework::Tensor>("LearningRate"), epsilon,
               moment_out_tensor, param_out_tensor);
     } else {

@@ -69,7 +69,8 @@ $$Out = \sum{|X|}$$
 namespace ops = paddle::operators;
 REGISTER_OP(l1_norm, ops::L1NormOp, ops::L1NormOpMaker, l1_norm_grad,
             ops::L1NormGradOp);
-REGISTER_OP_CPU_KERNEL(l1_norm,
-                       ops::L1NormKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    l1_norm_grad, ops::L1NormGradKernel<paddle::platform::CPUPlace, float>);
+    l1_norm, ops::L1NormKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    l1_norm_grad,
+    ops::L1NormGradKernel<paddle::platform::CPUDeviceContext, float>);

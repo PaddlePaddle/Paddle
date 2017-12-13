@@ -14,9 +14,9 @@
 
 #include "paddle/operators/rank_loss_op.h"
 
-REGISTER_OP_GPU_KERNEL(
-    rank_loss,
-    paddle::operators::RankLossKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
-    rank_loss_grad,
-    paddle::operators::RankLossGradKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_CUDA_KERNEL(rank_loss,
+                        paddle::operators::RankLossKernel<
+                            paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(rank_loss_grad,
+                        paddle::operators::RankLossGradKernel<
+                            paddle::platform::CUDADeviceContext, float>);

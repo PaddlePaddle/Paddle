@@ -25,9 +25,9 @@ namespace math {
  */
 template <class T>
 class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
-                    platform::CPUPlace, T> {
+                    platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& im, const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* col) {
@@ -90,9 +90,9 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
  */
 template <class T>
 class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
-                    platform::CPUPlace, T> {
+                    platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
@@ -149,13 +149,13 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
 };
 
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
-                             platform::CPUPlace, float>;
+                             platform::CPUDeviceContext, float>;
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
-                             platform::CPUPlace, double>;
+                             platform::CPUDeviceContext, double>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
-                             platform::CPUPlace, float>;
+                             platform::CPUDeviceContext, float>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
-                             platform::CPUPlace, double>;
+                             platform::CPUDeviceContext, double>;
 
 /*
  * im = [input_channels, input_height, input_width]
@@ -164,9 +164,9 @@ template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
  */
 template <class T>
 class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
-                    platform::CPUPlace, T> {
+                    platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& im, const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* col) {
@@ -235,9 +235,9 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
  */
 template <class T>
 class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
-                    platform::CPUPlace, T> {
+                    platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
@@ -300,13 +300,13 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
 };
 
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
-                             platform::CPUPlace, float>;
+                             platform::CPUDeviceContext, float>;
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
-                             platform::CPUPlace, double>;
+                             platform::CPUDeviceContext, double>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
-                             platform::CPUPlace, float>;
+                             platform::CPUDeviceContext, float>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
-                             platform::CPUPlace, double>;
+                             platform::CPUDeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators

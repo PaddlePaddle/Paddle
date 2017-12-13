@@ -15,7 +15,8 @@
 #include "paddle/operators/matmul_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(matmul,
-                       ops::MatMulKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
-    matmul_grad, ops::MatMulGradKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_CUDA_KERNEL(
+    matmul, ops::MatMulKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    matmul_grad,
+    ops::MatMulGradKernel<paddle::platform::CUDADeviceContext, float>);

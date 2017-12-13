@@ -112,11 +112,13 @@ adaptive estimates of lower-order moments.
 
 Adam updates:
 
-$$moment_1_{out} = \beta_1 * moment_1 + (1 - \beta_1) * grad \break
-moment_2_{out} = \beta_2 * moment_2 + (1 - \beta_2) * grad * grad \break
-learningRate = learningRate *
-                  $\sqrt{(1 - \beta_2_{pow})}$ / (1 - \beta_1_{pow}) \break
-paramOut = param - learningRate * moment_1/ ($\sqrt{(moment_2)} + \epsilon)$$
+$$
+moment\_1\_out = \beta_1 * moment\_1 + (1 - \beta_1) * grad \\
+moment\_2_\out = \beta_2 * moment\_2 + (1 - \beta_2) * grad * grad \\
+learning\_rate = learning\_rate *
+                  \frac{\sqrt{1 - \beta_{2\_pow}}}{1 - \beta_{1\_pow}} \\
+param\_out = param - learning\_rate * \frac{moment\_1}{\sqrt{moment\_2} + \epsilon}
+$$
 
 )DOC");
   }
@@ -126,6 +128,6 @@ paramOut = param - learningRate * moment_1/ ($\sqrt{(moment_2)} + \epsilon)$$
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(adam, ops::AdamOp, ops::AdamOpMaker);
-REGISTER_OP_CPU_KERNEL(adam,
-                       ops::AdamOpKernel<paddle::platform::CPUPlace, float>,
-                       ops::AdamOpKernel<paddle::platform::CPUPlace, double>);
+REGISTER_OP_CPU_KERNEL(
+    adam, ops::AdamOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::AdamOpKernel<paddle::platform::CPUDeviceContext, double>);
