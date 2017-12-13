@@ -24,7 +24,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
-template <typename Place, typename T, typename AttrType = T>
+template <typename DeviceContext, typename T, typename AttrType = T>
 class LogLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -38,7 +38,7 @@ class LogLossKernel : public framework::OpKernel<T> {
     auto label = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Labels"));
 
     auto loss = EigenVector<T>::Flatten(*loss_out);
-    auto place = ctx.GetEigenDevice<Place>();
+    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
     loss.device(place) = (-(label * (prediction + epsilon).log()) -
                           ((static_cast<T>(1) - label) *
@@ -46,7 +46,7 @@ class LogLossKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T, typename AttrType = T>
+template <typename DeviceContext, typename T, typename AttrType = T>
 class LogLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -59,7 +59,7 @@ class LogLossGradKernel : public framework::OpKernel<T> {
     auto* dpred = ctx.Output<Tensor>(framework::GradVarName("Predicted"));
 
     auto dl = EigenVector<T>::Flatten(*dloss);
-    auto place = ctx.GetEigenDevice<Place>();
+    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
     if (dpred) {
       dpred->mutable_data<T>(ctx.GetPlace());

@@ -22,20 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-template <>
-Eigen::DefaultDevice& ExecutionContext::GetEigenDevice<
-    platform::CPUPlace, Eigen::DefaultDevice>() const {
-  return *device_context_.GetEigenDevice<platform::CPUPlace>();
-}
-
-#ifdef PADDLE_WITH_CUDA
-template <>
-Eigen::GpuDevice&
-ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
-  return *device_context_.GetEigenDevice<platform::GPUPlace>();
-}
-#endif
-
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
   PADDLE_ENFORCE_LE(ins.size(), 1UL,
@@ -426,13 +412,10 @@ void OperatorWithKernel::Run(const Scope& scope,
   }
 
   kernel_iter->second->Compute(ctx);
-
-  // throws errors if have.
-  dev_ctx.Finish();
 }
 OpKernelType OperatorWithKernel::GetKernelType(
     const ExecutionContext& ctx) const {
-  return OpKernelType(IndicateDataType(ctx), ctx.device_context());
+  return OpKernelType(IndicateDataType(ctx), ctx.GetPlace());
 }
 DataType OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {

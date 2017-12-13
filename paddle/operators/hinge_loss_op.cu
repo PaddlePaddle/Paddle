@@ -12,11 +12,13 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/reshape_op.h"
+#define EIGEN_USE_GPU
+#include "paddle/operators/hinge_loss_op.h"
 
-REGISTER_OP_GPU_KERNEL(
-    reshape,
-    paddle::operators::ReshapeKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
-    reshape_grad,
-    paddle::operators::ReshapeGradKernel<paddle::platform::GPUPlace, float>);
+namespace ops = paddle::operators;
+REGISTER_OP_CUDA_KERNEL(
+    hinge_loss,
+    ops::HingeLossKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    hinge_loss_grad,
+    ops::HingeLossGradKernel<paddle::platform::CUDADeviceContext, float>);

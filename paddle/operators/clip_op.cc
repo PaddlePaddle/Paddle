@@ -52,7 +52,11 @@ class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
 Clip Operator.
 
 The clip operator limits the value of given input within an interval. The interval is
-specified with arguments 'min' and 'max'.
+specified with arguments 'min' and 'max':
+
+$$
+Out = \min(\max(X, min), max)
+$$
 
 )DOC");
   }
@@ -79,7 +83,7 @@ class ClipOpGrad : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(clip, ops::ClipOp, ops::ClipOpMaker<float>, clip_grad,
             ops::ClipOpGrad);
-REGISTER_OP_CPU_KERNEL(clip,
-                       ops::ClipKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(clip_grad,
-                       ops::ClipGradKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    clip, ops::ClipKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    clip_grad, ops::ClipGradKernel<paddle::platform::CPUDeviceContext, float>);

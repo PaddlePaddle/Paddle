@@ -21,13 +21,11 @@ namespace operators {
 namespace math {
 
 template <>
-void gemm<platform::CPUPlace, float>(const platform::DeviceContext& context,
-                                     const CBLAS_TRANSPOSE transA,
-                                     const CBLAS_TRANSPOSE transB, const int M,
-                                     const int N, const int K,
-                                     const float alpha, const float* A,
-                                     const float* B, const float beta,
-                                     float* C) {
+void gemm<platform::CPUDeviceContext, float>(
+    const platform::CPUDeviceContext& context, const CBLAS_TRANSPOSE transA,
+    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
+    const float alpha, const float* A, const float* B, const float beta,
+    float* C) {
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
   int ldc = N;
@@ -36,13 +34,11 @@ void gemm<platform::CPUPlace, float>(const platform::DeviceContext& context,
 }
 
 template <>
-void gemm<platform::CPUPlace, double>(const platform::DeviceContext& context,
-                                      const CBLAS_TRANSPOSE transA,
-                                      const CBLAS_TRANSPOSE transB, const int M,
-                                      const int N, const int K,
-                                      const double alpha, const double* A,
-                                      const double* B, const double beta,
-                                      double* C) {
+void gemm<platform::CPUDeviceContext, double>(
+    const platform::CPUDeviceContext& context, const CBLAS_TRANSPOSE transA,
+    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
+    const double alpha, const double* A, const double* B, const double beta,
+    double* C) {
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
   int ldc = N;
@@ -51,35 +47,32 @@ void gemm<platform::CPUPlace, double>(const platform::DeviceContext& context,
 }
 
 template <>
-void gemm<platform::CPUPlace, float>(const platform::DeviceContext& context,
-                                     const bool transA, const bool transB,
-                                     const int M, const int N, const int K,
-                                     const float alpha, const float* A,
-                                     const int lda, const float* B,
-                                     const int ldb, const float beta, float* C,
-                                     const int ldc) {
+void gemm<platform::CPUDeviceContext, float>(
+    const platform::CPUDeviceContext& context, const bool transA,
+    const bool transB, const int M, const int N, const int K, const float alpha,
+    const float* A, const int lda, const float* B, const int ldb,
+    const float beta, float* C, const int ldc) {
   cblas_sgemm(CblasRowMajor, transA == false ? CblasNoTrans : CblasTrans,
               transB == false ? CblasNoTrans : CblasTrans, M, N, K, alpha, A,
               lda, B, ldb, beta, C, ldc);
 }
 
 template <>
-void gemm<platform::CPUPlace, double>(const platform::DeviceContext& context,
-                                      const bool transA, const bool transB,
-                                      const int M, const int N, const int K,
-                                      const double alpha, const double* A,
-                                      const int lda, const double* B,
-                                      const int ldb, const double beta,
-                                      double* C, const int ldc) {
+void gemm<platform::CPUDeviceContext, double>(
+    const platform::CPUDeviceContext& context, const bool transA,
+    const bool transB, const int M, const int N, const int K,
+    const double alpha, const double* A, const int lda, const double* B,
+    const int ldb, const double beta, double* C, const int ldc) {
   cblas_dgemm(CblasRowMajor, transA == false ? CblasNoTrans : CblasTrans,
               transB == false ? CblasNoTrans : CblasTrans, M, N, K, alpha, A,
               lda, B, ldb, beta, C, ldc);
 }
 
 template <>
-void matmul<platform::CPUPlace, float>(
-    const platform::DeviceContext& context, const framework::Tensor& matrix_a,
-    bool trans_a, const framework::Tensor& matrix_b, bool trans_b, float alpha,
+void matmul<platform::CPUDeviceContext, float>(
+    const platform::CPUDeviceContext& context,
+    const framework::Tensor& matrix_a, bool trans_a,
+    const framework::Tensor& matrix_b, bool trans_b, float alpha,
     framework::Tensor* matrix_out, float beta) {
   auto dim_a = matrix_a.dims();
   auto dim_b = matrix_b.dims();
@@ -99,15 +92,16 @@ void matmul<platform::CPUPlace, float>(
   CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = (trans_b == false) ? CblasNoTrans : CblasTrans;
 
-  gemm<platform::CPUPlace, float>(
+  gemm<platform::CPUDeviceContext, float>(
       context, transA, transB, M, N, K, alpha, matrix_a.data<float>(),
       matrix_b.data<float>(), beta, matrix_out->data<float>());
 }
 
 template <>
-void matmul<platform::CPUPlace, double>(
-    const platform::DeviceContext& context, const framework::Tensor& matrix_a,
-    bool trans_a, const framework::Tensor& matrix_b, bool trans_b, double alpha,
+void matmul<platform::CPUDeviceContext, double>(
+    const platform::CPUDeviceContext& context,
+    const framework::Tensor& matrix_a, bool trans_a,
+    const framework::Tensor& matrix_b, bool trans_b, double alpha,
     framework::Tensor* matrix_out, double beta) {
   auto dim_a = matrix_a.dims();
   auto dim_b = matrix_b.dims();
@@ -127,16 +121,16 @@ void matmul<platform::CPUPlace, double>(
   CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = (trans_b == false) ? CblasNoTrans : CblasTrans;
 
-  gemm<platform::CPUPlace, double>(
+  gemm<platform::CPUDeviceContext, double>(
       context, transA, transB, M, N, K, alpha, matrix_a.data<double>(),
       matrix_b.data<double>(), beta, matrix_out->data<double>());
 }
 
-#ifdef PADDLE_USE_MKLML
+#ifdef PADDLE_WITH_MKLML
 // Use cblas_{s,d}gemm_batched if available: Run with 1 group of size batchSize.
 template <>
-void batched_gemm<platform::CPUPlace, float>(
-    const platform::DeviceContext& context, const CBLAS_TRANSPOSE transA,
+void batched_gemm<platform::CPUDeviceContext, float>(
+    const platform::CPUDeviceContext& context, const CBLAS_TRANSPOSE transA,
     const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
     const float alpha, const float* A, const float* B, const float beta,
     float* C, const int batchCount, const int strideA, const int strideB) {
@@ -157,8 +151,8 @@ void batched_gemm<platform::CPUPlace, float>(
 }
 
 template <>
-void batched_gemm<platform::CPUPlace, double>(
-    const platform::DeviceContext& context, const CBLAS_TRANSPOSE transA,
+void batched_gemm<platform::CPUDeviceContext, double>(
+    const platform::CPUDeviceContext& context, const CBLAS_TRANSPOSE transA,
     const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
     const double alpha, const double* A, const double* B, const double beta,
     double* C, const int batchCount, const int strideA, const int strideB) {
@@ -183,8 +177,8 @@ void batched_gemm<platform::CPUPlace, double>(
 // functions of Intel MKL are not available. In the future, this computation
 // should be parallelized.
 template <>
-void batched_gemm<platform::CPUPlace, float>(
-    const platform::DeviceContext& context, const CBLAS_TRANSPOSE transA,
+void batched_gemm<platform::CPUDeviceContext, float>(
+    const platform::CPUDeviceContext& context, const CBLAS_TRANSPOSE transA,
     const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
     const float alpha, const float* A, const float* B, const float beta,
     float* C, const int batchCount, const int strideA, const int strideB) {
@@ -192,14 +186,14 @@ void batched_gemm<platform::CPUPlace, float>(
     const float* Ak = &A[k * strideA];
     const float* Bk = &B[k * strideB];
     float* Ck = &C[k * M * N];
-    gemm<platform::CPUPlace, float>(context, transA, transB, M, N, K, alpha, Ak,
-                                    Bk, beta, Ck);
+    gemm<platform::CPUDeviceContext, float>(context, transA, transB, M, N, K,
+                                            alpha, Ak, Bk, beta, Ck);
   }
 }
 
 template <>
-void batched_gemm<platform::CPUPlace, double>(
-    const platform::DeviceContext& context, const CBLAS_TRANSPOSE transA,
+void batched_gemm<platform::CPUDeviceContext, double>(
+    const platform::CPUDeviceContext& context, const CBLAS_TRANSPOSE transA,
     const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
     const double alpha, const double* A, const double* B, const double beta,
     double* C, const int batchCount, const int strideA, const int strideB) {
@@ -207,55 +201,53 @@ void batched_gemm<platform::CPUPlace, double>(
     const double* Ak = &A[k * strideA];
     const double* Bk = &B[k * strideB];
     double* Ck = &C[k * M * N];
-    gemm<platform::CPUPlace, double>(context, transA, transB, M, N, K, alpha,
-                                     Ak, Bk, beta, Ck);
+    gemm<platform::CPUDeviceContext, double>(context, transA, transB, M, N, K,
+                                             alpha, Ak, Bk, beta, Ck);
   }
 }
 #endif
 
 template <>
-void gemv<platform::CPUPlace, float>(const platform::DeviceContext& context,
-                                     const bool trans_a, const int M,
-                                     const int N, const float alpha,
-                                     const float* A, const float* B,
-                                     const float beta, float* C) {
+void gemv<platform::CPUDeviceContext, float>(
+    const platform::CPUDeviceContext& context, const bool trans_a, const int M,
+    const int N, const float alpha, const float* A, const float* B,
+    const float beta, float* C) {
   CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
   cblas_sgemv(CblasRowMajor, transA, M, N, alpha, A, N, B, 1, beta, C, 1);
 }
 
 template <>
-void gemv<platform::CPUPlace, double>(const platform::DeviceContext& context,
-                                      const bool trans_a, const int M,
-                                      const int N, const double alpha,
-                                      const double* A, const double* B,
-                                      const double beta, double* C) {
+void gemv<platform::CPUDeviceContext, double>(
+    const platform::CPUDeviceContext& context, const bool trans_a, const int M,
+    const int N, const double alpha, const double* A, const double* B,
+    const double beta, double* C) {
   CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
   cblas_dgemv(CblasRowMajor, transA, M, N, alpha, A, N, B, 1, beta, C, 1);
 }
 
 template <>
-void axpy<platform::CPUPlace, float>(const platform::DeviceContext& context,
-                                     const int n, const float alpha,
-                                     const float* x, float* y) {
+void axpy<platform::CPUDeviceContext, float>(
+    const platform::CPUDeviceContext& context, const int n, const float alpha,
+    const float* x, float* y) {
   cblas_saxpy(n, alpha, x, 1, y, 1);
 }
 
 template <>
-void axpy<platform::CPUPlace, double>(const platform::DeviceContext& context,
-                                      const int n, const double alpha,
-                                      const double* x, double* y) {
+void axpy<platform::CPUDeviceContext, double>(
+    const platform::CPUDeviceContext& context, const int n, const double alpha,
+    const double* x, double* y) {
   cblas_daxpy(n, alpha, x, 1, y, 1);
 }
 
-template struct SetConstant<platform::CPUPlace, float>;
-template struct SetConstant<platform::CPUPlace, double>;
-template struct SetConstant<platform::CPUPlace, int>;
-template struct SetConstant<platform::CPUPlace, int64_t>;
-template struct SetConstant<platform::CPUPlace, bool>;
+template struct SetConstant<platform::CPUDeviceContext, float>;
+template struct SetConstant<platform::CPUDeviceContext, double>;
+template struct SetConstant<platform::CPUDeviceContext, int>;
+template struct SetConstant<platform::CPUDeviceContext, int64_t>;
+template struct SetConstant<platform::CPUDeviceContext, bool>;
 
-#define DEFINE_CPU_TRANS(RANK)                                \
-  template struct Transpose<platform::CPUPlace, float, RANK>; \
-  template struct Transpose<platform::CPUPlace, double, RANK>;
+#define DEFINE_CPU_TRANS(RANK)                                        \
+  template struct Transpose<platform::CPUDeviceContext, float, RANK>; \
+  template struct Transpose<platform::CPUDeviceContext, double, RANK>;
 
 DEFINE_CPU_TRANS(1);
 DEFINE_CPU_TRANS(2);
@@ -310,10 +302,10 @@ void set_constant(const platform::DeviceContext& context,
 #endif
 }
 
-template struct RowwiseAdd<platform::CPUPlace, float>;
-template struct RowwiseAdd<platform::CPUPlace, double>;
-template struct ColwiseSum<platform::CPUPlace, float>;
-template struct ColwiseSum<platform::CPUPlace, double>;
+template struct RowwiseAdd<platform::CPUDeviceContext, float>;
+template struct RowwiseAdd<platform::CPUDeviceContext, double>;
+template struct ColwiseSum<platform::CPUDeviceContext, float>;
+template struct ColwiseSum<platform::CPUDeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators

@@ -15,7 +15,7 @@
 #include "paddle/operators/clip_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(clip,
-                       ops::ClipKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(clip_grad,
-                       ops::ClipGradKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_CUDA_KERNEL(
+    clip, ops::ClipKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    clip_grad, ops::ClipGradKernel<paddle::platform::CUDADeviceContext, float>);

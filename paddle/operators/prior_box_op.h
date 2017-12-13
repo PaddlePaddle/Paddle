@@ -70,15 +70,15 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
 
     int img_width, img_height;
     if (img_h == 0 || img_w == 0) {
-      img_width = image->dims()[2];
-      img_height = image->dims()[3];
+      img_width = image->dims()[3];
+      img_height = image->dims()[2];
     } else {
       img_width = img_w;
       img_height = img_h;
     }
 
-    const int layer_width = input->dims()[2];
-    const int layer_height = input->dims()[3];
+    const int layer_width = input->dims()[3];
+    const int layer_height = input->dims()[2];
 
     float step_width, step_height;
     if (step_w == 0 || step_h == 0) {
