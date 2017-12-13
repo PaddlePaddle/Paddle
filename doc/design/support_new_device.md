@@ -8,10 +8,20 @@ On the one hand, hardware and computing library are not usually one-to-one cores
 
 On the other hand, users usually do not want to care about the low-level hardware and computing library when writing a neural network configuration. In Fluid, `Layer` is exposed in `Python`, and `Operator` is exposed in `C++`. Both `Layer` and `Operator` are independent on hardwares.
 
+So, how to support a new Device/Library in Fluid becomes a challenge.
+
 
 ## Basic: Integrate A New Device/Library
 
 For a general overview of fluid, please refer to [overview doc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/read_source.md).
+
+There are mainly there parts we have to consider in integrating a new device/library:
+
+- Place and DeviceContext: indicates the device id and manages hardware resources
+
+- Memory and Tensor: malloc/free data on certain device
+
+- Math Functor and OpKernel: implement computing unit on certain device/library
 
 ### Place and DeviceContext
 
