@@ -31,9 +31,15 @@ class SppOpMaker : public framework::OpProtoAndCheckerMaker {
               "M = C * H * W");
     AddAttr<int>("pyramid_height", "(int), multi level pooling");
     AddComment(R"DOC(
-        "Does spatial pyramid pooling on the input image by taking the max,
-        etc. within regions so that the result vector of different sized
-        images are of the same size
+        "With spatial pyramid pooling, the input image can
+        be of any sizes. This not only allows arbitrary aspect
+        ratios, but also allows arbitrary scales. We can resize
+        the input image to any scale (e.g., min(w, h)=180, 224,
+        ...) and apply the same deep network. When the
+        input image is at different scales, the network (with
+        the same filter sizes) will extract features at different
+        scales. The scales play important roles in traditional
+        methods.
         Input shape: $(N, C_{in}, H_{in}, W_{in})$
         Output shape: $(H_{out}, W_{out})$
         Where
@@ -41,6 +47,7 @@ class SppOpMaker : public framework::OpProtoAndCheckerMaker {
             H_{out} = N \\
             W_{out} = (((4^pyramid_height) - 1) / (4 - 1))$ * C_{in}
           $$
+        paper https://arxiv.org/pdf/1406.4729v4.pdf
         )DOC");
   }
 };
@@ -79,8 +86,9 @@ class SppOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OP(spp, ops::SppOp, ops::SppOpMaker, spp_grad, ops::SppOpGrad);
-REGISTER_OP_CPU_KERNEL(spp, ops::SppKernel<paddle::platform::CPUPlace, float>,
-                       ops::SppKernel<paddle::platform::CPUPlace, double>);
-REGISTER_OP_CPU_KERNEL(spp_grad,
-                       ops::SppGradKernel<paddle::platform::CPUPlace, float>,
-                       ops::SppGradKernel<paddle::platform::CPUPlace, double>);
+REGISTER_OP_CPU_KERNEL(
+    spp, ops::SppKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SppKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    spp_grad, ops::SppGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SppGradKernel<paddle::platform::CPUDeviceContext, double>);

@@ -20,7 +20,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SppKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -43,39 +43,32 @@ class SppKernel : public framework::OpKernel<T> {
       std::vector<int> paddings({padding_h, padding_w});
       // pooling output shape
       framework::Tensor out_level;
-      std::vector<int64_t> output_shape_vec({in_x->dims()[0], in_x->dims()[1]});
-      output_shape_vec.push_back(
-          (input_h - kernel_size_h + 2 * padding_h) / kernel_size_h + 1);
-      output_shape_vec.push_back(
-          (input_w - kernel_size_w + 2 * padding_w) / kernel_size_w + 1);
+      std::vector<int64_t> output_shape_vec(
+          {in_x->dims()[0], in_x->dims()[1], bins, bins});
       framework::DDim output_shape(framework::make_ddim(output_shape_vec));
       out_level.mutable_data<T>(output_shape, context.GetPlace());
       // pooling
-      math::Pool2dFunctor<Place, math::MaxPool<T>, T> pool_forward;
+      math::Pool2dFunctor<DeviceContext, math::MaxPool<T>, T> pool_forward;
       math::MaxPool<T> max_process;
-      pool_forward(context.device_context(), *in_x, kernel_size, strides,
-                   paddings, max_process, &out_level);
+      pool_forward(context.template device_context<DeviceContext>(), *in_x,
+                   kernel_size, strides, paddings, max_process, &out_level);
       // flatten pooling output shape
-      framework::Tensor out_flatten_level;
       int output_flatten_w = in_x->dims()[1] * bins * bins;
       std::vector<int64_t> output_flatten_shape_vec(
           {in_x->dims()[0], output_flatten_w});
       framework::DDim output_flatten_shape(
           framework::make_ddim(output_flatten_shape_vec));
-      out_flatten_level.ShareDataWith(out_level);
-      out_flatten_level.Resize(output_flatten_shape);
+      out_level.Resize(output_flatten_shape);
       // concat
-      auto out_flatten_level_stride =
-          framework::stride(out_flatten_level.dims());
-      StridedMemcpy<T>(context.device_context(), out_flatten_level.data<T>(),
-                       out_flatten_level_stride, out_flatten_level.dims(),
+      auto out_level_stride = framework::stride(out_level.dims());
+      StridedMemcpy<T>(context.template device_context<DeviceContext>(),
+                       out_level.data<T>(), out_level_stride, out_level.dims(),
                        out_stride, out->data<T>() + output_offset);
-      output_offset +=
-          out_flatten_level.dims()[1] * out_flatten_level_stride[1];
+      output_offset += out_level.dims()[1] * out_level_stride[1];
     }
   }
 };
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SppGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -86,8 +79,8 @@ class SppGradKernel : public framework::OpKernel<T> {
     framework::Tensor* in_x_grad =
         context.Output<framework::Tensor>(framework::GradVarName("X"));
     int pyramid_height = context.template Attr<int>("pyramid_height");
-    auto& device_ctx = context.device_context();
-    math::SetConstant<Place, T> zero;
+    auto& device_ctx = context.template device_context<DeviceContext>();
+    math::SetConstant<DeviceContext, T> zero;
     in_x_grad->mutable_data<T>(context.GetPlace());
     zero(device_ctx, in_x_grad, static_cast<T>(0));
     auto out_stride = framework::stride(out->dims());
@@ -104,45 +97,43 @@ class SppGradKernel : public framework::OpKernel<T> {
       std::vector<int> strides({kernel_size_h, kernel_size_w});
       std::vector<int> paddings({padding_h, padding_w});
       // split out and outgrad  ...  to flatten
-      framework::Tensor out_flatten_level;
-      framework::Tensor outgrad_flatten_level;
+      framework::Tensor out_level;
+      framework::Tensor outgrad_level;
       int out_flatten_w = in_x->dims()[1] * bins * bins;
       std::vector<int64_t> out_flatten_shape_vec(
           {in_x->dims()[0], out_flatten_w});
       framework::DDim out_flatten_shape(
           framework::make_ddim(out_flatten_shape_vec));
-      out_flatten_level.mutable_data<T>(out_flatten_shape, context.GetPlace());
-      outgrad_flatten_level.mutable_data<T>(out_flatten_shape,
-                                            context.GetPlace());
-      auto flatten_stride = framework::stride(out_flatten_level.dims());
+      out_level.mutable_data<T>(out_flatten_shape, context.GetPlace());
+      outgrad_level.mutable_data<T>(out_flatten_shape, context.GetPlace());
+      auto flatten_stride = framework::stride(out_level.dims());
       // memcpy
-      StridedMemcpy<T>(context.device_context(), out->data<T>() + out_offset,
-                       out_stride, out_flatten_level.dims(), flatten_stride,
-                       out_flatten_level.data<T>());
+      StridedMemcpy<T>(context.template device_context<DeviceContext>(),
+                       out->data<T>() + out_offset, out_stride,
+                       out_level.dims(), flatten_stride, out_level.data<T>());
 
-      StridedMemcpy<T>(context.device_context(),
+      StridedMemcpy<T>(context.template device_context<DeviceContext>(),
                        out_grad->data<T>() + out_offset, out_stride,
-                       outgrad_flatten_level.dims(), flatten_stride,
-                       outgrad_flatten_level.data<T>());
-      out_offset += out_flatten_level.dims()[1] * out_stride[1];
+                       outgrad_level.dims(), flatten_stride,
+                       outgrad_level.data<T>());
+      out_offset += out_level.dims()[1] * out_stride[1];
       // flatten backward to nchw
-      framework::Tensor out_level;
-      framework::Tensor outgrad_level;
+
       std::vector<int64_t> out_shape_vec({in_x->dims()[0], in_x->dims()[1]});
       out_shape_vec.push_back(
           (input_h - kernel_size_h + 2 * padding_h) / kernel_size_h + 1);
       out_shape_vec.push_back(
           (input_w - kernel_size_w + 2 * padding_w) / kernel_size_w + 1);
       framework::DDim out_shape(framework::make_ddim(out_shape_vec));
-      out_level.ShareDataWith(out_flatten_level);
+      out_level.ShareDataWith(out_level);
       out_level.Resize(out_shape);
-      outgrad_level.ShareDataWith(outgrad_flatten_level);
+      outgrad_level.ShareDataWith(outgrad_level);
       outgrad_level.Resize(out_shape);
       // pooling backward
-      math::MaxPool2dGradFunctor<Place, T> pool2d_backward;
-      pool2d_backward(context.device_context(), *in_x, *&out_level,
-                      *&outgrad_level, kernel_size, strides, paddings,
-                      in_x_grad);
+      math::MaxPool2dGradFunctor<DeviceContext, T> pool2d_backward;
+      pool2d_backward(context.template device_context<DeviceContext>(), *in_x,
+                      *&out_level, *&outgrad_level, kernel_size, strides,
+                      paddings, in_x_grad);
     }
   }
 };
