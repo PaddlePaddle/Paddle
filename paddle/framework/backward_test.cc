@@ -106,15 +106,15 @@ class FcOp : public operators::NetOp {
   FcOp(const std::string &type, const VariableNameMap &inputs,
        const VariableNameMap &outputs, const AttributeMap &attrs)
       : NetOp(type, inputs, outputs, attrs) {
-    AppendOp(OpRegistry::CreateOp("mul",
-                                  {{"X", {Input("X")}}, {"Y", {Input("W")}}},
-                                  {{"Out", {Output("mul_result")}}}, {}));
+    AppendOp(OpRegistry::CreateOp(
+        "mul", {{"X", {Input("X")}}, {"Y", {Input("W")}}},
+        {{"Out", {Output("mul_result")}}}, AttributeMap{}));
     auto input_b = Inputs("b");
     std::string before_act = "mul_result";
     if (input_b.size() != 0) {
       AppendOp(OpRegistry::CreateOp(
           "rowwise_add", {{"X", {Output("mul_result")}}, {"b", {input_b[0]}}},
-          {{"Out", {Output("add_result")}}}, {}));
+          {{"Out", {Output("add_result")}}}, AttributeMap{}));
       before_act = "add_result";
     } else {
       auto out_varname = Output("add_result");
@@ -124,7 +124,7 @@ class FcOp : public operators::NetOp {
     }
 
     AppendOp(OpRegistry::CreateOp("sigmoid", {{"X", {Output(before_act)}}},
-                                  {{"Out", {Output("Out")}}}, {}));
+                                  {{"Out", {Output("Out")}}}, AttributeMap{}));
     CompleteAddOp(false);
   }
 };
@@ -278,8 +278,9 @@ REGISTER_OPERATOR(scale, f::NoneOp);
 REGISTER_OP_CPU_KERNEL(scale, f::NoneKernel<paddle::platform::CPUPlace, float>);
 
 TEST(Backward, simple_op_not_need_grad) {
-  auto fwd = f::OpRegistry::CreateOp(
-      "rowwise_add", {{"X", {"x"}}, {"b", {"b"}}}, {{"Out", {"out"}}}, {});
+  auto fwd =
+      f::OpRegistry::CreateOp("rowwise_add", {{"X", {"x"}}, {"b", {"b"}}},
+                              {{"Out", {"out"}}}, f::AttributeMap{});
   ASSERT_NE(fwd, nullptr);
   auto gop = f::Backward(*fwd, {"x"});
   ASSERT_EQ(gop->Output(f::GradVarName("X")), f::kEmptyVarName);
@@ -296,9 +297,10 @@ TEST(Backward, net_fc_backward_normal) {
                               {{"mul_result", {"mul_res"}},
                                {"add_result", {"add_re"}},
                                {"Out", {"out"}}},
-                              {});
+                              f::AttributeMap{});
   ASSERT_NE(fwd, nullptr);
-  std::shared_ptr<f::OperatorBase> gop = f::Backward(*fwd, {});
+  std::shared_ptr<f::OperatorBase> gop =
+      f::Backward(*fwd, std::unordered_set<std::string>{});
   ASSERT_TRUE(gop->IsNetOp());
   auto net = static_cast<ops::NetOp *>(gop.get());
 
@@ -322,9 +324,10 @@ TEST(Backward, net_fc_backward_not_have_b) {
                               {{"mul_result", {"mul_res"}},
                                {"add_result", {"add_res"}},
                                {"Out", {"tmp"}}},
-                              {});
+                              f::AttributeMap{});
   ASSERT_NE(fwd, nullptr);
-  std::shared_ptr<f::OperatorBase> gop = f::Backward(*fwd, {});
+  std::shared_ptr<f::OperatorBase> gop =
+      f::Backward(*fwd, std::unordered_set<std::string>{});
   ASSERT_TRUE(gop->IsNetOp());
   auto net = static_cast<ops::NetOp *>(gop.get());
 
@@ -346,13 +349,13 @@ TEST(Backward, net_input_of_network_not_need_grad) {
       {{"mul_result", {"mul_tmp_0"}},
        {"add_result", {"add_tmp_0"}},
        {"Out", {"hidden0"}}},
-      {}));
+      f::AttributeMap{}));
   net.AppendOp(f::OpRegistry::CreateOp(
       "fc", {{"X", {"hidden0"}}, {"W", {"W2"}}, {"b", {"b2"}}},
       {{"mul_result", {"mul_tmp_1"}},
        {"add_result", {"add_tmp_1"}},
        {"Out", {"hidden1"}}},
-      {}));
+      f::AttributeMap{}));
   net.CompleteAddOp();
   auto bwd = Backward(net, {"x"});  // x@GRAD is not need.
   ASSERT_TRUE(bwd->IsNetOp());
@@ -381,12 +384,13 @@ TEST(Backward, net_input_of_network_not_need_grad) {
 TEST(Backward, net_shared_weight) {
   ops::NetOp net;
   net.AppendOp(f::OpRegistry::CreateOp("mul", {{"X", {"x"}}, {"Y", {"w"}}},
-                                       {{"Out", {"out"}}}, {}));
+                                       {{"Out", {"out"}}}, f::AttributeMap{}));
   net.AppendOp(f::OpRegistry::CreateOp("mul", {{"X", {"out"}}, {"Y", {"w"}}},
-                                       {{"Out", {"FinalOut"}}}, {}));
+                                       {{"Out", {"FinalOut"}}},
+                                       f::AttributeMap{}));
   net.CompleteAddOp();
 
-  auto bwd = f::Backward(net, {});
+  auto bwd = f::Backward(net, std::unordered_set<std::string>{});
   ASSERT_TRUE(bwd->IsNetOp());
   auto bwd_net = static_cast<ops::NetOp *>(bwd.get());
   ASSERT_EQ(3UL, bwd_net->ops_.size());
@@ -394,8 +398,9 @@ TEST(Backward, net_shared_weight) {
 }
 
 TEST(Backward, op_all_input_are_not_need) {
-  auto fwd = f::OpRegistry::CreateOp(
-      "rowwise_add", {{"X", {"x"}}, {"b", {"b"}}}, {{"Out", {"out"}}}, {});
+  auto fwd =
+      f::OpRegistry::CreateOp("rowwise_add", {{"X", {"x"}}, {"b", {"b"}}},
+                              {{"Out", {"out"}}}, f::AttributeMap{});
   auto backward = f::Backward(*fwd, {"x", "b"});
   ASSERT_TRUE(backward->IsNetOp());
   auto net = static_cast<ops::NetOp *>(backward.get());
@@ -403,8 +408,9 @@ TEST(Backward, op_all_input_are_not_need) {
 }
 
 TEST(Backward, op_all_output_are_not_need) {
-  auto fwd = f::OpRegistry::CreateOp(
-      "rowwise_add", {{"X", {"x"}}, {"b", {"b"}}}, {{"Out", {"out"}}}, {});
+  auto fwd =
+      f::OpRegistry::CreateOp("rowwise_add", {{"X", {"x"}}, {"b", {"b"}}},
+                              {{"Out", {"out"}}}, f::AttributeMap{});
   auto backward = f::Backward(*fwd, {"out"});
   ASSERT_TRUE(backward->IsNetOp());
   auto net = static_cast<ops::NetOp *>(backward.get());
@@ -412,8 +418,9 @@ TEST(Backward, op_all_output_are_not_need) {
 }
 
 TEST(Backward, op_part_of_output_are_not_need) {
-  auto fwd = f::OpRegistry::CreateOp("many_output_op", {{"x", {"X"}}},
-                                     {{"y", {"Y"}}, {"z", {"Z"}}}, {});
+  auto fwd =
+      f::OpRegistry::CreateOp("many_output_op", {{"x", {"X"}}},
+                              {{"y", {"Y"}}, {"z", {"Z"}}}, f::AttributeMap{});
   auto backward = f::Backward(*fwd, {"Z"});
   ASSERT_TRUE(backward->IsNetOp());
   auto net = static_cast<ops::NetOp *>(backward.get());
@@ -437,7 +444,7 @@ TEST(Backward, op_part_of_output_are_not_need) {
 
 TEST(Backward, op_part_of_input_are_not_need) {
   auto fwd = f::OpRegistry::CreateOp("mul", {{"X", {"a"}}, {"Y", {"b"}}},
-                                     {{"Out", {"out"}}}, {});
+                                     {{"Out", {"out"}}}, f::AttributeMap{});
   auto backward = f::Backward(*fwd, {"a"});
   auto &grad_mul = *backward;
   ASSERT_EQ(grad_mul.Type(), "mul_grad");
@@ -458,19 +465,19 @@ TEST(Backward, linear_net_intermediate_variable_has_no_grad) {
       {{"mul_result", {"mul_out1"}},
        {"add_result", {"add_out1"}},
        {"Out", {"out1"}}},
-      {}));
+      f::AttributeMap{}));
   net.AppendOp(f::OpRegistry::CreateOp(
       "fc", {{"X", {"out1"}}, {"W", {"w2"}}, {"b", {"b2"}}},
       {{"mul_result", {"mul_out2"}},
        {"add_result", {"tmp_out2"}},
        {"Out", {"out2"}}},
-      {}));
+      f::AttributeMap{}));
   net.AppendOp(f::OpRegistry::CreateOp(
       "fc", {{"X", {"out2"}}, {"W", {"w3"}}, {"b", {"b3"}}},
       {{"mul_result", {"mul_out3"}},
        {"add_result", {"tmp_out3"}},
        {"Out", {"out3"}}},
-      {}));
+      f::AttributeMap{}));
   net.CompleteAddOp();
 
   auto backward = f::Backward(net, {"mul_out2", "tmp_out2", "out2"});
@@ -509,7 +516,8 @@ TEST(Backward, simple_single_op) {
 
   auto target = f::VarDescBind("out");
   target.SetShape({1});
-  auto var_to_grad = AppendBackward(program, target, {});
+  auto var_to_grad =
+      AppendBackward(program, target, std::unordered_set<std::string>{});
 
   ASSERT_EQ(block->AllOps().size(), 3UL);
   f::OpDescBind *fill_op = block->AllOps()[1];
@@ -546,7 +554,7 @@ TEST(Backward, default_attribute) {
 
   auto target = f::VarDescBind("out");
   target.SetShape({1});
-  AppendBackward(program, target, {});
+  AppendBackward(program, target, std::unordered_set<std::string>{});
 
   ASSERT_EQ(block->AllOps().size(), 3UL);
   EXPECT_EQ(boost::get<int>(op->GetAttr("x_num_col_dims")), 1);
@@ -585,7 +593,8 @@ TEST(Backward, simple_mult_op) {
   auto target = f::VarDescBind("out3");
   target.SetShape({1});
   size_t forward_len = block->AllOps().size();
-  auto var_to_grad = AppendBackward(program, target, {});
+  auto var_to_grad =
+      AppendBackward(program, target, std::unordered_set<std::string>{});
 
   ASSERT_EQ(block->AllOps().size(), 6UL + 1);
   f::OpDescBind *fill_op = block->AllOps()[forward_len];
@@ -817,7 +826,8 @@ TEST(Backward, shared_var) {
   auto target = f::VarDescBind("out3");
   target.SetShape({1});
   size_t forward_len = block->AllOps().size();
-  auto var_to_grad = AppendBackward(program, target, {});
+  auto var_to_grad =
+      AppendBackward(program, target, std::unordered_set<std::string>{});
 
   ASSERT_EQ(block->AllOps().size(), 8UL);
   f::OpDescBind *fill_op = block->AllOps()[forward_len];

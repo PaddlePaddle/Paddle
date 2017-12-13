@@ -59,7 +59,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
     if (in_var->GetType() != VarDesc::LOD_TENSOR) {
-      VLOG(3) << "input " << in << "is not LodTensor";
+      VLOG(3) << "input " << in << " is not LodTensor";
       return;
     }
     PADDLE_ENFORCE_EQ(in_var->GetType(), VarDesc::LOD_TENSOR,
@@ -316,8 +316,8 @@ static void InitInferShapeFuncs() {
     for (auto &kern_pair : OperatorWithKernel::AllOpKernels()) {
       auto op_type = kern_pair.first;
       auto &op_info = info_map.at(op_type);
-      auto op =
-          static_cast<OperatorWithKernel *>(op_info.Creator()("", {}, {}, {}));
+      auto op = static_cast<OperatorWithKernel *>(op_info.Creator()(
+          "", VariableNameMap{}, VariableNameMap{}, AttributeMap{}));
       if (op_info.infer_shape_) {  // infer_shape has been registered.
         continue;
       }

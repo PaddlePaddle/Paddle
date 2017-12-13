@@ -135,7 +135,8 @@ The required data format for this layer is one of the following:
 };
 
 template <typename T>
-class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
+class BatchNormKernel<platform::CPUDeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const float epsilon = ctx.Attr<float>("epsilon");
@@ -318,12 +319,12 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
       PADDLE_THROW("can't find Y@GRAD");
     }
     return framework::OpKernelType(framework::ToDataType(t->type()),
-                                   ctx.device_context());
+                                   ctx.GetPlace());
   }
 };
 
 template <typename T>
-class BatchNormGradKernel<platform::CPUPlace, T>
+class BatchNormGradKernel<platform::CPUDeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -436,8 +437,9 @@ class BatchNormGradKernel<platform::CPUPlace, T>
 namespace ops = paddle::operators;
 REGISTER_OP(batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
             batch_norm_grad, ops::BatchNormGradOp);
-REGISTER_OP_CPU_KERNEL(batch_norm,
-                       ops::BatchNormKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    batch_norm,
+    ops::BatchNormKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     batch_norm_grad,
-    ops::BatchNormGradKernel<paddle::platform::CPUPlace, float>);
+    ops::BatchNormGradKernel<paddle::platform::CPUDeviceContext, float>);

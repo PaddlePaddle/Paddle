@@ -17,8 +17,9 @@
 #include "paddle/operators/sequence_pool_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
-    sequence_pool, ops::SequencePoolKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
+    sequence_pool,
+    ops::SequencePoolKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
     sequence_pool_grad,
-    ops::SequencePoolGradKernel<paddle::platform::GPUPlace, float>);
+    ops::SequencePoolGradKernel<paddle::platform::CUDADeviceContext, float>);

@@ -238,9 +238,24 @@ void testProjectionConv(size_t groups, bool isDeconv) {
                             /* caffeMode */ true);
   conv->set_output_x(output_x);
   conv->set_output_y(output_y);
+  LOG(INFO) << "DILATION:" << DILATION << "; output_x: " << output_x
+            << "; output_y: " << output_y;
   if (isDeconv) {
+    int deconv_image_x = imageSize(output_x,
+                                   (conv->filter_size() - 1) * DILATION + 1,
+                                   conv->padding(),
+                                   conv->stride(),
+                                   /* caffeMode */ true);
+    int deconv_image_y = imageSize(output_y,
+                                   (conv->filter_size_y() - 1) * DILATION + 1,
+                                   conv->padding_y(),
+                                   conv->stride_y(),
+                                   /* caffeMode */ true);
+
+    LOG(INFO) << " deconv_image_x: " << deconv_image_x
+              << "; deconv_image_y: " << deconv_image_y;
     conf.set_input_size(output_x * output_y * CHANNELS);
-    conf.set_output_size(IMAGE_SIZE * IMAGE_SIZE * NUM_FILTERS);
+    conf.set_output_size(deconv_image_x * deconv_image_y * NUM_FILTERS);
   } else {
     conf.set_input_size(IMAGE_SIZE * IMAGE_SIZE * CHANNELS);
     conf.set_output_size(output_x * output_y * NUM_FILTERS);
@@ -1211,7 +1226,10 @@ void setPoolConfig(TestConfig* config,
   pool->set_output_y(oh);
 }
 
-void testPoolLayer(const string& poolType, bool trans, bool useGpu) {
+void testPoolLayer(const string& poolType,
+                   bool trans,
+                   bool useGpu,
+                   bool excludeMode = true) {
   TestConfig config;
   config.inputDefs.push_back({INPUT_DATA, "layer_0", 3136, 0});
   LayerInputConfig* input = config.layerConfig.add_inputs();
@@ -1219,6 +1237,7 @@ void testPoolLayer(const string& poolType, bool trans, bool useGpu) {
 
   pool->set_img_size(14);
   pool->set_img_size_y(14);
+  pool->set_exclude_mode(excludeMode);
   setPoolConfig(&config, pool, poolType);
   config.layerConfig.set_size(pool->output_x() * pool->output_y() *
                               pool->channels());
@@ -1250,16 +1269,26 @@ void testPoolLayer2(const string& poolType, bool trans, bool useGpu) {
 
 TEST(Layer, PoolLayer) {
   testPoolLayer("avg-projection", /* trans= */ false, /* useGpu= */ false);
+  testPoolLayer("avg-projection",
+                /* trans= */ false,
+                /* useGpu= */ false,
+                /* excludeMode= */ false);
   testPoolLayer("max-projection", /* trans= */ false, /* useGpu= */ false);
   testPoolLayer("max-pool-with-mask", /* trans= */ false, /* useGpu= */ false);
 
 #ifdef PADDLE_WITH_CUDA
   testPoolLayer("avg-projection", /* trans= */ false, /* useGpu= */ true);
+  testPoolLayer("avg-projection",
+                /* trans= */ false,
+                /* useGpu= */ true,
+                /* excludeMode= */ false);
   testPoolLayer("max-projection", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer("cudnn-max-pool", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer("cudnn-avg-pool", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer2("cudnn-max-pool", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer2("cudnn-avg-pool", /* trans= */ false, /* useGpu= */ true);
+  testPoolLayer2(
+      "cudnn-avg-incl-pad-pool", /* trans= */ false, /* useGpu= */ true);
   testPoolLayer("max-pool-with-mask", /* trans= */ false, /* useGpu= */ true);
 #endif
 }
