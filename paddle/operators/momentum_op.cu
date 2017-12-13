@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -65,7 +66,7 @@ class MomentumOpCUDAKernel : public framework::OpKernel<T> {
 
     int block = 512;
     int grid = (param->numel() + block - 1) / block;
-    MomentumKernel<T><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
+    hipLaunchKernelGGL((MomentumKernel<T>), dim3(grid), dim3(block), 0, ctx.cuda_device_context().stream(), 
         p, g, v, lr, mu, param->numel(), use_nesterov, p_out, v_out);
   }
 };

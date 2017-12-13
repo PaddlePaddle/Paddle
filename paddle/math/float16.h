@@ -36,9 +36,9 @@ limitations under the License. */
 #define PADDLE_CLANG_VER 0
 #endif  // __clang__
 
-#if defined(__CUDACC__) && CUDA_VERSION >= 7050
+#if defined(__HIPCC__) && CUDA_VERSION >= 7050
 #define PADDLE_CUDA_FP16
-#include <cuda_fp16.h>
+#include <hip/hip_fp16.h>
 #endif
 
 #if defined(__arm__) || defined(__aarch64__)

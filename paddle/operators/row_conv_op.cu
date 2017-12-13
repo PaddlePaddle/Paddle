@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserve.
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,7 +40,7 @@ __global__ void RowConvForwardSharedMemory(const T *in, const T *wt,
   int thy = threadIdx.y;
   int d = blockIdx.x * blx + thx;  // index along input dim
 
-  extern __shared__ T mem[];
+  HIP_DYNAMIC_SHARED( T, mem)
   T *sw = mem;
 
   if (thy < future_context) {
@@ -106,7 +107,7 @@ __global__ void RowConvGradInputSharedMemory(const T *dout, const T *wt,
   int thy = threadIdx.y;
   int d = blockIdx.x * blx + thx;  // index along input dim
 
-  extern __shared__ T mem[];
+  HIP_DYNAMIC_SHARED( T, mem)
   T *sw = mem;
   if (thy < future_context) {
     sw[thy * blx + thx] =
@@ -171,7 +172,7 @@ __global__ void RowConvGradFilterImproved(const T *in, const T *dout,
   int gx = blockIdx.x * blx;
   int d = gx + thx;  // index along input dim
 
-  extern __shared__ T mem[];
+  HIP_DYNAMIC_SHARED( T, mem)
 
   int xdim_sh_in = block_y;
   int xdim_sh_dout = block_y;
@@ -248,7 +249,7 @@ __global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
   int thy = threadIdx.y;
   int gx = blockIdx.x * blx;
   int d = gx + thx;  // index along input dim
-  extern __shared__ T mem[];
+  HIP_DYNAMIC_SHARED( T, mem)
   T *sh_in = mem;
   T *sh_dout = &mem[block_x * block_y];
 
@@ -320,7 +321,7 @@ class RowConvKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     } else {
       dim3 block_dim = dim3(32, 32);
       dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
-      RowConvForward<T><<<grid_dim, block_dim, 0, stream>>>(
+      hipLaunchKernelGGL((RowConvForward<T>), dim3(grid_dim), dim3(block_dim), 0, stream, 
           in, weight, num_sequence, input_dim, future_context, idx, out);
     }
   }
@@ -392,7 +393,7 @@ class RowConvGradKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
       } else {
         dim3 block_dim = dim3(32, 32);
         dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
-        RowConvGradInput<T><<<grid_dim, block_dim, 0, device_ctx.stream()>>>(
+        hipLaunchKernelGGL((RowConvGradInput<T>), dim3(grid_dim), dim3(block_dim), 0, device_ctx.stream(), 
             dout, weights, num_sequence, input_dim, future_context, idx, din);
       }
     }

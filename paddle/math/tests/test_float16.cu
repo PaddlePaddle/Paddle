@@ -1,3 +1,5 @@
+#include "hip/hip_runtime.h"
+#include "hip/hip_runtime.h"
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,25 +36,25 @@ limitations under the License. */
     half *in1, *in2, *out;                                    \
     half *d_in1, *d_in2, *d_out;                              \
     int size = sizeof(half);                                  \
-    cudaMalloc((void**)&d_in1, size);                         \
-    cudaMalloc((void**)&d_in2, size);                         \
-    cudaMalloc((void**)&d_out, size);                         \
+    hipMalloc((void**)&d_in1, size);                         \
+    hipMalloc((void**)&d_in2, size);                         \
+    hipMalloc((void**)&d_out, size);                         \
     in1 = (half*)malloc(size);                                \
     in2 = (half*)malloc(size);                                \
     out = (half*)malloc(size);                                \
     in1[0] = half(float16(v_in1));                            \
     in2[0] = half(float16(v_in2));                            \
-    cudaMemcpy(d_in1, in1, size, cudaMemcpyHostToDevice);     \
-    cudaMemcpy(d_in2, in2, size, cudaMemcpyHostToDevice);     \
-    op_type<<<1, 1>>>(d_in1, d_in2, d_out);                   \
-    cudaMemcpy(out, d_out, size, cudaMemcpyDeviceToHost);     \
+    hipMemcpy(d_in1, in1, size, hipMemcpyHostToDevice);     \
+    hipMemcpy(d_in2, in2, size, hipMemcpyHostToDevice);     \
+    hipLaunchKernelGGL((op_type), dim3(1), dim3(1), 0, 0, d_in1, d_in2, d_out);                   \
+    hipMemcpy(out, d_out, size, hipMemcpyDeviceToHost);     \
     EXPECT_EQ(float(float16(out[0])), v_out);                 \
     free(in1);                                                \
     free(in2);                                                \
     free(out);                                                \
-    cudaFree(d_in1);                                          \
-    cudaFree(d_in2);                                          \
-    cudaFree(d_out);                                          \
+    hipFree(d_in1);                                          \
+    hipFree(d_in2);                                          \
+    hipFree(d_out);                                          \
   }
 
 #define COMPOUND_KERNEL_LAUNCH(op_type)                       \
@@ -61,21 +63,21 @@ limitations under the License. */
     half *in1, *in2;                                          \
     half *d_in1, *d_in2;                                      \
     int size = sizeof(half);                                  \
-    cudaMalloc((void**)&d_in1, size);                         \
-    cudaMalloc((void**)&d_in2, size);                         \
+    hipMalloc((void**)&d_in1, size);                         \
+    hipMalloc((void**)&d_in2, size);                         \
     in1 = (half*)malloc(size);                                \
     in2 = (half*)malloc(size);                                \
     in1[0] = half(float16(v_in1));                            \
     in2[0] = half(float16(v_in2));                            \
-    cudaMemcpy(d_in1, in1, size, cudaMemcpyHostToDevice);     \
-    cudaMemcpy(d_in2, in2, size, cudaMemcpyHostToDevice);     \
-    op_type<<<1, 1>>>(d_in1, d_in2);                          \
-    cudaMemcpy(in1, d_in1, size, cudaMemcpyDeviceToHost);     \
+    hipMemcpy(d_in1, in1, size, hipMemcpyHostToDevice);     \
+    hipMemcpy(d_in2, in2, size, hipMemcpyHostToDevice);     \
+    hipLaunchKernelGGL((op_type), dim3(1), dim3(1), 0, 0, d_in1, d_in2);                          \
+    hipMemcpy(in1, d_in1, size, hipMemcpyDeviceToHost);     \
     EXPECT_EQ(float(float16(in1[0])), v_out);                 \
     free(in1);                                                \
     free(in2);                                                \
-    cudaFree(d_in1);                                          \
-    cudaFree(d_in2);                                          \
+    hipFree(d_in1);                                          \
+    hipFree(d_in2);                                          \
   }
 
 #define COMPARISON_KERNEL_LAUNCH(op_type)                    \
@@ -85,25 +87,25 @@ limitations under the License. */
     half *d_in1, *d_in2;                                     \
     bool *out, *d_out;                                       \
     int size = sizeof(half);                                 \
-    cudaMalloc((void**)&d_in1, size);                        \
-    cudaMalloc((void**)&d_in2, size);                        \
-    cudaMalloc((void**)&d_out, 1);                           \
+    hipMalloc((void**)&d_in1, size);                        \
+    hipMalloc((void**)&d_in2, size);                        \
+    hipMalloc((void**)&d_out, 1);                           \
     in1 = (half*)malloc(size);                               \
     in2 = (half*)malloc(size);                               \
     out = (bool*)malloc(1);                                  \
     in1[0] = half(float16(v_in1));                           \
     in2[0] = half(float16(v_in2));                           \
-    cudaMemcpy(d_in1, in1, size, cudaMemcpyHostToDevice);    \
-    cudaMemcpy(d_in2, in2, size, cudaMemcpyHostToDevice);    \
-    op_type<<<1, 1>>>(d_in1, d_in2, d_out);                  \
-    cudaMemcpy(out, d_out, 1, cudaMemcpyDeviceToHost);       \
+    hipMemcpy(d_in1, in1, size, hipMemcpyHostToDevice);    \
+    hipMemcpy(d_in2, in2, size, hipMemcpyHostToDevice);    \
+    hipLaunchKernelGGL((op_type), dim3(1), dim3(1), 0, 0, d_in1, d_in2, d_out);                  \
+    hipMemcpy(out, d_out, 1, hipMemcpyDeviceToHost);       \
     EXPECT_EQ(out[0], v_out);                                \
     free(in1);                                               \
     free(in2);                                               \
     free(out);                                               \
-    cudaFree(d_in1);                                         \
-    cudaFree(d_in2);                                         \
-    cudaFree(d_out);                                         \
+    hipFree(d_in1);                                         \
+    hipFree(d_in2);                                         \
+    hipFree(d_out);                                         \
   }
 
 #ifdef PADDLE_CUDA_FP16
@@ -127,15 +129,15 @@ void TestNeg(float v_in, float v_out) {
   LOG(INFO) << "Test Neg on GPU!";
   half *in, *d_in;
   int size = sizeof(half);
-  cudaMalloc((void**)&d_in, size);
+  hipMalloc((void**)&d_in, size);
   in = (half*)malloc(size);
   in[0] = half(float16(v_in));
-  cudaMemcpy(d_in, in, size, cudaMemcpyHostToDevice);
-  Neg<<<1, 1>>>(d_in);
-  cudaMemcpy(in, d_in, size, cudaMemcpyDeviceToHost);
+  hipMemcpy(d_in, in, size, hipMemcpyHostToDevice);
+  hipLaunchKernelGGL((Neg), dim3(1), dim3(1), 0, 0, d_in);
+  hipMemcpy(in, d_in, size, hipMemcpyDeviceToHost);
   EXPECT_EQ(float(float16(in[0])), v_out);
   free(in);
-  cudaFree(d_in);
+  hipFree(d_in);
 }
 
 COMPOUND_KERNEL(AddAssign, +=)

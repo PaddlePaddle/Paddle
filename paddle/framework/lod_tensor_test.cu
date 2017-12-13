@@ -12,7 +12,7 @@
 */
 
 #include <cuda.h>
-#include <cuda_runtime.h>
+#include <hip/hip_runtime.h>
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/platform/assert.h"
 
@@ -41,8 +41,8 @@ TEST(LoDTensor, LoDInGPU) {
 
   auto lod = lod_tensor.lod();
 
-  test<<<1, 8>>>(lod[0].data(), lod[0].size());
-  cudaDeviceSynchronize();
+  hipLaunchKernelGGL((test), dim3(1), dim3(8), 0, 0, lod[0].data(), lod[0].size());
+  hipDeviceSynchronize();
 
   for (size_t i = 0; i < src_lod[0].size(); ++i) {
     EXPECT_EQ(lod[0].data()[i], src_lod[0].data()[i] * 2);
