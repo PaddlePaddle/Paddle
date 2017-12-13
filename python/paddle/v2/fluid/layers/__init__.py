@@ -1,12 +1,13 @@
 import contextlib
+from .. import proto
 
-import proto.framework_pb2 as framework_pb2
-import core
-from framework import OpProtoHolder, Variable, Program, Operator
-from initializer import Constant, Normal, Xavier, Initializer
+framework_pb2 = proto.framework_pb2
+from .. import core
+from ..framework import OpProtoHolder, Variable, Program, Operator
+from ..initializer import Constant, Normal, Xavier, Initializer
 from paddle.v2.fluid.layer_helper import LayerHelper, unique_name
-from registry import register_layer
-from param_attr import ParamAttr
+from ..registry import register_layer
+from ..param_attr import ParamAttr
 
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
@@ -1575,9 +1576,9 @@ def conv2d_transpose(input,
         h_in = input.shape[2]
         w_in = input.shape[3]
         filter_size_h = output_size[0] - \
-            (h_in - 1) * stride[0] + 2 * padding[0]
+                        (h_in - 1) * stride[0] + 2 * padding[0]
         filter_size_w = output_size[1] - \
-            (w_in - 1) * stride[1] + 2 * padding[1]
+                        (w_in - 1) * stride[1] + 2 * padding[1]
         filter_size = [filter_size_h, filter_size_w]
     elif isinstance(filter_size, int):
         filter_size = [filter_size, filter_size]
