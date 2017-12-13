@@ -390,7 +390,8 @@ class Parameters(object):
 
         :param f: the initialized model file.
         :type f: tar file
-        :param exclude_params: the names of parameters that shouldn't be initialized from the model file.
+        :param exclude_params: the names of parameters that should  
+            not be initialized from the model file.
         :type exclude_params: list of strings
         :return: Nothing.
         """
