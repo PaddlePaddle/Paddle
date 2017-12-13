@@ -28,6 +28,7 @@ gserver_test(test_BatchNorm)
 gserver_test(test_KmaxSeqScore)
 gserver_test(test_Expand)
 gserver_test(test_MaxPoolingWithMaskOutput)
+gserver_test(test_Upsample)
 
 ########## test_MKLDNN layers and activations ##########
 if(WITH_MKLDNN)
