@@ -408,7 +408,8 @@ class RecurrentGradOp : public RecurrentBase {
             attrs["value"] = 0.0f;
 
             auto zero_op = framework::OpRegistry::CreateOp(
-                "fill_constant", {}, {{"Out", {pg_names[param_id]}}}, attrs);
+                "fill_constant", framework::VariableNameMap{},
+                {{"Out", {pg_names[param_id]}}}, attrs);
             zero_op->Run(scope, dev_ctx);
           }
 
@@ -417,7 +418,7 @@ class RecurrentGradOp : public RecurrentBase {
 
           auto sum_op = framework::OpRegistry::CreateOp(
               "sum", {{"X", {pg_names[param_id], new_inside_name}}},
-              {{"Out", {pg_names[param_id]}}}, {});
+              {{"Out", {pg_names[param_id]}}}, framework::AttributeMap{});
           sum_op->Run(cur_scope, dev_ctx);
 
           cur_scope.Rename(new_inside_name, inside_grad_name);
@@ -599,7 +600,9 @@ class RecurrentGradOpShapeInference : public framework::InferShapeBase {
     std::vector<std::string> output{kOutputs};
     for (auto &s : input) {
       PADDLE_ENFORCE(ctx->HasInputs(s));
-      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(s)));
+      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(s)),
+                     "Cannot find the gradient variable %s",
+                     framework::GradVarName(s));
     }
     for (auto &s : output) {
       PADDLE_ENFORCE(ctx->HasInputs(s));

@@ -60,6 +60,29 @@ class TestUniformInitializer(unittest.TestCase):
         self.assertAlmostEqual(init_op.attr('max'), 1.0, delta=DELTA)
         self.assertEqual(init_op.attr('seed'), 0)
 
+    def test_uniform_initializer_random_seed(self):
+        """Test the uniform initializer with manually setting seed
+        """
+        program = framework.Program()
+        program.random_seed = 123
+        block = program.global_block()
+        block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.UniformInitializer())
+        block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.UniformInitializer(seed=456))
+        init_op = block.ops[1]
+        self.assertEqual(init_op.attr("seed"), 123)
+        init_op1 = block.ops[0]
+        self.assertEqual(init_op1.attr("seed"), 456)
+
     def test_uniform_initializer(self):
         """Test uniform initializer with supplied attributes
         """

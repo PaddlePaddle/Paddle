@@ -16,6 +16,6 @@
 #include "paddle/operators/decayed_adagrad_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     decayed_adagrad,
-    ops::DecayedAdagradOpKernel<paddle::platform::GPUPlace, float>);
+    ops::DecayedAdagradOpKernel<paddle::platform::CUDADeviceContext, float>);

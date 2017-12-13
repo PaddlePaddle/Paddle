@@ -931,7 +931,8 @@ public:
                               size_t outputH,
                               size_t outputW,
                               size_t paddingH,
-                              size_t paddingW) {
+                              size_t paddingW,
+                              bool excludeMode = true) {
     LOG(FATAL) << "Not implemeted";
   }
 
@@ -947,9 +948,11 @@ public:
                                real scaleTargets,
                                real scaleOutput,
                                size_t paddingH,
-                               size_t paddingW) {
+                               size_t paddingW,
+                               bool excludeMode = true) {
     LOG(FATAL) << "Not implemeted";
   }
+
   /**
    * Pooling 3D forward operation, pick out the largest element
    * in the sizeX of value
@@ -1494,7 +1497,8 @@ public:
                       size_t outputH,
                       size_t outputW,
                       size_t paddingH,
-                      size_t paddingW);
+                      size_t paddingW,
+                      bool excludeMode = true);
 
   void avgPoolBackward(Matrix& input,
                        size_t imgSizeH,
@@ -1508,7 +1512,8 @@ public:
                        real scaleTargets,
                        real scaleOutput,
                        size_t paddingH,
-                       size_t paddingW);
+                       size_t paddingW,
+                       bool excludeMode = true);
 
   void maxPool3DForward(Matrix& inputMat,
                         Matrix& maxPoolIdx,
@@ -1782,7 +1787,8 @@ public:
                       size_t outputH,
                       size_t outputW,
                       size_t paddingH,
-                      size_t paddingW);
+                      size_t paddingW,
+                      bool excludeMode = true);
 
   void avgPoolBackward(Matrix& input,
                        size_t imgSizeH,
@@ -1796,7 +1802,8 @@ public:
                        real scaleTargets,
                        real scaleOutput,
                        size_t paddingH,
-                       size_t paddingW);
+                       size_t paddingW,
+                       bool excludeMode = true);
 
   void maxPool3DForward(Matrix& inputMat,
                         Matrix& maxPoolIdx,

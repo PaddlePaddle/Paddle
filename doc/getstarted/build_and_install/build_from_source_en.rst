@@ -1,4 +1,4 @@
-Build PaddlePaddle from Sources
+Build from Sources
 ==========================
 
 .. _build_step:
@@ -9,15 +9,19 @@ How To Build
 PaddlePaddle mainly uses `CMake <https://cmake.org>`_ and GCC, G++ as compile
 tools. We recommend you to use our pre-built Docker image to run the build
 to avoid installing dependencies by yourself. We have several build environment
-Docker images `here <https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/>`_.
+Docker images `here <https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/>`_ .
+
+If you choose not to use Docker image for your build, you need to install the
+below `Compile Dependencies`_ before run the build.
+
 Then run:
 
 .. code-block:: bash
 
    git clone https://github.com/PaddlePaddle/Paddle.git
    cd Paddle
-   # run the following command to build CPU-Only binaries if you are using docker
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x paddle/scripts/docker/build.sh
+   # run the following command to build a CPU-Only binaries if you are using docker
+   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x /paddle/paddle/scripts/docker/build.sh
    # else run these commands
    mkdir build
    cd build
@@ -30,9 +34,37 @@ machine or copy it to the target machine.
 
 .. code-block:: bash
 
-   pip install python/dist/*.whl
+   pip install build/python/dist/*.whl
 
-.. _build_step:
+
+.. _run_test:
+
+Run Tests
+----------------
+
+If you wish to run the tests, you may follow the below steps:
+
+When using Docker, set :code:`RUN_TEST=ON` and :code:`WITH_TESTING=ON` will run test immediately after the build.
+Set :code:`WITH_GPU=ON` Can also run tests on GPU.
+
+.. code-block:: bash
+
+   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=ON" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x paddle/paddle/scripts/docker/build.sh
+
+If you don't use Docker, just run ctest will start the tests:
+
+.. code-block:: bash
+
+   mkdir build
+   cd build
+   cmake -DWITH_GPU=OFF -DWITH_TESTING=ON ..
+   make
+   ctest
+   # run a single test like test_mul_op
+   ctest -R test_mul_op
+
+
+.. _compile_deps:
 
 Compile Dependencies
 ----------------
@@ -85,7 +117,7 @@ You can add :code:`-D` argument to pass such options, like:
     "WITH_PYTHON", "Build with integrated Python interpreter", "ON"
     "WITH_STYLE_CHECK", "Check code style when building", "ON"
     "WITH_TESTING", "Build unit tests", "ON"
-    "WITH_DOC", "Build documentaions", "OFF"
+    "WITH_DOC", "Build documentations", "OFF"
     "WITH_SWIG_PY", "Build Python SWIG interface for V2 API", "Auto"
     "WITH_GOLANG", "Build fault-tolerant parameter server written in go", "ON"
     "WITH_MKL", "Use MKL as BLAS library, else use OpenBLAS", "ON"

@@ -99,4 +99,4 @@ REGISTER_OP_WITHOUT_GRADIENT(decayed_adagrad, ops::DecayedAdagradOp,
                              ops::DecayedAdagradOpMaker);
 REGISTER_OP_CPU_KERNEL(
     decayed_adagrad,
-    ops::DecayedAdagradOpKernel<paddle::platform::CPUPlace, float>);
+    ops::DecayedAdagradOpKernel<paddle::platform::CPUDeviceContext, float>);
