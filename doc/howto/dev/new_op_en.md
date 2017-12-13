@@ -1,8 +1,8 @@
 # How to write a new operator
 
  - [Background](#background)
- - [Implementing C++ Types](#implementing-c++-types)
-   - [Defining ProtoMaker](#defining-protoMaker)
+ - [Implementing C++ Types](#implementing-c-types)
+   - [Defining ProtoMaker](#defining-protomaker)
    - [Defining Operator](#defining-operator)
    - [Registering Operator](#registering-operator)
    - [Compilation](#compilation)
@@ -41,7 +41,7 @@ Let's take matrix multiplication operator, [MulOp](https://github.com/PaddlePadd
 ## Implementing C++ Types
 
 
-### 1. Defining Class ProtoMaker
+### Defining ProtoMaker
 
 Matrix Multiplication can be written as $Out = X * Y$, meaning that the operation consists of two inputs and pne output.
 
@@ -98,7 +98,7 @@ There are two changes in this example:
 - `AddAttr<AttrType>("scale", "...").SetDefault(1.0);`  adds `scale`constant as an attribute, and sets the default value to 1.0.
 
 
-### 2. Defining Operator
+### Defining Operator
 
 The following code defines the interface for MulOp:
 
@@ -147,7 +147,7 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
 
 Usually `OpProtoMaker` and `Op`'s type definitions are written in `.cc` files, which also include the registration methods introduced later.
 
-### 3. Defining OpKernel
+### Defining OpKernel
 
 `MulKernel` inherits `framework::OpKernel`, which includes the following templates:
 
@@ -188,7 +188,7 @@ This concludes the forward implementation of an operator. Next its operation and
 
 The definition of its corresponding backward operator, if applicable, is similar to that of an forward operator. **Note that a backward operator does not include a `ProtoMaker`**.
 
-### 4. Registering Operator
+### Registering Operator
 
 - In `.cc` files, register forward and backward operator classes and the CPU kernel.
 
@@ -220,7 +220,7 @@ The definition of its corresponding backward operator, if applicable, is similar
                            ops::MulGradKernel<paddle::platform::CUDADeviceContext, float>);
     ```
 
-### 5. Compilation
+### Compilation
 
 Run the following commands to compile.
 
@@ -284,8 +284,7 @@ A forward operator unit test inherits `unittest.TestCase` and defines metaclass 
       def test_check_grad_ingore_y(self):
           self.check_grad(
               ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
-
-    ```
+  ```
 Get its output, and compare it with the forward operator's own output.
 
 The code above first loads required packages. In addition, we have
@@ -293,6 +292,8 @@ The code above first loads required packages. In addition, we have
 - `self.op_type = "mul" ` defines the type that is identical to what the operator's registered type.
 - `self.inputs` defines input, with type `numpy.array` and initializes it.
 - `self.outputs` defines output and completes the same operator computation in the Python script, and returns its result from the Python script.
+
+### Testing Backward Operators
 
 Some key points in checking gradient above include:
 
