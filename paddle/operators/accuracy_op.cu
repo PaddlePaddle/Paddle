@@ -104,5 +104,6 @@ class AccuracyOpCUDAKernel : public framework::OpKernel<T> {
 
 // FIXME(typhoonzero): types of T is for inference data.
 // label data is always int64
-REGISTER_OP_GPU_KERNEL(accuracy, paddle::operators::AccuracyOpCUDAKernel<float>,
-                       paddle::operators::AccuracyOpCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(accuracy,
+                        paddle::operators::AccuracyOpCUDAKernel<float>,
+                        paddle::operators::AccuracyOpCUDAKernel<double>);

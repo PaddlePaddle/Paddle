@@ -26,7 +26,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SumKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -43,21 +43,26 @@ class SumKernel : public framework::OpKernel<T> {
       auto result = EigenVector<T>::Flatten(*out);
 
       if (!in_place) {
-        math::SetConstant<Place, T> constant_functor;
-        constant_functor(context.device_context(), out, 0.0);
+        math::SetConstant<DeviceContext, T> constant_functor;
+        constant_functor(context.template device_context<DeviceContext>(), out,
+                         0.0);
       }
 
-      math::SelectedRowsAddToTensor<Place, T> functor;
-      auto place = context.GetEigenDevice<Place>();
+      math::SelectedRowsAddToTensor<DeviceContext, T> functor;
+      auto &place =
+          *context.template device_context<DeviceContext>().eigen_device();
       // If in_place, just skip the first tensor
       for (int i = in_place ? 1 : 0; i < N; i++) {
         if (in_vars[i]->IsType<framework::LoDTensor>()) {
           auto &in_t = in_vars[i]->Get<framework::LoDTensor>();
+          if (in_t.numel() == 0) {
+            continue;
+          }
           auto in = EigenVector<T>::Flatten(in_t);
           result.device(place) = result + in;
         } else if (in_vars[i]->IsType<framework::SelectedRows>()) {
           auto &in_t = in_vars[i]->Get<framework::SelectedRows>();
-          functor(context.device_context(), in_t, out);
+          functor(context.template device_context<DeviceContext>(), in_t, out);
         } else {
           PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
         }
@@ -79,14 +84,14 @@ class SumKernel : public framework::OpKernel<T> {
       out_value->Resize(framework::make_ddim(in_dim_vec));
       out_value->mutable_data<T>(context.GetPlace());
 
-      math::SelectedRowsAddTo<Place, T> functor;
+      math::SelectedRowsAddTo<DeviceContext, T> functor;
 
       int64_t offset = 0;
       for (int i = 0; i < N; i++) {
         PADDLE_ENFORCE_EQ(out->height(),
                           in_vars[i]->Get<SelectedRows>().height());
-        functor(context.device_context(), in_vars[i]->Get<SelectedRows>(),
-                offset, out);
+        functor(context.template device_context<DeviceContext>(),
+                in_vars[i]->Get<SelectedRows>(), offset, out);
         offset += in_vars[i]->Get<SelectedRows>().value().numel();
       }
     } else if (out_var->IsType<framework::LoDTensorArray>()) {
@@ -109,7 +114,8 @@ class SumKernel : public framework::OpKernel<T> {
               PADDLE_ENFORCE(out_array[i].lod() == in_array[i].lod());
               auto in = EigenVector<T>::Flatten(in_array[i]);
               auto result = EigenVector<T>::Flatten(out_array[i]);
-              result.device(context.GetEigenDevice<Place>()) = result + in;
+              result.device(*context.template device_context<DeviceContext>()
+                                 .eigen_device()) = result + in;
             }
           }
         }

@@ -3,7 +3,7 @@ import framework
 __all__ = ['append_regularization_ops', 'L1Decay', 'L2Decay']
 
 
-def append_regularization_ops(parameters_and_grads):
+def append_regularization_ops(parameters_and_grads, regularization=None):
     """Create and add backward regularization Operators
 
     Creates and adds backward regularization operators in the BlockDesc.
@@ -14,6 +14,8 @@ def append_regularization_ops(parameters_and_grads):
     Args:
         parameters_and_grads: A list of (parameters, gradients) pairs
                               that need to be regularized.
+        regularization: A global regularizer. If the parameter is not
+                        set. It will be applied with regularizer.
 
     Returns:
         list of (parameters, gradients) pair with the regularized gradient
@@ -23,14 +25,19 @@ def append_regularization_ops(parameters_and_grads):
     """
     params_and_grads = []
     for param, grad in parameters_and_grads:
+        regularization_term = None
+        if param.regularizer is not None:
+            # Add variable for regularization term in grad block
+            regularization_term = param.regularizer(param, grad.block)
+        elif regularization is not None:
+            regularization_term = regularization(param, grad.block)
+
         # If no gradient or no regularization specified,
         # then we don't need to do anything
-        if grad is None or param.regularizer is None:
+        if grad is None or regularization_term is None:
             params_and_grads.append((param, grad))
             continue
 
-        # Add variable for regularization term in grad block
-        regularization_term = param.regularizer(param, grad.block)
         assert grad.shape == regularization_term.shape
 
         grad.block.append_op(
@@ -145,7 +152,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
 # import paddle.fluid as fluid
 #
 # hidden = fluid.layers.fc(...,
-#                          param_attr=ParamAttr(fluid.regularizer.Xavier()))
+#                          param_attr=fluid.regularizer.Xavier())
 #
 # It is no need to add a `Regularizer` as the class suffix
 L1Decay = L1DecayRegularizer

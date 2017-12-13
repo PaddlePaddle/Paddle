@@ -261,9 +261,10 @@ REGISTER_OP(linear_chain_crf, ops::LinearChainCRFOp, ops::LinearChainCRFOpMaker,
             linear_chain_crf_grad, ops::LinearChainCRFGradOp);
 REGISTER_OP_CPU_KERNEL(
     linear_chain_crf,
-    ops::LinearChainCRFOpKernel<paddle::platform::CPUPlace, float>,
-    ops::LinearChainCRFOpKernel<paddle::platform::CPUPlace, double>);
+    ops::LinearChainCRFOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::LinearChainCRFOpKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     linear_chain_crf_grad,
-    ops::LinearChainCRFGradOpKernel<paddle::platform::CPUPlace, float>,
-    ops::LinearChainCRFGradOpKernel<paddle::platform::CPUPlace, double>);
+    ops::LinearChainCRFGradOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::LinearChainCRFGradOpKernel<paddle::platform::CPUDeviceContext,
+                                    double>);

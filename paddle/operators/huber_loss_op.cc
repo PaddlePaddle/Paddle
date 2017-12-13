@@ -124,8 +124,9 @@ class HuberLossGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(huber_loss, ops::HuberLossOp, ops::HuberLossOpMaker<float>,
             huber_loss_grad, ops::HuberLossGradOp);
-REGISTER_OP_CPU_KERNEL(huber_loss,
-                       ops::HuberLossKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    huber_loss,
+    ops::HuberLossKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     huber_loss_grad,
-    ops::HuberLossGradKernel<paddle::platform::CPUPlace, float>);
+    ops::HuberLossGradKernel<paddle::platform::CPUDeviceContext, float>);

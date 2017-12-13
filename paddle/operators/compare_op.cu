@@ -14,10 +14,10 @@
 
 #include "paddle/operators/compare_op.h"
 
-REGISTER_LOGICAL_KERNEL(less_than, GPU, paddle::operators::LessThanFunctor);
-REGISTER_LOGICAL_KERNEL(less_equal, GPU, paddle::operators::LessEqualFunctor);
-REGISTER_LOGICAL_KERNEL(greater_than, GPU,
+REGISTER_LOGICAL_KERNEL(less_than, CUDA, paddle::operators::LessThanFunctor);
+REGISTER_LOGICAL_KERNEL(less_equal, CUDA, paddle::operators::LessEqualFunctor);
+REGISTER_LOGICAL_KERNEL(greater_than, CUDA,
                         paddle::operators::GreaterThanFunctor);
-REGISTER_LOGICAL_KERNEL(greater_equal, GPU,
+REGISTER_LOGICAL_KERNEL(greater_equal, CUDA,
                         paddle::operators::GreaterEqualFunctor);
-REGISTER_LOGICAL_KERNEL(equal, GPU, paddle::operators::EqualFunctor);
+REGISTER_LOGICAL_KERNEL(equal, CUDA, paddle::operators::EqualFunctor);

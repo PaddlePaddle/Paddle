@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#ifdef PADDLE_USE_MKLML
+#ifdef PADDLE_WITH_MKLML
 #include <mkl_cblas.h>
 #include <mkl_lapacke.h>
 #include <mkl_vml_functions.h>
@@ -62,53 +62,51 @@ namespace math {
 // Then matrixA: M * K, matrixB: K * N, matrixC : M * N
 // For more detailed info, please refer to
 // http://www.netlib.org/lapack/explore-html/d4/de2/sgemm_8f.html
-template <typename Place, typename T>
-void gemm(const platform::DeviceContext& context, const CBLAS_TRANSPOSE transA,
+template <typename DeviceContext, typename T>
+void gemm(const DeviceContext& context, const CBLAS_TRANSPOSE transA,
           const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
           const T alpha, const T* A, const T* B, const T beta, T* C);
 
 // gemm wrapper with stride args for matrix uncontinuous in memory
-template <typename Place, typename T>
-void gemm(const platform::DeviceContext& context, const bool transA,
-          const bool transB, const int M, const int N, const int K,
-          const T alpha, const T* A, const int lda, const T* B, const int ldb,
-          const T beta, T* C, const int ldc);
+template <typename DeviceContext, typename T>
+void gemm(const DeviceContext& context, const bool transA, const bool transB,
+          const int M, const int N, const int K, const T alpha, const T* A,
+          const int lda, const T* B, const int ldb, const T beta, T* C,
+          const int ldc);
 
 // matrix multiply with continuous memory
-template <typename Place, typename T>
-void matmul(const platform::DeviceContext& context,
-            const framework::Tensor& matrix_a, bool trans_a,
-            const framework::Tensor& matrix_b, bool trans_b, T alpha,
-            framework::Tensor* matrix_out, T beta);
+template <typename DeviceContext, typename T>
+void matmul(const DeviceContext& context, const framework::Tensor& matrix_a,
+            bool trans_a, const framework::Tensor& matrix_b, bool trans_b,
+            T alpha, framework::Tensor* matrix_out, T beta);
 
 // Batched gemm
-template <typename Place, typename T>
-void batched_gemm(const platform::DeviceContext& context,
-                  const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB,
-                  const int M, const int N, const int K, const T alpha,
-                  const T* A, const T* B, const T beta, T* C,
-                  const int batchCount, const int strideA, const int strideB);
+template <typename DeviceContext, typename T>
+void batched_gemm(const DeviceContext& context, const CBLAS_TRANSPOSE transA,
+                  const CBLAS_TRANSPOSE transB, const int M, const int N,
+                  const int K, const T alpha, const T* A, const T* B,
+                  const T beta, T* C, const int batchCount, const int strideA,
+                  const int strideB);
 
-template <typename Place, typename T>
-void gemv(const platform::DeviceContext& context, const bool trans_a,
-          const int M, const int N, const T alpha, const T* A, const T* B,
-          const T beta, T* C);
+template <typename DeviceContext, typename T>
+void gemv(const DeviceContext& context, const bool trans_a, const int M,
+          const int N, const T alpha, const T* A, const T* B, const T beta,
+          T* C);
 
-template <typename Place, typename T>
-void axpy(const platform::DeviceContext& context, const int n, const T alpha,
-          const T* x, T* y);
+template <typename DeviceContext, typename T>
+void axpy(const DeviceContext& context, const int n, const T alpha, const T* x,
+          T* y);
 
-template <typename Place, typename T, int Rank>
+template <typename DeviceContext, typename T, int Rank>
 struct Transpose {
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& in, framework::Tensor* out,
-                  const std::vector<int>& axis);
+  void operator()(const DeviceContext& context, const framework::Tensor& in,
+                  framework::Tensor* out, const std::vector<int>& axis);
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 struct SetConstant {
-  void operator()(const platform::DeviceContext& context,
-                  framework::Tensor* tensor, T num);
+  void operator()(const DeviceContext& context, framework::Tensor* tensor,
+                  T num);
 };
 
 template <typename Place>
@@ -118,17 +116,16 @@ void set_constant_with_place(const platform::DeviceContext& context,
 void set_constant(const platform::DeviceContext& context,
                   framework::Tensor* tensor, float value);
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 struct RowwiseAdd {
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, const framework::Tensor& vec,
-                  framework::Tensor* output);
+  void operator()(const DeviceContext& context, const framework::Tensor& input,
+                  const framework::Tensor& vec, framework::Tensor* output);
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 struct ColwiseSum {
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, framework::Tensor* vec);
+  void operator()(const DeviceContext& context, const framework::Tensor& input,
+                  framework::Tensor* vec);
 };
 
 }  // namespace math
