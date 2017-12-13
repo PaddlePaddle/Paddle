@@ -13,10 +13,10 @@
    limitations under the License. */
 #include <string>
 
+#include "paddle/framework/executor.h"
 #include "paddle/framework/init.h"
 #include "paddle/platform/place.h"
 #include "paddle/string/piece.h"
-#include "paddle/string/to_string.h"
 
 namespace paddle {
 namespace framework {
@@ -39,7 +39,7 @@ void InitGflags(std::vector<std::string> &argv) {
   });
 }
 
-void InitDevices(const std::vector<std::string> &devices) {
+bool InitDevices(const std::vector<std::string> &devices) {
   // device format
   // CPU
   // GPU:1
@@ -49,13 +49,16 @@ void InitDevices(const std::vector<std::string> &devices) {
     auto p = string::Piece(device);
     if (string::Find(p, ':', 0) == string::Piece::npos) {
       places.emplace_back(platform::CPUPlace());
-    }
-    if (string::HasPrefix(p, "GPU")) {
-      auto number = device.substr(string::RFind(p, ':', string::Piece::npos),
-                                  device.size() - 1);
+    } else if (string::HasPrefix(p, "GPU")) {
+      auto pos = string::RFind(p, ':', string::Piece::npos);
+      auto number = device.substr(pos + 1);
       places.emplace_back(platform::GPUPlace(std::stoi(number)));
+    } else {
+      return false;
     }
   }
+  DeviceContextPool::Create(places);
+  return true;
 }
 
 }  // namespace framework

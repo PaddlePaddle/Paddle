@@ -11,18 +11,12 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
-#pragma once
-#include <mutex>
+#include "gtest/gtest.h"
 
-#include "gflags/gflags.h"
-#include "glog/logging.h"
+#include "paddle/framework/init.h"
 
-namespace paddle {
-namespace framework {
-
-void InitGflags(std::vector<std::string> &argv);
-
-bool InitDevices(const std::vector<std::string> &devices);
-
-}  // namespace framework
-}  // namespace paddle
+TEST(Init, InitDevices) {
+  using paddle::framework::InitDevices;
+  std::vector<std::string> ds1 = {"CPU", "GPU:0", "GPU:1"};
+  ASSERT_EQ(InitDevices(ds1), true);
+}

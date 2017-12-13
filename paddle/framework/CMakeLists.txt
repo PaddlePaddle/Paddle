@@ -59,4 +59,5 @@ cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
 cc_library(selected_rows SRCS selected_rows.cc DEPS tensor)
 cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
 
-cc_library(init SRCS init.cc DEPS gflags)
+cc_library(init SRCS init.cc DEPS gflags executor place stringpiece)
+cc_test(init_test SRCS init_test.cc DEPS init)
