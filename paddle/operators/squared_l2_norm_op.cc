@@ -72,7 +72,7 @@ REGISTER_OP(squared_l2_norm, ops::SquaredL2NormOp, ops::SquaredL2NormOpMaker,
             squared_l2_norm_grad, ops::SquaredL2NormGradOp);
 REGISTER_OP_CPU_KERNEL(
     squared_l2_norm,
-    ops::SquaredL2NormKernel<paddle::platform::CPUPlace, float>);
+    ops::SquaredL2NormKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     squared_l2_norm_grad,
-    ops::SquaredL2NormGradKernel<paddle::platform::CPUPlace, float>);
+    ops::SquaredL2NormGradKernel<paddle::platform::CPUDeviceContext, float>);

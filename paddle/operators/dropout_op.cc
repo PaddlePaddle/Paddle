@@ -100,6 +100,8 @@ namespace ops = paddle::operators;
 REGISTER_OP(dropout, ops::DropoutOp, ops::DropoutOpMaker<float>, dropout_grad,
             ops::DropoutOpGrad<float>);
 REGISTER_OP_CPU_KERNEL(
-    dropout, ops::CPUDropoutKernel<paddle::platform::CPUPlace, float, float>);
+    dropout,
+    ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext, float, float>);
 REGISTER_OP_CPU_KERNEL(
-    dropout_grad, ops::DropoutGradKernel<paddle::platform::CPUPlace, float>);
+    dropout_grad,
+    ops::DropoutGradKernel<paddle::platform::CPUDeviceContext, float>);

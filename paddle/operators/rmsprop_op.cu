@@ -16,5 +16,5 @@
 #include "paddle/operators/rmsprop_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(rmsprop,
-                       ops::RmspropOpKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_CUDA_KERNEL(
+    rmsprop, ops::RmspropOpKernel<paddle::platform::CUDADeviceContext, float>);

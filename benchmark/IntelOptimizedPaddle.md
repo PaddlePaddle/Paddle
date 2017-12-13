@@ -19,6 +19,8 @@ On each machine, we will test and compare the performance of training on single 
 ## Benchmark Model
 
 ### Server
+
+#### Training
 Test on batch size 64, 128, 256 on Intel(R) Xeon(R) Gold 6148 CPU @ 2.40GHz
 
 Input image size - 3 * 224 * 224, Time: images/second
@@ -52,6 +54,34 @@ Input image size - 3 * 224 * 224, Time: images/second
 | MKL-DNN      | 250.46| 264.83| 269.50 |
 
 <img src="figs/googlenet-cpu-train.png" width="500">
+
+#### Inference
+Test on batch size 1, 2, 4, 8, 16 on Intel(R) Xeon(R) Gold 6148 CPU @ 2.40GHz
+- VGG-19
+
+| BatchSize | 1     | 2     | 4     | 8     | 16    |
+|-----------|-------|-------|-------|-------|-------|
+| OpenBLAS  | 1.07  | 1.08  | 1.06  | 0.88  | 0.65  |
+| MKLML     | 5.58  | 9.80  | 15.15 | 21.21 | 28.67 |
+| MKL-DNN   | 75.07 | 88.64 | 82.58 | 92.29 | 96.75 |
+
+- ResNet-50
+
+| BatchSize | 1     | 2      | 4      | 8      | 16     |
+|-----------|-------|--------|--------|--------|--------|
+| OpenBLAS  | 3.35  | 3.19   | 3.09   | 2.55   | 1.96   |
+| MKLML     | 6.33  | 12.02  | 22.88  | 40.53  | 63.09  |
+| MKL-DNN   | 107.83| 148.84 | 177.78 | 189.35 | 217.69 |
+
+
+- GoogLeNet
+
+| BatchSize | 1      | 2      | 4      | 8      | 16     |
+|-----------|--------|--------|--------|--------|--------|
+| OpenBLAS  | 12.04  | 11.31  | 10.00  | 9.07   | 4.34   |
+| MKLML     | 22.74  | 41.56  | 81.22  | 133.47 | 210.53 |
+| MKL-DNN   | 175.10 | 272.92 | 450.70 | 512.00 | 600.94 |
+
 
 ### Laptop
 TBD

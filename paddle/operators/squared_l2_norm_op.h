@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 // Out = sum(square(X))
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SquaredL2NormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -30,14 +30,15 @@ class SquaredL2NormKernel : public framework::OpKernel<T> {
 
     auto x = framework::EigenVector<T>::Flatten(*X);
     auto out = framework::EigenScalar<T>::From(*Out);
-    auto place = context.GetEigenDevice<Place>();
+    auto *place =
+        context.template device_context<DeviceContext>().eigen_device();
 
-    out.device(place) = x.square().sum();
+    out.device(*place) = x.square().sum();
   }
 };
 
 // dX = X
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SquaredL2NormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -53,10 +54,11 @@ class SquaredL2NormGradKernel : public framework::OpKernel<T> {
     auto x = framework::EigenVector<T>::Flatten(*X);
     auto dout = framework::EigenVector<T>::Flatten(*dOut);
     auto dx = framework::EigenVector<T>::Flatten(*dX);
-    auto place = context.GetEigenDevice<Place>();
+    auto *place =
+        context.template device_context<DeviceContext>().eigen_device();
 
     Eigen::DSizes<int, 1> x_dsize(X->numel());
-    dx.device(place) = (dout.broadcast(x_dsize) * x) * static_cast<T>(2.0);
+    dx.device(*place) = (dout.broadcast(x_dsize) * x) * static_cast<T>(2.0);
   }
 };
 

@@ -16,9 +16,10 @@
 #include "paddle/operators/gru_unit_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(gru_unit,
-                       ops::GRUUnitKernel<paddle::platform::GPUPlace, float>,
-                       ops::GRUUnitKernel<paddle::platform::GPUPlace, double>);
-REGISTER_OP_GPU_KERNEL(
-    gru_unit_grad, ops::GRUUnitGradKernel<paddle::platform::GPUPlace, float>,
-    ops::GRUUnitGradKernel<paddle::platform::GPUPlace, double>);
+REGISTER_OP_CUDA_KERNEL(
+    gru_unit, ops::GRUUnitKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::GRUUnitKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(
+    gru_unit_grad,
+    ops::GRUUnitGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::GRUUnitGradKernel<paddle::platform::CUDADeviceContext, double>);

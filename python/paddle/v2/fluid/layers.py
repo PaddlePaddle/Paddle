@@ -1,18 +1,28 @@
-import core
+import contextlib
+
 import proto.framework_pb2 as framework_pb2
+import core
 from framework import OpProtoHolder, Variable, Program, Operator
 from initializer import Constant, Normal, Xavier, Initializer
 from paddle.v2.fluid.layer_helper import LayerHelper, unique_name
-import re
-import cStringIO
+from registry import register_layer
 from param_attr import ParamAttr
-import contextlib
 
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
     'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool', 'sums', 'cos_sim',
     'batch_norm', 'accuracy', 'split_lod_tensor', 'While'
 ]
+
+_REGISTER_LAYER_FROM_OPS = [
+    'mean', 'mul', 'dropout', 'reshape', 'sigmoid', 'scale', 'transpose',
+    'sigmoid_cross_entropy_with_logits', 'elementwise_add', 'elementwise_div',
+    'elementwise_sub', 'elementwise_mul', 'clip', 'abs'
+]
+
+for _OP in set(_REGISTER_LAYER_FROM_OPS):
+    globals()[_OP] = register_layer(_OP)
+    __all__.append(_OP)
 
 
 def fc(input,
@@ -309,174 +319,6 @@ def create_tensor(dtype, name=None, main_program=None, startup_program=None):
     return helper.create_variable(name=helper.name, dtype=dtype)
 
 
-def _convert_(name):
-    """
-    Formatting.
-
-    Args:
-       name: The name/alias
-
-    This function takes in a name and converts it to a standard format of
-    group1_group2. Where as per the regular expression, group1 can have
-    alphabets and numbers and group2 has capital alphabets.
-
-    """
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-
-
-def _generate_doc_string_(op_proto):
-    """
-    Generate docstring by OpProto
-
-    Args:
-        op_proto (framework_pb2.OpProto): a protobuf message typed OpProto
-
-    Returns:
-        str: the document string
-    """
-
-    def _type_to_str_(tp):
-        return framework_pb2.AttrType.Name(tp)
-
-    if not isinstance(op_proto, framework_pb2.OpProto):
-        raise TypeError("OpProto should be `framework_pb2.OpProto`")
-
-    buf = cStringIO.StringIO()
-    buf.write(op_proto.comment)
-    buf.write('\nArgs:\n')
-    for each_input in op_proto.inputs:
-        line_begin = '    {0}: '.format(_convert_(each_input.name))
-        buf.write(line_begin)
-        buf.write(each_input.comment)
-        buf.write('\n')
-        buf.write(' ' * len(line_begin))
-        buf.write('Duplicable: ')
-        buf.write(str(each_input.duplicable))
-        buf.write('  Optional: ')
-        buf.write(str(each_input.dispensable))
-        buf.write('\n')
-
-    for each_attr in op_proto.attrs:
-        buf.write('    ')
-        buf.write(each_attr.name)
-        buf.write(' (')
-        buf.write(_type_to_str_(each_attr.type))
-        buf.write('): ')
-        buf.write(each_attr.comment)
-        buf.write('\n')
-
-    if len(op_proto.outputs) != 0:
-        buf.write('\nReturns:\n')
-        buf.write('    ')
-        for each_opt in op_proto.outputs:
-            if not each_opt.intermediate:
-                break
-        buf.write(each_opt.comment)
-
-    return buf.getvalue()
-
-
-def _create_op_func_(op_type):
-    """
-    Create an Operator for a Function.
-
-    Args:
-       op_type: The name of the operator to be created
-
-    This function takes in the operator type (sigmoid, mean , average etc) and
-    creates the operator functionality.
-
-    """
-    op_proto = OpProtoHolder.instance().get_op_proto(op_type)
-    not_intermediate_outputs = \
-        filter(lambda output: not output.intermediate, op_proto.outputs)
-    intermediate_outputs = \
-        filter(lambda output: output.intermediate, op_proto.outputs)
-
-    if len(not_intermediate_outputs) != 1:
-        raise ValueError("Only one non intermediate output operator can be",
-                         "automatically generated")
-
-    if not_intermediate_outputs[0].duplicable:
-        raise ValueError(
-            "Only non duplicable op can be automatically generated")
-
-    for output in intermediate_outputs:
-        if output.duplicable:
-            raise ValueError("The op can be automatically generated only when ",
-                             "all intermediate ops are not duplicable")
-
-    o_name = not_intermediate_outputs[0].name
-    intermediate_output_names = [output.name for output in intermediate_outputs]
-
-    def infer_and_check_dtype(op_proto, **kwargs):
-        """
-        This function performs the sanity check for dtype and
-        instance type.
-        """
-        dtype = None
-        for ipt in op_proto.inputs:
-            name = _convert_(ipt.name)
-            val = kwargs.pop(name, [])
-            if not isinstance(val, list) and not isinstance(val, tuple):
-                val = [val]
-            for each in val:
-                if not isinstance(each, Variable):
-                    raise ValueError("input of {0} must be variable".format(
-                        op_type))
-
-                if dtype is None:
-                    dtype = each.dtype
-                elif dtype != each.dtype:
-                    raise ValueError(
-                        "operator {0} must input same dtype. {1} vs {2}".format(
-                            op_type, dtype, each.dtype))
-
-        return dtype
-
-    def func(**kwargs):
-        helper = LayerHelper(op_type, **kwargs)
-
-        dtype = infer_and_check_dtype(op_proto, **kwargs)
-
-        inputs = dict()
-        for ipt in op_proto.inputs:
-            name = _convert_(ipt.name)
-            val = kwargs.pop(name, [])
-            if not isinstance(val, list) and not isinstance(val, tuple):
-                val = [val]
-            inputs[ipt.name] = val
-
-        outputs = dict()
-        out = helper.create_tmp_variable(dtype=dtype)
-        outputs[o_name] = [out]
-        for name in intermediate_output_names:
-            outputs[name] = [helper.create_tmp_variable(dtype=dtype)]
-        helper.append_op(
-            type=op_type, inputs=inputs, outputs=outputs, attrs=kwargs)
-        return helper.append_activation(out)
-
-    func.__name__ = op_type
-    globals()[op_type] = func
-    func.__doc__ = _generate_doc_string_(op_proto)
-    global __all__
-    __all__.append(op_type)
-
-
-_create_op_func_('mean')
-_create_op_func_('mul')
-_create_op_func_('elementwise_add')
-_create_op_func_('elementwise_div')
-_create_op_func_('dropout')
-_create_op_func_('reshape')
-_create_op_func_('sigmoid')
-_create_op_func_('scale')
-_create_op_func_('reshape')
-_create_op_func_('transpose')
-_create_op_func_('sigmoid_cross_entropy_with_logits')
-
-
 def cast(x, dtype, main_program=None):
     """
     This function takes in the input with input_dtype
@@ -762,7 +604,7 @@ def sequence_conv(input,
     helper = LayerHelper('sequence_conv', **locals())
     dtype = helper.input_dtype()
     filter_shape = [filter_size * input.shape[1], num_filters]
-    filter = helper.create_parameter(
+    filter_param = helper.create_parameter(
         attr=helper.param_attr, shape=filter_shape, dtype=dtype)
     pre_bias = helper.create_tmp_variable(dtype)
 
@@ -770,7 +612,7 @@ def sequence_conv(input,
         type='sequence_conv',
         inputs={
             'X': [input],
-            'Filter': [filter],
+            'Filter': [filter_param],
         },
         outputs={"Out": pre_bias},
         attrs={
@@ -785,7 +627,7 @@ def sequence_conv(input,
 def conv2d(input,
            num_filters,
            filter_size,
-           stride=[1, 1],
+           stride=None,
            padding=None,
            groups=None,
            param_attr=None,
@@ -802,6 +644,8 @@ def conv2d(input,
     conv-2d output, if mentioned in the input parameters.
     """
 
+    if stride is None:
+        stride = [1, 1]
     helper = LayerHelper('conv2d', **locals())
     dtype = helper.input_dtype()
 
@@ -827,7 +671,7 @@ def conv2d(input,
         std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
         return Normal(0.0, std, 0)
 
-    filter = helper.create_parameter(
+    filter_param = helper.create_parameter(
         attr=helper.param_attr,
         shape=filter_shape,
         dtype=dtype,
@@ -839,7 +683,7 @@ def conv2d(input,
         type='conv2d_cudnn',
         inputs={
             'Input': input,
-            'Filter': filter,
+            'Filter': filter_param,
         },
         outputs={"Output": pre_bias},
         attrs={'strides': stride,
@@ -875,8 +719,8 @@ def sequence_pool(input, pool_type, **kwargs):
 def pool2d(input,
            pool_size,
            pool_type,
-           pool_stride=[1, 1],
-           pool_padding=[0, 0],
+           pool_stride=None,
+           pool_padding=None,
            global_pooling=False,
            main_program=None,
            startup_program=None):
@@ -884,6 +728,10 @@ def pool2d(input,
     This function adds the operator for pooling in 2 dimensions, using the
     pooling configurations mentioned in input parameters.
     """
+    if pool_padding is None:
+        pool_padding = [0, 0]
+    if pool_stride is None:
+        pool_stride = [1, 1]
     if pool_type not in ["max", "avg"]:
         raise ValueError(
             "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
@@ -1726,8 +1574,10 @@ def conv2d_transpose(input,
 
         h_in = input.shape[2]
         w_in = input.shape[3]
-        filter_size_h = output_size[0] - (h_in - 1) * stride[0] + 2 * padding[0]
-        filter_size_w = output_size[1] - (w_in - 1) * stride[1] + 2 * padding[1]
+        filter_size_h = output_size[0] - \
+            (h_in - 1) * stride[0] + 2 * padding[0]
+        filter_size_w = output_size[1] - \
+            (w_in - 1) * stride[1] + 2 * padding[1]
         filter_size = [filter_size_h, filter_size_w]
     elif isinstance(filter_size, int):
         filter_size = [filter_size, filter_size]

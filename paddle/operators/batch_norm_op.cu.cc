@@ -47,7 +47,8 @@ void ExtractNCWHD(const framework::DDim &dims,
 }
 
 template <typename T>
-class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
+class BatchNormKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -121,11 +122,12 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     saved_mean->mutable_data<T>(ctx.GetPlace());
     saved_variance->mutable_data<T>(ctx.GetPlace());
 
-    math::SetConstant<platform::GPUPlace, T> functor;
-    functor(ctx.device_context(), saved_mean, 0);
-    functor(ctx.device_context(), saved_variance, 0);
+    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    math::SetConstant<platform::CUDADeviceContext, T> functor;
+    functor(dev_ctx, saved_mean, 0);
+    functor(dev_ctx, saved_variance, 0);
 
-    auto handle = ctx.cuda_device_context().cudnn_handle();
+    auto handle = dev_ctx.cudnn_handle();
 
     // Now, depending on whether we are running test or not, we have two paths.
     if (is_test) {
@@ -171,7 +173,7 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class BatchNormGradKernel<platform::GPUPlace, T>
+class BatchNormGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -244,11 +246,12 @@ class BatchNormGradKernel<platform::GPUPlace, T>
     const void *saved_mean_data = saved_mean->template data<T>();
     const void *saved_var_data = saved_var->template data<T>();
 
+    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationBackward(
-        ctx.cuda_device_context().cudnn_handle(), mode_,
-        CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(),
-        CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(), data_desc_,
-        x->template data<T>(), data_desc_, d_y->template data<T>(), data_desc_,
+        dev_ctx.cudnn_handle(), mode_, CudnnDataType<T>::kOne(),
+        CudnnDataType<T>::kZero(), CudnnDataType<T>::kOne(),
+        CudnnDataType<T>::kZero(), data_desc_, x->template data<T>(),
+        data_desc_, d_y->template data<T>(), data_desc_,
         d_x->template mutable_data<T>(ctx.GetPlace()), bn_param_desc_,
         scale->template data<T>(),
         d_scale->template mutable_data<T>(ctx.GetPlace()),
@@ -266,8 +269,9 @@ class BatchNormGradKernel<platform::GPUPlace, T>
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(batch_norm,
-                       ops::BatchNormKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
+    batch_norm,
+    ops::BatchNormKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
     batch_norm_grad,
-    ops::BatchNormGradKernel<paddle::platform::GPUPlace, float>);
+    ops::BatchNormGradKernel<paddle::platform::CUDADeviceContext, float>);

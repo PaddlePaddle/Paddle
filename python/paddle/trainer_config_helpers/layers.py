@@ -1519,34 +1519,33 @@ def lstmemory(input,
     NOTE: This is a low level user interface. You can use network.simple_lstm
     to config a simple plain lstm layer.
 
-    Please refer to **Generating Sequences With Recurrent Neural Networks** for
-    more details about LSTM.
+    Reference:
+        `Generating Sequences With Recurrent Neural Networks
+        <https://arxiv.org/pdf/1308.0850.pdf>`_
 
-    Link_ goes as below.
-
-    .. _Link: http://arxiv.org/abs/1308.0850
-
-    :param name: The lstmemory layer name.
+    :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param size: DEPRECATED. size of the lstm cell
+    :param size: DEPRECATED. The dimension of the lstm cell.
     :type size: int
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param reverse: is sequence process reversed or not.
+    :param reverse: Whether the input sequence is processed in a reverse order.
     :type reverse: bool
     :param act: Activation type. TanhActivation is the default activation.
     :type act: BaseActivation
-    :param gate_act: gate activation type, SigmoidActivation by default.
+    :param gate_act: Activation type of this layer's gates. SigmoidActivation is the
+                     default activation.
     :type gate_act: BaseActivation
-    :param state_act: state activation type, TanhActivation by default.
+    :param state_act: Activation type of the state. TanhActivation is the default activation.
     :type state_act: BaseActivation
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param param_attr: Parameter Attribute.
-    :type param_attr: ParameterAttribute | None | False
-    :param layer_attr: Extra Layer attribute
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
+    :type param_attr: ParameterAttribute
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute | None
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -1635,14 +1634,14 @@ def grumemory(input,
         h_t = (1 - z_t) h_{t-1} + z_t {\\tilde{h_t}}
 
     NOTE: In PaddlePaddle's implementation, the multiplication operations
-    :math:`W_{r}x_{t}`, :math:`W_{z}x_{t}` and :math:`W x_t` are not computed in
-    gate_recurrent layer. Consequently, an additional mixed_layer with
+    :math:`W_{r}x_{t}`, :math:`W_{z}x_{t}` and :math:`W x_t` are not performed
+    in gate_recurrent layer. Consequently, an additional mixed_layer with
     full_matrix_projection or a fc_layer must be included before grumemory
     is called.
 
-    More details can be found by referring to `Empirical Evaluation of Gated
-    Recurrent Neural Networks on Sequence Modeling.
-    <https://arxiv.org/abs/1412.3555>`_
+    Reference:
+        `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence Modeling
+        <https://arxiv.org/abs/1412.3555>`_
 
     The simple usage is:
 
@@ -1650,28 +1649,29 @@ def grumemory(input,
 
        gru = grumemory(input)
 
-    :param name: The gru layer name.
-    :type name: None | basestring
+    :param name: The name of this layer. It is optional.
+    :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput.
-    :param size: DEPRECATED. size of the gru cell
+    :param size: DEPRECATED. The dimension of the gru cell.
     :type size: int
-    :param reverse: Whether sequence process is reversed or not.
+    :param reverse: Whether the input sequence is processed in a reverse order.
     :type reverse: bool
     :param act: Activation type, TanhActivation is the default. This activation
                 affects the :math:`{\\tilde{h_t}}`.
     :type act: BaseActivation
-    :param gate_act: gate activation type, SigmoidActivation by default.
-                     This activation affects the :math:`z_t` and :math:`r_t`. It is the
-                     :math:`\\sigma` in the above formula.
+    :param gate_act: Activation type of this layer's two gates. SigmoidActivation is
+                     the default activation. This activation affects the :math:`z_t`
+                     and :math:`r_t`. It is the :math:`\\sigma` in the above formula.
     :type gate_act: BaseActivation
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param param_attr: Parameter Attribute.
-    :type param_attr: ParameterAttribute | None | False
-    :param layer_attr: Extra Layer attribute
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
+    :type param_attr: ParameterAttribute
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute | None
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -1715,10 +1715,10 @@ def last_seq(input,
     """
     Get Last Timestamp Activation of a sequence.
 
-    If stride > 0, this layer slides a window whose size is determined by stride,
-    and return the last value of the window as the output. Thus, a long sequence
-    will be shorten. Note that for sequence with sub-sequence, the default value
-    of stride is -1.
+    If stride > 0, this layer will slide a window whose size is determined by stride,
+    and return the last value of the sequence in the window as the output. Thus, a
+    long sequence will be shortened. Note that for sequence with sub-sequence, the
+    default value of stride is -1.
 
     The simple usage is:
 
@@ -1727,14 +1727,16 @@ def last_seq(input,
        seq = last_seq(input=layer)
 
     :param agg_level: Aggregated level
+    :type agg_level: AggregateLevel
     :param name: The name of this layer. It is optional.
     :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput
     :param stride: The step size between successive pooling regions.
-    :type stride: Int
-    :param layer_attr: extra layer attributes.
-    :type layer_attr: ExtraLayerAttribute.
+    :type stride: int
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -1771,10 +1773,10 @@ def first_seq(input,
     """
     Get First Timestamp Activation of a sequence.
 
-    If stride > 0, this layer slides a window whose size is determined by stride,
-    and return the first value of the window as the output. Thus, a long sequence
-    will be shorten. Note that for sequence with sub-sequence, the default value
-    of stride is -1.
+    If stride > 0, this layer will slide a window whose size is determined by stride,
+    and return the first value of the sequence in the window as the output. Thus, a
+    long sequence will be shortened. Note that for sequence with sub-sequence, the
+    default value of stride is -1.
 
     The simple usage is:
 
@@ -1783,13 +1785,15 @@ def first_seq(input,
        seq = first_seq(input=layer)
 
     :param agg_level: aggregation level
+    :type agg_level: AggregateLevel
     :param name: The name of this layer. It is optional.
     :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput
     :param stride: The step size between successive pooling regions.
-    :type stride: Int
-    :param layer_attr: extra layer attributes.
+    :type stride: int
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -1847,8 +1851,8 @@ def expand_layer(input,
                  expand_level=ExpandLevel.FROM_NO_SEQUENCE,
                  layer_attr=None):
     """
-    A layer for "Expand Dense data or (sequence data where the length of each
-    sequence is one) to sequence data."
+    A layer for expanding dense data or (sequence data where the length of each
+    sequence is one) to sequence data.
 
     The example usage is:
 
@@ -1860,7 +1864,9 @@ def expand_layer(input,
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param expand_as: Expand as this layer's sequence info.
+    :param expand_as: Expand the input according to this layer's sequence infomation. And
+                      after the operation, the input expanded will have the same number of
+                      elememts as this layer.
     :type expand_as: LayerOutput
     :param name: The name of this layer. It is optional.
     :type name: basestring
@@ -1868,9 +1874,10 @@ def expand_layer(input,
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param expand_level: whether input layer is timestep(default) or sequence.
+    :param expand_level: Whether the input layer is a sequence or the element of a sequence.
     :type expand_level: ExpandLevel
-    :param layer_attr: extra layer attributes.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2722,15 +2729,17 @@ def img_pool_layer(input,
 
     ..  math::
 
-        w = 1 + \frac{ceil(input\_width + 2 * padding - pool\_size)}{stride} \\\\
-        h = 1 + \frac{ceil(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
+        w & = 1 + \\frac{ceil(input\_width + 2 * padding - pool\_size)}{stride}
+
+        h & = 1 + \\frac{ceil(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
 
     - ceil_mode=False:
 
     ..  math::
 
-        w = 1 + \frac{floor(input\_width + 2 * padding - pool\_size)}{stride} \\\\
-        h = 1 + \frac{floor(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
+        w & = 1 + \\frac{floor(input\_width + 2 * padding - pool\_size)}{stride}
+
+        h & = 1 + \\frac{floor(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
 
     The example usage is:
 
@@ -2863,17 +2872,21 @@ def img_pool3d_layer(input,
 
     ..  math::
 
-        w = 1 + \frac{ceil(input\_width + 2 * padding - pool\_size)}{stride} \\\\
-        h = 1 + \frac{ceil(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y} \\\\
-        d = 1 + \frac{ceil(input\_depth + 2 * padding\_z - pool\_size\_z)}{stride\_z}
+        w & = 1 + \\frac{ceil(input\_width + 2 * padding - pool\_size)}{stride}
+
+        h & = 1 + \\frac{ceil(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
+
+        d & = 1 + \\frac{ceil(input\_depth + 2 * padding\_z - pool\_size\_z)}{stride\_z}
 
     - ceil_mode=False:
 
     ..  math::
 
-        w = 1 + \frac{floor(input\_width + 2 * padding - pool\_size)}{stride} \\\\
-        h = 1 + \frac{floor(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y} \\\\
-        d = 1 + \frac{floor(input\_depth + 2 * padding\_z - pool\_size\_z)}{stride\_z} \\\\
+        w & = 1 + \\frac{floor(input\_width + 2 * padding - pool\_size)}{stride}
+
+        h & = 1 + \\frac{floor(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
+
+        d & = 1 + \\frac{floor(input\_depth + 2 * padding\_z - pool\_size\_z)}{stride\_z}
 
     The example usage is:
 
@@ -3304,7 +3317,7 @@ def row_l2_norm_layer(input, name=None, layer_attr=None):
     A layer for L2-normalization in each row.
 
     .. math::
-       out[i] = \frac{in[i]}{\sqrt{\sum_{k=1}^N in[k]^{2}}}
+       out[i] = \\frac{in[i]} {\\sqrt{\\sum_{k=1}^N in[k]^{2}}}
 
     where the size of :math:`in` is (batchSize x dataDim) ,
     and the size of :math:`out` is a (batchSize x dataDim) .
@@ -5430,13 +5443,21 @@ def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
 
 
     .. math::
-       out = \max_k (in[n, k, o_c , s])   \\\\
-       out_{i * s + j} = \max_k in_{  k * o_{c} * s + i * s + j}  \\\\
-       s = \frac{input.size}{ num\_channels}       \\\\
-       o_{c} =\frac{num\_channels}{groups}         \\\\
-       0 \le i < o_{c}                             \\\\
-       0 \le j < s                                 \\\\
-       0 \le k < groups                            \\\\
+
+       & out = \max_k (in[n, k, o_c , s])
+
+       & out_{i * s + j} = \max_k in_{  k * o_{c} * s + i * s + j}
+
+       & s = \\frac{input.size}{ num\_channels}
+
+       & o_{c} = \\frac{num\_channels}{groups}
+
+       & 0 \le i < o_{c}
+
+       & 0 \le j < s
+
+       & 0 \le k < groups
+
 
     The simple usage is:
 
@@ -6173,9 +6194,11 @@ def huber_regression_cost(input,
     Given a prediction f(x), a label y and :math:`\delta`, the loss function
     is defined as:
 
-    .. math:
-       loss = 0.5*\left ( y-f(x) \right )^2, \left | y-f(x) \right |\leq \delta
-       loss = \delta \left | y-f(x) \right |-0.5\delta ^2, otherwise
+    .. math::
+
+       loss = 0.5*(y-f(x))^{2}, | y-f(x) | < \delta
+
+       loss = \delta | y-f(x) | - 0.5 \delta ^2, otherwise
 
     The example usage is:
 
@@ -6222,12 +6245,14 @@ def huber_classification_cost(input,
     """
     For classification purposes, a variant of the Huber loss called modified Huber
     is sometimes used. Given a prediction f(x) (a real-valued classifier score) and
-    a true binary class label :math:`y\in \left \{-1, 1 \right \}`, the modified Huber
+    a true binary class label :math:`y\in \{-1, 1 \}`, the modified Huber
     loss is defined as:
 
     .. math:
-       loss = \max \left ( 0, 1-yf(x) \right )^2, yf(x)\geq 1
-       loss = -4yf(x), \text{otherwise}
+
+       loss = \max ( 0, 1-yf(x) )^2, yf(x) \geq -1
+
+       loss = -4yf(x), otherwise
 
     The example usage is:
 
@@ -6972,7 +6997,7 @@ def clip_layer(input, min, max, name=None):
 
     .. math::
 
-        out[i] = \min\left(\max\left(in[i],p_{1}\right),p_{2}\right)
+        out[i] = \min (\max (in[i],p_{1} ),p_{2} )
 
     .. code-block:: python
 

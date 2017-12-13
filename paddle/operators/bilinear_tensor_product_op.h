@@ -27,7 +27,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class BilinearTensorProductKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -46,7 +46,8 @@ class BilinearTensorProductKernel : public framework::OpKernel<T> {
     int out_dim = weight_dims[0];
     auto x_dim = weight_dims[1];
     auto y_dim = weight_dims[2];
-    auto place = ctx.GetEigenDevice<Place>();
+    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     // Create the intermediate variable to caculate the result of
     // Input(X) multiplied by Input(Weight_i), the formula is:
@@ -60,9 +61,9 @@ class BilinearTensorProductKernel : public framework::OpKernel<T> {
       auto output_col_vec = output_mat.chip(i, 1);
       Tensor weight_mat =
           weight->Slice(i, i + 1).Resize(framework::make_ddim({x_dim, y_dim}));
-      math::gemm<Place, T>(ctx.device_context(), CblasNoTrans, CblasNoTrans,
-                           batch_size, y_dim, x_dim, 1, x->data<T>(),
-                           weight_mat.data<T>(), 0, left_mul.data<T>());
+      math::gemm<DeviceContext, T>(dev_ctx, CblasNoTrans, CblasNoTrans,
+                                   batch_size, y_dim, x_dim, 1, x->data<T>(),
+                                   weight_mat.data<T>(), 0, left_mul.data<T>());
       output_col_vec.device(place) =
           (left_mul_mat * y_mat).sum(Eigen::DSizes<int, 1>(1));
     }
@@ -74,7 +75,7 @@ class BilinearTensorProductKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class BilinearTensorProductGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -96,8 +97,8 @@ class BilinearTensorProductGradKernel : public framework::OpKernel<T> {
     auto x_mat = EigenMatrix<T>::From(*x);
     auto y_mat = EigenMatrix<T>::From(*y);
     auto d_out_mat = EigenMatrix<T>::From(*d_out);
-    auto place = ctx.GetEigenDevice<Place>();
-
+    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
     // Create the intermediate variable to caculate the Output(Y@Grad).
     Tensor x_scale;
     x_scale.mutable_data<T>(framework::make_ddim({batch_size, x_dim}),
@@ -110,18 +111,18 @@ class BilinearTensorProductGradKernel : public framework::OpKernel<T> {
                             ctx.GetPlace());
     auto y_scale_mat = EigenMatrix<T>::From(y_scale);
 
-    math::SetConstant<Place, T> set_zero;
+    math::SetConstant<DeviceContext, T> set_zero;
 
     // Set Output(X@Grad) be zero.
     if (d_x) {
       d_x->mutable_data<T>(ctx.GetPlace());
-      set_zero(ctx.device_context(), d_x, static_cast<T>(0));
+      set_zero(dev_ctx, d_x, static_cast<T>(0));
     }
 
     // Set Output(Y@Grad) be zero.
     if (d_y) {
       d_y->mutable_data<T>(ctx.GetPlace());
-      set_zero(ctx.device_context(), d_y, static_cast<T>(0));
+      set_zero(dev_ctx, d_y, static_cast<T>(0));
     }
 
     // Caculate the Output(X@Grad) and Output(Y@Grad).
@@ -137,18 +138,18 @@ class BilinearTensorProductGradKernel : public framework::OpKernel<T> {
               output_vec.reshape(Eigen::DSizes<int, 2>(batch_size, 1))
                   .broadcast(bcast_for_x) *
               y_mat;
-          math::gemm<Place, T>(ctx.device_context(), CblasNoTrans, CblasTrans,
-                               batch_size, x_dim, y_dim, 1, y_scale.data<T>(),
-                               weight_i.data<T>(), 1, d_x->data<T>());
+          math::gemm<DeviceContext, T>(
+              dev_ctx, CblasNoTrans, CblasTrans, batch_size, x_dim, y_dim, 1,
+              y_scale.data<T>(), weight_i.data<T>(), 1, d_x->data<T>());
         }
         if (d_y) {
           x_scale_mat.device(place) =
               output_vec.reshape(Eigen::DSizes<int, 2>(batch_size, 1))
                   .broadcast(bcast_for_y) *
               x_mat;
-          math::gemm<Place, T>(ctx.device_context(), CblasNoTrans, CblasNoTrans,
-                               batch_size, y_dim, x_dim, 1, x_scale.data<T>(),
-                               weight_i.data<T>(), 1, d_y->data<T>());
+          math::gemm<DeviceContext, T>(
+              dev_ctx, CblasNoTrans, CblasNoTrans, batch_size, y_dim, x_dim, 1,
+              x_scale.data<T>(), weight_i.data<T>(), 1, d_y->data<T>());
         }
       }
     }
@@ -165,9 +166,9 @@ class BilinearTensorProductGradKernel : public framework::OpKernel<T> {
             output_vec.reshape(Eigen::DSizes<int, 2>(batch_size, 1))
                 .broadcast(bcast_for_weight) *
             x_mat;
-        math::gemm<Place, T>(ctx.device_context(), CblasTrans, CblasNoTrans,
-                             x_dim, y_dim, batch_size, 1, x_scale.data<T>(),
-                             y->data<T>(), 0, d_weight_i.data<T>());
+        math::gemm<DeviceContext, T>(dev_ctx, CblasTrans, CblasNoTrans, x_dim,
+                                     y_dim, batch_size, 1, x_scale.data<T>(),
+                                     y->data<T>(), 0, d_weight_i.data<T>());
       }
     }
 

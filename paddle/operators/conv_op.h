@@ -72,7 +72,7 @@ class ConvOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class GemmConvKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -141,9 +141,10 @@ class GemmConvKernel : public framework::OpKernel<T> {
     int in_step = static_cast<int>(input->dims()[1]) / groups;
     int out_step = static_cast<int>(output->dims()[1]) / groups;
 
-    math::Vol2ColFunctor<Place, T> vol2col;
-    math::Im2ColFunctor<math::ColFormat::kCFO, Place, T> im2col;
+    math::Vol2ColFunctor<DeviceContext, T> vol2col;
+    math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
 
+    auto& dev_ctx = context.template device_context<DeviceContext>();
     for (int i = 0; i < batch_size; i++) {
       Tensor in_batch = input->Slice(i, i + 1).Resize(input_shape);
       Tensor out_batch = output->Slice(i, i + 1).Resize(output_matrix_shape);
@@ -157,27 +158,26 @@ class GemmConvKernel : public framework::OpKernel<T> {
           col_matrix.Resize(col_matrix_shape);
         } else if (data_dim == 2U) {
           // im2col
-          im2col(context.device_context(), in_slice, dilations, strides,
+          im2col(dev_ctx, in_slice, dilations, strides,
                  std::vector<int>{paddings[0], paddings[1], paddings[0],
                                   paddings[1]},
                  &col);
         } else if (data_dim == 3U) {
           // vol2col
-          vol2col(context.device_context(), in_slice, dilations, strides,
-                  paddings, &col);
+          vol2col(dev_ctx, in_slice, dilations, strides, paddings, &col);
         }
 
         // gemm
         Tensor out_slice = out_batch.Slice(g * out_step, (g + 1) * out_step);
         Tensor filter_slice = filter.Slice(g * out_step, (g + 1) * out_step);
-        math::matmul<Place, T>(context.device_context(), filter_slice, false,
-                               col_matrix, false, T(1.0), &out_slice, T(0.0));
+        math::matmul<DeviceContext, T>(dev_ctx, filter_slice, false, col_matrix,
+                                       false, T(1.0), &out_slice, T(0.0));
       }
     }
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class GemmConvGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -256,17 +256,19 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
       col_matrix.Resize(col_matrix_shape);
     }
 
-    math::SetConstant<Place, T> set_zero;
+    math::SetConstant<DeviceContext, T> set_zero;
+    auto& dev_ctx = context.template device_context<DeviceContext>();
 
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
+
       // if is_expand is false, the operation of set_zero is unnecessary,
       // because math::matmul will reset input_grad.
       if (is_expand) {
-        set_zero(context.device_context(), input_grad, static_cast<T>(0));
+        set_zero(dev_ctx, input_grad, static_cast<T>(0));
       }
-      math::Col2VolFunctor<Place, T> col2vol;
-      math::Col2ImFunctor<math::ColFormat::kCFO, Place, T> col2im;
+      math::Col2VolFunctor<DeviceContext, T> col2vol;
+      math::Col2ImFunctor<math::ColFormat::kCFO, DeviceContext, T> col2im;
 
       for (int i = 0; i < batch_size; i++) {
         Tensor out_grad_batch =
@@ -285,18 +287,17 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
             col_matrix.ShareDataWith(in_grad_slice);
             col_matrix.Resize(col_matrix_shape);
           }
-          math::matmul<Place, T>(context.device_context(), filter_slice, true,
-                                 out_grad_slice, false, T(1.0), &col_matrix,
-                                 T(0.0));
+          math::matmul<DeviceContext, T>(dev_ctx, filter_slice, true,
+                                         out_grad_slice, false, T(1.0),
+                                         &col_matrix, T(0.0));
 
           if (is_expand && data_dim == 2U) {
-            col2im(context.device_context(), col, dilations, strides,
+            col2im(dev_ctx, col, dilations, strides,
                    std::vector<int>{paddings[0], paddings[1], paddings[0],
                                     paddings[1]},
                    &in_grad_slice);
           } else if (is_expand && data_dim == 3U) {
-            col2vol(context.device_context(), col, dilations, strides, paddings,
-                    &in_grad_slice);
+            col2vol(dev_ctx, col, dilations, strides, paddings, &in_grad_slice);
           }
         }
       }
@@ -306,9 +307,9 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
       filter_grad->mutable_data<T>(context.GetPlace());
       Tensor filter_grad_ = *filter_grad;
       filter_grad_.Resize(filter_matrix_shape);
-      set_zero(context.device_context(), filter_grad, static_cast<T>(0));
-      math::Im2ColFunctor<math::ColFormat::kCFO, Place, T> im2col;
-      math::Vol2ColFunctor<Place, T> vol2col;
+      set_zero(dev_ctx, filter_grad, static_cast<T>(0));
+      math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
+      math::Vol2ColFunctor<DeviceContext, T> vol2col;
       for (int i = 0; i < batch_size; i++) {
         Tensor out_grad_batch =
             output_grad->Slice(i, i + 1).Resize(output_matrix_shape);
@@ -324,21 +325,20 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
             col_matrix.ShareDataWith(col);
             col_matrix.Resize(col_matrix_shape);
           } else if (data_dim == 2U) {
-            im2col(context.device_context(), in_slice, dilations, strides,
+            im2col(dev_ctx, in_slice, dilations, strides,
                    std::vector<int>{paddings[0], paddings[1], paddings[0],
                                     paddings[1]},
                    &col);
           } else if (data_dim == 3U) {
-            vol2col(context.device_context(), in_slice, dilations, strides,
-                    paddings, &col);
+            vol2col(dev_ctx, in_slice, dilations, strides, paddings, &col);
           }
 
           // gemm
           Tensor filter_grad_slice =
               filter_grad_.Slice(g * out_step, (g + 1) * out_step);
-          math::matmul<Place, T>(context.device_context(), out_grad_slice,
-                                 false, col_matrix, true, T(1.0),
-                                 &filter_grad_slice, T(1.0));
+          math::matmul<DeviceContext, T>(dev_ctx, out_grad_slice, false,
+                                         col_matrix, true, T(1.0),
+                                         &filter_grad_slice, T(1.0));
         }
       }
     }
