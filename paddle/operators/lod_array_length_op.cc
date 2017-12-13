@@ -43,12 +43,16 @@ class LoDArrayLengthProtoMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(LoDTensorArray) The input tensor array.");
     AddOutput("Out", "(Tensor) 1x1 CPU Tensor of length, int64_t");
-    AddComment(R"DOC(Get the length of lod tensor array
+    AddComment(R"DOC(
+LoDArrayLength Operator.
 
-Out = len(X)
+This operator obtains the length of lod tensor array:
+
+$$Out = len(X)$$
 
 NOTE: The output is a CPU Tensor since the control variable should be only in
 CPU and the length of LoDTensorArray should be used as control variables.
+
 )DOC");
   }
 };

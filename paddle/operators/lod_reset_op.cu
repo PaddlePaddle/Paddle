@@ -16,9 +16,10 @@
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(lod_reset,
-                       ops::LoDResetKernel<paddle::platform::GPUPlace, float>,
-                       ops::LoDResetKernel<paddle::platform::GPUPlace, double>);
-REGISTER_OP_GPU_KERNEL(
-    lod_reset_grad, ops::LoDResetGradKernel<paddle::platform::GPUPlace, float>,
-    ops::LoDResetGradKernel<paddle::platform::GPUPlace, double>);
+REGISTER_OP_CUDA_KERNEL(
+    lod_reset, ops::LoDResetKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::LoDResetKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(
+    lod_reset_grad,
+    ops::LoDResetGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::LoDResetGradKernel<paddle::platform::CUDADeviceContext, double>);

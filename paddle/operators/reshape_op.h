@@ -20,7 +20,7 @@
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class ReshapeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
@@ -33,7 +33,7 @@ class ReshapeKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class ReshapeGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {

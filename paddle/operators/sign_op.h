@@ -19,7 +19,7 @@
 
 namespace paddle {
 namespace operators {
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SignKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& context) const {
@@ -29,7 +29,8 @@ class SignKernel : public framework::OpKernel<T> {
 
     auto eigen_out = framework::EigenVector<T>::Flatten(*out);
     auto eigen_in = framework::EigenVector<T>::Flatten(*in);
-    auto& place = context.GetEigenDevice<Place>();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
     eigen_out.device(place) = eigen_in.sign();
   }
 };

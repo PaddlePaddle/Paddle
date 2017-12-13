@@ -34,13 +34,13 @@ inline TensorFormat StringToTensorFormat(const std::string& str) {
   }
 }
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class BatchNormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override;
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class BatchNormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override;

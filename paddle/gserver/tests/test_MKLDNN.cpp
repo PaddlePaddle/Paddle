@@ -272,6 +272,51 @@ TEST(MKLDNNLayer, BatchNormLayer) {
   testBatchNormLayer({4, 16, 8, 10});
 }
 
+struct testLRNDesc {
+  int bs, ic, ih, iw;
+  float scale, pow;
+  int localSize;
+};
+
+void getMKLDNNLRNConfig(TestConfig& cfg, const testLRNDesc& pm) {
+  cfg.layerConfig.set_type("mkldnn_lrn");
+  cfg.layerConfig.set_active_type("relu");
+  size_t layerSize = pm.ic * pm.ih * pm.iw;
+  cfg.inputDefs.push_back({INPUT_DATA, "layer_0", layerSize, 0});
+  LayerInputConfig* input = cfg.layerConfig.add_inputs();
+  NormConfig* norm = input->mutable_norm_conf();
+  norm->set_channels(pm.ic);
+  norm->set_size(pm.localSize);
+  norm->set_scale(pm.scale);
+  norm->set_pow(pm.pow);
+  norm->set_blocked(0);
+  norm->set_img_size(pm.iw);
+  norm->set_img_size_y(pm.ih);
+  norm->set_output_x(norm->img_size());
+  norm->set_output_y(norm->img_size_y());
+  cfg.layerConfig.set_size(layerSize);
+  cfg.biasSize = 0;
+}
+
+void testLRNLayer(const testLRNDesc& pm) {
+  TestConfig dnnConfig;
+  getMKLDNNLRNConfig(dnnConfig, pm);
+  // mkldnn_lrn <==> norm with cmrnorm-projection type
+  TestConfig refConfig = dnnConfig;
+  refConfig.layerConfig.set_type("norm");
+  LayerInputConfig* input = refConfig.layerConfig.mutable_inputs(0);
+  NormConfig* norm = input->mutable_norm_conf();
+  norm->set_norm_type("cmrnorm-projection");
+  norm->set_scale(norm->scale() / norm->size());
+  RUN_MKLDNN_TEST(dnnConfig, refConfig, pm)
+}
+
+TEST(MKLDNNLayer, LRNLayer) {
+  testLRNLayer({4, 10, 12, 12, 0.001f, 0.75f, 5});
+  testLRNLayer({2, 32, 6, 6, 0.001f, 0.75f, 5});
+  testLRNLayer({4, 16, 8, 10, 0.01f, 0.5f, 5});
+}
+
 struct testImageDesc {
   int bs, ic, ih, iw;
 };

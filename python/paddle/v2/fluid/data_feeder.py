@@ -1,5 +1,4 @@
 from __future__ import print_function
-
 import core
 import numpy
 import six.moves as six
