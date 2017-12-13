@@ -15,6 +15,6 @@ limitations under the License. */
 #include "paddle/operators/prior_box_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     prior_box, ops::PriorBoxOpKernel<paddle::platform::GPUPlace, float>,
     ops::PriorBoxOpKernel<paddle::platform::GPUPlace, double>);

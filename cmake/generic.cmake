@@ -227,8 +227,8 @@ function(cc_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_executable(${TARGET_NAME} ${cc_test_SRCS})
-    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} gtest gtest_main)
-    add_dependencies(${TARGET_NAME} ${cc_test_DEPS} gtest gtest_main)
+    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main paddle_memory gtest gflags)
+    add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main paddle_memory gtest gflags)
     add_test(NAME ${TARGET_NAME} COMMAND ${TARGET_NAME} WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   endif()
 endfunction(cc_test)
@@ -288,8 +288,8 @@ function(nv_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     cuda_add_executable(${TARGET_NAME} ${nv_test_SRCS})
-    target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} gtest gtest_main)
-    add_dependencies(${TARGET_NAME} ${nv_test_DEPS} gtest gtest_main)
+    target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main paddle_memory gtest gflags)
+    add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main paddle_memory gtest gflags)
     add_test(${TARGET_NAME} ${TARGET_NAME})
   endif()
 endfunction(nv_test)
@@ -505,12 +505,12 @@ function(grpc_library TARGET_NAME)
   set_source_files_properties(
     ${grpc_grpc_srcs}
     PROPERTIES
-    COMPILE_FLAGS  "-Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+    COMPILE_FLAGS  "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
   cc_library("${TARGET_NAME}_grpc" SRCS "${grpc_grpc_srcs}")
 
   set_source_files_properties(
     ${grpc_library_SRCS}
     PROPERTIES
-    COMPILE_FLAGS  "-Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+    COMPILE_FLAGS  "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
   cc_library("${TARGET_NAME}" SRCS "${grpc_library_SRCS}" DEPS "${TARGET_NAME}_grpc" "${TARGET_NAME}_proto" "${grpc_library_DEPS}")
 endfunction()

@@ -32,55 +32,55 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
 
 struct SumFunctor {
-  template <typename Place, typename X, typename Y, typename Dim>
-  void operator()(const Place& place, X& x, Y& y, const Dim& dim) {
+  template <typename DeviceContext, typename X, typename Y, typename Dim>
+  void operator()(const DeviceContext& place, X& x, Y& y, const Dim& dim) {
     y.device(place) = x.sum(dim);
   }
 };
 
 struct SumGradFunctor {
-  template <typename Place, typename X, typename Y, typename DX, typename DY,
-            typename Dim>
-  void operator()(const Place& place, X& x, Y& y, DX& dx, DY& dy,
+  template <typename DeviceContext, typename X, typename Y, typename DX,
+            typename DY, typename Dim>
+  void operator()(const DeviceContext& place, X& x, Y& y, DX& dx, DY& dy,
                   const Dim& dim, int size) {
     dx.device(place) = dy.broadcast(dim);
   }
 };
 
 struct MeanFunctor {
-  template <typename Place, typename X, typename Y, typename Dim>
-  void operator()(const Place& place, X& x, Y& y, const Dim& dim) {
+  template <typename DeviceContext, typename X, typename Y, typename Dim>
+  void operator()(const DeviceContext& place, X& x, Y& y, const Dim& dim) {
     y.device(place) = x.mean(dim);
   }
 };
 
 struct MeanGradFunctor {
-  template <typename Place, typename X, typename Y, typename DX, typename DY,
-            typename Dim>
-  void operator()(const Place& place, X& x, Y& y, DX& dx, DY& dy,
+  template <typename DeviceContext, typename X, typename Y, typename DX,
+            typename DY, typename Dim>
+  void operator()(const DeviceContext& place, X& x, Y& y, DX& dx, DY& dy,
                   const Dim& dim, int size) {
     dx.device(place) = dy.broadcast(dim) / dx.constant(size);
   }
 };
 
 struct MaxFunctor {
-  template <typename Place, typename X, typename Y, typename Dim>
-  void operator()(const Place& place, X& x, Y& y, const Dim& dim) {
+  template <typename DeviceContext, typename X, typename Y, typename Dim>
+  void operator()(const DeviceContext& place, X& x, Y& y, const Dim& dim) {
     y.device(place) = x.maximum(dim);
   }
 };
 
 struct MinFunctor {
-  template <typename Place, typename X, typename Y, typename Dim>
-  void operator()(const Place& place, X& x, Y& y, const Dim& dim) {
+  template <typename DeviceContext, typename X, typename Y, typename Dim>
+  void operator()(const DeviceContext& place, X& x, Y& y, const Dim& dim) {
     y.device(place) = x.minimum(dim);
   }
 };
 
 struct MaxOrMinGradFunctor {
-  template <typename Place, typename X, typename Y, typename DX, typename DY,
-            typename Dim>
-  void operator()(const Place& place, X& x, Y& y, DX& dx, DY& dy,
+  template <typename DeviceContext, typename X, typename Y, typename DX,
+            typename DY, typename Dim>
+  void operator()(const DeviceContext& place, X& x, Y& y, DX& dx, DY& dy,
                   const Dim& dim, int size) {
     auto equals = x == y.broadcast(dim);
     auto ones = dx.constant(1);
@@ -91,7 +91,7 @@ struct MaxOrMinGradFunctor {
   }
 };
 
-template <typename Place, typename T, typename Functor>
+template <typename DeviceContext, typename T, typename Functor>
 class ReduceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -139,7 +139,8 @@ class ReduceKernel : public framework::OpKernel<T> {
       dims = framework::make_ddim(dims_vector);
     }
 
-    auto& place = context.GetEigenDevice<Place>();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
 
     if (D == 1) {
@@ -152,7 +153,7 @@ class ReduceKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T, typename Functor>
+template <typename DeviceContext, typename T, typename Functor>
 class ReduceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -201,7 +202,8 @@ class ReduceGradKernel : public framework::OpKernel<T> {
     Eigen::array<int, D> broadcast_dim;
     for (size_t i = 0; i < D; ++i) broadcast_dim[i] = 1;
     broadcast_dim[dim] = input0->dims()[dim];
-    auto& place = context.GetEigenDevice<Place>();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
     functor(place, x, x_reduce, x_grad, x_reduce_grad, broadcast_dim,
             broadcast_dim[dim]);

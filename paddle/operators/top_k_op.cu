@@ -317,4 +317,4 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_GPU_KERNEL(top_k, paddle::operators::TopkOpCUDAKernel<float>);
+REGISTER_OP_CUDA_KERNEL(top_k, paddle::operators::TopkOpCUDAKernel<float>);

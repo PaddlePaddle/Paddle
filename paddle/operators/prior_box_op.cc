@@ -23,14 +23,22 @@ class PriorBoxOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(X) of SequenceSliceOp should not be null.");
+                   "Input(X) of PriorBoxOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Image"),
-                   "Input(Offset) of SequenceSliceOp should not be null.");
+                   "Input(Offset) of PriorBoxOp should not be null.");
 
     auto image_dims = ctx->GetInputDim("Image");
     auto input_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE(image_dims.size() == 4,
                    "The format of input tensor is NCHW.");
+    PADDLE_ENFORCE(input_dims.size() == 4,
+                   "The format of input tensor is NCHW.");
+
+    PADDLE_ENFORCE_LT(input_dims[2], image_dims[2],
+                      "The height of input must smaller than image.");
+
+    PADDLE_ENFORCE_LT(input_dims[3], image_dims[3],
+                      "The width of input must smaller than image.");
 
     auto min_sizes = ctx->Attrs().Get<std::vector<int>>("min_sizes");
     auto max_sizes = ctx->Attrs().Get<std::vector<int>>("max_sizes");
@@ -39,7 +47,8 @@ class PriorBoxOp : public framework::OperatorWithKernel {
         ctx->Attrs().Get<std::vector<float>>("aspect_ratios");
     bool flip = ctx->Attrs().Get<bool>("flip");
 
-    PADDLE_ENFORCE_GT(min_sizes.size(), 0, "must provide min_size.");
+    PADDLE_ENFORCE_GT(min_sizes.size(), 0,
+                      "Size of min_size must be at least 1.");
     for (size_t i = 0; i < min_sizes.size(); ++i) {
       PADDLE_ENFORCE_GT(min_sizes[i], 0, "min_sizes[%d] must be positive.", i);
     }
@@ -81,8 +90,8 @@ class PriorBoxOp : public framework::OperatorWithKernel {
     const float step_w = ctx->Attrs().Get<float>("step_w");
     PADDLE_ENFORCE_GT(step_w, 0.0, "step_w should be larger than 0.");
 
-    const int layer_height = input_dims[3];
-    const int layer_width = input_dims[2];
+    const int layer_height = input_dims[2];
+    const int layer_width = input_dims[3];
 
     std::vector<int64_t> dim_vec(3);
     // Since all images in a batch has same height and width, we only need to
@@ -114,16 +123,19 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
                   framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Input",
-             "(Tensor), "
-             "the input feature data of PriorBoxOp.");
+             "(Tensor, default Tensor<float>), "
+             "the input feature data of PriorBoxOp, The format is NCHW.");
     AddInput("Image",
-             "(Tensor), "
-             "the input image data of PriorBoxOp.");
-    AddOutput("Out", "(Tensor), the output prior boxes of PriorBoxOp.");
+             "(Tensor, default Tensor<float>), "
+             "the input image data of PriorBoxOp, The format is NCHW.");
+    AddOutput("Out",
+              "(Tensor, default Tensor<float>), the output prior boxes of "
+              "PriorBoxOp.");
     AddAttr<std::vector<int>>("min_sizes", "(vector<int>) ",
                               "List of min sizes of generated prior boxes.");
     AddAttr<std::vector<int>>("max_sizes", "(vector<int>) ",
-                              "List of max sizes of generated prior boxes.");
+                              "List of max sizes of generated prior boxes.")
+        .SetDefault({});
     AddAttr<std::vector<float>>(
         "aspect_ratios", "(vector<float>) ",
         "List of aspect ratios of generated prior boxes.")

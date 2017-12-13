@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class AdamaxOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -51,14 +51,14 @@ class AdamaxOpKernel : public framework::OpKernel<T> {
     auto moment_out = framework::EigenVector<T>::Flatten(*moment_out_tensor);
     auto inf_norm_out =
         framework::EigenVector<T>::Flatten(*inf_norm_out_tensor);
-    auto place = ctx.GetEigenDevice<Place>();
+    auto* place = ctx.template device_context<DeviceContext>().eigen_device();
 
-    moment_out.device(place) = beta1 * moment + (1 - beta1) * grad;
-    inf_norm_out.device(place) =
+    moment_out.device(*place) = beta1 * moment + (1 - beta1) * grad;
+    inf_norm_out.device(*place) =
         grad.abs().cwiseMax((beta2 * inf_norm) + epsilon);
     auto lr_t = lr / (1 - beta1_pow);
     Eigen::DSizes<int, 1> m_dsize(moment_out_tensor->numel());
-    param_out.device(place) =
+    param_out.device(*place) =
         param - lr_t.broadcast(m_dsize) * (moment_out / inf_norm_out);
   }
 };
