@@ -2,7 +2,7 @@
 
 ## Why Fluid
 
-When Baidu developed PaddlePaddle in 2013, the only well-known open source deep learning system is Caffe.  However, when it open-sourced PaddlePaddle in 2016, there had been many other choices over there.  We were facing a challenge -- why would we open source yet another one?  
+When Baidu developed PaddlePaddle in 2013, the only well-known open source deep learning system was Caffe.  However, when it open-sourced PaddlePaddle in 2016, there had been many other choices over there.  We were facing a challenge -- why would we open source yet another one?
 
 Fluid is the answer.  Fluid is similar to PyTorch and TensorFlow Eager Execution, which describes the "process" of training or inference a model, but not the model itself.  Indeed, in PyTorch, Eager Execution, and Fluid, there is no such a concept of the model at all. I will explain in this article, Fluid is currently more extreme in this idea than PyTorch and Eager Execution, and we are pushing Fluid towards a compiler and even a new programming language for deep learning
 
@@ -10,7 +10,7 @@ Fluid is the answer.  Fluid is similar to PyTorch and TensorFlow Eager Execution
 
 Deep learning infrastructure is one of the fastest involving technology.  Within only four years, there have been three generations of technologies invented. 
 
-| Since around | model = equence of layers | model = graph of operators | No model |
+| Since around | model = sequence of layers | model = graph of operators | No model |
 |--|--|--|--|
 | 2013 | Caffe, Theano, Torch, PaddlePaddle | | |
 | 2015 | | TensorFlow, MxNet, Caffe2, ONNX, n-graph | |
