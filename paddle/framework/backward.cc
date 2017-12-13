@@ -27,6 +27,18 @@
 namespace paddle {
 namespace framework {
 
+static std::unordered_set<std::string>* g_ctrl_flow_ops_ = nullptr;
+// Control Flow operators's backward is significantly different from
+// computational operators. Hack Code here.
+// We should design a better way to backward CtrlFlowOps.
+static std::unordered_set<std::string>& CtrlFlowOps() {
+  if (g_ctrl_flow_ops_ == nullptr) {
+    g_ctrl_flow_ops_ = new std::unordered_set<std::string>{
+        "increment", "lod_rank_table", "less_than"};
+  }
+  return *g_ctrl_flow_ops_;
+}
+
 static inline std::unique_ptr<OperatorBase> CreateGradOp(
     const OperatorBase& op, const std::unordered_set<std::string>& no_grad_set,
     std::unordered_map<std::string, std::string>* grad_to_var) {
@@ -178,8 +190,9 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
       // collect all the offset for each alias,
       // insert a sum operator to add all aliases to output
       insert_position.push_back(
-          {dup_op.back(), OpRegistry::CreateOp("sum", {{"X", dup_outputs}},
-                                               {{"Out", {name}}}, {})});
+          {dup_op.back(),
+           OpRegistry::CreateOp("sum", {{"X", dup_outputs}}, {{"Out", {name}}},
+                                AttributeMap{})});
     }
 
     // make sure the inserted `sum` ops follow the BFS order.
@@ -204,7 +217,8 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
         // If part of input gradient of that operator is not calculated, fill
         // zero variables to that input gradient.
         net->AppendOp(OpRegistry::CreateOp("fill_zeros_like", {{"X", {prefix}}},
-                                           {{"Y", {grad_input}}}, {}));
+                                           {{"Y", {grad_input}}},
+                                           AttributeMap{}));
       }
       return false;
     });
@@ -288,12 +302,24 @@ static void CreateGradVarInBlock(
   for (size_t op_index = grad_op_start_index; op_index < ops.size();
        ++op_index) {
     std::unordered_set<std::string> new_vars;
+    auto& ctrl_flow_ops = CtrlFlowOps();
     ForEachVarName(ops[op_index]->Outputs(),
                    [&](const std::string& grad_var_name) {
-                     if (block_desc->HasVar(grad_var_name)) {
+                     if (ctrl_flow_ops.find(ops[op_index]->Type()) !=
+                         ctrl_flow_ops.end()) {
+                       if (block_desc->HasVarRecursive(grad_var_name)) {
+                         return false;
+                       }
+                     } else {
+                       if (block_desc->HasVar(grad_var_name)) {
+                         return false;
+                       }
+                     }
+                     if (grad_var_name == framework::kEmptyVarName) {
                        return false;
                      }
                      auto var = block_desc->Var(grad_var_name);
+                     VLOG(10) << "Creating Variable " << grad_var_name;
                      new_vars.insert(var->Name());
                      auto it = param_name_map.find(grad_var_name);
                      if (it == param_name_map.end()) {
@@ -333,14 +359,25 @@ std::vector<std::unique_ptr<OpDescBind>> MakeOpGrad(
   // All input gradients of forwarding operator do not need to calculate.
   const std::vector<std::string>& inputs = op_desc->InputArgumentNames();
   if (AllGradInSet(inputs, *no_grad_vars)) {
+    VLOG(10) << "Drop operator  " << op_desc->Type();
     return grad_op_descs;  // empty vector
   }
+
   // All output gradients of forwarding operator do not need to calculate.
   const std::vector<std::string>& outputs = op_desc->OutputArgumentNames();
+
   if (AllGradInSet(outputs, *no_grad_vars)) {
-    for (const std::string& name : inputs) {
-      no_grad_vars->insert(GradVarName(name));
+    VLOG(10) << "Drop operator " << op_desc->Type();
+    // FIXME: Hack code here
+    auto& ctrl_flow_ops = CtrlFlowOps();
+    if (ctrl_flow_ops.find(op_desc->Type()) == ctrl_flow_ops.end()) {
+      // Only computational op need drop input's gradient.
+      for (const std::string& name : inputs) {
+        no_grad_vars->insert(GradVarName(name));
+        VLOG(10) << " Also drop " << GradVarName(name);
+      }
     }
+
     return grad_op_descs;  // empty vector
   }
 
@@ -357,8 +394,9 @@ std::vector<std::unique_ptr<OpDescBind>> MakeOpGrad(
             0, in_name.size() - sizeof(kGradVarSuffix) / sizeof(char) + 1);
         std::string new_name = prefix + kZeroVarSuffix;
         desc->Rename(in_name, new_name);
-        std::unique_ptr<OpDescBind> fill_zeros_op(new OpDescBind(
-            "fill_zeros_like", {{"X", {prefix}}}, {{"Y", {new_name}}}, {}));
+        std::unique_ptr<OpDescBind> fill_zeros_op(
+            new OpDescBind("fill_zeros_like", {{"X", {prefix}}},
+                           {{"Y", {new_name}}}, AttributeMap{}));
         pending_fill_zeros_ops.push_back(std::move(fill_zeros_op));
       }
     }
@@ -448,8 +486,9 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
         sum_op_inputs.emplace_back(new_name);
         next_g_name = sum_op_inputs.back();
       }
-      std::unique_ptr<OpDescBind> sum_op(new OpDescBind(
-          "sum", {{"X", sum_op_inputs}}, {{"Out", {out_name}}}, {}));
+      std::unique_ptr<OpDescBind> sum_op(
+          new OpDescBind("sum", {{"X", sum_op_inputs}}, {{"Out", {out_name}}},
+                         AttributeMap{}));
       pending_sum_ops.push_back({dup_op.back(), std::move(sum_op)});
     }
   }

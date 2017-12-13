@@ -15,7 +15,18 @@
 INCLUDE(ExternalProject)
 # Always invoke `FIND_PACKAGE(Protobuf)` for importing function protobuf_generate_cpp
 FIND_PACKAGE(Protobuf QUIET)
-SET(PROTOBUF_FOUND "OFF")
+macro(UNSET_VAR VAR_NAME)
+    UNSET(${VAR_NAME} CACHE)
+    UNSET(${VAR_NAME})
+endmacro()
+UNSET_VAR(PROTOBUF_INCLUDE_DIR)
+UNSET_VAR(PROTOBUF_FOUND)
+UNSET_VAR(PROTOBUF_PROTOC_EXECUTABLE)
+UNSET_VAR(PROTOBUF_PROTOC_LIBRARY)
+UNSET_VAR(PROTOBUF_LITE_LIBRARY)
+UNSET_VAR(PROTOBUF_LIBRARY)
+UNSET_VAR(PROTOBUF_INCLUDE_DIR)
+UNSET_VAR(Protobuf_PROTOC_EXECUTABLE)
 
 if(NOT COMMAND protobuf_generate_python)  # before cmake 3.4, protobuf_genrerate_python is not defined.
     function(protobuf_generate_python SRCS)
@@ -110,7 +121,6 @@ macro(PROMPT_PROTOBUF_LIB)
     # FIND_Protobuf.cmake uses `Protobuf_PROTOC_EXECUTABLE`.
     # make `protobuf_generate_cpp` happy.
     SET(Protobuf_PROTOC_EXECUTABLE ${PROTOBUF_PROTOC_EXECUTABLE})
-
     FOREACH(dep ${protobuf_DEPS})
         ADD_DEPENDENCIES(protobuf ${dep})
         ADD_DEPENDENCIES(protobuf_lite ${dep})
@@ -128,11 +138,11 @@ endmacro()
 
 set(PROTOBUF_ROOT "" CACHE PATH "Folder contains protobuf")
 if (NOT "${PROTOBUF_ROOT}" STREQUAL "")
-    find_path(PROTOBUF_INCLUDE_DIR google/protobuf/message.h PATHS ${PROTOBUF_ROOT}/include)
-    find_library(PROTOBUF_LIBRARY protobuf PATHS ${PROTOBUF_ROOT}/lib)
-    find_library(PROTOBUF_LITE_LIBRARY protobuf-lite PATHS ${PROTOBUF_ROOT}/lib)
-    find_library(PROTOBUF_PROTOC_LIBRARY protoc PATHS ${PROTOBUF_ROOT}/lib)
-    find_program(PROTOBUF_PROTOC_EXECUTABLE protoc PATHS ${PROTOBUF_ROOT}/bin)
+    find_path(PROTOBUF_INCLUDE_DIR google/protobuf/message.h PATHS ${PROTOBUF_ROOT}/include NO_DEFAULT_PATH)
+    find_library(PROTOBUF_LIBRARY protobuf PATHS ${PROTOBUF_ROOT}/lib NO_DEFAULT_PATH)
+    find_library(PROTOBUF_LITE_LIBRARY protobuf-lite PATHS ${PROTOBUF_ROOT}/lib NO_DEFAULT_PATH)
+    find_library(PROTOBUF_PROTOC_LIBRARY protoc PATHS ${PROTOBUF_ROOT}/lib NO_DEFAULT_PATH)
+    find_program(PROTOBUF_PROTOC_EXECUTABLE protoc PATHS ${PROTOBUF_ROOT}/bin NO_DEFAULT_PATH)
     if (PROTOBUF_INCLUDE_DIR AND PROTOBUF_LIBRARY AND PROTOBUF_LITE_LIBRARY AND PROTOBUF_PROTOC_LIBRARY AND PROTOBUF_PROTOC_EXECUTABLE)
         message(STATUS "Using custom protobuf library in ${PROTOBUF_ROOT}.")
         SET_PROTOBUF_VERSION()
@@ -178,14 +188,26 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
         SET(OPTIONAL_CACHE_ARGS "-DZLIB_ROOT:STRING=${ZLIB_ROOT}")
     ENDIF()
 
+    SET(PROTOBUF_REPO "https://github.com/google/protobuf.git")
+    SET(PROTOBUF_TAG "9f75c5aa851cd877fb0d93ccc31b8567a6706546")
+    IF(MOBILE_INFERENCE)
+        # The reason why the official version is not used is described in
+        # https://github.com/PaddlePaddle/Paddle/issues/6114
+        SET(PROTOBUF_REPO "https://github.com/qingqing01/protobuf.git")
+        SET(PROTOBUF_TAG "v3.2.0")
+        IF(NOT BUILD_FOR_HOST)
+            SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} "-Dprotobuf_BUILD_PROTOC_BINARIES=OFF")
+        ENDIF()
+    ENDIF()
+
     ExternalProject_Add(
         ${TARGET_NAME}
         ${EXTERNAL_PROJECT_LOG_ARGS}
         PREFIX          ${PROTOBUF_SOURCES_DIR}
         UPDATE_COMMAND  ""
         DEPENDS         zlib
-        GIT_REPOSITORY  "https://github.com/google/protobuf.git"
-        GIT_TAG         "9f75c5aa851cd877fb0d93ccc31b8567a6706546"
+        GIT_REPOSITORY  ${PROTOBUF_REPO}
+        GIT_TAG         ${PROTOBUF_TAG}
         CONFIGURE_COMMAND
         ${CMAKE_COMMAND} ${PROTOBUF_SOURCES_DIR}/src/${TARGET_NAME}/cmake
             ${OPTIONAL_ARGS}
@@ -203,7 +225,11 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     )
 ENDFUNCTION()
 
-SET(PROTOBUF_VERSION 3.1)
+IF(NOT MOBILE_INFERENCE)
+    SET(PROTOBUF_VERSION 3.1)
+ELSE()
+    SET(PROTOBUF_VERSION 3.2)
+ENDIF()
 IF(CMAKE_CROSSCOMPILING)
     build_protobuf(protobuf_host TRUE)
     LIST(APPEND external_project_dependencies protobuf_host)

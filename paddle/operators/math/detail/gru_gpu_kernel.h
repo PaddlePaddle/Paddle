@@ -27,174 +27,174 @@ namespace math {
 namespace detail {
 
 /*
- * threads(framePerBlock, batchPerBlock)
- * grid(frameBlocks, batchBlocks)
+ * threads(frame_per_block, batch_per_block)
+ * grid(frame_blocks, batch_blocks)
  */
-template <class OpResetOutput, bool isBatch, typename T>
-__global__ void KeGruForwardResetOutput(OpResetOutput opResetOutput,
-                                        T *gateValue, T *resetOutputValue,
-                                        T *prevOutputValue, int frameSize,
-                                        int batchSize,
+template <class OpResetOutput, bool is_batch, typename T>
+__global__ void KeGruForwardResetOutput(OpResetOutput op_reset_output,
+                                        T *gate_value, T *reset_output_value,
+                                        T *prev_output_value, int frame_size,
+                                        int batch_size,
                                         activation_mode_t active_gate) {
-  const int frameIdx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (frameIdx >= frameSize) return;
+  const int frame_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (frame_idx >= frame_size) return;
 
-  int batchIdx = 0;
-  if (isBatch) {
-    batchIdx = blockIdx.y * blockDim.y + threadIdx.y;
-    if (batchIdx >= batchSize) return;
-    gateValue += batchIdx * 3 * frameSize;
-    resetOutputValue += batchIdx * frameSize;
+  int batch_idx = 0;
+  if (is_batch) {
+    batch_idx = blockIdx.y * blockDim.y + threadIdx.y;
+    if (batch_idx >= batch_size) return;
+    gate_value += batch_idx * 3 * frame_size;
+    reset_output_value += batch_idx * frame_size;
   }
 
-  T rPrevOut = 0;
-  T rValueResetOutput;
-  T rValueUpdateGate = gateValue[frameIdx + frameSize * 0];
-  T rValueResetGate = gateValue[frameIdx + frameSize * 1];
+  T r_prev_out = 0;
+  T r_value_reset_output;
+  T r_value_update_gate = gate_value[frame_idx + frame_size * 0];
+  T r_value_reset_gate = gate_value[frame_idx + frame_size * 1];
 
-  if (prevOutputValue) {
-    if (isBatch) prevOutputValue += batchIdx * frameSize;
-    rPrevOut = prevOutputValue[frameIdx];
+  if (prev_output_value) {
+    if (is_batch) prev_output_value += batch_idx * frame_size;
+    r_prev_out = prev_output_value[frame_idx];
   }
 
-  opResetOutput(rValueUpdateGate, rValueResetGate, rPrevOut, rValueResetOutput,
-                active_gate);
+  op_reset_output(r_value_update_gate, r_value_reset_gate, r_prev_out,
+                  r_value_reset_output, active_gate);
 
-  gateValue[frameIdx + frameSize * 0] = rValueUpdateGate;
-  gateValue[frameIdx + frameSize * 1] = rValueResetGate;
-  resetOutputValue[frameIdx] = rValueResetOutput;
+  gate_value[frame_idx + frame_size * 0] = r_value_update_gate;
+  gate_value[frame_idx + frame_size * 1] = r_value_reset_gate;
+  reset_output_value[frame_idx] = r_value_reset_output;
 }
 
 /*
- * threads(framePerBlock, batchPerBlock)
- * grid(frameBlocks, batchBlocks)
+ * threads(frame_per_block, batch_per_block)
+ * grid(frame_blocks, batch_blocks)
  */
-template <class OpFinalOutput, bool isBatch, typename T>
-__global__ void KeGruForwardFinalOutput(OpFinalOutput opFinalOutput,
-                                        T *gateValue, T *prevOutputValue,
-                                        T *outputValue, int frameSize,
-                                        int batchSize,
+template <class OpFinalOutput, bool is_batch, typename T>
+__global__ void KeGruForwardFinalOutput(OpFinalOutput op_final_output,
+                                        T *gate_value, T *prev_output_value,
+                                        T *output_value, int frame_size,
+                                        int batch_size,
                                         activation_mode_t active_node) {
-  const int frameIdx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (frameIdx >= frameSize) return;
-  int batchIdx = 0;
-  if (isBatch) {
-    batchIdx = blockIdx.y * blockDim.y + threadIdx.y;
-    if (batchIdx >= batchSize) return;
-    gateValue += batchIdx * 3 * frameSize;
-    outputValue += batchIdx * frameSize;
+  const int frame_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (frame_idx >= frame_size) return;
+  int batch_idx = 0;
+  if (is_batch) {
+    batch_idx = blockIdx.y * blockDim.y + threadIdx.y;
+    if (batch_idx >= batch_size) return;
+    gate_value += batch_idx * 3 * frame_size;
+    output_value += batch_idx * frame_size;
   }
 
-  T rOutput;
-  T rPrevOut = 0;
-  T rValueUpdateGate = gateValue[frameIdx + frameSize * 0];
-  T rValueFrameState = gateValue[frameIdx + frameSize * 2];
+  T r_output;
+  T r_prev_out = 0;
+  T r_value_update_gate = gate_value[frame_idx + frame_size * 0];
+  T r_value_frame_state = gate_value[frame_idx + frame_size * 2];
 
-  if (prevOutputValue) {
-    if (isBatch) prevOutputValue += batchIdx * frameSize;
-    rPrevOut = prevOutputValue[frameIdx];
+  if (prev_output_value) {
+    if (is_batch) prev_output_value += batch_idx * frame_size;
+    r_prev_out = prev_output_value[frame_idx];
   }
 
-  opFinalOutput(rValueUpdateGate, rValueFrameState, rPrevOut, rOutput,
-                active_node);
+  op_final_output(r_value_update_gate, r_value_frame_state, r_prev_out,
+                  r_output, active_node);
 
-  gateValue[frameIdx + frameSize * 2] = rValueFrameState;
-  outputValue[frameIdx] = rOutput;
+  gate_value[frame_idx + frame_size * 2] = r_value_frame_state;
+  output_value[frame_idx] = r_output;
 }
 
 /*
- * threads(framePerBlock, batchPerBlock)
- * grid(frameBlocks, batchBlocks)
+ * threads(frame_per_block, batch_per_block)
+ * grid(frame_blocks, batch_blocks)
  */
-template <class OpStateGrad, bool isBatch, typename T>
-__global__ void KeGruBackwardStateGrad(OpStateGrad opStateGrad, T *gateValue,
-                                       T *gateGrad, T *prevOutValue,
-                                       T *prevOutGrad, T *outputGrad,
-                                       int frameSize, int batchSize,
+template <class OpStateGrad, bool is_batch, typename T>
+__global__ void KeGruBackwardStateGrad(OpStateGrad op_state_grad, T *gate_value,
+                                       T *gate_grad, T *prev_out_value,
+                                       T *prev_out_grad, T *output_grad,
+                                       int frame_size, int batch_size,
                                        activation_mode_t active_node) {
-  const int frameIdx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (frameIdx >= frameSize) return;
-  int batchIdx = 0;
-  if (isBatch) {
-    batchIdx = blockIdx.y * blockDim.y + threadIdx.y;
-    if (batchIdx >= batchSize) return;
-    gateValue += batchIdx * 3 * frameSize;
-    gateGrad += batchIdx * 3 * frameSize;
-    outputGrad += batchIdx * frameSize;
+  const int frame_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (frame_idx >= frame_size) return;
+  int batch_idx = 0;
+  if (is_batch) {
+    batch_idx = blockIdx.y * blockDim.y + threadIdx.y;
+    if (batch_idx >= batch_size) return;
+    gate_value += batch_idx * 3 * frame_size;
+    gate_grad += batch_idx * 3 * frame_size;
+    output_grad += batch_idx * frame_size;
   }
 
-  T rUpdateGateGrad;
-  T rFrameStateGrad;
-  T rPrevOutValue = 0;
-  T rPrevOutGrad = 0;
-  T rUpdateGateValue = gateValue[frameIdx + frameSize * 0];
-  T rFrameStateValue = gateValue[frameIdx + frameSize * 2];
-  T rOutGrad = outputGrad[frameIdx];
+  T r_update_gate_grad;
+  T r_frame_state_grad;
+  T r_prev_out_value = 0;
+  T r_prev_out_grad = 0;
+  T r_update_gate_value = gate_value[frame_idx + frame_size * 0];
+  T r_frame_state_value = gate_value[frame_idx + frame_size * 2];
+  T r_out_grad = output_grad[frame_idx];
 
-  if (prevOutValue && prevOutGrad) {
-    if (isBatch) prevOutValue += batchIdx * frameSize;
-    rPrevOutValue = prevOutValue[frameIdx];
+  if (prev_out_value && prev_out_grad) {
+    if (is_batch) prev_out_value += batch_idx * frame_size;
+    r_prev_out_value = prev_out_value[frame_idx];
 
-    if (isBatch) prevOutGrad += batchIdx * frameSize;
-    rPrevOutGrad = prevOutGrad[frameIdx];
+    if (is_batch) prev_out_grad += batch_idx * frame_size;
+    r_prev_out_grad = prev_out_grad[frame_idx];
   }
 
-  opStateGrad(rUpdateGateValue, rUpdateGateGrad, rFrameStateValue,
-              rFrameStateGrad, rPrevOutValue, rPrevOutGrad, rOutGrad,
-              active_node);
+  op_state_grad(r_update_gate_value, r_update_gate_grad, r_frame_state_value,
+                r_frame_state_grad, r_prev_out_value, r_prev_out_grad,
+                r_out_grad, active_node);
 
-  gateGrad[frameIdx + frameSize * 0] = rUpdateGateGrad;
-  gateGrad[frameIdx + frameSize * 2] = rFrameStateGrad;
-  if (prevOutGrad) {
-    prevOutGrad[frameIdx] = rPrevOutGrad;
+  gate_grad[frame_idx + frame_size * 0] = r_update_gate_grad;
+  gate_grad[frame_idx + frame_size * 2] = r_frame_state_grad;
+  if (prev_out_grad) {
+    prev_out_grad[frame_idx] = r_prev_out_grad;
   }
 }
 
 /*
- * threads(framePerBlock, batchPerBlock)
- * grid(frameBlocks, batchBlocks)
+ * threads(frame_per_block, batch_per_block)
+ * grid(frame_blocks, batch_blocks)
  */
-template <class OpResetGrad, bool isBatch, typename T>
-__global__ void KeGruBackwardResetGrad(OpResetGrad opResetGrad, T *gateValue,
-                                       T *gateGrad, T *prevOutValue,
-                                       T *prevOutGrad, T *resetOutputGrad,
-                                       int frameSize, int batchSize,
+template <class OpResetGrad, bool is_batch, typename T>
+__global__ void KeGruBackwardResetGrad(OpResetGrad op_reset_grad, T *gate_value,
+                                       T *gate_grad, T *prev_out_value,
+                                       T *prev_out_grad, T *reset_output_grad,
+                                       int frame_size, int batch_size,
                                        activation_mode_t active_gate) {
-  const int frameIdx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (frameIdx >= frameSize) return;
-  int batchIdx = 0;
-  if (isBatch) {
-    batchIdx = blockIdx.y * blockDim.y + threadIdx.y;
-    if (batchIdx >= batchSize) return;
-    gateValue += batchIdx * 3 * frameSize;
-    gateGrad += batchIdx * 3 * frameSize;
-    resetOutputGrad += batchIdx * frameSize;
+  const int frame_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (frame_idx >= frame_size) return;
+  int batch_idx = 0;
+  if (is_batch) {
+    batch_idx = blockIdx.y * blockDim.y + threadIdx.y;
+    if (batch_idx >= batch_size) return;
+    gate_value += batch_idx * 3 * frame_size;
+    gate_grad += batch_idx * 3 * frame_size;
+    reset_output_grad += batch_idx * frame_size;
   }
 
-  T rResetGateGrad;
-  T rPrevOutValue = 0;
-  T rPrevOutGrad = 0;
-  T rResetOutputGrad = 0;
-  T rUpdateGateValue = gateValue[frameIdx + frameSize * 0];
-  T rUpdateGateGrad = gateGrad[frameIdx + frameSize * 0];
-  T rResetGateValue = gateValue[frameIdx + frameSize * 1];
+  T r_reset_gate_grad;
+  T r_prev_out_value = 0;
+  T r_prev_out_grad = 0;
+  T r_reset_output_grad = 0;
+  T r_update_gate_value = gate_value[frame_idx + frame_size * 0];
+  T r_update_gate_grad = gate_grad[frame_idx + frame_size * 0];
+  T r_reset_gate_value = gate_value[frame_idx + frame_size * 1];
 
-  if (prevOutValue && prevOutGrad) {
-    if (isBatch) prevOutValue += batchIdx * frameSize;
-    if (isBatch) prevOutGrad += batchIdx * frameSize;
-    rPrevOutValue = prevOutValue[frameIdx];
-    rPrevOutGrad = prevOutGrad[frameIdx];
-    rResetOutputGrad = resetOutputGrad[frameIdx];
+  if (prev_out_value && prev_out_grad) {
+    if (is_batch) prev_out_value += batch_idx * frame_size;
+    if (is_batch) prev_out_grad += batch_idx * frame_size;
+    r_prev_out_value = prev_out_value[frame_idx];
+    r_prev_out_grad = prev_out_grad[frame_idx];
+    r_reset_output_grad = reset_output_grad[frame_idx];
   }
 
-  opResetGrad(rUpdateGateValue, rUpdateGateGrad, rResetGateValue,
-              rResetGateGrad, rPrevOutValue, rPrevOutGrad, rResetOutputGrad,
-              active_gate);
+  op_reset_grad(r_update_gate_value, r_update_gate_grad, r_reset_gate_value,
+                r_reset_gate_grad, r_prev_out_value, r_prev_out_grad,
+                r_reset_output_grad, active_gate);
 
-  gateGrad[frameIdx + frameSize * 0] = rUpdateGateGrad;
-  gateGrad[frameIdx + frameSize * 1] = rResetGateGrad;
-  if (prevOutGrad) {
-    prevOutGrad[frameIdx] = rPrevOutGrad;
+  gate_grad[frame_idx + frame_size * 0] = r_update_gate_grad;
+  gate_grad[frame_idx + frame_size * 1] = r_reset_gate_grad;
+  if (prev_out_grad) {
+    prev_out_grad[frame_idx] = r_prev_out_grad;
   }
 }
 }  // namespace detail

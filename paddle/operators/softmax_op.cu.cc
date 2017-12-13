@@ -16,7 +16,8 @@
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(softmax,
-                       ops::SoftmaxKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
-    softmax_grad, ops::SoftmaxGradKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_CUDA_KERNEL(
+    softmax, ops::SoftmaxKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    softmax_grad,
+    ops::SoftmaxGradKernel<paddle::platform::CUDADeviceContext, float>);

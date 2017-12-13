@@ -15,8 +15,9 @@
 #include "paddle/operators/transpose_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(transpose,
-                       ops::TransposeKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
+    transpose,
+    ops::TransposeKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
     transpose_grad,
-    ops::TransposeGradKernel<paddle::platform::GPUPlace, float>);
+    ops::TransposeGradKernel<paddle::platform::CUDADeviceContext, float>);

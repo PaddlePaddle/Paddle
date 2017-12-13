@@ -18,8 +18,9 @@ class Optimizer(object):
     but need to use one of it's implementation.
     """
 
-    def __init__(self, global_step=None):
+    def __init__(self, global_step=None, regularization=None):
         self._global_step = global_step
+        self.regularization = regularization
         # Dictionary of accumulators. Some optimizer subclasses need to
         # allocate and manage extra variables associated with the parameters
         # to train. These variables are called accumulators.
@@ -197,10 +198,10 @@ class Optimizer(object):
         This method combines interface `append_backward_ops()` and
         `create_optimization_pass()` into one.
         """
-        params_grads = append_backward_ops(loss, parameter_list, no_grad_set or
-                                           set())
+        params_grads = append_backward_ops(loss, parameter_list, no_grad_set)
         # Add regularization if any
-        params_grads = append_regularization_ops(params_grads)
+        params_grads = append_regularization_ops(params_grads,
+                                                 self.regularization)
         optimize_ops = self.create_optimization_pass(params_grads, loss,
                                                      startup_program)
         return optimize_ops
@@ -210,9 +211,9 @@ class SGDOptimizer(Optimizer):
     """ Simple SGD optimizer without any state.
     """
 
-    def __init__(self, learning_rate, global_step=None):
+    def __init__(self, learning_rate, **kwargs):
         assert learning_rate is not None
-        super(SGDOptimizer, self).__init__(global_step)
+        super(SGDOptimizer, self).__init__(**kwargs)
         self.type = "sgd"
         self._learning_rate = learning_rate
 
@@ -237,14 +238,10 @@ class MomentumOptimizer(Optimizer):
     """
     _velocity_acc_str = "velocity"
 
-    def __init__(self,
-                 learning_rate,
-                 momentum,
-                 use_nesterov=False,
-                 global_step=None):
+    def __init__(self, learning_rate, momentum, use_nesterov=False, **kwargs):
         assert learning_rate is not None
         assert momentum is not None
-        super(MomentumOptimizer, self).__init__(global_step)
+        super(MomentumOptimizer, self).__init__(**kwargs)
         self.type = "momentum"
         self._learning_rate = learning_rate
         self._momentum = momentum
@@ -285,10 +282,10 @@ class AdagradOptimizer(Optimizer):
     """
     _moment_acc_str = "moment"
 
-    def __init__(self, learning_rate, epsilon=1.0e-6, global_step=None):
+    def __init__(self, learning_rate, epsilon=1.0e-6, **kwargs):
         assert learning_rate is not None
         assert epsilon is not None
-        super(AdagradOptimizer, self).__init__(global_step)
+        super(AdagradOptimizer, self).__init__(**kwargs)
         self.type = "adagrad"
         self._learning_rate = learning_rate
         self._epsilon = epsilon
@@ -332,12 +329,12 @@ class AdamOptimizer(Optimizer):
                  beta1=0.9,
                  beta2=0.999,
                  epsilon=1e-8,
-                 global_step=None):
+                 **kwargs):
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        super(AdamOptimizer, self).__init__(global_step)
+        super(AdamOptimizer, self).__init__(**kwargs)
         self.type = "adam"
         self._learning_rate = learning_rate
         self._beta1 = beta1
@@ -437,12 +434,12 @@ class AdamaxOptimizer(Optimizer):
                  beta1=0.9,
                  beta2=0.999,
                  epsilon=1e-8,
-                 global_step=None):
+                 **kwargs):
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        super(AdamaxOptimizer, self).__init__()
+        super(AdamaxOptimizer, self).__init__(**kwargs)
         self.type = "adamax"
         self._learning_rate = learning_rate
         self._beta1 = beta1
@@ -515,16 +512,12 @@ class DecayedAdagradOptimizer(Optimizer):
     """
     _moment_acc_str = "moment"
 
-    def __init__(self,
-                 learning_rate,
-                 decay=0.95,
-                 epsilon=1.0e-6,
-                 global_step=None):
+    def __init__(self, learning_rate, decay=0.95, epsilon=1.0e-6, **kwargs):
         assert learning_rate is not None
         assert decay is not None
         assert epsilon is not None
 
-        super(DecayedAdagradOptimizer, self).__init__(global_step)
+        super(DecayedAdagradOptimizer, self).__init__(**kwargs)
         self.type = "decayed_adagrad"
         self._learning_rate = learning_rate
         self._decay = decay

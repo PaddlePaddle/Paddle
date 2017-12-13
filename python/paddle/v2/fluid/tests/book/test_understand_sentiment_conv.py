@@ -4,10 +4,8 @@ import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
 
 
-def convolution_net(input_dim, class_dim=2, emb_dim=32, hid_dim=32):
-    data = fluid.layers.data(name="words", shape=[1], dtype="int64")
-    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-
+def convolution_net(data, label, input_dim, class_dim=2, emb_dim=32,
+                    hid_dim=32):
     emb = fluid.layers.embedding(input=data, size=[input_dim, emb_dim])
     conv_3 = fluid.nets.sequence_conv_pool(
         input=emb,
@@ -55,8 +53,11 @@ def main():
     dict_dim = len(word_dict)
     class_dim = 2
 
+    data = fluid.layers.data(
+        name="words", shape=[1], dtype="int64", lod_level=1)
+    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
     cost, accuracy, acc_out = convolution_net(
-        input_dim=dict_dim, class_dim=class_dim)
+        data, label, input_dim=dict_dim, class_dim=class_dim)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
@@ -64,25 +65,16 @@ def main():
         batch_size=BATCH_SIZE)
     place = fluid.CPUPlace()
     exe = fluid.Executor(place)
+    feeder = fluid.DataFeeder(feed_list=[data, label], place=place)
 
     exe.run(fluid.default_startup_program())
 
     for pass_id in xrange(PASS_NUM):
         accuracy.reset(exe)
         for data in train_data():
-            tensor_words = to_lodtensor(map(lambda x: x[0], data), place)
-
-            label = np.array(map(lambda x: x[1], data)).astype("int64")
-            label = label.reshape([BATCH_SIZE, 1])
-
-            tensor_label = fluid.LoDTensor()
-            tensor_label.set(label, place)
-
-            cost_val, acc_val = exe.run(
-                fluid.default_main_program(),
-                feed={"words": tensor_words,
-                      "label": tensor_label},
-                fetch_list=[cost, acc_out])
+            cost_val, acc_val = exe.run(fluid.default_main_program(),
+                                        feed=feeder.feed(data),
+                                        fetch_list=[cost, acc_out])
             pass_acc = accuracy.eval(exe)
             print("cost=" + str(cost_val) + " acc=" + str(acc_val) +
                   " pass_acc=" + str(pass_acc))

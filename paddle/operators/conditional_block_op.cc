@@ -142,9 +142,9 @@ class ConditionalBlockGradOp : public ConditionalOp {
         continue;
       }
       auto new_in_grad_name = cur_scope.Rename(in_grad_name);
-      auto assign =
-          framework::OpRegistry::CreateOp("assign", {{"X", {new_in_grad_name}}},
-                                          {{"Out", {out_grad_name}}}, {});
+      auto assign = framework::OpRegistry::CreateOp(
+          "assign", {{"X", {new_in_grad_name}}}, {{"Out", {out_grad_name}}},
+          framework::AttributeMap{});
       assign->Run(cur_scope, dev_ctx);
       cur_scope.Rename(new_in_grad_name, in_grad_name);
     }
