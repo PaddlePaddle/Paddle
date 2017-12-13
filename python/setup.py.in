@@ -1,7 +1,60 @@
 from setuptools import setup, Distribution, Extension
+import subprocess
 class BinaryDistribution(Distribution):
     def has_ext_modules(foo):
         return True
+
+MAJOR   = 0
+MINOR   = 11
+PATCH   = 0
+RC      = 0
+ISTAGED = False
+
+
+
+def git_commit():
+    try:
+        cmd = ['git', 'rev-parse', 'HEAD']
+        git_commit = subprocess.Popen(cmd, stdout = subprocess.PIPE).communicate()[0].strip()
+    except:
+        git_commit = 'Unknown'
+    return git_commit
+
+def write_version_py(filename='paddle/version.py'):
+    cnt = '''
+# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
+#
+full_version    = '%(major)d.%(minor)d.%(patch)d'
+major           = '%(major)d'
+minor           = '%(minor)d'
+patch           = '%(patch)d'
+rc              = '%(rc)d'
+istaged         = %(istaged)s
+commit          = '%(commit)s'
+
+def show():
+    if istaged:
+        print 'full_version:', full_version
+        print 'major:', major
+        print 'minor:', minor
+        print 'patch:', patch
+        print 'rc:', rc
+    else:
+        print 'commit:', commit
+'''
+    commit = git_commit()
+    with open(filename, 'w') as f:
+        f.write(cnt % {
+            'major': MAJOR,
+            'minor': MINOR,
+            'patch': PATCH,
+            'rc': RC,
+            'version': '${PADDLE_VERSION}',
+            'commit': commit,
+            'istaged': ISTAGED})
+
+write_version_py(filename='@PADDLE_SOURCE_DIR@/python/paddle/version.py')
+
 
 packages=['paddle',
           'paddle.proto',
@@ -21,7 +74,7 @@ with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
 
 if '${CMAKE_SYSTEM_PROCESSOR}' not in ['arm', 'armv7-a', 'aarch64']:
-    setup_requires+=["opencv-python"]
+    setup_requires+=['opencv-python']
 
 # the prefix is sys.prefix which should always be usr
 paddle_bin_dir = 'opt/paddle/bin'
@@ -36,7 +89,7 @@ paddle_rt_libs = ['${WARPCTC_LIBRARIES}']
 if '${MKL_SHARED_LIBS}'!= '':
   paddle_rt_libs += '${MKL_SHARED_LIBS}'.split(';')
 
-setup(name='paddlepaddle',
+setup(name='${PACKAGE_NAME}',
       version='${PADDLE_VERSION}',
       description='Parallel Distributed Deep Learning',
       install_requires=setup_requires,

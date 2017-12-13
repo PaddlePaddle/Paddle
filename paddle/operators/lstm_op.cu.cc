@@ -15,8 +15,9 @@
 #include "paddle/operators/lstm_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(lstm, ops::LSTMKernel<paddle::platform::GPUPlace, float>,
-                       ops::LSTMKernel<paddle::platform::GPUPlace, double>);
-REGISTER_OP_GPU_KERNEL(lstm_grad,
-                       ops::LSTMGradKernel<paddle::platform::GPUPlace, float>,
-                       ops::LSTMGradKernel<paddle::platform::GPUPlace, double>);
+REGISTER_OP_CUDA_KERNEL(
+    lstm, ops::LSTMKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::LSTMKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(
+    lstm_grad, ops::LSTMGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::LSTMGradKernel<paddle::platform::CUDADeviceContext, double>);

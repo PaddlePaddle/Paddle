@@ -28,6 +28,7 @@ limitations under the License. */
 #include "hl_top_k.h"
 #include "paddle/utils/Logging.h"
 
+#include "NEONFunctions.h"
 #include "paddle/function/GemmFunctor.h"
 #include "paddle/utils/ThreadLocal.h"
 
@@ -1190,7 +1191,8 @@ void GpuMatrix::avgPoolForward(Matrix& inputMat,
                                size_t outputH,
                                size_t outputW,
                                size_t paddingH,
-                               size_t paddingW) {
+                               size_t paddingW,
+                               bool excludeMode) {
   CHECK(inputMat.useGpu_ == true) << "Matrix type are not equal";
 
   real* inputData = inputMat.getData();
@@ -1213,7 +1215,8 @@ void GpuMatrix::avgPoolForward(Matrix& inputMat,
                      paddingH,
                      paddingW,
                      data_,
-                     getStride());
+                     getStride(),
+                     excludeMode);
 }
 
 void GpuMatrix::avgPoolBackward(Matrix& outGrad,
@@ -1228,7 +1231,8 @@ void GpuMatrix::avgPoolBackward(Matrix& outGrad,
                                 real scaleTargets,
                                 real scaleOutput,
                                 size_t paddingH,
-                                size_t paddingW) {
+                                size_t paddingW,
+                                bool excludeMode) {
   CHECK(outGrad.useGpu_ == true) << "Matrix type are not equal";
 
   real* outDiff = outGrad.getData();
@@ -1254,7 +1258,8 @@ void GpuMatrix::avgPoolBackward(Matrix& outGrad,
                       scaleTargets,
                       scaleOutput,
                       data_,
-                      outGrad.getStride());
+                      outGrad.getStride(),
+                      excludeMode);
 }
 
 void GpuMatrix::maxPool3DForward(Matrix& inputMat,
@@ -2262,7 +2267,8 @@ void CpuMatrix::avgPoolForward(Matrix& input,
                                size_t outputH,
                                size_t outputW,
                                size_t paddingH,
-                               size_t paddingW) {
+                               size_t paddingW,
+                               bool excludeMode) {
   // The main loop
   size_t num = input.getHeight();
   size_t inLength = imgSizeH * imgSizeW;
@@ -2291,7 +2297,8 @@ void CpuMatrix::avgPoolForward(Matrix& input,
               tgtData[ph * outputW + pw] += inData[h * imgSizeW + w];
             }
           }
-          int poolSize = (hend - hstart) * (wend - wstart);
+          int poolSize =
+              excludeMode ? (hend - hstart) * (wend - wstart) : sizeY * sizeX;
           CHECK(poolSize);
           tgtData[ph * outputW + pw] /= poolSize;
         }
@@ -2315,7 +2322,8 @@ void CpuMatrix::avgPoolBackward(Matrix& input,
                                 real scaleTargets,
                                 real scaleOutput,
                                 size_t paddingH,
-                                size_t paddingW) {
+                                size_t paddingW,
+                                bool excludeMode) {
   size_t num = input.getHeight();
   size_t channels = input.getWidth() / outputH / outputW;
   size_t inLength = imgSizeH * imgSizeW;
@@ -2337,7 +2345,8 @@ void CpuMatrix::avgPoolBackward(Matrix& input,
           int wstart = pw * strideW - paddingW;
           int wend = std::min(wstart + sizeX, imgSizeW);
           wstart = std::max(wstart, 0);
-          int poolSize = (hend - hstart) * (wend - wstart);
+          int poolSize =
+              excludeMode ? (hend - hstart) * (wend - wstart) : sizeY * sizeX;
           CHECK(poolSize);
 
           for (int h = hstart; h < hend; ++h) {
@@ -4283,16 +4292,36 @@ void CpuMatrix::print(std::ostream& os) const {
 void CpuMatrix::paramReluForward(Matrix& data, Matrix& W) {
   real* input = data.getData();
   real* w = W.getData();
+  real* output = data_;
   size_t numElements = data.getWidth();
   size_t numSamples = data.getHeight();
   size_t paraSize = W.getHeight() * W.getWidth();
   CHECK(!(numElements % paraSize));  // this check from ParameterReluLayer::init
+
   size_t partial_sum = numElements / paraSize;
+  if (paraSize == numElements) {
+    for (size_t n = 0; n < numSamples * numElements; ++n) {
+      output[n] = input[n] > 0 ? input[n] : input[n] * w[n % numElements];
+    }
+    return;
+  }
+
+#if defined(__ARM_NEON__) || defined(__ARM_NEON)
+  for (size_t n = 0; n < numSamples; ++n) {
+    for (size_t i = 0; i < paraSize; i++) {
+      neon::prelu(
+          input + i * partial_sum, w[i], output + i * partial_sum, partial_sum);
+    }
+    input = input + numElements;
+    output = output + numElements;
+  }
+#else
   for (size_t n = 0, k = 0; n < numSamples; ++n) {
     for (size_t i = 0; i < numElements; ++i, ++k) {
-      data_[k] = input[k] > 0 ? input[k] : input[k] * w[i / partial_sum];
+      output[k] = input[k] > 0 ? input[k] : input[k] * w[i / partial_sum];
     }
   }
+#endif
 }
 
 void CpuMatrix::paramReluBackwardW(Matrix& oGrad, Matrix& data) {

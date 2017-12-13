@@ -23,7 +23,7 @@ TEST(selected_rows_functor, cpu_add) {
 
   CPUPlace cpu_place;
   CPUDeviceContext ctx(cpu_place);
-  SetConstant<CPUPlace, float> functor;
+  SetConstant<CPUDeviceContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
 
@@ -47,7 +47,7 @@ TEST(selected_rows_functor, cpu_add) {
   // simplely concat two SelectedRows
   out_value->mutable_data<float>(make_ddim({7, 10}), cpu_place);
 
-  SelectedRowsAdd<CPUPlace, float> add_functor;
+  SelectedRowsAdd<CPUDeviceContext, float> add_functor;
   add_functor(ctx, *selected_rows1, *selected_rows2, output.get());
 
   auto out_height = output->height();
@@ -85,7 +85,7 @@ TEST(selected_rows_functor, cpu_add) {
   std::unique_ptr<Tensor> tensor2{new Tensor()};
   tensor2->mutable_data<float>(make_ddim({height, row_numel}), cpu_place);
 
-  SelectedRowsAddTensor<CPUPlace, float> add_tensor_functor;
+  SelectedRowsAddTensor<CPUDeviceContext, float> add_tensor_functor;
   add_tensor_functor(ctx, *output, *tensor1, tensor2.get());
 
   auto* tensor2_data = tensor2->data<float>();
@@ -112,7 +112,7 @@ TEST(selected_rows_functor, cpu_add_to) {
 
   CPUPlace cpu_place;
   CPUDeviceContext ctx(cpu_place);
-  SetConstant<CPUPlace, float> functor;
+  SetConstant<CPUDeviceContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
 
@@ -137,7 +137,7 @@ TEST(selected_rows_functor, cpu_add_to) {
   // simplely concat two SelectedRows
   out_value->mutable_data<float>(make_ddim({7, 10}), cpu_place);
 
-  SelectedRowsAddTo<CPUPlace, float> add_to_functor;
+  SelectedRowsAddTo<CPUDeviceContext, float> add_to_functor;
   add_to_functor(ctx, *selected_rows1, 0, output.get());
   add_to_functor(ctx, *selected_rows2, in1_value->numel(), output.get());
 
@@ -173,7 +173,7 @@ TEST(selected_rows_functor, cpu_add_to) {
   tensor1->mutable_data<float>(make_ddim({height, row_numel}), cpu_place);
   functor(ctx, tensor1.get(), 3.0);
 
-  SelectedRowsAddToTensor<CPUPlace, float> add_to_tensor_functor;
+  SelectedRowsAddToTensor<CPUDeviceContext, float> add_to_tensor_functor;
   add_to_tensor_functor(ctx, *output, tensor1.get());
 
   auto* tensor1_data = tensor1->data<float>();

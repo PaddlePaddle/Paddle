@@ -58,9 +58,10 @@ class ChunkEvalOpMaker : public framework::OpProtoAndCheckerMaker {
                    framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Inference",
-             "(Tensor, default: Tensor<int>). Predictions from the network.");
+             "(Tensor, default: Tensor<int64_t>). "
+             "Predictions from the network.");
     AddInput("Label",
-             "(Tensor, default: Tensor<int>). The true tag sequences.");
+             "(Tensor, default: Tensor<int64_t>). The true tag sequences.");
     AddOutput("Precision",
               "(float). The evaluated precision (called positive predictive "
               "value) of chunks on the given mini-batch.");
@@ -84,7 +85,7 @@ class ChunkEvalOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(std::vector<int>{});
     AddComment(R"DOC(
 For some basics of chunking, please refer to
-‘Chunking with Support Vector Mechines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>’.
+‘Chunking with Support Vector Machines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>’.
 
 
 CheckEvalOp computes the precision, recall, and F1-score of chunk detection,
@@ -97,7 +98,7 @@ Here is a NER example of labeling for these tagging schemes:
   IOE:   I-PER  E-PER   O      O   I-ORG          I-ORG  I-ORG E-ORG  O   E-LOC
   IOBES: B-PER  E-PER   O      O   I-ORG          I-ORG  I-ORG E-ORG  O   S-LOC
 
-There are three chunk types(named entity types) including PER(person), ORG(orgnazation)
+There are three chunk types(named entity types) including PER(person), ORG(organization)
 and LOC(LOCATION), and we can see that the labels have the form <tag type>-<chunk type>.
 
 Since the calculations actually use label ids rather than labels, extra attention

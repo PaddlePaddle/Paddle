@@ -17,16 +17,17 @@
 
 namespace ops = paddle::operators;
 
-#define REGISTER_ACTIVATION_GPU_KERNEL(act_type, functor, grad_functor)       \
-  REGISTER_OP_GPU_KERNEL(                                                     \
-      act_type,                                                               \
-      ops::ActivationKernel<paddle::platform::GPUPlace, ops::functor<float>>, \
-      ops::ActivationKernel<paddle::platform::GPUPlace,                       \
-                            ops::functor<double>>);                           \
-  REGISTER_OP_GPU_KERNEL(                                                     \
-      act_type##_grad, ops::ActivationGradKernel<paddle::platform::GPUPlace,  \
-                                                 ops::grad_functor<float>>,   \
-      ops::ActivationGradKernel<paddle::platform::GPUPlace,                   \
+#define REGISTER_ACTIVATION_CUDA_KERNEL(act_type, functor, grad_functor)   \
+  REGISTER_OP_CUDA_KERNEL(                                                 \
+      act_type, ops::ActivationKernel<paddle::platform::CUDADeviceContext, \
+                                      ops::functor<float>>,                \
+      ops::ActivationKernel<paddle::platform::CUDADeviceContext,           \
+                            ops::functor<double>>);                        \
+  REGISTER_OP_CUDA_KERNEL(                                                 \
+      act_type##_grad,                                                     \
+      ops::ActivationGradKernel<paddle::platform::CUDADeviceContext,       \
+                                ops::grad_functor<float>>,                 \
+      ops::ActivationGradKernel<paddle::platform::CUDADeviceContext,       \
                                 ops::grad_functor<double>>);
 
-FOR_EACH_KERNEL_FUNCTOR(REGISTER_ACTIVATION_GPU_KERNEL);
+FOR_EACH_KERNEL_FUNCTOR(REGISTER_ACTIVATION_CUDA_KERNEL);
