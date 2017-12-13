@@ -27,7 +27,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class CosSimKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -51,7 +51,8 @@ class CosSimKernel : public framework::OpKernel<T> {
     auto y_norm = EigenVector<T>::Flatten(*out_y_norm);
 
     // compute
-    auto place = context.GetEigenDevice<Place>();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
     auto row_along = Eigen::array<int, 1>({{1}});
     x_norm.device(place) = x.square().sum(row_along).sqrt();
     y_norm.device(place) = y.square().sum(row_along).sqrt();
@@ -66,7 +67,7 @@ class CosSimKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class CosSimGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -96,7 +97,8 @@ class CosSimGradKernel : public framework::OpKernel<T> {
     auto z_bcast = z.broadcast(bcast_cols);
     auto dz_bcast = dz.broadcast(bcast_cols);
     auto x_snorm_bcast = x_norm.square().eval().broadcast(bcast_cols);
-    auto place = context.GetEigenDevice<Place>();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
     if (rows_x == rows_y) {
       auto y_snorm_bcast = y_norm.square().eval().broadcast(bcast_cols);
       auto norm_prod_bcast = (x_norm * y_norm).eval().broadcast(bcast_cols);

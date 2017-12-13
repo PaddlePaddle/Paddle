@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename T>
 class MomentumOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -33,7 +33,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
     param_out->mutable_data<T>(ctx.GetPlace());
     velocity_out->mutable_data<T>(ctx.GetPlace());
 
-    float mu = ctx.Attr<float>("mu");
+    T mu = static_cast<T>(ctx.Attr<float>("mu"));
     bool use_nesterov = ctx.Attr<bool>("use_nesterov");
 
     auto p_out = framework::EigenVector<T>::Flatten(*param_out);
@@ -42,18 +42,13 @@ class MomentumOpKernel : public framework::OpKernel<T> {
     auto p = framework::EigenVector<T>::Flatten(*param);
     auto v = framework::EigenVector<T>::Flatten(*velocity);
     auto g = framework::EigenVector<T>::Flatten(*grad);
-    auto lr = framework::EigenVector<T>::Flatten(*learning_rate);
+    auto* lr = learning_rate->data<T>();
 
-    auto place = ctx.GetEigenDevice<Place>();
-
-    Eigen::DSizes<int, 1> grad_dsize(grad->numel());
-
-    v_out.device(place) = v * mu + g;
+    v_out = v * mu + g;
     if (use_nesterov) {
-      p_out.device(place) = p - g * lr.broadcast(grad_dsize) +
-                            v_out * mu * lr.broadcast(grad_dsize);
+      p_out = p - (g - v_out * mu) * lr[0];
     } else {
-      p_out.device(place) = p - lr.broadcast(grad_dsize) * v_out;
+      p_out = p - lr[0] * v_out;
     }
   }
 };

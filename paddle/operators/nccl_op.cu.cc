@@ -204,6 +204,6 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(ncclAllReduce, ops::NCCLAllReduceKernel<float>);
-REGISTER_OP_GPU_KERNEL(ncclBcast, ops::NCCLBcastKernel<float>);
-REGISTER_OP_GPU_KERNEL(ncclReduce, ops::NCCLReduceKernel<float>);
+REGISTER_OP_CUDA_KERNEL(ncclAllReduce, ops::NCCLAllReduceKernel<float>);
+REGISTER_OP_CUDA_KERNEL(ncclBcast, ops::NCCLBcastKernel<float>);
+REGISTER_OP_CUDA_KERNEL(ncclReduce, ops::NCCLReduceKernel<float>);

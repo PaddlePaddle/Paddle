@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 // Out = max(X, 0) - X * Labels + log(1 + exp(-abs(X)))
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SigmoidCrossEntropyWithLogitsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -32,7 +32,7 @@ class SigmoidCrossEntropyWithLogitsKernel : public framework::OpKernel<T> {
     auto x = framework::EigenVector<T>::Flatten(*X);
     auto labels = framework::EigenVector<T>::Flatten(*Labels);
     auto out = framework::EigenVector<T>::Flatten(*Out);
-    auto place = context.GetEigenDevice<Place>();
+    auto &place = *context.device_context<DeviceContext>().eigen_device();
 
     // term1 = max(x, 0)
     auto term1 = x.cwiseMax(static_cast<T>(0));
@@ -46,7 +46,7 @@ class SigmoidCrossEntropyWithLogitsKernel : public framework::OpKernel<T> {
 };
 
 // dX = sigmoid(X) - labels
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SigmoidCrossEntropyWithLogitsGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -62,7 +62,8 @@ class SigmoidCrossEntropyWithLogitsGradKernel : public framework::OpKernel<T> {
     auto labels = framework::EigenVector<T>::Flatten(*Labels);
     auto dout = framework::EigenVector<T>::Flatten(*dOut);
     auto dx = framework::EigenVector<T>::Flatten(*dX);
-    auto place = context.GetEigenDevice<Place>();
+    auto &place =
+        *context.template device_context<DeviceContext>().eigen_device();
 
     auto sigmoid_x = static_cast<T>(1) / (static_cast<T>(1) + (-x).exp());
     dx.device(place) = dout * (sigmoid_x - labels);
