@@ -44,6 +44,7 @@ exe.optimize(optimize_ops, params_grads, pservers="127.0.0.1:6174", trainers=1)
 pserver_endpoint = os.getenv("PSERVER")
 if pserver_endpoint:
     pserver_prog = exe.get_pserver_program(pserver_endpoint, optimize_ops)
+    print("pserver startup: ", fluid.default_startup_program())
     exe.run(fluid.default_startup_program())
     while True:
         exe.run(pserver_prog)

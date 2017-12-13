@@ -138,7 +138,6 @@ class Executor(object):
                 inputs=opt_op.inputs,
                 outputs=opt_op.outputs,
                 attrs=opt_op.attrs)
-        print("optimize program: ", optimize_sub_program)
 
         pserver_program.global_block().append_op(
             type="recv",
@@ -248,7 +247,7 @@ class Executor(object):
                 outputs={'Out': [fetch_var]},
                 attrs={'col': i})
 
-        self.executor.run(program.desc, scope, 0, True)
+        self.executor.run(program.desc, scope, 0, True, True)
         outs = [
             core.get_fetch_variable(scope, fetch_var_name, i)
             for i in xrange(len(fetch_list))
