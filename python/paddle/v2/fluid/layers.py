@@ -15,8 +15,9 @@ __all__ = [
 ]
 
 _REGISTER_LAYER_FROM_OPS = [
-    'mean', 'mul', 'elementwise_add', 'elementwise_div', 'dropout', 'reshape',
-    'sigmoid', 'scale', 'transpose', 'sigmoid_cross_entropy_with_logits'
+    'mean', 'mul', 'dropout', 'reshape', 'sigmoid', 'scale', 'transpose',
+    'sigmoid_cross_entropy_with_logits', 'elementwise_add', 'elementwise_div',
+    'elementwise_sub', 'elementwise_mul', 'clip', 'abs'
 ]
 
 for _OP in set(_REGISTER_LAYER_FROM_OPS):
