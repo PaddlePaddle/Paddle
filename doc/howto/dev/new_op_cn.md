@@ -177,6 +177,7 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
     math::matmul<DeviceContext, T>(*X, false, *Y, false, 1, Z, 0, device_context);
   }
   };
+  ```
 
 需要注意：**不同设备(CPU、CUDA)共享一个Op定义，是否则共享同一个`OpKernel`，取决于`Compute`调用的函数是否支持不同设备。**
 
@@ -273,8 +274,7 @@ Op单元测试继承自`OpTest`。各项更加具体的单元测试在`TestMulOp
       def test_check_grad_ingore_y(self):
           self.check_grad(
               ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
-
-    ```
+  ```
 
 上面的代码首先导入依赖的包，下面是对`setUp`函数中操作的重要变量的详细解释：
 

@@ -284,8 +284,7 @@ A forward operator unit test inherits `unittest.TestCase` and defines metaclass 
       def test_check_grad_ingore_y(self):
           self.check_grad(
               ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
-
-    ```
+  ```
 Get its output, and compare it with the forward operator's own output.
 
 The code above first loads required packages. In addition, we have
