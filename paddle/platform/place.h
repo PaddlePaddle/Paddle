@@ -43,6 +43,11 @@ struct GPUPlace {
   int device;
 };
 
+struct CudnnPlace : public GPUPlace {
+  CudnnPlace() : GPUPlace() {}
+  explicit CudnnPlace(int d) : GPUPlace(d) {}
+};
+
 struct IsGPUPlace : public boost::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
   bool operator()(const GPUPlace &gpu) const { return true; }

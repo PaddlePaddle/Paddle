@@ -46,3 +46,19 @@ TEST(Device, CUDADeviceContext) {
     delete device_context;
   }
 }
+
+TEST(Device, CudnnDeviceContext) {
+  using paddle::platform::CudnnDeviceContext;
+  using paddle::platform::CudnnPlace;
+  if (dynload::HasCUDNN()) {
+    int count = paddle::platform::GetCUDADeviceCount();
+    for (int i = 0; i < count; ++i) {
+      CudnnDeviceContext* device_context =
+          new CudnnDeviceContext(CudnnPlace(i));
+      cudnnHandle_t cudnn_handle = device_context->cudnn_handle();
+      ASSERT_NE(nullptr, cudnn_handle);
+      ASSERT_NE(nullptr, device_context->stream());
+      delete device_context;
+    }
+  }
+}
