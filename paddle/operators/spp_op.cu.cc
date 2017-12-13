@@ -15,8 +15,9 @@ limitations under the License. */
 #include "paddle/operators/spp_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(spp, ops::SppKernel<paddle::platform::GPUPlace, float>,
-                       ops::SppKernel<paddle::platform::GPUPlace, double>);
-REGISTER_OP_GPU_KERNEL(spp_grad,
-                       ops::SppGradKernel<paddle::platform::GPUPlace, float>,
-                       ops::SppGradKernel<paddle::platform::GPUPlace, double>);
+REGISTER_OP_CUDA_KERNEL(
+    spp, ops::SppKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SppKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(
+    spp_grad, ops::SppGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SppGradKernel<paddle::platform::CUDADeviceContext, double>);
