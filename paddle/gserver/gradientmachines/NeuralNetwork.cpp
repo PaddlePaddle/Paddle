@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/utils/Logging.h"
 #include "paddle/utils/Stat.h"
 
-#ifdef PADDLE_USE_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
 #include "paddle/gserver/layers/MKLDNNLayer.h"
 #endif
 
@@ -307,7 +307,7 @@ void NeuralNetwork::backward(const UpdateCallback& callback) {
 }
 
 void NeuralNetwork::finish() {
-#ifdef PADDLE_USE_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
   FOR_EACH_R(layer, layers_) {
     MKLDNNLayerPtr dnnLayer = std::dynamic_pointer_cast<MKLDNNLayer>(*layer);
     if (dnnLayer) {

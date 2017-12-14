@@ -50,7 +50,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class LinearChainCRFOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -137,7 +137,8 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
         framework::make_ddim({static_cast<int64_t>(batch_size), 1}),
         platform::CPUPlace());
 
-    auto place = ctx.GetEigenDevice<platform::CPUPlace>();
+    auto& place = *ctx.template device_context<platform::CPUDeviceContext>()
+                       .eigen_device();
     auto x = EigenMatrix<T>::From(*emission_weights);
     auto x_row_max = EigenMatrix<T>::From(emission_row_max);
     x_row_max.device(place) =
@@ -287,7 +288,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -359,8 +360,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     emission_grad->mutable_data<T>(platform::CPUPlace());
     if (transition_grad) {
       transition_grad->mutable_data<T>(platform::CPUPlace());
-      math::SetConstant<platform::CPUPlace, T>()(ctx.device_context(),
-                                                 transition_grad, 0.);
+      math::set_constant(ctx.device_context(), transition_grad, 0.);
     }
     // Now, all the inputs and outputs should be on the CPU memory.
 
@@ -384,10 +384,10 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
       Tensor one_seq_beta = beta.Slice(start_pos, end_pos);
       Tensor one_seq_emission_grad = emission_grad->Slice(start_pos, end_pos);
 
-      BackwardOneSequence(ctx.device_context(), ll_grad[i],
-                          one_seq_emission_exps, *transition_exps,
-                          one_seq_alpha, one_seq_label, &one_seq_beta,
-                          transition_grad, &one_seq_emission_grad);
+      BackwardOneSequence(
+          ctx.template device_context<platform::CPUDeviceContext>(), ll_grad[i],
+          one_seq_emission_exps, *transition_exps, one_seq_alpha, one_seq_label,
+          &one_seq_beta, transition_grad, &one_seq_emission_grad);
     }
 
     if (platform::is_gpu_place(ctx.GetPlace())) {
@@ -441,8 +441,8 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     copyTensor(ctx, transition_grad_src, transition_grad_dst);
   }
 
-  void BackwardOneSequence(const platform::DeviceContext& ctx, const T ll_grad,
-                           const Tensor& emission_exps,
+  void BackwardOneSequence(const platform::CPUDeviceContext& ctx,
+                           const T ll_grad, const Tensor& emission_exps,
                            const Tensor& transition_exps, const Tensor& alpha,
                            const Tensor& label, Tensor* beta,
                            Tensor* transition_grad,
@@ -481,7 +481,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     auto alpha_mat = EigenMatrix<T>::From(alpha);
     auto beta_mat = EigenMatrix<T>::From(*beta);
 
-    auto* place = ctx.GetEigenDevice<platform::CPUPlace>();
+    auto* place = ctx.eigen_device();
     auto prob = alpha_mat * beta_mat;
     auto row_sum = prob.sum(Eigen::DSizes<int, 1>(1))
                        .reshape(Eigen::DSizes<int, 2>(seq_length, 1))

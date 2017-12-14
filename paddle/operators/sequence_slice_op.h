@@ -39,7 +39,7 @@ inline LoD SequenceSliceLoD(const T& in, const int64_t* offset_data,
   return out_lod;
 }
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SequenceSliceOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -54,10 +54,10 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
     PADDLE_ENFORCE_EQ(
         n, static_cast<size_t>(length->dims()[0]),
-        "The size of input-sequence and length-array should be the same")
+        "The size of input-sequence and length-array should be the same");
     PADDLE_ENFORCE_EQ(
         n, static_cast<size_t>(offset->dims()[0]),
-        "The size of input-sequence and offset-array should be the same")
+        "The size of input-sequence and offset-array should be the same");
 
     const int64_t* offset_data = offset->data<int64_t>();
     const int64_t* length_data = length->data<int64_t>();
@@ -78,11 +78,11 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
 
     for (size_t i = 0; i < n; ++i) {
       PADDLE_ENFORCE_LT(0, offset_data[i],
-                        "The offset[%d] must greater than zero.", i)
+                        "The offset[%d] must greater than zero.", i);
       PADDLE_ENFORCE_LT(0, length_data[i],
-                        "The length[%d] must greater than zero.", i)
+                        "The length[%d] must greater than zero.", i);
       PADDLE_ENFORCE_LT(lod[0][i] + offset_data[i] + length_data[i],
-                        lod[0][i + 1], "The target tensor's length overflow.")
+                        lod[0][i + 1], "The target tensor's length overflow.");
     }
 
     out->mutable_data<T>(ctx.GetPlace());
@@ -108,7 +108,7 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -143,8 +143,9 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
     if (x_grad) {
       x_grad->mutable_data<T>(ctx.GetPlace());
       x_grad->set_lod(in->lod());
-      math::SetConstant<Place, T> set_zero;
-      set_zero(ctx.device_context(), x_grad, static_cast<T>(0));
+      math::SetConstant<DeviceContext, T> set_zero;
+      set_zero(ctx.template device_context<DeviceContext>(), x_grad,
+               static_cast<T>(0));
 
       auto out_grad_stride = framework::stride(out_grad->dims());
 

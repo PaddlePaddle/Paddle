@@ -15,6 +15,7 @@
 #include "paddle/operators/mul_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(mul, ops::MulKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(mul_grad,
-                       ops::MulGradKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_CUDA_KERNEL(
+    mul, ops::MulKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    mul_grad, ops::MulGradKernel<paddle::platform::CUDADeviceContext, float>);

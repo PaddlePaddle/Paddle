@@ -1,4 +1,4 @@
-# 编译PaddlePaddle和运行单元测试
+# 用Docker编译和测试PaddlePaddle
 
 ## 需要的软硬件
 

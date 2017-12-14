@@ -14,6 +14,7 @@
 #include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {
@@ -32,15 +33,20 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
-    auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
-    auto &rank_table =
-        scope.FindVar(Input("RankTable"))->Get<framework::LoDRankTable>();
-    auto &out =
-        *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensorArray>();
-
+    auto &x = detail::Ref(scope.FindVar(Input("X")), "Cannot find input %s",
+                          Input("X"))
+                  .Get<framework::LoDTensor>();
+    auto &rank_table = detail::Ref(scope.FindVar(Input("RankTable")))
+                           .Get<framework::LoDRankTable>();
+    auto &out = *detail::Ref(scope.FindVar(Output("Out")))
+                     .GetMutable<framework::LoDTensorArray>();
     auto &items = rank_table.items();
     auto max_seq_len = items[0].length;
     auto rank_level = rank_table.level();
+
+    PADDLE_ENFORCE_LT(rank_level, x.lod().size(),
+                      "Input should be a LOD tensor, and size is at least %d",
+                      rank_level + 1);
     out.resize(max_seq_len);
     std::vector<std::vector<CopyRange>> copy_ranges(max_seq_len);
 
@@ -55,16 +61,13 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
         size_t start_idx = x.lod()[rank_level][item.index] + t;
         auto lod_and_offset = framework::GetSubLoDAndAbsoluteOffset(
             x.lod(), start_idx, start_idx + 1, rank_level + 1);
-
         auto &lod_length = lod_and_offset.first;
         framework::AppendLoD(&lod, lod_length);
-
         size_t start_offset = lod_and_offset.second.first;
         size_t end_offset = lod_and_offset.second.second;
         copy_ranges[t].emplace_back(CopyRange{start_offset, end_offset});
       }
     }
-
     for (size_t i = 0; i < max_seq_len; ++i) {
       auto &ranges = copy_ranges[i];
       size_t height = std::accumulate(
