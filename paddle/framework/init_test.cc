@@ -17,6 +17,11 @@
 
 TEST(Init, InitDevices) {
   using paddle::framework::InitDevices;
-  std::vector<std::string> ds1 = {"CPU", "GPU:0", "GPU:1"};
+  std::vector<std::string> ds1 = {"CPU"};
   ASSERT_EQ(InitDevices(ds1), true);
+
+#ifdef PADDLE_WITH_CUDA
+  std::vector<std::string> ds2 = {"CPU", "GPU:0", "GPU:1"};
+  ASSERT_EQ(InitDevices(ds2), true);
+#endif
 }
