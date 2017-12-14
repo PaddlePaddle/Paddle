@@ -3,9 +3,9 @@
 ## Abstract
 
 This Design Doc propose an approach to make the user-defined Op graph
-running on multi threads, we will use an auto transpiler to convert the user-defined
+running with multi threads, we will use an auto transpiler to convert the user-defined
 Op graph to a multi-thread Op graph, and run `ParallelDo` Op to run the
-multi-thread graph with multi-threads.
+multi-thread graph.
 
 ## Graph Converter
 <img src="src/multi-threads/single-thread@3x.png" width="300">
@@ -28,9 +28,9 @@ After converted:
     bc.Wait();
     ```
 - `ParallelDo` Operator
-  - Initialize a thread pool which is a Singleton Mode.
+  - Initialize a thread pool which is a Singleton.
   - Use a list of block id as the input, and create multi Executor to run 
-    these Block which specified with block id with multi-threads.
+    these Blocks with multi-threads.
   - Initialize a `BlockingCounter` instance and wait until all threads are done.
 - `Split` Operator will split the Input Tensor into N slices.
 - `Merge` Operator will merge all the gradients from the block list and then
