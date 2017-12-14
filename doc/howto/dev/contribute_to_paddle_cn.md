@@ -76,18 +76,18 @@ no changes added to commit (use "git add" and/or "git commit -a")
 
 ## 构建和测试
 
-编译 PaddlePaddle 的源码以及生成文档需要多种开发工具。为了方便大家，我们的标准开发流程是把这些工具都装进一个Docker image，称为*开发镜像*，通常名字是 `paddle:dev`。然后所有用 `cmake && make` 的地方（比如IDE配置里）都用 `docker run paddle:dev`来代替。
+编译 PaddlePaddle 的源码以及生成文档需要多种开发工具。为了方便大家，我们的标准开发流程是把这些工具都装进一个Docker image，称为*开发镜像*，通常名字是 `paddle:latest-dev` 或者 `paddle:[version tag]-dev` 如 `paddle:0.11.0-dev`。然后所有用 `cmake && make` 的地方（比如IDE配置里）都用 `docker run paddle:latest-dev`来代替。
 
 如要build这个开发镜像，在源码目录树的根目录中运行：
 
 ```bash
-➜  docker build -t paddle:dev .
+➜  docker build -t paddle:latest-dev .
 ```
 
 随后可以用这个开发镜像开始build PaddlePaddle的源码。比如如果要build一个不依赖GPU，但是支持AVX指令集，并且包括unit tests的PaddlePaddle，可以：
 
 ```bash
-➜  docker run -v $(pwd):/paddle -e "WITH_GPU=OFF" -e "WITH_AVX=ON" -e "WITH_TEST=ON" paddle:dev
+➜  docker run -v $(pwd):/paddle -e "WITH_GPU=OFF" -e "WITH_AVX=ON" -e "WITH_TESTING=ON" paddle:latest-dev
 ```
 
 这个过程除了编译PaddlePaddle为 `./build/libpaddle.so`，并且输出一个 `./build/paddle.deb`文件之外，还会输出一个 `build/Dockerfile`。我们只需要运行下面命令把编译好的PaddlePaddle打包成一个*生产镜像*（`paddle:prod`）：
@@ -99,7 +99,7 @@ no changes added to commit (use "git add" and/or "git commit -a")
 如果要运行所有的单元测试，可以用如下命令：
 
 ```bash
-➜  docker run -it -v $(pwd):/paddle paddle:dev bash -c "cd /paddle/build && ctest"
+➜  docker run -it -v $(pwd):/paddle paddle:latest-dev bash -c "cd /paddle/build && ctest"
 ```
 
 关于构建和测试的更多信息，请参见[这篇文档](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/getstarted/build_and_install/docker_install_cn.rst)。
