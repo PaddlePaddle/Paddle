@@ -93,7 +93,7 @@ class Executor(object):
             dtype=var.dtype,
             type=var.type,
             lod_level=var.lod_level,
-            persistable=True)
+            persistable=var.persistable)
 
     def _optimize_distributed(self, optimize_ops, program, params_and_grads,
                               **kwargs):
