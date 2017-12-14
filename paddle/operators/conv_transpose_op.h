@@ -225,7 +225,6 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
 
       if (input_grad) {
         input_grad->mutable_data<T>(context.GetPlace());
-        // set_zero is unnecessary, math::matmul will reset input_grad.
       }
       if (filter_grad) {  // filter size (m, c, k_h, k_w)
         filter_grad->mutable_data<T>(context.GetPlace());
