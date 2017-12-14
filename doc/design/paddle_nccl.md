@@ -53,8 +53,13 @@ Need to notice that AllReduce operator force GPUs synchronized at that point. Th
 
 As it shown in the picture, when each GPU compute the gradient of `W`, followed with a `AllReduce` operator, accumulate the `dW` to full batch of data, then run the optimize process individually and apply the gradient to its `W`.
 
-- **AllReduce2**
-If we use the NCCL2 AllReduce primitive, every GPU optimized full batch of data, wasted (n-1) GPU compute resources. In addition, AllReduce will only utilize the communicate resource during synchronization, then update the gradient will be a seperated phase. In fact, we can amortize the update gradient time cost into the communicating phase.
-- Every parameter has its root card. That card will call **Reduce** operator and collect the gradients from GPUs.
-- The whole model's parameter will be hashed to different root card, ensure the load balance between GPUs.
-Then we have another version AllReduce operator. Other part keep the same with before.
+- **AllReduce**
+  Need to note that our AllReduce operator is a ring-base AllReduce implementation. If we use the NCCL2 AllReduce primitive, every GPU optimized full batch of data, wasted (n-1) GPU compute resources. In addition, NCCL2 built-in AllReduce will only utilize the communicating resource during synchronization, then update the gradient will be a subsequent phase. In fact, we can amortize the update gradient time cost into the communicating phase. The process is
+1. Every parameter has its root card. That card will responsible for aggregating the gradients from GPUs.
+2. The whole model's parameter will be hashed to different root card, ensure the load balance between GPUs.
+3. Logically neighberhood card will start send parameter to the next one. After one round, the parameter main card will aggregate the full gradients.
+4. Then the root card will optimize the parameter.
+5. This parameter card will send its optimized result to its neighberhood, then the neighberhood will send parameter to its next one.
+6. Finish the sychronization round.
+
+The total time cost will be 2 * (n-1) * per-parameter-send-time, we reach the goal of amortize the upgrade time into communicating phase.
