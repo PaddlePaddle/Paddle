@@ -103,6 +103,18 @@ class CUDADeviceContext : public DeviceContext {
   cublasHandle_t cublas_handle_;
 };
 
+class DeviceGuard {
+ public:
+  explicit DeviceGuard(int device) {
+    original_device_ = platform::GetCurrentDeviceId();
+    platform::SetDeviceId(device);
+  }
+  ~DeviceGuard() { platform::SetDeviceId(original_device_); }
+
+ private:
+  int original_device_;
+};
+
 #endif
 
 }  // namespace platform
