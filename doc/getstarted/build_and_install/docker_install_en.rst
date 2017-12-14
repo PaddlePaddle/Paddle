@@ -122,7 +122,7 @@ GPU driver installed before move on.
 
   .. code-block:: bash
 
-     nvidia-docker run -it -v $PWD:/work paddledev/paddle:latest-gpu /bin/bash
+     nvidia-docker run -it -v $PWD:/work paddlepaddle/paddle:latest-gpu /bin/bash
 
 **NOTE: If you don't have nvidia-docker installed, try the following method to mount CUDA libs and devices into the container.**
 
@@ -130,7 +130,7 @@ GPU driver installed before move on.
 
      export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
      export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-     docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:latest-gpu
+     docker run ${CUDA_SO} ${DEVICES} -it paddlepaddle/paddle:latest-gpu
 
 **About AVX:**
 

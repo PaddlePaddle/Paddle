@@ -2,8 +2,8 @@
 
 
 [![Build Status](https://travis-ci.org/PaddlePaddle/Paddle.svg?branch=develop)](https://travis-ci.org/PaddlePaddle/Paddle)
-[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://doc.paddlepaddle.org/develop/doc/)
-[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://doc.paddlepaddle.org/develop/doc_cn/)
+[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/index_en.html)
+[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://www.paddlepaddle.org/docs/develop/documentation/zh/getstarted/index_cn.html)
 [![Coverage Status](https://coveralls.io/repos/github/PaddlePaddle/Paddle/badge.svg?branch=develop)](https://coveralls.io/github/PaddlePaddle/Paddle?branch=develop)
 [![Release](https://img.shields.io/github/release/PaddlePaddle/Paddle.svg)](https://github.com/PaddlePaddle/Paddle/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
@@ -36,7 +36,7 @@ Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddl
     examples:
 
       - Optimized math operations through SSE/AVX intrinsics, BLAS libraries
-      (e.g. MKL, ATLAS, cuBLAS) or customized CPU/GPU kernels.
+      (e.g. MKL, OpenBLAS, cuBLAS) or customized CPU/GPU kernels.
       - Highly optimized recurrent networks which can handle **variable-length**
       sequence without padding.
       - Optimized local and distributed training for models with high dimensional

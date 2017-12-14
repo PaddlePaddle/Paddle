@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "error.h"
 
-const char* paddle_error_string(paddle_error err) {
+extern "C" const char* paddle_error_string(paddle_error err) {
   switch (err) {
     case kPD_NULLPTR:
       return "nullptr error";

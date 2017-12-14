@@ -29,7 +29,10 @@ class TestBook(unittest.TestCase):
             label = layers.data(name='label', shape=[1], dtype='int32')
             hidden1 = layers.fc(input=images, size=128, act='relu')
             hidden2 = layers.fc(input=hidden1, size=64, act='relu')
-            predict = layers.fc(input=hidden2, size=10, act='softmax')
+            predict = layers.fc(input=[hidden2, hidden1],
+                                size=10,
+                                act='softmax',
+                                param_attr=["sftmax.w1", "sftmax.w2"])
             cost = layers.cross_entropy(input=predict, label=label)
             avg_cost = layers.mean(x=cost)
             self.assertIsNotNone(avg_cost)
