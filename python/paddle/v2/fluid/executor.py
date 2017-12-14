@@ -6,9 +6,6 @@ __all__ = ['Executor', 'g_scope']
 
 g_scope = core.Scope()
 
-# TODO(dzhwinter) : just for testing
-core.init_devices(["CPU", "GPU:0", "GPU:1"])
-
 
 def as_numpy(tensor):
     if isinstance(tensor, list):
