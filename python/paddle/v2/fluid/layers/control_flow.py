@@ -326,7 +326,7 @@ class StaticRNN(object):
             attrs={
                 'ex_states': pre_memories,
                 'states': memories,
-                'step_block': rnn_block
+                'sub_block': rnn_block
             })
 
 
@@ -403,7 +403,7 @@ class While(object):
             },
             outputs={'Out': out_vars,
                      'StepScopes': [step_scope]},
-            attrs={'step_block': while_block})
+            attrs={'sub_block': while_block})
 
 
 def lod_rank_table(x, level=0, main_program=None):
@@ -668,7 +668,7 @@ class ConditionalBlock(object):
             },
             outputs={'Out': out_list,
                      'Scope': [step_scope]},
-            attrs={'block': inside_block})
+            attrs={'sub_block': inside_block})
 
 
 class IfElseBlockGuard(object):
