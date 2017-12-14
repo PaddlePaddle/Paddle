@@ -161,7 +161,6 @@ class TestPipeReader(unittest.TestCase):
             reader = paddle.v2.reader.pipe_reader(cmd,
                                                   simple_parser,
                                                   bufsize = 128)
-            # test for 4 passes
             for i in xrange(4):
                 result = []
                 for r in reader():
