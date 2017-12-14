@@ -7,7 +7,7 @@ This Design Doc refers to the NCCL feature in  paddle.  We propose an approach t
 
 ## Motivation
 
-NCCL is a NVIDIA library support Multi-GPU communicating and optimized for NVIDIA GPUs, it provides routines such as all-gather, all-reduce, broadcast, reduce, reduce-scatter, that can achieve high bandwidth over PCIe and NVLink high-speed interconnect. [NCCL](https://developer.nvidia.com/nccl). With NCCL library, we can easily accelerate the training in parallel. 
+[NCCL](https://developer.nvidia.com/nccl) is a NVIDIA library support Multi-GPU communicating and optimized for NVIDIA GPUs, it provides routines such as all-gather, all-reduce, broadcast, reduce, reduce-scatter, that can achieve high bandwidth over PCIe and NVLink high-speed interconnect. With NCCL library, we can easily accelerate the training in parallel. 
 
 - Pros
 1. easily plug-in with [NCCL2](https://developer.nvidia.com/nccl) library.
