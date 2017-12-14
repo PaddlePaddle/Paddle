@@ -84,9 +84,9 @@ Given a 2-D tensor X with 2 rows and 2 columns
     [[1, 2], [3, 4]]
 
 and target shape = [1, 4], the reshape operator will transform
-the tensor X into a 1-D tensor:
+the tensor X into a 2-D tensor:
 
-    [1, 2, 3, 4]
+    [[1, 2, 3, 4]]
 
 )DOC");
   }

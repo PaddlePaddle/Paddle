@@ -1,17 +1,18 @@
 # 如何写新的Operator
 
  - [概念简介](#概念简介)
- - [实现C++类](#实现C++类)
-   - [定义ProtoMaker类](#定义ProtoMaker类)
-   - [定义Operator类](#定义Operator类)
-   - [定义OpKernel类](#定义OpKernel类)
-   - [注册Operator](#注册Operator)
+ - [实现C++类](#实现c类)
+   - [定义ProtoMaker类](#定义protomaker类)
+   - [定义Operator类](#定义operator类)
+   - [定义OpKernel类](#定义opkernel类)
+   - [注册Operator](#注册operator)
    - [编译](#编译)
- - [绑定Python](#绑定Python)
+ - [绑定Python](#绑定python)
  - [实现单元测试](#实现单元测试)
-   - [前向Operator单测](#前向Operator单测)
-   - [反向Operator单测](#反向Operator单测)
+   - [前向Operator单测](#前向operator单测)
+   - [反向Operator单测](#反向operator单测)
    - [编译和执行](#编译和执行)
+ - [注意事项](#注意事项)
 
 
 ## 概念简介
@@ -43,7 +44,7 @@ Kernel实现       | CPU、CUDA共享Kernel实现在`.h`文件中，否则，CPU
 ## 实现C++类
 
 
-### 1. 定义ProtoMaker类
+### 定义ProtoMaker类
 
 矩阵乘法的公式：$Out = X * Y$, 可见该计算由两个输入，一个输出组成。
 
@@ -100,7 +101,7 @@ The equation is: Out = scale*X
 - `AddAttr<AttrType>("scale", "...").SetDefault(1.0);` : 增加`scale`系数，作为参数属性，并且设置默认值为1.0。
 
 
-### 2. 定义Operator类
+### 定义Operator类
 
 下面的点实现了MulOp的定义：
 
@@ -149,7 +150,7 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
 
 通常`OpProtoMaker`和`Op`类的定义写在`.cc`文件中，和下面将要介绍的注册函数一起放在`.cc`中
 
-### 3. 定义OpKernel类
+### 定义OpKernel类
 
 `MulKernel`继承自`framework::OpKernel`，带有下面两个模板参数:
 
@@ -177,6 +178,7 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
     math::matmul<DeviceContext, T>(*X, false, *Y, false, 1, Z, 0, device_context);
   }
   };
+  ```
 
 需要注意：**不同设备(CPU、CUDA)共享一个Op定义，是否则共享同一个`OpKernel`，取决于`Compute`调用的函数是否支持不同设备。**
 
@@ -188,7 +190,7 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
 到此，前向Op实现完成。接下来，需要在`.cc`文件中注册该op和kernel。
 反向Op类的定义，反向OpKernel的定义与前向Op类似，这里不再赘述。**但需注意反向Op没有`ProtoMaker`**。
 
-### 4. 注册Operator
+### 注册Operator
 
 - 在`.cc`文件中注册前向、反向Op类，注册CPU Kernel。
 
@@ -220,7 +222,7 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
                            ops::MulGradKernel<paddle::platform::CUDADeviceContext, float>);
     ```
 
-### 5. 编译
+### 编译
 
 运行下面命令可以进行编译：
 
@@ -236,6 +238,7 @@ make mul_op
 
 单测包括对比前向Op不同设备(CPU、CUDA)的实现、对比反向OP不同设备(CPU、CUDA)的实现、反向Op的梯度测试。下面介绍介绍[`MulOp`的单元测试](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/framework/tests/test_mul_op.py)。
 
+### 前向Operator单测
 
 Op单元测试继承自`OpTest`。各项更加具体的单元测试在`TestMulOp`里完成。测试Operator，需要：
 
@@ -273,14 +276,15 @@ Op单元测试继承自`OpTest`。各项更加具体的单元测试在`TestMulOp
       def test_check_grad_ingore_y(self):
           self.check_grad(
               ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
-
-    ```
+  ```
 
 上面的代码首先导入依赖的包，下面是对`setUp`函数中操作的重要变量的详细解释：
 
 - `self.op_type = "mul" ` : 定义类型，与operator注册时注册的类型一致。
 - `self.inputs` : 定义输入，类型为`numpy.array`，并初始化。
 - `self.outputs` : 定义输出，并在Python脚本中完成与operator同样的计算逻辑，返回Python端的计算结果。
+
+### 反向operator单测
 
 而反向测试中：
 - `test_check_grad_normal`中调用`check_grad`使用数值法检测梯度正确性和稳定性。
@@ -290,7 +294,7 @@ Op单元测试继承自`OpTest`。各项更加具体的单元测试在`TestMulOp
 - `test_check_grad_ingore_x`和`test_check_grad_ingore_y`分支用来测试只需要计算一个输入梯度的情况。
 
 
-### 编译和执行单元测试
+### 编译和执行
 
 `python/paddle/v2/framework/tests` 目录下新增的 `test_*.py` 单元测试会被自动加入工程进行编译。
 
