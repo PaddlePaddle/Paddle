@@ -1,4 +1,4 @@
-# iOS Compiling Guide
+# PaddlePaddle Compiling Guide for iOS
 
 This tutorial will walk you through cross compiling the PaddlePaddle library for iOS from the source in MacOS.
 
