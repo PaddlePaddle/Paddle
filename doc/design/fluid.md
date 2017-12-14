@@ -2,25 +2,25 @@
 
 ## Why Fluid
 
-When Baidu developed PaddlePaddle in 2013, the only well-known open source deep learning system was Caffe.  However, when it open-sourced PaddlePaddle in 2016, there had been many other choices over there.  We were facing a challenge -- why would we open source yet another one?
+When Baidu developed PaddlePaddle in 2013, the only well-known open source deep learning system at the time was Caffe.  However, when PaddlePaddle was open-sourced in 2016, many other choices were available. There was a challenge -- what is the need for open sourcing yet another deep learning framework?
 
-Fluid is the answer.  Fluid is similar to PyTorch and TensorFlow Eager Execution, which describes the "process" of training or inference a model, but not the model itself.  Indeed, in PyTorch, Eager Execution, and Fluid, there is no such a concept of the model at all. I will explain in this article, Fluid is currently more extreme in this idea than PyTorch and Eager Execution, and we are pushing Fluid towards a compiler and even a new programming language for deep learning
+Fluid is the answer.  Fluid is similar to PyTorch and TensorFlow Eager Execution, which describes the "process" of training or inference using the concept of a model.  In fact in PyTorch, TensorFlow Eager Execution and Fluid, there is no  concept of a model at all. The details are covered in the sections below. Fluid is currently more extreme in the above mentioned idea than PyTorch and Eager Execution, and we are trying to push Fluid towards the directions of a compiler and a new programming language for deep learning.
 
 ## The Evolution of Deep Learning Systems
 
-Deep learning infrastructure is one of the fastest involving technology.  Within only four years, there have been three generations of technologies invented. 
+Deep learning infrastructure is one of the fastest evolving technologies. Within four years, there have already been three generations of technologies invented.
 
-| Since around | model = sequence of layers | model = graph of operators | No model |
+| Existed since | model as sequence of layers | model as graph of operators | No model |
 |--|--|--|--|
 | 2013 | Caffe, Theano, Torch, PaddlePaddle | | |
 | 2015 | | TensorFlow, MxNet, Caffe2, ONNX, n-graph | |
 | 2016 | | | PyTorch, TensorFlow Eager Execution, PaddlePaddle Fluid |
 
-From the above table, we see that the technology is evolving towards the removal of the concept of the model.  To better understand the reason, let us compare the *programming paradigms*, or, the ways we program deep learning applications using these systems.
+From the above table, we see that the deep learning technology is evolving towards getting rid of the concept of a model.  To understand the reasons behind this direction, a comparison of the *programming paradigms* or the ways to program deep learning applications using these systems, would be helpful. The following section goes over these.
 
 ## Deep Learning Programming Paradigms
 
-With any system listed as the first or second generation, e.g., Caffe or TensorFlow, an AI application training program looks like the following:
+With the systems listed as the first or second generation, e.g., Caffe or TensorFlow, an AI application training program looks like the following:
 
 ```python
 x = layer.data("image")
@@ -33,18 +33,18 @@ for i in xrange(1000): # train for 1000 iterations
     m = read_minibatch()
     forward({input=x, data=m}, minimize=c)
     backward(...)
-    
+
 print W # print the trained model parameters.
 ```
 
 The above program includes two parts:
 
-1. the first part describes the model, and
-2. the second part describes the training process (or inference process).
+1. The first part describes the model, and
+2. The second part describes the training process (or inference process) for the model.
 
-This paradigm has a well-known problem that limits programmers' productivity.  Suppose that we made some mistakes at configuring the model in the first part of the program, when we run the program, it wouldn't prompt error messages until the execution enters the second part, when the invocation to `forward` or `backward` raise errors.   It is difficult for the programmer to realize and locate that there is a mistake many lines away from where the error appears.
+This paradigm has a well-known problem that limits the productivity of programmers. If the programmer made a mistake in configuring the model, the error messages wouldn't show up until the second part is executed and `forward` and `backward` propagations are performed. This makes it difficult for the programmer to debug and locate a mistake that is located blocks away from the actual error prompt.
 
-This problem of hard to debug a program is the primary reason that programmers prefer PyTorch than elder systems.  Using PyTorch, we would write the above program like the following
+This problem of being hard to debug and re-iterate fast on a program is the primary reason that programmers, in general,  prefer PyTorch over the older systems.  Using PyTorch, we would write the above program as following:
 
 ```python
 W = tensor(...)
@@ -57,17 +57,17 @@ for i in xrange(1000): # train for 1000 iterations
     s = layer.softmax(f)
     c = layer.mse(l, s)
     backward()
-    
+
 print W # print the trained model parameters.
 ```
 
-We can see that the main difference is the moving of the model configuration, the first part, into the train loop.  This change would allow that mistakes in model configuration reported where they appear.  This change also represents the model, or its forward pass, by the process in the training loop.
+We can see that the main difference is the moving the model configuration part (the first step) into the training loop.  This change would allow the mistakes in model configuration to be reported where they actually appear in the programming block.  This change also represents the model better, or its forward pass, by keeping the configuration process in the training loop.
 
 ## Describe Arbitrary Models for the Future
 
-Describing the process instead of the model also brings Fluid the flexibility to define models not yet invented.
+Describing the process instead of the model also brings Fluid, the flexibility to define different non-standard models that haven't been invented yet.
 
-As we can program the process, we can write an RNN as a loop, instead of an RNN layer or operator.  A PyTorch example could look like
+As we write out the program for the process, we can write an RNN as a loop, instead of an RNN as a layer or as an operator.  A PyTorch example would look like the following:
 
 ```python
 for i in xrange(1000):
@@ -77,7 +77,7 @@ for i in xrange(1000):
         h[t] = the_step(x[t])
 ```        
 
-With Fluid, the training loop and the RNN in the above program are not Python loop, but a "loop structure" provided by Fluid and implemented in C++:
+With Fluid, the training loop and the RNN in the above program are not really Python loops, but just a "loop structure" provided by Fluid and implemented in C++ as the following:
 
 ```python
 train_loop = layers.While(cond)
@@ -89,34 +89,34 @@ with train_loop.block():
     h[t] = the_step(input[t])
 ```    
 
-A real Fluid example is [here](https://github.com/PaddlePaddle/Paddle/blob/a91efdde6910ce92a78e3aa7157412c4c88d9ee8/python/paddle/v2/fluid/tests/test_while_op.py#L36-L44).
+An actual Fluid example is described  [here](https://github.com/PaddlePaddle/Paddle/blob/a91efdde6910ce92a78e3aa7157412c4c88d9ee8/python/paddle/v2/fluid/tests/test_while_op.py#L36-L44).
 
-From these examples, you can see that Fluid programs look similar to their PyTorch equivalent, except that Fluid's loop structure, wrapped with Python's `with` statement, could run much faster than Python's loop.
+From the example, the Fluid programs look very similar to their PyTorch equivalent programs, except that Fluid's loop structure, wrapped with Python's `with` statement, could run much faster than just a Python loop.
 
 We have more examples of the [`if-then-else`](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/if_else_op.md) structure of Fluid.
 
 ## Turing Completeness
 
-In computability theory, a system of data-manipulation rules, such as a programming language, is said to be Turing complete if it can be used to simulate any Turing machine.  For a programming language, if it provides if-then-else and loop, it is Turing complete.  From above examples, Fluid seems Turing complete; however, I would like to point out is a slight difference between the if-then-else of Fluid and that in a programming language is that the former runs both of its branches.  It splits the input minibatch into two -- one for the true condition and one for the false.  I am not sure if this is equivalent to the if-then-else that makes programming languages Turing-complete.  I talked with [Yuang Yu](https://research.google.com/pubs/104812.html), but I need to figure out more.
+In computability theory, a system of data-manipulation rules, such as a programming language, is said to be Turing complete if it can be used to simulate any Turing machine.  For a programming language, if it provides if-then-else and loop, it is Turing complete.  From the above examples, Fluid seems to be Turing complete; however, it is noteworthy to notice that there  is a slight difference between the `if-then-else` of Fluid and that of a programming language. The difference being that the former runs both of its branches and splits the input mini-batch into two -- one for the True condition and another for the False condition. This hasn't been researched in depth if this is equivalent to the `if-then-else` in programming languages that makes them Turing-complete.  Based on a conversation with [Yuang Yu](https://research.google.com/pubs/104812.html), it seems to be the case but this needs to be looked into in-depth.
 
 ## The Execution of a Fluid Program
 
-There are two ways to run a Fluid program.  When we run an example program, it creates a protobuf message [`ProgramDesc`](https://github.com/PaddlePaddle/Paddle/blob/a91efdde6910ce92a78e3aa7157412c4c88d9ee8/paddle/framework/framework.proto#L145) that describes the process and conceptually likes an [abstract syntax tree](https://en.wikipedia.org/wiki/Abstract_syntax_tree).
+There are two ways to execute a Fluid program.  When a program is executed, it creates a protobuf message [`ProgramDesc`](https://github.com/PaddlePaddle/Paddle/blob/a91efdde6910ce92a78e3aa7157412c4c88d9ee8/paddle/framework/framework.proto#L145) that describes the process and is conceptually like an [abstract syntax tree](https://en.wikipedia.org/wiki/Abstract_syntax_tree).
 
-We have a C++ class [`Executor`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/executor.h), which runs a `ProgramDesc` like that an interpreter runs a Python program.
+There is a C++ class [`Executor`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/executor.h), which runs a `ProgramDesc`, similar to how an interpreter runs a Python program.
 
-We are moving towards a compiler, which we will explain in more details later in this article.
+Fluid is moving towards the direction of a compiler, which is explain in more detail later in this article.
 
-## Backward Compatibility
+## Backward Compatibility of Fluid
 
-Given all advantages from the removal of the concept *model*, hardware manufacturers might still prefer the existence of the concept model, so they could build their hardware reads and runs a trained model for inference.  For example, Nervana, a startup company acquired by Intel, has been working on an XPU that reads models in the format known as [n-graph](https://github.com/NervanaSystems/ngraph).  Similarly, [Movidius](https://www.movidius.com/) is producing a mobile deep learning chip that reads and runs graphs of operators too.  The well-known [ONNX](https://github.com/onnx/onnx) is also a file format of graphs of operators.
+Given all the advantages from the removal of the concept of a *model*, hardware manufacturers might still prefer the existence of the concept of a model, so it would be easier for them to support multiple frameworks all at once and could run a trained model during inference.  For example, Nervana, a startup company acquired by Intel, has been working on an XPU that reads the models in the format known as [n-graph](https://github.com/NervanaSystems/ngraph).  Similarly, [Movidius](https://www.movidius.com/) is producing a mobile deep learning chip that reads and runs graphs of operators.  The well-known [ONNX](https://github.com/onnx/onnx) is also a file format of graphs of operators.
 
-For Fluid, we can write a converter that extracts parts in the `ProgramDesc` protobuf message, converts them into a graph of operators, and exports into the ONNX or n-graph format.
+For Fluid, we can write a converter that extracts the parts in the `ProgramDesc` protobuf message, converts them into a graph of operators, and exports the graph into the ONNX or n-graph format.
 
 ## Towards a Deep Learning Language and the Compiler
 
-We can change the if-then-else and loop structure a little bit in the above Fluid example programs so to make it a new programming language, different from Python.
+We can change the `if-then-else` and loop structure a little bit in the above Fluid example programs, to make it into a new programming language, different than Python.
 
-Even if we don't invent a new language, as long as we get the `ProgramDesc` message filled in, we can write a transpiler, which translates each invocation to an operator into a C++ call to a kernel function of that operator. For example, a transpiler that weaves the CUDA kernels outputs an NVIDIA-friendly C++ program, which can be built using `nvcc`.  Another transpiler could generate MKL-friendly code that should be built using `icc` from Intel.  More interestingly, we can translate a Fluid program into its distributed version of two `ProgramDesc` messages, one for running on the trainer process, and the other one for the parameter server.  For more details of the last example, let us check the [concurrent programming design](concurrent_programming.md).  The following figure explains this two-stage process:
+Even if we do not invent a new language, as long as we get the `ProgramDesc` message filled in, we can write a transpiler, which translates each invocation to an operator, into a C++ call to a kernel function of that operator. For example, a transpiler that weaves the CUDA kernels outputs an NVIDIA-friendly C++ program, which can be built using `nvcc`.  Another transpiler could generate MKL-friendly code that should be built using `icc` from Intel.  More interestingly, we can translate a Fluid program into its distributed version of two `ProgramDesc` messages, one for running on the trainer process, and the other one for the parameter server.  For more details of the last example, the [concurrent programming design](concurrent_programming.md) document would be a good pointer.  The following figure explains the proposed two-stage process:
 
 ![](fluid-compiler.png)
