@@ -87,10 +87,15 @@ class ScatterOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Updates", "The updated value of updates op");
     AddOutput("Out", "The output of add op");
     AddComment(R"DOC(
-Scatter Operator by selecting from the first axis,
+Scatter Operator.
 
-Out = Ref
+This operator obtains output by updating the input on selected indices on the first axis:
+
+$$
+Out = Ref \\
 Out[Index] = Ref[Index] + Updates
+$$
+
 )DOC");
   }
 };

@@ -36,7 +36,7 @@ Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddl
     examples:
 
       - Optimized math operations through SSE/AVX intrinsics, BLAS libraries
-      (e.g. MKL, ATLAS, cuBLAS) or customized CPU/GPU kernels.
+      (e.g. MKL, OpenBLAS, cuBLAS) or customized CPU/GPU kernels.
       - Highly optimized recurrent networks which can handle **variable-length**
       sequence without padding.
       - Optimized local and distributed training for models with high dimensional

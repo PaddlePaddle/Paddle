@@ -6,10 +6,21 @@ width = 224
 num_class = 1000
 batch_size = get_config_arg('batch_size', int, 64)
 layer_num = get_config_arg('layer_num', int, 19)
+is_infer = get_config_arg("is_infer", bool, False)
 
-args = {'height': height, 'width': width, 'color': True, 'num_class': num_class}
+args = {
+    'height': height,
+    'width': width,
+    'color': True,
+    'num_class': num_class,
+    'is_infer': is_infer
+}
 define_py_data_sources2(
-    "train.list", None, module="provider", obj="process", args=args)
+    "train.list" if not is_infer else None,
+    "test.list" if is_infer else None,
+    module="provider",
+    obj="process",
+    args=args)
 
 settings(
     batch_size=batch_size,
@@ -98,6 +109,9 @@ elif layer_num == 19:
 else:
     print("Wrong layer number.")
 
-lab = data_layer('label', num_class)
-loss = cross_entropy(input=vgg, label=lab)
-outputs(loss)
+if is_infer:
+    outputs(vgg)
+else:
+    lab = data_layer('label', num_class)
+    loss = cross_entropy(input=vgg, label=lab)
+    outputs(loss)
