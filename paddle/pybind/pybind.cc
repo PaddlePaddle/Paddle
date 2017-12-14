@@ -282,6 +282,16 @@ All parameter, weight, gradient are variables in Paddle.
     }
     return ret_values;
   });
+  m.def("get_grad_op_desc",
+        [](const OpDescBind &op_desc,
+           const std::unordered_set<std::string> &no_grad_set,
+           std::unordered_map<std::string, std::string> &grad_to_var,
+           const std::vector<BlockDescBind *> &grad_sub_block) {
+          return framework::OpInfoMap::Instance()
+              .Get(op_desc.Type())
+              .GradOpMaker()(op_desc, no_grad_set, &grad_to_var,
+                             grad_sub_block);
+        });
   m.def("prune", [](const ProgramDescBind &origin,
                     const std::vector<std::array<size_t, 2>> &targets) {
     ProgramDescBind prog_with_targets(origin);
