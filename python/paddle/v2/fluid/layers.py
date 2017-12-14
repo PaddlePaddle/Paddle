@@ -11,7 +11,7 @@ from param_attr import ParamAttr
 __all__ = [
     'fc', 'data', 'cross_entropy', 'conv2d', 'pool2d', 'embedding', 'concat',
     'StaticRNN', 'cast', 'sequence_conv', 'sequence_pool', 'sums', 'cos_sim',
-    'batch_norm', 'accuracy', 'split_lod_tensor', 'While'
+    'batch_norm', 'accuracy', 'split_lod_tensor', 'While', 'seq_expand'
 ]
 
 _REGISTER_LAYER_FROM_OPS = [
@@ -2023,3 +2023,70 @@ class DynamicRNN(object):
         if self.status != DynamicRNN.IN_RNN:
             raise ValueError("{0} can only be invoked inside rnn block.".format(
                 method))
+
+
+def seq_expand(x, y, main_program=None, startup_program=None):
+    """Sequence Expand Layer. This layer will expand the input variable **x**
+    according to LoD information of **y**. And the following examples will
+    explain how seq_expand works:
+
+    .. code-block:: text
+
+        * Case 1
+            x is a LoDTensor:
+                x.lod = [[0,       2, 3],
+                         [0, 1,    3, 4]]
+                x.data = [a, b, c, d]
+                x.dims = [4, 1]
+
+            y is a LoDTensor:
+                y.lod = [[0,    2,    4],
+                         [0, 3, 6, 7, 8]]
+
+            with condition len(y.lod[-1]) - 1 == x.dims[0]
+
+            then output is a 2-level LoDTensor:
+                out.lod = [[0,                2,    4],
+                           [0,       3,       6, 7, 8]]
+                out.data = [a, a, a, b, b, b, c, d]
+                out.dims = [8, 1]
+
+        * Case 2
+            x is a Tensor:
+                x.data = [a, b, c]
+                x.dims = [3, 1]
+
+            y is a LoDTensor:
+                Y.lod = [[0, 2, 3, 6]]
+
+            with condition len(y.lod[-1]) - 1 == x.dims[0]
+
+            then output is a 1-level LoDTensor:
+                out.lod = [[0,    2, 3,      6]]
+                out.data = [a, a, b, c, c, c]
+                out.dims = [6, 1]
+
+    Args:
+        x (Variable): The input variable which is a Tensor or LoDTensor.
+        y (Variable): The input variable which is a LoDTensor.
+        main_program (Program): The main program.
+        startup_program (Program): The startup program.
+
+    Returns:
+        Variable: The expanded variable which is a LoDTensor.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[10], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[10, 20],
+                             dtype='float32', lod_level=1)
+            out = layers.seq_expand(x=x, y=y)
+    """
+    helper = LayerHelper('seq_expand', input=x, **locals())
+    dtype = helper.input_dtype()
+    tmp = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='seq_expand', inputs={'X': x,
+                                   'Y': y}, outputs={'Out': tmp})
+    return tmp
