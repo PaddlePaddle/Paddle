@@ -1130,7 +1130,7 @@ class StaticRNN(object):
             attrs={
                 'ex_states': pre_memories,
                 'states': memories,
-                'step_block': rnn_block
+                'sub_block': rnn_block
             })
 
 
@@ -1207,7 +1207,7 @@ class While(object):
             },
             outputs={'Out': out_vars,
                      'StepScopes': [step_scope]},
-            attrs={'step_block': while_block})
+            attrs={'sub_block': while_block})
 
 
 def lstm(x,
@@ -1671,7 +1671,7 @@ class ConditionalBlock(object):
             },
             outputs={'Out': out_list,
                      'Scope': [step_scope]},
-            attrs={'block': inside_block})
+            attrs={'sub_block': inside_block})
 
 
 class IfElseBlockGuard(object):
