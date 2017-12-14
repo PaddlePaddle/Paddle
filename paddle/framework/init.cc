@@ -62,7 +62,7 @@ bool InitDevices(const std::vector<std::string> &devices) {
       return false;
     }
   }
-  PADDLE_ENFORCE_GE(1UL, places.size());
+  PADDLE_ENFORCE_LE(1UL, places.size());
   DeviceContextPool::Create(places);
   return true;
 }
