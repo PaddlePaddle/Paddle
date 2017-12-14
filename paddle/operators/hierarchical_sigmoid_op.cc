@@ -60,12 +60,11 @@ class HierarchicalSigmoidOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInputs("X"), "Inputs(X) should not be null.");
+    PADDLE_ENFORCE(ctx->hasInput("X"), "Input(X) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null.");
-    const int64_t batch_size = ctx->GetInputsDim("X")[0][0];
-    const int64_t size = ctx->GetInputsDim("X").size();
-    std::vector<int64_t> output_shape({batch_size, size});
+    const int64_t batch_size = ctx->GetInputDim("X")[0];
+    std::vector<int64_t> output_shape({batch_size, num_classes_ - 1});
     ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
   }
 };
@@ -82,22 +81,23 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
                              framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
-             "(TensorArray, required) The input array. Each Tensor has the "
-             "same shape with [N * D].")
-        .AsDuplicable();
+             "(Tensor, required) The input Tensor, which the shape is"
+             "[N * D], which N is the size of mini-batch,"
+             "D is the embded size");
     AddInput("Parameters",
              "(Tensor, required), The parameters of hierarchical "
-             "sigmoid operator, each of them is s a 2-D tensor.")
-        .AsDuplicable();
+             "sigmoid operator, each of them is s a 3-D tensor, the shape is"
+             "[N, num_classes - 1, D]");
     AddInput("Label",
              "(Tensor, required), The labels of training data. It's a"
-             "1-D tensor.");
+             "1-D tensor, which the shape is [1, N]");
     AddInput("Bias",
              "(Tensor, optional), The bias is a 1-D tensor, "
-             "which is applied to the output.");
-    AddOutput(
-        "Out",
-        "(Tensor, required) The output of hierarchical sigmoid operator.");
+             "which is applied to the output, the shape is"
+             "[1, num_classes -1]");
+    AddOutput("Out",
+              "(Tensor, required) The output of hierarchical sigmoid operator."
+              "the shape is [N, 1]");
     AddAttr<int>("num_classes", "(int, required)", "The number of classes");
     AddComment(R"DOC(
 The hierarchical sigmoid operator organize the classes into a binary tree.

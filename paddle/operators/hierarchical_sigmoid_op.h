@@ -28,8 +28,8 @@ template <typename Place, typename T>
 class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<framework::Tensor>("X");
-    auto params = ctx.MultiInput<framework::Tensor>("Parameters");
+    auto* in = ctx.Input<framework::Tensor>("X");
+    auto* param = ctx.Input<framework::Tensor>("Parameter");
     auto* label = ctx.Input<framework::Tensor>("Label");
     auto* bias = ctx.Input<framework::Tensor>("Bias");
     auto* out = ctx.Output<framework::Tensor>("Out");
@@ -56,8 +56,9 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
       math::AddByBitCode<T>(num_classes, *label, pre_out, *bias);
     }
 
-    for (size_t i = 0; i < ins.size(); ++i) {
-      math::MulByBitCode<T>(num_classes, *label, pre_out, *params[i], *ins[i]);
+    for (size_t i = 0; i < in.dims()[0]; ++i) {
+      math::MulByBitCode<T>(num_classes, *label, pre_out,
+                            *params->Slice(i, i + 1), *in->Slice(i, i + 1));
     }
     // clip the matrix with (-40, 40)
     pre_out_mat.device(place) =
@@ -79,11 +80,10 @@ template <typename Place, typename T>
 class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<framework::Tensor>("X");
-    auto ins_grad =
-        ctx.MultiOutput<framework::Tensor>(framework::GradVarName("X"));
-    auto params = ctx.MultiOutput<framework::Tensor>(
-        framework::GradVarName("Parameters"));
+    auto* in = ctx.Input<framework::Tensor>("X");
+    auto* in_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* params =
+        ctx.Output<framework::Tensor>(framework::GradVarName("Parameters"));
     auto* bias = ctx.Output<framework::Tensor>(framework::GradVarName("Bias"));
     auto* label =
         ctx.Output<framework::Tensor>(framework::GradVarName("Label"));
@@ -92,7 +92,7 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
     framework::Tensor pre_out;
     auto place = ctx.GetEigenDevice<Place>();
     auto& dev_ctx = ctx.device_context();
-    int64_t batch_size = ins_grad.size();
+    int64_t batch_size = in_grad.dims()[0];
     int64_t code_length = math::FindLastSet(num_classes - 1);
     auto pre_out_mat = EigenMatrix<T>::From(pre_out);
 
@@ -111,11 +111,11 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
       math::AddByBitCodeGrad<T>(num_classes, *label, pre_out, *bias);
     }
 
-    for (size_t i = 0; i < ins_grad.size(); ++i) {
+    for (size_t i = 0; i < in_grad.dims()[0]; ++i) {
       math::MulByBitCodeGradWeight<T>(num_classes, *label, pre_out, *params[i],
-                                      *ins[i]);
+                                      *in[i]->Slice(i, i + 1));
       math::MulByBitCodeGradError<T>(num_classes, *label, pre_out, *params[i],
-                                     *ins_grad[i]);
+                                     *ins_grad[i]->Slice(i, i + 1));
     }
   }
 };
