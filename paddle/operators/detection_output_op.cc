@@ -16,10 +16,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class Detection_output_OpMaker : public framework::OpProtoAndCheckerMaker {
+class DetectionOutputOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Detection_output_OpMaker(framework::OpProto* proto,
-                           framework::OpAttrChecker* op_checker)
+  DetectionOutputOpMaker(framework::OpProto* proto,
+                         framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Loc",
              "(Tensor) The input tensor of detection_output operator."
@@ -59,21 +59,21 @@ class Detection_output_OpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class Detection_output_Op : public framework::OperatorWithKernel {
+class DetectionOutputOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Loc"),
-                   "Input(X) of Detection_output_Op"
+                   "Input(X) of DetectionOutputOp"
                    "should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Conf"),
-                   "Input(X) of Detection_output_Op"
+                   "Input(X) of DetectionOutputOp"
                    "should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("PriorBox"),
-                   "Input(X) of Detection_output_Op"
+                   "Input(X) of DetectionOutputOp"
                    "should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of Detection_output_Op should not be null.");
+                   "Output(Out) of DetectionOutputOp should not be null.");
     std::vector<int64_t> output_shape({1, 7});
     ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
   }
@@ -82,8 +82,8 @@ class Detection_output_Op : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(detection_output, ops::Detection_output_Op,
-                             ops::Detection_output_OpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(detection_output, ops::DetectionOutputOp,
+                             ops::DetectionOutputOpMaker);
 REGISTER_OP_CPU_KERNEL(
     detection_output,
     ops::Detection_output_Kernel<paddle::platform::CPUDeviceContext, float>,
