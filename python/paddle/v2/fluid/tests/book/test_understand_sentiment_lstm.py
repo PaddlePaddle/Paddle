@@ -1,6 +1,7 @@
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
+from paddle.v2.fluid.layer_helper import LayerHelper
 
 
 def lstm(x,
@@ -14,20 +15,20 @@ def lstm(x,
     Memory) cell that can be used inside an RNN.
     """
     helper = LayerHelper('lstm_unit', **locals())
-    rnn = StaticRNN()
+    rnn = fluid.layers.StaticRNN()
     with rnn.step():
         c_pre = rnn.memory(init=c_pre_init)
         x_t = rnn.step_input(x)
 
-        before_fc = concat(
+        before_fc = fluid.layers.concat(
             input=[x_t, c_pre],
             axis=1,
             main_program=main_program,
             startup_program=startup_program)
-        after_fc = fc(input=before_fc,
-                      size=hidden_dim * 4,
-                      main_program=main_program,
-                      startup_program=startup_program)
+        after_fc = fluid.layers.fc(input=before_fc,
+                                   size=hidden_dim * 4,
+                                   main_program=main_program,
+                                   startup_program=startup_program)
 
         dtype = x.dtype
         c = helper.create_tmp_variable(dtype)

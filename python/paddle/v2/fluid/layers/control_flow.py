@@ -9,7 +9,8 @@ __all__ = [
     'StaticRNNMemoryLink', 'WhileGuard', 'While', 'lod_rank_table',
     'max_sequence_len', 'topk', 'lod_tensor_to_array', 'array_to_lod_tensor',
     'increment', 'array_write', 'create_array', 'less_than', 'array_read',
-    'shrink_memory', 'array_length', 'IfElse', 'DynamicRNN'
+    'shrink_memory', 'array_length', 'IfElse', 'DynamicRNN', 'ConditionalBlock',
+    'StaticRNN'
 ]
 
 
