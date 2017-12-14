@@ -52,19 +52,20 @@ namespace math {
 */
 template <class CodeTable, class Op, typename T>
 static void AddByBitCodeT(Op op, CodeTable code_table,
-                          const framework::Tensor& codes, framework::Tensor& a,
-                          const framework::Tensor& b) {
+                          const framework::Tensor& codes,
+                          framework::Tensor& tmat,
+                          const framework::Tensor& vec) {
   size_t num_classes = code_table.size();
   size_t max_code_length = code_table.get_max_code_length();
-  size_t num_sample = a.dims()[0];
-  size_t width = a.dims()[1];
+  size_t num_sample = tmat.dims()[0];
+  size_t width = vec.dims()[1];
 
   for (size_t i = 0; i < num_sample; ++i) {
     auto code = code_table(codes.data<T>()[i]);
     int code_length = code.get_length();
     for (int j = 0; j < code_length; + j) {
       size_t index = code.calc_index(j);
-      op(a.data<T>()[i * width + j], b.data<T>()[index]);
+      op(tmat.data<T>()[i * width + j], vec.data<T>()[index]);
     }
   }
 }
