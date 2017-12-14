@@ -61,7 +61,6 @@ class DeviceContextPool {
 
   explicit DeviceContextPool(const std::vector<platform::Place>& places) {
     PADDLE_ENFORCE_GT(places.size(), 0);
-    // device_contexts_.resize(places.size());
     for (size_t i = 0; i < places.size(); i++) {
       if (platform::is_cpu_place(places[i])) {
         device_contexts_.emplace(
@@ -81,11 +80,7 @@ class DeviceContextPool {
     }
   }
 
-  ~DeviceContextPool() {
-    // for (auto& device_context : device_contexts_) {
-    //   delete device_context;
-    // }
-  }
+  ~DeviceContextPool() {}
 
  private:
   static DeviceContextPool* pool;
