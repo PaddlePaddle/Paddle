@@ -28,9 +28,9 @@ Besides, it needs interfaces to synchronize model update with each different GPU
 
 As mentioned above, we wrap the NCCL routines as several kinds of operators. Need to note that NCCL need to create Communicator between gpu at the beginning, so there is a NCCLInit operator created.
 
-### Graph Converter
+### Transpiler
 
-To be compatible with [parameter server design doc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/ops/dist_train.md), the graph converter converts the user defined operation graph into sub-graphs to be executed on different devices.
+To be compatible with [parameter server design doc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/ops/dist_train.md), the transpiler compiles the user defined operation graph into sub-graphs to be executed on different devices.
 
 1. The user-defined model will be a single device program
 
@@ -40,7 +40,7 @@ To be compatible with [parameter server design doc](https://github.com/PaddlePad
 
    <img src="images/multigpu_before_convert.png" width="300"/>
 
-After convert, the graph as shows
+After compiling, the graph as shows
 
 <img src="images/multigpu_allreduce.png" width="1000"/>
 
