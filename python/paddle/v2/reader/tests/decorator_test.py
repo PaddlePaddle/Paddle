@@ -158,8 +158,7 @@ class TestPipeReader(unittest.TestCase):
                     f.write('%s\n' % r)
 
             cmd = "cat %s" % temp.name
-            #reader = paddle.v2.reader.pipe_reader(cmd,
-            reader = pipe_reader(cmd,
+            reader = paddle.v2.reader.pipe_reader(cmd,
                                                   simple_parser,
                                                   bufsize = 128)
             # test for 4 passes
