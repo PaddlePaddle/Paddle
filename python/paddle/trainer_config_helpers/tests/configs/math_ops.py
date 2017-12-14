@@ -4,6 +4,8 @@ settings(batch_size=1000, learning_rate=1e-5)
 
 x = data_layer(name='data', size=100)
 x = layer_math.exp(x)
+x = layer_math.sqrt(x)
+x = layer_math.reciprocal(x)
 x = layer_math.log(x)
 x = layer_math.abs(x)
 x = layer_math.sigmoid(x)

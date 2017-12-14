@@ -17,10 +17,12 @@ import paddle.trainer_config_helpers.attrs
 __all__ = [
     "Param",
     "Extra",
+    "Hook",
 ]
 
 Param = paddle.trainer_config_helpers.attrs.ParameterAttribute
 Extra = paddle.trainer_config_helpers.attrs.ExtraLayerAttribute
+Hook = paddle.trainer_config_helpers.attrs.HookAttribute
 
 for each in paddle.trainer_config_helpers.attrs.__all__:
     globals()[each] = getattr(paddle.trainer_config_helpers.attrs, each)

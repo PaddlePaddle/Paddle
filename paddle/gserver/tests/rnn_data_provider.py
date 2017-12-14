@@ -95,3 +95,22 @@ def process_unequalength_seq(settings, file_name):
         words1 = reduce(lambda x, y: x + y, d[0])
         words2 = reduce(lambda x, y: x + y, d[1])
         yield words1, words2, d[2]
+
+
+###########################################################
+data3 = [
+    [[[1, 2], [4, 5, 2]], [1, 2], 0],
+    [[[0, 2], [2, 5], [0, 1, 2]], [2, 3, 0], 1],
+]
+
+
+# Used for sequence_nest_mixed_inputs.conf
+@provider(
+    input_types=[
+        integer_value_sub_sequence(10), integer_value_sequence(10),
+        integer_value(2)
+    ],
+    should_shuffle=False)
+def process_mixed(settings, file_name):
+    for d in data3:
+        yield d

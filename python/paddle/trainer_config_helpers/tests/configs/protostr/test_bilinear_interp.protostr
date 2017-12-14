@@ -28,6 +28,8 @@ layers {
       stride_y: 1
       output_y: 48
       img_size_y: 48
+      dilation: 1
+      dilation_y: 1
     }
   }
   bias_parameter_name: "___conv_0__.wbias"
@@ -90,8 +92,6 @@ layers {
     input_layer_name: "__pool_0__"
     input_parameter_name: "___fc_layer_0__.w0"
   }
-  height: 32
-  width: 32
 }
 parameters {
   name: "___conv_0__.w0"

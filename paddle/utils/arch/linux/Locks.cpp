@@ -40,6 +40,8 @@ void Semaphore::wait() { sem_wait(&m->sem); }
 
 void Semaphore::post() { sem_post(&m->sem); }
 
+/// SpinLockPrivate
+
 #ifdef PADDLE_USE_PTHREAD_SPINLOCK
 
 class SpinLockPrivate {
@@ -55,8 +57,11 @@ public:
 };
 
 #else
-
+// clang-format off
+#include <cstddef>
 #include <atomic>
+// clang-format on
+
 class SpinLockPrivate {
 public:
   inline void lock() {
@@ -75,6 +80,8 @@ SpinLock::SpinLock() : m(new SpinLockPrivate()) {}
 SpinLock::~SpinLock() { delete m; }
 void SpinLock::lock() { m->lock(); }
 void SpinLock::unlock() { m->unlock(); }
+
+/// ThreadBarrierPrivate
 
 #ifdef PADDLE_USE_PTHREAD_BARRIER
 
@@ -132,6 +139,8 @@ public:
 };
 
 #endif
+
+/// ThreadBarrier
 
 ThreadBarrier::ThreadBarrier(int count) : m(new ThreadBarrierPrivate(count)) {}
 ThreadBarrier::~ThreadBarrier() { delete m; }

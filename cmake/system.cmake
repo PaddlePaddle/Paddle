@@ -13,9 +13,9 @@
 # limitations under the License.
 
 # Detects the OS and sets appropriate variables.
-# CMAKE_SYSTEM_NAME only give us a coarse-grained name,
-# but the name like centos is necessary in some scenes
-# to distinguish system for customization.
+# CMAKE_SYSTEM_NAME only give us a coarse-grained name of the OS CMake is
+# building for, but the host processor name like centos is necessary
+# in some scenes to distinguish system for customization.
 #
 # for instance, protobuf libs path is <install_dir>/lib64
 # on CentOS, but <install_dir>/lib on other systems.
@@ -24,10 +24,15 @@ IF(WIN32)
     SET(HOST_SYSTEM "win32")
 ELSE(WIN32)
     IF(APPLE)
-        EXEC_PROGRAM (sw_vers ARGS -productVersion OUTPUT_VARIABLE MACOSX_VERSION)
-        STRING(REGEX MATCH "[0-9]+.[0-9]+" VERSION "${MACOSX_VERSION}")
-        SET(MACOS_VERSION ${VERSION})
         SET(HOST_SYSTEM "macosx")
+        EXEC_PROGRAM(sw_vers ARGS -productVersion OUTPUT_VARIABLE HOST_SYSTEM_VERSION)
+        STRING(REGEX MATCH "[0-9]+.[0-9]+" MACOS_VERSION "${HOST_SYSTEM_VERSION}")
+        IF(NOT DEFINED $ENV{MACOSX_DEPLOYMENT_TARGET})
+            # Set cache variable - end user may change this during ccmake or cmake-gui configure.
+            SET(CMAKE_OSX_DEPLOYMENT_TARGET ${MACOS_VERSION} CACHE STRING
+                "Minimum OS X version to target for deployment (at runtime); newer APIs weak linked. Set to empty string for default value.")
+        ENDIF()
+        set(CMAKE_EXE_LINKER_FLAGS "-framework CoreFoundation -framework Security")
     ELSE(APPLE)
 
         IF(EXISTS "/etc/issue")
@@ -43,6 +48,8 @@ ELSE(WIN32)
             ELSEIF(LINUX_ISSUE MATCHES "Fedora")
                 SET(HOST_SYSTEM "fedora")
             ENDIF()
+
+            STRING(REGEX MATCH "(([0-9]+)\\.)+([0-9]+)" HOST_SYSTEM_VERSION "${LINUX_ISSUE}")
         ENDIF(EXISTS "/etc/issue")
 
         IF(EXISTS "/etc/redhat-release")
@@ -64,12 +71,21 @@ CMAKE_HOST_SYSTEM_INFORMATION(RESULT CPU_CORES QUERY NUMBER_OF_LOGICAL_CORES)
 
 MARK_AS_ADVANCED(HOST_SYSTEM CPU_CORES)
 
-MESSAGE(STATUS "Found Paddle host system: ${HOST_SYSTEM}")
+MESSAGE(STATUS "Found Paddle host system: ${HOST_SYSTEM}, version: ${HOST_SYSTEM_VERSION}")
 MESSAGE(STATUS "Found Paddle host system's CPU: ${CPU_CORES} cores")
 
+# configuration for cross-compiling
 IF(DEFINED CMAKE_SYSTEM_NAME)
+    INCLUDE(cross_compiling/host)
     IF(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
         SET(ANDROID TRUE)
+        INCLUDE(cross_compiling/android)
+    ELSEIF(${CMAKE_SYSTEM_NAME} STREQUAL "RPi")
+        SET(RPI TRUE)
+        INCLUDE(cross_compiling/raspberry_pi)
+    ELSEIF(${CMAKE_SYSTEM_NAME} STREQUAL "iOS")
+        SET(IOS TRUE)
+        INCLUDE(cross_compiling/ios)
     ENDIF()
 ENDIF()
 

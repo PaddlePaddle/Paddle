@@ -12,13 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
-#include <cmath>
 #include <stdlib.h>
-#include "hl_cuda.h"
-#include "hl_time.h"
+#include <cmath>
 #include "hl_base.h"
+#include "hl_cuda.h"
 #include "hl_perturbation_util.cuh"
+#include "hl_time.h"
 
 #define _USE_MATH_DEFINES
 
@@ -30,10 +29,16 @@ limitations under the License. */
  * centerX, centerY: translation.
  * sourceX, sourceY: output coordinates in the original image.
  */
-__device__ void getTranformCoord(int x, int y, real theta, real scale,
-                                 real tgtCenter, real imgCenter,
-                                 real centerR, real centerC,
-                                 int* sourceX, int* sourceY) {
+__device__ void getTranformCoord(int x,
+                                 int y,
+                                 real theta,
+                                 real scale,
+                                 real tgtCenter,
+                                 real imgCenter,
+                                 real centerR,
+                                 real centerC,
+                                 int* sourceX,
+                                 int* sourceY) {
   real H[4] = {cosf(-theta), -sinf(-theta), sinf(-theta), cosf(-theta)};
 
   // compute coornidates in the rotated and scaled image
@@ -57,11 +62,17 @@ __device__ void getTranformCoord(int x, int y, real theta, real scale,
  * created by Wei Xu (genome), converted by Jiang Wang
  */
 
-__global__ void kSamplingPatches(const real* imgs, real* targets,
-                                 int imgSize, int tgtSize, const int channels,
-                                 int samplingRate, const real* thetas,
-                                 const real* scales, const int* centerRs,
-                                 const int* centerCs, const real padValue,
+__global__ void kSamplingPatches(const real* imgs,
+                                 real* targets,
+                                 int imgSize,
+                                 int tgtSize,
+                                 const int channels,
+                                 int samplingRate,
+                                 const real* thetas,
+                                 const real* scales,
+                                 const int* centerRs,
+                                 const int* centerCs,
+                                 const real padValue,
                                  const int numImages) {
   const int caseIdx = blockIdx.x * 4 + threadIdx.x;
   const int pxIdx = blockIdx.y * 128 + threadIdx.y;
@@ -80,8 +91,15 @@ __global__ void kSamplingPatches(const real* imgs, real* targets,
     const int pxY = pxIdx / tgtSize;
 
     int srcPxX, srcPxY;
-    getTranformCoord(pxX, pxY, thetas[imgIdx], scales[imgIdx], tgtCenter,
-                     imgCenter, centerCs[caseIdx], centerRs[caseIdx], &srcPxX,
+    getTranformCoord(pxX,
+                     pxY,
+                     thetas[imgIdx],
+                     scales[imgIdx],
+                     tgtCenter,
+                     imgCenter,
+                     centerCs[caseIdx],
+                     centerRs[caseIdx],
+                     &srcPxX,
                      &srcPxY);
 
     imgs += (imgIdx * imgPixels + srcPxY * imgSize + srcPxX) * channels;
@@ -100,10 +118,15 @@ __global__ void kSamplingPatches(const real* imgs, real* targets,
  *
  * created by Wei Xu
  */
-void hl_generate_disturb_params(real*& gpuAngle, real*& gpuScaleRatio,
-                                int*& gpuCenterR, int*& gpuCenterC,
-                                int numImages, int imgSize, real rotateAngle,
-                                real scaleRatio, int samplingRate,
+void hl_generate_disturb_params(real*& gpuAngle,
+                                real*& gpuScaleRatio,
+                                int*& gpuCenterR,
+                                int*& gpuCenterC,
+                                int numImages,
+                                int imgSize,
+                                real rotateAngle,
+                                real scaleRatio,
+                                int samplingRate,
                                 bool isTrain) {
   // The number of output samples.
   int numPatches = numImages * samplingRate;
@@ -123,7 +146,8 @@ void hl_generate_disturb_params(real*& gpuAngle, real*& gpuScaleRatio,
     for (int i = 0; i < numImages; i++) {
       r_angle[i] =
           (rotateAngle * M_PI / 180.0) * (rand() / (RAND_MAX + 1.0)  // NOLINT
-                                          - 0.5);
+                                          -
+                                          0.5);
       s_ratio[i] =
           1 + (rand() / (RAND_MAX + 1.0) - 0.5) * scaleRatio;  // NOLINT
     }
@@ -140,8 +164,10 @@ void hl_generate_disturb_params(real*& gpuAngle, real*& gpuScaleRatio,
         int pxY =
             (int)(real(imgSize - 1) * rand() / (RAND_MAX + 1.0));  // NOLINT
 
-        const real H[4] = {cos(-r_angle[i]), -sin(-r_angle[i]),
-                           sin(-r_angle[i]), cos(-r_angle[i])};
+        const real H[4] = {cos(-r_angle[i]),
+                           -sin(-r_angle[i]),
+                           sin(-r_angle[i]),
+                           cos(-r_angle[i])};
         real x = pxX - imgCenter;
         real y = pxY - imgCenter;
         real xx = H[0] * x + H[1] * y;
@@ -185,9 +211,12 @@ void hl_generate_disturb_params(real*& gpuAngle, real*& gpuScaleRatio,
   delete[] center_c;
 }
 
-void hl_conv_random_disturb_with_params(const real* images, int imgSize,
-                                        int tgtSize, int channels,
-                                        int numImages, int samplingRate,
+void hl_conv_random_disturb_with_params(const real* images,
+                                        int imgSize,
+                                        int tgtSize,
+                                        int channels,
+                                        int numImages,
+                                        int samplingRate,
                                         const real* gpuRotationAngle,
                                         const real* gpuScaleRatio,
                                         const int* gpuCenterR,
@@ -202,29 +231,59 @@ void hl_conv_random_disturb_with_params(const real* images, int imgSize,
   dim3 threadsPerBlock(4, 128);
   dim3 numBlocks(DIVUP(numPatches, 4), DIVUP(targetSize, 128));
 
-  kSamplingPatches <<<numBlocks, threadsPerBlock>>>
-      (images, target, imgSize, tgtSize, channels, samplingRate,
-      gpuRotationAngle, gpuScaleRatio, gpuCenterR, gpuCenterC,
-      paddingValue, numImages);
+  kSamplingPatches<<<numBlocks, threadsPerBlock>>>(images,
+                                                   target,
+                                                   imgSize,
+                                                   tgtSize,
+                                                   channels,
+                                                   samplingRate,
+                                                   gpuRotationAngle,
+                                                   gpuScaleRatio,
+                                                   gpuCenterR,
+                                                   gpuCenterC,
+                                                   paddingValue,
+                                                   numImages);
 
   hl_device_synchronize();
 }
 
-void hl_conv_random_disturb(const real* images, int imgSize,
-                            int tgtSize, int channels, int numImages,
-                            real scaleRatio, real rotateAngle,
-                            int samplingRate, real* gpu_r_angle,
-                            real* gpu_s_ratio, int* gpu_center_r,
-                            int* gpu_center_c, int paddingValue,
-                            bool isTrain, real* targets) {
+void hl_conv_random_disturb(const real* images,
+                            int imgSize,
+                            int tgtSize,
+                            int channels,
+                            int numImages,
+                            real scaleRatio,
+                            real rotateAngle,
+                            int samplingRate,
+                            real* gpu_r_angle,
+                            real* gpu_s_ratio,
+                            int* gpu_center_r,
+                            int* gpu_center_c,
+                            int paddingValue,
+                            bool isTrain,
+                            real* targets) {
   // generate the random disturbance sequence and the sampling locations
-  hl_generate_disturb_params(gpu_r_angle, gpu_s_ratio, gpu_center_r,
-                  gpu_center_c, numImages, imgSize, rotateAngle,
-                  scaleRatio, samplingRate, isTrain);
+  hl_generate_disturb_params(gpu_r_angle,
+                             gpu_s_ratio,
+                             gpu_center_r,
+                             gpu_center_c,
+                             numImages,
+                             imgSize,
+                             rotateAngle,
+                             scaleRatio,
+                             samplingRate,
+                             isTrain);
 
-  hl_conv_random_disturb_with_params(
-                  images, imgSize, tgtSize, channels, numImages,
-                  samplingRate, gpu_r_angle, gpu_s_ratio,
-                  gpu_center_r, gpu_center_r, paddingValue,
-                  targets);
+  hl_conv_random_disturb_with_params(images,
+                                     imgSize,
+                                     tgtSize,
+                                     channels,
+                                     numImages,
+                                     samplingRate,
+                                     gpu_r_angle,
+                                     gpu_s_ratio,
+                                     gpu_center_r,
+                                     gpu_center_r,
+                                     paddingValue,
+                                     targets);
 }

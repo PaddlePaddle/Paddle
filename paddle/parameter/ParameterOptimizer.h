@@ -167,6 +167,7 @@ public:
     }
     parameterTypes_.push_back(type);
   }
+
   real getLearningRate() const { return learningRate_; }
 
   virtual void setNoDecay() { applyDecay_ = false; }
@@ -201,6 +202,7 @@ protected:
    * so, if lr change in StartBatch, please assign to learningRate_
    */
   real learningRate_;
+
   std::unique_ptr<LearningRateScheduler> learningRateScheduler_;
   int64_t pass_;  // current training pass (starting from 0)
   bool firstTime_;

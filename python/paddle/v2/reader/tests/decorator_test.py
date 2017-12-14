@@ -121,5 +121,29 @@ class TestShuffle(unittest.TestCase):
             self.assertEqual(total, 10)
 
 
+class TestXmap(unittest.TestCase):
+    def test_xmap(self):
+        def mapper(x):
+            return (x + 1)
+
+        orders = (True, False)
+        thread_nums = (1, 2, 4, 8, 16)
+        buffered_size = (1, 2, 4, 8, 16)
+        for order in orders:
+            for tNum in thread_nums:
+                for size in buffered_size:
+                    reader = paddle.v2.reader.xmap_readers(mapper,
+                                                           reader_creator_10(0),
+                                                           tNum, size, order)
+                    for n in xrange(3):
+                        result = []
+                        for i in reader():
+                            result.append(i)
+                        if not order:
+                            result.sort()
+                        for idx, e in enumerate(result):
+                            self.assertEqual(e, mapper(idx))
+
+
 if __name__ == '__main__':
     unittest.main()

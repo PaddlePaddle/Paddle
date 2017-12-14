@@ -12,15 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "hl_base.h"
 #include "PadOp.h"
+#include "hl_base.h"
 
 namespace paddle {
 
-__global__ void KePad(real* outputs, const real* inputs,
-                      int inC, int inH, int inW,
-                      int padc, int padh, int padw,
-                      int outC, int outH, int outW, int nthreads) {
+__global__ void KePad(real* outputs,
+                      const real* inputs,
+                      int inC,
+                      int inH,
+                      int inW,
+                      int padc,
+                      int padh,
+                      int padw,
+                      int outC,
+                      int outH,
+                      int outW,
+                      int nthreads) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < nthreads) {
     const int w = idx % inW;
@@ -50,16 +58,33 @@ void Pad<DEVICE_TYPE_GPU>(real* outputs,
   int outC = inC + cstart + cend;
   int outH = inH + hstart + hend;
   int outW = inW + wstart + wend;
-  KePad<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>
-    (outputs, inputs, inC, inH, inW, cstart, hstart, wstart,
-     outC, outH, outW, nth);
+  KePad<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(outputs,
+                                                    inputs,
+                                                    inC,
+                                                    inH,
+                                                    inW,
+                                                    cstart,
+                                                    hstart,
+                                                    wstart,
+                                                    outC,
+                                                    outH,
+                                                    outW,
+                                                    nth);
   CHECK_SYNC("Pad");
 }
 
-__global__ void KePadDiff(real* inGrad, const real* outGrad,
-                          int inC, int inH, int inW,
-                          int padc, int padh, int padw,
-                          int outC, int outH, int outW, int nthreads) {
+__global__ void KePadDiff(real* inGrad,
+                          const real* outGrad,
+                          int inC,
+                          int inH,
+                          int inW,
+                          int padc,
+                          int padh,
+                          int padw,
+                          int outC,
+                          int outH,
+                          int outW,
+                          int nthreads) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < nthreads) {
     const int w = idx % inW;
@@ -89,9 +114,18 @@ void PadGrad<DEVICE_TYPE_GPU>(real* inGrad,
   int outC = inC + cstart + cend;
   int outH = inH + hstart + hend;
   int outW = inW + wstart + wend;
-  KePadDiff <<<gridSize, blockSize, 0, STREAM_DEFAULT>>>
-    (inGrad, outGrad, inC, inH, inW, cstart, hstart, wstart,
-     outC, outH, outW, nth);
+  KePadDiff<<<gridSize, blockSize, 0, STREAM_DEFAULT>>>(inGrad,
+                                                        outGrad,
+                                                        inC,
+                                                        inH,
+                                                        inW,
+                                                        cstart,
+                                                        hstart,
+                                                        wstart,
+                                                        outC,
+                                                        outH,
+                                                        outW,
+                                                        nth);
   CHECK_SYNC("PadGrad");
 }
 

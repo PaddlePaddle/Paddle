@@ -23,8 +23,8 @@ package paddle;
  */
 enum ParameterUpdateMode {
   // Set parameter
-   PSERVER_UPDATE_MODE_SET_PARAM = 0;//use local param
-   PSERVER_UPDATE_MODE_SET_PARAM_ZERO = 1;//set zero param
+  PSERVER_UPDATE_MODE_SET_PARAM = 0;      // use local param
+  PSERVER_UPDATE_MODE_SET_PARAM_ZERO = 1; // set zero param
 
   // Update parameter once a gradient is received
   PSERVER_UPDATE_MODE_ASYNC_SGD = 2;
@@ -37,7 +37,7 @@ enum ParameterUpdateMode {
 
   // No update. Only get parameters back.
   PSERVER_UPDATE_MODE_GET_PARAM = 5;
-  PSERVER_UPDATE_MODE_GET_PARAM_SPARSE = 6;//only get sparse rows
+  PSERVER_UPDATE_MODE_GET_PARAM_SPARSE = 6; // only get sparse rows
 };
 
 message ParameterBlock {
@@ -80,42 +80,34 @@ message SendParameterRequest {
   optional int32 trainer_id = 7;
 
   // send back parameter type on pserver, PARAMETER_VALUE by default
-  optional int32 send_back_parameter_type = 8 [default = 0];
+  optional int32 send_back_parameter_type = 8 [ default = 0 ];
 
   // forwardbackward time in usec
   optional uint64 forwardbackward_time = 9;
-
 }
 
-message WaitPassStartRequest {
-}
+message WaitPassStartRequest {}
 
-message WaitPassStartResponse {
-}
+message WaitPassStartResponse {}
 
-message WaitPassFinishRequest {
-}
+message WaitPassFinishRequest {}
 
-message WaitPassFinishResponse {
-}
+message WaitPassFinishResponse {}
 
 enum SyncObject {
   SYNC_DEFAULT = 0; // wait for the synchronizeBarrier_
-  SYNC_DATA = 1; // wait for the synchronizeDataBarrier_
+  SYNC_DATA = 1;    // wait for the synchronizeDataBarrier_
 }
 
 message SynchronizeRequest {
-  required SyncObject sync_object_id = 1 [default = SYNC_DEFAULT];
+  required SyncObject sync_object_id = 1 [ default = SYNC_DEFAULT ];
 
   optional int32 trainer_id = 2;
 }
 
-message SynchronizeResponse {
-}
+message SynchronizeResponse {}
 
-message SendParameterResponse  {
-  repeated ParameterBlock blocks = 1;
-}
+message SendParameterResponse { repeated ParameterBlock blocks = 1; }
 
 message SetConfigRequest {
   repeated ParameterConfig param_configs = 1;
@@ -125,26 +117,18 @@ message SetConfigRequest {
   required bool is_sparse_server = 6;
 }
 
-message SetConfigResponse{
-}
+message SetConfigResponse {}
 
-message GetStatusRequest {
-}
+message GetStatusRequest {}
 
-message GetStatusResponse {
-  required PServerStatus status = 1;
-}
+message GetStatusResponse { required PServerStatus status = 1; }
 
-message SetStatusRequest {
-  required PServerStatus status = 1;
-}
+message SetStatusRequest { required PServerStatus status = 1; }
 
-message SetStatusResponse {
-}
+message SetStatusResponse {}
 
 // create a column vector. The size is the dimension of parameter
-message CreateVectorRequest {
-}
+message CreateVectorRequest {}
 
 message CreateVectorResponse {
   // error message. Empty if success
@@ -153,9 +137,7 @@ message CreateVectorResponse {
   required int64 handle = 2;
 }
 
-message ReleaseVectorRequest {
-  required int64 handle = 1;
-}
+message ReleaseVectorRequest { required int64 handle = 1; }
 
 message ReleaseVectorResponse {
   // error message. Empty if success
@@ -164,9 +146,7 @@ message ReleaseVectorResponse {
 
 // Create a column major matrix. The number of rows is the dimension
 // of parameter. The number of columns is specifed by num_cols
-message CreateMatrixRequest {
-  required int32 num_cols = 1;
-}
+message CreateMatrixRequest { required int32 num_cols = 1; }
 
 message CreateMatrixResponse {
   // error message. Empty if success
@@ -175,15 +155,12 @@ message CreateMatrixResponse {
   required int64 handle = 2;
 }
 
-message ReleaseMatrixRequest {
-  required int64 handle = 1;
-}
+message ReleaseMatrixRequest { required int64 handle = 1; }
 
 message ReleaseMatrixResponse {
   // error message. Empty if success
   optional string return_message = 1;
 }
-
 
 /**
  * The operations are defined using the variables commented at Operation
@@ -245,36 +222,36 @@ enum MatrixVectorOperation {
 
 message ProtoVector {
   required int64 dim = 1;
-  repeated double values = 2 [packed = true];
+  repeated double values = 2 [ packed = true ];
 }
 
 message ProtoMatrix {
   required int64 num_rows = 1;
   required int64 num_cols = 2;
-  repeated double values = 3 [packed = true];
+  repeated double values = 3 [ packed = true ];
 }
 
 message Operation {
   required MatrixVectorOperation operation = 1;
 
   // vector handles created on the pserver
-  repeated int64 pvectors = 2;        // u, v, w
+  repeated int64 pvectors = 2; // u, v, w
 
   // matrix handles created on the pserver
-  repeated int64 pmatrices = 3;       // A, B, C
+  repeated int64 pmatrices = 3; // A, B, C
 
-  repeated double scalars = 4;  	      // a, b, c
-  repeated ProtoVector vectors = 5;   // x, y, z
-  repeated ProtoMatrix matrices = 6;  // X, Y, Z
+  repeated double scalars = 4;       // a, b, c
+  repeated ProtoVector vectors = 5;  // x, y, z
+  repeated ProtoMatrix matrices = 6; // X, Y, Z
 }
 
 message OperationResult {
   // error message. Empty if success
   optional string return_message = 1;
-//
-  repeated double scalars = 2;  // d, e, f
+  //
+  repeated double scalars = 2;       // d, e, f
   repeated ProtoVector vectors = 3;  // p, q, r
-  repeated ProtoMatrix matrices = 4;  // P, Q, R
+  repeated ProtoMatrix matrices = 4; // P, Q, R
 }
 
 message DoOperationRequest {
@@ -301,18 +278,14 @@ message DoOperationResponse {
   required bool pass_finish = 3;
 }
 
-message LoadValueRequest {
-  required string dir_name = 1;
-}
+message LoadValueRequest { required string dir_name = 1; }
 
 message LoadValueResponse {
   // error message. Empty if success
   optional string return_message = 1;
 }
 
-message SaveValueRequest {
-  required string dir_name = 1;
-}
+message SaveValueRequest { required string dir_name = 1; }
 
 message SaveValueResponse {
   // error message. Empty if success
@@ -331,11 +304,11 @@ enum DataUpdateMode {
   // Client send it's own ref label to pserver
   DATA_UPDATE_MODE_SET_REF_LABEL = 4;
   // Client get all ref labels from all pservers
-  DATA_UPDATE_MODE_GET_REF_LABEL =5;
+  DATA_UPDATE_MODE_GET_REF_LABEL = 5;
   // Client send it's own ref grad to pserver
-  DATA_UPDATE_MODE_SET_REF_GRAD =6;
+  DATA_UPDATE_MODE_SET_REF_GRAD = 6;
   // Client get all ref grad from all pservers
-  DATA_UPDATE_MODE_GET_REF_GRAD =7;
+  DATA_UPDATE_MODE_GET_REF_GRAD = 7;
 }
 
 enum SendDataType {
@@ -360,7 +333,7 @@ message DataBlock {
   // byte size of one data type
   required int32 data_size = 2;
   // data_type
-  optional TransDataType data_type = 3 [default = TRANS_DOUBLE];
+  optional TransDataType data_type = 3 [ default = TRANS_DOUBLE ];
 }
 
 message SendDataRequest {

@@ -22,10 +22,10 @@ limitations under the License. */
  */
 typedef enum {
   HL_POOLING_MAX = 0,
-  // average includes padded values
-  HL_POOLING_AVERAGE = 1,
   // average does not include padded values
-  HL_POOLING_AVERAGE_EXCLUDE_PADDING = 2,
+  HL_POOLING_AVERAGE = 1,
+  // average includes padded values
+  HL_POOLING_AVERAGE_INCLUDE_PADDING = 2,
   HL_POOLING_END
 } hl_pooling_mode_t;
 
@@ -214,7 +214,8 @@ extern void hl_conv_workspace(hl_tensor_descriptor input,
                               int* convBwdDataAlgo,
                               size_t* bwdDataLimitBytes,
                               int* convBwdFilterAlgo,
-                              size_t* bwdFilterLimitBytes);
+                              size_t* bwdFilterLimitBytes,
+                              bool useDilation);
 
 /**
  * @brief   destroy filter descriptor.
@@ -242,7 +243,9 @@ extern void hl_create_convolution_descriptor(hl_convolution_descriptor* conv,
                                              int padding_height,
                                              int padding_width,
                                              int stride_height,
-                                             int stride_width);
+                                             int stride_width,
+                                             int dilation_h = 1,
+                                             int dilation_w = 1);
 
 /**
  * @brief   reset convolution descriptor.
@@ -262,7 +265,9 @@ extern void hl_reset_convolution_descriptor(hl_convolution_descriptor conv,
                                             int padding_height,
                                             int padding_width,
                                             int stride_height,
-                                            int stride_width);
+                                            int stride_width,
+                                            int dilation_h = 1,
+                                            int dilation_w = 1);
 
 /**
  * @brief   destroy convolution descriptor.

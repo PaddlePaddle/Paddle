@@ -1,25 +1,25 @@
 # Python Data Reader Design Doc
 
-At training and testing time, PaddlePaddle programs need to read data. To ease the users' work to write data reading code, we define that
+During the training and testing phases, PaddlePaddle programs need to read data. To help the users write code that performs reading input data, we define the following:
 
-- A *reader* is a function that reads data (from file, network, random number generator, etc) and yields data items.
-- A *reader creator* is a function that returns a reader function.
-- A *reader decorator* is a function, which accepts one or more readers, and returns a reader.
-- A *batch reader* is a function that reads data (from *reader*, file, network, random number generator, etc) and yields a batch of data items.
+- A *reader*: A function that reads data (from file, network, random number generator, etc) and yields the data items.
+- A *reader creator*: A function that returns a reader function.
+- A *reader decorator*: A function, which takes in one or more readers, and returns a reader.
+- A *batch reader*: A function that reads data (from *reader*, file, network, random number generator, etc) and yields a batch of data items.
 
-and provide function which converts reader to batch reader, frequently used reader creators and reader decorators.
+and also provide a function which can convert a reader to a batch reader, frequently used reader creators and reader decorators.
 
 ## Data Reader Interface
 
-Indeed, *data reader* doesn't have to be a function that reads and yields data items. It can be any function with no parameter that creates a iterable (anything can be used in `for x in iterable`):
+*Data reader* doesn't have to be a function that reads and yields data items. It can just be any function without any parameters that creates an iterable (anything can be used in `for x in iterable`) as follows:
 
 ```
 iterable = data_reader()
 ```
 
-Element produced from the iterable should be a **single** entry of data, **not** a mini batch. That entry of data could be a single item, or a tuple of items. Item should be of [supported type](http://www.paddlepaddle.org/doc/ui/data_provider/pydataprovider2.html?highlight=dense_vector#input-types) (e.g., numpy 1d array of float32, int, list of int)
+The item produced from the iterable should be a **single** entry of data and **not** a mini batch. The entry of data could be a single item or a tuple of items. Item should be of one of the [supported types](http://www.paddlepaddle.org/doc/ui/data_provider/pydataprovider2.html?highlight=dense_vector#input-types) (e.g., numpy 1d array of float32, int, list of int etc.)
 
-An example implementation for single item data reader creator:
+An example implementation for single item data reader creator is as follows:
 
 ```python
 def reader_creator_random_image(width, height):
@@ -29,7 +29,7 @@ def reader_creator_random_image(width, height):
     return reader
 ```
 
-An example implementation for multiple item data reader creator:
+An example implementation for multiple item data reader creator is as follows:
 ```python
 def reader_creator_random_image_and_label(width, height, label):
     def reader():
@@ -40,9 +40,10 @@ def reader_creator_random_image_and_label(width, height, label):
 
 ## Batch Reader Interface
 
-*batch reader* can be any function with no parameter that creates a iterable (anything can be used in `for x in iterable`). The output of the iterable should be a batch (list) of data items. Each item inside the list must be a tuple.
+*Batch reader* can be any function without any parameters that creates an iterable (anything can be used in `for x in iterable`). The output of the iterable should be a batch (list) of data items. Each item inside the list should be a tuple.
 
-Here are valid outputs:
+Here are some valid outputs:
+
 ```python
 # a mini batch of three data items. Each data item consist three columns of data, each of which is 1.
 [(1, 1, 1),
@@ -52,26 +53,28 @@ Here are valid outputs:
 # a mini batch of three data items, each data item is a list (single column).
 [([1,1,1],),
 ([2,2,2],),
-([3,3,3],),
+([3,3,3],)]
 ```
 
 Please note that each item inside the list must be a tuple, below is an invalid output:
 ```python
  # wrong, [1,1,1] needs to be inside a tuple: ([1,1,1],).
- # Otherwise it's ambiguous whether [1,1,1] means a single column of data [1, 1, 1],
- # or three column of datas, each of which is 1.
+ # Otherwise it is ambiguous whether [1,1,1] means a single column of data [1, 1, 1],
+ # or three columns of data, each of which is 1.
 [[1,1,1],
 [2,2,2],
 [3,3,3]]
 ```
 
-It's easy to convert from reader to batch reader:
+It is easy to convert from a reader to a batch reader:
+
 ```python
 mnist_train = paddle.dataset.mnist.train()
 mnist_train_batch_reader = paddle.batch(mnist_train, 128)
 ```
 
-Also easy to create custom batch reader:
+It is also straight forward to create a custom batch reader:
+
 ```python
 def custom_batch_reader():
     while True:
@@ -85,7 +88,8 @@ mnist_random_image_batch_reader = custom_batch_reader
 
 ## Usage
 
-batch reader, mapping from item(s) read to data layer, batch size and number of total pass will be passed into `paddle.train`:
+Following is how we can use the reader with PaddlePaddle:
+The batch reader, a mapping from item(s) to data layer, the batch size and the number of total passes will be passed into `paddle.train` as follows:
 
 ```python
 # two data layer is created:
@@ -99,13 +103,13 @@ paddle.train(batch_reader, {"image":0, "label":1}, 128, 10, ...)
 
 ## Data Reader Decorator
 
-*Data reader decorator* takes a single or multiple data reader, returns a new data reader. It is similar to a [python decorator](https://wiki.python.org/moin/PythonDecorators), but it does not use `@` syntax.
+The *Data reader decorator* takes in a single reader or multiple data readers and returns a new data reader. It is similar to a [python decorator](https://wiki.python.org/moin/PythonDecorators), but it does not use `@` in the syntax.
 
-Since we have a strict interface for data readers (no parameter, return a single data item). Data reader can be used flexiable via data reader decorators. Following are a few examples:
+Since we have a strict interface for data readers (no parameters and return a single data item), a data reader can be used in a flexible way using data reader decorators. Following are a few examples:
 
 ### Prefetch Data
 
-Since reading data may take time and training can not proceed without data. It is generally a good idea to prefetch data.
+Since reading data may take some time and training can not proceed without data, it is generally a good idea to prefetch the data.
 
 Use `paddle.reader.buffered` to prefetch data:
 
@@ -117,9 +121,9 @@ buffered_reader = paddle.reader.buffered(paddle.dataset.mnist.train(), 100)
 
 ### Compose Multiple Data Readers
 
-For example, we want to use a source of real images (reusing mnist dataset), and a source of random images as input for [Generative Adversarial Networks](https://arxiv.org/abs/1406.2661).
+For example, if we want to use a source of real images (say reusing mnist dataset), and a source of random images as input for [Generative Adversarial Networks](https://arxiv.org/abs/1406.2661).
 
-We can do:
+We can do the following :
 
 ```python
 def reader_creator_random_image(width, height):
@@ -139,13 +143,13 @@ false_reader = reader_creator_bool(False)
 
 reader = paddle.reader.compose(paddle.dataset.mnist.train(), data_reader_creator_random_image(20, 20), true_reader, false_reader)
 # Skipped 1 because paddle.dataset.mnist.train() produces two items per data entry.
-# And we don't care second item at this time.
+# And we don't care about the second item at this time.
 paddle.train(paddle.batch(reader, 128), {"true_image":0, "fake_image": 2, "true_label": 3, "false_label": 4}, ...)
 ```
 
 ### Shuffle
 
-Given shuffle buffer size `n`, `paddle.reader.shuffle` will return a data reader that buffers `n` data entries and shuffle them before a data entry is read.
+Given the shuffle buffer size `n`, `paddle.reader.shuffle` returns a data reader that buffers `n` data entries and shuffles them before a data entry is read.
 
 Example:
 ```python
@@ -154,21 +158,21 @@ reader = paddle.reader.shuffle(paddle.dataset.mnist.train(), 512)
 
 ## Q & A
 
-### Why reader return only a single entry, but not a mini batch?
+### Why does a reader return only a single entry, and not a mini batch?
 
-Always returning a single entry make reusing existing data readers much easier (e.g., if existing reader return not a single entry but 3 entries, training code will be more complex because it need to handle cases like batch size 2).
+Returning a single entry makes reusing existing data readers much easier (for example, if an existing reader returns 3 entries instead if a single entry, the training code will be more complicated because it need to handle cases like a batch size 2).
 
-We provide function `paddle.batch` to turn (single entry) reader into batch reader.
+We provide a function: `paddle.batch` to turn (a single entry) reader into a batch reader.
 
-### Why do we need batch reader, isn't train take reader and batch_size as arguments sufficient?
+### Why do we need a batch reader, isn't is sufficient to give the reader and batch_size as arguments during training ?
 
-In most of the case, train taking reader and batch_size as arguments would be sufficent. However sometimes user want to customize order of data entries inside a mini batch. Or even change batch size dynamically.
+In most of the cases, it would be sufficient to give the reader and batch_size as arguments to the train method. However sometimes the user wants to customize the order of data entries inside a mini batch, or even change the batch size dynamically. For these cases using a batch reader is very efficient and helpful.
 
-### Why use a dictionary but not a list to provide mapping?
+### Why use a dictionary instead of a list to provide mapping?
 
-We decided to use dictionary (`{"image":0, "label":1}`) instead of list (`["image", "label"]`) is because that user can easily resue item (e.g., using `{"image_a":0, "image_b":0, "label":1}`) or skip item (e.g., using `{"image_a":0, "label":2}`).
+Using a dictionary (`{"image":0, "label":1}`) instead of a list (`["image", "label"]`) gives the advantage that the user can easily reuse the items (e.g., using `{"image_a":0, "image_b":0, "label":1}`) or even skip an item (e.g., using `{"image_a":0, "label":2}`).
 
-### How to create custom data reader creator
+### How to create a custom data reader creator ?
 
 ```python
 def image_reader_creator(image_path, label_path, n):
@@ -192,7 +196,7 @@ paddle.train(paddle.batch(reader, 128), {"image":0, "label":1}, ...)
 
 ### How is `paddle.train` implemented
 
-An example implementation of paddle.train could be:
+An example implementation of paddle.train is:
 
 ```python
 def train(batch_reader, mapping, batch_size, total_pass):

@@ -26,10 +26,9 @@ namespace paddle {
  * If SequenceLevel = kNonseq:
  *   Output: a sequence containing only the last instance of the input sequence
  *   If stride_ > 0:
- *      Output: a shorten sequence. The operation of getting last instance of a
- *              sequence is independently performed on every slice of the input
- *              sequence, which is obtained by sliding a window with the window
- *              size set to stride_.
+ *      Output: a shorten sequence. Stride is the step size by which we slide a
+ *              window upon the input sequence, and getting last instance
+ *              operation is then applied to each interval independently.
  * If SequenceLevel = kSeq:
  *   Check input sequence must has sub-sequence
  *   Output: a sequence containing only the last instance of each sub-sequence
@@ -73,8 +72,7 @@ bool SequenceLastInstanceLayer::init(const LayerMap& layerMap,
 void SequenceLastInstanceLayer::forward(PassType passType) {
   SequencePoolLayer::forward(passType);
 
-  auto starts = (stride_ > 0) ? stridePositions_->getData()
-                              : startPositions_->getData(false);
+  auto starts = startPositions_->getData(false);
   MatrixPtr inputValue = getInputValue(0);
   MatrixPtr outputValue = getOutputValue();
 

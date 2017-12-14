@@ -25,7 +25,7 @@ namespace paddle {
  */
 void sparseRand(
     int* major, int* minor, int nnz, int majorLen, int minorMax, bool useGpu) {
-  CHECK(size_t(nnz) > size_t(1));
+  CHECK(size_t(nnz) >= size_t(1));
   int* cpuMajor;
   int* cpuMinor;
   CpuIVector cpuMinorVec(nnz);

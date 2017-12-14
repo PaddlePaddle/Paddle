@@ -28,11 +28,12 @@ void testMatrixProjectionForward(int context_start,
                std::max(0, (int)(context_start + context_length - 1));
   if (pad == 0) is_padding = false;
 
-  FunctionCompare test("ContextProjectionForward",
-                       FuncConfig()
-                           .set("context_length", context_length)
-                           .set("context_start", context_start)
-                           .set("begin_pad", std::max(0, -context_start)));
+  CpuGpuFuncCompare test(
+      "ContextProjectionForward",
+      FuncConfig()
+          .set("context_length", context_length)
+          .set("context_start", context_start)
+          .set("begin_pad", (size_t)std::max(0, -context_start)));
 
   // prepare input arguments
   test.addSequence(SequenceIdArg(TensorShape{batch_size}));
@@ -51,7 +52,7 @@ void testMatrixProjectionForward(int context_start,
 }
 
 void testMatrixProjectionBackward(int context_start,
-                                  int context_length,
+                                  size_t context_length,
                                   bool is_padding,
                                   size_t batch_size,
                                   size_t input_dim) {
@@ -59,13 +60,14 @@ void testMatrixProjectionBackward(int context_start,
                std::max(0, (int)(context_start + context_length - 1));
   if (pad == 0) is_padding = false;
 
-  FunctionCompare test("ContextProjectionBackward",
-                       FuncConfig()
-                           .set("context_length", context_length)
-                           .set("context_start", context_start)
-                           .set("begin_pad", std::max(0, -context_start))
-                           .set("is_padding", is_padding)
-                           .set("total_pad", pad));
+  CpuGpuFuncCompare test(
+      "ContextProjectionBackward",
+      FuncConfig()
+          .set("context_length", context_length)
+          .set("context_start", context_start)
+          .set("begin_pad", (size_t)std::max(0, -context_start))
+          .set("is_padding", is_padding)
+          .set("total_pad", pad));
 
   // prepare input arguments
   test.addSequence(SequenceIdArg(TensorShape{batch_size}));

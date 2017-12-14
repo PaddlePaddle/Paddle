@@ -19,19 +19,22 @@ limitations under the License. */
 /// for MSVC
 #define CPUID(info, x) __cpuidex(info, x, 0)
 
-#elif !defined(__ANDROID__)
+#else
 
+#if !defined(__arm__) && !defined(__aarch64__)
 #include <cpuid.h>
-
 /// for GCC/Clang
 #define CPUID(info, x) __cpuid_count(x, 0, info[0], info[1], info[2], info[3])
+#endif
 
 #endif
 
 namespace paddle {
 
 SIMDFlags::SIMDFlags() {
-#if !defined(__ANDROID__)
+#if defined(__arm__) || defined(__aarch64__)
+  simd_flags_ = SIMD_NEON;
+#else
   unsigned int cpuInfo[4];
   // CPUID: https://en.wikipedia.org/wiki/CPUID
   // clang-format off
@@ -52,8 +55,6 @@ SIMDFlags::SIMDFlags() {
   CPUID(cpuInfo, 0x80000001);
   simd_flags_ |= cpuInfo[2] & (1 << 16) ? SIMD_FMA4  : SIMD_NONE;
   // clang-fotmat on
-#else
-  simd_flags_ = SIMD_NEON;
 #endif
 }
 

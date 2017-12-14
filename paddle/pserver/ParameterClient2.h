@@ -583,6 +583,7 @@ protected:
 #ifndef PADDLE_DISABLE_TIMER
   uint64_t forwardbackwordTime_;
 #endif
+  std::mutex sparseAutoGrowthMutex_;
 
   /// map id to parameter used for decoding protobuf data
   std::unordered_map<size_t, ParameterPtr> parameterMap_;

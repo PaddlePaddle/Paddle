@@ -320,6 +320,9 @@ void loadFileList(const std::string& fileListFileName,
 }
 
 double getMemoryUsage() {
+#if defined(__ANDROID__)
+  return 0.0;
+#else
   FILE* fp = fopen("/proc/meminfo", "r");
   CHECK(fp) << "failed to fopen /proc/meminfo";
   size_t bufsize = 256 * sizeof(char);
@@ -357,6 +360,7 @@ double getMemoryUsage() {
   delete[] buf;
   double usedMem = 1.0 - 1.0 * (freeMem + bufMem + cacheMem) / totalMem;
   return usedMem;
+#endif
 }
 
 SyncThreadPool* getGlobalSyncThreadPool() {

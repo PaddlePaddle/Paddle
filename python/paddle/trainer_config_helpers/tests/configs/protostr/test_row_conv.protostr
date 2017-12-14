@@ -1,0 +1,41 @@
+type: "nn"
+layers {
+  name: "data"
+  type: "data"
+  size: 2560
+  active_type: ""
+}
+layers {
+  name: "__row_conv_layer_0__"
+  type: "row_conv"
+  size: 2560
+  active_type: "relu"
+  inputs {
+    input_layer_name: "data"
+    input_parameter_name: "___row_conv_layer_0__.w0"
+    row_conv_conf {
+      context_length: 19
+    }
+  }
+}
+parameters {
+  name: "___row_conv_layer_0__.w0"
+  size: 48640
+  initial_mean: 0.0
+  initial_std: 0.229415733871
+  dims: 19
+  dims: 2560
+  initial_strategy: 0
+  initial_smart: true
+}
+input_layer_names: "data"
+output_layer_names: "__row_conv_layer_0__"
+sub_models {
+  name: "root"
+  layer_names: "data"
+  layer_names: "__row_conv_layer_0__"
+  input_layer_names: "data"
+  output_layer_names: "__row_conv_layer_0__"
+  is_recurrent_layer_group: false
+}
+

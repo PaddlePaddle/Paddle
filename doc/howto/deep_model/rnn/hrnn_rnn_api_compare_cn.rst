@@ -81,7 +81,7 @@
   
   * 在本例中，我们将原始数据的每一组，通过\ :code:`recurrent_group`\ 进行拆解，拆解成的每一句话再通过一个LSTM网络。这和单层RNN的配置是等价的。
 
-* 与单层RNN的配置类似，我们只需要使用LSTM encode成的最后一个向量。所以对\ :code:`recurrent_group`\ 进行了\ :code:`last_seq`\ 操作。但和单层RNN不同，我们是对每一个子序列取最后一个元素，因此\ :code:`agg_level=AggregateLevel.EACH_SEQUENCE`\ 。
+* 与单层RNN的配置类似，我们只需要使用LSTM encode成的最后一个向量。所以对\ :code:`recurrent_group`\ 进行了\ :code:`last_seq`\ 操作。但和单层RNN不同，我们是对每一个子序列取最后一个元素，因此\ :code:`agg_level=AggregateLevel.TO_SEQUENCE`\ 。
 
 * 至此，\ :code:`lstm_last`\ 便和单层RNN配置中的\ :code:`lstm_last`\ 具有相同的结果了。
 

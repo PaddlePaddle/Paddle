@@ -19,7 +19,7 @@ using namespace paddle;  // NOLINT
 
 TEST(SIMDFlags, gccTest) {
 #if (defined(__GNUC__) || defined(__GNUG__)) && !(defined(__clang__)) && \
-    !defined(__arm__)
+    !defined(__arm__) && !defined(__aarch64__)
   // clang-format off
   CHECK(!__builtin_cpu_supports("sse")    != HAS_SSE);
   CHECK(!__builtin_cpu_supports("sse2")   != HAS_SSE2);

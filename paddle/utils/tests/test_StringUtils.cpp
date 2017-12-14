@@ -18,6 +18,6 @@ limitations under the License. */
 
 TEST(StringUtil, to) {
   ASSERT_NEAR(paddle::str::to<double>("12.45"), 12.45, 1e-5);
-  ASSERT_DEATH(paddle::str::to<double>("12.45x23"), ".*");
-  ASSERT_DEATH(paddle::str::to<int>(""), ".*");
+  ASSERT_DEATH_IF_SUPPORTED(paddle::str::to<double>("12.45x23"), ".*");
+  ASSERT_DEATH_IF_SUPPORTED(paddle::str::to<int>(""), ".*");
 }

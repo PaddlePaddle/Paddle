@@ -60,7 +60,7 @@ public:
    */
   inline real* get(int row) const {
     if (preallocatedBuf_) {
-      CHECK_LE((row + 1) * width_ * sizeof(real), preallocatedBuf_->getSize());
+      CHECK_LE((row)*width_ * sizeof(real), preallocatedBuf_->getSize());
       return reinterpret_cast<real*>(preallocatedBuf_->getBuf()) + row * width_;
     } else {
       CHECK_LE((row + 1) * width_, rowStore_.size());
@@ -99,7 +99,11 @@ public:
   /**
    * @brief clear local buffer. It only affect auto-growth buffer.
    */
-  inline void clear() { rowStore_.clear(); }
+  inline void clear() {
+    // swap an empty vector to it to free the memory.
+    std::vector<real, AlignedAllocator<real, 32>> empty;
+    rowStore_.swap(empty);
+  }
 
   /**
    * @brief get current number of rows.

@@ -22,7 +22,6 @@ limitations under the License. */
 
 #include <arpa/inet.h>
 #include <net/if.h>
-#include <net/if_arp.h>
 #include <sys/ioctl.h>
 #include <sstream>
 
@@ -49,6 +48,11 @@ DEFINE_int32(sock_send_buf_size,
 DEFINE_int32(sock_recv_buf_size,
              1024 * 1024 * 40,
              "restrict sock recv buff size");
+
+/// reasonable sock_listen_queue_size can control maximum pending connections.
+DEFINE_int32(sock_listen_queue_size,
+             1024,
+             "listen queue size when pserver listen a TCP port");
 
 namespace paddle {
 
@@ -130,7 +134,7 @@ SocketServer::SocketServer(const std::string &addr, int port, int rdmaCpu)
   if (rdmaCpu == -1) {
     tcpRdma_ = F_TCP;
     socket_ = 0;
-    maxPendingConnections_ = 100;
+    maxPendingConnections_ = FLAGS_sock_listen_queue_size;
   } else {
     tcpRdma_ = F_RDMA;
     rdmaCpu_ = rdmaCpu;
@@ -142,7 +146,7 @@ SocketServer::SocketServer(const std::string &addr, int port, int rdmaCpu)
   }
 
   /// trigger to initialize RDMA lib
-  PCHECK(RdmaClientDaemons::get()) << "initilizate RDMA failed\n";
+  CHECK(RdmaClientDaemons::get()) << "initilizate RDMA failed\n";
 }
 
 SocketServer::~SocketServer() {
@@ -168,7 +172,7 @@ void SocketServer::tcpServer() {
 
   /// First call to socket() function
   socket_ = socket(AF_INET, SOCK_STREAM, 0);
-  PCHECK(socket_ >= 0) << "ERROR opening socket";
+  CHECK(socket_ >= 0) << "ERROR opening socket";
 
   /// Initialize socket structure
   bzero((char *)&serv_addr, sizeof(serv_addr));
@@ -176,7 +180,7 @@ void SocketServer::tcpServer() {
   serv_addr.sin_port = htons(port_);
   if (!addr_.empty()) {
     server = gethostbyname(addr_.c_str());
-    PCHECK(server) << "ERROR, no such host: " << addr_;
+    CHECK(server) << "ERROR, no such host: " << addr_;
     bcopy((char *)server->h_addr,
           (char *)&serv_addr.sin_addr.s_addr,
           server->h_length);
@@ -187,7 +191,7 @@ void SocketServer::tcpServer() {
   setOption(socket_);
 
   /// Now bind the host address using bind() call.
-  PCHECK(bind(socket_, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) >= 0)
+  CHECK(bind(socket_, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) >= 0)
       << "ERROR on binding " << addr_;
 
   /// Now start listening for the clients, here process will
@@ -201,7 +205,7 @@ void SocketServer::tcpServer() {
     if (stopping_) {
       break;
     }
-    PCHECK(newsockfd >= 0) << "ERROR on accept";
+    CHECK(newsockfd >= 0) << "ERROR on accept";
     constexpr int kPeerNameLen = 128;
     char peerName[kPeerNameLen];
     CHECK(inet_ntop(AF_INET, &cli_addr.sin_addr, peerName, kPeerNameLen));
@@ -227,14 +231,14 @@ void SocketServer::rdmaServer() {
 
   /// First call to socket() function
   rdmaSocket_ = rdma::ssocket(rdmaCpu_);
-  PCHECK(rdmaSocket_) << "ERROR opening RDMA socket";
+  CHECK(rdmaSocket_) << "ERROR opening RDMA socket";
 
-  PCHECK(rdma::bind(rdmaSocket_, rdmaUri_.c_str()) == 0)
+  CHECK(rdma::bind(rdmaSocket_, rdmaUri_.c_str()) == 0)
       << "ERROR bind RDMA socket";
 
   /// Now start listening for the clients, here process will
   /// go in sleep mode and will wait for the incoming connection
-  PCHECK(rdma::listen(rdmaSocket_) == 0) << "ERROR listen RDMA socket";
+  CHECK(rdma::listen(rdmaSocket_) == 0) << "ERROR listen RDMA socket";
 
   while (true) {
     /// Accept actual connection from the client
@@ -242,7 +246,7 @@ void SocketServer::rdmaServer() {
     if (stopping_) {
       break;
     }
-    PCHECK(newsock) << "ERROR on accept";
+    CHECK(newsock) << "ERROR on accept";
 
     constexpr int kPeerNameLen = 128;
     char peerName[kPeerNameLen];
@@ -290,7 +294,7 @@ RdmaClientDaemons::RdmaClientDaemons() {
     onlineCpus_ = rdma::numCpus();
     for (auto i = 0; i < onlineCpus_; i++) {
       socket = rdma::csocket(i);
-      PCHECK(socket) << "ERROR open client socket daemon";
+      CHECK(socket) << "ERROR open client socket daemon";
 
       rdmaClientSocket_.push_back(socket);
     }
@@ -355,7 +359,7 @@ void SocketClient::TcpClient(const std::string &serverAddr, int serverPort) {
 
   /// Create a socket point
   int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-  PCHECK(sockfd >= 0) << "ERROR opening socket";
+  CHECK(sockfd >= 0) << "ERROR opening socket";
 
 #if defined(__OSX__) || defined(__APPLE__)
   server = getipnodebyname(serverAddr.c_str(), AF_INET, AI_DEFAULT, &errRet);
@@ -383,20 +387,23 @@ void SocketClient::TcpClient(const std::string &serverAddr, int serverPort) {
   setOption(sockfd);
 
   /// Now connect to the server
-  int retry_second = 0;
-  int error = 0;
+  int retry_count = 0;
   do {
-    error = connect(sockfd, (sockaddr *)&serv_addr, sizeof(serv_addr));
-    if (error == ECONNREFUSED) {
+    if (connect(sockfd, (sockaddr *)&serv_addr, sizeof(serv_addr)) == 0) {
+      break;
+    }
+
+    if (errno == ECONNREFUSED) {
       LOG(WARNING) << "connection refused by pserver, try again!";
-      if (retry_second++ >= 7) {
+      if (retry_count++ >= 7) {
         LOG(FATAL) << "connection refused by pserver, maybe pserver failed!";
       }
       std::this_thread::sleep_for(std::chrono::seconds(1));
     } else {
-      PCHECK(error >= 0) << "ERROR connecting to " << serverAddr;
+      CHECK(errno != 0) << "ERROR connecting to " << serverAddr << ":"
+                        << serverPort << "errorno: " << errno;
     }
-  } while (error == ECONNREFUSED);
+  } while (errno == ECONNREFUSED);
 
   channel_.reset(new SocketChannel(sockfd, serverAddr));
   tcpRdma_ = F_TCP;
@@ -423,7 +430,7 @@ void SocketClient::RdmaClient(const std::string &serverAddr, int serverPort) {
 
   /// connect to server with socket daemon
   sock = rdma::connect(socketDaemon_, rdmaUri.c_str());
-  PCHECK(sock) << "ERROR connect to server" << rdmaUri;
+  CHECK(sock) << "ERROR connect to server" << rdmaUri;
 
   std::vector<std::string> seg;
   str::split(rdmaUri, '/', &seg);

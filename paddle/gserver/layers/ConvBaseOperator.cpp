@@ -59,7 +59,8 @@ void ConvBaseOperator::allocConvWorkSpace() {
                     &bwdDataAlgo_,
                     &bwdDataLimitBytes_,
                     &bwdFilterAlgo_,
-                    &bwdFilterLimitBytes_);
+                    &bwdFilterLimitBytes_,
+                    /*useDilation*/ false);
 
   size_t maxWorkSpace = 0;
   maxWorkSpace = std::max(fwdLimitBytes_, bwdDataLimitBytes_);

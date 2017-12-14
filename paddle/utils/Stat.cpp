@@ -97,34 +97,6 @@ std::ostream& operator<<(std::ostream& outPut, const Stat& stat) {
   return outPut;
 }
 
-BarrierStatPtr StatSet::getStat(uint16_t numConnThreads,
-                                const std::string& name,
-                                BarrierStatType bType) {
-  {
-    ReadLockGuard guard(lock_);
-    auto it = barrierStatSet_.find(name);
-    if (it != barrierStatSet_.end()) {
-      return it->second;
-    }
-  }
-
-  std::lock_guard<RWLock> guard(lock_);
-  // test again with lock_guard
-  auto it = barrierStatSet_.find(name);
-  if (it != barrierStatSet_.end()) {
-    return it->second;
-  }
-
-  BarrierStatPtr stat;
-  if (bType == BARRIER_END) {
-    stat = std::make_shared<BarrierEndStat>(numConnThreads, name);
-  } else if (bType == BARRIER_DELTA) {
-    stat = std::make_shared<BarrierDeltaStat>(numConnThreads, name);
-  }
-  auto ret = barrierStatSet_.insert(std::make_pair(name, stat));
-  return ret.first->second;
-}
-
 void StatSet::printSegTimerStatus() {
   ReadLockGuard guard(lock_);
   LOG(INFO) << std::setiosflags(std::ios::left) << std::setfill(' ')
@@ -135,45 +107,19 @@ void StatSet::printSegTimerStatus() {
   }
 }
 
-void StatSet::printBarrierTimerStatus() {
-  ReadLockGuard guard(lock_);
-  if (barrierStatSet_.empty()) {
-    return;
-  }
-  // control barrierAbstact in runtime, so enable compliation
-  LOG(INFO) << std::setiosflags(std::ios::left) << std::setfill(' ')
-            << "======= BarrierStatSet status ======" << std::endl;
-  for (auto& stat : barrierStatSet_) {
-    LOG(INFO) << std::setiosflags(std::ios::left) << std::setfill(' ')
-              << *(stat.second);
-  }
-}
-
 void StatSet::printAllStatus() {
 #ifndef PADDLE_DISABLE_TIMER
   printSegTimerStatus();
 #endif
-  printBarrierTimerStatus();
   LOG(INFO) << std::setiosflags(std::ios::left)
             << "--------------------------------------------------"
             << std::endl;
-}
-
-void StatSet::printStatus(const std::string& name) {
-  ReadLockGuard guard(lock_);
-  auto iter = statSet_.find(name);
-  CHECK(iter != statSet_.end()) << name << " is not registed in " << name_;
-  LOG(INFO) << *(iter->second);
 }
 
 void StatSet::reset(bool clearRawData) {
   ReadLockGuard guard(lock_);
   for (auto& stat : statSet_) {
     stat.second->reset();
-  }
-  // reset barrierStat
-  for (auto& stat : barrierStatSet_) {
-    stat.second->reset(clearRawData);
   }
 }
 
@@ -182,13 +128,6 @@ void StatSet::setThreadInfo(const std::string& name, bool flag) {
   auto iter = statSet_.find(name);
   CHECK(iter != statSet_.end()) << name << " is not registed in " << name_;
   iter->second->setThreadInfo(flag);
-}
-
-void StatSet::deleteStat(const std::string& name) {
-  std::lock_guard<RWLock> guard(lock_);
-  auto iter = statSet_.find(name);
-  CHECK(iter != statSet_.end()) << name << " is not registed in " << name_;
-  statSet_.erase(iter);
 }
 
 StatInfo::~StatInfo() {

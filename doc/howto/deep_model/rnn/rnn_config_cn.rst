@@ -5,36 +5,13 @@ RNN配置
 中配置循环神经网络（RNN）。PaddlePaddle
 高度支持灵活和高效的循环神经网络配置。 在本教程中，您将了解如何：
 
--  准备用来学习循环神经网络的序列数据。
 -  配置循环神经网络架构。
 -  使用学习完成的循环神经网络模型生成序列。
 
 我们将使用 vanilla 循环神经网络和 sequence to sequence
 模型来指导你完成这些步骤。sequence to sequence
-模型的代码可以在\ ``demo / seqToseq``\ 找到。
-
-准备序列数据
-------------
-
-PaddlePaddle
-不需要对序列数据进行任何预处理，例如填充。唯一需要做的是将相应类型设置为输入。例如，以下代码段定义了三个输入。
-它们都是序列，它们的大小是\ ``src_dict``\ ，\ ``trg_dict``\ 和\ ``trg_dict``\ ：
-
-.. code:: python
-
-    settings.input_types = [
-      integer_value_sequence(len(settings.src_dict)),
-      integer_value_sequence(len(settings.trg_dict)),
-      integer_value_sequence(len(settings.trg_dict))]
-
-在\ ``process``\ 函数中，每个\ ``yield``\ 函数将返回三个整数列表。每个整数列表被视为一个整数序列：
-
-.. code:: python
-
-    yield src_ids, trg_ids, trg_ids_next
-
-有关如何编写数据提供程序的更多细节描述，请参考 :ref:`api_pydataprovider2` 。完整的数据提供文件在
-``demo/seqToseq/dataprovider.py``\ 。
+模型的代码可以在 `book/08.machine_translation <https://github.com/PaddlePaddle/book/tree/develop/08.machine_translation>`_ 找到。
+wmt14数据的提供文件在 `python/paddle/v2/dataset/wmt14.py <https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/dataset/wmt14.py>`_ 。
 
 配置循环神经网络架构
 --------------------
@@ -44,7 +21,7 @@ PaddlePaddle
 
 循环神经网络在每个时间步骤顺序地处理序列。下面列出了 LSTM 的架构的示例。
 
-.. image:: ../../../tutorials/sentiment_analysis/bi_lstm.jpg
+.. image:: src/bi_lstm.jpg
       :align: center
 
 一般来说，循环网络从 :math:`t=1` 到 :math:`t=T` 或者反向地从 :math:`t=T` 到 :math:`t=1` 执行以下操作。
@@ -85,19 +62,19 @@ vanilla
                    act=None,
                    rnn_layer_attr=None):
         def __rnn_step__(ipt):
-           out_mem = memory(name=name, size=size)
-           rnn_out = mixed_layer(input = [full_matrix_projection(ipt),
-                                          full_matrix_projection(out_mem)],
-                                 name = name,
-                                 bias_attr = rnn_bias_attr,
-                                 act = act,
-                                 layer_attr = rnn_layer_attr,
-                                 size = size)
+           out_mem = paddle.layer.memory(name=name, size=size)
+           rnn_out = paddle.layer.mixed(input = [paddle.layer.full_matrix_projection(input=ipt),
+                                                 paddle.layer.full_matrix_projection(input=out_mem)],
+                                        name = name,
+                                        bias_attr = rnn_bias_attr,
+                                        act = act,
+                                        layer_attr = rnn_layer_attr,
+                                        size = size)
            return rnn_out
-        return recurrent_group(name='%s_recurrent_group' % name,
-                               step=__rnn_step__,
-                               reverse=reverse,
-                               input=input)
+        return paddle.layer.recurrent_group(name='%s_recurrent_group' % name,
+                                            step=__rnn_step__,
+                                            reverse=reverse,
+                                            input=input)
 
 PaddlePaddle
 使用“Memory”（记忆模块）实现单步函数。\ **Memory**\ 是在PaddlePaddle中构造循环神经网络时最重要的概念。
@@ -119,7 +96,7 @@ Sequence to Sequence Model with Attention
 我们将使用 sequence to sequence model with attention
 作为例子演示如何配置复杂的循环神经网络模型。该模型的说明如下图所示。
 
-.. image:: ../../../tutorials/text_generation/encoder-decoder-attention-model.png
+.. image:: src/encoder-decoder-attention-model.png
       :align: center
 
 在这个模型中，源序列 :math:`S = \{s_1, \dots, s_T\}` 
@@ -140,43 +117,52 @@ Sequence to Sequence Model with Attention
 .. code:: python
 
     # 定义源语句的数据层
-    src_word_id = data_layer(name='source_language_word', size=source_dict_dim)
+    src_word_id = paddle.layer.data(
+        name='source_language_word',
+        type=paddle.data_type.integer_value_sequence(source_dict_dim))
     # 计算每个词的词向量
-    src_embedding = embedding_layer(
+    src_embedding = paddle.layer.embedding(
         input=src_word_id,
         size=word_vector_dim,
-        param_attr=ParamAttr(name='_source_language_embedding'))
+        param_attr=paddle.attr.ParamAttr(name='_source_language_embedding'))
     # 应用前向循环神经网络
-    src_forward = grumemory(input=src_embedding, size=encoder_size)
+    src_forward = paddle.networks.simple_gru(
+        input=src_embedding, size=encoder_size)
     # 应用反向递归神经网络（reverse=True表示反向循环神经网络）
-    src_backward = grumemory(input=src_embedding,
-                              size=encoder_size,
-                              reverse=True)
+    src_backward = paddle.networks.simple_gru(
+        input=src_embedding, size=encoder_size, reverse=True)
     # 将循环神经网络的前向和反向部分混合在一起
-    encoded_vector = concat_layer(input=[src_forward, src_backward])
+    encoded_vector = paddle.layer.concat(input=[src_forward, src_backward])
 
     # 投射编码向量到 decoder_size
-    encoder_proj = mixed_layer(input = [full_matrix_projection(encoded_vector)],
-                               size = decoder_size)
+    encoded_proj = paddle.layer.mixed(
+        size=decoder_size,
+        input=paddle.layer.full_matrix_projection(encoded_vector))
 
     # 计算反向RNN的第一个实例
-    backward_first = first_seq(input=src_backward)
+    backward_first = paddle.layer.first_seq(input=src_backward)
 
     # 投射反向RNN的第一个实例到 decoder size
-    decoder_boot = mixed_layer(input=[full_matrix_projection(backward_first)], size=decoder_size, act=TanhActivation())
+    decoder_boot = paddle.layer.mixed(
+       size=decoder_size,
+       act=paddle.activation.Tanh(),
+       input=paddle.layer.full_matrix_projection(backward_first))
 
 解码器使用 ``recurrent_group`` 来定义循环神经网络。单步函数和输出函数在
 ``gru_decoder_with_attention`` 中定义：
 
 .. code:: python
 
-    group_inputs=[StaticInput(input=encoded_vector,is_seq=True),
-                  StaticInput(input=encoded_proj,is_seq=True)]
-    trg_embedding = embedding_layer(
-        input=data_layer(name='target_language_word',
-                         size=target_dict_dim),
-        size=word_vector_dim,
-        param_attr=ParamAttr(name='_target_language_embedding'))
+    group_input1 = paddle.layer.StaticInput(input=encoded_vector, is_seq=True)
+    group_input2 = paddle.layer.StaticInput(input=encoded_proj, is_seq=True)
+    group_inputs = [group_input1, group_input2]
+    trg_embedding = paddle.layer.embedding(
+            input=paddle.layer.data(
+                name='target_language_word',
+                type=paddle.data_type.integer_value_sequence(target_dict_dim)),
+            size=word_vector_dim,
+            param_attr=paddle.attr.ParamAttr(name='_target_language_embedding'))
+        group_inputs.append(trg_embedding)
     group_inputs.append(trg_embedding)
 
     # 对于配备有注意力机制的解码器，在训练中，
@@ -185,9 +171,10 @@ Sequence to Sequence Model with Attention
     # StaticInput 意味着不同时间步的输入都是相同的值，
     # 否则它以一个序列输入，不同时间步的输入是不同的。
     # 所有输入序列应该有相同的长度。
-    decoder = recurrent_group(name=decoder_group_name,
-                              step=gru_decoder_with_attention,
-                              input=group_inputs)
+    decoder = paddle.layer.recurrent_group(
+            name=decoder_group_name,
+            step=gru_decoder_with_attention,
+            input=group_inputs)
 
 单步函数的实现如下所示。首先，它定义解码网络的\ **Memory**\ 。然后定义
 attention，门控循环单元单步函数和输出函数：
@@ -198,27 +185,32 @@ attention，门控循环单元单步函数和输出函数：
         # 定义解码器的Memory
         # Memory的输出定义在 gru_step 内
         # 注意 gru_step 应该与它的Memory名字相同
-        decoder_mem = memory(name='gru_decoder',
-                             size=decoder_size,
-                             boot_layer=decoder_boot)
+        decoder_mem = paddle.layer.memory(
+            name='gru_decoder', size=decoder_size, boot_layer=decoder_boot)
         # 计算 attention 加权编码向量
-        context = simple_attention(encoded_sequence=enc_vec,
-                                   encoded_proj=enc_proj,
-                                   decoder_state=decoder_mem)
+        context = paddle.networks.simple_attention(
+            encoded_sequence=enc_vec,
+            encoded_proj=enc_proj,
+            decoder_state=decoder_mem)
         # 混合当前词向量和attention加权编码向量
-        decoder_inputs = mixed_layer(inputs = [full_matrix_projection(context),
-                                               full_matrix_projection(current_word)],
-                                     size = decoder_size * 3)
+         decoder_inputs = paddle.layer.mixed(
+            size=decoder_size * 3,
+            input=[
+                paddle.layer.full_matrix_projection(input=context),
+                paddle.layer.full_matrix_projection(input=current_word)
+            ])
         # 定义门控循环单元循环神经网络单步函数
-        gru_step = gru_step_layer(name='gru_decoder',
-                                  input=decoder_inputs,
-                                  output_mem=decoder_mem,
-                                  size=decoder_size)
+         gru_step = paddle.layer.gru_step(
+            name='gru_decoder',
+            input=decoder_inputs,
+            output_mem=decoder_mem,
+            size=decoder_size)
         # 定义输出函数
-        out = mixed_layer(input=[full_matrix_projection(input=gru_step)],
-                          size=target_dict_dim,
-                          bias_attr=True,
-                          act=SoftmaxActivation())
+         out = paddle.layer.mixed(
+            size=target_dict_dim,
+            bias_attr=True,
+            act=paddle.activation.Softmax(),
+            input=paddle.layer.full_matrix_projection(input=gru_step))
         return out
 
 生成序列
@@ -238,41 +230,32 @@ attention，门控循环单元单步函数和输出函数：
    -  ``beam_size``: beam search 算法中的beam大小。
    -  ``max_length``: 生成序列的最大长度。
 
--  使用 ``seqtext_printer_evaluator``
-   根据索引矩阵和字典打印文本。这个函数需要设置：
-
-   -  ``id_input``: 数据的整数ID，用于标识生成的文件中的相应输出。
-   -  ``dict_file``: 用于将词ID转换为词的字典文件。
-   -  ``result_file``: 生成结果文件的路径。
-
 代码如下：
 
 .. code:: python
 
-    group_inputs=[StaticInput(input=encoded_vector,is_seq=True),
-                  StaticInput(input=encoded_proj,is_seq=True)]
+    group_input1 = paddle.layer.StaticInput(input=encoded_vector, is_seq=True)
+    group_input2 = paddle.layer.StaticInput(input=encoded_proj, is_seq=True)
+    group_inputs = [group_input1, group_input2]
     # 在生成时，解码器基于编码源序列和最后生成的目标词预测下一目标词。
     # 编码源序列（编码器输出）必须由只读Memory的 StaticInput 指定。
     # 这里， GeneratedInputs 自动获取上一个生成的词，并在最开始初始化为起始词，如 <s>。
-    trg_embedding = GeneratedInput(
-        size=target_dict_dim,
-        embedding_name='_target_language_embedding',
-        embedding_size=word_vector_dim)
+    trg_embedding = paddle.layer.GeneratedInput(
+            size=target_dict_dim,
+            embedding_name='_target_language_embedding',
+            embedding_size=word_vector_dim)
     group_inputs.append(trg_embedding)
-    beam_gen = beam_search(name=decoder_group_name,
-                           step=gru_decoder_with_attention,
-                           input=group_inputs,
-                           bos_id=0, # Beginnning token.
-                           eos_id=1, # End of sentence token.
-                           beam_size=beam_size,
-                           max_length=max_length)
+    beam_gen = paddle.layer.beam_search(
+            name=decoder_group_name,
+            step=gru_decoder_with_attention,
+            input=group_inputs,
+            bos_id=0, # Beginnning token.
+            eos_id=1, # End of sentence token.
+            beam_size=beam_size,
+            max_length=max_length)
 
-    seqtext_printer_evaluator(input=beam_gen,
-                              id_input=data_layer(name="sent_id", size=1),
-                              dict_file=trg_dict_path,
-                              result_file=gen_trans_file)
-    outputs(beam_gen)
+    return beam_gen
 
-注意，这种生成技术只用于类似解码器的生成过程。如果你正在处理序列标记任务，请参阅 :ref:`semantic_role_labeling` 了解更多详细信息。
+注意，这种生成技术只用于类似解码器的生成过程。如果你正在处理序列标记任务，请参阅 `book/06.understand_sentiment <https://github.com/PaddlePaddle/book/tree/develop/06.understand_sentiment>`_ 了解更多详细信息。
 
-完整的配置文件在\ ``demo/seqToseq/seqToseq_net.py``\ 。
+完整的配置文件在 `book/08.machine_translation/train.py <https://github.com/PaddlePaddle/book/blob/develop/08.machine_translation/train.py>`_ 。

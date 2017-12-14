@@ -74,6 +74,9 @@ layers {
   inputs {
     input_layer_name: "__bidirectional_gru_0___bw"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 parameters {
   name: "___bidirectional_gru_0___fw_transform.w0"

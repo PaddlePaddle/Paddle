@@ -12,14 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
+#include "hl_activation_functions.h"
 #include "hl_base.h"
 #include "hl_cuda_cublas.h"
 #include "hl_device_functions.cuh"
-#include "hl_activation_functions.h"
 #include "paddle/utils/Logging.h"
 
-typedef hppl::Active<real>::forward  t_forward;
+typedef hppl::Active<real>::forward t_forward;
 typedef hppl::Active<real>::backward t_backward;
 
 bool hl_lstm_sequence_parallel(int frameSize) {
@@ -42,9 +41,9 @@ public:
       value_ += (start + length - 1) * frameSize + idx;
     }
   }
-  __device__ inline real *getPtr() const {return value_;}
-  __device__ inline real getValue() {return *value_;}
-  __device__ inline void setValue(real value) {*value_ = value;}
+  __device__ inline real *getPtr() const { return value_; }
+  __device__ inline real getValue() { return *value_; }
+  __device__ inline void setValue(real value) { *value_ = value; }
   template <int reversed, int frameSize>
   __device__ inline void nextFrame() {
     if (reversed == 0) {
@@ -55,28 +54,25 @@ public:
   }
 };
 
-__device__ __forceinline__
-void ptx_sync(const int id, const int barriers) {
+__device__ __forceinline__ void ptx_sync(const int id, const int barriers) {
   asm volatile("bar.sync %0, %1;" : : "r"(id), "r"(barriers) : "memory");
 }
 
-__device__ __forceinline__
-void ptx_arrive(const int id, const int barriers) {
+__device__ __forceinline__ void ptx_arrive(const int id, const int barriers) {
   asm volatile("bar.arrive %0, %1;" : : "r"(id), "r"(barriers) : "memory");
 }
 
-template<int valueSize, int frameSize>
-__device__ __forceinline__ real
-forward_sequence(real value,
-                 real *shValue,
-                 real *state,
-                 real *preOutput,
-                 real *output,
-                 real check,
-                 int index,
-                 t_forward activeNode,
-                 t_forward activeGate,
-                 t_forward activeState) {
+template <int valueSize, int frameSize>
+__device__ __forceinline__ real forward_sequence(real value,
+                                                 real *shValue,
+                                                 real *state,
+                                                 real *preOutput,
+                                                 real *output,
+                                                 real check,
+                                                 int index,
+                                                 t_forward activeNode,
+                                                 t_forward activeGate,
+                                                 t_forward activeState) {
   real out;
   real prevOut;
   real state_r;
@@ -112,17 +108,20 @@ forward_sequence(real value,
   if (idy == 0) {
     ptx_sync(2, frameSize * 2);
     prevOut = state[idx];
-     prevOut = activeState(prevOut);
+    prevOut = activeState(prevOut);
     preOutput[idx] = prevOut;
     ptx_arrive(3, frameSize * 2);
   }
   return value;
 }
 
-#define     OUTPUT_BARRIER_ID               10
-#define     OUTPUT_BARRIER_ID2              11
-template<int valueSize, int frameSize, int reversed,
-         int computeThreads, int blockSize>
+#define OUTPUT_BARRIER_ID 10
+#define OUTPUT_BARRIER_ID2 11
+template <int valueSize,
+          int frameSize,
+          int reversed,
+          int computeThreads,
+          int blockSize>
 __global__ void KeLstmForward(real *gateValue,
                               real *state,
                               real *output,
@@ -184,10 +183,16 @@ __global__ void KeLstmForward(real *gateValue,
         }
       }
       value = forward_sequence<valueSize, frameSize>(
-        value, shValue, shState, shPrevOutput, shOutput, check, index,
-        hppl::gpu::forward[active_node],
-        hppl::gpu::forward[active_gate],
-        hppl::gpu::forward[active_state]);
+          value,
+          shValue,
+          shState,
+          shPrevOutput,
+          shOutput,
+          check,
+          index,
+          hppl::gpu::forward[active_node],
+          hppl::gpu::forward[active_gate],
+          hppl::gpu::forward[active_state]);
       const int idx = index % frameSize;
       const int idy = index / frameSize;
       if (valueSize == 128) {
@@ -218,7 +223,7 @@ __global__ void KeLstmForward(real *gateValue,
           real B_r[frameSize];
           const int computeIdx = index - valueSize;
           if (i == 0) {
-            #pragma unroll
+#pragma unroll
             for (int n = 0; n < frameSize; n++) {
               B_r[n] = weight[n * valueSize + computeIdx];
             }
@@ -230,7 +235,7 @@ __global__ void KeLstmForward(real *gateValue,
           }
           real sum = 0.0f;
           for (int n = 0; n < frameSize; n++) {
-            sum += A_r[n]*B_r[n];
+            sum += A_r[n] * B_r[n];
           }
           shValue[computeIdx] = sum;
           ptx_arrive(OUTPUT_BARRIER_ID2, blockSize);
@@ -239,14 +244,14 @@ __global__ void KeLstmForward(real *gateValue,
       if (valueSize == 256) {
         real B_r[frameSize];
         if (i == 0) {
-          #pragma unroll
+#pragma unroll
           for (int n = 0; n < frameSize; n++) {
             B_r[n] = weight[n * valueSize + index];
           }
         }
         real sum = 0.0f;
         for (int n = 0; n < frameSize; n++) {
-          sum += shOutput[n]*B_r[n];
+          sum += shOutput[n] * B_r[n];
         }
         value += sum;
       }
@@ -273,50 +278,81 @@ void hl_lstm_parallel_forward(real *gateValue,
   dim3 grid(numSequences, 1);
   if (!reversed) {
     if (frameSize == 32) {
-      KeLstmForward<128, 32, 0, 128, 256>
-               <<<grid, 256, 0, STREAM_DEFAULT>>>
-               (gateValue, stateValue, outputValue, preOutputValue,
-               checkIg, checkFg, checkOg, weight, sequence,
-               active_node, active_gate, active_state);
+      KeLstmForward<128, 32, 0, 128, 256><<<grid, 256, 0, STREAM_DEFAULT>>>(
+          gateValue,
+          stateValue,
+          outputValue,
+          preOutputValue,
+          checkIg,
+          checkFg,
+          checkOg,
+          weight,
+          sequence,
+          active_node,
+          active_gate,
+          active_state);
     } else if (frameSize == 64) {
-      KeLstmForward<256, 64, 0, 256, 256>
-               <<<grid, 256, 0, STREAM_DEFAULT>>>
-               (gateValue, stateValue, outputValue, preOutputValue,
-               checkIg, checkFg, checkOg, weight, sequence,
-               active_node, active_gate, active_state);
+      KeLstmForward<256, 64, 0, 256, 256><<<grid, 256, 0, STREAM_DEFAULT>>>(
+          gateValue,
+          stateValue,
+          outputValue,
+          preOutputValue,
+          checkIg,
+          checkFg,
+          checkOg,
+          weight,
+          sequence,
+          active_node,
+          active_gate,
+          active_state);
     }
   } else {
     if (frameSize == 32) {
-      KeLstmForward<128, 32, 1, 128, 256>
-               <<<grid, 256, 0, STREAM_DEFAULT>>>
-               (gateValue, stateValue, outputValue, preOutputValue,
-               checkIg, checkFg, checkOg, weight, sequence,
-               active_node, active_gate, active_state);
+      KeLstmForward<128, 32, 1, 128, 256><<<grid, 256, 0, STREAM_DEFAULT>>>(
+          gateValue,
+          stateValue,
+          outputValue,
+          preOutputValue,
+          checkIg,
+          checkFg,
+          checkOg,
+          weight,
+          sequence,
+          active_node,
+          active_gate,
+          active_state);
     } else if (frameSize == 64) {
-      KeLstmForward<256, 64, 1, 256, 256>
-               <<<grid, 256, 0, STREAM_DEFAULT>>>
-               (gateValue, stateValue, outputValue, preOutputValue,
-               checkIg, checkFg, checkOg, weight, sequence,
-               active_node, active_gate, active_state);
+      KeLstmForward<256, 64, 1, 256, 256><<<grid, 256, 0, STREAM_DEFAULT>>>(
+          gateValue,
+          stateValue,
+          outputValue,
+          preOutputValue,
+          checkIg,
+          checkFg,
+          checkOg,
+          weight,
+          sequence,
+          active_node,
+          active_gate,
+          active_state);
     }
   }
   CHECK_SYNC("hl_lstm_parallel_forward failed");
 }
 
-__device__ __forceinline__
-void transpose_32x32(real a[], const int idx) {
+__device__ __forceinline__ void transpose_32x32(real a[], const int idx) {
   int addr = idx % 32;
-  #pragma unroll
+#pragma unroll
   for (int k = 1; k < 32; k++) {
     // rSrc[k] = __shfl(rSrc[k], (threadIdx.x + k) % 32, 32);
     addr = __shfl(addr, (idx + 1) % 32, 32);
     a[k] = __shfl(a[k], addr, 32);
   }
 
-  #pragma unroll
+#pragma unroll
   for (int tid = 0; tid < 31; tid++) {
     real tmp = (idx > tid) ? a[0] : a[1];
-    #pragma unroll
+#pragma unroll
     for (int k = 31; k > 0; k--) {
       a[(k + 1) % 32] = (idx > tid) ? a[k] : a[(k + 1) % 32];
     }
@@ -324,29 +360,28 @@ void transpose_32x32(real a[], const int idx) {
   }
 
   addr = (32 - idx) % 32;
-  #pragma unroll
+#pragma unroll
   for (int k = 0; k < 32; k++) {
     a[k] = __shfl(a[k], addr, 32);
     addr = __shfl(addr, (idx + 31) % 32, 32);
   }
 }
 
-template<int valueSize, int frameSize>
-__device__ void
-backward_sequence(real rGateValue,
-                  real rOutputGrad,
-                  real rPreOutputValue,
-                  real &rGateGrad,
-                  real &rStateGrad,
-                  real *shStateGrad,
-                  real *shStateValue,
-                  real *shGateValue,
-                  real rCheck,
-                  real &rGateValuePrev,
-                  int index,
-                  t_backward activeNode,
-                  t_backward activeGate,
-                  t_backward activeState) {
+template <int valueSize, int frameSize>
+__device__ void backward_sequence(real rGateValue,
+                                  real rOutputGrad,
+                                  real rPreOutputValue,
+                                  real &rGateGrad,
+                                  real &rStateGrad,
+                                  real *shStateGrad,
+                                  real *shStateValue,
+                                  real *shGateValue,
+                                  real rCheck,
+                                  real &rGateValuePrev,
+                                  int index,
+                                  t_backward activeNode,
+                                  t_backward activeGate,
+                                  t_backward activeState) {
   const int frameIdx = index % frameSize;
   const int frameIdy = index / frameSize;
   if (frameIdy == 3) {
@@ -363,8 +398,8 @@ backward_sequence(real rGateValue,
     rStateGrad = rGateGrad * rCheck;
     shStateGrad[index] = rStateGrad;
     ptx_sync(3, valueSize);
-    rStateGrad += shStateGrad[frameIdx + frameSize *2];
-    rStateGrad += shStateGrad[frameIdx + frameSize *3];
+    rStateGrad += shStateGrad[frameIdx + frameSize * 2];
+    rStateGrad += shStateGrad[frameIdx + frameSize * 3];
     rGateGrad = rStateGrad * shGateValue[frameIdx];
     rGateGrad = activeGate(rGateGrad, rGateValue);
   } else if (frameIdy == 2) {
@@ -373,7 +408,7 @@ backward_sequence(real rGateValue,
     shStateGrad[index] = rStateGrad;
     ptx_sync(3, valueSize);
     rStateGrad += shStateGrad[frameIdx + frameSize];
-    rStateGrad += shStateGrad[frameIdx + frameSize *3];
+    rStateGrad += shStateGrad[frameIdx + frameSize * 3];
     rGateValuePrev = rGateValue;
     rGateGrad = rStateGrad * shStateValue[frameIdx];
     rGateGrad = activeGate(rGateGrad, rGateValue);
@@ -381,43 +416,43 @@ backward_sequence(real rGateValue,
     shGateValue[frameIdx] = rGateValue;
     ptx_sync(3, valueSize);
     rStateGrad = shStateGrad[frameIdx + frameSize];
-    rStateGrad += shStateGrad[frameIdx + frameSize *2];
-    rStateGrad += shStateGrad[frameIdx + frameSize *3];
+    rStateGrad += shStateGrad[frameIdx + frameSize * 2];
+    rStateGrad += shStateGrad[frameIdx + frameSize * 3];
     rGateGrad = rStateGrad * shGateValue[frameIdx + frameSize];
     rGateGrad = activeNode(rGateGrad, rGateValue);
   }
 }
 
-template<int valueSize, int frameSize>
+template <int valueSize, int frameSize>
 __device__ void load_weight(real rWeight[], real *weight, const int index) {
   if (valueSize == 128) {
     weight += index;
-    #pragma unroll
+#pragma unroll
     for (int n = 0; n < frameSize; n++) {
-      rWeight[n] = weight[n*valueSize];
+      rWeight[n] = weight[n * valueSize];
     }
     transpose_32x32(rWeight, index % 32);
   }
   if (valueSize == 256) {
     int id = (index / 32) % 2;
     weight += index - id * 32 + id * 32 * valueSize;
-    #pragma unroll
+#pragma unroll
     for (int n = 0; n < 32; n++) {
-      rWeight[n] = weight[n*valueSize];
-      rWeight[n + 32] = weight[n*valueSize + 32];
+      rWeight[n] = weight[n * valueSize];
+      rWeight[n + 32] = weight[n * valueSize + 32];
     }
     transpose_32x32(rWeight, index % 32);
     transpose_32x32(&rWeight[32], index % 32);
   }
 }
 
-template<int valueSize, int frameSize, int reversed>
+template <int valueSize, int frameSize, int reversed>
 __global__ void KeLstmBackward(real *gateValue,
                                real *gateGrad,
                                real *stateValue,
-                               real *stateGrad,       /* do not need save */
+                               real *stateGrad, /* do not need save */
                                real *preOutputValue,
-                               real *preOutputGrad,   /* do not need save */
+                               real *preOutputGrad, /* do not need save */
                                real *checkIg,
                                real *checkIgGrad,
                                real *checkFg,
@@ -484,20 +519,27 @@ __global__ void KeLstmBackward(real *gateValue,
 
   for (int i = 0; i < length; ++i) {
     if (frameIdy == 3) {
-      if (i != length -1) {
+      if (i != length - 1) {
         frameStateValue.nextFrame<!reversed, frameSize>();
         shStateValue[frameIdx] = frameStateValue.getValue();
       } else {
         shStateValue[frameIdx] = 0.0;
       }
     }
-    backward_sequence<valueSize, frameSize>(
-        rGateValue, rOutputGrad, rPreOutputValue, rGateGrad,
-        rStateGrad, shStateGrad, shStateValue, shGateValue,
-        rCheck, rGateValuePrev, index,
-        hppl::gpu::backward[active_node],
-        hppl::gpu::backward[active_gate],
-        hppl::gpu::backward[active_state]);
+    backward_sequence<valueSize, frameSize>(rGateValue,
+                                            rOutputGrad,
+                                            rPreOutputValue,
+                                            rGateGrad,
+                                            rStateGrad,
+                                            shStateGrad,
+                                            shStateValue,
+                                            shGateValue,
+                                            rCheck,
+                                            rGateValuePrev,
+                                            index,
+                                            hppl::gpu::backward[active_node],
+                                            hppl::gpu::backward[active_gate],
+                                            hppl::gpu::backward[active_state]);
     if (frameIdy == 3) {
       rCheckGrad += rGateGrad * rStateValue;
       rStateValue = shStateValue[frameIdx];
@@ -523,9 +565,9 @@ __global__ void KeLstmBackward(real *gateValue,
       shGateGrad[frameIdy][frameIdx] = rGateGrad;
       if (valueSize == 128) {
         real sum = 0.0f;
-        #pragma unroll
+#pragma unroll
         for (int n = 0; n < frameSize; n++) {
-          sum += shGateGrad[frameIdy][n]*B_r[n];
+          sum += shGateGrad[frameIdy][n] * B_r[n];
         }
         if (frameIdy == 3) {
           rOutputGrad += sum;
@@ -541,7 +583,7 @@ __global__ void KeLstmBackward(real *gateValue,
         }
         real sum = 0.0f;
         for (int n = 0; n < frameSize; n++) {
-          sum += A_r[n]*B_r[n];
+          sum += A_r[n] * B_r[n];
         }
         if (frameIdy == 3) {
           rOutputGrad += sum;
@@ -552,8 +594,8 @@ __global__ void KeLstmBackward(real *gateValue,
 
       if (frameIdy == 3) {
         ptx_sync(6, valueSize);
-        #pragma unroll
-        for (int i = 0; i < 3; i ++) {
+#pragma unroll
+        for (int i = 0; i < 3; i++) {
           rOutputGrad += shOutputGrad[i][frameIdx];
         }
       } else {
@@ -564,11 +606,14 @@ __global__ void KeLstmBackward(real *gateValue,
 
   /* TODO: Temporary save & merger in another kernel */
   if (frameIdy == 1) {
-    if (checkIgGrad) paddle::paddleAtomicAdd(checkIgGrad+frameIdx, rCheckGrad);
+    if (checkIgGrad)
+      paddle::paddleAtomicAdd(checkIgGrad + frameIdx, rCheckGrad);
   } else if (frameIdy == 2) {
-    if (checkFgGrad) paddle::paddleAtomicAdd(checkFgGrad+frameIdx, rCheckGrad);
+    if (checkFgGrad)
+      paddle::paddleAtomicAdd(checkFgGrad + frameIdx, rCheckGrad);
   } else if (frameIdy == 3) {
-    if (checkOgGrad) paddle::paddleAtomicAdd(checkOgGrad+frameIdx, rCheckGrad);
+    if (checkOgGrad)
+      paddle::paddleAtomicAdd(checkOgGrad + frameIdx, rCheckGrad);
   }
 }
 
@@ -593,68 +638,183 @@ void hl_lstm_parallel_backward_data(real *gateValue,
                                     hl_activation_mode_t active_node,
                                     hl_activation_mode_t active_gate,
                                     hl_activation_mode_t active_state) {
-  CHECK(frameSize == 32 || frameSize == 64 ||
-        frameSize == 128 || frameSize == 256);
+  CHECK(frameSize == 32 || frameSize == 64 || frameSize == 128 ||
+        frameSize == 256);
   dim3 grid(numSequences, 1);
   if (!reversed) {
     if (frameSize == 32) {
-      KeLstmBackward<128, 32, 0><<<grid, 128, 0, STREAM_DEFAULT>>>
-          (gateValue, gateGrad, stateValue, stateGrad, preOutputValue,
-          preOutputGrad, checkIg, checkIgGrad, checkFg, checkFgGrad, checkOg,
-          checkOgGrad, outputGrad, weight, sequence,
-          active_node, active_gate, active_state);
+      KeLstmBackward<128, 32, 0><<<grid, 128, 0, STREAM_DEFAULT>>>(
+          gateValue,
+          gateGrad,
+          stateValue,
+          stateGrad,
+          preOutputValue,
+          preOutputGrad,
+          checkIg,
+          checkIgGrad,
+          checkFg,
+          checkFgGrad,
+          checkOg,
+          checkOgGrad,
+          outputGrad,
+          weight,
+          sequence,
+          active_node,
+          active_gate,
+          active_state);
     } else if (frameSize == 64) {
-      KeLstmBackward<256, 64, 0><<<grid, 256, 0, STREAM_DEFAULT>>>
-          (gateValue, gateGrad, stateValue, stateGrad, preOutputValue,
-          preOutputGrad, checkIg, checkIgGrad, checkFg, checkFgGrad, checkOg,
-          checkOgGrad, outputGrad, weight, sequence,
-          active_node, active_gate, active_state);
+      KeLstmBackward<256, 64, 0><<<grid, 256, 0, STREAM_DEFAULT>>>(
+          gateValue,
+          gateGrad,
+          stateValue,
+          stateGrad,
+          preOutputValue,
+          preOutputGrad,
+          checkIg,
+          checkIgGrad,
+          checkFg,
+          checkFgGrad,
+          checkOg,
+          checkOgGrad,
+          outputGrad,
+          weight,
+          sequence,
+          active_node,
+          active_gate,
+          active_state);
     } else if (frameSize == 128) {
-      KeLstmBackward<512, 128, 0><<<grid, 512, 0, STREAM_DEFAULT>>>
-          (gateValue, gateGrad, stateValue, stateGrad, preOutputValue,
-          preOutputGrad, checkIg, checkIgGrad, checkFg, checkFgGrad, checkOg,
-          checkOgGrad, outputGrad, weight, sequence,
-          active_node, active_gate, active_state);
+      KeLstmBackward<512, 128, 0><<<grid, 512, 0, STREAM_DEFAULT>>>(
+          gateValue,
+          gateGrad,
+          stateValue,
+          stateGrad,
+          preOutputValue,
+          preOutputGrad,
+          checkIg,
+          checkIgGrad,
+          checkFg,
+          checkFgGrad,
+          checkOg,
+          checkOgGrad,
+          outputGrad,
+          weight,
+          sequence,
+          active_node,
+          active_gate,
+          active_state);
     } else if (frameSize == 256) {
-      KeLstmBackward<1024, 256, 0><<<grid, 1024, 0, STREAM_DEFAULT>>>
-          (gateValue, gateGrad, stateValue, stateGrad, preOutputValue,
-          preOutputGrad, checkIg, checkIgGrad, checkFg, checkFgGrad, checkOg,
-          checkOgGrad, outputGrad, weight, sequence,
-          active_node, active_gate, active_state);
+      KeLstmBackward<1024, 256, 0><<<grid, 1024, 0, STREAM_DEFAULT>>>(
+          gateValue,
+          gateGrad,
+          stateValue,
+          stateGrad,
+          preOutputValue,
+          preOutputGrad,
+          checkIg,
+          checkIgGrad,
+          checkFg,
+          checkFgGrad,
+          checkOg,
+          checkOgGrad,
+          outputGrad,
+          weight,
+          sequence,
+          active_node,
+          active_gate,
+          active_state);
     }
   } else {
     if (frameSize == 32) {
-      KeLstmBackward<128, 32, 1><<<grid, 128, 0, STREAM_DEFAULT>>>
-          (gateValue, gateGrad, stateValue, stateGrad, preOutputValue,
-          preOutputGrad, checkIg, checkIgGrad, checkFg, checkFgGrad, checkOg,
-          checkOgGrad, outputGrad, weight, sequence,
-          active_node, active_gate, active_state);
+      KeLstmBackward<128, 32, 1><<<grid, 128, 0, STREAM_DEFAULT>>>(
+          gateValue,
+          gateGrad,
+          stateValue,
+          stateGrad,
+          preOutputValue,
+          preOutputGrad,
+          checkIg,
+          checkIgGrad,
+          checkFg,
+          checkFgGrad,
+          checkOg,
+          checkOgGrad,
+          outputGrad,
+          weight,
+          sequence,
+          active_node,
+          active_gate,
+          active_state);
     } else if (frameSize == 64) {
-      KeLstmBackward<256, 64, 1><<<grid, 256, 0, STREAM_DEFAULT>>>
-          (gateValue, gateGrad, stateValue, stateGrad, preOutputValue,
-          preOutputGrad, checkIg, checkIgGrad, checkFg, checkFgGrad, checkOg,
-          checkOgGrad, outputGrad, weight, sequence,
-          active_node, active_gate, active_state);
+      KeLstmBackward<256, 64, 1><<<grid, 256, 0, STREAM_DEFAULT>>>(
+          gateValue,
+          gateGrad,
+          stateValue,
+          stateGrad,
+          preOutputValue,
+          preOutputGrad,
+          checkIg,
+          checkIgGrad,
+          checkFg,
+          checkFgGrad,
+          checkOg,
+          checkOgGrad,
+          outputGrad,
+          weight,
+          sequence,
+          active_node,
+          active_gate,
+          active_state);
     } else if (frameSize == 128) {
-      KeLstmBackward<512, 128, 1><<<grid, 512, 0, STREAM_DEFAULT>>>
-          (gateValue, gateGrad, stateValue, stateGrad, preOutputValue,
-          preOutputGrad, checkIg, checkIgGrad, checkFg, checkFgGrad, checkOg,
-          checkOgGrad, outputGrad, weight, sequence,
-          active_node, active_gate, active_state);
+      KeLstmBackward<512, 128, 1><<<grid, 512, 0, STREAM_DEFAULT>>>(
+          gateValue,
+          gateGrad,
+          stateValue,
+          stateGrad,
+          preOutputValue,
+          preOutputGrad,
+          checkIg,
+          checkIgGrad,
+          checkFg,
+          checkFgGrad,
+          checkOg,
+          checkOgGrad,
+          outputGrad,
+          weight,
+          sequence,
+          active_node,
+          active_gate,
+          active_state);
     } else if (frameSize == 256) {
-      KeLstmBackward<1024, 256, 1><<<grid, 1024, 0, STREAM_DEFAULT>>>
-          (gateValue, gateGrad, stateValue, stateGrad, preOutputValue,
-          preOutputGrad, checkIg, checkIgGrad, checkFg, checkFgGrad, checkOg,
-          checkOgGrad, outputGrad, weight, sequence,
-          active_node, active_gate, active_state);
+      KeLstmBackward<1024, 256, 1><<<grid, 1024, 0, STREAM_DEFAULT>>>(
+          gateValue,
+          gateGrad,
+          stateValue,
+          stateGrad,
+          preOutputValue,
+          preOutputGrad,
+          checkIg,
+          checkIgGrad,
+          checkFg,
+          checkFgGrad,
+          checkOg,
+          checkOgGrad,
+          outputGrad,
+          weight,
+          sequence,
+          active_node,
+          active_gate,
+          active_state);
     }
   }
   CHECK_SYNC("hl_lstm_parallel_backward_data");
 }
 
-template<int B_X, int B_Y>
+template <int B_X, int B_Y>
 __global__ void KeSetGradZero(real *gateGrad,
-    const int *starts, int valueSize, int numSequences, bool reversed) {
+                              const int *starts,
+                              int valueSize,
+                              int numSequences,
+                              bool reversed) {
   // const int tid = threadIdx.x;
 
   const int frameIdx = blockIdx.x * B_X + threadIdx.x;
@@ -682,19 +842,31 @@ void hl_lstm_parallel_backward_weight(real *weightGrad,
   int valueSize = 4 * frameSize;
   dim3 threads(32, 32);
   dim3 grid((valueSize + 32 - 1) / 32, (numSequences + 32 - 1) / 32);
-  KeSetGradZero<32, 32><<<grid, threads, 0, STREAM_DEFAULT>>>
-           (gateGrad, sequence, valueSize, numSequences, reversed);
+  KeSetGradZero<32, 32><<<grid, threads, 0, STREAM_DEFAULT>>>(
+      gateGrad, sequence, valueSize, numSequences, reversed);
 
   if (!reversed) {
     hl_matrix_mul(outputValue,
-      HPPL_OP_T, gateGrad + valueSize, HPPL_OP_N, weightGrad,
-      frameSize, valueSize, batchSize - 1,
-      1.0, 1.0);
+                  HPPL_OP_T,
+                  gateGrad + valueSize,
+                  HPPL_OP_N,
+                  weightGrad,
+                  frameSize,
+                  valueSize,
+                  batchSize - 1,
+                  1.0,
+                  1.0);
   } else {
     hl_matrix_mul(outputValue + frameSize,
-      HPPL_OP_T, gateGrad, HPPL_OP_N, weightGrad,
-      frameSize, valueSize, batchSize - 1,
-      1.0, 1.0);
+                  HPPL_OP_T,
+                  gateGrad,
+                  HPPL_OP_N,
+                  weightGrad,
+                  frameSize,
+                  valueSize,
+                  batchSize - 1,
+                  1.0,
+                  1.0);
   }
   CHECK_SYNC("hl_lstm_parallel_backward_weight");
 }

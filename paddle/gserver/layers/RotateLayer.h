@@ -29,7 +29,7 @@ namespace paddle {
  *
  * The config file api is rotate_layer
  *
-*/
+ */
 
 class RotateLayer : public Layer {
 public:

@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
+#ifndef PADDLE_MOBILE_INFERENCE
+
 #include <cstddef>
 #include "Matrix.h"
 
@@ -236,6 +239,15 @@ public:
               const unsigned int* cols,
               const real* values);
 
+  /**
+   * @brief this_row = b_row * c_row[cCol]
+   *
+   * @param[in]  cCol   the column of matrix c used to scale each row of b
+   * @param[in]  b      CpuSparseMatrix
+   * @param[in]  c      Matrix
+   */
+  void rowScale(size_t cCol, CpuSparseMatrix& b, Matrix& c);
+
   void randomizeUniform();
 
   void copyFrom(const GpuSparseMatrix& src, hl_stream_t stream);
@@ -302,6 +314,64 @@ public:
   bool isSparse() const { return true; }
 
 private:
+  using Matrix::mul;
   using Matrix::copyFrom;
+  using Matrix::rowMax;
+  using Matrix::print;
+  using Matrix::subMatrix;
 };
 }  // namespace paddle
+
+#else
+
+#include "Matrix.h"
+
+namespace paddle {
+
+class CpuSparseMatrix : public Matrix {
+public:
+  CpuSparseMatrix(size_t height,
+                  size_t width,
+                  size_t nnz, /* used to allocate space */
+                  SparseValueType valueType = FLOAT_VALUE,
+                  SparseFormat format = SPARSE_CSR,
+                  bool trans = false)
+      : Matrix(NULL, height, width, trans, false) {}
+
+  CpuSparseMatrix(real* data,
+                  int* rows,
+                  int* cols,
+                  size_t height,
+                  size_t width,
+                  size_t nnz,
+                  SparseValueType valueType,
+                  SparseFormat format,
+                  bool trans)
+      : Matrix(NULL, height, width, trans, false) {}
+
+  real* getValue() const { return nullptr; }
+  size_t getColStartIdx(size_t i) const { return 0; }
+  size_t getRowStartIdx(size_t i) const { return 0; }
+  size_t getColNum(size_t i) const { return 0; }
+  int* getRowCols(size_t i) const { return nullptr; }
+
+  CpuSparseMatrixPtr getTmpSparseMatrix(size_t height, size_t width) {
+    return nullptr;
+  }
+
+  void resize(size_t newHeight,
+              size_t newWidth,
+              size_t newNnz, /* used to allocate space */
+              SparseValueType valueType,
+              SparseFormat format) {}
+  void resize(size_t newHeight, size_t newWidth) {}
+  MatrixPtr getTranspose() { return nullptr; }
+  void setRow(size_t row,
+              size_t colNum,
+              const unsigned int* cols,
+              const real* values) {}
+};
+
+}  // namespace paddle
+
+#endif

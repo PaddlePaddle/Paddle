@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 #include "ModelConfig.pb.h"
 #include "paddle/gserver/layers/DataLayer.h"
-#include "paddle/trainer/Trainer.h"
 
 #include "paddle/testing/TestUtil.h"
 using namespace std;  // NOLINT
@@ -31,7 +30,8 @@ enum InputType {
   INPUT_SEQUENCE_LABEL,
   INPUT_SPARSE_NON_VALUE_DATA,
   INPUT_SPARSE_FLOAT_VALUE_DATA,
-  INPUT_DENSE_DIM_DATA,  // using sequence length to init dense data
+  INPUT_DENSE_DIM_DATA,    // using sequence length to init dense data
+  INPUT_SELF_DEFINE_DATA,  // support customizing for input value
 };
 
 struct ParaSparse {
@@ -66,6 +66,9 @@ struct InputDef {
   bool isStatic;
   std::vector<int> labelInitValue;
   std::vector<int> labelSeqStartPositions;
+  std::vector<int> labelSubSeqStartPositions;
+  std::vector<int> ids;
+  MatrixPtr selfDefinedData;
 
   InputDef(InputType type, string nameIn, size_t dimIn, size_t sizeIn) {
     inputType = type;
@@ -73,6 +76,39 @@ struct InputDef {
     dim = dimIn;
     paraSize = sizeIn;
     sparse = {""};
+    isStatic = false;
+  }
+
+  InputDef(InputType type,
+           string nameIn,
+           MatrixPtr selfDefinedData,
+           std::vector<int> selfDefinedSeqStartPos = {},
+           std::vector<int> selfDefinedSubSeqStartPos = {})
+      : labelSeqStartPositions(selfDefinedSeqStartPos),
+        labelSubSeqStartPositions(selfDefinedSubSeqStartPos),
+        selfDefinedData(selfDefinedData) {
+    inputType = type;
+    name = nameIn;
+    dim = 0;
+    sparse = {""};
+    paraSize = 0;
+    isStatic = false;
+  }
+
+  InputDef(InputType type,
+           string nameIn,
+           const std::vector<int>& ids,
+           const std::vector<int>& selfDefinedSeqStartPos = {},
+           const std::vector<int>& selfDefinedSubSeqStartPos = {})
+      : labelSeqStartPositions(selfDefinedSeqStartPos),
+        labelSubSeqStartPositions(selfDefinedSubSeqStartPos),
+        ids(ids) {
+    selfDefinedData = nullptr;
+    inputType = type;
+    name = nameIn;
+    dim = 0;
+    sparse = {""};
+    paraSize = 0;
     isStatic = false;
   }
 
@@ -109,12 +145,16 @@ struct TestConfig {
   LayerConfig layerConfig;
   std::vector<InputDef> inputDefs;
   size_t biasSize;
+  real paramInitialMean;
+  real paramInitialStd;
   bool testAccumulate;
   bool testState;
   bool staticBias;
   bool testBatchState;
   TestConfig()
       : biasSize(0),
+        paramInitialMean(0.0),
+        paramInitialStd(1.0),
         testAccumulate(true),
         testState(false),
         staticBias(false),

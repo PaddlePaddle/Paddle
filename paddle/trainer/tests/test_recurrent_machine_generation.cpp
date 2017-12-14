@@ -113,7 +113,7 @@ void testGeneration(const string& configFile,
 #ifndef PADDLE_TYPE_DOUBLE
 
 TEST(RecurrentGradientMachine, test_generation) {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
   const auto useGpuConfs = {false};
 #else
   const auto useGpuConfs = {true, false};
@@ -124,6 +124,8 @@ TEST(RecurrentGradientMachine, test_generation) {
                      bool beam_search) {
     FLAGS_config_args = beam_search ? "beam_search=1" : "beam_search=0";
     for (auto useGpu : useGpuConfs) {
+      LOG(INFO) << configFile << " useGpu=" << useGpu
+                << " beam_search=" << beam_search;
       testGeneration(configFile, useGpu, hasSubseq, expRetFile);
     }
   };

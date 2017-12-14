@@ -1,0 +1,42 @@
+type: "nn"
+layers {
+  name: "data"
+  type: "data"
+  size: 30
+  active_type: ""
+}
+layers {
+  name: "__repeat_layer_0__"
+  type: "featmap_expand"
+  size: 300
+  active_type: ""
+  inputs {
+    input_layer_name: "data"
+  }
+  num_filters: 10
+}
+layers {
+  name: "__repeat_layer_1__"
+  type: "featmap_expand"
+  size: 300
+  active_type: "tanh"
+  inputs {
+    input_layer_name: "data"
+  }
+  num_filters: 10
+  user_arg: "as_col_vec"
+}
+input_layer_names: "data"
+output_layer_names: "__repeat_layer_0__"
+output_layer_names: "__repeat_layer_1__"
+sub_models {
+  name: "root"
+  layer_names: "data"
+  layer_names: "__repeat_layer_0__"
+  layer_names: "__repeat_layer_1__"
+  input_layer_names: "data"
+  output_layer_names: "__repeat_layer_0__"
+  output_layer_names: "__repeat_layer_1__"
+  is_recurrent_layer_group: false
+}
+

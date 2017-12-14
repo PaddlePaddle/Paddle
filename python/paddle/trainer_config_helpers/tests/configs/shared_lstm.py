@@ -20,12 +20,13 @@ lstm1 = lstmemory_group(
     input=m1,
     param_attr=lstm_param,
     lstm_bias_attr=lstm_bias,
-    mixed_bias_attr=False)
+    input_proj_bias_attr=False)
+
 lstm2 = lstmemory_group(
     input=m2,
     param_attr=lstm_param,
     lstm_bias_attr=lstm_bias,
-    mixed_bias_attr=False)
+    input_proj_bias_attr=False)
 
 softmax_param = ParamAttr(name='softmax_param')
 

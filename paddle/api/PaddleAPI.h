@@ -19,6 +19,7 @@ limitations under the License. */
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "paddle/gserver/gradientmachines/GradientMachine.h"
 #include "paddle/utils/Common.h"
 #include "paddle/utils/GlobalConstants.h"
 
@@ -453,6 +454,25 @@ public:
                                         IVector* vec) throw(RangeError);
   void setSlotSequenceDim(size_t idx, IVector* vec) throw(RangeError);
 
+  /**
+   * Set the frame height of the idx-th Argument.
+   *
+   * @param ids The index of which Argument.
+   * @param h The height value.
+   */
+  void setSlotFrameHeight(size_t idx, size_t h) throw(RangeError);
+
+  /**
+   * Set the frame height of the idx-th Argument.
+   *
+   * @param ids The index of which Argument.
+   * @param h The height value.
+   */
+  void setSlotFrameWidth(size_t idx, size_t w) throw(RangeError);
+
+  size_t getSlotFrameHeight(size_t idx = 0) const throw(RangeError);
+  size_t getSlotFrameWidth(size_t idx = 0) const throw(RangeError);
+
   float sum() const;
 
 private:
@@ -468,8 +488,10 @@ private:
 };
 
 enum GradientMatchineCreateMode {
-  CREATE_MODE_NORMAL = 0,
-  CREATE_MODE_TESTING = 4
+  CREATE_MODE_NORMAL = paddle::GradientMachine::kNormal,
+  CREATE_MODE_SGD_SPARSE_CPU_TRAINING =
+      paddle::GradientMachine::kSgdSparseCpuTraining,
+  CREATE_MODE_TESTING = paddle::GradientMachine::kTesting
 };
 
 struct ParameterConfigPrivate;
@@ -817,7 +839,12 @@ private:
 public:
   static ParameterUpdater* createLocalUpdater(OptimizationConfig* config);
   static ParameterUpdater* createRemoteUpdater(OptimizationConfig* config,
-                                               int passCount);
+                                               int passCount,
+                                               bool useSparseUpdater);
+  static ParameterUpdater* createNewRemoteUpdater(
+      OptimizationConfig* config,
+      const std::string pserverSpec,
+      const bool useEtcd) throw(UnsupportError);
   ~ParameterUpdater();
 
   /**
@@ -854,6 +881,13 @@ public:
    * @param param
    */
   void update(Parameter* param);
+
+  /**
+   * @breif only get required sparse rows by default.
+   * @param fullSize: get full matrix parameter if *fullSize* set
+   * @param apply: get PARAMETER_APPLY on pserver if *apply* set
+   */
+  void getParametersRemote(bool fullSize = false, bool apply = false);
 
   /**
    * @brief restore the average parameter.

@@ -1,0 +1,31 @@
+type: "nn"
+layers {
+  name: "input"
+  type: "data"
+  size: 300
+  active_type: ""
+}
+layers {
+  name: "__clip_0__"
+  type: "clip"
+  size: 300
+  active_type: ""
+  inputs {
+    input_layer_name: "input"
+    clip_conf {
+      min: -10
+      max: 10
+    }
+  }
+}
+input_layer_names: "input"
+output_layer_names: "__clip_0__"
+sub_models {
+  name: "root"
+  layer_names: "input"
+  layer_names: "__clip_0__"
+  input_layer_names: "input"
+  output_layer_names: "__clip_0__"
+  is_recurrent_layer_group: false
+}
+

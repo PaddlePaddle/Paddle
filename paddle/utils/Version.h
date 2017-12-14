@@ -48,7 +48,7 @@ void printVersion(std::ostream& os);
  * @return return true if paddle compiled with GPU
  */
 constexpr bool isWithGpu() {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
   return false;
 #else
   return true;

@@ -3,7 +3,7 @@
 ## Ingredients
 
 As our design principle is starting from the essence: how could we
-allow users to express and solve their problems at neural networks.
+allow users to express and solve their problems as neural networks.
 Some essential concepts that our API have to provide include:
 
 1. A *topology* is an expression of *layers*.
@@ -233,7 +233,7 @@ paddle.dist_train(model,
                   num_parameter_servers=15)
 ```
 
-The pseudo code if `paddle.dist_train` is as follows:
+The pseudo code of `paddle.dist_train` is as follows:
 
 ```python
 def dist_train(topology, parameters, trainer, reader, ...):

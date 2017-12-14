@@ -13,9 +13,7 @@
 # limitations under the License.
 import os
 import unittest
-
 import numpy as np
-
 import paddle.v2.reader.creator
 
 
@@ -34,6 +32,28 @@ class TestTextFile(unittest.TestCase):
         reader = paddle.v2.reader.creator.text_file(path)
         for idx, e in enumerate(reader()):
             self.assertEqual(e, str(idx * 2) + " " + str(idx * 2 + 1))
+
+
+class TestRecordIO(unittest.TestCase):
+    def do_test(self, path):
+        reader = paddle.v2.reader.creator.recordio(path)
+        idx = 0
+        for e in reader():
+            if idx == 0:
+                self.assertEqual(e, (1, 2, 3))
+            elif idx == 1:
+                self.assertEqual(e, (4, 5, 6))
+            idx += 1
+        self.assertEqual(idx, 2)
+
+    def test_recordIO(self):
+        self.do_test(
+            os.path.join(
+                os.path.dirname(__file__), "test_reader_recordio.dat"))
+        self.do_test([
+            os.path.join(
+                os.path.dirname(__file__), "test_reader_recordio.dat")
+        ])
 
 
 if __name__ == '__main__':

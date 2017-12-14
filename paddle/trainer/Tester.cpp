@@ -175,7 +175,7 @@ real Tester::forwardOneBatch(const DataBatch& dataBatch,
     }
     hl_stream_synchronize(HPPL_STREAM_DEFAULT);
     FILE* fp = fopen(featFile.c_str(), "ab+");
-    PCHECK(!ferror(fp)) << "Fail to open " << featFile;
+    CHECK(!ferror(fp)) << "Fail to open " << featFile;
 
     size_t sampleNum = featMatrices[0]->getHeight();
     for (size_t i = 0; i < sampleNum; ++i) {

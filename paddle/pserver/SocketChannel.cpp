@@ -51,7 +51,7 @@ size_t SocketChannel::read(void* buf, size_t size) {
     else
       len = rdma::read(rdmaSocket_, (char*)buf + total, size - total);
 
-    PCHECK(len >= 0) << " peer=" << peerName_;
+    CHECK(len >= 0) << " peer=" << peerName_;
     if (len <= 0) {
       return total;
     }
@@ -69,7 +69,7 @@ size_t SocketChannel::write(const void* buf, size_t size) {
     else
       len = rdma::write(rdmaSocket_, (char*)buf + total, size - total);
 
-    PCHECK(len >= 0) << " peer=" << peerName_;
+    CHECK(len >= 0) << " peer=" << peerName_;
     if (len <= 0) {
       return total;
     }
@@ -98,10 +98,10 @@ static size_t readwritev(IOFunc iofunc,
   while (size < total) {
     ssize_t len =
         iofunc(socket, &iovs[curIov], std::min(iovcnt - curIov, maxiovs));
-    PCHECK(len > 0) << " peer=" << peerName << " curIov=" << curIov
-                    << " iovCnt=" << iovcnt
-                    << " iovs[curIov].base=" << iovs[curIov].iov_base
-                    << " iovs[curIov].iov_len=" << iovs[curIov].iov_len;
+    CHECK(len > 0) << " peer=" << peerName << " curIov=" << curIov
+                   << " iovCnt=" << iovcnt
+                   << " iovs[curIov].base=" << iovs[curIov].iov_base
+                   << " iovs[curIov].iov_len=" << iovs[curIov].iov_len;
     size += len;
 
     /// restore iovs[curIov] to the original value
@@ -183,7 +183,7 @@ void SocketChannel::writeMessage(const std::vector<struct iovec>& userIovs) {
     header.totalLength += iov.iov_len;
   }
 
-  PCHECK(writev(iovs) == (size_t)header.totalLength);
+  CHECK(writev(iovs) == (size_t)header.totalLength);
 }
 
 std::unique_ptr<MsgReader> SocketChannel::readMessage() {
@@ -194,7 +194,7 @@ std::unique_ptr<MsgReader> SocketChannel::readMessage() {
     return nullptr;
   }
 
-  PCHECK(len == sizeof(header));
+  CHECK(len == sizeof(header));
 
   std::unique_ptr<MsgReader> msgReader(new MsgReader(this, header.numIovs));
 
@@ -209,7 +209,7 @@ std::unique_ptr<MsgReader> SocketChannel::readMessage() {
 MsgReader::MsgReader(SocketChannel* channel, size_t numBlocks)
     : channel_(channel), blockLengths_(numBlocks), currentBlockIndex_(0) {
   size_t size = numBlocks * sizeof(blockLengths_[0]);
-  PCHECK(channel_->read(&blockLengths_[0], size) == size);
+  CHECK(channel_->read(&blockLengths_[0], size) == size);
 }
 
 void MsgReader::readBlocks(const std::vector<void*>& bufs) {
@@ -223,12 +223,12 @@ void MsgReader::readBlocks(const std::vector<void*>& bufs) {
     ++currentBlockIndex_;
   }
 
-  PCHECK(channel_->readv(&iovs) == totalLength);
+  CHECK(channel_->readv(&iovs) == totalLength);
 }
 
 void MsgReader::readNextBlock(void* buf) {
   CHECK_LT(currentBlockIndex_, blockLengths_.size());
-  PCHECK(channel_->read(buf, getNextBlockLength()) == getNextBlockLength());
+  CHECK(channel_->read(buf, getNextBlockLength()) == getNextBlockLength());
   ++currentBlockIndex_;
 }
 

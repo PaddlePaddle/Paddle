@@ -35,7 +35,7 @@ void testFuncDDDMatrix(
   size_t heightC = dimM;
   size_t widthC = dimN;
   // init Test object
-  FunctionCompare test(
+  CpuGpuFuncCompare test(
       "MulOp", FuncConfig().set("aTrans", transa).set("bTrans", transb));
   // prepare input arguments
   /// matrix A : HA * WA
@@ -74,15 +74,15 @@ TEST(MulOp, DDDMatrixMul) {
 }
 
 /**
-  * C += A * B, B, C dense, A sparse
-  * dense = sparse * dense
-  */
+ * C += A * B, B, C dense, A sparse
+ * dense = sparse * dense
+ */
 void testFuncDSparseDMatrix(
     size_t dimM, size_t dimN, size_t dimK, size_t nnz, SparseFormat FORMAT) {
   real scaleT = 1.0;
   // init Test object
-  FunctionCompare test("MulOp",
-                       FuncConfig().set("aTrans", false).set("bTrans", false));
+  CpuGpuFuncCompare test(
+      "MulOp", FuncConfig().set("aTrans", false).set("bTrans", false));
   // prepare input arguments
   /// sparse matrix A : M * K
   test.addInputs(SparseMatrixArg(
@@ -119,15 +119,15 @@ TEST(MuLOp, DSparseDMul) {
 }
 
 /**
-  * C += A * B, A, C dense, B sparse
-  * dense = dense * sparse
-  */
+ * C += A * B, A, C dense, B sparse
+ * dense = dense * sparse
+ */
 void testFuncDDSparseMatrix(
     size_t dimM, size_t dimN, size_t dimK, size_t nnz, SparseFormat FORMAT) {
   real scaleT = 1.0;
   // init Test object
-  FunctionCompare test("MulOp",
-                       FuncConfig().set("aTrans", false).set("bTrans", false));
+  CpuGpuFuncCompare test(
+      "MulOp", FuncConfig().set("aTrans", false).set("bTrans", false));
   // prepare input arguments
   /// matrix A : M * K
   test.addInputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{dimM, dimK}));
@@ -165,15 +165,15 @@ TEST(MulOp, DDSparseMul) {
 }
 
 /**
-  * C += A * B, A sparse, B, C dense
-  * sparse = dense * dense
-  */
+ * C += A * B, A sparse, B, C dense
+ * sparse = dense * dense
+ */
 void testFuncSparseDDMatrix(
     size_t dimM, size_t dimN, size_t dimK, size_t nnz, SparseFormat FORMAT) {
   real scaleT = 1.0;
   // init Test object
-  FunctionCompare test("MulOp",
-                       FuncConfig().set("aTrans", false).set("bTrans", false));
+  CpuGpuFuncCompare test(
+      "MulOp", FuncConfig().set("aTrans", false).set("bTrans", false));
   // prepare input arguments
   /// matrix A : M * K
   test.addInputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{dimM, dimK}));

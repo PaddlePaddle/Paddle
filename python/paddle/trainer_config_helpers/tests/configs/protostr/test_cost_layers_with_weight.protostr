@@ -45,7 +45,7 @@ layers {
   coeff: 1.0
 }
 layers {
-  name: "__mse_cost_0__"
+  name: "__square_error_cost_0__"
   type: "square_error"
   size: 1
   active_type: ""
@@ -59,6 +59,31 @@ layers {
     input_layer_name: "weight"
   }
   coeff: 1.0
+}
+layers {
+  name: "multi_class_label"
+  type: "data"
+  size: 500
+  active_type: ""
+}
+layers {
+  name: "__nce_layer_0__"
+  type: "nce"
+  size: 1
+  active_type: "sigmoid"
+  inputs {
+    input_layer_name: "__fc_layer_0__"
+    input_parameter_name: "___nce_layer_0__.w0"
+  }
+  inputs {
+    input_layer_name: "multi_class_label"
+  }
+  inputs {
+    input_layer_name: "weight"
+  }
+  bias_parameter_name: "___nce_layer_0__.wbias"
+  num_classes: 500
+  num_neg_samples: 10
 }
 parameters {
   name: "___fc_layer_0__.w0"
@@ -80,11 +105,33 @@ parameters {
   initial_strategy: 0
   initial_smart: false
 }
+parameters {
+  name: "___nce_layer_0__.w0"
+  size: 5000
+  initial_mean: 0.0
+  initial_std: 0.04472135955
+  dims: 500
+  dims: 10
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "___nce_layer_0__.wbias"
+  size: 500
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 1
+  dims: 500
+  initial_strategy: 0
+  initial_smart: false
+}
 input_layer_names: "input"
 input_layer_names: "label"
 input_layer_names: "weight"
+input_layer_names: "multi_class_label"
 output_layer_names: "__cost_0__"
-output_layer_names: "__mse_cost_0__"
+output_layer_names: "__square_error_cost_0__"
+output_layer_names: "__nce_layer_0__"
 evaluators {
   name: "classification_error_evaluator"
   type: "classification_error"
@@ -99,12 +146,16 @@ sub_models {
   layer_names: "weight"
   layer_names: "__fc_layer_0__"
   layer_names: "__cost_0__"
-  layer_names: "__mse_cost_0__"
+  layer_names: "__square_error_cost_0__"
+  layer_names: "multi_class_label"
+  layer_names: "__nce_layer_0__"
   input_layer_names: "input"
   input_layer_names: "label"
   input_layer_names: "weight"
+  input_layer_names: "multi_class_label"
   output_layer_names: "__cost_0__"
-  output_layer_names: "__mse_cost_0__"
+  output_layer_names: "__square_error_cost_0__"
+  output_layer_names: "__nce_layer_0__"
   evaluator_names: "classification_error_evaluator"
   is_recurrent_layer_group: false
 }

@@ -19,8 +19,8 @@
 ..  toctree::
   :maxdepth: 1
 
-  dev/write_docs_cn.rst
   dev/contribute_to_paddle_cn.md
+  dev/write_docs_cn.rst
 
 模型配置
 --------
