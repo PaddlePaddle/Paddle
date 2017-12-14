@@ -38,17 +38,14 @@ train_reader = paddle.batch(
 
 place = fluid.CPUPlace()
 exe = fluid.Executor(place)
-
-exe.optimize(optimize_ops, params_grads, pservers="127.0.0.1:6174", trainers=1)
+t = fluid.DistributeTranspiler()
+t.transpile(optimize_ops, params_grads, pservers="127.0.0.1:6174", trainers=1)
 
 pserver_endpoint = os.getenv("PSERVER")
 if pserver_endpoint:
-    pserver_prog = exe.get_pserver_program(pserver_endpoint, optimize_ops)
-    print("pserver startup: ", fluid.default_startup_program())
+    pserver_prog = t.get_pserver_program(pserver_endpoint, optimize_ops)
     exe.run(fluid.default_startup_program())
-    while True:
-        exe.run(pserver_prog)
-        print("Run pserver once end...")
+    exe.run(pserver_prog)
 else:
     feeder = fluid.DataFeeder(feed_list=[images, label], place=place)
     exe.run(fluid.default_startup_program())
@@ -60,8 +57,6 @@ else:
                                 feed=feeder.feed(data),
                                 fetch_list=[avg_cost] + accuracy.metrics)
             pass_acc = accuracy.eval(exe)
-            print("pass_id=" + str(pass_id) + " acc=" + str(acc) + " pass_acc="
-                  + str(pass_acc))
             # print loss, acc
             if loss < 10.0 and pass_acc > 0.9:
                 # if avg cost less than 10.0 and accuracy is larger than 0.9, we think our code is good.

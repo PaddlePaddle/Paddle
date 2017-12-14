@@ -62,17 +62,29 @@ class RecvOp : public framework::OperatorBase {
     server_thread_->join();
   }
 
+  std::string GetGradVarNameForTrainer(const std::string &varname) const {
+    if (grads_counter_.find(varname) != grads_counter_.end()) {
+      grads_counter_[varname] = 0;
+    }
+    char ret[256];
+    snprintf(ret, sizeof(ret), "%s.trainer_%d", varname.c_str(),
+             grads_counter_[varname]++);
+    return std::string(ret);
+  }
+
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
     // FIXME(typhoonzero): no new scopes for every run.
     framework::Scope &recv_scope = scope.NewScope();
     auto param_list = Attr<std::vector<std::string>>("ParamList");
     auto grad_list = Attr<std::vector<std::string>>("GradList");
+    auto trainer_count = Attr<int>("Trainers");
     size_t param_count = param_list.size();
     // TODO(typhoonzero): change this to a while_op for every cluster-batch.
     while (true) {
-      // TODO(typhoonzero): get from multiple trainers.
-      for (size_t i = 0; i < param_count; ++i) {
+      // Get from multiple trainers, we don't care about order in which
+      // the gradient arrives, just add suffix 0~n then average the gradient.
+      for (size_t i = 0; i < param_count * trainer_count; ++i) {
         // blocking get one var from client.
         const detail::TensorWithName &v = rpc_service_->Get();
         auto grad_var_name = v.first;
@@ -83,6 +95,14 @@ class RecvOp : public framework::OperatorBase {
         }
         VLOG(10) << "recved grad: " << grad_var_name
                  << " updating param: " << param_var_name;
+        if (trainer_count > 1) {
+          auto *var = recv_scope.FindVar(grad_var_name);
+          if (var != nullptr) {
+            // must rename the var to different names to merge gradient.
+            grad_var_name = this->GetGradVarNameForTrainer(grad_var_name);
+          }
+        }
+
         auto *var = recv_scope.Var(grad_var_name);
         auto *tensor = var->GetMutable<framework::LoDTensor>();
         // FIXME(typhoonzero): do not copy
@@ -119,6 +139,7 @@ class RecvOp : public framework::OperatorBase {
   // grpc send/recv service implement to register.
   std::shared_ptr<detail::SendRecvServerImpl> rpc_service_;
   std::shared_ptr<std::thread> server_thread_;
+  mutable std::unordered_map<std::string, int> grads_counter_;
 };
 
 class RecvOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -144,6 +165,9 @@ This operator will recv tensor from send_op
     AddAttr<std::vector<std::string>>(
         "GradList", "type list of string",
         "grad->param name mapping to find which param to optimize.");
+    AddAttr<int>("Trainers", "type int",
+                 "Number of trainers in the current cluster job")
+        .SetDefault(1);
   }
 };
 
