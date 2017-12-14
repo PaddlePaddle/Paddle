@@ -146,5 +146,10 @@ PaddlePaddle支持不同类型的输入数据，主要包括四种类型，和�
 
 ..  literalinclude:: src/train.py
     :linenos:
+    
+使用以上训练好的模型进行预测的例子：
+
+..  literalinclude:: src/infer.py
+    :linenos:
 
 有关线性回归的实际应用，可以参考PaddlePaddle book的 `第一章节 <http://book.paddlepaddle.org/index.html>`_。
