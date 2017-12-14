@@ -50,7 +50,7 @@ TEST(Device, CUDADeviceContext) {
 TEST(Device, CudnnDeviceContext) {
   using paddle::platform::CudnnDeviceContext;
   using paddle::platform::CudnnPlace;
-  if (dynload::HasCUDNN()) {
+  if (paddle::platform::dynload::HasCUDNN()) {
     int count = paddle::platform::GetCUDADeviceCount();
     for (int i = 0; i < count; ++i) {
       CudnnDeviceContext* device_context =

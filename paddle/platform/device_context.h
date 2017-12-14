@@ -69,6 +69,9 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cublas handle in the device context. */
   cublasHandle_t cublas_handle() const;
 
+  /*! \brief  Return cudnn  handle in the device context. */
+  cudnnHandle_t cudnn_handle() const;
+
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
 
@@ -79,6 +82,7 @@ class CUDADeviceContext : public DeviceContext {
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
 
   cudaStream_t stream_;
+  cudnnHandle_t cudnn_handle_;
   cublasHandle_t cublas_handle_;
 };
 
@@ -88,7 +92,7 @@ class CudnnDeviceContext : public CUDADeviceContext {
   virtual ~CudnnDeviceContext();
 
   /*! \brief  Return place in the device context. */
-  Place GetPlace() const override final;
+  Place GetPlace() const final;
 
   /*! \brief  Return cudnn  handle in the device context. */
   cudnnHandle_t cudnn_handle() const;
