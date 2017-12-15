@@ -95,6 +95,12 @@ class RecvOp : public framework::OperatorBase {
         }
         VLOG(10) << "recved grad: " << grad_var_name
                  << " updating param: " << param_var_name;
+        auto *merged_grad = recv_scope.FindVar(grad_var_name);
+        if (merged_grad == nullptr) {
+          // create output of merged var.
+          recv_scope.Var(grad_var_name);
+        }
+
         if (trainer_count > 1) {
           grad_var_name = this->GetGradVarNameForTrainer(grad_var_name);
         }
