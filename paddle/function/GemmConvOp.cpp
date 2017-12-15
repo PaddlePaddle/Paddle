@@ -126,6 +126,11 @@ public:
       inputData += inputChannels * inputHeight * inputWidth;
       outputData += outputChannels * outputHeight * outputWidth;
     }
+#ifdef PADDLE_MOBILE_INFERENCE
+    if (Device == DEVICE_TYPE_CPU) {
+      delete memory_;
+    }
+#endif
   }
 };
 
@@ -233,11 +238,6 @@ public:
       inputGrad += inputChannels * inputHeight * inputWidth;
       outputGrad += outputChannels * outputHeight * outputWidth;
     }
-#ifdef PADDLE_MOBILE_INFERENCE
-    if (Device == DEVICE_TYPE_CPU) {
-      delete memory_;
-    }
-#endif
   }
 };
 
