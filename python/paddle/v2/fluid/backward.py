@@ -1,6 +1,25 @@
 from paddle.v2.fluid import framework as framework
+from . import core
 
 __all__ = ['append_backward_ops']
+
+
+def backward_impl(block, target_block, no_grad_set, grad_to_var, callback):
+    grad_op_descs = []
+    program = block.program
+    for each_op in block.ops:
+        grad_sub_block_list = []
+        if each_op.has_attr("sub_block"):
+            sub_block_idx = each_op.block_attr("sub_block")
+            sub_block = program.block(sub_block_idx)
+            grad_sub_block = program.create_block(parent_idx=sub_block_idx)
+            backward_impl(sub_block, grad_sub_block, no_grad_set, grad_to_var,
+                          callback)
+            grad_sub_block_list.append(grad_sub_block)
+        grad_op_desc = core.get_grad_op_desc(each_op.desc,
+                                             no_grad_set[block.idx],
+                                             grad_to_var, grad_sub_block_list)
+        grad_op_descs.append(grad_op_desc)
 
 
 def append_backward_ops(loss, parameter_list=None, no_grad_set=None):
