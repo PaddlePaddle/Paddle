@@ -31,7 +31,7 @@ struct CPUPlace {
   inline bool operator!=(const CPUPlace &) const { return false; }
 };
 
-struct MKLDNNPlace : public CPUPlace {
+struct MKLDNNPlace {
   MKLDNNPlace() {}
 
   // needed for variant equality comparison
