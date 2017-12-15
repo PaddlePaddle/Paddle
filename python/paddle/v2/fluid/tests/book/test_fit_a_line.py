@@ -44,7 +44,7 @@ def train():
                                        fetch_list=[avg_cost])
 
             if avg_loss_value[0] < 10.0:
-                return  # if avg cost less than 4.0, we think our code is good.
+                return  # if avg cost less than 10.0, we think our code is good.
 
 
 print("Training...")
