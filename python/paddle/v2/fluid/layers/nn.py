@@ -10,7 +10,7 @@ __all__ = [
     'fc', 'embedding', 'dynamic_lstm', 'gru_unit', 'linear_chain_crf',
     'crf_decoding', 'cos_sim', 'cross_entropy', 'square_error_cost', 'accuracy',
     'chunk_eval', 'sequence_conv', 'conv2d', 'sequence_pool', 'pool2d',
-    'batch_norm', 'beam_search_decode', 'conv2d_transpose'
+    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'seq_expand'
 ]
 
 
