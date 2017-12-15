@@ -45,7 +45,7 @@ bool is_gpu_place(const Place &p) {
   return boost::apply_visitor(IsGPUPlace(), p);
 }
 bool is_cpu_place(const Place &p) {
-  return !boost::apply_visitor(IsGPUPlace(), p);
+  return !is_gpu_place(p) && !is_mkldnn_place(p);
 }
 
 bool is_mkldnn_place(const Place &p) {
