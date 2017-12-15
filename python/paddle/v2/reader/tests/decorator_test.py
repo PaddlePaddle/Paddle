@@ -145,5 +145,35 @@ class TestXmap(unittest.TestCase):
                             self.assertEqual(e, mapper(idx))
 
 
+class TestPipeReader(unittest.TestCase):
+    def test_pipe_reader(self):
+        def simple_parser(lines):
+            return lines
+
+        import tempfile
+
+        records = [str(i) for i in xrange(5)]
+        temp = tempfile.NamedTemporaryFile()
+        try:
+            with open(temp.name, 'w') as f:
+                for r in records:
+                    f.write('%s\n' % r)
+
+            cmd = "cat %s" % temp.name
+            reader = paddle.v2.reader.pipe_reader(
+                cmd, simple_parser, bufsize=128)
+            for i in xrange(4):
+                result = []
+                for r in reader():
+                    result.append(r)
+
+                for idx, e in enumerate(records):
+                    print e, result[idx]
+                    self.assertEqual(e, result[idx])
+        finally:
+            # delete the temporary file
+            temp.close()
+
+
 if __name__ == '__main__':
     unittest.main()

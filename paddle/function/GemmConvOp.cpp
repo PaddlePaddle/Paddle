@@ -126,6 +126,11 @@ public:
       inputData += inputChannels * inputHeight * inputWidth;
       outputData += outputChannels * outputHeight * outputWidth;
     }
+#ifdef PADDLE_MOBILE_INFERENCE
+    if (Device == DEVICE_TYPE_CPU) {
+      delete memory_;
+    }
+#endif
   }
 };
 
