@@ -143,13 +143,6 @@ class LayerHelper(object):
             persistable=True,
             initializer=initializer)
 
-    @property
-    def to_kwargs(self):
-        return {
-            'main_program': self.main_program,
-            'startup_program': self.startup_program
-        }
-
     def append_bias_op(self, input_var, dim_start=1, dim_end=None):
         """
         Append bias operator and return its output. If the user does not set

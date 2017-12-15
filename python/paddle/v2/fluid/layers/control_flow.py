@@ -842,8 +842,7 @@ class DynamicRNN(object):
             inputs={'X': x,
                     'RankTable': self.lod_rank_table},
             outputs={'Out': input_array})
-        return array_read(
-            array=input_array, i=self.step_idx, **self.helper.to_kwargs)
+        return array_read(array=input_array, i=self.step_idx)
 
     @contextlib.contextmanager
     def block(self):
@@ -854,32 +853,18 @@ class DynamicRNN(object):
         self.status = DynamicRNN.IN_RNN
         with self.while_op.block():
             yield
-            increment(
-                x=self.step_idx,
-                value=1.0,
-                in_place=True,
-                **self.helper.to_kwargs)
+            increment(x=self.step_idx, value=1.0, in_place=True)
 
             for new_mem, mem_array in self.mem_link:
-                array_write(
-                    x=new_mem,
-                    i=self.step_idx,
-                    array=mem_array,
-                    **self.helper.to_kwargs)
+                array_write(x=new_mem, i=self.step_idx, array=mem_array)
 
-            less_than(
-                x=self.step_idx,
-                y=self.max_seq_len,
-                cond=self.cond,
-                **self.helper.to_kwargs)
+            less_than(x=self.step_idx, y=self.max_seq_len, cond=self.cond)
 
         self.status = DynamicRNN.AFTER_RNN
         for each_array in self.output_array:
             self.outputs.append(
                 array_to_lod_tensor(
-                    x=each_array,
-                    table=self.lod_rank_table,
-                    **self.helper.to_kwargs))
+                    x=each_array, table=self.lod_rank_table))
 
     def __call__(self, *args, **kwargs):
         if self.status != DynamicRNN.AFTER_RNN:
@@ -906,13 +891,9 @@ class DynamicRNN(object):
                 inputs={'X': init,
                         'I': self.zero_idx},
                 outputs={'Out': mem_array})
-            retv = array_read(
-                array=mem_array, i=self.step_idx, **self.helper.to_kwargs)
+            retv = array_read(array=mem_array, i=self.step_idx)
             retv = shrink_memory(
-                x=retv,
-                i=self.step_idx,
-                table=self.lod_rank_table,
-                **self.helper.to_kwargs)
+                x=retv, i=self.step_idx, table=self.lod_rank_table)
             self.mem_dict[retv.name] = mem_array
             return retv
         else:
