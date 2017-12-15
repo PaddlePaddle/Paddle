@@ -147,7 +147,13 @@ class TestChunkEvalOp(OpTest):
             'Recall': np.asarray(
                 [recall], dtype='float32'),
             'F1-Score': np.asarray(
-                [f1], dtype='float32')
+                [f1], dtype='float32'),
+            'NumInferChunks': np.asarray(
+                [self.num_infer_chunks], dtype='int64'),
+            'NumLabelChunks': np.asarray(
+                [self.num_label_chunks], dtype='int64'),
+            'NumCorrectChunks': np.asarray(
+                [self.num_correct_chunks], dtype='int64')
         }
 
     def setUp(self):

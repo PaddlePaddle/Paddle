@@ -86,6 +86,22 @@ class CUDADeviceContext : public DeviceContext {
   cublasHandle_t cublas_handle_;
 };
 
+class CudnnDeviceContext : public CUDADeviceContext {
+ public:
+  explicit CudnnDeviceContext(CudnnPlace place);
+  virtual ~CudnnDeviceContext();
+
+  /*! \brief  Return place in the device context. */
+  Place GetPlace() const final;
+
+  /*! \brief  Return cudnn  handle in the device context. */
+  cudnnHandle_t cudnn_handle() const;
+
+ private:
+  cudnnHandle_t cudnn_handle_;
+  CudnnPlace place_;
+};
+
 #endif
 
 }  // namespace platform
