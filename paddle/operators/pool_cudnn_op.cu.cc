@@ -12,7 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/pool_cudnn_op.h"
+#include "paddle/framework/op_registry.h"
+#include "paddle/operators/pool_op.h"
 #include "paddle/platform/cudnn_helper.h"
 
 namespace paddle {
@@ -162,12 +163,16 @@ class PoolCudnnGradOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(pool2d_cudnn, ops::PoolCudnnOpKernel<float>,
-                        ops::PoolCudnnOpKernel<double>);
-REGISTER_OP_CUDA_KERNEL(pool2d_cudnn_grad, ops::PoolCudnnGradOpKernel<float>,
-                        ops::PoolCudnnGradOpKernel<double>);
+REGISTER_OP_KERNEL(pool2d, Cudnn, ::paddle::platform::CudnnPlace,
+                   ops::PoolCudnnOpKernel<float>,
+                   ops::PoolCudnnOpKernel<double>);
+REGISTER_OP_KERNEL(pool2d_grad, Cudnn, ::paddle::platform::CudnnPlace,
+                   ops::PoolCudnnGradOpKernel<float>,
+                   ops::PoolCudnnGradOpKernel<double>);
 
-REGISTER_OP_CUDA_KERNEL(pool3d_cudnn, ops::PoolCudnnOpKernel<float>,
-                        ops::PoolCudnnOpKernel<double>);
-REGISTER_OP_CUDA_KERNEL(pool3d_cudnn_grad, ops::PoolCudnnGradOpKernel<float>,
-                        ops::PoolCudnnGradOpKernel<double>);
+REGISTER_OP_KERNEL(pool3d, Cudnn, ::paddle::platform::CudnnPlace,
+                   ops::PoolCudnnOpKernel<float>,
+                   ops::PoolCudnnOpKernel<double>);
+REGISTER_OP_KERNEL(pool3d_grad, Cudnn, ::paddle::platform::CudnnPlace,
+                   ops::PoolCudnnGradOpKernel<float>,
+                   ops::PoolCudnnGradOpKernel<double>);

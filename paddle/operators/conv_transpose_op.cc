@@ -83,6 +83,17 @@ Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(
       "(vector<int> default:{0, 0}), the paddings(h_pad, w_pad) of convolution "
       "transpose operator.")
       .SetDefault({0, 0});
+  AddAttr<std::vector<int>>(
+      "dilations",
+      "Used in cudnn kernel only. dilations of convolution operator.")
+      .SetDefault({1, 1});
+  AddAttr<int>("workspace_size_MB",
+               "Used in cudnn kernel only. workspace size for cudnn, in MB, "
+               "workspace is a section of GPU memory which will be "
+               "allocated/freed each time the operator runs, larger "
+               "workspace size can increase performance but also requires "
+               "better hardward. This size should be carefully setted.")
+      .SetDefault(4096);
   AddComment(R"DOC(
 Convolution2D Transpose Operator.
 
@@ -145,6 +156,17 @@ Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(
                             "(vector<int> default:{0, 0, 0}), paddings(d_pad, "
                             "h_pad, w_pad) of convolution transpose operator.")
       .SetDefault({0, 0, 0});
+  AddAttr<std::vector<int>>(
+      "dilations",
+      "Used in cudnn kernel only. dilations of convolution operator.")
+      .SetDefault({1, 1, 1});
+  AddAttr<int>("workspace_size_MB",
+               "Used in cudnn kernel only. workspace size for cudnn, in MB, "
+               "workspace is a section of GPU memory which will be "
+               "allocated/freed each time the operator runs, larger "
+               "workspace size can increase performance but also requires "
+               "better hardward. This size should be carefully setted.")
+      .SetDefault(4096);
   AddComment(R"DOC(
 Convolution3D Transpose Operator.
 

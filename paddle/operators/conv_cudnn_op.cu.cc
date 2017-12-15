@@ -315,16 +315,16 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(conv2d_cudnn,
-                        paddle::operators::CudnnConvOpKernel<float>,
-                        paddle::operators::CudnnConvOpKernel<double>);
-REGISTER_OP_CUDA_KERNEL(conv2d_cudnn_grad,
-                        paddle::operators::CudnnConvGradOpKernel<float>,
-                        paddle::operators::CudnnConvGradOpKernel<double>);
+REGISTER_OP_KERNEL(conv2d, Cudnn, ::paddle::platform::CudnnPlace,
+                   paddle::operators::CudnnConvOpKernel<float>,
+                   paddle::operators::CudnnConvOpKernel<double>);
+REGISTER_OP_KERNEL(conv2d_grad, Cudnn, ::paddle::platform::CudnnPlace,
+                   paddle::operators::CudnnConvGradOpKernel<float>,
+                   paddle::operators::CudnnConvGradOpKernel<double>);
 
-REGISTER_OP_CUDA_KERNEL(conv3d_cudnn,
-                        paddle::operators::CudnnConvOpKernel<float>,
-                        paddle::operators::CudnnConvOpKernel<double>);
-REGISTER_OP_CUDA_KERNEL(conv3d_cudnn_grad,
-                        paddle::operators::CudnnConvGradOpKernel<float>,
-                        paddle::operators::CudnnConvGradOpKernel<double>);
+REGISTER_OP_KERNEL(conv3d, Cudnn, ::paddle::platform::CudnnPlace,
+                   paddle::operators::CudnnConvOpKernel<float>,
+                   paddle::operators::CudnnConvOpKernel<double>);
+REGISTER_OP_KERNEL(conv3d_grad, Cudnn, ::paddle::platform::CudnnPlace,
+                   paddle::operators::CudnnConvGradOpKernel<float>,
+                   paddle::operators::CudnnConvGradOpKernel<double>);

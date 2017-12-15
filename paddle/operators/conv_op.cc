@@ -108,6 +108,13 @@ Conv2DOpMaker::Conv2DOpMaker(framework::OpProto* proto,
                             "dilations(h_dilation, w_dilation) of "
                             "convolution operator.")
       .SetDefault({1, 1});
+  AddAttr<int>("workspace_size_MB",
+               "Only used in cudnn kernel. workspace size for cudnn, in MB, "
+               "workspace is a section of GPU memory which will be "
+               "allocated/freed each time the operator runs, larger "
+               "workspace size can increase performance but also requires "
+               "better hardware. This size should be chosen carefully.")
+      .SetDefault(4096);
   AddComment(R"DOC(
 Convolution Operator.
 
@@ -182,6 +189,13 @@ Conv3DOpMaker::Conv3DOpMaker(framework::OpProto* proto,
                             "dilations(d_dilation, h_dilation, w_dilation) of "
                             "convolution operator.")
       .SetDefault({1, 1, 1});
+  AddAttr<int>("workspace_size_MB",
+               "Only used in cudnn kernel. workspace size for cudnn, in MB, "
+               "workspace is a section of GPU memory which will be "
+               "allocated/freed each time the operator runs, larger "
+               "workspace size can increase performance but also requires "
+               "better hardware. This size should be chosen carefully.")
+      .SetDefault(4096);
 
   AddComment(R"DOC(
 Convolution3D Operator.

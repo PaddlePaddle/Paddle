@@ -73,25 +73,11 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(conv2d);\n")
     endif()
 
-    # conv_cudnn_op contains several operators
-    if ("${TARGET}" STREQUAL "conv_cudnn_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(conv2d_cudnn);\n")
-    endif()
-
     # pool_op contains several operators
     if ("${TARGET}" STREQUAL "pool_op")
         set(pybind_flag 1)
         # It's enough to just adding one operator to pybind
         file(APPEND ${pybind_file} "USE_OP(pool2d);\n")
-    endif()
-
-    # pool_cudnn_op contains several operators
-    if ("${TARGET}" STREQUAL "pool_cudnn_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(pool2d_cudnn);\n")
     endif()
 
     if ("${TARGET}" STREQUAL "logical_op")
@@ -111,13 +97,6 @@ function(op_library TARGET)
         set(pybind_flag 1)
         # It's enough to just adding one operator to pybind
         file(APPEND ${pybind_file} "USE_OP(conv2d_transpose);\n")
-    endif()
-
-    # conv_transpose_cudnn_op contains two operators
-    if ("${TARGET}" STREQUAL "conv_transpose_cudnn_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(conv2d_transpose_cudnn);\n")
     endif()
 
     # save_restore_op contains several operators
