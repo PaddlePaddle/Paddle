@@ -130,11 +130,10 @@ TestConfig initTestConfig(size_t numClasses, bool withWeight) {
 
 TEST(Layer, CRFLayer) {
   size_t numClasses = 10;
-  for (int tries = 0; tries < 5; ++tries) {
-    TestConfig config = initTestConfig(numClasses, /* withWeight= */ false);
-    for (int length : {1, 3, 100}) {
-      // Not support GPU now
-      for (auto useGpu : {false, true}) {
+  for (auto useGpu : {false, true}) {
+    for (int tries = 0; tries < 5; ++tries) {
+      TestConfig config = initTestConfig(numClasses, /* withWeight= */ false);
+      for (int length : {1, 3, 100}) {
         testLayerGrad(config,
                       "crf",
                       length,
@@ -149,11 +148,10 @@ TEST(Layer, CRFLayer) {
 
 TEST(Layer, CRFLayerUseWeight) {
   size_t numClasses = 10;
-  for (int tries = 0; tries < 5; ++tries) {
-    TestConfig config = initTestConfig(numClasses, /* withWeight= */ true);
-    for (int length : {1, 3, 100}) {
-      // Not support GPU now
-      for (auto useGpu : {false}) {
+  for (auto useGpu : {false, true}) {
+    for (int tries = 0; tries < 5; ++tries) {
+      TestConfig config = initTestConfig(numClasses, /* withWeight= */ true);
+      for (int length : {1, 3, 100}) {
         testLayerGrad(config,
                       "crf",
                       length,
