@@ -1,7 +1,6 @@
 import numpy as np
 from . import core
 from framework import Program, default_main_program, Parameter, Variable
-import distribute_planner
 
 __all__ = ['Executor', 'g_scope']
 
