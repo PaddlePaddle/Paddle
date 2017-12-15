@@ -791,10 +791,9 @@ class MixedLayerType(LayerOutput):
 
     def __init__(self, name, size, act, bias_attr, layer_attr, parents=None):
         """
-        Ctor.
-        :param name: layer name.
+        :param name: The name of this layer.
         :type name: basestring
-        :param size: layer size.
+        :param size: The dimension of this layer.
         :type size: int
         :param act: Activation type.
         :type act: BaseActivation
@@ -802,8 +801,9 @@ class MixedLayerType(LayerOutput):
                           whose type is not ParameterAttribute, no bias is defined. If the
                           parameter is set to True, the bias is initialized to zero.
         :type bias_attr: ParameterAttribute | None | bool | Any
-        :param layer_attr: Extra Layer Attribute.
-        :type layer_attr: ExtraLayerAttribute or None
+        :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                           details.
+        :type layer_attr: ExtraLayerAttribute | None
         """
         LayerOutput.__init__(
             self,
@@ -868,12 +868,12 @@ def mixed_layer(size=0,
                 bias_attr=False,
                 layer_attr=None):
     """
-    Mixed Layer. A mixed layer will add all inputs together, then activate.
-    Each inputs is a projection or operator.
+    Mixed Layer. A mixed layer will add all inputs together, then activate the sum.
+    Each input is a projection or operator.
 
     There are two styles of usages.
 
-    1. When not set inputs parameter, use mixed_layer like this:
+    1. When the parameter input is not set, use mixed_layer like this:
 
     .. code-block:: python
 
@@ -889,21 +889,21 @@ def mixed_layer(size=0,
                        input=[full_matrix_projection(input=layer1),
                               full_matrix_projection(input=layer2)])
 
-    :param name: mixed layer name. Can be referenced by other layer.
+    :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param size: layer size.
+    :param size: The dimension of this layer.
     :type size: int
-    :param input: The input of this layer. It is an optional parameter. If set,
-                  then this function will just return layer's name.
+    :param input: The input of this layer. It is an optional parameter.
     :param act: Activation Type. LinearActivation is the default activation.
     :type act: BaseActivation
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param layer_attr: The extra layer config. Default is None.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
-    :return: MixedLayerType object can add inputs or layer name.
+    :return: MixedLayerType object.
     :rtype: MixedLayerType
     """
 
@@ -938,14 +938,15 @@ def data_layer(name, size, depth=None, height=None, width=None,
 
     :param name: The name of this layer.
     :type name: basestring
-    :param size: Size of this data layer.
+    :param size: The dimension of this data layer.
     :type size: int
-    :param height: Height of this data layer, used for image
+    :param height: The height of the input image data.
     :type height: int | None
-    :param width: Width of this data layer, used for image
+    :param width: The width of the input image data.
     :type width: int | None
-    :param layer_attr: Extra Layer Attribute.
-    :type layer_attr: ExtraLayerAttribute.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -978,14 +979,15 @@ def embedding_layer(input, size, name=None, param_attr=None, layer_attr=None):
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param input: The input of this layer, which must be Index Data.
+    :param input: The input of this layer, whose type must be Index Data.
     :type input: LayerOutput
-    :param size: The embedding dimension.
+    :param size: The dimension of the embedding vector.
     :type size: int
     :param param_attr: The embedding parameter attribute. See ParameterAttribute
                       for details.
-    :type param_attr: ParameterAttribute | None
-    :param layer_attr: Extra layer Config. Default is None.
+    :type param_attr: ParameterAttribute
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute | None
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -1013,7 +1015,7 @@ def fc_layer(input,
              bias_attr=None,
              layer_attr=None):
     """
-    Helper for declare fully connected layer.
+    The fully connected layer.
 
     The example usage is:
 
@@ -1035,17 +1037,18 @@ def fc_layer(input,
     :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput | list | tuple
-    :param size: The layer dimension.
+    :param size: The dimension of this layer.
     :type size: int
     :param act: Activation Type. TanhActivation is the default activation.
     :type act: BaseActivation
-    :param param_attr: The Parameter Attribute|list.
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
     :type param_attr: ParameterAttribute
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param layer_attr: Extra Layer config.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute | None
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -1086,13 +1089,15 @@ def fc_layer(input,
 @wrap_name_default("print")
 def printer_layer(input, format=None, name=None):
     """
-    Print the output value of input layers. This layer is useful for debugging.
+    Print the output value of the layers specified by the parameter input.
+    This layer is useful for debugging.
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput | list | tuple
-    :return: LayerOutput
+    :return: LayerOutput object.
+    :rtype: LayerOutput
     """
     if isinstance(input, LayerOutput):
         input = [input]
@@ -1135,11 +1140,12 @@ def priorbox_layer(input,
     :param aspect_ratio: The aspect ratio.
     :type aspect_ratio: list
     :param variance: The bounding box variance.
-    :type min_size: The min size of the priorbox width/height.
+    :type min_size: The minimum size of the priorbox width/height.
     :param min_size: list
-    :type max_size: The max size of the priorbox width/height. Could be NULL.
+    :type max_size: The maximum size of the priorbox width/height. It could be NULL.
     :param max_size: list
-    :return: LayerOutput
+    :return: LayerOutput object.
+    :rtype: LayerOutput
     """
     # plus one for ratio 1.
     num_filters = (len(aspect_ratio) * 2 + 1 + len(max_size)) * 4
@@ -1177,7 +1183,7 @@ def multibox_loss_layer(input_loc,
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param input_loc: The input predict locations.
+    :param input_loc: The input predicted locations.
     :type input_loc: LayerOutput | List of LayerOutput
     :param input_conf: The input priorbox confidence.
     :type input_conf: LayerOutput | List of LayerOutput
@@ -1189,13 +1195,15 @@ def multibox_loss_layer(input_loc,
     :type num_classes: int
     :param overlap_threshold: The threshold of the overlap.
     :type overlap_threshold: float
-    :param neg_pos_ratio: The ratio of the negative bbox to the positive bbox.
+    :param neg_pos_ratio: The ratio of the negative bounding box to
+                          the positive bounding box.
     :type neg_pos_ratio: float
-    :param neg_overlap: The negative bbox overlap threshold.
+    :param neg_overlap: The negative bounding box overlap threshold.
     :type neg_overlap: float
     :param background_id: The background class index.
     :type background_id: int
-    :return: LayerOutput
+    :return: LayerOutput object.
+    :rtype: LayerOutput
     """
     if isinstance(input_loc, LayerOutput):
         input_loc = [input_loc]
@@ -1258,19 +1266,20 @@ def detection_output_layer(input_loc,
     :type input_conf: LayerOutput | List of LayerOutput.
     :param priorbox: The input priorbox location and the variance.
     :type priorbox: LayerOutput
-    :param num_classes: The number of the classification.
+    :param num_classes: The number of the classes.
     :type num_classes: int
     :param nms_threshold: The Non-maximum suppression threshold.
     :type nms_threshold: float
-    :param nms_top_k: The bbox number kept of the NMS's output
+    :param nms_top_k: The bounding boxes number kept of the NMS's output.
     :type nms_top_k: int
-    :param keep_top_k: The bbox number kept of the layer's output
+    :param keep_top_k: The bounding boxes number kept of the layer's output.
     :type keep_top_k: int
-    :param confidence_threshold: The classification confidence threshold
+    :param confidence_threshold: The classification confidence threshold.
     :type confidence_threshold: float
     :param background_id: The background class index.
     :type background_id: int
-    :return: LayerOutput
+    :return: LayerOutput object.
+    :rtype: LayerOutput
     """
     if isinstance(input_loc, LayerOutput):
         input_loc = [input_loc]
@@ -1326,7 +1335,7 @@ def roi_pool_layer(input,
     A layer used by Fast R-CNN to extract feature maps of ROIs from the last
     feature map.
 
-    :param name: The Layer Name.
+    :param name: The name of this layer. It is optional.
     :type name: basestring
     :param input: The input layer.
     :type input: LayerOutput.
@@ -1338,9 +1347,10 @@ def roi_pool_layer(input,
     :type pooled_height: int
     :param spatial_scale: The spatial scale between the image and feature map.
     :type spatial_scale: float
-    :param num_channels: number of input channel.
+    :param num_channels: The number of the input channels.
     :type num_channels: int
-    :return: LayerOutput
+    :return: LayerOutput object.
+    :rtype: LayerOutput
     """
     if num_channels is None:
         assert input.num_filters is not None
@@ -1361,18 +1371,19 @@ def roi_pool_layer(input,
 @wrap_name_default("cross_channel_norm")
 def cross_channel_norm_layer(input, name=None, param_attr=None):
     """
-    Normalize a layer's output. This layer is necessary for ssd.
-    This layer applys normalize across the channels of each sample to
-    a conv layer's output and scale the output by a group of trainable
-    factors which dimensions equal to the channel's number.
+    Normalize a layer's output. This layer is necessary for ssd. This
+    layer applys normalization across the channels of each sample to
+    a convolutional layer's output and scales the output by a group of
+    trainable factors whose dimensions equal to the channel's number.
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param param_attr: The Parameter Attribute|list.
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
     :type param_attr: ParameterAttribute
-    :return: LayerOutput
+    :return: LayerOutput object.
+    :rtype: LayerOutput
     """
     assert input.num_filters is not None
     Layer(
@@ -1413,12 +1424,9 @@ def pooling_layer(input,
     Pooling layer for sequence inputs, not used for Image.
 
     If stride > 0, this layer slides a window whose size is determined by stride,
-    and return the pooling value of the window as the output. Thus, a long sequence
-    will be shorten.
-
-    The parameter stride specifies the intervals at which to apply the pooling
-    operation. Note that for sequence with sub-sequence, the default value
-    of stride is -1.
+    and returns the pooling value of the sequence in the window as the output. Thus,
+    a long sequence will be shortened. Note that for sequence with sub-sequence, the
+    default value of stride is -1.
 
     The example usage is:
 
@@ -1435,16 +1443,16 @@ def pooling_layer(input,
     :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param pooling_type: Type of pooling, MaxPooling(default), AvgPooling,
-                         SumPooling, SquareRootNPooling.
+    :param pooling_type: Type of pooling. MaxPooling is the default pooling.
     :type pooling_type: BasePoolingType | None
     :param stride: The step size between successive pooling regions.
-    :type stride: Int
+    :type stride: int
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param layer_attr: The Extra Attributes for layer, such as dropout.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute | None
     :return: LayerOutput object.
     :rtype: LayerOutput
