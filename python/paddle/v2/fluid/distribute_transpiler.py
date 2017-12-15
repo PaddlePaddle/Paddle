@@ -183,11 +183,20 @@ class DistributeTranspiler:
                         persistable=var.persistable,
                         dtype=var.dtype,
                         shape=var.shape)
-            optimize_sub_program.global_block().append_op(
-                type=opt_op.type,
-                inputs=opt_op.inputs,
-                outputs=opt_op.outputs,
-                attrs=opt_op.attrs)
+
+            if opt_op.inputs.has_key("Grad"):
+                if opt_op.inputs["Grad"].name in grad_var_names:
+                    optimize_sub_program.global_block().append_op(
+                        type=opt_op.type,
+                        inputs=opt_op.inputs,
+                        outputs=opt_op.outputs,
+                        attrs=opt_op.attrs)
+            else:
+                optimize_sub_program.global_block().append_op(
+                    type=opt_op.type,
+                    inputs=opt_op.inputs,
+                    outputs=opt_op.outputs,
+                    attrs=opt_op.attrs)
         pserver_program.global_block().append_op(
             type="recv",
             inputs={"RX":
