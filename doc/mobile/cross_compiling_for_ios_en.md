@@ -18,12 +18,12 @@ PaddlePaddle provides cross-compiling toolchain configuration documentation [cma
 
 There are some mandatory environment variables need to be set before cross compiling PaddlePaddle for iOS:
 
-- `CMAKE_SYSTEM_NAME`, CMake compiling target platform name, has to be `iOS`. PaddlePaddle CMake will compile all the third party dependencies and enforce some parameters (`WITH_C_API=ON`、`WITH_GPU=OFF`、`WITH_AVX=OFF`、`WITH_PYTHON=OFF`、`WITH_RDMA=OFF`) when this variable is set with value `iOS`.
+- `CMAKE_SYSTEM_NAME`, CMake compiling target platform name, has to be `iOS`. PaddlePaddle CMake will compile all the third party dependencies and enforce some parameters (`WITH_C_API=ON`, `WITH_GPU=OFF`, `WITH_AVX=OFF`, `WITH_PYTHON=OFF`,`WITH_RDMA=OFF`) when this variable is set with value `iOS`.
 
 - `WITH_C_API`, Whether to compile inference C-API library, has to be `ON`, since C-API is the only supported interface for inferencing in iOS.
-- `WITH_SWIG_PY`, has to be `ON`. It's not supported to inference or train via swig in iOS.
+- `WITH_SWIG_PY`, has to be `OFF`. It's not supported to inference or train via swig in iOS.
 
-Optional environment variables for iOS are：
+Optional environment variables for iOS are:
 
 - `IOS_PLATFORM`, either `OS` (default) or `SIMULATOR`.
   - `OS`, build targets ARM-based physical devices like iPhone or iPad.
@@ -115,6 +115,6 @@ Please Note: if you compiled PaddlePaddle in the source directory for other plat
 - `lib`, contains PaddlePaddle C-API static library.
 - `third_party` contains all the 3rd party libraries.
 
-Please note: if PaddlePaddle library need to support both physical devices and simulators, you will need to compile correspondingly, then merge fat library with `lipo`
+Please note: if PaddlePaddle library need to support both physical devices and simulators, you will need to compile correspondingly, then merge fat library with `lipo`.
 
 Now you will have PaddlePaddle library compiled and installed, the fat library can be used in deep learning related iOS APPs. Please refer to C-API documentation for usage guides.
