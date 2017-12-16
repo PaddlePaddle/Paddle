@@ -1,4 +1,4 @@
-# Intel® MKL Packed Optimization on PaddlePaddle: Design Doc
+# Intel® MKL Packed on PaddlePaddle: Design Doc
 
 
 ## Contents
@@ -17,13 +17,17 @@
 
 ## Overview
 我们计划将 Intel® MKL 中引入的 GEMM Packed APIs\[[1](#references)\] 集成到 PaddlePaddle 中，充分发挥英特尔平台的优势，有效提升PaddlePaddle在英特尔架构上的性能。
-现阶段的优化主要针对 Recurrent Neural Network(以下简称RNN)相关层（包括`RecurrentLayer`, `GatedRecurrentLayer`和`LstmLayer`）， 以及 PaddlePaddle V1 API。
+现阶段的优化主要针对 Recurrent Neural Network（以下简称RNN）相关层（包括`RecurrentLayer`, `GatedRecurrentLayer`和`LstmLayer`）， 以及 PaddlePaddle V1 API。
 
 ## Key Points
 
 ### Background
-为了达到最佳性能， Intel® MKL 中的 cblas_?gemm 会在计算前将原数据转换为更适合英特尔平台的Packed格式， 这一数据格式的转换操作 (Packing)，在问题本身的计算量比较小的时候显得相对来说较为耗时。
-在现有的某些情况下（例如RNN），多次调用 cblas_?gemm 时会使用相同的原数据，每次调用时对原数据的重复Packing便成为了冗余。
+目前PaddlePaddle采用了 Intel® MKL库的cblas_?gemm函数，这个函数本身会在计算前将原数据转换为更适合英特尔平台的内部格式。
+
+1. 转换耗时 \
+这一数据格式的转换操作（Packing），在问题本身的计算量比较小的时候，显得相对来说较为耗时。例如在DeepSpeech2 \[[2](#references)\] 的Vanilla RNN部分中，矩阵大小是`batch_size * 2048`。
+2. 转换冗余 \
+由于在现有的某些情况下（例如RNN），多次调用 cblas_?gemm 会使用相同的原数据，因此，每次调用时对原数据的重复Packing便成为了冗余。
 
 为了最大程度减少多次调用 cblas_?gemm 在Packing上的耗时，Intel® MKL 引入了以下四个API:
    * cblas_?gemm_alloc
@@ -34,16 +38,16 @@
 通过使用这些API，我们可以先完成对原数据的Packing操作，再把已转换为Packed格式的数据传递给那些复用同一数据的gemm_compute函数，从而避免了Packing冗余。
 
 ### Solution
-在RNN的case下，同一次 forward/backward 过程中所有time state共享同一个weight矩阵。当只做 inference 时，各次 forward 之间也都使用相同的weight矩阵，没有必要在每次forward中每个time state的计算时对weight进行重复的packing操作。
+在RNN的情况下，同一次**前向/后向**（forward/backward）过程中所有**时间步**（time step）共享同一个**权重**（weight）。当只做**预测**（inference）时，各次**前向**之间也都使用了相同的**权重**，没有必要在每次**前向**中每个**时间步**的计算时对**权重**进行重复的Packing操作。
 
-我们通过使用新引入的GEMM Packed APIs，在layer init时先完成对weight的packing操作，然后在 forward/backward 时复用已pack过后的weight，并在每次weight更新后重新Packing。
+我们通过使用新引入的GEMM Packed APIs，在层**初始化**的时时候，先完成对**权重**的Packing操作，然后在**前向/后向**时复用已经转换过的**权重**，并在每次**权重**更新后，对新的**权重**进行转换用于下次迭代。
 
-* 优化前，对于sequence length = `T` 的model, `N` 次iteration执行的Packing次数为：   
-  - `inference`: `N * T`  
-  - `training`: `2 * N * T`
-* 优化后，对于sequence length = `T` 的model, `N` 次iteration执行的Packing次数减少至：
-  - `inference`: `1`    
-  - `training`: `2 * N`
+* 优化前，对于序列长度（sequence length）为`T`的网络模型（model）, `N`次迭代执行的转换次数为：
+  - `inference`： `N * T`  
+  - `training`： `2 * N * T`
+* 优化后，对于同样设置的网络模型，其转换次数减少至：
+  - `inference`： `1`    
+  - `training`： `2 * N`
 
 ## Actions
 
@@ -71,7 +75,7 @@ PaddlePaddle/Paddle
 在对应的`CMakeLists.txt`中根据`WITH_MKL`是否打开，来决定是否开启MKL Packed相关功能。
 
 ### Layers
-所有的`MKLPacked*Layer`都继承于PaddlePaddle的基类`Layer`, 并添加头文件 `MKLPackedGemm.h`，该文件中实现的对相关GEMM Packed APIs做了封装。
+所有的`MKLPacked*Layer`都继承于PaddlePaddle的基类`Layer`, 并添加头文件 `MKLPackedGemm.h`，该文件对相关GEMM Packed APIs做了封装。
 
 ### Unit Tests
 我们会添加`test_MKLPacked.cpp`用于MKL Packed优化后layer的测试。
@@ -87,5 +91,5 @@ TBD
 
 ## References 
 1. [Introducing the new Packed APIs for GEMM](https://software.intel.com/en-us/articles/introducing-the-new-packed-apis-for-gemm)
-
+2. [DeepSpeech2 on PaddlePaddle](https://github.com/PaddlePaddle/DeepSpeech#deepspeech2-on-paddlepaddle)
 
