@@ -172,11 +172,10 @@ void SequenceToBatch::sequence2BatchCopy(Matrix &batch,
         batchData, seqData, idxData, seqWidth, batchCount, seq2batch);
   } else {
     if (seq2batch) {
+#ifdef PADDLE_USE_MKLML
       const int blockMemSize = 8 * 1024;
       const int blockSize = blockMemSize / sizeof(real);
-#ifdef PADDLE_USE_MKLML
 #pragma omp parallel for collapse(2)
-#endif
       for (int i = 0; i < batchCount; ++i) {
         for (int j = 0; j < seqWidth; j += blockSize) {
           memcpy(batch.rowBuf(i) + j,
@@ -185,6 +184,13 @@ void SequenceToBatch::sequence2BatchCopy(Matrix &batch,
                                             : blockMemSize);
         }
       }
+#else
+      for (int i = 0; i < batchCount; ++i) {
+        memcpy(batch.rowBuf(i),
+               sequence.rowBuf(idxData[i]),
+               seqWidth * sizeof(real));
+      }
+#endif
     } else {
 #ifdef PADDLE_USE_MKLML
 #pragma omp parallel for
