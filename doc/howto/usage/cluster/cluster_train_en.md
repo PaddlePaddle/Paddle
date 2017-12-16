@@ -1,24 +1,5 @@
 # PaddlePaddle Distributed Training
 
-* [Introduction](#introduction)
-* [Preparations](#preparations)
-* [Command-line arguments](#command-line-arguments)
-   * [Starting parameter server](#starting-parameter-server)
-   * [Starting trainer](#starting-trainer)
-   * [Prepare Training Dataset](#prepare-training-dataset)
-   * [Prepare Training program](#prepare-training-program)
-* [Use cluster platforms or cluster management tools](#use-cluster-platforms-or-cluster-management-tools)
-   * [Cluster Training Using Fabric](#cluster-training-using-fabric)
-      * [Prepare a Linux cluster](#prepare-a-linux-cluster)
-      * [Launching Cluster Job](#launching-cluster-job)
-      * [Kill Cluster Job](#kill-cluster-job)
-      * [Check Cluster Training Result](#check-cluster-training-result)
-      * [Check Model Output](#check-model-output)
-   * [Cluster Training Using OpenMPI](#cluster-training-using-openmpi)
-      * [Prepare an OpenMPI cluster](#prepare-an-openmpi-cluster)
-      * [Launching Cluster Job](#launching-cluster-job-1)
-   * [Cluster Training Using Kubernetes](#cluster-training-using-kubernetes)
-
 ## Introduction
 
 In this article, we'll explain how to run distributed training jobs with PaddlePaddle on different types of clusters. The diagram below shows the main architecture of a distributed trainning job:
@@ -202,92 +183,10 @@ We'll introduce cluster job management on these platforms. The examples can be f
 
 These cluster platforms provide API or environment variables for training processes, when the job is dispatched to different nodes. Like node ID, IP or total number of nodes etc.
 
-### Cluster Training Using Fabric
+## Use different clusters
 
-#### Prepare a Linux cluster
-
-Run `kubectl -f ssh_servers.yaml` under the directory:  `paddle/scripts/cluster_train_v2/fabric/docker_cluster` will launch a demo cluster. Run `kubectl get po -o wide` to get IP addresses of these nodes.
-
-#### Launching Cluster Job
-`paddle.py` provides automatical scripts to start all PaddlePaddle cluster processes in different nodes. By default, all command line options can be set as `paddle.py` command options and `paddle.py` will transparently and automatically set these options to PaddlePaddle lower level processes.
-
-`paddle.py`provides two distinguished command option for easy job launching.
-
-- `job_dispatch_package` set it with local `workspace` directory, it will be dispatched to all nodes which is set in `conf.py`. It could be helpful for frequently manipulating workspace files. otherwise, frequent multi-nodes workspace deployment is very annoying.
-- `job_workspace`  set it with already deployed workspace directory, `paddle.py` will skip dispatch stage to directly launch cluster job with all nodes. It could help to reduce heavy
-dispatch latency.
-
-`cluster_train/run.sh` provides command line sample to run `demo/recommendation` cluster job, just modify `job_dispatch_package` and `job_workspace` with your defined directory, then:
-```
-sh run.sh
-```
-
-The cluster Job will start in several seconds.
-
-#### Kill Cluster Job
-`paddle.py` can capture `Ctrl + C` SIGINT signal to automatically kill all processes launched by it. So just stop `paddle.py` to kill cluster job. You should manually kill the job if the program crashed.
-
-#### Check Cluster Training Result
-Check log in $workspace/log for details, each node owns same log structure.
-
-`paddle_trainer.INFO`
-It provides almost all internal output log for training,  same as local training. Check runtime model convergence here.
-
-`paddle_pserver2.INFO`
-It provides parameter server running log, which could help to diagnose distributed error.
-
-`server.log`
-It provides stderr and stdout of parameter server process. Check error log if training crashes.
-
-`train.log`
-It provides stderr and stdout of trainer process. Check error log if training crashes.
-
-#### Check Model Output
-After one pass finished, model files will be written in `output` directory in node 0.
-`nodefile` in workspace indicates the node id of current cluster job.
-
-### Cluster Training Using OpenMPI
-
-#### Prepare an OpenMPI cluster
-
-Run the following command to start a 3-node MPI cluster and one "head" node.
-
-```bash
-cd paddle/scripts/cluster_train_v2/openmpi/docker_cluster
-kubectl create -f head.yaml
-kubectl create -f mpi-nodes.yaml
-```
-
-Then you can log in to every OpenMPI node using ssh without input any passwords.
-
-#### Launching Cluster Job
-
-Follow the steps to launch a PaddlePaddle training job in OpenMPI cluster:\
-
-```bash
-# find out node IP addresses
-kubectl get po -o wide
-# generate a "machines" file containing node IP addresses
-kubectl get po -o wide | grep nodes | awk '{print $6}' > machines
-# copy necessary files onto "head" node
-scp -i ssh/id_rsa.mpi.pub machines prepare.py train.py start_mpi_train.sh tutorial@[headIP]:~
-# login to head node using ssh
-ssh -i ssh/id_rsa.mpi.pub tutorial@[headIP]
-# --------------- in head node ---------------
-# prepare training data
-python prepare.py
-# copy training data and dict file to MPI nodes
-cat machines | xargs -i scp word_dict.pickle train.py start_mpi_train.sh machines {}:/home/tutorial
-# creat a directory for storing log files
-mpirun -hostfile machines -n 3 mkdir /home/tutorial/logs
-# copy training data to every node
-scp train.txt-00000 test.txt-00000 [node1IP]:/home/tutorial
-scp train.txt-00001 test.txt-00001 [node2IP]:/home/tutorial
-scp train.txt-00002 test.txt-00002 [node3IP]:/home/tutorial
-# start the job
-mpirun -hostfile machines -n 3  /home/tutorial/start_mpi_train.sh
-```
-
-### Cluster Training Using Kubernetes
-
-The details can be found [here](../k8s/k8s_cn.md)
+  [fabric](fabric_cn.md)
+  [opemmpi](openmpi_cn.md)
+  [kubernetes](k8s_cn.md)
+  [kubernetes distributed](k8s_distributed_cn.md)
+  [kubernetes on AWS](k8s_aws_en.md)
