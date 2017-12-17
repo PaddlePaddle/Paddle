@@ -125,6 +125,22 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
+CudnnDeviceContext::CudnnDeviceContext(CudnnPlace place)
+    : CUDADeviceContext(place), place_(place) {
+  PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
+  PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream()));
+}
+
+CudnnDeviceContext::~CudnnDeviceContext() {
+  SetDeviceId(place_.device);
+  Wait();
+  PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
+}
+
+Place CudnnDeviceContext::GetPlace() const { return CudnnPlace(); }
+
+cudnnHandle_t CudnnDeviceContext::cudnn_handle() const { return cudnn_handle_; }
+
 #endif
 
 }  // namespace platform
