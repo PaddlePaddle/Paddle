@@ -107,7 +107,6 @@ class Executor {
       : Executor(std::vector<platform::Place>({place})) {}
 
   explicit Executor(const std::vector<platform::Place>& places);
-  // ~Executor();
 
   /* @Brief
    * Runtime evaluation of the given ProgramDesc under certain Scope

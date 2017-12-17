@@ -112,8 +112,5 @@ void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id,
   }
 }
 
-// Executor::Executor(const platform::DeviceContext& device)
-//     : device_contexts_({&device}), own_(false) {}
-
 }  // namespace framework
 }  // namespace paddle
