@@ -208,4 +208,3 @@ if use_mkldnn
 但是在PaddlePaddle中，无论是重构前的layer还是重构后的op，都不会想要知道next layer/op的信息。
 4. MKL-DNN的高性能格式与PaddlePaddle原有的`NCHW`不同(PaddlePaddle中的cuDNN部分使用的也是`NCHW`，所以不存在这个问题)。
 所以需要引入一个转换方法，并且只需要在必要的时候转换这种格式，才能更好的发挥MKL-DNN的性能。
-
