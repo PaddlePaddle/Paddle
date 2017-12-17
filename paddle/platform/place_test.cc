@@ -21,9 +21,15 @@ TEST(Place, Default) {
   EXPECT_TRUE(paddle::platform::is_gpu_place(paddle::platform::get_place()));
   EXPECT_TRUE(paddle::platform::is_gpu_place(paddle::platform::default_gpu()));
   EXPECT_TRUE(paddle::platform::is_cpu_place(paddle::platform::default_cpu()));
+  EXPECT_TRUE(
+      paddle::platform::is_mkldnn_place(paddle::platform::default_mkldnn()));
 
   paddle::platform::set_place(paddle::platform::CPUPlace());
   EXPECT_TRUE(paddle::platform::is_cpu_place(paddle::platform::get_place()));
+
+  paddle::platform::set_place(paddle::platform::MKLDNNPlace());
+  EXPECT_FALSE(paddle::platform::is_cpu_place(paddle::platform::get_place()));
+  EXPECT_TRUE(paddle::platform::is_mkldnn_place(paddle::platform::get_place()));
 }
 
 TEST(Place, Print) {
