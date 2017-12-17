@@ -30,6 +30,11 @@ class SppOpMaker : public framework::OpProtoAndCheckerMaker {
               "N * M."
               "M = C * H * W");
     AddAttr<int>("pyramid_height", "(int), multi level pooling");
+    AddAttr<std::string>(
+        "pooling_type",
+        "(string), pooling type, can be \"max\" for max-pooling "
+        "and \"avg\" for average-pooling.")
+        .InEnum({"max", "avg"});
     AddComment(R"DOC(
         "With spatial pyramid pooling, the input image can
         be of any sizes. This not only allows arbitrary aspect
