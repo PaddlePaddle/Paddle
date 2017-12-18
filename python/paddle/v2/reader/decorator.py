@@ -390,8 +390,6 @@ def pipe_reader(left_cmd,
     if not callable(parser):
         raise TypeError("parser must be a callable object")
 
-    process = subprocess.Popen(
-        left_cmd.split(" "), bufsize=bufsize, stdout=subprocess.PIPE)
     # TODO(typhoonzero): add a thread to read stderr
 
     # Always init a decompress object is better than
@@ -400,6 +398,8 @@ def pipe_reader(left_cmd,
         32 + zlib.MAX_WBITS)  # offset 32 to skip the header
 
     def reader():
+        process = subprocess.Popen(
+            left_cmd.split(" "), bufsize=bufsize, stdout=subprocess.PIPE)
         remained = ""
         while True:
             buff = process.stdout.read(bufsize)
