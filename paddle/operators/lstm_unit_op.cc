@@ -48,8 +48,7 @@ class LstmUnitOp : public framework::OperatorWithKernel {
 
 class LstmUnitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LstmUnitOpMaker(framework::OpProto* proto,
-                  framework::OpAttrChecker* op_checker)
+  LstmUnitOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "FC input before the non-linear activation.");
     AddInput(

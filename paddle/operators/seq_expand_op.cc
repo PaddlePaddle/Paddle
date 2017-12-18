@@ -37,8 +37,7 @@ class SeqExpandOp : public framework::OperatorWithKernel {
 
 class SeqExpandOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SeqExpandOpMaker(framework::OpProto* proto,
-                   framework::OpAttrChecker* op_checker)
+  SeqExpandOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor or LoDTensor) The input(X) of this operator can be a "

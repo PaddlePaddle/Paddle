@@ -81,7 +81,7 @@ void PrintOpProto(const std::string& type,
                   std::stringstream& ss) {
   std::cerr << "Processing " << type << "\n";
 
-  const paddle::framework::OpProto* p = opinfo.proto_;
+  const paddle::framework::proto::OpProto* p = opinfo.proto_;
   if (p == nullptr) {
     return;  // It is possible that an operator doesn't have OpProto.
   }
