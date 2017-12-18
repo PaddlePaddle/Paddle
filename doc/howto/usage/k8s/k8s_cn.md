@@ -10,7 +10,7 @@ PaddlePaddle的Docker Image里。为此，我们需要制作一个包含训练�
 
 PaddlePaddle的 `paddlepaddle/paddle:cpu-demo-latest` 镜像里有PaddlePaddle的源码与demo，
 （请注意，默认的PaddlePaddle生产环境镜像 `paddlepaddle/paddle:latest` 是不包括源码的，PaddlePaddle的各版本镜像可以参考
-[Docker installation guide](http://paddlepaddle.org/docs/develop/documentation/zh/getstarted/build_and_install/docker_install_cn.html)），
+[Docker Installation Guide](http://paddlepaddle.org/docs/develop/documentation/zh/getstarted/build_and_install/docker_install_cn.html)），
 下面我们使用这个镜像来下载数据到Docker Container中，并把这个包含了训练数据的Container保存为一个新的镜像。
 
 ### 运行容器
