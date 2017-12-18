@@ -1,6 +1,6 @@
 # Kubernetes分布式训练
 
-前一篇文章介绍了如何在Kubernetes集群上启动一个单机PaddlePaddle训练作业 (Job)。在这篇文章里，我们介绍如何在Kubernetes集群上进行分布式PaddlePaddle训练作业。关于PaddlePaddle的分布式训练，文章 [Cluster Training](https://github.com/baidu/Paddle/blob/develop/doc/cluster/opensource/cluster_train.md)介绍了一种通过SSH远程分发任务，进行分布式训练的方法，与此不同的是，本文将介绍在Kubernetes容器管理平台上快速构建PaddlePaddle容器集群，进行分布式训练的方案。
+前一篇文章介绍了如何在Kubernetes集群上启动一个单机PaddlePaddle训练作业 (Job)。在这篇文章里，我们介绍如何在Kubernetes集群上进行分布式PaddlePaddle训练作业。关于PaddlePaddle的分布式训练，文章 [Cluster Training](http://www.paddlepaddle.org/docs/develop/documentation/zh/howto/usage/cluster/cluster_train_cn.html)介绍了一种通过SSH远程分发任务，进行分布式训练的方法，与此不同的是，本文将介绍在Kubernetes容器管理平台上快速构建PaddlePaddle容器集群，进行分布式训练的方案。
 
 有关Kubernetes相关概念以及如何搭建和配置Kubernetes集群，可以参考[k8s_basis](./k8s_basis_cn.md)。
 
@@ -28,7 +28,7 @@ PaddlePaddle镜像需要提供`paddle pserver`与`paddle train`进程的运行�
 - 拷贝训练文件到容器内
 - 生成`paddle pserver`与`paddle train`进程的启动参数，并且启动训练
 
-因为官方镜像 `paddledev/paddle:cpu-latest` 内已经包含PaddlePaddle的执行程序但是还没上述功能，所以我们可以在这个基础上，添加启动脚本，制作新镜像来完成以上的工作。参考镜像的[*Dockerfile*](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/usage/cluster/k8s/src/k8s_train/Dockerfile)。
+因为官方镜像 `paddledev/paddle:cpu-latest` 内已经包含PaddlePaddle的执行程序但是还没上述功能，所以我们可以在这个基础上，添加启动脚本，制作新镜像来完成以上的工作。参考镜像的[*Dockerfile*](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/usage/cluster/src/k8s_train/Dockerfile)。
 
 ```bash
 $ cd doc/howto/usage/k8s/src/k8s_train
@@ -149,20 +149,19 @@ spec:
 
 文件中，`metadata`下的`name`表示这个job的名字。`parallelism，completions`字段表示这个job会同时开启3个PaddlePaddle节点，成功训练且退出的pod数目为3时，这个job才算成功结束。然后申明一个存储卷`jobpath`，代表宿主机目录`/home/work/mfs`，在对容器的描述`containers`字段中，将此目录挂载为容器的`/home/jobpath`目录，这样容器的`/home/jobpath`目录就成为了共享存储，放在这个目录里的文件其实是保存到了MFS上。
 
-`env`字段表示容器的环境变量，我们将`paddle`运行的一些参数通过这种方式传递到容器内。
+`env`字段表示容器的环境变量，我们将`paddle`运行的一些参数通过这种方式传递到容器内：
 
-环境变量 | 说明
---- | ---
-JOB_PATH | 共享存储挂在的路径
-JOB_NAME | Job的名字
-TRAIN_CONFIG_DIR | 本次训练文件所在目录，与JOB_PATH,JOB_NAME组合可以找到本次训练需要的文件路径
-CONF_PADDLE_NIC | `paddle pserver`进程需要的`--nics`参数，即网卡名
-CONF_PADDLE_PORT | `paddle paserver`的`--port`参数
-CONF_PADDLE_PORTS_NUM | 稠密更新的端口数量，即`--ports_num`参数
-CONF_PADDLE_PORTS_NUM_SPARSE | 稀疏更新的端口数量，即`--ports_num_for_sparse`参数
-CONF_PADDLE_GRADIENT_NUM | 训练节点数量，即`--num_gradient_servers参数`
 
-这些参数的具体描述，读者可以查看[这里](http://www.paddlepaddle.org/doc/ui/cmd_argument/detail_introduction.html#parameter-server-and-distributed-communication)。
+- JOB_PATH：共享存储挂在的路径
+- JOB_NAME：Job的名字
+- TRAIN_CONFIG_DIR：本次训练文件所在目录，与JOB_PATH,JOB_NAME组合可以找到本次训练需要的文件路径
+- CONF_PADDLE_NIC：`paddle pserver`进程需要的`--nics`参数，即网卡名
+- CONF_PADDLE_PORT：`paddle paserver`的`--port`参数
+- CONF_PADDLE_PORTS_NUM：稠密更新的端口数量，即`--ports_num`参数
+- CONF_PADDLE_PORTS_NUM_SPARSE：稀疏更新的端口数量，即`--ports_num_for_sparse`参数
+- CONF_PADDLE_GRADIENT_NUM：训练节点数量，即`--num_gradient_servers参数`
+
+这些参数的具体描述，读者可以查看[这里](http://www.paddlepaddle.org/docs/develop/documentation/zh/howto/usage/cmd_parameter/detail_introduction_cn.html)。
 
 编写完YAML文件后，可以使用Kubernetes的命令行工具创建job。
 
