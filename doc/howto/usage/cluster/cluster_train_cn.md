@@ -181,8 +181,8 @@ PaddlePaddle可以使用多种分布式计算平台构建分布式计算任务�
 
 ## 在不同集群中运行
 
-  [fabric](fabric_cn.md)
-  [opemmpi](openmpi_cn.md)
-  [kubernetes](k8s_cn.md)
-  [kubernetes distributed](k8s_distributed_cn.md)
-  [kubernetes on AWS](k8s_aws_en.md)
+  - [fabric](fabric_cn.md)
+  - [opemmpi](openmpi_cn.md)
+  - [kubernetes](k8s_cn.md)
+  - [kubernetes distributed](k8s_distributed_cn.md)
+  - [kubernetes on AWS](k8s_aws_en.md)
