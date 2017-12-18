@@ -62,12 +62,13 @@ class BatchNormOp : public framework::OperatorWithKernel {
     const auto x_dims = ctx->GetInputDim("X");
     const TensorFormat tensor_format =
         StringToTensorFormat(ctx->Attrs().Get<std::string>("tensor_format"));
+
+    PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
+                   "Input X must have 2 to 5 dimensions.");
+
     const int C =
         (tensor_format == TensorFormat::NCHW ? x_dims[1]
                                              : x_dims[x_dims.size() - 1]);
-
-    PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
-                   "Input X must have 3 to 5 dimensions.");
 
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1UL);
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], C);
@@ -134,7 +135,8 @@ The required data format for this layer is one of the following:
 };
 
 template <typename T>
-class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
+class BatchNormKernel<platform::CPUDeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const float epsilon = ctx.Attr<float>("epsilon");
@@ -146,8 +148,8 @@ class BatchNormKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
-                   "The Input dim size should be between 3 and 5");
+    PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
+                   "The Input dim size should be between 2 and 5");
     const int N = x_dims[0];
     const int C =
         (tensor_format == TensorFormat::NCHW ? x_dims[1]
@@ -317,12 +319,12 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
       PADDLE_THROW("can't find Y@GRAD");
     }
     return framework::OpKernelType(framework::ToDataType(t->type()),
-                                   ctx.device_context());
+                                   ctx.GetPlace());
   }
 };
 
 template <typename T>
-class BatchNormGradKernel<platform::CPUPlace, T>
+class BatchNormGradKernel<platform::CPUDeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -339,8 +341,8 @@ class BatchNormGradKernel<platform::CPUPlace, T>
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
-                   "The Input dim size should be between 3 and 5");
+    PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
+                   "The Input dim size should be between 2 and 5");
     const int N = x_dims[0];
     const int C =
         (tensor_format == TensorFormat::NCHW ? x_dims[1]
@@ -435,8 +437,9 @@ class BatchNormGradKernel<platform::CPUPlace, T>
 namespace ops = paddle::operators;
 REGISTER_OP(batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
             batch_norm_grad, ops::BatchNormGradOp);
-REGISTER_OP_CPU_KERNEL(batch_norm,
-                       ops::BatchNormKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    batch_norm,
+    ops::BatchNormKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     batch_norm_grad,
-    ops::BatchNormGradKernel<paddle::platform::CPUPlace, float>);
+    ops::BatchNormGradKernel<paddle::platform::CPUDeviceContext, float>);

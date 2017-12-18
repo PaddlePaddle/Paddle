@@ -49,7 +49,7 @@ class CropKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T, size_t D>
+template <typename DeviceContext, typename T, size_t D>
 void CropGradFunction(const framework::ExecutionContext& context) {
   auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
   if (d_x != nullptr) {
@@ -63,12 +63,13 @@ void CropGradFunction(const framework::ExecutionContext& context) {
     }
     auto d_x_tensor = EigenTensor<T, D>::From(*d_x);
     auto d_out_tensor = EigenTensor<T, D>::From(*d_out);
-    d_x_tensor.device(context.GetEigenDevice<Place>()) =
+    d_x_tensor.device(
+        *context.template device_context<DeviceContext>().eigen_device()) =
         d_out_tensor.pad(paddings, 0);
   }
 }
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class CropGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -76,22 +77,22 @@ class CropGradKernel : public framework::OpKernel<T> {
         context.Input<Tensor>(framework::GradVarName("Out"))->dims().size();
     switch (rank) {
       case 1:
-        CropGradFunction<Place, T, 1>(context);
+        CropGradFunction<DeviceContext, T, 1>(context);
         break;
       case 2:
-        CropGradFunction<Place, T, 2>(context);
+        CropGradFunction<DeviceContext, T, 2>(context);
         break;
       case 3:
-        CropGradFunction<Place, T, 3>(context);
+        CropGradFunction<DeviceContext, T, 3>(context);
         break;
       case 4:
-        CropGradFunction<Place, T, 4>(context);
+        CropGradFunction<DeviceContext, T, 4>(context);
         break;
       case 5:
-        CropGradFunction<Place, T, 5>(context);
+        CropGradFunction<DeviceContext, T, 5>(context);
         break;
       case 6:
-        CropGradFunction<Place, T, 6>(context);
+        CropGradFunction<DeviceContext, T, 6>(context);
         break;
       default:
         PADDLE_THROW(

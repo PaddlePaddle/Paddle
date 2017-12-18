@@ -32,6 +32,13 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
                    "Output(Recall) of ChunkEvalOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("F1-Score"),
                    "Output(F1-Score) of ChunkEvalOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("NumInferChunks"),
+                   "Output(NumInferChunks) of ChunkEvalOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("NumLabelChunks"),
+                   "Output(NumLabelChunks) of ChunkEvalOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("NumCorrectChunks"),
+        "Output(NumCorrectChunks) of ChunkEvalOp should not be null.");
 
     auto inference_dim = ctx->GetInputDim("Inference");
     auto label_dim = ctx->GetInputDim("Label");
@@ -42,6 +49,9 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Precision", {1});
     ctx->SetOutputDim("Recall", {1});
     ctx->SetOutputDim("F1-Score", {1});
+    ctx->SetOutputDim("NumInferChunks", {1});
+    ctx->SetOutputDim("NumLabelChunks", {1});
+    ctx->SetOutputDim("NumCorrectChunks", {1});
   }
 
  protected:
@@ -58,9 +68,10 @@ class ChunkEvalOpMaker : public framework::OpProtoAndCheckerMaker {
                    framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Inference",
-             "(Tensor, default: Tensor<int>). Predictions from the network.");
+             "(Tensor, default: Tensor<int64_t>). "
+             "Predictions from the network.");
     AddInput("Label",
-             "(Tensor, default: Tensor<int>). The true tag sequences.");
+             "(Tensor, default: Tensor<int64_t>). The true tag sequences.");
     AddOutput("Precision",
               "(float). The evaluated precision (called positive predictive "
               "value) of chunks on the given mini-batch.");
@@ -69,6 +80,16 @@ class ChunkEvalOpMaker : public framework::OpProtoAndCheckerMaker {
               "sensitivity) of chunks on the given mini-batch.");
     AddOutput("F1-Score",
               "(float). The evaluated F1-Score on the given mini-batch.");
+    AddOutput("NumInferChunks",
+              "(int64_t). The number of chunks in Inference on the given "
+              "mini-batch.");
+    AddOutput(
+        "NumLabelChunks",
+        "(int64_t). The number of chunks in Label on the given mini-batch.");
+    AddOutput(
+        "NumCorrectChunks",
+        "(int64_t). The number of chunks both in Inference and Label on the "
+        "given mini-batch.");
     AddAttr<int>("num_chunk_types",
                  "(int). The number of chunk type. See below for details.");
     AddAttr<std::string>(
@@ -84,7 +105,7 @@ class ChunkEvalOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(std::vector<int>{});
     AddComment(R"DOC(
 For some basics of chunking, please refer to
-‘Chunking with Support Vector Mechines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>’.
+‘Chunking with Support Vector Machines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>’.
 
 
 CheckEvalOp computes the precision, recall, and F1-score of chunk detection,
@@ -97,7 +118,7 @@ Here is a NER example of labeling for these tagging schemes:
   IOE:   I-PER  E-PER   O      O   I-ORG          I-ORG  I-ORG E-ORG  O   E-LOC
   IOBES: B-PER  E-PER   O      O   I-ORG          I-ORG  I-ORG E-ORG  O   S-LOC
 
-There are three chunk types(named entity types) including PER(person), ORG(orgnazation)
+There are three chunk types(named entity types) including PER(person), ORG(organization)
 and LOC(LOCATION), and we can see that the labels have the form <tag type>-<chunk type>.
 
 Since the calculations actually use label ids rather than labels, extra attention

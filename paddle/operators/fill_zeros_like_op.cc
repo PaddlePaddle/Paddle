@@ -54,8 +54,9 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(fill_zeros_like, ops::FillZerosLikeOp,
                              ops::FillZerosLikeOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    fill_zeros_like, ops::FillZerosLikeKernel<paddle::platform::CPUPlace, int>,
-    ops::FillZerosLikeKernel<paddle::platform::CPUPlace, int64_t>,
-    ops::FillZerosLikeKernel<paddle::platform::CPUPlace, float>,
-    ops::FillZerosLikeKernel<paddle::platform::CPUPlace, double>,
-    ops::FillZerosLikeKernel<paddle::platform::CPUPlace, bool>);
+    fill_zeros_like,
+    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, bool>);

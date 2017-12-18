@@ -1,6 +1,51 @@
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
+from paddle.v2.fluid.layer_helper import LayerHelper
+
+
+def lstm(x,
+         c_pre_init,
+         hidden_dim,
+         forget_bias=None,
+         main_program=None,
+         startup_program=None):
+    """
+    This function helps create an operator for the LSTM (Long Short Term
+    Memory) cell that can be used inside an RNN.
+    """
+    helper = LayerHelper('lstm_unit', **locals())
+    rnn = fluid.layers.StaticRNN()
+    with rnn.step():
+        c_pre = rnn.memory(init=c_pre_init)
+        x_t = rnn.step_input(x)
+
+        before_fc = fluid.layers.concat(
+            input=[x_t, c_pre],
+            axis=1,
+            main_program=main_program,
+            startup_program=startup_program)
+        after_fc = fluid.layers.fc(input=before_fc,
+                                   size=hidden_dim * 4,
+                                   main_program=main_program,
+                                   startup_program=startup_program)
+
+        dtype = x.dtype
+        c = helper.create_tmp_variable(dtype)
+        h = helper.create_tmp_variable(dtype)
+
+        helper.append_op(
+            type='lstm_unit',
+            inputs={"X": after_fc,
+                    "C_prev": c_pre},
+            outputs={"C": c,
+                     "H": h},
+            attrs={"forget_bias": forget_bias})
+
+        rnn.update_memory(c_pre, c)
+        rnn.output(h)
+
+    return rnn()
 
 
 def lstm_net(dict_dim, class_dim=2, emb_dim=32, seq_len=80, batch_size=50):
@@ -8,7 +53,8 @@ def lstm_net(dict_dim, class_dim=2, emb_dim=32, seq_len=80, batch_size=50):
         name="words",
         shape=[seq_len * batch_size, 1],
         append_batch_size=False,
-        dtype="int64")
+        dtype="int64",
+        lod_level=1)
     label = fluid.layers.data(
         name="label",
         shape=[batch_size, 1],
@@ -21,8 +67,8 @@ def lstm_net(dict_dim, class_dim=2, emb_dim=32, seq_len=80, batch_size=50):
 
     c_pre_init = fluid.layers.fill_constant(
         dtype=emb.dtype, shape=[batch_size, emb_dim], value=0.0)
-    layer_1_out = fluid.layers.lstm(
-        emb, c_pre_init=c_pre_init, hidden_dim=emb_dim)
+    c_pre_init.stop_gradient = False
+    layer_1_out = lstm(emb, c_pre_init=c_pre_init, hidden_dim=emb_dim)
     layer_1_out = fluid.layers.transpose(x=layer_1_out, axis=[1, 0, 2])
 
     prediction = fluid.layers.fc(input=layer_1_out,

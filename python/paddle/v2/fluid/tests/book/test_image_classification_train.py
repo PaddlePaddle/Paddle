@@ -1,9 +1,9 @@
 from __future__ import print_function
 
-import numpy as np
+import sys
+
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
-import sys
 
 
 def resnet_cifar10(input, depth=32):
@@ -69,8 +69,7 @@ def vgg16_bn_drop(input):
 
     drop = fluid.layers.dropout(x=conv5, dropout_prob=0.5)
     fc1 = fluid.layers.fc(input=drop, size=512, act=None)
-    reshape1 = fluid.layers.reshape(x=fc1, shape=list(fc1.shape + (1, 1)))
-    bn = fluid.layers.batch_norm(input=reshape1, act='relu')
+    bn = fluid.layers.batch_norm(input=fc1, act='relu')
     drop2 = fluid.layers.dropout(x=bn, dropout_prob=0.5)
     fc2 = fluid.layers.fc(input=drop2, size=512, act=None)
     return fc2
@@ -114,23 +113,14 @@ train_reader = paddle.batch(
 
 place = fluid.CPUPlace()
 exe = fluid.Executor(place)
-
+feeder = fluid.DataFeeder(place=place, feed_list=[images, label])
 exe.run(fluid.default_startup_program())
 
 for pass_id in range(PASS_NUM):
     accuracy.reset(exe)
     for data in train_reader():
-        img_data = np.array(map(lambda x: x[0].reshape(data_shape),
-                                data)).astype("float32")
-        y_data = np.array(map(lambda x: x[1], data)).astype("int64")
-        batch_size = 1
-        for i in y_data.shape:
-            batch_size = batch_size * i
-        y_data = y_data.reshape([batch_size, 1])
-
         loss, acc = exe.run(fluid.default_main_program(),
-                            feed={"pixel": img_data,
-                                  "label": y_data},
+                            feed=feeder.feed(data),
                             fetch_list=[avg_cost] + accuracy.metrics)
         pass_acc = accuracy.eval(exe)
         print("loss:" + str(loss) + " acc:" + str(acc) + " pass_acc:" + str(
