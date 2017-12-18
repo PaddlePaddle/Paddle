@@ -278,3 +278,55 @@ def get_parameter_value_by_name(name, executor, program=None):
         program = default_main_program()
     var = program.global_block().var(name)
     return get_parameter_value(var, executor)
+
+
+def get_vars(executor, main_program=None, vars=None, predicate=None):
+    """
+    Get variables.
+
+    :param executor: executor that save variable
+    :param main_program: program. If vars is None, then filter all variables in this
+    program which fit `predicate`. Default g_program.
+    :param predicate: The Predicate describes a callable that returns a variable
+    as a bool. If it returns true, the variables will be saved.
+    :param vars: variables need to be saved. If specify vars, program & predicate
+    will be ignored
+    :return: None
+    """
+    if vars is None:
+        if main_program is None:
+            main_program = default_main_program()
+        if not isinstance(main_program, Program):
+            raise TypeError("program should be as Program type or None")
+
+        return get_vars(
+            executor, vars=filter(predicate, main_program.list_vars()))
+    else:
+        fetch_list = []
+        get_program = Program()
+        block = get_program.global_block()
+        for var in vars:
+            new_var = _clone_var_in_block_(block, var)
+            fetch_list.append(new_var)
+        var_data = executor.run(get_program, feed={}, fetch_list=fetch_list)
+        result = zip([var.name for var in vars], var_data)
+        return result
+
+
+def get_params(executor, main_program=None):
+    """
+    Get all parameters with executor.
+    """
+    return get_vars(
+        executor, main_program=main_program, vars=None, predicate=is_parameter)
+
+
+def get_persistables(executor, main_program=None):
+    """
+    Get all persistables with executor.
+    """
+    return get_vars(
+        executor,
+        main_program=main_program,
+        vars=None,
+        predicate=is_persistable)
