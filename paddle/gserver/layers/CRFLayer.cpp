@@ -1,8 +1,11 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -104,13 +107,9 @@ void CRFLayer::forward(PassType passType) {
                          starts[i + 1] - starts[i]);
   }
   if (useGpu_) {
-    label_val->copyFrom(*cpuLabel_);
-    weight_val->copyFrom(*cpuWeight_);
     output_val->copyFrom(*cpuOutput_);
     output_arg_val->copyFrom(*cpuOutputArg_);
   } else {
-    label_val = cpuLabel_;
-    weight_val = cpuWeight_;
     output_val = cpuOutput_;
     output_arg_val = cpuOutputArg_;
   }
@@ -132,14 +131,8 @@ void CRFLayer::backward(const UpdateCallback& callback) {
   MatrixPtr output_arg_val = output.value;
   IVectorPtr label_val = label.ids;
   if (useGpu_) {
-    Matrix::resizeOrCreate(cpuOutputBackArg_,
-                           /* height */ output_arg_val->getHeight(),
-                           /* width */ output_arg_val->getWidth(),
-                           /* trans */ false,
-                           /* useGpu */ false);
-    IVector::resizeOrCreate(cpuBackLabel_, label_val->getSize(), false);
-    cpuOutputBackArg_->copyFrom(*output_arg_val);
-    cpuBackLabel_->copyFrom(*label_val);
+    cpuOutputArg_->copyFrom(*output_arg_val);
+    cpuLabel_->copyFrom(*label_val);
     if (output_arg_grad) {
       Matrix::resizeOrCreate(cpuOutputArgGrad_,
                              /* height */ output_arg_grad->getHeight(),
@@ -157,8 +150,8 @@ void CRFLayer::backward(const UpdateCallback& callback) {
       cpuWeightGrad_->copyFrom(*weight_grad);
     }
   } else {
-    cpuOutputBackArg_ = output_arg_val;
-    cpuBackLabel_ = label_val;
+    cpuOutputArg_ = output_arg_val;
+    cpuLabel_ = label_val;
     if (output_arg_grad) {
       cpuOutputArgGrad_ = output_arg_grad;
     }
@@ -167,8 +160,8 @@ void CRFLayer::backward(const UpdateCallback& callback) {
     }
   }
   for (int i = 0; i < numSequences; ++i) {
-    crfs_[i].backward(cpuOutputBackArg_->getData() + numClasses_ * starts[i],
-                      cpuBackLabel_->getData() + starts[i],
+    crfs_[i].backward(cpuOutputArg_->getData() + numClasses_ * starts[i],
+                      cpuLabel_->getData() + starts[i],
                       starts[i + 1] - starts[i],
                       needWGrad);
     real instanceWeight = weightLayer_
@@ -192,8 +185,7 @@ void CRFLayer::backward(const UpdateCallback& callback) {
     if (needWGrad) {
       weight_grad->copyFrom(*cpuWeightGrad_);
     }
-    output_arg_val->copyFrom(*cpuOutputBackArg_);
-    label_val->copyFrom(*cpuBackLabel_);
+    output_arg_val->copyFrom(*cpuOutputArg_);
   } else {
     if (output.grad) {
       output_arg_grad = cpuOutputArgGrad_;
@@ -201,8 +193,7 @@ void CRFLayer::backward(const UpdateCallback& callback) {
     if (needWGrad) {
       weight_grad = cpuWeightGrad_;
     }
-    output_arg_val = cpuOutputBackArg_;
-    label_val = cpuBackLabel_;
+    output_arg_val = cpuOutputArg_;
   }
 
   parameter_->incUpdate(callback);

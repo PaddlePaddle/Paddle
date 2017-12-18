@@ -49,8 +49,6 @@ protected:
   MatrixPtr cpuWeightGrad_;
   MatrixPtr cpuOutputArgGrad_;
   IVectorPtr cpuLabel_;
-  MatrixPtr cpuOutputBackArg_;
-  IVectorPtr cpuBackLabel_;
 };
 
 }  // namespace paddle
