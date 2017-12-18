@@ -43,19 +43,20 @@ bool RPCClient::SendVariable(const framework::Scope& scope,
   return true;
 }
 
-bool RPCClient::GetVariable(const framework::Scope& scope) {
+bool RPCClient::GetVariable(const framework::Scope& scope,
+                            const std::string& outname) {
   ClientContext context;
-  VariableMessage msg;
-  VoidMessage void_msg;
+  VariableMessage call_msg, ret_msg;
+  call_msg.set_varname(outname);
   auto ctx = platform::CPUDeviceContext();
-  Status status = stub_->GetVariable(&context, void_msg, &msg);
+  Status status = stub_->GetVariable(&context, call_msg, &ret_msg);
   if (!status.ok()) {
     LOG(ERROR) << "gRPC error: " << status.error_message();
     return false;
   }
 
-  std::istringstream iss(msg.serialized());
-  auto outname = msg.varname();
+  std::istringstream iss(ret_msg.serialized());
+
   framework::LoDTensor ret_tensor;
   framework::DeserializeFromStream(iss, &ret_tensor);
   auto* outvar = scope.FindVar(outname);

@@ -76,12 +76,14 @@ class RecvOp : public framework::OperatorBase {
            const platform::DeviceContext &dev_ctx) const override {
     // FIXME(typhoonzero): no new scopes for every run.
     framework::Scope &recv_scope = scope.NewScope();
+    rpc_service_.SetScope(&recv_scope);
     auto param_list = Attr<std::vector<std::string>>("ParamList");
     auto grad_list = Attr<std::vector<std::string>>("GradList");
     auto trainer_count = Attr<int>("Trainers");
     size_t param_count = param_list.size();
     // TODO(typhoonzero): change this to a while_op for every cluster-batch.
     while (true) {
+      rpc_service_.Start();
       // Get from multiple trainers, we don't care about order in which
       // the gradient arrives, just add suffix 0~n then average the gradient.
       for (size_t i = 0; i < param_count * trainer_count; ++i) {
@@ -125,13 +127,13 @@ class RecvOp : public framework::OperatorBase {
         LOG(ERROR) << "run sub program error " << e.what();
       }
 
-      for (size_t i = 0; i < param_count; ++i) {
-        auto *out_var = recv_scope.FindVar(param_list[i]);
-        detail::TensorWithName out;
-        out.first = param_list[i];
-        out.second = out_var->Get<framework::LoDTensor>();
-        rpc_service_->Push(out);
-      }
+      // for (size_t i = 0; i < param_count; ++i) {
+      //   auto *out_var = recv_scope.FindVar(param_list[i]);
+      //   detail::TensorWithName out;
+      //   out.first = param_list[i];
+      //   out.second = out_var->Get<framework::LoDTensor>();
+      //   rpc_service_->Push(out);
+      // }
     }  // while(true)
   }
 

@@ -22,7 +22,9 @@ service SendRecvService {
   // TODO(typhoonzero): add streaming API
   rpc SendVariable(VariableMessage) returns (VoidMessage) {}
   // Argument VariableMessage for GetVariable should only contain varname.
-  rpc GetVariable(VoidMessage) returns (VariableMessage) {}
+  rpc GetVariable(VariableMessage) returns (VariableMessage) {}
+  // wait for one execution of the program
+  rpc Wait(VoidMessage) returns (VoidMessage) {}
 }
 
 // VariableMessage is serialized paddle variable message.

@@ -20,10 +20,6 @@
 #include "paddle/framework/selected_rows.h"
 #include "paddle/operators/detail/simple_block_queue.h"
 
-// #include <grpc++/channel.h>
-// #include <grpc++/client_context.h>
-// #include <grpc++/create_channel.h>
-// #include <grpc++/security/credentials.h>
 #include "paddle/operators/detail/send_recv.grpc.pb.h"
 #include "paddle/operators/detail/send_recv.pb.h"
 
@@ -56,18 +52,24 @@ class SendRecvServerImpl final : public SendRecvService::Service {
 
   Status SendVariable(ServerContext *context, const VariableMessage *in_var,
                       VoidMessage *out_var) override;
-  Status GetVariable(ServerContext *context, const VoidMessage *in_var,
+  Status GetVariable(ServerContext *context, const VariableMessage *in_var,
                      VariableMessage *out_var) override;
+  Status Wait(ServerContext *context, const VoidMessage *in_var,
+              VoidMessage *out_var) override;
+  void Start();
+  void Done();
+  void SetScope(framework::Scope *scope) { scope_ = scope; };
 
   const TensorWithName Get() { return this->var_recv_queue_.Pop(); }
-
-  void Push(const TensorWithName &var) { this->var_return_queue_.Push(var); }
 
  private:
   // received variable from RPC, operators fetch variable from this queue.
   SimpleBlockQueue<TensorWithName> var_recv_queue_;
-  // calculated variable should push to this queue.
-  SimpleBlockQueue<TensorWithName> var_return_queue_;
+  framework::Scope *scope_;
+  // condition of the sub program
+  std::mutex mutex_;
+  bool done_;
+  std::condition_variable condition_;
 };
 
 // RPCClient is a class to send tensors to pserver sub-network
@@ -78,7 +80,7 @@ class RPCClient {
       : stub_(SendRecvService::NewStub(channel)) {}
 
   bool SendVariable(const framework::Scope &scope, const std::string &inname);
-  bool GetVariable(const framework::Scope &scope);
+  bool GetVariable(const framework::Scope &scope, const std::string &outname);
 
  private:
   std::unique_ptr<SendRecvService::Stub> stub_;
