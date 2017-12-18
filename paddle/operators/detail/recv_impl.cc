@@ -33,19 +33,38 @@ Status SendRecvServerImpl::SendVariable(ServerContext *context,
 }
 
 Status SendRecvServerImpl::GetVariable(ServerContext *context,
-                                       const VoidMessage *in_var,
+                                       const VariableMessage *in_var,
                                        VariableMessage *out_var) {
-  // Block util the sub graph is done.
-  auto out_tensor_with_name = var_return_queue_.Pop();
+  std::string get_var_name = in_var->varname();
+  auto *var = scope_->FindVar(get_var_name);
+  auto tensor = var->Get<framework::LoDTensor>();
   std::ostringstream oss;
-  framework::SerializeToStream(oss, out_tensor_with_name.second,
-                               platform::CPUDeviceContext());
+  framework::SerializeToStream(oss, tensor, platform::CPUDeviceContext());
 
   std::string *varname = out_var->mutable_varname();
-  *varname = out_tensor_with_name.first;
+  *varname = get_var_name;
   std::string *serialized = out_var->mutable_serialized();
   *serialized = oss.str();
   return Status::OK;
+}
+
+Status SendRecvServerImpl::Wait(ServerContext *context,
+                                const VoidMessage *in_var,
+                                VoidMessage *out_var) {
+  std::unique_lock<std::mutex> lock(this->mutex_);
+  condition_.wait(lock, [=] { return this->done_ == true; });
+  return Status::OK;
+}
+
+void SendRecvServerImpl::Start() {
+  std::unique_lock<std::mutex> lock(this->mutex_);
+  done_ = false;
+}
+
+void SendRecvServerImpl::Done() {
+  std::unique_lock<std::mutex> lock(this->mutex_);
+  done_ = true;
+  condition_.notify_all();
 }
 
 }  // namespace detail
