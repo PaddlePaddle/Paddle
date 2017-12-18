@@ -63,22 +63,20 @@ namespace math {
  * \note The caller needs to ensure that volShape.inputChannels is equal to
  *       colShape.inputChannels.
  */
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class Vol2ColFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& vol,
+  void operator()(const DeviceContext& context, const framework::Tensor& vol,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   framework::Tensor* col) const;
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class Col2VolFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& col,
+  void operator()(const DeviceContext& context, const framework::Tensor& col,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,

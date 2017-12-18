@@ -27,23 +27,10 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-template <typename T>
-struct EigenDeviceConverter;
-
-template <>
-struct EigenDeviceConverter<platform::CPUPlace> {
-  using EigenDeviceType = Eigen::DefaultDevice;
-};
-
 class DeviceContext {
  public:
   virtual ~DeviceContext() {}
   virtual Place GetPlace() const = 0;
-
-  template <typename PlaceType,
-            typename DeviceType =
-                typename EigenDeviceConverter<PlaceType>::EigenDeviceType>
-  DeviceType* GetEigenDevice() const;
 
   virtual void Wait() const {}
 };
@@ -62,10 +49,6 @@ class CPUDeviceContext : public DeviceContext {
 };
 
 #ifdef PADDLE_WITH_CUDA
-template <>
-struct EigenDeviceConverter<platform::GPUPlace> {
-  using EigenDeviceType = Eigen::GpuDevice;
-};
 
 class EigenCudaStreamDevice;
 
@@ -101,6 +84,22 @@ class CUDADeviceContext : public DeviceContext {
   cudaStream_t stream_;
   cudnnHandle_t cudnn_handle_;
   cublasHandle_t cublas_handle_;
+};
+
+class CUDNNDeviceContext : public CUDADeviceContext {
+ public:
+  explicit CUDNNDeviceContext(CUDNNPlace place);
+  virtual ~CUDNNDeviceContext();
+
+  /*! \brief  Return place in the device context. */
+  Place GetPlace() const final;
+
+  /*! \brief  Return cudnn  handle in the device context. */
+  cudnnHandle_t cudnn_handle() const;
+
+ private:
+  cudnnHandle_t cudnn_handle_;
+  CUDNNPlace place_;
 };
 
 class DeviceGuard {

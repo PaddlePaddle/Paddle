@@ -25,7 +25,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
-template <typename Place, typename T, typename AttrType>
+template <typename DeviceContext, typename T, typename AttrType>
 class CPUDropoutKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -55,13 +55,14 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
     } else {
       auto X = EigenMatrix<T>::Reshape(*x, 1);
       auto Y = EigenMatrix<T>::Reshape(*y, 1);
-      auto place = context.GetEigenDevice<Place>();
+      auto& place =
+          *context.template device_context<DeviceContext>().eigen_device();
       Y.device(place) = X * dropout_prob;
     }
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class DropoutGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -77,7 +78,8 @@ class DropoutGradKernel : public framework::OpKernel<T> {
     auto dX = EigenMatrix<T>::Reshape(*grad_x, 1);
     auto dY = EigenMatrix<T>::Reshape(*grad_y, 1);
 
-    auto place = context.GetEigenDevice<Place>();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
     dX.device(place) = dY * M;
   }
 };
