@@ -66,6 +66,24 @@ class DistributeTranspiler:
             Use different methods to split trainable varialbles to different
             parameter servers.
 
+            Example to run:
+
+            exe = fluid.Executor(place)
+            t = fluid.DistributeTranspiler()
+            t.transpile(optimize_ops, params_grads, pservers="127.0.0.1:6174", trainers=1)
+
+            pserver_endpoint = os.getenv("PSERVER")
+            if pserver_endpoint:
+                pserver_prog = t.get_pserver_program(pserver_endpoint, optimize_ops)
+                exe.run(fluid.default_startup_program())
+                exe.run(pserver_prog)
+            else:
+                feeder = fluid.DataFeeder(feed_list=[images, label], place=place)
+                exe.run(fluid.default_startup_program())
+
+                for pass_id in range(PASS_NUM):
+                    ...
+
             :param optimize_ops: op list of optimization, should be the
                                  return value of Optimizer.minimize
             :type optimize_ops: list

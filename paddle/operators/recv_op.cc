@@ -98,7 +98,8 @@ class RecvOp : public framework::OperatorBase {
         auto *merged_grad = recv_scope.FindVar(grad_var_name);
         if (merged_grad == nullptr) {
           // create output of merged var.
-          recv_scope.Var(grad_var_name);
+          auto merged_var = recv_scope.Var(grad_var_name);
+          merged_var->GetMutable<framework::LoDTensor>();
         }
 
         if (trainer_count > 1) {
