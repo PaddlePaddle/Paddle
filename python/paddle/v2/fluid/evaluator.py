@@ -4,7 +4,7 @@ import layers
 from framework import Program, unique_name, Variable
 from layer_helper import LayerHelper
 
-__all__ = ['Accuracy']
+__all__ = ['Accuracy', 'ChunkEvaluator']
 
 
 def _clone_var_(block, var):
@@ -132,3 +132,74 @@ class Accuracy(Evaluator):
         correct = layers.cast(correct, dtype='float32', **kwargs)
         out = layers.elementwise_div(x=correct, y=total, **kwargs)
         return np.array(executor.run(eval_program, fetch_list=[out])[0])
+
+
+class ChunkEvaluator(Evaluator):
+    """
+    Accumulate counter numbers output by chunk_eval from mini-batches and 
+    compute the precision recall and F1-score using the accumulated counter 
+    numbers.
+    """
+
+    def __init__(self,
+                 input,
+                 label,
+                 chunk_scheme,
+                 num_chunk_types,
+                 excluded_chunk_types=None,
+                 **kwargs):
+        super(ChunkEvaluator, self).__init__("chunk_eval", **kwargs)
+        main_program = self.helper.main_program
+        if main_program.current_block().idx != 0:
+            raise ValueError("You can only invoke Evaluator in root block")
+
+        self.num_infer_chunks = self.create_state(
+            dtype='int64', shape=[1], suffix='num_infer_chunks')
+        self.num_label_chunks = self.create_state(
+            dtype='int64', shape=[1], suffix='num_label_chunks')
+        self.num_correct_chunks = self.create_state(
+            dtype='int64', shape=[1], suffix='num_correct_chunks')
+        kwargs = {'main_program': main_program}
+        precision, recall, f1_score, num_infer_chunks, num_label_chunks, num_correct_chunks = layers.chunk_eval(
+            input=input,
+            label=label,
+            chunk_scheme=chunk_scheme,
+            num_chunk_types=num_chunk_types,
+            excluded_chunk_types=excluded_chunk_types,
+            **kwargs)
+        layers.sums(
+            input=[self.num_infer_chunks, num_infer_chunks],
+            out=self.num_infer_chunks,
+            **kwargs)
+        layers.sums(
+            input=[self.num_label_chunks, num_label_chunks],
+            out=self.num_label_chunks,
+            **kwargs)
+        layers.sums(
+            input=[self.num_correct_chunks, num_correct_chunks],
+            out=self.num_correct_chunks,
+            **kwargs)
+
+        self.metrics.extend([precision, recall, f1_score])
+
+    def eval(self, executor, eval_program=None):
+        if eval_program is None:
+            eval_program = Program()
+        block = eval_program.current_block()
+        kwargs = {'main_program': eval_program}
+        num_infer_chunks, num_label_chunks, num_correct_chunks = executor.run(
+            eval_program,
+            fetch_list=[_clone_var_(block, state) for state in self.states])
+        num_infer_chunks = num_infer_chunks[0]
+        num_label_chunks = num_label_chunks[0]
+        num_correct_chunks = num_correct_chunks[0]
+        precision = float(
+            num_correct_chunks) / num_infer_chunks if num_infer_chunks else 0
+        recall = float(
+            num_correct_chunks) / num_label_chunks if num_label_chunks else 0
+        f1_score = float(2 * precision * recall) / (
+            precision + recall) if num_correct_chunks else 0
+        return np.array(
+            [precision], dtype='float32'), np.array(
+                [recall], dtype='float32'), np.array(
+                    [f1_score], dtype='float32')

@@ -15,12 +15,6 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-template <>
-Eigen::DefaultDevice* DeviceContext::GetEigenDevice<
-    platform::CPUPlace, Eigen::DefaultDevice>() const {
-  return reinterpret_cast<const CPUDeviceContext*>(this)->eigen_device();
-}
-
 CPUDeviceContext::CPUDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
 }
@@ -36,12 +30,6 @@ Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
 Place CPUDeviceContext::GetPlace() const { return CPUPlace(); }
 
 #ifdef PADDLE_WITH_CUDA
-
-template <>
-Eigen::GpuDevice*
-DeviceContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
-  return reinterpret_cast<const CUDADeviceContext*>(this)->eigen_device();
-}
 
 class EigenCudaStreamDevice : public Eigen::StreamInterface {
  public:
@@ -136,6 +124,22 @@ cublasHandle_t CUDADeviceContext::cublas_handle() const {
 cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
+
+CUDNNDeviceContext::CUDNNDeviceContext(CUDNNPlace place)
+    : CUDADeviceContext(place), place_(place) {
+  PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
+  PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream()));
+}
+
+CUDNNDeviceContext::~CUDNNDeviceContext() {
+  SetDeviceId(place_.device);
+  Wait();
+  PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
+}
+
+Place CUDNNDeviceContext::GetPlace() const { return CUDNNPlace(); }
+
+cudnnHandle_t CUDNNDeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 #endif
 

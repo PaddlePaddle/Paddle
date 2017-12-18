@@ -19,9 +19,9 @@ namespace operators {
 namespace math {
 
 template <typename T>
-class CopyMatrixRowsFunctor<platform::CPUPlace, T> {
+class CopyMatrixRowsFunctor<platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& src, const size_t* index,
                   framework::Tensor& dst, bool is_src_index) {
     auto src_dims = src.dims();
@@ -48,13 +48,13 @@ class CopyMatrixRowsFunctor<platform::CPUPlace, T> {
   }
 };
 
-template class CopyMatrixRowsFunctor<platform::CPUPlace, float>;
-template class CopyMatrixRowsFunctor<platform::CPUPlace, double>;
+template class CopyMatrixRowsFunctor<platform::CPUDeviceContext, float>;
+template class CopyMatrixRowsFunctor<platform::CPUDeviceContext, double>;
 
-template class LoDTensor2BatchFunctor<platform::CPUPlace, float>;
-template class LoDTensor2BatchFunctor<platform::CPUPlace, double>;
-template class Batch2LoDTensorFunctor<platform::CPUPlace, float>;
-template class Batch2LoDTensorFunctor<platform::CPUPlace, double>;
+template class LoDTensor2BatchFunctor<platform::CPUDeviceContext, float>;
+template class LoDTensor2BatchFunctor<platform::CPUDeviceContext, double>;
+template class Batch2LoDTensorFunctor<platform::CPUDeviceContext, float>;
+template class Batch2LoDTensorFunctor<platform::CPUDeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators

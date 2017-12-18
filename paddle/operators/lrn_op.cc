@@ -20,7 +20,7 @@ namespace operators {
 using framework::Tensor;
 
 template <typename T>
-struct LRNFunctor<platform::CPUPlace, T> {
+struct LRNFunctor<platform::CPUDeviceContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor& input, framework::Tensor* out,
                   framework::Tensor* mid, int N, int C, int H, int W, int n,
@@ -55,11 +55,11 @@ struct LRNFunctor<platform::CPUPlace, T> {
     out_e = x_v * e_mid.reshape(Eigen::DSizes<int, 1>(e_mid.size())).pow(-beta);
   }
 };
-template struct LRNFunctor<platform::CPUPlace, float>;
-template struct LRNFunctor<platform::CPUPlace, double>;
+template struct LRNFunctor<platform::CPUDeviceContext, float>;
+template struct LRNFunctor<platform::CPUDeviceContext, double>;
 
 template <typename T>
-struct LRNGradFunctor<platform::CPUPlace, T> {
+struct LRNGradFunctor<platform::CPUDeviceContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor& x, const framework::Tensor& out,
                   const framework::Tensor& mid, framework::Tensor* x_g,
@@ -113,8 +113,8 @@ struct LRNGradFunctor<platform::CPUPlace, T> {
     }
   }
 };
-template struct LRNGradFunctor<platform::CPUPlace, float>;
-template struct LRNGradFunctor<platform::CPUPlace, double>;
+template struct LRNGradFunctor<platform::CPUDeviceContext, float>;
+template struct LRNGradFunctor<platform::CPUDeviceContext, double>;
 
 class LRNOp : public framework::OperatorWithKernel {
  public:
@@ -204,7 +204,7 @@ Input(i, x, y), Output(i, x, y) represents an element in an image.
 C is the number of feature maps of one image. n is a hyper-parameter
 configured when operator is initialized. The sum in the denominator
 is the sum of the same positions in the neighboring maps.
-    
+
 )DOC");
   }
 };
@@ -230,6 +230,7 @@ class LRNOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OP(lrn, ops::LRNOp, ops::LRNOpMaker<float>, lrn_grad, ops::LRNOpGrad);
-REGISTER_OP_CPU_KERNEL(lrn, ops::LRNKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(lrn_grad,
-                       ops::LRNGradKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    lrn, ops::LRNKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    lrn_grad, ops::LRNGradKernel<paddle::platform::CPUDeviceContext, float>);

@@ -17,9 +17,9 @@ namespace paddle {
 namespace operators {
 namespace math {
 template <typename T>
-class Unpool2dMaxFunctor<platform::CPUPlace, T> {
+class Unpool2dMaxFunctor<platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& indices, framework::Tensor* output) {
     const int batch_size = input.dims()[0];
@@ -48,9 +48,9 @@ class Unpool2dMaxFunctor<platform::CPUPlace, T> {
   }
 };
 template <class T>
-class Unpool2dMaxGradFunctor<platform::CPUPlace, T> {
+class Unpool2dMaxGradFunctor<platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& indices,
                   const framework::Tensor& output,
@@ -82,10 +82,10 @@ class Unpool2dMaxGradFunctor<platform::CPUPlace, T> {
     }
   }
 };
-template class Unpool2dMaxGradFunctor<platform::CPUPlace, float>;
-template class Unpool2dMaxGradFunctor<platform::CPUPlace, double>;
-template class Unpool2dMaxFunctor<platform::CPUPlace, float>;
-template class Unpool2dMaxFunctor<platform::CPUPlace, double>;
+template class Unpool2dMaxGradFunctor<platform::CPUDeviceContext, float>;
+template class Unpool2dMaxGradFunctor<platform::CPUDeviceContext, double>;
+template class Unpool2dMaxFunctor<platform::CPUDeviceContext, float>;
+template class Unpool2dMaxFunctor<platform::CPUDeviceContext, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

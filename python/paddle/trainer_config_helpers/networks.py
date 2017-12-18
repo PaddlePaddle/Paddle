@@ -1119,8 +1119,9 @@ def simple_gru2(input,
     :param gru_bias_attr: bias parameter attribute of gru layer, 
                           False means no bias, None means default bias.
     :type gru_bias_attr: ParameterAttribute|False|None
-    :param gru_layer_attr: Extra attribute of the gru layer.
-    :type gru_layer_attr: ExtraLayerAttribute
+    :param gru_param_attr: param parameter attribute of gru layer,
+                          None means default param.
+    :type gru_param_attr: ParameterAttribute|None
     :return: the gru group.
     :rtype: LayerOutput
     """

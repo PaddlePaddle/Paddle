@@ -20,7 +20,7 @@
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class RankLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
@@ -35,13 +35,13 @@ class RankLossKernel : public framework::OpKernel<T> {
     auto left = framework::EigenVector<T>::Flatten(*left_t);
     auto right = framework::EigenVector<T>::Flatten(*right_t);
 
-    auto& dev = ctx.GetEigenDevice<Place>();
+    auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
     out.device(dev) =
         (1. + (left - right).exp()).log() - label * (left - right);
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class RankLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
@@ -55,7 +55,7 @@ class RankLossGradKernel : public framework::OpKernel<T> {
     auto* left_t = ctx.Input<framework::Tensor>("Left");
     auto* right_t = ctx.Input<framework::Tensor>("Right");
 
-    auto& dev = ctx.GetEigenDevice<Place>();
+    auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
     auto d_out = framework::EigenVector<T>::Flatten(*d_out_t);
     auto label = framework::EigenVector<T>::Flatten(*label_t);
     auto left = framework::EigenVector<T>::Flatten(*left_t);
