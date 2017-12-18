@@ -19,7 +19,7 @@
 ## 环境准备
 
 1. 准备您的计算集群。计算集群通常由一组（几台到几千台规模）的Linux服务器组成。服务器之间可以通过局域网（LAN）联通，每台服务器具有集群中唯一的IP地址（或者可被DNS解析的主机名）。集群中的每台计算机通常被成为一个“节点”。
-1. 我们需要在集群的所有节点上安装 PaddlePaddle。 如果要启用GPU，还需要在节点上安装对应的GPU驱动以及CUDA。PaddlePaddle的安装可以参考[build_and_install](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/getstarted/build_and_install)的多种安装方式。我们推荐使用[Docker](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/getstarted/build_and_install/docker_install_cn.rst)安装方式来快速安装PaddlePaddle。
+1. 我们需要在集群的所有节点上安装 PaddlePaddle。 如果要启用GPU，还需要在节点上安装对应的GPU驱动以及CUDA。PaddlePaddle的安装可以参考[build_and_install](http://www.paddlepaddle.org/docs/develop/documentation/zh/getstarted/build_and_install/index_cn.html)的多种安装方式。我们推荐使用[Docker](http://www.paddlepaddle.org/docs/develop/documentation/zh/getstarted/build_and_install/docker_install_cn.html)安装方式来快速安装PaddlePaddle。
 
 安装完成之后，执行下面的命令可以查看已经安装的版本（docker安装方式可以进入docker容器执行：`docker run -it paddlepaddle/paddle:[tag] /bin/bash`）：
 ```bash
@@ -47,12 +47,12 @@ $ paddle pserver --port=7164 --ports_num=1 --ports_num_for_sparse=1 --num_gradie
 $ stdbuf -oL /usr/bin/nohup paddle pserver --port=7164 --ports_num=1 --ports_num_for_sparse=1 --num_gradient_servers=1 &> pserver.log
 ```
 
-| 参数  | 是否必选 | 默认值 | 说明 |
-| ------------- | ------------- | ------------- | ------------- |
-| port  | 必选 | 7164 | pserver监听的起始端口，根据ports_num决定<br>总端口个数，从起始端口监听多个端口用于通信  |
-| ports_num  | 必选 | 1 | 监听的端口个数  |
-| ports_num_for_sparse  | 必选 | 1 | 用于稀疏类型参数通信的端口个数  |
-| num_gradient_servers  | 必选 | 1 | 当前训练任务pserver总数 |
+参数说明
+
+- port：**必选，默认7164**，pserver监听的起始端口，根据ports_num决定总端口个数，从起始端口监听多个端口用于通信
+- ports_num：**必选，默认1**，监听的端口个数
+- ports_num_for_sparse：**必选，默认1**，用于稀疏类型参数通信的端口个数
+- num_gradient_servers：**必选，默认1**，当前训练任务pserver总数
 
 ### 启动计算节点
 执行以下命令启动使用python编写的trainer程序（文件名为任意文件名，如train.py）
@@ -89,16 +89,16 @@ paddle.init(
         pservers="127.0.0.1")
 ```
 
-| 参数  | 是否必选 | 默认 | 说明 |
-| ------------- | ------------- | ------------- | ------------- |
-| use_gpu  | 可选 | False | 是否启用GPU训练 |
-| trainer_count  | 必选 | 1 | 当前训练任务trainer总个数 |
-| port  | 必选 | 7164 | 连接到pserver的端口  |
-| ports_num  | 必选 | 1 | 连接到pserver的端口个数  |
-| ports_num_for_sparse  | 必选 | 1 | 和pserver之间用于稀疏类型参数通信的端口个数  |
-| num_gradient_servers  | 必选 | 1 | 当前训练任务pserver总数 |
-| trainer_id  | 必选 | 0 | 每个trainer的唯一ID，从0开始的整数 |
-| pservers  | 必选 | 127.0.0.1 | 当前训练任务启动的pserver的IP列表，多个IP使用“,”隔开 |
+参数说明
+
+- use_gpu： **可选，默认False**，是否启用GPU训练
+- trainer_count：**必选，默认1**，当前训练任务trainer总个数
+- port：**必选，默认7164**，连接到pserver的端口
+- ports_num：**必选，默认1**，连接到pserver的端口个数
+- ports_num_for_sparse：**必选，默认1**，和pserver之间用于稀疏类型参数通信的端口个数
+- num_gradient_servers：**必选，默认1**，当前训练任务pserver总数
+- trainer_id：**必选，默认0**，每个trainer的唯一ID，从0开始的整数
+- pservers：**必选，默认127.0.0.1**，当前训练任务启动的pserver的IP列表，多个IP使用“,”隔开
 
 
 ### 准备数据集
@@ -155,7 +155,7 @@ test.txt-00002
 
 - `my_lib.py`：会被`train.py`调用的一些用户定义的库函数，比如PIL库等。
 - `word_dict.pickle`：在`train.py`中会使用到的字典数据文件。
-- `train.py`：训练程序，代码参考[api_train_v2_cluster.py](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/howto/usage/cluster/src/word2vec/prepare.py)。***注意：*** 对于本样例代码，在使用不同的分布式计算平台时，您可能需要修改`train.py`开头的部分（如下），以便获得训练数据的位置和获取环境变量配置：
+- `train.py`：训练程序，代码参考[api_train_v2_cluster.py](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/howto/usage/cluster/src/word2vec/api_train_v2_cluster.py)。***注意：*** 对于本样例代码，在使用不同的分布式计算平台时，您可能需要修改`train.py`开头的部分（如下），以便获得训练数据的位置和获取环境变量配置：
 
   ```python
   cluster_train_file = "./train_data_dir/train/train.txt"
@@ -182,7 +182,7 @@ PaddlePaddle可以使用多种分布式计算平台构建分布式计算任务�
 ## 在不同集群中运行
 
   - [fabric](fabric_cn.md)
-  - [opemmpi](openmpi_cn.md)
+  - [openmpi](openmpi_cn.md)
   - [kubernetes](k8s_cn.md)
   - [kubernetes distributed](k8s_distributed_cn.md)
-  - [kubernetes on AWS](k8s_aws_en.md)
+  - [kubernetes on AWS](k8s_aws_cn.md)
