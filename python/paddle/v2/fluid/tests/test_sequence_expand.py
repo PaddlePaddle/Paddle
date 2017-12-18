@@ -3,7 +3,7 @@ import numpy as np
 from op_test import OpTest
 
 
-class TestSeqExpand(OpTest):
+class TestSequenceExpand(OpTest):
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [3, 1]).astype('float32')
         y_data = np.random.uniform(0.1, 1, [8, 1]).astype('float32')
@@ -21,7 +21,7 @@ class TestSeqExpand(OpTest):
         self.outputs = {'Out': out}
 
     def setUp(self):
-        self.op_type = 'seq_expand'
+        self.op_type = 'sequence_expand'
         self.set_data()
         self.compute()
 
@@ -32,7 +32,7 @@ class TestSeqExpand(OpTest):
         self.check_grad(["X"], "Out")
 
 
-class TestSeqExpandCase1(TestSeqExpand):
+class TestSequenceExpandCase1(TestSequenceExpand):
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [5, 1]).astype('float32')
         x_lod = [[0, 2, 5]]
@@ -41,7 +41,7 @@ class TestSeqExpandCase1(TestSeqExpand):
         self.inputs = {'X': (x_data, x_lod), 'Y': (y_data, y_lod)}
 
 
-class TestSeqExpandCase2(TestSeqExpand):
+class TestSequenceExpandCase2(TestSequenceExpand):
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [1, 2, 2]).astype('float32')
         x_lod = [[0, 1]]
@@ -50,7 +50,7 @@ class TestSeqExpandCase2(TestSeqExpand):
         self.inputs = {'X': (x_data, x_lod), 'Y': (y_data, y_lod)}
 
 
-class TestSeqExpandCase3(TestSeqExpand):
+class TestSequenceExpandCase3(TestSequenceExpand):
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [4, 1]).astype('float32')
         x_lod = [[0, 1, 2, 3, 4]]
