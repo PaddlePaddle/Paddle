@@ -16,7 +16,7 @@ When training with synchronize SGD, PaddlePaddle uses an internal "synchronize b
 
 ## Preparations
 1. Prepare your computer cluster. It's normally a bunch of Linux servers connected by LAN. Each server will be assigned a unique IP address. The computers in the cluster can be called "nodes".
-2. Install PaddlePaddle on every node. If you are going to take advantage of GPU cards, you'll also need to install proper driver and CUDA libraries. To install PaddlePaddle please read [this build and install](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/getstarted/build_and_install) document. We strongly recommend using [Docker installation](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/getstarted/build_and_install/docker_install_en.rst).
+2. Install PaddlePaddle on every node. If you are going to take advantage of GPU cards, you'll also need to install proper driver and CUDA libraries. To install PaddlePaddle please read [this build and install](http://www.paddlepaddle.org/docs/develop/documentation/zh/getstarted/build_and_install/index_cn.html) document. We strongly recommend using [Docker installation](http://www.paddlepaddle.org/docs/develop/documentation/zh/getstarted/build_and_install/docker_install_cn.html).
 
 After installation, you can check the version by typing the below command (run a docker container  if using docker: `docker run -it paddlepaddle/paddle:[tag] /bin/bash`):
 
@@ -48,12 +48,12 @@ If you wish to run parameter servers in background, and save a log file, you can
 $ stdbuf -oL /usr/bin/nohup paddle pserver --port=7164 --ports_num=1 --ports_num_for_sparse=1 --num_gradient_servers=1 &> pserver.log
 ```
 
-| param  | required | default | description |
-| ------------- | ------------- | ------------- | ------------- |
-| port  | required | 7164 | port which parameter server will listen on. If ports_num greater than 1, parameter server will listen on multiple ports for more network throughput |
-| ports_num  | required | 1 | total number of ports will listen on  |
-| ports_num_for_sparse  | required | 1 | number of ports which serves sparse parameter update  |
-| num_gradient_servers  | required | 1 | total number of gradient servers |
+Parameter Description
+
+- port: **required, default 7164**, port which parameter server will listen on. If ports_num greater than 1, parameter server will listen on multiple ports for more network throughput.
+- ports_num: **required, default 1**, total number of ports will listen on.
+- ports_num_for_sparse: **required, default 1**, number of ports which serves sparse parameter update.
+- num_gradient_servers: **required, default 1**, total number of gradient servers.
 
 ### Starting trainer
 Type the command below to start the trainer(name the file whatever you want, like "train.py")
@@ -92,16 +92,16 @@ paddle.init(
         pservers="127.0.0.1")
 ```
 
-| param  | required | default | description |
-| ------------- | ------------- | ------------- | ------------- |
-| use_gpu  | optional | False | set to "True" to enable GPU training |
-| trainer_count  | required | 1 | total count of trainers in the training job |
-| port  | required | 7164 | port to connect to parameter server  |
-| ports_num  | required | 1 | number of ports for communication |
-| ports_num_for_sparse  | required | 1 | number of ports for sparse type caculation |
-| num_gradient_servers  | required | 1 | total number of gradient server |
-| trainer_id  | required | 0 | ID for every trainer, start from 0 |
-| pservers  | required | 127.0.0.1 | list of IPs of parameter servers, separated by "," |
+Parameter Description
+
+- use_gpu: **optional, default False**, set to "True" to enable GPU training.
+- trainer_count: **required, default 1**, total count of trainers in the training job.
+- port: **required, default 7164**, port to connect to parameter server.
+- ports_num: **required, default 1**, number of ports for communication.
+- ports_num_for_sparse: **required, default 1**, number of ports for sparse type caculation.
+- num_gradient_servers: **required, default 1**, total number of gradient server.
+- trainer_id: **required, default 0**, ID for every trainer, start from 0.
+- pservers: **required, default 127.0.0.1**, list of IPs of parameter servers, separated by ",".
 
 ### Prepare Training Dataset
 
@@ -159,7 +159,7 @@ Your workspace may looks like:
 
 - `my_lib.py`: user defined libraries, like PIL libs. This is optional.
 - `word_dict.pickle`: dict file for training word embeding.
-- `train.py`: training program. Sample code: [api_train_v2_cluster.py](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/howto/usage/cluster/src/word2vec/prepare.py). ***NOTE:*** You may need to modify the head part of `train.py` when using different cluster platform to retrive configuration environment variables:
+- `train.py`: training program. Sample code: [api_train_v2_cluster.py](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/howto/usage/cluster/src/word2vec/api_train_v2_cluster.py). ***NOTE:*** You may need to modify the head part of `train.py` when using different cluster platform to retrive configuration environment variables:
 
   ```python
   cluster_train_file = "./train_data_dir/train/train.txt"
@@ -186,7 +186,7 @@ These cluster platforms provide API or environment variables for training proces
 ## Use different clusters
 
   - [fabric](fabric_en.md)
-  - [opemmpi](openmpi_en.md)
+  - [openmpi](openmpi_en.md)
   - [kubernetes](k8s_en.md)
-  - [kubernetes distributed](k8s_distributed_cn.md)
+  - kubernetes distributed
   - [kubernetes on AWS](k8s_aws_en.md)
