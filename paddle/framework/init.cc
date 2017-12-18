@@ -44,7 +44,7 @@ bool InitDevices(const std::vector<std::string> &devices) {
   // device format
   // CPU
   // GPU:1
-  // TODO:(dzhwinter) add device format annotation for users.
+  // TODO(dzhwinter) : add device format annotation for users.
   std::vector<platform::Place> places;
   for (auto &device : devices) {
     auto p = string::Piece(device);
@@ -64,8 +64,10 @@ bool InitDevices(const std::vector<std::string> &devices) {
     }
   }
 
-  if (std::find(places.begin(), places.end(), platform::CPUPlace()) ==
-      places.end()) {
+  if (std::find_if(places.begin(), places.end(),
+                   [&](const platform::Place &place) {
+                     return platform::is_cpu_place(place);
+                   }) == places.end()) {
     places.emplace_back(platform::CPUPlace());
     LOG(WARNING) << "Not specified any device, use CPU by Default.";
   }
