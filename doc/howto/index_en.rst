@@ -9,8 +9,6 @@ Usage
 
   usage/cmd_parameter/index_en.rst
   usage/cluster/cluster_train_en.md
-  usage/k8s/k8s_en.md
-  usage/k8s/k8s_aws_en.md
 
 Development
 ------------
