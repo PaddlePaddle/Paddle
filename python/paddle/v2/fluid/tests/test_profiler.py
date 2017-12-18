@@ -7,7 +7,7 @@ import paddle.v2.fluid.layers as layers
 
 class TestProfiler(unittest.TestCase):
     def test_nvprof(self):
-        if not fluid.core.is_compile_gpu():
+        if not fluid.core.with_gpu():
             return
         epoc = 8
         dshape = [4, 3, 28, 28]

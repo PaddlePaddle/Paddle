@@ -69,9 +69,17 @@ void InitGflags(std::vector<std::string> &argv) {
   });
 }
 
-bool IsCompileGPU() {
+bool WithGPU() {
 #ifndef PADDLE_WITH_CUDA
   return false;
+#else
+  return true;
+#endif
+}
+
+bool WithCUDNN() {
+#ifndef PADDLE_WITH_CUDA
+  return platform::dynload::HasCUDNN();
 #else
   return true;
 #endif
@@ -440,7 +448,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("unique_integer", UniqueIntegerGenerator);
   m.def("init_gflags", InitGflags);
 
-  m.def("is_compile_gpu", IsCompileGPU);
+  m.def("with_gpu", WithGPU);
+  m.def("with_cudnn", WithCUDNN);
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
 

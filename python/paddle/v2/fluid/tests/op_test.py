@@ -317,8 +317,10 @@ class OpTest(unittest.TestCase):
 
     def check_output(self, atol=1e-5):
         places = [core.CPUPlace()]
-        if core.is_compile_gpu() and core.op_support_gpu(self.op_type):
+        if core.with_gpu() and core.op_support_gpu(self.op_type):
             places.append(core.GPUPlace(0))
+        if core.with_cudnn():
+            places.append(core.CUDNNPlace(0))
         for place in places:
             self.check_output_with_place(place, atol)
 
@@ -380,7 +382,7 @@ class OpTest(unittest.TestCase):
                                inputs_to_check, max_relative_error,
                                "Gradient Check On %s" % str(cpu_place))
 
-        if core.is_compile_gpu() and self.op.support_gpu():
+        if core.with_gpu() and self.op.support_gpu():
             gpu_place = core.GPUPlace(0)
             gpu_analytic_grads = self._get_gradient(inputs_to_check, gpu_place,
                                                     output_names, no_grad_set)

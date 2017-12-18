@@ -342,7 +342,7 @@ class TestBatchNormOp(OpTest):
             print "op test backward passed: ", str(place), tensor_format
 
         places = [core.CPUPlace()]
-        if core.is_compile_gpu() and core.op_support_gpu("batch_norm"):
+        if core.with_gpu() and core.op_support_gpu("batch_norm"):
             places.append(core.GPUPlace(0))
         for place in places:
             for data_format in ["NCHW", "NHWC"]:
