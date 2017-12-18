@@ -52,9 +52,9 @@ class DeviceContextPool {
             "'Place' is not supported, Please re-compile with WITH_GPU "
             "option");
       }
-      // TODO(dzhwinter) : assign first find device. Will enhanced later.
+      // TODO(dzhwinter) : assign the first found device. Will enhanced later.
+      // device load balancer maybe useful here.
       borrowed_contexts.emplace_back(range.first->second);
-      device_tasks_[place] += 1;
     }
     return borrowed_contexts;
   }
@@ -93,7 +93,6 @@ class DeviceContextPool {
   std::unordered_multimap<const platform::Place, const platform::DeviceContext*,
                           Hash>
       device_contexts_;
-  std::unordered_map<const platform::Place, int, Hash> device_tasks_;
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
 

@@ -11,6 +11,7 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
+#include <algorithm>
 #include <string>
 
 #include "paddle/framework/executor.h"
@@ -40,7 +41,36 @@ void InitGflags(std::vector<std::string> &argv) {
 }
 
 bool InitDevices(const std::vector<std::string> &devices) {
+  // device format
+  // CPU
+  // GPU:1
+  // TODO:(dzhwinter) add device format annotation for users.
+  std::vector<platform::Place> places;
+  for (auto &device : devices) {
+    auto p = string::Piece(device);
+    if (string::Find(p, ':', 0) == string::Piece::npos) {
+      places.emplace_back(platform::CPUPlace());
+    } else if (string::HasPrefix(p, "GPU")) {
+#ifdef PADDLE_WITH_CUDA
+      auto pos = string::RFind(p, ':', string::Piece::npos);
+      auto number = device.substr(pos + 1);
+      places.emplace_back(platform::GPUPlace(std::stoi(number)));
+#else
+      LOG(WARNING)
+          << "'GPU' is not supported, Please re-compile with WITH_GPU option";
+#endif
+    } else {
+      return false;
+    }
+  }
+
+  if (std::find(places.begin(), places.end(), platform::CPUPlace()) ==
+      places.end()) {
+    places.emplace_back(platform::CPUPlace());
+    LOG(WARNING) << "Not specified any device, use CPU by Default.";
+  }
   DeviceContextPool::Create(places);
+  return true;
   return true;
 }
 
