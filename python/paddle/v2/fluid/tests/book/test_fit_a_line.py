@@ -16,6 +16,8 @@ avg_cost = fluid.layers.mean(x=cost)
 sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
 sgd_optimizer.minimize(avg_cost)
 
+inference_program = fluid.default_main_program().clone()
+
 train_reader = paddle.batch(
     paddle.reader.shuffle(
         paddle.dataset.uci_housing.train(), buf_size=500),
@@ -53,7 +55,7 @@ train()
 print("Now performing inference...")
 fluid.io.load_persistables(exe, "./fit_a_line.model/")
 for data in test_reader():
-    out, y_pred, y_label = exe.run(fluid.default_main_program(),
+    out, y_pred, y_label = exe.run(inference_program,
                                    feed=feeder.feed(data),
                                    fetch_list=[avg_cost, y_predict, y])
 
