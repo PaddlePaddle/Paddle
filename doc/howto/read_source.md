@@ -6,9 +6,9 @@ Core: https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/framework
 
 Operator: https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators
 
-Optimizer: https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/optimizer
-
 Memory: https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/memory
+
+Platform: https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/platform
 
 # Compile Time
 
