@@ -243,6 +243,7 @@ void BindOpDesc(py::module &m) {
       .def("set_input", &OpDescBind::SetInput)
       .def("output", &OpDescBind::Output)
       .def("output_names", &OpDescBind::OutputNames)
+      .def("output_arg_names", &OpDescBind::OutputArgumentNames)
       .def("set_output", &OpDescBind::SetOutput)
       .def("has_attr", &OpDescBind::HasAttr)
       .def("attr_type", &OpDescBind::GetAttrType)

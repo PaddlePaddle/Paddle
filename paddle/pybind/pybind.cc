@@ -282,7 +282,7 @@ All parameter, weight, gradient are variables in Paddle.
     }
     return ret_values;
   });
-  m.def("get_grad_op_descs",
+  m.def("get_grad_op_desc",
         [](const OpDescBind &op_desc,
            const std::unordered_set<std::string> &no_grad_set,
            std::unordered_map<std::string, std::string> &grad_to_var,
