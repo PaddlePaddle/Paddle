@@ -10,7 +10,7 @@ __all__ = [
     'fc', 'embedding', 'dynamic_lstm', 'gru_unit', 'linear_chain_crf',
     'crf_decoding', 'cos_sim', 'cross_entropy', 'square_error_cost', 'accuracy',
     'chunk_eval', 'sequence_conv', 'conv2d', 'sequence_pool', 'pool2d',
-    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'seq_expand'
+    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand'
 ]
 
 
@@ -791,10 +791,10 @@ def conv2d_transpose(input,
     return out
 
 
-def seq_expand(x, y, main_program=None, startup_program=None):
+def sequence_expand(x, y, main_program=None, startup_program=None):
     """Sequence Expand Layer. This layer will expand the input variable **x**
     according to LoD information of **y**. And the following examples will
-    explain how seq_expand works:
+    explain how sequence_expand works:
 
     .. code-block:: text
 
@@ -823,7 +823,7 @@ def seq_expand(x, y, main_program=None, startup_program=None):
                 x.dims = [3, 1]
 
             y is a LoDTensor:
-                Y.lod = [[0, 2, 3, 6]]
+                y.lod = [[0, 2, 3, 6]]
 
             with condition len(y.lod[-1]) - 1 == x.dims[0]
 
@@ -847,12 +847,12 @@ def seq_expand(x, y, main_program=None, startup_program=None):
             x = fluid.layers.data(name='x', shape=[10], dtype='float32')
             y = fluid.layers.data(name='y', shape=[10, 20],
                              dtype='float32', lod_level=1)
-            out = layers.seq_expand(x=x, y=y)
+            out = layers.sequence_expand(x=x, y=y)
     """
-    helper = LayerHelper('seq_expand', input=x, **locals())
+    helper = LayerHelper('sequence_expand', input=x, **locals())
     dtype = helper.input_dtype()
     tmp = helper.create_tmp_variable(dtype)
     helper.append_op(
-        type='seq_expand', inputs={'X': x,
-                                   'Y': y}, outputs={'Out': tmp})
+        type='sequence_expand', inputs={'X': x,
+                                        'Y': y}, outputs={'Out': tmp})
     return tmp
