@@ -37,22 +37,18 @@ def convert_np_dtype_to_dtype_(np_dtype):
 
     """
     dtype = np.dtype(np_dtype)
-    if dtype == np.float32:
-        return core.DataType.FP32
-    elif dtype == np.float64:
-        return core.DataType.FP64
-    elif dtype == np.float16:
-        return core.DataType.FP16
-    elif dtype == np.int32:
-        return core.DataType.INT32
-    elif dtype == np.int16:
-        return core.DataType.INT16
-    elif dtype == np.int64:
-        return core.DataType.INT64
-    elif dtype == np.bool:
-        return core.DataType.BOOL
-    else:
-        raise ValueError("Not supported numpy dtype " + str(dtype))
+    dtypes = {
+        np.dtype('float32'): core.DataType.FP32,
+        np.dtype('float64'): core.DataType.FP64,
+        np.dtype('float16'): core.DataType.FP16,
+        np.dtype('int32'): core.DataType.INT32,
+        np.dtype('int16'): core.DataType.INT16,
+        np.dtype('int64'): core.DataType.INT64,
+        np.dtype('bool'): core.DataType.BOOL,
+    }
+
+    assert dtype in dtypes.keys(), "Not supported numpy dtype %s" % str(dtype)
+    return dtypes[dtype]
 
 
 def dtype_is_floating(dtype):
