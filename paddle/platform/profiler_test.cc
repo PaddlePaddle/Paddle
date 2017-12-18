@@ -51,8 +51,6 @@ TEST(Event, CudaElapsedTime) {
 
 TEST(RecordEvent, RecordEvent) {
   using paddle::platform::DeviceContext;
-  using paddle::platform::CUDADeviceContext;
-  using paddle::platform::GPUPlace;
   using paddle::platform::Event;
   using paddle::platform::EventKind;
   using paddle::platform::RecordEvent;
@@ -61,6 +59,8 @@ TEST(RecordEvent, RecordEvent) {
   ProfilerState state = ProfilerState::kCPU;
   DeviceContext* dev_ctx = nullptr;
 #ifdef PADDLE_WITH_CUDA
+  using paddle::platform::CUDADeviceContext;
+  using paddle::platform::GPUPlace;
   state = ProfilerState::kCUDA;
   dev_ctx =
       new paddle::platform::CUDADeviceContext(paddle::platform::GPUPlace(0));
