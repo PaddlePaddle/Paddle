@@ -41,8 +41,8 @@ __global__ void SparseSGDFunctorKernel(const T* selected_rows,
 }  // namespace
 
 template <typename T>
-struct SparseSGDFunctor<platform::GPUPlace, T> {
-  void operator()(const platform::DeviceContext& context,
+struct SparseSGDFunctor<platform::CUDADeviceContext, T> {
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::SelectedRows& input,
                   const framework::Tensor& learning_rate,
                   framework::Tensor* output) {
@@ -62,21 +62,19 @@ struct SparseSGDFunctor<platform::GPUPlace, T> {
     const int block_size = 256;
     dim3 threads(block_size, 1);
     dim3 grid(1, in_rows.size());
-    SparseSGDFunctorKernel<
-        T, 256><<<grid, threads, 0,
-                  reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                      .stream()>>>(in_data, in_rows.data(),
-                                   learning_rate.data<T>(), out_data,
-                                   in_row_numel);
+    SparseSGDFunctorKernel<T, 256><<<grid, threads, 0, context.stream()>>>(
+        in_data, in_rows.data(), learning_rate.data<T>(), out_data,
+        in_row_numel);
   }
 };
 
-template struct SparseSGDFunctor<platform::GPUPlace, float>;
-template struct SparseSGDFunctor<platform::GPUPlace, double>;
+template struct SparseSGDFunctor<platform::CUDADeviceContext, float>;
+template struct SparseSGDFunctor<platform::CUDADeviceContext, double>;
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(sgd, ops::SGDOpKernel<paddle::platform::GPUPlace, float>,
-                       ops::SGDOpKernel<paddle::platform::GPUPlace, double>);
+REGISTER_OP_CUDA_KERNEL(
+    sgd, ops::SGDOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SGDOpKernel<paddle::platform::CUDADeviceContext, double>);

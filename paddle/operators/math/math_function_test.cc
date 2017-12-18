@@ -21,7 +21,7 @@ TEST(math_function, gemm_notrans_cblas) {
   memcpy(input3_ptr, arr3, 8 * sizeof(float));
 
   paddle::platform::CPUDeviceContext context(*cpu_place);
-  paddle::operators::math::gemm<paddle::platform::CPUPlace, float>(
+  paddle::operators::math::gemm<paddle::platform::CPUDeviceContext, float>(
       context, false, false, m, n, k, 1, input1_ptr, 3, input2_ptr + 1, 4, 1,
       input3_ptr + 1, 4);
 
@@ -55,7 +55,7 @@ TEST(math_function, gemm_trans_clbas) {
   memcpy(input3_ptr, arr3, 8 * sizeof(float));
 
   paddle::platform::CPUDeviceContext context(*cpu_place);
-  paddle::operators::math::gemm<paddle::platform::CPUPlace, float>(
+  paddle::operators::math::gemm<paddle::platform::CPUDeviceContext, float>(
       context, false, true, m, n, k, 1, input1_ptr, 3, input2_ptr + 3, 3, 1,
       input3_ptr + 1, 4);
 
@@ -74,7 +74,8 @@ TEST(math_function, zero) {
   auto* cpu_place = new paddle::platform::CPUPlace();
   float* t = tensor.mutable_data<float>({2, 2}, *cpu_place);
   paddle::platform::CPUDeviceContext context(*cpu_place);
-  paddle::operators::math::SetConstant<paddle::platform::CPUPlace, float>
+  paddle::operators::math::SetConstant<paddle::platform::CPUDeviceContext,
+                                       float>
       functor;
   functor(context, &tensor, 0);
   EXPECT_EQ(t[0], 0);
@@ -110,7 +111,7 @@ void GemvTest(int m, int n, bool trans) {
   }
 
   paddle::platform::CPUDeviceContext context(*cpu_place);
-  paddle::operators::math::gemv<paddle::platform::CPUPlace, T>(
+  paddle::operators::math::gemv<paddle::platform::CPUDeviceContext, T>(
       context, trans, static_cast<int>(m), static_cast<int>(n), 1., data_a,
       data_b, 0., data_c);
 

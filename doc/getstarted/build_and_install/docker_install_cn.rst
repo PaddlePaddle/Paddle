@@ -114,7 +114,7 @@ PaddlePaddle Book是为用户和开发者制作的一个交互式的Jupyter Note
 
   .. code-block:: bash
 
-     nvidia-docker run -it -v $PWD:/work paddledev/paddle:latest-gpu /bin/bash
+     nvidia-docker run -it -v $PWD:/work paddlepaddle/paddle:latest-gpu /bin/bash
 
 **注: 如果没有安装nvidia-docker，可以尝试以下的方法，将CUDA库和Linux设备挂载到Docker容器内：**
 
@@ -122,7 +122,7 @@ PaddlePaddle Book是为用户和开发者制作的一个交互式的Jupyter Note
 
      export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
      export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-     docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:latest-gpu
+     docker run ${CUDA_SO} ${DEVICES} -it paddlepaddle/paddle:latest-gpu
 
 **关于AVX：**
 

@@ -20,9 +20,9 @@ namespace operators {
 namespace math {
 
 template <typename T>
-class MaxSeqPoolFunctor<platform::CPUPlace, T> {
+class MaxSeqPoolFunctor<platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::LoDTensor& input, framework::Tensor* output,
                   framework::Tensor* index) {
     auto in_dims = input.dims();
@@ -60,9 +60,9 @@ class MaxSeqPoolFunctor<platform::CPUPlace, T> {
 };
 
 template <typename T>
-class MaxSeqPoolGradFunctor<platform::CPUPlace, T> {
+class MaxSeqPoolGradFunctor<platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& out_grad,
                   const framework::Tensor& index,
                   framework::LoDTensor* in_grad) {
@@ -80,7 +80,7 @@ class MaxSeqPoolGradFunctor<platform::CPUPlace, T> {
     const int* max_index = index.data<int>();
     T* ig_data = in_grad->data<T>();
 
-    SetConstant<platform::CPUPlace, T> set_zero;
+    SetConstant<platform::CPUDeviceContext, T> set_zero;
     set_zero(context, in_grad, static_cast<T>(0.0));
     int64_t num_seq = og_dims[0];
     int64_t dim = out_grad.numel() / num_seq;
@@ -93,10 +93,10 @@ class MaxSeqPoolGradFunctor<platform::CPUPlace, T> {
   }
 };
 
-template class MaxSeqPoolFunctor<platform::CPUPlace, float>;
-template class MaxSeqPoolFunctor<platform::CPUPlace, double>;
-template class MaxSeqPoolGradFunctor<platform::CPUPlace, float>;
-template class MaxSeqPoolGradFunctor<platform::CPUPlace, double>;
+template class MaxSeqPoolFunctor<platform::CPUDeviceContext, float>;
+template class MaxSeqPoolFunctor<platform::CPUDeviceContext, double>;
+template class MaxSeqPoolGradFunctor<platform::CPUDeviceContext, float>;
+template class MaxSeqPoolGradFunctor<platform::CPUDeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators

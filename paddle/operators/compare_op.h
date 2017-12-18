@@ -59,7 +59,7 @@ struct EqualFunctor {
   }
 };
 
-template <typename Place, typename Functor>
+template <typename DeviceContext, typename Functor>
 class CompareOpKernel
     : public framework::OpKernel<typename Functor::ELEM_TYPE> {
  public:
@@ -69,24 +69,23 @@ class CompareOpKernel
     auto* y = context.Input<framework::Tensor>("Y");
     auto* out = context.Output<framework::Tensor>("Out");
     Functor binary_func;
-    platform::Transform<Place> trans;
-    trans(context.device_context(), x->data<T>(), x->data<T>() + x->numel(),
-          y->data<T>(), out->mutable_data<bool>(context.GetPlace()),
-          binary_func);
+    platform::Transform<DeviceContext> trans;
+    trans(context.template device_context<DeviceContext>(), x->data<T>(),
+          x->data<T>() + x->numel(), y->data<T>(),
+          out->mutable_data<bool>(context.GetPlace()), binary_func);
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
-#define REGISTER_LOGICAL_KERNEL(op_type, dev, functor)                     \
-  REGISTER_OP_##dev##_KERNEL(                                              \
-      op_type,                                                             \
-      ::paddle::operators::CompareOpKernel<::paddle::platform::dev##Place, \
-                                           functor<int>>,                  \
-      ::paddle::operators::CompareOpKernel<::paddle::platform::dev##Place, \
-                                           functor<int64_t>>,              \
-      ::paddle::operators::CompareOpKernel<::paddle::platform::dev##Place, \
-                                           functor<float>>,                \
-      ::paddle::operators::CompareOpKernel<::paddle::platform::dev##Place, \
-                                           functor<double>>);
+#define REGISTER_LOGICAL_KERNEL(op_type, dev, functor)                    \
+  REGISTER_OP_##dev##_KERNEL(                                             \
+      op_type, ::paddle::operators::CompareOpKernel<                      \
+                   ::paddle::platform::dev##DeviceContext, functor<int>>, \
+      ::paddle::operators::CompareOpKernel<                               \
+          ::paddle::platform::dev##DeviceContext, functor<int64_t>>,      \
+      ::paddle::operators::CompareOpKernel<                               \
+          ::paddle::platform::dev##DeviceContext, functor<float>>,        \
+      ::paddle::operators::CompareOpKernel<                               \
+          ::paddle::platform::dev##DeviceContext, functor<double>>);

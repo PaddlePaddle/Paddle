@@ -16,7 +16,8 @@
 #include "paddle/operators/log_loss_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(log_loss,
-                       ops::LogLossKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
-    log_loss_grad, ops::LogLossGradKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_CUDA_KERNEL(
+    log_loss, ops::LogLossKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    log_loss_grad,
+    ops::LogLossGradKernel<paddle::platform::CUDADeviceContext, float>);

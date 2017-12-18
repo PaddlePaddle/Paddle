@@ -16,8 +16,9 @@
 #include "paddle/operators/seq_expand_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(seq_expand,
-                       ops::SeqExpandKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
+    seq_expand,
+    ops::SeqExpandKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
     seq_expand_grad,
-    ops::SeqExpandGradKernel<paddle::platform::GPUPlace, float>);
+    ops::SeqExpandGradKernel<paddle::platform::CUDADeviceContext, float>);

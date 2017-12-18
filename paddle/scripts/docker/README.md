@@ -20,7 +20,7 @@ binaries.
 
 ## Run The Build
 
-### Build Evironments
+### Build Environments
 
 The pre-built build environment images are:
 
@@ -192,7 +192,7 @@ For developers who are interested in the C++ source code, please use -e "WOBOQ=O
 - The following command builds PaddlePaddle, generates HTML pages from C++ source code, and writes HTML pages into `$HOME/woboq_out` on the host:
 
 ```bash
-docker run -v $PWD:/paddle -v $HOME/woboq_out:/woboq_out -e "WITH_GPU=OFF" -e "WITH_AVX=ON" -e "WITH_TEST=ON" -e "WOBOQ=ON" paddlepaddle/paddle:latest-dev
+docker run -v $PWD:/paddle -v $HOME/woboq_out:/woboq_out -e "WITH_GPU=OFF" -e "WITH_AVX=ON" -e "WITH_TESTING=ON" -e "WOBOQ=ON" paddlepaddle/paddle:latest-dev
 ```
 
 - You can open the generated HTML files in your Web browser. Or, if you want to run a Nginx container to serve them for a wider audience, you can run:

@@ -23,6 +23,7 @@ class PlacePrinter : public boost::static_visitor<> {
  public:
   explicit PlacePrinter(std::ostream &os) : os_(os) {}
   void operator()(const CPUPlace &) { os_ << "CPUPlace"; }
+  void operator()(const MKLDNNPlace &) { os_ << "MKLDNNPlace"; }
   void operator()(const GPUPlace &p) { os_ << "GPUPlace(" << p.device << ")"; }
 
  private:
@@ -38,12 +39,17 @@ const Place &get_place() { return the_default_place; }
 
 const GPUPlace default_gpu() { return GPUPlace(0); }
 const CPUPlace default_cpu() { return CPUPlace(); }
+const MKLDNNPlace default_mkldnn() { return MKLDNNPlace(); }
 
 bool is_gpu_place(const Place &p) {
   return boost::apply_visitor(IsGPUPlace(), p);
 }
 bool is_cpu_place(const Place &p) {
-  return !boost::apply_visitor(IsGPUPlace(), p);
+  return !is_gpu_place(p) && !is_mkldnn_place(p);
+}
+
+bool is_mkldnn_place(const Place &p) {
+  return boost::apply_visitor(IsMKLDNNPlace(), p);
 }
 
 bool places_are_same_class(const Place &p1, const Place &p2) {
