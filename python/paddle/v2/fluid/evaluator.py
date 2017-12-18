@@ -150,7 +150,6 @@ class ChunkEvaluator(Evaluator):
             dtype='int64', shape=[1], suffix='num_label_chunks')
         self.num_correct_chunks = self.create_state(
             dtype='int64', shape=[1], suffix='num_correct_chunks')
-        kwargs = {'main_program': main_program}
         precision, recall, f1_score, num_infer_chunks, num_label_chunks, num_correct_chunks = layers.chunk_eval(
             input=input,
             label=label,
@@ -159,13 +158,13 @@ class ChunkEvaluator(Evaluator):
             excluded_chunk_types=excluded_chunk_types, )
         layers.sums(
             input=[self.num_infer_chunks, num_infer_chunks],
-            out=self.num_infer_chunks, )
+            out=self.num_infer_chunks)
         layers.sums(
             input=[self.num_label_chunks, num_label_chunks],
-            out=self.num_label_chunks, )
+            out=self.num_label_chunks)
         layers.sums(
             input=[self.num_correct_chunks, num_correct_chunks],
-            out=self.num_correct_chunks, )
+            out=self.num_correct_chunks)
 
         self.metrics.extend([precision, recall, f1_score])
 
