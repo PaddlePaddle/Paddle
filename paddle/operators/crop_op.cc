@@ -88,7 +88,8 @@ There are two ways to set shape:
 
 The input should be a k-D tensor(k > 0 and k < 7). As an example:
 
-Given:
+Case 1:
+Given
 
     X = [[0, 1, 2, 0, 0]
          [0, 3, 4, 0, 0]
@@ -107,6 +108,27 @@ we get:
     Out = [[1, 2],
            [3, 4]].
 
+
+Case 2:
+Given
+
+    X = [[0, 1, 2, 5, 0]
+         [0, 3, 4, 6, 0]
+         [0, 0, 0, 0, 0]],
+
+and
+
+    offsets = [0, 1],
+
+and
+
+    Y = [[0, 0, 0]
+         [0, 0, 0]],
+
+we get:
+
+    Out = [[1, 2, 5],
+           [3, 4, 6]].
 )DOC");
   }
 };
