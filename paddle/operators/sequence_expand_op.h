@@ -24,7 +24,7 @@ namespace operators {
 using LoDTensor = framework::LoDTensor;
 
 template <typename DeviceContext, typename T>
-class SeqExpandKernel : public framework::OpKernel<T> {
+class SequenceExpandKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<LoDTensor>("X");
@@ -71,7 +71,7 @@ class SeqExpandKernel : public framework::OpKernel<T> {
  *
  * */
 template <typename DeviceContext, typename T>
-class SeqExpandGradKernel : public framework::OpKernel<T> {
+class SequenceExpandGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* d_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
