@@ -121,86 +121,6 @@ def decoder_decode(context):
     return translation_ids, translation_scores
 
 
-# def decoder(context):
-#     '''
-#     decoder for generation, only used in the inference stage.
-#     '''
-#     init_state = pd.fc(context, size=hidden_dim)
-
-#     # directly use while_loop
-#     # TODO add candidate set check
-#     array_len = pd.fill_constant(shape=[1], dtype='int64', value=max_length)
-#     counter = pd.zeros(shape=[1], dtype='int64')
-
-#     # TODO(ChunweiYan) check the init_state should pass the gradient back
-#     mem_array = pd.array_write(init_state, i=counter)
-#     # TODO(ChunweiYan) should init to <s>
-#     ids_array = pd.create_array('int32')
-#     # TODO(ChunweiYan) should init to 1s
-#     scores_array = pd.create_array('float32')
-
-#     # TODO(ChunweiYan) another stop condition, check candidate set empty should be added
-#     cond = pd.less_than(x=counter, y=array_len)
-
-#     init_ids = pd.ones(shape=[batch_size, 1], dtype='int32')
-#     init_scores = pd.ones(shape=[batch_size, 1], dtype='float32')
-
-#     pd.array_write(init_ids, array=ids_array, i=counter)
-#     pd.array_write(init_scores, array=scores_array, i=counter)
-
-#     while_op = pd.While(cond=cond)
-#     with while_op.block():
-#         pre_state = pd.array_read(array=mem_array, i=counter)
-#         # get the words of the previous step
-#         id = pd.array_read(array=ids_array, i=counter)
-#         target_word = pd.embedding(
-#             input=id,
-#             size=[dict_size, word_dim],
-#             dtype='float32',
-#             is_sparse=IS_SPARSE)
-
-#         encoder_ctx_expanded = pd.seq_expand(context, target_word)
-
-#         # use a simple gru
-#         # gru_input = pd.fc(
-#         #     act='sigmoid',
-#         #     input=[target_word, encoder_ctx_expanded],
-#         #     # gru has 2 gates and 1 x
-#         #     size=3 * hidden_dim)
-
-#         # gru_input = pd.fc(
-#         #     act='sigmoid',
-#         #     input=[target_word],
-#         #     # gru has 2 gates and 1 x
-#         #     size=3 * hidden_dim)
-
-#         # updated_hidden, _, _ = pd.gru_unit(
-#         #     input=gru_input, hidden=pre_state, size=hidden_dim)
-
-#         # simplified RNN
-#         updated_hidden = pd.fc(input=[pre_state, target_word],
-#                                size=hidden_dim,
-#                                act='tanh')
-
-#         scores = pd.fc(updated_hidden, size=trg_dic_size, act='softmax')
-#         # use pre_mem to predict candidates
-#         scores = pd.fc(pre_state, size=dict_size, act='softmax')
-#         topk_scores, topk_indices = pd.topk(scores, k=50)
-#         selected_ids, selected_scores = pd.beam_search(topk_indices,
-#                                                        topk_scores)
-
-#         pd.array_write(updated_hidden, array=mem_array, i=counter)
-#         pd.array_write(selected_ids, array=ids_array, i=counter)
-#         pd.array_write(selected_scores, array=scores_array, i=counter)
-
-#     while_op()
-
-#     translation_ids, translation_scores = pd.beam_search_decode(
-#         ids=ids_array, scores=scores_array)
-
-#     return translation_ids, translation_scores
-
-
 def to_lodtensor(data, place):
     seq_lens = [len(seq) for seq in data]
     cur_len = 0
@@ -216,17 +136,17 @@ def to_lodtensor(data, place):
     return res
 
 
-def main():
+def train_main():
     context = encoder()
-    # rnn_out = decoder_train(context)
+    rnn_out = decoder_train(context)
     # translation_ids, translation_scores = decoder_decode(context)
     label = pd.data(
         name="target_language_next_word", shape=[1], dtype='int64', lod_level=1)
-    # cost = pd.cross_entropy(input=rnn_out, label=label)
-    # avg_cost = pd.mean(x=cost)
+    cost = pd.cross_entropy(input=rnn_out, label=label)
+    avg_cost = pd.mean(x=cost)
 
-    # optimizer = fluid.optimizer.Adagrad(learning_rate=1e-4)
-    # optimizer.minimize(avg_cost)
+    optimizer = fluid.optimizer.Adagrad(learning_rate=1e-4)
+    optimizer.minimize(avg_cost)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
@@ -244,20 +164,23 @@ def main():
             word_data = to_lodtensor(map(lambda x: x[0], data), place)
             trg_word = to_lodtensor(map(lambda x: x[1], data), place)
             trg_word_next = to_lodtensor(map(lambda x: x[2], data), place)
-            outs = exe.run(
-                framework.default_main_program(),
-                feed={
-                    'src_word_id': word_data,
-                    # 'target_language_word': trg_word,
-                    # 'target_language_next_word': trg_word_next
-                }, )
-            #fetch_list=[avg_cost])
-            # avg_cost_val = np.array(outs[0])
-            # print('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
-            #       " avg_cost=" + str(avg_cost_val))
+            outs = exe.run(framework.default_main_program(),
+                           feed={
+                               'src_word_id': word_data,
+                               'target_language_word': trg_word,
+                               'target_language_next_word': trg_word_next
+                           },
+                           fetch_list=[avg_cost])
+            avg_cost_val = np.array(outs[0])
+            print('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
+                  " avg_cost=" + str(avg_cost_val))
             if batch_id > 3:
                 break
             batch_id += 1
+
+
+def decode_main():
+    context = encoder()
 
     print 'to decode'
     for data in train_data():
@@ -269,4 +192,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    train_main()
