@@ -72,7 +72,7 @@ struct IsMKLDNNPlace : public boost::static_visitor<bool> {
 // should be less equal than 2^(NUM_PLACE_TYPE_LIMIT_IN_BIT)
 #define NUM_PLACE_TYPE_LIMIT_IN_BIT 4
 
-typedef boost::variant<CudnnPlace, GPUPlace, CPUPlace, MKLDNNPlace> Place;
+typedef boost::variant<CUDNNPlace, GPUPlace, CPUPlace, MKLDNNPlace> Place;
 
 // static check number of place types is less equal than
 // 2^(NUM_PLACE_TYPE_LIMIT_IN_BIT)
