@@ -16,11 +16,11 @@ limitations under the License. */
 
 #include <mutex>  // for call_once
 #include <unordered_map>
-#include "gflags/gflags.h"
 #include "paddle/framework/backward.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/feed_fetch_method.h"
 #include "paddle/framework/framework.pb.h"
+#include "paddle/framework/init.h"
 #include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/lod_tensor_array.h"
@@ -49,24 +49,6 @@ namespace pybind {
 static size_t UniqueIntegerGenerator(const std::string &prefix) {
   static std::unordered_map<std::string, std::atomic<size_t>> generators;
   return generators[prefix].fetch_add(1);
-}
-
-std::once_flag gflags_init_flag;
-
-// TODO(qijun) move init gflags to init.cc
-void InitGflags(std::vector<std::string> &argv) {
-  std::call_once(gflags_init_flag, [&]() {
-    int argc = argv.size();
-    char **arr = new char *[argv.size()];
-    std::string line;
-    for (size_t i = 0; i < argv.size(); i++) {
-      arr[i] = &argv[i][0];
-      line += argv[i];
-      line += ' ';
-    }
-    google::ParseCommandLineFlags(&argc, &arr, true);
-    VLOG(1) << "Init commandline: " << line;
-  });
 }
 
 bool IsCompileGPU() {
@@ -282,6 +264,23 @@ All parameter, weight, gradient are variables in Paddle.
     }
     return ret_values;
   });
+  m.def("get_grad_op_descs",
+        [](const OpDescBind &op_desc,
+           const std::unordered_set<std::string> &no_grad_set,
+           std::unordered_map<std::string, std::string> &grad_to_var,
+           const std::vector<BlockDescBind *> &grad_sub_block) {
+          std::vector<std::unique_ptr<OpDescBind>> grad_op_descs =
+              framework::OpInfoMap::Instance()
+                  .Get(op_desc.Type())
+                  .GradOpMaker()(op_desc, no_grad_set, &grad_to_var,
+                                 grad_sub_block);
+          std::vector<OpDescBind *> grad_op_desc_ptrs(grad_op_descs.size());
+          std::transform(
+              grad_op_descs.begin(), grad_op_descs.end(),
+              grad_op_desc_ptrs.begin(),
+              [](std::unique_ptr<OpDescBind> &p) { return p.release(); });
+          return grad_op_desc_ptrs;
+        });
   m.def("prune", [](const ProgramDescBind &origin,
                     const std::vector<std::array<size_t, 2>> &targets) {
     ProgramDescBind prog_with_targets(origin);
@@ -421,7 +420,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run", &Executor::Run);
 
   m.def("unique_integer", UniqueIntegerGenerator);
-  m.def("init_gflags", InitGflags);
+  m.def("init_gflags", framework::InitGflags);
+  m.def("init_devices", &framework::InitDevices);
 
   m.def("is_compile_gpu", IsCompileGPU);
   m.def("set_feed_variable", framework::SetFeedVariable);
