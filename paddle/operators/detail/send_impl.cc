@@ -66,6 +66,12 @@ bool RPCClient::GetVariable(const framework::Scope& scope,
   return true;
 }
 
+void RPCClient::Wait() {
+  ClientContext context;
+  VoidMessage call_msg, ret_msg;
+  stub_->Wait(&context, call_msg, &ret_msg);
+}
+
 }  // namespace detail
 }  // namespace operators
 }  // namespace paddle

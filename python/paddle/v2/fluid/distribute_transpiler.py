@@ -145,14 +145,20 @@ class DistributeTranspiler:
         pserver_endpoints = kwargs["pservers"].split(",")
         self.param_grad_map = split_method(params_and_grads, pserver_endpoints)
 
-        for ep in pserver_endpoints:
-            # FIXME(typhoonzero): send to different servers can run in parrallel.
-            send_op = program.global_block().append_op(
-                type="send",
-                inputs={"X": self.param_grad_map[ep]["grads"]
-                        },  # inputs is a list of tensors to be send
-                outputs={},
-                attrs={"endpoint": ep})
+        send_op_ordered_inputs = []
+        epmap = []
+        for ep, v in self.param_grad_map.iteritems():
+            send_op_ordered_inputs.extend(v["grads"])
+            for i in v:
+                epmap.append(ep)
+
+        send_op = program.global_block().append_op(
+            type="send",
+            inputs={"X": send_op_ordered_inputs
+                    },  # inputs is a list of tensors to be send
+            outputs={},
+            attrs={"endpoints": pserver_endpoints,
+                   "epmap": epmap})
 
     def _create_var_for_trainers(self, block, var, trainers):
         var_list = []

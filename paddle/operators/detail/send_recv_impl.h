@@ -81,6 +81,7 @@ class RPCClient {
 
   bool SendVariable(const framework::Scope &scope, const std::string &inname);
   bool GetVariable(const framework::Scope &scope, const std::string &outname);
+  void Wait();
 
  private:
   std::unique_ptr<SendRecvService::Stub> stub_;
