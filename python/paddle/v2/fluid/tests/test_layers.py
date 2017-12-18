@@ -167,7 +167,7 @@ class TestBook(unittest.TestCase):
             x = layers.data(name='x', shape=[10], dtype='float32')
             y = layers.data(
                 name='y', shape=[10, 20], dtype='float32', lod_level=1)
-            self.assertIsNotNone(layers.seq_expand(x=x, y=y))
+            self.assertIsNotNone(layers.sequence_expand(x=x, y=y))
         print(str(program))
 
 
