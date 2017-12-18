@@ -185,8 +185,8 @@ These cluster platforms provide API or environment variables for training proces
 
 ## Use different clusters
 
-  [fabric](fabric_cn.md)
-  [opemmpi](openmpi_cn.md)
-  [kubernetes](k8s_cn.md)
-  [kubernetes distributed](k8s_distributed_cn.md)
-  [kubernetes on AWS](k8s_aws_en.md)
+  - [fabric](fabric_en.md)
+  - [opemmpi](openmpi_en.md)
+  - [kubernetes](k8s_en.md)
+  - [kubernetes distributed](k8s_distributed_cn.md)
+  - [kubernetes on AWS](k8s_aws_en.md)
