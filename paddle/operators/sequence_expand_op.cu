@@ -13,12 +13,12 @@
    limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/operators/seq_expand_op.h"
+#include "paddle/operators/sequence_expand_op.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    seq_expand,
-    ops::SeqExpandKernel<paddle::platform::CUDADeviceContext, float>);
+    sequence_expand,
+    ops::SequenceExpandKernel<paddle::platform::CUDADeviceContext, float>);
 REGISTER_OP_CUDA_KERNEL(
-    seq_expand_grad,
-    ops::SeqExpandGradKernel<paddle::platform::CUDADeviceContext, float>);
+    sequence_expand_grad,
+    ops::SequenceExpandGradKernel<paddle::platform::CUDADeviceContext, float>);

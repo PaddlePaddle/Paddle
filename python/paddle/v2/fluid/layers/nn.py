@@ -10,7 +10,7 @@ __all__ = [
     'fc', 'embedding', 'dynamic_lstm', 'gru_unit', 'linear_chain_crf',
     'crf_decoding', 'cos_sim', 'cross_entropy', 'square_error_cost', 'accuracy',
     'chunk_eval', 'sequence_conv', 'conv2d', 'sequence_pool', 'pool2d',
-    'batch_norm', 'beam_search_decode', 'conv2d_transpose'
+    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand'
 ]
 
 
@@ -20,9 +20,7 @@ def fc(input,
        param_attr=None,
        bias_attr=None,
        act=None,
-       name=None,
-       main_program=None,
-       startup_program=None):
+       name=None):
     """
     Fully Connected Layer.
 
@@ -88,13 +86,7 @@ def fc(input,
     return helper.append_activation(pre_activation)
 
 
-def embedding(input,
-              size,
-              is_sparse=False,
-              param_attr=None,
-              dtype='float32',
-              main_program=None,
-              startup_program=None):
+def embedding(input, size, is_sparse=False, param_attr=None, dtype='float32'):
     """
     Embedding Layer.
 
@@ -140,9 +132,7 @@ def dynamic_lstm(input,
                  gate_activation='sigmoid',
                  cell_activation='tanh',
                  candidate_activation='tanh',
-                 dtype='float32',
-                 main_program=None,
-                 startup_program=None):
+                 dtype='float32'):
     helper = LayerHelper('lstm', **locals())
     size = size / 4
     weight = helper.create_parameter(
@@ -185,9 +175,7 @@ def gru_unit(input,
              weight=None,
              bias=None,
              activation='tanh',
-             gate_activation='sigmoid',
-             main_program=None,
-             startup_program=None):
+             gate_activation='sigmoid'):
     """
     GRUUnit Operator implements partial calculations of the GRU unit as following:
 
@@ -250,11 +238,7 @@ def gru_unit(input,
     return updated_hidden, reset_hidden_pre, gate
 
 
-def linear_chain_crf(input,
-                     label,
-                     param_attr=None,
-                     main_program=None,
-                     startup_program=None):
+def linear_chain_crf(input, label, param_attr=None):
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[1]
     transition = helper.create_parameter(
@@ -280,11 +264,7 @@ def linear_chain_crf(input,
     return log_likelihood
 
 
-def crf_decoding(input,
-                 param_attr,
-                 label=None,
-                 main_program=None,
-                 startup_program=None):
+def crf_decoding(input, param_attr, label=None):
     helper = LayerHelper('crf_decoding', **locals())
     transition = helper.get_parameter(param_attr.name)
     viterbi_path = helper.create_tmp_variable(dtype=helper.input_dtype())
@@ -392,7 +372,7 @@ def chunk_eval(input,
                excluded_chunk_types=None,
                **kwargs):
     """
-    This function computes and outputs the precision, recall and 
+    This function computes and outputs the precision, recall and
     F1-score of chunk detection.
     """
     helper = LayerHelper("chunk_eval", **kwargs)
@@ -432,9 +412,7 @@ def sequence_conv(input,
                   padding=None,
                   bias_attr=None,
                   param_attr=None,
-                  act=None,
-                  main_program=None,
-                  startup_program=None):
+                  act=None):
     """
     This function creates the op for sequence_conv, using the inputs and
     other convolutional configurations for the filters and stride as given
@@ -477,9 +455,7 @@ def conv2d(input,
            param_attr=None,
            bias_attr=None,
            act=None,
-           name=None,
-           main_program=None,
-           startup_program=None):
+           name=None):
     """
     This function creates the op for a 2-dimensional Convolution.
     This is performed using the parameters of filters(size, dimensionality etc)
@@ -565,9 +541,7 @@ def pool2d(input,
            pool_type,
            pool_stride=None,
            pool_padding=None,
-           global_pooling=False,
-           main_program=None,
-           startup_program=None):
+           global_pooling=False):
     """
     This function adds the operator for pooling in 2 dimensions, using the
     pooling configurations mentioned in input parameters.
@@ -613,9 +587,7 @@ def batch_norm(input,
                epsilon=1e-05,
                param_attr=None,
                bias_attr=None,
-               data_layout='NCHW',
-               main_program=None,
-               startup_program=None):
+               data_layout='NCHW'):
     """
     This function helps create an operator to implement
     the BatchNorm layer using the configurations from the input parameters.
@@ -685,7 +657,7 @@ def batch_norm(input,
     return helper.append_activation(batch_norm_out)
 
 
-def beam_search_decode(ids, scores, main_program=None, startup_program=None):
+def beam_search_decode(ids, scores):
     helper = LayerHelper('beam_search_decode', **locals())
     sentence_ids = helper.create_tmp_variable(dtype=ids.dtype)
     sentence_scores = helper.create_tmp_variable(dtype=ids.dtype)
@@ -708,9 +680,7 @@ def conv2d_transpose(input,
                      filter_size=None,
                      padding=None,
                      stride=None,
-                     param_attr=None,
-                     main_program=None,
-                     startup_program=None):
+                     param_attr=None):
     """
     The transpose of conv2d layer.
 
@@ -789,3 +759,70 @@ def conv2d_transpose(input,
         attrs=op_attr)
 
     return out
+
+
+def sequence_expand(x, y, main_program=None, startup_program=None):
+    """Sequence Expand Layer. This layer will expand the input variable **x**
+    according to LoD information of **y**. And the following examples will
+    explain how sequence_expand works:
+
+    .. code-block:: text
+
+        * Case 1
+            x is a LoDTensor:
+                x.lod = [[0,       2, 3],
+                         [0, 1,    3, 4]]
+                x.data = [a, b, c, d]
+                x.dims = [4, 1]
+
+            y is a LoDTensor:
+                y.lod = [[0,    2,    4],
+                         [0, 3, 6, 7, 8]]
+
+            with condition len(y.lod[-1]) - 1 == x.dims[0]
+
+            then output is a 2-level LoDTensor:
+                out.lod = [[0,                2,    4],
+                           [0,       3,       6, 7, 8]]
+                out.data = [a, a, a, b, b, b, c, d]
+                out.dims = [8, 1]
+
+        * Case 2
+            x is a Tensor:
+                x.data = [a, b, c]
+                x.dims = [3, 1]
+
+            y is a LoDTensor:
+                y.lod = [[0, 2, 3, 6]]
+
+            with condition len(y.lod[-1]) - 1 == x.dims[0]
+
+            then output is a 1-level LoDTensor:
+                out.lod = [[0,    2, 3,      6]]
+                out.data = [a, a, b, c, c, c]
+                out.dims = [6, 1]
+
+    Args:
+        x (Variable): The input variable which is a Tensor or LoDTensor.
+        y (Variable): The input variable which is a LoDTensor.
+        main_program (Program): The main program.
+        startup_program (Program): The startup program.
+
+    Returns:
+        Variable: The expanded variable which is a LoDTensor.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[10], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[10, 20],
+                             dtype='float32', lod_level=1)
+            out = layers.sequence_expand(x=x, y=y)
+    """
+    helper = LayerHelper('sequence_expand', input=x, **locals())
+    dtype = helper.input_dtype()
+    tmp = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='sequence_expand', inputs={'X': x,
+                                        'Y': y}, outputs={'Out': tmp})
+    return tmp
