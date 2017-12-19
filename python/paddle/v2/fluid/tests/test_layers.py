@@ -173,7 +173,7 @@ class TestBook(unittest.TestCase):
     def test_get_places(self):
         program = Program()
         with program_guard(program):
-            x = layers.get_places(use_gpu=True, trainer_count=4)
+            x = layers.get_places(trainer_count=4)
         print(str(program))
 
 
