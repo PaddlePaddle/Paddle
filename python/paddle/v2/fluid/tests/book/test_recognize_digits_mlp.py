@@ -11,7 +11,9 @@ regularizer = fluid.regularizer.L2Decay(0.0005 * BATCH_SIZE)
 hidden1 = fluid.layers.fc(input=image,
                           size=128,
                           act='relu',
-                          param_attr=regularizer)
+                          param_attr=fluid.ParamAttr(
+                              regularizer=regularizer,
+                              clip=fluid.clip.ClipByValue(10)))
 hidden2 = fluid.layers.fc(input=hidden1,
                           size=64,
                           act='relu',
