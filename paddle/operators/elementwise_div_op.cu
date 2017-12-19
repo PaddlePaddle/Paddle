@@ -17,15 +17,16 @@
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     elementwise_div,
-    ops::ElementwiseDivKernel<paddle::platform::GPUPlace, float>,
-    ops::ElementwiseDivKernel<paddle::platform::GPUPlace, double>,
-    ops::ElementwiseDivKernel<paddle::platform::GPUPlace, int>,
-    ops::ElementwiseDivKernel<paddle::platform::GPUPlace, int64_t>);
-REGISTER_OP_GPU_KERNEL(
+    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(
     elementwise_div_grad,
-    ops::ElementwiseDivGradKernel<paddle::platform::GPUPlace, float>,
-    ops::ElementwiseDivGradKernel<paddle::platform::GPUPlace, double>,
-    ops::ElementwiseDivGradKernel<paddle::platform::GPUPlace, int>,
-    ops::ElementwiseDivGradKernel<paddle::platform::GPUPlace, int64_t>);
+    ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext,
+                                  int64_t>);

@@ -115,7 +115,7 @@ class OpWithKernelTest : public OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {}
   OpKernelType GetKernelType(const ExecutionContext& ctx) const override {
-    return OpKernelType(DataType::FP32, ctx.device_context());
+    return OpKernelType(DataType::FP32, ctx.GetPlace());
   }
 };
 
@@ -261,7 +261,9 @@ class OperatorClone : public paddle::framework::OperatorBase {
 };
 
 TEST(Operator, Clone) {
-  OperatorClone a("ABC", {}, {}, {});
+  OperatorClone a("ABC", paddle::framework::VariableNameMap{},
+                  paddle::framework::VariableNameMap{},
+                  paddle::framework::AttributeMap{});
   auto b = a.Clone();
   ASSERT_EQ(a.Type(), b->Type());
 }

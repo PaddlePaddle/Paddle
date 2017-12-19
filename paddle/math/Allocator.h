@@ -48,7 +48,7 @@ public:
    */
   virtual void* alloc(size_t size) {
     void* ptr;
-#ifdef PADDLE_USE_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
     // refer to https://github.com/01org/mkl-dnn/blob/master/include/mkldnn.hpp
     // memory alignment
     CHECK_EQ(posix_memalign(&ptr, 4096ul, size), 0);

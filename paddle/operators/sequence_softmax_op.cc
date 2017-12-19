@@ -99,7 +99,7 @@ REGISTER_OP(sequence_softmax, ops::SequenceSoftmaxOp,
             ops::SequenceSoftmaxGradOp);
 REGISTER_OP_CPU_KERNEL(
     sequence_softmax,
-    ops::SequenceSoftmaxKernel<paddle::platform::CPUPlace, float>);
+    ops::SequenceSoftmaxKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     sequence_softmax_grad,
-    ops::SequenceSoftmaxGradKernel<paddle::platform::CPUPlace, float>);
+    ops::SequenceSoftmaxGradKernel<paddle::platform::CPUDeviceContext, float>);

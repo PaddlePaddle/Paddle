@@ -15,6 +15,8 @@ limitations under the License. */
 #ifndef __PADDLE_CAPI_ERROR_H__
 #define __PADDLE_CAPI_ERROR_H__
 
+#include "config.h"
+
 /**
  * Error Type for Paddle API.
  */
@@ -26,5 +28,18 @@ typedef enum {
   kPD_NOT_SUPPORTED = 4,
   kPD_UNDEFINED_ERROR = -1,
 } paddle_error;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * Error string for Paddle API.
+ */
+PD_API const char* paddle_error_string(paddle_error err);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

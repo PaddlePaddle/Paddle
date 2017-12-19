@@ -112,8 +112,8 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(transpose, ops::TransposeOp, ops::TransposeOpMaker, transpose_grad,
             ops::TransposeOpGrad);
-REGISTER_OP_CPU_KERNEL(transpose,
-                       ops::TransposeKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    transpose, ops::TransposeKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     transpose_grad,
-    ops::TransposeGradKernel<paddle::platform::CPUPlace, float>);
+    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, float>);
