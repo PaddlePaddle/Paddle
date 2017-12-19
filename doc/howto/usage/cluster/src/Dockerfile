@@ -1,4 +1,4 @@
-FROM paddlepaddle/paddle:cpu-latest
+FROM paddlepaddle/paddle:latest
 
 MAINTAINER zjsxzong89@gmail.com
 
