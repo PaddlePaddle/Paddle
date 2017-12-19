@@ -8,6 +8,8 @@ import tensor
 from tensor import *
 import control_flow
 from control_flow import *
+import utils
+from utils import *
 
 __all__ = []
 __all__ += nn.__all__
@@ -15,3 +17,4 @@ __all__ += io.__all__
 __all__ += tensor.__all__
 __all__ += control_flow.__all__
 __all__ += ops.__all__
+__all__ += utils.__all__
