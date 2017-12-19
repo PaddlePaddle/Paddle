@@ -1,24 +1,5 @@
 # PaddlePaddle Distributed Training
 
-* [Introduction](#introduction)
-* [Preparations](#preparations)
-* [Command-line arguments](#command-line-arguments)
-   * [Starting parameter server](#starting-parameter-server)
-   * [Starting trainer](#starting-trainer)
-   * [Prepare Training Dataset](#prepare-training-dataset)
-   * [Prepare Training program](#prepare-training-program)
-* [Use cluster platforms or cluster management tools](#use-cluster-platforms-or-cluster-management-tools)
-   * [Cluster Training Using Fabric](#cluster-training-using-fabric)
-      * [Prepare a Linux cluster](#prepare-a-linux-cluster)
-      * [Launching Cluster Job](#launching-cluster-job)
-      * [Kill Cluster Job](#kill-cluster-job)
-      * [Check Cluster Training Result](#check-cluster-training-result)
-      * [Check Model Output](#check-model-output)
-   * [Cluster Training Using OpenMPI](#cluster-training-using-openmpi)
-      * [Prepare an OpenMPI cluster](#prepare-an-openmpi-cluster)
-      * [Launching Cluster Job](#launching-cluster-job-1)
-   * [Cluster Training Using Kubernetes](#cluster-training-using-kubernetes)
-
 ## Introduction
 
 In this article, we'll explain how to run distributed training jobs with PaddlePaddle on different types of clusters. The diagram below shows the main architecture of a distributed trainning job:
@@ -35,7 +16,7 @@ When training with synchronize SGD, PaddlePaddle uses an internal "synchronize b
 
 ## Preparations
 1. Prepare your computer cluster. It's normally a bunch of Linux servers connected by LAN. Each server will be assigned a unique IP address. The computers in the cluster can be called "nodes".
-2. Install PaddlePaddle on every node. If you are going to take advantage of GPU cards, you'll also need to install proper driver and CUDA libraries. To install PaddlePaddle please read [this build and install](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/getstarted/build_and_install) document. We strongly recommend using [Docker installation](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/getstarted/build_and_install/docker_install_en.rst).
+2. Install PaddlePaddle on every node. If you are going to take advantage of GPU cards, you'll also need to install proper driver and CUDA libraries. To install PaddlePaddle please read [this build and install](http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/build_and_install/index_en.html) document. We strongly recommend using [Docker installation](http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/build_and_install/docker_install_en.html).
 
 After installation, you can check the version by typing the below command (run a docker container  if using docker: `docker run -it paddlepaddle/paddle:[tag] /bin/bash`):
 
@@ -67,12 +48,12 @@ If you wish to run parameter servers in background, and save a log file, you can
 $ stdbuf -oL /usr/bin/nohup paddle pserver --port=7164 --ports_num=1 --ports_num_for_sparse=1 --num_gradient_servers=1 &> pserver.log
 ```
 
-| param  | required | default | description |
-| ------------- | ------------- | ------------- | ------------- |
-| port  | required | 7164 | port which parameter server will listen on. If ports_num greater than 1, parameter server will listen on multiple ports for more network throughput |
-| ports_num  | required | 1 | total number of ports will listen on  |
-| ports_num_for_sparse  | required | 1 | number of ports which serves sparse parameter update  |
-| num_gradient_servers  | required | 1 | total number of gradient servers |
+Parameter Description
+
+- port: **required, default 7164**, port which parameter server will listen on. If ports_num greater than 1, parameter server will listen on multiple ports for more network throughput.
+- ports_num: **required, default 1**, total number of ports will listen on.
+- ports_num_for_sparse: **required, default 1**, number of ports which serves sparse parameter update.
+- num_gradient_servers: **required, default 1**, total number of gradient servers.
 
 ### Starting trainer
 Type the command below to start the trainer(name the file whatever you want, like "train.py")
@@ -111,16 +92,16 @@ paddle.init(
         pservers="127.0.0.1")
 ```
 
-| param  | required | default | description |
-| ------------- | ------------- | ------------- | ------------- |
-| use_gpu  | optional | False | set to "True" to enable GPU training |
-| trainer_count  | required | 1 | total count of trainers in the training job |
-| port  | required | 7164 | port to connect to parameter server  |
-| ports_num  | required | 1 | number of ports for communication |
-| ports_num_for_sparse  | required | 1 | number of ports for sparse type caculation |
-| num_gradient_servers  | required | 1 | total number of gradient server |
-| trainer_id  | required | 0 | ID for every trainer, start from 0 |
-| pservers  | required | 127.0.0.1 | list of IPs of parameter servers, separated by "," |
+Parameter Description
+
+- use_gpu: **optional, default False**, set to "True" to enable GPU training.
+- trainer_count: **required, default 1**, total count of trainers in the training job.
+- port: **required, default 7164**, port to connect to parameter server.
+- ports_num: **required, default 1**, number of ports for communication.
+- ports_num_for_sparse: **required, default 1**, number of ports for sparse type caculation.
+- num_gradient_servers: **required, default 1**, total number of gradient server.
+- trainer_id: **required, default 0**, ID for every trainer, start from 0.
+- pservers: **required, default 127.0.0.1**, list of IPs of parameter servers, separated by ",".
 
 ### Prepare Training Dataset
 
@@ -178,7 +159,7 @@ Your workspace may looks like:
 
 - `my_lib.py`: user defined libraries, like PIL libs. This is optional.
 - `word_dict.pickle`: dict file for training word embeding.
-- `train.py`: training program. Sample code: [api_train_v2_cluster.py](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/howto/usage/cluster/src/word2vec/prepare.py). ***NOTE:*** You may need to modify the head part of `train.py` when using different cluster platform to retrive configuration environment variables:
+- `train.py`: training program. Sample code: [api_train_v2_cluster.py](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/howto/usage/cluster/src/word2vec/api_train_v2_cluster.py). ***NOTE:*** You may need to modify the head part of `train.py` when using different cluster platform to retrive configuration environment variables:
 
   ```python
   cluster_train_file = "./train_data_dir/train/train.txt"
@@ -202,92 +183,10 @@ We'll introduce cluster job management on these platforms. The examples can be f
 
 These cluster platforms provide API or environment variables for training processes, when the job is dispatched to different nodes. Like node ID, IP or total number of nodes etc.
 
-### Cluster Training Using Fabric
+## Use different clusters
 
-#### Prepare a Linux cluster
-
-Run `kubectl -f ssh_servers.yaml` under the directory:  `paddle/scripts/cluster_train_v2/fabric/docker_cluster` will launch a demo cluster. Run `kubectl get po -o wide` to get IP addresses of these nodes.
-
-#### Launching Cluster Job
-`paddle.py` provides automatical scripts to start all PaddlePaddle cluster processes in different nodes. By default, all command line options can be set as `paddle.py` command options and `paddle.py` will transparently and automatically set these options to PaddlePaddle lower level processes.
-
-`paddle.py`provides two distinguished command option for easy job launching.
-
-- `job_dispatch_package` set it with local `workspace` directory, it will be dispatched to all nodes which is set in `conf.py`. It could be helpful for frequently manipulating workspace files. otherwise, frequent multi-nodes workspace deployment is very annoying.
-- `job_workspace`  set it with already deployed workspace directory, `paddle.py` will skip dispatch stage to directly launch cluster job with all nodes. It could help to reduce heavy
-dispatch latency.
-
-`cluster_train/run.sh` provides command line sample to run `demo/recommendation` cluster job, just modify `job_dispatch_package` and `job_workspace` with your defined directory, then:
-```
-sh run.sh
-```
-
-The cluster Job will start in several seconds.
-
-#### Kill Cluster Job
-`paddle.py` can capture `Ctrl + C` SIGINT signal to automatically kill all processes launched by it. So just stop `paddle.py` to kill cluster job. You should manually kill the job if the program crashed.
-
-#### Check Cluster Training Result
-Check log in $workspace/log for details, each node owns same log structure.
-
-`paddle_trainer.INFO`
-It provides almost all internal output log for training,  same as local training. Check runtime model convergence here.
-
-`paddle_pserver2.INFO`
-It provides parameter server running log, which could help to diagnose distributed error.
-
-`server.log`
-It provides stderr and stdout of parameter server process. Check error log if training crashes.
-
-`train.log`
-It provides stderr and stdout of trainer process. Check error log if training crashes.
-
-#### Check Model Output
-After one pass finished, model files will be written in `output` directory in node 0.
-`nodefile` in workspace indicates the node id of current cluster job.
-
-### Cluster Training Using OpenMPI
-
-#### Prepare an OpenMPI cluster
-
-Run the following command to start a 3-node MPI cluster and one "head" node.
-
-```bash
-cd paddle/scripts/cluster_train_v2/openmpi/docker_cluster
-kubectl create -f head.yaml
-kubectl create -f mpi-nodes.yaml
-```
-
-Then you can log in to every OpenMPI node using ssh without input any passwords.
-
-#### Launching Cluster Job
-
-Follow the steps to launch a PaddlePaddle training job in OpenMPI cluster:\
-
-```bash
-# find out node IP addresses
-kubectl get po -o wide
-# generate a "machines" file containing node IP addresses
-kubectl get po -o wide | grep nodes | awk '{print $6}' > machines
-# copy necessary files onto "head" node
-scp -i ssh/id_rsa.mpi.pub machines prepare.py train.py start_mpi_train.sh tutorial@[headIP]:~
-# login to head node using ssh
-ssh -i ssh/id_rsa.mpi.pub tutorial@[headIP]
-# --------------- in head node ---------------
-# prepare training data
-python prepare.py
-# copy training data and dict file to MPI nodes
-cat machines | xargs -i scp word_dict.pickle train.py start_mpi_train.sh machines {}:/home/tutorial
-# creat a directory for storing log files
-mpirun -hostfile machines -n 3 mkdir /home/tutorial/logs
-# copy training data to every node
-scp train.txt-00000 test.txt-00000 [node1IP]:/home/tutorial
-scp train.txt-00001 test.txt-00001 [node2IP]:/home/tutorial
-scp train.txt-00002 test.txt-00002 [node3IP]:/home/tutorial
-# start the job
-mpirun -hostfile machines -n 3  /home/tutorial/start_mpi_train.sh
-```
-
-### Cluster Training Using Kubernetes
-
-The details can be found [here](../k8s/k8s_cn.md)
+  - [fabric](fabric_en.md)
+  - [openmpi](openmpi_en.md)
+  - [kubernetes](k8s_en.md)
+  - kubernetes distributed
+  - [kubernetes on AWS](k8s_aws_en.md)
