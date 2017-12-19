@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/framework/op_registry.h"
 #include "paddle/platform/place.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/platform/gpu_info.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -26,7 +29,7 @@ class GetPlacesOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
-    auto use_gpu = Attr<bool>("use_gpu");
+    std::string device_type = Attr<std::string>("device_type");
     auto trainer_count = Attr<int>("trainer_count");
 
     auto out_var_name = Output("Out");
@@ -36,11 +39,16 @@ class GetPlacesOp : public framework::OperatorBase {
 
     auto &places = *(out_var->GetMutable<std::vector<platform::Place>>());
     places.resize(trainer_count);
-    if (use_gpu) {
+    if (device_type == "CUDA") {
+#ifdef PADDLE_WITH_CUDA
+      PADDLE_ENFORCE_LT(trainer_count, GetCUDADeviceCount());
       for (int i = 0; i < trainer_count; i++) {
         places.emplace_back(platform::GPUPlace(i));
       }
-    } else {
+#else
+      PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
+#endif
+    } else if (device_type == "CPU") {
       for (int i = 0; i < trainer_count; i++) {
         places.emplace_back(platform::CPUPlace());
       }
@@ -55,9 +63,11 @@ class GetPlacesOpProtoMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddOutput("Out", "vector of Place");
     AddAttr<int>("trainer_count", "(int)trainer count").SetDefault(1);
-    AddAttr<bool>("use_gpu", "(bool)use gpu").SetDefault(false);
+    AddAttr<std::string>("device_type",
+                         "(string), deivce type can be \"CPU\" and \"CUDA\"")
+        .InEnum({"CPU", "CUDA"});
     AddComment(R"DOC(
-GetPlaces Operator.
+Returns a list of places based on flags. The list will be used for parallel execution.
 
 )DOC");
   }
