@@ -51,19 +51,23 @@ Status SendRecvServerImpl::GetVariable(ServerContext *context,
 Status SendRecvServerImpl::Wait(ServerContext *context,
                                 const VoidMessage *in_var,
                                 VoidMessage *out_var) {
-  std::unique_lock<std::mutex> lock(this->mutex_);
-  condition_.wait(lock, [=] { return this->done_ == true; });
+  {
+    std::unique_lock<std::mutex> lock(this->mutex_);
+    condition_.wait(lock, [=] { return this->done_ == true; });
+  }
   return Status::OK;
 }
 
 void SendRecvServerImpl::Start() {
-  std::unique_lock<std::mutex> lock(this->mutex_);
+  std::lock_guard<std::mutex> lock(this->mutex_);
   done_ = false;
 }
 
 void SendRecvServerImpl::Done() {
-  std::unique_lock<std::mutex> lock(this->mutex_);
-  done_ = true;
+  {
+    std::lock_guard<std::mutex> lock(this->mutex_);
+    done_ = true;
+  }
   condition_.notify_all();
 }
 
