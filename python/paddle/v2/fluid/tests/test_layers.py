@@ -170,6 +170,12 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(layers.sequence_expand(x=x, y=y))
         print(str(program))
 
+    def test_get_places(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.get_places(use_gpu=True, trainer_count=4)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()

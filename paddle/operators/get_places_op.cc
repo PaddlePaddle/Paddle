@@ -35,7 +35,7 @@ class GetPlacesOp : public framework::OperatorBase {
                    out_var_name);
 
     auto &places = *(out_var->GetMutable<std::vector<platform::Place>>());
-    places.reserve(trainer_count);
+    places.resize(trainer_count);
     if (use_gpu) {
       for (int i = 0; i < trainer_count; i++) {
         places.emplace_back(platform::GPUPlace(i));
