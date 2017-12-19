@@ -16,12 +16,13 @@ import regularizer
 from param_attr import ParamAttr
 from data_feeder import DataFeeder
 from core import LoDTensor, CPUPlace, GPUPlace
+import clip
 
 Tensor = LoDTensor
 __all__ = framework.__all__ + executor.__all__ + [
     'io', 'initializer', 'layers', 'nets', 'optimizer', 'backward',
     'regularizer', 'LoDTensor', 'CPUPlace', 'GPUPlace', 'Tensor', 'ParamAttr'
-    'DataFeeder'
+    'DataFeeder', 'clip'
 ]
 
 
