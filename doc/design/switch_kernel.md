@@ -1,5 +1,5 @@
 ## Background
-Every operator has many kernels. It because there are multiple data types, places, data layout that Fluid supports. We use the `KernelType` to describe kernel types that operators can hold. 
+Every operator has many kernels because there are multiple data types, places, data layout that Fluid supports. We use the `KernelType` to describe kernel types that operators can hold. 
 
 The `KernelType` is as follows.
 
@@ -11,19 +11,19 @@ struct KernelType {
 };
 ```
 
-The `place_` is a descriptor of the device and the computational library, e.g., `MKLPlace`, `CUDAPlace`.
+The `place_` is a descriptor of the device and the computational library, e.g., `MKLDNNPlace`, `CUDAPlace`.
 
 The `data_type_` is the data type that this kernel performs on, e.g., `FP32`, `INT64`. Note that one kernel may have inputs with different data types. However, it will be a major `data_type`. For example, the `cross_entropy` takes `int64` as it label, and `double`/`float` as its input logit and output cost. The major `data_type` of `cross_entropy` is `float`/`double`.
 
-The `layout` is useful for some computational library. One example is that MKLDNN uses many kinds of layout, such as `nChw8`. Each kind of layout will invoke the different kernel.
+The `layout` is useful for some computational library. One example is that MKLDNN uses many kinds of layout, such as `nChw8c`. Each kind of layout will invoke the different kernel.
 
 ## Problem
 
 We register a kernel for every operator and every kernel type ideally. However, it is impracticable for the following situations.
 
 1. Some operators, like CRF, are complicated and inefficient to be implemented on GPU. The CRF operator will only have a CPU kernel.
-2. Some operators will take too many memory. It is better to force them into CPU. However, the rest of operators in this neural network will be performed in GPU, i.e., model parallel problem.
-3. Some layout and place are particular. One example is that MKLDNN uses `nChw8` and there is no other library uses `nChw8`.
+2. Some operators will take too many memory. It is better to force them into CPU. However, the rest of operators in this neural network will be performed on GPU, i.e., model parallel problem.
+3. Some layout and place are particular. One example is that MKLDNN uses `nChw8` and there is no other library uses `nChw8c`.
 
 Problems under these situations are similar. We can formalise this problem as follow.
 
@@ -31,7 +31,7 @@ We register kernels with types $KT = \{kt_1, kt_2, kt_3, ...\}$ for one operator
 
 ## Solution
 
-It is clearly that transforming inputs of an operator from a specific kernel type to another kernel type is not related to the particular operator. So we should register these transformation methods as global methods.
+It is clearly that transforming inputs of an operator toadapt another kernel type is not related to the particular operator. So we should register these transformation methods as global methods.
 
 We can infer a kernel type from the inputs of an operators. We let this kernel type as `actual kernel type`, which means this kernel type is the actually kernel type that operator should be performed.
 
@@ -61,6 +61,6 @@ void OpWithKernel::Run() {
   
   auto trans = g_data_transformation_[{actual_kernel_type, expect_kernel_type}];
   
-  kenerl.run(trans(inputs));
+  kernel.run(trans(inputs));
 }
 ```
