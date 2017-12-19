@@ -891,6 +891,7 @@ def lstm_unit(x_t,
                 size=4 * size,
                 param_attr=param_attr,
                 bias_attr=bias_attr,
+                act='linear',
                 main_program=main_program,
                 startup_program=startup_program)
     dtype = x_t.dtype
