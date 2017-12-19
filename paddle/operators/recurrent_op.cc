@@ -25,7 +25,7 @@ constexpr char kOutputs[] = "outputs";
 constexpr char kParallelScopes[] = "step_scopes";
 constexpr char kExStates[] = "ex_states";
 constexpr char kStates[] = "states";
-constexpr char kParallelBlock[] = "step_block";
+constexpr char kStepBlock[] = "sub_block";
 constexpr char kReverse[] = "reverse";
 constexpr char kIsTrain[] = "is_train";
 #define GRAD_SUFFIX "@GRAD"

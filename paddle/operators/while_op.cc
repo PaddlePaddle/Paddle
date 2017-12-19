@@ -25,7 +25,7 @@ namespace operators {
 using StepScopeVar = std::vector<framework::Scope *>;
 using LoDTensor = framework::LoDTensor;
 
-constexpr char kParallelBlock[] = "step_block";
+constexpr char kStepBlock[] = "sub_block";
 constexpr char kCondition[] = "Condition";
 constexpr char kParallelScopes[] = "StepScopes";
 constexpr char kParameters[] = "X";

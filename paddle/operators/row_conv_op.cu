@@ -243,7 +243,6 @@ __global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
                                   int block_x, int block_y,
                                   const size_t *batch_indices, T *dfilter) {
   int blx = blockDim.x;
-  int bly = blockDim.y;
   int thx = threadIdx.x;
   int thy = threadIdx.y;
   int gx = blockIdx.x * blx;

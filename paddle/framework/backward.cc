@@ -430,14 +430,14 @@ std::vector<std::unique_ptr<OpDescBind>> MakeBlockBackward(
     std::vector<std::unique_ptr<OpDescBind>> op_grads;
 
     if ((*it)->Type() == "recurrent" || (*it)->Type() == "while") {
-      int step_block_idx = (*it)->GetBlockAttr("step_block");
+      int step_block_idx = (*it)->GetBlockAttr("sub_block");
       BlockDescBind* backward_block = CreateStepBlock(
           program_desc, no_grad_vars, grad_to_var, step_block_idx);
       op_grads = MakeOpGrad(*it, no_grad_vars, grad_to_var, {backward_block});
     } else if ((*it)->Type() == "conditional_block") {
       BlockDescBind* backward_block =
           CreateStepBlock(program_desc, no_grad_vars, grad_to_var,
-                          (*it)->GetBlockAttr("block"));
+                          (*it)->GetBlockAttr("sub_block"));
       op_grads = MakeOpGrad(*it, no_grad_vars, grad_to_var, {backward_block});
     } else {
       op_grads = MakeOpGrad(*it, no_grad_vars, grad_to_var);
