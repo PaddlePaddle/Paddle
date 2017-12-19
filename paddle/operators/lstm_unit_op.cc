@@ -51,7 +51,10 @@ class LstmUnitOpMaker : public framework::OpProtoAndCheckerMaker {
   LstmUnitOpMaker(framework::OpProto* proto,
                   framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "FC input before the non-linear activation.");
+    AddInput("X",
+             "Lstm unit only applies non-linear activations, please make sure"
+             "that linear tranformation has already been applied to `X`. "
+             "Linear tranformation can be applied by adding a `fc` layer");
     AddInput(
         "C_prev",
         "The cell state tensor of last time-step in the Lstm Unit operator.");
