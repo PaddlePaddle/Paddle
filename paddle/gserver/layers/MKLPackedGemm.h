@@ -27,7 +27,7 @@ protected:
   size_t weightWidth_;
 
 public:
-  MKLPackedGemm(MatrixPtr weight) {
+  explicit MKLPackedGemm(MatrixPtr weight) {
     weightHeight_ = weight->getHeight();
     weightWidth_ = weight->getWidth();
     weightPacked_ =
@@ -91,4 +91,5 @@ public:
     cblas_sgemm_free(weightTPacked_);
   }
 };
+
 }  // namespace paddle
