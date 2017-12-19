@@ -35,10 +35,11 @@ const std::string kFetchOpType = "fetch";
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
-Executor::Executor(const std::vector<platform::Place>& places) {
-  DeviceContextPool& pool = DeviceContextPool::Get();
-  auto borrowed_contexts = pool.Borrow(places);
-  device_contexts_.swap(borrowed_contexts);
+Executor::Executor(const platform::Place& place) : place_(place) {
+  // DeviceContextPool& pool = DeviceContextPool::Get();
+  // std::vector<const platform::Place> places = {place};
+  // auto borrowed_contexts = pool.Borrow(places);
+  // dev_ctx_ = borrowed_contexts.front();
 }
 
 static void CreateTensor(Variable* var, VarDesc::VarType var_type) {
@@ -71,7 +72,6 @@ void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id,
   //    - will change to use multiple blocks for RNN op and Cond Op
   PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), pdesc.Size());
   auto& block = pdesc.Block(block_id);
-  auto& device = device_contexts_[0];
 
   Scope* local_scope = scope;
   if (create_local_scope) {
@@ -105,7 +105,7 @@ void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id,
   for (auto& op_desc : block.AllOps()) {
     auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
     VLOG(3) << op->DebugString();
-    op->Run(*local_scope, *device);
+    op->Run(*local_scope, place_);
   }
   if (create_local_scope) {
     scope->DeleteScope(local_scope);

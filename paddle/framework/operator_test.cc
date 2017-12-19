@@ -27,8 +27,7 @@ class OpWithoutKernelTest : public OperatorBase {
   OpWithoutKernelTest(const std::string& type, const VariableNameMap& inputs,
                       const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs), x(1) {}
-  void Run(const Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override {
+  void Run(const Scope& scope, const platform::Place& place) const override {
     ++op_run_num;
     ASSERT_EQ(static_cast<int>(inputs_.size()), 1);
     ASSERT_EQ(static_cast<int>(outputs_.size()), 1);
@@ -257,7 +256,7 @@ class OperatorClone : public paddle::framework::OperatorBase {
                 const paddle::framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const paddle::framework::Scope& scope,
-           const paddle::platform::DeviceContext& dev_ctx) const override {}
+           const platform::Place& place) const override {}
 };
 
 TEST(Operator, Clone) {

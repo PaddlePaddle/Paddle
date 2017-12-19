@@ -83,8 +83,7 @@ class OperatorBase {
   virtual std::string DebugString() const;
 
   /// Net will call this function to Run an op.
-  virtual void Run(const Scope& scope,
-                   const platform::DeviceContext& dev_ctx) const = 0;
+  virtual void Run(const Scope& scope, const platform::Place& place) const = 0;
 
   virtual bool IsNetOp() const { return false; }
 
@@ -159,8 +158,7 @@ class OperatorBase {
 class NOP : public OperatorBase {
  public:
   using OperatorBase::OperatorBase;
-  void Run(const Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override {}
+  void Run(const Scope& scope, const platform::Place& place) const override {}
   std::unique_ptr<OperatorBase> Clone() const override {
     return std::unique_ptr<OperatorBase>(new NOP(*this));
   }
@@ -382,8 +380,7 @@ class OperatorWithKernel : public OperatorBase {
                      const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
-  void Run(const Scope& scope,
-           const platform::DeviceContext& dev_ctx) const final;
+  void Run(const Scope& scope, const platform::Place& place) const final;
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&
   AllOpKernels() {

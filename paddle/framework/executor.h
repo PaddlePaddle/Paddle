@@ -40,6 +40,14 @@ class DeviceContextPool {
     return *pool;
   }
 
+  const platform::DeviceContext* Borrow(const platform::Place& place) {
+    std::vector<const platform::Place> places;
+    places.emplace_back(place);
+    DeviceContextPool& pool = DeviceContextPool::Get();
+    auto borrowed_contexts = pool.Borrow(places);
+    return borrowed_contexts.front();
+  }
+
   std::vector<const platform::DeviceContext*> Borrow(
       const std::vector<platform::Place>& places) {
     PADDLE_ENFORCE_GT(places.size(), 0);
@@ -100,12 +108,9 @@ class Executor {
  public:
   // TODO(dzhwinter) : Do not rely on this function, it will be removed
   explicit Executor(const platform::DeviceContext& device)
-      : Executor(std::vector<platform::Place>({device.GetPlace()})) {}
+      : Executor(device.GetPlace()) {}
 
-  explicit Executor(const platform::Place& place)
-      : Executor(std::vector<platform::Place>({place})) {}
-
-  explicit Executor(const std::vector<platform::Place>& places);
+  explicit Executor(const platform::Place& place);
 
   /* @Brief
    * Runtime evaluation of the given ProgramDesc under certain Scope
@@ -117,7 +122,7 @@ class Executor {
   void Run(const ProgramDescBind&, Scope*, int, bool create_local_scope = true);
 
  private:
-  std::vector<const platform::DeviceContext*> device_contexts_;
+  const platform::Place place_;
 };
 
 }  // namespace framework
