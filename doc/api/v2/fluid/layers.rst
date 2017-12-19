@@ -295,6 +295,12 @@ conv2d_transpose
     :noindex:
 
 
+sequence_expand
+---------
+..  autofunction:: paddle.v2.fluid.layers.sequence_expand
+    :noindex:
+
+
 lstm_unit
 ---------
 ..  autofunction:: paddle.v2.fluid.layers.lstm_unit
