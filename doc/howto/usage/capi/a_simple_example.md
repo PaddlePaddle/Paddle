@@ -143,8 +143,8 @@ CHECK(paddle_arguments_resize(in_args, 1));
 // agument to store the testing samples.
 paddle_matrix mat =
     paddle_matrix_create(/* height = batch size */ 1,
-                         /* width = dimensionality of the data layer */ 784,
-                         /* whether to use GPU */ false);
+                    /* width = dimensionality of the data layer */ 784,
+                    /* whether to use GPU */ false);
 
 paddle_real* array;
 // Get the pointer pointing to the start address of the first row of the
@@ -172,9 +172,9 @@ paddle_arguments out_args = paddle_arguments_create_none();
 
 // Invoke the forward computation.
 CHECK(paddle_gradient_machine_forward(machine,
-                                      in_args,
-                                      out_args,
-                                      /* is train taks or not */ false));
+                                in_args,
+                                out_args,
+                                s/* is train taks or not */ false));
 
 // Create the matrix to hold the forward result of the neural network.
 paddle_matrix prob = paddle_matrix_create_none();
