@@ -103,6 +103,7 @@ class ParallelDo(object):
 
     def read_input(self, var):
         self.inputs.append(var)
+        return var
 
     def write_output(self, var):
         self.outputs.append(var)
@@ -149,7 +150,7 @@ class ParallelDo(object):
                 'places': self.places
             },
             outputs={'outputs': self.outputs,
-                     'step_scopes': [step_scope]},
+                     'parallel_scopes': [step_scope]},
             attrs={'sub_block': current_block})
 
 
