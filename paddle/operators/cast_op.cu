@@ -19,4 +19,5 @@ using CastOpKernel =
     paddle::operators::CastOpKernel<paddle::platform::CUDADeviceContext, T>;
 
 REGISTER_OP_CUDA_KERNEL(cast, CastOpKernel<float>, CastOpKernel<double>,
-                        CastOpKernel<int>, CastOpKernel<int64_t>);
+                        CastOpKernel<int>, CastOpKernel<int64_t>,
+                        CastOpKernel<bool>);

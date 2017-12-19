@@ -74,4 +74,5 @@ REGISTER_OP_WITH_KERNEL(cast, ops::CastOpGradMaker, ops::CastOpInferShape,
 REGISTER_OP_CPU_KERNEL(cast, ops::CastOpKernel<CPU, float>,
                        ops::CastOpKernel<CPU, double>,
                        ops::CastOpKernel<CPU, int>,
-                       ops::CastOpKernel<CPU, int64_t>);
+                       ops::CastOpKernel<CPU, int64_t>,
+                       ops::CastOpKernel<CPU, bool>);

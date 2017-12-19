@@ -21,19 +21,11 @@ class LayerHelper(object):
 
     @property
     def main_program(self):
-        prog = self.kwargs.get('main_program', None)
-        if prog is None:
-            return default_main_program()
-        else:
-            return prog
+        return default_main_program()
 
     @property
     def startup_program(self):
-        prog = self.kwargs.get('startup_program', None)
-        if prog is None:
-            return default_startup_program()
-        else:
-            return prog
+        return default_startup_program()
 
     def append_op(self, *args, **kwargs):
         return self.main_program.current_block().append_op(*args, **kwargs)
@@ -150,13 +142,6 @@ class LayerHelper(object):
             shape=var.shape,
             persistable=True,
             initializer=initializer)
-
-    @property
-    def to_kwargs(self):
-        return {
-            'main_program': self.main_program,
-            'startup_program': self.startup_program
-        }
 
     def append_bias_op(self, input_var, dim_start=1, dim_end=None):
         """
