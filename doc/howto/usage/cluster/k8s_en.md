@@ -1,6 +1,6 @@
-# Paddle On Kubernetes
+# PaddlePaddle On Kubernetes
 
->In this article, we will introduce how to run Paddle training job on single CPU machine using Kubernetes. In next article, we will introduce how to run Paddle training job on distributed cluster.
+In this article, we will introduce how to run PaddlePaddle training job on single CPU machine using Kubernetes. In next article, we will introduce how to run PaddlePaddle training job on distributed cluster.
 
 ## Build Docker Image
 
@@ -76,7 +76,7 @@ $ docker commit quick_start_data mypaddle/paddle:quickstart
 
 ## Use Kubernetes For Training
 
->We will use Kubernetes job for training process, following steps shows how to do the training with Kubernetes.
+We will use Kubernetes job for training process, following steps shows how to do the training with Kubernetes.
 
 ### Create Yaml Files
 
@@ -108,7 +108,7 @@ spec:
       restartPolicy: Never
 ```
 
-### Start Paddle Job
+### Start PaddlePaddle Job
 
 Using the above yaml file to start the Kubernetes job.
 
