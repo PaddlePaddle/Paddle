@@ -12,7 +12,8 @@ __all__ = [
     'fc', 'embedding', 'dynamic_lstm', 'gru_unit', 'linear_chain_crf',
     'crf_decoding', 'cos_sim', 'cross_entropy', 'square_error_cost', 'accuracy',
     'chunk_eval', 'sequence_conv', 'conv2d', 'sequence_pool', 'pool2d',
-    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'lstm_unit'
+    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
+    'lstm_unit'
 ]
 
 
@@ -791,6 +792,73 @@ def conv2d_transpose(input,
         attrs=op_attr)
 
     return out
+
+
+def sequence_expand(x, y, main_program=None, startup_program=None):
+    """Sequence Expand Layer. This layer will expand the input variable **x**
+    according to LoD information of **y**. And the following examples will
+    explain how sequence_expand works:
+
+    .. code-block:: text
+
+        * Case 1
+            x is a LoDTensor:
+                x.lod = [[0,       2, 3],
+                         [0, 1,    3, 4]]
+                x.data = [a, b, c, d]
+                x.dims = [4, 1]
+
+            y is a LoDTensor:
+                y.lod = [[0,    2,    4],
+                         [0, 3, 6, 7, 8]]
+
+            with condition len(y.lod[-1]) - 1 == x.dims[0]
+
+            then output is a 2-level LoDTensor:
+                out.lod = [[0,                2,    4],
+                           [0,       3,       6, 7, 8]]
+                out.data = [a, a, a, b, b, b, c, d]
+                out.dims = [8, 1]
+
+        * Case 2
+            x is a Tensor:
+                x.data = [a, b, c]
+                x.dims = [3, 1]
+
+            y is a LoDTensor:
+                y.lod = [[0, 2, 3, 6]]
+
+            with condition len(y.lod[-1]) - 1 == x.dims[0]
+
+            then output is a 1-level LoDTensor:
+                out.lod = [[0,    2, 3,      6]]
+                out.data = [a, a, b, c, c, c]
+                out.dims = [6, 1]
+
+    Args:
+        x (Variable): The input variable which is a Tensor or LoDTensor.
+        y (Variable): The input variable which is a LoDTensor.
+        main_program (Program): The main program.
+        startup_program (Program): The startup program.
+
+    Returns:
+        Variable: The expanded variable which is a LoDTensor.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[10], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[10, 20],
+                             dtype='float32', lod_level=1)
+            out = layers.sequence_expand(x=x, y=y)
+    """
+    helper = LayerHelper('sequence_expand', input=x, **locals())
+    dtype = helper.input_dtype()
+    tmp = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='sequence_expand', inputs={'X': x,
+                                        'Y': y}, outputs={'Out': tmp})
+    return tmp
 
 
 def lstm_unit(x_t,
