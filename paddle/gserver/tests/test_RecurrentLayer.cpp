@@ -420,12 +420,165 @@ TEST(Layer, LstmLayer) {
   }
 }
 
-int main(int argc, char** argv) {
-  if (version::isWithGpu()) {
-    testing::InitGoogleTest(&argc, argv);
-    initMain(argc, argv);
-    return RUN_ALL_TESTS();
-  } else {
-    return 0;
+#ifdef PADDLE_WITH_MKLML
+
+LayerPtr initMKLPackedLayer(LayerConfig layerConfig,
+                            bool reversed,
+                            int layerSize,
+                            LayerPtr dataLayer,
+                            ParameterPtr para,
+                            ParameterPtr bias = nullptr) {
+  LayerMap layerMap;
+  ParameterMap parameterMap;
+  layerMap[dataLayer->getName()] = dataLayer;
+  parameterMap[para->getName()] = para;
+  if (bias) {
+    parameterMap[bias->getName()] = bias;
+    layerConfig.set_bias_parameter_name("bias_0");
   }
+
+  layerConfig.set_size(layerSize);
+  layerConfig.set_reversed(reversed);
+  layerConfig.add_inputs();
+  LayerInputConfig& input = *(layerConfig.mutable_inputs(0));
+  input.set_input_layer_name("layer_0");
+  input.set_input_parameter_name("para_0");
+
+  LayerPtr testLayer = Layer::create(layerConfig);
+  layerMap[testLayer->getName()] = testLayer;
+
+  testLayer->init(layerMap, parameterMap);
+  testLayer->setNeedGradient(true);
+
+  return testLayer;
+}
+
+void checkMKLPackedLayer(LayerPtr testLayer1, LayerPtr testLayer2) {
+  const VectorPtr& weightGrad =
+      (testLayer1->getParameters()[0])->getBuf(PARAMETER_GRADIENT);
+  const MatrixPtr& inputGrad = testLayer1->getPrev(0)->getOutputGrad();
+  CpuVector wgt_grad1(weightGrad->getSize());
+  CpuVector wgt_grad2(weightGrad->getSize());
+  CpuMatrix input_grad1(inputGrad->getHeight(), inputGrad->getWidth());
+  CpuMatrix input_grad2(inputGrad->getHeight(), inputGrad->getWidth());
+
+  CpuMatrix outputGrad(inputGrad->getHeight(), inputGrad->getWidth());
+  outputGrad.randomizeUniform();
+
+  for (int i = 0; i < 2; i++) {
+    FLAGS_rnn_use_batch = true;
+
+    testLayer1->forward(PASS_GC);
+
+    testLayer1->getOutputGrad()->copyFrom(outputGrad);
+
+    weightGrad->zero();
+    inputGrad->zero();
+
+    testLayer1->backward(nullptr);
+
+    wgt_grad1.copyFrom(*weightGrad);
+    input_grad1.copyFrom(*inputGrad);
+
+    FLAGS_rnn_use_batch = true;
+
+    testLayer2->forward(PASS_GC);
+    testLayer2->getOutputGrad()->copyFrom(outputGrad);
+
+    weightGrad->zero();
+    inputGrad->zero();
+
+    testLayer2->backward(nullptr);
+
+    wgt_grad2.copyFrom(*weightGrad);
+    input_grad2.copyFrom(*inputGrad);
+
+    checkError(*testLayer1->getOutputValue(), *testLayer2->getOutputValue());
+
+    checkError(wgt_grad1, wgt_grad2);
+    checkError(input_grad1, input_grad2);
+  }
+
+  for (int i = 0; i < 2; i++) {
+    CpuMatrix outputValue(testLayer2->getOutputValue()->getHeight(),
+                          testLayer2->getOutputValue()->getWidth());
+
+    FLAGS_rnn_use_batch = true;
+
+    testLayer2->forward(PASS_GC);
+    outputValue.copyFrom(*testLayer2->getOutputValue());
+
+    testLayer2->getOutputGrad()->copyFrom(outputGrad);
+
+    weightGrad->zero();
+    inputGrad->zero();
+
+    testLayer2->backward(nullptr);
+
+    wgt_grad1.copyFrom(*weightGrad);
+    input_grad1.copyFrom(*inputGrad);
+
+    FLAGS_rnn_use_batch = false;
+
+    testLayer2->getOutputValue()->zero();
+
+    testLayer2->forward(PASS_GC);
+    testLayer2->getOutputGrad()->copyFrom(outputGrad);
+
+    weightGrad->zero();
+    inputGrad->zero();
+
+    testLayer2->backward(nullptr);
+
+    wgt_grad2.copyFrom(*weightGrad);
+    input_grad2.copyFrom(*inputGrad);
+
+    checkError(outputValue, *testLayer2->getOutputValue());
+    checkError(wgt_grad1, wgt_grad2);
+    checkError(input_grad1, input_grad2);
+  }
+}
+
+TEST(MKLPackedLayer, RecurrentLayer) {
+  LayerConfig layerConfig1;
+  LayerConfig layerConfig2;
+
+  layerConfig1.set_name("paddle-rnn");
+  layerConfig1.set_type("recurrent");
+  layerConfig1.set_active_type("relu");
+
+  layerConfig2.set_name("mkl-packed-rnn");
+  layerConfig2.set_type("mkl_packed_recurrent");
+  layerConfig2.set_active_type("relu");
+
+  for (auto layerSize : {32, 64, 128, 256, 512}) {
+    for (auto batchSize : {1, 5, 100, 500}) {
+      for (auto reversed : {true, false}) {
+        LOG(INFO) << " layerSize=" << layerSize << " batchSize=" << batchSize
+                  << " reversed=" << reversed;
+
+        LayerPtr dataLayer =
+            creatDataLayer("layer_0", batchSize, layerSize, false);
+        ParameterPtr para =
+            creatParameter("para_0", 0, layerSize * layerSize, false);
+
+        LayerPtr testLayer1 = initMKLPackedLayer(
+            layerConfig1, reversed, layerSize, dataLayer, para);
+        LayerPtr testLayer2 = initMKLPackedLayer(
+            layerConfig2, reversed, layerSize, dataLayer, para);
+
+        checkMKLPackedLayer(testLayer1, testLayer2);
+      }
+    }
+  }
+}
+#endif
+
+int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
+  initMain(argc, argv);
+  if (!version::isWithGpu()) {
+    testing::GTEST_FLAG(filter) = "-Layer.*";
+  }
+  return RUN_ALL_TESTS();
 }
