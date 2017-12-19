@@ -305,3 +305,10 @@ lstm_unit
 ---------
 ..  autofunction:: paddle.v2.fluid.layers.lstm_unit
     :noindex:
+
+
+sequence_softmax
+---------
+..  autofunction:: paddle.v2.fluid.layers.sequence_softmax
+    :noindex:
+
