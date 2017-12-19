@@ -1,4 +1,4 @@
-# PaddlePaddle Distributed Training
+# Distributed Training
 
 ## Introduction
 
@@ -188,5 +188,4 @@ These cluster platforms provide API or environment variables for training proces
   - [fabric](fabric_en.md)
   - [openmpi](openmpi_en.md)
   - [kubernetes](k8s_en.md)
-  - kubernetes distributed
   - [kubernetes on AWS](k8s_aws_en.md)
