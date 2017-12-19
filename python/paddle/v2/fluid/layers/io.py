@@ -10,8 +10,6 @@ def data(name,
          dtype='float32',
          lod_level=0,
          type=core.VarDesc.VarType.LOD_TENSOR,
-         main_program=None,
-         startup_program=None,
          stop_gradient=True):
     """
     Data Layer.

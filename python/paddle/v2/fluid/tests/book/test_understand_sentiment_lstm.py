@@ -4,12 +4,7 @@ import paddle.v2.fluid as fluid
 from paddle.v2.fluid.layer_helper import LayerHelper
 
 
-def lstm(x,
-         c_pre_init,
-         hidden_dim,
-         forget_bias=None,
-         main_program=None,
-         startup_program=None):
+def lstm(x, c_pre_init, hidden_dim, forget_bias=None):
     """
     This function helps create an operator for the LSTM (Long Short Term
     Memory) cell that can be used inside an RNN.
@@ -20,15 +15,8 @@ def lstm(x,
         c_pre = rnn.memory(init=c_pre_init)
         x_t = rnn.step_input(x)
 
-        before_fc = fluid.layers.concat(
-            input=[x_t, c_pre],
-            axis=1,
-            main_program=main_program,
-            startup_program=startup_program)
-        after_fc = fluid.layers.fc(input=before_fc,
-                                   size=hidden_dim * 4,
-                                   main_program=main_program,
-                                   startup_program=startup_program)
+        before_fc = fluid.layers.concat(input=[x_t, c_pre], axis=1)
+        after_fc = fluid.layers.fc(input=before_fc, size=hidden_dim * 4)
 
         dtype = x.dtype
         c = helper.create_tmp_variable(dtype)
