@@ -53,6 +53,8 @@ constexpr char kGradVarSuffix[] = "@GRAD";
 /// Variables with this suffix are supposed to be filled up with zeros.
 constexpr char kZeroVarSuffix[] = "@ZERO";
 
+constexpr char kKernelHintKey[] = "#KERNEL_HINT";
+
 inline std::string GradVarName(const std::string& var_name) {
   return var_name + kGradVarSuffix;
 }
@@ -114,6 +116,9 @@ class OperatorBase {
   const std::string& Type() const { return type_; }
   void SetType(const std::string& type) { type_ = type; }
   const AttributeMap& Attrs() const { return attrs_; }
+  const std::string& KernelHint() const {
+    return Attr<std::string>(kKernelHintKey);
+  }
 
   // Return a new operator instance, which is as same as this.
   // Use unique_ptr to prevent caller forget to delete this pointer.

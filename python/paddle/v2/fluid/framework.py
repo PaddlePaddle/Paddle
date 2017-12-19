@@ -16,6 +16,7 @@ EMPTY_VAR_NAME = core.kEmptyVarName()
 TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
+KERNEL_HINT_KEY = core.kKernelHintKey()
 
 
 def grad_var_name(var_name):
