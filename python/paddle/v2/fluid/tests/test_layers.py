@@ -161,7 +161,7 @@ class TestBook(unittest.TestCase):
                     x=dat, label=lbl))
         print(str(program))
 
-    def test_seq_expand(self):
+    def test_sequence_expand(self):
         program = Program()
         with program_guard(program):
             x = layers.data(name='x', shape=[10], dtype='float32')
