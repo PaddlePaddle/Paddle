@@ -12,6 +12,7 @@ function train() {
   config="${topology}.py"
   paddle train --job=time \
     --config=$config \
+    --use_mkldnn=False \
     --use_gpu=False \
     --trainer_count=$thread \
     --log_period=10 \
