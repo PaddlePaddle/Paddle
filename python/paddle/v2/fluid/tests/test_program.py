@@ -1,7 +1,7 @@
 from __future__ import print_function
 import unittest
 
-from paddle.v2.fluid.framework import Program, default_main_program
+from paddle.v2.fluid.framework import Program, default_main_program, program_guard
 import paddle.v2.fluid.layers as layers
 
 main_program = default_main_program()
@@ -129,13 +129,10 @@ class TestProgram(unittest.TestCase):
     def test_program_clone_with_parameter(self):
         main_program = Program()
         startup_program = Program()
-        kwargs = {
-            'main_program': main_program,
-            'startup_program': startup_program
-        }
-        d = layers.data(name='x', shape=[784], dtype='float32', **kwargs)
-        hidden = layers.fc(input=d, size=100, **kwargs)
-        layers.fc(input=hidden, size=100, **kwargs)
+        with program_guard(main_program, startup_program):
+            d = layers.data(name='x', shape=[784], dtype='float32')
+            hidden = layers.fc(input=d, size=100)
+            layers.fc(input=hidden, size=100)
 
         new_program = main_program.clone()
         self.assertNotEqual(0, len(new_program.blocks[0].all_parameters()))
