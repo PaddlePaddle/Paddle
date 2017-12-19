@@ -41,7 +41,7 @@ class GetPlacesOp : public framework::OperatorBase {
     places.resize(trainer_count);
     if (device_type == "CUDA") {
 #ifdef PADDLE_WITH_CUDA
-      PADDLE_ENFORCE_LT(trainer_count, GetCUDADeviceCount());
+      PADDLE_ENFORCE_LT(trainer_count, platform::GetCUDADeviceCount());
       for (int i = 0; i < trainer_count; i++) {
         places.emplace_back(platform::GPUPlace(i));
       }
