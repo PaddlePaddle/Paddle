@@ -29,7 +29,10 @@ class TestBook(unittest.TestCase):
             label = layers.data(name='label', shape=[1], dtype='int32')
             hidden1 = layers.fc(input=images, size=128, act='relu')
             hidden2 = layers.fc(input=hidden1, size=64, act='relu')
-            predict = layers.fc(input=hidden2, size=10, act='softmax')
+            predict = layers.fc(input=[hidden2, hidden1],
+                                size=10,
+                                act='softmax',
+                                param_attr=["sftmax.w1", "sftmax.w2"])
             cost = layers.cross_entropy(input=predict, label=label)
             avg_cost = layers.mean(x=cost)
             self.assertIsNotNone(avg_cost)
@@ -156,6 +159,15 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(
                 layers.sigmoid_cross_entropy_with_logits(
                     x=dat, label=lbl))
+        print(str(program))
+
+    def test_seq_expand(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[10], dtype='float32')
+            y = layers.data(
+                name='y', shape=[10, 20], dtype='float32', lod_level=1)
+            self.assertIsNotNone(layers.sequence_expand(x=x, y=y))
         print(str(program))
 
 

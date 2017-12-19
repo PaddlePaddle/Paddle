@@ -74,5 +74,5 @@ class MomentumOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(momentum, ops::MomentumOpCUDAKernel<float>,
-                       ops::MomentumOpCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(momentum, ops::MomentumOpCUDAKernel<float>,
+                        ops::MomentumOpCUDAKernel<double>);

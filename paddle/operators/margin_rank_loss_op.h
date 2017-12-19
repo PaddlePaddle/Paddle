@@ -34,7 +34,7 @@ struct Heaviside {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class MarginRankLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
@@ -56,13 +56,13 @@ class MarginRankLossKernel : public framework::OpKernel<T> {
     auto x1 = framework::EigenVector<T>::Flatten(*x1_t);
     auto x2 = framework::EigenVector<T>::Flatten(*x2_t);
 
-    auto& dev = ctx.GetEigenDevice<Place>();
+    auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
     out.device(dev) = (-label * (x1 - x2) + margin).unaryExpr(ReLU<T>());
     act.device(dev) = out.unaryExpr(Heaviside<T>());
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class MarginRankLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
@@ -78,7 +78,7 @@ class MarginRankLossGradKernel : public framework::OpKernel<T> {
     auto d_out = framework::EigenVector<T>::Flatten(*d_out_t);
     auto act = framework::EigenVector<T>::Flatten(*act_t);
     auto label = framework::EigenVector<T>::Flatten(*label_t);
-    auto& dev = ctx.GetEigenDevice<Place>();
+    auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
 
     // compute d_x1
     if (d_x1_t) {

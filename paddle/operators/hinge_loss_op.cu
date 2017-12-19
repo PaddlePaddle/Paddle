@@ -16,8 +16,9 @@
 #include "paddle/operators/hinge_loss_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(hinge_loss,
-                       ops::HingeLossKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
+    hinge_loss,
+    ops::HingeLossKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
     hinge_loss_grad,
-    ops::HingeLossGradKernel<paddle::platform::GPUPlace, float>);
+    ops::HingeLossGradKernel<paddle::platform::CUDADeviceContext, float>);

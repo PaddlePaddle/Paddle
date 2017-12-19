@@ -16,8 +16,9 @@
 #include "paddle/operators/huber_loss_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(huber_loss,
-                       ops::HuberLossKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
+    huber_loss,
+    ops::HuberLossKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
     huber_loss_grad,
-    ops::HuberLossGradKernel<paddle::platform::GPUPlace, float>);
+    ops::HuberLossGradKernel<paddle::platform::CUDADeviceContext, float>);

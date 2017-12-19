@@ -119,7 +119,8 @@ REGISTER_OPERATOR(multiplex, ops::MultiplexOp, ops::MultiplexOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<false>);
 REGISTER_OPERATOR(multiplex_grad, ops::MultiplexGradOp);
 REGISTER_OP_CPU_KERNEL(
-    multiplex, ops::MultiplexCPUKernel<paddle::platform::CPUPlace, float>);
+    multiplex,
+    ops::MultiplexCPUKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     multiplex_grad,
-    ops::MultiplexGradCPUKernel<paddle::platform::CPUPlace, float>);
+    ops::MultiplexGradCPUKernel<paddle::platform::CPUDeviceContext, float>);
