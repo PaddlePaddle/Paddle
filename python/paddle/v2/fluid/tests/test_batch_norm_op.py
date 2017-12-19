@@ -6,10 +6,6 @@ from paddle.v2.fluid.op import Operator
 from paddle.v2.fluid.framework import grad_var_name
 
 
-def grad_var_name(var_name):
-    return var_name + "@GRAD"
-
-
 def get_backward_op(scope, op, no_grad_set):
     backward_op = core.Operator.backward(op, no_grad_set)
     for input in backward_op.input_vars():
