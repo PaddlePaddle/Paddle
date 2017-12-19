@@ -52,7 +52,8 @@ class SendOp : public framework::OperatorBase {
         LOG(ERROR) << "send variable error: " << ins[i];
       }
     }
-    client_map_[0]->Wait();  // TODO(typhoonzero): support async optimization
+    // TODO(typhoonzero): support async optimization
+    client_map_[epmap[0]]->Wait();
     for (size_t i = 0; i < ins.size(); ++i) {
       bool ret = client_map_[epmap[i]]->GetVariable(scope, ins[i]);
       if (!ret) {

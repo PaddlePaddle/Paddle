@@ -149,9 +149,8 @@ class DistributeTranspiler:
         epmap = []
         for ep, v in self.param_grad_map.iteritems():
             send_op_ordered_inputs.extend(v["grads"])
-            for i in v:
+            for i in v["grads"]:
                 epmap.append(ep)
-
         send_op = program.global_block().append_op(
             type="send",
             inputs={"X": send_op_ordered_inputs
