@@ -28,7 +28,7 @@ PaddlePaddle镜像需要提供`paddle pserver`与`paddle train`进程的运行�
 - 拷贝训练文件到容器内
 - 生成`paddle pserver`与`paddle train`进程的启动参数，并且启动训练
 
-因为官方镜像 `paddledev/paddle:cpu-latest` 内已经包含PaddlePaddle的执行程序但是还没上述功能，所以我们可以在这个基础上，添加启动脚本，制作新镜像来完成以上的工作。参考镜像的[*Dockerfile*](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/usage/cluster/src/k8s_train/Dockerfile)。
+因为官方镜像 `paddlepaddle/paddle:latest` 内已经包含PaddlePaddle的执行程序但是还没上述功能，所以我们可以在这个基础上，添加启动脚本，制作新镜像来完成以上的工作。参考镜像的[*Dockerfile*](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/usage/cluster/src/k8s_train/Dockerfile)。
 
 ```bash
 $ cd doc/howto/usage/k8s/src/k8s_train
@@ -62,7 +62,7 @@ spec:
       hostNetwork: true
       containers:
       - name: paddle-data
-        image: paddledev/paddle-tutorial:k8s_data
+        image: paddlepaddle/paddle-tutorial:k8s_data
         imagePullPolicy: Always
         volumeMounts:
         - mountPath: "/mnt"
