@@ -22,10 +22,10 @@ constexpr char kInputs[] = "inputs";
 constexpr char kInitialStates[] = "initial_states";
 constexpr char kParameters[] = "parameters";
 constexpr char kOutputs[] = "outputs";
-constexpr char kStepScopes[] = "step_scopes";
+constexpr char kParallelScopes[] = "step_scopes";
 constexpr char kExStates[] = "ex_states";
 constexpr char kStates[] = "states";
-constexpr char kStepBlock[] = "step_block";
+constexpr char kParallelBlock[] = "step_block";
 constexpr char kReverse[] = "reverse";
 constexpr char kIsTrain[] = "is_train";
 #define GRAD_SUFFIX "@GRAD"
@@ -234,7 +234,7 @@ class RecurrentOp : public RecurrentBase {
     auto reverse = Attr<bool>(kReverse);
 
     framework::Executor executor(dev_ctx);
-    auto *block = Attr<framework::BlockDescBind *>(kStepBlock);
+    auto *block = Attr<framework::BlockDescBind *>(kParallelBlock);
     auto *program = block->Program();
 
     for (size_t i = 0; i < seq_len; ++i) {
@@ -295,7 +295,7 @@ class RecurrentOp : public RecurrentBase {
  private:
   StepScopes CreateStepScopes(const framework::Scope &scope,
                               size_t seq_len) const {
-    auto *var = scope.FindVar(Output(kStepScopes));
+    auto *var = scope.FindVar(Output(kParallelScopes));
     PADDLE_ENFORCE(var != nullptr);
     return StepScopes(scope, var->GetMutable<StepScopeVar>(),
                       Attr<bool>(kIsTrain), seq_len);
@@ -317,7 +317,7 @@ class RecurrentGradOp : public RecurrentBase {
     auto reverse = Attr<bool>(kReverse);
 
     framework::Executor executor(dev_ctx);
-    auto *block = Attr<framework::BlockDescBind *>(kStepBlock);
+    auto *block = Attr<framework::BlockDescBind *>(kParallelBlock);
     auto *program = block->Program();
 
     for (size_t step_id = 0; step_id < seq_len; ++step_id) {
@@ -465,7 +465,7 @@ class RecurrentGradOp : public RecurrentBase {
  private:
   StepScopes CreateStepScopes(const framework::Scope &scope,
                               size_t seq_len) const {
-    auto *var = scope.FindVar(Input(kStepScopes));
+    auto *var = scope.FindVar(Input(kParallelScopes));
     PADDLE_ENFORCE(var != nullptr);
     return StepScopes(scope, var->GetMutable<StepScopeVar>(),
                       Attr<bool>(kIsTrain), seq_len, true /*is_backward*/);
@@ -510,7 +510,7 @@ class RecurrentOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput(kOutputs,
               "The output sequence of RNN. The sequence length must be same.")
         .AsDuplicable();
-    AddOutput(kStepScopes,
+    AddOutput(kParallelScopes,
               "StepScopes contain all local variables in each time step.");
     AddAttr<std::vector<std::string>>(kExStates,
                                       string::Sprintf(
@@ -523,7 +523,7 @@ The ex-state means the state value in the ex-timestep or the previous time step
         string::Sprintf(
             "The state variable names. [%s, %s, %s] must be the same order",
             kExStates, kStates, kInitStateGrads));
-    AddAttr<framework::BlockDescBind *>(kStepBlock,
+    AddAttr<framework::BlockDescBind *>(kParallelBlock,
                                         "The step block inside RNN");
     AddAttr<bool>(kReverse, R"DOC(Calculate RNN reversely or not.
 By default reverse=False
@@ -576,7 +576,7 @@ class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
     }
 
     for (auto &output_param : this->OutputNames()) {
-      if (output_param == kStepScopes) {
+      if (output_param == kParallelScopes) {
         grad->SetInput(output_param, this->Output(output_param));
         grad->SetInput(framework::GradVarName(output_param),
                        this->Output(output_param));
@@ -587,7 +587,7 @@ class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
       }
     }
     grad->SetAttrMap(this->Attrs());
-    grad->SetBlockAttr(kStepBlock, *grad_block_[0]);
+    grad->SetBlockAttr(kParallelBlock, *grad_block_[0]);
 
     return std::unique_ptr<framework::OpDescBind>(grad);
   }
