@@ -25,7 +25,7 @@ constexpr char kParameters[] = "parameters";
 constexpr char kPlaces[] = "places";
 constexpr char kParallelBlock[] = "parallel_block";
 constexpr char kOutputs[] = "outputs";
-constexpr char kParallelScopes[] = "parallel_scopes";
+constexpr char kParallelScopes[] = "sub_block";
 // #define GRAD_SUFFIX "@GRAD"
 // constexpr char kInputGrads[] = "inputs" GRAD_SUFFIX;
 // constexpr char kOutputGrads[] = "outputs" GRAD_SUFFIX;
