@@ -60,3 +60,5 @@ cc_library(selected_rows SRCS selected_rows.cc DEPS tensor)
 cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
 
 cc_test(threadpool_test SRCS threadpool_test.cc)
+cc_library(init SRCS init.cc DEPS gflags executor place stringpiece)
+cc_test(init_test SRCS init_test.cc DEPS init)

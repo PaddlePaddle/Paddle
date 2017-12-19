@@ -11,14 +11,18 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
+#pragma once
+#include <mutex>
 
-#define EIGEN_USE_GPU
-#include "paddle/operators/seq_expand_op.h"
+#include "gflags/gflags.h"
+#include "glog/logging.h"
 
-namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    seq_expand,
-    ops::SeqExpandKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    seq_expand_grad,
-    ops::SeqExpandGradKernel<paddle::platform::CUDADeviceContext, float>);
+namespace paddle {
+namespace framework {
+
+void InitGflags(std::vector<std::string> &argv);
+
+bool InitDevices(const std::vector<std::string> &devices);
+
+}  // namespace framework
+}  // namespace paddle
