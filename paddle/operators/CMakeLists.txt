@@ -185,6 +185,7 @@ set(DEPS_OPS
     cond_op
     cross_entropy_op
     recurrent_op
+    parallel_do_op
     softmax_with_cross_entropy_op
     softmax_op
     sequence_softmax_op
@@ -256,6 +257,7 @@ op_library(lstm_op DEPS sequence2batch lstm_compute)
 op_library(conv_transpose_op DEPS vol2col)
 op_library(gru_op DEPS sequence2batch gru_compute)
 op_library(recurrent_op SRCS recurrent_op.cc DEPS executor)
+op_library(parallel_do_op SRCS parallel_do_op.cc DEPS executor)
 
 # FIXME(typhoonzero): save/load depends lodtensor serialization functions
 op_library(save_op DEPS lod_tensor)
