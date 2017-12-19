@@ -16,7 +16,7 @@ PaddlePaddle的 `paddlepaddle/paddle:cpu-demo-latest` 镜像里有PaddlePaddle�
 ### 运行容器
 
 ```
-$ docker run --name quick_start_data -it paddledev/paddle:cpu-demo-latest
+$ docker run --name quick_start_data -it paddlepaddle/paddle:cpu-demo-latest
 ```
 
 ### 下载数据
