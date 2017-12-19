@@ -30,7 +30,7 @@ The tool uses Docker, please install it on your system. Please check Docker offi
     git clone https://github.com/PaddlePaddle/Mobile.git
 
     # Please specify the working directory through -v
-    docker run -it -p 8000:8000 -v `pwd`:/var/content docker.paddlepaddle.org/paddle:latest
+    docker run -it -p 8000:8000 -v `pwd`:/var/content paddlepaddle/paddlepaddle.org:latest
 
 Note: PaddlePaddle.org will read the content repos specified in the -v (volume) flag of the docker run command
 Use a web browser and navigate to http://localhost:8000, click the buttons to compile the documentation
