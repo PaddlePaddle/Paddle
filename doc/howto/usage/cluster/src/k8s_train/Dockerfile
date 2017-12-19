@@ -1,4 +1,4 @@
-FROM paddledev/paddle:cpu-latest
+FROM paddlepaddle/paddle:cpu-latest
 
 COPY start.sh /root/
 COPY start_paddle.py /root/

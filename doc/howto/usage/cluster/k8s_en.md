@@ -21,7 +21,7 @@ Container to be a new Docker Image.
 ### Run Docker Container
 
 ```
-$ docker run --name quick_start_data -it paddledev/paddle:cpu-demo-latest
+$ docker run --name quick_start_data -it paddlepaddle/paddle:cpu-demo-latest
 ```
 
 ### Download Training Data
