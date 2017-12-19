@@ -30,10 +30,10 @@
 由于在现有的某些情况下（例如RNN），多次调用 cblas_?gemm 会使用相同的原数据，因此，每次调用时对原数据的重复Packing便成为了冗余。
 
 为了最大程度减少多次调用 cblas_?gemm 在Packing上的耗时，Intel® MKL 引入了以下四个API:
-   * cblas_?gemm_alloc
-   * cblas_?gemm_pack 
-   * cblas_?gemm_compute
-   * cblas_?gemm_free
+   * [cblas_?gemm_alloc](https://software.intel.com/en-us/mkl-developer-reference-c-cblas-gemm-alloc)
+   * [cblas_?gemm_pack](https://software.intel.com/en-us/mkl-developer-reference-c-cblas-gemm-pack)
+   * [cblas_?gemm_compute](https://software.intel.com/en-us/mkl-developer-reference-c-cblas-gemm-compute)
+   * [cblas_?gemm_free](https://software.intel.com/en-us/mkl-developer-reference-c-cblas-gemm-free)
 
 通过使用这些API，我们可以先完成对原数据的Packing操作，再把已转换为Packed格式的数据传递给那些复用同一数据的gemm_compute函数，从而避免了Packing冗余。
 
@@ -84,7 +84,20 @@ PaddlePaddle/Paddle
 2. 对比优化后layer与相对应的PaddlePaddle原有layer, 在batch mode下的结果。
 
 ### Python API
-TBD
+计划在`paddle/utils.Flags`中添加`use_mkl_packed`的flag，用于选择是否使用相关功能，并且当编译时`WITH_MKL=ON`的情况下，默认设置为`true`。
+
+同时，在`python/paddle/trainer/config_parser.py`中对应的layer处，添加`use_mkl_packed`这个选择，方便用户在Python端选择是否启用这个功能。
+
+具体实现方式比如：
+
+```python
+use_mkl_packed = bool(int(g_command_config_args.get("use_mkl_packed", 0)))
+if use_mkl_packed:
+    self.layer_type = mkl_packed_*
+```
+
+所有相关的`layer_type`会以*mkl_packed_*开头，这些会在`MKLPacked*Layer`注册layer的时候保证，以示区分。 
+
 
 ### Benchmarking
 会添加相应的脚本用于测试和对比在使用MKL Packed recurrent layers 前后的网络性能。
