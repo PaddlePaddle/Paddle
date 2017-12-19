@@ -236,15 +236,25 @@ void BindOpDesc(py::module &m) {
       .value("BLOCK", AttrType::BLOCK);
 
   py::class_<OpDescBind> op_desc(m, "OpDesc", "");
-  op_desc.def("type", &OpDescBind::Type)
+  op_desc
+      .def("__init__",
+           [](OpDescBind &self, const std::string &type,
+              const VariableNameMap &inputs, const VariableNameMap &outputs,
+              const AttributeMap &attrs) {
+             new (&self) OpDescBind(type, inputs, outputs, attrs);
+           })
+      .def("type", &OpDescBind::Type)
       .def("set_type", &OpDescBind::SetType)
       .def("input", &OpDescBind::Input)
       .def("input_names", &OpDescBind::InputNames)
-      .def("set_input", &OpDescBind::SetInput)
       .def("output", &OpDescBind::Output)
       .def("output_names", &OpDescBind::OutputNames)
-      .def("output_arg_names", &OpDescBind::OutputArgumentNames)
+      .def("set_input", &OpDescBind::SetInput)
       .def("set_output", &OpDescBind::SetOutput)
+      .def("input_arg_names", &OpDescBind::InputArgumentNames)
+      .def("output_arg_names", &OpDescBind::OutputArgumentNames)
+      .def("rename_input", &OpDescBind::RenameInput)
+      .def("rename_output", &OpDescBind::RenameOutput)
       .def("has_attr", &OpDescBind::HasAttr)
       .def("attr_type", &OpDescBind::GetAttrType)
       .def("attr_names", &OpDescBind::AttrNames)
