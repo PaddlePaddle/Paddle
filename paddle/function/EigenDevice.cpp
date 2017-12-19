@@ -63,6 +63,7 @@ int GetCpuCount() {
 #ifdef __OSX__
   return GetOSXCpuCount();
 #endif
+  return 1;
 }
 
 const Eigen::ThreadPoolDevice& GetThreadPoolDevice() {

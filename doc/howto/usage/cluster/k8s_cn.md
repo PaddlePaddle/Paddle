@@ -1,16 +1,16 @@
 # Kubernetes单机训练
 
-在这篇文档里，我们介绍如何在 Kubernetes 集群上启动一个单机使用CPU的Paddle训练作业。在下一篇中，我们将介绍如何启动分布式训练作业。
+在这篇文档里，我们介绍如何在 Kubernetes 集群上启动一个单机使用CPU的PaddlePaddle训练作业。在下一篇中，我们将介绍如何启动分布式训练作业。
 
 ## 制作Docker镜像
 
-在一个功能齐全的Kubernetes机群里，通常我们会安装Ceph等分布式文件系统来存储训练数据。这样的话，一个分布式Paddle训练任务中的每个进程都可以从Ceph读取数据。在这个例子里，我们只演示一个单机作业，所以可以简化对环境的要求，把训练数据直接放在
-Paddle的Docker image里。为此，我们需要制作一个包含训练数据的Paddle镜像。
+在一个功能齐全的Kubernetes机群里，通常我们会安装Ceph等分布式文件系统来存储训练数据。这样的话，一个分布式PaddlePaddle训练任务中的每个进程都可以从Ceph读取数据。在这个例子里，我们只演示一个单机作业，所以可以简化对环境的要求，把训练数据直接放在
+PaddlePaddle的Docker image里。为此，我们需要制作一个包含训练数据的PaddlePaddle镜像。
 
-Paddle 的 [Quick Start Tutorial](http://www.paddlepaddle.org/doc/demo/quick_start/index_en.html) 
+Paddle 的 [Quick Start Tutorial](http://www.paddlepaddle.org/docs/develop/documentation/zh/getstarted/index_cn.html) 
 里介绍了用Paddle源码中的脚本下载训练数据的过程。
-而 `paddledev/paddle:cpu-demo-latest` 镜像里有 Paddle 源码与demo，（ 请注意，默认的
-Paddle镜像 `paddledev/paddle:cpu-latest` 是不包括源码的, Paddle的各版本镜像可以参考 [Docker installation guide](http://www.paddlepaddle.org/doc/build/docker_install.html) ），所以我们使用这个镜像来下载训练数据到Docker container中，然后把这个包含了训练数据的container保存为一个新的镜像。
+而 `paddledev/paddle:cpu-demo-latest` 镜像里有 PaddlePaddle 源码与demo，（ 请注意，默认的
+PaddlePaddle镜像 `paddledev/paddle:cpu-latest` 是不包括源码的, PaddlePaddle的各版本镜像可以参考 [Docker installation guide](http://www.paddlepaddle.org/doc/build/docker_install.html) ），所以我们使用这个镜像来下载训练数据到Docker container中，然后把这个包含了训练数据的container保存为一个新的镜像。
   
 ### 运行容器
 
@@ -103,7 +103,7 @@ spec:
       restartPolicy: Never
 ```
 
-### 创建Paddle Job
+### 创建PaddlePaddle Job
 
 使用上文创建的yaml文件创建Kubernetes Job，命令为：
 

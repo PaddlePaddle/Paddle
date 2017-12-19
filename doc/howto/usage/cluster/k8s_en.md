@@ -1,13 +1,13 @@
-# Paddle On Kubernetes
+# PaddlePaddle On Kubernetes
 
->In this article, we will introduce how to run Paddle training job on single CPU machine using Kubernetes. In next article, we will introduce how to run Paddle training job on distributed cluster.
+In this article, we will introduce how to run PaddlePaddle training job on single CPU machine using Kubernetes. In next article, we will introduce how to run PaddlePaddle training job on distributed cluster.
 
 ## Build Docker Image
 
-In distributed Kubernetes cluster, we will use Ceph or other shared storage system for storing training related data so that all processes in Paddle training can retrieve data from Ceph. In this example, we will only demo training job on single machine. In order to simplify the requirement of the environment, we will directly put training data into Paddle's Docker Image, so we need to create a Paddle Docker image that already includes the training data.
+In distributed Kubernetes cluster, we will use Ceph or other shared storage system for storing training data so that all processes in the training job can retrieve data from Ceph. In this example, we will only demo training job on single machine. In order to simplify the requirement of the environment, we will directly put training data into PaddlePaddle's Docker Image, so we need to create a PaddlePaddle Docker image that already includes the training data.
 
-Paddle's [Quick Start Tutorial](http://www.paddlepaddle.org/doc/demo/quick_start/index_en.html) introduces how to download and train data by using script from Paddle's source code.
-And `paddledev/paddle:cpu-demo-latest` image has the Paddle source code and demo. (Caution: Default Paddle image `paddledev/paddle:cpu-latest` doesn't include the source code, Paddle's different versions of image can be referred here: [Docker installation guide](http://www.paddlepaddle.org/doc/build/docker_install.html)), so we run this container and download the training data, and then commit the whole container to be a new Docker image.
+PaddlePaddle's [Quick Start Tutorial](http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/index_en.html) introduces how to download and train data by using script from PaddlePaddle's source code.
+And `paddledev/paddle:cpu-demo-latest` image has the PaddlePaddle source code and demo. (Caution: Default PaddlePaddle image `paddledev/paddle:cpu-latest` doesn't include the source code, PaddlePaddle's different versions of image can be referred here: [Docker installation guide](http://www.paddlepaddle.org/doc/build/docker_install.html)), so we run this container and download the training data, and then commit the whole container to be a new Docker image.
   
 ### Run Docker Container
 
@@ -67,7 +67,7 @@ $ docker commit quick_start_data mypaddle/paddle:quickstart
 
 ## Use Kubernetes For Training
 
->We will use Kubernetes job for training process, following steps shows how to do the training with Kubernetes.
+We will use Kubernetes job for training process, following steps shows how to do the training with Kubernetes.
 
 ### Create Yaml Files
 
@@ -99,7 +99,7 @@ spec:
       restartPolicy: Never
 ```
 
-### Start Paddle Job
+### Start PaddlePaddle Job
 
 Using the above yaml file to start the Kubernetes job.
 
