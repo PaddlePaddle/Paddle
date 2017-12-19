@@ -59,4 +59,4 @@ cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
 cc_library(selected_rows SRCS selected_rows.cc DEPS tensor)
 cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
 
-cc_test(threadpool_test SRCS threadpool_test.cc )
+cc_test(threadpool_test SRCS threadpool_test.cc)

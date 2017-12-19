@@ -24,11 +24,10 @@ TEST(ThreadPool, Start) {
   size_t num_threads = 4;
   framework::ThreadPool* pool = framework::ThreadPool::Instance(num_threads);
   std::map<int, bool> dict;
-  for (int i = 0; i < 4; ++i) {
-    pool->Start([&dict, i]() { dict[i] = true; });
+  int sum = 0;
+  for (int i = 0; i < 10; ++i) {
+    pool->Run([&sum]() { sum++; });
   }
   pool->Wait();
-  for (int i = 0; i < 4; ++i) {
-    EXPECT_EQ(dict[i], true);
-  }
+  EXPECT_EQ(sum, 10);
 }

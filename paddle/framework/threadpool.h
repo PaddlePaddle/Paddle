@@ -26,22 +26,22 @@ namespace framework {
 
 class ThreadPool {
  private:
-  typedef std::function<void()> Func;
+  typedef std::function<void()> Task;
   int num_threads_;
   int available_;
   bool running_;
-  bool complete_;
-  std::queue<Func> tasks_;
+  bool done_;
+  std::queue<Task> tasks_;
   std::vector<std::unique_ptr<std::thread>> threads_;
   std::mutex mutex_;
-  std::condition_variable condition_;
+  std::condition_variable scheduled_;
   std::condition_variable completed_;
 
  public:
   /**
    * @brief   get a instance of threadpool, the thread number will
    *          be specified by the first time.
-   * @param[in] num_threads   Theavailable thread number.
+   * @param[in] num_threads   The available thread number.
    *            If num_threads <= 0, the thread pool wil be initilized
    *            with the number of concurrent threads supported.
    */
@@ -58,9 +58,9 @@ class ThreadPool {
 
   ~ThreadPool() {
     {
-      std::unique_lock<std::mutex> lock(mutex_);
+      // notify all threads to stop running
       running_ = false;
-      condition_.notify_all();
+      scheduled_.notify_all();
     }
 
     for (auto& t : threads_) {
@@ -77,19 +77,18 @@ class ThreadPool {
 
   // push a function to the queue, and will be scheduled and
   // executed if a thread is available
-  void Start(const Func& fn) {
+  void Run(const Task& fn) {
     std::unique_lock<std::mutex> lock(mutex_);
     tasks_.push(fn);
-    complete_ = false;
-    condition_.notify_one();
+    done_ = false;
+    lock.unlock();
+    scheduled_.notify_one();
   }
 
-  // wait unitle all the function are completed
+  // wait util all the tasks are completed
   void Wait() {
     std::unique_lock<std::mutex> lock(mutex_);
-    while (!complete_) {
-      completed_.wait(lock);
-    }
+    completed_.wait(lock, [=] { return done_ == true; });
   }
 
  private:
@@ -100,7 +99,7 @@ class ThreadPool {
       : num_threads_(num_threads),
         available_(num_threads),
         running_(true),
-        complete_(true) {
+        done_(false) {
     threads_.resize(num_threads);
     for (auto& thread : threads_) {
       thread.reset(new std::thread(std::bind(&ThreadPool::TaskLoop, this)));
@@ -110,25 +109,28 @@ class ThreadPool {
   void TaskLoop() {
     while (running_) {
       std::unique_lock<std::mutex> lock(mutex_);
-      while (tasks_.empty() && running_) {
-        condition_.wait(lock);
-      }
+      scheduled_.wait(lock, [=] { return !tasks_.empty() || !running_; });
+
       if (!running_) {
         break;
       }
+      // pop a task from the task queue
       auto task = tasks_.front();
       tasks_.pop();
+
       --available_;
+      lock.unlock();
 
       // run the task
       task();
-      lock.unlock();
-
-      ++available_;
-
-      if (tasks_.empty() && available_ == num_threads_) {
-        complete_ = true;
-        completed_.notify_all();
+      {
+        std::unique_lock<std::mutex> lock(mutex_);
+        ++available_;
+        if (tasks_.empty() && available_ == num_threads_) {
+          done_ = true;
+          lock.unlock();
+          completed_.notify_all();
+        }
       }
     }
   }
