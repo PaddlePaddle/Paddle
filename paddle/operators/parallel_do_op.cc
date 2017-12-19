@@ -23,9 +23,9 @@ namespace operators {
 constexpr char kInputs[] = "inputs";
 constexpr char kParameters[] = "parameters";
 constexpr char kPlaces[] = "places";
-constexpr char kParallelBlock[] = "parallel_block";
+constexpr char kParallelBlock[] = "sub_block";
 constexpr char kOutputs[] = "outputs";
-constexpr char kParallelScopes[] = "sub_block";
+constexpr char kParallelScopes[] = "sub_scopes";
 // #define GRAD_SUFFIX "@GRAD"
 // constexpr char kInputGrads[] = "inputs" GRAD_SUFFIX;
 // constexpr char kOutputGrads[] = "outputs" GRAD_SUFFIX;
