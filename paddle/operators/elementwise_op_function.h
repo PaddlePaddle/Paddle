@@ -103,10 +103,12 @@ class MidWiseTransformIterator<T, platform::CPUDeviceContext> {
 
   MidWiseTransformIterator<T, platform::CPUDeviceContext>& operator++() {
     ++j_;
-    i_ = j_ / post_;
-    if (UNLIKELY(i_ == n_)) {
-      j_ = 0;
-      i_ = 0;
+    if (UNLIKELY(j_ == post_)) {
+      ++i_;
+      if (UNLIKELY(i_ == n_)) {
+        j_ = 0;
+        i_ = 0;
+      }
     }
     return *this;
   }
