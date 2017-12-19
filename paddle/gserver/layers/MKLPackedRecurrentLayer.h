@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#pragma once
+
 #include <gflags/gflags.h>
 #include "Layer.h"
 #include "MKLPackedGemm.h"
@@ -128,4 +130,5 @@ protected:
 
   std::unique_ptr<MKLPackedGemm> sgemm_packed_;
 };
-}
+
+}  // namespace paddle
