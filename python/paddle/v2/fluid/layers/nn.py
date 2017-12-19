@@ -5,12 +5,15 @@ All layers just related to the neural network.
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
 from ..framework import Variable
+from ..param_attr import ParamAttr
+from tensor import concat
 
 __all__ = [
     'fc', 'embedding', 'dynamic_lstm', 'gru_unit', 'linear_chain_crf',
     'crf_decoding', 'cos_sim', 'cross_entropy', 'square_error_cost', 'accuracy',
     'chunk_eval', 'sequence_conv', 'conv2d', 'sequence_pool', 'pool2d',
-    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand'
+    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
+    'lstm_unit'
 ]
 
 
@@ -761,7 +764,7 @@ def conv2d_transpose(input,
     return out
 
 
-def sequence_expand(x, y, main_program=None, startup_program=None):
+def sequence_expand(x, y):
     """Sequence Expand Layer. This layer will expand the input variable **x**
     according to LoD information of **y**. And the following examples will
     explain how sequence_expand works:
@@ -805,8 +808,6 @@ def sequence_expand(x, y, main_program=None, startup_program=None):
     Args:
         x (Variable): The input variable which is a Tensor or LoDTensor.
         y (Variable): The input variable which is a LoDTensor.
-        main_program (Program): The main program.
-        startup_program (Program): The startup program.
 
     Returns:
         Variable: The expanded variable which is a LoDTensor.
@@ -826,3 +827,111 @@ def sequence_expand(x, y, main_program=None, startup_program=None):
         type='sequence_expand', inputs={'X': x,
                                         'Y': y}, outputs={'Out': tmp})
     return tmp
+
+
+def lstm_unit(x_t,
+              hidden_t_prev,
+              cell_t_prev,
+              forget_bias=0.0,
+              param_attr=None,
+              bias_attr=None):
+    """Lstm unit layer. The equation of a lstm step is:
+
+        .. math::
+
+            i_t & = \sigma(W_{x_i}x_{t} + W_{h_i}h_{t-1} + W_{c_i}c_{t-1} + b_i)
+
+            f_t & = \sigma(W_{x_f}x_{t} + W_{h_f}h_{t-1} + W_{c_f}c_{t-1} + b_f)
+
+            c_t & = f_tc_{t-1} + i_t tanh (W_{x_c}x_t+W_{h_c}h_{t-1} + b_c)
+
+            o_t & = \sigma(W_{x_o}x_{t} + W_{h_o}h_{t-1} + W_{c_o}c_t + b_o)
+
+            h_t & = o_t tanh(c_t)
+
+    The inputs of lstm unit includes :math:`x_t`, :math:`h_{t-1}` and
+    :math:`c_{t-1}`. The implementation separates the linear transformation
+    and non-linear transformation apart. Here, we take :math:`i_t` as an
+    example. The linear transformation is applied by calling a `fc` layer and
+    the equation is:
+
+        .. math::
+
+            L_{i_t} = W_{x_i}x_{t} + W_{h_i}h_{t-1} + W_{c_i}c_{t-1} + b_i
+
+    The non-linear transformation is applied by calling `lstm_unit_op` and the
+    equation is:
+
+        .. math::
+
+            i_t = \sigma(L_{i_t})
+
+    This layer has two outputs including :math:`h_t` and :math:`o_t`.
+
+    Args:
+        x_t (Variable): The input value of current step.
+        hidden_t_prev (Variable): The hidden value of lstm unit.
+        cell_t_prev (Variable): The cell value of lstm unit.
+        forget_bias (float): The forget bias of lstm unit.
+        param_attr (ParamAttr): The attributes of parameter weights, used to set
+            initializer, name etc.
+        bias_attr (ParamAttr): The attributes of bias weights, if not False,
+            bias weights will be created and be set to default value.
+
+    Returns:
+        tuple: The hidden value and cell value of lstm unit.
+
+    Raises:
+        ValueError: The ranks of **x_t**, **hidden_t_prev** and **cell_t_prev**\
+                not be 2 or the 1st dimensions of **x_t**, **hidden_t_prev** \
+                and **cell_t_prev** not be the same.
+
+    Examples:
+
+        .. code-block:: python
+
+             x_t = fluid.layers.fc(input=x_t_data, size=10)
+             prev_hidden = fluid.layers.fc(input=prev_hidden_data, size=20)
+             prev_cell = fluid.layers.fc(input=prev_cell_data, size=30)
+             hidden_value, cell_value = fluid.layers.lstm_unit(x_t=x_t,
+                                                    hidden_t_prev=prev_hidden,
+                                                    cell_t_prev=prev_cell)
+    """
+    helper = LayerHelper('lstm_unit', **locals())
+
+    if len(x_t.shape) != 2:
+        raise ValueError("Rank of x_t must be 2.")
+
+    if len(hidden_t_prev.shape) != 2:
+        raise ValueError("Rank of hidden_t_prev must be 2.")
+
+    if len(cell_t_prev.shape) != 2:
+        raise ValueError("Rank of cell_t_prev must be 2.")
+
+    if x_t.shape[0] != hidden_t_prev.shape[0] or x_t.shape[
+            0] != cell_t_prev.shape[0]:
+        raise ValueError("The 1s dimension of x_t, hidden_t_prev and "
+                         "cell_t_prev must be the same.")
+
+    if bias_attr is None:
+        bias_attr = ParamAttr()
+
+    size = cell_t_prev.shape[1]
+    concat_out = concat(input=[x_t, hidden_t_prev], axis=1)
+    fc_out = fc(input=concat_out,
+                size=4 * size,
+                param_attr=param_attr,
+                bias_attr=bias_attr)
+    dtype = x_t.dtype
+    c = helper.create_tmp_variable(dtype)
+    h = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type='lstm_unit',
+        inputs={"X": fc_out,
+                "C_prev": cell_t_prev},
+        outputs={"C": c,
+                 "H": h},
+        attrs={"forget_bias": forget_bias})
+
+    return h, c

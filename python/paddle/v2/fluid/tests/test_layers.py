@@ -161,7 +161,7 @@ class TestBook(unittest.TestCase):
                     x=dat, label=lbl))
         print(str(program))
 
-    def test_seq_expand(self):
+    def test_sequence_expand(self):
         program = Program()
         with program_guard(program):
             x = layers.data(name='x', shape=[10], dtype='float32')
@@ -174,6 +174,23 @@ class TestBook(unittest.TestCase):
         program = Program()
         with program_guard(program):
             x = layers.get_places(trainer_count=4)
+        print(str(program))
+
+    def test_lstm_unit(self):
+        program = Program()
+        with program_guard(program):
+            x_t_data = layers.data(
+                name='x_t_data', shape=[10, 10], dtype='float32')
+            x_t = layers.fc(input=x_t_data, size=10)
+            prev_hidden_data = layers.data(
+                name='prev_hidden_data', shape=[10, 20], dtype='float32')
+            prev_hidden = layers.fc(input=prev_hidden_data, size=20)
+            prev_cell_data = layers.data(
+                name='prev_cell', shape=[10, 30], dtype='float32')
+            prev_cell = layers.fc(input=prev_cell_data, size=30)
+            self.assertIsNotNone(
+                layers.lstm_unit(
+                    x_t=x_t, hidden_t_prev=prev_hidden, cell_t_prev=prev_cell))
         print(str(program))
 
 
