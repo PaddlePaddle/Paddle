@@ -17,12 +17,11 @@ NVPROF_CONFIG = [
     "memtransferhostmemtype",
     "streamid",
     "cacheconfigrequested",
-    "cacheconfigrequested",
-    "cacheconfigrequested",
+    "cacheconfigexecuted",
+    "countermodeaggregate",
     "enableonstart 0",
-    "conckerneltrace",
     "active_warps",
-    "active_warps",
+    "active_cycles",
 ]
 
 
