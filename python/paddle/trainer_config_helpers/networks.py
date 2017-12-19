@@ -447,7 +447,7 @@ def img_separable_conv(input,
                        bias_attr=None,
                        param_attr=None,
                        shared_bias=True,
-                       layer_type=None,
+                       layer_type='exconv',
                        name=None):
     """
     Separable Convolution.
@@ -510,8 +510,7 @@ def img_separable_conv(input,
         act=act,
         bias_attr=bias_attr,
         param_attr=param_attr,
-        shared_biases=shared_bias,
-        layer_type=layer_type)
+        shared_biases=shared_bias)
     return __pointwise_conv__
 
 
