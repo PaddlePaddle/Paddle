@@ -300,3 +300,7 @@ conv2d_transpose
 ..  autofunction:: paddle.v2.fluid.layers.conv2d_transpose
     :noindex:
 
+sequence_expand
+---------
+..  autofunction:: paddle.v2.fluid.layers.sequence_expand
+    :noindex:
