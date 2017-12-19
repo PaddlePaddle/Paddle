@@ -866,7 +866,7 @@ def lstm_unit(x_t,
               cell_t_prev,
               forget_bias=0.0,
               param_attr=None,
-              bias_attr=ParamAttr(),
+              bias_attr=None,
               main_program=None,
               startup_program=None):
     """Lstm unit layer. The equation of a lstm step is:
@@ -909,8 +909,8 @@ def lstm_unit(x_t,
         forget_bias (float): The forget bias of lstm unit.
         param_attr (ParamAttr): The attributes of parameter weights, used to set
             initializer, name etc.
-        bias_attr (ParamAttr): The attributes of bias weights, used to set
-            initializer, name etc.
+        bias_attr (ParamAttr): The attributes of bias weights, if not False,
+            bias weights will be created and be set to default value.
         main_program (Program): The main program.
         startup_program (Program): the startup program.
 
@@ -948,6 +948,9 @@ def lstm_unit(x_t,
             0] != cell_t_prev.shape[0]:
         raise ValueError("The 1s dimension of x_t, hidden_t_prev and "
                          "cell_t_prev must be the same.")
+
+    if bias_attr is None:
+        bias_attr = ParamAttr()
 
     size = cell_t_prev.shape[1]
     concat_out = concat(
