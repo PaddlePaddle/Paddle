@@ -761,7 +761,7 @@ def conv2d_transpose(input,
     return out
 
 
-def sequence_expand(x, y, main_program=None, startup_program=None):
+def sequence_expand(x, y):
     """Sequence Expand Layer. This layer will expand the input variable **x**
     according to LoD information of **y**. And the following examples will
     explain how sequence_expand works:

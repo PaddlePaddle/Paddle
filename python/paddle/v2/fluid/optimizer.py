@@ -6,6 +6,7 @@ from framework import unique_name, program_guard
 from initializer import Constant
 from layer_helper import LayerHelper
 from regularizer import append_regularization_ops
+from clip import append_gradient_clip_ops
 
 __all__ = ['SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad']
 
@@ -200,6 +201,9 @@ class Optimizer(object):
         # Add regularization if any
         params_grads = append_regularization_ops(params_grads,
                                                  self.regularization)
+
+        params_grads = append_gradient_clip_ops(params_grads)
+
         optimize_ops = self.create_optimization_pass(params_grads, loss,
                                                      startup_program)
         return optimize_ops

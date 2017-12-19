@@ -704,6 +704,7 @@ class Block(object):
                 trainable=p.trainable,
                 optimize_attr=p.optimize_attr,
                 regularizer=p.regularizer,
+                clip_attr=p.clip_attr,
                 name=v.name)
             self.vars[new_p.name] = new_p
 
@@ -865,6 +866,8 @@ class Parameter(Variable):
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
 
         self.regularizer = kwargs.get('regularizer', None)
+
+        self.clip_attr = kwargs.get('clip_attr', None)
 
 
 # program is a global instance.
