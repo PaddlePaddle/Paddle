@@ -304,3 +304,10 @@ sequence_expand
 ---------
 ..  autofunction:: paddle.v2.fluid.layers.sequence_expand
     :noindex:
+
+
+sequence_softmax
+---------
+..  autofunction:: paddle.v2.fluid.layers.sequence_softmax
+    :noindex:
+
