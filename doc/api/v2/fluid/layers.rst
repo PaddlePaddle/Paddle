@@ -188,12 +188,6 @@ beam_search_decode
     :noindex:
 
 
-lstm
----------
-..  autofunction:: paddle.v2.fluid.layers.lstm
-    :noindex:
-
-
 lod_rank_table
 ---------
 ..  autofunction:: paddle.v2.fluid.layers.lod_rank_table
@@ -300,7 +294,14 @@ conv2d_transpose
 ..  autofunction:: paddle.v2.fluid.layers.conv2d_transpose
     :noindex:
 
+
 sequence_expand
 ---------
 ..  autofunction:: paddle.v2.fluid.layers.sequence_expand
+    :noindex:
+
+
+lstm_unit
+---------
+..  autofunction:: paddle.v2.fluid.layers.lstm_unit
     :noindex:
