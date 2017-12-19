@@ -10,25 +10,19 @@ def simple_img_conv_pool(input,
                          pool_stride,
                          act,
                          param_attr=None,
-                         pool_type='max',
-                         main_program=None,
-                         startup_program=None):
+                         pool_type='max'):
     conv_out = layers.conv2d(
         input=input,
         num_filters=num_filters,
         filter_size=filter_size,
         param_attr=param_attr,
-        act=act,
-        main_program=main_program,
-        startup_program=startup_program)
+        act=act)
 
     pool_out = layers.pool2d(
         input=conv_out,
         pool_size=pool_size,
         pool_type=pool_type,
-        pool_stride=pool_stride,
-        main_program=main_program,
-        startup_program=startup_program)
+        pool_stride=pool_stride)
     return pool_out
 
 
@@ -42,9 +36,7 @@ def img_conv_group(input,
                    conv_with_batchnorm=False,
                    conv_batchnorm_drop_rate=None,
                    pool_stride=1,
-                   pool_type=None,
-                   main_program=None,
-                   startup_program=None):
+                   pool_type=None):
     """
     Image Convolution Group, Used for vgg net.
     """
@@ -75,31 +67,19 @@ def img_conv_group(input,
             filter_size=conv_filter_size[i],
             padding=conv_padding[i],
             param_attr=param_attr[i],
-            act=local_conv_act,
-            main_program=main_program,
-            startup_program=startup_program)
+            act=local_conv_act)
 
         if conv_with_batchnorm[i]:
-            tmp = layers.batch_norm(
-                input=tmp,
-                act=conv_act,
-                main_program=main_program,
-                startup_program=startup_program)
+            tmp = layers.batch_norm(input=tmp, act=conv_act)
             drop_rate = conv_batchnorm_drop_rate[i]
             if abs(drop_rate) > 1e-5:
-                tmp = layers.dropout(
-                    x=tmp,
-                    dropout_prob=drop_rate,
-                    main_program=main_program,
-                    startup_program=startup_program)
+                tmp = layers.dropout(x=tmp, dropout_prob=drop_rate)
 
     pool_out = layers.pool2d(
         input=tmp,
         pool_size=pool_size,
         pool_type=pool_type,
-        pool_stride=pool_stride,
-        main_program=main_program,
-        startup_program=startup_program)
+        pool_stride=pool_stride)
     return pool_out
 
 
@@ -108,21 +88,13 @@ def sequence_conv_pool(input,
                        filter_size,
                        param_attr=None,
                        act="sigmoid",
-                       pool_type="max",
-                       main_program=None,
-                       startup_program=None):
+                       pool_type="max"):
     conv_out = layers.sequence_conv(
         input=input,
         num_filters=num_filters,
         filter_size=filter_size,
         param_attr=param_attr,
-        act=act,
-        main_program=main_program,
-        startup_program=startup_program)
+        act=act)
 
-    pool_out = layers.sequence_pool(
-        input=conv_out,
-        pool_type=pool_type,
-        main_program=main_program,
-        startup_program=startup_program)
+    pool_out = layers.sequence_pool(input=conv_out, pool_type=pool_type)
     return pool_out

@@ -161,6 +161,15 @@ class TestBook(unittest.TestCase):
                     x=dat, label=lbl))
         print(str(program))
 
+    def test_seq_expand(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[10], dtype='float32')
+            y = layers.data(
+                name='y', shape=[10, 20], dtype='float32', lod_level=1)
+            self.assertIsNotNone(layers.sequence_expand(x=x, y=y))
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()

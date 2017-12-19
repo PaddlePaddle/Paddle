@@ -46,6 +46,13 @@ class Executor(object):
             p.set_place(each)
             act_places.append(p)
 
+        # TODO(dzhwinter) : consider that our fluid tests all written in 
+        # GPUPlace(gpu_id), this will be changed in next PR.
+        if core.is_compile_gpu():
+            core.init_devices(["CPU", "GPU:0"])
+        else:
+            core.init_devices(["CPU"])
+
         self.executor = core.Executor(act_places)
         self.places = places
 
