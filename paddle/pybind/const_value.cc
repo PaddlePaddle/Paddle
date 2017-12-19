@@ -24,6 +24,7 @@ void BindConstValue(pybind11::module& m) {
   m.def("kGradVarSuffix", [] { return framework::kGradVarSuffix; });
   m.def("kZeroVarSuffix", [] { return framework::kZeroVarSuffix; });
   m.def("kKernelHintKey", [] { return framework::kKernelHintKey; });
+  m.def("kNonKernelHint", [] { return framework::kNonKernelHint; });
 }
 
 }  // namespace pybind
