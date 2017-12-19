@@ -198,11 +198,12 @@ class Optimizer(object):
         `create_optimization_pass()` into one.
         """
         params_grads = append_backward_ops(loss, parameter_list, no_grad_set)
+
+        params_grads = append_gradient_clip_ops(params_grads)
+
         # Add regularization if any
         params_grads = append_regularization_ops(params_grads,
                                                  self.regularization)
-
-        params_grads = append_gradient_clip_ops(params_grads)
 
         optimize_ops = self.create_optimization_pass(params_grads, loss,
                                                      startup_program)
