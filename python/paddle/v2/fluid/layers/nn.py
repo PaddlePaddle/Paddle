@@ -764,7 +764,7 @@ def conv2d_transpose(input,
     return out
 
 
-def sequence_expand(x, y, main_program=None, startup_program=None):
+def sequence_expand(x, y):
     """Sequence Expand Layer. This layer will expand the input variable **x**
     according to LoD information of **y**. And the following examples will
     explain how sequence_expand works:
@@ -808,8 +808,6 @@ def sequence_expand(x, y, main_program=None, startup_program=None):
     Args:
         x (Variable): The input variable which is a Tensor or LoDTensor.
         y (Variable): The input variable which is a LoDTensor.
-        main_program (Program): The main program.
-        startup_program (Program): The startup program.
 
     Returns:
         Variable: The expanded variable which is a LoDTensor.
@@ -836,9 +834,7 @@ def lstm_unit(x_t,
               cell_t_prev,
               forget_bias=0.0,
               param_attr=None,
-              bias_attr=None,
-              main_program=None,
-              startup_program=None):
+              bias_attr=None):
     """Lstm unit layer. The equation of a lstm step is:
 
         .. math::
@@ -881,8 +877,6 @@ def lstm_unit(x_t,
             initializer, name etc.
         bias_attr (ParamAttr): The attributes of bias weights, if not False,
             bias weights will be created and be set to default value.
-        main_program (Program): The main program.
-        startup_program (Program): the startup program.
 
     Returns:
         tuple: The hidden value and cell value of lstm unit.
@@ -923,18 +917,11 @@ def lstm_unit(x_t,
         bias_attr = ParamAttr()
 
     size = cell_t_prev.shape[1]
-    concat_out = concat(
-        input=[x_t, hidden_t_prev],
-        axis=1,
-        main_program=main_program,
-        startup_program=startup_program)
+    concat_out = concat(input=[x_t, hidden_t_prev], axis=1)
     fc_out = fc(input=concat_out,
                 size=4 * size,
                 param_attr=param_attr,
-                bias_attr=bias_attr,
-                act='linear',
-                main_program=main_program,
-                startup_program=startup_program)
+                bias_attr=bias_attr)
     dtype = x_t.dtype
     c = helper.create_tmp_variable(dtype)
     h = helper.create_tmp_variable(dtype)
