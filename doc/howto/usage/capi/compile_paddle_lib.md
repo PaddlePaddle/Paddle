@@ -1,5 +1,7 @@
 ## 编译 PaddlePaddle 链接库
 
+### 概述
+
 使用 C-API 进行预测依赖于将 PaddlePaddle 核心代码编译成链接库，只需在编译时指定编译选项：`-DWITH_C_API=ON`。同时，**建议将：`DWITH_PYTHON`，`DWITH_SWIG_PY`，`DWITH_GOLANG`，均设置为`OFF`**，以避免链接不必要的库。其它编译选项按需进行设定。
 
 ```shell
@@ -42,7 +44,7 @@ cmake $PADDLE_ROOT -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX \
     ├── ......
 ```
 
-## 链接方式说明
+### 链接方式说明
 
 目前提供三种链接方式：
 
