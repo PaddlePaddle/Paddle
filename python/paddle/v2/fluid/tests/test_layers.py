@@ -170,12 +170,6 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(layers.sequence_expand(x=x, y=y))
         print(str(program))
 
-    def test_get_places(self):
-        program = Program()
-        with program_guard(program):
-            x = layers.get_places(trainer_count=4)
-        print(str(program))
-
     def test_lstm_unit(self):
         program = Program()
         with program_guard(program):
@@ -191,6 +185,12 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(
                 layers.lstm_unit(
                     x_t=x_t, hidden_t_prev=prev_hidden, cell_t_prev=prev_cell))
+        print(str(program))
+
+    def test_get_places(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.get_places(trainer_count=4)
         print(str(program))
 
 
