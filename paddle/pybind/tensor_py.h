@@ -137,8 +137,8 @@ void PyCUDATensorSetFromArray(
 
   framework::DeviceContextPool pool & = framework::DeviceContextPool::Get();
   auto dev_ctx = pool.Borrow(place);
-  paddle::platform::GpuMemcpySync(dst, array.data(), sizeof(T) * array.size(),
-                                  cudaMemcpyHostToDevice, dev_ctx.stream());
+  paddle::platform::GpuMemcpyAsync(dst, array.data(), sizeof(T) * array.size(),
+                                   cudaMemcpyHostToDevice, dev_ctx.stream());
 }
 #endif
 
