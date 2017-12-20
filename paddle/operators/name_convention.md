@@ -35,8 +35,8 @@ Here we give some examples to show how these rules will be used.
 ```c++
 class AccumulateOpMaker : public framework::OpProtoAndCheckerMaker {
 public:
-  AccumulateOpMaker(framework::OpProto *proto,
-                            framework::OpAttrChecker *op_checker)
+  AccumulateOpMaker(OpProto *proto,
+                    OpAttrChecker *op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) The input tensor that has to be accumulated to the output tensor.
     If the output size is not the same as input size,

@@ -53,8 +53,8 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
 }
 
-Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(
-    framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(OpProto* proto,
+                                               OpAttrChecker* op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput(
       "Input",
@@ -112,8 +112,8 @@ Example:
 )DOC");
 }
 
-Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(
-    framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(OpProto* proto,
+                                               OpAttrChecker* op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput("Input",
            "(Tensor) The input tensor of convolution transpose operator."

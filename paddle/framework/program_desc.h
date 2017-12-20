@@ -29,7 +29,7 @@ class ProgramDescBind {
  public:
   ProgramDescBind();
 
-  explicit ProgramDescBind(const ProgramDesc &desc);
+  explicit ProgramDescBind(const proto::ProgramDesc &desc);
 
   ProgramDescBind(const ProgramDescBind &o);
 
@@ -43,10 +43,10 @@ class ProgramDescBind {
 
   size_t Size() const { return blocks_.size(); }
 
-  ProgramDesc *Proto();
+  proto::ProgramDesc *Proto();
 
  private:
-  ProgramDesc desc_;
+  proto::ProgramDesc desc_;
 
   std::vector<std::unique_ptr<BlockDescBind>> blocks_;
 };

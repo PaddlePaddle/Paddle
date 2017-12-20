@@ -36,8 +36,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
 
 class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SoftmaxOpMaker(framework::OpProto* proto,
-                 framework::OpAttrChecker* op_checker)
+  SoftmaxOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "The input tensor of softmax. "

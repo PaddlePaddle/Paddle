@@ -197,7 +197,7 @@ void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
   {  // the 2nd field, tensor description
      // int32_t  size
      // void*    protobuf message
-    framework::TensorDesc desc;
+    proto::TensorDesc desc;
     desc.set_data_type(framework::ToDataType(tensor.type()));
     auto dims = framework::vectorize(tensor.dims());
     auto *pb_dims = desc.mutable_dims();
@@ -262,7 +262,7 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor) {
   uint32_t version;
   is.read(reinterpret_cast<char *>(&version), sizeof(version));
   PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
-  framework::TensorDesc desc;
+  proto::TensorDesc desc;
   {  // int32_t size
      // proto buffer
     int32_t size;
@@ -281,16 +281,16 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor) {
     void *buf;
     platform::Place cpu = platform::CPUPlace();
     switch (desc.data_type()) {
-      case framework::FP32:
+      case proto::FP32:
         buf = tensor->mutable_data<float>(cpu);
         break;
-      case framework::FP64:
+      case proto::FP64:
         buf = tensor->mutable_data<double>(cpu);
         break;
-      case framework::INT32:
+      case proto::INT32:
         buf = tensor->mutable_data<int>(cpu);
         break;
-      case framework::INT64:
+      case proto::INT64:
         buf = tensor->mutable_data<int64_t>(cpu);
         break;
       default:
