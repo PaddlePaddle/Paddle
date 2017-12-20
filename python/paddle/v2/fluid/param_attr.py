@@ -1,6 +1,8 @@
 from initializer import Initializer, Xavier, Constant
 from regularizer import WeightDecayRegularizer
 
+__all__ = ['ParamAttr']
+
 
 class ParamAttr(object):
     def __init__(self,
@@ -8,12 +10,14 @@ class ParamAttr(object):
                  initializer=None,
                  learning_rate=1.0,
                  regularizer=None,
-                 trainable=True):
+                 trainable=True,
+                 clip=None):
         self.name = name
         self.initializer = initializer
         self.learning_rate = learning_rate
         self.regularizer = regularizer
         self.trainable = trainable
+        self.clip = clip
 
     def set_default_initializer(self, initializer):
         if initializer is None:
@@ -56,7 +60,8 @@ class ParamAttr(object):
             'name': self.name,
             'learning_rate': self.learning_rate,
             'regularizer': self.regularizer,
-            'trainable': self.trainable
+            'trainable': self.trainable,
+            'clip_attr': self.clip
         }
         if with_initializer:
             kwargs['initializer'] = self.initializer
