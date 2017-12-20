@@ -13,7 +13,7 @@ __all__ = [
     'crf_decoding', 'cos_sim', 'cross_entropy', 'square_error_cost', 'accuracy',
     'chunk_eval', 'sequence_conv', 'conv2d', 'sequence_pool', 'pool2d',
     'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
-    'lstm_unit'
+    'lstm_unit', 'reduce_sum'
 ]
 
 
@@ -421,8 +421,8 @@ def chunk_eval(input,
         },
         attrs={
             "num_chunk_types": num_chunk_types,
-            'chunk_scheme': chunk_scheme,
-            'excluded_chunk_types': excluded_chunk_types or []
+            "chunk_scheme": chunk_scheme,
+            "excluded_chunk_types": excluded_chunk_types or []
         })
     return precision, recall, f1_score, num_infer_chunks, num_label_chunks, num_correct_chunks
 
@@ -954,3 +954,47 @@ def lstm_unit(x_t,
         attrs={"forget_bias": forget_bias})
 
     return h, c
+
+
+def reduce_sum(input, dim=None, keep_dim=False):
+    """
+    Computes the sum of tensor elements over the given dimension. 
+
+    Args:
+        input (Variable): The input variable which is a Tensor or LoDTensor.
+        dim (int|None): The dimension along which the sum is performed. If 
+            :attr:`None`, sum all elements of :attr:`input` and return a 
+            Tensor variable with a single element, otherwise must be in the 
+            range :math:`[-rank(input), rank(input))`. If :math:`dim < 0`, 
+            the dimension to reduce is :math:`rank + dim`.
+        keep_dim (bool): Whether to reserve the reduced dimension in the 
+            output Tensor. The result tensor will have one fewer dimension 
+            than the :attr:`input` unless :attr:`keep_dim` is true.
+
+    Returns:
+        Variable: The reduced Tensor variable.
+    
+    Examples:
+        .. code-block:: python
+
+            # x is a Tensor variable with following elements:
+            #    [[0.2, 0.3, 0.5, 0.9]
+            #     [0.1, 0.2, 0.6, 0.7]]
+            # Each example is followed by the correspending output tensor.
+            fluid.layers.reduce_sum(x)  # [3.5]
+            fluid.layers.reduce_sum(x, dim=0)  # [0.3, 0.5, 1.1, 1.6]
+            fluid.layers.reduce_sum(x, dim=-1)  # [1.9, 1.6]
+            fluid.layers.reduce_sum(x, dim=1, keep_dim=True)  # [[1.9], [1.6]]
+    """
+    helper = LayerHelper('reduce_sum', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='reduce_sum',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={
+            'dim': dim if dim != None else 0,
+            'keep_dim': keep_dim,
+            'reduce_all': True if dim == None else False
+        })
+    return out
