@@ -32,7 +32,7 @@ class MeanOp : public framework::OperatorWithKernel {
 
 class MeanOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MeanOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  MeanOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of mean op");
     AddOutput("Out", "The output of mean op");

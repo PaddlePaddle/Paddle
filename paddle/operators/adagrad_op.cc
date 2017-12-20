@@ -59,8 +59,7 @@ class AdagradOp : public framework::OperatorWithKernel {
 
 class AdagradOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AdagradOpMaker(framework::OpProto* proto,
-                 framework::OpAttrChecker* op_checker)
+  AdagradOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param", "(Tensor) Input parameter");
     AddInput("Grad", "(Tensor) Input gradient");

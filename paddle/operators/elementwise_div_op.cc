@@ -19,8 +19,7 @@ namespace paddle {
 namespace operators {
 class ElementwiseDivOpMaker : public ElementwiseOpMaker {
  public:
-  ElementwiseDivOpMaker(framework::OpProto* proto,
-                        framework::OpAttrChecker* op_checker)
+  ElementwiseDivOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : ElementwiseOpMaker(proto, op_checker) {
     SetComment("Div", "$Out = X / Y$");
     AddComment(comment_);

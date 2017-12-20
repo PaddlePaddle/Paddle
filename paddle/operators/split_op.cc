@@ -65,7 +65,7 @@ class SplitOp : public framework::OperatorWithKernel {
 
 class SplitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SplitOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  SplitOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) Input tensor of the split operator.");
     AddOutput("Out", "(Tensor) Output tensors of the split operator.")

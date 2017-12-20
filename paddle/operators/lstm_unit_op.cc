@@ -48,8 +48,7 @@ class LstmUnitOp : public framework::OperatorWithKernel {
 
 class LstmUnitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LstmUnitOpMaker(framework::OpProto* proto,
-                  framework::OpAttrChecker* op_checker)
+  LstmUnitOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "Lstm unit only applies non-linear activations, please make sure"

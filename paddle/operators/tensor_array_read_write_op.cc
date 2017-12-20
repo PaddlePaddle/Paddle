@@ -51,8 +51,7 @@ class WriteToArrayOp : public ArrayOp {
 
 class WriteToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  WriteToArrayOpProtoMaker(framework::OpProto *proto,
-                           framework::OpAttrChecker *op_checker)
+  WriteToArrayOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(LoDTensor) the tensor will be written to tensor array");
     AddInput(
@@ -104,7 +103,7 @@ class WriteToArrayInferVarType : public framework::VarTypeInference {
     VLOG(10) << "Set Variable " << out_name << " as LOD_TENSOR_ARRAY";
     auto &out = detail::Ref(block->FindRecursiveOrCreateVar(out_name),
                             "Cannot found %s", out_name);
-    out.SetType(framework::VarDesc::LOD_TENSOR_ARRAY);
+    out.SetType(framework::proto::VarDesc::LOD_TENSOR_ARRAY);
     auto *x = block->FindVarRecursive(x_name);
     if (x != nullptr) {
       out.SetDataType(x->GetDataType());
@@ -140,8 +139,7 @@ class ReadFromArrayOp : public ArrayOp {
 
 class ReadFromArrayProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ReadFromArrayProtoMaker(framework::OpProto *proto,
-                          framework::OpAttrChecker *op_checker)
+  ReadFromArrayProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(TensorArray) the array will be read from.");
     AddInput("I",

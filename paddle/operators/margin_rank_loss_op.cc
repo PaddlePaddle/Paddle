@@ -42,8 +42,7 @@ class MarginRankLossOp : public framework::OperatorWithKernel {
 template <typename T>
 class MarginRankLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MarginRankLossOpMaker(framework::OpProto *proto,
-                        framework::OpAttrChecker *op_checker)
+  MarginRankLossOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X1",
              "(2-D tensor with shape [batch_size x 1]) The score for "

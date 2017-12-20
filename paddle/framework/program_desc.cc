@@ -26,7 +26,7 @@ BlockDescBind *ProgramDescBind::AppendBlock(const BlockDescBind &parent) {
   return blocks_.back().get();
 }
 
-ProgramDesc *ProgramDescBind::Proto() {
+proto::ProgramDesc *ProgramDescBind::Proto() {
   for (auto &block : blocks_) {
     block->Flush();
   }
@@ -49,7 +49,7 @@ ProgramDescBind::ProgramDescBind(const ProgramDescBind &o) {
   }
 }
 
-ProgramDescBind::ProgramDescBind(const ProgramDesc &desc) {
+ProgramDescBind::ProgramDescBind(const proto::ProgramDesc &desc) {
   desc_ = desc;
   for (auto &block_desc : *desc_.mutable_blocks()) {
     blocks_.emplace_back(new BlockDescBind(this, &block_desc));
