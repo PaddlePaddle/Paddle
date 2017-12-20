@@ -36,14 +36,14 @@ class SumOpVarTypeInference : public VarTypeInference {
   void operator()(const OpDescBind &op_desc,
                   BlockDescBind *block) const override {
     auto &inputs = op_desc.Input("X");
-    auto default_var_type = VarDesc::SELECTED_ROWS;
+    auto default_var_type = proto::VarDesc::SELECTED_ROWS;
 
     bool any_input_is_lod_tensor = std::any_of(
         inputs.begin(), inputs.end(), [block](const std::string &name) {
-          return block->Var(name)->GetType() == VarDesc::LOD_TENSOR;
+          return block->Var(name)->GetType() == proto::VarDesc::LOD_TENSOR;
         });
     if (any_input_is_lod_tensor) {
-      default_var_type = VarDesc::LOD_TENSOR;
+      default_var_type = proto::VarDesc::LOD_TENSOR;
     }
 
     auto out_var_name = op_desc.Output("Out").front();
@@ -68,19 +68,19 @@ TEST(InferVarType, sum_op) {
   op->SetInput("X", {"test_a", "test_b", "test_c"});
   op->SetOutput("Out", {"test_out"});
 
-  prog.MutableBlock(0)->Var("test_a")->SetType(VarDesc::SELECTED_ROWS);
-  prog.MutableBlock(0)->Var("test_b")->SetType(VarDesc::SELECTED_ROWS);
-  prog.MutableBlock(0)->Var("test_c")->SetType(VarDesc::SELECTED_ROWS);
+  prog.MutableBlock(0)->Var("test_a")->SetType(proto::VarDesc::SELECTED_ROWS);
+  prog.MutableBlock(0)->Var("test_b")->SetType(proto::VarDesc::SELECTED_ROWS);
+  prog.MutableBlock(0)->Var("test_c")->SetType(proto::VarDesc::SELECTED_ROWS);
   prog.MutableBlock(0)->Var("test_out");
 
   op->InferVarType(prog.MutableBlock(0));
 
-  ASSERT_EQ(VarDesc::SELECTED_ROWS,
+  ASSERT_EQ(proto::VarDesc::SELECTED_ROWS,
             prog.MutableBlock(0)->Var("test_out")->GetType());
 
-  prog.MutableBlock(0)->Var("test_b")->SetType(VarDesc::LOD_TENSOR);
+  prog.MutableBlock(0)->Var("test_b")->SetType(proto::VarDesc::LOD_TENSOR);
   op->InferVarType(prog.MutableBlock(0));
-  ASSERT_EQ(VarDesc::LOD_TENSOR,
+  ASSERT_EQ(proto::VarDesc::LOD_TENSOR,
             prog.MutableBlock(0)->Var("test_out")->GetType());
 }
 
@@ -91,14 +91,14 @@ TEST(InferVarType, sum_op_without_infer_var_type) {
   op->SetInput("X", {"test2_a", "test2_b", "test2_c"});
   op->SetOutput("Out", {"test2_out"});
 
-  prog.MutableBlock(0)->Var("test2_a")->SetType(VarDesc::SELECTED_ROWS);
-  prog.MutableBlock(0)->Var("test2_b")->SetType(VarDesc::SELECTED_ROWS);
-  prog.MutableBlock(0)->Var("test2_c")->SetType(VarDesc::SELECTED_ROWS);
+  prog.MutableBlock(0)->Var("test2_a")->SetType(proto::VarDesc::SELECTED_ROWS);
+  prog.MutableBlock(0)->Var("test2_b")->SetType(proto::VarDesc::SELECTED_ROWS);
+  prog.MutableBlock(0)->Var("test2_c")->SetType(proto::VarDesc::SELECTED_ROWS);
   prog.MutableBlock(0)->Var("test2_out");
 
   op->InferVarType(prog.MutableBlock(0));
 
-  ASSERT_EQ(VarDesc_VarType_LOD_TENSOR,
+  ASSERT_EQ(proto::VarDesc_VarType_LOD_TENSOR,
             prog.MutableBlock(0)->Var("test2_out")->GetType());
 }
 

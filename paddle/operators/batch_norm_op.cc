@@ -85,8 +85,7 @@ class BatchNormOp : public framework::OperatorWithKernel {
 
 class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BatchNormOpMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  BatchNormOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddAttr<bool>("is_test", "").SetDefault(false);
     AddAttr<float>("momentum", "").SetDefault(0.9);

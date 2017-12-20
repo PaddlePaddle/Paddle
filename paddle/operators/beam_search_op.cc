@@ -153,8 +153,7 @@ bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
 class BeamSearchProtoAndCheckerMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  BeamSearchProtoAndCheckerMaker(framework::OpProto *proto,
-                                 framework::OpAttrChecker *op_checker)
+  BeamSearchProtoAndCheckerMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     // inputs and outputs stored in proto
     AddInput("pre_ids", "ids in previous step");

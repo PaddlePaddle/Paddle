@@ -40,14 +40,12 @@ class PoolOpGrad : public framework::OperatorWithKernel {
 
 class Pool2dOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Pool2dOpMaker(framework::OpProto* proto,
-                framework::OpAttrChecker* op_checker);
+  Pool2dOpMaker(OpProto* proto, OpAttrChecker* op_checker);
 };
 
 class Pool3dOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Pool3dOpMaker(framework::OpProto* proto,
-                framework::OpAttrChecker* op_checker);
+  Pool3dOpMaker(OpProto* proto, OpAttrChecker* op_checker);
 };
 
 template <typename DeviceContext, typename T>

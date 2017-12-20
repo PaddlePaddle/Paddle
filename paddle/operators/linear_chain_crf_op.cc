@@ -19,8 +19,7 @@ namespace operators {
 
 class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LinearChainCRFOpMaker(framework::OpProto* proto,
-                        framework::OpAttrChecker* op_checker)
+  LinearChainCRFOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Emission",
              "(LoDTensor, default LoDTensor<float>) "

@@ -288,12 +288,12 @@ All parameter, weight, gradient are variables in Paddle.
     for (const auto &t : targets) {
       prog_with_targets.MutableBlock(t[0])->Op(t[1])->MarkAsTarget();
     }
-    ProgramDesc pruned_desc;
+    proto::ProgramDesc pruned_desc;
     Prune(*prog_with_targets.Proto(), &pruned_desc);
     return new ProgramDescBind(pruned_desc);
   });
   m.def("inference_optimize", [](ProgramDescBind &origin) {
-    ProgramDesc pruned_desc;
+    proto::ProgramDesc pruned_desc;
     InferenceOptimize(*(origin.Proto()), &pruned_desc);
     return new ProgramDescBind(pruned_desc);
   });
@@ -345,7 +345,7 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<OperatorBase>(m, "Operator")
       .def_static("create",
                   [](py::bytes protobin) {
-                    OpDesc desc;
+                    proto::OpDesc desc;
                     PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
                                    "Cannot parse user input to OpDesc");
                     PADDLE_ENFORCE(desc.IsInitialized(),
@@ -398,7 +398,7 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<operators::CondOp, OperatorBase>(m, "CondOp")
       .def_static("create",
                   [](py::bytes protobin) -> operators::CondOp * {
-                    OpDesc desc;
+                    proto::OpDesc desc;
                     PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
                                    "Cannot parse user input to OpDesc");
                     PADDLE_ENFORCE(desc.IsInitialized(),

@@ -43,8 +43,7 @@ class SequenceConcatOp : public framework::OperatorWithKernel {
 
 class SequenceConcatOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceConcatOpMaker(framework::OpProto* proto,
-                        framework::OpAttrChecker* op_checker)
+  SequenceConcatOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(LodTensorArray) Input is a vector of LoDTensor, "
