@@ -1,4 +1,4 @@
-# PaddlePaddle分布式训练
+# 分布式训练
 
 
 ## 概述
@@ -181,8 +181,8 @@ PaddlePaddle可以使用多种分布式计算平台构建分布式计算任务�
 
 ## 在不同集群中运行
 
-  - [fabric](fabric_cn.md)
-  - [openmpi](openmpi_cn.md)
-  - [kubernetes](k8s_cn.md)
-  - [kubernetes distributed](k8s_distributed_cn.md)
-  - [kubernetes on AWS](k8s_aws_cn.md)
+  - [fabric集群](fabric_cn.md)
+  - [openmpi集群](openmpi_cn.md)
+  - [kubernetes单机](k8s_cn.md)
+  - [kubernetes distributed分布式](k8s_distributed_cn.md)
+  - [AWS上运行kubernetes集群训练](k8s_aws_cn.md)

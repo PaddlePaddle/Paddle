@@ -187,6 +187,15 @@ class TestBook(unittest.TestCase):
                     x_t=x_t, hidden_t_prev=prev_hidden, cell_t_prev=prev_cell))
         print(str(program))
 
+    def test_sequence_softmax(self):
+        program = Program()
+        with program_guard(program):
+            seq_data = layers.data(
+                name='seq_data', shape=[10, 10], dtype='float32', lod_level=1)
+            seq = layers.fc(input=seq_data, size=20)
+            self.assertIsNotNone(layers.sequence_softmax(x=seq))
+        print(str(program))
+
     def test_get_places(self):
         program = Program()
         with program_guard(program):

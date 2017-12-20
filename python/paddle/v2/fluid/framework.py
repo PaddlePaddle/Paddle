@@ -1,16 +1,28 @@
 import collections
+import contextlib
 
 import numpy as np
-from . import core
+
 import proto.framework_pb2 as framework_pb2
-import google.protobuf.message
-import contextlib
+from . import core
 
 __all__ = [
     'Block', 'Variable', 'Program', 'Operator', 'default_startup_program',
     'default_main_program', 'program_guard', 'switch_startup_program',
     'switch_main_program'
 ]
+
+EMPTY_VAR_NAME = core.kEmptyVarName()
+TEMP_VAR_NAME = core.kTempVarName()
+GRAD_VAR_SUFFIX = core.kGradVarSuffix()
+ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
+
+
+def grad_var_name(var_name):
+    """
+    return gradient name for a certain var name
+    """
+    return var_name + GRAD_VAR_SUFFIX
 
 
 def unique_name(prefix):
@@ -704,6 +716,7 @@ class Block(object):
                 trainable=p.trainable,
                 optimize_attr=p.optimize_attr,
                 regularizer=p.regularizer,
+                clip_attr=p.clip_attr,
                 name=v.name)
             self.vars[new_p.name] = new_p
 
@@ -865,6 +878,8 @@ class Parameter(Variable):
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
 
         self.regularizer = kwargs.get('regularizer', None)
+
+        self.clip_attr = kwargs.get('clip_attr', None)
 
 
 # program is a global instance.

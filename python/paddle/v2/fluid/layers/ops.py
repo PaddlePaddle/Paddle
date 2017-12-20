@@ -2,7 +2,7 @@ from ..registry import register_layer
 __all__ = [
     'mean', 'mul', 'dropout', 'reshape', 'sigmoid', 'scale', 'transpose',
     'sigmoid_cross_entropy_with_logits', 'elementwise_add', 'elementwise_div',
-    'elementwise_sub', 'elementwise_mul', 'clip', 'abs'
+    'elementwise_sub', 'elementwise_mul', 'clip', 'abs', 'sequence_softmax'
 ]
 
 for _OP in set(__all__):
