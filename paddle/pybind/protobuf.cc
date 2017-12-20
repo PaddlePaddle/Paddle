@@ -157,7 +157,10 @@ void BindBlockDesc(py::module &m) {
       .def_property_readonly("parent", &BlockDescBind::Parent)
       .def("append_op", &BlockDescBind::AppendOp,
            py::return_value_policy::reference)
-      .def("append_allocated_op", &BlockDescBind::AppendAllocatedOp)
+      .def("append_allocated_op",
+           [](BlockDescBind &self, OpDescBind *op_desc) {
+             self.AppendAllocatedOp(std::unique_ptr<OpDescBind>(op_desc));
+           })
       .def("prepend_op", &BlockDescBind::PrependOp,
            py::return_value_policy::reference)
       .def("var",
