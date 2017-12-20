@@ -439,7 +439,7 @@ def max_sequence_len(rank_table, main_program=None):
 
 def topk(input, k, main_program=None, startup_program=None):
     helper = LayerHelper('topk', **locals())
-    topk_out = helper.create_tmp_variable(dtype=input.data_type)
+    topk_out = helper.create_tmp_variable(dtype=input.dtype)
     topk_indices = helper.create_tmp_variable(dtype='int64')
     helper.append_op(
         type='top_k',

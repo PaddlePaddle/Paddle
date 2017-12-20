@@ -10,7 +10,8 @@ __all__ = [
     'fc', 'embedding', 'dynamic_lstm', 'gru_unit', 'linear_chain_crf',
     'crf_decoding', 'cos_sim', 'cross_entropy', 'square_error_cost', 'accuracy',
     'chunk_eval', 'sequence_conv', 'conv2d', 'sequence_pool', 'pool2d',
-    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand'
+    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
+    'beam_search'
 ]
 
 
@@ -856,3 +857,35 @@ def sequence_expand(x, y, main_program=None, startup_program=None):
         type='sequence_expand', inputs={'X': x,
                                         'Y': y}, outputs={'Out': tmp})
     return tmp
+
+
+def beam_search(pre_ids, ids, scores, beam_size, end_id):
+    '''
+    This function implements the beam search algorithm.
+    '''
+    helper = LayerHelper('beam_search', **locals())
+    score_type = scores.dtype
+    id_type = ids.dtype
+
+    selected_scores = helper.create_tmp_variable(dtype=score_type)
+    selected_ids = helper.create_tmp_variable(dtype=id_type)
+
+    helper.append_op(
+        type='beam_search',
+        inputs={
+            'pre_ids': pre_ids,
+            'ids': ids,
+            'scores': scores,
+        },
+        outputs={
+            'selected_ids': selected_ids,
+            'selected_scores': selected_scores,
+        },
+        attrs={
+            # TODO(ChunweiYan) to assure other value support
+            'level': 0,
+            'beam_size': beam_size,
+            'end_id': end_id,
+        })
+
+    return selected_ids, selected_scores
