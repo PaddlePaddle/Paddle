@@ -46,7 +46,7 @@ class MinusOp : public framework::OperatorWithKernel {
 
 class MinusOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MinusOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  MinusOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The left tensor of minus operator.");
     AddInput("Y", "The right tensor of minus operator.");

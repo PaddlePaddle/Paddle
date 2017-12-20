@@ -76,8 +76,7 @@ class RowConvGradOp : public framework::OperatorWithKernel {
 
 class RowConvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RowConvOpMaker(framework::OpProto *proto,
-                 framework::OpAttrChecker *op_checker)
+  RowConvOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(LoDTensor), the input(X) is a LodTensor, which supports "

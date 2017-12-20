@@ -61,8 +61,7 @@ class MultiplexOp : public framework::OperatorWithKernel {
 
 class MultiplexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MultiplexOpMaker(framework::OpProto* proto,
-                   framework::OpAttrChecker* op_checker)
+  MultiplexOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Ids", "The index tensor of multiplex operator.");
     AddInput("X", "The candidate tensors of multiplex operator.")

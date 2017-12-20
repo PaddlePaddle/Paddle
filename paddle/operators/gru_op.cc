@@ -67,7 +67,7 @@ class GRUOp : public framework::OperatorWithKernel {
 
 class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  GRUOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  GRUOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Input",
              "(LoDTensor) The first input is a LodTensor, which supports "

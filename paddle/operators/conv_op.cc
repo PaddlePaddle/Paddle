@@ -66,8 +66,7 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
 }
 
-Conv2DOpMaker::Conv2DOpMaker(framework::OpProto* proto,
-                             framework::OpAttrChecker* op_checker)
+Conv2DOpMaker::Conv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput(
       "Input",
@@ -138,8 +137,7 @@ $$
 )DOC");
 }
 
-Conv3DOpMaker::Conv3DOpMaker(framework::OpProto* proto,
-                             framework::OpAttrChecker* op_checker)
+Conv3DOpMaker::Conv3DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput(
       "Input",
