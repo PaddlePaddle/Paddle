@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/function/EigenDevice.h"
+
 #include <glog/logging.h>
 #include "unsupported/Eigen/CXX11/Tensor"
 
@@ -70,7 +72,11 @@ struct EigenBlasGemm {
     dims[0].first = transA ? 0 : 1;
     dims[0].second = transB ? 1 : 0;
 
-    Eigen::DefaultDevice device;
+#if defined(__ANDROID__) || defined(__OSX__)
+    const Eigen::ThreadPoolDevice& device = GetThreadPoolDevice();
+#else
+    const Eigen::DefaultDevice device;
+#endif
     if (N == ldc) {
       if (alpha == T(1) && beta == T(0)) {
         c.device(device) = a.contract(b, dims);
