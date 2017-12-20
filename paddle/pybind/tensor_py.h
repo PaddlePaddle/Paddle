@@ -62,12 +62,15 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
         auto *src_ptr = static_cast<const void *>(tensor.data<CUR_TYPE>());
         auto *dst_ptr = static_cast<void *>(dst_tensor.mutable_data<CUR_TYPE>(
             tensor.dims(), platform::CPUPlace()));
-        framework::DeviceContextPool pool & =
+
+        framework::DeviceContextPool &pool =
             framework::DeviceContextPool::Get();
-        auto dev_ctx =
-            pool.Borrow(tensor.place()) paddle::platform::GpuMemcpyAsync(
-                dst_ptr, src_ptr sizeof(CUR_TYPE) * tensor.numel(),
-                cudaMemcpyDeviceToHost, dev_ctx.stream());
+        auto dev_ctx = static_cast<const platform::CUDADeviceContext *>(
+            pool.Borrow(tensor.place()));
+
+        paddle::platform::GpuMemcpyAsync(
+            dst_ptr, src_ptr, sizeof(CUR_TYPE) * tensor.numel(),
+            cudaMemcpyDeviceToHost, dev_ctx->stream());
 #else
         PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
 #endif
@@ -135,10 +138,11 @@ void PyCUDATensorSetFromArray(
   self.Resize(framework::make_ddim(dims));
   auto *dst = self.mutable_data<T>(place);
 
-  framework::DeviceContextPool pool & = framework::DeviceContextPool::Get();
-  auto dev_ctx = pool.Borrow(place);
+  framework::DeviceContextPool &pool = framework::DeviceContextPool::Get();
+  auto dev_ctx =
+      static_cast<const platform::CUDADeviceContext *>(pool.Borrow(place));
   paddle::platform::GpuMemcpyAsync(dst, array.data(), sizeof(T) * array.size(),
-                                   cudaMemcpyHostToDevice, dev_ctx.stream());
+                                   cudaMemcpyHostToDevice, dev_ctx->stream());
 }
 #endif
 
