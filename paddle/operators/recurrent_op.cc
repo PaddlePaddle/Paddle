@@ -25,7 +25,7 @@ constexpr char kOutputs[] = "outputs";
 constexpr char kStepScopes[] = "step_scopes";
 constexpr char kExStates[] = "ex_states";
 constexpr char kStates[] = "states";
-constexpr char kStepBlock[] = "step_block";
+constexpr char kStepBlock[] = "sub_block";
 constexpr char kReverse[] = "reverse";
 constexpr char kIsTrain[] = "is_train";
 #define GRAD_SUFFIX "@GRAD"
@@ -497,8 +497,7 @@ class RecurrentGradOp : public RecurrentBase {
 
 class RecurrentOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RecurrentOpProtoMaker(framework::OpProto *proto,
-                        framework::OpAttrChecker *op_checker)
+  RecurrentOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(kInputs, "rnn inputs").AsDuplicable();
     AddInput(kInitialStates, "rnn initial states").AsDuplicable();

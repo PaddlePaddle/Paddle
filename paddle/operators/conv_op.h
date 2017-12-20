@@ -50,14 +50,12 @@ inline bool IsExpand(std::vector<int64_t>& filter_dim,
 // operator implementations can reuse the code.
 class Conv2DOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Conv2DOpMaker(framework::OpProto* proto,
-                framework::OpAttrChecker* op_checker);
+  Conv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker);
 };
 
 class Conv3DOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Conv3DOpMaker(framework::OpProto* proto,
-                framework::OpAttrChecker* op_checker);
+  Conv3DOpMaker(OpProto* proto, OpAttrChecker* op_checker);
 };
 
 class ConvOp : public framework::OperatorWithKernel {
@@ -261,8 +259,12 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
 
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
-      set_zero(dev_ctx, input_grad, static_cast<T>(0));
 
+      // if is_expand is false, the operation of set_zero is unnecessary,
+      // because math::matmul will reset input_grad.
+      if (is_expand) {
+        set_zero(dev_ctx, input_grad, static_cast<T>(0));
+      }
       math::Col2VolFunctor<DeviceContext, T> col2vol;
       math::Col2ImFunctor<math::ColFormat::kCFO, DeviceContext, T> col2im;
 

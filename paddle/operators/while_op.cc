@@ -25,7 +25,7 @@ namespace operators {
 using StepScopeVar = std::vector<framework::Scope *>;
 using LoDTensor = framework::LoDTensor;
 
-constexpr char kStepBlock[] = "step_block";
+constexpr char kStepBlock[] = "sub_block";
 constexpr char kCondition[] = "Condition";
 constexpr char kStepScopes[] = "StepScopes";
 constexpr char kParameters[] = "X";
@@ -64,7 +64,7 @@ class WhileOp : public framework::OperatorBase {
 
 class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  WhileOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  WhileOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(kParameters,
              "A set of variables, which are required by operators inside the "
@@ -321,10 +321,10 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
         continue;
       }
       auto dims = ctx->GetInputsElementDim(kParameters, i);
-      if (var_types[i] == framework::VarDesc::LOD_TENSOR) {
+      if (var_types[i] == framework::proto::VarDesc::LOD_TENSOR) {
         names_to_set.push_back(pg_names[i]);
         dims_to_set.push_back(dims);
-      } else if (var_types[i] == framework::VarDesc::LOD_TENSOR_ARRAY) {
+      } else if (var_types[i] == framework::proto::VarDesc::LOD_TENSOR_ARRAY) {
         // not sure how to set the dim of LOD_TENSOR_ARRAY
         names_to_set.push_back(pg_names[i]);
         dims_to_set.push_back(dims);

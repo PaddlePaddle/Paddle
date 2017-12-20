@@ -14,7 +14,7 @@
 
     $ export CUDA_SO="$(\ls usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
     $ export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-    $ docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddlepaddle:latest-gpu
+    $ docker run ${CUDA_SO} ${DEVICES} -it paddlepaddle/paddle:latest-gpu
 
 更多关于Docker的安装与使用, 请参考 `PaddlePaddle Docker 文档 <http://www.paddlepaddle.org/doc_cn/build_and_install/install/docker_install.html>`_ 。
 
