@@ -355,8 +355,11 @@ struct OpKernelType {
     }
   };
 
-  platform::Place place_;
+  platform::Place place_;  // address space
   DataType data_type_;
+  std::string library_;  // kernel based library
+  // FIXME(dzhwinter):
+  // LayoutType layerout_;
 
   OpKernelType(DataType data_type, platform::Place place)
       : place_(place), data_type_(data_type) {}

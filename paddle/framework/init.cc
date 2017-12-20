@@ -14,8 +14,8 @@
 #include <algorithm>
 #include <string>
 
-#include "paddle/framework/executor.h"
 #include "paddle/framework/init.h"
+#include "paddle/platform/device_context.h"
 #include "paddle/platform/place.h"
 #include "paddle/string/piece.h"
 
@@ -71,8 +71,7 @@ bool InitDevices(const std::vector<std::string> &devices) {
     places.emplace_back(platform::CPUPlace());
     LOG(WARNING) << "Not specified any device, use CPU by Default.";
   }
-  DeviceContextPool::Create(places);
-  return true;
+  platform::DeviceContextPool::Create(places);
   return true;
 }
 

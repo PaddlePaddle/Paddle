@@ -33,14 +33,7 @@ namespace framework {
 const std::string kFeedOpType = "feed";
 const std::string kFetchOpType = "fetch";
 
-DeviceContextPool* DeviceContextPool::pool = nullptr;
-
-Executor::Executor(const platform::Place& place) : place_(place) {
-  // DeviceContextPool& pool = DeviceContextPool::Get();
-  // std::vector<const platform::Place> places = {place};
-  // auto borrowed_contexts = pool.Borrow(places);
-  // dev_ctx_ = borrowed_contexts.front();
-}
+Executor::Executor(const platform::Place& place) : place_(place) {}
 
 static void CreateTensor(Variable* var, VarDesc::VarType var_type) {
   if (var_type == VarDesc::LOD_TENSOR) {

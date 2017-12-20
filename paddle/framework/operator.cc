@@ -393,7 +393,7 @@ void OperatorWithKernel::Run(const Scope& scope,
                              const platform::Place& place) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
   this->InferShape(&infer_shape_ctx);
-  DeviceContextPool pool = DeviceContextPool::Get();
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Get();
   auto dev_ctx = pool.Borrow(place);
 
   // check if op[type] has kernel registered.
@@ -407,7 +407,7 @@ void OperatorWithKernel::Run(const Scope& scope,
   // check if op[type] have kernel for kernel_key
   OpKernelMap& kernels = kernels_iter->second;
 
-  ExecutionContext ctx(*this, scope, dev_ctx);
+  ExecutionContext ctx(*this, scope, *dev_ctx);
   auto kernel_key = GetKernelType(ctx);
   auto kernel_iter = kernels.find(kernel_key);
 

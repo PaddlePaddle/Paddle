@@ -79,13 +79,14 @@ TEST(OperatorBase, all) {
   attr->set_type(paddle::framework::AttrType::FLOAT);
   attr->set_f(3.14);
 
-  paddle::platform::CPUDeviceContext device_context;
+  // paddle::platform::CPUDeviceContext device_context;
+  paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   scope.Var("OUT1");
   ASSERT_EQ(paddle::framework::op_run_num, 0);
-  op->Run(scope, device_context);
+  op->Run(scope, cpu_place);
   ASSERT_EQ(paddle::framework::op_run_num, 1);
 }
 
@@ -204,12 +205,13 @@ TEST(OpKernel, all) {
   attr->set_type(paddle::framework::AttrType::FLOAT);
   attr->set_f(3.14);
 
-  paddle::platform::CPUDeviceContext cpu_device_context;
+  // paddle::platform::CPUDeviceContext cpu_device_context;
+  paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 0);
-  op->Run(scope, cpu_device_context);
+  op->Run(scope, cpu_place);
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 1);
 }
 
@@ -234,7 +236,8 @@ TEST(OpKernel, multi_inputs) {
   attr->set_type(paddle::framework::AttrType::FLOAT);
   attr->set_f(3.14);
 
-  paddle::platform::CPUDeviceContext cpu_device_context;
+  // paddle::platform::CPUDeviceContext cpu_device_context;
+  paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
   scope.Var("x0")->GetMutable<LoDTensor>();
   scope.Var("x1")->GetMutable<LoDTensor>();
@@ -244,7 +247,7 @@ TEST(OpKernel, multi_inputs) {
   scope.Var("y1")->GetMutable<LoDTensor>();
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  op->Run(scope, cpu_device_context);
+  op->Run(scope, cpu_place);
 }
 
 class OperatorClone : public paddle::framework::OperatorBase {
@@ -256,7 +259,7 @@ class OperatorClone : public paddle::framework::OperatorBase {
                 const paddle::framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const paddle::framework::Scope& scope,
-           const platform::Place& place) const override {}
+           const paddle::platform::Place& place) const override {}
 };
 
 TEST(Operator, Clone) {

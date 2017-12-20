@@ -15,6 +15,8 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+DeviceContextPool* DeviceContextPool::pool = nullptr;
+
 CPUDeviceContext::CPUDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
 }
