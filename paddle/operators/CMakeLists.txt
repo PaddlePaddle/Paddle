@@ -207,6 +207,7 @@ set(DEPS_OPS
     gru_op
     adagrad_op
     sgd_op
+    print_op
     save_op
     load_op
     send_op
@@ -260,6 +261,7 @@ op_library(recurrent_op SRCS recurrent_op.cc DEPS executor)
 # FIXME(typhoonzero): save/load depends lodtensor serialization functions
 op_library(save_op DEPS lod_tensor)
 op_library(load_op DEPS lod_tensor)
+op_library(print_op SRCS print_op.cc DEPS lod_tensor)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
