@@ -48,7 +48,7 @@ class FillOp : public framework::OperatorBase {
                                 "Cannot find variable %s", Output("Out"))
                         .GetMutable<framework::LoDTensor>());
     out.Resize(framework::make_ddim(Attr<std::vector<int>>("shape")));
-    auto dtype = static_cast<framework::DataType>(Attr<int>("dtype"));
+    auto dtype = static_cast<framework::proto::DataType>(Attr<int>("dtype"));
     platform::CPUPlace cpu;
     auto force_cpu = Attr<bool>("force_cpu");
     out.mutable_data(force_cpu ? cpu : dev_ctx.GetPlace(),
@@ -76,7 +76,7 @@ class FillOp : public framework::OperatorBase {
 
 class FillOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FillOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  FillOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddComment(R"DOC(Fill operator
 
@@ -88,7 +88,7 @@ Fill an tensor with `value` and `shape`. The type of the tensor is specify by
         "value", "The float values of tensor, which are flatten in row major");
     AddAttr<std::vector<int>>("shape", "The shape of output tensor");
     AddAttr<int>("dtype", "The data type of output tensor, Default is float")
-        .SetDefault(framework::DataType::FP32);
+        .SetDefault(framework::proto::DataType::FP32);
     AddAttr<bool>("force_cpu",
                   "Whether the output tensor must be at CPU memory or not. "
                   "Default is false.")

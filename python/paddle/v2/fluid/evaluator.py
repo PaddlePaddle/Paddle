@@ -1,7 +1,7 @@
 import numpy as np
 
 import layers
-from framework import Program, unique_name, Variable
+from framework import Program, unique_name, Variable, program_guard
 from layer_helper import LayerHelper
 
 __all__ = ['Accuracy', 'ChunkEvaluator']
@@ -49,15 +49,12 @@ class Evaluator(object):
         if reset_program is None:
             reset_program = Program()
 
-        for var in self.states:
-            assert isinstance(var, Variable)
-            g_var = _clone_var_(reset_program.current_block(), var)
-            layers.fill_constant(
-                shape=g_var.shape,
-                value=0.0,
-                dtype=g_var.dtype,
-                out=g_var,
-                main_program=reset_program)
+        with program_guard(main_program=reset_program):
+            for var in self.states:
+                assert isinstance(var, Variable)
+                g_var = _clone_var_(reset_program.current_block(), var)
+                layers.fill_constant(
+                    shape=g_var.shape, value=0.0, dtype=g_var.dtype, out=g_var)
 
         executor.run(reset_program)
 
@@ -104,20 +101,14 @@ class Accuracy(Evaluator):
         self.total = self.create_state(dtype='int64', shape=[1], suffix='total')
         self.correct = self.create_state(
             dtype='int64', shape=[1], suffix='correct')
-        kwargs = {'main_program': main_program}
         total = self.helper.create_tmp_variable(dtype='int')
         correct = self.helper.create_tmp_variable(dtype='int')
         acc = layers.accuracy(
-            input=input,
-            label=label,
-            k=k,
-            total=total,
-            correct=correct,
-            **kwargs)
-        total = layers.cast(x=total, dtype='int64', **kwargs)
-        correct = layers.cast(x=correct, dtype='int64', **kwargs)
-        layers.sums(input=[self.total, total], out=self.total, **kwargs)
-        layers.sums(input=[self.correct, correct], out=self.correct, **kwargs)
+            input=input, label=label, k=k, total=total, correct=correct)
+        total = layers.cast(x=total, dtype='int64')
+        correct = layers.cast(x=correct, dtype='int64')
+        layers.sums(input=[self.total, total], out=self.total)
+        layers.sums(input=[self.correct, correct], out=self.correct)
 
         self.metrics.append(acc)
 
@@ -125,12 +116,12 @@ class Accuracy(Evaluator):
         if eval_program is None:
             eval_program = Program()
         block = eval_program.current_block()
-        kwargs = {'main_program': eval_program}
-        total = _clone_var_(block, self.total)
-        correct = _clone_var_(block, self.correct)
-        total = layers.cast(total, dtype='float32', **kwargs)
-        correct = layers.cast(correct, dtype='float32', **kwargs)
-        out = layers.elementwise_div(x=correct, y=total, **kwargs)
+        with program_guard(main_program=eval_program):
+            total = _clone_var_(block, self.total)
+            correct = _clone_var_(block, self.correct)
+            total = layers.cast(total, dtype='float32')
+            correct = layers.cast(correct, dtype='float32')
+            out = layers.elementwise_div(x=correct, y=total)
         return np.array(executor.run(eval_program, fetch_list=[out])[0])
 
 
@@ -141,14 +132,14 @@ class ChunkEvaluator(Evaluator):
     numbers.
     """
 
-    def __init__(self,
-                 input,
-                 label,
-                 chunk_scheme,
-                 num_chunk_types,
-                 excluded_chunk_types=None,
-                 **kwargs):
-        super(ChunkEvaluator, self).__init__("chunk_eval", **kwargs)
+    def __init__(
+            self,
+            input,
+            label,
+            chunk_scheme,
+            num_chunk_types,
+            excluded_chunk_types=None, ):
+        super(ChunkEvaluator, self).__init__("chunk_eval")
         main_program = self.helper.main_program
         if main_program.current_block().idx != 0:
             raise ValueError("You can only invoke Evaluator in root block")
@@ -159,26 +150,21 @@ class ChunkEvaluator(Evaluator):
             dtype='int64', shape=[1], suffix='num_label_chunks')
         self.num_correct_chunks = self.create_state(
             dtype='int64', shape=[1], suffix='num_correct_chunks')
-        kwargs = {'main_program': main_program}
         precision, recall, f1_score, num_infer_chunks, num_label_chunks, num_correct_chunks = layers.chunk_eval(
             input=input,
             label=label,
             chunk_scheme=chunk_scheme,
             num_chunk_types=num_chunk_types,
-            excluded_chunk_types=excluded_chunk_types,
-            **kwargs)
+            excluded_chunk_types=excluded_chunk_types, )
         layers.sums(
             input=[self.num_infer_chunks, num_infer_chunks],
-            out=self.num_infer_chunks,
-            **kwargs)
+            out=self.num_infer_chunks)
         layers.sums(
             input=[self.num_label_chunks, num_label_chunks],
-            out=self.num_label_chunks,
-            **kwargs)
+            out=self.num_label_chunks)
         layers.sums(
             input=[self.num_correct_chunks, num_correct_chunks],
-            out=self.num_correct_chunks,
-            **kwargs)
+            out=self.num_correct_chunks)
 
         self.metrics.extend([precision, recall, f1_score])
 
@@ -186,7 +172,6 @@ class ChunkEvaluator(Evaluator):
         if eval_program is None:
             eval_program = Program()
         block = eval_program.current_block()
-        kwargs = {'main_program': eval_program}
         num_infer_chunks, num_label_chunks, num_correct_chunks = executor.run(
             eval_program,
             fetch_list=[_clone_var_(block, state) for state in self.states])

@@ -20,8 +20,7 @@ namespace operators {
 
 class CastOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CastOpProtoMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  CastOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input tensor of cast op");
     AddOutput("Out", "The output tensor of cast op");
