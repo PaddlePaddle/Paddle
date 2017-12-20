@@ -4,7 +4,7 @@ All layers just related to the neural network.
 
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
-from ..framework import Variable
+from ..framework import Variable, KERNEL_HINT_KEY, NON_KENLEL_HINT
 from ..param_attr import ParamAttr
 from tensor import concat
 
@@ -458,7 +458,8 @@ def conv2d(input,
            param_attr=None,
            bias_attr=None,
            act=None,
-           name=None):
+           name=None,
+           kernel_hint=None):
     """
     This function creates the op for a 2-dimensional Convolution.
     This is performed using the parameters of filters(size, dimensionality etc)
@@ -509,9 +510,12 @@ def conv2d(input,
             'Filter': filter_param,
         },
         outputs={"Output": pre_bias},
-        attrs={'strides': stride,
-               'paddings': padding,
-               'groups': groups})
+        attrs={
+            'strides': stride,
+            'paddings': padding,
+            'groups': groups,
+            KERNEL_HINT_KEY: kernel_hint or NON_KENLEL_HINT
+        })
 
     pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
 
@@ -590,7 +594,8 @@ def batch_norm(input,
                epsilon=1e-05,
                param_attr=None,
                bias_attr=None,
-               data_layout='NCHW'):
+               data_layout='NCHW',
+               kernel_hint=None):
     """
     This function helps create an operator to implement
     the BatchNorm layer using the configurations from the input parameters.
@@ -653,9 +658,12 @@ def batch_norm(input,
             "SavedMean": saved_mean,
             "SavedVariance": saved_variance
         },
-        attrs={"momentum": momentum,
-               "epsilon": epsilon,
-               "is_test": is_test})
+        attrs={
+            "momentum": momentum,
+            "epsilon": epsilon,
+            "is_test": is_test,
+            KERNEL_HINT_KEY: kernel_hint or NON_KENLEL_HINT
+        })
 
     return helper.append_activation(batch_norm_out)
 
