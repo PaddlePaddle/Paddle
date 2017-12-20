@@ -240,13 +240,7 @@ void BindOpDesc(py::module &m) {
       .value("BLOCK", AttrType::BLOCK);
 
   py::class_<OpDescBind> op_desc(m, "OpDesc", "");
-  op_desc
-      .def("__init__",
-           [](OpDescBind &self, const std::string &type,
-              const VariableNameMap &inputs, const VariableNameMap &outputs,
-              const AttributeMap &attrs) {
-             new (&self) OpDescBind(type, inputs, outputs, attrs);
-           })
+  op_desc.def("__init__", [](OpDescBind &self) { new (&self) OpDescBind(); })
       .def("type", &OpDescBind::Type)
       .def("set_type", &OpDescBind::SetType)
       .def("input", &OpDescBind::Input)
