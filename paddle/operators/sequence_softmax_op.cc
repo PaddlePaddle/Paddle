@@ -33,8 +33,7 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
 
 class SequenceSoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceSoftmaxOpMaker(framework::OpProto* proto,
-                         framework::OpAttrChecker* op_checker)
+  SequenceSoftmaxOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(LoDTensor) 1-D or 2-D input LoDTensor with the 2-nd dimension "
@@ -99,7 +98,7 @@ REGISTER_OP(sequence_softmax, ops::SequenceSoftmaxOp,
             ops::SequenceSoftmaxGradOp);
 REGISTER_OP_CPU_KERNEL(
     sequence_softmax,
-    ops::SequenceSoftmaxKernel<paddle::platform::CPUPlace, float>);
+    ops::SequenceSoftmaxKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     sequence_softmax_grad,
-    ops::SequenceSoftmaxGradKernel<paddle::platform::CPUPlace, float>);
+    ops::SequenceSoftmaxGradKernel<paddle::platform::CPUDeviceContext, float>);

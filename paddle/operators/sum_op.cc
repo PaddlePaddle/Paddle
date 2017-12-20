@@ -29,7 +29,7 @@ class SumOp : public framework::OperatorWithKernel {
                    "Output(Out) of SumOp should not be null.");
     if (ctx->IsRuntime() &&
         ctx->GetOutputsVarType("Out")[0] ==
-            framework::VarDesc::LOD_TENSOR_ARRAY) {
+            framework::proto::VarDesc::LOD_TENSOR_ARRAY) {
       return;  // skip runtime infershape when is tensor array;
     }
 
@@ -37,10 +37,16 @@ class SumOp : public framework::OperatorWithKernel {
     size_t N = x_dims.size();
     PADDLE_ENFORCE_GT(N, 1, "Input tensors count should > 1.");
 
-    auto in_dim = x_dims[0];
-    for (size_t i = 1; i < N; i++) {
-      auto dim = x_dims[i];
-      PADDLE_ENFORCE_EQ(in_dim, dim, "Input tensors must have same shape");
+    framework::DDim in_dim({0});
+    for (auto& x_dim : x_dims) {
+      if (framework::product(x_dim) == 0) {
+        continue;
+      }
+      if (framework::product(in_dim) == 0) {
+        in_dim = x_dim;
+      } else {
+        PADDLE_ENFORCE_EQ(in_dim, x_dim, "Input tensors must have same shape");
+      }
     }
     ctx->SetOutputDim("Out", in_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -51,9 +57,23 @@ class SumOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto x_vars = ctx.MultiInputVar("X");
     if (x_vars[0]->IsType<framework::LoDTensor>()) {
+      int dtype = -1;
+      for (auto& x_var : x_vars) {
+        auto& lod_tensor = x_var->Get<framework::LoDTensor>();
+        if (lod_tensor.numel() == 0) {
+          continue;
+        }
+        if (dtype == -1) {
+          dtype = framework::ToDataType(lod_tensor.type());
+        } else {
+          PADDLE_ENFORCE_EQ(dtype, framework::ToDataType(lod_tensor.type()));
+        }
+      }
+      PADDLE_ENFORCE_NE(dtype, -1,
+                        "Sum operator should have at least one tensor");
+
       return framework::OpKernelType(
-          framework::ToDataType(x_vars[0]->Get<framework::LoDTensor>().type()),
-          ctx.device_context());
+          static_cast<framework::proto::DataType>(dtype), ctx.device_context());
     } else if (x_vars[0]->IsType<framework::SelectedRows>()) {
       return framework::OpKernelType(
           framework::ToDataType(
@@ -78,7 +98,7 @@ class SumOp : public framework::OperatorWithKernel {
 
 class SumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SumOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  SumOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(vector<Tensor>) The input tensors of sum operator.")
         .AsDuplicable();
@@ -98,7 +118,7 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
   void operator()(const framework::OpDescBind& op_desc,
                   framework::BlockDescBind* block) const override {
     auto& inputs = op_desc.Input("X");
-    auto var_type = framework::VarDesc::SELECTED_ROWS;
+    auto var_type = framework::proto::VarDesc::SELECTED_ROWS;
 
     for (auto& name : op_desc.Input("X")) {
       VLOG(10) << name << " "
@@ -108,12 +128,12 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
     bool any_input_is_lod_tensor = std::any_of(
         inputs.begin(), inputs.end(), [block](const std::string& name) {
           return block->FindRecursiveOrCreateVar(name)->GetType() ==
-                 framework::VarDesc::LOD_TENSOR;
+                 framework::proto::VarDesc::LOD_TENSOR;
         });
 
     auto is_tensor_array = [block](const std::string& name) {
       return detail::Ref(block->FindRecursiveOrCreateVar(name)).GetType() ==
-             framework::VarDesc::LOD_TENSOR_ARRAY;
+             framework::proto::VarDesc::LOD_TENSOR_ARRAY;
     };
 
     bool any_input_is_tensor_array =
@@ -132,9 +152,9 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
         PADDLE_ENFORCE(all_inputs_are_tensor_array,
                        "Not all inputs are tensor array:\n%s", os.str());
       }
-      var_type = framework::VarDesc::LOD_TENSOR_ARRAY;
+      var_type = framework::proto::VarDesc::LOD_TENSOR_ARRAY;
     } else if (any_input_is_lod_tensor) {
-      var_type = framework::VarDesc::LOD_TENSOR;
+      var_type = framework::proto::VarDesc::LOD_TENSOR;
     }
 
     auto out_var_name = op_desc.Output("Out").front();
@@ -175,5 +195,8 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(sum, ops::SumOp, ops::SumOpMaker, ops::SumGradMaker,
                   ops::SumOpVarTypeInference);
-REGISTER_OP_CPU_KERNEL(sum, ops::SumKernel<paddle::platform::CPUPlace, float>,
-                       ops::SumKernel<paddle::platform::CPUPlace, double>);
+REGISTER_OP_CPU_KERNEL(
+    sum, ops::SumKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SumKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::SumKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::SumKernel<paddle::platform::CPUDeviceContext, int64_t>);

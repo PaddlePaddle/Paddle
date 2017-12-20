@@ -43,7 +43,8 @@ class AssignFunctor {
     out_rows.set_rows(rows.rows());
     out_rows.set_height(rows.height());
     auto &t = rows.value();
-    out_rows.mutable_value()->CopyFrom(t, t.place(), dev_ctx_);
+    auto *m = out_rows.mutable_value();
+    framework::CopyFrom(t, t.place(), dev_ctx_, m);
   }
 
   template <typename T>
@@ -55,7 +56,7 @@ class AssignFunctor {
   void copy_tensor(const framework::LoDTensor &lod_tensor,
                    framework::LoDTensor *out) const {
     auto &out_tensor = *out;
-    out_tensor.CopyFrom(lod_tensor, lod_tensor.place(), dev_ctx_);
+    CopyFrom(lod_tensor, lod_tensor.place(), dev_ctx_, &out_tensor);
     out_tensor.set_lod(lod_tensor.lod());
   }
 
@@ -85,8 +86,7 @@ class AssignOp : public framework::OperatorBase {
 
 class AssignOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AssignOpProtoMaker(framework::OpProto *proto,
-                     framework::OpAttrChecker *op_checker)
+  AssignOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(LoDTensor, SelectedRows or LoDTensorArray) The input variable "
@@ -108,8 +108,8 @@ class AssignInferShape : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *context) const override {
     if (context->HasInput("X")) {
       auto type = context->GetInputsVarType("X")[0];
-      if (type == framework::VarDesc_VarType_SELECTED_ROWS ||
-          type == framework::VarDesc_VarType_LOD_TENSOR) {
+      if (type == framework::proto::VarDesc_VarType_SELECTED_ROWS ||
+          type == framework::proto::VarDesc_VarType_LOD_TENSOR) {
         context->SetOutputDim("Out", context->GetInputDim("X"));
       }
     }

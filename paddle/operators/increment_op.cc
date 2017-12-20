@@ -61,6 +61,8 @@ class IncrementOp : public framework::OperatorBase {
     out.Resize(x.dims());
     out.mutable_data(x.place(), x.type());
     float value = Attr<float>("step");
+    VLOG(10) << Output("Out") << " increase " << Input("X") << " with "
+             << value;
     framework::VisitDataType(framework::ToDataType(out.type()),
                              IncrementFunctor(x, &out, value));
   }
@@ -68,8 +70,7 @@ class IncrementOp : public framework::OperatorBase {
 
 class IncrementOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  IncrementOpMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  IncrementOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) The input tensor of increment operator");
     AddOutput("Out", "(Tensor) The output tensor of increment operator.");

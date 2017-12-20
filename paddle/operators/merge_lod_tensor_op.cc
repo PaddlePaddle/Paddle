@@ -45,7 +45,7 @@ class MergeLoDTensorOp : public framework::OperatorBase {
       cpu_mask->ShareDataWith(mask);
     } else if (platform::is_gpu_place(mask.place())) {
 #ifdef PADDLE_WITH_CUDA
-      cpu_mask->CopyFrom(mask, platform::CPUPlace(), dev_ctx);
+      framework::CopyFrom(mask, platform::CPUPlace(), dev_ctx, cpu_mask.get());
 #else
       PADDLE_THROW("Not supported GPU, Please compile WITH_GPU option");
 #endif
@@ -99,8 +99,9 @@ class MergeLoDTensorOp : public framework::OperatorBase {
       if (len == 0) {
         continue;
       }
-      out->Slice(out_offset, out_offset + len)
-          .CopyFrom(input->Slice(start_offset, end_offset), place, dev_ctx);
+      auto slice = out->Slice(out_offset, out_offset + len);
+      framework::CopyFrom(input->Slice(start_offset, end_offset), place,
+                          dev_ctx, &slice);
       out_offset += len;
       (*in_idx) += 1;
     }
@@ -113,8 +114,7 @@ class MergeLoDTensorOp : public framework::OperatorBase {
 
 class MergeLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MergeLoDTensorOpProtoMaker(framework::OpProto *proto,
-                             framework::OpAttrChecker *op_checker)
+  MergeLoDTensorOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "The input LoDTensor, contains complete lod information to "

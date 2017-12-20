@@ -61,8 +61,7 @@ class MultiplexOp : public framework::OperatorWithKernel {
 
 class MultiplexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MultiplexOpMaker(framework::OpProto* proto,
-                   framework::OpAttrChecker* op_checker)
+  MultiplexOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Ids", "The index tensor of multiplex operator.");
     AddInput("X", "The candidate tensors of multiplex operator.")
@@ -99,13 +98,7 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
                    "Output(X@Grad) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null.");
-    std::vector<framework::DDim> d_ins;
-    auto ins = ctx->GetInputsDim("X");
-    // No need to compute gradient for Input(Ids)
-    for (size_t i = 0; i < ins.size(); i++) {
-      d_ins.push_back(ins[i]);
-    }
-    ctx->SetOutputsDim(framework::GradVarName("X"), d_ins);
+    ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
   }
 
  protected:
@@ -125,7 +118,8 @@ REGISTER_OPERATOR(multiplex, ops::MultiplexOp, ops::MultiplexOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<false>);
 REGISTER_OPERATOR(multiplex_grad, ops::MultiplexGradOp);
 REGISTER_OP_CPU_KERNEL(
-    multiplex, ops::MultiplexCPUKernel<paddle::platform::CPUPlace, float>);
+    multiplex,
+    ops::MultiplexCPUKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     multiplex_grad,
-    ops::MultiplexGradCPUKernel<paddle::platform::CPUPlace, float>);
+    ops::MultiplexGradCPUKernel<paddle::platform::CPUDeviceContext, float>);

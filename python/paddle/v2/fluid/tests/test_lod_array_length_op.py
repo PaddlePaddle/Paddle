@@ -13,7 +13,7 @@ class TestLoDArrayLength(unittest.TestCase):
         arr_len = layers.array_length(arr)
         cpu = core.CPUPlace()
         exe = Executor(cpu)
-        result = numpy.array(exe.run(fetch_list=[arr_len])[0])
+        result = exe.run(fetch_list=[arr_len])[0]
         self.assertEqual(11, result[0])
 
 

@@ -51,7 +51,7 @@ class FetchOp : public framework::OperatorBase {
 
     // FIXME(yuyang18): Should we assume the fetch operator always generate
     // CPU outputs?
-    dst_item.CopyFrom(src_item, platform::CPUPlace(), dev_ctx);
+    CopyFrom(src_item, platform::CPUPlace(), dev_ctx, &dst_item);
     dev_ctx.Wait();
     dst_item.set_lod(src_item.lod());
 
@@ -61,8 +61,7 @@ class FetchOp : public framework::OperatorBase {
 
 class FetchOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FetchOpInfoMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  FetchOpInfoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of fetch op");
     AddOutput("Out", "The output of fetch op");

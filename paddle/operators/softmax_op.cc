@@ -36,8 +36,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
 
 class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SoftmaxOpMaker(framework::OpProto* proto,
-                 framework::OpAttrChecker* op_checker)
+  SoftmaxOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "The input tensor of softmax. "
@@ -59,7 +58,7 @@ Then the ratio of the exponential of the given dimension and the sum of
 exponential values of all the other dimensions is the output of the softmax
 operator.
 
-For each row `i` and each column `j` in input X, we have:
+For each row $i$ and each column $j$ in Input(X), we have:
     $$Y[i, j] = \frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])}$$
 
 )DOC");
@@ -89,7 +88,8 @@ namespace ops = paddle::operators;
 
 REGISTER_OP(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker, softmax_grad,
             ops::SoftmaxOpGrad);
-REGISTER_OP_CPU_KERNEL(softmax,
-                       ops::SoftmaxKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    softmax_grad, ops::SoftmaxGradKernel<paddle::platform::CPUPlace, float>);
+    softmax, ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    softmax_grad,
+    ops::SoftmaxGradKernel<paddle::platform::CPUDeviceContext, float>);

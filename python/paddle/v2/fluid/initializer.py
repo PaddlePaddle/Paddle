@@ -1,10 +1,7 @@
-import paddle.v2.fluid.framework as framework
+import framework
 import numpy as np
 
-__all__ = [
-    'ConstantInitializer', 'UniformInitializer', 'NormalInitializer',
-    'XavierInitializer'
-]
+__all__ = ['Constant', 'Uniform', 'Normal', 'Xavier']
 
 
 class Initializer(object):
@@ -93,7 +90,7 @@ class ConstantInitializer(Initializer):
             outputs={"Out": var},
             attrs={
                 "shape": var.shape,
-                "data_type": int(var.data_type),
+                "dtype": int(var.dtype),
                 "value": self._value
             })
         var.op = op
@@ -135,12 +132,14 @@ class UniformInitializer(Initializer):
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
         # Initialization Ops should be prepended and not appended
+        if self._seed == 0:
+            self._seed = block.program.random_seed
         op = block.prepend_op(
             type="uniform_random",
             outputs={"Out": var},
             attrs={
                 "shape": var.shape,
-                "data_type": int(var.data_type),
+                "dtype": int(var.dtype),
                 "min": self._low,
                 "max": self._high,
                 "seed": self._seed
@@ -183,12 +182,14 @@ class NormalInitializer(Initializer):
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
         # Initialization Ops should be prepended and not appended
+        if self._seed == 0:
+            self._seed = block.program.random_seed
         op = block.prepend_op(
             type="gaussian_random",
             outputs={"Out": var},
             attrs={
                 "shape": var.shape,
-                "data_type": int(var.data_type),
+                "dtype": int(var.dtype),
                 "mean": self._mean,
                 "std": self._std_dev,
                 "seed": self._seed
@@ -258,6 +259,9 @@ class XavierInitializer(Initializer):
         fan_in = f_in if self._fan_in is None else self._fan_in
         fan_out = f_out if self._fan_out is None else self._fan_out
 
+        if self._seed == 0:
+            self._seed = block.program.random_seed
+
         if self._uniform:
             limit = np.sqrt(6.0 / float(fan_in + fan_out))
             op = block.prepend_op(
@@ -265,7 +269,7 @@ class XavierInitializer(Initializer):
                 outputs={"Out": var},
                 attrs={
                     "shape": var.shape,
-                    "data_type": int(var.data_type),
+                    "dtype": int(var.dtype),
                     "min": -limit,
                     "max": limit,
                     "seed": self._seed
@@ -278,7 +282,7 @@ class XavierInitializer(Initializer):
                 outputs={"Out": var},
                 attrs={
                     "shape": var.shape,
-                    "data_type": int(var.data_type),
+                    "dtype": int(var.dtype),
                     "mean": 0.0,
                     "std": std,
                     "seed": self._seed
@@ -341,6 +345,9 @@ class MSRAInitializer(Initializer):
         # If fan_in is passed, use it
         fan_in = f_in if self._fan_in is None else self._fan_in
 
+        if self._seed == 0:
+            self._seed = block.program.random_seed
+
         if self._uniform:
             limit = np.sqrt(6.0 / float(fan_in))
             op = block.prepend_op(
@@ -348,7 +355,7 @@ class MSRAInitializer(Initializer):
                 outputs={"Out": var},
                 attrs={
                     "shape": var.shape,
-                    "data_type": int(var.data_type),
+                    "dtype": int(var.dtype),
                     "min": -limit,
                     "max": limit,
                     "seed": self._seed
@@ -361,10 +368,26 @@ class MSRAInitializer(Initializer):
                 outputs={"Out": var},
                 attrs={
                     "shape": var.shape,
-                    "data_type": int(var.data_type),
+                    "dtype": int(var.dtype),
                     "mean": 0.0,
                     "std": std,
                     "seed": self._seed
                 })
         var.op = op
         return op
+
+
+# We short the class name, since users will use the initializer with the package
+# name. The sample code:
+#
+# import paddle.fluid as fluid
+#
+# hidden = fluid.layers.fc(...,
+#                          param_attr=ParamAttr(fluid.initializer.Xavier()))
+#
+# It is no need to add an `Initializer` as the class suffix
+Constant = ConstantInitializer
+Uniform = UniformInitializer
+Normal = NormalInitializer
+Xavier = XavierInitializer
+MSRA = MSRAInitializer

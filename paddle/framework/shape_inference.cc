@@ -12,6 +12,8 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 #include "paddle/framework/shape_inference.h"
+#include "grad_op_desc_maker.h"
+#include "paddle/framework/operator.h"
 
 namespace paddle {
 namespace framework {
@@ -20,6 +22,12 @@ std::vector<framework::DDim> InferShapeContext::GetInputsDim(
     const std::string &name) const {
   const std::vector<std::string> &names = Inputs(name);
   return GetDims(names);
+}
+
+DDim InferShapeContext::GetInputsElementDim(const std::string &name,
+                                            int idx) const {
+  const std::vector<std::string> &names = Inputs(name);
+  return this->GetDim(names[idx]);
 }
 
 void InferShapeContext::SetOutputsDim(
@@ -43,20 +51,23 @@ void InferShapeContext::SetDims(const std::vector<std::string> &names,
   size_t length = names.size();
   PADDLE_ENFORCE_EQ(length, dims.size());
   for (size_t i = 0; i < length; ++i) {
+    if (names[i] == framework::kEmptyVarName) {
+      continue;
+    }
     SetDim(names[i], dims[i]);
   }
 }
-std::vector<VarDesc::VarType> InferShapeContext::GetInputsVarType(
+std::vector<proto::VarDesc::VarType> InferShapeContext::GetInputsVarType(
     const std::string &name) const {
   return GetVarTypes(Inputs(name));
 }
-std::vector<VarDesc::VarType> InferShapeContext::GetOutputsVarType(
+std::vector<proto::VarDesc::VarType> InferShapeContext::GetOutputsVarType(
     const std::string &name) const {
   return GetVarTypes(Outputs(name));
 }
-std::vector<VarDesc::VarType> InferShapeContext::GetVarTypes(
+std::vector<proto::VarDesc::VarType> InferShapeContext::GetVarTypes(
     const std::vector<std::string> &names) const {
-  std::vector<VarDesc::VarType> retv;
+  std::vector<proto::VarDesc::VarType> retv;
   retv.resize(names.size());
   std::transform(names.begin(), names.end(), retv.begin(),
                  std::bind(std::mem_fn(&InferShapeContext::GetVarType), this,

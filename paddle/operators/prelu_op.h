@@ -39,7 +39,7 @@ class PReluFunctor {
   const T* alpha_;
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class PReluKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -54,9 +54,9 @@ class PReluKernel : public framework::OpKernel<T> {
 
     int numel = x->numel();
 
-    Transform<Place> trans;
-    trans(context.device_context(), x_ptr, x_ptr + numel, o_ptr,
-          PReluFunctor<T>(alpha_ptr));
+    Transform<DeviceContext> trans;
+    trans(context.template device_context<DeviceContext>(), x_ptr,
+          x_ptr + numel, o_ptr, PReluFunctor<T>(alpha_ptr));
   }
 };
 
@@ -76,7 +76,7 @@ class PReluGradFunctor {
   const T* alpha_;
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class PReluGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -92,9 +92,9 @@ class PReluGradKernel : public framework::OpKernel<T> {
     const T* out_ptr = out->data<T>();
     int numel = dx->numel();
 
-    Transform<Place> trans;
-    trans(context.device_context(), out_ptr, out_ptr + numel, dout_ptr, dx_ptr,
-          PReluGradFunctor<T>(alpha_ptr));
+    Transform<DeviceContext> trans;
+    trans(context.template device_context<DeviceContext>(), out_ptr,
+          out_ptr + numel, dout_ptr, dx_ptr, PReluGradFunctor<T>(alpha_ptr));
 
     // TODO(Zhuoyuan): add dalpha upgrade when GPU kernels ready
   }

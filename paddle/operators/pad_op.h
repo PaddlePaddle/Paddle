@@ -26,7 +26,7 @@ template <typename T, size_t D, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
-template <typename Place, typename T, size_t D>
+template <typename DeviceContext, typename T, size_t D>
 void PadFunction(const framework::ExecutionContext& context) {
   auto pads = context.Attr<std::vector<int>>("paddings");
   Eigen::array<std::pair<int, int>, D> paddings;
@@ -42,33 +42,34 @@ void PadFunction(const framework::ExecutionContext& context) {
 
   auto x_tensor = EigenTensor<T, D>::From(*x);
   auto out_tensor = EigenTensor<T, D>::From(*out);
-  auto place = context.GetEigenDevice<Place>();
+  auto& place =
+      *context.template device_context<DeviceContext>().eigen_device();
   out_tensor.device(place) = x_tensor.pad(paddings, pad_value);
 }
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class PadKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     int rank = context.Input<Tensor>("X")->dims().size();
     switch (rank) {
       case 1:
-        PadFunction<Place, T, 1>(context);
+        PadFunction<DeviceContext, T, 1>(context);
         break;
       case 2:
-        PadFunction<Place, T, 2>(context);
+        PadFunction<DeviceContext, T, 2>(context);
         break;
       case 3:
-        PadFunction<Place, T, 3>(context);
+        PadFunction<DeviceContext, T, 3>(context);
         break;
       case 4:
-        PadFunction<Place, T, 4>(context);
+        PadFunction<DeviceContext, T, 4>(context);
         break;
       case 5:
-        PadFunction<Place, T, 5>(context);
+        PadFunction<DeviceContext, T, 5>(context);
         break;
       case 6:
-        PadFunction<Place, T, 6>(context);
+        PadFunction<DeviceContext, T, 6>(context);
         break;
       default:
         PADDLE_THROW(
@@ -77,7 +78,7 @@ class PadKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T, size_t D>
+template <typename DeviceContext, typename T, size_t D>
 void PadGradFunction(const framework::ExecutionContext& context) {
   auto pads = context.Attr<std::vector<int>>("paddings");
   Eigen::array<std::pair<int, int>, D> paddings;
@@ -91,12 +92,13 @@ void PadGradFunction(const framework::ExecutionContext& context) {
     d_x->mutable_data<T>(context.GetPlace());
     auto d_x_tensor = EigenTensor<T, D>::From(*d_x);
     auto d_out_tensor = EigenTensor<T, D>::From(*d_out);
-    auto place = context.GetEigenDevice<Place>();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
     d_x_tensor.device(place) = d_out_tensor.pad(paddings, 0);
   }
 }
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class PadGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -104,22 +106,22 @@ class PadGradKernel : public framework::OpKernel<T> {
         context.Input<Tensor>(framework::GradVarName("Out"))->dims().size();
     switch (rank) {
       case 1:
-        PadGradFunction<Place, T, 1>(context);
+        PadGradFunction<DeviceContext, T, 1>(context);
         break;
       case 2:
-        PadGradFunction<Place, T, 2>(context);
+        PadGradFunction<DeviceContext, T, 2>(context);
         break;
       case 3:
-        PadGradFunction<Place, T, 3>(context);
+        PadGradFunction<DeviceContext, T, 3>(context);
         break;
       case 4:
-        PadGradFunction<Place, T, 4>(context);
+        PadGradFunction<DeviceContext, T, 4>(context);
         break;
       case 5:
-        PadGradFunction<Place, T, 5>(context);
+        PadGradFunction<DeviceContext, T, 5>(context);
         break;
       case 6:
-        PadGradFunction<Place, T, 6>(context);
+        PadGradFunction<DeviceContext, T, 6>(context);
         break;
       default:
         PADDLE_THROW(

@@ -57,15 +57,14 @@ class RNNMemoryHelperOpShapeInference : public framework::InferShapeBase {
 
 class RNNMemoryHelperOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RNNMemoryHelperOpInfoMaker(framework::OpProto *proto,
-                             framework::OpAttrChecker *op_checker)
+  RNNMemoryHelperOpInfoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "");
     AddOutput("Out", "");
-    AddAttr<int>("data_type",
+    AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
-        .SetDefault(framework::DataType::FP32);
+        .SetDefault(framework::proto::DataType::FP32);
     AddComment("");
   }
 };
@@ -95,7 +94,7 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
       auto &in_var_tensor = in_var->Get<framework::LoDTensor>();
 
       framework::AttributeMap attrs;
-      attrs["data_type"] = framework::ToDataType(in_var_tensor.type());
+      attrs["dtype"] = framework::ToDataType(in_var_tensor.type());
       attrs["shape"] = framework::vectorize2int(in_var_tensor.dims());
       attrs["value"] = 0.0f;
 
@@ -114,17 +113,16 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
 class RNNMemoryHelperGradOpInfoMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  RNNMemoryHelperGradOpInfoMaker(framework::OpProto *proto,
-                                 framework::OpAttrChecker *op_checker)
+  RNNMemoryHelperGradOpInfoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(framework::GradVarName("Out"), "");
     AddInput("X", "");
     AddInput("Out", "");
     AddOutput(framework::GradVarName("X"), "");
-    AddAttr<int>("data_type",
+    AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
-        .SetDefault(framework::DataType::FP32);
+        .SetDefault(framework::proto::DataType::FP32);
     AddComment("");
   }
 };

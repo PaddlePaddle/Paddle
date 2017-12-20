@@ -32,7 +32,7 @@ class MeanOp : public framework::OperatorWithKernel {
 
 class MeanOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MeanOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  MeanOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of mean op");
     AddOutput("Out", "The output of mean op");
@@ -76,8 +76,9 @@ class MeanGradMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(mean, ops::MeanOp, ops::MeanOpMaker, ops::MeanGradMaker);
 REGISTER_OPERATOR(mean_grad, ops::MeanGradOp);
-REGISTER_OP_CPU_KERNEL(mean, ops::MeanKernel<paddle::platform::CPUPlace, float>,
-                       ops::MeanKernel<paddle::platform::CPUPlace, double>);
-REGISTER_OP_CPU_KERNEL(mean_grad,
-                       ops::MeanGradKernel<paddle::platform::CPUPlace, float>,
-                       ops::MeanGradKernel<paddle::platform::CPUPlace, double>);
+REGISTER_OP_CPU_KERNEL(
+    mean, ops::MeanKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MeanKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    mean_grad, ops::MeanGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MeanGradKernel<paddle::platform::CPUDeviceContext, double>);

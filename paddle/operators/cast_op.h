@@ -27,13 +27,13 @@ struct CastOpTransformFunctor {
   HOSTDEVICE OutT operator()(InT in) const { return static_cast<OutT>(in); }
 };
 
-template <typename Place, typename InT>
+template <typename DeviceContext, typename InT>
 struct CastOpFunctor {
   const framework::Tensor* in_;
   framework::Tensor* out_;
-  const platform::DeviceContext& ctx_;
+  const DeviceContext& ctx_;
   CastOpFunctor(const framework::Tensor* in, framework::Tensor* out,
-                const platform::DeviceContext& ctx)
+                const DeviceContext& ctx)
       : in_(in), out_(out), ctx_(ctx) {}
 
   template <typename OutT>
@@ -42,21 +42,22 @@ struct CastOpFunctor {
     auto numel = in_->numel();
     auto* in_end = in_begin + numel;
     auto* out_begin = out_->mutable_data<OutT>(ctx_.GetPlace());
-    platform::Transform<Place> trans;
+    platform::Transform<DeviceContext> trans;
     trans(ctx_, in_begin, in_end, out_begin,
           CastOpTransformFunctor<InT, OutT>());
   }
 };
 
-template <typename Place, typename InT>
+template <typename DeviceContext, typename InT>
 class CastOpKernel : public framework::OpKernel<InT> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
     framework::VisitDataType(
-        static_cast<framework::DataType>(context.Attr<int>("out_data_type")),
-        CastOpFunctor<Place, InT>(in, out, context.device_context()));
+        static_cast<framework::proto::DataType>(context.Attr<int>("out_dtype")),
+        CastOpFunctor<DeviceContext, InT>(
+            in, out, context.template device_context<DeviceContext>()));
   }
 };
 

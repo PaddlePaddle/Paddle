@@ -45,7 +45,7 @@ class SequenceSliceOp : public framework::OperatorWithKernel {
     // Initialize the output's dims to maximum,
     // and re-set to real dims by the value of Offset and Length at kernel
     ctx->SetOutputDim("Out", input_dims);
-    }
+  }
 
  protected:
   framework::OpKernelType GetKernelType(
@@ -79,8 +79,7 @@ class SequenceSliceGradOp : public framework::OperatorWithKernel {
 
 class SequenceSliceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceSliceOpMaker(framework::OpProto* proto,
-                       framework::OpAttrChecker* op_checker)
+  SequenceSliceOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(LoDTensor), "
@@ -93,8 +92,7 @@ class SequenceSliceOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor), "
              "a vector<int> to describe the length of every input sequence for "
              "sub sequence item.");
-    AddOutput("Out",
-              "(LoDTensor), the output of SequenceSliceOp.");
+    AddOutput("Out", "(LoDTensor), the output of SequenceSliceOp.");
     AddComment(R"DOC(
 Sequence slice operator
 
@@ -126,7 +124,7 @@ REGISTER_OP(sequence_slice, ops::SequenceSliceOp, ops::SequenceSliceOpMaker,
             sequence_slice_grad, ops::SequenceSliceGradOp);
 REGISTER_OP_CPU_KERNEL(
     sequence_slice,
-    ops::SequenceSliceOpKernel<paddle::platform::CPUPlace, float>);
+    ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     sequence_slice_grad,
-    ops::SequenceSliceGradOpKernel<paddle::platform::CPUPlace, float>);
+    ops::SequenceSliceGradOpKernel<paddle::platform::CPUDeviceContext, float>);

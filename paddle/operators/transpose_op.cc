@@ -55,8 +55,7 @@ class TransposeOp : public framework::OperatorWithKernel {
 
 class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  TransposeOpMaker(framework::OpProto* proto,
-                   framework::OpAttrChecker* op_checker)
+  TransposeOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(
         "X",
@@ -112,8 +111,8 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(transpose, ops::TransposeOp, ops::TransposeOpMaker, transpose_grad,
             ops::TransposeOpGrad);
-REGISTER_OP_CPU_KERNEL(transpose,
-                       ops::TransposeKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    transpose, ops::TransposeKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     transpose_grad,
-    ops::TransposeGradKernel<paddle::platform::CPUPlace, float>);
+    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, float>);

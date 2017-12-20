@@ -16,7 +16,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <iostream>
 
-template <typename Place>
+template <typename DeviceContext, typename Place>
 void testIm2col() {
   paddle::framework::Tensor input_tmp;
   paddle::framework::Tensor input;
@@ -59,22 +59,11 @@ void testIm2col() {
   memcpy(input_ptr, arr, 6 * sizeof(float));
 
   auto* place = new Place();
-  paddle::platform::DeviceContext* context;
-  if (paddle::platform::is_cpu_place(*place)) {
-    context =
-        new paddle::platform::CPUDeviceContext(paddle::platform::CPUPlace());
-  } else {
-#ifdef PADDLE_WITH_CUDA
-    context =
-        new paddle::platform::CUDADeviceContext(paddle::platform::GPUPlace());
-#else
-    PADDLE_THROW("no GPU support");
-#endif  // PADDLE_WITH_CUDA
-  }
+  DeviceContext* context = new DeviceContext(*place);
   if (paddle::platform::is_cpu_place(*place)) {
     input = input_tmp;
   } else {
-    input.CopyFrom(input_tmp, *place, *context);
+    CopyFrom(input_tmp, *place, *context, &input);
   }
   output_cfo.mutable_data<float>(
       {1, filter_size, filter_size, output_height, output_width}, *place);
@@ -83,10 +72,10 @@ void testIm2col() {
 
   // Im2Col
   paddle::operators::math::Im2ColFunctor<
-      paddle::operators::math::ColFormat::kCFO, Place, float>
+      paddle::operators::math::ColFormat::kCFO, DeviceContext, float>
       im2col;
   paddle::operators::math::Im2ColFunctor<
-      paddle::operators::math::ColFormat::kOCF, Place, float>
+      paddle::operators::math::ColFormat::kOCF, DeviceContext, float>
       im2col_ocf;
 
   im2col(*context, input, dilation, stride, padding, &output_cfo);
@@ -99,7 +88,7 @@ void testIm2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     out_cfo_ptr = output_cfo.data<float>();
   } else {
-    output_tmp.CopyFrom(output_cfo, paddle::platform::CPUPlace(), *context);
+    CopyFrom(output_cfo, paddle::platform::CPUPlace(), *context, &output_tmp);
     out_cfo_ptr = output_tmp.data<float>();
   }
   for (int i = 0; i < 6; ++i) {
@@ -110,7 +99,7 @@ void testIm2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     out_ocf_ptr = output_ocf.data<float>();
   } else {
-    output_tmp.CopyFrom(output_ocf, paddle::platform::CPUPlace(), *context);
+    CopyFrom(output_ocf, paddle::platform::CPUPlace(), *context, &output_tmp);
     out_ocf_ptr = output_tmp.data<float>();
   }
   for (int i = 0; i < 6; ++i) {
@@ -119,10 +108,10 @@ void testIm2col() {
 
   // Col2Im: kCFO
   paddle::operators::math::Col2ImFunctor<
-      paddle::operators::math::ColFormat::kCFO, Place, float>
+      paddle::operators::math::ColFormat::kCFO, DeviceContext, float>
       col2im;
   paddle::operators::math::Col2ImFunctor<
-      paddle::operators::math::ColFormat::kOCF, Place, float>
+      paddle::operators::math::ColFormat::kOCF, DeviceContext, float>
       col2im_ocf;
   float col2im_data[] = {0, 2, 2, 3, 8, 5};
 
@@ -130,7 +119,7 @@ void testIm2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     input = input_tmp;
   } else {
-    input.CopyFrom(input_tmp, *place, *context);
+    CopyFrom(input_tmp, *place, *context, &input);
   }
 
   col2im(*context, output_cfo, dilation, stride, padding, &input);
@@ -139,7 +128,7 @@ void testIm2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
-    input_tmp.CopyFrom(input, paddle::platform::CPUPlace(), *context);
+    CopyFrom(input, paddle::platform::CPUPlace(), *context, &input_tmp);
     in_ptr = input_tmp.data<float>();
   }
   for (int i = 0; i < 6; ++i) {
@@ -151,7 +140,7 @@ void testIm2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     input = input_tmp;
   } else {
-    input.CopyFrom(input_tmp, *place, *context);
+    CopyFrom(input_tmp, *place, *context, &input);
   }
 
   col2im_ocf(*context, output_ocf, dilation, stride, padding, &input);
@@ -159,7 +148,7 @@ void testIm2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
-    input_tmp.CopyFrom(input, paddle::platform::CPUPlace(), *context);
+    CopyFrom(input, paddle::platform::CPUPlace(), *context, &input_tmp);
     in_ptr = input_tmp.data<float>();
   }
   for (int i = 0; i < 6; ++i) {
@@ -168,8 +157,8 @@ void testIm2col() {
 }
 
 TEST(math, im2col) {
-  testIm2col<paddle::platform::CPUPlace>();
+  testIm2col<paddle::platform::CPUDeviceContext, paddle::platform::CPUPlace>();
 #ifdef PADDLE_WITH_CUDA
-  testIm2col<paddle::platform::GPUPlace>();
+  testIm2col<paddle::platform::CUDADeviceContext, paddle::platform::GPUPlace>();
 #endif
 }

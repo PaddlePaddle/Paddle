@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/softmax_with_cross_entropy_op.h"
-#include <paddle/function/TensorType.h>
 
 namespace paddle {
 namespace operators {
@@ -21,8 +20,7 @@ namespace operators {
 class SoftmaxWithCrossEntropyOpMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  SoftmaxWithCrossEntropyOpMaker(framework::OpProto* proto,
-                                 framework::OpAttrChecker* op_checker)
+  SoftmaxWithCrossEntropyOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Logits",
              "(Tensor, default: Tensor<float>), The unscaled log probabilities "
@@ -67,15 +65,15 @@ The equation is as follows:
 
 1) Hard label (one-hot label, so every sample has exactly one class)
 
-$$Loss_j = \f$ -\text{Logit}_{Label_j} +
+$$Loss_j =  -\text{Logit}_{Label_j} +
 \log\left(\sum_{i=0}^{K}\exp(\text{Logit}_i)\right),
-j = 1, ..., K $\f$$
+j = 1,..., K$$
 
 2) Soft label (each sample can have a distribution over all classes)
 
-$$Loss_j = \f$ -\sum_{i=0}^{K}\text{Label}_i\left(\text{Logit}_i -
+$$Loss_j =  -\sum_{i=0}^{K}\text{Label}_i \left(\text{Logit}_i -
 \log\left(\sum_{i=0}^{K}\exp(\text{Logit}_i)\right)\right),
-j = 1,...,K $\f$$
+j = 1,...,K$$
 
 )DOC");
   }

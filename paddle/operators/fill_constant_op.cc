@@ -34,7 +34,8 @@ class FillConstantOp : public framework::OperatorBase {
   using framework::OperatorBase::OperatorBase;
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
-    auto data_type = static_cast<framework::DataType>(Attr<int>("data_type"));
+    auto data_type =
+        static_cast<framework::proto::DataType>(Attr<int>("dtype"));
     auto value = Attr<float>("value");
     auto force_cpu = Attr<bool>("force_cpu");
     auto &out =
@@ -52,13 +53,12 @@ class FillConstantOp : public framework::OperatorBase {
 
 class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FillConstantOpMaker(framework::OpProto *proto,
-                      framework::OpAttrChecker *op_checker)
+  FillConstantOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddAttr<int>("data_type",
+    AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
-        .SetDefault(framework::DataType::FP32);
+        .SetDefault(framework::proto::DataType::FP32);
     AddAttr<std::vector<int>>("shape", "(vector<int>) The shape of the output");
     AddAttr<float>("value", "(float, default 0) The value to be filled")
         .SetDefault(0.0f);

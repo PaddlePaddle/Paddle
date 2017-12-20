@@ -49,7 +49,7 @@ class SplitLoDTensorOp : public framework::OperatorBase {
       cpu_mask->ShareDataWith(mask);
     } else if (platform::is_gpu_place(mask.place())) {
 #ifdef PADDLE_WITH_CUDA
-      cpu_mask->CopyFrom(mask, platform::CPUPlace(), dev_ctx);
+      framework::CopyFrom(mask, platform::CPUPlace(), dev_ctx, cpu_mask.get());
 #else
       PADDLE_THROW("Not supported GPU, Please compile WITH_GPU option");
 #endif
@@ -105,10 +105,11 @@ class SplitLoDTensorOp : public framework::OperatorBase {
           continue;
         }
         // out[offset: offset+len] = x[each_range.begin: each_range.end]
-        out->Slice(static_cast<int>(offset), static_cast<int>(offset + len))
-            .CopyFrom(x.Slice(static_cast<int>(each_range.begin),
-                              static_cast<int>(each_range.end)),
-                      x.place(), dev_ctx);
+        auto slice = out->Slice(static_cast<int>(offset),
+                                static_cast<int>(offset + len));
+        framework::CopyFrom(x.Slice(static_cast<int>(each_range.begin),
+                                    static_cast<int>(each_range.end)),
+                            x.place(), dev_ctx, &slice);
         offset += len;
       }
     }
@@ -117,8 +118,7 @@ class SplitLoDTensorOp : public framework::OperatorBase {
 
 class SplitLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SplitLoDTensorOpProtoMaker(framework::OpProto *proto,
-                             framework::OpAttrChecker *op_checker)
+  SplitLoDTensorOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input LoDTensor");
     AddInput("Mask", "A bool column vector which mask the input");

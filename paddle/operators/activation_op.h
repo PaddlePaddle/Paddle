@@ -19,7 +19,7 @@
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename Functor>
+template <typename DeviceContext, typename Functor>
 class ActivationKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
@@ -32,18 +32,19 @@ class ActivationKernel
 
     auto x = framework::EigenVector<T>::Flatten(*X);
     auto y = framework::EigenVector<T>::Flatten(*Y);
-    auto place = context.GetEigenDevice<Place>();
+    auto* place =
+        context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
 
     auto attrs = functor.GetAttrs();
     for (auto& attr : attrs) {
       *attr.second = context.Attr<float>(attr.first);
     }
-    functor(place, x, y);
+    functor(*place, x, y);
   }
 };
 
-template <typename Place, typename Functor>
+template <typename DeviceContext, typename Functor>
 class ActivationGradKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
@@ -59,13 +60,14 @@ class ActivationGradKernel
     auto x = framework::EigenVector<T>::Flatten(*X);
     auto y = framework::EigenVector<T>::Flatten(*Y);
     auto dx = framework::EigenVector<T>::Flatten(*dX);
-    auto place = context.GetEigenDevice<Place>();
+    auto* place =
+        context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
     auto attrs = functor.GetAttrs();
     for (auto& attr : attrs) {
       *attr.second = context.Attr<float>(attr.first);
     }
-    functor(place, x, y, dy, dx);
+    functor(*place, x, y, dy, dx);
   }
 };
 
@@ -280,6 +282,41 @@ struct SqrtGradFunctor : public BaseActivationFunctor<T> {
   void operator()(Device d, X x, Y y, dY dy, dX dx) const {
     const Y y_conj = Eigen::numext::conj(y);
     dx.device(d) = static_cast<T>(0.5) * dy / y_conj;
+  }
+};
+
+// ceil(x) = ceiling(x)
+template <typename T>
+struct CeilFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) const {
+    y.device(d) = x.ceil();
+  }
+};
+
+template <typename T>
+struct ZeroGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) const {
+    dx.device(d) = static_cast<T>(0) / x;
+  }
+};
+
+// floor(x) = flooring(x)
+template <typename T>
+struct FloorFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) const {
+    y.device(d) = x.ceil();
+  }
+};
+
+// round(x) = [x]
+template <typename T>
+struct RoundFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) const {
+    y.device(d) = x.round();
   }
 };
 
@@ -665,6 +702,35 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct SwishFunctor : public BaseActivationFunctor<T> {
+  float beta;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"beta", &beta}};
+  }
+
+  template <typename Device, typename X, typename Y>
+  void operator()(Device d, X x, Y y) const {
+    y.device(d) = x / (static_cast<T>(1) + (static_cast<T>(-beta) * x).exp());
+  }
+};
+
+template <typename T>
+struct SwishGradFunctor : public BaseActivationFunctor<T> {
+  float beta;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"beta", &beta}};
+  }
+
+  template <typename Device, typename X, typename Y, typename dY, typename dX>
+  void operator()(Device d, X x, Y y, dY dy, dX dx) const {
+    auto temp1 = static_cast<T>(1) /
+                 (static_cast<T>(1) + (static_cast<T>(-beta) * x).exp());
+    auto temp2 = temp1 * (static_cast<T>(1) - (beta * y));
+    dx.device(d) = dy * ((beta * y) + temp2);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -677,6 +743,9 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   __macro(softshrink, SoftShrinkFunctor, SoftShrinkGradFunctor);     \
   __macro(sqrt, SqrtFunctor, SqrtGradFunctor);                       \
   __macro(abs, AbsFunctor, AbsGradFunctor);                          \
+  __macro(ceil, CeilFunctor, ZeroGradFunctor);                       \
+  __macro(floor, FloorFunctor, ZeroGradFunctor);                     \
+  __macro(round, RoundFunctor, ZeroGradFunctor);                     \
   __macro(reciprocal, ReciprocalFunctor, ReciprocalGradFunctor);     \
   __macro(log, LogFunctor, LogGradFunctor);                          \
   __macro(square, SquareFunctor, SquareGradFunctor);                 \
@@ -692,4 +761,5 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   __macro(elu, ELUFunctor, ELUGradFunctor);                          \
   __macro(hard_shrink, HardShrinkFunctor, HardShrinkGradFunctor);    \
   __macro(hard_sigmoid, HardSigmoidFunctor, HardSigmoidGradFunctor); \
+  __macro(swish, SwishFunctor, SwishGradFunctor);                    \
   __macro(thresholded_relu, ThresholdedReluFunctor, ThresholdedReluGradFunctor);

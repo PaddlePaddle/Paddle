@@ -67,8 +67,7 @@ void PoolOpGrad::InferShape(framework::InferShapeContext *ctx) const {
   ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
 }
 
-Pool2dOpMaker::Pool2dOpMaker(framework::OpProto *proto,
-                             framework::OpAttrChecker *op_checker)
+Pool2dOpMaker::Pool2dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput(
       "X",
@@ -105,7 +104,7 @@ Pool2dOpMaker::Pool2dOpMaker(framework::OpProto *proto,
   // TypedAttrChecker don't support vector type.)
   AddAttr<std::vector<int>>(
       "paddings",
-      "(vector<int>, defalut {0,0}), paddings(height, width) of pooling "
+      "(vector<int>, default {0,0}), paddings(height, width) of pooling "
       "operator."
       "If global_pooling = true, paddings and ksize will be ignored.")
       .SetDefault({0, 0});  // TODO(Chengduo): Add checker. (Currently,
@@ -122,22 +121,21 @@ Parameters(ksize, strides, paddings) are two elements.
 These two elements represent height and width, respectively.
 The input(X) size and output(Out) size may be different.
 
-Example:
+Example:   
   Input:
        X shape: $(N, C, H_{in}, W_{in})$
   Output:
        Out shape: $(N, C, H_{out}, W_{out})$
-  where 
+  Where
        $$ 
-       H_{out} = (H_{in} - ksize[0] + 2 * paddings[0]) / strides[0] + 1 \\
-       W_{out} = (W_{in} - ksize[1] + 2 * paddings[1]) / strides[1] + 1
+       H_{out} = \frac{(H_{in} - ksize[0] + 2 * paddings[0])}{strides[0]} + 1 \\
+       W_{out} = \frac{(W_{in} - ksize[1] + 2 * paddings[1])}{strides[1]} + 1
        $$
 
 )DOC");
 }
 
-Pool3dOpMaker::Pool3dOpMaker(framework::OpProto *proto,
-                             framework::OpAttrChecker *op_checker)
+Pool3dOpMaker::Pool3dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput("X",
            "(Tensor) The input tensor of pooling operator. "
@@ -177,7 +175,7 @@ Pool3dOpMaker::Pool3dOpMaker(framework::OpProto *proto,
                                // TypedAttrChecker don't support vector type.)
   AddAttr<std::vector<int>>(
       "paddings",
-      "(vector<int>, defalut {0,0,0}), paddings(depth, height, "
+      "(vector<int>, default {0,0,0}), paddings(depth, height, "
       "width) of pooling operator. "
       "If global_pooling = true, ksize and paddings will be ignored.")
       .SetDefault({0, 0, 0});  // TODO(Chengduo): Add checker. (Currently,
@@ -199,12 +197,12 @@ Example:
        X shape: $(N, C, D_{in}, H_{in}, W_{in})$
   Output:
        Out shape: $(N, C, D_{out}, H_{out}, W_{out})$
-  where
-       $$
-       D_{out} = (D_{in} - ksize[0] + 2 * paddings[0]) / strides[0] + 1 \\
-       H_{out} = (H_{in} - ksize[1] + 2 * paddings[1]) / strides[1] + 1 \\
-       W_{out} = (W_{in} - ksize[2] + 2 * paddings[2]) / strides[2] + 1
-       $$
+  Where
+  $$
+       D_{out} = \frac{(D_{in} - ksize[0] + 2 * paddings[0])}{strides[0]} + 1 \\
+       H_{out} = \frac{(H_{in} - ksize[1] + 2 * paddings[1])}{strides[1]} + 1 \\
+       W_{out} = \frac{(W_{in} - ksize[2] + 2 * paddings[2])}{strides[2]} + 1
+  $$
 
 )DOC");
 }
@@ -216,19 +214,19 @@ namespace ops = paddle::operators;
 REGISTER_OP(pool2d, ops::PoolOp, ops::Pool2dOpMaker, pool2d_grad,
             ops::PoolOpGrad);
 
-REGISTER_OP_CPU_KERNEL(pool2d,
-                       ops::PoolKernel<paddle::platform::CPUPlace, float>,
-                       ops::PoolKernel<paddle::platform::CPUPlace, double>);
-REGISTER_OP_CPU_KERNEL(pool2d_grad,
-                       ops::PoolGradKernel<paddle::platform::CPUPlace, float>,
-                       ops::PoolGradKernel<paddle::platform::CPUPlace, double>)
+REGISTER_OP_CPU_KERNEL(
+    pool2d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PoolKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    pool2d_grad, ops::PoolGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>)
 
 REGISTER_OP(pool3d, ops::PoolOp, ops::Pool3dOpMaker, pool3d_grad,
             ops::PoolOpGrad);
 
-REGISTER_OP_CPU_KERNEL(pool3d,
-                       ops::PoolKernel<paddle::platform::CPUPlace, float>,
-                       ops::PoolKernel<paddle::platform::CPUPlace, double>);
-REGISTER_OP_CPU_KERNEL(pool3d_grad,
-                       ops::PoolGradKernel<paddle::platform::CPUPlace, float>,
-                       ops::PoolGradKernel<paddle::platform::CPUPlace, double>);
+REGISTER_OP_CPU_KERNEL(
+    pool3d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PoolKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    pool3d_grad, ops::PoolGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>);

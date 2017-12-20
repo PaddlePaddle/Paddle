@@ -30,7 +30,7 @@ class DropoutOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", x_dims);
-    if (ctx->Attrs().Get<bool>("is_training") == true) {
+    if (ctx->Attrs().Get<bool>("is_test") == false) {
       ctx->SetOutputDim("Mask", x_dims);
     }
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -40,8 +40,7 @@ class DropoutOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  DropoutOpMaker(framework::OpProto* proto,
-                 framework::OpAttrChecker* op_checker)
+  DropoutOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of dropout op.");
     AddOutput("Out", "The output of dropout op.");
@@ -49,7 +48,7 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<float>("dropout_prob", "Probability of setting units to zero.")
         .SetDefault(.5f);
-    AddAttr<bool>("is_training", "True if in training phase.").SetDefault(true);
+    AddAttr<bool>("is_test", "True if in test phase.").SetDefault(false);
     AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
 
     AddComment(R"DOC(
@@ -71,8 +70,8 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("is_training"), true,
-                      "GradOp is only callable when is_training is true");
+    PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("is_test"), false,
+                      "GradOp is only callable when is_test is false");
 
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Mask"), "Mask must not be null.");
@@ -100,6 +99,8 @@ namespace ops = paddle::operators;
 REGISTER_OP(dropout, ops::DropoutOp, ops::DropoutOpMaker<float>, dropout_grad,
             ops::DropoutOpGrad<float>);
 REGISTER_OP_CPU_KERNEL(
-    dropout, ops::CPUDropoutKernel<paddle::platform::CPUPlace, float, float>);
+    dropout,
+    ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext, float, float>);
 REGISTER_OP_CPU_KERNEL(
-    dropout_grad, ops::DropoutGradKernel<paddle::platform::CPUPlace, float>);
+    dropout_grad,
+    ops::DropoutGradKernel<paddle::platform::CPUDeviceContext, float>);

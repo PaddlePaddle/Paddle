@@ -33,48 +33,28 @@ namespace framework {
 const std::string kFeedOpType = "feed";
 const std::string kFetchOpType = "fetch";
 
-Executor::Executor(const std::vector<platform::Place>& places) : own_(true) {
-  PADDLE_ENFORCE_GT(places.size(), 0);
-  device_contexts_.resize(places.size());
-  for (size_t i = 0; i < places.size(); i++) {
-    if (platform::is_cpu_place(places[i])) {
-      device_contexts_[i] = new platform::CPUDeviceContext(
-          boost::get<platform::CPUPlace>(places[i]));
-    } else if (platform::is_gpu_place(places[i])) {
-#ifdef PADDLE_WITH_CUDA
-      device_contexts_[i] = new platform::CUDADeviceContext(
-          boost::get<platform::GPUPlace>(places[i]));
-#else
-      PADDLE_THROW(
-          "'GPUPlace' is not supported, Please re-compile with WITH_GPU "
-          "option");
-#endif
-    }
-  }
+DeviceContextPool* DeviceContextPool::pool = nullptr;
+
+Executor::Executor(const std::vector<platform::Place>& places) {
+  DeviceContextPool& pool = DeviceContextPool::Get();
+  auto borrowed_contexts = pool.Borrow(places);
+  device_contexts_.swap(borrowed_contexts);
 }
 
-Executor::~Executor() {
-  if (own_) {
-    for (auto& device_context : device_contexts_) {
-      delete device_context;
-    }
-  }
-}
-
-static void CreateTensor(Variable* var, VarDesc::VarType var_type) {
-  if (var_type == VarDesc::LOD_TENSOR) {
+static void CreateTensor(Variable* var, proto::VarDesc::VarType var_type) {
+  if (var_type == proto::VarDesc::LOD_TENSOR) {
     var->GetMutable<LoDTensor>();
-  } else if (var_type == VarDesc::SELECTED_ROWS) {
+  } else if (var_type == proto::VarDesc::SELECTED_ROWS) {
     var->GetMutable<SelectedRows>();
-  } else if (var_type == VarDesc::FEED_MINIBATCH) {
+  } else if (var_type == proto::VarDesc::FEED_MINIBATCH) {
     var->GetMutable<FeedFetchList>();
-  } else if (var_type == VarDesc::FETCH_LIST) {
+  } else if (var_type == proto::VarDesc::FETCH_LIST) {
     var->GetMutable<FeedFetchList>();
-  } else if (var_type == VarDesc::STEP_SCOPES) {
+  } else if (var_type == proto::VarDesc::STEP_SCOPES) {
     var->GetMutable<std::vector<framework::Scope>>();
-  } else if (var_type == VarDesc::LOD_RANK_TABLE) {
+  } else if (var_type == proto::VarDesc::LOD_RANK_TABLE) {
     var->GetMutable<LoDRankTable>();
-  } else if (var_type == VarDesc::LOD_TENSOR_ARRAY) {
+  } else if (var_type == proto::VarDesc::LOD_TENSOR_ARRAY) {
     var->GetMutable<LoDTensorArray>();
   } else {
     PADDLE_THROW(
@@ -97,6 +77,10 @@ void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id,
   if (create_local_scope) {
     local_scope = &scope->NewScope();
     for (auto& var : block.AllVars()) {
+      if (var->Name() == framework::kEmptyVarName) {
+        continue;
+      }
+
       if (var->Persistable()) {
         auto* ptr = scope->Var(var->Name());
         CreateTensor(ptr, var->GetType());
@@ -120,16 +104,13 @@ void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id,
 
   for (auto& op_desc : block.AllOps()) {
     auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
-    VLOG(10) << op->DebugString();
+    VLOG(3) << op->DebugString();
     op->Run(*local_scope, *device);
   }
   if (create_local_scope) {
     scope->DeleteScope(local_scope);
   }
 }
-
-Executor::Executor(const platform::DeviceContext& device)
-    : device_contexts_({&device}), own_(false) {}
 
 }  // namespace framework
 }  // namespace paddle

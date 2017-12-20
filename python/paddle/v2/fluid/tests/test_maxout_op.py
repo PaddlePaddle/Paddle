@@ -30,9 +30,7 @@ class TestMaxOutOp(OpTest):
     def init_test_case(self):
         self.MaxOut_forward_naive = maxout_forward_naive
         self.shape = [100, 6, 2, 2]
-        self.groups=2
-
-
+        self.groups = 2
 
 
 if __name__ == '__main__':

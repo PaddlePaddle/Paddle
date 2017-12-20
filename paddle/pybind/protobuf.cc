@@ -144,7 +144,7 @@ void BindProgramDesc(py::module &m) {
       .def("serialize_to_string", SerializeMessage<ProgramDescBind>)
       .def("parse_from_string",
            [](ProgramDescBind &program_desc, const std::string &data) {
-             ProgramDesc *desc = program_desc.Proto();
+             proto::ProgramDesc *desc = program_desc.Proto();
              PADDLE_ENFORCE(desc->ParseFromString(data),
                             "Fail to parse ProgramDesc from string. This could "
                             "be a bug of Paddle.");
@@ -184,14 +184,14 @@ void BindBlockDesc(py::module &m) {
 }
 
 void BindVarDsec(py::module &m) {
-  py::enum_<DataType>(m, "DataType", "")
-      .value("BOOL", DataType::BOOL)
-      .value("INT16", DataType::INT16)
-      .value("INT32", DataType::INT32)
-      .value("INT64", DataType::INT64)
-      .value("FP16", DataType::FP16)
-      .value("FP32", DataType::FP32)
-      .value("FP64", DataType::FP64);
+  py::enum_<proto::DataType>(m, "DataType", "")
+      .value("BOOL", proto::DataType::BOOL)
+      .value("INT16", proto::DataType::INT16)
+      .value("INT32", proto::DataType::INT32)
+      .value("INT64", proto::DataType::INT64)
+      .value("FP16", proto::DataType::FP16)
+      .value("FP32", proto::DataType::FP32)
+      .value("FP64", proto::DataType::FP64);
 
   py::class_<VarDescBind> var_desc(m, "VarDesc", "");
   var_desc
@@ -202,9 +202,9 @@ void BindVarDsec(py::module &m) {
            },
            py::return_value_policy::reference)
       .def("set_shape", &VarDescBind::SetShape)
-      .def("set_data_type", &VarDescBind::SetDataType)
+      .def("set_dtype", &VarDescBind::SetDataType)
       .def("shape", &VarDescBind::Shape, py::return_value_policy::reference)
-      .def("data_type", &VarDescBind::GetDataType)
+      .def("dtype", &VarDescBind::GetDataType)
       .def("lod_level", &VarDescBind::GetLodLevel)
       .def("set_lod_level", &VarDescBind::SetLoDLevel)
       .def("type", &VarDescBind::GetType)
@@ -213,27 +213,27 @@ void BindVarDsec(py::module &m) {
       .def("persistable", &VarDescBind::Persistable)
       .def("set_persistable", &VarDescBind::SetPersistable);
 
-  py::enum_<VarDesc::VarType>(var_desc, "VarType", "")
-      .value("LOD_TENSOR", VarDesc::LOD_TENSOR)
-      .value("SELECTED_ROWS", VarDesc::SELECTED_ROWS)
-      .value("FEED_MINIBATCH", VarDesc::FEED_MINIBATCH)
-      .value("FETCH_LIST", VarDesc::FETCH_LIST)
-      .value("STEP_SCOPES", VarDesc::STEP_SCOPES)
-      .value("LOD_RANK_TABLE", VarDesc::LOD_RANK_TABLE)
-      .value("LOD_TENSOR_ARRAY", VarDesc::LOD_TENSOR_ARRAY);
+  py::enum_<proto::VarDesc::VarType>(var_desc, "VarType", "")
+      .value("LOD_TENSOR", proto::VarDesc::LOD_TENSOR)
+      .value("SELECTED_ROWS", proto::VarDesc::SELECTED_ROWS)
+      .value("FEED_MINIBATCH", proto::VarDesc::FEED_MINIBATCH)
+      .value("FETCH_LIST", proto::VarDesc::FETCH_LIST)
+      .value("STEP_SCOPES", proto::VarDesc::STEP_SCOPES)
+      .value("LOD_RANK_TABLE", proto::VarDesc::LOD_RANK_TABLE)
+      .value("LOD_TENSOR_ARRAY", proto::VarDesc::LOD_TENSOR_ARRAY);
 }
 
 void BindOpDesc(py::module &m) {
-  py::enum_<AttrType>(m, "AttrType", "")
-      .value("INT", AttrType::INT)
-      .value("INTS", AttrType::INTS)
-      .value("FLOAT", AttrType::FLOAT)
-      .value("FLOATS", AttrType::FLOATS)
-      .value("STRING", AttrType::STRING)
-      .value("STRINGS", AttrType::STRINGS)
-      .value("BOOL", AttrType::BOOLEAN)
-      .value("BOOLS", AttrType::BOOLEANS)
-      .value("BLOCK", AttrType::BLOCK);
+  py::enum_<proto::AttrType>(m, "AttrType", "")
+      .value("INT", proto::AttrType::INT)
+      .value("INTS", proto::AttrType::INTS)
+      .value("FLOAT", proto::AttrType::FLOAT)
+      .value("FLOATS", proto::AttrType::FLOATS)
+      .value("STRING", proto::AttrType::STRING)
+      .value("STRINGS", proto::AttrType::STRINGS)
+      .value("BOOL", proto::AttrType::BOOLEAN)
+      .value("BOOLS", proto::AttrType::BOOLEANS)
+      .value("BLOCK", proto::AttrType::BLOCK);
 
   py::class_<OpDescBind> op_desc(m, "OpDesc", "");
   op_desc.def("type", &OpDescBind::Type)

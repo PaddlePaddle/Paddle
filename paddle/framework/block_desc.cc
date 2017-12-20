@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/block_desc.h"
+#include "paddle/framework/operator.h"
 #include "paddle/framework/program_desc.h"
 
 namespace paddle {
@@ -42,6 +43,8 @@ bool BlockDescBind::HasVar(const std::string &name) const {
 }
 
 VarDescBind *BlockDescBind::FindVarRecursive(const std::string &name) const {
+  if (name == kEmptyVarName) return nullptr;
+
   auto it = vars_.find(name);
   if (it == vars_.end()) {
     return Parent() == kNoneBlockIndex ? nullptr
@@ -125,22 +128,22 @@ BlockDescBind *BlockDescBind::ParentBlock() const {
   return prog_->MutableBlock(static_cast<size_t>(this->desc_->parent_idx()));
 }
 
-BlockDesc *BlockDescBind::Proto() {
+proto::BlockDesc *BlockDescBind::Proto() {
   Flush();
   return desc_;
 }
 
-BlockDescBind::BlockDescBind(ProgramDescBind *prog, BlockDesc *desc)
+BlockDescBind::BlockDescBind(ProgramDescBind *prog, proto::BlockDesc *desc)
     : prog_(prog), desc_(desc), need_update_(false) {
-  for (const VarDesc &var_desc : desc_->vars()) {
+  for (const proto::VarDesc &var_desc : desc_->vars()) {
     vars_[var_desc.name()].reset(new VarDescBind(var_desc));
   }
-  for (const OpDesc &op_desc : desc_->ops()) {
+  for (const proto::OpDesc &op_desc : desc_->ops()) {
     ops_.emplace_back(new OpDescBind(op_desc, prog));
   }
 }
 
-BlockDescBind::BlockDescBind(const BlockDescBind &other, BlockDesc *desc,
+BlockDescBind::BlockDescBind(const BlockDescBind &other, proto::BlockDesc *desc,
                              ProgramDescBind *prog)
     : prog_(prog), desc_(desc) {
   need_update_ = true;

@@ -51,8 +51,7 @@ class LookupTableOp : public framework::OperatorWithKernel {
 
 class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LookupTableOpMaker(framework::OpProto* proto,
-                     framework::OpAttrChecker* op_checker)
+  LookupTableOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("W",
              "An input represents embedding tensors, "
@@ -117,11 +116,12 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
     if (is_sparse) {
       VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
               << " is set to SelectedRows";
-      block->Var(out_var_name)->SetType(framework::VarDesc::SELECTED_ROWS);
+      block->Var(out_var_name)
+          ->SetType(framework::proto::VarDesc::SELECTED_ROWS);
     } else {
       VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
               << " is set to LoDTensor";
-      block->Var(out_var_name)->SetType(framework::VarDesc::LOD_TENSOR);
+      block->Var(out_var_name)->SetType(framework::proto::VarDesc::LOD_TENSOR);
     }
   }
 };

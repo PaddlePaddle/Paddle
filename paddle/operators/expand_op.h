@@ -56,7 +56,7 @@ template <typename T, size_t D, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class ExpandKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -83,12 +83,13 @@ class ExpandKernel : public framework::OpKernel<T> {
     auto x = EigenTensor<T, Rank>::From(*in0);
     out0->mutable_data<T>(context.GetPlace());
     auto y = EigenTensor<T, Rank>::From(*out0);
-    auto place = context.GetEigenDevice<Place>();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
     y.device(place) = x.broadcast(bcast_dims);
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class ExpandGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -125,7 +126,8 @@ class ExpandGradKernel : public framework::OpKernel<T> {
       auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
       auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
       out0->mutable_data<T>(context.GetPlace());
-      out0->CopyFrom(*in0, context.GetPlace(), context.device_context());
+      framework::CopyFrom(*in0, context.GetPlace(), context.device_context(),
+                          out0);
     } else {
       switch (dims) {
         REP_EXPAND_GRAD_TEMPLATE(72)
@@ -163,7 +165,8 @@ class ExpandGradKernel : public framework::OpKernel<T> {
       reduce_dims[i] = reduce_dims_vec[i];
     }
     auto out_grad = EigenVector<T>::Flatten(*in0);
-    x_grad.device(context.GetEigenDevice<Place>()) =
+    x_grad.device(
+        *context.template device_context<DeviceContext>().eigen_device()) =
         out_grad.reshape(reshape_dims).sum(reduce_dims).reshape(x.dimensions());
   }
 };

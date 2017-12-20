@@ -65,8 +65,7 @@ class BilinearTensorProductOp : public framework::OperatorWithKernel {
 
 class BilinearTensorProductOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BilinearTensorProductOpMaker(framework::OpProto* proto,
-                               framework::OpAttrChecker* op_checker)
+  BilinearTensorProductOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of bilinear_tensor_product operator.");
     AddInput("Y", "The second input of bilinear_tensor_product operator.");
@@ -77,11 +76,19 @@ class BilinearTensorProductOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The output of bilinear_tensor_product operator.");
     AddComment(R"DOC(
 Bilinear Tensor Product operator.
-Given input X and Y, a 3D tensor weight, and bias. Each column of the
-output is computed by one slice i = 1, . . . , k of the tensor:
+Given input X and Y, a 3D tensor Weight and a Bias. Each column of the
+Output is computed by one slice $i = 1, . . . , k$ of the tensor:
 
-    M =  (X W_i) \cdot Y
-    Out_i = \sum_i {M_i} + Bias_i
+$$
+M =  (X W_i) * Y \\
+Out_i = \sum_j {M_j} + Bias_i
+$$
+
+Where $W_i$ is the $i$-th slice of Input(Weight);
+      $M_j$ is the $j$-th column of $M$;
+      $Out_i$ is the $i$-th column of Output(Out);
+      $Bias_i$ is a column vector, each element of it is equal to
+        the $i$-th element of $Bias$;
 
 )DOC");
   }
@@ -151,9 +158,12 @@ REGISTER_OP(bilinear_tensor_product, ops::BilinearTensorProductOp,
             ops::BilinearTensorProductOpGrad);
 REGISTER_OP_CPU_KERNEL(
     bilinear_tensor_product,
-    ops::BilinearTensorProductKernel<paddle::platform::CPUPlace, float>,
-    ops::BilinearTensorProductKernel<paddle::platform::CPUPlace, double>);
+    ops::BilinearTensorProductKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::BilinearTensorProductKernel<paddle::platform::CPUDeviceContext,
+                                     double>);
 REGISTER_OP_CPU_KERNEL(
     bilinear_tensor_product_grad,
-    ops::BilinearTensorProductGradKernel<paddle::platform::CPUPlace, float>,
-    ops::BilinearTensorProductGradKernel<paddle::platform::CPUPlace, double>);
+    ops::BilinearTensorProductGradKernel<paddle::platform::CPUDeviceContext,
+                                         float>,
+    ops::BilinearTensorProductGradKernel<paddle::platform::CPUDeviceContext,
+                                         double>);
