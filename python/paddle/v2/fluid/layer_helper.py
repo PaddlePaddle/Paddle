@@ -2,7 +2,7 @@ import copy
 import itertools
 
 from framework import Variable, Parameter, default_main_program, default_startup_program, \
-    unique_name, dtype_is_floating, KERNEL_HINT_KEY, NON_KENLEL_HINT
+    unique_name, dtype_is_floating
 from paddle.v2.fluid.initializer import Constant, Xavier
 from param_attr import ParamAttr
 
