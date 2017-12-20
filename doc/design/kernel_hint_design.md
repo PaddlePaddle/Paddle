@@ -36,11 +36,11 @@ const std::string kUseCUDNN = "use_cudnn";
 const std::string kUseMKLDNN = "use_mkldnn";
 
 KernelType GetExpectedKernelType() {
-	if (Attr<bool>(kForceCPU)) {
-		return KernelType(CPUPlace, ...)
-	} else {
-		...
-	}
+  if (Attr<bool>(kForceCPU)) {
+    return KernelType(CPUPlace, ...)
+  } else {
+    ...
+  }
 }
 ```
 
@@ -50,8 +50,8 @@ In Python code
 FORCE_CPU = core.kForceCPU()
 
 def xx_layer(..., force_cpu=false):
-	layer_helper = LayerHelper(...)
-	layer_helper.append_op(
-		type="xx",
-		attr={FORCE_CPU: force_cpu})
+  layer_helper = LayerHelper(...)
+  layer_helper.append_op(
+    type="xx",
+    attr={FORCE_CPU: force_cpu})
 ```
