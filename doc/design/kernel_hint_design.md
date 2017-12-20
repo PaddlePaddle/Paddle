@@ -19,11 +19,13 @@ so, we should send the information user defined in proto to `GetExpectedKernelTy
 The problem is, how should we define and send the information for `GetExpectedKernelType` to use?
 
 ## Solution
+
+### potential choice
 1, Do nothing, let the user add the information they want to operator‘s attribute and get them inside `GetExpectedKernelType`, this can work right. But there is a little problem that users may define many kinds of hints for the same purpose, such as `force_cpu`, `use_cpu`, `CPU` for CPU kernel, and `use_cudnn`, `force_cudnn`, `cudnn_kernel` for use of CUDNN kernel.
 
 2, Pre-define all the needed option and use a single attr key such as `kernel_hint` for the user, this is not so flexible if the user wants to define some more kind of hint.
 
-
+### final choice
 To provide enough flexibility while avoiding confusion definition, we can predefine some options, such as `force_cpu`, `use_cudnn`, `use_mkldnn` for a user to choose.
 
 ```cpp
