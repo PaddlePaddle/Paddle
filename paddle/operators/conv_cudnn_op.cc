@@ -19,8 +19,7 @@ namespace operators {
 
 class CudnnConv2DOpMaker : public Conv2DOpMaker {
  public:
-  CudnnConv2DOpMaker(framework::OpProto* proto,
-                     framework::OpAttrChecker* op_checker)
+  CudnnConv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : Conv2DOpMaker(proto, op_checker) {
     AddAttr<int>("workspace_size_MB",
                  "workspace size for cudnn, in MB, "
@@ -34,8 +33,7 @@ class CudnnConv2DOpMaker : public Conv2DOpMaker {
 
 class CudnnConv3DOpMaker : public Conv3DOpMaker {
  public:
-  CudnnConv3DOpMaker(framework::OpProto* proto,
-                     framework::OpAttrChecker* op_checker)
+  CudnnConv3DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : Conv3DOpMaker(proto, op_checker) {
     AddAttr<int>("workspace_size_MB",
                  "workspace size for cudnn, in MB, "

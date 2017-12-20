@@ -52,7 +52,7 @@ class CropOp : public framework::OperatorWithKernel {
 
 class CropOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CropOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  CropOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "The input of pad op. "

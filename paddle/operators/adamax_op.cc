@@ -67,7 +67,7 @@ class AdamaxOp : public framework::OperatorWithKernel {
 
 class AdamaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AdamaxOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  AdamaxOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param", "(Tensor) Input parameter");
     AddInput("Grad", "(Tensor) Input gradient");

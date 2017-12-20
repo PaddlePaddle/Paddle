@@ -312,3 +312,9 @@ sequence_softmax
 ..  autofunction:: paddle.v2.fluid.layers.sequence_softmax
     :noindex:
 
+
+reduce_sum
+---------
+..  autofunction:: paddle.v2.fluid.layers.reduce_sum
+    :noindex:
+

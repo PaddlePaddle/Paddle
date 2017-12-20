@@ -102,7 +102,7 @@ class LSTMOp : public framework::OperatorWithKernel {
 
 class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LSTMOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  LSTMOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Input",
              "(LoDTensor) the first input is a LodTensor, which support "
