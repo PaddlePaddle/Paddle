@@ -27,7 +27,7 @@ class ArrayOp : public framework::OperatorBase {
 
  protected:
   size_t GetOffset(const framework::Scope &scope,
-                   const platform::DeviceContext &dev_ctx) const {
+                   const platform::Place &place) const {
     auto *i = scope.FindVar(Input("I"));
     PADDLE_ENFORCE(i != nullptr, "I must be set");
     auto &i_tensor = i->Get<framework::LoDTensor>();

@@ -193,12 +193,11 @@ void CondOp::MergeDataFromSubnet(const framework::Scope& scope,
   }
 }
 
-void CondOp::Run(const Scope& scope,
-                 const platform::DeviceContext& dev_ctx) const {
+void CondOp::Run(const Scope& scope, const platform::Place& place) const {
   PrepareDataForSubnet(scope, dev_ctx);
   std::vector<framework::Scope*>& sub_scopes = GetSubScopes(scope);
   for (int i = 0; i < BRANCH_NUM; ++i) {
-    sub_net_op_[i]->Run(*sub_scopes[i], dev_ctx);
+    sub_net_op_[i]->Run(*sub_scopes[i], place);
   }
   MergeDataFromSubnet(scope, dev_ctx);
 }

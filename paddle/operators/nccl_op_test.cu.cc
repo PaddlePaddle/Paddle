@@ -49,7 +49,7 @@ const f::DDim kDims = {100, 100};
 class NCCLTester : public ::testing::Test {
  public:
   virtual void SetUp() override {
-    cpu_ctx = new p::CPUDeviceContext(p::CPUPlace());
+    paddle::platform::CPUPlace cpu_place;
     for (size_t i = 0; i < gpu_list.size(); ++i) {
       p::GPUPlace place(i);
       dev_ctxs.emplace_back(new p::CUDADeviceContext(place));
@@ -66,6 +66,7 @@ class NCCLTester : public ::testing::Test {
 
   void NCCLInitOp() {
     std::unique_ptr<f::OpDescBind> op1(new f::OpDescBind);
+    paddle::platform::CPUPlace cpu_place;
 
     op1->SetType("ncclInit");
     op1->SetOutput("Communicator", {"comm"});
@@ -76,7 +77,7 @@ class NCCLTester : public ::testing::Test {
 
     auto op = f::OpRegistry::CreateOp(*op1);
     VLOG(1) << "invoke NCCLInitOp.";
-    op->Run(g_scope, *cpu_ctx);
+    op->Run(g_scope, cpu_place);
     VLOG(1) << "NCCLInitOp finished.";
   }
 
@@ -112,13 +113,12 @@ class NCCLTester : public ::testing::Test {
     VLOG(1) << "Device : " << gpu_id << " invoke " << op_desc.Type();
     VLOG(1) << " send_tensor : " << send_tensor->numel()
             << " recv_tensor : " << recv_tensor->numel();
-    op->Run(*scope, *ctx);
+    op->Run(*scope, place);
     VLOG(1) << "Device : " << gpu_id << " finished " << op_desc.Type();
   }
 
  public:
   std::vector<p::DeviceContext *> dev_ctxs;
-  p::DeviceContext *cpu_ctx;
   f::Scope g_scope;
   std::mutex mu;
 };
@@ -132,14 +132,14 @@ TEST(NCCL, ncclInitOp) {
   op_desc->SetAttr("gpus", {gpu_list});
 
   f::Scope g_scope;
-  std::unique_ptr<p::DeviceContext> ctx(new p::CPUDeviceContext(p::CPUPlace()));
+  paddle::platform::CPUPlace cpu_place;
 
   auto *var = g_scope.Var("x1");
   var->GetMutable<p::Communicator>();
 
   auto op = f::OpRegistry::CreateOp(*op_desc);
   VLOG(1) << "invoke NCCLInitOp.";
-  op->Run(g_scope, *ctx.get());
+  op->Run(g_scope, cpu_place);
   VLOG(1) << "NCCLInitOp finished.";
 }
 
