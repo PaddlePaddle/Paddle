@@ -58,8 +58,7 @@ class GetPlacesOp : public framework::OperatorBase {
 
 class GetPlacesOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  GetPlacesOpProtoMaker(framework::OpProto *proto,
-                        framework::OpAttrChecker *op_checker)
+  GetPlacesOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddOutput("Out", "vector of Place");
     AddAttr<int>("device_count", "(int)device count").SetDefault(1);
