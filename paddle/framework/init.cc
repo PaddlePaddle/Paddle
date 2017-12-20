@@ -48,7 +48,7 @@ bool InitDevices(const std::vector<std::string> &devices) {
   std::vector<platform::Place> places;
   for (auto &device : devices) {
     auto p = string::Piece(device);
-    if (string::Find(p, ':', 0) == string::Piece::npos) {
+    if (string::HasPrefix(p, "CPU")) {
       places.emplace_back(platform::CPUPlace());
     } else if (string::HasPrefix(p, "GPU")) {
 #ifdef PADDLE_WITH_CUDA
@@ -69,7 +69,7 @@ bool InitDevices(const std::vector<std::string> &devices) {
                      return platform::is_cpu_place(place);
                    }) == places.end()) {
     places.emplace_back(platform::CPUPlace());
-    LOG(WARNING) << "Not specified any device, use CPU by Default.";
+    LOG(WARNING) << "Not specified CPU device, create CPU by Default.";
   }
   platform::DeviceContextPool::Create(places);
   return true;

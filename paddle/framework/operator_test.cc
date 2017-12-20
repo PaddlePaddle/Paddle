@@ -11,11 +11,12 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#include "paddle/framework/operator.h"
 #include "gtest/gtest.h"
+
+#include "paddle/framework/init.h"
 #include "paddle/framework/op_info.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/framework/operator.h"
 
 namespace paddle {
 namespace framework {
@@ -40,10 +41,9 @@ class OpWithoutKernelTest : public OperatorBase {
   int x{0};
 };
 
-class OpeWithoutKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
+class OpWithoutKernelCheckerMaker : public OpProtoAndCheckerMaker {
  public:
-  OpeWithoutKernelTestProtoAndCheckerMaker(OpProto* proto,
-                                           OpAttrChecker* op_checker)
+  OpWithoutKernelCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("input", "input of test op");
     AddOutput("output", "output of test op");
@@ -64,11 +64,12 @@ static void BuildVar(const std::string& param_name,
   }
 }
 
-REGISTER_OP_WITHOUT_GRADIENT(
-    test_operator, paddle::framework::OpWithoutKernelTest,
-    paddle::framework::OpeWithoutKernelTestProtoAndCheckerMaker);
+REGISTER_OP_WITHOUT_GRADIENT(test_operator,
+                             paddle::framework::OpWithoutKernelTest,
+                             paddle::framework::OpWithoutKernelCheckerMaker);
 
 TEST(OperatorBase, all) {
+  paddle::framework::InitDevices({"CPU"});
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("test_operator");
   BuildVar("input", {"IN1"}, op_desc.add_inputs());
@@ -79,7 +80,6 @@ TEST(OperatorBase, all) {
   attr->set_type(paddle::framework::AttrType::FLOAT);
   attr->set_f(3.14);
 
-  // paddle::platform::CPUDeviceContext device_context;
   paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
@@ -123,7 +123,6 @@ template <typename T1, typename T2>
 class CPUKernelTest : public OpKernel<float> {
  public:
   void Compute(const ExecutionContext& ctx) const {
-    std::cout << "this is cpu kernel" << std::endl;
     std::cout << ctx.op().DebugString() << std::endl;
     cpu_kernel_run_num++;
     ASSERT_EQ(ctx.op().Input("x"), "IN1");
@@ -195,6 +194,7 @@ REGISTER_OP_CPU_KERNEL(op_with_kernel,
 
 // test with single input
 TEST(OpKernel, all) {
+  paddle::framework::InitDevices({"CPU"});
   paddle::framework::OpDesc op_desc;
   op_desc.set_type("op_with_kernel");
   BuildVar("x", {"IN1"}, op_desc.add_inputs());
@@ -205,7 +205,6 @@ TEST(OpKernel, all) {
   attr->set_type(paddle::framework::AttrType::FLOAT);
   attr->set_f(3.14);
 
-  // paddle::platform::CPUDeviceContext cpu_device_context;
   paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
@@ -225,6 +224,7 @@ REGISTER_OP_CPU_KERNEL(op_multi_inputs_with_kernel,
 TEST(OpKernel, multi_inputs) {
   using namespace paddle::framework;
 
+  paddle::framework::InitDevices({"CPU"});
   OpDesc op_desc;
   op_desc.set_type("op_multi_inputs_with_kernel");
   BuildVar("xs", {"x0", "x1", "x2"}, op_desc.add_inputs());
@@ -236,7 +236,6 @@ TEST(OpKernel, multi_inputs) {
   attr->set_type(paddle::framework::AttrType::FLOAT);
   attr->set_f(3.14);
 
-  // paddle::platform::CPUDeviceContext cpu_device_context;
   paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
   scope.Var("x0")->GetMutable<LoDTensor>();
@@ -263,6 +262,7 @@ class OperatorClone : public paddle::framework::OperatorBase {
 };
 
 TEST(Operator, Clone) {
+  paddle::framework::InitDevices({"CPU"});
   OperatorClone a("ABC", paddle::framework::VariableNameMap{},
                   paddle::framework::VariableNameMap{},
                   paddle::framework::AttributeMap{});
