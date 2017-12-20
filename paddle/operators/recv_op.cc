@@ -160,10 +160,12 @@ This operator will recv tensor from send_op
                          "Serialized ProgramDesc string for recv to run.");
     AddAttr<std::vector<std::string>>(
         "ParamList", "type list of string",
-        "grad->param name mapping to find which param to optimize.");
+        "grad->param name mapping to find which param to optimize.")
+        .SetDefault({});
     AddAttr<std::vector<std::string>>(
         "GradList", "type list of string",
-        "grad->param name mapping to find which param to optimize.");
+        "grad->param name mapping to find which param to optimize.")
+        .SetDefault({});
     AddAttr<int>("Trainers", "type int",
                  "Number of trainers in the current cluster job")
         .SetDefault(1);
