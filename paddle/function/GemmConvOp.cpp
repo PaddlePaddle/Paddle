@@ -73,18 +73,38 @@ public:
 
     TensorShape colShape;
     real* colData = NULL;
+    size_t im2colGroupNum = 1;
 
+    size_t colHeight = inputChannels / groups_ * filterHeight * filterWidth;
     if (needIm2col) {
       colShape = TensorShape({inputChannels / groups_,
                               filterHeight,
                               filterWidth,
                               outputHeight,
                               outputWidth});
-      resizeBuffer<Device>(colShape.getElements());
+      size_t workspaceSize = colShape.getElements() * sizeof(real);
+      size_t memoryLimitBytes = (1LL << 20) * FLAGS_conv_workspace_limit_in_mb;
+
+      if (workspaceSize > memoryLimitBytes && Device == DEVICE_TYPE_CPU) {
+        size_t groupNum = std::ceil(workspaceSize / memoryLimitBytes);
+        size_t perGroup = std::ceil(colHeight / groupNum);
+        CHECK_LT(perGroup, 1UL)
+            << "The conv_workspace_limit_in_mb must large than "
+            << workspaceSize / colHeight;
+        size_t memSize = perGroup * outputHeight * outputWidth;
+        resizeBuffer<Device>(memSize);
+        im2colGroupNum = groupNum;
+      } else {
+        resizeBuffer<Device>(colShape.getElements());
+      }
       colData = reinterpret_cast<real*>(memory_->getBuf());
     }
 
+#ifdef PADDLE_MOBILE_INFERENCE
+    GroupedIm2ColFunctor<kCFO, Device, real> groupedIm2col;
+#else
     Im2ColFunctor<kCFO, Device, real> im2col;
+#endif
     size_t inputOffset = imShape.getElements();
     size_t outputOffset =
         (outputChannels / groups_) * outputHeight * outputWidth;
@@ -92,36 +112,59 @@ public:
 
     for (size_t i = 0; i < batchSize; i++) {
       for (size_t g = 0; g < groups_; g++) {
-        if (needIm2col) {
-          im2col(inputData + g * inputOffset,
-                 imShape,
-                 colData,
-                 colShape,
-                 strideH(),
-                 strideW(),
-                 paddingH(),
-                 paddingW(),
-                 dilationH(),
-                 dilationW());
-        } else {
-          colData = inputData + g * inputOffset;
+        for (size_t k = 0; k < im2colGroupNum; ++k) {
+          int32_t start = colHeight * k / im2colGroupNum;
+          int32_t end = colHeight * (k + 1) / im2colGroupNum;
+          if (needIm2col) {
+#ifdef PADDLE_MOBILE_INFERENCE
+            groupedIm2col(inputData + g * inputOffset,
+                          imShape,
+                          colData + start * outputHeight * outputWidth,
+                          start,
+                          end,
+                          filterHeight,
+                          filterWidth,
+                          outputHeight,
+                          outputWidth,
+                          strideH(),
+                          strideW(),
+                          paddingH(),
+                          paddingW(),
+                          dilationH(),
+                          dilationW());
+#else
+            im2col(inputData + g * inputOffset,
+                   imShape,
+                   colData,
+                   colShape,
+                   strideH(),
+                   strideW(),
+                   paddingH(),
+                   paddingW(),
+                   dilationH(),
+                   dilationW());
+#endif
+          } else {
+            colData = inputData + g * inputOffset;
+          }
+          int M = outputChannels / groups_;
+          int N = outputHeight * outputWidth;
+          int K = end - start;
+          int kStride = inputChannels / groups_ * filterHeight * filterWidth;
+          BlasGemm<Device, real>::compute(false,
+                                          false,
+                                          M,
+                                          N,
+                                          K,
+                                          1.0f,
+                                          filterData + g * filterOffset,
+                                          kStride,
+                                          colData,
+                                          N,
+                                          beta,
+                                          outputData + g * outputOffset,
+                                          N);
         }
-        int M = outputChannels / groups_;
-        int N = outputHeight * outputWidth;
-        int K = inputChannels / groups_ * filterHeight * filterWidth;
-        BlasGemm<Device, real>::compute(false,
-                                        false,
-                                        M,
-                                        N,
-                                        K,
-                                        1.0f,
-                                        filterData + g * filterOffset,
-                                        K,
-                                        colData,
-                                        N,
-                                        beta,
-                                        outputData + g * outputOffset,
-                                        N);
       }
       inputData += inputChannels * inputHeight * inputWidth;
       outputData += outputChannels * outputHeight * outputWidth;

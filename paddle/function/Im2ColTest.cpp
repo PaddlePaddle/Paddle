@@ -130,7 +130,75 @@ void TestIm2ColFunctor() {
   }
 }
 
+template <DeviceType Device, class T>
+void TestGroupedIm2ColFunctor() {
+  size_t channels = 5;
+  size_t inputHeight = 33;
+  size_t inputWidth = 32;
+  size_t filterHeight = 3;
+  size_t filterWidth = 3;
+  size_t stride = 1;
+  size_t padding = 1;
+  size_t dilation = 1;
+  size_t filterSizeH = (filterHeight - 1) * dilation + 1;
+  size_t filterSizeW = (filterWidth - 1) * dilation + 1;
+
+  size_t outputHeight = (inputHeight - filterSizeH + 2 * padding) / stride + 1;
+  size_t outputWidth = (inputWidth - filterSizeW + 2 * padding) / stride + 1;
+
+  TensorShape imShape = TensorShape({channels, inputHeight, inputWidth});
+  TensorShape colShape = TensorShape(
+      {channels, filterHeight, filterWidth, outputHeight, outputWidth});
+
+  size_t height = channels * filterHeight * filterWidth;
+  size_t width = outputHeight * outputWidth;
+  VectorPtr input1 = Vector::create(imShape.getElements(), false);
+  MatrixPtr output1 = Matrix::create(height, width, false, false);
+  input1->uniform(0.001, 1);
+
+  MatrixPtr output2 = Matrix::create(height, width, false, false);
+
+  Im2ColFunctor<kCFO, Device, T> im2Col;
+  im2Col(input1->getData(),
+         imShape,
+         output1->getData(),
+         colShape,
+         stride,
+         stride,
+         padding,
+         padding,
+         dilation,
+         dilation);
+
+  size_t im2colGroupNum = 6;
+  GroupedIm2ColFunctor<kCFO, Device, T> subIm2Col;
+  real* colData = output2->getData();
+  for (size_t k = 0; k < im2colGroupNum; ++k) {
+    int32_t start = height * k / im2colGroupNum;
+    int32_t end = height * (k + 1) / im2colGroupNum;
+    subIm2Col(input1->getData(),
+              imShape,
+              colData + start * width,
+              start,
+              end,
+              filterHeight,
+              filterWidth,
+              outputHeight,
+              outputWidth,
+              stride,
+              stride,
+              padding,
+              padding,
+              dilation,
+              dilation);
+  }
+  autotest::TensorCheckEqual(*output1, *output2);
+}
+
 TEST(Im2ColFunctor, CPU) { TestIm2ColFunctor<DEVICE_TYPE_CPU, float>(); }
+TEST(GroupedIm2ColFunctor, CPU) {
+  TestGroupedIm2ColFunctor<DEVICE_TYPE_CPU, float>();
+}
 
 #ifdef PADDLE_WITH_CUDA
 

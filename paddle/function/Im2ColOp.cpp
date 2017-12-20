@@ -68,6 +68,53 @@ public:
   }
 };
 
+template <class T>
+class GroupedIm2ColFunctor<kCFO, DEVICE_TYPE_CPU, T> {
+public:
+  void operator()(const T* imData,
+                  const TensorShape& imShape,
+                  T* colData,
+                  int colStart,
+                  int colEnd,
+                  int filterHeight,
+                  int filterWidth,
+                  int outputHeight,
+                  int outputWidth,
+                  int strideHeight,
+                  int strideWidth,
+                  int paddingHeight,
+                  int paddingWidth,
+                  int dilationHeight,
+                  int dilationWidth) {
+    int inputHeight = imShape[1];
+    int inputWidth = imShape[2];
+
+    for (int c = colStart; c < colEnd; ++c) {
+      int wOffset = c % filterWidth;
+      int hOffset = (c / filterWidth) % filterHeight;
+      int c_im = c / filterWidth / filterHeight;
+      for (int h = 0; h < outputHeight; ++h) {
+        for (int w = 0; w < outputWidth; ++w) {
+          int imRowIdx = h * strideHeight + hOffset * dilationHeight;
+          int imColIdx = w * strideWidth + wOffset * dilationWidth;
+          if ((imRowIdx - paddingHeight) < 0 ||
+              (imRowIdx - paddingHeight) >= inputHeight ||
+              (imColIdx - paddingWidth) < 0 ||
+              (imColIdx - paddingWidth) >= inputWidth) {
+            colData[((c - colStart) * outputHeight + h) * outputWidth + w] =
+                T(0);
+          } else {
+            imRowIdx += c_im * inputHeight - paddingHeight;
+            imColIdx -= paddingWidth;
+            colData[((c - colStart) * outputHeight + h) * outputWidth + w] =
+                imData[imRowIdx * inputWidth + imColIdx];
+          }
+        }
+      }
+    }
+  }
+};
+
 /*
  * imShape = [inputChannels, inputHeight, inputWidth]
  * colShape =
@@ -122,6 +169,8 @@ template class Im2ColFunctor<kCFO, DEVICE_TYPE_CPU, float>;
 template class Im2ColFunctor<kCFO, DEVICE_TYPE_CPU, double>;
 template class Col2ImFunctor<kCFO, DEVICE_TYPE_CPU, float>;
 template class Col2ImFunctor<kCFO, DEVICE_TYPE_CPU, double>;
+
+template class GroupedIm2ColFunctor<kCFO, DEVICE_TYPE_CPU, float>;
 
 /*
  * imShape = [inputChannels, inputHeight, inputWidth]

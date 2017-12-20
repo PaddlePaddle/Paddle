@@ -84,6 +84,26 @@ public:
 };
 
 template <ColFormat Format, DeviceType Device, class T>
+class GroupedIm2ColFunctor {
+public:
+  void operator()(const T* imData,
+                  const TensorShape& imShape,
+                  T* colData,
+                  int colStart,
+                  int colEnd,
+                  int filterHeight,
+                  int filterWidth,
+                  int outputHeight,
+                  int outputWidth,
+                  int strideHeight,
+                  int strideWidth,
+                  int paddingHeight,
+                  int paddingWidth,
+                  int dilationHeight,
+                  int dilationWidth);
+};
+
+template <ColFormat Format, DeviceType Device, class T>
 class Col2ImFunctor {
 public:
   void operator()(T* imData,
