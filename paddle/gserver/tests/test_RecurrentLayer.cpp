@@ -551,6 +551,8 @@ TEST(MKLPackedLayer, RecurrentLayer) {
   layerConfig2.set_type("mkl_packed_recurrent");
   layerConfig2.set_active_type("relu");
 
+  FLAGS_use_gpu = false;
+
   for (auto layerSize : {32, 64, 128, 256, 512}) {
     for (auto batchSize : {1, 5, 100, 500}) {
       for (auto reversed : {true, false}) {
