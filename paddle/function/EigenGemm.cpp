@@ -72,7 +72,7 @@ struct EigenBlasGemm {
     dims[0].first = transA ? 0 : 1;
     dims[0].second = transB ? 1 : 0;
 
-#if defined(__ANDROID__) || defined(__OSX__)
+#ifdef EIGEN_USE_THREADS
     const Eigen::ThreadPoolDevice& device = GetThreadPoolDevice();
 #else
     const Eigen::DefaultDevice device;

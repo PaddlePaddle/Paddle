@@ -15,16 +15,11 @@
 #pragma once
 
 #include "unsupported/Eigen/CXX11/Tensor"
-
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
 namespace paddle {
-
-int GetAndroidCpuCount();
-
-int GetOSXCpuCount();
 
 int GetCpuCount();
 

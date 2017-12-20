@@ -12,18 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef _OPENMP
-#include <omp.h>
-#else
-#include "paddle/function/EigenDevice.h"
-#endif
-
 #include <fenv.h>
 #include <stdlib.h>
 #include <string.h>
 #include <vector>
+
 #include "capi_private.h"
 #include "main.h"
+#include "paddle/function/EigenDevice.h"
 #include "paddle/trainer/TrainerConfigHelper.h"
 #include "paddle/utils/Excepts.h"
 #include "paddle/utils/PythonUtil.h"
@@ -47,17 +43,6 @@ paddle_error paddle_init(int argc, char** argv) {
   initPaddle(argc + 1, realArgv.data());
   free(realArgv[0]);
   isInit = true;
-  return kPD_NO_ERROR;
-}
-
-paddle_error paddle_set_num_threads(int n) {
-  paddle::ThreadsNumManager::Set(n);
-  return kPD_NO_ERROR;
-}
-
-paddle_error paddle_get_num_threads(int* n) {
-  if (n == nullptr) return kPD_NULLPTR;
-  *n = paddle::ThreadsNumManager::Get();
   return kPD_NO_ERROR;
 }
 
