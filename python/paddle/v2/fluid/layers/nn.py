@@ -55,24 +55,27 @@ def fc(input,
        act: Activation to be applied to the output of the fully connected layer.
        name: Name/alias of the fully connected layer.
 
-    The fully connected can take multiple tensor as inputs. It creates a
-    variable (one for each input tensor) called weights which represents a
-    fully connected weight matrix from each input unit to each output unit.
-    The fully connected layer multiplies each input tensor with its coresponding
-    weight to produce an output Tensor. If multiple input tensors are given,
-    the results of multiple multiplications will be sumed up. If bias_attr is
-    not None, a biases variable will be created and added to the output.
-    Finally, if activation is not None, it will be applied to the output as well.
+    The fully connected layer can take multiple tensors as its inputs. It
+    creates a variable (one for each input tensor) called weights for each input
+    tensor, which represents a fully connected weight matrix from each input
+    unit to each output unit. The fully connected layer multiplies each input
+    tensor with its coresponding weight to produce an output Tensor. If
+    multiple input tensors are given, the results of multiple multiplications
+    will be sumed up. If bias_attr is not None, a biases variable will be
+    created and added to the output. Finally, if activation is not None,
+    it will be applied to the output as well.
 
-    This process canbe formulated as follows:
+    This process can be formulated as follows:
 
     .. math::
         Y = \sigma({\sum_{i=0}^{N-1}W_iX_i + b})
 
     where, :math:`N` is the number of input, :math:`X_i` is the input tensor,
-    :math`W` is the weights created by this layer, :math:`b` is the bias.
+    :math:`W` is the weights created by this layer, :math:`b` is the bias
+    created by this layer (if needed), :math:`\sigma` is the activation funtion.
 
     """
+
     helper = LayerHelper("fc", **locals())
 
     dtype = helper.input_dtype()
