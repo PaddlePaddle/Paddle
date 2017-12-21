@@ -56,6 +56,7 @@ fi
 
 # inference benchmark
 for batchsize in 1 2 4 8 16; do
+  infer alexnet group2 $batchsize $use_mkldnn
   infer googlenet v1 $batchsize
   infer resnet 50 $batchsize
   infer vgg 19 $batchsize
