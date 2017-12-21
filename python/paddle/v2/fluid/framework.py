@@ -16,6 +16,8 @@ EMPTY_VAR_NAME = core.kEmptyVarName()
 TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
+KERNEL_HINT_KEY = core.kKernelHintKey()  # kernel_hint
+NON_KENLEL_HINT = core.kNonKernelHint()
 
 
 def grad_var_name(var_name):
@@ -432,6 +434,12 @@ class Operator(object):
                     self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
                 else:
                     self.desc.set_attr(attr_name, attrs[attr_name])
+
+        # set kernel hint in the attr
+        if isinstance(attrs, dict) and attrs.has_key(KERNEL_HINT_KEY):
+            self.desc.set_attr(KERNEL_HINT_KEY, attrs[KERNEL_HINT_KEY])
+        else:
+            self.desc.set_attr(KERNEL_HINT_KEY, NON_KENLEL_HINT)
 
         self.desc.check_attrs()
         no_kernel_op_set = {
