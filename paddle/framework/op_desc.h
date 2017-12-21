@@ -33,9 +33,9 @@ class OpDescBind {
   OpDescBind(const std::string &type, const VariableNameMap &inputs,
              const VariableNameMap &outputs, const AttributeMap &attrs);
 
-  OpDescBind(const OpDesc &desc, ProgramDescBind *prog);
+  OpDescBind(const proto::OpDesc &desc, ProgramDescBind *prog);
 
-  OpDesc *Proto();
+  proto::OpDesc *Proto();
 
   std::string Type() const { return desc_.type(); }
 
@@ -59,7 +59,7 @@ class OpDescBind {
     return attrs_.find(name) != attrs_.end();
   }
 
-  AttrType GetAttrType(const std::string &name) const;
+  proto::AttrType GetAttrType(const std::string &name) const;
 
   std::vector<std::string> AttrNames() const;
 
@@ -126,7 +126,7 @@ class OpDescBind {
     return ret_val;
   }
 
-  OpDesc desc_;
+  proto::OpDesc desc_;
   VariableNameMap inputs_;
   VariableNameMap outputs_;
   AttributeMap attrs_;

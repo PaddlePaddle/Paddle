@@ -36,9 +36,9 @@ class ProgramDescBind;
 
 class BlockDescBind {
  public:
-  BlockDescBind(ProgramDescBind *prog, BlockDesc *desc);
+  BlockDescBind(ProgramDescBind *prog, proto::BlockDesc *desc);
 
-  BlockDescBind(const BlockDescBind &other, BlockDesc *desc,
+  BlockDescBind(const BlockDescBind &other, proto::BlockDesc *desc,
                 ProgramDescBind *prog);
 
   ~BlockDescBind() {
@@ -88,7 +88,7 @@ class BlockDescBind {
 
   void Flush();
 
-  BlockDesc *Proto();
+  proto::BlockDesc *Proto();
 
   ProgramDescBind *Program() { return this->prog_; }
 
@@ -97,8 +97,8 @@ class BlockDescBind {
   void ClearPBVars();
 
  private:
-  ProgramDescBind *prog_;  // not_own
-  BlockDesc *desc_;        // not_own
+  ProgramDescBind *prog_;   // not_own
+  proto::BlockDesc *desc_;  // not_own
   bool need_update_;
 
   std::deque<std::unique_ptr<OpDescBind>> ops_;

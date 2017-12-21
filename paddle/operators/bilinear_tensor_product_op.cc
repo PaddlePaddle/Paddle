@@ -65,8 +65,7 @@ class BilinearTensorProductOp : public framework::OperatorWithKernel {
 
 class BilinearTensorProductOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BilinearTensorProductOpMaker(framework::OpProto* proto,
-                               framework::OpAttrChecker* op_checker)
+  BilinearTensorProductOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of bilinear_tensor_product operator.");
     AddInput("Y", "The second input of bilinear_tensor_product operator.");

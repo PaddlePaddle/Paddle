@@ -14,11 +14,7 @@ __all__ = [
 ]
 
 
-def split_lod_tensor(input,
-                     mask,
-                     level=0,
-                     main_program=None,
-                     startup_program=None):
+def split_lod_tensor(input, mask, level=0):
     helper = LayerHelper('split_lod_tensor', **locals())
     out_true = helper.create_tmp_variable(dtype=input.dtype)
     out_false = helper.create_tmp_variable(dtype=input.dtype)
@@ -34,13 +30,7 @@ def split_lod_tensor(input,
     return out_true, out_false
 
 
-def merge_lod_tensor(in_true,
-                     in_false,
-                     x,
-                     mask,
-                     level=0,
-                     main_program=None,
-                     startup_program=None):
+def merge_lod_tensor(in_true, in_false, x, mask, level=0):
     helper = LayerHelper('merge_lod_tensor', **locals())
     out = helper.create_tmp_variable(dtype=in_true.dtype)
     helper.append_op(
@@ -135,9 +125,8 @@ class StaticRNN(object):
     IN_RNN_BLOCK = 1
     AFTER_RNN_BLOCK = 2
 
-    def __init__(self, name=None, main_program=None):
-        self.helper = LayerHelper(
-            "static_rnn", name=name, main_program=main_program)
+    def __init__(self, name=None):
+        self.helper = LayerHelper("static_rnn", name=name)
         self.memories = {}  # memory map, from pre_mem.name --> MemoryLink
         self.inputs = []  # input variable list in current block
         self.outputs = []  # output variable list in parent block
@@ -354,8 +343,8 @@ class While(object):
     IN_WHILE_BLOCK = 1
     AFTER_WHILE_BLOCK = 2
 
-    def __init__(self, cond, name=None, main_program=None):
-        self.helper = LayerHelper("while", name=name, main_program=main_program)
+    def __init__(self, cond, name=None):
+        self.helper = LayerHelper("while", name=name)
         self.status = While.BEFORE_WHILE_BLOCK
         if not isinstance(cond, Variable):
             raise TypeError("condition should be a variable")
@@ -406,7 +395,7 @@ class While(object):
             attrs={'sub_block': while_block})
 
 
-def lod_rank_table(x, level=0, main_program=None):
+def lod_rank_table(x, level=0):
     """
     This function creates an operator for creating a LOD_RANK_TABLE
     using the input x.
@@ -423,7 +412,7 @@ def lod_rank_table(x, level=0, main_program=None):
     return table
 
 
-def max_sequence_len(rank_table, main_program=None):
+def max_sequence_len(rank_table):
     """
     This function creates an operator to calculate the length of
     max seqence through input rank_table(should be a lod_rank_table)
@@ -437,7 +426,7 @@ def max_sequence_len(rank_table, main_program=None):
     return res
 
 
-def topk(input, k, main_program=None, startup_program=None):
+def topk(input, k):
     helper = LayerHelper('topk', **locals())
     topk_out = helper.create_tmp_variable(dtype=input.data_type)
     topk_indices = helper.create_tmp_variable(dtype='int64')
@@ -450,7 +439,7 @@ def topk(input, k, main_program=None, startup_program=None):
     return topk_out, topk_indices
 
 
-def lod_tensor_to_array(x, table, main_program=None):
+def lod_tensor_to_array(x, table):
     """
     This function creates an operator to convert an LOD_Tensor to
     an array.
@@ -468,7 +457,7 @@ def lod_tensor_to_array(x, table, main_program=None):
     return array
 
 
-def array_to_lod_tensor(x, table, main_program=None, startup_program=None):
+def array_to_lod_tensor(x, table):
     """
     This function creates an operator to convert an array to a
     LOD_Tensor.
@@ -483,11 +472,7 @@ def array_to_lod_tensor(x, table, main_program=None, startup_program=None):
     return tmp
 
 
-def increment(x,
-              value=1.0,
-              in_place=True,
-              main_program=None,
-              startup_program=None):
+def increment(x, value=1.0, in_place=True):
     """
     This function creates an operator to increment each value in the input
     `x` by an amount: `value` as mentioned in the input parameter. This
@@ -506,7 +491,7 @@ def increment(x,
     return out
 
 
-def array_write(x, i, array=None, main_program=None, startup_program=None):
+def array_write(x, i, array=None):
     """
     This function creates an operator to write the data out as a
     LOD_TENSOR_ARRAY.
@@ -525,7 +510,7 @@ def array_write(x, i, array=None, main_program=None, startup_program=None):
     return array
 
 
-def create_array(dtype, main_program=None):
+def create_array(dtype):
     helper = LayerHelper("array", **locals())
     return helper.create_variable(
         name="{0}.out".format(helper.name),
@@ -533,7 +518,25 @@ def create_array(dtype, main_program=None):
         dtype=dtype)
 
 
-def less_than(x, y, cond=None, main_program=None, **ignored):
+def less_than(x, y, cond=None, **ignored):
+    """
+    **Less than**
+
+    This layer returns the truth value of :math:`x < y` elementwise.
+
+    Args:
+        x(Variable): First operand of *less_than*
+        y(Variable): Second operand of *less_than*
+        cond(Variable|None): Optional output variable to store the result of *less_than*
+
+    Returns:
+        Variable: The tensor variable storing the output of *less_than*.
+
+    Examples:
+        .. code-block:: python
+
+          less = fluid.layers.less_than(x=label, y=limit)
+    """
     helper = LayerHelper("less_than", **locals())
     if cond is None:
         cond = helper.create_tmp_variable(dtype='bool')
@@ -545,7 +548,7 @@ def less_than(x, y, cond=None, main_program=None, **ignored):
     return cond
 
 
-def array_read(array, i, main_program=None, startup_program=None):
+def array_read(array, i):
     """
     This function creates an operator to read the data in as a
     LOD_TENSOR_ARRAY.
@@ -564,7 +567,7 @@ def array_read(array, i, main_program=None, startup_program=None):
     return out
 
 
-def shrink_memory(x, i, table, main_program=None, startup_program=None):
+def shrink_memory(x, i, table):
     """
     This function creates an operator to shrink_rnn_memory using the RankTable
     as mentioned in the input parameter.
@@ -581,7 +584,7 @@ def shrink_memory(x, i, table, main_program=None, startup_program=None):
     return out
 
 
-def array_length(array, main_program=None):
+def array_length(array):
     """
     This function creates an operator to find the length of the
     LOD_TENSOR_ARRAY.
@@ -611,20 +614,12 @@ class ConditionalBlockGuard(BlockGuard):
 
 
 class ConditionalBlock(object):
-    def __init__(self,
-                 inputs,
-                 name=None,
-                 main_program=None,
-                 startup_program=None):
+    def __init__(self, inputs, name=None):
         for each_input in inputs:
             if not isinstance(each_input, Variable):
                 raise TypeError("Each input should be variable")
         self.inputs = inputs
-        self.helper = LayerHelper(
-            'conditional_block',
-            name=name,
-            main_program=main_program,
-            startup_program=startup_program)
+        self.helper = LayerHelper('conditional_block', name=name)
 
     def block(self):
         return ConditionalBlockGuard(self)
@@ -709,15 +704,10 @@ class IfElse(object):
     IN_IF_ELSE_TRUE_BLOCKS = 1
     IN_IF_ELSE_FALSE_BLOCKS = 2
 
-    def __init__(self, cond, name=None, main_program=None,
-                 startup_program=None):
+    def __init__(self, cond, name=None):
         if not isinstance(cond, Variable):
             raise TypeError("cond must be a Variable")
-        self.helper = LayerHelper(
-            'ifelse',
-            name=name,
-            main_program=main_program,
-            startup_program=startup_program)
+        self.helper = LayerHelper('ifelse', name=name)
         self.cond = cond
         self.input_table = {}
         self.status = IfElse.OUT_IF_ELSE_BLOCKS
@@ -782,11 +772,7 @@ class IfElse(object):
             out_table.append(outside_out)
 
             # assign local var to outside
-            assign(
-                input=each_out,
-                output=outside_out,
-                main_program=self.helper.main_program,
-                startup_program=self.helper.startup_program)
+            assign(input=each_out, output=outside_out)
 
     def __call__(self):
         if self.status != self.OUT_IF_ELSE_BLOCKS:
@@ -810,9 +796,7 @@ class IfElse(object):
                     in_false=false_var,
                     mask=self.cond,
                     x=self.cond,
-                    level=0,
-                    main_program=self.helper.main_program,
-                    startup_program=self.helper.startup_program))
+                    level=0))
         return rlist
 
 
@@ -821,12 +805,8 @@ class DynamicRNN(object):
     IN_RNN = 1
     AFTER_RNN = 2
 
-    def __init__(self, name=None, main_program=None, startup_program=None):
-        self.helper = LayerHelper(
-            'dynamic_rnn',
-            name=name,
-            main_program=main_program,
-            startup_program=startup_program)
+    def __init__(self, name=None):
+        self.helper = LayerHelper('dynamic_rnn', name=name)
         self.status = DynamicRNN.BEFORE_RNN
         self.lod_rank_table = None
         self.max_seq_len = None
@@ -880,8 +860,7 @@ class DynamicRNN(object):
             inputs={'X': x,
                     'RankTable': self.lod_rank_table},
             outputs={'Out': input_array})
-        return array_read(
-            array=input_array, i=self.step_idx, **self.helper.to_kwargs)
+        return array_read(array=input_array, i=self.step_idx)
 
     @contextlib.contextmanager
     def block(self):
@@ -892,32 +871,18 @@ class DynamicRNN(object):
         self.status = DynamicRNN.IN_RNN
         with self.while_op.block():
             yield
-            increment(
-                x=self.step_idx,
-                value=1.0,
-                in_place=True,
-                **self.helper.to_kwargs)
+            increment(x=self.step_idx, value=1.0, in_place=True)
 
             for new_mem, mem_array in self.mem_link:
-                array_write(
-                    x=new_mem,
-                    i=self.step_idx,
-                    array=mem_array,
-                    **self.helper.to_kwargs)
+                array_write(x=new_mem, i=self.step_idx, array=mem_array)
 
-            less_than(
-                x=self.step_idx,
-                y=self.max_seq_len,
-                cond=self.cond,
-                **self.helper.to_kwargs)
+            less_than(x=self.step_idx, y=self.max_seq_len, cond=self.cond)
 
         self.status = DynamicRNN.AFTER_RNN
         for each_array in self.output_array:
             self.outputs.append(
                 array_to_lod_tensor(
-                    x=each_array,
-                    table=self.lod_rank_table,
-                    **self.helper.to_kwargs))
+                    x=each_array, table=self.lod_rank_table))
 
     def __call__(self, *args, **kwargs):
         if self.status != DynamicRNN.AFTER_RNN:
@@ -944,13 +909,9 @@ class DynamicRNN(object):
                 inputs={'X': init,
                         'I': self.zero_idx},
                 outputs={'Out': mem_array})
-            retv = array_read(
-                array=mem_array, i=self.step_idx, **self.helper.to_kwargs)
+            retv = array_read(array=mem_array, i=self.step_idx)
             retv = shrink_memory(
-                x=retv,
-                i=self.step_idx,
-                table=self.lod_rank_table,
-                **self.helper.to_kwargs)
+                x=retv, i=self.step_idx, table=self.lod_rank_table)
             self.mem_dict[retv.name] = mem_array
             return retv
         else:
