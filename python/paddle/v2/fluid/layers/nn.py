@@ -5,12 +5,15 @@ All layers just related to the neural network.
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
 from ..framework import Variable
+from ..param_attr import ParamAttr
+from tensor import concat
 
 __all__ = [
     'fc', 'embedding', 'dynamic_lstm', 'gru_unit', 'linear_chain_crf',
     'crf_decoding', 'cos_sim', 'cross_entropy', 'square_error_cost', 'accuracy',
     'chunk_eval', 'sequence_conv', 'conv2d', 'sequence_pool', 'pool2d',
-    'batch_norm', 'beam_search_decode', 'conv2d_transpose'
+    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
+    'lstm_unit', 'reduce_sum'
 ]
 
 
@@ -20,36 +23,50 @@ def fc(input,
        param_attr=None,
        bias_attr=None,
        act=None,
-       name=None,
-       main_program=None,
-       startup_program=None):
+       name=None):
     """
-    Fully Connected Layer.
+    **Fully Connected Layer**
+
+    This layer accepts multiple inputs and applies a linear transformation to each input.
+    If activation type is provided, the corresponding activation function is applied to the
+    output of the linear transformation. For each input :math:`X`, the equation is:
+
+    .. math::
+
+        Out = Act(WX + b)
+
+    In the above equation:
+
+        * :math:`X`: Input value, a tensor with rank at least 2.
+        * :math:`W`: Weight, a 2-D tensor with shape [M, N].
+        * :math:`b`: Bias, a 2-D tensor with shape [M, 1].
+        * :math:`Act`: Activation function.
+        * :math:`Out`: Output value, same shape with :math:`X`.
+
+    All the input variables are passed in as local variables to the LayerHelper
+    constructor.
 
     Args:
-       input: The input tensor to the function
-       size: The size of the layer
-       num_flatten_dims: Number of columns in input
-       param_attr: The parameters/weights to the FC Layer
-       param_initializer: Initializer used for the weight/parameter. If None, XavierInitializer() is used
-       bias_attr: The bias parameter for the FC layer
-       bias_initializer: Initializer used for the bias. If None, then ConstantInitializer() is used
-       act: Activation to be applied to the output of FC layer
-       name: Name/alias of the function
-       main_program: Name of the main program that calls this
-       startup_program: Name of the startup program
+       input(Variable|list): Input tensors. Each tensor has a rank of atleast 2
+       size(int): Output size
+       num_flatten_dims(int): Number of columns in input
+       param_attr(ParamAttr|list): The parameters/weights to the FC Layer
+       bias_attr(ParamAttr|list): Bias parameter for the FC layer
+       act(str): Activation type
+       name(str): Name/alias of the function
 
-    This function can take in multiple inputs and performs the Fully Connected
-    function (linear transformation) on top of each of them.
-    So for input x, the output will be : Wx + b. Where W is the parameter,
-    b the bias and x is the input.
+    Returns:
+        Variable: The tensor variable storing the transformation and \
+                  non-linearity activation result.
 
-    The function also applies an activation (non-linearity) on top of the
-    output, if activation is passed in the input.
+    Raises:
+        ValueError: If rank of input tensor is less than 2.
 
-    All the input variables of this function are passed in as local variables
-    to the LayerHelper constructor.
+    Examples:
+        .. code-block:: python
 
+          data = fluid.layers.data(name='data', shape=[32, 32], dtype='float32')
+          fc = fluid.layers.fc(input=data, size=1000, act="tanh")
     """
     helper = LayerHelper('fc', **locals())
 
@@ -88,33 +105,32 @@ def fc(input,
     return helper.append_activation(pre_activation)
 
 
-def embedding(input,
-              size,
-              is_sparse=False,
-              param_attr=None,
-              dtype='float32',
-              main_program=None,
-              startup_program=None):
+def embedding(input, size, is_sparse=False, param_attr=None, dtype='float32'):
     """
-    Embedding Layer.
+    **Embedding Layer**
+
+    This layer is used to lookup a vector of IDs, provided by *input*, in a lookup table.
+    The result of this lookup is the embedding of each ID in the *input*.
+
+    All the input variables are passed in as local variables to the LayerHelper
+    constructor.
 
     Args:
-       param_initializer:
-       input: The input to the function
-       size: The size of the layer
-       is_sparse: A flag that decleares whether the input is sparse
-       param_attr: Parameters for this layer
-       dtype: The type of data : float32, float_16, int etc
-       main_program: Name of the main program that calls this
-       startup_program: Name of the startup program
+       input(Variable): Input to the function
+       size(int): Output size
+       is_sparse(bool): Boolean flag that specifying whether the input is sparse
+       param_attr(ParamAttr): Parameters for this layer
+       dtype(np.dtype|core.DataType|str): The type of data : float32, float_16, int etc
 
-    This function can take in the input (which is a vector of IDs) and
-    performs a lookup in the lookup_table using these IDs, to result into
-    the embedding of each ID in the input.
+    Returns:
+        Variable: The tensor variable storing the embeddings of the \
+                  supplied inputs.
 
-    All the input variables of this function are passed in as local variables
-    to the LayerHelper constructor.
+    Examples:
+        .. code-block:: python
 
+          data = fluid.layers.data(name='ids', shape=[32, 32], dtype='float32')
+          fc = fluid.layers.embedding(input=data, size=16)
     """
 
     helper = LayerHelper('embedding', **locals())
@@ -140,9 +156,7 @@ def dynamic_lstm(input,
                  gate_activation='sigmoid',
                  cell_activation='tanh',
                  candidate_activation='tanh',
-                 dtype='float32',
-                 main_program=None,
-                 startup_program=None):
+                 dtype='float32'):
     helper = LayerHelper('lstm', **locals())
     size = size / 4
     weight = helper.create_parameter(
@@ -185,9 +199,7 @@ def gru_unit(input,
              weight=None,
              bias=None,
              activation='tanh',
-             gate_activation='sigmoid',
-             main_program=None,
-             startup_program=None):
+             gate_activation='sigmoid'):
     """
     GRUUnit Operator implements partial calculations of the GRU unit as following:
 
@@ -250,11 +262,7 @@ def gru_unit(input,
     return updated_hidden, reset_hidden_pre, gate
 
 
-def linear_chain_crf(input,
-                     label,
-                     param_attr=None,
-                     main_program=None,
-                     startup_program=None):
+def linear_chain_crf(input, label, param_attr=None):
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[1]
     transition = helper.create_parameter(
@@ -280,11 +288,7 @@ def linear_chain_crf(input,
     return log_likelihood
 
 
-def crf_decoding(input,
-                 param_attr,
-                 label=None,
-                 main_program=None,
-                 startup_program=None):
+def crf_decoding(input, param_attr, label=None):
     helper = LayerHelper('crf_decoding', **locals())
     transition = helper.get_parameter(param_attr.name)
     viterbi_path = helper.create_tmp_variable(dtype=helper.input_dtype())
@@ -392,8 +396,8 @@ def chunk_eval(input,
                excluded_chunk_types=None,
                **kwargs):
     """
-    This function computes the accuracy using the input and label.
-    The output is the top_k inputs and their indices.
+    This function computes and outputs the precision, recall and
+    F1-score of chunk detection.
     """
     helper = LayerHelper("chunk_eval", **kwargs)
 
@@ -401,6 +405,9 @@ def chunk_eval(input,
     precision = helper.create_tmp_variable(dtype="float32")
     recall = helper.create_tmp_variable(dtype="float32")
     f1_score = helper.create_tmp_variable(dtype="float32")
+    num_infer_chunks = helper.create_tmp_variable(dtype="int64")
+    num_label_chunks = helper.create_tmp_variable(dtype="int64")
+    num_correct_chunks = helper.create_tmp_variable(dtype="int64")
 
     helper.append_op(
         type="chunk_eval",
@@ -409,14 +416,17 @@ def chunk_eval(input,
         outputs={
             "Precision": [precision],
             "Recall": [recall],
-            "F1-Score": [f1_score]
+            "F1-Score": [f1_score],
+            "NumInferChunks": [num_infer_chunks],
+            "NumLabelChunks": [num_label_chunks],
+            "NumCorrectChunks": [num_correct_chunks]
         },
         attrs={
             "num_chunk_types": num_chunk_types,
-            'chunk_scheme': chunk_scheme,
-            'excluded_chunk_types': excluded_chunk_types or []
+            "chunk_scheme": chunk_scheme,
+            "excluded_chunk_types": excluded_chunk_types or []
         })
-    return precision, recall, f1_score
+    return precision, recall, f1_score, num_infer_chunks, num_label_chunks, num_correct_chunks
 
 
 def sequence_conv(input,
@@ -426,9 +436,7 @@ def sequence_conv(input,
                   padding=None,
                   bias_attr=None,
                   param_attr=None,
-                  act=None,
-                  main_program=None,
-                  startup_program=None):
+                  act=None):
     """
     This function creates the op for sequence_conv, using the inputs and
     other convolutional configurations for the filters and stride as given
@@ -471,9 +479,7 @@ def conv2d(input,
            param_attr=None,
            bias_attr=None,
            act=None,
-           name=None,
-           main_program=None,
-           startup_program=None):
+           name=None):
     """
     This function creates the op for a 2-dimensional Convolution.
     This is performed using the parameters of filters(size, dimensionality etc)
@@ -559,9 +565,7 @@ def pool2d(input,
            pool_type,
            pool_stride=None,
            pool_padding=None,
-           global_pooling=False,
-           main_program=None,
-           startup_program=None):
+           global_pooling=False):
     """
     This function adds the operator for pooling in 2 dimensions, using the
     pooling configurations mentioned in input parameters.
@@ -607,9 +611,7 @@ def batch_norm(input,
                epsilon=1e-05,
                param_attr=None,
                bias_attr=None,
-               data_layout='NCHW',
-               main_program=None,
-               startup_program=None):
+               data_layout='NCHW'):
     """
     This function helps create an operator to implement
     the BatchNorm layer using the configurations from the input parameters.
@@ -679,7 +681,7 @@ def batch_norm(input,
     return helper.append_activation(batch_norm_out)
 
 
-def beam_search_decode(ids, scores, main_program=None, startup_program=None):
+def beam_search_decode(ids, scores):
     helper = LayerHelper('beam_search_decode', **locals())
     sentence_ids = helper.create_tmp_variable(dtype=ids.dtype)
     sentence_scores = helper.create_tmp_variable(dtype=ids.dtype)
@@ -703,9 +705,7 @@ def conv2d_transpose(input,
                      padding=None,
                      stride=None,
                      dilation=None,
-                     param_attr=None,
-                     main_program=None,
-                     startup_program=None):
+                     param_attr=None):
     """
     The transpose of conv2d layer.
 
@@ -794,4 +794,221 @@ def conv2d_transpose(input,
         outputs={'Output': out},
         attrs=op_attr)
 
+    return out
+
+
+def sequence_expand(x, y):
+    """Sequence Expand Layer. This layer will expand the input variable **x**
+    according to LoD information of **y**. And the following examples will
+    explain how sequence_expand works:
+
+    .. code-block:: text
+
+        * Case 1
+            x is a LoDTensor:
+                x.lod = [[0,       2, 3],
+                         [0, 1,    3, 4]]
+                x.data = [a, b, c, d]
+                x.dims = [4, 1]
+
+            y is a LoDTensor:
+                y.lod = [[0,    2,    4],
+                         [0, 3, 6, 7, 8]]
+
+            with condition len(y.lod[-1]) - 1 == x.dims[0]
+
+            then output is a 2-level LoDTensor:
+                out.lod = [[0,                2,    4],
+                           [0,       3,       6, 7, 8]]
+                out.data = [a, a, a, b, b, b, c, d]
+                out.dims = [8, 1]
+
+        * Case 2
+            x is a Tensor:
+                x.data = [a, b, c]
+                x.dims = [3, 1]
+
+            y is a LoDTensor:
+                y.lod = [[0, 2, 3, 6]]
+
+            with condition len(y.lod[-1]) - 1 == x.dims[0]
+
+            then output is a 1-level LoDTensor:
+                out.lod = [[0,    2, 3,      6]]
+                out.data = [a, a, b, c, c, c]
+                out.dims = [6, 1]
+
+    Args:
+        x (Variable): The input variable which is a Tensor or LoDTensor.
+        y (Variable): The input variable which is a LoDTensor.
+
+    Returns:
+        Variable: The expanded variable which is a LoDTensor.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[10], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[10, 20],
+                             dtype='float32', lod_level=1)
+            out = layers.sequence_expand(x=x, y=y)
+    """
+    helper = LayerHelper('sequence_expand', input=x, **locals())
+    dtype = helper.input_dtype()
+    tmp = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='sequence_expand', inputs={'X': x,
+                                        'Y': y}, outputs={'Out': tmp})
+    return tmp
+
+
+def lstm_unit(x_t,
+              hidden_t_prev,
+              cell_t_prev,
+              forget_bias=0.0,
+              param_attr=None,
+              bias_attr=None):
+    """Lstm unit layer. The equation of a lstm step is:
+
+        .. math::
+
+            i_t & = \sigma(W_{x_i}x_{t} + W_{h_i}h_{t-1} + W_{c_i}c_{t-1} + b_i)
+
+            f_t & = \sigma(W_{x_f}x_{t} + W_{h_f}h_{t-1} + W_{c_f}c_{t-1} + b_f)
+
+            c_t & = f_tc_{t-1} + i_t tanh (W_{x_c}x_t+W_{h_c}h_{t-1} + b_c)
+
+            o_t & = \sigma(W_{x_o}x_{t} + W_{h_o}h_{t-1} + W_{c_o}c_t + b_o)
+
+            h_t & = o_t tanh(c_t)
+
+    The inputs of lstm unit includes :math:`x_t`, :math:`h_{t-1}` and
+    :math:`c_{t-1}`. The implementation separates the linear transformation
+    and non-linear transformation apart. Here, we take :math:`i_t` as an
+    example. The linear transformation is applied by calling a `fc` layer and
+    the equation is:
+
+        .. math::
+
+            L_{i_t} = W_{x_i}x_{t} + W_{h_i}h_{t-1} + W_{c_i}c_{t-1} + b_i
+
+    The non-linear transformation is applied by calling `lstm_unit_op` and the
+    equation is:
+
+        .. math::
+
+            i_t = \sigma(L_{i_t})
+
+    This layer has two outputs including :math:`h_t` and :math:`o_t`.
+
+    Args:
+        x_t (Variable): The input value of current step.
+        hidden_t_prev (Variable): The hidden value of lstm unit.
+        cell_t_prev (Variable): The cell value of lstm unit.
+        forget_bias (float): The forget bias of lstm unit.
+        param_attr (ParamAttr): The attributes of parameter weights, used to set
+            initializer, name etc.
+        bias_attr (ParamAttr): The attributes of bias weights, if not False,
+            bias weights will be created and be set to default value.
+
+    Returns:
+        tuple: The hidden value and cell value of lstm unit.
+
+    Raises:
+        ValueError: The ranks of **x_t**, **hidden_t_prev** and **cell_t_prev**\
+                not be 2 or the 1st dimensions of **x_t**, **hidden_t_prev** \
+                and **cell_t_prev** not be the same.
+
+    Examples:
+
+        .. code-block:: python
+
+             x_t = fluid.layers.fc(input=x_t_data, size=10)
+             prev_hidden = fluid.layers.fc(input=prev_hidden_data, size=20)
+             prev_cell = fluid.layers.fc(input=prev_cell_data, size=30)
+             hidden_value, cell_value = fluid.layers.lstm_unit(x_t=x_t,
+                                                    hidden_t_prev=prev_hidden,
+                                                    cell_t_prev=prev_cell)
+    """
+    helper = LayerHelper('lstm_unit', **locals())
+
+    if len(x_t.shape) != 2:
+        raise ValueError("Rank of x_t must be 2.")
+
+    if len(hidden_t_prev.shape) != 2:
+        raise ValueError("Rank of hidden_t_prev must be 2.")
+
+    if len(cell_t_prev.shape) != 2:
+        raise ValueError("Rank of cell_t_prev must be 2.")
+
+    if x_t.shape[0] != hidden_t_prev.shape[0] or x_t.shape[
+            0] != cell_t_prev.shape[0]:
+        raise ValueError("The 1s dimension of x_t, hidden_t_prev and "
+                         "cell_t_prev must be the same.")
+
+    if bias_attr is None:
+        bias_attr = ParamAttr()
+
+    size = cell_t_prev.shape[1]
+    concat_out = concat(input=[x_t, hidden_t_prev], axis=1)
+    fc_out = fc(input=concat_out,
+                size=4 * size,
+                param_attr=param_attr,
+                bias_attr=bias_attr)
+    dtype = x_t.dtype
+    c = helper.create_tmp_variable(dtype)
+    h = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type='lstm_unit',
+        inputs={"X": fc_out,
+                "C_prev": cell_t_prev},
+        outputs={"C": c,
+                 "H": h},
+        attrs={"forget_bias": forget_bias})
+
+    return h, c
+
+
+def reduce_sum(input, dim=None, keep_dim=False):
+    """
+    Computes the sum of tensor elements over the given dimension. 
+
+    Args:
+        input (Variable): The input variable which is a Tensor or LoDTensor.
+        dim (int|None): The dimension along which the sum is performed. If 
+            :attr:`None`, sum all elements of :attr:`input` and return a 
+            Tensor variable with a single element, otherwise must be in the 
+            range :math:`[-rank(input), rank(input))`. If :math:`dim < 0`, 
+            the dimension to reduce is :math:`rank + dim`.
+        keep_dim (bool): Whether to reserve the reduced dimension in the 
+            output Tensor. The result tensor will have one fewer dimension 
+            than the :attr:`input` unless :attr:`keep_dim` is true.
+
+    Returns:
+        Variable: The reduced Tensor variable.
+    
+    Examples:
+        .. code-block:: python
+
+            # x is a Tensor variable with following elements:
+            #    [[0.2, 0.3, 0.5, 0.9]
+            #     [0.1, 0.2, 0.6, 0.7]]
+            # Each example is followed by the correspending output tensor.
+            fluid.layers.reduce_sum(x)  # [3.5]
+            fluid.layers.reduce_sum(x, dim=0)  # [0.3, 0.5, 1.1, 1.6]
+            fluid.layers.reduce_sum(x, dim=-1)  # [1.9, 1.6]
+            fluid.layers.reduce_sum(x, dim=1, keep_dim=True)  # [[1.9], [1.6]]
+    """
+    helper = LayerHelper('reduce_sum', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='reduce_sum',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={
+            'dim': dim if dim != None else 0,
+            'keep_dim': keep_dim,
+            'reduce_all': True if dim == None else False
+        })
     return out

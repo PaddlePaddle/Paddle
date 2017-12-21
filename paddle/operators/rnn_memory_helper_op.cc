@@ -57,15 +57,14 @@ class RNNMemoryHelperOpShapeInference : public framework::InferShapeBase {
 
 class RNNMemoryHelperOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RNNMemoryHelperOpInfoMaker(framework::OpProto *proto,
-                             framework::OpAttrChecker *op_checker)
+  RNNMemoryHelperOpInfoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "");
     AddOutput("Out", "");
     AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
-        .SetDefault(framework::DataType::FP32);
+        .SetDefault(framework::proto::DataType::FP32);
     AddComment("");
   }
 };
@@ -114,8 +113,7 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
 class RNNMemoryHelperGradOpInfoMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  RNNMemoryHelperGradOpInfoMaker(framework::OpProto *proto,
-                                 framework::OpAttrChecker *op_checker)
+  RNNMemoryHelperGradOpInfoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(framework::GradVarName("Out"), "");
     AddInput("X", "");
@@ -124,7 +122,7 @@ class RNNMemoryHelperGradOpInfoMaker
     AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
-        .SetDefault(framework::DataType::FP32);
+        .SetDefault(framework::proto::DataType::FP32);
     AddComment("");
   }
 };

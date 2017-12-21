@@ -47,8 +47,7 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class SmoothL1LossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SmoothL1LossOpMaker(framework::OpProto* proto,
-                      framework::OpAttrChecker* op_checker)
+  SmoothL1LossOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor, default Tensor<float>) A tensor with rank at least 2. "

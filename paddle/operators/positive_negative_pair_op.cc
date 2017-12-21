@@ -95,8 +95,7 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
 
 class PositiveNegativePairOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  PositiveNegativePairOpMaker(framework::OpProto *proto,
-                              framework::OpAttrChecker *op_checker)
+  PositiveNegativePairOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Score",
              "(Tensor, float) Model Score on an item (with "

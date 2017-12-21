@@ -114,8 +114,7 @@ class MergeLoDTensorOp : public framework::OperatorBase {
 
 class MergeLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MergeLoDTensorOpProtoMaker(framework::OpProto *proto,
-                             framework::OpAttrChecker *op_checker)
+  MergeLoDTensorOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "The input LoDTensor, contains complete lod information to "

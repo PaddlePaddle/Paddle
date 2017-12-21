@@ -16,11 +16,11 @@ limitations under the License. */
 
 #include <mutex>  // for call_once
 #include <unordered_map>
-#include "gflags/gflags.h"
 #include "paddle/framework/backward.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/feed_fetch_method.h"
 #include "paddle/framework/framework.pb.h"
+#include "paddle/framework/init.h"
 #include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/lod_tensor_array.h"
@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/operators/net_op.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
+#include "paddle/pybind/const_value.h"
 #include "paddle/pybind/exception.h"
 #include "paddle/pybind/pybind.h"
 #include "paddle/pybind/tensor_py.h"
@@ -49,24 +50,6 @@ namespace pybind {
 static size_t UniqueIntegerGenerator(const std::string &prefix) {
   static std::unordered_map<std::string, std::atomic<size_t>> generators;
   return generators[prefix].fetch_add(1);
-}
-
-std::once_flag gflags_init_flag;
-
-// TODO(qijun) move init gflags to init.cc
-void InitGflags(std::vector<std::string> &argv) {
-  std::call_once(gflags_init_flag, [&]() {
-    int argc = argv.size();
-    char **arr = new char *[argv.size()];
-    std::string line;
-    for (size_t i = 0; i < argv.size(); i++) {
-      arr[i] = &argv[i][0];
-      line += argv[i];
-      line += ' ';
-    }
-    google::ParseCommandLineFlags(&argc, &arr, true);
-    VLOG(1) << "Init commandline: " << line;
-  });
 }
 
 bool IsCompileGPU() {
@@ -305,12 +288,12 @@ All parameter, weight, gradient are variables in Paddle.
     for (const auto &t : targets) {
       prog_with_targets.MutableBlock(t[0])->Op(t[1])->MarkAsTarget();
     }
-    ProgramDesc pruned_desc;
+    proto::ProgramDesc pruned_desc;
     Prune(*prog_with_targets.Proto(), &pruned_desc);
     return new ProgramDescBind(pruned_desc);
   });
   m.def("inference_optimize", [](ProgramDescBind &origin) {
-    ProgramDesc pruned_desc;
+    proto::ProgramDesc pruned_desc;
     InferenceOptimize(*(origin.Proto()), &pruned_desc);
     return new ProgramDescBind(pruned_desc);
   });
@@ -362,7 +345,7 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<OperatorBase>(m, "Operator")
       .def_static("create",
                   [](py::bytes protobin) {
-                    OpDesc desc;
+                    proto::OpDesc desc;
                     PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
                                    "Cannot parse user input to OpDesc");
                     PADDLE_ENFORCE(desc.IsInitialized(),
@@ -415,7 +398,7 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<operators::CondOp, OperatorBase>(m, "CondOp")
       .def_static("create",
                   [](py::bytes protobin) -> operators::CondOp * {
-                    OpDesc desc;
+                    proto::OpDesc desc;
                     PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
                                    "Cannot parse user input to OpDesc");
                     PADDLE_ENFORCE(desc.IsInitialized(),
@@ -438,7 +421,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run", &Executor::Run);
 
   m.def("unique_integer", UniqueIntegerGenerator);
-  m.def("init_gflags", InitGflags);
+  m.def("init_gflags", framework::InitGflags);
+  m.def("init_devices", &framework::InitDevices);
 
   m.def("is_compile_gpu", IsCompileGPU);
   m.def("set_feed_variable", framework::SetFeedVariable);
@@ -448,6 +432,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindBlockDesc(m);
   BindVarDsec(m);
   BindOpDesc(m);
+  BindConstValue(m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
       .def("items", [](framework::LoDRankTable &table) {

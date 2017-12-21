@@ -114,8 +114,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
 
 class ArrayToLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ArrayToLoDTensorOpProtoMaker(framework::OpProto *proto,
-                               framework::OpAttrChecker *op_checker)
+  ArrayToLoDTensorOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(std::vector<LodTensor>) A vector of tensors that is going to "

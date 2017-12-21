@@ -18,8 +18,7 @@ namespace operators {
 
 class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Unpool2dOpMaker(framework::OpProto* proto,
-                  framework::OpAttrChecker* op_checker)
+  Unpool2dOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(
         "X",

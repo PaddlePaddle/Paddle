@@ -6,12 +6,12 @@ __all__ = [
 ]
 
 
-def create_tensor(dtype, name=None, main_program=None, startup_program=None):
+def create_tensor(dtype, name=None):
     helper = LayerHelper("create_tensor", **locals())
     return helper.create_variable(name=helper.name, dtype=dtype)
 
 
-def cast(x, dtype, main_program=None):
+def cast(x, dtype):
     """
     This function takes in the input with input_dtype
     and casts it to the output_dtype as the output.
@@ -27,7 +27,7 @@ def cast(x, dtype, main_program=None):
     return out
 
 
-def concat(input, axis, main_program=None, startup_program=None):
+def concat(input, axis):
     """
     This function concats the input along the axis mentioned
     and returns that as the output.
@@ -42,7 +42,7 @@ def concat(input, axis, main_program=None, startup_program=None):
     return out
 
 
-def sums(input, out=None, main_program=None, startup_program=None):
+def sums(input, out=None):
     """
     This function takes in the input and performs the sum operation on it
     and returns that as the output.
@@ -54,7 +54,7 @@ def sums(input, out=None, main_program=None, startup_program=None):
     return out
 
 
-def assign(input, output, main_program=None, startup_program=None):
+def assign(input, output):
     helper = LayerHelper('assign', **locals())
     helper.append_op(
         type='scale',
@@ -64,16 +64,28 @@ def assign(input, output, main_program=None, startup_program=None):
     return output
 
 
-def fill_constant(shape,
-                  dtype,
-                  value,
-                  out=None,
-                  main_program=None,
-                  startup_program=None):
+def fill_constant(shape, dtype, value, out=None):
     """
-    This function creates a tensor , with shape as mentioned in the input and
-    specified dtype and fills this up with a constant value that
-    comes in the input. It also sets the stop_gradient to be True.
+    **fill_constant**
+
+    This function creates a tensor of specified *shape* and 
+    *dtype*, and initializes this with a constant supplied in *value*.
+    
+    It also sets *stop_gradient* to True.
+
+    Args:
+        shape(tuple|list|None): Shape of output tensor
+        dtype(np.dtype|core.DataType|str): Data type of output tensor
+        value(float): Constant value to initialize the output tensor
+        out(Variable): Output Variable to initialize
+
+    Returns:
+        Variable: The tensor variable storing the output
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.fill_constant(shape=[1], value=0, dtype='int64')
     """
     helper = LayerHelper("fill_constant", **locals())
     if out is None:
@@ -94,9 +106,32 @@ def fill_constant_batch_size_like(input,
                                   dtype,
                                   value,
                                   input_dim_idx=0,
-                                  output_dim_idx=0,
-                                  main_program=None,
-                                  startup_program=None):
+                                  output_dim_idx=0):
+    """
+    **fill_constant_batch_size_like**
+
+    This function creates a tensor of specified *shape*, *dtype* and batch size, 
+    and initializes this with a constant supplied in *value*. The batch size is 
+    obtained from the `input` tensor. 
+
+    It also sets *stop_gradient* to True.
+
+    Args:
+        input(Variable): Tensor whose dimensions will be used to get batch size
+        shape(tuple|list|None): Shape of output tensor
+        dtype(np.dtype|core.DataType|str): Data type of output tensor
+        value(float): Constant value to initialize the output tensor
+        input_dim_idx(int): Index of input's batch size dimension
+        output_dim_idx(int): Index of output's batch size dimension
+
+    Returns:
+        Variable: The tensor variable storing the output
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.fill_constant(shape=[1], value=0, dtype='int64')
+    """
     helper = LayerHelper("fill_constant_batch_size_like", **locals())
     out = helper.create_tmp_variable(dtype=dtype)
     helper.append_op(
@@ -114,7 +149,7 @@ def fill_constant_batch_size_like(input,
     return out
 
 
-def ones(shape, dtype, main_program=None):
+def ones(shape, dtype):
     """
     This function performs the same function as fill_constant() declared above
     with the constant value being 1.0.
@@ -122,7 +157,7 @@ def ones(shape, dtype, main_program=None):
     return fill_constant(value=1.0, **locals())
 
 
-def zeros(shape, dtype, main_program=None):
+def zeros(shape, dtype):
     """
     This function performs the same function as fill_constant() declared above
     with the constant value being 0.0.
