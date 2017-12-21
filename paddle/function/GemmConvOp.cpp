@@ -94,17 +94,15 @@ public:
         size_t memSize = perGroup * outputHeight * outputWidth;
         resizeBuffer<Device>(memSize);
         im2colGroupNum = groupNum;
+        beta = 1.0;
       } else {
         resizeBuffer<Device>(colShape.getElements());
       }
       colData = reinterpret_cast<real*>(memory_->getBuf());
     }
 
-#ifdef PADDLE_MOBILE_INFERENCE
     GroupedIm2ColFunctor<kCFO, Device, real> groupedIm2col;
-#else
     Im2ColFunctor<kCFO, Device, real> im2col;
-#endif
     size_t inputOffset = imShape.getElements();
     size_t outputOffset =
         (outputChannels / groups_) * outputHeight * outputWidth;
@@ -115,8 +113,7 @@ public:
         for (size_t k = 0; k < im2colGroupNum; ++k) {
           int32_t start = colHeight * k / im2colGroupNum;
           int32_t end = colHeight * (k + 1) / im2colGroupNum;
-          if (needIm2col) {
-#ifdef PADDLE_MOBILE_INFERENCE
+          if (im2colGroupNum > 1) {
             groupedIm2col(inputData + g * inputOffset,
                           imShape,
                           colData + start * outputHeight * outputWidth,
@@ -132,7 +129,7 @@ public:
                           paddingW(),
                           dilationH(),
                           dilationW());
-#else
+          } else if (needIm2col) {
             im2col(inputData + g * inputOffset,
                    imShape,
                    colData,
@@ -143,7 +140,6 @@ public:
                    paddingW(),
                    dilationH(),
                    dilationW());
-#endif
           } else {
             colData = inputData + g * inputOffset;
           }

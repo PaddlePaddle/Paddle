@@ -461,4 +461,28 @@ template class Im2ColFunctor<kOCF, DEVICE_TYPE_GPU, double>;
 template class Col2ImFunctor<kOCF, DEVICE_TYPE_GPU, float>;
 template class Col2ImFunctor<kOCF, DEVICE_TYPE_GPU, double>;
 
+template <class T>
+class GroupedIm2ColFunctor<kCFO, DEVICE_TYPE_GPU, T> {
+public:
+  void operator()(const T* imData,
+                  const TensorShape& imShape,
+                  T* colData,
+                  int colStart,
+                  int colEnd,
+                  int filterHeight,
+                  int filterWidth,
+                  int outputHeight,
+                  int outputWidth,
+                  int strideHeight,
+                  int strideWidth,
+                  int paddingHeight,
+                  int paddingWidth,
+                  int dilationHeight,
+                  int dilationWidth) {
+    LOG(FATAL) << "The GroupedIm2ColFunctor for GPU is not implemented.";
+  }
+};
+
+template class GroupedIm2ColFunctor<kCFO, DEVICE_TYPE_GPU, float>;
+
 }  // namespace paddle
