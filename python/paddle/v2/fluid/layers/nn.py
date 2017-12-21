@@ -25,32 +25,48 @@ def fc(input,
        act=None,
        name=None):
     """
-    Fully Connected Layer.
+    **Fully Connected Layer**
+
+    This layer accepts multiple inputs and applies a linear transformation to each input.
+    If activation type is provided, the corresponding activation function is applied to the
+    output of the linear transformation. For each input :math:`X`, the equation is:
+
+    .. math::
+
+        Out = Act(WX + b)
+
+    In the above equation:
+
+        * :math:`X`: Input value, a tensor with rank at least 2.
+        * :math:`W`: Weight, a 2-D tensor with shape [M, N].
+        * :math:`b`: Bias, a 2-D tensor with shape [M, 1].
+        * :math:`Act`: Activation function.
+        * :math:`Out`: Output value, same shape with :math:`X`.
+
+    All the input variables are passed in as local variables to the LayerHelper
+    constructor.
 
     Args:
-       input: The input tensor to the function
-       size: The size of the layer
-       num_flatten_dims: Number of columns in input
-       param_attr: The parameters/weights to the FC Layer
-       param_initializer: Initializer used for the weight/parameter. If None, XavierInitializer() is used
-       bias_attr: The bias parameter for the FC layer
-       bias_initializer: Initializer used for the bias. If None, then ConstantInitializer() is used
-       act: Activation to be applied to the output of FC layer
-       name: Name/alias of the function
-       main_program: Name of the main program that calls this
-       startup_program: Name of the startup program
+       input(Variable|list): Input tensors. Each tensor has a rank of atleast 2
+       size(int): Output size
+       num_flatten_dims(int): Number of columns in input
+       param_attr(ParamAttr|list): The parameters/weights to the FC Layer
+       bias_attr(ParamAttr|list): Bias parameter for the FC layer
+       act(str): Activation type
+       name(str): Name/alias of the function
 
-    This function can take in multiple inputs and performs the Fully Connected
-    function (linear transformation) on top of each of them.
-    So for input x, the output will be : Wx + b. Where W is the parameter,
-    b the bias and x is the input.
+    Returns:
+        Variable: The tensor variable storing the transformation and \
+                  non-linearity activation result.
 
-    The function also applies an activation (non-linearity) on top of the
-    output, if activation is passed in the input.
+    Raises:
+        ValueError: If rank of input tensor is less than 2.
 
-    All the input variables of this function are passed in as local variables
-    to the LayerHelper constructor.
+    Examples:
+        .. code-block:: python
 
+          data = fluid.layers.data(name='data', shape=[32, 32], dtype='float32')
+          fc = fluid.layers.fc(input=data, size=1000, act="tanh")
     """
     helper = LayerHelper('fc', **locals())
 
@@ -91,25 +107,30 @@ def fc(input,
 
 def embedding(input, size, is_sparse=False, param_attr=None, dtype='float32'):
     """
-    Embedding Layer.
+    **Embedding Layer**
+
+    This layer is used to lookup a vector of IDs, provided by *input*, in a lookup table.
+    The result of this lookup is the embedding of each ID in the *input*.
+
+    All the input variables are passed in as local variables to the LayerHelper
+    constructor.
 
     Args:
-       param_initializer:
-       input: The input to the function
-       size: The size of the layer
-       is_sparse: A flag that decleares whether the input is sparse
-       param_attr: Parameters for this layer
-       dtype: The type of data : float32, float_16, int etc
-       main_program: Name of the main program that calls this
-       startup_program: Name of the startup program
+       input(Variable): Input to the function
+       size(int): Output size
+       is_sparse(bool): Boolean flag that specifying whether the input is sparse
+       param_attr(ParamAttr): Parameters for this layer
+       dtype(np.dtype|core.DataType|str): The type of data : float32, float_16, int etc
 
-    This function can take in the input (which is a vector of IDs) and
-    performs a lookup in the lookup_table using these IDs, to result into
-    the embedding of each ID in the input.
+    Returns:
+        Variable: The tensor variable storing the embeddings of the \
+                  supplied inputs.
 
-    All the input variables of this function are passed in as local variables
-    to the LayerHelper constructor.
+    Examples:
+        .. code-block:: python
 
+          data = fluid.layers.data(name='ids', shape=[32, 32], dtype='float32')
+          fc = fluid.layers.embedding(input=data, size=16)
     """
 
     helper = LayerHelper('embedding', **locals())
@@ -683,6 +704,7 @@ def conv2d_transpose(input,
                      filter_size=None,
                      padding=None,
                      stride=None,
+                     dilation=None,
                      param_attr=None):
     """
     The transpose of conv2d layer.
@@ -706,6 +728,9 @@ def conv2d_transpose(input,
         stride(int|tuple): The stride size. If stride is a tuple, it must
             contain two integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride.
+        dilation(int|tuple): The dilation size. If dilation is a tuple, it must
+            contain two integers, (dilation_H, dilation_W). Otherwise, the
+            dilation_H = dilation_W = dilation.
         param_attr: Parameter Attribute.
         main_program(Program): the main program
         startup_program(Program): the startup program
@@ -726,9 +751,14 @@ def conv2d_transpose(input,
         op_attr['paddings'] = padding
 
     if isinstance(stride, int):
-        op_attr['strides'] = stride
+        op_attr['strides'] = [stride, stride]
     elif stride is not None:
         op_attr['strides'] = stride
+
+    if isinstance(dilation, int):
+        op_attr['dilations'] = [dilation, dilation]
+    elif dilation is not None:
+        op_attr['dilations'] = dilation
 
     if filter_size is None:
         if output_size is None:
@@ -738,14 +768,17 @@ def conv2d_transpose(input,
 
         padding = op_attr.get('paddings', [0, 0])
         stride = op_attr.get('strides', [1, 1])
+        dilation = op_attr.get('dilations', [1, 1])
 
         h_in = input.shape[2]
         w_in = input.shape[3]
-        filter_size_h = output_size[0] - \
-                        (h_in - 1) * stride[0] + 2 * padding[0]
-        filter_size_w = output_size[1] - \
-                        (w_in - 1) * stride[1] + 2 * padding[1]
+
+        filter_size_h = (output_size[0] - (h_in - 1) * stride[0] + 2 *
+                         padding[0] - 1) / dilation[0] + 1
+        filter_size_w = (output_size[1] - (w_in - 1) * stride[1] + 2 *
+                         padding[1] - 1) / dilation[1] + 1
         filter_size = [filter_size_h, filter_size_w]
+
     elif isinstance(filter_size, int):
         filter_size = [filter_size, filter_size]
 

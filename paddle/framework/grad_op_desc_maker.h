@@ -25,18 +25,16 @@ namespace framework {
 class GradOpDescMakerBase {
  public:
   explicit GradOpDescMakerBase(
-      const OpDescBind& fwd_op,
-      const std::unordered_set<std::string>& no_grad_set,
+      const OpDesc& fwd_op, const std::unordered_set<std::string>& no_grad_set,
       std::unordered_map<std::string, std::string>* grad_to_var,
-      const std::vector<BlockDescBind*>& grad_block =
-          std::vector<BlockDescBind*>())
+      const std::vector<BlockDesc*>& grad_block = std::vector<BlockDesc*>())
       : fwd_op_(fwd_op),
         no_grad_set_(no_grad_set),
         grad_to_var_(grad_to_var),
         grad_block_(grad_block) {}
 
   virtual ~GradOpDescMakerBase() = default;
-  virtual std::vector<std::unique_ptr<OpDescBind>> operator()() const = 0;
+  virtual std::vector<std::unique_ptr<OpDesc>> operator()() const = 0;
 
  protected:
   std::vector<std::string> InputGrad(const std::string& name,
@@ -105,26 +103,26 @@ class GradOpDescMakerBase {
   std::string ForwardOpType() const { return this->fwd_op_.Type(); }
 
  private:
-  const OpDescBind& fwd_op_;
+  const OpDesc& fwd_op_;
   const std::unordered_set<std::string>& no_grad_set_;
   std::unordered_map<std::string, std::string>* grad_to_var_;
 
  protected:
-  std::vector<BlockDescBind*> grad_block_;
+  std::vector<BlockDesc*> grad_block_;
 };
 
 class SingleGradOpDescMaker : public GradOpDescMakerBase {
  public:
   using GradOpDescMakerBase::GradOpDescMakerBase;
 
-  std::vector<std::unique_ptr<OpDescBind>> operator()() const {
-    std::vector<std::unique_ptr<OpDescBind>> retv;
+  std::vector<std::unique_ptr<OpDesc>> operator()() const {
+    std::vector<std::unique_ptr<OpDesc>> retv;
     retv.emplace_back(this->Apply());
     return retv;
   }
 
  protected:
-  virtual std::unique_ptr<OpDescBind> Apply() const = 0;
+  virtual std::unique_ptr<OpDesc> Apply() const = 0;
 };
 
 template <bool DropEmptyIG = true>
@@ -133,8 +131,8 @@ class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
   using SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  virtual std::unique_ptr<OpDescBind> Apply() const {
-    auto* grad = new OpDescBind();
+  virtual std::unique_ptr<OpDesc> Apply() const {
+    auto* grad = new OpDesc();
     grad->SetType(this->GradOpType());
 
     for (auto& input_param : this->InputNames()) {
@@ -150,7 +148,7 @@ class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
 
     grad->SetAttrMap(this->Attrs());
 
-    return std::unique_ptr<OpDescBind>(grad);
+    return std::unique_ptr<OpDesc>(grad);
   }
 
   virtual std::string GradOpType() const {
@@ -161,7 +159,7 @@ class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
 class EmptyGradOpMaker : public GradOpDescMakerBase {
  public:
   using GradOpDescMakerBase::GradOpDescMakerBase;
-  std::vector<std::unique_ptr<OpDescBind>> operator()() const override {
+  std::vector<std::unique_ptr<OpDesc>> operator()() const override {
     return {};
   }
 };

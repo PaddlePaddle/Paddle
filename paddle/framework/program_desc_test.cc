@@ -19,7 +19,7 @@
 namespace paddle {
 namespace framework {
 TEST(ProgramDesc, copy_ctor) {
-  ProgramDescBind program;
+  ProgramDesc program;
   auto* global_block = program.MutableBlock(0);
   auto* x = global_block->Var("X");
   x->SetType(proto::VarDesc_VarType_LOD_TENSOR);
@@ -42,12 +42,12 @@ TEST(ProgramDesc, copy_ctor) {
   out->SetType(proto::VarDesc_VarType_LOD_TENSOR);
   op->SetOutput("Y", {out->Name()});
 
-  ProgramDescBind program_copy(program);
+  ProgramDesc program_copy(program);
 
   auto* global_block_copy = program_copy.MutableBlock(0);
   ASSERT_NE(global_block, global_block_copy);
 
-  auto assert_same_var = [&](const std::string& name, VarDescBind* var_before) {
+  auto assert_same_var = [&](const std::string& name, VarDesc* var_before) {
     ASSERT_TRUE(global_block_copy->HasVar(name));
     auto* copy = global_block_copy->Var(name);
     ASSERT_NE(copy, var_before);
@@ -81,7 +81,7 @@ TEST(ProgramDesc, copy_ctor) {
 }
 
 TEST(ProgramDescBind, serialize_and_deserialize) {
-  ProgramDescBind program_origin;
+  ProgramDesc program_origin;
   auto* global_block = program_origin.MutableBlock(0);
   auto* x = global_block->Var("X");
   x->SetType(proto::VarDesc_VarType_LOD_TENSOR);
@@ -107,11 +107,11 @@ TEST(ProgramDescBind, serialize_and_deserialize) {
   std::string binary_str;
   program_origin.Proto()->SerializeToString(&binary_str);
 
-  ProgramDescBind program_restored(binary_str);
+  ProgramDesc program_restored(binary_str);
   auto* global_block_restored = program_restored.MutableBlock(0);
   ASSERT_NE(global_block, global_block_restored);
 
-  auto assert_same_var = [&](const std::string& name, VarDescBind* var_before) {
+  auto assert_same_var = [&](const std::string& name, VarDesc* var_before) {
     ASSERT_TRUE(global_block_restored->HasVar(name));
     auto* restored = global_block_restored->Var(name);
     ASSERT_NE(restored, var_before);
