@@ -41,4 +41,4 @@ DECLARE_string(predict_file);
 DECLARE_bool(prev_batch_state);
 DECLARE_string(init_model_path);
 DECLARE_bool(use_mkldnn);
-DECLARE_int32(conv_workspace_limit_in_mb);
+DECLARE_double(conv_workspace_limit_in_mb);

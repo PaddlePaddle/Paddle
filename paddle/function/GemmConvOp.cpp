@@ -83,12 +83,14 @@ public:
                               outputHeight,
                               outputWidth});
       size_t workspaceSize = colShape.getElements() * sizeof(real);
-      size_t memoryLimitBytes = (1LL << 20) * FLAGS_conv_workspace_limit_in_mb;
+      double memoryLimitBytes =
+          static_cast<double>(1LL << 20) * FLAGS_conv_workspace_limit_in_mb;
 
-      if (workspaceSize > memoryLimitBytes && Device == DEVICE_TYPE_CPU) {
+      if (static_cast<double>(workspaceSize) > memoryLimitBytes &&
+          Device == DEVICE_TYPE_CPU) {
         size_t groupNum = std::ceil(workspaceSize / memoryLimitBytes);
-        size_t perGroup = std::ceil(colHeight / groupNum);
-        CHECK_LT(perGroup, 1UL)
+        size_t perGroup = std::ceil(colHeight / static_cast<float>(groupNum));
+        CHECK_GT(perGroup, 1UL)
             << "The conv_workspace_limit_in_mb must large than "
             << workspaceSize / colHeight;
         size_t memSize = perGroup * outputHeight * outputWidth;
@@ -116,7 +118,7 @@ public:
           if (im2colGroupNum > 1) {
             groupedIm2col(inputData + g * inputOffset,
                           imShape,
-                          colData + start * outputHeight * outputWidth,
+                          colData,
                           start,
                           end,
                           filterHeight,
@@ -147,13 +149,14 @@ public:
           int N = outputHeight * outputWidth;
           int K = end - start;
           int kStride = inputChannels / groups_ * filterHeight * filterWidth;
+          real* filterStart = filterData + g * filterOffset + start;
           BlasGemm<Device, real>::compute(false,
                                           false,
                                           M,
                                           N,
                                           K,
                                           1.0f,
-                                          filterData + g * filterOffset,
+                                          filterStart,
                                           kStride,
                                           colData,
                                           N,
