@@ -28,7 +28,7 @@ def fc(input,
     **Fully Connected Layer**
 
     This layer accepts multiple inputs and applies a linear transformation to each input.
-    If activation type is provided, the corresponding non-linear function is applied to the
+    If activation type is provided, the corresponding activation function is applied to the
     output of the linear transformation. For each input :math:`X`, the equation is:
 
     .. math::
