@@ -33,7 +33,6 @@ class ThreadPool {
   int num_threads_;
   int available_;
   bool running_;
-  bool done_;
   std::queue<Task> tasks_;
   std::vector<std::unique_ptr<std::thread>> threads_;
   std::mutex mutex_;
@@ -42,15 +41,12 @@ class ThreadPool {
 
  public:
   /**
-   * @brief   get a instance of threadpool, the thread number will
-   *          be specified by the first time.
-   * @param[in] num_threads   The available thread number.
-   *            If num_threads <= 0, the thread pool wil be initilized
-   *            with the number of concurrent threads supported.
+   * @brief   Get a instance of threadpool, the thread number will
+   *          be specified as the number of hardware thread contexts
    */
   static ThreadPool* GetInstance() {
     if (threadpool.get() == nullptr) {
-      // TODO(Yancey1989): initialze the threadpool with max threads number
+      // TODO(Yancey1989): specify the max threads number
       int num_threads = std::thread::hardware_concurrency();
       PADDLE_ENFORCE_GT(num_threads, 0);
       threadpool.reset(new ThreadPool(num_threads));
@@ -71,29 +67,31 @@ class ThreadPool {
     }
   }
 
-  // get the total thread number
   int GetNumThreads() const { return num_threads_; }
 
-  // get the available thread number
   int GetAvailable() {
     std::unique_lock<std::mutex> lock(mutex_);
     return available_;
   }
 
-  // push a function to the queue, and will be scheduled and
-  // executed if a thread is available
+  /**
+   * @brief   Push a function to the queue, and will be scheduled and
+   *          executed if a thread is available.
+   * @param[in] Task  will be pushed to the task queue.
+   */
   void Run(const Task& fn) {
     std::unique_lock<std::mutex> lock(mutex_);
     tasks_.push(fn);
-    done_ = false;
     lock.unlock();
     scheduled_.notify_one();
   }
 
-  // wait util all the tasks are completed
+  /**
+   * @brief   Wait until all the tasks are completed.
+   */
   void Wait() {
     std::unique_lock<std::mutex> lock(mutex_);
-    completed_.wait(lock, [=] { return done_ == true; });
+    completed_.wait(lock, [=] { return Done() == true; });
   }
 
  private:
@@ -101,10 +99,7 @@ class ThreadPool {
   ThreadPool(const ThreadPool&) = delete;
 
   ThreadPool(int num_threads)
-      : num_threads_(num_threads),
-        available_(num_threads),
-        running_(true),
-        done_(false) {
+      : num_threads_(num_threads), available_(num_threads), running_(true) {
     threads_.resize(num_threads);
     for (auto& thread : threads_) {
       // TODO(Yancey1989): binding the thread on the specify CPU number
@@ -112,6 +107,15 @@ class ThreadPool {
     }
   }
 
+  /**
+   * @brief   If the task queue is empty and avaialbe
+   *          is equal to the number of threads, means that
+   *          all tasks are completed.
+   *
+   *          Note: this function is not thread-safe.
+   *
+   * @return true if all tasks are completed.
+   */
   bool Done() { return tasks_.empty() && available_ == num_threads_; }
 
   void TaskLoop() {
@@ -136,8 +140,6 @@ class ThreadPool {
         std::unique_lock<std::mutex> lock(mutex_);
         ++available_;
         if (Done()) {
-          done_ = true;
-          lock.unlock();
           completed_.notify_all();
         }
       }
