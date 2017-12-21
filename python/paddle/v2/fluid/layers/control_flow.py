@@ -496,11 +496,11 @@ def array_write(x, i, array=None):
     LOD_TENSOR_ARRAY.
 
     Args:
-        x (LoDTensorArray): The input tensor from which the data will be read.
-        i (Tensor): The subscript index in tensor array, that points the place
-                    from which data will be read.
-        array (LoDTensor): The data can be read into this variable if
-                           this is assigned.
+        x (Variable|list): The input tensor from which the data will be read.
+        i (Variable|list): The subscript index in tensor array, that points the
+                           place from which data will be read.
+        array (Variable|list): The data can be read into this variable if
+                               this is assigned.
     Returns:
         Variable: The tensor type variable that has the data written to it.
 
