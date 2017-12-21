@@ -454,9 +454,9 @@ def lod_tensor_to_array(x, table):
     Examples:
         .. code-block:: python
 
-        x = fluid.layers.data(name='x', shape=[10])
-        table = fluid.layers.lod_rank_table(x, level=0)
-        array = fluid.layers.lod_tensor_to_array(x, table)
+          x = fluid.layers.data(name='x', shape=[10])
+          table = fluid.layers.lod_rank_table(x, level=0)
+          array = fluid.layers.lod_tensor_to_array(x, table)
     """
     helper = LayerHelper("lod_tensor_to_array", **locals())
     array = helper.create_variable(
@@ -486,10 +486,10 @@ def array_to_lod_tensor(x, table):
     Examples:
         .. code-block:: python
 
-        x = fluid.layers.data(name='x', shape=[10])
-        table = fluid.layers.lod_rank_table(x, level=0)
-        array = fluid.layers.lod_tensor_to_array(x, table)
-        lod_tensor = fluid.layers.array_to_lod_tensor(array, table)
+          x = fluid.layers.data(name='x', shape=[10])
+          table = fluid.layers.lod_rank_table(x, level=0)
+          array = fluid.layers.lod_tensor_to_array(x, table)
+          lod_tensor = fluid.layers.array_to_lod_tensor(array, table)
     """
     helper = LayerHelper("array_to_lod_tensor", **locals())
     tmp = helper.create_tmp_variable(dtype=x.dtype)
@@ -518,8 +518,8 @@ def increment(x, value=1.0, in_place=True):
     Examples:
         .. code-block:: python
 
-        data = fluid.layers.data(name='data', shape=[32, 32], dtype='float32')
-        data = fluid.layers.increment(x=data, value=3.0, in_place=True)
+          data = fluid.layers.data(name='data', shape=[32, 32], dtype='float32')
+          data = fluid.layers.increment(x=data, value=3.0, in_place=True)
     """
     helper = LayerHelper("increment", **locals())
     if not in_place:
@@ -566,7 +566,7 @@ def create_array(dtype):
     Examples:
         .. code-block:: python
 
-        data = fluid.layers.create_array(dtype='float32')
+          data = fluid.layers.create_array(dtype='float32')
 
     """
     helper = LayerHelper("array", **locals())
