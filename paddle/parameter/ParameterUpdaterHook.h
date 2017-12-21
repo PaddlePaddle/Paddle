@@ -53,6 +53,13 @@ public:
    */
   virtual void init(Parameter* para) = 0;
 
+  /**
+   * The preprocess hook method. Invoke in ParameterUpdater::preprocess
+   */
+  virtual void preprocess(Parameter* para,
+                          size_t currentPass,
+                          size_t currentBatch) = 0;
+
 protected:
   /**
    * Ctor.

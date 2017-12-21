@@ -88,6 +88,13 @@ void ParameterUpdater::update(Parameter *param) {
   m->updater->update(paddleParam);
 }
 
+void ParameterUpdater::preprocess(Parameter *param,
+                                  size_t currentPass,
+                                  size_t currentBatch) {
+  auto paddleParam = param->m->getPtr();
+  m->updater->preprocess(paddleParam, currentPass, currentBatch);
+}
+
 void ParameterUpdater::getParametersRemote(bool fullSize, bool apply) {
   m->updater->getParametersRemote(fullSize, apply);
 }

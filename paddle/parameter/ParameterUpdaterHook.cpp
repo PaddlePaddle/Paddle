@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <algorithm>
 #include <atomic>
-#include <fstream>
 #include <mutex>
 #include <thread>
 #include <unordered_map>
@@ -29,42 +28,29 @@ limitations under the License. */
 
 namespace paddle {
 
-/**
- * The static pruning hook
- * Static means user specify a sparsity_ratio before training started, and the
- * network will prune the parameters based on the sparsity_ratio. More details
- * can be found https://arxiv.org/pdf/1506.02626.pdf.
- */
-
-class StaticPruningHook : public IParameterUpdaterHook {
+class ParameterPruningHook : public IParameterUpdaterHook {
 public:
-  explicit StaticPruningHook(const ParameterUpdaterHookConfig &hookConfig)
-      : initCount_(0) {
-    sparsityRatio_ = hookConfig.sparsity_ratio();
-  }
+  ParameterPruningHook() : initCount_(0) {}
 
-  static bool sortPairAscend(const std::pair<real, size_t> &pair1,
-                             const std::pair<real, size_t> &pair2) {
-    return pair1.first > pair2.first;
-  }
-
-  void update(Parameter *para) {
+  void preprocess(Parameter *para,
+                  size_t currentPass,
+                  size_t currentBatch) override {}
+  void update(Parameter *para) override {
     updateThreadChecker_.check();
-    auto &vec = para->getBuf(PARAMETER_GRADIENT);
+    auto &vec = para->getBuf(PARAMETER_VALUE);
     if (vec) {
       vec->dotMul(*maskVec_);
     }
   }
 
-  void generateMask(Parameter *para) {
+  virtual void generateMask(Parameter *para, real sparsityRatio) {
+    size_t nonZeroNum = para->getSize() * (1 - sparsityRatio);
     VectorPtr maskTemp = Vector::create(para->getSize(), false);
     maskTemp->zeroMem();
     real *maskTempData = maskTemp->getData();
-    size_t nonZeroNum = para->getSize() * (1 - sparsityRatio_);
 
     VectorPtr paraVec = para->getBuf(PARAMETER_VALUE);
     VectorPtr paraCpuCopy = Vector::create(para->getSize(), false);
-
     paraCpuCopy->copyFrom(*paraVec);
     std::vector<std::pair<real, size_t>> param;
 
@@ -73,38 +59,104 @@ public:
 
     std::partial_sort(
         param.begin(), param.begin() + nonZeroNum, param.end(), sortPairAscend);
+
     for (size_t i = 0; i < nonZeroNum; i++) maskTempData[param[i].second] = 1.0;
 
-    // Currently just use a mask vector for hack.
     if (para->useGpu()) {
-      maskVec_ = Vector::create(para->getSize(), para->useGpu());
-      maskVec_->copyFrom(*maskTemp);
+      this->maskVec_ = Vector::create(para->getSize(), para->useGpu());
+      this->maskVec_->copyFrom(*maskTemp);
     } else {
-      maskVec_ = maskTemp;
+      this->maskVec_ = maskTemp;
     }
   }
 
-  void init(Parameter *para) {
-    generateMask(para);
+  static bool sortPairAscend(const std::pair<real, size_t> &pair1,
+                             const std::pair<real, size_t> &pair2) {
+    return pair1.first > pair2.first;
+  }
+
+protected:
+  std::atomic<size_t> initCount_;
+  SameThreadChecker updateThreadChecker_;
+  VectorPtr maskVec_;
+};
+
+/**
+ * The static pruning hook
+ * Static means user specify a sparsity_ratio before training started, and the
+ * network will prune the parameters based on the sparsity_ratio. More details
+ * can be found https://arxiv.org/pdf/1506.02626.pdf.
+ */
+
+class StaticPruningHook : public ParameterPruningHook {
+public:
+  explicit StaticPruningHook(const ParameterUpdaterHookConfig &hookConfig)
+      : ParameterPruningHook() {
+    this->sparsityRatio_ = hookConfig.sparsity_ratio();
+  }
+
+  void init(Parameter *para) override {
     size_t initCount = this->initCount_.fetch_add(1);
     CHECK_EQ(initCount, 0UL) << "Currently the StaticPruningHook must invoke "
                                 "in same ParamterUpdater";
     VLOG(3) << "Initialize Parameter " << para;
     SetDevice device(para->getDeviceId());
 
+    this->generateMask(para, sparsityRatio_);
+
     auto &paraVec = para->getBuf(PARAMETER_VALUE);
-    paraVec->dotMul(*maskVec_);
+    paraVec->dotMul(*this->maskVec_);
   }
 
 private:
-  SameThreadChecker updateThreadChecker_;
-  std::atomic<size_t> initCount_;
-  VectorPtr maskVec_;
   real sparsityRatio_;
 };
 
-IParameterUpdaterHook::IParameterUpdaterHook() {}
+class DynamicPruningHook : public ParameterPruningHook {
+public:
+  explicit DynamicPruningHook(const ParameterUpdaterHookConfig &hookConfig)
+      : ParameterPruningHook() {
+    this->sparsityUpperBound_ = hookConfig.sparsity_upper_bound();
+    this->intervalPass_ = hookConfig.interval_pass();
+    this->endPass_ = hookConfig.end_pass();
+  }
 
+  void init(Parameter *para) override {
+    // init mask
+    size_t initCount = this->initCount_.fetch_add(1);
+    CHECK_EQ(initCount, 0UL) << "Currently the StaticPruningHook must invoke "
+                                "in same ParamterUpdater";
+    VLOG(3) << "Initialize Parameter " << para;
+    this->maskVec_ = Vector::create(para->getSize(), para->useGpu());
+    this->maskVec_->reset(1.0);
+  }
+
+  void preprocess(Parameter *para,
+                  size_t currentPass,
+                  size_t currentBatch) override {
+    if (currentPass % intervalPass_ == 0 && currentPass <= endPass_ &&
+        currentBatch == 0) {
+      real boundWeight =
+          this->sparsityUpperBound_ /
+          std::log(this->endPass_ / (real) this->intervalPass_ + 2);
+      real sparsityRatio =
+          boundWeight * std::log(2 + currentPass / (real)intervalPass_);
+
+      this->generateMask(para, sparsityRatio);
+      LOG(INFO) << para->getName()
+                << " Current sparsity ratio: " << sparsityRatio;
+      auto &paraVec = para->getBuf(PARAMETER_VALUE);
+      paraVec->dotMul(*this->maskVec_);
+    }
+  }
+
+private:
+  real sparsityUpperBound_;
+  size_t intervalPass_;
+  size_t endPass_;
+};
+
+IParameterUpdaterHook::IParameterUpdaterHook() {}
 IParameterUpdaterHook::~IParameterUpdaterHook() {}
 
 /**
@@ -139,6 +191,8 @@ static IParameterUpdaterHook *createImpl(
   auto &type = config.type();
   if (type == "pruning") {
     return new StaticPruningHook(config);
+  } else if (type == "dynamic_pruning") {
+    return new DynamicPruningHook(config);
   }
 
   LOG(FATAL) << "Unknown Hook type:  " << type;

@@ -168,6 +168,10 @@ class SGD(object):
                     len(data_batch))
                 in_args = feeder(data_batch)
                 self.__prepare_parameter__(in_args)
+                for each_param in self.__gradient_machine__.getNonStaticParameters(
+                ):
+                    self.__parameter_updater__.preprocess(each_param, pass_id,
+                                                          batch_id)
                 self.__gradient_machine__.forwardBackward(in_args, out_args,
                                                           pass_type)
                 self.__gradient_machine__.eval(pass_evaluator)

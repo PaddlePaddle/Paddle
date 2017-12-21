@@ -301,6 +301,20 @@ public:
   }
 
   /**
+   * @brief  Parameter preProcess Hook.
+   *
+   * The parameter's preProcess hook before layer Forwardbackward
+   * It could do the preprocess for parameters, such as the 'dynamic pruning'
+   * task which drops some parameters.
+   *
+   */
+  void preProcessHook(size_t currentPass, size_t currentBatch) {
+    for (auto& hook : updaterHooks_) {
+      hook->preprocess(this, currentPass, currentBatch);
+    }
+  }
+
+  /**
    * @brief  Initialize all updater hook.
    *
    * This method should be invoked in ParameterUpdater::init() only.

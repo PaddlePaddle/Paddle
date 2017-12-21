@@ -3942,9 +3942,18 @@ def ParameterHook(type, **kwargs):
         if sparsity_ratio is not None:
             hook.sparsity_ratio = sparsity_ratio
         return hook
-    elif type == 'dpruning':
+    elif type == 'dynamic_pruning':
         hook = ParameterUpdaterHookConfig()
         hook.type = type
+        sparsity_upper_bound = kwargs.get('sparsity_upper_bound', None)
+        if sparsity_upper_bound is not None:
+            hook.sparsity_upper_bound = sparsity_upper_bound
+        interval_pass = kwargs.get('interval_pass', None)
+        if interval_pass is not None:
+            hook.interval_pass = interval_pass
+        end_pass = kwargs.get('end_pass', None)
+        if end_pass is not None:
+            hook.end_pass = end_pass
         return hook
     else:
         return None

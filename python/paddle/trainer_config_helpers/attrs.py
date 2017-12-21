@@ -71,23 +71,65 @@ class HookAttribute(object):
                             The pruning details can be found https://arxiv.org/pdf/1506.02626.pdf
     :type type: string
 
-    :param sparsity_ratio: Must be specified if hook type is 'pruning', 
+    :param sparsity_ratio: 'pruning' hook parameters, 
                         it represents the ratio of the zero elements to be set by the Parameter.
     :type sparsity_ratio: float or None
+
+    :param sparsity_upper_bound: 'dynamic_pruning' hook parameters, 
+  	                    this represents the sparsity ratio of dynamic pruning finally reaching.
+    :type sparsity_upper_bound: float or None
+
+    :param interval_pass:  'dynamic_pruning' hook parameters,
+                        sparsity ratio will not change until 'pass % interval_pass == 0', the change in sparsity ratio is a log curve.
+                        More details can be found https://github.com/PaddlePaddle/Paddle/pull/2603
+    :type interval_pass: int or None
+
+    :param end_pass:  'dynamic_pruning' hook parameters, when 'pass >= end_pass', the sparsity ratio will reach the sparsity_upper_bound,
+                       then no longer change.
+    :type end_pass: int or None
 	
     """
 
-    def __init__(self, type, sparsity_ratio=None):
+    def __init__(self,
+                 type,
+                 sparsity_ratio=None,
+                 sparsity_upper_bound=None,
+                 interval_pass=None,
+                 end_pass=None):
+
         self.type = type
         self.sparsity_ratio = sparsity_ratio
+        self.sparsity_upper_bound = sparsity_upper_bound
+        self.interval_pass = interval_pass
+        self.end_pass = end_pass
+
         if self.sparsity_ratio is not None:
             assert is_compatible_with(
                 self.sparsity_ratio,
                 float), 'sparisity_ratio must be float type'
             assert self.sparsity_ratio <= 1 and self.sparsity_ratio >= 0, 'sparsity_ratio must be a float between [0, 1] '
 
+        if self.sparsity_upper_bound is not None:
+            assert is_compatible_with(
+                self.sparsity_upper_bound,
+                float), 'sparisity_upper_bound   must be float type'
+            assert self.sparsity_upper_bound <= 1 and self.sparsity_upper_bound >= 0, 'sparsity_upper_bound must be a float between [0, 1] '
+
+        if self.interval_pass is not None:
+            assert is_compatible_with(self.interval_pass,
+                                      int), 'interval_pass must be int type'
+
+        if self.end_pass is not None:
+            assert is_compatible_with(self.end_pass,
+                                      int), 'end_pass must be int type'
+
     def __call__(self):
-        return ParameterHook(self.type, sparsity_ratio=self.sparsity_ratio)
+        return ParameterHook(
+            self.type,
+            sparsity_ratio=self.sparsity_ratio,
+            sparsity_upper_bound=self.sparsity_upper_bound,
+            interval_pass=self.interval_pass,
+            end_pass=self.end_pass)
 
 
 class ParameterAttribute(object):

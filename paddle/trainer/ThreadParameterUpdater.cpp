@@ -207,6 +207,7 @@ void SgdThreadUpdater::finishBatch(real cost) {
   for (auto& para : parameters_) {
     int pid = para->getID();
     optimizers_[pid]->finishBatch();
+    para->updateHook();
   }
 }
 

@@ -57,10 +57,18 @@ public:
   // with its gradient in PARAMETER_GRADIENT
   void update(Parameter* para) {
     SetDevice setDevice(para->getDeviceId());
-    para->updateHook();
     this->updateImpl(para);
+    if (para->useGpu()) {
+      para->updateHook();
+    }
   }
-
+  // it will be called before layer forwardbackward in training process, do the
+  // preprocess for the parameters. Such as drop some parameters in dynamic
+  // pruning task.
+  void preprocess(Parameter* para, size_t currentPass, size_t currentBatch) {
+    SetDevice setDevice(para->getDeviceId());
+    para->preProcessHook(currentPass, currentBatch);
+  }
   // only get required sparse rows by default,
   // get full matrix parameter if *fullSize* set
   // get PARAMETER_APPLY on pserver if *apply* set
@@ -91,7 +99,6 @@ public:
 
 protected:
   virtual void updateImpl(Parameter* para) = 0;
-
   std::vector<ParameterType> parameterTypes_;
   std::vector<ParameterPtr> parameters_;
   std::map<size_t, size_t> nonStaticParaIDMap_;
