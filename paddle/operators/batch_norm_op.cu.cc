@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/batch_norm_op.h"
-#include "paddle/operators/data_layout.h"
+#include "paddle/framework/data_layout.h"
 
 #include <cfloat>
 #include "paddle/operators/math/math_function.h"
