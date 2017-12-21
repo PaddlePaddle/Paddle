@@ -90,7 +90,7 @@ OpDesc *BlockDesc::PrependOp() {
   return ops_.front().get();
 }
 
-void BlockDescBind::RemoveOp(size_t s, size_t e) {
+void BlockDesc::RemoveOp(size_t s, size_t e) {
   if (ops_.begin() + s == ops_.end() || ops_.begin() + e == ops_.end()) {
     return;
   }

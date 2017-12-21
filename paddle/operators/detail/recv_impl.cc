@@ -58,7 +58,7 @@ Status SendRecvServerImpl::Wait(ServerContext *context,
   return Status::OK;
 }
 
-void SendRecvServerImpl::Start() {
+void SendRecvServerImpl::Reset() {
   std::lock_guard<std::mutex> lock(this->mutex_);
   done_ = false;
 }
