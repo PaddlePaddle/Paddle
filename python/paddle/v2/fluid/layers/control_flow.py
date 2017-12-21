@@ -519,6 +519,24 @@ def create_array(dtype):
 
 
 def less_than(x, y, cond=None, **ignored):
+    """
+    **Less than**
+
+    This layer returns the truth value of :math:`x < y` elementwise.
+
+    Args:
+        x(Variable): First operand of *less_than*
+        y(Variable): Second operand of *less_than*
+        cond(Variable|None): Optional output variable to store the result of *less_than*
+
+    Returns:
+        Variable: The tensor variable storing the output of *less_than*.
+
+    Examples:
+        .. code-block:: python
+
+          less = fluid.layers.less_than(x=label, y=limit)
+    """
     helper = LayerHelper("less_than", **locals())
     if cond is None:
         cond = helper.create_tmp_variable(dtype='bool')
