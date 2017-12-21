@@ -56,7 +56,7 @@ class SendRecvServerImpl final : public SendRecvService::Service {
                      VariableMessage *out_var) override;
   Status Wait(ServerContext *context, const VoidMessage *in_var,
               VoidMessage *out_var) override;
-  void Start();
+  void Reset();
   void Done();
   void SetScope(framework::Scope *scope) { scope_ = scope; };
 
