@@ -338,8 +338,36 @@ def cross_entropy(input, label, **kwargs):
 
 def square_error_cost(input, label, **kwargs):
     """
-    This functions returns the squared error cost using the input and label.
-    The output is appending the op to do the above.
+    **Square error cost layer**
+
+    This layer accepts input predictions and target label and returns the squared error cost.
+    For predictions, :math:`X`, and target labels, :math:`Y`, the equation is:
+
+    .. math::
+
+        Out = (X - Y)^2
+
+    In the above equation:
+
+        * :math:`X`: Input predictions, a tensor.
+        * :math:`Y`: Input labels, a tensor.
+        * :math:`Out`: Output value, same shape with :math:`X`.
+
+    Args:
+       input(Variable): Input tensor, has predictions.
+       label(Variable): Label tensor, has target labels.
+
+    Returns:
+        Variable: The tensor variable storing the element-wise squared error difference \
+                  of input and label.
+
+    Examples:
+        .. code-block:: python
+
+          y = layers.data(name='y', shape=[1], dtype='float32')
+          y_predict = layers.data(name='y_predict', shape=[1], dtype='float32')
+          cost = layers.square_error_cost(input=y_predict, label=y)
+
     """
     helper = LayerHelper('square_error_cost', **kwargs)
     minus_out = helper.create_tmp_variable(dtype=input.dtype)
