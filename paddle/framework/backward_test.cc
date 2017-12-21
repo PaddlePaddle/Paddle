@@ -159,7 +159,7 @@ class FillZeroOpMaker : public OpProtoAndCheckerMaker {
   FillZeroOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "x");
-    AddOutput("Y", "out");
+    AddOutput("Out", "out");
     AddComment("");
   }
 };
