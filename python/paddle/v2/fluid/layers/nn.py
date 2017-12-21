@@ -13,7 +13,7 @@ __all__ = [
     'crf_decoding', 'cos_sim', 'cross_entropy', 'square_error_cost', 'accuracy',
     'chunk_eval', 'sequence_conv', 'conv2d', 'sequence_pool', 'pool2d',
     'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
-    'lstm_unit', 'reduce_sum'
+    'lstm_unit', 'reduce_sum', 'sequence_first_step', 'sequence_last_step'
 ]
 
 
@@ -581,6 +581,14 @@ def sequence_pool(input, pool_type, **kwargs):
         attrs={"pooltype": pool_type.upper()})
 
     return pool_out
+
+
+def sequence_first_step(input, **kwargs):
+    return sequence_pool(input=input, pool_type="first")
+
+
+def sequence_last_step(input, **kwargs):
+    return sequence_pool(input=input, pool_type="last")
 
 
 def pool2d(input,
