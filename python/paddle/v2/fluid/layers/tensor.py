@@ -27,10 +27,23 @@ def cast(x, dtype):
     return out
 
 
-def concat(input, axis):
+def concat(input, axis=0):
     """
-    This function concats the input along the axis mentioned
+    **Concat**
+
+    This function concatenates the input along the axis mentioned
     and returns that as the output.
+
+    Args:
+        input(list): List of tensors to be concatenated
+        axis(int): Integer axis along which the tensors will be concatenated
+
+    Returns:
+        Variable: Output variable of the concatenation
+
+    Examples:
+        .. code-block:: python
+          out = fluid.layers.concat(input=[Efirst, Esecond, Ethird, Efourth])
     """
     helper = LayerHelper('concat', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
@@ -55,6 +68,24 @@ def sums(input, out=None):
 
 
 def assign(input, output):
+    """
+    **Assign**
+
+    This function copies the *input* Variable to the *output* Variable.
+
+    Args:
+        input(Variable): The source variable
+        output(Variable): The destination variable
+
+    Returns:
+        Variable: The destination variable that was supplied as the *output*.
+
+    Examples:
+        .. code-block:: python
+          out = fluid.layers.create_tensor(dtype='float32')
+          hidden = fluid.layers.fc(input=data, size=10)
+          fluid.layers.assign(hidden, out)
+    """
     helper = LayerHelper('assign', **locals())
     helper.append_op(
         type='scale',
