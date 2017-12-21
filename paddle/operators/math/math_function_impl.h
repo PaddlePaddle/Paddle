@@ -67,16 +67,15 @@ void RowwiseAdd<DeviceContext, T>::operator()(const DeviceContext& context,
 template <typename DeviceContext, typename T>
 void ColwiseSum<DeviceContext, T>::operator()(const DeviceContext& context,
                                               const framework::Tensor& input,
-                                              framework::Tensor* vector) {
+                                              framework::Tensor* out) {
   auto in_dims = input.dims();
   auto size = input.numel() / in_dims[0];
-  PADDLE_ENFORCE_EQ(vector->numel(), size);
+  PADDLE_ENFORCE_EQ(out->numel(), size);
 
-  auto vec = framework::EigenMatrix<T>::From(*vector);
   auto in = framework::EigenMatrix<T>::From(input);
-  Eigen::array<int, 2> shape({{1, static_cast<int>(size)}});
-  vec.reshape(shape).device(*context.eigen_device()) =
-      in.sum(Eigen::array<int, 1>({{0}})).reshape(shape);
+  auto vec = framework::EigenVector<T>::Flatten(*out);
+
+  vec.device(*context.eigen_device()) = in.sum(Eigen::array<int, 1>({{0}}));
 }
 
 }  // namespace math
