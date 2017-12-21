@@ -39,14 +39,16 @@ train_reader = paddle.batch(
 place = fluid.CPUPlace()
 exe = fluid.Executor(place)
 t = fluid.DistributeTranspiler()
-t.transpile(optimize_ops, params_grads, pservers="127.0.0.1:6174", trainers=1)
+pserver_endpoints = os.getenv("PSERVERS")
+training_role = os.getenv("TRAINING_ROLE",
+                          "TRAINER")  # get the training role: trainer/pserver
+t.transpile(optimize_ops, params_grads, pservers=pserver_endpoints, trainers=1)
 
-pserver_endpoint = os.getenv("PSERVER")
-if pserver_endpoint:
-    pserver_prog = t.get_pserver_program(pserver_endpoint, optimize_ops)
+if training_role == "PSERVER":
+    pserver_prog = t.get_pserver_program(pserver_endpoints, optimize_ops)
     exe.run(fluid.default_startup_program())
     exe.run(pserver_prog)
-else:
+elif training_role == "TRAINER":
     feeder = fluid.DataFeeder(feed_list=[images, label], place=place)
     exe.run(fluid.default_startup_program())
 
@@ -64,5 +66,7 @@ else:
 
         pass_acc = accuracy.eval(exe)
         print("pass_id=" + str(pass_id) + " pass_acc=" + str(pass_acc))
+else:
+    print("environment var TRAINER_ROLE should be TRAINER os PSERVER")
 
 exit(1)
