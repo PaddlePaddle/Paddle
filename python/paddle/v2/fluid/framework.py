@@ -18,7 +18,7 @@ GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 
 FORCE_CPU = core.kForceCPU()
-USE_CUDNN = core.kUseMKLDNN()
+USE_CUDNN = core.kUseCUDNN()
 USE_MKLDNN = core.kUseMKLDNN()
 
 

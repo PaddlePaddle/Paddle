@@ -94,6 +94,7 @@ Conv2DOpMaker::Conv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
                             "paddings(h_pad, w_pad) of "
                             "convolution operator.")
       .SetDefault({0, 0});
+  AddAttr<bool>(framework::kUseCUDNN, "").SetDefault(false);
   AddAttr<int>(
       "groups",
       "(int default:1), the groups number of the convolution operator. "
