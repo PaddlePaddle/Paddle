@@ -116,14 +116,14 @@ class PadOpGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto* bind = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* bind = new framework::OpDesc();
     bind->SetInput("X", Input("X"));
     bind->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     bind->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     bind->SetAttrMap(Attrs());
     bind->SetType("pad_grad");
-    return std::unique_ptr<framework::OpDescBind>(bind);
+    return std::unique_ptr<framework::OpDesc>(bind);
   }
 };
 

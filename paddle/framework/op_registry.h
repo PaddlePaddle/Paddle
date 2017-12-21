@@ -79,7 +79,7 @@ class OpRegistry {
 
   static std::unique_ptr<OperatorBase> CreateOp(const proto::OpDesc& op_desc);
 
-  static std::unique_ptr<OperatorBase> CreateOp(const OpDescBind& op_desc);
+  static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
 };
 
 template <typename PlaceType, bool at_end, size_t I, typename... KernelType>
