@@ -117,7 +117,7 @@ def embedding(input, size, is_sparse=False, param_attr=None, dtype='float32'):
 
     Args:
        input(Variable): Input to the function
-       size(int): Output size
+       size(tuple|list|None): Shape of the look up table parameter 
        is_sparse(bool): Boolean flag that specifying whether the input is sparse
        param_attr(ParamAttr): Parameters for this layer
        dtype(np.dtype|core.DataType|str): The type of data : float32, float_16, int etc
