@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_info.h"
+#include "paddle/framework/op_kernel.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/selected_rows.h"
 #include "paddle/framework/tensor.h"
@@ -345,34 +346,6 @@ class OpKernel : public OpKernelBase {
   using ELEMENT_TYPE = T;
 };
 
-struct OpKernelType {
-  struct Hash {
-    std::hash<int> hash_;
-    size_t operator()(const OpKernelType& key) const {
-      int place = key.place_.which();
-      int data_type = static_cast<int>(key.data_type_);
-      int pre_hash = data_type << NUM_PLACE_TYPE_LIMIT_IN_BIT |
-                     (place & ((1 << NUM_PLACE_TYPE_LIMIT_IN_BIT) - 1));
-      return hash_(pre_hash);
-    }
-  };
-
-  platform::Place place_;
-  proto::DataType data_type_;
-
-  OpKernelType(proto::DataType data_type, platform::Place place)
-      : place_(place), data_type_(data_type) {}
-
-  OpKernelType(proto::DataType data_type,
-               const platform::DeviceContext& dev_ctx)
-      : place_(dev_ctx.GetPlace()), data_type_(data_type) {}
-
-  bool operator==(const OpKernelType& o) const {
-    return platform::places_are_same_class(place_, o.place_) &&
-           data_type_ == o.data_type_;
-  }
-};
-
 class OperatorWithKernel : public OperatorBase {
  public:
   using OpKernelMap =
@@ -405,7 +378,9 @@ class OperatorWithKernel : public OperatorBase {
   }
 
  protected:
-  virtual OpKernelType GetKernelType(const ExecutionContext& ctx) const;
+  virtual OpKernelType GetActualKernelType(const ExecutionContext& ctx) const;
+  virtual OpKernelType GetExpectedKernelType(
+      const OpKernelType& actual_kernel_type) const;
 
  private:
   // indicate kernel DataType by input data. Defaultly all input data must be
