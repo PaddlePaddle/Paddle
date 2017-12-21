@@ -23,7 +23,7 @@ template <typename DeviceContext, typename T>
 class FillZerosLikeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* out = context.Output<framework::Tensor>("Y");
+    auto* out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
     math::SetConstant<DeviceContext, T> setter;
