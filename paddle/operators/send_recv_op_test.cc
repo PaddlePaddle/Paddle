@@ -56,12 +56,12 @@ void AddOp(const std::string &type,
            const paddle::framework::VariableNameMap &inputs,
            const paddle::framework::VariableNameMap &outputs,
            paddle::framework::AttributeMap attrs,
-           paddle::framework::BlockDescBind *block) {
+           paddle::framework::BlockDesc *block) {
   // insert output
   for (auto kv : outputs) {
     for (auto v : kv.second) {
       auto var = block->Var(v);
-      var->SetDataType(paddle::framework::DataType::FP32);
+      var->SetDataType(paddle::framework::proto::DataType::FP32);
     }
   }
 
@@ -83,8 +83,8 @@ void StartServerNet() {
   InitTensorsInScope(scope, place);
 
   // sub program run in recv_op, for simple test we use sum
-  paddle::framework::ProgramDescBind program;
-  paddle::framework::BlockDescBind *block = program.MutableBlock(0);
+  paddle::framework::ProgramDesc program;
+  paddle::framework::BlockDesc *block = program.MutableBlock(0);
   // X for server side tensors, RX for received tensers, must be of same shape.
   AddOp("sum", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, {}, block);
 
