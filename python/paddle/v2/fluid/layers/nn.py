@@ -25,35 +25,7 @@ def fc(input,
        act=None,
        name=None):
     """
-    Fully Connected Layer.
-
-    Args:
-       input: The input tensor(s) to the fully connected layer.
-       size: The number of output units in the fully connected layer.
-       num_flatten_dims: The fc layer can accept an input tensor with more than
-                         two dimensions. If this happens, the multidimensional
-                         tensor will first be flattened into a 2-dimensional
-                         matrix. The parameter `num_flatten_dims` determines
-                         how the input tensor is flattened: the first
-                         `num_flatten_dims` dimensions will be flatten to form
-                         the first dimension of the final matrix (height of the
-                         matrix), and the rest `rank(X) - num_col_dims`
-                         dimensions are flattened to form the second dimension
-                         of the final matrix (width of the matrix). For example,
-                         suppose `X` is a 6-dimensional tensor with a shape
-                         [2, 3, 4, 5, 6], and `x_num_col_dims` = 3. Then, the
-                         flattened matrix will have a shape [2 x 3 x 4, 5 x 6]
-                         = [24, 30]. By default, `x_num_col_dims` is set to 1.
-       param_attr: The parameter attribute for learnable parameters/weights of
-                   the fully connected Layer.
-       param_initializer: The initializer used for the weight/parameter.
-                          If set None, XavierInitializer() will be used.
-       bias_attr: The parameter attribute for the bias parameter for this layer.
-                  If set None, no bias will be added to the output units.
-       bias_initializer: The initializer used for the bias. If set None,
-                         then ConstantInitializer() will be used.
-       act: Activation to be applied to the output of the fully connected layer.
-       name: Name/alias of the fully connected layer.
+    **Fully Connected Layer**
 
     The fully connected layer can take multiple tensors as its inputs. It
     creates a variable (one for each input tensor) called weights for each input
@@ -68,12 +40,64 @@ def fc(input,
     This process can be formulated as follows:
 
     .. math::
-        Y = \sigma({\sum_{i=0}^{N-1}W_iX_i + b})
+        Out = Act({\sum_{i=0}^{N-1}W_iX_i + b})
 
-    where, :math:`N` is the number of input, :math:`X_i` is the input tensor,
-    :math:`W` is the weights created by this layer, :math:`b` is the bias
-    created by this layer (if needed), :math:`\sigma` is the activation funtion.
+    In the above equation:
 
+    * :math:`N`: Number of the input.
+    * :math:`X_i`: The input tensor.
+    * :math:`W`: The weights created by this layer.
+    * :math:`b`: The bias parameter created by this layer (if needed).
+    * :math`Act`: The activation funtion.
+    * :math`Out`: The output tensor.
+
+    Args:
+       input(Variable|list): The input tensor(s) to the fully connected layer.
+       size(int): The number of output units in the fully connected layer.
+       num_flatten_dims(int): The fc layer can accept an input tensor with more
+                              than two dimensions. If this happens, the
+                              multidimensional tensor will first be flattened
+                              into a 2-dimensional matrix. The parameter
+                              `num_flatten_dims` determines how the input tensor
+                              is flattened: the first `num_flatten_dims`
+                              dimensions will be flatten to form the first
+                              dimension of the final matrix (height of the
+                              matrix), and the rest `rank(X) - num_col_dims`
+                              dimensions are flattened to form the second
+                              dimension of the final matrix (width of the matrix).
+                              For example, suppose `X` is a 6-dimensional tensor
+                              with a shape [2, 3, 4, 5, 6], and
+                              `x_num_col_dims` = 3. Then, the flattened matrix
+                              will have a shape [2 x 3 x 4, 5 x 6] = [24, 30].
+                              By default, `x_num_col_dims` is set to 1.
+       param_attr(ParamAttr|list): The parameter attribute for learnable
+                                   parameters/weights of the fully connected
+                                   layer.
+       param_initializer(ParamAttr|list): The initializer used for the
+                                          weight/parameter. If set None,
+                                          XavierInitializer() will be used.
+       bias_attr(ParamAttr|list): The parameter attribute for the bias parameter
+                                  for this layer. If set None, no bias will be
+                                  added to the output units.
+       bias_initializer(ParamAttr|list): The initializer used for the bias.
+                                        If set None, then ConstantInitializer()
+                                        will be used.
+       act(str): Activation to be applied to the output of the fully connected
+                 layer.
+       name(str): Name/alias of the fully connected layer.
+
+
+    Returns:
+        Variable: The output tensor variable.
+
+    Raises:
+        ValueError: If rank of the input tensor is less than 2.
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+          fc = fluid.layers.fc(input=data, size=1000, act="tanh")
     """
 
     helper = LayerHelper("fc", **locals())
@@ -115,23 +139,30 @@ def fc(input,
 
 def embedding(input, size, is_sparse=False, param_attr=None, dtype='float32'):
     """
-    Embedding Layer.
+    **Embedding Layer**
+
+    This layer is used to lookup a vector of IDs, provided by *input*, in a lookup table.
+    The result of this lookup is the embedding of each ID in the *input*.
+
+    All the input variables are passed in as local variables to the LayerHelper
+    constructor.
 
     Args:
-       param_initializer:
-       input: The input to the function
-       size: The size of the layer
-       is_sparse: A flag that decleares whether the input is sparse
-       param_attr: Parameters for this layer
-       dtype: The type of data : float32, float_16, int etc
+       input(Variable): Input to the function
+       size(int): Output size
+       is_sparse(bool): Boolean flag that specifying whether the input is sparse
+       param_attr(ParamAttr): Parameters for this layer
+       dtype(np.dtype|core.DataType|str): The type of data : float32, float_16, int etc
 
-    This function can take in the input (which is a vector of IDs) and
-    performs a lookup in the lookup_table using these IDs, to result into
-    the embedding of each ID in the input.
+    Returns:
+        Variable: The tensor variable storing the embeddings of the \
+                  supplied inputs.
 
-    All the input variables of this function are passed in as local variables
-    to the LayerHelper constructor.
+    Examples:
+        .. code-block:: python
 
+          data = fluid.layers.data(name='ids', shape=[32, 32], dtype='float32')
+          fc = fluid.layers.embedding(input=data, size=16)
     """
 
     helper = LayerHelper('embedding', **locals())
