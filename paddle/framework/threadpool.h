@@ -75,7 +75,10 @@ class ThreadPool {
   int GetNumThreads() const { return num_threads_; }
 
   // get the available thread number
-  int GetAvailable() const { return available_; }
+  int GetAvailable() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    return available_;
+  }
 
   // push a function to the queue, and will be scheduled and
   // executed if a thread is available
