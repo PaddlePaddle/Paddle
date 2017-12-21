@@ -49,6 +49,7 @@ map<KernelTypePair, DataTransformationFN> g_data_transformation_;
 
 void OpWithKernel::Run() {
   ExecutionContext ctx(...);
+
   auto actual_kernel_type = GetActualKernelType(ctx);
   
   // The expected kernel type is related to actual kernel type.
