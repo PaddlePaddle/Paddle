@@ -492,9 +492,24 @@ def increment(x, value=1.0, in_place=True):
 
 
 def array_write(x, i, array=None):
-    """
-    This function creates an operator to write the data out as a
+    """This function performs the operation to write the data out as an
     LOD_TENSOR_ARRAY.
+
+    Args:
+        x (Variable|list): The input tensor from which the data will be read.
+        i (Variable|list): The subscript index in tensor array, that points the
+                           place from which data will be read.
+        array (Variable|list): The data can be read into this variable if
+                               this is assigned.
+    Returns:
+        Variable: The tensor type variable that has the data written to it.
+
+    Examples:
+        .. code-block::python
+
+          tmp = fluid.layers.zeros(shape=[10], dtype='int32')
+          i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
+          arr = layers.array_write(tmp, i=i)
     """
     helper = LayerHelper('array_write', **locals())
     if array is None:
