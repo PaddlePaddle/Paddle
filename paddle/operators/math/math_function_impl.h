@@ -78,6 +78,34 @@ void ColwiseSum<DeviceContext, T>::operator()(const DeviceContext& context,
   vec.device(*context.eigen_device()) = in.sum(Eigen::array<int, 1>({{0}}));
 }
 
+// Specialize for CPU, since Eigen implement a general reduce. However,
+// colwise-sum can be easily implemented. General reduce has a huge overhead in
+// CPU
+template <typename T>
+class ColwiseSum<platform::CPUDeviceContext, T> {
+ public:
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor* out) {
+    auto& in_dims = input.dims();
+    auto height = in_dims[0];
+    auto size = in_dims[1];
+    PADDLE_ENFORCE_EQ(out->numel(), size);
+
+    T* out_buf = out->mutable_data<T>(out->place());
+    const T* in_buf = input.data<T>();
+
+    for (size_t i = 0; i < height; ++i) {
+      for (size_t j = 0; j < size; ++j) {
+        if (i == 0) {
+          out_buf[j] = in_buf[i * size + j];
+        } else {
+          out_buf[j] += in_buf[i * size + j];
+        }
+      }
+    }
+  }
+};
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
