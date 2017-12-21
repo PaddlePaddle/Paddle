@@ -121,12 +121,12 @@ class AssignGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *op = new framework::OpDesc();
     op->SetType("assign");
     op->SetInput("X", OutputGrad("Out"));
     op->SetOutput("Out", InputGrad("X"));
-    return std::unique_ptr<framework::OpDescBind>(op);
+    return std::unique_ptr<framework::OpDesc>(op);
   }
 };
 

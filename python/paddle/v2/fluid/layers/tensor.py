@@ -66,9 +66,26 @@ def assign(input, output):
 
 def fill_constant(shape, dtype, value, out=None):
     """
-    This function creates a tensor , with shape as mentioned in the input and
-    specified dtype and fills this up with a constant value that
-    comes in the input. It also sets the stop_gradient to be True.
+    **fill_constant**
+
+    This function creates a tensor of specified *shape* and 
+    *dtype*, and initializes this with a constant supplied in *value*.
+    
+    It also sets *stop_gradient* to True.
+
+    Args:
+        shape(tuple|list|None): Shape of output tensor
+        dtype(np.dtype|core.DataType|str): Data type of output tensor
+        value(float): Constant value to initialize the output tensor
+        out(Variable): Output Variable to initialize
+
+    Returns:
+        Variable: The tensor variable storing the output
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.fill_constant(shape=[1], value=0, dtype='int64')
     """
     helper = LayerHelper("fill_constant", **locals())
     if out is None:
@@ -90,6 +107,31 @@ def fill_constant_batch_size_like(input,
                                   value,
                                   input_dim_idx=0,
                                   output_dim_idx=0):
+    """
+    **fill_constant_batch_size_like**
+
+    This function creates a tensor of specified *shape*, *dtype* and batch size, 
+    and initializes this with a constant supplied in *value*. The batch size is 
+    obtained from the `input` tensor. 
+
+    It also sets *stop_gradient* to True.
+
+    Args:
+        input(Variable): Tensor whose dimensions will be used to get batch size
+        shape(tuple|list|None): Shape of output tensor
+        dtype(np.dtype|core.DataType|str): Data type of output tensor
+        value(float): Constant value to initialize the output tensor
+        input_dim_idx(int): Index of input's batch size dimension
+        output_dim_idx(int): Index of output's batch size dimension
+
+    Returns:
+        Variable: The tensor variable storing the output
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.fill_constant(shape=[1], value=0, dtype='int64')
+    """
     helper = LayerHelper("fill_constant_batch_size_like", **locals())
     out = helper.create_tmp_variable(dtype=dtype)
     helper.append_op(
