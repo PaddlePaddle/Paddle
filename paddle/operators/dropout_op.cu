@@ -71,7 +71,7 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       auto M = EigenMatrix<T>::Reshape(*mask, 1);
       Y.device(place) = X * M;
     } else {
-      Y.device(place) = X * dropout_prob;
+      Y.device(place) = X * (1.0f - dropout_prob);
     }
   }
 };
