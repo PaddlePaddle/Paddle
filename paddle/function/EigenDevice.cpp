@@ -13,16 +13,10 @@
  *     limitations under the License. */
 
 #include "paddle/function/EigenDevice.h"
-
-#ifdef _OPENMP
-#include <omp.h>
-#endif
 #ifdef __OSX__
 #include <sys/sysctl.h>
 #include <sys/types.h>
 #endif
-
-// #include <android/log.h>
 
 namespace paddle {
 
@@ -34,15 +28,12 @@ int GetCpuCount() {
   }
   int rank0, rank1;
   int num = fscanf(fp, "%d-%d", &rank0, &rank1);
-  //  __android_log_print(ANDROID_LOG_DEBUG, "Paddle",
-  //          "rank0: %d, rank1: %d", rank0, rank1);
   fclose(fp);
   if (num < 2) return 1;
   return rank1 + 1;
 }
 #elif defined(__OSX__) || defined(__APPLE__)
 int GetCpuCount() {
-  // TODO(hjchen) test on osx device
   int count = 0;
   size_t len = sizeof(int);
   sysctlbyname("hw.ncpu", &count, &len, NULL, 0);
@@ -54,8 +45,6 @@ int GetCpuCount() { return 1; }
 
 const Eigen::ThreadPoolDevice& GetThreadPoolDevice() {
   int num_threads = ThreadsNumManager::Get();
-  //  __android_log_print(ANDROID_LOG_DEBUG, "Paddle",
-  //          "num_threads: %d", num_threads);
   static Eigen::ThreadPool tp(num_threads);
   static Eigen::ThreadPoolDevice device(&tp, num_threads);
   return device;

@@ -15,9 +15,6 @@
 #pragma once
 
 #include "unsupported/Eigen/CXX11/Tensor"
-#ifdef _OPENMP
-#include <omp.h>
-#endif
 
 namespace paddle {
 
@@ -27,22 +24,12 @@ const Eigen::ThreadPoolDevice& GetThreadPoolDevice();
 
 class ThreadsNumManager {
 public:
-  static void Set(int n) {
-#ifdef _OPENMP
-    omp_set_num_threads(n);
-#else
-    manage_threads_num(SetAction, &n);
-#endif
-  }
+  static void Set(int n) { manage_threads_num(SetAction, &n); }
 
   static int Get() {
-#ifdef _OPENMP
-    return omp_get_num_threads();
-#else
     int n = 1;
     manage_threads_num(GetAction, &n);
     return n;
-#endif
   }
 
 private:
