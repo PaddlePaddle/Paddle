@@ -1,6 +1,6 @@
 # Design Doc: The Keys of Operator Kernel Type
 ## Problem
-An operator can have different kernel implementations, and each operator will have map to store the related kernels. Fluid uses `OpKernelType` as a key to identify a unique Kernel. Before an operator runs, an certain kernel must be choose by a key of `OpKernelType`. Currently, `OpKernelType` is defined as follows:
+An operator can have different kernel implementations, and each operator will have a map to store the related kernels. Fluid uses `OpKernelType` as a key to identify a unique Kernel. Before an operator runs, an certain kernel must be chosen by a key of `OpKernelType`. Currently, `OpKernelType` is defined as follows:
 
 ```cpp
 struct OpKernelType {
@@ -46,7 +46,7 @@ typedef boost::variant<CUDAPlace, ROCmPlace, FPGAPlace, CPUPlace> Place;
 
 ### Library
 
-An operator kernel is usually implemented based on some library. `Library` is defined as a enum variable:
+One operator kernel is usually implemented based on one library. `Library` is defined as a enum variable:
 
 ```cpp
 enum Library { Plain, MKLDNN, CUDNN };
