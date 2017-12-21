@@ -55,6 +55,24 @@ def sums(input, out=None):
 
 
 def assign(input, output):
+    """
+    **Assign**
+
+    This function copies the *input* Variable to the *output* Variable.
+
+    Args:
+        input(Variable): The source variable
+        output(Variable): The destination variable
+
+    Returns:
+        Variable: The destination variable that was supplied as the *output*.
+
+    Examples:
+        .. code-block:: python
+          out = layers.create_tensor(dtype='float32')
+          hidden = layers.fc(input=data, size=10)
+          fluid.layers.assign(hidden, out)
+    """
     helper = LayerHelper('assign', **locals())
     helper.append_op(
         type='scale',
