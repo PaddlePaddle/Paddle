@@ -444,12 +444,14 @@ def lod_tensor_to_array(x, table):
        an array.
 
     Args:
-        x (LoDTensor): The tensor that needs to be converted to an array.
-        table (LoDRankTable): The RankTable that provides the coarse lod
-                              infomation to build the output LoDTensorArray.
+        x (Variable|list): The tensor that needs to be converted to an array.
+        table (ParamAttr|list): The variable that stores the level of lod
+                                which is ordered by sequence length in
+                                descending order.
 
     Returns:
-        Variable: The tensor variable of type LOD_TENSOR.
+        Variable: The variable of type array that has been converted from a
+                  tensor.
 
     Examples:
         .. code-block:: python
@@ -476,12 +478,14 @@ def array_to_lod_tensor(x, table):
        an LOD_Tensor.
 
     Args:
-        x (LoDTensorArray): The array that needs to be converted to LOD_Tensor.
-        table (LoDRankTable): The RankTable that provides the coarse lod
-                              infomation to build the output LoDTensor.
+        x (Variable|list): The array that needs to be converted to a tensor.
+        table (ParamAttr|list): The variable that stores the level of lod
+                                which is ordered by sequence length in
+                                descending order.
 
     Returns:
-        Variable: The array variable of type LOD_TENSOR_ARRAY.
+        Variable: The variable of type tensor that has been converted
+                  from an array.
 
     Examples:
         .. code-block:: python
@@ -507,13 +511,13 @@ def increment(x, value=1.0, in_place=True):
     parameter. This operation is performed in-place by default.
 
     Args:
-        x (LoDTensor): The tensor that has the input values.
+        x (Variable|list): The tensor that has the input values.
         value (float): The amount by which the values should be incremented.
         in_place (bool): If the increment should be performed in-place.
 
     Returns:
         Variable: The tensor variable storing the transformation of
-        element-wise increment of each value in the input.
+                  element-wise increment of each value in the input.
 
     Examples:
         .. code-block:: python
@@ -558,7 +562,7 @@ def create_array(dtype):
     LayerHelper.
 
     Args:
-        dtype (data type): The data type of the elements in the array.
+        dtype (int|float): The data type of the elements in the array.
 
     Returns:
         Variable: The tensor variable storing the elements of data type.
