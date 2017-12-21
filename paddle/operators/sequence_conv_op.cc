@@ -100,8 +100,7 @@ class SequenceConvGradOp : public framework::OperatorWithKernel {
 
 class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceConvOpMaker(framework::OpProto* proto,
-                      framework::OpAttrChecker* op_checker)
+  SequenceConvOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(
         "X",

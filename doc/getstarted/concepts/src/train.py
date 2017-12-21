@@ -26,6 +26,11 @@ def event_handler(event):
         if event.batch_id % 1 == 0:
             print "Pass %d, Batch %d, Cost %f" % (event.pass_id, event.batch_id,
                                                   event.cost)
+    # product model every 10 pass
+    if isinstance(event, paddle.event.EndPass):
+        if event.pass_id % 10 == 0:
+            with open('params_pass_%d.tar' % event.pass_id, 'w') as f:
+                trainer.save_parameter_to_tar(f)
 
 
 # define training dataset reader

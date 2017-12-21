@@ -23,19 +23,19 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class BlockDescBind;
-class ProgramDescBind;
+class BlockDesc;
+class ProgramDesc;
 
-class OpDescBind {
+class OpDesc {
  public:
-  OpDescBind() {}
+  OpDesc() {}
 
-  OpDescBind(const std::string &type, const VariableNameMap &inputs,
-             const VariableNameMap &outputs, const AttributeMap &attrs);
+  OpDesc(const std::string &type, const VariableNameMap &inputs,
+         const VariableNameMap &outputs, const AttributeMap &attrs);
 
-  OpDescBind(const OpDesc &desc, ProgramDescBind *prog);
+  OpDesc(const proto::OpDesc &desc, ProgramDesc *prog);
 
-  OpDesc *Proto();
+  proto::OpDesc *Proto();
 
   std::string Type() const { return desc_.type(); }
 
@@ -59,13 +59,13 @@ class OpDescBind {
     return attrs_.find(name) != attrs_.end();
   }
 
-  AttrType GetAttrType(const std::string &name) const;
+  proto::AttrType GetAttrType(const std::string &name) const;
 
   std::vector<std::string> AttrNames() const;
 
   void SetAttr(const std::string &name, const Attribute &v);
 
-  void SetBlockAttr(const std::string &name, BlockDescBind &block);
+  void SetBlockAttr(const std::string &name, BlockDesc &block);
 
   Attribute GetAttr(const std::string &name) const;
 
@@ -107,9 +107,9 @@ class OpDescBind {
 
   void CheckAttrs();
 
-  void InferShape(const BlockDescBind &block) const;
+  void InferShape(const BlockDesc &block) const;
 
-  void InferVarType(BlockDescBind *block) const;
+  void InferVarType(BlockDesc *block) const;
 
   void MarkAsTarget() { desc_.set_is_target(true); }
 
@@ -126,7 +126,7 @@ class OpDescBind {
     return ret_val;
   }
 
-  OpDesc desc_;
+  proto::OpDesc desc_;
   VariableNameMap inputs_;
   VariableNameMap outputs_;
   AttributeMap attrs_;

@@ -20,7 +20,7 @@ using framework::Tensor;
 
 class MaxOutOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MaxOutOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  MaxOutOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(
         "X",
