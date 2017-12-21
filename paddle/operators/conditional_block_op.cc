@@ -65,7 +65,7 @@ class ConditionalBlockOp : public ConditionalOp {
       scopes->front() = &scope.NewScope();
       auto &cur_scope = *scopes->front();
 
-      auto *block = Attr<framework::BlockDescBind *>("sub_block");
+      auto *block = Attr<framework::BlockDesc *>("sub_block");
       framework::Executor exec(dev_ctx);
       exec.Run(*block->Program(), &cur_scope, block->ID(), false);
     }
@@ -74,8 +74,7 @@ class ConditionalBlockOp : public ConditionalOp {
 
 class ConditionalBlockOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ConditionalBlockOpProtoMaker(framework::OpProto *proto,
-                               framework::OpAttrChecker *op_checker)
+  ConditionalBlockOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "The conditional variable of this operator. If X is empty, the "
@@ -87,7 +86,7 @@ class ConditionalBlockOpProtoMaker : public framework::OpProtoAndCheckerMaker {
               "(std::vector<Scope*>) The step scope of conditional block. To "
               "unify the conditional block, rnn and while op, the type of "
               "scope is std::vector<Scope*>");
-    AddAttr<framework::BlockDescBind *>(
+    AddAttr<framework::BlockDesc *>(
         "sub_block", "The step block of conditional block operator");
     AddComment(R"DOC(Conditional block operator
 
@@ -117,7 +116,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
       auto &scopes = scope_var->Get<std::vector<framework::Scope *>>();
       framework::Scope &cur_scope = *scopes[0];
 
-      auto *block = Attr<framework::BlockDescBind *>("sub_block");
+      auto *block = Attr<framework::BlockDesc *>("sub_block");
       framework::Executor exec(dev_ctx);
       exec.Run(*block->Program(), &cur_scope, block->ID(), false);
 
@@ -171,8 +170,8 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto grad_op = new framework::OpDesc();
     grad_op->SetType("conditional_block_grad");
     grad_op->SetInput("X", Input("X"));
     grad_op->SetInput("Params", Input("Params"));
@@ -182,7 +181,7 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpDescMaker {
     grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     grad_op->SetOutput(framework::GradVarName("Params"), InputGrad("Params"));
     grad_op->SetBlockAttr("sub_block", *this->grad_block_[0]);
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 

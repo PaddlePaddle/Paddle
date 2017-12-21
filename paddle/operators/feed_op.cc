@@ -54,8 +54,7 @@ class FeedOp : public framework::OperatorBase {
 
 class FeedOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FeedOpInfoMaker(framework::OpProto *proto,
-                  framework::OpAttrChecker *op_checker)
+  FeedOpInfoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of feed op");
     AddOutput("Out", "The output of feed op");

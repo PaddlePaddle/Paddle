@@ -57,7 +57,7 @@ class FTRLOp : public framework::OperatorWithKernel {
 
 class FTRLOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FTRLOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  FTRLOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param",
              "(Tensor, default Tensor<float>) "

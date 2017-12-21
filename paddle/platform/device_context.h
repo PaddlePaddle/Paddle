@@ -45,6 +45,7 @@ class CPUDeviceContext : public DeviceContext {
   Place GetPlace() const override;
 
  private:
+  CPUPlace place_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
 
@@ -86,10 +87,10 @@ class CUDADeviceContext : public DeviceContext {
   cublasHandle_t cublas_handle_;
 };
 
-class CudnnDeviceContext : public CUDADeviceContext {
+class CUDNNDeviceContext : public CUDADeviceContext {
  public:
-  explicit CudnnDeviceContext(CudnnPlace place);
-  virtual ~CudnnDeviceContext();
+  explicit CUDNNDeviceContext(CUDNNPlace place);
+  virtual ~CUDNNDeviceContext();
 
   /*! \brief  Return place in the device context. */
   Place GetPlace() const final;
@@ -99,7 +100,7 @@ class CudnnDeviceContext : public CUDADeviceContext {
 
  private:
   cudnnHandle_t cudnn_handle_;
-  CudnnPlace place_;
+  CUDNNPlace place_;
 };
 
 #endif

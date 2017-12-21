@@ -18,8 +18,7 @@ namespace paddle {
 namespace operators {
 class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CRFDecodingOpMaker(framework::OpProto* proto,
-                     framework::OpAttrChecker* op_checker)
+  CRFDecodingOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Emission",
              "(LoDTensor, default: LoDTensor<float>). A LoDTensor with shape "
