@@ -579,6 +579,7 @@ class Block(object):
         self.vars = dict()  # var_name --> var
         self.ops = collections.deque()  # operator list
         self.program = program
+        self.removed_vars = dict()
 
     def __str__(self):
         return self.to_string(True)
@@ -635,8 +636,15 @@ class Block(object):
         self.ops.append(op)
         return op
 
-    def delete_op(self, op):
-        self.ops.remove(op)
+    def delete_ops(self, ops):
+        # remove from cpp
+        # FIXME(typhoonzero): remove only the first occuracy.
+        try:
+            start = list(self.ops).index(ops[0])
+            end = list(self.ops).index(ops[-1])
+        except Exception, e:
+            raise e
+        self.desc.remove_op(start, end)
 
     def prepend_op(self, *args, **kwargs):
         op_desc = self.desc.prepend_op()
