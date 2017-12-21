@@ -549,9 +549,19 @@ def less_than(x, y, cond=None, **ignored):
 
 
 def array_read(array, i):
-    """
-    This function creates an operator to read the data in as a
+    """This function performs the operation to read the data in as an
     LOD_TENSOR_ARRAY.
+    Args:
+        array (Variable|list): The input tensor that will be written to an array.
+        i (Variable|list): The subscript index in tensor array, that points the
+                           place where data will be written to.
+    Returns:
+        Variable: The tensor type variable that has the data written to it.
+    Examples:
+        .. code-block::python
+          tmp = fluid.layers.zeros(shape=[10], dtype='int32')
+          i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
+          arr = layers.array_read(tmp, i=i)
     """
     helper = LayerHelper('array_read', **locals())
     if not isinstance(
