@@ -585,9 +585,23 @@ def shrink_memory(x, i, table):
 
 
 def array_length(array):
-    """
-    This function creates an operator to find the length of the
+    """This function performs the operation to find the length of the input
     LOD_TENSOR_ARRAY.
+
+    Args:
+        array (LOD_TENSOR_ARRAY): The input array that will be used
+                                  to compute the length.
+
+    Returns:
+        Variable: The length of the input LoDTensorArray.
+
+    Examples:
+        .. code-block::python
+
+          tmp = fluid.layers.zeros(shape=[10], dtype='int32')
+          i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
+          arr = fluid.layers.array_write(tmp, i=i)
+          arr_len = fluid.layers.array_length(arr)
     """
     helper = LayerHelper('array_length', **locals())
     tmp = helper.create_tmp_variable(dtype='int64')
