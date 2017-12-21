@@ -48,8 +48,8 @@ using KernelTypePair = std::pair<KernelType, KernelType>;
 map<KernelTypePair, DataTransformationFN> g_data_transformation_;
 
 void OpWithKernel::Run() {
-  vec<Tensor> inputs = ...
-  auto actual_kernel_type = GetActualKernelType(inputs);
+  ExecutionContext ctx(...);
+  auto actual_kernel_type = GetActualKernelType(ctx);
   
   // The expected kernel type is related to actual kernel type.
   // For the most operators, the expected kernel type is as same as
@@ -57,7 +57,7 @@ void OpWithKernel::Run() {
   //
   // So we pass `actual_kernel_type` as a parameter of 
   // GetExpectedKernelType
-  auto expect_kernel_type = GetExpectedKernelType(actual_kernel_type);
+  auto expect_kernel_type = GetExpectedKernelType(ctx, actual_kernel_type);
   
   auto trans = g_data_transformation_[{actual_kernel_type, expect_kernel_type}];
   

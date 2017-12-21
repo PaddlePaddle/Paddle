@@ -405,7 +405,7 @@ void OperatorWithKernel::Run(const Scope& scope,
   // check if op[type] have kernel for kernel_key
   OpKernelMap& kernels = kernels_iter->second;
   auto actual_kernel_key = GetActualKernelType(ctx);
-  auto expected_kernel_key = GetExpectedKernelType(actual_kernel_key);
+  auto expected_kernel_key = GetExpectedKernelType(ctx, actual_kernel_key);
   auto kernel_iter = kernels.find(expected_kernel_key);
 
   if (kernel_iter == kernels.end()) {
@@ -422,7 +422,7 @@ OpKernelType OperatorWithKernel::GetActualKernelType(
 }
 
 OpKernelType OperatorWithKernel::GetExpectedKernelType(
-    const OpKernelType& actual_kernel_type) const {
+    const ExecutionContext& ctx, const OpKernelType& actual_kernel_type) const {
   return actual_kernel_type;
 }
 

@@ -65,6 +65,7 @@ class ConvOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx,
       const framework::OpKernelType& actual_kernel_type) const override {
     if (Attr<bool>(framework::kUseCUDNN)) {
       PADDLE_THROW(
