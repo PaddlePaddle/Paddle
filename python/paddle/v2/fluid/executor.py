@@ -98,11 +98,11 @@ class Executor(object):
 
     def run(self,
             program=None,
+            scope=None,
             feed=None,
             fetch_list=None,
             feed_var_name='feed',
             fetch_var_name='fetch',
-            scope=None,
             return_numpy=True):
         if feed is None:
             feed = {}
