@@ -314,7 +314,8 @@ All parameter, weight, gradient are variables in Paddle.
     InferenceOptimize(*(origin.Proto()), &pruned_desc);
     return new ProgramDescBind(pruned_desc);
   });
-  m.def("get_empty_var_name", []() { return framework::kEmptyVarName; });
+  m.def("empty_var_name", []() { return framework::kEmptyVarName; });
+  m.def("grad_var_suffix", []() { return framework::kGradVarSuffix; });
   m.def_submodule(
        "var_names",
        "The module will return special predefined variable name in Paddle")
