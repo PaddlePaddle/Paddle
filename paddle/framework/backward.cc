@@ -217,7 +217,7 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
         // If part of input gradient of that operator is not calculated, fill
         // zero variables to that input gradient.
         net->AppendOp(OpRegistry::CreateOp("fill_zeros_like", {{"X", {prefix}}},
-                                           {{"Y", {grad_input}}},
+                                           {{"Out", {grad_input}}},
                                            AttributeMap{}));
       }
       return false;
@@ -395,7 +395,7 @@ std::vector<std::unique_ptr<OpDesc>> MakeOpGrad(
         desc->Rename(in_name, new_name);
         std::unique_ptr<OpDesc> fill_zeros_op(
             new OpDesc("fill_zeros_like", {{"X", {prefix}}},
-                       {{"Y", {new_name}}}, AttributeMap{}));
+                       {{"Out", {new_name}}}, AttributeMap{}));
         pending_fill_zeros_ops.push_back(std::move(fill_zeros_op));
       }
     }
