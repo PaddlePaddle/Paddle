@@ -66,10 +66,6 @@ class ConvOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::OpKernelType& actual_kernel_type) const override {
-    for (auto it = Attrs().begin(); it != Attrs().end(); ++it) {
-      std::cout << it->first << std::endl;
-    }
-    std::cout << "count=" << Attrs().count(framework::kUseCUDNN) << std::endl;
     if (Attr<bool>(framework::kUseCUDNN)) {
       PADDLE_THROW(
           "Library is not Supported now, after support "
