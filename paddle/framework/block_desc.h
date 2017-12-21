@@ -80,6 +80,8 @@ class BlockDescBind {
 
   OpDescBind *PrependOp();
 
+  void RemoveOp(size_t s, size_t e);
+
   std::vector<OpDescBind *> AllOps() const;
 
   size_t OpSize() const { return ops_.size(); }

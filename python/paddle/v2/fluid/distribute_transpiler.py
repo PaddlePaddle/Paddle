@@ -131,11 +131,6 @@ class DistributeTranspiler:
 
     def _optimize_distributed(self, optimize_ops, program, params_and_grads,
                               **kwargs):
-        # remove optimize ops and add a send op to main_program
-        # FIXME(typhoonzero): delete_op only remove the first accurance,
-        # need to consider about multiple same optimize op?
-        for op in optimize_ops:
-            program.global_block().delete_op(op)
         if kwargs.has_key("split_method"):
             split_method = kwargs["split_method"]
         else:
@@ -158,6 +153,10 @@ class DistributeTranspiler:
             outputs={},
             attrs={"endpoints": pserver_endpoints,
                    "epmap": epmap})
+
+    def get_trainer_program(optimize_ops, program):
+        # remove optimize ops and add a send op to main_program
+        program.global_block().delete_ops(optimize_ops)
 
     def _create_var_for_trainers(self, block, var, trainers):
         var_list = []
@@ -209,6 +208,7 @@ class DistributeTranspiler:
 
             if opt_op.inputs.has_key("Grad"):
                 if opt_op.inputs["Grad"].name in grad_var_names:
+                    print "appending ", opt_op.type, opt_op.inputs
                     optimize_sub_program.global_block().append_op(
                         type=opt_op.type,
                         inputs=opt_op.inputs,

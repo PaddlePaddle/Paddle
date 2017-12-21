@@ -159,6 +159,7 @@ void BindBlockDesc(py::module &m) {
            py::return_value_policy::reference)
       .def("prepend_op", &BlockDescBind::PrependOp,
            py::return_value_policy::reference)
+      .def("remove_op", &BlockDescBind::RemoveOp)
       .def("var",
            [](BlockDescBind &self, py::bytes byte_name) {
              std::string name = byte_name;
