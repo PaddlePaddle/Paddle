@@ -234,7 +234,7 @@ class RecurrentOp : public RecurrentBase {
     auto reverse = Attr<bool>(kReverse);
 
     framework::Executor executor(dev_ctx);
-    auto *block = Attr<framework::BlockDescBind *>(kStepBlock);
+    auto *block = Attr<framework::BlockDesc *>(kStepBlock);
     auto *program = block->Program();
 
     for (size_t i = 0; i < seq_len; ++i) {
@@ -317,7 +317,7 @@ class RecurrentGradOp : public RecurrentBase {
     auto reverse = Attr<bool>(kReverse);
 
     framework::Executor executor(dev_ctx);
-    auto *block = Attr<framework::BlockDescBind *>(kStepBlock);
+    auto *block = Attr<framework::BlockDesc *>(kStepBlock);
     auto *program = block->Program();
 
     for (size_t step_id = 0; step_id < seq_len; ++step_id) {
@@ -497,8 +497,7 @@ class RecurrentGradOp : public RecurrentBase {
 
 class RecurrentOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RecurrentOpProtoMaker(framework::OpProto *proto,
-                        framework::OpAttrChecker *op_checker)
+  RecurrentOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(kInputs, "rnn inputs").AsDuplicable();
     AddInput(kInitialStates, "rnn initial states").AsDuplicable();
@@ -523,8 +522,7 @@ The ex-state means the state value in the ex-timestep or the previous time step
         string::Sprintf(
             "The state variable names. [%s, %s, %s] must be the same order",
             kExStates, kStates, kInitStateGrads));
-    AddAttr<framework::BlockDescBind *>(kStepBlock,
-                                        "The step block inside RNN");
+    AddAttr<framework::BlockDesc *>(kStepBlock, "The step block inside RNN");
     AddAttr<bool>(kReverse, R"DOC(Calculate RNN reversely or not.
 By default reverse=False
 
@@ -566,8 +564,8 @@ class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  virtual std::unique_ptr<framework::OpDescBind> Apply() const {
-    auto *grad = new framework::OpDescBind();
+  virtual std::unique_ptr<framework::OpDesc> Apply() const {
+    auto *grad = new framework::OpDesc();
     grad->SetType("recurrent_grad");
     for (auto &input_param : this->InputNames()) {
       grad->SetInput(input_param, this->Input(input_param));
@@ -589,7 +587,7 @@ class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
     grad->SetAttrMap(this->Attrs());
     grad->SetBlockAttr(kStepBlock, *grad_block_[0]);
 
-    return std::unique_ptr<framework::OpDescBind>(grad);
+    return std::unique_ptr<framework::OpDesc>(grad);
   }
 };
 
