@@ -389,10 +389,10 @@ function(go_test TARGET_NAME)
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endfunction(go_test)
 
+
 # Modification of standard 'protobuf_generate_cpp()' with protobuf-lite support
 # Usage:
 #   paddle_protobuf_generate_cpp(<proto_srcs> <proto_hdrs> <proto_files>)
-
 function(paddle_protobuf_generate_cpp SRCS HDRS)
   if(NOT ARGN)
     message(SEND_ERROR "Error: paddle_protobuf_generate_cpp() called without any proto files")
@@ -402,10 +402,10 @@ function(paddle_protobuf_generate_cpp SRCS HDRS)
   set(${SRCS})
   set(${HDRS})
 
-  if (MOBILE_INFERENCE)
-      set(EXTRA_FLAG "lite:")  
+  if(MOBILE_INFERENCE)
+    set(EXTRA_FLAG "lite:")
   else()
-      set(EXTRA_FLAG "") 
+    set(EXTRA_FLAG "")
   endif()
 
   foreach(FIL ${ARGN})
@@ -423,8 +423,8 @@ function(paddle_protobuf_generate_cpp SRCS HDRS)
 
       COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}"
       COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} 
-      -I${CMAKE_CURRENT_SOURCE_DIR}
-      --cpp_out "${EXTRA_FLAG}${CMAKE_CURRENT_BINARY_DIR}" ${ABS_FIL}
+              -I${CMAKE_CURRENT_SOURCE_DIR}
+              --cpp_out "${EXTRA_FLAG}${CMAKE_CURRENT_BINARY_DIR}" ${ABS_FIL}
       DEPENDS ${ABS_FIL} protoc
       COMMENT "Running C++ protocol buffer compiler on ${FIL}"
       VERBATIM )
@@ -435,7 +435,6 @@ function(paddle_protobuf_generate_cpp SRCS HDRS)
   set(${HDRS} ${${HDRS}} PARENT_SCOPE)
 endfunction()
 
-
 function(proto_library TARGET_NAME)
   set(oneValueArgs "")
   set(multiValueArgs SRCS DEPS)
@@ -443,7 +442,13 @@ function(proto_library TARGET_NAME)
   set(proto_srcs)
   set(proto_hdrs)
   paddle_protobuf_generate_cpp(proto_srcs proto_hdrs ${proto_library_SRCS})
-  cc_library(${TARGET_NAME} SRCS ${proto_srcs} DEPS ${proto_library_DEPS} protobuf)
+  if(MOBILE_INFERENCE)
+    list(APPEND proto_library_DEPS protobuf_lite)
+  else()
+    list(APPEND proto_library_DEPS protobuf)
+  endif()
+  list(REMOVE_DUPLICATES proto_library_DEPS)
+  cc_library(${TARGET_NAME} SRCS ${proto_srcs} DEPS ${proto_library_DEPS})
 endfunction()
 
 function(py_proto_compile TARGET_NAME)

@@ -82,6 +82,8 @@ if(ANDROID OR IOS)
         "Disable AVX when cross-compiling for Android and iOS" FORCE)
     set(WITH_PYTHON OFF CACHE STRING
         "Disable PYTHON when cross-compiling for Android and iOS" FORCE)
+    set(WITH_SWIG_PY OFF CACHE STRING
+        "Disable SWIG_PY when cross-compiling for Android and iOS" FORCE)
     set(WITH_RDMA OFF CACHE STRING
         "Disable RDMA when cross-compiling for Android and iOS" FORCE)
     set(WITH_MKL OFF CACHE STRING
@@ -99,12 +101,12 @@ if(ANDROID OR IOS)
 endif()
 
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
-  "A path setting third party libraries download & build directories.")
+    "A path setting third party libraries download & build directories.")
 
 if (WITH_C_API AND WITH_PYTHON)
-  message(WARNING "It is suggest not embedded a python interpreter in Paddle "
-    "when using C-API. It will give an unpredictable behavior when using a "
-    "different Python interpreter from compiling.")
+    message(WARNING "It is suggest not embedded a python interpreter in Paddle "
+            "when using C-API. It will give an unpredictable behavior when using a "
+            "different Python interpreter from compiling.")
 endif()
 
 if(MOBILE_INFERENCE)
@@ -153,6 +155,10 @@ include(flags)              # set paddle compile flags
 include(version)            # set PADDLE_VERSION
 include(coveralls)          # set code coverage
 
+if(WITH_GPU)
+    include(cuda)
+endif(WITH_GPU)
+
 
 include_directories("${PADDLE_SOURCE_DIR}")
 include_directories("${PADDLE_SOURCE_DIR}/paddle/cuda/include")
@@ -164,14 +170,14 @@ set(EXTERNAL_LIBS
     ${GFLAGS_LIBRARIES}
     ${GLOG_LIBRARIES}
     ${CBLAS_LIBRARIES}
-    ${PROTOBUF_LIBRARY}
-    ${ZLIB_LIBRARIES}
     ${PYTHON_LIBRARIES}
 )
 
-if(WITH_GPU)
-  include(cuda)
-endif(WITH_GPU)
+if(MOBILE_INFERENCE)
+    list(APPEND EXTERNAL_LIBS ${PROTOBUF_LITE_LIBRARY})
+else()
+    list(APPEND EXTERNAL_LIBS ${PROTOBUF_LIBRARY} ${ZLIB_LIBRARIES})
+endif()
 
 if(WITH_MKLML)
     list(APPEND EXTERNAL_LIBS ${MKLML_IOMP_LIB})

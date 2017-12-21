@@ -1,4 +1,4 @@
-if (MOBILE_INFERENCE)
+if(MOBILE_INFERENCE)
     file(GLOB proto_filenames . ModelConfig.proto ParameterConfig.proto
          TrainerConfig.proto DataConfig.proto)
 else()
