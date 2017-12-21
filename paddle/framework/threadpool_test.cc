@@ -21,8 +21,7 @@ limitations under the License. */
 namespace framework = paddle::framework;
 
 TEST(ThreadPool, Start) {
-  size_t num_threads = 4;
-  framework::ThreadPool* pool = framework::ThreadPool::Instance(num_threads);
+  framework::ThreadPool* pool = framework::ThreadPool::GetInstance();
   std::map<int, bool> dict;
   int sum = 0;
   for (int i = 0; i < 10; ++i) {

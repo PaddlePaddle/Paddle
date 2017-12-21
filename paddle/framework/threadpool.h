@@ -21,12 +21,15 @@ limitations under the License. */
 #include <queue>
 #include <thread>
 
+#include "paddle/platform/enforce.h"
+
 namespace paddle {
 namespace framework {
 
 class ThreadPool {
  private:
   typedef std::function<void()> Task;
+  static std::unique_ptr<ThreadPool> threadpool;
   int num_threads_;
   int available_;
   bool running_;
@@ -45,12 +48,11 @@ class ThreadPool {
    *            If num_threads <= 0, the thread pool wil be initilized
    *            with the number of concurrent threads supported.
    */
-  static ThreadPool* Instance(size_t num_threads) {
-    static std::unique_ptr<ThreadPool> threadpool;
+  static ThreadPool* GetInstance() {
     if (threadpool.get() == nullptr) {
-      if (num_threads <= 0) {
-        num_threads = std::thread::hardware_concurrency();
-      }
+      // TODO(Yancey1989): initialze the threadpool with max threads number
+      int num_threads = std::thread::hardware_concurrency();
+      PADDLE_ENFORCE_GT(num_threads, 0);
       threadpool.reset(new ThreadPool(num_threads));
     }
     return threadpool.get();
@@ -102,9 +104,12 @@ class ThreadPool {
         done_(false) {
     threads_.resize(num_threads);
     for (auto& thread : threads_) {
+      // TODO(Yancey1989): binding the thread on the specify CPU number
       thread.reset(new std::thread(std::bind(&ThreadPool::TaskLoop, this)));
     }
   }
+
+  bool Done() { return tasks_.empty() && available_ == num_threads_; }
 
   void TaskLoop() {
     while (running_) {
@@ -123,10 +128,11 @@ class ThreadPool {
 
       // run the task
       task();
+
       {
         std::unique_lock<std::mutex> lock(mutex_);
         ++available_;
-        if (tasks_.empty() && available_ == num_threads_) {
+        if (Done()) {
           done_ = true;
           lock.unlock();
           completed_.notify_all();
@@ -135,5 +141,8 @@ class ThreadPool {
     }
   }
 };
+
+std::unique_ptr<ThreadPool> ThreadPool::threadpool(nullptr);
+
 }  // namespace framework
 }  // namespace paddle
