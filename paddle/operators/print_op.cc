@@ -12,6 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include <algorithm>
 #include <ctime>
 
 #include "paddle/framework/op_registry.h"
@@ -27,6 +28,7 @@ struct Formater {
   std::vector<int> dims;
   std::type_index dtype{typeid(char)};
   framework::LoD lod;
+  int summarize;
   void* data{nullptr};
 
   void operator()() {
@@ -93,7 +95,20 @@ struct Formater {
   template <typename T>
   void Display() {
     auto* d = (T*)data;
-    (void)d;
+    int size = std::accumulate(dims.begin(), dims.end(), 1,
+                               [](int a, int b) { return a * b; });
+    CLOG << "\tdata: ";
+    if (summarize != -1) {
+      summarize = std::min(size, summarize);
+      for (int i = 0; i < summarize; i++) {
+        CLOG << d[i] << ",";
+      }
+    } else {
+      for (int i = 0; i < size; i++) {
+        CLOG << d[i] << ",";
+      }
+    }
+    CLOG << std::endl;
   }
 };
 
@@ -114,6 +129,10 @@ class TensorPrintOp : public framework::OperatorBase {
 
   void Run(const framework::Scope& scope,
            const platform::DeviceContext& dev_ctx) const override {
+    // Only run the `first_n` times.
+    int first_n = Attr<int>("first_n");
+    if (first_n > 0 && ++times_ > first_n) return;
+
     PADDLE_ENFORCE(!Inputs("input").empty(), "input should be set");
     auto* input_var = scope.FindVar(Input("input"));
     PADDLE_ENFORCE_NOT_NULL(input_var);
@@ -133,10 +152,13 @@ class TensorPrintOp : public framework::OperatorBase {
     if (Attr<bool>("print_tensor_lod")) {
       formater.lod = tensor.lod();
     }
+    formater.summarize = Attr<int>("summarize");
     formater.data = (void*)tensor.data<void>();
-
     formater();
   }
+
+ private:
+  mutable int times_{0};
 };
 
 class PrintOpProtoAndCheckMaker : public framework::OpProtoAndCheckerMaker {
@@ -144,9 +166,9 @@ class PrintOpProtoAndCheckMaker : public framework::OpProtoAndCheckerMaker {
   PrintOpProtoAndCheckMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("input", "the tensor that will be displayed.");
-    AddOutput("output", "just a place holder");
     AddAttr<int>("first_n", "Only log `first_n` number of times.");
     AddAttr<std::string>("message", "A string message to print as a prefix.");
+    AddAttr<int>("summarize", "Print this number of elements in the tensor.");
     AddAttr<bool>("print_tensor_name", "Whether to print the tensor name.");
     AddAttr<bool>("print_tensor_type", "Whether to print the tensor's dtype.");
     AddAttr<bool>("print_tensor_shape", "Whether to print the tensor's shape.");
@@ -156,17 +178,7 @@ class PrintOpProtoAndCheckMaker : public framework::OpProtoAndCheckerMaker {
 
     Wraps the tensor passed in so that whenever that a tensor is accessed,
     the message `message` is printed, along with the current value of the
-    tensor `t`.
-
-    Args:
-      input: A Tensor to print.
-      message: A string message to print as a prefix.
-      first_n: Only log `first_n` number of times.
-      print_tensor_name: Print the tensor name.
-      print_tensor_type: Print the tensor type.
-      print_tensor_shape: Print the tensor shape.
-      print_tensor_lod: Print the tensor lod.
-)DOC");
+    tensor `t`.)DOC");
   }
 };
 

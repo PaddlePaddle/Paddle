@@ -65,6 +65,7 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
 def Print(input,
           first_n=-1,
           message=None,
+          summarize=-1,
           print_tensor_name=True,
           print_tensor_type=True,
           print_tensor_shape=True,
@@ -78,6 +79,7 @@ def Print(input,
 
     Args:
       input: A Tensor to print.
+      summarize: Print this number of elements in the tensor.
       message: A string message to print as a prefix.
       first_n: Only log `first_n` number of times.
       print_tensor_name: Print the tensor name.
@@ -90,10 +92,10 @@ def Print(input,
     helper.append_op(
         type='print',
         inputs={'input': input},
-        outputs={'output': out},
         attrs={
             'first_n': first_n,
-            'message': message,
+            'summarize': summarize,
+            'message': message if message else "",
             'print_tensor_name': print_tensor_name,
             'print_tensor_type': print_tensor_type,
             'print_tensor_shape': print_tensor_shape,
