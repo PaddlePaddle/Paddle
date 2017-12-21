@@ -15,6 +15,36 @@ __all__ = [
 
 
 def split_lod_tensor(input, mask, level=0):
+    """
+    **split_lod_tensor**
+
+    This function takes in an input that contains the complete lod information,
+    and takes in a mask which is used to mask certain parts of the input.
+    The output is the true branch and the false branch with the mask applied to
+    the input at a certain level in the tensor.
+
+    Args:
+        input(tuple|list|None): The input tensor that contains complete
+                                lod information needed to construct the output.
+        mask(list): A bool column vector which masks the input.
+        level(int): The specific lod level to rank.
+
+    Returns:
+        Variable: The true branch of tensor.
+        Variable: The false branch of tensor.
+
+    Examples:
+        .. code-block:: python
+
+          x = layers.data(name='x', shape=[1])
+          x.persistable = True
+
+          y = layers.data(name='y', shape=[1])
+          y.persistable = True
+
+          out_true, out_false = layers.split_lod_tensor(
+                input=x, mask=y, level=level)
+    """
     helper = LayerHelper('split_lod_tensor', **locals())
     out_true = helper.create_tmp_variable(dtype=input.dtype)
     out_false = helper.create_tmp_variable(dtype=input.dtype)
