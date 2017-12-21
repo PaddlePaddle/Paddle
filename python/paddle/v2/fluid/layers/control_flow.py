@@ -10,7 +10,7 @@ __all__ = [
     'max_sequence_len', 'topk', 'lod_tensor_to_array', 'array_to_lod_tensor',
     'increment', 'array_write', 'create_array', 'less_than', 'array_read',
     'shrink_memory', 'array_length', 'IfElse', 'DynamicRNN', 'ConditionalBlock',
-    'StaticRNN'
+    'StaticRNN', 'reorder_lod_tensor_by_rank'
 ]
 
 
@@ -963,3 +963,26 @@ class DynamicRNN(object):
         if self.status != DynamicRNN.IN_RNN:
             raise ValueError("{0} can only be invoked inside rnn block.".format(
                 method))
+
+
+def reorder_lod_tensor_by_rank(x, rank_table):
+    """
+    
+    Args:
+        x(Variable): 
+        rank_table(Variable): 
+
+    Returns:
+
+    """
+    helper = LayerHelper('reorder_lod_tensor_by_rank', **locals())
+    helper.is_instance('x', Variable)
+    helper.is_instance('rank_table', Variable)
+
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='reorder_lod_tensor_by_rank',
+        inputs={'X': [x],
+                'RankTable': [rank_table]},
+        outputs={'Out': [out]})
+    return out
