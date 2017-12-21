@@ -159,7 +159,7 @@ class FillZeroOpMaker : public OpProtoAndCheckerMaker {
   FillZeroOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "x");
-    AddOutput("Y", "out");
+    AddOutput("Out", "out");
     AddComment("");
   }
 };
@@ -430,8 +430,8 @@ TEST(Backward, op_part_of_output_are_not_need) {
   ASSERT_EQ("fill_zeros_like", fill_zero.Type());
   ASSERT_EQ(1UL, fill_zero.Inputs("X").size());
   ASSERT_EQ("Z", fill_zero.Input("X"));
-  ASSERT_EQ(1UL, fill_zero.Outputs("Y").size());
-  ASSERT_EQ(std::string("Z") + f::kZeroVarSuffix, fill_zero.Output("Y"));
+  ASSERT_EQ(1UL, fill_zero.Outputs("Out").size());
+  ASSERT_EQ(std::string("Z") + f::kZeroVarSuffix, fill_zero.Output("Out"));
 
   auto &d_many_out = *net->ops_[1];
   ASSERT_EQ("many_output_op_grad", d_many_out.Type());
@@ -772,7 +772,7 @@ TEST(Backward, var_no_grad) {
   ASSERT_EQ(fill_zero_op->InputNames().size(), 1UL);
   ASSERT_EQ(fill_zero_op->OutputNames().size(), 1UL);
   EXPECT_EQ(fill_zero_op->Input("X"), std::vector<std::string>({"z1"}));
-  EXPECT_EQ(fill_zero_op->Output("Y"),
+  EXPECT_EQ(fill_zero_op->Output("Out"),
             std::vector<std::string>({std::string("z1") + f::kZeroVarSuffix}));
 
   f::OpDesc *grad_op1 = block->AllOps()[5];
