@@ -3,6 +3,7 @@ from ..framework import Program, Variable, Operator
 from .. import core
 from tensor import assign, fill_constant
 import contextlib
+from ..registry import autodoc
 
 __all__ = [
     'split_lod_tensor', 'merge_lod_tensor', 'BlockGuard', 'StaticRNNGuard',
@@ -983,16 +984,8 @@ class DynamicRNN(object):
                 method))
 
 
+@autodoc
 def reorder_lod_tensor_by_rank(x, rank_table):
-    """
-    
-    Args:
-        x(Variable): 
-        rank_table(Variable): 
-
-    Returns:
-
-    """
     helper = LayerHelper('reorder_lod_tensor_by_rank', **locals())
     helper.is_instance('x', Variable)
     helper.is_instance('rank_table', Variable)
