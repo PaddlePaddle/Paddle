@@ -25,7 +25,7 @@ constexpr char kOutputs[] = "outputs";
 constexpr char kStepScopes[] = "step_scopes";
 constexpr char kExStates[] = "ex_states";
 constexpr char kStates[] = "states";
-constexpr char kStepBlock[] = "step_block";
+constexpr char kStepBlock[] = "sub_block";
 constexpr char kReverse[] = "reverse";
 constexpr char kIsTrain[] = "is_train";
 #define GRAD_SUFFIX "@GRAD"
@@ -408,7 +408,8 @@ class RecurrentGradOp : public RecurrentBase {
             attrs["value"] = 0.0f;
 
             auto zero_op = framework::OpRegistry::CreateOp(
-                "fill_constant", {}, {{"Out", {pg_names[param_id]}}}, attrs);
+                "fill_constant", framework::VariableNameMap{},
+                {{"Out", {pg_names[param_id]}}}, attrs);
             zero_op->Run(scope, dev_ctx);
           }
 
@@ -417,7 +418,7 @@ class RecurrentGradOp : public RecurrentBase {
 
           auto sum_op = framework::OpRegistry::CreateOp(
               "sum", {{"X", {pg_names[param_id], new_inside_name}}},
-              {{"Out", {pg_names[param_id]}}}, {});
+              {{"Out", {pg_names[param_id]}}}, framework::AttributeMap{});
           sum_op->Run(cur_scope, dev_ctx);
 
           cur_scope.Rename(new_inside_name, inside_grad_name);
@@ -496,8 +497,7 @@ class RecurrentGradOp : public RecurrentBase {
 
 class RecurrentOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RecurrentOpProtoMaker(framework::OpProto *proto,
-                        framework::OpAttrChecker *op_checker)
+  RecurrentOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(kInputs, "rnn inputs").AsDuplicable();
     AddInput(kInitialStates, "rnn initial states").AsDuplicable();

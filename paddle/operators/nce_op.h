@@ -28,7 +28,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 void PrepareSamples(const framework::ExecutionContext& context) {
   auto label = context.Input<Tensor>("Label");
   const int64_t* label_data = label->data<int64_t>();
@@ -67,11 +67,11 @@ void PrepareSamples(const framework::ExecutionContext& context) {
   }
 }
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class NCEKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PrepareSamples<Place, T>(context);
+    PrepareSamples<DeviceContext, T>(context);
     auto sample_labels = context.Output<Tensor>("SampleLabels");
     const int64_t* sample_labels_data = sample_labels->data<int64_t>();
     auto sample_out = context.Output<Tensor>("SampleLogits");
@@ -135,7 +135,7 @@ class NCEKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class NCEGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {

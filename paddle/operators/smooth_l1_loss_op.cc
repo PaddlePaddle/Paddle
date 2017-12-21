@@ -47,8 +47,7 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class SmoothL1LossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SmoothL1LossOpMaker(framework::OpProto* proto,
-                      framework::OpAttrChecker* op_checker)
+  SmoothL1LossOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor, default Tensor<float>) A tensor with rank at least 2. "
@@ -138,7 +137,8 @@ REGISTER_OP(smooth_l1_loss, ops::SmoothL1LossOp,
             ops::SmoothL1LossOpMaker<float>, smooth_l1_loss_grad,
             ops::SmoothL1LossGradOp);
 REGISTER_OP_CPU_KERNEL(
-    smooth_l1_loss, ops::SmoothL1LossKernel<paddle::platform::CPUPlace, float>);
+    smooth_l1_loss,
+    ops::SmoothL1LossKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     smooth_l1_loss_grad,
-    ops::SmoothL1LossGradKernel<paddle::platform::CPUPlace, float>);
+    ops::SmoothL1LossGradKernel<paddle::platform::CPUDeviceContext, float>);

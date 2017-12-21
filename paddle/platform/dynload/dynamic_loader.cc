@@ -78,12 +78,11 @@ static inline void GetDsoHandleFromDefaultPath(std::string& dso_path,
     *dso_handle = dlopen(dso_path.c_str(), dynload_flags);
     if (nullptr == *dso_handle) {
       if (dso_path == "libcudnn.dylib") {
-        PADDLE_ENFORCE(true,
-                       "Note: [Recommend] copy cudnn into /usr/local/cuda/ \n "
-                       "For instance, sudo tar -xzf "
-                       "cudnn-7.5-osx-x64-v5.0-ga.tgz -C /usr/local \n sudo "
-                       "chmod a+r /usr/local/cuda/include/cudnn.h "
-                       "/usr/local/cuda/lib/libcudnn*");
+        LOG(WARNING) << "Note: [Recommend] copy cudnn into /usr/local/cuda/ \n "
+                        "For instance, sudo tar -xzf "
+                        "cudnn-7.5-osx-x64-v5.0-ga.tgz -C /usr/local \n sudo "
+                        "chmod a+r /usr/local/cuda/include/cudnn.h "
+                        "/usr/local/cuda/lib/libcudnn*";
       }
     }
   }
@@ -92,7 +91,8 @@ static inline void GetDsoHandleFromDefaultPath(std::string& dso_path,
 
 static inline void GetDsoHandleFromSearchPath(const std::string& search_root,
                                               const std::string& dso_name,
-                                              void** dso_handle) {
+                                              void** dso_handle,
+                                              bool throw_on_error = true) {
   int dynload_flags = RTLD_LAZY | RTLD_LOCAL;
   *dso_handle = nullptr;
 
@@ -111,15 +111,19 @@ static inline void GetDsoHandleFromSearchPath(const std::string& search_root,
       GetDsoHandleFromDefaultPath(dlPath, dso_handle, dynload_flags);
     }
   }
-  PADDLE_ENFORCE(nullptr != *dso_handle,
-                 "Failed to find dynamic library: %s ( %s ) \n Please specify "
-                 "its path correctly using following ways: \n Method. set "
-                 "environment variable LD_LIBRARY_PATH on Linux or "
-                 "DYLD_LIBRARY_PATH on Mac OS. \n For instance, issue command: "
-                 "export LD_LIBRARY_PATH=... \n Note: After Mac OS 10.11, "
-                 "using the DYLD_LIBRARY_PATH is impossible unless System "
-                 "Integrity Protection (SIP) is disabled.",
-                 dlPath, dlerror());
+  auto error_msg =
+      "Failed to find dynamic library: %s ( %s ) \n Please specify "
+      "its path correctly using following ways: \n Method. set "
+      "environment variable LD_LIBRARY_PATH on Linux or "
+      "DYLD_LIBRARY_PATH on Mac OS. \n For instance, issue command: "
+      "export LD_LIBRARY_PATH=... \n Note: After Mac OS 10.11, "
+      "using the DYLD_LIBRARY_PATH is impossible unless System "
+      "Integrity Protection (SIP) is disabled.";
+  if (throw_on_error) {
+    PADDLE_ENFORCE(nullptr != *dso_handle, error_msg, dlPath, dlerror());
+  } else if (nullptr == *dso_handle) {
+    LOG(WARNING) << string::Sprintf(error_msg, dlPath, dlerror());
+  }
 }
 
 void GetCublasDsoHandle(void** dso_handle) {
@@ -132,9 +136,10 @@ void GetCublasDsoHandle(void** dso_handle) {
 
 void GetCudnnDsoHandle(void** dso_handle) {
 #if defined(__APPLE__) || defined(__OSX__)
-  GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.dylib", dso_handle);
+  GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.dylib", dso_handle,
+                             false);
 #else
-  GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.so", dso_handle);
+  GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.so", dso_handle, false);
 #endif
 }
 

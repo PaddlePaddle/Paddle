@@ -140,7 +140,11 @@ else:
   sys.exit(0)
 EOF
 
-cpu_config
+if [ "`uname -s`" == "Linux" ]; then
+  # only support on linux yet, with mac can use v2
+  cpu_config
+fi
+
 # echo $KMP_AFFINITY $OMP_DYNAMIC
 
 case "$1" in

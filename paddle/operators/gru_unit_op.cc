@@ -71,8 +71,7 @@ class GRUUnitOp : public framework::OperatorWithKernel {
 
 class GRUUnitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  GRUUnitOpMaker(framework::OpProto* proto,
-                 framework::OpAttrChecker* op_checker)
+  GRUUnitOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Input",
              "(Tensor) Matrix with shape [batch_size, frame_size * 3] for the "
@@ -201,9 +200,10 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(gru_unit, ops::GRUUnitOp, ops::GRUUnitOpMaker, gru_unit_grad,
             ops::GRUUnitGradOp);
-REGISTER_OP_CPU_KERNEL(gru_unit,
-                       ops::GRUUnitKernel<paddle::platform::CPUPlace, float>,
-                       ops::GRUUnitKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
-    gru_unit_grad, ops::GRUUnitGradKernel<paddle::platform::CPUPlace, float>,
-    ops::GRUUnitGradKernel<paddle::platform::CPUPlace, double>);
+    gru_unit, ops::GRUUnitKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GRUUnitKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    gru_unit_grad,
+    ops::GRUUnitGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GRUUnitGradKernel<paddle::platform::CPUDeviceContext, double>);

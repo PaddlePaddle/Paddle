@@ -71,7 +71,7 @@ class MulOpShapeInference : public framework::InferShapeBase {
 
 class MulOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MulOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  MulOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of mul op");
     AddInput("Y", "The second input of mul op");
@@ -149,6 +149,7 @@ REGISTER_OPERATOR(mul, paddle::framework::OperatorWithKernel, ops::MulOpMaker,
                   ops::MulOpShapeInference,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(mul_grad, ops::MulOpGrad);
-REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(mul_grad,
-                       ops::MulGradKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    mul_grad, ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>);

@@ -37,8 +37,7 @@ class ClipByNormOp : public framework::OperatorWithKernel {
 
 class ClipByNormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ClipByNormOpMaker(framework::OpProto* proto,
-                    framework::OpAttrChecker* op_checker)
+  ClipByNormOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor) The input of clip_by_norm op."
@@ -71,4 +70,5 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(clip_by_norm, ops::ClipByNormOp,
                              ops::ClipByNormOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    clip_by_norm, ops::ClipByNormKernel<paddle::platform::CPUPlace, float>);
+    clip_by_norm,
+    ops::ClipByNormKernel<paddle::platform::CPUDeviceContext, float>);

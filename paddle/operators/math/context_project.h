@@ -81,17 +81,17 @@ using LoDTensor = framework::LoDTensor;
  *
  */
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class ContextProjectFunctor {
  public:
-  void operator()(const platform::DeviceContext& context, const LoDTensor& in,
+  void operator()(const DeviceContext& context, const LoDTensor& in,
                   const Tensor& padding_data, bool padding_trainable,
                   const int context_start, const int context_length,
                   const int context_stride, const int up_pad,
                   const int down_pad, Tensor* col) {
     auto lod_level_0 = in.lod()[0];
 
-    math::Im2ColFunctor<math::ColFormat::kOCF, Place, float> im2col_ocf;
+    math::Im2ColFunctor<math::ColFormat::kOCF, DeviceContext, float> im2col_ocf;
 
     std::vector<int> dilation({1, 1});
     std::vector<int> padding({up_pad, 0, down_pad, 0});
@@ -188,17 +188,17 @@ class ContextProjectFunctor {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class ContextProjectGradFunctor {
  public:
-  void operator()(const platform::DeviceContext& context, const LoDTensor& in,
+  void operator()(const DeviceContext& context, const LoDTensor& in,
                   bool padding_trainable, const int context_start,
                   const int context_length, const int context_stride,
                   const int up_pad, const int down_pad, bool pad_grad,
                   bool input_grad, Tensor* padding_data, Tensor* col) {
     auto lod_level_0 = in.lod()[0];
 
-    math::Col2ImFunctor<math::ColFormat::kOCF, Place, float> col2im_ocf;
+    math::Col2ImFunctor<math::ColFormat::kOCF, DeviceContext, float> col2im_ocf;
 
     std::vector<int> dilation({1, 1});
     std::vector<int> padding({up_pad, 0, down_pad, 0});
@@ -258,8 +258,8 @@ class ContextProjectGradFunctor {
               Tensor out_t_sub = out_t.Slice(k * context_length,
                                              k * context_length + padding_size);
               Tensor w_sub = padding_data->Slice(k, k + padding_size);
-              axpy<Place, T>(context, w_sub.numel(), static_cast<T>(1),
-                             out_t_sub.data<T>(), w_sub.data<T>());
+              axpy<DeviceContext, T>(context, w_sub.numel(), static_cast<T>(1),
+                                     out_t_sub.data<T>(), w_sub.data<T>());
             }
           }
           if (down_pad > 0) {
@@ -290,8 +290,8 @@ class ContextProjectGradFunctor {
                   (down_pad_begin_row + t) * context_length);
               Tensor w_sub = padding_data->Slice(
                   up_pad + padding_idx, up_pad + padding_idx + padding_size);
-              axpy<Place, T>(context, w_sub.numel(), static_cast<T>(1),
-                             out_t_sub.data<T>(), w_sub.data<T>());
+              axpy<DeviceContext, T>(context, w_sub.numel(), static_cast<T>(1),
+                                     out_t_sub.data<T>(), w_sub.data<T>());
             }
           }
           out_t.Resize({sequence_height, context_length * sequence_width});

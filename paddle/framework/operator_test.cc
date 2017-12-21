@@ -58,7 +58,7 @@ class OpeWithoutKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 
 static void BuildVar(const std::string& param_name,
                      std::initializer_list<const char*> arguments,
-                     paddle::framework::OpDesc::Var* var) {
+                     paddle::framework::proto::OpDesc::Var* var) {
   var->set_parameter(param_name);
   for (auto& arg_name : arguments) {
     *var->mutable_arguments()->Add() = arg_name;
@@ -70,14 +70,14 @@ REGISTER_OP_WITHOUT_GRADIENT(
     paddle::framework::OpeWithoutKernelTestProtoAndCheckerMaker);
 
 TEST(OperatorBase, all) {
-  paddle::framework::OpDesc op_desc;
+  paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("test_operator");
   BuildVar("input", {"IN1"}, op_desc.add_inputs());
   BuildVar("output", {"OUT1"}, op_desc.add_outputs());
 
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
-  attr->set_type(paddle::framework::AttrType::FLOAT);
+  attr->set_type(paddle::framework::proto::AttrType::FLOAT);
   attr->set_f(3.14);
 
   paddle::platform::CPUDeviceContext device_context;
@@ -115,7 +115,7 @@ class OpWithKernelTest : public OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {}
   OpKernelType GetKernelType(const ExecutionContext& ctx) const override {
-    return OpKernelType(DataType::FP32, ctx.device_context());
+    return OpKernelType(proto::DataType::FP32, ctx.GetPlace());
   }
 };
 
@@ -195,14 +195,14 @@ REGISTER_OP_CPU_KERNEL(op_with_kernel,
 
 // test with single input
 TEST(OpKernel, all) {
-  paddle::framework::OpDesc op_desc;
+  paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("op_with_kernel");
   BuildVar("x", {"IN1"}, op_desc.add_inputs());
   BuildVar("y", {"OUT1"}, op_desc.add_outputs());
 
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
-  attr->set_type(paddle::framework::AttrType::FLOAT);
+  attr->set_type(paddle::framework::proto::AttrType::FLOAT);
   attr->set_f(3.14);
 
   paddle::platform::CPUDeviceContext cpu_device_context;
@@ -224,7 +224,7 @@ REGISTER_OP_CPU_KERNEL(op_multi_inputs_with_kernel,
 TEST(OpKernel, multi_inputs) {
   using namespace paddle::framework;
 
-  OpDesc op_desc;
+  proto::OpDesc op_desc;
   op_desc.set_type("op_multi_inputs_with_kernel");
   BuildVar("xs", {"x0", "x1", "x2"}, op_desc.add_inputs());
   BuildVar("k", {"k0"}, op_desc.add_inputs());
@@ -232,7 +232,7 @@ TEST(OpKernel, multi_inputs) {
 
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
-  attr->set_type(paddle::framework::AttrType::FLOAT);
+  attr->set_type(paddle::framework::proto::AttrType::FLOAT);
   attr->set_f(3.14);
 
   paddle::platform::CPUDeviceContext cpu_device_context;
@@ -261,7 +261,9 @@ class OperatorClone : public paddle::framework::OperatorBase {
 };
 
 TEST(Operator, Clone) {
-  OperatorClone a("ABC", {}, {}, {});
+  OperatorClone a("ABC", paddle::framework::VariableNameMap{},
+                  paddle::framework::VariableNameMap{},
+                  paddle::framework::AttributeMap{});
   auto b = a.Clone();
   ASSERT_EQ(a.Type(), b->Type());
 }

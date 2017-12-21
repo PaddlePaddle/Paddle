@@ -86,8 +86,8 @@ class SigmoidCrossEntropyWithLogitsGradOp
 class SigmoidCrossEntropyWithLogitsOpMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  SigmoidCrossEntropyWithLogitsOpMaker(framework::OpProto* proto,
-                                       framework::OpAttrChecker* op_checker)
+  SigmoidCrossEntropyWithLogitsOpMaker(OpProto* proto,
+                                       OpAttrChecker* op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor, default Tensor<float>), a 2-D tensor with shape N x D, "
@@ -142,7 +142,7 @@ REGISTER_OP(sigmoid_cross_entropy_with_logits,
             ops::SigmoidCrossEntropyWithLogitsGradOp);
 REGISTER_OP_CPU_KERNEL(sigmoid_cross_entropy_with_logits,
                        ops::SigmoidCrossEntropyWithLogitsKernel<
-                           paddle::platform::CPUPlace, float>);
+                           paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(sigmoid_cross_entropy_with_logits_grad,
                        ops::SigmoidCrossEntropyWithLogitsGradKernel<
-                           paddle::platform::CPUPlace, float>);
+                           paddle::platform::CPUDeviceContext, float>);

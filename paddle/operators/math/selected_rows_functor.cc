@@ -19,8 +19,8 @@ namespace paddle {
 namespace operators {
 namespace math {
 template <typename T>
-struct SelectedRowsAdd<platform::CPUPlace, T> {
-  void operator()(const platform::DeviceContext& context,
+struct SelectedRowsAdd<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::SelectedRows& input1,
                   const framework::SelectedRows& input2,
                   framework::SelectedRows* output) {
@@ -67,12 +67,12 @@ struct SelectedRowsAdd<platform::CPUPlace, T> {
   }
 };
 
-template struct SelectedRowsAdd<platform::CPUPlace, float>;
-template struct SelectedRowsAdd<platform::CPUPlace, double>;
+template struct SelectedRowsAdd<platform::CPUDeviceContext, float>;
+template struct SelectedRowsAdd<platform::CPUDeviceContext, double>;
 
 template <typename T>
-struct SelectedRowsAddTensor<platform::CPUPlace, T> {
-  void operator()(const platform::DeviceContext& context,
+struct SelectedRowsAddTensor<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::SelectedRows& input1,
                   const framework::Tensor& input2, framework::Tensor* output) {
     auto in1_height = input1.height();
@@ -88,7 +88,7 @@ struct SelectedRowsAddTensor<platform::CPUPlace, T> {
     PADDLE_ENFORCE_EQ(in1_row_numel, input2.numel() / in1_height);
     PADDLE_ENFORCE_EQ(in1_row_numel, output->numel() / in1_height);
 
-    SetConstant<platform::CPUPlace, T> functor;
+    SetConstant<platform::CPUDeviceContext, T> functor;
     functor(context, output, 0.0);
 
     auto* in1_data = in1_value.data<T>();
@@ -103,17 +103,16 @@ struct SelectedRowsAddTensor<platform::CPUPlace, T> {
 
     auto out_eigen = framework::EigenVector<T>::Flatten(*output);
     auto in2_eigen = framework::EigenVector<T>::Flatten(input2);
-    out_eigen.device(*context.GetEigenDevice<platform::CPUPlace>()) =
-        out_eigen + in2_eigen;
+    out_eigen.device(*context.eigen_device()) = out_eigen + in2_eigen;
   }
 };
 
-template struct SelectedRowsAddTensor<platform::CPUPlace, float>;
-template struct SelectedRowsAddTensor<platform::CPUPlace, double>;
+template struct SelectedRowsAddTensor<platform::CPUDeviceContext, float>;
+template struct SelectedRowsAddTensor<platform::CPUDeviceContext, double>;
 
 template <typename T>
-struct SelectedRowsAddTo<platform::CPUPlace, T> {
-  void operator()(const platform::DeviceContext& context,
+struct SelectedRowsAddTo<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::SelectedRows& input1,
                   const int64_t input2_offset,
                   framework::SelectedRows* input2) {
@@ -143,14 +142,14 @@ struct SelectedRowsAddTo<platform::CPUPlace, T> {
   }
 };
 
-template struct SelectedRowsAddTo<platform::CPUPlace, float>;
-template struct SelectedRowsAddTo<platform::CPUPlace, double>;
-template struct SelectedRowsAddTo<platform::CPUPlace, int>;
-template struct SelectedRowsAddTo<platform::CPUPlace, int64_t>;
+template struct SelectedRowsAddTo<platform::CPUDeviceContext, float>;
+template struct SelectedRowsAddTo<platform::CPUDeviceContext, double>;
+template struct SelectedRowsAddTo<platform::CPUDeviceContext, int>;
+template struct SelectedRowsAddTo<platform::CPUDeviceContext, int64_t>;
 
 template <typename T>
-struct SelectedRowsAddToTensor<platform::CPUPlace, T> {
-  void operator()(const platform::DeviceContext& context,
+struct SelectedRowsAddToTensor<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::SelectedRows& input1,
                   framework::Tensor* input2) {
     auto in1_height = input1.height();
@@ -175,10 +174,10 @@ struct SelectedRowsAddToTensor<platform::CPUPlace, T> {
   }
 };
 
-template struct SelectedRowsAddToTensor<platform::CPUPlace, float>;
-template struct SelectedRowsAddToTensor<platform::CPUPlace, double>;
-template struct SelectedRowsAddToTensor<platform::CPUPlace, int>;
-template struct SelectedRowsAddToTensor<platform::CPUPlace, int64_t>;
+template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, float>;
+template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, double>;
+template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, int>;
+template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, int64_t>;
 
 }  // namespace math
 }  // namespace operators

@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
-using platform::Place;
+using platform::DeviceContext;
 
 #define CUDA_1D_KERNEL_LOOP(i, n)                              \
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \

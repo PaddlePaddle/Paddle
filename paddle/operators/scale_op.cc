@@ -38,7 +38,7 @@ class ScaleOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ScaleOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  ScaleOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) Input tensor of scale operator.");
     AddOutput("Out", "(Tensor) Output tensor of scale operator.");
@@ -75,8 +75,8 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker<float>,
                   ops::ScaleGradMaker);
-REGISTER_OP_CPU_KERNEL(scale,
-                       ops::ScaleKernel<paddle::platform::CPUPlace, float>,
-                       ops::ScaleKernel<paddle::platform::CPUPlace, double>,
-                       ops::ScaleKernel<paddle::platform::CPUPlace, int>,
-                       ops::ScaleKernel<paddle::platform::CPUPlace, int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    scale, ops::ScaleKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ScaleKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ScaleKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ScaleKernel<paddle::platform::CPUDeviceContext, int64_t>);

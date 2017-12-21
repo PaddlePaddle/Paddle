@@ -14,7 +14,7 @@ limitations under the License. */
 
 syntax = "proto2";
 option optimize_for = LITE_RUNTIME;
-package paddle.framework;
+package paddle.framework.proto;
 
 enum AttrType {
   INT = 0;

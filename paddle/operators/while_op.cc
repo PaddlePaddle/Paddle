@@ -25,7 +25,7 @@ namespace operators {
 using StepScopeVar = std::vector<framework::Scope *>;
 using LoDTensor = framework::LoDTensor;
 
-constexpr char kStepBlock[] = "step_block";
+constexpr char kStepBlock[] = "sub_block";
 constexpr char kCondition[] = "Condition";
 constexpr char kStepScopes[] = "StepScopes";
 constexpr char kParameters[] = "X";
@@ -64,7 +64,7 @@ class WhileOp : public framework::OperatorBase {
 
 class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  WhileOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  WhileOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(kParameters,
              "A set of variables, which are required by operators inside the "
@@ -187,7 +187,8 @@ class WhileGradOp : public framework::OperatorBase {
             attrs["value"] = 0.0f;
 
             auto zero_op = framework::OpRegistry::CreateOp(
-                "fill_constant", {}, {{"Out", {pg_names[param_id]}}}, attrs);
+                "fill_constant", framework::VariableNameMap{},
+                {{"Out", {pg_names[param_id]}}}, attrs);
             zero_op->Run(scope, dev_ctx);
           }
         }
@@ -195,7 +196,7 @@ class WhileGradOp : public framework::OperatorBase {
         auto new_inside_name = cur_scope.Rename(inside_grad_name);
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {pg_names[param_id], new_inside_name}}},
-            {{"Out", {pg_names[param_id]}}}, {});
+            {{"Out", {pg_names[param_id]}}}, framework::AttributeMap{});
         sum_op->Run(cur_scope, dev_ctx);
         cur_scope.Rename(new_inside_name, inside_grad_name);
       }
@@ -320,10 +321,10 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
         continue;
       }
       auto dims = ctx->GetInputsElementDim(kParameters, i);
-      if (var_types[i] == framework::VarDesc::LOD_TENSOR) {
+      if (var_types[i] == framework::proto::VarDesc::LOD_TENSOR) {
         names_to_set.push_back(pg_names[i]);
         dims_to_set.push_back(dims);
-      } else if (var_types[i] == framework::VarDesc::LOD_TENSOR_ARRAY) {
+      } else if (var_types[i] == framework::proto::VarDesc::LOD_TENSOR_ARRAY) {
         // not sure how to set the dim of LOD_TENSOR_ARRAY
         names_to_set.push_back(pg_names[i]);
         dims_to_set.push_back(dims);
