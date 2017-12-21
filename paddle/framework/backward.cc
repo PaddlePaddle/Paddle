@@ -394,8 +394,8 @@ std::vector<std::unique_ptr<OpDesc>> MakeOpGrad(
         std::string new_name = prefix + kZeroVarSuffix;
         desc->Rename(in_name, new_name);
         std::unique_ptr<OpDesc> fill_zeros_op(
-            new OpDescBind("fill_zeros_like", {{"X", {prefix}}},
-                           {{"Out", {new_name}}}, AttributeMap{}));
+            new OpDesc("fill_zeros_like", {{"X", {prefix}}},
+                       {{"Out", {new_name}}}, AttributeMap{}));
         pending_fill_zeros_ops.push_back(std::move(fill_zeros_op));
       }
     }
