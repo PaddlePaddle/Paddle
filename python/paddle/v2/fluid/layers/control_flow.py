@@ -440,9 +440,25 @@ def topk(input, k):
 
 
 def lod_tensor_to_array(x, table):
-    """
-    This function creates an operator to convert an LOD_Tensor to
-    an array.
+    """This function performs the operation that converts an LOD_Tensor to
+       an array.
+
+    Args:
+        x (Variable|list): The tensor that needs to be converted to an array.
+        table (ParamAttr|list): The variable that stores the level of lod
+                                which is ordered by sequence length in
+                                descending order.
+
+    Returns:
+        Variable: The variable of type array that has been converted from a
+                  tensor.
+
+    Examples:
+        .. code-block:: python
+
+          x = fluid.layers.data(name='x', shape=[10])
+          table = fluid.layers.lod_rank_table(x, level=0)
+          array = fluid.layers.lod_tensor_to_array(x, table)
     """
     helper = LayerHelper("lod_tensor_to_array", **locals())
     array = helper.create_variable(
@@ -458,9 +474,26 @@ def lod_tensor_to_array(x, table):
 
 
 def array_to_lod_tensor(x, table):
-    """
-    This function creates an operator to convert an array to a
-    LOD_Tensor.
+    """This function performs the operations that converts an array to
+       an LOD_Tensor.
+
+    Args:
+        x (Variable|list): The array that needs to be converted to a tensor.
+        table (ParamAttr|list): The variable that stores the level of lod
+                                which is ordered by sequence length in
+                                descending order.
+
+    Returns:
+        Variable: The variable of type tensor that has been converted
+                  from an array.
+
+    Examples:
+        .. code-block:: python
+
+          x = fluid.layers.data(name='x', shape=[10])
+          table = fluid.layers.lod_rank_table(x, level=0)
+          array = fluid.layers.lod_tensor_to_array(x, table)
+          lod_tensor = fluid.layers.array_to_lod_tensor(array, table)
     """
     helper = LayerHelper("array_to_lod_tensor", **locals())
     tmp = helper.create_tmp_variable(dtype=x.dtype)
@@ -473,10 +506,24 @@ def array_to_lod_tensor(x, table):
 
 
 def increment(x, value=1.0, in_place=True):
-    """
-    This function creates an operator to increment each value in the input
-    `x` by an amount: `value` as mentioned in the input parameter. This
-    operation is performed in-place by default.
+    """This function performs an operation that increments each value in the
+    input :math:`x` by an amount: :math:`value` as mentioned in the input
+    parameter. This operation is performed in-place by default.
+
+    Args:
+        x (Variable|list): The tensor that has the input values.
+        value (float): The amount by which the values should be incremented.
+        in_place (bool): If the increment should be performed in-place.
+
+    Returns:
+        Variable: The tensor variable storing the transformation of
+                  element-wise increment of each value in the input.
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(name='data', shape=[32, 32], dtype='float32')
+          data = fluid.layers.increment(x=data, value=3.0, in_place=True)
     """
     helper = LayerHelper("increment", **locals())
     if not in_place:
@@ -526,6 +573,21 @@ def array_write(x, i, array=None):
 
 
 def create_array(dtype):
+    """This function creates an array of type :math:`LOD_TENSOR_ARRAY` using the
+    LayerHelper.
+
+    Args:
+        dtype (int|float): The data type of the elements in the array.
+
+    Returns:
+        Variable: The tensor variable storing the elements of data type.
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.create_array(dtype='float32')
+
+    """
     helper = LayerHelper("array", **locals())
     return helper.create_variable(
         name="{0}.out".format(helper.name),
