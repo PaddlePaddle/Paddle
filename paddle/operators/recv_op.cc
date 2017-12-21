@@ -143,7 +143,7 @@ class RecvOp : public framework::OperatorBase {
 
 class RecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RecvOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  RecvOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("RX", "(Tensor) Input tensor to be optimized").AsDuplicable();
     AddComment(R"DOC(

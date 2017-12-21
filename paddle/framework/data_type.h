@@ -20,7 +20,8 @@
 namespace paddle {
 namespace framework {
 
-inline DataType ToDataType(std::type_index type) {
+inline proto::DataType ToDataType(std::type_index type) {
+  using namespace paddle::framework::proto;
   if (typeid(float).hash_code() == type.hash_code()) {
     return DataType::FP32;
   } else if (typeid(double).hash_code() == type.hash_code()) {
@@ -36,7 +37,8 @@ inline DataType ToDataType(std::type_index type) {
   }
 }
 
-inline std::type_index ToTypeIndex(DataType type) {
+inline std::type_index ToTypeIndex(proto::DataType type) {
+  using namespace paddle::framework::proto;
   switch (type) {
     case DataType::FP32:
       return typeid(float);
@@ -54,7 +56,8 @@ inline std::type_index ToTypeIndex(DataType type) {
 }
 
 template <typename Visitor>
-inline void VisitDataType(DataType type, Visitor visitor) {
+inline void VisitDataType(proto::DataType type, Visitor visitor) {
+  using namespace paddle::framework::proto;
   switch (type) {
     case DataType::FP32:
       visitor.template operator()<float>();

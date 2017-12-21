@@ -53,7 +53,7 @@ Kernel实现       | CPU、CUDA共享Kernel实现在`.h`文件中，否则，CPU
 ```cpp
 class MulOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MulOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  MulOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor), 2D tensor of size (M x K)");
     AddInput("Y", "(Tensor), 2D tensor of size (K x N)");
@@ -82,7 +82,7 @@ The equation is: Out = X * Y
 template <typename AttrType>
 class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ScaleOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  ScaleOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input tensor of scale operator.").NotInGradient();
     AddOutput("Out", "The output tensor of scale operator.").NotInGradient();

@@ -14,6 +14,19 @@
 
 #pragma once
 
+#ifdef __CUDACC__
+#ifdef __CUDACC_VER_MAJOR__
+// CUDA 9 define `__CUDACC_VER__` as a warning message, manually define
+// __CUDACC_VER__ instead.
+#undef __CUDACC_VER__
+
+#define __CUDACC_VER__                                         \
+  (__CUDACC_VER_MAJOR__ * 10000 + __CUDACC_VER_MINOR__ * 100 + \
+   __CUDACC_VER_BUILD__)
+#endif
+
+#endif
+
 #include <boost/config.hpp>
 
 #ifdef PADDLE_WITH_CUDA

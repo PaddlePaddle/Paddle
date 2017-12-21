@@ -69,7 +69,7 @@ class SendOp : public framework::OperatorBase {
 
 class SendOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SendOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  SendOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) Input tensor to be send").AsDuplicable();
     AddComment(R"DOC(

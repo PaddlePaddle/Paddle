@@ -273,6 +273,13 @@ void set_constant_with_place<platform::GPUPlace>(
                            TensorSetConstantGPU(context, tensor, value));
 }
 
+template <>
+void set_constant_with_place<platform::CUDNNPlace>(
+    const platform::DeviceContext& context, framework::Tensor* tensor,
+    float value) {
+  set_constant_with_place<platform::GPUPlace>(context, tensor, value);
+}
+
 template struct RowwiseAdd<platform::CUDADeviceContext, float>;
 template struct RowwiseAdd<platform::CUDADeviceContext, double>;
 template struct ColwiseSum<platform::CUDADeviceContext, float>;
