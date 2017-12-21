@@ -34,7 +34,7 @@ class InferShapeBase {
 struct OpInfo {
   OpCreator creator_;
   GradOpMakerFN grad_op_maker_;
-  OpProto* proto_{nullptr};
+  proto::OpProto* proto_{nullptr};
   OpAttrChecker* checker_{nullptr};
   InferVarTypeFN infer_var_type_;
   InferShapeFN infer_shape_;
@@ -43,7 +43,7 @@ struct OpInfo {
     return proto_ != nullptr && checker_ != nullptr;
   }
 
-  const OpProto& Proto() const {
+  const proto::OpProto& Proto() const {
     PADDLE_ENFORCE_NOT_NULL(proto_, "Operator Proto has not been registered");
     PADDLE_ENFORCE(proto_->IsInitialized(),
                    "Operator Proto must be initialized in op info");

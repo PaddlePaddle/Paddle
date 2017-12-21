@@ -57,15 +57,14 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(framework::DataType::FP32,
+    return framework::OpKernelType(framework::proto::DataType::FP32,
                                    ctx.device_context());
   }
 };
 
 class ChunkEvalOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ChunkEvalOpMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  ChunkEvalOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Inference",
              "(Tensor, default: Tensor<int64_t>). "

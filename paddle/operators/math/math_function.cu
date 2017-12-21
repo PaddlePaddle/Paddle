@@ -274,7 +274,7 @@ void set_constant_with_place<platform::GPUPlace>(
 }
 
 template <>
-void set_constant_with_place<platform::CudnnPlace>(
+void set_constant_with_place<platform::CUDNNPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {
   set_constant_with_place<platform::GPUPlace>(context, tensor, value);

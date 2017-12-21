@@ -39,8 +39,7 @@ class ModifiedHuberLossOp : public framework::OperatorWithKernel {
 
 class ModifiedHuberLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ModifiedHuberLossOpMaker(framework::OpProto* proto,
-                           framework::OpAttrChecker* op_checker)
+  ModifiedHuberLossOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "The input tensor of modified huber loss op. "
