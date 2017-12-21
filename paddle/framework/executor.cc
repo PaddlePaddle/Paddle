@@ -64,7 +64,7 @@ static void CreateTensor(Variable* var, proto::VarDesc::VarType var_type) {
   }
 }
 
-void Executor::Run(const ProgramDescBind& pdesc, Scope* scope, int block_id,
+void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool create_local_scope) {
   // TODO(tonyyang-svail):
   //    - only runs on the first device (i.e. no interdevice communication)

@@ -163,8 +163,8 @@ class SplitLoDTensorArrayGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
     grad_op->SetType("merge_lod_tensor");
     grad_op->SetInput("InTrue", OutputGrad("OutTrue"));
     grad_op->SetInput("InFalse", OutputGrad("OutFalse"));
@@ -172,7 +172,7 @@ class SplitLoDTensorArrayGradMaker : public framework::SingleGradOpDescMaker {
     grad_op->SetInput("X", Input("X"));
     grad_op->SetOutput("Out", InputGrad("X"));
     grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 
