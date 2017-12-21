@@ -40,7 +40,8 @@ def fc(input,
     This process can be formulated as follows:
 
     .. math::
-        Out = Act({\sum_{i=0}^{N-1}W_iX_i + b})
+
+        Out = Act\left({\sum_{i=0}^{N-1}W_iX_i + b}\right)
 
     In the above equation:
 
@@ -48,8 +49,8 @@ def fc(input,
     * :math:`X_i`: The input tensor.
     * :math:`W`: The weights created by this layer.
     * :math:`b`: The bias parameter created by this layer (if needed).
-    * :math`Act`: The activation funtion.
-    * :math`Out`: The output tensor.
+    * :math:`Act`: The activation funtion.
+    * :math:`Out`: The output tensor.
 
     Args:
        input(Variable|list): The input tensor(s) to the fully connected layer.
