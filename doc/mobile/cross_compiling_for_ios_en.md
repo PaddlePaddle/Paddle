@@ -1,4 +1,4 @@
-# PaddlePaddle Compiling Guide for iOS
+# Build PaddlePaddle for iOS
 
 This tutorial will walk you through cross compiling the PaddlePaddle library for iOS from the source in MacOS.
 
@@ -98,7 +98,7 @@ You can set other compiling parameters for your own need. I.E. if you are trying
 - set `CMAKE_BUILD_TYPE` with `Release`
 - set `IOS_USE_VECLIB_FOR_BLAS` with `ON`
 
-## Compile and install
+## Build and install
 
 After CMake, run following commands, PaddlePaddle will download the compile 3rd party dependencies, compile and install PaddlePaddle inference library.
 
@@ -109,7 +109,7 @@ $ make install
 
 Please Note: if you compiled PaddlePaddle in the source directory for other platforms, do remove `third_party` and `build` directory within the source with `rm -rf` to ensure that all the 3rd party libraries dependencies and PaddlePaddle is newly compiled with current CMake configuration.
 
-`your/path/to/install` directory will have following directories after `compile` and `install`:
+`your/path/to/install` directory will have following directories after `make install`:
 
 - `include`, contains all the C-API header files.
 - `lib`, contains PaddlePaddle C-API static library.
