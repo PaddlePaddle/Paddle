@@ -12,7 +12,11 @@ import paddle.v2.fluid.core as core
 class ParallelOpTest(unittest.TestCase):
     def setUp(self):
         x = layers.data(
-            shape=[2, 3, 4], dtype='float32', name='x', append_batch_size=False)
+            shape=[-1, 3, 4],
+            dtype='float32',
+            name='x',
+            append_batch_size=False,
+            stop_gradient=False)
 
         places = fluid.default_main_program().global_block().create_var()
         pd = layers.ParallelDo(places=places)
@@ -22,8 +26,16 @@ class ParallelOpTest(unittest.TestCase):
             hidden = layers.fc(input=data, size=7)
             pd.write_output(hidden)
         data = pd()
-        print data
-        print fluid.default_main_program()
+        loss = layers.mean(x=data)
+        append_backward_ops(loss)
+
+        exe = fluid.Executor(fluid.CPUPlace())
+        exe.run(fluid.default_startup_program())
+        exe.run(fluid.default_main_program(),
+                feed={
+                    x.name: np.random.uniform(0.1, 0.6,
+                                              (2, 3, 4)).astype("float32")
+                })
 
     def test_forward(self):
         pass

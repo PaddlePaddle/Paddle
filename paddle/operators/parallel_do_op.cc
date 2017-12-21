@@ -13,9 +13,11 @@
    limitations under the License. */
 
 #include <vector>
+#include "chunk_eval_op.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
+#include "paddle/platform/place.h"
 
 namespace paddle {
 namespace operators {
@@ -28,10 +30,6 @@ constexpr char kOutputs[] = "outputs";
 constexpr char kParallelScopes[] = "parallel_scopes";
 
 constexpr char kParallelBlock[] = "sub_block";
-// #define GRAD_SUFFIX "@GRAD"
-// constexpr char kInputGrads[] = "inputs" GRAD_SUFFIX;
-// constexpr char kOutputGrads[] = "outputs" GRAD_SUFFIX;
-// constexpr char kParamGrads[] = "parameters" GRAD_SUFFIX;
 
 using ParallelScopeVar = std::vector<framework::Scope *>;
 using OperatorBase = framework::OperatorBase;
@@ -46,21 +44,66 @@ class ParallelDoOp : public OperatorBase {
 
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
-    // create scope
-    // copy parameters
+    auto *block = Attr<framework::BlockDescBind *>(kParallelBlock);
+    auto *program = block->Program();
+
+    // TODO(tonyyang-svail): get places from input
+    std::vector<platform::Place> places;
+    places.emplace_back(platform::CPUPlace());
+    places.emplace_back(platform::CPUPlace());
+
+    std::vector<framework::Scope *> sub_scopes;
+    for (int place_idx = 0; place_idx < places.size(); ++place_idx) {
+      VLOG(3) << "Run " << place_idx;
+
+      sub_scopes.push_back(&scope.NewScope());
+
+      auto &place = places[place_idx];
+      auto *cur_scope = sub_scopes[place_idx];
+
+      // copy parameter
+      if (dev_ctx.GetPlace() != place) {
+        PADDLE_THROW("Not Implemented");
+      }
+
+      // feed input
+      for (auto &argu : Inputs(kInputs)) {
+        auto *var = scope.FindVar(argu);
+        const auto &tensor = var->Get<LoDTensor>();
+        if (!tensor.lod().empty()) {
+          PADDLE_THROW("Disable parallel lod for now");
+        } else {
+          PADDLE_ENFORCE(tensor.dims()[0] % places.size() == 0,
+                         "Batch size should be divided by places size");
+          int begin = place_idx * tensor.dims()[0] / places.size();
+          int end = (place_idx + 1) * tensor.dims()[0] / places.size();
+          auto feed_tensor = tensor.Slice(begin, end);
+          feed_tensor.switch_place(place);
+
+          auto *cur_var = cur_scope->Var(argu);
+          auto *cur_tensor = cur_var->GetMutable<Tensor>();
+          *cur_tensor = feed_tensor;
+        }
+      }
+
+      // execute
+      auto executor = framework::Executor(place);
+      executor.Run(*program, cur_scope, block->ID(),
+                   false /*create_local_scope*/);
+    }
+
+    // merge output
+    for (auto &o_name : Outputs(kOutputs)) {
+      std::vector<const framework::LoDTensor *> lod_tensors;
+      for (auto *sub_scope : sub_scopes) {
+        lod_tensors.push_back(&sub_scope->FindVar(o_name)->Get<LoDTensor>());
+      }
+
+      auto *lod_tensor_to_be_merged =
+          scope.FindVar(o_name)->GetMutable<LoDTensor>();
+      lod_tensor_to_be_merged->MergeLoDTensor(lod_tensors, dev_ctx.GetPlace());
+    }
   }
-};
-
-class ParallelDoGradOp : public OperatorBase {
- public:
-  ParallelDoGradOp(const std::string &type,
-                   const framework::VariableNameMap &inputs,
-                   const framework::VariableNameMap &outputs,
-                   const framework::AttributeMap &attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
-
-  void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {}
 };
 
 class ParallelDoOpProtoMaker : public framework::OpProtoAndCheckerMaker {
@@ -80,16 +123,28 @@ ParallelDo Operator.
   }
 };
 
+class ParallelDoGradOp : public OperatorBase {
+ public:
+  ParallelDoGradOp(const std::string &type,
+                   const framework::VariableNameMap &inputs,
+                   const framework::VariableNameMap &outputs,
+                   const framework::AttributeMap &attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+
+  void Run(const framework::Scope &scope,
+           const platform::DeviceContext &dev_ctx) const override {}
+};
+
 class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
   virtual std::unique_ptr<framework::OpDescBind> Apply() const {
-    PADDLE_THROW("Not Implemented");
     auto *grad = new framework::OpDescBind();
-    grad->SetType("recurrent_grad");
+    grad->SetType("parallel_do_grad");
     for (auto &input_param : this->InputNames()) {
+      LOG(INFO) << input_param;
       grad->SetInput(input_param, this->Input(input_param));
       grad->SetOutput(framework::GradVarName(input_param),
                       this->InputGrad(input_param));
@@ -116,26 +171,25 @@ class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {
 class ParallelDoGradOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
-    PADDLE_THROW("Not Implemented");
-    // std::vector<std::string> input{kInputs};
-    // std::vector<std::string> output{kOutputs};
-    // for (auto &s : input) {
-    //   PADDLE_ENFORCE(ctx->HasInputs(s));
-    //   PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(s)),
-    //                  "Cannot find the gradient variable %s",
-    //                  framework::GradVarName(s));
-    // }
-    // for (auto &s : output) {
-    //   PADDLE_ENFORCE(ctx->HasInputs(s));
-    // }
-    // for (auto &s : input) {
-    //   ctx->SetOutputsDim(framework::GradVarName(s), ctx->GetInputsDim(s));
-    // }
-    // if (ctx->HasInputs(kParameters)) {
-    //   PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(kParameters)));
-    //   ctx->SetOutputsDim(framework::GradVarName(kParameters),
-    //                      ctx->GetInputsDim(kParameters));
-    // }
+    std::vector<std::string> input{kParameters, kInputs};
+    std::vector<std::string> output{kOutputs};
+    for (auto &s : input) {
+      PADDLE_ENFORCE(ctx->HasInputs(s));
+      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(s)),
+                     "Cannot find the gradient variable %s",
+                     framework::GradVarName(s));
+    }
+    for (auto &s : output) {
+      PADDLE_ENFORCE(ctx->HasInputs(s));
+    }
+    for (auto &s : input) {
+      ctx->SetOutputsDim(framework::GradVarName(s), ctx->GetInputsDim(s));
+    }
+    if (ctx->HasInputs(kParameters)) {
+      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(kParameters)));
+      ctx->SetOutputsDim(framework::GradVarName(kParameters),
+                         ctx->GetInputsDim(kParameters));
+    }
   }
 };
 

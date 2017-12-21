@@ -140,7 +140,18 @@ class ParallelDo(object):
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
 
+        self.outputs = [
+            parent_block.create_var(
+                name=o.name,
+                shape=o.shape,
+                dtype=o.dtype,
+                lod_level=o.lod_level,
+                persistable=o.persistable,
+                stop_gradient=o.stop_gradient) for o in self.outputs
+        ]
+
         inputs = [parent_block.var(i.name) for i in self.inputs]
+        outputs = [parent_block.var(o.name) for o in self.outputs]
 
         parent_block.append_op(
             type='parallel_do',
@@ -149,7 +160,7 @@ class ParallelDo(object):
                 'parameters': self.get_parameters(),
                 'places': self.places
             },
-            outputs={'outputs': self.outputs,
+            outputs={'outputs': outputs,
                      'parallel_scopes': [step_scope]},
             attrs={'sub_block': current_block})
 
