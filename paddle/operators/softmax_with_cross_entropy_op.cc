@@ -20,8 +20,7 @@ namespace operators {
 class SoftmaxWithCrossEntropyOpMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  SoftmaxWithCrossEntropyOpMaker(framework::OpProto* proto,
-                                 framework::OpAttrChecker* op_checker)
+  SoftmaxWithCrossEntropyOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Logits",
              "(Tensor, default: Tensor<float>), The unscaled log probabilities "

@@ -41,7 +41,7 @@ struct HuberLossForward {
   T delta;
 };
 
-template <typename Place, typename T, typename AttrType = T>
+template <typename DeviceContext, typename T, typename AttrType = T>
 class HuberLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -50,7 +50,8 @@ class HuberLossKernel : public framework::OpKernel<T> {
     auto* out0 = context.Output<Tensor>("Residual");
     auto* out1 = context.Output<Tensor>("Out");
     auto delta = static_cast<T>(context.Attr<AttrType>("delta"));
-    auto place = context.GetEigenDevice<Place>();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
 
     auto x = EigenVector<T>::Flatten(*in0);
     auto y = EigenVector<T>::Flatten(*in1);
@@ -85,7 +86,7 @@ struct HuberLossBackward {
   T delta;
 };
 
-template <typename Place, typename T, typename AttrType = T>
+template <typename DeviceContext, typename T, typename AttrType = T>
 class HuberLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -94,7 +95,8 @@ class HuberLossGradKernel : public framework::OpKernel<T> {
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
     auto* out1 = context.Output<Tensor>(framework::GradVarName("Y"));
     auto delta = static_cast<T>(context.op().Attr<AttrType>("delta"));
-    auto place = context.GetEigenDevice<Place>();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
 
     auto residual = EigenVector<T>::Flatten(*in0);
     auto out_grad = EigenVector<T>::Flatten(*in1);

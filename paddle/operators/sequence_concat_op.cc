@@ -43,8 +43,7 @@ class SequenceConcatOp : public framework::OperatorWithKernel {
 
 class SequenceConcatOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceConcatOpMaker(framework::OpProto* proto,
-                        framework::OpAttrChecker* op_checker)
+  SequenceConcatOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(LodTensorArray) Input is a vector of LoDTensor, "
@@ -129,7 +128,7 @@ REGISTER_OP(sequence_concat, ops::SequenceConcatOp, ops::SequenceConcatOpMaker,
             sequence_concat_grad, ops::SequenceConcatGradOp);
 REGISTER_OP_CPU_KERNEL(
     sequence_concat,
-    ops::SequenceConcatOpKernel<paddle::platform::CPUPlace, float>);
+    ops::SequenceConcatOpKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     sequence_concat_grad,
-    ops::SequenceConcatGradOpKernel<paddle::platform::CPUPlace, float>);
+    ops::SequenceConcatGradOpKernel<paddle::platform::CPUDeviceContext, float>);

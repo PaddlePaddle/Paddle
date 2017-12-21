@@ -20,8 +20,7 @@ namespace operators {
 
 class CastOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CastOpProtoMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  CastOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input tensor of cast op");
     AddOutput("Out", "The output tensor of cast op");
@@ -68,10 +67,11 @@ class CastOpGradMaker : public framework::SingleGradOpDescMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUPlace;
+using CPU = paddle::platform::CPUDeviceContext;
 REGISTER_OP_WITH_KERNEL(cast, ops::CastOpGradMaker, ops::CastOpInferShape,
                         ops::CastOpProtoMaker);
 REGISTER_OP_CPU_KERNEL(cast, ops::CastOpKernel<CPU, float>,
                        ops::CastOpKernel<CPU, double>,
                        ops::CastOpKernel<CPU, int>,
-                       ops::CastOpKernel<CPU, int64_t>);
+                       ops::CastOpKernel<CPU, int64_t>,
+                       ops::CastOpKernel<CPU, bool>);

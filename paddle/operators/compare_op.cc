@@ -20,8 +20,7 @@ namespace operators {
 template <typename OpComment>
 class CompareOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CompareOpProtoMaker(framework::OpProto *proto,
-                      framework::OpAttrChecker *op_checker)
+  CompareOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     OpComment comment;
     AddInput("X",

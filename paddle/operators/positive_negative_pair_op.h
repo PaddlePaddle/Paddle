@@ -22,7 +22,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class PositiveNegativePairKernel : public framework::OpKernel<T> {
  public:
   struct PredictionResult {

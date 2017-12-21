@@ -46,7 +46,7 @@ class MinusOp : public framework::OperatorWithKernel {
 
 class MinusOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MinusOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  MinusOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The left tensor of minus operator.");
     AddInput("Y", "The right tensor of minus operator.");
@@ -102,5 +102,5 @@ class MinusGradMaker : public framework::GradOpDescMakerBase {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(minus, ops::MinusOp, ops::MinusOpMaker, ops::MinusGradMaker);
-REGISTER_OP_CPU_KERNEL(minus,
-                       ops::MinusKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    minus, ops::MinusKernel<paddle::platform::CPUDeviceContext, float>);

@@ -53,8 +53,8 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
 }
 
-Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(
-    framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(OpProto* proto,
+                                               OpAttrChecker* op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput(
       "Input",
@@ -112,8 +112,8 @@ Example:
 )DOC");
 }
 
-Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(
-    framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(OpProto* proto,
+                                               OpAttrChecker* op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput("Input",
            "(Tensor) The input tensor of convolution transpose operator."
@@ -197,21 +197,23 @@ REGISTER_OP(conv2d_transpose, ops::ConvTransposeOp, ops::Conv2DTransposeOpMaker,
 
 REGISTER_OP_CPU_KERNEL(
     conv2d_transpose,
-    ops::GemmConvTransposeKernel<paddle::platform::CPUPlace, float>,
-    ops::GemmConvTransposeKernel<paddle::platform::CPUPlace, double>);
+    ops::GemmConvTransposeKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GemmConvTransposeKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     conv2d_transpose_grad,
-    ops::GemmConvTransposeGradKernel<paddle::platform::CPUPlace, float>,
-    ops::GemmConvTransposeGradKernel<paddle::platform::CPUPlace, double>);
+    ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext,
+                                     double>);
 
 REGISTER_OP(conv3d_transpose, ops::ConvTransposeOp, ops::Conv3DTransposeOpMaker,
             conv3d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     conv3d_transpose,
-    ops::GemmConvTransposeKernel<paddle::platform::CPUPlace, float>,
-    ops::GemmConvTransposeKernel<paddle::platform::CPUPlace, double>);
+    ops::GemmConvTransposeKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GemmConvTransposeKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     conv3d_transpose_grad,
-    ops::GemmConvTransposeGradKernel<paddle::platform::CPUPlace, float>,
-    ops::GemmConvTransposeGradKernel<paddle::platform::CPUPlace, double>);
+    ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext,
+                                     double>);

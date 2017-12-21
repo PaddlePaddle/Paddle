@@ -39,8 +39,7 @@ class ModifiedHuberLossOp : public framework::OperatorWithKernel {
 
 class ModifiedHuberLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ModifiedHuberLossOpMaker(framework::OpProto* proto,
-                           framework::OpAttrChecker* op_checker)
+  ModifiedHuberLossOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "The input tensor of modified huber loss op. "
@@ -115,6 +114,6 @@ REGISTER_OP(modified_huber_loss, ops::ModifiedHuberLossOp,
 
 REGISTER_OP_CPU_KERNEL(
     modified_huber_loss,
-    ops::ModifiedHuberLossKernel<paddle::platform::CPUPlace, float>);
+    ops::ModifiedHuberLossKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(modified_huber_loss_grad,
                        ops::ModifiedHuberLossGradCPUKernel<float>);

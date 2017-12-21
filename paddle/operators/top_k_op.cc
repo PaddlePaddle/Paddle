@@ -46,7 +46,7 @@ class TopkOp : public framework::OperatorWithKernel {
 
 class TopkOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  TopkOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  TopkOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) The input of Topk op");
     AddOutput("Out", "(Tensor) The output tensor of Topk op");

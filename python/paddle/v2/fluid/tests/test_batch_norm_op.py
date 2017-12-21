@@ -3,10 +3,7 @@ import numpy as np
 from op_test import OpTest
 import paddle.v2.fluid.core as core
 from paddle.v2.fluid.op import Operator
-
-
-def grad_var_name(var_name):
-    return var_name + "@GRAD"
+from paddle.v2.fluid.framework import grad_var_name
 
 
 def get_backward_op(scope, op, no_grad_set):

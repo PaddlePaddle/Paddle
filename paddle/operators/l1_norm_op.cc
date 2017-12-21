@@ -48,7 +48,7 @@ class L1NormGradOp : public framework::OperatorWithKernel {
 
 class L1NormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  L1NormOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  L1NormOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) The input of l1_norm op.");
     AddOutput("Out", "(Scalar) The output of l1_norm op.");
@@ -69,7 +69,8 @@ $$Out = \sum{|X|}$$
 namespace ops = paddle::operators;
 REGISTER_OP(l1_norm, ops::L1NormOp, ops::L1NormOpMaker, l1_norm_grad,
             ops::L1NormGradOp);
-REGISTER_OP_CPU_KERNEL(l1_norm,
-                       ops::L1NormKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    l1_norm_grad, ops::L1NormGradKernel<paddle::platform::CPUPlace, float>);
+    l1_norm, ops::L1NormKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    l1_norm_grad,
+    ops::L1NormGradKernel<paddle::platform::CPUDeviceContext, float>);

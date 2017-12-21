@@ -11,7 +11,9 @@ regularizer = fluid.regularizer.L2Decay(0.0005 * BATCH_SIZE)
 hidden1 = fluid.layers.fc(input=image,
                           size=128,
                           act='relu',
-                          param_attr=regularizer)
+                          param_attr=fluid.ParamAttr(
+                              regularizer=regularizer,
+                              clip=fluid.clip.ClipByValue(10)))
 hidden2 = fluid.layers.fc(input=hidden1,
                           size=64,
                           act='relu',
@@ -33,11 +35,10 @@ opts = optimizer.minimize(avg_cost)
 accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
 
 inference_program = fluid.default_main_program().clone()
-test_accuracy = fluid.evaluator.Accuracy(
-    input=predict, label=label, main_program=inference_program)
-test_target = [avg_cost] + test_accuracy.metrics + test_accuracy.states
-inference_program = fluid.io.get_inference_program(
-    test_target, main_program=inference_program)
+with fluid.program_guard(inference_program):
+    test_accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
+    test_target = [avg_cost] + test_accuracy.metrics + test_accuracy.states
+    inference_program = fluid.io.get_inference_program(test_target)
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(

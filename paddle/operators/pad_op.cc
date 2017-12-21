@@ -48,7 +48,7 @@ class PadOp : public framework::OperatorWithKernel {
 
 class PadOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  PadOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  PadOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "The input of pad op. "
@@ -134,6 +134,7 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(pad, ops::PadOp, ops::PadOpMaker, ops::PadOpGradMaker);
 REGISTER_OPERATOR(pad_grad, ops::PadOpGrad);
-REGISTER_OP_CPU_KERNEL(pad, ops::PadKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(pad_grad,
-                       ops::PadGradKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    pad, ops::PadKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    pad_grad, ops::PadGradKernel<paddle::platform::CPUDeviceContext, float>);

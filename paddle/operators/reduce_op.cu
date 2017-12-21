@@ -17,12 +17,13 @@
 
 namespace ops = paddle::operators;
 
-#define REGISTER_REDUCE_GPU_KERNEL(reduce_type, functor, grad_functor)     \
-  REGISTER_OP_GPU_KERNEL(                                                  \
-      reduce_type,                                                         \
-      ops::ReduceKernel<paddle::platform::GPUPlace, float, ops::functor>); \
-  REGISTER_OP_GPU_KERNEL(reduce_type##_grad,                               \
-                         ops::ReduceGradKernel<paddle::platform::GPUPlace, \
-                                               float, ops::grad_functor>);
+#define REGISTER_REDUCE_GPU_KERNEL(reduce_type, functor, grad_functor)    \
+  REGISTER_OP_CUDA_KERNEL(                                                \
+      reduce_type, ops::ReduceKernel<paddle::platform::CUDADeviceContext, \
+                                     float, ops::functor>);               \
+  REGISTER_OP_CUDA_KERNEL(                                                \
+      reduce_type##_grad,                                                 \
+      ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, float,   \
+                            ops::grad_functor>);
 
 FOR_EACH_KERNEL_FUNCTOR(REGISTER_REDUCE_GPU_KERNEL);

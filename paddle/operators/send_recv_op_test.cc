@@ -85,7 +85,10 @@ void StartServerNet() {
 
   paddle::framework::AttributeMap attrs;
   attrs.insert({"endpoint", std::string("127.0.0.1:6174")});
-  attrs.insert({"OptimizeBlock", block});
+  std::string program_proto;
+  PADDLE_ENFORCE(program.Proto()->SerializeToString(&program_proto));
+
+  attrs.insert({"OptimizeProgram", program_proto});
   recv_op = paddle::framework::OpRegistry::CreateOp("recv", {{"RX", {"RX"}}},
                                                     {{"Out", {"Out"}}}, attrs);
   paddle::platform::CPUDeviceContext ctx(place);
