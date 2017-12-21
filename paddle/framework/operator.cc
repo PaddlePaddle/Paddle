@@ -421,7 +421,7 @@ OpKernelType OperatorWithKernel::GetActualKernelType(
   return OpKernelType(IndicateDataType(ctx), ctx.GetPlace());
 }
 
-OpKernelType GetExpectedKernelType(
+OpKernelType OperatorWithKernel::GetExpectedKernelType(
     const OpKernelType& actual_kernel_type) const {
   return actual_kernel_type;
 }

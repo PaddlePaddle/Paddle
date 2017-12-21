@@ -14,8 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/"
-
 namespace paddle {
 namespace framework {
 
