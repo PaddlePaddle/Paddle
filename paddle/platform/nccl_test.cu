@@ -12,16 +12,18 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include <thrust/device_vector.h>
+#include <memory>
+#include <vector>
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+
+#include "paddle/framework/init.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/dynload/nccl.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/gpu_info.h"
-
-#include <thrust/device_vector.h>
-#include <memory>
-#include <vector>
 
 static int dev_count = 0;
 
@@ -85,7 +87,7 @@ TEST(NCCL, all_reduce) {
   }
 
   VLOG(1) << "Invoking ncclAllReduce";
-  PADDLE_ENFORCE(dynload::ncclGroupStart());
+  // PADDLE_ENFORCE(dynload::ncclGroupStart(void));
 
   for (int i = 0; i < dev_count; ++i) {
     VLOG(1) << "Invoking ncclAllReduce with device " << i;
@@ -97,7 +99,7 @@ TEST(NCCL, all_reduce) {
   }
 
   VLOG(1) << "Invoked ncclAllReduce";
-  PADDLE_ENFORCE(dynload::ncclGroupEnd());
+  // PADDLE_ENFORCE(dynload::ncclGroupEnd());
 
   VLOG(1) << "Sync devices";
   for (int i = 0; i < dev_count; ++i) {
@@ -119,7 +121,8 @@ TEST(NCCL, all_reduce) {
   }
 
   for (int i = 0; i < dev_count; ++i) {
-    PADDLE_ENFORCE(dynload::ncclCommDestroy(comms[i]));
+    // PADDLE_ENFORCE(dynload::ncclCommDestroy(comms[i]));
+    dynload::ncclCommDestroy(comms[i]);
   }
 }
 }  // namespace platform
@@ -133,6 +136,15 @@ int main(int argc, char** argv) {
         << dev_count;
     return 0;
   }
+
+  auto init_dev = [&](const int& gpu_id) {
+    return "GPU:" + std::to_string(gpu_id);
+  };
+  std::vector<std::string> devs;
+  for (int i = 0; i < dev_count; ++i) {
+    devs.push_back(init_dev(i));
+  }
+  paddle::framework::InitDevices(devs);
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
