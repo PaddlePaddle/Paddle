@@ -90,7 +90,7 @@ struct OpInfoFiller<T, kOperator> {
 template <typename T>
 struct OpInfoFiller<T, kOpProtoAndCheckerMaker> {
   void operator()(const char* op_type, OpInfo* info) const {
-    info->proto_ = new OpProto;
+    info->proto_ = new proto::OpProto;
     info->checker_ = new OpAttrChecker();
     auto maker = T(info->proto_, info->checker_);
     maker.Validate();

@@ -48,7 +48,7 @@ class PadOp : public framework::OperatorWithKernel {
 
 class PadOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  PadOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  PadOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "The input of pad op. "

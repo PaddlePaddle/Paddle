@@ -2,10 +2,11 @@ from collections import defaultdict
 
 import framework
 from backward import append_backward_ops
-from framework import unique_name
+from framework import unique_name, program_guard
 from initializer import Constant
 from layer_helper import LayerHelper
 from regularizer import append_regularization_ops
+from clip import append_gradient_clip_ops
 
 __all__ = ['SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad']
 
@@ -159,34 +160,32 @@ class Optimizer(object):
 
         # Create any accumulators
         program = loss.block.program
-        self.helper = LayerHelper(
-            self.__class__.__name__,
-            main_program=program,
-            startup_program=startup_program)
-        self._create_accumulators(loss.block,
-                                  [p[0] for p in parameters_and_grads])
+        with program_guard(program, startup_program):
+            self.helper = LayerHelper(self.__class__.__name__)
+            self._create_accumulators(loss.block,
+                                      [p[0] for p in parameters_and_grads])
 
-        optimize_ops = []
-        for param_and_grad in parameters_and_grads:
-            if param_and_grad[0].trainable is True and param_and_grad[
-                    1] is not None:
-                optimize_op = self._append_optimize_op(loss.block,
-                                                       param_and_grad)
-                optimize_ops.append(optimize_op)
+            optimize_ops = []
+            for param_and_grad in parameters_and_grads:
+                if param_and_grad[0].trainable is True and param_and_grad[
+                        1] is not None:
+                    optimize_op = self._append_optimize_op(loss.block,
+                                                           param_and_grad)
+                    optimize_ops.append(optimize_op)
 
-        # Returned list of ops can include more ops in addition
-        # to optimization ops
-        return_ops = optimize_ops
+            # Returned list of ops can include more ops in addition
+            # to optimization ops
+            return_ops = optimize_ops
 
-        # Get custom finish ops for subclasses
-        # FIXME: Need to fix this once we figure out how to handle dependencies
-        finish_ops = self._finish_update(loss.block)
-        if finish_ops is not None:
-            return_ops += finish_ops
+            # Get custom finish ops for subclasses
+            # FIXME: Need to fix this once we figure out how to handle dependencies
+            finish_ops = self._finish_update(loss.block)
+            if finish_ops is not None:
+                return_ops += finish_ops
 
-        if self._global_step is not None:
-            return_ops.append(self._increment_global_step(loss.block))
-        return return_ops
+            if self._global_step is not None:
+                return_ops.append(self._increment_global_step(loss.block))
+            return return_ops
 
     def minimize(self,
                  loss,
@@ -199,9 +198,13 @@ class Optimizer(object):
         `create_optimization_pass()` into one.
         """
         params_grads = append_backward_ops(loss, parameter_list, no_grad_set)
+
+        params_grads = append_gradient_clip_ops(params_grads)
+
         # Add regularization if any
         params_grads = append_regularization_ops(params_grads,
                                                  self.regularization)
+
         optimize_ops = self.create_optimization_pass(params_grads, loss,
                                                      startup_program)
         return optimize_ops

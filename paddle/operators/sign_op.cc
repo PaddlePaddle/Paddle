@@ -34,7 +34,7 @@ class SignOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class SignOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SignOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  SignOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) Input tensor of sign operator.");
     AddOutput("Out", "(Tensor) Output tensor of sign operator.");

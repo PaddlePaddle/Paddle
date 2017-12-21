@@ -30,13 +30,13 @@ class LoDRankTableOp : public framework::OperatorBase {
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDRankTable>();
     VLOG(10) << "Level = " << static_cast<size_t>(Attr<int>("level"));
     out->Reset(x.lod(), static_cast<size_t>(Attr<int>("level")));
+    VLOG(10) << Input("X") << "'s lod information is " << *out;
   }
 };
 
 class LoDRankTableOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LoDRankTableOpProtoMaker(framework::OpProto *proto,
-                           framework::OpAttrChecker *op_checker)
+  LoDRankTableOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(LoDTensor) input lod tensor, must contain lod information.");
@@ -67,7 +67,7 @@ class LoDRankTableInferVarType : public framework::VarTypeInference {
                   framework::BlockDescBind *block) const override {
     for (auto &o : op_desc.Output("Out")) {
       block->FindRecursiveOrCreateVar(o)->SetType(
-          framework::VarDesc::LOD_RANK_TABLE);
+          framework::proto::VarDesc::LOD_RANK_TABLE);
     }
   }
 };

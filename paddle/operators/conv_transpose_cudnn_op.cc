@@ -19,8 +19,7 @@ namespace operators {
 
 class CudnnConv2DTransposeOpMaker : public Conv2DTransposeOpMaker {
  public:
-  CudnnConv2DTransposeOpMaker(framework::OpProto* proto,
-                              framework::OpAttrChecker* op_checker)
+  CudnnConv2DTransposeOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : Conv2DTransposeOpMaker(proto, op_checker) {
     AddAttr<std::vector<int>>("dilations", "dilations of convolution operator.")
         .SetDefault({1, 1});
@@ -36,8 +35,7 @@ class CudnnConv2DTransposeOpMaker : public Conv2DTransposeOpMaker {
 
 class CudnnConv3DTransposeOpMaker : public Conv3DTransposeOpMaker {
  public:
-  CudnnConv3DTransposeOpMaker(framework::OpProto* proto,
-                              framework::OpAttrChecker* op_checker)
+  CudnnConv3DTransposeOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : Conv3DTransposeOpMaker(proto, op_checker) {
     AddAttr<std::vector<int>>("dilations", "dilations of convolution operator.")
         .SetDefault({1, 1, 1});

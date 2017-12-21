@@ -74,8 +74,7 @@ class ConditionalBlockOp : public ConditionalOp {
 
 class ConditionalBlockOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ConditionalBlockOpProtoMaker(framework::OpProto *proto,
-                               framework::OpAttrChecker *op_checker)
+  ConditionalBlockOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "The conditional variable of this operator. If X is empty, the "
