@@ -314,5 +314,30 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor) {
   }
 }
 
+void LoDTensor::MergeLoDTensor(
+    const std::vector<const LoDTensor *> &lod_tensors, platform::Place place) {
+  PADDLE_ENFORCE(platform::is_cpu_place(place));
+  PADDLE_ENFORCE(!lod_tensors.empty());
+
+  framework::DDim new_dim = lod_tensors[0]->dims();
+  std::type_index new_type = lod_tensors[0]->type();
+  for (auto *lod : lod_tensors) {
+    PADDLE_ENFORCE(new_dim == lod->dims());
+    PADDLE_ENFORCE(new_type == lod->type());
+    PADDLE_ENFORCE(platform::is_cpu_place(lod->place()));
+  }
+  new_dim[0] *= lod_tensors.size();
+  Resize(new_dim);
+
+  auto *dst_ptr = reinterpret_cast<uint8_t *>(mutable_data(place, new_type));
+  for (auto *src : lod_tensors) {
+    auto size = src->numel() * SizeOfType(src->type());
+    memory::Copy(boost::get<platform::CPUPlace>(place), dst_ptr,
+                 boost::get<platform::CPUPlace>(src->place()),
+                 src->data<void>(), size);
+    dst_ptr += size;
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle

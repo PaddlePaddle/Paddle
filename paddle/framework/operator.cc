@@ -179,10 +179,13 @@ static const Tensor* GetTensorFromVar(const Variable* var) {
   const Tensor* t = nullptr;
   if (var->IsType<LoDTensor>()) {
     t = &(var->Get<LoDTensor>());
+  } else if (var->IsType<Tensor>()) {
+    t = &(var->Get<Tensor>());
   } else if (var->IsType<SelectedRows>()) {
     t = &(var->Get<SelectedRows>().value());
   } else {
-    PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+    PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
+                 var->Type().name());
   }
   return t;
 }
@@ -191,10 +194,13 @@ static Tensor* GetMutableTensorFromVar(Variable* var) {
   Tensor* t = nullptr;
   if (var->IsType<LoDTensor>()) {
     t = var->GetMutable<LoDTensor>();
+  } else if (var->IsType<Tensor>()) {
+    t = var->GetMutable<Tensor>();
   } else if (var->IsType<SelectedRows>()) {
     t = var->GetMutable<SelectedRows>()->mutable_value();
   } else {
-    PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+    PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
+                 var->Type().name());
   }
   return t;
 }
@@ -359,10 +365,13 @@ class RuntimeInferShapeContext : public InferShapeContext {
     Variable* var = scope_.FindVar(name);
     if (var->IsType<LoDTensor>()) {
       return var->Get<LoDTensor>().dims();
+    } else if (var->IsType<Tensor>()) {
+      return var->Get<Tensor>().dims();
     } else if (var->IsType<SelectedRows>()) {
       return var->Get<SelectedRows>().GetCompleteDims();
     } else {
-      PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+      PADDLE_THROW("Variable %s type_id %s, expect LoDTensor/SelectedRows.",
+                   name, var->Type().name());
     }
   }
 
@@ -370,10 +379,13 @@ class RuntimeInferShapeContext : public InferShapeContext {
     Variable* var = scope_.FindVar(name);
     if (var->IsType<LoDTensor>()) {
       var->GetMutable<LoDTensor>()->Resize(dim);
+    } else if (var->IsType<Tensor>()) {
+      var->GetMutable<Tensor>()->Resize(dim);
     } else if (var->IsType<SelectedRows>()) {
       var->GetMutable<SelectedRows>()->set_height(dim[0]);
     } else {
-      PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+      PADDLE_THROW("Variable %s type_id %s, expect LoDTensor/SelectedRows.",
+                   name, var->Type().name());
     }
   }
 
