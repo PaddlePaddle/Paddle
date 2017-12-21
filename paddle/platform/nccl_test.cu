@@ -85,6 +85,7 @@ TEST(NCCL, all_reduce) {
   }
 
   VLOG(1) << "Invoking ncclAllReduce";
+  PADDLE_ENFORCE(dynload::ncclGroupStart());
 
   for (int i = 0; i < dev_count; ++i) {
     VLOG(1) << "Invoking ncclAllReduce with device " << i;
@@ -96,6 +97,7 @@ TEST(NCCL, all_reduce) {
   }
 
   VLOG(1) << "Invoked ncclAllReduce";
+  PADDLE_ENFORCE(dynload::ncclGroupEnd());
 
   VLOG(1) << "Sync devices";
   for (int i = 0; i < dev_count; ++i) {
@@ -117,7 +119,7 @@ TEST(NCCL, all_reduce) {
   }
 
   for (int i = 0; i < dev_count; ++i) {
-    dynload::ncclCommDestroy(comms[i]);
+    PADDLE_ENFORCE(dynload::ncclCommDestroy(comms[i]));
   }
 }
 }  // namespace platform

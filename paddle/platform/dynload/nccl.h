@@ -64,6 +64,8 @@ extern void LoadNCCLDSO();
   __macro(ncclBcast);                   \
   __macro(ncclAllGather);               \
   __macro(ncclReduce);                  \
+  __macro(ncclGroupStart);              \
+  __macro(ncclGroupEnd);                \
   __macro(ncclGetErrorString);
 
 NCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
