@@ -61,14 +61,13 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
 
     const T* im_data = im.data<T>();
     T* col_data = col->data<T>();
-
     for (int c = 0; c < channels_col; ++c) {
       int w_offset = c % filter_width;
       int h_offset = (c / filter_width) % filter_height;
-      int c_im = c / filter_width / filter_height;
+      int c_im = c / (filter_width * filter_height);
       for (int h = 0; h < col_height; ++h) {
+        int im_row_idx = h * stride[0] - padding[0] + h_offset * dilation[0];
         for (int w = 0; w < col_width; ++w) {
-          int im_row_idx = h * stride[0] - padding[0] + h_offset * dilation[0];
           int im_col_idx = w * stride[1] - padding[1] + w_offset * dilation[1];
           int col_idx = (c * col_height + h) * col_width + w;
           int im_idx = (im_row_idx + c_im * im_height) * im_width + im_col_idx;
@@ -130,16 +129,14 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
     for (int c = 0; c < channels_col; ++c) {
       int w_offset = c % filter_width;
       int h_offset = (c / filter_width) % filter_height;
-      int c_im = c / filter_width / filter_height;
+      int c_im = c / (filter_width * filter_height);
       for (int h = 0; h < col_height; ++h) {
+        int im_row_idx = h * stride[0] - padding[0] + h_offset * dilation[0];
         for (int w = 0; w < col_width; ++w) {
-          int im_row_idx = h * stride[0] - padding[0] + h_offset * dilation[0];
           int im_col_idx = w * stride[1] - padding[1] + w_offset * dilation[1];
-
           if ((im_row_idx) >= 0 && (im_row_idx) < im_height &&
               (im_col_idx) >= 0 && (im_col_idx) < im_width) {
-            im_row_idx += c_im * im_height;
-            im_data[im_row_idx * im_width + im_col_idx] +=
+            im_data[(im_row_idx + c_im * im_height) * im_width + im_col_idx] +=
                 col_data[(c * col_height + h) * col_width + w];
           }
         }
@@ -199,12 +196,13 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
         for (int channel = 0; channel < im_channels; ++channel) {
           for (int filter_row_idx = 0; filter_row_idx < filter_height;
                ++filter_row_idx) {
+            int im_row_offset =
+                col_row_idx * stride[0] + filter_row_idx - padding[0];
             for (int filter_col_idx = 0; filter_col_idx < filter_width;
                  ++filter_col_idx) {
-              int im_row_offset =
-                  col_row_idx * stride[0] + filter_row_idx - padding[0];
               int im_col_offset =
                   col_col_idx * stride[1] + filter_col_idx - padding[1];
+
               int col_offset =
                   ((((col_row_idx)*col_width + col_col_idx) * im_channels +
                     channel) *
@@ -271,12 +269,13 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
         for (int channel = 0; channel < im_channels; ++channel) {
           for (int filter_row_idx = 0; filter_row_idx < filter_height;
                ++filter_row_idx) {
+            int im_row_offset =
+                col_row_idx * stride[0] + filter_row_idx - padding[0];
             for (int filter_col_idx = 0; filter_col_idx < filter_width;
                  ++filter_col_idx) {
-              int im_row_offset =
-                  col_row_idx * stride[0] + filter_row_idx - padding[0];
               int im_col_offset =
                   col_col_idx * stride[1] + filter_col_idx - padding[1];
+
               int col_offset =
                   (((col_row_idx * col_width + col_col_idx) * im_channels +
                     channel) *
@@ -284,6 +283,7 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
                    filter_row_idx) *
                       filter_width +
                   filter_col_idx;
+
               if (im_row_offset >= 0 && im_row_offset < im_height &&
                   im_col_offset >= 0 && im_col_offset < im_width) {
                 int im_offset =

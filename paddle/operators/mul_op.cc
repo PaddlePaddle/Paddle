@@ -71,7 +71,7 @@ class MulOpShapeInference : public framework::InferShapeBase {
 
 class MulOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MulOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  MulOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of mul op");
     AddInput("Y", "The second input of mul op");

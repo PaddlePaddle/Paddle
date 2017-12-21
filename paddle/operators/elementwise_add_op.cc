@@ -19,8 +19,7 @@ namespace paddle {
 namespace operators {
 class ElementwiseAddOpMaker : public ElementwiseOpMaker {
  public:
-  ElementwiseAddOpMaker(framework::OpProto* proto,
-                        framework::OpAttrChecker* op_checker)
+  ElementwiseAddOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : ElementwiseOpMaker(proto, op_checker) {
     SetComment("Add", "$Out = X + Y$");
     AddComment(comment_);

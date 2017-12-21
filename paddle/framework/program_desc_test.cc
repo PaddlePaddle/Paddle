@@ -19,18 +19,18 @@
 namespace paddle {
 namespace framework {
 TEST(ProgramDesc, copy_ctor) {
-  ProgramDescBind program;
+  ProgramDesc program;
   auto* global_block = program.MutableBlock(0);
   auto* x = global_block->Var("X");
-  x->SetType(VarDesc_VarType_LOD_TENSOR);
+  x->SetType(proto::VarDesc_VarType_LOD_TENSOR);
   x->SetLoDLevel(0);
-  x->SetDataType(FP32);
+  x->SetDataType(proto::FP32);
   x->SetShape({1000, 784});
 
   auto* y = global_block->Var("Y");
-  y->SetType(VarDesc_VarType_LOD_TENSOR);
+  y->SetType(proto::VarDesc_VarType_LOD_TENSOR);
   y->SetLoDLevel(0);
-  y->SetDataType(FP32);
+  y->SetDataType(proto::FP32);
   y->SetShape({784, 100});
 
   auto* op = global_block->AppendOp();
@@ -39,15 +39,15 @@ TEST(ProgramDesc, copy_ctor) {
   op->SetInput("Y", {y->Name()});
 
   auto* out = global_block->Var("Out");
-  out->SetType(VarDesc_VarType_LOD_TENSOR);
+  out->SetType(proto::VarDesc_VarType_LOD_TENSOR);
   op->SetOutput("Y", {out->Name()});
 
-  ProgramDescBind program_copy(program);
+  ProgramDesc program_copy(program);
 
   auto* global_block_copy = program_copy.MutableBlock(0);
   ASSERT_NE(global_block, global_block_copy);
 
-  auto assert_same_var = [&](const std::string& name, VarDescBind* var_before) {
+  auto assert_same_var = [&](const std::string& name, VarDesc* var_before) {
     ASSERT_TRUE(global_block_copy->HasVar(name));
     auto* copy = global_block_copy->Var(name);
     ASSERT_NE(copy, var_before);
@@ -81,18 +81,18 @@ TEST(ProgramDesc, copy_ctor) {
 }
 
 TEST(ProgramDescBind, serialize_and_deserialize) {
-  ProgramDescBind program_origin;
+  ProgramDesc program_origin;
   auto* global_block = program_origin.MutableBlock(0);
   auto* x = global_block->Var("X");
-  x->SetType(VarDesc_VarType_LOD_TENSOR);
+  x->SetType(proto::VarDesc_VarType_LOD_TENSOR);
   x->SetLoDLevel(0);
-  x->SetDataType(FP32);
+  x->SetDataType(proto::FP32);
   x->SetShape({1000, 784});
 
   auto* y = global_block->Var("Y");
-  y->SetType(VarDesc_VarType_LOD_TENSOR);
+  y->SetType(proto::VarDesc_VarType_LOD_TENSOR);
   y->SetLoDLevel(0);
-  y->SetDataType(FP32);
+  y->SetDataType(proto::FP32);
   y->SetShape({784, 100});
 
   auto* op = global_block->AppendOp();
@@ -101,17 +101,17 @@ TEST(ProgramDescBind, serialize_and_deserialize) {
   op->SetInput("Y", {y->Name()});
 
   auto* out = global_block->Var("Out");
-  out->SetType(VarDesc_VarType_LOD_TENSOR);
+  out->SetType(proto::VarDesc_VarType_LOD_TENSOR);
   op->SetOutput("Y", {out->Name()});
 
   std::string binary_str;
   program_origin.Proto()->SerializeToString(&binary_str);
 
-  ProgramDescBind program_restored(binary_str);
+  ProgramDesc program_restored(binary_str);
   auto* global_block_restored = program_restored.MutableBlock(0);
   ASSERT_NE(global_block, global_block_restored);
 
-  auto assert_same_var = [&](const std::string& name, VarDescBind* var_before) {
+  auto assert_same_var = [&](const std::string& name, VarDesc* var_before) {
     ASSERT_TRUE(global_block_restored->HasVar(name));
     auto* restored = global_block_restored->Var(name);
     ASSERT_NE(restored, var_before);

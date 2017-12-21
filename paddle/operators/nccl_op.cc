@@ -43,8 +43,7 @@ class NCCLInitOp : public framework::OperatorBase {
 
 class NCCLInitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  NCCLInitOpMaker(framework::OpProto *proto,
-                  framework::OpAttrChecker *op_checker)
+  NCCLInitOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddOutput("Communicator",
               "Create Communicator for communicating between gpus");
@@ -52,7 +51,7 @@ class NCCLInitOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
-        .SetDefault(framework::DataType::FP32);
+        .SetDefault(framework::proto::DataType::FP32);
     AddComment(R"DOC(
 NCCLInit Operator.
 
@@ -141,8 +140,7 @@ class NCCLBcastOp : public framework::OperatorWithKernel {
 // AllreduceOp
 class NCCLAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  NCCLAllReduceOpMaker(framework::OpProto *proto,
-                       framework::OpAttrChecker *op_checker)
+  NCCLAllReduceOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of AllReduce op");
     AddInput("Communicator", "Communicator for communicating between gpus");
@@ -163,8 +161,7 @@ AllReduce the input tensors.
 // ReduceOp
 class NCCLReduceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  NCCLReduceOpMaker(framework::OpProto *proto,
-                    framework::OpAttrChecker *op_checker)
+  NCCLReduceOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of Reduce op");
     AddInput("Communicator", "Communicator for communicating between gpus");
@@ -190,8 +187,7 @@ Reduce the tensors.
 // BcastOp
 class NCCLBcastOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  NCCLBcastOpMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  NCCLBcastOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of BcastSend op");
     AddInput("Communicator", "Communicator for communicating between gpus");

@@ -83,9 +83,8 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
 
 class BeamSearchDecodeOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BeamSearchDecodeOpProtoMaker(framework::OpProto* proto,
-                               framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  BeamSearchDecodeOpProtoMaker(OpProto* proto, OpAttrChecker* op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Ids",
              "(LodTensorArray)"
              "score of the candidate words in each step");
@@ -120,13 +119,13 @@ class BeamSearchDecodeInferShape : public framework::InferShapeBase {
 
 class BeamSearchDecodeInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDescBind& op_desc,
-                  framework::BlockDescBind* block) const override {
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const override {
     for (auto& o : op_desc.Output("SentenceIds")) {
-      block->Var(o)->SetType(framework::VarDesc::LOD_TENSOR);
+      block->Var(o)->SetType(framework::proto::VarDesc::LOD_TENSOR);
     }
     for (auto& o : op_desc.Output("SentenceScores")) {
-      block->Var(o)->SetType(framework::VarDesc::LOD_TENSOR);
+      block->Var(o)->SetType(framework::proto::VarDesc::LOD_TENSOR);
     }
   }
 };
