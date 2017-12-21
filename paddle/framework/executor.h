@@ -114,7 +114,7 @@ class Executor {
    *  ProgramDesc
    *  Scope
    */
-  void Run(const ProgramDescBind&, Scope*, int, bool create_local_scope = true);
+  void Run(const ProgramDesc&, Scope*, int, bool create_local_scope = true);
 
  private:
   std::vector<const platform::DeviceContext*> device_contexts_;
