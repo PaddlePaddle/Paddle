@@ -24,6 +24,7 @@
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/framework/proto_desc.h"
 #include "paddle/operators/detail/send_recv_impl.h"
 #include "paddle/operators/detail/simple_block_queue.h"
 
@@ -117,9 +118,9 @@ class RecvOp : public framework::OperatorBase {
       rpc_service_->Reset();
 
       std::string program_str = Attr<std::string>("OptimizeProgram");
-      framework::ProgramDesc program_desc;
+      framework::proto::ProgramDesc program_desc;
       program_desc.ParseFromString(program_str);
-      framework::ProgramDescBind program(program_desc);
+      framework::ProgramDesc program(program_desc);
       framework::Executor executor(dev_ctx);
       // Run sub graph to get optimized tensor
       try {
