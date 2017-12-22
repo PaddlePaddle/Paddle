@@ -79,20 +79,19 @@ enum class ColFormat { kCFO = 0, kOCF = 1 };
  * \note The caller needs to ensure that imShape.inputChannels is equal to
  *       colShape.inputChannels.
  */
-template <ColFormat Format, typename Place, typename T>
+template <ColFormat Format, typename DeviceContext, typename T>
 class Im2ColFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& im, const std::vector<int>& dilation,
+  void operator()(const DeviceContext& context, const framework::Tensor& im,
+                  const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* col);
 };
 
-template <ColFormat Format, typename Place, typename T>
+template <ColFormat Format, typename DeviceContext, typename T>
 class Col2ImFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& col,
+  void operator()(const DeviceContext& context, const framework::Tensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* im);

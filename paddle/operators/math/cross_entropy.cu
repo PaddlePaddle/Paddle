@@ -95,10 +95,10 @@ __global__ void SoftCrossEntropyKernel(T* Y, const T* X, const T* label,
 using Tensor = framework::Tensor;
 
 template <typename T>
-class CrossEntropyFunctor<platform::GPUPlace, T> {
+class CrossEntropyFunctor<platform::CUDADeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& ctx, framework::Tensor* out,
-                  const framework::Tensor* prob,
+  void operator()(const platform::CUDADeviceContext& ctx,
+                  framework::Tensor* out, const framework::Tensor* prob,
                   const framework::Tensor* labels, bool softLabel) {
     const T* prob_data = prob->data<T>();
     T* loss_data = out->mutable_data<T>(ctx.GetPlace());
@@ -118,16 +118,14 @@ class CrossEntropyFunctor<platform::GPUPlace, T> {
       const int64_t* label_data = labels->data<int64_t>();
       int block = 512;
       int grid = (batch_size + block - 1) / block;
-      CrossEntropyKernel<T><<<
-          grid, block, 0,
-          reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
+      CrossEntropyKernel<T><<<grid, block, 0, ctx.stream()>>>(
           loss_data, prob_data, label_data, batch_size, class_num);
     }
   }
 };
 
-template class CrossEntropyFunctor<platform::GPUPlace, float>;
-template class CrossEntropyFunctor<platform::GPUPlace, double>;
+template class CrossEntropyFunctor<platform::CUDADeviceContext, float>;
+template class CrossEntropyFunctor<platform::CUDADeviceContext, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

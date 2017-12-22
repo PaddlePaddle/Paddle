@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include <stdlib.h>    // for malloc and free
 #include <sys/mman.h>  // for mlock and munlock
+#include <algorithm>   // for std::max
 
 #include "gflags/gflags.h"
 
@@ -28,7 +29,7 @@ limitations under the License. */
 // of memory available to the system for paging.  So, by default, we
 // should set false to use_pinned_memory.
 DEFINE_bool(use_pinned_memory, true, "If set, allocate cpu pinned memory.");
-
+DECLARE_double(fraction_of_gpu_memory_to_use);
 namespace paddle {
 namespace memory {
 namespace detail {
@@ -43,7 +44,7 @@ void* CPUAllocator::Alloc(size_t& index, size_t size) {
 
   void* p;
 
-#ifdef PADDLE_USE_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
   // refer to https://github.com/01org/mkl-dnn/blob/master/include/mkldnn.hpp
   // memory alignment
   PADDLE_ENFORCE_EQ(posix_memalign(&p, 4096ul, size), 0);
@@ -77,45 +78,20 @@ void* GPUAllocator::Alloc(size_t& index, size_t size) {
   // CUDA documentation doesn't explain if cudaMalloc returns nullptr
   // if size is 0.  We just make sure it does.
   if (size <= 0) return nullptr;
-
-  size_t available = 0;
-  size_t capacity = 0;
-  paddle::platform::GpuMemoryUsage(available, capacity);
-
-  // Reserve memory for page tables, etc.
-  size_t reserving = capacity - paddle::platform::GpuMaxAllocSize();
-  size_t usable = available > reserving ? available - reserving : 0;
-
-  // If remaining size no less than expected size, using general
-  // cudaMalloc to allocate GPU memory.
-  void* p = 0;
-  if (size <= usable) {
-    cudaError_t result = cudaMalloc(&p, size);
-    if (result == cudaSuccess) {
-      index = 0;
-      gpu_alloc_size_ += size;
-      return p;
-    }
-  }
-
-  // If remaining size less than expected size or cudaMalloc failed,
-  // cudaMallocHost will be considered as a fallback allocator.
-  //
-  // NOTE: here, we use GpuMaxAllocSize() as the maximum memory size
-  // of host fallback allocation. Allocates too much would reduce
-  // the amount of memory available to the underlying system for paging.
-  usable = paddle::platform::GpuMaxAllocSize() - fallback_alloc_size_;
-
-  if (size > usable) return nullptr;
-
-  cudaError_t result = cudaMallocHost(&p, size);
+  void* p;
+  cudaError_t result = cudaMalloc(&p, size);
   if (result == cudaSuccess) {
-    index = 1;
-    fallback_alloc_size_ += size;
+    index = 0;
+    gpu_alloc_size_ += size;
     return p;
+  } else {
+    LOG(WARNING)
+        << "Cannot malloc " << size / 1024.0 / 1024.0
+        << " MB GPU memory. Please shrink FLAGS_fraction_of_gpu_memory_to_use "
+           "environment variable to a lower value. Current value is "
+        << FLAGS_fraction_of_gpu_memory_to_use;
+    return nullptr;
   }
-
-  return nullptr;
 }
 
 void GPUAllocator::Free(void* p, size_t size, size_t index) {

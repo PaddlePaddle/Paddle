@@ -61,6 +61,8 @@ class IncrementOp : public framework::OperatorBase {
     out.Resize(x.dims());
     out.mutable_data(x.place(), x.type());
     float value = Attr<float>("step");
+    VLOG(10) << Output("Out") << " increase " << Input("X") << " with "
+             << value;
     framework::VisitDataType(framework::ToDataType(out.type()),
                              IncrementFunctor(x, &out, value));
   }
@@ -68,8 +70,7 @@ class IncrementOp : public framework::OperatorBase {
 
 class IncrementOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  IncrementOpMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  IncrementOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) The input tensor of increment operator");
     AddOutput("Out", "(Tensor) The output tensor of increment operator.");
@@ -92,13 +93,13 @@ class IncrementGradOpMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
     grad_op->SetType("increment");
     grad_op->SetInput("X", Output("Out"));
     grad_op->SetOutput("Out", Input("X"));
     grad_op->SetAttr("step", -boost::get<float>(GetAttr("step")));
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 

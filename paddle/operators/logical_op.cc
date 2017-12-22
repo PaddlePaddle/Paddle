@@ -20,8 +20,7 @@ namespace operators {
 template <typename OpComment>
 class BinaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BinaryLogicalOpProtoMaker(framework::OpProto *proto,
-                            framework::OpAttrChecker *op_checker)
+  BinaryLogicalOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     OpComment comment;
     AddInput("X",
@@ -45,8 +44,7 @@ Each element of Out is calculated by %s
 template <typename OpComment>
 class UnaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  UnaryLogicalOpProtoMaker(framework::OpProto *proto,
-                           framework::OpAttrChecker *op_checker)
+  UnaryLogicalOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     OpComment comment;
     AddInput("X", string::Sprintf("(LoDTensor) Operand of %s operator",
@@ -139,15 +137,16 @@ class LogicalOp : public framework::OperatorWithKernel {
       ::paddle::operators::UnaryLogicalOpInferShape<_##op_type##Comment>, \
       ::paddle::framework::EmptyGradOpMaker);
 
-REGISTER_BINARY_LOGICAL_OP(logical_and, "Out = X && Y");
+REGISTER_BINARY_LOGICAL_OP(logical_and, "$$Out = X \\&\\& Y$$");
 REGISTER_BINARY_LOGICAL_KERNEL(logical_and, CPU,
                                paddle::operators::LogicalAndFunctor);
-REGISTER_BINARY_LOGICAL_OP(logical_or, "Out = X && Y");
+REGISTER_BINARY_LOGICAL_OP(logical_or, "$$Out = X || Y$$");
 REGISTER_BINARY_LOGICAL_KERNEL(logical_or, CPU,
                                paddle::operators::LogicalOrFunctor);
-REGISTER_UNARY_LOGICAL_OP(logical_not, "Out = !X");
+REGISTER_UNARY_LOGICAL_OP(logical_not, "$$Out = !X$$");
 REGISTER_UNARY_LOGICAL_KERNEL(logical_not, CPU,
                               paddle::operators::LogicalNotFunctor);
-REGISTER_BINARY_LOGICAL_OP(logical_xor, "Out = (X || Y) && !(X && Y)");
+REGISTER_BINARY_LOGICAL_OP(logical_xor,
+                           "$$Out = (X || Y) \\, \\&\\& \\, !(X \\&\\& Y)$$");
 REGISTER_BINARY_LOGICAL_KERNEL(logical_xor, CPU,
                                paddle::operators::LogicalXorFunctor);

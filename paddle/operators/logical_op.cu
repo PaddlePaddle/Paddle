@@ -14,11 +14,11 @@
 
 #include "paddle/operators/logical_op.h"
 
-REGISTER_BINARY_LOGICAL_KERNEL(logical_and, GPU,
+REGISTER_BINARY_LOGICAL_KERNEL(logical_and, CUDA,
                                paddle::operators::LogicalAndFunctor);
-REGISTER_BINARY_LOGICAL_KERNEL(logical_or, GPU,
+REGISTER_BINARY_LOGICAL_KERNEL(logical_or, CUDA,
                                paddle::operators::LogicalOrFunctor);
-REGISTER_UNARY_LOGICAL_KERNEL(logical_not, GPU,
+REGISTER_UNARY_LOGICAL_KERNEL(logical_not, CUDA,
                               paddle::operators::LogicalNotFunctor);
-REGISTER_BINARY_LOGICAL_KERNEL(logical_xor, GPU,
+REGISTER_BINARY_LOGICAL_KERNEL(logical_xor, CUDA,
                                paddle::operators::LogicalXorFunctor);

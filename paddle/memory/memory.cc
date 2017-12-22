@@ -64,19 +64,21 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
     int gpu_num = platform::GetCUDADeviceCount();
     as = new BuddyAllocator*[gpu_num];
     for (int gpu = 0; gpu < gpu_num; gpu++) {
-      platform::SetDeviceId(gpu);
-      as[gpu] = new BuddyAllocator(new detail::GPUAllocator,
-                                   platform::GpuMinChunkSize(),
-                                   platform::GpuMaxChunkSize());
+      as[gpu] = nullptr;
     }
+  }
+  platform::SetDeviceId(gpu_id);
+  if (!as[gpu_id]) {
+    as[gpu_id] = new BuddyAllocator(new detail::GPUAllocator,
+                                    platform::GpuMinChunkSize(),
+                                    platform::GpuMaxChunkSize());
     VLOG(10) << "\n\nNOTE: each GPU device use "
              << FLAGS_fraction_of_gpu_memory_to_use * 100
              << "% of GPU memory.\n"
-             << "You can set environment variable '"
-             << platform::kEnvFractionGpuMemoryToUse
+             << "You can set GFlags environment variable '"
+             << "FLAGS_fraction_of_gpu_memory_to_use"
              << "' to change the fraction of GPU usage.\n\n";
   }
-  platform::SetDeviceId(gpu_id);
   return as[gpu_id];
 }
 

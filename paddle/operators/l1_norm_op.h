@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 // Out = sum(abs(X))
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class L1NormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -30,14 +30,15 @@ class L1NormKernel : public framework::OpKernel<T> {
 
     auto x = framework::EigenVector<T>::Flatten(*X);
     auto out = framework::EigenScalar<T>::From(*Out);
-    auto place = context.GetEigenDevice<Place>();
+    auto &place =
+        *context.template device_context<DeviceContext>().eigen_device();
 
     out.device(place) = x.abs().sum();
   }
 };
 
 // dX = dout * sign(X)
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class L1NormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -52,7 +53,8 @@ class L1NormGradKernel : public framework::OpKernel<T> {
     auto x_eigen = framework::EigenVector<T>::Flatten(*x);
     auto d_out_eigen = framework::EigenVector<T>::Flatten(*d_out);
     auto dx_eigen = framework::EigenVector<T>::Flatten(*dx);
-    auto place = context.GetEigenDevice<Place>();
+    auto &place =
+        *context.template device_context<DeviceContext>().eigen_device();
 
     Eigen::DSizes<int, 1> x_dsize(x->numel());
     dx_eigen.device(place) = d_out_eigen.broadcast(x_dsize) * x_eigen.sign();

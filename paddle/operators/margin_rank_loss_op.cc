@@ -42,8 +42,7 @@ class MarginRankLossOp : public framework::OperatorWithKernel {
 template <typename T>
 class MarginRankLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MarginRankLossOpMaker(framework::OpProto *proto,
-                        framework::OpAttrChecker *op_checker)
+  MarginRankLossOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X1",
              "(2-D tensor with shape [batch_size x 1]) The score for "
@@ -117,7 +116,7 @@ REGISTER_OP(margin_rank_loss, ops::MarginRankLossOp,
             ops::MarginRankLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     margin_rank_loss,
-    ops::MarginRankLossKernel<paddle::platform::CPUPlace, float>);
+    ops::MarginRankLossKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     margin_rank_loss_grad,
-    ops::MarginRankLossGradKernel<paddle::platform::CPUPlace, float>);
+    ops::MarginRankLossGradKernel<paddle::platform::CPUDeviceContext, float>);

@@ -34,7 +34,7 @@ class SignOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class SignOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SignOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  SignOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) Input tensor of sign operator.");
     AddOutput("Out", "(Tensor) Output tensor of sign operator.");
@@ -50,13 +50,13 @@ class SignGradMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
     grad_op->SetType("scale");
     grad_op->SetInput("X", OutputGrad("Out"));
     grad_op->SetOutput("Out", InputGrad("X"));
     grad_op->SetAttr("scale", 0.0f);
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 
@@ -67,5 +67,5 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(sign, ops::SignOp, ops::SignOpMaker<float>,
                   ops::SignGradMaker);
-REGISTER_OP_CPU_KERNEL(sign,
-                       ops::SignKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    sign, ops::SignKernel<paddle::platform::CPUDeviceContext, float>);

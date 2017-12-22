@@ -4,6 +4,7 @@ import unittest
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.nets as nets
 from paddle.v2.fluid.framework import Program, program_guard
+from paddle.v2.fluid.param_attr import ParamAttr
 
 
 class TestBook(unittest.TestCase):
@@ -28,7 +29,10 @@ class TestBook(unittest.TestCase):
             label = layers.data(name='label', shape=[1], dtype='int32')
             hidden1 = layers.fc(input=images, size=128, act='relu')
             hidden2 = layers.fc(input=hidden1, size=64, act='relu')
-            predict = layers.fc(input=hidden2, size=10, act='softmax')
+            predict = layers.fc(input=[hidden2, hidden1],
+                                size=10,
+                                act='softmax',
+                                param_attr=["sftmax.w1", "sftmax.w2"])
             cost = layers.cross_entropy(input=predict, label=label)
             avg_cost = layers.mean(x=cost)
             self.assertIsNotNone(avg_cost)
@@ -129,11 +133,21 @@ class TestBook(unittest.TestCase):
     def test_linear_chain_crf(self):
         program = Program()
         with program_guard(program, startup_program=Program()):
+            label_dict_len = 10
             images = layers.data(name='pixel', shape=[784], dtype='float32')
             label = layers.data(name='label', shape=[1], dtype='int32')
             hidden = layers.fc(input=images, size=128)
-            crf = layers.linear_chain_crf(input=hidden, label=label)
+            crf = layers.linear_chain_crf(
+                input=hidden, label=label, param_attr=ParamAttr(name="crfw"))
+            crf_decode = layers.crf_decoding(
+                input=hidden, param_attr=ParamAttr(name="crfw"))
+            layers.chunk_eval(
+                input=crf_decode,
+                label=label,
+                chunk_scheme="IOB",
+                num_chunk_types=(label_dict_len - 1) / 2)
             self.assertNotEqual(crf, None)
+            self.assertNotEqual(crf_decode, None)
 
         print(str(program))
 
@@ -145,6 +159,41 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(
                 layers.sigmoid_cross_entropy_with_logits(
                     x=dat, label=lbl))
+        print(str(program))
+
+    def test_sequence_expand(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[10], dtype='float32')
+            y = layers.data(
+                name='y', shape=[10, 20], dtype='float32', lod_level=1)
+            self.assertIsNotNone(layers.sequence_expand(x=x, y=y))
+        print(str(program))
+
+    def test_lstm_unit(self):
+        program = Program()
+        with program_guard(program):
+            x_t_data = layers.data(
+                name='x_t_data', shape=[10, 10], dtype='float32')
+            x_t = layers.fc(input=x_t_data, size=10)
+            prev_hidden_data = layers.data(
+                name='prev_hidden_data', shape=[10, 20], dtype='float32')
+            prev_hidden = layers.fc(input=prev_hidden_data, size=20)
+            prev_cell_data = layers.data(
+                name='prev_cell', shape=[10, 30], dtype='float32')
+            prev_cell = layers.fc(input=prev_cell_data, size=30)
+            self.assertIsNotNone(
+                layers.lstm_unit(
+                    x_t=x_t, hidden_t_prev=prev_hidden, cell_t_prev=prev_cell))
+        print(str(program))
+
+    def test_sequence_softmax(self):
+        program = Program()
+        with program_guard(program):
+            seq_data = layers.data(
+                name='seq_data', shape=[10, 10], dtype='float32', lod_level=1)
+            seq = layers.fc(input=seq_data, size=20)
+            self.assertIsNotNone(layers.sequence_softmax(x=seq))
         print(str(program))
 
 

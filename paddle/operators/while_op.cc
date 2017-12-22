@@ -25,7 +25,7 @@ namespace operators {
 using StepScopeVar = std::vector<framework::Scope *>;
 using LoDTensor = framework::LoDTensor;
 
-constexpr char kStepBlock[] = "step_block";
+constexpr char kStepBlock[] = "sub_block";
 constexpr char kCondition[] = "Condition";
 constexpr char kStepScopes[] = "StepScopes";
 constexpr char kParameters[] = "X";
@@ -46,7 +46,7 @@ class WhileOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(cond.dims(), paddle::framework::make_ddim({1}));
 
     framework::Executor executor(dev_ctx);
-    auto *block = Attr<framework::BlockDescBind *>(kStepBlock);
+    auto *block = Attr<framework::BlockDesc *>(kStepBlock);
     auto *program = block->Program();
 
     auto step_scopes =
@@ -64,7 +64,7 @@ class WhileOp : public framework::OperatorBase {
 
 class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  WhileOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  WhileOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(kParameters,
              "A set of variables, which are required by operators inside the "
@@ -82,8 +82,8 @@ class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
               "(StepScopeVar) A vector of local scope, which size equals the "
               "step number of While Op. The i'th scope storages temporary "
               "variables generated in the i'th step.");
-    AddAttr<framework::BlockDescBind *>(kStepBlock,
-                                        "The step block inside WhileOp");
+    AddAttr<framework::BlockDesc *>(kStepBlock,
+                                    "The step block inside WhileOp");
     AddComment(R"DOC(
 )DOC");
   }
@@ -98,10 +98,8 @@ class WhileGradOp : public framework::OperatorBase {
 
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
-    //    PADDLE_ENFORCE(...)
-
     framework::Executor executor(dev_ctx);
-    auto *block = Attr<framework::BlockDescBind *>(kStepBlock);
+    auto *block = Attr<framework::BlockDesc *>(kStepBlock);
     auto *program = block->Program();
 
     auto *step_scopes =
@@ -124,8 +122,12 @@ class WhileGradOp : public framework::OperatorBase {
         auto inside_og_name = inside_og_names[i];
         VLOG(10) << "Linking outside " << outside_og_name << " --> inside "
                  << inside_og_name;
-        auto &og_outside = detail::Ref(scope.FindVar(outside_og_name));
-        auto &og_inside = detail::Ref(cur_scope.Var(inside_og_name));
+        auto &og_outside =
+            detail::Ref(scope.FindVar(outside_og_name),
+                        "Cannot find Outside Gradient %s", outside_og_name);
+        auto &og_inside =
+            detail::Ref(cur_scope.Var(inside_og_name),
+                        "Cannot find inside gradient %s", inside_og_name);
         if (og_outside.Type().hash_code() ==
             typeid(framework::LoDTensor).hash_code()) {
           auto &outside_tensor = og_outside.Get<framework::LoDTensor>();
@@ -160,7 +162,7 @@ class WhileGradOp : public framework::OperatorBase {
       PADDLE_ENFORCE_EQ(pg_names.size(), p_names.size());
       for (size_t param_id = 0; param_id < pg_names.size(); ++param_id) {
         if (pg_names[param_id] == framework::kEmptyVarName) {
-          continue;  // iterator doesn't have gradient
+          continue;  // parameter doesn't have gradient
         }
         auto inside_grad_name = framework::GradVarName(p_names[param_id]);
 
@@ -185,16 +187,16 @@ class WhileGradOp : public framework::OperatorBase {
             attrs["value"] = 0.0f;
 
             auto zero_op = framework::OpRegistry::CreateOp(
-                "fill_constant", {}, {{"Out", {pg_names[param_id]}}}, attrs);
+                "fill_constant", framework::VariableNameMap{},
+                {{"Out", {pg_names[param_id]}}}, attrs);
             zero_op->Run(scope, dev_ctx);
           }
         }
 
-        // sum gradient
         auto new_inside_name = cur_scope.Rename(inside_grad_name);
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {pg_names[param_id], new_inside_name}}},
-            {{"Out", {pg_names[param_id]}}}, {});
+            {{"Out", {pg_names[param_id]}}}, framework::AttributeMap{});
         sum_op->Run(cur_scope, dev_ctx);
         cur_scope.Rename(new_inside_name, inside_grad_name);
       }
@@ -207,18 +209,35 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  virtual std::unique_ptr<framework::OpDescBind> Apply() const {
-    auto *grad = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad = new framework::OpDesc();
     grad->SetType("while_grad");
     grad->SetInput(kParameters, Input(kParameters));
-    grad->SetOutput(
-        framework::GradVarName(kParameters),
-        InputGrad(kParameters, /*do not drop empty gradient*/ false));
+
+    // Not all of IGs will be generated by inner gradient operators of while op.
+    // Ignore IGs that is not generated by the inside block.
+    auto igs = InputGrad(kParameters, /*do not drop empty gradient*/ false);
+    std::unordered_set<std::string> all_outs;
+    for (size_t i = 0; i < grad_block_[0]->OpSize(); ++i) {
+      for (auto &oname : grad_block_[0]->Op(i)->OutputArgumentNames()) {
+        all_outs.insert(oname);
+      }
+    }
+    for (auto &each_ig : igs) {
+      if (all_outs.find(each_ig) == all_outs.end()) {
+        VLOG(10) << "Ignore " << each_ig;
+        each_ig = framework::kEmptyVarName;
+      }
+    }
+
+    grad->SetOutput(framework::GradVarName(kParameters), igs);
+
     grad->SetInput(kOutputs, Output(kOutputs));
 
     // OG should be re-calculated by step blocks, since many outputs of while op
     // do not need to calculate gradients.
     std::unordered_set<std::string> block_ins;
+    auto *fwd_block = this->grad_block_[0]->ParentBlock();
     {
       for (auto &p : Input(kParameters)) {
         block_ins.insert(p);
@@ -233,6 +252,13 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
         if (block_ins.find(input_name) != block_ins.end()) {
           continue;
         }
+
+        // If the input of Op is generated by the forward block, do not make it
+        // as input again.
+        if (fwd_block->FindVar(input_name) != nullptr) {
+          continue;
+        }
+
         extra_inputs.insert(input_name);
       }
 
@@ -253,14 +279,14 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
     // while operator could be renamed.
     grad->SetAttr("original_output_grad", extra_inputs_list);
 
-    return std::unique_ptr<framework::OpDescBind>(grad);
+    return std::unique_ptr<framework::OpDesc>(grad);
   }
 };
 
 class WhileGradOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDescBind &op_desc,
-                  framework::BlockDescBind *block) const override {
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
     auto p_names = op_desc.Input(kParameters);
     auto pg_names = op_desc.Output(framework::GradVarName(kParameters));
 
@@ -295,10 +321,10 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
         continue;
       }
       auto dims = ctx->GetInputsElementDim(kParameters, i);
-      if (var_types[i] == framework::VarDesc::LOD_TENSOR) {
+      if (var_types[i] == framework::proto::VarDesc::LOD_TENSOR) {
         names_to_set.push_back(pg_names[i]);
         dims_to_set.push_back(dims);
-      } else if (var_types[i] == framework::VarDesc::LOD_TENSOR_ARRAY) {
+      } else if (var_types[i] == framework::proto::VarDesc::LOD_TENSOR_ARRAY) {
         // not sure how to set the dim of LOD_TENSOR_ARRAY
         names_to_set.push_back(pg_names[i]);
         dims_to_set.push_back(dims);
