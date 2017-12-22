@@ -20,7 +20,6 @@ limitations under the License. */
 #include <thread>
 
 namespace framework = paddle::framework;
-framework::ThreadPool* pool;
 
 void do_sum(framework::ThreadPool* pool, std::atomic<int>& sum, int cnt) {
   for (int i = 0; i < cnt; ++i) {
@@ -29,13 +28,15 @@ void do_sum(framework::ThreadPool* pool, std::atomic<int>& sum, int cnt) {
 }
 
 TEST(ThreadPool, ConcurrentInit) {
-  std::thread t1([]() { pool = framework::ThreadPool::GetInstance(); });
-  std::thread t2([]() { pool = framework::ThreadPool::GetInstance(); });
+  framework::ThreadPool* pool;
+  std::thread t1([&pool]() { pool = framework::ThreadPool::GetInstance(); });
+  std::thread t2([&pool]() { pool = framework::ThreadPool::GetInstance(); });
   t1.join();
   t2.join();
 }
 
 TEST(ThreadPool, ConcurrentStart) {
+  framework::ThreadPool* pool = framework::ThreadPool::GetInstance();
   std::atomic<int> sum(0);
   int cnt1 = 10, cnt2 = 20;
   std::thread t1(do_sum, pool, std::ref(sum), 10);
