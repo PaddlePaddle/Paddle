@@ -100,6 +100,7 @@ SET(CMAKE_EXTRA_INCLUDE_FILES "")
 set(COMMON_FLAGS
     -fPIC
     -fno-omit-frame-pointer
+    -lrt
     -Wall
     -Wextra
     -Werror

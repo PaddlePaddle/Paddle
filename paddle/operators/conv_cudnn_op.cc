@@ -21,6 +21,7 @@ class CudnnConv2DOpMaker : public Conv2DOpMaker {
  public:
   CudnnConv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : Conv2DOpMaker(proto, op_checker) {
+    //    AddAttr<bool>(framework::kUseCUDNN, "").SetDefault(false);
     AddAttr<int>("workspace_size_MB",
                  "workspace size for cudnn, in MB, "
                  "workspace is a section of GPU memory which will be "
@@ -35,6 +36,7 @@ class CudnnConv3DOpMaker : public Conv3DOpMaker {
  public:
   CudnnConv3DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : Conv3DOpMaker(proto, op_checker) {
+    //    AddAttr<bool>(framework::kUseCUDNN, "").SetDefault(false);
     AddAttr<int>("workspace_size_MB",
                  "workspace size for cudnn, in MB, "
                  "workspace is a section of GPU memory which will be "
