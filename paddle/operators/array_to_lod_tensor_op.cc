@@ -114,8 +114,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
 
 class ArrayToLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ArrayToLoDTensorOpProtoMaker(framework::OpProto *proto,
-                               framework::OpAttrChecker *op_checker)
+  ArrayToLoDTensorOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(std::vector<LodTensor>) A vector of tensors that is going to "
@@ -150,14 +149,14 @@ class ArrayToLoDTensorGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
     grad_op->SetType("lod_tensor_to_array");
     grad_op->SetInput("X", OutputGrad("Out"));
     grad_op->SetInput("RankTable", Input("RankTable"));
     grad_op->SetOutput("Out", InputGrad("X"));
     grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 

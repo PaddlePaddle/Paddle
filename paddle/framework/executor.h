@@ -40,6 +40,16 @@ class DeviceContextPool {
     return *pool;
   }
 
+  const platform::DeviceContext* Borrow(const platform::Place& place) {
+    auto range = device_contexts_.equal_range(place);
+    if (range.first == range.second) {
+      PADDLE_THROW(
+          "'Place' is not supported, Please re-compile with WITH_GPU "
+          "option");
+    }
+    return range.first->second;
+  }
+
   std::vector<const platform::DeviceContext*> Borrow(
       const std::vector<platform::Place>& places) {
     PADDLE_ENFORCE_GT(places.size(), 0);
@@ -114,7 +124,8 @@ class Executor {
    *  ProgramDesc
    *  Scope
    */
-  void Run(const ProgramDescBind&, Scope*, int, bool create_local_scope = true);
+  void Run(const ProgramDesc&, Scope*, int, bool create_local_scope = true,
+           bool create_vars = true);
 
  private:
   std::vector<const platform::DeviceContext*> device_contexts_;

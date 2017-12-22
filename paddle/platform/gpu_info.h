@@ -52,10 +52,6 @@ size_t GpuMaxChunkSize();
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,
                     enum cudaMemcpyKind kind, cudaStream_t stream);
 
-//! Copy memory from address src to dst synchronously.
-void GpuMemcpySync(void *dst, const void *src, size_t count,
-                   enum cudaMemcpyKind kind);
-
 //! Copy memory from one device to another device.
 void GpuMemcpyPeer(void *dst, int dst_device, const void *src, int src_device,
                    size_t count, cudaStream_t stream);
