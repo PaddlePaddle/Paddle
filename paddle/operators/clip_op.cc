@@ -38,7 +38,7 @@ class ClipOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ClipOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  ClipOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor)The input of clip op."

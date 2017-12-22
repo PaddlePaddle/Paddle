@@ -58,8 +58,7 @@ class LoadOp : public framework::OperatorBase {
 
 class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LoadOpProtoMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  LoadOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddOutput("Out", "(Tensor) The tensor need to be loaded");
     AddAttr<std::string>("file_path",

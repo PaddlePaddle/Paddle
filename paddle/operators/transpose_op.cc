@@ -55,8 +55,7 @@ class TransposeOp : public framework::OperatorWithKernel {
 
 class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  TransposeOpMaker(framework::OpProto* proto,
-                   framework::OpAttrChecker* op_checker)
+  TransposeOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(
         "X",

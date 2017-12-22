@@ -67,7 +67,7 @@ class GatherGradOp : public framework::OperatorWithKernel {
 
 class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  GatherOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  GatherOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The source input of gather op");
     AddInput("Index", "The index input of gather op");

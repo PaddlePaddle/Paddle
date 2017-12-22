@@ -1,16 +1,28 @@
 import collections
+import contextlib
 
 import numpy as np
-from . import core
+
 import proto.framework_pb2 as framework_pb2
-import google.protobuf.message
-import contextlib
+from . import core
 
 __all__ = [
     'Block', 'Variable', 'Program', 'Operator', 'default_startup_program',
     'default_main_program', 'program_guard', 'switch_startup_program',
     'switch_main_program'
 ]
+
+EMPTY_VAR_NAME = core.kEmptyVarName()
+TEMP_VAR_NAME = core.kTempVarName()
+GRAD_VAR_SUFFIX = core.kGradVarSuffix()
+ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
+
+
+def grad_var_name(var_name):
+    """
+    return gradient name for a certain var name
+    """
+    return var_name + GRAD_VAR_SUFFIX
 
 
 def unique_name(prefix):
@@ -347,6 +359,10 @@ class Operator(object):
         """
         self.block = block
         self.desc = desc
+        # for clone a new operator
+        self.inputs = inputs
+        self.outputs = outputs
+        self.attrs = attrs
         if len(self.desc.type()) != 0:
             return
         if type is None:
@@ -418,13 +434,18 @@ class Operator(object):
                     continue
                 if isinstance(attrs[attr_name], Block):
                     self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
+                elif isinstance(attrs[attr_name], core.BlockDesc) or \
+                   isinstance(attrs[attr_name], core.ProgramDesc):
+                    self.desc.set_serialized_attr(
+                        attr_name, attrs[attr_name].serialize_to_string())
                 else:
                     self.desc.set_attr(attr_name, attrs[attr_name])
 
         self.desc.check_attrs()
         no_kernel_op_set = {
             'feed', 'fetch', 'save', 'load', 'recurrent',
-            'rnn_memory_helper_grad', 'conditional_block', 'while'
+            'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
+            'recv'
         }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
@@ -570,6 +591,7 @@ class Block(object):
         self.vars = dict()  # var_name --> var
         self.ops = collections.deque()  # operator list
         self.program = program
+        self.removed_vars = dict()
 
     def __str__(self):
         return self.to_string(True)
@@ -625,6 +647,16 @@ class Block(object):
         op = Operator(self, op_desc, *args, **kwargs)
         self.ops.append(op)
         return op
+
+    def delete_ops(self, ops):
+        # remove from cpp
+        # FIXME(typhoonzero): remove only the first occuracy.
+        try:
+            start = list(self.ops).index(ops[0])
+            end = list(self.ops).index(ops[-1])
+        except Exception, e:
+            raise e
+        self.desc.remove_op(start, end)
 
     def prepend_op(self, *args, **kwargs):
         op_desc = self.desc.prepend_op()
@@ -704,6 +736,7 @@ class Block(object):
                 trainable=p.trainable,
                 optimize_attr=p.optimize_attr,
                 regularizer=p.regularizer,
+                clip_attr=p.clip_attr,
                 name=v.name)
             self.vars[new_p.name] = new_p
 
@@ -865,6 +898,8 @@ class Parameter(Variable):
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
 
         self.regularizer = kwargs.get('regularizer', None)
+
+        self.clip_attr = kwargs.get('clip_attr', None)
 
 
 # program is a global instance.
