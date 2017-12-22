@@ -79,7 +79,7 @@ fi
 # inference benchmark
 for use_mkldnn in True False; do
   for batchsize in 1 2 4 8 16; do
-    infer alexnet group2 $batchsize $use_mkldnn
+    infer alexnet 2 $batchsize $use_mkldnn
     infer googlenet v1 $batchsize $use_mkldnn
     infer resnet 50 $batchsize $use_mkldnn
     infer vgg 19 $batchsize $use_mkldnn
