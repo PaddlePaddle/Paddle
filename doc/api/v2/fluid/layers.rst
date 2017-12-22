@@ -170,6 +170,18 @@ sequence_pool
     :noindex:
 
 
+sequence_first_step
+-------------------
+..  autofunction:: paddle.v2.fluid.layers.sequence_first_step
+    :noindex:
+
+
+sequence_last_step
+------------------
+..  autofunction:: paddle.v2.fluid.layers.sequence_last_step
+    :noindex:
+
+
 pool2d
 ------
 ..  autofunction:: paddle.v2.fluid.layers.pool2d
