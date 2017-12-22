@@ -144,6 +144,9 @@ class LoDTensor : public Tensor {
    */
   void ShrinkInLevel(size_t level, size_t elem_begin, size_t elem_end);
 
+  std::vector<LoDTensor> SplitLoDTensor(
+      const std::vector<platform::Place> places) const;
+
   void MergeLoDTensor(const std::vector<const LoDTensor*>& lod_tensors,
                       platform::Place place);
 
