@@ -115,6 +115,10 @@ set(COMMON_FLAGS
     -Wno-error=terminate  # Warning in PADDLE_ENFORCE
 )
 
+if(NOT APPLE AND NOT ANDROID)
+    set(COMMON_FLAGS "${COMMON_FLAGS} -lrt")
+endif(NOT APPLE AND NOT ANDROID)
+
 set(GPU_COMMON_FLAGS
     -fPIC
     -fno-omit-frame-pointer
