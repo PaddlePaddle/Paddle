@@ -16,6 +16,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+template <typename AttrType>
 class NormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   NormOpMaker(OpProto* proto, OpAttrChecker* op_checker)
@@ -28,9 +29,9 @@ class NormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Scale",
              "(Tensor) The input tensor of norm operator. "
              "The format of input tensor is C * 1.");
-    AddAttr<float>("epsilon",
-                   "(float, default 1e-10) Constant "
-                   "for numerical stability.")
+    AddAttr<AttrType>("epsilon",
+                      "(float, default 1e-10) Constant "
+                      "for numerical stability.")
         .SetDefault(1.0e-10f);
     AddOutput("Out",
               "(Tensor) The output tensor of norm operator."
@@ -100,7 +101,8 @@ class NormOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(norm, ops::NormOp, ops::NormOpMaker, norm_grad, ops::NormOpGrad);
+REGISTER_OP(norm, ops::NormOp, ops::NormOpMaker<float>, norm_grad,
+            ops::NormOpGrad);
 REGISTER_OP_CPU_KERNEL(
     norm, ops::NormKernel<paddle::platform::CPUDeviceContext, float>,
     ops::NormKernel<paddle::platform::CPUDeviceContext, double>);
