@@ -17,53 +17,53 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-// TEST(Device, Init) {
-//   using paddle::platform::DeviceContext;
-//   using paddle::platform::CUDADeviceContext;
-//   using paddle::platform::GPUPlace;
+TEST(Device, Init) {
+  using paddle::platform::DeviceContext;
+  using paddle::platform::CUDADeviceContext;
+  using paddle::platform::GPUPlace;
 
-//   int count = paddle::platform::GetCUDADeviceCount();
-//   for (int i = 0; i < count; i++) {
-//     CUDADeviceContext* device_context = new CUDADeviceContext(GPUPlace(i));
-//     Eigen::GpuDevice* gpu_device = device_context->eigen_device();
-//     ASSERT_NE(nullptr, gpu_device);
-//     delete device_context;
-//   }
-// }
+  int count = paddle::platform::GetCUDADeviceCount();
+  for (int i = 0; i < count; i++) {
+    CUDADeviceContext* device_context = new CUDADeviceContext(GPUPlace(i));
+    Eigen::GpuDevice* gpu_device = device_context->eigen_device();
+    ASSERT_NE(nullptr, gpu_device);
+    delete device_context;
+  }
+}
 
-// TEST(Device, CUDADeviceContext) {
-//   using paddle::platform::CUDADeviceContext;
-//   using paddle::platform::GPUPlace;
+TEST(Device, CUDADeviceContext) {
+  using paddle::platform::CUDADeviceContext;
+  using paddle::platform::GPUPlace;
 
-//   int count = paddle::platform::GetCUDADeviceCount();
-//   for (int i = 0; i < count; i++) {
-//     CUDADeviceContext* device_context = new CUDADeviceContext(GPUPlace(i));
-//     Eigen::GpuDevice* gpu_device = device_context->eigen_device();
-//     ASSERT_NE(nullptr, gpu_device);
-//     cudnnHandle_t cudnn_handle = device_context->cudnn_handle();
-//     ASSERT_NE(nullptr, cudnn_handle);
-//     cublasHandle_t cublas_handle = device_context->cublas_handle();
-//     ASSERT_NE(nullptr, cublas_handle);
-//     ASSERT_NE(nullptr, device_context->stream());
-//     delete device_context;
-//   }
-// }
+  int count = paddle::platform::GetCUDADeviceCount();
+  for (int i = 0; i < count; i++) {
+    CUDADeviceContext* device_context = new CUDADeviceContext(GPUPlace(i));
+    Eigen::GpuDevice* gpu_device = device_context->eigen_device();
+    ASSERT_NE(nullptr, gpu_device);
+    cudnnHandle_t cudnn_handle = device_context->cudnn_handle();
+    ASSERT_NE(nullptr, cudnn_handle);
+    cublasHandle_t cublas_handle = device_context->cublas_handle();
+    ASSERT_NE(nullptr, cublas_handle);
+    ASSERT_NE(nullptr, device_context->stream());
+    delete device_context;
+  }
+}
 
-// TEST(Device, CUDNNDeviceContext) {
-//   using paddle::platform::CUDNNDeviceContext;
-//   using paddle::platform::CUDNNPlace;
-//   if (paddle::platform::dynload::HasCUDNN()) {
-//     int count = paddle::platform::GetCUDADeviceCount();
-//     for (int i = 0; i < count; ++i) {
-//       CUDNNDeviceContext* device_context =
-//           new CUDNNDeviceContext(CUDNNPlace(i));
-//       cudnnHandle_t cudnn_handle = device_context->cudnn_handle();
-//       ASSERT_NE(nullptr, cudnn_handle);
-//       ASSERT_NE(nullptr, device_context->stream());
-//       delete device_context;
-//     }
-//   }
-// }
+TEST(Device, CUDNNDeviceContext) {
+  using paddle::platform::CUDNNDeviceContext;
+  using paddle::platform::CUDNNPlace;
+  if (paddle::platform::dynload::HasCUDNN()) {
+    int count = paddle::platform::GetCUDADeviceCount();
+    for (int i = 0; i < count; ++i) {
+      CUDNNDeviceContext* device_context =
+          new CUDNNDeviceContext(CUDNNPlace(i));
+      cudnnHandle_t cudnn_handle = device_context->cudnn_handle();
+      ASSERT_NE(nullptr, cudnn_handle);
+      ASSERT_NE(nullptr, device_context->stream());
+      delete device_context;
+    }
+  }
+}
 
 TEST(Device, DeviceContextPool) {
   using paddle::platform::DeviceContextPool;

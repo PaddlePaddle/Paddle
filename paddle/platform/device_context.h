@@ -144,7 +144,6 @@ class DeviceContextPool {
       if (platform::is_gpu_place(place)) {
         pre_hash += boost::get<platform::GPUPlace>(place).GetDeviceId();
       }
-      VLOG(0) << "hash value" << pre_hash;
       return hash_(pre_hash);
     }
   };

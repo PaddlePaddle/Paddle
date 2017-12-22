@@ -289,22 +289,25 @@ TEST_F(NCCLTester, ncclBcastOp) {
 
 int main(int argc, char **argv) {
   const int dev_count = p::GetCUDADeviceCount();
-  std::vector<std::string> devs;
   if (dev_count <= 1) {
     LOG(WARNING)
         << "Cannot test multi-gpu nccl, because the CUDA device count is "
         << dev_count;
     return 0;
   }
-  auto init_dev = [&](const int &gpu_id) {
-    return "GPU:" + std::to_string(gpu_id);
-  };
 
-  for (int i = 0; i < dev_count; ++i) {
+  std::vector<paddle::platform::Place> places;
+
+  places.emplace_back(paddle::platform::CPUPlace());
+  int count = paddle::platform::GetCUDADeviceCount();
+  for (int i = 0; i < count; ++i) {
+    places.emplace_back(paddle::platform::GPUPlace(i));
     gpu_list.emplace_back(i);
-    devs.push_back(init_dev(i));
   }
-  paddle::framework::InitDevices(devs);
+
+  VLOG(0) << " DeviceCount " << count;
+  paddle::platform::DeviceContextPool::Create(places);
+
   testing::InitGoogleTest(&argc, argv);
 
   // device context should be release before scope.

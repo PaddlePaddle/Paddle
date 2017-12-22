@@ -56,7 +56,6 @@ DeviceContextPool::DeviceContextPool(
                                    boost::get<platform::CPUPlace>(places[i])));
     } else if (platform::is_gpu_place(places[i])) {
 #ifdef PADDLE_WITH_CUDA
-      platform::GPUPlace place = boost::get<platform::GPUPlace>(places[i]);
       device_contexts_.emplace(places[i],
                                new platform::CUDADeviceContext(
                                    boost::get<platform::GPUPlace>(places[i])));
