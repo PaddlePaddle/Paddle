@@ -43,7 +43,7 @@ class FillOp : public framework::OperatorBase {
          const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
+           const platform::Place &place) const override {
     auto &out =
         detail::Ref(detail::Ref(scope.FindVar(Output("Out")),
                                 "Cannot find variable %s", Output("Out"))
@@ -52,12 +52,11 @@ class FillOp : public framework::OperatorBase {
     auto dtype = static_cast<framework::DataType>(Attr<int>("dtype"));
     platform::CPUPlace cpu;
     auto force_cpu = Attr<bool>("force_cpu");
-    out.mutable_data(force_cpu ? cpu : dev_place,
-                     framework::ToTypeIndex(dtype));
+    out.mutable_data(force_cpu ? cpu : place, framework::ToTypeIndex(dtype));
 
     framework::LoDTensor tensor;
 
-    if (force_cpu || platform::is_cpu_place(dev_place)) {
+    if (force_cpu || platform::is_cpu_place(place)) {
       tensor.ShareDataWith(out);
     } else {
       // Always make tensor in CPU memory.
@@ -68,11 +67,11 @@ class FillOp : public framework::OperatorBase {
     framework::VisitDataType(
         dtype, FillOpVisitor(&tensor, Attr<std::vector<float>>("value")));
 
-    if (!force_cpu && platform::is_gpu_place(dev_place)) {
+    if (!force_cpu && platform::is_gpu_place(place)) {
       // Copy tensor to out
       platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
       auto &dev_ctx = *pool.Borrow(place);
-      framework::CopyFrom(tensor, dev_place, dev_ctx, &out);
+      framework::CopyFrom(tensor, place, dev_ctx, &out);
     }
   }
 };

@@ -33,7 +33,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
                      const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
+           const platform::Place &place) const override {
     auto &x = detail::Ref(scope.FindVar(Input("X")), "Cannot find input %s",
                           Input("X"))
                   .Get<framework::LoDTensor>();
