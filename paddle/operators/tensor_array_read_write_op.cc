@@ -51,8 +51,7 @@ class WriteToArrayOp : public ArrayOp {
 
 class WriteToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  WriteToArrayOpProtoMaker(framework::OpProto *proto,
-                           framework::OpAttrChecker *op_checker)
+  WriteToArrayOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(LoDTensor) the tensor will be written to tensor array");
     AddInput(
@@ -97,14 +96,14 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
 
 class WriteToArrayInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDescBind &op_desc,
-                  framework::BlockDescBind *block) const override {
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
     auto x_name = op_desc.Input("X")[0];
     auto out_name = op_desc.Output("Out")[0];
     VLOG(10) << "Set Variable " << out_name << " as LOD_TENSOR_ARRAY";
     auto &out = detail::Ref(block->FindRecursiveOrCreateVar(out_name),
                             "Cannot found %s", out_name);
-    out.SetType(framework::VarDesc::LOD_TENSOR_ARRAY);
+    out.SetType(framework::proto::VarDesc::LOD_TENSOR_ARRAY);
     auto *x = block->FindVarRecursive(x_name);
     if (x != nullptr) {
       out.SetDataType(x->GetDataType());
@@ -140,8 +139,7 @@ class ReadFromArrayOp : public ArrayOp {
 
 class ReadFromArrayProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ReadFromArrayProtoMaker(framework::OpProto *proto,
-                          framework::OpAttrChecker *op_checker)
+  ReadFromArrayProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(TensorArray) the array will be read from.");
     AddInput("I",
@@ -177,14 +175,14 @@ class WriteToArrayGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
     grad_op->SetType("read_from_array");
     grad_op->SetInput("I", Input("I"));
     grad_op->SetInput("X", OutputGrad("Out"));
     grad_op->SetOutput("Out", InputGrad("X"));
     grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 
@@ -193,14 +191,14 @@ class ReadFromArrayGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
     grad_op->SetType("write_to_array");
     grad_op->SetInput("I", Input("I"));
     grad_op->SetInput("X", OutputGrad("Out"));
     grad_op->SetOutput("Out", InputGrad("X"));
     grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 

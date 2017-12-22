@@ -18,7 +18,7 @@ namespace operators {
 
 class SppOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SppOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  SppOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(
         "X",
