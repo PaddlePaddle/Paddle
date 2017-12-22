@@ -19,13 +19,13 @@ DeviceContextPool* DeviceContextPool::pool = nullptr;
 
 const platform::DeviceContext* DeviceContextPool::Borrow(
     const platform::Place& place) {
-  auto range = device_contexts_.equal_range(place);
-  if (range.first == range.second) {
+  auto it = device_contexts_.find(place);
+  if (it == device_contexts_.end()) {
     PADDLE_THROW(
         "'Place' is not supported, Please re-compile with WITH_GPU "
         "option");
   }
-  return range.first->second;
+  return it->second;
 }
 
 std::vector<const platform::DeviceContext*> DeviceContextPool::Borrow(
@@ -34,14 +34,14 @@ std::vector<const platform::DeviceContext*> DeviceContextPool::Borrow(
   PADDLE_ENFORCE_LE(places.size(), device_contexts_.size());
   std::vector<const platform::DeviceContext*> borrowed_contexts;
   for (auto& place : places) {
-    auto range = device_contexts_.equal_range(place);
-    if (range.first == range.second) {
+    auto it = device_contexts_.find(place);
+    if (it != device_contexts_.end()) {
+      borrowed_contexts.emplace_back(it->second);
+    } else {
       PADDLE_THROW(
           "'Place' is not supported, Please re-compile with WITH_GPU "
           "option");
     }
-    // TODO(dzhwinter) : assign the first found device. Will enhanced later.
-    borrowed_contexts.emplace_back(range.first->second);
   }
   return borrowed_contexts;
 }
@@ -56,6 +56,7 @@ DeviceContextPool::DeviceContextPool(
                                    boost::get<platform::CPUPlace>(places[i])));
     } else if (platform::is_gpu_place(places[i])) {
 #ifdef PADDLE_WITH_CUDA
+      platform::GPUPlace place = boost::get<platform::GPUPlace>(places[i]);
       device_contexts_.emplace(places[i],
                                new platform::CUDADeviceContext(
                                    boost::get<platform::GPUPlace>(places[i])));

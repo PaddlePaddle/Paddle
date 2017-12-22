@@ -25,6 +25,8 @@ limitations under the License. */
 #include "paddle/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
+#include "glog/logging.h"
+
 namespace paddle {
 namespace platform {
 
@@ -137,11 +139,17 @@ class DeviceContextPool {
   struct Hash {
     std::hash<int> hash_;
     size_t operator()(const platform::Place& place) const {
-      return hash_(place.which());
+      int pre_hash = place.which()
+                     << (sizeof(int) * 8 - NUM_PLACE_TYPE_LIMIT_IN_BIT);
+      if (platform::is_gpu_place(place)) {
+        pre_hash += boost::get<platform::GPUPlace>(place).GetDeviceId();
+      }
+      VLOG(0) << "hash value" << pre_hash;
+      return hash_(pre_hash);
     }
   };
-  std::unordered_multimap<const platform::Place, const platform::DeviceContext*,
-                          Hash>
+  std::unordered_map<const platform::Place, const platform::DeviceContext*,
+                     Hash>
       device_contexts_;
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
