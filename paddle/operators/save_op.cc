@@ -21,6 +21,7 @@
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -62,7 +63,7 @@ class SaveOp : public framework::OperatorBase {
          const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto filename = Attr<std::string>("file_path");
     auto overwrite = Attr<bool>("overwrite");
 
@@ -88,6 +89,11 @@ class SaveOp : public framework::OperatorBase {
                    "SaveOp only support LoDTensor, %s has wrong type", iname);
 
     auto &tensor = var->Get<framework::LoDTensor>();
+
+    // get device context from pool
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+    auto &dev_ctx = *pool.Borrow(place);
+
     framework::SerializeToStream(fout, tensor, dev_ctx);
   }
 };

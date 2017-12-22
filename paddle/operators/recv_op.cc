@@ -62,7 +62,7 @@ class RecvOp : public framework::OperatorBase {
   }
 
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &dev_place) const override {
     // blocking get one var from client.
     const framework::LoDTensor &t = rpc_service_->Get();
     framework::Scope &recv_scope = scope.NewScope();
@@ -70,13 +70,16 @@ class RecvOp : public framework::OperatorBase {
     auto *var = recv_scope.Var(Input("RX"));
     auto *tensor = var->GetMutable<framework::LoDTensor>();
     // FIXME(typhoonzero): do not copy
-    framework::CopyFrom(t, dev_ctx.GetPlace(), dev_ctx, tensor);
+
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+    auto &dev_ctx = *pool.Borrow(place);
+    framework::CopyFrom(t, dev_place, dev_ctx, tensor);
 
     std::string program_str = Attr<std::string>("OptimizeProgram");
     framework::ProgramDesc program_desc;
     program_desc.ParseFromString(program_str);
     framework::ProgramDescBind program(program_desc);
-    framework::Executor executor(dev_ctx);
+    framework::Executor executor(dev_place);
     // Run sub graph to get optimized tensor
     executor.Run(program, &recv_scope, 0, /*global_block*/
                  false /*create_local_scope*/);
