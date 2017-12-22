@@ -4,7 +4,7 @@ All layers just related to the neural network.
 
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
-from ..framework import Variable, FORCE_CPU
+from ..framework import Variable
 from ..param_attr import ParamAttr
 from tensor import concat
 
