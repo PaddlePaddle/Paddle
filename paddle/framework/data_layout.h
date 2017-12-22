@@ -13,24 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
-namespace operators {
+namespace framework {
 
-template <typename DeviceContext, typename T>
-class FillZerosLikeKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* out = context.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(context.GetPlace());
-
-    math::SetConstant<DeviceContext, T> setter;
-    setter(context.template device_context<DeviceContext>(), out,
-           static_cast<T>(0));
-  }
+enum DataLayout {
+  kNHWC = 0,
+  kNCHW = 1,
+  kAnyLayout = 2,
 };
 
-}  // namespace operators
+inline DataLayout StringToDataLayout(const std::string& str) {
+  if (str == "NHWC" || str == "nhwc") {
+    return DataLayout::kNHWC;
+  } else if (str == "NCHW" || str == "nchw") {
+    return DataLayout::kNCHW;
+  } else {
+    PADDLE_THROW("Unknown storage order string: %s", str);
+  }
+}
+
+}  // namespace framework
 }  // namespace paddle
