@@ -358,12 +358,8 @@ All parameter, weight, gradient are variables in Paddle.
               const std::unordered_set<std::string> &no_grad_vars) {
              return Backward(forwardOp, no_grad_vars).release();
            })
-      .def("run",
-           [](OperatorBase &self, const Scope &scope,
-              const platform::Place &place) {
-             self.Run(scope, place);
-             dev_ctx.Wait();
-           })
+      .def("run", [](OperatorBase &self, const Scope &scope,
+                     const platform::Place &place) { self.Run(scope, place); })
       .def("type",
            [](const OperatorBase &op) -> std::string { return op.Type(); })
       .def("outputs",
@@ -417,7 +413,7 @@ All parameter, weight, gradient are variables in Paddle.
            });
 
   py::class_<framework::Executor>(m, "Executor")
-      .def(py::init<std::vector<platform::Place> &>())
+      .def(py::init<const platform::Place &>())
       .def("run", &Executor::Run);
 
   m.def("unique_integer", UniqueIntegerGenerator);

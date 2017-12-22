@@ -24,7 +24,6 @@ class TestGaussianRandomOp(unittest.TestCase):
 
     def gaussian_random_test(self, place):
 
-        context = core.DeviceContext.create(place)
         program = fluid.Program()
         block = program.global_block()
         vout = block.create_var(name="Out")

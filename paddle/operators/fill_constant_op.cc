@@ -35,7 +35,8 @@ class FillConstantOp : public framework::OperatorBase {
   using framework::OperatorBase::OperatorBase;
   void Run(const framework::Scope &scope,
            const platform::Place &dev_place) const override {
-    auto data_type = static_cast<framework::DataType>(Attr<int>("dtype"));
+    auto data_type =
+        static_cast<framework::proto::DataType>(Attr<int>("dtype"));
     auto value = Attr<float>("value");
     auto force_cpu = Attr<bool>("force_cpu");
     auto &out =

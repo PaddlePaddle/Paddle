@@ -46,7 +46,6 @@ class WhileOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(cond.dims(), paddle::framework::make_ddim({1}));
 
     framework::Executor executor(dev_place);
-    framework::Executor executor(dev_ctx);
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
 
     auto *program = block->Program();
