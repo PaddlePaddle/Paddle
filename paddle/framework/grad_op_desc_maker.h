@@ -22,6 +22,14 @@
 namespace paddle {
 namespace framework {
 
+/*
+  This functor class is responsible for creating the gradient ops for the given
+  operator fwd_op. After it is called (through operator()), the pairs of
+  (gradient variable, corresponding input variable of fwd_op) will be added to
+  grad_to_var. If an input variable of fwd_op is contained in no_grad_set, its
+  gradient varialbe will be ignored or kEmptyVarName depending on the template
+  argument DropEmptyIG in the derived classes.
+ */
 class GradOpDescMakerBase {
  public:
   explicit GradOpDescMakerBase(
@@ -56,6 +64,16 @@ class GradOpDescMakerBase {
     if (!drop_empty_grad) {
       return ret_val;
     }
+    PADDLE_ENFORCE_LE(var_names.size(), 1UL,
+                      "BUG from operator developer:"
+                      " for input argument with a list of variables, "
+                      " drop_empty_grad is not allowed because it makes"
+                      " the correspondence bewteen a variable and its gradient"
+                      " ambiguous. Use REGISTER_OP_EX to register the op"
+                      " or call InputGrad(?,false) in GradOpDescMaker."
+                      " Op type %s",
+                      fwd_op_.Type());
+
     std::vector<std::string> dropped_ret_val;
     dropped_ret_val.reserve(ret_val.size());
     std::copy_if(ret_val.begin(), ret_val.end(),

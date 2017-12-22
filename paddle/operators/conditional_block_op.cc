@@ -178,8 +178,9 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpDescMaker {
     grad_op->SetInput("Out", Output("Out"));
     grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     grad_op->SetInput("Scope", Output("Scope"));
-    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    grad_op->SetOutput(framework::GradVarName("Params"), InputGrad("Params"));
+    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X", false));
+    grad_op->SetOutput(framework::GradVarName("Params"),
+                       InputGrad("Params", false));
     grad_op->SetBlockAttr("sub_block", *this->grad_block_[0]);
     return std::unique_ptr<framework::OpDesc>(grad_op);
   }
