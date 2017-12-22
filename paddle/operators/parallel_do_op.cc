@@ -13,11 +13,9 @@
    limitations under the License. */
 
 #include <vector>
-#include "chunk_eval_op.h"
+
 #include "paddle/framework/executor.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/framework/operator.h"
-#include "paddle/platform/place.h"
 
 namespace paddle {
 namespace operators {
@@ -31,10 +29,31 @@ constexpr char kParallelScopes[] = "parallel_scopes";
 
 constexpr char kParallelBlock[] = "sub_block";
 
-using ParallelScopeVar = std::vector<framework::Scope *>;
+// using ParallelScopeVar = std::vector<framework::Scope *>;
+using LoDTensor = framework::LoDTensor;
 using OperatorBase = framework::OperatorBase;
 
-class ParallelDoOp : public OperatorBase {
+void SplitTensorAndMoveTensorToScopes(
+    const framework::Scope &scope,
+    const std::vector<framework::Scope *> &sub_scopes,
+    const std::vector<platform::Place> &places,
+    const std::vector<std::string> &names) {
+  for (auto &argu : names) {
+    auto *var = scope.FindVar(argu);
+    const auto &tensor = var->Get<LoDTensor>();
+    auto lod_tensors = tensor.SplitLoDTensor(places);
+
+    for (auto &lod : lod_tensors) {
+      LOG(INFO) << lod.dims();
+    }
+
+    for (int i = 0; i < sub_scopes.size(); ++i) {
+      *sub_scopes[i]->Var(argu)->GetMutable<LoDTensor>() = lod_tensors[i];
+    }
+  }
+}
+
+class ParallelDoOp : public framework::OperatorBase {
  public:
   ParallelDoOp(const std::string &type,
                const framework::VariableNameMap &inputs,
@@ -52,11 +71,18 @@ class ParallelDoOp : public OperatorBase {
     places.emplace_back(platform::CPUPlace());
     places.emplace_back(platform::CPUPlace());
 
-    std::vector<framework::Scope *> sub_scopes;
+    auto &sub_scopes = *scope.FindVar(Output(kParallelScopes))
+                            ->GetMutable<std::vector<framework::Scope *>>();
+    //    std::vector<framework::Scope *> sub_scopes;
+    for (int place_idx = 0; place_idx < places.size(); ++place_idx) {
+      sub_scopes.push_back(&scope.NewScope());
+    }
+
+    SplitTensorAndMoveTensorToScopes(scope, sub_scopes, places,
+                                     Inputs(kInputs));
+
     for (int place_idx = 0; place_idx < places.size(); ++place_idx) {
       VLOG(3) << "Run " << place_idx;
-
-      sub_scopes.push_back(&scope.NewScope());
 
       auto &place = places[place_idx];
       auto *cur_scope = sub_scopes[place_idx];
@@ -64,26 +90,6 @@ class ParallelDoOp : public OperatorBase {
       // copy parameter
       if (dev_ctx.GetPlace() != place) {
         PADDLE_THROW("Not Implemented");
-      }
-
-      // feed input
-      for (auto &argu : Inputs(kInputs)) {
-        auto *var = scope.FindVar(argu);
-        const auto &tensor = var->Get<LoDTensor>();
-        if (!tensor.lod().empty()) {
-          PADDLE_THROW("Disable parallel lod for now");
-        } else {
-          PADDLE_ENFORCE(tensor.dims()[0] % places.size() == 0,
-                         "Batch size should be divided by places size");
-          int begin = place_idx * tensor.dims()[0] / places.size();
-          int end = (place_idx + 1) * tensor.dims()[0] / places.size();
-          auto feed_tensor = tensor.Slice(begin, end);
-          feed_tensor.switch_place(place);
-
-          auto *cur_var = cur_scope->Var(argu);
-          auto *cur_tensor = cur_var->GetMutable<Tensor>();
-          *cur_tensor = feed_tensor;
-        }
       }
 
       // execute
@@ -132,7 +138,49 @@ class ParallelDoGradOp : public OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {}
+           const platform::DeviceContext &dev_ctx) const override {
+    auto *block = Attr<framework::BlockDescBind *>(kParallelBlock);
+    auto *program = block->Program();
+
+    auto &sub_scopes = scope.FindVar(Input(kParallelScopes))
+                           ->Get<std::vector<framework::Scope *>>();
+
+    // TODO(tonyyang-svail): get places from input
+    std::vector<platform::Place> places;
+    places.emplace_back(platform::CPUPlace());
+    places.emplace_back(platform::CPUPlace());
+
+    // feed output@grad
+    SplitTensorAndMoveTensorToScopes(scope, sub_scopes, places,
+                                     Inputs(framework::GradVarName(kOutputs)));
+
+    for (auto &s : Inputs(framework::GradVarName(kOutputs))) {
+      LOG(INFO) << s;
+      LOG(INFO) << scope.FindVar(s)->Get<LoDTensor>().dims();
+      for (auto *sub_scope : sub_scopes) {
+        LOG(INFO) << sub_scope->FindVar(s)->Get<LoDTensor>().dims();
+      }
+    }
+    // exe run
+    for (int place_idx = 0; place_idx < places.size(); ++place_idx) {
+      VLOG(3) << "Run " << place_idx;
+
+      auto &place = places[place_idx];
+      auto *cur_scope = sub_scopes[place_idx];
+
+      // copy parameter
+      if (dev_ctx.GetPlace() != place) {
+        PADDLE_THROW("Not Implemented");
+      }
+
+      // execute
+      auto executor = framework::Executor(place);
+      executor.Run(*program, cur_scope, block->ID(),
+                   false /*create_local_scope*/);
+    }
+
+    // merge grad
+  }
 };
 
 class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {

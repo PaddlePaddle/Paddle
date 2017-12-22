@@ -314,6 +314,45 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor) {
   }
 }
 
+std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
+    const std::vector<platform::Place> places) const {
+  check_memory_size();
+  //  PADDLE_ENFORCE(lod().empty() || (lod().size() == 1 && lod()[0].empty())
+  //                 , "Disable parallel lod for now");
+  PADDLE_ENFORCE(lod().empty(), "Disable parallel lod for now");
+  PADDLE_ENFORCE(dims()[0] % places.size() == 0,
+                 "Batch size should be divided by places size");
+
+  std::vector<LoDTensor> lods;
+  for (int place_idx = 0; place_idx < places.size(); ++place_idx) {
+    int begin = place_idx * dims()[0] / places.size();
+    int end = (place_idx + 1) * dims()[0] / places.size();
+    auto src = Slice(begin, end);
+
+    LoDTensor dst;
+    dst.Resize(src.dims());
+    auto &dst_place = places[place_idx];
+    auto dst_ptr = dst.mutable_data(dst_place, src.type());
+
+    // TODO(tonyyang-svail):
+    //   change the following to framework::CopyFrom
+    auto src_place = src.place();
+    auto src_ptr = src.data<void>();
+    auto size = src.numel() * SizeOfType(src.type());
+    if (platform::is_cpu_place(src_place) &&
+        platform::is_cpu_place(dst_place)) {
+      memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
+                   boost::get<platform::CPUPlace>(src_place), src_ptr, size);
+    } else {
+      PADDLE_THROW("Not Implemented");
+    }
+
+    lods.emplace_back(dst);
+  }
+
+  return lods;
+}
+
 void LoDTensor::MergeLoDTensor(
     const std::vector<const LoDTensor *> &lod_tensors, platform::Place place) {
   PADDLE_ENFORCE(platform::is_cpu_place(place));
