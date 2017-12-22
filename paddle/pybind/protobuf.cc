@@ -174,10 +174,21 @@ void BindBlockDesc(py::module &m) {
              std::string name = byte_name;
              return self.HasVar(name);
            })
+      .def("has_var_recursive",
+           [](BlockDescBind &self, py::bytes byte_name) {
+             std::string name = byte_name;
+             return self.HasVarRecursive(name);
+           })
       .def("find_var",
            [](BlockDescBind &self, py::bytes byte_name) {
              std::string name = byte_name;
              return self.FindVar(name);
+           },
+           py::return_value_policy::reference)
+      .def("find_var_recursive",
+           [](BlockDescBind &self, py::bytes byte_name) {
+             std::string name = byte_name;
+             return self.FindVarRecursive(name);
            },
            py::return_value_policy::reference)
       .def("all_vars", &BlockDescBind::AllVars,
@@ -208,7 +219,8 @@ void BindVarDsec(py::module &m) {
       .def("set_shape", &VarDescBind::SetShape)
       .def("set_dtype", &VarDescBind::SetDataType)
       .def("shape", &VarDescBind::Shape, py::return_value_policy::reference)
-      .def("dtype", &VarDescBind::GetDataType)
+      .def("dtype", &VarDescBind::GetDataType,
+           py::return_value_policy::reference)
       .def("lod_level", &VarDescBind::GetLodLevel)
       .def("set_lod_level", &VarDescBind::SetLoDLevel)
       .def("type", &VarDescBind::GetType)
@@ -240,7 +252,9 @@ void BindOpDesc(py::module &m) {
       .value("BLOCK", AttrType::BLOCK);
 
   py::class_<OpDescBind> op_desc(m, "OpDesc", "");
-  op_desc.def("__init__", [](OpDescBind &self) { new (&self) OpDescBind(); })
+  op_desc
+      .def("__init__", [](OpDescBind &self) { new (&self) OpDescBind(); },
+           py::return_value_policy::reference)
       .def("type", &OpDescBind::Type)
       .def("set_type", &OpDescBind::SetType)
       .def("input", &OpDescBind::Input)
