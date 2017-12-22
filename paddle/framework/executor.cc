@@ -65,7 +65,7 @@ static void CreateTensor(Variable* var, proto::VarDesc::VarType var_type) {
 }
 
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
-                   bool create_local_scope) {
+                   bool create_local_scope, bool create_vars) {
   // TODO(tonyyang-svail):
   //    - only runs on the first device (i.e. no interdevice communication)
   //    - will change to use multiple blocks for RNN op and Cond Op
@@ -74,33 +74,35 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
   auto& device = device_contexts_[0];
 
   Scope* local_scope = scope;
-  if (create_local_scope) {
-    local_scope = &scope->NewScope();
-    for (auto& var : block.AllVars()) {
-      if (var->Name() == framework::kEmptyVarName) {
-        continue;
-      }
+  if (create_vars) {
+    if (create_local_scope) {
+      local_scope = &scope->NewScope();
+      for (auto& var : block.AllVars()) {
+        if (var->Name() == framework::kEmptyVarName) {
+          continue;
+        }
 
-      if (var->Persistable()) {
-        auto* ptr = scope->Var(var->Name());
-        CreateTensor(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " global, which pointer is " << ptr;
-      } else {
+        if (var->Persistable()) {
+          auto* ptr = scope->Var(var->Name());
+          CreateTensor(ptr, var->GetType());
+          VLOG(3) << "Create Variable " << var->Name()
+                  << " global, which pointer is " << ptr;
+        } else {
+          auto* ptr = local_scope->Var(var->Name());
+          CreateTensor(ptr, var->GetType());
+          VLOG(3) << "Create Variable " << var->Name()
+                  << " locally, which pointer is " << ptr;
+        }
+      }
+    } else {
+      for (auto& var : block.AllVars()) {
         auto* ptr = local_scope->Var(var->Name());
         CreateTensor(ptr, var->GetType());
-        VLOG(3) << "Create Variable " << var->Name()
-                << " locally, which pointer is " << ptr;
+        VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
+                << ptr;
       }
-    }
-  } else {
-    for (auto& var : block.AllVars()) {
-      auto* ptr = local_scope->Var(var->Name());
-      CreateTensor(ptr, var->GetType());
-      VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
-              << ptr;
-    }
-  }
+    }  // if (create_local_scope)
+  }    // if (create_vars)
 
   for (auto& op_desc : block.AllOps()) {
     auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);

@@ -159,6 +159,7 @@ void BindBlockDesc(py::module &m) {
            py::return_value_policy::reference)
       .def("prepend_op", &BlockDesc::PrependOp,
            py::return_value_policy::reference)
+      .def("remove_op", &BlockDesc::RemoveOp)
       .def("var",
            [](BlockDesc &self, py::bytes byte_name) {
              std::string name = byte_name;
@@ -249,6 +250,12 @@ void BindOpDesc(py::module &m) {
       .def("set_attr", &OpDesc::SetAttr)
       .def("attr", &OpDesc::GetAttr)
       .def("set_block_attr", &OpDesc::SetBlockAttr)
+      .def("set_serialized_attr",
+           [](OpDesc &self, const std::string &name,
+              const py::bytes &seriralized) {
+             std::string ser(seriralized);
+             self.SetAttr(name, ser);
+           })
       .def("block_attr", &OpDesc::GetBlockAttr)
       .def("check_attrs", &OpDesc::CheckAttrs)
       .def("infer_shape", &OpDesc::InferShape)

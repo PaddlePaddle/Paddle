@@ -207,7 +207,7 @@ class Optimizer(object):
 
         optimize_ops = self.create_optimization_pass(params_grads, loss,
                                                      startup_program)
-        return optimize_ops
+        return optimize_ops, params_grads
 
 
 class SGDOptimizer(Optimizer):
