@@ -27,7 +27,7 @@ Refer to https://stackoverflow.com/questions/35985960/
 c-why-is-boosthash-combine-the-best-way-to-combine-hash-values
 */
 template <class T>
-inline void hash_combine(std::size_t& seed, const T& v) {
+inline void HashCombine(std::size_t& seed, const T& v) {
   std::hash<T> hasher;
   seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
@@ -41,10 +41,10 @@ struct OpKernelType {
       int library_type = static_cast<int>(key.library_type_);
 
       size_t seed = 0;
-      hash_combine(seed, place);
-      hash_combine(seed, data_type);
-      hash_combine(seed, data_layout);
-      hash_combine(seed, library_type);
+      HashCombine(seed, place);
+      HashCombine(seed, data_type);
+      HashCombine(seed, data_layout);
+      HashCombine(seed, library_type);
       return seed;
     }
   };
