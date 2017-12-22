@@ -41,7 +41,7 @@ def fc(input,
 
     .. math::
 
-        Out = Act\left({\sum_{i=0}^{N-1}W_iX_i + b}\right)
+        Out = Act({\sum_{i=0}^{N-1}W_iX_i + b})
 
     In the above equation:
 
