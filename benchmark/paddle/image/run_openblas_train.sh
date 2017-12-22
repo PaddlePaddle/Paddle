@@ -37,4 +37,5 @@ for batchsize in 64 128 256; do
   train vgg 19 $batchsize
   train resnet 50 $batchsize
   train googlenet v1 $batchsize
+  train alexnet 2 $batchsize
 done
