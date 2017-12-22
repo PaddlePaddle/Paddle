@@ -78,11 +78,11 @@ will be downloaded automatically.
 
    "CMake", ">=3.2", ""
    "GCC", "4.8.2", "Recommend devtools2 for CentOS"
-   "Python", "2.7.x", "Need libpython2.7.so"
-   "pip", ">=9.0", ""
-   "numpy", "", ""
+   "Python", "2.7.x", "Need libpython2.7.so"
+   "pip", ">=9.0", ""
+   "numpy", "", ""
    "SWIG", ">=2.0", ""
-   "Go", ">=1.8", "Optional"
+   "Go", ">=1.8", "Optional"
 
 
 .. _build_options:
