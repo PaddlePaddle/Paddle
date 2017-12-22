@@ -76,7 +76,7 @@ will be downloaded automatically.
    :header: "Dependency", "Version", "Description"
    :widths: 10, 15, 30
 
-   "CMake", ">=3.5", ""
+   "CMake", ">=3.2", ""
    "GCC", "4.8.2", "Recommend devtools2 for CentOS"
    "Python", "2.7.x", "Need libpython2.7.so"
    "pip", ">=9.0", ""
