@@ -90,6 +90,14 @@ OpDescBind::OpDescBind(const std::string &type, const VariableNameMap &inputs,
   need_update_ = true;
 }
 
+void OpDescBind::CopyFrom(const OpDescBind &op_desc) {
+  desc_.set_type(op_desc.Type());
+  inputs_ = op_desc.inputs_;
+  outputs_ = op_desc.outputs_;
+  attrs_ = op_desc.attrs_;
+  need_update_ = true;
+}
+
 OpDescBind::OpDescBind(const OpDesc &desc, ProgramDescBind *prog)
     : desc_(desc), need_update_(false) {
   // restore inputs_

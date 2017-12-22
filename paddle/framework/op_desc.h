@@ -35,6 +35,8 @@ class OpDescBind {
 
   OpDescBind(const OpDesc &desc, ProgramDescBind *prog);
 
+  void CopyFrom(const OpDescBind &op_desc);
+
   OpDesc *Proto();
 
   std::string Type() const { return desc_.type(); }

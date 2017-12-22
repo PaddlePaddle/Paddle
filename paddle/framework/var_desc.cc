@@ -72,7 +72,7 @@ const TensorDesc &VarDescBind::tensor_desc() const {
     case VarDesc::LOD_TENSOR_ARRAY:
       return desc_.tensor_array().tensor();
     default:
-      PADDLE_THROW("Unexpected branch.");
+      PADDLE_THROW("The type of var '", this->Name(), "' is unsupported.");
   }
 }
 
