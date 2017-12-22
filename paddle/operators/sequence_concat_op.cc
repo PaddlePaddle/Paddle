@@ -67,12 +67,12 @@ class SequenceConcatOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The level should be less than the level number of inputs.")
         .SetDefault(0);
     AddComment(R"DOC(
-The sequence_concat operator concatenates multiple LoDTensors. 
-It only supports sequence (LoD Tensor with level number is 1) 
+The sequence_concat operator concatenates multiple LoDTensors.
+It only supports sequence (LoD Tensor with level number is 1)
 or a nested sequence (LoD tensor with level number is 2) as its input.
 - Case1:
   If the axis is other than 0(here, axis is 1 and level is 1),
-  each input should have the same LoD information and the LoD 
+  each input should have the same LoD information and the LoD
   information of the output keeps the same as the input.
 
   LoD(x0) = {{0,2,4}, {0,1,2,3,4}}; Dims(x0) = (4,3,4)
@@ -80,7 +80,7 @@ or a nested sequence (LoD tensor with level number is 2) as its input.
   LoD(Out) = {{0,2,4}, {0,1,2,3,4}}; Dims(Out) = (4,7,4)
 
 - Case2:
-  If the axis is 0(here, leve is 0), the inputs are concatenated along 
+  If the axis is 0(here, leve is 0), the inputs are concatenated along
   time steps, the LoD information of the output need to re-compute.
   The LoD information of level-1 should be same.
 
@@ -124,8 +124,9 @@ class SequenceConcatGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(sequence_concat, ops::SequenceConcatOp, ops::SequenceConcatOpMaker,
-            sequence_concat_grad, ops::SequenceConcatGradOp);
+REGISTER_OP_EX(sequence_concat, ops::SequenceConcatOp,
+               ops::SequenceConcatOpMaker, sequence_concat_grad,
+               ops::SequenceConcatGradOp, false);
 REGISTER_OP_CPU_KERNEL(
     sequence_concat,
     ops::SequenceConcatOpKernel<paddle::platform::CPUDeviceContext, float>);

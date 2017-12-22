@@ -570,7 +570,7 @@ class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
     for (auto &input_param : this->InputNames()) {
       grad->SetInput(input_param, this->Input(input_param));
       grad->SetOutput(framework::GradVarName(input_param),
-                      this->InputGrad(input_param));
+                      this->InputGrad(input_param, false));
     }
 
     for (auto &output_param : this->OutputNames()) {
