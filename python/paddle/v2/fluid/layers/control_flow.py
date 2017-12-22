@@ -3,6 +3,7 @@ from ..framework import Program, Variable, Operator
 from .. import core
 from tensor import assign, fill_constant
 import contextlib
+from ..registry import autodoc
 
 __all__ = [
     'split_lod_tensor', 'merge_lod_tensor', 'BlockGuard', 'StaticRNNGuard',
@@ -10,7 +11,7 @@ __all__ = [
     'max_sequence_len', 'topk', 'lod_tensor_to_array', 'array_to_lod_tensor',
     'increment', 'array_write', 'create_array', 'less_than', 'array_read',
     'shrink_memory', 'array_length', 'IfElse', 'DynamicRNN', 'ConditionalBlock',
-    'StaticRNN'
+    'StaticRNN', 'reorder_lod_tensor_by_rank'
 ]
 
 
@@ -440,9 +441,25 @@ def topk(input, k):
 
 
 def lod_tensor_to_array(x, table):
-    """
-    This function creates an operator to convert an LOD_Tensor to
-    an array.
+    """This function performs the operation that converts an LOD_Tensor to
+       an array.
+
+    Args:
+        x (Variable|list): The tensor that needs to be converted to an array.
+        table (ParamAttr|list): The variable that stores the level of lod
+                                which is ordered by sequence length in
+                                descending order.
+
+    Returns:
+        Variable: The variable of type array that has been converted from a
+                  tensor.
+
+    Examples:
+        .. code-block:: python
+
+          x = fluid.layers.data(name='x', shape=[10])
+          table = fluid.layers.lod_rank_table(x, level=0)
+          array = fluid.layers.lod_tensor_to_array(x, table)
     """
     helper = LayerHelper("lod_tensor_to_array", **locals())
     array = helper.create_variable(
@@ -458,9 +475,26 @@ def lod_tensor_to_array(x, table):
 
 
 def array_to_lod_tensor(x, table):
-    """
-    This function creates an operator to convert an array to a
-    LOD_Tensor.
+    """This function performs the operations that converts an array to
+       an LOD_Tensor.
+
+    Args:
+        x (Variable|list): The array that needs to be converted to a tensor.
+        table (ParamAttr|list): The variable that stores the level of lod
+                                which is ordered by sequence length in
+                                descending order.
+
+    Returns:
+        Variable: The variable of type tensor that has been converted
+                  from an array.
+
+    Examples:
+        .. code-block:: python
+
+          x = fluid.layers.data(name='x', shape=[10])
+          table = fluid.layers.lod_rank_table(x, level=0)
+          array = fluid.layers.lod_tensor_to_array(x, table)
+          lod_tensor = fluid.layers.array_to_lod_tensor(array, table)
     """
     helper = LayerHelper("array_to_lod_tensor", **locals())
     tmp = helper.create_tmp_variable(dtype=x.dtype)
@@ -473,10 +507,24 @@ def array_to_lod_tensor(x, table):
 
 
 def increment(x, value=1.0, in_place=True):
-    """
-    This function creates an operator to increment each value in the input
-    `x` by an amount: `value` as mentioned in the input parameter. This
-    operation is performed in-place by default.
+    """This function performs an operation that increments each value in the
+    input :math:`x` by an amount: :math:`value` as mentioned in the input
+    parameter. This operation is performed in-place by default.
+
+    Args:
+        x (Variable|list): The tensor that has the input values.
+        value (float): The amount by which the values should be incremented.
+        in_place (bool): If the increment should be performed in-place.
+
+    Returns:
+        Variable: The tensor variable storing the transformation of
+                  element-wise increment of each value in the input.
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(name='data', shape=[32, 32], dtype='float32')
+          data = fluid.layers.increment(x=data, value=3.0, in_place=True)
     """
     helper = LayerHelper("increment", **locals())
     if not in_place:
@@ -492,9 +540,24 @@ def increment(x, value=1.0, in_place=True):
 
 
 def array_write(x, i, array=None):
-    """
-    This function creates an operator to write the data out as a
+    """This function performs the operation to write the data out as an
     LOD_TENSOR_ARRAY.
+
+    Args:
+        x (Variable|list): The input tensor from which the data will be read.
+        i (Variable|list): The subscript index in tensor array, that points the
+                           place from which data will be read.
+        array (Variable|list): The data can be read into this variable if
+                               this is assigned.
+    Returns:
+        Variable: The tensor type variable that has the data written to it.
+
+    Examples:
+        .. code-block::python
+
+          tmp = fluid.layers.zeros(shape=[10], dtype='int32')
+          i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
+          arr = layers.array_write(tmp, i=i)
     """
     helper = LayerHelper('array_write', **locals())
     if array is None:
@@ -511,6 +574,21 @@ def array_write(x, i, array=None):
 
 
 def create_array(dtype):
+    """This function creates an array of type :math:`LOD_TENSOR_ARRAY` using the
+    LayerHelper.
+
+    Args:
+        dtype (int|float): The data type of the elements in the array.
+
+    Returns:
+        Variable: The tensor variable storing the elements of data type.
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.create_array(dtype='float32')
+
+    """
     helper = LayerHelper("array", **locals())
     return helper.create_variable(
         name="{0}.out".format(helper.name),
@@ -519,6 +597,24 @@ def create_array(dtype):
 
 
 def less_than(x, y, cond=None, **ignored):
+    """
+    **Less than**
+
+    This layer returns the truth value of :math:`x < y` elementwise.
+
+    Args:
+        x(Variable): First operand of *less_than*
+        y(Variable): Second operand of *less_than*
+        cond(Variable|None): Optional output variable to store the result of *less_than*
+
+    Returns:
+        Variable: The tensor variable storing the output of *less_than*.
+
+    Examples:
+        .. code-block:: python
+
+          less = fluid.layers.less_than(x=label, y=limit)
+    """
     helper = LayerHelper("less_than", **locals())
     if cond is None:
         cond = helper.create_tmp_variable(dtype='bool')
@@ -531,9 +627,19 @@ def less_than(x, y, cond=None, **ignored):
 
 
 def array_read(array, i):
-    """
-    This function creates an operator to read the data in as a
+    """This function performs the operation to read the data in as an
     LOD_TENSOR_ARRAY.
+    Args:
+        array (Variable|list): The input tensor that will be written to an array.
+        i (Variable|list): The subscript index in tensor array, that points the
+                           place where data will be written to.
+    Returns:
+        Variable: The tensor type variable that has the data written to it.
+    Examples:
+        .. code-block::python
+          tmp = fluid.layers.zeros(shape=[10], dtype='int32')
+          i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
+          arr = layers.array_read(tmp, i=i)
     """
     helper = LayerHelper('array_read', **locals())
     if not isinstance(
@@ -567,9 +673,23 @@ def shrink_memory(x, i, table):
 
 
 def array_length(array):
-    """
-    This function creates an operator to find the length of the
+    """This function performs the operation to find the length of the input
     LOD_TENSOR_ARRAY.
+
+    Args:
+        array (LOD_TENSOR_ARRAY): The input array that will be used
+                                  to compute the length.
+
+    Returns:
+        Variable: The length of the input LoDTensorArray.
+
+    Examples:
+        .. code-block::python
+
+          tmp = fluid.layers.zeros(shape=[10], dtype='int32')
+          i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
+          arr = fluid.layers.array_write(tmp, i=i)
+          arr_len = fluid.layers.array_length(arr)
     """
     helper = LayerHelper('array_length', **locals())
     tmp = helper.create_tmp_variable(dtype='int64')
@@ -963,3 +1083,18 @@ class DynamicRNN(object):
         if self.status != DynamicRNN.IN_RNN:
             raise ValueError("{0} can only be invoked inside rnn block.".format(
                 method))
+
+
+@autodoc
+def reorder_lod_tensor_by_rank(x, rank_table):
+    helper = LayerHelper('reorder_lod_tensor_by_rank', **locals())
+    helper.is_instance('x', Variable)
+    helper.is_instance('rank_table', Variable)
+
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='reorder_lod_tensor_by_rank',
+        inputs={'X': [x],
+                'RankTable': [rank_table]},
+        outputs={'Out': [out]})
+    return out

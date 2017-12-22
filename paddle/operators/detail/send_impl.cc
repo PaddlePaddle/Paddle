@@ -19,10 +19,10 @@ namespace operators {
 namespace detail {
 
 bool RPCClient::SendVariable(const framework::Scope& scope,
-                             const std::string& inname,
-                             const std::string& outname) {
+                             const std::string& inname) {
   ClientContext context;
-  VariableMessage msg, out_msg;
+  VariableMessage msg;
+  VoidMessage out_msg;
   // FIXME(typhoonzero): pass device context to here.
   auto ctx = platform::CPUDeviceContext();
   auto* var = scope.FindVar(inname);
@@ -37,9 +37,26 @@ bool RPCClient::SendVariable(const framework::Scope& scope,
   msg.set_serialized(oss.str());
   Status status = stub_->SendVariable(&context, msg, &out_msg);
   if (!status.ok()) {
+    LOG(ERROR) << "gRPC error: " << status.error_message();
     return false;
   }
-  std::istringstream iss(out_msg.serialized());
+  return true;
+}
+
+bool RPCClient::GetVariable(const framework::Scope& scope,
+                            const std::string& outname) {
+  ClientContext context;
+  VariableMessage call_msg, ret_msg;
+  call_msg.set_varname(outname);
+  auto ctx = platform::CPUDeviceContext();
+  Status status = stub_->GetVariable(&context, call_msg, &ret_msg);
+  if (!status.ok()) {
+    LOG(ERROR) << "gRPC error: " << status.error_message();
+    return false;
+  }
+
+  std::istringstream iss(ret_msg.serialized());
+
   framework::LoDTensor ret_tensor;
   framework::DeserializeFromStream(iss, &ret_tensor);
   auto* outvar = scope.FindVar(outname);
@@ -47,6 +64,12 @@ bool RPCClient::SendVariable(const framework::Scope& scope,
   // FIXME(typhoonzero): do not copy.
   framework::CopyFrom(ret_tensor, ctx.GetPlace(), ctx, out_tensor);
   return true;
+}
+
+void RPCClient::Wait() {
+  ClientContext context;
+  VoidMessage call_msg, ret_msg;
+  stub_->Wait(&context, call_msg, &ret_msg);
 }
 
 }  // namespace detail

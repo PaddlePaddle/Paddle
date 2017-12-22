@@ -140,7 +140,7 @@ class LRNOp : public framework::OperatorWithKernel {
 template <typename T>
 class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LRNOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  LRNOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor) The input of LRN operator. "

@@ -54,8 +54,7 @@ class MomentumOp : public framework::OperatorWithKernel {
 
 class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MomentumOpMaker(framework::OpProto *proto,
-                  framework::OpAttrChecker *op_checker)
+  MomentumOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param",
              "(Tensor, default Tensor<float>) "
