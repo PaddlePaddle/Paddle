@@ -40,8 +40,7 @@ class MaxSeqenceLenOp : public framework::OperatorBase {
 
 class MaxSeqenceLenOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MaxSeqenceLenOpProtoMaker(framework::OpProto *proto,
-                            framework::OpAttrChecker *op_checker)
+  MaxSeqenceLenOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("RankTable", "The lod_rank_table.");
     AddOutput("Out", "The max sequence length.");

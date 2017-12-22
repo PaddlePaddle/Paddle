@@ -28,6 +28,10 @@ function train() {
     --test_period=100 \
     --config_args=$args \
     2>&1 | tee ${log} 
+
+  avg_time=`tail ${log} -n 1 | awk -F ' ' '{print $8}' | sed 's/avg=//'`
+  fps=`awk 'BEGIN{printf "%.2f",('$bs' / '$avg_time' * 1000)}'`
+  echo "FPS: $fps images/sec" 2>&1 | tee -a ${log}
 }
 
 if [ ! -f "train.list" ]; then
@@ -43,5 +47,6 @@ for use_mkldnn in True False; do
     train vgg 19 $batchsize $use_mkldnn
     train resnet 50 $batchsize $use_mkldnn
     train googlenet v1 $batchsize $use_mkldnn
+    train alexnet 2 $batchsize $use_mkldnn
   done
 done

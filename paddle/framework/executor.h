@@ -38,7 +38,8 @@ class Executor {
    *  ProgramDesc
    *  Scope
    */
-  void Run(const ProgramDescBind&, Scope*, int, bool create_local_scope = true);
+  void Run(const ProgramDesc&, Scope*, int, bool create_local_scope = true,
+           bool create_vars = true);
 
  private:
   const platform::Place place_;

@@ -72,7 +72,7 @@ CPUDeviceContext::CPUDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
 }
 
-CPUDeviceContext::CPUDeviceContext(CPUPlace place) {
+CPUDeviceContext::CPUDeviceContext(CPUPlace place) : place_(place) {
   eigen_device_.reset(new Eigen::DefaultDevice());
 }
 
@@ -80,7 +80,7 @@ Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
   return eigen_device_.get();
 }
 
-Place CPUDeviceContext::GetPlace() const { return CPUPlace(); }
+Place CPUDeviceContext::GetPlace() const { return place_; }
 
 #ifdef PADDLE_WITH_CUDA
 

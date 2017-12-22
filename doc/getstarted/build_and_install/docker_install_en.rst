@@ -137,7 +137,7 @@ GPU driver installed before move on.
 AVX is a kind of CPU instruction can accelerate PaddlePaddle's calculations.
 The latest PaddlePaddle Docker image turns AVX on by default, so, if your
 computer doesn't support AVX, you'll probably need to
-`build <./build_from_source_en.rst>`_ with :code:`WITH_AVX=OFF`.
+`build <./build_from_source_en.html>`_ with :code:`WITH_AVX=OFF`.
 
 The following command will tell you whether your computer supports AVX.
 

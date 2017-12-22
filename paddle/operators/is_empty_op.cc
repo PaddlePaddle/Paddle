@@ -47,8 +47,7 @@ class IsEmptyOp : public framework::OperatorBase {
 
 class IsEmptyOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  IsEmptyOpProtoMaker(framework::OpProto *proto,
-                      framework::OpAttrChecker *op_checker)
+  IsEmptyOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(kInput, "(Tensor) Tensor which is to be checked.");
     AddOutput(kOutput, "(Tensor) a boolean Tensor that indicate empty or not.");

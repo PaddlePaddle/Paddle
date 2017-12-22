@@ -118,8 +118,7 @@ class MergeLoDTensorOp : public framework::OperatorBase {
 
 class MergeLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MergeLoDTensorOpProtoMaker(framework::OpProto *proto,
-                             framework::OpAttrChecker *op_checker)
+  MergeLoDTensorOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "The input LoDTensor, contains complete lod information to "
@@ -166,15 +165,15 @@ class MergeLoDTensorGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
     grad_op->SetType("split_lod_tensor");
     grad_op->SetInput("X", OutputGrad("Out"));
     grad_op->SetInput("Mask", Input("Mask"));
     grad_op->SetOutput("OutTrue", InputGrad("InTrue"));
     grad_op->SetOutput("OutFalse", InputGrad("InFalse"));
     grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 

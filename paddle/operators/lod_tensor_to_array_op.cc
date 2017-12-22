@@ -102,8 +102,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
 
 class LoDTensorToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LoDTensorToArrayOpProtoMaker(framework::OpProto *proto,
-                               framework::OpAttrChecker *op_checker)
+  LoDTensorToArrayOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "");
     AddInput("RankTable", "");
@@ -133,10 +132,10 @@ class LoDTensorToArrayInferShape : public framework::InferShapeBase {
 
 class LoDTensorToArrayInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDescBind &op_desc,
-                  framework::BlockDescBind *block) const override {
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
     for (auto &out_var : op_desc.Output("Out")) {
-      block->Var(out_var)->SetType(framework::VarDesc::LOD_TENSOR_ARRAY);
+      block->Var(out_var)->SetType(framework::proto::VarDesc::LOD_TENSOR_ARRAY);
     }
   }
 };
@@ -146,14 +145,14 @@ class LoDTensorToArrayGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
     grad_op->SetType("array_to_lod_tensor");
     grad_op->SetInput("X", OutputGrad("Out"));
     grad_op->SetInput("RankTable", Input("RankTable"));
     grad_op->SetOutput("Out", InputGrad("X"));
     grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 

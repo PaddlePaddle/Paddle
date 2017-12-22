@@ -56,13 +56,12 @@ class FillConstantOp : public framework::OperatorBase {
 
 class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FillConstantOpMaker(framework::OpProto *proto,
-                      framework::OpAttrChecker *op_checker)
+  FillConstantOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
-        .SetDefault(framework::DataType::FP32);
+        .SetDefault(framework::proto::DataType::FP32);
     AddAttr<std::vector<int>>("shape", "(vector<int>) The shape of the output");
     AddAttr<float>("value", "(float, default 0) The value to be filled")
         .SetDefault(0.0f);

@@ -49,7 +49,7 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 
 static void BuildVar(const std::string& param_name,
                      std::initializer_list<const char*> arguments,
-                     paddle::framework::OpDesc::Var* var) {
+                     paddle::framework::proto::OpDesc::Var* var) {
   var->set_parameter(param_name);
   for (auto& arg_name : arguments) {
     var->add_arguments(arg_name);
@@ -61,7 +61,7 @@ REGISTER_OP_WITHOUT_GRADIENT(my_test_op, paddle::framework::MyTestOp,
                              paddle::framework::MyTestOpProtoAndCheckerMaker);
 
 TEST(OpRegistry, CreateOp) {
-  paddle::framework::OpDesc op_desc;
+  paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("cos_sim");
   BuildVar("input", {"aa"}, op_desc.add_inputs());
   BuildVar("output", {"bb"}, op_desc.add_outputs());
@@ -69,7 +69,7 @@ TEST(OpRegistry, CreateOp) {
   float scale = 3.3;
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
-  attr->set_type(paddle::framework::AttrType::FLOAT);
+  attr->set_type(paddle::framework::proto::AttrType::FLOAT);
   attr->set_f(scale);
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
@@ -81,14 +81,14 @@ TEST(OpRegistry, CreateOp) {
 }
 
 TEST(OpRegistry, IllegalAttr) {
-  paddle::framework::OpDesc op_desc;
+  paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("cos_sim");
   BuildVar("input", {"aa"}, op_desc.add_inputs());
   BuildVar("output", {"bb"}, op_desc.add_outputs());
 
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("scale");
-  attr->set_type(paddle::framework::AttrType::FLOAT);
+  attr->set_type(paddle::framework::proto::AttrType::FLOAT);
   attr->set_f(-2.0);
 
   bool caught = false;
@@ -106,7 +106,7 @@ TEST(OpRegistry, IllegalAttr) {
 }
 
 TEST(OpRegistry, DefaultValue) {
-  paddle::framework::OpDesc op_desc;
+  paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("cos_sim");
   BuildVar("input", {"aa"}, op_desc.add_inputs());
   BuildVar("output", {"bb"}, op_desc.add_outputs());
@@ -121,7 +121,7 @@ TEST(OpRegistry, DefaultValue) {
 }
 
 TEST(OpRegistry, CustomChecker) {
-  paddle::framework::OpDesc op_desc;
+  paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("my_test_op");
   BuildVar("input", {"ii"}, op_desc.add_inputs());
   BuildVar("output", {"oo"}, op_desc.add_outputs());
@@ -143,7 +143,7 @@ TEST(OpRegistry, CustomChecker) {
   // set 'test_attr' set to an illegal value
   auto attr = op_desc.mutable_attrs()->Add();
   attr->set_name("test_attr");
-  attr->set_type(paddle::framework::AttrType::INT);
+  attr->set_type(paddle::framework::proto::AttrType::INT);
   attr->set_i(3);
   caught = false;
   try {
@@ -162,7 +162,7 @@ TEST(OpRegistry, CustomChecker) {
   op_desc.mutable_attrs()->Clear();
   attr = op_desc.mutable_attrs()->Add();
   attr->set_name("test_attr");
-  attr->set_type(paddle::framework::AttrType::INT);
+  attr->set_type(paddle::framework::proto::AttrType::INT);
   attr->set_i(4);
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::platform::CPUPlace cpu_place;

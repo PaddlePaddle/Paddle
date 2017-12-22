@@ -355,16 +355,14 @@ struct OpKernelType {
     }
   };
 
-  platform::Place place_;  // address space
-  DataType data_type_;
-  std::string library_;  // kernel based library
-  // FIXME(dzhwinter):
-  // LayoutType layerout_;
+  platform::Place place_;
+  proto::DataType data_type_;
 
-  OpKernelType(DataType data_type, platform::Place place)
+  OpKernelType(proto::DataType data_type, platform::Place place)
       : place_(place), data_type_(data_type) {}
 
-  OpKernelType(DataType data_type, const platform::DeviceContext& dev_ctx)
+  OpKernelType(proto::DataType data_type,
+               const platform::DeviceContext& dev_ctx)
       : place_(dev_ctx.GetPlace()), data_type_(data_type) {}
 
   bool operator==(const OpKernelType& o) const {
@@ -409,7 +407,7 @@ class OperatorWithKernel : public OperatorBase {
  private:
   // indicate kernel DataType by input data. Defaultly all input data must be
   // same.
-  DataType IndicateDataType(const ExecutionContext& ctx) const;
+  proto::DataType IndicateDataType(const ExecutionContext& ctx) const;
 };
 
 std::ostream& operator<<(std::ostream& os, const OpKernelType& kernel_key);

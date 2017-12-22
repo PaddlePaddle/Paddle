@@ -379,7 +379,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     }
   }
 
-  VarDesc::VarType GetVarType(const std::string& name) const override {
+  proto::VarDesc::VarType GetVarType(const std::string& name) const override {
     auto* var = scope_.FindVar(name);
     return ToVarType(var->Type());
   }
@@ -421,7 +421,7 @@ OpKernelType OperatorWithKernel::GetKernelType(
     const ExecutionContext& ctx) const {
   return OpKernelType(IndicateDataType(ctx), ctx.GetPlace());
 }
-DataType OperatorWithKernel::IndicateDataType(
+proto::DataType OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
   auto& scope = ctx.scope();
   int data_type = -1;
@@ -447,7 +447,7 @@ DataType OperatorWithKernel::IndicateDataType(
     }
   }
   PADDLE_ENFORCE(data_type != -1, "DataType should be indicated by input");
-  return static_cast<DataType>(data_type);
+  return static_cast<proto::DataType>(data_type);
 }
 
 }  // namespace framework

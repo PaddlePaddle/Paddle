@@ -45,8 +45,7 @@ class RankLossOp : public framework::OperatorWithKernel {
 
 class RankLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RankLossOpMaker(framework::OpProto *proto,
-                  framework::OpAttrChecker *op_checker)
+  RankLossOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Label",
              "(2-D Tensor with shape [batch_size x 1]) "

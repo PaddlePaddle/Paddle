@@ -48,6 +48,7 @@ class CPUDeviceContext : public DeviceContext {
   Place GetPlace() const override;
 
  private:
+  CPUPlace place_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
 
