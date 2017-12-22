@@ -62,6 +62,19 @@ class ConvOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx,
+      const framework::OpKernelType& actual_kernel_type) const override {
+    if (Attr<bool>(framework::kUseCUDNN)) {
+      PADDLE_THROW(
+          "Library is not Supported now, after support "
+          "Library in kernel type, we can choose "
+          "a kernel with certain library");
+    }
+    return actual_kernel_type;
+  }
 };
 
 class ConvOpGrad : public framework::OperatorWithKernel {

@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+from paddle.v2.fluid.framework import USE_CUDNN
 
 
 def conv2d_forward_naive(input, filter, group, conv_param):
@@ -67,7 +68,8 @@ class TestConv2dOp(OpTest):
             'strides': self.stride,
             'paddings': self.pad,
             'groups': self.groups,
-            'dilations': self.dilations
+            'dilations': self.dilations,
+            USE_CUDNN: False
         }
         self.outputs = {'Output': output}
 
