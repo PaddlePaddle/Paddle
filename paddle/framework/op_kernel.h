@@ -14,6 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/framework/framework.pb.h"
+#include "paddle/platform/device_context.h"
+#include "paddle/platform/place.h"
+
 namespace paddle {
 namespace framework {
 
