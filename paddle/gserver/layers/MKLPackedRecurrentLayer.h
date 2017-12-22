@@ -16,7 +16,8 @@ limitations under the License. */
 
 #include <gflags/gflags.h>
 #include "Layer.h"
-#include "MKLPackedGemm.h"
+#include "MKLPackedWeight.h"
+#include "RecurrentLayer.h"
 #include "SequenceToBatch.h"
 #include "paddle/utils/Stat.h"
 
@@ -45,90 +46,28 @@ namespace paddle {
  * them by rnn_use_batch flag.
  */
 
-class MKLPackedRecurrentLayer : public Layer {
+class MKLPackedRecurrentLayer : public RecurrentLayer {
 public:
-  explicit MKLPackedRecurrentLayer(const LayerConfig& config) : Layer(config) {}
+  explicit MKLPackedRecurrentLayer(const LayerConfig& config)
+      : RecurrentLayer(config) {}
 
   bool init(const LayerMap& layerMap,
             const ParameterMap& parameterMap) override;
 
-  void forward(PassType passType) override;
-
   void backward(const UpdateCallback& callback) override;
 
-  void resetState() override;
+protected:
+  void forwardBatch(int batchSize,
+                    size_t numSequences,
+                    const int* starts) override;
 
-  void setState(LayerStatePtr state) override;
-
-  LayerStatePtr getState() override;
+  void backwardBatch(int batchSize,
+                     size_t numSequences,
+                     const int* starts) override;
 
 protected:
-  /**
-   * @brief If user do not set --rnn_use_batch=true, it will
-   * compute rnn forward one sequence by one sequence in default.
-   * @param batchSize Total words number of all samples in this batch.
-   * @param numSequences The sample number.
-   * @param starts Each start position of each samples.
-   */
-  void forwardSequence(int batchSize, size_t numSequences, const int* starts);
-  /**
-   * @brief Compute rnn forward by one sequence.
-   * @param start The start position of this sequence (or sample).
-   * @param length The length of this sequence (or sample), namely the words
-   * number of this sequence.
-   */
-  void forwardOneSequence(int start, int length);
-  /**
-   * @brief Compute rnn backward one sequence by onesequence.
-   * @param batchSize Total words number of all samples in this batch.
-   * @param numSequences The sample number.
-   * @param starts Each start position of each samples.
-   */
-  void backwardSequence(int batchSize, size_t numSequences, const int* starts);
-  /**
-   * @brief Compute rnn backward by one sequence.
-   * @param start The start position of this sequence (or sample).
-   * @param length The length of this sequence (or sample), namely the words
-   * number of this sequence.
-   */
-  void backwardOneSequence(int start, int length);
-
-  /**
-   * @brief Reorganize input into batches and compute rnn forward batch
-   * by batch. It will convert batch shape to sequence after finishing forward.
-   * The batch info can refer to SequenceToBatch class.
-   * @param batchSize Total words number of all samples in this batch.
-   * @param numSequences The sample number.
-   * @param starts Each start position of each samples.
-   */
-  void forwardBatch(int batchSize, size_t numSequences, const int* starts);
-
-  /**
-   * @brief Reorganize input into batches and compute rnn forward batch
-   * by batch.
-   * @param batchSize Total words number of all samples in this batch.
-   * @param numSequences The sample number.
-   * @param starts Each start position of each samples.
-   */
-  void backwardBatch(int batchSize, size_t numSequences, const int* starts);
-
-protected:
-  std::unique_ptr<Weight> weight_;
-  std::unique_ptr<Weight> bias_;
-
-  /// frameOutput_[i] is used to hold the i-th sample of output_
-  std::vector<Argument> frameOutput_;
-  MatrixPtr prevOutput_;
-  /// Whether compute rnn by reverse.
-  bool reversed_;
-  /// If compute batch by batch, batchValue_ will be used to save the
-  /// reorganized input value.
-  std::unique_ptr<SequenceToBatch> batchValue_;
-  /// If compute batch by batch, batchGrad_ will be used to save the
-  /// gradient with respect to reorganized input value.
-  std::unique_ptr<SequenceToBatch> batchGrad_;
-
-  std::unique_ptr<MKLPackedGemm> sgemm_packed_;
+  std::unique_ptr<MKLPackedWeight> packed_weight_;
+  std::unique_ptr<MKLPackedWeight> packed_weightT_;
 };
 
 }  // namespace paddle
