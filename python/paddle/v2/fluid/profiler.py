@@ -9,19 +9,9 @@ NVPROF_CONFIG = [
     "gpuendtimestamp",
     "gridsize3d",
     "threadblocksize",
-    "dynsmemperblock",
-    "stasmemperblock",
-    "regperthread",
-    "memtransfersize",
-    "memtransferdir",
-    "memtransferhostmemtype",
     "streamid",
-    "cacheconfigrequested",
-    "cacheconfigexecuted",
-    "countermodeaggregate",
     "enableonstart 0",
-    "active_warps",
-    "active_cycles",
+    "conckerneltrace",
 ]
 
 
