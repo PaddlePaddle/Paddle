@@ -25,12 +25,11 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class OpDescBind;
-class BlockDescBind;
+class OpDesc;
+class BlockDesc;
 class CompileTimeInferShapeContext : public InferShapeContext {
  public:
-  CompileTimeInferShapeContext(const OpDescBind &op,
-                               const BlockDescBind &block);
+  CompileTimeInferShapeContext(const OpDesc &op, const BlockDesc &block);
 
   bool HasInput(const std::string &name) const override;
 
@@ -76,13 +75,12 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   void SetDim(const std::string &name, const DDim &dim) override;
 
-  const OpDescBind &op_;
-  const BlockDescBind &block_;
+  const OpDesc &op_;
+  const BlockDesc &block_;
 };
 
-OpDescBind::OpDescBind(const std::string &type, const VariableNameMap &inputs,
-                       const VariableNameMap &outputs,
-                       const AttributeMap &attrs) {
+OpDesc::OpDesc(const std::string &type, const VariableNameMap &inputs,
+               const VariableNameMap &outputs, const AttributeMap &attrs) {
   desc_.set_type(type);
   inputs_ = inputs;
   outputs_ = outputs;
@@ -90,7 +88,7 @@ OpDescBind::OpDescBind(const std::string &type, const VariableNameMap &inputs,
   need_update_ = true;
 }
 
-OpDescBind::OpDescBind(const proto::OpDesc &desc, ProgramDescBind *prog)
+OpDesc::OpDesc(const proto::OpDesc &desc, ProgramDesc *prog)
     : desc_(desc), need_update_(false) {
   // restore inputs_
   int input_size = desc_.inputs_size();
@@ -126,20 +124,19 @@ OpDescBind::OpDescBind(const proto::OpDesc &desc, ProgramDescBind *prog)
   }
 }
 
-proto::OpDesc *OpDescBind::Proto() {
+proto::OpDesc *OpDesc::Proto() {
   Flush();
   return &desc_;
 }
 
-const std::vector<std::string> &OpDescBind::Input(
-    const std::string &name) const {
+const std::vector<std::string> &OpDesc::Input(const std::string &name) const {
   auto it = inputs_.find(name);
   PADDLE_ENFORCE(it != inputs_.end(), "Input %s cannot be found in Op %s", name,
                  Type());
   return it->second;
 }
 
-std::vector<std::string> OpDescBind::InputArgumentNames() const {
+std::vector<std::string> OpDesc::InputArgumentNames() const {
   std::vector<std::string> retv;
   for (auto &ipt : this->inputs_) {
     retv.insert(retv.end(), ipt.second.begin(), ipt.second.end());
@@ -147,21 +144,20 @@ std::vector<std::string> OpDescBind::InputArgumentNames() const {
   return retv;
 }
 
-void OpDescBind::SetInput(const std::string &param_name,
-                          const std::vector<std::string> &args) {
+void OpDesc::SetInput(const std::string &param_name,
+                      const std::vector<std::string> &args) {
   need_update_ = true;
   inputs_[param_name] = args;
 }
 
-const std::vector<std::string> &OpDescBind::Output(
-    const std::string &name) const {
+const std::vector<std::string> &OpDesc::Output(const std::string &name) const {
   auto it = outputs_.find(name);
   PADDLE_ENFORCE(it != outputs_.end(), "Output %s cannot be found in Op %s",
                  name, Type());
   return it->second;
 }
 
-std::vector<std::string> OpDescBind::OutputArgumentNames() const {
+std::vector<std::string> OpDesc::OutputArgumentNames() const {
   std::vector<std::string> retv;
   for (auto &ipt : this->outputs_) {
     retv.insert(retv.end(), ipt.second.begin(), ipt.second.end());
@@ -169,19 +165,19 @@ std::vector<std::string> OpDescBind::OutputArgumentNames() const {
   return retv;
 }
 
-void OpDescBind::SetOutput(const std::string &param_name,
-                           const std::vector<std::string> &args) {
+void OpDesc::SetOutput(const std::string &param_name,
+                       const std::vector<std::string> &args) {
   need_update_ = true;
   this->outputs_[param_name] = args;
 }
 
-proto::AttrType OpDescBind::GetAttrType(const std::string &name) const {
+proto::AttrType OpDesc::GetAttrType(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
   return static_cast<proto::AttrType>(it->second.which() - 1);
 }
 
-std::vector<std::string> OpDescBind::AttrNames() const {
+std::vector<std::string> OpDesc::AttrNames() const {
   std::vector<std::string> retv;
   retv.reserve(attrs_.size());
   for (auto &attr : attrs_) {
@@ -190,41 +186,39 @@ std::vector<std::string> OpDescBind::AttrNames() const {
   return retv;
 }
 
-void OpDescBind::SetAttr(const std::string &name, const Attribute &v) {
+void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   this->attrs_[name] = v;
   need_update_ = true;
 }
 
-void OpDescBind::SetBlockAttr(const std::string &name, BlockDescBind &block) {
+void OpDesc::SetBlockAttr(const std::string &name, BlockDesc &block) {
   this->attrs_[name] = &block;
   need_update_ = true;
 }
 
-void OpDescBind::SetAttrMap(
+void OpDesc::SetAttrMap(
     const std::unordered_map<std::string, Attribute> &attr_map) {
   attrs_ = attr_map;
   need_update_ = true;
 }
 
-Attribute OpDescBind::GetAttr(const std::string &name) const {
+Attribute OpDesc::GetAttr(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
   return it->second;
 }
 
-int OpDescBind::GetBlockAttr(const std::string &name) const {
+int OpDesc::GetBlockAttr(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
-  return boost::get<BlockDescBind *>(it->second)->ID();
+  return boost::get<BlockDesc *>(it->second)->ID();
 }
 
-const std::unordered_map<std::string, Attribute> &OpDescBind::GetAttrMap()
-    const {
+const std::unordered_map<std::string, Attribute> &OpDesc::GetAttrMap() const {
   return attrs_;
 }
 
-void OpDescBind::Rename(const std::string &old_name,
-                        const std::string &new_name) {
+void OpDesc::Rename(const std::string &old_name, const std::string &new_name) {
   for (auto &input : inputs_) {
     std::replace(input.second.begin(), input.second.end(), old_name, new_name);
   }
@@ -235,8 +229,8 @@ void OpDescBind::Rename(const std::string &old_name,
   need_update_ = true;
 }
 
-void OpDescBind::RenameOutput(const std::string &old_name,
-                              const std::string &new_name) {
+void OpDesc::RenameOutput(const std::string &old_name,
+                          const std::string &new_name) {
   for (auto &output : outputs_) {
     std::replace(output.second.begin(), output.second.end(), old_name,
                  new_name);
@@ -244,8 +238,8 @@ void OpDescBind::RenameOutput(const std::string &old_name,
   need_update_ = true;
 }
 
-void OpDescBind::RenameInput(const std::string &old_name,
-                             const std::string &new_name) {
+void OpDesc::RenameInput(const std::string &old_name,
+                         const std::string &new_name) {
   for (auto &input : inputs_) {
     std::replace(input.second.begin(), input.second.end(), old_name, new_name);
   }
@@ -278,7 +272,7 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
   void operator()(boost::blank) const { PADDLE_THROW("Unexpected branch"); }
 };
 
-void OpDescBind::Flush() {
+void OpDesc::Flush() {
   if (need_update_) {
     this->desc_.mutable_inputs()->Clear();
     for (auto &ipt : inputs_) {
@@ -330,7 +324,7 @@ static void InitInferShapeFuncs() {
   });
 }
 
-void OpDescBind::CheckAttrs() {
+void OpDesc::CheckAttrs() {
   PADDLE_ENFORCE(!Type().empty(),
                  "CheckAttr() can not be called before type is setted.");
   auto *checker = OpInfoMap::Instance().Get(Type()).Checker();
@@ -342,7 +336,7 @@ void OpDescBind::CheckAttrs() {
   checker->Check(attrs_);
 }
 
-void OpDescBind::InferShape(const BlockDescBind &block) const {
+void OpDesc::InferShape(const BlockDesc &block) const {
   VLOG(3) << "CompileTime infer shape on " << Type();
   InitInferShapeFuncs();
   auto &infer_shape = OpInfoMap::Instance().Get(this->Type()).infer_shape_;
@@ -365,7 +359,7 @@ void OpDescBind::InferShape(const BlockDescBind &block) const {
   infer_shape(&ctx);
 }
 
-void OpDescBind::InferVarType(BlockDescBind *block) const {
+void OpDesc::InferVarType(BlockDesc *block) const {
   auto &info = OpInfoMap::Instance().Get(this->Type());
   if (info.infer_var_type_) {
     info.infer_var_type_(*this, block);
@@ -384,7 +378,7 @@ void OpDescBind::InferVarType(BlockDescBind *block) const {
 }
 
 CompileTimeInferShapeContext::CompileTimeInferShapeContext(
-    const OpDescBind &op, const BlockDescBind &block)
+    const OpDesc &op, const BlockDesc &block)
     : op_(op), block_(block) {}
 
 bool CompileTimeInferShapeContext::HasInput(const std::string &name) const {
