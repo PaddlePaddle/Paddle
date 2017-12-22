@@ -12,10 +12,11 @@ function train() {
   config="${topology}.py"
   paddle train --job=time \
     --config=$config \
+    --use_mkldnn=False \
     --use_gpu=False \
     --trainer_count=$thread \
-    --log_period=10 \
-    --test_period=100 \
+    --log_period=3 \
+    --test_period=30 \
     --config_args=$args \
     2>&1 | tee ${log} 
 
@@ -36,4 +37,5 @@ for batchsize in 64 128 256; do
   train vgg 19 $batchsize
   train resnet 50 $batchsize
   train googlenet v1 $batchsize
+  train alexnet 2 $batchsize
 done

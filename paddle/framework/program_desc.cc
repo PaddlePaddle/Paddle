@@ -18,49 +18,49 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-BlockDescBind *ProgramDescBind::AppendBlock(const BlockDescBind &parent) {
+BlockDesc *ProgramDesc::AppendBlock(const BlockDesc &parent) {
   auto *b = desc_.add_blocks();
   b->set_parent_idx(parent.ID());
   b->set_idx(desc_.blocks_size() - 1);
-  blocks_.emplace_back(new BlockDescBind(this, b));
+  blocks_.emplace_back(new BlockDesc(this, b));
   return blocks_.back().get();
 }
 
-proto::ProgramDesc *ProgramDescBind::Proto() {
+proto::ProgramDesc *ProgramDesc::Proto() {
   for (auto &block : blocks_) {
     block->Flush();
   }
   return &desc_;
 }
 
-ProgramDescBind::ProgramDescBind() {
+ProgramDesc::ProgramDesc() {
   auto *block = desc_.mutable_blocks()->Add();
   block->set_idx(kRootBlockIndex);
   block->set_parent_idx(kNoneBlockIndex);
-  blocks_.emplace_back(new BlockDescBind(this, block));
+  blocks_.emplace_back(new BlockDesc(this, block));
 }
 
-ProgramDescBind::ProgramDescBind(const ProgramDescBind &o) {
+ProgramDesc::ProgramDesc(const ProgramDesc &o) {
   desc_ = o.desc_;
 
   for (int i = 0; i < desc_.blocks_size(); ++i) {
     auto *block = desc_.mutable_blocks(i);
-    blocks_.emplace_back(new BlockDescBind(*o.blocks_[i], block, this));
+    blocks_.emplace_back(new BlockDesc(*o.blocks_[i], block, this));
   }
 }
 
-ProgramDescBind::ProgramDescBind(const proto::ProgramDesc &desc) {
+ProgramDesc::ProgramDesc(const proto::ProgramDesc &desc) {
   desc_ = desc;
   for (auto &block_desc : *desc_.mutable_blocks()) {
-    blocks_.emplace_back(new BlockDescBind(this, &block_desc));
+    blocks_.emplace_back(new BlockDesc(this, &block_desc));
   }
 }
 
-ProgramDescBind::ProgramDescBind(const std::string &binary_str) {
+ProgramDesc::ProgramDesc(const std::string &binary_str) {
   PADDLE_ENFORCE(desc_.ParseFromString(binary_str),
                  "Fail to parse program_desc from binary string.");
   for (auto &block_desc : *desc_.mutable_blocks()) {
-    blocks_.emplace_back(new BlockDescBind(this, &block_desc));
+    blocks_.emplace_back(new BlockDesc(this, &block_desc));
   }
 }
 

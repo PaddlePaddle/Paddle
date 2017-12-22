@@ -50,13 +50,13 @@ class SignGradMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
     grad_op->SetType("scale");
     grad_op->SetInput("X", OutputGrad("Out"));
     grad_op->SetOutput("Out", InputGrad("X"));
     grad_op->SetAttr("scale", 0.0f);
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 
