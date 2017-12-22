@@ -58,7 +58,7 @@ This operator expands input(X) according to LOD of input(Y).
 Following are cases to better explain how this works:
 Case 1:
 
-Given 2-level a LoDTensor input(X)
+Given a 2-level LoDTensor input(X)
     X.lod = [[0,       2, 3],
              [0, 1,    3, 4]]
     X.data = [a, b, c, d]
