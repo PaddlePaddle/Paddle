@@ -68,6 +68,9 @@ class NormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of NormOp"
                    "should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Scale"),
+                   "Input(Scale) of NormOp"
+                   "should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of NormOp should not be null.");
     auto in_x_dims = ctx->GetInputDim("X");
