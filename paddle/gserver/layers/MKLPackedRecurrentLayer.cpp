@@ -20,188 +20,21 @@ REGISTER_LAYER(mkl_packed_recurrent, MKLPackedRecurrentLayer);
 
 bool MKLPackedRecurrentLayer::init(const LayerMap& layerMap,
                                    const ParameterMap& parameterMap) {
-  if (!Layer::init(layerMap, parameterMap)) return false;
-  CHECK_EQ(1U, inputLayers_.size());
-  CHECK_EQ(1U, parameters_.size());
-  CHECK_EQ(getSize() * getSize(), parameters_[0]->getSize());
-  weight_.reset(new Weight(getSize(), getSize(), parameters_[0]));
-  if (biasParameter_.get() != NULL) {
-    bias_.reset(new Weight(1, getSize(), biasParameter_));
+  if (!RecurrentLayer::init(layerMap, parameterMap)) return false;
+  packed_weight_.reset(new MKLPackedWeight(weight_->getW()));
+  packed_weight_->pack();
+  if (needGradient_) {
+    packed_weightT_.reset(new MKLPackedWeight(weight_->getW(), true));
+    packed_weightT_->pack();
   }
-  reversed_ = config_.reversed();
-
-  sgemm_packed_.reset(new MKLPackedGemm(weight_->getW()));
-
   return true;
 }
 
-void MKLPackedRecurrentLayer::resetState() {
-  CHECK(!reversed_) << "state is not allowed for reversed recurrent layer";
-  Matrix::resizeOrCreate(
-      prevOutput_, 1, getSize(), /* trans= */ false, useGpu_);
-  prevOutput_->zeroMem();
-}
-
-void MKLPackedRecurrentLayer::setState(LayerStatePtr state) {
-  CHECK(state->value.size() == 1) << "one matrix is expected for RNN state";
-  prevOutput_->copyFrom(*(state->value[0]));
-}
-
-LayerStatePtr MKLPackedRecurrentLayer::getState() {
-  LayerStatePtr res = std::make_shared<LayerState>();
-  res->value.push_back(prevOutput_->clone(0, 0, useGpu_));
-  res->value[0]->copyFrom(*prevOutput_);
-  return res;
-}
-
-void MKLPackedRecurrentLayer::forward(PassType passType) {
-  REGISTER_TIMER_INFO("RecurrentFwTimer", getName().c_str());
-  Layer::forward(passType);
-  const Argument& input = getInput(0);
-  CHECK(input.sequenceStartPositions);
-  int batchSize = input.getBatchSize();
-  size_t numSequences = input.getNumSequences();
-  resetOutput(batchSize, getSize());
-  CHECK_EQ(getSize(), input.value->getWidth());
-  const int* starts = input.sequenceStartPositions->getData(false);
-  CHECK_EQ(starts[numSequences], batchSize);
-
-  output_.value->assign(*input.value);
-  if (bias_) {
-    output_.value->addBias(*bias_->getW(), 1);
-  }
-  if (!FLAGS_rnn_use_batch) {
-    forwardSequence(batchSize, numSequences, starts);
-  } else {
-    forwardBatch(batchSize, numSequences, starts);
-  }
-}
-
-void MKLPackedRecurrentLayer::forwardSequence(int batchSize,
-                                              size_t numSequences,
-                                              const int* starts) {
-  REGISTER_TIMER_INFO("RecurrentFwSequence", getName().c_str());
-
-  frameOutput_.reserve(batchSize);
-  for (int i = frameOutput_.size(); i < batchSize; ++i) {
-    Argument arg;
-    arg.value = Matrix::create(nullptr,
-                               /* height= */ 1,
-                               getSize(),
-                               /* trans= */ false,
-                               useGpu_);
-    arg.grad = Matrix::create(nullptr,
-                              /* height= */ 1,
-                              getSize(),
-                              /* trans= */ false,
-                              useGpu_);
-    frameOutput_.push_back(arg);
-  }
-
-  for (int i = 0; i < batchSize; ++i) {
-    frameOutput_[i].value->setData(output_.value->getData() + i * getSize());
-  }
-
-  for (size_t i = 0; i < numSequences; ++i) {
-    forwardOneSequence(starts[i], starts[i + 1] - starts[i]);
-  }
-}
-
-void MKLPackedRecurrentLayer::forwardOneSequence(int start, int length) {
-  if (!reversed_) {
-    if (prevOutput_) {
-      frameOutput_[start].value->mul(*prevOutput_, *weight_->getW(), 1, 1);
-    }
-    activation_->forward(frameOutput_[start]).check();
-
-    for (int i = 1; i < length; ++i) {
-      frameOutput_[start + i].value->mul(
-          *frameOutput_[start + i - 1].value, *weight_->getW(), 1, 1);
-      activation_->forward(frameOutput_[start + i]).check();
-    }
-    if (prevOutput_) {
-      prevOutput_->assign(*frameOutput_[start + length - 1].value);
-    }
-  } else {
-    activation_->forward(frameOutput_[start + length - 1]).check();
-    for (int i = length - 2; i >= 0; --i) {
-      frameOutput_[start + i].value->mul(
-          *frameOutput_[start + i + 1].value, *weight_->getW(), 1, 1);
-      activation_->forward(frameOutput_[start + i]).check();
-    }
-  }
-}
-
 void MKLPackedRecurrentLayer::backward(const UpdateCallback& callback) {
-  REGISTER_TIMER_INFO("RecurrentBwTimer", getName().c_str());
-  const Argument& input = getInput(0);
-  CHECK(input.sequenceStartPositions);
-  int batchSize = input.getBatchSize();
-  const int* starts = input.sequenceStartPositions->getData(false);
-  size_t numSequences = input.getNumSequences();
-
-  if (!FLAGS_rnn_use_batch) {
-    backwardSequence(batchSize, numSequences, starts);
-  } else {
-    backwardBatch(batchSize, numSequences, starts);
-  }
-
-  if (input.grad) {
-    input.grad->add(*output_.grad);
-  }
-
-  if (bias_ && bias_->getWGrad()) {
-    bias_->getWGrad()->collectBias(*output_.grad, 1);
-    bias_->getParameterPtr()->incUpdate(callback);
-  }
-
-  weight_->getParameterPtr()->incUpdate(callback);
-  sgemm_packed_.reset(new MKLPackedGemm(weight_->getW()));
-}
-
-void MKLPackedRecurrentLayer::backwardSequence(int batchSize,
-                                               size_t numSequences,
-                                               const int* starts) {
-  REGISTER_TIMER_INFO("RecurrentBwSequence", getName().c_str());
-  for (int i = 0; i < batchSize; ++i) {
-    frameOutput_[i].grad->setData(output_.grad->getData() + i * getSize());
-  }
-
-  for (size_t i = 0; i < numSequences; ++i) {
-    backwardOneSequence(starts[i], starts[i + 1] - starts[i]);
-  }
-}
-
-void MKLPackedRecurrentLayer::backwardOneSequence(int start, int length) {
-  MatrixPtr weightT = weight_->getW()->getTranspose();
-  if (!reversed_) {
-    for (int i = length - 1; i > 0; --i) {
-      activation_->backward(frameOutput_[start + i]).check();
-      frameOutput_[start + i - 1].grad->mul(
-          *frameOutput_[start + i].grad, *weightT, 1, 1);
-    }
-    activation_->backward(frameOutput_[start]).check();
-    if (weight_->getWGrad()) {
-      weight_->getWGrad()->mul(
-          *output_.value->subMatrix(start, length - 1)->getTranspose(),
-          *output_.grad->subMatrix(start + 1, length - 1),
-          1,
-          1);
-    }
-  } else {
-    for (int i = 0; i < length - 1; ++i) {
-      activation_->backward(frameOutput_[start + i]).check();
-      frameOutput_[start + i + 1].grad->mul(
-          *frameOutput_[start + i].grad, *weightT, 1, 1);
-    }
-    activation_->backward(frameOutput_[start + length - 1]).check();
-    if (weight_->getWGrad()) {
-      weight_->getWGrad()->mul(
-          *output_.value->subMatrix(start + 1, length - 1)->getTranspose(),
-          *output_.grad->subMatrix(start, length - 1),
-          1,
-          1);
-    }
+  RecurrentLayer::backward(callback);
+  packed_weight_->pack();
+  if (needGradient_) {
+    packed_weightT_->pack();
   }
 }
 
@@ -227,7 +60,7 @@ void MKLPackedRecurrentLayer::forwardBatch(int batchSize,
             batchValue_->getBatchValue(n - 1, batch2->getHeight());
 
         // batch2->mul(*batch1, *weight_->getW(), 1, 1);
-        sgemm_packed_->compute(batch2, batch1);
+        packed_weight_->compute(batch2, batch1);
       }
 
 #pragma omp parallel for collapse(2)
@@ -272,7 +105,7 @@ void MKLPackedRecurrentLayer::backwardBatch(int batchSize,
       if (n != 0) {
         batch1 = batchGrad_->getBatchValue(n - 1, batch2->getHeight());
         // batch1->mul(*batch2, *weightT, 1, 1);
-        sgemm_packed_->compute(batch1, batch2, true);
+        packed_weightT_->compute(batch1, batch2);
       }
 
       if (backwardByBatch && weight_->getWGrad()) {
