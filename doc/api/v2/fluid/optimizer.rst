@@ -18,7 +18,7 @@ SGDOptimizer
 
 
 MomentumOptimizer
------------
+-----------------
 ..  automodule:: paddle.v2.fluid.optimizer
     :members: MomentumOptimizer
     :noindex:
@@ -26,14 +26,14 @@ MomentumOptimizer
 
 
 AdagradOptimizer
------------
+----------------
 ..  automodule:: paddle.v2.fluid.optimizer
     :members: AdagradOptimizer
     :noindex:
 
 
 AdamOptimizer
------------
+-------------
 ..  automodule:: paddle.v2.fluid.optimizer
     :members: AdamOptimizer
     :noindex:
@@ -47,7 +47,7 @@ AdamaxOptimizer
 
 
 DecayedAdagradOptimizer
------------
+-----------------------
 ..  automodule:: paddle.v2.fluid.optimizer
     :members: DecayedAdagradOptimizer
     :noindex:

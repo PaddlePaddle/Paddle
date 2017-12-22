@@ -19,17 +19,17 @@ dynamic_lstm
     :noindex:
 
 data
----------
+----
 ..  autofunction:: paddle.v2.fluid.layers.data
     :noindex:
 
 mean
----------
+----
 ..  autofunction:: paddle.v2.fluid.layers.mean
     :noindex:
 
 mul
----------
+---
 ..  autofunction:: paddle.v2.fluid.layers.mul
     :noindex:
 
@@ -45,13 +45,13 @@ elementwise_div
 
 
 dropout
----------
+-------
 ..  autofunction:: paddle.v2.fluid.layers.dropout
     :noindex:
 
 
 reshape
----------
+--------
 ..  autofunction:: paddle.v2.fluid.layers.reshape
     :noindex:
 
@@ -81,67 +81,67 @@ transpose
 
 
 sigmoid_cross_entropy_with_logits
----------
+---------------------------------
 ..  autofunction:: paddle.v2.fluid.layers.esigmoid_cross_entropy_with_logits
     :noindex:
 
 
 cast
----------
+----
 ..  autofunction:: paddle.v2.fluid.layers.cast
     :noindex:
 
 
 concat
----------
+-------
 ..  autofunction:: paddle.v2.fluid.layers.concat
     :noindex:
 
 
 sums
----------
+----
 ..  autofunction:: paddle.v2.fluid.layers.sums
     :noindex:
 
 
 linear_chain_crf
----------
+----------------
 ..  autofunction:: paddle.v2.fluid.layers.linear_chain_crf
     :noindex:
 
 
 assign
----------
+-------
 ..  autofunction:: paddle.v2.fluid.layers.embedding
     :noindex:
 
 
 split_lod_tensor
----------
+----------------
 ..  autofunction:: paddle.v2.fluid.layers.split_lod_tensor
     :noindex:
 
 
 merge_lod_tensor
----------
+----------------
 ..  autofunction:: paddle.v2.fluid.layers.merge_lod_tensor
     :noindex:
 
 cos_sim
----------
+--------
 ..  autofunction:: paddle.v2.fluid.layers.cos_sim
     :noindex:
 
 
 cross_entropy
----------
+-------------
 ..  autofunction:: paddle.v2.fluid.layers.cross_entropy
     :noindex:
 
 
 
 square_error_cost
----------
+-----------------
 ..  autofunction:: paddle.v2.fluid.layers.square_error_cost
     :noindex:
 
@@ -153,68 +153,68 @@ accuracy
 
 
 sequence_conv
----------
+-------------
 ..  autofunction:: paddle.v2.fluid.layers.sequence_conv
     :noindex:
 
 
 conv2d
----------
+------
 ..  autofunction:: paddle.v2.fluid.layers.conv2d
     :noindex:
 
 
 sequence_pool
----------
+-------------
 ..  autofunction:: paddle.v2.fluid.layers.sequence_pool
     :noindex:
 
 
 pool2d
----------
+------
 ..  autofunction:: paddle.v2.fluid.layers.pool2d
     :noindex:
 
 
 batch_norm
----------
+----------
 ..  autofunction:: paddle.v2.fluid.layers.batch_norm
     :noindex:
 
 
 beam_search_decode
----------
+------------------
 ..  autofunction:: paddle.v2.fluid.layers.beam_search_decode
     :noindex:
 
 
 lod_rank_table
----------
+--------------
 ..  autofunction:: paddle.v2.fluid.layers.lod_rank_table
     :noindex:
 
 
 max_sequence_len
----------
+----------------
 ..  autofunction:: paddle.v2.fluid.layers.max_sequence_len
     :noindex:
 
 
 topk
----------
+-----
 ..  autofunction:: paddle.v2.fluid.layers.topk
     :noindex:
 
 
 lod_tensor_to_array
----------
+-------------------
 ..  autofunction:: paddle.v2.fluid.layers.lod_tensor_to_array
     :noindex:
 
 
 
 array_to_lod_tensor
----------
+-------------------
 ..  autofunction:: paddle.v2.fluid.layers.array_to_lod_tensor
     :noindex:
 
@@ -222,26 +222,26 @@ array_to_lod_tensor
 
 
 fill_constant
----------
+-------------
 ..  autofunction:: paddle.v2.fluid.layers.fill_constant
     :noindex:
 
 
 
 fill_constant_batch_size_like
----------
+-----------------------------
 ..  autofunction:: paddle.v2.fluid.layers.fill_constant_batch_size_like
     :noindex:
 
 
 ones
----------
+----
 ..  autofunction:: paddle.v2.fluid.layers.ones
     :noindex:
 
 
 zeros
----------
+-----
 ..  autofunction:: paddle.v2.fluid.layers.zeros
     :noindex:
 
@@ -253,14 +253,14 @@ increment
 
 
 array_write
----------
+-----------
 ..  autofunction:: paddle.v2.fluid.layers.array_write
     :noindex:
 
 
 
 create_array
----------
+------------
 ..  autofunction:: paddle.v2.fluid.layers.create_array
     :noindex:
 
@@ -272,31 +272,31 @@ less_than
 
 
 array_read
----------
+----------
 ..  autofunction:: paddle.v2.fluid.layers.array_read
     :noindex:
 
 
 shrink_memory
----------
+--------------
 ..  autofunction:: paddle.v2.fluid.layers.shrink_memory
     :noindex:
 
 
 array_length
----------
+-------------
 ..  autofunction:: paddle.v2.fluid.layers.array_length
     :noindex:
 
 
 conv2d_transpose
----------
+----------------
 ..  autofunction:: paddle.v2.fluid.layers.conv2d_transpose
     :noindex:
 
 
 sequence_expand
----------
+---------------
 ..  autofunction:: paddle.v2.fluid.layers.sequence_expand
     :noindex:
 
@@ -308,13 +308,13 @@ lstm_unit
 
 
 sequence_softmax
----------
+----------------
 ..  autofunction:: paddle.v2.fluid.layers.sequence_softmax
     :noindex:
 
 
 reduce_sum
----------
+----------
 ..  autofunction:: paddle.v2.fluid.layers.reduce_sum
     :noindex:
 
