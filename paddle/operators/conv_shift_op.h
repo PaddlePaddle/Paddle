@@ -18,13 +18,13 @@
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class ConvShiftKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override;
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class ConvShiftGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override;

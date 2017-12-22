@@ -23,7 +23,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SequenceSoftmaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -52,12 +52,13 @@ class SequenceSoftmaxKernel : public framework::OpKernel<T> {
       framework::DDim dims_i = framework::make_ddim({1UL, end_pos - start_pos});
       x_i.Resize(dims_i);
       out_i.Resize(dims_i);
-      math::SoftmaxFunctor<Place, T>()(ctx.device_context(), &x_i, &out_i);
+      math::SoftmaxFunctor<DeviceContext, T>()(
+          ctx.template device_context<DeviceContext>(), &x_i, &out_i);
     }
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SequenceSoftmaxGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -83,8 +84,9 @@ class SequenceSoftmaxGradKernel : public framework::OpKernel<T> {
       out_i.Resize(dims_i);
       out_grad_i.Resize(dims_i);
       x_grad_i.Resize(dims_i);
-      math::SoftmaxGradFunctor<Place, T>()(ctx.device_context(), &out_i,
-                                           &out_grad_i, &x_grad_i);
+      math::SoftmaxGradFunctor<DeviceContext, T>()(
+          ctx.template device_context<DeviceContext>(), &out_i, &out_grad_i,
+          &x_grad_i);
     }
   }
 };

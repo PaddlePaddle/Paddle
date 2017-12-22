@@ -38,10 +38,10 @@ TEST(OpKernel, all) {
 
   net->AppendOp(std::unique_ptr<TestOp>(
       new TestOp("test", {{"X", {"x"}}, {"W", {"w1"}}, {"b", {"b1"}}},
-                 {{"Out", {"y"}}}, {})));
+                 {{"Out", {"y"}}}, framework::AttributeMap{})));
   net->AppendOp(std::unique_ptr<TestOp>(
       new TestOp("test", {{"X", {"y"}}, {"W", {"w2"}}, {"b", {"b2"}}},
-                 {{"Out", {"z"}}}, {})));
+                 {{"Out", {"z"}}}, framework::AttributeMap{})));
 
   net->CompleteAddOp();
   AssertSameVectorWithoutOrder({"x", "w1", "b1", "w2", "b2"},
@@ -58,7 +58,7 @@ TEST(NetOp, insert_op) {
   NetOp net;
   auto op1 = std::unique_ptr<framework::NOP>(
       new framework::NOP("empty", {{"X", {"x"}}, {"W", {"w1"}}, {"b", {"b1"}}},
-                         {{"Out", {"y"}}}, {}));
+                         {{"Out", {"y"}}}, framework::AttributeMap{}));
   net.AppendOp(*op1);
   net.InsertOp(0, *op1);
   ASSERT_EQ(2UL, net.ops_.size());
@@ -68,10 +68,12 @@ TEST(NetOp, insert_op) {
 
 TEST(NetOp, Clone) {
   NetOp net;
-  net.AppendOp(
-      std::unique_ptr<framework::NOP>(new framework::NOP{"empty", {}, {}, {}}));
-  net.AppendOp(std::unique_ptr<framework::NOP>(
-      new framework::NOP{"empty2", {}, {}, {}}));
+  net.AppendOp(std::unique_ptr<framework::NOP>(new framework::NOP{
+      "empty", framework::VariableNameMap{}, framework::VariableNameMap{},
+      framework::AttributeMap{}}));
+  net.AppendOp(std::unique_ptr<framework::NOP>(new framework::NOP{
+      "empty2", framework::VariableNameMap{}, framework::VariableNameMap{},
+      framework::AttributeMap{}}));
   net.CompleteAddOp(true);
   auto new_net_op = net.Clone();
   ASSERT_NE(new_net_op, nullptr);

@@ -12,7 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <paddle/platform/dynload/cudnn.h>
+#include "paddle/platform/dynload/cudnn.h"
+#include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace platform {
@@ -39,6 +40,21 @@ CUDNN_DNN_ROUTINE_EACH_R5(DEFINE_WRAP);
 
 #ifdef CUDNN_DNN_ROUTINE_EACH_R7
 CUDNN_DNN_ROUTINE_EACH_R7(DEFINE_WRAP);
+#endif
+
+#ifdef PADDLE_USE_DSO
+bool HasCUDNN() {
+  std::call_once(cudnn_dso_flag, GetCudnnDsoHandle, &cudnn_dso_handle);
+  return cudnn_dso_handle != nullptr;
+}
+
+void EnforceCUDNNLoaded(const char* fn_name) {
+  PADDLE_ENFORCE(cudnn_dso_handle != nullptr,
+                 "Cannot load cudnn shared library. Cannot invoke method %s",
+                 fn_name);
+}
+#else
+bool HasCUDNN() { return true; }
 #endif
 
 }  // namespace dynload

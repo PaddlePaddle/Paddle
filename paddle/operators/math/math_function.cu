@@ -22,13 +22,11 @@ namespace operators {
 namespace math {
 
 template <>
-void gemm<platform::GPUPlace, float>(const platform::DeviceContext& context,
-                                     const CBLAS_TRANSPOSE transA,
-                                     const CBLAS_TRANSPOSE transB, const int M,
-                                     const int N, const int K,
-                                     const float alpha, const float* A,
-                                     const float* B, const float beta,
-                                     float* C) {
+void gemm<platform::CUDADeviceContext, float>(
+    const platform::CUDADeviceContext& context, const CBLAS_TRANSPOSE transA,
+    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
+    const float alpha, const float* A, const float* B, const float beta,
+    float* C) {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -39,19 +37,16 @@ void gemm<platform::GPUPlace, float>(const platform::DeviceContext& context,
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
 
   PADDLE_ENFORCE(platform::dynload::cublasSgemm(
-      reinterpret_cast<const platform::CUDADeviceContext&>(context)
-          .cublas_handle(),
-      cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A, lda, &beta, C, N));
+      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A,
+      lda, &beta, C, N));
 }
 
 template <>
-void gemm<platform::GPUPlace, double>(const platform::DeviceContext& context,
-                                      const CBLAS_TRANSPOSE transA,
-                                      const CBLAS_TRANSPOSE transB, const int M,
-                                      const int N, const int K,
-                                      const double alpha, const double* A,
-                                      const double* B, const double beta,
-                                      double* C) {
+void gemm<platform::CUDADeviceContext, double>(
+    const platform::CUDADeviceContext& context, const CBLAS_TRANSPOSE transA,
+    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
+    const double alpha, const double* A, const double* B, const double beta,
+    double* C) {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -61,51 +56,45 @@ void gemm<platform::GPUPlace, double>(const platform::DeviceContext& context,
   cublasOperation_t cuTransB =
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   PADDLE_ENFORCE(platform::dynload::cublasDgemm(
-      reinterpret_cast<const platform::CUDADeviceContext&>(context)
-          .cublas_handle(),
-      cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A, lda, &beta, C, N));
+      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A,
+      lda, &beta, C, N));
 }
 
 template <>
-void gemm<platform::GPUPlace, float>(const platform::DeviceContext& context,
-                                     const bool transA, const bool transB,
-                                     const int M, const int N, const int K,
-                                     const float alpha, const float* A,
-                                     const int lda, const float* B,
-                                     const int ldb, const float beta, float* C,
-                                     const int ldc) {
+void gemm<platform::CUDADeviceContext, float>(
+    const platform::CUDADeviceContext& context, const bool transA,
+    const bool transB, const int M, const int N, const int K, const float alpha,
+    const float* A, const int lda, const float* B, const int ldb,
+    const float beta, float* C, const int ldc) {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   cublasOperation_t cuTransA = transA == false ? CUBLAS_OP_N : CUBLAS_OP_T;
   cublasOperation_t cuTransB = transB == false ? CUBLAS_OP_N : CUBLAS_OP_T;
   PADDLE_ENFORCE(platform::dynload::cublasSgemm(
-      reinterpret_cast<const platform::CUDADeviceContext&>(context)
-          .cublas_handle(),
-      cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A, lda, &beta, C, ldc));
+      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A,
+      lda, &beta, C, ldc));
 }
 
 template <>
-void gemm<platform::GPUPlace, double>(const platform::DeviceContext& context,
-                                      const bool transA, const bool transB,
-                                      const int M, const int N, const int K,
-                                      const double alpha, const double* A,
-                                      const int lda, const double* B,
-                                      const int ldb, const double beta,
-                                      double* C, const int ldc) {
+void gemm<platform::CUDADeviceContext, double>(
+    const platform::CUDADeviceContext& context, const bool transA,
+    const bool transB, const int M, const int N, const int K,
+    const double alpha, const double* A, const int lda, const double* B,
+    const int ldb, const double beta, double* C, const int ldc) {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   cublasOperation_t cuTransA = transA == false ? CUBLAS_OP_N : CUBLAS_OP_T;
   cublasOperation_t cuTransB = transB == false ? CUBLAS_OP_N : CUBLAS_OP_T;
   PADDLE_ENFORCE(platform::dynload::cublasDgemm(
-      reinterpret_cast<const platform::CUDADeviceContext&>(context)
-          .cublas_handle(),
-      cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A, lda, &beta, C, ldc));
+      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A,
+      lda, &beta, C, ldc));
 }
 
 template <>
-void matmul<platform::GPUPlace, float>(
-    const platform::DeviceContext& context, const framework::Tensor& matrix_a,
-    bool trans_a, const framework::Tensor& matrix_b, bool trans_b, float alpha,
+void matmul<platform::CUDADeviceContext, float>(
+    const platform::CUDADeviceContext& context,
+    const framework::Tensor& matrix_a, bool trans_a,
+    const framework::Tensor& matrix_b, bool trans_b, float alpha,
     framework::Tensor* matrix_out, float beta) {
   auto dim_a = matrix_a.dims();
   auto dim_b = matrix_b.dims();
@@ -125,15 +114,16 @@ void matmul<platform::GPUPlace, float>(
   CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = (trans_b == false) ? CblasNoTrans : CblasTrans;
 
-  gemm<platform::GPUPlace, float>(
+  gemm<platform::CUDADeviceContext, float>(
       context, transA, transB, M, N, K, alpha, matrix_a.data<float>(),
       matrix_b.data<float>(), beta, matrix_out->data<float>());
 }
 
 template <>
-void matmul<platform::GPUPlace, double>(
-    const platform::DeviceContext& context, const framework::Tensor& matrix_a,
-    bool trans_a, const framework::Tensor& matrix_b, bool trans_b, double alpha,
+void matmul<platform::CUDADeviceContext, double>(
+    const platform::CUDADeviceContext& context,
+    const framework::Tensor& matrix_a, bool trans_a,
+    const framework::Tensor& matrix_b, bool trans_b, double alpha,
     framework::Tensor* matrix_out, double beta) {
   auto dim_a = matrix_a.dims();
   auto dim_b = matrix_b.dims();
@@ -153,14 +143,14 @@ void matmul<platform::GPUPlace, double>(
   CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = (trans_b == false) ? CblasNoTrans : CblasTrans;
 
-  gemm<platform::GPUPlace, double>(
+  gemm<platform::CUDADeviceContext, double>(
       context, transA, transB, M, N, K, alpha, matrix_a.data<double>(),
       matrix_b.data<double>(), beta, matrix_out->data<double>());
 }
 
 template <>
-void batched_gemm<platform::GPUPlace, float>(
-    const platform::DeviceContext& context, const CBLAS_TRANSPOSE transA,
+void batched_gemm<platform::CUDADeviceContext, float>(
+    const platform::CUDADeviceContext& context, const CBLAS_TRANSPOSE transA,
     const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
     const float alpha, const float* A, const float* B, const float beta,
     float* C, const int batchCount, const int strideA, const int strideB) {
@@ -176,15 +166,13 @@ void batched_gemm<platform::GPUPlace, float>(
   const int strideC = M * N;
 
   PADDLE_ENFORCE(platform::dynload::cublasSgemmStridedBatched(
-      reinterpret_cast<const platform::CUDADeviceContext&>(context)
-          .cublas_handle(),
-      cuTransB, cuTransA, N, M, K, &alpha, B, ldb, strideB, A, lda, strideA,
-      &beta, C, ldc, strideC, batchCount));
+      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb,
+      strideB, A, lda, strideA, &beta, C, ldc, strideC, batchCount));
 }
 
 template <>
-void batched_gemm<platform::GPUPlace, double>(
-    const platform::DeviceContext& context, const CBLAS_TRANSPOSE transA,
+void batched_gemm<platform::CUDADeviceContext, double>(
+    const platform::CUDADeviceContext& context, const CBLAS_TRANSPOSE transA,
     const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
     const double alpha, const double* A, const double* B, const double beta,
     double* C, const int batchCount, const int strideA, const int strideB) {
@@ -200,68 +188,58 @@ void batched_gemm<platform::GPUPlace, double>(
   const int strideC = M * N;
 
   PADDLE_ENFORCE(platform::dynload::cublasDgemmStridedBatched(
-      reinterpret_cast<const platform::CUDADeviceContext&>(context)
-          .cublas_handle(),
-      cuTransB, cuTransA, N, M, K, &alpha, B, ldb, strideB, A, lda, strideA,
-      &beta, C, ldc, strideC, batchCount));
+      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb,
+      strideB, A, lda, strideA, &beta, C, ldc, strideC, batchCount));
 }
 
 template <>
-void gemv<platform::GPUPlace, float>(const platform::DeviceContext& context,
-                                     const bool trans_a, const int M,
-                                     const int N, const float alpha,
-                                     const float* A, const float* B,
-                                     const float beta, float* C) {
+void gemv<platform::CUDADeviceContext, float>(
+    const platform::CUDADeviceContext& context, const bool trans_a, const int M,
+    const int N, const float alpha, const float* A, const float* B,
+    const float beta, float* C) {
   cublasOperation_t cuTransA = (trans_a == false) ? CUBLAS_OP_T : CUBLAS_OP_N;
 
-  PADDLE_ENFORCE(platform::dynload::cublasSgemv(
-      reinterpret_cast<const platform::CUDADeviceContext&>(context)
-          .cublas_handle(),
-      cuTransA, N, M, &alpha, A, N, B, 1, &beta, C, 1));
+  PADDLE_ENFORCE(platform::dynload::cublasSgemv(context.cublas_handle(),
+                                                cuTransA, N, M, &alpha, A, N, B,
+                                                1, &beta, C, 1));
 }
 
 template <>
-void gemv<platform::GPUPlace, double>(const platform::DeviceContext& context,
-                                      const bool trans_a, const int M,
-                                      const int N, const double alpha,
-                                      const double* A, const double* B,
-                                      const double beta, double* C) {
+void gemv<platform::CUDADeviceContext, double>(
+    const platform::CUDADeviceContext& context, const bool trans_a, const int M,
+    const int N, const double alpha, const double* A, const double* B,
+    const double beta, double* C) {
   cublasOperation_t cuTransA = (trans_a == false) ? CUBLAS_OP_T : CUBLAS_OP_N;
-  PADDLE_ENFORCE(platform::dynload::cublasDgemv(
-      reinterpret_cast<const platform::CUDADeviceContext&>(context)
-          .cublas_handle(),
-      cuTransA, N, M, &alpha, A, N, B, 1, &beta, C, 1));
+  PADDLE_ENFORCE(platform::dynload::cublasDgemv(context.cublas_handle(),
+                                                cuTransA, N, M, &alpha, A, N, B,
+                                                1, &beta, C, 1));
 }
 
 template <>
-void axpy<platform::GPUPlace, float>(const platform::DeviceContext& context,
-                                     const int n, const float alpha,
-                                     const float* x, float* y) {
-  PADDLE_ENFORCE(platform::dynload::cublasSaxpy(
-      reinterpret_cast<const platform::CUDADeviceContext&>(context)
-          .cublas_handle(),
-      n, &alpha, x, 1, y, 1));
+void axpy<platform::CUDADeviceContext, float>(
+    const platform::CUDADeviceContext& context, const int n, const float alpha,
+    const float* x, float* y) {
+  PADDLE_ENFORCE(platform::dynload::cublasSaxpy(context.cublas_handle(), n,
+                                                &alpha, x, 1, y, 1));
 }
 
 template <>
-void axpy<platform::GPUPlace, double>(const platform::DeviceContext& context,
-                                      const int n, const double alpha,
-                                      const double* x, double* y) {
-  PADDLE_ENFORCE(platform::dynload::cublasDaxpy(
-      reinterpret_cast<const platform::CUDADeviceContext&>(context)
-          .cublas_handle(),
-      n, &alpha, x, 1, y, 1));
+void axpy<platform::CUDADeviceContext, double>(
+    const platform::CUDADeviceContext& context, const int n, const double alpha,
+    const double* x, double* y) {
+  PADDLE_ENFORCE(platform::dynload::cublasDaxpy(context.cublas_handle(), n,
+                                                &alpha, x, 1, y, 1));
 }
 
-template struct SetConstant<platform::GPUPlace, float>;
-template struct SetConstant<platform::GPUPlace, double>;
-template struct SetConstant<platform::GPUPlace, int>;
-template struct SetConstant<platform::GPUPlace, int64_t>;
-template struct SetConstant<platform::GPUPlace, bool>;
+template struct SetConstant<platform::CUDADeviceContext, float>;
+template struct SetConstant<platform::CUDADeviceContext, double>;
+template struct SetConstant<platform::CUDADeviceContext, int>;
+template struct SetConstant<platform::CUDADeviceContext, int64_t>;
+template struct SetConstant<platform::CUDADeviceContext, bool>;
 
-#define DEFINE_GPU_TRANS(RANK)                                \
-  template struct Transpose<platform::GPUPlace, float, RANK>; \
-  template struct Transpose<platform::GPUPlace, double, RANK>;
+#define DEFINE_GPU_TRANS(RANK)                                         \
+  template struct Transpose<platform::CUDADeviceContext, float, RANK>; \
+  template struct Transpose<platform::CUDADeviceContext, double, RANK>;
 
 DEFINE_GPU_TRANS(1);
 DEFINE_GPU_TRANS(2);
@@ -277,8 +255,9 @@ struct TensorSetConstantGPU {
 
   template <typename T>
   void operator()() const {
-    SetConstant<platform::GPUPlace, T> functor;
-    functor(context_, tensor_, static_cast<T>(value_));
+    SetConstant<platform::CUDADeviceContext, T> functor;
+    functor(reinterpret_cast<const platform::CUDADeviceContext&>(context_),
+            tensor_, static_cast<T>(value_));
   }
 
   const platform::DeviceContext& context_;
@@ -294,27 +273,27 @@ void set_constant_with_place<platform::GPUPlace>(
                            TensorSetConstantGPU(context, tensor, value));
 }
 
-template struct RowwiseAdd<platform::GPUPlace, float>;
-template struct RowwiseAdd<platform::GPUPlace, double>;
-template struct ColwiseSum<platform::GPUPlace, float>;
-// template struct ColwiseSum<platform::GPUPlace, double>;
-// The ColwiseSum<platform::GPUPlace, double> failed in debug mode,
+template struct RowwiseAdd<platform::CUDADeviceContext, float>;
+template struct RowwiseAdd<platform::CUDADeviceContext, double>;
+template struct ColwiseSum<platform::CUDADeviceContext, float>;
+// template struct ColwiseSum<platform::CUDADeviceContext, double>;
+// The ColwiseSum<platform::CUDADeviceContext, double> failed in debug mode,
 // and only failed for this case. So reimplemented it.
 template <>
-void ColwiseSum<platform::GPUPlace, double>::operator()(
-    const platform::DeviceContext& context, const framework::Tensor& input,
+void ColwiseSum<platform::CUDADeviceContext, double>::operator()(
+    const platform::CUDADeviceContext& context, const framework::Tensor& input,
     framework::Tensor* vector) {
   auto in_dims = input.dims();
   auto size = input.numel() / in_dims[0];
   PADDLE_ENFORCE_EQ(vector->numel(), size);
   framework::Tensor one;
   one.mutable_data<double>({in_dims[0]}, context.GetPlace());
-  SetConstant<platform::GPUPlace, double> set;
+  SetConstant<platform::CUDADeviceContext, double> set;
   set(context, &one, static_cast<double>(1.0));
-  gemv<platform::GPUPlace, double>(context, true, static_cast<int>(in_dims[0]),
-                                   static_cast<int>(in_dims[1]), 1.0,
-                                   input.data<double>(), one.data<double>(),
-                                   0.0, vector->data<double>());
+  gemv<platform::CUDADeviceContext, double>(
+      context, true, static_cast<int>(in_dims[0]), static_cast<int>(in_dims[1]),
+      1.0, input.data<double>(), one.data<double>(), 0.0,
+      vector->data<double>());
 }
 
 }  // namespace math

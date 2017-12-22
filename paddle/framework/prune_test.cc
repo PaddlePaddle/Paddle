@@ -54,7 +54,8 @@ TEST(Prune, one_operator) {
   f::ProgramDescBind program;
   f::BlockDescBind *block = program.MutableBlock(0);
 
-  AddOp("one_one", {{"input", {"a"}}}, {{"output", {"b"}}}, {}, block);
+  AddOp("one_one", {{"input", {"a"}}}, {{"output", {"b"}}}, f::AttributeMap{},
+        block);
 
   f::ProgramDesc *pdesc = program.Proto();
   f::ProgramDesc pruned;
@@ -71,10 +72,14 @@ TEST(Prune, forward) {
   f::ProgramDescBind program;
   f::BlockDescBind *block = program.MutableBlock(0);
 
-  AddOp("one_one", {{"input", {"a"}}}, {{"output", {"b"}}}, {}, block);
-  AddOp("one_one", {{"input", {"b"}}}, {{"output", {"c"}}}, {}, block);
-  AddOp("one_one", {{"input", {"c"}}}, {{"output", {"d"}}}, {}, block);
-  AddOp("one_one", {{"input", {"d"}}}, {{"output", {"e"}}}, {}, block);
+  AddOp("one_one", {{"input", {"a"}}}, {{"output", {"b"}}}, f::AttributeMap{},
+        block);
+  AddOp("one_one", {{"input", {"b"}}}, {{"output", {"c"}}}, f::AttributeMap{},
+        block);
+  AddOp("one_one", {{"input", {"c"}}}, {{"output", {"d"}}}, f::AttributeMap{},
+        block);
+  AddOp("one_one", {{"input", {"d"}}}, {{"output", {"e"}}}, f::AttributeMap{},
+        block);
 
   f::ProgramDesc *pdesc = program.Proto();
 
@@ -90,11 +95,14 @@ TEST(Prune, multi_input_op) {
   f::ProgramDescBind program;
   f::BlockDescBind *block = program.MutableBlock(0);
 
-  AddOp("one_one", {{"input", {"a0"}}}, {{"output", {"b0"}}}, {}, block);
-  AddOp("one_one", {{"input", {"a1"}}}, {{"output", {"b1"}}}, {}, block);
-  AddOp("one_one", {{"input", {"a2"}}}, {{"output", {"b2"}}}, {}, block);
-  AddOp("three_one", {{"input", {"b0", "b1", "b2"}}}, {{"output", {"c"}}}, {},
+  AddOp("one_one", {{"input", {"a0"}}}, {{"output", {"b0"}}}, f::AttributeMap{},
         block);
+  AddOp("one_one", {{"input", {"a1"}}}, {{"output", {"b1"}}}, f::AttributeMap{},
+        block);
+  AddOp("one_one", {{"input", {"a2"}}}, {{"output", {"b2"}}}, f::AttributeMap{},
+        block);
+  AddOp("three_one", {{"input", {"b0", "b1", "b2"}}}, {{"output", {"c"}}},
+        f::AttributeMap{}, block);
 
   f::ProgramDesc *pdesc = program.Proto();
   pdesc->mutable_blocks(0)->mutable_ops(3)->set_is_target(true);
@@ -108,9 +116,12 @@ TEST(Prune, multi_output_op) {
   f::ProgramDescBind program;
   f::BlockDescBind *block = program.MutableBlock(0);
 
-  AddOp("one_two", {{"input", {"a"}}}, {{"output", {"b", "c"}}}, {}, block);
-  AddOp("one_one", {{"input", {"b"}}}, {{"output", {"b1"}}}, {}, block);
-  AddOp("one_one", {{"input", {"c"}}}, {{"output", {"c1"}}}, {}, block);
+  AddOp("one_two", {{"input", {"a"}}}, {{"output", {"b", "c"}}},
+        f::AttributeMap{}, block);
+  AddOp("one_one", {{"input", {"b"}}}, {{"output", {"b1"}}}, f::AttributeMap{},
+        block);
+  AddOp("one_one", {{"input", {"c"}}}, {{"output", {"c1"}}}, f::AttributeMap{},
+        block);
 
   f::ProgramDesc *pdesc = program.Proto();
   pdesc->mutable_blocks(0)->mutable_ops(2)->set_is_target(true);
@@ -124,9 +135,12 @@ TEST(Prune, multi_target) {
   f::ProgramDescBind program;
   f::BlockDescBind *block = program.MutableBlock(0);
 
-  AddOp("one_two", {{"input", {"a"}}}, {{"output", {"b", "c"}}}, {}, block);
-  AddOp("one_one", {{"input", {"b"}}}, {{"output", {"b1"}}}, {}, block);
-  AddOp("one_one", {{"input", {"c"}}}, {{"output", {"c1"}}}, {}, block);
+  AddOp("one_two", {{"input", {"a"}}}, {{"output", {"b", "c"}}},
+        f::AttributeMap{}, block);
+  AddOp("one_one", {{"input", {"b"}}}, {{"output", {"b1"}}}, f::AttributeMap{},
+        block);
+  AddOp("one_one", {{"input", {"c"}}}, {{"output", {"c1"}}}, f::AttributeMap{},
+        block);
 
   f::ProgramDesc *pdesc = program.Proto();
   pdesc->mutable_blocks(0)->mutable_ops(1)->set_is_target(true);

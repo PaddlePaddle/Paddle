@@ -216,19 +216,19 @@ namespace ops = paddle::operators;
 REGISTER_OP(pool2d, ops::PoolOp, ops::Pool2dOpMaker, pool2d_grad,
             ops::PoolOpGrad);
 
-REGISTER_OP_CPU_KERNEL(pool2d,
-                       ops::PoolKernel<paddle::platform::CPUPlace, float>,
-                       ops::PoolKernel<paddle::platform::CPUPlace, double>);
-REGISTER_OP_CPU_KERNEL(pool2d_grad,
-                       ops::PoolGradKernel<paddle::platform::CPUPlace, float>,
-                       ops::PoolGradKernel<paddle::platform::CPUPlace, double>)
+REGISTER_OP_CPU_KERNEL(
+    pool2d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PoolKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    pool2d_grad, ops::PoolGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>)
 
 REGISTER_OP(pool3d, ops::PoolOp, ops::Pool3dOpMaker, pool3d_grad,
             ops::PoolOpGrad);
 
-REGISTER_OP_CPU_KERNEL(pool3d,
-                       ops::PoolKernel<paddle::platform::CPUPlace, float>,
-                       ops::PoolKernel<paddle::platform::CPUPlace, double>);
-REGISTER_OP_CPU_KERNEL(pool3d_grad,
-                       ops::PoolGradKernel<paddle::platform::CPUPlace, float>,
-                       ops::PoolGradKernel<paddle::platform::CPUPlace, double>);
+REGISTER_OP_CPU_KERNEL(
+    pool3d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PoolKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    pool3d_grad, ops::PoolGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>);

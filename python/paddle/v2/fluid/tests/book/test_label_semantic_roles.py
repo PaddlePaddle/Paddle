@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.dataset.conll05 as conll05
@@ -28,17 +30,9 @@ def load_parameter(file_name, h, w):
         return np.fromfile(f, dtype=np.float32).reshape(h, w)
 
 
-def db_lstm():
+def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
+            **ignored):
     # 8 features
-    word = fluid.layers.data(name='word_data', shape=[1], dtype='int64')
-    predicate = fluid.layers.data(name='verb_data', shape=[1], dtype='int64')
-    ctx_n2 = fluid.layers.data(name='ctx_n2_data', shape=[1], dtype='int64')
-    ctx_n1 = fluid.layers.data(name='ctx_n1_data', shape=[1], dtype='int64')
-    ctx_0 = fluid.layers.data(name='ctx_0_data', shape=[1], dtype='int64')
-    ctx_p1 = fluid.layers.data(name='ctx_p1_data', shape=[1], dtype='int64')
-    ctx_p2 = fluid.layers.data(name='ctx_p2_data', shape=[1], dtype='int64')
-    mark = fluid.layers.data(name='mark_data', shape=[1], dtype='int64')
-
     predicate_embedding = fluid.layers.embedding(
         input=predicate,
         size=[pred_len, word_dim],
@@ -120,25 +114,58 @@ def to_lodtensor(data, place):
 
 def main():
     # define network topology
-    feature_out = db_lstm()
-    target = fluid.layers.data(name='target', shape=[1], dtype='int64')
+    word = fluid.layers.data(
+        name='word_data', shape=[1], dtype='int64', lod_level=1)
+    predicate = fluid.layers.data(
+        name='verb_data', shape=[1], dtype='int64', lod_level=1)
+    ctx_n2 = fluid.layers.data(
+        name='ctx_n2_data', shape=[1], dtype='int64', lod_level=1)
+    ctx_n1 = fluid.layers.data(
+        name='ctx_n1_data', shape=[1], dtype='int64', lod_level=1)
+    ctx_0 = fluid.layers.data(
+        name='ctx_0_data', shape=[1], dtype='int64', lod_level=1)
+    ctx_p1 = fluid.layers.data(
+        name='ctx_p1_data', shape=[1], dtype='int64', lod_level=1)
+    ctx_p2 = fluid.layers.data(
+        name='ctx_p2_data', shape=[1], dtype='int64', lod_level=1)
+    mark = fluid.layers.data(
+        name='mark_data', shape=[1], dtype='int64', lod_level=1)
+    feature_out = db_lstm(**locals())
+    target = fluid.layers.data(
+        name='target', shape=[1], dtype='int64', lod_level=1)
     crf_cost = fluid.layers.linear_chain_crf(
         input=feature_out,
         label=target,
         param_attr=fluid.ParamAttr(
             name='crfw', learning_rate=mix_hidden_lr))
     avg_cost = fluid.layers.mean(x=crf_cost)
+
     # TODO(qiao)
-    #   1. add crf_decode_layer and evaluator
-    #   2. use other optimizer and check why out will be NAN
+    # check other optimizers and check why out will be NAN
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.0001)
     sgd_optimizer.minimize(avg_cost)
+
+    # TODO(qiao)
+    # add dependency track and move this config before optimizer
+    crf_decode = fluid.layers.crf_decoding(
+        input=feature_out, param_attr=fluid.ParamAttr(name='crfw'))
+
+    precision, recall, f1_score = fluid.layers.chunk_eval(
+        input=crf_decode,
+        label=target,
+        chunk_scheme="IOB",
+        num_chunk_types=int(math.ceil((label_dict_len - 1) / 2.0)))
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.conll05.test(), buf_size=8192),
         batch_size=BATCH_SIZE)
     place = fluid.CPUPlace()
+    feeder = fluid.DataFeeder(
+        feed_list=[
+            word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, predicate, mark, target
+        ],
+        place=place)
     exe = fluid.Executor(place)
 
     exe.run(fluid.default_startup_program())
@@ -150,33 +177,19 @@ def main():
     batch_id = 0
     for pass_id in xrange(PASS_NUM):
         for data in train_data():
-            word_data = to_lodtensor(map(lambda x: x[0], data), place)
-            ctx_n2_data = to_lodtensor(map(lambda x: x[1], data), place)
-            ctx_n1_data = to_lodtensor(map(lambda x: x[2], data), place)
-            ctx_0_data = to_lodtensor(map(lambda x: x[3], data), place)
-            ctx_p1_data = to_lodtensor(map(lambda x: x[4], data), place)
-            ctx_p2_data = to_lodtensor(map(lambda x: x[5], data), place)
-            verb_data = to_lodtensor(map(lambda x: x[6], data), place)
-            mark_data = to_lodtensor(map(lambda x: x[7], data), place)
-            target = to_lodtensor(map(lambda x: x[8], data), place)
-
             outs = exe.run(fluid.default_main_program(),
-                           feed={
-                               'word_data': word_data,
-                               'ctx_n2_data': ctx_n2_data,
-                               'ctx_n1_data': ctx_n1_data,
-                               'ctx_0_data': ctx_0_data,
-                               'ctx_p1_data': ctx_p1_data,
-                               'ctx_p2_data': ctx_p2_data,
-                               'verb_data': verb_data,
-                               'mark_data': mark_data,
-                               'target': target
-                           },
-                           fetch_list=[avg_cost])
+                           feed=feeder.feed(data),
+                           fetch_list=[avg_cost, precision, recall, f1_score])
             avg_cost_val = np.array(outs[0])
+            precision_val = np.array(outs[1])
+            recall_val = np.array(outs[2])
+            f1_score_val = np.array(outs[3])
 
             if batch_id % 10 == 0:
                 print("avg_cost=" + str(avg_cost_val))
+                print("precision_val=" + str(precision_val))
+                print("recall_val:" + str(recall_val))
+                print("f1_score_val:" + str(f1_score_val))
 
             # exit early for CI
             exit(0)

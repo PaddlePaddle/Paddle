@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/block_desc.h"
+#include "paddle/framework/operator.h"
 #include "paddle/framework/program_desc.h"
 
 namespace paddle {
@@ -42,6 +43,8 @@ bool BlockDescBind::HasVar(const std::string &name) const {
 }
 
 VarDescBind *BlockDescBind::FindVarRecursive(const std::string &name) const {
+  if (name == kEmptyVarName) return nullptr;
+
   auto it = vars_.find(name);
   if (it == vars_.end()) {
     return Parent() == kNoneBlockIndex ? nullptr
