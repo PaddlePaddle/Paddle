@@ -21,36 +21,22 @@ limitations under the License. */
 #include <queue>
 #include <thread>
 
+#include "paddle/platform/call_once.h"
 #include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 
-class ThreadPool {
- private:
-  typedef std::function<void()> Task;
-  static std::unique_ptr<ThreadPool> threadpool;
-  int num_threads_;
-  int available_;
-  bool running_;
-  std::queue<Task> tasks_;
-  std::vector<std::unique_ptr<std::thread>> threads_;
-  std::mutex mutex_;
-  std::condition_variable scheduled_;
-  std::condition_variable completed_;
+typedef std::function<void()> Task;
 
+class ThreadPool {
  public:
   /**
    * @brief   Get a instance of threadpool, the thread number will
    *          be specified as the number of hardware thread contexts
    */
   static ThreadPool* GetInstance() {
-    if (threadpool.get() == nullptr) {
-      // TODO(Yancey1989): specify the max threads number
-      int num_threads = std::thread::hardware_concurrency();
-      PADDLE_ENFORCE_GT(num_threads, 0);
-      threadpool.reset(new ThreadPool(num_threads));
-    }
+    std::call_once(init_flag, &ThreadPool::Init);
     return threadpool.get();
   }
 
@@ -145,9 +131,31 @@ class ThreadPool {
       }
     }
   }
+
+  static void Init() {
+    if (threadpool.get() == nullptr) {
+      // TODO(Yancey1989): specify the max threads number
+      int num_threads = std::thread::hardware_concurrency();
+      PADDLE_ENFORCE_GT(num_threads, 0);
+      threadpool.reset(new ThreadPool(num_threads));
+    }
+  }
+
+ private:
+  static std::unique_ptr<ThreadPool> threadpool;
+  static std::once_flag init_flag;
+
+  int num_threads_;
+  int available_;
+  bool running_;
+  std::queue<Task> tasks_;
+  std::vector<std::unique_ptr<std::thread>> threads_;
+  std::mutex mutex_;
+  std::condition_variable scheduled_;
+  std::condition_variable completed_;
 };
 
 std::unique_ptr<ThreadPool> ThreadPool::threadpool(nullptr);
-
+std::once_flag ThreadPool::init_flag;
 }  // namespace framework
 }  // namespace paddle

@@ -14,19 +14,34 @@ limitations under the License. */
 
 #include "threadpool.h"
 #include <gtest/gtest.h>
+#include <atomic>
 #include <chrono>
 #include <map>
 #include <thread>
 
 namespace framework = paddle::framework;
+framework::ThreadPool* pool;
 
-TEST(ThreadPool, Start) {
-  framework::ThreadPool* pool = framework::ThreadPool::GetInstance();
-  std::map<int, bool> dict;
-  int sum = 0;
-  for (int i = 0; i < 10; ++i) {
-    pool->Run([&sum]() { sum++; });
+void do_sum(framework::ThreadPool* pool, std::atomic<int>& sum, int cnt) {
+  for (int i = 0; i < cnt; ++i) {
+    pool->Run([&sum]() { sum.fetch_add(1); });
   }
+}
+
+TEST(ThreadPool, ConcurrentInit) {
+  std::thread t1([]() { pool = framework::ThreadPool::GetInstance(); });
+  std::thread t2([]() { pool = framework::ThreadPool::GetInstance(); });
+  t1.join();
+  t2.join();
+}
+
+TEST(ThreadPool, ConcurrentStart) {
+  std::atomic<int> sum(0);
+  int cnt1 = 10, cnt2 = 20;
+  std::thread t1(do_sum, pool, std::ref(sum), 10);
+  std::thread t2(do_sum, pool, std::ref(sum), 20);
+  t1.join();
+  t2.join();
   pool->Wait();
-  EXPECT_EQ(sum, 10);
+  EXPECT_EQ(sum, cnt1 + cnt2);
 }
