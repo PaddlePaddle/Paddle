@@ -6,7 +6,7 @@ height = 227
 width = 227
 num_class = 1000
 batch_size = get_config_arg('batch_size', int, 128)
-use_mkldnn = get_config_arg('use_mkldnn', bool, False)
+gp = get_config_arg('layer_num', int, 1)
 is_infer = get_config_arg("is_infer", bool, False)
 num_samples = get_config_arg('num_samples', int, 2560)
 
@@ -41,12 +41,7 @@ net = img_pool_layer(input=net, pool_size=3, stride=2)
 
 # conv2
 net = img_conv_layer(
-    input=net,
-    filter_size=5,
-    num_filters=256,
-    stride=1,
-    padding=2,
-    groups=2 if use_mkldnn else 1)
+    input=net, filter_size=5, num_filters=256, stride=1, padding=2, groups=gp)
 net = img_cmrnorm_layer(input=net, size=5, scale=0.0001, power=0.75)
 net = img_pool_layer(input=net, pool_size=3, stride=2)
 
@@ -55,21 +50,11 @@ net = img_conv_layer(
     input=net, filter_size=3, num_filters=384, stride=1, padding=1)
 # conv4
 net = img_conv_layer(
-    input=net,
-    filter_size=3,
-    num_filters=384,
-    stride=1,
-    padding=1,
-    groups=2 if use_mkldnn else 1)
+    input=net, filter_size=3, num_filters=384, stride=1, padding=1, groups=gp)
 
 # conv5
 net = img_conv_layer(
-    input=net,
-    filter_size=3,
-    num_filters=256,
-    stride=1,
-    padding=1,
-    groups=2 if use_mkldnn else 1)
+    input=net, filter_size=3, num_filters=256, stride=1, padding=1, groups=gp)
 net = img_pool_layer(input=net, pool_size=3, stride=2)
 
 net = fc_layer(
@@ -84,6 +69,9 @@ net = fc_layer(
     layer_attr=ExtraAttr(drop_rate=0.5))
 net = fc_layer(input=net, size=1000, act=SoftmaxActivation())
 
-lab = data_layer('label', num_class)
-loss = cross_entropy(input=net, label=lab)
-outputs(loss)
+if is_infer:
+    outputs(net)
+else:
+    lab = data_layer('label', num_class)
+    loss = cross_entropy(input=net, label=lab)
+    outputs(loss)
