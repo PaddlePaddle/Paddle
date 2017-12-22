@@ -33,9 +33,9 @@
 #include "paddle/platform/place.h"
 
 USE_NO_KERNEL_OP(ncclInit);
-USE_GPU_ONLY_OP(ncclAllReduce);
-USE_GPU_ONLY_OP(ncclReduce);
-USE_GPU_ONLY_OP(ncclBcast);
+USE_CUDA_ONLY_OP(ncclAllReduce);
+USE_CUDA_ONLY_OP(ncclReduce);
+USE_CUDA_ONLY_OP(ncclBcast);
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
@@ -65,7 +65,7 @@ class NCCLTester : public ::testing::Test {
   }
 
   void NCCLInitOp() {
-    std::unique_ptr<f::OpDescBind> op1(new f::OpDescBind);
+    std::unique_ptr<f::OpDesc> op1(new f::OpDesc);
 
     op1->SetType("ncclInit");
     op1->SetOutput("Communicator", {"comm"});
@@ -81,10 +81,9 @@ class NCCLTester : public ::testing::Test {
   }
 
   template <class T>
-  void PerThreadProgram(int gpu_id, const f::OpDescBind &op_desc,
-                        f::Scope *scope) {
+  void PerThreadProgram(int gpu_id, const f::OpDesc &op_desc, f::Scope *scope) {
     std::unique_lock<std::mutex> lk(mu);
-    const f::OpDescBind *op1 = &op_desc;
+    const f::OpDesc *op1 = &op_desc;
 
     p::GPUPlace place(gpu_id);
     auto &ctx = dev_ctxs.at(gpu_id);
@@ -125,7 +124,7 @@ class NCCLTester : public ::testing::Test {
 
 // ncclInitOp with desc
 TEST(NCCL, ncclInitOp) {
-  std::unique_ptr<f::OpDescBind> op_desc(new f::OpDescBind);
+  std::unique_ptr<f::OpDesc> op_desc(new f::OpDesc);
 
   op_desc->SetType("ncclInit");
   op_desc->SetOutput("Communicator", {"x1"});
@@ -145,7 +144,7 @@ TEST(NCCL, ncclInitOp) {
 
 // ncclAllReduceOp with desc
 TEST_F(NCCLTester, ncclAllReduceOp) {
-  std::unique_ptr<f::OpDescBind> op2(new f::OpDescBind);
+  std::unique_ptr<f::OpDesc> op2(new f::OpDesc);
   op2->SetType("ncclAllReduce");
   op2->SetInput("X", {"st"});
   op2->SetInput("Communicator", {"comm"});
@@ -192,7 +191,7 @@ TEST_F(NCCLTester, ncclAllReduceOp) {
 
 // ncclReduceOp with desc
 TEST_F(NCCLTester, ncclReduceOp) {
-  std::unique_ptr<f::OpDescBind> op2(new f::OpDescBind);
+  std::unique_ptr<f::OpDesc> op2(new f::OpDesc);
   const int kRoot = 0;
   op2->SetType("ncclReduce");
   op2->SetInput("X", {"st"});
@@ -240,7 +239,7 @@ TEST_F(NCCLTester, ncclReduceOp) {
 
 // ncclBcastOp with desc
 TEST_F(NCCLTester, ncclBcastOp) {
-  std::unique_ptr<f::OpDescBind> op2(new f::OpDescBind);
+  std::unique_ptr<f::OpDesc> op2(new f::OpDesc);
   const int kRoot = 5;
   op2->SetType("ncclBcast");
   op2->SetInput("X", {"st"});

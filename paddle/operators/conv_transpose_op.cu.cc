@@ -16,20 +16,24 @@
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     conv2d_transpose,
-    ops::GemmConvTransposeKernel<paddle::platform::GPUPlace, float>,
-    ops::GemmConvTransposeKernel<paddle::platform::GPUPlace, double>);
-REGISTER_OP_GPU_KERNEL(
+    ops::GemmConvTransposeKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::GemmConvTransposeKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(
     conv2d_transpose_grad,
-    ops::GemmConvTransposeGradKernel<paddle::platform::GPUPlace, float>,
-    ops::GemmConvTransposeGradKernel<paddle::platform::GPUPlace, double>);
+    ops::GemmConvTransposeGradKernel<paddle::platform::CUDADeviceContext,
+                                     float>,
+    ops::GemmConvTransposeGradKernel<paddle::platform::CUDADeviceContext,
+                                     double>);
 
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     conv3d_transpose,
-    ops::GemmConvTransposeKernel<paddle::platform::GPUPlace, float>,
-    ops::GemmConvTransposeKernel<paddle::platform::GPUPlace, double>);
-REGISTER_OP_GPU_KERNEL(
+    ops::GemmConvTransposeKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::GemmConvTransposeKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(
     conv3d_transpose_grad,
-    ops::GemmConvTransposeGradKernel<paddle::platform::GPUPlace, float>,
-    ops::GemmConvTransposeGradKernel<paddle::platform::GPUPlace, double>);
+    ops::GemmConvTransposeGradKernel<paddle::platform::CUDADeviceContext,
+                                     float>,
+    ops::GemmConvTransposeGradKernel<paddle::platform::CUDADeviceContext,
+                                     double>);

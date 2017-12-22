@@ -37,8 +37,7 @@ class SequencePoolOp : public framework::OperatorWithKernel {
 
 class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequencePoolOpMaker(framework::OpProto* proto,
-                      framework::OpAttrChecker* op_checker)
+  SequencePoolOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(LoDTensor) The variable-length input of SequencePoolOp");
     AddOutput("Out",
@@ -123,7 +122,8 @@ namespace ops = paddle::operators;
 REGISTER_OP(sequence_pool, ops::SequencePoolOp, ops::SequencePoolOpMaker,
             sequence_pool_grad, ops::SequencePoolGradOp);
 REGISTER_OP_CPU_KERNEL(
-    sequence_pool, ops::SequencePoolKernel<paddle::platform::CPUPlace, float>);
+    sequence_pool,
+    ops::SequencePoolKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     sequence_pool_grad,
-    ops::SequencePoolGradKernel<paddle::platform::CPUPlace, float>);
+    ops::SequencePoolGradKernel<paddle::platform::CPUDeviceContext, float>);

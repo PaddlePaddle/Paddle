@@ -24,7 +24,7 @@ struct AddFunctor {
   inline HOSTDEVICE T operator()(T a, T b) const { return a + b; }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class ElementwiseAddKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -34,8 +34,8 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
     auto* y = ctx.Input<Tensor>("Y");
     auto* z = ctx.Output<Tensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
-    TransformFunctor<AddFunctor<T>, T, Place> functor(
-        x, y, z, ctx.device_context(), AddFunctor<T>());
+    TransformFunctor<AddFunctor<T>, T, DeviceContext> functor(
+        x, y, z, ctx.template device_context<DeviceContext>(), AddFunctor<T>());
 
     auto x_dims = x->dims();
     auto y_dims = y->dims();
@@ -137,11 +137,11 @@ struct ElementwiseAddBroadCast2GradFunctor {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class ElementwiseAddGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    ElementwiseGradCompute<Place, T, ElementwiseAddGradFunctor<T>,
+    ElementwiseGradCompute<DeviceContext, T, ElementwiseAddGradFunctor<T>,
                            ElementwiseAddOneGradFunctor<T>,
                            ElementwiseAddBroadCastGradFunctor<T>,
                            ElementwiseAddBroadCast2GradFunctor<T>>(ctx);

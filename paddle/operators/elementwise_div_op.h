@@ -19,11 +19,11 @@
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class ElementwiseDivKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    ElementwiseCompute<EigenDivFunctor, Place, T>(ctx);
+    ElementwiseCompute<EigenDivFunctor, DeviceContext, T>(ctx);
   }
 };
 
@@ -102,11 +102,11 @@ struct ElementwiseDivBroadCast2GradFunctor {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class ElementwiseDivGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    ElementwiseGradCompute<Place, T, ElementwiseDivGradFunctor<T>,
+    ElementwiseGradCompute<DeviceContext, T, ElementwiseDivGradFunctor<T>,
                            ElementwiseDivGradFunctor<T>,
                            ElementwiseDivBroadCastGradFunctor<T>,
                            ElementwiseDivBroadCast2GradFunctor<T>>(ctx);

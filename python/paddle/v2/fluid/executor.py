@@ -1,6 +1,6 @@
 import numpy as np
 from . import core
-from framework import Program, default_main_program
+from framework import Program, default_main_program, Parameter, Variable
 
 __all__ = ['Executor', 'g_scope']
 
@@ -45,6 +45,13 @@ class Executor(object):
             p = core.Place()
             p.set_place(each)
             act_places.append(p)
+
+        # TODO(dzhwinter) : consider that our fluid tests all written in 
+        # GPUPlace(gpu_id), this will be changed in next PR.
+        if core.is_compile_gpu():
+            core.init_devices(["CPU", "GPU:0"])
+        else:
+            core.init_devices(["CPU"])
 
         self.executor = core.Executor(act_places)
         self.places = places
@@ -141,7 +148,7 @@ class Executor(object):
                 outputs={'Out': [fetch_var]},
                 attrs={'col': i})
 
-        self.executor.run(program.desc, scope, 0, True)
+        self.executor.run(program.desc, scope, 0, True, True)
         outs = [
             core.get_fetch_variable(scope, fetch_var_name, i)
             for i in xrange(len(fetch_list))

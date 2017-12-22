@@ -22,6 +22,8 @@ SET(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 include(system)
 
 project(paddle CXX C Go)
+message(STATUS "CXX compiler: " ${CMAKE_CXX_COMPILER} ", version: " ${CMAKE_CXX_COMPILER_VERSION})
+message(STATUS "C compiler: " ${CMAKE_C_COMPILER} ", version: " ${CMAKE_C_COMPILER_VERSION})
 
 find_package(Sphinx)
 if(NOT CMAKE_CROSSCOMPILING)

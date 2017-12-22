@@ -61,8 +61,7 @@ class MultiplexOp : public framework::OperatorWithKernel {
 
 class MultiplexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MultiplexOpMaker(framework::OpProto* proto,
-                   framework::OpAttrChecker* op_checker)
+  MultiplexOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Ids", "The index tensor of multiplex operator.");
     AddInput("X", "The candidate tensors of multiplex operator.")
@@ -119,7 +118,8 @@ REGISTER_OPERATOR(multiplex, ops::MultiplexOp, ops::MultiplexOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<false>);
 REGISTER_OPERATOR(multiplex_grad, ops::MultiplexGradOp);
 REGISTER_OP_CPU_KERNEL(
-    multiplex, ops::MultiplexCPUKernel<paddle::platform::CPUPlace, float>);
+    multiplex,
+    ops::MultiplexCPUKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     multiplex_grad,
-    ops::MultiplexGradCPUKernel<paddle::platform::CPUPlace, float>);
+    ops::MultiplexGradCPUKernel<paddle::platform::CPUDeviceContext, float>);

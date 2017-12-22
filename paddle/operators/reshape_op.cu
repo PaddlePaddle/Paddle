@@ -14,9 +14,9 @@
 
 #include "paddle/operators/reshape_op.h"
 
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     reshape,
     paddle::operators::ReshapeKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     reshape_grad,
     paddle::operators::ReshapeGradKernel<paddle::platform::GPUPlace, float>);

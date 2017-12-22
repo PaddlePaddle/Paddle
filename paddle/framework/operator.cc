@@ -22,20 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-template <>
-Eigen::DefaultDevice& ExecutionContext::GetEigenDevice<
-    platform::CPUPlace, Eigen::DefaultDevice>() const {
-  return *device_context_.GetEigenDevice<platform::CPUPlace>();
-}
-
-#ifdef PADDLE_WITH_CUDA
-template <>
-Eigen::GpuDevice&
-ExecutionContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
-  return *device_context_.GetEigenDevice<platform::GPUPlace>();
-}
-#endif
-
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
   PADDLE_ENFORCE_LE(ins.size(), 1UL,
@@ -391,7 +377,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     }
   }
 
-  VarDesc::VarType GetVarType(const std::string& name) const override {
+  proto::VarDesc::VarType GetVarType(const std::string& name) const override {
     auto* var = scope_.FindVar(name);
     return ToVarType(var->Type());
   }
@@ -429,9 +415,9 @@ void OperatorWithKernel::Run(const Scope& scope,
 }
 OpKernelType OperatorWithKernel::GetKernelType(
     const ExecutionContext& ctx) const {
-  return OpKernelType(IndicateDataType(ctx), ctx.device_context());
+  return OpKernelType(IndicateDataType(ctx), ctx.GetPlace());
 }
-DataType OperatorWithKernel::IndicateDataType(
+proto::DataType OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
   auto& scope = ctx.scope();
   int data_type = -1;
@@ -457,7 +443,7 @@ DataType OperatorWithKernel::IndicateDataType(
     }
   }
   PADDLE_ENFORCE(data_type != -1, "DataType should be indicated by input");
-  return static_cast<DataType>(data_type);
+  return static_cast<proto::DataType>(data_type);
 }
 
 }  // namespace framework

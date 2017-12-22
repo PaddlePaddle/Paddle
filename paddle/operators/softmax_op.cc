@@ -36,8 +36,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
 
 class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SoftmaxOpMaker(framework::OpProto* proto,
-                 framework::OpAttrChecker* op_checker)
+  SoftmaxOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "The input tensor of softmax. "
@@ -89,7 +88,8 @@ namespace ops = paddle::operators;
 
 REGISTER_OP(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker, softmax_grad,
             ops::SoftmaxOpGrad);
-REGISTER_OP_CPU_KERNEL(softmax,
-                       ops::SoftmaxKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    softmax_grad, ops::SoftmaxGradKernel<paddle::platform::CPUPlace, float>);
+    softmax, ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    softmax_grad,
+    ops::SoftmaxGradKernel<paddle::platform::CPUDeviceContext, float>);

@@ -58,7 +58,7 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
     auto X = EigenMatrix<T>::Reshape(*x, 1);
     auto Y = EigenMatrix<T>::Reshape(*y, 1);
 
-    auto place = context.GetEigenDevice<Place>();
+    auto& place = *context.template device_context<Place>().eigen_device();
     if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
       auto* mask_data = mask->mutable_data<T>(context.GetPlace());
@@ -71,7 +71,7 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       auto M = EigenMatrix<T>::Reshape(*mask, 1);
       Y.device(place) = X * M;
     } else {
-      Y.device(place) = X * dropout_prob;
+      Y.device(place) = X * (1.0f - dropout_prob);
     }
   }
 };
@@ -80,7 +80,9 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
-    dropout, ops::GPUDropoutKernel<paddle::platform::GPUPlace, float, float>);
-REGISTER_OP_GPU_KERNEL(
-    dropout_grad, ops::DropoutGradKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_CUDA_KERNEL(
+    dropout,
+    ops::GPUDropoutKernel<paddle::platform::CUDADeviceContext, float, float>);
+REGISTER_OP_CUDA_KERNEL(
+    dropout_grad,
+    ops::DropoutGradKernel<paddle::platform::CUDADeviceContext, float>);

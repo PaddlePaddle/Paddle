@@ -16,9 +16,9 @@
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     margin_rank_loss,
-    ops::MarginRankLossKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
+    ops::MarginRankLossKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
     margin_rank_loss_grad,
-    ops::MarginRankLossGradKernel<paddle::platform::GPUPlace, float>);
+    ops::MarginRankLossGradKernel<paddle::platform::CUDADeviceContext, float>);

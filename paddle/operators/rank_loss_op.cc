@@ -45,8 +45,7 @@ class RankLossOp : public framework::OperatorWithKernel {
 
 class RankLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RankLossOpMaker(framework::OpProto *proto,
-                  framework::OpAttrChecker *op_checker)
+  RankLossOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Label",
              "(2-D Tensor with shape [batch_size x 1]) "
@@ -123,7 +122,8 @@ namespace ops = paddle::operators;
 
 REGISTER_OP(rank_loss, ops::RankLossOp, ops::RankLossOpMaker, rank_loss_grad,
             ops::RankLossGradOp);
-REGISTER_OP_CPU_KERNEL(rank_loss,
-                       ops::RankLossKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    rank_loss_grad, ops::RankLossGradKernel<paddle::platform::CPUPlace, float>);
+    rank_loss, ops::RankLossKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    rank_loss_grad,
+    ops::RankLossGradKernel<paddle::platform::CPUDeviceContext, float>);

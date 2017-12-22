@@ -46,7 +46,7 @@ class MinusOp : public framework::OperatorWithKernel {
 
 class MinusOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MinusOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  MinusOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The left tensor of minus operator.");
     AddInput("Y", "The right tensor of minus operator.");
@@ -70,12 +70,11 @@ class MinusGradMaker : public framework::GradOpDescMakerBase {
  public:
   using framework::GradOpDescMakerBase::GradOpDescMakerBase;
 
-  std::vector<std::unique_ptr<framework::OpDescBind>> operator()()
-      const override {
-    std::vector<std::unique_ptr<framework::OpDescBind>> ops;
+  std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override {
+    std::vector<std::unique_ptr<framework::OpDesc>> ops;
     auto x_g = InputGrad("X");
     if (!x_g.empty()) {
-      auto *x_g_op = new framework::OpDescBind();
+      auto *x_g_op = new framework::OpDesc();
       x_g_op->SetType("scale");
       x_g_op->SetInput("X", OutputGrad("Out"));
       x_g_op->SetOutput("Out", x_g);
@@ -85,7 +84,7 @@ class MinusGradMaker : public framework::GradOpDescMakerBase {
 
     auto y_g = InputGrad("Y");
     if (!y_g.empty()) {
-      auto *y_g_op = new framework::OpDescBind();
+      auto *y_g_op = new framework::OpDesc();
       y_g_op->SetType("scale");
       y_g_op->SetInput("X", OutputGrad("Out"));
       y_g_op->SetOutput("Out", y_g);
@@ -102,5 +101,5 @@ class MinusGradMaker : public framework::GradOpDescMakerBase {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(minus, ops::MinusOp, ops::MinusOpMaker, ops::MinusGradMaker);
-REGISTER_OP_CPU_KERNEL(minus,
-                       ops::MinusKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    minus, ops::MinusKernel<paddle::platform::CPUDeviceContext, float>);
