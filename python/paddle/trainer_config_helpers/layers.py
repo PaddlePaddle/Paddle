@@ -270,7 +270,7 @@ class LayerType(object):
     @staticmethod
     def is_layer_type(type_name):
         """
-        If type_name is a layer type.
+        Whether type_name is a layer type.
 
         :param type_name: layer type name. Because layer type enumerations are
                           strings.
@@ -441,7 +441,7 @@ def full_matrix_projection(input, size=0, param_attr=None):
        with mixed_layer(size=100) as m:
            m += full_matrix_projection(input=layer)
 
-    2. When used as an independant object like this, you must set the size:
+    2. When used as an independent object like this, you must set the size:
 
     .. code-block:: python
 
@@ -451,11 +451,11 @@ def full_matrix_projection(input, size=0, param_attr=None):
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param size: The parameter size. Means the width of parameter.
+    :param size: The dimension of this layer.
     :type size: int
-    :param param_attr: Parameter config, None if use default.
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
     :type param_attr: ParameterAttribute
-    :return: A FullMatrixProjection Object.
+    :return: FullMatrixProjection Object.
     :rtype: FullMatrixProjection
     """
     proj = FullMatrixProjection(
@@ -468,12 +468,12 @@ def full_matrix_projection(input, size=0, param_attr=None):
 def trans_full_matrix_projection(input, size=0, param_attr=None):
     """
     Different from full_matrix_projection, this projection performs matrix
-    multiplication, using transpose of weight.
+    multiplication, using the transpose of weight.
 
     ..  math::
         out.row[i] += in.row[i] * w^\mathrm{T}
 
-    :math:`w^\mathrm{T}` means transpose of weight.
+    :math:`w^\mathrm{T}` means the transpose of weight.
     The simply usage is:
 
     .. code-block:: python
@@ -489,9 +489,9 @@ def trans_full_matrix_projection(input, size=0, param_attr=None):
     :type input: LayerOutput
     :param size: The parameter size. Means the width of parameter.
     :type size: int
-    :param param_attr: Parameter config, None if use default.
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
     :type param_attr: ParameterAttribute
-    :return: A TransposedFullMatrixProjection Object.
+    :return: TransposedFullMatrixProjection Object.
     :rtype: TransposedFullMatrixProjection
     """
     proj = TransposedFullMatrixProjection(
@@ -521,7 +521,7 @@ def table_projection(input, size=0, param_attr=None):
        with mixed_layer(size=100) as m:
            m += table_projection(input=layer)
 
-    2. When used as an independant object like this, you must set the size:
+    2. When used as an independent object like this, you must set the size:
 
     .. code-block:: python
 
@@ -532,11 +532,11 @@ def table_projection(input, size=0, param_attr=None):
 
     :param input: The input of this layer, which must contains id fields.
     :type input: LayerOutput
-    :param size: The parameter size. Means the width of parameter.
+    :param size: The dimension of the output.
     :type size: int
-    :param param_attr: Parameter config, None if use default.
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
     :type param_attr: ParameterAttribute
-    :return: A TableProjection Object.
+    :return: TableProjection Object.
     :rtype: TableProjection
     """
     proj = TableProjection(
@@ -547,7 +547,7 @@ def table_projection(input, size=0, param_attr=None):
 
 def identity_projection(input, offset=None, size=None):
     """
-    1. IdentityProjection if offset=None. It performs:
+    1. If offset=None, it performs IdentityProjection as follows:
 
     .. math::
        out.row[i] += in.row[i]
@@ -559,9 +559,8 @@ def identity_projection(input, offset=None, size=None):
        proj = identity_projection(input=layer)
 
 
-    2. IdentityOffsetProjection if offset!=None. It likes IdentityProjection,
-    but layer size may be smaller than input size.
-    It select dimesions [offset, offset+layer_size) from input:
+    2. If offset!=None, It executes IdentityOffsetProjection and takes the
+       elements of the input in the range [offset, offset+size) as output.
 
     .. math::
        out.row[i] += in.row[i + \\textrm{offset}]
@@ -573,14 +572,20 @@ def identity_projection(input, offset=None, size=None):
        proj = identity_projection(input=layer,
                                   offset=10)
 
-    Note that both of two projections should not have any parameter.
+    Note that neither of the projections have trainable parameter.
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param offset: Offset, None if use default.
+    :param offset: The offset from the start of the input. The input's
+                   elements in the range [offset, offset+size) will be
+                   taken as output. If this parameter is not set or set
+                   to None, the output will be the same as the input.
     :type offset: int
-    :return: A IdentityProjection or IdentityOffsetProjection object
-    :rtype: IdentityProjection or IdentityOffsetProjection
+    :param size: The dimension of this layer. It will be neglected
+                 when offset is None or not set.
+    :type size: int
+    :return: IdentityProjection or IdentityOffsetProjection object
+    :rtype: IdentityProjection | IdentityOffsetProjection
     """
     if offset is None:
         proj = IdentityProjection(input_layer_name=input.name)
@@ -596,8 +601,8 @@ def identity_projection(input, offset=None, size=None):
 
 def slice_projection(input, slices):
     """
-    slice_projection can slice the input value into multiple parts,
-    and then select some of them to merge into a new output.
+    slice_projection slices the input value into multiple parts,
+    then selects and merges some of them into a new output.
 
     .. math::
        output = [input.slices()]
@@ -608,15 +613,13 @@ def slice_projection(input, slices):
 
        proj = slice_projection(input=layer, slices=[(0, 10), (20, 30)])
 
-    Note that slice_projection should not have any parameter.
+    Note that slice_projection has no trainable parameter.
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param slices: An array of slice parameters.
-                   Each slice contains the start and end offsets based
-                   on the input.
-    :type slices: pair of int
-    :return: A SliceProjection object
+    :param slices: A list of start and end offsets of each slice.
+    :type slices: list of tuple
+    :return: SliceProjection object.
     :rtype: SliceProjection
     """
     assert len(slices) >= 1
@@ -636,8 +639,7 @@ def slice_projection(input, slices):
 @wrap_param_attr_default()
 def scaling_projection(input, param_attr=None):
     """
-    scaling_projection multiplies the input with a scalar parameter and add to
-    the output.
+    scaling_projection multiplies the input with a scalar parameter.
 
     .. math::
        out += w * in
@@ -650,9 +652,9 @@ def scaling_projection(input, param_attr=None):
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param param_attr: Parameter config, None if use default.
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
     :type param_attr: ParameterAttribute
-    :return: A ScalingProjection object
+    :return: ScalingProjection object.
     :rtype: ScalingProjection
     """
     proj = ScalingProjection(input_layer_name=input.name, **param_attr.attr)
@@ -663,8 +665,8 @@ def scaling_projection(input, param_attr=None):
 @wrap_param_attr_default()
 def dotmul_projection(input, param_attr=None):
     """
-    DotMulProjection with a layer as input.
-    It performs element-wise multiplication with weight.
+    DotMulProjection takes a layer as input and performs
+    element-wise multiplication with weight.
 
     ..  math::
         out.row[i] += in.row[i] .* weight
@@ -679,9 +681,9 @@ def dotmul_projection(input, param_attr=None):
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param param_attr: Parameter config, None if use default.
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
     :type param_attr: ParameterAttribute
-    :return: A DotMulProjection Object.
+    :return: DotMulProjection object.
     :rtype: DotMulProjection
     """
     proj = DotMulProjection(
@@ -698,7 +700,7 @@ def dotmul_operator(a=None, b=None, scale=1, **kwargs):
        out.row[i] += scale * (a.row[i] .* b.row[i])
 
     where :math:`.*` means element-wise multiplication, and
-    scale is a config scalar, its default value is one.
+    scale is a config scalar, its default value is 1.
 
     The example usage is:
 
@@ -706,13 +708,13 @@ def dotmul_operator(a=None, b=None, scale=1, **kwargs):
 
        op = dotmul_operator(a=layer1, b=layer2, scale=0.5)
 
-    :param a: Input layer1
+    :param a: The first input of this layer.
     :type a: LayerOutput
-    :param b: Input layer2
+    :param b: The second input of this layer.
     :type b: LayerOutput
-    :param scale: config scalar, default value is one.
+    :param scale: A scalar to scale the product. Its default value is 1.
     :type scale: float
-    :return: A DotMulOperator Object.
+    :return: DotMulOperator object.
     :rtype: DotMulOperator
     """
     if 'x' in kwargs or 'y' in kwargs:
@@ -738,28 +740,29 @@ def context_projection(input,
     """
     Context Projection.
 
-    It just simply reorganizes input sequence, combines "context_len" sequence
-    to one context from context_start. "context_start" will be set to
-    -(context_len - 1) / 2 by default. If context position out of sequence
+    It just reorganizes input sequence, combines "context_len" elements of the
+    sequence to one context from context_start. "context_start" will be set to
+    -(context_len - 1) / 2 by default. When context position is out of sequence
     length, padding will be filled as zero if padding_attr = False, otherwise
     it is trainable.
 
-    For example, origin sequence is [A B C D E F G], context len is 3, then
-    after context projection and not set padding_attr, sequence will
+    For example, origin sequence is [A B C D E F G], context len is 3, padding_attr
+    is not set, then after context projection, sequence will
     be [ 0AB ABC BCD CDE DEF EFG FG0 ].
 
     :param input: The input of this layer, which should be a sequence.
     :type input: LayerOutput
-    :param context_len: context length.
+    :param context_len: The length of the context.
     :type context_len: int
-    :param context_start: context start position. Default is
+    :param context_start: The start position of the context. The default value is
                           -(context_len - 1)/2
     :type context_start: int
-    :param padding_attr: Padding Parameter Attribute. If false, it means padding
-                         always be zero. Otherwise Padding is learnable, and
-                         parameter attribute is set by this parameter.
+    :param padding_attr: Parameter attribute of the padding. If the parameter is
+                         set to False, padding will be zero. In other cases, the
+                         padding is trainable, and its parameter attribute is set
+                         by this parameter.
     :type padding_attr: bool | ParameterAttribute
-    :return: Projection
+    :return: Projection object.
     :rtype: Projection
     """
     context_start = -(
