@@ -136,14 +136,14 @@ class ShrinkRNNGradOpMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *op = new framework::OpDesc();
     op->SetType("shrink_rnn_memory_grad");
     op->SetInput("X", Input("X"));
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDescBind>(op);
+    return std::unique_ptr<framework::OpDesc>(op);
   }
 };
 

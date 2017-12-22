@@ -103,10 +103,12 @@ class MidWiseTransformIterator<T, platform::CPUDeviceContext> {
 
   MidWiseTransformIterator<T, platform::CPUDeviceContext>& operator++() {
     ++j_;
-    i_ = j_ / post_;
-    if (UNLIKELY(i_ == n_)) {
+    if (UNLIKELY(j_ == post_)) {
+      ++i_;
       j_ = 0;
-      i_ = 0;
+      if (UNLIKELY(i_ == n_)) {
+        i_ = 0;
+      }
     }
     return *this;
   }
@@ -125,10 +127,10 @@ class MidWiseTransformIterator<T, platform::CPUDeviceContext> {
 
  private:
   const T* ptr_;
-  int i_;
+  int64_t i_;
   int64_t j_;
   int64_t n_;
-  int post_;
+  int64_t post_;
 };
 
 #ifdef __NVCC__

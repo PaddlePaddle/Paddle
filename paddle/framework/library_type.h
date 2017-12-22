@@ -13,24 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
-namespace operators {
+namespace framework {
 
-template <typename DeviceContext, typename T>
-class FillZerosLikeKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* out = context.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(context.GetPlace());
+// For more details about the design of LibraryType, Please refer to
+// https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/operator_kernel_type.md#library
 
-    math::SetConstant<DeviceContext, T> setter;
-    setter(context.template device_context<DeviceContext>(), out,
-           static_cast<T>(0));
-  }
-};
+enum LibraryType { kPlain = 0; kMKLDNN = 1; kCUDNN = 2; }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace
+}  // framework
