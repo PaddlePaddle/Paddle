@@ -75,9 +75,8 @@ then we get 2-level LoDTensor
 
 Case 2:
 
-Given a 0-level LoDTensor input(X)
+Given a base Tensor input(X)
     X.data = [a, b, c]
-    X.lod = NULL
     X.dims = [3, 1]
 and input(Y)
     Y.lod = [[0, 2, 3, 6]]
@@ -89,9 +88,8 @@ then we get 1-level LoDTensor
 
 Case 3:
 
-Given a 0-level LoDTensor input(X)
+Given a base LoDTensor input(X)
     X.data = [[a, b], [c, d], [e, f]]
-    X.lod = NULL
     X.dims = [3, 2]
 and input(Y)
     Y.lod = [[0, 2, 3, 6]]
