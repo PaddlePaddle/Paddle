@@ -584,10 +584,68 @@ def sequence_pool(input, pool_type, **kwargs):
 
 
 def sequence_first_step(input, **kwargs):
+    """
+    This funciton get the first step of sequence.
+
+    .. code-block:: text
+
+       x is a 1-level LoDTensor:
+         x.lod = [[0, 2, 5, 7]]
+         x.data = [1, 3, 2, 4, 6, 5, 1]
+         x.dims = [7, 1]
+
+       then output is a Tensor:
+         out.dim = [3, 1]
+         with condition len(x.lod[-1]) - 1 == out.dims[0]
+         out.data = [1, 2, 5], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
+         
+    Args:
+        input(variable): The input variable which is a LoDTensor.
+
+    Returns:
+        The sequence's first step variable which is a Tensor.
+
+    Examples:
+
+        .. code-block:: python
+             
+             x = fluid.layers.data(name='x', shape=[7, 1], 
+                              dtype='float32', lod_level=1)
+             x_first_step = fluid.layers.sequence_first_step(input=x)
+    """
     return sequence_pool(input=input, pool_type="first")
 
 
 def sequence_last_step(input, **kwargs):
+    """
+    This funciton get the last step of sequence.
+
+    .. code-block:: text
+
+       x is a 1-level LoDTensor:
+         x.lod = [[0, 2, 5, 7]]
+         x.data = [1, 3, 2, 4, 6, 5, 1]
+         x.dims = [7, 1]
+
+       then output is a Tensor:
+         out.dim = [3, 1]
+         with condition len(x.lod[-1]) - 1 == out.dims[0]
+         out.data = [3, 6, 1], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
+         
+    Args:
+        input(variable): The input variable which is a LoDTensor.
+
+    Returns:
+        The sequence's last step variable which is a Tensor.
+
+    Examples:
+
+        .. code-block:: python
+             
+             x = fluid.layers.data(name='x', shape=[7, 1], 
+                              dtype='float32', lod_level=1)
+             x_last_step = fluid.layers.sequence_last_step(input=x)
+    """
     return sequence_pool(input=input, pool_type="last")
 
 
