@@ -23,10 +23,8 @@ namespace paddle {
 namespace framework {
 
 /*
-
 Refer to https://stackoverflow.com/questions/35985960/
 c-why-is-boosthash-combine-the-best-way-to-combine-hash-values
-
 */
 template <class T>
 inline void hash_combine(std::size_t& seed, const T& v) {
@@ -52,23 +50,22 @@ struct OpKernelType {
   };
 
   proto::DataType data_type_;
-  framework::DataLayout data_layout_;
+  DataLayout data_layout_;
   platform::Place place_;
-  framework::LibraryType library_type_;
+  LibraryType library_type_;
 
-  OpKernelType(
-      proto::DataType data_type, platform::Place place,
-      framework::DataLayout data_layout = framework::DataLayout::kAnyLayout,
-      framework::LibraryType library_type = framework::LibraryType::kPlain)
+  OpKernelType(proto::DataType data_type, platform::Place place,
+               DataLayout data_layout = DataLayout::kAnyLayout,
+               LibraryType library_type = LibraryType::kPlain)
       : data_type_(data_type),
         data_layout_(data_layout),
         place_(place),
         library_type_(library_type) {}
 
-  OpKernelType(
-      proto::DataType data_type, const platform::DeviceContext& dev_ctx,
-      framework::DataLayout data_layout = framework::DataLayout::kAnyLayout,
-      framework::LibraryType library_type = framework::LibraryType::kPlain)
+  OpKernelType(proto::DataType data_type,
+               const platform::DeviceContext& dev_ctx,
+               DataLayout data_layout = DataLayout::kAnyLayout,
+               LibraryType library_type = LibraryType::kPlain)
       : data_type_(data_type),
         data_layout_(data_layout),
         place_(dev_ctx.GetPlace()),
