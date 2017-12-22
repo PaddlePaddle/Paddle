@@ -27,7 +27,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SquaredL2DistanceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -51,7 +51,8 @@ class SquaredL2DistanceKernel : public framework::OpKernel<T> {
     auto sub_result = EigenMatrix<T>::From(*out0);
     auto z = EigenVector<T>::Flatten(*out1);
 
-    auto place = context.GetEigenDevice<Place>();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
     auto x_dims = x.dimensions();
     auto y_dims = y.dimensions();
     // buffer the substraction result
@@ -67,7 +68,7 @@ class SquaredL2DistanceKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SquaredL2DistanceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -89,7 +90,8 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel<T> {
                     sub_result;
 
     // propagate back to input
-    auto eigen_place = context.GetEigenDevice<Place>();
+    auto& eigen_place =
+        *context.template device_context<DeviceContext>().eigen_device();
     if (x_g) {
       x_g->mutable_data<T>(context.GetPlace());
       // eigen matrix

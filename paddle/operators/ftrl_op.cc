@@ -57,7 +57,7 @@ class FTRLOp : public framework::OperatorWithKernel {
 
 class FTRLOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FTRLOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  FTRLOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param",
              "(Tensor, default Tensor<float>) "
@@ -135,5 +135,5 @@ The paper that proposed Follow The Regularized Leader (FTRL):
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(ftrl, ops::FTRLOp, ops::FTRLOpMaker);
-REGISTER_OP_CPU_KERNEL(ftrl,
-                       ops::FTRLOpKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    ftrl, ops::FTRLOpKernel<paddle::platform::CPUDeviceContext, float>);

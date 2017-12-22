@@ -22,9 +22,8 @@ TEST(Device, Init) {
 
   int count = paddle::platform::GetCUDADeviceCount();
   for (int i = 0; i < count; i++) {
-    DeviceContext* device_context = new CUDADeviceContext(GPUPlace(i));
-    Eigen::GpuDevice* gpu_device =
-        device_context->template GetEigenDevice<GPUPlace>();
+    CUDADeviceContext* device_context = new CUDADeviceContext(GPUPlace(i));
+    Eigen::GpuDevice* gpu_device = device_context->eigen_device();
     ASSERT_NE(nullptr, gpu_device);
     delete device_context;
   }
@@ -45,5 +44,21 @@ TEST(Device, CUDADeviceContext) {
     ASSERT_NE(nullptr, cublas_handle);
     ASSERT_NE(nullptr, device_context->stream());
     delete device_context;
+  }
+}
+
+TEST(Device, CUDNNDeviceContext) {
+  using paddle::platform::CUDNNDeviceContext;
+  using paddle::platform::CUDNNPlace;
+  if (paddle::platform::dynload::HasCUDNN()) {
+    int count = paddle::platform::GetCUDADeviceCount();
+    for (int i = 0; i < count; ++i) {
+      CUDNNDeviceContext* device_context =
+          new CUDNNDeviceContext(CUDNNPlace(i));
+      cudnnHandle_t cudnn_handle = device_context->cudnn_handle();
+      ASSERT_NE(nullptr, cudnn_handle);
+      ASSERT_NE(nullptr, device_context->stream());
+      delete device_context;
+    }
   }
 }

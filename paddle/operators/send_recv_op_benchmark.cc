@@ -93,9 +93,7 @@ void StartServerNet() {
   recv_op = paddle::framework::OpRegistry::CreateOp("recv", {{"RX", {"RX"}}},
                                                     {{"Out", {"Out"}}}, attrs);
   paddle::platform::CPUDeviceContext ctx(place);
-  for (int i = 0; i < benchmark_count; ++i) {
-    recv_op->Run(scope, ctx);
-  }
+  recv_op->Run(scope, ctx);
 }
 
 TEST(SendRecvBenchmark, CPU) {

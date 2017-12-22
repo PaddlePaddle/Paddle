@@ -16,9 +16,10 @@
 #include "paddle/framework/op_registry.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
-    fill_zeros_like, ops::FillZerosLikeKernel<paddle::platform::GPUPlace, int>,
-    ops::FillZerosLikeKernel<paddle::platform::GPUPlace, int64_t>,
-    ops::FillZerosLikeKernel<paddle::platform::GPUPlace, float>,
-    ops::FillZerosLikeKernel<paddle::platform::GPUPlace, double>,
-    ops::FillZerosLikeKernel<paddle::platform::GPUPlace, bool>);
+REGISTER_OP_CUDA_KERNEL(
+    fill_zeros_like,
+    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, bool>);

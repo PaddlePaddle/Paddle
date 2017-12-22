@@ -24,6 +24,7 @@
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/framework/proto_desc.h"
 #include "paddle/operators/detail/send_recv_impl.h"
 #include "paddle/operators/detail/simple_block_queue.h"
 
@@ -61,27 +62,76 @@ class RecvOp : public framework::OperatorBase {
     server_thread_->join();
   }
 
+  std::string GetGradVarNameForTrainer(const std::string &varname) const {
+    if (grads_counter_.find(varname) == grads_counter_.end()) {
+      grads_counter_[varname] = 0;
+    }
+    char ret[256];
+    snprintf(ret, sizeof(ret), "%s.trainer_%d", varname.c_str(),
+             grads_counter_[varname]++);
+    return std::string(ret);
+  }
+
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
-    // blocking get one var from client.
-    const framework::LoDTensor &t = rpc_service_->Get();
+    // FIXME(typhoonzero): no new scopes for every run.
     framework::Scope &recv_scope = scope.NewScope();
-    // set graph input var
-    auto *var = recv_scope.Var(Input("RX"));
-    auto *tensor = var->GetMutable<framework::LoDTensor>();
-    // FIXME(typhoonzero): do not copy
-    framework::CopyFrom(t, dev_ctx.GetPlace(), dev_ctx, tensor);
+    rpc_service_->SetScope(&recv_scope);
+    auto param_list = Attr<std::vector<std::string>>("ParamList");
+    auto grad_list = Attr<std::vector<std::string>>("GradList");
+    auto trainer_count = Attr<int>("Trainers");
+    size_t param_count = param_list.size();
+    rpc_service_->Reset();
+    // TODO(typhoonzero): change this to a while_op for every cluster-batch.
+    while (true) {
+      // Get from multiple trainers, we don't care about order in which
+      // the gradient arrives, just add suffix 0~n then average the gradient.
+      for (size_t i = 0; i < param_count * trainer_count; ++i) {
+        // blocking get one var from client.
+        const detail::TensorWithName &v = rpc_service_->Get();
+        auto grad_var_name = v.first;
+        auto it = std::find(grad_list.begin(), grad_list.end(), grad_var_name);
+        std::string param_var_name;
+        if (it != grad_list.end()) {
+          param_var_name = param_list[it - grad_list.begin()];
+        } else {
+          LOG(ERROR) << "grad have no paired param found!";
+        }
+        VLOG(3) << "recved grad: " << grad_var_name
+                << " updating param: " << param_var_name;
+        auto *merged_grad = recv_scope.FindVar(grad_var_name);
+        if (merged_grad == nullptr) {
+          // create output of merged var.
+          auto merged_var = recv_scope.Var(grad_var_name);
+          merged_var->GetMutable<framework::LoDTensor>();
+        }
 
-    auto *block = Attr<framework::BlockDescBind *>("OptimizeBlock");
-    auto *program = block->Program();
-    framework::Executor executor(dev_ctx);
-    // Run sub graph to get optimized tensor
-    executor.Run(*program, &recv_scope, block->ID(),
-                 false /*create_local_scope*/);
+        if (trainer_count > 1) {
+          grad_var_name = this->GetGradVarNameForTrainer(grad_var_name);
+        }
 
-    auto *out_var = recv_scope.FindVar("Out");
-    // push back
-    rpc_service_->Push(out_var->Get<framework::LoDTensor>());
+        auto *var = recv_scope.Var(grad_var_name);
+        auto *tensor = var->GetMutable<framework::LoDTensor>();
+        // FIXME(typhoonzero): do not copy
+        framework::CopyFrom(v.second, dev_ctx.GetPlace(), dev_ctx, tensor);
+      }
+      rpc_service_->Reset();
+
+      std::string program_str = Attr<std::string>("OptimizeProgram");
+      framework::proto::ProgramDesc program_desc;
+      program_desc.ParseFromString(program_str);
+      framework::ProgramDesc program(program_desc);
+      framework::Executor executor(dev_ctx);
+      // Run sub graph to get optimized tensor
+      try {
+        executor.Run(program, &recv_scope, 0, /*global_block*/
+                     false /*create_local_scope*/, false /*create_vars*/);
+      } catch (std::exception &e) {
+        LOG(ERROR) << "run sub program error " << e.what();
+      }
+      rpc_service_->Done();
+      grads_counter_.clear();
+    }  // while(true)
   }
 
  protected:
@@ -91,13 +141,14 @@ class RecvOp : public framework::OperatorBase {
   // grpc send/recv service implement to register.
   std::shared_ptr<detail::SendRecvServerImpl> rpc_service_;
   std::shared_ptr<std::thread> server_thread_;
+  mutable std::unordered_map<std::string, int> grads_counter_;
 };
 
 class RecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RecvOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  RecvOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("RX", "(Tensor) Input tensor to be saved");
+    AddInput("RX", "(Tensor) Input tensor to be optimized").AsDuplicable();
     AddComment(R"DOC(
 Recv operator
 
@@ -108,8 +159,19 @@ This operator will recv tensor from send_op
                          "IP address to listen on.")
         .SetDefault("127.0.0.1:6164")
         .AddCustomChecker([](const std::string &ip) { return !ip.empty(); });
-    AddAttr<framework::BlockDescBind *>("OptimizeBlock", "type BlockDescBind*",
-                                        "optimize network run in server");
+    AddAttr<std::string>("OptimizeProgram", "type string",
+                         "Serialized ProgramDesc string for recv to run.");
+    AddAttr<std::vector<std::string>>(
+        "ParamList", "type list of string",
+        "grad->param name mapping to find which param to optimize.")
+        .SetDefault({});
+    AddAttr<std::vector<std::string>>(
+        "GradList", "type list of string",
+        "grad->param name mapping to find which param to optimize.")
+        .SetDefault({});
+    AddAttr<int>("Trainers", "type int",
+                 "Number of trainers in the current cluster job")
+        .SetDefault(1);
   }
 };
 

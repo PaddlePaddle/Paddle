@@ -40,8 +40,7 @@ class DropoutOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  DropoutOpMaker(framework::OpProto* proto,
-                 framework::OpAttrChecker* op_checker)
+  DropoutOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of dropout op.");
     AddOutput("Out", "The output of dropout op.");
@@ -100,6 +99,8 @@ namespace ops = paddle::operators;
 REGISTER_OP(dropout, ops::DropoutOp, ops::DropoutOpMaker<float>, dropout_grad,
             ops::DropoutOpGrad<float>);
 REGISTER_OP_CPU_KERNEL(
-    dropout, ops::CPUDropoutKernel<paddle::platform::CPUPlace, float, float>);
+    dropout,
+    ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext, float, float>);
 REGISTER_OP_CPU_KERNEL(
-    dropout_grad, ops::DropoutGradKernel<paddle::platform::CPUPlace, float>);
+    dropout_grad,
+    ops::DropoutGradKernel<paddle::platform::CPUDeviceContext, float>);

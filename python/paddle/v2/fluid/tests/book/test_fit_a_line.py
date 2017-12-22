@@ -22,6 +22,7 @@ train_reader = paddle.batch(
     batch_size=BATCH_SIZE)
 
 place = fluid.CPUPlace()
+feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
 exe = fluid.Executor(place)
 
 exe.run(fluid.default_startup_program())
@@ -31,12 +32,8 @@ for pass_id in range(PASS_NUM):
     fluid.io.save_persistables(exe, "./fit_a_line.model/")
     fluid.io.load_persistables(exe, "./fit_a_line.model/")
     for data in train_reader():
-        x_data = np.array(map(lambda _: _[0], data)).astype("float32")
-        y_data = np.array(map(lambda _: _[1], data)).astype("float32")
-
         avg_loss_value, = exe.run(fluid.default_main_program(),
-                                  feed={'x': x_data,
-                                        'y': y_data},
+                                  feed=feeder.feed(data),
                                   fetch_list=[avg_cost])
 
         if avg_loss_value[0] < 10.0:

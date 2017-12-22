@@ -1,7 +1,7 @@
 import copy
 import itertools
 
-from framework import Variable, default_main_program, default_startup_program, \
+from framework import Variable, Parameter, default_main_program, default_startup_program, \
     unique_name, dtype_is_floating
 from paddle.v2.fluid.initializer import Constant, Xavier
 from param_attr import ParamAttr
@@ -21,19 +21,11 @@ class LayerHelper(object):
 
     @property
     def main_program(self):
-        prog = self.kwargs.get('main_program', None)
-        if prog is None:
-            return default_main_program()
-        else:
-            return prog
+        return default_main_program()
 
     @property
     def startup_program(self):
-        prog = self.kwargs.get('startup_program', None)
-        if prog is None:
-            return default_startup_program()
-        else:
-            return prog
+        return default_startup_program()
 
     def append_op(self, *args, **kwargs):
         return self.main_program.current_block().append_op(*args, **kwargs)
@@ -121,6 +113,12 @@ class LayerHelper(object):
             dtype=dtype, shape=shape, **attr.to_kwargs(with_initializer=True))
         return self.main_program.global_block().create_parameter(
             dtype=dtype, shape=shape, **attr.to_kwargs())
+
+    def get_parameter(self, name):
+        param = self.main_program.global_block().var(name)
+        if not isinstance(param, Parameter):
+            raise ValueError("no Parameter name %s found" % name)
+        return param
 
     def create_tmp_variable(self, dtype):
         return self.main_program.current_block().create_var(

@@ -59,8 +59,7 @@ class AdagradOp : public framework::OperatorWithKernel {
 
 class AdagradOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AdagradOpMaker(framework::OpProto* proto,
-                 framework::OpAttrChecker* op_checker)
+  AdagradOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param", "(Tensor) Input parameter");
     AddInput("Grad", "(Tensor) Input gradient");
@@ -80,8 +79,8 @@ Adaptive Gradient Algorithm (Adagrad).
 
 The update is done as follows:
 
-$$momentOut = moment + grad * grad \break
-paramOut = param - learningRate * grad / ($\sqrt{momentOut}$ + \epsilon) \break
+$$moment\_out = moment + grad * grad \\
+param\_out = param - \frac{learning\_rate * grad}{\sqrt{moment\_out} + \epsilon}
 $$
 
 The original paper(http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
@@ -100,8 +99,8 @@ size_t FindPos(const std::vector<int64_t>& rows, int64_t value) {
 }  // namespace
 
 template <typename T>
-struct SparseAdagradFunctor<platform::CPUPlace, T> {
-  void operator()(const platform::DeviceContext& context,
+struct SparseAdagradFunctor<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::SelectedRows& grad,
                   const framework::Tensor& learning_rate, T epsilon,
                   framework::Tensor* moment, framework::Tensor* param) {
@@ -120,7 +119,7 @@ struct SparseAdagradFunctor<platform::CPUPlace, T> {
             {static_cast<int64_t>(merge_rows.size()), grad_width}),
         context.GetPlace());
 
-    math::SetConstant<platform::CPUPlace, T> constant_functor;
+    math::SetConstant<platform::CPUDeviceContext, T> constant_functor;
     constant_functor(context, grad_merge->mutable_value(), 0.0);
 
     auto* grad_merge_data = grad_merge->mutable_value()->data<T>();
@@ -144,9 +143,9 @@ struct SparseAdagradFunctor<platform::CPUPlace, T> {
     auto gs =
         framework::EigenVector<T>::Flatten(*(grad_square->mutable_value()));
     auto gm = framework::EigenVector<T>::Flatten(grad_merge->value());
-    gs.device(*context.GetEigenDevice<platform::CPUPlace>()) = gm * gm;
+    gs.device(*context.eigen_device()) = gm * gm;
 
-    math::SelectedRowsAddToTensor<platform::CPUPlace, T> functor;
+    math::SelectedRowsAddToTensor<platform::CPUDeviceContext, T> functor;
     functor(context, *grad_square, moment);
 
     // 3. update parameter
@@ -164,13 +163,13 @@ struct SparseAdagradFunctor<platform::CPUPlace, T> {
   }
 };
 
-template struct SparseAdagradFunctor<platform::CPUPlace, float>;
-template struct SparseAdagradFunctor<platform::CPUPlace, double>;
+template struct SparseAdagradFunctor<platform::CPUDeviceContext, float>;
+template struct SparseAdagradFunctor<platform::CPUDeviceContext, double>;
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(adagrad, ops::AdagradOp, ops::AdagradOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    adagrad, ops::AdagradOpKernel<paddle::platform::CPUPlace, float>,
-    ops::AdagradOpKernel<paddle::platform::CPUPlace, double>);
+    adagrad, ops::AdagradOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::AdagradOpKernel<paddle::platform::CPUDeviceContext, double>);

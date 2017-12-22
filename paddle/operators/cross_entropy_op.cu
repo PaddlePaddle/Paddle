@@ -53,8 +53,9 @@ class CrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     Tensor* y = ctx.Output<Tensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
 
-    math::CrossEntropyFunctor<platform::GPUPlace, T>()(
-        ctx.device_context(), y, x, label, ctx.Attr<bool>("soft_label"));
+    math::CrossEntropyFunctor<platform::CUDADeviceContext, T>()(
+        ctx.template device_context<platform::CUDADeviceContext>(), y, x, label,
+        ctx.Attr<bool>("soft_label"));
   }
 };
 
@@ -80,15 +81,17 @@ class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel<T> {
 
     int block = 512;
     int grid = (batch_size * class_num + block - 1) / block;
-    auto stream = ctx.cuda_device_context().stream();
+
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto stream = dev_ctx.stream();
 
     if (ctx.Attr<bool>("soft_label")) {
       auto* label_data = label->data<T>();
       SoftCrossEntropyGradientKernel<T><<<grid, block, 0, stream>>>(
           dx_data, dy_data, x_data, label_data, batch_size, class_num);
     } else {
-      math::SetConstant<platform::GPUPlace, T> functor;
-      functor(ctx.device_context(), dx, 0);
+      math::SetConstant<platform::CUDADeviceContext, T> functor;
+      functor(dev_ctx, dx, 0);
       auto* label_data = label->data<int64_t>();
       grid = (batch_size + block - 1) / block;
       CrossEntropyGradientKernel<T><<<grid, block, 0, stream>>>(
@@ -101,8 +104,8 @@ class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(cross_entropy, ops::CrossEntropyOpCUDAKernel<float>,
-                       ops::CrossEntropyOpCUDAKernel<double>);
-REGISTER_OP_GPU_KERNEL(cross_entropy_grad,
-                       ops::CrossEntropyGradientOpCUDAKernel<float>,
-                       ops::CrossEntropyGradientOpCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(cross_entropy, ops::CrossEntropyOpCUDAKernel<float>,
+                        ops::CrossEntropyOpCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(cross_entropy_grad,
+                        ops::CrossEntropyGradientOpCUDAKernel<float>,
+                        ops::CrossEntropyGradientOpCUDAKernel<double>);

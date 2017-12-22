@@ -27,7 +27,7 @@ class WriteToArrayOp : public ArrayOp {
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
     auto *x = scope.FindVar(Input("X"));
-    PADDLE_ENFORCE(x != nullptr, "X must be set");
+    if (x == nullptr) return;
     auto &x_tensor = x->Get<framework::LoDTensor>();
     size_t offset = GetOffset(scope, dev_ctx);
     auto *out =
@@ -51,8 +51,7 @@ class WriteToArrayOp : public ArrayOp {
 
 class WriteToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  WriteToArrayOpProtoMaker(framework::OpProto *proto,
-                           framework::OpAttrChecker *op_checker)
+  WriteToArrayOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(LoDTensor) the tensor will be written to tensor array");
     AddInput(
@@ -60,12 +59,16 @@ class WriteToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         "(Tensor) the subscript index in tensor array. The number of element "
         "should be 1");
     AddOutput("Out", "(TensorArray) the tensor array will be written");
-    AddComment(R"DOC(Write a LoDTensor to a LoDTensor array.
+    AddComment(R"DOC(
+WriteToArray Operator.
 
-Assume T is LoDTensor, i is the subscript of the array, and A is the array. The
+This operator writes a LoDTensor to a LoDTensor array.
+
+Assume $T$ is LoDTensor, $i$ is the subscript of the array, and $A$ is the array. The
 equation is
 
-A[i] = T
+$$A[i] = T$$
+
 )DOC");
   }
 };
@@ -76,7 +79,9 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE(context->HasInput("I"), "Must set the subscript index");
     PADDLE_ENFORCE_EQ(framework::product(context->GetInputDim("I")), 1,
                       "The number of element of subscript index must be 1");
-    PADDLE_ENFORCE(context->HasInput("X"), NotHasXError());
+    if (!context->HasInput("X")) {
+      return;
+    }
     PADDLE_ENFORCE(context->HasOutput("Out"), NotHasOutError());
     context->SetOutputDim("Out", context->GetInputDim("X"));
   }
@@ -91,17 +96,18 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
 
 class WriteToArrayInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDescBind &op_desc,
-                  framework::BlockDescBind *block) const override {
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
     auto x_name = op_desc.Input("X")[0];
     auto out_name = op_desc.Output("Out")[0];
     VLOG(10) << "Set Variable " << out_name << " as LOD_TENSOR_ARRAY";
     auto &out = detail::Ref(block->FindRecursiveOrCreateVar(out_name),
                             "Cannot found %s", out_name);
-    out.SetType(framework::VarDesc::LOD_TENSOR_ARRAY);
-    auto &x =
-        detail::Ref(block->FindVarRecursive(x_name), "Cannot found %s", x_name);
-    out.SetDataType(x.GetDataType());
+    out.SetType(framework::proto::VarDesc::LOD_TENSOR_ARRAY);
+    auto *x = block->FindVarRecursive(x_name);
+    if (x != nullptr) {
+      out.SetDataType(x->GetDataType());
+    }
   }
 };
 
@@ -121,29 +127,35 @@ class ReadFromArrayOp : public ArrayOp {
     PADDLE_ENFORCE(out != nullptr, "Out must be set");
     auto *out_tensor = out->GetMutable<framework::LoDTensor>();
     size_t offset = GetOffset(scope, dev_ctx);
-    PADDLE_ENFORCE_LT(offset, x_array.size());
-    framework::CopyFrom(x_array[offset], dev_ctx.GetPlace(), dev_ctx,
-                        out_tensor);
-    out_tensor->set_lod(x_array[offset].lod());
+    if (offset < x_array.size()) {
+      framework::CopyFrom(x_array[offset], dev_ctx.GetPlace(), dev_ctx,
+                          out_tensor);
+      out_tensor->set_lod(x_array[offset].lod());
+    } else {
+      VLOG(10) << "offset " << offset << " >= " << x_array.size();
+    }
   }
 };
 
 class ReadFromArrayProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ReadFromArrayProtoMaker(framework::OpProto *proto,
-                          framework::OpAttrChecker *op_checker)
+  ReadFromArrayProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(TensorArray) the array will be read from.");
     AddInput("I",
              "(Tensor) the subscript index in tensor array. The number of "
              "element should be 1");
     AddOutput("Out", "(LoDTensor) the tensor will be read from.");
-    AddComment(R"DOC(Read a LoDTensor from a LoDTensor Array
+    AddComment(R"DOC(
+ReadFromArray Operator.
 
-Assume T is LoDTensor, i is th e subscript of the array, and A is the array. The
+Read a LoDTensor from a LoDTensor Array.
+
+Assume $T$ is LoDTensor, $i$ is the subscript of the array, and $A$ is the array. The
 equation is
 
-T = A[i]
+$$T = A[i]$$
+
 )DOC");
   }
 };
@@ -163,14 +175,14 @@ class WriteToArrayGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
     grad_op->SetType("read_from_array");
     grad_op->SetInput("I", Input("I"));
     grad_op->SetInput("X", OutputGrad("Out"));
     grad_op->SetOutput("Out", InputGrad("X"));
     grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 
@@ -179,14 +191,14 @@ class ReadFromArrayGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
     grad_op->SetType("write_to_array");
     grad_op->SetInput("I", Input("I"));
     grad_op->SetInput("X", OutputGrad("Out"));
     grad_op->SetOutput("Out", InputGrad("X"));
     grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 

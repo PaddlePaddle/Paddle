@@ -15,17 +15,11 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-template <>
-Eigen::DefaultDevice* DeviceContext::GetEigenDevice<
-    platform::CPUPlace, Eigen::DefaultDevice>() const {
-  return reinterpret_cast<const CPUDeviceContext*>(this)->eigen_device();
-}
-
 CPUDeviceContext::CPUDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
 }
 
-CPUDeviceContext::CPUDeviceContext(CPUPlace place) {
+CPUDeviceContext::CPUDeviceContext(CPUPlace place) : place_(place) {
   eigen_device_.reset(new Eigen::DefaultDevice());
 }
 
@@ -33,15 +27,9 @@ Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
   return eigen_device_.get();
 }
 
-Place CPUDeviceContext::GetPlace() const { return CPUPlace(); }
+Place CPUDeviceContext::GetPlace() const { return place_; }
 
 #ifdef PADDLE_WITH_CUDA
-
-template <>
-Eigen::GpuDevice*
-DeviceContext::GetEigenDevice<platform::GPUPlace, Eigen::GpuDevice>() const {
-  return reinterpret_cast<const CUDADeviceContext*>(this)->eigen_device();
-}
 
 class EigenCudaStreamDevice : public Eigen::StreamInterface {
  public:
@@ -122,10 +110,6 @@ Place CUDADeviceContext::GetPlace() const { return place_; }
 
 void CUDADeviceContext::Wait() const {
   PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
-}
-
-void CUDADeviceContext::Finish() const {
-  Wait();
   PADDLE_ENFORCE(cudaGetLastError());
 }
 
@@ -140,6 +124,22 @@ cublasHandle_t CUDADeviceContext::cublas_handle() const {
 cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
+
+CUDNNDeviceContext::CUDNNDeviceContext(CUDNNPlace place)
+    : CUDADeviceContext(place), place_(place) {
+  PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
+  PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream()));
+}
+
+CUDNNDeviceContext::~CUDNNDeviceContext() {
+  SetDeviceId(place_.device);
+  Wait();
+  PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
+}
+
+Place CUDNNDeviceContext::GetPlace() const { return CUDNNPlace(); }
+
+cudnnHandle_t CUDNNDeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 #endif
 

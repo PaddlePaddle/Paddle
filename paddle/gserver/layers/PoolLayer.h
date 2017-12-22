@@ -38,6 +38,8 @@ protected:
 
   std::string poolType_;
 
+  bool excludeMode_;
+
 public:
   explicit PoolLayer(const LayerConfig& config) : Layer(config) {}
 
