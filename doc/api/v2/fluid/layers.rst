@@ -318,3 +318,9 @@ reduce_sum
 ..  autofunction:: paddle.v2.fluid.layers.reduce_sum
     :noindex:
 
+
+reduce_mean
+---------
+..  autofunction:: paddle.v2.fluid.layers.reduce_mean
+    :noindex:
+
