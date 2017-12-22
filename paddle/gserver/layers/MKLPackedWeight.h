@@ -29,7 +29,7 @@ protected:
   bool transW_;
 
 public:
-  MKLPackedWeight(MatrixPtr weight, bool transW = false) {
+  explicit MKLPackedWeight(MatrixPtr weight, bool transW = false) {
     packedWeight_ = nullptr;
     weight_ = weight->getData();
     height_ = weight->getHeight();
