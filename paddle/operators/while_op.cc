@@ -46,7 +46,7 @@ class WhileOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(cond.dims(), paddle::framework::make_ddim({1}));
 
     framework::Executor executor(dev_ctx);
-    auto *block = Attr<framework::BlockDescBind *>(kStepBlock);
+    auto *block = Attr<framework::BlockDesc *>(kStepBlock);
     auto *program = block->Program();
 
     auto step_scopes =
@@ -82,8 +82,8 @@ class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
               "(StepScopeVar) A vector of local scope, which size equals the "
               "step number of While Op. The i'th scope storages temporary "
               "variables generated in the i'th step.");
-    AddAttr<framework::BlockDescBind *>(kStepBlock,
-                                        "The step block inside WhileOp");
+    AddAttr<framework::BlockDesc *>(kStepBlock,
+                                    "The step block inside WhileOp");
     AddComment(R"DOC(
 )DOC");
   }
@@ -99,7 +99,7 @@ class WhileGradOp : public framework::OperatorBase {
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
     framework::Executor executor(dev_ctx);
-    auto *block = Attr<framework::BlockDescBind *>(kStepBlock);
+    auto *block = Attr<framework::BlockDesc *>(kStepBlock);
     auto *program = block->Program();
 
     auto *step_scopes =
@@ -209,8 +209,8 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *grad = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad = new framework::OpDesc();
     grad->SetType("while_grad");
     grad->SetInput(kParameters, Input(kParameters));
 
@@ -279,14 +279,14 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
     // while operator could be renamed.
     grad->SetAttr("original_output_grad", extra_inputs_list);
 
-    return std::unique_ptr<framework::OpDescBind>(grad);
+    return std::unique_ptr<framework::OpDesc>(grad);
   }
 };
 
 class WhileGradOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDescBind &op_desc,
-                  framework::BlockDescBind *block) const override {
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
     auto p_names = op_desc.Input(kParameters);
     auto pg_names = op_desc.Output(framework::GradVarName(kParameters));
 
