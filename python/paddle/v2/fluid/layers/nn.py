@@ -27,48 +27,81 @@ def fc(input,
     """
     **Fully Connected Layer**
 
-    This layer accepts multiple inputs and applies a linear transformation to each input.
-    If activation type is provided, the corresponding activation function is applied to the
-    output of the linear transformation. For each input :math:`X`, the equation is:
+    The fully connected layer can take multiple tensors as its inputs. It
+    creates a variable (one for each input tensor) called weights for each input
+    tensor, which represents a fully connected weight matrix from each input
+    unit to each output unit. The fully connected layer multiplies each input
+    tensor with its coresponding weight to produce an output Tensor. If
+    multiple input tensors are given, the results of multiple multiplications
+    will be sumed up. If bias_attr is not None, a biases variable will be
+    created and added to the output. Finally, if activation is not None,
+    it will be applied to the output as well.
+
+    This process can be formulated as follows:
 
     .. math::
 
-        Out = Act(WX + b)
+        Out = Act\left({\sum_{i=0}^{N-1}W_iX_i + b}\right)
 
     In the above equation:
 
-        * :math:`X`: Input value, a tensor with rank at least 2.
-        * :math:`W`: Weight, a 2-D tensor with shape [M, N].
-        * :math:`b`: Bias, a 2-D tensor with shape [M, 1].
-        * :math:`Act`: Activation function.
-        * :math:`Out`: Output value, same shape with :math:`X`.
-
-    All the input variables are passed in as local variables to the LayerHelper
-    constructor.
+    * :math:`N`: Number of the input.
+    * :math:`X_i`: The input tensor.
+    * :math:`W`: The weights created by this layer.
+    * :math:`b`: The bias parameter created by this layer (if needed).
+    * :math:`Act`: The activation funtion.
+    * :math:`Out`: The output tensor.
 
     Args:
-       input(Variable|list): Input tensors. Each tensor has a rank of atleast 2
-       size(int): Output size
-       num_flatten_dims(int): Number of columns in input
-       param_attr(ParamAttr|list): The parameters/weights to the FC Layer
-       bias_attr(ParamAttr|list): Bias parameter for the FC layer
-       act(str): Activation type
-       name(str): Name/alias of the function
+       input(Variable|list): The input tensor(s) to the fully connected layer.
+       size(int): The number of output units in the fully connected layer.
+       num_flatten_dims(int): The fc layer can accept an input tensor with more
+                              than two dimensions. If this happens, the
+                              multidimensional tensor will first be flattened
+                              into a 2-dimensional matrix. The parameter
+                              `num_flatten_dims` determines how the input tensor
+                              is flattened: the first `num_flatten_dims`
+                              dimensions will be flatten to form the first
+                              dimension of the final matrix (height of the
+                              matrix), and the rest `rank(X) - num_col_dims`
+                              dimensions are flattened to form the second
+                              dimension of the final matrix (width of the matrix).
+                              For example, suppose `X` is a 6-dimensional tensor
+                              with a shape [2, 3, 4, 5, 6], and
+                              `x_num_col_dims` = 3. Then, the flattened matrix
+                              will have a shape [2 x 3 x 4, 5 x 6] = [24, 30].
+                              By default, `x_num_col_dims` is set to 1.
+       param_attr(ParamAttr|list): The parameter attribute for learnable
+                                   parameters/weights of the fully connected
+                                   layer.
+       param_initializer(ParamAttr|list): The initializer used for the
+                                          weight/parameter. If set None,
+                                          XavierInitializer() will be used.
+       bias_attr(ParamAttr|list): The parameter attribute for the bias parameter
+                                  for this layer. If set None, no bias will be
+                                  added to the output units.
+       bias_initializer(ParamAttr|list): The initializer used for the bias.
+                                        If set None, then ConstantInitializer()
+                                        will be used.
+       act(str): Activation to be applied to the output of the fully connected
+                 layer.
+       name(str): Name/alias of the fully connected layer.
+
 
     Returns:
-        Variable: The tensor variable storing the transformation and \
-                  non-linearity activation result.
+        Variable: The output tensor variable.
 
     Raises:
-        ValueError: If rank of input tensor is less than 2.
+        ValueError: If rank of the input tensor is less than 2.
 
     Examples:
         .. code-block:: python
 
-          data = fluid.layers.data(name='data', shape=[32, 32], dtype='float32')
+          data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
           fc = fluid.layers.fc(input=data, size=1000, act="tanh")
     """
-    helper = LayerHelper('fc', **locals())
+
+    helper = LayerHelper("fc", **locals())
 
     dtype = helper.input_dtype()
 
@@ -88,8 +121,8 @@ def fc(input,
                 "Y": w,
             },
             outputs={"Out": tmp},
-            attrs={'x_num_col_dims': num_flatten_dims,
-                   'y_num_col_dims': 1})
+            attrs={"x_num_col_dims": num_flatten_dims,
+                   "y_num_col_dims": 1})
         mul_results.append(tmp)
 
     # sum
