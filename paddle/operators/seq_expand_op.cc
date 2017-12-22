@@ -59,7 +59,7 @@ This operator expands input(X) according to LOD of input(Y).
 Following are cases to better explain how this works:
 Case 1:
 
-Given 2-level a LoDTensor input(X)
+Given a 2-level LoDTensor input(X)
     X.lod = [[0,       2, 3],
              [0, 1,    3, 4]]
     X.data = [a, b, c, d]
@@ -76,9 +76,8 @@ then we get 2-level LoDTensor
 
 Case 2:
 
-Given a 0-level LoDTensor input(X)
+Given a common Tensor input(X)
     X.data = [a, b, c]
-    X.lod = NULL
     X.dims = [3, 1]
 and input(Y)
     Y.lod = [[0, 2, 3, 6]]
@@ -90,9 +89,8 @@ then we get 1-level LoDTensor
 
 Case 3:
 
-Given a 0-level LoDTensor input(X)
+Given a common Tensor input(X)
     X.data = [[a, b], [c, d], [e, f]]
-    X.lod = NULL
     X.dims = [3, 2]
 and input(Y)
     Y.lod = [[0, 2, 3, 6]]
@@ -148,8 +146,9 @@ class SeqExpandOpGrad : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(seq_expand, ops::SeqExpandOp, ops::SeqExpandOpMaker,
             seq_expand_grad, ops::SeqExpandOpGrad);
-REGISTER_OP_CPU_KERNEL(seq_expand,
-                       ops::SeqExpandKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    seq_expand,
+    ops::SeqExpandKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     seq_expand_grad,
-    ops::SeqExpandGradKernel<paddle::platform::CPUPlace, float>);
+    ops::SeqExpandGradKernel<paddle::platform::CPUDeviceContext, float>);

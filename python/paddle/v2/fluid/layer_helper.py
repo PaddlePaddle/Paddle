@@ -1,7 +1,7 @@
 import copy
 import itertools
 
-from framework import Variable, default_main_program, default_startup_program, \
+from framework import Variable, Parameter, default_main_program, default_startup_program, \
     unique_name, dtype_is_floating
 from paddle.v2.fluid.initializer import Constant, Xavier
 from param_attr import ParamAttr
@@ -122,6 +122,12 @@ class LayerHelper(object):
         return self.main_program.global_block().create_parameter(
             dtype=dtype, shape=shape, **attr.to_kwargs())
 
+    def get_parameter(self, name):
+        param = self.main_program.global_block().var(name)
+        if not isinstance(param, Parameter):
+            raise ValueError("no Parameter name %s found" % name)
+        return param
+
     def create_tmp_variable(self, dtype):
         return self.main_program.current_block().create_var(
             name=unique_name(".".join([self.name, 'tmp'])),
@@ -144,6 +150,13 @@ class LayerHelper(object):
             shape=var.shape,
             persistable=True,
             initializer=initializer)
+
+    @property
+    def to_kwargs(self):
+        return {
+            'main_program': self.main_program,
+            'startup_program': self.startup_program
+        }
 
     def append_bias_op(self, input_var, dim_start=1, dim_end=None):
         """

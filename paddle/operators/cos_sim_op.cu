@@ -16,7 +16,8 @@
 #include "paddle/operators/cos_sim_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(cos_sim,
-                       ops::CosSimKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
-    cos_sim_grad, ops::CosSimGradKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_CUDA_KERNEL(
+    cos_sim, ops::CosSimKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    cos_sim_grad,
+    ops::CosSimGradKernel<paddle::platform::CUDADeviceContext, float>);

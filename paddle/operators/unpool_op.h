@@ -20,7 +20,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class UnpoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -32,15 +32,16 @@ class UnpoolKernel : public framework::OpKernel<T> {
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     T* output_data = out->mutable_data<T>(context.GetPlace());
+    auto& dev_ctx = context.template device_context<DeviceContext>();
     if (output_data) {
-      math::SetConstant<Place, T> set_zero;
-      set_zero(context.device_context(), out, static_cast<T>(0));
+      math::SetConstant<DeviceContext, T> set_zero;
+      set_zero(dev_ctx, out, static_cast<T>(0));
     }
-    math::Unpool2dMaxFunctor<Place, T> unpool2d_max_forward;
-    unpool2d_max_forward(context.device_context(), *in_x, *in_y, out);
+    math::Unpool2dMaxFunctor<DeviceContext, T> unpool2d_max_forward;
+    unpool2d_max_forward(dev_ctx, *in_x, *in_y, out);
   }
 };
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class UnpoolGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -56,15 +57,14 @@ class UnpoolGradKernel : public framework::OpKernel<T> {
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
 
-    auto& device_ctx = context.device_context();
-    math::SetConstant<Place, T> zero;
+    auto& device_ctx = context.template device_context<DeviceContext>();
+    math::SetConstant<DeviceContext, T> zero;
     if (in_x_grad) {
       in_x_grad->mutable_data<T>(context.GetPlace());
       zero(device_ctx, in_x_grad, static_cast<T>(0));
     }
-    math::Unpool2dMaxGradFunctor<Place, T> unpool2d_max_backward;
-    unpool2d_max_backward(context.device_context(), *in_x, *in_y, *out,
-                          *out_grad, in_x_grad);
+    math::Unpool2dMaxGradFunctor<DeviceContext, T> unpool2d_max_backward;
+    unpool2d_max_backward(device_ctx, *in_x, *in_y, *out, *out_grad, in_x_grad);
   }
 };
 }  // namespace operators

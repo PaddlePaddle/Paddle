@@ -50,7 +50,7 @@ class Pool3dOpMaker : public framework::OpProtoAndCheckerMaker {
                 framework::OpAttrChecker* op_checker);
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class PoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -67,41 +67,41 @@ class PoolKernel : public framework::OpKernel<T> {
         ksize[i] = static_cast<int>(in_x->dims()[i + 2]);
       }
     }
-
+    auto& dev_ctx = context.template device_context<DeviceContext>();
     switch (ksize.size()) {
       case 2: {
         if (pooling_type == "max") {
           paddle::operators::math::Pool2dFunctor<
-              Place, paddle::operators::math::MaxPool<T>, T>
+              DeviceContext, paddle::operators::math::MaxPool<T>, T>
               pool2d_forward;
           paddle::operators::math::MaxPool<T> pool_process;
-          pool2d_forward(context.device_context(), *in_x, ksize, strides,
-                         paddings, pool_process, out);
+          pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings, pool_process,
+                         out);
 
         } else if (pooling_type == "avg") {
           paddle::operators::math::Pool2dFunctor<
-              Place, paddle::operators::math::AvgPool<T>, T>
+              DeviceContext, paddle::operators::math::AvgPool<T>, T>
               pool2d_forward;
           paddle::operators::math::AvgPool<T> pool_process;
-          pool2d_forward(context.device_context(), *in_x, ksize, strides,
-                         paddings, pool_process, out);
+          pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings, pool_process,
+                         out);
         }
       } break;
       case 3: {
         if (pooling_type == "max") {
           paddle::operators::math::Pool3dFunctor<
-              Place, paddle::operators::math::MaxPool<T>, T>
+              DeviceContext, paddle::operators::math::MaxPool<T>, T>
               pool3d_forward;
           paddle::operators::math::MaxPool<T> pool_process;
-          pool3d_forward(context.device_context(), *in_x, ksize, strides,
-                         paddings, pool_process, out);
+          pool3d_forward(dev_ctx, *in_x, ksize, strides, paddings, pool_process,
+                         out);
         } else if (pooling_type == "avg") {
           paddle::operators::math::Pool3dFunctor<
-              Place, paddle::operators::math::AvgPool<T>, T>
+              DeviceContext, paddle::operators::math::AvgPool<T>, T>
               pool3d_forward;
           paddle::operators::math::AvgPool<T> pool_process;
-          pool3d_forward(context.device_context(), *in_x, ksize, strides,
-                         paddings, pool_process, out);
+          pool3d_forward(dev_ctx, *in_x, ksize, strides, paddings, pool_process,
+                         out);
         }
       } break;
       default: { PADDLE_THROW("Pool op only supports 2D and 3D input."); }
@@ -109,7 +109,7 @@ class PoolKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class PoolGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -130,42 +130,43 @@ class PoolGradKernel : public framework::OpKernel<T> {
         ksize[i] = static_cast<int>(in_x->dims()[i + 2]);
       }
     }
-
+    auto& dev_ctx = context.template device_context<DeviceContext>();
     if (in_x_grad) {
       in_x_grad->mutable_data<T>(context.GetPlace());
       auto temp = framework::EigenVector<T>::Flatten(*in_x_grad);
-      temp.device(context.GetEigenDevice<Place>()) =
+      temp.device(
+          *context.template device_context<DeviceContext>().eigen_device()) =
           temp.constant(static_cast<T>(0));
 
       switch (ksize.size()) {
         case 2: {
           if (pooling_type == "max") {
-            paddle::operators::math::MaxPool2dGradFunctor<Place, T>
+            paddle::operators::math::MaxPool2dGradFunctor<DeviceContext, T>
                 pool2d_backward;
-            pool2d_backward(context.device_context(), *in_x, *out, *out_grad,
-                            ksize, strides, paddings, in_x_grad);
+            pool2d_backward(dev_ctx, *in_x, *out, *out_grad, ksize, strides,
+                            paddings, in_x_grad);
           } else if (pooling_type == "avg") {
             paddle::operators::math::Pool2dGradFunctor<
-                Place, paddle::operators::math::AvgPoolGrad<T>, T>
+                DeviceContext, paddle::operators::math::AvgPoolGrad<T>, T>
                 pool2d_backward;
             paddle::operators::math::AvgPoolGrad<T> pool_process;
-            pool2d_backward(context.device_context(), *in_x, *out, *out_grad,
-                            ksize, strides, paddings, pool_process, in_x_grad);
+            pool2d_backward(dev_ctx, *in_x, *out, *out_grad, ksize, strides,
+                            paddings, pool_process, in_x_grad);
           }
         } break;
         case 3: {
           if (pooling_type == "max") {
-            paddle::operators::math::MaxPool3dGradFunctor<Place, T>
+            paddle::operators::math::MaxPool3dGradFunctor<DeviceContext, T>
                 pool3d_backward;
-            pool3d_backward(context.device_context(), *in_x, *out, *out_grad,
-                            ksize, strides, paddings, in_x_grad);
+            pool3d_backward(dev_ctx, *in_x, *out, *out_grad, ksize, strides,
+                            paddings, in_x_grad);
           } else if (pooling_type == "avg") {
             paddle::operators::math::Pool3dGradFunctor<
-                Place, paddle::operators::math::AvgPoolGrad<T>, T>
+                DeviceContext, paddle::operators::math::AvgPoolGrad<T>, T>
                 pool3d_backward;
             paddle::operators::math::AvgPoolGrad<T> pool_process;
-            pool3d_backward(context.device_context(), *in_x, *out, *out_grad,
-                            ksize, strides, paddings, pool_process, in_x_grad);
+            pool3d_backward(dev_ctx, *in_x, *out, *out_grad, ksize, strides,
+                            paddings, pool_process, in_x_grad);
           }
         } break;
         default: { PADDLE_THROW("Pool op only supports 2D and 3D input."); }

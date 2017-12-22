@@ -28,7 +28,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 void PrepareSamples(const framework::ExecutionContext& context) {
   auto label = context.Input<Tensor>("Label");
   const int64_t* label_data = label->data<int64_t>();
@@ -49,7 +49,7 @@ void PrepareSamples(const framework::ExecutionContext& context) {
 
   int num_label = label_dims.size() == 2 ? label_dims[1] : 1;
   int index = 0;
-  for (size_t i = 0; i < label_dims[0]; ++i) {
+  for (int64_t i = 0; i < label_dims[0]; ++i) {
     int j = 0;
     for (; j < num_label; ++j) {
       sample_labels_data[index++] = label_data[i * num_label + j];
@@ -67,11 +67,11 @@ void PrepareSamples(const framework::ExecutionContext& context) {
   }
 }
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class NCEKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PrepareSamples<Place, T>(context);
+    PrepareSamples<DeviceContext, T>(context);
     auto sample_labels = context.Output<Tensor>("SampleLabels");
     const int64_t* sample_labels_data = sample_labels->data<int64_t>();
     auto sample_out = context.Output<Tensor>("SampleLogits");
@@ -86,7 +86,7 @@ class NCEKernel : public framework::OpKernel<T> {
     T* out_data = out->mutable_data<T>(context.GetPlace());
     int num_neg_samples = context.Attr<int>("num_neg_samples");
     int num_total_classes = context.Attr<int>("num_total_classes");
-    int num_true_class = 1;
+    int64_t num_true_class = 1;
     if (label != nullptr) {
       num_true_class = label->dims()[1];
     }
@@ -95,18 +95,18 @@ class NCEKernel : public framework::OpKernel<T> {
     auto bias = context.Input<Tensor>("Bias");
     if (bias != nullptr) {
       const T* bias_data = bias->data<T>();
-      for (size_t i = 0; i < sample_labels->numel(); ++i) {
+      for (int64_t i = 0; i < sample_labels->numel(); ++i) {
         sample_out_data[i] = bias_data[sample_labels_data[i]];
       }
     } else {
-      for (size_t i = 0; i < sample_labels->numel(); ++i) {
+      for (int64_t i = 0; i < sample_labels->numel(); ++i) {
         sample_out_data[i] = 0;
       }
     }
     // forward mul
     auto input_mat = EigenMatrix<T>::From(*(context.Input<Tensor>("Input")));
     auto weight_mat = EigenMatrix<T>::From(*(context.Input<Tensor>("Weight")));
-    for (size_t i = 0; i < sample_labels->numel(); ++i) {
+    for (int64_t i = 0; i < sample_labels->numel(); ++i) {
       Eigen::Tensor<T, 0, Eigen::RowMajor, Eigen::DenseIndex> result =
           (input_mat.chip((int)(i / sample_labels->dims()[1]), 0) *
            weight_mat.chip(sample_labels_data[i], 0))
@@ -115,8 +115,8 @@ class NCEKernel : public framework::OpKernel<T> {
       sample_out_data[i] = (1. / (1. + exp(-sample_out_data[i])));
     }
     // forward cost
-    for (size_t i = 0; i < sample_labels->dims()[0]; ++i) {
-      size_t j = 0;
+    for (int64_t i = 0; i < sample_labels->dims()[0]; ++i) {
+      int64_t j = 0;
       out_data[i] = 0;
       T w = sample_weight == nullptr ? 1. : sample_weight_data[i];
       // for true classes
@@ -135,7 +135,7 @@ class NCEKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class NCEGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -162,7 +162,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
     T* sample_grad_data =
         sample_grad.mutable_data<T>(sample_labels->dims(), context.GetPlace());
     // backward cost
-    for (size_t i = 0; i < sample_labels->numel(); ++i) {
+    for (int64_t i = 0; i < sample_labels->numel(); ++i) {
       T o = sample_out_data[i];
       T w = sample_weight == nullptr
                 ? 1
@@ -177,7 +177,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
     if (d_bias != nullptr) {
       T* d_bias_data = d_bias->mutable_data<T>(context.GetPlace());
       std::fill(d_bias_data, d_bias_data + d_bias->numel(), 0.0);
-      for (size_t i = 0; i < sample_labels->numel(); ++i) {
+      for (int64_t i = 0; i < sample_labels->numel(); ++i) {
         d_bias_data[sample_labels_data[i]] += sample_grad_data[i];
       }
     }
@@ -188,7 +188,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
       std::fill(d_w_data, d_w_data + d_w->numel(), 0.0);
       auto d_w_matrix = EigenMatrix<T>::From(*d_w);
       auto x_matrix = EigenMatrix<T>::From(*(context.Input<Tensor>("Input")));
-      for (size_t i = 0; i < sample_labels->numel(); ++i) {
+      for (int64_t i = 0; i < sample_labels->numel(); ++i) {
         d_w_matrix.chip(sample_labels_data[i], 0) +=
             x_matrix.chip((int)(i / sample_labels->dims()[1]), 0) *
             sample_grad_data[i];
@@ -200,7 +200,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
       d_x->mutable_data<T>(context.GetPlace());
       auto d_x_matrix = EigenMatrix<T>::From(*d_x);
       auto w_matrix = EigenMatrix<T>::From(*(context.Input<Tensor>("Weight")));
-      for (size_t i = 0; i < sample_labels->numel(); ++i) {
+      for (int64_t i = 0; i < sample_labels->numel(); ++i) {
         d_x_matrix.chip((int)(i / sample_labels->dims()[1]), 0) +=
             w_matrix.chip(sample_labels_data[i], 0) * sample_grad_data[i];
       }

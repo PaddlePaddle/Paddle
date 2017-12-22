@@ -16,10 +16,14 @@ cmake_minimum_required(VERSION 3.0)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
+SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
+SET(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 
 include(system)
 
 project(paddle CXX C Go)
+message(STATUS "CXX compiler: " ${CMAKE_CXX_COMPILER} ", version: " ${CMAKE_CXX_COMPILER_VERSION})
+message(STATUS "C compiler: " ${CMAKE_C_COMPILER} ", version: " ${CMAKE_C_COMPILER_VERSION})
 
 find_package(Sphinx)
 if(NOT CMAKE_CROSSCOMPILING)
@@ -56,6 +60,7 @@ option(GLIDE_INSTALL    "Download and install go dependencies "         ON)
 option(USE_NNPACK       "Compile PaddlePaddle with NNPACK library"      OFF)
 option(WITH_DISTRIBUTE  "Compile with grpc distributed support"         OFF)
 option(USE_EIGEN_FOR_BLAS   "Use matrix multiplication in Eigen"        OFF)
+option(WITH_ARM_FP16    "Use half precision support on armv8.2-a cpu"   OFF)
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)

@@ -35,7 +35,7 @@ inline T tanh(T x) {
   return 2. * sigmoid(2. * x) - 1.;
 }
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class LstmUnitKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -78,7 +78,7 @@ class LstmUnitKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class LstmUnitGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
