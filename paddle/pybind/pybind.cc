@@ -359,8 +359,8 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
-              const platform::DeviceContext &dev_ctx) {
-             self.Run(scope, dev_ctx);
+              const platform::Place &place) {
+             self.Run(scope, place);
              dev_ctx.Wait();
            })
       .def("type",
