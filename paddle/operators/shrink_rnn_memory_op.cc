@@ -54,8 +54,7 @@ class ShrinkRNNMemoryOp : public ArrayOp {
 
 class ShrinkRNNMemoryOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ShrinkRNNMemoryOpProtoMaker(framework::OpProto *proto,
-                              framework::OpAttrChecker *op_checker)
+  ShrinkRNNMemoryOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(LoDTensor) The RNN step memory to be shrinked.");
     AddInput("RankTable", "(LoDRankTable) The lod_rank_table of dynamic RNN.");
@@ -137,14 +136,14 @@ class ShrinkRNNGradOpMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *op = new framework::OpDesc();
     op->SetType("shrink_rnn_memory_grad");
     op->SetInput("X", Input("X"));
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDescBind>(op);
+    return std::unique_ptr<framework::OpDesc>(op);
   }
 };
 
