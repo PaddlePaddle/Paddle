@@ -25,7 +25,7 @@ void BindConstValue(pybind11::module& m) {
   m.def("kZeroVarSuffix", [] { return framework::kZeroVarSuffix; });
 
   // for kernel_hint key
-  m.def("kForceCPU", [] { return framework::kForceCPU; });
+  m.def("kUseCPU", [] { return framework::kUseCPU; });
   m.def("kUseCUDNN", [] { return framework::kUseCUDNN; });
   m.def("kUseMKLDNN", [] { return framework::kUseMKLDNN; });
 }

@@ -17,7 +17,7 @@ TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 
-FORCE_CPU = core.kForceCPU()
+USE_CPU = core.kUseCPU()
 USE_CUDNN = core.kUseMKLDNN()
 USE_MKLDNN = core.kUseMKLDNN()
 

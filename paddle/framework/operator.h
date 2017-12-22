@@ -54,7 +54,7 @@ constexpr char kGradVarSuffix[] = "@GRAD";
 constexpr char kZeroVarSuffix[] = "@ZERO";
 
 // define some kernel hint
-const std::string kForceCPU = "force_cpu";
+const std::string kUseCPU = "use_cpu";
 const std::string kUseCUDNN = "use_cudnn";
 const std::string kUseMKLDNN = "use_mkldnn";
 
