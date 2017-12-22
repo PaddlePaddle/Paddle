@@ -13,23 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/op_registry.h"
 
 namespace paddle {
-namespace operators {
+namespace framework {
 
-template <typename DeviceContext, typename T>
-class BatchNormKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override;
+enum DataLayout {
+  kNHWC = 0,
+  kNCHW = 1,
+  kAnyLayout = 2,
 };
 
-template <typename DeviceContext, typename T>
-class BatchNormGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override;
-};
+inline DataLayout StringToDataLayout(const std::string& str) {
+  if (str == "NHWC" || str == "nhwc") {
+    return DataLayout::kNHWC;
+  } else if (str == "NCHW" || str == "nchw") {
+    return DataLayout::kNCHW;
+  } else {
+    PADDLE_THROW("Unknown storage order string: %s", str);
+  }
+}
 
-}  // namespace operators
+}  // namespace framework
 }  // namespace paddle
