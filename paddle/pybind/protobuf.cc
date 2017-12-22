@@ -255,6 +255,7 @@ void BindOpDesc(py::module &m) {
   op_desc
       .def("__init__", [](OpDescBind &self) { new (&self) OpDescBind(); },
            py::return_value_policy::reference)
+      .def("copy_from", &OpDescBind::CopyFrom)
       .def("type", &OpDescBind::Type)
       .def("set_type", &OpDescBind::SetType)
       .def("input", &OpDescBind::Input)
