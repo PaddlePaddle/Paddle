@@ -851,9 +851,51 @@ def conv2d_transpose(input,
                      dilation=None,
                      param_attr=None):
     """
-    The transpose of conv2d layer.
+    **Convlution2D transpose layer**
 
-    This layer is also known as deconvolution layer.
+    The convolution2D layer calculates the output based on the input, filter
+    and strides, paddings, dilations, groups parameters. Input(Input) and Output(Output)
+    are in NCHW format. Where N is batch size, C is the number of channels, H is the height
+    of the feature, and W is the width of the feature.
+    The details of convolution transpose layer, please refer to the following explanation
+    and references therein
+    <http://datascience.stackexchange.com/questions/6107/what-are-deconvolutional-layers/>`_ .
+
+    For each input :math:`X`, the equation is:
+
+
+    .. math::
+
+        Out = W \\ast X
+
+   In the above equation:
+
+        * :math:`X`: Input value, a tensor with NCHW format.
+        * :math:`W`: Filter value, a tensor with MCHW format.
+        * :math: \\ast : Convolution transpose operation.
+        * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+
+    Example:
+
+        - Input:
+
+           Input shape: $(N, C_{in}, H_{in}, W_{in})$
+
+           Filter shape: $(C_{in}, C_{out}, H_f, W_f)$
+
+        - Output:
+
+           Output shape: $(N, C_{out}, H_{out}, W_{out})$
+
+        Where
+
+     .. math::
+
+           H_{out} = (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\\\
+           W_{out} = (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1
+
+    All the input variables are passed in as local variables to the LayerHelper
+    constructor.
 
     Args:
         input(Variable): The input image with [N, C, H, W] format.
@@ -876,11 +918,19 @@ def conv2d_transpose(input,
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation.
         param_attr: Parameter Attribute.
-        main_program(Program): the main program
-        startup_program(Program): the startup program
 
     Returns:
-        Variable: Output image.
+        Variable: The tensor variable storing the convolution transpose result.
+
+    Raises:
+        ValueError: If the shapes of input, filter_size, stride, padding and groups mismatch.
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          conv2d = fluid.layers.conv2d_transpose(input=data, num_filters=2, filter_size=3)
+
     """
     helper = LayerHelper("conv2d_transpose", **locals())
     if not isinstance(input, Variable):
