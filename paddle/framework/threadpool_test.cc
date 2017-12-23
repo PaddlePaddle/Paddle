@@ -29,18 +29,23 @@ void do_sum(framework::ThreadPool* pool, std::atomic<int>& sum, int cnt) {
 
 TEST(ThreadPool, ConcurrentInit) {
   framework::ThreadPool* pool;
-  std::thread t1([&pool]() { pool = framework::ThreadPool::GetInstance(); });
-  std::thread t2([&pool]() { pool = framework::ThreadPool::GetInstance(); });
-  t1.join();
-  t2.join();
+  int concurrent_cnt = 50;
+  std::vector<std::thread> threads;
+  for (int i = 0; i < concurrent_cnt; ++i) {
+    std::thread t([&pool]() { pool = framework::ThreadPool::GetInstance(); });
+    threads.push_back(std::move(t));
+  }
+  for (int i = 0; i < concurrent_cnt; ++i) {
+    threads[i].join();
+  }
 }
 
 TEST(ThreadPool, ConcurrentStart) {
   framework::ThreadPool* pool = framework::ThreadPool::GetInstance();
   std::atomic<int> sum(0);
   int cnt1 = 10, cnt2 = 20;
-  std::thread t1(do_sum, pool, std::ref(sum), 10);
-  std::thread t2(do_sum, pool, std::ref(sum), 20);
+  std::thread t1(do_sum, pool, std::ref(sum), cnt1);
+  std::thread t2(do_sum, pool, std::ref(sum), cnt2);
   t1.join();
   t2.join();
   pool->Wait();
