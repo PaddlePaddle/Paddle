@@ -489,34 +489,40 @@ def conv2d(input,
     of the feature, and W is the width of the feature.
     The details of convolution layer, please refer UFLDL's `convolution,
     <http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/>`_ .
-    If bias_attr and activation type are provided, bias is added to the output of the convolution,
+    If bias attribution and activation type are provided, bias is added to the output of the convolution,
     and the corresponding activation function is applied to the final result.
     For each input :math:`X`, the equation is:
 
+
     .. math::
 
-        Out = \sigma (W\ast X + b)
+        Out = \sigma (W \\ast X + b)
 
-    In the above equation:
+   In the above equation:
 
         * :math:`X`: Input value, a tensor with NCHW format.
         * :math:`W`: Filter value, a tensor with MCHW format.
-        * :math:`b`: Bias, .
-        * :math:\sigma : Activation function.
+        * :math: \\ast : Convolution operation.
+        * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
+        * :math: \\sigma : Activation function.
         * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
 
-        Input:
+        - Input:
            Input shape: $(N, C_{in}, H_{in}, W_{in})$
+
            Filter shape: $(C_{out}, C_{in}, H_f, W_f)$
-        Output:
+
+        - Output:
            Output shape: $(N, C_{out}, H_{out}, W_{out})$
         Where
-        $$
-           H_{out}= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]}+ 1 \\
+     .. math::
+
+           H_{out}= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]}+ 1
+
            W_{out}= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]}+ 1
-        $$
+
 
     All the input variables are passed in as local variables to the LayerHelper
     constructor.
@@ -537,10 +543,13 @@ def conv2d(input,
         Variable: The tensor variable storing the convolution and \
                   non-linearity activation result.
 
+    Raises:
+        ValueError: If the shapes of input, filter_size, stride, padding and groups mismatch.
+
     Examples:
         .. code-block:: python
 
-          data = fluid.layers.data(name='data', shape=[3,32, 32], dtype='float32')
+          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
           conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
     """
 
