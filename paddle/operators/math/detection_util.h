@@ -266,50 +266,64 @@ bool SortScorePairDescend(const std::pair<float, T>& pair1,
 }
 
 template <typename DeviceContext, typename T>
-int TransposeFromNCHWToNHWC(const DeviceContext& ctx,
+int TransposeFromNCHWToNHWC(const platform::Place& dst_place,
+                            const DeviceContext& ctx,
                             const framework::Tensor& src,
-                            framework::Tensor& dst, int dst_offset) {
+                            framework::Tensor& dst, int dst_total_size,
+                            int dst_offset) {
+  int batch_size = src.dims()[0];
   std::vector<int64_t> shape_vec(
       {src.dims()[0], src.dims()[2], src.dims()[3], src.dims()[1]});
   auto shape = framework::make_ddim(shape_vec);
-  framework::Tensor in_p_tensor_transpose;
-  in_p_tensor_transpose.mutable_data<T>(shape, ctx.GetPlace());
-
+  framework::Tensor src_transpose;
+  src_transpose.mutable_data<T>(shape, dst_place);
   std::vector<int> shape_axis({0, 2, 3, 1});
   math::Transpose<DeviceContext, T, 4> trans4;
+  trans4(ctx, src, &src_transpose, shape_axis);
 
-  trans4(ctx, src, &in_p_tensor_transpose, shape_axis);
+  auto src_stride = framework::stride(src.dims());
 
-  const T* src_data = in_p_tensor_transpose.data<T>();
-  auto src_size = in_p_tensor_transpose.numel();
-  T* dst_data = dst.mutable_data<T>(ctx.GetPlace());
+  for (int i = 0; i < batch_size; ++i) {
+    int out_offset = i * (dst_total_size / batch_size) + dst_offset;
+    framework::Tensor src_i = src_transpose.Slice(i, i + 1);
 
-  std::copy(src_data, src_data + src_size, dst_data + dst_offset);
+    src_i.Resize(framework::make_ddim({1, src_i.numel()}));
 
-  return src_size;
+    StridedMemcpy<T>(ctx, src_i.data<T>(), framework::stride(src_i.dims()),
+                     src_i.dims(), framework::stride(dst.dims()),
+                     dst.data<T>() + out_offset);
+  }
+
+  return src_stride[0];
 }
 
 template <typename DeviceContext, typename T>
-int TransposeFromNHWCToNCHW(const DeviceContext& ctx,
-                            const framework::Tensor& src, int src_offset,
-                            framework::Tensor& dst) {
+int TransposeFromNHWCToNCHW(const platform::Place& dst_place,
+                            const DeviceContext& ctx,
+                            const framework::Tensor& src, int src_total_size,
+                            int src_offset, framework::Tensor& dst) {
+  int batch_size = dst.dims()[0];
+
+  framework::Tensor dst_transpose;
   std::vector<int64_t> shape_vec(
       {dst.dims()[0], dst.dims()[3], dst.dims()[1], dst.dims()[2]});
-  framework::DDim shape(framework::make_ddim(shape_vec));
-  framework::Tensor out_p_tensor_transpose;
-  out_p_tensor_transpose.mutable_data<T>(shape, ctx.GetPlace());
+  dst_transpose.mutable_data<T>(framework::make_ddim(shape_vec), dst_place);
+  auto dst_stride = framework::stride(dst.dims());
 
-  const T* src_data = src.data<T>();
-  auto dst_size = framework::stride(dst.dims())[0];
-  T* dst_data = dst.mutable_data<T>(ctx.GetPlace());
+  for (int i = 0; i < batch_size; ++i) {
+    int in_offset = i * (src_total_size / batch_size) + src_offset;
+    framework::Tensor dst_i = dst_transpose.Slice(i, i + 1);
 
-  std::copy(src_data + src_offset, src_data + src_offset + dst_size, dst_data);
+    dst_i.Resize(framework::make_ddim({1, dst_stride[0]}));
+    StridedMemcpy<T>(ctx, src.data<T>() + in_offset,
+                     framework::stride(src.dims()), src.dims(),
+                     framework::stride(dst_i.dims()), dst_i.data<T>());
+  }
 
   std::vector<int> shape_axis({0, 3, 1, 2});
   math::Transpose<DeviceContext, T, 4> trans4;
-  trans4(ctx, out_p_tensor_transpose, &dst, shape_axis);
-
-  return dst_size;
+  trans4(ctx, dst_transpose, &dst, shape_axis);
+  return dst_stride[0];
 }
 
 }  // namespace math

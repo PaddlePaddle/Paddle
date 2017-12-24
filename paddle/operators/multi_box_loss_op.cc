@@ -82,8 +82,7 @@ class MultiBoxLossGradOp : public framework::OperatorWithKernel {
 
 class MultiBoxLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MultiBoxLossOpMaker(framework::OpProto* proto,
-                      framework::OpAttrChecker* op_checker)
+  MultiBoxLossOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Loc", "The input predict locations.").AsDuplicable();
     AddInput("Conf", "The input priorbox confidence..").AsDuplicable();
@@ -114,9 +113,6 @@ class MultiBoxLossOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(3);
     AddAttr<int>("background_label_id", "The background class index.")
         .SetDefault(-1);
-    // AddOutput("MatchNum",
-    //           "(Tensor), ")
-    //     .AsIntermediate();
     AddComment(R"DOC(
 MultiBoxLoss operator
 Compute the location loss and the confidence loss for ssd.

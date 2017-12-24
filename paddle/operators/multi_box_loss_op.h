@@ -36,9 +36,9 @@ T MultiBoxLossSmoothL1(const framework::ExecutionContext& ctx,
   const T* label_data = label.data<T>();
 
   T cost = 0.0;
-  for (size_t i = 0; i < sample_num; ++i, out_data += dim, label_data += dim) {
+  for (int i = 0; i < sample_num; ++i, out_data += dim, label_data += dim) {
     T cost_i = 0.0;
-    for (size_t j = 0; j < dim; ++j) {
+    for (int j = 0; j < dim; ++j) {
       T abs = std::fabs(out_data[j] - label_data[j]);
       cost_i *= dest_scale;
       if (abs < 1.0)
@@ -82,6 +82,9 @@ class MultiBoxLossOpKernel : public framework::OpKernel<T> {
     int batch_size = ins_loc[0]->dims()[0];
     int prior_num = in_priorbox->numel() / 8;
 
+    platform::CPUPlace cpu_place;
+    platform::CPUDeviceContext cpu_ctx(cpu_place);
+
     framework::Tensor loc_buffer_cpu;
     framework::Tensor conf_buffer_cpu;
 
@@ -92,27 +95,32 @@ class MultiBoxLossOpKernel : public framework::OpKernel<T> {
       conf_size_sum += ins_conf[i]->numel();
     }
 
+    PADDLE_ENFORCE_EQ(
+        conf_size_sum, batch_size * prior_num * class_num,
+        "Sum of the sizes of inputs(conf) and batch_size * prior_num * "
+        "class_num must be the same.");
+
     auto loc_buffer_dim = framework::make_ddim({1, loc_size_sum});
     loc_buffer_cpu.mutable_data<T>(loc_buffer_dim, platform::CPUPlace());
 
     auto conf_buffer_dim = framework::make_ddim({1, conf_size_sum});
     conf_buffer_cpu.mutable_data<T>(conf_buffer_dim, platform::CPUPlace());
 
+    math::SetConstant<platform::CPUDeviceContext, T> set_constant;
+    set_constant(cpu_ctx, &loc_buffer_cpu, 0);
+    set_constant(cpu_ctx, &conf_buffer_cpu, 0);
+
     int loc_offset = 0;
     int conf_offset = 0;
-
-    platform::CPUPlace cpu_place;
-    platform::CPUDeviceContext cpu_ctx(cpu_place);
 
     for (int i = 0; i < input_num; ++i) {
       auto in_loc = ins_loc[i];
       auto in_conf = ins_conf[i];
 
+      framework::Tensor loc;
+      framework::Tensor conf;
+
       if (platform::is_gpu_place(ctx.GetPlace())) {
-        framework::Tensor loc;
-        framework::Tensor conf;
-        loc.mutable_data<T>(in_loc->dims(), platform::CPUPlace());
-        conf.mutable_data<T>(in_conf->dims(), platform::CPUPlace());
         framework::CopyFrom(*in_loc, platform::CPUPlace(), ctx.device_context(),
                             &loc);
         framework::CopyFrom(*in_conf, platform::CPUPlace(),
@@ -120,17 +128,21 @@ class MultiBoxLossOpKernel : public framework::OpKernel<T> {
 
         loc_offset +=
             math::TransposeFromNCHWToNHWC<platform::CPUDeviceContext, T>(
-                cpu_ctx, loc, loc_buffer_cpu, loc_offset);
+                platform::CPUPlace(), cpu_ctx, loc, loc_buffer_cpu,
+                loc_size_sum, loc_offset);
         conf_offset +=
             math::TransposeFromNCHWToNHWC<platform::CPUDeviceContext, T>(
-                cpu_ctx, conf, conf_buffer_cpu, conf_offset);
+                platform::CPUPlace(), cpu_ctx, conf, conf_buffer_cpu,
+                conf_size_sum, conf_offset);
       } else {
         loc_offset +=
             math::TransposeFromNCHWToNHWC<platform::CPUDeviceContext, T>(
-                cpu_ctx, *in_loc, loc_buffer_cpu, loc_offset);
+                platform::CPUPlace(), cpu_ctx, *in_loc, loc_buffer_cpu,
+                loc_size_sum, loc_offset);
         conf_offset +=
             math::TransposeFromNCHWToNHWC<platform::CPUDeviceContext, T>(
-                cpu_ctx, *in_conf, conf_buffer_cpu, conf_offset);
+                platform::CPUPlace(), cpu_ctx, *in_conf, conf_buffer_cpu,
+                conf_size_sum, conf_offset);
       }
     }
 
@@ -209,7 +221,6 @@ class MultiBoxLossOpKernel : public framework::OpKernel<T> {
       }
     }
 
-
     T loss = loc_loss + conf_loss;
 
     out_loss->mutable_data<T>(ctx.GetPlace());
@@ -218,20 +229,19 @@ class MultiBoxLossOpKernel : public framework::OpKernel<T> {
       T* loss_data =
           loss_cpu.mutable_data<T>(out_loss->dims(), platform::CPUPlace());
       loss_data[0] = loss;
-      framework::CopyFrom(loss_cpu, platform::CPUPlace(), ctx.device_context(),
+      framework::CopyFrom(loss_cpu, ctx.GetPlace(), ctx.device_context(),
                           out_loss);
     } else {
       T* loss_data = out_loss->mutable_data<T>(ctx.GetPlace());
       loss_data[0] = loss;
     }
-
     out_inter_couter->mutable_data<int>(platform::CPUPlace());
     auto inter_couter = framework::EigenVector<int>::Flatten(*out_inter_couter);
 
     inter_couter(0) = total_match;
     inter_couter(1) = total_neg;
     inter_couter(2) = num_conf;
-  }  // namespace operators
+  }
 
  private:
   void GetMaxConfidenceScores(
@@ -240,9 +250,9 @@ class MultiBoxLossOpKernel : public framework::OpKernel<T> {
       std::vector<std::vector<T>>& all_max_conf_score) const {
     all_max_conf_score.clear();
     const T* conf_data = conf.data<T>();
-    for (size_t i = 0; i < batch_size; ++i) {
+    for (int i = 0; i < batch_size; ++i) {
       std::vector<T> max_conf_score;
-      for (size_t j = 0; j < prior_num; ++j) {
+      for (int j = 0; j < prior_num; ++j) {
         int offset = j * class_num;
         T max_val = -std::numeric_limits<T>::max();
         T max_pos_val = -std::numeric_limits<T>::max();
@@ -253,7 +263,7 @@ class MultiBoxLossOpKernel : public framework::OpKernel<T> {
             max_pos_val = std::max<T>(conf_data[offset + c], max_pos_val);
         }
         T sum = 0.0;
-        for (size_t c = 0; c < class_num; ++c)
+        for (int c = 0; c < class_num; ++c)
           sum += std::exp(conf_data[offset + c] - max_val);
         max_score = std::exp(max_pos_val - max_val) / sum;
         max_conf_score.push_back(max_score);
@@ -277,7 +287,7 @@ class MultiBoxLossOpKernel : public framework::OpKernel<T> {
 
     auto label_lod = label.lod();
     auto label_index = label_lod[0];
-    auto label_data_num = label_lod[0].size();
+    auto label_data_num = static_cast<int>(label_lod[0].size());
 
     total_match = 0;
     total_neg = 0;
@@ -393,31 +403,35 @@ class MultiBoxLossOpKernel : public framework::OpKernel<T> {
     auto label_index = label_lod[0];
 
     size_t count = 0;
-    std::vector<T> conf_pred_data;
     T* conf_prob_data = conf_prob.mutable_data<T>(
         {match_num + neg_num, class_num}, platform::CPUPlace());
-    T* conf_gt_data =
-        conf_gt.mutable_data<T>({match_num + neg_num, 1}, platform::CPUPlace());
+    int64_t* conf_gt_data = conf_gt.mutable_data<int64_t>(
+        {match_num + neg_num, 1}, platform::CPUPlace());
     const T* conf_buffer_data = conf_buffer.data<T>();
 
-    for (size_t n = 0; n < batch_size; ++n) {
-      for (size_t i = 0; i < prior_num; ++i) {
+    platform::CPUPlace cpu_place;
+    platform::CPUDeviceContext cpu_ctx(cpu_place);
+
+    math::SetConstant<platform::CPUDeviceContext, T> set_constant_t;
+    math::SetConstant<platform::CPUDeviceContext, int64_t> set_constant_i;
+    set_constant_t(cpu_ctx, &conf_prob, 0);
+    set_constant_i(cpu_ctx, &conf_gt, 0);
+
+    for (int n = 0; n < batch_size; ++n) {
+      for (int i = 0; i < prior_num; ++i) {
         if (all_match_indices(n, i) == -1) continue;
         size_t label_offset = (label_index[n] + all_match_indices(n, i)) * 6;
         const int gt_label = (label.data<T>() + label_offset)[0];
+
         conf_gt_data[count] = gt_label;
         size_t conf_offset = n * prior_num * class_num + i * class_num;
         std::copy(conf_buffer_data + conf_offset,
                   conf_buffer_data + conf_offset + class_num,
                   conf_prob_data + count * class_num);
-        conf_pred_data.reserve(conf_pred_data.size() + class_num);
-        conf_pred_data.insert(conf_pred_data.end(),
-                              conf_buffer_data + conf_offset,
-                              conf_buffer_data + conf_offset + class_num);
         ++count;
       }
       // Negative mining samples
-      for (size_t i = 0; i < prior_num; ++i) {
+      for (int i = 0; i < prior_num; ++i) {
         if (all_neg_indices(n, i) == -1) continue;
         conf_gt_data[count] = background_label_id;
         size_t conf_offset =
@@ -425,16 +439,9 @@ class MultiBoxLossOpKernel : public framework::OpKernel<T> {
         std::copy(conf_buffer_data + conf_offset,
                   conf_buffer_data + conf_offset + class_num,
                   conf_prob_data + count * class_num);
-        conf_pred_data.reserve(conf_pred_data.size() + class_num);
-        conf_pred_data.insert(conf_pred_data.end(),
-                              conf_buffer_data + conf_offset,
-                              conf_buffer_data + conf_offset + class_num);
         ++count;
       }
     }
-
-    platform::CPUPlace cpu_place;
-    platform::CPUDeviceContext cpu_ctx(cpu_place);
 
     math::SoftmaxFunctor<platform::CPUDeviceContext, T>()(cpu_ctx, &conf_prob,
                                                           &conf_prob);
@@ -444,10 +451,10 @@ class MultiBoxLossOpKernel : public framework::OpKernel<T> {
         {match_num + neg_num, 1}, platform::CPUPlace());
 
     math::CrossEntropyFunctor<platform::CPUDeviceContext, T>()(
-        cpu_ctx, &conf_loss_out, &conf_prob, &conf_gt, true);
-    int data_count = conf_loss_out.numel();
+        cpu_ctx, &conf_loss_out, &conf_prob, &conf_gt, false);
+
     conf_loss = 0.0;
-    for (int i = 0; i < data_count; ++i) {
+    for (int i = 0; i < conf_loss_out.numel(); ++i) {
       conf_loss += conf_loss_data[i];
     }
     conf_loss = conf_loss / match_num;
@@ -468,9 +475,9 @@ void MultiBoxLossSmoothL1BP(const framework::ExecutionContext& ctx,
   const T* label_data = label.data<T>();
   T* grad_data = grad.mutable_data<T>(platform::CPUPlace());
 
-  for (size_t i = 0; i < sample_num;
+  for (int i = 0; i < sample_num;
        ++i, out_data += dim, grad_data += dim, label_data += dim) {
-    for (size_t j = 0; j < dim; ++j) {
+    for (int j = 0; j < dim; ++j) {
       T val = out_data[j] - label_data[j];
       grad_data[j] *= dest_scale;
       if (std::fabs(val) < 1) {
@@ -501,9 +508,7 @@ class MultiBoxLossGradOpKernel : public framework::OpKernel<T> {
     auto* in_conf_prob = ctx.Input<framework::Tensor>("ConfProb");
 
     auto* in_inter_couter = ctx.Input<framework::Tensor>("InterCounter");
-
     auto inter_couter = framework::EigenVector<int>::Flatten(*in_inter_couter);
-
     int class_num = ctx.template Attr<int>("class_num");
 
     auto* in_all_match_indices =
@@ -516,12 +521,30 @@ class MultiBoxLossGradOpKernel : public framework::OpKernel<T> {
     // int neg_num = inter_couter(1);
     int conf_num = inter_couter(2);
     int prior_num = in_priorbox->numel() / 8;
+    int input_num = ins_loc.size();
 
     framework::Tensor loc_buffer;
     framework::Tensor conf_buffer;
 
-    loc_buffer.mutable_data<T>(in_loc_diff->dims(), platform::CPUPlace());
-    conf_buffer.mutable_data<T>(in_conf_prob->dims(), platform::CPUPlace());
+    int loc_size_sum = 0;
+    int conf_size_sum = 0;
+    for (int i = 0; i < input_num; ++i) {
+      loc_size_sum += ins_loc[i]->numel();
+      conf_size_sum += ins_conf[i]->numel();
+    }
+
+    auto loc_buffer_dim = framework::make_ddim({1, loc_size_sum});
+    loc_buffer.mutable_data<T>(loc_buffer_dim, platform::CPUPlace());
+
+    auto conf_buffer_dim = framework::make_ddim({1, conf_size_sum});
+    conf_buffer.mutable_data<T>(conf_buffer_dim, platform::CPUPlace());
+
+    platform::CPUPlace cpu_place;
+    platform::CPUDeviceContext cpu_ctx(cpu_place);
+
+    math::SetConstant<platform::CPUDeviceContext, T> set_constant;
+    set_constant(cpu_ctx, &loc_buffer, 0);
+    set_constant(cpu_ctx, &conf_buffer, 0);
 
     auto all_match_indices =
         framework::EigenMatrix<const int>::From(*in_all_match_indices);
@@ -533,6 +556,7 @@ class MultiBoxLossGradOpKernel : public framework::OpKernel<T> {
       CalcLocationLossBP(ctx, *in_loc_diff, *in_loc_gt, loc_buffer, match_num,
                          batch_size, prior_num, all_match_indices);
     }
+
     if (conf_num > 1) {
       CalcConfidenceLossBP(ctx, *in_conf_gt, *in_conf_prob, conf_buffer,
                            match_num, conf_num, batch_size, prior_num,
@@ -541,39 +565,51 @@ class MultiBoxLossGradOpKernel : public framework::OpKernel<T> {
 
     int loc_offset = 0;
     int conf_offset = 0;
-    int input_num = d_ins_loc.size();
-
-    // printf("!! 123 \n");
-    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-    platform::CPUPlace cpu_place;
-    platform::CPUDeviceContext cpu_ctx(cpu_place);
 
     for (int i = 0; i < input_num; ++i) {
       auto d_loc = d_ins_loc[i];
       auto d_conf = d_ins_conf[i];
 
-      d_loc->mutable_data<T>(ins_loc[i]->dims(), platform::CPUPlace());
-      d_conf->mutable_data<T>(ins_conf[i]->dims(), platform::CPUPlace());
+      d_loc->mutable_data<T>(ins_loc[i]->dims(), ctx.GetPlace());
+      d_conf->mutable_data<T>(ins_conf[i]->dims(), ctx.GetPlace());
 
-      framework::Tensor loc_g_buffer;
-      framework::Tensor conf_g_buffer;
-      loc_g_buffer.mutable_data<T>(d_loc->dims(), platform::CPUPlace());
-      conf_g_buffer.mutable_data<T>(d_conf->dims(), platform::CPUPlace());
+      math::SetConstant<DeviceContext, T> set_constant;
+      set_constant(ctx.template device_context<DeviceContext>(), d_loc, 0);
+      set_constant(ctx.template device_context<DeviceContext>(), d_conf, 0);
 
-      loc_offset +=
-          math::TransposeFromNHWCToNCHW<platform::CPUDeviceContext, T>(
-              cpu_ctx, loc_buffer, loc_offset, loc_g_buffer);
-      conf_offset +=
-          math::TransposeFromNHWCToNCHW<platform::CPUDeviceContext, T>(
-              cpu_ctx, conf_buffer, conf_offset, conf_g_buffer);
+      if (platform::is_gpu_place(ctx.GetPlace())) {
+        framework::Tensor d_loc_cpu;
+        framework::Tensor d_conf_cpu;
+        d_loc_cpu.mutable_data<T>(d_loc->dims(), platform::CPUPlace());
+        d_conf_cpu.mutable_data<T>(d_conf->dims(), platform::CPUPlace());
 
-      auto d_loc_e = framework::EigenTensor<T, 4>::From(*d_loc);
-      auto loc_g_buffer_e = framework::EigenTensor<T, 4>::From(loc_g_buffer);
-      d_loc_e.device(place) = loc_g_buffer_e;
+        math::SetConstant<platform::CPUDeviceContext, T> set_constant;
+        set_constant(cpu_ctx, &d_loc_cpu, 0);
+        set_constant(cpu_ctx, &d_conf_cpu, 0);
+        loc_offset +=
+            math::TransposeFromNHWCToNCHW<platform::CPUDeviceContext, T>(
+                platform::CPUPlace(), cpu_ctx, loc_buffer, loc_size_sum,
+                loc_offset, d_loc_cpu);
+        conf_offset +=
+            math::TransposeFromNHWCToNCHW<platform::CPUDeviceContext, T>(
+                platform::CPUPlace(), cpu_ctx, conf_buffer, conf_size_sum,
+                conf_offset, d_conf_cpu);
 
-      auto d_conf_e = framework::EigenTensor<T, 4>::From(*d_conf);
-      auto conf_g_buffer_e = framework::EigenTensor<T, 4>::From(conf_g_buffer);
-      d_conf_e.device(place) = conf_g_buffer_e;
+        framework::CopyFrom(d_loc_cpu, ctx.GetPlace(), ctx.device_context(),
+                            d_loc);
+        framework::CopyFrom(d_conf_cpu, ctx.GetPlace(), ctx.device_context(),
+                            d_conf);
+
+      } else {
+        loc_offset +=
+            math::TransposeFromNHWCToNCHW<platform::CPUDeviceContext, T>(
+                platform::CPUPlace(), cpu_ctx, loc_buffer, loc_size_sum,
+                loc_offset, *d_loc);
+        conf_offset +=
+            math::TransposeFromNHWCToNCHW<platform::CPUDeviceContext, T>(
+                platform::CPUPlace(), cpu_ctx, conf_buffer, conf_size_sum,
+                conf_offset, *d_conf);
+      }
     }
   }
 
@@ -589,12 +625,12 @@ class MultiBoxLossGradOpKernel : public framework::OpKernel<T> {
                               0.0);
     // scale gradient
     auto loc_diff_data = loc_diff_buffer.data<T>();
-    for (size_t i = 0; i < match_num * 4; ++i)
+    for (int i = 0; i < match_num * 4; ++i)
       loc_diff_data[i] *= (1. / match_num);
     // Copy gradient back
     size_t count = 0;
-    for (size_t n = 0; n < batch_size; ++n) {
-      for (size_t i = 0; i < prior_num; ++i) {
+    for (int n = 0; n < batch_size; ++n) {
+      for (int i = 0; i < prior_num; ++i) {
         if (all_match_indices(n, i) == -1) continue;
         T* loc_buffer_data = loc_buffer.data<T>() + n * prior_num * 4 + i * 4;
         std::copy(loc_diff_data + count * 4, loc_diff_data + (count + 1) * 4,
@@ -615,15 +651,16 @@ class MultiBoxLossGradOpKernel : public framework::OpKernel<T> {
     framework::CopyFrom(conf_prob, platform::CPUPlace(), ctx.device_context(),
                         &conf_prob_temp);
     auto conf_prob_data = conf_prob_temp.data<T>();
-    auto conf_gt_data = conf_gt.data<T>();
-    for (size_t i = 0; i < conf_num; ++i)
-      conf_prob_data[i * class_num + static_cast<int>(conf_gt_data[i])] -= 1;
+    auto conf_gt_data = conf_gt.data<int64_t>();
+    for (int i = 0; i < conf_num; ++i)
+      conf_prob_data[i * class_num + conf_gt_data[i]] -= 1;
 
-    for (size_t i = 0; i < conf_num * class_num; ++i)
+    for (int i = 0; i < conf_num * class_num; ++i)
       conf_prob_data[i] *= (1. / match_num);
     size_t count = 0;
-    for (size_t n = 0; n < batch_size; ++n) {
-      for (size_t i = 0; i < prior_num; ++i) {
+
+    for (int n = 0; n < batch_size; ++n) {
+      for (int i = 0; i < prior_num; ++i) {
         if (all_match_indices(n, i) == -1) continue;
         T* conf_diff_data =
             conf_buffer.data<T>() + n * prior_num * class_num + i * class_num;
@@ -631,7 +668,7 @@ class MultiBoxLossGradOpKernel : public framework::OpKernel<T> {
                   conf_prob_data + (count + 1) * class_num, conf_diff_data);
         ++count;
       }
-      for (size_t i = 0; i < prior_num; ++i) {
+      for (int i = 0; i < prior_num; ++i) {
         if (all_neg_indices(n, i) == -1) continue;
         int idx = all_neg_indices(n, i);
         T* conf_diff_data =
