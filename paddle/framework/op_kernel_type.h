@@ -22,33 +22,23 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-/*
-Refer to https://stackoverflow.com/questions/35985960/
-c-why-is-boosthash-combine-the-best-way-to-combine-hash-values
-*/
-template <class T>
-inline void HashCombine(const T& v, std::size_t* seed) {
-  std::hash<T> hasher;
-  *seed ^= hasher(v) + 0x9e3779b9 + (*seed << 6) + (*seed >> 2);
-}
-
 struct OpKernelType {
   struct Hash {
     size_t operator()(const OpKernelType& key) const {
-      int place = key.place_.which();
-      int data_type = static_cast<int>(key.data_type_);
-      int data_layout = static_cast<int>(key.data_layout_);
-      int library_type = static_cast<int>(key.library_type_);
-
-      size_t seed = 0;
-      HashCombine(place, &seed);
-      HashCombine(data_type, &seed);
-      HashCombine(data_layout, &seed);
-      HashCombine(library_type, &seed);
-      return seed;
+      int place = key.place_.which() + (1 << LEFT_SHIFT);
+      int data_type =
+          static_cast<int>(key.data_type_) + (1 << (LEFT_SHIFT + 1));
+      int data_layout =
+          static_cast<int>(key.data_layout_) + (1 << (LEFT_SHIFT + 2));
+      int library_type =
+          static_cast<int>(key.library_type_) + (1 << (LEFT_SHIFT + 3));
+      std::hash<int> hasher;
+      return hasher(place + data_type + data_layout + library_type);
     }
   };
 
+  // place, data_type, library_type kinds less than 2^8
+  constexpr static int LEFT_SHIFT = 8;
   proto::DataType data_type_;
   DataLayout data_layout_;
   platform::Place place_;
