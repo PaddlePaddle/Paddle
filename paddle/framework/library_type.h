@@ -22,5 +22,23 @@ namespace framework {
 
 enum LibraryType { kPlain = 0, kMKLDNN = 1, kCUDNN = 2 };
 
+inline std::string LibraryTypeToString(const LibraryType& library_type) {
+  switch (library_type) {
+    case kPlain:
+      return "PLAIN";
+    case kMKLDNN:
+      return "MKLDNN";
+    case kCUDNN:
+      return "CUDNN";
+    default:
+      PADDLE_THROW("unknown LibraryType %d", library_type);
+  }
+}
+
+inline std::ostream& operator<<(std::ostream& out, LibraryType l) {
+  out << LibraryTypeToString(l);
+  return out;
+}
+
 }  // namespace
 }  // framework
