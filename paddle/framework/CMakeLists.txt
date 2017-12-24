@@ -61,3 +61,5 @@ cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
 
 cc_library(init SRCS init.cc DEPS gflags device_context place stringpiece)
 cc_test(init_test SRCS init_test.cc DEPS init)
+
+cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context)
