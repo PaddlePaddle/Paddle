@@ -42,5 +42,10 @@ def __read_gflags_from_env__():
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
 
+    if core.is_compile_gpu():
+        core.init_devices(["CPU", "GPU:0"])
+    else:
+        core.init_devices(["CPU"])
+
 
 __read_gflags_from_env__()

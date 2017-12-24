@@ -15,6 +15,7 @@
 #include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/detail/safe_ref.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -32,7 +33,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
                      const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto &x = detail::Ref(scope.FindVar(Input("X")), "Cannot find input %s",
                           Input("X"))
                   .Get<framework::LoDTensor>();
@@ -86,6 +87,10 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
         // out[i][offset: offset+len] = x[each_range.begin: each_range.end]
         auto slice = out[i].Slice(static_cast<int>(offset),
                                   static_cast<int>(offset + len));
+
+        platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+        auto &dev_ctx = *pool.Borrow(place);
+
         framework::CopyFrom(x.Slice(static_cast<int>(each_range.begin),
                                     static_cast<int>(each_range.end)),
                             x.place(), dev_ctx, &slice);

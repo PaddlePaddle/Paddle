@@ -25,7 +25,7 @@ class FeedOp : public framework::OperatorBase {
          const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto feed_var_name = Input("X");
     auto *feed_var = scope.FindVar(feed_var_name);
 
@@ -47,7 +47,12 @@ class FeedOp : public framework::OperatorBase {
     auto &feed_list = feed_var->Get<framework::FeedFetchList>();
     auto &feed_item = feed_list.at(static_cast<size_t>(col));
     auto *out_item = out_var->GetMutable<framework::FeedFetchType>();
-    framework::CopyFrom(feed_item, dev_ctx.GetPlace(), dev_ctx, out_item);
+
+    // get device context from pool
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+    auto &dev_ctx = *pool.Borrow(place);
+
+    framework::CopyFrom(feed_item, place, dev_ctx, out_item);
     out_item->set_lod(feed_item.lod());
   }
 };

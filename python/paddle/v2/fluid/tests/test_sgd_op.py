@@ -55,8 +55,7 @@ class TestSparseSGDOp(unittest.TestCase):
             Grad='Grad',
             ParamOut='Param',
             LearningRate='LearningRate')
-        ctx = core.DeviceContext.create(place)
-        sgd_op.run(scope, ctx)
+        sgd_op.run(scope, place)
 
         # get and compare result
         result_array = np.array(param)

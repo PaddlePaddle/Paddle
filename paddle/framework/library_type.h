@@ -20,7 +20,7 @@ namespace framework {
 // For more details about the design of LibraryType, Please refer to
 // https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/operator_kernel_type.md#library
 
-enum LibraryType { kPlain = 0; kMKLDNN = 1; kCUDNN = 2; }
+enum LibraryType { kPlain = 0, kMKLDNN = 1, kCUDNN = 2 };
 
 }  // namespace
 }  // framework
