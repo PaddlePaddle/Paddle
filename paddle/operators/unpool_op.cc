@@ -53,9 +53,8 @@ class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
         "(string), unpooling type, can be \"max\" for max-unpooling ")
         .InEnum({"max"});
     AddComment(R"DOC(
-"Input shape: $(N, C_{in}, H_{in}, W_{in})$, 
-Output shape: $(N, C_{out}, H_{out}, W_{out})$
-Where
+Input shape is: $(N, C_{in}, H_{in}, W_{in})$, Output shape is:
+$(N, C_{out}, H_{out}, W_{out})$, where
 $$
 H_{out} = (H_{in}−1) * strides[0] − 2 * paddings[0] + ksize[0] \\
 W_{out} = (W_{in}−1) * strides[1] − 2 * paddings[1] + ksize[1]
