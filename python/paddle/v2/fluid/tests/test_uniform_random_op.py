@@ -26,7 +26,6 @@ class TestUniformRandomOp(unittest.TestCase):
             self.uniform_random_test(place=core.GPUPlace(0))
 
     def uniform_random_test(self, place):
-        context = core.DeviceContext.create(place)
         program = fluid.Program()
         block = program.global_block()
         vout = block.create_var(name="Out")

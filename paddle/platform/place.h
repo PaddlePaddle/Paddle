@@ -60,12 +60,14 @@ struct IsGPUPlace : public boost::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
   bool operator()(const MKLDNNPlace &) const { return false; }
   bool operator()(const GPUPlace &gpu) const { return true; }
+  bool operator()(const CUDNNPlace &) const { return true; }
 };
 
 struct IsMKLDNNPlace : public boost::static_visitor<bool> {
   bool operator()(const MKLDNNPlace &) const { return true; }
   bool operator()(const CPUPlace &) const { return false; }
   bool operator()(const GPUPlace &) const { return false; }
+  bool operator()(const CUDNNPlace &) const { return false; }
 };
 
 // Define the max number of Place in bit length. i.e., the max number of places

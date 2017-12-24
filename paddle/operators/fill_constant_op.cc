@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/math/math_function.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -33,7 +34,7 @@ class FillConstantOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &dev_place) const override {
     auto data_type =
         static_cast<framework::proto::DataType>(Attr<int>("dtype"));
     auto value = Attr<float>("value");
@@ -45,8 +46,11 @@ class FillConstantOp : public framework::OperatorBase {
       auto cpu = platform::CPUPlace();
       out.mutable_data(cpu, framework::ToTypeIndex(data_type));
     } else {
-      out.mutable_data(dev_ctx.GetPlace(), framework::ToTypeIndex(data_type));
+      out.mutable_data(dev_place, framework::ToTypeIndex(data_type));
     }
+
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+    auto &dev_ctx = *pool.Borrow(dev_place);
     math::set_constant(dev_ctx, &out, value);
   }
 };
