@@ -19,11 +19,12 @@ namespace framework {
 
 static DataTransform* data_transform_map = nullptr;
 
-DataTransform::Instance() {
-  if (data_transform_map == nullprt) {
+DataTransform& DataTransform::Instance() {
+  if (data_transform_map == nullptr) {
     data_transform_map = new DataTransform();
   }
-  return data_transform_map;
+  return *data_transform_map;
 }
-}
-}
+
+}  // namespace framework
+}  // namespace paddle

@@ -66,6 +66,8 @@ struct OpKernelType {
            data_type_ == o.data_type_ && data_layout_ == o.data_layout_ &&
            library_type_ == o.library_type_;
   }
+
+  friend std::ostream& operator<<(std::ostream& out, OpKernelType t);
 };
 
 }  // namespace framework
