@@ -33,13 +33,7 @@ namespace framework {
 const std::string kFeedOpType = "feed";
 const std::string kFetchOpType = "fetch";
 
-DeviceContextPool* DeviceContextPool::pool = nullptr;
-
-Executor::Executor(const std::vector<platform::Place>& places) {
-  DeviceContextPool& pool = DeviceContextPool::Get();
-  auto borrowed_contexts = pool.Borrow(places);
-  device_contexts_.swap(borrowed_contexts);
-}
+Executor::Executor(const platform::Place& place) : place_(place) {}
 
 static void CreateTensor(Variable* var, proto::VarDesc::VarType var_type) {
   if (var_type == proto::VarDesc::LOD_TENSOR) {
@@ -71,7 +65,6 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
   //    - will change to use multiple blocks for RNN op and Cond Op
   PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), pdesc.Size());
   auto& block = pdesc.Block(block_id);
-  auto& device = device_contexts_[0];
 
   Scope* local_scope = scope;
   if (create_vars) {
@@ -107,7 +100,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
   for (auto& op_desc : block.AllOps()) {
     auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
     VLOG(3) << op->DebugString();
-    op->Run(*local_scope, *device);
+    op->Run(*local_scope, place_);
   }
   if (create_local_scope) {
     scope->DeleteScope(local_scope);

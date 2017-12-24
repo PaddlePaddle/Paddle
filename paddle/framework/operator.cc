@@ -12,10 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/framework/operator.h"
 #include <algorithm>
 #include <atomic>
+
+#include "paddle/framework/executor.h"
 #include "paddle/framework/lod_tensor_array.h"
+#include "paddle/framework/operator.h"
 #include "paddle/framework/shape_inference.h"
 #include "paddle/framework/var_type.h"
 
@@ -388,11 +390,11 @@ class RuntimeInferShapeContext : public InferShapeContext {
 };
 
 void OperatorWithKernel::Run(const Scope& scope,
-                             const platform::DeviceContext& dev_ctx) const {
+                             const platform::Place& place) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
   this->InferShape(&infer_shape_ctx);
-
-  ExecutionContext ctx(*this, scope, dev_ctx);
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Get();
+  auto dev_ctx = pool.Borrow(place);
 
   // check if op[type] has kernel registered.
   auto& all_op_kernels = AllOpKernels();
@@ -404,6 +406,8 @@ void OperatorWithKernel::Run(const Scope& scope,
 
   // check if op[type] have kernel for kernel_key
   OpKernelMap& kernels = kernels_iter->second;
+
+  ExecutionContext ctx(*this, scope, *dev_ctx);
   auto kernel_key = GetKernelType(ctx);
   auto kernel_iter = kernels.find(kernel_key);
 
