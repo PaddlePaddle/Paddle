@@ -243,8 +243,9 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
 }
 
 std::ostream& operator<<(std::ostream& os, const OpKernelType& kernel_key) {
-  os << "place[" << kernel_key.place_ << "]:data_type[" << kernel_key.data_type_
-     << "]";
+  os << "data_type[" << kernel_key.data_type_ << "]:data_layout["
+     << kernel_key.data_layout_ << "]:place[" << kernel_key.place_
+     << "]:library_type[" << kernel_key.library_type_ << "]";
   return os;
 }
 
