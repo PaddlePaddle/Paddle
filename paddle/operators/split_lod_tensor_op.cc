@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/framework/op_registry.h"
 #include "paddle/memory/memcpy.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -33,7 +34,7 @@ class SplitLoDTensorOp : public framework::OperatorBase {
                    const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &dev_place) const override {
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
     auto &mask = scope.FindVar(Input("Mask"))->Get<framework::LoDTensor>();
     auto *out_true =
@@ -43,6 +44,9 @@ class SplitLoDTensorOp : public framework::OperatorBase {
     auto level = static_cast<size_t>(Attr<int>("level"));
     auto &x_lod = x.lod();
     auto &mask_dim = mask.dims();
+
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+    auto &dev_ctx = *pool.Borrow(dev_place);
 
     std::unique_ptr<framework::LoDTensor> cpu_mask{new framework::LoDTensor()};
     if (platform::is_cpu_place(mask.place())) {

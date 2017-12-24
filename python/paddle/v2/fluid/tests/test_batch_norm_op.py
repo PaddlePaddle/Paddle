@@ -296,8 +296,7 @@ class TestBatchNormOp(OpTest):
                 momentum=momentum,
                 epsilon=epsilon)
 
-            ctx = core.DeviceContext.create(place)
-            batch_norm_op.run(scope, ctx)
+            batch_norm_op.run(scope, place)
 
             # check forward result
             self.__assert_close(y_tensor, y_out, "y_out")
@@ -320,7 +319,7 @@ class TestBatchNormOp(OpTest):
                 ["y_out", "mean", "variance", "saved_mean", "saved_variance"],
                 place,
                 feed_dict={"y_out": y_grad})
-            batch_norm_op_grad.run(scope, ctx)
+            batch_norm_op_grad.run(scope, place)
 
             x_grad_tensor = create_or_get_tensor(scope,
                                                  grad_var_name("x_val"), None,
