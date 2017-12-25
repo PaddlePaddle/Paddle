@@ -39,43 +39,45 @@ struct MKLDNNPlace {
   inline bool operator!=(const MKLDNNPlace &) const { return false; }
 };
 
-struct GPUPlace {
-  GPUPlace() : GPUPlace(0) {}
-  explicit GPUPlace(int d) : device(d) {}
+struct CUDAPlace {
+  CUDAPlace() : CUDAPlace(0) {}
+  explicit CUDAPlace(int d) : device(d) {}
 
   inline int GetDeviceId() const { return device; }
   // needed for variant equality comparison
-  inline bool operator==(const GPUPlace &o) const { return device == o.device; }
-  inline bool operator!=(const GPUPlace &o) const { return !(*this == o); }
+  inline bool operator==(const CUDAPlace &o) const {
+    return device == o.device;
+  }
+  inline bool operator!=(const CUDAPlace &o) const { return !(*this == o); }
 
   int device;
 };
 
-struct CUDNNPlace : public GPUPlace {
-  CUDNNPlace() : GPUPlace() {}
-  explicit CUDNNPlace(int d) : GPUPlace(d) {}
+struct CUDNNPlace : public CUDAPlace {
+  CUDNNPlace() : CUDAPlace() {}
+  explicit CUDNNPlace(int d) : CUDAPlace(d) {}
 };
 
-struct IsGPUPlace : public boost::static_visitor<bool> {
+struct IsCUDAPlace : public boost::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
   bool operator()(const MKLDNNPlace &) const { return false; }
-  bool operator()(const GPUPlace &gpu) const { return true; }
+  bool operator()(const CUDAPlace &gpu) const { return true; }
   bool operator()(const CUDNNPlace &) const { return true; }
 };
 
 struct IsMKLDNNPlace : public boost::static_visitor<bool> {
   bool operator()(const MKLDNNPlace &) const { return true; }
   bool operator()(const CPUPlace &) const { return false; }
-  bool operator()(const GPUPlace &) const { return false; }
+  bool operator()(const CUDAPlace &) const { return false; }
   bool operator()(const CUDNNPlace &) const { return false; }
 };
 
-typedef boost::variant<CUDNNPlace, GPUPlace, CPUPlace, MKLDNNPlace> Place;
+typedef boost::variant<CUDNNPlace, CUDAPlace, CPUPlace, MKLDNNPlace> Place;
 
 void set_place(const Place &);
 const Place &get_place();
 
-const GPUPlace default_gpu();
+const CUDAPlace default_gpu();
 const CPUPlace default_cpu();
 const MKLDNNPlace default_mkldnn();
 

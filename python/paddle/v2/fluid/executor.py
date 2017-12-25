@@ -47,7 +47,7 @@ class Executor(object):
             act_places.append(p)
 
         # TODO(dzhwinter) : consider that our fluid tests all written in 
-        # GPUPlace(gpu_id), this will be changed in the future
+        # CUDAPlace(gpu_id), this will be changed in the future
         if core.is_compile_gpu():
             core.init_devices(["CPU", "GPU:0"])
         else:

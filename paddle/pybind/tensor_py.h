@@ -71,7 +71,7 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
             dst_ptr, src_ptr, sizeof(CUR_TYPE) * tensor.numel(),
             cudaMemcpyDeviceToHost, dev_ctx->stream());
 #else
-        PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
+        PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
 #endif
       } else if (paddle::platform::is_cpu_place(tensor.place())) {
         dst_tensor = tensor;
@@ -127,7 +127,7 @@ template <typename T>
 void PyCUDATensorSetFromArray(
     framework::Tensor &self,
     py::array_t<T, py::array::c_style | py::array::forcecast> array,
-    paddle::platform::GPUPlace &place) {
+    paddle::platform::CUDAPlace &place) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (size_t i = 0; i < array.ndim(); ++i) {

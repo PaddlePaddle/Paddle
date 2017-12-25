@@ -58,7 +58,7 @@ TEST(CopyFrom, Tensor) {
     memcpy(src_ptr, arr, 9 * sizeof(int));
 
     // CPU Tensor to GPU Tensor
-    auto gpu_place = new platform::GPUPlace(0);
+    auto gpu_place = new platform::CUDAPlace(0);
     platform::CUDADeviceContext gpu_ctx(*gpu_place);
     CopyFrom(src_tensor, *gpu_place, gpu_ctx, &gpu_tensor);
 
@@ -143,7 +143,7 @@ TEST(CopyFromVector, Tensor) {
 
     // Copy to GPUTensor
     gpu_tensor.Resize(make_ddim({3, 3}));
-    auto gpu_place = new paddle::platform::GPUPlace();
+    auto gpu_place = new paddle::platform::CUDAPlace();
     CUDADeviceContext gpu_ctx(*gpu_place);
     CopyFromVector<int>(src_vec, gpu_ctx, &gpu_tensor);
     // Copy from GPU to CPU tensor for comparison
@@ -210,7 +210,7 @@ TEST(CopyToVector, Tensor) {
   {
     std::vector<int> src_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     Tensor gpu_tensor;
-    GPUPlace place;
+    CUDAPlace place;
     CUDADeviceContext gpu_ctx(place);
     CopyFromVector<int>(src_vec, gpu_ctx, &gpu_tensor);
 

@@ -50,7 +50,7 @@ struct PerThreadData {
 
   T* RecvBuff() { return thrust::raw_pointer_cast(recv_buff.data()); }
 
-  PerThreadData(int gpu_id, size_t size) : dev_ctx(GPUPlace(gpu_id)) {
+  PerThreadData(int gpu_id, size_t size) : dev_ctx(CUDAPlace(gpu_id)) {
     send_buff.resize(size);
     for (size_t i = 0; i < size; ++i) {
       send_buff[i] = static_cast<T>(i);
@@ -140,7 +140,7 @@ int main(int argc, char** argv) {
   places.emplace_back(paddle::platform::CPUPlace());
   int count = paddle::platform::GetCUDADeviceCount();
   for (int i = 0; i < count; ++i) {
-    places.emplace_back(paddle::platform::GPUPlace(i));
+    places.emplace_back(paddle::platform::CUDAPlace(i));
   }
 
   VLOG(0) << " DeviceCount " << count;
