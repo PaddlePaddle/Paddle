@@ -35,6 +35,19 @@ inline std::string LibraryTypeToString(const LibraryType& library_type) {
   }
 }
 
+inline LibraryType StringToLibraryType(const std::string& str) {
+  switch (str) {
+    case "PLAIN":
+      return LibraryType::kPlain;
+    case "MKLDNN":
+      return LibraryType::kMKLDNN;
+    case "CUDNN":
+      return LibraryType::CUDNN;
+    default:
+      PADDLE_THROW("Unknown LibraryType %s", str);
+  }
+}
+
 inline std::ostream& operator<<(std::ostream& out, LibraryType l) {
   out << LibraryTypeToString(l);
   return out;
