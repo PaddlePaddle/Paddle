@@ -4,7 +4,7 @@
 
 TEST(Place, Equality) {
   paddle::platform::CPUPlace cpu;
-  paddle::platform::GPUPlace g0(0), g1(1), gg0(0);
+  paddle::platform::CUDAPlace g0(0), g1(1), gg0(0);
   paddle::platform::CUDNNPlace d0(0), d1(1), dd0(0);
 
   EXPECT_EQ(cpu, cpu);
@@ -41,8 +41,8 @@ TEST(Place, Default) {
 TEST(Place, Print) {
   {
     std::stringstream ss;
-    ss << paddle::platform::GPUPlace(1);
-    EXPECT_EQ("GPUPlace(1)", ss.str());
+    ss << paddle::platform::CUDAPlace(1);
+    EXPECT_EQ("CUDAPlace(1)", ss.str());
   }
   {
     std::stringstream ss;

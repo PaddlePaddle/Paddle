@@ -37,13 +37,13 @@ TEST(OpKernelType, Hash) {
   using OpKernelType = paddle::framework::OpKernelType;
   using DataType = paddle::framework::proto::DataType;
   using CPUPlace = paddle::platform::CPUPlace;
-  using GPUPlace = paddle::platform::GPUPlace;
+  using CUDAPlace = paddle::platform::CUDAPlace;
   using DataLayout = paddle::framework::DataLayout;
   using LibraryType = paddle::framework::LibraryType;
 
   OpKernelType op_kernel_type_1(DataType::FP32, CPUPlace(), DataLayout::kNCHW,
                                 LibraryType::kCUDNN);
-  OpKernelType op_kernel_type_2(DataType::FP32, GPUPlace(0), DataLayout::kNCHW,
+  OpKernelType op_kernel_type_2(DataType::FP32, CUDAPlace(0), DataLayout::kNCHW,
                                 LibraryType::kCUDNN);
 
   OpKernelType::Hash hasher;
