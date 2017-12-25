@@ -302,12 +302,12 @@ void set_constant(const platform::DeviceContext& context,
 #endif
 }
 
-template struct RowwiseAdd<platform::CPUPlace, float>;
-template struct RowwiseAdd<platform::CPUPlace, double>;
-template struct ColwiseSum<platform::CPUPlace, float>;
-template struct ColwiseSum<platform::CPUPlace, double>;
-template struct RowwiseSum<platform::CPUPlace, float>;
-template struct RowwiseSum<platform::CPUPlace, double>;
+template struct RowwiseAdd<platform::CPUDeviceContext, float>;
+template struct RowwiseAdd<platform::CPUDeviceContext, double>;
+template struct ColwiseSum<platform::CPUDeviceContext, float>;
+template struct ColwiseSum<platform::CPUDeviceContext, double>;
+template struct RowwiseSum<platform::CPUDeviceContext, float>;
+template struct RowwiseSum<platform::CPUDeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators

@@ -60,19 +60,48 @@ class HierarchicalSigmoidOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->hasInput("X"), "Input(X) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Parameters"),
+                   "Input(Parameters)"
+                   "should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null.");
     const int64_t batch_size = ctx->GetInputDim("X")[0];
-    std::vector<int64_t> output_shape({batch_size, num_classes_ - 1});
+    std::vector<int64_t> output_shape({batch_size, 1});
     ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
+  }
+
+ protected:
+  framework::OpKernelType GetKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
+        ctx.GetPlace());
   }
 };
 
 class HierarchicalSigmoidGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {}
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Parameters"),
+                   "Input(Parameters)"
+                   "should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Label"),
+                   "Input(Label)"
+                   "should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Parameters")),
+                   "Input(Parameters@Grad should not be null.)");
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")));
+  }
+
+ protected:
+  framework::OpKernelType GetKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
+        ctx.GetPlace());
+  }
 };
 
 class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -98,7 +127,8 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "(Tensor, required) The output of hierarchical sigmoid operator."
               "the shape is [N, 1]");
-    AddAttr<int>("num_classes", "(int, required)", "The number of classes");
+    AddAttr<int>("num_classes", "(int, required)", "The number of classes")
+        .SetDefault(2);
     AddComment(R"DOC(
 The hierarchical sigmoid operator organize the classes into a binary tree.
 At each node, a sigmoid function is used to caculate the probability of 
@@ -116,9 +146,9 @@ namespace ops = paddle::operators;
 REGISTER_OP(hierarchical_sigmoid, ops::HierarchicalSigmoidOp,
             ops::HierarchicalSigmoidOpMaker, hierarchical_sigmoid_grad,
             ops::HierarchicalSigmoidGradOp);
-REGISTER_OP_CPU_KERNEL(
-    hierarchical_sigmoid,
-    ops::HierarchicalSigmoidOpKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(
-    hierarchical_sigmoid_grad,
-    ops::HierarchicalSigmoidGradOpKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(hierarchical_sigmoid,
+                       ops::HierarchicalSigmoidOpKernel<
+                           paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(hierarchical_sigmoid_grad,
+                       ops::HierarchicalSigmoidGradOpKernel<
+                           paddle::platform::CPUDeviceContext, float>);

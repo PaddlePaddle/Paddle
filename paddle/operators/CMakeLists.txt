@@ -207,7 +207,7 @@ set(DEPS_OPS
     gru_op
     adagrad_op
     sgd_op
-    hierarchical_sigmoid_op)
+    hierarchical_sigmoid_op
     save_op
     load_op
     send_op
