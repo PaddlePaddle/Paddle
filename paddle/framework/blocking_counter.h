@@ -28,11 +28,10 @@ namespace framework {
 
 class BlockingCounter {
  public:
-  BlockingCounter(int cnt) : cnt_(cnt), done_(false) {
+  BlockingCounter(int cnt) : cnt_(cnt) {
     PADDLE_ENFORCE_GE(static_cast<int>(cnt_), 0,
                       "The initialized counter should not be less than 0");
   }
-
   ~BlockingCounter() {}
 
   /**
@@ -41,25 +40,20 @@ class BlockingCounter {
   void Wait() {
     if (cnt_ == 0) return;
     std::unique_lock<std::mutex> lock(done_m);
-    done_cv.wait(lock, [=] { return done_ == true; });
+    done_cv.wait(lock, [=] { return cnt_ == 0; });
   }
 
   /**
    * @breif   Descrease the count by 1
    */
   void DecreaseCount() {
-    cnt_.fetch_sub(1);
-    if (cnt_ != 0) return;
-    std::unique_lock<std::mutex> lock(done_m);
-    done_ = true;
-    lock.unlock();
+    if (cnt_-- != 1) return;
     done_cv.notify_all();
   }
 
  private:
   BlockingCounter(const BlockingCounter&) = delete;
   std::atomic<int> cnt_;
-  bool done_;
   std::mutex done_m;
   std::condition_variable done_cv;
 };
