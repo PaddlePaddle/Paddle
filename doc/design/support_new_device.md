@@ -107,7 +107,7 @@ template <typename Place>
 size_t Used(Place place);
 ```
 
-To implementing these interfaces, we have to implement MemoryAllocator for different Devices.
+To implement these interfaces, we have to implement MemoryAllocator for different Devices.
 
 
 #### Tensor
