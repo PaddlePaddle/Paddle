@@ -17,6 +17,7 @@
 
 namespace paddle {
 namespace framework {
+
 TEST(CopyFrom, Tensor) {
   Tensor src_tensor;
   Tensor dst_tensor;
@@ -29,7 +30,7 @@ TEST(CopyFrom, Tensor) {
   memcpy(src_ptr, arr, 9 * sizeof(int));
 
   auto cpu_place = new platform::CPUPlace();
-  CopyFrom(src_tensor, *cpu_place, cpu_ctx, &dst_tensor);
+  CopyFrom(src_tensor, *cpu_place, &dst_tensor);
 
   const int* dst_ptr = dst_tensor.data<int>();
   ASSERT_NE(src_ptr, dst_ptr);

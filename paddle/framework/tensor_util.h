@@ -83,6 +83,28 @@ inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
 }
 
 /**
+ * @brief CopyFrom support CPU <-> CPU
+ */
+
+inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
+                     Tensor* dst) {
+  src.check_memory_size();
+  dst->Resize(src.dims());
+
+  auto src_place = src.place();
+  auto src_ptr = src.data<void>();
+
+  auto dst_ptr = dst->mutable_data(dst_place, src.type());
+
+  auto size = src.numel() * SizeOfType(src.type());
+
+  if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
+    memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
+                 boost::get<platform::CPUPlace>(src_place), src_ptr, size);
+  }
+}
+
+/**
  * @brief   Copy the content of an external vector to a tensor.
  *
  * @param[in] src        The external tensor.
@@ -113,6 +135,25 @@ inline void CopyFromVector(const std::vector<T>& src,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
   }
 #endif
+}
+
+/**
+ * @brief CopyFromVector CPU vector -> CPU Tensor
+ */
+
+inline void CopyFromVector(const std::vector<T>& src,
+                           const platform::DeviceContext& ctx, Tensor* dst) {
+  auto dst_place = ctx.GetPlace();
+  auto src_ptr = static_cast<const void*>(src.data());
+  platform::CPUPlace src_place;
+  dst->Resize({static_cast<int64_t>(src.size())});
+  auto dst_ptr = static_cast<void*>(dst->mutable_data<T>(dst_place));
+  auto size = src.size() * sizeof(T);
+
+  if (platform::is_cpu_place(dst_place)) {
+    memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr, src_place,
+                 src_ptr, size);
+  }
 }
 
 /**
