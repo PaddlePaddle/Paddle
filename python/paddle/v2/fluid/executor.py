@@ -47,13 +47,14 @@ class Executor(object):
             act_places.append(p)
 
         # TODO(dzhwinter) : consider that our fluid tests all written in 
-        # GPUPlace(gpu_id), this will be changed in next PR.
+        # CUDAPlace(gpu_id), this will be changed in the future
         if core.is_compile_gpu():
             core.init_devices(["CPU", "GPU:0"])
         else:
             core.init_devices(["CPU"])
 
-        self.executor = core.Executor(act_places)
+        # TODO(dzhwinter) : only use the first place
+        self.executor = core.Executor(act_places[0])
         self.places = places
 
     def aslodtensor(self, data):

@@ -25,11 +25,11 @@ class WriteToArrayOp : public ArrayOp {
       : ArrayOp(type, inputs, outputs, attrs) {}
 
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
     if (x == nullptr) return;
     auto &x_tensor = x->Get<framework::LoDTensor>();
-    size_t offset = GetOffset(scope, dev_ctx);
+    size_t offset = GetOffset(scope, place);
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensorArray>();
     if (offset >= out->size()) {
@@ -39,7 +39,11 @@ class WriteToArrayOp : public ArrayOp {
     }
     if (x_tensor.memory_size() > 0) {
       auto *out_tensor = &out->at(offset);
-      CopyFrom(x_tensor, dev_ctx.GetPlace(), dev_ctx, out_tensor);
+
+      platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+      auto &dev_ctx = *pool.Borrow(place);
+
+      CopyFrom(x_tensor, place, dev_ctx, out_tensor);
       out_tensor->set_lod(x_tensor.lod());
     } else {
       VLOG(10) << "WARNING: The input tensor 'x_tensor' holds no memory, so "
@@ -119,17 +123,18 @@ class ReadFromArrayOp : public ArrayOp {
                   const framework::AttributeMap &attrs)
       : ArrayOp(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
     PADDLE_ENFORCE(x != nullptr, "X must be set");
     auto &x_array = x->Get<framework::LoDTensorArray>();
     auto *out = scope.FindVar(Output("Out"));
     PADDLE_ENFORCE(out != nullptr, "Out must be set");
     auto *out_tensor = out->GetMutable<framework::LoDTensor>();
-    size_t offset = GetOffset(scope, dev_ctx);
+    size_t offset = GetOffset(scope, place);
     if (offset < x_array.size()) {
-      framework::CopyFrom(x_array[offset], dev_ctx.GetPlace(), dev_ctx,
-                          out_tensor);
+      platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+      auto &dev_ctx = *pool.Borrow(place);
+      framework::CopyFrom(x_array[offset], place, dev_ctx, out_tensor);
       out_tensor->set_lod(x_array[offset].lod());
     } else {
       VLOG(10) << "offset " << offset << " >= " << x_array.size();

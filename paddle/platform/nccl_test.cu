@@ -12,16 +12,18 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include <thrust/device_vector.h>
+#include <memory>
+#include <vector>
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+
+#include "paddle/framework/init.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/dynload/nccl.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/gpu_info.h"
-
-#include <thrust/device_vector.h>
-#include <memory>
-#include <vector>
 
 static int dev_count = 0;
 
@@ -31,7 +33,8 @@ namespace platform {
 TEST(NCCL, init) {
   std::vector<ncclComm_t> comms;
   comms.resize(dev_count);
-  dynload::ncclCommInitAll(comms.data(), dev_count, nullptr);
+  PADDLE_ENFORCE(dynload::ncclCommInitAll(comms.data(), dev_count, nullptr));
+
   for (int i = 0; i < dev_count; ++i) {
     dynload::ncclCommDestroy(comms[i]);
   }
@@ -47,7 +50,7 @@ struct PerThreadData {
 
   T* RecvBuff() { return thrust::raw_pointer_cast(recv_buff.data()); }
 
-  PerThreadData(int gpu_id, size_t size) : dev_ctx(GPUPlace(gpu_id)) {
+  PerThreadData(int gpu_id, size_t size) : dev_ctx(CUDAPlace(gpu_id)) {
     send_buff.resize(size);
     for (size_t i = 0; i < size; ++i) {
       send_buff[i] = static_cast<T>(i);
@@ -131,6 +134,18 @@ int main(int argc, char** argv) {
         << dev_count;
     return 0;
   }
+
+  std::vector<paddle::platform::Place> places;
+
+  places.emplace_back(paddle::platform::CPUPlace());
+  int count = paddle::platform::GetCUDADeviceCount();
+  for (int i = 0; i < count; ++i) {
+    places.emplace_back(paddle::platform::CUDAPlace(i));
+  }
+
+  VLOG(0) << " DeviceCount " << count;
+  paddle::platform::DeviceContextPool::Create(places);
+
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

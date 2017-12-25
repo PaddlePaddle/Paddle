@@ -20,7 +20,25 @@ namespace framework {
 // For more details about the design of LibraryType, Please refer to
 // https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/operator_kernel_type.md#library
 
-enum LibraryType { kPlain = 0; kMKLDNN = 1; kCUDNN = 2; }
+enum LibraryType { kPlain = 0, kMKLDNN = 1, kCUDNN = 2 };
+
+inline std::string LibraryTypeToString(const LibraryType& library_type) {
+  switch (library_type) {
+    case kPlain:
+      return "PLAIN";
+    case kMKLDNN:
+      return "MKLDNN";
+    case kCUDNN:
+      return "CUDNN";
+    default:
+      PADDLE_THROW("unknown LibraryType %d", library_type);
+  }
+}
+
+inline std::ostream& operator<<(std::ostream& out, LibraryType l) {
+  out << LibraryTypeToString(l);
+  return out;
+}
 
 }  // namespace
 }  // framework
