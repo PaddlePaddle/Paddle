@@ -45,7 +45,7 @@ struct BlasGemm {
 // include the Paddle header file. And need an EigenBlasGemm template class
 // that does not contain the DeviceType parameter.
 // I will fix this problem and merge BlasGemm and EigenBlasGemm into one.
-template <class T>
+template <class EigenDevice, class T>
 struct EigenBlasGemm {
   static void compute(const bool transA,
                       const bool transB,
@@ -59,7 +59,8 @@ struct EigenBlasGemm {
                       const int ldb,
                       const T beta,
                       T* C,
-                      const int ldc);
+                      const int ldc,
+                      const EigenDevice& device);
 };
 
 }  // namespace paddle

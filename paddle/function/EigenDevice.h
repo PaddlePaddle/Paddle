@@ -15,36 +15,44 @@
 #pragma once
 
 #include "unsupported/Eigen/CXX11/Tensor"
+#if defined(__OSX__) || defined(__APPLE__)
+#include <sys/sysctl.h>
+#include <sys/types.h>
+#endif
 
 namespace paddle {
 
-int GetCpuCount();
-
-const Eigen::ThreadPoolDevice& GetThreadPoolDevice();
-
-class ThreadsNumManager {
-public:
-  static void Set(int n) { manage_threads_num(SetAction, &n); }
-
-  static int Get() {
-    int n = 1;
-    manage_threads_num(GetAction, &n);
-    return n;
+#if defined(__ANDROID__)
+int GetCpuCount() {
+  FILE* fp = fopen("/sys/devices/system/cpu/possible", "r");
+  if (!fp) {
+    return 1;
   }
+  int rank0, rank1;
+  int num = fscanf(fp, "%d-%d", &rank0, &rank1);
+  fclose(fp);
+  if (num < 2) return 1;
+  return rank1 + 1;
+}
+#elif defined(__OSX__) || defined(__APPLE__)
+int GetCpuCount() {
+  int count = 0;
+  size_t len = sizeof(int);
+  sysctlbyname("hw.ncpu", &count, &len, NULL, 0);
+  return count > 0 ? count : 1;
+}
+#else
+int GetCpuCount() { return 1; }
+#endif
 
-private:
-  enum Action { GetAction, SetAction };
-
-  static void manage_threads_num(Action a, int* n) {
-    static int num_threads = GetCpuCount();
-    if (a == SetAction) {
-      if (*n > 0 && *n < num_threads) {
-        num_threads = *n;
-      }
-    } else {
-      *n = num_threads;
-    }
-  }
-};
+#ifdef EIGEN_USE_THREADS
+const Eigen::ThreadPoolDevice& GetThreadPoolDevice() {
+  const int num_cpus = GetCpuCount();
+  const int num_threads = (num_cpus > 2) ? 2 : num_cpus;
+  static Eigen::ThreadPool tp(num_threads);
+  static Eigen::ThreadPoolDevice device(&tp, num_threads);
+  return device;
+}
+#endif
 
 }  // namespace paddle

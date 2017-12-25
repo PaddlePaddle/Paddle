@@ -12,14 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/function/EigenDevice.h"
-
 #include <glog/logging.h>
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
 
-template <class T>
+template <class EigenDevice, class T>
 struct EigenBlasGemm {
   typedef Eigen::TensorMap<Eigen::Tensor<T, 2, Eigen::RowMajor, int>,
                            Eigen::Aligned>
@@ -37,7 +35,8 @@ struct EigenBlasGemm {
                       const int ldb,
                       const T beta,
                       T* C,
-                      const int ldc) {
+                      const int ldc,
+                      const EigenDevice& device) {
     Eigen::array<int, 2> sizeA;
     if (transA) {
       sizeA[0] = K;
@@ -72,11 +71,6 @@ struct EigenBlasGemm {
     dims[0].first = transA ? 0 : 1;
     dims[0].second = transB ? 1 : 0;
 
-#ifdef EIGEN_USE_THREADS
-    const Eigen::ThreadPoolDevice& device = GetThreadPoolDevice();
-#else
-    const Eigen::DefaultDevice device;
-#endif
     if (N == ldc) {
       if (alpha == T(1) && beta == T(0)) {
         c.device(device) = a.contract(b, dims);
@@ -99,9 +93,15 @@ struct EigenBlasGemm {
 };
 
 #ifdef PADDLE_TYPE_DOUBLE
-template struct EigenBlasGemm<double>;
+template struct EigenBlasGemm<Eigen::DefaultDevice, double>;
+#ifdef EIGEN_USE_THREADS
+template struct EigenBlasGemm<Eigen::ThreadPoolDevice, double>;
+#endif
 #else
-template struct EigenBlasGemm<float>;
+template struct EigenBlasGemm<Eigen::DefaultDevice, float>;
+#ifdef EIGEN_USE_THREADS
+template struct EigenBlasGemm<Eigen::ThreadPoolDevice, float>;
+#endif
 #endif
 
 }  // namespace paddle
