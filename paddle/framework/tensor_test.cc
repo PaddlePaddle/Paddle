@@ -200,3 +200,12 @@ TEST(Tensor, ReshapeToMatrix) {
   ASSERT_EQ(res.dims()[0], 2 * 3);
   ASSERT_EQ(res.dims()[1], 4 * 9);
 }
+
+TEST(Tensor, Layout) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+  Tensor src;
+  ASSERT_EQ(src.layout(), DataLayout::kNHWC);
+  src.set_layout(DataLayout::kAnyLayout);
+  ASSERT_EQ(src.layout(), DataLayout::kAnyLayout);
+}
