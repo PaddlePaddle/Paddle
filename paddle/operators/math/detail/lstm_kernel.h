@@ -30,9 +30,9 @@ class lstm {
   HOSTDEVICE void operator()(T &value_in, T &value_ig, T &value_fg, T &value_og,
                              T &prev_state, T &state, T &state_atv, T &output,
                              T &checkI, T &checkF, T &checkO,
-                             activation_mode_t active_node,
-                             activation_mode_t active_gate,
-                             activation_mode_t active_state) {
+                             ActivationType active_node,
+                             ActivationType active_gate,
+                             ActivationType active_state) {
     value_in = activation(value_in, active_node);
     value_ig = activation(value_ig + prev_state * checkI, active_gate);
     value_fg = activation(value_fg + prev_state * checkF, active_gate);
@@ -53,9 +53,9 @@ class lstm {
                              __m256 &prev_state, __m256 &state,
                              __m256 &state_atv, __m256 &output, __m256 &checkI,
                              __m256 &checkF, __m256 &checkO,
-                             activation_mode_t active_node,
-                             activation_mode_t active_gate,
-                             activation_mode_t active_state) {
+                             ActivationType active_node,
+                             ActivationType active_gate,
+                             ActivationType active_state) {
     value_in = activation(value_in, active_node);
     value_ig =
         activation(_mm256_add_ps(value_ig, _mm256_mul_ps(prev_state, checkI)),
@@ -87,9 +87,9 @@ class lstm {
                              T &state_grad, T &state_atv, T &output_grad,
                              T &checkI, T &checkF, T &checkO, T &checkIGrad,
                              T &checkFGrad, T &checkOGrad,
-                             activation_mode_t active_node,
-                             activation_mode_t active_gate,
-                             activation_mode_t active_state) {
+                             ActivationType active_node,
+                             ActivationType active_gate,
+                             ActivationType active_state) {
     grad_og = activation(output_grad * state_atv, value_og, active_gate);
     state_grad += activation(output_grad * value_og, state_atv, active_state) +
                   grad_og * checkO;
@@ -114,8 +114,8 @@ class lstm {
       __m256 &prev_state, __m256 &prev_state_grad, __m256 &state,
       __m256 &state_grad, __m256 &state_atv, __m256 &output_grad,
       __m256 &checkI, __m256 &checkF, __m256 &checkO, __m256 &checkIGrad,
-      __m256 &checkFGrad, __m256 &checkOGrad, activation_mode_t active_node,
-      activation_mode_t active_gate, activation_mode_t active_state) {
+      __m256 &checkFGrad, __m256 &checkOGrad, ActivationType active_node,
+      ActivationType active_gate, ActivationType active_state) {
     grad_og = activation(_mm256_mul_ps(output_grad, state_atv), value_og,
                          active_gate);
     state_grad = _mm256_add_ps(activation(_mm256_mul_ps(output_grad, value_og),
