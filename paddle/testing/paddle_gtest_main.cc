@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
   paddle::memory::Used(paddle::platform::CPUPlace());
   std::vector<std::string> devs = {"CPU"};
 #ifdef PADDLE_WITH_CUDA
-  paddle::memory::Used(paddle::platform::GPUPlace(0));
+  paddle::memory::Used(paddle::platform::CUDAPlace(0));
   devs.push_back("GPU:0");
 #endif
   paddle::framework::InitDevices(devs);
