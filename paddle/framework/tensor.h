@@ -20,6 +20,7 @@ limitations under the License. */
 #include <typeindex>
 #include <vector>
 
+#include "paddle/framework/data_layout.h"
 #include "paddle/framework/ddim.h"
 #include "paddle/memory/memory.h"
 #include "paddle/platform/device_context.h"
@@ -172,6 +173,12 @@ class Tensor {
    */
 
   DDim dims_;
+
+  /**
+   * @brief the layout of memory block size
+   *
+   */
+  DataLayout layout_;
 
   /**
    * @brief   A PlaceHolder may be shared by more than one tensor.
