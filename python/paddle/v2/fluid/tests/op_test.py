@@ -89,12 +89,10 @@ def get_numeric_gradient(scope,
     def product(dim):
         return reduce(lambda a, b: a * b, dim, 1)
 
-    ctx = core.DeviceContext.create(core.CPUPlace())
-
     def get_output():
         sum = []
         for output_name in output_names:
-            op.run(scope, ctx)
+            op.run(scope, core.CPUPlace())
             sum.append(
                 np.array(scope.find_var(output_name).get_tensor()).mean())
         return np.array(sum).mean()

@@ -28,7 +28,7 @@ class MaxSeqenceLenOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &dev_place) const override {
     auto &rank_table =
         scope.FindVar(Input("RankTable"))->Get<framework::LoDRankTable>();
     auto *out =
@@ -40,8 +40,7 @@ class MaxSeqenceLenOp : public framework::OperatorBase {
 
 class MaxSeqenceLenOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MaxSeqenceLenOpProtoMaker(framework::OpProto *proto,
-                            framework::OpAttrChecker *op_checker)
+  MaxSeqenceLenOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("RankTable", "The lod_rank_table.");
     AddOutput("Out", "The max sequence length.");

@@ -12,16 +12,18 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include <thrust/device_vector.h>
+#include <memory>
+#include <vector>
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+
+#include "paddle/framework/init.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/dynload/nccl.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/gpu_info.h"
-
-#include <thrust/device_vector.h>
-#include <memory>
-#include <vector>
 
 static int dev_count = 0;
 
@@ -32,6 +34,7 @@ TEST(NCCL, init) {
   std::vector<ncclComm_t> comms;
   comms.resize(dev_count);
   PADDLE_ENFORCE(dynload::ncclCommInitAll(comms.data(), dev_count, nullptr));
+
   for (int i = 0; i < dev_count; ++i) {
     dynload::ncclCommDestroy(comms[i]);
   }
@@ -62,7 +65,7 @@ TEST(NCCL, all_reduce) {
   std::vector<ncclComm_t> comms;
   comms.resize(dev_count);
   VLOG(1) << "Initializing ncclComm";
-  PADDLE_ENFORCE(dynload::ncclCommInitAll(comms.data(), dev_count, nullptr));
+  dynload::ncclCommInitAll(comms.data(), dev_count, nullptr);
   VLOG(1) << "ncclComm initialized";
   VLOG(1) << "Creating thread data";
   std::vector<std::unique_ptr<PerThreadData<double>>> data;
@@ -131,6 +134,18 @@ int main(int argc, char** argv) {
         << dev_count;
     return 0;
   }
+
+  std::vector<paddle::platform::Place> places;
+
+  places.emplace_back(paddle::platform::CPUPlace());
+  int count = paddle::platform::GetCUDADeviceCount();
+  for (int i = 0; i < count; ++i) {
+    places.emplace_back(paddle::platform::GPUPlace(i));
+  }
+
+  VLOG(0) << " DeviceCount " << count;
+  paddle::platform::DeviceContextPool::Create(places);
+
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

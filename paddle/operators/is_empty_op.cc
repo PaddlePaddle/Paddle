@@ -29,7 +29,7 @@ class IsEmptyOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     // get input
     auto *var = scope.FindVar(Input(kInput));
     PADDLE_ENFORCE_NOT_NULL(var);
@@ -47,8 +47,7 @@ class IsEmptyOp : public framework::OperatorBase {
 
 class IsEmptyOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  IsEmptyOpProtoMaker(framework::OpProto *proto,
-                      framework::OpAttrChecker *op_checker)
+  IsEmptyOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(kInput, "(Tensor) Tensor which is to be checked.");
     AddOutput(kOutput, "(Tensor) a boolean Tensor that indicate empty or not.");

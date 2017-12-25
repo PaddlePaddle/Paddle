@@ -85,5 +85,19 @@ class Test1DReduce(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+class TestReduceAll(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.inputs = {'X': np.random.random((5, 6, 2, 10)).astype("float32")}
+        self.attrs = {'reduce_all': True}
+        self.outputs = {'Out': self.inputs['X'].sum()}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 if __name__ == '__main__':
     unittest.main()

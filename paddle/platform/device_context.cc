@@ -15,11 +15,64 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+DeviceContextPool* DeviceContextPool::pool = nullptr;
+
+const platform::DeviceContext* DeviceContextPool::Borrow(
+    const platform::Place& place) {
+  auto it = device_contexts_.find(place);
+  if (it == device_contexts_.end()) {
+    PADDLE_THROW(
+        "'Place' is not supported, Please re-compile with WITH_GPU "
+        "option");
+  }
+  return it->second;
+}
+
+std::vector<const platform::DeviceContext*> DeviceContextPool::Borrow(
+    const std::vector<platform::Place>& places) {
+  PADDLE_ENFORCE_GT(places.size(), 0);
+  PADDLE_ENFORCE_LE(places.size(), device_contexts_.size());
+  std::vector<const platform::DeviceContext*> borrowed_contexts;
+  for (auto& place : places) {
+    auto it = device_contexts_.find(place);
+    if (it != device_contexts_.end()) {
+      borrowed_contexts.emplace_back(it->second);
+    } else {
+      PADDLE_THROW(
+          "'Place' is not supported, Please re-compile with WITH_GPU "
+          "option");
+    }
+  }
+  return borrowed_contexts;
+}
+
+DeviceContextPool::DeviceContextPool(
+    const std::vector<platform::Place>& places) {
+  PADDLE_ENFORCE_GT(places.size(), 0);
+  for (size_t i = 0; i < places.size(); i++) {
+    if (platform::is_cpu_place(places[i])) {
+      device_contexts_.emplace(places[i],
+                               new platform::CPUDeviceContext(
+                                   boost::get<platform::CPUPlace>(places[i])));
+    } else if (platform::is_gpu_place(places[i])) {
+#ifdef PADDLE_WITH_CUDA
+      device_contexts_.emplace(places[i],
+                               new platform::CUDADeviceContext(
+                                   boost::get<platform::GPUPlace>(places[i])));
+#else
+      PADDLE_THROW(
+          "'GPUPlace' is not supported, Please re-compile with WITH_GPU "
+          "option");
+#endif
+    }
+  }
+}
+
 CPUDeviceContext::CPUDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
 }
 
-CPUDeviceContext::CPUDeviceContext(CPUPlace place) {
+CPUDeviceContext::CPUDeviceContext(CPUPlace place) : place_(place) {
   eigen_device_.reset(new Eigen::DefaultDevice());
 }
 
@@ -27,7 +80,7 @@ Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
   return eigen_device_.get();
 }
 
-Place CPUDeviceContext::GetPlace() const { return CPUPlace(); }
+Place CPUDeviceContext::GetPlace() const { return place_; }
 
 #ifdef PADDLE_WITH_CUDA
 
@@ -124,6 +177,22 @@ cublasHandle_t CUDADeviceContext::cublas_handle() const {
 cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
+
+CUDNNDeviceContext::CUDNNDeviceContext(CUDNNPlace place)
+    : CUDADeviceContext(place), place_(place) {
+  PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
+  PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream()));
+}
+
+CUDNNDeviceContext::~CUDNNDeviceContext() {
+  SetDeviceId(place_.device);
+  Wait();
+  PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
+}
+
+Place CUDNNDeviceContext::GetPlace() const { return CUDNNPlace(); }
+
+cudnnHandle_t CUDNNDeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 #endif
 

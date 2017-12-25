@@ -26,7 +26,7 @@ class LoDArrayLengthOp : public framework::OperatorBase {
                    const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
     auto &out =
         *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
@@ -38,8 +38,7 @@ class LoDArrayLengthOp : public framework::OperatorBase {
 
 class LoDArrayLengthProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LoDArrayLengthProtoMaker(framework::OpProto *proto,
-                           framework::OpAttrChecker *op_checker)
+  LoDArrayLengthProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(LoDTensorArray) The input tensor array.");
     AddOutput("Out", "(Tensor) 1x1 CPU Tensor of length, int64_t");
