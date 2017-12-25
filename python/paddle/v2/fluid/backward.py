@@ -13,8 +13,11 @@ def _rename_arg_(op_desc_list, old_name, new_name, begin_idx=None,
     if end_idx is None:
         end_idx = len(op_desc_list)
     for i in range(begin_idx, end_idx):
-        op_desc_list[i].rename_input(old_name, new_name)
-        op_desc_list[i].rename_output(old_name, new_name)
+        op_desc = op_desc_list[i]
+        if isinstance(op_desc, tuple):
+            op_desc = op_desc[0]
+        op_desc.rename_input(old_name, new_name)
+        op_desc.rename_output(old_name, new_name)
 
 
 def _create_op_desc_(op_type, inputs, outputs, attrs):
