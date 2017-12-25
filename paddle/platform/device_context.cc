@@ -178,19 +178,17 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
-CUDNNDeviceContext::CUDNNDeviceContext(CUDNNPlace place)
-    : CUDADeviceContext(place), place_(place) {
+CUDNNDeviceContext::CUDNNDeviceContext(CUDAPlace place)
+    : CUDADeviceContext(place) {
   PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
   PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream()));
 }
 
 CUDNNDeviceContext::~CUDNNDeviceContext() {
-  SetDeviceId(place_.device);
+  SetDeviceId(boost::get<CUDAPlace>(GetPlace()).device);
   Wait();
   PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
 }
-
-Place CUDNNDeviceContext::GetPlace() const { return CUDNNPlace(); }
 
 cudnnHandle_t CUDNNDeviceContext::cudnn_handle() const { return cudnn_handle_; }
 

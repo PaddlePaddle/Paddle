@@ -92,18 +92,14 @@ class CUDADeviceContext : public DeviceContext {
 
 class CUDNNDeviceContext : public CUDADeviceContext {
  public:
-  explicit CUDNNDeviceContext(CUDNNPlace place);
+  explicit CUDNNDeviceContext(CUDAPlace place);
   virtual ~CUDNNDeviceContext();
-
-  /*! \brief  Return place in the device context. */
-  Place GetPlace() const final;
 
   /*! \brief  Return cudnn  handle in the device context. */
   cudnnHandle_t cudnn_handle() const;
 
  private:
   cudnnHandle_t cudnn_handle_;
-  CUDNNPlace place_;
 };
 
 #endif
