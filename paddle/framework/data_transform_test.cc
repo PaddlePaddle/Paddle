@@ -28,18 +28,29 @@ namespace frw = paddle::framework;
 
 namespace paddle {
 namespace framework {
-void fn1(const frw::Tensor& in, frw::Tensor* out) {}
+OpKernelType kernel_type_1(DataType::FP32, CPUPlace(), DataLayout::kNCHW,
+                           LibraryType::kCUDNN);
+OpKernelType kernel_type_2(DataType::FP32, GPUPlace(0), DataLayout::kNCHW,
+                           LibraryType::kCUDNN);
+OpKernelType kernel_type_3(DataType::FP16, GPUPlace(0), DataLayout::kNCHW,
+                           LibraryType::kCUDNN);
+void type1_to_type2(const frw::Tensor& in, frw::Tensor* out) {}
 }  // namespace framework
 }  // namespace paddle
 
+// REGISTER_DATA_TRANSFORM_FN(frw::kernel_type_1, frw::kernel_type_2, fn);
+int test() {
+  ::paddle::framework::DataTransformFnMap::Instance().Insert(
+      frw::kernel_type_3, frw::kernel_type_2, frw::type1_to_type2);
+  return 0;
+}
+static int aa = test();
+
 TEST(DataTransform, Register) {
-  OpKernelType kernel_type_1(DataType::FP32, CPUPlace(), DataLayout::kNCHW,
-                             LibraryType::kCUDNN);
-  OpKernelType kernel_type_2(DataType::FP32, GPUPlace(0), DataLayout::kNCHW,
-                             LibraryType::kCUDNN);
+  ;
+  DataTransformationFN fn = frw::type1_to_type2;
+  auto& instance = DataTransformFnMap::Instance();
+  instance.Insert(frw::kernel_type_1, frw::kernel_type_2, fn);
 
-  DataTransformationFN fn = frw::fn1;
-  DataTransformFnMap::Instance().Insert(kernel_type_1, kernel_type_2, fn);
-
-  ASSERT_EQ(DataTransformFnMap::Instance().Map().size(), 1UL);
+  ASSERT_EQ(instance.Map().size(), 2UL);
 }
