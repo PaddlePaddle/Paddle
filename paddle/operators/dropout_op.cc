@@ -47,8 +47,8 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("dropout_prob", "Probability of setting units to zero.")
         .SetDefault(.5f)
         .AddCustomChecker([](const float& drop_p) {
-          PADDLE_ENFORCE(drop_p > 0.0f && drop_p < 1.0f,
-                         "'dropout_prob' must be between 0 and 1.");
+          PADDLE_ENFORCE(drop_p >= 0.0f && drop_p <= 1.0f,
+                         "'dropout_prob' must be between 0.0 and 1.0.");
         });
     AddAttr<bool>("is_test", "True if in test phase.").SetDefault(false);
     AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
