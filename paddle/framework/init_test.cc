@@ -23,5 +23,9 @@ TEST(Init, InitDevices) {
 #ifdef PADDLE_WITH_CUDA
   std::vector<std::string> ds2 = {"CPU", "GPU:0", "GPU:1"};
   ASSERT_EQ(InitDevices(ds2), true);
+
+  // test re-init
+  std::vector<std::string> ds3 = {"GPU:0", "GPU:1"};
+  ASSERT_EQ(InitDevices(ds3), true);
 #endif
 }

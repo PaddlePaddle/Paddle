@@ -113,8 +113,7 @@ class TestSparseAdagradOp(unittest.TestCase):
             LearningRate='LearningRate',
             epsilon=2.0)
 
-        ctx = core.DeviceContext.create(place)
-        adagrad_op.run(scope, ctx)
+        adagrad_op.run(scope, place)
 
         # get and compare moment result
         moment_result_array = np.array(moment)
