@@ -87,12 +87,17 @@ class DataTransformFnMap {
   DISABLE_COPY_AND_ASSIGN(DataTransformFnMap);
 };
 
-#define REGISTER_DATA_TRANSFORM_FN(uniq_name, from, to, fn)                   \
-  int uniq_name##_fn() {                                                      \
+// generate unique name with __LINE__
+// refs https://stackoverflow.com/questions/1597007
+#define TOKENPASTE(x, y) x##y
+#define TOKENPASTE2(x, y) TOKENPASTE(x, y)
+#define REGISTER_DATA_TRANSFORM_FN(from, to, fn)                              \
+  static int TOKENPASTE2(fn_, __LINE__)() {                                   \
     ::paddle::framework::DataTransformFnMap::Instance().Insert(from, to, fn); \
     return 0;                                                                 \
   }                                                                           \
-  static int uniq_name##_var __attribute__((unused)) = uniq_name##_fn()
+  static int TOKENPASTE2(var_, __LINE__) __attribute__((unused)) =            \
+      TOKENPASTE2(fn_, __LINE__)()
 
 }  // namespace framework
 }  // namespace paddle

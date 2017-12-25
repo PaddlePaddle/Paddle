@@ -49,11 +49,11 @@ void type1_to_type3(std::vector<platform::DeviceContext*> ctx, const Tensor& in,
 
 namespace frw = paddle::framework;
 
-REGISTER_DATA_TRANSFORM_FN(test, frw::kernel_type_1, frw::kernel_type_2,
+REGISTER_DATA_TRANSFORM_FN(frw::kernel_type_1, frw::kernel_type_2,
                            frw::type1_to_type2);
-REGISTER_DATA_TRANSFORM_FN(test1, frw::kernel_type_2, frw::kernel_type_3,
+REGISTER_DATA_TRANSFORM_FN(frw::kernel_type_2, frw::kernel_type_3,
                            frw::type2_to_type3);
-REGISTER_DATA_TRANSFORM_FN(test2, frw::kernel_type_1, frw::kernel_type_3,
+REGISTER_DATA_TRANSFORM_FN(frw::kernel_type_1, frw::kernel_type_3,
                            frw::type1_to_type3);
 
 TEST(DataTransform, Register) {
