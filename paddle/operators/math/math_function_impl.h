@@ -94,8 +94,8 @@ class ColwiseSum<platform::CPUDeviceContext, T> {
     T* out_buf = out->mutable_data<T>(out->place());
     const T* in_buf = input.data<T>();
 
-    for (size_t i = 0; i < height; ++i) {
-      for (size_t j = 0; j < size; ++j) {
+    for (size_t i = 0; i < static_cast<size_t>(height); ++i) {
+      for (size_t j = 0; j < static_cast<size_t>(size); ++j) {
         if (i == 0) {
           out_buf[j] = in_buf[i * size + j];
         } else {

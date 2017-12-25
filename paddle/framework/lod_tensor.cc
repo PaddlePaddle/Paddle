@@ -224,7 +224,7 @@ void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
       while (size != 0) {
         size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
         memory::Copy(cpu, buf.get(),
-                     boost::get<platform::GPUPlace>(tensor.place()),
+                     boost::get<platform::CUDAPlace>(tensor.place()),
                      reinterpret_cast<const void *>(data), size_to_write,
                      gpu_dev_ctx.stream());
         gpu_dev_ctx.Wait();

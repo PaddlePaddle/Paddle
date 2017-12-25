@@ -6629,7 +6629,7 @@ def row_conv_layer(input,
     .. math::
 
         r_{t,r} = \sum_{j=1}^{k + 1} {w_{i,j}h_{t+j-1, i}}
-                  \quad \text{for} \quad  (1 \leq i \leq d)
+                  \quad \\text{for} \quad  (1 \leq i \leq d)
 
     Note:
         The `context_len` is `k + 1`. That is to say, the lookahead step
@@ -6778,7 +6778,7 @@ def gated_unit_layer(input,
     The gated unit layer implements a simple gating mechanism over the input.
     The input :math:`X` is first projected into a new space :math:`X'`, and
     it is also used to produce a gate weight :math:`\sigma`. Element-wise
-    product between :match:`X'` and :math:`\sigma` is finally returned.
+    product between :math:`X'` and :math:`\sigma` is finally returned.
 
     Reference:
         `Language Modeling with Gated Convolutional Networks
@@ -7474,7 +7474,7 @@ def factorization_machine(input,
     Factorization Machine with the formula:
 
     .. math::
-        y = \sum_{i=1}^{n-1}\sum_{j=i+1}^n\langle v_i, v_j \rangle x_i x_j
+        y = \sum_{i=1}^{n-1}\sum_{j=i+1}^n\langle v_i, v_j \\rangle x_i x_j
 
     Note:
         X is the input vector with size n. V is the factor matrix. Each row of V

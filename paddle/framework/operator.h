@@ -388,8 +388,6 @@ class OperatorWithKernel : public OperatorBase {
   proto::DataType IndicateDataType(const ExecutionContext& ctx) const;
 };
 
-std::ostream& operator<<(std::ostream& os, const OpKernelType& kernel_key);
-
 extern bool OpSupportGPU(const std::string& op_type);
 
 }  // namespace framework

@@ -242,13 +242,6 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
   return res;
 }
 
-std::ostream& operator<<(std::ostream& os, const OpKernelType& kernel_key) {
-  os << "data_type[" << kernel_key.data_type_ << "]:data_layout["
-     << kernel_key.data_layout_ << "]:place[" << kernel_key.place_
-     << "]:library_type[" << kernel_key.library_type_ << "]";
-  return os;
-}
-
 bool OpSupportGPU(const std::string& op_type) {
   auto& all_kernels = OperatorWithKernel::AllOpKernels();
   auto it = all_kernels.find(op_type);
