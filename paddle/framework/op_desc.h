@@ -127,7 +127,9 @@ class OpDesc {
   }
 
   proto::OpDesc desc_;
+  // input arg name => output variable names
   VariableNameMap inputs_;
+  // output arg name => output variable names
   VariableNameMap outputs_;
   AttributeMap attrs_;
 

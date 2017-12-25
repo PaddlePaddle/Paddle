@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/batch_norm_op.h"
+#include "paddle/framework/data_layout.h"
 
 #include <cfloat>
 #include "paddle/operators/math/math_function.h"
@@ -22,12 +23,12 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+using DataLayout = framework::DataLayout;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 
-void ExtractNCWHD(const framework::DDim &dims,
-                  const TensorFormat &tensor_format, int *N, int *C, int *H,
-                  int *W, int *D) {
+void ExtractNCWHD(const framework::DDim &dims, const DataLayout &data_layout,
+                  int *N, int *C, int *H, int *W, int *D) {
   *N = dims[0];
   if (dims.size() == 2) {
     *C = dims[1];
@@ -35,13 +36,13 @@ void ExtractNCWHD(const framework::DDim &dims,
     *W = 1;
     *D = 1;
   } else {
-    *C = tensor_format == TensorFormat::NCHW ? dims[1] : dims[dims.size() - 1];
-    *H = tensor_format == TensorFormat::NCHW ? dims[2] : dims[1];
+    *C = data_layout == DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
+    *H = data_layout == DataLayout::kNCHW ? dims[2] : dims[1];
     *W = dims.size() > 3
-             ? (tensor_format == TensorFormat::NCHW ? dims[3] : dims[2])
+             ? (data_layout == DataLayout::kNCHW ? dims[3] : dims[2])
              : 1;
     *D = dims.size() > 4
-             ? (tensor_format == TensorFormat::NCHW ? dims[4] : dims[3])
+             ? (data_layout == DataLayout::kNCHW ? dims[4] : dims[3])
              : 1;
   }
 }
@@ -52,13 +53,13 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "It must use CUDAPlace.");
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
-    const std::string tensor_format_str =
-        ctx.Attr<std::string>("tensor_format");
-    const TensorFormat tensor_format = StringToTensorFormat(tensor_format_str);
+    const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+    const DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
@@ -67,7 +68,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
                    "The Input dim size should be between 2 and 5");
     int N, C, H, W, D;
-    ExtractNCWHD(x_dims, tensor_format, &N, &C, &H, &W, &D);
+    ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
     // ------------------- cudnn descriptors ---------------------
     cudnnTensorDescriptor_t data_desc_;
@@ -93,7 +94,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     VLOG(1) << "Setting descriptors.";
     std::vector<int> dims;
     std::vector<int> strides;
-    if (tensor_format == TensorFormat::NCHW) {
+    if (data_layout == DataLayout::kNCHW) {
       dims = {N, C, H, W, D};
       strides = {C * H * W * D, H * W * D, W * D, D, 1};
     } else {
@@ -178,11 +179,11 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "It must use CUDAPlace.");
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
-    const std::string tensor_format_str =
-        ctx.Attr<std::string>("tensor_format");
-    const TensorFormat tensor_format = StringToTensorFormat(tensor_format_str);
+    const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+    const DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
     const auto *x = ctx.Input<Tensor>("X");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
@@ -192,7 +193,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
                    "The Input dim size should be between 2 and 5");
     int N, C, H, W, D;
-    ExtractNCWHD(x_dims, tensor_format, &N, &C, &H, &W, &D);
+    ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
     PADDLE_ENFORCE_EQ(scale->dims().size(), 1UL);
     PADDLE_ENFORCE_EQ(scale->dims()[0], C);
@@ -219,7 +220,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 
     std::vector<int> dims;
     std::vector<int> strides;
-    if (tensor_format == TensorFormat::NCHW) {
+    if (data_layout == DataLayout::kNCHW) {
       dims = {N, C, H, W, D};
       strides = {C * H * W * D, H * W * D, W * D, D, 1};
     } else {
