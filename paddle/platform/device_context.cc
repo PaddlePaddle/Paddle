@@ -58,10 +58,10 @@ DeviceContextPool::DeviceContextPool(
 #ifdef PADDLE_WITH_CUDA
       device_contexts_.emplace(places[i],
                                new platform::CUDADeviceContext(
-                                   boost::get<platform::GPUPlace>(places[i])));
+                                   boost::get<platform::CUDAPlace>(places[i])));
 #else
       PADDLE_THROW(
-          "'GPUPlace' is not supported, Please re-compile with WITH_GPU "
+          "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
           "option");
 #endif
     }
@@ -91,7 +91,7 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   }
   ~EigenCudaStreamDevice() override {}
 
-  void Reinitialize(const cudaStream_t* cuda_stream, GPUPlace place) {
+  void Reinitialize(const cudaStream_t* cuda_stream, CUDAPlace place) {
     stream_ = cuda_stream;
     place_ = place;
     device_prop_ = &Eigen::m_deviceProperties[place.device];
@@ -130,14 +130,14 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   }
 
  private:
-  GPUPlace place_;
+  CUDAPlace place_;
   const cudaStream_t* stream_;         // not owned;
   const cudaDeviceProp* device_prop_;  // not owned;
   mutable void* scratch_;
   mutable unsigned int* semaphore_;
 };
 
-CUDADeviceContext::CUDADeviceContext(GPUPlace place) : place_(place) {
+CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   SetDeviceId(place_.device);
   PADDLE_ENFORCE(cudaStreamCreate(&stream_));
   eigen_stream_.reset(new EigenCudaStreamDevice());
@@ -178,19 +178,17 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
-CUDNNDeviceContext::CUDNNDeviceContext(CUDNNPlace place)
-    : CUDADeviceContext(place), place_(place) {
+CUDNNDeviceContext::CUDNNDeviceContext(CUDAPlace place)
+    : CUDADeviceContext(place) {
   PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
   PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream()));
 }
 
 CUDNNDeviceContext::~CUDNNDeviceContext() {
-  SetDeviceId(place_.device);
+  SetDeviceId(boost::get<CUDAPlace>(GetPlace()).device);
   Wait();
   PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
 }
-
-Place CUDNNDeviceContext::GetPlace() const { return CUDNNPlace(); }
 
 cudnnHandle_t CUDNNDeviceContext::cudnn_handle() const { return cudnn_handle_; }
 

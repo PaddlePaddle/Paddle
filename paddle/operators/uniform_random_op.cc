@@ -63,7 +63,7 @@ class UniformRandomOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         static_cast<framework::proto::DataType>(ctx.Attr<int>("dtype")),
