@@ -20,11 +20,11 @@ limitations under the License. */
 TEST(Device, Init) {
   using paddle::platform::DeviceContext;
   using paddle::platform::CUDADeviceContext;
-  using paddle::platform::GPUPlace;
+  using paddle::platform::CUDAPlace;
 
   int count = paddle::platform::GetCUDADeviceCount();
   for (int i = 0; i < count; i++) {
-    CUDADeviceContext* device_context = new CUDADeviceContext(GPUPlace(i));
+    CUDADeviceContext* device_context = new CUDADeviceContext(CUDAPlace(i));
     Eigen::GpuDevice* gpu_device = device_context->eigen_device();
     ASSERT_NE(nullptr, gpu_device);
     delete device_context;
@@ -33,11 +33,11 @@ TEST(Device, Init) {
 
 TEST(Device, CUDADeviceContext) {
   using paddle::platform::CUDADeviceContext;
-  using paddle::platform::GPUPlace;
+  using paddle::platform::CUDAPlace;
 
   int count = paddle::platform::GetCUDADeviceCount();
   for (int i = 0; i < count; i++) {
-    CUDADeviceContext* device_context = new CUDADeviceContext(GPUPlace(i));
+    CUDADeviceContext* device_context = new CUDADeviceContext(CUDAPlace(i));
     Eigen::GpuDevice* gpu_device = device_context->eigen_device();
     ASSERT_NE(nullptr, gpu_device);
     cudnnHandle_t cudnn_handle = device_context->cudnn_handle();
@@ -70,7 +70,7 @@ TEST(Device, DeviceContextPool) {
   using paddle::platform::CUDADeviceContext;
   using paddle::platform::Place;
   using paddle::platform::CPUPlace;
-  using paddle::platform::GPUPlace;
+  using paddle::platform::CUDAPlace;
 
   DeviceContextPool& pool = DeviceContextPool::Get();
   auto cpu_dev_ctx1 = pool.Borrow(CPUPlace());
@@ -80,14 +80,14 @@ TEST(Device, DeviceContextPool) {
   std::vector<Place> gpu_places;
   int count = paddle::platform::GetCUDADeviceCount();
   for (int i = 0; i < count; ++i) {
-    gpu_places.emplace_back(GPUPlace(i));
+    gpu_places.emplace_back(CUDAPlace(i));
   }
   auto dev_ctxs = pool.Borrow(gpu_places);
   for (size_t i = 0; i < dev_ctxs.size(); ++i) {
     auto* dev_ctx = static_cast<const CUDADeviceContext*>(dev_ctxs[i]);
 
-    // check same as GPUPlace(i)
-    GPUPlace place = boost::get<GPUPlace>(dev_ctx->GetPlace());
+    // check same as CUDAPlace(i)
+    CUDAPlace place = boost::get<CUDAPlace>(dev_ctx->GetPlace());
     EXPECT_EQ(place.GetDeviceId(), static_cast<int>(i));
   }
 }
@@ -106,7 +106,7 @@ int main(int argc, char** argv) {
   places.emplace_back(paddle::platform::CPUPlace());
   int count = paddle::platform::GetCUDADeviceCount();
   for (int i = 0; i < count; ++i) {
-    places.emplace_back(paddle::platform::GPUPlace(i));
+    places.emplace_back(paddle::platform::CUDAPlace(i));
   }
 
   VLOG(0) << " DeviceCount " << count;

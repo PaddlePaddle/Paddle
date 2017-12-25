@@ -15,7 +15,7 @@ class TestProfiler(unittest.TestCase):
         data = layers.data(name='data', shape=[3, 28, 28], dtype='float32')
         conv = layers.conv2d(data, 20, 3, stride=[1, 1], padding=[1, 1])
 
-        place = fluid.GPUPlace(0)
+        place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
 
