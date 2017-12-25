@@ -83,6 +83,28 @@ inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
 }
 
 /**
+ * @brief CopyFrom support CPU <-> CPU
+ */
+inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
+                     Tensor* dst) {
+  src.check_memory_size();
+  dst->Resize(src.dims());
+
+  auto src_place = src.place();
+  auto src_ptr = src.data<void>();
+
+  auto dst_ptr = dst->mutable_data(dst_place, src.type());
+
+  auto size = src.numel() * SizeOfType(src.type());
+
+  PADDLE_ENFORCE(platform::is_cpu_place(src_place) &&
+                 platform::is_cpu_place(dst_place));
+
+  memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
+               boost::get<platform::CPUPlace>(src_place), src_ptr, size);
+}
+
+/**
  * @brief   Copy the content of an external vector to a tensor.
  *
  * @param[in] src        The external tensor.
@@ -116,6 +138,21 @@ inline void CopyFromVector(const std::vector<T>& src,
 }
 
 /**
+ * @brief CopyFromVector CPU vector -> CPU Tensor
+ */
+template <typename T>
+inline void CopyFromVector(const std::vector<T>& src, Tensor* dst) {
+  platform::CPUPlace dst_place = platform::CPUPlace();
+  auto src_ptr = static_cast<const void*>(src.data());
+  platform::CPUPlace src_place;
+  dst->Resize({static_cast<int64_t>(src.size())});
+  auto dst_ptr = static_cast<void*>(dst->mutable_data<T>(dst_place));
+  auto size = src.size() * sizeof(T);
+
+  memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+}
+
+/**
  * @brief   Copy the content of a tensor to a vector
  *
  * @param[in] src        The external tensor.
@@ -146,6 +183,24 @@ inline void CopyToVector(const Tensor& src, const platform::DeviceContext& ctx,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
   }
 #endif
+}
+
+/**
+ * @brief CopyToVector CPUTensor <-> CPU Vector
+ */
+template <typename T>
+inline void CopyToVector(const Tensor& src, std::vector<T>* dst) {
+  auto src_ptr = static_cast<const void*>(src.data<T>());
+  auto size = src.numel() * sizeof(T);
+
+  platform::CPUPlace dst_place;
+  dst->resize(src.numel());
+  auto dst_ptr = static_cast<void*>(dst->data());
+
+  PADDLE_ENFORCE(platform::is_cpu_place(src.place()));
+
+  memory::Copy(dst_place, dst_ptr, boost::get<platform::CPUPlace>(src.place()),
+               src_ptr, size);
 }
 
 }  // namespace framework
