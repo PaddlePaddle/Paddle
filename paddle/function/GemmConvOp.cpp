@@ -103,7 +103,6 @@ public:
       colData = reinterpret_cast<real*>(memory_->getBuf());
     }
 
-    GroupedIm2ColFunctor<kCFO, Device, real> groupedIm2col;
     Im2ColFunctor<kCFO, Device, real> im2col;
     size_t inputOffset = imShape.getElements();
     size_t outputOffset =
@@ -113,25 +112,17 @@ public:
     for (size_t i = 0; i < batchSize; i++) {
       for (size_t g = 0; g < groups_; g++) {
         for (size_t k = 0; k < im2colGroupNum; ++k) {
-          int32_t start = colHeight * k / im2colGroupNum;
-          int32_t end = colHeight * (k + 1) / im2colGroupNum;
+          size_t start = colHeight * k / im2colGroupNum;
+          size_t end = colHeight * (k + 1) / im2colGroupNum;
+
           if (im2colGroupNum > 1) {
-            groupedIm2col(inputData + g * inputOffset,
-                          imShape,
-                          colData,
-                          start,
-                          end,
-                          filterHeight,
-                          filterWidth,
-                          outputHeight,
-                          outputWidth,
-                          strideH(),
-                          strideW(),
-                          paddingH(),
-                          paddingW(),
-                          dilationH(),
-                          dilationW());
-          } else if (needIm2col) {
+            colShape = TensorShape({end - start,
+                                    filterHeight,
+                                    filterWidth,
+                                    outputHeight,
+                                    outputWidth});
+          }
+          if (needIm2col) {
             im2col(inputData + g * inputOffset,
                    imShape,
                    colData,
@@ -141,7 +132,9 @@ public:
                    paddingH(),
                    paddingW(),
                    dilationH(),
-                   dilationW());
+                   dilationW(),
+                   start,
+                   end);
           } else {
             colData = inputData + g * inputOffset;
           }

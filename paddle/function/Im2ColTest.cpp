@@ -158,39 +158,36 @@ void TestGroupedIm2ColFunctor() {
 
   MatrixPtr output2 = Matrix::create(height, width, false, false);
 
-  Im2ColFunctor<kCFO, Device, T> im2Col;
-  im2Col(input1->getData(),
-         imShape,
-         output1->getData(),
-         colShape,
-         stride,
-         stride,
-         padding,
-         padding,
-         dilation,
-         dilation);
+  Im2ColFunctor<kCFO, Device, T> im2Col1;
+  im2Col1(input1->getData(),
+          imShape,
+          output1->getData(),
+          colShape,
+          stride,
+          stride,
+          padding,
+          padding,
+          dilation,
+          dilation);
 
   size_t im2colGroupNum = 6;
-  GroupedIm2ColFunctor<kCFO, Device, T> subIm2Col;
+  Im2ColFunctor<kCFO, Device, T> im2Col2;
   real* colData = output2->getData();
   for (size_t k = 0; k < im2colGroupNum; ++k) {
-    int32_t start = height * k / im2colGroupNum;
-    int32_t end = height * (k + 1) / im2colGroupNum;
-    subIm2Col(input1->getData(),
-              imShape,
-              colData + start * width,
-              start,
-              end,
-              filterHeight,
-              filterWidth,
-              outputHeight,
-              outputWidth,
-              stride,
-              stride,
-              padding,
-              padding,
-              dilation,
-              dilation);
+    size_t start = height * k / im2colGroupNum;
+    size_t end = height * (k + 1) / im2colGroupNum;
+    im2Col2(input1->getData(),
+            imShape,
+            colData + start * width,
+            colShape,
+            stride,
+            stride,
+            padding,
+            padding,
+            dilation,
+            dilation,
+            start,
+            end);
   }
   autotest::TensorCheckEqual(*output1, *output2);
 }
