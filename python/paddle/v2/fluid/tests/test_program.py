@@ -1,7 +1,7 @@
 from __future__ import print_function
 import unittest
 
-from paddle.v2.fluid.framework import Program, default_main_program, program_guard
+from paddle.v2.fluid.framework import Program, default_main_program, program_guard, grad_var_name
 import paddle.v2.fluid.layers as layers
 
 main_program = default_main_program()
@@ -109,12 +109,10 @@ class TestProgram(unittest.TestCase):
         self.assertEqual(add_op.idx, 1)
         param_to_grad = prog.append_backward(mean_out, set())
 
-        def grad_name(name):
-            return name + "@GRAD"
-
         for var_name in ("mul.x", "mul.y", "mul.out", "add.y", "add.out",
                          "mean.out"):
-            self.assertEqual(param_to_grad[var_name][0], grad_name(var_name))
+            self.assertEqual(param_to_grad[var_name][0],
+                             grad_var_name(var_name))
             self.assertEqual(param_to_grad[var_name][1], 0)
 
         expect_ops = [

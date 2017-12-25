@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/operators/net_op.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
+#include "paddle/pybind/const_value.h"
 #include "paddle/pybind/exception.h"
 #include "paddle/pybind/pybind.h"
 #include "paddle/pybind/tensor_py.h"
@@ -265,36 +266,36 @@ All parameter, weight, gradient are variables in Paddle.
     return ret_values;
   });
   m.def("get_grad_op_descs",
-        [](const OpDescBind &op_desc,
+        [](const OpDesc &op_desc,
            const std::unordered_set<std::string> &no_grad_set,
            std::unordered_map<std::string, std::string> &grad_to_var,
-           const std::vector<BlockDescBind *> &grad_sub_block) {
-          std::vector<std::unique_ptr<OpDescBind>> grad_op_descs =
+           const std::vector<BlockDesc *> &grad_sub_block) {
+          std::vector<std::unique_ptr<OpDesc>> grad_op_descs =
               framework::OpInfoMap::Instance()
                   .Get(op_desc.Type())
                   .GradOpMaker()(op_desc, no_grad_set, &grad_to_var,
                                  grad_sub_block);
-          std::vector<OpDescBind *> grad_op_desc_ptrs(grad_op_descs.size());
+          std::vector<OpDesc *> grad_op_desc_ptrs(grad_op_descs.size());
           std::transform(
               grad_op_descs.begin(), grad_op_descs.end(),
               grad_op_desc_ptrs.begin(),
-              [](std::unique_ptr<OpDescBind> &p) { return p.release(); });
+              [](std::unique_ptr<OpDesc> &p) { return p.release(); });
           return grad_op_desc_ptrs;
         });
-  m.def("prune", [](const ProgramDescBind &origin,
+  m.def("prune", [](const ProgramDesc &origin,
                     const std::vector<std::array<size_t, 2>> &targets) {
-    ProgramDescBind prog_with_targets(origin);
+    ProgramDesc prog_with_targets(origin);
     for (const auto &t : targets) {
       prog_with_targets.MutableBlock(t[0])->Op(t[1])->MarkAsTarget();
     }
-    ProgramDesc pruned_desc;
+    proto::ProgramDesc pruned_desc;
     Prune(*prog_with_targets.Proto(), &pruned_desc);
-    return new ProgramDescBind(pruned_desc);
+    return new ProgramDesc(pruned_desc);
   });
-  m.def("inference_optimize", [](ProgramDescBind &origin) {
-    ProgramDesc pruned_desc;
+  m.def("inference_optimize", [](ProgramDesc &origin) {
+    proto::ProgramDesc pruned_desc;
     InferenceOptimize(*(origin.Proto()), &pruned_desc);
-    return new ProgramDescBind(pruned_desc);
+    return new ProgramDesc(pruned_desc);
   });
   m.def_submodule(
        "var_names",
@@ -344,7 +345,7 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<OperatorBase>(m, "Operator")
       .def_static("create",
                   [](py::bytes protobin) {
-                    OpDesc desc;
+                    proto::OpDesc desc;
                     PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
                                    "Cannot parse user input to OpDesc");
                     PADDLE_ENFORCE(desc.IsInitialized(),
@@ -359,10 +360,10 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
-              const platform::DeviceContext &dev_ctx) {
-             self.Run(scope, dev_ctx);
-             dev_ctx.Wait();
-           })
+              const platform::CPUPlace &place) { self.Run(scope, place); })
+      .def("run",
+           [](OperatorBase &self, const Scope &scope,
+              const platform::GPUPlace &place) { self.Run(scope, place); })
       .def("type",
            [](const OperatorBase &op) -> std::string { return op.Type(); })
       .def("outputs",
@@ -397,7 +398,7 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<operators::CondOp, OperatorBase>(m, "CondOp")
       .def_static("create",
                   [](py::bytes protobin) -> operators::CondOp * {
-                    OpDesc desc;
+                    proto::OpDesc desc;
                     PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
                                    "Cannot parse user input to OpDesc");
                     PADDLE_ENFORCE(desc.IsInitialized(),
@@ -416,7 +417,7 @@ All parameter, weight, gradient are variables in Paddle.
            });
 
   py::class_<framework::Executor>(m, "Executor")
-      .def(py::init<std::vector<platform::Place> &>())
+      .def(py::init<const platform::Place &>())
       .def("run", &Executor::Run);
 
   m.def("unique_integer", UniqueIntegerGenerator);
@@ -431,6 +432,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindBlockDesc(m);
   BindVarDsec(m);
   BindOpDesc(m);
+  BindConstValue(m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
       .def("items", [](framework::LoDRankTable &table) {

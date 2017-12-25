@@ -79,8 +79,7 @@ class SequenceSliceGradOp : public framework::OperatorWithKernel {
 
 class SequenceSliceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceSliceOpMaker(framework::OpProto* proto,
-                       framework::OpAttrChecker* op_checker)
+  SequenceSliceOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(LoDTensor), "

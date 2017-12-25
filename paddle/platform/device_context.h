@@ -11,8 +11,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/platform/enforce.h"
-#include "paddle/platform/place.h"
+#include <memory>
+#include <unordered_map>
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/platform/dynload/cublas.h"
@@ -20,9 +20,12 @@ limitations under the License. */
 #include "paddle/platform/gpu_info.h"
 #define EIGEN_USE_GPU
 #endif
-#include <memory>
+
+#include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
+
+#include "glog/logging.h"
 
 namespace paddle {
 namespace platform {
@@ -45,6 +48,7 @@ class CPUDeviceContext : public DeviceContext {
   Place GetPlace() const override;
 
  private:
+  CPUPlace place_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
 
@@ -103,6 +107,52 @@ class CUDNNDeviceContext : public CUDADeviceContext {
 };
 
 #endif
+
+/*! \brief device context pool singleton */
+class DeviceContextPool {
+ public:
+  explicit DeviceContextPool(const std::vector<platform::Place>& places);
+
+  static DeviceContextPool& Get() {
+    PADDLE_ENFORCE_NOT_NULL(pool, "Need to Create DeviceContextPool first!");
+    return *pool;
+  }
+
+  /*! \brief  Create should only called by Init function */
+  static DeviceContextPool& Create(const std::vector<platform::Place>& places) {
+    if (pool == nullptr) {
+      pool = new DeviceContextPool(places);
+    }
+    return *pool;
+  }
+
+  /*! \brief  Return handle of single device context. */
+  const platform::DeviceContext* Borrow(const platform::Place& place);
+
+  /*! \brief  Return handle of multi-device context. */
+  std::vector<const platform::DeviceContext*> Borrow(
+      const std::vector<platform::Place>& places);
+
+  ~DeviceContextPool() {}
+
+ private:
+  static DeviceContextPool* pool;
+  constexpr static int LEFT_SHIFT = 8;
+  struct Hash {
+    std::hash<int> hash_;
+    size_t operator()(const platform::Place& place) const {
+      int pre_hash = place.which() + (1 << LEFT_SHIFT);
+      if (platform::is_gpu_place(place)) {
+        pre_hash += boost::get<platform::GPUPlace>(place).GetDeviceId();
+      }
+      return hash_(pre_hash);
+    }
+  };
+  std::unordered_map<const platform::Place, const platform::DeviceContext*,
+                     Hash>
+      device_contexts_;
+  DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
+};
 
 }  // namespace platform
 }  // namespace paddle

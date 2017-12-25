@@ -43,7 +43,7 @@ class SGDOp : public framework::OperatorWithKernel {
 
 class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SGDOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  SGDOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param", "(Tensor) Input parameter");
     AddInput("LearningRate", "(Tensor) Learning rate of SGD");

@@ -14,8 +14,8 @@
 #include <algorithm>
 #include <string>
 
-#include "paddle/framework/executor.h"
 #include "paddle/framework/init.h"
+#include "paddle/platform/device_context.h"
 #include "paddle/platform/place.h"
 #include "paddle/string/piece.h"
 
@@ -48,7 +48,7 @@ bool InitDevices(const std::vector<std::string> &devices) {
   std::vector<platform::Place> places;
   for (auto &device : devices) {
     auto p = string::Piece(device);
-    if (string::Find(p, ':', 0) == string::Piece::npos) {
+    if (string::HasPrefix(p, "CPU")) {
       places.emplace_back(platform::CPUPlace());
     } else if (string::HasPrefix(p, "GPU")) {
 #ifdef PADDLE_WITH_CUDA
@@ -69,10 +69,9 @@ bool InitDevices(const std::vector<std::string> &devices) {
                      return platform::is_cpu_place(place);
                    }) == places.end()) {
     places.emplace_back(platform::CPUPlace());
-    LOG(WARNING) << "Not specified any device, use CPU by Default.";
+    LOG(WARNING) << "Not specified CPU device, create CPU by Default.";
   }
-  DeviceContextPool::Create(places);
-  return true;
+  platform::DeviceContextPool::Create(places);
   return true;
 }
 
