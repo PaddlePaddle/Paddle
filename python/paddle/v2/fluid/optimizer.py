@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 import framework
-from backward import append_backward_ops
+from backward import append_backward
 from framework import unique_name
 from initializer import Constant
 from layer_helper import LayerHelper
@@ -195,10 +195,10 @@ class Optimizer(object):
                  no_grad_set=None):
         """Add operations to minimize `loss` by updating `parameter_list`.
 
-        This method combines interface `append_backward_ops()` and
+        This method combines interface `append_backward()` and
         `create_optimization_pass()` into one.
         """
-        params_grads = append_backward_ops(loss, parameter_list, no_grad_set)
+        params_grads = append_backward(loss, parameter_list, no_grad_set)
         # Add regularization if any
         params_grads = append_regularization_ops(params_grads,
                                                  self.regularization)

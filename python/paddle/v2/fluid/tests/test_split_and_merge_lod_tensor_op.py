@@ -4,7 +4,7 @@ import numpy as np
 import paddle.v2.fluid.layers as layers
 from paddle.v2.fluid.framework import Program
 from paddle.v2.fluid.executor import Executor
-from paddle.v2.fluid.backward import append_backward_ops
+from paddle.v2.fluid.backward import append_backward
 
 
 class TestCPULoDTensorArrayOps(unittest.TestCase):
@@ -150,7 +150,7 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
             main_program=program)
         mean = layers.mean(x=out, main_program=program)
 
-        append_backward_ops(mean)
+        append_backward(mean)
 
         tensor = core.LoDTensor()
         tensor.set(np.arange(10).reshape(10, 1).astype('float32'), place)

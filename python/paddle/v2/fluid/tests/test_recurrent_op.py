@@ -3,7 +3,7 @@ import unittest
 import paddle.v2.fluid.layers as layers
 from paddle.v2.fluid.framework import Program
 from paddle.v2.fluid.executor import Executor
-from paddle.v2.fluid.backward import append_backward_ops
+from paddle.v2.fluid.backward import append_backward
 import numpy as np
 import paddle.v2.fluid.core as core
 
@@ -177,7 +177,7 @@ class RecurrentOpTest1(unittest.TestCase):
     def test_backward(self):
         self.check_forward()
 
-        append_backward_ops(self.output)
+        append_backward(self.output)
 
         ana_grad = [np.array(x) for x in self.backward()]
 
