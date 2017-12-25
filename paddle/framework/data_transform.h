@@ -29,11 +29,11 @@ using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 
 struct KernelTypePairHash {
   size_t operator()(const KernelTypePair& kernel_pair) const {
-    OpKernelType::Hash kernel_type_haser;
-    size_t left_hasher = kernel_type_haser(kernel_pair.first) << 1;
-    size_t right_hasher = kernel_type_haser(kernel_pair.second);
-    std::hash<int> hasher;
-    return hasher(static_cast<int>(left_hasher + right_hasher));
+    OpKernelType::Hash kernel_type_hasher;
+    size_t left_hasher = kernel_type_hasher(kernel_pair.first) << 1;
+    size_t right_hasher = kernel_type_hasher(kernel_pair.second);
+    std::hash<size_t> hasher;
+    return hasher(left_hasher + right_hasher);
   }
 };
 

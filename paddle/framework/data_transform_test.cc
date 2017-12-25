@@ -39,11 +39,7 @@ TEST(DataTransform, Register) {
                              LibraryType::kCUDNN);
 
   DataTransformationFN fn = frw::fn1;
+  DataTransformFnMap::Instance().Insert(kernel_type_1, kernel_type_2, fn);
 
-  std::cout << "aa" << std::endl;
-  auto& data_transform_map = DataTransformFnMap::Instance();
-
-  data_transform_map.Insert(kernel_type_1, kernel_type_2, fn);
-  std::cout << "bb" << std::endl;
-  ASSERT_EQ(data_transform_map.Map().size(), 1UL);
+  ASSERT_EQ(DataTransformFnMap::Instance().Map().size(), 1UL);
 }

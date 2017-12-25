@@ -21,10 +21,8 @@ static DataTransformFnMap* data_transform_map = nullptr;
 
 DataTransformFnMap& DataTransformFnMap::Instance() {
   if (data_transform_map == nullptr) {
-    //    data_transform_map = new DataTransformFnMap();
-    new DataTransformFnMap();
+    data_transform_map = new DataTransformFnMap();
   }
-
   return *data_transform_map;
 }
 
