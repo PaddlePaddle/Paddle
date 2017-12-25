@@ -20,8 +20,6 @@ limitations under the License. */
 #include <typeindex>
 #include <vector>
 
-#include "unsupported/Eigen/CXX11/Tensor"
-
 #include "paddle/framework/data_layout.h"
 #include "paddle/framework/ddim.h"
 #include "paddle/memory/memory.h"
