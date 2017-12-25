@@ -49,7 +49,7 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddAttr<std::string>(
         "pooltype",
-        "(int, default AVERAGE) the pooling pooltype of SequencePoolOp.")
+        "(string, default 'AVERAGE') the pooling pooltype of SequencePoolOp.")
         .SetDefault("AVERAGE")
         .InEnum({"AVERAGE", "SUM", "SQRT", "LAST", "FIRST", "MAX"});
     AddComment(R"DOC(
