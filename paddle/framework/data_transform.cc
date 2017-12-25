@@ -17,12 +17,14 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-static DataTransform* data_transform_map = nullptr;
+static DataTransformFnMap* data_transform_map = nullptr;
 
-DataTransform& DataTransform::Instance() {
+DataTransformFnMap& DataTransformFnMap::Instance() {
   if (data_transform_map == nullptr) {
-    data_transform_map = new DataTransform();
+    //    data_transform_map = new DataTransformFnMap();
+    new DataTransformFnMap();
   }
+
   return *data_transform_map;
 }
 

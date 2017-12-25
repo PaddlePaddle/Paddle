@@ -36,7 +36,8 @@ cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 cc_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 
-cc_library(data_transform SRCS data_transform.cc)
+cc_library(data_transform SRCS data_transform.cc DEPS tensor)
+cc_test(data_transform_test SRCS data_transform_test.cc DEPS data_transform)
 
 py_proto_compile(framework_py_proto SRCS framework.proto)
 # Generate an empty __init__.py to make framework_py_proto as a valid python module.
