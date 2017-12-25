@@ -25,6 +25,7 @@ import collections
 import tarfile
 import re
 import string
+import random
 
 __all__ = ['build_dict', 'train', 'test', 'convert']
 
