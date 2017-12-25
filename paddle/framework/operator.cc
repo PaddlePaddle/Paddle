@@ -411,7 +411,30 @@ void OperatorWithKernel::Run(const Scope& scope,
                  expected_kernel_key);
   }
 
-  kernel_iter->second->Compute(ctx);
+  if (actual_kernel_key == expected_kernel_key) {
+    kernel_iter->second->Compute(ctx);
+  } else {
+    Scope& op_scope = scope.NewScope();
+    auto input_vars = this->InputVars();
+    for (auto var_name : input_vars) {
+      op_scope.Var(var_name);
+    }
+
+    // TODO(qijun) get appropriate DeviceContext from DeviceContext pool
+    platform::DeviceContext* trans_dev_ctx = nullptr;
+
+    // TODO(qijun) get appropriate DataTransformFn from global map
+    using DataTransformFn = std::function<void(
+        const Variable& in, Variable* out, platform::DeviceContext* ctx)>;
+    DataTransformFn trans_fun = nullptr;
+
+    for (auto var_name : input_vars) {
+      trans_fun(*(scope.FindVar(var_name)), op_scope.FindVar(var_name),
+                trans_dev_ctx);
+    }
+    ExecutionContext op_ctx(*this, op_scope, *dev_ctx);
+    kernel_iter->second->Compute(op_ctx);
+  }
 }
 
 OpKernelType OperatorWithKernel::GetActualKernelType(
