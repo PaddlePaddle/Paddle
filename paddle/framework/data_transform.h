@@ -16,15 +16,18 @@ limitations under the License. */
 
 #include <functional>
 #include <utility>
+#include <vector>
 
 #include "paddle/framework/op_kernel_type.h"
 #include "paddle/framework/tensor.h"
+#include "paddle/platform/device_context.h"
 #include "paddle/platform/macros.h"
 
 namespace paddle {
 namespace framework {
 
-using DataTransformationFN = std::function<void(const Tensor& in, Tensor* out)>;
+using DataTransformFN = std::function<void(
+    std::vector<platform::DeviceContext*> ctx, const Tensor& in, Tensor* out)>;
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 
 struct KernelTypePairHash {
@@ -37,9 +40,8 @@ struct KernelTypePairHash {
   }
 };
 
-using DataTramsformMap =
-    std::unordered_map<KernelTypePair, DataTransformationFN,
-                       KernelTypePairHash>;
+using DataTransformMap =
+    std::unordered_map<KernelTypePair, DataTransformFN, KernelTypePairHash>;
 
 class DataTransformFnMap {
  public:
@@ -50,26 +52,25 @@ class DataTransformFnMap {
   }
 
   void Insert(const OpKernelType& left, const OpKernelType& right,
-              const DataTransformationFN& data_tranform_fn) {
+              const DataTransformFN& data_tranform_fn) {
     Insert(std::make_pair(left, right), data_tranform_fn);
   }
 
   void Insert(const KernelTypePair& kernel_type_pair,
-              const DataTransformationFN& data_tranform_fn) {
+              const DataTransformFN& data_tranform_fn) {
     PADDLE_ENFORCE(!Has(kernel_type_pair),
                    "KernelTypePair %s has been registered", "");
     map_.insert({kernel_type_pair, data_tranform_fn});
   }
 
-  const DataTransformationFN& Get(const KernelTypePair& key_pair) const {
+  const DataTransformFN& Get(const KernelTypePair& key_pair) const {
     auto data_transformer = GetNullable(key_pair);
     PADDLE_ENFORCE_NOT_NULL(data_transformer,
-                            "DataTransformationFN should not be NULL");
+                            "DataTransformFN should not be NULL");
     return *data_transformer;
   }
 
-  const DataTransformationFN* GetNullable(
-      const KernelTypePair& key_pair) const {
+  const DataTransformFN* GetNullable(const KernelTypePair& key_pair) const {
     auto it = map_.find(key_pair);
     if (it == map_.end()) {
       return nullptr;
@@ -78,20 +79,19 @@ class DataTransformFnMap {
     }
   }
 
-  const DataTramsformMap& Map() const { return map_; }
+  const DataTransformMap& Map() const { return map_; }
 
  private:
   DataTransformFnMap() = default;
-  DataTramsformMap map_;
-  //  DISABLE_COPY_AND_ASSIGN(DataTransformFnMap);
+  DataTransformMap map_;
+  DISABLE_COPY_AND_ASSIGN(DataTransformFnMap);
 };
 
-#define REGISTER_DATA_TRANSFORM_FN(uniq_name, left, right, fn)              \
-  int uniq_name##_fn() {                                                    \
-    ::paddle::framework::DataTransformFnMap::Instance().Insert(left, right, \
-                                                               fn);         \
-    return 0;                                                               \
-  }                                                                         \
+#define REGISTER_DATA_TRANSFORM_FN(uniq_name, from, to, fn)                   \
+  int uniq_name##_fn() {                                                      \
+    ::paddle::framework::DataTransformFnMap::Instance().Insert(from, to, fn); \
+    return 0;                                                                 \
+  }                                                                           \
   static int uniq_name##_var __attribute__((unused)) = uniq_name##_fn()
 
 }  // namespace framework

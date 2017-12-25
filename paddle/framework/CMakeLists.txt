@@ -36,9 +36,6 @@ cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 cc_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 
-cc_library(data_transform SRCS data_transform.cc DEPS tensor)
-cc_test(data_transform_test SRCS data_transform_test.cc DEPS data_transform)
-
 py_proto_compile(framework_py_proto SRCS framework.proto)
 # Generate an empty __init__.py to make framework_py_proto as a valid python module.
 add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
@@ -66,4 +63,7 @@ cc_test(threadpool_test SRCS threadpool_test.cc)
 cc_library(init SRCS init.cc DEPS gflags device_context place stringpiece)
 cc_test(init_test SRCS init_test.cc DEPS init)
 
-cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context)
+cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto)
+
+cc_library(data_transform SRCS data_transform.cc DEPS tensor framework_proto)
+cc_test(data_transform_test SRCS data_transform_test.cc DEPS data_transform device_context)
