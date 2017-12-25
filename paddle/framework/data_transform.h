@@ -61,19 +61,20 @@ class DataTransformFnMap {
     map_.insert({kernel_type_pair, data_tranform_fn});
   }
 
-  const DataTransformationFN Get(const KernelTypePair& key_pair) const {
+  const DataTransformationFN& Get(const KernelTypePair& key_pair) const {
     auto data_transformer = GetNullable(key_pair);
     PADDLE_ENFORCE_NOT_NULL(data_transformer,
                             "DataTransformationFN should not be NULL");
-    return data_transformer;
+    return *data_transformer;
   }
 
-  const DataTransformationFN GetNullable(const KernelTypePair& key_pair) const {
+  const DataTransformationFN* GetNullable(
+      const KernelTypePair& key_pair) const {
     auto it = map_.find(key_pair);
     if (it == map_.end()) {
       return nullptr;
     } else {
-      return it->second;
+      return &(it->second);
     }
   }
 
@@ -100,12 +101,12 @@ struct DataTransformRegistrar {
   }
 };
 
-#define REGISTER_DATA_TRANSFORM_FN(uniq_name, left, right, fn)        \
-  int uniq_name##_fn() {                                              \
-    ::paddle::framework::DataTransformFnMap::Instance().Insert(       \
-        frw::kernel_type_3, frw::kernel_type_2, frw::type1_to_type2); \
-    return 0;                                                         \
-  }                                                                   \
+#define REGISTER_DATA_TRANSFORM_FN(uniq_name, left, right, fn)              \
+  int uniq_name##_fn() {                                                    \
+    ::paddle::framework::DataTransformFnMap::Instance().Insert(left, right, \
+                                                               fn);         \
+    return 0;                                                               \
+  }                                                                         \
   static int uniq_name##_var __attribute__((unused)) = uniq_name##_fn()
 
 }  // namespace framework

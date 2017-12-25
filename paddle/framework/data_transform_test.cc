@@ -18,7 +18,7 @@ limitations under the License. */
 using OpKernelType = paddle::framework::OpKernelType;
 using DataType = paddle::framework::proto::DataType;
 using CPUPlace = paddle::platform::CPUPlace;
-using GPUPlace = paddle::platform::GPUPlace;
+using CUDAPlace = paddle::platform::CUDAPlace;
 using DataLayout = paddle::framework::DataLayout;
 using LibraryType = paddle::framework::LibraryType;
 using DataTransformFnMap = paddle::framework::DataTransformFnMap;
@@ -30,21 +30,28 @@ namespace paddle {
 namespace framework {
 OpKernelType kernel_type_1(DataType::FP32, CPUPlace(), DataLayout::kNCHW,
                            LibraryType::kCUDNN);
-OpKernelType kernel_type_2(DataType::FP32, GPUPlace(0), DataLayout::kNCHW,
+OpKernelType kernel_type_2(DataType::FP32, CUDAPlace(0), DataLayout::kNCHW,
                            LibraryType::kCUDNN);
-OpKernelType kernel_type_3(DataType::FP16, GPUPlace(0), DataLayout::kNCHW,
+OpKernelType kernel_type_3(DataType::FP16, CUDAPlace(0), DataLayout::kNCHW,
                            LibraryType::kCUDNN);
 void type1_to_type2(const frw::Tensor& in, frw::Tensor* out) {}
 
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_DATA_TRANSFORM_FN(test, frw::kernel_type_1, frw::kernel_type_2, fn);
+REGISTER_DATA_TRANSFORM_FN(test, frw::kernel_type_1, frw::kernel_type_2,
+                           frw::type1_to_type2);
+REGISTER_DATA_TRANSFORM_FN(test1, frw::kernel_type_2, frw::kernel_type_3,
+                           frw::type1_to_type2);
 
 TEST(DataTransform, Register) {
-  DataTransformationFN fn = frw::type1_to_type2;
   auto& instance = DataTransformFnMap::Instance();
-  instance.Insert(frw::kernel_type_1, frw::kernel_type_2, fn);
 
   ASSERT_EQ(instance.Map().size(), 2UL);
+
+  DataTransformationFN fn = frw::type1_to_type2;
+
+  instance.Insert(frw::kernel_type_1, frw::kernel_type_3, fn);
+
+  ASSERT_EQ(instance.Map().size(), 3UL);
 }
