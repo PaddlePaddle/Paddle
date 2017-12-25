@@ -28,8 +28,8 @@ struct LstmUnitFunctor<platform::CUDADeviceContext, T> {
                       const detail::ActivationType& cell_act,
                       const detail::ActivationType& cand_act) {
     detail::gpu_lstm_forward<T>(context, detail::forward::lstm<T>(), value,
-                                frame_size, batch_size, cand_act,
-                                gate_act, cell_act);
+                                frame_size, batch_size, cand_act, gate_act,
+                                cell_act);
   }
 };
 
@@ -42,8 +42,8 @@ struct LstmUnitGradFunctor<platform::CUDADeviceContext, T> {
                       const detail::ActivationType& cell_act,
                       const detail::ActivationType& cand_act) {
     detail::gpu_lstm_backward(context, detail::backward::lstm<T>(), value, grad,
-                              frame_size, batch_size, cand_act,
-                              gate_act, cell_act);
+                              frame_size, batch_size, cand_act, gate_act,
+                              cell_act);
   }
 };
 

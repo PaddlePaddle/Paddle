@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/operators/math/detail/activation_functions.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/enforce.h"
-#include "paddle/operators/math/detail/activation_functions.h"
 
 namespace paddle {
 namespace operators {
@@ -29,7 +29,6 @@ typedef enum {
   HL_ACTIVATION_LINEAR = 3,
   HL_ACTIVATION_END
 } activation_mode_t;
-
 
 template <class T>
 struct LstmMetaValue {

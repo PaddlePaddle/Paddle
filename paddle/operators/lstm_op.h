@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/math/detail/activation_functions.h"
 #include "paddle/operators/math/lstm_compute.h"
 #include "paddle/operators/math/math_function.h"
 #include "paddle/operators/math/sequence2batch.h"
-#include "paddle/operators/math/detail/activation_functions.h"
 
 namespace paddle {
 namespace operators {

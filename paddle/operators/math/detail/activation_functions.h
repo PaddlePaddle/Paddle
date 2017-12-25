@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include <math.h>
-#include "paddle/platform/hostdevice.h"
 #include "paddle/platform/enforce.h"
+#include "paddle/platform/hostdevice.h"
 
 #ifdef __AVX__
 #include <immintrin.h>
@@ -37,19 +37,18 @@ enum ActivationType {
   kIdentity,
 };
 
-inline ActivationType GetActivationType (const std::string &type) {
+inline ActivationType GetActivationType(const std::string &type) {
   if (type == "sigmoid") {
     return ActivationType::kSigmoid;
   } else if (type == "relu") {
     return ActivationType::kReLU;
   } else if (type == "tanh") {
     return ActivationType::kTanh;
-  } else if (type == "identity") {
+  } else if (type == "identity" || type == "") {
     return ActivationType::kIdentity;
   }
   PADDLE_THROW("Not support type %s.", type);
 }
-
 
 namespace forward {
 
