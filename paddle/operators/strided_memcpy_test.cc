@@ -82,7 +82,7 @@ TEST(StridedMemcpy, GPUCrop) {
   };
   // clang-format on
 
-  platform::GPUPlace gpu0(0);
+  platform::CUDAPlace gpu0(0);
   platform::CPUPlace cpu;
 
   platform::CUDADeviceContext ctx(gpu0);
@@ -121,7 +121,7 @@ TEST(StridedMemcpy, GPUConcat) {
   };
   // clang-format on
 
-  platform::GPUPlace gpu0(0);
+  platform::CUDAPlace gpu0(0);
   platform::CPUPlace cpu;
   platform::CUDADeviceContext ctx(gpu0);
 

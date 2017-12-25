@@ -113,7 +113,7 @@ This operator is used to perform matrix multiplication for input $X$ and $Y$.
 
 The equation is:
 
-    $$Out = X * Y$$
+$$Out = X * Y$$
 
 Both the input $X$ and $Y$ can carry the LoD (Level of Details) information,
 or not. But the output only shares the LoD information with input $X$.

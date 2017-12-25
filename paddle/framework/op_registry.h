@@ -61,17 +61,6 @@ struct OperatorRegistrar : public Registrar {
 
 class OpRegistry {
  public:
-  template <typename OpType, typename ProtoMakerType, typename GradOpType>
-  static void RegisterOp(const std::string& op_type,
-                         const std::string& grad_op_type) {
-    OperatorRegistrar<OpType, ProtoMakerType> reg(op_type.c_str());
-    reg.info.grad_op_type_ = grad_op_type;
-    // register gradient op
-    if (!grad_op_type.empty()) {
-      OperatorRegistrar<GradOpType> grad_reg(grad_op_type.c_str());
-    }
-  }
-
   static std::unique_ptr<OperatorBase> CreateOp(const std::string& type,
                                                 const VariableNameMap& inputs,
                                                 const VariableNameMap& outputs,
@@ -199,7 +188,7 @@ class OpKernelRegistrar : public Registrar {
   }
 
 #define REGISTER_OP_CUDA_KERNEL(op_type, ...) \
-  REGISTER_OP_KERNEL(op_type, CUDA, ::paddle::platform::GPUPlace, __VA_ARGS__)
+  REGISTER_OP_KERNEL(op_type, CUDA, ::paddle::platform::CUDAPlace, __VA_ARGS__)
 
 #define REGISTER_OP_CPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)
