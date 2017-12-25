@@ -140,20 +140,16 @@ inline void CopyFromVector(const std::vector<T>& src,
 /**
  * @brief CopyFromVector CPU vector -> CPU Tensor
  */
-
-inline void CopyFromVector(const std::vector<T>& src,
-                           const platform::DeviceContext& ctx, Tensor* dst) {
-  auto dst_place = ctx.GetPlace();
+template <typename T>
+inline void CopyFromVector(const std::vector<T>& src, Tensor* dst) {
+  platform::CPUPlace dst_place = platform::CPUPlace();
   auto src_ptr = static_cast<const void*>(src.data());
   platform::CPUPlace src_place;
   dst->Resize({static_cast<int64_t>(src.size())});
   auto dst_ptr = static_cast<void*>(dst->mutable_data<T>(dst_place));
   auto size = src.size() * sizeof(T);
 
-  if (platform::is_cpu_place(dst_place)) {
-    memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr, src_place,
-                 src_ptr, size);
-  }
+  memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
 }
 
 /**
@@ -187,6 +183,24 @@ inline void CopyToVector(const Tensor& src, const platform::DeviceContext& ctx,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
   }
 #endif
+}
+/**
+ * @brief CopyToVector CPUTensor <-> CPU Vector
+ */
+
+template <typename T>
+inline void CopyToVector(const Tensor& src, std::vector<T>* dst) {
+  auto src_ptr = static_cast<const void*>(src.data<T>());
+  auto size = src.numel() * sizeof(T);
+
+  platform::CPUPlace dst_place;
+  dst->resize(src.numel());
+  auto dst_ptr = static_cast<void*>(dst->data());
+
+  if (platform::is_cpu_place(src.place())) {
+    memory::Copy(dst_place, dst_ptr,
+                 boost::get<platform::CPUPlace>(src.place()), src_ptr, size);
+  }
 }
 
 }  // namespace framework

@@ -105,8 +105,7 @@ TEST(CopyFromVector, Tensor) {
     // Copy to CPU Tensor
     cpu_tensor.Resize(make_ddim({3, 3}));
     auto cpu_place = new paddle::platform::CPUPlace();
-    CPUDeviceContext cpu_ctx(*cpu_place);
-    CopyFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
+    CopyFromVector<int>(src_vec, &cpu_tensor);
 
     // Compare Tensors
     const int* cpu_ptr = cpu_tensor.data<int>();
@@ -118,7 +117,7 @@ TEST(CopyFromVector, Tensor) {
 
     src_vec.erase(src_vec.begin(), src_vec.begin() + 5);
     cpu_tensor.Resize(make_ddim({2, 2}));
-    CopyFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
+    CopyFromVector<int>(src_vec, &cpu_tensor);
     cpu_ptr = cpu_tensor.data<int>();
     src_ptr = src_vec.data();
     ASSERT_NE(src_ptr, cpu_ptr);
@@ -199,9 +198,8 @@ TEST(CopyToVector, Tensor) {
     }
 
     CPUPlace place;
-    CPUDeviceContext cpu_ctx(place);
     std::vector<int> dst;
-    CopyToVector<int>(src, cpu_ctx, &dst);
+    CopyToVector<int>(src, &dst);
 
     for (int i = 0; i < 3 * 3; ++i) {
       EXPECT_EQ(src_ptr[i], dst[i]);
