@@ -165,6 +165,7 @@ inline Tensor Tensor::Slice(int begin_idx, int end_idx) const {
     size_t base = numel() / dims_[0];
     Tensor dst;
     dst.holder_ = holder_;
+    dst.layout_ = layout_;
     DDim dst_dims = dims_;
     dst_dims[0] = end_idx - begin_idx;
     dst.Resize(dst_dims);
