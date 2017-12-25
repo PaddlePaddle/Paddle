@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/platform/enforce.h"
+
 namespace paddle {
 namespace framework {
 

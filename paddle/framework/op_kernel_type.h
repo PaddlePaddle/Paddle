@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/framework/data_layout.h"
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/library_type.h"
+#include "paddle/platform/device_context.h"
 #include "paddle/platform/place.h"
 
 namespace paddle {
@@ -66,8 +67,6 @@ struct OpKernelType {
            data_type_ == o.data_type_ && data_layout_ == o.data_layout_ &&
            library_type_ == o.library_type_;
   }
-
-  friend std::ostream& operator<<(std::ostream& out, OpKernelType t);
 };
 
 }  // namespace framework
