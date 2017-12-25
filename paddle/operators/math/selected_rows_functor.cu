@@ -16,6 +16,8 @@ limitations under the License. */
 #include "paddle/operators/math/selected_rows_functor.h"
 #include "paddle/platform/cuda_helper.h"
 
+#include "glog/logging.h"
+
 namespace paddle {
 namespace operators {
 namespace math {
@@ -117,18 +119,25 @@ struct SelectedRowsAddTensor<platform::CUDADeviceContext, T> {
     auto* out_data = output->data<T>();
 
     SetConstant<platform::CUDADeviceContext, T> functor;
+    VLOG(0) << " inside add Tensor. Before set constant";
     functor(context, output, 0.0);
+    VLOG(0) << " inside add Tensor. After set constant";
 
     const int block_size = 256;
     dim3 threads(block_size, 1);
     dim3 grid(1, in1_rows.size());
+    VLOG(0) << " inside add Tensor. Before launch kernel";
     SelectedRowsAddTensorKernel<
         T, block_size><<<grid, threads, 0, context.stream()>>>(
         in1_data, in1_rows.data(), out_data, in1_row_numel);
 
+    VLOG(0) << " inside add Tensor. After launch kernel";
     auto out_eigen = framework::EigenVector<T>::Flatten(*output);
     auto in2_eigen = framework::EigenVector<T>::Flatten(input2);
+
+    VLOG(0) << " inside add Tensor. Before device compute";
     out_eigen.device(*context.eigen_device()) = out_eigen + in2_eigen;
+    VLOG(0) << " inside add Tensor. After device compute";
   }
 };
 

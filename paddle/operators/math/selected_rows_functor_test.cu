@@ -16,6 +16,8 @@ limitations under the License. */
 #include "paddle/operators/math/math_function.h"
 #include "paddle/operators/math/selected_rows_functor.h"
 
+#include "glog/logging.h"
+
 TEST(selected_rows_functor, gpu_add) {
   using namespace paddle::framework;
   using namespace paddle::platform;
@@ -49,6 +51,7 @@ TEST(selected_rows_functor, gpu_add) {
   out_value->mutable_data<float>(make_ddim({7, 10}), gpu_place);
 
   SelectedRowsAdd<CUDADeviceContext, float> add_functor;
+  VLOG(0) << " before add functor";
   add_functor(ctx, *selected_rows1, *selected_rows2, output.get());
 
   auto out_height = output->height();
@@ -67,7 +70,9 @@ TEST(selected_rows_functor, gpu_add) {
   EXPECT_EQ(out_rows[6], 9);
 
   Tensor out_cpu;
+  VLOG(0) << "before CopyFrom";
   CopyFrom(*out_value, cpu_place, ctx, &out_cpu);
+  VLOG(0) << "after CopyFrom";
   ctx.Wait();
 
   auto* out_cpu_data = out_cpu.data<float>();
@@ -83,18 +88,24 @@ TEST(selected_rows_functor, gpu_add) {
   EXPECT_EQ(out_cpu_data[5 * row_numel + 7], 2.0);
   EXPECT_EQ(out_cpu_data[6 * row_numel + 9], 2.0);
 
-  std::unique_ptr<Tensor> tensor1{new Tensor()};
-  tensor1->mutable_data<float>(make_ddim({height, row_numel}), gpu_place);
-  functor(ctx, tensor1.get(), 3.0);
+  // std::unique_ptr<Tensor> tensor1{new Tensor()};
+  Tensor tensor1;
+  tensor1.mutable_data<float>(make_ddim({height, row_numel}), gpu_place);
+  functor(ctx, &tensor1, 3.0);
 
-  std::unique_ptr<Tensor> tensor2{new Tensor()};
-  tensor2->mutable_data<float>(make_ddim({height, row_numel}), gpu_place);
+  // std::unique_ptr<Tensor> tensor2{new Tensor()};
+  Tensor tensor2;
+  tensor2.mutable_data<float>(make_ddim({height, row_numel}), gpu_place);
 
   SelectedRowsAddTensor<CUDADeviceContext, float> add_tensor_functor;
-  add_tensor_functor(ctx, *output, *tensor1, tensor2.get());
+  VLOG(0) << "before add functor2";
+  add_tensor_functor(ctx, *output, tensor1, &tensor2);
+  VLOG(0) << "after add functor2";
 
   Tensor tensor2_cpu;
-  CopyFrom(*tensor2, cpu_place, ctx, &tensor2_cpu);
+  VLOG(0) << "before CopyFrom2";
+  CopyFrom(tensor2, cpu_place, ctx, &tensor2_cpu);
+  VLOG(0) << "after CopyFrom2";
   ctx.Wait();
 
   auto* tensor2_cpu_data = tensor2_cpu.data<float>();
