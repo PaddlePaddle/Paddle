@@ -85,7 +85,6 @@ inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
 /**
  * @brief CopyFrom support CPU <-> CPU
  */
-
 inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
                      Tensor* dst) {
   src.check_memory_size();
@@ -98,10 +97,11 @@ inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
 
   auto size = src.numel() * SizeOfType(src.type());
 
-  if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
-    memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
-                 boost::get<platform::CPUPlace>(src_place), src_ptr, size);
-  }
+  PADDLE_ENFORCE(platform::is_cpu_place(src_place) &&
+                 platform::is_cpu_place(dst_place));
+
+  memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
+               boost::get<platform::CPUPlace>(src_place), src_ptr, size);
 }
 
 /**
@@ -184,10 +184,10 @@ inline void CopyToVector(const Tensor& src, const platform::DeviceContext& ctx,
   }
 #endif
 }
+
 /**
  * @brief CopyToVector CPUTensor <-> CPU Vector
  */
-
 template <typename T>
 inline void CopyToVector(const Tensor& src, std::vector<T>* dst) {
   auto src_ptr = static_cast<const void*>(src.data<T>());
@@ -197,10 +197,10 @@ inline void CopyToVector(const Tensor& src, std::vector<T>* dst) {
   dst->resize(src.numel());
   auto dst_ptr = static_cast<void*>(dst->data());
 
-  if (platform::is_cpu_place(src.place())) {
-    memory::Copy(dst_place, dst_ptr,
-                 boost::get<platform::CPUPlace>(src.place()), src_ptr, size);
-  }
+  PADDLE_ENFORCE(platform::is_cpu_place(src.place()));
+
+  memory::Copy(dst_place, dst_ptr, boost::get<platform::CPUPlace>(src.place()),
+               src_ptr, size);
 }
 
 }  // namespace framework
