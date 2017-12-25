@@ -20,8 +20,7 @@ namespace operators {
 
 class CastOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CastOpProtoMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  CastOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input tensor of cast op");
     AddOutput("Out", "The output tensor of cast op");
@@ -53,14 +52,14 @@ class CastOpGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto grad = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto grad = new framework::OpDesc();
     grad->SetType("cast");
     grad->SetInput("X", OutputGrad("Out"));
     grad->SetOutput("Out", InputGrad("X"));
     grad->SetAttr("out_dtype", GetAttr("in_dtype"));
     grad->SetAttr("in_dtype", GetAttr("out_dtype"));
-    return std::unique_ptr<framework::OpDescBind>(grad);
+    return std::unique_ptr<framework::OpDesc>(grad);
   }
 };
 

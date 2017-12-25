@@ -16,6 +16,7 @@
 #include <string>
 #include "paddle/framework/tensor.h"
 #include "paddle/memory/memcpy.h"
+#include "paddle/platform/device_context.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 
@@ -61,13 +62,16 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
         auto *src_ptr = static_cast<const void *>(tensor.data<CUR_TYPE>());
         auto *dst_ptr = static_cast<void *>(dst_tensor.mutable_data<CUR_TYPE>(
             tensor.dims(), platform::CPUPlace()));
-        // TODO(qijun): Here we use default CUDA stream to set GPU Tensor to
-        // a Python numpy array. It's better to manage CDUA stream unifiedly.
-        paddle::platform::GpuMemcpySync(dst_ptr, src_ptr,
-                                        sizeof(CUR_TYPE) * tensor.numel(),
-                                        cudaMemcpyDeviceToHost);
+
+        platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+        auto dev_ctx = static_cast<const platform::CUDADeviceContext *>(
+            pool.Borrow(tensor.place()));
+
+        paddle::platform::GpuMemcpyAsync(
+            dst_ptr, src_ptr, sizeof(CUR_TYPE) * tensor.numel(),
+            cudaMemcpyDeviceToHost, dev_ctx->stream());
 #else
-        PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
+        PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
 #endif
       } else if (paddle::platform::is_cpu_place(tensor.place())) {
         dst_tensor = tensor;
@@ -123,7 +127,7 @@ template <typename T>
 void PyCUDATensorSetFromArray(
     framework::Tensor &self,
     py::array_t<T, py::array::c_style | py::array::forcecast> array,
-    paddle::platform::GPUPlace &place) {
+    paddle::platform::CUDAPlace &place) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (size_t i = 0; i < array.ndim(); ++i) {
@@ -132,10 +136,12 @@ void PyCUDATensorSetFromArray(
 
   self.Resize(framework::make_ddim(dims));
   auto *dst = self.mutable_data<T>(place);
-  // TODO(qijun): Here we use default CUDA stream to set a Python numpy
-  // array to a GPU Tensor. It's better to manage CDUA stream unifiedly.
-  paddle::platform::GpuMemcpySync(dst, array.data(), sizeof(T) * array.size(),
-                                  cudaMemcpyHostToDevice);
+
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+  auto dev_ctx =
+      static_cast<const platform::CUDADeviceContext *>(pool.Borrow(place));
+  paddle::platform::GpuMemcpyAsync(dst, array.data(), sizeof(T) * array.size(),
+                                   cudaMemcpyHostToDevice, dev_ctx->stream());
 }
 #endif
 

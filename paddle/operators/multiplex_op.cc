@@ -51,7 +51,7 @@ class MultiplexOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type()),
@@ -61,8 +61,7 @@ class MultiplexOp : public framework::OperatorWithKernel {
 
 class MultiplexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MultiplexOpMaker(framework::OpProto* proto,
-                   framework::OpAttrChecker* op_checker)
+  MultiplexOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Ids", "The index tensor of multiplex operator.");
     AddInput("X", "The candidate tensors of multiplex operator.")
@@ -103,7 +102,7 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type()),

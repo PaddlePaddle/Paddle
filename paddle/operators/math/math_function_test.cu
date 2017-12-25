@@ -13,7 +13,7 @@ TEST(math_function, notrans_mul_trans) {
   float arr[6] = {0, 1, 2, 3, 4, 5};
   memcpy(input1_ptr, arr, 6 * sizeof(float));
 
-  auto* gpu_place = new paddle::platform::GPUPlace(0);
+  auto* gpu_place = new paddle::platform::CUDAPlace(0);
   paddle::platform::CUDADeviceContext context(*gpu_place);
 
   paddle::framework::CopyFrom(input1, *gpu_place, context, &input1_gpu);
@@ -47,7 +47,7 @@ TEST(math_function, trans_mul_notrans) {
   float arr[6] = {0, 1, 2, 3, 4, 5};
   memcpy(input1_ptr, arr, 6 * sizeof(float));
 
-  auto* gpu_place = new paddle::platform::GPUPlace(0);
+  auto* gpu_place = new paddle::platform::CUDAPlace(0);
   paddle::platform::CUDADeviceContext context(*gpu_place);
 
   paddle::framework::CopyFrom(input1, *gpu_place, context, &input1_gpu);
@@ -96,7 +96,7 @@ TEST(math_function, gemm_notrans_cublas) {
   float arr3[8] = {0, 1, 2, 3, 4, 5, 6, 7};
   memcpy(input3_ptr, arr3, 8 * sizeof(float));
 
-  auto* gpu_place = new paddle::platform::GPUPlace(0);
+  auto* gpu_place = new paddle::platform::CUDAPlace(0);
   paddle::platform::CUDADeviceContext context(*gpu_place);
 
   paddle::framework::CopyFrom(input1, *gpu_place, context, &input1_gpu);
@@ -151,7 +151,7 @@ TEST(math_function, gemm_trans_cublas) {
   float arr3[8] = {0, 1, 2, 3, 4, 5, 6, 7};
   memcpy(input3_ptr, arr3, 8 * sizeof(float));
 
-  auto* gpu_place = new paddle::platform::GPUPlace(0);
+  auto* gpu_place = new paddle::platform::CUDAPlace(0);
   paddle::platform::CUDADeviceContext context(*gpu_place);
 
   paddle::framework::CopyFrom(input1, *gpu_place, context, &input1_gpu);
@@ -189,7 +189,7 @@ void GemvTest(int m, int n, bool trans) {
   T* data_b = vec_b.mutable_data<T>({trans ? m : n}, *cpu_place);
   T* data_c = vec_c.mutable_data<T>({trans ? n : m}, *cpu_place);
 
-  auto* gpu_place = new paddle::platform::GPUPlace(0);
+  auto* gpu_place = new paddle::platform::CUDAPlace(0);
   paddle::framework::Tensor g_mat_a;
   paddle::framework::Tensor g_vec_b;
   paddle::framework::Tensor g_vec_c;
