@@ -84,8 +84,10 @@ struct OpKernelRegistrarFunctor<PlaceType, DeviceType, false, I,
 
   void operator()(const char* op_type) const {
     using T = typename KERNEL_TYPE::ELEMENT_TYPE;
+
     OpKernelType key(ToDataType(std::type_index(typeid(T))), PlaceType(),
-                     library_type = StringToLibraryType(DeviceType));
+                     DataLayout::kAnyLayout, StringToLibraryType(DeviceType));
+
     OperatorWithKernel::AllOpKernels()[op_type][key].reset(new KERNEL_TYPE);
 
     constexpr auto size = std::tuple_size<std::tuple<KernelTypes...>>::value;
@@ -98,7 +100,7 @@ struct OpKernelRegistrarFunctor<PlaceType, DeviceType, false, I,
 
 template <typename PlaceType, const char* DeviceType, size_t I,
           typename... KernelType>
-struct OpKernelRegistrarFunctor<PlaceType, true, I, KernelType...> {
+struct OpKernelRegistrarFunctor<PlaceType, DeviceType, true, I, KernelType...> {
   void operator()(const char* op_type) const {}
 };
 
