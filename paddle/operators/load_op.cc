@@ -11,10 +11,10 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
+#include <fstream>
 
 #include "paddle/framework/op_registry.h"
-
-#include <fstream>
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -26,7 +26,7 @@ class LoadOp : public framework::OperatorBase {
          const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto filename = Attr<std::string>("file_path");
     std::ifstream fin(filename);
     PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s for load op",
@@ -40,7 +40,9 @@ class LoadOp : public framework::OperatorBase {
     auto *tensor = out_var->GetMutable<framework::LoDTensor>();
     framework::DeserializeFromStream(fin, tensor);
 
-    auto place = dev_ctx.GetPlace();
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+    auto &dev_ctx = *pool.Borrow(place);
+
     if (platform::is_gpu_place(place)) {
       // copy CPU to GPU
       framework::LoDTensor cpu_tensor;

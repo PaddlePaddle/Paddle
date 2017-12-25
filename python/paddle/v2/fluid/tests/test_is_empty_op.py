@@ -33,8 +33,7 @@ class TestIsEmptyOp(unittest.TestCase):
 
     def one_case(self, input, target):
         op = Operator(type="is_empty", X=input, Out="out")
-        ctx = core.DeviceContext.create(core.CPUPlace())
-        op.run(self.scope, ctx)
+        op.run(self.scope, core.CPUPlace())
         out = self.scope.var("out").get_tensor()
         self.assertEqual(np.array(out)[0], target)
 

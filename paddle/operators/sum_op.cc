@@ -53,7 +53,7 @@ class SumOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto x_vars = ctx.MultiInputVar("X");
     if (x_vars[0]->IsType<framework::LoDTensor>()) {
@@ -106,8 +106,8 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Sum operator.
 
-This operators sums the input tensors. All the inputs can carry the 
-LoD (Level of Details) information. However, the output only shares 
+This operators sums the input tensors. All the inputs can carry the
+LoD (Level of Details) information. However, the output only shares
 the LoD information with the first input.
 )DOC");
   }
@@ -115,8 +115,8 @@ the LoD information with the first input.
 
 class SumOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDescBind& op_desc,
-                  framework::BlockDescBind* block) const override {
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const override {
     auto& inputs = op_desc.Input("X");
     auto var_type = framework::proto::VarDesc::SELECTED_ROWS;
 
@@ -169,20 +169,19 @@ class SumGradMaker : public framework::GradOpDescMakerBase {
  public:
   using framework::GradOpDescMakerBase::GradOpDescMakerBase;
 
-  std::vector<std::unique_ptr<framework::OpDescBind>> operator()()
-      const override {
-    auto x_grads = InputGrad("X");
-    std::vector<std::unique_ptr<framework::OpDescBind>> grad_ops;
+  std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override {
+    auto x_grads = InputGrad("X", false);
+    std::vector<std::unique_ptr<framework::OpDesc>> grad_ops;
     grad_ops.reserve(x_grads.size());
     auto og = OutputGrad("Out");
     std::transform(x_grads.begin(), x_grads.end(), std::back_inserter(grad_ops),
                    [&og](const std::string& x_grad) {
-                     auto* grad_op = new framework::OpDescBind();
+                     auto* grad_op = new framework::OpDesc();
                      grad_op->SetType("scale");
                      grad_op->SetInput("X", og);
                      grad_op->SetOutput("Out", {x_grad});
                      grad_op->SetAttr("scale", 1.0f);
-                     return std::unique_ptr<framework::OpDescBind>(grad_op);
+                     return std::unique_ptr<framework::OpDesc>(grad_op);
                    });
     return grad_ops;
   }

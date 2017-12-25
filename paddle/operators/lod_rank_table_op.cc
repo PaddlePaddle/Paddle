@@ -24,7 +24,7 @@ class LoDRankTableOp : public framework::OperatorBase {
                  const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &dev_place) const override {
     auto x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDRankTable>();
@@ -63,8 +63,8 @@ class LoDRankTableInferShape : public framework::InferShapeBase {
 
 class LoDRankTableInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDescBind &op_desc,
-                  framework::BlockDescBind *block) const override {
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
     for (auto &o : op_desc.Output("Out")) {
       block->FindRecursiveOrCreateVar(o)->SetType(
           framework::proto::VarDesc::LOD_RANK_TABLE);

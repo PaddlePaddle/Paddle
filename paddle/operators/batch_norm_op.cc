@@ -13,12 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/batch_norm_op.h"
+#include "paddle/framework/data_layout.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
+using DataLayout = framework::DataLayout;
 
 template <typename T>
 using EigenArrayMap =
@@ -60,15 +62,15 @@ class BatchNormOp : public framework::OperatorWithKernel {
                       "Variance and VarianceOut should share the same memory");
 
     const auto x_dims = ctx->GetInputDim("X");
-    const TensorFormat tensor_format =
-        StringToTensorFormat(ctx->Attrs().Get<std::string>("tensor_format"));
+    const DataLayout data_layout = framework::StringToDataLayout(
+        ctx->Attrs().Get<std::string>("data_layout"));
 
     PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
                    "Input X must have 2 to 5 dimensions.");
 
     const int C =
-        (tensor_format == TensorFormat::NCHW ? x_dims[1]
-                                             : x_dims[x_dims.size() - 1]);
+        (data_layout == DataLayout::kNCHW ? x_dims[1]
+                                          : x_dims[x_dims.size() - 1]);
 
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1UL);
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], C);
@@ -90,7 +92,7 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("is_test", "").SetDefault(false);
     AddAttr<float>("momentum", "").SetDefault(0.9);
     AddAttr<float>("epsilon", "").SetDefault(1e-5);
-    AddAttr<std::string>("tensor_format", "").SetDefault("NCHW");
+    AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
     AddInput("X", "The input tensor");
     AddInput("Scale",
              "Scale is a 1-dimensional tensor of size C "
@@ -141,9 +143,9 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
     const float epsilon = ctx.Attr<float>("epsilon");
     const float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
-    const std::string tensor_format_str =
-        ctx.Attr<std::string>("tensor_format");
-    const TensorFormat tensor_format = StringToTensorFormat(tensor_format_str);
+    const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+    const DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
@@ -151,8 +153,8 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
                    "The Input dim size should be between 2 and 5");
     const int N = x_dims[0];
     const int C =
-        (tensor_format == TensorFormat::NCHW ? x_dims[1]
-                                             : x_dims[x_dims.size() - 1]);
+        (data_layout == DataLayout::kNCHW ? x_dims[1]
+                                          : x_dims[x_dims.size() - 1]);
     const int sample_size = x->numel() / N / C;
 
     auto *y = ctx.Output<Tensor>("Y");
@@ -177,8 +179,8 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
       saved_mean_e.setZero();
       saved_variance_e.setZero();
 
-      switch (tensor_format) {
-        case TensorFormat::NCHW: {
+      switch (data_layout) {
+        case DataLayout::kNCHW: {
           ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
           for (int nc = 0; nc < N * C; ++nc) {
             saved_mean_e(nc % C) += x_arr.col(nc).sum();
@@ -191,7 +193,7 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
           saved_variance_e /= N * sample_size;
           break;
         }
-        case TensorFormat::NHWC: {
+        case DataLayout::kNHWC: {
           ConstEigenArrayMap<T> x_arr(x->data<T>(), C, N * sample_size);
           for (int i = 0; i < N * sample_size; ++i) {
             saved_mean_e += x_arr.col(i);
@@ -205,7 +207,7 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
           break;
         }
         default:
-          PADDLE_THROW("Unknown storage order: %s", tensor_format_str);
+          PADDLE_THROW("Unknown storage order: %s", data_layout_str);
       }
 
       EigenVectorArrayMap<T> running_mean_arr(
@@ -247,8 +249,8 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
     Eigen::Array<T, Eigen::Dynamic, 1> new_bias =
         bias_arr - mean_arr * inv_std * scale_arr;
 
-    switch (tensor_format) {
-      case TensorFormat::NCHW: {
+    switch (data_layout) {
+      case DataLayout::kNCHW: {
         EigenArrayMap<T> y_arr(y->mutable_data<T>(ctx.GetPlace()), sample_size,
                                N * C);
         ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
@@ -257,7 +259,7 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
         }
         break;
       }
-      case TensorFormat::NHWC: {
+      case DataLayout::kNHWC: {
         EigenArrayMap<T>(y->mutable_data<T>(ctx.GetPlace()), C,
                          N * sample_size) =
             (ConstEigenArrayMap<T>(x->data<T>(), C, N * sample_size).colwise() *
@@ -267,7 +269,7 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
         break;
       }
       default:
-        PADDLE_THROW("Unknown storage order: %d", tensor_format);
+        PADDLE_THROW("Unknown storage order: %d", data_layout);
     }
   }
 };
@@ -290,11 +292,11 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Bias")), "");
 
     const auto x_dims = ctx->GetInputDim("X");
-    const TensorFormat tensor_format =
-        StringToTensorFormat(ctx->Attrs().Get<std::string>("tensor_format"));
+    const DataLayout data_layout = framework::StringToDataLayout(
+        ctx->Attrs().Get<std::string>("data_layout"));
     const int C =
-        (tensor_format == TensorFormat::NCHW ? x_dims[1]
-                                             : x_dims[x_dims.size() - 1]);
+        (data_layout == DataLayout::kNCHW ? x_dims[1]
+                                          : x_dims[x_dims.size() - 1]);
 
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
@@ -302,7 +304,7 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext &ctx) const override {
     const auto *var = ctx.InputVar(framework::GradVarName("Y"));
     if (var == nullptr) {
@@ -333,9 +335,9 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
     // SavedVariance have been reverted in forward operator
     const auto *saved_inv_variance = ctx.Input<Tensor>("SavedVariance");
-    const std::string tensor_format_str =
-        ctx.Attr<std::string>("tensor_format");
-    const TensorFormat tensor_format = StringToTensorFormat(tensor_format_str);
+    const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+    const DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
@@ -344,8 +346,8 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
                    "The Input dim size should be between 2 and 5");
     const int N = x_dims[0];
     const int C =
-        (tensor_format == TensorFormat::NCHW ? x_dims[1]
-                                             : x_dims[x_dims.size() - 1]);
+        (data_layout == DataLayout::kNCHW ? x_dims[1]
+                                          : x_dims[x_dims.size() - 1]);
     const int sample_size = x->numel() / N / C;
 
     ConstEigenVectorArrayMap<T> scale_arr(scale->data<T>(), C);
@@ -376,8 +378,8 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
 
     const auto scale_inv_var_nhw = scale_arr * inv_var_arr / (N * sample_size);
 
-    switch (tensor_format) {
-      case TensorFormat::NCHW: {
+    switch (data_layout) {
+      case DataLayout::kNCHW: {
         ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), sample_size, N * C);
         EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()),
@@ -400,7 +402,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         }
         break;
       }
-      case TensorFormat::NHWC: {
+      case DataLayout::kNHWC: {
         ConstEigenArrayMap<T> x_arr(x->data<T>(), C, N * sample_size);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), C, N * sample_size);
         EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C,
@@ -425,7 +427,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         break;
       }
       default:
-        PADDLE_THROW("Unknown storage order: %s", tensor_format_str);
+        PADDLE_THROW("Unknown storage order: %s", data_layout_str);
     }
   }
 };

@@ -118,7 +118,7 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("Logits")->type()),
@@ -159,7 +159,7 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(
@@ -173,8 +173,8 @@ class SoftmaxGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto* grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* grad_op = new framework::OpDesc();
     grad_op->SetType("softmax_with_cross_entropy_grad");
     grad_op->SetInput("Label", Input("Label"));
     grad_op->SetInput("Softmax", Output("Softmax"));
@@ -183,7 +183,7 @@ class SoftmaxGradMaker : public framework::SingleGradOpDescMaker {
     grad_op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
     grad_op->SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));
     grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 

@@ -82,11 +82,13 @@ TEST(StridedMemcpy, GPUCrop) {
   };
   // clang-format on
 
-  platform::GPUPlace gpu0(0);
+  platform::CUDAPlace gpu0(0);
   platform::CPUPlace cpu;
 
+  platform::CUDADeviceContext ctx(gpu0);
+
   int* gpu_src = reinterpret_cast<int*>(memory::Alloc(gpu0, sizeof(src)));
-  memory::Copy(gpu0, gpu_src, cpu, src, sizeof(src));
+  memory::Copy(gpu0, gpu_src, cpu, src, sizeof(src), ctx.stream());
 
   framework::DDim src_stride({5, 1});
 
@@ -96,7 +98,6 @@ TEST(StridedMemcpy, GPUCrop) {
   framework::DDim dst_dim({2, 2});
   framework::DDim dst_stride({2, 1});
 
-  platform::CUDADeviceContext ctx(gpu0);
   StridedMemcpy<int>(ctx, gpu_src + 1, src_stride, dst_dim, dst_stride,
                      gpu_dst);
 
@@ -120,11 +121,12 @@ TEST(StridedMemcpy, GPUConcat) {
   };
   // clang-format on
 
-  platform::GPUPlace gpu0(0);
+  platform::CUDAPlace gpu0(0);
   platform::CPUPlace cpu;
+  platform::CUDADeviceContext ctx(gpu0);
 
   int* gpu_src = reinterpret_cast<int*>(memory::Alloc(gpu0, sizeof(src)));
-  memory::Copy(gpu0, gpu_src, cpu, src, sizeof(src));
+  memory::Copy(gpu0, gpu_src, cpu, src, sizeof(src), ctx.stream());
 
   int dst[8];
   int* gpu_dst = reinterpret_cast<int*>(memory::Alloc(gpu0, sizeof(dst)));
@@ -132,7 +134,6 @@ TEST(StridedMemcpy, GPUConcat) {
   framework::DDim src_stride({2, 1});
   framework::DDim dst_dim({2, 2});
   framework::DDim dst_stride({4, 1});
-  platform::CUDADeviceContext ctx(gpu0);
 
   StridedMemcpy<int>(ctx, gpu_src, src_stride, dst_dim, dst_stride, gpu_dst);
   StridedMemcpy<int>(ctx, gpu_src, src_stride, dst_dim, dst_stride,

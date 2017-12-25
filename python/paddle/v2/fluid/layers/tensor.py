@@ -27,10 +27,23 @@ def cast(x, dtype):
     return out
 
 
-def concat(input, axis):
+def concat(input, axis=0):
     """
-    This function concats the input along the axis mentioned
+    **Concat**
+
+    This function concatenates the input along the axis mentioned
     and returns that as the output.
+
+    Args:
+        input(list): List of tensors to be concatenated
+        axis(int): Integer axis along which the tensors will be concatenated
+
+    Returns:
+        Variable: Output variable of the concatenation
+
+    Examples:
+        .. code-block:: python
+          out = fluid.layers.concat(input=[Efirst, Esecond, Ethird, Efourth])
     """
     helper = LayerHelper('concat', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
@@ -43,9 +56,28 @@ def concat(input, axis):
 
 
 def sums(input, out=None):
-    """
-    This function takes in the input and performs the sum operation on it
-    and returns that as the output.
+    """This function performs the sum operation on the input and returns the
+    result as the output.
+
+    Args:
+        input (Variable|list): The input tensor that has the elements
+                               that need to be summed up.
+
+    Returns:
+        Variable: The tensor type variable that has the sum of input
+                  written to it.
+
+    Examples:
+        .. code-block::python
+
+          tmp = fluid.layers.zeros(shape=[10], dtype='int32')
+          i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
+          a0 = layers.array_read(array=tmp, i=i)
+          i = layers.increment(x=i)
+          a1 = layers.array_read(array=tmp, i=i)
+          mean_a0 = layers.mean(x=a0)
+          mean_a1 = layers.mean(x=a1)
+          a_sum = layers.sums(input=[mean_a0, mean_a1])
     """
     helper = LayerHelper('sum', **locals())
     if out is None:
@@ -55,6 +87,24 @@ def sums(input, out=None):
 
 
 def assign(input, output):
+    """
+    **Assign**
+
+    This function copies the *input* Variable to the *output* Variable.
+
+    Args:
+        input(Variable): The source variable
+        output(Variable): The destination variable
+
+    Returns:
+        Variable: The destination variable that was supplied as the *output*.
+
+    Examples:
+        .. code-block:: python
+          out = fluid.layers.create_tensor(dtype='float32')
+          hidden = fluid.layers.fc(input=data, size=10)
+          fluid.layers.assign(hidden, out)
+    """
     helper = LayerHelper('assign', **locals())
     helper.append_op(
         type='scale',
@@ -68,9 +118,9 @@ def fill_constant(shape, dtype, value, out=None):
     """
     **fill_constant**
 
-    This function creates a tensor of specified *shape* and 
+    This function creates a tensor of specified *shape* and
     *dtype*, and initializes this with a constant supplied in *value*.
-    
+
     It also sets *stop_gradient* to True.
 
     Args:
@@ -110,9 +160,9 @@ def fill_constant_batch_size_like(input,
     """
     **fill_constant_batch_size_like**
 
-    This function creates a tensor of specified *shape*, *dtype* and batch size, 
-    and initializes this with a constant supplied in *value*. The batch size is 
-    obtained from the `input` tensor. 
+    This function creates a tensor of specified *shape*, *dtype* and batch size,
+    and initializes this with a constant supplied in *value*. The batch size is
+    obtained from the `input` tensor.
 
     It also sets *stop_gradient* to True.
 

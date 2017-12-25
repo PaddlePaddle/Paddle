@@ -20,23 +20,55 @@ namespace detail {
 
 Status SendRecvServerImpl::SendVariable(ServerContext *context,
                                         const VariableMessage *in_var,
-                                        VariableMessage *out_var) {
-  framework::LoDTensor t;
-  // TODO(typhoonzero): desirealize in_tensor and run pserver network.
+                                        VoidMessage *out_var) {
+  // TODO(typhoonzero): support different variable types.
   std::istringstream iss(in_var->serialized());
+  framework::LoDTensor t;
   framework::DeserializeFromStream(iss, &t);
-  lodtensor_queue_.Push(std::move(t));
-  // Block util the sub graph is done.
-  t = lodtensor_return_queue_.Pop();
+  TensorWithName tensor_with_name =
+      std::make_pair(in_var->varname(), std::move(t));
+
+  var_recv_queue_.Push(std::move(tensor_with_name));
+  return Status::OK;
+}
+
+Status SendRecvServerImpl::GetVariable(ServerContext *context,
+                                       const VariableMessage *in_var,
+                                       VariableMessage *out_var) {
+  std::string get_var_name = in_var->varname();
+  auto *var = scope_->FindVar(get_var_name);
+  auto tensor = var->Get<framework::LoDTensor>();
   std::ostringstream oss;
-  // FIXME(typhoonzero): get context from op.
-  framework::SerializeToStream(oss, t, platform::CPUDeviceContext());
+  framework::SerializeToStream(oss, tensor, platform::CPUDeviceContext());
+
   std::string *varname = out_var->mutable_varname();
-  *varname = in_var->varname();
+  *varname = get_var_name;
   std::string *serialized = out_var->mutable_serialized();
   *serialized = oss.str();
-
   return Status::OK;
+}
+
+Status SendRecvServerImpl::Wait(ServerContext *context,
+                                const VoidMessage *in_var,
+                                VoidMessage *out_var) {
+  {
+    std::unique_lock<std::mutex> lock(this->mutex_);
+    condition_.wait(lock, [=] { return this->done_ == true; });
+  }
+  return Status::OK;
+}
+
+void SendRecvServerImpl::Reset() {
+  std::lock_guard<std::mutex> lock(this->mutex_);
+  done_ = false;
+}
+
+void SendRecvServerImpl::Done() {
+  {
+    std::lock_guard<std::mutex> lock(this->mutex_);
+    done_ = true;
+  }
+  condition_.notify_all();
 }
 
 }  // namespace detail
