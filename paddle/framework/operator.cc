@@ -410,6 +410,12 @@ void OperatorWithKernel::Run(const Scope& scope,
   }
 
   kernel_iter->second->Compute(ctx);
+
+  // Developers can set GLOG_vmodule=operator=100 to synchronize GPU computation
+  // It is useful for benchmark.
+  if (VLOG_IS_ON(100)) {
+    ctx.device_context().Wait();
+  }
 }
 OpKernelType OperatorWithKernel::GetKernelType(
     const ExecutionContext& ctx) const {
