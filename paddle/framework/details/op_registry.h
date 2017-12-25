@@ -90,7 +90,7 @@ struct OpInfoFiller<T, kOperator> {
 template <typename T>
 struct OpInfoFiller<T, kOpProtoAndCheckerMaker> {
   void operator()(const char* op_type, OpInfo* info) const {
-    info->proto_ = new OpProto;
+    info->proto_ = new proto::OpProto;
     info->checker_ = new OpAttrChecker();
     auto maker = T(info->proto_, info->checker_);
     maker.Validate();
@@ -106,10 +106,10 @@ template <typename T>
 struct OpInfoFiller<T, kGradOpDescMaker> {
   void operator()(const char* op_type, OpInfo* info) const {
     info->grad_op_maker_ = [](
-        const OpDescBind& fwd_op,
+        const OpDesc& fwd_op,
         const std::unordered_set<std::string>& no_grad_set,
         std::unordered_map<std::string, std::string>* grad_to_var,
-        const std::vector<BlockDescBind*>& grad_block) {
+        const std::vector<BlockDesc*>& grad_block) {
       T maker(fwd_op, no_grad_set, grad_to_var, grad_block);
       return maker();
     };
@@ -119,7 +119,7 @@ struct OpInfoFiller<T, kGradOpDescMaker> {
 template <typename T>
 struct OpInfoFiller<T, kVarTypeInference> {
   void operator()(const char* op_type, OpInfo* info) const {
-    info->infer_var_type_ = [](const OpDescBind& fwd_op, BlockDescBind* block) {
+    info->infer_var_type_ = [](const OpDesc& fwd_op, BlockDesc* block) {
       T inference;
       inference(fwd_op, block);
     };

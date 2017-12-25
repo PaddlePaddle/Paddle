@@ -273,13 +273,20 @@ void set_constant_with_place<platform::GPUPlace>(
                            TensorSetConstantGPU(context, tensor, value));
 }
 
-template struct RowwiseAdd<platform::GPUPlace, float>;
-template struct RowwiseAdd<platform::GPUPlace, double>;
-template struct ColwiseSum<platform::GPUPlace, float>;
-template struct RowwiseSum<platform::GPUPlace, float>;
-template struct RowwiseSum<platform::GPUPlace, double>;
-// template struct ColwiseSum<platform::GPUPlace, double>;
-// The ColwiseSum<platform::GPUPlace, double> failed in debug mode,
+template <>
+void set_constant_with_place<platform::CUDNNPlace>(
+    const platform::DeviceContext& context, framework::Tensor* tensor,
+    float value) {
+  set_constant_with_place<platform::GPUPlace>(context, tensor, value);
+}
+
+template struct RowwiseAdd<platform::CUDADeviceContext, float>;
+template struct RowwiseAdd<platform::CUDADeviceContext, double>;
+template struct ColwiseSum<platform::CUDADeviceContext, float>;
+template struct RowwiseSum<platform::CUDADeviceContext, float>;
+template struct RowwiseSum<platform::CUDADeviceContext, double>;
+// template struct ColwiseSum<platform::CUDADeviceContext, double>;
+// The ColwiseSum<platform::CUDADeviceContext, double> failed in debug mode,
 // and only failed for this case. So reimplemented it.
 template <>
 void ColwiseSum<platform::CUDADeviceContext, double>::operator()(

@@ -153,7 +153,6 @@ void MatrixBitCodeFunctor<T>::Mul(size_t num_classes, const int64_t* codes,
         sum +=
             weight_p[weight_width * index + k] * input_p[input_width * i + k];
       }
-      std::cout << sum << std::endl;
       tmat_p[i * tmat_width + j] += sum;
     }
   }

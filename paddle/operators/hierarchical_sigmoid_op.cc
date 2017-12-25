@@ -106,8 +106,7 @@ class HierarchicalSigmoidGradOp : public framework::OperatorWithKernel {
 
 class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  HierarchicalSigmoidOpMaker(framework::OpProto* proto,
-                             framework::OpAttrChecker* op_checker)
+  HierarchicalSigmoidOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor, required) The input Tensor, which the shape is"
