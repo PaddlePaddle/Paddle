@@ -58,7 +58,7 @@ class EigenCudaStreamDevice;
 
 class CUDADeviceContext : public DeviceContext {
  public:
-  explicit CUDADeviceContext(GPUPlace place);
+  explicit CUDADeviceContext(CUDAPlace place);
   virtual ~CUDADeviceContext();
 
   /*! \brief  Wait for all operations completion in the stream. */
@@ -80,7 +80,7 @@ class CUDADeviceContext : public DeviceContext {
   cudaStream_t stream() const;
 
  private:
-  GPUPlace place_;
+  CUDAPlace place_;
 
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
@@ -143,7 +143,7 @@ class DeviceContextPool {
     size_t operator()(const platform::Place& place) const {
       int pre_hash = place.which() + (1 << LEFT_SHIFT);
       if (platform::is_gpu_place(place)) {
-        pre_hash += boost::get<platform::GPUPlace>(place).GetDeviceId();
+        pre_hash += boost::get<platform::CUDAPlace>(place).GetDeviceId();
       }
       return hash_(pre_hash);
     }
