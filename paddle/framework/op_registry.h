@@ -123,7 +123,6 @@ class OpKernelRegistrar : public Registrar {
     VarTypeInference
     InferShapeBase
 */
-
 #define REGISTER_OPERATOR(op_type, op_class, ...)                      \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                      \
       __reg_op__##op_type,                                             \
