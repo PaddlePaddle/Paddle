@@ -432,6 +432,10 @@ void OperatorWithKernel::Run(const Scope& scope,
       trans_fun(*(scope.FindVar(var_name)), op_scope.FindVar(var_name),
                 trans_dev_ctx);
     }
+    // Wait for data transform finishing
+    trans_dev_ctx.Wait();
+
+    // Create a new ExecutionContext
     ExecutionContext op_ctx(*this, op_scope, *dev_ctx);
     kernel_iter->second->Compute(op_ctx);
   }
