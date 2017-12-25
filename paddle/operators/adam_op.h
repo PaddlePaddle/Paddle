@@ -16,7 +16,7 @@ limitations under the License. */
 #include <math.h>  // for sqrt in CPU and CUDA
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/detail/safe_ref.h"
-#include "paddle/platform/transform.h"
+#include "paddle/platform/for_range.h"
 
 namespace paddle {
 namespace operators {
@@ -36,10 +36,12 @@ struct AdamFunctor {
   const T* lr_;
   const T* grad_;
   const T* param_;
+  T* param_out_;
 
   AdamFunctor(T beta1, T beta2, T epsilon, const T* beta1_pow,
               const T* beta2_pow, const T* mom1, T* mom1_out, const T* mom2,
-              T* mom2_out, const T* lr, const T* grad, const T* param)
+              T* mom2_out, const T* lr, const T* grad, const T* param,
+              T* param_out)
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),
@@ -51,11 +53,10 @@ struct AdamFunctor {
         moment2_out_(mom2_out),
         lr_(lr),
         grad_(grad),
-        param_(param) {}
+        param_(param),
+        param_out_(param_out) {}
 
-  // From param[i] --> param_out[i];
-  inline HOSTDEVICE T operator()(const T& p) const {
-    size_t i = &p - param_;
+  inline HOSTDEVICE void operator()(size_t i) const {
     // Merge all memory access together.
     T g = grad_[i];
     T mom1 = moment1_[i];
@@ -63,17 +64,18 @@ struct AdamFunctor {
     T lr = *lr_;
     T beta1_pow = *beta1_pow_;
     T beta2_pow = *beta2_pow_;
+    T p = param_[i];
 
     // Calculation
-    lr = lr * sqrt(1 - beta2_pow) / (1 - beta1_pow);
+    lr *= sqrt(1 - beta2_pow) / (1 - beta1_pow);
     mom1 = beta1_ * mom1 + (1 - beta1_) * g;
     mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
-    T new_p = p - lr * (mom1 / (sqrt(mom2) + epsilon_));
+    p -= lr * (mom1 / (sqrt(mom2) + epsilon_));
 
     // Write back to global memory
     moment1_out_[i] = mom1;
     moment2_out_[i] = mom2;
-    return new_p;
+    param_out_[i] = p;
   }
 };
 
@@ -113,13 +115,11 @@ class AdamOpKernel : public framework::OpKernel<T> {
                            mom2.template data<T>(),
                            mom2_out.template mutable_data<T>(ctx.GetPlace()),
                            lr.template data<T>(), grad.template data<T>(),
-                           param.template data<T>());
-
-    const T* in_ptr = param.template data<T>();
-    T* out_ptr = param_out.template mutable_data<T>(ctx.GetPlace());
-    platform::Transform<DeviceContext> trans;
-    trans(static_cast<const DeviceContext&>(ctx.device_context()), in_ptr,
-          in_ptr + param_out.numel(), out_ptr, functor);
+                           param.template data<T>(),
+                           param_out.template mutable_data<T>(ctx.GetPlace()));
+    platform::ForRange<DeviceContext> for_range(
+        static_cast<const DeviceContext&>(ctx.device_context()), param.numel());
+    for_range(functor);
   }
 };
 
