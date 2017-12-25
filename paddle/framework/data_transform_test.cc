@@ -35,19 +35,13 @@ OpKernelType kernel_type_2(DataType::FP32, GPUPlace(0), DataLayout::kNCHW,
 OpKernelType kernel_type_3(DataType::FP16, GPUPlace(0), DataLayout::kNCHW,
                            LibraryType::kCUDNN);
 void type1_to_type2(const frw::Tensor& in, frw::Tensor* out) {}
+
 }  // namespace framework
 }  // namespace paddle
 
-// REGISTER_DATA_TRANSFORM_FN(frw::kernel_type_1, frw::kernel_type_2, fn);
-int test() {
-  ::paddle::framework::DataTransformFnMap::Instance().Insert(
-      frw::kernel_type_3, frw::kernel_type_2, frw::type1_to_type2);
-  return 0;
-}
-static int aa = test();
+REGISTER_DATA_TRANSFORM_FN(test, frw::kernel_type_1, frw::kernel_type_2, fn);
 
 TEST(DataTransform, Register) {
-  ;
   DataTransformationFN fn = frw::type1_to_type2;
   auto& instance = DataTransformFnMap::Instance();
   instance.Insert(frw::kernel_type_1, frw::kernel_type_2, fn);

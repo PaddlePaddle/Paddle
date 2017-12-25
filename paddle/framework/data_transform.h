@@ -100,9 +100,13 @@ struct DataTransformRegistrar {
   }
 };
 
-#define REGISTER_DATA_TRANSFORM_FN(left, right, fn)                       \
-  ::paddle::framework::DataTransformFnMap::Instance().Insert(left, right, \
-                                                             data_tranform_fn)
+#define REGISTER_DATA_TRANSFORM_FN(uniq_name, left, right, fn)        \
+  int uniq_name##_fn() {                                              \
+    ::paddle::framework::DataTransformFnMap::Instance().Insert(       \
+        frw::kernel_type_3, frw::kernel_type_2, frw::type1_to_type2); \
+    return 0;                                                         \
+  }                                                                   \
+  static int uniq_name##_var __attribute__((unused)) = uniq_name##_fn()
 
 }  // namespace framework
 }  // namespace paddle
