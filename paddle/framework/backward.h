@@ -49,7 +49,7 @@ using ParamGradInfoMap = std::unordered_map<std::string /*fwd_var_name*/,
                                             GradVarInfo /*grad_var_info*/>;
 
 ParamGradInfoMap AppendBackward(
-    ProgramDescBind& program_desc, const VarDescBind& target,
+    ProgramDesc& program_desc, const VarDesc& target,
     const std::unordered_set<std::string>& no_grad_vars);
 
 }  // namespace framework

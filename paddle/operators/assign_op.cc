@@ -15,6 +15,7 @@
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/var_type.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -71,7 +72,7 @@ class AssignOp : public framework::OperatorBase {
            const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
     if (x == nullptr) {
       return;
@@ -80,14 +81,17 @@ class AssignOp : public framework::OperatorBase {
     PADDLE_ENFORCE(
         out != nullptr,
         "The Output(Out) should not be null if the Input(X) is set.");
+
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+    auto &dev_ctx = *pool.Borrow(place);
+
     framework::VisitVarType(*x, AssignFunctor(out, dev_ctx));
   }
 };
 
 class AssignOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AssignOpProtoMaker(framework::OpProto *proto,
-                     framework::OpAttrChecker *op_checker)
+  AssignOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(LoDTensor, SelectedRows or LoDTensorArray) The input variable "
@@ -109,8 +113,8 @@ class AssignInferShape : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *context) const override {
     if (context->HasInput("X")) {
       auto type = context->GetInputsVarType("X")[0];
-      if (type == framework::VarDesc_VarType_SELECTED_ROWS ||
-          type == framework::VarDesc_VarType_LOD_TENSOR) {
+      if (type == framework::proto::VarDesc_VarType_SELECTED_ROWS ||
+          type == framework::proto::VarDesc_VarType_LOD_TENSOR) {
         context->SetOutputDim("Out", context->GetInputDim("X"));
       }
     }
@@ -122,12 +126,12 @@ class AssignGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *op = new framework::OpDesc();
     op->SetType("assign");
     op->SetInput("X", OutputGrad("Out"));
     op->SetOutput("Out", InputGrad("X"));
-    return std::unique_ptr<framework::OpDescBind>(op);
+    return std::unique_ptr<framework::OpDesc>(op);
   }
 };
 

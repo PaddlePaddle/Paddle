@@ -83,7 +83,7 @@ class ReduceGradOp : public framework::OperatorWithKernel {
 
 class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ReduceOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  ReduceOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor) The input tensor. Tensors with rank at most 6 are "
@@ -135,8 +135,7 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
 
 class ReduceSumOpMaker : public ReduceOpMaker {
  public:
-  ReduceSumOpMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  ReduceSumOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : ReduceOpMaker(proto, op_checker) {
     SetComment("ReduceSum", "sum");
     AddComment(comment_);
@@ -145,8 +144,7 @@ class ReduceSumOpMaker : public ReduceOpMaker {
 
 class ReduceMeanOpMaker : public ReduceOpMaker {
  public:
-  ReduceMeanOpMaker(framework::OpProto *proto,
-                    framework::OpAttrChecker *op_checker)
+  ReduceMeanOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : ReduceOpMaker(proto, op_checker) {
     SetComment("ReduceMean", "mean");
     AddComment(comment_);
@@ -155,8 +153,7 @@ class ReduceMeanOpMaker : public ReduceOpMaker {
 
 class ReduceMaxOpMaker : public ReduceOpMaker {
  public:
-  ReduceMaxOpMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  ReduceMaxOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : ReduceOpMaker(proto, op_checker) {
     SetComment("ReduceMax", "max");
     AddComment(comment_);
@@ -165,8 +162,7 @@ class ReduceMaxOpMaker : public ReduceOpMaker {
 
 class ReduceMinOpMaker : public ReduceOpMaker {
  public:
-  ReduceMinOpMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  ReduceMinOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : ReduceOpMaker(proto, op_checker) {
     SetComment("ReduceMin", "min");
     AddComment(comment_);

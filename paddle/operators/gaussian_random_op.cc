@@ -57,18 +57,17 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        static_cast<framework::DataType>(ctx.Attr<int>("dtype")),
+        static_cast<framework::proto::DataType>(ctx.Attr<int>("dtype")),
         ctx.device_context());
   }
 };
 
 class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  GaussianRandomOpMaker(framework::OpProto* proto,
-                        framework::OpAttrChecker* op_checker)
+  GaussianRandomOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddOutput("Out", "Output matrix of gaussian random op");
 
@@ -91,7 +90,7 @@ class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("dtype",
                  "(int, default 5(FP32)) "
                  "Output data type.")
-        .SetDefault(framework::DataType::FP32);
+        .SetDefault(framework::proto::DataType::FP32);
 
     AddComment(R"DOC(
 GaussianRandom Operator.

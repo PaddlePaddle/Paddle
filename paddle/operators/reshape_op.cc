@@ -77,8 +77,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
 
 class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ReshapeOpMaker(framework::OpProto *proto,
-                 framework::OpAttrChecker *op_checker)
+  ReshapeOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input tensor of reshape operator.");
     AddOutput("Out", "The output tensor of reshape operator.");

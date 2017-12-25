@@ -37,8 +37,7 @@ class SequencePoolOp : public framework::OperatorWithKernel {
 
 class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequencePoolOpMaker(framework::OpProto* proto,
-                      framework::OpAttrChecker* op_checker)
+  SequencePoolOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(LoDTensor) The variable-length input of SequencePoolOp");
     AddOutput("Out",
@@ -108,7 +107,7 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()),

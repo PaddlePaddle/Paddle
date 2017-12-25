@@ -4,15 +4,24 @@ In this article, we will introduce how to run PaddlePaddle training job on singl
 
 ## Build Docker Image
 
-In distributed Kubernetes cluster, we will use Ceph or other shared storage system for storing training data so that all processes in the training job can retrieve data from Ceph. In this example, we will only demo training job on single machine. In order to simplify the requirement of the environment, we will directly put training data into PaddlePaddle's Docker Image, so we need to create a PaddlePaddle Docker image that already includes the training data.
+In distributed Kubernetes cluster, we will use Ceph or other distributed
+storage system for storing training related data so that all processes in
+PaddlePaddle training can retrieve data from Ceph. In this example, we will
+only demo training job on single machine. In order to simplify the requirement
+of the environment, we will directly put training data into the PaddlePaddle Docker Image,
+so we need to create a PaddlePaddle Docker image that includes the training data.
 
-PaddlePaddle's [Quick Start Tutorial](http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/index_en.html) introduces how to download and train data by using script from PaddlePaddle's source code.
-And `paddledev/paddle:cpu-demo-latest` image has the PaddlePaddle source code and demo. (Caution: Default PaddlePaddle image `paddledev/paddle:cpu-latest` doesn't include the source code, PaddlePaddle's different versions of image can be referred here: [Docker installation guide](http://www.paddlepaddle.org/doc/build/docker_install.html)), so we run this container and download the training data, and then commit the whole container to be a new Docker image.
-  
+The production Docker Image `paddlepaddle/paddle:cpu-demo-latest` has the PaddlePaddle
+source code and demo. (Caution: Default PaddlePaddle Docker Image `paddlepaddle/paddle:latest` doesn't include
+the source code, PaddlePaddle's different versions of Docker Image can be referred here:
+[Docker Installation Guide](http://paddlepaddle.org/docs/develop/documentation/zh/getstarted/build_and_install/docker_install_en.html)),
+so we run this Docker Image and download the training data, and then commit the whole
+Container to be a new Docker Image.
+
 ### Run Docker Container
 
 ```
-$ docker run --name quick_start_data -it paddledev/paddle:cpu-demo-latest
+$ docker run --name quick_start_data -it paddlepaddle/paddle:cpu-demo-latest
 ```
 
 ### Download Training Data

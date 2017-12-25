@@ -98,7 +98,7 @@ class LstmUnitOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "It must use CUDAPlace.");
 
     auto* x_tensor = ctx.Input<framework::Tensor>("X");
     auto* c_prev_tensor = ctx.Input<framework::Tensor>("C_prev");
@@ -129,7 +129,7 @@ class LstmUnitGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "It must use CUDAPlace.");
 
     auto x_tensor = ctx.Input<Tensor>("X");
     auto c_prev_tensor = ctx.Input<Tensor>("C_prev");

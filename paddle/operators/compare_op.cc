@@ -20,8 +20,7 @@ namespace operators {
 template <typename OpComment>
 class CompareOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CompareOpProtoMaker(framework::OpProto *proto,
-                      framework::OpAttrChecker *op_checker)
+  CompareOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     OpComment comment;
     AddInput("X",
@@ -67,9 +66,9 @@ class CompareOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::OpKernelType kt = OperatorWithKernel::GetKernelType(ctx);
+    framework::OpKernelType kt = OperatorWithKernel::GetActualKernelType(ctx);
     // CompareOp kernel's device type is decided by input tensor place
     kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
     return kt;

@@ -53,7 +53,7 @@ class MultiBoxLossOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::Tensor>("Label")->type()),
@@ -72,7 +72,7 @@ class MultiBoxLossGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::Tensor>("Label")->type()),
@@ -126,8 +126,8 @@ https://arxiv.org/abs/1512.02325.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(multi_box_loss, ops::MultiBoxLossOp, ops::MultiBoxLossOpMaker,
-            multi_box_loss_grad, ops::MultiBoxLossGradOp);
+REGISTER_OP_EX(multi_box_loss, ops::MultiBoxLossOp, ops::MultiBoxLossOpMaker,
+               multi_box_loss_grad, ops::MultiBoxLossGradOp, false);
 REGISTER_OP_CPU_KERNEL(
     multi_box_loss,
     ops::MultiBoxLossOpKernel<paddle::platform::CPUDeviceContext, float>);
