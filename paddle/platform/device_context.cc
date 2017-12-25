@@ -185,7 +185,7 @@ CUDNNDeviceContext::CUDNNDeviceContext(CUDAPlace place)
 }
 
 CUDNNDeviceContext::~CUDNNDeviceContext() {
-  SetDeviceId(place_.device);
+  SetDeviceId(boost::get<CUDAPlace>(GetPlace()).device);
   Wait();
   PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
 }
