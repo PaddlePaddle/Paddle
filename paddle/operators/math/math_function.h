@@ -128,10 +128,10 @@ struct ColwiseSum {
                   framework::Tensor* vec);
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 struct RowwiseSum {
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, framework::Tensor* vec);
+  void operator()(const DeviceContext& context, const framework::Tensor& input,
+                  framework::Tensor* vec);
 };
 
 }  // namespace math
