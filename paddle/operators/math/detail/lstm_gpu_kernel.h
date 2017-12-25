@@ -185,8 +185,7 @@ __global__ void KeLstmBackward(Op op, LstmMetaValue<T> value,
 template <class T, class Op>
 void gpu_lstm_forward(const platform::DeviceContext& context, Op op,
                       LstmMetaValue<T> value, int frame_size, int batch_size,
-                      ActivationType active_node,
-                      ActivationType active_gate,
+                      ActivationType active_node, ActivationType active_gate,
                       ActivationType active_state) {
   dim3 threads;
   dim3 grid;
@@ -220,8 +219,7 @@ template <class T, class Op>
 void gpu_lstm_backward(const platform::DeviceContext& context, Op op,
                        LstmMetaValue<T> value, LstmMetaGrad<T> grad,
                        int frame_size, int batch_size,
-                       ActivationType active_node,
-                       ActivationType active_gate,
+                       ActivationType active_node, ActivationType active_gate,
                        ActivationType active_state) {
   dim3 threads;
   dim3 grid;
