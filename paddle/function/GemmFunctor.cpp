@@ -12,8 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "GemmFunctor.h"
+#ifdef PADDLE_USE_EIGEN_FOR_BLAS
 #include "paddle/function/EigenDevice.h"
+#endif
+#include "GemmFunctor.h"
 #include "paddle/math/MathFunctions.h"
 
 namespace paddle {
