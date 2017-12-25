@@ -14,7 +14,7 @@
 
 __all__ = [
     'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
-    'ComposeNotAligned', 'firstn', 'xmap_readers', 'pipe_reader'
+    'ComposeNotAligned', 'firstn', 'xmap_readers', 'PipeReader'
 ]
 
 from threading import Thread
