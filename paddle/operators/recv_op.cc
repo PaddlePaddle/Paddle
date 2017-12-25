@@ -62,9 +62,7 @@ class RecvOp : public framework::OperatorBase {
   void Stop() override {
     detail::TensorWithName term_msg;
     term_msg.first = LISTEN_TERMINATE_MESSAGE;
-    LOG(ERROR) << "push term msg";
     rpc_service_->Push(term_msg);
-    LOG(ERROR) << "push term msg over";
     rpc_server_->Shutdown();
     server_thread_->join();
   }
@@ -98,7 +96,6 @@ class RecvOp : public framework::OperatorBase {
         // blocking get one var from client.
         const detail::TensorWithName &v = rpc_service_->Get();
         auto grad_var_name = v.first;
-        LOG(ERROR) << "recved varname" << grad_var_name;
         if (grad_var_name == LISTEN_TERMINATE_MESSAGE) {
           exit_flag = true;
           break;
