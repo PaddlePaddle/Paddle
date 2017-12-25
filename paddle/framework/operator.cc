@@ -433,7 +433,7 @@ void OperatorWithKernel::Run(const Scope& scope,
                 trans_dev_ctx);
     }
     // Wait for data transform finishing
-    trans_dev_ctx.Wait();
+    trans_dev_ctx->Wait();
 
     // Create a new ExecutionContext
     ExecutionContext op_ctx(*this, op_scope, *dev_ctx);
