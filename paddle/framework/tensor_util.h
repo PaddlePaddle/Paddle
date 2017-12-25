@@ -33,6 +33,7 @@ inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
   src.check_memory_size();
 
   dst->Resize(src.dims());
+  dst->set_layout(src.layout());
   auto src_place = src.place();
   auto src_ptr = src.data<void>();
 
@@ -89,6 +90,7 @@ inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
                      Tensor* dst) {
   src.check_memory_size();
   dst->Resize(src.dims());
+  dst->set_layout(src.layout());
 
   auto src_place = src.place();
   auto src_ptr = src.data<void>();

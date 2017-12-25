@@ -40,6 +40,7 @@ struct OpKernelType {
 
   // place, data_type, library_type kinds less than 2^8
   constexpr static int LEFT_SHIFT = 8;
+
   proto::DataType data_type_;
   DataLayout data_layout_;
   platform::Place place_;
