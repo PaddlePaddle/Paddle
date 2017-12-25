@@ -71,11 +71,11 @@ class OpRegistry {
   static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
 };
 
-template <typename PlaceType, std::string DeviceType, bool at_end, size_t I,
+template <typename PlaceType, const char* DeviceType, bool at_end, size_t I,
           typename... KernelType>
 struct OpKernelRegistrarFunctor;
 
-template <typename PlaceType, std::string DeviceType, size_t I,
+template <typename PlaceType, const char* DeviceType, size_t I,
           typename... KernelTypes>
 struct OpKernelRegistrarFunctor<PlaceType, DeviceType, false, I,
                                 KernelTypes...> {
@@ -89,20 +89,21 @@ struct OpKernelRegistrarFunctor<PlaceType, DeviceType, false, I,
     OperatorWithKernel::AllOpKernels()[op_type][key].reset(new KERNEL_TYPE);
 
     constexpr auto size = std::tuple_size<std::tuple<KernelTypes...>>::value;
-    OpKernelRegistrarFunctor<PlaceType, I + 1 == size, I + 1, KernelTypes...>
+    OpKernelRegistrarFunctor<PlaceType, DeviceType, I + 1 == size, I + 1,
+                             KernelTypes...>
         func;
     func(op_type);
   }
 };
 
-template <typename PlaceType, std::string DeviceType, size_t I,
+template <typename PlaceType, const char* DeviceType, size_t I,
           typename... KernelType>
 struct OpKernelRegistrarFunctor<PlaceType, true, I, KernelType...> {
   void operator()(const char* op_type) const {}
 };
 
 // User can register many kernel in one place. The data type could be different.
-template <typename PlaceType, std::string DeviceType, typename... KernelType>
+template <typename PlaceType, const char* DeviceType, typename... KernelType>
 class OpKernelRegistrar : public Registrar {
  public:
   explicit OpKernelRegistrar(const char* op_type) {

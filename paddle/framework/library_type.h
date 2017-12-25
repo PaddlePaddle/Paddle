@@ -31,20 +31,20 @@ inline std::string LibraryTypeToString(const LibraryType& library_type) {
     case kCUDNN:
       return "CUDNN";
     default:
-      PADDLE_THROW("unknown LibraryType %d", library_type);
+      PADDLE_THROW("unknown LibraryType %d", static_cast<int>(library_type));
   }
 }
 
-inline LibraryType StringToLibraryType(const std::string& str) {
-  switch (str) {
-    case "PLAIN":
-      return LibraryType::kPlain;
-    case "MKLDNN":
-      return LibraryType::kMKLDNN;
-    case "CUDNN":
-      return LibraryType::CUDNN;
-    default:
-      PADDLE_THROW("Unknown LibraryType %s", str);
+inline LibraryType StringToLibraryType(const char* ctype) {
+  std::string s(ctype);
+  if (s == std::string("PLAIN")) {
+    return LibraryType::kPlain;
+  } else if (s == std::string("MKLDNN")) {
+    return LibraryType::kMKLDNN;
+  } else if (s == std::string("CUDNN")) {
+    return LibraryType::kCUDNN;
+  } else {
+    PADDLE_THROW("Unknown LibraryType %s", s.c_str());
   }
 }
 
