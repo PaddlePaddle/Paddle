@@ -55,14 +55,6 @@ class NormOpMaker : public framework::OpProtoAndCheckerMaker {
 };
 
 class NormOp : public framework::OperatorWithKernel {
- protected:
-  framework::OpKernelType GetKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
-        ctx.device_context());
-  }
-
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
@@ -80,14 +72,6 @@ class NormOp : public framework::OperatorWithKernel {
 };
 
 class NormOpGrad : public framework::OperatorWithKernel {
- protected:
-  framework::OpKernelType GetKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
-        ctx.device_context());
-  }
-
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
@@ -105,7 +89,7 @@ REGISTER_OP(norm, ops::NormOp, ops::NormOpMaker<float>, norm_grad,
             ops::NormOpGrad);
 REGISTER_OP_CPU_KERNEL(
     norm, ops::NormKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::NormKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::NormKernel<paddle::platform::CPUDeviceContext, double, float>);
 REGISTER_OP_CPU_KERNEL(
     norm_grad, ops::NormGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::NormGradKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::NormGradKernel<paddle::platform::CPUDeviceContext, double, float>);
