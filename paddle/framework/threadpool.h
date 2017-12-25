@@ -13,15 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <condition_variable>
-#include <cstdio>
-#include <functional>
 #include <iostream>
+
+#include <condition_variable>
+#include <functional>
 #include <mutex>
 #include <queue>
 #include <thread>
 
-#include "paddle/platform/call_once.h"
 #include "paddle/platform/enforce.h"
 
 namespace paddle {
@@ -81,10 +80,9 @@ class ThreadPool {
   }
 
  private:
-  ThreadPool& operator=(const ThreadPool&) = delete;
-  ThreadPool(const ThreadPool&) = delete;
+  DISABLE_COPY_AND_ASSIGN(ThreadPool);
 
-  ThreadPool(int num_threads)
+  explicit ThreadPool(int num_threads)
       : num_threads_(num_threads), available_(num_threads), running_(true) {
     threads_.resize(num_threads);
     for (auto& thread : threads_) {
@@ -155,7 +153,5 @@ class ThreadPool {
   std::condition_variable completed_;
 };
 
-std::unique_ptr<ThreadPool> ThreadPool::threadpool(nullptr);
-std::once_flag ThreadPool::init_flag;
 }  // namespace framework
 }  // namespace paddle
