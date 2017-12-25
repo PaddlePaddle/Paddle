@@ -35,19 +35,24 @@ TEST(ThreadPool, ConcurrentInit) {
     std::thread t([&pool]() { pool = framework::ThreadPool::GetInstance(); });
     threads.push_back(std::move(t));
   }
-  for (int i = 0; i < concurrent_cnt; ++i) {
-    threads[i].join();
+  for (auto& t : threads) {
+    t.join();
   }
 }
 
 TEST(ThreadPool, ConcurrentStart) {
   framework::ThreadPool* pool = framework::ThreadPool::GetInstance();
   std::atomic<int> sum(0);
-  int cnt1 = 10, cnt2 = 20;
-  std::thread t1(do_sum, pool, std::ref(sum), cnt1);
-  std::thread t2(do_sum, pool, std::ref(sum), cnt2);
-  t1.join();
-  t2.join();
+  std::vector<std::thread> threads;
+  int concurrent_cnt = 50;
+  // sum = (n * (n + 1)) / 2
+  for (int i = 1; i <= concurrent_cnt; ++i) {
+    std::thread t(do_sum, pool, std::ref(sum), i);
+    threads.push_back(std::move(t));
+  }
+  for (auto& t : threads) {
+    t.join();
+  }
   pool->Wait();
-  EXPECT_EQ(sum, cnt1 + cnt2);
+  EXPECT_EQ(sum, ((concurrent_cnt + 1) * concurrent_cnt) / 2);
 }
