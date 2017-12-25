@@ -86,21 +86,6 @@ class DataTransformFnMap {
   //  DISABLE_COPY_AND_ASSIGN(DataTransformFnMap);
 };
 
-struct DataTransformRegistrar {
-  explicit DataTransformRegistrar(
-      const OpKernelType& left, const OpKernelType& right,
-      const DataTransformationFN& data_tranform_fn) {
-    ::paddle::framework::KernelTypePair pair = std::make_pair(left, right);
-    auto& data_transform_fn_map =
-        ::paddle::framework::DataTransformFnMap::Instance();
-    PADDLE_ENFORCE(!data_transform_fn_map.Has(pair),
-                   "'%s' is registered more than once.", "");
-    data_transform_fn_map.Insert(pair, data_tranform_fn);
-    ::paddle::framework::DataTransformFnMap::Instance().Insert(
-        left, right, data_tranform_fn);
-  }
-};
-
 #define REGISTER_DATA_TRANSFORM_FN(uniq_name, left, right, fn)              \
   int uniq_name##_fn() {                                                    \
     ::paddle::framework::DataTransformFnMap::Instance().Insert(left, right, \
