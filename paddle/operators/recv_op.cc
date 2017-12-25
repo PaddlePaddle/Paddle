@@ -39,7 +39,7 @@ void RunServer(Server **rpc_server,
   builder.RegisterService(service.get());
   std::unique_ptr<Server> server(builder.BuildAndStart());
   *rpc_server = server.get();
-  LOG(INFO) << "Server listening on " << server_address << std::endl;
+  LOG(INFO) << "Server listening on " << server_address;
   server->Wait();
 }
 

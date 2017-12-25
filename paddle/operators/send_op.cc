@@ -41,6 +41,7 @@ class SendOp : public framework::OperatorBase {
           grpc::CreateChannel(ep, grpc::InsecureChannelCredentials())));
     }
   }
+
   void Run(const framework::Scope &scope,
            const platform::DeviceContext &dev_ctx) const override {
     auto ins = Inputs("X");

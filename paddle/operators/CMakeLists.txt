@@ -227,6 +227,10 @@ set_source_files_properties(
     COMPILE_FLAGS  "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
 
 cc_test(test_send_recv SRCS send_recv_op_test.cc DEPS send_op recv_op sum_op executor)
+# FIXME(typhoonzero): use gtest to get benchmark result
+if(WITH_PROFILER)
+    cc_test(test_send_recv_benchmark SRCS send_recv_op_benchmark.cc DEPS send_op recv_op sum_op executor)
+endif()
 endif()
 
 op_library(cond_op SRCS cond_op.cc DEPS framework_proto tensor operator net_op)

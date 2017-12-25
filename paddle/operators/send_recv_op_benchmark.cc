@@ -12,15 +12,17 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+// TODO(typhoonzero): add python bindings for this test as
+// a RemoteOptimizer.
+
 #include <unistd.h>
-#include <string>
+#include <iostream>
 #include <thread>
 
 #include "gtest/gtest.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/program_desc.h"
-#include "paddle/string/printf.h"
 
 USE_NO_KERNEL_OP(send);
 USE_NO_KERNEL_OP(recv);
@@ -28,24 +30,24 @@ USE_OP(sum);
 
 // global for simplicity.
 std::unique_ptr<paddle::framework::OperatorBase> recv_op;
+int benchmark_count = 1000;
+// FIXME(typhoonzero): protobuf message size limits the maximum tensor size
+int mat_size = 512;
 
 void InitTensorsInScope(paddle::framework::Scope &scope,
                         paddle::platform::CPUPlace &place) {
   paddle::platform::CPUDeviceContext ctx(place);
-  for (int i = 0; i < 2; ++i) {
-    auto var_name = paddle::string::Sprintf("x%d", i);
-    auto var = scope.Var(var_name);
-    auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
-    tensor->Resize({10, 10});
-    float *expect = tensor->mutable_data<float>(place);
-    for (int64_t i = 0; i < tensor->numel(); ++i) {
-      expect[i] = static_cast<float>(i);
-    }
+  auto var = scope.Var("X");
+  auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
+  tensor->Resize({mat_size, mat_size});
+  float *expect = tensor->mutable_data<float>(place);
+  for (int64_t i = 0; i < tensor->numel(); ++i) {
+    expect[i] = static_cast<float>(i) / 1000.0f;
   }
 
   auto out_var = scope.Var("Out");
   auto out_tensor = out_var->GetMutable<paddle::framework::LoDTensor>();
-  out_tensor->Resize({10, 10});
+  out_tensor->Resize({mat_size, mat_size});
   out_tensor->mutable_data<float>(place);  // allocate
 }
 
@@ -53,12 +55,12 @@ void AddOp(const std::string &type,
            const paddle::framework::VariableNameMap &inputs,
            const paddle::framework::VariableNameMap &outputs,
            paddle::framework::AttributeMap attrs,
-           paddle::framework::BlockDesc *block) {
+           paddle::framework::BlockDescBind *block) {
   // insert output
   for (auto kv : outputs) {
     for (auto v : kv.second) {
       auto var = block->Var(v);
-      var->SetDataType(paddle::framework::proto::DataType::FP32);
+      var->SetDataType(paddle::framework::DataType::FP32);
     }
   }
 
@@ -80,28 +82,21 @@ void StartServerNet() {
   InitTensorsInScope(scope, place);
 
   // sub program run in recv_op, for simple test we use sum
-  paddle::framework::ProgramDesc program;
-  paddle::framework::BlockDesc *block = program.MutableBlock(0);
+  paddle::framework::ProgramDescBind program;
+  paddle::framework::BlockDescBind *block = program.MutableBlock(0);
   // X for server side tensors, RX for received tensers, must be of same shape.
-  AddOp("sum", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, {}, block);
+  AddOp("sum", {{"X", {"X", "RX"}}}, {{"Out", {"Out"}}}, {}, block);
 
   paddle::framework::AttributeMap attrs;
   attrs.insert({"endpoint", std::string("127.0.0.1:6174")});
-  std::string program_proto;
-  PADDLE_ENFORCE(program.Proto()->SerializeToString(&program_proto));
-
-  attrs.insert({"OptimizeProgram", program_proto});
-  recv_op = paddle::framework::OpRegistry::CreateOp(
-      "recv", {{"RX", {"x0", "x1"}}}, {{"Out", {"Out"}}}, attrs);
+  attrs.insert({"OptimizeBlock", block});
+  recv_op = paddle::framework::OpRegistry::CreateOp("recv", {{"RX", {"RX"}}},
+                                                    {{"Out", {"Out"}}}, attrs);
   paddle::platform::CPUDeviceContext ctx(place);
-  while (1) {
-    recv_op->Run(scope, ctx);
-    // run once
-    break;
-  }
+  recv_op->Run(scope, ctx);
 }
 
-TEST(SendRecvOp, CPU) {
+TEST(SendRecvBenchmark, CPU) {
   std::thread server_thread(StartServerNet);
   sleep(5);  // wait server to start
   // local net
@@ -113,22 +108,13 @@ TEST(SendRecvOp, CPU) {
   attrs.insert({"endpoint", std::string("127.0.0.1:6174")});
 
   auto send_op = paddle::framework::OpRegistry::CreateOp(
-      "send", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, attrs);
+      "send", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
   paddle::platform::CPUDeviceContext ctx(place);
-  send_op->Run(scope, ctx);
 
-  auto in_var = scope.Var("x0");
-  auto tensor = in_var->GetMutable<paddle::framework::LoDTensor>();
-  float *expected = tensor->data<float>();
-
-  auto out_var = scope.Var("Out");
-  auto target = out_var->GetMutable<paddle::framework::LoDTensor>();
-  // send fail cause output is none.
-  EXPECT_NE(target->memory_size(), size_t(0));
-  float *actual = target->data<float>();
-  for (int64_t i = 0; i < target->numel(); ++i) {
-    EXPECT_EQ(expected[i] * 2, actual[i]);
+  for (int i = 0; i < benchmark_count; ++i) {
+    send_op->Run(scope, ctx);
   }
+
   recv_op.reset();  // dtor can shutdown and join server thread.
   server_thread.join();
 }
