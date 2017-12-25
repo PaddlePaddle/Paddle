@@ -13,7 +13,8 @@ __all__ = [
     'crf_decoding', 'cos_sim', 'cross_entropy', 'square_error_cost', 'accuracy',
     'chunk_eval', 'sequence_conv', 'conv2d', 'sequence_pool', 'pool2d',
     'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
-    'lstm_unit', 'reduce_sum'
+    'lstm_unit', 'reduce_sum', 'reduce_mean', 'sequence_first_step',
+    'sequence_last_step'
 ]
 
 
@@ -41,7 +42,7 @@ def fc(input,
 
     .. math::
 
-        Out = Act\left({\sum_{i=0}^{N-1}W_iX_i + b}\right)
+        Out = Act({\sum_{i=0}^{N-1}W_iX_i + b})
 
     In the above equation:
 
@@ -162,8 +163,9 @@ def embedding(input, size, is_sparse=False, param_attr=None, dtype='float32'):
     Examples:
         .. code-block:: python
 
+          dict_size = len(dataset.ids)
           data = fluid.layers.data(name='ids', shape=[32, 32], dtype='float32')
-          fc = fluid.layers.embedding(input=data, size=16)
+          fc = fluid.layers.embedding(input=data, size=[dict_size, 16])
     """
 
     helper = LayerHelper('embedding', **locals())
@@ -574,9 +576,53 @@ def conv2d(input,
 
 def sequence_pool(input, pool_type, **kwargs):
     """
-    This function add the operator for sequence pooling.
-    This is applied on top of the input using pool_type mentioned
-    in the parameters.
+    This function add the operator for sequence pooling. 
+    It pools features of all time-steps of each instance, and is applied 
+    on top of the input using pool_type mentioned in the parameters. 
+
+    It supports four pool_type:
+
+    - average: :math:`Out[i] = \\frac{\sum_i X_i}{N}`
+    - sum:     :math:`Out[i] = \sum_jX_{ij}`
+    - sqrt:    :math:`Out[i] = \\frac{\sum_jX_{ij}}{\sqrt{len(X_i)}}`
+    - max:     :math:`Out[i] = max(X_i)`
+
+    .. code-block:: text
+
+       x is a 1-level LoDTensor:
+         x.lod = [[0, 2, 5, 7]]
+         x.data = [1, 3, 2, 4, 6, 5, 1]
+         x.dims = [7, 1]
+
+       then output is a Tensor:
+         out.dim = [3, 1]
+         with condition len(x.lod[-1]) - 1 == out.dims[0]
+
+       for different pool_type:
+         average: out.data = [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
+         sum    : out.data = [4, 12, 6], where 4=1+3, 12=2+4+6, 6=5+1
+         sqrt   : out.data = [2.82, 6.93, 4.24], where 2.82=(1+3)/sqrt(2),
+                    6.93=(2+4+6)/sqrt(3), 4.24=(5+1)/sqrt(2)
+         max    : out.data = [3, 6, 5], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
+         
+    Args:
+        input(variable): The input variable which is a LoDTensor.
+        pool_type (string): The pooling type of sequence_pool. 
+            It supports average, sum, sqrt and max.
+
+    Returns:
+        The sequence pooling variable which is a Tensor.
+
+    Examples:
+
+        .. code-block:: python
+             
+             x = fluid.layers.data(name='x', shape=[7, 1], 
+                              dtype='float32', lod_level=1)
+             avg_x = fluid.layers.sequence_pool(input=x, pool_type='average')
+             sum_x = fluid.layers.sequence_pool(input=x, pool_type='sum')
+             sqrt_x = fluid.layers.sequence_pool(input=x, pool_type='sqrt')
+             max_x = fluid.layers.sequence_pool(input=x, pool_type='max')
     """
     helper = LayerHelper('sequence_pool', input=input, **kwargs)
     dtype = helper.input_dtype()
@@ -591,6 +637,72 @@ def sequence_pool(input, pool_type, **kwargs):
         attrs={"pooltype": pool_type.upper()})
 
     return pool_out
+
+
+def sequence_first_step(input, **kwargs):
+    """
+    This funciton get the first step of sequence.
+
+    .. code-block:: text
+
+       x is a 1-level LoDTensor:
+         x.lod = [[0, 2, 5, 7]]
+         x.data = [1, 3, 2, 4, 6, 5, 1]
+         x.dims = [7, 1]
+
+       then output is a Tensor:
+         out.dim = [3, 1]
+         with condition len(x.lod[-1]) - 1 == out.dims[0]
+         out.data = [1, 2, 5], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
+         
+    Args:
+        input(variable): The input variable which is a LoDTensor.
+
+    Returns:
+        The sequence's first step variable which is a Tensor.
+
+    Examples:
+
+        .. code-block:: python
+             
+             x = fluid.layers.data(name='x', shape=[7, 1], 
+                              dtype='float32', lod_level=1)
+             x_first_step = fluid.layers.sequence_first_step(input=x)
+    """
+    return sequence_pool(input=input, pool_type="first")
+
+
+def sequence_last_step(input, **kwargs):
+    """
+    This funciton get the last step of sequence.
+
+    .. code-block:: text
+
+       x is a 1-level LoDTensor:
+         x.lod = [[0, 2, 5, 7]]
+         x.data = [1, 3, 2, 4, 6, 5, 1]
+         x.dims = [7, 1]
+
+       then output is a Tensor:
+         out.dim = [3, 1]
+         with condition len(x.lod[-1]) - 1 == out.dims[0]
+         out.data = [3, 6, 1], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
+         
+    Args:
+        input(variable): The input variable which is a LoDTensor.
+
+    Returns:
+        The sequence's last step variable which is a Tensor.
+
+    Examples:
+
+        .. code-block:: python
+             
+             x = fluid.layers.data(name='x', shape=[7, 1], 
+                              dtype='float32', lod_level=1)
+             x_last_step = fluid.layers.sequence_last_step(input=x)
+    """
+    return sequence_pool(input=input, pool_type="last")
 
 
 def pool2d(input,
@@ -1037,6 +1149,50 @@ def reduce_sum(input, dim=None, keep_dim=False):
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
         type='reduce_sum',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={
+            'dim': dim if dim != None else 0,
+            'keep_dim': keep_dim,
+            'reduce_all': True if dim == None else False
+        })
+    return out
+
+
+def reduce_mean(input, dim=None, keep_dim=False):
+    """
+    Computes the mean of tensor elements over the given dimension. 
+
+    Args:
+        input (Variable): The input variable which is a Tensor or LoDTensor.
+        dim (int|None): The dimension along which the mean is computed. If 
+            :attr:`None`, compute the mean over all elements of :attr:`input` 
+            and return a Tensor variable with a single element, otherwise 
+            must be in the range :math:`[-rank(input), rank(input))`. If 
+            :math:`dim < 0`, the dimension to reduce is :math:`rank + dim`.
+        keep_dim (bool): Whether to reserve the reduced dimension in the 
+            output Tensor. The result tensor will have one fewer dimension 
+            than the :attr:`input` unless :attr:`keep_dim` is true.
+
+    Returns:
+        Variable: The reduced Tensor variable.
+    
+    Examples:
+        .. code-block:: python
+
+            # x is a Tensor variable with following elements:
+            #    [[0.2, 0.3, 0.5, 0.9]
+            #     [0.1, 0.2, 0.6, 0.7]]
+            # Each example is followed by the correspending output tensor.
+            fluid.layers.reduce_mean(x)  # [0.4375]
+            fluid.layers.reduce_mean(x, dim=0)  # [0.15, 0.25, 0.55, 0.8]
+            fluid.layers.reduce_mean(x, dim=-1)  # [0.475, 0.4]
+            fluid.layers.reduce_mean(x, dim=1, keep_dim=True)  # [[0.475], [0.4]]
+    """
+    helper = LayerHelper('reduce_mean', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='reduce_mean',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={

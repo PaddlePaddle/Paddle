@@ -79,6 +79,8 @@ class BlockDesc {
 
   OpDesc *PrependOp();
 
+  void RemoveOp(size_t s, size_t e);
+
   std::vector<OpDesc *> AllOps() const;
 
   size_t OpSize() const { return ops_.size(); }

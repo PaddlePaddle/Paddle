@@ -35,7 +35,7 @@ struct StridedMemcpyFunctor<T, 1> {
       memory::Copy(cpu_place, dst, cpu_place, src, sizeof(T) * dst_dim.head);
     } else {
 #ifdef PADDLE_WITH_CUDA
-      auto& gpu_place = boost::get<platform::GPUPlace>(place);
+      auto& gpu_place = boost::get<platform::CUDAPlace>(place);
       auto& cuda_ctx =
           reinterpret_cast<const platform::CUDADeviceContext&>(dev_ctx);
       memory::Copy(gpu_place, dst, gpu_place, src, sizeof(T) * dst_dim.head,

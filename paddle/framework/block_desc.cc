@@ -90,6 +90,21 @@ OpDesc *BlockDesc::PrependOp() {
   return ops_.front().get();
 }
 
+void BlockDesc::RemoveOp(size_t s, size_t e) {
+  if (ops_.begin() + s == ops_.end() || ops_.begin() + e == ops_.end()) {
+    return;
+  }
+  need_update_ = true;
+  for (auto it = ops_.begin() + s; it != ops_.begin() + e; it++) {
+    auto names = (*it)->InputArgumentNames();
+    for (auto n : names) {
+      // TODO(typhoonzero): delete vars if no other op use it.
+      VLOG(3) << "deleting var " << n;
+    }
+  }
+  ops_.erase(ops_.begin() + s, ops_.begin() + e);
+}
+
 std::vector<OpDesc *> BlockDesc::AllOps() const {
   std::vector<OpDesc *> res;
   for (const auto &op : ops_) {
