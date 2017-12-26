@@ -54,7 +54,7 @@ bool InitDevices(const std::vector<std::string> &devices) {
 #ifdef PADDLE_WITH_CUDA
       auto pos = string::RFind(p, ':', string::Piece::npos);
       auto number = device.substr(pos + 1);
-      places.emplace_back(platform::GPUPlace(std::stoi(number)));
+      places.emplace_back(platform::CUDAPlace(std::stoi(number)));
 #else
       LOG(WARNING)
           << "'GPU' is not supported, Please re-compile with WITH_GPU option";

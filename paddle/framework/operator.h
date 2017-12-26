@@ -52,6 +52,11 @@ constexpr char kGradVarSuffix[] = "@GRAD";
 /// Variables with this suffix are supposed to be filled up with zeros.
 constexpr char kZeroVarSuffix[] = "@ZERO";
 
+// define some kernel hint
+const std::string kUseCPU = "use_cpu";
+const std::string kUseCUDNN = "use_cudnn";
+const std::string kUseMKLDNN = "use_mkldnn";
+
 inline std::string GradVarName(const std::string& var_name) {
   return var_name + kGradVarSuffix;
 }
@@ -373,15 +378,15 @@ class OperatorWithKernel : public OperatorBase {
   }
 
  protected:
-  virtual OpKernelType GetKernelType(const ExecutionContext& ctx) const;
+  virtual OpKernelType GetActualKernelType(const ExecutionContext& ctx) const;
+  virtual OpKernelType GetExpectedKernelType(
+      const OpKernelType& actual_kernel_type) const;
 
  private:
   // indicate kernel DataType by input data. Defaultly all input data must be
   // same.
   proto::DataType IndicateDataType(const ExecutionContext& ctx) const;
 };
-
-std::ostream& operator<<(std::ostream& os, const OpKernelType& kernel_key);
 
 extern bool OpSupportGPU(const std::string& op_type);
 

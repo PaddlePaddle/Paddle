@@ -36,7 +36,7 @@ class MultiplexGPUKernel : public framework::OpKernel<T> {
     CopyFrom(*ids, platform::CPUPlace(), ctx.device_context(), &index_t_cpu);
     auto* index = index_t_cpu.data<int32_t>();
     auto stream = ctx.cuda_device_context().stream();
-    platform::GPUPlace place = boost::get<platform::GPUPlace>(ctx.GetPlace());
+    platform::CUDAPlace place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     for (auto i = 0; i < rows; i++) {
       int32_t k = index[i];
       PADDLE_ENFORCE_GE(k, 0, "index must be nonnegative.");
@@ -73,7 +73,7 @@ class MultiplexGradGPUKernel : public framework::OpKernel<T> {
     auto* index = index_t_cpu.data<int32_t>();
 
     auto stream = ctx.cuda_device_context().stream();
-    platform::GPUPlace place = boost::get<platform::GPUPlace>(ctx.GetPlace());
+    platform::CUDAPlace place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     for (auto i = 0; i < rows; i++) {
       size_t k = static_cast<size_t>(index[i]);
       if (d_ins[k]) {
