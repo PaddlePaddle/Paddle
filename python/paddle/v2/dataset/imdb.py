@@ -73,7 +73,7 @@ def build_dict(pattern, cutoff):
     return word_idx
 
 
-def reader_creator(pos_pattern, neg_pattern, word_idx, buffer_size):
+def reader_creator(pos_pattern, neg_pattern, word_idx):
     UNK = word_idx['<unk>']
     INS = []
 
@@ -106,7 +106,7 @@ def train(word_idx):
     """
     return reader_creator(
         re.compile("aclImdb/train/pos/.*\.txt$"),
-        re.compile("aclImdb/train/neg/.*\.txt$"), word_idx, 1000)
+        re.compile("aclImdb/train/neg/.*\.txt$"), word_idx)
 
 
 def test(word_idx):
@@ -123,7 +123,7 @@ def test(word_idx):
     """
     return reader_creator(
         re.compile("aclImdb/test/pos/.*\.txt$"),
-        re.compile("aclImdb/test/neg/.*\.txt$"), word_idx, 1000)
+        re.compile("aclImdb/test/neg/.*\.txt$"), word_idx)
 
 
 def word_dict():
