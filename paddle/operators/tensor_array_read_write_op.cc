@@ -136,17 +136,6 @@ class ReadFromArrayOp : public ArrayOp {
       auto &dev_ctx = *pool.Borrow(place);
       framework::CopyFrom(x_array[offset], place, dev_ctx, out_tensor);
       out_tensor->set_lod(x_array[offset].lod());
-      if (Input("X") == "dynamic_rnn_0_output_array_fc_0.tmp_0_0@GRAD") {
-        VLOG(10) << "Offset = " << offset;
-        if (x_array[offset].numel() != 0) {
-          auto d = x_array[offset].dims();
-          std::ostringstream sout;
-          for (int64_t i = 0; i < d[0]; ++i) {
-            sout << x_array[offset].data<float>()[0 * d[1]] << ", ";
-          }
-          VLOG(10) << "Grad = " << sout.str();
-        }
-      }
     } else {
       VLOG(10) << "offset " << offset << " >= " << x_array.size();
     }
