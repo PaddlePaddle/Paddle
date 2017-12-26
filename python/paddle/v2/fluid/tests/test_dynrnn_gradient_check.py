@@ -142,10 +142,10 @@ class BaseRNN(object):
         return feed_dict
 
     def get_numeric_gradient_of_param(self, param_name, delta=0.001):
+        p = self.params[param_name]
         if len(p.shape) != 2:
             raise ValueError("Not support get numeric gradient of an parameter,"
                              " which is not matrix")
-        p = self.params[param_name]
         g = numpy.zeros(shape=p.shape, dtype=p.dtype)
 
         for i in xrange(p.shape[0]):
