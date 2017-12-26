@@ -206,8 +206,7 @@ public:
       colData = reinterpret_cast<real*>(memory_->getBuf());
     }
 
-    Im2ColFunctor<kCFO, Device, real> im2col;
-    GemmFunctor<Device, real> gemm;
+    Im2ColMobileFunctor<real> im2col;
     size_t inputOffset = imShape.getElements();
     size_t outputOffset =
         (outputChannels / groups_) * outputHeight * outputWidth;
@@ -241,19 +240,20 @@ public:
 
               // gemm
               int M = outputChannels / groups_;
-              gemm(CblasNoTrans,
-                   CblasNoTrans,
-                   M,
-                   N,
-                   K,
-                   1.0f,
-                   filterData + g * filterOffset + colHeightStart,
-                   kStride,
-                   colData,
-                   N,
-                   beta_,
-                   outputData + g * outputOffset + colWidthStart,
-                   nStride);
+              BlasGemm<Device, real>::compute(
+                  false,
+                  false,
+                  M,
+                  N,
+                  K,
+                  1.0f,
+                  filterData + g * filterOffset + colHeightStart,
+                  kStride,
+                  colData,
+                  N,
+                  beta_,
+                  outputData + g * outputOffset + colWidthStart,
+                  nStride);
             }
             beta_ = 1.0;
           }
@@ -261,19 +261,19 @@ public:
           int M = outputChannels / groups_;
           int N = outputHeight * outputWidth;
           int K = inputChannels / groups_ * filterHeight * filterWidth;
-          gemm(CblasNoTrans,
-               CblasNoTrans,
-               M,
-               N,
-               K,
-               1.0f,
-               filterData + g * filterOffset,
-               K,
-               inputData + g * inputOffset,
-               N,
-               beta,
-               outputData + g * outputOffset,
-               N);
+          BlasGemm<Device, real>::compute(false,
+                                          false,
+                                          M,
+                                          N,
+                                          K,
+                                          1.0f,
+                                          filterData + g * filterOffset,
+                                          K,
+                                          inputData + g * inputOffset,
+                                          N,
+                                          beta,
+                                          outputData + g * outputOffset,
+                                          N);
         }
       }
       inputData += inputChannels * inputHeight * inputWidth;
