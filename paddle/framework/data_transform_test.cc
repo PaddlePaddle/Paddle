@@ -29,18 +29,18 @@ OpKernelType kernel_type_2(proto::DataType::FP32, CUDAPlace(0),
 OpKernelType kernel_type_3(proto::DataType::FP16, CUDAPlace(0),
                            DataLayout::kNCHW, LibraryType::kCUDNN);
 
-void type1_to_type2(std::vector<platform::DeviceContext*> ctx, const Tensor& in,
-                    Tensor* out) {
+void type1_to_type2(std::vector<platform::DeviceContext*> ctx,
+                    const Variable& in, Variable* out) {
   test_value++;
 }
 
-void type2_to_type3(std::vector<platform::DeviceContext*> ctx, const Tensor& in,
-                    Tensor* out) {
+void type2_to_type3(std::vector<platform::DeviceContext*> ctx,
+                    const Variable& in, Variable* out) {
   test_value--;
 }
 
-void type1_to_type3(std::vector<platform::DeviceContext*> ctx, const Tensor& in,
-                    Tensor* out) {
+void type1_to_type3(std::vector<platform::DeviceContext*> ctx,
+                    const Variable& in, Variable* out) {
   test_value += 2;
 }
 
@@ -63,8 +63,8 @@ TEST(DataTransform, Register) {
   auto& instance = DataTransformFnMap::Instance();
   ASSERT_EQ(instance.Map().size(), 3UL);
   std::vector<DeviceContext*> ctx;
-  paddle::framework::Tensor in;
-  paddle::framework::Tensor out;
+  paddle::framework::Variable in;
+  paddle::framework::Variable out;
 
   instance.Get(std::make_pair(frw::kernel_type_1, frw::kernel_type_2))(ctx, in,
                                                                        &out);

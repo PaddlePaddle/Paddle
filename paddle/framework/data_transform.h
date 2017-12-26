@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include "paddle/framework/op_kernel_type.h"
 #include "paddle/framework/tensor.h"
+#include "paddle/framework/variable.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/macros.h"
 
@@ -28,7 +29,7 @@ namespace framework {
 
 using DataTransformFN =
     std::function<void(const std::vector<platform::DeviceContext*> ctx,
-                       const Tensor& in, Tensor* out)>;
+                       const Variable& in, Variable* out)>;
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 
 struct KernelTypePairHash {
