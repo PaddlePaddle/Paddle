@@ -48,7 +48,7 @@ struct OpKernelType {
 
   OpKernelType(proto::DataType data_type, platform::Place place,
                DataLayout data_layout = DataLayout::kAnyLayout,
-               LibraryType library_type = LibraryType::kPlain)
+               LibraryType library_type = LibraryType::kCPU)
       : data_type_(data_type),
         data_layout_(data_layout),
         place_(place),
@@ -57,7 +57,7 @@ struct OpKernelType {
   OpKernelType(proto::DataType data_type,
                const platform::DeviceContext& dev_ctx,
                DataLayout data_layout = DataLayout::kAnyLayout,
-               LibraryType library_type = LibraryType::kPlain)
+               LibraryType library_type = LibraryType::kCPU)
       : data_type_(data_type),
         data_layout_(data_layout),
         place_(dev_ctx.GetPlace()),

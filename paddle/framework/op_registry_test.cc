@@ -182,3 +182,17 @@ TEST(OperatorRegistrar, Test) {
   using namespace paddle::framework;
   OperatorRegistrar<CosineOpComplete, CosineOpProtoAndCheckerMaker> reg("cos");
 }
+
+TEST(KernelRegister, Test) {
+  class OpWithKernelTest : public OperatorWithKernel {
+   public:
+    using OperatorWithKernel::OperatorWithKernel;
+
+   protected:
+    void InferShape(framework::InferShapeContext* ctx) const override {}
+    OpKernelType GetActualKernelType(
+        const ExecutionContext& ctx) const override {
+      return OpKernelType(proto::DataType::FP32, ctx.GetPlace());
+    }
+  };
+}

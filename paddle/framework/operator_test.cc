@@ -115,7 +115,8 @@ class OpWithKernelTest : public OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {}
   OpKernelType GetActualKernelType(const ExecutionContext& ctx) const override {
-    return OpKernelType(proto::DataType::FP32, ctx.GetPlace());
+    return OpKernelType(proto::DataType::FP32, ctx.GetPlace(),
+                        DataLayout::kAnyLayout, LibraryType::kCPU);
   }
 };
 
