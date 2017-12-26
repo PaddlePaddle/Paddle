@@ -173,25 +173,35 @@ inline void Mark(const std::string name,
   GetEventList().Record(EventKind::kMark, std::move(name), kThreadId, dev_ctx);
 }
 
+void PushEvent(const std::string name,
+               const platform::DeviceContext* dev_ctx = nullptr);
+
+void PopEvent(const std::string name,
+              const platform::DeviceContext* dev_ctx = nullptr);
+
 struct RecordEvent {
   explicit RecordEvent(const std::string name,
                        platform::DeviceContext* dev_ctx = nullptr) {
     if (kState == ProfilerState::kDisabled) return;
     dev_ctx_ = dev_ctx;
+    name_ = name;
     GetEventList().Record(EventKind::kPushRange, std::move(name), kThreadId,
                           dev_ctx_);
   }
 
   ~RecordEvent() {
     if (kState == ProfilerState::kDisabled) return;
-    GetEventList().Record(EventKind::kPopRange, std::string(), kThreadId,
+    GetEventList().Record(EventKind::kPopRange, std::move(name_), kThreadId,
                           dev_ctx_);
   }
   platform::DeviceContext* dev_ctx_;
+  std::string name_;
 };
 
 void EnableProfiler(ProfilerState state);
 std::vector<std::vector<Event>> DisableProfiler();
+
+void ParseEvents(std::vector<std::vector<Event>>);
 
 }  // namespace platform
 }  // namespace paddle
