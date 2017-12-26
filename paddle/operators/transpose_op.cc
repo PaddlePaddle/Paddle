@@ -74,14 +74,14 @@ The op functions is similar to how numpy.transpose works in python.
 
 For example:
 
-    .. code-block:: python
+    .. code-block:: text
 
       input = numpy.arange(6).reshape((2,3))
 
       the input is:
 
       array([[0, 1, 2],
-           [3, 4, 5]])
+             [3, 4, 5]])
 
       given axis is:
 
@@ -92,8 +92,8 @@ For example:
       then the output is:
 
       array([[0, 3],
-           [1, 4],
-           [2, 5]])
+             [1, 4],
+             [2, 5]])
 
 So, given a input tensor of shape(N, C, H, W) and the axis is {0, 2, 3, 1},
 the output tensor shape will be (N, H, W, C)
