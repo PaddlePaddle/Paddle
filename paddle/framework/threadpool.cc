@@ -12,9 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#define EIGEN_USE_GPU
-#include "paddle/operators/rmsprop_op.h"
+#include "paddle/framework/threadpool.h"
 
-namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    rmsprop, ops::RmspropOpKernel<paddle::platform::CUDADeviceContext, float>);
+namespace paddle {
+namespace framework {
+
+std::unique_ptr<ThreadPool> ThreadPool::threadpool(nullptr);
+std::once_flag ThreadPool::init_flag;
+
+}  // namespace framework
+}  // namespace paddle

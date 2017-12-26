@@ -28,6 +28,7 @@ TEST(CopyFrom, Tensor) {
 
   int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
   memcpy(src_ptr, arr, 9 * sizeof(int));
+  src_tensor.set_layout(DataLayout::kAnyLayout);
 
   auto cpu_place = new platform::CPUPlace();
   CopyFrom(src_tensor, *cpu_place, &dst_tensor);
@@ -38,14 +39,18 @@ TEST(CopyFrom, Tensor) {
     EXPECT_EQ(src_ptr[i], dst_ptr[i]);
   }
 
+  EXPECT_TRUE(dst_tensor.layout() == src_tensor.layout());
+
   Tensor slice_tensor = src_tensor.Slice(1, 2);
-  CopyFrom(slice_tensor, *cpu_place, cpu_ctx, &dst_tensor);
+  CopyFrom(slice_tensor, *cpu_place, &dst_tensor);
   const int* slice_ptr = slice_tensor.data<int>();
   dst_ptr = dst_tensor.data<int>();
   ASSERT_NE(dst_ptr, slice_ptr);
   for (size_t i = 0; i < 3; ++i) {
     EXPECT_EQ(dst_ptr[i], slice_ptr[i]);
   }
+  EXPECT_TRUE(dst_tensor.layout() == src_tensor.layout());
+
 #ifdef PADDLE_WITH_CUDA
   {
     Tensor src_tensor;
@@ -91,6 +96,8 @@ TEST(CopyFrom, Tensor) {
     for (size_t i = 0; i < 3; ++i) {
       EXPECT_EQ(dst_ptr[i], slice_ptr[i]);
     }
+
+    EXPECT_TRUE(dst_tensor.layout() == src_tensor.layout());
   }
 #endif
 }
