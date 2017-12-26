@@ -134,14 +134,6 @@ inline void* Tensor::mutable_data(platform::Place place, std::type_index type) {
 #endif
     offset_ = 0;
   }
-
-  if (typeid(float).hash_code() == type.hash_code()) {
-    auto buf = reinterpret_cast<float*>(
-        reinterpret_cast<uintptr_t>(holder_->ptr()) + offset_);
-    for (int64_t i = 0; i < this->numel(); ++i) {
-      buf[i] = NAN;
-    }
-  }
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                  offset_);
 }
