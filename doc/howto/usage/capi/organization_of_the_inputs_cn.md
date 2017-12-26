@@ -260,6 +260,8 @@
 </table>
 </html>
 <br>
+
+
 ### 输出数据
 
 PaddlePaddle中一个计算层的输出数据组织方式和输入数据组织方式完全相同。一个输出数据同样被组织为一个`argument`，`argument`通过`paddle_matrix`或`paddle_ivector`存数数据，如果输出是一个序列，那么会携带有`sequence_start_positions`信息。调用C-API相关接口，读取需要的结果即可。
