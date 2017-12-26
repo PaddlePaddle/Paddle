@@ -491,7 +491,7 @@ class RecurrentGradOp : public RecurrentBase {
 
   std::unordered_set<std::string> LocalVarNames(
       const framework::Scope &scope) const {
-    return this->List2Set(scope.GetAllNames(false));
+    return this->List2Set(scope.LocalVarNames());
   }
   static std::vector<std::string> GradVarLists(
       const std::vector<std::string> &var_names) {
