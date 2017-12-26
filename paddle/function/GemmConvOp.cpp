@@ -233,6 +233,8 @@ public:
                      strideW(),
                      paddingH(),
                      paddingW(),
+                     dilationH(),
+                     dilationW(),
                      colHeightStart,
                      K,
                      colWidthStart,

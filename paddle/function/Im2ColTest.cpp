@@ -147,7 +147,7 @@ void TestIm2ColMobileFunctor() {
           for (size_t filterWidth : {3, 7}) {
             for (size_t stride : {1, 2}) {
               for (size_t padding : {0, 1}) {
-                for (size_t dilation : {1 /*, 3*/}) {
+                for (size_t dilation : {1, 3}) {
                   size_t filterSizeH = (filterHeight - 1) * dilation + 1;
                   size_t filterSizeW = (filterWidth - 1) * dilation + 1;
                   if (inputHeight + 2 * padding < filterSizeH ||
@@ -200,6 +200,8 @@ void TestIm2ColMobileFunctor() {
                           stride,
                           padding,
                           padding,
+                          dilation,
+                          dilation,
                           0,
                           height,
                           0,
