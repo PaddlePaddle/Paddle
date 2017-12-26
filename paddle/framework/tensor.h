@@ -99,6 +99,16 @@ class Tensor {
    */
   inline Tensor Slice(int begin_idx, int end_idx) const;
 
+  /*
+   * Serialize/Desiralize Tensor to std::ostream
+   * You can pass ofstream or ostringstream to serilize to file
+   * or to a in memory string. GPU tensor will be copied to CPU.
+   */
+  inline void SerializeToStream(std::ostream& os,
+                                const platform::DeviceContext& dev_ctx) const;
+
+  inline void DeserializeFromStream(std::istream& is);
+
   platform::Place place() const {
     PADDLE_ENFORCE_NOT_NULL(
         holder_, "Tensor not initialized yet when Tensor::place() is called.");

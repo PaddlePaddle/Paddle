@@ -50,6 +50,11 @@ class SelectedRows {
     return make_ddim(dims);
   }
 
+  void SerializeToStream(std::ostream& os,
+                         const platform::DeviceContext& dev_ctx);
+
+  void DeserializeFromStream(std::istream& is);
+
  private:
   // Notice: rows can be duplicate. We can have {0, 4, 7, 0, 5, 7, 9} here.
   // SelectedRows are simplely concated when adding together. Until a

@@ -43,5 +43,19 @@ TEST_F(SelectedRowsTester, complete_dims) {
   ASSERT_EQ(selected_rows_->GetCompleteDims(), make_ddim({10, 100}));
 }
 
+TEST_F(SelectedRowsTester, SerializeAndDeseralize) {
+  SelectedRows dst_tensor;
+  platform::CPUDeviceContext cpu_ctx((platform::CPUPlace()));
+  std::ostringstream oss;
+
+  selected_rows_->SerializeToStream(oss, cpu_ctx);
+
+  std::istringstream iss(oss.str());
+  dst_tensor.DeserializeFromStream(iss);
+
+  ASSERT_EQ(selected_rows_->rows(), dst_tensor.rows());
+  ASSERT_EQ(selected_rows_->height(), dst_tensor.height());
+}
+
 }  // namespace framework
 }  // namespace paddle

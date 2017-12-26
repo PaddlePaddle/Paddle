@@ -94,7 +94,7 @@ class SaveOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
     auto &dev_ctx = *pool.Borrow(place);
 
-    framework::SerializeToStream(fout, tensor, dev_ctx);
+    tensor.SerializeToStream(fout, dev_ctx);
   }
 };
 

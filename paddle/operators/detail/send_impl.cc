@@ -32,7 +32,7 @@ bool RPCClient::SendVariable(const framework::Scope& scope,
                  "Only support LoDTensor, %s has wrong type", inname);
   const framework::LoDTensor& tensor = var->Get<framework::LoDTensor>();
   std::ostringstream oss;
-  framework::SerializeToStream(oss, tensor, ctx);
+  tensor.SerializeToStream(oss, ctx);
   msg.set_varname(inname);
   msg.set_serialized(oss.str());
   Status status = stub_->SendVariable(&context, msg, &out_msg);
@@ -58,7 +58,7 @@ bool RPCClient::GetVariable(const framework::Scope& scope,
   std::istringstream iss(ret_msg.serialized());
 
   framework::LoDTensor ret_tensor;
-  framework::DeserializeFromStream(iss, &ret_tensor);
+  ret_tensor.DeserializeFromStream(iss);
   auto* outvar = scope.FindVar(outname);
   framework::LoDTensor* out_tensor = outvar->GetMutable<framework::LoDTensor>();
   // FIXME(typhoonzero): do not copy.

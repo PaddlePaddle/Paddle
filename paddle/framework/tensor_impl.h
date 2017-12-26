@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/framework/data_type.h"
+#include "paddle/framework/framework.pb.h"
 #include "paddle/memory/memcpy.h"
 #include "paddle/platform/enforce.h"
 
@@ -73,42 +75,42 @@ inline size_t Tensor::memory_size() const {
 }
 
 template <typename T>
-inline const T* Tensor::data() const {
+inline const T *Tensor::data() const {
   check_memory_size();
   PADDLE_ENFORCE(std::is_same<T, void>::value ||
                      holder_->type().hash_code() == typeid(T).hash_code(),
                  "Tensor holds the wrong type, it holds %s",
                  this->holder_->type().name());
 
-  return reinterpret_cast<const T*>(
+  return reinterpret_cast<const T *>(
       reinterpret_cast<uintptr_t>(holder_->ptr()) + offset_);
 }
 
 template <typename T>
-inline T* Tensor::data() {
+inline T *Tensor::data() {
   check_memory_size();
   PADDLE_ENFORCE(std::is_same<T, void>::value ||
                      holder_->type().hash_code() == typeid(T).hash_code(),
                  "Tensor holds the wrong type, it holds %s",
                  this->holder_->type().name());
-  return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
-                              offset_);
+  return reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
+                               offset_);
 }
 
 template <typename T>
-inline T* Tensor::mutable_data(DDim dims, platform::Place place) {
+inline T *Tensor::mutable_data(DDim dims, platform::Place place) {
   static_assert(std::is_pod<T>::value, "T must be POD");
   Resize(dims);
   return mutable_data<T>(place);
 }
 
 template <typename T>
-inline T* Tensor::mutable_data(platform::Place place) {
+inline T *Tensor::mutable_data(platform::Place place) {
   static_assert(std::is_pod<T>::value, "T must be POD");
-  return reinterpret_cast<T*>(mutable_data(place, typeid(T)));
+  return reinterpret_cast<T *>(mutable_data(place, typeid(T)));
 }
 
-inline void* Tensor::mutable_data(platform::Place place, std::type_index type) {
+inline void *Tensor::mutable_data(platform::Place place, std::type_index type) {
   if (holder_ != nullptr) {
     holder_->set_type(type);
   }
@@ -134,17 +136,17 @@ inline void* Tensor::mutable_data(platform::Place place, std::type_index type) {
 #endif
     offset_ = 0;
   }
-  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
-                                 offset_);
+  return reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
+                                  offset_);
 }
 
-inline void* Tensor::mutable_data(platform::Place place) {
+inline void *Tensor::mutable_data(platform::Place place) {
   PADDLE_ENFORCE(this->holder_ != nullptr,
                  "Cannot invoke mutable data if current hold nothing");
   return mutable_data(place, holder_->type());
 }
 
-inline Tensor& Tensor::ShareDataWith(const Tensor& src) {
+inline Tensor &Tensor::ShareDataWith(const Tensor &src) {
   src.check_memory_size();
   *this = src;
   return *this;
@@ -174,16 +176,116 @@ inline Tensor Tensor::Slice(int begin_idx, int end_idx) const {
   }
 }
 
-inline Tensor& Tensor::Resize(const DDim& dims) {
+inline void Tensor::SerializeToStream(
+    std::ostream &os, const platform::DeviceContext &dev_ctx) const {
+  // TODO(typhoonzero): serialize to ostream
+  {  // the 1st field, uint32_t version
+    constexpr uint32_t version = 0;
+    os.write(reinterpret_cast<const char *>(&version), sizeof(version));
+  }
+  {  // the 2nd field, tensor description
+     // int32_t  size
+     // void*    protobuf message
+    proto::TensorDesc desc;
+    desc.set_data_type(framework::ToDataType(type()));
+    auto dims = framework::vectorize(this->dims());
+    auto *pb_dims = desc.mutable_dims();
+    pb_dims->Resize(static_cast<int>(dims.size()), 0);
+    std::copy(dims.begin(), dims.end(), pb_dims->begin());
+    int32_t size = desc.ByteSize();
+    os.write(reinterpret_cast<const char *>(&size), sizeof(size));
+    auto out = desc.SerializeAsString();
+    os.write(out.data(), size);
+  }
+  {  // the 3rd field, tensor data
+    uint64_t size = this->memory_size();
+    auto *data_ptr = this->data<void>();
+    PADDLE_ENFORCE(size < std::numeric_limits<std::streamsize>::max(),
+                   "Index overflow when writing tensor");
+    if (platform::is_gpu_place(this->place())) {
+#ifdef PADDLE_WITH_CUDA
+      // TODO(Yancey1989): use CopyFrom
+      constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
+      std::unique_ptr<char[]> buf(new char[kBufSize]);
+      auto ctx_place = ctx.GetPlace();
+      PADDLE_ENFORCE(platform::is_gpu_place(ctx_place));
+      auto &gpu_dev_ctx =
+          static_cast<const platform::CUDADeviceContext &>(dev_ctx);
+      platform::CPUPlace cpu;
+      uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
+      while (size != 0) {
+        size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
+        memory::Copy(cpu, buf.get(),
+                     boost::get<platform::CUDAPlace>(this->place()),
+                     reinterpret_cast<const void *>(data), size_to_write,
+                     gpu_dev_ctx.stream());
+        gpu_dev_ctx.Wait();
+        os.write(buf.get(), size_to_write);
+        data += size_to_write;
+        size -= size_to_write;
+      }
+#else
+      PADDLE_THROW("Unexpected branch");
+#endif
+    } else {
+      os.write(static_cast<const char *>(data_ptr),
+               static_cast<std::streamsize>(size));
+    }
+  }
+}
+
+inline void Tensor::DeserializeFromStream(std::istream &is) {
+  uint32_t version;
+  is.read(reinterpret_cast<char *>(&version), sizeof(version));
+  PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
+  proto::TensorDesc desc;
+  {  // int32_t size
+     // proto buffer
+    int32_t size;
+    is.read(reinterpret_cast<char *>(&size), sizeof(size));
+    std::unique_ptr<char[]> buf(new char[size]);
+    is.read(reinterpret_cast<char *>(buf.get()), size);
+    PADDLE_ENFORCE(desc.ParseFromArray(buf.get(), size),
+                   "Cannot parse tensor desc");
+  }
+  {  // read tensor
+    std::vector<int64_t> dims;
+    dims.reserve(static_cast<size_t>(desc.dims().size()));
+    std::copy(desc.dims().begin(), desc.dims().end(), std::back_inserter(dims));
+    this->Resize(framework::make_ddim(dims));
+
+    void *buf;
+    platform::Place cpu = platform::CPUPlace();
+    switch (desc.data_type()) {
+      case proto::FP32:
+        buf = this->mutable_data<float>(cpu);
+        break;
+      case proto::FP64:
+        buf = this->mutable_data<double>(cpu);
+        break;
+      case proto::INT32:
+        buf = this->mutable_data<int>(cpu);
+        break;
+      case proto::INT64:
+        buf = this->mutable_data<int64_t>(cpu);
+        break;
+      default:
+        PADDLE_THROW("DataType %d not supported", desc.data_type());
+    }
+    is.read(static_cast<char *>(buf), this->memory_size());
+  }
+}
+
+inline Tensor &Tensor::Resize(const DDim &dims) {
   dims_ = dims;
   return *this;
 }
 
-inline const DDim& Tensor::dims() const { return dims_; }
+inline const DDim &Tensor::dims() const { return dims_; }
 
 inline int64_t Tensor::numel() const { return product(dims_); }
 
-inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {
+inline Tensor ReshapeToMatrix(const Tensor &src, int num_col_dims) {
   Tensor res;
   res.ShareDataWith(src);
   res.Resize(flatten_to_2d(src.dims(), num_col_dims));

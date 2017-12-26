@@ -38,7 +38,7 @@ class LoadOp : public framework::OperatorBase {
                    out_var_name);
 
     auto *tensor = out_var->GetMutable<framework::LoDTensor>();
-    framework::DeserializeFromStream(fin, tensor);
+    tensor->DeserializeFromStream(fin);
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
     auto &dev_ctx = *pool.Borrow(place);
