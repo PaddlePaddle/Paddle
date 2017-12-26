@@ -273,6 +273,33 @@ void set_constant_with_place<platform::CUDAPlace>(
                            TensorSetConstantGPU(context, tensor, value));
 }
 
+template <typename T>
+__global__ void RowwiseAddKernel(const T* a, const T* b, T* c, int64_t height,
+                                 int64_t width) {
+  int64_t num = height * width;
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num;
+       i += blockDim.x * gridDim.x) {
+    int h = i / width;
+    int w = i % width;
+    int idx = h * width + w;
+    c[idx] = a[idx] + b[w];
+  }
+}
+
+template <typename T>
+struct RowwiseAdd<platform::CUDADeviceContext, T> {
+  void operator()(const platform::CUDADeviceContext& context,
+                  const framework::Tensor& input,
+                  const framework::Tensor& vector, framework::Tensor* output) {
+    auto in_dims = input.dims();
+    int blocks = 512;
+    int grids = (input.numel() + blocks - 1) / blocks;
+    RowwiseAddKernel<T><<<grids, blocks, 0, context.stream()>>>(
+        input.data<T>(), vector.data<T>(), output->data<T>(), in_dims[0],
+        in_dims[1]);
+  }
+};
+
 template struct RowwiseAdd<platform::CUDADeviceContext, float>;
 template struct RowwiseAdd<platform::CUDADeviceContext, double>;
 template struct ColwiseSum<platform::CUDADeviceContext, float>;
