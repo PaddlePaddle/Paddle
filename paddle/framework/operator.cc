@@ -428,6 +428,9 @@ void OperatorWithKernel::Run(const Scope& scope,
     // TODO(qijun) get appropriate DataTransformFN from global map
     framework::DataTransformFN trans_fun = nullptr;
 
+    // Wait for transform starting
+    dev_ctx->Wait();
+
     for (auto var_name : input_vars) {
       trans_fun(trans_dev_ctx_vec, *(scope.FindVar(var_name)),
                 op_scope.FindVar(var_name));
