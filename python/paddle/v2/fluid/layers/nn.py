@@ -13,8 +13,8 @@ __all__ = [
     'crf_decoding', 'cos_sim', 'cross_entropy', 'square_error_cost', 'accuracy',
     'chunk_eval', 'sequence_conv', 'conv2d', 'sequence_pool', 'pool2d',
     'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
-    'lstm_unit', 'reduce_sum', 'reduce_mean', 'sequence_first_step',
-    'sequence_last_step'
+    'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min',
+    'sequence_first_step', 'sequence_last_step'
 ]
 
 
@@ -1193,6 +1193,94 @@ def reduce_mean(input, dim=None, keep_dim=False):
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
         type='reduce_mean',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={
+            'dim': dim if dim != None else 0,
+            'keep_dim': keep_dim,
+            'reduce_all': True if dim == None else False
+        })
+    return out
+
+
+def reduce_max(input, dim=None, keep_dim=False):
+    """
+    Computes the maximum of tensor elements over the given dimension. 
+
+    Args:
+        input (Variable): The input variable which is a Tensor or LoDTensor.
+        dim (int|None): The dimension along which the maximum is computed. 
+            If :attr:`None`, compute the maximum over all elements of 
+            :attr:`input` and return a Tensor variable with a single element, 
+            otherwise must be in the range :math:`[-rank(input), rank(input))`. 
+            If :math:`dim < 0`, the dimension to reduce is :math:`rank + dim`.
+        keep_dim (bool): Whether to reserve the reduced dimension in the 
+            output Tensor. The result tensor will have one fewer dimension 
+            than the :attr:`input` unless :attr:`keep_dim` is true.
+
+    Returns:
+        Variable: The reduced Tensor variable.
+    
+    Examples:
+        .. code-block:: python
+
+            # x is a Tensor variable with following elements:
+            #    [[0.2, 0.3, 0.5, 0.9]
+            #     [0.1, 0.2, 0.6, 0.7]]
+            # Each example is followed by the correspending output tensor.
+            fluid.layers.reduce_max(x)  # [0.9]
+            fluid.layers.reduce_max(x, dim=0)  # [0.2, 0.3, 0.6, 0.9]
+            fluid.layers.reduce_max(x, dim=-1)  # [0.9, 0.7]
+            fluid.layers.reduce_max(x, dim=1, keep_dim=True)  # [[0.9], [0.7]]
+    """
+    helper = LayerHelper('reduce_max', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='reduce_max',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={
+            'dim': dim if dim != None else 0,
+            'keep_dim': keep_dim,
+            'reduce_all': True if dim == None else False
+        })
+    return out
+
+
+def reduce_min(input, dim=None, keep_dim=False):
+    """
+    Computes the minimum of tensor elements over the given dimension. 
+
+    Args:
+        input (Variable): The input variable which is a Tensor or LoDTensor.
+        dim (int|None): The dimension along which the minimum is computed. 
+            If :attr:`None`, compute the minimum over all elements of 
+            :attr:`input` and return a Tensor variable with a single element, 
+            otherwise must be in the range :math:`[-rank(input), rank(input))`. 
+            If :math:`dim < 0`, the dimension to reduce is :math:`rank + dim`.
+        keep_dim (bool): Whether to reserve the reduced dimension in the 
+            output Tensor. The result tensor will have one fewer dimension 
+            than the :attr:`input` unless :attr:`keep_dim` is true.
+
+    Returns:
+        Variable: The reduced Tensor variable.
+    
+    Examples:
+        .. code-block:: python
+
+            # x is a Tensor variable with following elements:
+            #    [[0.2, 0.3, 0.5, 0.9]
+            #     [0.1, 0.2, 0.6, 0.7]]
+            # Each example is followed by the correspending output tensor.
+            fluid.layers.reduce_min(x)  # [0.1]
+            fluid.layers.reduce_min(x, dim=0)  # [0.1, 0.2, 0.5, 0.7]
+            fluid.layers.reduce_min(x, dim=-1)  # [0.2, 0.1]
+            fluid.layers.reduce_min(x, dim=1, keep_dim=True)  # [[0.2], [0.1]]
+    """
+    helper = LayerHelper('reduce_min', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='reduce_min',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
