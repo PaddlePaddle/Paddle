@@ -26,8 +26,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-using DataTransformFN = std::function<void(
-    std::vector<platform::DeviceContext*> ctx, const Tensor& in, Tensor* out)>;
+using DataTransformFN =
+    std::function<void(const std::vector<platform::DeviceContext*> ctx,
+                       const Tensor& in, Tensor* out)>;
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 
 struct KernelTypePairHash {
