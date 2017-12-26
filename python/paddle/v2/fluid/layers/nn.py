@@ -163,8 +163,9 @@ def embedding(input, size, is_sparse=False, param_attr=None, dtype='float32'):
     Examples:
         .. code-block:: python
 
+          dict_size = len(dataset.ids)
           data = fluid.layers.data(name='ids', shape=[32, 32], dtype='float32')
-          fc = fluid.layers.embedding(input=data, size=16)
+          fc = fluid.layers.embedding(input=data, size=[dict_size, 16])
     """
 
     helper = LayerHelper('embedding', **locals())

@@ -23,7 +23,7 @@ class TestUniformRandomOp(unittest.TestCase):
 
     def test_gpu(self):
         if core.is_compile_gpu():
-            self.uniform_random_test(place=core.GPUPlace(0))
+            self.uniform_random_test(place=core.CUDAPlace(0))
 
     def uniform_random_test(self, place):
         program = fluid.Program()

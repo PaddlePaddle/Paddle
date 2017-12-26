@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -52,7 +52,7 @@ class NCCLTester : public ::testing::Test {
   virtual void SetUp() override {
     paddle::platform::CPUPlace cpu_place;
     for (size_t i = 0; i < gpu_list.size(); ++i) {
-      p::GPUPlace place(i);
+      p::CUDAPlace place(i);
       dev_ctxs.emplace_back(new p::CUDADeviceContext(place));
     }
 
@@ -87,7 +87,7 @@ class NCCLTester : public ::testing::Test {
     std::unique_lock<std::mutex> lk(mu);
     const f::OpDesc *op1 = &op_desc;
 
-    p::GPUPlace place(gpu_id);
+    p::CUDAPlace place(gpu_id);
     auto &ctx = dev_ctxs.at(gpu_id);
 
     auto *send_tensor = scope->Var("st")->GetMutable<f::LoDTensor>();
@@ -171,7 +171,7 @@ TEST_F(NCCLTester, ncclAllReduceOp) {
 
   for (size_t i = 0; i < dev_scopes.size(); ++i) {
     p::CPUPlace cpu_place;
-    p::GPUPlace gpu_place(gpu_list[i]);
+    p::CUDAPlace gpu_place(gpu_list[i]);
 
     auto &recv_tensor = dev_scopes[i]->FindVar("rt")->Get<f::LoDTensor>();
     auto *rt = recv_tensor.data<float>();
@@ -180,7 +180,7 @@ TEST_F(NCCLTester, ncclAllReduceOp) {
     auto *ct = result_tensor->mutable_data<float>(cpu_place);
 
     paddle::memory::Copy(
-        cpu_place, ct, p::GPUPlace(gpu_list[i]), rt,
+        cpu_place, ct, p::CUDAPlace(gpu_list[i]), rt,
         recv_tensor.numel() * sizeof(float),
         static_cast<p::CUDADeviceContext *>(dev_ctxs[i])->stream());
 
@@ -219,7 +219,7 @@ TEST_F(NCCLTester, ncclReduceOp) {
   float result = std::accumulate(gpu_list.begin(), gpu_list.end(), 0);
 
   p::CPUPlace cpu_place;
-  p::GPUPlace gpu_place(gpu_list[kRoot]);
+  p::CUDAPlace gpu_place(gpu_list[kRoot]);
 
   auto &recv_tensor = dev_scopes[kRoot]->FindVar("rt")->Get<f::LoDTensor>();
   auto *rt = recv_tensor.data<float>();
@@ -229,7 +229,7 @@ TEST_F(NCCLTester, ncclReduceOp) {
   auto *ct = result_tensor->mutable_data<float>(cpu_place);
 
   paddle::memory::Copy(
-      cpu_place, ct, p::GPUPlace(gpu_list[kRoot]), rt,
+      cpu_place, ct, p::CUDAPlace(gpu_list[kRoot]), rt,
       recv_tensor.numel() * sizeof(float),
       static_cast<p::CUDADeviceContext *>(dev_ctxs[kRoot])->stream());
 
@@ -268,7 +268,7 @@ TEST_F(NCCLTester, ncclBcastOp) {
   float result = kRoot;
 
   p::CPUPlace cpu_place;
-  p::GPUPlace gpu_place(gpu_list[idx]);
+  p::CUDAPlace gpu_place(gpu_list[idx]);
 
   auto &recv_tensor = dev_scopes[idx]->FindVar("rt")->Get<f::LoDTensor>();
   auto *rt = recv_tensor.data<float>();
@@ -277,7 +277,7 @@ TEST_F(NCCLTester, ncclBcastOp) {
   auto *ct = result_tensor->mutable_data<float>(cpu_place);
 
   paddle::memory::Copy(
-      cpu_place, ct, p::GPUPlace(gpu_list[idx]), rt,
+      cpu_place, ct, p::CUDAPlace(gpu_list[idx]), rt,
       recv_tensor.numel() * sizeof(float),
       static_cast<p::CUDADeviceContext *>(dev_ctxs[idx])->stream());
 
@@ -300,7 +300,7 @@ int main(int argc, char **argv) {
   places.emplace_back(paddle::platform::CPUPlace());
   int count = paddle::platform::GetCUDADeviceCount();
   for (int i = 0; i < count; ++i) {
-    places.emplace_back(paddle::platform::GPUPlace(i));
+    places.emplace_back(paddle::platform::CUDAPlace(i));
     gpu_list.emplace_back(i);
   }
 

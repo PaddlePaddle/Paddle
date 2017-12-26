@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <math.h>
+#include "paddle/platform/enforce.h"
 #include "paddle/platform/hostdevice.h"
 
 #ifdef __AVX__
@@ -28,6 +29,26 @@ namespace detail {
 #define SIGMOID_THRESHOLD_MIN -40.0
 #define SIGMOID_THRESHOLD_MAX 13.0
 #define EXP_MAX_INPUT 40.0
+
+enum ActivationType {
+  kSigmoid,
+  kReLU,
+  kTanh,
+  kIdentity,
+};
+
+inline ActivationType GetActivationType(const std::string &type) {
+  if (type == "sigmoid") {
+    return ActivationType::kSigmoid;
+  } else if (type == "relu") {
+    return ActivationType::kReLU;
+  } else if (type == "tanh") {
+    return ActivationType::kTanh;
+  } else if (type == "identity" || type == "") {
+    return ActivationType::kIdentity;
+  }
+  PADDLE_THROW("Not support type %s.", type);
+}
 
 namespace forward {
 

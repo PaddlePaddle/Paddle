@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/platform/enforce.h"
 
 #include <iostream>
 #include "paddle/platform/enforce.h"
@@ -20,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-enum DataLayout {
+enum class DataLayout {
   kNHWC = 0,
   kNCHW = 1,
   kAnyLayout = 2,
@@ -38,11 +39,11 @@ inline DataLayout StringToDataLayout(const std::string& str) {
 
 inline std::string DataLayoutToString(const DataLayout& data_layout) {
   switch (data_layout) {
-    case kNHWC:
+    case DataLayout::kNHWC:
       return "NHWC";
-    case kNCHW:
+    case DataLayout::kNCHW:
       return "NCHW";
-    case kAnyLayout:
+    case DataLayout::kAnyLayout:
       return "ANY_LAYOUT";
     default:
       PADDLE_THROW("unknown DataLayou %d", data_layout);

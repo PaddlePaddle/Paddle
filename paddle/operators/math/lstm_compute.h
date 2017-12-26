@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/operators/math/detail/activation_functions.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/enforce.h"
 
@@ -72,8 +73,9 @@ class LstmUnitFunctor {
  public:
   static void compute(const DeviceContext &context, LstmMetaValue<T> value,
                       int frame_size, int batch_size,
-                      const std::string &gate_act, const std::string &cell_act,
-                      const std::string &cand_act);
+                      const detail::ActivationType &gate_act,
+                      const detail::ActivationType &cell_act,
+                      const detail::ActivationType &cand_act);
 };
 
 template <typename DeviceContext, typename T>
@@ -81,8 +83,9 @@ class LstmUnitGradFunctor {
  public:
   static void compute(const DeviceContext &context, LstmMetaValue<T> value,
                       LstmMetaGrad<T> grad, int frame_size, int batch_size,
-                      const std::string &gate_act, const std::string &cell_act,
-                      const std::string &cand_act);
+                      const detail::ActivationType &gate_act,
+                      const detail::ActivationType &cell_act,
+                      const detail::ActivationType &cand_act);
 };
 
 }  // namespace math
