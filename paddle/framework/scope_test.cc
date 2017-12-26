@@ -61,7 +61,7 @@ TEST(Scope, GetAllNames) {
   Variable* v = s.Var("a");
   EXPECT_EQ(&s, s.FindScope(v));
 
-  std::vector<std::string> ans = s.GetAllNames();
+  std::vector<std::string> ans = s.LocalVarNames();
   std::string str;
   for (auto& var : ans) {
     str += var;

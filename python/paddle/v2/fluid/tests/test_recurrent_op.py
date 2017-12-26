@@ -1,7 +1,7 @@
 import unittest
 
 import paddle.v2.fluid.layers as layers
-from paddle.v2.fluid.framework import Program
+from paddle.v2.fluid.framework import Program, grad_var_name
 from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.backward import append_backward
 import numpy as np
@@ -164,7 +164,7 @@ class RecurrentOpTest1(unittest.TestCase):
             for x in self.data_field
         }
         fetch_list = [
-            self.main_program.global_block().var(x + "@GRAD")
+            self.main_program.global_block().var(grad_var_name(x))
             for x in self.data_field
         ]
 

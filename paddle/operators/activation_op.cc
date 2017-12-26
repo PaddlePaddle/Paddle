@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/activation_op.h"
 
@@ -38,9 +38,8 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
 
 class SigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SigmoidOpMaker(framework::OpProto *proto,
-                 framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  SigmoidOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Sigmoid operator");
     AddOutput("Y", "Output of Sigmoid operator");
     AddComment(R"DOC(
@@ -54,9 +53,8 @@ $$y = \frac{1}{1 + e^{-x}}$$
 
 class LogSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LogSigmoidOpMaker(framework::OpProto *proto,
-                    framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  LogSigmoidOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of LogSigmoid operator");
     AddOutput("Y", "Output of LogSigmoid operator");
     AddComment(R"DOC(
@@ -70,8 +68,8 @@ $$y = \log \frac{1}{1 + e^{-x}}$$
 
 class ExpOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ExpOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  ExpOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Exp operator");
     AddOutput("Y", "Output of Exp operator");
     AddComment(R"DOC(
@@ -85,8 +83,8 @@ $y = e^x$
 
 class ReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ReluOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  ReluOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Relu operator");
     AddOutput("Y", "Output of Relu operator");
     AddComment(R"DOC(
@@ -100,9 +98,8 @@ $y = \max(x, 0)$
 
 class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LeakyReluOpMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  LeakyReluOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of LeakyRelu operator");
     AddOutput("Y", "Output of LeakyRelu operator");
     AddAttr<float>("alpha", "The small negative slope").SetDefault(0.02f);
@@ -117,9 +114,8 @@ $y = \max(x, \alpha * x)$
 
 class SoftShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SoftShrinkOpMaker(framework::OpProto *proto,
-                    framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  SoftShrinkOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Softshrink operator");
     AddOutput("Y", "Output of Softshrink operator");
     AddAttr<float>("lambda", "non-negative offset").SetDefault(0.5f);
@@ -140,8 +136,8 @@ $$
 
 class TanhOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  TanhOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  TanhOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Tanh operator");
     AddOutput("Y", "Output of Tanh operator");
     AddComment(R"DOC(
@@ -155,9 +151,8 @@ $$y = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 
 class TanhShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  TanhShrinkOpMaker(framework::OpProto *proto,
-                    framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  TanhShrinkOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of TanhShrink operator");
     AddOutput("Y", "Output of TanhShrink operator");
     AddComment(R"DOC(
@@ -171,9 +166,8 @@ $$y = x - \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 
 class HardShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  HardShrinkOpMaker(framework::OpProto *proto,
-                    framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  HardShrinkOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of HardShrink operator");
     AddOutput("Y", "Output of HardShrink operator");
     AddAttr<float>("threshold", "The value of threshold for HardShrink")
@@ -195,8 +189,8 @@ $$
 
 class SqrtOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SqrtOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  SqrtOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Sqrt operator");
     AddOutput("Y", "Output of Sqrt operator");
     AddComment(R"DOC(
@@ -210,8 +204,8 @@ $y = \sqrt{x}$
 
 class AbsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AbsOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  AbsOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Abs operator");
     AddOutput("Y", "Output of Abs operator");
     AddComment(R"DOC(
@@ -225,8 +219,8 @@ $y = |x|$
 
 class CeilOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CeilOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  CeilOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Ceil operator");
     AddOutput("Y", "Output of Ceil operator");
     AddComment(R"DOC(
@@ -240,8 +234,8 @@ $y = ceil(x)$
 
 class FloorOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FloorOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  FloorOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Floor operator");
     AddOutput("Y", "Output of Floor operator");
     AddComment(R"DOC(
@@ -255,8 +249,8 @@ $y = floor(x)$
 
 class RoundOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RoundOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  RoundOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Round operator");
     AddOutput("Y", "Output of Round operator");
     AddComment(R"DOC(
@@ -270,9 +264,8 @@ $y = [x]$
 
 class ReciprocalOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ReciprocalOpMaker(framework::OpProto *proto,
-                    framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  ReciprocalOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Reciprocal operator");
     AddOutput("Y", "Output of Reciprocal operator");
     AddComment(R"DOC(
@@ -286,8 +279,8 @@ $$y = \frac{1}{x}$$
 
 class LogOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LogOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  LogOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Log operator");
     AddOutput("Y", "Output of Log operator");
     AddComment(R"DOC(
@@ -303,8 +296,8 @@ Natural logarithm of x.
 
 class SquareOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SquareOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  SquareOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Square operator");
     AddOutput("Y", "Output of Square operator");
     AddComment(R"DOC(
@@ -318,9 +311,8 @@ $y = x^2$
 
 class SoftplusOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SoftplusOpMaker(framework::OpProto *proto,
-                  framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  SoftplusOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Softplus operator");
     AddOutput("Y", "Output of Softplus operator");
     AddComment(R"DOC(
@@ -334,9 +326,8 @@ $y = \ln(1 + e^{x})$
 
 class SoftsignOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SoftsignOpMaker(framework::OpProto *proto,
-                  framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  SoftsignOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Softsign operator");
     AddOutput("Y", "Output of Softsign operator");
     AddComment(R"DOC(
@@ -350,8 +341,8 @@ $$y = \frac{x}{1 + |x|}$$
 
 class BReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BReluOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  BReluOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of BRelu operator");
     AddOutput("Y", "Output of BRelu operator");
     AddAttr<float>("t_min", "The min marginal value of BRelu")
@@ -369,9 +360,8 @@ $y = \max(\min(x, t_{min}), t_{max})$
 
 class SoftReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SoftReluOpMaker(framework::OpProto *proto,
-                  framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  SoftReluOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of SoftRelu operator");
     AddOutput("Y", "Output of SoftRelu operator");
     AddAttr<float>("threshold", "The threshold value of SoftRelu")
@@ -387,8 +377,8 @@ $y = \ln(1 + \exp(\max(\min(x, threshold), threshold))$
 
 class ELUOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ELUOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  ELUOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of ELU operator");
     AddOutput("Y", "Output of ELU operator");
     AddAttr<float>("alpha", "The alpha value of ELU").SetDefault(1.0f);
@@ -406,8 +396,8 @@ $y = \max(0, x) + \min(0, \alpha * (e^x - 1))$
 
 class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Relu6OpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  Relu6OpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Relu6 operator");
     AddOutput("Y", "Output of Relu6 operator");
     AddAttr<float>("threshold", "The threshold value of Relu6")
@@ -423,8 +413,8 @@ $y = \min(\max(0, x), 6)$
 
 class PowOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  PowOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  PowOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Pow operator");
     AddOutput("Y", "Output of Pow operator");
     AddAttr<float>("factor", "The exponential factor of Pow").SetDefault(1.0f);
@@ -439,8 +429,8 @@ $y = x^{factor}$
 
 class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  STanhOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  STanhOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of STanh operator");
     AddOutput("Y", "Output of STanh operator");
     AddAttr<float>("scale_a", "The scale parameter of a for the input")
@@ -458,9 +448,8 @@ $$y = b * \frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}$$
 
 class ThresholdedReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ThresholdedReluOpMaker(framework::OpProto *proto,
-                         framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  ThresholdedReluOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of ThresholdedRelu operator");
     AddOutput("Y", "Output of ThresholdedRelu operator");
     AddAttr<float>("threshold", "The threshold location of activation")
@@ -481,9 +470,8 @@ $$
 
 class HardSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  HardSigmoidOpMaker(framework::OpProto *proto,
-                     framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  HardSigmoidOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of HardSigmoid operator");
     AddOutput("Y", "Output of HardSigmoid operator");
     AddAttr<float>("slope", "Slope for linear approximation of sigmoid")
@@ -508,8 +496,8 @@ It is recommended to use the defaults for this activation.
 
 class SwishOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SwishOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  SwishOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Swish operator");
     AddOutput("Y", "Output of Swish operator");
     AddAttr<float>("beta", "Constant beta of swish operator").SetDefault(1.0f);

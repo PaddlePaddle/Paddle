@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/framework/op_registry.h"
 
@@ -52,7 +52,7 @@ class IncrementOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
     auto &out =
         *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
@@ -70,8 +70,7 @@ class IncrementOp : public framework::OperatorBase {
 
 class IncrementOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  IncrementOpMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  IncrementOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) The input tensor of increment operator");
     AddOutput("Out", "(Tensor) The output tensor of increment operator.");
@@ -94,13 +93,13 @@ class IncrementGradOpMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
     grad_op->SetType("increment");
     grad_op->SetInput("X", Output("Out"));
     grad_op->SetOutput("Out", Input("X"));
     grad_op->SetAttr("step", -boost::get<float>(GetAttr("step")));
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 

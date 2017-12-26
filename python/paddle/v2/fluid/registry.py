@@ -8,7 +8,7 @@ import proto.framework_pb2 as framework_pb2
 from framework import OpProtoHolder, Variable, Program, Operator
 from paddle.v2.fluid.layer_helper import LayerHelper, unique_name
 
-__all__ = ['deprecated', 'register_layer']
+__all__ = ['deprecated', 'register_layer', 'autodoc']
 
 
 def _convert_(name):
@@ -175,12 +175,18 @@ def deprecated(func_or_class):
         """
         Wrap func with deprecated warning
         """
-        warnings.simplefilter('always', DeprecationWarning)  #turn off filter
+        warnings.simplefilter('always', DeprecationWarning)  # turn off filter
         warnings.warn(
             "Call to deprecated function {}.".format(func.__name__),
             category=DeprecationWarning,
             stacklevel=2)
-        warnings.simplefilter('default', DeprecationWarning)  #reset filter
+        warnings.simplefilter('default', DeprecationWarning)  # reset filter
         return func(*args, **kwargs)
 
     return func_wrapper
+
+
+def autodoc(func):
+    func.__doc__ = _generate_doc_string_(OpProtoHolder.instance().get_op_proto(
+        func.__name__))
+    return func
