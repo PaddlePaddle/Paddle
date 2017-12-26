@@ -15,6 +15,7 @@ limitations under the License. */
 #include <algorithm>
 #include <atomic>
 
+#include "paddle/framework/data_transform.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/operator.h"
@@ -422,18 +423,19 @@ void OperatorWithKernel::Run(const Scope& scope,
 
     // TODO(qijun) get appropriate DeviceContext from DeviceContext pool
     platform::DeviceContext* trans_dev_ctx = nullptr;
+    std::vector<platform::DeviceContext*> trans_dev_ctx_vec{trans_dev_ctx};
 
-    // TODO(qijun) get appropriate DataTransformFn from global map
-    using DataTransformFn = std::function<void(
-        const Variable& in, Variable* out, platform::DeviceContext* ctx)>;
-    DataTransformFn trans_fun = nullptr;
+    // TODO(qijun) get appropriate DataTransformFN from global map
+    framework::DataTransformFN trans_fun = nullptr;
 
     for (auto var_name : input_vars) {
-      trans_fun(*(scope.FindVar(var_name)), op_scope.FindVar(var_name),
-                trans_dev_ctx);
+      trans_fun(trans_dev_ctx_vec, *(scope.FindVar(var_name)),
+                op_scope.FindVar(var_name));
     }
     // Wait for data transform finishing
-    trans_dev_ctx->Wait();
+    for (auto ctx : trans_dev_ctx_vec) {
+      ctx->Wait();
+    }
 
     // Create a new ExecutionContext
     ExecutionContext op_ctx(*this, op_scope, *dev_ctx);
