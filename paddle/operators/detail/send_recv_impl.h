@@ -62,6 +62,8 @@ class SendRecvServerImpl final : public SendRecvService::Service {
 
   const TensorWithName Get() { return this->var_recv_queue_.Pop(); }
 
+  void Push(const TensorWithName &msg) { this->var_recv_queue_.Push(msg); }
+
  private:
   // received variable from RPC, operators fetch variable from this queue.
   SimpleBlockQueue<TensorWithName> var_recv_queue_;

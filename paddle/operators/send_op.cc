@@ -41,9 +41,11 @@ class SendOp : public framework::OperatorBase {
           grpc::CreateChannel(ep, grpc::InsecureChannelCredentials())));
     }
   }
+
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &dev_place) const override {
     auto ins = Inputs("X");
+    auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
     // TODO(typhoonzero): use async calls to send multiple variable asyncly.
     for (size_t i = 0; i < ins.size(); ++i) {
@@ -54,10 +56,10 @@ class SendOp : public framework::OperatorBase {
     }
     // TODO(typhoonzero): support async optimization
     client_map_[epmap[0]]->Wait();
-    for (size_t i = 0; i < ins.size(); ++i) {
-      bool ret = client_map_[epmap[i]]->GetVariable(scope, ins[i]);
+    for (size_t i = 0; i < outs.size(); ++i) {
+      bool ret = client_map_[epmap[i]]->GetVariable(scope, outs[i]);
       if (!ret) {
-        LOG(ERROR) << "GetVariable error: " << ins[i];
+        LOG(ERROR) << "GetVariable error: " << outs[i];
       }
     }
   }
@@ -72,6 +74,8 @@ class SendOpMaker : public framework::OpProtoAndCheckerMaker {
   SendOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) Input tensor to be send").AsDuplicable();
+    AddOutput("Out", "(Tensor) Output tensor to get from server")
+        .AsDuplicable();
     AddComment(R"DOC(
 Recv operator
 
@@ -79,11 +83,13 @@ This operator will recv tensor from send_op
 )DOC");
     AddAttr<std::vector<std::string>>("endpoints",
                                       "(string vector, default 127.0.0.1:6164)"
-                                      "Server endpoints to send variables to.");
+                                      "Server endpoints to send variables to.")
+        .SetDefault({});
     AddAttr<std::vector<std::string>>("epmap",
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints in the order of input "
-                                      "variables for mapping");
+                                      "variables for mapping")
+        .SetDefault({});
   }
 };
 
