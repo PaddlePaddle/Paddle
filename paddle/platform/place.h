@@ -31,44 +31,31 @@ struct CPUPlace {
   inline bool operator!=(const CPUPlace &) const { return false; }
 };
 
-struct GPUPlace {
-  GPUPlace() : GPUPlace(0) {}
-  explicit GPUPlace(int d) : device(d) {}
+struct CUDAPlace {
+  CUDAPlace() : CUDAPlace(0) {}
+  explicit CUDAPlace(int d) : device(d) {}
 
   inline int GetDeviceId() const { return device; }
   // needed for variant equality comparison
-  inline bool operator==(const GPUPlace &o) const { return device == o.device; }
-  inline bool operator!=(const GPUPlace &o) const { return !(*this == o); }
+  inline bool operator==(const CUDAPlace &o) const {
+    return device == o.device;
+  }
+  inline bool operator!=(const CUDAPlace &o) const { return !(*this == o); }
 
   int device;
 };
 
-struct CudnnPlace : public GPUPlace {
-  CudnnPlace() : GPUPlace() {}
-  explicit CudnnPlace(int d) : GPUPlace(d) {}
-};
-
-struct IsGPUPlace : public boost::static_visitor<bool> {
+struct IsCUDAPlace : public boost::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
-  bool operator()(const GPUPlace &gpu) const { return true; }
+  bool operator()(const CUDAPlace &gpu) const { return true; }
 };
 
-// Define the max number of Place in bit length. i.e., the max number of places
-// should be less equal than 2^(NUM_PLACE_TYPE_LIMIT_IN_BIT)
-#define NUM_PLACE_TYPE_LIMIT_IN_BIT 4
-
-typedef boost::variant<CudnnPlace, GPUPlace, CPUPlace> Place;
-
-// static check number of place types is less equal than
-// 2^(NUM_PLACE_TYPE_LIMIT_IN_BIT)
-BOOST_MPL_ASSERT((boost::mpl::less_equal<
-                  Place::types::size,
-                  boost::mpl::long_<1 << NUM_PLACE_TYPE_LIMIT_IN_BIT>>));
+typedef boost::variant<CUDAPlace, CPUPlace> Place;
 
 void set_place(const Place &);
 const Place &get_place();
 
-const GPUPlace default_gpu();
+const CUDAPlace default_gpu();
 const CPUPlace default_cpu();
 
 bool is_gpu_place(const Place &);

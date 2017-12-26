@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <cstring>
+
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
+#include "paddle/framework/init.h"
 #include "paddle/memory/memory.h"
 
 int main(int argc, char** argv) {
@@ -32,8 +34,11 @@ int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&new_argc, &new_argv_address, false);
   testing::InitGoogleTest(&argc, argv);
   paddle::memory::Used(paddle::platform::CPUPlace());
+  std::vector<std::string> devs = {"CPU"};
 #ifdef PADDLE_WITH_CUDA
-  paddle::memory::Used(paddle::platform::GPUPlace(0));
+  paddle::memory::Used(paddle::platform::CUDAPlace(0));
+  devs.push_back("GPU:0");
 #endif
+  paddle::framework::InitDevices(devs);
   return RUN_ALL_TESTS();
 }
