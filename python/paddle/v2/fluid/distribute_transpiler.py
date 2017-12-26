@@ -141,16 +141,18 @@ class DistributeTranspiler:
         self.param_grad_map = split_method(params_and_grads, pserver_endpoints)
 
         send_op_ordered_inputs = []
+        send_op_ordered_outputs = []
         epmap = []
         for ep, v in self.param_grad_map.iteritems():
             send_op_ordered_inputs.extend(v["grads"])
+            send_op_ordered_outputs.extend(v["params"])
             for i in v["grads"]:
                 epmap.append(ep)
         send_op = program.global_block().append_op(
             type="send",
             inputs={"X": send_op_ordered_inputs
                     },  # inputs is a list of tensors to be send
-            outputs={},
+            outputs={"Out": send_op_ordered_outputs},
             attrs={"endpoints": pserver_endpoints,
                    "epmap": epmap})
 
