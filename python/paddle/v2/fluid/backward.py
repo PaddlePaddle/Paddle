@@ -150,7 +150,7 @@ def _append_backward_ops_(target,
 
     if target_block.idx == 0:
         grad_target_name = _append_grad_suffix_(target.name)
-        target_block.desc.var(grad_target_name.encode("ascii"))
+        # target_block.desc.var(grad_target_name.encode("ascii"))
         grad_op_descs.insert(
             0,
             _create_op_desc_(
