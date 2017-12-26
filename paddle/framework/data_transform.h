@@ -32,13 +32,18 @@ using DataTransformFN =
                        const Variable& in, Variable* out)>;
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 
+static void hash_combine(std::size_t& seed, const OpKernelType& t) {
+  OpKernelType::Hash kernel_type_hasher;
+  seed ^= kernel_type_hasher(t) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
+
 struct KernelTypePairHash {
   size_t operator()(const KernelTypePair& kernel_pair) const {
-    OpKernelType::Hash kernel_type_hasher;
-    size_t left_hasher = kernel_type_hasher(kernel_pair.first) << 1;
-    size_t right_hasher = kernel_type_hasher(kernel_pair.second);
-    std::hash<size_t> hasher;
-    return hasher(left_hasher + right_hasher);
+    std::size_t seed = 0;
+    hash_combine(seed, kernel_pair.first);
+    hash_combine(seed, kernel_pair.second);
+
+    return seed;
   }
 };
 
