@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/platform/profiler.h"
+#include <map>
 
 namespace paddle {
 namespace platform {
@@ -68,6 +69,64 @@ std::vector<std::vector<Event>> DisableProfiler() {
     result.emplace_back(list->Reduce());
   }
   return result;
+}
+
+void PushEvent(const std::string name, const platform::DeviceContext* dev_ctx) {
+  GetEventList().Record(EventKind::kPushRange, std::move(name), kThreadId,
+                        dev_ctx);
+}
+
+void PopEvent(const std::string name, const platform::DeviceContext* dev_ctx) {
+  GetEventList().Record(EventKind::kPopRange, std::move(name), kThreadId,
+                        dev_ctx);
+}
+
+void ParseEvents(std::vector<std::vector<Event>> events) {
+  std::map<std::string, std::tuple<int, double, double>> events_table;
+  for (size_t i = 0; i < events.size(); i++) {
+    std::list<Event> pushed_events;
+    for (size_t j = 0; j < events[i].size(); j++) {
+      if (events[i][j].kind() == "push") {
+        pushed_events.push_back(events[i][j]);
+      }
+      if (events[i][j].kind() == "pop") {
+        std::list<Event>::reverse_iterator rit = pushed_events.rbegin();
+        while (rit->name() != events[i][j].name() &&
+               rit != pushed_events.rend()) {
+          ++rit;
+        }
+        if (rit != pushed_events.rend()) {
+          Event pushed_event = *rit;
+          double cpu_time = rit->CpuElapsedUs(events[i][j]);
+          double cuda_time = 0;
+#ifdef PADDLE_WITH_CUDA
+          cuda_time = rit->CudaElapsedUs(events[i][j]);
+#endif
+          if (events_table.find(rit->name()) == events_table.end()) {
+            events_table[rit->name()] = std::make_tuple(1, cpu_time, cuda_time);
+          } else {
+            std::get<0>(events_table[rit->name()]) += 1;
+            std::get<1>(events_table[rit->name()]) += cpu_time;
+            std::get<2>(events_table[rit->name()]) += cuda_time;
+          }
+          // remove the start marker from the list
+          pushed_events.erase((++rit).base());
+        } else {
+          std::cout << "Warning: can not find the start marker of event "
+                    << events[i][j].name();
+        }
+      }
+    }
+  }
+  // output events table
+  std::cout << "\nEvents\t\tCalls\t\tTotal CPU time\t\tTotal GPU time\n";
+  for (std::map<std::string, std::tuple<int, double, double>>::iterator it =
+           events_table.begin();
+       it != events_table.end(); ++it) {
+    std::cout << it->first << "\t\t" << std::get<0>(it->second) << "\t\t"
+              << std::get<1>(it->second) << "\t\t" << std::get<2>(it->second)
+              << std::endl;
+  }
 }
 
 }  // namespace platform
