@@ -159,6 +159,39 @@ class BaseRNN(object):
                 g[i][j] = (pos - neg) / (delta * 2)
         return g
 
+    def get_numeric_gradient_of_input(self,
+                                      input_name,
+                                      delta=0.001,
+                                      return_one_tensor=True):
+        ipt = self.inputs[input_name]
+        grad = []
+
+        for seq in ipt:
+            seq_grad = []
+            for item in seq:
+                item_grad = numpy.zeros(shape=item.shape, dtype=item.dtype)
+                if len(item.shape) != 1:
+                    raise ValueError("Not support")
+
+                for i in xrange(len(item)):
+                    o = item[i]
+                    item[i] += delta
+                    pos = self._exe_mean_out_()
+                    item[i] -= 2 * delta
+                    neg = self._exe_mean_out_()
+                    item[i] = o
+                    item_grad[i] = (pos - neg) / (delta * 2)
+                seq_grad.append(item_grad)
+            grad.append(seq_grad)
+
+        if not return_one_tensor:
+            return grad
+
+        for i in xrange(len(grad)):
+            grad[i] = numpy.concatenate(grad[i])
+        grad = numpy.concatenate(grad)
+        return grad
+
     def _exe_mean_out_(self):
         outs = self.exe()
         return numpy.array([o.mean() for o in outs.itervalues()]).mean()
@@ -191,9 +224,10 @@ class TestSimpleMul(unittest.TestCase):
     # @many_times(10)
     @prog_scope()
     def test_forward_backward(self):
-        python_impl = TestSimpleMul.SimpleMul()
+        py_rnn = TestSimpleMul.SimpleMul()
         dat = fluid.layers.data(
             name=self.DATA_NAME, shape=[self.DATA_WIDTH], lod_level=1)
+        dat.stop_gradient = False
 
         rnn = fluid.layers.DynamicRNN()
         with rnn.block():
@@ -212,17 +246,26 @@ class TestSimpleMul(unittest.TestCase):
 
         cpu = fluid.CPUPlace()
         exe = fluid.Executor(cpu)
-        out, w_g = exe.run(feed=python_impl.to_feed(cpu),
-                           fetch_list=[out, self.PARAM_NAME + "@GRAD"])
-        out_by_python = python_impl.exe()[self.OUT_NAME]
+        out, w_g, i_g = map(numpy.array,
+                            exe.run(feed=py_rnn.to_feed(cpu),
+                                    fetch_list=[
+                                        out, self.PARAM_NAME + "@GRAD",
+                                        self.DATA_NAME + "@GRAD"
+                                    ],
+                                    return_numpy=False))
+        out_by_python = py_rnn.exe()[self.OUT_NAME]
         self.assertTrue(numpy.allclose(out, out_by_python))
-        w_g_num = python_impl.get_numeric_gradient_of_param(self.PARAM_NAME)
+        w_g_num = py_rnn.get_numeric_gradient_of_param(self.PARAM_NAME)
         self.assertTrue(numpy.allclose(w_g_num, w_g, rtol=0.05))
+        i_g_num = py_rnn.get_numeric_gradient_of_input(
+            input_name=self.DATA_NAME)
+        i_g_num = i_g_num.reshape(i_g.shape)
+        self.assertTrue(numpy.allclose(i_g_num, i_g, rtol=0.05))
 
 
 class TestSimpleMulWithMemory(unittest.TestCase):
     DATA_WIDTH = 32
-    HIDDEN_WIDTH = 10
+    HIDDEN_WIDTH = 20
     DATA_NAME = 'X'
     PARAM_NAME = 'W'
 
@@ -251,12 +294,14 @@ class TestSimpleMulWithMemory(unittest.TestCase):
             assert isinstance(Out, Output)
             Out.out(o)
 
+    # @many_times(10)
     @prog_scope()
     def test_forward_backward(self):
         py_rnn = TestSimpleMulWithMemory.SimpleMulWithMemory()
 
         data = fluid.layers.data(
             name=self.DATA_NAME, shape=[self.DATA_WIDTH], lod_level=1)
+        data.stop_gradient = False
         rnn = fluid.layers.DynamicRNN()
         with rnn.block():
             d = rnn.step_input(data)
@@ -272,14 +317,32 @@ class TestSimpleMulWithMemory(unittest.TestCase):
 
         out = rnn()
         last = fluid.layers.sequence_pool(input=out, pool_type='last')
+        loss = fluid.layers.mean(x=last)
+        fluid.backward.append_backward_ops(loss)
 
         cpu = fluid.CPUPlace()
         exe = fluid.Executor(cpu)
-
-        last_np, = exe.run(feed=py_rnn.to_feed(cpu), fetch_list=[last])
+        feed = py_rnn.to_feed(cpu)
+        for _ in xrange(2):
+            last_np, w_g, i_g = map(numpy.array,
+                                    exe.run(feed=feed,
+                                            fetch_list=[
+                                                last, self.PARAM_NAME + "@GRAD",
+                                                self.DATA_NAME + "@GRAD"
+                                            ],
+                                            return_numpy=False))
         last_by_py, = py_rnn.exe().values()
 
         self.assertTrue(numpy.allclose(last_np, last_by_py))
+        w_g_num = py_rnn.get_numeric_gradient_of_param(self.PARAM_NAME)
+        print w_g[0], w_g_num[0]
+        self.assertTrue(numpy.allclose(w_g_num, w_g, rtol=0.1))
+        i_g_num = py_rnn.get_numeric_gradient_of_input(self.DATA_NAME)
+        i_g_num = i_g_num.reshape(i_g.shape)
+
+        # Since this RNN has many float add. The number could be not stable.
+        # rtol = 0.1
+        self.assertTrue(numpy.allclose(i_g_num, i_g, rtol=0.1))
 
 
 if __name__ == '__main__':
