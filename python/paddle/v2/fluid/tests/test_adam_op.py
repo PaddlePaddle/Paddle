@@ -1,6 +1,8 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+from paddle.v2.fluid import core
+from paddle.v2.fluid.op import Operator
 
 
 class TestAdamOp1(OpTest):
@@ -196,9 +198,9 @@ def adam_step_sparse(inputs, attributes, height, rows, row_numel, np_grad):
     beta2 = attributes['beta2']
     epsilon = attributes['epsilon']
 
-    moment1_out = np.array([height, row_numel])
-    moment2_out = np.array([height, row_numel])
-    param_out = np.array([height, row_numel])
+    moment1_out = np.zeros(shape=[height, row_numel])
+    moment2_out = np.zeros(shape=[height, row_numel])
+    param_out = np.zeros(shape=[height, row_numel])
 
     for idx, row_id in enumerate(rows):
         moment1_out[row_id] = beta1 * moment1[row_id] + (1 - beta1
@@ -206,8 +208,8 @@ def adam_step_sparse(inputs, attributes, height, rows, row_numel, np_grad):
         moment2_out[row_id] = beta2 * moment2[row_id] + (
             1 - beta2) * np.square(np_grad[idx])
         lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
-        param_out[row_id] = param[row_id] - lr_t * (moment1_out / (
-            np.sqrt(moment2_out) + epsilon))
+        param_out[row_id] = param[row_id] - lr_t * (moment1_out[row_id] / (
+            np.sqrt(moment2_out[row_id]) + epsilon))
     return param_out, moment1_out, moment2_out
 
 
@@ -219,13 +221,15 @@ class TestSparseAdamOp(unittest.TestCase):
 
         height = 10
         rows = [0, 4, 7]
+        self.rows = rows
         row_numel = 12
+        self.row_numel = row_numel
         self.dense_inputs = {
             "Param": np.full((height, row_numel), 5.0).astype("float32"),
             "Moment1": np.full((height, row_numel), 5.0).astype("float32"),
             "Moment2": np.full((height, row_numel), 5.0).astype("float32"),
-            'Beta1Pow': np.array([0.9**10]).astype("float32"),
-            'Beta2Pow': np.array([0.999**10]).astype("float32"),
+            'Beta1Pow': np.array([beta1**10]).astype("float32"),
+            'Beta2Pow': np.array([beta2**10]).astype("float32"),
             "LearningRate": np.full((1), 2.0).astype("float32")
         }
         self.attrs = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
@@ -245,7 +249,7 @@ class TestSparseAdamOp(unittest.TestCase):
         param_out, mom1, mom2 = adam_step_sparse(
             self.dense_inputs, self.attrs, height, rows, row_numel, np_array)
         self.outputs = {
-            "Param": param_out,
+            "ParamOut": param_out,
             "Moment1Out": mom1,
             "Moment2Out": mom2
         }
@@ -261,37 +265,29 @@ class TestSparseAdamOp(unittest.TestCase):
             op_args[key] = key
         for s in self.sparse_inputs:
             op_args[s] = s
+        for s in self.outputs:
+            var = scope.var(s).get_tensor()
+            var.set(self.outputs[s], place)
+            op_args[s] = s
         for k in self.attrs:
             op_args[k] = self.attrs[k]
 
         # create and run sgd operator
-        sgd_op = Operator("adam", **op_args)
-        sgd_op.run(scope, place)
+        adam_op = Operator("adam", **op_args)
+        adam_op.run(scope, place)
 
         for key, np_array in self.outputs.iteritems():
             out_var = scope.var(key).get_tensor()
             actual = np.array(out_var)
-            actual.reshape([actual.size()])
-            np_array.reshape([np_array.size()])
-            i = 0
-            while i < actual.size():
-                self.assertAlmostEqual(actual[i], np_array[i])
-                i += 1
-
-        # # rows[0] = 0, 5.0 - 2.0 * 2.0
-        # self.assertAlmostEqual(1.0, result_array[rows[0], 0])
-        # # rows[0] = 0, 5.0 - 2.0 * 1.0
-        # self.assertAlmostEqual(3.0, result_array[rows[0], 2])
-        # # 5.0 - 2.0 * 0.0
-        # self.assertAlmostEqual(5.0, result_array[1, 0])
-        # # rows[1] = 4, 5.0 - 2.0 * 1.0
-        # self.assertAlmostEqual(3.0, result_array[rows[1], 10])
-        # # 5.0 - 2.0 * 0.0
-        # self.assertAlmostEqual(5.0, result_array[5, 8])
-        # # rows[2] = 7, 5.0 - 2.0 * 1.0
-        # self.assertAlmostEqual(3.0, result_array[rows[2], 1])
-        # # rows[2] = 7, 5.0 - 2.0 * 4.0
-        # self.assertAlmostEqual(-3.0, result_array[rows[2], 8])
+            actual = actual.reshape([actual.size])
+            np_array = np_array.reshape([np_array.size])
+            for idx, row_id in enumerate(self.rows):
+                j = 0
+                while j < self.row_numel:
+                    pos = row_id * self.row_numel + j
+                    print (actual[pos] - np_array[pos]) / actual[pos]
+                    self.assertLess((actual[pos] - np_array[pos]) / actual[pos], 0.00001)
+                    j += 1
 
     def test_sparse_sgd(self):
         places = [core.CPUPlace()]

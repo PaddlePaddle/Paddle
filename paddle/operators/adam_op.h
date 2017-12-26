@@ -98,13 +98,12 @@ struct SparseAdamFunctor {
 
   const int64_t* rows_;
   int64_t row_numel_;
-  int64_t height_;
 
   SparseAdamFunctor(T beta1, T beta2, T epsilon, const T* beta1_pow,
                     const T* beta2_pow, const T* mom1, T* mom1_out,
                     const T* mom2, T* mom2_out, const T* lr, const T* grad,
                     const T* param, T* param_out, const int64_t* rows,
-                    int64_t row_numel, int64_t height)
+                    int64_t row_numel)
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),
@@ -119,8 +118,7 @@ struct SparseAdamFunctor {
         param_(param),
         param_out_(param_out),
         rows_(rows),
-        row_numel_(row_numel),
-        height_(height) {}
+        row_numel_(row_numel) {}
 
   inline HOSTDEVICE void operator()(size_t i) const {
     for (int64_t j = 0; j < row_numel_; ++j) {
@@ -136,6 +134,7 @@ struct SparseAdamFunctor {
       mom1 = beta1_ * mom1 + (1 - beta1_) * g;
       mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
       p -= lr * (mom1 / (sqrt(mom2) + epsilon_));
+      // IMPORTANT:
       // FIXME(typhoonzero): row id may be duplicate
       moment1_out_[rows_[i] * row_numel_ + j] = mom1;
       moment2_out_[rows_[i] * row_numel_ + j] = mom2;
@@ -195,8 +194,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
       auto& grad_tensor = grad.value();
       const T* grad_data = grad_tensor.template data<T>();
       auto* rows = grad.rows().data();
-      auto height = grad.height();
-      auto row_numel = grad_tensor.numel() / height;
+      auto row_numel = grad_tensor.numel() / grad.rows().size();
 
       SparseAdamFunctor<T> functor(
           beta1, beta2, epsilon, beta1_pow.template data<T>(),
@@ -205,8 +203,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
           mom2.template data<T>(),
           mom2_out.template mutable_data<T>(ctx.GetPlace()),
           lr.template data<T>(), grad_data, param.template data<T>(),
-          param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel,
-          height);
+          param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel);
       platform::ForRange<DeviceContext> for_range(
           static_cast<const DeviceContext&>(ctx.device_context()),
           grad.rows().size());
