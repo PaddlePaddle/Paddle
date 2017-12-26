@@ -3,7 +3,7 @@ import random
 import collections
 import paddle.v2.fluid as fluid
 import unittest
-import copy
+from decorators import *
 
 
 class Memory(object):
@@ -78,7 +78,7 @@ class BaseRNN(object):
             self.outputs[oname] = Output()
 
     def step(self, **kwargs):
-        pass
+        raise NotImplementedError()
 
     def exe(self):
         retv = dict()
@@ -141,18 +141,22 @@ class BaseRNN(object):
             feed_dict[pname] = self.params[pname]
         return feed_dict
 
-    def get_numeric_gradient_of_param(self, param_name, delta=0.01):
+    def get_numeric_gradient_of_param(self, param_name, delta=0.001):
+        if len(p.shape) != 2:
+            raise ValueError("Not support get numeric gradient of an parameter,"
+                             " which is not matrix")
         p = self.params[param_name]
         g = numpy.zeros(shape=p.shape, dtype=p.dtype)
 
-        for p_it, g_it in numpy.nditer([p, g], op_flags=['readwrite']):
-            o = float(p_it)
-            p_it[...] = o + delta
-            pos = self._exe_mean_out_()
-            p_it[...] = o - delta
-            neg = self._exe_mean_out_()
-            p_it[...] = o
-            g[:] = (pos - neg) / (delta * 2)
+        for i in xrange(p.shape[0]):
+            for j in xrange(p.shape[1]):
+                o = p[i][j]
+                p[i][j] += delta
+                pos = self._exe_mean_out_()
+                p[i][j] -= 2 * delta
+                neg = self._exe_mean_out_()
+                p[i][j] = o
+                g[i][j] = (pos - neg) / (delta * 2)
         return g
 
     def _exe_mean_out_(self):
@@ -175,40 +179,36 @@ class SimpleMul(BaseRNN):
 
 
 class TestSimpleMul(unittest.TestCase):
-    def setUp(self):
-        self.python_impl = SimpleMul()
+    # Test many times in local to ensure the random seed cannot breaks CI
+    # @many_times(10)
+    @prog_scope()
+    def test_forward_backward(self):
+        python_impl = SimpleMul()
+        dat = fluid.layers.data(name='X', shape=[32], lod_level=1)
 
-    def test_forward(self):
-        program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(program, startup_program):
-            dat = fluid.layers.data(name='X', shape=[32], lod_level=1)
+        rnn = fluid.layers.DynamicRNN()
+        with rnn.block():
+            d = rnn.step_input(dat)
+            o = fluid.layers.fc(input=d,
+                                param_attr='W',
+                                bias_attr=False,
+                                size=10,
+                                act=None)
+            rnn.output(o)
 
-            rnn = fluid.layers.DynamicRNN()
-            with rnn.block():
-                d = rnn.step_input(dat)
-                o = fluid.layers.fc(input=d,
-                                    param_attr='W',
-                                    bias_attr=False,
-                                    size=10,
-                                    act=None)
-                rnn.output(o)
-
-            out = rnn()
-            out = fluid.layers.sequence_pool(out, pool_type='last')
-            loss = fluid.layers.mean(x=out)
-            fluid.backward.append_backward_ops(loss)
+        out = rnn()
+        out = fluid.layers.sequence_pool(out, pool_type='last')
+        loss = fluid.layers.mean(x=out)
+        fluid.backward.append_backward_ops(loss)
 
         cpu = fluid.CPUPlace()
         exe = fluid.Executor(cpu)
-        out, w_g = exe.run(program,
-                           feed=self.python_impl.to_feed(cpu),
+        out, w_g = exe.run(feed=python_impl.to_feed(cpu),
                            fetch_list=[out, "W@GRAD"])
-        out_by_python = self.python_impl.exe()['Out']
+        out_by_python = python_impl.exe()['Out']
         self.assertTrue(numpy.allclose(out, out_by_python))
-        w_g_num = self.python_impl.get_numeric_gradient_of_param("W")
-        print w_g_num[0][0]
-        print w_g_num - w_g
+        w_g_num = python_impl.get_numeric_gradient_of_param("W")
+        self.assertTrue(numpy.allclose(w_g_num, w_g, rtol=0.05))
 
 
 if __name__ == '__main__':
