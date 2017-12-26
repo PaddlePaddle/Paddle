@@ -158,11 +158,9 @@ def _append_backward_ops_(target,
                 op_type="fill_constant",
                 inputs={},
                 outputs={"Out": [grad_target_name]},
-                attrs={
-                    "shape": [1],
-                    "value": 1.0,
-                    "dtype": core.DataType.FP32
-                }))
+                attrs={"shape": [1],
+                       "value": 1.0,
+                       "dtype": target.dtype}))
     for op_desc in grad_op_descs:
         new_op_desc = target_block.desc.append_op()
         new_op_desc.copy_from(op_desc)
