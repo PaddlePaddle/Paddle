@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include <stdint.h>
 #include <sys/stat.h>
@@ -28,6 +28,8 @@
 #include "paddle/operators/detail/send_recv_impl.h"
 #include "paddle/operators/detail/simple_block_queue.h"
 
+#define LISTEN_TERMINATE_MESSAGE "TERMINATE@RECV"
+
 namespace paddle {
 namespace operators {
 
@@ -39,7 +41,7 @@ void RunServer(Server **rpc_server,
   builder.RegisterService(service.get());
   std::unique_ptr<Server> server(builder.BuildAndStart());
   *rpc_server = server.get();
-  LOG(INFO) << "Server listening on " << server_address << std::endl;
+  LOG(INFO) << "Server listening on " << server_address;
   server->Wait();
 }
 
@@ -57,7 +59,10 @@ class RecvOp : public framework::OperatorBase {
     }
   }
 
-  virtual ~RecvOp() {
+  void Stop() override {
+    detail::TensorWithName term_msg;
+    term_msg.first = LISTEN_TERMINATE_MESSAGE;
+    rpc_service_->Push(term_msg);
     rpc_server_->Shutdown();
     server_thread_->join();
   }
@@ -83,13 +88,18 @@ class RecvOp : public framework::OperatorBase {
     size_t param_count = param_list.size();
     rpc_service_->Reset();
     // TODO(typhoonzero): change this to a while_op for every cluster-batch.
-    while (true) {
+    bool exit_flag = false;
+    while (!exit_flag) {
       // Get from multiple trainers, we don't care about order in which
       // the gradient arrives, just add suffix 0~n then average the gradient.
       for (size_t i = 0; i < param_count * trainer_count; ++i) {
         // blocking get one var from client.
         const detail::TensorWithName &v = rpc_service_->Get();
         auto grad_var_name = v.first;
+        if (grad_var_name == LISTEN_TERMINATE_MESSAGE) {
+          exit_flag = true;
+          break;
+        }
         auto it = std::find(grad_list.begin(), grad_list.end(), grad_var_name);
         std::string param_var_name;
         if (it != grad_list.end()) {
@@ -114,8 +124,11 @@ class RecvOp : public framework::OperatorBase {
         auto *tensor = var->GetMutable<framework::LoDTensor>();
         // FIXME(typhoonzero): do not copy
         platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-        auto &dev_ctx = *pool.Borrow(place);
-        framework::CopyFrom(v.second, place, dev_ctx, tensor);
+        auto &dev_ctx = *pool.Borrow(dev_place);
+        framework::CopyFrom(v.second, dev_place, dev_ctx, tensor);
+      }
+      if (exit_flag) {
+        break;
       }
       rpc_service_->Reset();
 
@@ -123,7 +136,7 @@ class RecvOp : public framework::OperatorBase {
       framework::proto::ProgramDesc program_desc;
       program_desc.ParseFromString(program_str);
       framework::ProgramDesc program(program_desc);
-      framework::Executor executor(place);
+      framework::Executor executor(dev_place);
       // Run sub graph to get optimized tensor
       try {
         executor.Run(program, &recv_scope, 0, /*global_block*/

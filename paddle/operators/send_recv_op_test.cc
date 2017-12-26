@@ -1,19 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
-
-// TODO(typhoonzero): add python bindings for this test as
-// a RemoteOptimizer.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include <unistd.h>
 #include <string>
@@ -86,18 +83,19 @@ void StartServerNet() {
   paddle::framework::ProgramDesc program;
   paddle::framework::BlockDesc *block = program.MutableBlock(0);
   // X for server side tensors, RX for received tensers, must be of same shape.
-  AddOp("sum", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, {}, block);
+  AddOp("sum", {{"X", {"x0", "x1"}}}, {{"Out", {"x0"}}}, {}, block);
 
   paddle::framework::AttributeMap attrs;
   attrs.insert({"endpoint", std::string("127.0.0.1:6174")});
+  attrs.insert({"ParamList", std::vector<std::string>({"x0"})});
+  attrs.insert({"GradList", std::vector<std::string>({"x1"})});
   std::string program_proto;
   PADDLE_ENFORCE(program.Proto()->SerializeToString(&program_proto));
 
   attrs.insert({"OptimizeProgram", program_proto});
-  recv_op = paddle::framework::OpRegistry::CreateOp(
-      "recv", {{"RX", {"x0", "x1"}}}, {{"Out", {"Out"}}}, attrs);
-  paddle::platform::CPUDeviceContext ctx(place);
-  recv_op->Run(scope, ctx);
+  recv_op = paddle::framework::OpRegistry::CreateOp("recv", {{"RX", {"x1"}}},
+                                                    {}, attrs);
+  recv_op->Run(scope, place);
 }
 
 TEST(SendRecvOp, CPU) {
@@ -109,25 +107,25 @@ TEST(SendRecvOp, CPU) {
   InitTensorsInScope(scope, place);
 
   paddle::framework::AttributeMap attrs;
-  attrs.insert({"endpoint", std::string("127.0.0.1:6174")});
-
+  attrs.insert({"endpoints", std::vector<std::string>({"127.0.0.1:6174"})});
+  attrs.insert({"epmap", std::vector<std::string>({"127.0.0.1:6174"})});
   auto send_op = paddle::framework::OpRegistry::CreateOp(
-      "send", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, attrs);
-  paddle::platform::CPUDeviceContext ctx(place);
-  send_op->Run(scope, ctx);
+      "send", {{"X", {"x1"}}}, {{"Out", {"x0"}}}, attrs);
+  send_op->Run(scope, place);
 
-  auto in_var = scope.Var("x0");
+  auto in_var = scope.Var("x1");
   auto tensor = in_var->GetMutable<paddle::framework::LoDTensor>();
   float *expected = tensor->data<float>();
-
-  auto out_var = scope.Var("Out");
+  auto out_var = scope.Var("x0");
   auto target = out_var->GetMutable<paddle::framework::LoDTensor>();
-  // send fail cause output is none.
+  // x1 * 2 == x0
   EXPECT_NE(target->memory_size(), size_t(0));
   float *actual = target->data<float>();
   for (int64_t i = 0; i < target->numel(); ++i) {
     EXPECT_EQ(expected[i] * 2, actual[i]);
   }
-  recv_op.reset();  // dtor can shutdown and join server thread.
+
+  recv_op->Stop();
   server_thread.join();
+  // recv_op.reset();
 }
