@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/math/detail/activation_functions.h"
 #include "paddle/operators/math/lstm_compute.h"
 #include "paddle/operators/math/math_function.h"
 #include "paddle/operators/math/sequence2batch.h"
@@ -102,9 +103,12 @@ class LSTMKernel : public framework::OpKernel<T> {
 
     auto batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
-    auto gate_act = ctx.Attr<std::string>("gate_activation");
-    auto cell_act = ctx.Attr<std::string>("cell_activation");
-    auto cand_act = ctx.Attr<std::string>("candidate_activation");
+    auto gate_act = math::detail::GetActivationType(
+        ctx.Attr<std::string>("gate_activation"));
+    auto cell_act = math::detail::GetActivationType(
+        ctx.Attr<std::string>("cell_activation"));
+    auto cand_act = math::detail::GetActivationType(
+        ctx.Attr<std::string>("candidate_activation"));
 
     for (size_t n = 0; n < num_batch; n++) {
       int bstart = static_cast<int>(batch_starts[n]);
@@ -264,9 +268,12 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     batch_gate_g.mutable_data<T>(batch_gate->dims(), ctx.GetPlace());
     batch_gate_g.set_lod(batch_gate->lod());
 
-    auto gate_act = ctx.Attr<std::string>("gate_activation");
-    auto cell_act = ctx.Attr<std::string>("cell_activation");
-    auto cand_act = ctx.Attr<std::string>("candidate_activation");
+    auto gate_act = math::detail::GetActivationType(
+        ctx.Attr<std::string>("gate_activation"));
+    auto cell_act = math::detail::GetActivationType(
+        ctx.Attr<std::string>("cell_activation"));
+    auto cand_act = math::detail::GetActivationType(
+        ctx.Attr<std::string>("candidate_activation"));
 
     auto batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
