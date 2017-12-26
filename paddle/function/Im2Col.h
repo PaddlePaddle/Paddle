@@ -109,6 +109,8 @@ public:
                   int strideWidth,
                   int paddingHeight,
                   int paddingWidth,
+                  int dilationHeight,
+                  int dilationWidth,
                   int colHeightStart,
                   int colHeightSize,
                   int colWidthStart,
@@ -128,8 +130,8 @@ public:
         int h = (colWidthStart + colw) / outputWidth;
         int w = (colWidthStart + colw) % outputWidth;
 
-        int imRowIdx = h * strideHeight + hOffset;
-        int imColIdx = w * strideWidth + wOffset;
+        int imRowIdx = h * strideHeight + hOffset * dilationHeight;
+        int imColIdx = w * strideWidth + wOffset * dilationWidth;
         if ((imRowIdx - paddingHeight) < 0 ||
             (imRowIdx - paddingHeight) >= inputHeight ||
             (imColIdx - paddingWidth) < 0 ||
