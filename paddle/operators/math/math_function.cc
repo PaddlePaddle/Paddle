@@ -312,23 +312,12 @@ struct RowwiseAdd<platform::CPUDeviceContext, T> {
     PADDLE_ENFORCE_EQ(vector.numel(), size);
     PADDLE_ENFORCE_EQ(output->dims(), in_dims);
 
-    // auto in = framework::EigenMatrix<T>::From(input);
-    // auto vec = framework::EigenVector<T>::Flatten(vector);
-    // auto out = framework::EigenMatrix<T>::From(*output);
-    // for (int64_t i = 0; i < in_dims[0]; ++i) {
-    //   out.chip(i, 0) = in.chip(i, 0) + vec;
-    // }
+    auto in = framework::EigenMatrix<T>::From(input);
+    auto vec = framework::EigenVector<T>::Flatten(vector);
+    auto out = framework::EigenMatrix<T>::From(*output);
 
-    auto* in = input.data<T>();
-    auto* vec = vector.data<T>();
-    auto* out = output->data<T>();
-
-    int64_t h = in_dims[0];
-    int64_t w = in_dims[1];
-    for (int64_t i = 0; i < h; ++i) {
-      for (int64_t j = 0; j < w; ++j) {
-        out[i * w + j] = in[i * w + j] + vec[j];
-      }
+    for (int64_t i = 0; i < in_dims[0]; ++i) {
+      out.chip(i, 0) = in.chip(i, 0) + vec;
     }
   }
 };
