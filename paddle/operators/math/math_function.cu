@@ -105,7 +105,7 @@ void matmul<platform::CUDADeviceContext, float>(
   PADDLE_ENFORCE(platform::is_gpu_place(matrix_a.place()) &&
                      platform::is_gpu_place(matrix_b.place()) &&
                      platform::is_gpu_place(matrix_out->place()),
-                 "Matrix must all be in GPUPlace");
+                 "Matrix must all be in CUDAPlace");
 
   int M = dim_out[0];
   int N = dim_out[1];
@@ -134,7 +134,7 @@ void matmul<platform::CUDADeviceContext, double>(
   PADDLE_ENFORCE(platform::is_gpu_place(matrix_a.place()) &&
                      platform::is_gpu_place(matrix_b.place()) &&
                      platform::is_gpu_place(matrix_out->place()),
-                 "Matrix must all be in GPUPlace");
+                 "Matrix must all be in CUDAPlace");
 
   int M = dim_out[0];
   int N = dim_out[1];
@@ -266,18 +266,11 @@ struct TensorSetConstantGPU {
 };
 
 template <>
-void set_constant_with_place<platform::GPUPlace>(
+void set_constant_with_place<platform::CUDAPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {
   framework::VisitDataType(framework::ToDataType(tensor->type()),
                            TensorSetConstantGPU(context, tensor, value));
-}
-
-template <>
-void set_constant_with_place<platform::CUDNNPlace>(
-    const platform::DeviceContext& context, framework::Tensor* tensor,
-    float value) {
-  set_constant_with_place<platform::GPUPlace>(context, tensor, value);
 }
 
 template struct RowwiseAdd<platform::CUDADeviceContext, float>;
