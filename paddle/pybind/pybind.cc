@@ -78,6 +78,10 @@ PYBIND11_PLUGIN(core) {
            [](Tensor &self, const std::vector<int64_t> &dim) {
              self.Resize(make_ddim(dim));
            })
+      .def("set_layout",
+           [](Tensor &self, const std::string &layout) {
+             self.set_layout(StringToDataLayout(layout));
+           })
       .def("alloc_float",
            [](Tensor &self, paddle::platform::CUDAPlace &place) {
              self.mutable_data<float>(place);
