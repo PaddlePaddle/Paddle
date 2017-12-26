@@ -66,6 +66,14 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
   PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), pdesc.Size());
   auto& block = pdesc.Block(block_id);
 
+  if (VLOG_IS_ON(100)) {
+    std::ostringstream sout;
+    for (auto& name : scope->GetAllNames(false)) {
+      sout << name << ", ";
+    }
+    VLOG(100) << "Scope has variable " << sout.str();
+  }
+
   Scope* local_scope = scope;
   if (create_vars) {
     if (create_local_scope) {
