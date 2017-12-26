@@ -31,31 +31,32 @@ std::string Escape(const std::string& s) {
   return r;
 }
 
-std::string AttrType(paddle::framework::AttrType at) {
+std::string AttrType(paddle::framework::proto::AttrType at) {
   switch (at) {
-    case paddle::framework::INT:
+    case paddle::framework::proto::INT:
       return "int";
-    case paddle::framework::FLOAT:
+    case paddle::framework::proto::FLOAT:
       return "float";
-    case paddle::framework::STRING:
+    case paddle::framework::proto::STRING:
       return "string";
-    case paddle::framework::BOOLEAN:
+    case paddle::framework::proto::BOOLEAN:
       return "bool";
-    case paddle::framework::INTS:
+    case paddle::framework::proto::INTS:
       return "int array";
-    case paddle::framework::FLOATS:
+    case paddle::framework::proto::FLOATS:
       return "float array";
-    case paddle::framework::STRINGS:
+    case paddle::framework::proto::STRINGS:
       return "string array";
-    case paddle::framework::BOOLEANS:
+    case paddle::framework::proto::BOOLEANS:
       return "bool array";
-    case paddle::framework::BLOCK:
+    case paddle::framework::proto::BLOCK:
       return "block id";
   }
   return "UNKNOWN";  // not possible
 }
 
-void PrintVar(const paddle::framework::OpProto::Var& v, std::stringstream& ss) {
+void PrintVar(const paddle::framework::proto::OpProto::Var& v,
+              std::stringstream& ss) {
   ss << " { "
      << "\n"
      << "   \"name\" : \"" << Escape(v.name()) << "\",\n"
@@ -65,7 +66,7 @@ void PrintVar(const paddle::framework::OpProto::Var& v, std::stringstream& ss) {
      << " },";
 }
 
-void PrintAttr(const paddle::framework::OpProto::Attr& a,
+void PrintAttr(const paddle::framework::proto::OpProto::Attr& a,
                std::stringstream& ss) {
   ss << " { "
      << "\n"
@@ -81,7 +82,7 @@ void PrintOpProto(const std::string& type,
                   std::stringstream& ss) {
   std::cerr << "Processing " << type << "\n";
 
-  const paddle::framework::OpProto* p = opinfo.proto_;
+  const paddle::framework::proto::OpProto* p = opinfo.proto_;
   if (p == nullptr) {
     return;  // It is possible that an operator doesn't have OpProto.
   }

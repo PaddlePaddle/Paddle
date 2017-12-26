@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/conv_transpose_op.h"
 
@@ -29,6 +29,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   auto filter_dims = ctx->GetInputDim("Filter");
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
+  std::vector<int> dilations = ctx->Attrs().Get<std::vector<int>>("dilations");
 
   PADDLE_ENFORCE(in_dims.size() == 4 || in_dims.size() == 5,
                  "ConvTransposeOp intput should be 4-D or 5-D tensor.");
@@ -41,20 +42,24 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(paddings.size(), strides.size(),
                     "ConvTransposeOp paddings dimension and strides "
                     "dimension should be the same.");
+  PADDLE_ENFORCE_EQ(paddings.size(), dilations.size(),
+                    "ConvTransposeOp paddings dimension and dilations "
+                    "dimension should be the same.");
   PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[0],
                     "In ConvTransposeOp, The input channel should be the same "
                     "as the number of filters.");
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[1]});
   for (size_t i = 0; i < strides.size(); ++i) {
+    auto filter_extent = dilations[i] * (filter_dims[i + 2] - 1) + 1;
     output_shape.push_back((in_dims[i + 2] - 1) * strides[i] - 2 * paddings[i] +
-                           filter_dims[i + 2]);
+                           filter_extent);
   }
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
 }
 
-Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(
-    framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(OpProto* proto,
+                                               OpAttrChecker* op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput(
       "Input",
@@ -73,6 +78,12 @@ Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(
   AddOutput("Output",
             "(Tensor) The output tensor of convolution transpose operator. "
             "The format of output tensor is also NCHW.");
+
+  AddAttr<std::vector<int>>("dilations",
+                            "(vector<int> default:{1, 1}), the "
+                            "dilations(h_dilation, w_dilation) of convolution "
+                            "transpose operator.")
+      .SetDefault({1, 1});
   AddAttr<std::vector<int>>(
       "strides",
       "(vector<int> default:{1, 1}), the strides(h_stride, w_stride) of "
@@ -87,7 +98,7 @@ Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(
 Convolution2D Transpose Operator.
 
 The convolution transpose operation calculates the output based on the input, filter
-and strides, paddings, groups parameters. The size of each dimension of the
+and dilations, strides, paddings, groups parameters. The size of each dimension of the
 parameters is checked in the infer-shape.
 Input(Input) and output(Output) are in NCHW format. Where N is batchsize, C is the
 number of channels, H is the height of the feature, and W is the width of the feature.
@@ -112,8 +123,8 @@ Example:
 )DOC");
 }
 
-Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(
-    framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(OpProto* proto,
+                                               OpAttrChecker* op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput("Input",
            "(Tensor) The input tensor of convolution transpose operator."
@@ -136,6 +147,13 @@ Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(
             "Where N is batch size, C is "
             "the number of channels, D is the depth of the feature, H is the "
             "height of the feature, and W is the width of the feature.");
+
+  AddAttr<std::vector<int>>(
+      "dilations",
+      "(vector<int> default:{1, 1, 1}), the "
+      "dilations(d_dilation,h_dilation, w_dilation) of convolution "
+      "transpose operator.")
+      .SetDefault({1, 1, 1});
   AddAttr<std::vector<int>>("strides",
                             "(vector<int> default:{1, 1, 1}), the "
                             "strides{d_stride, h_stride, w_stride} of "
@@ -149,7 +167,7 @@ Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(
 Convolution3D Transpose Operator.
 
 The convolution transpose operation calculates the output based on the input, filter
-and strides, paddings, groups parameters. The size of each dimension of the
+and dilations, strides, paddings, groups parameters. The size of each dimension of the
 parameters is checked in the infer-shape.
 Input(Input) and output(Output) are in NCDHW format. Where N is batch size, C is the
 number of channels, D is the depth of the feature, H is the height of the feature,

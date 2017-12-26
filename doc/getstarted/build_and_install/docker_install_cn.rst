@@ -128,7 +128,7 @@ PaddlePaddle Book是为用户和开发者制作的一个交互式的Jupyter Note
 
 AVX是一种CPU指令集，可以加速PaddlePaddle的计算。最新的PaddlePaddle Docker镜像默认
 是开启AVX编译的，所以，如果您的电脑不支持AVX，需要单独
-`编译 <./build_from_source_cn.rst>`_ PaddlePaddle为no-avx版本。
+`编译 <./build_from_source_cn.html>`_ PaddlePaddle为no-avx版本。
 
 以下指令能检查Linux电脑是否支持AVX：
 
