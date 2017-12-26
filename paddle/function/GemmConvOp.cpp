@@ -126,13 +126,10 @@ public:
       inputData += inputChannels * inputHeight * inputWidth;
       outputData += outputChannels * outputHeight * outputWidth;
     }
-#ifdef PADDLE_MOBILE_INFERENCE
-    if (Device == DEVICE_TYPE_CPU) {
-      memory_.reset();
-    }
-#endif
   }
 };
+
+#ifdef PADDLE_MOBILE_INFERENCE
 
 /*
  * \brief Forward calculation of convolution, optimized for mobile.
@@ -283,6 +280,8 @@ public:
     }
   }
 };
+
+#endif
 
 /*
  * \brief Backward input calculation of convolution.
