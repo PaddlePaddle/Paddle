@@ -167,7 +167,7 @@ class TestSparseAdagradOp(unittest.TestCase):
     def test_sparse_adagrad(self):
         places = [core.CPUPlace()]
         if core.is_compile_gpu():
-            places.append(core.GPUPlace(0))
+            places.append(core.CUDAPlace(0))
         for place in places:
             self.check_with_place(place)
 

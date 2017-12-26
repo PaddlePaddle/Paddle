@@ -277,14 +277,6 @@ void set_constant_with_place<platform::CPUPlace>(
                            TensorSetConstantCPU(tensor, value));
 }
 
-template <>
-void set_constant_with_place<platform::MKLDNNPlace>(
-    const platform::DeviceContext& context, framework::Tensor* tensor,
-    float value) {
-  framework::VisitDataType(framework::ToDataType(tensor->type()),
-                           TensorSetConstantCPU(tensor, value));
-}
-
 struct TensorSetConstantWithPlace : public boost::static_visitor<void> {
   TensorSetConstantWithPlace(const platform::DeviceContext& context,
                              framework::Tensor* tensor, float value)

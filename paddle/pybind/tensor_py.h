@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 #include <string>
@@ -71,7 +71,7 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
             dst_ptr, src_ptr, sizeof(CUR_TYPE) * tensor.numel(),
             cudaMemcpyDeviceToHost, dev_ctx->stream());
 #else
-        PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
+        PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
 #endif
       } else if (paddle::platform::is_cpu_place(tensor.place())) {
         dst_tensor = tensor;
@@ -127,7 +127,7 @@ template <typename T>
 void PyCUDATensorSetFromArray(
     framework::Tensor &self,
     py::array_t<T, py::array::c_style | py::array::forcecast> array,
-    paddle::platform::GPUPlace &place) {
+    paddle::platform::CUDAPlace &place) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (size_t i = 0; i < array.ndim(); ++i) {

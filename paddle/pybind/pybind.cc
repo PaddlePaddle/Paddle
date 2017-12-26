@@ -78,8 +78,12 @@ PYBIND11_PLUGIN(core) {
            [](Tensor &self, const std::vector<int64_t> &dim) {
              self.Resize(make_ddim(dim));
            })
+      .def("set_layout",
+           [](Tensor &self, const std::string &layout) {
+             self.set_layout(StringToDataLayout(layout));
+           })
       .def("alloc_float",
-           [](Tensor &self, paddle::platform::GPUPlace &place) {
+           [](Tensor &self, paddle::platform::CUDAPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("alloc_float",
@@ -91,7 +95,7 @@ PYBIND11_PLUGIN(core) {
              self.mutable_data<int>(place);
            })
       .def("alloc_int",
-           [](Tensor &self, paddle::platform::GPUPlace &place) {
+           [](Tensor &self, paddle::platform::CUDAPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("set", PyCPUTensorSetFromArray<float>)
@@ -310,10 +314,10 @@ All parameter, weight, gradient are variables in Paddle.
                     return new paddle::platform::CPUDeviceContext();
                   })
       .def_static("create",
-                  [](paddle::platform::GPUPlace& place)
+                  [](paddle::platform::CUDAPlace& place)
                       -> paddle::platform::DeviceContext* {
 #ifndef PADDLE_WITH_CUDA
-                    PADDLE_THROW("GPUPlace is not supported in CPU device.");
+                    PADDLE_THROW("CUDAPlace is not supported in CPU device.");
 #else
                     return new paddle::platform::CUDADeviceContext(place);
 #endif
@@ -323,9 +327,9 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CUDA
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
-  py::class_<platform::GPUPlace>(m, "GPUPlace")
+  py::class_<platform::CUDAPlace>(m, "CUDAPlace")
       .def(py::init<int>())
-      .def("__str__", string::to_string<const platform::GPUPlace &>);
+      .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace")
       .def(py::init<>())
@@ -338,7 +342,7 @@ All parameter, weight, gradient are variables in Paddle.
              self = cpu_place;
            })
       .def("set_place",
-           [](platform::Place &self, const platform::GPUPlace &gpu_place) {
+           [](platform::Place &self, const platform::CUDAPlace &gpu_place) {
              self = gpu_place;
            });
 
@@ -363,7 +367,7 @@ All parameter, weight, gradient are variables in Paddle.
               const platform::CPUPlace &place) { self.Run(scope, place); })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
-              const platform::GPUPlace &place) { self.Run(scope, place); })
+              const platform::CUDAPlace &place) { self.Run(scope, place); })
       .def("type",
            [](const OperatorBase &op) -> std::string { return op.Type(); })
       .def("outputs",
