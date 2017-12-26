@@ -164,35 +164,44 @@ class BaseRNN(object):
         return numpy.array([o.mean() for o in outs.itervalues()]).mean()
 
 
-class SimpleMul(BaseRNN):
-    def __init__(self):
-        super(SimpleMul, self).__init__({
-            'X': {
-                'shape': [32]
-            }
-        }, {}, {'W': {
-            'shape': [32, 10]
-        }}, ['Out'])
-
-    def step(self, X, W, Out):
-        Out.out(numpy.matmul(X, W))
-
-
 class TestSimpleMul(unittest.TestCase):
+    DATA_NAME = 'X'
+    DATA_WIDTH = 32
+    PARAM_NAME = 'W'
+    HIDDEN_WIDTH = 10
+    OUT_NAME = 'Out'
+
+    class SimpleMul(BaseRNN):
+        def __init__(self):
+            base = TestSimpleMul
+            super(base.SimpleMul, self).__init__({
+                base.DATA_NAME: {
+                    'shape': [base.DATA_WIDTH]
+                }
+            }, {}, {
+                base.PARAM_NAME: {
+                    'shape': [base.DATA_WIDTH, base.HIDDEN_WIDTH]
+                }
+            }, [base.OUT_NAME])
+
+        def step(self, X, W, Out):
+            Out.out(numpy.matmul(X, W))
+
     # Test many times in local to ensure the random seed cannot breaks CI
     # @many_times(10)
     @prog_scope()
     def test_forward_backward(self):
-        python_impl = SimpleMul()
-        dat = fluid.layers.data(name='X', shape=[32], lod_level=1)
+        python_impl = TestSimpleMul.SimpleMul()
+        dat = fluid.layers.data(
+            name=self.DATA_NAME, shape=[self.DATA_WIDTH], lod_level=1)
 
         rnn = fluid.layers.DynamicRNN()
         with rnn.block():
             d = rnn.step_input(dat)
             o = fluid.layers.fc(input=d,
-                                param_attr='W',
+                                param_attr=self.PARAM_NAME,
                                 bias_attr=False,
-                                size=10,
+                                size=self.HIDDEN_WIDTH,
                                 act=None)
             rnn.output(o)
 
@@ -204,10 +213,10 @@ class TestSimpleMul(unittest.TestCase):
         cpu = fluid.CPUPlace()
         exe = fluid.Executor(cpu)
         out, w_g = exe.run(feed=python_impl.to_feed(cpu),
-                           fetch_list=[out, "W@GRAD"])
-        out_by_python = python_impl.exe()['Out']
+                           fetch_list=[out, self.PARAM_NAME + "@GRAD"])
+        out_by_python = python_impl.exe()[self.OUT_NAME]
         self.assertTrue(numpy.allclose(out, out_by_python))
-        w_g_num = python_impl.get_numeric_gradient_of_param("W")
+        w_g_num = python_impl.get_numeric_gradient_of_param(self.PARAM_NAME)
         self.assertTrue(numpy.allclose(w_g_num, w_g, rtol=0.05))
 
 
