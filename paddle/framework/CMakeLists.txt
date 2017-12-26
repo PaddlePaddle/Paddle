@@ -64,4 +64,7 @@ cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
 cc_library(init SRCS init.cc DEPS gflags device_context place stringpiece)
 cc_test(init_test SRCS init_test.cc DEPS init)
 
-cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context)
+cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto)
+
+cc_library(data_transform SRCS data_transform.cc DEPS tensor framework_proto)
+cc_test(data_transform_test SRCS data_transform_test.cc DEPS data_transform device_context)
