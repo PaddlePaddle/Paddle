@@ -107,10 +107,12 @@ class SumKernel : public framework::OpKernel<T> {
               out_array.resize(i + 1);
             }
             if (out_array[i].numel() == 0) {
+              VLOG(10) << context.op().Output("Out") << " just copy";
               framework::CopyFrom(in_array[i], in_array[i].place(),
                                   context.device_context(), &out_array[i]);
               out_array[i].set_lod(in_array[i].lod());
             } else {
+              VLOG(10) << context.op().Output("Out") << " merged";
               PADDLE_ENFORCE(out_array[i].lod() == in_array[i].lod());
               auto in = EigenVector<T>::Flatten(in_array[i]);
               auto result = EigenVector<T>::Flatten(out_array[i]);

@@ -298,7 +298,6 @@ class TestSimpleMulWithMemory(unittest.TestCase):
     @prog_scope()
     def test_forward_backward(self):
         py_rnn = TestSimpleMulWithMemory.SimpleMulWithMemory()
-
         data = fluid.layers.data(
             name=self.DATA_NAME, shape=[self.DATA_WIDTH], lod_level=1)
         data.stop_gradient = False
@@ -323,19 +322,18 @@ class TestSimpleMulWithMemory(unittest.TestCase):
         cpu = fluid.CPUPlace()
         exe = fluid.Executor(cpu)
         feed = py_rnn.to_feed(cpu)
-        for _ in xrange(2):
-            last_np, w_g, i_g = map(numpy.array,
-                                    exe.run(feed=feed,
-                                            fetch_list=[
-                                                last, self.PARAM_NAME + "@GRAD",
-                                                self.DATA_NAME + "@GRAD"
-                                            ],
-                                            return_numpy=False))
+        last_np, w_g, i_g = map(numpy.array,
+                                exe.run(feed=feed,
+                                        fetch_list=[
+                                            last, self.PARAM_NAME + "@GRAD",
+                                            self.DATA_NAME + "@GRAD"
+                                        ],
+                                        return_numpy=False))
         last_by_py, = py_rnn.exe().values()
-
         self.assertTrue(numpy.allclose(last_np, last_by_py))
         w_g_num = py_rnn.get_numeric_gradient_of_param(self.PARAM_NAME)
-        print w_g[0], w_g_num[0]
+        # print w_g_num[0], w_g[0]
+
         self.assertTrue(numpy.allclose(w_g_num, w_g, rtol=0.1))
         i_g_num = py_rnn.get_numeric_gradient_of_input(self.DATA_NAME)
         i_g_num = i_g_num.reshape(i_g.shape)

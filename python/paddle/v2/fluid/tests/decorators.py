@@ -19,8 +19,10 @@ def prog_scope():
         def __fn__(*args, **kwargs):
             prog = fluid.Program()
             startup_prog = fluid.Program()
-            with fluid.program_guard(prog, startup_prog):
-                fn(*args, **kwargs)
+            scope = fluid.core.Scope()
+            with fluid.scope_guard(scope):
+                with fluid.program_guard(prog, startup_prog):
+                    fn(*args, **kwargs)
 
         return __fn__
 
