@@ -386,7 +386,8 @@ def square_error_cost(input, label, **kwargs):
 
     square_out = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
-        type='square', inputs={'X': [minus_out]}, outputs={'Y': [square_out]})
+        type='square', inputs={'X': [minus_out]},
+        outputs={'Out': [square_out]})
     return square_out
 
 
@@ -604,7 +605,7 @@ def sequence_pool(input, pool_type, **kwargs):
          sqrt   : out.data = [2.82, 6.93, 4.24], where 2.82=(1+3)/sqrt(2),
                     6.93=(2+4+6)/sqrt(3), 4.24=(5+1)/sqrt(2)
          max    : out.data = [3, 6, 5], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
-         
+
     Args:
         input(variable): The input variable which is a LoDTensor.
         pool_type (string): The pooling type of sequence_pool. 
@@ -616,7 +617,7 @@ def sequence_pool(input, pool_type, **kwargs):
     Examples:
 
         .. code-block:: python
-             
+
              x = fluid.layers.data(name='x', shape=[7, 1], 
                               dtype='float32', lod_level=1)
              avg_x = fluid.layers.sequence_pool(input=x, pool_type='average')
@@ -654,7 +655,7 @@ def sequence_first_step(input, **kwargs):
          out.dim = [3, 1]
          with condition len(x.lod[-1]) - 1 == out.dims[0]
          out.data = [1, 2, 5], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
-         
+
     Args:
         input(variable): The input variable which is a LoDTensor.
 
@@ -664,7 +665,7 @@ def sequence_first_step(input, **kwargs):
     Examples:
 
         .. code-block:: python
-             
+
              x = fluid.layers.data(name='x', shape=[7, 1], 
                               dtype='float32', lod_level=1)
              x_first_step = fluid.layers.sequence_first_step(input=x)
@@ -687,7 +688,7 @@ def sequence_last_step(input, **kwargs):
          out.dim = [3, 1]
          with condition len(x.lod[-1]) - 1 == out.dims[0]
          out.data = [3, 6, 1], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
-         
+
     Args:
         input(variable): The input variable which is a LoDTensor.
 
@@ -697,7 +698,7 @@ def sequence_last_step(input, **kwargs):
     Examples:
 
         .. code-block:: python
-             
+
              x = fluid.layers.data(name='x', shape=[7, 1], 
                               dtype='float32', lod_level=1)
              x_last_step = fluid.layers.sequence_last_step(input=x)
@@ -1132,7 +1133,7 @@ def reduce_sum(input, dim=None, keep_dim=False):
 
     Returns:
         Variable: The reduced Tensor variable.
-    
+
     Examples:
         .. code-block:: python
 
@@ -1176,7 +1177,7 @@ def reduce_mean(input, dim=None, keep_dim=False):
 
     Returns:
         Variable: The reduced Tensor variable.
-    
+
     Examples:
         .. code-block:: python
 
