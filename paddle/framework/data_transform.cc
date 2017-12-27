@@ -23,31 +23,29 @@ DataTransformFnMap& DataTransformFnMap::Instance() {
   return data_transform_map;
 }
 
-// auto kernel_FP32 = OpKernelType(proto::DataType::FP32, platform::CPUPlace(),
-//                                 DataLayout::kNHWC, LibraryType::kPlain);
+auto kernel_FP32 = OpKernelType(proto::DataType::FP32, platform::CPUPlace(),
+                                DataLayout::kNHWC, LibraryType::kPlain);
 
-// auto kernel_FP64 = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
-//                                 DataLayout::kNHWC, LibraryType::kPlain);
+auto kernel_FP64 = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
+                                DataLayout::kNHWC, LibraryType::kPlain);
 
-// void TransDataType(const OpKernelType& kernel_out,
-//                    const std::vector<platform::DeviceContext*> ctx,
-//                    const Variable& in, Variable* out) {
+void TransDataType(const OpKernelType& kernel_out,
+                   const std::vector<platform::DeviceContext*> ctx,
+                   const Variable& in, Variable* out) {
+  PADDLE_ENFORCE(in.IsType<LoDTensor>(), "Only Support LoDTensor transform!.");
+  auto src = in->Get<LoDTensor>();
+  auto* dst = out->GetMutable<LoDTensor>();
+  auto dims = in.Get<LoDTensor>().dims();
+  dst->Resize(dims);
+  auto context = *ctx[0];
 
-//   PADDLE_ENFORCE(in.IsType<LoDTensor>(),
-//                  "Only Support LoDTensor transform!.");
-//   auto src = in->Get<LoDTensor>();
-//   auto* dst = out->GetMutable<LoDTensor>();
-//   auto dims = in.Get<LoDTensor>().dims();
-//   dst->Resize(dims);
-//   auto context = *ctx[0];
-
-//   VisitDataType(kernel_out.data_type_, CastDataType<DeviceContext>(out,
-//   context));
-//   CopyFrom(src, kernel_out.place_, context, dst);
-// }
+  VisitDataType(kernel_out.data_type_,
+                CastDataType<DeviceContext>(out, context));
+  CopyFrom(src, kernel_out.place_, context, dst);
+}
 
 }  // namespace framework
 }  // namespace paddle
 
 namespace f = paddle::framework;
-// REGISTER_DATA_TRANSFORM_FN(f::kernel_FP32, f::kernel_FP64, f::TransDataType);
+REGISTER_DATA_TRANSFORM_FN(f::kernel_FP32, f::kernel_FP64, f::TransDataType);

@@ -27,9 +27,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-using DataTransformFN =
-    std::function<void(const std::vector<platform::DeviceContext*> ctx,
-                       const Variable& in, Variable* out)>;
+using DataTransformFN = std::function<void(
+    const OpKernelType&, const std::vector<platform::DeviceContext*> ctx,
+    const Variable& in, Variable* out)>;
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 
 struct KernelTypePairHash {
@@ -43,6 +43,15 @@ struct KernelTypePairHash {
     HashCombine(kernel_pair.first, &seed);
     HashCombine(kernel_pair.second, &seed);
     return seed;
+  }
+};
+
+template <typename DeviceContext>
+struct CastDataType {
+  CastDataType(LoDTensor* t, const DeviceContext& ctx);
+  template <typename OutType>
+  void operator()() {
+    t->mutable_data<OutType>(ctx.GetPlace());
   }
 };
 
