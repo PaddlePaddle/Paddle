@@ -118,19 +118,20 @@ def fill_constant(shape, dtype, value, out=None):
     """
     **fill_constant**
 
-    This function creates a tensor of specified *shape* and
-    *dtype*, and initializes this with a constant supplied in *value*.
+    This function creates a tensor with the specified *shape* and
+    *dtype*, and initializes it with the constant given by *value*.
 
-    It also sets *stop_gradient* to True.
+    The attribute *stop_gradient* of the created tensor is set to True.
 
     Args:
-        shape(tuple|list|None): Shape of output tensor
-        dtype(np.dtype|core.DataType|str): Data type of output tensor
-        value(float): Constant value to initialize the output tensor
-        out(Variable): Output Variable to initialize
+        shape(tuple|list|None): Shape of the output tensor.
+        dtype(np.dtype|core.DataType|str): Data type of the output tensor.
+        value(float): The constant value used to initialize the the output
+                      tensor.
+        out(Variable): The output tensor.
 
     Returns:
-        Variable: The tensor variable storing the output
+        Variable: The tensor variable storing the output.
 
     Examples:
         .. code-block:: python

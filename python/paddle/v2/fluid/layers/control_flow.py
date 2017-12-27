@@ -475,8 +475,7 @@ def lod_tensor_to_array(x, table):
 
 
 def array_to_lod_tensor(x, table):
-    """This function performs the operations that converts an array to
-       an LOD_Tensor.
+    """This function converts an LOD_TENSOR_ARRAY to an LODTensor.
 
     Args:
         x (Variable|list): The array that needs to be converted to a tensor.
@@ -540,17 +539,23 @@ def increment(x, value=1.0, in_place=True):
 
 
 def array_write(x, i, array=None):
-    """This function performs the operation to write the data out as an
-    LOD_TENSOR_ARRAY.
+    """This function writes the given input variable to the specifict position
+    which is indicated by the arrary index to an output LOD_TENSOR_ARRAY. If the
+    output LOD_TENSOR_ARRAY is not given(None), a new one will be created and
+    returned.
 
     Args:
         x (Variable|list): The input tensor from which the data will be read.
-        i (Variable|list): The subscript index in tensor array, that points the
-                           place from which data will be read.
-        array (Variable|list): The data can be read into this variable if
-                               this is assigned.
+        i (Variable|list): The index of the output LOD_TENSOR_ARRAY, pointing to
+                           the position to which the input tensor will be
+                           written.
+        array (Variable|list): The output LOD_TENSOR_ARRAY to which the input
+                               tensor will be written. If this parameter is
+                               NONE, a new LOD_TENSOR_ARRAY will be created and
+                               returned.
+
     Returns:
-        Variable: The tensor type variable that has the data written to it.
+        Variable: The ouput LOD_TENSOR_ARRAY where the input tensor is written.
 
     Examples:
         .. code-block::python
@@ -927,7 +932,7 @@ class DynamicRNN(object):
         self._assert_in_rnn_block_("step_input")
         if not isinstance(x, Variable):
             raise TypeError(
-                "step_input() can only take a Variable as its input")
+                "step_input() can only take a Variable as its input.")
         parent_block = self._parent_block_()
         if self.lod_rank_table is None:
             self.lod_rank_table = parent_block.create_var(
@@ -988,8 +993,8 @@ class DynamicRNN(object):
 
     def __call__(self, *args, **kwargs):
         if self.status != DynamicRNN.AFTER_RNN:
-            raise ValueError(
-                "Dynamic RNN outputs can only be retrieved after rnn block")
+            raise ValueError(("Output of the dynamic RNN can only be visited "
+                              "outside the rnn block."))
         if len(self.outputs) == 1:
             return self.outputs[0]
         else:
