@@ -58,7 +58,7 @@ bool RPCClient::GetVariable(const framework::Scope& scope,
   std::istringstream iss(ret_msg.serialized());
 
   framework::LoDTensor ret_tensor;
-  ret_tensor.DeserializeFromStream(iss);
+  framework::DeserializeFromStream(iss, &ret_tensor);
   auto* outvar = scope.FindVar(outname);
   framework::LoDTensor* out_tensor = outvar->GetMutable<framework::LoDTensor>();
   // FIXME(typhoonzero): do not copy.
