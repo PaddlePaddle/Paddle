@@ -49,17 +49,14 @@ class SendOp : public framework::OperatorBase {
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
     // TODO(typhoonzero): use async calls to send multiple variable asyncly.
     for (size_t i = 0; i < ins.size(); ++i) {
-      VLOG(3) << "sending " << ins[i];
       bool ret = client_map_[epmap[i]]->SendVariable(scope, ins[i]);
       if (!ret) {
         LOG(ERROR) << "send variable error: " << ins[i];
       }
     }
-    VLOG(3) << "waiting batch ";
     // TODO(typhoonzero): support async optimization
     client_map_[epmap[0]]->Wait();
     for (size_t i = 0; i < outs.size(); ++i) {
-      VLOG(3) << "getting " << outs[i];
       bool ret = client_map_[epmap[i]]->GetVariable(scope, outs[i]);
       if (!ret) {
         LOG(ERROR) << "GetVariable error: " << outs[i];
