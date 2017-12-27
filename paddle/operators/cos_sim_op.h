@@ -193,9 +193,10 @@ struct CosSimDxFunctor {
 
 template <typename DeviceContext, typename T>
 struct CosSimDyFunctor {
-  CosSimDyFunctor(const T* x_norm, const T* y_norm, const T* x, const T* y,
-                  const T* z, const T* dz, T* dy, int cols);
-  inline HOSTDEVICE void operator()(size_t) const;
+  inline void operator()(const DeviceContext& ctx, const T* x_norm,
+                         const T* y_norm, const T* x, const T* y, const T* z,
+                         const T* dz, const size_t rows, const size_t cols,
+                         T* dy) const;
 };
 
 template <typename DeviceContext, typename T>
@@ -255,14 +256,11 @@ class CosSimGradKernel : public framework::OpKernel<T> {
         auto& dev_ctx = context.template device_context<DeviceContext>();
         set_zero(dev_ctx, out_grad_y, static_cast<T>(0));
 
-        CosSimDyFunctor<DeviceContext, T> functor(
-            in_x_norm->data<T>(), in_y_norm->data<T>(), in_x->data<T>(),
-            in_y->data<T>(), in_z->data<T>(), in_grad_z->data<T>(),
-            out_grad_y->data<T>(), cols);
-        platform::ForRange<DeviceContext> for_range(
-            static_cast<const DeviceContext&>(context.device_context()),
-            rows_x);
-        for_range(functor);
+        CosSimDyFunctor<DeviceContext, T> functor;
+        functor(dev_ctx, in_x_norm->data<T>(), in_y_norm->data<T>(),
+                in_x->data<T>(), in_y->data<T>(), in_z->data<T>(),
+                in_grad_z->data<T>(), static_cast<size_t>(rows_x),
+                static_cast<size_t>(cols), out_grad_y->data<T>());
       }
     }
   }
