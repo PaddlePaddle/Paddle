@@ -79,7 +79,7 @@ class SendOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Recv operator
 
-This operator will recv tensor from send_op
+This operator will send tensor to recv_op.
 )DOC");
     AddAttr<std::vector<std::string>>("endpoints",
                                       "(string vector, default 127.0.0.1:6164)"
