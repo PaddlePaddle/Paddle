@@ -272,8 +272,9 @@ class RecurrentOp : public RecurrentBase {
                    false /*create_local_scope*/);
 
       // get device context from pool
-      platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-      auto &dev_ctx = *pool.Borrow(place);
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto &dev_ctx = *pool.Get(place);
 
       // Copy inside::output -> outside::output
       //    outside::output[seq_offset: seq_offset + 1] = inside::output
@@ -326,8 +327,8 @@ class RecurrentGradOp : public RecurrentBase {
     auto *program = block->Program();
 
     // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-    auto &dev_ctx = *pool.Borrow(place);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place);
 
     for (size_t step_id = 0; step_id < seq_len; ++step_id) {
       size_t seq_offset = reverse ? step_id : seq_len - step_id - 1;
