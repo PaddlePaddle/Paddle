@@ -82,3 +82,8 @@ DEFINE_string(init_model_path,
               "",
               "Path of the initial model parameters."
               "If it was set, start_pass will be ignored.");
+DEFINE_double(conv_workspace_limit_in_mb,
+              1024,
+              "The maxium workspace for convolution implenmentation by "
+              "im2col and gemm. The unit is MB and the defalut size is 1GB. "
+              "This flag is only enabled for CPU.");

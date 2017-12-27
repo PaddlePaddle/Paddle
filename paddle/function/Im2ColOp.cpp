@@ -33,7 +33,9 @@ public:
                   int paddingHeight,
                   int paddingWidth,
                   int dilationHeight,
-                  int dilationWidth) {
+                  int dilationWidth,
+                  int colStart = 0,
+                  int colEnd = 0) {
     int inputChannels = imShape[0];
     int inputHeight = imShape[1];
     int inputWidth = imShape[2];
@@ -42,11 +44,13 @@ public:
     int outputHeight = colShape[3];
     int outputWidth = colShape[4];
     int channelsCol = inputChannels * filterHeight * filterWidth;
+    int colHeight = colEnd - colStart;
+    channelsCol = colHeight ? colHeight : channelsCol;
 
     for (int c = 0; c < channelsCol; ++c) {
-      int wOffset = c % filterWidth;
-      int hOffset = (c / filterWidth) % filterHeight;
-      int c_im = c / filterWidth / filterHeight;
+      int wOffset = (c + colStart) % filterWidth;
+      int hOffset = ((c + colStart) / filterWidth) % filterHeight;
+      int c_im = (c + colStart) / filterWidth / filterHeight;
       for (int h = 0; h < outputHeight; ++h) {
         for (int w = 0; w < outputWidth; ++w) {
           int imRowIdx = h * strideHeight + hOffset * dilationHeight;
@@ -140,7 +144,10 @@ public:
                   int paddingHeight,
                   int paddingWidth,
                   int dilationHeight = 1,
-                  int dilationWidth = 1) {
+                  int dilationWidth = 1,
+                  int colStart = 0,
+                  int colEnd = 0) {
+    CHECK(colStart == 0 && colEnd == 0) << "Not support grouped im2col.";
     int inputChannels = imShape[0];
     int inputHeight = imShape[1];
     int inputWidth = imShape[2];

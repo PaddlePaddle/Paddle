@@ -81,7 +81,10 @@ public:
                   int paddingHeight,
                   int paddingWidth,
                   int dilationHeight,
-                  int dilationWidth) {
+                  int dilationWidth,
+                  int colStart = 0,
+                  int colEnd = 0) {
+    CHECK(colStart == 0 && colEnd == 0) << "Not support grouped im2col.";
     int inputChannels = imShape[0];
     int inputHeight = imShape[1];
     int inputWidth = imShape[2];
@@ -302,7 +305,10 @@ public:
                   int paddingHeight,
                   int paddingWidth,
                   int dilationHeight,
-                  int dilationWidth) {
+                  int dilationWidth,
+                  int colStart = 0,
+                  int colEnd = 0) {
+    CHECK(colStart == 0 && colEnd == 0) << "Not support grouped im2col.";
     int inputChannels = imShape[0];
     int inputHeight = imShape[1];
     int inputWidth = imShape[2];

@@ -80,7 +80,9 @@ public:
                   int paddingHeight,
                   int paddingWidth,
                   int dilationHeight = 1,
-                  int dilationWidth = 1);
+                  int dilationWidth = 1,
+                  int colStart = 0,
+                  int colEnd = 0);
 };
 
 template <ColFormat Format, DeviceType Device, class T>
