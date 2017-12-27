@@ -384,6 +384,24 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const Scope& scope_;
 };
 
+std::vector<const platform::DeviceContext*> GetDeviceContext(
+    OpKernelType actual_kernel_key, OpKernelType expected_kernel_key) {
+  std::vector<const platform::DeviceContext*> results;
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Get();
+
+  if (platform::is_gpu_place(actual_kernel_key.place_) &&
+      platform::is_cpu_place(expected_kernel_key.place_)) {
+    results.push_back(pool.Borrow(actual_kernel_key.place_));
+  } else if (platform::is_cpu_place(actual_kernel_key.place_) &&
+             platform::is_gpu_place(expected_kernel_key.place_)) {
+    results.push_back(pool.Borrow(expected_kernel_key.place_));
+  } else {
+    PADDLE_THROW(
+        "Currently, model parallelism is only supported between CPU and CUDA");
+  }
+  return results;
+}
+
 void OperatorWithKernel::Run(const Scope& scope,
                              const platform::Place& place) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
@@ -437,9 +455,8 @@ void OperatorWithKernel::Run(const Scope& scope,
       }
 
       if (!need_trans.empty()) {
-        // TODO(qijun) get appropriate DeviceContext from DeviceContext pool
-        platform::DeviceContext* trans_dev_ctx = nullptr;
-        std::vector<platform::DeviceContext*> trans_dev_ctx_vec{trans_dev_ctx};
+        auto trans_dev_ctx_vec =
+            GetDeviceContext(actual_kernel_key, expected_kernel_key);
 
         // Wait for transform starting
         dev_ctx->Wait();

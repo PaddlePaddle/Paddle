@@ -28,7 +28,7 @@ namespace paddle {
 namespace framework {
 
 using DataTransformFn =
-    std::function<void(const std::vector<platform::DeviceContext*> ctx,
+    std::function<void(const std::vector<const platform::DeviceContext*>& ctx,
                        const Variable& in, Variable* out)>;
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 
