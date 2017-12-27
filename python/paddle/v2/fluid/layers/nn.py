@@ -478,8 +478,7 @@ def conv2d(input,
            groups=None,
            param_attr=None,
            bias_attr=None,
-           act=None,
-           name=None):
+           act=None):
     """
     **Convlution2D Layer**
 
@@ -498,46 +497,51 @@ def conv2d(input,
 
         Out = \sigma (W \\ast X + b)
 
-   In the above equation:
+    In the above equation:
 
         * :math:`X`: Input value, a tensor with NCHW format.
         * :math:`W`: Filter value, a tensor with MCHW format.
-        * :math: \\ast : Convolution operation.
+        * :math:`\\ast`: Convolution operation.
         * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
-        * :math: \\sigma : Activation function.
+        * :math:`\\sigma`: Activation function.
         * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
 
-        - Input:
-           Input shape: $(N, C_{in}, H_{in}, W_{in})$
+        Input:
+            Input shape: $(N, C_{in}, H_{in}, W_{in})$
 
-           Filter shape: $(C_{out}, C_{in}, H_f, W_f)$
+            Filter shape: $(C_{out}, C_{in}, H_f, W_f)$
 
-        - Output:
-           Output shape: $(N, C_{out}, H_{out}, W_{out})$
+        Output:
+            Output shape: $(N, C_{out}, H_{out}, W_{out})$
         Where
-     .. math::
+    .. math::
 
-           H_{out}= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]}+ 1
-
-           W_{out}= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]}+ 1
-
-
-    All the input variables are passed in as local variables to the LayerHelper
-    constructor.
+        H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
+        W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
-       input(Variable): Input tensors. The format of input tensor is NCHW.
-       num_filters(int): Number of filters
-       filter_size(list/int): Filter size of Conv2d Layer
-       stride(list/int, optional): Strides(h_s, w_s) of Conv2d Layer. Default: 1
-       padding(list/int, optional): Paddings(h_pad, w_pad) of Conv2d Layer. Default: 0
-       groups(int, optional): The groups number of the Conv2d Layer. Default: 1
-       param_attr(ParamAttr): The parameters to the Conv2d Layer. Default: None
-       bias_attr(ParamAttr): Bias parameter for the Conv2d layer. Default: None
-       act(str): Activation type. Default: None
-       name(str): Name/alias of the function
+        input(Variable): The input image with [N, C, H, W] format.
+        num_filters(int): The number of filter. It is as same as the output
+            image channel.
+        filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
+            it must contain two integers, (filter_size_H, filter_size_W).
+            Otherwise, the filter will be a square.
+        stride(int|tuple): The stride size. If stride is a tuple, it must
+            contain two integers, (stride_H, stride_W). Otherwise, the
+            stride_H = stride_W = stride. Default: stride = 1.
+        padding(int|tuple): The padding size. If padding is a tuple, it must
+            contain two integers, (padding_H, padding_W). Otherwise, the
+            padding_H = padding_W = padding. Default: padding = 0.
+        groups(int): The groups number of the Conv2d Layer. According to grouped
+            convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
+            the first half of the filters is only connected to the first half
+            of the input channels, while the second half of the filters is only
+            connected to the second half of the input channels. Default: groups=1
+        param_attr(ParamAttr): The parameters to the Conv2d Layer. Default: None
+        bias_attr(ParamAttr): Bias parameter for the Conv2d layer. Default: None
+        act(str): Activation type. Default: None
 
     Returns:
         Variable: The tensor variable storing the convolution and \
