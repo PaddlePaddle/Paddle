@@ -1,16 +1,16 @@
-/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/conv_shift_op.h"
 #include "paddle/operators/math/math_function.h"
@@ -111,7 +111,8 @@ __global__ void ConvShiftDy(const T *x, const T *dout, int x_width, int y_width,
 }  // namespace
 
 template <typename T>
-class ConvShiftKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
+class ConvShiftKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     const Tensor *X = context.Input<Tensor>("X");
@@ -132,7 +133,8 @@ class ConvShiftKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
 
     dim3 grid_dim(num_x_blocks, batch_size);
 
-    auto stream = context.cuda_device_context().stream();
+    auto stream =
+        context.template device_context<platform::CUDADeviceContext>().stream();
 
     ConvShiftForward<T><<<grid_dim, x_per_block, mem_per_block, stream>>>(
         x_data, y_data, x_width, y_width, y_half_width, batch_size, out_data);
@@ -140,7 +142,7 @@ class ConvShiftKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class ConvShiftGradKernel<platform::GPUPlace, T>
+class ConvShiftGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -159,8 +161,9 @@ class ConvShiftGradKernel<platform::GPUPlace, T>
     int y_width = Y->dims()[1];
     int y_half_width = (y_width - 1) / 2;
 
-    auto &device_ctx = context.cuda_device_context();
-    math::SetConstant<platform::GPUPlace, T> zero;
+    auto &device_ctx =
+        context.template device_context<platform::CUDADeviceContext>();
+    math::SetConstant<platform::CUDADeviceContext, T> zero;
 
     const int x_per_block = 256;
     int num_x_blocks = DivUp(x_width, x_per_block);
@@ -186,8 +189,9 @@ class ConvShiftGradKernel<platform::GPUPlace, T>
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(conv_shift,
-                       ops::ConvShiftKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
+    conv_shift,
+    ops::ConvShiftKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
     conv_shift_grad,
-    ops::ConvShiftGradKernel<paddle::platform::GPUPlace, float>);
+    ops::ConvShiftGradKernel<paddle::platform::CUDADeviceContext, float>);

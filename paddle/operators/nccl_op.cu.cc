@@ -67,7 +67,7 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
     auto stream = ctx.cuda_device_context().stream();
 
     // device id
-    int gpu_id = boost::get<platform::GPUPlace>(ctx.GetPlace()).GetDeviceId();
+    int gpu_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
 
     for (size_t i = 0; i < ins.size(); ++i) {
@@ -120,7 +120,7 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
                       ctx.device_context())
                       .stream();
     // device id
-    int gpu_id = boost::get<platform::GPUPlace>(ctx.GetPlace()).GetDeviceId();
+    int gpu_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
 
     auto ins_names = ctx.Inputs("X");
@@ -164,7 +164,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
                       ctx.device_context())
                       .stream();
     // device id
-    int gpu_id = boost::get<platform::GPUPlace>(ctx.GetPlace()).GetDeviceId();
+    int gpu_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
 
     if (idx == root) {
@@ -204,6 +204,6 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(ncclAllReduce, ops::NCCLAllReduceKernel<float>);
-REGISTER_OP_GPU_KERNEL(ncclBcast, ops::NCCLBcastKernel<float>);
-REGISTER_OP_GPU_KERNEL(ncclReduce, ops::NCCLReduceKernel<float>);
+REGISTER_OP_CUDA_KERNEL(ncclAllReduce, ops::NCCLAllReduceKernel<float>);
+REGISTER_OP_CUDA_KERNEL(ncclBcast, ops::NCCLBcastKernel<float>);
+REGISTER_OP_CUDA_KERNEL(ncclReduce, ops::NCCLReduceKernel<float>);

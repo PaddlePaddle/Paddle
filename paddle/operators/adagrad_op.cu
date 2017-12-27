@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #define EIGEN_USE_GPU
 #include "paddle/operators/adagrad_op.h"
@@ -72,8 +72,8 @@ __global__ void SparseAdagradFunctorKernel(const T* grad, const int64_t* rows,
 }  // namespace
 
 template <typename T>
-struct SparseAdagradFunctor<platform::GPUPlace, T> {
-  void operator()(const platform::DeviceContext& context,
+struct SparseAdagradFunctor<platform::CUDADeviceContext, T> {
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::SelectedRows& grad,
                   const framework::Tensor& learning_rate, T epsilon,
                   framework::Tensor* moment, framework::Tensor* param) {
@@ -92,7 +92,7 @@ struct SparseAdagradFunctor<platform::GPUPlace, T> {
             {static_cast<int64_t>(merge_rows.size()), grad_width}),
         context.GetPlace());
 
-    math::SetConstant<platform::GPUPlace, T> constant_functor;
+    math::SetConstant<platform::CUDADeviceContext, T> constant_functor;
     constant_functor(context, grad_merge->mutable_value(), 0.0);
 
     auto* grad_merge_data = grad_merge->mutable_value()->data<T>();
@@ -119,9 +119,9 @@ struct SparseAdagradFunctor<platform::GPUPlace, T> {
     auto gs =
         framework::EigenVector<T>::Flatten(*(grad_square->mutable_value()));
     auto gm = framework::EigenVector<T>::Flatten(grad_merge->value());
-    gs.device(*context.GetEigenDevice<platform::GPUPlace>()) = gm * gm;
+    gs.device(*context.eigen_device()) = gm * gm;
 
-    math::SelectedRowsAddToTensor<platform::GPUPlace, T> functor;
+    math::SelectedRowsAddToTensor<platform::CUDADeviceContext, T> functor;
     functor(context, *grad_square, moment);
 
     // 3. update parameter
@@ -139,13 +139,13 @@ struct SparseAdagradFunctor<platform::GPUPlace, T> {
   }
 };
 
-template struct SparseAdagradFunctor<platform::GPUPlace, float>;
-template struct SparseAdagradFunctor<platform::GPUPlace, double>;
+template struct SparseAdagradFunctor<platform::CUDADeviceContext, float>;
+template struct SparseAdagradFunctor<platform::CUDADeviceContext, double>;
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
-    adagrad, ops::AdagradOpKernel<paddle::platform::GPUPlace, float>,
-    ops::AdagradOpKernel<paddle::platform::GPUPlace, double>);
+REGISTER_OP_CUDA_KERNEL(
+    adagrad, ops::AdagradOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::AdagradOpKernel<paddle::platform::CUDADeviceContext, double>);

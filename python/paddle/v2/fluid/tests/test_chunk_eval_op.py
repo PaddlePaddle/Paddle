@@ -120,7 +120,7 @@ class TestChunkEvalOp(OpTest):
         self.num_correct_chunks, self.num_infer_chunks, self.num_label_chunks = 4, 5, 9
 
     def set_data(self):
-        infer = np.zeros((self.batch_size, )).astype('int32')
+        infer = np.zeros((self.batch_size, )).astype('int64')
         infer.fill(self.num_chunk_types * self.num_tag_types)
         label = np.copy(infer)
         starts = np.random.choice(
@@ -147,7 +147,13 @@ class TestChunkEvalOp(OpTest):
             'Recall': np.asarray(
                 [recall], dtype='float32'),
             'F1-Score': np.asarray(
-                [f1], dtype='float32')
+                [f1], dtype='float32'),
+            'NumInferChunks': np.asarray(
+                [self.num_infer_chunks], dtype='int64'),
+            'NumLabelChunks': np.asarray(
+                [self.num_label_chunks], dtype='int64'),
+            'NumCorrectChunks': np.asarray(
+                [self.num_correct_chunks], dtype='int64')
         }
 
     def setUp(self):

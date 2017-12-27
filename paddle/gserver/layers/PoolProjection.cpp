@@ -36,6 +36,8 @@ PoolProjection::PoolProjection(const ProjectionConfig& config,
   strideY_ = conf.has_stride_y() ? conf.stride_y() : conf.stride();
   confPaddingY_ = conf.has_padding_y() ? conf.padding_y() : conf.padding();
   outputY_ = conf.has_output_y() ? conf.output_y() : conf.output_x();
+
+  excludeMode_ = conf.has_exclude_mode() ? conf.exclude_mode() : true;
 }
 
 size_t PoolProjection::getSize() {
@@ -141,7 +143,8 @@ void AvgPoolProjection::forward() {
                        outputY_,
                        outputX_,
                        confPaddingY_,
-                       confPadding_);
+                       confPadding_,
+                       excludeMode_);
 }
 
 void AvgPoolProjection::backward(const UpdateCallback& callback) {
@@ -166,6 +169,7 @@ void AvgPoolProjection::backward(const UpdateCallback& callback) {
                              1,
                              1,
                              confPaddingY_,
-                             confPadding_);
+                             confPadding_,
+                             excludeMode_);
 }
 }  // namespace paddle

@@ -11,7 +11,9 @@ regularizer = fluid.regularizer.L2Decay(0.0005 * BATCH_SIZE)
 hidden1 = fluid.layers.fc(input=image,
                           size=128,
                           act='relu',
-                          param_attr=regularizer)
+                          param_attr=fluid.ParamAttr(
+                              regularizer=regularizer,
+                              clip=fluid.clip.ClipByValue(10)))
 hidden2 = fluid.layers.fc(input=hidden1,
                           size=64,
                           act='relu',
@@ -33,11 +35,10 @@ opts = optimizer.minimize(avg_cost)
 accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
 
 inference_program = fluid.default_main_program().clone()
-test_accuracy = fluid.evaluator.Accuracy(
-    input=predict, label=label, main_program=inference_program)
-test_target = [avg_cost] + test_accuracy.metrics + test_accuracy.states
-inference_program = fluid.io.get_inference_program(
-    test_target, main_program=inference_program)
+with fluid.program_guard(inference_program):
+    test_accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
+    test_target = [avg_cost] + test_accuracy.metrics + test_accuracy.states
+    inference_program = fluid.io.get_inference_program(test_target)
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
@@ -48,40 +49,22 @@ test_reader = paddle.batch(paddle.dataset.mnist.test(), batch_size=128)
 
 place = fluid.CPUPlace()
 exe = fluid.Executor(place)
-
+feeder = fluid.DataFeeder(feed_list=[image, label], place=place)
 exe.run(fluid.default_startup_program())
 
 PASS_NUM = 100
 for pass_id in range(PASS_NUM):
     accuracy.reset(exe)
     for data in train_reader():
-        x_data = np.array(map(lambda x: x[0], data)).astype("float32")
-        y_data = np.array(map(lambda x: x[1], data)).astype("int64")
-        y_data = np.expand_dims(y_data, axis=1)
-
-        tensor_x = fluid.LoDTensor()
-        tensor_x.set(x_data, place)
-
-        tensor_y = fluid.LoDTensor()
-        tensor_y.set(y_data, place)
-
-        outs = exe.run(fluid.default_main_program(),
-                       feed={'x': tensor_x,
-                             'y': tensor_y},
-                       fetch_list=[avg_cost] + accuracy.metrics)
-        out = np.array(outs[0])
-        acc = np.array(outs[1])
+        out, acc = exe.run(fluid.default_main_program(),
+                           feed=feeder.feed(data),
+                           fetch_list=[avg_cost] + accuracy.metrics)
         pass_acc = accuracy.eval(exe)
 
         test_accuracy.reset(exe)
         for data in test_reader():
-            x_data = np.array(map(lambda x: x[0], data)).astype("float32")
-            y_data = np.array(map(lambda x: x[1], data)).astype("int64")
-            y_data = np.expand_dims(y_data, axis=1)
-
             out, acc = exe.run(inference_program,
-                               feed={'x': x_data,
-                                     'y': y_data},
+                               feed=feeder.feed(data),
                                fetch_list=[avg_cost] + test_accuracy.metrics)
 
         test_pass_acc = test_accuracy.eval(exe)

@@ -40,19 +40,18 @@ struct hl_gru_grad {
   T *prev_out_grad;
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 struct GRUUnitFunctor {
-  static void compute(const platform::DeviceContext &context,
-                      hl_gru_value<T> value, int frame_size, int batch_size,
+  static void compute(const DeviceContext &context, hl_gru_value<T> value,
+                      int frame_size, int batch_size,
                       activation_mode_t active_node,
                       activation_mode_t active_gate);
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 struct GRUUnitGradFunctor {
-  static void compute(const platform::DeviceContext &context,
-                      hl_gru_value<T> value, hl_gru_grad<T> grad,
-                      int frame_size, int batch_size,
+  static void compute(const DeviceContext &context, hl_gru_value<T> value,
+                      hl_gru_grad<T> grad, int frame_size, int batch_size,
                       activation_mode_t active_node,
                       activation_mode_t active_gate);
 };

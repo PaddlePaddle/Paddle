@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/conv_op.h"
 
@@ -66,8 +66,7 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
 }
 
-Conv2DOpMaker::Conv2DOpMaker(framework::OpProto* proto,
-                             framework::OpAttrChecker* op_checker)
+Conv2DOpMaker::Conv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput(
       "Input",
@@ -138,8 +137,7 @@ $$
 )DOC");
 }
 
-Conv3DOpMaker::Conv3DOpMaker(framework::OpProto* proto,
-                             framework::OpAttrChecker* op_checker)
+Conv3DOpMaker::Conv3DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput(
       "Input",
@@ -235,16 +233,18 @@ namespace ops = paddle::operators;
 REGISTER_OP(conv3d, ops::ConvOp, ops::Conv3DOpMaker, conv3d_grad,
             ops::ConvOpGrad);
 
-REGISTER_OP_CPU_KERNEL(conv2d,
-                       ops::GemmConvKernel<paddle::platform::CPUPlace, float>,
-                       ops::GemmConvKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
-    conv2d_grad, ops::GemmConvGradKernel<paddle::platform::CPUPlace, float>,
-    ops::GemmConvGradKernel<paddle::platform::CPUPlace, double>);
+    conv2d, ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    conv2d_grad,
+    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);
 
-REGISTER_OP_CPU_KERNEL(conv3d,
-                       ops::GemmConvKernel<paddle::platform::CPUPlace, float>,
-                       ops::GemmConvKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
-    conv3d_grad, ops::GemmConvGradKernel<paddle::platform::CPUPlace, float>,
-    ops::GemmConvGradKernel<paddle::platform::CPUPlace, double>);
+    conv3d, ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    conv3d_grad,
+    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);

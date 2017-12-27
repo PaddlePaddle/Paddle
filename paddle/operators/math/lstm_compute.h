@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/operators/math/detail/activation_functions.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/enforce.h"
 
@@ -31,26 +32,26 @@ typedef enum {
 
 template <class T>
 struct LstmMetaValue {
-  T *gateValue;
-  T *prevStateValue;
-  T *stateValue;
-  T *stateActiveValue;
-  T *outputValue;
-  T *checkIg;
-  T *checkFg;
-  T *checkOg;
+  T *gate_value;
+  T *prev_state_value;
+  T *state_value;
+  T *state_active_value;
+  T *output_value;
+  T *check_ig;
+  T *check_fg;
+  T *check_og;
 };
 
 template <class T>
 struct LstmMetaGrad {
-  T *gateGrad;
-  T *prevStateGrad;
-  T *stateGrad;
-  T *stateActiveGrad;
-  T *outputGrad;
-  T *checkIgGrad;
-  T *checkFgGrad;
-  T *checkOgGrad;
+  T *gate_grad;
+  T *prev_state_grad;
+  T *state_grad;
+  T *state_active_grad;
+  T *output_grad;
+  T *check_ig_grad;
+  T *check_fg_grad;
+  T *check_og_grad;
 };
 
 inline activation_mode_t ActiveType(const std::string &type) {
@@ -67,23 +68,24 @@ inline activation_mode_t ActiveType(const std::string &type) {
   }
 }
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class LstmUnitFunctor {
  public:
-  static void compute(const platform::DeviceContext &context,
-                      LstmMetaValue<T> value, int frame_size, int batch_size,
-                      const std::string &gate_act, const std::string &cell_act,
-                      const std::string &cand_act);
+  static void compute(const DeviceContext &context, LstmMetaValue<T> value,
+                      int frame_size, int batch_size,
+                      const detail::ActivationType &gate_act,
+                      const detail::ActivationType &cell_act,
+                      const detail::ActivationType &cand_act);
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class LstmUnitGradFunctor {
  public:
-  static void compute(const platform::DeviceContext &context,
-                      LstmMetaValue<T> value, LstmMetaGrad<T> grad,
-                      int frame_size, int batch_size,
-                      const std::string &gate_act, const std::string &cell_act,
-                      const std::string &cand_act);
+  static void compute(const DeviceContext &context, LstmMetaValue<T> value,
+                      LstmMetaGrad<T> grad, int frame_size, int batch_size,
+                      const detail::ActivationType &gate_act,
+                      const detail::ActivationType &cell_act,
+                      const detail::ActivationType &cand_act);
 };
 
 }  // namespace math

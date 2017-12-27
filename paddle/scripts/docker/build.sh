@@ -36,6 +36,7 @@ function cmake_gen() {
         ${PYTHON_FLAGS}
         -DWITH_DOC=OFF
         -DWITH_GPU=${WITH_GPU:-OFF}
+        -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DWITH_GOLANG=${WITH_GOLANG:-ON}
@@ -57,6 +58,7 @@ EOF
         ${PYTHON_FLAGS} \
         -DWITH_DOC=OFF \
         -DWITH_GPU=${WITH_GPU:-OFF} \
+        -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DWITH_GOLANG=${WITH_GOLANG:-ON} \
@@ -111,7 +113,10 @@ EOF
             -DWITH_SWIG_PY=ON \
             -DWITH_STYLE_CHECK=OFF
         make -j `nproc` gen_proto_py
+        make -j `nproc` paddle_python
         make -j `nproc` paddle_docs paddle_docs_cn
+        make -j `nproc` print_operators_doc
+        paddle/pybind/print_operators_doc > doc/en/html/operators.json
         popd
     fi
 
@@ -173,7 +178,7 @@ EOF
     # run paddle version to install python packages first
     RUN apt-get update &&\
         ${NCCL_DEPS}\
-        apt-get install -y wget python-pip && pip install -U pip && \
+        apt-get install -y wget python-pip dmidecode && pip install -U pip && \
         pip install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \

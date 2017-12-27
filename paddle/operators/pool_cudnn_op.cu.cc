@@ -29,7 +29,7 @@ class PoolCudnnOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "It must use CUDAPlace.");
 
     const Tensor *input = ctx.Input<Tensor>("X");
     Tensor *output = ctx.Output<Tensor>("Out");
@@ -90,7 +90,7 @@ class PoolCudnnGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "It must use CUDAPlace.");
 
     const Tensor *input = ctx.Input<Tensor>("X");
     const Tensor *output = ctx.Input<Tensor>("Out");
@@ -162,12 +162,12 @@ class PoolCudnnGradOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(pool2d_cudnn, ops::PoolCudnnOpKernel<float>,
-                       ops::PoolCudnnOpKernel<double>);
-REGISTER_OP_GPU_KERNEL(pool2d_cudnn_grad, ops::PoolCudnnGradOpKernel<float>,
-                       ops::PoolCudnnGradOpKernel<double>);
+REGISTER_OP_CUDA_KERNEL(pool2d_cudnn, ops::PoolCudnnOpKernel<float>,
+                        ops::PoolCudnnOpKernel<double>);
+REGISTER_OP_CUDA_KERNEL(pool2d_cudnn_grad, ops::PoolCudnnGradOpKernel<float>,
+                        ops::PoolCudnnGradOpKernel<double>);
 
-REGISTER_OP_GPU_KERNEL(pool3d_cudnn, ops::PoolCudnnOpKernel<float>,
-                       ops::PoolCudnnOpKernel<double>);
-REGISTER_OP_GPU_KERNEL(pool3d_cudnn_grad, ops::PoolCudnnGradOpKernel<float>,
-                       ops::PoolCudnnGradOpKernel<double>);
+REGISTER_OP_CUDA_KERNEL(pool3d_cudnn, ops::PoolCudnnOpKernel<float>,
+                        ops::PoolCudnnOpKernel<double>);
+REGISTER_OP_CUDA_KERNEL(pool3d_cudnn_grad, ops::PoolCudnnGradOpKernel<float>,
+                        ops::PoolCudnnGradOpKernel<double>);
