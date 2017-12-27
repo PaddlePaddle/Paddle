@@ -6,11 +6,23 @@ width = 224
 num_class = 1000
 batch_size = get_config_arg('batch_size', int, 64)
 layer_num = get_config_arg("layer_num", int, 50)
-is_test = get_config_arg("is_test", bool, False)
+is_infer = get_config_arg("is_infer", bool, False)
+num_samples = get_config_arg('num_samples', int, 2560)
 
-args = {'height': height, 'width': width, 'color': True, 'num_class': num_class}
+args = {
+    'height': height,
+    'width': width,
+    'color': True,
+    'num_class': num_class,
+    'is_infer': is_infer,
+    'num_samples': num_samples
+}
 define_py_data_sources2(
-    "train.list", None, module="provider", obj="process", args=args)
+    "train.list" if not is_infer else None,
+    "test.list" if is_infer else None,
+    module="provider",
+    obj="process",
+    args=args)
 
 settings(
     batch_size=batch_size,
@@ -45,7 +57,10 @@ def conv_bn_layer(name,
         act=LinearActivation(),
         bias_attr=False)
     return batch_norm_layer(
-        name=name + "_bn", input=tmp, act=active_type, use_global_stats=is_test)
+        name=name + "_bn",
+        input=tmp,
+        act=active_type,
+        use_global_stats=is_infer)
 
 
 def bottleneck_block(name, input, num_filters1, num_filters2):
@@ -207,7 +222,9 @@ elif layer_num == 152:
 else:
     print("Wrong layer number.")
 
-lbl = data_layer(name="label", size=num_class)
-loss = cross_entropy(name='loss', input=resnet, label=lbl)
-inputs(img, lbl)
-outputs(loss)
+if is_infer:
+    outputs(resnet)
+else:
+    lbl = data_layer(name="label", size=num_class)
+    loss = cross_entropy(name='loss', input=resnet, label=lbl)
+    outputs(loss)

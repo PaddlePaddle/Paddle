@@ -51,7 +51,7 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
  protected:
   // Explicitly set that the data type of computation kernel of cross_entropy
   // is determined by its input "X".
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()),
@@ -95,12 +95,13 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
                         "Input(Label) should be 1.");
     }
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+    ctx->ShareLoD("X", framework::GradVarName("X"));
   }
 
  protected:
   // Explicitly set that the data type of computation kernel of cross_entropy
   // is determined by its input "X".
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()),
@@ -110,8 +111,7 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
 
 class CrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CrossEntropyOpMaker(framework::OpProto* proto,
-                      framework::OpAttrChecker* op_checker)
+  CrossEntropyOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor, default Tensor<float>), a 2-D tensor with shape N x D, "

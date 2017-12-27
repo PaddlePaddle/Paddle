@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/gru_unit_op.h"
 
@@ -71,8 +71,7 @@ class GRUUnitOp : public framework::OperatorWithKernel {
 
 class GRUUnitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  GRUUnitOpMaker(framework::OpProto* proto,
-                 framework::OpAttrChecker* op_checker)
+  GRUUnitOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Input",
              "(Tensor) Matrix with shape [batch_size, frame_size * 3] for the "
@@ -201,9 +200,10 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(gru_unit, ops::GRUUnitOp, ops::GRUUnitOpMaker, gru_unit_grad,
             ops::GRUUnitGradOp);
-REGISTER_OP_CPU_KERNEL(gru_unit,
-                       ops::GRUUnitKernel<paddle::platform::CPUPlace, float>,
-                       ops::GRUUnitKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(
-    gru_unit_grad, ops::GRUUnitGradKernel<paddle::platform::CPUPlace, float>,
-    ops::GRUUnitGradKernel<paddle::platform::CPUPlace, double>);
+    gru_unit, ops::GRUUnitKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GRUUnitKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    gru_unit_grad,
+    ops::GRUUnitGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GRUUnitGradKernel<paddle::platform::CPUDeviceContext, double>);

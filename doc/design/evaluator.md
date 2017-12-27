@@ -1,22 +1,22 @@
 ## Evaluator Design
 
-### The Problem
+### Problem Statement
 
-During training or serving, we provide the evaluation function to measure the model performance, e.g., accuracy, precision. In the operator based framework design, the data go through the network pipeline batch by batch. As a result, inside the operator, we only can calculate one minibatch metrics. We need to provide a mechanism to calculate the metrics for each N pass/batch the user wanted.
+During training or inference, we provide an evaluation function to measure the model performance, for example, accuracy, precision, etc. In the operator based framework design, the data passes through the network pipeline batch by batch. As a result, inside the operator, we only calculate the metrics for one minibatch. Thus, we need to provide a mechanism to calculate the metrics for each N pass/batch the user wants.
 
 ### Evaluator Design
-Currently, every operation is expressed in the graph. we divide the evaluator process into three steps.
+Currently, every operation is expressed in the graph. We divide the evaluator process into three steps.
 
 1. Initialize the metric state and add it into the block.
 
-2. Calculate the statistic of the metric state in every mini-batch. The single operator is only responsible for calculating necessary statistics for one mini-batch. For example, accuracy operator only calculate a minibatch data if run once.
+2. Calculate the concerned metrics for every mini-batch. The single evaluator operator is only responsible for calculating the necessary statistics for one mini-batch. For example, the accuracy operator only calculates the accuracy for a minibatch data if run once.
 
 
 3. Merge the mini-batch statistics to form the evaluation result for multiple mini-batches. When it comes to distributed training/Multi-GPU training, aggregate the value from different devices.
 
 ### Implementation
-This design is shown in python API. 
-Each metric operator need to caculate the metric statistic and return the batch aware states, Python side responsible for accumulate the states for each pass. 
+This design is shown in the Python API. 
+Each metric operator needs to caculate the metric statistic and return the batch-aware states. Python side is responsible for accumulating the states for each pass. 
 
     
 ```python

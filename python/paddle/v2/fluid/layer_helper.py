@@ -1,7 +1,7 @@
 import copy
 import itertools
 
-from framework import Variable, default_main_program, default_startup_program, \
+from framework import Variable, Parameter, default_main_program, default_startup_program, \
     unique_name, dtype_is_floating
 from paddle.v2.fluid.initializer import Constant, Xavier
 from param_attr import ParamAttr
@@ -21,19 +21,11 @@ class LayerHelper(object):
 
     @property
     def main_program(self):
-        prog = self.kwargs.get('main_program', None)
-        if prog is None:
-            return default_main_program()
-        else:
-            return prog
+        return default_main_program()
 
     @property
     def startup_program(self):
-        prog = self.kwargs.get('startup_program', None)
-        if prog is None:
-            return default_startup_program()
-        else:
-            return prog
+        return default_startup_program()
 
     def append_op(self, *args, **kwargs):
         return self.main_program.current_block().append_op(*args, **kwargs)
@@ -122,6 +114,12 @@ class LayerHelper(object):
         return self.main_program.global_block().create_parameter(
             dtype=dtype, shape=shape, **attr.to_kwargs())
 
+    def get_parameter(self, name):
+        param = self.main_program.global_block().var(name)
+        if not isinstance(param, Parameter):
+            raise ValueError("no Parameter name %s found" % name)
+        return param
+
     def create_tmp_variable(self, dtype):
         return self.main_program.current_block().create_var(
             name=unique_name(".".join([self.name, 'tmp'])),
@@ -186,7 +184,7 @@ class LayerHelper(object):
         self.append_op(
             type=act_type,
             inputs={"X": [input_var]},
-            outputs={"Y": [tmp]},
+            outputs={"Out": [tmp]},
             attrs=act)
         return tmp
 
@@ -196,3 +194,9 @@ class LayerHelper(object):
         else:
             # For integer and boolean types, initialize with all zeros
             return Constant()
+
+    def is_instance(self, param_name, cls):
+        param = self.kwargs.get(param_name, None)
+        if not isinstance(param, cls):
+            raise TypeError("The input {0} parameter of method {1} must be {2}",
+                            param_name, self.layer_type, cls.__name__)
