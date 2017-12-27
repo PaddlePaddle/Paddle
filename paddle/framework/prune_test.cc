@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/framework/prune.h"
 
@@ -29,7 +29,7 @@ namespace ops = paddle::operators;
 
 void AddOp(const std::string &type, const f::VariableNameMap &inputs,
            const f::VariableNameMap &outputs, f::AttributeMap attrs,
-           paddle::framework::BlockDescBind *block) {
+           paddle::framework::BlockDesc *block) {
   // insert output
   for (auto kv : outputs) {
     for (auto v : kv.second) {
@@ -51,8 +51,8 @@ void AddOp(const std::string &type, const f::VariableNameMap &inputs,
 }
 
 TEST(Prune, one_operator) {
-  f::ProgramDescBind program;
-  f::BlockDescBind *block = program.MutableBlock(0);
+  f::ProgramDesc program;
+  f::BlockDesc *block = program.MutableBlock(0);
 
   AddOp("one_one", {{"input", {"a"}}}, {{"output", {"b"}}}, f::AttributeMap{},
         block);
@@ -69,8 +69,8 @@ TEST(Prune, one_operator) {
 }
 
 TEST(Prune, forward) {
-  f::ProgramDescBind program;
-  f::BlockDescBind *block = program.MutableBlock(0);
+  f::ProgramDesc program;
+  f::BlockDesc *block = program.MutableBlock(0);
 
   AddOp("one_one", {{"input", {"a"}}}, {{"output", {"b"}}}, f::AttributeMap{},
         block);
@@ -92,8 +92,8 @@ TEST(Prune, forward) {
 }
 
 TEST(Prune, multi_input_op) {
-  f::ProgramDescBind program;
-  f::BlockDescBind *block = program.MutableBlock(0);
+  f::ProgramDesc program;
+  f::BlockDesc *block = program.MutableBlock(0);
 
   AddOp("one_one", {{"input", {"a0"}}}, {{"output", {"b0"}}}, f::AttributeMap{},
         block);
@@ -113,8 +113,8 @@ TEST(Prune, multi_input_op) {
 }
 
 TEST(Prune, multi_output_op) {
-  f::ProgramDescBind program;
-  f::BlockDescBind *block = program.MutableBlock(0);
+  f::ProgramDesc program;
+  f::BlockDesc *block = program.MutableBlock(0);
 
   AddOp("one_two", {{"input", {"a"}}}, {{"output", {"b", "c"}}},
         f::AttributeMap{}, block);
@@ -132,8 +132,8 @@ TEST(Prune, multi_output_op) {
 }
 
 TEST(Prune, multi_target) {
-  f::ProgramDescBind program;
-  f::BlockDescBind *block = program.MutableBlock(0);
+  f::ProgramDesc program;
+  f::BlockDesc *block = program.MutableBlock(0);
 
   AddOp("one_two", {{"input", {"a"}}}, {{"output", {"b", "c"}}},
         f::AttributeMap{}, block);

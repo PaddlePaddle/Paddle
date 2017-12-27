@@ -165,9 +165,6 @@ case "$1" in
     "make_diagram")
         python -m paddle.utils.make_model_diagram ${@:2}
         ;;
-    "usage")
-        $PADDLE_BIN_PATH/paddle_usage ${@:2}
-        ;;
     "version")
         version
         ;;

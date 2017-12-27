@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/cond_op.h"
-
 #include "paddle/operators/gather.h"
 #include "paddle/operators/scatter.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -193,12 +193,15 @@ void CondOp::MergeDataFromSubnet(const framework::Scope& scope,
   }
 }
 
-void CondOp::Run(const Scope& scope,
-                 const platform::DeviceContext& dev_ctx) const {
+void CondOp::Run(const Scope& scope, const platform::Place& place) const {
+  // get device context from pool
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Get();
+  auto& dev_ctx = *pool.Borrow(place);
+
   PrepareDataForSubnet(scope, dev_ctx);
   std::vector<framework::Scope*>& sub_scopes = GetSubScopes(scope);
   for (int i = 0; i < BRANCH_NUM; ++i) {
-    sub_net_op_[i]->Run(*sub_scopes[i], dev_ctx);
+    sub_net_op_[i]->Run(*sub_scopes[i], place);
   }
   MergeDataFromSubnet(scope, dev_ctx);
 }

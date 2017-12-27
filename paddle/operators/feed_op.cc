@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/framework/feed_fetch_type.h"
 #include "paddle/framework/op_registry.h"
@@ -25,7 +25,7 @@ class FeedOp : public framework::OperatorBase {
          const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto feed_var_name = Input("X");
     auto *feed_var = scope.FindVar(feed_var_name);
 
@@ -47,7 +47,12 @@ class FeedOp : public framework::OperatorBase {
     auto &feed_list = feed_var->Get<framework::FeedFetchList>();
     auto &feed_item = feed_list.at(static_cast<size_t>(col));
     auto *out_item = out_var->GetMutable<framework::FeedFetchType>();
-    framework::CopyFrom(feed_item, dev_ctx.GetPlace(), dev_ctx, out_item);
+
+    // get device context from pool
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+    auto &dev_ctx = *pool.Borrow(place);
+
+    framework::CopyFrom(feed_item, place, dev_ctx, out_item);
     out_item->set_lod(feed_item.lod());
   }
 };

@@ -60,13 +60,13 @@ class MeanGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto* grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* grad_op = new framework::OpDesc();
     grad_op->SetType("mean_grad");
     grad_op->SetInput("X", Input("X"));
     grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 
