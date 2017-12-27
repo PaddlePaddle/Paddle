@@ -82,7 +82,7 @@ inline std::ostream& operator<<(std::ostream& os,
 
 inline std::string KernelTypeToString(const OpKernelType& kernel_key) {
   std::ostringstream stream;
-  stream << op_kernel_type;
+  stream << kernel_key;
   return stream.str();
 }
 
