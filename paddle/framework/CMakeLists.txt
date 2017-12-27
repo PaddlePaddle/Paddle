@@ -21,6 +21,8 @@ cc_test(variable_test SRCS variable_test.cc)
 cc_library(scope SRCS scope.cc DEPS glog)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)
 
+cc_library(data_transform SRCS data_transform.cc DEPS tensor framework_proto)
+cc_test(data_transform_test SRCS data_transform_test.cc DEPS data_transform device_context)
 
 cc_library(attribute SRCS attribute.cc DEPS framework_proto)
 cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc
@@ -29,7 +31,8 @@ cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute)
 cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
 cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute)
-cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog shape_inference)
+cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
+    shape_inference data_transform)
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry init)
 cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog)
 
@@ -65,6 +68,3 @@ cc_library(init SRCS init.cc DEPS gflags device_context place stringpiece)
 cc_test(init_test SRCS init_test.cc DEPS init)
 
 cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto)
-
-cc_library(data_transform SRCS data_transform.cc DEPS tensor framework_proto)
-cc_test(data_transform_test SRCS data_transform_test.cc DEPS data_transform device_context)
