@@ -270,6 +270,7 @@ def gru_unit(input,
             attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
 
     # create bias
+
     if bias is None:
         bias_size = [1, 3 * size]
         bias = helper.create_parameter(
@@ -358,7 +359,59 @@ def cos_sim(X, Y, **kwargs):
 
 def cross_entropy(input, label, **kwargs):
     """
-    This function computes cross_entropy using the input and label.
+    **Cross Entropy Layer**
+
+    This layer computes the cross entropy between `input` and `label`. It supports
+    both standard cross-entropy and soft-label cross-entropy loss computation.
+
+    1) One-hot cross-entropy:
+	`soft_label = false`, `Label[i, 0]` indicates the class index for sample i:
+        
+        .. math::
+          
+            Y[i] = -\log(X[i, Label[i]])
+
+    2) Soft-label cross-entropy:
+	`soft_label = true`, `Label[i, j]` indicates the soft label of class j
+	for sample i:
+
+        .. math::
+
+            Y[i] = \sum_j{-Label[i, j] * log(X[i, j])}
+
+       Please make sure that in this case the summuation of each row of `label`
+       equals one.
+
+    3) One-hot cross-entropy with vecterized `label`:
+	 As a special case of 2), when each row of 'label' has only one
+	 non-zero element (equals 1), soft-label cross-entropy degenerates to a
+	 one-hot cross-entropy with one-hot label representation.
+    
+    Args:
+        input (Variable|list):  a 2-D tensor with shape N x D, where N is the 
+            batch size and D is the number of classes. This input is a probability 
+            computed by the previous operator, which is almost always the result
+            of a softmax operator.
+        label (Variable|list): the ground truth which is a 2-D tensor. When 
+              `soft_label` is set to `false`, `label` is a tensor<int64> with shape 
+              [N x 1]. When `soft_label` is set to `true`, `label` is a 
+              tensor<float/double> with shape [N x K].
+        soft_label (bool, via `**kwargs`): a flag indicating whether to interpretate
+              the given labels as soft labels, default `false`.
+
+    Returns:
+         A 2-D tensor with shape [N x 1], the cross entropy loss.
+
+    Raises:
+        `ValueError`: 1) If the 1st dimension of `input` and `label` are not equal; 2) If 
+              `soft_label == true`, and the 2nd dimension of `input` and `label` are not 
+               equal; 3) If `soft_label == false`, and the 2nd dimension of `label` is not 1.
+
+    Examples:
+        .. code-block:: python
+
+          predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
+          cost = fluid.layers.cross_entropy(input=predict, label=label)
     """
     helper = LayerHelper('cross_entropy', **kwargs)
     out = helper.create_tmp_variable(dtype=input.dtype)
