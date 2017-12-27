@@ -45,7 +45,7 @@ TEST_F(SelectedRowsTester, complete_dims) {
 
 TEST_F(SelectedRowsTester, SerializeAndDeseralize) {
   SelectedRows dst_tensor;
-  platform::CPUDeviceContext cpu_ctx((platform::CPUPlace()));
+  platform::CPUDeviceContext cpu_ctx(platform::CPUPlace());
   std::ostringstream oss;
 
   SerializeToStream(oss, *selected_rows_, cpu_ctx);
