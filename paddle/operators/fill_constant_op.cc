@@ -49,8 +49,8 @@ class FillConstantOp : public framework::OperatorBase {
       out.mutable_data(dev_place, framework::ToTypeIndex(data_type));
     }
 
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-    auto &dev_ctx = *pool.Borrow(dev_place);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place);
     math::set_constant(dev_ctx, &out, value);
   }
 };
