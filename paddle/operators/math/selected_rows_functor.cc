@@ -179,6 +179,53 @@ template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, double>;
 template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, int>;
 template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, int64_t>;
 
+// This is a separated namespace for manipulate SelectedRows typed
+// data. Like merge duplicated rows, adding two SelectedRows etc.
+//
+// Another group of functors is called "scatter updates", which means
+// use SelectedRows to update a dense tensor with different Ops, like
+// add or mul.
+namespace scatter {
+
+size_t FindPos(const std::vector<int64_t>& rows, int64_t value) {
+  return std::find(rows.begin(), rows.end(), value) - rows.begin();
+}
+
+template <typename T>
+struct MergeAdd<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::SelectedRows& input,
+                  framework::SelectedRows* out) {
+    auto input_rows = input.rows();
+    std::set<int64_t> row_set(input_rows.begin(), input_rows.end());
+    std::vector<int64_t> merge_rows(row_set.begin(), row_set.end());
+
+    auto input_width = input.value().dims()[1];
+    // std::unique_ptr<framework::SelectedRows> out{
+    //     new framework::SelectedRows()};
+    out->set_rows(merge_rows);
+    out->set_height(input.height());
+    out->mutable_value()->mutable_data<T>(
+        framework::make_ddim(
+            {static_cast<int64_t>(merge_rows.size()), input_width}),
+        context.GetPlace());
+
+    math::SetConstant<platform::CPUDeviceContext, T> constant_functor;
+    constant_functor(context, out->mutable_value(), 0.0);
+
+    auto* out_data = out->mutable_value()->data<T>();
+    auto* input_data = input.value().data<T>();
+
+    for (size_t i = 0; i < input_rows.size(); i++) {
+      size_t out_i = FindPos(merge_rows, input_rows[i]);
+      for (int64_t j = 0; j < input_width; j++) {
+        out_data[out_i * input_width + j] += input_data[i * input_width + j];
+      }
+    }
+  }
+};
+
+}  // namespace scatter
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
