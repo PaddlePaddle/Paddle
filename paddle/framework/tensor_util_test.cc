@@ -235,12 +235,13 @@ TEST(Tensor, SerializeAndDeserialize) {
   int array[6] = {1, 2, 3, 4, 5, 6};
   src_tensor.Resize({2, 3});
   int* src_ptr = src_tensor.mutable_data<int>(platform::CPUPlace());
-  for (int i = 0; i < 5; ++i) {
+  for (int i = 0; i < 6; ++i) {
     src_ptr[i] = array[i];
   }
   {
     framework::Tensor dst_tensor;
-    platform::CPUDeviceContext cpu_ctx((platform::CPUPlace()));
+    auto place = new platform::CPUPlace();
+    platform::CPUDeviceContext cpu_ctx(*place);
     std::ostringstream oss;
     SerializeToStream(oss, src_tensor, cpu_ctx);
 
@@ -250,13 +251,16 @@ TEST(Tensor, SerializeAndDeserialize) {
     for (int i = 0; i < 5; ++i) {
       ASSERT_EQ(dst_ptr[i], array[i]);
     }
+    delete place;
   }
 #ifdef PADDLE_WITH_CUDA
   {
     Tensor gpu_tensor;
     Tensor dst_tensor;
 
-    platform::CUDADeviceContext gpu_ctx(platform::CUDAPlace());
+    auto gpu_place = new platform::CUDAPlace();
+    platform::CUDADeviceContext gpu_ctx(*gpu_place);
+
     CopyFrom(src_tensor, *gpu_place, gpu_ctx, &gpu_tensor);
 
     std::ostringstream oss;
@@ -265,9 +269,11 @@ TEST(Tensor, SerializeAndDeserialize) {
     std::istringstream iss(os.str());
 
     int* dst_ptr = dst_tensor.mutable_data<int>(platform::CPUPlace());
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 6; ++i) {
       ASSERT_EQ(dst_ptr[i], array[i]);
     }
+
+    delete gpu_place;
   }
 #endif
 }
