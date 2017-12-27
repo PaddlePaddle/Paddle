@@ -95,7 +95,9 @@ class DistributeTranspiler:
         """
         if program is None:
             program = default_main_program()
+        self.program = program
         self.trainers = trainers
+        self.optimize_ops = optimize_ops
         self._optimize_distributed(
             optimize_ops,
             program,
@@ -156,9 +158,10 @@ class DistributeTranspiler:
             attrs={"endpoints": pserver_endpoints,
                    "epmap": epmap})
 
-    def get_trainer_program(optimize_ops, program):
+    def get_trainer_program(self):
         # remove optimize ops and add a send op to main_program
-        program.global_block().delete_ops(optimize_ops)
+        self.program.global_block().delete_ops(self.optimize_ops)
+        return self.program
 
     def _create_var_for_trainers(self, block, var, trainers):
         var_list = []
@@ -210,7 +213,6 @@ class DistributeTranspiler:
 
             if opt_op.inputs.has_key("Grad"):
                 if opt_op.inputs["Grad"].name in grad_var_names:
-                    print "appending ", opt_op.type, opt_op.inputs
                     optimize_sub_program.global_block().append_op(
                         type=opt_op.type,
                         inputs=opt_op.inputs,
