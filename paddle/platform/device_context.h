@@ -109,13 +109,13 @@ class DeviceContextPool {
  public:
   explicit DeviceContextPool(const std::vector<platform::Place>& places);
 
-  static DeviceContextPool& Get() {
+  static DeviceContextPool& Instance() {
     PADDLE_ENFORCE_NOT_NULL(pool, "Need to Create DeviceContextPool first!");
     return *pool;
   }
 
   /*! \brief  Create should only called by Init function */
-  static DeviceContextPool& Create(const std::vector<platform::Place>& places) {
+  static DeviceContextPool& Init(const std::vector<platform::Place>& places) {
     if (pool == nullptr) {
       pool = new DeviceContextPool(places);
     }
@@ -123,13 +123,7 @@ class DeviceContextPool {
   }
 
   /*! \brief  Return handle of single device context. */
-  const platform::DeviceContext* Borrow(const platform::Place& place);
-
-  /*! \brief  Return handle of multi-device context. */
-  std::vector<const platform::DeviceContext*> Borrow(
-      const std::vector<platform::Place>& places);
-
-  ~DeviceContextPool() {}
+  const platform::DeviceContext* Get(const platform::Place& place);
 
  private:
   static DeviceContextPool* pool;
