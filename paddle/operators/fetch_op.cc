@@ -52,8 +52,8 @@ class FetchOp : public framework::OperatorBase {
 
     // FIXME(yuyang18): Should we assume the fetch operator always generate
     // CPU outputs?
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-    auto &dev_ctx = *pool.Borrow(place);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place);
 
     CopyFrom(src_item, platform::CPUPlace(), dev_ctx, &dst_item);
     dev_ctx.Wait();
