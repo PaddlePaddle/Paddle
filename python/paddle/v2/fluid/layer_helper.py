@@ -184,7 +184,7 @@ class LayerHelper(object):
         self.append_op(
             type=act_type,
             inputs={"X": [input_var]},
-            outputs={"Y": [tmp]},
+            outputs={"Out": [tmp]},
             attrs=act)
         return tmp
 

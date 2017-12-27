@@ -131,8 +131,8 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
     auto x_sliced = x.Slice(x_offset, x_offset + len);
     auto out_sliced = out->Slice(out_offset, out_offset + len);
 
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-    auto &dev_ctx = *pool.Borrow(place);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place);
     framework::CopyFrom(x_sliced, out_sliced.place(), dev_ctx, &out_sliced);
     out_offset += len;
     return out_offset;
