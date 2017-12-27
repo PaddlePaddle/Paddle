@@ -1627,9 +1627,9 @@ TEST(Layer, NCELayer) {
             }
           }
           LOG(INFO) << "NCELayer "
-                    << " isIdLabel=" << isIdLabel << " withWeight=" << withWeight
-                    << " withDist=" << withDist;
-          // Not support GPU now
+                    << " isIdLabel=" << isIdLabel
+                    << " withWeight=" << withWeight << " withDist=" << withDist;
+
           testLayerGrad(config,
                         "nce",
                         100,

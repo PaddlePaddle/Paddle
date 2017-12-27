@@ -66,7 +66,6 @@ class NCELayer : public Layer {
   MatrixPtr cpuLabelValue_;
   MatrixPtr cpuWeightLayerValue_;
 
-
 public:
   explicit NCELayer(const LayerConfig& config)
       : Layer(config),
@@ -126,34 +125,31 @@ public:
     IVectorPtr label = label_layer.ids;
     MatrixPtr label_value = label_layer.value;
     if (useGpu_) {
-        if (label) {
-            IVector::resizeOrCreate(cpuLabel_,
-                        label->getSize(),
-                        false);
-            cpuLabel_->copyFrom(*label);
-        }
-        if (label_value) {
-            Matrix::resizeOrCreateSparseMatrix(
-                           cpuLabelValue_,
-                           label_value->getHeight(),
-                           label_value->getWidth(),
-                           label_value->getElementCnt(),
-                           NO_VALUE,
-                           SPARSE_CSR,
-                           false,
-                           false);
-            cpuLabelValue_->copyFrom(*label_value, HPPL_STREAM_DEFAULT);
-        }
+      if (label) {
+        IVector::resizeOrCreate(cpuLabel_, label->getSize(), false);
+        cpuLabel_->copyFrom(*label);
+      }
+      if (label_value) {
+        Matrix::resizeOrCreateSparseMatrix(cpuLabelValue_,
+                                           label_value->getHeight(),
+                                           label_value->getWidth(),
+                                           label_value->getElementCnt(),
+                                           NO_VALUE,
+                                           SPARSE_CSR,
+                                           false,
+                                           false);
+        cpuLabelValue_->copyFrom(*label_value, HPPL_STREAM_DEFAULT);
+      }
     } else {
-        if (label) {
-            cpuLabel_ = label;
-        }
-        if (label_value) {
-            cpuLabelValue_ = label_value;
-        }
+      if (label) {
+        cpuLabel_ = label;
+      }
+      if (label_value) {
+        cpuLabelValue_ = label_value;
+      }
     }
-    CpuSparseMatrixPtr multiLabel = std::dynamic_pointer_cast<CpuSparseMatrix>(
-        cpuLabelValue_);
+    CpuSparseMatrixPtr multiLabel =
+        std::dynamic_pointer_cast<CpuSparseMatrix>(cpuLabelValue_);
 
     CHECK(cpuLabel_ || multiLabel)
         << "The label layer must have ids or NonValueSparseMatrix value";
@@ -165,18 +161,18 @@ public:
 
     real* weight = nullptr;
     if (weightLayer_) {
-        const MatrixPtr& weight_value = getInputValue(*weightLayer_);
-        if (useGpu_) {
-            Matrix::resizeOrCreate(cpuWeightLayerValue_,
-                                   weight_value->getHeight(),
-                                   weight_value->getWidth(),
-                                   false,
-                                   false);
-            cpuWeightLayerValue_->copyFrom(*weight_value);
-        } else {
-            cpuWeightLayerValue_ = weight_value;
-        }
-        weight = cpuWeightLayerValue_->getData();
+      const MatrixPtr& weight_value = getInputValue(*weightLayer_);
+      if (useGpu_) {
+        Matrix::resizeOrCreate(cpuWeightLayerValue_,
+                               weight_value->getHeight(),
+                               weight_value->getWidth(),
+                               false,
+                               false);
+        cpuWeightLayerValue_->copyFrom(*weight_value);
+      } else {
+        cpuWeightLayerValue_ = weight_value;
+      }
+      weight = cpuWeightLayerValue_->getData();
     }
 
     for (int i = 0; i < batchSize; ++i) {
@@ -232,11 +228,7 @@ public:
     int size = getSize();
     resetOutput(batchSize, size);
 
-    Matrix::resizeOrCreate(sampleOut_.value,
-                           1,
-                           samples_.size(),
-                           false,
-                           false);
+    Matrix::resizeOrCreate(sampleOut_.value, 1, samples_.size(), false, false);
 
     forwardBias();
 
@@ -251,11 +243,7 @@ public:
   }
 
   void backward(const UpdateCallback& callback) override {
-    Matrix::resizeOrCreate(sampleOut_.grad,
-                           1,
-                           samples_.size(),
-                           false,
-                           false);
+    Matrix::resizeOrCreate(sampleOut_.grad, 1, samples_.size(), false, false);
 
     backwardCost();
 
@@ -277,14 +265,14 @@ public:
     } else {
       MatrixPtr bias_value = biases_->getW();
       if (useGpu_) {
-          Matrix::resizeOrCreate(cpuBias_,
-                         bias_value->getHeight(),
-                         bias_value->getWidth(),
-                         false,
-                         false);
-          cpuBias_->copyFrom(*bias_value);
+        Matrix::resizeOrCreate(cpuBias_,
+                               bias_value->getHeight(),
+                               bias_value->getWidth(),
+                               false,
+                               false);
+        cpuBias_->copyFrom(*bias_value);
       } else {
-          cpuBias_ = bias_value;
+        cpuBias_ = bias_value;
       }
       real* bias = cpuBias_->getData();
       real* sampleOut = sampleOut_.value->getData();
@@ -298,14 +286,14 @@ public:
     if (!biases_) return;
     MatrixPtr bias_grad = biases_->getWGrad();
     if (useGpu_) {
-        Matrix::resizeOrCreate(cpuBiasGrad_,
-                         bias_grad->getHeight(),
-                         bias_grad->getWidth(),
-                         false,
-                         false);
-        cpuBiasGrad_->copyFrom(*bias_grad);
+      Matrix::resizeOrCreate(cpuBiasGrad_,
+                             bias_grad->getHeight(),
+                             bias_grad->getWidth(),
+                             false,
+                             false);
+      cpuBiasGrad_->copyFrom(*bias_grad);
     } else {
-        cpuBiasGrad_ = bias_grad;
+      cpuBiasGrad_ = bias_grad;
     }
     real* bias = cpuBiasGrad_->getData();
     real* sampleOut = sampleOut_.grad->getData();
@@ -313,9 +301,9 @@ public:
       bias[samples_[i].labelId] += sampleOut[i];
     }
     if (useGpu_) {
-        bias_grad->copyFrom(*cpuBiasGrad_);
+      bias_grad->copyFrom(*cpuBiasGrad_);
     } else {
-        bias_grad = cpuBiasGrad_;
+      bias_grad = cpuBiasGrad_;
     }
     biases_->incUpdate(callback);
   }
@@ -324,21 +312,18 @@ public:
     const MatrixPtr& inputMat = getInputValue(layerId);
     const MatrixPtr& weightMat = weights_[layerId]->getW();
     if (useGpu_) {
-        Matrix::resizeOrCreate(cpuInput_,
-                         inputMat->getHeight(),
-                         inputMat->getWidth(),
-                         false,
-                         false);
-        cpuInput_->copyFrom(*inputMat);
-        Matrix::resizeOrCreate(cpuWeight_,
-                         weightMat->getHeight(),
-                         weightMat->getWidth(),
-                         false,
-                         false);
-        cpuWeight_->copyFrom(*weightMat);
+      Matrix::resizeOrCreate(
+          cpuInput_, inputMat->getHeight(), inputMat->getWidth(), false, false);
+      cpuInput_->copyFrom(*inputMat);
+      Matrix::resizeOrCreate(cpuWeight_,
+                             weightMat->getHeight(),
+                             weightMat->getWidth(),
+                             false,
+                             false);
+      cpuWeight_->copyFrom(*weightMat);
     } else {
-        cpuInput_ = inputMat;
-        cpuWeight_ = weightMat;
+      cpuInput_ = inputMat;
+      cpuWeight_ = weightMat;
     }
     int dim = inputMat->getWidth();
     real* sampleOut = sampleOut_.value->getData();
@@ -357,43 +342,40 @@ public:
     MatrixPtr weightGradMat = weights_[layerId]->getWGrad();
 
     if (useGpu_) {
-        Matrix::resizeOrCreate(cpuInput_,
-                         inputMat->getHeight(),
-                         inputMat->getWidth(),
-                         false,
-                         false);
-        cpuInput_->copyFrom(*inputMat);
-        if (inputGradMat) {
-          Matrix::resizeOrCreate(cpuInputGrad_,
-                         inputGradMat->getHeight(),
-                         inputGradMat->getWidth(),
-                         false,
-                         false);
-          cpuInputGrad_->copyFrom(*inputGradMat);
-        }
-        Matrix::resizeOrCreate(cpuWeight_,
-                         weightMat->getHeight(),
-                         weightMat->getWidth(),
-                         false,
-                         false);
-        cpuWeight_->copyFrom(*weightMat);
-        if (weightGradMat) {
-          Matrix::resizeOrCreate(cpuWeightGrad_,
-                         weightGradMat->getHeight(),
-                         weightGradMat->getWidth(),
-                         false,
-                         false);
-          cpuWeightGrad_->copyFrom(*weightGradMat);
-        }
+      Matrix::resizeOrCreate(
+          cpuInput_, inputMat->getHeight(), inputMat->getWidth(), false, false);
+      cpuInput_->copyFrom(*inputMat);
+      if (inputGradMat) {
+        Matrix::resizeOrCreate(cpuInputGrad_,
+                               inputGradMat->getHeight(),
+                               inputGradMat->getWidth(),
+                               false,
+                               false);
+        cpuInputGrad_->copyFrom(*inputGradMat);
+      }
+      Matrix::resizeOrCreate(cpuWeight_,
+                             weightMat->getHeight(),
+                             weightMat->getWidth(),
+                             false,
+                             false);
+      cpuWeight_->copyFrom(*weightMat);
+      if (weightGradMat) {
+        Matrix::resizeOrCreate(cpuWeightGrad_,
+                               weightGradMat->getHeight(),
+                               weightGradMat->getWidth(),
+                               false,
+                               false);
+        cpuWeightGrad_->copyFrom(*weightGradMat);
+      }
     } else {
-        cpuInput_ = inputMat;
-        if (inputGradMat) {
-          cpuInputGrad_ = inputGradMat;
-        }
-        cpuWeight_ = weightMat;
-        if (weightGradMat) {
-          cpuWeightGrad_ = weightGradMat;
-        }
+      cpuInput_ = inputMat;
+      if (inputGradMat) {
+        cpuInputGrad_ = inputGradMat;
+      }
+      cpuWeight_ = weightMat;
+      if (weightGradMat) {
+        cpuWeightGrad_ = weightGradMat;
+      }
     }
     int dim = cpuInput_->getWidth();
     real* sampleGrad = sampleOut_.grad->getData();
@@ -431,14 +413,14 @@ public:
   void forwardCost() {
     MatrixPtr output_value = output_.value;
     if (useGpu_) {
-        Matrix::resizeOrCreate(cpuOutput_,
-                         output_value->getHeight(),
-                         output_value->getWidth(),
-                         false,
-                         false);
-        cpuOutput_->copyFrom(*output_value);
+      Matrix::resizeOrCreate(cpuOutput_,
+                             output_value->getHeight(),
+                             output_value->getWidth(),
+                             false,
+                             false);
+      cpuOutput_->copyFrom(*output_value);
     } else {
-        cpuOutput_ = output_value;
+      cpuOutput_ = output_value;
     }
     real* out = cpuOutput_->getData();
     real* sampleOut = sampleOut_.value->getData();
@@ -453,9 +435,9 @@ public:
       out[samples_[i].sampleId] += samples_[i].weight * cost;
     }
     if (useGpu_) {
-        output_value->copyFrom(*cpuOutput_);
+      output_value->copyFrom(*cpuOutput_);
     } else {
-        output_value = cpuOutput_;
+      output_value = cpuOutput_;
     }
   }
 
