@@ -215,24 +215,3 @@ TEST(Tensor, Layout) {
   src.set_layout(framework::DataLayout::kAnyLayout);
   ASSERT_EQ(src.layout(), framework::DataLayout::kAnyLayout);
 }
-
-TEST(Tensor, SerializeAndDeserialize) {
-  framework::Tensor src_tensor;
-  framework::Tensor dst_tensor;
-  int array[6] = {1, 2, 3, 4, 5, 6};
-  src_tensor.Resize({2, 3});
-  int* src_ptr = src_tensor.mutable_data<int>(platform::CPUPlace());
-  for (int i = 0; i < 5; ++i) {
-    src_ptr[i] = array[i];
-  }
-  platform::CPUDeviceContext cpu_ctx((platform::CPUPlace()));
-  std::ostringstream oss;
-  src_tensor.SerializeToStream(oss, cpu_ctx);
-
-  std::istringstream iss(oss.str());
-  dst_tensor.DeserializeFromStream(iss);
-  int* dst_ptr = dst_tensor.mutable_data<int>(platform::CPUPlace());
-  for (int i = 0; i < 5; ++i) {
-    ASSERT_EQ(dst_ptr[i], array[i]);
-  }
-}

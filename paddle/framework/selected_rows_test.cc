@@ -48,10 +48,10 @@ TEST_F(SelectedRowsTester, SerializeAndDeseralize) {
   platform::CPUDeviceContext cpu_ctx((platform::CPUPlace()));
   std::ostringstream oss;
 
-  selected_rows_->SerializeToStream(oss, cpu_ctx);
+  SerializeToStream(oss, *selected_rows_, cpu_ctx);
 
   std::istringstream iss(oss.str());
-  dst_tensor.DeserializeFromStream(iss);
+  DeserializeFromStream(iss, &dst_tensor);
 
   ASSERT_EQ(selected_rows_->rows(), dst_tensor.rows());
   ASSERT_EQ(selected_rows_->height(), dst_tensor.height());

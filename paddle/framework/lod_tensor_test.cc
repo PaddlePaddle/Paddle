@@ -130,10 +130,9 @@ TEST_F(LoDTensorTester, SerializeAndDeserialize) {
   LoDTensor dst_tensor;
   platform::CPUDeviceContext cpu_ctx((platform::CPUPlace()));
   std::ostringstream oss;
-  lod_tensor_.SerializeToStream(oss, cpu_ctx);
-
+  SerializeToStream(oss, lod_tensor_, cpu_ctx);
   std::istringstream iss(oss.str());
-  dst_tensor.DeserializeFromStream(iss);
+  DeserializeFromStream(iss, &dst_tensor);
   float* dst_ptr = dst_tensor.mutable_data<float>(platform::CPUPlace());
   for (int i = 0; i < kLodTensorSize; ++i) {
     EXPECT_EQ(dst_ptr[i], i);

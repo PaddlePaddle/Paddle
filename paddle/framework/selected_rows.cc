@@ -13,42 +13,45 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-void SelectedRows::SerializeToStream(std::ostream &os,
-                                     const platform::DeviceContext &dev_ctx) {
-  PADDLE_ENFORCE_NOT_NULL(
-      value_, "serialize SelectedRows failed since Tensor is nullptr.");
-  value_->SerializeToStream(os, dev_ctx);
+void SerializeToStream(std::ostream& os, const SelectedRows& selected_rows,
+                       const platform::DeviceContext& dev_ctx) {
+  SerializeToStream(os, selected_rows.value(), dev_ctx);
   {
     // serialize rows information
-    uint64_t size = rows_.size();
-    os.write(reinterpret_cast<const char *>(&size), sizeof(size));
+    auto& rows = selected_rows.rows();
+    uint64_t size = rows.size();
+    os.write(reinterpret_cast<const char*>(&size), sizeof(size));
     for (uint64_t i = 0; i < size; ++i) {
-      os.write(reinterpret_cast<const char *>(&rows_[i]), sizeof(rows_[i]));
+      os.write(reinterpret_cast<const char*>(&rows[i]), sizeof(rows[i]));
     }
   }
   {
     // serialize height field
-    os.write(reinterpret_cast<const char *>(&this->height_), sizeof(int64_t));
+    int64_t height = selected_rows.height();
+    os.write(reinterpret_cast<const char*>(&height), sizeof(height));
   }
 }
 
-void SelectedRows::DeserializeFromStream(std::istream &is) {
-  value_.reset(new Tensor());
-  value_->DeserializeFromStream(is);
+void DeserializeFromStream(std::istream& is, SelectedRows* selected_rows) {
+  auto tensor = *selected_rows->mutable_value();
+  DeserializeFromStream(is, &tensor);
   {
     // deserialize rows information
     uint64_t size;
-    is.read(reinterpret_cast<char *>(&size), sizeof(size));
-    rows_.resize(size);
+    is.read(reinterpret_cast<char*>(&size), sizeof(size));
+    auto& rows = *selected_rows->mutable_rows();
+    rows.resize(size);
     for (uint64_t i = 0; i < size; ++i) {
       int64_t tmp;
-      is.read(reinterpret_cast<char *>(&tmp), sizeof(int64_t));
-      rows_[i] = tmp;
+      is.read(reinterpret_cast<char*>(&tmp), sizeof(int64_t));
+      rows[i] = tmp;
     }
   }
   {
     // deserialize height field
-    is.read(reinterpret_cast<char *>(&this->height_), sizeof(int64_t));
+    int64_t height;
+    is.read(reinterpret_cast<char*>(&height), sizeof(int64_t));
+    selected_rows->set_height(height);
   }
 }
 

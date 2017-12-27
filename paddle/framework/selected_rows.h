@@ -50,11 +50,6 @@ class SelectedRows {
     return make_ddim(dims);
   }
 
-  void SerializeToStream(std::ostream& os,
-                         const platform::DeviceContext& dev_ctx);
-
-  void DeserializeFromStream(std::istream& is);
-
  private:
   // Notice: rows can be duplicate. We can have {0, 4, 7, 0, 5, 7, 9} here.
   // SelectedRows are simplely concated when adding together. Until a
@@ -63,6 +58,15 @@ class SelectedRows {
   std::unique_ptr<Tensor> value_{nullptr};
   int64_t height_;
 };
+
+/*
+ * Serialize/Desiralize SelectedRows to std::ostream
+ * You can pass ofstream or ostringstream to serilize to file
+ * or to a in memory string. GPU tensor will be copied to CPU.
+ */
+void SerializeToStream(std::ostream& os, const SelectedRows& selected_rows,
+                       const platform::DeviceContext& dev_ctx);
+void DeserializeFromStream(std::istream& is, SelectedRows* selected_rows);
 
 }  // namespace framework
 }  // namespace paddle

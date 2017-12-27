@@ -152,45 +152,6 @@ void LoDTensor::ShrinkInLevel(size_t level, size_t elem_begin,
   ShareDataWith(Slice(begin, end));
 }
 
-void LoDTensor::SerializeToStream(
-    std::ostream &os, const platform::DeviceContext &dev_ctx) const {
-  Tensor::SerializeToStream(os, dev_ctx);
-  {  // serialize lod information
-     // uint64_t lod_level
-     // uint64_t lod_level_1 size in byte.
-     // int*     lod_level_1 data
-     // ...
-    auto lod = this->lod();
-    uint64_t size = lod.size();
-    os.write(reinterpret_cast<const char *>(&size), sizeof(size));
-
-    for (auto &each : lod) {
-      size = each.size() * sizeof(framework::LoD::value_type::value_type);
-      os.write(reinterpret_cast<const char *>(&size), sizeof(size));
-      os.write(reinterpret_cast<const char *>(each.data()),
-               static_cast<std::streamsize>(size));
-    }
-  }
-}
-
-void LoDTensor::DeserializeFromStream(std::istream &is) {
-  Tensor::DeserializeFromStream(is);
-  {  // read lod
-    uint64_t lod_level;
-    is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
-    //  auto &lod = this->mutable_lod();
-    this->lod_.resize(lod_level);
-    for (uint64_t i = 0; i < lod_level; ++i) {
-      uint64_t size;
-      is.read(reinterpret_cast<char *>(&size), sizeof(size));
-      std::vector<size_t> tmp(size / sizeof(size_t));
-      is.read(reinterpret_cast<char *>(tmp.data()),
-              static_cast<std::streamsize>(size));
-      this->lod_[i] = tmp;
-    }
-  }
-}
-
 using LoDAndOffset = std::pair<LoD, std::pair<size_t, size_t>>;
 LoDAndOffset GetSubLoDAndAbsoluteOffset(const LoD &lod, size_t start_idx,
                                         size_t end_idx, size_t start_level) {
@@ -222,6 +183,46 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
     auto &level = (*lod)[i];
     for (size_t len : lod_length[i]) {
       level.push_back(level.back() + len);
+    }
+  }
+}
+
+void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
+                       const platform::DeviceContext &dev_ctx) {
+  // serialize Tensor
+  SerializeToStream(os, static_cast<Tensor>(tensor), dev_ctx);
+  {  // serialize lod information
+     // uint64_t lod_level
+     // uint64_t lod_level_1 size in byte.
+     // int*     lod_level_1 data
+     // ...
+    auto lod = tensor.lod();
+    uint64_t size = lod.size();
+    os.write(reinterpret_cast<const char *>(&size), sizeof(size));
+
+    for (auto &each : lod) {
+      size = each.size() * sizeof(framework::LoD::value_type::value_type);
+      os.write(reinterpret_cast<const char *>(&size), sizeof(size));
+      os.write(reinterpret_cast<const char *>(each.data()),
+               static_cast<std::streamsize>(size));
+    }
+  }
+}
+
+void DeserializeFromStream(std::istream &is, LoDTensor *tensor) {
+  DeserializeFromStream(is, static_cast<Tensor *>(tensor));
+  {  // read lod
+    uint64_t lod_level;
+    is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
+    auto &lod = *tensor->mutable_lod();
+    lod.resize(lod_level);
+    for (uint64_t i = 0; i < lod_level; ++i) {
+      uint64_t size;
+      is.read(reinterpret_cast<char *>(&size), sizeof(size));
+      std::vector<size_t> tmp(size / sizeof(size_t));
+      is.read(reinterpret_cast<char *>(tmp.data()),
+              static_cast<std::streamsize>(size));
+      lod[i] = tmp;
     }
   }
 }
