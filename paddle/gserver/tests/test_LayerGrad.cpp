@@ -1604,37 +1604,38 @@ TEST(Layer, NCELayer) {
           {INPUT_DATA_TARGET, "weight", /* dim= */ 1, /* paraSize= */ 0});
       config.layerConfig.add_inputs();
     }
+    for (auto useGpu : {false, true}) {
+      for (auto isIdLabel : {false, true}) {
+        config.inputDefs[1] = {
+            isIdLabel ? INPUT_LABEL : INPUT_SPARSE_NON_VALUE_DATA,
+            "label",
+            /* dim= */ numClasses,
+            /* paraSize= */ 0};
 
-    for (auto isIdLabel : {false, true}) {
-      config.inputDefs[1] = {
-          isIdLabel ? INPUT_LABEL : INPUT_SPARSE_NON_VALUE_DATA,
-          "label",
-          /* dim= */ numClasses,
-          /* paraSize= */ 0};
-
-      for (auto withDist : {false, true}) {
-        config.layerConfig.clear_neg_sampling_dist();
-        if (withDist) {
-          double sum = 0;
-          for (size_t i = 0; i < numClasses; ++i) {
-            real p = rand();  // NOLINT use rand_r
-            config.layerConfig.add_neg_sampling_dist(p);
-            sum += p;
+        for (auto withDist : {false, true}) {
+          config.layerConfig.clear_neg_sampling_dist();
+          if (withDist) {
+            double sum = 0;
+            for (size_t i = 0; i < numClasses; ++i) {
+              real p = rand();  // NOLINT use rand_r
+              config.layerConfig.add_neg_sampling_dist(p);
+              sum += p;
+            }
+            for (size_t i = 0; i < numClasses; ++i) {
+              real p = config.layerConfig.neg_sampling_dist(i) / sum;
+              config.layerConfig.set_neg_sampling_dist(i, p);
+            }
           }
-          for (size_t i = 0; i < numClasses; ++i) {
-            real p = config.layerConfig.neg_sampling_dist(i) / sum;
-            config.layerConfig.set_neg_sampling_dist(i, p);
-          }
+          LOG(INFO) << "NCELayer "
+                    << " isIdLabel=" << isIdLabel << " withWeight=" << withWeight
+                    << " withDist=" << withDist;
+          // Not support GPU now
+          testLayerGrad(config,
+                        "nce",
+                        100,
+                        /* trans= */ false,
+                        /* useGpu */ useGpu);
         }
-        LOG(INFO) << "NCELayer "
-                  << " isIdLabel=" << isIdLabel << " withWeight=" << withWeight
-                  << " withDist=" << withDist;
-        // Not support GPU now
-        testLayerGrad(config,
-                      "nce",
-                      100,
-                      /* trans= */ false,
-                      /* useGpu */ false);
       }
     }
   }
