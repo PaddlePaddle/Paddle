@@ -222,6 +222,73 @@ template struct SelectedRowsAddToTensor<platform::CUDADeviceContext, float>;
 template struct SelectedRowsAddToTensor<platform::CUDADeviceContext, double>;
 template struct SelectedRowsAddToTensor<platform::CUDADeviceContext, int>;
 template struct SelectedRowsAddToTensor<platform::CUDADeviceContext, int64_t>;
+
+namespace scatter {
+
+template <typename T, int block_size>
+__global__ void MergeAddKernel(const T* input, const int64_t* input_rows,
+                               T* out, const int64_t* out_rows,
+                               size_t out_rows_size, int64_t row_numel) {
+  const int ty = blockIdx.y;
+  int tid = threadIdx.x;
+  __shared__ size_t out_idx;
+
+  if (tid == 0) {
+    for (size_t i = 0; i < out_rows_size; i++) {
+      if (input_rows[ty] == out_rows[i]) {
+        out_idx = i;
+      }
+    }
+  }
+
+  __syncthreads();
+
+  input += ty * row_numel;
+  out += out_idx * row_numel;
+  for (int index = tid; index < row_numel; index += block_size) {
+    paddle::platform::CudaAtomicAdd(out + index, input[index]);
+  }
+}
+
+template <typename T>
+struct MergeAdd<platform::GPUDeviceContext, T> {
+  void operator()(const platform::GPUDeviceContext& context,
+                  const framework::SelectedRows& input,
+                  framework::SelectedRows* out) {
+    auto input_rows = input.rows();
+    std::set<int64_t> row_set(input_rows.begin(), input_rows.end());
+    std::vector<int64_t> merge_rows(row_set.begin(), row_set.end());
+
+    auto input_width = input.value().dims()[1];
+    // std::unique_ptr<framework::SelectedRows> out{
+    //     new framework::SelectedRows()};
+    out->set_rows(merge_rows);
+    out->set_height(input.height());
+    out->mutable_value()->mutable_data<T>(
+        framework::make_ddim(
+            {static_cast<int64_t>(merge_rows.size()), input_width}),
+        context.GetPlace());
+
+    math::SetConstant<platform::CUDADeviceContext, T> constant_functor;
+    constant_functor(context, out->mutable_value(), 0.0);
+
+    auto* out_data = out->mutable_value()->data<T>();
+    auto* input_data = input.value().data<T>();
+
+    const int block_size = 256;
+    dim3 threads(block_size, 1);
+    dim3 grid1(1, input_rows.size());
+
+    MergeAddKernel<
+        T, 256><<<grid1, threads, 0,
+                  reinterpret_cast<const platform::CUDADeviceContext&>(context)
+                      .stream()>>>(input_data, input.rows().data(), out_data,
+                                   out->rows().data(), out->rows().size(),
+                                   input_width);
+  }
+};
+
+}  // namespace scatter
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

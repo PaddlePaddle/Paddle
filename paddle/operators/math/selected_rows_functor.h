@@ -52,6 +52,53 @@ struct SelectedRowsAddToTensor {
                   framework::Tensor* input2);
 };
 
+namespace scatter {
+// functors for manuplating SelectedRows data
+
+template <typename DeviceContext, typename T>
+struct MergeAdd {
+  // unary functor, merge by adding duplicated rows in
+  // the input SelectedRows object.
+  void operator()(const DeviceContext& context,
+                  const framework::SelectedRows& input,
+                  framework::SelectedRows* out);
+};
+
+template <typename DeviceContext, typename T>
+struct Add {
+  void operator()(const DeviceContext& context,
+                  const framework::SelectedRows& input1,
+                  const framework::SelectedRows& input2,
+                  framework::SelectedRows* out) {
+    out->set_rows(input1->rows());
+    out->set_height(input1->height());
+    out->mutable_value()->mutable_data<T>(input1->value().dims(),
+                                          context.GetPlace());
+    auto e_out = framework::EigenVector<T>::Flatten(*(out->mutable_value()));
+    auto e_in1 = framework::EigenVector<T>::Flatten(input1->value());
+    auto e_in2 = framework::EigenVector<T>::Flatten(input2->value());
+    e_out.device(*context.eigen_device()) = e_in1 + e_in2;
+  }
+};
+
+template <typename DeviceContext, typename T>
+struct Mul {
+  void operator()(const DeviceContext& context,
+                  const framework::SelectedRows& input1,
+                  const framework::SelectedRows& input2,
+                  framework::SelectedRows* out) {
+    out->set_rows(input1->rows());
+    out->set_height(input1->height());
+    out->mutable_value()->mutable_data<T>(input1->value().dims(),
+                                          context.GetPlace());
+    auto e_out = framework::EigenVector<T>::Flatten(*(out->mutable_value()));
+    auto e_in1 = framework::EigenVector<T>::Flatten(input1->value());
+    auto e_in2 = framework::EigenVector<T>::Flatten(input2->value());
+    e_out.device(*context.eigen_device()) = e_in1 * e_in2;
+  }
+};
+
+}  // namespace scatter
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
