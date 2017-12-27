@@ -38,35 +38,43 @@ train_reader = paddle.batch(
 
 place = fluid.CPUPlace()
 exe = fluid.Executor(place)
+
 t = fluid.DistributeTranspiler()
+# all parameter server endpoints list for spliting parameters
 pserver_endpoints = os.getenv("PSERVERS")
+# server endpoint for current node
+current_endpoint = os.getenv("SERVER_ENDPOINT")
+# run as trainer or parameter server
 training_role = os.getenv("TRAINING_ROLE",
                           "TRAINER")  # get the training role: trainer/pserver
-t.transpile(optimize_ops, params_grads, pservers=pserver_endpoints, trainers=1)
+t.transpile(optimize_ops, params_grads, pservers=pserver_endpoints, trainers=2)
 
 if training_role == "PSERVER":
-    pserver_prog = t.get_pserver_program(pserver_endpoints, optimize_ops)
+    if not current_endpoint:
+        print("need env SERVER_ENDPOINT")
+        exit(1)
+    pserver_prog = t.get_pserver_program(current_endpoint, optimize_ops)
     exe.run(fluid.default_startup_program())
     exe.run(pserver_prog)
 elif training_role == "TRAINER":
+    trainer_prog = t.get_trainer_program()
     feeder = fluid.DataFeeder(feed_list=[images, label], place=place)
     exe.run(fluid.default_startup_program())
 
     for pass_id in range(PASS_NUM):
         accuracy.reset(exe)
+        batch_id = 0
         for data in train_reader():
-            loss, acc = exe.run(fluid.default_main_program(),
+            loss, acc = exe.run(trainer_prog,
                                 feed=feeder.feed(data),
                                 fetch_list=[avg_cost] + accuracy.metrics)
             pass_acc = accuracy.eval(exe)
-            # print loss, acc
-            if loss < 10.0 and pass_acc > 0.9:
-                # if avg cost less than 10.0 and accuracy is larger than 0.9, we think our code is good.
-                exit(0)
+            if batch_id % 100 == 0:
+                print("batch_id %d, loss: %f, acc: %f" %
+                      (batch_id, loss, pass_acc))
+            batch_id += 1
 
         pass_acc = accuracy.eval(exe)
         print("pass_id=" + str(pass_id) + " pass_acc=" + str(pass_acc))
 else:
     print("environment var TRAINER_ROLE should be TRAINER os PSERVER")
-
-exit(1)
