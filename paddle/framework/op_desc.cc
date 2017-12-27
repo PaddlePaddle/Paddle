@@ -88,6 +88,14 @@ OpDesc::OpDesc(const std::string &type, const VariableNameMap &inputs,
   need_update_ = true;
 }
 
+void OpDesc::CopyFrom(const OpDesc &op_desc) {
+  desc_.set_type(op_desc.Type());
+  inputs_ = op_desc.inputs_;
+  outputs_ = op_desc.outputs_;
+  attrs_ = op_desc.attrs_;
+  need_update_ = true;
+}
+
 OpDesc::OpDesc(const proto::OpDesc &desc, ProgramDesc *prog)
     : desc_(desc), need_update_(false) {
   // restore inputs_
