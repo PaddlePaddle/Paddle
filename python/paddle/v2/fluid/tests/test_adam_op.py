@@ -285,8 +285,9 @@ class TestSparseAdamOp(unittest.TestCase):
                 j = 0
                 while j < self.row_numel:
                     pos = row_id * self.row_numel + j
-                    print (actual[pos] - np_array[pos]) / actual[pos]
-                    self.assertLess((actual[pos] - np_array[pos]) / actual[pos], 0.00001)
+                    print(actual[pos] - np_array[pos]) / actual[pos]
+                    self.assertLess((actual[pos] - np_array[pos]) / actual[pos],
+                                    0.00001)
                     j += 1
 
     def test_sparse_sgd(self):
