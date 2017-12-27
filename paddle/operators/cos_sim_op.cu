@@ -1,19 +1,20 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #define EIGEN_USE_GPU
 #include "paddle/operators/cos_sim_op.h"
+#include "paddle/platform/cuda_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -31,7 +32,7 @@ struct CosSimDyFunctor<platform::CUDADeviceContext, T> {
         dy_(dy),
         cols_(static_cast<size_t>(cols)) {}
 
-  inline void operator()(size_t offset) const {
+  inline HOSTDEVICE void operator()(size_t offset) const {
     auto xy_norm_prod = x_norm_[offset] * y_norm_[0];
     auto dz = dz_[offset];
     auto z = z_[offset];
@@ -43,7 +44,8 @@ struct CosSimDyFunctor<platform::CUDADeviceContext, T> {
     for (size_t i = 0; i < cols_; ++i) {
       T dy = dz * (x[i] * reciprocal_xy_norm_prod -
                    z * y_[i] * reciprocal_y_norm_square);
-      paddle::paddleAtomicAdd(dy_ + i, dy)
+      // platform::CudaAtomicAdd(dy_ + i, dy);
+      dy_[i] += dy;
     }
   }
 
