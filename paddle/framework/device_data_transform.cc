@@ -23,18 +23,17 @@ static OpKernelType k0(proto::DataType::FP32, platform::CPUPlace(),
 static OpKernelType k1(proto::DataType::FP32, platform::CUDAPlace(0),
                        DataLayout::kNCHW, LibraryType::kPlain);
 
-void CPU_to_GPU(std::vector<platform::DeviceContext*> ctx, const Variable& in,
-                Variable* out) {
-  CopyFrom(in);
+void CPU_fromto_GPU(std::vector<platform::DeviceContext*> ctx,
+                    const KernelTypePair& pair, const Variable& in,
+                    Variable* out) {
+  CopyFrom(in.Get<Tensor>(), pair.second.place_, *ctx[0],
+           out->GetMutable<Tensor>());
 }
-
-void GPU_to_CPU(std::vector<platform::DeviceContext*> ctx, const Variable& in,
-                Variable* out) {}
 
 }  // namespace framework
 }  // namespace paddle
 
 namespace frw = paddle::framework;
 
-REGISTER_DATA_TRANSFORM_FN(frw::k0, frw::k1, frw::CPU_to_GPU);
-REGISTER_DATA_TRANSFORM_FN(frw::k0, frw::k1, frw::GPU_to_CPU);
+REGISTER_DATA_TRANSFORM_FN(frw::k0, frw::k1, frw::CPU_fromto_GPU);
+REGISTER_DATA_TRANSFORM_FN(frw::k1, frw::k0, frw::CPU_fromto_GPU);
