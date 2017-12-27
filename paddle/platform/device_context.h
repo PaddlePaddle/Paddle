@@ -52,6 +52,14 @@ class CPUDeviceContext : public DeviceContext {
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
 
+template <typename Place>
+struct DefaultDeviceContextType;
+
+template <>
+struct DefaultDeviceContextType<platform::CPUPlace> {
+  using TYPE = CPUDeviceContext;
+};
+
 #ifdef PADDLE_WITH_CUDA
 
 class EigenCudaStreamDevice;
@@ -90,6 +98,11 @@ class CUDADeviceContext : public DeviceContext {
   cublasHandle_t cublas_handle_;
 };
 
+template <>
+struct DefaultDeviceContextType<platform::CUDAPlace> {
+  using T = CUDADeviceContext;
+};
+
 class CUDNNDeviceContext : public CUDADeviceContext {
  public:
   explicit CUDNNDeviceContext(CUDAPlace place);
@@ -124,6 +137,13 @@ class DeviceContextPool {
 
   /*! \brief  Return handle of single device context. */
   const platform::DeviceContext* Get(const platform::Place& place);
+
+  template <typename Place>
+  const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(
+      const Place& place) {
+    return reinterpret_cast<
+        const typename DefaultDeviceContextType<Place>::TYPE*>(Get(place));
+  }
 
  private:
   static DeviceContextPool* pool;
