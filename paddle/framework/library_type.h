@@ -25,7 +25,7 @@ enum class LibraryType {
   kMKLDNN = 1,
   kCUDNN = 2,
   kCPU = 3,
-  kGPU = 4
+  kCUDA = 4
 };
 
 inline std::string LibraryTypeToString(const LibraryType& library_type) {
@@ -38,8 +38,8 @@ inline std::string LibraryTypeToString(const LibraryType& library_type) {
       return "CUDNN";
     case LibraryType::kCPU:
       return "CPU";
-    case LibraryType::kGPU:
-      return "GPU";
+    case LibraryType::kCUDA:
+      return "CUDA";
     default:
       PADDLE_THROW("unknown LibraryType %d", static_cast<int>(library_type));
   }
@@ -55,8 +55,8 @@ inline LibraryType StringToLibraryType(const char* ctype) {
     return LibraryType::kCUDNN;
   } else if (s == std::string("CPU")) {
     return LibraryType::kCPU;
-  } else if (s == std::string("GPU")) {
-    return LibraryType::kGPU;
+  } else if (s == std::string("CUDA")) {
+    return LibraryType::kCUDA;
   } else {
     PADDLE_THROW("Unknown LibraryType %s", s.c_str());
   }
