@@ -149,6 +149,44 @@ class CosSimOpGrad : public framework::OperatorWithKernel {
   }
 };
 
+template <typename T>
+struct CosSimDyFunctor<platform::CPUDeviceContext, T> {
+  CosSimDyFunctor(const T* x_norm, const T* y_norm, const T* x, const T* y,
+                  const T* z, const T* dz, T* dy, int cols)
+      : x_norm_(x_norm),
+        y_norm_(y_norm),
+        x_(x),
+        y_(y),
+        z_(z),
+        dz_(dz),
+        dy_(dy),
+        cols_(static_cast<size_t>(cols)) {}
+
+  inline void operator()(size_t offset) const {
+    auto xy_norm_prod = x_norm_[offset] * y_norm_[0];
+    auto dz = dz_[offset];
+    auto z = z_[offset];
+    auto* x = x_ + cols_ * offset;
+    auto reciprocal_xy_norm_prod = 1 / xy_norm_prod;
+
+    auto y_norm_square = y_norm_[0] * y_norm_[0];
+    auto reciprocal_y_norm_square = 1 / y_norm_square;
+    for (size_t i = 0; i < cols_; ++i) {
+      dy_[i] += dz * (x[i] * reciprocal_xy_norm_prod -
+                      z * y_[i] * reciprocal_y_norm_square);
+    }
+  }
+
+  const T* x_norm_;
+  const T* y_norm_;
+  const T* x_;
+  const T* y_;
+  const T* z_;
+  const T* dz_;
+  T* dy_;
+  const size_t cols_;
+};
+
 }  // namespace operators
 }  // namespace paddle
 

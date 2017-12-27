@@ -21,10 +21,17 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename IT1, typename IT2, typename Callback>
-static void ForEachZip(IT1 begin1, IT1 last1, IT2 begin2, Callback callback) {
-  for (; begin1 < last1; ++begin1, ++begin2) {
-    callback(*begin1, *begin2);
+template <typename DeviceContext, typename T>
+struct CosSimDyFunctor {
+  CosSimDyFunctor(const T* x_norm, const T* y_norm, const T* x, const T* y,
+                  const T* z, const T* dz, T* dy, int cols);
+  inline void operator()(size_t) const;
+};
+
+template <typename Callback>
+static void ForEachZip(size_t num, Callback callback) {
+  for (size_t i = 0; i < num; ++i) {
+    callback(i);
   }
 }
 
@@ -38,16 +45,11 @@ struct CosSimFunctor {
         z_(z),
         cols_(static_cast<size_t>(cols)) {}
 
-  inline void operator()(T& x_norm, T& y_norm) const {
-    size_t x_offset = &x_norm - x_norm_;
-    size_t y_offset = &y_norm - y_norm_;
-
-    auto* x = x_ + cols_ * x_offset;
-
-    T xx = 0, xy = 0;
-    T yy = 0;
+  inline HOSTDEVICE void operator()(size_t offset) const {
+    auto* x = x_ + cols_ * offset;
+    T xx = 0, xy = 0, yy = 0;
     if (same_row) {
-      auto* y = y_ + cols_ * y_offset;
+      auto* y = y_ + cols_ * offset;
       for (size_t i = 0; i < cols_; ++i) {
         xx += x[i] * x[i];
         yy += y[i] * y[i];
@@ -55,21 +57,20 @@ struct CosSimFunctor {
       }
       xx = sqrt(xx);
       yy = sqrt(yy);
-      x_norm_[x_offset] = xx;
-      y_norm_[y_offset] = yy;
-      z_[x_offset] = xy / (xx * yy);
+      y_norm_[offset] = yy;
+      x_norm_[offset] = xx;
+      z_[offset] = xy / (xx * yy);
     } else {  // This can be wrote in a better way.
-      auto* y = y_;
       for (size_t i = 0; i < cols_; ++i) {
         xx += x[i] * x[i];
-        yy += y[i] * y[i];  // only need
-        xy += x[i] * y[i];
+        yy += y_[i] * y_[i];  // only need
+        xy += x[i] * y_[i];
       }
       xx = sqrt(xx);
       yy = sqrt(yy);
-      x_norm_[x_offset] = xx;
       y_norm_[0] = yy;
-      z_[x_offset] = xy / (xx * yy);
+      x_norm_[offset] = xx;
+      z_[offset] = xy / (xx * yy);
     }
   }
 
@@ -104,14 +105,12 @@ class CosSimKernel : public framework::OpKernel<T> {
       CosSimFunctor<T, true> functor(
           in_x->data<T>(), in_y->data<T>(), out_x_norm->data<T>(),
           out_y_norm->data<T>(), out_z->data<T>(), cols);
-      ForEachZip(out_x_norm->data<T>(), out_x_norm->data<T>() + rows_x,
-                 out_y_norm->data<T>(), functor);
+      ForEachZip(rows_x, functor);
     } else {
       CosSimFunctor<T, false> functor(
           in_x->data<T>(), in_y->data<T>(), out_x_norm->data<T>(),
           out_y_norm->data<T>(), out_z->data<T>(), cols);
-      ForEachZip(out_x_norm->data<T>(), out_x_norm->data<T>() + rows_x,
-                 out_y_norm->data<T>(), functor);
+      ForEachZip(rows_x, functor);
     }
   }
 };
@@ -129,19 +128,15 @@ struct CosSimGradFunctor {
         dx_(dx),
         cols_(static_cast<size_t>(cols)) {}
 
-  inline void operator()(const T& x_norm, const T& y_norm) const {
-    size_t x_offset = &x_norm - x_norm_;
-    size_t y_offset = &y_norm - y_norm_;
+  inline HOSTDEVICE void operator()(size_t offset) const {
+    auto x_norm_square = x_norm_[offset] * x_norm_[offset];
+    auto xy_norm_prod = x_norm_[offset] * y_norm_[offset];
+    auto dz = dz_[offset];
+    auto z = z_[offset];
 
-    auto x_norm_square = x_norm_[x_offset] * x_norm_[x_offset];
-    auto xy_norm_prod = x_norm_[x_offset] * y_norm_[y_offset];
-    auto dz = dz_[x_offset];
-    auto z = z_[x_offset];
-
-    auto* dx = dx_ + cols_ * x_offset;
-    auto* x = x_ + cols_ * x_offset;
-
-    auto* y = y_ + cols_ * y_offset;
+    auto* dx = dx_ + cols_ * offset;
+    auto* x = x_ + cols_ * offset;
+    auto* y = y_ + cols_ * offset;
 
     auto reciprocal_xy_norm_prod = 1 / xy_norm_prod;
     auto reciprocal_x_norm_square = 1 / x_norm_square;
@@ -161,10 +156,10 @@ struct CosSimGradFunctor {
   const size_t cols_;
 };
 
-template <typename T, bool Dx>
+template <typename T>
 struct CosSimDxFunctor {
   CosSimDxFunctor(const T* x_norm, const T* y_norm, const T* x, const T* y,
-                  const T* z, const T* dz, T* dx, T* dy, int cols)
+                  const T* z, const T* dz, T* dx, int cols)
       : x_norm_(x_norm),
         y_norm_(y_norm),
         x_(x),
@@ -172,37 +167,23 @@ struct CosSimDxFunctor {
         z_(z),
         dz_(dz),
         dx_(dx),
-        dy_(dy),
         cols_(static_cast<size_t>(cols)) {}
 
-  inline void operator()(const T& x_norm, const T& y_norm) const {
-    size_t x_offset = &x_norm - x_norm_;
-
-    auto xy_norm_prod = x_norm_[x_offset] * y_norm_[0];
-    auto dz = dz_[x_offset];
-    auto z = z_[x_offset];
-    auto* x = x_ + cols_ * x_offset;
+  inline HOSTDEVICE void operator()(size_t offset) const {
+    auto xy_norm_prod = x_norm_[offset] * y_norm_[0];
+    auto dz = dz_[offset];
+    auto z = z_[offset];
+    auto* x = x_ + cols_ * offset;
     auto reciprocal_xy_norm_prod = 1 / xy_norm_prod;
+    auto x_norm_square = x_norm_[offset] * x_norm_[offset];
+    auto* dx = dx_ + cols_ * offset;
+    auto reciprocal_x_norm_square = 1 / x_norm_square;
 
-    if (Dx) {
-      auto x_norm_square = x_norm_[x_offset] * x_norm_[x_offset];
-      auto* dx = dx_ + cols_ * x_offset;
-      auto* x = x_ + cols_ * x_offset;
-      auto reciprocal_x_norm_square = 1 / x_norm_square;
-      for (size_t i = 0; i < cols_; ++i) {
-        dx[i] = dz * (y_[i] * reciprocal_xy_norm_prod -
-                      z * x[i] * reciprocal_x_norm_square);
-      }
-    } else {
-      auto y_norm_square = y_norm_[0] * y_norm_[0];
-      auto reciprocal_y_norm_square = 1 / y_norm_square;
-      for (size_t i = 0; i < cols_; ++i) {
-        dy_[i] += dz * (x[i] * reciprocal_xy_norm_prod -
-                        z * y_[i] * reciprocal_y_norm_square);
-      }
+    for (size_t i = 0; i < cols_; ++i) {
+      dx[i] = dz * (y_[i] * reciprocal_xy_norm_prod -
+                    z * x[i] * reciprocal_x_norm_square);
     }
   }
-
   const T* x_norm_;
   const T* y_norm_;
   const T* x_;
@@ -210,7 +191,6 @@ struct CosSimDxFunctor {
   const T* z_;
   const T* dz_;
   T* dx_;
-  T* dy_;
   const size_t cols_;
 };
 
@@ -239,33 +219,34 @@ class CosSimGradKernel : public framework::OpKernel<T> {
             in_x_norm->data<T>(), in_y_norm->data<T>(), in_x->data<T>(),
             in_y->data<T>(), in_z->data<T>(), in_grad_z->data<T>(),
             out_grad_x->mutable_data<T>(context.GetPlace()), cols);
-        ForEachZip(in_x_norm->data<T>(), in_x_norm->data<T>() + rows_x,
-                   in_y_norm->data<T>(), functor);
+        ForEachZip(rows_x, functor);
       }
       if (out_grad_y) {
         CosSimGradFunctor<T> functor(
             in_y_norm->data<T>(), in_x_norm->data<T>(), in_y->data<T>(),
             in_x->data<T>(), in_z->data<T>(), in_grad_z->data<T>(),
             out_grad_y->mutable_data<T>(context.GetPlace()), cols);
-        ForEachZip(in_y_norm->data<T>(), in_y_norm->data<T>() + rows_x,
-                   in_x_norm->data<T>(), functor);
+        ForEachZip(rows_x, functor);
       }
     } else {
       if (out_grad_x) {
-        CosSimDxFunctor<T, true> functor(
+        CosSimDxFunctor<T> functor(
             in_x_norm->data<T>(), in_y_norm->data<T>(), in_x->data<T>(),
             in_y->data<T>(), in_z->data<T>(), in_grad_z->data<T>(),
-            out_grad_x->mutable_data<T>(context.GetPlace()), nullptr, cols);
-        ForEachZip(in_x_norm->data<T>(), in_x_norm->data<T>() + rows_x,
-                   in_y_norm->data<T>(), functor);
+            out_grad_x->mutable_data<T>(context.GetPlace()), cols);
+        ForEachZip(rows_x, functor);
       }
       if (out_grad_y) {
-        CosSimDxFunctor<T, false> functor(
+        out_grad_y->mutable_data<T>(context.GetPlace());
+        math::SetConstant<DeviceContext, T> set_zero;
+        auto& dev_ctx = context.template device_context<DeviceContext>();
+        set_zero(dev_ctx, out_grad_y, static_cast<T>(0));
+
+        CosSimDyFunctor<DeviceContext, T> functor(
             in_x_norm->data<T>(), in_y_norm->data<T>(), in_x->data<T>(),
-            in_y->data<T>(), in_z->data<T>(), in_grad_z->data<T>(), nullptr,
-            out_grad_y->mutable_data<T>(context.GetPlace()), cols);
-        ForEachZip(in_x_norm->data<T>(), in_x_norm->data<T>() + rows_x,
-                   in_y_norm->data<T>(), functor);
+            in_y->data<T>(), in_z->data<T>(), in_grad_z->data<T>(),
+            out_grad_y->data<T>(), cols);
+        ForEachZip(rows_x, functor);
       }
     }
   }
