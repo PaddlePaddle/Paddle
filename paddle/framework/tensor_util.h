@@ -25,7 +25,7 @@ namespace framework {
  * @param[in] dst_place  The dst place.
  * @param[in] ctx        The device context contains device resources.
  *
- * @note    CopyFrom supports CPU <-> GPU, GPU <-> GPU.
+ * @note    CopyFrom supports CPU <-> CPU, CPU <-> GPU, GPU <-> GPU, GPU <-> CPU
  */
 
 inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,

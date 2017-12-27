@@ -23,14 +23,15 @@ limitations under the License. */
 #include "paddle/framework/variable.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/macros.h"
+#include "paddle/platform/place.h"
 
 namespace paddle {
 namespace framework {
 
-using DataTransformFn =
-    std::function<void(const std::vector<platform::DeviceContext*> ctx,
-                       const Variable& in, Variable* out)>;
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
+using DataTransformFn = std::function<void(
+    const std::vector<platform::DeviceContext*> ctx, const KernelTypePair& pair,
+    const Variable& in, Variable* out)>;
 
 struct KernelTypePairHash {
   static void HashCombine(const OpKernelType& t, std::size_t* seed) {
