@@ -64,7 +64,7 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
             tensor.dims(), platform::CPUPlace()));
 
         platform::DeviceContextPool &pool =
-            platform::DeviceContextPool::Instance;
+            platform::DeviceContextPool::Instance();
         auto dev_ctx = static_cast<const platform::CUDADeviceContext *>(
             pool.Get(tensor.place()));
 
