@@ -54,21 +54,34 @@ def Print(input,
           print_tensor_shape=True,
           print_tensor_lod=True):
     '''
-    Creates a print op that will print when a tensor is accessed.
+    **Print operator**
+
+    This creates a print op that will print when a tensor is accessed.
 
     Wraps the tensor passed in so that whenever that a tensor is accessed,
     the message `message` is printed, along with the current value of the
     tensor `t`.
 
     Args:
-      input: A Tensor to print.
-      summarize: Print this number of elements in the tensor.
-      message: A string message to print as a prefix.
-      first_n: Only log `first_n` number of times.
-      print_tensor_name: Print the tensor name.
-      print_tensor_type: Print the tensor type.
-      print_tensor_shape: Print the tensor shape.
-      print_tensor_lod: Print the tensor lod.
+      input(Variable): A Tensor to print.
+      summarize(int): Print this number of elements in the tensor, will print all
+                 if left negative.
+      message(str): A string message to print as a prefix.
+      first_n(int): Only log `first_n` number of times.
+      print_tensor_name(bool): Print the tensor name.
+      print_tensor_type(bool): Print the tensor type.
+      print_tensor_shape(bool): Print the tensor shape.
+      print_tensor_lod(bool): Print the tensor lod.
+
+    Returns:
+      None
+
+    Examples:
+        .. code-block:: python
+
+        value = some_layer(...)
+        Print(value, summarize=10,
+              message="The content of some_layer: ")
     '''
     helper = LayerHelper('print', **locals())
     out = helper.create_tmp_variable(dtype='int32')
@@ -78,7 +91,7 @@ def Print(input,
         attrs={
             'first_n': first_n,
             'summarize': summarize,
-            'message': message if message else "",
+            'message': message or "",
             'print_tensor_name': print_tensor_name,
             'print_tensor_type': print_tensor_type,
             'print_tensor_shape': print_tensor_shape,
