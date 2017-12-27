@@ -663,7 +663,7 @@ class Block(object):
             end = list(self.ops).index(ops[-1])
         except Exception, e:
             raise e
-        self.desc.remove_op(start, end)
+        self.desc.remove_op(start, end + 1)
 
     def prepend_op(self, *args, **kwargs):
         op_desc = self.desc.prepend_op()
