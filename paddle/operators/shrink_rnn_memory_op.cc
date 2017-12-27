@@ -106,8 +106,8 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
     dx_tensor.mutable_data(x_tensor.place(), x_tensor.type());
 
     // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-    auto &dev_ctx = *pool.Borrow(place);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place);
 
     if (dout_var == nullptr) {  // dx_tensor fill zero
       math::set_constant(dev_ctx, &dx_tensor, 0.0f);
