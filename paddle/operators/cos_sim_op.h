@@ -1,39 +1,26 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 #include "paddle/framework/op_registry.h"
-#include "paddle/operators/elementwise_op_function.h"
+#include "paddle/operators/math/math_function.h"
+#include "paddle/platform/for_range.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-
-template <typename DeviceContext, typename T>
-struct CosSimDyFunctor {
-  CosSimDyFunctor(const T* x_norm, const T* y_norm, const T* x, const T* y,
-                  const T* z, const T* dz, T* dy, int cols);
-  inline void operator()(size_t) const;
-};
-
-template <typename Callback>
-static void ForEachZip(size_t num, Callback callback) {
-  for (size_t i = 0; i < num; ++i) {
-    callback(i);
-  }
-}
 
 template <typename T, bool same_row>
 struct CosSimFunctor {
@@ -50,10 +37,13 @@ struct CosSimFunctor {
     T xx = 0, xy = 0, yy = 0;
     if (same_row) {
       auto* y = y_ + cols_ * offset;
+      T tep_x, tep_y;
       for (size_t i = 0; i < cols_; ++i) {
-        xx += x[i] * x[i];
-        yy += y[i] * y[i];
-        xy += x[i] * y[i];
+        tep_x = x[i];
+        tep_y = y[i];
+        xx += tep_x * tep_x;
+        yy += tep_y * tep_y;
+        xy += tep_x * tep_y;
       }
       xx = sqrt(xx);
       yy = sqrt(yy);
@@ -61,14 +51,17 @@ struct CosSimFunctor {
       x_norm_[offset] = xx;
       z_[offset] = xy / (xx * yy);
     } else {  // This can be wrote in a better way.
+      T tep_x, tep_y;
       for (size_t i = 0; i < cols_; ++i) {
-        xx += x[i] * x[i];
-        yy += y_[i] * y_[i];  // only need
-        xy += x[i] * y_[i];
+        tep_x = x[i];
+        tep_y = y_[i];
+        xx += tep_x * tep_x;
+        yy += tep_y * tep_y;  // only need
+        xy += tep_x * tep_y;
       }
       xx = sqrt(xx);
       yy = sqrt(yy);
-      y_norm_[0] = yy;
+      if (offset == 0) y_norm_[0] = yy;
       x_norm_[offset] = xx;
       z_[offset] = xy / (xx * yy);
     }
@@ -105,12 +98,16 @@ class CosSimKernel : public framework::OpKernel<T> {
       CosSimFunctor<T, true> functor(
           in_x->data<T>(), in_y->data<T>(), out_x_norm->data<T>(),
           out_y_norm->data<T>(), out_z->data<T>(), cols);
-      ForEachZip(rows_x, functor);
+      platform::ForRange<DeviceContext> for_range(
+          static_cast<const DeviceContext&>(context.device_context()), rows_x);
+      for_range(functor);
     } else {
       CosSimFunctor<T, false> functor(
           in_x->data<T>(), in_y->data<T>(), out_x_norm->data<T>(),
           out_y_norm->data<T>(), out_z->data<T>(), cols);
-      ForEachZip(rows_x, functor);
+      platform::ForRange<DeviceContext> for_range(
+          static_cast<const DeviceContext&>(context.device_context()), rows_x);
+      for_range(functor);
     }
   }
 };
@@ -195,6 +192,13 @@ struct CosSimDxFunctor {
 };
 
 template <typename DeviceContext, typename T>
+struct CosSimDyFunctor {
+  CosSimDyFunctor(const T* x_norm, const T* y_norm, const T* x, const T* y,
+                  const T* z, const T* dz, T* dy, int cols);
+  inline HOSTDEVICE void operator()(size_t) const;
+};
+
+template <typename DeviceContext, typename T>
 class CosSimGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -219,14 +223,20 @@ class CosSimGradKernel : public framework::OpKernel<T> {
             in_x_norm->data<T>(), in_y_norm->data<T>(), in_x->data<T>(),
             in_y->data<T>(), in_z->data<T>(), in_grad_z->data<T>(),
             out_grad_x->mutable_data<T>(context.GetPlace()), cols);
-        ForEachZip(rows_x, functor);
+        platform::ForRange<DeviceContext> for_range(
+            static_cast<const DeviceContext&>(context.device_context()),
+            rows_x);
+        for_range(functor);
       }
       if (out_grad_y) {
         CosSimGradFunctor<T> functor(
             in_y_norm->data<T>(), in_x_norm->data<T>(), in_y->data<T>(),
             in_x->data<T>(), in_z->data<T>(), in_grad_z->data<T>(),
             out_grad_y->mutable_data<T>(context.GetPlace()), cols);
-        ForEachZip(rows_x, functor);
+        platform::ForRange<DeviceContext> for_range(
+            static_cast<const DeviceContext&>(context.device_context()),
+            rows_x);
+        for_range(functor);
       }
     } else {
       if (out_grad_x) {
@@ -234,7 +244,10 @@ class CosSimGradKernel : public framework::OpKernel<T> {
             in_x_norm->data<T>(), in_y_norm->data<T>(), in_x->data<T>(),
             in_y->data<T>(), in_z->data<T>(), in_grad_z->data<T>(),
             out_grad_x->mutable_data<T>(context.GetPlace()), cols);
-        ForEachZip(rows_x, functor);
+        platform::ForRange<DeviceContext> for_range(
+            static_cast<const DeviceContext&>(context.device_context()),
+            rows_x);
+        for_range(functor);
       }
       if (out_grad_y) {
         out_grad_y->mutable_data<T>(context.GetPlace());
@@ -246,7 +259,10 @@ class CosSimGradKernel : public framework::OpKernel<T> {
             in_x_norm->data<T>(), in_y_norm->data<T>(), in_x->data<T>(),
             in_y->data<T>(), in_z->data<T>(), in_grad_z->data<T>(),
             out_grad_y->data<T>(), cols);
-        ForEachZip(rows_x, functor);
+        platform::ForRange<DeviceContext> for_range(
+            static_cast<const DeviceContext&>(context.device_context()),
+            rows_x);
+        for_range(functor);
       }
     }
   }
