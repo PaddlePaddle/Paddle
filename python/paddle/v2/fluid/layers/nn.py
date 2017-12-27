@@ -403,8 +403,8 @@ def cross_entropy(input, label, **kwargs):
          A 2-D tensor with shape [N x 1], the cross entropy loss.
 
     Raises:
-        `ValueError`: 1) If the 1st dimension of `input` and `label` are not equal; 2) If 
-              `soft_label == true`, and the 2nd dimension of `input` and `label` are not 
+        `ValueError`: 1) If the 1st dimension of `input` and `label` are not equal; 2) If \ 
+              `soft_label == true`, and the 2nd dimension of `input` and `label` are not \
                equal; 3) If `soft_label == false`, and the 2nd dimension of `label` is not 1.
 
     Examples:
