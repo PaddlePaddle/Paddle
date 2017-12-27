@@ -305,7 +305,7 @@ int main(int argc, char **argv) {
   }
 
   VLOG(0) << " DeviceCount " << count;
-  paddle::platform::DeviceContextPool::Create(places);
+  paddle::platform::DeviceContextPool::Init(places);
 
   testing::InitGoogleTest(&argc, argv);
 
