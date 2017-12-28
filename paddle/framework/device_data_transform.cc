@@ -19,9 +19,9 @@ namespace paddle {
 namespace framework {
 
 static OpKernelType k0(proto::DataType::FP32, platform::CPUPlace(),
-                       DataLayout::kNCHW, LibraryType::kPlain);
+                       DataLayout::kAnyLayout, LibraryType::kPlain);
 static OpKernelType k1(proto::DataType::FP32, platform::CUDAPlace(0),
-                       DataLayout::kNCHW, LibraryType::kPlain);
+                       DataLayout::kAnyLayout, LibraryType::kPlain);
 
 void CPU_fromto_GPU(std::vector<platform::DeviceContext*> ctx,
                     const KernelTypePair& pair, const Variable& in,

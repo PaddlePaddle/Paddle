@@ -418,9 +418,9 @@ void OperatorWithKernel::Run(const Scope& scope,
                       "CPU and other devices. For example, multi-GPU model "
                       "parallelism will failed.");
   } else {
+    auto key_pair = std::make_pair(actual_kernel_key, expected_kernel_key);
     const DataTransformFn* trans_fun =
-        DataTransformFnMap::Instance().GetNullable(
-            std::make_pair(actual_kernel_key, expected_kernel_key));
+        DataTransformFnMap::Instance().GetNullable(key_pair);
     if (trans_fun) {
       auto input_vars = this->InputVars();
       // TODO(qijun) filter the input vars that do not need to be transformed
@@ -445,7 +445,7 @@ void OperatorWithKernel::Run(const Scope& scope,
         dev_ctx->Wait();
 
         for (auto var_name : need_trans) {
-          (*trans_fun)(trans_dev_ctx_vec, *(scope.FindVar(var_name)),
+          (*trans_fun)(trans_dev_ctx_vec, key_pair, *(scope.FindVar(var_name)),
                        scope.FindVar(var_name + framework::KernelTypeToString(
                                                     expected_kernel_key)));
         }
