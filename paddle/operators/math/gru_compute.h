@@ -11,7 +11,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/operators/math/lstm_compute.h"
+#include "paddle/operators/math/detail/activation_functions.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/enforce.h"
 
@@ -19,9 +19,8 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-// TODO(guosheng): refine code style in gru_compute
 template <typename T>
-struct hl_gru_value {
+struct GRUMetaValue {
   T *gate_weight;
   T *state_weight;
   T *gate_value;
@@ -31,7 +30,7 @@ struct hl_gru_value {
 };
 
 template <typename T>
-struct hl_gru_grad {
+struct GRUMetaGrad {
   T *gate_weight_grad;
   T *state_weight_grad;
   T *gate_grad;
@@ -42,18 +41,18 @@ struct hl_gru_grad {
 
 template <typename DeviceContext, typename T>
 struct GRUUnitFunctor {
-  static void compute(const DeviceContext &context, hl_gru_value<T> value,
+  static void compute(const DeviceContext &context, GRUMetaValue<T> value,
                       int frame_size, int batch_size,
-                      activation_mode_t active_node,
-                      activation_mode_t active_gate);
+                      const detail::ActivationType active_node,
+                      const detail::ActivationType active_gate);
 };
 
 template <typename DeviceContext, typename T>
 struct GRUUnitGradFunctor {
-  static void compute(const DeviceContext &context, hl_gru_value<T> value,
-                      hl_gru_grad<T> grad, int frame_size, int batch_size,
-                      activation_mode_t active_node,
-                      activation_mode_t active_gate);
+  static void compute(const DeviceContext &context, GRUMetaValue<T> value,
+                      GRUMetaGrad<T> grad, int frame_size, int batch_size,
+                      const detail::ActivationType active_node,
+                      const detail::ActivationType active_gate);
 };
 
 }  // namespace math

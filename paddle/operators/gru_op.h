@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/operators/math/detail/activation_functions.h"
 #include "paddle/operators/math/gru_compute.h"
 #include "paddle/operators/math/math_function.h"
 #include "paddle/operators/math/sequence2batch.h"
@@ -70,7 +71,7 @@ class GRUKernel : public framework::OpKernel<T> {
     }
 
     int frame_size = hidden_dims[1];
-    math::hl_gru_value<T> gru_value;
+    math::GRUMetaValue<T> gru_value;
     gru_value.gate_weight = const_cast<T*>(weight_data);
     gru_value.state_weight =
         const_cast<T*>(weight_data + 2 * frame_size * frame_size);
@@ -102,8 +103,10 @@ class GRUKernel : public framework::OpKernel<T> {
       gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
       math::GRUUnitFunctor<DeviceContext, T>::compute(
           dev_ctx, gru_value, frame_size, cur_batch_size,
-          math::ActiveType(context.Attr<std::string>("activation")),
-          math::ActiveType(context.Attr<std::string>("gate_activation")));
+          math::detail::GetActivationType(
+              context.Attr<std::string>("activation")),
+          math::detail::GetActivationType(
+              context.Attr<std::string>("gate_activation")));
       gru_value.prev_out_value = gru_value.output_value;
     }
 
@@ -170,12 +173,12 @@ class GRUGradKernel : public framework::OpKernel<T> {
     batch_hidden_grad.set_lod(batch_hidden->lod());
     to_batch(dev_ctx, *hidden_grad, batch_hidden_grad, false, is_reverse);
 
-    math::hl_gru_value<T> gru_value;
+    math::GRUMetaValue<T> gru_value;
     gru_value.gate_weight = const_cast<T*>(weight_data);
     gru_value.state_weight =
         const_cast<T*>(weight_data + 2 * frame_size * frame_size);
 
-    math::hl_gru_grad<T> gru_grad;
+    math::GRUMetaGrad<T> gru_grad;
     if (weight_grad) {
       gru_grad.gate_weight_grad =
           weight_grad->mutable_data<T>(context.GetPlace());
@@ -220,8 +223,10 @@ class GRUGradKernel : public framework::OpKernel<T> {
 
       math::GRUUnitGradFunctor<DeviceContext, T>::compute(
           dev_ctx, gru_value, gru_grad, frame_size, cur_batch_size,
-          math::ActiveType(context.Attr<std::string>("activation")),
-          math::ActiveType(context.Attr<std::string>("gate_activation")));
+          math::detail::GetActivationType(
+              context.Attr<std::string>("activation")),
+          math::detail::GetActivationType(
+              context.Attr<std::string>("gate_activation")));
     }
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
