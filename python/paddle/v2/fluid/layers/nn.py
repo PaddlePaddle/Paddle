@@ -270,6 +270,7 @@ def gru_unit(input,
             attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
 
     # create bias
+
     if bias is None:
         bias_size = [1, 3 * size]
         bias = helper.create_parameter(
@@ -358,7 +359,59 @@ def cos_sim(X, Y, **kwargs):
 
 def cross_entropy(input, label, **kwargs):
     """
-    This function computes cross_entropy using the input and label.
+    **Cross Entropy Layer**
+
+    This layer computes the cross entropy between `input` and `label`. It supports
+    both standard cross-entropy and soft-label cross-entropy loss computation.
+
+    1) One-hot cross-entropy:
+	`soft_label = False`, `Label[i, 0]` indicates the class index for sample i:
+        
+        .. math::
+          
+            Y[i] = -\log(X[i, Label[i]])
+
+    2) Soft-label cross-entropy:
+	`soft_label = True`, `Label[i, j]` indicates the soft label of class j
+	for sample i:
+
+        .. math::
+
+            Y[i] = \sum_j{-Label[i, j] * log(X[i, j])}
+
+       Please make sure that in this case the summation of each row of `label`
+       equals one.
+
+    3) One-hot cross-entropy with vecterized `label`:
+	 As a special case of 2), when each row of 'label' has only one
+	 non-zero element which is equal to 1, soft-label cross-entropy degenerates
+         to a one-hot cross-entropy with one-hot label representation.
+    
+    Args:
+        input (Variable|list):  a 2-D tensor with shape [N x D], where N is the 
+            batch size and D is the number of classes. This input is a probability 
+            computed by the previous operator, which is almost always the result
+            of a softmax operator.
+        label (Variable|list): the ground truth which is a 2-D tensor. When 
+              `soft_label` is set to `False`, `label` is a tensor<int64> with shape 
+              [N x 1]. When `soft_label` is set to `True`, `label` is a 
+              tensor<float/double> with shape [N x D].
+        soft_label (bool, via `**kwargs`): a flag indicating whether to interpretate
+              the given labels as soft labels, default `False`.
+
+    Returns:
+         A 2-D tensor with shape [N x 1], the cross entropy loss.
+
+    Raises:
+        `ValueError`: 1) the 1st dimension of `input` and `label` are not equal; 2) when \ 
+              `soft_label == True`, and the 2nd dimension of `input` and `label` are not \
+               equal; 3) when `soft_label == False`, and the 2nd dimension of `label` is not 1.
+
+    Examples:
+        .. code-block:: python
+
+          predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
+          cost = fluid.layers.cross_entropy(input=predict, label=label)
     """
     helper = LayerHelper('cross_entropy', **kwargs)
     out = helper.create_tmp_variable(dtype=input.dtype)
@@ -514,14 +567,83 @@ def conv2d(input,
            groups=None,
            param_attr=None,
            bias_attr=None,
-           act=None,
-           name=None):
+           act=None):
     """
-    This function creates the op for a 2-dimensional Convolution.
-    This is performed using the parameters of filters(size, dimensionality etc)
-    , stride and other configurations for a Convolution operation.
-    This funciton can also append an activation on top of the
-    conv-2d output, if mentioned in the input parameters.
+    **Convlution2D Layer**
+
+    The convolution2D layer calculates the output based on the input, filter
+    and strides, paddings, dilations, groups parameters. Input(Input) and Output(Output)
+    are in NCHW format. Where N is batch size, C is the number of channels, H is the height
+    of the feature, and W is the width of the feature.
+    The details of convolution layer, please refer UFLDL's `convolution,
+    <http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/>`_ .
+    If bias attribution and activation type are provided, bias is added to the output of the convolution,
+    and the corresponding activation function is applied to the final result.
+    For each input :math:`X`, the equation is:
+
+
+    .. math::
+
+        Out = \sigma (W \\ast X + b)
+
+    In the above equation:
+
+        * :math:`X`: Input value, a tensor with NCHW format.
+        * :math:`W`: Filter value, a tensor with MCHW format.
+        * :math:`\\ast`: Convolution operation.
+        * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
+        * :math:`\\sigma`: Activation function.
+        * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+
+    Example:
+
+        Input:
+            Input shape: $(N, C_{in}, H_{in}, W_{in})$
+
+            Filter shape: $(C_{out}, C_{in}, H_f, W_f)$
+
+        Output:
+            Output shape: $(N, C_{out}, H_{out}, W_{out})$
+        Where
+    .. math::
+
+        H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
+        W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
+
+    Args:
+        input(Variable): The input image with [N, C, H, W] format.
+        num_filters(int): The number of filter. It is as same as the output
+            image channel.
+        filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
+            it must contain two integers, (filter_size_H, filter_size_W).
+            Otherwise, the filter will be a square.
+        stride(int|tuple): The stride size. If stride is a tuple, it must
+            contain two integers, (stride_H, stride_W). Otherwise, the
+            stride_H = stride_W = stride. Default: stride = 1.
+        padding(int|tuple): The padding size. If padding is a tuple, it must
+            contain two integers, (padding_H, padding_W). Otherwise, the
+            padding_H = padding_W = padding. Default: padding = 0.
+        groups(int): The groups number of the Conv2d Layer. According to grouped
+            convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
+            the first half of the filters is only connected to the first half
+            of the input channels, while the second half of the filters is only
+            connected to the second half of the input channels. Default: groups=1
+        param_attr(ParamAttr): The parameters to the Conv2d Layer. Default: None
+        bias_attr(ParamAttr): Bias parameter for the Conv2d layer. Default: None
+        act(str): Activation type. Default: None
+
+    Returns:
+        Variable: The tensor variable storing the convolution and \
+                  non-linearity activation result.
+
+    Raises:
+        ValueError: If the shapes of input, filter_size, stride, padding and groups mismatch.
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
     """
 
     if stride is None:
