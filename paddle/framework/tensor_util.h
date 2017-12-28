@@ -208,7 +208,10 @@ inline void CopyToVector(const Tensor& src, std::vector<T>* dst) {
                src_ptr, size);
 }
 
+// Returns true if a tensor contains NAN, i.e., Not A Number.
 extern bool HasNAN(const framework::Tensor& tensor);
+
+// Returns true if a tensor contains Inf, i.e., Infinity.
 extern bool HasInf(const framework::Tensor& tensor);
 
 }  // namespace framework
