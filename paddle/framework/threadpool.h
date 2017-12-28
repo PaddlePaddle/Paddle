@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <condition_variable>
 #include <functional>
+#include <future>
 #include <mutex>
 #include <queue>
 #include <thread>
@@ -25,10 +26,14 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-typedef std::function<void()> Task;
+// typedef std::packaged_task<void()> Task;
+// typedef std::function<void()> Fun;
 
 class ThreadPool {
  public:
+  typedef std::packaged_task<void()> Task;
+  typedef std::function<void()> Fun;
+
   /**
    * @brief   Get a instance of threadpool, the thread number will
    *          be specified as the number of hardware thread contexts
@@ -61,13 +66,18 @@ class ThreadPool {
   /**
    * @brief   Push a function to the queue, and will be scheduled and
    *          executed if a thread is available.
-   * @param[in] Task  will be pushed to the task queue.
+   * @param[in] Task, will be pushed to the task queue.
+   * @return    std::future<void>, we could wait for the task finished by
+   *            f.wait().
    */
-  void Run(const Task& fn) {
+  std::future<void> Run(const Fun& fn) {
     std::unique_lock<std::mutex> lock(mutex_);
-    tasks_.push(fn);
+    Task task(std::bind(fn));
+    std::future<void> f = task.get_future();
+    tasks_.push(std::move(task));
     lock.unlock();
     scheduled_.notify_one();
+    return f;
   }
 
   /**
@@ -110,7 +120,7 @@ class ThreadPool {
         break;
       }
       // pop a task from the task queue
-      auto task = tasks_.front();
+      auto task = std::move(tasks_.front());
       tasks_.pop();
 
       --available_;
