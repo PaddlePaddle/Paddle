@@ -100,7 +100,7 @@ class CUDADeviceContext : public DeviceContext {
 
 template <>
 struct DefaultDeviceContextType<platform::CUDAPlace> {
-  using T = CUDADeviceContext;
+  using TYPE = CUDADeviceContext;
 };
 
 class CUDNNDeviceContext : public CUDADeviceContext {
