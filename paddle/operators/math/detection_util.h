@@ -51,31 +51,31 @@ struct BBox {
 // KNCHW ==> NHWC
 // template <typename T>
 template <typename T>
-void get_bbox_from_priorData(const T* prior_data, const size_t num_bboxes,
-                             std::vector<BBox<T>>& bbox_vec);
+void GetBBoxFromPriorData(const T* prior_data, const size_t num_bboxes,
+                          std::vector<BBox<T>>& bbox_vec);
 template <typename T>
-void get_bbox_var_from_prior_data(const T* prior_data, const size_t num,
-                                  std::vector<std::vector<T>>& var_vec);
+void GetBBoxVarFromPriorData(const T* prior_data, const size_t num,
+                             std::vector<std::vector<T>>& var_vec);
 template <typename T>
-BBox<T> decode_bbox_with_var(BBox<T>& prior_bbox,
-                             const std::vector<T>& prior_bbox_var,
-                             const std::vector<T>& loc_pred_data);
+BBox<T> DecodeBBoxWithVar(BBox<T>& prior_bbox,
+                          const std::vector<T>& prior_bbox_var,
+                          const std::vector<T>& loc_pred_data);
 template <typename T1, typename T2>
-bool sort_score_pair_descend(const std::pair<T1, T2>& pair1,
-                             const std::pair<T1, T2>& pair2);
+bool SortScorePairDescend(const std::pair<T1, T2>& pair1,
+                          const std::pair<T1, T2>& pair2);
 template <typename T>
-bool sort_score_pair_descend(const std::pair<T, BBox<T>>& pair1,
-                             const std::pair<T, BBox<T>>& pair2);
+bool SortScorePairDescend(const std::pair<T, BBox<T>>& pair1,
+                          const std::pair<T, BBox<T>>& pair2);
 template <typename T>
 T jaccard_overlap(const BBox<T>& bbox1, const BBox<T>& bbox2);
 
 template <typename T>
-void apply_nms_fast(const std::vector<BBox<T>>& bboxes,
-                    const T* conf_score_data, size_t class_idx, size_t top_k,
-                    T conf_threshold, T nms_threshold, size_t num_priors,
-                    size_t num_classes, std::vector<size_t>* indices);
+void ApplyNmsFast(const std::vector<BBox<T>>& bboxes, const T* conf_score_data,
+                  size_t class_idx, size_t top_k, T conf_threshold,
+                  T nms_threshold, size_t num_priors, size_t num_classes,
+                  std::vector<size_t>* indices);
 template <typename T>
-int get_detection_indices(
+int GetDetectionIndices(
     const T* conf_data, const size_t num_priors, const size_t num_classes,
     const size_t background_label_id, const size_t batch_size,
     const T conf_threshold, const size_t nms_top_k, const T nms_threshold,
@@ -83,16 +83,16 @@ int get_detection_indices(
     const std::vector<std::vector<BBox<T>>>& all_decoded_bboxes,
     std::vector<std::map<size_t, std::vector<size_t>>>* all_detection_indices);
 template <typename T>
-BBox<T> clipBBox(const BBox<T>& bbox);
+BBox<T> ClipBBox(const BBox<T>& bbox);
 template <typename T>
-void get_detection_output(
+void GetDetectionOutput(
     const T* conf_data, const size_t num_kept, const size_t num_priors,
     const size_t num_classes, const size_t batch_size,
     const std::vector<std::map<size_t, std::vector<size_t>>>& all_indices,
     const std::vector<std::vector<BBox<T>>>& all_decoded_bboxes, T* out_data);
 template <typename T>
-void get_bbox_from_priorData(const T* prior_data, const size_t num_bboxes,
-                             std::vector<BBox<T>>& bbox_vec) {
+void GetBBoxFromPriorData(const T* prior_data, const size_t num_bboxes,
+                          std::vector<BBox<T>>& bbox_vec) {
   size_t out_offset = bbox_vec.size();
   bbox_vec.resize(bbox_vec.size() + num_bboxes);
   for (size_t i = 0; i < num_bboxes; ++i) {
@@ -105,8 +105,8 @@ void get_bbox_from_priorData(const T* prior_data, const size_t num_bboxes,
   }
 }
 template <typename T>
-void get_bbox_var_from_prior_data(const T* prior_data, const size_t num,
-                                  std::vector<std::vector<T>>& var_vec) {
+void GetBBoxVarFromPriorData(const T* prior_data, const size_t num,
+                             std::vector<std::vector<T>>& var_vec) {
   size_t out_offset = var_vec.size();
   var_vec.resize(var_vec.size() + num);
   for (size_t i = 0; i < num; ++i) {
@@ -119,9 +119,9 @@ void get_bbox_var_from_prior_data(const T* prior_data, const size_t num,
   }
 }
 template <typename T>
-BBox<T> decode_bbox_with_var(BBox<T>& prior_bbox,
-                             const std::vector<T>& prior_bbox_var,
-                             const std::vector<T>& loc_pred_data) {
+BBox<T> DecodeBBoxWithVar(BBox<T>& prior_bbox,
+                          const std::vector<T>& prior_bbox_var,
+                          const std::vector<T>& loc_pred_data) {
   T prior_bbox_width = prior_bbox.get_width();
   T prior_bbox_height = prior_bbox.get_height();
   T prior_bbox_center_x = prior_bbox.get_center_x();
@@ -147,8 +147,8 @@ BBox<T> decode_bbox_with_var(BBox<T>& prior_bbox,
   return decoded_bbox;
 }
 template <typename T1, typename T2>
-bool sort_score_pair_descend(const std::pair<T1, T2>& pair1,
-                             const std::pair<T1, T2>& pair2) {
+bool SortScorePairDescend(const std::pair<T1, T2>& pair1,
+                          const std::pair<T1, T2>& pair2) {
   return pair1.first > pair2.first;
 }
 template <typename T>
@@ -174,10 +174,10 @@ T jaccard_overlap(const BBox<T>& bbox1, const BBox<T>& bbox2) {
 }
 
 template <typename T>
-void apply_nms_fast(const std::vector<BBox<T>>& bboxes,
-                    const T* conf_score_data, size_t class_idx, size_t top_k,
-                    T conf_threshold, T nms_threshold, size_t num_priors,
-                    size_t num_classes, std::vector<size_t>* indices) {
+void ApplyNmsFast(const std::vector<BBox<T>>& bboxes, const T* conf_score_data,
+                  size_t class_idx, size_t top_k, T conf_threshold,
+                  T nms_threshold, size_t num_priors, size_t num_classes,
+                  std::vector<size_t>* indices) {
   std::vector<std::pair<T, size_t>> scores;
   for (size_t i = 0; i < num_priors; ++i) {
     size_t conf_offset = i * num_classes + class_idx;
@@ -185,7 +185,7 @@ void apply_nms_fast(const std::vector<BBox<T>>& bboxes,
       scores.push_back(std::make_pair(conf_score_data[conf_offset], i));
   }
   std::stable_sort(scores.begin(), scores.end(),
-                   sort_score_pair_descend<T, size_t>);
+                   SortScorePairDescend<T, size_t>);
   if (top_k > 0 && top_k < scores.size()) scores.resize(top_k);
   while (scores.size() > 0) {
     const size_t idx = scores.front().second;
@@ -204,7 +204,7 @@ void apply_nms_fast(const std::vector<BBox<T>>& bboxes,
   }
 }
 template <typename T>
-int get_detection_indices(
+int GetDetectionIndices(
     const T* conf_data, const size_t num_priors, const size_t num_classes,
     const size_t background_label_id, const size_t batch_size,
     const T conf_threshold, const size_t nms_top_k, const T nms_threshold,
@@ -219,9 +219,9 @@ int get_detection_indices(
     size_t conf_offset = n * num_priors * num_classes;
     for (size_t c = 0; c < num_classes; ++c) {
       if (c == background_label_id) continue;
-      apply_nms_fast<T>(decoded_bboxes, conf_data + conf_offset, c, nms_top_k,
-                        conf_threshold, nms_threshold, num_priors, num_classes,
-                        &(indices[c]));
+      ApplyNmsFast<T>(decoded_bboxes, conf_data + conf_offset, c, nms_top_k,
+                      conf_threshold, nms_threshold, num_priors, num_classes,
+                      &(indices[c]));
       num_detected += indices[c].size();
     }
     if (top_k > 0 && num_detected > top_k) {
@@ -237,7 +237,7 @@ int get_detection_indices(
         }
       }
       std::sort(score_index_pairs.begin(), score_index_pairs.end(),
-                sort_score_pair_descend<T, std::pair<size_t, size_t>>);
+                SortScorePairDescend<T, std::pair<size_t, size_t>>);
       score_index_pairs.resize(top_k);
       std::map<size_t, std::vector<size_t>> new_indices;
       for (size_t i = 0; i < score_index_pairs.size(); ++i) {
@@ -255,7 +255,7 @@ int get_detection_indices(
   return total_keep_num;
 }
 template <typename T>
-BBox<T> clipBBox(const BBox<T>& bbox) {
+BBox<T> ClipBBox(const BBox<T>& bbox) {
   T one = static_cast<T>(1.0);
   T zero = static_cast<T>(0.0);
   BBox<T> clipped_bbox;
@@ -266,7 +266,7 @@ BBox<T> clipBBox(const BBox<T>& bbox) {
   return clipped_bbox;
 }
 template <typename T>
-void get_detection_output(
+void GetDetectionOutput(
     const T* conf_data, const size_t num_kept, const size_t num_priors,
     const size_t num_classes, const size_t batch_size,
     const std::vector<std::map<size_t, std::vector<size_t>>>& all_indices,
@@ -285,7 +285,7 @@ void get_detection_output(
         out_data[count * 7] = n;
         out_data[count * 7 + 1] = label;
         out_data[count * 7 + 2] = (conf_data + conf_offset)[label];
-        BBox<T> clipped_bbox = clipBBox<T>(decoded_bboxes[idx]);
+        BBox<T> clipped_bbox = ClipBBox<T>(decoded_bboxes[idx]);
         out_data[count * 7 + 3] = clipped_bbox.x_min;
         out_data[count * 7 + 4] = clipped_bbox.y_min;
         out_data[count * 7 + 5] = clipped_bbox.x_max;
