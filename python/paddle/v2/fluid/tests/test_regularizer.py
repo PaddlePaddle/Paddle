@@ -3,7 +3,7 @@ import unittest
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.optimizer as optimizer
 import paddle.v2.fluid.regularizer as regularizer
-from paddle.v2.fluid.backward import append_backward_ops
+from paddle.v2.fluid.backward import append_backward
 
 
 class TestL2DecayRegularizer(unittest.TestCase):
@@ -33,7 +33,7 @@ class TestL2DecayRegularizer(unittest.TestCase):
             dtype="float32", shape=[1], lod_level=0, name="mean.out")
         block.append_op(
             type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
-        params_grads = append_backward_ops(mean_out)
+        params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         count_ops = len(block.ops)
         params_grads = optimizer.append_regularization_ops(params_grads)
@@ -70,7 +70,7 @@ class TestL1DecayRegularizer(unittest.TestCase):
             dtype="float32", shape=[1], lod_level=0, name="mean.out")
         block.append_op(
             type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
-        params_grads = append_backward_ops(mean_out)
+        params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         count_ops = len(block.ops)
         params_grads = optimizer.append_regularization_ops(params_grads)
