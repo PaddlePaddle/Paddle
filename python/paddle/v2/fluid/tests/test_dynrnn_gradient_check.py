@@ -242,7 +242,7 @@ class TestSimpleMul(unittest.TestCase):
         out = rnn()
         out = fluid.layers.sequence_pool(out, pool_type='last')
         loss = fluid.layers.mean(x=out)
-        fluid.backward.append_backward_ops(loss)
+        fluid.backward.append_backward(loss)
 
         cpu = fluid.CPUPlace()
         exe = fluid.Executor(cpu)
@@ -317,7 +317,7 @@ class TestSimpleMulWithMemory(unittest.TestCase):
         out = rnn()
         last = fluid.layers.sequence_pool(input=out, pool_type='last')
         loss = fluid.layers.mean(x=last)
-        fluid.backward.append_backward_ops(loss)
+        fluid.backward.append_backward(loss)
 
         cpu = fluid.CPUPlace()
         exe = fluid.Executor(cpu)
@@ -330,6 +330,7 @@ class TestSimpleMulWithMemory(unittest.TestCase):
                                         ],
                                         return_numpy=False))
         last_by_py, = py_rnn.exe().values()
+        print w_g[0]
         self.assertTrue(numpy.allclose(last_np, last_by_py))
         w_g_num = py_rnn.get_numeric_gradient_of_param(self.PARAM_NAME)
         # print w_g_num[0], w_g[0]
