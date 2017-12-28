@@ -294,7 +294,7 @@ class TestSimpleMulWithMemory(unittest.TestCase):
             assert isinstance(Out, Output)
             Out.out(o)
 
-    # @many_times(10)
+    @many_times(10)
     @prog_scope()
     def test_forward_backward(self):
         py_rnn = TestSimpleMulWithMemory.SimpleMulWithMemory()
@@ -330,10 +330,8 @@ class TestSimpleMulWithMemory(unittest.TestCase):
                                         ],
                                         return_numpy=False))
         last_by_py, = py_rnn.exe().values()
-        print w_g[0]
-        self.assertTrue(numpy.allclose(last_np, last_by_py))
         w_g_num = py_rnn.get_numeric_gradient_of_param(self.PARAM_NAME)
-        # print w_g_num[0], w_g[0]
+        self.assertTrue(numpy.allclose(last_np, last_by_py))
 
         self.assertTrue(numpy.allclose(w_g_num, w_g, rtol=0.1))
         i_g_num = py_rnn.get_numeric_gradient_of_input(self.DATA_NAME)

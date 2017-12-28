@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <cmath>
 #include <vector>
 #include "paddle/framework/executor.h"
 #include "paddle/framework/lod_tensor_array.h"
@@ -201,6 +202,15 @@ class WhileGradOp : public framework::OperatorBase {
             VLOG(10) << "Checking " << var_name;
             PADDLE_ENFORCE(!framework::HasNAN(var->Get<framework::LoDTensor>()),
                            "%s has NAN", var_name);
+            if (var->Get<framework::LoDTensor>().type() ==
+                typeid(float)) {  // NOLINT
+              auto &tensor = var->Get<framework::LoDTensor>();
+              auto *buf = tensor.data<float>();
+              for (int64_t i = 0; i < tensor.numel(); ++i) {
+                PADDLE_ENFORCE(!std::isnan(buf[i]));
+              }
+              VLOG(10) << buf[0];
+            }
           }
         };
         check_var_no_nan(cur_scope, inside_grad_name);
@@ -210,7 +220,7 @@ class WhileGradOp : public framework::OperatorBase {
             "sum", {{"X", {pg_names[param_id], new_inside_name}}},
             {{"Out", {pg_names[param_id]}}}, framework::AttributeMap{});
         sum_op->Run(cur_scope, dev_place);
-        check_var_no_nan(cur_scope, pg_names[param_id]);
+        check_var_no_nan(scope, pg_names[param_id]);
         cur_scope.Rename(new_inside_name, inside_grad_name);
       }
     }
