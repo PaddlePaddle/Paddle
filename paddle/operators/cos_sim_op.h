@@ -56,7 +56,7 @@ struct CosSimFunctor {
         tep_x = x[i];
         tep_y = y_[i];
         xx += tep_x * tep_x;
-        yy += tep_y * tep_y;  // only need
+        yy += tep_y * tep_y;
         xy += tep_x * tep_y;
       }
       xx = sqrt(xx);
