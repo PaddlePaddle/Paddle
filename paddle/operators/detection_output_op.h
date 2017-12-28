@@ -48,7 +48,7 @@ inline void transpose_fun(const framework::ExecutionContext& context,
   }
 }
 template <typename DeviceContext, typename T>
-class Detection_output_Kernel : public framework::OpKernel<T> {
+class DetectionOutputKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const framework::Tensor* in_loc = context.Input<framework::Tensor>("Loc");
@@ -119,22 +119,22 @@ class Detection_output_Kernel : public framework::OpKernel<T> {
         size_t prior_offset = i * 8;
         size_t loc_pred_offset = n * num_priors * 4 + i * 4;
         std::vector<math::BBox<T>> prior_bbox_vec;
-        math::getBBoxFromPriorData<T>(priorbox_data + prior_offset, 1,
-                                      prior_bbox_vec);
+        math::get_bbox_from_priorData<T>(priorbox_data + prior_offset, 1,
+                                         prior_bbox_vec);
         std::vector<std::vector<T>> prior_bbox_var;
-        math::getBBoxVarFromPriorData<T>(priorbox_data + prior_offset, 1,
-                                         prior_bbox_var);
+        math::get_bbox_var_from_prior_data<T>(priorbox_data + prior_offset, 1,
+                                              prior_bbox_var);
         std::vector<T> loc_pred_data;
         for (size_t j = 0; j < 4; ++j)
           loc_pred_data.push_back(*(loc_data + loc_pred_offset + j));
-        math::BBox<T> bbox = math::decodeBBoxWithVar<T>(
+        math::BBox<T> bbox = math::decode_bbox_with_var<T>(
             prior_bbox_vec[0], prior_bbox_var[0], loc_pred_data);
         decoded_bboxes.push_back(bbox);
       }
       all_decoded_bboxes.push_back(decoded_bboxes);
     }
     std::vector<std::map<size_t, std::vector<size_t>>> all_indices;
-    int num_kept = math::getDetectionIndices<T>(
+    int num_kept = math::get_detection_indices<T>(
         conf_data, num_priors, num_classes, background_label_id, batch_size,
         confidence_threshold, nms_top_k, nms_threshold, top_k,
         all_decoded_bboxes, &all_indices);
@@ -154,11 +154,11 @@ class Detection_output_Kernel : public framework::OpKernel<T> {
       out_cpu.mutable_data<T>(out->dims(), platform::CPUPlace());
       out_data = out_cpu.data<T>();
     }
-    math::getDetectionOutput<T>(conf_data, num_kept, num_priors, num_classes,
-                                batch_size, all_indices, all_decoded_bboxes,
-                                out_data);
+    math::get_detection_output<T>(conf_data, num_kept, num_priors, num_classes,
+                                  batch_size, all_indices, all_decoded_bboxes,
+                                  out_data);
     if (platform::is_gpu_place(context.GetPlace())) {
-      framework::CopyFrom(out_cpu, platform::GPUPlace(),
+      framework::CopyFrom(out_cpu, platform::CUDAPlace(),
                           context.device_context(), out);
     }
   }

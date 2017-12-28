@@ -17,5 +17,5 @@ limitations under the License. */
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     detection_output,
-    ops::Detection_output_Kernel<paddle::platform::CUDADeviceContext, float>,
-    ops::Detection_output_Kernel<paddle::platform::CUDADeviceContext, double>);
+    ops::DetectionOutputKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::DetectionOutputKernel<paddle::platform::CUDADeviceContext, double>);

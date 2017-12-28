@@ -18,8 +18,7 @@ namespace operators {
 
 class DetectionOutputOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  DetectionOutputOpMaker(framework::OpProto* proto,
-                         framework::OpAttrChecker* op_checker)
+  DetectionOutputOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Loc",
              "(Tensor) The input tensor of detection_output operator."
@@ -86,5 +85,5 @@ REGISTER_OP_WITHOUT_GRADIENT(detection_output, ops::DetectionOutputOp,
                              ops::DetectionOutputOpMaker);
 REGISTER_OP_CPU_KERNEL(
     detection_output,
-    ops::Detection_output_Kernel<paddle::platform::CPUDeviceContext, float>,
-    ops::Detection_output_Kernel<paddle::platform::CPUDeviceContext, double>);
+    ops::DetectionOutputKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::DetectionOutputKernel<paddle::platform::CPUDeviceContext, double>);
