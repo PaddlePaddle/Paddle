@@ -79,7 +79,7 @@ class Optimizer(object):
     def minimize(self, loss, parameter_list):
         """Add operations to minimize `loss` by updating `parameter_list`.
 
-        This method combines interface `append_backward_ops()` and
+        This method combines interface `append_backward()` and
         `create_optimization_pass()` into one.
         """
         params_grads = self.create_backward_pass(loss, parameter_list)

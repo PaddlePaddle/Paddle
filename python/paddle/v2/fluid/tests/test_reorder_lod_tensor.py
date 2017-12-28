@@ -12,7 +12,7 @@ class TestReorderLoDTensor(unittest.TestCase):
         new_dat = fluid.layers.reorder_lod_tensor_by_rank(
             x=dat, rank_table=table)
         loss = fluid.layers.mean(x=new_dat)
-        fluid.backward.append_backward_ops(loss=loss)
+        fluid.backward.append_backward(loss=loss)
 
         cpu = fluid.CPUPlace()
         exe = fluid.Executor(cpu)
