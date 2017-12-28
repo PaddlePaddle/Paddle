@@ -21,7 +21,7 @@ TEST(selected_rows_functor, gpu_add) {
   using namespace paddle::platform;
   using namespace paddle::operators::math;
 
-  GPUPlace gpu_place(0);
+  CUDAPlace gpu_place(0);
   CPUPlace cpu_place;
   CUDADeviceContext ctx(gpu_place);
   SetConstant<CUDADeviceContext, float> functor;
@@ -119,7 +119,7 @@ TEST(selected_rows_functor, gpu_add_to) {
   using namespace paddle::platform;
   using namespace paddle::operators::math;
 
-  GPUPlace gpu_place(0);
+  CUDAPlace gpu_place(0);
   CPUPlace cpu_place;
   CUDADeviceContext ctx(gpu_place);
   SetConstant<CUDADeviceContext, float> functor;
