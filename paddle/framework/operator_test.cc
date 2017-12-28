@@ -108,7 +108,7 @@ class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 
 static int cpu_kernel_run_num = 0;
 
-class CPUOpWithKernelTest : public OperatorWithKernel {
+class OpWithKernelTest : public OperatorWithKernel {
  public:
   using OperatorWithKernel::OperatorWithKernel;
 
