@@ -6,9 +6,9 @@ cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
 
 if (WITH_GPU)
-  nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS ddim place paddle_memory device_context)
+  nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS ddim place paddle_memory device_context framework_proto)
 else()
-  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS ddim place paddle_memory device_context)
+  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS ddim place paddle_memory device_context framework_proto)
 endif ()
 
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
