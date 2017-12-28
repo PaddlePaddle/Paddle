@@ -189,7 +189,7 @@ class BeamSearchOp : public framework::OperatorBase {
   }
 
   void Run(const framework::Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override {
+           const platform::Place& dev_place) const override {
     LOG(INFO) << "run beam search op";
     auto ids_var = scope.FindVar(Input("ids"));
     auto scores_var = scope.FindVar(Input("scores"));
