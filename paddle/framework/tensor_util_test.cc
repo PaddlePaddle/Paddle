@@ -256,6 +256,7 @@ TEST(Tensor, SerializeAndDeserialize) {
 #ifdef PADDLE_WITH_CUDA
   {
     Tensor gpu_tensor;
+    gpu_tensor.Resize({2, 3});
     Tensor dst_tensor;
 
     auto gpu_place = new platform::CUDAPlace();
