@@ -136,7 +136,7 @@ public:
             (imRowIdx - paddingHeight) >= inputHeight ||
             (imColIdx - paddingWidth) < 0 ||
             (imColIdx - paddingWidth) >= inputWidth) {
-          colData[colh * colWidthSize + colw] = T(0);
+          colData[colh * colWidthSize + colw] = static_cast<T>(0);
         } else {
           imRowIdx += c_im * inputHeight - paddingHeight;
           imColIdx -= paddingWidth;
