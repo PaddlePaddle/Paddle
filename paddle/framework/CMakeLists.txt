@@ -5,7 +5,11 @@ cc_library(ddim SRCS ddim.cc DEPS eigen3)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
 
-cc_library(tensor SRCS tensor.cc DEPS ddim place paddle_memory device_context)
+if (WITH_GPU)
+  nv_binary(tensor SRCS tensor.cc tensor_util.cu DEPS ddim place paddle_memory device_context)
+else()
+  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS ddim place paddle_memory device_context)
+endif ()
 
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
 cc_test(tensor_util_test SRCS tensor_util_test.cc DEPS tensor)
