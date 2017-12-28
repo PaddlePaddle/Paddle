@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
 
+#include "paddle/operators/detail/grpc_client.h"
 #include "paddle/operators/detail/send_recv_impl.h"
 #include "paddle/operators/detail/simple_block_queue.h"
 

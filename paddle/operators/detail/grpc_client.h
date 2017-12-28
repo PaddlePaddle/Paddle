@@ -6,98 +6,162 @@
 #include <string>
 #include <vector>
 
+#include "paddle/framework/data_type.h"
+#include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/scope.h"
+#include "paddle/framework/selected_rows.h"
+#include "paddle/operators/detail/simple_block_queue.h"
+
+#include "paddle/operators/detail/send_recv.grpc.pb.h"
+#include "paddle/operators/detail/send_recv.pb.h"
+
+#include <grpc++/grpc++.h>
+
+using grpc::Channel;
+using grpc::Server;
+using grpc::ServerContext;
+using grpc::ServerReader;
+using grpc::ServerBuilder;
+
+using grpc::ClientContext;
+using grpc::ClientReader;
+using grpc::ClientReaderWriter;
+using grpc::ClientWriter;
+using grpc::Status;
+using sendrecv::SendRecvService;
+using sendrecv::VariableMessage;
+using sendrecv::VoidMessage;
+
 namespace paddle {
 namespace operators {
 namespace detail {
 
-struct Msg {
+struct SendVar {
   std::string endpoint;
   std::string name;
-  std::function<bool(std::string, std::string)> call_back;
+  // std::function<bool(std::string, std::string)> call_back;
+};
+
+struct SendStatus {
   std::string error;
-  // std::string time;
-  time_t start;
-}
+  std::chrono::system_clock::time_point start;
+  std::chrono::system_clock::time_point end;
+  SendVar var;
+};
 
 class GRPCClient {
  public:
-  GRPCClient() {
-    channel_.reset(grpc::CreateChannel(ep, grpc::InsecureChannelCredentials()));
+  GRPCClient() {}
+
+  void AddEndPoint(std::string ep) {
+    if (channels_.find(ep) != channels_.end()) {
+      return;
+    }
+
+    channels_[ep] = std::shared_ptr<Channel>(
+        grpc::CreateChannel(ep, grpc::InsecureChannelCredentials()));
   }
 
-  bool send(const framework::Scope& scope, std::vector<Msg>& in) {
-    CompletionQueue cq;
+  void GetVariableMessage(const framework::Scope& scope, const std::string name,
+                          VariableMessage* msg) {
+    // FIXME(typhoonzero): pass device context to here.
+    auto ctx = platform::CPUDeviceContext();
+    auto* var = scope.FindVar(name);
+    PADDLE_ENFORCE(var);
+    // TODO(typhoonzero): support SelectedRows
+    PADDLE_ENFORCE(var->IsType<framework::LoDTensor>(),
+                   "Only support LoDTensor, %s has wrong type", name);
+
+    const framework::LoDTensor& tensor = var->Get<framework::LoDTensor>();
+    std::ostringstream oss;
+    framework::SerializeToStream(oss, tensor, ctx);
+    msg->set_varname(name);
+    msg->set_serialized(oss.str());
+  }
+
+  // Send all variables of in.
+  // if all are completed, return true, else false;
+  bool Send(const framework::Scope& scope, std::vector<SendVar>& in,
+            std::vector<SendStatus>& ret) {
+    grpc::CompletionQueue cq;
     // Create a ClientContext, Status, Reply, and rpc for each backend.
-    std::vector<std::unique_ptr<Service::Stub>> stubs;
+    std::vector<std::unique_ptr<SendRecvService::Stub>> stubs;
     std::vector<std::unique_ptr<ClientContext>> contexts;
     std::vector<std::unique_ptr<Status>> statuses;
-    std::vector<std::unique_ptr<Reply>> replies;
-    std::vector<std::unique_ptr<ClientAsyncResponseReader<Reply>>> rpcs;
+    std::vector<std::unique_ptr<VariableMessage>> replies;
+    std::vector<
+        std::unique_ptr<grpc::ClientAsyncResponseReader<VariableMessage>>>
+        rpcs;
 
-    int i = 0;
-    for (int i = 0; i < in.size(); i++)
-      stubs[i] = SendRecvService::NewStub(SendRecvService::NewStub(channel_));
+    typedef std::chrono::system_clock::time_point time_point;
 
-    const auto start_time = chrono::system_clock::now();
-    const chrono::system_clock::time_point deadline =
-        start_time + chrono::milliseconds(5000);
+    for (int i = 0; i < (int)in.size(); i++) {
+      PADDLE_ENFORCE(channels_.find(in[i].endpoint) != channels_.end());
+      auto ch = channels_[in[i].endpoint];
+      stubs.emplace_back(SendRecvService::NewStub(ch));
 
-    ClientContext* context = new ClientContext();
-    context->set_deadline(deadline);
-    contexts.emplace_back(context);
+      // record send status
+      SendStatus s;
+      s.start = std::chrono::system_clock::now();
+      s.end = s.start;
+      ret.emplace_back(s);
+      const time_point deadline = s.start + std::chrono::milliseconds(5000);
 
-    statuses.emplace_back(new Status());
+      // context
+      ClientContext* context = new ClientContext();
+      context->set_deadline(deadline);
+      contexts.emplace_back(context);
 
-    Reply* reply = new Reply();
-    replies->emplace_back(reply);
+      // status
+      statuses.emplace_back(new Status());
 
-    rpcs.emplace_back(stubs_[ep.first]->AsyncFooCall(context, request, &cq));
-    rpcs[i]->Finish(reply, statuses[i].get(), (void*)i);
-    i++;
-  }
+      // reply
+      replies.emplace_back(new VariableMessage);
 
-  typedef std::map<std::string, std::string>::iterator end_type;
+      // request
+      VariableMessage request;
+      GetVariableMessage(scope, in[i].name, &request);
 
-  int num_rpcs_finished = 0;
-  int num_rpcs_finished_ok = 0;
-  while (num_rpcs_finished < in.size()) {
-    void* which;
-    bool ok = false;
-    // Block until the next result is available in the completion queue "cq".
-    cq.Next(&which, &ok);
-    num_rpcs_finished++;
+      // rpcs
+      rpcs.emplace_back(stubs[i]->AsyncSendVariable(context, request, &cq));
+      rpcs[i]->Finish(&request, statuses[i].get(), (void*)i);
+    }
 
-    const int idx = int(which);
-    const Status& status = *(statuses[idx].get());
-    LOG(info) << "rpc #" << idx << " done after " << elapsed_ms(start_time)
-              << "ms";
+    int finished = 0;
+    int finished_ok = 0;
+    bool all_completed = true;
+    while (finished < int(in.size())) {
+      void* which = NULL;
+      bool ok = false;
 
-    if (status.ok()) {
-      LOG(info) << "rpc ok";
-      num_rpcs_finished_ok++;
-    } else {
-      if (status.error_code() == StatusCode::DEADLINE_EXCEEDED) {
-        LOG(error) << "rpc timed out";
+      // Block until the next result is available in the completion queue "cq".
+      cq.Next(&which, &ok);
+      finished++;
+
+      const int idx = int(which);
+      ret[idx].end = std::chrono::system_clock::now();
+      const Status& status = *(statuses[idx].get());
+
+      if (status.ok()) {
+        finished_ok++;
       } else {
-        LOG(error) << "rpc failed because:" << status.error_code();
+        all_completed = false;
+        if (status.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
+          ret[idx].error = "rpc timed out";
+        } else {
+          std::ostringstream stringStream;
+          stringStream << "rpc failed because:" << status.error_code();
+          ret[idx].error = stringStream.str();
+        }
       }
     }
+
+    return all_completed;
   }
 
-  return true;
-}
-
-
-  bool GetVariable(const framework::Scope &scope,
-          const std::string &outname);
-{}
-
-void Wait();
-
-private:
-std::shared_ptr<Channel> channel_
+ private:
+  std::map<std::string, std::shared_ptr<Channel>> channels_;
 };
 }
 }
-}
-;
+};
