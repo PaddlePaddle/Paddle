@@ -35,8 +35,8 @@ class ArrayOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(i_tensor.numel(), 1);
 
     // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-    auto &dev_ctx = *pool.Borrow(place);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place);
 
     size_t offset;
     if (platform::is_gpu_place(i_tensor.place())) {

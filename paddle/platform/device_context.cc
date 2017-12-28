@@ -17,7 +17,7 @@ namespace platform {
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
-const platform::DeviceContext* DeviceContextPool::Borrow(
+const platform::DeviceContext* DeviceContextPool::Get(
     const platform::Place& place) {
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
@@ -26,24 +26,6 @@ const platform::DeviceContext* DeviceContextPool::Borrow(
         "option");
   }
   return it->second;
-}
-
-std::vector<const platform::DeviceContext*> DeviceContextPool::Borrow(
-    const std::vector<platform::Place>& places) {
-  PADDLE_ENFORCE_GT(places.size(), 0);
-  PADDLE_ENFORCE_LE(places.size(), device_contexts_.size());
-  std::vector<const platform::DeviceContext*> borrowed_contexts;
-  for (auto& place : places) {
-    auto it = device_contexts_.find(place);
-    if (it != device_contexts_.end()) {
-      borrowed_contexts.emplace_back(it->second);
-    } else {
-      PADDLE_THROW(
-          "'Place' is not supported, Please re-compile with WITH_GPU "
-          "option");
-    }
-  }
-  return borrowed_contexts;
 }
 
 DeviceContextPool::DeviceContextPool(
