@@ -12,7 +12,11 @@ else()
 endif ()
 
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
-cc_test(tensor_util_test SRCS tensor_util_test.cc DEPS tensor)
+if (WITH_GPU)
+  nv_test(tensor_util_test SRCS tensor_util_test.cc tensor_util_test.cu DEPS tensor)
+else()
+  cc_test(tensor_util_test SRCS tensor_util_test.cc DEPS tensor)
+endif()
 
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
