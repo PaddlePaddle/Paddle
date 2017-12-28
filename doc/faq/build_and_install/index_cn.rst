@@ -109,3 +109,31 @@ PaddlePaddle使用avx SIMD指令提高cpu执行效率，因此错误的使用二
 解决办法是：
 
 * 卸载PaddlePaddle包 :code:`pip uninstall paddle`, 清理掉老旧的PaddlePaddle安装包，使得单元测试有一个干净的环境。如果PaddlePaddle包已经在python的site-packages里面，单元测试会引用site-packages里面的python包，而不是源码目录里 :code:`/python` 目录下的python包。同时，即便设置 :code:`PYTHONPATH` 到 :code:`/python` 也没用，因为python的搜索路径是优先已经安装的python包。
+
+8. 下载MKLML库失败
+------------------
+
+..  code-block:: bash
+
+    make[2]: *** [third_party/mklml/src/extern_mklml-stamp/extern_mklml-download] 错误 4
+    make[1]: *** [CMakeFiles/extern_mklml.dir/all] 错误 2
+    make[1]: *** 正在等待未完成的任务....
+
+原因：网速或SSL链接原因，导致MKLML库下载不成功。
+
+解决办法是：手动下载并安装，具体步骤如下。
+
+..  code-block:: bash
+
+    // 1. 进入对应的目录
+    cd build/third_party/mklml/src/extern_mklml
+
+    // 2. 查看包的大小， 正常情况下是75M，如果小于75M，即下载失败：
+    du -sh mklml_lnx_2018.0.1.20171007.tgz
+
+    // 3. 手动下载且解压缩，并手动生成download成功标签：
+    wget --no-check-certificate https://github.com/01org/mkl-dnn/releases/download/v0.11/mklml_lnx_2018.0.1.20171007.tgz -c -O mklml_lnx_2018.0.1.20171007.tgz 
+    tar zxf mklml_lnx_2018.0.1.20171007.tgz
+    touch ../extern_mklml-stamp/extern_mklml-download
+
+    // 4. 接着编译即可

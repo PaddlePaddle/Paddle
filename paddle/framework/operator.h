@@ -89,6 +89,9 @@ class OperatorBase {
   /// Net will call this function to Run an op.
   virtual void Run(const Scope& scope, const platform::Place& place) const = 0;
 
+  // FIXME(typhoonzero): this is only used for recv_op to stop event_loop.
+  virtual void Stop() {}
+
   virtual bool IsNetOp() const { return false; }
 
   virtual bool SupportGPU() const { return false; }

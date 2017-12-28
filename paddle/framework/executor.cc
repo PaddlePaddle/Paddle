@@ -102,7 +102,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
     VLOG(3) << op->DebugString();
     op->Run(*local_scope, place_);
   }
-  if (create_local_scope) {
+  if (create_vars && create_local_scope) {
     scope->DeleteScope(local_scope);
   }
 }
