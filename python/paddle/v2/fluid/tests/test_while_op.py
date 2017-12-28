@@ -2,7 +2,7 @@ import unittest
 import paddle.v2.fluid.layers as layers
 from paddle.v2.fluid.executor import Executor
 import paddle.v2.fluid.core as core
-from paddle.v2.fluid.backward import append_backward_ops
+from paddle.v2.fluid.backward import append_backward
 import numpy
 
 
@@ -46,7 +46,7 @@ class TestWhileOp(unittest.TestCase):
         sum_result = layers.array_read(array=mem_array, i=i)
         loss = layers.mean(x=sum_result)
 
-        append_backward_ops(loss)
+        append_backward(loss)
 
         cpu = core.CPUPlace()
         exe = Executor(cpu)

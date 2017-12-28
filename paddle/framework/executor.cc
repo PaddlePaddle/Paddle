@@ -124,7 +124,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
       }
     }
   }
-  if (create_local_scope) {
+  if (create_vars && create_local_scope) {
     scope->DeleteScope(local_scope);
   }
 }

@@ -1,3 +1,17 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License. */
+
 #include "paddle/framework/op_registry.h"
 #include <gtest/gtest.h>
 
@@ -182,3 +196,71 @@ TEST(OperatorRegistrar, Test) {
   using namespace paddle::framework;
   OperatorRegistrar<CosineOpComplete, CosineOpProtoAndCheckerMaker> reg("cos");
 }
+
+namespace paddle {
+namespace framework {
+
+class OpKernelTestMaker : public OpProtoAndCheckerMaker {
+ public:
+  OpKernelTestMaker(OpProto* proto, OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddComment("NoGradOp, same input output. no Grad");
+  }
+};
+
+class OpWithKernelTest : public OperatorWithKernel {
+ public:
+  using OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(InferShapeContext* ctx) const override {}
+
+  framework::OpKernelType GetActualKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(proto::DataType::FP32, ctx.device_context());
+  }
+};
+
+template <typename DeviceContext, typename T>
+class OpKernelTest : public paddle::framework::OpKernel<T> {
+ public:
+  void Compute(const paddle::framework::ExecutionContext& ctx) const {}
+};
+
+}  // namespace framework
+}  // namespace paddle
+
+REGISTER_OP_WITHOUT_GRADIENT(op_with_kernel,
+                             paddle::framework::OpWithKernelTest,
+                             paddle::framework::OpKernelTestMaker);
+REGISTER_OP_CPU_KERNEL(
+    op_with_kernel,
+    paddle::framework::OpKernelTest<paddle::platform::CPUDeviceContext, float>);
+
+REGISTER_OP_CUDA_KERNEL(op_with_kernel,
+                        paddle::framework::OpKernelTest<
+                            paddle::platform::CUDADeviceContext, float>);
+
+TEST(OperatorRegistrar, CPU) {
+  paddle::framework::proto::OpDesc op_desc;
+  paddle::platform::CPUPlace cpu_place;
+  paddle::framework::Scope scope;
+
+  op_desc.set_type("op_with_kernel");
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+
+  op->Run(scope, cpu_place);
+}
+
+#ifdef PADDLE_WITH_CUDA
+TEST(OperatorRegistrar, CUDA) {
+  paddle::framework::proto::OpDesc op_desc;
+  paddle::platform::CUDAPlace cuda_place(0);
+  paddle::framework::Scope scope;
+
+  op_desc.set_type("op_with_kernel");
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+
+  op->Run(scope, cuda_place);
+}
+#endif
