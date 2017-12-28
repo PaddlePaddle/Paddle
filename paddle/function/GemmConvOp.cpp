@@ -189,8 +189,8 @@ public:
     size_t colHeight = inputChannels / groups_ * filterHeight * filterWidth;
     size_t colWidth = outputHeight * outputWidth;
     // Max col matrix height 256, Max col matrix width 1024
-    size_t stepColHeight = std::min(colHeight, (size_t)256);
-    size_t stepColWidth = std::min(colWidth, (size_t)2048);
+    size_t stepColHeight = std::min(colHeight, static_cast<size_t>(256));
+    size_t stepColWidth = std::min(colWidth, static_cast<size_t>(2048));
 
     if (needIm2col) {
       colShape = TensorShape({inputChannels / groups_,
@@ -278,6 +278,8 @@ public:
       inputData += inputChannels * inputHeight * inputWidth;
       outputData += outputChannels * outputHeight * outputWidth;
     }
+
+    memory_.reset();
   }
 };
 

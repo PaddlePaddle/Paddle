@@ -140,13 +140,13 @@ TEST(Im2ColFunctor, GPU) { TestIm2ColFunctor<DEVICE_TYPE_GPU, float>(); }
 
 template <class T>
 void TestIm2ColMobileFunctor() {
-  for (size_t channels : {1, 5, 32}) {
-    for (size_t inputHeight : {5, 33, 100}) {
-      for (size_t inputWidth : {5, 32, 96}) {
-        for (size_t filterHeight : {1, 5}) {
-          for (size_t filterWidth : {3, 7}) {
-            for (size_t stride : {1, 2}) {
-              for (size_t padding : {0, 1}) {
+  for (size_t channels : {32}) {
+    for (size_t inputHeight : {33, 100}) {
+      for (size_t inputWidth : {32, 96}) {
+        for (size_t filterHeight : {5}) {
+          for (size_t filterWidth : {7}) {
+            for (size_t stride : {2}) {
+              for (size_t padding : {1}) {
                 for (size_t dilation : {1, 3}) {
                   size_t filterSizeH = (filterHeight - 1) * dilation + 1;
                   size_t filterSizeW = (filterWidth - 1) * dilation + 1;
