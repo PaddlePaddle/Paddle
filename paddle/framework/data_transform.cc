@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/data_transform.h"
+#include "paddle/framework/lod_tensor.h"
 
 namespace paddle {
 namespace framework {
