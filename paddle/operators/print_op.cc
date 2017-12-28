@@ -128,7 +128,7 @@ class TensorPrintOp : public framework::OperatorBase {
   }
 
   void Run(const framework::Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override {
+           const platform::Place& place) const override {
     // Only run the `first_n` times.
     int first_n = Attr<int>("first_n");
     if (first_n > 0 && ++times_ > first_n) return;
@@ -191,8 +191,8 @@ class InferShape : public framework::InferShapeBase {
 
 class InferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDescBind& op_desc,
-                  framework::BlockDescBind* block) const override {}
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const override {}
 };
 
 }  // namespace operators
