@@ -35,7 +35,6 @@ class Variable {
   template <typename T>
   T* GetMutable() {
     if (!IsType<T>()) {
-      VLOG(10) << "Resetting " << *this->name_;
       holder_.reset(new PlaceholderImpl<T>(new T()));
     }
     return static_cast<T*>(holder_->Ptr());
