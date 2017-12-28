@@ -2,7 +2,7 @@ import unittest
 import paddle.v2.fluid.core as core
 from paddle.v2.fluid.executor import Executor
 import paddle.v2.fluid.layers as layers
-from paddle.v2.fluid.backward import append_backward_ops
+from paddle.v2.fluid.backward import append_backward
 from paddle.v2.fluid.framework import default_main_program
 import numpy
 
@@ -35,7 +35,7 @@ class TestShrinkRNNMemory(unittest.TestCase):
         self.assertTrue(numpy.allclose(tensor_np[0:1], outs[2]))
 
         mem3_mean = layers.mean(x=mem3)
-        append_backward_ops(loss=mem3_mean)
+        append_backward(loss=mem3_mean)
         x_grad = exe.run(
             feed={'x': tensor},
             fetch_list=[main_program.global_block().var('x@GRAD')])[0]
