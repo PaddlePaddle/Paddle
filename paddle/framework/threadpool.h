@@ -26,9 +26,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-// typedef std::packaged_task<void()> Task;
-// typedef std::function<void()> Fun;
-
 class ThreadPool {
  public:
   typedef std::packaged_task<void()> Task;
