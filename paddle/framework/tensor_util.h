@@ -284,6 +284,7 @@ inline void DeserializeFromStream(std::istream& is, Tensor* tensor) {
 
     void* buf;
     platform::Place cpu = platform::CPUPlace();
+    // TODO(Yancey1989): use VisiterDataType instead of DataType switch
     switch (desc.data_type()) {
       case proto::FP32:
         buf = tensor->mutable_data<float>(cpu);

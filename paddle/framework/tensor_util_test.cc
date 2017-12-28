@@ -266,7 +266,7 @@ TEST(Tensor, SerializeAndDeserialize) {
     std::ostringstream oss;
     SerializeToStream(oss, gpu_tensor, gpu_ctx);
 
-    std::istringstream iss(os.str());
+    std::istringstream iss(oss.str());
 
     int* dst_ptr = dst_tensor.mutable_data<int>(platform::CPUPlace());
     for (int i = 0; i < 6; ++i) {

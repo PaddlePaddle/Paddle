@@ -189,13 +189,16 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
 
 void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
                        const platform::DeviceContext &dev_ctx) {
-  // serialize Tensor
-  SerializeToStream(os, static_cast<Tensor>(tensor), dev_ctx);
-  {  // serialize lod information
-     // uint64_t lod_level
-     // uint64_t lod_level_1 size in byte.
-     // int*     lod_level_1 data
-     // ...
+  {  // the 1st field, uint32_t version for LoDTensor
+    constexpr uint32_t version = 0;
+    os.write(reinterpret_cast<const char *>(&version), sizeof(version));
+  }
+  {
+    // the 2st field, LoD information
+    // uint64_t lod_level
+    // uint64_t lod_level_1 size in byte.
+    // int*     lod_level_1 data
+    // ...
     auto lod = tensor.lod();
     uint64_t size = lod.size();
     os.write(reinterpret_cast<const char *>(&size), sizeof(size));
@@ -207,11 +210,19 @@ void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
                static_cast<std::streamsize>(size));
     }
   }
+  // the 3st field, Tensor
+  SerializeToStream(os, static_cast<Tensor>(tensor), dev_ctx);
 }
 
 void DeserializeFromStream(std::istream &is, LoDTensor *tensor) {
-  DeserializeFromStream(is, static_cast<Tensor *>(tensor));
-  {  // read lod
+  {
+    // the 1st field, unit32_t version for SelectedRows
+    uint32_t version;
+    is.read(reinterpret_cast<char *>(&version), sizeof(version));
+    PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
+  }
+  {
+    // the 2st field, LoD information
     uint64_t lod_level;
     is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
     auto &lod = *tensor->mutable_lod();
@@ -225,6 +236,8 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor) {
       lod[i] = tmp;
     }
   }
+  // the 3st filed, Tensor
+  DeserializeFromStream(is, static_cast<Tensor *>(tensor));
 }
 
 }  // namespace framework
