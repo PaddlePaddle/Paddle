@@ -439,20 +439,17 @@ void OperatorWithKernel::Run(const Scope& scope,
       if (!need_trans.empty()) {
         // TODO(qijun) get appropriate DeviceContext from DeviceContext pool
         platform::DeviceContext* trans_dev_ctx = nullptr;
-        std::vector<platform::DeviceContext*> trans_dev_ctx_vec{trans_dev_ctx};
 
         // Wait for transform starting
         dev_ctx->Wait();
 
         for (auto var_name : need_trans) {
-          (*trans_fun)(trans_dev_ctx_vec, *(scope.FindVar(var_name)),
+          (*trans_fun)(trans_dev_ctx, *(scope.FindVar(var_name)),
                        scope.FindVar(var_name + framework::KernelTypeToString(
                                                     expected_kernel_key)));
         }
         // Wait for data transform finishing
-        for (auto ctx : trans_dev_ctx_vec) {
-          ctx->Wait();
-        }
+        trans_dev_ctx->Wait();
       }
     }
   }

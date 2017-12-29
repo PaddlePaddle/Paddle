@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/framework/data_transform.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
@@ -29,19 +30,39 @@ auto kernel_FP32 = OpKernelType(proto::DataType::FP32, platform::CPUPlace(),
 auto kernel_FP64 = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
                                 DataLayout::kNHWC, LibraryType::kPlain);
 
-void TransDataType(const OpKernelType& kernel_out,
-                   const std::vector<platform::DeviceContext*> ctx,
-                   const Variable& in, Variable* out) {
+void TransDataType(const platform::DeviceContext* ctx,
+                   const KernelTypePair& kernel_pair, const Variable& in,
+                   Variable* out) {
   PADDLE_ENFORCE(in.IsType<LoDTensor>(), "Only Support LoDTensor transform!.");
-  auto src = in->Get<LoDTensor>();
+  auto src = in.Get<LoDTensor>();
   auto* dst = out->GetMutable<LoDTensor>();
-  auto dims = in.Get<LoDTensor>().dims();
+  auto dims = src.dims();
   dst->Resize(dims);
-  auto context = *ctx[0];
+  auto dst_type = kernel_pair.second.data_type_;
+  auto src_type = kernel_pair.first.data_type_;
 
-  VisitDataType(kernel_out.data_type_,
-                CastDataType<DeviceContext>(out, context));
-  CopyFrom(src, kernel_out.place_, context, dst);
+  switch (src_type) {
+    case proto::DataType::FP32:
+      framework::VisitDataType(dst_type, CastDataType<float>(src, dst, ctx));
+    // case proto::DataType::FP64:
+    //     framework::VisitDataType(
+    //         dst_type,
+    //         CastDataType<platform::DeviceContext, double>(src, dst, ctx));
+    // case proto::DataType::INT32:
+    //     framework::VisitDataType(
+    //         dst_type, CastDataType<platform::DeviceContext, int>(src, dst,
+    //         ctx));
+    // case proto::DataType::INT64:
+    //     framework::VisitDataType(
+    //         dst_type,
+    //         CastDataType<platform::DeviceContext, int64_t>(src, dst, ctx));
+    // case proto::DataType::BOOL:
+    //     framework::VisitDataType(
+    //         dst_type, CastDataType<platform::DeviceContext, bool>(src, dst,
+    //         ctx));
+    default:
+      PADDLE_THROW("Not support type %d", src_type);
+  }
 }
 
 }  // namespace framework

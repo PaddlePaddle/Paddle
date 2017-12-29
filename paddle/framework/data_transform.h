@@ -23,15 +23,16 @@ limitations under the License. */
 #include "paddle/framework/variable.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/macros.h"
+#include "paddle/platform/transform.h"
 
 namespace paddle {
 namespace framework {
 
-using DataTransformFN = std::function<void(
-    const OpKernelType&, const std::vector<platform::DeviceContext*> ctx,
-    const Variable& in, Variable* out)>;
-
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
+
+using DataTransformFn =
+    std::function<void(const platform::DeviceContext*, const KernelTypePair&,
+                       const Variable&, Variable*)>;
 
 struct KernelTypePairHash {
   static void HashCombine(const OpKernelType& t, std::size_t* seed) {
@@ -47,12 +48,45 @@ struct KernelTypePairHash {
   }
 };
 
-template <typename DeviceContext>
+template <typename InType, typename OutType>
+struct CastDataTypeFunctor {
+  HOSTDEVICE OutType operator()(InType in) const {
+    return static_cast<OutType>(in);
+  }
+};
+
+template <typename InType>
 struct CastDataType {
-  CastDataType(LoDTensor* t, const DeviceContext& ctx);
+  CastDataType(const framework::Tensor& in, framework::Tensor* out,
+               const platform::DeviceContext* ctx)
+      : in_(in), out_(out), ctx_(ctx) {}
+  const framework::Tensor in_;
+  framework::Tensor* out_;
+  const platform::DeviceContext* ctx_;
+
   template <typename OutType>
   void operator()() {
-    t->mutable_data<OutType>(ctx.GetPlace());
+    auto place = ctx_->GetPlace();
+
+    auto* in_begin = in_.data<InType>();
+    auto numel = in_.numel();
+    auto* in_end = in_begin + numel;
+    auto* out_begin = out_->mutable_data<OutType>(place);
+    if (platform::is_cpu_place(place)) {
+      platform::Transform<platform::CPUDeviceContext> trans;
+      auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
+      trans(*context, in_begin, in_end, out_begin,
+            CastDataTypeFunctor<InType, OutType>());
+    }
+    // #ifdef PADDLE_WITH_CUDA
+    //     else if (platform::is_gpu_place(place) {
+    //         platform::Transform<platform::CUDADeviceContext> trans;
+    //         auto* context = static_cast<const
+    //         platform::CUDADeviceContext*>(ctx);
+    //         trans(*context, in_begin, in_end, out_begin,
+    //               CastDataTypeFunctor<InType, OutType>());
+    //       }
+    // #endif
   }
 };
 
