@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <set>
+
 #include "paddle/operators/math/math_function.h"
 #include "paddle/operators/math/selected_rows_functor.h"
 #include "paddle/platform/cuda_helper.h"
@@ -251,8 +253,8 @@ __global__ void MergeAddKernel(const T* input, const int64_t* input_rows,
 }
 
 template <typename T>
-struct MergeAdd<platform::GPUDeviceContext, T> {
-  framework::SelectedRows operator()(const platform::GPUDeviceContext& context,
+struct MergeAdd<platform::CUDADeviceContext, T> {
+  framework::SelectedRows operator()(const platform::CUDADeviceContext& context,
                                      const framework::SelectedRows& input) {
     framework::SelectedRows out;
     auto input_rows = input.rows();
@@ -288,10 +290,10 @@ struct MergeAdd<platform::GPUDeviceContext, T> {
   }
 };
 
-template struct MergeAdd<platform::GPUDeviceContext, float>;
-template struct MergeAdd<platform::GPUDeviceContext, double>;
-template struct MergeAdd<platform::GPUDeviceContext, int>;
-template struct MergeAdd<platform::GPUDeviceContext, int64_t>;
+template struct MergeAdd<platform::CUDADeviceContext, float>;
+template struct MergeAdd<platform::CUDADeviceContext, double>;
+template struct MergeAdd<platform::CUDADeviceContext, int>;
+template struct MergeAdd<platform::CUDADeviceContext, int64_t>;
 
 template <typename T, int block_size>
 __global__ void UpdateToTensorKernel(const T* selected_rows,
@@ -343,14 +345,14 @@ __global__ void UpdateToTensorKernel(const T* selected_rows,
 }
 
 template <typename T>
-struct UpdateToTensor<platform::GPUDeviceContext, T> {
-  framework::Tensor operator()(const platform::GPUDeviceContext& context,
-                               const ScatterOps& op,
-                               const framework::SelectedRows& input1,
-                               framework::Tensor* input2) {
+struct UpdateToTensor<platform::CUDADeviceContext, T> {
+  void operator()(const platform::CUDADeviceContext& context,
+                  const ScatterOps& op, const framework::SelectedRows& input1,
+                  framework::Tensor* input2) {
     // NOTE: Use SelectedRowsAddToTensor for better performance
     //       no additional MergeAdd called.
-    auto merged_in1 = MergeAdd()(context, input1);
+    MergeAdd<platform::CUDADeviceContext, T> merge_func;
+    auto merged_in1 = merge_func(context, input1);
 
     auto in1_height = merged_in1.height();
     auto in2_dims = input2->dims();
@@ -362,14 +364,14 @@ struct UpdateToTensor<platform::GPUDeviceContext, T> {
     int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
     PADDLE_ENFORCE_EQ(in1_row_numel, input2->numel() / in1_height);
 
-    auto* in1_data = in1_value.data<T>();
-    auto* input2_data = input2->data<T>();
+    auto* in1_data = in1_value.template data<T>();
+    auto* in2_data = input2->data<T>();
 
-    dim3 threads(PADDLE_CUDA_NUM_THREADS, 1);
+    dim3 threads(platform::PADDLE_CUDA_NUM_THREADS, 1);
     dim3 grid(1, in1_rows.size());
-    UpdateToTensorKernel<
-        T, PADDLE_CUDA_NUM_THREADS><<<grid, threads, 0, context.stream()>>>(
-        in1_data, in1_rows.data(), op, in2_data, in1_row_numel);
+    UpdateToTensorKernel<T, platform::PADDLE_CUDA_NUM_THREADS><<<
+        grid, threads, 0, context.stream()>>>(in1_data, in1_rows.data(), op,
+                                              in2_data, in1_row_numel);
   }
 };
 }  // namespace scatter
