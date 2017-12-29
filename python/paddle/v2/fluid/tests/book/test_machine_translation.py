@@ -33,7 +33,7 @@ def encoder_decoder():
 
     fc1 = fluid.layers.fc(input=src_embedding, size=hidden_dim * 4, act='tanh')
     lstm_hidden0, lstm_0 = layers.dynamic_lstm(input=fc1, size=hidden_dim * 4)
-    encoder_out = layers.sequence_pool(input=lstm_hidden0, pool_type="last")
+    encoder_out = layers.sequence_last_step(input=lstm_hidden0)
 
     # decoder
     trg_language_word = layers.data(

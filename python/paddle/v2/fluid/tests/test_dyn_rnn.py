@@ -63,8 +63,7 @@ class TestDynRNN(unittest.TestCase):
 
             all_timesteps = fluid.layers.array_to_lod_tensor(
                 x=out, table=rank_table)
-            last = fluid.layers.sequence_pool(
-                input=all_timesteps, pool_type='last')
+            last = fluid.layers.sequence_last_step(input=all_timesteps)
             logits = fluid.layers.fc(input=last, size=1, act=None)
             loss = fluid.layers.sigmoid_cross_entropy_with_logits(
                 x=logits, label=label)
@@ -101,7 +100,7 @@ class TestDynRNN(unittest.TestCase):
                 rnn.update_memory(mem, out_)
                 rnn.output(out_)
 
-            last = fluid.layers.sequence_pool(input=rnn(), pool_type='last')
+            last = fluid.layers.sequence_last_step(input=rnn())
             logits = fluid.layers.fc(input=last, size=1, act=None)
             label = fluid.layers.data(name='label', shape=[1], dtype='float32')
             loss = fluid.layers.sigmoid_cross_entropy_with_logits(
