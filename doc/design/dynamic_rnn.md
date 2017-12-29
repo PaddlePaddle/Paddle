@@ -1,6 +1,6 @@
 # Implementation Doc: Dynamic RNN
 
-## Background
+## A glance of Dynamic RNN
 
 A common neural network structure called recurrent neural network(`RNN` for short), which there is a directed circle in the neural network model. RNN can use a internal memory to process arbitrary sequences of inputs.
 
@@ -36,4 +36,9 @@ while (i < inputs_for_each_timestep.size()) {
 LoDTensor outputs = TimestepsToLoDTensor(outputs_for_each_timestep);
 ```
 
-In this description, there are several points need to be pointed out.
+The `Dynamic RNN` in PaddlePaddle Fluid is basically a syntax sugar to compose operators, such as `while`, `split_lod_tensor_to_timesteps`, `restore_lod_tensor_from_timesteps`.
+
+The following of this document will be organized in several sections:
+
+1. Data manipulation operators of RNN.
+2. Backward of RNN.
