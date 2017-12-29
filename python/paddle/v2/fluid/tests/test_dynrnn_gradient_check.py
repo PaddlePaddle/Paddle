@@ -294,7 +294,8 @@ class TestSimpleMulWithMemory(unittest.TestCase):
             assert isinstance(Out, Output)
             Out.out(o)
 
-    @many_times(10)
+    # many_times used locally for debug. Make sure the calculation is stable.
+    # @many_times(10)
     @prog_scope()
     def test_forward_backward(self):
         py_rnn = TestSimpleMulWithMemory.SimpleMulWithMemory()
