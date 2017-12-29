@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/math/cos_sim_functor.h"
 #include "paddle/operators/math/math_function.h"
 #include "paddle/platform/for_range.h"
 
@@ -21,59 +22,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-
-template <typename T, bool same_row>
-struct CosSimFunctor {
-  CosSimFunctor(const T* x, const T* y, T* x_norm, T* y_norm, T* z, int cols)
-      : x_norm_(x_norm),
-        y_norm_(y_norm),
-        x_(x),
-        y_(y),
-        z_(z),
-        cols_(static_cast<size_t>(cols)) {}
-
-  inline HOSTDEVICE void operator()(size_t row_id) const {
-    auto* x = x_ + cols_ * row_id;
-    T xx = 0, xy = 0, yy = 0;
-    if (same_row) {
-      auto* y = y_ + cols_ * row_id;
-      T tep_x, tep_y;
-      for (size_t i = 0; i < cols_; ++i) {
-        tep_x = x[i];
-        tep_y = y[i];
-        xx += tep_x * tep_x;
-        yy += tep_y * tep_y;
-        xy += tep_x * tep_y;
-      }
-      xx = sqrt(xx);
-      yy = sqrt(yy);
-      y_norm_[row_id] = yy;
-      x_norm_[row_id] = xx;
-      z_[row_id] = xy / (xx * yy);
-    } else {  // This can be wrote in a better way.
-      T tep_x, tep_y;
-      for (size_t i = 0; i < cols_; ++i) {
-        tep_x = x[i];
-        tep_y = y_[i];
-        xx += tep_x * tep_x;
-        yy += tep_y * tep_y;
-        xy += tep_x * tep_y;
-      }
-      xx = sqrt(xx);
-      yy = sqrt(yy);
-      if (row_id == 0) y_norm_[0] = yy;
-      x_norm_[row_id] = xx;
-      z_[row_id] = xy / (xx * yy);
-    }
-  }
-
-  T* x_norm_;
-  T* y_norm_;
-  const T* x_;
-  const T* y_;
-  T* z_;
-  const size_t cols_;
-};
 
 template <typename DeviceContext, typename T>
 class CosSimKernel : public framework::OpKernel<T> {
@@ -95,14 +43,14 @@ class CosSimKernel : public framework::OpKernel<T> {
     int cols = framework::product(in_x->dims()) / rows_x;
 
     if (rows_x == rows_y) {
-      CosSimFunctor<T, true> functor(
+      math::CosSimFunctor<T, true> functor(
           in_x->data<T>(), in_y->data<T>(), out_x_norm->data<T>(),
           out_y_norm->data<T>(), out_z->data<T>(), cols);
       platform::ForRange<DeviceContext> for_range(
           static_cast<const DeviceContext&>(context.device_context()), rows_x);
       for_range(functor);
     } else {
-      CosSimFunctor<T, false> functor(
+      math::CosSimFunctor<T, false> functor(
           in_x->data<T>(), in_y->data<T>(), out_x_norm->data<T>(),
           out_y_norm->data<T>(), out_z->data<T>(), cols);
       platform::ForRange<DeviceContext> for_range(
@@ -110,93 +58,6 @@ class CosSimKernel : public framework::OpKernel<T> {
       for_range(functor);
     }
   }
-};
-
-template <typename T>
-struct CosSimGradFunctor {
-  CosSimGradFunctor(const T* x_norm, const T* y_norm, const T* x, const T* y,
-                    const T* z, const T* dz, T* dx, int cols)
-      : x_norm_(x_norm),
-        y_norm_(y_norm),
-        x_(x),
-        y_(y),
-        z_(z),
-        dz_(dz),
-        dx_(dx),
-        cols_(static_cast<size_t>(cols)) {}
-
-  inline HOSTDEVICE void operator()(size_t row_id) const {
-    auto x_norm_square = x_norm_[row_id] * x_norm_[row_id];
-    auto xy_norm_prod = x_norm_[row_id] * y_norm_[row_id];
-    auto dz = dz_[row_id];
-    auto z = z_[row_id];
-
-    auto* dx = dx_ + cols_ * row_id;
-    auto* x = x_ + cols_ * row_id;
-    auto* y = y_ + cols_ * row_id;
-
-    auto reciprocal_xy_norm_prod = 1 / xy_norm_prod;
-    auto reciprocal_x_norm_square = 1 / x_norm_square;
-    for (size_t i = 0; i < cols_; ++i) {
-      dx[i] = dz * (y[i] * reciprocal_xy_norm_prod -
-                    z * x[i] * reciprocal_x_norm_square);
-    }
-  }
-
-  const T* x_norm_;
-  const T* y_norm_;
-  const T* x_;
-  const T* y_;
-  const T* z_;
-  const T* dz_;
-  T* dx_;
-  const size_t cols_;
-};
-
-template <typename T>
-struct CosSimDxFunctor {
-  CosSimDxFunctor(const T* x_norm, const T* y_norm, const T* x, const T* y,
-                  const T* z, const T* dz, T* dx, int cols)
-      : x_norm_(x_norm),
-        y_norm_(y_norm),
-        x_(x),
-        y_(y),
-        z_(z),
-        dz_(dz),
-        dx_(dx),
-        cols_(static_cast<size_t>(cols)) {}
-
-  inline HOSTDEVICE void operator()(size_t row_id) const {
-    auto xy_norm_prod = x_norm_[row_id] * y_norm_[0];
-    auto dz = dz_[row_id];
-    auto z = z_[row_id];
-    auto* x = x_ + cols_ * row_id;
-    auto reciprocal_xy_norm_prod = 1 / xy_norm_prod;
-    auto x_norm_square = x_norm_[row_id] * x_norm_[row_id];
-    auto* dx = dx_ + cols_ * row_id;
-    auto reciprocal_x_norm_square = 1 / x_norm_square;
-
-    for (size_t i = 0; i < cols_; ++i) {
-      dx[i] = dz * (y_[i] * reciprocal_xy_norm_prod -
-                    z * x[i] * reciprocal_x_norm_square);
-    }
-  }
-  const T* x_norm_;
-  const T* y_norm_;
-  const T* x_;
-  const T* y_;
-  const T* z_;
-  const T* dz_;
-  T* dx_;
-  const size_t cols_;
-};
-
-template <typename DeviceContext, typename T>
-struct CosSimDyFunctor {
-  inline void operator()(const DeviceContext& ctx, const T* x_norm,
-                         const T* y_norm, const T* x, const T* y, const T* z,
-                         const T* dz, const size_t rows, const size_t cols,
-                         T* dy) const;
 };
 
 template <typename DeviceContext, typename T>
@@ -220,7 +81,7 @@ class CosSimGradKernel : public framework::OpKernel<T> {
 
     if (rows_x == rows_y) {
       if (out_grad_x) {
-        CosSimGradFunctor<T> functor(
+        math::CosSimGradFunctor<T> functor(
             in_x_norm->data<T>(), in_y_norm->data<T>(), in_x->data<T>(),
             in_y->data<T>(), in_z->data<T>(), in_grad_z->data<T>(),
             out_grad_x->mutable_data<T>(context.GetPlace()), cols);
@@ -230,7 +91,7 @@ class CosSimGradKernel : public framework::OpKernel<T> {
         for_range(functor);
       }
       if (out_grad_y) {
-        CosSimGradFunctor<T> functor(
+        math::CosSimGradFunctor<T> functor(
             in_y_norm->data<T>(), in_x_norm->data<T>(), in_y->data<T>(),
             in_x->data<T>(), in_z->data<T>(), in_grad_z->data<T>(),
             out_grad_y->mutable_data<T>(context.GetPlace()), cols);
@@ -241,7 +102,7 @@ class CosSimGradKernel : public framework::OpKernel<T> {
       }
     } else {
       if (out_grad_x) {
-        CosSimDxFunctor<T> functor(
+        math::CosSimDxFunctor<T> functor(
             in_x_norm->data<T>(), in_y_norm->data<T>(), in_x->data<T>(),
             in_y->data<T>(), in_z->data<T>(), in_grad_z->data<T>(),
             out_grad_x->mutable_data<T>(context.GetPlace()), cols);
@@ -256,7 +117,7 @@ class CosSimGradKernel : public framework::OpKernel<T> {
         auto& dev_ctx = context.template device_context<DeviceContext>();
         set_zero(dev_ctx, out_grad_y, static_cast<T>(0));
 
-        CosSimDyFunctor<DeviceContext, T> functor;
+        math::CosSimDyFunctor<DeviceContext, T> functor;
         functor(dev_ctx, in_x_norm->data<T>(), in_y_norm->data<T>(),
                 in_x->data<T>(), in_y->data<T>(), in_z->data<T>(),
                 in_grad_z->data<T>(), static_cast<size_t>(rows_x),
