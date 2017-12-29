@@ -32,11 +32,11 @@ struct CosSimFunctor {
         z_(z),
         cols_(static_cast<size_t>(cols)) {}
 
-  inline HOSTDEVICE void operator()(size_t offset) const {
-    auto* x = x_ + cols_ * offset;
+  inline HOSTDEVICE void operator()(size_t row_id) const {
+    auto* x = x_ + cols_ * row_id;
     T xx = 0, xy = 0, yy = 0;
     if (same_row) {
-      auto* y = y_ + cols_ * offset;
+      auto* y = y_ + cols_ * row_id;
       T tep_x, tep_y;
       for (size_t i = 0; i < cols_; ++i) {
         tep_x = x[i];
@@ -47,9 +47,9 @@ struct CosSimFunctor {
       }
       xx = sqrt(xx);
       yy = sqrt(yy);
-      y_norm_[offset] = yy;
-      x_norm_[offset] = xx;
-      z_[offset] = xy / (xx * yy);
+      y_norm_[row_id] = yy;
+      x_norm_[row_id] = xx;
+      z_[row_id] = xy / (xx * yy);
     } else {  // This can be wrote in a better way.
       T tep_x, tep_y;
       for (size_t i = 0; i < cols_; ++i) {
@@ -61,9 +61,9 @@ struct CosSimFunctor {
       }
       xx = sqrt(xx);
       yy = sqrt(yy);
-      if (offset == 0) y_norm_[0] = yy;
-      x_norm_[offset] = xx;
-      z_[offset] = xy / (xx * yy);
+      if (row_id == 0) y_norm_[0] = yy;
+      x_norm_[row_id] = xx;
+      z_[row_id] = xy / (xx * yy);
     }
   }
 
@@ -125,15 +125,15 @@ struct CosSimGradFunctor {
         dx_(dx),
         cols_(static_cast<size_t>(cols)) {}
 
-  inline HOSTDEVICE void operator()(size_t offset) const {
-    auto x_norm_square = x_norm_[offset] * x_norm_[offset];
-    auto xy_norm_prod = x_norm_[offset] * y_norm_[offset];
-    auto dz = dz_[offset];
-    auto z = z_[offset];
+  inline HOSTDEVICE void operator()(size_t row_id) const {
+    auto x_norm_square = x_norm_[row_id] * x_norm_[row_id];
+    auto xy_norm_prod = x_norm_[row_id] * y_norm_[row_id];
+    auto dz = dz_[row_id];
+    auto z = z_[row_id];
 
-    auto* dx = dx_ + cols_ * offset;
-    auto* x = x_ + cols_ * offset;
-    auto* y = y_ + cols_ * offset;
+    auto* dx = dx_ + cols_ * row_id;
+    auto* x = x_ + cols_ * row_id;
+    auto* y = y_ + cols_ * row_id;
 
     auto reciprocal_xy_norm_prod = 1 / xy_norm_prod;
     auto reciprocal_x_norm_square = 1 / x_norm_square;
@@ -166,14 +166,14 @@ struct CosSimDxFunctor {
         dx_(dx),
         cols_(static_cast<size_t>(cols)) {}
 
-  inline HOSTDEVICE void operator()(size_t offset) const {
-    auto xy_norm_prod = x_norm_[offset] * y_norm_[0];
-    auto dz = dz_[offset];
-    auto z = z_[offset];
-    auto* x = x_ + cols_ * offset;
+  inline HOSTDEVICE void operator()(size_t row_id) const {
+    auto xy_norm_prod = x_norm_[row_id] * y_norm_[0];
+    auto dz = dz_[row_id];
+    auto z = z_[row_id];
+    auto* x = x_ + cols_ * row_id;
     auto reciprocal_xy_norm_prod = 1 / xy_norm_prod;
-    auto x_norm_square = x_norm_[offset] * x_norm_[offset];
-    auto* dx = dx_ + cols_ * offset;
+    auto x_norm_square = x_norm_[row_id] * x_norm_[row_id];
+    auto* dx = dx_ + cols_ * row_id;
     auto reciprocal_x_norm_square = 1 / x_norm_square;
 
     for (size_t i = 0; i < cols_; ++i) {
