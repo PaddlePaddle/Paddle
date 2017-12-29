@@ -115,18 +115,6 @@ class CUDNNDeviceContext : public CUDADeviceContext {
   cudnnHandle_t cudnn_handle_;
 };
 
-class DeviceGuard {
- public:
-  explicit DeviceGuard(int device) {
-    original_device_ = platform::GetCurrentDeviceId();
-    platform::SetDeviceId(device);
-  }
-  ~DeviceGuard() { platform::SetDeviceId(original_device_); }
-
- private:
-  int original_device_;
-};
-
 #endif
 
 /*! \brief device context pool singleton */

@@ -24,76 +24,24 @@ namespace platform {
 
 enum EventKind { kMark, kPushRange, kPopRange };
 
-inline uint64_t GetTimeInNsec() {
-  // using std::chrono;
-  using clock = std::conditional<std::chrono::high_resolution_clock::is_steady,
-                                 std::chrono::high_resolution_clock,
-                                 std::chrono::steady_clock>::type;
-  return std::chrono::duration_cast<std::chrono::nanoseconds>(
-             clock::now().time_since_epoch())
-      .count();
-}
-
 class Event {
  public:
-  // the DeviceContext is used to get the cuda stream.
+  // The DeviceContext is used to get the cuda stream.
+  // If CPU profiling mode, can pass nullptr.
   Event(EventKind kind, std::string name, uint32_t thread_id,
-        const platform::DeviceContext* dev_ctx = nullptr)
-      : kind_(kind), name_(std::move(name)), thread_id_(thread_id) {
-    has_cuda_ = false;
-#ifdef PADDLE_WITH_CUDA
-    auto* cuda_dev_ctx =
-        static_cast<const platform::CUDADeviceContext*>(dev_ctx);
-    if (cuda_dev_ctx) {
-      PADDLE_ENFORCE(cudaGetDevice(&device_));
-      PADDLE_ENFORCE(cudaEventCreate(&event_));
-      auto stream = cuda_dev_ctx->stream();
-      PADDLE_ENFORCE(cudaEventRecord(event_, stream));
-      has_cuda_ = true;
-    }
-#endif
-    cpu_ns_ = GetTimeInNsec();
-  }
+        DeviceContext* dev_ctx);
 
-  std::string kind() const {
-    switch (kind_) {
-      case EventKind::kMark:
-        return "mark";
-      case EventKind::kPushRange:
-        return "push";
-      case EventKind::kPopRange:
-        return "pop";
-    }
-    PADDLE_THROW("Unknown EventKind.");
-  }
-
+  std::string kind() const;
   std::string name() const { return name_; }
-
   bool has_cuda() const { return has_cuda_; }
 
 #ifdef PADDLE_WITH_CUDA
   cudaEvent_t event() const { return event_; }
-
   int device() const { return device_; }
 #endif
 
-  double CpuElapsedUs(const Event& e) const {
-    return (e.cpu_ns_ - cpu_ns_) / (1000.0);
-  }
-
-  double CudaElapsedUs(const Event& e) const {
-#ifdef PADDLE_WITH_CUDA
-    PADDLE_ENFORCE(e.has_cuda() && has_cuda());
-    PADDLE_ENFORCE(e.device() == device());
-    PADDLE_ENFORCE(cudaEventSynchronize(event_));
-    PADDLE_ENFORCE(cudaEventSynchronize(e.event()));
-    float ms;
-    PADDLE_ENFORCE(cudaEventElapsedTime(&ms, event_, e.event()));
-    return ms * 1000.0;
-#else
-    PADDLE_THROW("CUDA is not enabled");
-#endif
-  }
+  double CpuElapsedUs(const Event& e) const;
+  double CudaElapsedUs(const Event& e) const;
 
  private:
   EventKind kind_;
@@ -108,11 +56,11 @@ class Event {
 };
 
 struct EventList {
-  constexpr static std::size_t kMB = 1024 * 1024;
-  constexpr static std::size_t kEventBlockSize = 16 * kMB;
-  constexpr static std::size_t kEventSize = sizeof(Event);
-  constexpr static std::size_t kEventAlign = alignof(Event);
-  constexpr static std::size_t kNumBlock =
+  constexpr static size_t kMB = 1024 * 1024;
+  constexpr static size_t kEventBlockSize = 16 * kMB;
+  constexpr static size_t kEventSize = sizeof(Event);
+  constexpr static size_t kEventAlign = alignof(Event);
+  constexpr static size_t kNumBlock =
       kEventBlockSize /
       ((kEventSize + kEventAlign - 1) / kEventAlign * kEventAlign);
 
@@ -139,58 +87,27 @@ struct EventList {
 };
 
 enum ProfilerState {
-  kDisabled,
-  kCPU,
-  kCUDA,
+  kDisabled,  // disabled state
+  kCPU,       // CPU profiling state
+  kCUDA,      // GPU profiling state
 };
 
-// The profiler state, the initial value is ProfilerState::kDisabled
-extern ProfilerState kState;
-// The global mutex
-extern std::mutex kAllEventListsMutex;
-// The total event lists of all threads
-extern std::list<std::shared_ptr<EventList>> kAllEventLists;
-// The thread local event list only can be accessed by the specific thread
-extern thread_local std::shared_ptr<EventList> kEventList;
-// The thread index of each thread
-extern thread_local int32_t kThreadId;
-// The kNextThreadId is a global counter for threads, by the kThreadId and
-// kNextThreadId, we can know how many threads have created EventList.
-extern uint32_t kNextThreadId;
-
-inline EventList& GetEventList() {
-  if (!kEventList) {
-    std::lock_guard<std::mutex> guard(kAllEventListsMutex);
-    kEventList = std::make_shared<EventList>();
-    kThreadId = kNextThreadId++;
-    kAllEventLists.emplace_front(kEventList);
-  }
-  return *kEventList;
-}
-
-inline void Mark(const std::string name,
-                 const platform::DeviceContext* dev_ctx = nullptr) {
-  GetEventList().Record(EventKind::kMark, std::move(name), kThreadId, dev_ctx);
-}
+void Mark(const std::string& name, DeviceContext* dev_ctx);
 
 struct RecordEvent {
-  explicit RecordEvent(const std::string name,
-                       platform::DeviceContext* dev_ctx = nullptr) {
-    if (kState == ProfilerState::kDisabled) return;
-    dev_ctx_ = dev_ctx;
-    GetEventList().Record(EventKind::kPushRange, std::move(name), kThreadId,
-                          dev_ctx_);
-  }
+  explicit RecordEvent(const std::string& name, DeviceContext* dev_ctx);
 
-  ~RecordEvent() {
-    if (kState == ProfilerState::kDisabled) return;
-    GetEventList().Record(EventKind::kPopRange, std::string(), kThreadId,
-                          dev_ctx_);
-  }
-  platform::DeviceContext* dev_ctx_;
+  ~RecordEvent();
+
+  // The device context is used by Event to get the current cuda stream.
+  DeviceContext* dev_ctx_;
 };
 
+// Enable the profiling function.
 void EnableProfiler(ProfilerState state);
+
+// Return the event list of all threads. Asummed the returned value calls
+// event_lists, event_lists[i][j] represents the j-th Event of i-th thread.
 std::vector<std::vector<Event>> DisableProfiler();
 
 }  // namespace platform
