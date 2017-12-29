@@ -54,18 +54,18 @@ auto kernel1 = GenFromBit({0, 0, 0, 1});
 auto kernel2 = GenFromBit({0, 0, 1, 0});
 auto kernel3 = GenFromBit({0, 0, 1, 1});
 
-void TransDataType_t(std::vector<platform::DeviceContext*> ctx,
-                     const Variable& in, Variable* out) {
+void TransDataType_t(const platform::DeviceContext* ctx, const Variable& in,
+                     Variable* out) {
   test_value++;
 }
 
-void TransDataLayout_t(std::vector<platform::DeviceContext*> ctx,
-                       const Variable& in, Variable* out) {
+void TransDataLayout_t(const platform::DeviceContext* ctx, const Variable& in,
+                       Variable* out) {
   test_value--;
 }
 
-void TransLibraryType_t(std::vector<platform::DeviceContext*> ctx,
-                        const Variable& in, Variable* out) {
+void TransLibraryType_t(const platform::DeviceContext* ctx, const Variable& in,
+                        Variable* out) {
   test_value += 2;
 }
 
@@ -83,7 +83,8 @@ TEST(DataTransform, Register) {
   using namespace paddle::platform;
 
   auto& instance = DataTransformFnMap::Instance();
-  std::vector<DeviceContext*> ctx;
+  ASSERT_EQ(instance.Map().size(), 3UL);
+  DeviceContext* ctx = nullptr;
   paddle::framework::Variable in;
   paddle::framework::Variable out;
 
