@@ -59,11 +59,11 @@ static void CreateTensor(Variable* var, proto::VarDesc::VarType var_type) {
 
 static void CheckTensorNANOrInf(const std::string& name,
                                 const framework::Tensor& tensor) {
-  if (tensor.type().hash_code() != typeid(float).hash_code() &&
-      tensor.type().hash_code() != typeid(double).hash_code()) {
+  if (tensor.memory_size() == 0) {
     return;
   }
-  if (tensor.memory_size() == 0) {
+  if (tensor.type().hash_code() != typeid(float).hash_code() &&
+      tensor.type().hash_code() != typeid(double).hash_code()) {
     return;
   }
   PADDLE_ENFORCE(!framework::HasInf(tensor), "Tensor %s has Inf", name);

@@ -210,10 +210,10 @@ inline void CopyToVector(const Tensor& src, std::vector<T>* dst) {
 }
 
 // Returns true if a tensor contains NAN, i.e., Not A Number.
-extern bool HasNAN(const framework::Tensor& tensor);
+bool HasNAN(const framework::Tensor& tensor);
 
 // Returns true if a tensor contains Inf, i.e., Infinity.
-extern bool HasInf(const framework::Tensor& tensor);
+bool HasInf(const framework::Tensor& tensor);
 
 inline void SerializeToStream(std::ostream& os, const Tensor& tensor,
                               const platform::DeviceContext& dev_ctx) {
