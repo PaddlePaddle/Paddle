@@ -128,7 +128,7 @@ public:
     }
 #ifdef PADDLE_MOBILE_INFERENCE
     if (Device == DEVICE_TYPE_CPU) {
-      delete memory_;
+      memory_.reset();
     }
 #endif
   }

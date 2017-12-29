@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/dropout_op.h"
 
@@ -25,8 +25,6 @@ class DropoutOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
-    PADDLE_ENFORCE_GE(ctx->Attrs().Get<float>("dropout_prob"), 0);
-    PADDLE_ENFORCE_LE(ctx->Attrs().Get<float>("dropout_prob"), 1);
 
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", x_dims);
@@ -40,15 +38,18 @@ class DropoutOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  DropoutOpMaker(framework::OpProto* proto,
-                 framework::OpAttrChecker* op_checker)
+  DropoutOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of dropout op.");
     AddOutput("Out", "The output of dropout op.");
     AddOutput("Mask", "The random sampled dropout mask.").AsIntermediate();
 
     AddAttr<float>("dropout_prob", "Probability of setting units to zero.")
-        .SetDefault(.5f);
+        .SetDefault(.5f)
+        .AddCustomChecker([](const float& drop_p) {
+          PADDLE_ENFORCE(drop_p >= 0.0f && drop_p <= 1.0f,
+                         "'dropout_prob' must be between 0.0 and 1.0.");
+        });
     AddAttr<bool>("is_test", "True if in test phase.").SetDefault(false);
     AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
 
@@ -79,8 +80,6 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) must not be null.");
 
-    PADDLE_ENFORCE_GE(ctx->Attrs().Get<float>("dropout_prob"), 0);
-    PADDLE_ENFORCE_LE(ctx->Attrs().Get<float>("dropout_prob"), 1);
     auto x_dims = ctx->GetInputDim("X");
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     PADDLE_ENFORCE_EQ(x_dims, out_dims,
