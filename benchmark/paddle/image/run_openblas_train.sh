@@ -1,7 +1,6 @@
 set -e
 
 function train() {
-  unset OMP_NUM_THREADS MKL_NUM_THREADS OMP_DYNAMIC KMP_AFFINITY
   export OPENBLAS_NUM_THREADS=1
   topology=$1
   layer_num=$2
