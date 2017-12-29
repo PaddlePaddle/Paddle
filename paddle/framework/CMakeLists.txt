@@ -5,10 +5,18 @@ cc_library(ddim SRCS ddim.cc DEPS eigen3)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
 
-cc_library(tensor SRCS tensor.cc DEPS ddim place paddle_memory device_context framework_proto)
+if (WITH_GPU)
+  nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS ddim place paddle_memory device_context framework_proto)
+else()
+  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS ddim place paddle_memory device_context framework_proto)
+endif ()
 
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
-cc_test(tensor_util_test SRCS tensor_util_test.cc DEPS tensor)
+if (WITH_GPU)
+  nv_test(tensor_util_test SRCS tensor_util_test.cc tensor_util_test.cu DEPS tensor)
+else()
+  cc_test(tensor_util_test SRCS tensor_util_test.cc DEPS tensor)
+endif()
 
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 

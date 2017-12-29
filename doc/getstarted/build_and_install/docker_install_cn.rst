@@ -15,7 +15,7 @@
 获取PaddlePaddle的Docker镜像
 ------------------------------
 
-执行下面的命令获取最新的PaddlePaddle Docker镜像
+执行下面的命令获取最新的PaddlePaddle Docker镜像，版本为cpu_avx_mkl：
 
   .. code-block:: bash
 
@@ -27,7 +27,7 @@
 
      docker pull docker.paddlepaddle.org/paddle
 
-下载GPU版本的Docker镜像：
+下载GPU版本（cuda8.0_cudnn5_avx_mkl）的Docker镜像：
 
   .. code-block:: bash
 
@@ -54,7 +54,7 @@
 .. _docker_run:
 
 在Docker中执行PaddlePaddle训练程序
-------------------------------
+----------------------------------
 
 假设您已经在当前目录（比如在/home/work）编写了一个PaddlePaddle的程序 :code:`train.py` （可以参考
 `PaddlePaddleBook <http://www.paddlepaddle.org/docs/develop/book/01.fit_a_line/index.cn.html>`_ 
@@ -82,7 +82,7 @@
 .. _docker_run_book:
 
 使用Docker启动PaddlePaddle Book教程
-------------------------------
+-----------------------------------
 
 使用Docker可以快速在本地启动一个包含了PaddlePaddle官方Book教程的Jupyter Notebook，可以通过网页浏览。
 PaddlePaddle Book是为用户和开发者制作的一个交互式的Jupyter Notebook。

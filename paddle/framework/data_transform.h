@@ -30,7 +30,7 @@ namespace framework {
 
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 using DataTransformFn = std::function<void(
-    const std::vector<platform::DeviceContext*> ctx, const KernelTypePair& pair,
+    const platform::DeviceContext* ctx, const KernelTypePair& pair,
     const Variable& in, Variable* out)>;
 
 struct KernelTypePairHash {
