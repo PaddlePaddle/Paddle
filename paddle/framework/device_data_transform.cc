@@ -23,10 +23,10 @@ static OpKernelType k0(proto::DataType::FP32, platform::CPUPlace(),
 static OpKernelType k1(proto::DataType::FP32, platform::CUDAPlace(0),
                        DataLayout::kAnyLayout, LibraryType::kPlain);
 
-void CPU_fromto_GPU(std::vector<platform::DeviceContext*> ctx,
+void CPU_fromto_GPU(const platform::DeviceContext* ctx,
                     const KernelTypePair& pair, const Variable& in,
                     Variable* out) {
-  CopyFrom(in.Get<Tensor>(), pair.second.place_, *ctx[0],
+  CopyFrom(in.Get<Tensor>(), pair.second.place_, *ctx,
            out->GetMutable<Tensor>());
 }
 
