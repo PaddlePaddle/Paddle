@@ -16,10 +16,13 @@ limitations under the License. */
 #include <math.h>  // for sqrt in CPU and CUDA
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/detail/safe_ref.h"
+#include "paddle/operators/math/selected_rows_functor.h"
 #include "paddle/platform/for_range.h"
 
 namespace paddle {
 namespace operators {
+
+namespace scatter = paddle::operators::math::scatter;
 
 template <typename T>
 struct AdamFunctor {
@@ -134,8 +137,6 @@ struct SparseAdamFunctor {
       mom1 = beta1_ * mom1 + (1 - beta1_) * g;
       mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
       p -= lr * (mom1 / (sqrt(mom2) + epsilon_));
-      // IMPORTANT:
-      // FIXME(typhoonzero): row id may be duplicate
       moment1_out_[rows_[i] * row_numel_ + j] = mom1;
       moment2_out_[rows_[i] * row_numel_ + j] = mom2;
       param_out_[rows_[i] * row_numel_ + j] = p;
@@ -191,10 +192,14 @@ class AdamOpKernel : public framework::OpKernel<T> {
     } else if (grad_var->IsType<framework::SelectedRows>()) {
       auto& grad =
           Ref(ctx.Input<framework::SelectedRows>("Grad"), "Must set Grad");
-      auto& grad_tensor = grad.value();
+      // merge duplicated rows if any.
+      scatter::MergeAdd<DeviceContext, T> merge_func;
+      auto grad_merge =
+          merge_func(ctx.template device_context<DeviceContext>(), grad);
+      auto& grad_tensor = grad_merge.value();
       const T* grad_data = grad_tensor.template data<T>();
-      auto* rows = grad.rows().data();
-      auto row_numel = grad_tensor.numel() / grad.rows().size();
+      auto* rows = grad_merge.rows().data();
+      auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
 
       SparseAdamFunctor<T> functor(
           beta1, beta2, epsilon, beta1_pow.template data<T>(),
@@ -206,7 +211,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
           param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel);
       platform::ForRange<DeviceContext> for_range(
           static_cast<const DeviceContext&>(ctx.device_context()),
-          grad.rows().size());
+          grad_merge.rows().size());
       for_range(functor);
     } else {
       PADDLE_THROW("Variable type not supported by adam_op");
