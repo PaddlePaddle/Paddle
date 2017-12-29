@@ -68,12 +68,6 @@ scale
     :noindex:
 
 
-reshape
----------
-..  autofunction:: paddle.v2.fluid.layers.reshape
-    :noindex:
-
-
 transpose
 ---------
 ..  autofunction:: paddle.v2.fluid.layers.transpose

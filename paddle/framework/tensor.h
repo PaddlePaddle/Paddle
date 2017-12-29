@@ -178,7 +178,7 @@ class Tensor {
   DDim dims_;
 
   /**
-   * @brief the layout of memory block, default is NCHW.
+   * @brief the layout of memory block, default is NHWC.
    *
    * @note the memory allocation order, describe how weight/data is stored
    *       For example, in 4-D Tensor(rank=4), there are three commonly

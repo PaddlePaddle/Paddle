@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <iostream>
-
+#include "paddle/platform/enforce.h"
 #include "paddle/platform/variant.h"
 
 namespace paddle {
@@ -63,6 +63,32 @@ bool is_cpu_place(const Place &);
 bool places_are_same_class(const Place &, const Place &);
 
 std::ostream &operator<<(std::ostream &, const Place &);
+
+template <typename Visitor>
+struct PlaceVisitorWrapper
+    : public boost::static_visitor<typename Visitor::result_type> {
+  const Visitor &visitor_;
+  explicit PlaceVisitorWrapper(const Visitor &visitor) : visitor_(visitor) {}
+
+  typename Visitor::result_type operator()(const CPUPlace &cpu) const {
+    return visitor_(cpu);
+  }
+
+  typename Visitor::result_type operator()(const CUDAPlace &cuda) const {
+#ifdef PADDLE_WITH_CUDA
+    return visitor_(cuda);
+#else
+    PADDLE_THROW("Paddle is not compiled with CUDA. Cannot visit cuda device");
+    return typename Visitor::result_type();
+#endif
+  }
+};
+
+template <typename Visitor>
+typename Visitor::result_type VisitPlace(const Place &place,
+                                         const Visitor &visitor) {
+  return boost::apply_visitor(PlaceVisitorWrapper<Visitor>(visitor), place);
+}
 
 }  // namespace platform
 }  // namespace paddle
