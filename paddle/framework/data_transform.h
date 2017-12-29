@@ -77,16 +77,10 @@ struct CastDataType {
       auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
       trans(*context, in_begin, in_end, out_begin,
             CastDataTypeFunctor<InType, OutType>());
+    } else {
+      // TODO(dzhwinter): enhance CopyFrom CPU<->GPU with different data type?
+      PADDLE_THROW("Unsupport CPU <-> GPU!");
     }
-    // #ifdef PADDLE_WITH_CUDA
-    //     else if (platform::is_gpu_place(place) {
-    //         platform::Transform<platform::CUDADeviceContext> trans;
-    //         auto* context = static_cast<const
-    //         platform::CUDADeviceContext*>(ctx);
-    //         trans(*context, in_begin, in_end, out_begin,
-    //               CastDataTypeFunctor<InType, OutType>());
-    //       }
-    // #endif
   }
 };
 

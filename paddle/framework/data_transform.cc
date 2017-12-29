@@ -30,12 +30,20 @@ auto kernel_FP32 = OpKernelType(proto::DataType::FP32, platform::CPUPlace(),
 auto kernel_FP64 = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
                                 DataLayout::kNHWC, LibraryType::kPlain);
 
+auto kernel_Layout0 = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
+                                   DataLayout::kNHWC, LibraryType::kPlain);
+
+auto kernel_Layout1 = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
+                                   DataLayout::kNCHW, LibraryType::kPlain);
+
 void TransDataType(const platform::DeviceContext* ctx,
                    const KernelTypePair& kernel_pair, const Variable& in,
                    Variable* out) {
-  PADDLE_ENFORCE(in.IsType<LoDTensor>(), "Only Support LoDTensor transform!.");
-  auto src = in.Get<LoDTensor>();
-  auto* dst = out->GetMutable<LoDTensor>();
+  PADDLE_ENFORCE(in.IsType<Tensor>(), "Only Support Tensor transform!.");
+  auto src = in.Get<Tensor>();
+  auto* dst = out->GetMutable<Tensor>();
+  // TODO(dzhwinter): CPU <-> GPU need a copy here
+
   auto dims = src.dims();
   dst->Resize(dims);
   auto dst_type = kernel_pair.second.data_type_;
@@ -44,25 +52,34 @@ void TransDataType(const platform::DeviceContext* ctx,
   switch (src_type) {
     case proto::DataType::FP32:
       framework::VisitDataType(dst_type, CastDataType<float>(src, dst, ctx));
-    // case proto::DataType::FP64:
-    //     framework::VisitDataType(
-    //         dst_type,
-    //         CastDataType<platform::DeviceContext, double>(src, dst, ctx));
-    // case proto::DataType::INT32:
-    //     framework::VisitDataType(
-    //         dst_type, CastDataType<platform::DeviceContext, int>(src, dst,
-    //         ctx));
-    // case proto::DataType::INT64:
-    //     framework::VisitDataType(
-    //         dst_type,
-    //         CastDataType<platform::DeviceContext, int64_t>(src, dst, ctx));
-    // case proto::DataType::BOOL:
-    //     framework::VisitDataType(
-    //         dst_type, CastDataType<platform::DeviceContext, bool>(src, dst,
-    //         ctx));
+      break;
+    case proto::DataType::FP64:
+      framework::VisitDataType(dst_type, CastDataType<double>(src, dst, ctx));
+      break;
+    case proto::DataType::INT32:
+      framework::VisitDataType(dst_type, CastDataType<int>(src, dst, ctx));
+      break;
+    case proto::DataType::INT64:
+      framework::VisitDataType(dst_type, CastDataType<int64_t>(src, dst, ctx));
+      break;
+    case proto::DataType::BOOL:
+      framework::VisitDataType(dst_type, CastDataType<bool>(src, dst, ctx));
+      break;
     default:
       PADDLE_THROW("Not support type %d", src_type);
   }
+}
+
+void TransDataLayout(const platform::DeviceContext* ctx,
+                     const KernelTypePair& kernel_pair, const Variable& in,
+                     Variable* out) {
+  PADDLE_ENFORCE(in.IsType<Tensor>(), "Only Support LoDTensor transform!.");
+  auto src = in.Get<Tensor>();
+  auto* dst = out->GetMutable<Tensor>();
+  dst->Resize(src.dims());
+  auto place = kernel_pair.second.place_;
+  CopyFrom(src, place, *ctx, dst);
+  dst->set_layout(kernel_pair.second.data_layout_);
 }
 
 }  // namespace framework
@@ -70,3 +87,5 @@ void TransDataType(const platform::DeviceContext* ctx,
 
 namespace f = paddle::framework;
 REGISTER_DATA_TRANSFORM_FN(f::kernel_FP32, f::kernel_FP64, f::TransDataType);
+REGISTER_DATA_TRANSFORM_FN(f::kernel_Layout0, f::kernel_Layout1,
+                           f::TransDataLayout);
