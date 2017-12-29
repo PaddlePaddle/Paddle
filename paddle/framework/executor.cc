@@ -67,8 +67,7 @@ static void CheckTensorNANOrInf(const std::string& name,
     return;
   }
   PADDLE_ENFORCE(!framework::HasInf(tensor), "Tensor %s has Inf", name);
-  PADDLE_ENFORCE(!framework::HasNAN(tensor), "Tensor %s has NAN, %p", name,
-                 &tensor);
+  PADDLE_ENFORCE(!framework::HasNAN(tensor), "Tensor %s has NAN", name);
 }
 
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
