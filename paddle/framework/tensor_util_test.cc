@@ -13,6 +13,7 @@
 
 #include "paddle/framework/tensor_util.h"
 #include <gtest/gtest.h>
+#include <cmath>
 #include <string>
 
 namespace paddle {
@@ -228,6 +229,29 @@ TEST(CopyToVector, Tensor) {
     }
   }
 #endif
+}
+
+TEST(IsNAN, CPU) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+  Tensor src;
+  float* buf = src.mutable_data<float>({3}, CPUPlace());
+  buf[0] = 0.0;
+  buf[1] = NAN;
+  buf[2] = 0.0;
+
+  ASSERT_TRUE(HasNAN(src));
+}
+
+TEST(IsInf, CPU) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+  Tensor src;
+  double* buf = src.mutable_data<double>({3}, CPUPlace());
+  buf[0] = 1.0;
+  buf[1] = INFINITY;
+  buf[2] = 0.0;
+  ASSERT_TRUE(HasInf(src));
 }
 
 TEST(Tensor, SerializeAndDeserialize) {

@@ -14,8 +14,10 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/framework/data_type.h"
+#include "paddle/framework/eigen.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/tensor.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
@@ -206,6 +208,12 @@ inline void CopyToVector(const Tensor& src, std::vector<T>* dst) {
   memory::Copy(dst_place, dst_ptr, boost::get<platform::CPUPlace>(src.place()),
                src_ptr, size);
 }
+
+// Returns true if a tensor contains NAN, i.e., Not A Number.
+extern bool HasNAN(const framework::Tensor& tensor);
+
+// Returns true if a tensor contains Inf, i.e., Infinity.
+extern bool HasInf(const framework::Tensor& tensor);
 
 inline void SerializeToStream(std::ostream& os, const Tensor& tensor,
                               const platform::DeviceContext& dev_ctx) {
