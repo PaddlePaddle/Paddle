@@ -155,11 +155,11 @@ struct CosSimDyFunctor<platform::CPUDeviceContext, T> {
                          const T* y_norm, const T* x, const T* y, const T* z,
                          const T* dz, const size_t rows, const size_t cols,
                          T* dy) const {
-    for (size_t offset = 0; offset < rows; ++offset) {
-      auto xy_norm_prod = x_norm[offset] * y_norm[0];
-      auto dz_data = dz[offset];
-      auto z_data = z[offset];
-      auto* x_data = x + cols * offset;
+    for (size_t row_id = 0; row_id < rows; ++row_id) {
+      auto xy_norm_prod = x_norm[row_id] * y_norm[0];
+      auto dz_data = dz[row_id];
+      auto z_data = z[row_id];
+      auto* x_data = x + cols * row_id;
       auto reciprocal_xy_norm_prod = 1 / xy_norm_prod;
 
       auto y_norm_square = y_norm[0] * y_norm[0];

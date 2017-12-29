@@ -25,12 +25,12 @@ __global__ void CosSimDyKernel(const T* x_norm, const T* y_norm, const T* x,
                                const size_t rows, const size_t cols, T* dy) {
   int grid_size = blockDim.x * gridDim.x;
   T y_norm_data = y_norm[0];
-  for (int offset = blockIdx.x * blockDim.x + threadIdx.x; offset < rows;
-       offset += grid_size) {
-    T xy_norm_prod = x_norm[offset] * y_norm_data;
-    T dz_data = dz[offset];
-    T z_data = z[offset];
-    const T* x_data = x + cols * offset;
+  for (int row_id = blockIdx.x * blockDim.x + threadIdx.x; row_id < rows;
+       row_id += grid_size) {
+    T xy_norm_prod = x_norm[row_id] * y_norm_data;
+    T dz_data = dz[row_id];
+    T z_data = z[row_id];
+    const T* x_data = x + cols * row_id;
     T reciprocal_xy_norm_prod = 1 / xy_norm_prod;
 
     T y_norm_square = y_norm_data * y_norm_data;
