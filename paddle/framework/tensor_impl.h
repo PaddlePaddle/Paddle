@@ -134,17 +134,8 @@ inline void* Tensor::mutable_data(platform::Place place, std::type_index type) {
 #endif
     offset_ = 0;
   }
-  void* buf = reinterpret_cast<void*>(
-      reinterpret_cast<uintptr_t>(holder_->ptr()) + offset_);
-  if (type.hash_code() == typeid(float).hash_code() ||
-      type.hash_code() == typeid(double).hash_code()) {
-    float* tmp = (float*)(buf);
-    for (int64_t i = 0; i < numel(); ++i) {
-      tmp[i] = NAN;
-    }
-  }
-
-  return buf;
+  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
+                                 offset_);
 }
 
 inline void* Tensor::mutable_data(platform::Place place) {

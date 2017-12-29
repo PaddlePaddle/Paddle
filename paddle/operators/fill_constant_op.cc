@@ -51,7 +51,6 @@ class FillConstantOp : public framework::OperatorBase {
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
-    VLOG(10) << "FillConstant to " << &out;
     math::set_constant(dev_ctx, &out, value);
   }
 };
