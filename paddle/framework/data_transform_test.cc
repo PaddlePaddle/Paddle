@@ -84,7 +84,7 @@ TEST(DataTransform, Register) {
 
   auto& instance = DataTransformFnMap::Instance();
   ASSERT_EQ(instance.Map().size(), 3UL);
-  DeviceContext* ctx;
+  DeviceContext* ctx = nullptr;
   paddle::framework::Variable in;
   paddle::framework::Variable out;
 
