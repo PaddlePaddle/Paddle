@@ -5,7 +5,7 @@ cc_library(ddim SRCS ddim.cc DEPS eigen3)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
 
-cc_library(tensor SRCS tensor.cc DEPS ddim place paddle_memory device_context)
+cc_library(tensor SRCS tensor.cc DEPS ddim place paddle_memory device_context framework_proto)
 
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
 cc_test(tensor_util_test SRCS tensor_util_test.cc DEPS tensor)
@@ -37,7 +37,7 @@ cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry init)
 cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog)
 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
-cc_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
+nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 
 py_proto_compile(framework_py_proto SRCS framework.proto)
 # Generate an empty __init__.py to make framework_py_proto as a valid python module.

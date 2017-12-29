@@ -31,8 +31,6 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
   int groups = ctx->Attrs().Get<int>("groups");
   std::vector<int> dilations = ctx->Attrs().Get<std::vector<int>>("dilations");
-  int input_channels = in_dims[1];
-  int output_channels = filter_dims[0];
 
   PADDLE_ENFORCE(in_dims.size() == 4 || in_dims.size() == 5,
                  "Conv intput should be 4-D or 5-D tensor.");
@@ -45,9 +43,13 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
       paddings.size(), strides.size(),
       "Conv paddings dimension and Conv strides dimension should be the same.");
+
+  int input_channels = in_dims[1];
   PADDLE_ENFORCE_EQ(input_channels, filter_dims[1] * groups,
                     "The number of input channels should be equal to filter "
                     "channels * groups.");
+
+  int output_channels = filter_dims[0];
   PADDLE_ENFORCE_EQ(
       output_channels % groups, 0,
       "The number of output channels should be divided by groups.");

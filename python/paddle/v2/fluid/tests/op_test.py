@@ -4,7 +4,7 @@ import random
 import itertools
 import paddle.v2.fluid.core as core
 import collections
-from paddle.v2.fluid.backward import append_backward_ops
+from paddle.v2.fluid.backward import append_backward
 from paddle.v2.fluid.op import Operator
 from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.framework import Program, OpProtoHolder
@@ -491,7 +491,7 @@ class OpTest(unittest.TestCase):
             op_loss.desc.infer_var_type(block.desc)
             op_loss.desc.infer_shape(block.desc)
 
-        param_grad_list = append_backward_ops(
+        param_grad_list = append_backward(
             loss=loss, parameter_list=input_to_check, no_grad_set=no_grad_set)
 
         feed_dict = {
