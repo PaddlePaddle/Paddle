@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 
 template <typename Place, typename T>
-class CTCEditDistanceKernel : public framework::OpKernel<T> {
+class EditDistanceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* out_t = ctx.Output<framework::Tensor>("Out");
