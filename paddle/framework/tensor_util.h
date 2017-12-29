@@ -13,7 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/framework/data_type.h"
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/framework.pb.h"
 #include "paddle/framework/tensor.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
@@ -203,6 +207,110 @@ inline void CopyToVector(const Tensor& src, std::vector<T>* dst) {
 
   memory::Copy(dst_place, dst_ptr, boost::get<platform::CPUPlace>(src.place()),
                src_ptr, size);
+}
+
+// Returns true if a tensor contains NAN, i.e., Not A Number.
+extern bool HasNAN(const framework::Tensor& tensor);
+
+// Returns true if a tensor contains Inf, i.e., Infinity.
+extern bool HasInf(const framework::Tensor& tensor);
+
+inline void SerializeToStream(std::ostream& os, const Tensor& tensor,
+                              const platform::DeviceContext& dev_ctx) {
+  // TODO(typhoonzero): serialize to ostream
+  {  // the 1st field, uint32_t version
+    constexpr uint32_t version = 0;
+    os.write(reinterpret_cast<const char*>(&version), sizeof(version));
+  }
+  {  // the 2nd field, tensor description
+     // int32_t  size
+     // void*    protobuf message
+    proto::TensorDesc desc;
+    desc.set_data_type(framework::ToDataType(tensor.type()));
+    auto dims = framework::vectorize(tensor.dims());
+    auto* pb_dims = desc.mutable_dims();
+    pb_dims->Resize(static_cast<int>(dims.size()), 0);
+    std::copy(dims.begin(), dims.end(), pb_dims->begin());
+    int32_t size = desc.ByteSize();
+    os.write(reinterpret_cast<const char*>(&size), sizeof(size));
+    auto out = desc.SerializeAsString();
+    os.write(out.data(), size);
+  }
+  {  // the 3rd field, tensor data
+    uint64_t size = tensor.memory_size();
+    auto* data_ptr = tensor.data<void>();
+    PADDLE_ENFORCE(size < std::numeric_limits<std::streamsize>::max(),
+                   "Index overflow when writing tensor");
+    if (platform::is_gpu_place(tensor.place())) {
+#ifdef PADDLE_WITH_CUDA
+      constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
+      std::unique_ptr<char[]> buf(new char[kBufSize]);
+      auto& gpu_dev_ctx =
+          static_cast<const platform::CUDADeviceContext&>(dev_ctx);
+      platform::CPUPlace cpu;
+      uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
+      while (size != 0) {
+        size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
+        memory::Copy(cpu, buf.get(),
+                     boost::get<platform::CUDAPlace>(tensor.place()),
+                     reinterpret_cast<const void*>(data), size_to_write,
+                     gpu_dev_ctx.stream());
+        gpu_dev_ctx.Wait();
+        os.write(buf.get(), size_to_write);
+        data += size_to_write;
+        size -= size_to_write;
+      }
+#else
+      PADDLE_THROW("Unexpected branch");
+#endif
+    } else {
+      os.write(static_cast<const char*>(data_ptr),
+               static_cast<std::streamsize>(size));
+    }
+  }
+}
+
+inline void DeserializeFromStream(std::istream& is, Tensor* tensor) {
+  uint32_t version;
+  is.read(reinterpret_cast<char*>(&version), sizeof(version));
+  PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
+  proto::TensorDesc desc;
+  {  // int32_t size
+     // proto buffer
+    int32_t size;
+    is.read(reinterpret_cast<char*>(&size), sizeof(size));
+    std::unique_ptr<char[]> buf(new char[size]);
+    is.read(reinterpret_cast<char*>(buf.get()), size);
+    PADDLE_ENFORCE(desc.ParseFromArray(buf.get(), size),
+                   "Cannot parse tensor desc");
+  }
+  {  // read tensor
+    std::vector<int64_t> dims;
+    dims.reserve(static_cast<size_t>(desc.dims().size()));
+    std::copy(desc.dims().begin(), desc.dims().end(), std::back_inserter(dims));
+    tensor->Resize(framework::make_ddim(dims));
+
+    void* buf;
+    platform::Place cpu = platform::CPUPlace();
+    // TODO(Yancey1989): use VisiterDataType instead of DataType switch
+    switch (desc.data_type()) {
+      case proto::FP32:
+        buf = tensor->mutable_data<float>(cpu);
+        break;
+      case proto::FP64:
+        buf = tensor->mutable_data<double>(cpu);
+        break;
+      case proto::INT32:
+        buf = tensor->mutable_data<int>(cpu);
+        break;
+      case proto::INT64:
+        buf = tensor->mutable_data<int64_t>(cpu);
+        break;
+      default:
+        PADDLE_THROW("DataType %d not supported", desc.data_type());
+    }
+    is.read(static_cast<char*>(buf), tensor->memory_size());
+  }
 }
 
 }  // namespace framework

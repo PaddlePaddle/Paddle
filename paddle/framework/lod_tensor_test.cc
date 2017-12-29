@@ -126,6 +126,20 @@ TEST_F(LoDTensorTester, ShrinkInLevel) {
   EXPECT_NE(t1.data<float>(), lod_tensor_.data<float>());
 }
 
+TEST_F(LoDTensorTester, SerializeAndDeserialize) {
+  LoDTensor dst_tensor;
+  platform::CPUDeviceContext cpu_ctx((platform::CPUPlace()));
+  std::ostringstream oss;
+  SerializeToStream(oss, lod_tensor_, cpu_ctx);
+  std::istringstream iss(oss.str());
+  DeserializeFromStream(iss, &dst_tensor);
+  float* dst_ptr = dst_tensor.mutable_data<float>(platform::CPUPlace());
+  for (int i = 0; i < kLodTensorSize; ++i) {
+    EXPECT_EQ(dst_ptr[i], i);
+  }
+  EXPECT_EQ(dst_tensor.lod(), lod_tensor_.lod());
+}
+
 TEST(LodExpand, test) {
   LoD lod{{0, 2}};
   LoDTensor tensor;
