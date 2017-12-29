@@ -79,12 +79,12 @@ struct SparseAdagradFunctor<platform::CUDADeviceContext, T> {
                   framework::Tensor* moment, framework::Tensor* param) {
     // 1. g_m.rows = set(g.rows)
     auto grad_width = grad.value().dims()[1];
-    math::scatter::MergeAdd<platform::CPUDeviceContext, T> merge_func;
+    math::scatter::MergeAdd<platform::CUDADeviceContext, T> merge_func;
     auto grad_merge = merge_func(context, grad);
     auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
-    auto& merge_rows = grad_merge.rows;
+    auto& merge_rows = grad_merge.rows();
     // 2. m += g_m * g_m
-    math::scatter::Mul<platform::CPUDeviceContext, T> sqare_func;
+    math::scatter::Mul<platform::CUDADeviceContext, T> sqare_func;
     auto grad_square = sqare_func(context, grad_merge, grad_merge);
 
     math::SelectedRowsAddToTensor<platform::CUDADeviceContext, T> functor;
@@ -95,11 +95,13 @@ struct SparseAdagradFunctor<platform::CUDADeviceContext, T> {
     auto* param_data = param->data<T>();
     auto* moment_data = moment->data<T>();
 
+    const int block_size = 256;
+    dim3 threads(block_size, 1);
     dim3 grid2(1, merge_rows.size());
     SparseAdagradFunctorKernel<
         T, 256><<<grid2, threads, 0,
                   reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                      .stream()>>>(grad_merge_data, grad_merge->rows().data(),
+                      .stream()>>>(grad_merge_data, grad_merge.rows().data(),
                                    lr, param_data, moment_data, grad_width,
                                    epsilon);
   }

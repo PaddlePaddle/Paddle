@@ -123,10 +123,9 @@ enum class ScatterOps { ASSIGN, ADD, SUB, SUBBY, MUL, DIV, DIVBY };
 // out = seleted_rows_in / tensor
 template <typename DeviceContext, typename T>
 struct UpdateToTensor {
-  framework::Tensor operator()(const DeviceContext& context,
-                               const ScatterOps& op,
-                               const framework::SelectedRows& input1,
-                               framework::Tensor* input2);
+  void operator()(const DeviceContext& context, const ScatterOps& op,
+                  const framework::SelectedRows& input1,
+                  framework::Tensor* input2);
 };
 
 }  // namespace scatter

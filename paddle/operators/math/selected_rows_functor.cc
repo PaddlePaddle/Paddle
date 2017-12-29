@@ -233,10 +233,9 @@ template struct MergeAdd<platform::CPUDeviceContext, int64_t>;
 
 template <typename T>
 struct UpdateToTensor<platform::CPUDeviceContext, T> {
-  framework::Tensor operator()(const platform::CPUDeviceContext& context,
-                               const ScatterOps& op,
-                               const framework::SelectedRows& input1,
-                               framework::Tensor* input2) {
+  void operator()(const platform::CPUDeviceContext& context,
+                  const ScatterOps& op, const framework::SelectedRows& input1,
+                  framework::Tensor* input2) {
     auto in1_height = input1.height();
     auto in2_dims = input2->dims();
     PADDLE_ENFORCE_EQ(in1_height, in2_dims[0]);
