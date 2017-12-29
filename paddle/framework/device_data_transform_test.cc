@@ -79,6 +79,9 @@ REGISTER_OP_WITHOUT_GRADIENT(
 REGISTER_OP_CPU_KERNEL(
     test_op,
     paddle::framework::TestKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    test_op, 
+    paddle::framework::TestKernel<paddle::platform::CUDADeviceContext, float>);
 
 static void BuildVar(const std::string& param_name,
                      std::initializer_list<const char*> arguments,
@@ -94,8 +97,7 @@ TEST(Operator, CPUtoGPU) {
   using namespace paddle::framework;
   using namespace paddle::platform;
 
-  //  ASSERT_EQ(InitDevices({"CPU", "GPU:0"}), true);
-  ASSERT_EQ(InitDevices({"CPU"}), true);
+  ASSERT_EQ(InitDevices({"CPU", "GPU:0"}), true);
 
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace cpu_place;
@@ -129,11 +131,17 @@ TEST(Operator, CPUtoGPU) {
   BuildVar("input", {"OUT1"}, gpu_op_desc.add_inputs());
   BuildVar("output", {"OUT2"}, gpu_op_desc.add_outputs());
 
+  auto attr = gpu_op_desc.mutable_attrs()->Add();
+  attr->set_name("use_cpu");
+  attr->set_type(paddle::framework::proto::AttrType::BOOLEAN);
+  attr->set_f(true);
+
   auto gpu_op = paddle::framework::OpRegistry::CreateOp(gpu_op_desc);
 
+  paddle::platform::CUDAPlace cuda_place(0);
   // get output
   auto* output2 = scope.Var("OUT2");
-  gpu_op->Run(scope, cpu_place);
+  gpu_op->Run(scope, cuda_place);
 
   auto* output2_ptr = output2->Get<LoDTensor>().data<float>();
   for (int i = 0; i < 2 * 3; ++i) {
