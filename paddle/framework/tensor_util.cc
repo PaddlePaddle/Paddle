@@ -31,6 +31,7 @@ struct AnyDTypeVisitor {
   void operator()() const {
     auto t = EigenVector<T>::Flatten(tensor_);
     auto o = EigenScalar<bool>::From(*out_);
+    // return any of predicate_(t) is true.
     o.device(*ctx_.eigen_device()) = predicate_(t).any();
   }
 };
@@ -66,9 +67,10 @@ struct AnyVisitor : public boost::static_visitor<bool> {
     framework::Tensor tmp;
     tmp.Resize({1});
     tmp.mutable_data<bool>(cpu);
-    platform::DeviceContextPool::Instance().Get(gpu)->Wait();
-    CopyFrom(out, cpu, &tmp);
-    platform::DeviceContextPool::Instance().Get(gpu)->Wait();
+    auto gpuctx = platform::DeviceContextPool::Instance().Get(gpu);
+    gpuctx->Wait();
+    CopyFrom(out, cpu, *gpuctx, &tmp);
+    gpuctx->Wait();
     return GetResult(tmp, cpu);
   }
 
@@ -89,6 +91,7 @@ struct HasNANPredicate {
   template <typename T>
   auto operator()(const T& eigen_vec) const
       -> decltype(std::declval<T>().isnan()) {
+    // Cast eigen_vector to vector of bool. true if is inf.
     return eigen_vec.isnan();
   }
 };
@@ -102,6 +105,7 @@ struct HasInfPredicate {
   template <typename T>
   auto operator()(const T& eigen_vec) const
       -> decltype(std::declval<T>().isinf()) {
+    // Cast eigen_vector to vector of bool. true if is inf.
     return eigen_vec.isinf();
   }
 };
