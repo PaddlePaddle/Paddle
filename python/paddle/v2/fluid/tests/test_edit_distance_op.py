@@ -36,7 +36,7 @@ def Levenshtein(hyp, ref):
 
 class TestCTCEditDistanceOp(OpTest):
     def setUp(self):
-        self.op_type = "ctc_edit_distance"
+        self.op_type = "edit_distance"
         normalized = True
         x1 = np.array([0, 12, 3, 5]).astype("int32")
         x2 = np.array([0, 12, 4, 7, 8]).astype("int32")

@@ -65,7 +65,7 @@ __global__ void SetOutput(T* out, const T* dist, const int M, const int N,
 }
 
 template <typename Place, typename T>
-class CTCEditDistanceGPUKernel : public framework::OpKernel<T> {
+class EditDistanceGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* out_t = ctx.Output<framework::Tensor>("Out");
@@ -110,8 +110,8 @@ class CTCEditDistanceGPUKernel : public framework::OpKernel<T> {
         int z_n = slice < n + 1 ? 0 : slice - n;
         int size = slice - (z_m + z_n) + 1;  // number of elments in the same
                                              // anti-diagonal line to update
-        int start = slice < n + 1 ? slice : z_n * (n + 1) - 1;  // start index
-
+        // the start index at which computes from
+        int start = slice < n + 1 ? slice : (z_n + 1) * (n + 1) - 1;
         Levenshtein<T><<<1 + (size - 1) / PADDLE_CUDA_NUM_THREADS,
                          PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, x1, x2, m,
                                                                n, start);
@@ -126,6 +126,6 @@ class CTCEditDistanceGPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(
-    ctc_edit_distance,
-    ops::CTCEditDistanceGPUKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_CUDA_KERNEL(
+    edit_distance,
+    ops::EditDistanceGPUKernel<paddle::platform::CUDAPlace, float>);
