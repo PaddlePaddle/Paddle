@@ -27,9 +27,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-using DataTransformFN =
-    std::function<void(const std::vector<platform::DeviceContext*> ctx,
-                       const Variable& in, Variable* out)>;
+using DataTransformFn = std::function<void(const platform::DeviceContext* ctx,
+                                           const Variable& in, Variable* out)>;
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 
 struct KernelTypePairHash {
@@ -47,7 +46,7 @@ struct KernelTypePairHash {
 };
 
 using DataTransformMap =
-    std::unordered_map<KernelTypePair, DataTransformFN, KernelTypePairHash>;
+    std::unordered_map<KernelTypePair, DataTransformFn, KernelTypePairHash>;
 
 class DataTransformFnMap {
  public:
@@ -58,25 +57,25 @@ class DataTransformFnMap {
   }
 
   void Insert(const OpKernelType& left, const OpKernelType& right,
-              const DataTransformFN& data_tranform_fn) {
+              const DataTransformFn& data_tranform_fn) {
     Insert(std::make_pair(left, right), data_tranform_fn);
   }
 
   void Insert(const KernelTypePair& kernel_type_pair,
-              const DataTransformFN& data_tranform_fn) {
+              const DataTransformFn& data_tranform_fn) {
     PADDLE_ENFORCE(!Has(kernel_type_pair),
                    "KernelTypePair %s has been registered", "");
     map_.insert({kernel_type_pair, data_tranform_fn});
   }
 
-  const DataTransformFN& Get(const KernelTypePair& key_pair) const {
+  const DataTransformFn& Get(const KernelTypePair& key_pair) const {
     auto data_transformer = GetNullable(key_pair);
     PADDLE_ENFORCE_NOT_NULL(data_transformer,
-                            "DataTransformFN should not be NULL");
+                            "DataTransformFn should not be NULL");
     return *data_transformer;
   }
 
-  const DataTransformFN* GetNullable(const KernelTypePair& key_pair) const {
+  const DataTransformFn* GetNullable(const KernelTypePair& key_pair) const {
     auto it = map_.find(key_pair);
     if (it == map_.end()) {
       return nullptr;
