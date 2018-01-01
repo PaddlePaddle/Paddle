@@ -14,20 +14,24 @@ limitations under the License. */
 
 #include "paddle/framework/data_transform.h"
 #include "paddle/framework/tensor_util.h"
+#include "paddle/framework/tensor.h"
+#include "paddle/framework/lod_tensor.h"
 
 namespace paddle {
 namespace framework {
 
-static OpKernelType k0(proto::DataType::FP32, platform::CPUPlace(),
+OpKernelType k0(proto::DataType::FP32, platform::CPUPlace(),
                        DataLayout::kAnyLayout, LibraryType::kPlain);
-static OpKernelType k1(proto::DataType::FP32, platform::CUDAPlace(0),
+OpKernelType k1(proto::DataType::FP32, platform::CUDAPlace(0),
                        DataLayout::kAnyLayout, LibraryType::kPlain);
 
 void CPU_fromto_GPU(const platform::DeviceContext* ctx,
                     const KernelTypePair& pair, const Variable& in,
                     Variable* out) {
-  CopyFrom(in.Get<Tensor>(), pair.second.place_, *ctx,
+  std::cout << "CPU_fromto_GPU in" << std::endl;
+  CopyFrom(in.Get<LoDTensor>(), pair.second.place_, *ctx,
            out->GetMutable<Tensor>());
+  std::cout << "CPU_fromto_GPU out" << std::endl;
 }
 
 }  // namespace framework
@@ -35,5 +39,8 @@ void CPU_fromto_GPU(const platform::DeviceContext* ctx,
 
 namespace frw = paddle::framework;
 
+
+REGISTER_DATA_TRANSFORM_MODEULE(device_data_transform);
 REGISTER_DATA_TRANSFORM_FN(frw::k0, frw::k1, frw::CPU_fromto_GPU);
-REGISTER_DATA_TRANSFORM_FN(frw::k1, frw::k0, frw::CPU_fromto_GPU);
+REGISTER_DATA_TRANSFORM_FN(frw::k1, frw::k1, frw::CPU_fromto_GPU);
+

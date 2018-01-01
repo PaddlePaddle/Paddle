@@ -420,8 +420,9 @@ void OperatorWithKernel::Run(const Scope& scope,
   // check if op[type] have kernel for kernel_key
   OpKernelMap& kernels = kernels_iter->second;
 
-  ExecutionContext ctx(*this, scope, *dev_ctx);
-  auto actual_kernel_key = GetActualKernelType(ctx);
+  // ExecutionContext ctx(*this, scope, *dev_ctx);
+  auto actual_kernel_key = GetActualKernelType(ExecutionContext(
+        *this, scope, *dev_ctx));
   auto expected_kernel_key = GetExpectedKernelType(actual_kernel_key);
   auto kernel_iter = kernels.find(expected_kernel_key);
 
@@ -430,6 +431,8 @@ void OperatorWithKernel::Run(const Scope& scope,
                  expected_kernel_key);
   }
 
+  std::cout << "actual_kernel_key:" << actual_kernel_key << std::endl;
+  std::cout << "expected_kernel_key:" << expected_kernel_key << std::endl;
   if (actual_kernel_key == expected_kernel_key) {
     PADDLE_ENFORCE_EQ(actual_kernel_key.place_, expected_kernel_key.place_,
                       "Currently, model parallelism is only supported between "
@@ -437,6 +440,8 @@ void OperatorWithKernel::Run(const Scope& scope,
                       "parallelism will failed.");
   } else {
     auto kernel_pair = std::make_pair(actual_kernel_key, expected_kernel_key);
+    auto map = DataTransformFnMap::Instance().Map();
+    std::cout << "fn size:" << map.size() << std::endl;
     const DataTransformFn* trans_fun =
         DataTransformFnMap::Instance().GetNullable(kernel_pair);
     if (trans_fun) {
@@ -455,23 +460,27 @@ void OperatorWithKernel::Run(const Scope& scope,
       }
 
       if (!need_trans.empty()) {
-        auto trans_dev_ctx = GetDeviceContext(kernel_pair);
+        dev_ctx = GetDeviceContext(kernel_pair);
 
         // Wait for transform starting
         dev_ctx->Wait();
 
         for (auto var_name : need_trans) {
-          (*trans_fun)(trans_dev_ctx, kernel_pair, *(scope.FindVar(var_name)),
+          std::cout << "transform var:" << var_name << std::endl;
+          (*trans_fun)(dev_ctx, kernel_pair, *(scope.FindVar(var_name)),
                        scope.FindVar(var_name + framework::KernelTypeToString(
                                                     expected_kernel_key)));
         }
         // Wait for data transform finishing
-        trans_dev_ctx->Wait();
+        dev_ctx->Wait();
+        std::cout << "after wait in operator.cc" << std::endl;
       }
     }
   }
 
-  kernel_iter->second->Compute(ctx);
+  std::cout << "before compute" << std::endl;
+  kernel_iter->second->Compute(ExecutionContext(*this, scope, *dev_ctx));
+  std::cout << "end compute" << std::endl;
 }
 
 OpKernelType OperatorWithKernel::GetActualKernelType(

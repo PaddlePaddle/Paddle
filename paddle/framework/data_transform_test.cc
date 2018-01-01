@@ -55,7 +55,7 @@ auto kernel2 = GenFromBit({0, 0, 1, 0});
 auto kernel3 = GenFromBit({0, 0, 1, 1});
 
 void TransDataType_t(const platform::DeviceContext* ctx,
-                     const KernelTypePair pair, const Variable& in,
+                     const KernelTypePair& pair, const Variable& in,
                      Variable* out) {
   test_value++;
 }
@@ -66,7 +66,7 @@ void TransDataLayout_t(const platform::DeviceContext* ctx,
   test_value--;
 }
 
-void TransLibraryType_t(platform::DeviceContext* ctx,
+void TransLibraryType_t(const platform::DeviceContext* ctx,
                         const KernelTypePair& pair, const Variable& in,
                         Variable* out) {
   test_value += 2;

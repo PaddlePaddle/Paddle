@@ -20,6 +20,10 @@ limitations under the License. */
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/elementwise_op_function.h"
 #include "paddle/operators/math/math_function.h"
+#include "paddle/framework/data_transform.h"
+#include "paddle/platform/device_context.h"
+
+USE_DATA_TRANSFORM_MODULE(device_data_transform);
 
 namespace paddle {
 namespace framework {
@@ -35,7 +39,7 @@ class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("input", "input1 of test op");
     AddOutput("output", "output of test op");
-    AddAttr<bool>("use_cpu", "force to use cpu kernel").SetDefault(false);
+    AddAttr<bool>("use_gpu", "force to use cpu kernel").SetDefault(false);
     AddComment("This is test op");
   }
 };
@@ -47,7 +51,15 @@ class TestOpWithKernel : public OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {}
   OpKernelType GetActualKernelType(const ExecutionContext& ctx) const override {
-    return OpKernelType(proto::DataType::FP32, ctx.GetPlace());
+    return OpKernelType(proto::DataType::FP32, ctx.Input<Tensor>("input")->place());
+  }
+  OpKernelType GetExpectedKernelType(const OpKernelType& actual_kernel_type) const override {
+    std::cout << "GetExpectedKernelType, use_gpu=" << Attr<bool>("use_gpu") << std::endl;
+    if (Attr<bool>("use_gpu")) {
+      return OpKernelType(proto::DataType::FP32, platform::CUDAPlace(0));
+    } else {
+      return actual_kernel_type;
+    }
   }
 };
 
@@ -62,6 +74,7 @@ class TestKernel : public OpKernel<float> {
     auto* output = ctx.Output<framework::LoDTensor>("output");
     output->Resize(input->dims());
     output->mutable_data<T>(ctx.GetPlace());
+    std::cout << "kernel place:" << ctx.GetPlace() << std::endl;
 
     operators::TransformFunctor<AddFunctor<T>, T, DeviceContext> functor(
         input, input, output, ctx.template device_context<DeviceContext>(),
@@ -132,9 +145,9 @@ TEST(Operator, CPUtoGPU) {
   BuildVar("output", {"OUT2"}, gpu_op_desc.add_outputs());
 
   auto attr = gpu_op_desc.mutable_attrs()->Add();
-  attr->set_name("use_cpu");
+  attr->set_name("use_gpu");
   attr->set_type(paddle::framework::proto::AttrType::BOOLEAN);
-  attr->set_f(true);
+  attr->set_b(true);
 
   auto gpu_op = paddle::framework::OpRegistry::CreateOp(gpu_op_desc);
 
@@ -142,10 +155,24 @@ TEST(Operator, CPUtoGPU) {
   // get output
   auto* output2 = scope.Var("OUT2");
   gpu_op->Run(scope, cuda_place);
+  std::cout << "after run in test" << std::endl;
 
-  auto* output2_ptr = output2->Get<LoDTensor>().data<float>();
-  for (int i = 0; i < 2 * 3; ++i) {
-    ASSERT_EQ(output2_ptr[i], static_cast<float>(i) * 4);
-  }
+  // auto* output2_ptr = output2->Get<LoDTensor>().data<float>();
+  DeviceContextPool& pool = DeviceContextPool::Instance();
+  auto dev_ctx = pool.Get(cuda_place);
+
+  std::cout << output2->Get<LoDTensor>().place() << std::endl;
+  paddle::framework::Tensor output_tensor;
+  std::cout << "first wait in" << std::endl;
+  dev_ctx->Wait();
+  std::cout << "first wait out" << std::endl;
+  CopyFrom(output2->Get<LoDTensor>(), paddle::platform::CPUPlace(), *dev_ctx, &output_tensor);
+  std::cout << "second wait in" << std::endl;
+  dev_ctx->Wait();
+  std::cout << "second wait out" << std::endl;
+  float* output2_ptr = output_tensor.data<float>();
+  // for (int i = 0; i < 2 * 3; ++i) {
+  //  ASSERT_EQ(output2_ptr[i], static_cast<float>(i) * 4);
+  // }
 }
 //#endif
