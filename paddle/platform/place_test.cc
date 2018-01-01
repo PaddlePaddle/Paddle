@@ -6,6 +6,10 @@ TEST(Place, Equality) {
   paddle::platform::CPUPlace cpu;
   paddle::platform::CUDAPlace g0(0), g1(1), gg0(0);
 
+  paddle::platform::Place cpu1 = paddle::platform::CPUPlace();
+  paddle::platform::Place gpu1 = paddle::platform::CUDAPlace();
+  paddle::platform::Place gpu2 = paddle::platform::CUDAPlace(1);
+
   EXPECT_EQ(cpu, cpu);
   EXPECT_EQ(g0, g0);
   EXPECT_EQ(g1, g1);
@@ -15,6 +19,11 @@ TEST(Place, Equality) {
 
   EXPECT_TRUE(paddle::platform::places_are_same_class(g0, gg0));
   EXPECT_FALSE(paddle::platform::places_are_same_class(g0, cpu));
+
+  EXPECT_TRUE(paddle::platform::is_same_place(cpu, cpu1));
+  EXPECT_TRUE(paddle::platform::is_same_place(g0, gpu1));
+  EXPECT_FALSE(paddle::platform::is_same_place(cpu1, gpu1));
+  EXPECT_FALSE(paddle::platform::is_same_place(gpu1, gpu2));
 }
 
 TEST(Place, Default) {

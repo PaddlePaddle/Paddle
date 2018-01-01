@@ -453,7 +453,8 @@ void OperatorWithKernel::Run(const Scope& scope,
       for (auto var_name : input_vars) {
         auto* var = scope.FindVar(var_name);
         if (var->IsType<LoDTensor>()) {
-          if (var->Get<LoDTensor>().place() != kernel_pair.second.place_) {
+          if (!is_same_place(var->Get<LoDTensor>().place(),
+                             kernel_pair.second.place_)) {
             if (!new_scope.FindVarLocally(var_name)) {
               new_scope.Var(var_name);
               need_trans.push_back(var_name);
