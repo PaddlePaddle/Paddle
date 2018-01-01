@@ -360,6 +360,11 @@ scaling
 ..  autoclass:: paddle.v2.layer.scaling
     :noindex:
 
+broadcast_scale
+-------
+..  autoclass:: paddle.v2.layer.broadcast_scale
+    :noindex:
+
 clip
 ----
 ..  autoclass:: paddle.v2.layer.clip

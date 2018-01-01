@@ -72,6 +72,7 @@ __all__ = [
     'expand_layer',
     'scaling_layer',
     'scaling_projection',
+    'broadcast_scale_layer',
     'power_layer',
     'interpolation_layer',
     'bilinear_interp_layer',
@@ -199,6 +200,7 @@ class LayerType(object):
     BILINEAR_INTERP_LAYER = 'bilinear_interp'
     POWER_LAYER = 'power'
     SCALING_LAYER = 'scaling'
+    BROADCAST_SCALE_LAYER = 'broadcast_scale'
     TRANS_LAYER = 'trans'
     ROTATE_LAYER = 'rotate'
     DOT_PROD_LAYER = 'dot_prod'
@@ -2227,6 +2229,48 @@ def scaling_layer(input, weight, name=None, layer_attr=None):
 
 @wrap_name_default()
 @layer_support()
+def broadcast_scale_layer(input, weight, name=None, layer_attr=None):
+    """
+    This layer applys scale across the channels of each input. Each channel
+    would be scaled by the same scaling factor in weight correponding to each
+    channel. The dimensions of weight equal to the number of channels in input.
+
+    .. math::
+       y(c, h, w)  = w(c) x(c, h, w)
+
+    The example usage is:
+
+    .. code-block:: python
+
+       scale = broadcast_scale_layer(input=layer1, weight=layer2)
+
+    :param input: The input of this layer.
+    :type input: LayerOutput
+    :param weight: The weight of each input channel.
+    :type weight: LayerOutput
+    :param name: The name of this layer. It is optional.
+    :type name: basestring
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
+    :type layer_attr: ExtraLayerAttribute.
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input, LayerOutput) and isinstance(weight, LayerOutput)
+    Layer(
+        name=name,
+        type=LayerType.BROADCAST_SCALE_LAYER,
+        inputs=[input.name, weight.name],
+        **ExtraAttr.to_kwargs(layer_attr))
+    return LayerOutput(
+        name,
+        LayerType.BROADCAST_SCALE_LAYER,
+        parents=[input, weight],
+        size=input.size)
+
+
+@wrap_name_default()
+@layer_support()
 def trans_layer(input, name=None, layer_attr=None):
     """
     A layer for transposing a minibatch matrix.
@@ -2798,9 +2842,9 @@ def img_pool_layer(input,
                       True is the default. If it is set to False, the floor function will
                       be used.
     :type ceil_mode: bool
-    :param exclude_mode: Whether to exclude the padding cells when calculating, but only 
-                         work when pool_type is AvgPooling. If None, also exclude the padding 
-                         cells. If use cudnn, use CudnnAvgPooling or CudnnAvgInclPadPooling 
+    :param exclude_mode: Whether to exclude the padding cells when calculating, but only
+                         work when pool_type is AvgPooling. If None, also exclude the padding
+                         cells. If use cudnn, use CudnnAvgPooling or CudnnAvgInclPadPooling
                          as pool_type to identify the mode.
     :type exclude_mode: bool
     :return: LayerOutput object.

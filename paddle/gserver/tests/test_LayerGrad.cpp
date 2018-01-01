@@ -1159,6 +1159,22 @@ TEST(Layer, ScalingLayer) {
   }
 }
 
+TEST(Layer, BroadcastScaleLayer) {
+  TestConfig config;
+  config.layerConfig.set_type("broadcast_scale");
+  config.layerConfig.set_size(3 * 5 * 5);
+  config.biasSize = 0;
+
+  config.inputDefs.push_back({INPUT_DATA, "layer_0", 3 * 5 * 5, 0});
+  config.layerConfig.add_inputs();
+  config.inputDefs.push_back({INPUT_DATA, "layer_1", 3, 0});
+  config.layerConfig.add_inputs();
+
+  for (auto useGpu : {false, true}) {
+    testLayerGrad(config, "broadcast_scale", 100, false, useGpu);
+  }
+}
+
 void testNormLayer(const string& normType, bool trans, bool useGpu) {
   TestConfig config;
   config.layerConfig.set_type("norm");

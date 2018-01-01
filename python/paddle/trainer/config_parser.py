@@ -3268,6 +3268,18 @@ class ScalingLayer(LayerBase):
                       'The left input should be of size 1')
 
 
+@config_layer('broadcast_scale')
+class BroadcastScaleLayer(LayerBase):
+    def __init__(self, name, inputs, device=None):
+        super(ScalingLayer, self).__init__(
+            name, 'broadcast_scale', 0, inputs=inputs, device=device)
+        config_assert(
+            len(self.inputs) == 2,
+            'The BroadcastScaleLayer expects two and only two inputs.')
+        input_layer0 = self.get_input_layer(0)
+        self.set_layer_size(input_layer0.size)
+
+
 @config_layer('conv_shift')
 class ConvShiftLayer(LayerBase):
     def __init__(self, name, inputs, device=None):
