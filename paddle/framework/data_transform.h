@@ -18,6 +18,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "glog/logging.h"  // For VLOG
 #include "paddle/framework/op_kernel_type.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/framework/variable.h"
@@ -29,9 +30,9 @@ namespace paddle {
 namespace framework {
 
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
-using DataTransformFn = std::function<void(
-    const platform::DeviceContext* ctx, const KernelTypePair& pair,
-    const Variable& in, Variable* out)>;
+using DataTransformFn = std::function<void(const platform::DeviceContext* ctx,
+                                           const KernelTypePair& pair,
+                                           const Variable& in, Variable* out)>;
 
 struct KernelTypePairHash {
   static void HashCombine(const OpKernelType& t, std::size_t* seed) {
@@ -95,24 +96,22 @@ class DataTransformFnMap {
 };
 
 #define REGISTER_DATA_TRANSFORM_MODEULE(module) \
-  int data_transform_module_##module() { \
-    return 0;  \
-  }
+  int data_transform_module_##module() { return 0; }
 
-#define USE_DATA_TRANSFORM_MODULE(module) \
-  extern int data_transform_module_##module();\
-  static int data_transform_module_var_##module \
-   __attribute__((unused)) = data_transform_module_##module()
+#define USE_DATA_TRANSFORM_MODULE(module)                                 \
+  extern int data_transform_module_##module();                            \
+  static int data_transform_module_var_##module __attribute__((unused)) = \
+      data_transform_module_##module()
 
 // generate unique name with __LINE__
 // refs https://stackoverflow.com/questions/1597007
 #define TOKENPASTE(x, y) x##y
 #define TOKENPASTE2(x, y) TOKENPASTE(x, y)
 #define REGISTER_DATA_TRANSFORM_FN(from, to, fn)                              \
-  int TOKENPASTE2(fn_, __LINE__)() {                                   \
+  static int TOKENPASTE2(fn_, __LINE__)() {                                   \
     ::paddle::framework::DataTransformFnMap::Instance().Insert(from, to, fn); \
     return 0;                                                                 \
-  } \
+  }                                                                           \
   static int TOKENPASTE2(var_, __LINE__) __attribute__((unused)) =            \
       TOKENPASTE2(fn_, __LINE__)()
 

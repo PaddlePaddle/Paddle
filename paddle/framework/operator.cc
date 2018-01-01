@@ -421,8 +421,8 @@ void OperatorWithKernel::Run(const Scope& scope,
   OpKernelMap& kernels = kernels_iter->second;
 
   // ExecutionContext ctx(*this, scope, *dev_ctx);
-  auto actual_kernel_key = GetActualKernelType(ExecutionContext(
-        *this, scope, *dev_ctx));
+  auto actual_kernel_key =
+      GetActualKernelType(ExecutionContext(*this, scope, *dev_ctx));
   auto expected_kernel_key = GetExpectedKernelType(actual_kernel_key);
   auto kernel_iter = kernels.find(expected_kernel_key);
 
@@ -431,8 +431,8 @@ void OperatorWithKernel::Run(const Scope& scope,
                  expected_kernel_key);
   }
 
-  std::cout << "actual_kernel_key:" << actual_kernel_key << std::endl;
-  std::cout << "expected_kernel_key:" << expected_kernel_key << std::endl;
+  VLOG(3) << "actual_kernel_key:" << actual_kernel_key;
+  VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   Scope& new_scope = scope.NewScope();
   if (actual_kernel_key == expected_kernel_key) {
@@ -443,13 +443,11 @@ void OperatorWithKernel::Run(const Scope& scope,
   } else {
     auto kernel_pair = std::make_pair(actual_kernel_key, expected_kernel_key);
     auto map = DataTransformFnMap::Instance().Map();
-    std::cout << "fn size:" << map.size() << std::endl;
     const DataTransformFn* trans_fun =
         DataTransformFnMap::Instance().GetNullable(kernel_pair);
     if (trans_fun) {
       auto input_vars = this->InputVars();
       // TODO(qijun) filter the input vars that do not need to be transformed
-      std::cout << "need to do transform" << std::endl;
 
       // filter vars that has been transformed
       std::vector<std::string> need_trans;
@@ -470,23 +468,19 @@ void OperatorWithKernel::Run(const Scope& scope,
         dev_ctx->Wait();
 
         for (auto var_name : need_trans) {
-          std::cout << "transform var:" << var_name << std::endl;
           (*trans_fun)(dev_ctx, kernel_pair, *(scope.FindVar(var_name)),
                        new_scope.FindVar(var_name));
         }
         // Wait for data transform finishing
         dev_ctx->Wait();
-        std::cout << "after wait in operator.cc" << std::endl;
       }
     } else {
       PADDLE_THROW("DataTransformFn not found");
     }
   }
 
-  std::cout << "before compute" << std::endl;
   kernel_iter->second->Compute(ExecutionContext(*this, new_scope, *dev_ctx));
   dev_ctx->Wait();
-  std::cout << "end compute" << std::endl;
 }
 
 OpKernelType OperatorWithKernel::GetActualKernelType(
