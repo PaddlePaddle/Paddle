@@ -45,7 +45,7 @@ class TestCTCEditDistanceOp(OpTest):
         if normalized is True:
             distance = distance / len(x2)
         self.attrs = {'normalized': normalized}
-        self.inputs = {'X1': x1, 'X2': x2}
+        self.inputs = {'Hyp': x1, 'Ref': x2}
         self.outputs = {'Out': distance}
 
     def test_check_output(self):
