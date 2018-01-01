@@ -40,7 +40,7 @@ As a result, in most cases, users do not need to invoke the API by themselves to
 
 ## Implementation
 
-The implementation of backward building algorithm is in `backward.py` file. The whole algorithm can be divided into two independent parts: creating of `grad_op`s and creating new variables. 
+The implementation of backward building algorithm is in `backward.py` file. The whole algorithm can be divided into two independent parts: creating `grad_op`s and creating new variables. 
 
 ### Creating `grad_op`s
 
@@ -108,7 +108,7 @@ In our framework, variables can be marked as *no_gradient*, it means that the gr
 
 But these unnecessary gradients still need to be creating and initialized by something, otherwise following `grad_op`s who take these gradients as inputs take the risk of using uninitialized memory. In our code, we employ `fill_zeros_like_op` to initialize them as all zeros. 
 
-This features are implemented in function `_remove_no_grad_branch_`. It checks new created `grad_op`'s one-by-one, removes whose outputs are all in `no_grad_set` or inserts `fill_zeros_like_op` when its necessary. We can get the `no_grad_set` from the `_append_backward_ops_` argument `no_grad_dict` or generate it on fly by scanning all variables' `no_gradient` attribute(True or False). 
+This features are implemented in function `_remove_no_grad_branch_`. It checks new created `grad_op`s one-by-one, removes whose outputs are all in `no_grad_set` or inserts `fill_zeros_like_op` when its necessary. We can get the `no_grad_set` from the `_append_backward_ops_` argument `no_grad_dict` or generate it on the fly by scanning all variables' `no_gradient` attribute(True or False). 
 
 ### Creating Backward Variables
 
