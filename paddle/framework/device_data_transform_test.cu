@@ -71,9 +71,11 @@ class TestKernel : public OpKernel<float> {
 
     const Tensor* input = ctx.Input<Tensor>("input");
 
+    std::cout << "input place:" << input->place() << std::endl;
     auto* output = ctx.Output<framework::LoDTensor>("output");
     output->Resize(input->dims());
     output->mutable_data<T>(ctx.GetPlace());
+    std::cout << "output place:" << output->place() << std::endl;
     std::cout << "kernel place:" << ctx.GetPlace() << std::endl;
 
     operators::TransformFunctor<AddFunctor<T>, T, DeviceContext> functor(
@@ -171,8 +173,8 @@ TEST(Operator, CPUtoGPU) {
   dev_ctx->Wait();
   std::cout << "second wait out" << std::endl;
   float* output2_ptr = output_tensor.data<float>();
-  // for (int i = 0; i < 2 * 3; ++i) {
-  //  ASSERT_EQ(output2_ptr[i], static_cast<float>(i) * 4);
-  // }
+  for (int i = 0; i < 2 * 3; ++i) {
+    ASSERT_EQ(output2_ptr[i], static_cast<float>(i) * 4);
+  }
 }
 //#endif

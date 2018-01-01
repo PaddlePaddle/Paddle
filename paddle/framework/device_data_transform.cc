@@ -29,8 +29,10 @@ void CPU_fromto_GPU(const platform::DeviceContext* ctx,
                     const KernelTypePair& pair, const Variable& in,
                     Variable* out) {
   std::cout << "CPU_fromto_GPU in" << std::endl;
+  std::cout << "src_place: " << in.Get<LoDTensor>().place() << std::endl;
+  std::cout << "dst_place: " << pair.second.place_ << std::endl;
   CopyFrom(in.Get<LoDTensor>(), pair.second.place_, *ctx,
-           out->GetMutable<Tensor>());
+           out->GetMutable<LoDTensor>());
   std::cout << "CPU_fromto_GPU out" << std::endl;
 }
 

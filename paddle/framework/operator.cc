@@ -433,6 +433,8 @@ void OperatorWithKernel::Run(const Scope& scope,
 
   std::cout << "actual_kernel_key:" << actual_kernel_key << std::endl;
   std::cout << "expected_kernel_key:" << expected_kernel_key << std::endl;
+
+  Scope& new_scope = scope.NewScope();
   if (actual_kernel_key == expected_kernel_key) {
     PADDLE_ENFORCE_EQ(actual_kernel_key.place_, expected_kernel_key.place_,
                       "Currently, model parallelism is only supported between "
@@ -447,14 +449,16 @@ void OperatorWithKernel::Run(const Scope& scope,
     if (trans_fun) {
       auto input_vars = this->InputVars();
       // TODO(qijun) filter the input vars that do not need to be transformed
+      std::cout << "need to do transform" << std::endl;
 
       // filter vars that has been transformed
       std::vector<std::string> need_trans;
       for (auto var_name : input_vars) {
         auto var_name_trans =
             var_name + framework::KernelTypeToString(expected_kernel_key);
-        if (!scope.FindVar(var_name_trans)) {
-          const_cast<Scope&>(scope).Var(var_name_trans);
+        if (!new_scope.FindVarLocally(var_name)) {
+          // const_cast<Scope&>(scope).Var(var_name_trans);
+          new_scope.Var(var_name);
           need_trans.push_back(var_name);
         }
       }
@@ -468,18 +472,20 @@ void OperatorWithKernel::Run(const Scope& scope,
         for (auto var_name : need_trans) {
           std::cout << "transform var:" << var_name << std::endl;
           (*trans_fun)(dev_ctx, kernel_pair, *(scope.FindVar(var_name)),
-                       scope.FindVar(var_name + framework::KernelTypeToString(
-                                                    expected_kernel_key)));
+                       new_scope.FindVar(var_name));
         }
         // Wait for data transform finishing
         dev_ctx->Wait();
         std::cout << "after wait in operator.cc" << std::endl;
       }
+    } else {
+      PADDLE_THROW("DataTransformFn not found");
     }
   }
 
   std::cout << "before compute" << std::endl;
-  kernel_iter->second->Compute(ExecutionContext(*this, scope, *dev_ctx));
+  kernel_iter->second->Compute(ExecutionContext(*this, new_scope, *dev_ctx));
+  dev_ctx->Wait();
   std::cout << "end compute" << std::endl;
 }
 
