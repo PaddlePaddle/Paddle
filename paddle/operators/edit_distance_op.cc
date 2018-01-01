@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/edit_distance_op.h"
 
@@ -22,8 +22,8 @@ class EditDistanceOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X1"), "Input(X1) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("X2"), "Input(X2) shouldn't be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Hyp"), "Input(Hyp) shouldn't be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Ref"), "Input(Ref) shouldn't be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) shouldn't be null.");
     ctx->SetOutputDim("Out", {1});
   }
@@ -40,16 +40,16 @@ class EditDistanceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   EditDistanceOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X1",
+    AddInput("Hyp",
              "(2-D tensor with shape [M x 1]) The indices for "
              "hypothesis string");
-    AddInput("X2",
+    AddInput("Ref",
              "(2-D tensor with shape [N x 1]) The indices "
              "for reference string.");
     AddAttr<bool>("normalized",
                   "(bool, default false) Indicated whether "
                   "normalize the Output(Out) by the length of reference "
-                  "string (X2).")
+                  "string (Ref).")
         .SetDefault(false);
     AddOutput("Out",
               "(2-D tensor with shape [1 x 1]) "
