@@ -12,14 +12,14 @@ Install Using pip
 ------------------------------
 
 Run the following command to install PaddlePaddle on the current
-machine, it will also download requirements.
+machine, it will also download requirements, the version is cpu_avx_openblas.
 
   .. code-block:: bash
 
      pip install paddlepaddle
 
 
-If you wish to install GPU version, just run:
+If you wish to install GPU version (cuda7.5_cudnn5_avx_openblas), just run:
 
   .. code-block:: bash
 
