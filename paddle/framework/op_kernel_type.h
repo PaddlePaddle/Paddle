@@ -48,11 +48,11 @@ struct OpKernelType {
 
   OpKernelType() = delete;
 
-  OpKernelType(const OpKernelType& c) {
-    data_type_ = c.data_type_;
-    data_layout_ = c.data_layout_;
-    place_ = c.place_;
-    library_type_ = c.library_type_;
+  OpKernelType(const OpKernelType& t) {
+    data_type_ = t.data_type_;
+    data_layout_ = t.data_layout_;
+    place_ = t.place_;
+    library_type_ = t.library_type_;
   }
 
   OpKernelType(proto::DataType data_type, platform::Place place,

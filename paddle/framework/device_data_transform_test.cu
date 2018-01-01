@@ -118,7 +118,7 @@ TEST(Operator, CPUtoGPU) {
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace cpu_place;
 
-  // create a op to run on CPU
+  // create an op to run on CPU
   paddle::framework::proto::OpDesc cpu_op_desc;
   cpu_op_desc.set_type("test_op");
   BuildVar("input", {"IN1"}, cpu_op_desc.add_inputs());
@@ -141,7 +141,7 @@ TEST(Operator, CPUtoGPU) {
     ASSERT_EQ(output_ptr[i], static_cast<float>(i) * 2);
   }
 
-  // create a op to run on CPU
+  // create an op to run on GPU
   paddle::framework::proto::OpDesc gpu_op_desc;
   gpu_op_desc.set_type("test_op");
   BuildVar("input", {"OUT1"}, gpu_op_desc.add_inputs());
