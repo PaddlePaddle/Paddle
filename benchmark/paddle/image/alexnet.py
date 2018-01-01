@@ -19,7 +19,11 @@ args = {
     'num_samples': num_samples
 }
 define_py_data_sources2(
-    "train.list", None, module="provider", obj="process", args=args)
+    "train.list" if not is_infer else None,
+    "test.list" if is_infer else None,
+    module="provider",
+    obj="process",
+    args=args)
 
 settings(
     batch_size=batch_size,
