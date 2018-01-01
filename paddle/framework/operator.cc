@@ -451,7 +451,7 @@ void OperatorWithKernel::Run(const Scope& scope,
       // filter vars that has been transformed
       std::vector<std::string> need_trans;
       for (auto var_name : input_vars) {
-        auto* var = default_ctx.InputVar(var_name);
+        auto* var = scope.FindVar(var_name);
         if (var->IsType<LoDTensor>()) {
           if (var->Get<LoDTensor>().place() != kernel_pair.second.place_) {
             if (!new_scope.FindVarLocally(var_name)) {
