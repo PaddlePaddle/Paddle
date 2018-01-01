@@ -59,9 +59,9 @@ class DataTransformFnMap {
     return map_.find(key_pair) != map_.end();
   }
 
-  void Insert(const OpKernelType& left, const OpKernelType& right,
+  void Insert(const OpKernelType& from, const OpKernelType& to,
               const DataTransformFn& data_tranform_fn) {
-    Insert(std::make_pair(left, right), data_tranform_fn);
+    Insert(std::make_pair(from, to), data_tranform_fn);
   }
 
   void Insert(const KernelTypePair& kernel_type_pair,
@@ -95,9 +95,16 @@ class DataTransformFnMap {
   DISABLE_COPY_AND_ASSIGN(DataTransformFnMap);
 };
 
+/**
+ * register a unique name for one module of data transform
+ */
 #define REGISTER_DATA_TRANSFORM_MODEULE(module) \
   int data_transform_module_##module() { return 0; }
 
+/**
+ * this MACRO will force linker to link module to the target, or the
+ * module may be skipped by linker.
+ */
 #define USE_DATA_TRANSFORM_MODULE(module)                                 \
   extern int data_transform_module_##module();                            \
   static int data_transform_module_var_##module __attribute__((unused)) = \

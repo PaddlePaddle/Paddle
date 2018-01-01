@@ -420,10 +420,10 @@ void OperatorWithKernel::Run(const Scope& scope,
   // check if op[type] have kernel for kernel_key
   OpKernelMap& kernels = kernels_iter->second;
 
-  // ExecutionContext ctx(*this, scope, *dev_ctx);
-  auto actual_kernel_key =
-      GetActualKernelType(ExecutionContext(*this, scope, *dev_ctx));
-  auto expected_kernel_key = GetExpectedKernelType(actual_kernel_key);
+  ExecutionContext default_ctx(*this, scope, *dev_ctx);
+  auto actual_kernel_key = GetActualKernelType(default_ctx);
+  auto expected_kernel_key =
+      GetExpectedKernelType(default_ctx, actual_kernel_key);
   auto kernel_iter = kernels.find(expected_kernel_key);
 
   if (kernel_iter == kernels.end()) {
@@ -442,7 +442,6 @@ void OperatorWithKernel::Run(const Scope& scope,
                       "parallelism will failed.");
   } else {
     auto kernel_pair = std::make_pair(actual_kernel_key, expected_kernel_key);
-    auto map = DataTransformFnMap::Instance().Map();
     const DataTransformFn* trans_fun =
         DataTransformFnMap::Instance().GetNullable(kernel_pair);
     if (trans_fun) {
@@ -452,12 +451,14 @@ void OperatorWithKernel::Run(const Scope& scope,
       // filter vars that has been transformed
       std::vector<std::string> need_trans;
       for (auto var_name : input_vars) {
-        auto var_name_trans =
-            var_name + framework::KernelTypeToString(expected_kernel_key);
-        if (!new_scope.FindVarLocally(var_name)) {
-          // const_cast<Scope&>(scope).Var(var_name_trans);
-          new_scope.Var(var_name);
-          need_trans.push_back(var_name);
+        auto* var = default_ctx.InputVar(var_name);
+        if (var->IsType<LoDTensor>()) {
+          if (var->Get<LoDTensor>().place() != kernel_pair.second.place_) {
+            if (!new_scope.FindVarLocally(var_name)) {
+              new_scope.Var(var_name);
+              need_trans.push_back(var_name);
+            }
+          }
         }
       }
 
@@ -489,7 +490,7 @@ OpKernelType OperatorWithKernel::GetActualKernelType(
 }
 
 OpKernelType OperatorWithKernel::GetExpectedKernelType(
-    const OpKernelType& actual_kernel_type) const {
+    const ExecutionContext& ctx, const OpKernelType& actual_kernel_type) const {
   return actual_kernel_type;
 }
 

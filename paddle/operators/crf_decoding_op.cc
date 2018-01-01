@@ -128,6 +128,7 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx,
       const framework::OpKernelType& actual_kernel_type) const override {
     return framework::OpKernelType(actual_kernel_type.data_type_,
                                    platform::CPUPlace());

@@ -55,6 +55,7 @@ class TestOpWithKernel : public OperatorWithKernel {
                         ctx.Input<Tensor>("input")->place());
   }
   OpKernelType GetExpectedKernelType(
+      const ExecutionContext& ctx,
       const OpKernelType& actual_kernel_type) const override {
     if (Attr<bool>("use_gpu")) {
       VLOG(3) << "force use gpu kernel";
@@ -108,7 +109,6 @@ static void BuildVar(const std::string& param_name,
   }
 }
 
-//#ifdef PADDLE_WITH_CUDA
 TEST(Operator, CPUtoGPU) {
   using namespace paddle::framework;
   using namespace paddle::platform;
@@ -173,4 +173,3 @@ TEST(Operator, CPUtoGPU) {
     ASSERT_EQ(output2_ptr[i], static_cast<float>(i) * 4);
   }
 }
-//#endif
