@@ -208,7 +208,6 @@ set(DEPS_OPS
     array_to_lod_tensor_op
     max_sequence_len_op
     lstm_op
-    tensor_array_read_write_op
     gru_op
     adagrad_op
     sgd_op
