@@ -57,8 +57,8 @@ struct CosSimDyFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template class CosSimDyFunctor<platform::CUDADeviceContext, float>;
-template class CosSimDyFunctor<platform::CUDADeviceContext, double>;
+template struct CosSimDyFunctor<platform::CUDADeviceContext, float>;
+template struct CosSimDyFunctor<platform::CUDADeviceContext, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

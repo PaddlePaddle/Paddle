@@ -41,8 +41,8 @@ struct CosSimDyFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template class CosSimDyFunctor<platform::CPUDeviceContext, float>;
-template class CosSimDyFunctor<platform::CPUDeviceContext, double>;
+template struct CosSimDyFunctor<platform::CPUDeviceContext, float>;
+template struct CosSimDyFunctor<platform::CPUDeviceContext, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
