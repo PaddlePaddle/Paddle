@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 #include "paddle/framework/lod_rank_table.h"
 #include "paddle/operators/array_operator.h"
 #include "paddle/operators/math/math_function.h"
@@ -27,11 +27,11 @@ class ShrinkRNNMemoryOp : public ArrayOp {
       : ArrayOp(type, inputs, outputs, attrs) {}
 
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto *x_var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE(x_var != nullptr, "Input X must be set");
     auto &x_tensor = x_var->Get<framework::LoDTensor>();
-    size_t offset = this->GetOffset(scope, dev_ctx);
+    size_t offset = this->GetOffset(scope, place);
     auto *rank_table_var = scope.FindVar(Input("RankTable"));
     PADDLE_ENFORCE(rank_table_var != nullptr, "RankTable must be set");
     auto &rank_table = rank_table_var->Get<framework::LoDRankTable>();
@@ -93,7 +93,7 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
       : ArrayOp(type, inputs, outputs, attrs) {}
 
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto *dout_var = scope.FindVar(Input(framework::GradVarName("Out")));
     auto *dx_var = scope.FindVar(Output(framework::GradVarName("X")));
     PADDLE_ENFORCE(dx_var != nullptr, "Input Gradient should not be nullptr");
@@ -105,6 +105,10 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
     dx_tensor.Resize(x_tensor.dims());
     dx_tensor.mutable_data(x_tensor.place(), x_tensor.type());
 
+    // get device context from pool
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place);
+
     if (dout_var == nullptr) {  // dx_tensor fill zero
       math::set_constant(dev_ctx, &dx_tensor, 0.0f);
     } else {
@@ -112,9 +116,9 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
       auto height = dout_tensor.dims()[0];
       auto slice = dx_tensor.Slice(0, static_cast<int>(height));
       framework::CopyFrom(dout_tensor, dout_tensor.place(), dev_ctx, &slice);
-      if (dx_tensor.dims()[0] < height) {
+      if (dx_tensor.dims()[0] > height) {
         auto rest_tensor = dx_tensor.Slice(
-            static_cast<int>(height), static_cast<int>(dout_tensor.dims()[0]));
+            static_cast<int>(height), static_cast<int>(dx_tensor.dims()[0]));
         math::set_constant(dev_ctx, &rest_tensor, 0.0f);
       }
     }

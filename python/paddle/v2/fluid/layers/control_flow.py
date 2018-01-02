@@ -3,6 +3,7 @@ from ..framework import Program, Variable, Operator
 from .. import core
 from tensor import assign, fill_constant
 import contextlib
+from ..registry import autodoc
 
 __all__ = [
     'split_lod_tensor', 'merge_lod_tensor', 'BlockGuard', 'StaticRNNGuard',
@@ -10,7 +11,7 @@ __all__ = [
     'max_sequence_len', 'topk', 'lod_tensor_to_array', 'array_to_lod_tensor',
     'increment', 'array_write', 'create_array', 'less_than', 'array_read',
     'shrink_memory', 'array_length', 'IfElse', 'DynamicRNN', 'ConditionalBlock',
-    'StaticRNN'
+    'StaticRNN', 'reorder_lod_tensor_by_rank'
 ]
 
 
@@ -396,9 +397,50 @@ class While(object):
 
 
 def lod_rank_table(x, level=0):
-    """
-    This function creates an operator for creating a LOD_RANK_TABLE
-    using the input x.
+    """LoD Rank Table Operator. Given an input variable **x** and a level number
+    of LoD, this layer creates a LodRankTable object. A LoDRankTable object
+    contains a list of bi-element tuples. Each tuple consists of an index and
+    a length, both of which are int type. Reffering to specified level of LoD,
+    the index is the sequence index number and the length representes the
+    sequence length. Please note that the list is ranked in descending order by
+    the length. The following is an example:
+
+        .. code-block:: text
+
+            x is a LoDTensor:
+                x.lod = [[0,                2, 3],
+                         [0,             5, 6, 7]]
+                x.data = [a, b, c, d, e, f, g]
+
+            1. set level to 0:
+                Create lod rank table:
+                    lod_rank_table_obj = lod_rank_table(x, level=0)
+
+                Get:
+                    lod_rank_table_obj.items() = [(0, 2), (1, 1)]
+
+            2. set level to 1:
+                Create lod rank table:
+                    lod_rank_table_obj = lod_rank_table(x, level=1)
+
+                Get:
+                    lod_rank_table_obj.items() = [(0, 5), (1, 1), (2, 1)]
+
+    Args:
+        x (Variable): Input variable, a LoDTensor based which to create the lod
+            rank table.
+        level (int): Specify the LoD level, on which to create the lod rank
+            table.
+
+    Returns:
+        Variable: The created LoDRankTable object.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[10],
+                            dtype='float32', lod_level=1)
+            out = layers.lod_rank_table(x=x, level=0)
     """
     helper = LayerHelper("lod_rank_table", **locals())
     table = helper.create_variable(
@@ -413,9 +455,25 @@ def lod_rank_table(x, level=0):
 
 
 def max_sequence_len(rank_table):
-    """
-    This function creates an operator to calculate the length of
-    max seqence through input rank_table(should be a lod_rank_table)
+    """Max Sequence Len Operator. Given a LoDRankTable object, this layer
+    returns the max length of a batch of sequences. In fact, a LoDRankTable
+    object contains a list of tuples(<sequence index, sequence length>) and
+    the list is already sorted by sequence length in descending order, so the
+    operator just returns the sequence length of the first tuple element.
+
+    Args:
+        rank_table (Variable): Input variable which is a LoDRankTable object.
+
+    Returns:
+        Variable: The max length of sequence.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[10],
+                            dtype='float32', lod_level=1)
+            rank_table = layers.lod_rank_table(x=x, level=0)
+            max_seq_len = layers.max_sequence_len(rank_table)
     """
     helper = LayerHelper("max_seqence_len", **locals())
     res = helper.create_tmp_variable(dtype="int64")
@@ -427,6 +485,30 @@ def max_sequence_len(rank_table):
 
 
 def topk(input, k):
+    """
+    **topk**
+
+    This function performs the operation that selects the k entries in the input
+    vector and outputs their values and indices as vectors. Thus topk_out[j] is
+    the j-th largest entry in input, and its index is topk_indices[j]
+
+    Args:
+        input (Variable|list): The input tensor that has all the data.
+        k (int): The number of top elements that the function will pick.
+
+    Returns:
+        Variable: The variable of type array that contains the k largest entries
+                  from input.
+        Variable: The variable of type array that contains the indices of k
+                  largest entries from input.
+
+    Examples:
+        .. code-block:: python
+
+          x = fluid.layers.data(name='x', shape=[10])
+          k = 5
+          array = fluid.layers.topk(x, k)
+    """
     helper = LayerHelper('topk', **locals())
     topk_out = helper.create_tmp_variable(dtype=input.data_type)
     topk_indices = helper.create_tmp_variable(dtype='int64')
@@ -1082,3 +1164,18 @@ class DynamicRNN(object):
         if self.status != DynamicRNN.IN_RNN:
             raise ValueError("{0} can only be invoked inside rnn block.".format(
                 method))
+
+
+@autodoc
+def reorder_lod_tensor_by_rank(x, rank_table):
+    helper = LayerHelper('reorder_lod_tensor_by_rank', **locals())
+    helper.is_instance('x', Variable)
+    helper.is_instance('rank_table', Variable)
+
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='reorder_lod_tensor_by_rank',
+        inputs={'X': [x],
+                'RankTable': [rank_table]},
+        outputs={'Out': [out]})
+    return out

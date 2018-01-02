@@ -53,7 +53,7 @@ class SumOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto x_vars = ctx.MultiInputVar("X");
     if (x_vars[0]->IsType<framework::LoDTensor>()) {
@@ -106,8 +106,8 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Sum operator.
 
-This operators sums the input tensors. All the inputs can carry the 
-LoD (Level of Details) information. However, the output only shares 
+This operators sums the input tensors. All the inputs can carry the
+LoD (Level of Details) information. However, the output only shares
 the LoD information with the first input.
 )DOC");
   }
@@ -170,7 +170,7 @@ class SumGradMaker : public framework::GradOpDescMakerBase {
   using framework::GradOpDescMakerBase::GradOpDescMakerBase;
 
   std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override {
-    auto x_grads = InputGrad("X");
+    auto x_grads = InputGrad("X", false);
     std::vector<std::unique_ptr<framework::OpDesc>> grad_ops;
     grad_ops.reserve(x_grads.size());
     auto og = OutputGrad("Out");
