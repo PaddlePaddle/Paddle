@@ -429,7 +429,8 @@ def lod_rank_table(x, level=0):
     Args:
         x (Variable): Input variable, a LoDTensor based which to create the lod
             rank table.
-        level (int): Specify the LoD level.
+        level (int): Specify the LoD level, on which to create the lod rank
+            table.
 
     Returns:
         Variable: The created LoDRankTable object.
