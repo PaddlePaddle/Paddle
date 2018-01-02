@@ -130,9 +130,9 @@ class ReadFromArrayOp : public ArrayOp {
     auto &x_array = x->Get<framework::LoDTensorArray>();
     auto *out = scope.FindVar(Output("Out"));
     PADDLE_ENFORCE(out != nullptr, "Out must be set");
-    auto *out_tensor = out->GetMutable<framework::LoDTensor>();
     size_t offset = GetOffset(scope, place);
     if (offset < x_array.size()) {
+      auto *out_tensor = out->GetMutable<framework::LoDTensor>();
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(place);

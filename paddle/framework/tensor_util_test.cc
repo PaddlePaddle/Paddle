@@ -231,7 +231,7 @@ TEST(CopyToVector, Tensor) {
 #endif
 }
 
-TEST(IsNAN, CPU) {
+TEST(HasNAN, CPU) {
   using namespace paddle::framework;
   using namespace paddle::platform;
   Tensor src;
@@ -243,7 +243,7 @@ TEST(IsNAN, CPU) {
   ASSERT_TRUE(HasNAN(src));
 }
 
-TEST(IsInf, CPU) {
+TEST(HasInf, CPU) {
   using namespace paddle::framework;
   using namespace paddle::platform;
   Tensor src;
