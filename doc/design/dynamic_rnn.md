@@ -49,7 +49,10 @@ The following of this document will be organized in several sections:
 
 ### WhileOp
 
-The primary control flow operator to implement dynamic RNN is `WhileOp`. The `WhileOp` takes a sub-block. The operators in the sub-block will be executed again and again while the condition is true. The fragment program of a while op and its sub-block is:
+The primary control flow operator to implement dynamic RNN is `WhileOp`. The `WhileOp` takes a sub-block. The operators in the sub-block will be executed again and again while the condition is true. 
+
+#### Sub-Block
+The fragment program of a while op and its sub-block is:
 
 ```text
 program {
@@ -85,4 +88,39 @@ program {
 }
 ```
 
-The while 
+#### inputs
+
+The while operator has two kinds of inputs. They are
+
+* Condition: A bool scalar. When it's False, the While Op will be terminated. Note that this scalar should always be in CPU memory.
+  * The condition variable is in the external block. However, it should be updated inside the sub-block of while op unless it is an endless loop. The condition variable will be an output variable of the while operator, too.
+* X: The external inputs variables, which are required by operators inside the block of While Op.
+  * For example, if there is a hidden fully-connected layer in while operator. The input of the fully-connected layer is calculated by another operator inside the while operator. The input of this fully-connected layer is not the `external` inputs of the while operator. However, weight tensors of this fully-connected layer are external outputs of the while operator.
+
+  
+#### outputs
+
+* Output: The output variables. They are `assigned` or `push_back` by the operators inside the block of While Op.
+    * It is reasonable for `while operator` to `push_back` its output to an array because 1) the while operator is a loop. 2) the output in every timestep should not be overwritten since they will be used in backward.
+    * The condition and other control flow related operator, like `++i` or `i=0`, could be overwritten since they do not need when backwards. The backward control flow operator of `++i` is `--i`.
+* The step-scopes. A vector of local scope, which size equals the step number of While Op. The i'th scope storages temporary variables generated in the i'th step.
+    * A potential optimization of `while operator` when inference is just maintaining one step of scope in while operator since there is no backward stage when inference.
+
+#### Implementation of the while operator
+
+The implementation is quite simple. It is just a while loop in C++. The pseudocode is:
+
+
+```cpp
+auto global_scopes = ...
+vector<Scope> step_scopes;
+while(cond) {
+  auto cur_scope = global_scopes.NewScope()
+  step_scopes.push_back(cur_scope);
+  executor.Run(cur_scope, sub_block);
+}
+```
+
+#### Backward of the while operator
+
+The backward of the while operator will just execute the backward of its sub-block reversely. The gradient of while operator has a 
