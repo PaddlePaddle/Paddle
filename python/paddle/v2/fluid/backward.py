@@ -138,7 +138,7 @@ def _remove_no_grad_branch_(op_descs, no_grad_set):
     Remove unnecessary grad ops
     A grad op can be removed in two cases:
         1. all outputs of the grad op are in 'no_grad_set'
-        2. (TODO) all grad inputs of the grad op are in 'no_grad_set'
+        2. all grad inputs of the grad op are in 'no_grad_set'
     """
 
     def _op_can_be_removed_(op_desc, no_grad_set):
