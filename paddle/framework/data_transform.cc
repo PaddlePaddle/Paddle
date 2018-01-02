@@ -24,25 +24,29 @@ DataTransformFnMap& DataTransformFnMap::Instance() {
   return data_transform_map;
 }
 
-auto kernel_FP32 = OpKernelType(proto::DataType::FP32, platform::CPUPlace(),
-                                DataLayout::kNHWC, LibraryType::kPlain);
+auto KernelFP32 = OpKernelType(proto::DataType::FP32, platform::CPUPlace(),
+                               DataLayout::kNHWC, LibraryType::kPlain);
 
-auto kernel_FP64 = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
-                                DataLayout::kNHWC, LibraryType::kPlain);
+auto KernelFP64 = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
+                               DataLayout::kNHWC, LibraryType::kPlain);
 
-auto kernel_Layout0 = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
-                                   DataLayout::kNHWC, LibraryType::kPlain);
+auto KernelNHWC = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
+                               DataLayout::kNHWC, LibraryType::kPlain);
 
-auto kernel_Layout1 = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
-                                   DataLayout::kNCHW, LibraryType::kPlain);
+auto KernelNCHW = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
+                               DataLayout::kNCHW, LibraryType::kPlain);
 
 void TransDataType(const platform::DeviceContext* ctx,
                    const KernelTypePair& kernel_pair, const Variable& in,
                    Variable* out) {
   PADDLE_ENFORCE(in.IsType<Tensor>(), "Only Support Tensor transform!.");
+  PADDLE_ENFORCE(
+      platform::places_are_same_class(kernel_pair.first.place_,
+                                      kernel_pair.second.place_),
+      "TransDataType Only Support DataType transform on same place!");
+
   auto src = in.Get<Tensor>();
   auto* dst = out->GetMutable<Tensor>();
-  // TODO(dzhwinter): CPU <-> GPU need a copy here
 
   auto dims = src.dims();
   dst->Resize(dims);
@@ -73,12 +77,17 @@ void TransDataType(const platform::DeviceContext* ctx,
 void TransDataLayout(const platform::DeviceContext* ctx,
                      const KernelTypePair& kernel_pair, const Variable& in,
                      Variable* out) {
-  PADDLE_ENFORCE(in.IsType<Tensor>(), "Only Support LoDTensor transform!.");
+  PADDLE_ENFORCE(in.IsType<Tensor>(), "Only Support Tensor transform!.");
   auto src = in.Get<Tensor>();
   auto* dst = out->GetMutable<Tensor>();
   dst->Resize(src.dims());
   auto place = kernel_pair.second.place_;
   CopyFrom(src, place, *ctx, dst);
+  const std::vector<int> axis = {0, 2, 3, 1};
+
+  auto src_type = kernel_pair.first.data_type_;
+  framework::VisitDataType(src_type, CastDataLayout(src, dst, ctx, axis));
+
   dst->set_layout(kernel_pair.second.data_layout_);
 }
 
@@ -86,6 +95,5 @@ void TransDataLayout(const platform::DeviceContext* ctx,
 }  // namespace paddle
 
 namespace f = paddle::framework;
-REGISTER_DATA_TRANSFORM_FN(f::kernel_FP32, f::kernel_FP64, f::TransDataType);
-REGISTER_DATA_TRANSFORM_FN(f::kernel_Layout0, f::kernel_Layout1,
-                           f::TransDataLayout);
+REGISTER_DATA_TRANSFORM_FN(f::KernelFP32, f::KernelFP64, f::TransDataType);
+REGISTER_DATA_TRANSFORM_FN(f::KernelNHWC, f::KernelNCHW, f::TransDataLayout);

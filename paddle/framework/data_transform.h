@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/framework/op_kernel_type.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/framework/variable.h"
+#include "paddle/operators/math/math_function.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/macros.h"
 #include "paddle/platform/transform.h"
@@ -79,6 +80,28 @@ struct CastDataType {
             CastDataTypeFunctor<InType, OutType>());
     } else {
       // TODO(dzhwinter): enhance CopyFrom CPU<->GPU with different data type?
+      PADDLE_THROW("Unsupport CPU <-> GPU!");
+    }
+  }
+};
+
+struct CastDataLayout {
+  CastDataLayout(const framework::Tensor& in, framework::Tensor* out,
+                 const platform::DeviceContext* ctx,
+                 const std::vector<int>& axis)
+      : in_(in), out_(out), ctx_(ctx), axis_(axis) {}
+  const framework::Tensor in_;
+  framework::Tensor* out_;
+  const platform::DeviceContext* ctx_;
+  const std::vector<int> axis_;
+  template <typename T>
+  void operator()() {
+    auto place = ctx_->GetPlace();
+    if (platform::is_cpu_place(place)) {
+      operators::math::Transpose<platform::CPUDeviceContext, T, 4> trans4;
+      auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
+      trans4(*context, in_, out_, axis_);
+    } else {
       PADDLE_THROW("Unsupport CPU <-> GPU!");
     }
   }
