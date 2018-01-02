@@ -243,9 +243,9 @@ def gru_unit(input,
 
             r_t & = actGate(xr_{t} + W_r h_{t-1} + b_r)
 
-            ch_t & = actNode(xc_t + W_c \cdot(r_t, h_{t-1}) + b_c)
+            ch_t & = actNode(xc_t + W_c dot(r_t, h_{t-1}) + b_c)
 
-            h_t & = \cdot((1-u_t), ch_{t-1}) + \cdot(u_t, h_t)
+            h_t & = dot((1-u_t), ch_{t-1}) + dot(u_t, h_t)
 
     The inputs of gru unit includes :math:`z_t`, :math:`h_{t-1}`. In terms
     of the equation above, the :math:`z_t` is split into 3 parts - 
@@ -253,7 +253,7 @@ def gru_unit(input,
     implement a full GRU unit operator for an input, a fully 
     connected layer has to be applied, such that :math:`z_t = W_{fc}x_t`.
 
-    This layer has three outputs :math:`h_t`, :math:`\cdot(r_t, h_{t - 1})`
+    This layer has three outputs :math:`h_t`, :math:`dot(r_t, h_{t - 1})`
     and concatenation of :math:`u_t`, :math:`r_t` and :math:`ch_t`.
 
     Args:
