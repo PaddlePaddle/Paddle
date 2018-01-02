@@ -19,13 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-
 template <typename DeviceContext, typename T, typename AttrType = T>
 class NormKernel : public framework::OpKernel<T> {
  public:
@@ -42,29 +35,37 @@ class NormKernel : public framework::OpKernel<T> {
     int fea_len = height * width;
     auto* place =
         context.template device_context<DeviceContext>().eigen_device();
-    auto x = EigenMatrix<T>::From(
-        *in_x, framework::make_ddim({batch_size, fea_len * channels}));
+    auto x =
+        framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
+            *in_x, framework::make_ddim({batch_size, fea_len * channels}));
     // get square
     framework::Tensor x_square;
     x_square.mutable_data<T>(in_x->dims(), context.GetPlace());
-    auto x_square_eigen = EigenMatrix<T>::From(
-        x_square, framework::make_ddim({batch_size, fea_len * channels}));
+    auto x_square_eigen =
+        framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
+            x_square, framework::make_ddim({batch_size, fea_len * channels}));
     x_square_eigen.device(*place) = x.square();
-    auto scale_eigen = EigenVector<T>::Flatten(*scale);
+    auto scale_eigen =
+        framework::EigenVector<T, Eigen::RowMajor, Eigen::DenseIndex>::Flatten(
+            *scale);
     for (int n = 0; n < batch_size; ++n) {
       framework::Tensor in_x_batch = in_x->Slice(n, n + 1);
-      auto in_x_batch_eigen = EigenMatrix<T>::From(
-          in_x_batch, framework::make_ddim({channels, fea_len}));
+      auto in_x_batch_eigen =
+          framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
+              in_x_batch, framework::make_ddim({channels, fea_len}));
       framework::Tensor x_square_batch = x_square.Slice(n, n + 1);
-      auto x_square_batch_eigen = EigenMatrix<T>::From(
-          x_square_batch, framework::make_ddim({channels, fea_len}));
+      auto x_square_batch_eigen =
+          framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
+              x_square_batch, framework::make_ddim({channels, fea_len}));
       framework::Tensor out_batch = out->Slice(n, n + 1);
-      auto out_batch_eigen = EigenMatrix<T>::From(
-          out_batch, framework::make_ddim({channels, fea_len}));
+      auto out_batch_eigen =
+          framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
+              out_batch, framework::make_ddim({channels, fea_len}));
       framework::Tensor tmp_tensor;
       tmp_tensor.mutable_data<T>(framework::make_ddim({1, fea_len}),
                                  context.GetPlace());
-      auto tmp = EigenVector<T>::Flatten(tmp_tensor);
+      auto tmp = framework::EigenVector<T, Eigen::RowMajor,
+                                        Eigen::DenseIndex>::Flatten(tmp_tensor);
       // get colsum  and sqrt , inverse
       auto dim = Eigen::array<int, 1>({{0}});
       tmp.device(*place) = x_square_batch_eigen.sum(dim);
@@ -102,40 +103,52 @@ class NormGradKernel : public framework::OpKernel<T> {
     auto* place =
         context.template device_context<DeviceContext>().eigen_device();
 
-    auto scale_eigen = EigenVector<T>::Flatten(*scale);
-    auto x = EigenMatrix<T>::From(
-        *in_x, framework::make_ddim({batch_size, fea_len * channels}));
+    auto scale_eigen =
+        framework::EigenVector<T, Eigen::RowMajor, Eigen::DenseIndex>::Flatten(
+            *scale);
+    auto x =
+        framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
+            *in_x, framework::make_ddim({batch_size, fea_len * channels}));
     // get square
     framework::Tensor x_square;
     x_square.mutable_data<T>(in_x->dims(), context.GetPlace());
-    auto x_square_eigen = EigenMatrix<T>::From(
-        x_square, framework::make_ddim({batch_size, fea_len * channels}));
+    auto x_square_eigen =
+        framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
+            x_square, framework::make_ddim({batch_size, fea_len * channels}));
     x_square_eigen.device(*place) = x.square();
 
     for (int n = 0; n < batch_size; ++n) {
       framework::Tensor in_x_batch = in_x->Slice(n, n + 1);
-      auto in_x_batch_eigen = EigenMatrix<T>::From(
-          in_x_batch, framework::make_ddim({channels, fea_len}));
+      auto in_x_batch_eigen =
+          framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
+              in_x_batch, framework::make_ddim({channels, fea_len}));
       framework::Tensor in_g_batch = in_x_grad->Slice(n, n + 1);
-      auto in_g_batch_eigen = EigenMatrix<T>::From(
-          in_g_batch, framework::make_ddim({channels, fea_len}));
+      auto in_g_batch_eigen =
+          framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
+              in_g_batch, framework::make_ddim({channels, fea_len}));
       framework::Tensor x_square_batch = x_square.Slice(n, n + 1);
-      auto x_square_batch_eigen = EigenMatrix<T>::From(
-          x_square_batch, framework::make_ddim({channels, fea_len}));
+      auto x_square_batch_eigen =
+          framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
+              x_square_batch, framework::make_ddim({channels, fea_len}));
       framework::Tensor outg_batch = out_grad->Slice(n, n + 1);
-      auto outg_batch_eigen = EigenMatrix<T>::From(
-          outg_batch, framework::make_ddim({channels, fea_len}));
+      auto outg_batch_eigen =
+          framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
+              outg_batch, framework::make_ddim({channels, fea_len}));
 
       framework::Tensor tmp_tensor;
       tmp_tensor.mutable_data<T>(framework::make_ddim({1, fea_len}),
                                  context.GetPlace());
-      auto tmp_eigen = EigenVector<T>::Flatten(tmp_tensor);
+      auto tmp_eigen =
+          framework::EigenVector<T, Eigen::RowMajor,
+                                 Eigen::DenseIndex>::Flatten(tmp_tensor);
       auto dim = Eigen::array<int, 1>({{0}});
       tmp_eigen.device(*place) = (in_x_batch_eigen * outg_batch_eigen).sum(dim);
       framework::Tensor norm_tmp_tensor;
       norm_tmp_tensor.mutable_data<T>(framework::make_ddim({1, fea_len}),
                                       context.GetPlace());
-      auto norm_tmp_eigen = EigenVector<T>::Flatten(norm_tmp_tensor);
+      auto norm_tmp_eigen =
+          framework::EigenVector<T, Eigen::RowMajor,
+                                 Eigen::DenseIndex>::Flatten(norm_tmp_tensor);
       norm_tmp_eigen.device(*place) =
           (x_square_batch_eigen.sum(dim) + epsilon).sqrt();
       Eigen::array<int, 2> broadcast_dim_col;
