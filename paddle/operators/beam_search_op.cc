@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/beam_search_op.h"
 
@@ -139,7 +139,7 @@ bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
   items->reserve(framework::product(ids.dims()));
   for (size_t offset = abs_lod[lod_level_][sent_offset_];
        offset < abs_lod[lod_level_][sent_offset_ + 1]; offset++) {
-    for (int d = 0; d < instance_dim; d++) {
+    for (size_t d = 0; d < instance_dim; d++) {
       const size_t dim_offset = offset * instance_dim + d;
       items->emplace_back(offset, ids_data[dim_offset],
                           scores_data[dim_offset]);
@@ -153,8 +153,7 @@ bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
 class BeamSearchProtoAndCheckerMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  BeamSearchProtoAndCheckerMaker(framework::OpProto *proto,
-                                 framework::OpAttrChecker *op_checker)
+  BeamSearchProtoAndCheckerMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     // inputs and outputs stored in proto
     AddInput("pre_ids", "ids in previous step");

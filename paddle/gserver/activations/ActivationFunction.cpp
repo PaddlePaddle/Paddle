@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/utils/ClassRegistrar.h"
 #include "paddle/utils/Logging.h"
 
-#ifdef PADDLE_USE_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
 #include "MKLDNNActivation.h"
 #endif
 
@@ -211,6 +211,37 @@ Error __must_check backward(Argument& act) {
   return Error();
 }
 END_DEFINE_ACTIVATION(sequence_softmax)
+
+/*
+ * @brief SoftSign Activation.
+ * \f[
+ * f(z) = \frac{z}{1 + |z|}
+ * \f]
+ */
+BEGIN_DEFINE_ACTIVATION(softsign)
+private:
+MatrixPtr denominator_;
+
+Error __must_check forward(Argument& act) {
+  size_t height = act.value->getHeight();
+  size_t width = act.value->getWidth();
+  Matrix::resizeOrCreate(
+      denominator_, height, width, false, useGpu(act.deviceId));
+  denominator_->assign(*act.value);
+  denominator_->abs2();
+  denominator_->add(1.);
+
+  act.value->dotDiv(*act.value, *denominator_);
+  return Error();
+}
+
+Error __must_check backward(Argument& act) {
+  denominator_->square2();
+  denominator_->scalarDiv(*denominator_, 1.);
+  act.grad->dotMul(*act.grad, *denominator_);
+  return Error();
+}
+END_DEFINE_ACTIVATION(softsign)
 
 /**
  * @brief Relu Activation.
@@ -459,7 +490,7 @@ Error __must_check backward(Argument& act) {
 END_DEFINE_ACTIVATION(log)
 
 ActivationFunction* ActivationFunction::create(const std::string& type) {
-#ifdef PADDLE_USE_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
   if (!type.empty() && type.compare(0, 7, "mkldnn_") == 0) {
     return MKLDNNActivation::create(type);
   }

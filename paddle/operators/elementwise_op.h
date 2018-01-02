@@ -35,7 +35,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
     auto x_dim = ctx->GetInputDim("X");
     auto y_dim = ctx->GetInputDim("Y");
     PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
-                      "Rank of first input must >= rank of second input.")
+                      "Rank of first input must >= rank of second input.");
     ctx->SetOutputDim("Out", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -43,8 +43,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
 
 class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ElementwiseOpMaker(framework::OpProto* proto,
-                     framework::OpAttrChecker* op_checker)
+  ElementwiseOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) The first input tensor of elementwise op");
     AddInput("Y", "(Tensor) The second input tensor of elementwise op");
@@ -120,7 +119,7 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
-                      "Rank of first input must >= rank of second input.")
+                      "Rank of first input must >= rank of second input.");
 
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");

@@ -19,83 +19,85 @@ namespace operators {
 namespace math {
 
 template <typename T>
-struct GRUUnitFunctor<platform::CPUPlace, T> {
-  static void compute(const platform::DeviceContext &context,
-                      hl_gru_value<T> value, int frameSize, int batchSize,
-                      activation_mode_t active_node,
-                      activation_mode_t active_gate) {
+struct GRUUnitFunctor<platform::CPUDeviceContext, T> {
+  static void compute(const platform::CPUDeviceContext &context,
+                      GRUMetaValue<T> value, int frame_size, int batch_size,
+                      const detail::ActivationType active_node,
+                      const detail::ActivationType active_gate) {
 #ifndef __NVCC__
-    if (value.prevOutValue) {
-      math::gemm<platform::CPUPlace, T>(
-          context, false, false, batchSize, frameSize * 2, frameSize, 1,
-          value.prevOutValue, frameSize, value.gateWeight, frameSize * 2, 1,
-          value.gateValue, frameSize * 3);
+    if (value.prev_out_value) {
+      math::gemm<platform::CPUDeviceContext, T>(
+          context, false, false, batch_size, frame_size * 2, frame_size, 1,
+          value.prev_out_value, frame_size, value.gate_weight, frame_size * 2,
+          1, value.gate_value, frame_size * 3);
     }
 
     detail::forward_reset_output(detail::forward::gru_resetOutput<T>(), value,
-                                 frameSize, batchSize, active_gate);
+                                 frame_size, batch_size, active_gate);
 
-    if (value.prevOutValue) {
-      math::gemm<platform::CPUPlace, T>(
-          context, false, false, batchSize, frameSize, frameSize, 1,
-          value.resetOutputValue, frameSize, value.stateWeight, frameSize, 1,
-          value.gateValue + frameSize * 2, frameSize * 3);
+    if (value.prev_out_value) {
+      math::gemm<platform::CPUDeviceContext, T>(
+          context, false, false, batch_size, frame_size, frame_size, 1,
+          value.reset_output_value, frame_size, value.state_weight, frame_size,
+          1, value.gate_value + frame_size * 2, frame_size * 3);
     }
 
     detail::forward_final_output(detail::forward::gru_finalOutput<T>(), value,
-                                 frameSize, batchSize, active_node);
+                                 frame_size, batch_size, active_node);
 #endif
   }
 };
 
 template <typename T>
-struct GRUUnitGradFunctor<platform::CPUPlace, T> {
-  static void compute(const platform::DeviceContext &context,
-                      hl_gru_value<T> value, hl_gru_grad<T> grad, int frameSize,
-                      int batchSize, activation_mode_t active_node,
-                      activation_mode_t active_gate) {
+struct GRUUnitGradFunctor<platform::CPUDeviceContext, T> {
+  static void compute(const platform::CPUDeviceContext &context,
+                      GRUMetaValue<T> value, GRUMetaGrad<T> grad,
+                      int frame_size, int batch_size,
+                      const detail::ActivationType active_node,
+                      const detail::ActivationType active_gate) {
 #ifndef __NVCC__
     detail::backward_state_grad(detail::backward::gru_stateGrad<T>(), value,
-                                grad, frameSize, batchSize, active_node);
+                                grad, frame_size, batch_size, active_node);
 
-    if (value.prevOutValue && grad.prevOutGrad) {
-      math::gemm<platform::CPUPlace, T>(
-          context, false, true, batchSize, frameSize, frameSize, 1,
-          grad.gateGrad + frameSize * 2, frameSize * 3, value.stateWeight,
-          frameSize, 0, grad.resetOutputGrad, frameSize);
+    if (value.prev_out_value && grad.prev_out_grad) {
+      math::gemm<platform::CPUDeviceContext, T>(
+          context, false, true, batch_size, frame_size, frame_size, 1,
+          grad.gate_grad + frame_size * 2, frame_size * 3, value.state_weight,
+          frame_size, 0, grad.reset_output_grad, frame_size);
 
-      if (grad.stateWeightGrad) {
-        math::gemm<platform::CPUPlace, T>(
-            context, true, false, frameSize, frameSize, batchSize, 1,
-            value.resetOutputValue, frameSize, grad.gateGrad + frameSize * 2,
-            frameSize * 3, 1, grad.stateWeightGrad, frameSize);
+      if (grad.state_weight_grad) {
+        math::gemm<platform::CPUDeviceContext, T>(
+            context, true, false, frame_size, frame_size, batch_size, 1,
+            value.reset_output_value, frame_size,
+            grad.gate_grad + frame_size * 2, frame_size * 3, 1,
+            grad.state_weight_grad, frame_size);
       }
     }
 
     detail::backward_reset_grad(detail::backward::gru_resetGrad<T>(), value,
-                                grad, frameSize, batchSize, active_gate);
+                                grad, frame_size, batch_size, active_gate);
 
-    if (grad.prevOutGrad && value.prevOutValue) {
-      math::gemm<platform::CPUPlace, T>(
-          context, false, true, batchSize, frameSize, frameSize * 2, 1,
-          grad.gateGrad, frameSize * 3, value.gateWeight, frameSize * 2, 1,
-          grad.prevOutGrad, frameSize);
+    if (grad.prev_out_grad && value.prev_out_value) {
+      math::gemm<platform::CPUDeviceContext, T>(
+          context, false, true, batch_size, frame_size, frame_size * 2, 1,
+          grad.gate_grad, frame_size * 3, value.gate_weight, frame_size * 2, 1,
+          grad.prev_out_grad, frame_size);
 
-      if (grad.gateWeightGrad) {
-        math::gemm<platform::CPUPlace, T>(
-            context, true, false, frameSize, frameSize * 2, batchSize, 1,
-            value.prevOutValue, frameSize, grad.gateGrad, frameSize * 3, 1,
-            grad.gateWeightGrad, frameSize * 2);
+      if (grad.gate_weight_grad) {
+        math::gemm<platform::CPUDeviceContext, T>(
+            context, true, false, frame_size, frame_size * 2, batch_size, 1,
+            value.prev_out_value, frame_size, grad.gate_grad, frame_size * 3, 1,
+            grad.gate_weight_grad, frame_size * 2);
       }
     }
 #endif
   }
 };
 
-template struct GRUUnitFunctor<platform::CPUPlace, float>;
-template struct GRUUnitFunctor<platform::CPUPlace, double>;
-template struct GRUUnitGradFunctor<platform::CPUPlace, float>;
-template struct GRUUnitGradFunctor<platform::CPUPlace, double>;
+template struct GRUUnitFunctor<platform::CPUDeviceContext, float>;
+template struct GRUUnitFunctor<platform::CPUDeviceContext, double>;
+template struct GRUUnitGradFunctor<platform::CPUDeviceContext, float>;
+template struct GRUUnitGradFunctor<platform::CPUDeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators

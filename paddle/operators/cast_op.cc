@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/cast_op.h"
 #include "paddle/framework/op_registry.h"
@@ -20,13 +20,12 @@ namespace operators {
 
 class CastOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CastOpProtoMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  CastOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input tensor of cast op");
     AddOutput("Out", "The output tensor of cast op");
-    AddAttr<int>("out_data_type", "output data type");
-    AddAttr<int>("in_data_type", "input data type");
+    AddAttr<int>("out_dtype", "output data type");
+    AddAttr<int>("in_dtype", "input data type");
     AddComment(R"DOC(
 Cast Operator.
 
@@ -53,14 +52,14 @@ class CastOpGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto grad = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto grad = new framework::OpDesc();
     grad->SetType("cast");
     grad->SetInput("X", OutputGrad("Out"));
     grad->SetOutput("Out", InputGrad("X"));
-    grad->SetAttr("out_data_type", GetAttr("in_data_type"));
-    grad->SetAttr("in_data_type", GetAttr("out_data_type"));
-    return std::unique_ptr<framework::OpDescBind>(grad);
+    grad->SetAttr("out_dtype", GetAttr("in_dtype"));
+    grad->SetAttr("in_dtype", GetAttr("out_dtype"));
+    return std::unique_ptr<framework::OpDesc>(grad);
   }
 };
 
@@ -68,10 +67,11 @@ class CastOpGradMaker : public framework::SingleGradOpDescMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUPlace;
+using CPU = paddle::platform::CPUDeviceContext;
 REGISTER_OP_WITH_KERNEL(cast, ops::CastOpGradMaker, ops::CastOpInferShape,
                         ops::CastOpProtoMaker);
 REGISTER_OP_CPU_KERNEL(cast, ops::CastOpKernel<CPU, float>,
                        ops::CastOpKernel<CPU, double>,
                        ops::CastOpKernel<CPU, int>,
-                       ops::CastOpKernel<CPU, int64_t>);
+                       ops::CastOpKernel<CPU, int64_t>,
+                       ops::CastOpKernel<CPU, bool>);

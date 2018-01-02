@@ -4,7 +4,7 @@ import random
 import itertools
 import paddle.v2.fluid.core as core
 import collections
-from paddle.v2.fluid.backward import append_backward_ops
+from paddle.v2.fluid.backward import append_backward
 from paddle.v2.fluid.op import Operator
 from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.framework import Program, OpProtoHolder
@@ -90,12 +90,10 @@ def get_numeric_gradient(scope,
     def product(dim):
         return reduce(lambda a, b: a * b, dim, 1)
 
-    ctx = core.DeviceContext.create(core.CPUPlace())
-
     def get_output():
         sum = []
         for output_name in output_names:
-            op.run(scope, ctx)
+            op.run(scope, core.CPUPlace())
             sum.append(
                 np.array(scope.find_var(output_name).get_tensor()).mean())
         return np.array(sum).mean()
@@ -261,7 +259,10 @@ class OpTest(unittest.TestCase):
         feed_map = self.feed_var(inputs, place)
 
         exe = Executor(place)
-        outs = exe.run(program, feed=feed_map, fetch_list=fetch_list)
+        outs = exe.run(program,
+                       feed=feed_map,
+                       fetch_list=fetch_list,
+                       return_numpy=False)
 
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
@@ -315,7 +316,7 @@ class OpTest(unittest.TestCase):
     def check_output(self, atol=1e-5):
         places = [core.CPUPlace()]
         if core.is_compile_gpu() and core.op_support_gpu(self.op_type):
-            places.append(core.GPUPlace(0))
+            places.append(core.CUDAPlace(0))
         for place in places:
             self.check_output_with_place(place, atol)
 
@@ -378,7 +379,7 @@ class OpTest(unittest.TestCase):
                                "Gradient Check On %s" % str(cpu_place))
 
         if core.is_compile_gpu() and self.op.support_gpu():
-            gpu_place = core.GPUPlace(0)
+            gpu_place = core.CUDAPlace(0)
             gpu_analytic_grads = self._get_gradient(inputs_to_check, gpu_place,
                                                     output_names, no_grad_set)
 
@@ -458,7 +459,7 @@ class OpTest(unittest.TestCase):
         mean_inputs = map(block.var, output_names)
 
         if len(mean_inputs) == 1:
-            loss = block.create_var(dtype=mean_inputs[0].data_type, shape=[1])
+            loss = block.create_var(dtype=mean_inputs[0].dtype, shape=[1])
             op = block.append_op(
                 inputs={"X": mean_inputs}, outputs={"Out": loss}, type='mean')
             op.desc.infer_var_type(block.desc)
@@ -466,8 +467,7 @@ class OpTest(unittest.TestCase):
         else:
             avg_sum = []
             for cur_loss in mean_inputs:
-                cur_avg_loss = block.create_var(
-                    dtype=cur_loss.data_type, shape=[1])
+                cur_avg_loss = block.create_var(dtype=cur_loss.dtype, shape=[1])
                 op = block.append_op(
                     inputs={"X": [cur_loss]},
                     outputs={"Out": [cur_avg_loss]},
@@ -476,13 +476,13 @@ class OpTest(unittest.TestCase):
                 op.desc.infer_shape(block.desc)
                 avg_sum.append(cur_avg_loss)
 
-            loss_sum = block.create_var(dtype=avg_sum[0].data_type, shape=[1])
+            loss_sum = block.create_var(dtype=avg_sum[0].dtype, shape=[1])
             op_sum = block.append_op(
                 inputs={"X": avg_sum}, outputs={"Out": loss_sum}, type='sum')
             op_sum.desc.infer_var_type(block.desc)
             op_sum.desc.infer_shape(block.desc)
 
-            loss = block.create_var(dtype=loss_sum.data_type, shape=[1])
+            loss = block.create_var(dtype=loss_sum.dtype, shape=[1])
             op_loss = block.append_op(
                 inputs={"X": loss_sum},
                 outputs={"Out": loss},
@@ -491,7 +491,7 @@ class OpTest(unittest.TestCase):
             op_loss.desc.infer_var_type(block.desc)
             op_loss.desc.infer_shape(block.desc)
 
-        param_grad_list = append_backward_ops(
+        param_grad_list = append_backward(
             loss=loss, parameter_list=input_to_check, no_grad_set=no_grad_set)
 
         feed_dict = {
@@ -501,5 +501,6 @@ class OpTest(unittest.TestCase):
 
         fetch_list = [g for p, g in param_grad_list]
         executor = Executor(place)
-        result = executor.run(prog, feed_dict, fetch_list)
-        return map(np.array, result)
+        return map(
+            np.array,
+            executor.run(prog, feed_dict, fetch_list, return_numpy=False))

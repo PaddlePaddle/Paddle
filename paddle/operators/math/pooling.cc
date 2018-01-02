@@ -24,9 +24,9 @@ namespace math {
  * height and width, respectively.
  */
 template <typename PoolProcess, typename T>
-class Pool2dFunctor<platform::CPUPlace, PoolProcess, T> {
+class Pool2dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
                   PoolProcess pool_process, framework::Tensor* output) {
@@ -84,9 +84,9 @@ class Pool2dFunctor<platform::CPUPlace, PoolProcess, T> {
 * and width, respectively.
 */
 template <typename PoolProcess, class T>
-class Pool2dGradFunctor<platform::CPUPlace, PoolProcess, T> {
+class Pool2dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
@@ -152,9 +152,9 @@ class Pool2dGradFunctor<platform::CPUPlace, PoolProcess, T> {
  * height and width, respectively.
  */
 template <class T>
-class MaxPool2dGradFunctor<platform::CPUPlace, T> {
+class MaxPool2dGradFunctor<platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
@@ -213,25 +213,29 @@ class MaxPool2dGradFunctor<platform::CPUPlace, T> {
   }
 };
 
-template class MaxPool2dGradFunctor<platform::CPUPlace, float>;
-template class MaxPool2dGradFunctor<platform::CPUPlace, double>;
+template class MaxPool2dGradFunctor<platform::CPUDeviceContext, float>;
+template class MaxPool2dGradFunctor<platform::CPUDeviceContext, double>;
 
-template class Pool2dFunctor<platform::CPUPlace,
+template class Pool2dFunctor<platform::CPUDeviceContext,
                              paddle::operators::math::MaxPool<float>, float>;
-template class Pool2dFunctor<platform::CPUPlace,
+template class Pool2dFunctor<platform::CPUDeviceContext,
                              paddle::operators::math::AvgPool<float>, float>;
-template class Pool2dGradFunctor<
-    platform::CPUPlace, paddle::operators::math::MaxPoolGrad<float>, float>;
-template class Pool2dGradFunctor<
-    platform::CPUPlace, paddle::operators::math::AvgPoolGrad<float>, float>;
-template class Pool2dFunctor<platform::CPUPlace,
+template class Pool2dGradFunctor<platform::CPUDeviceContext,
+                                 paddle::operators::math::MaxPoolGrad<float>,
+                                 float>;
+template class Pool2dGradFunctor<platform::CPUDeviceContext,
+                                 paddle::operators::math::AvgPoolGrad<float>,
+                                 float>;
+template class Pool2dFunctor<platform::CPUDeviceContext,
                              paddle::operators::math::MaxPool<double>, double>;
-template class Pool2dFunctor<platform::CPUPlace,
+template class Pool2dFunctor<platform::CPUDeviceContext,
                              paddle::operators::math::AvgPool<double>, double>;
-template class Pool2dGradFunctor<
-    platform::CPUPlace, paddle::operators::math::MaxPoolGrad<double>, double>;
-template class Pool2dGradFunctor<
-    platform::CPUPlace, paddle::operators::math::AvgPoolGrad<double>, double>;
+template class Pool2dGradFunctor<platform::CPUDeviceContext,
+                                 paddle::operators::math::MaxPoolGrad<double>,
+                                 double>;
+template class Pool2dGradFunctor<platform::CPUDeviceContext,
+                                 paddle::operators::math::AvgPoolGrad<double>,
+                                 double>;
 
 /*
  * All tensors are in NCDHW format.
@@ -239,9 +243,9 @@ template class Pool2dGradFunctor<
  * depth, height and width, respectively.
  */
 template <typename PoolProcess, class T>
-class Pool3dFunctor<platform::CPUPlace, PoolProcess, T> {
+class Pool3dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
                   PoolProcess pool_process, framework::Tensor* output) {
@@ -314,9 +318,9 @@ class Pool3dFunctor<platform::CPUPlace, PoolProcess, T> {
  * depth, height and width, respectively.
  */
 template <typename PoolProcess, class T>
-class Pool3dGradFunctor<platform::CPUPlace, PoolProcess, T> {
+class Pool3dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
@@ -398,9 +402,9 @@ class Pool3dGradFunctor<platform::CPUPlace, PoolProcess, T> {
  * depth, height and width, respectively.
  */
 template <class T>
-class MaxPool3dGradFunctor<platform::CPUPlace, T> {
+class MaxPool3dGradFunctor<platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
@@ -473,35 +477,39 @@ class MaxPool3dGradFunctor<platform::CPUPlace, T> {
   }
 };
 
-template class MaxPool3dGradFunctor<platform::CPUPlace, float>;
-template class MaxPool3dGradFunctor<platform::CPUPlace, double>;
+template class MaxPool3dGradFunctor<platform::CPUDeviceContext, float>;
+template class MaxPool3dGradFunctor<platform::CPUDeviceContext, double>;
 
-template class Pool3dFunctor<platform::CPUPlace,
+template class Pool3dFunctor<platform::CPUDeviceContext,
                              paddle::operators::math::MaxPool<float>, float>;
-template class Pool3dFunctor<platform::CPUPlace,
+template class Pool3dFunctor<platform::CPUDeviceContext,
                              paddle::operators::math::AvgPool<float>, float>;
-template class Pool3dGradFunctor<
-    platform::CPUPlace, paddle::operators::math::MaxPoolGrad<float>, float>;
-template class Pool3dGradFunctor<
-    platform::CPUPlace, paddle::operators::math::AvgPoolGrad<float>, float>;
-template class Pool3dFunctor<platform::CPUPlace,
+template class Pool3dGradFunctor<platform::CPUDeviceContext,
+                                 paddle::operators::math::MaxPoolGrad<float>,
+                                 float>;
+template class Pool3dGradFunctor<platform::CPUDeviceContext,
+                                 paddle::operators::math::AvgPoolGrad<float>,
+                                 float>;
+template class Pool3dFunctor<platform::CPUDeviceContext,
                              paddle::operators::math::MaxPool<double>, double>;
-template class Pool3dFunctor<platform::CPUPlace,
+template class Pool3dFunctor<platform::CPUDeviceContext,
                              paddle::operators::math::AvgPool<double>, double>;
-template class Pool3dGradFunctor<
-    platform::CPUPlace, paddle::operators::math::MaxPoolGrad<double>, double>;
-template class Pool3dGradFunctor<
-    platform::CPUPlace, paddle::operators::math::AvgPoolGrad<double>, double>;
+template class Pool3dGradFunctor<platform::CPUDeviceContext,
+                                 paddle::operators::math::MaxPoolGrad<double>,
+                                 double>;
+template class Pool3dGradFunctor<platform::CPUDeviceContext,
+                                 paddle::operators::math::AvgPoolGrad<double>,
+                                 double>;
 
 /*
  * All tensors are in NCHW format.
  * Ksize, strides, paddings are two elements. These two elements represent
  * height and width, respectively.
  */
-template <typename T>
-class MaxPool2dWithIndexFunctor<platform::CPUPlace, T> {
+template <typename T1, typename T2>
+class MaxPool2dWithIndexFunctor<platform::CPUDeviceContext, T1, T2> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
                   framework::Tensor* output, framework::Tensor* mask) {
@@ -520,9 +528,9 @@ class MaxPool2dWithIndexFunctor<platform::CPUPlace, T> {
     const int input_stride = input_height * input_width;
     const int output_stride = output_height * output_width;
 
-    const T* input_data = input.data<T>();
-    T* output_data = output->mutable_data<T>(context.GetPlace());
-    T* mask_data = mask->mutable_data<T>(context.GetPlace());
+    const T1* input_data = input.data<T1>();
+    T1* output_data = output->mutable_data<T1>(context.GetPlace());
+    T2* mask_data = mask->mutable_data<T2>(context.GetPlace());
 
     for (int i = 0; i < batch_size; i++) {
       for (int c = 0; c < output_channels; ++c) {
@@ -535,7 +543,7 @@ class MaxPool2dWithIndexFunctor<platform::CPUPlace, T> {
             int wend = std::min(wstart + ksize_width, input_width);
             wstart = std::max(wstart, 0);
 
-            T ele = static_cast<T>(-FLT_MAX);
+            T1 ele = static_cast<T1>(-FLT_MAX);
             int index = -1;
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {
@@ -563,10 +571,10 @@ class MaxPool2dWithIndexFunctor<platform::CPUPlace, T> {
  * Ksize, strides, paddings are two elements. These two elements represent
  * height and width, respectively.
  */
-template <typename T>
-class MaxPool2dWithIndexGradFunctor<platform::CPUPlace, T> {
+template <typename T1, typename T2>
+class MaxPool2dWithIndexGradFunctor<platform::CPUDeviceContext, T1, T2> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& output_grad,
                   const framework::Tensor& mask, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
@@ -580,9 +588,9 @@ class MaxPool2dWithIndexGradFunctor<platform::CPUPlace, T> {
     const int input_stride = input_height * input_width;
     const int output_stride = output_height * output_width;
 
-    const T* mask_data = mask.data<T>();
-    const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
+    const T2* mask_data = mask.data<T2>();
+    const T1* output_grad_data = output_grad.data<T1>();
+    T1* input_grad_data = input_grad->mutable_data<T1>(context.GetPlace());
 
     for (int n = 0; n < batch_size; ++n) {
       for (int c = 0; c < output_channels; ++c) {
@@ -602,20 +610,24 @@ class MaxPool2dWithIndexGradFunctor<platform::CPUPlace, T> {
   }
 };
 
-template class MaxPool2dWithIndexFunctor<platform::CPUPlace, float>;
-template class MaxPool2dWithIndexGradFunctor<platform::CPUPlace, float>;
-template class MaxPool2dWithIndexFunctor<platform::CPUPlace, double>;
-template class MaxPool2dWithIndexGradFunctor<platform::CPUPlace, double>;
+template class MaxPool2dWithIndexFunctor<platform::CPUDeviceContext, float,
+                                         int>;
+template class MaxPool2dWithIndexGradFunctor<platform::CPUDeviceContext, float,
+                                             int>;
+template class MaxPool2dWithIndexFunctor<platform::CPUDeviceContext, double,
+                                         int>;
+template class MaxPool2dWithIndexGradFunctor<platform::CPUDeviceContext, double,
+                                             int>;
 
 /*
  * All tensors are in NCDHW format.
  * Ksize, strides, paddings are three elements. These three elements represent
  * depth, height and width, respectively.
  */
-template <typename T>
-class MaxPool3dWithIndexFunctor<platform::CPUPlace, T> {
+template <typename T1, typename T2>
+class MaxPool3dWithIndexFunctor<platform::CPUDeviceContext, T1, T2> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
                   framework::Tensor* output, framework::Tensor* mask) {
@@ -639,9 +651,9 @@ class MaxPool3dWithIndexFunctor<platform::CPUPlace, T> {
     const int input_stride = input_depth * input_height * input_width;
     const int output_stride = output_depth * output_height * output_width;
 
-    const T* input_data = input.data<T>();
-    T* output_data = output->mutable_data<T>(context.GetPlace());
-    T* mask_data = mask->mutable_data<T>(context.GetPlace());
+    const T1* input_data = input.data<T1>();
+    T1* output_data = output->mutable_data<T1>(context.GetPlace());
+    T2* mask_data = mask->mutable_data<T2>(context.GetPlace());
 
     for (int i = 0; i < batch_size; i++) {
       for (int c = 0; c < output_channels; ++c) {
@@ -659,7 +671,7 @@ class MaxPool3dWithIndexFunctor<platform::CPUPlace, T> {
               wstart = std::max(wstart, 0);
 
               int output_idx = (pd * output_height + ph) * output_width + pw;
-              T ele = static_cast<T>(-FLT_MAX);
+              T1 ele = static_cast<T1>(-FLT_MAX);
               int index = -1;
               for (int d = dstart; d < dend; ++d) {
                 for (int h = hstart; h < hend; ++h) {
@@ -691,10 +703,10 @@ class MaxPool3dWithIndexFunctor<platform::CPUPlace, T> {
  * Ksize, strides, paddings are three elements. These three elements represent
  * depth, height and width, respectively.
  */
-template <typename T>
-class MaxPool3dWithIndexGradFunctor<platform::CPUPlace, T> {
+template <typename T1, typename T2>
+class MaxPool3dWithIndexGradFunctor<platform::CPUDeviceContext, T1, T2> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& output_grad,
                   const framework::Tensor& mask, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
@@ -710,9 +722,9 @@ class MaxPool3dWithIndexGradFunctor<platform::CPUPlace, T> {
     const int input_stride = input_depth * input_height * input_width;
     const int output_stride = output_depth * output_height * output_width;
 
-    const T* mask_data = mask.data<T>();
-    const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
+    const T2* mask_data = mask.data<T2>();
+    const T1* output_grad_data = output_grad.data<T1>();
+    T1* input_grad_data = input_grad->mutable_data<T1>(context.GetPlace());
 
     for (int n = 0; n < batch_size; ++n) {
       for (int c = 0; c < output_channels; ++c) {
@@ -735,10 +747,14 @@ class MaxPool3dWithIndexGradFunctor<platform::CPUPlace, T> {
   }
 };
 
-template class MaxPool3dWithIndexFunctor<platform::CPUPlace, float>;
-template class MaxPool3dWithIndexGradFunctor<platform::CPUPlace, float>;
-template class MaxPool3dWithIndexFunctor<platform::CPUPlace, double>;
-template class MaxPool3dWithIndexGradFunctor<platform::CPUPlace, double>;
+template class MaxPool3dWithIndexFunctor<platform::CPUDeviceContext, float,
+                                         int>;
+template class MaxPool3dWithIndexGradFunctor<platform::CPUDeviceContext, float,
+                                             int>;
+template class MaxPool3dWithIndexFunctor<platform::CPUDeviceContext, double,
+                                         int>;
+template class MaxPool3dWithIndexGradFunctor<platform::CPUDeviceContext, double,
+                                             int>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
