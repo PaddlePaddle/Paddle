@@ -67,6 +67,7 @@ static std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
 
 /**
  * @brief Use cpu kernel only
+ * this function should be guarded with call once.
  */
 inline void UseCPU() {
   auto need_remove = [&](const std::tuple<platform::Place, LibraryType>& key) {
@@ -79,13 +80,15 @@ inline void UseCPU() {
 
 /**
  * @brief perfer cudnn kernel than Plain CUDA kernel
+ * this function should be guarded with call once.
  */
 inline void UseCUDNN() {
 #if PADDLE_WITH_CUDA
   if (platform::dynload::HasCUDNN()) {
-    kKernelPriority.insert(
-        kKernelPriority.begin(),
-        std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN));
+    auto key = std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN);
+    if (kKernelPriority.find(key) == kKernelPriority.end()) {
+      kKernelPriority.insert(kKernelPriority.begin(), key);
+    }
   }
 #endif
 }
