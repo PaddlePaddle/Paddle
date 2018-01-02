@@ -87,10 +87,19 @@ void TransDataLayout(const platform::DeviceContext* ctx,
   auto* dst = out->GetMutable<Tensor>();
   PADDLE_ENFORCE(arity(src.dims()) == 4, "Input Arity Only Suppport 4!");
 
-  dst->Resize(src.dims());
+  auto src_dim = src.dims();
+  dst->Resize(src_dim);
   auto place = kernel_pair.second.place_;
   CopyFrom(src, place, *ctx, dst);
   const std::vector<int> axis = {0, 2, 3, 1};
+
+  std::vector<int64_t> dst_dim;
+  dst_dim.resize(axis.size());
+  for (size_t i = 0; i < axis.size(); i++) {
+    dst_dim[i] = src_dim[axis[i]];
+  }
+
+  dst->Resize(make_ddim(dst_dim));
 
   auto src_type = kernel_pair.first.data_type_;
   framework::VisitDataType(src_type, CastDataLayout(src, dst, ctx, axis));
