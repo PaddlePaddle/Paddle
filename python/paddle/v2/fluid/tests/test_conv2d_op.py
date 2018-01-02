@@ -1,5 +1,7 @@
 import unittest
 import numpy as np
+
+import paddle.v2.fluid.core as core
 from op_test import OpTest
 
 

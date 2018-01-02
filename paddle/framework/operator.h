@@ -55,7 +55,7 @@ constexpr char kZeroVarSuffix[] = "@ZERO";
 
 // define some kernel hint
 
-std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
+static std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
 #if PADDLE_WITH_CUDA
     std::make_tuple(platform::CUDAPlace(0), LibraryType::kPlain), /*Plain GPU*/
 #endif
@@ -70,9 +70,7 @@ std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
  */
 inline void UseCPU() {
   auto need_remove = [&](const std::tuple<platform::Place, LibraryType>& key) {
-    platform::Place place;
-    std::tie(place, std::ignore) = key;
-    return !platform::is_cpu_place(place);
+    return !platform::is_cpu_place(std::get<0>(key));
   };
   std::remove_if(kKernelPriority.begin(), kKernelPriority.end(), need_remove);
 }
@@ -81,11 +79,13 @@ inline void UseCPU() {
  * @brief perfer cudnn kernel than Plain CUDA kernel
  */
 inline void UseCUDNN() {
+#if PADDLE_WITH_CUDA
   if (platform::dynload::HasCUDNN()) {
     kKernelPriority.insert(
         kKernelPriority.begin(),
         std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN));
   }
+#endif
 }
 
 inline std::string GradVarName(const std::string& var_name) {
