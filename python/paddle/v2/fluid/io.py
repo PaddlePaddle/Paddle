@@ -188,7 +188,7 @@ def save_inference_model(dirname,
             raise ValueError("'feed_var_names' should be a list of str.")
 
     if isinstance(target_vars, Variable):
-        feeded_var_names = [feeded_var_names]
+        target_vars = [target_vars]
     else:
         if not (bool(target_vars) and all(
                 isinstance(var, Variable) for var in target_vars)):
