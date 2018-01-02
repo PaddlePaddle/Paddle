@@ -422,7 +422,9 @@ void OperatorWithKernel::Run(const Scope& scope,
 
   ExecutionContext ctx(*this, scope, *dev_ctx);
   auto actual_kernel_key = GetActualKernelType(ctx);
+
   auto expected_kernel_key = GetExpectedKernelType(actual_kernel_key);
+
   auto kernel_iter = kernels.find(expected_kernel_key);
 
   if (kernel_iter == kernels.end()) {
@@ -436,9 +438,22 @@ void OperatorWithKernel::Run(const Scope& scope,
                       "CPU and other devices. For example, multi-GPU model "
                       "parallelism will failed.");
   } else {
+    // find the best key candidate
+    const DataTransformFnMap& trans_map = DataTransformFnMap::Instance();
+    for (auto& candidate : kKernelPriority) {
+      auto candidate_key =
+          OpKernelType(actual_kernel_key.data_type_, std::get<0>(candidate),
+                       actual_kernel_key.data_layout_, std::get<1>(candidate));
+      auto candidate_pair = std::make_pair(actual_kernel_key, candidate_key);
+      if (kernels.count(candidate_key) &&
+          trans_map.GetNullable(candidate_pair)) {
+        expected_kernel_key = candidate_key;
+        break;
+      }
+    }
+
     auto kernel_pair = std::make_pair(actual_kernel_key, expected_kernel_key);
-    const DataTransformFn* trans_fun =
-        DataTransformFnMap::Instance().GetNullable(kernel_pair);
+    const DataTransformFn* trans_fun = trans_map.GetNullable(kernel_pair);
     if (trans_fun) {
       auto input_vars = this->InputVars();
       // TODO(qijun) filter the input vars that do not need to be transformed

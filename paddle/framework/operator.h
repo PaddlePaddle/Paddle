@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <atomic>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 
@@ -53,9 +54,39 @@ constexpr char kGradVarSuffix[] = "@GRAD";
 constexpr char kZeroVarSuffix[] = "@ZERO";
 
 // define some kernel hint
-const std::string kUseCPU = "use_cpu";
-const std::string kUseCUDNN = "use_cudnn";
-const std::string kUseMKLDNN = "use_mkldnn";
+
+std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
+#if PADDLE_WITH_CUDA
+    std::make_tuple(platform::CUDAPlace(0), LibraryType::kPlain), /*Plain GPU*/
+#endif
+#if PADDLE_WITH_MKLML
+    std::make_tuple(platform::CPUPlace(), LibraryType::kMKLDNN),
+#endif
+    std::make_tuple(platform::CPUPlace(), LibraryType::kPlain), /*Plain CPU*/
+};
+
+/**
+ * @brief Use cpu kernel only
+ */
+inline void UseCPU() {
+  auto need_remove = [&](const std::tuple<platform::Place, LibraryType>& key) {
+    platform::Place place;
+    std::tie(place, std::ignore) = key;
+    return !platform::is_cpu_place(place);
+  };
+  std::remove_if(kKernelPriority.begin(), kKernelPriority.end(), need_remove);
+}
+
+/**
+ * @brief perfer cudnn kernel than Plain CUDA kernel
+ */
+inline void UseCUDNN() {
+  if (platform::dynload::HasCUDNN()) {
+    kKernelPriority.insert(
+        kKernelPriority.begin(),
+        std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN));
+  }
+}
 
 inline std::string GradVarName(const std::string& var_name) {
   return var_name + kGradVarSuffix;
