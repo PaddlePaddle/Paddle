@@ -23,17 +23,19 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class BlockDescBind;
-class ProgramDescBind;
+class BlockDesc;
+class ProgramDesc;
 
-class OpDescBind {
+class OpDesc {
  public:
-  OpDescBind() {}
+  OpDesc() {}
 
-  OpDescBind(const std::string &type, const VariableNameMap &inputs,
-             const VariableNameMap &outputs, const AttributeMap &attrs);
+  OpDesc(const std::string &type, const VariableNameMap &inputs,
+         const VariableNameMap &outputs, const AttributeMap &attrs);
 
-  OpDescBind(const proto::OpDesc &desc, ProgramDescBind *prog);
+  OpDesc(const proto::OpDesc &desc, ProgramDesc *prog);
+
+  void CopyFrom(const OpDesc &op_desc);
 
   proto::OpDesc *Proto();
 
@@ -65,7 +67,7 @@ class OpDescBind {
 
   void SetAttr(const std::string &name, const Attribute &v);
 
-  void SetBlockAttr(const std::string &name, BlockDescBind &block);
+  void SetBlockAttr(const std::string &name, BlockDesc &block);
 
   Attribute GetAttr(const std::string &name) const;
 
@@ -107,9 +109,9 @@ class OpDescBind {
 
   void CheckAttrs();
 
-  void InferShape(const BlockDescBind &block) const;
+  void InferShape(const BlockDesc &block) const;
 
-  void InferVarType(BlockDescBind *block) const;
+  void InferVarType(BlockDesc *block) const;
 
   void MarkAsTarget() { desc_.set_is_target(true); }
 
@@ -127,7 +129,9 @@ class OpDescBind {
   }
 
   proto::OpDesc desc_;
+  // input arg name => output variable names
   VariableNameMap inputs_;
+  // output arg name => output variable names
   VariableNameMap outputs_;
   AttributeMap attrs_;
 

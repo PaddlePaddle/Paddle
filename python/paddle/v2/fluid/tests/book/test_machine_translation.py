@@ -36,7 +36,7 @@ def encoder():
 
     fc1 = pd.fc(input=src_embedding, size=hidden_dim * 4, act='tanh')
     lstm_hidden0, lstm_0 = pd.dynamic_lstm(input=fc1, size=hidden_dim * 4)
-    encoder_out = pd.sequence_pool(input=lstm_hidden0, pool_type="last")
+    encoder_out = pd.sequence_last_step(input=lstm_hidden0)
     return encoder_out
 
 

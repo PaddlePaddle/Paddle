@@ -19,8 +19,6 @@ limitations under the License. */
 #include "paddle/platform/cuda_helper.h"
 #include "paddle/platform/device_context.h"
 
-#include <glog/logging.h>
-
 namespace paddle {
 namespace operators {
 namespace math {
@@ -35,7 +33,7 @@ __global__ void KeGruForwardResetOutput(OpResetOutput op_reset_output,
                                         T *gate_value, T *reset_output_value,
                                         T *prev_output_value, int frame_size,
                                         int batch_size,
-                                        activation_mode_t active_gate) {
+                                        ActivationType active_gate) {
   const int frame_idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (frame_idx >= frame_size) return;
 
@@ -74,7 +72,7 @@ __global__ void KeGruForwardFinalOutput(OpFinalOutput op_final_output,
                                         T *gate_value, T *prev_output_value,
                                         T *output_value, int frame_size,
                                         int batch_size,
-                                        activation_mode_t active_node) {
+                                        ActivationType active_node) {
   const int frame_idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (frame_idx >= frame_size) return;
   int batch_idx = 0;
@@ -111,7 +109,7 @@ __global__ void KeGruBackwardStateGrad(OpStateGrad op_state_grad, T *gate_value,
                                        T *gate_grad, T *prev_out_value,
                                        T *prev_out_grad, T *output_grad,
                                        int frame_size, int batch_size,
-                                       activation_mode_t active_node) {
+                                       ActivationType active_node) {
   const int frame_idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (frame_idx >= frame_size) return;
   int batch_idx = 0;
@@ -159,7 +157,7 @@ __global__ void KeGruBackwardResetGrad(OpResetGrad op_reset_grad, T *gate_value,
                                        T *gate_grad, T *prev_out_value,
                                        T *prev_out_grad, T *reset_output_grad,
                                        int frame_size, int batch_size,
-                                       activation_mode_t active_gate) {
+                                       ActivationType active_gate) {
   const int frame_idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (frame_idx >= frame_size) return;
   int batch_idx = 0;

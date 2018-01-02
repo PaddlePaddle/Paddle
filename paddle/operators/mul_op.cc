@@ -73,39 +73,50 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   MulOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The first input of mul op");
-    AddInput("Y", "The second input of mul op");
-    AddOutput("Out", "The output of mul op");
+    AddInput("X", "(Tensor), The first input tensor of mul op.");
+    AddInput("Y", "(Tensor), The second input tensor of mul op.");
+    AddOutput("Out", "(Tensor), The output tensor of mul op.");
     AddAttr<int>(
         "x_num_col_dims",
-        "(int, default 1) "
-        R"DOC(mul_op can take tensors with more than two dimensions as input `X`,
-            in that case, tensors will be reshaped to a matrix. The matrix's first
-            dimension(column length) will be the product of tensor's last
-            `num_col_dims` dimensions, and the matrix's second dimension(row length)
-            will be the product of tensor's first `rank - num_col_dims` dimensions.
+        R"DOC((int, default 1), The mul_op can take tensors with more than two
+              dimensions as its inputs. If the input $X$ is a tensor with more
+              than two dimensions, $X$ will be flattened into a two-dimensional
+              matrix first. The flattening rule is: the first `num_col_dims`
+              will be flattened to form the first dimension of the final matrix
+              (the height of the matrix), and the rest `rank(X) - num_col_dims`
+              dimensions are flattened to form the second dimension of the final
+              matrix (the width of the matrix). As a result, height of the
+              flattened matrix is equal to the product of $X$'s first
+              `x_num_col_dims` dimensions' sizes, and width of the flattened
+              matrix is equal to the product of $X$'s last `rank(x) - num_col_dims`
+              dimensions' size. For example, suppose $X$ is a 6-dimensional
+              tensor with the shape [2, 3, 4, 5, 6], and `x_num_col_dims` = 3.
+              Thus, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] =
+              [24, 30].
         )DOC")
         .SetDefault(1)
         .EqualGreaterThan(1);
     AddAttr<int>(
         "y_num_col_dims",
-        "(int, default 1) "
-        R"DOC(mul_op can take tensors with more than two dimensions as input `Y`,
-             in that case, tensors will be reshaped to a matrix. Just like input `X`.
+        R"DOC((int, default 1), The mul_op can take tensors with more than two,
+              dimensions as its inputs. If the input $Y$ is a tensor with more
+              than two dimensions, $Y$ will be flattened into a two-dimensional
+              matrix first. The attribute `y_num_col_dims` determines how $Y$ is
+              flattened. See comments of `x_num_col_dims` for more details.
         )DOC")
         .SetDefault(1)
         .EqualGreaterThan(1);
     AddComment(R"DOC(
-Mul Operator. 
+Mul Operator.
 
-This operator is used to perform matrix multiplication for input X and Y.
+This operator is used to perform matrix multiplication for input $X$ and $Y$.
 
 The equation is:
 
-    $$Out = X * Y$$
+$$Out = X * Y$$
 
-Both the input `X` and `Y` can carry the LoD (Level of Details) information,
-or not. But the output only shares the LoD information with input `X`.
+Both the input $X$ and $Y$ can carry the LoD (Level of Details) information,
+or not. But the output only shares the LoD information with input $X$.
 
 )DOC");
   }
