@@ -397,9 +397,40 @@ class While(object):
 
 
 def lod_rank_table(x, level=0):
-    """
-    This function creates an operator for creating a LOD_RANK_TABLE
-    using the input x.
+    """LoD Rank Table Operator. Given an input variable `x` and a LoD level,
+    this layer creates a LodRankTable object. A LoDRankTable object contains a
+    list of bi-element tuples and each tuple consists of an index and a length.
+    For given level's LoD information, the index is the sequence position and
+    the length representes the sequence length. Please note that the list is
+    ranked in descending order by the length. The following is an example:
+
+        .. code-block:: text
+
+            x is a LoDTensor:
+                x.lod = [[0,             1, 2, 3],
+                         [0,             5, 6, 7]]
+                x.data = [a, b, c, d, e, f, g]
+
+            Create lod rank table:
+                lod_rank_table_obj = lod_rank_table(x, level=1)
+
+            Get:
+                lod_rank_table_obj.items() = [(0, 5), (1, 1), (2, 1)]
+
+    Args:
+        x (Variable): Input variable, a LoDTensor based which to create the lod
+            rank table.
+        level (int): Specify the LoD level.
+
+    Returns:
+        Variable: The created LoDRankTable object.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[10],
+                            dtype='float32', lod_level=1)
+            out = layers.lod_rank_table(x=x, level=0)
     """
     helper = LayerHelper("lod_rank_table", **locals())
     table = helper.create_variable(
