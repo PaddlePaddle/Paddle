@@ -308,7 +308,7 @@ sequence_expand
 
 
 gru_unit
----------
+--------
 ..  autofunction:: paddle.v2.fluid.layers.gru_unit
     :noindex:
 
