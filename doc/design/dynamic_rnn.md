@@ -40,9 +40,9 @@ The `Dynamic RNN` in PaddlePaddle Fluid is basically a syntax sugar to compose o
 
 The following of this document will be organized in several sections:
 
-1. Control flow operators
+1. Control flow operators.
+1. No Padding Dynamic RNN algorithm.
 1. Data manipulation operators of RNN.
-2. Backward of RNN.
 
 
 ## Control flow operators
@@ -123,4 +123,87 @@ while(cond) {
 
 #### Backward of the while operator
 
-The backward of the while operator will just execute the backward of its sub-block reversely. The gradient of while operator has a 
+The gradient of the while operator has a sub-block. The sub-block is the backward block of the forward while operator's sub-block. The backward sub-block is a child of the forward sub-block. The backward of the while operator will just execute the backward of its sub-block reversely. The program of while gradient operator is
+
+```text
+program {
+  block {
+    idx: 0  # main block
+    ops {
+      ...
+      while_op (sub_block: 1),
+      ...
+      while_grad_op (sub_block: 3)
+    }
+  },
+  block {
+    idx: 1,
+    parent_idx: 0,  # sub-block in the while operator
+    ops {
+      op1,
+      op2,
+      op3
+    }
+  },
+  block { ... } # unrelated block
+  block {
+    idx: 3,
+    parent_idx: 1,  # the gradient sub-block is 
+                    # a child of forward block
+    ops {
+      grad_of_op3,  # NOTE: it is just a example.
+                    #
+                    # The gradient operators of an forward operator 
+                    # is not a `One To One` map actually.
+      grad_of_op2,
+      grad_of_op1
+    }
+  }
+}
+
+```
+ 
+There are several corner cases of gradient implementation:
+
+1. The gradient of `X` in every timestep should be added together. In the first timestep, the gradient of `X` in the external scope should be set to zero. In the end of execution in every timestep, the gradient of `X` in the internal scope should be added to the gradient of `X` in the external scope.
+2. Not all output of the while operator is used outside. Some of the output gradients are not set. So the empty output gradient should be concerned.
+
+### IncrementOp
+
+The increment operator is not used for computational. It is just used as a control flow operator. The basic logic of `IncrementOp` is as same as the variable in a `for-range` loop. For example,
+
+```cpp
+for (auto i=0; i<10; ++i) {
+  ...
+}
+```
+
+The `++i` is the increment operator as a control flow operator. There are several differences between the computational `a = a + 1` and the control flow operator `++i`.
+
+1. `IncrementOp` can only be run on CPU. And it should only be run on CPU.
+2. The corresponding operator in the backward stage of `++i` is `--i`, because for the for loop, the data access should be reverse. The gradient of `++i` is not needed.
+3. The `++i` is usually in place.
+
+### CompareOp
+
+The compare operators, such as `less than`/`equal`, are used as a control flow operator. The gradient of compare operator is nothing since the compare operator cannot be derived. The compare operators also can be run on CPU forcibly, since it will be used in the `WhileOp`.
+
+### LoDArrayLengthOp
+
+The `LoDArrayLength` operator will return the length of an `vector<LoDArray>`. The length can only be run on CPU and it should only be run on CPU. 
+
+### FillConstantOp
+
+The `FillConstant` operator can be used to initialize the loop counter, etc. It supports `force_cpu` so it can be used as a control flow operator.
+
+## No Padding Dynamic RNN algorithm
+
+Using the control flow operators, such as `WhileOp`/ `IncrementOp`, can represent the time-series loop and can calculate its backward automatically. The time-series loop is like the following code.
+
+```cpp
+for (auto i=0; i<inputs.size(); ++i) {
+  ...
+}
+```
+
+We need operators to split the input lod-tensor to the lod tensor array, to merge a lod tensor array together, to set a lod tensor to an array, to get a lod tensor from an array, to shrink the memory of every timestep.
