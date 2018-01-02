@@ -236,21 +236,47 @@ def gru_unit(input,
              activation='tanh',
              gate_activation='sigmoid'):
     """
-    GRUUnit Operator implements partial calculations of the GRU unit as following:
+    GRU unit layer. The equation of a gru step is:
 
-    $$
-    update \ gate: u_t = actGate(xu_t + W_u * h_{t-1} + b_u) \\
-    reset \ gate: r_t = actGate(xr_t + W_r * h_{t-1} + b_r)  \\
-    output \ candidate: {h}_t = actNode(xc_t + W_c * dot(r_t, h_{t-1}) + b_c) \\
-    output: h_t = dot((1 - u_t), h_{t-1}) + dot(u_t, {h}_t)
-    $$
+        .. math::
+            u_t & = actGate(xu_{t} + W_u h_{t-1} + b_u)
 
-    which is same as one time step of GRU Operator.
+            r_t & = actGate(xr_{t} + W_r h_{t-1} + b_r)
 
-    @note To implement the complete GRU unit, fully-connected operator must be
-    used before to feed xu, xr and xc as the Input of GRUUnit operator.
+            ch_t & = actNode(xc_t + W_c \cdot(r_t, h_{t-1}) + b_c)
 
-    TODO(ChunweiYan) add more document here
+            h_t & = \cdot((1-u_t), ch_{t-1}) + \cdot(u_t, h_t)
+
+    The inputs of gru unit includes :math:`z_t`, :math:`h_{t-1}`. In terms
+    of the equation above, the :math:`z_t` is split into 3 parts - 
+    :math:`xu_t`, :math:`xr_t` and :math:`xc_t`. This means that in order to 
+    implement a full GRU unit operator for an input, a fully 
+    connected layer has to be applied, such that :math:`z_t = W_{fc}x_t`.
+
+    This layer has three outputs :math:`h_t`, :math:`\cdot(r_t, h_{t - 1})`
+    and concatenation of :math:`u_t`, :math:`r_t` and :math:`ch_t`.
+
+    Args:
+        input (Variable): The fc transformed input value of current step.
+        hidden (Variable): The hidden value of lstm unit from previous step.
+        size (integer): The input dimension value.
+        weight (ParamAttr): The weight parameters for gru unit. Default: None
+        bias (ParamAttr): The bias parameters for gru unit. Default: None
+        activation (string): The activation type for cell (actNode). Default: 'tanh'
+        gate_activation (string): The activation type for gates (actGate). Default: 'sigmoid'
+
+    Returns:
+        tuple: The hidden value, reset-hidden value and gate values.
+
+    Examples:
+
+        .. code-block:: python
+
+             # assuming we have x_t_data and prev_hidden of size=10
+             x_t = fluid.layers.fc(input=x_t_data, size=30) 
+             hidden_val, r_h_val, gate_val = fluid.layers.gru_unit(input=x_t,
+                                                    hidden = prev_hidden)
+
     """
     activation_dict = dict(
         identity=0,
