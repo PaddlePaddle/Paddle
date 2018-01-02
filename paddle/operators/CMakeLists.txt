@@ -61,32 +61,12 @@ function(op_library TARGET)
                 ${op_common_deps})
     endif()
 
-    # net_op doesn't need pybind
-    if ("${TARGET}" STREQUAL "net_op")
-        set(pybind_flag 1)
-    endif()
-
-    if ("${TARGET}" STREQUAL "compare_op")
-        set(pybind_flag 1)
-        file(APPEND ${pybind_file} "USE_OP(less_than);\nUSE_OP(equal);\n")
-    endif()
-
-    if ("${TARGET}" STREQUAL "logical_op")
-        set(pybind_flag 1)
-        file(APPEND ${pybind_file} "USE_OP(logical_and);\n")
-    endif()
-
-    # nccl_op contains several operators
-    if ("${TARGET}" STREQUAL "nccl_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(ncclAllReduce);\n")
-    endif()
-
-    if ("${TARGET}" STREQUAL "tensor_array_read_write_op")
-        set(pybind_flag 1)
-        file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(read_from_array);\nUSE_NO_KERNEL_OP(write_to_array);\n")
-    endif()
+    # net_op doesn't need pybind, others will be pybind manually
+    foreach(manual_pybind_op "net_op" "compare_op" "logical_op" "nccl_op" "tensor_array_read_write_op")
+        if ("${TARGET}" STREQUAL "${manual_pybind_op}")
+            set(pybind_flag 1)
+        endif()
+    endforeach()
 
     file(READ ${TARGET}.cc TARGET_CONTENT)
     # It's enough to just adding one operator to pybind
@@ -127,6 +107,7 @@ add_subdirectory(nccl)
 
 if(WITH_GPU)
     op_library(nccl_op DEPS nccl_common)
+    file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(ncclAllReduce);\n")
 else()
     set(DEPS_OPS ${DEPS_OPS} nccl_op)
 endif()
@@ -177,6 +158,8 @@ list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
     op_library(${src})
 endforeach()
+file(APPEND ${pybind_file} "USE_OP(less_than);\nUSE_OP(logical_and);\nUSE_NO_KERNEL_OP(read_from_array);\n")
+
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 
