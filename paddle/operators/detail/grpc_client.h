@@ -62,35 +62,72 @@ class GRPCClient {
         grpc::CreateChannel(ep, grpc::InsecureChannelCredentials()));
   }
 
-  void SendVariableMessage(const framework::Scope& scope,
-                           const std::string name, VariableMessage* msg) {
-    // FIXME(typhoonzero): pass device context to here.
-    auto ctx = platform::CPUDeviceContext();
-    auto* var = scope.FindVar(name);
-    PADDLE_ENFORCE(var);
-    // TODO(typhoonzero): support SelectedRows
-    PADDLE_ENFORCE(var->IsType<framework::LoDTensor>(),
-                   "Only support LoDTensor, %s has wrong type", name);
+  struct SendMsg {
+    void Run(const framework::Scope& scope, const std::string name,
+             VariableMessage* msg) {
+      // FIXME(gongwb): pass device context to here.
+      auto ctx = platform::CPUDeviceContext();
+      auto* var = scope.FindVar(name);
+      PADDLE_ENFORCE(var);
+      // TODO(gongwb): support SelectedRows
+      PADDLE_ENFORCE(var->IsType<framework::LoDTensor>(),
+                     "Only support LoDTensor, %s has wrong type", name);
 
-    const framework::LoDTensor& tensor = var->Get<framework::LoDTensor>();
-    std::ostringstream oss;
-    framework::SerializeToStream(oss, tensor, ctx);
-    msg->set_varname(name);
-    msg->set_serialized(oss.str());
-  }
+      const framework::LoDTensor& tensor = var->Get<framework::LoDTensor>();
+      std::ostringstream oss;
+      framework::SerializeToStream(oss, tensor, ctx);
+      msg->set_varname(name);
+      msg->set_serialized(oss.str());
+    }
 
-  /*
-  void GetVariableMessage(const framework::Scope& scope, const std::string name,
-                          VariableMessage* msg) {
-    // FIXME(typhoonzero): pass device context to here.
-    auto ctx = platform::CPUDeviceContext();
-    //auto* var = scope.FindVar(name);
-    msg->set_varname(name);
-  }
-  */
+    template <typename reply_t>
+    void ProcRetMsg(const reply_t& replies, int64_t idx,
+                    const framework::Scope& scope, std::string name) {}
 
-  template <typename send_t, typename recv_t, typename SendMsgMaker,
-            typename RecvFunctor>
+    template <typename send_t, typename recv_t>
+    void Call(
+        grpc::CompletionQueue* cq,
+        std::vector<std::unique_ptr<grpc::ClientAsyncResponseReader<recv_t>>>&
+            rpcs,
+        ClientContext* context, SendRecvService::Stub* stub,
+        const send_t& request) {
+      rpcs.emplace_back(stub->AsyncSendVariable(context, request, cq));
+    }
+  };
+
+  struct GetMsg {
+    void Run(const framework::Scope& scope, const std::string name,
+             VariableMessage* msg) {
+      // FIXME(gongwb): pass device context to here.
+      msg->set_varname(name);
+    }
+
+    template <typename reply_t>
+    void ProcRetMsg(const reply_t& replies, int64_t idx,
+                    const framework::Scope& scope, std::string name) {
+      std::istringstream iss(replies[idx]->serialized());
+      framework::LoDTensor ret_tensor;
+      framework::DeserializeFromStream(iss, &ret_tensor);
+      auto* outvar = scope.FindVar(name);
+      framework::LoDTensor* out_tensor =
+          outvar->GetMutable<framework::LoDTensor>();
+      // FIXME(gongwb): do not copy.
+      auto ctx = platform::CPUDeviceContext();
+      framework::CopyFrom(ret_tensor, ctx.GetPlace(), ctx, out_tensor);
+    }
+
+    template <typename send_t, typename recv_t>
+    void Call(
+        grpc::CompletionQueue* cq,
+        std::vector<std::unique_ptr<grpc::ClientAsyncResponseReader<recv_t>>>&
+            rpcs,
+        ClientContext* context, SendRecvService::Stub* stub,
+        const send_t& request) {
+      rpcs.emplace_back(stub->AsyncGetVariable(context, request, cq));
+    }
+  };
+
+  template <typename send_t, typename recv_t, typename Msg_t>
   bool call(const framework::Scope& scope, std::vector<Var>& in,
             std::vector<SendStatus>& ret) {
     grpc::CompletionQueue cq;
@@ -98,8 +135,8 @@ class GRPCClient {
     std::vector<std::unique_ptr<SendRecvService::Stub>> stubs;
     std::vector<std::unique_ptr<ClientContext>> contexts;
     std::vector<std::unique_ptr<Status>> statuses;
-    std::vector<std::unique_ptr<send_t>> replies;
-    std::vector<std::unique_ptr<grpc::ClientAsyncResponseReader<send_t>>> rpcs;
+    std::vector<std::unique_ptr<recv_t>> replies;
+    std::vector<std::unique_ptr<grpc::ClientAsyncResponseReader<recv_t>>> rpcs;
 
     typedef std::chrono::system_clock::time_point time_point;
 
@@ -126,14 +163,16 @@ class GRPCClient {
 
       // request
       send_t request;
-      CallMsgMaker(scope, in[i].name, &request);
+      Msg_t maker;
+      maker.Run(scope, in[i].name, &request);
 
       // reply
       recv_t* reply = new recv_t();
       replies.emplace_back(reply);
 
       // rpcs
-      rpcs.emplace_back(stubs[i]->AsyncSendVariable(context, request, &cq));
+      maker.template Call<send_t, recv_t>(&cq, rpcs, context, stubs[i].get(),
+                                          request);
       rpcs[i]->Finish(reply, statuses[i].get(), (void*)i);
     }
 
@@ -152,7 +191,9 @@ class GRPCClient {
       const Status& status = *(statuses[idx].get());
 
       if (status.ok()) {
-        RecvFunctor();
+        Msg_t maker;
+        maker.template ProcRetMsg<std::vector<std::unique_ptr<recv_t>>>(
+            replies, idx, scope, in[idx].name);
         finished_ok++;
       } else {
         if (status.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
@@ -168,177 +209,15 @@ class GRPCClient {
     return finished_ok == finished;
   }
 
-  /*
-  // Send all variables of in.
-  // if all are completed, return true, else false.
-  // ret contains status of send actions.
-  bool Send(const framework::Scope& scope, std::vector<Var>& in,
-            std::vector<SendStatus>& ret) {
-    grpc::CompletionQueue cq;
-    // Create a ClientContext, Status, Reply, and rpc for each backend.
-    std::vector<std::unique_ptr<SendRecvService::Stub>> stubs;
-    std::vector<std::unique_ptr<ClientContext>> contexts;
-    std::vector<std::unique_ptr<Status>> statuses;
-    std::vector<std::unique_ptr<VoidMessage>> replies;
-    std::vector<
-        std::unique_ptr<grpc::ClientAsyncResponseReader<VoidMessage>>>
-        rpcs;
-
-    typedef std::chrono::system_clock::time_point time_point;
-
-    for (int64_t i = 0; i < (int64_t)in.size(); i++) {
-      PADDLE_ENFORCE(channels_.find(in[i].endpoint) != channels_.end());
-      auto ch = channels_[in[i].endpoint];
-      stubs.emplace_back(SendRecvService::NewStub(ch));
-
-      // record send status
-      SendStatus s;
-      s.start = std::chrono::system_clock::now();
-      s.end = s.start;
-      s.var = in[i];
-      ret.emplace_back(s);
-      const time_point deadline = s.start + std::chrono::milliseconds(5000);
-
-      // context
-      ClientContext* context = new ClientContext();
-      context->set_deadline(deadline);
-      contexts.emplace_back(context);
-
-      // status
-      statuses.emplace_back(new Status());
-
-      // request
-      VariableMessage request;
-      SendVariableMessage(scope, in[i].name, &request);
-
-      //reply
-      VoidMessage* reply = new VoidMessage();
-      replies.emplace_back(reply);
-
-      // rpcs
-      rpcs.emplace_back(stubs[i]->AsyncSendVariable(context, request, &cq));
-      rpcs[i]->Finish(reply, statuses[i].get(), (void*)i);
-    }
-
-    int finished = 0;
-    int finished_ok = 0;
-    while (finished < int(in.size())) {
-      void* which = NULL;
-      bool ok = false;
-
-      // Block until the next result is available in the completion queue "cq".
-      cq.Next(&which, &ok);
-      finished++;
-
-      const int64_t idx = int64_t(which);
-      ret[idx].end = std::chrono::system_clock::now();
-      const Status& status = *(statuses[idx].get());
-
-      if (status.ok()) {
-        finished_ok++;
-      } else {
-        if (status.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
-          ret[idx].error = "rpc timed out";
-        } else {
-          std::ostringstream stringStream;
-          stringStream << "rpc failed because:" << status.error_code();
-          ret[idx].error = stringStream.str();
-        }
-      }
-    }
-
-    return finished_ok == finished;
+  bool SendVariable(const framework::Scope& scope, std::vector<Var>& in,
+                    std::vector<SendStatus>& ret) {
+    return call<VariableMessage, VoidMessage, SendMsg>(scope, in, ret);
   }
 
-  // TODO(gongwb):recv paramter just when it's send complete!
-  bool Recv(const framework::Scope& scope, std::vector<Var>& in,
-            std::vector<SendStatus>& ret) {
-    grpc::CompletionQueue cq;
-    // Create a ClientContext, Status, Reply, and rpc for each backend.
-    std::vector<std::unique_ptr<SendRecvService::Stub>> stubs;
-    std::vector<std::unique_ptr<ClientContext>> contexts;
-    std::vector<std::unique_ptr<Status>> statuses;
-    std::vector<std::unique_ptr<VariableMessage>> replies;
-    std::vector<
-        std::unique_ptr<grpc::ClientAsyncResponseReader<VariableMessage>>>
-        rpcs;
-
-    typedef std::chrono::system_clock::time_point time_point;
-
-    for (int64_t i = 0; i < (int64_t)in.size(); i++) {
-      PADDLE_ENFORCE(channels_.find(in[i].endpoint) != channels_.end());
-      auto ch = channels_[in[i].endpoint];
-      stubs.emplace_back(SendRecvService::NewStub(ch));
-
-      // record send status
-      SendStatus s;
-      s.start = std::chrono::system_clock::now();
-      s.end = s.start;
-      s.var = in[i];
-      ret.emplace_back(s);
-      const time_point deadline = s.start + std::chrono::milliseconds(5000);
-
-      // context
-      ClientContext* context = new ClientContext();
-      context->set_deadline(deadline);
-      contexts.emplace_back(context);
-
-      // status
-      statuses.emplace_back(new Status());
-
-      // request
-      VariableMessage request;
-      request.set_varname(in[i].name);
-
-      //reply
-      VariableMessage* reply = new VariableMessage();
-      replies.emplace_back(reply);
-
-      // rpcs
-      rpcs.emplace_back(stubs[i]->AsyncGetVariable(context, request, &cq));
-      rpcs[i]->Finish(reply, statuses[i].get(), (void*)i);
-    }
-
-    int finished = 0;
-    int finished_ok = 0;
-    while (finished < int(in.size())) {
-      void* which = NULL;
-      bool ok = false;
-
-      // Block until the next result is available in the completion queue "cq".
-      cq.Next(&which, &ok);
-      finished++;
-
-      const int64_t idx = int64_t(which);
-      ret[idx].end = std::chrono::system_clock::now();
-      const Status& status = *(statuses[idx].get());
-
-      if (status.ok()) {
-        finished_ok++;
-        std::istringstream iss(replies[idx]->serialized());
-        framework::LoDTensor ret_tensor;
-        framework::DeserializeFromStream(iss, &ret_tensor);
-        auto* outvar = scope.FindVar(in[idx].name);
-        framework::LoDTensor* out_tensor =
-  outvar->GetMutable<framework::LoDTensor>();
-        // FIXME(typhoonzero): do not copy.
-        auto ctx = platform::CPUDeviceContext();
-        framework::CopyFrom(ret_tensor, ctx.GetPlace(), ctx, out_tensor);
-      } else {
-        if (status.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
-          ret[idx].error = "rpc timed out";
-        } else {
-          std::ostringstream stringStream;
-          stringStream << "rpc failed because:" << status.error_code();
-          ret[idx].error = stringStream.str();
-        }
-      }
-    }
-
-    return finished_ok == finished;
-
+  bool GetVariable(const framework::Scope& scope, std::vector<Var>& in,
+                   std::vector<SendStatus>& ret) {
+    return call<VariableMessage, VariableMessage, GetMsg>(scope, in, ret);
   }
-  */
 
  private:
   std::map<std::string, std::shared_ptr<Channel>> channels_;
