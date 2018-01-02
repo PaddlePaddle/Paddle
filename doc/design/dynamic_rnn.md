@@ -4,7 +4,7 @@
 
 A common neural network structure called recurrent neural network(`RNN` for short), which there is a directed circle in the neural network model. RNN can use a internal memory to process arbitrary sequences of inputs.
 
-PaddlePaddle Fluid directly represents the `directed circle` in the `ProgramDesc`, since we do not use directed acyclic graph to represent our model. The `ProgramDesc` just like the AST of a programming language, which describes the computation instructions for training a neural network. We use arrays and a while loop to describe the training process of an RNN. The C++ code below demonstrates the forward logic of RNN which PaddlePaddle Fluid generates in `ProgramDesc`.
+PaddlePaddle Fluid directly represents the `directed circle` in the `ProgramDesc`, since we do not use directed acyclic graph to represent our model. The `ProgramDesc` just like the AST of a programming language, which describes the computation instructions for training a neural network. We use arrays and a while loop to describe the training/inference process of an RNN. The C++ code below demonstrates the forward logic of RNN generated in ProgramDesc of PaddlePaddle Fluid.
 
 ```cpp
 auto input = LoDTensor(...);  // LoDTensor is the data structure for time series
@@ -49,7 +49,7 @@ The following of this document will be organized in several sections:
 
 ### WhileOp
 
-The primary control flow operator to implement dynamic RNN is `WhileOp`. The `WhileOp` takes a sub-block. The operators in the sub-block will be executed again and again while the condition is true. 
+The primary control flow operator to implement dynamic RNN is `WhileOp`. The `WhileOp` holds a sub-block. The operators in the sub-block will be executed again and again while the condition is true. 
 
 #### Sub-Block
 The fragment program of a while op and its sub-block is:
@@ -93,9 +93,9 @@ program {
 The while operator has two kinds of inputs. They are
 
 * Condition: A bool scalar. When it's False, the While Op will be terminated. Note that this scalar should always be in CPU memory.
-  * The condition variable is in the external block. However, it should be updated inside the sub-block of while op unless it is an endless loop. The condition variable will be an output variable of the while operator, too.
+  * The condition variable is in the parent block. However, it should be updated inside the sub-block of while op. Otherwise, it would result to an endless loop. The condition variable will be an output variable of the while operator, too.
 * X: The external inputs variables, which are required by operators inside the block of While Op.
-  * For example, if there is a hidden fully-connected layer in while operator. The input of the fully-connected layer is calculated by another operator inside the while operator. The input of this fully-connected layer is not the `external` inputs of the while operator. However, weight tensors of this fully-connected layer are external outputs of the while operator.
+  * For example, if there is a hidden fully-connected layer in while operator. The input of the fully-connected layer is output of another operator inside the while operator. The input of this fully-connected layer is not the `external` inputs of the while operator. However, weight tensors of this fully-connected layer are external outputs of the while operator.
 
   
 #### outputs
