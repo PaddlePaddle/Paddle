@@ -402,6 +402,17 @@ const platform::DeviceContext* GetDeviceContext(
   }
 }
 
+static platform::Place GetPlace(const std::string& name, const Scope& scope) {
+  auto var = scope.FindVar(name);
+  if (var->IsType<LoDTensor>()) {
+    return var->Get<LoDTensor>().place();
+  } else if (var->IsType<SelectedRows>()) {
+    return var->Get<SelectedRows>().place();
+  } else {
+    PADDLE_THROW("unknown var type");
+  }
+}
+
 void OperatorWithKernel::Run(const Scope& scope,
                              const platform::Place& place) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
@@ -470,6 +481,7 @@ void OperatorWithKernel::Run(const Scope& scope,
         dev_ctx->Wait();
 
         for (auto var_name : need_trans) {
+          VLOG(3) << "do transform for " << var_name;
           (*trans_fun)(dev_ctx, kernel_pair, *(scope.FindVar(var_name)),
                        new_scope.FindVar(var_name));
         }
@@ -487,12 +499,24 @@ void OperatorWithKernel::Run(const Scope& scope,
 
 OpKernelType OperatorWithKernel::GetActualKernelType(
     const ExecutionContext& ctx) const {
-  return OpKernelType(IndicateDataType(ctx), ctx.GetPlace());
+  auto input_place = ctx.GetPlace();
+  if (this->InputVars().size() == 0) {
+    input_place = ctx.GetPlace();
+  } else {
+    for (auto& var : this->InputVars()) {
+      auto var_place = GetPlace(var, ctx.scope());
+      if (!platform::is_same_place(input_place, var_place)) {
+        input_place = var_place;
+        break;
+      }
+    }
+  }
+  return OpKernelType(IndicateDataType(ctx), input_place);
 }
 
 OpKernelType OperatorWithKernel::GetExpectedKernelType(
     const ExecutionContext& ctx, const OpKernelType& actual_kernel_type) const {
-  return actual_kernel_type;
+  return OpKernelType(actual_kernel_type.data_type_, ctx.GetPlace());
 }
 
 proto::DataType OperatorWithKernel::IndicateDataType(

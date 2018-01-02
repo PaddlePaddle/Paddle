@@ -24,12 +24,24 @@ OpKernelType k0(proto::DataType::FP32, platform::CPUPlace(),
                 DataLayout::kAnyLayout, LibraryType::kPlain);
 OpKernelType k1(proto::DataType::FP32, platform::CUDAPlace(0),
                 DataLayout::kAnyLayout, LibraryType::kPlain);
+OpKernelType k3(proto::DataType::INT64, platform::CPUPlace(),
+                DataLayout::kAnyLayout, LibraryType::kPlain);
+OpKernelType k4(proto::DataType::INT64, platform::CUDAPlace(0),
+                DataLayout::kAnyLayout, LibraryType::kPlain);
 
 void CPU_fromto_GPU(const platform::DeviceContext* ctx,
                     const KernelTypePair& pair, const Variable& in,
                     Variable* out) {
-  CopyFrom(in.Get<LoDTensor>(), pair.second.place_, *ctx,
-           out->GetMutable<LoDTensor>());
+  auto& in_tensor = in.Get<LoDTensor>();
+  auto* out_tensor = out->GetMutable<LoDTensor>();
+  VLOG(3) << "do data copy from " << in_tensor.place() << " to "
+          << pair.second.place_;
+  VLOG(3) << "ctx place:" << ctx->GetPlace();
+  out_tensor->set_lod(in_tensor.lod());
+  out_tensor->set_layout(in_tensor.layout());
+  CopyFrom(in_tensor, pair.second.place_, *ctx, out_tensor);
+  ctx->Wait();
+  VLOG(3) << "copy done";
 }
 
 }  // namespace framework
@@ -39,4 +51,6 @@ namespace frw = paddle::framework;
 
 REGISTER_DATA_TRANSFORM_MODEULE(device_data_transform);
 REGISTER_DATA_TRANSFORM_FN(frw::k0, frw::k1, frw::CPU_fromto_GPU);
-REGISTER_DATA_TRANSFORM_FN(frw::k1, frw::k1, frw::CPU_fromto_GPU);
+REGISTER_DATA_TRANSFORM_FN(frw::k1, frw::k0, frw::CPU_fromto_GPU);
+REGISTER_DATA_TRANSFORM_FN(frw::k3, frw::k4, frw::CPU_fromto_GPU);
+REGISTER_DATA_TRANSFORM_FN(frw::k4, frw::k3, frw::CPU_fromto_GPU);

@@ -57,8 +57,25 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(framework::proto::DataType::FP32,
-                                   ctx.device_context());
+    auto data_type = framework::proto::DataType::FP32;
+    auto inference_place = ctx.Input<LoDTensor>("Inference")->place();
+    auto label_place = ctx.Input<LoDTensor>("Label")->place();
+    if (platform::is_gpu_place(inference_place)) {
+      return framework::OpKernelType(
+          data_type, boost::get<platform::CUDAPlace>(inference_place));
+    } else if (platform::is_gpu_place(label_place)) {
+      return framework::OpKernelType(
+          data_type, boost::get<platform::CUDAPlace>(label_place));
+    } else {
+      return framework::OpKernelType(
+          data_type, boost::get<platform::CPUPlace>(inference_place));
+    }
+  }
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx,
+      const framework::OpKernelType &actual_kernel_type) const override {
+    return framework::OpKernelType(actual_kernel_type.data_type_,
+                                   platform::CPUPlace());
   }
 };
 

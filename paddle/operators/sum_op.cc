@@ -58,8 +58,12 @@ class SumOp : public framework::OperatorWithKernel {
     auto x_vars = ctx.MultiInputVar("X");
     if (x_vars[0]->IsType<framework::LoDTensor>()) {
       int dtype = -1;
+      platform::Place place = ctx.GetPlace();
       for (auto& x_var : x_vars) {
         auto& lod_tensor = x_var->Get<framework::LoDTensor>();
+        if (!platform::is_same_place(lod_tensor.place(), ctx.GetPlace())) {
+          place = lod_tensor.place();
+        }
         if (lod_tensor.numel() == 0) {
           continue;
         }
@@ -73,7 +77,7 @@ class SumOp : public framework::OperatorWithKernel {
                         "Sum operator should have at least one tensor");
 
       return framework::OpKernelType(
-          static_cast<framework::proto::DataType>(dtype), ctx.device_context());
+          static_cast<framework::proto::DataType>(dtype), place);
     } else if (x_vars[0]->IsType<framework::SelectedRows>()) {
       return framework::OpKernelType(
           framework::ToDataType(

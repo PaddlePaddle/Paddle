@@ -104,6 +104,8 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& context) const override {
+    VLOG(3) << "ChunkEvalKernel compute";
+    VLOG(3) << "context place" << context.GetPlace();
     // initialize to parse configurations
     int num_chunk_types, num_tag_types;
     int other_chunk_type;
@@ -146,6 +148,9 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
 
     auto* inference = context.Input<LoDTensor>("Inference");
     auto* label = context.Input<LoDTensor>("Label");
+    VLOG(3) << "inference place " << inference->place() << " label place "
+            << label->place();
+    auto place = inference->place();
     auto* precision = context.Output<Tensor>("Precision");
     auto* recall = context.Output<Tensor>("Recall");
     auto* f1 = context.Output<Tensor>("F1-Score");
@@ -155,15 +160,15 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
 
     const int64_t* inference_data = inference->data<int64_t>();
     const int64_t* label_data = label->data<int64_t>();
-    T* precision_data = precision->mutable_data<T>(context.GetPlace());
-    T* racall_data = recall->mutable_data<T>(context.GetPlace());
-    T* f1_data = f1->mutable_data<T>(context.GetPlace());
+    T* precision_data = precision->mutable_data<T>(place);
+    T* racall_data = recall->mutable_data<T>(place);
+    T* f1_data = f1->mutable_data<T>(place);
     int64_t* num_infer_chunks_data =
-        num_infer_chunks->mutable_data<int64_t>(context.GetPlace());
+        num_infer_chunks->mutable_data<int64_t>(place);
     int64_t* num_label_chunks_data =
-        num_label_chunks->mutable_data<int64_t>(context.GetPlace());
+        num_label_chunks->mutable_data<int64_t>(place);
     int64_t* num_correct_chunks_data =
-        num_correct_chunks->mutable_data<int64_t>(context.GetPlace());
+        num_correct_chunks->mutable_data<int64_t>(place);
     *num_infer_chunks_data = 0;
     *num_label_chunks_data = 0;
     *num_correct_chunks_data = 0;
