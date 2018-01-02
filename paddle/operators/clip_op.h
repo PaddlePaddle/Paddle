@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 
@@ -55,7 +55,7 @@ class ClipGradFunctor {
   T max_;
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class ClipKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -66,13 +66,13 @@ class ClipKernel : public framework::OpKernel<T> {
     T* out_data = out->mutable_data<T>(context.GetPlace());
     const T* x_data = x->data<T>();
     int64_t numel = x->numel();
-    Transform<Place> trans;
-    trans(context.device_context(), x_data, x_data + numel, out_data,
-          ClipFunctor<T>(min, max));
+    Transform<DeviceContext> trans;
+    trans(context.template device_context<DeviceContext>(), x_data,
+          x_data + numel, out_data, ClipFunctor<T>(min, max));
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class ClipGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -86,9 +86,9 @@ class ClipGradKernel : public framework::OpKernel<T> {
       auto* d_x_data = d_x->mutable_data<T>(context.GetPlace());
       const T* d_out_data = d_out->data<T>();
       const T* x_data = x->data<T>();
-      Transform<Place> trans;
-      trans(context.device_context(), d_out_data, d_out_data + numel, x_data,
-            d_x_data, ClipGradFunctor<T>(min, max));
+      Transform<DeviceContext> trans;
+      trans(context.template device_context<DeviceContext>(), d_out_data,
+            d_out_data + numel, x_data, d_x_data, ClipGradFunctor<T>(min, max));
     }
   }
 };

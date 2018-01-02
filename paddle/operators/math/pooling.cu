@@ -155,9 +155,9 @@ __global__ void KernelMaxPool2DGrad(
  * height and width, respectively.
  */
 template <typename PoolProcess, typename T>
-class Pool2dFunctor<platform::GPUPlace, PoolProcess, T> {
+class Pool2dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
                   PoolProcess pool_process, framework::Tensor* output) {
@@ -183,11 +183,7 @@ class Pool2dFunctor<platform::GPUPlace, PoolProcess, T> {
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelPool2D<
-        PoolProcess,
-        T><<<grid, threads, 0,
-             reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                 .stream()>>>(
+    KernelPool2D<PoolProcess, T><<<grid, threads, 0, context.stream()>>>(
         nthreads, input_data, input_channels, input_height, input_width,
         output_height, output_width, ksize_height, ksize_width, stride_height,
         stride_width, padding_height, padding_width, pool_process, output_data);
@@ -200,9 +196,9 @@ class Pool2dFunctor<platform::GPUPlace, PoolProcess, T> {
  * height and width, respectively.
  */
 template <typename PoolProcess, typename T>
-class Pool2dGradFunctor<platform::GPUPlace, PoolProcess, T> {
+class Pool2dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
@@ -231,11 +227,7 @@ class Pool2dGradFunctor<platform::GPUPlace, PoolProcess, T> {
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelPool2DGrad<
-        PoolProcess,
-        T><<<grid, threads, 0,
-             reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                 .stream()>>>(
+    KernelPool2DGrad<PoolProcess, T><<<grid, threads, 0, context.stream()>>>(
         nthreads, input_data, output_data, output_grad_data, input_channels,
         input_height, input_width, output_height, output_width, ksize_height,
         ksize_width, stride_height, stride_width, padding_height, padding_width,
@@ -249,9 +241,9 @@ class Pool2dGradFunctor<platform::GPUPlace, PoolProcess, T> {
  * height and width, respectively.
  */
 template <typename T>
-class MaxPool2dGradFunctor<platform::GPUPlace, T> {
+class MaxPool2dGradFunctor<platform::CUDADeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
@@ -281,10 +273,7 @@ class MaxPool2dGradFunctor<platform::GPUPlace, T> {
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelMaxPool2DGrad<
-        T><<<grid, threads, 0,
-             reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                 .stream()>>>(
+    KernelMaxPool2DGrad<T><<<grid, threads, 0, context.stream()>>>(
         nthreads, input_data, output_data, output_grad_data, input_channels,
         input_height, input_width, output_height, output_width, ksize_height,
         ksize_width, stride_height, stride_width, padding_height, padding_width,
@@ -292,25 +281,29 @@ class MaxPool2dGradFunctor<platform::GPUPlace, T> {
   }
 };
 
-template class MaxPool2dGradFunctor<platform::GPUPlace, float>;
-template class MaxPool2dGradFunctor<platform::GPUPlace, double>;
+template class MaxPool2dGradFunctor<platform::CUDADeviceContext, float>;
+template class MaxPool2dGradFunctor<platform::CUDADeviceContext, double>;
 
-template class Pool2dFunctor<platform::GPUPlace,
+template class Pool2dFunctor<platform::CUDADeviceContext,
                              paddle::operators::math::MaxPool<float>, float>;
-template class Pool2dFunctor<platform::GPUPlace,
+template class Pool2dFunctor<platform::CUDADeviceContext,
                              paddle::operators::math::AvgPool<float>, float>;
-template class Pool2dGradFunctor<
-    platform::GPUPlace, paddle::operators::math::MaxPoolGrad<float>, float>;
-template class Pool2dGradFunctor<
-    platform::GPUPlace, paddle::operators::math::AvgPoolGrad<float>, float>;
-template class Pool2dFunctor<platform::GPUPlace,
+template class Pool2dGradFunctor<platform::CUDADeviceContext,
+                                 paddle::operators::math::MaxPoolGrad<float>,
+                                 float>;
+template class Pool2dGradFunctor<platform::CUDADeviceContext,
+                                 paddle::operators::math::AvgPoolGrad<float>,
+                                 float>;
+template class Pool2dFunctor<platform::CUDADeviceContext,
                              paddle::operators::math::MaxPool<double>, double>;
-template class Pool2dFunctor<platform::GPUPlace,
+template class Pool2dFunctor<platform::CUDADeviceContext,
                              paddle::operators::math::AvgPool<double>, double>;
-template class Pool2dGradFunctor<
-    platform::GPUPlace, paddle::operators::math::MaxPoolGrad<double>, double>;
-template class Pool2dGradFunctor<
-    platform::GPUPlace, paddle::operators::math::AvgPoolGrad<double>, double>;
+template class Pool2dGradFunctor<platform::CUDADeviceContext,
+                                 paddle::operators::math::MaxPoolGrad<double>,
+                                 double>;
+template class Pool2dGradFunctor<platform::CUDADeviceContext,
+                                 paddle::operators::math::AvgPoolGrad<double>,
+                                 double>;
 
 template <typename PoolProcess, typename T>
 __global__ void KernelPool3D(const int nthreads, const T* input_data,
@@ -478,9 +471,9 @@ __global__ void KernelMaxPool3DGrad(
  * depth, height and width, respectively.
  */
 template <typename PoolProcess, class T>
-class Pool3dFunctor<platform::GPUPlace, PoolProcess, T> {
+class Pool3dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
                   PoolProcess pool_process, framework::Tensor* output) {
@@ -512,11 +505,7 @@ class Pool3dFunctor<platform::GPUPlace, PoolProcess, T> {
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelPool3D<
-        PoolProcess,
-        T><<<grid, threads, 0,
-             reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                 .stream()>>>(
+    KernelPool3D<PoolProcess, T><<<grid, threads, 0, context.stream()>>>(
         nthreads, input_data, input_channels, input_depth, input_height,
         input_width, output_depth, output_height, output_width, ksize_depth,
         ksize_height, ksize_width, stride_depth, stride_height, stride_width,
@@ -531,9 +520,9 @@ class Pool3dFunctor<platform::GPUPlace, PoolProcess, T> {
  * depth, height and width, respectively.
  */
 template <typename PoolProcess, class T>
-class Pool3dGradFunctor<platform::GPUPlace, PoolProcess, T> {
+class Pool3dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
@@ -569,11 +558,7 @@ class Pool3dGradFunctor<platform::GPUPlace, PoolProcess, T> {
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelPool3DGrad<
-        PoolProcess,
-        T><<<grid, threads, 0,
-             reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                 .stream()>>>(
+    KernelPool3DGrad<PoolProcess, T><<<grid, threads, 0, context.stream()>>>(
         nthreads, input_data, output_data, output_grad_data, input_channels,
         input_depth, input_height, input_width, output_depth, output_height,
         output_width, ksize_depth, ksize_height, ksize_width, stride_depth,
@@ -588,9 +573,9 @@ class Pool3dGradFunctor<platform::GPUPlace, PoolProcess, T> {
  * depth, height and width, respectively.
  */
 template <class T>
-class MaxPool3dGradFunctor<platform::GPUPlace, T> {
+class MaxPool3dGradFunctor<platform::CUDADeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
@@ -626,10 +611,7 @@ class MaxPool3dGradFunctor<platform::GPUPlace, T> {
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelMaxPool3DGrad<
-        T><<<grid, threads, 0,
-             reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                 .stream()>>>(
+    KernelMaxPool3DGrad<T><<<grid, threads, 0, context.stream()>>>(
         nthreads, input_data, output_data, output_grad_data, input_channels,
         input_depth, input_height, input_width, output_depth, output_height,
         output_width, ksize_depth, ksize_height, ksize_width, stride_depth,
@@ -638,33 +620,37 @@ class MaxPool3dGradFunctor<platform::GPUPlace, T> {
   }
 };
 
-template class MaxPool3dGradFunctor<platform::GPUPlace, float>;
-template class MaxPool3dGradFunctor<platform::GPUPlace, double>;
+template class MaxPool3dGradFunctor<platform::CUDADeviceContext, float>;
+template class MaxPool3dGradFunctor<platform::CUDADeviceContext, double>;
 
-template class Pool3dFunctor<platform::GPUPlace,
+template class Pool3dFunctor<platform::CUDADeviceContext,
                              paddle::operators::math::MaxPool<float>, float>;
-template class Pool3dFunctor<platform::GPUPlace,
+template class Pool3dFunctor<platform::CUDADeviceContext,
                              paddle::operators::math::AvgPool<float>, float>;
-template class Pool3dGradFunctor<
-    platform::GPUPlace, paddle::operators::math::MaxPoolGrad<float>, float>;
-template class Pool3dGradFunctor<
-    platform::GPUPlace, paddle::operators::math::AvgPoolGrad<float>, float>;
-template class Pool3dFunctor<platform::GPUPlace,
+template class Pool3dGradFunctor<platform::CUDADeviceContext,
+                                 paddle::operators::math::MaxPoolGrad<float>,
+                                 float>;
+template class Pool3dGradFunctor<platform::CUDADeviceContext,
+                                 paddle::operators::math::AvgPoolGrad<float>,
+                                 float>;
+template class Pool3dFunctor<platform::CUDADeviceContext,
                              paddle::operators::math::MaxPool<double>, double>;
-template class Pool3dFunctor<platform::GPUPlace,
+template class Pool3dFunctor<platform::CUDADeviceContext,
                              paddle::operators::math::AvgPool<double>, double>;
-template class Pool3dGradFunctor<
-    platform::GPUPlace, paddle::operators::math::MaxPoolGrad<double>, double>;
-template class Pool3dGradFunctor<
-    platform::GPUPlace, paddle::operators::math::AvgPoolGrad<double>, double>;
+template class Pool3dGradFunctor<platform::CUDADeviceContext,
+                                 paddle::operators::math::MaxPoolGrad<double>,
+                                 double>;
+template class Pool3dGradFunctor<platform::CUDADeviceContext,
+                                 paddle::operators::math::AvgPoolGrad<double>,
+                                 double>;
 
-template <typename T>
+template <typename T1, typename T2>
 __global__ void KernelMaxPool2dWithIdx(
-    const int nthreads, const T* input_data, const int channels,
+    const int nthreads, const T1* input_data, const int channels,
     const int input_height, const int input_width, const int output_height,
     const int output_width, const int ksize_height, const int ksize_width,
     const int stride_height, const int stride_width, const int padding_height,
-    const int padding_width, T* output_data, T* mask_data) {
+    const int padding_width, T1* output_data, T2* mask_data) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int pw = index % output_width;
@@ -681,7 +667,7 @@ __global__ void KernelMaxPool2dWithIdx(
     wstart = max(wstart, 0);
 
     input_data += (batch_idx * channels + c) * input_height * input_width;
-    T ele = -FLT_MAX;
+    T1 ele = -FLT_MAX;
     int max_index = -1;
     for (int h = hstart; h < hend; ++h) {
       for (int w = wstart; w < wend; ++w) {
@@ -697,13 +683,13 @@ __global__ void KernelMaxPool2dWithIdx(
   }
 }
 
-template <typename T>
+template <typename T1, typename T2>
 __global__ void KernelMaxPool2DWithIdxGrad(
-    const int nthreads, const T* output_grad, const T* mask_data,
+    const int nthreads, const T1* output_grad, const T2* mask_data,
     const int channels, const int input_height, const int input_width,
     const int output_height, const int output_width, const int ksize_height,
     const int ksize_width, const int stride_height, const int stride_width,
-    const int padding_height, const int padding_width, T* input_grad) {
+    const int padding_height, const int padding_width, T1* input_grad) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int w_offset = index % input_width;
@@ -724,7 +710,7 @@ __global__ void KernelMaxPool2DWithIdxGrad(
     int pw_end =
         min((w_offset + padding_width) / stride_width + 1, output_width);
 
-    T gradient = 0;
+    T1 gradient = 0;
     int input_current_featuremap_idx = h_offset * input_width + w_offset;
     int output_idx =
         (batch_idx * channels + c_offset) * output_height * output_width;
@@ -746,10 +732,10 @@ __global__ void KernelMaxPool2DWithIdxGrad(
  * Ksize, strides, paddings are two elements. These two elements represent
  * height and width, respectively.
  */
-template <typename T>
-class MaxPool2dWithIndexFunctor<platform::GPUPlace, T> {
+template <typename T1, typename T2>
+class MaxPool2dWithIndexFunctor<platform::CUDADeviceContext, T1, T2> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
                   framework::Tensor* output, framework::Tensor* mask) {
@@ -767,19 +753,16 @@ class MaxPool2dWithIndexFunctor<platform::GPUPlace, T> {
     const int padding_height = paddings[0];
     const int padding_width = paddings[1];
 
-    const T* input_data = input.data<T>();
-    T* output_data = output->mutable_data<T>(context.GetPlace());
-    T* mask_data = mask->mutable_data<T>(context.GetPlace());
+    const T1* input_data = input.data<T1>();
+    T1* output_data = output->mutable_data<T1>(context.GetPlace());
+    T2* mask_data = mask->mutable_data<T2>(context.GetPlace());
 
     int nthreads = batch_size * output_channels * output_height * output_width;
     int blocks = (nthreads + 1024 - 1) / 1024;
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelMaxPool2dWithIdx<
-        T><<<grid, threads, 0,
-             reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                 .stream()>>>(
+    KernelMaxPool2dWithIdx<T1, T2><<<grid, threads, 0, context.stream()>>>(
         nthreads, input_data, input_channels, input_height, input_width,
         output_height, output_width, ksize_height, ksize_width, stride_height,
         stride_width, padding_height, padding_width, output_data, mask_data);
@@ -791,10 +774,10 @@ class MaxPool2dWithIndexFunctor<platform::GPUPlace, T> {
  * Ksize, strides, paddings are two elements. These two elements represent
  * height and width, respectively.
  */
-template <typename T>
-class MaxPool2dWithIndexGradFunctor<platform::GPUPlace, T> {
+template <typename T1, typename T2>
+class MaxPool2dWithIndexGradFunctor<platform::CUDADeviceContext, T1, T2> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& output_grad,
                   const framework::Tensor& mask, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
@@ -812,40 +795,41 @@ class MaxPool2dWithIndexGradFunctor<platform::GPUPlace, T> {
     const int padding_height = paddings[0];
     const int padding_width = paddings[1];
 
-    const T* mask_data = mask.data<T>();
-    const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
+    const T2* mask_data = mask.data<T2>();
+    const T1* output_grad_data = output_grad.data<T1>();
+    T1* input_grad_data = input_grad->mutable_data<T1>(context.GetPlace());
 
     int nthreads = batch_size * input_channels * input_height * input_width;
     int blocks = (nthreads + 1024 - 1) / 1024;
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelMaxPool2DWithIdxGrad<
-        T><<<grid, threads, 0,
-             reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                 .stream()>>>(nthreads, output_grad_data, mask_data,
-                              input_channels, input_height, input_width,
-                              output_height, output_width, ksize_height,
-                              ksize_width, stride_height, stride_width,
-                              padding_height, padding_width, input_grad_data);
+    KernelMaxPool2DWithIdxGrad<T1, T2><<<grid, threads, 0, context.stream()>>>(
+        nthreads, output_grad_data, mask_data, input_channels, input_height,
+        input_width, output_height, output_width, ksize_height, ksize_width,
+        stride_height, stride_width, padding_height, padding_width,
+        input_grad_data);
   }
 };
 
-template class MaxPool2dWithIndexFunctor<platform::GPUPlace, float>;
-template class MaxPool2dWithIndexGradFunctor<platform::GPUPlace, float>;
-template class MaxPool2dWithIndexFunctor<platform::GPUPlace, double>;
-template class MaxPool2dWithIndexGradFunctor<platform::GPUPlace, double>;
+template class MaxPool2dWithIndexFunctor<platform::CUDADeviceContext, float,
+                                         int>;
+template class MaxPool2dWithIndexGradFunctor<platform::CUDADeviceContext, float,
+                                             int>;
+template class MaxPool2dWithIndexFunctor<platform::CUDADeviceContext, double,
+                                         int>;
+template class MaxPool2dWithIndexGradFunctor<platform::CUDADeviceContext,
+                                             double, int>;
 
-template <typename T>
+template <typename T1, typename T2>
 __global__ void KernelMaxPool3DWithIdx(
-    const int nthreads, const T* input_data, const int channels,
+    const int nthreads, const T1* input_data, const int channels,
     const int input_depth, const int input_height, const int input_width,
     const int output_depth, const int output_height, const int output_width,
     const int ksize_depth, const int ksize_height, const int ksize_width,
     const int stride_depth, const int stride_height, const int stride_width,
     const int padding_depth, const int padding_height, const int padding_width,
-    T* output_data, T* mask_data) {
+    T1* output_data, T2* mask_data) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int pw = index % output_width;
@@ -865,7 +849,7 @@ __global__ void KernelMaxPool3DWithIdx(
     hstart = max(hstart, 0);
     wstart = max(wstart, 0);
 
-    T ele = -FLT_MAX;
+    T1 ele = -FLT_MAX;
     int max_index = -1;
     input_data +=
         (batch_idx * channels + c) * input_depth * input_height * input_width;
@@ -885,15 +869,15 @@ __global__ void KernelMaxPool3DWithIdx(
   }
 }
 
-template <typename T>
+template <typename T1, typename T2>
 __global__ void KernelMaxPool3DWithIdxGrad(
-    const int nthreads, const T* output_grad, const T* mask, const int channels,
-    const int input_depth, const int input_height, const int input_width,
-    const int output_depth, const int output_height, const int output_width,
-    const int ksize_depth, const int ksize_height, const int ksize_width,
-    const int stride_depth, const int stride_height, const int stride_width,
-    const int padding_depth, const int padding_height, const int padding_width,
-    T* input_grad) {
+    const int nthreads, const T1* output_grad, const T2* mask,
+    const int channels, const int input_depth, const int input_height,
+    const int input_width, const int output_depth, const int output_height,
+    const int output_width, const int ksize_depth, const int ksize_height,
+    const int ksize_width, const int stride_depth, const int stride_height,
+    const int stride_width, const int padding_depth, const int padding_height,
+    const int padding_width, T1* input_grad) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int w_offset = index % input_width;
@@ -922,7 +906,7 @@ __global__ void KernelMaxPool3DWithIdxGrad(
     int pw_end =
         min((w_offset + padding_width) / stride_width + 1, output_width);
 
-    T gradient = 0;
+    T1 gradient = 0;
     int input_current_feature_map_idx =
         (d_offset * input_height + h_offset) * input_width + w_offset;
     int output_idx = (batch_idx * channels + c_offset) * output_depth *
@@ -949,10 +933,10 @@ __global__ void KernelMaxPool3DWithIdxGrad(
  * Ksize, strides, paddings are three elements. These three elements represent
  * depth, height and width, respectively.
  */
-template <typename T>
-class MaxPool3dWithIndexFunctor<platform::GPUPlace, T> {
+template <typename T1, typename T2>
+class MaxPool3dWithIndexFunctor<platform::CUDADeviceContext, T1, T2> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
                   framework::Tensor* output, framework::Tensor* mask) {
@@ -975,9 +959,9 @@ class MaxPool3dWithIndexFunctor<platform::GPUPlace, T> {
     const int padding_height = paddings[1];
     const int padding_width = paddings[2];
 
-    const T* input_data = input.data<T>();
-    T* output_data = output->mutable_data<T>(context.GetPlace());
-    T* mask_data = mask->mutable_data<T>(context.GetPlace());
+    const T1* input_data = input.data<T1>();
+    T1* output_data = output->mutable_data<T1>(context.GetPlace());
+    T2* mask_data = mask->mutable_data<T2>(context.GetPlace());
 
     int nthreads = batch_size * output_channels * output_depth * output_height *
                    output_width;
@@ -985,10 +969,7 @@ class MaxPool3dWithIndexFunctor<platform::GPUPlace, T> {
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelMaxPool3DWithIdx<
-        T><<<grid, threads, 0,
-             reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                 .stream()>>>(
+    KernelMaxPool3DWithIdx<T1, T2><<<grid, threads, 0, context.stream()>>>(
         nthreads, input_data, input_channels, input_depth, input_height,
         input_width, output_depth, output_height, output_width, ksize_depth,
         ksize_height, ksize_width, stride_depth, stride_height, stride_width,
@@ -1001,10 +982,10 @@ class MaxPool3dWithIndexFunctor<platform::GPUPlace, T> {
  * Ksize, strides, paddings are three elements. These three elements represent
  * depth, height and width, respectively.
  */
-template <typename T>
-class MaxPool3dWithIndexGradFunctor<platform::GPUPlace, T> {
+template <typename T1, typename T2>
+class MaxPool3dWithIndexGradFunctor<platform::CUDADeviceContext, T1, T2> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& output_grad,
                   const framework::Tensor& mask, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
@@ -1027,9 +1008,9 @@ class MaxPool3dWithIndexGradFunctor<platform::GPUPlace, T> {
     const int padding_height = paddings[1];
     const int padding_width = paddings[2];
 
-    const T* output_grad_data = output_grad.data<T>();
-    const T* mask_data = mask.data<T>();
-    T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
+    const T1* output_grad_data = output_grad.data<T1>();
+    const T2* mask_data = mask.data<T2>();
+    T1* input_grad_data = input_grad->mutable_data<T1>(context.GetPlace());
 
     int nthreads =
         batch_size * input_channels * input_depth * input_height * input_width;
@@ -1037,10 +1018,7 @@ class MaxPool3dWithIndexGradFunctor<platform::GPUPlace, T> {
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelMaxPool3DWithIdxGrad<
-        T><<<grid, threads, 0,
-             reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                 .stream()>>>(
+    KernelMaxPool3DWithIdxGrad<T1, T2><<<grid, threads, 0, context.stream()>>>(
         nthreads, output_grad_data, mask_data, input_channels, input_depth,
         input_height, input_width, output_depth, output_height, output_width,
         ksize_depth, ksize_height, ksize_width, stride_depth, stride_height,
@@ -1049,10 +1027,14 @@ class MaxPool3dWithIndexGradFunctor<platform::GPUPlace, T> {
   }
 };
 
-template class MaxPool3dWithIndexFunctor<platform::GPUPlace, float>;
-template class MaxPool3dWithIndexGradFunctor<platform::GPUPlace, float>;
-template class MaxPool3dWithIndexFunctor<platform::GPUPlace, double>;
-template class MaxPool3dWithIndexGradFunctor<platform::GPUPlace, double>;
+template class MaxPool3dWithIndexFunctor<platform::CUDADeviceContext, float,
+                                         int>;
+template class MaxPool3dWithIndexGradFunctor<platform::CUDADeviceContext, float,
+                                             int>;
+template class MaxPool3dWithIndexFunctor<platform::CUDADeviceContext, double,
+                                         int>;
+template class MaxPool3dWithIndexGradFunctor<platform::CUDADeviceContext,
+                                             double, int>;
 
 }  // namespace math
 }  // namespace operators

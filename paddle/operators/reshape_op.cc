@@ -1,17 +1,16 @@
-
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/reshape_op.h"
 
@@ -35,21 +34,33 @@ class ReshapeOp : public framework::OperatorWithKernel {
     auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
     PADDLE_ENFORCE(shape.size() > 0, "Attr(shape) shouldn't be empty.");
     auto x_dims = ctx->GetInputDim("X");
-    // TODO(qiao) change batch_size
-    for (size_t i = 1; i < shape.size(); ++i) {
-      PADDLE_ENFORCE(shape[i] > 0,
-                     "Each dimension of shape "
-                     "must be positiv except the first.");
+
+    std::vector<size_t> neg_dims_idx;
+    // set some dimension to -1 if it is unknown
+    const int unknown_size = -1;
+    for (size_t i = 0; i < shape.size(); ++i) {
+      PADDLE_ENFORCE(shape[i] > 0 || shape[i] == unknown_size,
+                     "Each dimension of Attr(shape) must be positive or %d.",
+                     unknown_size);
+      if (shape[i] == unknown_size) {
+        neg_dims_idx.push_back(i);
+        PADDLE_ENFORCE(neg_dims_idx.size() <= 1,
+                       "Only one dimension of Attr(shape) can be unknown.");
+      }
     }
-    if (shape[0] < 0) {
-      shape[0] = x_dims[0];
-    }
-    // capacity check
+
     int64_t capacity =
         std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
     int64_t in_size = framework::product(x_dims);
-    PADDLE_ENFORCE_EQ(capacity, in_size,
-                      "The size of Input(X) mismatches with Attr(shape).");
+    if (neg_dims_idx.size() == 1) {
+      // dim infer
+      shape[neg_dims_idx[0]] = in_size / (-capacity);
+      // recalculate capacity
+      capacity = shape[neg_dims_idx[0]] * (-capacity);
+    }
+    // capacity check
+    PADDLE_ENFORCE(capacity == in_size,
+                   "The size of Input(X) mismatches with Attr(shape).");
     // resize output
     std::vector<int64_t> shape_int64(shape.size(), 0);
     std::transform(shape.begin(), shape.end(), shape_int64.begin(),
@@ -66,8 +77,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
 
 class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ReshapeOpMaker(framework::OpProto *proto,
-                 framework::OpAttrChecker *op_checker)
+  ReshapeOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input tensor of reshape operator.");
     AddOutput("Out", "The output tensor of reshape operator.");
@@ -85,10 +95,13 @@ Given a 2-D tensor X with 2 rows and 2 columns
     [[1, 2], [3, 4]]
 
 and target shape = [1, 4], the reshape operator will transform
-the tensor X into a 1-D tensor:
+the tensor X into a 2-D tensor:
 
-    [1, 2, 3, 4]
+    [[1, 2, 3, 4]]
 
+One dimension in the target shape can be set -1, representing that its
+size is unknown. In this case, the real dimension will be infered from 
+the original shape of Input(X) and other dimensions in the target shape.
 )DOC");
   }
 };

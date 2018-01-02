@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 #include <random>
@@ -25,7 +25,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
-template <typename Place, typename T, typename AttrType>
+template <typename DeviceContext, typename T, typename AttrType>
 class CPUDropoutKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -35,7 +35,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
     auto* y_data = y->mutable_data<T>(context.GetPlace());
     float dropout_prob = context.Attr<float>("dropout_prob");
 
-    if (context.Attr<bool>("is_training")) {
+    if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
       auto* mask_data = mask->mutable_data<T>(context.GetPlace());
       int seed = context.Attr<int>("seed");
@@ -55,18 +55,19 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
     } else {
       auto X = EigenMatrix<T>::Reshape(*x, 1);
       auto Y = EigenMatrix<T>::Reshape(*y, 1);
-      auto place = context.GetEigenDevice<Place>();
-      Y.device(place) = X * dropout_prob;
+      auto& place =
+          *context.template device_context<DeviceContext>().eigen_device();
+      Y.device(place) = X * (1.0f - dropout_prob);
     }
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class DropoutGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(context.Attr<bool>("is_training"),
-                   "GradOp is only callable when is_training is true");
+    PADDLE_ENFORCE(!context.Attr<bool>("is_test"),
+                   "GradOp is only callable when is_test is false");
 
     auto* grad_x = context.Output<Tensor>(framework::GradVarName("X"));
     auto* grad_y = context.Input<Tensor>(framework::GradVarName("Out"));
@@ -77,7 +78,8 @@ class DropoutGradKernel : public framework::OpKernel<T> {
     auto dX = EigenMatrix<T>::Reshape(*grad_x, 1);
     auto dY = EigenMatrix<T>::Reshape(*grad_y, 1);
 
-    auto place = context.GetEigenDevice<Place>();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
     dX.device(place) = dY * M;
   }
 };

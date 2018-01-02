@@ -36,12 +36,9 @@ Scope& Scope::NewScope() const {
 }
 
 Variable* Scope::Var(const std::string& name) {
-  auto iter = vars_.find(name);
-  if (iter != vars_.end()) {
-    VLOG(3) << "Get existing variable " << name;
-    return iter->second;
-  }
-  Variable* v = new Variable();
+  auto* v = FindVarLocally(name);
+  if (v != nullptr) return v;
+  v = new Variable();
   vars_[name] = v;
   VLOG(3) << "Create variable " << name;
   v->name_ = &(vars_.find(name)->first);
@@ -57,8 +54,10 @@ Variable* Scope::Var(std::string* name) {
 }
 
 Variable* Scope::FindVar(const std::string& name) const {
-  auto it = vars_.find(name);
-  if (it != vars_.end()) return it->second;
+  auto var = FindVarLocally(name);
+  if (var != nullptr) {
+    return var;
+  }
   return (parent_ == nullptr) ? nullptr : parent_->FindVar(name);
 }
 
@@ -75,17 +74,9 @@ void Scope::DropKids() {
   kids_.clear();
 }
 
-std::vector<std::string> Scope::GetAllNames(bool recursive) const {
-  std::vector<std::string> known_vars(vars_.size());
-
-  if (recursive) {
-    for (auto& kid : kids_) {
-      auto kid_vars = kid->GetAllNames();
-      for (auto& p : kid_vars) {
-        known_vars.emplace_back(p);
-      }
-    }
-  }
+std::vector<std::string> Scope::LocalVarNames() const {
+  std::vector<std::string> known_vars;
+  known_vars.reserve(this->vars_.size());
   for (auto& p : vars_) {
     known_vars.emplace_back(p.first);
   }
@@ -115,6 +106,11 @@ std::string Scope::Rename(const std::string& origin_name) const {
   auto var_name = string::Sprintf("%p.%d", this, vars_.size());
   Rename(origin_name, var_name);
   return var_name;
+}
+Variable* Scope::FindVarLocally(const std::string& name) const {
+  auto it = vars_.find(name);
+  if (it != vars_.end()) return it->second;
+  return nullptr;
 }
 
 }  // namespace framework

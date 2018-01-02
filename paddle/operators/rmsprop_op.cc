@@ -63,8 +63,7 @@ class RmspropOp : public framework::OperatorWithKernel {
 
 class RmspropOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RmspropOpMaker(framework::OpProto *proto,
-                 framework::OpAttrChecker *op_checker)
+  RmspropOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param",
              "(Tensor, default Tensor<float>) "
@@ -116,5 +115,5 @@ http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf)
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(rmsprop, ops::RmspropOp, ops::RmspropOpMaker);
-REGISTER_OP_CPU_KERNEL(rmsprop,
-                       ops::RmspropOpKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    rmsprop, ops::RmspropOpKernel<paddle::platform::CPUDeviceContext, float>);

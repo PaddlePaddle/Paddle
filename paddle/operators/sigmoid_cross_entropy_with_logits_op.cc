@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/sigmoid_cross_entropy_with_logits_op.h"
 
@@ -25,20 +25,19 @@ class SigmoidCrossEntropyWithLogitsOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Labels"),
-                   "Input(Labels) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should be not null.");
 
     auto x_dims = ctx->GetInputDim("X");
-    auto labels_dims = ctx->GetInputDim("Labels");
+    auto labels_dims = ctx->GetInputDim("Label");
     PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
     PADDLE_ENFORCE_EQ(labels_dims.size(), 2,
-                      "Input(Labels)'s rank should be 2.");
+                      "Input(Label)'s rank should be 2.");
     PADDLE_ENFORCE_EQ(x_dims[0], labels_dims[0],
-                      "The 1st dimension of Input(X) and Input(Labels) should "
+                      "The 1st dimension of Input(X) and Input(Label) should "
                       "be equal.");
     PADDLE_ENFORCE_EQ(x_dims[1], labels_dims[1],
-                      "The 2nd dimension of Input(X) and Input(Labels) should "
+                      "The 2nd dimension of Input(X) and Input(Label) should "
                       "be equal.");
 
     ctx->SetOutputDim("Out", x_dims);
@@ -53,26 +52,25 @@ class SigmoidCrossEntropyWithLogitsGradOp
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Labels"),
-                   "Input(Labels) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) shoudl be not null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
                    "Output(X@GRAD) should be not null.");
 
     auto x_dims = ctx->GetInputDim("X");
-    auto labels_dims = ctx->GetInputDim("Labels");
+    auto labels_dims = ctx->GetInputDim("Label");
     auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
     PADDLE_ENFORCE_EQ(labels_dims.size(), 2,
-                      "Input(Labels)'s rank should be 2.");
+                      "Input(Label)'s rank should be 2.");
     PADDLE_ENFORCE_EQ(dout_dims.size(), 2,
                       "Input(Out@Grad)'s rank should be 2.");
     PADDLE_ENFORCE_EQ(x_dims[0], labels_dims[0],
-                      "The 1st dimension of Input(X) and Input(Labels) should "
+                      "The 1st dimension of Input(X) and Input(Label) should "
                       "be equal.");
     PADDLE_ENFORCE_EQ(x_dims[1], labels_dims[1],
-                      "The 2nd dimension of Input(X) and Input(Labels) should "
+                      "The 2nd dimension of Input(X) and Input(Label) should "
                       "be equal.");
     PADDLE_ENFORCE_EQ(x_dims[0], dout_dims[0],
                       "The 1st dimension of Input(X) and Input(Out@Grad) "
@@ -88,8 +86,8 @@ class SigmoidCrossEntropyWithLogitsGradOp
 class SigmoidCrossEntropyWithLogitsOpMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  SigmoidCrossEntropyWithLogitsOpMaker(framework::OpProto* proto,
-                                       framework::OpAttrChecker* op_checker)
+  SigmoidCrossEntropyWithLogitsOpMaker(OpProto* proto,
+                                       OpAttrChecker* op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor, default Tensor<float>), a 2-D tensor with shape N x D, "
@@ -97,7 +95,7 @@ class SigmoidCrossEntropyWithLogitsOpMaker
              "This input is a tensor of logits computed by the previous "
              " operator. Logits are unscaled log probabilities given as "
              "log(p/(1-p)).");
-    AddInput("Labels",
+    AddInput("Label",
              "(Tensor, default Tensor<float>), a 2-D tensor of the same type "
              "and shape as X. This input is a tensor of probabalistic labels "
              "for each logit");
@@ -144,7 +142,7 @@ REGISTER_OP(sigmoid_cross_entropy_with_logits,
             ops::SigmoidCrossEntropyWithLogitsGradOp);
 REGISTER_OP_CPU_KERNEL(sigmoid_cross_entropy_with_logits,
                        ops::SigmoidCrossEntropyWithLogitsKernel<
-                           paddle::platform::CPUPlace, float>);
+                           paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(sigmoid_cross_entropy_with_logits_grad,
                        ops::SigmoidCrossEntropyWithLogitsGradKernel<
-                           paddle::platform::CPUPlace, float>);
+                           paddle::platform::CPUDeviceContext, float>);

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/batch_norm_op.h"
+#include "paddle/framework/data_layout.h"
 
 #include <cfloat>
 #include "paddle/operators/math/math_function.h"
@@ -22,44 +23,52 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+using DataLayout = framework::DataLayout;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 
-void ExtractNCWHD(const framework::DDim &dims,
-                  const TensorFormat &tensor_format, int *N, int *C, int *H,
-                  int *W, int *D) {
+void ExtractNCWHD(const framework::DDim &dims, const DataLayout &data_layout,
+                  int *N, int *C, int *H, int *W, int *D) {
   *N = dims[0];
-  *C = tensor_format == TensorFormat::NCHW ? dims[1] : dims[dims.size() - 1];
-  *H = tensor_format == TensorFormat::NCHW ? dims[2] : dims[1];
-  *W = dims.size() > 3
-           ? (tensor_format == TensorFormat::NCHW ? dims[3] : dims[2])
-           : 1;
-  *D = dims.size() > 4
-           ? (tensor_format == TensorFormat::NCHW ? dims[4] : dims[3])
-           : 1;
+  if (dims.size() == 2) {
+    *C = dims[1];
+    *H = 1;
+    *W = 1;
+    *D = 1;
+  } else {
+    *C = data_layout == DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
+    *H = data_layout == DataLayout::kNCHW ? dims[2] : dims[1];
+    *W = dims.size() > 3
+             ? (data_layout == DataLayout::kNCHW ? dims[3] : dims[2])
+             : 1;
+    *D = dims.size() > 4
+             ? (data_layout == DataLayout::kNCHW ? dims[4] : dims[3])
+             : 1;
+  }
 }
 
 template <typename T>
-class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
+class BatchNormKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "It must use CUDAPlace.");
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
-    const std::string tensor_format_str =
-        ctx.Attr<std::string>("tensor_format");
-    const TensorFormat tensor_format = StringToTensorFormat(tensor_format_str);
+    const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+    const DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
-                   "The Input dim size should be between 3 and 5");
+    PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
+                   "The Input dim size should be between 2 and 5");
     int N, C, H, W, D;
-    ExtractNCWHD(x_dims, tensor_format, &N, &C, &H, &W, &D);
+    ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
     // ------------------- cudnn descriptors ---------------------
     cudnnTensorDescriptor_t data_desc_;
@@ -85,7 +94,7 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     VLOG(1) << "Setting descriptors.";
     std::vector<int> dims;
     std::vector<int> strides;
-    if (tensor_format == TensorFormat::NCHW) {
+    if (data_layout == DataLayout::kNCHW) {
       dims = {N, C, H, W, D};
       strides = {C * H * W * D, H * W * D, W * D, D, 1};
     } else {
@@ -114,11 +123,12 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
     saved_mean->mutable_data<T>(ctx.GetPlace());
     saved_variance->mutable_data<T>(ctx.GetPlace());
 
-    math::SetConstant<platform::GPUPlace, T> functor;
-    functor(ctx.device_context(), saved_mean, 0);
-    functor(ctx.device_context(), saved_variance, 0);
+    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    math::SetConstant<platform::CUDADeviceContext, T> functor;
+    functor(dev_ctx, saved_mean, 0);
+    functor(dev_ctx, saved_variance, 0);
 
-    auto handle = ctx.cuda_device_context().cudnn_handle();
+    auto handle = dev_ctx.cudnn_handle();
 
     // Now, depending on whether we are running test or not, we have two paths.
     if (is_test) {
@@ -164,26 +174,26 @@ class BatchNormKernel<platform::GPUPlace, T> : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class BatchNormGradKernel<platform::GPUPlace, T>
+class BatchNormGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "It must use CUDAPlace.");
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
-    const std::string tensor_format_str =
-        ctx.Attr<std::string>("tensor_format");
-    const TensorFormat tensor_format = StringToTensorFormat(tensor_format_str);
+    const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+    const DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
     const auto *x = ctx.Input<Tensor>("X");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
 
     const auto &x_dims = x->dims();
 
-    PADDLE_ENFORCE(x_dims.size() >= 3 && x_dims.size() <= 5,
-                   "The Input dim size should be between 3 and 5");
+    PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
+                   "The Input dim size should be between 2 and 5");
     int N, C, H, W, D;
-    ExtractNCWHD(x_dims, tensor_format, &N, &C, &H, &W, &D);
+    ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
     PADDLE_ENFORCE_EQ(scale->dims().size(), 1UL);
     PADDLE_ENFORCE_EQ(scale->dims()[0], C);
@@ -210,7 +220,7 @@ class BatchNormGradKernel<platform::GPUPlace, T>
 
     std::vector<int> dims;
     std::vector<int> strides;
-    if (tensor_format == TensorFormat::NCHW) {
+    if (data_layout == DataLayout::kNCHW) {
       dims = {N, C, H, W, D};
       strides = {C * H * W * D, H * W * D, W * D, D, 1};
     } else {
@@ -237,11 +247,12 @@ class BatchNormGradKernel<platform::GPUPlace, T>
     const void *saved_mean_data = saved_mean->template data<T>();
     const void *saved_var_data = saved_var->template data<T>();
 
+    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationBackward(
-        ctx.cuda_device_context().cudnn_handle(), mode_,
-        CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(),
-        CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(), data_desc_,
-        x->template data<T>(), data_desc_, d_y->template data<T>(), data_desc_,
+        dev_ctx.cudnn_handle(), mode_, CudnnDataType<T>::kOne(),
+        CudnnDataType<T>::kZero(), CudnnDataType<T>::kOne(),
+        CudnnDataType<T>::kZero(), data_desc_, x->template data<T>(),
+        data_desc_, d_y->template data<T>(), data_desc_,
         d_x->template mutable_data<T>(ctx.GetPlace()), bn_param_desc_,
         scale->template data<T>(),
         d_scale->template mutable_data<T>(ctx.GetPlace()),
@@ -259,8 +270,9 @@ class BatchNormGradKernel<platform::GPUPlace, T>
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(batch_norm,
-                       ops::BatchNormKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
+    batch_norm,
+    ops::BatchNormKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
     batch_norm_grad,
-    ops::BatchNormGradKernel<paddle::platform::GPUPlace, float>);
+    ops::BatchNormGradKernel<paddle::platform::CUDADeviceContext, float>);
