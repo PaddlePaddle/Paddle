@@ -12,13 +12,16 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/framework/op_registry.h"
+#include <glog/logging.h>
 #include <gtest/gtest.h>
+
+#include "paddle/framework/op_registry.h"
 
 namespace pd = paddle::framework;
 
 namespace paddle {
 namespace framework {
+
 class CosineOp : public OperatorBase {
  public:
   using OperatorBase::OperatorBase;
@@ -252,7 +255,6 @@ TEST(OperatorRegistrar, CPU) {
   op->Run(scope, cpu_place);
 }
 
-#ifdef PADDLE_WITH_CUDA
 TEST(OperatorRegistrar, CUDA) {
   paddle::framework::proto::OpDesc op_desc;
   paddle::platform::CUDAPlace cuda_place(0);
@@ -263,4 +265,99 @@ TEST(OperatorRegistrar, CUDA) {
 
   op->Run(scope, cuda_place);
 }
-#endif
+
+static int op_test_value = 0;
+
+using paddle::platform::DeviceContext;
+using paddle::platform::CPUDeviceContext;
+using paddle::platform::CUDADeviceContext;
+using paddle::platform::CUDNNDeviceContext;
+
+class DummyDeviceContext : public DeviceContext {
+ public:
+  DummyDeviceContext(){};
+};
+
+namespace paddle {
+namespace framework {
+
+class OpWithMultiKernelTest : public OperatorWithKernel {
+ public:
+  using OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(InferShapeContext* ctx) const override {}
+
+  framework::OpKernelType GetActualKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(proto::DataType::FP32, ctx.device_context());
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::OpKernelType& kernel) const override {
+    return framework::OpKernelType(kernel.data_type_, platform::CUDAPlace(0),
+                                   kernel.data_layout_,
+                                   framework::LibraryType::kCUDNN);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class OpMultiKernelTest : public paddle::framework::OpKernel<T> {
+ public:
+  void Compute(const paddle::framework::ExecutionContext& ctx) const {}
+};
+
+template <typename T>
+class OpMultiKernelTest<DummyDeviceContext, T>
+    : public paddle::framework::OpKernel<T> {
+ public:
+  void Compute(const paddle::framework::ExecutionContext& ctx) const {
+    ++op_test_value;
+  }
+};
+
+template <typename T>
+class OpMultiKernelTest<CUDNNDeviceContext, T>
+    : public paddle::framework::OpKernel<T> {
+ public:
+  void Compute(const paddle::framework::ExecutionContext& ctx) const {
+    --op_test_value;
+  }
+};
+
+}  // namespace framework
+}  // namespace paddle
+
+REGISTER_OP_WITHOUT_GRADIENT(op_with_multi_kernel,
+                             paddle::framework::OpWithMultiKernelTest,
+                             paddle::framework::OpKernelTestMaker);
+REGISTER_OP_KERNEL(
+    op_with_multi_kernel, CPU, paddle::platform::CPUPlace,
+    paddle::framework::OpMultiKernelTest<CPUDeviceContext, float>);
+REGISTER_OP_KERNEL(
+    op_with_multi_kernel, MKLDNN, paddle::platform::CPUPlace,
+    paddle::framework::OpMultiKernelTest<DummyDeviceContext, float>);
+REGISTER_OP_KERNEL(
+    op_with_multi_kernel, CUDA, paddle::platform::CUDAPlace,
+    paddle::framework::OpMultiKernelTest<CUDADeviceContext, float>);
+REGISTER_OP_KERNEL(
+    op_with_multi_kernel, CUDNN, paddle::platform::CUDAPlace,
+    paddle::framework::OpMultiKernelTest<CUDNNDeviceContext, float>);
+
+TEST(OperatorRegistrar, OpWithMultiKernel) {
+  paddle::framework::proto::OpDesc op_desc;
+  paddle::platform::CUDAPlace cuda_place(0);
+  paddle::platform::CPUPlace cpu_place;
+  paddle::framework::Scope scope;
+
+  op_desc.set_type("op_with_multi_kernel");
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+
+  op->Run(scope, cuda_place);
+  EXPECT_EQ(op_test_value, -1);
+
+  // remove cuda kernels
+  paddle::framework::UseCPU();
+  op->Run(scope, cpu_place);
+  EXPECT_EQ(op_test_value, 0);
+}

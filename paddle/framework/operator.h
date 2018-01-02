@@ -72,7 +72,9 @@ inline void UseCPU() {
   auto need_remove = [&](const std::tuple<platform::Place, LibraryType>& key) {
     return !platform::is_cpu_place(std::get<0>(key));
   };
-  std::remove_if(kKernelPriority.begin(), kKernelPriority.end(), need_remove);
+  kKernelPriority.erase(std::remove_if(kKernelPriority.begin(),
+                                       kKernelPriority.end(), need_remove),
+                        kKernelPriority.end());
 }
 
 /**
