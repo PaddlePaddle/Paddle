@@ -415,16 +415,16 @@ def lod_rank_table(x, level=0):
 
 def max_sequence_len(rank_table):
     """Max Sequence Len Operator. Given a LoDRankTable object, this layer
-    returns the max length of batch of sequences. In fact, a LoDRankTable object
-    contains a list of tuples (<sequence index, sequence length>) and the list
-    is already sorted by sequence length in descending order, so the operator
-    just returns the sequence length of the first tuple element.
+    returns the max length of a batch of sequences. In fact, a LoDRankTable
+    object contains a list of tuples(<sequence index, sequence length>) and
+    the list is already sorted by sequence length in descending order, so the
+    operator just returns the sequence length of the first tuple element.
 
     Args:
         rank_table (Variable): Input variable which is a LoDRankTable object.
 
     Returns:
-        Variable: the max length of sequence.
+        Variable: The max length of sequence.
 
     Examples:
         .. code-block:: python
