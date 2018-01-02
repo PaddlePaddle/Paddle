@@ -71,72 +71,9 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(less_than);\nUSE_OP(equal);\n")
     endif()
 
-    # conv_op contains several operators
-    if ("${TARGET}" STREQUAL "conv_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(conv2d);\n")
-    endif()
-
-    # conv_cudnn_op contains several operators
-    if ("${TARGET}" STREQUAL "conv_cudnn_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(conv2d_cudnn);\n")
-    endif()
-
-    # pool_op contains several operators
-    if ("${TARGET}" STREQUAL "pool_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(pool2d);\n")
-    endif()
-
-    # pool_cudnn_op contains several operators
-    if ("${TARGET}" STREQUAL "pool_cudnn_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(pool2d_cudnn);\n")
-    endif()
-
     if ("${TARGET}" STREQUAL "logical_op")
         set(pybind_flag 1)
         file(APPEND ${pybind_file} "USE_OP(logical_and);\n")
-    endif()
-
-    # pool_with_index_op contains several operators
-    if ("${TARGET}" STREQUAL "pool_with_index_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(max_pool2d_with_index);\n")
-    endif()
-
-    # conv_transpose_op contains several operators
-    if ("${TARGET}" STREQUAL "conv_transpose_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(conv2d_transpose);\n")
-    endif()
-
-    # conv_transpose_cudnn_op contains two operators
-    if ("${TARGET}" STREQUAL "conv_transpose_cudnn_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(conv2d_transpose_cudnn);\n")
-    endif()
-
-    # save_restore_op contains several operators
-    if ("${TARGET}" STREQUAL "save_restore_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(save);\n")
-    endif()
-
-    # activation_op contains several operators
-    if ("${TARGET}" STREQUAL "activation_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(sigmoid);\n")
     endif()
 
     # nccl_op contains several operators
@@ -146,21 +83,24 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(ncclAllReduce);\n")
     endif()
 
-    # reduce_op contains several operators
-    if ("${TARGET}" STREQUAL "reduce_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(reduce_sum);\n")
-    endif()
-
     if ("${TARGET}" STREQUAL "tensor_array_read_write_op")
         set(pybind_flag 1)
         file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(read_from_array);\nUSE_NO_KERNEL_OP(write_to_array);\n")
     endif()
 
+    file(READ ${TARGET}.cc TARGET_CONTENT)
+    # It's enough to just adding one operator to pybind
+    string(REGEX MATCH "REGISTER_OP\\(.*REGISTER_OP\\(" multi_register "${TARGET_CONTENT}")
+    string(REGEX MATCH "REGISTER_OP\\([a-z0-9_]*," one_register "${multi_register}")
+    if (one_register STREQUAL "")
+        string(REPLACE "_op" "" TARGET "${TARGET}")
+    else ()
+        string(REPLACE "REGISTER_OP(" "" TARGET "${one_register}")
+        string(REPLACE "," "" TARGET "${TARGET}")
+    endif()
+
     # pybind USE_NO_KERNEL_OP
     # HACK: if REGISTER_OP_CPU_KERNEL presents the operator must have kernel
-    file(READ ${TARGET}.cc TARGET_CONTENT)
     string(REGEX MATCH "REGISTER_OP_CPU_KERNEL" regex_result "${TARGET_CONTENT}")
     string(REPLACE "_op" "" TARGET "${TARGET}")
     if (${pybind_flag} EQUAL 0 AND regex_result STREQUAL "")
@@ -171,7 +111,6 @@ function(op_library TARGET)
     # pybind USE_CPU_ONLY_OP
     list(LENGTH cu_srcs cu_srcs_len)
     list(LENGTH cu_cc_srcs cu_cc_srcs_len)
-
     if (${pybind_flag} EQUAL 0 AND ${cu_srcs_len} EQUAL 0 AND ${cu_cc_srcs_len} EQUAL 0)
         file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(${TARGET});\n")
         set(pybind_flag 1)
