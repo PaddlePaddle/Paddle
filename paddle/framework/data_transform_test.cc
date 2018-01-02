@@ -106,7 +106,7 @@ TEST(DataTransform, Register) {
   ASSERT_EQ(test_value, 2);
 }
 
-TEST(DataTransform, Layout) {
+TEST(DataTransform, DataLayout) {
   using namespace paddle::framework;
   using namespace paddle::platform;
 
@@ -127,7 +127,9 @@ TEST(DataTransform, Layout) {
   }
 
   Tensor dst = out.Get<Tensor>();
-  EXPECT_TRUE(dst.layout() != src->layout());
+
+  EXPECT_TRUE(dst.layout() == DataLayout::kNCHW);
+  EXPECT_TRUE(dst.dims() == make_ddim({2, 2, 3, 1}));
 }
 
 TEST(DataTransform, DataType) {
