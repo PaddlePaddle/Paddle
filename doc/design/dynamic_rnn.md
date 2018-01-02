@@ -40,5 +40,49 @@ The `Dynamic RNN` in PaddlePaddle Fluid is basically a syntax sugar to compose o
 
 The following of this document will be organized in several sections:
 
+1. Control flow operators
 1. Data manipulation operators of RNN.
 2. Backward of RNN.
+
+
+## Control flow operators
+
+### WhileOp
+
+The primary control flow operator to implement dynamic RNN is `WhileOp`. The `WhileOp` takes a sub-block. The operators in the sub-block will be executed again and again while the condition is true. The fragment program of a while op and its sub-block is:
+
+```text
+program {
+  block {
+    idx: 0  # main block
+    parent_idx: -1  # -1 means no parent
+    ops: {
+      ...  # ops before while op
+      
+      op {
+        inputs: ...,
+        outputs: ...,
+        type: "while",
+        attrs: {
+          attr {
+            name: 'sub_block',
+            type: 'BlockID',
+            value: 1  # the sub block id of this while op is 1
+          }
+        }
+      }
+      ...  # ops after while op
+    }
+  }
+  
+  block {
+    idx: 1  # the sub_block of while_op
+    parent_idx: 0  # parent of while block is the main block
+    ops: {
+      ... # ops inside while
+    }
+  }
+}
+```
+
+The while 

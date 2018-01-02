@@ -73,7 +73,8 @@ class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddInput(
         kCondition,
-        "(Bool) An scalar. When it's False, the While Op will be terminated.")
+        "(Bool) An scalar. When it's False, the While Op will be terminated."
+        " Note that this scalar should be always in CPU memory.")
         .AsDuplicable();
     AddOutput(kOutputs,
               "A set of variables, which will be assigned with values "
