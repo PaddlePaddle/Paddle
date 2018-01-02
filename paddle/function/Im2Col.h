@@ -98,4 +98,54 @@ public:
                   int dilationWidth = 1);
 };
 
+template <class T>
+class Im2ColMobileFunctor {
+public:
+  void operator()(const T* imData,
+                  const TensorShape& imShape,
+                  T* colData,
+                  const TensorShape& colShape,
+                  int strideHeight,
+                  int strideWidth,
+                  int paddingHeight,
+                  int paddingWidth,
+                  int dilationHeight,
+                  int dilationWidth,
+                  int colHeightStart,
+                  int colHeightSize,
+                  int colWidthStart,
+                  int colWidthSize) {
+    int inputHeight = imShape[1];
+    int inputWidth = imShape[2];
+    int filterHeight = colShape[1];
+    int filterWidth = colShape[2];
+    int outputWidth = colShape[4];
+
+    for (int colh = 0; colh < colHeightSize; colh++) {
+      int wOffset = (colHeightStart + colh) % filterWidth;
+      int hOffset = ((colHeightStart + colh) / filterWidth) % filterHeight;
+      int c_im = (colHeightStart + colh) / filterWidth / filterHeight;
+
+      for (int colw = 0; colw < colWidthSize; colw++) {
+        int h = (colWidthStart + colw) / outputWidth;
+        int w = (colWidthStart + colw) % outputWidth;
+
+        int imRowIdx = h * strideHeight + hOffset * dilationHeight;
+        int imColIdx = w * strideWidth + wOffset * dilationWidth;
+        if ((imRowIdx - paddingHeight) < 0 ||
+            (imRowIdx - paddingHeight) >= inputHeight ||
+            (imColIdx - paddingWidth) < 0 ||
+            (imColIdx - paddingWidth) >= inputWidth) {
+          colData[colh * colWidthSize + colw] = static_cast<T>(0);
+        } else {
+          imRowIdx += c_im * inputHeight - paddingHeight;
+          imColIdx -= paddingWidth;
+          colData[colh * colWidthSize + colw] =
+              imData[imRowIdx * inputWidth + imColIdx];
+        }
+      }
+    }
+  }
+};
+
 }  // namespace paddle

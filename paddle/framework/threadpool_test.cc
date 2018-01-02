@@ -12,26 +12,29 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "threadpool.h"
 #include <gtest/gtest.h>
 #include <atomic>
-#include <chrono>
-#include <map>
-#include <thread>
+
+#include "threadpool.h"
 
 namespace framework = paddle::framework;
 
 void do_sum(framework::ThreadPool* pool, std::atomic<int>& sum, int cnt) {
+  std::vector<std::future<void>> fs;
   for (int i = 0; i < cnt; ++i) {
-    pool->Run([&sum]() { sum.fetch_add(1); });
+    auto f = pool->Run([&sum]() { sum.fetch_add(1); });
+    fs.push_back(std::move(f));
+  }
+  for (auto& f : fs) {
+    f.wait();
   }
 }
 
 TEST(ThreadPool, ConcurrentInit) {
   framework::ThreadPool* pool;
-  int concurrent_cnt = 50;
+  int n = 50;
   std::vector<std::thread> threads;
-  for (int i = 0; i < concurrent_cnt; ++i) {
+  for (int i = 0; i < n; ++i) {
     std::thread t([&pool]() { pool = framework::ThreadPool::GetInstance(); });
     threads.push_back(std::move(t));
   }
@@ -40,13 +43,13 @@ TEST(ThreadPool, ConcurrentInit) {
   }
 }
 
-TEST(ThreadPool, ConcurrentStart) {
+TEST(ThreadPool, ConcurrentRun) {
   framework::ThreadPool* pool = framework::ThreadPool::GetInstance();
   std::atomic<int> sum(0);
   std::vector<std::thread> threads;
-  int concurrent_cnt = 50;
+  int n = 50;
   // sum = (n * (n + 1)) / 2
-  for (int i = 1; i <= concurrent_cnt; ++i) {
+  for (int i = 1; i <= n; ++i) {
     std::thread t(do_sum, pool, std::ref(sum), i);
     threads.push_back(std::move(t));
   }
@@ -54,5 +57,5 @@ TEST(ThreadPool, ConcurrentStart) {
     t.join();
   }
   pool->Wait();
-  EXPECT_EQ(sum, ((concurrent_cnt + 1) * concurrent_cnt) / 2);
+  EXPECT_EQ(sum, ((n + 1) * n) / 2);
 }

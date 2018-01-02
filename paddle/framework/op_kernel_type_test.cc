@@ -26,10 +26,8 @@ TEST(OpKernelType, ToString) {
   OpKernelType op_kernel_type(DataType::FP32, CPUPlace(), DataLayout::kNCHW,
                               LibraryType::kCUDNN);
 
-  std::ostringstream stream;
-  stream << op_kernel_type;
   ASSERT_EQ(
-      stream.str(),
+      paddle::framework::KernelTypeToString(op_kernel_type),
       "data_type[5]:data_layout[NCHW]:place[CPUPlace]:library_type[CUDNN]");
 }
 

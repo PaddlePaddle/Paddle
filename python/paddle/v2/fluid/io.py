@@ -180,10 +180,22 @@ def save_inference_model(dirname,
 
     :return: None
     """
+    if isinstance(feeded_var_names, basestring):
+        feeded_var_names = [feeded_var_names]
+    else:
+        if not (bool(feeded_var_names) and all(
+                isinstance(name, basestring) for name in feeded_var_names)):
+            raise ValueError("'feed_var_names' should be a list of str.")
+
+    if isinstance(target_vars, Variable):
+        target_vars = [target_vars]
+    else:
+        if not (bool(target_vars) and all(
+                isinstance(var, Variable) for var in target_vars)):
+            raise ValueError("'target_vars' should be a list of Variable.")
+
     if main_program is None:
         main_program = default_main_program()
-    if not isinstance(target_vars, list):
-        target_vars = [target_vars]
 
     if not os.path.isdir(dirname):
         os.makedirs(dirname)

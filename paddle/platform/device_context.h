@@ -52,6 +52,14 @@ class CPUDeviceContext : public DeviceContext {
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
 
+template <typename Place>
+struct DefaultDeviceContextType;
+
+template <>
+struct DefaultDeviceContextType<platform::CPUPlace> {
+  using TYPE = CPUDeviceContext;
+};
+
 #ifdef PADDLE_WITH_CUDA
 
 class EigenCudaStreamDevice;
@@ -90,6 +98,11 @@ class CUDADeviceContext : public DeviceContext {
   cublasHandle_t cublas_handle_;
 };
 
+template <>
+struct DefaultDeviceContextType<platform::CUDAPlace> {
+  using TYPE = CUDADeviceContext;
+};
+
 class CUDNNDeviceContext : public CUDADeviceContext {
  public:
   explicit CUDNNDeviceContext(CUDAPlace place);
@@ -109,13 +122,13 @@ class DeviceContextPool {
  public:
   explicit DeviceContextPool(const std::vector<platform::Place>& places);
 
-  static DeviceContextPool& Get() {
+  static DeviceContextPool& Instance() {
     PADDLE_ENFORCE_NOT_NULL(pool, "Need to Create DeviceContextPool first!");
     return *pool;
   }
 
   /*! \brief  Create should only called by Init function */
-  static DeviceContextPool& Create(const std::vector<platform::Place>& places) {
+  static DeviceContextPool& Init(const std::vector<platform::Place>& places) {
     if (pool == nullptr) {
       pool = new DeviceContextPool(places);
     }
@@ -123,13 +136,14 @@ class DeviceContextPool {
   }
 
   /*! \brief  Return handle of single device context. */
-  const platform::DeviceContext* Borrow(const platform::Place& place);
+  const platform::DeviceContext* Get(const platform::Place& place);
 
-  /*! \brief  Return handle of multi-device context. */
-  std::vector<const platform::DeviceContext*> Borrow(
-      const std::vector<platform::Place>& places);
-
-  ~DeviceContextPool() {}
+  template <typename Place>
+  const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(
+      const Place& place) {
+    return reinterpret_cast<
+        const typename DefaultDeviceContextType<Place>::TYPE*>(Get(place));
+  }
 
  private:
   static DeviceContextPool* pool;
