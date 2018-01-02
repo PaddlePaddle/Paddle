@@ -51,7 +51,7 @@ struct KernelTypePairHash {
 
 template <typename InType, typename OutType>
 struct CastDataTypeFunctor {
-  HOSTDEVICE OutType operator()(InType in) const {
+  HOSTDEVICE inline OutType operator()(InType in) const {
     return static_cast<OutType>(in);
   }
 };
@@ -94,6 +94,7 @@ struct CastDataLayout {
   framework::Tensor* out_;
   const platform::DeviceContext* ctx_;
   const std::vector<int> axis_;
+
   template <typename T>
   void operator()() {
     auto place = ctx_->GetPlace();

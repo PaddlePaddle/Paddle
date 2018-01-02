@@ -114,7 +114,7 @@ TEST(DataTransform, Layout) {
   Variable in;
   Variable out;
   Tensor* src = in.GetMutable<Tensor>();
-  src->mutable_data<float>(make_ddim({2, 3}), CPUPlace());
+  src->mutable_data<double>(make_ddim({2, 3, 1, 2}), CPUPlace());
   src->set_layout(DataLayout::kNHWC);
 
   DeviceContext* ctx = new CPUDeviceContext();
@@ -125,6 +125,7 @@ TEST(DataTransform, Layout) {
     auto pair0 = std::make_pair(kernel1, kernel2);
     instance.Get(pair0)(ctx, pair0, in, &out);
   }
+
   Tensor dst = out.Get<Tensor>();
   EXPECT_TRUE(dst.layout() != src->layout());
 }

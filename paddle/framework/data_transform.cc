@@ -78,8 +78,15 @@ void TransDataLayout(const platform::DeviceContext* ctx,
                      const KernelTypePair& kernel_pair, const Variable& in,
                      Variable* out) {
   PADDLE_ENFORCE(in.IsType<Tensor>(), "Only Support Tensor transform!.");
+  PADDLE_ENFORCE(
+      platform::places_are_same_class(kernel_pair.first.place_,
+                                      kernel_pair.second.place_),
+      "TransDataType Only Support DataType transform on same place!");
+
   auto src = in.Get<Tensor>();
   auto* dst = out->GetMutable<Tensor>();
+  PADDLE_ENFORCE(arity(src.dims()) == 4, "Input Arity Only Suppport 4!");
+
   dst->Resize(src.dims());
   auto place = kernel_pair.second.place_;
   CopyFrom(src, place, *ctx, dst);
