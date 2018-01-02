@@ -245,9 +245,12 @@ template struct SetConstant<platform::CPUDeviceContext, int>;
 template struct SetConstant<platform::CPUDeviceContext, int64_t>;
 template struct SetConstant<platform::CPUDeviceContext, bool>;
 
-#define DEFINE_CPU_TRANS(RANK)                                        \
-  template struct Transpose<platform::CPUDeviceContext, float, RANK>; \
-  template struct Transpose<platform::CPUDeviceContext, double, RANK>;
+#define DEFINE_CPU_TRANS(RANK)                                          \
+  template struct Transpose<platform::CPUDeviceContext, float, RANK>;   \
+  template struct Transpose<platform::CPUDeviceContext, double, RANK>;  \
+  template struct Transpose<platform::CPUDeviceContext, int, RANK>;     \
+  template struct Transpose<platform::CPUDeviceContext, int64_t, RANK>; \
+  template struct Transpose<platform::CPUDeviceContext, bool, RANK>;
 
 DEFINE_CPU_TRANS(1);
 DEFINE_CPU_TRANS(2);
