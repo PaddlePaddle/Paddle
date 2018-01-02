@@ -14,18 +14,17 @@ limitations under the License. */
 
 #include "paddle/framework/executor.h"
 
-#include <algorithm>
-#include <iostream>
-#include <memory>
 #include <set>
-#include <vector>
 
+#include "gflags/gflags.h"
 #include "paddle/framework/feed_fetch_type.h"
 #include "paddle/framework/lod_rank_table.h"
-#include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/framework/scope.h"
+
+DEFINE_bool(check_nan_inf, false,
+            "Checking whether operator produce NAN/INF or not. It will be "
+            "extremely slow so please use this flag wisely.");
 
 namespace paddle {
 namespace framework {
@@ -56,6 +55,19 @@ static void CreateTensor(Variable* var, proto::VarDesc::VarType var_type) {
         "[LoDTensor, SelectedRows, FEED_MINIBATCH, FETCH_LIST, LOD_RANK_TABLE]",
         var_type);
   }
+}
+
+static void CheckTensorNANOrInf(const std::string& name,
+                                const framework::Tensor& tensor) {
+  if (tensor.memory_size() == 0) {
+    return;
+  }
+  if (tensor.type().hash_code() != typeid(float).hash_code() &&
+      tensor.type().hash_code() != typeid(double).hash_code()) {
+    return;
+  }
+  PADDLE_ENFORCE(!framework::HasInf(tensor), "Tensor %s has Inf", name);
+  PADDLE_ENFORCE(!framework::HasNAN(tensor), "Tensor %s has NAN", name);
 }
 
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
@@ -101,6 +113,15 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
     auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
     VLOG(3) << op->DebugString();
     op->Run(*local_scope, place_);
+    if (FLAGS_check_nan_inf) {
+      for (auto& vname : op->OutputVars(true)) {
+        auto* var = local_scope->FindVar(vname);
+        if (var == nullptr) continue;
+        if (var->IsType<framework::LoDTensor>()) {
+          CheckTensorNANOrInf(vname, var->Get<framework::LoDTensor>());
+        }
+      }
+    }
   }
   if (create_vars && create_local_scope) {
     scope->DeleteScope(local_scope);

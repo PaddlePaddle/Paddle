@@ -77,10 +77,10 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
       } else if (paddle::platform::is_cpu_place(tensor.place())) {
         dst_tensor = tensor;
       }
-      return py::buffer_info(
-          dst_tensor.mutable_data<CUR_TYPE>(dst_tensor.place()),
-          sizeof(CUR_TYPE), py::format_descriptor<CUR_TYPE>::format(),
-          (size_t)framework::arity(dst_tensor.dims()), dims_outside, strides);
+      return py::buffer_info(dst_tensor.data<CUR_TYPE>(), sizeof(CUR_TYPE),
+                             py::format_descriptor<CUR_TYPE>::format(),
+                             (size_t)framework::arity(dst_tensor.dims()),
+                             dims_outside, strides);
     } else {
       constexpr bool less = I + 1 < std::tuple_size<std::tuple<ARGS...>>::value;
       return CastToPyBufferImpl<less, I + 1, ARGS...>()(tensor);
