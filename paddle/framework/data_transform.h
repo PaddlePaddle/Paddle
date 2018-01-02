@@ -18,18 +18,21 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "glog/logging.h"  // For VLOG
 #include "paddle/framework/op_kernel_type.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/framework/variable.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/macros.h"
+#include "paddle/platform/place.h"
 
 namespace paddle {
 namespace framework {
 
-using DataTransformFn = std::function<void(const platform::DeviceContext* ctx,
-                                           const Variable& in, Variable* out)>;
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
+using DataTransformFn = std::function<void(const platform::DeviceContext* ctx,
+                                           const KernelTypePair& pair,
+                                           const Variable& in, Variable* out)>;
 
 struct KernelTypePairHash {
   static void HashCombine(const OpKernelType& t, std::size_t* seed) {
@@ -56,9 +59,9 @@ class DataTransformFnMap {
     return map_.find(key_pair) != map_.end();
   }
 
-  void Insert(const OpKernelType& left, const OpKernelType& right,
+  void Insert(const OpKernelType& from, const OpKernelType& to,
               const DataTransformFn& data_tranform_fn) {
-    Insert(std::make_pair(left, right), data_tranform_fn);
+    Insert(std::make_pair(from, to), data_tranform_fn);
   }
 
   void Insert(const KernelTypePair& kernel_type_pair,
@@ -91,6 +94,21 @@ class DataTransformFnMap {
   DataTransformMap map_;
   DISABLE_COPY_AND_ASSIGN(DataTransformFnMap);
 };
+
+/**
+ * register a unique name for one module of data transform
+ */
+#define REGISTER_DATA_TRANSFORM_MODEULE(module) \
+  int data_transform_module_##module() { return 0; }
+
+/**
+ * this MACRO will force linker to link module to the target, or the
+ * module may be skipped by linker.
+ */
+#define USE_DATA_TRANSFORM_MODULE(module)                                 \
+  extern int data_transform_module_##module();                            \
+  static int data_transform_module_var_##module __attribute__((unused)) = \
+      data_transform_module_##module()
 
 // generate unique name with __LINE__
 // refs https://stackoverflow.com/questions/1597007

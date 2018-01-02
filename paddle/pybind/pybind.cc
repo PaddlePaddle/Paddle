@@ -17,6 +17,7 @@ limitations under the License. */
 #include <mutex>  // for call_once
 #include <unordered_map>
 #include "paddle/framework/backward.h"
+#include "paddle/framework/data_transform_modules.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/feed_fetch_method.h"
 #include "paddle/framework/framework.pb.h"

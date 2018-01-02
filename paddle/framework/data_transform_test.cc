@@ -54,17 +54,20 @@ auto kernel1 = GenFromBit({0, 0, 0, 1});
 auto kernel2 = GenFromBit({0, 0, 1, 0});
 auto kernel3 = GenFromBit({0, 0, 1, 1});
 
-void TransDataType_t(const platform::DeviceContext* ctx, const Variable& in,
+void TransDataType_t(const platform::DeviceContext* ctx,
+                     const KernelTypePair& pair, const Variable& in,
                      Variable* out) {
   test_value++;
 }
 
-void TransDataLayout_t(const platform::DeviceContext* ctx, const Variable& in,
+void TransDataLayout_t(const platform::DeviceContext* ctx,
+                       const KernelTypePair& pair, const Variable& in,
                        Variable* out) {
   test_value--;
 }
 
-void TransLibraryType_t(const platform::DeviceContext* ctx, const Variable& in,
+void TransLibraryType_t(const platform::DeviceContext* ctx,
+                        const KernelTypePair& pair, const Variable& in,
                         Variable* out) {
   test_value += 2;
 }
@@ -88,12 +91,15 @@ TEST(DataTransform, Register) {
   paddle::framework::Variable in;
   paddle::framework::Variable out;
 
-  instance.Get(std::make_pair(frw::kernel0, frw::kernel1))(ctx, in, &out);
+  auto pair1 = std::make_pair(frw::kernel0, frw::kernel1);
+  instance.Get(pair1)(ctx, pair1, in, &out);
   ASSERT_EQ(test_value, 1);
 
-  instance.Get(std::make_pair(frw::kernel1, frw::kernel2))(ctx, in, &out);
+  auto pair2 = std::make_pair(frw::kernel1, frw::kernel2);
+  instance.Get(pair2)(ctx, pair2, in, &out);
   ASSERT_EQ(test_value, 0);
 
-  instance.Get(std::make_pair(frw::kernel0, frw::kernel2))(ctx, in, &out);
+  auto pair3 = std::make_pair(frw::kernel0, frw::kernel2);
+  instance.Get(pair3)(ctx, pair3, in, &out);
   ASSERT_EQ(test_value, 2);
 }

@@ -46,6 +46,15 @@ struct OpKernelType {
   platform::Place place_;
   LibraryType library_type_;
 
+  OpKernelType() = delete;
+
+  OpKernelType(const OpKernelType& t) {
+    data_type_ = t.data_type_;
+    data_layout_ = t.data_layout_;
+    place_ = t.place_;
+    library_type_ = t.library_type_;
+  }
+
   OpKernelType(proto::DataType data_type, platform::Place place,
                DataLayout data_layout = DataLayout::kAnyLayout,
                LibraryType library_type = LibraryType::kPlain)

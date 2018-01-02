@@ -383,6 +383,7 @@ class OperatorWithKernel : public OperatorBase {
  protected:
   virtual OpKernelType GetActualKernelType(const ExecutionContext& ctx) const;
   virtual OpKernelType GetExpectedKernelType(
+      const ExecutionContext& ctx,
       const OpKernelType& actual_kernel_type) const;
 
  private:

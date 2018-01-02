@@ -420,9 +420,10 @@ void OperatorWithKernel::Run(const Scope& scope,
   // check if op[type] have kernel for kernel_key
   OpKernelMap& kernels = kernels_iter->second;
 
-  ExecutionContext ctx(*this, scope, *dev_ctx);
-  auto actual_kernel_key = GetActualKernelType(ctx);
-  auto expected_kernel_key = GetExpectedKernelType(actual_kernel_key);
+  ExecutionContext default_ctx(*this, scope, *dev_ctx);
+  auto actual_kernel_key = GetActualKernelType(default_ctx);
+  auto expected_kernel_key =
+      GetExpectedKernelType(default_ctx, actual_kernel_key);
   auto kernel_iter = kernels.find(expected_kernel_key);
 
   if (kernel_iter == kernels.end()) {
@@ -430,6 +431,10 @@ void OperatorWithKernel::Run(const Scope& scope,
                  expected_kernel_key);
   }
 
+  VLOG(3) << "actual_kernel_key:" << actual_kernel_key;
+  VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
+
+  Scope& new_scope = scope.NewScope();
   if (actual_kernel_key == expected_kernel_key) {
     PADDLE_ENFORCE_EQ(actual_kernel_key.place_, expected_kernel_key.place_,
                       "Currently, model parallelism is only supported between "
@@ -446,32 +451,38 @@ void OperatorWithKernel::Run(const Scope& scope,
       // filter vars that has been transformed
       std::vector<std::string> need_trans;
       for (auto var_name : input_vars) {
-        auto var_name_trans =
-            var_name + framework::KernelTypeToString(expected_kernel_key);
-        if (!scope.FindVar(var_name_trans)) {
-          const_cast<Scope&>(scope).Var(var_name_trans);
-          need_trans.push_back(var_name);
+        auto* var = scope.FindVar(var_name);
+        if (var->IsType<LoDTensor>()) {
+          if (!is_same_place(var->Get<LoDTensor>().place(),
+                             kernel_pair.second.place_)) {
+            if (!new_scope.FindVarLocally(var_name)) {
+              new_scope.Var(var_name);
+              need_trans.push_back(var_name);
+            }
+          }
         }
       }
 
       if (!need_trans.empty()) {
-        auto trans_dev_ctx = GetDeviceContext(kernel_pair);
+        dev_ctx = GetDeviceContext(kernel_pair);
 
         // Wait for transform starting
         dev_ctx->Wait();
 
         for (auto var_name : need_trans) {
-          (*trans_fun)(trans_dev_ctx, *(scope.FindVar(var_name)),
-                       scope.FindVar(var_name + framework::KernelTypeToString(
-                                                    expected_kernel_key)));
+          (*trans_fun)(dev_ctx, kernel_pair, *(scope.FindVar(var_name)),
+                       new_scope.FindVar(var_name));
         }
         // Wait for data transform finishing
-        trans_dev_ctx->Wait();
+        dev_ctx->Wait();
       }
+    } else {
+      PADDLE_THROW("DataTransformFn not found");
     }
   }
 
-  kernel_iter->second->Compute(ctx);
+  kernel_iter->second->Compute(ExecutionContext(*this, new_scope, *dev_ctx));
+  dev_ctx->Wait();
 }
 
 OpKernelType OperatorWithKernel::GetActualKernelType(
@@ -480,7 +491,7 @@ OpKernelType OperatorWithKernel::GetActualKernelType(
 }
 
 OpKernelType OperatorWithKernel::GetExpectedKernelType(
-    const OpKernelType& actual_kernel_type) const {
+    const ExecutionContext& ctx, const OpKernelType& actual_kernel_type) const {
   return actual_kernel_type;
 }
 
