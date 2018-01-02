@@ -414,9 +414,25 @@ def lod_rank_table(x, level=0):
 
 
 def max_sequence_len(rank_table):
-    """
-    This function creates an operator to calculate the length of
-    max seqence through input rank_table(should be a lod_rank_table)
+    """Max Sequence Len Operator. Given a LoDRankTable object, this layer
+    returns the max length of batch of sequences. In fact, a LoDRankTable object
+    contains a list of tuples (<sequence index, sequence length>) and the list
+    is already sorted by sequence length in descending order, so the operator
+    just returns the sequence length of the first tuple element.
+
+    Args:
+        rank_table (Variable): Input variable which is a LoDRankTable object.
+
+    Returns:
+        Variable: the max length of sequence.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[10],
+                            dtype='float32', lod_level=1)
+            rank_table = layers.lod_rank_table(x=x, level=0)
+            max_seq_len = layers.max_sequence_len(rank_table)
     """
     helper = LayerHelper("max_seqence_len", **locals())
     res = helper.create_tmp_variable(dtype="int64")
