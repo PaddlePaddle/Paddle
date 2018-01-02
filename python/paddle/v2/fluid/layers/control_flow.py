@@ -397,25 +397,34 @@ class While(object):
 
 
 def lod_rank_table(x, level=0):
-    """LoD Rank Table Operator. Given an input variable `x` and a LoD level,
-    this layer creates a LodRankTable object. A LoDRankTable object contains a
-    list of bi-element tuples and each tuple consists of an index and a length.
-    For given level's LoD information, the index is the sequence position and
-    the length representes the sequence length. Please note that the list is
-    ranked in descending order by the length. The following is an example:
+    """LoD Rank Table Operator. Given an input variable **x** and a level number
+    of LoD, this layer creates a LodRankTable object. A LoDRankTable object
+    contains a list of bi-element tuples. Each tuple consists of an index and
+    a length, both of which are int type. Reffering to specified level of LoD,
+    the index is the sequence index number and the length representes the
+    sequence length. Please note that the list is ranked in descending order by
+    the length. The following is an example:
 
         .. code-block:: text
 
             x is a LoDTensor:
-                x.lod = [[0,             1, 2, 3],
+                x.lod = [[0,                2, 3],
                          [0,             5, 6, 7]]
                 x.data = [a, b, c, d, e, f, g]
 
-            Create lod rank table:
-                lod_rank_table_obj = lod_rank_table(x, level=1)
+            1. set level to 0:
+                Create lod rank table:
+                    lod_rank_table_obj = lod_rank_table(x, level=0)
 
-            Get:
-                lod_rank_table_obj.items() = [(0, 5), (1, 1), (2, 1)]
+                Get:
+                    lod_rank_table_obj.items() = [(0, 2), (1, 1)]
+
+            2. set level to 1:
+                Create lod rank table:
+                    lod_rank_table_obj = lod_rank_table(x, level=1)
+
+                Get:
+                    lod_rank_table_obj.items() = [(0, 5), (1, 1), (2, 1)]
 
     Args:
         x (Variable): Input variable, a LoDTensor based which to create the lod
