@@ -170,7 +170,7 @@ def main():
 
     exe.run(fluid.default_startup_program())
 
-    embedding_param = fluid.g_scope.find_var(embedding_name).get_tensor()
+    embedding_param = fluid.global_scope().find_var(embedding_name).get_tensor()
     embedding_param.set(
         load_parameter(conll05.get_embedding(), word_dict_len, word_dim), place)
 
