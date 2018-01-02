@@ -53,7 +53,6 @@ function(op_library TARGET)
     if (${op_library_DEPS_len} GREATER 0)
         set(DEPS_OPS ${TARGET} ${DEPS_OPS} PARENT_SCOPE)
     endif()
-    
     if (WITH_GPU)
         nv_library(${TARGET} SRCS ${cc_srcs} ${cu_cc_srcs} ${cu_srcs} DEPS ${op_library_DEPS}
                 ${op_common_deps})
@@ -187,6 +186,36 @@ endfunction()
 add_subdirectory(math)
 add_subdirectory(nccl)
 
+set(DEPS_OPS
+    cond_op
+    cross_entropy_op
+    recurrent_op
+    softmax_with_cross_entropy_op
+    softmax_op
+    sequence_softmax_op
+    sum_op
+    pool_op
+    maxout_op
+    unpool_op
+    pool_with_index_op
+    conv_op
+    conv_transpose_op
+    nccl_op
+    sequence_conv_op
+    sequence_pool_op
+    lod_rank_table_op
+    lod_tensor_to_array_op
+    array_to_lod_tensor_op
+    max_sequence_len_op
+    lstm_op
+    gru_op
+    adagrad_op
+    sgd_op
+    save_op
+    load_op
+    send_op
+    recv_op
+    detection_output_op)
 if(WITH_GPU)
     op_library(nccl_op DEPS nccl_common)
 else()
@@ -210,6 +239,7 @@ op_library(cond_op DEPS framework_proto tensor net_op)
 op_library(cross_entropy_op DEPS cross_entropy)
 op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
 op_library(softmax_op DEPS softmax)
+op_library(detection_output_op DEPS softmax)
 op_library(sequence_softmax_op DEPS softmax)
 op_library(sum_op DEPS selected_rows_functor)
 op_library(sgd_op DEPS selected_rows_functor)
