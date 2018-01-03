@@ -1199,9 +1199,12 @@ def lstm_unit(x_t,
     This layer has two outputs including :math:`h_t` and :math:`o_t`.
 
     Args:
-        x_t (Variable): The input value of current step, a 2-D tensor.
-        hidden_t_prev (Variable): The hidden value of lstm unit, a 2-D tensor.
-        cell_t_prev (Variable): The cell value of lstm unit, a 2-D tensor.
+        x_t (Variable): The input value of current step, a 2-D tensor with shape
+            M x N, M for batch size and N for input size.
+        hidden_t_prev (Variable): The hidden value of lstm unit, a 2-D tensor
+            with shape M x S, M for batch size and S for size of lstm unit.
+        cell_t_prev (Variable): The cell value of lstm unit, a 2-D tensor with
+            shape M x S, M for batch size and S for size of lstm unit.
         forget_bias (float): The forget bias of lstm unit.
         param_attr (ParamAttr): The attributes of parameter weights, used to set
             initializer, name etc.
