@@ -68,9 +68,10 @@ function(op_library TARGET)
         endif()
     endforeach()
 
+    # The registration of USE_OP, please refer to paddle/framework/op_registry.h.
+    # Note that it's enough to just adding one operator to pybind in a *_op.cc file.
+    # And for detail pybind information, please see generated paddle/pybind/pybind.h.
     file(READ ${TARGET}.cc TARGET_CONTENT)
-    # It's enough to just adding one operator to pybind.
-    # And for detail pybind information, please see paddle/pybind/pybind.h.
     string(REGEX MATCH "REGISTER_OP\\(.*REGISTER_OP\\(" multi_register "${TARGET_CONTENT}")
     string(REGEX MATCH "REGISTER_OP\\([a-z0-9_]*," one_register "${multi_register}")
     if (one_register STREQUAL "")
