@@ -22,8 +22,8 @@ DECLARE_bool(rnn_use_batch);
 namespace paddle {
 
 /**
- * @brief MKLPackedRecurrentLayer is same with RecurrentLayer but is optimized
- * with MKL cblas packed gemm.
+ * @brief MKLPackedRecurrentLayer is almost the same with RecurrentLayer
+ * but is optimized with MKL cblas packed gemm.
  * More details:
  * https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/mkl/mkl_packed.md
  */
@@ -48,7 +48,7 @@ protected:
                      const int* starts) override;
 
 protected:
-  /// packed_weight_ is contains same data with
+  /// packed_weight_ contains same data with
   /// RecurrentLayer::weight_ but is packed
   std::unique_ptr<MKLPackedWeight> packed_weight_;
   /// packed_weightT_ is the transposition matrix of packed_weight_
