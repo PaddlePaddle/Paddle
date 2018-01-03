@@ -415,7 +415,8 @@ void OperatorWithKernel::Run(const Scope& scope,
   }
 
   ExecutionContext ctx(*this, scope, *dev_ctx);
-  auto expected_kernel_key = GetExpectedKernelType(ctx);
+  auto actual_kernel_key = GetActualKernelType(ctx);
+  auto expected_kernel_key = GetExpectedKernelType(ctx, actual_kernel_key);
 
   std::vector<std::pair<std::string, std::string>> need_trans;
   for (auto& var_name : this->InputVars()) {
@@ -462,7 +463,8 @@ void OperatorWithKernel::Run(const Scope& scope,
                  expected_kernel_key);
   }
 
-  RenameGuard guard(scope, need_trans);
+  //  RenameGuard guard(scope, need_trans);
+  std::cout << "expected_kernel_key: " << expected_kernel_key << std::endl;
   kernel_iter->second->Compute(ctx);
 }
 
@@ -472,8 +474,8 @@ OpKernelType OperatorWithKernel::GetActualKernelType(
 }
 
 OpKernelType OperatorWithKernel::GetExpectedKernelType(
-    const ExecutionContext& ctx) const {
-  return OpKernelType(IndicateDataType(ctx), ctx.GetPlace());
+    const ExecutionContext& ctx, const OpKernelType& actual_kernel_type) const {
+  return actual_kernel_type;
 }
 
 proto::DataType OperatorWithKernel::IndicateDataType(
