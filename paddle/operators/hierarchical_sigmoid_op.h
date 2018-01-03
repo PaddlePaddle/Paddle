@@ -32,15 +32,14 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
-    auto* params = ctx.Input<framework::Tensor>("Parameters");
-    auto* label = ctx.Input<framework::Tensor>("Label");
+    auto* w = ctx.Input<framework::Tensor>("W");
+    auto* ids = ctx.Input<framework::Tensor>("Ids");
     auto* bias = ctx.Input<framework::Tensor>("Bias");
     auto* out = ctx.Output<framework::Tensor>("Out");
     size_t num_classes = static_cast<size_t>(ctx.Attr<int>("num_classes"));
 
     int64_t code_length = math::FindLastSet(num_classes - 1);
     int64_t batch_size = in->dims()[0];
-    auto* ids = label->data<int64_t>();
     framework::Tensor pre_out;
     framework::Tensor sum;
     auto pre_out_data = pre_out.mutable_data<T>(
@@ -59,18 +58,19 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
     auto out_mat = framework::EigenVector<T>::Flatten(*out);
 
     if (bias) {
-      bit_code.Add(num_classes, ids, pre_out, *bias);
+      bit_code.Add(num_classes, ids->data<int64_t>(), pre_out, *bias);
     }
     for (int i = 0; i < in->dims()[0]; ++i) {
-      bit_code.Mul(num_classes, ids, pre_out, params->Slice(i, i + 1),
-                   in->Slice(i, i + 1));
+      bit_code.Mul(num_classes, ids->data<int64_t>(), pre_out,
+                   w->Slice(i, i + 1), in->Slice(i, i + 1));
     }
     // clip the matrix with (-40, 40)
     Transform<DeviceContext> trans;
     trans(ctx.template device_context<DeviceContext>(), pre_out_data,
           pre_out_data + pre_out.numel(), pre_out_data,
           ClipFunctor<T>(static_cast<T>(-40.0), static_cast<T>(40.0)));
-    bit_code.Sum(num_classes, ids, pre_out, *out, static_cast<T>(-1));
+    bit_code.Sum(num_classes, ids->data<int64_t>(), pre_out, *out,
+                 static_cast<T>(-1));
     // softrelu with threshold is 40.0
     trans(ctx.template device_context<DeviceContext>(), pre_out_data,
           pre_out_data + pre_out.numel(), pre_out_data,
@@ -88,10 +88,9 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
     auto* in_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto* params =
-        ctx.Output<framework::Tensor>(framework::GradVarName("Parameters"));
+    auto* w = ctx.Output<framework::Tensor>(framework::GradVarName("W"));
     auto* bias = ctx.Output<framework::Tensor>(framework::GradVarName("Bias"));
-    auto* label = ctx.Input<framework::Tensor>("Label");
+    auto* ids = ctx.Input<framework::Tensor>("Ids");
     size_t num_classes = static_cast<size_t>(ctx.Attr<int>("num_classes"));
     int64_t code_length = math::FindLastSet(num_classes - 1);
     int64_t batch_size = in->dims()[0];
@@ -102,8 +101,6 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     auto& device_ctx = ctx.template device_context<DeviceContext>();
     auto pre_out_mat = EigenMatrix<T>::From(pre_out);
-    auto* ids = label->data<int64_t>();
-
     // init pre_out matrix with {1.0}
     math::SetConstant<DeviceContext, T> one;
     math::MatrixBitCodeFunctor<T> bit_code;
@@ -112,19 +109,22 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
     pre_out_mat.device(place) =
         pre_out_mat * (static_cast<T>(1.0) - static_cast<T>(1.0) / pre_out_mat);
 
-    bit_code.Sub(num_classes, ids, pre_out);
+    bit_code.Sub(num_classes, ids->data<int64_t>(), pre_out);
 
     if (bias) {
-      bit_code.AddGrad(num_classes, ids, pre_out, *bias);
+      bias->mutable_data<T>(ctx.GetPlace());
+      bit_code.AddGrad(num_classes, ids->data<int64_t>(), pre_out, *bias);
     }
-
+    in_grad->mutable_data<T>(ctx.GetPlace());
+    w->mutable_data<T>(ctx.GetPlace());
     for (int i = 0; i < in_grad->dims()[0]; ++i) {
-      auto p_sliced = params->Slice(i, i + 1);
+      auto p_sliced = w->Slice(i, i + 1);
       auto in_sliced = in->Slice(i, i + 1);
       auto in_grad_sliced = in_grad->Slice(i, i + 1);
-      bit_code.MulGradWeight(num_classes, ids, pre_out, p_sliced, in_sliced);
-      bit_code.MulGradError(num_classes, ids, pre_out, p_sliced,
-                            in_grad_sliced);
+      bit_code.MulGradWeight(num_classes, ids->data<int64_t>(), pre_out,
+                             p_sliced, in_sliced);
+      bit_code.MulGradError(num_classes, ids->data<int64_t>(), pre_out,
+                            p_sliced, in_grad_sliced);
     }
   }
 };

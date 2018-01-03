@@ -56,7 +56,6 @@ static void AddByBitCodeT(Op op, CodeTable code_table, const int64_t* codes,
                           const framework::Tensor& vec) {
   size_t num_sample = tmat.dims()[0];
   size_t width = vec.dims()[1];
-
   for (size_t i = 0; i < num_sample; ++i) {
     auto code = code_table(static_cast<size_t>(codes[i]));
     int code_length = code.get_length();

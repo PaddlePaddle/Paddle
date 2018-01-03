@@ -109,8 +109,6 @@ PYBIND11_PLUGIN(core) {
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
       .def("set_float_element", TensorSetElement<float>)
       .def("get_float_element", TensorGetElement<float>)
-      .def("set_int64_element", TensorSetElement<int64_t>)
-      .def("get_int64_element", TensorGetElement<int64_t>)
       .def("set_double_element", TensorSetElement<double>)
       .def("get_double_element", TensorGetElement<double>)
       .def("dtype", [](Tensor &self) { return ToDataType(self.type()); });

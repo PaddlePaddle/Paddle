@@ -61,10 +61,8 @@ class HierarchicalSigmoidOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Parameters"),
-                   "Input(Parameters)"
-                   "should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Ids"), "Input(Ids) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("W"), "Input(W) should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null.");
     const int64_t batch_size = ctx->GetInputDim("X")[0];
     std::vector<int64_t> output_shape({batch_size, 1});
@@ -84,15 +82,17 @@ class HierarchicalSigmoidGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Parameters"),
-                   "Input(Parameters)"
-                   "should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"),
-                   "Input(Label)"
-                   "should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Parameters")),
-                   "Input(Parameters@Grad should not be null.)");
+    PADDLE_ENFORCE(ctx->HasInput("W"), "Input(W) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Ids"), "Input(Ids) should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("W")),
+                   "Input(W@Grad should not be null.)");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")));
+    if (ctx->HasOutput(framework::GradVarName("Bias"))) {
+      ctx->SetOutputDim(framework::GradVarName("Bias"),
+                        ctx->GetInputDim("Bias"));
+    }
+    ctx->SetOutputDim(framework::GradVarName("W"), ctx->GetInputDim("W"));
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 
  protected:
@@ -112,11 +112,11 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor, required) The input Tensor, which the shape is"
              "[N * D], which N is the size of mini-batch,"
              "D is the embded size");
-    AddInput("Parameters",
+    AddInput("W",
              "(Tensor, required), The parameters of hierarchical "
              "sigmoid operator, each of them is s a 3-D tensor, the shape is"
              "[N, num_classes - 1, D]");
-    AddInput("Label",
+    AddInput("Ids",
              "(Tensor, required), The labels of training data. It's a"
              "1-D tensor, which the shape is [1, N]");
     AddInput("Bias",

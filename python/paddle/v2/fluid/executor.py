@@ -148,7 +148,6 @@ class Executor(object):
                 inputs={'X': [var]},
                 outputs={'Out': [fetch_var]},
                 attrs={'col': i})
-
         self.executor.run(program.desc, scope, 0, True, True)
         outs = [
             core.get_fetch_variable(scope, fetch_var_name, i)

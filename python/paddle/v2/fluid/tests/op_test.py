@@ -123,8 +123,6 @@ def get_numeric_gradient(scope,
     def __set_elem__(tensor, i, e):
         if tensor_to_check_dtype == np.float32:
             tensor.set_float_element(i, e)
-        elif tensor_to_check_dtype == np.int64:
-            tensor.set_int64_element(i, e)
         else:
             tensor.set_double_element(i, e)
 
