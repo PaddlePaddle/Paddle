@@ -2,7 +2,7 @@
 
 ## Compile and Execution
 
-A PaddlePaddle program consists of two parts -- the first generates a `ProgramDesc` protobuf message that describes the program, and the second runs this message using a C++ class `Executor`.
+A PaddlePaddle program consists of three parts -- the first generates a `ProgramDesc` protobuf message that describes the program, the second plans this message using a C++ class `Planner` and generates an `ExecutionPlan` protobuf messages, and the third run the message using a C++ class `Executor`.
 
 A simple example PaddlePaddle program can be found in [graph.md](./graph.md):
 
@@ -15,7 +15,64 @@ optimize(cost)
 train(cost, reader=mnist.train())
 ```
 
-The first five lines of the following PaddlePaddle program generates, or, compiles, the `ProgramDesc` message.  The last line runs it.
+The first five lines of the following PaddlePaddle program generates,
+or, compiles, the `ProgramDesc` message. The last line runs it by
+generating the `ExecutionPlan` and sending to `Executor` for
+execution.
+
+
+### ProgramDesc
+
+The `ProgramDesc` describes the computation specified by the user, it
+will be the same regardless which devices the program runs on
+(CPU/single GPU/multiple GPU/multiple nodes), with the following
+requirements:
+
+1. It should be programming language agnostic. Currently, we have a
+Python API that generates the `ProgramDesc`, but we could add the
+support for other languages later.
+
+1. It should **not** describe anything that is not specified by the
+   user. For example:
+   1. The OPs for the backward pass added by PaddlePaddle
+   1. Any optimizations to the program.
+   1. OP placement information that is not specified by the user.
+
+
+### ExecutionPlan
+
+The `ExecutionPlan` contains all the details of running the program,
+including which device each OP is placed on. One `Executor` could have
+multiple devices (e.g, CPU, GPUs), but it runs only one
+`ExecutionPlan`. In distributed training there will be `n`
+`ExecutionPlan` for `n` `Executor`, jointly completes the
+`ProgramDesc` specified by the user.
+
+
+### Planner
+
+The planner takes `ProgramDesc` as the input and outputs the
+`ExcutionPlan`, the steps are:
+
+1. Add necessary OPs that are not specified by the user to the
+   `ProgramDesc`. E.g., add the backward pass.
+
+1. Prune the unnecessary computations from the `ProgramDesc`.
+
+1. Transforms the `ProgramDesc` given the available devices. E.g., add
+   data parallelism by splitting the input mini-batches and
+   replicating the OPs onto different GPUs.
+
+1. Generate `ExecutionPlan` by placing each OP onto available devices,
+   the placement information is written in the `ExecutionPlan`.
+
+1. In distributed training, split the `ExecutionPlan` into multiple
+   `ExecutionPlans` and add send/recv OP between them. For local
+   training, this step is not necessary since there is only one
+   executor.
+
+1. Send the `ExecutionPlan` to the executor for execution.
+
 
 ## Programs and Blocks
 
