@@ -18,7 +18,8 @@ namespace platform {
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
 const platform::DeviceContext* DeviceContextPool::Get(
-    const platform::Place& place) {
+    const platform::Place& place,
+    const framework::LibraryType& library /* kPlain by default*/) {
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
     PADDLE_THROW(

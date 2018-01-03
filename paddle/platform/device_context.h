@@ -21,6 +21,7 @@ limitations under the License. */
 #define EIGEN_USE_GPU
 #endif
 
+#include "paddle/framework/library_type.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
@@ -52,11 +53,12 @@ class CPUDeviceContext : public DeviceContext {
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
 
-template <typename Place>
+template <typename Place, typename Library>
 struct DefaultDeviceContextType;
 
 template <>
-struct DefaultDeviceContextType<platform::CPUPlace> {
+struct DefaultDeviceContextType<platform::CPUPlace,
+                                framework::LibraryType::kPlain> {
   using TYPE = CPUDeviceContext;
 };
 
@@ -99,8 +101,15 @@ class CUDADeviceContext : public DeviceContext {
 };
 
 template <>
-struct DefaultDeviceContextType<platform::CUDAPlace> {
+struct DefaultDeviceContextType<platform::CUDAPlace,
+                                framework::LibraryType::kPlain> {
   using TYPE = CUDADeviceContext;
+};
+
+template <>
+struct DefaultDeviceContextType<platform::CUDAPlace,
+                                framework::LibraryType::kCUDNN> {
+  using TYPE = CUDNNDeviceContext;
 };
 
 class CUDNNDeviceContext : public CUDADeviceContext {
@@ -120,7 +129,7 @@ class CUDNNDeviceContext : public CUDADeviceContext {
 /*! \brief device context pool singleton */
 class DeviceContextPool {
  public:
-  explicit DeviceContextPool(const std::vector<platform::Place>& places);
+  explicit DeviceContextPool(const std::vector<platform::LibraryType>& places);
 
   static DeviceContextPool& Instance() {
     PADDLE_ENFORCE_NOT_NULL(pool, "Need to Create DeviceContextPool first!");
@@ -128,7 +137,8 @@ class DeviceContextPool {
   }
 
   /*! \brief  Create should only called by Init function */
-  static DeviceContextPool& Init(const std::vector<platform::Place>& places) {
+  static DeviceContextPool& Init(
+      const std::vector<framework::LibraryType>& places) {
     if (pool == nullptr) {
       pool = new DeviceContextPool(places);
     }
@@ -136,13 +146,17 @@ class DeviceContextPool {
   }
 
   /*! \brief  Return handle of single device context. */
-  const platform::DeviceContext* Get(const platform::Place& place);
+  const platform::DeviceContext* Get(
+      const platform::Place& place,
+      const framework::LibraryType& library = framework::LibraryType::kPlain);
 
-  template <typename Place>
+  template <typename Place, typename Library>
   const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(
-      const Place& place) {
+      const Place& place,
+      const Library& library = framework::LibraryType::kPlain) {
     return reinterpret_cast<
-        const typename DefaultDeviceContextType<Place>::TYPE*>(Get(place));
+        const typename DefaultDeviceContextType<Place>::TYPE*>(
+        Get(place, library));
   }
 
  private:
