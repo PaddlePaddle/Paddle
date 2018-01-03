@@ -61,7 +61,7 @@ function(op_library TARGET)
                 ${op_common_deps})
     endif()
 
-    # net_op doesn't need pybind, others will be pybind manually
+    # Define operators that don't need pybind here.
     foreach(manual_pybind_op "net_op" "compare_op" "logical_op" "nccl_op" "tensor_array_read_write_op")
         if ("${TARGET}" STREQUAL "${manual_pybind_op}")
             set(pybind_flag 1)
@@ -69,7 +69,8 @@ function(op_library TARGET)
     endforeach()
 
     file(READ ${TARGET}.cc TARGET_CONTENT)
-    # It's enough to just adding one operator to pybind
+    # It's enough to just adding one operator to pybind.
+    # And for detail pybind information, please see paddle/pybind/pybind.h.
     string(REGEX MATCH "REGISTER_OP\\(.*REGISTER_OP\\(" multi_register "${TARGET_CONTENT}")
     string(REGEX MATCH "REGISTER_OP\\([a-z0-9_]*," one_register "${multi_register}")
     if (one_register STREQUAL "")
