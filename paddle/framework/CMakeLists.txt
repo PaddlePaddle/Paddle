@@ -30,6 +30,8 @@ cc_library(scope SRCS scope.cc DEPS glog)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)
 cc_test(rename_guard_test SRCS rename_guard_test.cc DEPS scope)
 
+cc_library(device_data_transform SRCS device_data_transform.cc DEPS tensor)
+
 cc_library(data_transform SRCS data_transform.cc DEPS math_function tensor framework_proto)
 cc_test(data_transform_test SRCS data_transform_test.cc DEPS data_transform device_context)
 

@@ -381,9 +381,8 @@ class OperatorWithKernel : public OperatorBase {
   }
 
  protected:
+  virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
   virtual OpKernelType GetActualKernelType(const ExecutionContext& ctx) const;
-  virtual OpKernelType GetExpectedKernelType(
-      const OpKernelType& actual_kernel_type) const;
 
  private:
   // indicate kernel DataType by input data. Defaultly all input data must be

@@ -128,9 +128,10 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetExpectedKernelType(
-      const framework::OpKernelType& actual_kernel_type) const override {
-    return framework::OpKernelType(actual_kernel_type.data_type_,
-                                   platform::CPUPlace());
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<LoDTensor>("Emission")->type()),
+        platform::CPUPlace());
   }
 };
 }  // namespace operators
