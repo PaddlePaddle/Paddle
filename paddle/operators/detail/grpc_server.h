@@ -51,21 +51,13 @@ class AsyncGRPCServer final : public SendRecvService::Service {
  public:
   explicit AsyncGRPCServer(std::string address) { address_ = address; }
 
-  void Run();
-
-  /*
-  Status SendVariable(ServerContext *context, const VariableMessage *in_var,
-                      VoidMessage *out_var) override;
-
-  Status GetVariable(ServerContext *context, const VariableMessage *in_var,
-                     VariableMessage *out_var) override;
+  void RunSyncUpdate();
 
   Status Wait(ServerContext *context, const VoidMessage *in_var,
               VoidMessage *out_var) override;
-
   void Reset();
   void Done();
-  */
+
   void SetScope(framework::Scope *scope) { scope_ = scope; }
 
   const TensorWithName Get() { return this->var_recv_queue_.Pop(); }
@@ -76,12 +68,20 @@ class AsyncGRPCServer final : public SendRecvService::Service {
   void HandleRpcs();
 
  private:
-  SimpleBlockQueue<TensorWithName> var_recv_queue_;
-  std::unique_ptr<ServerCompletionQueue> cq_;
+  std::unique_ptr<ServerCompletionQueue> cq_send_;
+  std::unique_ptr<ServerCompletionQueue> cq_get_;
   SendRecvService::AsyncService service_;
   std::unique_ptr<Server> server_;
+
   std::string address_;
   framework::Scope *scope_;
+  // received variable from RPC, operators fetch variable from this queue.
+  SimpleBlockQueue<TensorWithName> var_recv_queue_;
+
+  // condition of the sub program
+  std::mutex mutex_;
+  bool done_;
+  std::condition_variable condition_;
 };
 
 };  // namespace detail

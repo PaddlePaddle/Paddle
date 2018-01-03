@@ -54,12 +54,18 @@ class AsyncGRPCClient {
   AsyncGRPCClient() {}
 
   void AddEndPoint(std::string ep);
+  void AddEndPoint(const std::vector<std::string>& ep);
 
-  bool SendVariable(const framework::Scope& scope, std::vector<Var>& in,
+  bool SendVariable(const framework::Scope& scope, const std::vector<Var>& in,
                     std::vector<SendStatus>& ret);
 
-  bool GetVariable(const framework::Scope& scope, std::vector<Var>& in,
+  bool GetVariable(const framework::Scope& scope, const std::vector<Var>& in,
                    std::vector<SendStatus>& ret);
+
+  bool SyncUpdate(const framework::Scope& scope, const std::vector<Var>& in,
+                  std::vector<SendStatus>& in_ret, const std::vector<Var>& out,
+                  std::vector<SendStatus>& out_ret,
+                  std::vector<SendStatus>& errors);
 
   // TODO(gongwb): add SendRecv function to try to update
   // one local parameter immediately when it's gradient

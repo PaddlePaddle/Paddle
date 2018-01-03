@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "grpc_server.h"
+#include <future>
 
 using grpc::ServerAsyncResponseWriter;
 
@@ -76,6 +77,7 @@ class RequestGet final : public RequestBase {
   }
 
   void Proceed() {
+    // wait to this server has receive all gradients.
     if (status_ == CREATE) {
       status_ = PROCESS;
 
@@ -108,23 +110,50 @@ class RequestGet final : public RequestBase {
 };
 
 // There is no shutdown handling in this code.
-void AsyncGRPCServer::Run() {
+void AsyncGRPCServer::RunSyncUpdate() {
   ServerBuilder builder;
   builder.AddListeningPort(address_, grpc::InsecureServerCredentials());
-
   builder.RegisterService(&service_);
-  cq_ = builder.AddCompletionQueue();
+
+  cq_send_ = builder.AddCompletionQueue();
+  cq_get_ = builder.AddCompletionQueue();
   server_ = builder.BuildAndStart();
   // std::cout << "Server listening on " << server_address << std::endl;
 
-  HandleRpcs();
+  auto RequestBase* req_send = new RequestSend(&service_, cq_send_.get());
+  auto RequestBase* req_get = new RequestGet(&service_, cq_get_.get());
+
+  auto t_send = std::async(&AsyncGRPCServer::HandleRpcs, this, req_send);
+  auto t_get = std::async(&AsyncGRPCServer::HandleRpcs, this, req_get);
+
+  auto req_send_ret = t_send.get();
+  auto req_get_ret = t_get.get();
+}
+
+Status AsyncGRPCServer::Wait(ServerContext* context, const VoidMessage* in_var,
+                             VoidMessage* out_var) {
+  {
+    std::unique_lock<std::mutex> lock(this->mutex_);
+    condition_.wait(lock, [=] { return this->done_ == true; });
+  }
+  return Status::OK;
+}
+
+void AsyncGRPCServer::Reset() {
+  std::lock_guard<std::mutex> lock(this->mutex_);
+  done_ = false;
+}
+
+void AsyncGRPCServer::Done() {
+  {
+    std::lock_guard<std::mutex> lock(this->mutex_);
+    done_ = true;
+  }
+  condition_.notify_all();
 }
 
 // This can be run in multiple threads if needed.
-void AsyncGRPCServer::HandleRpcs() {
-  new RequestSend(&service_, cq_.get());
-  new RequestGet(&service_, cq_.get());
-
+void AsyncGRPCServer::HandleRpcs(RequestBase* base) {
   void* tag = NULL;
   bool ok = false;
   while (true) {
@@ -135,5 +164,4 @@ void AsyncGRPCServer::HandleRpcs() {
 }
 
 }  // namespace detail
-}  // namespace operators
-}  // namespace paddle
+}  // namespace operators }  // namespace paddle

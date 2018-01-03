@@ -33,16 +33,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-void RunServer(Server **rpc_server,
-               std::shared_ptr<detail::SendRecvServerImpl> service,
-               const std::string &server_address) {
-  ServerBuilder builder;
-  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
-  builder.RegisterService(service.get());
-  std::unique_ptr<Server> server(builder.BuildAndStart());
-  *rpc_server = server.get();
-  LOG(INFO) << "Server listening on " << server_address;
-  server->Wait();
+void RunServer(std::shared_ptr<detail::SendRecvServerImpl> service) {
+  service->Run();
+  service->wait();
 }
 
 class RecvOp : public framework::OperatorBase {
@@ -52,10 +45,9 @@ class RecvOp : public framework::OperatorBase {
          const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {
     if (!rpc_service_) {
-      rpc_service_.reset(new detail::SendRecvServerImpl());
       std::string endpoint = Attr<std::string>("endpoint");
-      server_thread_.reset(
-          new std::thread(RunServer, &rpc_server_, rpc_service_, endpoint));
+      rpc_service_.reset(new detail::AsyncGRPCServer(endpoint));
+      server_thread_.reset(new std::thread(RunServer, rpc_service_));
     }
   }
 
@@ -63,7 +55,7 @@ class RecvOp : public framework::OperatorBase {
     detail::TensorWithName term_msg;
     term_msg.first = LISTEN_TERMINATE_MESSAGE;
     rpc_service_->Push(term_msg);
-    rpc_server_->Shutdown();
+    // rpc_server_->Shutdown();
     server_thread_->join();
   }
 
@@ -150,11 +142,7 @@ class RecvOp : public framework::OperatorBase {
   }
 
  protected:
-  // grpc server instance to track status and gracefully shutdown.
-  // borrow an pointer from server thread.
-  Server *rpc_server_{nullptr};
-  // grpc send/recv service implement to register.
-  std::shared_ptr<detail::SendRecvServerImpl> rpc_service_;
+  std::shared_ptr<detail::AsyncGRPCServer> rpc_service_;
   std::shared_ptr<std::thread> server_thread_;
   mutable std::unordered_map<std::string, int> grads_counter_;
 };

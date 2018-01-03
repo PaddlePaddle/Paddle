@@ -26,8 +26,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-// TODO(typhoonzero): this is a simple implementation which only send
-// one tensor
+// TODO(gongwb):add more attrs to support more send pattern.
 class SendOp : public framework::OperatorBase {
  public:
   SendOp(const std::string &type, const framework::VariableNameMap &inputs,
@@ -37,10 +36,8 @@ class SendOp : public framework::OperatorBase {
     // init client when the operator is created at runtime.
     std::vector<std::string> endpoints =
         Attr<std::vector<std::string>>("endpoints");
-    for (auto ep : endpoints) {
-      client_map_[ep].reset(new detail::RPCClient(
-          grpc::CreateChannel(ep, grpc::InsecureChannelCredentials())));
-    }
+
+    client_.AddEndPoint(endpoints);
   }
 
   void Run(const framework::Scope &scope,
@@ -48,26 +45,33 @@ class SendOp : public framework::OperatorBase {
     auto ins = Inputs("X");
     auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
-    // TODO(typhoonzero): use async calls to send multiple variable asyncly.
-    for (size_t i = 0; i < ins.size(); ++i) {
-      bool ret = client_map_[epmap[i]]->SendVariable(scope, ins[i]);
-      if (!ret) {
-        LOG(ERROR) << "send variable error: " << ins[i];
-      }
+
+    std::vector<detail::Var> in_vars;
+    std::vector<detail::Var> out_vars;
+    for (int i = 0; i < int(ins.size()); i++) {
+      detail::Var in_var;
+      in_var.name = ins[i];
+      in_var.endpoint = epmap[i];
+      in_vars.emplace_back(in_var);
+
+      detail::Var out_var;
+      in_var.name = ins[i];
+      in_var.endpoint = epmap[i];
+      out_vars.emplace_back(epmap[i]);
     }
-    // TODO(typhoonzero): support async optimization
-    client_map_[epmap[0]]->Wait();
-    for (size_t i = 0; i < outs.size(); ++i) {
-      bool ret = client_map_[epmap[i]]->GetVariable(scope, outs[i]);
-      if (!ret) {
-        LOG(ERROR) << "GetVariable error: " << outs[i];
-      }
+
+    std::vector<detail::SendStatus> in_status;
+    std::vector<detail::SendStatus> out_status;
+    std::vector<detail::SendStatus> errors;
+    bool ok = client_.SyncUpdate(scope, in_vars, in_status, out_vars,
+                                 out_status, errors);
+    if (!ok) {
+      LOG(ERROR) << "sync update variable error: in_status:" << errors;
     }
   }
 
  protected:
-  mutable std::unordered_map<std::string, std::shared_ptr<detail::RPCClient>>
-      client_map_;
+  detail::AsyncGRPCClient client_;
 };
 
 class SendOpMaker : public framework::OpProtoAndCheckerMaker {

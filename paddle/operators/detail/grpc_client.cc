@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "grpc_client.h"
+#include <future>
 
 using grpc::Server;
 using grpc::ServerContext;
@@ -31,6 +32,12 @@ using sendrecv::VoidMessage;
 namespace paddle {
 namespace operators {
 namespace detail {
+
+void AsyncGRPCClient::AddEndPoint(const std::vector<std::string>& ep) {
+  for (size_t i = 0; i < ep.size(); i++) {
+    AddEndPoint(ep[i]);
+  }
+}
 
 void AsyncGRPCClient::AddEndPoint(std::string ep) {
   if (channels_.find(ep) != channels_.end()) {
@@ -105,7 +112,7 @@ struct GetMsg {
 };
 
 template <typename send_t, typename recv_t, typename Msg_t>
-bool AsyncGRPCClient::call(const framework::Scope& scope, std::vector<Var>& in,
+bool AsyncGRPCClient::Call(const framework::Scope& scope, std::vector<Var>& in,
                            std::vector<SendStatus>& ret) {
   grpc::CompletionQueue cq;
   // Create a ClientContext, Status, Reply, and rpc for each backend.
@@ -188,15 +195,37 @@ bool AsyncGRPCClient::call(const framework::Scope& scope, std::vector<Var>& in,
 }
 
 bool AsyncGRPCClient::SendVariable(const framework::Scope& scope,
-                                   std::vector<Var>& in,
+                                   const std::vector<Var>& in,
                                    std::vector<SendStatus>& ret) {
-  return call<VariableMessage, VoidMessage, SendMsg>(scope, in, ret);
+  return Call<VariableMessage, VoidMessage, SendMsg>(scope, in, ret);
 }
 
 bool AsyncGRPCClient::GetVariable(const framework::Scope& scope,
-                                  std::vector<Var>& in,
+                                  const std::vector<Var>& in,
                                   std::vector<SendStatus>& ret) {
-  return call<VariableMessage, VariableMessage, GetMsg>(scope, in, ret);
+  return Call<VariableMessage, VariableMessage, GetMsg>(scope, in, ret);
+}
+
+bool AsyncGRPCClient::SyncUpdate(const framework::Scope& scope,
+                                 const std::vector<Var>& in,
+                                 std::vector<SendStatus>& in_ret,
+                                 const std::vector<Var>& out,
+                                 std::vector<SendStatus>& out_ret,
+                                 std::vector<SendStatus>& errors) {
+  auto in_thread =
+      std::async(&AsyncGRPCClient::SendVariable, this, scope, in, in_ret);
+  auto out_thread =
+      std::async(&AsyncGRPCClient::GetVariable, this, scope, out, out_ret);
+  auto in_ok = in_thread.get();
+  auto out_ok = out_thread.get();
+
+  std::copy_if(in_ret.begin(), in_ret.end(), std::back_inserter(errors),
+               [](SendStatus status) { return status.error != ""; });
+
+  std::copy_if(out_ret.begin(), out_ret.end(), std::back_inserter(errors),
+               [](SendStatus status) { return status.error != ""; });
+
+  return (in_ok && out_ok);
 }
 };  // namespace detail
 };  // namespace operators
