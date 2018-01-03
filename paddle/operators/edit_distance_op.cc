@@ -22,10 +22,18 @@ class EditDistanceOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Hyp"), "Input(Hyp) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Ref"), "Input(Ref) shouldn't be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Hyps"), "Input(Hyps) shouldn't be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Refs"), "Input(Refs) shouldn't be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) shouldn't be null.");
-    ctx->SetOutputDim("Out", {1});
+    auto hyp_dims = ctx->GetInputDim("Hyps");
+    auto ref_dims = ctx->GetInputDim("Refs");
+    PADDLE_ENFORCE(hyp_dims.size() == 2 && hyp_dims[1] == 1,
+                   "Input(Hyps) must be a 2-D LoDTensor with the 2nd dimension "
+                   "equal to 1.");
+    PADDLE_ENFORCE(ref_dims.size() == 2 && ref_dims[1] == 1,
+                   "Input(Refs) must be a 2-D LoDTensor with the 2nd dimension "
+                   "equal to 1.");
+    ctx->SetOutputDim("Out", ctx->GetInputDim("Refs"));
   }
 
  protected:
@@ -40,24 +48,23 @@ class EditDistanceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   EditDistanceOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("Hyp",
-             "(2-D tensor with shape [M x 1]) The indices for "
-             "hypothesis string");
-    AddInput("Ref",
-             "(2-D tensor with shape [N x 1]) The indices "
-             "for reference string.");
+    AddInput("Hyps",
+             "(2-D LoDTensor, 2nd dim. equal to 1) "
+             "The indices for hypothesis strings.");
+    AddInput("Refs",
+             "(2-D LoDTensor, 2nd dim. equal to 1) "
+             "The indices for reference strings.");
     AddAttr<bool>("normalized",
-                  "(bool, default false) Indicated whether "
-                  "normalize the Output(Out) by the length of reference "
-                  "string (Ref).")
+                  "(bool, default false) Indicated whether to normalize "
+                  "the edit distance by the length of reference string.")
         .SetDefault(false);
     AddOutput("Out",
-              "(2-D tensor with shape [1 x 1]) "
-              "The output distance of EditDistance operator.");
+              "(2-D Tensor with shape [`batch_size` x 1]) "
+              "The output edit distances of EditDistance operator.");
     AddComment(R"DOC(
 
-EditDistance operator computes the edit distance of two sequences, one named
-hypothesis with length M and another named reference with length N.
+EditDistance operator computes the edit distances between a batch of hypothesis
+strings and their references.
 
 Edit distance, also called Levenshtein distance, measures how dissimilar two strings 
 are by counting the minimum number of operations to transform one string into anthor. 
@@ -68,8 +75,14 @@ insertion:
   
    "kitten" -> "sitten" -> "sittin" -> "sitting"
 
-If Attr(normalized) is true, the edit distance will be divided by the length of 
-reference string N.
+Input(Hyps) is a LoDTensor consisting of all the hypothesis strings with the total 
+number denoted by `batch_size`, and the separation is specified by the LoD information. 
+And the `batch_size` reference strings are arranged in order in the same way in the 
+LoDTensor Input(Refs).
+
+Output(Out) contains the `batch_size` results and each stands for the edit stance 
+for a pair of strings respectively. If Attr(normalized) is true, the edit distance 
+will be divided by the length of reference string.
 )DOC");
   }
 };

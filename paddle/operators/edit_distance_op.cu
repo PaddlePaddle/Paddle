@@ -70,53 +70,71 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* out_t = ctx.Output<framework::Tensor>("Out");
 
-    auto* x1_t = ctx.Input<framework::Tensor>("Hyp");
-    auto* x2_t = ctx.Input<framework::Tensor>("Ref");
-
-    out_t->mutable_data<T>(ctx.GetPlace());
-    auto out = out_t->data<T>();
+    auto* x1_t = ctx.Input<framework::LoDTensor>("Hyps");
+    auto* x2_t = ctx.Input<framework::LoDTensor>("Refs");
 
     auto normalized = ctx.Attr<bool>("normalized");
     auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(
                       ctx.device_context())
                       .stream();
 
-    auto m = x1_t->numel();
-    auto n = x2_t->numel();
-    T distance = 0.0;
-    if (m == 0 || n == 0) {
-      distance = std::max(m, n);
-      if (normalized) {
-        distance = distance / n;
-      }
-      memory::Copy(boost::get<Place>(ctx.GetPlace()), out, platform::CPUPlace(),
-                   &distance, sizeof(T), stream);
-    } else {
-      framework::Tensor dist_t;
-      dist_t.Resize({m + 1, n + 1});
-      dist_t.mutable_data<T>(ctx.GetPlace());
-      auto dist = dist_t.data<T>();
-      auto x1 = x1_t->data<int>();
-      auto x2 = x2_t->data<int>();
+    auto hyp_lod = x1_t->lod()[0];
+    auto ref_lod = x2_t->lod()[0];
+    PADDLE_ENFORCE(
+        hyp_lod.size() == ref_lod.size(),
+        "Input(Hyps) and Input(Refs) must have the same batch size.");
+    for (size_t i = 1; i < ref_lod.size(); ++i) {
+      PADDLE_ENFORCE(ref_lod[i] > ref_lod[i - 1],
+                     "Reference string %d is empty.", i);
+    }
 
-      FillFirstColumn<T><<<1 + m / PADDLE_CUDA_NUM_THREADS,
-                           PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, m, n);
+    auto num_strs = hyp_lod.size() - 1;
+    out_t->Resize({static_cast<int64_t>(num_strs), 1});
+    out_t->mutable_data<T>(ctx.GetPlace());
+    auto out = out_t->data<T>();
 
-      FillFirstRow<T><<<1 + n / PADDLE_CUDA_NUM_THREADS,
-                        PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, n);
-      // Compute the elements of distance matrix in the anti-diagonal diretion
-      for (int64_t slice = 2; slice < m + n + 1; ++slice) {
-        int z_m = slice < m + 1 ? 0 : slice - m;
-        int z_n = slice < n + 1 ? 0 : slice - n;
-        int size = slice - (z_m + z_n) + 1;  // number of elments in the same
-                                             // anti-diagonal line to update
-        // the start index at which computes from
-        int start = slice < n + 1 ? slice : (z_n + 1) * (n + 1) - 1;
-        Levenshtein<T><<<1 + (size - 1) / PADDLE_CUDA_NUM_THREADS,
-                         PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, x1, x2, m,
-                                                               n, start);
+    std::vector<T> distance(num_strs, 0.0);
+    for (size_t num = 0; num < num_strs; num++) {
+      auto m = static_cast<int64_t>(hyp_lod[num + 1] - hyp_lod[num]);
+      auto n = static_cast<int64_t>(ref_lod[num + 1] - ref_lod[num]);
+      if (m == 0 || n == 0) {
+        distance[num] = std::max(m, n);
+        if (normalized) {
+          PADDLE_ENFORCE(n > 0,
+                         "The reference string (#%d) cannot be empty "
+                         "when Attr(normalized) is enabled.",
+                         n);
+          distance[num] = distance[num] / n;
+        }
+        memory::Copy(boost::get<Place>(ctx.GetPlace()), out + num,
+                     platform::CPUPlace(), &distance[num], sizeof(T), stream);
+      } else {
+        framework::Tensor dist_t;
+        dist_t.Resize({m + 1, n + 1});
+        dist_t.mutable_data<T>(ctx.GetPlace());
+        auto dist = dist_t.data<T>();
+        auto x1 = x1_t->data<int>() + hyp_lod[num];
+        auto x2 = x2_t->data<int>() + ref_lod[num];
+
+        FillFirstColumn<T><<<1 + m / PADDLE_CUDA_NUM_THREADS,
+                             PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, m, n);
+
+        FillFirstRow<T><<<1 + n / PADDLE_CUDA_NUM_THREADS,
+                          PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, n);
+        // Compute the elements of distance matrix in the anti-diagonal diretion
+        for (int64_t slice = 2; slice < m + n + 1; ++slice) {
+          int z_m = slice < m + 1 ? 0 : slice - m;
+          int z_n = slice < n + 1 ? 0 : slice - n;
+          int size = slice - (z_m + z_n) + 1;  // number of elments in the same
+                                               // anti-diagonal line to update
+          // the start index at which computes from
+          int start = slice < n + 1 ? slice : (z_n + 1) * (n + 1) - 1;
+          Levenshtein<T><<<1 + (size - 1) / PADDLE_CUDA_NUM_THREADS,
+                           PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, x1, x2,
+                                                                 m, n, start);
+        }
+        SetOutput<T><<<1, 1, 0, stream>>>(out + num, dist, m, n, normalized);
       }
-      SetOutput<T><<<1, 1, 0, stream>>>(out, dist, m, n, normalized);
     }
   }
 };
