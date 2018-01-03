@@ -420,35 +420,39 @@ void OperatorWithKernel::Run(const Scope& scope,
 
   std::vector<std::pair<std::string, std::string>> need_trans;
   for (auto& var_name : this->InputVars()) {
+    std::cout << "var_name: " << var_name << std::endl;
     auto var_name_trans = TransName(var_name);
     auto* var = scope.FindVar(var_name);
-    auto var_place = GetVarPlace(*var);
-    if (var && !(var_place == expected_kernel_key.place_)) {
-      if (!scope.FindVar(var_name_trans)) {
-        auto trans_var = const_cast<Scope&>(scope).Var(var_name_trans);
-        Tensor* out = nullptr;
-        if (var->IsType<LoDTensor>()) {
-          auto& in_lod_tensor = var->Get<LoDTensor>();
-          auto* tran_lod_tensor = trans_var->GetMutable<LoDTensor>();
+    if (var) {
+      auto var_place = GetVarPlace(*var);
+      if (var_place != expected_kernel_key.place_) {
+        std::cout << "need to do transform" << std::endl;
+        if (!scope.FindVar(var_name_trans)) {
+          auto trans_var = const_cast<Scope&>(scope).Var(var_name_trans);
+          Tensor* out = nullptr;
+          if (var->IsType<LoDTensor>()) {
+            auto& in_lod_tensor = var->Get<LoDTensor>();
+            auto* tran_lod_tensor = trans_var->GetMutable<LoDTensor>();
 
-          out = DeviceTransform(var_place, expected_kernel_key.place_,
-                                in_lod_tensor);
+            out = DeviceTransform(var_place, expected_kernel_key.place_,
+                                  in_lod_tensor);
 
-          tran_lod_tensor->set_lod(in_lod_tensor.lod());
-          tran_lod_tensor->set_layout(in_lod_tensor.layout());
-          tran_lod_tensor->ShareDataWith(*out);
-        } else if (var->IsType<SelectedRows>()) {
-          auto& in_selected_rows = var->Get<SelectedRows>();
-          auto* trans_selected_rows = trans_var->GetMutable<SelectedRows>();
+            tran_lod_tensor->set_lod(in_lod_tensor.lod());
+            tran_lod_tensor->set_layout(in_lod_tensor.layout());
+            tran_lod_tensor->ShareDataWith(*out);
+          } else if (var->IsType<SelectedRows>()) {
+            auto& in_selected_rows = var->Get<SelectedRows>();
+            auto* trans_selected_rows = trans_var->GetMutable<SelectedRows>();
 
-          out = DeviceTransform(var_place, expected_kernel_key.place_,
-                                in_selected_rows.value());
+            out = DeviceTransform(var_place, expected_kernel_key.place_,
+                                  in_selected_rows.value());
 
-          trans_selected_rows->set_height(in_selected_rows.height());
-          trans_selected_rows->set_rows(in_selected_rows.rows());
-          trans_selected_rows->mutable_value()->ShareDataWith(*out);
-        } else {
-          PADDLE_THROW("unknown var type");
+            trans_selected_rows->set_height(in_selected_rows.height());
+            trans_selected_rows->set_rows(in_selected_rows.rows());
+            trans_selected_rows->mutable_value()->ShareDataWith(*out);
+          } else {
+            PADDLE_THROW("unknown var type");
+          }
         }
         need_trans.push_back(std::make_pair(var_name, var_name_trans));
       }
