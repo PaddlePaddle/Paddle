@@ -70,12 +70,14 @@ static std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
  * this function should be guarded with call once.
  */
 inline void UseCPU() {
-  auto need_remove = [&](const std::tuple<platform::Place, LibraryType>& key) {
-    return !platform::is_cpu_place(std::get<0>(key));
-  };
-  kKernelPriority.erase(std::remove_if(kKernelPriority.begin(),
-                                       kKernelPriority.end(), need_remove),
-                        kKernelPriority.end());
+  auto is_not_cpu_kernel =
+      [&](const std::tuple<platform::Place, LibraryType>& key) {
+        return !platform::is_cpu_place(std::get<0>(key));
+      };
+  kKernelPriority.erase(
+      std::remove_if(kKernelPriority.begin(), kKernelPriority.end(),
+                     is_not_cpu_kernel),
+      kKernelPriority.end());
 }
 
 /**
@@ -85,8 +87,14 @@ inline void UseCPU() {
 inline void UseCUDNN() {
 #if PADDLE_WITH_CUDA
   if (platform::dynload::HasCUDNN()) {
-    auto key = std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN);
-    if (kKernelPriority.find(key) == kKernelPriority.end()) {
+    auto is_cudnn_kernel =
+        [&](const std::tuple<platform::Place, LibraryType>& key) {
+          return platform::is_gpu_place(std::get<0>(key)) &&
+                 (std::get<1>(key) == LibraryType::kCUDNN);
+        };
+    if (std::find_if(kKernelPriority.begin(), kKernelPriority.end(),
+                     is_cudnn_kernel) == kKernelPriority.end()) {
+      auto key = std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN);
       kKernelPriority.insert(kKernelPriority.begin(), key);
     }
   }
