@@ -52,8 +52,9 @@ The IR for PaddlePaddle after refactoring is called a `Block`, it specifies the 
 
 The user can not directly specify the parameter update rule for the parameter server in the Python module, since the parameter server does not use the same computation definition as the trainer. Instead, the update rule is baked inside the parameter server. The user can not specify the update rule explicitly.
 
-This could be fixed by making the parameter server run the same computation definition as the trainer (the user's Python module). For a detailed explanation, refer to this document -
-[Design Doc: Operation Graph Based Parameter Server](./parameter_server.md)
+This could be fixed by making the parameter server also run an IR, which can be different to the trainer side
+For a detailed explanation, refer to this document -
+[Design Doc: Parameter Server](./parameter_server.md)
 
 ## Distributed Training Architecture
 
@@ -113,7 +114,7 @@ Below are the steps that are followed :
    distributed training program:
    1. Parse configurations from `RemoteExecutor`.
    1. Determine the type of distributed program, can be DataParallelism, ModelParallelism or Streaming.
-   1. Partition the `ProgramDesc` according to type and add `send` / `recv` OP pair on the boundaries. For
+   1. Partition the `ProgramDesc` according to type and add `send` / `recv` OP pair on the boundaries. Take
       DataParallelism type for example, it removes the optimization operators and add a `send` OP to the
       "trainer" role, then add the optimization operators to the parameter server role within the `recv` OP.
 1. Dispatch the partitioned graph to different `RemoteExecutor` in the cluster.
@@ -129,12 +130,9 @@ log printing.
 The Python `RemoteExecutor` is derived from `Executor` class.
 
 ```python
-run(self,
-    program=None,
-    feed=None,
-    fetch_list=None,
-    feed_var_name='feed',
-    fetch_var_name='fetch',
+exe = RemoteExecutor(
+    feed=feeder.feed(data),
+    fetch_list=[avg_cost],
     job_desc=JobDesc(
       jobname,
       num_trainer,
@@ -145,6 +143,10 @@ run(self,
       cpu_per_pserver,
       mem_per_pserver
     ))
+for data in train_reader():
+    loss, acc = exe.run(trainer_prog,
+                        feed=feeder.feed(data),
+                        fetch_list=[avg_cost])
 ```
 
 `JobDesc` object describe the distributed job resource specification to run on
