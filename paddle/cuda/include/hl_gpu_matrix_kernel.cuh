@@ -120,6 +120,23 @@ __global__ void KeEltWiseTernaryOp(T* A_d,
 }
 
 template<class T, class Op>
+__global__ void KeBroadcastTernaryOp(T* A_d,
+                                     T* B_d,
+                                     T* C_d,
+                                     int dimM,
+                                     int dimN,
+                                     int dimK,
+                                     const int border,
+                                     Op op) {
+  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < border) {
+    int rowID = idx / (dimN * dimK);
+    int colID = idx % (dimN * dimK) / dimK;
+    op.gpuOperator(A_d[idx], B_d[idx], C_d[rowID*dimN + colID]);
+  }
+}
+
+template<class T, class Op>
 __global__ void KeEltWiseQuaternaryOp(T* A_d,
                                       T* B_d,
                                       T* C_d,
@@ -253,6 +270,27 @@ void hl_gpu_apply_ternary_op(Op op,
   CHECK_SYNC("hl_gpu_apply_ternary_op failed");
 }
 
+/**
+ * @brief   gpu element wise ternary broadcast operator.
+ */
+template <class T, class Op>
+void hl_gpu_apply_ternary_broadcast_op(Op op,
+                                       T* A_d,
+                                       T* B_d,
+                                       T* C_d,
+                                       int dimM,
+                                       int dimN,
+                                       int dimK) {
+  CHECK_NOTNULL(A_d);
+
+  int size = dimM * dimN * dimK;
+  int blockSize = size <= 1024 ? size : 1024;
+  int gridSize = (size + 1024 - 1) / 1024;
+  KeBroadcastTernaryOp<T, Op><<<gridSize, blockSize, 0, STREAM_DEFAULT>>>
+    (A_d, B_d, C_d, dimM, dimN, dimK, size, op);
+
+  CHECK_SYNC("hl_gpu_apply_ternary_broadcast_op failed");
+}
 
 /**
  * @brief   gpu element wise quaternary operator.
@@ -316,6 +354,15 @@ void hl_gpu_apply_ternary_op(Op op,
                              int lda,
                              int ldb,
                              int ldc) {}
+
+template <class T, class Op>
+void hl_gpu_apply_ternary_broadcast_op(Op op,
+                                       T* A_d,
+                                       T* B_d,
+                                       T* C_d,
+                                       int dimM,
+                                       int dimN,
+                                       int dimK) {}
 
 template <class T, class Op>
 void hl_gpu_apply_quaternary_op(Op op,

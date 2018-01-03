@@ -208,6 +208,54 @@ int BaseMatrixT<T>::applyTernary(Op op,
 
 template <class T>
 template <class Op>
+int BaseMatrixT<T>::applyTernaryBroadcast(Op op,
+                                          BaseMatrixT& b,
+                                          BaseMatrixT& c,
+                                          int numRows,
+                                          int numColsB,
+                                          int numColsC,
+                                          MatrixOffset& offset) {
+  CHECK(!this->isSparse()) << SPARSE_SUPPORT_ERROR;
+  CHECK(!b.isSparse()) << SPARSE_SUPPORT_ERROR;
+  CHECK(!c.isSparse()) << SPARSE_SUPPORT_ERROR;
+  CHECK_EQ(useGpu_, b.useGpu_);
+  CHECK_EQ(useGpu_, c.useGpu_);
+  CHECK_EQ(numColsB % numColsC, 0);
+
+  int dimM = numRows;
+  int dimN = numColsC;
+  int dimK = numColsB / numColsC;
+  int lda = stride_;
+  int ldb = b.stride_;
+  int ldc = c.stride_;
+
+  T* A = data_;
+  T* B = b.data_;
+  T* C = c.data_;
+  CAL_MATRIX_START_ADDRESS(A, height_, width_, lda, offset.aCol_, offset.aRow_);
+  CAL_MATRIX_START_ADDRESS(
+      B, b.height_, b.width_, ldb, offset.bCol_, offset.bRow_);
+  CAL_MATRIX_START_ADDRESS(
+      C, c.height_, c.width_, ldc, offset.cCol_, offset.cRow_);
+
+  CHECK_LE(dimM + offset.aRow_, this->height_);
+  CHECK_LE(dimN * dimK + offset.aCol_, this->width_);
+  CHECK_LE(dimM + offset.bRow_, b.height_);
+  CHECK_LE(dimN * dimK + offset.bCol_, b.width_);
+  CHECK_LE(dimM + offset.cRow_, c.height_);
+  CHECK_LE(dimN + offset.cCol_, c.width_);
+
+  if (true == useGpu_) {
+    hl_gpu_apply_ternary_broadcast_op<T, Op>(op, A, B, C, dimM, dimN, dimK);
+  } else {
+    hl_cpu_apply_ternary_broadcast_op<T, Op>(op, A, B, C, dimM, dimN, dimK);
+  }
+
+  return 0;
+}
+
+template <class T>
+template <class Op>
 int BaseMatrixT<T>::applyQuaternary(Op op,
                                     BaseMatrixT& b,
                                     BaseMatrixT& c,
@@ -1587,6 +1635,16 @@ void BaseMatrixT<T>::addRowScale(size_t cCol, BaseMatrixT& b, BaseMatrixT& c) {
                offset,
                false_type(),
                true_type() /*cAsColVector*/);
+}
+
+template <class T>
+void BaseMatrixT<T>::addBroadcastMul(BaseMatrixT& b, BaseMatrixT& c) {
+  MatrixOffset offset(0, 0, 0, 0, 0, 0);
+  int numRows = height_;
+  int numColsB = b.width_;
+  int numColsC = c.width_;
+  applyTernaryBroadcast(
+      ternary::addDotMulMMV<T>(), b, c, numRows, numColsB, numColsC, offset);
 }
 
 DEFINE_MATRIX_TERNARY_PARAMETER_OP(RowAdd, ONE_PARAMETER, a = b + p * c);

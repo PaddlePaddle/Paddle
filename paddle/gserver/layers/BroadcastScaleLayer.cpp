@@ -66,7 +66,6 @@ void BroadcastScaleLayer::forward(PassType passType) {
   size_t batchSize = inV->getHeight();
   size_t dataDim = inV->getWidth();
   size_t channelNum = weightV->getWidth();
-  size_t channelSize = dataDim / channelNum;
 
   CHECK_EQ(dataDim, getSize());
   CHECK_EQ(weightV->getHeight(), batchSize);
@@ -80,7 +79,7 @@ void BroadcastScaleLayer::forward(PassType passType) {
   MatrixPtr outV = getOutputValue();
   {
     REGISTER_TIMER_INFO("FwBroadcastScaleTimer", getName().c_str());
-    outV->addRowScale(0, *inV, *weightV);
+    outV->addBroadcastMul(*inV, *weightV);
   }
 }
 
@@ -95,7 +94,7 @@ void BroadcastScaleLayer::backward(const UpdateCallback& callback) {
     REGISTER_TIMER_INFO("BwBroadcastScaleTimer", getName().c_str());
 
     if (inGrad) {
-      inGrad->addRowScale(0, *outGrad, *weightV);
+      inGrad->addBroadcastMul(*outGrad, *weightV);
     }
 
     if (weightGrad) {

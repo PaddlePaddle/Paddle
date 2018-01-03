@@ -243,6 +243,15 @@ public:
                    int numCols,
                    MatrixOffset& offset);
 
+  template <class Op>
+  int applyTernaryBroadcast(Op op,
+                            BaseMatrixT& b,
+                            BaseMatrixT& c,
+                            int numRows,
+                            int numColsB,
+                            int numColsC,
+                            MatrixOffset& offset);
+
   /**
    * quaternary operator: element wise op(a, b, c, d).
    *
@@ -1019,6 +1028,13 @@ public:
    * @endcode
    */
   void addRowScale(size_t cCol, BaseMatrixT& b, BaseMatrixT& c);
+
+  /**
+   * @code
+   * this_row[c * size + j] += b_row[c * size + j] * c_row[c]
+   * @endcode
+   */
+  void addBroadcastMul(BaseMatrixT& b, BaseMatrixT& c);
 
   /// calculate the sum of each row of the matrix b.
   /// this_i = scaleDest * this_i + scaleSum * \sum_j b_{ij}

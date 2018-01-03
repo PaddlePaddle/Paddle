@@ -195,6 +195,7 @@ extern void hl_gpu_apply_binary_op(Op op,
                                    int dimN,
                                    int lda,
                                    int ldb);
+
 /**
  * @brief   GPU element wise ternary operator.
  *
@@ -233,7 +234,6 @@ extern void hl_gpu_apply_ternary_op(Op op,
                                     int lda,
                                     int ldb,
                                     int ldc);
-
 
 /**
  * @brief   GPU element wise quaternary operator.
@@ -419,5 +419,49 @@ extern void hl_gpu_matrix_column_op(Agg agg, Op op, Saver sv,
                                     real *dst,
                                     real *A, int lda,
                                     real *B, int ldb);
+
+/**
+ * @brief   CPU element wise broadcast ternary operator.
+ *
+ * @param[in]       op          ternary op. see namespace ternary.
+ * @param[in,out]   A_d         matrix.
+ * @param[in,out]   B_d         matrix.
+ * @param[in,out]   C_d         matrix.
+ * @param[in]       dimM        the height of matrix.
+ * @param[in]       dimN        the width of matrix C.
+ * @param[in]       dimK        the block size for broadcast, dimN * dimK
+ *                              equals to the width of matrix B.
+ *
+ */
+template <class T, class Op>
+extern void hl_cpu_apply_ternary_broadcast_op(Op op,
+                                              T* A_h,
+                                              T* B_h,
+                                              T* C_h,
+                                              int dimM,
+                                              int dimN,
+                                              int dimK);
+
+/**
+ * @brief   GPU element wise broadcast ternary operator.
+ *
+ * @param[in]       op          ternary op. see namespace ternary.
+ * @param[in,out]   A_d         matrix.
+ * @param[in,out]   B_d         matrix.
+ * @param[in,out]   C_d         matrix.
+ * @param[in]       dimM        the height of matrix.
+ * @param[in]       dimN        the width of matrix C.
+ * @param[in]       dimK        the block size for broadcast, dimN * dimK equals
+ *                              to the width of matrix B.
+ *
+ */
+template <class T, class Op>
+extern void hl_gpu_apply_ternary_broadcast_op(Op op,
+                                              T* A_d,
+                                              T* B_d,
+                                              T* C_d,
+                                              int dimM,
+                                              int dimN,
+                                              int dimK);
 
 #endif /* HL_MATRIX_APPLY_H_ */

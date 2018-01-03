@@ -89,6 +89,30 @@ void hl_cpu_apply_ternary_op(Op op,
 }
 
 /**
+ * @brief   cpu element wise ternary broadcast operator.
+ */
+template <class T, class Op>
+void hl_cpu_apply_ternary_broadcast_op(Op op,
+                                       T* A_h,
+                                       T* B_h,
+                                       T* C_h,
+                                       int dimM,
+                                       int dimN,
+                                       int dimK) {
+  int lda = dimN * dimK;
+  int ldb = dimN * dimK;
+  for (int i = 0; i < dimM; i ++) {
+    for (int j = 0; j < dimN; j++) {
+      for (int k = 0; k < dimK; k++) {
+        op.cpuOperator(A_h[i*lda + j*dimK + k],
+                       B_h[i*ldb + j*dimK + k],
+                       C_h[i*dimN + j]);
+      }
+    }
+  }
+}
+
+/**
  * @brief   cpu element wise quaternary operator.
  */
 template <class T, class Op>
