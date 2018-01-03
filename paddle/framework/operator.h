@@ -53,53 +53,28 @@ constexpr char kGradVarSuffix[] = "@GRAD";
 /// Variables with this suffix are supposed to be filled up with zeros.
 constexpr char kZeroVarSuffix[] = "@ZERO";
 
-// define some kernel hint
-
-static std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
-#if PADDLE_WITH_CUDA
-    std::make_tuple(platform::CUDAPlace(0), LibraryType::kPlain), /*Plain GPU*/
-#endif
-#if PADDLE_WITH_MKLML
-    std::make_tuple(platform::CPUPlace(), LibraryType::kMKLDNN),
-#endif
-    std::make_tuple(platform::CPUPlace(), LibraryType::kPlain), /*Plain CPU*/
-};
+// define some kernel priority
+extern std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
 
 /**
  * @brief Use cpu kernel only
- * this function should be guarded with call once.
  */
-inline void UseCPU() {
-  auto is_not_cpu_kernel =
-      [&](const std::tuple<platform::Place, LibraryType>& key) {
-        return !platform::is_cpu_place(std::get<0>(key));
-      };
-  kKernelPriority.erase(
-      std::remove_if(kKernelPriority.begin(), kKernelPriority.end(),
-                     is_not_cpu_kernel),
-      kKernelPriority.end());
-}
+void UseCPU();
 
 /**
- * @brief perfer cudnn kernel than Plain CUDA kernel
- * this function should be guarded with call once.
+ * @brief Perfer cudnn kernel than Plain CUDA kernel
  */
-inline void UseCUDNN() {
-#if PADDLE_WITH_CUDA
-  if (platform::dynload::HasCUDNN()) {
-    auto is_cudnn_kernel =
-        [&](const std::tuple<platform::Place, LibraryType>& key) {
-          return platform::is_gpu_place(std::get<0>(key)) &&
-                 (std::get<1>(key) == LibraryType::kCUDNN);
-        };
-    if (std::find_if(kKernelPriority.begin(), kKernelPriority.end(),
-                     is_cudnn_kernel) == kKernelPriority.end()) {
-      auto key = std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN);
-      kKernelPriority.insert(kKernelPriority.begin(), key);
-    }
-  }
-#endif
-}
+void UseCUDNN();
+
+/**
+ * @brief Perfer MKLDNN kernel than Plain CPU kernel
+ */
+void UseMKLDNN();
+
+/**
+ * @brief Use all available kernels
+ */
+void UseAll();
 
 inline std::string GradVarName(const std::string& var_name) {
   return var_name + kGradVarSuffix;
