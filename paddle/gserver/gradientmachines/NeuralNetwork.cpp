@@ -189,7 +189,7 @@ void NeuralNetwork::init(const ModelConfig& config,
   }
 
   for (const auto& layer : layers_) {
-    const auto name& = layer->getName();
+    const auto& name = layer->getName();
     bool isMiddleLayer = true;
 
     // if data layer
