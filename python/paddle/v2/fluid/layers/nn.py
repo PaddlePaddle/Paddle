@@ -1241,7 +1241,7 @@ def lstm_unit(x_t,
 
     if x_t.shape[0] != hidden_t_prev.shape[0] or x_t.shape[
             0] != cell_t_prev.shape[0]:
-        raise ValueError("The 1s dimensions of x_t, hidden_t_prev and "
+        raise ValueError("The 1st dimensions of x_t, hidden_t_prev and "
                          "cell_t_prev must be the same.")
 
     if hidden_t_prev.shape[1] != cell_t_prev.shape[1]:
