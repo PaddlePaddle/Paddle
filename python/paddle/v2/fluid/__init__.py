@@ -1,23 +1,23 @@
 # import all class inside framework into fluid module
-import framework
-from framework import *
+from core import LoDTensor
+
+import backward
+import clip
+import evaluator
 # import all class inside executor into fluid module
 import executor
-from executor import *
-
-import io
-import evaluator
+import framework
 import initializer
+import io
 import layers
 import nets
 import optimizer
-import backward
 import regularizer
-from param_attr import ParamAttr
 from data_feeder import DataFeeder
-from core import LoDTensor, CPUPlace, CUDAPlace
 from distribute_transpiler import DistributeTranspiler
-import clip
+from executor import *
+from framework import *
+from param_attr import ParamAttr
 
 Tensor = LoDTensor
 __all__ = framework.__all__ + executor.__all__ + [
@@ -27,7 +27,7 @@ __all__ = framework.__all__ + executor.__all__ + [
 ]
 
 
-def __read_gflags_from_env__():
+def __bootstrap__():
     """
     Enable reading gflags from environment variables.
 
@@ -41,6 +41,7 @@ def __read_gflags_from_env__():
         read_env_flags.append('fraction_of_gpu_memory_to_use')
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
+    core.init_glog(sys.argv[0])
 
     if core.is_compile_gpu():
         core.init_devices(["CPU", "GPU:0"])
@@ -48,4 +49,4 @@ def __read_gflags_from_env__():
         core.init_devices(["CPU"])
 
 
-__read_gflags_from_env__()
+__bootstrap__()
