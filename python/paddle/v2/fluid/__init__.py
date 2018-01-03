@@ -1,23 +1,23 @@
 # import all class inside framework into fluid module
-from core import LoDTensor
-
-import backward
-import clip
-import evaluator
+import framework
+from framework import *
 # import all class inside executor into fluid module
 import executor
-import framework
-import initializer
+from executor import *
+
 import io
+import evaluator
+import initializer
 import layers
 import nets
 import optimizer
+import backward
 import regularizer
-from data_feeder import DataFeeder
-from distribute_transpiler import DistributeTranspiler
-from executor import *
-from framework import *
 from param_attr import ParamAttr
+from data_feeder import DataFeeder
+from core import LoDTensor, CPUPlace, CUDAPlace
+from distribute_transpiler import DistributeTranspiler
+import clip
 
 Tensor = LoDTensor
 __all__ = framework.__all__ + executor.__all__ + [
