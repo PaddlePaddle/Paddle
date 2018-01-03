@@ -219,8 +219,8 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     // operators runs on GPU device.
     auto copyTensor = [](const platform::DeviceContext& ctx, const Tensor& src,
                          Tensor* dst) {
-      dst->mutable_data<T>(platform::GPUPlace());
-      framework::CopyFrom(src, platform::GPUPlace(), ctx, dst);
+      dst->mutable_data<T>(platform::CUDAPlace());
+      framework::CopyFrom(src, platform::CUDAPlace(), ctx, dst);
     };
     copyTensor(ctx, emission_exps_src, emission_exps_dst);
     copyTensor(ctx, transition_exps_src, transition_exps_dst);
@@ -433,8 +433,8 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     auto copyTensor = [](const platform::DeviceContext& ctx, const Tensor* src,
                          Tensor* dst) {
       if (src && dst) {
-        dst->mutable_data<T>(platform::GPUPlace());
-        framework::CopyFrom(*src, platform::GPUPlace(), ctx, dst);
+        dst->mutable_data<T>(platform::CUDAPlace());
+        framework::CopyFrom(*src, platform::CUDAPlace(), ctx, dst);
       }
     };
     copyTensor(ctx, emission_grad_src, emission_grad_dst);

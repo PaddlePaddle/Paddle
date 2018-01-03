@@ -13,11 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/platform/enforce.h"
+
+#include <iostream>
+#include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 
-enum DataLayout {
+enum class DataLayout {
   kNHWC = 0,
   kNCHW = 1,
   kAnyLayout = 2,
@@ -31,6 +35,24 @@ inline DataLayout StringToDataLayout(const std::string& str) {
   } else {
     PADDLE_THROW("Unknown storage order string: %s", str);
   }
+}
+
+inline std::string DataLayoutToString(const DataLayout& data_layout) {
+  switch (data_layout) {
+    case DataLayout::kNHWC:
+      return "NHWC";
+    case DataLayout::kNCHW:
+      return "NCHW";
+    case DataLayout::kAnyLayout:
+      return "ANY_LAYOUT";
+    default:
+      PADDLE_THROW("unknown DataLayou %d", data_layout);
+  }
+}
+
+inline std::ostream& operator<<(std::ostream& out, DataLayout l) {
+  out << DataLayoutToString(l);
+  return out;
 }
 
 }  // namespace framework
