@@ -62,8 +62,12 @@ class ParallelDoOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
-    auto *block = Attr<framework::BlockDescBind *>(kParallelBlock);
+           const platform::Place &place) const override {
+    // get device context from pool
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place);
+
+    auto *block = Attr<framework::BlockDesc *>(kParallelBlock);
     auto *program = block->Program();
 
     // TODO(tonyyang-svail): get places from input
@@ -113,15 +117,14 @@ class ParallelDoOp : public framework::OperatorBase {
 
 class ParallelDoOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ParallelDoOpProtoMaker(framework::OpProto *proto,
-                         framework::OpAttrChecker *op_checker)
+  ParallelDoOpProtoMaker(OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(kInputs, "").AsDuplicable();
     AddInput(kParameters, "").AsDuplicable();
     AddInput(kPlaces, "");
     AddOutput(kOutputs, "").AsDuplicable();
     AddOutput(kParallelScopes, "");
-    AddAttr<framework::BlockDescBind *>(kParallelBlock, "");
+    AddAttr<framework::BlockDesc *>(kParallelBlock, "");
     AddComment(R"DOC(
 ParallelDo Operator.
 )DOC");
@@ -137,8 +140,13 @@ class ParallelDoGradOp : public OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
-    auto *block = Attr<framework::BlockDescBind *>(kParallelBlock);
+           const platform::Place &place) const override {
+    // // get device context from pool
+    // platform::DeviceContextPool &pool =
+    //        platform::DeviceContextPool::Instance();
+    // auto &dev_ctx = *pool.Get(place);
+
+    auto *block = Attr<framework::BlockDesc *>(kParallelBlock);
     auto *program = block->Program();
 
     auto &sub_scopes = scope.FindVar(Input(kParallelScopes))
@@ -198,14 +206,14 @@ class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  virtual std::unique_ptr<framework::OpDescBind> Apply() const {
-    auto *grad = new framework::OpDescBind();
+  virtual std::unique_ptr<framework::OpDesc> Apply() const {
+    auto *grad = new framework::OpDesc();
     grad->SetType("parallel_do_grad");
     for (auto &input_param : this->InputNames()) {
       LOG(INFO) << input_param;
       grad->SetInput(input_param, this->Input(input_param));
       grad->SetOutput(framework::GradVarName(input_param),
-                      this->InputGrad(input_param));
+                      this->InputGrad(input_param, false));
     }
 
     for (auto &output_param : this->OutputNames()) {
@@ -222,7 +230,7 @@ class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {
     grad->SetAttrMap(this->Attrs());
     grad->SetBlockAttr(kParallelBlock, *grad_block_[0]);
 
-    return std::unique_ptr<framework::OpDescBind>(grad);
+    return std::unique_ptr<framework::OpDesc>(grad);
   }
 };
 

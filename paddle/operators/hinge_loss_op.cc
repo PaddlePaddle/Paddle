@@ -46,8 +46,7 @@ class HingeLossOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class HingeLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  HingeLossOpMaker(framework::OpProto* proto,
-                   framework::OpAttrChecker* op_checker)
+  HingeLossOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Logits",
              "The input value (Logits) of Hinge loss op."

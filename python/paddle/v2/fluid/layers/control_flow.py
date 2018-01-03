@@ -3,6 +3,7 @@ from ..framework import Program, Variable, Operator
 from .. import core
 from tensor import assign, fill_constant
 import contextlib
+from ..registry import autodoc
 
 __all__ = [
     'split_lod_tensor', 'merge_lod_tensor', 'BlockGuard',
@@ -10,11 +11,42 @@ __all__ = [
     'lod_rank_table', 'max_sequence_len', 'topk', 'lod_tensor_to_array',
     'array_to_lod_tensor', 'increment', 'array_write', 'create_array',
     'less_than', 'array_read', 'shrink_memory', 'array_length', 'IfElse',
-    'DynamicRNN', 'ConditionalBlock', 'StaticRNN', 'ParallelDo'
+    'DynamicRNN', 'ConditionalBlock', 'StaticRNN', 'reorder_lod_tensor_by_rank',
+    'ParallelDo'
 ]
 
 
 def split_lod_tensor(input, mask, level=0):
+    """
+    **split_lod_tensor**
+
+    This function takes in an input that contains the complete lod information,
+    and takes in a mask which is used to mask certain parts of the input.
+    The output is the true branch and the false branch with the mask applied to
+    the input at a certain level in the tensor.
+
+    Args:
+        input(tuple|list|None): The input tensor that contains complete
+                                lod information needed to construct the output.
+        mask(list): A bool column vector which masks the input.
+        level(int): The specific lod level to rank.
+
+    Returns:
+        Variable: The true branch of tensor as per the mask applied to input.
+        Variable: The false branch of tensor as per the mask applied to input.
+
+    Examples:
+        .. code-block:: python
+
+          x = layers.data(name='x', shape=[1])
+          x.persistable = True
+
+          y = layers.data(name='y', shape=[1])
+          y.persistable = True
+
+          out_true, out_false = layers.split_lod_tensor(
+                input=x, mask=y, level=level)
+    """
     helper = LayerHelper('split_lod_tensor', **locals())
     out_true = helper.create_tmp_variable(dtype=input.dtype)
     out_false = helper.create_tmp_variable(dtype=input.dtype)
@@ -31,6 +63,40 @@ def split_lod_tensor(input, mask, level=0):
 
 
 def merge_lod_tensor(in_true, in_false, x, mask, level=0):
+    """
+    **merge_lod_tensor**
+
+    This function takes in an input :math:`x`, the True branch, the False
+    branch and a binary :math:`mask`. Using this information, this function
+    merges the True and False branches of the tensor into a single Output
+    at a certain lod level indiacted by :math:`level`.
+
+    Args:
+        in_true(tuple|list|None): The True branch to be merged.
+        in_false(tuple|list|None): The False branch to be merged.
+        x(tuple|list|None): The input tensor that contains complete
+                            lod information needed to construct the output.
+        mask(list): A bool column vector which masks the input.
+        level(int): The specific lod level to rank.
+
+    Returns:
+        Variable: The merged output tensor.
+
+    Examples:
+        .. code-block:: python
+
+          x = layers.data(
+                      name='x', shape=[1], dtype='float32', stop_gradient=False)
+          y = layers.data(
+                name='y', shape=[1], dtype='bool', stop_gradient=False)
+
+          level = 0
+
+          out_true, out_false = layers.split_lod_tensor(
+                input=x, mask=y, level=level)
+          out = layers.merge_lod_tensor(
+                in_true=out_true, in_false=out_false, mask=y, x=x, level=level)
+    """
     helper = LayerHelper('merge_lod_tensor', **locals())
     out = helper.create_tmp_variable(dtype=in_true.dtype)
     helper.append_op(
@@ -496,9 +562,50 @@ class While(object):
 
 
 def lod_rank_table(x, level=0):
-    """
-    This function creates an operator for creating a LOD_RANK_TABLE
-    using the input x.
+    """LoD Rank Table Operator. Given an input variable **x** and a level number
+    of LoD, this layer creates a LodRankTable object. A LoDRankTable object
+    contains a list of bi-element tuples. Each tuple consists of an index and
+    a length, both of which are int type. Reffering to specified level of LoD,
+    the index is the sequence index number and the length representes the
+    sequence length. Please note that the list is ranked in descending order by
+    the length. The following is an example:
+
+        .. code-block:: text
+
+            x is a LoDTensor:
+                x.lod = [[0,                2, 3],
+                         [0,             5, 6, 7]]
+                x.data = [a, b, c, d, e, f, g]
+
+            1. set level to 0:
+                Create lod rank table:
+                    lod_rank_table_obj = lod_rank_table(x, level=0)
+
+                Get:
+                    lod_rank_table_obj.items() = [(0, 2), (1, 1)]
+
+            2. set level to 1:
+                Create lod rank table:
+                    lod_rank_table_obj = lod_rank_table(x, level=1)
+
+                Get:
+                    lod_rank_table_obj.items() = [(0, 5), (1, 1), (2, 1)]
+
+    Args:
+        x (Variable): Input variable, a LoDTensor based which to create the lod
+            rank table.
+        level (int): Specify the LoD level, on which to create the lod rank
+            table.
+
+    Returns:
+        Variable: The created LoDRankTable object.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[10],
+                            dtype='float32', lod_level=1)
+            out = layers.lod_rank_table(x=x, level=0)
     """
     helper = LayerHelper("lod_rank_table", **locals())
     table = helper.create_variable(
@@ -513,9 +620,25 @@ def lod_rank_table(x, level=0):
 
 
 def max_sequence_len(rank_table):
-    """
-    This function creates an operator to calculate the length of
-    max seqence through input rank_table(should be a lod_rank_table)
+    """Max Sequence Len Operator. Given a LoDRankTable object, this layer
+    returns the max length of a batch of sequences. In fact, a LoDRankTable
+    object contains a list of tuples(<sequence index, sequence length>) and
+    the list is already sorted by sequence length in descending order, so the
+    operator just returns the sequence length of the first tuple element.
+
+    Args:
+        rank_table (Variable): Input variable which is a LoDRankTable object.
+
+    Returns:
+        Variable: The max length of sequence.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[10],
+                            dtype='float32', lod_level=1)
+            rank_table = layers.lod_rank_table(x=x, level=0)
+            max_seq_len = layers.max_sequence_len(rank_table)
     """
     helper = LayerHelper("max_seqence_len", **locals())
     res = helper.create_tmp_variable(dtype="int64")
@@ -527,6 +650,30 @@ def max_sequence_len(rank_table):
 
 
 def topk(input, k):
+    """
+    **topk**
+
+    This function performs the operation that selects the k entries in the input
+    vector and outputs their values and indices as vectors. Thus topk_out[j] is
+    the j-th largest entry in input, and its index is topk_indices[j]
+
+    Args:
+        input (Variable|list): The input tensor that has all the data.
+        k (int): The number of top elements that the function will pick.
+
+    Returns:
+        Variable: The variable of type array that contains the k largest entries
+                  from input.
+        Variable: The variable of type array that contains the indices of k
+                  largest entries from input.
+
+    Examples:
+        .. code-block:: python
+
+          x = fluid.layers.data(name='x', shape=[10])
+          k = 5
+          array = fluid.layers.topk(x, k)
+    """
     helper = LayerHelper('topk', **locals())
     topk_out = helper.create_tmp_variable(dtype=input.data_type)
     topk_indices = helper.create_tmp_variable(dtype='int64')
@@ -540,9 +687,25 @@ def topk(input, k):
 
 
 def lod_tensor_to_array(x, table):
-    """
-    This function creates an operator to convert an LOD_Tensor to
-    an array.
+    """This function performs the operation that converts an LOD_Tensor to
+       an array.
+
+    Args:
+        x (Variable|list): The tensor that needs to be converted to an array.
+        table (ParamAttr|list): The variable that stores the level of lod
+                                which is ordered by sequence length in
+                                descending order.
+
+    Returns:
+        Variable: The variable of type array that has been converted from a
+                  tensor.
+
+    Examples:
+        .. code-block:: python
+
+          x = fluid.layers.data(name='x', shape=[10])
+          table = fluid.layers.lod_rank_table(x, level=0)
+          array = fluid.layers.lod_tensor_to_array(x, table)
     """
     helper = LayerHelper("lod_tensor_to_array", **locals())
     array = helper.create_variable(
@@ -558,9 +721,26 @@ def lod_tensor_to_array(x, table):
 
 
 def array_to_lod_tensor(x, table):
-    """
-    This function creates an operator to convert an array to a
-    LOD_Tensor.
+    """This function performs the operations that converts an array to
+       an LOD_Tensor.
+
+    Args:
+        x (Variable|list): The array that needs to be converted to a tensor.
+        table (ParamAttr|list): The variable that stores the level of lod
+                                which is ordered by sequence length in
+                                descending order.
+
+    Returns:
+        Variable: The variable of type tensor that has been converted
+                  from an array.
+
+    Examples:
+        .. code-block:: python
+
+          x = fluid.layers.data(name='x', shape=[10])
+          table = fluid.layers.lod_rank_table(x, level=0)
+          array = fluid.layers.lod_tensor_to_array(x, table)
+          lod_tensor = fluid.layers.array_to_lod_tensor(array, table)
     """
     helper = LayerHelper("array_to_lod_tensor", **locals())
     tmp = helper.create_tmp_variable(dtype=x.dtype)
@@ -573,10 +753,24 @@ def array_to_lod_tensor(x, table):
 
 
 def increment(x, value=1.0, in_place=True):
-    """
-    This function creates an operator to increment each value in the input
-    `x` by an amount: `value` as mentioned in the input parameter. This
-    operation is performed in-place by default.
+    """This function performs an operation that increments each value in the
+    input :math:`x` by an amount: :math:`value` as mentioned in the input
+    parameter. This operation is performed in-place by default.
+
+    Args:
+        x (Variable|list): The tensor that has the input values.
+        value (float): The amount by which the values should be incremented.
+        in_place (bool): If the increment should be performed in-place.
+
+    Returns:
+        Variable: The tensor variable storing the transformation of
+                  element-wise increment of each value in the input.
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(name='data', shape=[32, 32], dtype='float32')
+          data = fluid.layers.increment(x=data, value=3.0, in_place=True)
     """
     helper = LayerHelper("increment", **locals())
     if not in_place:
@@ -592,9 +786,24 @@ def increment(x, value=1.0, in_place=True):
 
 
 def array_write(x, i, array=None):
-    """
-    This function creates an operator to write the data out as a
+    """This function performs the operation to write the data out as an
     LOD_TENSOR_ARRAY.
+
+    Args:
+        x (Variable|list): The input tensor from which the data will be read.
+        i (Variable|list): The subscript index in tensor array, that points the
+                           place from which data will be read.
+        array (Variable|list): The data can be read into this variable if
+                               this is assigned.
+    Returns:
+        Variable: The tensor type variable that has the data written to it.
+
+    Examples:
+        .. code-block::python
+
+          tmp = fluid.layers.zeros(shape=[10], dtype='int32')
+          i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
+          arr = layers.array_write(tmp, i=i)
     """
     helper = LayerHelper('array_write', **locals())
     if array is None:
@@ -611,6 +820,21 @@ def array_write(x, i, array=None):
 
 
 def create_array(dtype):
+    """This function creates an array of type :math:`LOD_TENSOR_ARRAY` using the
+    LayerHelper.
+
+    Args:
+        dtype (int|float): The data type of the elements in the array.
+
+    Returns:
+        Variable: The tensor variable storing the elements of data type.
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.create_array(dtype='float32')
+
+    """
     helper = LayerHelper("array", **locals())
     return helper.create_variable(
         name="{0}.out".format(helper.name),
@@ -619,6 +843,24 @@ def create_array(dtype):
 
 
 def less_than(x, y, cond=None, **ignored):
+    """
+    **Less than**
+
+    This layer returns the truth value of :math:`x < y` elementwise.
+
+    Args:
+        x(Variable): First operand of *less_than*
+        y(Variable): Second operand of *less_than*
+        cond(Variable|None): Optional output variable to store the result of *less_than*
+
+    Returns:
+        Variable: The tensor variable storing the output of *less_than*.
+
+    Examples:
+        .. code-block:: python
+
+          less = fluid.layers.less_than(x=label, y=limit)
+    """
     helper = LayerHelper("less_than", **locals())
     if cond is None:
         cond = helper.create_tmp_variable(dtype='bool')
@@ -631,9 +873,19 @@ def less_than(x, y, cond=None, **ignored):
 
 
 def array_read(array, i):
-    """
-    This function creates an operator to read the data in as a
+    """This function performs the operation to read the data in as an
     LOD_TENSOR_ARRAY.
+    Args:
+        array (Variable|list): The input tensor that will be written to an array.
+        i (Variable|list): The subscript index in tensor array, that points the
+                           place where data will be written to.
+    Returns:
+        Variable: The tensor type variable that has the data written to it.
+    Examples:
+        .. code-block::python
+          tmp = fluid.layers.zeros(shape=[10], dtype='int32')
+          i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
+          arr = layers.array_read(tmp, i=i)
     """
     helper = LayerHelper('array_read', **locals())
     if not isinstance(
@@ -667,9 +919,23 @@ def shrink_memory(x, i, table):
 
 
 def array_length(array):
-    """
-    This function creates an operator to find the length of the
+    """This function performs the operation to find the length of the input
     LOD_TENSOR_ARRAY.
+
+    Args:
+        array (LOD_TENSOR_ARRAY): The input array that will be used
+                                  to compute the length.
+
+    Returns:
+        Variable: The length of the input LoDTensorArray.
+
+    Examples:
+        .. code-block::python
+
+          tmp = fluid.layers.zeros(shape=[10], dtype='int32')
+          i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
+          arr = fluid.layers.array_write(tmp, i=i)
+          arr_len = fluid.layers.array_length(arr)
     """
     helper = LayerHelper('array_length', **locals())
     tmp = helper.create_tmp_variable(dtype='int64')
@@ -1063,3 +1329,18 @@ class DynamicRNN(object):
         if self.status != DynamicRNN.IN_RNN:
             raise ValueError("{0} can only be invoked inside rnn block.".format(
                 method))
+
+
+@autodoc
+def reorder_lod_tensor_by_rank(x, rank_table):
+    helper = LayerHelper('reorder_lod_tensor_by_rank', **locals())
+    helper.is_instance('x', Variable)
+    helper.is_instance('rank_table', Variable)
+
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='reorder_lod_tensor_by_rank',
+        inputs={'X': [x],
+                'RankTable': [rank_table]},
+        outputs={'Out': [out]})
+    return out

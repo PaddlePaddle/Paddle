@@ -159,6 +159,7 @@ void testIm2col() {
 TEST(math, im2col) {
   testIm2col<paddle::platform::CPUDeviceContext, paddle::platform::CPUPlace>();
 #ifdef PADDLE_WITH_CUDA
-  testIm2col<paddle::platform::CUDADeviceContext, paddle::platform::GPUPlace>();
+  testIm2col<paddle::platform::CUDADeviceContext,
+             paddle::platform::CUDAPlace>();
 #endif
 }

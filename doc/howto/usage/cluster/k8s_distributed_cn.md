@@ -2,8 +2,6 @@
 
 前一篇文章介绍了如何在Kubernetes集群上启动一个单机PaddlePaddle训练作业 (Job)。在这篇文章里，我们介绍如何在Kubernetes集群上进行分布式PaddlePaddle训练作业。关于PaddlePaddle的分布式训练，文章 [Cluster Training](http://www.paddlepaddle.org/docs/develop/documentation/zh/howto/usage/cluster/cluster_train_cn.html)介绍了一种通过SSH远程分发任务，进行分布式训练的方法，与此不同的是，本文将介绍在Kubernetes容器管理平台上快速构建PaddlePaddle容器集群，进行分布式训练的方案。
 
-有关Kubernetes相关概念以及如何搭建和配置Kubernetes集群，可以参考[k8s_basis](./k8s_basis_cn.md)。
-
 ## 整体方案
 
 在训练之前，用户将配置与训练数据切分好放在分布式文件系统预先分配好的目录中(不同的分布式文件系统，需要使用其制定的方式挂载后并导入数据)，训练时，程序从此目录拷贝文件到容器内进行训练，将结果保存到此目录里。整体的结构图如下：
@@ -28,7 +26,7 @@ PaddlePaddle镜像需要提供`paddle pserver`与`paddle train`进程的运行�
 - 拷贝训练文件到容器内
 - 生成`paddle pserver`与`paddle train`进程的启动参数，并且启动训练
 
-因为官方镜像 `paddledev/paddle:cpu-latest` 内已经包含PaddlePaddle的执行程序但是还没上述功能，所以我们可以在这个基础上，添加启动脚本，制作新镜像来完成以上的工作。参考镜像的[*Dockerfile*](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/usage/cluster/src/k8s_train/Dockerfile)。
+因为官方镜像 `paddlepaddle/paddle:latest` 内已经包含PaddlePaddle的执行程序但是还没上述功能，所以我们可以在这个基础上，添加启动脚本，制作新镜像来完成以上的工作。参考镜像的[*Dockerfile*](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/usage/cluster/src/k8s_train/Dockerfile)。
 
 ```bash
 $ cd doc/howto/usage/k8s/src/k8s_train
@@ -62,7 +60,7 @@ spec:
       hostNetwork: true
       containers:
       - name: paddle-data
-        image: paddledev/paddle-tutorial:k8s_data
+        image: paddlepaddle/paddle-tutorial:k8s_data
         imagePullPolicy: Always
         volumeMounts:
         - mountPath: "/mnt"
