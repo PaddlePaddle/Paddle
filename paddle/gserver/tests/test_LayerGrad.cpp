@@ -1496,7 +1496,7 @@ TEST(Layer, LstmLayer) {
       config.layerConfig.set_reversed(reversed);
       config.testState = !reversed;
       testLayerGrad(
-          config, "lstmemory", 100, /* trans= */ false, useGpu, false, 1.0);
+          config, "lstmemory", 100, /* trans= */ false, useGpu, false, 0.02);
     }
   }
   for (auto useGpu : {true}) {
