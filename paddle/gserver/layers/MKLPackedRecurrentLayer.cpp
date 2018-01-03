@@ -53,28 +53,19 @@ void MKLPackedRecurrentLayer::forwardBatch(int batchSize,
     REGISTER_TIMER_INFO("RecurrentFwBatch", getName().c_str());
     /* forward one batch */
     for (size_t n = 0; n < batchValue_->getNumBatch(); n++) {
-      MatrixPtr batch2 = batchValue_->getBatchValue(n);
+      MatrixPtr batchValue = batchValue_->getBatchValue(n);
 
       if (n != 0) {
-        MatrixPtr batch1 =
-            batchValue_->getBatchValue(n - 1, batch2->getHeight());
+        MatrixPtr preBatchValue =
+            batchValue_->getBatchValue(n - 1, batchValue->getHeight());
 
-        // batch2->mul(*batch1, *weight_->getW(), 1, 1);
-        packed_weight_->compute(batch2, batch1);
+        packed_weight_->compute(batchValue, preBatchValue);
       }
-
-#pragma omp parallel for collapse(2)
-      for (size_t i = 0; i < batch2->getHeight(); i++) {
-        for (size_t j = 0; j < batch2->getWidth(); j++) {
-          *(batch2->getData() + i * batch2->getWidth() + j) =
-              *(batch2->getData() + i * batch2->getWidth() + j) > 0
-                  ? *(batch2->getData() + i * batch2->getWidth() + j)
-                  : 0;
-        }
-      }
+      Argument arg;
+      arg.value = batchValue;
+      activation_->forward(arg).check();
     }
   }
-
   batchValue_->copyBackSeq(*output_.value);
 }
 
@@ -94,25 +85,27 @@ void MKLPackedRecurrentLayer::backwardBatch(int batchSize,
     REGISTER_TIMER_INFO("RecurrentBwData", getName().c_str());
     /* backward one batch */
     for (int n = (int)numBatch - 1; n >= 0; n--) {
-      MatrixPtr batch2 = batchGrad_->getBatchValue(n);
-      MatrixPtr batch1 = batchValue_->getBatchValue(n, batch2->getHeight());
+      MatrixPtr batchGrad = batchGrad_->getBatchValue(n);
+      MatrixPtr batchValue =
+          batchValue_->getBatchValue(n, batchGrad->getHeight());
 
       Argument arg;
-      arg.value = batch1;
-      arg.grad = batch2;
+      arg.value = batchValue;
+      arg.grad = batchGrad;
       activation_->backward(arg).check();
 
       if (n != 0) {
-        batch1 = batchGrad_->getBatchValue(n - 1, batch2->getHeight());
-        // batch1->mul(*batch2, *weightT, 1, 1);
-        packed_weightT_->compute(batch1, batch2);
+        batchValue = batchGrad_->getBatchValue(n - 1, batchGrad->getHeight());
+        packed_weightT_->compute(batchValue, batchGrad);
       }
 
       if (backwardByBatch && weight_->getWGrad()) {
         if (n != 0) {
           /* backward weight */
-          batch1 = batchValue_->getBatchValue(n - 1, batch2->getHeight());
-          weight_->getWGrad()->mul(*batch1->getTranspose(), *batch2, 1, 1);
+          batchValue =
+              batchValue_->getBatchValue(n - 1, batchGrad->getHeight());
+          weight_->getWGrad()->mul(
+              *batchValue->getTranspose(), *batchGrad, 1, 1);
         }
       }
     }
@@ -124,19 +117,14 @@ void MKLPackedRecurrentLayer::backwardBatch(int batchSize,
     REGISTER_TIMER_INFO("RecurrentBwWeight", getName().c_str());
     for (size_t seq = 0; seq < numSequences; ++seq) {
       int len = starts[seq + 1] - starts[seq];
-      if (!reversed_) {
-        weight_->getWGrad()->mul(
-            *output_.value->subMatrix(starts[seq], len - 1)->getTranspose(),
-            *output_.grad->subMatrix(starts[seq] + 1, len - 1),
-            1,
-            1);
-      } else {
-        weight_->getWGrad()->mul(
-            *output_.value->subMatrix(starts[seq] + 1, len - 1)->getTranspose(),
-            *output_.grad->subMatrix(starts[seq], len - 1),
-            1,
-            1);
-      }
+      weight_->getWGrad()->mul(
+          *output_.value
+               ->subMatrix(reversed_ ? starts[seq] + 1 : starts[seq], len - 1)
+               ->getTranspose(),
+          *output_.grad->subMatrix(reversed_ ? starts[seq] : starts[seq] + 1,
+                                   len - 1),
+          1,
+          1);
     }
   }
 }

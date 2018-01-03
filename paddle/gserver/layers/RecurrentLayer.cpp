@@ -13,10 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "RecurrentLayer.h"
-#include <gflags/gflags.h>
-#include "Layer.h"
-#include "SequenceToBatch.h"
-#include "paddle/utils/Stat.h"
 
 DEFINE_bool(rnn_use_batch, false, "Using the batch method for calculation.");
 

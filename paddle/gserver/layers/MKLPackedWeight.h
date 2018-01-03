@@ -22,7 +22,9 @@ namespace paddle {
 
 class MKLPackedWeight {
 protected:
+  /// The pointor of weight
   real *weight_;
+  /// The pointor of cblas packed gemm to weight
   real *packedWeight_;
   size_t height_;
   size_t width_;
@@ -41,7 +43,7 @@ public:
 
   void pack() { pack_(weight_); }
 
-  void compute(MatrixPtr dst, MatrixPtr src) {
+  void compute(MatrixPtr dst, const MatrixPtr src) {
     cblas_sgemm_compute(CblasRowMajor,
                         CblasNoTrans,
                         CblasPacked,
@@ -55,22 +57,6 @@ public:
                         1.0,
                         dst->getData(),
                         dst->getWidth());
-  }
-
-  void compute(size_t M, real *A, size_t lda, real *C, size_t ldc) {
-    cblas_sgemm_compute(CblasRowMajor,
-                        CblasNoTrans,
-                        CblasPacked,
-                        M,
-                        width_,
-                        height_,
-                        A,
-                        lda,
-                        packedWeight_,
-                        width_,
-                        1.0,
-                        C,
-                        ldc);
   }
 
 protected:
