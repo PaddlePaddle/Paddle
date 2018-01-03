@@ -186,36 +186,6 @@ endfunction()
 add_subdirectory(math)
 add_subdirectory(nccl)
 
-set(DEPS_OPS
-    cond_op
-    cross_entropy_op
-    recurrent_op
-    softmax_with_cross_entropy_op
-    softmax_op
-    sequence_softmax_op
-    sum_op
-    pool_op
-    maxout_op
-    unpool_op
-    pool_with_index_op
-    conv_op
-    conv_transpose_op
-    nccl_op
-    sequence_conv_op
-    sequence_pool_op
-    lod_rank_table_op
-    lod_tensor_to_array_op
-    array_to_lod_tensor_op
-    max_sequence_len_op
-    lstm_op
-    gru_op
-    adagrad_op
-    sgd_op
-    save_op
-    load_op
-    send_op
-    recv_op
-    detection_output_op)
 if(WITH_GPU)
     op_library(nccl_op DEPS nccl_common)
 else()

@@ -201,15 +201,47 @@ def fill_constant_batch_size_like(input,
 
 def ones(shape, dtype):
     """
-    This function performs the same function as fill_constant() declared above
-    with the constant value being 1.0.
+    **ones**
+
+    This function creates a tensor of specified *shape* and
+    *dtype*, and initializes this with 1.
+
+    It also sets *stop_gradient* to True.
+
+    Args:
+        shape(tuple|list|None): Shape of output tensor
+        dtype(np.dtype|core.DataType|str): Data type of output tensor
+
+    Returns:
+        Variable: The tensor variable storing the output
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.ones(shape=[1], dtype='int64')
     """
     return fill_constant(value=1.0, **locals())
 
 
 def zeros(shape, dtype):
     """
-    This function performs the same function as fill_constant() declared above
-    with the constant value being 0.0.
+    **zeros**
+
+    This function creates a tensor of specified *shape* and
+    *dtype*, and initializes this with 0.
+
+    It also sets *stop_gradient* to True.
+
+    Args:
+        shape(tuple|list|None): Shape of output tensor
+        dtype(np.dtype|core.DataType|str): Data type of output tensor
+
+    Returns:
+        Variable: The tensor variable storing the output
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.zeros(shape=[1], dtype='int64')
     """
     return fill_constant(value=0.0, **locals())
