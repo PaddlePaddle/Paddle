@@ -65,7 +65,7 @@ void TransDataType(const platform::DeviceContext* ctx,
       framework::VisitDataType(dst_type, CastDataType<int>(src, dst, ctx));
       break;
     case proto::DataType::INT64:
-      framework::VisitDataType(dst_type, CastDataType<int>(src, dst, ctx));
+      framework::VisitDataType(dst_type, CastDataType<int64_t>(src, dst, ctx));
       break;
     case proto::DataType::BOOL:
       framework::VisitDataType(dst_type, CastDataType<bool>(src, dst, ctx));
@@ -75,9 +75,10 @@ void TransDataType(const platform::DeviceContext* ctx,
   }
 }
 
-void TransDataLayout(const platform::DeviceContext* ctx,
+void TransDataLayout(const std::vector<int>& axis,
+                     const platform::DeviceContext* ctx,
                      const KernelTypePair& kernel_pair, const Variable& in,
-                     Variable* out, const std::vector<int>& axis) {
+                     Variable* out) {
   PADDLE_ENFORCE(in.IsType<Tensor>(), "Only Support Tensor transform!.");
   PADDLE_ENFORCE(
       platform::places_are_same_class(kernel_pair.first.place_,
@@ -93,7 +94,7 @@ void TransDataLayout(const platform::DeviceContext* ctx,
   auto place = kernel_pair.second.place_;
   CopyFrom(src, place, *ctx, dst);
 
-  std::vector<int> dst_dim;
+  std::vector<int64_t> dst_dim;
   dst_dim.resize(axis.size());
   for (size_t i = 0; i < axis.size(); i++) {
     dst_dim[i] = src_dim[axis[i]];
@@ -112,17 +113,21 @@ void TransDataLayout(const platform::DeviceContext* ctx,
 
 namespace f = paddle::framework;
 
+namespace {
 std::vector<int> NHWC2NCHW = {0, 3, 1, 2};
 std::vector<int> NCHW2NHWC = {0, 2, 3, 1};
+}
 
 REGISTER_DATA_TRANSFORM_FN(f::KernelFP32, f::KernelFP64, f::TransDataType);
 REGISTER_DATA_TRANSFORM_FN(f::KernelNHWC, f::KernelNCHW,
-                           std::bind(f::TransDataLayout, std::placeholders::_1,
+                           std::bind(f::TransDataLayout, NHWC2NCHW,
+                                     std::placeholders::_1,
                                      std::placeholders::_2,
                                      std::placeholders::_3,
-                                     std::placeholders::_4, NHWC2NCHW));
+                                     std::placeholders::_4));
 REGISTER_DATA_TRANSFORM_FN(f::KernelNCHW, f::KernelNHWC,
-                           std::bind(f::TransDataLayout, std::placeholders::_1,
+                           std::bind(f::TransDataLayout, NCHW2NHWC,
+                                     std::placeholders::_1,
                                      std::placeholders::_2,
                                      std::placeholders::_3,
-                                     std::placeholders::_4, NCHW2NHWC));
+                                     std::placeholders::_4));
