@@ -105,18 +105,10 @@ There are two ways to execute a Fluid program.  When a program is executed, it c
 
 There is a C++ class [`Executor`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/executor.h), which runs a `ProgramDesc`, similar to how an interpreter runs a Python program.
 
-Fluid is moving towards the direction of a compiler, which is explain in more detail later in this article.
+Fluid is moving towards the direction of a compiler, which is explain in [fluid_compiler.md](fluid_compiler.md).
 
 ## Backward Compatibility of Fluid
 
 Given all the advantages from the removal of the concept of a *model*, hardware manufacturers might still prefer the existence of the concept of a model, so it would be easier for them to support multiple frameworks all at once and could run a trained model during inference.  For example, Nervana, a startup company acquired by Intel, has been working on an XPU that reads the models in the format known as [n-graph](https://github.com/NervanaSystems/ngraph).  Similarly, [Movidius](https://www.movidius.com/) is producing a mobile deep learning chip that reads and runs graphs of operators.  The well-known [ONNX](https://github.com/onnx/onnx) is also a file format of graphs of operators.
 
 For Fluid, we can write a converter that extracts the parts in the `ProgramDesc` protobuf message, converts them into a graph of operators, and exports the graph into the ONNX or n-graph format.
-
-## Towards a Deep Learning Language and the Compiler
-
-We can change the `if-then-else` and loop structure a little bit in the above Fluid example programs, to make it into a new programming language, different than Python.
-
-Even if we do not invent a new language, as long as we get the `ProgramDesc` message filled in, we can write a transpiler, which translates each invocation to an operator, into a C++ call to a kernel function of that operator. For example, a transpiler that weaves the CUDA kernels outputs an NVIDIA-friendly C++ program, which can be built using `nvcc`.  Another transpiler could generate MKL-friendly code that should be built using `icc` from Intel.  More interestingly, we can translate a Fluid program into its distributed version of two `ProgramDesc` messages, one for running on the trainer process, and the other one for the parameter server.  For more details of the last example, the [concurrent programming design](concurrent_programming.md) document would be a good pointer.  The following figure explains the proposed two-stage process:
-
-![](fluid-compiler.png)
