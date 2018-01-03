@@ -61,17 +61,6 @@ struct OperatorRegistrar : public Registrar {
 
 class OpRegistry {
  public:
-  template <typename OpType, typename ProtoMakerType, typename GradOpType>
-  static void RegisterOp(const std::string& op_type,
-                         const std::string& grad_op_type) {
-    OperatorRegistrar<OpType, ProtoMakerType> reg(op_type.c_str());
-    reg.info.grad_op_type_ = grad_op_type;
-    // register gradient op
-    if (!grad_op_type.empty()) {
-      OperatorRegistrar<GradOpType> grad_reg(grad_op_type.c_str());
-    }
-  }
-
   static std::unique_ptr<OperatorBase> CreateOp(const std::string& type,
                                                 const VariableNameMap& inputs,
                                                 const VariableNameMap& outputs,
@@ -90,30 +79,31 @@ struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
   using KERNEL_TYPE =
       typename std::tuple_element<I, std::tuple<KernelTypes...>>::type;
 
-  void operator()(const char* op_type) const {
+  void operator()(const char* op_type, const char* library_type) const {
     using T = typename KERNEL_TYPE::ELEMENT_TYPE;
-    OpKernelType key(ToDataType(std::type_index(typeid(T))), PlaceType());
+    OpKernelType key(ToDataType(std::type_index(typeid(T))), PlaceType(),
+                     DataLayout::kAnyLayout, StringToLibraryType(library_type));
     OperatorWithKernel::AllOpKernels()[op_type][key].reset(new KERNEL_TYPE);
 
     constexpr auto size = std::tuple_size<std::tuple<KernelTypes...>>::value;
     OpKernelRegistrarFunctor<PlaceType, I + 1 == size, I + 1, KernelTypes...>
         func;
-    func(op_type);
+    func(op_type, library_type);
   }
 };
 
 template <typename PlaceType, size_t I, typename... KernelType>
 struct OpKernelRegistrarFunctor<PlaceType, true, I, KernelType...> {
-  void operator()(const char* op_type) const {}
+  void operator()(const char* op_type, const char* library_type) const {}
 };
 
 // User can register many kernel in one place. The data type could be different.
 template <typename PlaceType, typename... KernelType>
 class OpKernelRegistrar : public Registrar {
  public:
-  explicit OpKernelRegistrar(const char* op_type) {
+  explicit OpKernelRegistrar(const char* op_type, const char* library_type) {
     OpKernelRegistrarFunctor<PlaceType, false, 0, KernelType...> func;
-    func(op_type);
+    func(op_type, library_type);
   }
 };
 
@@ -192,14 +182,15 @@ class OpKernelRegistrar : public Registrar {
       __reg_op_kernel_##op_type##_##DEVICE_TYPE##__,                      \
       "REGISTER_OP_KERNEL must be called in global namespace");           \
   static ::paddle::framework::OpKernelRegistrar<place_class, __VA_ARGS__> \
-      __op_kernel_registrar_##op_type##_##DEVICE_TYPE##__(#op_type);      \
+      __op_kernel_registrar_##op_type##_##DEVICE_TYPE##__(#op_type,       \
+                                                          #DEVICE_TYPE);  \
   int TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE() {                \
     __op_kernel_registrar_##op_type##_##DEVICE_TYPE##__.Touch();          \
     return 0;                                                             \
   }
 
 #define REGISTER_OP_CUDA_KERNEL(op_type, ...) \
-  REGISTER_OP_KERNEL(op_type, CUDA, ::paddle::platform::GPUPlace, __VA_ARGS__)
+  REGISTER_OP_KERNEL(op_type, CUDA, ::paddle::platform::CUDAPlace, __VA_ARGS__)
 
 #define REGISTER_OP_CPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)
