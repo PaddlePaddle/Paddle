@@ -38,7 +38,7 @@ device_context)
 cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute)
 cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
-cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute)
+cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_context)
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
     shape_inference data_transform)
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry init)
