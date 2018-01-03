@@ -125,7 +125,6 @@ class CUDNNDeviceContext : public CUDADeviceContext {
 class MKLDNNDeviceContext : public CPUDeviceContext {
  public:
   explicit MKLDNNDeviceContext(CPUPlace place);
-  virtual ~MKLDNNDeviceContext();
 
   /* \brief  Add new element: memory, primitive or primitive desc */
   template <typename T>
