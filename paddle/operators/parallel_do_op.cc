@@ -185,18 +185,27 @@ class ParallelDoGradOp : public OperatorBase {
     // merge grad
     for (auto &s : Outputs(framework::GradVarName(kParameters))) {
       LOG(INFO) << s;
-      // std::string s_buf = s + "@BUF";
-      // auto *t_buf = sub_scopes[0]->Var(s_buf)->GetMutable<LoDTensor>();
-      for (size_t place_idx = 1; place_idx < places.size(); ++place_idx) {
-        LOG(INFO) << place_idx;
-        LOG(INFO) << sub_scopes[place_idx]->FindVar(s)->Get<LoDTensor>();
-        // Copy grad[i] to grad_buf[0]
 
-        // sum_op
+      auto &t = sub_scopes[0]->FindVar(s)->Get<LoDTensor>();
+      LOG(INFO) << t;
+
+      std::string s_buf = s + "@BUF";
+      auto *t_buf = sub_scopes[0]->Var(s_buf)->GetMutable<LoDTensor>();
+
+      for (size_t place_idx = 1; place_idx < places.size(); ++place_idx) {
+        auto &tt = sub_scopes[place_idx]->FindVar(s)->Get<LoDTensor>();
+        LOG(INFO) << place_idx;
+        LOG(INFO) << tt;
+        framework::CopyFrom(tt, places[0], t_buf);
+
+        auto sum_op = framework::OpRegistry::CreateOp(
+            "sum", {{"X", {s, s_buf}}}, {{"Out", {s}}},
+            framework::AttributeMap{});
+        sum_op->Run(*sub_scopes[0], place);
       }
 
-      // Copy grad[0] to grad
-      // auto *t = scope.FindVar(s)->GetMutable<LoDTensor>();
+      LOG(INFO) << t;
+      framework::CopyFrom(t, place, scope.FindVar(s)->GetMutable<LoDTensor>());
     }
   }
 };
