@@ -57,6 +57,8 @@ def _all_in_set_(cands, s):
     """
     Test if all elements of 'cands' are in set 's'
     """
+    if len(cands) == 0:
+        return False
     for c in cands:
         if not c in s:
             return False
@@ -136,12 +138,23 @@ def _remove_no_grad_branch_(op_descs, no_grad_set):
     Remove unnecessary grad ops
     A grad op can be removed in two cases:
         1. all outputs of the grad op are in 'no_grad_set'
-        2. (TODO) all grad inputs of the grad op are in 'no_grad_set'
+        2. all grad inputs of the grad op are in 'no_grad_set'
     """
+
+    def _op_can_be_removed_(op_desc, no_grad_set):
+        out_arg_names = op_desc.output_arg_names()
+        if len(out_arg_names) == 0 or _all_in_set_(out_arg_names, no_grad_set):
+            return True
+        if _all_in_set_(
+                filter(lambda name: name.find(core.grad_var_suffix()) != -1,
+                       op_desc.input_arg_names()), no_grad_set):
+            no_grad_set.union(out_arg_names)
+            return True
+        return False
+
     # Remove ops whose outputs are all in no_grad_dict
     op_descs = filter(
-        lambda op_desc: not _all_in_set_(op_desc.output_arg_names(), no_grad_set),
-        op_descs)
+        lambda op_desc: not _op_can_be_removed_(op_desc, no_grad_set), op_descs)
     # Insert fill_zeros_like_op
     to_insert = []
     for idx, op_desc in enumerate(op_descs):
@@ -284,7 +297,9 @@ def append_backward(loss, parameter_list=None, no_grad_set=None):
                     block_no_grad_set.add(_append_grad_suffix_(var.name))
             no_grad_dict[block.idx] = block_no_grad_set
     elif isinstance(no_grad_set, set):
-        no_grad_dict = {0: no_grad_set}
+        no_grad_dict = {
+            0: set([_append_grad_suffix_(name) for name in no_grad_set])
+        }
     else:
         raise ValueError("'no_grad_set' should be a set or None.")
 

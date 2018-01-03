@@ -21,15 +21,19 @@ limitations under the License. */
 #include "paddle/framework/op_kernel_type.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/framework/variable.h"
+#include "paddle/operators/math/math_function.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/macros.h"
+#include "paddle/platform/transform.h"
 
 namespace paddle {
 namespace framework {
 
-using DataTransformFn = std::function<void(const platform::DeviceContext* ctx,
-                                           const Variable& in, Variable* out)>;
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
+
+using DataTransformFn =
+    std::function<void(const platform::DeviceContext*, const KernelTypePair&,
+                       const Variable&, Variable*)>;
 
 struct KernelTypePairHash {
   static void HashCombine(const OpKernelType& t, std::size_t* seed) {
@@ -42,6 +46,65 @@ struct KernelTypePairHash {
     HashCombine(kernel_pair.first, &seed);
     HashCombine(kernel_pair.second, &seed);
     return seed;
+  }
+};
+
+template <typename InType, typename OutType>
+struct CastDataTypeFunctor {
+  HOSTDEVICE inline OutType operator()(InType in) const {
+    return static_cast<OutType>(in);
+  }
+};
+
+template <typename InType>
+struct CastDataType {
+  CastDataType(const framework::Tensor& in, framework::Tensor* out,
+               const platform::DeviceContext* ctx)
+      : in_(in), out_(out), ctx_(ctx) {}
+  const framework::Tensor in_;
+  framework::Tensor* out_;
+  const platform::DeviceContext* ctx_;
+
+  template <typename OutType>
+  void operator()() {
+    auto place = ctx_->GetPlace();
+
+    auto* in_begin = in_.data<InType>();
+    auto numel = in_.numel();
+    auto* in_end = in_begin + numel;
+    auto* out_begin = out_->mutable_data<OutType>(place);
+    if (platform::is_cpu_place(place)) {
+      platform::Transform<platform::CPUDeviceContext> trans;
+      auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
+      trans(*context, in_begin, in_end, out_begin,
+            CastDataTypeFunctor<InType, OutType>());
+    } else {
+      // TODO(dzhwinter): enhance CopyFrom CPU<->GPU with different data type?
+      PADDLE_THROW("Unsupport CPU <-> GPU!");
+    }
+  }
+};
+
+struct CastDataLayout {
+  CastDataLayout(const framework::Tensor& in, framework::Tensor* out,
+                 const platform::DeviceContext* ctx,
+                 const std::vector<int>& axis)
+      : in_(in), out_(out), ctx_(ctx), axis_(axis) {}
+  const framework::Tensor in_;
+  framework::Tensor* out_;
+  const platform::DeviceContext* ctx_;
+  const std::vector<int> axis_;
+
+  template <typename T>
+  void operator()() {
+    auto place = ctx_->GetPlace();
+    if (platform::is_cpu_place(place)) {
+      operators::math::Transpose<platform::CPUDeviceContext, T, 4> trans4;
+      auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
+      trans4(*context, in_, out_, axis_);
+    } else {
+      PADDLE_THROW("Unsupport CPU <-> GPU!");
+    }
   }
 };
 

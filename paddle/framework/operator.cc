@@ -461,7 +461,7 @@ void OperatorWithKernel::Run(const Scope& scope,
         dev_ctx->Wait();
 
         for (auto var_name : need_trans) {
-          (*trans_fun)(trans_dev_ctx, *(scope.FindVar(var_name)),
+          (*trans_fun)(trans_dev_ctx, kernel_pair, *(scope.FindVar(var_name)),
                        scope.FindVar(var_name + framework::KernelTypeToString(
                                                     expected_kernel_key)));
         }
