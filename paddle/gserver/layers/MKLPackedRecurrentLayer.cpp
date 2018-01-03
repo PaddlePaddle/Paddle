@@ -59,7 +59,7 @@ void MKLPackedRecurrentLayer::forwardBatch(int batchSize,
         MatrixPtr preBatchValue =
             batchValue_->getBatchValue(n - 1, batchValue->getHeight());
 
-        packed_weight_->compute(batchValue, preBatchValue);
+        packed_weight_->gemm_compute(preBatchValue, batchValue);
       }
       Argument arg;
       arg.value = batchValue;
@@ -96,7 +96,7 @@ void MKLPackedRecurrentLayer::backwardBatch(int batchSize,
 
       if (n != 0) {
         batchValue = batchGrad_->getBatchValue(n - 1, batchGrad->getHeight());
-        packed_weightT_->compute(batchValue, batchGrad);
+        packed_weightT_->gemm_compute(batchGrad, batchValue);
       }
 
       if (backwardByBatch && weight_->getWGrad()) {
