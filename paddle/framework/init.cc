@@ -77,6 +77,7 @@ bool InitDevices(const std::vector<std::string> &devices) {
 
 void InitGLOG(const std::string &prog_name) {
   google::InitGoogleLogging(prog_name.c_str());
+  google::InstallFailureSignalHandler();
 }
 
 }  // namespace framework
