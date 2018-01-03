@@ -49,11 +49,11 @@ void AsyncGRPCClient::AddEndPoint(std::string ep) {
 }
 
 struct SendMsg {
-  void Run(const framework::Scope& scope, const std::string name,
+  void Run(const framework::Scope* scope, const std::string name,
            VariableMessage* msg) {
     // FIXME(gongwb): pass device context to here.
     auto ctx = platform::CPUDeviceContext();
-    auto* var = scope.FindVar(name);
+    auto* var = scope->FindVar(name);
     PADDLE_ENFORCE(var);
     // TODO(gongwb): support SelectedRows
     PADDLE_ENFORCE(var->IsType<framework::LoDTensor>(),
@@ -68,7 +68,7 @@ struct SendMsg {
 
   template <typename reply_t>
   void ProcRetMsg(const reply_t& replies, int64_t idx,
-                  const framework::Scope& scope, std::string name) {}
+                  const framework::Scope* scope, std::string name) {}
 
   template <typename send_t, typename recv_t>
   void Call(grpc::CompletionQueue* cq,
@@ -81,7 +81,7 @@ struct SendMsg {
 };
 
 struct GetMsg {
-  void Run(const framework::Scope& scope, const std::string name,
+  void Run(const framework::Scope* scope, const std::string name,
            VariableMessage* msg) {
     // FIXME(gongwb): pass device context to here.
     msg->set_varname(name);
@@ -89,11 +89,11 @@ struct GetMsg {
 
   template <typename reply_t>
   void ProcRetMsg(const reply_t& replies, int64_t idx,
-                  const framework::Scope& scope, std::string name) {
+                  const framework::Scope* scope, std::string name) {
     std::istringstream iss(replies[idx]->serialized());
     framework::LoDTensor ret_tensor;
     framework::DeserializeFromStream(iss, &ret_tensor);
-    auto* outvar = scope.FindVar(name);
+    auto* outvar = scope->FindVar(name);
     framework::LoDTensor* out_tensor =
         outvar->GetMutable<framework::LoDTensor>();
     // FIXME(gongwb): do not copy.
@@ -112,7 +112,8 @@ struct GetMsg {
 };
 
 template <typename send_t, typename recv_t, typename Msg_t>
-bool AsyncGRPCClient::Call(const framework::Scope& scope, std::vector<Var>& in,
+bool AsyncGRPCClient::Call(const framework::Scope* scope,
+                           const std::vector<Var>& in,
                            std::vector<SendStatus>& ret) {
   grpc::CompletionQueue cq;
   // Create a ClientContext, Status, Reply, and rpc for each backend.
@@ -194,36 +195,30 @@ bool AsyncGRPCClient::Call(const framework::Scope& scope, std::vector<Var>& in,
   return finished_ok == finished;
 }
 
-bool AsyncGRPCClient::SendVariable(const framework::Scope& scope,
+bool AsyncGRPCClient::SendVariable(const framework::Scope* scope,
                                    const std::vector<Var>& in,
                                    std::vector<SendStatus>& ret) {
   return Call<VariableMessage, VoidMessage, SendMsg>(scope, in, ret);
 }
 
-bool AsyncGRPCClient::GetVariable(const framework::Scope& scope,
+bool AsyncGRPCClient::GetVariable(const framework::Scope* scope,
                                   const std::vector<Var>& in,
                                   std::vector<SendStatus>& ret) {
   return Call<VariableMessage, VariableMessage, GetMsg>(scope, in, ret);
 }
 
-bool AsyncGRPCClient::SyncUpdate(const framework::Scope& scope,
+bool AsyncGRPCClient::SyncUpdate(const framework::Scope* scope,
                                  const std::vector<Var>& in,
                                  std::vector<SendStatus>& in_ret,
                                  const std::vector<Var>& out,
-                                 std::vector<SendStatus>& out_ret,
-                                 std::vector<SendStatus>& errors) {
-  auto in_thread =
-      std::async(&AsyncGRPCClient::SendVariable, this, scope, in, in_ret);
-  auto out_thread =
-      std::async(&AsyncGRPCClient::GetVariable, this, scope, out, out_ret);
+                                 std::vector<SendStatus>& out_ret) const {
+  std::future<bool> in_thread = std::async(
+      std::bind(&AsyncGRPCClient::SendVariable, this, scope, in, in_ret));
+  std::future<bool> out_thread = std::async(
+      std::bind(&AsyncGRPCClient::GetVariable, this, scope, out, out_ret));
+
   auto in_ok = in_thread.get();
   auto out_ok = out_thread.get();
-
-  std::copy_if(in_ret.begin(), in_ret.end(), std::back_inserter(errors),
-               [](SendStatus status) { return status.error != ""; });
-
-  std::copy_if(out_ret.begin(), out_ret.end(), std::back_inserter(errors),
-               [](SendStatus status) { return status.error != ""; });
 
   return (in_ok && out_ok);
 }

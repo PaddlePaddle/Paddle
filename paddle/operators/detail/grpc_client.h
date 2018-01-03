@@ -30,6 +30,9 @@ limitations under the License. */
 #include "paddle/operators/detail/send_recv.pb.h"
 
 #include <grpc++/grpc++.h>
+#include <chrono>
+#include <ctime>
+#include <iostream>
 
 using grpc::Channel;
 
@@ -40,6 +43,11 @@ namespace detail {
 struct Var {
   std::string endpoint;
   std::string name;
+  std::string String() const {
+    std::ostringstream s;
+    s << "name:" << name << " endpoint:" << endpoint;
+    return s.str();
+  }
 };
 
 struct SendStatus {
@@ -47,6 +55,15 @@ struct SendStatus {
   std::chrono::system_clock::time_point start;
   std::chrono::system_clock::time_point end;
   Var var;
+
+  std::string String() const {
+    std::time_t t0 = std::chrono::system_clock::to_time_t(start);
+    std::time_t t1 = std::chrono::system_clock::to_time_t(end);
+    std::ostringstream s;
+    s << var.String() << " start_time:" << std::ctime(&t0)
+      << " end_time:" << std::ctime(&t1);
+    return s.str();
+  }
 };
 
 class AsyncGRPCClient {
@@ -56,23 +73,22 @@ class AsyncGRPCClient {
   void AddEndPoint(std::string ep);
   void AddEndPoint(const std::vector<std::string>& ep);
 
-  bool SendVariable(const framework::Scope& scope, const std::vector<Var>& in,
+  bool SendVariable(const framework::Scope* scope, const std::vector<Var>& in,
                     std::vector<SendStatus>& ret);
 
-  bool GetVariable(const framework::Scope& scope, const std::vector<Var>& in,
+  bool GetVariable(const framework::Scope* scope, const std::vector<Var>& in,
                    std::vector<SendStatus>& ret);
 
-  bool SyncUpdate(const framework::Scope& scope, const std::vector<Var>& in,
+  bool SyncUpdate(const framework::Scope* scope, const std::vector<Var>& in,
                   std::vector<SendStatus>& in_ret, const std::vector<Var>& out,
-                  std::vector<SendStatus>& out_ret,
-                  std::vector<SendStatus>& errors);
+                  std::vector<SendStatus>& out_ret) const;
 
   // TODO(gongwb): add SendRecv function to try to update
   // one local parameter immediately when it's gradient
   // is sent completely and don't wait all.
  protected:
   template <typename send_t, typename recv_t, typename Msg_t>
-  bool call(const framework::Scope& scope, std::vector<Var>& in,
+  bool Call(const framework::Scope* scope, const std::vector<Var>& in,
             std::vector<SendStatus>& ret);
 
  private:

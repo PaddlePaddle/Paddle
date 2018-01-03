@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/proto_desc.h"
+#include "paddle/operators/detail/grpc_server.h"
 #include "paddle/operators/detail/send_recv_impl.h"
 #include "paddle/operators/detail/simple_block_queue.h"
 
@@ -33,9 +34,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-void RunServer(std::shared_ptr<detail::SendRecvServerImpl> service) {
-  service->Run();
-  service->wait();
+void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service) {
+  service->RunSyncUpdate();
 }
 
 class RecvOp : public framework::OperatorBase {
@@ -55,7 +55,7 @@ class RecvOp : public framework::OperatorBase {
     detail::TensorWithName term_msg;
     term_msg.first = LISTEN_TERMINATE_MESSAGE;
     rpc_service_->Push(term_msg);
-    // rpc_server_->Shutdown();
+    rpc_service_->ShutDown();
     server_thread_->join();
   }
 
@@ -78,10 +78,12 @@ class RecvOp : public framework::OperatorBase {
     auto grad_list = Attr<std::vector<std::string>>("GradList");
     auto trainer_count = Attr<int>("Trainers");
     size_t param_count = param_list.size();
+
     rpc_service_->Reset();
     // TODO(typhoonzero): change this to a while_op for every cluster-batch.
     bool exit_flag = false;
     while (!exit_flag) {
+      // TODO(gognwb): simply this loop.
       // Get from multiple trainers, we don't care about order in which
       // the gradient arrives, just add suffix 0~n then average the gradient.
       for (size_t i = 0; i < param_count * trainer_count; ++i) {
@@ -101,6 +103,7 @@ class RecvOp : public framework::OperatorBase {
         }
         VLOG(3) << "recved grad: " << grad_var_name
                 << " updating param: " << param_var_name;
+
         auto *merged_grad = recv_scope.FindVar(grad_var_name);
         if (merged_grad == nullptr) {
           // create output of merged var.
@@ -119,9 +122,11 @@ class RecvOp : public framework::OperatorBase {
         auto &dev_ctx = *pool.Borrow(dev_place);
         framework::CopyFrom(v.second, dev_place, dev_ctx, tensor);
       }
+
       if (exit_flag) {
         break;
       }
+
       rpc_service_->Reset();
 
       std::string program_str = Attr<std::string>("OptimizeProgram");
@@ -136,6 +141,7 @@ class RecvOp : public framework::OperatorBase {
       } catch (std::exception &e) {
         LOG(ERROR) << "run sub program error " << e.what();
       }
+
       rpc_service_->Done();
       grads_counter_.clear();
     }  // while(true)

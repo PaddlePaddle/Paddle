@@ -40,6 +40,14 @@ class SendOp : public framework::OperatorBase {
     client_.AddEndPoint(endpoints);
   }
 
+  void LogErrors(const std::vector<detail::SendStatus> &status) const {
+    for (auto &s : status) {
+      if (s.error != "") {
+        LOG(ERROR) << "sync update variable error:" << s.String();
+      }
+    }
+  }
+
   void Run(const framework::Scope &scope,
            const platform::Place &dev_place) const override {
     auto ins = Inputs("X");
@@ -52,21 +60,21 @@ class SendOp : public framework::OperatorBase {
       detail::Var in_var;
       in_var.name = ins[i];
       in_var.endpoint = epmap[i];
-      in_vars.emplace_back(in_var);
+      in_vars.push_back(in_var);
 
       detail::Var out_var;
       in_var.name = ins[i];
       in_var.endpoint = epmap[i];
-      out_vars.emplace_back(epmap[i]);
+      out_vars.push_back(out_var);
     }
 
     std::vector<detail::SendStatus> in_status;
     std::vector<detail::SendStatus> out_status;
-    std::vector<detail::SendStatus> errors;
-    bool ok = client_.SyncUpdate(scope, in_vars, in_status, out_vars,
-                                 out_status, errors);
+    bool ok =
+        client_.SyncUpdate(&scope, in_vars, in_status, out_vars, out_status);
     if (!ok) {
-      LOG(ERROR) << "sync update variable error: in_status:" << errors;
+      LogErrors(in_status);
+      LogErrors(out_status);
     }
   }
 

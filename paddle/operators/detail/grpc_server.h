@@ -25,6 +25,7 @@ limitations under the License. */
 
 #include <grpc++/grpc++.h>
 #include <grpc/support/log.h>
+#include <thread>
 
 using grpc::Channel;
 using grpc::Server;
@@ -49,7 +50,10 @@ typedef std::pair<std::string, framework::LoDTensor> TensorWithName;
 
 class AsyncGRPCServer final : public SendRecvService::Service {
  public:
-  explicit AsyncGRPCServer(std::string address) { address_ = address; }
+  explicit AsyncGRPCServer(std::string address) {
+    address_ = address;
+    exit_ = false;
+  }
 
   void RunSyncUpdate();
 
@@ -64,8 +68,12 @@ class AsyncGRPCServer final : public SendRecvService::Service {
 
   void Push(const TensorWithName &msg) { this->var_recv_queue_.Push(msg); }
 
+  void ShutDown();
+
  protected:
-  void HandleRpcs();
+  void _Wait();
+  void _HandleReqSend();
+  void _HandleReqGet(bool wait);
 
  private:
   std::unique_ptr<ServerCompletionQueue> cq_send_;
@@ -80,8 +88,12 @@ class AsyncGRPCServer final : public SendRecvService::Service {
 
   // condition of the sub program
   std::mutex mutex_;
-  bool done_;
+  mutable bool done_;
+  mutable bool exit_;
   std::condition_variable condition_;
+
+  std::unique_ptr<std::thread> t_send_;
+  std::unique_ptr<std::thread> t_get_;
 };
 
 };  // namespace detail

@@ -109,7 +109,6 @@ class RequestGet final : public RequestBase {
   CallStatus status_;
 };
 
-// There is no shutdown handling in this code.
 void AsyncGRPCServer::RunSyncUpdate() {
   ServerBuilder builder;
   builder.AddListeningPort(address_, grpc::InsecureServerCredentials());
@@ -120,22 +119,67 @@ void AsyncGRPCServer::RunSyncUpdate() {
   server_ = builder.BuildAndStart();
   // std::cout << "Server listening on " << server_address << std::endl;
 
-  auto RequestBase* req_send = new RequestSend(&service_, cq_send_.get());
-  auto RequestBase* req_get = new RequestGet(&service_, cq_get_.get());
+  t_send_.reset(
+      new std::thread(std::bind(&AsyncGRPCServer::_HandleReqSend, this)));
+  t_get_.reset(
+      new std::thread(std::bind(&AsyncGRPCServer::_HandleReqGet, this, true)));
 
-  auto t_send = std::async(&AsyncGRPCServer::HandleRpcs, this, req_send);
-  auto t_get = std::async(&AsyncGRPCServer::HandleRpcs, this, req_get);
+  // wait server
+  server_->Wait();
+}
 
-  auto req_send_ret = t_send.get();
-  auto req_get_ret = t_get.get();
+void AsyncGRPCServer::ShutDown() {
+  exit_ = true;
+  cq_send_->Shutdown();
+  cq_get_->Shutdown();
+  t_send_->join();
+  t_get_->join();
+  server_->Shutdown();
+}
+
+void AsyncGRPCServer::_HandleReqSend() {
+  std::unique_ptr<RequestSend> req_send(
+      new RequestSend(&service_, cq_send_.get()));
+  void* tag = NULL;
+  bool ok = false;
+  while (true) {
+    if (cq_send_->Next(&tag, &ok)) {
+      break;
+    }
+    if (!ok) {
+      continue;
+    }
+    static_cast<RequestBase*>(tag)->Proceed();
+  }
+}
+
+void AsyncGRPCServer::_HandleReqGet(bool wait) {
+  std::unique_ptr<RequestGet> req_get(new RequestGet(&service_, cq_get_.get()));
+  void* tag = NULL;
+  bool ok = false;
+  while (true) {
+    if (!cq_get_->Next(&tag, &ok)) {
+      break;
+    }
+    if (!ok) {
+      continue;
+    }
+
+    if (wait && !done_) {
+      _Wait();
+    }
+    static_cast<RequestBase*>(tag)->Proceed();
+  }
+}
+
+void AsyncGRPCServer::_Wait() {
+  std::unique_lock<std::mutex> lock(this->mutex_);
+  condition_.wait(lock, [=] { return this->done_ == true; });
 }
 
 Status AsyncGRPCServer::Wait(ServerContext* context, const VoidMessage* in_var,
                              VoidMessage* out_var) {
-  {
-    std::unique_lock<std::mutex> lock(this->mutex_);
-    condition_.wait(lock, [=] { return this->done_ == true; });
-  }
+  _Wait();
   return Status::OK;
 }
 
@@ -152,16 +196,6 @@ void AsyncGRPCServer::Done() {
   condition_.notify_all();
 }
 
-// This can be run in multiple threads if needed.
-void AsyncGRPCServer::HandleRpcs(RequestBase* base) {
-  void* tag = NULL;
-  bool ok = false;
-  while (true) {
-    GPR_ASSERT(cq_->Next(&tag, &ok));
-    GPR_ASSERT(ok);
-    static_cast<RequestBase*>(tag)->Proceed();
-  }
-}
-
 }  // namespace detail
-}  // namespace operators }  // namespace paddle
+}  // namespace operators
+}  // namespace paddle
