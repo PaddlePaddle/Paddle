@@ -122,6 +122,6 @@ TEST(math, vol2col) {
   testVol2col<paddle::platform::CPUDeviceContext, paddle::platform::CPUPlace>();
 #ifdef PADDLE_WITH_CUDA
   testVol2col<paddle::platform::CUDADeviceContext,
-              paddle::platform::GPUPlace>();
+              paddle::platform::CUDAPlace>();
 #endif  // PADDLE_WITH_CUDA
 }

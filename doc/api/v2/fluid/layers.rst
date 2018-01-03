@@ -68,12 +68,6 @@ scale
     :noindex:
 
 
-reshape
----------
-..  autofunction:: paddle.v2.fluid.layers.reshape
-    :noindex:
-
-
 transpose
 ---------
 ..  autofunction:: paddle.v2.fluid.layers.transpose
@@ -167,6 +161,18 @@ conv2d
 sequence_pool
 -------------
 ..  autofunction:: paddle.v2.fluid.layers.sequence_pool
+    :noindex:
+
+
+sequence_first_step
+-------------------
+..  autofunction:: paddle.v2.fluid.layers.sequence_first_step
+    :noindex:
+
+
+sequence_last_step
+------------------
+..  autofunction:: paddle.v2.fluid.layers.sequence_last_step
     :noindex:
 
 
@@ -320,7 +326,19 @@ reduce_sum
 
 
 reduce_mean
----------
+-----------
 ..  autofunction:: paddle.v2.fluid.layers.reduce_mean
+    :noindex:
+
+
+reduce_max
+----------
+..  autofunction:: paddle.v2.fluid.layers.reduce_max
+    :noindex:
+
+
+reduce_min
+----------
+..  autofunction:: paddle.v2.fluid.layers.reduce_min
     :noindex:
 

@@ -53,7 +53,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "It must use CUDAPlace.");
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -179,7 +179,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "It must use CUDAPlace.");
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout data_layout =

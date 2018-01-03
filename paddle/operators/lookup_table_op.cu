@@ -1,13 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-   http://www.apache.org/licenses/LICENSE-2.0
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
@@ -101,7 +104,7 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       // copy GPU memory to CPU pinned memory
       framework::Vector<int64_t> new_rows;
       new_rows.resize(ids_dim[0]);
-      auto gpu_place = boost::get<platform::GPUPlace>(context.GetPlace());
+      auto gpu_place = boost::get<platform::CUDAPlace>(context.GetPlace());
 
       memory::Copy(platform::CPUPlace(), new_rows.data(), gpu_place, ids_data,
                    ids_dim[0] * sizeof(int64_t), stream);
