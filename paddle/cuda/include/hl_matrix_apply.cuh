@@ -279,6 +279,7 @@ extern void hl_cpu_matrix_row_op(Agg agg, Op op, Saver sv,
  *
  * @param[in]  agg    aggregate operator expression.
  * @param[in]  op     operator expression.
+ * @param[in]  sv     assignment operator expression.
  * @param[in]  dimM   matrix height.
  * @param[in]  dimN   matrix width.
  * @param[out] dst    destination matrix.
@@ -289,12 +290,35 @@ extern void hl_cpu_matrix_row_op(Agg agg, Op op, Saver sv,
  * @param[in]  ldb    leading dimension of matrix B.
  *
  */
-template <class Saver, class Agg, class Op>
-extern void hl_cpu_matrix_row_op(Agg agg, Op op,
+template <class Agg, class Op, class Saver>
+extern void hl_cpu_matrix_row_op(Agg agg, Op op, Saver sv,
                                  int dimM, int dimN,
                                  real *dst, int ld,
                                  real *A, int lda,
                                  real *B, int ldb);
+
+/**
+ * @brief  CPU matrix group row operator.
+ *
+ * @param[in]  agg    aggregate operator expression.
+ * @param[in]  op     operator expression.
+ * @param[in]  sv     assignment operator expression.
+ * @param[in]  dimM   matrix height.
+ * @param[in]  dimN   matrix width.
+ * @param[out] dst    destination matrix.
+ * @param[in]  ld     leading dimension of dst matrix.
+ * @param[in]  *A     matrix A.
+ * @param[in]  lda    leading dimension of matrix A.
+ * @param[in]  *B     matrix B.
+ * @param[in]  ldb    leading dimension of matrix B.
+ *
+ */
+template <class Agg, class Op, class Saver>
+extern void hl_cpu_matrix_group_row_op(Agg agg, Op op, Saver sv,
+                                       int dimM, int dimN,
+                                       real *dst, int ld,
+                                       real *A, int lda,
+                                       real *B, int ldb);
 
 /**
  * @brief  CPU matrix column operator.
@@ -362,6 +386,7 @@ extern void hl_gpu_matrix_row_op(Agg agg, Op op, Saver sv,
  *
  * @param[in]  agg    aggregate operator expression.
  * @param[in]  op     operator expression.
+ * @param[in]  sv     assignment operator expression.
  * @param[in]  dimM   matrix height.
  * @param[in]  dimN   matrix width.
  * @param[out] dst    destination matrix.
@@ -372,12 +397,35 @@ extern void hl_gpu_matrix_row_op(Agg agg, Op op, Saver sv,
  * @param[in]  ldb    leading dimension of matrix B.
  *
  */
-template <class Saver, class Agg, class Op>
-extern void hl_gpu_matrix_row_op(Agg agg, Op op,
+template <class Agg, class Op, class Saver>
+extern void hl_gpu_matrix_row_op(Agg agg, Op op, Saver sv,
                                  int dimM, int dimN,
                                  real *dst, int ld,
                                  real *A, int lda,
                                  real *B, int ldb);
+
+/**
+ * @brief  GPU matrix group row operator.
+ *
+ * @param[in]  agg    aggregate operator expression.
+ * @param[in]  op     operator expression.
+ * @param[in]  sv     assignment operator expression.
+ * @param[in]  dimM   matrix height.
+ * @param[in]  dimN   matrix width.
+ * @param[out] dst    destination matrix.
+ * @param[in]  ld     leading dimension of dst matrix.
+ * @param[in]  *A     matrix A.
+ * @param[in]  lda    leading dimension of matrix A.
+ * @param[in]  *B     matrix B.
+ * @param[in]  ldb    leading dimension of matrix B.
+ *
+ */
+template <class Agg, class Op, class Saver>
+extern void hl_gpu_matrix_group_row_op(Agg agg, Op op, Saver sv,
+                                       int dimM, int dimN,
+                                       real *dst, int ld,
+                                       real *A, int lda,
+                                       real *B, int ldb);
 
 /**
  * @brief  GPU matrix column operator.

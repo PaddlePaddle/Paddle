@@ -463,6 +463,30 @@ __global__ void KeMatrixRowOp(Agg agg, Op op, Saver sv,
   }
 }
 
+template<class Agg, class Op, class Saver, int blockSize>
+__global__ void KeMatrixGroupRowOp(Agg agg, Op op, Saver sv,
+                                   int dimN,
+                                   real *dst, int ld,
+                                   real *A, int lda,
+                                   real *B, int ldb) {
+  __shared__ real row_s[blockSize];
+  int rowId = (blockIdx.x + blockIdx.y*gridDim.x) / ld;
+  int groupId = (blockIdx.x + blockIdx.y*gridDim.x) % ld;
+  int tid = threadIdx.x;
+
+  A += rowId*lda + groupID*dimN;
+  B += rowId*ldb + groupID*dimN;
+  row_s[tid] = sumRow(agg, op, tid, blockSize, dimN, A, B);
+  __syncthreads();
+
+  aggRow(agg, row_s, blockSize, tid);
+  __syncthreads();
+
+  if (tid == 0) {
+    dst[rowId*ld + groupID] = sv(dst[rowId*ld + groupID], row_s[0]);
+  }
+}
+
 /**
  * @brief   matrix column operator.
  */
@@ -613,6 +637,27 @@ void hl_gpu_matrix_row_op(Agg agg, Op op, Saver sv,
     (agg, op, sv, dimN, dst, ld, A, lda, B, ldb);
 
   CHECK_SYNC("hl_matrix_row_op failed");
+#endif
+}
+
+template <class Agg, class Op, class Saver>
+void hl_gpu_matrix_group_row_op(Agg agg, Op op, Saver sv,
+                                int dimM, int dimN,
+                                real *dst, int ld,
+                                real *A, int lda,
+                                real *B, int ldb) {
+#ifdef __NVCC__
+  CHECK_NOTNULL(dst);
+  CHECK_NOTNULL(A);
+
+  int blocksX = dimM * ld;
+  int blocksY = 1;
+  dim3 threads(128, 1);
+  dim3 grid(blocksX, blocksY);
+  KeMatrixGroupRowOp<Agg, Op, Saver, 128><<< grid, threads, 0, STREAM_DEFAULT >>>
+    (agg, op, sv, dimN/ld, dst, ld, A, lda, B, ldb);
+
+  CHECK_SYNC("hl_matrix_group_row_op failed");
 #endif
 }
 
