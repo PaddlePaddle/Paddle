@@ -43,6 +43,22 @@ std::ostream &operator<<(std::ostream &os, const LoD &lod) {
   return os;
 }
 
+std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
+  PADDLE_ENFORCE(platform::is_cpu_place(t.place()));
+  PADDLE_ENFORCE(t.type().hash_code() == typeid(float).hash_code());
+
+  os << "dim: " << t.dims() << "\n";
+  os << "lod: " << t.lod() << "\n";
+
+  // only print first ten elements
+  int64_t size = t.numel() < 10 ? t.numel() : 10;
+  for (int64_t i = 0; i < size; ++i) {
+    os << t.data<float>()[i] << " ";
+  }
+
+  return os;
+}
+
 LoD SliceLevels(const LoD &in, size_t level_begin, size_t level_end) {
   LoD new_lod;
   new_lod.reserve(level_end - level_begin);
