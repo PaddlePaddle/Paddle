@@ -37,7 +37,8 @@ void SerializeToStream(std::ostream& os, const SelectedRows& selected_rows,
   SerializeToStream(os, selected_rows.value(), dev_ctx);
 }
 
-void DeserializeFromStream(std::istream& is, SelectedRows* selected_rows) {
+void DeserializeFromStream(std::istream& is, SelectedRows* selected_rows,
+                           const platform::DeviceContext& dev_ctx) {
   auto tensor = *selected_rows->mutable_value();
   {
     // the 1st field, unit32_t version for SelectedRows
@@ -62,7 +63,7 @@ void DeserializeFromStream(std::istream& is, SelectedRows* selected_rows) {
     selected_rows->set_height(height);
   }
   // the 4st field, tensor which contains the data
-  DeserializeFromStream(is, &tensor);
+  DeserializeFromStream(is, &tensor, dev_ctx);
 }
 
 }  // namespace framework

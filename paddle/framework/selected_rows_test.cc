@@ -51,7 +51,7 @@ TEST_F(SelectedRowsTester, SerializeAndDeseralize) {
   SerializeToStream(oss, *selected_rows_, cpu_ctx);
 
   std::istringstream iss(oss.str());
-  DeserializeFromStream(iss, &dst_tensor);
+  DeserializeFromStream(iss, &dst_tensor, cpu_ctx);
 
   ASSERT_EQ(selected_rows_->rows(), dst_tensor.rows());
   ASSERT_EQ(selected_rows_->height(), dst_tensor.height());

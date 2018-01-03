@@ -124,7 +124,6 @@ TEST(SendRecvOp, CPU) {
   for (int64_t i = 0; i < target->numel(); ++i) {
     EXPECT_EQ(expected[i] * 2, actual[i]);
   }
-
   recv_op->Stop();
   server_thread.join();
   // recv_op.reset();

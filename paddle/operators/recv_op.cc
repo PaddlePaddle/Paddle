@@ -60,7 +60,7 @@ class RecvOp : public framework::OperatorBase {
   }
 
   void Stop() override {
-    detail::TensorWithName term_msg;
+    detail::MessageWithName term_msg;
     term_msg.first = LISTEN_TERMINATE_MESSAGE;
     rpc_service_->Push(term_msg);
     rpc_server_->Shutdown();
@@ -94,7 +94,7 @@ class RecvOp : public framework::OperatorBase {
       // the gradient arrives, just add suffix 0~n then average the gradient.
       for (size_t i = 0; i < param_count * trainer_count; ++i) {
         // blocking get one var from client.
-        const detail::TensorWithName &v = rpc_service_->Get();
+        const detail::MessageWithName &v = rpc_service_->Get();
         auto grad_var_name = v.first;
         if (grad_var_name == LISTEN_TERMINATE_MESSAGE) {
           exit_flag = true;
@@ -121,11 +121,18 @@ class RecvOp : public framework::OperatorBase {
         }
 
         auto *var = recv_scope.Var(grad_var_name);
+        platform::DeviceContextPool &pool =
+            platform::DeviceContextPool::Instance();
+        auto &dev_ctx = *pool.Get(dev_place);
+        detail::DeserializeFromMessage(v.second, dev_ctx, var);
+        /**
+        auto *var = recv_scope.Var(grad_var_name);
         auto *tensor = var->GetMutable<framework::LoDTensor>();
         // FIXME(typhoonzero): do not copy
         platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
         auto &dev_ctx = *pool.Borrow(dev_place);
         framework::CopyFrom(v.second, dev_place, dev_ctx, tensor);
+        **/
       }
       if (exit_flag) {
         break;
