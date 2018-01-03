@@ -22,7 +22,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "mkldnn.hpp"
+#include "paddle/platform/mkldnn_helper.h"
 #endif
 
 #include "paddle/platform/enforce.h"
@@ -122,16 +122,6 @@ class CUDNNDeviceContext : public CUDADeviceContext {
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-using MKLDNNStream = mkldnn::stream;
-using MKLDNNEngine = mkldnn::engine;
-using MKLDNNMemory = mkldnn::memory;
-using MKLDNNPrimitive = mkldnn::primitive;
-using MKLDNNPrimitiveDesc = mkldnn::handle<mkldnn_primitive_desc_t>;
-
-typedef std::shared_ptr<MKLDNNEngine> MKLDNNEnginePtr;
-typedef std::shared_ptr<MKLDNNMemory> MKLDNNMemoryPtr;
-typedef std::shared_ptr<MKLDNNPrimitive> MKLDNNPrimitivePtr;
-typedef std::shared_ptr<MKLDNNPrimitiveDesc> MKLDNNPrimitiveDescPtr;
 class MKLDNNDeviceContext : public CPUDeviceContext {
  public:
   explicit MKLDNNDeviceContext(CPUPlace place);
