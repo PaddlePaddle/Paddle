@@ -11,36 +11,67 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <array>
+#include <vector>
+
+#include <gtest/gtest.h>
 
 #include "paddle/framework/data_transform.h"
-#include <gtest/gtest.h>
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
-
 using namespace platform;
+
+/**
+ * @brief cross validation of different kernel type transform
+ *  We use four bit map represent different combination.
+ *  If the field has multiple possible value, only choose two of them.
+ *  For DataType, only test the FP32(float), FP64(double).
+ *  e.g. 0000 -> FP32, CPUPlace, kNHWC, kPlain
+ *       1111 -> FP64, GPUPlace, kNCHW, kMKLDNN
+ */
+
+std::array<proto::DataType, 2> kDataType = {
+    {proto::DataType::FP32, proto::DataType::FP64}};
+
+std::array<Place, 2> kPlace = {{CPUPlace(), CUDAPlace(0)}};
+
+std::array<DataLayout, 2> kDataLayout = {{
+    DataLayout::kNHWC, DataLayout::kNCHW,
+}};
+
+std::array<LibraryType, 2> kLibraryType = {{
+    LibraryType::kPlain, LibraryType::kMKLDNN,
+}};
+
+OpKernelType GenFromBit(const std::vector<bool> bits) {
+  return OpKernelType(kDataType[bits[0]], kPlace[bits[1]], kDataLayout[bits[2]],
+                      kLibraryType[bits[3]]);
+}
 
 int test_value = 0;
 
-OpKernelType kernel_type_1(proto::DataType::FP32, CPUPlace(), DataLayout::kNCHW,
-                           LibraryType::kCUDNN);
-OpKernelType kernel_type_2(proto::DataType::FP32, CUDAPlace(0),
-                           DataLayout::kNCHW, LibraryType::kCUDNN);
-OpKernelType kernel_type_3(proto::DataType::FP16, CUDAPlace(0),
-                           DataLayout::kNCHW, LibraryType::kCUDNN);
+auto kernel0 = GenFromBit({0, 0, 0, 0});
+auto kernel1 = GenFromBit({0, 0, 0, 1});
+auto kernel2 = GenFromBit({0, 0, 1, 0});
+auto kernel3 = GenFromBit({0, 0, 1, 1});
 
-void type1_to_type2(std::vector<platform::DeviceContext*> ctx,
-                    const Variable& in, Variable* out) {
+void TransDataType_t(const platform::DeviceContext* ctx,
+                     const KernelTypePair& p, const Variable& in,
+                     Variable* out) {
   test_value++;
 }
 
-void type2_to_type3(std::vector<platform::DeviceContext*> ctx,
-                    const Variable& in, Variable* out) {
+void TransDataLayout_t(const platform::DeviceContext* ctx,
+                       const KernelTypePair& p, const Variable& in,
+                       Variable* out) {
   test_value--;
 }
 
-void type1_to_type3(std::vector<platform::DeviceContext*> ctx,
-                    const Variable& in, Variable* out) {
+void TransLibraryType_t(const platform::DeviceContext* ctx,
+                        const KernelTypePair& p, const Variable& in,
+                        Variable* out) {
   test_value += 2;
 }
 
@@ -49,30 +80,77 @@ void type1_to_type3(std::vector<platform::DeviceContext*> ctx,
 
 namespace frw = paddle::framework;
 
-REGISTER_DATA_TRANSFORM_FN(frw::kernel_type_1, frw::kernel_type_2,
-                           frw::type1_to_type2);
-REGISTER_DATA_TRANSFORM_FN(frw::kernel_type_2, frw::kernel_type_3,
-                           frw::type2_to_type3);
-REGISTER_DATA_TRANSFORM_FN(frw::kernel_type_1, frw::kernel_type_3,
-                           frw::type1_to_type3);
+REGISTER_DATA_TRANSFORM_FN(frw::kernel0, frw::kernel1, frw::TransDataType_t);
+REGISTER_DATA_TRANSFORM_FN(frw::kernel1, frw::kernel2, frw::TransDataLayout_t);
+REGISTER_DATA_TRANSFORM_FN(frw::kernel0, frw::kernel2, frw::TransLibraryType_t);
 
 TEST(DataTransform, Register) {
   using namespace paddle::framework;
   using namespace paddle::platform;
 
   auto& instance = DataTransformFnMap::Instance();
-  ASSERT_EQ(instance.Map().size(), 3UL);
-  std::vector<DeviceContext*> ctx;
   paddle::framework::Variable in;
   paddle::framework::Variable out;
 
-  instance.Get(std::make_pair(frw::kernel_type_1, frw::kernel_type_2))(ctx, in,
-                                                                       &out);
+  DeviceContext* ctx = new CPUDeviceContext();
+  auto pair0 = std::make_pair(frw::kernel0, frw::kernel1);
+  instance.Get(pair0)(ctx, pair0, in, &out);
   ASSERT_EQ(test_value, 1);
-  instance.Get(std::make_pair(frw::kernel_type_2, frw::kernel_type_3))(ctx, in,
-                                                                       &out);
+
+  auto pair1 = std::make_pair(frw::kernel1, frw::kernel2);
+  instance.Get(pair1)(ctx, pair1, in, &out);
   ASSERT_EQ(test_value, 0);
-  instance.Get(std::make_pair(frw::kernel_type_1, frw::kernel_type_3))(ctx, in,
-                                                                       &out);
+
+  auto pair3 = std::make_pair(frw::kernel0, frw::kernel2);
+  instance.Get(pair3)(ctx, pair3, in, &out);
   ASSERT_EQ(test_value, 2);
+}
+
+TEST(DataTransform, Layout) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+
+  auto& instance = DataTransformFnMap::Instance();
+  Variable in;
+  Variable out;
+  Tensor* src = in.GetMutable<Tensor>();
+  src->mutable_data<double>(make_ddim({2, 3, 1, 2}), CPUPlace());
+  src->set_layout(DataLayout::kNHWC);
+
+  DeviceContext* ctx = new CPUDeviceContext();
+
+  {
+    auto kernel1 = GenFromBit({1, 0, 0, 0});
+    auto kernel2 = GenFromBit({1, 0, 1, 0});
+    auto pair0 = std::make_pair(kernel1, kernel2);
+    instance.Get(pair0)(ctx, pair0, in, &out);
+  }
+
+  Tensor dst = out.Get<Tensor>();
+  EXPECT_TRUE(dst.layout() != src->layout());
+}
+
+TEST(DataTransform, DataType) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+
+  auto& instance = DataTransformFnMap::Instance();
+  DeviceContext* ctx = new CPUDeviceContext();
+
+  Variable in;
+  Variable out;
+  Tensor* src = in.GetMutable<Tensor>();
+  float* ptr = src->mutable_data<float>(make_ddim({2, 3}), CPUPlace());
+  for (int i = 0; i < 6; ++i) {
+    ptr[i] = i / 3;
+  }
+
+  {
+    auto kernel1 = GenFromBit({0, 0, 0, 0});
+    auto kernel2 = GenFromBit({1, 0, 0, 0});
+    auto pair0 = std::make_pair(kernel1, kernel2);
+    instance.Get(pair0)(ctx, pair0, in, &out);
+  }
+  Tensor dst = out.Get<Tensor>();
+  EXPECT_TRUE(dst.data<double>() != nullptr);
 }

@@ -252,6 +252,11 @@ first_seq
 ..  autoclass:: paddle.v2.layer.first_seq
     :noindex:
 
+sub_seq
+---------
+..  autoclass:: paddle.v2.layer.sub_seq
+    :noindex:
+
 concat
 ------
 ..  autoclass:: paddle.v2.layer.concat

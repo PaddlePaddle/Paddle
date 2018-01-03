@@ -22,14 +22,6 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-typedef enum {
-  HL_ACTIVATION_SIGMOID = 0,
-  HL_ACTIVATION_RELU = 1,
-  HL_ACTIVATION_TANH = 2,
-  HL_ACTIVATION_LINEAR = 3,
-  HL_ACTIVATION_END
-} activation_mode_t;
-
 template <class T>
 struct LstmMetaValue {
   T *gate_value;
@@ -53,20 +45,6 @@ struct LstmMetaGrad {
   T *check_fg_grad;
   T *check_og_grad;
 };
-
-inline activation_mode_t ActiveType(const std::string &type) {
-  if (type == "sigmoid") {
-    return HL_ACTIVATION_SIGMOID;
-  } else if (type == "relu") {
-    return HL_ACTIVATION_RELU;
-  } else if (type == "tanh") {
-    return HL_ACTIVATION_TANH;
-  } else if (type == "linear" || type == "identity" || type == "") {
-    return HL_ACTIVATION_LINEAR;
-  } else {
-    PADDLE_THROW("Do not support activation type.");
-  }
-}
 
 template <typename DeviceContext, typename T>
 class LstmUnitFunctor {
