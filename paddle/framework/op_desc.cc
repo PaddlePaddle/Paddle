@@ -261,6 +261,7 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
   void operator()(float v) const { attr_->set_f(v); }
   void operator()(const std::string &v) const { attr_->set_s(v); }
 
+  // Please refer to https://github.com/PaddlePaddle/Paddle/issues/7162
   template <class T,
             class = typename std::enable_if<std::is_same<bool, T>::value>::type>
   void operator()(T b) const {
