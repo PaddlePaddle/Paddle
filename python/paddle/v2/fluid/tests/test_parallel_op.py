@@ -12,7 +12,7 @@ import paddle.v2.fluid.core as core
 class ParallelOpTest(unittest.TestCase):
     def setUp(self):
         x = layers.data(
-            shape=[-1, 3, 4],
+            shape=[-1, 30, 40],
             dtype='float32',
             name='x',
             append_batch_size=False,
@@ -35,7 +35,7 @@ class ParallelOpTest(unittest.TestCase):
         exe.run(fluid.default_main_program(),
                 feed={
                     x.name: np.random.uniform(0.1, 0.6,
-                                              (2, 3, 4)).astype("float32")
+                                              (20, 30, 40)).astype("float32")
                 })
 
     def test_forward(self):
