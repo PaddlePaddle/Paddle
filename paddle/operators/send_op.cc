@@ -26,7 +26,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-// TODO(gongwb):add more attrs to support more send pattern.
+// TODO(gongwb): add more attrs to support more send pattern.
 class SendOp : public framework::OperatorBase {
  public:
   SendOp(const std::string &type, const framework::VariableNameMap &inputs,
@@ -79,7 +79,7 @@ class SendOp : public framework::OperatorBase {
   }
 
  protected:
-  detail::AsyncGRPCClient client_;
+  mutable detail::AsyncGRPCClient client_;
 };
 
 class SendOpMaker : public framework::OpProtoAndCheckerMaker {

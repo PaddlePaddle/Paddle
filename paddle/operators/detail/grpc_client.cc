@@ -211,7 +211,7 @@ bool AsyncGRPCClient::SyncUpdate(const framework::Scope* scope,
                                  const std::vector<Var>& in,
                                  std::vector<SendStatus>& in_ret,
                                  const std::vector<Var>& out,
-                                 std::vector<SendStatus>& out_ret) const {
+                                 std::vector<SendStatus>& out_ret) {
   std::future<bool> in_thread = std::async(
       std::bind(&AsyncGRPCClient::SendVariable, this, scope, in, in_ret));
   std::future<bool> out_thread = std::async(

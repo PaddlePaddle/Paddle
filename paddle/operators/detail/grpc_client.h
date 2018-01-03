@@ -81,7 +81,7 @@ class AsyncGRPCClient {
 
   bool SyncUpdate(const framework::Scope* scope, const std::vector<Var>& in,
                   std::vector<SendStatus>& in_ret, const std::vector<Var>& out,
-                  std::vector<SendStatus>& out_ret) const;
+                  std::vector<SendStatus>& out_ret);
 
   // TODO(gongwb): add SendRecv function to try to update
   // one local parameter immediately when it's gradient

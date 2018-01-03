@@ -88,8 +88,8 @@ class AsyncGRPCServer final : public SendRecvService::Service {
 
   // condition of the sub program
   std::mutex mutex_;
-  mutable bool done_;
-  mutable bool exit_;
+  volatile mutable bool done_;
+  volatile mutable bool exit_;
   std::condition_variable condition_;
 
   std::unique_ptr<std::thread> t_send_;
