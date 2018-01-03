@@ -4,7 +4,7 @@ import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid as fluid
 from paddle.v2.fluid.framework import Program
 from paddle.v2.fluid.executor import Executor
-from paddle.v2.fluid.backward import append_backward_ops
+from paddle.v2.fluid.backward import append_backward
 import numpy as np
 import paddle.v2.fluid.core as core
 
@@ -27,7 +27,7 @@ class ParallelOpTest(unittest.TestCase):
             pd.write_output(hidden)
         data = pd()
         loss = layers.mean(x=data)
-        append_backward_ops(loss)
+        append_backward(loss)
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())

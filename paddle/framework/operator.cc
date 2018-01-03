@@ -12,10 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/framework/operator.h"
 #include <algorithm>
 #include <atomic>
+
+#include "paddle/framework/data_transform.h"
+#include "paddle/framework/executor.h"
 #include "paddle/framework/lod_tensor_array.h"
+#include "paddle/framework/operator.h"
 #include "paddle/framework/shape_inference.h"
 #include "paddle/framework/var_type.h"
 
@@ -246,12 +249,6 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
   return res;
 }
 
-std::ostream& operator<<(std::ostream& os, const OpKernelType& kernel_key) {
-  os << "place[" << kernel_key.place_ << "]:data_type[" << kernel_key.data_type_
-     << "]";
-  return os;
-}
-
 bool OpSupportGPU(const std::string& op_type) {
   auto& all_kernels = OperatorWithKernel::AllOpKernels();
   auto it = all_kernels.find(op_type);
@@ -389,7 +386,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     }
   }
 
-  VarDesc::VarType GetVarType(const std::string& name) const override {
+  proto::VarDesc::VarType GetVarType(const std::string& name) const override {
     auto* var = scope_.FindVar(name);
     return ToVarType(var->Type());
   }
@@ -399,12 +396,30 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const Scope& scope_;
 };
 
+const platform::DeviceContext* GetDeviceContext(
+    framework::KernelTypePair& kernel_pair) {
+  auto& actual_kernel_key = kernel_pair.first;
+  auto& expected_kernel_key = kernel_pair.second;
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+
+  if (platform::is_gpu_place(actual_kernel_key.place_) &&
+      platform::is_cpu_place(expected_kernel_key.place_)) {
+    return pool.Get(actual_kernel_key.place_);
+  } else if (platform::is_cpu_place(actual_kernel_key.place_) &&
+             platform::is_gpu_place(expected_kernel_key.place_)) {
+    return pool.Get(expected_kernel_key.place_);
+  } else {
+    PADDLE_THROW(
+        "Currently, model parallelism is only supported between CPU and CUDA");
+  }
+}
+
 void OperatorWithKernel::Run(const Scope& scope,
-                             const platform::DeviceContext& dev_ctx) const {
+                             const platform::Place& place) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
   this->InferShape(&infer_shape_ctx);
-
-  ExecutionContext ctx(*this, scope, dev_ctx);
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto dev_ctx = pool.Get(place);
 
   // check if op[type] has kernel registered.
   auto& all_op_kernels = AllOpKernels();
@@ -416,20 +431,72 @@ void OperatorWithKernel::Run(const Scope& scope,
 
   // check if op[type] have kernel for kernel_key
   OpKernelMap& kernels = kernels_iter->second;
-  auto kernel_key = GetKernelType(ctx);
-  auto kernel_iter = kernels.find(kernel_key);
+
+  ExecutionContext ctx(*this, scope, *dev_ctx);
+  auto actual_kernel_key = GetActualKernelType(ctx);
+  auto expected_kernel_key = GetExpectedKernelType(actual_kernel_key);
+  auto kernel_iter = kernels.find(expected_kernel_key);
 
   if (kernel_iter == kernels.end()) {
-    PADDLE_THROW("The operator %s does not support %s", type_, kernel_key);
+    PADDLE_THROW("The operator %s does not support %s", type_,
+                 expected_kernel_key);
+  }
+
+  if (actual_kernel_key == expected_kernel_key) {
+    PADDLE_ENFORCE_EQ(actual_kernel_key.place_, expected_kernel_key.place_,
+                      "Currently, model parallelism is only supported between "
+                      "CPU and other devices. For example, multi-GPU model "
+                      "parallelism will failed.");
+  } else {
+    auto kernel_pair = std::make_pair(actual_kernel_key, expected_kernel_key);
+    const DataTransformFn* trans_fun =
+        DataTransformFnMap::Instance().GetNullable(kernel_pair);
+    if (trans_fun) {
+      auto input_vars = this->InputVars();
+      // TODO(qijun) filter the input vars that do not need to be transformed
+
+      // filter vars that has been transformed
+      std::vector<std::string> need_trans;
+      for (auto var_name : input_vars) {
+        auto var_name_trans =
+            var_name + framework::KernelTypeToString(expected_kernel_key);
+        if (!scope.FindVar(var_name_trans)) {
+          const_cast<Scope&>(scope).Var(var_name_trans);
+          need_trans.push_back(var_name);
+        }
+      }
+
+      if (!need_trans.empty()) {
+        auto trans_dev_ctx = GetDeviceContext(kernel_pair);
+
+        // Wait for transform starting
+        dev_ctx->Wait();
+
+        for (auto var_name : need_trans) {
+          (*trans_fun)(trans_dev_ctx, kernel_pair, *(scope.FindVar(var_name)),
+                       scope.FindVar(var_name + framework::KernelTypeToString(
+                                                    expected_kernel_key)));
+        }
+        // Wait for data transform finishing
+        trans_dev_ctx->Wait();
+      }
+    }
   }
 
   kernel_iter->second->Compute(ctx);
 }
-OpKernelType OperatorWithKernel::GetKernelType(
+
+OpKernelType OperatorWithKernel::GetActualKernelType(
     const ExecutionContext& ctx) const {
   return OpKernelType(IndicateDataType(ctx), ctx.GetPlace());
 }
-DataType OperatorWithKernel::IndicateDataType(
+
+OpKernelType OperatorWithKernel::GetExpectedKernelType(
+    const OpKernelType& actual_kernel_type) const {
+  return actual_kernel_type;
+}
+
+proto::DataType OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
   auto& scope = ctx.scope();
   int data_type = -1;
@@ -455,7 +522,7 @@ DataType OperatorWithKernel::IndicateDataType(
     }
   }
   PADDLE_ENFORCE(data_type != -1, "DataType should be indicated by input");
-  return static_cast<DataType>(data_type);
+  return static_cast<proto::DataType>(data_type);
 }
 
 }  // namespace framework

@@ -63,7 +63,7 @@ class NCEOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("Input")->type()),
@@ -73,7 +73,7 @@ class NCEOp : public framework::OperatorWithKernel {
 
 class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  NCEOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  NCEOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Input", "(Tensor) A tensor of shape [batch_size, dim].");
     AddInput(
@@ -166,7 +166,7 @@ class NCEOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetActualKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("Input")->type()),

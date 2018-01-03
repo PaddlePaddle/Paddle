@@ -45,8 +45,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
 
 class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ElementwiseOpMaker(framework::OpProto* proto,
-                     framework::OpAttrChecker* op_checker)
+  ElementwiseOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) The first input tensor of elementwise op");
     AddInput("Y", "(Tensor) The second input tensor of elementwise op");

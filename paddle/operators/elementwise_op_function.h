@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 #include "paddle/framework/eigen.h"
@@ -103,10 +103,12 @@ class MidWiseTransformIterator<T, platform::CPUDeviceContext> {
 
   MidWiseTransformIterator<T, platform::CPUDeviceContext>& operator++() {
     ++j_;
-    i_ = j_ / post_;
-    if (UNLIKELY(i_ == n_)) {
+    if (UNLIKELY(j_ == post_)) {
+      ++i_;
       j_ = 0;
-      i_ = 0;
+      if (UNLIKELY(i_ == n_)) {
+        i_ = 0;
+      }
     }
     return *this;
   }
@@ -125,10 +127,10 @@ class MidWiseTransformIterator<T, platform::CPUDeviceContext> {
 
  private:
   const T* ptr_;
-  int i_;
+  int64_t i_;
   int64_t j_;
   int64_t n_;
-  int post_;
+  int64_t post_;
 };
 
 #ifdef __NVCC__
