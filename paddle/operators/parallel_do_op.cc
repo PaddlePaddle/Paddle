@@ -156,11 +156,12 @@ class ParallelDoGradOp : public OperatorBase {
 
     for (auto &s : Inputs(framework::GradVarName(kOutputs))) {
       LOG(INFO) << s;
-      LOG(INFO) << scope.FindVar(s)->Get<LoDTensor>().dims();
+      LOG(INFO) << scope.FindVar(s)->Get<LoDTensor>();
       for (auto *sub_scope : sub_scopes) {
-        LOG(INFO) << sub_scope->FindVar(s)->Get<LoDTensor>().dims();
+        LOG(INFO) << sub_scope->FindVar(s)->Get<LoDTensor>();
       }
     }
+
     // exe run
     for (int place_idx = 0; place_idx < places.size(); ++place_idx) {
       VLOG(3) << "Run " << place_idx;
