@@ -56,6 +56,24 @@ void hl_matrix_row_op(Agg agg, Op op, Saver sv,
 }
 
 template <class Agg, class Op, class Saver>
+void hl_matrix_group_row_op(Agg agg, Op op, Saver sv,
+                            int dimM, int dimN,
+                            real *dst, int ld,
+                            real *A, int lda,
+                            real *B, int ldb) {
+  int groupSize = dimN / ld;
+  for (int i = 0; i < dimM; i++) {
+    for (int g = 0; g < ld; g++) {
+        real tmp = agg.init();
+        for (int j = groupSize*g; j < groupSize*(g+1); j++) {
+            tmp = agg(tmp, op(A[i * lda + j], B[i * ldb + j]));
+        }
+        dst[i*ld + g] = sv(dst[i*ld + g], tmp);
+    }
+  }
+}
+
+template <class Agg, class Op, class Saver>
 void hl_matrix_column_op(Agg agg, Op op, Saver sv,
                          int dimM, int dimN,
                          real *dst,

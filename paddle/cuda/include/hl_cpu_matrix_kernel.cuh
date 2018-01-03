@@ -177,6 +177,17 @@ void hl_cpu_matrix_row_op(Agg agg, Op op, Saver sv,
 }
 
 template <class Agg, class Op, class Saver>
+void hl_cpu_matrix_group_row_op(Agg agg, Op op, Saver sv,
+                                int dimM, int dimN,
+                                real *dst, int ld,
+                                real *A, int lda,
+                                real *B, int ldb) {
+#ifndef __CUDA_ARCH__
+  hl_matrix_group_row_op(agg, op, sv, dimM, dimN, dst, ld, A, lda, B, ldb);
+#endif
+}
+
+template <class Agg, class Op, class Saver>
 void hl_cpu_matrix_column_op(Agg agg, Op op, Saver sv,
                              int dimM, int dimN,
                              real *dst,

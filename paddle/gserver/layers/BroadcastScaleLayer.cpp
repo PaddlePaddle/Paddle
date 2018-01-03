@@ -46,7 +46,7 @@ public:
   void backward(const UpdateCallback& callback = nullptr) override;
 };
 
-REGISTER_LAYER(broadcast_scale_layer, BroadcastScaleLayer);
+REGISTER_LAYER(broadcast_scale, BroadcastScaleLayer);
 
 bool BroadcastScaleLayer::init(const LayerMap& layerMap,
                                const ParameterMap& parameterMap) {
@@ -98,7 +98,7 @@ void BroadcastScaleLayer::backward(const UpdateCallback& callback) {
     }
 
     if (weightGrad) {
-      weightGrad->rowDotMul(0, *outGrad, *inV);
+      weightGrad->rowGroupDotMul(*outGrad, *inV);
     }
   }
 }

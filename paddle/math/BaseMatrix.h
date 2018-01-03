@@ -352,6 +352,29 @@ public:
                 aAsColVector);
 
   /**
+   * a group aggregate expression that apply each row of matrix b and c.
+   *
+   * Each row of b and c is divided into k groups. k equals to the number
+   * of column of matrix a. op and sv is element wise operator.
+   *
+   * @code
+   * for each row i & 0 <= group < a.width, do:
+   *   for groupStart <= j < groupEnd, do
+   *     dst = agg(op(b[i*ldb + j], c[i*ldc + j]))
+   *     a[i*lda + group] = sv(a[i*lda + group], dst)
+   * @endcode
+   */
+  template <class Agg, class Op, class Saver>
+  int groupAggregate(Agg agg,
+                     Op op,
+                     Saver sv,
+                     BaseMatrixT& b,
+                     BaseMatrixT& c,
+                     int numRows,
+                     int numCols,
+                     MatrixOffset& offset);
+
+  /**
    * a aggregate expression that apply each row of matrix b.
    *
    * @code
@@ -970,6 +993,13 @@ public:
    */
   void rowDotMul(size_t destCol, BaseMatrixT& b, BaseMatrixT& c);
   void rowDotMul2(size_t destCol, BaseMatrixT& b, BaseMatrixT& c);
+
+  /**
+   * @code
+   * this_row[g] += dotprod(b_row[g*groupSize + j], c_row[g*groupSize + j])
+   * @endcode
+   */
+  void rowGroupDotMul(BaseMatrixT& b, BaseMatrixT& c);
 
   /**
    * this is vector (one row matrix)

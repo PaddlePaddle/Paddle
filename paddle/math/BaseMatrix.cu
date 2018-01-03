@@ -428,6 +428,45 @@ int BaseMatrixT<T>::aggregate(Agg agg,
   return 0;
 }
 
+template <class T>
+template <class Agg, class Op, class Saver>
+int BaseMatrixT<T>::groupAggregate(Agg agg,
+                                   Op op,
+                                   Saver sv,
+                                   BaseMatrixT& b,
+                                   BaseMatrixT& c,
+                                   int numRows,
+                                   int numCols,
+                                   MatrixOffset& offset) {
+  CHECK_EQ(useGpu_, b.useGpu_);
+  CHECK_EQ(useGpu_, c.useGpu_);
+
+  int lda = stride_;
+  int ldb = b.stride_;
+  int ldc = c.stride_;
+
+  CHECK_EQ(numCols % lda, 0);
+
+  T* A = data_;
+  T* B = b.data_;
+  T* C = c.data_;
+  CAL_MATRIX_START_ADDRESS(A, height_, width_, lda, offset.aCol_, offset.aRow_);
+  CAL_MATRIX_START_ADDRESS(
+      B, b.height_, b.width_, ldb, offset.bCol_, offset.bRow_);
+  CAL_MATRIX_START_ADDRESS(
+      C, c.height_, c.width_, ldc, offset.cCol_, offset.cRow_);
+
+  if (useGpu_) {
+    hl_gpu_matrix_group_row_op(
+        agg, op, sv, numRows, numCols, A, lda, B, ldb, C, ldc);
+  } else {
+    hl_cpu_matrix_group_row_op(
+        agg, op, sv, numRows, numCols, A, lda, B, ldb, C, ldc);
+  }
+
+  return 0;
+}
+
 /**
  * @brief   unary operator.
  *
@@ -1482,6 +1521,21 @@ void BaseMatrixT<T>::rowDotMul2(size_t destCol,
       A[destCol] += B[j] * C[j];
     }
   }
+}
+
+template <>
+void BaseMatrixT<real>::rowGroupDotMul(BaseMatrixT& b, BaseMatrixT& c) {
+  int numRows = b.height_;
+  int numCols = b.width_;
+  MatrixOffset offset(0, 0, 0, 0, 0, 0);
+  groupAggregate(aggregate::sum(),
+                 base::binary::mul(),
+                 base::binary::add(),
+                 b,
+                 c,
+                 numRows,
+                 numCols,
+                 offset);
 }
 
 template <>
