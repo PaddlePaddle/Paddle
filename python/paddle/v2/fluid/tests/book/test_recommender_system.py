@@ -142,7 +142,7 @@ def main():
     opts = sgd_optimizer.minimize(cost)
 
     if USE_GPU:
-        place = core.GPUPlace(0)
+        place = core.CUDAPlace(0)
     else:
         place = core.CPUPlace()
 

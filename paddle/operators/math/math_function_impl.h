@@ -46,25 +46,6 @@ void Transpose<DeviceContext, T, Rank>::operator()(
 }
 
 template <typename DeviceContext, typename T>
-void RowwiseAdd<DeviceContext, T>::operator()(const DeviceContext& context,
-                                              const framework::Tensor& input,
-                                              const framework::Tensor& vector,
-                                              framework::Tensor* output) {
-  auto in_dims = input.dims();
-  auto size = input.numel() / in_dims[0];
-  PADDLE_ENFORCE_EQ(vector.numel(), size);
-  PADDLE_ENFORCE_EQ(output->dims(), in_dims);
-
-  auto in = framework::EigenMatrix<T>::From(input);
-  auto vec = framework::EigenMatrix<T>::From(vector);
-  auto out = framework::EigenMatrix<T>::From(*output);
-  Eigen::array<int, 2> shape({{1, static_cast<int>(size)}});
-  Eigen::array<int, 2> bcast({{static_cast<int>(in_dims[0]), 1}});
-  out.device(*context.eigen_device()) =
-      in + vec.reshape(shape).broadcast(bcast);
-}
-
-template <typename DeviceContext, typename T>
 void ColwiseSum<DeviceContext, T>::operator()(const DeviceContext& context,
                                               const framework::Tensor& input,
                                               framework::Tensor* out) {
@@ -108,8 +89,8 @@ class ColwiseSum<platform::CPUDeviceContext, T> {
     T* out_buf = out->mutable_data<T>(out->place());
     const T* in_buf = input.data<T>();
 
-    for (size_t i = 0; i < height; ++i) {
-      for (size_t j = 0; j < size; ++j) {
+    for (size_t i = 0; i < static_cast<size_t>(height); ++i) {
+      for (size_t j = 0; j < static_cast<size_t>(size); ++j) {
         if (i == 0) {
           out_buf[j] = in_buf[i * size + j];
         } else {
