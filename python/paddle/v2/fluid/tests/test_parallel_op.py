@@ -27,7 +27,8 @@ class ParallelOpTest(unittest.TestCase):
             pd.write_output(hidden)
         data = pd()
         loss = layers.mean(x=data)
-        append_backward(loss)
+        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+        sgd_optimizer.minimize(loss)
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
