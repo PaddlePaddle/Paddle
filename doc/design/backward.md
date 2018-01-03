@@ -106,9 +106,11 @@ See function `_addup_repetitive_outputs_` in `backward.py` for implementation de
 
 In our framework, variables can be marked as *no_gradient*, it means that the gradient of this variable is unnecessary and can be considered as zero in model training. Apparently, when all the outputs of some `grad_op` are marked as *no_gradient*, the `grad_op` itself can be skipped in backward pass. 
 
-But these unnecessary gradients still need to be creating and initialized by something, otherwise following `grad_op`s who take these gradients as inputs take the risk of using uninitialized memory. In our code, we employ `fill_zeros_like_op` to initialize them as all zeros. 
+Another situation is all the gradient inputs of some `grad_op` are marked as *no_gradient*, which means all of them can be considered as zeros. For `grad_op`s are in essence the propagation of gradients, all the outputs are definitely zeros when all gradient inputs are zeros. Therefore the `grad_op` can also be skipped.
 
-This features are implemented in function `_remove_no_grad_branch_`. It checks new created `grad_op`s one-by-one, removes whose outputs are all in `no_grad_set` or inserts `fill_zeros_like_op` when its necessary. We can get the `no_grad_set` from the `_append_backward_ops_` argument `no_grad_dict` or generate it on the fly by scanning all variables' `no_gradient` attribute(True or False). 
+It should be noted that all these zero gradients still need to be creating and initialized by something, otherwise following `grad_op`s who take these gradients as inputs take the risk of using uninitialized memory. In our code, we employ `fill_zeros_like_op` to initialize them as all zeros. 
+
+This features are implemented in function `_remove_no_grad_branch_`. It checks new created `grad_op`s one-by-one, removes who can be skipped and inserts `fill_zeros_like_op` when its necessary. We can get the `no_grad_set` from the `_append_backward_ops_` argument `no_grad_dict` or generate it on the fly by scanning all variables' `no_gradient` attribute(True or False). 
 
 ### Creating Backward Variables
 
