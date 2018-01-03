@@ -94,7 +94,6 @@ void InferenceEngine::GenerateLoadProgram(const std::string& dirname) {
     if (IsParameter(var)) {
       LOG(INFO) << "parameter's name: " << var->Name();
 
-      // framework::VarDesc new_var = *var;
       framework::VarDesc* new_var = load_block->Var(var->Name());
       new_var->SetShape(var->Shape());
       new_var->SetDataType(var->GetDataType());
