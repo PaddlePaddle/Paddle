@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <iostream>
-
+#include "paddle/platform/enforce.h"
 #include "paddle/platform/variant.h"
 
 namespace paddle {
@@ -31,60 +31,64 @@ struct CPUPlace {
   inline bool operator!=(const CPUPlace &) const { return false; }
 };
 
-struct MKLDNNPlace {
-  MKLDNNPlace() {}
-
-  // needed for variant equality comparison
-  inline bool operator==(const MKLDNNPlace &) const { return true; }
-  inline bool operator!=(const MKLDNNPlace &) const { return false; }
-};
-
-struct GPUPlace {
-  GPUPlace() : GPUPlace(0) {}
-  explicit GPUPlace(int d) : device(d) {}
+struct CUDAPlace {
+  CUDAPlace() : CUDAPlace(0) {}
+  explicit CUDAPlace(int d) : device(d) {}
 
   inline int GetDeviceId() const { return device; }
   // needed for variant equality comparison
-  inline bool operator==(const GPUPlace &o) const { return device == o.device; }
-  inline bool operator!=(const GPUPlace &o) const { return !(*this == o); }
+  inline bool operator==(const CUDAPlace &o) const {
+    return device == o.device;
+  }
+  inline bool operator!=(const CUDAPlace &o) const { return !(*this == o); }
 
   int device;
 };
 
-struct CUDNNPlace : public GPUPlace {
-  CUDNNPlace() : GPUPlace() {}
-  explicit CUDNNPlace(int d) : GPUPlace(d) {}
-};
-
-struct IsGPUPlace : public boost::static_visitor<bool> {
+struct IsCUDAPlace : public boost::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
-  bool operator()(const MKLDNNPlace &) const { return false; }
-  bool operator()(const GPUPlace &gpu) const { return true; }
-  bool operator()(const CUDNNPlace &) const { return true; }
+  bool operator()(const CUDAPlace &gpu) const { return true; }
 };
 
-struct IsMKLDNNPlace : public boost::static_visitor<bool> {
-  bool operator()(const MKLDNNPlace &) const { return true; }
-  bool operator()(const CPUPlace &) const { return false; }
-  bool operator()(const GPUPlace &) const { return false; }
-  bool operator()(const CUDNNPlace &) const { return false; }
-};
-
-typedef boost::variant<CUDNNPlace, GPUPlace, CPUPlace, MKLDNNPlace> Place;
+typedef boost::variant<CUDAPlace, CPUPlace> Place;
 
 void set_place(const Place &);
 const Place &get_place();
 
-const GPUPlace default_gpu();
+const CUDAPlace default_gpu();
 const CPUPlace default_cpu();
-const MKLDNNPlace default_mkldnn();
 
 bool is_gpu_place(const Place &);
 bool is_cpu_place(const Place &);
-bool is_mkldnn_place(const Place &);
 bool places_are_same_class(const Place &, const Place &);
 
 std::ostream &operator<<(std::ostream &, const Place &);
+
+template <typename Visitor>
+struct PlaceVisitorWrapper
+    : public boost::static_visitor<typename Visitor::result_type> {
+  const Visitor &visitor_;
+  explicit PlaceVisitorWrapper(const Visitor &visitor) : visitor_(visitor) {}
+
+  typename Visitor::result_type operator()(const CPUPlace &cpu) const {
+    return visitor_(cpu);
+  }
+
+  typename Visitor::result_type operator()(const CUDAPlace &cuda) const {
+#ifdef PADDLE_WITH_CUDA
+    return visitor_(cuda);
+#else
+    PADDLE_THROW("Paddle is not compiled with CUDA. Cannot visit cuda device");
+    return typename Visitor::result_type();
+#endif
+  }
+};
+
+template <typename Visitor>
+typename Visitor::result_type VisitPlace(const Place &place,
+                                         const Visitor &visitor) {
+  return boost::apply_visitor(PlaceVisitorWrapper<Visitor>(visitor), place);
+}
 
 }  // namespace platform
 }  // namespace paddle

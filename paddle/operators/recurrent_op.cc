@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include <vector>
 #include "paddle/framework/executor.h"
@@ -272,8 +272,9 @@ class RecurrentOp : public RecurrentBase {
                    false /*create_local_scope*/);
 
       // get device context from pool
-      platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-      auto &dev_ctx = *pool.Borrow(place);
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto &dev_ctx = *pool.Get(place);
 
       // Copy inside::output -> outside::output
       //    outside::output[seq_offset: seq_offset + 1] = inside::output
@@ -326,8 +327,8 @@ class RecurrentGradOp : public RecurrentBase {
     auto *program = block->Program();
 
     // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-    auto &dev_ctx = *pool.Borrow(place);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place);
 
     for (size_t step_id = 0; step_id < seq_len; ++step_id) {
       size_t seq_offset = reverse ? step_id : seq_len - step_id - 1;
@@ -491,7 +492,7 @@ class RecurrentGradOp : public RecurrentBase {
 
   std::unordered_set<std::string> LocalVarNames(
       const framework::Scope &scope) const {
-    return this->List2Set(scope.GetAllNames(false));
+    return this->List2Set(scope.LocalVarNames());
   }
   static std::vector<std::string> GradVarLists(
       const std::vector<std::string> &var_names) {

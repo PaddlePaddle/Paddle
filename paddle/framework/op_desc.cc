@@ -88,6 +88,14 @@ OpDesc::OpDesc(const std::string &type, const VariableNameMap &inputs,
   need_update_ = true;
 }
 
+void OpDesc::CopyFrom(const OpDesc &op_desc) {
+  desc_.set_type(op_desc.Type());
+  inputs_ = op_desc.inputs_;
+  outputs_ = op_desc.outputs_;
+  attrs_ = op_desc.attrs_;
+  need_update_ = true;
+}
+
 OpDesc::OpDesc(const proto::OpDesc &desc, ProgramDesc *prog)
     : desc_(desc), need_update_(false) {
   // restore inputs_
@@ -252,7 +260,13 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
   void operator()(int v) const { attr_->set_i(v); }
   void operator()(float v) const { attr_->set_f(v); }
   void operator()(const std::string &v) const { attr_->set_s(v); }
-  void operator()(bool b) const { attr_->set_b(b); }
+
+  // Please refer to https://github.com/PaddlePaddle/Paddle/issues/7162
+  template <class T,
+            class = typename std::enable_if<std::is_same<bool, T>::value>::type>
+  void operator()(T b) const {
+    attr_->set_b(b);
+  }
 
   void operator()(const std::vector<int> &v) const {
     VectorToRepeated(v, attr_->mutable_ints());
@@ -266,9 +280,7 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
   void operator()(const std::vector<bool> &v) const {
     VectorToRepeated(v, attr_->mutable_bools());
   }
-  void operator()(proto::BlockDesc *desc) const {
-    attr_->set_block_idx(desc->idx());
-  }
+  void operator()(BlockDesc *desc) const { attr_->set_block_idx(desc->ID()); }
   void operator()(boost::blank) const { PADDLE_THROW("Unexpected branch"); }
 };
 
