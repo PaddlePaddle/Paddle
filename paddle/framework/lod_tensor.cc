@@ -176,17 +176,31 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
   PADDLE_ENFORCE(
       lod->empty() || lod->size() == lod_length.size(),
       "The lod_length should has the same size with the appended lod.");
-  if (lod->empty()) {
-    for (size_t i = 0; i < lod_length.size(); ++i) {
-      lod->emplace_back(1, 0);  // size = 1, value = 0;
-    }
-    *lod = LoD(lod_length.size(), std::vector<size_t>({0}));
+  using CPULoDType = std::vector<std::vector<size_t>>;
+  CPULoDType *tmp = nullptr;
+  if (typeid(CPULoDType) == typeid(LoD)) {
+    tmp = lod;
+  } else {
+    tmp = new CPULoDType();
   }
-  for (size_t i = 0; i < lod->size(); ++i) {
-    auto &level = (*lod)[i];
+
+  if (tmp->empty()) {
+    for (size_t i = 0; i < lod_length.size(); ++i) {
+      tmp->emplace_back(1, 0);  // size = 1, value = 0;
+    }
+    *tmp = LoD(lod_length.size(), std::vector<size_t>({0}));
+  }
+  for (size_t i = 0; i < tmp->size(); ++i) {
+    auto &level = (*tmp)[i];
+    level.reserve(level.size() + lod_length[i].size());
     for (size_t len : lod_length[i]) {
       level.push_back(level.back() + len);
     }
+  }
+
+  if (tmp != lod) {
+    *lod = *tmp;
+    delete tmp;
   }
 }
 
