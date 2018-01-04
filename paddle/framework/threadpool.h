@@ -159,5 +159,14 @@ class ThreadPool {
   std::condition_variable completed_;
 };
 
+// Run a function asynchronously.
+// NOTE: The function must return void. If the function need to return a value,
+// you can use lambda to capture a value pointer.
+template <typename Callback, typename ARGS>
+std::future<void> Async(Callback callback, ARGS... args) {
+  return ThreadPool::GetInstance()->Run(
+      [&] { callback(std::forward(args)...); });
+};
+
 }  // namespace framework
 }  // namespace paddle
