@@ -4,6 +4,7 @@ import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.dataset.conll05 as conll05
 import paddle.v2.fluid as fluid
+import time
 
 word_dict, verb_dict, label_dict = conll05.get_dict()
 word_dict_len = len(word_dict)
@@ -161,6 +162,7 @@ def main():
             paddle.dataset.conll05.test(), buf_size=8192),
         batch_size=BATCH_SIZE)
     place = fluid.CPUPlace()
+    #place = fluid.CUDAPlace(0)
     feeder = fluid.DataFeeder(
         feed_list=[
             word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, predicate, mark, target
@@ -174,6 +176,7 @@ def main():
     embedding_param.set(
         load_parameter(conll05.get_embedding(), word_dict_len, word_dim), place)
 
+    start_time = time.time()
     batch_id = 0
     for pass_id in xrange(PASS_NUM):
         chunk_evaluator.reset(exe)
@@ -191,9 +194,12 @@ def main():
                         f1_score) + " pass_precision:" + str(
                             pass_precision) + " pass_recall:" + str(pass_recall)
                       + " pass_f1_score:" + str(pass_f1_score))
+                if batch_id != 0:
+                    print("second per batch: " + str((time.time() - start_time)
+                                                     / batch_id))
 
             # exit early for CI
-            exit(0)
+            # exit(0)
 
             batch_id = batch_id + 1
 

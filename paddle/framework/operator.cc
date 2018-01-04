@@ -420,13 +420,12 @@ void OperatorWithKernel::Run(const Scope& scope,
 
   std::vector<std::pair<std::string, std::string>> need_trans;
   for (auto& var_name : this->InputVars()) {
-    std::cout << "var_name: " << var_name << std::endl;
     auto var_name_trans = TransName(var_name);
     auto* var = scope.FindVar(var_name);
     if (var) {
       auto var_place = GetVarPlace(*var);
       if (var_place != expected_kernel_key.place_) {
-        std::cout << "need to do transform" << std::endl;
+        VLOG(3) << "need to do transform for var " << var_name;
         if (!scope.FindVar(var_name_trans)) {
           auto trans_var = const_cast<Scope&>(scope).Var(var_name_trans);
           Tensor* out = nullptr;
@@ -467,8 +466,7 @@ void OperatorWithKernel::Run(const Scope& scope,
                  expected_kernel_key);
   }
 
-  //  RenameGuard guard(scope, need_trans);
-  std::cout << "expected_kernel_key: " << expected_kernel_key << std::endl;
+  RenameGuard guard(scope, need_trans);
   kernel_iter->second->Compute(ctx);
 }
 

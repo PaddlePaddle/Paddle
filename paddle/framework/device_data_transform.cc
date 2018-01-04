@@ -33,6 +33,8 @@ static const platform::DeviceContext* GetDeviceContext(
 
 Tensor* DeviceTransform(const platform::Place& src_place,
                         const platform::Place& dst_place, const Tensor& in) {
+  VLOG(3) << "DeviceTransform in, src_place " << src_place
+          << " dst_place: " << dst_place;
   Tensor* out = new Tensor();
   auto* dev_ctx = GetDeviceContext(src_place, dst_place);
   dev_ctx->Wait();

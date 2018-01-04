@@ -93,13 +93,20 @@ void Scope::DeleteScope(Scope* scope) {
 void Scope::Rename(const std::string& origin_name,
                    const std::string& new_name) const {
   auto origin_it = vars_.find(origin_name);
-  PADDLE_ENFORCE(origin_it != vars_.end(),
-                 "Cannot find original variable with name %s", origin_name);
-  auto new_it = vars_.find(new_name);
-  PADDLE_ENFORCE(new_it == vars_.end(),
-                 "The variable with name %s is already in the scope", new_name);
-  vars_[new_name] = origin_it->second;
-  vars_.erase(origin_it);
+  if (origin_it == vars_.end()) {
+    if (parent_ == nullptr) {
+      PADDLE_THROW("Cannot find original variable with name %s", origin_name);
+    } else {
+      parent_->Rename(origin_name, new_name);
+    }
+  } else {
+    auto new_it = vars_.find(new_name);
+    PADDLE_ENFORCE(new_it == vars_.end(),
+                   "The variable with name %s is already in the scope",
+                   new_name);
+    vars_[new_name] = origin_it->second;
+    vars_.erase(origin_it);
+  }
 }
 
 std::string Scope::Rename(const std::string& origin_name) const {
