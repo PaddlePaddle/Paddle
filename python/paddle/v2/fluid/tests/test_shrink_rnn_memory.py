@@ -29,7 +29,9 @@ class TestShrinkRNNMemory(unittest.TestCase):
         tensor_np = numpy.random.random(size=(6, 100)).astype('float32')
         tensor.set(tensor_np, cpu)
         exe = Executor(cpu)
-        outs = exe.run(feed={'x': tensor}, fetch_list=[mem1, mem2, mem3])
+        outs = exe.run(feed={'x': tensor},
+                       fetch_list=[mem1, mem2, mem3],
+                       return_numpy=False)
         self.assertTrue(numpy.allclose(tensor_np[0:6], outs[0]))
         self.assertTrue(numpy.allclose(tensor_np[0:5], outs[1]))
         self.assertTrue(numpy.allclose(tensor_np[0:2], outs[2]))
