@@ -64,14 +64,14 @@ def fc(input,
                               is flattened: the first `num_flatten_dims`
                               dimensions will be flatten to form the first
                               dimension of the final matrix (height of the
-                              matrix), and the rest `rank(X) - num_col_dims`
+                              matrix), and the rest `rank(X) - num_flatten_dims`
                               dimensions are flattened to form the second
                               dimension of the final matrix (width of the matrix).
                               For example, suppose `X` is a 6-dimensional tensor
                               with a shape [2, 3, 4, 5, 6], and
-                              `x_num_col_dims` = 3. Then, the flattened matrix
+                              `num_flatten_dims` = 3. Then, the flattened matrix
                               will have a shape [2 x 3 x 4, 5 x 6] = [24, 30].
-                              By default, `x_num_col_dims` is set to 1.
+                              By default, `num_flatten_dims` is set to 1.
        param_attr(ParamAttr|list): The parameter attribute for learnable
                                    parameters/weights of the fully connected
                                    layer.
