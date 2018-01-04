@@ -34,6 +34,8 @@ class RenameGuard {
       const Scope& scope,
       const std::vector<std::pair<std::string, std::string>>& names) {
     for (auto& name_pair : names) {
+      VLOG(3) << "ExchangeVarNames from " << name_pair.first << " to "
+              << name_pair.second;
       auto temp_name = name_pair.first + name_pair.second;
       scope.Rename(name_pair.first, temp_name);
       scope.Rename(name_pair.second, name_pair.first);

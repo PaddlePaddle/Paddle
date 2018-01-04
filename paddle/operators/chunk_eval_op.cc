@@ -58,7 +58,7 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(framework::proto::DataType::FP32,
-                                   ctx.device_context());
+                                   platform::CPUPlace());
   }
 };
 

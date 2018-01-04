@@ -49,18 +49,13 @@ class TestOpWithKernel : public OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
   OpKernelType GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
-    return OpKernelType(proto::DataType::FP32,
-                        ctx.Input<Tensor>("input")->place());
-  }
-  OpKernelType GetExpectedKernelType(
-      const ExecutionContext& ctx,
-      const OpKernelType& actual_kernel_type) const override {
     if (Attr<bool>("use_gpu")) {
       VLOG(3) << "force use gpu kernel";
       return OpKernelType(proto::DataType::FP32, platform::CUDAPlace(0));
     } else {
       VLOG(3) << "use default kernel";
-      return actual_kernel_type;
+      return OpKernelType(proto::DataType::FP32,
+                          ctx.Input<Tensor>("input")->place());
     }
   }
 };
