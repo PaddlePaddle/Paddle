@@ -103,18 +103,6 @@ struct DefaultDeviceContextType<platform::CUDAPlace> {
   using TYPE = CUDADeviceContext;
 };
 
-class CUDNNDeviceContext : public CUDADeviceContext {
- public:
-  explicit CUDNNDeviceContext(CUDAPlace place);
-  virtual ~CUDNNDeviceContext();
-
-  /*! \brief  Return cudnn  handle in the device context. */
-  cudnnHandle_t cudnn_handle() const;
-
- private:
-  cudnnHandle_t cudnn_handle_;
-};
-
 #endif
 
 /*! \brief device context pool singleton */
