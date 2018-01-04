@@ -19,9 +19,6 @@ limitations under the License. */
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
 
-//#include "paddle/operators/detail/grpc_client.h"
-//#include "paddle/operators/detail/send_recv_impl.h"
-//#include "paddle/operators/detail/simple_block_queue.h"
 #include <future>
 #include "paddle/operators/detail/grpc_client2.h"
 
@@ -95,14 +92,15 @@ class SendOp : public framework::OperatorBase {
                   const std::vector<std::string>& ins,
                   const std::vector<std::string>& outs) const {
     int64_t send_timeout = 5000 * 1000;
-    int64_t get_timeout = 1800 * 1000;
+    // int64_t get_timeout = 1800 * 1000;
     auto send_thread = std::async(Send, eps, scope, ins, send_timeout);
-    auto get_thread = std::async(Get, eps, scope, outs, get_timeout);
+    // auto get_thread = std::async(Get, eps, scope, outs, get_timeout);
 
     auto send_ok = send_thread.get();
-    auto get_ok = get_thread.get();
+    // auto get_ok = get_thread.get();
 
-    return (send_ok && get_ok);
+    // return (send_ok && get_ok);
+    return send_ok;
   }
 
   void Run(const framework::Scope& scope,

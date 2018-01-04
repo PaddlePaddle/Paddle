@@ -73,7 +73,7 @@ class ClientBase {
   virtual grpc::Status* GetStatus() = 0;
   virtual SendStatus GetSendStatus() = 0;
 
-  virtual ~ClientBase() {}
+  virtual ~ClientBase() = 0;
 };
 
 class SendClient : public ClientBase {
@@ -260,7 +260,7 @@ class RPCClients {
   std::map<std::string, std::shared_ptr<grpc::Channel>> channels_;
 
   // even if user don't call proceed,
-  // the clientbase will release automaticly
+  // the ClientBase will release automaticly
   std::map<void*, std::shared_ptr<ClientBase>> clients_;
 };
 
