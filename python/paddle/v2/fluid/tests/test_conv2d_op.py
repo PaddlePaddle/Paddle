@@ -193,6 +193,7 @@ class TestCudnnWithGroup(TestWithGroup):
 
 class TestCudnnWith1x1(TestWith1x1):
     def init_op_type(self):
+        core.use_cudnn()
         self.op_type = "conv2d_cudnn"
 
 
