@@ -1,7 +1,42 @@
 import functools
 import layers
+from . import core
 
 __all__ = ['GradientClipByValue', 'append_gradient_clip_ops']
+
+
+class BaseErrorClipAttr(object):
+    def create_clip_op_desc(self, grad_name):
+        raise NotImplementedError()
+
+    def prepend_clip_op_desc(self, op_descs):
+        grad_names = set()
+        for op_desc in op_descs:
+            grad_names.update(
+                filter(lambda n: n.find(core.grad_var_suffix()) != -1,
+                       op_desc.output_arg_names()))
+        for n in grad_names:
+            op_descs.append(self.create_clip_op_desc(grad_name=n))
+
+
+class ErrorClipByValue(BaseErrorClipAttr):
+    def __init__(self, max, min=None):
+        max = float(max)
+        if min is None:
+            min = -max
+        else:
+            min = float(min)
+        self.max = max
+        self.min = min
+
+    def create_clip_op_desc(self, grad_name):
+        desc = core.OpDesc()
+        desc.set_type("clip")
+        desc.set_input("X", grad_name)
+        desc.set_output("Out", grad_name)
+        desc.set_attr("min", self.min)
+        desc.set_attr("max", self.max)
+        return desc
 
 
 class BaseGradientClipAttr(object):
