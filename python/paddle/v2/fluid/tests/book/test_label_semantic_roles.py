@@ -199,7 +199,7 @@ def main():
                                                      / batch_id))
 
             # exit early for CI
-            # exit(0)
+            exit(0)
 
             batch_id = batch_id + 1
 
