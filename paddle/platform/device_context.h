@@ -13,6 +13,7 @@ limitations under the License. */
 
 #include <memory>
 #include <unordered_map>
+#include <utility>
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/platform/dynload/cublas.h"
@@ -129,6 +130,8 @@ class CUDNNDeviceContext : public CUDADeviceContext {
 /*! \brief device context pool singleton */
 class DeviceContextPool {
  public:
+  using DeviceContextId = std::pair<platform::Place, framework::LibraryType>;
+
   explicit DeviceContextPool(const std::vector<platform::LibraryType>& places);
 
   static DeviceContextPool& Instance() {
@@ -155,7 +158,7 @@ class DeviceContextPool {
       const Place& place,
       const Library& library = framework::LibraryType::kPlain) {
     return reinterpret_cast<
-        const typename DefaultDeviceContextType<Place>::TYPE*>(
+        const typename DefaultDeviceContextType<Place, Library>::TYPE*>(
         Get(place, library));
   }
 
@@ -164,15 +167,18 @@ class DeviceContextPool {
   constexpr static int LEFT_SHIFT = 8;
   struct Hash {
     std::hash<int> hash_;
-    size_t operator()(const platform::Place& place) const {
-      int pre_hash = place.which() + (1 << LEFT_SHIFT);
+    size_t operator()(const DeviceContextId& id) const {
+      auto place = id.first;
+      auto library = id.second;
+      int pre_hash = place.which() << LEFT_SHIFT;
+      pre_hash += (library << (LEFT_SHIFT * 2));
       if (platform::is_gpu_place(place)) {
         pre_hash += boost::get<platform::CUDAPlace>(place).GetDeviceId();
       }
       return hash_(pre_hash);
     }
   };
-  std::unordered_map<const platform::Place, const platform::DeviceContext*,
+  std::unordered_map<const DeviceContextId, const platform::DeviceContext*,
                      Hash>
       device_contexts_;
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);

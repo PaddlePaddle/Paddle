@@ -26,13 +26,11 @@ namespace framework {
 struct OpKernelType {
   struct Hash {
     size_t operator()(const OpKernelType& key) const {
-      int place = key.place_.which() + (1 << LEFT_SHIFT);
-      int data_type =
-          static_cast<int>(key.data_type_) + (1 << (LEFT_SHIFT + 1));
-      int data_layout =
-          static_cast<int>(key.data_layout_) + (1 << (LEFT_SHIFT + 2));
-      int library_type =
-          static_cast<int>(key.library_type_) + (1 << (LEFT_SHIFT + 3));
+      int place = key.place_.which();
+      int data_type = static_cast<int>(key.data_type_) << LEFT_SHIFT;
+      int data_layout = static_cast<int>(key.data_layout_) << (LEFT_SHIFT * 2);
+      int library_type = static_cast<int>(key.library_type_)
+                         << (LEFT_SHIFT * 3);
       std::hash<int> hasher;
       return hasher(place + data_type + data_layout + library_type);
     }

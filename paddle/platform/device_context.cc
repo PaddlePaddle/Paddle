@@ -20,7 +20,7 @@ DeviceContextPool* DeviceContextPool::pool = nullptr;
 const platform::DeviceContext* DeviceContextPool::Get(
     const platform::Place& place,
     const framework::LibraryType& library /* kPlain by default*/) {
-  auto it = device_contexts_.find(place);
+  auto it = device_contexts_.find(std::make_pair(place, library));
   if (it == device_contexts_.end()) {
     PADDLE_THROW(
         "'Place' is not supported, Please re-compile with WITH_GPU "
@@ -30,11 +30,12 @@ const platform::DeviceContext* DeviceContextPool::Get(
 }
 
 DeviceContextPool::DeviceContextPool(
-    const std::vector<platform::Place>& places) {
+    const std::vector<platform::LibraryType>& places) {
   PADDLE_ENFORCE_GT(places.size(), 0);
+
   for (size_t i = 0; i < places.size(); i++) {
-    if (platform::is_cpu_place(places[i])) {
-      device_contexts_.emplace(places[i],
+    if (places[i] == platform::LibraryType::kPlain) {
+      device_contexts_.emplace(std::make_pair(CPUPlace(), places[i]),
                                new platform::CPUDeviceContext(
                                    boost::get<platform::CPUPlace>(places[i])));
     } else if (platform::is_gpu_place(places[i])) {
