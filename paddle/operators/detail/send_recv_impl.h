@@ -96,17 +96,15 @@ inline void SerializeToMessage(const std::string &name,
   msg->set_varname(name);
   std::ostringstream oss;
   switch (framework::ToVarType(var->Type())) {
-    case framework::proto::VarDesc_VarType_LOD_TENSOR: {
+    case framework::proto::VarDesc_VarType_LOD_TENSOR:
       msg->set_type(sendrecv::VarType::LOD_TENSOR);
       framework::SerializeToStream(oss, var->Get<framework::LoDTensor>(), ctx);
       break;
-    }
-    case framework::proto::VarDesc_VarType_SELECTED_ROWS: {
+    case framework::proto::VarDesc_VarType_SELECTED_ROWS:
       msg->set_type(sendrecv::VarType::SELECTED_ROWS);
       framework::SerializeToStream(oss, var->Get<framework::SelectedRows>(),
                                    ctx);
       break;
-    }
     default: {
       PADDLE_THROW("Serialize does not support type: %s",
                    typeid(var->Type()).name());
@@ -122,15 +120,12 @@ inline void DeserializeFromMessage(const VariableMessage &msg,
   using namespace paddle::framework::proto;
   std::istringstream iss(msg.serialized());
   switch (msg.type()) {
-    case sendrecv::VarType::LOD_TENSOR: {
-      framework::LoDTensor *tensor = var->GetMutable<framework::LoDTensor>();
-      DeserializeFromStream(iss, tensor, ctx);
+    case sendrecv::VarType::LOD_TENSOR:
+      DeserializeFromStream(iss, var->GetMutable<framework::LoDTensor>(), ctx);
       break;
-    }
     case sendrecv::VarType::SELECTED_ROWS: {
-      framework::SelectedRows *rows =
-          var->GetMutable<framework::SelectedRows>();
-      DeserializeFromStream(iss, rows, ctx);
+      DeserializeFromStream(iss, var->GetMutable<framework::SelectedRows>(),
+                            ctx);
       break;
     }
     default: {
