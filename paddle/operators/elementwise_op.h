@@ -34,8 +34,6 @@ class ElementwiseOp : public framework::OperatorWithKernel {
 
     auto x_dim = ctx->GetInputDim("X");
     auto y_dim = ctx->GetInputDim("Y");
-    LOG(INFO) << x_dim;
-    LOG(INFO) << y_dim;
     PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
                       "Rank of first input must >= rank of second input.");
     ctx->SetOutputDim("Out", x_dim);
@@ -119,9 +117,6 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    LOG(INFO) << x_dims;
-    LOG(INFO) << y_dims;
-    LOG(INFO) << out_dims;
 
     PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
                       "Rank of first input must >= rank of second input.");
