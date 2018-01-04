@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 #include <math.h>
@@ -47,7 +47,7 @@ struct LogicalXorFunctor {
   }
 };
 
-template <typename Place, typename Functor>
+template <typename DeviceContext, typename Functor>
 class BinaryLogicalOpKernel
     : public framework::OpKernel<typename Functor::ELEM_TYPE> {
  public:
@@ -57,14 +57,14 @@ class BinaryLogicalOpKernel
     auto* y = context.Input<framework::Tensor>("Y");
     auto* out = context.Output<framework::Tensor>("Out");
     Functor binary_func;
-    platform::Transform<Place> trans;
-    trans(context.device_context(), x->data<T>(), x->data<T>() + x->numel(),
-          y->data<T>(), out->mutable_data<bool>(context.GetPlace()),
-          binary_func);
+    platform::Transform<DeviceContext> trans;
+    trans(context.template device_context<DeviceContext>(), x->data<T>(),
+          x->data<T>() + x->numel(), y->data<T>(),
+          out->mutable_data<bool>(context.GetPlace()), binary_func);
   }
 };
 
-template <typename Place, typename Functor>
+template <typename DeviceContext, typename Functor>
 class UnaryLogicalOpKernel
     : public framework::OpKernel<typename Functor::ELEM_TYPE> {
  public:
@@ -73,8 +73,9 @@ class UnaryLogicalOpKernel
     auto* x = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
     Functor unary_func;
-    platform::Transform<Place> trans;
-    trans(context.device_context(), x->data<T>(), x->data<T>() + x->numel(),
+    platform::Transform<DeviceContext> trans;
+    trans(context.template device_context<DeviceContext>(), x->data<T>(),
+          x->data<T>() + x->numel(),
           out->mutable_data<bool>(context.GetPlace()), unary_func);
   }
 };
@@ -85,9 +86,9 @@ class UnaryLogicalOpKernel
 #define REGISTER_BINARY_LOGICAL_KERNEL(op_type, dev, functor) \
   REGISTER_OP_##dev##_KERNEL(                                 \
       op_type, ::paddle::operators::BinaryLogicalOpKernel<    \
-                   ::paddle::platform::dev##Place, functor<bool>>);
+                   ::paddle::platform::dev##DeviceContext, functor<bool>>);
 
 #define REGISTER_UNARY_LOGICAL_KERNEL(op_type, dev, functor) \
   REGISTER_OP_##dev##_KERNEL(                                \
       op_type, ::paddle::operators::UnaryLogicalOpKernel<    \
-                   ::paddle::platform::dev##Place, functor<bool>>);
+                   ::paddle::platform::dev##DeviceContext, functor<bool>>);

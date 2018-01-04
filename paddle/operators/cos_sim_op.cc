@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/cos_sim_op.h"
 
@@ -62,7 +62,7 @@ class CosSimOp : public framework::OperatorWithKernel {
 
 class CosSimOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CosSimOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  CosSimOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The 1st input of cos_sim op.");
     AddInput("Y", "The 2nd input of cos_sim op.");
@@ -155,7 +155,8 @@ class CosSimOpGrad : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(cos_sim, ops::CosSimOp, ops::CosSimOpMaker, cos_sim_grad,
             ops::CosSimOpGrad);
-REGISTER_OP_CPU_KERNEL(cos_sim,
-                       ops::CosSimKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    cos_sim_grad, ops::CosSimGradKernel<paddle::platform::CPUPlace, float>);
+    cos_sim, ops::CosSimKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    cos_sim_grad,
+    ops::CosSimGradKernel<paddle::platform::CPUDeviceContext, float>);

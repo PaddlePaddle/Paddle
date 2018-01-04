@@ -2,9 +2,9 @@ import unittest
 import paddle.v2.fluid.core as core
 import numpy
 import paddle.v2.fluid.layers as layers
-from paddle.v2.fluid.framework import Program
+from paddle.v2.fluid.framework import Program, program_guard
 from paddle.v2.fluid.executor import Executor
-from paddle.v2.fluid.backward import append_backward_ops
+from paddle.v2.fluid.backward import append_backward
 
 
 class TestCPULoDTensorArrayOps(unittest.TestCase):
@@ -118,16 +118,17 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
     def main(self, tensor, expect_array, expect_lod, expect_max_len, level=0):
         place = self.place()
         program = Program()
-        x = layers.data(name='x', shape=[10], main_program=program)
-        x.persistable = True
-        table = layers.lod_rank_table(x, level=level, main_program=program)
-        max_len = layers.max_sequence_len(table, main_program=program)
-        max_len.persistable = True
-        array = layers.lod_tensor_to_array(x, table, main_program=program)
-        array.persistable = True
+        with program_guard(program):
+            x = layers.data(name='x', shape=[10])
+            x.persistable = True
+            table = layers.lod_rank_table(x, level=level)
+            max_len = layers.max_sequence_len(table)
+            max_len.persistable = True
+            array = layers.lod_tensor_to_array(x, table)
+            array.persistable = True
 
-        result = layers.array_to_lod_tensor(array, table, main_program=program)
-        result.persistable = True
+            result = layers.array_to_lod_tensor(array, table)
+            result.persistable = True
         exe = Executor(place)
         scope = core.Scope()
         exe.run(program, feed={'x': tensor}, scope=scope)
@@ -160,19 +161,16 @@ class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
         place = core.CPUPlace()
         program = Program()
 
-        x = layers.data(
-            name='x',
-            shape=[1],
-            dtype='float32',
-            main_program=program,
-            stop_gradient=False)
-        table = layers.lod_rank_table(x, level=0, main_program=program)
-        array = layers.lod_tensor_to_array(x, table, main_program=program)
-        result = layers.array_to_lod_tensor(array, table, main_program=program)
+        with program_guard(program):
+            x = layers.data(
+                name='x', shape=[1], dtype='float32', stop_gradient=False)
+            table = layers.lod_rank_table(x, level=0)
+            array = layers.lod_tensor_to_array(x, table)
+            result = layers.array_to_lod_tensor(array, table)
 
-        mean = layers.mean(x=result, main_program=program)
+            mean = layers.mean(x=result)
 
-        append_backward_ops(mean)
+            append_backward(mean)
 
         tensor = core.LoDTensor()
         tensor.set(numpy.arange(10).reshape(10, 1).astype('float32'), place)

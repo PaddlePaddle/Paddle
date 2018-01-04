@@ -19,19 +19,18 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SoftmaxFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor* X, framework::Tensor* Y);
+  void operator()(const DeviceContext& context, const framework::Tensor* X,
+                  framework::Tensor* Y);
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SoftmaxGradFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor* y, const framework::Tensor* y_grad,
-                  framework::Tensor* x_grad);
+  void operator()(const DeviceContext& context, const framework::Tensor* y,
+                  const framework::Tensor* y_grad, framework::Tensor* x_grad);
 };
 
 }  // namespace math

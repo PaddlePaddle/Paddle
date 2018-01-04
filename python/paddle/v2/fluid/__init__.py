@@ -15,17 +15,19 @@ import backward
 import regularizer
 from param_attr import ParamAttr
 from data_feeder import DataFeeder
-from core import LoDTensor, CPUPlace, GPUPlace
+from core import LoDTensor, CPUPlace, CUDAPlace
+from distribute_transpiler import DistributeTranspiler
+import clip
 
 Tensor = LoDTensor
 __all__ = framework.__all__ + executor.__all__ + [
     'io', 'initializer', 'layers', 'nets', 'optimizer', 'backward',
-    'regularizer', 'LoDTensor', 'CPUPlace', 'GPUPlace', 'Tensor', 'ParamAttr'
-    'DataFeeder'
+    'regularizer', 'LoDTensor', 'CPUPlace', 'CUDAPlace', 'Tensor', 'ParamAttr'
+    'DataFeeder', 'clip', 'DistributeTranspiler'
 ]
 
 
-def __read_gflags_from_env__():
+def __bootstrap__():
     """
     Enable reading gflags from environment variables.
 
@@ -34,11 +36,17 @@ def __read_gflags_from_env__():
     """
     import sys
     import core
-    read_env_flags = ['use_pinned_memory']
+    read_env_flags = ['use_pinned_memory', 'check_nan_inf']
     if core.is_compile_gpu():
         read_env_flags.append('fraction_of_gpu_memory_to_use')
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
+    core.init_glog(sys.argv[0])
+
+    if core.is_compile_gpu():
+        core.init_devices(["CPU", "GPU:0"])
+    else:
+        core.init_devices(["CPU"])
 
 
-__read_gflags_from_env__()
+__bootstrap__()

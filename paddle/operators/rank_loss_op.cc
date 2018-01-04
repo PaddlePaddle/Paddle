@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-       http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/rank_loss_op.h"
 
@@ -45,8 +45,7 @@ class RankLossOp : public framework::OperatorWithKernel {
 
 class RankLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RankLossOpMaker(framework::OpProto *proto,
-                  framework::OpAttrChecker *op_checker)
+  RankLossOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Label",
              "(2-D Tensor with shape [batch_size x 1]) "
@@ -123,7 +122,8 @@ namespace ops = paddle::operators;
 
 REGISTER_OP(rank_loss, ops::RankLossOp, ops::RankLossOpMaker, rank_loss_grad,
             ops::RankLossGradOp);
-REGISTER_OP_CPU_KERNEL(rank_loss,
-                       ops::RankLossKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    rank_loss_grad, ops::RankLossGradKernel<paddle::platform::CPUPlace, float>);
+    rank_loss, ops::RankLossKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    rank_loss_grad,
+    ops::RankLossGradKernel<paddle::platform::CPUDeviceContext, float>);

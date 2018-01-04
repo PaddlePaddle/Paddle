@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   You may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 
@@ -23,7 +23,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class MulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -46,15 +46,16 @@ class MulKernel : public framework::OpKernel<T> {
     if (z_dim.size() != 2) {
       z->Resize({x_matrix.dims()[0], y_matrix.dims()[1]});
     }
-    math::matmul<Place, T>(context.device_context(), x_matrix, false, y_matrix,
-                           false, 1, z, 0);
+    math::matmul<DeviceContext, T>(
+        context.template device_context<DeviceContext>(), x_matrix, false,
+        y_matrix, false, 1, z, 0);
     if (z_dim.size() != 2) {
       z->Resize(z_dim);
     }
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class MulGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -77,6 +78,7 @@ class MulGradKernel : public framework::OpKernel<T> {
 
     Tensor* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     Tensor* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
     if (dx) {
       dx->mutable_data<T>(ctx.GetPlace());
       Tensor dx_matrix = dx->dims().size() > 2
@@ -84,8 +86,8 @@ class MulGradKernel : public framework::OpKernel<T> {
                              : *dx;
 
       // dx = dout * y'. dx: M x K, dout : M x N, y : K x N
-      math::matmul<Place, T>(ctx.device_context(), dout_mat, false, y_matrix,
-                             true, 1, &dx_matrix, 0);
+      math::matmul<DeviceContext, T>(dev_ctx, dout_mat, false, y_matrix, true,
+                                     1, &dx_matrix, 0);
     }
     if (dy) {
       dy->mutable_data<T>(ctx.GetPlace());
@@ -93,8 +95,8 @@ class MulGradKernel : public framework::OpKernel<T> {
                              ? framework::ReshapeToMatrix(*dy, y_num_col_dims)
                              : *dy;
       // dy = x' * dout. dy K x N, dout : M x N, x : M x K
-      math::matmul<Place, T>(ctx.device_context(), x_matrix, true, dout_mat,
-                             false, 1, &dy_matrix, 0);
+      math::matmul<DeviceContext, T>(dev_ctx, x_matrix, true, dout_mat, false,
+                                     1, &dy_matrix, 0);
     }
   }
 };

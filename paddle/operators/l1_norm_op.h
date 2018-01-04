@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 #include "paddle/framework/eigen.h"
@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 // Out = sum(abs(X))
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class L1NormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -30,14 +30,15 @@ class L1NormKernel : public framework::OpKernel<T> {
 
     auto x = framework::EigenVector<T>::Flatten(*X);
     auto out = framework::EigenScalar<T>::From(*Out);
-    auto place = context.GetEigenDevice<Place>();
+    auto &place =
+        *context.template device_context<DeviceContext>().eigen_device();
 
     out.device(place) = x.abs().sum();
   }
 };
 
 // dX = dout * sign(X)
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class L1NormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -52,7 +53,8 @@ class L1NormGradKernel : public framework::OpKernel<T> {
     auto x_eigen = framework::EigenVector<T>::Flatten(*x);
     auto d_out_eigen = framework::EigenVector<T>::Flatten(*d_out);
     auto dx_eigen = framework::EigenVector<T>::Flatten(*dx);
-    auto place = context.GetEigenDevice<Place>();
+    auto &place =
+        *context.template device_context<DeviceContext>().eigen_device();
 
     Eigen::DSizes<int, 1> x_dsize(x->numel());
     dx_eigen.device(place) = d_out_eigen.broadcast(x_dsize) * x_eigen.sign();
