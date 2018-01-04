@@ -165,7 +165,7 @@ class ThreadPool {
 template <typename Callback>
 std::future<void> Async(Callback callback) {
   return ThreadPool::GetInstance()->Run(callback);
-};
+}
 
 }  // namespace framework
 }  // namespace paddle
