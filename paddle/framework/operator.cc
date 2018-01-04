@@ -36,6 +36,7 @@ void UseCPU() {
 }
 
 void UseMKLDNN() {
+  UseCPU();
 #if PADDLE_WITH_MKLML
   {
     /*MKLDNN Kernel*/
@@ -46,15 +47,16 @@ void UseMKLDNN() {
 }
 
 void UseCUDNN() {
+  UseMKLDNN();
 #if PADDLE_WITH_CUDA
-  if (platform::dynload::HasCUDNN()) {
-    /*CUDNN Kernel*/
-    auto pair0 = std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN);
-    kKernelPriority.insert(kKernelPriority.begin(), pair0);
-  }
   {
     /*Plain GPU*/
     auto pair0 = std::make_tuple(platform::CUDAPlace(0), LibraryType::kPlain);
+    kKernelPriority.insert(kKernelPriority.begin(), pair0);
+  }
+  if (platform::dynload::HasCUDNN()) {
+    /*CUDNN Kernel*/
+    auto pair0 = std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN);
     kKernelPriority.insert(kKernelPriority.begin(), pair0);
   }
 #endif
@@ -484,8 +486,6 @@ void OperatorWithKernel::Run(const Scope& scope,
       auto candidate_key =
           OpKernelType(actual_kernel_key.data_type_, std::get<0>(candidate),
                        actual_kernel_key.data_layout_, std::get<1>(candidate));
-      VLOG(0) << "candidate : " << candidate_key;
-      VLOG(0) << "actual : " << actual_kernel_key;
 
       auto candidate_pair = std::make_pair(actual_kernel_key, candidate_key);
       if ((actual_kernel_key == candidate_key) ||
@@ -496,12 +496,9 @@ void OperatorWithKernel::Run(const Scope& scope,
       }
     }
 
-    VLOG(0) << "expected kernel : " << expected_kernel_key;
     auto kernel_pair = std::make_pair(actual_kernel_key, expected_kernel_key);
     const DataTransformFn* trans_fun = trans_map.GetNullable(kernel_pair);
     if (trans_fun) {
-      VLOG(0) << " make transform : " << actual_kernel_key
-              << " expected : " << expected_kernel_key;
       auto input_vars = this->InputVars();
       // TODO(qijun) filter the input vars that do not need to be transformed
 
@@ -533,7 +530,9 @@ void OperatorWithKernel::Run(const Scope& scope,
     }
   }
 
-  VLOG(0) << "final expected kernel : " << expected_kernel_key;
+  VLOG(10) << "Actual kernel: " << actual_kernel_key
+           << "Expected kernel: " << expected_kernel_key;
+
   auto kernel_iter = kernels.find(expected_kernel_key);
 
   if (kernel_iter == kernels.end()) {

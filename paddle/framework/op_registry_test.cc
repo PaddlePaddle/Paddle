@@ -271,12 +271,6 @@ static int op_test_value = 0;
 using paddle::platform::DeviceContext;
 using paddle::platform::CPUDeviceContext;
 using paddle::platform::CUDADeviceContext;
-using paddle::platform::CUDNNDeviceContext;
-
-class DummyDeviceContext : public DeviceContext {
- public:
-  DummyDeviceContext(){};
-};
 
 namespace paddle {
 namespace framework {
@@ -308,7 +302,7 @@ class OpMultiKernelTest : public paddle::framework::OpKernel<T> {
 };
 
 template <typename T>
-class OpMultiKernelTest<DummyDeviceContext, T>
+class OpMultiKernelTest<CPUDeviceContext, T>
     : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const {
@@ -317,16 +311,22 @@ class OpMultiKernelTest<DummyDeviceContext, T>
 };
 
 template <typename T>
-class OpMultiKernelTest<CPUDeviceContext, T>
+class OpMultiKernelTest<CUDADeviceContext, T>
     : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const {
-    op_test_value -= 10;
+    --op_test_value;
   }
 };
 
+template <typename DeviceContext, typename T>
+class OpMultiKernelTest2 : public paddle::framework::OpKernel<T> {
+ public:
+  void Compute(const paddle::framework::ExecutionContext& ctx) const;
+};
+
 template <typename T>
-class OpMultiKernelTest<CUDADeviceContext, T>
+class OpMultiKernelTest2<CPUDeviceContext, T>
     : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const {
@@ -335,11 +335,11 @@ class OpMultiKernelTest<CUDADeviceContext, T>
 };
 
 template <typename T>
-class OpMultiKernelTest<CUDNNDeviceContext, T>
+class OpMultiKernelTest2<CUDADeviceContext, T>
     : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const {
-    --op_test_value;
+    op_test_value -= 10;
   }
 };
 
@@ -354,13 +354,13 @@ REGISTER_OP_KERNEL(
     paddle::framework::OpMultiKernelTest<CPUDeviceContext, float>);
 REGISTER_OP_KERNEL(
     op_with_multi_kernel, MKLDNN, paddle::platform::CPUPlace,
-    paddle::framework::OpMultiKernelTest<DummyDeviceContext, float>);
+    paddle::framework::OpMultiKernelTest2<CPUDeviceContext, float>);
 REGISTER_OP_KERNEL(
     op_with_multi_kernel, CUDA, paddle::platform::CUDAPlace,
     paddle::framework::OpMultiKernelTest<CUDADeviceContext, float>);
 REGISTER_OP_KERNEL(
     op_with_multi_kernel, CUDNN, paddle::platform::CUDAPlace,
-    paddle::framework::OpMultiKernelTest<CUDNNDeviceContext, float>);
+    paddle::framework::OpMultiKernelTest2<CUDADeviceContext, float>);
 
 TEST(OperatorRegistrar, OpWithMultiKernel) {
   paddle::framework::proto::OpDesc op_desc;
@@ -368,13 +368,13 @@ TEST(OperatorRegistrar, OpWithMultiKernel) {
   paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
-  paddle::framework::UseAll();
-
   op_desc.set_type("op_with_multi_kernel");
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
 
+  // use all available kernels
+  paddle::framework::UseAll();
   op->Run(scope, cuda_place);
-  EXPECT_EQ(op_test_value, -1);
+  EXPECT_EQ(op_test_value, -10);
 
   VLOG(0) << paddle::framework::kKernelPriority.size();
 
@@ -382,13 +382,10 @@ TEST(OperatorRegistrar, OpWithMultiKernel) {
   paddle::framework::UseCPU();
   op->Run(scope, cpu_place);
 
-  VLOG(0) << paddle::framework::kKernelPriority.size();
-
-  EXPECT_EQ(op_test_value, -11);
+  EXPECT_EQ(op_test_value, -9);
 
   // use cudnn kernel
   paddle::framework::UseCUDNN();
-  VLOG(0) << paddle::framework::kKernelPriority.size();
   op->Run(scope, cuda_place);
-  EXPECT_EQ(op_test_value, -12);
+  EXPECT_EQ(op_test_value, -19);
 }

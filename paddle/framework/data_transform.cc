@@ -40,10 +40,10 @@ auto KernelNCHW = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
 // Dummy transform function for library_type
 // should be removed.
 auto KernelPlain = OpKernelType(proto::DataType::FP32, platform::CUDAPlace(0),
-                                DataLayout::kNHWC, LibraryType::kPlain);
+                                DataLayout::kAnyLayout, LibraryType::kPlain);
 
 auto KernelCUDNN = OpKernelType(proto::DataType::FP32, platform::CUDAPlace(0),
-                                DataLayout::kNHWC, LibraryType::kCUDNN);
+                                DataLayout::kAnyLayout, LibraryType::kCUDNN);
 
 void DummyTrans(const platform::DeviceContext* ctx,
                 const KernelTypePair& kernel_pair, const Variable& in,
