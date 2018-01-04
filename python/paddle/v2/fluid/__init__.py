@@ -1,3 +1,4 @@
+from __future__ import print_function
 # import all class inside framework into fluid module
 import framework
 from framework import *
@@ -36,6 +37,24 @@ def __bootstrap__():
     """
     import sys
     import core
+    import os
+
+    try:
+        num_threads = int(os.getenv('OMP_NUM_THREADS', '1'))
+    except ValueError:
+        num_threads = 1
+
+    if num_threads > 1:
+        print(
+            'WARNING: OMP_NUM_THREADS set to {0}, not 1. The computation '
+            'speed will not be optimized if you use data parallel. It will '
+            'fail if this PaddlePaddle binary is compiled with OpenBlas since'
+            ' OpenBlas does not support multi-threads.'.format(num_threads),
+            file=sys.stderr)
+        print('PLEASE USE OMP_NUM_THREADS WISELY.', file=sys.stderr)
+
+    os.environ['OMP_NUM_THREADS'] = str(num_threads)
+
     read_env_flags = ['use_pinned_memory', 'check_nan_inf']
     if core.is_compile_gpu():
         read_env_flags.append('fraction_of_gpu_memory_to_use')
