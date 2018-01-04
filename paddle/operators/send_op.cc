@@ -92,15 +92,14 @@ class SendOp : public framework::OperatorBase {
                   const std::vector<std::string>& ins,
                   const std::vector<std::string>& outs) const {
     int64_t send_timeout = 5000 * 1000;
-    // int64_t get_timeout = 1800 * 1000;
+    int64_t get_timeout = 1800 * 1000;
     auto send_thread = std::async(Send, eps, scope, ins, send_timeout);
-    // auto get_thread = std::async(Get, eps, scope, outs, get_timeout);
+    auto get_thread = std::async(Get, eps, scope, outs, get_timeout);
 
     auto send_ok = send_thread.get();
-    // auto get_ok = get_thread.get();
+    auto get_ok = get_thread.get();
 
-    // return (send_ok && get_ok);
-    return send_ok;
+    return (send_ok && get_ok);
   }
 
   void Run(const framework::Scope& scope,
