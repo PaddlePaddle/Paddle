@@ -426,6 +426,7 @@ void OperatorWithKernel::Run(const Scope& scope,
       auto var_place = GetVarPlace(*var);
       if (var_place != expected_kernel_key.place_) {
         VLOG(3) << "need to do transform for var " << var_name;
+        need_trans.emplace_back(std::make_pair(var_name, var_name_trans));
         if (!scope.FindVar(var_name_trans)) {
           auto trans_var = const_cast<Scope&>(scope).Var(var_name_trans);
           Tensor* out = nullptr;
@@ -453,7 +454,6 @@ void OperatorWithKernel::Run(const Scope& scope,
             PADDLE_THROW("unknown var type");
           }
         }
-        need_trans.push_back(std::make_pair(var_name, var_name_trans));
       }
     }
   }
