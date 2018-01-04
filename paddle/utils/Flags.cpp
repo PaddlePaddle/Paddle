@@ -28,9 +28,10 @@ DEFINE_bool(use_mkldnn, false, "Only support CPU training");
 #endif
 
 #ifdef PADDLE_WITH_MKLML
-DEFINE_bool(use_mkl_packed, true, "Default use MKL Packed Optimization");
-#else
+// TODO(TJ): change to true when fully confirmed
 DEFINE_bool(use_mkl_packed, false, "Whether to use MKL Packed Optimization");
+#else
+DEFINE_bool(use_mkl_packed, false, "Not to use MKL Packed Optimization");
 #endif
 
 DEFINE_bool(parallel_nn,
