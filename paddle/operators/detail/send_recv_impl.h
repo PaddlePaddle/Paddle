@@ -39,7 +39,6 @@ using grpc::Status;
 using sendrecv::SendRecvService;
 using sendrecv::VariableMessage;
 using sendrecv::VoidMessage;
-// using sendrecv::VarType;
 
 namespace paddle {
 namespace operators {

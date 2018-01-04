@@ -125,14 +125,6 @@ class RecvOp : public framework::OperatorBase {
             platform::DeviceContextPool::Instance();
         auto &dev_ctx = *pool.Get(dev_place);
         detail::DeserializeFromMessage(v.second, dev_ctx, var);
-        /**
-        auto *var = recv_scope.Var(grad_var_name);
-        auto *tensor = var->GetMutable<framework::LoDTensor>();
-        // FIXME(typhoonzero): do not copy
-        platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-        auto &dev_ctx = *pool.Borrow(dev_place);
-        framework::CopyFrom(v.second, dev_place, dev_ctx, tensor);
-        **/
       }
       if (exit_flag) {
         break;

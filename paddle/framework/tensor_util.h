@@ -270,7 +270,7 @@ struct DeserializedDataFunctor {
   template <typename T>
   void operator()() {
     *buf_ = tensor_->mutable_data<T>(place_);
-  };
+  }
 
   void** buf_;
   Tensor* tensor_;
