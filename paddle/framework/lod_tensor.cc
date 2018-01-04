@@ -182,6 +182,10 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
     tmp = lod;
   } else {
     tmp = new CPULoDType();
+    tmp->resize(lod->size());
+    for (size_t i = 0; i < tmp->size(); ++i) {
+      (*tmp)[i] = (*lod)[i];
+    }
   }
 
   if (tmp->empty()) {
@@ -199,7 +203,9 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
   }
 
   if (tmp != lod) {
-    *lod = *tmp;
+    for (size_t i = 0; i < tmp->size(); ++i) {
+      (*lod)[i] = (*tmp)[i];
+    }
     delete tmp;
   }
 }
