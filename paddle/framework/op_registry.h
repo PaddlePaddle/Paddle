@@ -37,8 +37,8 @@ class Registrar {
  public:
   // In our design, various kinds of classes, e.g., operators and kernels,
   // have their corresponding registry and registrar. The action of
-  // registration is in the constructor of a global registrar variable, which,
-  // however, are not used in the code that calls package framework, and would
+  // registration is in the constructor of a global registrar variable, which
+  // are not used in the code that calls package framework, and would
   // be removed from the generated binary file by the linker. To avoid such
   // removal, we add Touch to all registrar classes and make USE_OP macros to
   // call this method. So, as long as the callee code calls USE_OP, the global
@@ -79,30 +79,31 @@ struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
   using KERNEL_TYPE =
       typename std::tuple_element<I, std::tuple<KernelTypes...>>::type;
 
-  void operator()(const char* op_type) const {
+  void operator()(const char* op_type, const char* library_type) const {
     using T = typename KERNEL_TYPE::ELEMENT_TYPE;
-    OpKernelType key(ToDataType(std::type_index(typeid(T))), PlaceType());
+    OpKernelType key(ToDataType(std::type_index(typeid(T))), PlaceType(),
+                     DataLayout::kAnyLayout, StringToLibraryType(library_type));
     OperatorWithKernel::AllOpKernels()[op_type][key].reset(new KERNEL_TYPE);
 
     constexpr auto size = std::tuple_size<std::tuple<KernelTypes...>>::value;
     OpKernelRegistrarFunctor<PlaceType, I + 1 == size, I + 1, KernelTypes...>
         func;
-    func(op_type);
+    func(op_type, library_type);
   }
 };
 
 template <typename PlaceType, size_t I, typename... KernelType>
 struct OpKernelRegistrarFunctor<PlaceType, true, I, KernelType...> {
-  void operator()(const char* op_type) const {}
+  void operator()(const char* op_type, const char* library_type) const {}
 };
 
 // User can register many kernel in one place. The data type could be different.
 template <typename PlaceType, typename... KernelType>
 class OpKernelRegistrar : public Registrar {
  public:
-  explicit OpKernelRegistrar(const char* op_type) {
+  explicit OpKernelRegistrar(const char* op_type, const char* library_type) {
     OpKernelRegistrarFunctor<PlaceType, false, 0, KernelType...> func;
-    func(op_type);
+    func(op_type, library_type);
   }
 };
 
@@ -181,7 +182,8 @@ class OpKernelRegistrar : public Registrar {
       __reg_op_kernel_##op_type##_##DEVICE_TYPE##__,                      \
       "REGISTER_OP_KERNEL must be called in global namespace");           \
   static ::paddle::framework::OpKernelRegistrar<place_class, __VA_ARGS__> \
-      __op_kernel_registrar_##op_type##_##DEVICE_TYPE##__(#op_type);      \
+      __op_kernel_registrar_##op_type##_##DEVICE_TYPE##__(#op_type,       \
+                                                          #DEVICE_TYPE);  \
   int TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE() {                \
     __op_kernel_registrar_##op_type##_##DEVICE_TYPE##__.Touch();          \
     return 0;                                                             \
