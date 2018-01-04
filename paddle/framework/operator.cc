@@ -415,8 +415,7 @@ void OperatorWithKernel::Run(const Scope& scope,
   }
 
   ExecutionContext ctx(*this, scope, *dev_ctx);
-  auto actual_kernel_key = GetActualKernelType(ctx);
-  auto expected_kernel_key = GetExpectedKernelType(ctx, actual_kernel_key);
+  auto expected_kernel_key = GetExpectedKernelType(ctx);
 
   std::vector<std::pair<std::string, std::string>> need_trans;
   for (auto& var_name : this->InputVars()) {
@@ -470,16 +469,6 @@ void OperatorWithKernel::Run(const Scope& scope,
   kernel_iter->second->Compute(ctx);
 }
 
-OpKernelType OperatorWithKernel::GetActualKernelType(
-    const ExecutionContext& ctx) const {
-  return OpKernelType(IndicateDataType(ctx), ctx.GetPlace());
-}
-
-OpKernelType OperatorWithKernel::GetExpectedKernelType(
-    const ExecutionContext& ctx, const OpKernelType& actual_kernel_type) const {
-  return actual_kernel_type;
-}
-
 proto::DataType OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
   auto& scope = ctx.scope();
@@ -507,6 +496,11 @@ proto::DataType OperatorWithKernel::IndicateDataType(
   }
   PADDLE_ENFORCE(data_type != -1, "DataType should be indicated by input");
   return static_cast<proto::DataType>(data_type);
+}
+
+OpKernelType OperatorWithKernel::GetExpectedKernelType(
+    const ExecutionContext& ctx) const {
+  return OpKernelType(IndicateDataType(ctx), ctx.GetPlace());
 }
 
 }  // namespace framework

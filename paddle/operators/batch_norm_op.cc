@@ -305,7 +305,7 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetActualKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     const auto *var = ctx.InputVar(framework::GradVarName("Y"));
     if (var == nullptr) {

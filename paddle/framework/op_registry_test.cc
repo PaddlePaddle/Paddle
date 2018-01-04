@@ -215,7 +215,7 @@ class OpWithKernelTest : public OperatorWithKernel {
  protected:
   void InferShape(InferShapeContext* ctx) const override {}
 
-  framework::OpKernelType GetActualKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(proto::DataType::FP32, ctx.device_context());
   }
