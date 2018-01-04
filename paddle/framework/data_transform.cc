@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/data_transform.h"
+#include "paddle/framework/device_data_transform.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/selected_rows.h"
 #include "paddle/platform/device_context.h"
 
 namespace paddle {
@@ -22,6 +24,55 @@ namespace framework {
 DataTransformFnMap& DataTransformFnMap::Instance() {
   static DataTransformFnMap data_transform_map;
   return data_transform_map;
+}
+
+const VariableAttr GetVariableAttr(const Variable& var) {
+  VariableAttr attr;
+  const Tensor* tensor;
+
+  if (var.IsType<LoDTensor>()) {
+    tensor = &var.Get<LoDTensor>();
+  } else if (var.IsType<SelectedRows>()) {
+    tensor = &var.Get<SelectedRows>().value();
+  } else {
+    PADDLE_THROW("unknown var type");
+  }
+
+  attr.place = tensor->place();
+  attr.data_layout = tensor->layout();
+  attr.data_type = ToDataType(tensor->type());
+  attr.tensor = tensor;
+  return attr;
+}
+
+Tensor* DataTransform(const VarAttrMatch& match,
+                      const VariableAttr& input_var_attr,
+                      const OpKernelType& expected_kernel_type) {
+  Tensor* out = nullptr;
+  if (!match.place) {
+    out = DeviceTransform(input_var_attr.place, expected_kernel_type.place_,
+                          *input_var_attr.tensor);
+  }
+  return out;
+}
+
+void CopyVariableWithTensor(const Variable& in_var, Variable& out_var,
+                            const Tensor& tensor) {
+  if (in_var.IsType<LoDTensor>()) {
+    auto& in_lod_tensor = in_var.Get<LoDTensor>();
+    auto* tran_lod_tensor = out_var.GetMutable<LoDTensor>();
+    tran_lod_tensor->set_lod(in_lod_tensor.lod());
+    tran_lod_tensor->set_layout(in_lod_tensor.layout());
+    tran_lod_tensor->ShareDataWith(tensor);
+  } else if (in_var.IsType<SelectedRows>()) {
+    auto& in_selected_rows = in_var.Get<SelectedRows>();
+    auto* trans_selected_rows = out_var.GetMutable<SelectedRows>();
+    trans_selected_rows->set_height(in_selected_rows.height());
+    trans_selected_rows->set_rows(in_selected_rows.rows());
+    trans_selected_rows->mutable_value()->ShareDataWith(tensor);
+  } else {
+    PADDLE_THROW("unknown var type");
+  }
 }
 
 auto KernelFP32 = OpKernelType(proto::DataType::FP32, platform::CPUPlace(),

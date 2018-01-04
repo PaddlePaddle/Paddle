@@ -24,25 +24,36 @@ class RenameGuard {
   RenameGuard(const Scope& scope,
               const std::vector<std::pair<std::string, std::string>>& names)
       : scope_(scope), names_(names) {
-    ExchangeVarNames(scope, names);
-  }
-
-  ~RenameGuard() { ExchangeVarNames(scope_, names_); }
-
- private:
-  void ExchangeVarNames(
-      const Scope& scope,
-      const std::vector<std::pair<std::string, std::string>>& names) {
     for (auto& name_pair : names) {
       VLOG(3) << "ExchangeVarNames from " << name_pair.first << " to "
               << name_pair.second;
-      auto temp_name = name_pair.first + name_pair.second;
-      scope.Rename(name_pair.first, temp_name);
-      scope.Rename(name_pair.second, name_pair.first);
-      scope.Rename(temp_name, name_pair.second);
+      if (scope.FindVarLocally(name_pair.first)) {
+        auto temp_name = name_pair.first + name_pair.second;
+        scope.Rename(name_pair.first, temp_name);
+        scope.Rename(name_pair.second, name_pair.first);
+        scope.Rename(temp_name, name_pair.second);
+      } else {
+        scope.Rename(name_pair.second, name_pair.first);
+      }
     }
   }
 
+  ~RenameGuard() {
+    for (auto& name_pair : names_) {
+      VLOG(3) << "ExchangeVarNames back from " << name_pair.first << " to "
+              << name_pair.second;
+      if (scope_.FindVarLocally(name_pair.second)) {
+        auto temp_name = name_pair.first + name_pair.second;
+        scope_.Rename(name_pair.first, temp_name);
+        scope_.Rename(name_pair.second, name_pair.first);
+        scope_.Rename(temp_name, name_pair.second);
+      } else {
+        scope_.Rename(name_pair.first, name_pair.second);
+      }
+    }
+  }
+
+ private:
   const Scope& scope_;
   const std::vector<std::pair<std::string, std::string>>& names_;
 };

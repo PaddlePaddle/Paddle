@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/framework/data_transform.h"
 #include "paddle/framework/device_data_transform.h"
 #include "paddle/framework/executor.h"
-#include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/rename_guard.h"
 #include "paddle/framework/shape_inference.h"
@@ -389,16 +388,6 @@ static std::string TransName(const std::string& name) {
   return name + "@transform_rename";
 }
 
-static platform::Place GetVarPlace(const Variable& var) {
-  if (var.IsType<LoDTensor>()) {
-    return var.Get<LoDTensor>().place();
-  } else if (var.IsType<SelectedRows>()) {
-    return var.Get<SelectedRows>().place();
-  } else {
-    PADDLE_THROW("unknown var type");
-  }
-}
-
 void OperatorWithKernel::Run(const Scope& scope,
                              const platform::Place& place) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
@@ -422,36 +411,15 @@ void OperatorWithKernel::Run(const Scope& scope,
     auto var_name_trans = TransName(var_name);
     auto* var = scope.FindVar(var_name);
     if (var) {
-      auto var_place = GetVarPlace(*var);
-      if (!platform::is_same_place(var_place, expected_kernel_key.place_)) {
+      auto var_attr = GetVariableAttr(*var);
+      const auto var_match = VarAttrMatch(var_attr, expected_kernel_key);
+      if (!var_match()) {
         VLOG(3) << "need to do transform for var " << var_name;
         need_trans.emplace_back(std::make_pair(var_name, var_name_trans));
-        if (!scope.FindVar(var_name_trans)) {
-          auto trans_var = const_cast<Scope&>(scope).Var(var_name_trans);
-          Tensor* out = nullptr;
-          if (var->IsType<LoDTensor>()) {
-            auto& in_lod_tensor = var->Get<LoDTensor>();
-            auto* tran_lod_tensor = trans_var->GetMutable<LoDTensor>();
-
-            out = DeviceTransform(var_place, expected_kernel_key.place_,
-                                  in_lod_tensor);
-
-            tran_lod_tensor->set_lod(in_lod_tensor.lod());
-            tran_lod_tensor->set_layout(in_lod_tensor.layout());
-            tran_lod_tensor->ShareDataWith(*out);
-          } else if (var->IsType<SelectedRows>()) {
-            auto& in_selected_rows = var->Get<SelectedRows>();
-            auto* trans_selected_rows = trans_var->GetMutable<SelectedRows>();
-
-            out = DeviceTransform(var_place, expected_kernel_key.place_,
-                                  in_selected_rows.value());
-
-            trans_selected_rows->set_height(in_selected_rows.height());
-            trans_selected_rows->set_rows(in_selected_rows.rows());
-            trans_selected_rows->mutable_value()->ShareDataWith(*out);
-          } else {
-            PADDLE_THROW("unknown var type");
-          }
+        if (!scope.FindVarLocally(var_name_trans)) {
+          auto* trans_var = const_cast<Scope&>(scope).Var(var_name_trans);
+          auto* out = DataTransform(var_match, var_attr, expected_kernel_key);
+          CopyVariableWithTensor(*var, *trans_var, *out);
         }
       }
     }

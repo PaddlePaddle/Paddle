@@ -32,7 +32,7 @@ cc_test(rename_guard_test SRCS rename_guard_test.cc DEPS scope)
 
 cc_library(device_data_transform SRCS device_data_transform.cc DEPS tensor)
 
-cc_library(data_transform SRCS data_transform.cc DEPS math_function tensor framework_proto)
+cc_library(data_transform SRCS data_transform.cc DEPS math_function tensor framework_proto selected_rows device_data_transform)
 cc_test(data_transform_test SRCS data_transform_test.cc DEPS data_transform device_context)
 
 cc_library(attribute SRCS attribute.cc DEPS framework_proto)
@@ -43,7 +43,7 @@ cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
 cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute)
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
-    shape_inference data_transform device_data_transform)
+    shape_inference data_transform)
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry init)
 cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog)
 

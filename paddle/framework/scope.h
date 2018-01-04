@@ -72,12 +72,15 @@ class Scope {
   void Rename(const std::string& origin_name,
               const std::string& new_name) const;
 
+  void RenameRecursive(const std::string& origin_name,
+                       const std::string& new_name) const;
+
   // Rename variable to a new name and return the new name
   std::string Rename(const std::string& origin_name) const;
 
- private:
   Variable* FindVarLocally(const std::string& name) const;
 
+ private:
   // Call Scope::NewScope for a sub-scope.
   explicit Scope(Scope const* parent) : parent_(parent) {}
 

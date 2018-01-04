@@ -19,6 +19,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/framework/op_kernel_type.h"
+#include "paddle/framework/selected_rows.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/framework/variable.h"
 #include "paddle/operators/math/math_function.h"
@@ -48,6 +49,35 @@ struct KernelTypePairHash {
     return seed;
   }
 };
+
+struct VariableAttr {
+  proto::DataType data_type;
+  DataLayout data_layout;
+  platform::Place place;
+  const Tensor* tensor;
+};
+
+const VariableAttr GetVariableAttr(const Variable& var);
+
+struct VarAttrMatch {
+  bool data_type = false;
+  bool place = false;
+  bool data_layout = false;
+
+  VarAttrMatch(const VariableAttr& var_attr, const OpKernelType& kernel_type) {
+    data_type = var_attr.data_type == kernel_type.data_type_;
+    place = platform::is_same_place(var_attr.place, kernel_type.place_);
+    data_layout = var_attr.data_layout == kernel_type.data_layout_;
+  }
+
+  bool operator()() const { return data_type && place && data_layout; }
+};
+
+Tensor* DataTransform(const VarAttrMatch& match, const VariableAttr& input_var,
+                      const OpKernelType& expected_kernel_type);
+
+void CopyVariableWithTensor(const Variable& in_var, Variable& out_var,
+                            const Tensor& tensor);
 
 template <typename InType, typename OutType>
 struct CastDataTypeFunctor {
