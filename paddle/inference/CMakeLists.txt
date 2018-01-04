@@ -30,7 +30,18 @@ if(PTOOLS_INC_DIR AND PTOOLS_SHARED_LIB)
 endif()
 
 add_executable(example example.cc)
-target_link_libraries(example
-    -Wl,--start-group -Wl,--whole-archive paddle_fluid
-    -Wl,--no-whole-archive -Wl,--end-group
-    ${PTOOLS_LIB})
+if(APPLE)
+  set(OPTIONAL_LINK_FLAGS)
+  if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
+    set(OPTIONAL_LINK_FLAGS "-undefined dynamic_lookup")
+  endif()
+  target_link_libraries(example
+      -Wl,-force_load paddle_fluid
+      ${OPTIONAL_LINK_FLAGS}
+      ${PTOOLS_LIB})
+else()
+  target_link_libraries(example
+      -Wl,--start-group -Wl,--whole-archive paddle_fluid
+      -Wl,--no-whole-archive -Wl,--end-group
+      ${PTOOLS_LIB})
+endif()
