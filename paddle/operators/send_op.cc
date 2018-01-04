@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/framework/op_registry.h"
 
 #include <future>
-#include "paddle/operators/detail/grpc_client2.h"
+#include "paddle/operators/detail/grpc_client.h"
 
 namespace paddle {
 namespace operators {
