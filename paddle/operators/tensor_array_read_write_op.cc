@@ -40,8 +40,9 @@ class WriteToArrayOp : public ArrayOp {
     if (x_tensor.memory_size() > 0) {
       auto *out_tensor = &out->at(offset);
 
-      platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-      auto &dev_ctx = *pool.Borrow(place);
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto &dev_ctx = *pool.Get(place);
 
       CopyFrom(x_tensor, place, dev_ctx, out_tensor);
       out_tensor->set_lod(x_tensor.lod());
@@ -129,11 +130,12 @@ class ReadFromArrayOp : public ArrayOp {
     auto &x_array = x->Get<framework::LoDTensorArray>();
     auto *out = scope.FindVar(Output("Out"));
     PADDLE_ENFORCE(out != nullptr, "Out must be set");
-    auto *out_tensor = out->GetMutable<framework::LoDTensor>();
     size_t offset = GetOffset(scope, place);
     if (offset < x_array.size()) {
-      platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-      auto &dev_ctx = *pool.Borrow(place);
+      auto *out_tensor = out->GetMutable<framework::LoDTensor>();
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto &dev_ctx = *pool.Get(place);
       framework::CopyFrom(x_array[offset], place, dev_ctx, out_tensor);
       out_tensor->set_lod(x_array[offset].lod());
     } else {

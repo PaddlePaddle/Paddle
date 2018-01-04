@@ -16,7 +16,7 @@ After you've read above tutorials you may proceed the following steps.
 Pull PaddlePaddle Docker Image
 ------------------------------
 
-Run the following command to download the latest Docker images:
+Run the following command to download the latest Docker images, the version is cpu_avx_mkl:
 
   .. code-block:: bash
 
@@ -28,7 +28,7 @@ For users in China, we provide a faster mirror:
 
      docker pull docker.paddlepaddle.org/paddle
 
-Download GPU version images:
+Download GPU version (cuda8.0_cudnn5_avx_mkl) images:
 
   .. code-block:: bash
 
@@ -58,7 +58,7 @@ and run:
 .. _docker_run:
 
 Launch your training program in Docker
-------------------------------
+--------------------------------------
 
 Assume that you have already written a PaddlePaddle program
 named :code:`train.py` under directory :code:`/home/work` (refer to 

@@ -19,13 +19,13 @@ TEST(Event, CpuElapsedTime) {
   using paddle::platform::Event;
   using paddle::platform::EventKind;
 
-  Event start_event(EventKind::kPushRange, "test", 0);
+  Event start_event(EventKind::kPushRange, "test", 0, nullptr);
   EXPECT_TRUE(start_event.has_cuda() == false);
   int counter = 0;
   while (counter != 1000) {
     counter++;
   }
-  Event stop_event(EventKind::kPopRange, "test", 0);
+  Event stop_event(EventKind::kPopRange, "test", 0, nullptr);
   EXPECT_GT(start_event.CpuElapsedUs(stop_event), 0);
 }
 
@@ -33,11 +33,11 @@ TEST(Event, CpuElapsedTime) {
 TEST(Event, CudaElapsedTime) {
   using paddle::platform::DeviceContext;
   using paddle::platform::CUDADeviceContext;
-  using paddle::platform::GPUPlace;
+  using paddle::platform::CUDAPlace;
   using paddle::platform::Event;
   using paddle::platform::EventKind;
 
-  DeviceContext* dev_ctx = new CUDADeviceContext(GPUPlace(0));
+  DeviceContext* dev_ctx = new CUDADeviceContext(CUDAPlace(0));
   Event start_event(EventKind::kPushRange, "test", 0, dev_ctx);
   EXPECT_TRUE(start_event.has_cuda() == true);
   int counter = 0;
@@ -60,10 +60,10 @@ TEST(RecordEvent, RecordEvent) {
   DeviceContext* dev_ctx = nullptr;
 #ifdef PADDLE_WITH_CUDA
   using paddle::platform::CUDADeviceContext;
-  using paddle::platform::GPUPlace;
+  using paddle::platform::CUDAPlace;
   state = ProfilerState::kCUDA;
   dev_ctx =
-      new paddle::platform::CUDADeviceContext(paddle::platform::GPUPlace(0));
+      new paddle::platform::CUDADeviceContext(paddle::platform::CUDAPlace(0));
 #endif
   EnableProfiler(state);
 
@@ -98,7 +98,9 @@ TEST(RecordEvent, RecordEvent) {
   int cuda_startup_count = 0;
   int start_profiler_count = 0;
   int stop_profiler_count = 0;
+
   ParseEvents(events);
+
   for (size_t i = 0; i < events.size(); ++i) {
     for (size_t j = 0; j < events[i].size(); ++j) {
       if (events[i][j].name() == "_cuda_startup_") ++cuda_startup_count;

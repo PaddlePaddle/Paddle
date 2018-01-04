@@ -36,7 +36,7 @@ def __read_gflags_from_env__():
     """
     import sys
     import core
-    read_env_flags = ['use_pinned_memory']
+    read_env_flags = ['use_pinned_memory', 'check_nan_inf']
     if core.is_compile_gpu():
         read_env_flags.append('fraction_of_gpu_memory_to_use')
     core.init_gflags([sys.argv[0]] +
