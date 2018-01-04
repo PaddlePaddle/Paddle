@@ -423,7 +423,7 @@ void OperatorWithKernel::Run(const Scope& scope,
     auto* var = scope.FindVar(var_name);
     if (var) {
       auto var_place = GetVarPlace(*var);
-      if (var_place != expected_kernel_key.place_) {
+      if (!platform::is_same_place(var_place, expected_kernel_key.place_)) {
         VLOG(3) << "need to do transform for var " << var_name;
         need_trans.emplace_back(std::make_pair(var_name, var_name_trans));
         if (!scope.FindVar(var_name_trans)) {
