@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "grpc_client.h"
+#include <grpc/support/log.h>
 #include <future>
 
 using grpc::Server;
@@ -26,8 +27,6 @@ using grpc::ClientReaderWriter;
 using grpc::ClientWriter;
 using grpc::Status;
 using sendrecv::SendRecvService;
-using sendrecv::VariableMessage;
-using sendrecv::VoidMessage;
 
 namespace paddle {
 namespace operators {
@@ -50,7 +49,7 @@ void AsyncGRPCClient::AddEndPoint(std::string ep) {
 
 struct SendMsg {
   void Run(const framework::Scope* scope, const std::string name,
-           VariableMessage* msg) {
+           sendrecv::VariableMessage* msg) {
     // FIXME(gongwb): pass device context to here.
     auto ctx = platform::CPUDeviceContext();
     auto* var = scope->FindVar(name);
@@ -82,7 +81,7 @@ struct SendMsg {
 
 struct GetMsg {
   void Run(const framework::Scope* scope, const std::string name,
-           VariableMessage* msg) {
+           sendrecv::VariableMessage* msg) {
     // FIXME(gongwb): pass device context to here.
     msg->set_varname(name);
   }
@@ -94,6 +93,7 @@ struct GetMsg {
     framework::LoDTensor ret_tensor;
     framework::DeserializeFromStream(iss, &ret_tensor);
     auto* outvar = scope->FindVar(name);
+    // FIXME(gongwb): other tensor type?
     framework::LoDTensor* out_tensor =
         outvar->GetMutable<framework::LoDTensor>();
     // FIXME(gongwb): do not copy.
@@ -113,7 +113,7 @@ struct GetMsg {
 
 template <typename send_t, typename recv_t, typename Msg_t>
 bool AsyncGRPCClient::Call(const framework::Scope* scope,
-                           const std::vector<Var>& in,
+                           const std::vector<VarHandle>& in,
                            std::vector<SendStatus>& ret) {
   grpc::CompletionQueue cq;
   // Create a ClientContext, Status, Reply, and rpc for each backend.
@@ -161,15 +161,19 @@ bool AsyncGRPCClient::Call(const framework::Scope* scope,
     rpcs[i]->Finish(reply, statuses[i].get(), (void*)i);
   }
 
-  int finished = 0;
-  int finished_ok = 0;
+  int64_t finished = 0;
+  int64_t finished_ok = 0;
   while (finished < int(in.size())) {
     void* which = NULL;
     bool ok = false;
 
     // Block until the next result is available
     // in the completion queue "cq".
-    cq.Next(&which, &ok);
+    if (!cq.Next(&which, &ok)) {
+      break;
+    }
+    GPR_ASSERT(ok);
+
     finished++;
 
     const int64_t idx = int64_t(which);
@@ -196,21 +200,24 @@ bool AsyncGRPCClient::Call(const framework::Scope* scope,
 }
 
 bool AsyncGRPCClient::SendVariable(const framework::Scope* scope,
-                                   const std::vector<Var>& in,
+                                   const std::vector<VarHandle>& in,
                                    std::vector<SendStatus>& ret) {
-  return Call<VariableMessage, VoidMessage, SendMsg>(scope, in, ret);
+  return Call<sendrecv::VariableMessage, sendrecv::VoidMessage, SendMsg>(
+      scope, in, ret);
 }
 
 bool AsyncGRPCClient::GetVariable(const framework::Scope* scope,
-                                  const std::vector<Var>& in,
+                                  const std::vector<VarHandle>& in,
                                   std::vector<SendStatus>& ret) {
-  return Call<VariableMessage, VariableMessage, GetMsg>(scope, in, ret);
+  return Call<sendrecv::VariableMessage, sendrecv::VariableMessage, GetMsg>(
+      scope, in, ret);
 }
 
+// TODO(gongwb): add retry pattern.
 bool AsyncGRPCClient::SyncUpdate(const framework::Scope* scope,
-                                 const std::vector<Var>& in,
+                                 const std::vector<VarHandle>& in,
                                  std::vector<SendStatus>& in_ret,
-                                 const std::vector<Var>& out,
+                                 const std::vector<VarHandle>& out,
                                  std::vector<SendStatus>& out_ret) {
   std::future<bool> in_thread = std::async(
       std::bind(&AsyncGRPCClient::SendVariable, this, scope, in, in_ret));

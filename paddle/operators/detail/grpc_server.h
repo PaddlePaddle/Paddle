@@ -39,8 +39,6 @@ using grpc::ClientReaderWriter;
 using grpc::ClientWriter;
 using grpc::Status;
 using sendrecv::SendRecvService;
-using sendrecv::VariableMessage;
-using sendrecv::VoidMessage;
 
 namespace paddle {
 namespace operators {
@@ -50,16 +48,12 @@ typedef std::pair<std::string, framework::LoDTensor> TensorWithName;
 
 class AsyncGRPCServer final : public SendRecvService::Service {
  public:
-  explicit AsyncGRPCServer(std::string address) {
-    address_ = address;
-    exit_ = false;
-  }
+  explicit AsyncGRPCServer(std::string address) { address_ = address; }
 
   void RunSyncUpdate();
 
-  Status Wait(ServerContext *context, const VoidMessage *in_var,
-              VoidMessage *out_var) override;
   void Reset();
+
   void Done();
 
   void SetScope(framework::Scope *scope) { scope_ = scope; }
@@ -89,7 +83,6 @@ class AsyncGRPCServer final : public SendRecvService::Service {
   // condition of the sub program
   std::mutex mutex_;
   volatile mutable bool done_;
-  volatile mutable bool exit_;
   std::condition_variable condition_;
 
   std::unique_ptr<std::thread> t_send_;

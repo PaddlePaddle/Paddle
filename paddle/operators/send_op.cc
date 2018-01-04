@@ -54,15 +54,15 @@ class SendOp : public framework::OperatorBase {
     auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
 
-    std::vector<detail::Var> in_vars;
-    std::vector<detail::Var> out_vars;
+    std::vector<detail::VarHandle> in_vars;
+    std::vector<detail::VarHandle> out_vars;
     for (int i = 0; i < int(ins.size()); i++) {
-      detail::Var in_var;
+      detail::VarHandle in_var;
       in_var.name = ins[i];
       in_var.endpoint = epmap[i];
       in_vars.push_back(in_var);
 
-      detail::Var out_var;
+      detail::VarHandle out_var;
       in_var.name = ins[i];
       in_var.endpoint = epmap[i];
       out_vars.push_back(out_var);

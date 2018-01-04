@@ -59,13 +59,13 @@ class RequestSend final : public RequestBase {
   }
 
  private:
-  VariableMessage request_;
-  VoidMessage reply_;
+  sendrecv::VariableMessage request_;
+  sendrecv::VoidMessage reply_;
   ServerContext ctx_;
 
   SendRecvService::AsyncService* service_;
   ServerCompletionQueue* cq_;
-  ServerAsyncResponseWriter<VoidMessage> responder_;
+  ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
   CallStatus status_;
 };
 
@@ -77,7 +77,6 @@ class RequestGet final : public RequestBase {
   }
 
   void Proceed() {
-    // wait to this server has receive all gradients.
     if (status_ == CREATE) {
       status_ = PROCESS;
 
@@ -99,13 +98,13 @@ class RequestGet final : public RequestBase {
   }
 
  private:
-  VariableMessage request_;
-  VariableMessage reply_;
+  sendrecv::VariableMessage request_;
+  sendrecv::VariableMessage reply_;
   ServerContext ctx_;
 
   SendRecvService::AsyncService* service_;
   ServerCompletionQueue* cq_;
-  ServerAsyncResponseWriter<VariableMessage> responder_;
+  ServerAsyncResponseWriter<sendrecv::VariableMessage> responder_;
   CallStatus status_;
 };
 
@@ -129,11 +128,12 @@ void AsyncGRPCServer::RunSyncUpdate() {
 }
 
 void AsyncGRPCServer::ShutDown() {
-  exit_ = true;
   cq_send_->Shutdown();
-  cq_get_->Shutdown();
   t_send_->join();
+
+  cq_get_->Shutdown();
   t_get_->join();
+
   server_->Shutdown();
 }
 
@@ -175,12 +175,6 @@ void AsyncGRPCServer::_HandleReqGet(bool wait) {
 void AsyncGRPCServer::_Wait() {
   std::unique_lock<std::mutex> lock(this->mutex_);
   condition_.wait(lock, [=] { return this->done_ == true; });
-}
-
-Status AsyncGRPCServer::Wait(ServerContext* context, const VoidMessage* in_var,
-                             VoidMessage* out_var) {
-  _Wait();
-  return Status::OK;
 }
 
 void AsyncGRPCServer::Reset() {

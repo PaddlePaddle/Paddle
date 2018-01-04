@@ -40,7 +40,7 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-struct Var {
+struct VarHandle {
   std::string endpoint;
   std::string name;
   std::string String() const {
@@ -54,7 +54,7 @@ struct SendStatus {
   std::string error;
   std::chrono::system_clock::time_point start;
   std::chrono::system_clock::time_point end;
-  Var var;
+  VarHandle var;
 
   std::string String() const {
     std::time_t t0 = std::chrono::system_clock::to_time_t(start);
@@ -73,22 +73,23 @@ class AsyncGRPCClient {
   void AddEndPoint(std::string ep);
   void AddEndPoint(const std::vector<std::string>& ep);
 
-  bool SendVariable(const framework::Scope* scope, const std::vector<Var>& in,
+  bool SendVariable(const framework::Scope* scope,
+                    const std::vector<VarHandle>& in,
                     std::vector<SendStatus>& ret);
 
-  bool GetVariable(const framework::Scope* scope, const std::vector<Var>& in,
+  bool GetVariable(const framework::Scope* scope,
+                   const std::vector<VarHandle>& in,
                    std::vector<SendStatus>& ret);
 
-  bool SyncUpdate(const framework::Scope* scope, const std::vector<Var>& in,
-                  std::vector<SendStatus>& in_ret, const std::vector<Var>& out,
+  bool SyncUpdate(const framework::Scope* scope,
+                  const std::vector<VarHandle>& in,
+                  std::vector<SendStatus>& in_ret,
+                  const std::vector<VarHandle>& out,
                   std::vector<SendStatus>& out_ret);
 
-  // TODO(gongwb): add SendRecv function to try to update
-  // one local parameter immediately when it's gradient
-  // is sent completely and don't wait all.
  protected:
   template <typename send_t, typename recv_t, typename Msg_t>
-  bool Call(const framework::Scope* scope, const std::vector<Var>& in,
+  bool Call(const framework::Scope* scope, const std::vector<VarHandle>& in,
             std::vector<SendStatus>& ret);
 
  private:
