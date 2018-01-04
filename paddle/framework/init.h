@@ -22,6 +22,8 @@ namespace framework {
 
 void InitGflags(std::vector<std::string> &argv);
 
+void InitGLOG(const std::string &prog_name);
+
 bool InitDevices(const std::vector<std::string> &devices);
 
 }  // namespace framework
