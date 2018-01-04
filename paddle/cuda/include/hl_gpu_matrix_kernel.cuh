@@ -474,8 +474,8 @@ __global__ void KeMatrixGroupRowOp(Agg agg, Op op, Saver sv,
   int groupId = (blockIdx.x + blockIdx.y*gridDim.x) % ld;
   int tid = threadIdx.x;
 
-  A += rowId*lda + groupID*dimN;
-  B += rowId*ldb + groupID*dimN;
+  A += rowId*lda + groupId*dimN;
+  B += rowId*ldb + groupId*dimN;
   row_s[tid] = sumRow(agg, op, tid, blockSize, dimN, A, B);
   __syncthreads();
 
@@ -483,7 +483,7 @@ __global__ void KeMatrixGroupRowOp(Agg agg, Op op, Saver sv,
   __syncthreads();
 
   if (tid == 0) {
-    dst[rowId*ld + groupID] = sv(dst[rowId*ld + groupID], row_s[0]);
+    dst[rowId*ld + groupId] = sv(dst[rowId*ld + groupId], row_s[0]);
   }
 }
 
