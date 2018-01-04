@@ -47,6 +47,7 @@ class AdagradOpKernel : public framework::OpKernel<T> {
           *ctx.Input<framework::Tensor>("Grad"));
       auto moment = framework::EigenVector<T>::Flatten(
           *ctx.Input<framework::Tensor>("Moment"));
+
       auto* learning_rate = ctx.Input<framework::Tensor>("LearningRate");
       auto* lr = learning_rate->data<T>();
 
