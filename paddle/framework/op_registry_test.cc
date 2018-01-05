@@ -372,7 +372,7 @@ TEST(OperatorRegistrar, OpWithMultiKernel) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
 
   // use all available kernels
-  paddle::framework::UseAll();
+  paddle::framework::UseALL();
   op->Run(scope, cuda_place);
   EXPECT_EQ(op_test_value, -10);
 
