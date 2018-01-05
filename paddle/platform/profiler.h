@@ -33,6 +33,7 @@ class Event {
 
   std::string kind() const;
   std::string name() const { return name_; }
+  uint32_t thread_id() const { return thread_id_; }
   bool has_cuda() const { return has_cuda_; }
 
 #ifdef PADDLE_WITH_CUDA

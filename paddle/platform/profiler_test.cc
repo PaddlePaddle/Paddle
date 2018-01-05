@@ -94,6 +94,12 @@ TEST(RecordEvent, RecordEvent) {
     int counter = 1;
     while (counter != i * 1000) counter++;
   }
+  for (int i = 1; i < 5; ++i) {
+    std::string name = "evs_op_" + std::to_string(i);
+    RecordEvent record_event(name, dev_ctx);
+    int counter = 1;
+    while (counter != i * 1000) counter++;
+  }
   std::vector<std::vector<Event>> events = paddle::platform::DisableProfiler();
   int cuda_startup_count = 0;
   int start_profiler_count = 0;

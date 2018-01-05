@@ -3,7 +3,7 @@
 licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-`
+
     http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/platform/profiler.h"
+#include <iomanip>
 #include <map>
 
 namespace paddle {
@@ -183,7 +184,8 @@ void PopEvent(const std::string& name, DeviceContext* dev_ctx) {
 
 void ParseEvents(std::vector<std::vector<Event>>& events) {
   // Event name :: counts :: ave  ::  min   ::  max :: total
-  std::map<std::string, std::tuple<int, double, double>> events_table;
+  std::map<std::string, std::tuple<int, double, double, double, double>>
+      events_table;
   for (size_t i = 0; i < events.size(); i++) {
     std::list<Event> pushed_events;
     for (size_t j = 0; j < events[i].size(); j++) {
@@ -197,18 +199,28 @@ void ParseEvents(std::vector<std::vector<Event>>& events) {
           ++rit;
         }
         if (rit != pushed_events.rend()) {
-          Event pushed_event = *rit;
-          double cpu_time = rit->CpuElapsedUs(events[i][j]);
-          double cuda_time = 0;
 #ifdef PADDLE_WITH_CUDA
-          cuda_time = rit->CudaElapsedUs(events[i][j]);
+          double event_time = rit->CudaElapsedUs(events[i][j]);
+#else
+          double event_time = rit->CpuElapsedUs(events[i][j]);
 #endif
-          if (events_table.find(rit->name()) == events_table.end()) {
-            events_table[rit->name()] = std::make_tuple(1, cpu_time, cuda_time);
+          std::string event_name =
+              "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
+          if (events_table.find(event_name) == events_table.end()) {
+            events_table[event_name] =
+                std::make_tuple(1, event_time, event_time, event_time, 0);
           } else {
-            std::get<0>(events_table[rit->name()]) += 1;
-            std::get<1>(events_table[rit->name()]) += cpu_time;
-            std::get<2>(events_table[rit->name()]) += cuda_time;
+            std::get<0>(events_table[event_name]) += 1;
+            // total time
+            std::get<1>(events_table[event_name]) += event_time;
+            // min time
+            if (std::get<2>(events_table[event_name]) > event_time) {
+              std::get<2>(events_table[event_name]) = event_time;
+            }
+            // max time
+            if (std::get<3>(events_table[event_name]) < event_time) {
+              std::get<3>(events_table[event_name]) = event_time;
+            }
           }
           // remove the start marker from the list
           pushed_events.erase((++rit).base());
@@ -220,13 +232,21 @@ void ParseEvents(std::vector<std::vector<Event>>& events) {
     }
   }
   // output events table
-  std::cout << "\nEvents\t\tCalls\t\tTotal CPU time\t\tTotal GPU time\n";
-  for (std::map<std::string, std::tuple<int, double, double>>::iterator it =
+  std::cout << std::setw(20) << "Events" << std::setw(10) << "Calls"
+            << std::setw(10) << "Total" << std::setw(10) << "Min"
+            << std::setw(10) << "Max" << std::setw(10) << "Ave" << std::endl;
+  for (std::map<std::string,
+                std::tuple<int, double, double, double, double>>::iterator it =
            events_table.begin();
        it != events_table.end(); ++it) {
-    std::cout << it->first << "\t\t" << std::get<0>(it->second) << "\t\t"
-              << std::get<1>(it->second) << "\t\t" << std::get<2>(it->second)
-              << std::endl;
+    // average time
+    std::get<4>(it->second) = std::get<1>(it->second) / std::get<0>(it->second);
+    std::cout << std::setw(20) << it->first << std::setw(10)
+              << std::get<0>(it->second) << std::setw(10)
+              << std::get<1>(it->second) << std::setw(10)
+              << std::get<2>(it->second) << std::setw(10)
+              << std::get<3>(it->second) << std::setw(10)
+              << std::get<4>(it->second) << std::endl;
   }
 }
 
