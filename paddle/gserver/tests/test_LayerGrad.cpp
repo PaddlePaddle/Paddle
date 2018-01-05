@@ -1472,7 +1472,8 @@ TEST(Layer, RecurrentLayer) {
     for (auto reversed : {false, true}) {
       config.layerConfig.set_reversed(reversed);
       config.testState = !reversed;
-      testLayerGrad(config, "recurrent", 50, /* trans= */ false, useGpu);
+      testLayerGrad(
+          config, "recurrent", 50, /* trans= */ false, useGpu, false, 1.0);
     }
   }
 }
@@ -1494,7 +1495,8 @@ TEST(Layer, LstmLayer) {
     for (auto reversed : {false, true}) {
       config.layerConfig.set_reversed(reversed);
       config.testState = !reversed;
-      testLayerGrad(config, "lstmemory", 100, /* trans= */ false, useGpu);
+      testLayerGrad(
+          config, "lstmemory", 100, /* trans= */ false, useGpu, false, 0.02);
     }
   }
   for (auto useGpu : {true}) {

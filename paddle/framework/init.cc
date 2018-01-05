@@ -1,20 +1,21 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 #include <algorithm>
 #include <string>
 
 #include "paddle/framework/init.h"
+#include "paddle/framework/operator.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/place.h"
 #include "paddle/string/piece.h"
@@ -24,7 +25,6 @@ namespace framework {
 
 std::once_flag gflags_init_flag;
 
-// TODO(qijun) move init gflags to init.cc
 void InitGflags(std::vector<std::string> &argv) {
   std::call_once(gflags_init_flag, [&]() {
     int argc = argv.size();
@@ -71,8 +71,14 @@ bool InitDevices(const std::vector<std::string> &devices) {
     places.emplace_back(platform::CPUPlace());
     LOG(WARNING) << "Not specified CPU device, create CPU by Default.";
   }
-  platform::DeviceContextPool::Create(places);
+  platform::DeviceContextPool::Init(places);
+  framework::UseALL();
   return true;
+}
+
+void InitGLOG(const std::string &prog_name) {
+  google::InitGoogleLogging(prog_name.c_str());
+  google::InstallFailureSignalHandler();
 }
 
 }  // namespace framework

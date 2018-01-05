@@ -26,13 +26,12 @@ namespace framework {
 struct OpKernelType {
   struct Hash {
     size_t operator()(const OpKernelType& key) const {
-      int place = key.place_.which() + (1 << LEFT_SHIFT);
-      int data_type =
-          static_cast<int>(key.data_type_) + (1 << (LEFT_SHIFT + 1));
-      int data_layout =
-          static_cast<int>(key.data_layout_) + (1 << (LEFT_SHIFT + 2));
-      int library_type =
-          static_cast<int>(key.library_type_) + (1 << (LEFT_SHIFT + 3));
+      int place = key.place_.which();
+      int data_type = static_cast<int>(key.data_type_) << LEFT_SHIFT;
+      int data_layout = static_cast<int>(key.data_layout_) << (LEFT_SHIFT * 2);
+      int library_type = static_cast<int>(key.library_type_)
+                         << (LEFT_SHIFT * 3);
+
       std::hash<int> hasher;
       return hasher(place + data_type + data_layout + library_type);
     }
@@ -40,6 +39,7 @@ struct OpKernelType {
 
   // place, data_type, library_type kinds less than 2^8
   constexpr static int LEFT_SHIFT = 8;
+
   proto::DataType data_type_;
   DataLayout data_layout_;
   platform::Place place_;
@@ -67,6 +67,8 @@ struct OpKernelType {
            data_type_ == o.data_type_ && data_layout_ == o.data_layout_ &&
            library_type_ == o.library_type_;
   }
+
+  bool operator!=(const OpKernelType& o) const { return !(*this == o); }
 };
 
 inline std::ostream& operator<<(std::ostream& os,
@@ -75,6 +77,12 @@ inline std::ostream& operator<<(std::ostream& os,
      << kernel_key.data_layout_ << "]:place[" << kernel_key.place_
      << "]:library_type[" << kernel_key.library_type_ << "]";
   return os;
+}
+
+inline std::string KernelTypeToString(const OpKernelType& kernel_key) {
+  std::ostringstream stream;
+  stream << kernel_key;
+  return stream.str();
 }
 
 }  // namespace framework

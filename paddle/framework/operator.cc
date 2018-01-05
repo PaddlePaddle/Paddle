@@ -11,10 +11,12 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <glog/logging.h>
 
 #include <algorithm>
 #include <atomic>
 
+#include "paddle/framework/data_transform.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/operator.h"
@@ -23,6 +25,53 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
+std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
+
+void UseCPU() {
+  kKernelPriority.clear();
+  /*Plain CPU*/
+  auto pair0 = std::make_tuple(platform::CPUPlace(), LibraryType::kPlain);
+  kKernelPriority.insert(kKernelPriority.begin(), pair0);
+}
+
+void UseMKLDNN() {
+  UseCPU();
+#if PADDLE_WITH_MKLML
+  {
+    /*MKLDNN Kernel*/
+    auto pair0 = std::make_tuple(platform::CPUPlace(), LibraryType::kMKLDNN);
+    kKernelPriority.insert(kKernelPriority.begin(), pair0);
+  }
+#endif
+}
+
+void UseCUDA() {
+  UseMKLDNN();
+#if PADDLE_WITH_CUDA
+  /*Plain GPU*/
+  auto pair0 = std::make_tuple(platform::CUDAPlace(0), LibraryType::kPlain);
+  kKernelPriority.insert(kKernelPriority.begin(), pair0);
+#endif
+}
+
+void UseCUDNN() {
+  UseCUDA();
+#if PADDLE_WITH_CUDA
+  if (platform::dynload::HasCUDNN()) {
+    /*CUDNN Kernel*/
+    auto pair0 = std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN);
+    kKernelPriority.insert(kKernelPriority.begin(), pair0);
+  }
+#endif
+}
+
+void UseALL() {
+  UseCPU();
+  UseMKLDNN();
+  UseCUDA();
+  UseCUDNN();
+}
 
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
@@ -383,12 +432,36 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const Scope& scope_;
 };
 
+const platform::DeviceContext* GetDeviceContext(
+    framework::KernelTypePair& kernel_pair) {
+  auto& actual_kernel_key = kernel_pair.first;
+  auto& expected_kernel_key = kernel_pair.second;
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+
+  if (platform::is_gpu_place(actual_kernel_key.place_) &&
+      platform::is_cpu_place(expected_kernel_key.place_)) {
+    return pool.Get(actual_kernel_key.place_);
+  } else if (platform::is_cpu_place(actual_kernel_key.place_) &&
+             platform::is_gpu_place(expected_kernel_key.place_)) {
+    return pool.Get(expected_kernel_key.place_);
+  } else {
+    PADDLE_THROW(
+        "Currently, model parallelism is only supported between CPU and CUDA");
+  }
+}
+
+const platform::DeviceContext* GetDeviceContext(
+    const framework::OpKernelType& kernel) {
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  return pool.Get(kernel.place_);
+}
+
 void OperatorWithKernel::Run(const Scope& scope,
                              const platform::Place& place) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
   this->InferShape(&infer_shape_ctx);
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Get();
-  auto dev_ctx = pool.Borrow(place);
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto dev_ctx = pool.Get(place);
 
   // check if op[type] has kernel registered.
   auto& all_op_kernels = AllOpKernels();
@@ -403,7 +476,68 @@ void OperatorWithKernel::Run(const Scope& scope,
 
   ExecutionContext ctx(*this, scope, *dev_ctx);
   auto actual_kernel_key = GetActualKernelType(ctx);
+
   auto expected_kernel_key = GetExpectedKernelType(actual_kernel_key);
+
+  if (actual_kernel_key == expected_kernel_key) {
+    PADDLE_ENFORCE_EQ(actual_kernel_key.place_, expected_kernel_key.place_,
+                      "Currently, model parallelism is only supported between "
+                      "CPU and other devices. For example, multi-GPU model "
+                      "parallelism will failed.");
+  } else {
+    // find the best key candidate
+    const DataTransformFnMap& trans_map = DataTransformFnMap::Instance();
+    for (auto& candidate : kKernelPriority) {
+      auto candidate_key =
+          OpKernelType(actual_kernel_key.data_type_, std::get<0>(candidate),
+                       actual_kernel_key.data_layout_, std::get<1>(candidate));
+
+      auto candidate_pair = std::make_pair(actual_kernel_key, candidate_key);
+      if ((actual_kernel_key == candidate_key) ||
+          (kernels.count(candidate_key) &&
+           trans_map.GetNullable(candidate_pair))) {
+        expected_kernel_key = candidate_key;
+        break;
+      }
+    }
+
+    auto kernel_pair = std::make_pair(actual_kernel_key, expected_kernel_key);
+    const DataTransformFn* trans_fun = trans_map.GetNullable(kernel_pair);
+    if (trans_fun) {
+      auto input_vars = this->InputVars();
+      // TODO(qijun) filter the input vars that do not need to be transformed
+
+      // filter vars that has been transformed
+      std::vector<std::string> need_trans;
+      for (auto var_name : input_vars) {
+        auto var_name_trans =
+            var_name + framework::KernelTypeToString(expected_kernel_key);
+        if (!scope.FindVar(var_name_trans)) {
+          const_cast<Scope&>(scope).Var(var_name_trans);
+          need_trans.push_back(var_name);
+        }
+      }
+
+      if (!need_trans.empty()) {
+        auto trans_dev_ctx = GetDeviceContext(kernel_pair);
+
+        // Wait for transform starting
+        dev_ctx->Wait();
+
+        for (auto var_name : need_trans) {
+          (*trans_fun)(trans_dev_ctx, kernel_pair, *(scope.FindVar(var_name)),
+                       scope.FindVar(var_name + framework::KernelTypeToString(
+                                                    expected_kernel_key)));
+        }
+        // Wait for data transform finishing
+        trans_dev_ctx->Wait();
+      }
+    }
+  }
+
+  VLOG(10) << "Actual kernel: " << actual_kernel_key
+           << "Expected kernel: " << expected_kernel_key;
+
   auto kernel_iter = kernels.find(expected_kernel_key);
 
   if (kernel_iter == kernels.end()) {
@@ -411,7 +545,10 @@ void OperatorWithKernel::Run(const Scope& scope,
                  expected_kernel_key);
   }
 
-  kernel_iter->second->Compute(ctx);
+  auto* expected_dev_ctx = GetDeviceContext(expected_kernel_key);
+  ExecutionContext expected_ctx(*this, scope, *expected_dev_ctx);
+
+  kernel_iter->second->Compute(expected_ctx);
 }
 
 OpKernelType OperatorWithKernel::GetActualKernelType(

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <cctype>
 
 namespace paddle {
 namespace framework {
@@ -20,18 +21,44 @@ namespace framework {
 // For more details about the design of LibraryType, Please refer to
 // https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/operator_kernel_type.md#library
 
-enum LibraryType { kPlain = 0, kMKLDNN = 1, kCUDNN = 2 };
+enum class LibraryType {
+  kPlain = 0,
+  kMKLDNN = 1,
+  kCUDNN = 2,
+};
 
 inline std::string LibraryTypeToString(const LibraryType& library_type) {
   switch (library_type) {
-    case kPlain:
+    case LibraryType::kPlain:
       return "PLAIN";
-    case kMKLDNN:
+    case LibraryType::kMKLDNN:
       return "MKLDNN";
-    case kCUDNN:
+    case LibraryType::kCUDNN:
       return "CUDNN";
     default:
-      PADDLE_THROW("unknown LibraryType %d", library_type);
+      PADDLE_THROW("unknown LibraryType %d", static_cast<int>(library_type));
+  }
+}
+
+inline LibraryType StringToLibraryType(const char* ctype) {
+  std::string s(ctype);
+  for (size_t i = 0; i < s.size(); ++i) {
+    s[i] = toupper(s[i]);
+  }
+  if (s == std::string("PLAIN")) {
+    return LibraryType::kPlain;
+  } else if (s == std::string("MKLDNN")) {
+    return LibraryType::kMKLDNN;
+  } else if (s == std::string("CUDNN")) {
+    return LibraryType::kCUDNN;
+    // To be compatible with register macro.
+    // CPU, CUDA, PLAIN are same library type.
+  } else if (s == std::string("CPU")) {
+    return LibraryType::kPlain;
+  } else if (s == std::string("CUDA")) {
+    return LibraryType::kPlain;
+  } else {
+    PADDLE_THROW("Unknown LibraryType %s", s.c_str());
   }
 }
 

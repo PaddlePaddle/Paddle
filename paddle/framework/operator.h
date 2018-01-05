@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <atomic>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 
@@ -52,10 +53,33 @@ constexpr char kGradVarSuffix[] = "@GRAD";
 /// Variables with this suffix are supposed to be filled up with zeros.
 constexpr char kZeroVarSuffix[] = "@ZERO";
 
-// define some kernel hint
-const std::string kUseCPU = "use_cpu";
-const std::string kUseCUDNN = "use_cudnn";
-const std::string kUseMKLDNN = "use_mkldnn";
+// define some kernel priority
+extern std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
+
+/**
+ * @brief Use cpu kernel only
+ */
+void UseCPU();
+
+/**
+ * @brief Perfer MKLDNN kernel than Plain CPU kernel
+ */
+void UseMKLDNN();
+
+/**
+ * @brief Perfer CUDA kernel than Plain CPU kernel
+ */
+void UseCUDA();
+
+/**
+ * @brief Perfer cudnn kernel than Plain CUDA kernel
+ */
+void UseCUDNN();
+
+/**
+ * @brief Use all available kernels
+ */
+void UseALL();
 
 inline std::string GradVarName(const std::string& var_name) {
   return var_name + kGradVarSuffix;
@@ -88,6 +112,9 @@ class OperatorBase {
 
   /// Net will call this function to Run an op.
   virtual void Run(const Scope& scope, const platform::Place& place) const = 0;
+
+  // FIXME(typhoonzero): this is only used for recv_op to stop event_loop.
+  virtual void Stop() {}
 
   virtual bool IsNetOp() const { return false; }
 

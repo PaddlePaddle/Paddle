@@ -17,10 +17,6 @@ TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 
-USE_CPU = core.kUseCPU()
-USE_CUDNN = core.kUseMKLDNN()
-USE_MKLDNN = core.kUseMKLDNN()
-
 
 def grad_var_name(var_name):
     """
@@ -663,7 +659,7 @@ class Block(object):
             end = list(self.ops).index(ops[-1])
         except Exception, e:
             raise e
-        self.desc.remove_op(start, end)
+        self.desc.remove_op(start, end + 1)
 
     def prepend_op(self, *args, **kwargs):
         op_desc = self.desc.prepend_op()
@@ -846,9 +842,11 @@ class Program(object):
         self.sync_with_cpp()
         return param_to_grad_info
 
-    def create_block(self):
+    def create_block(self, parent_idx=None):
         new_block_idx = len(self.blocks)
-        self.desc.append_block(self.current_block().desc)
+        parent = self.current_block() if parent_idx is None else self.block(
+            parent_idx)
+        self.desc.append_block(parent.desc)
         self.current_block_idx = new_block_idx
         self.blocks.append(Block(self, self.current_block_idx))
         return self.current_block()

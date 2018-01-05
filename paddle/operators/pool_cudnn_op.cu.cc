@@ -26,7 +26,7 @@ using DataLayout = platform::DataLayout;
 using PoolingMode = platform::PoolingMode;
 
 template <typename T>
-class PoolCudnnOpKernel : public framework::OpKernel<T> {
+class PoolCUDNNOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -87,7 +87,7 @@ class PoolCudnnOpKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class PoolCudnnGradOpKernel : public framework::OpKernel<T> {
+class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -163,16 +163,16 @@ class PoolCudnnGradOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(pool2d, Cudnn, ::paddle::platform::CudnnPlace,
-                   ops::PoolCudnnOpKernel<float>,
-                   ops::PoolCudnnOpKernel<double>);
-REGISTER_OP_KERNEL(pool2d_grad, Cudnn, ::paddle::platform::CudnnPlace,
-                   ops::PoolCudnnGradOpKernel<float>,
-                   ops::PoolCudnnGradOpKernel<double>);
+REGISTER_OP_KERNEL(pool2d, CUDNN, ::paddle::platform::CUDNNPlace,
+                   ops::PoolCUDNNOpKernel<float>,
+                   ops::PoolCUDNNOpKernel<double>);
+REGISTER_OP_KERNEL(pool2d_grad, CUDNN, ::paddle::platform::CUDNNPlace,
+                   ops::PoolCUDNNGradOpKernel<float>,
+                   ops::PoolCUDNNGradOpKernel<double>);
 
-REGISTER_OP_KERNEL(pool3d, Cudnn, ::paddle::platform::CudnnPlace,
-                   ops::PoolCudnnOpKernel<float>,
-                   ops::PoolCudnnOpKernel<double>);
-REGISTER_OP_KERNEL(pool3d_grad, Cudnn, ::paddle::platform::CudnnPlace,
-                   ops::PoolCudnnGradOpKernel<float>,
-                   ops::PoolCudnnGradOpKernel<double>);
+REGISTER_OP_KERNEL(pool3d, CUDNN, ::paddle::platform::CUDNNPlace,
+                   ops::PoolCUDNNOpKernel<float>,
+                   ops::PoolCUDNNOpKernel<double>);
+REGISTER_OP_KERNEL(pool3d_grad, CUDNN, ::paddle::platform::CUDNNPlace,
+                   ops::PoolCUDNNGradOpKernel<float>,
+                   ops::PoolCUDNNGradOpKernel<double>);

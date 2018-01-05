@@ -13,24 +13,23 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <condition_variable>
-#include <cstdio>
 #include <functional>
-#include <iostream>
+#include <future>
 #include <mutex>
 #include <queue>
 #include <thread>
 
-#include "paddle/platform/call_once.h"
 #include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 
-typedef std::function<void()> Task;
-
 class ThreadPool {
  public:
+  typedef std::packaged_task<void()> Task;
+
   /**
    * @brief   Get a instance of threadpool, the thread number will
    *          be specified as the number of hardware thread contexts
@@ -63,13 +62,19 @@ class ThreadPool {
   /**
    * @brief   Push a function to the queue, and will be scheduled and
    *          executed if a thread is available.
-   * @param[in] Task  will be pushed to the task queue.
+   * @param[in] Task, will be pushed to the task queue.
+   * @return    std::future<void>, we could wait for the task finished by
+   *            f.wait().
    */
-  void Run(const Task& fn) {
+  template <typename Callback>
+  std::future<void> Run(Callback fn) {
     std::unique_lock<std::mutex> lock(mutex_);
-    tasks_.push(fn);
+    Task task(std::bind(fn));
+    std::future<void> f = task.get_future();
+    tasks_.push(std::move(task));
     lock.unlock();
     scheduled_.notify_one();
+    return f;
   }
 
   /**
@@ -81,10 +86,9 @@ class ThreadPool {
   }
 
  private:
-  ThreadPool& operator=(const ThreadPool&) = delete;
-  ThreadPool(const ThreadPool&) = delete;
+  DISABLE_COPY_AND_ASSIGN(ThreadPool);
 
-  ThreadPool(int num_threads)
+  explicit ThreadPool(int num_threads)
       : num_threads_(num_threads), available_(num_threads), running_(true) {
     threads_.resize(num_threads);
     for (auto& thread : threads_) {
@@ -113,7 +117,7 @@ class ThreadPool {
         break;
       }
       // pop a task from the task queue
-      auto task = tasks_.front();
+      auto task = std::move(tasks_.front());
       tasks_.pop();
 
       --available_;
@@ -155,7 +159,13 @@ class ThreadPool {
   std::condition_variable completed_;
 };
 
-std::unique_ptr<ThreadPool> ThreadPool::threadpool(nullptr);
-std::once_flag ThreadPool::init_flag;
+// Run a function asynchronously.
+// NOTE: The function must return void. If the function need to return a value,
+// you can use lambda to capture a value pointer.
+template <typename Callback>
+std::future<void> Async(Callback callback) {
+  return ThreadPool::GetInstance()->Run(callback);
+}
+
 }  // namespace framework
 }  // namespace paddle

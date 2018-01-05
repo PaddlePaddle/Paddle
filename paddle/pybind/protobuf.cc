@@ -171,10 +171,21 @@ void BindBlockDesc(py::module &m) {
              std::string name = byte_name;
              return self.HasVar(name);
            })
+      .def("has_var_recursive",
+           [](BlockDesc &self, py::bytes byte_name) {
+             std::string name = byte_name;
+             return self.HasVarRecursive(name);
+           })
       .def("find_var",
            [](BlockDesc &self, py::bytes byte_name) {
              std::string name = byte_name;
              return self.FindVar(name);
+           },
+           py::return_value_policy::reference)
+      .def("find_var_recursive",
+           [](BlockDesc &self, py::bytes byte_name) {
+             std::string name = byte_name;
+             return self.FindVarRecursive(name);
            },
            py::return_value_policy::reference)
       .def("all_vars", &BlockDesc::AllVars, py::return_value_policy::reference)
@@ -204,8 +215,8 @@ void BindVarDsec(py::module &m) {
       .def("set_shape", &VarDesc::SetShape)
       .def("set_dtype", &VarDesc::SetDataType)
       .def("shape", &VarDesc::Shape, py::return_value_policy::reference)
-      .def("dtype", &VarDesc::GetDataType)
-      .def("lod_level", &VarDesc::GetLodLevel)
+      .def("dtype", &VarDesc::GetDataType, py::return_value_policy::reference)
+      .def("lod_level", &VarDesc::GetLoDLevel)
       .def("set_lod_level", &VarDesc::SetLoDLevel)
       .def("type", &VarDesc::GetType)
       .def("set_type", &VarDesc::SetType)
@@ -236,14 +247,22 @@ void BindOpDesc(py::module &m) {
       .value("BLOCK", proto::AttrType::BLOCK);
 
   py::class_<OpDesc> op_desc(m, "OpDesc", "");
-  op_desc.def("type", &OpDesc::Type)
+  op_desc
+      .def("__init__", [](OpDesc &self) { new (&self) OpDesc(); },
+           py::return_value_policy::reference)
+      .def("copy_from", &OpDesc::CopyFrom)
+      .def("type", &OpDesc::Type)
       .def("set_type", &OpDesc::SetType)
       .def("input", &OpDesc::Input)
       .def("input_names", &OpDesc::InputNames)
-      .def("set_input", &OpDesc::SetInput)
       .def("output", &OpDesc::Output)
       .def("output_names", &OpDesc::OutputNames)
+      .def("set_input", &OpDesc::SetInput)
       .def("set_output", &OpDesc::SetOutput)
+      .def("input_arg_names", &OpDesc::InputArgumentNames)
+      .def("output_arg_names", &OpDesc::OutputArgumentNames)
+      .def("rename_input", &OpDesc::RenameInput)
+      .def("rename_output", &OpDesc::RenameOutput)
       .def("has_attr", &OpDesc::HasAttr)
       .def("attr_type", &OpDesc::GetAttrType)
       .def("attr_names", &OpDesc::AttrNames)

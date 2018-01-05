@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
@@ -32,7 +32,7 @@ static constexpr size_t kCONV_CUDNN_WORKSPACE_LIMIT_BYTES =
     static_cast<size_t>(1024) * 1024 * 1024;
 
 template <typename T>
-class CudnnConvOpKernel : public framework::OpKernel<T> {
+class CUDNNConvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -147,7 +147,7 @@ class CudnnConvOpKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class CudnnConvGradOpKernel : public framework::OpKernel<T> {
+class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -315,16 +315,16 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_KERNEL(conv2d, Cudnn, ::paddle::platform::CudnnPlace,
-                   paddle::operators::CudnnConvOpKernel<float>,
-                   paddle::operators::CudnnConvOpKernel<double>);
-REGISTER_OP_KERNEL(conv2d_grad, Cudnn, ::paddle::platform::CudnnPlace,
-                   paddle::operators::CudnnConvGradOpKernel<float>,
-                   paddle::operators::CudnnConvGradOpKernel<double>);
+REGISTER_OP_KERNEL(conv2d, CUDNN, ::paddle::platform::CUDAPlace,
+                   paddle::operators::CUDNNConvOpKernel<float>,
+                   paddle::operators::CUDNNConvOpKernel<double>);
+REGISTER_OP_KERNEL(conv2d_grad, CUDNN, ::paddle::platform::CUDNNPlace,
+                   paddle::operators::CUDNNConvGradOpKernel<float>,
+                   paddle::operators::CUDNNConvGradOpKernel<double>);
 
-REGISTER_OP_KERNEL(conv3d, Cudnn, ::paddle::platform::CudnnPlace,
-                   paddle::operators::CudnnConvOpKernel<float>,
-                   paddle::operators::CudnnConvOpKernel<double>);
-REGISTER_OP_KERNEL(conv3d_grad, Cudnn, ::paddle::platform::CudnnPlace,
-                   paddle::operators::CudnnConvGradOpKernel<float>,
-                   paddle::operators::CudnnConvGradOpKernel<double>);
+REGISTER_OP_KERNEL(conv3d, CUDNN, ::paddle::platform::CUDAPlace,
+                   paddle::operators::CUDNNConvOpKernel<float>,
+                   paddle::operators::CUDNNConvOpKernel<double>);
+REGISTER_OP_KERNEL(conv3d_grad, CUDNN, ::paddle::platform::CUDNNPlace,
+                   paddle::operators::CUDNNConvGradOpKernel<float>,
+                   paddle::operators::CUDNNConvGradOpKernel<double>);

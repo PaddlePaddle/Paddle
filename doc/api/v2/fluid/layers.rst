@@ -68,12 +68,6 @@ scale
     :noindex:
 
 
-reshape
----------
-..  autofunction:: paddle.v2.fluid.layers.reshape
-    :noindex:
-
-
 transpose
 ---------
 ..  autofunction:: paddle.v2.fluid.layers.transpose
@@ -313,6 +307,12 @@ sequence_expand
     :noindex:
 
 
+gru_unit
+--------
+..  autofunction:: paddle.v2.fluid.layers.gru_unit
+    :noindex:
+
+
 lstm_unit
 ---------
 ..  autofunction:: paddle.v2.fluid.layers.lstm_unit
@@ -332,7 +332,19 @@ reduce_sum
 
 
 reduce_mean
----------
+-----------
 ..  autofunction:: paddle.v2.fluid.layers.reduce_mean
+    :noindex:
+
+
+reduce_max
+----------
+..  autofunction:: paddle.v2.fluid.layers.reduce_max
+    :noindex:
+
+
+reduce_min
+----------
+..  autofunction:: paddle.v2.fluid.layers.reduce_min
     :noindex:
 
