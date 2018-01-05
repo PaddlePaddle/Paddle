@@ -14,7 +14,6 @@ limitations under the License. */
 #include <glog/logging.h>
 
 #include <algorithm>
-#include <atomic>
 
 #include "paddle/framework/data_transform.h"
 #include "paddle/framework/executor.h"
