@@ -55,6 +55,8 @@ TEST_F(SelectedRowsTester, SerializeAndDeseralize) {
 
   ASSERT_EQ(selected_rows_->rows(), dst_tensor.rows());
   ASSERT_EQ(selected_rows_->height(), dst_tensor.height());
+  ASSERT_EQ(selected_rows_->value().dims(), dst_tensor.value().dims());
+  ASSERT_EQ(selected_rows_->GetCompleteDims(), dst_tensor.GetCompleteDims());
 }
 
 }  // namespace framework

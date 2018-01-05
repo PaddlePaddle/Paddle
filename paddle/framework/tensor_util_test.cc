@@ -251,6 +251,7 @@ TEST(Tensor, SerializeAndDeserialize) {
     for (int i = 0; i < 5; ++i) {
       ASSERT_EQ(dst_ptr[i], array[i]);
     }
+    ASSERT_EQ(dst_tensor.dims(), src_tensor.dims());
     delete place;
   }
 #ifdef PADDLE_WITH_CUDA
@@ -274,7 +275,6 @@ TEST(Tensor, SerializeAndDeserialize) {
     for (int i = 0; i < 6; ++i) {
       ASSERT_EQ(dst_ptr[i], array[i]);
     }
-
     delete gpu_place;
   }
 #endif
