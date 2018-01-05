@@ -186,6 +186,7 @@ void ParseEvents(std::vector<std::vector<Event>>& events) {
   // Event name :: counts :: ave  ::  min   ::  max :: total
   std::map<std::string, std::tuple<int, double, double, double, double>>
       events_table;
+  size_t max_name_width = 0;
   for (size_t i = 0; i < events.size(); i++) {
     std::list<Event> pushed_events;
     for (size_t j = 0; j < events[i].size(); j++) {
@@ -206,6 +207,7 @@ void ParseEvents(std::vector<std::vector<Event>>& events) {
 #endif
           std::string event_name =
               "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
+          max_name_width = std::max(max_name_width, event_name.size());
           if (events_table.find(event_name) == events_table.end()) {
             events_table[event_name] =
                 std::make_tuple(1, event_time, event_time, event_time, 0);
@@ -232,21 +234,24 @@ void ParseEvents(std::vector<std::vector<Event>>& events) {
     }
   }
   // output events table
-  std::cout << std::setw(20) << "Events" << std::setw(10) << "Calls"
-            << std::setw(10) << "Total" << std::setw(10) << "Min"
-            << std::setw(10) << "Max" << std::setw(10) << "Ave" << std::endl;
+  std::cout.setf(std::ios::left);
+  const int data_width = 12;
+  std::cout << std::setw(max_name_width + 4) << "Event" << std::setw(data_width)
+            << "Calls" << std::setw(data_width) << "Total"
+            << std::setw(data_width) << "Min." << std::setw(data_width)
+            << "Max." << std::setw(data_width) << "Ave." << std::endl;
   for (std::map<std::string,
                 std::tuple<int, double, double, double, double>>::iterator it =
            events_table.begin();
        it != events_table.end(); ++it) {
     // average time
     std::get<4>(it->second) = std::get<1>(it->second) / std::get<0>(it->second);
-    std::cout << std::setw(20) << it->first << std::setw(10)
-              << std::get<0>(it->second) << std::setw(10)
-              << std::get<1>(it->second) << std::setw(10)
-              << std::get<2>(it->second) << std::setw(10)
-              << std::get<3>(it->second) << std::setw(10)
-              << std::get<4>(it->second) << std::endl;
+    std::cout << std::setw(max_name_width + 4) << it->first
+              << std::setw(data_width) << std::get<0>(it->second)
+              << std::setw(data_width) << std::get<1>(it->second)
+              << std::setw(data_width) << std::get<2>(it->second)
+              << std::setw(data_width) << std::get<3>(it->second)
+              << std::setw(data_width) << std::get<4>(it->second) << std::endl;
   }
 }
 
