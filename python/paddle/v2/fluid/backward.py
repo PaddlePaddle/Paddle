@@ -192,7 +192,7 @@ def _append_backward_ops_(target,
     """
     if callback is None:
 
-        def empty_callback(block):
+        def empty_callback(block, context):
             pass
 
         callback = empty_callback
