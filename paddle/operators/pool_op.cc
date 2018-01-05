@@ -181,6 +181,11 @@ Pool3dOpMaker::Pool3dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       .SetDefault({0, 0, 0});  // TODO(Chengduo): Add checker. (Currently,
                                // TypedAttrChecker don't support vector type.)
 
+  AddAttr<bool>(
+      "use_cudnn",
+      "(bool, default false) Only used in cudnn kernel, need install cudnn")
+      .SetDefault(false);
+
   AddComment(R"DOC(
 Pool3d Operator.
 

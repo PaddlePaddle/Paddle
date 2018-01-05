@@ -107,8 +107,13 @@ Conv2DOpMaker::Conv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
                             "dilations(h_dilation, w_dilation) of "
                             "convolution operator.")
       .SetDefault({1, 1});
+  AddAttr<bool>(
+      "use_cudnn",
+      "(bool, default false) Only used in cudnn kernel, need install cudnn")
+      .SetDefault(false);
   AddAttr<int>("workspace_size_MB",
-               "Only used in cudnn kernel. workspace size for cudnn, in MB, "
+               "Only used in cudnn kernel. Need set use_cudnn to true."
+               "workspace size for cudnn, in MB, "
                "workspace is a section of GPU memory which will be "
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
