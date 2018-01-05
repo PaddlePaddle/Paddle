@@ -77,3 +77,8 @@ FILE(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
 ADD_LIBRARY(mkldnn STATIC ${dummyfile})
 TARGET_LINK_LIBRARIES(mkldnn ${MKLDNN_LIB} ${MKLML_LIB} ${MKLML_IOMP_LIB})
 ADD_DEPENDENCIES(mkldnn ${MKLDNN_PROJECT})
+
+IF(WITH_C_API)
+  INSTALL(FILES ${MKLDNN_LIB} DESTINATION lib)
+ENDIF()
+
