@@ -25,60 +25,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-bool Send(const std::vector<std::string>& ep, const framework::Scope* scope,
-          const std::vector<std::string>& ins, int64_t time_out) {
-  detail::RPCClients c;
-  for (size_t i = 0; i < ins.size(); i++) {
-    c.AsyncSendVariable(ep[i], scope, ins[i], time_out);
-  }
-
-  bool ok = true;
-  while (true) {
-    detail::SendStatus s;
-    if (!c.Proceed(s)) {
-      LOG(ERROR) << "Send meets CompletionQueue error";
-      return false;
-    }
-
-    // TODO(gongwb): add more retry?
-    if (s.error != "") {
-      ok = false;
-      LOG(ERROR) << "sync update variable error:" << s.String();
-    } else {
-      VLOG(3) << "sync update variable ok:" << s.String();
-    }
-  }
-
-  return ok;
-}
-
-bool Get(const std::vector<std::string>& ep, const framework::Scope* scope,
-         const std::vector<std::string>& ins, int64_t time_out) {
-  detail::RPCClients c;
-  for (size_t i = 0; i < ins.size(); i++) {
-    c.AsyncGetVariable(ep[i], scope, ins[i], time_out);
-  }
-
-  bool ok = true;
-  while (true) {
-    detail::SendStatus s;
-    if (!c.Proceed(s)) {
-      LOG(ERROR) << "Get meets CompletionQueue error";
-      return false;
-    }
-
-    // TODO(gongwb): add more retry?
-    if (s.error != "") {
-      ok = false;
-      LOG(ERROR) << "sync update variable error:" << s.String();
-    } else {
-      VLOG(3) << "sync update variable ok:" << s.String();
-    }
-  }
-
-  return ok;
-}
-
 // TODO(gongwb): add more attrs to support more send pattern.
 class SendOp : public framework::OperatorBase {
  public:
@@ -87,28 +33,27 @@ class SendOp : public framework::OperatorBase {
          const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
-  bool SyncUpdate(const std::vector<std::string>& eps,
-                  const framework::Scope* scope,
-                  const std::vector<std::string>& ins,
-                  const std::vector<std::string>& outs) const {
-    int64_t send_timeout = 5000 * 1000;
-    int64_t get_timeout = 1800 * 1000;
-    auto send_thread = std::async(Send, eps, scope, ins, send_timeout);
-    auto get_thread = std::async(Get, eps, scope, outs, get_timeout);
-
-    auto send_ok = send_thread.get();
-    auto get_ok = get_thread.get();
-
-    return (send_ok && get_ok);
-  }
-
   void Run(const framework::Scope& scope,
            const platform::Place& dev_place) const override {
     auto ins = Inputs("X");
     auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
-    SyncUpdate(epmap, &scope, ins, outs);
+
+    int64_t send_timeout = 180 * 1000;
+    int64_t get_timeout = 1800 * 1000;
+    for (size_t i = 0; i < ins.size(); i++) {
+      client_.AsyncSendVariable(epmap[i], &scope, ins[i], send_timeout);
+    }
+
+    for (size_t i = 0; i < outs.size(); i++) {
+      client_.AsyncGetVariable(epmap[i], &scope, outs[i], get_timeout);
+    }
+
+    client_.wait();
   }
+
+ private:
+  mutable detail::RPCClient client_;
 };
 
 class SendOpMaker : public framework::OpProtoAndCheckerMaker {

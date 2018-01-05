@@ -16,10 +16,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-namespace detail {
-
-ClientBase::~ClientBase() {}
-
-};  // namespace detail
-};  // namespace operators
-};  // namespace paddle
+namespace detail {};  // namespace detail
+};                    // namespace operators
+};                    // namespace paddle
