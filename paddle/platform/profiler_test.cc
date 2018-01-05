@@ -55,6 +55,7 @@ TEST(RecordEvent, RecordEvent) {
   using paddle::platform::EventKind;
   using paddle::platform::RecordEvent;
   using paddle::platform::ProfilerState;
+  using paddle::platform::EventSortingKey;
 
   ProfilerState state = ProfilerState::kCPU;
   DeviceContext* dev_ctx = nullptr;
@@ -70,21 +71,25 @@ TEST(RecordEvent, RecordEvent) {
   /* Usage 1:
   *  PushEvent(evt_name, dev_ctx);
   *  ...
-  *  code to time
+  *  code to analyze
   *  ...
   * PopEvent(evt_name, dev_ctx);
   */
-  for (int i = 1; i < 5; ++i) {
-    std::string name = "op_" + std::to_string(i);
-    PushEvent(name, dev_ctx);
-    int counter = 1;
-    while (counter != i * 1000) counter++;
-    PopEvent(name, dev_ctx);
+  for (int loop = 0; loop < 3; ++loop) {
+    for (int i = 1; i < 5; ++i) {
+      std::string name = "op_" + std::to_string(i);
+      PushEvent(name, dev_ctx);
+      int counter = 1;
+      while (counter != i * 1000) counter++;
+      PopEvent(name, dev_ctx);
+    }
   }
 
   /* Usage 2:
    * {
    *   RecordEvent record_event(name, dev_ctx);
+   *   ...
+   *   code to analyze
    *   ...
    * }
    */
@@ -94,19 +99,13 @@ TEST(RecordEvent, RecordEvent) {
     int counter = 1;
     while (counter != i * 1000) counter++;
   }
-  for (int i = 1; i < 5; ++i) {
-    std::string name = "evs_op_" + std::to_string(i);
-    RecordEvent record_event(name, dev_ctx);
-    int counter = 1;
-    while (counter != i * 1000) counter++;
-  }
   std::vector<std::vector<Event>> events = paddle::platform::DisableProfiler();
+  // Will remove from test before merging
+  ParseEvents(events, EventSortingKey::kTotal);
+
   int cuda_startup_count = 0;
   int start_profiler_count = 0;
   int stop_profiler_count = 0;
-
-  ParseEvents(events);
-
   for (size_t i = 0; i < events.size(); ++i) {
     for (size_t j = 0; j < events[i].size(); ++j) {
       if (events[i][j].name() == "_cuda_startup_") ++cuda_startup_count;

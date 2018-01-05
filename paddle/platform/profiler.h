@@ -117,7 +117,22 @@ void EnableProfiler(ProfilerState state);
 // event_lists, event_lists[i][j] represents the j-th Event of i-th thread.
 std::vector<std::vector<Event>> DisableProfiler();
 
-void ParseEvents(std::vector<std::vector<Event>>&);
+// The information of each event given in the profiling report
+struct EventItem {
+  std::string name;
+  int calls;
+  double total_time;
+  double min_time;
+  double max_time;
+  double ave_time;
+};
+
+// Candidate keys to sort the profiling report
+enum EventSortingKey { kDefault, kCalls, kTotal, kMin, kMax, kAve };
+
+// Parse the event list and output the profiling report
+void ParseEvents(std::vector<std::vector<Event>>&,
+                 EventSortingKey sorted_by = EventSortingKey::kDefault);
 
 }  // namespace platform
 }  // namespace paddle

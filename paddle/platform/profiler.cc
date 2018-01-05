@@ -182,47 +182,88 @@ void PopEvent(const std::string& name, DeviceContext* dev_ctx) {
                         dev_ctx);
 }
 
-void ParseEvents(std::vector<std::vector<Event>>& events) {
-  // Event name :: counts :: ave  ::  min   ::  max :: total
-  std::map<std::string, std::tuple<int, double, double, double, double>>
-      events_table;
+void ParseEvents(std::vector<std::vector<Event>>& events,
+                 EventSortingKey sorted_by) {
+  // Output header information
+  std::cout << "------------------------->"
+            << "     Profiling Report     "
+            << "<-------------------------"
+            << "\n\n";
+#ifdef PADDLE_WITH_CUDA
+  std::cout << "Place: GPU" << std::endl;
+#else
+  std::cout << "Place: CPU" << std::endl;
+#endif
+  std::cout << "Time unit: ms" << std::endl;
+  std::string sort_domain = "event end time";
+  switch (sorted_by) {
+    case EventSortingKey::kCalls:
+      sort_domain = "number of calls";
+      break;
+    case EventSortingKey::kTotal:
+      sort_domain = "total time";
+      break;
+    case EventSortingKey::kMin:
+      sort_domain = "minimum time";
+      break;
+    case EventSortingKey::kMax:
+      sort_domain = "maximum time";
+      break;
+    case EventSortingKey::kAve:
+      sort_domain = "average time";
+      break;
+    default:
+      if (sorted_by != EventSortingKey::kDefault) {
+        std::cout << "Warning: unkown sorting key. ";
+        sorted_by = EventSortingKey::kDefault;
+      }
+  }
+  std::cout << "Sorted by " << sort_domain
+            << " in descending order in the same thread\n\n";
+
+  // Parse events
+  std::vector<std::vector<EventItem>> events_table;
   size_t max_name_width = 0;
   for (size_t i = 0; i < events.size(); i++) {
     std::list<Event> pushed_events;
+    std::vector<EventItem> event_items;
+    std::unordered_map<std::string, int> event_idx;
+
     for (size_t j = 0; j < events[i].size(); j++) {
       if (events[i][j].kind() == "push") {
         pushed_events.push_back(events[i][j]);
-      }
-      if (events[i][j].kind() == "pop") {
+      } else if (events[i][j].kind() == "pop") {
         std::list<Event>::reverse_iterator rit = pushed_events.rbegin();
         while (rit->name() != events[i][j].name() &&
                rit != pushed_events.rend()) {
           ++rit;
         }
         if (rit != pushed_events.rend()) {
+// get event time in ms
 #ifdef PADDLE_WITH_CUDA
-          double event_time = rit->CudaElapsedUs(events[i][j]);
+          double event_time = rit->CudaElapsedUs(events[i][j]) / 1000.0;
 #else
-          double event_time = rit->CpuElapsedUs(events[i][j]);
+          double event_time = rit->CpuElapsedUs(events[i][j]) / 1000.0;
 #endif
           std::string event_name =
               "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
           max_name_width = std::max(max_name_width, event_name.size());
-          if (events_table.find(event_name) == events_table.end()) {
-            events_table[event_name] =
-                std::make_tuple(1, event_time, event_time, event_time, 0);
+          if (event_idx.find(event_name) == event_idx.end()) {
+            event_idx[event_name] = event_items.size();
+            EventItem event_item = {event_name, 1,          event_time,
+                                    event_time, event_time, event_time};
+            event_items.push_back(event_item);
           } else {
-            std::get<0>(events_table[event_name]) += 1;
+            int index = event_idx[event_name];
+            event_items[index].calls += 1;
             // total time
-            std::get<1>(events_table[event_name]) += event_time;
+            event_items[index].total_time += event_time;
             // min time
-            if (std::get<2>(events_table[event_name]) > event_time) {
-              std::get<2>(events_table[event_name]) = event_time;
-            }
+            event_items[index].min_time =
+                std::min(event_time, event_items[index].min_time);
             // max time
-            if (std::get<3>(events_table[event_name]) < event_time) {
-              std::get<3>(events_table[event_name]) = event_time;
-            }
+            event_items[index].max_time =
+                std::max(event_time, event_items[index].max_time);
           }
           // remove the start marker from the list
           pushed_events.erase((++rit).base());
@@ -232,6 +273,29 @@ void ParseEvents(std::vector<std::vector<Event>>& events) {
         }
       }
     }
+    // average time
+    for (auto& item : event_items) {
+      item.ave_time = item.total_time / item.calls;
+    }
+    // sort
+    if (sorted_by != EventSortingKey::kDefault) {
+      std::sort(event_items.begin(), event_items.end(),
+                [&](EventItem& a, EventItem& b) {
+                  switch (sorted_by) {
+                    case EventSortingKey::kCalls:
+                      return a.calls > b.calls;
+                    case EventSortingKey::kTotal:
+                      return a.total_time > b.total_time;
+                    case EventSortingKey::kMin:
+                      return a.min_time > b.min_time;
+                    case EventSortingKey::kMax:
+                      return a.max_time > b.max_time;
+                    default:
+                      return a.ave_time > b.ave_time;
+                  }
+                });
+    }
+    events_table.push_back(event_items);
   }
   // output events table
   std::cout.setf(std::ios::left);
@@ -240,18 +304,16 @@ void ParseEvents(std::vector<std::vector<Event>>& events) {
             << "Calls" << std::setw(data_width) << "Total"
             << std::setw(data_width) << "Min." << std::setw(data_width)
             << "Max." << std::setw(data_width) << "Ave." << std::endl;
-  for (std::map<std::string,
-                std::tuple<int, double, double, double, double>>::iterator it =
-           events_table.begin();
-       it != events_table.end(); ++it) {
-    // average time
-    std::get<4>(it->second) = std::get<1>(it->second) / std::get<0>(it->second);
-    std::cout << std::setw(max_name_width + 4) << it->first
-              << std::setw(data_width) << std::get<0>(it->second)
-              << std::setw(data_width) << std::get<1>(it->second)
-              << std::setw(data_width) << std::get<2>(it->second)
-              << std::setw(data_width) << std::get<3>(it->second)
-              << std::setw(data_width) << std::get<4>(it->second) << std::endl;
+  for (size_t i = 0; i < events_table.size(); ++i) {
+    for (size_t j = 0; j < events_table[i].size(); ++j) {
+      EventItem& event_item = events_table[i][j];
+      std::cout << std::setw(max_name_width + 4) << event_item.name
+                << std::setw(data_width) << event_item.calls
+                << std::setw(data_width) << event_item.total_time
+                << std::setw(data_width) << event_item.min_time
+                << std::setw(data_width) << event_item.max_time
+                << std::setw(data_width) << event_item.ave_time << std::endl;
+    }
   }
 }
 
