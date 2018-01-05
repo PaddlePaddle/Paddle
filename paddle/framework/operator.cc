@@ -409,6 +409,7 @@ void OperatorWithKernel::Run(const Scope& scope,
           var_name + framework::KernelTypeToString(expected_kernel_key);
       auto* var = scope.FindVar(var_name);
       if (var) {
+        VLOG(3) << "var " << var_name << " need to do transform";
         auto* tensor_in = GetTensorFromVar(var);
         auto kernel_type_for_var = this->GetKernelTypeForVar(
             var_name_item.first, *tensor_in, expected_kernel_key);
