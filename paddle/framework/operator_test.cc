@@ -90,6 +90,34 @@ TEST(OperatorBase, all) {
   ASSERT_EQ(paddle::framework::op_run_num, 1);
 }
 
+TEST(OperatorBase, RenameGuard) {
+  using paddle::framework::RenameGuard;
+  using paddle::framework::OperatorBase;
+
+  paddle::framework::InitDevices({"CPU"});
+  paddle::framework::proto::OpDesc op_desc;
+  op_desc.set_type("test_operator");
+  BuildVar("input", {"IN1"}, op_desc.add_inputs());
+  BuildVar("output", {"OUT1"}, op_desc.add_outputs());
+
+  auto attr = op_desc.mutable_attrs()->Add();
+  attr->set_name("scale");
+  attr->set_type(paddle::framework::proto::AttrType::FLOAT);
+  attr->set_f(3.14);
+
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  OperatorBase* op_ptr = op.get();
+
+  std::vector<std::pair<std::string, std::string>> var_names = {
+      std::make_pair("IN1", "IN2")};
+
+  ASSERT_EQ(op_ptr->Input("input"), "IN1");
+  RenameGuard* guard = new RenameGuard(var_names, op_ptr);
+  ASSERT_EQ(op_ptr->Input("input"), "IN2");
+  delete guard;
+  ASSERT_EQ(op_ptr->Input("input"), "IN1");
+}
+
 namespace paddle {
 namespace framework {
 

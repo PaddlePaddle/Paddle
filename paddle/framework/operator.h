@@ -393,5 +393,26 @@ class OperatorWithKernel : public OperatorBase {
 
 extern bool OpSupportGPU(const std::string& op_type);
 
+class RenameGuard {
+ public:
+  RenameGuard(const std::vector<std::pair<std::string, std::string>>& names,
+              OperatorBase* op)
+      : op_(op), names_(names) {
+    for (auto& name_pair : names) {
+      op->Rename(name_pair.first, name_pair.second);
+    }
+  }
+
+  ~RenameGuard() {
+    for (auto& name_pair : names_) {
+      op_->Rename(name_pair.second, name_pair.first);
+    }
+  }
+
+ private:
+  OperatorBase* const op_;
+  const std::vector<std::pair<std::string, std::string>>& names_;
+};
+
 }  // namespace framework
 }  // namespace paddle

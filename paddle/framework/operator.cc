@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
-#include <atomic>
 
 #include "paddle/framework/data_transform.h"
 #include "paddle/framework/executor.h"
