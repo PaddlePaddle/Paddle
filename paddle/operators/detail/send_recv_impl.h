@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/data_type.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/selected_rows.h"
+#include "paddle/framework/var_type.h"
 #include "paddle/operators/detail/simple_block_queue.h"
 
 #include "paddle/operators/detail/send_recv.grpc.pb.h"
@@ -44,7 +44,7 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-typedef std::pair<std::string, framework::LoDTensor> TensorWithName;
+typedef std::pair<std::string, sendrecv::VariableMessage> MessageWithName;
 
 class SendRecvServerImpl final : public SendRecvService::Service {
  public:
@@ -60,13 +60,13 @@ class SendRecvServerImpl final : public SendRecvService::Service {
   void Done();
   void SetScope(framework::Scope *scope) { scope_ = scope; };
 
-  const TensorWithName Get() { return this->var_recv_queue_.Pop(); }
+  const MessageWithName Get() { return this->var_recv_queue_.Pop(); }
 
-  void Push(const TensorWithName &msg) { this->var_recv_queue_.Push(msg); }
+  void Push(const MessageWithName &msg) { this->var_recv_queue_.Push(msg); }
 
  private:
   // received variable from RPC, operators fetch variable from this queue.
-  SimpleBlockQueue<TensorWithName> var_recv_queue_;
+  SimpleBlockQueue<MessageWithName> var_recv_queue_;
   framework::Scope *scope_;
   // condition of the sub program
   std::mutex mutex_;
@@ -88,6 +88,53 @@ class RPCClient {
  private:
   std::unique_ptr<SendRecvService::Stub> stub_;
 };
+
+inline void SerializeToMessage(const std::string &name,
+                               const framework::Variable *var,
+                               const platform::DeviceContext &ctx,
+                               VariableMessage *msg) {
+  msg->set_varname(name);
+  std::ostringstream oss;
+  switch (framework::ToVarType(var->Type())) {
+    case framework::proto::VarDesc_VarType_LOD_TENSOR:
+      msg->set_type(sendrecv::VarType::LOD_TENSOR);
+      framework::SerializeToStream(oss, var->Get<framework::LoDTensor>(), ctx);
+      break;
+    case framework::proto::VarDesc_VarType_SELECTED_ROWS:
+      msg->set_type(sendrecv::VarType::SELECTED_ROWS);
+      framework::SerializeToStream(oss, var->Get<framework::SelectedRows>(),
+                                   ctx);
+      break;
+    default: {
+      PADDLE_THROW("Serialize does not support type: %s",
+                   typeid(var->Type()).name());
+      break;
+    }
+  }
+  msg->set_serialized(oss.str());
+}
+
+inline void DeserializeFromMessage(const VariableMessage &msg,
+                                   const platform::DeviceContext &ctx,
+                                   framework::Variable *var) {
+  using namespace paddle::framework::proto;
+  std::istringstream iss(msg.serialized());
+  switch (msg.type()) {
+    case sendrecv::VarType::LOD_TENSOR:
+      DeserializeFromStream(iss, var->GetMutable<framework::LoDTensor>(), ctx);
+      break;
+    case sendrecv::VarType::SELECTED_ROWS: {
+      DeserializeFromStream(iss, var->GetMutable<framework::SelectedRows>(),
+                            ctx);
+      break;
+    }
+    default: {
+      PADDLE_THROW("Deserialize does not support type: %s",
+                   typeid(var->Type()).name());
+      break;
+    }
+  }
+}
 
 }  // namespace detail
 }  // namespace operators

@@ -1,6 +1,9 @@
 # Build PaddlePaddle for Android
 
-There are two approaches to build PaddlePaddle for Android: using Docker and on Linux without Docker. 
+There are two approaches to build PaddlePaddle for Android: 
+
+- [Cross-Compiling Using Docker](#cross-compiling-using-docker)
+- [Cross-Compiling on Linux](#cross-compiling-on-linux) 
 
 ## Cross-Compiling Using Docker
 
@@ -14,6 +17,12 @@ The following steps pack all the tools that we need to build PaddlePaddle into a
 $ git clone https://github.com/PaddlePaddle/Paddle.git
 $ cd Paddle
 $ docker build -t paddle:dev-android . -f Dockerfile.android
+```
+
+Users can directly use the published Docker image.
+
+```bash
+$ docker pull paddlepaddle/paddle:latest-dev-android
 ```
 
 ### Build the Inference Library
@@ -47,7 +56,7 @@ The Docker image accepts two arguments `ANDROID_ABI` and `ANDROID_API`:
 </tr>
 <tr class="row-odd">
   <td>ANDROID_API</td>
-  <td>>= 21</td>
+  <td>>= 16</td>
   <td>21</td>
 </tr>
 </tbody>
@@ -93,15 +102,13 @@ Android NDK includes everything we need to build the [*standalone toolchain*](ht
 
   The generated standalone toolchain will be in `your/path/to/arm64_standalone_toolchain`.
 
-**Please be aware that the minimum level of Android API required by PaddlePaddle is 21.**
-
 ### Cross-Compiling Arguments
 
 CMake supports [choosing the toolchain](https://cmake.org/cmake/help/v3.0/manual/cmake-toolchains.7.html#cross-compiling).  PaddlePaddle provides [`android.cmake`](https://github.com/PaddlePaddle/Paddle/blob/develop/cmake/cross_compiling/android.cmake), which configures the Android cross-compiling toolchain for CMake.  `android.cmake` is not required for CMake >= 3.7, which support Android cross-compiling. PaddlePaddle detects the CMake version, for those newer than 3.7, it uses [the official version](https://cmake.org/cmake/help/v3.7/manual/cmake-toolchains.7.html#cross-compiling).
 
 Some other CMake arguments you need to know:
 
-- `CMAKE_SYSTEM_NAME` must be `Android`.  This tells PaddlePaddle's CMake system to cross-compile third-party dependencies.  This also changes some other CMake arguments like `WITH_GPU=OFF`, `WITH_AVX=OFF`, `WITH_PYTHON=OFF`, and `WITH_RDMA=OFF`.
+- `CMAKE_SYSTEM_NAME` must be `Android`.  This tells PaddlePaddle's CMake system to cross-compile third-party dependencies. This also changes some other CMake arguments like `WITH_GPU=OFF`, `WITH_AVX=OFF`, `WITH_PYTHON=OFF`, `WITH_RDMA=OFF`, `WITH_MKL=OFF` and `WITH_GOLANG=OFF`.
 - `WITH_C_API` must be `ON`, to build the C-based inference library for Android.
 - `WITH_SWIG_PY` must be `OFF` because the Android platform doesn't support SWIG-based API.
 
@@ -123,7 +130,7 @@ Some Android-specific arguments:
 Other useful arguments:
 
 - `USE_EIGEN_FOR_BLAS`: indicates if using Eigen.  Could be `ON` or `OFF`, defaults to `OFF`.
-- `HOST_C/CXX_COMPILER`: specifies the host compiler, which is used to build the host-specific protoc and target-specific OpenBLAS.  It defaults to the value of the environment variable `CC`, or `cc`.
+- `HOST_C/CXX_COMPILER`: specifies the host compiler, which is used to build the host-specific protoc and target-specific OpenBLAS.  It defaults to the value of the environment variable `CC/C++`, or `cc/c++`.
 
 Some frequent configurations for your reference:
 
@@ -158,6 +165,7 @@ There are some other arguments you might want to configure.
 - `CMAKE_BUILD_TYPE-Release` optimizes the runtime performance.
 
 Our own tip for performance optimization to use clang and Eigen or OpenBLAS:
+
 - `CMAKE_BUILD_TYPE=Release`
 - `ANDROID_TOOLCHAIN=clang`
 - `USE_EIGEN_BLAS=ON` for `armeabi-v7a`, or `USE_EIGEN_FOR_BLAS=OFF` for `arm64-v8a`.
