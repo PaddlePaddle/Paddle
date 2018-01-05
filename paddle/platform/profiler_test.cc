@@ -99,8 +99,12 @@ TEST(RecordEvent, RecordEvent) {
     int counter = 1;
     while (counter != i * 1000) counter++;
   }
+
+  // Bad Usage:
+  PushEvent("event_without_pop", dev_ctx);
+  PopEvent("event_without_push", dev_ctx);
   std::vector<std::vector<Event>> events = paddle::platform::DisableProfiler();
-  // Will remove from test before merging
+  // Will remove parsing-related code from test later
   ParseEvents(events, EventSortingKey::kTotal);
 
   int cuda_startup_count = 0;
