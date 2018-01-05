@@ -454,17 +454,26 @@ void OperatorWithKernel::Run(const Scope& scope,
   for (auto& var_name_item : this->Inputs()) {
     for (auto& var_name : var_name_item.second) {
       auto* var = scope.FindVar(var_name);
-      if (var && var->IsInitialized()) {
-        VLOG(3) << "var " << var_name << " need to do transform";
+      if (var) {
         auto* tensor_in = GetTensorFromVar(var);
-        auto kernel_type_for_var = this->GetKernelTypeForVar(
-            var_name_item.first, *tensor_in, expected_kernel_key);
-        if (kernel_type_for_var != expected_kernel_key) {
-          VLOG(3) << "need to do transform for var " << var_name;
-          auto* trans_var = new_scope.Var(var_name);
-          auto* out = DataTransform(expected_kernel_key, kernel_type_for_var,
-                                    *tensor_in);
-          CopyVariableWithTensor(*var, *out, *trans_var);
+        if (tensor_in->IsInitialized()) {
+          auto kernel_type_for_var = this->GetKernelTypeForVar(
+              var_name_item.first, *tensor_in, expected_kernel_key);
+          if (kernel_type_for_var != expected_kernel_key) {
+            auto out_var_names = OutputVars(true);
+            if (std::find(out_var_names.begin(), out_var_names.end(),
+                          var_name) != out_var_names.end()) {
+              PADDLE_THROW(
+                  "var %s is both input and output, "
+                  "does not support transform",
+                  var_name);
+            }
+            VLOG(3) << "need to do transform for var " << var_name;
+            auto* trans_var = new_scope.Var(var_name);
+            auto* out = DataTransform(expected_kernel_key, kernel_type_for_var,
+                                      *tensor_in);
+            CopyVariableWithTensor(*var, *out, *trans_var);
+          }
         }
       }
     }

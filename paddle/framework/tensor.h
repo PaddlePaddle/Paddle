@@ -55,6 +55,8 @@ class Tensor {
   template <typename T>
   inline const T* data() const;
 
+  inline bool IsInitialized() const;
+
   /**
    * @brief   Return a pointer to mutable memory block.
    * @note    If not exist, then allocation.

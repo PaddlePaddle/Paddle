@@ -50,9 +50,6 @@ struct KernelTypePairHash {
   }
 };
 
-bool TensorMatchKernelType(const Tensor& tensor,
-                           const OpKernelType& kernel_type);
-
 Tensor* DataTransform(const OpKernelType& expected_kernel_type,
                       const OpKernelType& kernel_type_for_var,
                       const Tensor& input_tensor);
