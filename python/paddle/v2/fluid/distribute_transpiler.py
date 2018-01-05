@@ -80,7 +80,6 @@ class DistributeTranspiler:
 
         # step3
         send_inputs = []
-        send_outputs = []
         for _, splited in var2splited.iteritems():
             send_inputs.extend(splited)
         send_outputs = self._create_vars_from_blocklist(program, param_blocks)
