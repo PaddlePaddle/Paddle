@@ -64,7 +64,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     PADDLE_ENFORCE_EQ(in_var->GetType(), proto::VarDesc::LOD_TENSOR,
                       "The %d-th output of Output(%s) must be LoDTensor.", j,
                       out);
-    out_var->SetLoDLevel(in_var->GetLodLevel());
+    out_var->SetLoDLevel(in_var->GetLoDLevel());
   }
   bool IsRuntime() const override;
 

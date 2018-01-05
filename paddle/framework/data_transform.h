@@ -84,6 +84,7 @@ struct CastDataType {
     auto numel = in_.numel();
     auto* in_end = in_begin + numel;
     auto* out_begin = out_->mutable_data<OutType>(place);
+
     if (platform::is_cpu_place(place)) {
       platform::Transform<platform::CPUDeviceContext> trans;
       auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
@@ -97,9 +98,9 @@ struct CastDataType {
 };
 
 struct CastDataLayout {
-  CastDataLayout(const framework::Tensor& in, framework::Tensor* out,
-                 const platform::DeviceContext* ctx,
-                 const std::vector<int>& axis)
+  CastDataLayout(const platform::DeviceContext* ctx,
+                 const std::vector<int>& axis, const framework::Tensor& in,
+                 framework::Tensor* out)
       : in_(in), out_(out), ctx_(ctx), axis_(axis) {}
   const framework::Tensor in_;
   framework::Tensor* out_;
@@ -109,6 +110,7 @@ struct CastDataLayout {
   template <typename T>
   void operator()() {
     auto place = ctx_->GetPlace();
+
     if (platform::is_cpu_place(place)) {
       operators::math::Transpose<platform::CPUDeviceContext, T, 4> trans4;
       auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);

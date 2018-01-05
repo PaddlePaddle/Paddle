@@ -106,7 +106,7 @@ TEST(DataTransform, Register) {
   ASSERT_EQ(test_value, 2);
 }
 
-TEST(DataTransform, Layout) {
+TEST(DataTransform, DataLayout) {
   using namespace paddle::framework;
   using namespace paddle::platform;
 
@@ -127,7 +127,19 @@ TEST(DataTransform, Layout) {
   }
 
   Tensor dst = out.Get<Tensor>();
-  EXPECT_TRUE(dst.layout() != src->layout());
+
+  EXPECT_TRUE(dst.layout() == DataLayout::kNCHW);
+  EXPECT_TRUE(dst.dims() == make_ddim({2, 2, 3, 1}));
+
+  {
+    auto kernel1 = GenFromBit({1, 0, 1, 0});
+    auto kernel2 = GenFromBit({1, 0, 0, 0});
+    auto pair0 = std::make_pair(kernel1, kernel2);
+    instance.Get(pair0)(ctx, pair0, out, &in);
+  }
+
+  EXPECT_TRUE(src->layout() == DataLayout::kNHWC);
+  EXPECT_TRUE(src->dims() == make_ddim({2, 3, 1, 2}));
 }
 
 TEST(DataTransform, DataType) {

@@ -64,7 +64,7 @@ class BatchNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
                    "Input X must have 2 to 5 dimensions.");
 
-    const int C =
+    const int64_t C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
 
@@ -78,6 +78,7 @@ class BatchNormOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("VarianceOut", {C});
     ctx->SetOutputDim("SavedMean", {C});
     ctx->SetOutputDim("SavedVariance", {C});
+    ctx->ShareLoD("X", "Y");
   }
 };
 
