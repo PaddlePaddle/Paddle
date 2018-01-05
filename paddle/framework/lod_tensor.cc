@@ -270,10 +270,10 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
                  "Batch size should be divided by places size");
 
   std::vector<LoDTensor> lods;
-  for (int place_idx = 0; place_idx < places.size(); ++place_idx) {
-    int begin = place_idx * dims()[0] / places.size();
-    int end = (place_idx + 1) * dims()[0] / places.size();
-    auto src = Slice(begin, end);
+  for (size_t place_idx = 0; place_idx < places.size(); ++place_idx) {
+    size_t begin = place_idx * dims()[0] / places.size();
+    size_t end = (place_idx + 1) * dims()[0] / places.size();
+    auto src = Slice(static_cast<int>(begin), static_cast<int>(end));
 
     LoDTensor dst;
     dst.Resize(src.dims());
