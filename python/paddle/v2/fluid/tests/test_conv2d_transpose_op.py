@@ -88,34 +88,32 @@ class TestConv2dTransposeOp(OpTest):
         self.op_type = "conv2d_transpose"
 
 
-class TestWithPad(TestConv2dTransposeOp):
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [1, 1]
-        self.dilations = [1, 1]
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 3, 3]
+# class TestWithPad(TestConv2dTransposeOp):
+#     def init_test_case(self):
+#         self.pad = [1, 1]
+#         self.stride = [1, 1]
+#         self.dilations = [1, 1]
+#         self.input_size = [2, 3, 5, 5]  # NCHW
+#         f_c = self.input_size[1]
+#         self.filter_size = [f_c, 6, 3, 3]
 
+# class TestWithStride(TestConv2dTransposeOp):
+#     def init_test_case(self):
+#         self.pad = [1, 1]
+#         self.stride = [2, 2]
+#         self.dilations = [1, 1]
+#         self.input_size = [2, 3, 5, 5]  # NCHW
+#         f_c = self.input_size[1]
+#         self.filter_size = [f_c, 6, 3, 3]
 
-class TestWithStride(TestConv2dTransposeOp):
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [2, 2]
-        self.dilations = [1, 1]
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 3, 3]
-
-
-class TestWithDilation(TestConv2dTransposeOp):
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [1, 1]
-        self.dilations = [2, 2]
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 3, 3]
+# class TestWithDilation(TestConv2dTransposeOp):
+#     def init_test_case(self):
+#         self.pad = [1, 1]
+#         self.stride = [1, 1]
+#         self.dilations = [2, 2]
+#         self.input_size = [2, 3, 5, 5]  # NCHW
+#         f_c = self.input_size[1]
+#         self.filter_size = [f_c, 6, 3, 3]
 
 
 # ------------ test_cudnn ------------
@@ -124,31 +122,29 @@ class TestCUDNN(TestConv2dTransposeOp):
         self.op_type = "conv2d_transpose_cudnn"
 
 
-class TestCUDNNWithPad(TestWithPad):
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [1, 1]
-        self.dilations = [1, 1]
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 3, 3]
+# class TestCUDNNWithPad(TestWithPad):
+#     def init_test_case(self):
+#         self.pad = [1, 1]
+#         self.stride = [1, 1]
+#         self.dilations = [1, 1]
+#         self.input_size = [2, 3, 5, 5]  # NCHW
+#         f_c = self.input_size[1]
+#         self.filter_size = [f_c, 6, 3, 3]
 
-    def init_op_type(self):
-        self.op_type = "conv2d_transpose_cudnn"
+#     def init_op_type(self):
+#         self.op_type = "conv2d_transpose_cudnn"
 
+# class TestCUDNNWithStride(TestWithStride):
+#     def init_test_case(self):
+#         self.pad = [1, 1]
+#         self.stride = [2, 2]
+#         self.dilations = [1, 1]
+#         self.input_size = [2, 3, 5, 5]  # NCHW
+#         f_c = self.input_size[1]
+#         self.filter_size = [f_c, 6, 3, 3]
 
-class TestCUDNNWithStride(TestWithStride):
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [2, 2]
-        self.dilations = [1, 1]
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 3, 3]
-
-    def init_op_type(self):
-        self.op_type = "conv2d_transpose_cudnn"
-
+#     def init_op_type(self):
+#         self.op_type = "conv2d_transpose_cudnn"
 
 # #cudnn v5 does not support dilation conv.
 # class TestCUDNNWithDilation(TestWithDilation):

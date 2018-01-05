@@ -98,10 +98,6 @@ Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(OpProto* proto,
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
       .SetDefault(false);
-  AddAttr<std::vector<int>>(
-      "dilations",
-      "Used in cudnn kernel only. dilations of convolution operator.")
-      .SetDefault({1, 1});
   AddAttr<int>("workspace_size_MB",
                "Used in cudnn kernel only. workspace size for cudnn, in MB, "
                "workspace is a section of GPU memory which will be "
@@ -182,10 +178,6 @@ Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(OpProto* proto,
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
       .SetDefault(false);
-  AddAttr<std::vector<int>>(
-      "dilations",
-      "Used in cudnn kernel only. dilations of convolution operator.")
-      .SetDefault({1, 1, 1});
   AddAttr<int>("workspace_size_MB",
                "Used in cudnn kernel only. workspace size for cudnn, in MB, "
                "workspace is a section of GPU memory which will be "
