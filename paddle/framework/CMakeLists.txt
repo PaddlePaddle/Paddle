@@ -26,7 +26,10 @@ nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
 
 cc_test(variable_test SRCS variable_test.cc)
 
-cc_library(scope SRCS scope.cc DEPS glog)
+cc_library(threadpool SRCS threadpool.cc)
+cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
+
+cc_library(scope SRCS scope.cc DEPS glog threadpool)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)
 
 cc_library(data_transform SRCS data_transform.cc DEPS math_function tensor framework_proto)
@@ -70,9 +73,7 @@ cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
 cc_library(selected_rows SRCS selected_rows.cc DEPS tensor)
 cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
 
-cc_library(threadpool SRCS threadpool.cc)
-cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
-cc_library(init SRCS init.cc DEPS gflags device_context place stringpiece)
+cc_library(init SRCS init.cc DEPS gflags device_context place stringpiece operator)
 cc_test(init_test SRCS init_test.cc DEPS init)
 
 cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto)
