@@ -208,7 +208,8 @@ void AppendLoD(LoD* lod, const LoD& lod_length);
  */
 void SerializeToStream(std::ostream& os, const LoDTensor& tensor,
                        const platform::DeviceContext& dev_ctx);
-void DeserializeFromStream(std::istream& is, LoDTensor* tensor);
+void DeserializeFromStream(std::istream& is, LoDTensor* tensor,
+                           const platform::DeviceContext& dev_ctx);
 
 }  // namespace framework
 }  // namespace paddle
