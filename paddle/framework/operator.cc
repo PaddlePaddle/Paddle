@@ -233,7 +233,8 @@ static const Tensor* GetTensorFromVar(const Variable* var) {
   } else if (var->IsType<SelectedRows>()) {
     t = &(var->Get<SelectedRows>().value());
   } else {
-    PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+    PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
+                 var->Type().name());
   }
   return t;
 }
@@ -245,7 +246,8 @@ static Tensor* GetMutableTensorFromVar(Variable* var) {
   } else if (var->IsType<SelectedRows>()) {
     t = var->GetMutable<SelectedRows>()->mutable_value();
   } else {
-    PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+    PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
+                 var->Type().name());
   }
   return t;
 }
@@ -407,7 +409,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
     } else if (var->IsType<SelectedRows>()) {
       return var->Get<SelectedRows>().GetCompleteDims();
     } else {
-      PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+      PADDLE_THROW("Variable %s type_id %s, expect LoDTensor/SelectedRows.",
+                   name, var->Type().name());
     }
   }
 
@@ -418,7 +421,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
     } else if (var->IsType<SelectedRows>()) {
       var->GetMutable<SelectedRows>()->set_height(dim[0]);
     } else {
-      PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+      PADDLE_THROW("Variable %s type_id %s, expect LoDTensor/SelectedRows.",
+                   name, var->Type().name());
     }
   }
 
