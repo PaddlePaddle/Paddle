@@ -12,23 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <thread>
 #include <vector>
 
 #include "paddle/framework/executor.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/framework/threadpool.h"
 
 namespace paddle {
 namespace operators {
 
-constexpr char kInputs[] = "inputs";
-constexpr char kParameters[] = "parameters";
-constexpr char kPlaces[] = "places";
+static constexpr char kInputs[] = "inputs";
+static constexpr char kParameters[] = "parameters";
+static constexpr char kPlaces[] = "places";
 
-constexpr char kOutputs[] = "outputs";
-constexpr char kParallelScopes[] = "parallel_scopes";
+static constexpr char kOutputs[] = "outputs";
+static constexpr char kParallelScopes[] = "parallel_scopes";
 
-constexpr char kParallelBlock[] = "sub_block";
+static constexpr char kParallelBlock[] = "sub_block";
 
 // using ParallelScopeVar = std::vector<framework::Scope *>;
 using LoDTensor = framework::LoDTensor;
@@ -85,7 +85,8 @@ class ParallelDoOp : public framework::OperatorBase {
     SplitTensorAndMoveTensorToScopes(scope, sub_scopes, places,
                                      Inputs(kInputs));
 
-    std::vector<std::thread> workers;
+    std::vector<std::future<void>> workers;
+    workers.reserve(places.size());
     for (size_t place_idx = 0; place_idx < places.size(); ++place_idx) {
       VLOG(3) << "Run " << place_idx;
 
@@ -93,26 +94,27 @@ class ParallelDoOp : public framework::OperatorBase {
       auto *cur_scope = sub_scopes[place_idx];
 
       // copy parameter
-      if (dev_ctx.GetPlace() != place) {
+      // some version of boost lacks != for boost::variant
+      if (!(dev_ctx.GetPlace() == place)) {
         PADDLE_THROW("Not Implemented");
       }
 
-      // execute
-      workers.push_back(std::thread([program, cur_scope, place, block] {
-        auto executor = framework::Executor(place);
+      workers.emplace_back(framework::Async([program, cur_scope, place, block] {
+        framework::Executor executor(place);
         executor.Run(*program, cur_scope, block->ID(),
                      false /*create_local_scope*/);
       }));
     }
     for (auto &worker : workers) {
-      worker.join();
+      worker.wait();
     }
 
     // merge output
     for (auto &o_name : Outputs(kOutputs)) {
       std::vector<const framework::LoDTensor *> lod_tensors;
+      lod_tensors.reserve(sub_scopes.size());
       for (auto *sub_scope : sub_scopes) {
-        lod_tensors.push_back(&sub_scope->FindVar(o_name)->Get<LoDTensor>());
+        lod_tensors.emplace_back(&sub_scope->FindVar(o_name)->Get<LoDTensor>());
       }
 
       auto *lod_tensor_to_be_merged =
@@ -177,7 +179,7 @@ class ParallelDoGradOp : public OperatorBase {
     }
 
     // exe run
-    std::vector<std::thread> workers;
+    std::vector<std::future<void>> workers;
     for (size_t place_idx = 0; place_idx < places.size(); ++place_idx) {
       VLOG(3) << "Run " << place_idx;
 
@@ -185,14 +187,14 @@ class ParallelDoGradOp : public OperatorBase {
       auto *cur_scope = sub_scopes[place_idx];
 
       // execute
-      workers.push_back(std::thread([program, cur_scope, place, block] {
-        auto executor = framework::Executor(place);
+      workers.emplace_back(framework::Async([program, cur_scope, place, block] {
+        framework::Executor executor(place);
         executor.Run(*program, cur_scope, block->ID(),
                      false /*create_local_scope*/);
       }));
     }
     for (auto &worker : workers) {
-      worker.join();
+      worker.wait();
     }
 
     // merge grad
