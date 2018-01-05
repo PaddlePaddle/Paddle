@@ -37,6 +37,28 @@ auto KernelNHWC = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
 auto KernelNCHW = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
                                DataLayout::kNCHW, LibraryType::kPlain);
 
+// TODO(dzhwinter): Only for testing multiple op kernel.
+// Dummy transform function for library_type
+// should be removed.
+auto KernelPlain = OpKernelType(proto::DataType::FP32, platform::CUDAPlace(0),
+                                DataLayout::kAnyLayout, LibraryType::kPlain);
+
+auto KernelCUDNN = OpKernelType(proto::DataType::FP32, platform::CUDAPlace(0),
+                                DataLayout::kAnyLayout, LibraryType::kCUDNN);
+
+void DummyTrans(const platform::DeviceContext* ctx,
+                const KernelTypePair& kernel_pair, const Variable& in,
+                Variable* out) {
+  PADDLE_ENFORCE(in.IsType<Tensor>(), "Only Support Tensor transform!.");
+  PADDLE_ENFORCE(
+      platform::places_are_same_class(kernel_pair.first.place_,
+                                      kernel_pair.second.place_),
+      "TransDataType Only Support DataType transform on same place!");
+  auto src = in.Get<Tensor>();
+  auto* dst = out->GetMutable<Tensor>();
+  *dst = src;
+}
+
 void TransDataType(const platform::DeviceContext* ctx,
                    const KernelTypePair& kernel_pair, const Variable& in,
                    Variable* out) {
@@ -121,6 +143,8 @@ std::vector<int> NCHW2NHWC = {0, 2, 3, 1};
 }
 
 REGISTER_DATA_TRANSFORM_FN(f::KernelFP32, f::KernelFP64, f::TransDataType);
+REGISTER_DATA_TRANSFORM_FN(f::KernelPlain, f::KernelCUDNN, f::DummyTrans);
+REGISTER_DATA_TRANSFORM_FN(f::KernelCUDNN, f::KernelPlain, f::DummyTrans);
 REGISTER_DATA_TRANSFORM_FN(f::KernelNHWC, f::KernelNCHW,
                            std::bind(f::TransDataLayout, NHWC2NCHW,
                                      std::placeholders::_1,

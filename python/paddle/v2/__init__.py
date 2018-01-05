@@ -135,6 +135,8 @@ def init(**kwargs):
         cp.g_command_config_args['use_gpu'] = kwargs['use_gpu']
     if 'use_mkldnn' in kwargs:
         cp.g_command_config_args['use_mkldnn'] = kwargs['use_mkldnn']
+    if 'use_mkl_packed' in kwargs:
+        cp.g_command_config_args['use_mkl_packed'] = kwargs['use_mkl_packed']
     assert 'parallel_nn' not in kwargs, ("currently 'parallel_nn' is not "
                                          "supported in v2 APIs.")
 

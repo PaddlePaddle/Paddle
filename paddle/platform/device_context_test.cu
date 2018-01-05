@@ -49,21 +49,6 @@ TEST(Device, CUDADeviceContext) {
   }
 }
 
-TEST(Device, CUDNNDeviceContext) {
-  using paddle::platform::CUDNNDeviceContext;
-  using paddle::platform::CUDAPlace;
-  if (paddle::platform::dynload::HasCUDNN()) {
-    int count = paddle::platform::GetCUDADeviceCount();
-    for (int i = 0; i < count; ++i) {
-      CUDNNDeviceContext* device_context = new CUDNNDeviceContext(CUDAPlace(i));
-      cudnnHandle_t cudnn_handle = device_context->cudnn_handle();
-      ASSERT_NE(nullptr, cudnn_handle);
-      ASSERT_NE(nullptr, device_context->stream());
-      delete device_context;
-    }
-  }
-}
-
 TEST(Device, DeviceContextPool) {
   using paddle::platform::DeviceContextPool;
   using paddle::platform::CUDADeviceContext;
