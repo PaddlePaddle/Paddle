@@ -94,6 +94,10 @@ Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(OpProto* proto,
       "(vector<int> default:{0, 0}), the paddings(h_pad, w_pad) of convolution "
       "transpose operator.")
       .SetDefault({0, 0});
+  AddAttr<bool>(
+      "use_cudnn",
+      "(bool, default false) Only used in cudnn kernel, need install cudnn")
+      .SetDefault(false);
   AddAttr<std::vector<int>>(
       "dilations",
       "Used in cudnn kernel only. dilations of convolution operator.")
@@ -174,6 +178,10 @@ Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(OpProto* proto,
                             "(vector<int> default:{0, 0, 0}), paddings(d_pad, "
                             "h_pad, w_pad) of convolution transpose operator.")
       .SetDefault({0, 0, 0});
+  AddAttr<bool>(
+      "use_cudnn",
+      "(bool, default false) Only used in cudnn kernel, need install cudnn")
+      .SetDefault(false);
   AddAttr<std::vector<int>>(
       "dilations",
       "Used in cudnn kernel only. dilations of convolution operator.")

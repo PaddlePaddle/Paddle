@@ -101,15 +101,19 @@ Pool2dOpMaker::Pool2dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
   AddAttr<std::vector<int>>("strides",
                             "(vector<int>, default {1, 1}), strides(height, "
                             "width) of pooling operator.")
-      .SetDefault({1, 1});  // TODO(Chengduo): Add checker. (Currently,
+      .SetDefault({1, 1});
+  // TODO(Chengduo): Add checker. (Currently,
   // TypedAttrChecker don't support vector type.)
   AddAttr<std::vector<int>>(
       "paddings",
       "(vector<int>, default {0,0}), paddings(height, width) of pooling "
       "operator."
       "If global_pooling = true, paddings and ksize will be ignored.")
-      .SetDefault({0, 0});  // TODO(Chengduo): Add checker. (Currently,
-  // TypedAttrChecker don't support vector type.)
+      .SetDefault({0, 0});
+  AddAttr<bool>(
+      "use_cudnn",
+      "(bool, default false) Only used in cudnn kernel, need install cudnn")
+      .SetDefault(false);
 
   AddComment(R"DOC(
 Pool2d Operator.
