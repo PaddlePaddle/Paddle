@@ -197,6 +197,7 @@ TEST(SendRecvOp, CPUSparse) {
   add_functor(ctx, *x0, *x1, expect.get());
 
   EXPECT_EQ(actual->numel(), expect_value->numel());
+  EXPECT_EQ(out->rows().size(), x0->rows().size() + x1->rows().size());
 
   for (int64_t i = 0; i < expect_value->numel(); ++i) {
     EXPECT_EQ(expect_value->mutable_data<float>(place)[i],
