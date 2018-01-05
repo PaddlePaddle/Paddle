@@ -41,8 +41,8 @@ class Event {
   int device() const { return device_; }
 #endif
 
-  double CpuElapsedUs(const Event& e) const;
-  double CudaElapsedUs(const Event& e) const;
+  double CpuElapsedMs(const Event& e) const;
+  double CudaElapsedMs(const Event& e) const;
 
  private:
   EventKind kind_;
