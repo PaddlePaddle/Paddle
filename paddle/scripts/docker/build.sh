@@ -208,7 +208,7 @@ function gen_capi_package() {
 
     find ./third_party/install -name 'libiomp5.so' -exec cp {} $install_prefix/usr/local/lib \;
     cd $install_prefix/usr/local
-    ls | egrep -v "^Found.*item$" | xargs tar /paddle/build/paddle.tgz
+    ls | egrep -v "^Found.*item$" | xargs tar -cf /paddle/build/paddle.tgz
   fi
 }
 
