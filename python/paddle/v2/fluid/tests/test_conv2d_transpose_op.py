@@ -119,7 +119,7 @@ class TestConv2dTransposeOp(OpTest):
 # ------------ test_cudnn ------------
 class TestCUDNN(TestConv2dTransposeOp):
     def init_op_type(self):
-        self.op_type = "conv2d_transpose_cudnn"
+        self.op_type = "conv2d_transpose"
 
 
 # class TestCUDNNWithPad(TestWithPad):
@@ -132,7 +132,7 @@ class TestCUDNN(TestConv2dTransposeOp):
 #         self.filter_size = [f_c, 6, 3, 3]
 
 #     def init_op_type(self):
-#         self.op_type = "conv2d_transpose_cudnn"
+#         self.op_type = "conv2d_transpose"
 
 # class TestCUDNNWithStride(TestWithStride):
 #     def init_test_case(self):
@@ -144,7 +144,7 @@ class TestCUDNN(TestConv2dTransposeOp):
 #         self.filter_size = [f_c, 6, 3, 3]
 
 #     def init_op_type(self):
-#         self.op_type = "conv2d_transpose_cudnn"
+#         self.op_type = "conv2d_transpose"
 
 # #cudnn v5 does not support dilation conv.
 # class TestCUDNNWithDilation(TestWithDilation):
@@ -157,7 +157,7 @@ class TestCUDNN(TestConv2dTransposeOp):
 #         self.filter_size = [f_c, 6, 3, 3]
 #
 #     def init_op_type(self):
-#         self.op_type = "conv2d_transpose_cudnn"
+#         self.op_type = "conv2d_transpose"
 
 if __name__ == '__main__':
     unittest.main()

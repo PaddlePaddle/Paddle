@@ -49,7 +49,6 @@ def conv2d_forward_naive(input, filter, group, conv_param):
 
 class TestConv2dOp(OpTest):
     def setUp(self):
-        core.use_cuda()
         self.init_op_type()
         self.init_group()
         self.init_dilation()
@@ -170,32 +169,27 @@ class TestWithDilation(TestConv2dOp):
 #----------------Conv2dCudnn----------------
 class TestCudnn(TestConv2dOp):
     def init_op_type(self):
-        self.op_type = "conv2d_cudnn"
-        self.attrs.update({"use_cudnn": True})
+        self.op_type = "conv2d"
 
 
 class TestCudnnWithPad(TestWithPad):
     def init_op_type(self):
-        self.op_type = "conv2d_cudnn"
-        self.attrs.update({"use_cudnn": True})
+        self.op_type = "conv2d"
 
 
 class TestCudnnWithStride(TestWithStride):
     def init_op_type(self):
-        self.op_type = "conv2d_cudnn"
-        self.attrs.update({"use_cudnn": True})
+        self.op_type = "conv2d"
 
 
 class TestCudnnWithGroup(TestWithGroup):
     def init_op_type(self):
-        self.op_type = "conv2d_cudnn"
-        self.attrs.update({"use_cudnn": True})
+        self.op_type = "conv2d"
 
 
 class TestCudnnWith1x1(TestWith1x1):
     def init_op_type(self):
-        self.op_type = "conv2d_cudnn"
-        self.attrs.update({"use_cudnn": True})
+        self.op_type = "conv2d"
 
 
 #  cudnn v5 does not support dilation conv.

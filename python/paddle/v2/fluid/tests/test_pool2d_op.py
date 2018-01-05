@@ -153,35 +153,35 @@ class TestCase5(TestCase2):
         self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
-#--------------------test pool2d_cudnn--------------------
+#--------------------test pool2d--------------------
 class TestCUDNNCase1(TestPool2d_Op):
     def init_op_type(self):
-        self.op_type = "pool2d_cudnn"
+        self.op_type = "pool2d"
 
 
 class TestCUDNNCase2(TestCase1):
     def init_op_type(self):
-        self.op_type = "pool2d_cudnn"
+        self.op_type = "pool2d"
 
 
 class TestCUDNNCase3(TestCase2):
     def init_op_type(self):
-        self.op_type = "pool2d_cudnn"
+        self.op_type = "pool2d"
 
 
 class TestCUDNNCase4(TestCase3):
     def init_op_type(self):
-        self.op_type = "pool2d_cudnn"
+        self.op_type = "pool2d"
 
 
 class TestCUDNNCase5(TestCase4):
     def init_op_type(self):
-        self.op_type = "pool2d_cudnn"
+        self.op_type = "pool2d"
 
 
 class TestCUDNNCase6(TestCase5):
     def init_op_type(self):
-        self.op_type = "pool2d_cudnn"
+        self.op_type = "pool2d"
 
 
 if __name__ == '__main__':
