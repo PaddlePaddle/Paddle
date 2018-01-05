@@ -355,7 +355,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   void ShareLayout(const std::string& in, const std::string& out, size_t i = 0,
-                   size_t j = 0) const override {
+                   size_t j = 0) const {
     PADDLE_ENFORCE_LT(i, Inputs(in).size());
     PADDLE_ENFORCE_LT(j, Outputs(out).size());
     Variable* in_var = scope_.FindVar(Inputs(in)[i]);

@@ -92,7 +92,7 @@ void TransDataLayout(const std::vector<int>& axis,
   PADDLE_ENFORCE(arity(src.dims()) == 4, "Input Arity Only Suppport 4!");
 
   auto place = kernel_pair.second.place_;
-  CopyFrom(src, place, *ctx, dst);
+  dst->mutable_data(place, src.type());
 
   auto src_dim = src.dims();
   std::vector<int64_t> dst_dim;
