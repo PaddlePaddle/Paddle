@@ -449,26 +449,22 @@ void OperatorWithKernel::Run(const Scope& scope,
   ExecutionContext ctx(*this, scope, *dev_ctx);
   auto expected_kernel_key = this->GetExpectedKernelType(ctx);
 
-  std::vector<std::pair<std::string, std::string>> need_renames;
+  Scope& new_scope = scope.NewScope();
+
   for (auto& var_name_item : this->Inputs()) {
     for (auto& var_name : var_name_item.second) {
-      auto var_name_trans =
-          var_name + framework::KernelTypeToString(expected_kernel_key);
       auto* var = scope.FindVar(var_name);
-      if (var) {
+      if (var && var->IsInitialized()) {
         VLOG(3) << "var " << var_name << " need to do transform";
         auto* tensor_in = GetTensorFromVar(var);
         auto kernel_type_for_var = this->GetKernelTypeForVar(
             var_name_item.first, *tensor_in, expected_kernel_key);
         if (kernel_type_for_var != expected_kernel_key) {
           VLOG(3) << "need to do transform for var " << var_name;
-          need_renames.emplace_back(std::make_pair(var_name, var_name_trans));
-          if (!scope.FindVarLocally(var_name_trans)) {
-            auto* trans_var = const_cast<Scope&>(scope).Var(var_name_trans);
-            auto* out = DataTransform(expected_kernel_key, kernel_type_for_var,
-                                      *tensor_in);
-            CopyVariableWithTensor(*var, *out, *trans_var);
-          }
+          auto* trans_var = new_scope.Var(var_name);
+          auto* out = DataTransform(expected_kernel_key, kernel_type_for_var,
+                                    *tensor_in);
+          CopyVariableWithTensor(*var, *out, *trans_var);
         }
       }
     }
@@ -477,7 +473,7 @@ void OperatorWithKernel::Run(const Scope& scope,
   OpKernelMap& kernels = kernels_iter->second;
   auto kernel_iter = kernels.find(expected_kernel_key);
 
-  kernel_iter->second->Compute(ctx);
+  kernel_iter->second->Compute(ExecutionContext(*this, new_scope, *dev_ctx));
 }
 
 proto::DataType OperatorWithKernel::IndicateDataType(

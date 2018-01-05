@@ -31,7 +31,6 @@ cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
 
 cc_library(scope SRCS scope.cc DEPS glog threadpool)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)
-cc_test(rename_guard_test SRCS rename_guard_test.cc DEPS scope)
 
 cc_library(device_data_transform SRCS device_data_transform.cc DEPS tensor)
 
