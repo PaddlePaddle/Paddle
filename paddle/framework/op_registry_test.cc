@@ -282,16 +282,9 @@ class OpWithMultiKernelTest : public OperatorWithKernel {
  protected:
   void InferShape(InferShapeContext* ctx) const override {}
 
-  framework::OpKernelType GetActualKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(proto::DataType::FP32, ctx.device_context());
-  }
-
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::OpKernelType& kernel) const override {
-    return framework::OpKernelType(kernel.data_type_, platform::CUDAPlace(0),
-                                   kernel.data_layout_,
-                                   framework::LibraryType::kCUDNN);
   }
 };
 
