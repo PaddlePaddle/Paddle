@@ -21,8 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-Tensor* DeviceTransform(const platform::Place& src_place,
-                        const platform::Place& dst_place, const Tensor& in);
+Tensor* DeviceTransform(const Tensor& in, const platform::Place& dst_place);
 
 }  // namespace framework
 }  // namespace paddle

@@ -50,34 +50,15 @@ struct KernelTypePairHash {
   }
 };
 
-struct VariableAttr {
-  proto::DataType data_type;
-  DataLayout data_layout;
-  platform::Place place;
-  const Tensor* tensor;
-};
+bool TensorMatchKernelType(const Tensor& tensor,
+                           const OpKernelType& kernel_type);
 
-const VariableAttr GetVariableAttr(const Variable& var);
+Tensor* DataTransform(const OpKernelType& expected_kernel_type,
+                      const OpKernelType& kernel_type_for_var,
+                      const Tensor& input_tensor);
 
-struct VarAttrMatch {
-  bool data_type = false;
-  bool place = false;
-  bool data_layout = false;
-
-  VarAttrMatch(const VariableAttr& var_attr, const OpKernelType& kernel_type) {
-    data_type = var_attr.data_type == kernel_type.data_type_;
-    place = platform::is_same_place(var_attr.place, kernel_type.place_);
-    data_layout = var_attr.data_layout == kernel_type.data_layout_;
-  }
-
-  bool operator()() const { return data_type && place && data_layout; }
-};
-
-Tensor* DataTransform(const VarAttrMatch& match, const VariableAttr& input_var,
-                      const OpKernelType& expected_kernel_type);
-
-void CopyVariableWithTensor(const Variable& in_var, Variable& out_var,
-                            const Tensor& tensor);
+void CopyVariableWithTensor(const Variable& in_var, const Tensor& tensor,
+                            Variable& out_var);
 
 template <typename InType, typename OutType>
 struct CastDataTypeFunctor {

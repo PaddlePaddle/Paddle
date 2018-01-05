@@ -30,8 +30,8 @@ TEST(RenameGuard, ExchangeVars) {
       std::make_pair("a", "b")};
   auto* guard = new RenameGuard(s, var_names);
 
-  Variable* v2 = s.Var("a");
-  Variable* v3 = s.Var("b");
+  Variable* v2 = s.FindVar("a");
+  Variable* v3 = s.FindVar("b");
 
   EXPECT_EQ(v0, v3);
   EXPECT_EQ(v1, v2);
@@ -40,11 +40,36 @@ TEST(RenameGuard, ExchangeVars) {
 
   delete guard;
 
-  v2 = s.Var("a");
-  v3 = s.Var("b");
+  v2 = s.FindVar("a");
+  v3 = s.FindVar("b");
 
   EXPECT_EQ(v0, v2);
   EXPECT_EQ(v1, v3);
   EXPECT_NE(v0, v3);
   EXPECT_NE(v1, v2);
+}
+
+TEST(RenameGuard, StackedScope) {
+  Scope s;
+  Scope& ss = s.NewScope();
+
+  Variable* v0 = s.Var("a");
+  Variable* v1 = ss.Var("b");
+
+  std::vector<std::pair<std::string, std::string>> var_names = {
+      std::make_pair("a", "b")};
+
+  auto* guard = new RenameGuard(ss, var_names);
+
+  Variable* v2 = ss.FindVar("a");
+  EXPECT_EQ(v1, v2);
+  EXPECT_FALSE(ss.FindVarLocally("b"));
+
+  delete guard;
+
+  v2 = ss.FindVar("a");
+  Variable* v3 = ss.FindVar("b");
+
+  EXPECT_EQ(v0, v2);
+  EXPECT_EQ(v1, v3);
 }

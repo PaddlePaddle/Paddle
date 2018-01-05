@@ -384,10 +384,6 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const Scope& scope_;
 };
 
-static std::string TransName(const std::string& name) {
-  return name + "@transform_rename";
-}
-
 void OperatorWithKernel::Run(const Scope& scope,
                              const platform::Place& place) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
@@ -404,22 +400,27 @@ void OperatorWithKernel::Run(const Scope& scope,
   }
 
   ExecutionContext ctx(*this, scope, *dev_ctx);
-  auto expected_kernel_key = GetExpectedKernelType(ctx);
+  auto expected_kernel_key = this->GetExpectedKernelType(ctx);
 
-  std::vector<std::pair<std::string, std::string>> need_trans;
-  for (auto& var_name : this->InputVars()) {
-    auto var_name_trans = TransName(var_name);
-    auto* var = scope.FindVar(var_name);
-    if (var) {
-      auto var_attr = GetVariableAttr(*var);
-      const auto var_match = VarAttrMatch(var_attr, expected_kernel_key);
-      if (!var_match()) {
-        VLOG(3) << "need to do transform for var " << var_name;
-        need_trans.emplace_back(std::make_pair(var_name, var_name_trans));
-        if (!scope.FindVarLocally(var_name_trans)) {
-          auto* trans_var = const_cast<Scope&>(scope).Var(var_name_trans);
-          auto* out = DataTransform(var_match, var_attr, expected_kernel_key);
-          CopyVariableWithTensor(*var, *trans_var, *out);
+  std::vector<std::pair<std::string, std::string>> need_renames;
+  for (auto& var_name_item : this->Inputs()) {
+    for (auto& var_name : var_name_item.second) {
+      auto var_name_trans =
+          var_name + framework::KernelTypeToString(expected_kernel_key);
+      auto* var = scope.FindVar(var_name);
+      if (var) {
+        auto* tensor_in = GetTensorFromVar(var);
+        auto kernel_type_for_var = this->GetKernelTypeForVar(
+            var_name_item.first, *tensor_in, expected_kernel_key);
+        if (kernel_type_for_var != expected_kernel_key) {
+          VLOG(3) << "need to do transform for var " << var_name;
+          need_renames.emplace_back(std::make_pair(var_name, var_name_trans));
+          if (!scope.FindVarLocally(var_name_trans)) {
+            auto* trans_var = const_cast<Scope&>(scope).Var(var_name_trans);
+            auto* out = DataTransform(expected_kernel_key, kernel_type_for_var,
+                                      *tensor_in);
+            CopyVariableWithTensor(*var, *out, *trans_var);
+          }
         }
       }
     }
@@ -433,7 +434,7 @@ void OperatorWithKernel::Run(const Scope& scope,
                  expected_kernel_key);
   }
 
-  RenameGuard guard(scope, need_trans);
+  RenameGuard guard(scope, need_renames);
   kernel_iter->second->Compute(ctx);
 }
 
@@ -469,6 +470,12 @@ proto::DataType OperatorWithKernel::IndicateDataType(
 OpKernelType OperatorWithKernel::GetExpectedKernelType(
     const ExecutionContext& ctx) const {
   return OpKernelType(IndicateDataType(ctx), ctx.GetPlace());
+}
+
+OpKernelType OperatorWithKernel::GetKernelTypeForVar(
+    const std::string& var_name, const Tensor& tensor,
+    const OpKernelType& expected_kernel_type) const {
+  return OpKernelType(expected_kernel_type.data_type_, tensor.place());
 }
 
 }  // namespace framework

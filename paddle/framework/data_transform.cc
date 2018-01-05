@@ -26,38 +26,27 @@ DataTransformFnMap& DataTransformFnMap::Instance() {
   return data_transform_map;
 }
 
-const VariableAttr GetVariableAttr(const Variable& var) {
-  VariableAttr attr;
-  const Tensor* tensor;
-
-  if (var.IsType<LoDTensor>()) {
-    tensor = &var.Get<LoDTensor>();
-  } else if (var.IsType<SelectedRows>()) {
-    tensor = &var.Get<SelectedRows>().value();
-  } else {
-    PADDLE_THROW("unknown var type");
-  }
-
-  attr.place = tensor->place();
-  attr.data_layout = tensor->layout();
-  attr.data_type = ToDataType(tensor->type());
-  attr.tensor = tensor;
-  return attr;
-}
-
-Tensor* DataTransform(const VarAttrMatch& match,
-                      const VariableAttr& input_var_attr,
-                      const OpKernelType& expected_kernel_type) {
+Tensor* DataTransform(const OpKernelType& expected_kernel_type,
+                      const OpKernelType& kernel_type_for_var,
+                      const Tensor& input_tensor) {
   Tensor* out = nullptr;
-  if (!match.place) {
-    out = DeviceTransform(input_var_attr.place, expected_kernel_type.place_,
-                          *input_var_attr.tensor);
+  if (!platform::is_same_place(kernel_type_for_var.place_,
+                               expected_kernel_type.place_)) {
+    out = DeviceTransform(input_tensor, expected_kernel_type.place_);
   }
+  PADDLE_ENFORCE_NOT_NULL(out, "out should not be null");
   return out;
 }
 
-void CopyVariableWithTensor(const Variable& in_var, Variable& out_var,
-                            const Tensor& tensor) {
+bool TensorMatchKernelType(const Tensor& tensor,
+                           const OpKernelType& kernel_type) {
+  return (ToDataType(tensor.type()) == kernel_type.data_type_) &&
+         platform::is_same_place(tensor.place(), kernel_type.place_) &&
+         (tensor.layout() == kernel_type.data_layout_);
+}
+
+void CopyVariableWithTensor(const Variable& in_var, const Tensor& tensor,
+                            Variable& out_var) {
   if (in_var.IsType<LoDTensor>()) {
     auto& in_lod_tensor = in_var.Get<LoDTensor>();
     auto* tran_lod_tensor = out_var.GetMutable<LoDTensor>();

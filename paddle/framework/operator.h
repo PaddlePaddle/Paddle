@@ -382,6 +382,9 @@ class OperatorWithKernel : public OperatorBase {
 
  protected:
   virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
+  virtual OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const OpKernelType& expected_kernel_type) const;
 
  private:
   // indicate kernel DataType by input data. Defaultly all input data must be

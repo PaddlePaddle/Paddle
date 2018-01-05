@@ -31,12 +31,11 @@ static const platform::DeviceContext* GetDeviceContext(
   }
 }
 
-Tensor* DeviceTransform(const platform::Place& src_place,
-                        const platform::Place& dst_place, const Tensor& in) {
-  VLOG(3) << "DeviceTransform in, src_place " << src_place
+Tensor* DeviceTransform(const Tensor& in, const platform::Place& dst_place) {
+  VLOG(3) << "DeviceTransform in, src_place " << in.place()
           << " dst_place: " << dst_place;
   Tensor* out = new Tensor();
-  auto* dev_ctx = GetDeviceContext(src_place, dst_place);
+  auto* dev_ctx = GetDeviceContext(in.place(), dst_place);
   dev_ctx->Wait();
   CopyFrom(in, dst_place, *dev_ctx, out);
   dev_ctx->Wait();
