@@ -175,7 +175,8 @@ class GetProcessor : public ClientProcessor {
 class RPCClient {
  public:
   bool AsyncSendVariable(const std::string& ep, const framework::Scope* scope,
-                         const std::string& var_name, int64_t time_out) {
+                         const std::string& var_name,
+                         int64_t time_out = 600 * 1000) {
     auto ch = GetChannel(ep);
 
     auto c = std::shared_ptr<ClientProcessor>(new SendProcessor(&cq_, ch, ep));
@@ -186,7 +187,8 @@ class RPCClient {
     return c->Call(scope, var_name, time_out);
   }
   bool AsyncGetVariable(const std::string& ep, const framework::Scope* scope,
-                        const std::string& var_name, int64_t time_out) {
+                        const std::string& var_name,
+                        int64_t time_out = 600 * 1000) {
     auto ch = GetChannel(ep);
 
     auto c = std::shared_ptr<ClientProcessor>(new GetProcessor(&cq_, ch, ep));
