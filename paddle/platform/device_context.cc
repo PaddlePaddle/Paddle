@@ -189,11 +189,11 @@ void MKLDNNDeviceContext::AddElement(const std::string& op_key,
   if (GetElement<T>(op_key)) {
     return;
   }
-  GetElementPool<T>().emplace(op_key, value);
+  GetElementPool<T>().emplace(op_key, std::move(value));
 }
 
 template <typename T>
-const T MKLDNNDeviceContext::GetElement(const std::string& op_key) const {
+const T& MKLDNNDeviceContext::GetElement(const std::string& op_key) const {
   auto it = GetElementPool<T>().find(op_key);
   return it == GetElementPool<T>().end() ? nullptr : it->second;
 }

@@ -25,10 +25,11 @@ using MKLDNNMemory = mkldnn::memory;
 using MKLDNNPrimitive = mkldnn::primitive;
 using MKLDNNPrimitiveDesc = mkldnn::handle<mkldnn_primitive_desc_t>;
 
-typedef std::shared_ptr<MKLDNNEngine> MKLDNNEnginePtr;
-typedef std::shared_ptr<MKLDNNMemory> MKLDNNMemoryPtr;
-typedef std::shared_ptr<MKLDNNPrimitive> MKLDNNPrimitivePtr;
-typedef std::shared_ptr<MKLDNNPrimitiveDesc> MKLDNNPrimitiveDescPtr;
+typedef std::unique_ptr<MKLDNNStream> MKLDNNStreamPtr;
+typedef std::unique_ptr<MKLDNNEngine> MKLDNNEnginePtr;
+typedef std::unique_ptr<MKLDNNMemory> MKLDNNMemoryPtr;
+typedef std::unique_ptr<MKLDNNPrimitive> MKLDNNPrimitivePtr;
+typedef std::unique_ptr<MKLDNNPrimitiveDesc> MKLDNNPrimitiveDescPtr;
 
 }  // namespace platform
 }  // namespace paddle
