@@ -26,19 +26,24 @@ class ReorderLoDTensorByRankTableOpProtoMaker
   ReorderLoDTensorByRankTableOpProtoMaker(OpProto *proto,
                                           OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "(LoDTensor), the input lod tensor to be reordered.");
+    AddInput("X",
+             "(LoDTensor), the input lod tensor to be reordered according to "
+             "Input(RankTable).");
     AddInput("RankTable",
              "(LoDRankTable), the rank table according to which Input(X) is "
              "ordered.");
     AddOutput("Out", "(LoDTensor), the reordered lod tensor.");
     AddComment(R"DOC(ReorderLoDTensorByRankTable
 
-Reorder the Input(X) according to the information provided by the `RankTable`.
-For example, If the indices stored in the `RankTable` is [3, 0, 2, 1], the
+Reorder the Input(X) according to the information provided by Input(RankTable).
+For example, If the indices stored in the Input(RankTable) is [3, 0, 2, 1], the
 Input(X) will be reordered that the forth sequence in Input(X) will become the
-first one, and then followed by the originally first, third, second one.
+first one, and then followed by the originally first, third, and the second one.
 
-NOTE: The RankTable does not need to be calculated by X.
+NOTE: This operator sort Input(X) according to a given LoDRankTable which dose
+not need to be calculated according to Input(X). It can be calculated according
+to any other different sequence, and then this operator sort Input(X) according
+to the given LoDRankTable.
 
 For example:
 The X = [Seq0, Seq1, Seq2, Seq3]. The indices of RankTable are [3, 0, 2, 1].
