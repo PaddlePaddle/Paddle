@@ -64,7 +64,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     PADDLE_ENFORCE_EQ(in_var->GetType(), proto::VarDesc::LOD_TENSOR,
                       "The %d-th output of Output(%s) must be LoDTensor.", j,
                       out);
-    out_var->SetLoDLevel(in_var->GetLodLevel());
+    out_var->SetLoDLevel(in_var->GetLoDLevel());
   }
   bool IsRuntime() const override;
 
@@ -260,7 +260,13 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
   void operator()(int v) const { attr_->set_i(v); }
   void operator()(float v) const { attr_->set_f(v); }
   void operator()(const std::string &v) const { attr_->set_s(v); }
-  void operator()(bool b) const { attr_->set_b(b); }
+
+  // Please refer to https://github.com/PaddlePaddle/Paddle/issues/7162
+  template <class T,
+            class = typename std::enable_if<std::is_same<bool, T>::value>::type>
+  void operator()(T b) const {
+    attr_->set_b(b);
+  }
 
   void operator()(const std::vector<int> &v) const {
     VectorToRepeated(v, attr_->mutable_ints());
@@ -274,9 +280,7 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
   void operator()(const std::vector<bool> &v) const {
     VectorToRepeated(v, attr_->mutable_bools());
   }
-  void operator()(proto::BlockDesc *desc) const {
-    attr_->set_block_idx(desc->idx());
-  }
+  void operator()(BlockDesc *desc) const { attr_->set_block_idx(desc->ID()); }
   void operator()(boost::blank) const { PADDLE_THROW("Unexpected branch"); }
 };
 
