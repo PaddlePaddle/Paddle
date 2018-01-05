@@ -38,13 +38,6 @@ Tensor* DataTransform(const OpKernelType& expected_kernel_type,
   return out;
 }
 
-bool TensorMatchKernelType(const Tensor& tensor,
-                           const OpKernelType& kernel_type) {
-  return (ToDataType(tensor.type()) == kernel_type.data_type_) &&
-         platform::is_same_place(tensor.place(), kernel_type.place_) &&
-         (tensor.layout() == kernel_type.data_layout_);
-}
-
 void CopyVariableWithTensor(const Variable& in_var, const Tensor& tensor,
                             Variable& out_var) {
   if (in_var.IsType<LoDTensor>()) {
