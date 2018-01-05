@@ -29,7 +29,6 @@ namespace framework {
 class ThreadPool {
  public:
   typedef std::packaged_task<void()> Task;
-  typedef std::function<void()> Fun;
 
   /**
    * @brief   Get a instance of threadpool, the thread number will
@@ -67,7 +66,8 @@ class ThreadPool {
    * @return    std::future<void>, we could wait for the task finished by
    *            f.wait().
    */
-  std::future<void> Run(const Fun& fn) {
+  template <typename Callback>
+  std::future<void> Run(Callback fn) {
     std::unique_lock<std::mutex> lock(mutex_);
     Task task(std::bind(fn));
     std::future<void> f = task.get_future();
@@ -158,6 +158,14 @@ class ThreadPool {
   std::condition_variable scheduled_;
   std::condition_variable completed_;
 };
+
+// Run a function asynchronously.
+// NOTE: The function must return void. If the function need to return a value,
+// you can use lambda to capture a value pointer.
+template <typename Callback>
+std::future<void> Async(Callback callback) {
+  return ThreadPool::GetInstance()->Run(callback);
+}
 
 }  // namespace framework
 }  // namespace paddle
