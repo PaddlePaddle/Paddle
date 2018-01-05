@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <functional>
 
 #include "paddle/framework/data_transform.h"
 #include "paddle/framework/lod_tensor.h"
@@ -35,6 +36,28 @@ auto KernelNHWC = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
 
 auto KernelNCHW = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
                                DataLayout::kNCHW, LibraryType::kPlain);
+
+// TODO(dzhwinter): Only for testing multiple op kernel.
+// Dummy transform function for library_type
+// should be removed.
+auto KernelPlain = OpKernelType(proto::DataType::FP32, platform::CUDAPlace(0),
+                                DataLayout::kAnyLayout, LibraryType::kPlain);
+
+auto KernelCUDNN = OpKernelType(proto::DataType::FP32, platform::CUDAPlace(0),
+                                DataLayout::kAnyLayout, LibraryType::kCUDNN);
+
+void DummyTrans(const platform::DeviceContext* ctx,
+                const KernelTypePair& kernel_pair, const Variable& in,
+                Variable* out) {
+  PADDLE_ENFORCE(in.IsType<Tensor>(), "Only Support Tensor transform!.");
+  PADDLE_ENFORCE(
+      platform::places_are_same_class(kernel_pair.first.place_,
+                                      kernel_pair.second.place_),
+      "TransDataType Only Support DataType transform on same place!");
+  auto src = in.Get<Tensor>();
+  auto* dst = out->GetMutable<Tensor>();
+  *dst = src;
+}
 
 void TransDataType(const platform::DeviceContext* ctx,
                    const KernelTypePair& kernel_pair, const Variable& in,
@@ -74,26 +97,28 @@ void TransDataType(const platform::DeviceContext* ctx,
   }
 }
 
-void TransDataLayout(const platform::DeviceContext* ctx,
+void TransDataLayout(const std::vector<int>& axis,
+                     const platform::DeviceContext* ctx,
                      const KernelTypePair& kernel_pair, const Variable& in,
                      Variable* out) {
-  PADDLE_ENFORCE(in.IsType<Tensor>(), "Only Support Tensor transform!.");
+  PADDLE_ENFORCE(in.IsType<Tensor>(), "Only support Tensor transform!.");
   PADDLE_ENFORCE(
       platform::places_are_same_class(kernel_pair.first.place_,
                                       kernel_pair.second.place_),
-      "TransDataType Only Support DataType transform on same place!");
+      "TransDataLayout only support DataLayout transform on same place!");
+  PADDLE_ENFORCE(kernel_pair.first.data_type_ == kernel_pair.second.data_type_,
+                 "TransDataLayout only support Datatype are same!");
 
   auto src = in.Get<Tensor>();
   auto* dst = out->GetMutable<Tensor>();
   PADDLE_ENFORCE(arity(src.dims()) == 4, "Input Arity Only Suppport 4!");
 
-  auto src_dim = src.dims();
-  dst->Resize(src_dim);
   auto place = kernel_pair.second.place_;
   CopyFrom(src, place, *ctx, dst);
-  const std::vector<int> axis = {0, 2, 3, 1};
 
+  auto src_dim = src.dims();
   std::vector<int64_t> dst_dim;
+
   dst_dim.resize(axis.size());
   for (size_t i = 0; i < axis.size(); i++) {
     dst_dim[i] = src_dim[axis[i]];
@@ -102,7 +127,7 @@ void TransDataLayout(const platform::DeviceContext* ctx,
   dst->Resize(make_ddim(dst_dim));
 
   auto src_type = kernel_pair.first.data_type_;
-  framework::VisitDataType(src_type, CastDataLayout(src, dst, ctx, axis));
+  framework::VisitDataType(src_type, CastDataLayout(ctx, axis, src, dst));
 
   dst->set_layout(kernel_pair.second.data_layout_);
 }
@@ -111,5 +136,24 @@ void TransDataLayout(const platform::DeviceContext* ctx,
 }  // namespace paddle
 
 namespace f = paddle::framework;
+
+namespace {
+std::vector<int> NHWC2NCHW = {0, 3, 1, 2};
+std::vector<int> NCHW2NHWC = {0, 2, 3, 1};
+}
+
 REGISTER_DATA_TRANSFORM_FN(f::KernelFP32, f::KernelFP64, f::TransDataType);
-REGISTER_DATA_TRANSFORM_FN(f::KernelNHWC, f::KernelNCHW, f::TransDataLayout);
+REGISTER_DATA_TRANSFORM_FN(f::KernelPlain, f::KernelCUDNN, f::DummyTrans);
+REGISTER_DATA_TRANSFORM_FN(f::KernelCUDNN, f::KernelPlain, f::DummyTrans);
+REGISTER_DATA_TRANSFORM_FN(f::KernelNHWC, f::KernelNCHW,
+                           std::bind(f::TransDataLayout, NHWC2NCHW,
+                                     std::placeholders::_1,
+                                     std::placeholders::_2,
+                                     std::placeholders::_3,
+                                     std::placeholders::_4));
+REGISTER_DATA_TRANSFORM_FN(f::KernelNCHW, f::KernelNHWC,
+                           std::bind(f::TransDataLayout, NCHW2NHWC,
+                                     std::placeholders::_1,
+                                     std::placeholders::_2,
+                                     std::placeholders::_3,
+                                     std::placeholders::_4));
