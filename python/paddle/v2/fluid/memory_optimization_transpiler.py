@@ -37,10 +37,10 @@ class ControlFlowGraph(object):
         print(self._succesors)
         print(self._presucessors)
 
-        ops = [global_block.op(i) for i in range(self.op_size)]
+        self.ops = [global_block.op(i) for i in range(self.op_size)]
         for i in range(self.op_size):
-            self._uses[i].update(ops[i].input_arg_names())
-            self._defs[i].update(ops[i].output_arg_names())
+            self._uses[i].update(self.ops[i].input_arg_names())
+            self._defs[i].update(self.ops[i].output_arg_names())
 
         print self._uses
         print self._defs
@@ -84,7 +84,8 @@ class ControlFlowGraph(object):
     def memory_optimize(self):
         self._dataflow_analyze()
         for i in range(self.op_size):
-            print self._get_diff(self._live_in[i], self._live_out[i])
+            print self.ops[i].type(), self._get_diff(self._live_in[i],
+                                                     self._live_out[i])
 
     def get_program(self):
         pass

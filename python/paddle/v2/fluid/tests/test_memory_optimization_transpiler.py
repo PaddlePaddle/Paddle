@@ -3,6 +3,7 @@ import unittest
 
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.nets as nets
+import paddle.v2.fluid.optimizer as optimizer
 from paddle.v2.fluid.framework import Program, program_guard
 from paddle.v2.fluid.param_attr import ParamAttr
 from paddle.v2.fluid.memory_optimization_transpiler import ControlFlowGraph
@@ -17,8 +18,9 @@ class TestControlFlowGraph(unittest.TestCase):
             y = layers.data(name='y', shape=[1], dtype='float32')
             cost = layers.square_error_cost(input=y_predict, label=y)
             avg_cost = layers.mean(x=cost)
-            self.assertIsNotNone(avg_cost)
-            program.append_backward(avg_cost)
+            opt = optimizer.SGD(learning_rate=0.001)
+            opt = opt.minimize(avg_cost)
+
         self.program = program
 
     def test_control_flow_graph(self):
