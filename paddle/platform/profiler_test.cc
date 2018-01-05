@@ -71,7 +71,7 @@ TEST(RecordEvent, RecordEvent) {
   /* Usage 1:
   *  PushEvent(evt_name, dev_ctx);
   *  ...
-  *  code to analyze
+  *  code to be analyzed
   *  ...
   * PopEvent(evt_name, dev_ctx);
   */
@@ -89,7 +89,7 @@ TEST(RecordEvent, RecordEvent) {
    * {
    *   RecordEvent record_event(name, dev_ctx);
    *   ...
-   *   code to analyze
+   *   code to be analyzed
    *   ...
    * }
    */
