@@ -163,16 +163,16 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(pool2d, CUDNN, ::paddle::platform::CUDNNPlace,
+REGISTER_OP_KERNEL(pool2d, CUDNN, ::paddle::platform::CUDAPlace,
                    ops::PoolCUDNNOpKernel<float>,
                    ops::PoolCUDNNOpKernel<double>);
-REGISTER_OP_KERNEL(pool2d_grad, CUDNN, ::paddle::platform::CUDNNPlace,
+REGISTER_OP_KERNEL(pool2d_grad, CUDNN, ::paddle::platform::CUDAPlace,
                    ops::PoolCUDNNGradOpKernel<float>,
                    ops::PoolCUDNNGradOpKernel<double>);
 
-REGISTER_OP_KERNEL(pool3d, CUDNN, ::paddle::platform::CUDNNPlace,
+REGISTER_OP_KERNEL(pool3d, CUDNN, ::paddle::platform::CUDAPlace,
                    ops::PoolCUDNNOpKernel<float>,
                    ops::PoolCUDNNOpKernel<double>);
-REGISTER_OP_KERNEL(pool3d_grad, CUDNN, ::paddle::platform::CUDNNPlace,
+REGISTER_OP_KERNEL(pool3d_grad, CUDNN, ::paddle::platform::CUDAPlace,
                    ops::PoolCUDNNGradOpKernel<float>,
                    ops::PoolCUDNNGradOpKernel<double>);

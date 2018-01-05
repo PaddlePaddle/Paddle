@@ -52,17 +52,9 @@ static size_t UniqueIntegerGenerator(const std::string &prefix) {
   return generators[prefix].fetch_add(1);
 }
 
-bool WithGPU() {
+bool IsCompileGPU() {
 #ifndef PADDLE_WITH_CUDA
   return false;
-#else
-  return true;
-#endif
-}
-
-bool WithCUDNN() {
-#ifndef PADDLE_WITH_CUDA
-  return platform::dynload::HasCUDNN();
 #else
   return true;
 #endif

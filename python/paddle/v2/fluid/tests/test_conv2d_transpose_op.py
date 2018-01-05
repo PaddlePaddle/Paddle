@@ -119,12 +119,12 @@ class TestWithDilation(TestConv2dTransposeOp):
 
 
 # ------------ test_cudnn ------------
-class TestCudnn(TestConv2dTransposeOp):
+class TestCUDNN(TestConv2dTransposeOp):
     def init_op_type(self):
         self.op_type = "conv2d_transpose_cudnn"
 
 
-class TestCudnnWithPad(TestWithPad):
+class TestCUDNNWithPad(TestWithPad):
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -137,7 +137,7 @@ class TestCudnnWithPad(TestWithPad):
         self.op_type = "conv2d_transpose_cudnn"
 
 
-class TestCudnnWithStride(TestWithStride):
+class TestCUDNNWithStride(TestWithStride):
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [2, 2]
@@ -151,7 +151,7 @@ class TestCudnnWithStride(TestWithStride):
 
 
 # #cudnn v5 does not support dilation conv.
-# class TestCudnnWithDilation(TestWithDilation):
+# class TestCUDNNWithDilation(TestWithDilation):
 #     def init_test_case(self):
 #         self.pad = [1, 1]
 #         self.stride = [2, 2]

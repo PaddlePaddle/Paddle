@@ -154,32 +154,32 @@ class TestCase5(TestCase2):
 
 
 #--------------------test pool2d_cudnn--------------------
-class TestCudnnCase1(TestPool2d_Op):
+class TestCUDNNCase1(TestPool2d_Op):
     def init_op_type(self):
         self.op_type = "pool2d_cudnn"
 
 
-class TestCudnnCase2(TestCase1):
+class TestCUDNNCase2(TestCase1):
     def init_op_type(self):
         self.op_type = "pool2d_cudnn"
 
 
-class TestCudnnCase3(TestCase2):
+class TestCUDNNCase3(TestCase2):
     def init_op_type(self):
         self.op_type = "pool2d_cudnn"
 
 
-class TestCudnnCase4(TestCase3):
+class TestCUDNNCase4(TestCase3):
     def init_op_type(self):
         self.op_type = "pool2d_cudnn"
 
 
-class TestCudnnCase5(TestCase4):
+class TestCUDNNCase5(TestCase4):
     def init_op_type(self):
         self.op_type = "pool2d_cudnn"
 
 
-class TestCudnnCase6(TestCase5):
+class TestCUDNNCase6(TestCase5):
     def init_op_type(self):
         self.op_type = "pool2d_cudnn"
 

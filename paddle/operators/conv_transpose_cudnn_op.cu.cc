@@ -236,16 +236,16 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(conv2d_transpose, CUDNN, ::paddle::platform::CUDNNPlace,
+REGISTER_OP_KERNEL(conv2d_transpose, CUDNN, ::paddle::platform::CUDAPlace,
                    ops::CUDNNConvTransposeOpKernel<float>,
                    ops::CUDNNConvTransposeOpKernel<double>);
-REGISTER_OP_KERNEL(conv2d_transpose_grad, CUDNN, ::paddle::platform::CUDNNPlace,
+REGISTER_OP_KERNEL(conv2d_transpose_grad, CUDNN, ::paddle::platform::CUDAPlace,
                    ops::CUDNNConvTransposeGradOpKernel<float>,
                    ops::CUDNNConvTransposeGradOpKernel<double>);
 
-REGISTER_OP_KERNEL(conv3d_transpose, CUDNN, ::paddle::platform::CUDNNPlace,
+REGISTER_OP_KERNEL(conv3d_transpose, CUDNN, ::paddle::platform::CUDAPlace,
                    ops::CUDNNConvTransposeOpKernel<float>,
                    ops::CUDNNConvTransposeOpKernel<double>);
-REGISTER_OP_KERNEL(conv3d_transpose_grad, CUDNN, ::paddle::platform::CUDNNPlace,
+REGISTER_OP_KERNEL(conv3d_transpose_grad, CUDNN, ::paddle::platform::CUDAPlace,
                    ops::CUDNNConvTransposeGradOpKernel<float>,
                    ops::CUDNNConvTransposeGradOpKernel<double>);

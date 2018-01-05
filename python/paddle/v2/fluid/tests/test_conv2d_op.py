@@ -170,32 +170,32 @@ class TestWithDilation(TestConv2dOp):
 #----------------Conv2dCudnn----------------
 class TestCudnn(TestConv2dOp):
     def init_op_type(self):
-        core.use_cudnn()
         self.op_type = "conv2d_cudnn"
+        self.attrs.update({"use_cudnn": True})
 
 
 class TestCudnnWithPad(TestWithPad):
     def init_op_type(self):
-        core.use_cudnn()
         self.op_type = "conv2d_cudnn"
+        self.attrs.update({"use_cudnn": True})
 
 
 class TestCudnnWithStride(TestWithStride):
     def init_op_type(self):
-        core.use_cudnn()
         self.op_type = "conv2d_cudnn"
+        self.attrs.update({"use_cudnn": True})
 
 
 class TestCudnnWithGroup(TestWithGroup):
     def init_op_type(self):
-        core.use_cudnn()
         self.op_type = "conv2d_cudnn"
+        self.attrs.update({"use_cudnn": True})
 
 
 class TestCudnnWith1x1(TestWith1x1):
     def init_op_type(self):
-        core.use_cudnn()
         self.op_type = "conv2d_cudnn"
+        self.attrs.update({"use_cudnn": True})
 
 
 #  cudnn v5 does not support dilation conv.

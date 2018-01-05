@@ -61,6 +61,7 @@ void UseCUDNN() {
   if (platform::dynload::HasCUDNN()) {
     /*CUDNN Kernel*/
     auto pair0 = std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN);
+
     kKernelPriority.insert(kKernelPriority.begin(), pair0);
   }
 #endif

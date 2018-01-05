@@ -49,7 +49,7 @@ auto KernelCUDNN = OpKernelType(proto::DataType::FP32, platform::CUDAPlace(0),
 void DummyTrans(const platform::DeviceContext* ctx,
                 const KernelTypePair& kernel_pair, const Variable& in,
                 Variable* out) {
-  PADDLE_ENFORCE(in.IsType<Tensor>(), "Only Support Tensor transform!.");
+  PADDLE_ENFORCE(in.IsType<LoDTensor>(), "Only Support Tensor transform!.");
   PADDLE_ENFORCE(
       platform::places_are_same_class(kernel_pair.first.place_,
                                       kernel_pair.second.place_),
@@ -62,7 +62,7 @@ void DummyTrans(const platform::DeviceContext* ctx,
 void TransDataType(const platform::DeviceContext* ctx,
                    const KernelTypePair& kernel_pair, const Variable& in,
                    Variable* out) {
-  PADDLE_ENFORCE(in.IsType<Tensor>(), "Only Support Tensor transform!.");
+  PADDLE_ENFORCE(in.IsType<LoDTensor>(), "Only Support Tensor transform!.");
   PADDLE_ENFORCE(
       platform::places_are_same_class(kernel_pair.first.place_,
                                       kernel_pair.second.place_),
@@ -101,7 +101,7 @@ void TransDataLayout(const std::vector<int>& axis,
                      const platform::DeviceContext* ctx,
                      const KernelTypePair& kernel_pair, const Variable& in,
                      Variable* out) {
-  PADDLE_ENFORCE(in.IsType<Tensor>(), "Only support Tensor transform!.");
+  PADDLE_ENFORCE(in.IsType<LoDTensor>(), "Only support Tensor transform!.");
   PADDLE_ENFORCE(
       platform::places_are_same_class(kernel_pair.first.place_,
                                       kernel_pair.second.place_),
