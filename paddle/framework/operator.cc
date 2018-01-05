@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/framework/device_data_transform.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/operator.h"
-#include "paddle/framework/rename_guard.h"
 #include "paddle/framework/shape_inference.h"
 #include "paddle/framework/var_type.h"
 
@@ -478,7 +477,6 @@ void OperatorWithKernel::Run(const Scope& scope,
   OpKernelMap& kernels = kernels_iter->second;
   auto kernel_iter = kernels.find(expected_kernel_key);
 
-  RenameGuard guard(scope, need_renames);
   kernel_iter->second->Compute(ctx);
 }
 
