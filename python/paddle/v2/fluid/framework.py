@@ -763,6 +763,9 @@ class Program(object):
         proto = framework_pb2.ProgramDesc.FromString(str(protostr))
         return _debug_string_(proto, throw_on_error)
 
+    def get_desc(self):
+        return self.desc
+
     def clone(self):
         p = Program()
         p.desc = core.ProgramDesc(self.desc)
