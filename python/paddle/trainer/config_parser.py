@@ -3271,7 +3271,7 @@ class ScalingLayer(LayerBase):
 @config_layer('broadcast_scale')
 class BroadcastScaleLayer(LayerBase):
     def __init__(self, name, inputs, device=None):
-        super(ScalingLayer, self).__init__(
+        super(BroadcastScaleLayer, self).__init__(
             name, 'broadcast_scale', 0, inputs=inputs, device=device)
         config_assert(
             len(self.inputs) == 2,
