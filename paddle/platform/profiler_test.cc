@@ -26,7 +26,7 @@ TEST(Event, CpuElapsedTime) {
     counter++;
   }
   Event stop_event(EventKind::kPopRange, "test", 0, nullptr);
-  EXPECT_GT(start_event.CpuElapsedUs(stop_event), 0);
+  EXPECT_GT(start_event.CpuElapsedMs(stop_event), 0);
 }
 
 #ifdef PADDLE_WITH_CUDA
@@ -45,7 +45,7 @@ TEST(Event, CudaElapsedTime) {
     counter++;
   }
   Event stop_event(EventKind::kPopRange, "test", 0, dev_ctx);
-  EXPECT_GT(start_event.CudaElapsedUs(stop_event), 0);
+  EXPECT_GT(start_event.CudaElapsedMs(stop_event), 0);
 }
 #endif
 
@@ -114,9 +114,9 @@ TEST(RecordEvent, RecordEvent) {
       if (events[i][j].name() == "push") {
         EXPECT_EQ(events[i][j + 1].name(), "pop");
 #ifdef PADDLE_WITH_CUDA
-        EXPECT_GT(events[i][j].CudaElapsedUs(events[i][j + 1]), 0);
+        EXPECT_GT(events[i][j].CudaElapsedMs(events[i][j + 1]), 0);
 #else
-        EXPECT_GT(events[i][j].CpuElapsedUs(events[i][j + 1]), 0);
+        EXPECT_GT(events[i][j].CpuElapsedMs(events[i][j + 1]), 0);
 #endif
       }
     }

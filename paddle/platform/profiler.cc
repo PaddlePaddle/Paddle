@@ -74,11 +74,11 @@ std::string Event::kind() const {
   PADDLE_THROW("Unknown EventKind.");
 }
 
-double Event::CpuElapsedUs(const Event& e) const {
-  return (e.cpu_ns_ - cpu_ns_) / (1000.0);
+double Event::CpuElapsedMs(const Event& e) const {
+  return (e.cpu_ns_ - cpu_ns_) / (1000000.0);
 }
 
-double Event::CudaElapsedUs(const Event& e) const {
+double Event::CudaElapsedMs(const Event& e) const {
 #ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE(e.has_cuda() && has_cuda());
   PADDLE_ENFORCE(e.device() == device());
@@ -86,7 +86,7 @@ double Event::CudaElapsedUs(const Event& e) const {
   PADDLE_ENFORCE(cudaEventSynchronize(e.event()));
   float ms;
   PADDLE_ENFORCE(cudaEventElapsedTime(&ms, event_, e.event()));
-  return ms * 1000.0;
+  return ms;
 #else
   PADDLE_THROW("CUDA is not enabled");
 #endif
@@ -239,11 +239,10 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
           ++rit;
         }
         if (rit != pushed_events.rend()) {
-// get event time in ms
 #ifdef PADDLE_WITH_CUDA
-          double event_time = rit->CudaElapsedUs(events[i][j]) / 1000.0;
+          double event_time = rit->CudaElapsedMs(events[i][j]);
 #else
-          double event_time = rit->CpuElapsedUs(events[i][j]) / 1000.0;
+          double event_time = rit->CpuElapsedMs(events[i][j]);
 #endif
           std::string event_name =
               "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
