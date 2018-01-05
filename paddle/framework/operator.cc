@@ -46,14 +46,18 @@ void UseMKLDNN() {
 #endif
 }
 
-void UseCUDNN() {
+void UseCUDA() {
   UseMKLDNN();
 #if PADDLE_WITH_CUDA
-  {
-    /*Plain GPU*/
-    auto pair0 = std::make_tuple(platform::CUDAPlace(0), LibraryType::kPlain);
-    kKernelPriority.insert(kKernelPriority.begin(), pair0);
-  }
+  /*Plain GPU*/
+  auto pair0 = std::make_tuple(platform::CUDAPlace(0), LibraryType::kPlain);
+  kKernelPriority.insert(kKernelPriority.begin(), pair0);
+#endif
+}
+
+void UseCUDNN() {
+  UseCUDA();
+#if PADDLE_WITH_CUDA
   if (platform::dynload::HasCUDNN()) {
     /*CUDNN Kernel*/
     auto pair0 = std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN);
@@ -62,9 +66,10 @@ void UseCUDNN() {
 #endif
 }
 
-void UseAll() {
+void UseALL() {
   UseCPU();
   UseMKLDNN();
+  UseCUDA();
   UseCUDNN();
 }
 

@@ -49,6 +49,7 @@ def conv2d_forward_naive(input, filter, group, conv_param):
 
 class TestConv2dOp(OpTest):
     def setUp(self):
+        core.use_cuda()
         self.init_op_type()
         self.init_group()
         self.init_dilation()

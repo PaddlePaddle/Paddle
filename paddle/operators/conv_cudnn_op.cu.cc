@@ -315,19 +315,6 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_KERNEL(conv2d, CUDNN, paddle::platform::CUDAPlace,
-                   paddle::operators::CudnnConvOpKernel<float>,
-                   paddle::operators::CudnnConvOpKernel<double>);
-REGISTER_OP_KERNEL(conv2d_grad, CUDNN, paddle::platform::CUDAPlace,
-                   paddle::operators::CudnnConvGradOpKernel<float>,
-                   paddle::operators::CudnnConvGradOpKernel<double>);
-REGISTER_OP_KERNEL(conv3d, CUDNN, paddle::platform::CUDAPlace,
-                   paddle::operators::CudnnConvOpKernel<float>,
-                   paddle::operators::CudnnConvOpKernel<double>);
-REGISTER_OP_KERNEL(conv3d_grad, CUDNN, paddle::platform::CUDAPlace,
-                   paddle::operators::CudnnConvGradOpKernel<float>,
-                   paddle::operators::CudnnConvGradOpKernel<double>);
-
 // TODO(dzhwinter) : below register should be removed
 REGISTER_OP_CUDA_KERNEL(conv2d_cudnn,
                         paddle::operators::CudnnConvOpKernel<float>,
