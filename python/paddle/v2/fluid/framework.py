@@ -151,6 +151,7 @@ class Variable(object):
                  stop_gradient=False,
                  **kwargs):
         self.block = block
+        self.error_clip = error_clip
 
         if name is None:
             name = Variable._unique_var_name_()

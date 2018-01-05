@@ -2,7 +2,9 @@ import functools
 import layers
 from . import core
 
-__all__ = ['GradientClipByValue', 'append_gradient_clip_ops']
+__all__ = [
+    'GradientClipByValue', 'append_gradient_clip_ops', 'error_clip_callback'
+]
 
 
 class BaseErrorClipAttr(object):
