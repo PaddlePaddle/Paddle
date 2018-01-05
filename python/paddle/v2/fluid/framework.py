@@ -147,6 +147,7 @@ class Variable(object):
                  dtype=None,
                  lod_level=None,
                  persistable=None,
+                 error_clip=None,
                  stop_gradient=False,
                  **kwargs):
         self.block = block
@@ -626,6 +627,17 @@ class Block(object):
             raise ValueError("var %s not in this block" % name)
         return v
 
+    def var_recursive(self, name):
+        if self.has_var(name):
+            return self.var(name)
+        else:
+            if self.idx == 0:
+                raise ValueError("var %s is not in block(%d) nor its parents." %
+                                 name, self.idx)
+            else:
+                parent_block = self.program.block(self.parent_idx)
+                return parent_block.var_recursive(name)
+
     def all_parameters(self):
         return list(self.iter_parameters())
 
@@ -744,6 +756,7 @@ class Block(object):
                 optimize_attr=p.optimize_attr,
                 regularizer=p.regularizer,
                 clip_attr=p.clip_attr,
+                error_clip=p.error_clip,
                 name=v.name)
             self.vars[new_p.name] = new_p
 
