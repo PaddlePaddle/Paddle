@@ -270,11 +270,12 @@ TEST(Tensor, SerializeAndDeserialize) {
     SerializeToStream(oss, src_tensor, cpu_ctx);
 
     std::istringstream iss(oss.str());
-    DeserializeFromStream(iss, &dst_tensor);
+    DeserializeFromStream(iss, &dst_tensor, cpu_ctx);
     int* dst_ptr = dst_tensor.mutable_data<int>(platform::CPUPlace());
     for (int i = 0; i < 5; ++i) {
       ASSERT_EQ(dst_ptr[i], array[i]);
     }
+    ASSERT_EQ(dst_tensor.dims(), src_tensor.dims());
     delete place;
   }
 #ifdef PADDLE_WITH_CUDA
@@ -292,13 +293,12 @@ TEST(Tensor, SerializeAndDeserialize) {
     SerializeToStream(oss, gpu_tensor, gpu_ctx);
 
     std::istringstream iss(oss.str());
-    DeserializeFromStream(iss, &dst_tensor);
+    DeserializeFromStream(iss, &dst_tensor, gpu_ctx);
 
     int* dst_ptr = dst_tensor.mutable_data<int>(platform::CPUPlace());
     for (int i = 0; i < 6; ++i) {
       ASSERT_EQ(dst_ptr[i], array[i]);
     }
-
     delete gpu_place;
   }
 #endif

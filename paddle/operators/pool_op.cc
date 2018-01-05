@@ -58,6 +58,7 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
         OutputSizePool(in_x_dims[i + 2], ksize[i], paddings[i], strides[i]));
   }
   ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
+  ctx->ShareLoD("X", "Out");
 }
 
 void PoolOpGrad::InferShape(framework::InferShapeContext *ctx) const {

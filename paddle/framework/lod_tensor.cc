@@ -193,6 +193,9 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
       lod->empty() || lod->size() == lod_length.size(),
       "The lod_length should has the same size with the appended lod.");
   if (lod->empty()) {
+    for (size_t i = 0; i < lod_length.size(); ++i) {
+      lod->emplace_back(1, 0);  // size = 1, value = 0;
+    }
     *lod = LoD(lod_length.size(), std::vector<size_t>({0}));
   }
   for (size_t i = 0; i < lod->size(); ++i) {
@@ -230,9 +233,10 @@ void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
   SerializeToStream(os, static_cast<Tensor>(tensor), dev_ctx);
 }
 
-void DeserializeFromStream(std::istream &is, LoDTensor *tensor) {
+void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
+                           const platform::DeviceContext &dev_ctx) {
   {
-    // the 1st field, unit32_t version for SelectedRows
+    // the 1st field, unit32_t version for LoDTensor
     uint32_t version;
     is.read(reinterpret_cast<char *>(&version), sizeof(version));
     PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
@@ -253,7 +257,7 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor) {
     }
   }
   // the 3st filed, Tensor
-  DeserializeFromStream(is, static_cast<Tensor *>(tensor));
+  DeserializeFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
 }
 
 std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
@@ -266,10 +270,10 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
                  "Batch size should be divided by places size");
 
   std::vector<LoDTensor> lods;
-  for (int place_idx = 0; place_idx < places.size(); ++place_idx) {
-    int begin = place_idx * dims()[0] / places.size();
-    int end = (place_idx + 1) * dims()[0] / places.size();
-    auto src = Slice(begin, end);
+  for (size_t place_idx = 0; place_idx < places.size(); ++place_idx) {
+    size_t begin = place_idx * dims()[0] / places.size();
+    size_t end = (place_idx + 1) * dims()[0] / places.size();
+    auto src = Slice(static_cast<int>(begin), static_cast<int>(end));
 
     LoDTensor dst;
     dst.Resize(src.dims());
