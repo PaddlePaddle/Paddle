@@ -897,7 +897,7 @@ class ConditionalBlock(object):
 
         out_list = [
             parent_block.var(var_name) for var_name in parent_block.vars
-            if var_name not in intermediate
+            if var_name in intermediate
         ]
 
         step_scope = parent_block.create_var(
