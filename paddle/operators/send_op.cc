@@ -25,7 +25,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-// TODO(gongwb): add more attrs to support more send pattern.
 class SendOp : public framework::OperatorBase {
  public:
   SendOp(const std::string& type, const framework::VariableNameMap& inputs,
@@ -39,14 +38,14 @@ class SendOp : public framework::OperatorBase {
     auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
 
-    int64_t send_timeout = 180 * 1000;
-    int64_t get_timeout = 1800 * 1000;
+    // FIXME(gongwb): DeviceContext?
+    auto ctx = platform::CPUDeviceContext();
     for (size_t i = 0; i < ins.size(); i++) {
-      client_.AsyncSendVariable(epmap[i], &scope, ins[i], send_timeout);
+      client_.AsyncSendVariable(epmap[i], ctx, &scope, ins[i]);
     }
 
     for (size_t i = 0; i < outs.size(); i++) {
-      client_.AsyncGetVariable(epmap[i], &scope, outs[i], get_timeout);
+      client_.AsyncGetVariable(epmap[i], ctx, &scope, outs[i]);
     }
 
     client_.wait();

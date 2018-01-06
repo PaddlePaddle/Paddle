@@ -39,9 +39,13 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
+// TODO(gongwb): add device support.
 struct VarHandle {
   std::string ep;
+  const platform::DeviceContext* ctx;
+  const framework::Scope* scope;
   std::string name;
+
   std::string String() const {
     std::ostringstream s;
     s << "name:[" << name << "] ep:[" << ep << "]";
@@ -49,237 +53,87 @@ struct VarHandle {
   }
 };
 
-struct SendStatus {
-  std::string error;
-  VarHandle var;
+void SerializeToMessage(const std::string& name, const framework::Variable* var,
+                        const platform::DeviceContext& ctx,
+                        sendrecv::VariableMessage* msg);
 
-  std::string String() const {
-    std::ostringstream s;
+void DeserializeFromMessage(const sendrecv::VariableMessage& msg,
+                            const platform::DeviceContext& ctx,
+                            framework::Variable* var);
 
-    s << var.String();
+void ProcSendResponse(const VarHandle&, const sendrecv::VoidMessage& msg);
 
-    if (error != "") {
-      s << " error_info:[" << error << "]";
-    }
+void ProcGetResponse(const VarHandle& var_h,
+                     const sendrecv::VariableMessage& msg);
 
-    return s.str();
+template <typename ResponseT>
+struct GRPCStubContext {
+  void init(std::shared_ptr<grpc::Channel> ch, const VarHandle& var_info,
+            std::function<void(const VarHandle&, const ResponseT&)> f,
+            int64_t time_out) {
+    stub = sendrecv::SendRecvService::NewStub(ch);
+    context.reset(new grpc::ClientContext());
+    status.reset(new grpc::Status());
+    reply.reset(new ResponseT());
+    var_h = var_info;
+
+    std::chrono::system_clock::time_point deadline =
+        std::chrono::system_clock::now() + std::chrono::milliseconds(time_out);
+
+    context->set_deadline(deadline);
+    response_call_back = f;
   }
+
+  std::unique_ptr<sendrecv::SendRecvService::Stub> stub;
+  std::unique_ptr<grpc::ClientContext> context;
+  std::unique_ptr<grpc::Status> status;
+  std::unique_ptr<ResponseT> reply;
+  VarHandle var_h;
+
+  std::function<void(const VarHandle&, const ResponseT&)> response_call_back;
 };
 
-class ClientProcessor {
- public:
-  ClientProcessor(grpc::CompletionQueue* cq, std::shared_ptr<grpc::Channel> ch,
-                  std::string ep) {
-    cq_ = cq;
-    ch_ = ch;
-    ep_ = ep;
-    stub_ = sendrecv::SendRecvService::NewStub(ch);
-    context_.reset(new grpc::ClientContext());
-    status_.reset(new grpc::Status());
-  }
-
-  virtual ~ClientProcessor() {}
-
-  virtual bool Call(const framework::Scope* scope, const std::string& name,
-                    int64_t time_out) = 0;
-
-  virtual bool ProcRet() { return true; }
-
-  virtual grpc::Status* GetStatus() { return status_.get(); }
-
-  virtual SendStatus GetSendStatus() { return send_status_; }
-
- protected:
-  typedef std::chrono::system_clock::time_point time_point;
-
-  grpc::CompletionQueue* cq_;
-  std::shared_ptr<grpc::Channel> ch_;
-  std::string ep_;
-  std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
-  std::unique_ptr<grpc::ClientContext> context_;
-  std::unique_ptr<grpc::Status> status_;
-  SendStatus send_status_;
+enum ActionType {
+  kActionSend = 0,
+  kActionGet,
 };
 
-class SendProcessor : public ClientProcessor {
- public:
-  SendProcessor(grpc::CompletionQueue* cq, std::shared_ptr<grpc::Channel> ch,
-                std::string ep)
-      : ClientProcessor(cq, ch, ep) {}
-
-  virtual ~SendProcessor() {}
-
-  virtual bool Call(const framework::Scope* scope, const std::string& name,
-                    int64_t time_out) {
-    // record send status
-    auto start = std::chrono::system_clock::now();
-    send_status_.var.ep = ep_;
-    send_status_.var.name = name;
-
-    const time_point deadline = start + std::chrono::milliseconds(time_out);
-    context_->set_deadline(deadline);
-
-    sendrecv::VariableMessage req;
-    Request(scope, name, &req);
-
-    reply_.reset(new sendrecv::VoidMessage());
-    auto rpc = stub_->AsyncSendVariable(context_.get(), req, cq_);
-    rpc->Finish(reply_.get(), status_.get(), (void*)this);
-
-    return true;
-  }
-
- private:
-  void Request(const framework::Scope* scope, const std::string name,
-               sendrecv::VariableMessage* msg) {
-    // FIXME(gongwb): pass device context to here.
-    auto ctx = platform::CPUDeviceContext();
-    auto* var = scope->FindVar(name);
-    PADDLE_ENFORCE(var);
-    // TODO(gongwb): support SelectedRows
-    PADDLE_ENFORCE(var->IsType<framework::LoDTensor>(),
-                   "Only support LoDTensor, %s has wrong type", name);
-
-    const framework::LoDTensor& tensor = var->Get<framework::LoDTensor>();
-    std::ostringstream oss;
-    framework::SerializeToStream(oss, tensor, ctx);
-    msg->set_varname(name);
-    msg->set_serialized(oss.str());
-  }
-
- protected:
-  std::unique_ptr<sendrecv::VoidMessage> reply_;
+struct RequestContext {
+  ActionType type;
+  void* ctx;
 };
 
-class GetProcessor : public ClientProcessor {
- public:
-  GetProcessor(grpc::CompletionQueue* cq, std::shared_ptr<grpc::Channel> ch,
-               std::string ep)
-      : ClientProcessor(cq, ch, ep) {
-    reply_.reset(new sendrecv::VoidMessage());
-  }
+typedef std::function<void(const VarHandle&, const sendrecv::VoidMessage&)>
+    RequestSendCallBack;
 
-  virtual ~GetProcessor() {}
-
-  virtual bool Call(const framework::Scope* scope, const std::string& name,
-                    int64_t time_out) {
-    return true;
-  }
-
-  virtual bool ProcRet() { return true; }
-
- protected:
-  std::unique_ptr<sendrecv::VoidMessage> reply_;
-};
+typedef std::function<void(const VarHandle&, const sendrecv::VariableMessage&)>
+    RequestGetCallBack;
 
 class RPCClient {
  public:
-  bool AsyncSendVariable(const std::string& ep, const framework::Scope* scope,
+  bool AsyncSendVariable(const std::string& ep,
+                         const platform::DeviceContext& ctx,
+                         const framework::Scope* scope,
                          const std::string& var_name,
-                         int64_t time_out = 600 * 1000) {
-    auto ch = GetChannel(ep);
+                         int64_t time_out = 600 * 1000);
 
-    auto c = std::shared_ptr<ClientProcessor>(new SendProcessor(&cq_, ch, ep));
-    clients_[c.get()] = c;
-
-    count_++;
-
-    return c->Call(scope, var_name, time_out);
-  }
-  bool AsyncGetVariable(const std::string& ep, const framework::Scope* scope,
+  bool AsyncGetVariable(const std::string& ep,
+                        const platform::DeviceContext& ctx,
+                        const framework::Scope* scope,
                         const std::string& var_name,
-                        int64_t time_out = 600 * 1000) {
-    auto ch = GetChannel(ep);
-
-    auto c = std::shared_ptr<ClientProcessor>(new GetProcessor(&cq_, ch, ep));
-    clients_[c.get()] = c;
-
-    count_++;
-
-    return c->Call(scope, var_name, time_out);
-  }
-
-  bool wait() {
-    bool ok = true;
-
-    while (true) {
-      if (count_ <= 0) {
-        break;
-      }
-
-      detail::SendStatus s;
-      if (!Proceed(s)) {
-        LOG(ERROR) << "Get meets CompletionQueue error";
-        return false;
-      }
-
-      // TODO(gongwb): add more retry?
-      if (s.error != "") {
-        ok = false;
-        LOG(ERROR) << "sync update variable error:" << s.String();
-        continue;
-      }
-      VLOG(3) << "sync update variable ok:" << s.String();
-    }
-
-    return ok;
-  }
-
-  bool Proceed(SendStatus& s) {
-    void* tag = NULL;
-    bool ok = false;
-
-    if (!cq_.Next(&tag, &ok)) {
-      return false;
-    }
-    count_--;
-    GPR_ASSERT(ok);
-    PADDLE_ENFORCE(tag);
-
-    ClientProcessor* cls = (ClientProcessor*)tag;
-    const grpc::Status& status = *cls->GetStatus();
-    s = cls->GetSendStatus();
-
-    if (status.ok()) {
-      cls->ProcRet();
-      clients_.erase(tag);
-      return true;
-    }
-
-    if (status.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
-      s.error = "rpc timed out";
-    } else {
-      std::ostringstream stringStream;
-      stringStream << "rpc failed because:" << status.error_code();
-      s.error = stringStream.str();
-    }
-
-    clients_.erase(tag);
-    return true;
-  }
+                        int64_t time_out = 600 * 1000);
+  bool wait();
 
  private:
-  std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep) {
-    auto it = channels_.find(ep);
-    if (it != channels_.end()) {
-      return it->second;
-    }
-
-    auto ch = std::shared_ptr<grpc::Channel>(
-        grpc::CreateChannel(ep, grpc::InsecureChannelCredentials()));
-
-    channels_[ep] = ch;
-    return ch;
-  }
+  bool Proceed();
+  int ProcTag(RequestContext* tag);
+  std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep);
 
  private:
   grpc::CompletionQueue cq_;
   std::map<std::string, std::shared_ptr<grpc::Channel>> channels_;
 
-  // even if user don't call proceed,
-  // the ClientProcessor will release automaticly
-  std::map<void*, std::shared_ptr<ClientProcessor>> clients_;
-
+  std::map<void*, std::shared_ptr<RequestContext>> req_contexts_;
   int64_t count_ = 0;
 };
 
