@@ -58,6 +58,7 @@ using Vector = thrust::host_vector<
 using LoD = std::vector<Vector<size_t>>;
 
 std::ostream& operator<<(std::ostream& os, const LoD& lod);
+std::ostream& operator<<(std::ostream& os, const LoDTensor& t);
 
 /*
  * Slice levels from a LoD.
@@ -143,6 +144,12 @@ class LoDTensor : public Tensor {
    * @note: low performance in slice lod_.
    */
   void ShrinkInLevel(size_t level, size_t elem_begin, size_t elem_end);
+
+  std::vector<LoDTensor> SplitLoDTensor(
+      const std::vector<platform::Place> places) const;
+
+  void MergeLoDTensor(const std::vector<const LoDTensor*>& lod_tensors,
+                      platform::Place place);
 
  private:
   LoD lod_;

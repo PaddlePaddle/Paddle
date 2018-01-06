@@ -205,6 +205,7 @@ def _append_backward_ops_(target,
         # Getting op's corresponding grad_op
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             op.desc, no_grad_dict[block.idx], grad_sub_block_list)
+
         grad_op_descs.extend(grad_op_desc)
         grad_to_var.update(op_grad_to_var)
 
