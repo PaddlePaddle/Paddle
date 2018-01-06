@@ -108,7 +108,10 @@ class OperatorBase {
     return boost::get<T>(attrs_.at(name));
   }
 
-  virtual std::string DebugString() const;
+  /// if scope is not null, also show dimensions of arguments
+  virtual std::string DebugStringEx(const Scope* scope) const;
+
+  std::string DebugString() const { return DebugStringEx(nullptr); }
 
   /// Net will call this function to Run an op.
   virtual void Run(const Scope& scope, const platform::Place& place) const = 0;
