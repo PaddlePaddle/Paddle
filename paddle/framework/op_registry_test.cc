@@ -284,7 +284,9 @@ class OpWithMultiKernelTest : public OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(proto::DataType::FP32, ctx.device_context());
+    return framework::OpKernelType(
+        proto::DataType::FP32, platform::CUDAPlace(0), DataLayout::kAnyLayout,
+        framework::LibraryType::kCUDNN);
   }
 };
 
