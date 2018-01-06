@@ -39,7 +39,6 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-// TODO(gongwb): add device support.
 struct VarHandle {
   std::string ep;
   const platform::DeviceContext* ctx;
