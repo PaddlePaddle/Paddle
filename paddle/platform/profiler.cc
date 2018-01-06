@@ -181,6 +181,7 @@ std::vector<std::vector<Event>> DisableProfiler() {
 
 void ParseEvents(std::vector<std::vector<Event>>& events,
                  EventSortingKey sorted_by) {
+  if (g_profiler_place == "") return;
   std::vector<std::vector<EventItem>> events_table;
   size_t max_name_width = 0;
   for (size_t i = 0; i < events.size(); i++) {
@@ -199,7 +200,7 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
         }
 
         if (rit != pushed_events.rend()) {
-          double event_time = (g_state == ProfilerState::kCUDA)
+          double event_time = (g_profiler_place == "CUDA")
                                   ? rit->CudaElapsedMs(events[i][j])
                                   : rit->CpuElapsedMs(events[i][j]);
           std::string event_name =
@@ -224,7 +225,7 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
                 std::max(event_time, event_items[index].max_time);
           }
 
-          // remove the start marker from the list
+          // remove the push marker from the list
           pushed_events.erase((++rit).base());
         } else {
           LOG(WARNING) << "Cannot find the push marker of event \'"
@@ -257,13 +258,11 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
     }
 
     events_table.push_back(event_items);
-    // To check whether there are events with `push` but without `pop`
+    // log warning if there are events with `push` but without `pop`
     std::list<Event>::reverse_iterator rit = pushed_events.rbegin();
     while (rit != pushed_events.rend()) {
-      if (rit->kind() == "push") {
-        LOG(WARNING) << "Cannot find the pop marker of event \'" << rit->name()
-                     << "\', which will be ignored in profiling report.";
-      }
+      LOG(WARNING) << "Cannot find the pop marker of event \'" << rit->name()
+                   << "\', which will be ignored in profiling report.";
       ++rit;
     }
   }
@@ -275,7 +274,6 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
 void PrintProfilingReport(std::vector<std::vector<EventItem>>& events_table,
                           EventSortingKey sorted_by, const size_t name_width,
                           const size_t data_width) {
-  if (g_profiler_place == "") return;
   // Output header information
   std::cout << "\n------------------------->"
             << "     Profiling Report     "
