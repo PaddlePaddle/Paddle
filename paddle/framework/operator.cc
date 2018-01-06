@@ -225,6 +225,10 @@ void OperatorBase::GenerateTemporaryNames() {
   }
 }
 
+static bool VarIsTensor(const Variable* var) {
+  return var->IsType<LoDTensor>() || var->IsType<SelectedRows>();
+}
+
 static const Tensor* GetTensorFromVar(const Variable* var) {
   const Tensor* t = nullptr;
   if (var->IsType<LoDTensor>()) {
@@ -458,7 +462,7 @@ void OperatorWithKernel::Run(const Scope& scope,
   for (auto& var_name_item : this->Inputs()) {
     for (auto& var_name : var_name_item.second) {
       auto* var = scope.FindVar(var_name);
-      if (var) {
+      if (var && VarIsTensor(var)) {
         auto* tensor_in = GetTensorFromVar(var);
         if (tensor_in->IsInitialized()) {
           auto kernel_type_for_var = this->GetKernelTypeForVar(
