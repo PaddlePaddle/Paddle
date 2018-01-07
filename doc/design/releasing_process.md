@@ -29,7 +29,7 @@ PaddlePaddle每次发新的版本，遵循以下流程:
 * `release/版本号`分支一旦建立，一般不允许再从`develop`分支合入`release/版本号`。这样保证`release/版本号`分支功能的封闭，方便测试人员测试PaddlePaddle的行为。
 * 在`release/版本号`分支存在的时候，如果有bugfix的行为，需要将bugfix的分支同时merge到`master`, `develop`和`release/版本号`这三个分支。
 
-## 发布whl包到pypi
+## 发布wheel包到pypi
 
 使用[PaddlePaddle CI](https://paddleci.ngrok.io/project.html?projectId=Manylinux1&tab=projectOverview)
 完成自动化二进制编译，参考下图，选择需要发布的版本（通常包含一个CPU版本和一个GPU版本），点击"run"右侧的"..."按钮，可以
@@ -41,14 +41,14 @@ PaddlePaddle每次发新的版本，遵循以下流程:
 
 * 注：CI环境使用 https://github.com/PaddlePaddle/buildtools 这里的DockerImage作为编译环境以支持更多的Linux
   发型版，如果需要手动编译，也可以使用这些镜像。这些镜像也可以从 https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/ 下载得到。
-* pypi不支持覆盖上传，所以一个版本号的whl包发布之后，不可以更改。下一个whl包需要更新版本号才可以上传。
+* pypi不支持覆盖上传，所以一个版本号的wheel包发布之后，不可以更改。下一个wheel包需要更新版本号才可以上传。
 
 ## 发布Docker镜像
 
-上述PaddlePaddle CI编译whl完成后会自动将Docker镜像push到DockerHub，所以，发布Docker镜像只需要对自动push的镜像打上
+上述PaddlePaddle CI编译wheel完成后会自动将Docker镜像push到DockerHub，所以，发布Docker镜像只需要对自动push的镜像打上
 版本号对应的tag即可：
 
-1. 进入 https://hub.docker.com/r/paddlepaddle/paddle/tags/ 查看latest tag的更新时间是否在上述编译whl包完成后是否最新。
+1. 进入 https://hub.docker.com/r/paddlepaddle/paddle/tags/ 查看latest tag的更新时间是否在上述编译wheel包完成后是否最新。
 1. 执行 `docker pull paddlepaddle/paddle:[latest tag]`，latest tag可以是latest或latest-gpu等。
 1. 执行 `docker tag paddlepaddle/paddle:[latest tag] paddlepaddle/paddle:[version]`
 1. 执行 `docker push paddlepaddle/paddle:[version]`
