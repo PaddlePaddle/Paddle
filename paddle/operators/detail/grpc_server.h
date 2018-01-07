@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/data_type.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/selected_rows.h"
+#include "paddle/framework/var_type.h"
 #include "paddle/operators/detail/simple_block_queue.h"
 
 #include "paddle/operators/detail/send_recv.grpc.pb.h"
@@ -44,7 +44,7 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-typedef std::pair<std::string, framework::LoDTensor> TensorWithName;
+typedef std::pair<std::string, sendrecv::VariableMessage> MessageWithName;
 
 class AsyncGRPCServer final : public SendRecvService::Service {
  public:
@@ -58,16 +58,16 @@ class AsyncGRPCServer final : public SendRecvService::Service {
 
   void SetScope(framework::Scope *scope) { scope_ = scope; }
 
-  const TensorWithName Get() { return this->var_recv_queue_.Pop(); }
+  const MessageWithName Get() { return this->var_recv_queue_.Pop(); }
 
-  void Push(const TensorWithName &msg) { this->var_recv_queue_.Push(msg); }
+  void Push(const MessageWithName &msg) { this->var_recv_queue_.Push(msg); }
 
   void ShutDown();
 
  protected:
-  void _Wait();
-  void _HandleReqSend();
-  void _HandleReqGet(bool wait);
+  void Wait();
+  void HandleReqSend();
+  void HandleReqGet(bool wait);
 
  private:
   std::unique_ptr<ServerCompletionQueue> cq_send_;
@@ -78,7 +78,7 @@ class AsyncGRPCServer final : public SendRecvService::Service {
   std::string address_;
   framework::Scope *scope_;
   // received variable from RPC, operators fetch variable from this queue.
-  SimpleBlockQueue<TensorWithName> var_recv_queue_;
+  SimpleBlockQueue<MessageWithName> var_recv_queue_;
 
   // condition of the sub program
   std::mutex mutex_;

@@ -88,8 +88,9 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
         auto slice = out[i].Slice(static_cast<int>(offset),
                                   static_cast<int>(offset + len));
 
-        platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-        auto &dev_ctx = *pool.Borrow(place);
+        platform::DeviceContextPool &pool =
+            platform::DeviceContextPool::Instance();
+        auto &dev_ctx = *pool.Get(place);
 
         framework::CopyFrom(x.Slice(static_cast<int>(each_range.begin),
                                     static_cast<int>(each_range.end)),

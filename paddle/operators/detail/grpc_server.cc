@@ -86,9 +86,6 @@ class RequestGet final : public RequestBase {
       new RequestGet(service_, cq_);
 
       // The actual processing.
-      // std::string prefix("Hello ");
-      // reply_.set_message(prefix + request_.name());
-
       status_ = FINISH;
       responder_.Finish(reply_, Status::OK, this);
     } else {
@@ -119,9 +116,9 @@ void AsyncGRPCServer::RunSyncUpdate() {
   // std::cout << "Server listening on " << server_address << std::endl;
 
   t_send_.reset(
-      new std::thread(std::bind(&AsyncGRPCServer::_HandleReqSend, this)));
+      new std::thread(std::bind(&AsyncGRPCServer::HandleReqSend, this)));
   t_get_.reset(
-      new std::thread(std::bind(&AsyncGRPCServer::_HandleReqGet, this, true)));
+      new std::thread(std::bind(&AsyncGRPCServer::HandleReqGet, this, true)));
 
   // wait server
   server_->Wait();
@@ -137,7 +134,7 @@ void AsyncGRPCServer::ShutDown() {
   server_->Shutdown();
 }
 
-void AsyncGRPCServer::_HandleReqSend() {
+void AsyncGRPCServer::HandleReqSend() {
   std::unique_ptr<RequestSend> req_send(
       new RequestSend(&service_, cq_send_.get()));
   void* tag = NULL;
@@ -153,7 +150,7 @@ void AsyncGRPCServer::_HandleReqSend() {
   }
 }
 
-void AsyncGRPCServer::_HandleReqGet(bool wait) {
+void AsyncGRPCServer::HandleReqGet(bool wait) {
   std::unique_ptr<RequestGet> req_get(new RequestGet(&service_, cq_get_.get()));
   void* tag = NULL;
   bool ok = false;
@@ -166,13 +163,13 @@ void AsyncGRPCServer::_HandleReqGet(bool wait) {
     }
 
     if (wait && !done_) {
-      _Wait();
+      Wait();
     }
     static_cast<RequestBase*>(tag)->Proceed();
   }
 }
 
-void AsyncGRPCServer::_Wait() {
+void AsyncGRPCServer::Wait() {
   std::unique_lock<std::mutex> lock(this->mutex_);
   condition_.wait(lock, [=] { return this->done_ == true; });
 }

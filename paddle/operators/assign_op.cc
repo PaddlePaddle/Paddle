@@ -82,8 +82,8 @@ class AssignOp : public framework::OperatorBase {
         out != nullptr,
         "The Output(Out) should not be null if the Input(X) is set.");
 
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-    auto &dev_ctx = *pool.Borrow(place);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place);
 
     framework::VisitVarType(*x, AssignFunctor(out, dev_ctx));
   }

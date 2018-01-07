@@ -1,10 +1,29 @@
 import numpy as np
+import contextlib
+from framework import Program, default_main_program
 from . import core
-from framework import Program, default_main_program, Parameter, Variable
 
-__all__ = ['Executor', 'g_scope']
+__all__ = ['Executor', 'global_scope', 'scope_guard', 'switch_scope']
 
 g_scope = core.Scope()
+
+
+def global_scope():
+    return g_scope
+
+
+def switch_scope(scope):
+    global g_scope
+    ex = g_scope
+    g_scope = scope
+    return ex
+
+
+@contextlib.contextmanager
+def scope_guard(scope):
+    ex = switch_scope(scope)
+    yield
+    switch_scope(ex)
 
 
 def as_numpy(tensor):
@@ -45,13 +64,6 @@ class Executor(object):
             p = core.Place()
             p.set_place(each)
             act_places.append(p)
-
-        # TODO(dzhwinter) : consider that our fluid tests all written in 
-        # CUDAPlace(gpu_id), this will be changed in the future
-        if core.is_compile_gpu():
-            core.init_devices(["CPU", "GPU:0"])
-        else:
-            core.init_devices(["CPU"])
 
         # TODO(dzhwinter) : only use the first place
         self.executor = core.Executor(act_places[0])
@@ -117,7 +129,7 @@ class Executor(object):
             raise TypeError()
 
         if scope is None:
-            scope = g_scope
+            scope = global_scope()
 
         program = program.clone()
         global_block = program.global_block()

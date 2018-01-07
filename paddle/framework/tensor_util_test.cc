@@ -13,6 +13,7 @@
 
 #include "paddle/framework/tensor_util.h"
 #include <gtest/gtest.h>
+#include <cmath>
 #include <string>
 
 namespace paddle {
@@ -226,6 +227,79 @@ TEST(CopyToVector, Tensor) {
     for (int i = 0; i < 3 * 3; ++i) {
       EXPECT_EQ(src_vec[i], dst[i]);
     }
+  }
+#endif
+}
+
+TEST(HasNAN, CPU) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+  Tensor src;
+  float* buf = src.mutable_data<float>({3}, CPUPlace());
+  buf[0] = 0.0;
+  buf[1] = NAN;
+  buf[2] = 0.0;
+
+  ASSERT_TRUE(HasNAN(src));
+}
+
+TEST(HasInf, CPU) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+  Tensor src;
+  double* buf = src.mutable_data<double>({3}, CPUPlace());
+  buf[0] = 1.0;
+  buf[1] = INFINITY;
+  buf[2] = 0.0;
+  ASSERT_TRUE(HasInf(src));
+}
+
+TEST(Tensor, SerializeAndDeserialize) {
+  framework::Tensor src_tensor;
+  int array[6] = {1, 2, 3, 4, 5, 6};
+  src_tensor.Resize({2, 3});
+  int* src_ptr = src_tensor.mutable_data<int>(platform::CPUPlace());
+  for (int i = 0; i < 6; ++i) {
+    src_ptr[i] = array[i];
+  }
+  {
+    framework::Tensor dst_tensor;
+    auto place = new platform::CPUPlace();
+    platform::CPUDeviceContext cpu_ctx(*place);
+    std::ostringstream oss;
+    SerializeToStream(oss, src_tensor, cpu_ctx);
+
+    std::istringstream iss(oss.str());
+    DeserializeFromStream(iss, &dst_tensor, cpu_ctx);
+    int* dst_ptr = dst_tensor.mutable_data<int>(platform::CPUPlace());
+    for (int i = 0; i < 5; ++i) {
+      ASSERT_EQ(dst_ptr[i], array[i]);
+    }
+    ASSERT_EQ(dst_tensor.dims(), src_tensor.dims());
+    delete place;
+  }
+#ifdef PADDLE_WITH_CUDA
+  {
+    Tensor gpu_tensor;
+    gpu_tensor.Resize({2, 3});
+    Tensor dst_tensor;
+
+    auto gpu_place = new platform::CUDAPlace();
+    platform::CUDADeviceContext gpu_ctx(*gpu_place);
+
+    CopyFrom(src_tensor, *gpu_place, gpu_ctx, &gpu_tensor);
+
+    std::ostringstream oss;
+    SerializeToStream(oss, gpu_tensor, gpu_ctx);
+
+    std::istringstream iss(oss.str());
+    DeserializeFromStream(iss, &dst_tensor, gpu_ctx);
+
+    int* dst_ptr = dst_tensor.mutable_data<int>(platform::CPUPlace());
+    for (int i = 0; i < 6; ++i) {
+      ASSERT_EQ(dst_ptr[i], array[i]);
+    }
+    delete gpu_place;
   }
 #endif
 }

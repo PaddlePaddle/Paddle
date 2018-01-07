@@ -144,14 +144,6 @@ std::shared_ptr<grpc::Channel> RPCClient::GetChannel(const std::string& ep) {
   return ch;
 }
 
-void SerializeToMessage(const std::string& name, const framework::Variable* var,
-                        const platform::DeviceContext& ctx,
-                        sendrecv::VariableMessage* msg) {}
-
-void DeserializeFromMessage(const sendrecv::VariableMessage& msg,
-                            const platform::DeviceContext& ctx,
-                            framework::Variable* var) {}
-
 }  // namespace detail
 }  // namespace operators
 }  // namespace paddle

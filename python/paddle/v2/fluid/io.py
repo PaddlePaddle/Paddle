@@ -36,7 +36,7 @@ def save_vars(executor, dirname, main_program=None, vars=None, predicate=None):
     :param executor: executor that save variable
     :param dirname: directory path
     :param main_program: program. If vars is None, then filter all variables in this
-    program which fit `predicate`. Default g_program.
+    program which fit `predicate`. Default default_main_program.
     :param predicate: The Predicate describes a callable that returns a variable
     as a bool. If it returns true, the variables will be saved.
     :param vars: variables need to be saved. If specify vars, program & predicate
@@ -188,7 +188,7 @@ def save_inference_model(dirname,
             raise ValueError("'feed_var_names' should be a list of str.")
 
     if isinstance(target_vars, Variable):
-        feeded_var_names = [feeded_var_names]
+        target_vars = [target_vars]
     else:
         if not (bool(target_vars) and all(
                 isinstance(var, Variable) for var in target_vars)):

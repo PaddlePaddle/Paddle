@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <grpc++/grpc++.h>
+#include <grpc/support/log.h>
 #include <time.h>
 #include <chrono>
 #include <ctime>
@@ -28,12 +30,7 @@ limitations under the License. */
 #include "paddle/framework/scope.h"
 #include "paddle/framework/selected_rows.h"
 #include "paddle/operators/detail/simple_block_queue.h"
-
-#include "paddle/operators/detail/send_recv.grpc.pb.h"
-#include "paddle/operators/detail/send_recv.pb.h"
-
-#include <grpc++/grpc++.h>
-#include <grpc/support/log.h>
+#include "paddle/operators/detail/utils.h"
 
 namespace paddle {
 namespace operators {
@@ -51,14 +48,6 @@ struct VarHandle {
     return s.str();
   }
 };
-
-void SerializeToMessage(const std::string& name, const framework::Variable* var,
-                        const platform::DeviceContext& ctx,
-                        sendrecv::VariableMessage* msg);
-
-void DeserializeFromMessage(const sendrecv::VariableMessage& msg,
-                            const platform::DeviceContext& ctx,
-                            framework::Variable* var);
 
 void ProcSendResponse(const VarHandle&, const sendrecv::VoidMessage& msg);
 

@@ -17,7 +17,7 @@ namespace platform {
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
-const platform::DeviceContext* DeviceContextPool::Borrow(
+const platform::DeviceContext* DeviceContextPool::Get(
     const platform::Place& place) {
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
@@ -26,24 +26,6 @@ const platform::DeviceContext* DeviceContextPool::Borrow(
         "option");
   }
   return it->second;
-}
-
-std::vector<const platform::DeviceContext*> DeviceContextPool::Borrow(
-    const std::vector<platform::Place>& places) {
-  PADDLE_ENFORCE_GT(places.size(), 0);
-  PADDLE_ENFORCE_LE(places.size(), device_contexts_.size());
-  std::vector<const platform::DeviceContext*> borrowed_contexts;
-  for (auto& place : places) {
-    auto it = device_contexts_.find(place);
-    if (it != device_contexts_.end()) {
-      borrowed_contexts.emplace_back(it->second);
-    } else {
-      PADDLE_THROW(
-          "'Place' is not supported, Please re-compile with WITH_GPU "
-          "option");
-    }
-  }
-  return borrowed_contexts;
 }
 
 DeviceContextPool::DeviceContextPool(
@@ -145,15 +127,21 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
   PADDLE_ENFORCE(dynload::cublasCreate(&cublas_handle_));
   PADDLE_ENFORCE(dynload::cublasSetStream(cublas_handle_, stream_));
-  PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
-  PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream_));
+  if (dynload::HasCUDNN()) {
+    PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
+    PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream_));
+  } else {
+    cudnn_handle_ = nullptr;
+  }
 }
 
 CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
   Wait();
   PADDLE_ENFORCE(dynload::cublasDestroy(cublas_handle_));
-  PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
+  if (cudnn_handle_ != nullptr) {
+    PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
+  }
   eigen_stream_.reset();
   eigen_device_.reset();
   PADDLE_ENFORCE(cudaStreamDestroy(stream_));
@@ -178,19 +166,69 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
-CUDNNDeviceContext::CUDNNDeviceContext(CUDAPlace place)
-    : CUDADeviceContext(place) {
-  PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
-  PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream()));
+#endif
+
+#ifdef PADDLE_WITH_MKLDNN
+MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
+    : CPUDeviceContext(place), ready_(false) {
+  stream_.reset(new mkldnn::stream(mkldnn::stream::kind::eager));
+  engine_.reset(new mkldnn::engine(mkldnn::engine::cpu, 0));
 }
 
-CUDNNDeviceContext::~CUDNNDeviceContext() {
-  SetDeviceId(boost::get<CUDAPlace>(GetPlace()).device);
-  Wait();
-  PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
+template <typename T>
+void MKLDNNDeviceContext::AddElement(const std::string& op_key,
+                                     const T& value) {
+  if (GetElement<T>(op_key)) {
+    return;
+  }
+  GetElementPool<T>().emplace(op_key, std::move(value));
 }
 
-cudnnHandle_t CUDNNDeviceContext::cudnn_handle() const { return cudnn_handle_; }
+template <typename T>
+const T& MKLDNNDeviceContext::GetElement(const std::string& op_key) const {
+  auto it = GetElementPool<T>().find(op_key);
+  return it == GetElementPool<T>().end() ? nullptr : it->second;
+}
+
+template <>
+const std::unordered_map<const std::string, const MKLDNNMemoryPtr,
+                         std::hash<std::string>>&
+MKLDNNDeviceContext::GetElementPool<MKLDNNMemoryPtr>() const {
+  return memory_pool_;
+}
+
+template <>
+const std::unordered_map<const std::string, const MKLDNNPrimitivePtr,
+                         std::hash<std::string>>&
+MKLDNNDeviceContext::GetElementPool<MKLDNNPrimitivePtr>() const {
+  return primitive_pool_;
+}
+
+template <>
+const std::unordered_map<const std::string, const MKLDNNPrimitiveDescPtr,
+                         std::hash<std::string>>&
+MKLDNNDeviceContext::GetElementPool<MKLDNNPrimitiveDescPtr>() const {
+  return primitive_desc_pool_;
+}
+
+void MKLDNNDeviceContext::Execute(bool block) {
+  if (pipeline_.empty()) {
+    return;
+  }
+  ResetStream();
+  stream_->submit(pipeline_).wait(block);
+  ready_ = false;
+  pipeline_.clear();
+}
+
+void MKLDNNDeviceContext::ResetStream() {
+  if (ready_) {
+    return;
+  }
+  // TODO(TJ): change me when mkldnn have specific method to reset this state
+  stream_.reset(new mkldnn::stream(mkldnn::stream::kind::eager));
+  ready_ = true;
+}
 
 #endif
 
