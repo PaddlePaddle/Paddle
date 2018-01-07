@@ -87,9 +87,6 @@ class AsyncGRPCServer final : public SendRecvService::Service {
 
   std::unique_ptr<std::thread> t_send_;
   std::unique_ptr<std::thread> t_get_;
-
-  friend class RequestSend;
-  friend class RequestGet;
 };
 
 };  // namespace detail
