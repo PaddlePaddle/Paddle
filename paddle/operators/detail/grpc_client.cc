@@ -36,18 +36,16 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
   // stub context
   auto ch = GetChannel(ep);
   GRPCStubContext<sendrecv::VoidMessage>* c =
-      new GRPCStubContext<sendrecv::VoidMessage>();
-  c->init(ch, var_h, ProcSendResponse, time_out);
+      new GRPCStubContext<sendrecv::VoidMessage>(ch);
+  c->init(var_h, ProcSendResponse, time_out);
 
   // request context
   RequestContext* req_ctx = new RequestContext(kActionSend, c);
 
   req_contexts_[(void*)&req_ctx] = std::shared_ptr<RequestContext>(req_ctx);
 
-  c->rpc = c->stub->AsyncSendVariable(c->context.get(), req, &cq_);
-  c->rpc->Finish(c->reply.get(), &c->status, (void*)req_ctx);
-  // int64_t a = 1;
-  // c->rpc->Finish(c->reply.get(), &c->status, (void*)a);
+  auto rpc = c->stub->AsyncSendVariable(c->context.get(), req, &cq_);
+  rpc->Finish(c->reply.get(), &req_ctx->status, (void*)req_ctx);
 
   count_++;
 
@@ -87,29 +85,14 @@ bool RPCClient::wait() {
 int RPCClient::ProcSendTag(RequestContext* req_context) {
   GRPCStubContext<sendrecv::VoidMessage>* c =
       (GRPCStubContext<sendrecv::VoidMessage>*)(req_context->ctx);
-  if (!c->status.ok()) {
-    RequestContext::destroy(req_context);
-    req_contexts_.erase(req_context);
-    return -1;
-  }
 
   c->response_call_back(c->var_h, *c->reply.get());
-  RequestContext::destroy(req_context);
-  req_contexts_.erase(req_context);
   return 0;
 }
 
 int RPCClient::ProcGetTag(RequestContext* req_context) {
   auto c = (GRPCStubContext<sendrecv::VariableMessage>*)(req_context->ctx);
-  if (!c->status.ok()) {
-    RequestContext::destroy(req_context);
-    req_contexts_.erase(req_context);
-    return -1;
-  }
-
   c->response_call_back(c->var_h, *c->reply.get());
-  RequestContext::destroy(req_context);
-  req_contexts_.erase(req_context);
   return 0;
 }
 
@@ -128,6 +111,12 @@ bool RPCClient::Proceed() {
 
   // TODO(gongwb): add more retries.
   RequestContext* req_context = (RequestContext*)tag;
+  if (!req_context->status.ok()) {
+    RequestContext::destroy(req_context);
+    req_contexts_.erase(req_context);
+    return true;
+  }
+
   switch (req_context->type) {
     case kActionSend: {
       ProcSendTag(req_context);
@@ -140,6 +129,8 @@ bool RPCClient::Proceed() {
     default: { assert(false); }
   }
 
+  RequestContext::destroy(req_context);
+  req_contexts_.erase(req_context);
   return true;
 }
 

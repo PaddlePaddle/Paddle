@@ -56,17 +56,15 @@ void ProcGetResponse(const VarHandle& var_h,
 
 template <typename ResponseT>
 struct GRPCStubContext {
-  GRPCStubContext() {
-    stub = NULL;
+  explicit GRPCStubContext(std::shared_ptr<grpc::Channel> ch) {
+    stub = sendrecv::SendRecvService::NewStub(ch);
     context = NULL;
     reply = NULL;
-    rpc = NULL;
   }
 
-  void init(std::shared_ptr<grpc::Channel> ch, const VarHandle& var_info,
+  void init(const VarHandle& var_info,
             std::function<void(const VarHandle&, const ResponseT&)> f,
             int64_t time_out) {
-    stub = sendrecv::SendRecvService::NewStub(ch);
     context.reset(new grpc::ClientContext());
     reply.reset(new ResponseT());
     var_h = var_info;
@@ -80,9 +78,7 @@ struct GRPCStubContext {
 
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub;
   std::unique_ptr<grpc::ClientContext> context;
-  grpc::Status status;
   std::unique_ptr<ResponseT> reply;
-  std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseT>> rpc;
   VarHandle var_h;
 
   std::function<void(const VarHandle&, const ResponseT&)> response_call_back;
@@ -96,6 +92,7 @@ enum ActionType {
 
 struct RequestContext {
   ActionType type;
+  grpc::Status status;
   void* ctx;
 
   explicit RequestContext(ActionType action_type, void* init_ctx) {
@@ -103,6 +100,7 @@ struct RequestContext {
     ctx = init_ctx;
   }
 
+  // TODO(gongwb): avoid cast?
   static void destroy(RequestContext* req_context) {
     switch (req_context->type) {
       case kActionSend: {
