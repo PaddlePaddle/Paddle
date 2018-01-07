@@ -35,18 +35,19 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
 
   // stub context
   auto ch = GetChannel(ep);
-  GRPCStubContext<sendrecv::VoidMessage> c;
-  c.init(ch, var_h, ProcSendResponse, time_out);
+  GRPCStubContext<sendrecv::VoidMessage>* c =
+      new GRPCStubContext<sendrecv::VoidMessage>();
+  c->init(ch, var_h, ProcSendResponse, time_out);
 
   // request context
-  RequestContext req_ctx;
-  req_ctx.ctx = &c;
-  req_ctx.type = kActionSend;
+  RequestContext* req_ctx = new RequestContext(kActionSend, c);
 
-  req_contexts_[(void*)&req_ctx] = std::shared_ptr<RequestContext>(&req_ctx);
+  req_contexts_[(void*)&req_ctx] = std::shared_ptr<RequestContext>(req_ctx);
 
-  auto rpc = c.stub->AsyncSendVariable(c.context.get(), req, &cq_);
-  rpc->Finish(c.reply.get(), c.status.get(), (void*)&req_ctx);
+  c->rpc = c->stub->AsyncSendVariable(c->context.get(), req, &cq_);
+  c->rpc->Finish(c->reply.get(), &c->status, (void*)req_ctx);
+  // int64_t a = 1;
+  // c->rpc->Finish(c->reply.get(), &c->status, (void*)a);
 
   count_++;
 
@@ -83,27 +84,32 @@ bool RPCClient::wait() {
   return ok;
 }
 
-int RPCClient::ProcTag(RequestContext* req_context) {
-  switch (req_context->type) {
-    case kActionSend: {
-      auto c = (GRPCStubContext<sendrecv::VoidMessage>*)(req_context->ctx);
-      if (!c->status->ok()) {
-        return -1;
-      }
-      c->response_call_back(c->var_h, *c->reply.get());
-      break;
-    }
-    case kActionGet: {
-      auto c = (GRPCStubContext<sendrecv::VariableMessage>*)(req_context->ctx);
-      if (!c->status->ok()) {
-        return -1;
-      }
-      c->response_call_back(c->var_h, *c->reply.get());
-      break;
-    }
-    default: { assert(false); }
+int RPCClient::ProcSendTag(RequestContext* req_context) {
+  GRPCStubContext<sendrecv::VoidMessage>* c =
+      (GRPCStubContext<sendrecv::VoidMessage>*)(req_context->ctx);
+  if (!c->status.ok()) {
+    RequestContext::destroy(req_context);
+    req_contexts_.erase(req_context);
+    return -1;
   }
 
+  c->response_call_back(c->var_h, *c->reply.get());
+  RequestContext::destroy(req_context);
+  req_contexts_.erase(req_context);
+  return 0;
+}
+
+int RPCClient::ProcGetTag(RequestContext* req_context) {
+  auto c = (GRPCStubContext<sendrecv::VariableMessage>*)(req_context->ctx);
+  if (!c->status.ok()) {
+    RequestContext::destroy(req_context);
+    req_contexts_.erase(req_context);
+    return -1;
+  }
+
+  c->response_call_back(c->var_h, *c->reply.get());
+  RequestContext::destroy(req_context);
+  req_contexts_.erase(req_context);
   return 0;
 }
 
@@ -120,14 +126,20 @@ bool RPCClient::Proceed() {
   GPR_ASSERT(ok);
   PADDLE_ENFORCE(tag);
 
-  RequestContext* req_context = (RequestContext*)tag;
   // TODO(gongwb): add more retries.
-  if (ProcTag(req_context)) {
-    req_contexts_.erase(tag);
-    return false;
+  RequestContext* req_context = (RequestContext*)tag;
+  switch (req_context->type) {
+    case kActionSend: {
+      ProcSendTag(req_context);
+      break;
+    }
+    case kActionGet: {
+      ProcGetTag(req_context);
+      break;
+    }
+    default: { assert(false); }
   }
 
-  req_contexts_.erase(tag);
   return true;
 }
 

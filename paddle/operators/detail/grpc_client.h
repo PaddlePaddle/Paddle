@@ -56,12 +56,18 @@ void ProcGetResponse(const VarHandle& var_h,
 
 template <typename ResponseT>
 struct GRPCStubContext {
+  GRPCStubContext() {
+    stub = NULL;
+    context = NULL;
+    reply = NULL;
+    rpc = NULL;
+  }
+
   void init(std::shared_ptr<grpc::Channel> ch, const VarHandle& var_info,
             std::function<void(const VarHandle&, const ResponseT&)> f,
             int64_t time_out) {
     stub = sendrecv::SendRecvService::NewStub(ch);
     context.reset(new grpc::ClientContext());
-    status.reset(new grpc::Status());
     reply.reset(new ResponseT());
     var_h = var_info;
 
@@ -74,21 +80,47 @@ struct GRPCStubContext {
 
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub;
   std::unique_ptr<grpc::ClientContext> context;
-  std::unique_ptr<grpc::Status> status;
+  grpc::Status status;
   std::unique_ptr<ResponseT> reply;
+  std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseT>> rpc;
   VarHandle var_h;
 
   std::function<void(const VarHandle&, const ResponseT&)> response_call_back;
 };
 
 enum ActionType {
-  kActionSend = 0,
+  kActionUnkown = 0,
+  kActionSend,
   kActionGet,
 };
 
 struct RequestContext {
   ActionType type;
   void* ctx;
+
+  explicit RequestContext(ActionType action_type, void* init_ctx) {
+    type = action_type;
+    ctx = init_ctx;
+  }
+
+  static void destroy(RequestContext* req_context) {
+    switch (req_context->type) {
+      case kActionSend: {
+        delete (GRPCStubContext<sendrecv::VoidMessage>*)req_context->ctx;
+        break;
+      }
+      case kActionGet: {
+        delete (GRPCStubContext<sendrecv::VariableMessage>*)req_context->ctx;
+        break;
+      }
+      case kActionUnkown: {
+        break;
+      }
+      default: { assert(false); }
+    }
+    req_context->ctx = NULL;
+    req_context->type = kActionUnkown;
+  }
 };
 
 typedef std::function<void(const VarHandle&, const sendrecv::VoidMessage&)>
@@ -114,7 +146,8 @@ class RPCClient {
 
  private:
   bool Proceed();
-  int ProcTag(RequestContext* tag);
+  int ProcGetTag(RequestContext* req_context);
+  int ProcSendTag(RequestContext* req_context);
   std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep);
 
  private:
