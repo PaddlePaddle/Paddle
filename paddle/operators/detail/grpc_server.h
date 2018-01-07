@@ -27,26 +27,13 @@ limitations under the License. */
 #include <grpc/support/log.h>
 #include <thread>
 
-using grpc::Channel;
-using grpc::Server;
-using grpc::ServerContext;
-using grpc::ServerReader;
-using grpc::ServerBuilder;
-using grpc::ServerCompletionQueue;
-using grpc::ClientContext;
-using grpc::ClientReader;
-using grpc::ClientReaderWriter;
-using grpc::ClientWriter;
-using grpc::Status;
-using sendrecv::SendRecvService;
-
 namespace paddle {
 namespace operators {
 namespace detail {
 
 typedef std::pair<std::string, sendrecv::VariableMessage> MessageWithName;
 
-class AsyncGRPCServer final : public SendRecvService::Service {
+class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
  public:
   explicit AsyncGRPCServer(std::string address) { address_ = address; }
 
@@ -70,10 +57,10 @@ class AsyncGRPCServer final : public SendRecvService::Service {
   void HandleReqGet(bool wait);
 
  private:
-  std::unique_ptr<ServerCompletionQueue> cq_send_;
-  std::unique_ptr<ServerCompletionQueue> cq_get_;
-  SendRecvService::AsyncService service_;
-  std::unique_ptr<Server> server_;
+  std::unique_ptr<grpc::ServerCompletionQueue> cq_send_;
+  std::unique_ptr<grpc::ServerCompletionQueue> cq_get_;
+  sendrecv::SendRecvService::AsyncService service_;
+  std::unique_ptr<grpc::Server> server_;
 
   std::string address_;
   framework::Scope *scope_;

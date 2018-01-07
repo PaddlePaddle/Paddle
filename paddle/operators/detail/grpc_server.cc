@@ -27,8 +27,8 @@ enum CallStatus { CREATE, PROCESS, FINISH };
 // https://stackoverflow.com/questions/41732884/grpc-multiple-services-in-cpp-async-server
 class RequestBase {
  public:
-  explicit RequestBase(SendRecvService::AsyncService* service,
-                       ServerCompletionQueue* cq)
+  explicit RequestBase(sendrecv::SendRecvService::AsyncService* service,
+                       grpc::ServerCompletionQueue* cq)
       : service_(service), cq_(cq) {}
   virtual ~RequestBase() {}
   virtual void Proceed() = 0;
@@ -36,9 +36,9 @@ class RequestBase {
   CallStatus Status() { return status_; }
 
  protected:
-  ServerContext ctx_;
-  SendRecvService::AsyncService* service_;
-  ServerCompletionQueue* cq_;
+  grpc::ServerContext ctx_;
+  sendrecv::SendRecvService::AsyncService* service_;
+  grpc::ServerCompletionQueue* cq_;
   CallStatus status_;
 };
 
@@ -46,8 +46,8 @@ typedef std::pair<std::string, sendrecv::VariableMessage> MessageWithName;
 
 class RequestSend final : public RequestBase {
  public:
-  explicit RequestSend(SendRecvService::AsyncService* service,
-                       ServerCompletionQueue* cq,
+  explicit RequestSend(sendrecv::SendRecvService::AsyncService* service,
+                       grpc::ServerCompletionQueue* cq,
                        SimpleBlockQueue<MessageWithName>* queue)
       : RequestBase(service, cq), queue_(queue), responder_(&ctx_) {
     Proceed();
@@ -74,7 +74,7 @@ class RequestSend final : public RequestBase {
       // The actual processing.
 
       status_ = FINISH;
-      responder_.Finish(reply_, Status::OK, this);
+      responder_.Finish(reply_, grpc::Status::OK, this);
       VLOG(4) << "Process RequestSend" << std::endl;
     } else {
       VLOG(4) << "delete RequestSend" << std::endl;
@@ -92,8 +92,8 @@ class RequestSend final : public RequestBase {
 
 class RequestGet final : public RequestBase {
  public:
-  explicit RequestGet(SendRecvService::AsyncService* service,
-                      ServerCompletionQueue* cq)
+  explicit RequestGet(sendrecv::SendRecvService::AsyncService* service,
+                      grpc::ServerCompletionQueue* cq)
       : RequestBase(service, cq), responder_(&ctx_) {
     Proceed();
   }
@@ -111,7 +111,7 @@ class RequestGet final : public RequestBase {
 
       // The actual processing.
       status_ = FINISH;
-      responder_.Finish(reply_, Status::OK, this);
+      responder_.Finish(reply_, grpc::Status::OK, this);
     } else {
       GPR_ASSERT(status_ == FINISH);
       delete this;
@@ -125,7 +125,7 @@ class RequestGet final : public RequestBase {
 };
 
 void AsyncGRPCServer::RunSyncUpdate() {
-  ServerBuilder builder;
+  grpc::ServerBuilder builder;
   builder.AddListeningPort(address_, grpc::InsecureServerCredentials());
   builder.RegisterService(&service_);
 
