@@ -27,56 +27,80 @@ enum CallStatus { CREATE, PROCESS, FINISH };
 // https://stackoverflow.com/questions/41732884/grpc-multiple-services-in-cpp-async-server
 class RequestBase {
  public:
+  explicit RequestBase(SendRecvService::AsyncService* service,
+                       ServerCompletionQueue* cq)
+      : service_(service), cq_(cq) {}
+  virtual ~RequestBase() {}
   virtual void Proceed() = 0;
+
+  CallStatus Status() { return status_; }
+
+ protected:
+  ServerContext ctx_;
+  SendRecvService::AsyncService* service_;
+  ServerCompletionQueue* cq_;
+  CallStatus status_;
 };
+
+typedef std::pair<std::string, sendrecv::VariableMessage> MessageWithName;
 
 class RequestSend final : public RequestBase {
  public:
-  RequestSend(SendRecvService::AsyncService* service, ServerCompletionQueue* cq)
-      : service_(service), cq_(cq), responder_(&ctx_), status_(CREATE) {
+  explicit RequestSend(SendRecvService::AsyncService* service,
+                       ServerCompletionQueue* cq,
+                       SimpleBlockQueue<MessageWithName>* queue)
+      : RequestBase(service, cq), queue_(queue), responder_(&ctx_) {
     Proceed();
   }
 
-  void Proceed() {
+  virtual ~RequestSend() {}
+
+  void SendVariable(const sendrecv::VariableMessage& in_var) {
+    MessageWithName msg_with_name =
+        std::make_pair(in_var.varname(), std::move(in_var));
+    queue_->Push(std::move(msg_with_name));
+  }
+
+  virtual void Proceed() {
     if (status_ == CREATE) {
       status_ = PROCESS;
 
       service_->RequestSendVariable(&ctx_, &request_, &responder_, cq_, cq_,
                                     this);
+      VLOG(4) << "create RequestSend" << std::endl;
     } else if (status_ == PROCESS) {
-      new RequestSend(service_, cq_);
+      new RequestSend(service_, cq_, queue_);
 
       // The actual processing.
-      // std::string prefix("Hello ");
-      // reply_.set_message(prefix + request_.name());
 
       status_ = FINISH;
       responder_.Finish(reply_, Status::OK, this);
+      VLOG(4) << "Process RequestSend" << std::endl;
     } else {
+      VLOG(4) << "delete RequestSend" << std::endl;
       GPR_ASSERT(status_ == FINISH);
       delete this;
     }
   }
 
- private:
+ protected:
   sendrecv::VariableMessage request_;
   sendrecv::VoidMessage reply_;
-  ServerContext ctx_;
-
-  SendRecvService::AsyncService* service_;
-  ServerCompletionQueue* cq_;
+  SimpleBlockQueue<MessageWithName>* queue_;
   ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
-  CallStatus status_;
 };
 
 class RequestGet final : public RequestBase {
  public:
-  RequestGet(SendRecvService::AsyncService* service, ServerCompletionQueue* cq)
-      : service_(service), cq_(cq), responder_(&ctx_), status_(CREATE) {
+  explicit RequestGet(SendRecvService::AsyncService* service,
+                      ServerCompletionQueue* cq)
+      : RequestBase(service, cq), responder_(&ctx_) {
     Proceed();
   }
 
-  void Proceed() {
+  virtual ~RequestGet() {}
+
+  virtual void Proceed() {
     if (status_ == CREATE) {
       status_ = PROCESS;
 
@@ -94,15 +118,10 @@ class RequestGet final : public RequestBase {
     }
   }
 
- private:
+ protected:
   sendrecv::VariableMessage request_;
   sendrecv::VariableMessage reply_;
-  ServerContext ctx_;
-
-  SendRecvService::AsyncService* service_;
-  ServerCompletionQueue* cq_;
   ServerAsyncResponseWriter<sendrecv::VariableMessage> responder_;
-  CallStatus status_;
 };
 
 void AsyncGRPCServer::RunSyncUpdate() {
@@ -113,7 +132,7 @@ void AsyncGRPCServer::RunSyncUpdate() {
   cq_send_ = builder.AddCompletionQueue();
   cq_get_ = builder.AddCompletionQueue();
   server_ = builder.BuildAndStart();
-  // std::cout << "Server listening on " << server_address << std::endl;
+  LOG(INFO) << "Server listening on " << address_ << std::endl;
 
   t_send_.reset(
       new std::thread(std::bind(&AsyncGRPCServer::HandleReqSend, this)));
@@ -135,15 +154,18 @@ void AsyncGRPCServer::ShutDown() {
 }
 
 void AsyncGRPCServer::HandleReqSend() {
-  std::unique_ptr<RequestSend> req_send(
-      new RequestSend(&service_, cq_send_.get()));
+  RequestSend* req_send =
+      new RequestSend(&service_, cq_send_.get(), &var_recv_queue_);
+  VLOG(4) << "RequestSend status" << req_send->Status();
   void* tag = NULL;
   bool ok = false;
   while (true) {
-    if (cq_send_->Next(&tag, &ok)) {
+    if (!cq_send_->Next(&tag, &ok)) {
+      LOG(ERROR) << "HandleReqSend meets CompletionQueue errors" << std::endl;
       break;
     }
     if (!ok) {
+      LOG(WARNING) << "HandleReqSend meets not handled events" << std::endl;
       continue;
     }
     static_cast<RequestBase*>(tag)->Proceed();
@@ -151,14 +173,18 @@ void AsyncGRPCServer::HandleReqSend() {
 }
 
 void AsyncGRPCServer::HandleReqGet(bool wait) {
-  std::unique_ptr<RequestGet> req_get(new RequestGet(&service_, cq_get_.get()));
+  RequestGet* req_get = new RequestGet(&service_, cq_get_.get());
+  VLOG(4) << "RequestSend status" << req_get->Status();
+
   void* tag = NULL;
   bool ok = false;
   while (true) {
     if (!cq_get_->Next(&tag, &ok)) {
+      LOG(ERROR) << "HandleReqSend meets CompletionQueue errors" << std::endl;
       break;
     }
     if (!ok) {
+      LOG(WARNING) << "HandleReqSend meets not handled events" << std::endl;
       continue;
     }
 

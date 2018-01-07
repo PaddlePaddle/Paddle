@@ -35,17 +35,12 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
 
   // stub context
   auto ch = GetChannel(ep);
-  GRPCStubContext<sendrecv::VoidMessage>* c =
-      new GRPCStubContext<sendrecv::VoidMessage>(ch);
-  c->init(var_h, ProcSendResponse, time_out);
+  SendProcessor* s = new SendProcessor(ch);
+  s->Prepare(var_h, time_out);
+  s->SetCallBack(ProcSendResponse);
 
-  // request context
-  RequestContext* req_ctx = new RequestContext(kActionSend, c);
-
-  req_contexts_[(void*)&req_ctx] = std::shared_ptr<RequestContext>(req_ctx);
-
-  auto rpc = c->stub->AsyncSendVariable(c->context.get(), req, &cq_);
-  rpc->Finish(c->reply.get(), &req_ctx->status, (void*)req_ctx);
+  auto rpc = s->stub->AsyncSendVariable(s->context.get(), req, &cq_);
+  rpc->Finish(&s->reply, &s->status, (void*)s);
 
   count_++;
 
@@ -82,20 +77,6 @@ bool RPCClient::wait() {
   return ok;
 }
 
-int RPCClient::ProcSendTag(RequestContext* req_context) {
-  GRPCStubContext<sendrecv::VoidMessage>* c =
-      (GRPCStubContext<sendrecv::VoidMessage>*)(req_context->ctx);
-
-  c->response_call_back(c->var_h, *c->reply.get());
-  return 0;
-}
-
-int RPCClient::ProcGetTag(RequestContext* req_context) {
-  auto c = (GRPCStubContext<sendrecv::VariableMessage>*)(req_context->ctx);
-  c->response_call_back(c->var_h, *c->reply.get());
-  return 0;
-}
-
 bool RPCClient::Proceed() {
   void* tag = NULL;
   bool ok = false;
@@ -110,27 +91,14 @@ bool RPCClient::Proceed() {
   PADDLE_ENFORCE(tag);
 
   // TODO(gongwb): add more retries.
-  RequestContext* req_context = (RequestContext*)tag;
-  if (!req_context->status.ok()) {
-    RequestContext::destroy(req_context);
-    req_contexts_.erase(req_context);
+  ClientBase* c = (ClientBase*)tag;
+  if (!c->status.ok()) {
+    delete c;
     return true;
   }
 
-  switch (req_context->type) {
-    case kActionSend: {
-      ProcSendTag(req_context);
-      break;
-    }
-    case kActionGet: {
-      ProcGetTag(req_context);
-      break;
-    }
-    default: { assert(false); }
-  }
-
-  RequestContext::destroy(req_context);
-  req_contexts_.erase(req_context);
+  c->Proceed();
+  delete c;
   return true;
 }
 
