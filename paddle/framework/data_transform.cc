@@ -14,7 +14,9 @@ limitations under the License. */
 #include <functional>
 
 #include "paddle/framework/data_transform.h"
+#include "paddle/framework/device_data_transform.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/selected_rows.h"
 #include "paddle/platform/device_context.h"
 
 namespace paddle {
@@ -23,6 +25,37 @@ namespace framework {
 DataTransformFnMap& DataTransformFnMap::Instance() {
   static DataTransformFnMap data_transform_map;
   return data_transform_map;
+}
+
+Tensor* DataTransform(const OpKernelType& expected_kernel_type,
+                      const OpKernelType& kernel_type_for_var,
+                      const Tensor& input_tensor) {
+  Tensor* out = nullptr;
+  if (!platform::is_same_place(kernel_type_for_var.place_,
+                               expected_kernel_type.place_)) {
+    out = DeviceTransform(input_tensor, expected_kernel_type.place_);
+  }
+  PADDLE_ENFORCE_NOT_NULL(out, "out should not be null");
+  return out;
+}
+
+void CopyVariableWithTensor(const Variable& in_var, const Tensor& tensor,
+                            Variable& out_var) {
+  if (in_var.IsType<LoDTensor>()) {
+    auto& in_lod_tensor = in_var.Get<LoDTensor>();
+    auto* tran_lod_tensor = out_var.GetMutable<LoDTensor>();
+    tran_lod_tensor->set_lod(in_lod_tensor.lod());
+    tran_lod_tensor->set_layout(in_lod_tensor.layout());
+    tran_lod_tensor->ShareDataWith(tensor);
+  } else if (in_var.IsType<SelectedRows>()) {
+    auto& in_selected_rows = in_var.Get<SelectedRows>();
+    auto* trans_selected_rows = out_var.GetMutable<SelectedRows>();
+    trans_selected_rows->set_height(in_selected_rows.height());
+    trans_selected_rows->set_rows(in_selected_rows.rows());
+    trans_selected_rows->mutable_value()->ShareDataWith(tensor);
+  } else {
+    PADDLE_THROW("unknown var type");
+  }
 }
 
 auto KernelFP32 = OpKernelType(proto::DataType::FP32, platform::CPUPlace(),
@@ -36,6 +69,28 @@ auto KernelNHWC = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
 
 auto KernelNCHW = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
                                DataLayout::kNCHW, LibraryType::kPlain);
+
+// TODO(dzhwinter): Only for testing multiple op kernel.
+// Dummy transform function for library_type
+// should be removed.
+auto KernelPlain = OpKernelType(proto::DataType::FP32, platform::CUDAPlace(0),
+                                DataLayout::kAnyLayout, LibraryType::kPlain);
+
+auto KernelCUDNN = OpKernelType(proto::DataType::FP32, platform::CUDAPlace(0),
+                                DataLayout::kAnyLayout, LibraryType::kCUDNN);
+
+void DummyTrans(const platform::DeviceContext* ctx,
+                const KernelTypePair& kernel_pair, const Variable& in,
+                Variable* out) {
+  PADDLE_ENFORCE(in.IsType<Tensor>(), "Only Support Tensor transform!.");
+  PADDLE_ENFORCE(
+      platform::places_are_same_class(kernel_pair.first.place_,
+                                      kernel_pair.second.place_),
+      "TransDataType Only Support DataType transform on same place!");
+  auto src = in.Get<Tensor>();
+  auto* dst = out->GetMutable<Tensor>();
+  *dst = src;
+}
 
 void TransDataType(const platform::DeviceContext* ctx,
                    const KernelTypePair& kernel_pair, const Variable& in,
@@ -121,6 +176,8 @@ std::vector<int> NCHW2NHWC = {0, 2, 3, 1};
 }
 
 REGISTER_DATA_TRANSFORM_FN(f::KernelFP32, f::KernelFP64, f::TransDataType);
+REGISTER_DATA_TRANSFORM_FN(f::KernelPlain, f::KernelCUDNN, f::DummyTrans);
+REGISTER_DATA_TRANSFORM_FN(f::KernelCUDNN, f::KernelPlain, f::DummyTrans);
 REGISTER_DATA_TRANSFORM_FN(f::KernelNHWC, f::KernelNCHW,
                            std::bind(f::TransDataLayout, NHWC2NCHW,
                                      std::placeholders::_1,
