@@ -26,7 +26,11 @@ class SequenceEraseOp : public framework::OperatorWithKernel {
                    "Input(X) of SequenceEraseOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SequenceEraseOp should not be null.");
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    auto x_dims = ctx->GetInputDim("X");
+    PADDLE_ENFORCE(x_dims.size() == 2 && x_dims[1] == 1,
+                   "Input(X) of SequenceEraseOp should be a 2-D LoDTensor "
+                   "with the 2nd dimension equal to 1.");
+    ctx->SetOutputDim("Out", x_dims);
   }
 };
 
@@ -35,17 +39,41 @@ class SequenceEraseOpMaker : public framework::OpProtoAndCheckerMaker {
   SequenceEraseOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
-             "(LoDTensor) 2-D input LoDTensor with the 2-nd dimension "
-             "of length 1.");
+             "(2-D LoDTensor with the 2nd dim. equal to 1) "
+             "Input LoDTensor of SequenceEraseOp.");
     AddOutput("Out",
-              "(LoDTensor) 2-D output LoDTensor with the 2-nd dimension "
-              "of length 1.");
+              "(2-D LoDTensor with the 2nd dim. equal to 1) "
+              "Output LoDTensor of SequenceEraseOp.");
     AddAttr<std::vector<int>>("tokens",
-                              "(vector<int>) "
-                              "Tokens to be removed from input.");
+                              "(vector<int>) Tokens need to be erased from "
+                              "input sequences.");
     AddComment(R"DOC(
 Sequence Erase Operator.
 
+Sequence erase operator erases tokens specified by Attr(tokens) in the input 
+sequences Input(X), and outputs the remaining data and modifies the LoD 
+information at the same time. For example, given a 2-D LoDTensor
+
+    X = [[2, 2, 6, 1, 3, 9, 6, 1, 0, 1]]^T
+
+with lod = [[0, 3, 6, 10]], there are three sequences in the input:
+   
+     X1 = [[2, 2, 6]]^T, X2 = [[1, 3, 9]]^T and X3 = [[6, 1, 0, 1]]^T.
+
+If the tokens to be erased are Attr(tokens) = [2, 3, 5], after the erasing 
+operation, the three sequences become
+
+    X1' = [[6]]^T, X2' = [[1, 9]]^T and X3' = [[6, 1, 0, 1]]^T.
+
+Hence the LoDTensor Output(Out) should be
+
+    Out = [[6, 1, 9, 6, 1, 0, 1]]^T,
+
+with lod = [[0, 1, 3, 7]].
+
+An example usage for this operator is to remove the special tokens when 
+computing the edit distance between two strings, such as blank, start token, 
+and end token.
 )DOC");
   }
 };
