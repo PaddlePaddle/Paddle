@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-enum CallStatus { CREATE = 0, PROCESS, FINISH };
+enum CallStatus { PROCESS = 0, FINISH };
 
 // reference:
 // https://stackoverflow.com/questions/41732884/grpc-multiple-services-in-cpp-async-server
@@ -29,11 +29,15 @@ class RequestBase {
  public:
   explicit RequestBase(sendrecv::SendRecvService::AsyncService* service,
                        grpc::ServerCompletionQueue* cq)
-      : service_(service), cq_(cq) {}
+      : service_(service), cq_(cq) {
+    status_ = PROCESS;
+  }
   virtual ~RequestBase() {}
   virtual void Proceed() = 0;
+  virtual void RegistNewOne() = 0;
 
   CallStatus Status() { return status_; }
+  void SetStatus(CallStatus status) { status_ = status; }
 
  protected:
   grpc::ServerContext ctx_;
@@ -50,38 +54,24 @@ class RequestSend final : public RequestBase {
                        grpc::ServerCompletionQueue* cq,
                        SimpleBlockQueue<MessageWithName>* queue)
       : RequestBase(service, cq), queue_(queue), responder_(&ctx_) {
-    Proceed();
+    service_->RequestSendVariable(&ctx_, &request_, &responder_, cq_, cq_,
+                                  this);
   }
 
   virtual ~RequestSend() {}
 
-  void SendVariable() {
-    MessageWithName msg_with_name =
-        std::make_pair(request_.varname(), std::move(request_));
-    queue_->Push(std::move(msg_with_name));
+  virtual void RegistNewOne() {
+    auto* n = new RequestSend(service_, cq_, queue_);
+    service_->RequestSendVariable(&ctx_, &request_, &responder_, cq_, cq_, n);
   }
 
   virtual void Proceed() {
-    if (status_ == CREATE) {
-      status_ = PROCESS;
-
-      service_->RequestSendVariable(&ctx_, &request_, &responder_, cq_, cq_,
-                                    this);
-      VLOG(4) << "create RequestSend" << std::endl;
-    } else if (status_ == PROCESS) {
-      new RequestSend(service_, cq_, queue_);
-
-      // The actual processing.
-      SendVariable();
-
-      status_ = FINISH;
-      responder_.Finish(reply_, grpc::Status::OK, this);
-      VLOG(4) << "Process RequestSend" << std::endl;
-    } else {
-      VLOG(4) << "delete RequestSend" << std::endl;
-      GPR_ASSERT(status_ == FINISH);
-      delete this;
-    }
+    // proc request.
+    MessageWithName msg_with_name =
+        std::make_pair(request_.varname(), std::move(request_));
+    queue_->Push(std::move(msg_with_name));
+    // TODO(gongwb): check var's info.
+    responder_.Finish(reply_, grpc::Status::OK, this);
   }
 
  protected:
@@ -96,35 +86,24 @@ class RequestGet final : public RequestBase {
   explicit RequestGet(sendrecv::SendRecvService::AsyncService* service,
                       grpc::ServerCompletionQueue* cq, framework::Scope* scope)
       : RequestBase(service, cq), responder_(&ctx_), scope_(scope) {
-    Proceed();
+    service_->RequestGetVariable(&ctx_, &request_, &responder_, cq_, cq_, this);
   }
 
   virtual ~RequestGet() {}
 
-  void GetVariable() {
-    std::string var_name = request_.varname();
-    auto* var = scope_->FindVar(var_name);
-
-    // FIXME(gongwb): device context?
-    SerializeToMessage(var_name, var, platform::CPUDeviceContext(), &reply_);
+  virtual void RegistNewOne() {
+    auto* n = new RequestGet(service_, cq_, scope_);
+    service_->RequestGetVariable(&ctx_, &request_, &responder_, cq_, cq_, n);
   }
 
   virtual void Proceed() {
-    if (status_ == CREATE) {
-      status_ = PROCESS;
-
-      service_->RequestGetVariable(&ctx_, &request_, &responder_, cq_, cq_,
-                                   this);
-    } else if (status_ == PROCESS) {
-      new RequestGet(service_, cq_, scope_);
-
-      // The actual processing.
-      status_ = FINISH;
-      responder_.Finish(reply_, grpc::Status::OK, this);
-    } else {
-      GPR_ASSERT(status_ == FINISH);
-      delete this;
-    }
+    // proc request.
+    std::string var_name = request_.varname();
+    auto* var = scope_->FindVar(var_name);
+    // FIXME(gongwb): device context?
+    SerializeToMessage(var_name, var, platform::CPUDeviceContext(), &reply_);
+    // TODO(gongwb): check var's info.
+    responder_.Finish(reply_, grpc::Status::OK, this);
   }
 
  protected:
@@ -151,22 +130,38 @@ void AsyncGRPCServer::RunSyncUpdate() {
 
   // wait server
   server_->Wait();
+  t_send_->join();
+  t_get_->join();
 }
 
-void AsyncGRPCServer::ShutDown() {
-  cq_send_->Shutdown();
-  t_send_->join();
-
+void AsyncGRPCServer::ShutdownGetQueue() {
+  std::unique_lock<std::mutex> lock(cq_get_mutex_);
   cq_get_->Shutdown();
-  t_get_->join();
+  is_get_shut_down_ = true;
+}
 
+void AsyncGRPCServer::ShutdownSendQueue() {
+  std::unique_lock<std::mutex> lock(cq_send_mutex_);
+  cq_send_->Shutdown();
+  is_send_shut_down_ = true;
+}
+
+/*
+ * This URL explains why shutdown is complicate:
+ * https://stackoverflow.com/questions/35708348/grpc-what-is-the-
+ * recommended-way-to-shut-down-an-asynchronous-server-in-c
+ */
+void AsyncGRPCServer::ShutDown() {
   server_->Shutdown();
+  ShutdownGetQueue();
+  ShutdownSendQueue();
 }
 
 void AsyncGRPCServer::HandleReqSend() {
   RequestSend* req_send =
       new RequestSend(&service_, cq_send_.get(), &var_recv_queue_);
-  VLOG(4) << "RequestSend status" << req_send->Status();
+  VLOG(4) << "create RequestSend status:" << req_send->Status();
+
   void* tag = NULL;
   bool ok = false;
   while (true) {
@@ -174,34 +169,108 @@ void AsyncGRPCServer::HandleReqSend() {
       LOG(ERROR) << "HandleReqSend meets CompletionQueue errors" << std::endl;
       break;
     }
+
+    RequestBase* base = (RequestBase*)tag;
     if (!ok) {
-      LOG(WARNING) << "HandleReqSend meets not handled events" << std::endl;
-      continue;
+      TryToRegisterNewSend();
+      delete base;
+      return;
     }
-    static_cast<RequestBase*>(tag)->Proceed();
+
+    switch (base->Status()) {
+      case PROCESS: {
+        TryToRegisterNewSend();
+        base->Proceed();
+        SetSendFinishOrDelete(base);
+        break;
+      }
+      case FINISH: {
+        delete base;
+        break;
+      }
+      default: { assert(false); }
+    }
   }
+}
+
+void AsyncGRPCServer::TryToRegisterNewGet() {
+  std::unique_lock<std::mutex> lock(cq_get_mutex_);
+  if (is_get_shut_down_) {
+    return;
+  }
+  RequestGet* req_get = new RequestGet(&service_, cq_get_.get(), scope_);
+  req_get->RegistNewOne();
+}
+
+void AsyncGRPCServer::TryToRegisterNewSend() {
+  std::unique_lock<std::mutex> lock(cq_send_mutex_);
+  if (is_send_shut_down_) {
+    return;
+  }
+  RequestSend* req_send =
+      new RequestSend(&service_, cq_send_.get(), &var_recv_queue_);
+  req_send->RegistNewOne();
+}
+
+void AsyncGRPCServer::SetGetFinishOrDelete(RequestBase*& last) {
+  std::unique_lock<std::mutex> lock(cq_get_mutex_);
+  if (is_get_shut_down_) {
+    delete last;
+    last = NULL;
+    return;
+  }
+
+  last->SetStatus(FINISH);
+  return;
+}
+
+void AsyncGRPCServer::SetSendFinishOrDelete(RequestBase*& last) {
+  std::unique_lock<std::mutex> lock(cq_send_mutex_);
+  if (is_send_shut_down_) {
+    delete last;
+    last = NULL;
+    return;
+  }
+
+  last->SetStatus(FINISH);
+  return;
 }
 
 void AsyncGRPCServer::HandleReqGet(bool wait) {
   RequestGet* req_get = new RequestGet(&service_, cq_get_.get(), scope_);
-  VLOG(4) << "RequestSend status:" << req_get->Status();
+  VLOG(4) << "create RequestGet status:" << req_get->Status();
 
   void* tag = NULL;
   bool ok = false;
   while (true) {
-    if (!cq_get_->Next(&tag, &ok)) {
-      LOG(ERROR) << "HandleReqSend meets CompletionQueue errors" << std::endl;
-      break;
-    }
-    if (!ok) {
-      LOG(WARNING) << "HandleReqSend meets not handled events" << std::endl;
-      continue;
-    }
-
     if (wait && !done_) {
       Wait();
     }
-    static_cast<RequestBase*>(tag)->Proceed();
+    if (!cq_get_->Next(&tag, &ok)) {
+      LOG(ERROR) << "HandleReqGet meets CompletionQueue errors" << std::endl;
+      break;
+    }
+
+    RequestBase* base = (RequestBase*)tag;
+    if (!ok) {
+      TryToRegisterNewGet();
+      delete base;
+      return;
+    }
+
+    switch (base->Status()) {
+      case PROCESS: {
+        TryToRegisterNewGet();
+        base->Proceed();
+        SetGetFinishOrDelete(base);
+        break;
+      }
+      case FINISH: {
+        delete base;
+        break;
+      }
+      default: { assert(false); }
+    }
   }
 }
 

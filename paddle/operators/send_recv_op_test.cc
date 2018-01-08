@@ -150,13 +150,6 @@ void PrintTop(std::string name, float *data) {
 
 TEST(SendRecvOp, CPUDense) {
   std::thread server_thread(StartServerNet, false);
-  server_thread.join();
-  sleep(10);
-}
-
-/*
-TEST(SendRecvOp, CPUDense) {
-  std::thread server_thread(StartServerNet, false);
   sleep(10);  // wait server to start
   // local net
   f::Scope scope;
@@ -226,4 +219,3 @@ TEST(SendRecvOp, CPUSparse) {
   server_thread.join();
   recv_op.reset();
 }
-*/

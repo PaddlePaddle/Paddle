@@ -36,6 +36,7 @@ namespace operators {
 
 void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service) {
   service->RunSyncUpdate();
+  VLOG(4) << "RunServer thread end";
 }
 
 class RecvOp : public framework::OperatorBase {
@@ -55,7 +56,7 @@ class RecvOp : public framework::OperatorBase {
     detail::MessageWithName term_msg;
     term_msg.first = LISTEN_TERMINATE_MESSAGE;
     rpc_service_->Push(term_msg);
-    // rpc_service_->ShutDown();
+    rpc_service_->ShutDown();
     server_thread_->join();
   }
 
@@ -91,6 +92,7 @@ class RecvOp : public framework::OperatorBase {
         const detail::MessageWithName &v = rpc_service_->Get();
         auto grad_var_name = v.first;
         if (grad_var_name == LISTEN_TERMINATE_MESSAGE) {
+          VLOG(4) << "received LISTEN_TERMINATE_MESSAGE and RunOp.Run() exit";
           exit_flag = true;
           break;
         }

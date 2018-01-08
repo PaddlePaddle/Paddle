@@ -33,6 +33,7 @@ namespace operators {
 namespace detail {
 
 typedef std::pair<std::string, sendrecv::VariableMessage> MessageWithName;
+class RequestBase;
 
 class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
  public:
@@ -56,10 +57,24 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
   void Wait();
   void HandleReqSend();
   void HandleReqGet(bool wait);
+  // void Proceed(void *tag, bool ok);
+  void TryToRegisterNewGet();
+  void TryToRegisterNewSend();
+  void SetGetFinishOrDelete(RequestBase *&last);
+  void SetSendFinishOrDelete(RequestBase *&last);
+
+  void ShutdownGetQueue();
+  void ShutdownSendQueue();
 
  private:
+  std::mutex cq_send_mutex_;
+  mutable bool is_send_shut_down_ = false;
   std::unique_ptr<grpc::ServerCompletionQueue> cq_send_;
+
+  std::mutex cq_get_mutex_;
+  mutable bool is_get_shut_down_ = false;
   std::unique_ptr<grpc::ServerCompletionQueue> cq_get_;
+
   sendrecv::SendRecvService::AsyncService service_;
   std::unique_ptr<grpc::Server> server_;
 
