@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/platform/profiler.h"
 #include <iomanip>
 #include <map>
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 
 namespace paddle {
