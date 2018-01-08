@@ -72,9 +72,6 @@ class Scope {
   void Rename(const std::string& origin_name,
               const std::string& new_name) const;
 
-  void RenameRecursive(const std::string& origin_name,
-                       const std::string& new_name) const;
-
   // Rename variable to a new name and return the new name
   std::string Rename(const std::string& origin_name) const;
 

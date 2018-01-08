@@ -10,7 +10,7 @@ struct KernelType {
   LayoutType layout_;
 };
 ```
- `place_` `data_type_` and `layout_` can be got from the input tensors of the operator, `GetExpectedKernelType(inputs)` use inputs to infer the proper kernel key that fit the incoming data, but users can not directly configure it.
+ `place_` `data_type_` and `layout_` can be got from the input tensors of the operator, `GetActualKernelType(inputs)` use inputs to infer the proper kernel key that fit the incoming data, but users can not directly configure it.
 
 The [design](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/switch_kernel.md) also provides a virtual method `GetExpectedKernelType` that user can overload and use to choose the KernelType they want to use.
 
