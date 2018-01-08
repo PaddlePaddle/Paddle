@@ -73,6 +73,17 @@ void UseALL() {
   UseCUDNN();
 }
 
+static DDim GetDims(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var->IsType<LoDTensor>()) {
+    return var->Get<LoDTensor>().dims();
+  } else if (var->IsType<SelectedRows>()) {
+    return var->Get<SelectedRows>().GetCompleteDims();
+  } else {
+    return DDim({-1});
+  }
+}
+
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
   PADDLE_ENFORCE_LE(ins.size(), 1UL,
@@ -105,7 +116,7 @@ const std::vector<std::string>& OperatorBase::Outputs(
   return it->second;
 }
 
-std::string OperatorBase::DebugString() const {
+std::string OperatorBase::DebugStringEx(const Scope* scope) const {
   std::stringstream ss;
   ss << "Op(" << type_ << "), inputs:{";
   for (auto it = inputs_.begin(); it != inputs_.end();) {
@@ -113,6 +124,9 @@ std::string OperatorBase::DebugString() const {
     ss << input.first << "[";
     for (size_t i = 0; i < input.second.size(); ++i) {
       ss << input.second[i];
+      if (scope) {
+        ss << "(" << GetDims(*scope, input.second[i]) << ")";
+      }
       if (i != input.second.size() - 1) {
         ss << ", ";
       }
@@ -129,6 +143,9 @@ std::string OperatorBase::DebugString() const {
     ss << output.first << "[";
     for (size_t i = 0; i < output.second.size(); ++i) {
       ss << output.second[i];
+      if (scope) {
+        ss << "(" << GetDims(*scope, output.second[i]) << ")";
+      }
       if (i != output.second.size() - 1) {
         ss << ", ";
       }
