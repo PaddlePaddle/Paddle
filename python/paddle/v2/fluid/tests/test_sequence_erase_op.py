@@ -28,9 +28,9 @@ def sequence_erase(in_seq, lod0, tokens):
 class TestSequenceEraseOp(OpTest):
     def setUp(self):
         self.op_type = "sequence_erase"
-        in_seq = np.random.randint(0, 10, (30, 1)).astype("int32")
-        lod = [[0, 5, 15, 30]]
-        tokens = [2, 5]
+        in_seq = np.random.randint(0, 10, (10, 1)).astype("int32")
+        lod = [[0, 3, 6, 10]]
+        tokens = [2, 3, 5]
         out_seq, new_lod0 = sequence_erase(in_seq, lod[0], tokens)
         self.attrs = {'tokens': tokens}
         self.inputs = {'X': (in_seq, lod)}

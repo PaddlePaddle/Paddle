@@ -13,17 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <thrust/device_vector.h>
-#include <thrust/execution_policy.h>
 #include <thrust/host_vector.h>
-#include <thrust/reduce.h>
 #include "paddle/operators/sequence_erase_op.h"
 #include "paddle/platform/cuda_helper.h"
-#include "paddle/platform/gpu_info.h"
 
 namespace paddle {
 namespace operators {
 using platform::PADDLE_CUDA_NUM_THREADS;
-using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
 template <typename T>
@@ -97,7 +93,7 @@ class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
     thrust::inclusive_scan(num_erased.begin() + 1, num_erased.end(),
                            num_erased.begin() + 1);
 
-    // Reset LoD
+    // Calc LoD
     auto lod_len = lod0.size();
     thrust::host_vector<int> host_lod(lod_len);
     for (size_t i = 0; i < lod_len; ++i) {
@@ -117,15 +113,14 @@ class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
     }
     framework::LoD out_lod;
     out_lod.push_back(out_lod0);
+    out->set_lod(out_lod);
 
-    out->Resize({out_lod0.back(), 1});
     // Set output
+    out->Resize({out_lod0.back(), 1});
     auto out_dat = out->mutable_data<T>(ctx.GetPlace());
     SetOutput<<<(in_len - 1) / PADDLE_CUDA_NUM_THREADS + 1,
                 PADDLE_CUDA_NUM_THREADS, 0, stream>>>(in_dat, in_len,
                                                       num_erased_ptr, out_dat);
-    // Set LoD
-    out->set_lod(out_lod);
   }
 };
 

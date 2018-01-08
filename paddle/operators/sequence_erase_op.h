@@ -15,13 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/framework/op_registry.h"
-#include "paddle/operators/math/softmax.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
 
 template <typename DeviceContext, typename T>
 class SequenceEraseKernel : public framework::OpKernel<T> {
@@ -32,17 +28,6 @@ class SequenceEraseKernel : public framework::OpKernel<T> {
 
     auto lod = in->lod();
     PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
-    // auto dims = x->dims();
-    /*
-    const size_t level = lod.size() - 1;
-    PADDLE_ENFORCE_EQ(dims[0], static_cast<int64_t>(lod[level].back()),
-                      "The first dimension of Input(X) should be equal to the "
-                      "sum of all sequences' lengths.");
-    PADDLE_ENFORCE_EQ(dims[0], x->numel(),
-                      "The width of each timestep in Input(X) of "
-                      "SequenceEraseOp should be 1.");
-    out->mutable_data<T>(ctx.GetPlace());
-    */
     auto tokens = ctx.Attr<std::vector<int>>("tokens");
     auto in_len = in->numel();
     auto in_dat = in->data<T>();
@@ -65,7 +50,7 @@ class SequenceEraseKernel : public framework::OpKernel<T> {
     out->Resize({static_cast<int64_t>(out_len), 1});
     auto out_dat = out->mutable_data<T>(ctx.GetPlace());
 
-    for (size_t i = 0; i < in_len; ++i) {
+    for (int64_t i = 0; i < in_len; ++i) {
       if (num_erased[i] == num_erased[i + 1]) {
         out_dat[i - num_erased[i]] = in_dat[i];
       }
