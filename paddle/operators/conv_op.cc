@@ -63,6 +63,15 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
     output_shape.push_back(OutputSize(in_dims[i + 2], filter_dims[i + 2],
                                       dilations[i], paddings[i], strides[i]));
   }
+  bool use_cudnn = ctx->Attrs().Get<bool>("use_cudnn");
+  if (use_cudnn) {
+    library_ = framework::LibraryType::kCUDNN;
+  } else {
+    library_ = framework::LibraryType::kPlain;
+  }
+
+  std::string data_format = ctx->Attrs().Get<std::string>("data_format");
+  layout_ = framework::StringToDataLayout(data_format);
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
   ctx->ShareLoD("Input", "Output");
 }
@@ -112,6 +121,13 @@ Conv2DOpMaker::Conv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
       .SetDefault(false);
+  AddAttr<std::string>(
+      "data_format",
+      "(string, default NCHW) Only used in "
+      "An optional string from: \"NHWC\", \"NCHW\". "
+      "Defaults to \"NHWC\". Specify the data format of the output data, "
+      "the input will be transformed automatically. ")
+      .SetDefault("NCHW");
   AddAttr<int>("workspace_size_MB",
                "Only used in cudnn kernel. Need set use_cudnn to true."
                "workspace size for cudnn, in MB, "
@@ -245,6 +261,16 @@ void ConvOpGrad::InferShape(framework::InferShapeContext* ctx) const {
   if (ctx->HasOutput(framework::GradVarName("Filter"))) {
     ctx->SetOutputDim(framework::GradVarName("Filter"), filter_dims);
   }
+
+  bool use_cudnn = ctx->Attrs().Get<bool>("use_cudnn");
+  if (use_cudnn) {
+    library_ = framework::LibraryType::kCUDNN;
+  } else {
+    library_ = framework::LibraryType::kPlain;
+  }
+
+  std::string data_format = ctx->Attrs().Get<std::string>("data_format");
+  layout_ = framework::StringToDataLayout(data_format);
 }
 
 }  // namespace operators

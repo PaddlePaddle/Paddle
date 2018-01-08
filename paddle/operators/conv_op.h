@@ -65,9 +65,12 @@ class ConvOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::OpKernelType& kernel) const override {
     return framework::OpKernelType(kernel.data_type_, platform::CUDAPlace(0),
-                                   kernel.data_layout_,
-                                   framework::LibraryType::kCUDNN);
+                                   layout_, library_);
   }
+
+ private:
+  framework::DataLayout layout_;
+  framework::LibraryType library_;
 };
 
 class ConvOpGrad : public framework::OperatorWithKernel {
@@ -78,9 +81,12 @@ class ConvOpGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::OpKernelType& kernel) const override {
     return framework::OpKernelType(kernel.data_type_, platform::CUDAPlace(0),
-                                   kernel.data_layout_,
-                                   framework::LibraryType::kCUDNN);
+                                   layout_, library_);
   }
+
+ private:
+  framework::DataLayout layout_;
+  framework::LibraryType library_;
 };
 
 template <typename DeviceContext, typename T>
