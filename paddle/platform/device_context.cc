@@ -168,5 +168,69 @@ cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
 #endif
 
+#ifdef PADDLE_WITH_MKLDNN
+MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
+    : CPUDeviceContext(place), ready_(false) {
+  stream_.reset(new mkldnn::stream(mkldnn::stream::kind::eager));
+  engine_.reset(new mkldnn::engine(mkldnn::engine::cpu, 0));
+}
+
+template <typename T>
+void MKLDNNDeviceContext::AddElement(const std::string& op_key,
+                                     const T& value) {
+  if (GetElement<T>(op_key)) {
+    return;
+  }
+  GetElementPool<T>().emplace(op_key, std::move(value));
+}
+
+template <typename T>
+const T& MKLDNNDeviceContext::GetElement(const std::string& op_key) const {
+  auto it = GetElementPool<T>().find(op_key);
+  return it == GetElementPool<T>().end() ? nullptr : it->second;
+}
+
+template <>
+const std::unordered_map<const std::string, const MKLDNNMemoryPtr,
+                         std::hash<std::string>>&
+MKLDNNDeviceContext::GetElementPool<MKLDNNMemoryPtr>() const {
+  return memory_pool_;
+}
+
+template <>
+const std::unordered_map<const std::string, const MKLDNNPrimitivePtr,
+                         std::hash<std::string>>&
+MKLDNNDeviceContext::GetElementPool<MKLDNNPrimitivePtr>() const {
+  return primitive_pool_;
+}
+
+template <>
+const std::unordered_map<const std::string, const MKLDNNPrimitiveDescPtr,
+                         std::hash<std::string>>&
+MKLDNNDeviceContext::GetElementPool<MKLDNNPrimitiveDescPtr>() const {
+  return primitive_desc_pool_;
+}
+
+void MKLDNNDeviceContext::Execute(bool block) {
+  if (pipeline_.empty()) {
+    return;
+  }
+  ResetStream();
+  stream_->submit(pipeline_).wait(block);
+  ready_ = false;
+  pipeline_.clear();
+}
+
+void MKLDNNDeviceContext::ResetStream() {
+  if (ready_) {
+    return;
+  }
+  // TODO(TJ): change me when mkldnn have specific method to reset this state
+  stream_.reset(new mkldnn::stream(mkldnn::stream::kind::eager));
+  ready_ = true;
+}
+
+#endif
+
 }  // namespace platform
 }  // namespace paddle
