@@ -136,11 +136,28 @@ void StartServerNet(bool is_sparse) {
   attrs.insert({"OptimizeProgram", program_proto});
   recv_op = f::OpRegistry::CreateOp("recv", {{"RX", {"x1"}}}, {}, attrs);
   recv_op->Run(scope, place);
+
+  std::cout << "start servernet end" << std::endl;
+}
+
+void PrintTop(std::string name, float *data) {
+  printf("%s:", name.c_str());
+  for (int i = 0; i < 10; i++) {
+    printf(" %.2f", data[i]);
+  }
+  printf("\n");
 }
 
 TEST(SendRecvOp, CPUDense) {
   std::thread server_thread(StartServerNet, false);
-  sleep(3);  // wait server to start
+  server_thread.join();
+  sleep(10);
+}
+
+/*
+TEST(SendRecvOp, CPUDense) {
+  std::thread server_thread(StartServerNet, false);
+  sleep(10);  // wait server to start
   // local net
   f::Scope scope;
   p::CPUPlace place;
@@ -156,11 +173,13 @@ TEST(SendRecvOp, CPUDense) {
   auto in_var = scope.Var("x1");
   auto tensor = in_var->GetMutable<f::LoDTensor>();
   float *expected = tensor->data<float>();
+  PrintTop("expected", expected);
   auto out_var = scope.Var("Out");
   auto target = out_var->GetMutable<f::LoDTensor>();
   // x1 * 2 == x0
   EXPECT_NE(target->memory_size(), size_t(0));
   float *actual = target->data<float>();
+  PrintTop("actual", actual);
   for (int64_t i = 0; i < target->numel(); ++i) {
     EXPECT_EQ(expected[i] * 2, actual[i]);
   }
@@ -207,3 +226,4 @@ TEST(SendRecvOp, CPUSparse) {
   server_thread.join();
   recv_op.reset();
 }
+*/

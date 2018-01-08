@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-enum CallStatus { CREATE, PROCESS, FINISH };
+enum CallStatus { CREATE = 0, PROCESS, FINISH };
 
 // reference:
 // https://stackoverflow.com/questions/41732884/grpc-multiple-services-in-cpp-async-server
@@ -55,9 +55,9 @@ class RequestSend final : public RequestBase {
 
   virtual ~RequestSend() {}
 
-  void SendVariable(const sendrecv::VariableMessage& in_var) {
+  void SendVariable() {
     MessageWithName msg_with_name =
-        std::make_pair(in_var.varname(), std::move(in_var));
+        std::make_pair(request_.varname(), std::move(request_));
     queue_->Push(std::move(msg_with_name));
   }
 
@@ -72,6 +72,7 @@ class RequestSend final : public RequestBase {
       new RequestSend(service_, cq_, queue_);
 
       // The actual processing.
+      SendVariable();
 
       status_ = FINISH;
       responder_.Finish(reply_, grpc::Status::OK, this);
@@ -93,12 +94,20 @@ class RequestSend final : public RequestBase {
 class RequestGet final : public RequestBase {
  public:
   explicit RequestGet(sendrecv::SendRecvService::AsyncService* service,
-                      grpc::ServerCompletionQueue* cq)
-      : RequestBase(service, cq), responder_(&ctx_) {
+                      grpc::ServerCompletionQueue* cq, framework::Scope* scope)
+      : RequestBase(service, cq), responder_(&ctx_), scope_(scope) {
     Proceed();
   }
 
   virtual ~RequestGet() {}
+
+  void GetVariable() {
+    std::string var_name = request_.varname();
+    auto* var = scope_->FindVar(var_name);
+
+    // FIXME(gongwb): device context?
+    SerializeToMessage(var_name, var, platform::CPUDeviceContext(), &reply_);
+  }
 
   virtual void Proceed() {
     if (status_ == CREATE) {
@@ -107,7 +116,7 @@ class RequestGet final : public RequestBase {
       service_->RequestGetVariable(&ctx_, &request_, &responder_, cq_, cq_,
                                    this);
     } else if (status_ == PROCESS) {
-      new RequestGet(service_, cq_);
+      new RequestGet(service_, cq_, scope_);
 
       // The actual processing.
       status_ = FINISH;
@@ -122,6 +131,7 @@ class RequestGet final : public RequestBase {
   sendrecv::VariableMessage request_;
   sendrecv::VariableMessage reply_;
   ServerAsyncResponseWriter<sendrecv::VariableMessage> responder_;
+  framework::Scope* scope_;
 };
 
 void AsyncGRPCServer::RunSyncUpdate() {
@@ -173,8 +183,8 @@ void AsyncGRPCServer::HandleReqSend() {
 }
 
 void AsyncGRPCServer::HandleReqGet(bool wait) {
-  RequestGet* req_get = new RequestGet(&service_, cq_get_.get());
-  VLOG(4) << "RequestSend status" << req_get->Status();
+  RequestGet* req_get = new RequestGet(&service_, cq_get_.get(), scope_);
+  VLOG(4) << "RequestSend status:" << req_get->Status();
 
   void* tag = NULL;
   bool ok = false;

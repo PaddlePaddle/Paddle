@@ -50,13 +50,42 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
 void ProcSendResponse(const VarHandle&, const sendrecv::VoidMessage& msg) {}
 
 void ProcGetResponse(const VarHandle& var_h,
-                     const sendrecv::VariableMessage& msg) {}
+                     const sendrecv::VariableMessage& ret_msg) {
+  auto* outvar = var_h.scope->FindVar(var_h.name);
+
+  std::istringstream iss(ret_msg.serialized());
+  DeserializeFromMessage(ret_msg, *var_h.ctx, outvar);
+}
 
 bool RPCClient::AsyncGetVariable(const std::string& ep,
                                  const platform::DeviceContext& ctx,
                                  const framework::Scope* scope,
                                  const std::string& var_name,
                                  int64_t time_out) {
+  sendrecv::VariableMessage req;
+  req.set_varname(var_name);
+
+  auto* var = scope->FindVar(var_name);
+  SerializeToMessage(var_name, var, ctx, &req);
+
+  // varhandle
+  VarHandle var_h;
+  var_h.ep = ep;
+  var_h.scope = scope;
+  var_h.name = var_name;
+  var_h.ctx = &ctx;
+
+  // stub context
+  auto ch = GetChannel(ep);
+  GetProcessor* s = new GetProcessor(ch);
+  s->Prepare(var_h, time_out);
+  s->SetCallBack(ProcGetResponse);
+
+  auto rpc = s->stub->AsyncGetVariable(s->context.get(), req, &cq_);
+  rpc->Finish(&s->reply, &s->status, (void*)s);
+
+  count_++;
+
   return true;
 }
 

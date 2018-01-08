@@ -55,7 +55,7 @@ class RecvOp : public framework::OperatorBase {
     detail::MessageWithName term_msg;
     term_msg.first = LISTEN_TERMINATE_MESSAGE;
     rpc_service_->Push(term_msg);
-    rpc_service_->ShutDown();
+    // rpc_service_->ShutDown();
     server_thread_->join();
   }
 

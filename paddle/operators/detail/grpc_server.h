@@ -26,6 +26,7 @@ limitations under the License. */
 #include <grpc++/grpc++.h>
 #include <grpc/support/log.h>
 #include <thread>
+#include "paddle/operators/detail/utils.h"
 
 namespace paddle {
 namespace operators {
