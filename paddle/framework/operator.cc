@@ -488,6 +488,8 @@ void OperatorWithKernel::Run(const Scope& scope,
     }
   }
 
+  VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
+
   Scope& new_scope = scope.NewScope();
 
   for (auto& var_name_item : this->Inputs()) {
@@ -520,7 +522,8 @@ void OperatorWithKernel::Run(const Scope& scope,
 
   auto kernel_iter = kernels.find(expected_kernel_key);
 
-  kernel_iter->second->Compute(ExecutionContext(*this, new_scope, *dev_ctx));
+  kernel_iter->second->Compute(ExecutionContext(
+      *this, new_scope, *pool.Get(expected_kernel_key.place_)));
 }
 
 proto::DataType OperatorWithKernel::IndicateDataType(
