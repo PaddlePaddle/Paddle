@@ -84,6 +84,8 @@ inline const T* Tensor::data() const {
       reinterpret_cast<uintptr_t>(holder_->ptr()) + offset_);
 }
 
+inline bool Tensor::IsInitialized() const { return holder_ != nullptr; }
+
 template <typename T>
 inline T* Tensor::data() {
   check_memory_size();
