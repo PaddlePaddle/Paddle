@@ -74,7 +74,9 @@ void UseALL() {
 
 static DDim GetDims(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
-  if (var->IsType<LoDTensor>()) {
+  if (var == nullptr) {
+    return DDim({-1});
+  } else if (var->IsType<LoDTensor>()) {
     return var->Get<LoDTensor>().dims();
   } else if (var->IsType<SelectedRows>()) {
     return var->Get<SelectedRows>().GetCompleteDims();
