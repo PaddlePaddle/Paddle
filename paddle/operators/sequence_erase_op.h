@@ -27,8 +27,8 @@ template <typename DeviceContext, typename T>
 class SequenceEraseKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<LoDTensor>("X");
-    auto* out = ctx.Output<LoDTensor>("Out");
+    auto* in = ctx.Input<framework::LoDTensor>("X");
+    auto* out = ctx.Output<framework::LoDTensor>("Out");
 
     auto lod = in->lod();
     PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
