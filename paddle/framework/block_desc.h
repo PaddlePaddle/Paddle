@@ -57,7 +57,7 @@ class BlockDesc {
 
   VarDesc *FindVarRecursive(const std::string &name_bytes) const;
 
-  VarDesc *FindRecursiveOrCreateVar(const std::string &name_bytes);
+  VarDesc &FindRecursiveOrCreateVar(const std::string &name_bytes);
 
   bool HasVarRecursive(const std::string &var_name) const;
 
