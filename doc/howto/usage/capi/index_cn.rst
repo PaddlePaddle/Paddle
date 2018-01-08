@@ -6,4 +6,4 @@ PaddlePaddle C-API
 
   compile_paddle_lib_cn.md
   organization_of_the_inputs_cn.md
-  workflow_of_capi.md
+  workflow_of_capi_cn.md
