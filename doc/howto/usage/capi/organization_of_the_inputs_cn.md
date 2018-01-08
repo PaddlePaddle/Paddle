@@ -1,11 +1,11 @@
 ## 输入/输出数据组织
 
-这篇文档介绍在使用 PaddlePaddle C-API 时如何组织输入数据，以及如何解析神经网络前向计算的输出数据。
+这篇文档介绍在使用 PaddlePaddle C-API 时如何组织输入数据，以及如何解析神经网络前向计算的输出结果。
 
 ### 输入/输出数据类型
 在C-API中，按照基本数据类型在PaddlePaddle内部的定义和实现，输入数据可分为：
 1. 一维整型数组
-2. 二维浮点型矩阵
+1. 二维浮点型矩阵
     - 稠密矩阵
     - 稀疏矩阵
 
@@ -25,8 +25,8 @@
 
 - **注**：
     1. 这篇文档之后部分将会统一使用`argument`来特指PaddlePaddle中神经网络计算层一个输入/输出数据。
-    2. 使用`paddle_ivector`来特指PaddlePaddle中的一维整型数组。
-    3. 使用`paddle_matrix`来特指PaddlePaddle中的二维浮点型矩阵。
+    1. 使用`paddle_ivector`来特指PaddlePaddle中的一维整型数组。
+    1. 使用`paddle_matrix`来特指PaddlePaddle中的二维浮点型矩阵。
 
 ### 组织输入数据
 - 一维整型数组
@@ -137,8 +137,8 @@
 
 **注：**
 1. 不论序列中的元素在内存中占用多少实际存储空间，`sequence_start_positions`表示的偏移是以“序列中的一个元素”作为统计的基本单位，而不是相对`batch`起始存储地址以数据的存储大小为单位的偏移。
-2. 非序列输入不携带`sequence_start_positions`，非序列输入无需构造`sequence_start_positions`。
-3. **不论是单层序列还是双层序列的序列信息，都使用`paddle_ivector`（也就是PaddlePaddle中的一维整型数组）来存储。**
+1. 非序列输入不携带`sequence_start_positions`，非序列输入无需构造`sequence_start_positions`。
+1. **不论是单层序列还是双层序列的序列信息，都使用`paddle_ivector`（也就是PaddlePaddle中的一维整型数组）来存储。**
 
 图2 是PaddlePaddle中单层序列和双层序列存储示意图。
 <p align="center">
@@ -149,8 +149,8 @@
 
     图2 (a) 展示了一个含有4个序列的`batch`输入：
     1. 4个序列的长度分别为：5、3、2、4；
-    2. 这时的`sequence_start_positions`为：`[0, 5, 8, 10, 14]`；
-    3. 不论数据域是`paddle_ivector`类型还是`paddle_matrix`类型，都可以通过调用下面的接口为原有的数据输入附加上序列信息，使之变为一个单层序列输入，代码片段如下：
+    1. 这时的`sequence_start_positions`为：`[0, 5, 8, 10, 14]`；
+    1. 本地训练. 不论数据域是`paddle_ivector`类型还是`paddle_matrix`类型，都可以通过调用下面的接口为原有的数据输入附加上序列信息，使之变为一个单层序列输入，代码片段如下：
 
     ```c
     int seq_pos_array[] = {0, 5, 8, 10, 14};
