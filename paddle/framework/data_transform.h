@@ -19,6 +19,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/framework/op_kernel_type.h"
+#include "paddle/framework/selected_rows.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/framework/variable.h"
 #include "paddle/operators/math/math_function.h"
@@ -48,6 +49,13 @@ struct KernelTypePairHash {
     return seed;
   }
 };
+
+Tensor* DataTransform(const OpKernelType& expected_kernel_type,
+                      const OpKernelType& kernel_type_for_var,
+                      const Tensor& input_tensor);
+
+void CopyVariableWithTensor(const Variable& in_var, const Tensor& tensor,
+                            Variable& out_var);
 
 template <typename InType, typename OutType>
 struct CastDataTypeFunctor {
