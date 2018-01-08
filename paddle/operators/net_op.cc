@@ -56,11 +56,11 @@ void NetOp::CompleteAddOp(bool calc) {
   std::copy(output_set.begin(), output_set.end(), std::back_inserter(outputs));
 }
 
-std::string NetOp::DebugString() const {
+std::string NetOp::DebugStringEx(const framework::Scope* scope) const {
   std::ostringstream os;
-  os << OperatorBase::DebugString() << std::endl;
+  os << OperatorBase::DebugStringEx(scope) << std::endl;
   for (auto& op : ops_) {
-    std::istringstream is(op->DebugString());
+    std::istringstream is(op->DebugStringEx(scope));
     for (std::string line; std::getline(is, line);) {
       os << "    " << line << std::endl;
     }
