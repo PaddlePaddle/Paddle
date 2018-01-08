@@ -28,10 +28,6 @@ TEST(COWPtr, all) {
   *ptr2.MutableData() = 10;
   ASSERT_EQ(ptr.Data(), 0);
   ASSERT_EQ(ptr2.Data(), 10);
-
-  auto ptr_before = ptr2.MutableData();
-  ptr2.Reset();
-  ASSERT_NE(ptr2.MutableData(), ptr_before);
 }
 
 }  // namespace details
