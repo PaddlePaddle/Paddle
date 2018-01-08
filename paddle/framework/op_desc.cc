@@ -66,6 +66,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                       out);
     out_var->SetLoDLevel(in_var->GetLoDLevel());
   }
+
   bool IsRuntime() const override;
 
  protected:
