@@ -14,10 +14,10 @@ avg_cost = fluid.layers.mean(x=cost)
 sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
 sgd_optimizer.minimize(avg_cost)
 
-# memopt_program = fluid.memory_optimize(fluid.default_main_program())
-memopt_program = fluid.default_main_program()
+memopt_program = fluid.memory_optimize(fluid.default_main_program())
+# memopt_program = fluid.default_main_program()
 
-BATCH_SIZE = 20
+BATCH_SIZE = 200
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
@@ -38,7 +38,6 @@ for pass_id in range(PASS_NUM):
         avg_loss_value, = exe.run(memopt_program,
                                   feed=feeder.feed(data),
                                   fetch_list=[avg_cost])
-        print avg_loss_value
         if avg_loss_value[0] < 10.0:
             exit(0)  # if avg cost less than 10.0, we think our code is good.
 exit(1)

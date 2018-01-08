@@ -89,7 +89,7 @@ class ControlFlowGraph(object):
         self._dataflow_analyze()
         self.pool = []
         for i in range(self.op_size):
-            print self.ops[i].type()
+            # print self.ops[i].type()
             if self.pool:
                 out_pair = [(x, self.global_block.var(str(x)).shape())
                             for x in self._defs[i]]

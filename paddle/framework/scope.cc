@@ -17,7 +17,6 @@ limitations under the License. */
 #include <memory>  // for unique_ptr
 #include <mutex>   // for call_once
 #include "glog/logging.h"
-#include "paddle/framework/threadpool.h"
 #include "paddle/string/printf.h"
 
 namespace paddle {
@@ -88,8 +87,7 @@ void Scope::DeleteScope(Scope* scope) {
   auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
   PADDLE_ENFORCE(it != this->kids_.end(), "Cannot find %p as kid scope", scope);
   this->kids_.erase(it);
-  // Make delete async.
-  Async([scope] { delete scope; });
+  delete scope;
 }
 
 void Scope::Rename(const std::string& origin_name,
