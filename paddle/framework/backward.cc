@@ -427,7 +427,8 @@ std::vector<std::unique_ptr<OpDesc>> MakeBlockBackward(
     VLOG(5) << "Making backward " << (*it)->Type() << " op";
     std::vector<std::unique_ptr<OpDesc>> op_grads;
 
-    if ((*it)->Type() == "recurrent" || (*it)->Type() == "while") {
+    if ((*it)->Type() == "recurrent" || (*it)->Type() == "while" ||
+        (*it)->Type() == "parallel_do") {
       int step_block_idx = (*it)->GetBlockAttr("sub_block");
       BlockDesc* backward_block = CreateStepBlock(program_desc, no_grad_vars,
                                                   grad_to_var, step_block_idx);
