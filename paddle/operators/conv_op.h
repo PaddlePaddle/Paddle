@@ -69,8 +69,8 @@ class ConvOp : public framework::OperatorWithKernel {
   }
 
  private:
-  framework::DataLayout layout_;
-  framework::LibraryType library_;
+  mutable framework::DataLayout layout_;
+  mutable framework::LibraryType library_;
 };
 
 class ConvOpGrad : public framework::OperatorWithKernel {
@@ -85,8 +85,8 @@ class ConvOpGrad : public framework::OperatorWithKernel {
   }
 
  private:
-  framework::DataLayout layout_;
-  framework::LibraryType library_;
+  mutable framework::DataLayout layout_;
+  mutable framework::LibraryType library_;
 };
 
 template <typename DeviceContext, typename T>

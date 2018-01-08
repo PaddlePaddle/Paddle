@@ -55,6 +55,16 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
     output_shape.push_back((in_dims[i + 2] - 1) * strides[i] - 2 * paddings[i] +
                            filter_extent);
   }
+
+  bool use_cudnn = ctx->Attrs().Get<bool>("use_cudnn");
+  if (use_cudnn) {
+    library_ = framework::LibraryType::kCUDNN;
+  } else {
+    library_ = framework::LibraryType::kPlain;
+  }
+
+  std::string data_format = ctx->Attrs().Get<std::string>("data_format");
+  layout_ = framework::StringToDataLayout(data_format);
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
 }
 

@@ -46,9 +46,12 @@ class ConvTransposeOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::OpKernelType& kernel) const override {
     return framework::OpKernelType(kernel.data_type_, platform::CUDAPlace(0),
-                                   kernel.data_layout_,
-                                   framework::LibraryType::kCUDNN);
+                                   layout_, library_);
   }
+
+ private:
+  mutable framework::DataLayout layout_;
+  mutable framework::LibraryType library_;
 };
 
 class ConvTransposeOpGrad : public framework::OperatorWithKernel {
@@ -59,9 +62,12 @@ class ConvTransposeOpGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::OpKernelType& kernel) const override {
     return framework::OpKernelType(kernel.data_type_, platform::CUDAPlace(0),
-                                   kernel.data_layout_,
-                                   framework::LibraryType::kCUDNN);
+                                   layout_, library_);
   }
+
+ private:
+  mutable framework::DataLayout layout_;
+  mutable framework::LibraryType library_;
 };
 
 template <typename DeviceContext, typename T>

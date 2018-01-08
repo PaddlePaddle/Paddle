@@ -480,6 +480,9 @@ void OperatorWithKernel::Run(const Scope& scope,
 
   auto expected_kernel_key = GetExpectedKernelType(actual_kernel_key);
 
+  VLOG(3) << "Actual kernel: " << actual_kernel_key << "\n"
+          << "User configured kernel: " << expected_kernel_key;
+
   if (actual_kernel_key == expected_kernel_key) {
     PADDLE_ENFORCE_EQ(actual_kernel_key.place_, expected_kernel_key.place_,
                       "Currently, model parallelism is only supported between "
@@ -536,8 +539,8 @@ void OperatorWithKernel::Run(const Scope& scope,
     }
   }
 
-  VLOG(10) << "Actual kernel: " << actual_kernel_key
-           << "Expected kernel: " << expected_kernel_key;
+  VLOG(3) << "Actual kernel: " << actual_kernel_key << "\n"
+          << "Expected kernel: " << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
 
