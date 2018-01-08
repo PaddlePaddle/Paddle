@@ -13,12 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #define EIGEN_USE_GPU
 
-#include "paddle/operators/norm_op.h"
+#include "paddle/operators/cross_channel_norm_op.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    norm, ops::NormKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::NormKernel<paddle::platform::CUDADeviceContext, double, float>);
+    cross_channel_norm,
+    ops::CrossChannelNormKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::CrossChannelNormKernel<paddle::platform::CUDADeviceContext, double,
+                                float>);
 REGISTER_OP_CUDA_KERNEL(
-    norm_grad, ops::NormGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::NormGradKernel<paddle::platform::CUDADeviceContext, double, float>);
+    cross_channel_norm_grad,
+    ops::CrossChannelNormGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::CrossChannelNormGradKernel<paddle::platform::CUDADeviceContext, double,
+                                    float>);

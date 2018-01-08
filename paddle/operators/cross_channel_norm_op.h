@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T, typename AttrType = T>
-class NormKernel : public framework::OpKernel<T> {
+class CrossChannelNormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const framework::Tensor* in_x = context.Input<framework::Tensor>("X");
@@ -84,7 +84,7 @@ class NormKernel : public framework::OpKernel<T> {
   }
 };
 template <typename DeviceContext, typename T, typename AttrType = T>
-class NormGradKernel : public framework::OpKernel<T> {
+class CrossChannelNormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const framework::Tensor* in_x = context.Input<framework::Tensor>("X");

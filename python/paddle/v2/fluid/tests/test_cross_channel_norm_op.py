@@ -28,9 +28,9 @@ def norm(input, scale, epsilon):
     return out
 
 
-class TestNormOp(OpTest):
+class TestCrossChannelNormOp(OpTest):
     def setUp(self):
-        self.op_type = "norm"
+        self.op_type = "cross_channel_norm"
         self.init_test_case()
         input = np.random.random(self.shape).astype("float32")
         scale = np.array([10, 10, 10])
