@@ -4,6 +4,7 @@ from framework import Program, default_main_program, Parameter, Variable
 import optimizer
 from layer_helper import LayerHelper
 from distributed_spliter import *
+import math
 
 
 class VarBlock:
@@ -15,6 +16,47 @@ class VarBlock:
 
     def __str__(self):
         return "%s:%d:%d" % (self.varname, self.offset, self.size)
+
+
+def split_dense_variable(var_list,
+                         pserver_count,
+                         min_block_size=1024,
+                         max_block_size=1048576):
+    """
+        We may need to split dense tensor to one or several blocks and put
+        them equally onto parameter server. One block is a sub-tensor
+        aligned by dim[0] of the tensor.
+        
+        We need to have a minimal block size so that the calculations in
+        the parameter server side can gain better performance. By default
+        mininum block size is 1024. The max block size is used to prevent
+        too large block that may causing send error.
+    """
+    blocks = []
+    for var in var_list:
+        split_count = pserver_count
+        var_numel = reduce(lambda x, y: x * y, var.shape)
+        max_pserver_count = int(math.floor(var_numel / float(min_block_size)))
+        if max_pserver_count == 0:
+            max_pserver_count = 1
+        if max_pserver_count < pserver_count:
+            split_count = max_pserver_count
+        block_size = int(math.ceil(var_numel / float(split_count)))
+
+        if len(var.shape) >= 2:
+            # align by dim1(width)
+            dim1 = reduce(lambda x, y: x * y, var.shape[1:])
+            remains = block_size % dim1
+            if remains != 0:
+                block_size += dim1 - remains
+        # update split_count after align
+        split_count = int(math.ceil(var_numel / float(block_size)))
+        for block_id in xrange(split_count):
+            curr_block_size = min(block_size, var_numel - (
+                (block_id) * block_size))
+            block = VarBlock(var.name, block_id, curr_block_size)
+            blocks.append(str(block))
+    return blocks
 
 
 class DistributeTranspiler:
@@ -57,43 +99,49 @@ class DistributeTranspiler:
         # 5. create parameter server program by split_method generated endpoint->VarBlock
         # 6. run compile time infershape for parameter server program
 
-        if kwargs.has_key("split_method"):
-            split_method = kwargs["split_method"]
-        else:
-            split_method = round_robin
-        pserver_endpoints = kwargs["pservers"].split(",")
-
-        grad2param = dict()
-        for param, grad in params_and_grads:
-            grad2param[grad.name()] = param.name()
+        pserver_endpoints = pservers.split(",")
 
         # step1
-        param_list = [pg[0] for pg in params_and_grads]
-        grad_list = [pg[1] for pg in params_and_grads]
+        param_list = [pg[0] for pg in params_grads]
+        grad_list = [pg[1] for pg in params_grads]
         # TODO: add split selected rows support
-        grad_blocks = _split_dense_variable(grad_list, len(pserver_endpoints))
-        param_blocks = _split_dense_variable(param_list, len(pserver_endpoints))
-        ep2gradblock = split_method(grad_blocks, pserver_endpoints)
-        # self.param_grad_map
+        grad_blocks = split_dense_variable(grad_list, len(pserver_endpoints))
+        param_blocks = split_dense_variable(param_list, len(pserver_endpoints))
         # step2
-        var2splited = self._split_trainer_vars(program, grad_blocks)
+        grad_var_mapping = self._append_split_op(program, grad_blocks)
 
         # step3
         send_inputs = []
-        for _, splited in var2splited.iteritems():
+        send_outputs = []
+        for _, splited in grad_var_mapping.iteritems():
             send_inputs.extend(splited)
-        send_outputs = self._create_vars_from_blocklist(program, param_blocks)
+        param_var_mapping = self._create_vars_from_blocklist(program,
+                                                             param_blocks)
+        for _, splited in param_var_mapping.iteritems():
+            send_outputs.extend(splited)
+        # let send_op know which endpoint to send which var, eplist is of the same
+        # order of send_inputs.
+        eplist = split_method(send_inputs, pserver_endpoints)
 
         send_op = program.global_block().append_op(
             type="send",
             inputs={"X": send_inputs},
             outputs={"Out": send_outputs},
             attrs={"endpoints": pserver_endpoints,
-                   "epmap": epmap})
+                   "epmap": eplist})
+
+        # step4
+        for varname, splited_var in param_var_mapping.iteritems():
+            orig_param = program.global_block().vars[varname]
+            concat = program.global_block().append_op(
+                type="concat",
+                inputs={"X": send_outputs},
+                outputs={"Out": orig_param},
+                attrs={"axis": 0})
 
     def _create_vars_from_blocklist(self, program, block_list):
         block_map = dict()
-        ret_vars = []
+        var_mapping = dict()
         for block_str in block_list:
             varname, offset, size = block_str.split(":")
             if not block_map.has_key(varname):
@@ -102,15 +150,26 @@ class DistributeTranspiler:
 
         for varname, splited in block_map.iteritems():
             orig_var = program.global_block().vars[varname]
-            for block in splited:
+            orig_shape = orig_var.shape
+            orig_dim1_flatten = 1
+            if len(orig_shape) >= 2:
+                orig_dim1_flatten = reduce(lambda x, y: x * y, orig_shape[1:])
+            var_list = []
+            for i, block in enumerate(splited):
                 size = block[1]
+                rows = size / orig_dim1_flatten
+                splited_shape = [rows]
+                if len(orig_shape) >= 2:
+                    splited_shape.extend(orig_shape[1:])
+                print("block, splited shape:", block, splited_shape)
                 var = program.global_block().create_var(
                     name="%s.block%d" % (varname, i),
                     psersistable=False,
                     dtype=orig_var.dtype,
-                    shape=[1, size])  # flattend splited var
-                ret_vars.append(var)
-        return ret_vars
+                    shape=splited_shape)  # flattend splited var
+                var_list.append(var)
+            var_mapping[varname] = var_list
+        return var_mapping
 
     def _clone_param(self, block, v):
         assert isinstance(v, Parameter)
@@ -137,80 +196,22 @@ class DistributeTranspiler:
             lod_level=var.lod_level,
             persistable=var.persistable)
 
-    def _split_dense_variable(self,
-                              var_list,
-                              pserver_count,
-                              min_block_size=1024,
-                              max_block_size=1048576):
-        """
-            We may need to split dense tensor to one or several blocks and put
-            them equally onto parameter server. One block is a sub-tensor
-            aligned by dim[0] of the tensor.
-            
-            We need to have a minimal block size so that the calculations in
-            the parameter server side can gain better performance. By default
-            mininum block size is 1024. The max block size is used to prevent
-            too large block that may causing send error.
-        """
-        block_sizes = []
-        blocks = []
-        for grad in var_list:
-            dim1 = reduce(lambda x, y: x * y, grad.shape[1:])
-            grad_numel = reduce(lambda x, y: x * y, grad.shape)
-            if grad_numel < min_block_size:
-                block_sizes.append(grad_numel)
-            block_size = grad_numel / min_block_size
-            if block_size < min_block_size:
-                block_size = min_block_size
-            # align by dim1(width)
-            remains = block_size % dim1
-            if remains != 0:
-                block_size += dim1 - remains
-            block_sizes.append(block_size)
-            num_blocks = grad_numel / block_size
-            print("grad numel :%d, blocksize: %d" % grad_numel, block_size)
-            for block_id in xrange(num_blocks):
-                block = VarBlock(grad.name(), block_id, block_size)
-                blocks.append(str(block))
-        return blocks
-
-    def _split_trainer_vars(self, program, gradblocks, params_and_grads):
-        var2blocks = dict()
-        splited = dict()
-        for block_str in gradblocks:
-            varname, offset, size = block_str.split(":")
-            if not var2blocks.has_key(varname):
-                var2blocks[varname] = []
-            var2blocks[varname].append((long(offset), long(size)))
-        for varname, blocks in var2blocks.iteritems():
+    def _append_split_op(self, program, gradblocks):
+        var_mapping = self._create_vars_from_blocklist(program, gradblocks)
+        for varname, splited_vars in var_mapping.iteritems():
+            if len(splited_vars) == 1:
+                continue
             orig_var = program.global_block().vars[varname]
-            split_outs = []
-            for i in xrange(len(blocks)):
-                size = blocks[i][1]
-                var = program.global_block().create_var(
-                    name="%s.block%d" % (varname, i),
-                    psersistable=False,
-                    dtype=orig_var.dtype,
-                    shape=[1, size])  # flattend splited var
-                split_outs.append(var)
-
-            splited[varname] = split_outs
+            sections = []
+            for v in splited_vars:
+                sections.append(v.shape[0])
             program.global_block().append_op(
                 type="split",
                 inputs={"X": orig_var},
-                outputs={"Out": split_outs},
-                attrs={"num": len(blocks)}  # assume split evenly
+                outputs={"Out": splited_vars},
+                attrs={"sections": sections}  # assume split evenly
             )
-        return splited
-
-    def _concat_trainer_vars(self, program, splited):
-        for varname, to_merge_list in splited.iteritems():
-            orig_var = program.global_block().vars[varname]
-            program.global_block().append_op(
-                type="concat",
-                inputs={"X": to_merge_list},
-                outputs={"Out": orig_var},
-                attrs={})
+        return var_mapping
 
     def get_trainer_program(self):
         # remove optimize ops and add a send op to main_program
