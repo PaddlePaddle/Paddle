@@ -125,7 +125,7 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     ss << input.first << "[";
     for (size_t i = 0; i < input.second.size(); ++i) {
       ss << input.second[i];
-      if (scope) {
+      if (scope && scope->FindVar(input.second[i])) {
         ss << "(" << GetDims(*scope, input.second[i]) << ")";
       }
       if (i != input.second.size() - 1) {
