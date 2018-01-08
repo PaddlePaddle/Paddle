@@ -32,6 +32,8 @@ class Variable {
     return *static_cast<const T*>(holder_->Ptr());
   }
 
+  bool IsInitialized() const { return holder_ != nullptr; }
+
   template <typename T>
   T* GetMutable() {
     if (!IsType<T>()) {
