@@ -21,10 +21,16 @@ ELSE()
     set(GPU_CTX_DEPS)
 ENDIF()
 
+IF(WITH_MKLDNN)
+    set(MKLDNN_CTX_DEPS mkldnn)
+ELSE()
+    set(MKLDNN_CTX_DEPS)
+ENDIF()
+
 # memcpy deoends on device_context, here add deps individually for
 # avoiding cycle dependencies
 cc_library(device_context SRCS device_context.cc DEPS memory buddy_allocator
-    system_allocator memory_block meta_data meta_cache place eigen3 ${GPU_CTX_DEPS})
+    system_allocator memory_block meta_data meta_cache place eigen3 ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS})
 nv_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_info)
 
 nv_test(cudnn_helper_test SRCS cudnn_helper_test.cc DEPS dynload_cuda)

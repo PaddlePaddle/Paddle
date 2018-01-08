@@ -63,9 +63,17 @@ ExternalProject_Add(
                         -DMKLROOT:PATH=${MKLML_ROOT}
 )
 
-ADD_LIBRARY(mkldnn SHARED IMPORTED GLOBAL)
-SET_PROPERTY(TARGET mkldnn PROPERTY IMPORTED_LOCATION ${MKLDNN_LIB})
-ADD_DEPENDENCIES(mkldnn ${MKLDNN_PROJECT})
+ADD_LIBRARY(shared_mkldnn SHARED IMPORTED GLOBAL)
+SET_PROPERTY(TARGET shared_mkldnn PROPERTY IMPORTED_LOCATION ${MKLDNN_LIB})
+ADD_DEPENDENCIES(shared_mkldnn ${MKLDNN_PROJECT})
 MESSAGE(STATUS "MKLDNN library: ${MKLDNN_LIB}")
 add_definitions(-DPADDLE_WITH_MKLDNN)
-LIST(APPEND external_project_dependencies mkldnn)
+LIST(APPEND external_project_dependencies shared_mkldnn)
+
+# generate a static dummy target to track mkldnn dependencies
+# for cc_library(xxx SRCS xxx.c DEPS mkldnn)
+SET(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/mkldnn_dummy.c)
+FILE(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
+ADD_LIBRARY(mkldnn STATIC ${dummyfile})
+TARGET_LINK_LIBRARIES(mkldnn ${MKLDNN_LIB} ${MKLML_LIB} ${MKLML_IOMP_LIB})
+ADD_DEPENDENCIES(mkldnn ${MKLDNN_PROJECT})
