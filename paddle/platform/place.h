@@ -52,6 +52,8 @@ struct IsCUDAPlace : public boost::static_visitor<bool> {
 
 typedef boost::variant<CUDAPlace, CPUPlace> Place;
 
+using PlaceList = std::vector<Place>;
+
 void set_place(const Place &);
 const Place &get_place();
 
