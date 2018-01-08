@@ -43,32 +43,32 @@ std::ostream &operator<<(std::ostream &os, const LoD &lod) {
   return os;
 }
 
-LoD SliceInLevel(const LoD &in, size_t level, size_t elem_begin,
-                 size_t elem_end) {
-  PADDLE_ENFORCE_LT(level, in.size());
-  PADDLE_ENFORCE_LT(elem_end, in[level].size());
+std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
+  PADDLE_ENFORCE(platform::is_cpu_place(t.place()));
+  PADDLE_ENFORCE(t.type().hash_code() == typeid(float).hash_code());
 
-  LoD res;
-  res.resize(in.size() - level);
-  // copy the first level
-  res[0].assign(in[level].begin() + elem_begin,
-                in[level].begin() + elem_end + 1);
-  for (size_t lvl = 1; lvl < res.size(); lvl++) {
-    const auto &in_level = in[level + lvl];
-    const auto &above_level = res[lvl - 1];
-    auto &out_level = res[lvl];
-    out_level.assign(in_level.begin() + above_level.front(),
-                     in_level.begin() + above_level.back() + 1);
+  os << "dim: " << t.dims() << "\n";
+  os << "lod: " << t.lod() << "\n";
+
+  // only print first ten elements
+  int64_t size = t.numel() < 10 ? t.numel() : 10;
+  for (int64_t i = 0; i < size; ++i) {
+    os << t.data<float>()[i] << " ";
   }
-  for (size_t lvl = 0; lvl < res.size(); lvl++) {
-    // to make the first offset equals 0, all the elements minus the first
-    // element
-    size_t front = res[lvl].front();
-    for (auto &ele : res[lvl]) {
-      ele -= front;
-    }
+
+  return os;
+}
+
+LoD SliceLevels(const LoD &in, size_t level_begin, size_t level_end) {
+  LoD new_lod;
+  new_lod.reserve(level_end - level_begin);
+  for (size_t i = level_begin; i < level_end; i++) {
+    new_lod.emplace_back(in.at(i));
   }
-  return res;
+  // transform the lowest level to absolute offset.
+  LoD abs_offset_lod = ToAbsOffset(in);
+  new_lod.back() = abs_offset_lod[level_end - 1];
+  return new_lod;
 }
 
 LoD ToAbsOffset(const LoD &in) {
@@ -193,6 +193,70 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
   }
   // the 3st filed, Tensor
   DeserializeFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
+}
+
+std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
+    const std::vector<platform::Place> places) const {
+  check_memory_size();
+  //  PADDLE_ENFORCE(lod().empty() || (lod().size() == 1 && lod()[0].empty())
+  //                 , "Disable parallel lod for now");
+  PADDLE_ENFORCE(lod().empty(), "Disable parallel lod for now");
+  PADDLE_ENFORCE(dims()[0] % places.size() == 0,
+                 "Batch size should be divided by places size");
+
+  std::vector<LoDTensor> lods;
+  for (size_t place_idx = 0; place_idx < places.size(); ++place_idx) {
+    size_t begin = place_idx * dims()[0] / places.size();
+    size_t end = (place_idx + 1) * dims()[0] / places.size();
+    auto src = Slice(static_cast<int>(begin), static_cast<int>(end));
+
+    LoDTensor dst;
+    dst.Resize(src.dims());
+    auto &dst_place = places[place_idx];
+    auto dst_ptr = dst.mutable_data(dst_place, src.type());
+
+    // TODO(tonyyang-svail):
+    //   change the following to framework::CopyFrom
+    auto src_place = src.place();
+    auto src_ptr = src.data<void>();
+    auto size = src.numel() * SizeOfType(src.type());
+    if (platform::is_cpu_place(src_place) &&
+        platform::is_cpu_place(dst_place)) {
+      memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
+                   boost::get<platform::CPUPlace>(src_place), src_ptr, size);
+    } else {
+      PADDLE_THROW("Not Implemented");
+    }
+
+    lods.emplace_back(dst);
+  }
+
+  return lods;
+}
+
+void LoDTensor::MergeLoDTensor(
+    const std::vector<const LoDTensor *> &lod_tensors, platform::Place place) {
+  PADDLE_ENFORCE(platform::is_cpu_place(place));
+  PADDLE_ENFORCE(!lod_tensors.empty());
+
+  framework::DDim new_dim = lod_tensors[0]->dims();
+  std::type_index new_type = lod_tensors[0]->type();
+  for (auto *lod : lod_tensors) {
+    PADDLE_ENFORCE(new_dim == lod->dims());
+    PADDLE_ENFORCE(new_type == lod->type());
+    PADDLE_ENFORCE(platform::is_cpu_place(lod->place()));
+  }
+  new_dim[0] *= lod_tensors.size();
+  Resize(new_dim);
+
+  auto *dst_ptr = reinterpret_cast<uint8_t *>(mutable_data(place, new_type));
+  for (auto *src : lod_tensors) {
+    auto size = src->numel() * SizeOfType(src->type());
+    memory::Copy(boost::get<platform::CPUPlace>(place), dst_ptr,
+                 boost::get<platform::CPUPlace>(src->place()),
+                 src->data<void>(), size);
+    dst_ptr += size;
+  }
 }
 
 }  // namespace framework

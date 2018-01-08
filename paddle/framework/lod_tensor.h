@@ -58,6 +58,7 @@ using Vector = thrust::host_vector<
 using LoD = std::vector<Vector<size_t>>;
 
 std::ostream& operator<<(std::ostream& os, const LoD& lod);
+std::ostream& operator<<(std::ostream& os, const LoDTensor& t);
 
 LoD SliceInLevel(const LoD& in, size_t level, size_t elem_begin,
                  size_t elem_end);
@@ -106,6 +107,12 @@ class LoDTensor : public Tensor {
     // the last offset is the end of last element
     return (lod_)[level].size() - 1;
   }
+
+  std::vector<LoDTensor> SplitLoDTensor(
+      const std::vector<platform::Place> places) const;
+
+  void MergeLoDTensor(const std::vector<const LoDTensor*>& lod_tensors,
+                      platform::Place place);
 
  private:
   LoD lod_;

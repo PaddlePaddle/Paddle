@@ -1,5 +1,7 @@
 import unittest
 import numpy as np
+
+import paddle.v2.fluid.core as core
 from op_test import OpTest
 
 
@@ -47,6 +49,7 @@ def conv2d_forward_naive(input, filter, group, conv_param):
 
 class TestConv2dOp(OpTest):
     def setUp(self):
+        core.use_cuda()
         self.init_op_type()
         self.init_group()
         self.init_dilation()
@@ -167,26 +170,31 @@ class TestWithDilation(TestConv2dOp):
 #----------------Conv2dCudnn----------------
 class TestCudnn(TestConv2dOp):
     def init_op_type(self):
+        core.use_cudnn()
         self.op_type = "conv2d_cudnn"
 
 
 class TestCudnnWithPad(TestWithPad):
     def init_op_type(self):
+        core.use_cudnn()
         self.op_type = "conv2d_cudnn"
 
 
 class TestCudnnWithStride(TestWithStride):
     def init_op_type(self):
+        core.use_cudnn()
         self.op_type = "conv2d_cudnn"
 
 
 class TestCudnnWithGroup(TestWithGroup):
     def init_op_type(self):
+        core.use_cudnn()
         self.op_type = "conv2d_cudnn"
 
 
 class TestCudnnWith1x1(TestWith1x1):
     def init_op_type(self):
+        core.use_cudnn()
         self.op_type = "conv2d_cudnn"
 
 
