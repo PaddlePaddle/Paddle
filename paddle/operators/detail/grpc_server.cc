@@ -240,16 +240,18 @@ void AsyncGRPCServer::HandleReqGet(bool wait) {
   void* tag = NULL;
   bool ok = false;
   while (true) {
-    if (wait && !done_) {
-      Wait();
-    }
     if (!cq_get_->Next(&tag, &ok)) {
       LOG(INFO) << "get CompletionQueue shutdown!";
       break;
     }
 
+    if (wait && !done_) {
+      Wait();
+    }
+
     RequestBase* base = (RequestBase*)tag;
     if (!ok) {
+      VLOG(4) << "recv no regular event";
       TryToRegisterNewGet();
       delete base;
       continue;
