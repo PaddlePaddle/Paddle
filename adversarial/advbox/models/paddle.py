@@ -7,6 +7,7 @@ from paddle.v2.fluid.framework import program_guard
 
 from .base import Model
 
+
 class PaddleModel(Model):
     """
     Create a PaddleModel instance.
@@ -30,9 +31,7 @@ class PaddleModel(Model):
                  channel_axis=3,
                  preprocess=None):
         super(PaddleModel, self).__init__(
-            bounds=bounds,
-            channel_axis=channel_axis,
-            preprocess=preprocess)
+            bounds=bounds, channel_axis=channel_axis, preprocess=preprocess)
 
         if preprocess is None:
             preprocess = (0, 1)
@@ -48,7 +47,8 @@ class PaddleModel(Model):
 
         # gradient
         loss = self._program.block(0).var(self._cost_name)
-        param_grads = fluid.backward.append_backward(loss, parameter_list=[self._input_name])
+        param_grads = fluid.backward.append_backward(
+            loss, parameter_list=[self._input_name])
         self._gradient = param_grads[0][1]
 
     def predict(self, image_batch):
@@ -61,16 +61,13 @@ class PaddleModel(Model):
                 numpy.ndarray: predictions of the images with shape (batch_size, num_of_classes).
         """
         feeder = fluid.DataFeeder(
-            feed_list=[self._input_name, self._logits_name], 
-            place=self._place, 
-            program=self._program
-        )
+            feed_list=[self._input_name, self._logits_name],
+            place=self._place,
+            program=self._program)
         predict_var = self._program.block(0).var(self._predict_name)
-        predict = self._exe.run(
-            self._program,
-            feed=feeder.feed(image_batch),
-            fetch_list=[predict_var]
-        )
+        predict = self._exe.run(self._program,
+                                feed=feeder.feed(image_batch),
+                                fetch_list=[predict_var])
         return predict
 
     def num_classes(self):
@@ -95,12 +92,10 @@ class PaddleModel(Model):
         """
         feeder = fluid.DataFeeder(
             feed_list=[self._input_name, self._logits_name],
-            place=self._place, 
-            program=self._program
-        )
+            place=self._place,
+            program=self._program)
 
-        grad, = self._exe.run(
-            self._program,
-            feed=feeder.feed(image_batch),
-            fetch_list=[self._gradient])
+        grad, = self._exe.run(self._program,
+                              feed=feeder.feed(image_batch),
+                              fetch_list=[self._gradient])
         return grad
