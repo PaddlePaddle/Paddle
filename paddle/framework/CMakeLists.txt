@@ -32,7 +32,9 @@ cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
 cc_library(scope SRCS scope.cc DEPS glog threadpool)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)
 
-cc_library(data_transform SRCS data_transform.cc DEPS math_function tensor framework_proto)
+cc_library(device_data_transform SRCS device_data_transform.cc DEPS tensor)
+
+cc_library(data_transform SRCS data_transform.cc DEPS math_function tensor framework_proto selected_rows device_data_transform)
 cc_test(data_transform_test SRCS data_transform_test.cc DEPS data_transform device_context)
 
 cc_library(attribute SRCS attribute.cc DEPS framework_proto)
@@ -77,3 +79,6 @@ cc_library(init SRCS init.cc DEPS gflags device_context place stringpiece operat
 cc_test(init_test SRCS init_test.cc DEPS init)
 
 cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto)
+
+nv_test(device_data_transform_test SRCS device_data_transform_test.cu
+        DEPS operator op_registry init math_function)
