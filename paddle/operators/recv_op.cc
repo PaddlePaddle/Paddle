@@ -101,7 +101,8 @@ class RecvOp : public framework::OperatorBase {
         if (it != grad_list.end()) {
           param_var_name = param_list[it - grad_list.begin()];
         } else {
-          LOG(ERROR) << "grad have no paired param found!";
+          LOG(ERROR) << "grad have no paired param found!\"" << grad_var_name
+                     << "\"";
         }
         VLOG(3) << "recved grad: " << grad_var_name
                 << " updating param: " << param_var_name;

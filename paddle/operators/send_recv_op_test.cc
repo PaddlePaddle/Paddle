@@ -137,7 +137,7 @@ void StartServerNet(bool is_sparse) {
   recv_op = f::OpRegistry::CreateOp("recv", {{"RX", {"x1"}}}, {}, attrs);
   recv_op->Run(scope, place);
 
-  std::cout << "start servernet end" << std::endl;
+  std::cout << "servernet end" << std::endl;
 }
 
 void PrintTop(std::string name, float *data) {

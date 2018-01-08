@@ -88,8 +88,6 @@ struct SendProcessor : public ClientBase {
 
   virtual ~SendProcessor() {}
 
-  void SetCallBack(RequestSendCallBack f) { response_call_back = f; }
-
   virtual void Proceed() { response_call_back(var_h, reply); }
 
   sendrecv::VoidMessage reply;
@@ -103,8 +101,6 @@ struct GetProcessor : public ClientBase {
   explicit GetProcessor(std::shared_ptr<grpc::Channel> ch) : ClientBase(ch) {}
 
   virtual ~GetProcessor() {}
-
-  void SetCallBack(RequestGetCallBack f) { response_call_back = f; }
 
   virtual void Proceed() { response_call_back(var_h, reply); }
 

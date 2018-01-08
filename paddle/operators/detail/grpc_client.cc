@@ -37,7 +37,7 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
   auto ch = GetChannel(ep);
   SendProcessor* s = new SendProcessor(ch);
   s->Prepare(var_h, time_out);
-  s->SetCallBack(ProcSendResponse);
+  s->response_call_back = ProcSendResponse;
 
   auto rpc = s->stub->AsyncSendVariable(s->context.get(), req, &cq_);
   rpc->Finish(&s->reply, &s->status, (void*)s);
@@ -79,7 +79,7 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
   auto ch = GetChannel(ep);
   GetProcessor* s = new GetProcessor(ch);
   s->Prepare(var_h, time_out);
-  s->SetCallBack(ProcGetResponse);
+  s->response_call_back = ProcGetResponse;
 
   auto rpc = s->stub->AsyncGetVariable(s->context.get(), req, &cq_);
   rpc->Finish(&s->reply, &s->status, (void*)s);

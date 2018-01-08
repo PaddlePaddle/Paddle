@@ -34,7 +34,6 @@ class RequestBase {
   }
   virtual ~RequestBase() {}
   virtual void Proceed() = 0;
-  virtual void RegistNewOne() = 0;
 
   CallStatus Status() { return status_; }
   void SetStatus(CallStatus status) { status_ = status; }
@@ -60,10 +59,12 @@ class RequestSend final : public RequestBase {
 
   virtual ~RequestSend() {}
 
+  /*
   virtual void RegistNewOne() {
     auto* n = new RequestSend(service_, cq_, queue_);
     service_->RequestSendVariable(&ctx_, &request_, &responder_, cq_, cq_, n);
   }
+  */
 
   virtual void Proceed() {
     // proc request.
@@ -90,11 +91,6 @@ class RequestGet final : public RequestBase {
   }
 
   virtual ~RequestGet() {}
-
-  virtual void RegistNewOne() {
-    auto* n = new RequestGet(service_, cq_, scope_);
-    service_->RequestGetVariable(&ctx_, &request_, &responder_, cq_, cq_, n);
-  }
 
   virtual void Proceed() {
     // proc request.
@@ -148,25 +144,24 @@ void AsyncGRPCServer::ShutdownSendQueue() {
 
 /*
  * This URL explains why shutdown is complicate:
- * https://stackoverflow.com/questions/35708348/grpc-what-is-the-
- * recommended-way-to-shut-down-an-asynchronous-server-in-c
+ * https://stackoverflow.com/questions/35708348/grpc-what-is-the-recommended-way-to-shut-down-an-asynchronous-server-in-c
  */
 void AsyncGRPCServer::ShutDown() {
-  server_->Shutdown();
   ShutdownGetQueue();
   ShutdownSendQueue();
+  server_->Shutdown();
 }
 
 void AsyncGRPCServer::HandleReqSend() {
   RequestSend* req_send =
       new RequestSend(&service_, cq_send_.get(), &var_recv_queue_);
-  VLOG(4) << "create RequestSend status:" << req_send->Status();
+  VLOG(5) << "create req_send status:" << req_send->Status();
 
   void* tag = NULL;
   bool ok = false;
   while (true) {
     if (!cq_send_->Next(&tag, &ok)) {
-      LOG(ERROR) << "HandleReqSend meets CompletionQueue errors" << std::endl;
+      LOG(INFO) << "send CompletionQueue shutdown!";
       break;
     }
 
@@ -174,17 +169,19 @@ void AsyncGRPCServer::HandleReqSend() {
     if (!ok) {
       TryToRegisterNewSend();
       delete base;
-      return;
+      continue;
     }
 
     switch (base->Status()) {
       case PROCESS: {
+        VLOG(4) << "status:" << base->Status();
         TryToRegisterNewSend();
         base->Proceed();
         SetSendFinishOrDelete(base);
         break;
       }
       case FINISH: {
+        VLOG(4) << "status:" << base->Status();
         delete base;
         break;
       }
@@ -199,7 +196,7 @@ void AsyncGRPCServer::TryToRegisterNewGet() {
     return;
   }
   RequestGet* req_get = new RequestGet(&service_, cq_get_.get(), scope_);
-  req_get->RegistNewOne();
+  VLOG(5) << "create req_get status:" << req_get->Status();
 }
 
 void AsyncGRPCServer::TryToRegisterNewSend() {
@@ -209,7 +206,7 @@ void AsyncGRPCServer::TryToRegisterNewSend() {
   }
   RequestSend* req_send =
       new RequestSend(&service_, cq_send_.get(), &var_recv_queue_);
-  req_send->RegistNewOne();
+  VLOG(5) << "create req_send status:" << req_send->Status();
 }
 
 void AsyncGRPCServer::SetGetFinishOrDelete(RequestBase*& last) {
@@ -238,7 +235,7 @@ void AsyncGRPCServer::SetSendFinishOrDelete(RequestBase*& last) {
 
 void AsyncGRPCServer::HandleReqGet(bool wait) {
   RequestGet* req_get = new RequestGet(&service_, cq_get_.get(), scope_);
-  VLOG(4) << "create RequestGet status:" << req_get->Status();
+  VLOG(5) << "create req_get status:" << req_get->Status();
 
   void* tag = NULL;
   bool ok = false;
@@ -247,7 +244,7 @@ void AsyncGRPCServer::HandleReqGet(bool wait) {
       Wait();
     }
     if (!cq_get_->Next(&tag, &ok)) {
-      LOG(ERROR) << "HandleReqGet meets CompletionQueue errors" << std::endl;
+      LOG(INFO) << "get CompletionQueue shutdown!";
       break;
     }
 
@@ -255,17 +252,19 @@ void AsyncGRPCServer::HandleReqGet(bool wait) {
     if (!ok) {
       TryToRegisterNewGet();
       delete base;
-      return;
+      continue;
     }
 
     switch (base->Status()) {
       case PROCESS: {
+        VLOG(4) << "status:" << base->Status();
         TryToRegisterNewGet();
         base->Proceed();
         SetGetFinishOrDelete(base);
         break;
       }
       case FINISH: {
+        VLOG(4) << "status:" << base->Status();
         delete base;
         break;
       }
