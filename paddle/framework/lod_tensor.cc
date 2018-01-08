@@ -59,16 +59,32 @@ std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
   return os;
 }
 
-LoD SliceLevels(const LoD &in, size_t level_begin, size_t level_end) {
-  LoD new_lod;
-  new_lod.reserve(level_end - level_begin);
-  for (size_t i = level_begin; i < level_end; i++) {
-    new_lod.emplace_back(in.at(i));
+LoD SliceInLevel(const LoD &in, size_t level, size_t elem_begin,
+                 size_t elem_end) {
+  PADDLE_ENFORCE_LT(level, in.size());
+  PADDLE_ENFORCE_LT(elem_end, in[level].size());
+
+  LoD res;
+  res.resize(in.size() - level);
+  // copy the first level
+  res[0].assign(in[level].begin() + elem_begin,
+                in[level].begin() + elem_end + 1);
+  for (size_t lvl = 1; lvl < res.size(); lvl++) {
+    const auto &in_level = in[level + lvl];
+    const auto &above_level = res[lvl - 1];
+    auto &out_level = res[lvl];
+    out_level.assign(in_level.begin() + above_level.front(),
+                     in_level.begin() + above_level.back() + 1);
   }
-  // transform the lowest level to absolute offset.
-  LoD abs_offset_lod = ToAbsOffset(in);
-  new_lod.back() = abs_offset_lod[level_end - 1];
-  return new_lod;
+  for (size_t lvl = 0; lvl < res.size(); lvl++) {
+    // to make the first offset equals 0, all the elements minus the first
+    // element
+    size_t front = res[lvl].front();
+    for (auto &ele : res[lvl]) {
+      ele -= front;
+    }
+  }
+  return res;
 }
 
 LoD ToAbsOffset(const LoD &in) {
