@@ -148,6 +148,24 @@ void BindProgramDesc(py::module &m) {
              PADDLE_ENFORCE(desc->ParseFromString(data),
                             "Fail to parse ProgramDesc from string. This could "
                             "be a bug of Paddle.");
+           })
+      .def("assign_feed_var_names",
+           [](ProgramDesc &program_desc,
+              const std::vector<std::string> &var_names) {
+             proto::ProgramDesc *desc = program_desc.Proto();
+             desc->clear_feed_var_names();
+             for (auto var_name : var_names) {
+               desc->add_feed_var_names(var_name);
+             }
+           })
+      .def("assign_fetch_var_names",
+           [](ProgramDesc &program_desc,
+              const std::vector<std::string> &var_names) {
+             proto::ProgramDesc *desc = program_desc.Proto();
+             desc->clear_fetch_var_names();
+             for (auto var_name : var_names) {
+               desc->add_fetch_var_names(var_name);
+             }
            });
 }
 

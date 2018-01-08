@@ -214,6 +214,8 @@ def save_inference_model(dirname,
 
     # Save only programDesc of inference_program in binary format
     # in another file: __model__.dat
+    inference_program.desc.assign_feed_var_names(feeded_var_names)
+    inference_program.desc.assign_fetch_var_names(fetch_var_names)
     with open(model_file_name + ".dat", "wb") as fp:
         fp.write(inference_program.desc.serialize_to_string())
 
