@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 #include <algorithm>
 #include "paddle/framework/executor.h"
 #include "paddle/framework/op_registry.h"
@@ -51,7 +51,7 @@ class ConditionalBlockOp : public ConditionalOp {
                      const framework::AttributeMap &attrs)
       : ConditionalOp(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &dev_place) const override {
     auto xs = InputTensors(scope);
     bool need_run = std::all_of(
         xs.begin(), xs.end(),
@@ -65,8 +65,8 @@ class ConditionalBlockOp : public ConditionalOp {
       scopes->front() = &scope.NewScope();
       auto &cur_scope = *scopes->front();
 
+      framework::Executor exec(dev_place);
       auto *block = Attr<framework::BlockDesc *>("sub_block");
-      framework::Executor exec(dev_ctx);
       exec.Run(*block->Program(), &cur_scope, block->ID(), false);
     }
   }
@@ -104,7 +104,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
                          const framework::AttributeMap &attrs)
       : ConditionalOp(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &dev_place) const override {
     auto xs = this->InputTensors(scope);
     bool need_run = std::all_of(
         xs.begin(), xs.end(),
@@ -116,21 +116,21 @@ class ConditionalBlockGradOp : public ConditionalOp {
       auto &scopes = scope_var->Get<std::vector<framework::Scope *>>();
       framework::Scope &cur_scope = *scopes[0];
 
+      framework::Executor exec(dev_place);
       auto *block = Attr<framework::BlockDesc *>("sub_block");
-      framework::Executor exec(dev_ctx);
       exec.Run(*block->Program(), &cur_scope, block->ID(), false);
 
-      AssignLocalGradientToGlobal(dev_ctx, cur_scope, Inputs("Params"),
+      AssignLocalGradientToGlobal(dev_place, cur_scope, Inputs("Params"),
                                   Outputs(framework::GradVarName("Params")));
 
-      AssignLocalGradientToGlobal(dev_ctx, cur_scope, Inputs("X"),
+      AssignLocalGradientToGlobal(dev_place, cur_scope, Inputs("X"),
                                   Outputs(framework::GradVarName("X")));
     }
   }
 
  private:
   void AssignLocalGradientToGlobal(
-      const platform::DeviceContext &dev_ctx, const framework::Scope &cur_scope,
+      const platform::Place &place, const framework::Scope &cur_scope,
       const std::vector<std::string> &p_names,
       const std::vector<std::string> &pg_names) const {
     for (size_t i = 0; i < p_names.size(); ++i) {
@@ -144,7 +144,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
       auto assign = framework::OpRegistry::CreateOp(
           "assign", {{"X", {new_in_grad_name}}}, {{"Out", {out_grad_name}}},
           framework::AttributeMap{});
-      assign->Run(cur_scope, dev_ctx);
+      assign->Run(cur_scope, place);
       cur_scope.Rename(new_in_grad_name, in_grad_name);
     }
   }

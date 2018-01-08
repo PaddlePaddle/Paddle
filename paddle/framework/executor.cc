@@ -14,18 +14,17 @@ limitations under the License. */
 
 #include "paddle/framework/executor.h"
 
-#include <algorithm>
-#include <iostream>
-#include <memory>
 #include <set>
-#include <vector>
 
+#include "gflags/gflags.h"
 #include "paddle/framework/feed_fetch_type.h"
 #include "paddle/framework/lod_rank_table.h"
-#include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
-#include "paddle/framework/scope.h"
+
+DEFINE_bool(check_nan_inf, false,
+            "Checking whether operator produce NAN/INF or not. It will be "
+            "extremely slow so please use this flag wisely.");
 
 namespace paddle {
 namespace framework {
@@ -33,13 +32,7 @@ namespace framework {
 const std::string kFeedOpType = "feed";
 const std::string kFetchOpType = "fetch";
 
-DeviceContextPool* DeviceContextPool::pool = nullptr;
-
-Executor::Executor(const std::vector<platform::Place>& places) {
-  DeviceContextPool& pool = DeviceContextPool::Get();
-  auto borrowed_contexts = pool.Borrow(places);
-  device_contexts_.swap(borrowed_contexts);
-}
+Executor::Executor(const platform::Place& place) : place_(place) {}
 
 static void CreateTensor(Variable* var, proto::VarDesc::VarType var_type) {
   if (var_type == proto::VarDesc::LOD_TENSOR) {
@@ -64,6 +57,19 @@ static void CreateTensor(Variable* var, proto::VarDesc::VarType var_type) {
   }
 }
 
+static void CheckTensorNANOrInf(const std::string& name,
+                                const framework::Tensor& tensor) {
+  if (tensor.memory_size() == 0) {
+    return;
+  }
+  if (tensor.type().hash_code() != typeid(float).hash_code() &&
+      tensor.type().hash_code() != typeid(double).hash_code()) {
+    return;
+  }
+  PADDLE_ENFORCE(!framework::HasInf(tensor), "Tensor %s has Inf", name);
+  PADDLE_ENFORCE(!framework::HasNAN(tensor), "Tensor %s has NAN", name);
+}
+
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool create_local_scope, bool create_vars) {
   // TODO(tonyyang-svail):
@@ -71,7 +77,6 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
   //    - will change to use multiple blocks for RNN op and Cond Op
   PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), pdesc.Size());
   auto& block = pdesc.Block(block_id);
-  auto& device = device_contexts_[0];
 
   Scope* local_scope = scope;
   if (create_vars) {
@@ -107,9 +112,18 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
   for (auto& op_desc : block.AllOps()) {
     auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
     VLOG(3) << op->DebugString();
-    op->Run(*local_scope, *device);
+    op->Run(*local_scope, place_);
+    if (FLAGS_check_nan_inf) {
+      for (auto& vname : op->OutputVars(true)) {
+        auto* var = local_scope->FindVar(vname);
+        if (var == nullptr) continue;
+        if (var->IsType<framework::LoDTensor>()) {
+          CheckTensorNANOrInf(vname, var->Get<framework::LoDTensor>());
+        }
+      }
+    }
   }
-  if (create_local_scope) {
+  if (create_vars && create_local_scope) {
     scope->DeleteScope(local_scope);
   }
 }

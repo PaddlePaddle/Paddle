@@ -448,7 +448,7 @@ class Operator(object):
         no_kernel_op_set = {
             'feed', 'fetch', 'save', 'load', 'recurrent',
             'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
-            'recv', 'get_places'
+            'recv', 'get_places', 'parallel_do'
         }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
@@ -659,7 +659,7 @@ class Block(object):
             end = list(self.ops).index(ops[-1])
         except Exception, e:
             raise e
-        self.desc.remove_op(start, end)
+        self.desc.remove_op(start, end + 1)
 
     def prepend_op(self, *args, **kwargs):
         op_desc = self.desc.prepend_op()
@@ -842,9 +842,11 @@ class Program(object):
         self.sync_with_cpp()
         return param_to_grad_info
 
-    def create_block(self):
+    def create_block(self, parent_idx=None):
         new_block_idx = len(self.blocks)
-        self.desc.append_block(self.current_block().desc)
+        parent = self.current_block() if parent_idx is None else self.block(
+            parent_idx)
+        self.desc.append_block(parent.desc)
         self.current_block_idx = new_block_idx
         self.blocks.append(Block(self, self.current_block_idx))
         return self.current_block()
