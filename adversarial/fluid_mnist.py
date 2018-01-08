@@ -4,6 +4,7 @@ CNN on mnist data using fluid api of paddlepaddle
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
 
+
 def mnist_cnn_model(img):
     """
     Mnist cnn model
@@ -31,10 +32,7 @@ def mnist_cnn_model(img):
         pool_stride=2,
         act='relu')
 
-    logits = fluid.layers.fc(
-        input=conv_pool_2,
-        size=10,
-        act='softmax')
+    logits = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
     return logits
 
 
@@ -73,17 +71,19 @@ def main():
                                 feed=feeder.feed(data),
                                 fetch_list=[avg_cost] + accuracy.metrics)
             pass_acc = accuracy.eval(exe)
-            print("pass_id=" + str(pass_id) + " acc=" + str(acc) + " pass_acc=" +
-                  str(pass_acc))
+            print("pass_id=" + str(pass_id) + " acc=" + str(acc) + " pass_acc="
+                  + str(pass_acc))
             # print loss, acc
             if loss < LOSS_THRESHOLD and pass_acc > ACC_THRESHOLD:
                 # if avg cost less than 10.0 and accuracy is larger than 0.9, we think our code is good.
                 break
+
 #                exit(0)
 
         pass_acc = accuracy.eval(exe)
         print("pass_id=" + str(pass_id) + " pass_acc=" + str(pass_acc))
-    fluid.io.save_params(exe, dirname='./mnist', main_program=fluid.default_main_program())
+    fluid.io.save_params(
+        exe, dirname='./mnist', main_program=fluid.default_main_program())
     print('train mnist done')
     exit(1)
 

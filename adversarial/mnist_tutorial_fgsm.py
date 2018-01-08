@@ -9,6 +9,7 @@ import numpy as np
 from advbox.models.paddle import PaddleModel
 from advbox.attacks.gradientsign import GradientSignAttack
 
+
 def cnn_model(img):
     """
     Mnist cnn model
@@ -19,25 +20,22 @@ def cnn_model(img):
     """
     #conv1 = fluid.nets.conv2d()
     conv_pool_1 = fluid.nets.simple_img_conv_pool(
-            input=img,
-            num_filters=20,
-            filter_size=5,
-            pool_size=2,
-            pool_stride=2,
-            act='relu')
+        input=img,
+        num_filters=20,
+        filter_size=5,
+        pool_size=2,
+        pool_stride=2,
+        act='relu')
 
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
-            input=conv_pool_1,
-            num_filters=50,
-            filter_size=5,
-            pool_size=2,
-            pool_stride=2,
-            act='relu')
+        input=conv_pool_1,
+        num_filters=50,
+        filter_size=5,
+        pool_size=2,
+        pool_stride=2,
+        act='relu')
 
-    logits = fluid.layers.fc(
-            input=conv_pool_2,
-            size=10,
-            act='softmax')
+    logits = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
     return logits
 
 
@@ -65,22 +63,16 @@ def main():
             paddle.dataset.mnist.train(), buf_size=500),
         batch_size=BATCH_SIZE)
     feeder = fluid.DataFeeder(
-        feed_list=[IMG_NAME, LABEL_NAME], 
-        place=place, 
-        program=fluid.default_main_program()
-    )
+        feed_list=[IMG_NAME, LABEL_NAME],
+        place=place,
+        program=fluid.default_main_program())
 
-    fluid.io.load_params(exe, "./mnist/", main_program=fluid.default_main_program())
+    fluid.io.load_params(
+        exe, "./mnist/", main_program=fluid.default_main_program())
 
     # advbox demo
-    m = PaddleModel(
-        fluid.default_main_program(), 
-        IMG_NAME,
-        LABEL_NAME, 
-        logits.name, 
-        avg_cost.name, 
-        (-1, 1)
-    )
+    m = PaddleModel(fluid.default_main_program(), IMG_NAME, LABEL_NAME,
+                    logits.name, avg_cost.name, (-1, 1))
     att = GradientSignAttack(m)
     for data in train_reader():
         # fgsm attack
@@ -89,6 +81,7 @@ def main():
         plt.show()
         #np.save('adv_img', adv_img)
         break
-    
+
+
 if __name__ == '__main__':
     main()
