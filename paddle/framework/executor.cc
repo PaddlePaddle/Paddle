@@ -34,7 +34,7 @@ const std::string kFetchOpType = "fetch";
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
-static void CreateTensor(Variable* var, proto::VarDesc::VarType var_type) {
+void CreateTensor(Variable* var, proto::VarDesc::VarType var_type) {
   if (var_type == proto::VarDesc::LOD_TENSOR) {
     var->GetMutable<LoDTensor>();
   } else if (var_type == proto::VarDesc::SELECTED_ROWS) {
