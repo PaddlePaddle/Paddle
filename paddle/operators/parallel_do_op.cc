@@ -178,7 +178,9 @@ class ParallelDoGradOp : public OperatorBase {
     // feed output@grad
     SplitTensorAndMoveTensorToScopes(scope, sub_scopes, places,
                                      Inputs(framework::GradVarName(kOutputs)));
+    WaitOnPlaces(places);
 
+    // for debugging
     for (auto &s : Inputs(framework::GradVarName(kOutputs))) {
       VLOG(3) << s;
       VLOG(3) << scope.FindVar(s)->Get<LoDTensor>();
@@ -205,6 +207,7 @@ class ParallelDoGradOp : public OperatorBase {
     for (auto &worker : workers) {
       worker.join();
     }
+    WaitOnPlaces(places);
 
     // merge grad
     for (auto &s : Outputs(framework::GradVarName(kParameters))) {
@@ -221,11 +224,13 @@ class ParallelDoGradOp : public OperatorBase {
         VLOG(3) << place_idx;
         VLOG(3) << tt;
         framework::CopyFrom(tt, places[0], t_buf);
+        WaitOnPlaces(places);
 
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {s, s_buf}}}, {{"Out", {s}}},
             framework::AttributeMap{});
         sum_op->Run(*sub_scopes[0], place);
+        WaitOnPlaces(places);
       }
 
       VLOG(3) << t;

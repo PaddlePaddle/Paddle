@@ -44,8 +44,18 @@ std::ostream &operator<<(std::ostream &os, const LoD &lod) {
 }
 
 std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
-  PADDLE_ENFORCE(platform::is_cpu_place(t.place()));
   PADDLE_ENFORCE(t.type().hash_code() == typeid(float).hash_code());
+
+  if (!platform::is_cpu_place(t.place())) {
+    LoDTensor tt;
+    framework::CopyFrom(t, platform::CPUPlace(), &tt);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(t.place());
+    dev_ctx.Wait();
+
+    os << tt;
+    return os;
+  }
 
   os << "dim: " << t.dims() << "\n";
   os << "lod: " << t.lod() << "\n";
