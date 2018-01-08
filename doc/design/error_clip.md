@@ -2,20 +2,13 @@
 
 ## Overview
 
-Error clip is widely used in model training to prevent gradient exploding. It takes a value as clip threshold. With error clip, all gradient values will be checked before they are taken by the next `grad_op`, and values greater than the threshold will be clipped.
-
+Error clip is widely used in model training to prevent gradient exploding. It takes some specific rules to adjust variables' gradients and prevent them from being too large. With it, values of a gradient will be checked before they are taken by the next `grad_op` and be shrunk if necessary.
 ## Usage
 
-Users can enable clip and set related attributes via invoking `Optimizer`'s `minimize` API:
+Users are allowed to assign different error clip methods or attributes to different `Variable`s. Users can specify it as a parameter of `Variable`'s constructor:
 
 ```python
-def minimize(self,
-             loss,
-             startup_program=None,
-             parameter_list=None,
-             no_grad_set=None,
-             error_clip=None):
-    # ...
+var = framework.Variable(..., error_clip=myErrorClip, ...)
 ```
 
 The default value of `error_clip` is `None`, which means no error clip is employed. When it's not `None`, it should take an object of `BaseErrorClipAttr`'s derived class. So far, `BaseErrorClipAttr` has only one derived class: `ErrorClipByValue`, whose constructor is:
@@ -24,13 +17,12 @@ The default value of `error_clip` is `None`, which means no error clip is employ
 ErrorClipByValue(max, min=None)
 ```
 
-`max` and `min` represent the maximal and minimal clip threshold respectively. When the `min` is None, the minimal threshold will be assigned with `-max`.
+`max` and `min` represent the maximal and minimal clip threshold respectively. In backward pass, all values of `var`'s gradient greater than `max` or less than `min` will be clipped to `max` and `min` respectively. When the `min` is None, the minimal threshold will be assigned with `-max` automatically.
 
-So we can enable the error clip with threshold `[-5.0, 5.0]` by:
+So we can enable the error clip with threshold `[-5.0, 5.0]` for variable `var` by:
 
 ```python
-opt = fluid.optimizer.SGD(learning_rate=0.001)
-opt.minimize(loss=avg_cost, error_clip=ErrorClipByValue(max=5.0))
+var = framework.Variable(..., error_clip=ErrorClipByValue(max=5.0), ...)
 ```
 
 ## Implementation
@@ -39,16 +31,8 @@ The `BaseErrorClipAttr` and its derived class `ErrorClipByValue` are defined in 
 
 ```python
 class BaseErrorClipAttr(object):
-    def create_clip_op_desc(self, grad_name):
+    def append_clip_op(self, block, grad_name):
         raise NotImplementedError()
-
-    def prepend_clip_op_desc(self, op_descs):
-        grad_names = set()
-        for op_desc in op_descs:
-            grad_names.update(filter(lambda n: n.find(
-                core.grad_var_suffix()) != -1, op_desc.output_arg_names()))
-        for n in grad_names:
-            op_descs.append(self.create_clip_op_desc(grad_name=n))
 
 
 class ErrorClipByValue(BaseErrorClipAttr):
@@ -61,40 +45,43 @@ class ErrorClipByValue(BaseErrorClipAttr):
         self.max = max
         self.min = min
 
-    def create_clip_op_desc(self, grad_name):
-        desc = core.OpDesc()
-        desc.set_type("clip")
-        desc.set_input("X", grad_name)
-        desc.set_output("Out", grad_name)
-        desc.set_attr("min", self.min)
-        desc.set_attr("max", self.max)
-        return desc
+    def append_clip_op(self, block, grad_name):
+        block.append_op(
+            type="clip",
+            inputs={"X": grad_name},
+            outputs={"Out": grad_name},
+            attrs={"min": self.min,
+                   "max": self.max})
 ```
 
-The `BaseErrorClipAttr` have two main member functions:
+The `BaseErrorClipAttr` have one main member functions: `append_clip_op(self, block, grad_name)`.
 
-- **`create_clip_op_desc(self, grad_name)`**
+This function is used to create a `clip_op` and append it to the end of given `block`. For different error clip algorithm require different `clip_op`, the function is defined as virtual in the base class. All derived classes must implement their own versions of this function.
 
-> This function is used to create a C++ `OpDesc` object of `clip_op` and return its pointer to Python. For different error clips require different `clip_op`, the function is defined as virtual in the base class. All derived classes must implement their own versions of this function.
-
-- **`prepend_clip_op_desc(self, op_descs)`**
-
-> This function takes a list of C++ `OpDesc` as input. It checks each `OpDesc` in the list, creates `clip_op`s for every gradient outputs and then appends them to the input list. The input `op_descs` is supposed to be the backward of a certain forward op. It can contain one or more `OpDesc`s (Some op's backward is a combination of several other ops). 
-
-This two functions take effort during the backward building. Just as we showed in the *Usage* section, `Optimizer`'s `minimize` function can take an object of `ErrorClipByValue`(or some other `BaseErrorClipAttr`'s derived class). Inside the `minimize` function, the `prepend_clip_op_desc` function will be send to backward building process as an callback function:
+These `clip_op`s should be inserted after `grad_op`s whose output gradients need to be clipped. It is equivalent to appending some `clip_op`s to the end of the target block every time a new `grad_op` is added.
 
 ```python
-params_grads = append_backward(loss=loss, 
-                               parameter_list=parameter_list,
-                               no_grad_set=no_grad_set,
-                               callback=error_clip.prepend_clip_op_desc)
+for op_desc in grad_op_descs:
+        new_op_desc = target_block.desc.append_op()
+        new_op_desc.copy_from(op_desc)
+        callback(block=target_block, context=grad_to_var)
 ```
 
-Each time we get the backward of a forward op, we invoke the callback function to append `clip_op` for all the new generated gradients(In the `_append_backward_ops_` function of *backward.py*):
+Here we employ a callback function to complete this kind of jobs. In `_append_backward_ops_` function, each time after a `grad_op` is added to the `target_block`, a callback function is invoked. The logic of `clip_op` appending can be implemented inside the callback function.
+
+The callback function for `clip_op` appending is defined in *clip.py*:
 
 ```python
-grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-            op.desc, no_grad_dict[block.idx], grad_sub_block_list)
-if callback is not None:
-    grad_op_desc = callback(grad_op_desc)
+def error_clip_callback(block, context):
+    # the context is a grad_to_var map
+    grad_to_var = context
+    op_desc = block.desc.op(block.desc.op_size() - 1)
+    for grad_n in filter(lambda n: grad_to_var.has_key(n),
+                         op_desc.output_arg_names()):
+        fwd_var = block.var_recursive(grad_to_var[grad_n])
+        error_clip = getattr(fwd_var, "error_clip", None)
+        if error_clip is not None:
+            error_clip.append_clip_op(block, grad_n)
 ```
+
+This function takes a `block` and a `context`(which is actually a grad\_to\_var map) as inputs. It checks each output of the last `OpDesc` in the `block`. Notice that the last `OpDesc` of the `block` must be a `grad_op` and its outputs must be some forward variables' gradients. If an output gradient's corresponding forward variable has an attribute of `error_clip`, `error_clip_callback` will call the `error_clip`'s `append_clip_op` function to append the required `clip_op` into the `block`.
