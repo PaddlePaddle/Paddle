@@ -109,6 +109,7 @@ std::string Scope::Rename(const std::string& origin_name) const {
   Rename(origin_name, var_name);
   return var_name;
 }
+
 Variable* Scope::FindVarLocally(const std::string& name) const {
   auto it = vars_.find(name);
   if (it != vars_.end()) return it->second;
