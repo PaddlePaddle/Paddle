@@ -44,14 +44,12 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
       paddings.size(), strides.size(),
       "Conv paddings dimension and Conv strides dimension should be the same.");
 
-  int input_channels = in_dims[1];
-  PADDLE_ENFORCE_EQ(input_channels, filter_dims[1] * groups,
+  PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[1] * groups,
                     "The number of input channels should be equal to filter "
                     "channels * groups.");
 
-  int output_channels = filter_dims[0];
   PADDLE_ENFORCE_EQ(
-      output_channels % groups, 0,
+      filter_dims[0] % groups, 0,
       "The number of output channels should be divided by groups.");
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[0]});
@@ -66,6 +64,7 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
                                       dilations[i], paddings[i], strides[i]));
   }
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
+  ctx->ShareLoD("Input", "Output");
 }
 
 Conv2DOpMaker::Conv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker)

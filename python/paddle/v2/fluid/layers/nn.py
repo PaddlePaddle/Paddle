@@ -64,14 +64,14 @@ def fc(input,
                               is flattened: the first `num_flatten_dims`
                               dimensions will be flatten to form the first
                               dimension of the final matrix (height of the
-                              matrix), and the rest `rank(X) - num_col_dims`
+                              matrix), and the rest `rank(X) - num_flatten_dims`
                               dimensions are flattened to form the second
                               dimension of the final matrix (width of the matrix).
                               For example, suppose `X` is a 6-dimensional tensor
                               with a shape [2, 3, 4, 5, 6], and
-                              `x_num_col_dims` = 3. Then, the flattened matrix
+                              `num_flatten_dims` = 3. Then, the flattened matrix
                               will have a shape [2 x 3 x 4, 5 x 6] = [24, 30].
-                              By default, `x_num_col_dims` is set to 1.
+                              By default, `num_flatten_dims` is set to 1.
        param_attr(ParamAttr|list): The parameter attribute for learnable
                                    parameters/weights of the fully connected
                                    layer.
@@ -236,21 +236,50 @@ def gru_unit(input,
              activation='tanh',
              gate_activation='sigmoid'):
     """
-    GRUUnit Operator implements partial calculations of the GRU unit as following:
+    GRU unit layer. The equation of a gru step is:
 
-    $$
-    update \ gate: u_t = actGate(xu_t + W_u * h_{t-1} + b_u) \\
-    reset \ gate: r_t = actGate(xr_t + W_r * h_{t-1} + b_r)  \\
-    output \ candidate: {h}_t = actNode(xc_t + W_c * dot(r_t, h_{t-1}) + b_c) \\
-    output: h_t = dot((1 - u_t), h_{t-1}) + dot(u_t, {h}_t)
-    $$
+        .. math::
+            u_t & = actGate(xu_{t} + W_u h_{t-1} + b_u)
 
-    which is same as one time step of GRU Operator.
+            r_t & = actGate(xr_{t} + W_r h_{t-1} + b_r)
 
-    @note To implement the complete GRU unit, fully-connected operator must be
-    used before to feed xu, xr and xc as the Input of GRUUnit operator.
+            m_t & = actNode(xm_t + W_c dot(r_t, h_{t-1}) + b_m)
 
-    TODO(ChunweiYan) add more document here
+            h_t & = dot((1-u_t), m_t) + dot(u_t, h_{t-1})
+
+    The inputs of gru unit includes :math:`z_t`, :math:`h_{t-1}`. In terms
+    of the equation above, the :math:`z_t` is split into 3 parts - 
+    :math:`xu_t`, :math:`xr_t` and :math:`xm_t`. This means that in order to 
+    implement a full GRU unit operator for an input, a fully 
+    connected layer has to be applied, such that :math:`z_t = W_{fc}x_t`.
+
+    The terms :math:`u_t` and :math:`r_t` represent the update and reset gates 
+    of the GRU cell. Unlike LSTM, GRU has one lesser gate. However, there is 
+    an intermediate candidate hidden output, which is denoted by :math:`m_t`.
+    This layer has three outputs :math:`h_t`, :math:`dot(r_t, h_{t-1})`
+    and concatenation of :math:`u_t`, :math:`r_t` and :math:`m_t`.
+
+    Args:
+        input (Variable): The fc transformed input value of current step.
+        hidden (Variable): The hidden value of lstm unit from previous step.
+        size (integer): The input dimension value.
+        weight (ParamAttr): The weight parameters for gru unit. Default: None
+        bias (ParamAttr): The bias parameters for gru unit. Default: None
+        activation (string): The activation type for cell (actNode). Default: 'tanh'
+        gate_activation (string): The activation type for gates (actGate). Default: 'sigmoid'
+
+    Returns:
+        tuple: The hidden value, reset-hidden value and gate values.
+
+    Examples:
+
+        .. code-block:: python
+
+             # assuming we have x_t_data and prev_hidden of size=10
+             x_t = fluid.layers.fc(input=x_t_data, size=30) 
+             hidden_val, r_h_val, gate_val = fluid.layers.gru_unit(input=x_t,
+                                                    hidden = prev_hidden)
+
     """
     activation_dict = dict(
         identity=0,
@@ -426,8 +455,36 @@ def cross_entropy(input, label, **kwargs):
 
 def square_error_cost(input, label, **kwargs):
     """
-    This functions returns the squared error cost using the input and label.
-    The output is appending the op to do the above.
+    **Square error cost layer**
+
+    This layer accepts input predictions and target label and returns the squared error cost.
+    For predictions, :math:`X`, and target labels, :math:`Y`, the equation is:
+
+    .. math::
+
+        Out = (X - Y)^2
+
+    In the above equation:
+
+        * :math:`X`: Input predictions, a tensor.
+        * :math:`Y`: Input labels, a tensor.
+        * :math:`Out`: Output value, same shape with :math:`X`.
+
+    Args:
+       input(Variable): Input tensor, has predictions.
+       label(Variable): Label tensor, has target labels.
+
+    Returns:
+        Variable: The tensor variable storing the element-wise squared error difference \
+                  of input and label.
+
+    Examples:
+        .. code-block:: python
+
+          y = layers.data(name='y', shape=[1], dtype='float32')
+          y_predict = layers.data(name='y_predict', shape=[1], dtype='float32')
+          cost = layers.square_error_cost(input=y_predict, label=y)
+
     """
     helper = LayerHelper('square_error_cost', **kwargs)
     minus_out = helper.create_tmp_variable(dtype=input.dtype)
@@ -1145,25 +1202,26 @@ def lstm_unit(x_t,
 
         .. math::
 
-            i_t & = \sigma(W_{x_i}x_{t} + W_{h_i}h_{t-1} + W_{c_i}c_{t-1} + b_i)
+            i_t & = \sigma(W_{x_i}x_{t} + W_{h_i}h_{t-1} + b_i)
 
-            f_t & = \sigma(W_{x_f}x_{t} + W_{h_f}h_{t-1} + W_{c_f}c_{t-1} + b_f)
+            f_t & = \sigma(W_{x_f}x_{t} + W_{h_f}h_{t-1} + b_f)
 
-            c_t & = f_tc_{t-1} + i_t tanh (W_{x_c}x_t+W_{h_c}h_{t-1} + b_c)
+            c_t & = f_tc_{t-1} + i_t tanh (W_{x_c}x_t + W_{h_c}h_{t-1} + b_c)
 
-            o_t & = \sigma(W_{x_o}x_{t} + W_{h_o}h_{t-1} + W_{c_o}c_t + b_o)
+            o_t & = \sigma(W_{x_o}x_{t} + W_{h_o}h_{t-1} + b_o)
 
             h_t & = o_t tanh(c_t)
 
-    The inputs of lstm unit includes :math:`x_t`, :math:`h_{t-1}` and
-    :math:`c_{t-1}`. The implementation separates the linear transformation
-    and non-linear transformation apart. Here, we take :math:`i_t` as an
-    example. The linear transformation is applied by calling a `fc` layer and
-    the equation is:
+    The inputs of lstm unit include :math:`x_t`, :math:`h_{t-1}` and
+    :math:`c_{t-1}`. The 2nd dimensions of :math:`h_{t-1}` and :math:`c_{t-1}`
+    should be same. The implementation separates the linear transformation and
+    non-linear transformation apart. Here, we take :math:`i_t` as an example.
+    The linear transformation is applied by calling a `fc` layer and the
+    equation is:
 
         .. math::
 
-            L_{i_t} = W_{x_i}x_{t} + W_{h_i}h_{t-1} + W_{c_i}c_{t-1} + b_i
+            L_{i_t} = W_{x_i}x_{t} + W_{h_i}h_{t-1} + b_i
 
     The non-linear transformation is applied by calling `lstm_unit_op` and the
     equation is:
@@ -1175,9 +1233,12 @@ def lstm_unit(x_t,
     This layer has two outputs including :math:`h_t` and :math:`o_t`.
 
     Args:
-        x_t (Variable): The input value of current step.
-        hidden_t_prev (Variable): The hidden value of lstm unit.
-        cell_t_prev (Variable): The cell value of lstm unit.
+        x_t (Variable): The input value of current step, a 2-D tensor with shape
+            M x N, M for batch size and N for input size.
+        hidden_t_prev (Variable): The hidden value of lstm unit, a 2-D tensor
+            with shape M x S, M for batch size and S for size of lstm unit.
+        cell_t_prev (Variable): The cell value of lstm unit, a 2-D tensor with
+            shape M x S, M for batch size and S for size of lstm unit.
         forget_bias (float): The forget bias of lstm unit.
         param_attr (ParamAttr): The attributes of parameter weights, used to set
             initializer, name etc.
@@ -1190,14 +1251,15 @@ def lstm_unit(x_t,
     Raises:
         ValueError: The ranks of **x_t**, **hidden_t_prev** and **cell_t_prev**\
                 not be 2 or the 1st dimensions of **x_t**, **hidden_t_prev** \
-                and **cell_t_prev** not be the same.
+                and **cell_t_prev** not be the same or the 2nd dimensions of \
+                **hidden_t_prev** and **cell_t_prev** not be the same.
 
     Examples:
 
         .. code-block:: python
 
              x_t = fluid.layers.fc(input=x_t_data, size=10)
-             prev_hidden = fluid.layers.fc(input=prev_hidden_data, size=20)
+             prev_hidden = fluid.layers.fc(input=prev_hidden_data, size=30)
              prev_cell = fluid.layers.fc(input=prev_cell_data, size=30)
              hidden_value, cell_value = fluid.layers.lstm_unit(x_t=x_t,
                                                     hidden_t_prev=prev_hidden,
@@ -1216,7 +1278,11 @@ def lstm_unit(x_t,
 
     if x_t.shape[0] != hidden_t_prev.shape[0] or x_t.shape[
             0] != cell_t_prev.shape[0]:
-        raise ValueError("The 1s dimension of x_t, hidden_t_prev and "
+        raise ValueError("The 1st dimensions of x_t, hidden_t_prev and "
+                         "cell_t_prev must be the same.")
+
+    if hidden_t_prev.shape[1] != cell_t_prev.shape[1]:
+        raise ValueError("The 2nd dimensions of hidden_t_prev and "
                          "cell_t_prev must be the same.")
 
     if bias_attr is None:

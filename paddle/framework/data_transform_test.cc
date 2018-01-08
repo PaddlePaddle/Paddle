@@ -32,18 +32,18 @@ using namespace platform;
  *       1111 -> FP64, GPUPlace, kNCHW, kMKLDNN
  */
 
-std::array<proto::DataType, 2> kDataType = {proto::DataType::FP32,
-                                            proto::DataType::FP64};
+std::array<proto::DataType, 2> kDataType = {
+    {proto::DataType::FP32, proto::DataType::FP64}};
 
-std::array<Place, 2> kPlace = {CPUPlace(), CUDAPlace(0)};
+std::array<Place, 2> kPlace = {{CPUPlace(), CUDAPlace(0)}};
 
-std::array<DataLayout, 2> kDataLayout = {
+std::array<DataLayout, 2> kDataLayout = {{
     DataLayout::kNHWC, DataLayout::kNCHW,
-};
+}};
 
-std::array<LibraryType, 2> kLibraryType = {
+std::array<LibraryType, 2> kLibraryType = {{
     LibraryType::kPlain, LibraryType::kMKLDNN,
-};
+}};
 
 OpKernelType GenFromBit(const std::vector<bool> bits) {
   return OpKernelType(kDataType[bits[0]], kPlace[bits[1]], kDataLayout[bits[2]],
@@ -106,7 +106,7 @@ TEST(DataTransform, Register) {
   ASSERT_EQ(test_value, 2);
 }
 
-TEST(DataTransform, Layout) {
+TEST(DataTransform, DataLayout) {
   using namespace paddle::framework;
   using namespace paddle::platform;
 
@@ -127,7 +127,19 @@ TEST(DataTransform, Layout) {
   }
 
   Tensor dst = out.Get<Tensor>();
-  EXPECT_TRUE(dst.layout() != src->layout());
+
+  EXPECT_TRUE(dst.layout() == DataLayout::kNCHW);
+  EXPECT_TRUE(dst.dims() == make_ddim({2, 2, 3, 1}));
+
+  {
+    auto kernel1 = GenFromBit({1, 0, 1, 0});
+    auto kernel2 = GenFromBit({1, 0, 0, 0});
+    auto pair0 = std::make_pair(kernel1, kernel2);
+    instance.Get(pair0)(ctx, pair0, out, &in);
+  }
+
+  EXPECT_TRUE(src->layout() == DataLayout::kNHWC);
+  EXPECT_TRUE(src->dims() == make_ddim({2, 3, 1, 2}));
 }
 
 TEST(DataTransform, DataType) {
