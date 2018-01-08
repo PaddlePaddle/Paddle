@@ -49,7 +49,7 @@ map<KernelTypePair, DataTransformationFN> g_data_transformation_;
 
 void OpWithKernel::Run() {
   vec<Tensor> inputs = ...
-  auto actual_kernel_type = GetExpectedKernelType(inputs);
+  auto actual_kernel_type = GetActualKernelType(inputs);
   
   // The expected kernel type is related to actual kernel type.
   // For the most operators, the expected kernel type is as same as
