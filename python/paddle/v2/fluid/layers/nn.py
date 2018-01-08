@@ -243,18 +243,21 @@ def gru_unit(input,
 
             r_t & = actGate(xr_{t} + W_r h_{t-1} + b_r)
 
-            ch_t & = actNode(xc_t + W_c dot(r_t, h_{t-1}) + b_c)
+            m_t & = actNode(xm_t + W_c dot(r_t, h_{t-1}) + b_m)
 
-            h_t & = dot((1-u_t), ch_{t-1}) + dot(u_t, h_t)
+            h_t & = dot((1-u_t), m_t) + dot(u_t, h_{t-1})
 
     The inputs of gru unit includes :math:`z_t`, :math:`h_{t-1}`. In terms
     of the equation above, the :math:`z_t` is split into 3 parts - 
-    :math:`xu_t`, :math:`xr_t` and :math:`xc_t`. This means that in order to 
+    :math:`xu_t`, :math:`xr_t` and :math:`xm_t`. This means that in order to 
     implement a full GRU unit operator for an input, a fully 
     connected layer has to be applied, such that :math:`z_t = W_{fc}x_t`.
 
-    This layer has three outputs :math:`h_t`, :math:`dot(r_t, h_{t - 1})`
-    and concatenation of :math:`u_t`, :math:`r_t` and :math:`ch_t`.
+    The terms :math:`u_t` and :math:`r_t` represent the update and reset gates 
+    of the GRU cell. Unlike LSTM, GRU has one lesser gate. However, there is 
+    an intermediate candidate hidden output, which is denoted by :math:`m_t`.
+    This layer has three outputs :math:`h_t`, :math:`dot(r_t, h_{t-1})`
+    and concatenation of :math:`u_t`, :math:`r_t` and :math:`m_t`.
 
     Args:
         input (Variable): The fc transformed input value of current step.
