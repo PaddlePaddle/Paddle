@@ -366,6 +366,7 @@ TEST(OperatorRegistrar, OpWithMultiKernel) {
   op_desc.set_type("op_with_multi_kernel");
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
 
+  // TODO(qiao) add priority back
   // use all available kernels
   paddle::framework::UseALL();
   op->Run(scope, cuda_place);
@@ -375,16 +376,16 @@ TEST(OperatorRegistrar, OpWithMultiKernel) {
   paddle::framework::UseCPU();
   op->Run(scope, cpu_place);
 
-  EXPECT_EQ(op_test_value, -9);
+  EXPECT_EQ(op_test_value, -20);
 
   // add cuda kernels
   paddle::framework::UseCUDA();
   op->Run(scope, cuda_place);
 
-  EXPECT_EQ(op_test_value, -10);
+  EXPECT_EQ(op_test_value, -30);
 
   // use cudnn kernel
   paddle::framework::UseCUDNN();
   op->Run(scope, cuda_place);
-  EXPECT_EQ(op_test_value, -20);
+  EXPECT_EQ(op_test_value, -40);
 }
