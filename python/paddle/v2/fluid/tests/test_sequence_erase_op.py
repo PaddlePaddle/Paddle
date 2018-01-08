@@ -32,7 +32,6 @@ class TestSequenceEraseOp(OpTest):
         lod = [[0, 5, 15, 30]]
         tokens = [2, 5]
         out_seq, new_lod0 = sequence_erase(in_seq, lod[0], tokens)
-
         self.attrs = {'tokens': tokens}
         self.inputs = {'X': (in_seq, lod)}
         self.outputs = {'Out': (out_seq, [new_lod0])}
