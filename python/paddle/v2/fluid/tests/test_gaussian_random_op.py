@@ -1,32 +1,46 @@
 import unittest
+import numpy
+
+import paddle.v2.fluid as fluid
 import paddle.v2.fluid.core as core
 from paddle.v2.fluid.op import Operator
-import numpy
+from paddle.v2.fluid.executor import Executor
 
 
 class TestGaussianRandomOp(unittest.TestCase):
+    def setUp(self):
+        self.op_type = "gaussian_random"
+        self.inputs = {}
+        self.attrs = {"shape": [1000, 784], "mean": .0, "std": 1., "seed": 10}
+
+        self.outputs = ["Out"]
+
     def test_cpu(self):
-        self.gaussian_random_test(place=core.CPUPlace())
+        self.gaussian_random_test(place=fluid.CPUPlace())
 
     def test_gpu(self):
         if core.is_compile_gpu():
-            self.gaussian_random_test(place=core.GPUPlace(0))
+            self.gaussian_random_test(place=fluid.CUDAPlace(0))
 
     def gaussian_random_test(self, place):
-        scope = core.Scope()
-        scope.var('Out').get_tensor()
 
-        op = Operator(
-            "gaussian_random",
-            Out='Out',
-            shape=[1000, 784],
-            mean=.0,
-            std=1.,
-            seed=10)
+        program = fluid.Program()
+        block = program.global_block()
+        vout = block.create_var(name="Out")
+        op = block.append_op(
+            type=self.op_type, outputs={"Out": vout}, attrs=self.attrs)
 
-        context = core.DeviceContext.create(place)
-        op.run(scope, context)
-        tensor = numpy.array(scope.find_var('Out').get_tensor())
+        op.desc.infer_var_type(block.desc)
+        op.desc.infer_shape(block.desc)
+
+        fetch_list = []
+        for var_name in self.outputs:
+            fetch_list.append(block.var(var_name))
+
+        exe = Executor(place)
+        outs = exe.run(program, fetch_list=fetch_list)
+        tensor = outs[0]
+
         self.assertAlmostEqual(numpy.mean(tensor), .0, delta=0.1)
         self.assertAlmostEqual(numpy.std(tensor), 1., delta=0.1)
 

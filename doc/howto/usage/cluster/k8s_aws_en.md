@@ -493,7 +493,7 @@ spec:
     spec:
       containers:
       - name: paddle-data
-        image: paddledev/paddle-tutorial:k8s_data
+        image: paddlepaddle/paddle-tutorial:k8s_data
         imagePullPolicy: Always
         volumeMounts:
         - mountPath: "/efs"
@@ -522,7 +522,7 @@ NAME          DESIRED   SUCCESSFUL   AGE
 paddle-data   1         1            6m
 ```
 
-Data preparation is done by docker image `paddledev/paddle-tutorial:k8s_data`, see [here](src/k8s_data/README.md) for how to build this docker image and source code.
+Data preparation is done by docker image `paddlepaddle/paddle-tutorial:k8s_data`, see [here](src/k8s_data/README.md) for how to build this docker image and source code.
 
 #### Start Training
 
@@ -545,7 +545,7 @@ spec:
           claimName: efsvol
       containers:
       - name: trainer
-        image: paddledev/paddle-tutorial:k8s_train
+        image: paddlepaddle/paddle-tutorial:k8s_train
         command: ["bin/bash",  "-c", "/root/start.sh"]
         env:
         - name: JOB_NAME
@@ -617,7 +617,7 @@ kubectl --kubeconfig=kubeconfig log -f POD_NAME
 
 Run `kubectl --kubeconfig=kubeconfig describe job paddle-cluster-job` to check training job status. It will complete in around 20 minutes.
 
-The details for start `pserver` and `trainer` are hidden inside docker image `paddledev/paddle-tutorial:k8s_train`, see [here](src/k8s_train/README.md) for how to build the docker image and source code.
+The details for start `pserver` and `trainer` are hidden inside docker image `paddlepaddle/paddle-tutorial:k8s_train`, see [here](src/k8s_train/README.md) for how to build the docker image and source code.
 
 #### Inspect Training Output
 
