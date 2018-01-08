@@ -6,8 +6,8 @@ import abc
 
 abstractmethod = abc.abstractmethod
 
-class Model(object):
 
+class Model(object):
     """
     Base class of model to provide attack.
 

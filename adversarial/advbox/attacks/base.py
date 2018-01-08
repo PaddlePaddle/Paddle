@@ -7,6 +7,7 @@ import abc
 
 abstractmethod = abc.abstractmethod
 
+
 class Attack(object):
     """
     Abstract base class for adversarial attacks. `Attack` represent an adversarial attack

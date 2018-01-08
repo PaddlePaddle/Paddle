@@ -5,7 +5,8 @@ from __future__ import division
 import numpy as np
 from collections import Iterable
 from .base import Attack
- 
+
+
 class GradientSignAttack(Attack):
     """
     This attack was originally implemented by Goodfellow et al. (2015) with the
@@ -22,15 +23,17 @@ class GradientSignAttack(Attack):
         gradient_sign = np.sign(gradient) * (max_ - min_)
 
         if not isinstance(epsilons, Iterable):
-            epsilons = np.linspace(0, 1, num = epsilons + 1)
+            epsilons = np.linspace(0, 1, num=epsilons + 1)
 
         for epsilon in epsilons:
-            adv_img = image_batch[0][0].reshape(gradient_sign.shape) + epsilon * gradient_sign
+            adv_img = image_batch[0][0].reshape(
+                gradient_sign.shape) + epsilon * gradient_sign
             adv_img = np.clip(adv_img, min_, max_)
             adv_label = np.argmax(self.model.predict([(adv_img, 0)]))
             #print("pre_label="+str(pre_label)+ " adv_label="+str(adv_label))
             if pre_label != adv_label:
                 #print(epsilon, pre_label, adv_label)
                 return adv_img
+
 
 FGSM = GradientSignAttack
