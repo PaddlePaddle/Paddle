@@ -496,6 +496,9 @@ void OperatorWithKernel::Run(const Scope& scope,
           OpKernelType(actual_kernel_key.data_type_, std::get<0>(candidate),
                        actual_kernel_key.data_layout_, std::get<1>(candidate));
 
+      VLOG(3) << "Actual kernel: " << actual_kernel_key << "\n"
+              << "Candidate kernel: " << candidate_key;
+
       auto candidate_pair = std::make_pair(actual_kernel_key, candidate_key);
       if ((actual_kernel_key == candidate_key) ||
           (kernels.count(candidate_key) &&

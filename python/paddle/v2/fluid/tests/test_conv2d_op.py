@@ -73,6 +73,7 @@ class TestConv2dOp(OpTest):
         self.outputs = {'Output': output}
 
         self.init_op_type()
+        self.attrs.update({"use_cudnn": True})
 
     def test_check_output(self):
         self.check_output()
@@ -162,13 +163,11 @@ class TestConv2dOp(OpTest):
 #     def init_group(self):
 #         self.groups = 3
 
-
 #----------------Conv2dCUDNN----------------
-class TestCUDNN(TestConv2dOp):
-    def init_op_type(self):
-        self.op_type = "conv2d"
-        self.attrs.update({"use_cudnn": True})
-
+# class TestCUDNN(TestConv2dOp):
+#     def init_op_type(self):
+#         self.op_type = "conv2d"
+#         self.attrs.update({"use_cudnn": True})
 
 # class TestCUDNNWithPad(TestWithPad):
 #     def init_op_type(self):
