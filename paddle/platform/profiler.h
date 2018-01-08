@@ -136,7 +136,7 @@ void ParseEvents(std::vector<std::vector<Event>>&,
 
 // Print results
 void PrintProfilingReport(std::vector<std::vector<EventItem>>& events_table,
-                          EventSortingKey sorted_by, const size_t name_width,
+                          std::string& sorted_domain, const size_t name_width,
                           const size_t data_width);
 }  // namespace platform
 }  // namespace paddle
