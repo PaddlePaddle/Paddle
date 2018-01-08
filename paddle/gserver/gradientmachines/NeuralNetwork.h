@@ -137,6 +137,13 @@ public:
   /// some finish work, like convert the weight format of MKLDNNLayers
   void finish();
 
+  /**
+   * @brief   Release the middle layer's output memory.
+   *
+   * @note    This function is used for memory optimization in inference.
+   */
+  void releaseOutput();
+
 protected:
   /**
    * The constructor of NeuralNetwork.
@@ -158,6 +165,7 @@ protected:
 
   std::vector<DataLayerPtr> dataLayers_;
   std::vector<LayerPtr> outputLayers_;
+  std::vector<LayerPtr> middleLayers_;
 
   static std::map<std::string, bool> dllInitMap;
 
