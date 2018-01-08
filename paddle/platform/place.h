@@ -61,6 +61,7 @@ const CPUPlace default_cpu();
 bool is_gpu_place(const Place &);
 bool is_cpu_place(const Place &);
 bool places_are_same_class(const Place &, const Place &);
+bool is_same_place(const Place &, const Place &);
 
 std::ostream &operator<<(std::ostream &, const Place &);
 

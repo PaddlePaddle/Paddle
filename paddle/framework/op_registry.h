@@ -37,8 +37,8 @@ class Registrar {
  public:
   // In our design, various kinds of classes, e.g., operators and kernels,
   // have their corresponding registry and registrar. The action of
-  // registration is in the constructor of a global registrar variable, which,
-  // however, are not used in the code that calls package framework, and would
+  // registration is in the constructor of a global registrar variable, which
+  // are not used in the code that calls package framework, and would
   // be removed from the generated binary file by the linker. To avoid such
   // removal, we add Touch to all registrar classes and make USE_OP macros to
   // call this method. So, as long as the callee code calls USE_OP, the global
