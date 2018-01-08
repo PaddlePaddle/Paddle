@@ -54,6 +54,15 @@ void SplitTensorAndMoveTensorToScopes(
   }
 }
 
+void WaitOnPlaces(const std::vector<platform::Place> places) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+
+  for (auto& place : places) {
+    auto &dev_ctx = *pool.Get(place);
+    dev_ctx.Wait();
+  }
+}
+
 class ParallelDoOp : public framework::OperatorBase {
  public:
   ParallelDoOp(const std::string &type,
@@ -73,17 +82,17 @@ class ParallelDoOp : public framework::OperatorBase {
 
     // TODO(tonyyang-svail): get places from input
     std::vector<platform::Place> places;
-    places.emplace_back(platform::CPUPlace());
-    places.emplace_back(platform::CPUPlace());
+    places.emplace_back(platform::CUDAPlace(0));
+    places.emplace_back(platform::CUDAPlace(1));
 
     auto &sub_scopes = *scope.FindVar(Output(kParallelScopes))
                             ->GetMutable<std::vector<framework::Scope *>>();
     for (size_t place_idx = 0; place_idx < places.size(); ++place_idx) {
       sub_scopes.push_back(&scope.NewScope());
     }
-
     SplitTensorAndMoveTensorToScopes(scope, sub_scopes, places,
                                      Inputs(kInputs));
+    WaitOnPlaces(places);
 
     std::vector<std::thread> workers;
     for (size_t place_idx = 0; place_idx < places.size(); ++place_idx) {
@@ -107,6 +116,7 @@ class ParallelDoOp : public framework::OperatorBase {
     for (auto &worker : workers) {
       worker.join();
     }
+    WaitOnPlaces(places);
 
     // merge output
     for (auto &o_name : Outputs(kOutputs)) {
@@ -119,6 +129,7 @@ class ParallelDoOp : public framework::OperatorBase {
           scope.FindVar(o_name)->GetMutable<LoDTensor>();
       lod_tensor_to_be_merged->MergeLoDTensor(lod_tensors, dev_ctx.GetPlace());
     }
+    WaitOnPlaces(places);
   }
 };
 
@@ -161,8 +172,8 @@ class ParallelDoGradOp : public OperatorBase {
 
     // TODO(tonyyang-svail): get places from input
     std::vector<platform::Place> places;
-    places.emplace_back(platform::CPUPlace());
-    places.emplace_back(platform::CPUPlace());
+    places.emplace_back(platform::CUDAPlace(0));
+    places.emplace_back(platform::CUDAPlace(1));
 
     // feed output@grad
     SplitTensorAndMoveTensorToScopes(scope, sub_scopes, places,

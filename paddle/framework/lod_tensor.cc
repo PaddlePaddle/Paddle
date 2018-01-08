@@ -259,35 +259,19 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor) {
 std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     const std::vector<platform::Place> places) const {
   check_memory_size();
-  //  PADDLE_ENFORCE(lod().empty() || (lod().size() == 1 && lod()[0].empty())
-  //                 , "Disable parallel lod for now");
   PADDLE_ENFORCE(lod().empty(), "Disable parallel lod for now");
   PADDLE_ENFORCE(dims()[0] % places.size() == 0,
                  "Batch size should be divided by places size");
 
   std::vector<LoDTensor> lods;
-  for (int place_idx = 0; place_idx < places.size(); ++place_idx) {
+  for (size_t place_idx = 0; place_idx < places.size(); ++place_idx) {
     int begin = place_idx * dims()[0] / places.size();
     int end = (place_idx + 1) * dims()[0] / places.size();
+
     auto src = Slice(begin, end);
-
-    LoDTensor dst;
-    dst.Resize(src.dims());
     auto &dst_place = places[place_idx];
-    auto dst_ptr = dst.mutable_data(dst_place, src.type());
-
-    // TODO(tonyyang-svail):
-    //   change the following to framework::CopyFrom
-    auto src_place = src.place();
-    auto src_ptr = src.data<void>();
-    auto size = src.numel() * SizeOfType(src.type());
-    if (platform::is_cpu_place(src_place) &&
-        platform::is_cpu_place(dst_place)) {
-      memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
-                   boost::get<platform::CPUPlace>(src_place), src_ptr, size);
-    } else {
-      PADDLE_THROW("Not Implemented");
-    }
+    LoDTensor dst;
+    framework::CopyFrom(src, dst_place, &dst);
 
     lods.emplace_back(dst);
   }
@@ -295,28 +279,30 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
   return lods;
 }
 
+// TODO(tonyyang-svail): make this function support LoD
 void LoDTensor::MergeLoDTensor(
-    const std::vector<const LoDTensor *> &lod_tensors, platform::Place place) {
-  PADDLE_ENFORCE(platform::is_cpu_place(place));
+    const std::vector<const LoDTensor *> &lod_tensors,
+    platform::Place dst_place) {
   PADDLE_ENFORCE(!lod_tensors.empty());
-
   framework::DDim new_dim = lod_tensors[0]->dims();
   std::type_index new_type = lod_tensors[0]->type();
+  auto new_layout = lod_tensors[0]->layout();
   for (auto *lod : lod_tensors) {
     PADDLE_ENFORCE(new_dim == lod->dims());
     PADDLE_ENFORCE(new_type == lod->type());
-    PADDLE_ENFORCE(platform::is_cpu_place(lod->place()));
+    PADDLE_ENFORCE(new_layout == lod->layout());
   }
   new_dim[0] *= lod_tensors.size();
   Resize(new_dim);
+  set_layout(new_layout);
 
-  auto *dst_ptr = reinterpret_cast<uint8_t *>(mutable_data(place, new_type));
+  mutable_data(dst_place, new_type);
+  int begin = 0;
   for (auto *src : lod_tensors) {
-    auto size = src->numel() * SizeOfType(src->type());
-    memory::Copy(boost::get<platform::CPUPlace>(place), dst_ptr,
-                 boost::get<platform::CPUPlace>(src->place()),
-                 src->data<void>(), size);
-    dst_ptr += size;
+    int end = begin + src->dims()[0];
+    auto dst = Slice(begin, end);
+    framework::CopyFrom(*src, dst_place, &dst);
+    begin = end;
   }
 }
 
