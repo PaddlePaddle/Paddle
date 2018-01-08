@@ -281,7 +281,7 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     auto dst_ptr = dst.mutable_data(dst_place, src.type());
 
     // TODO(tonyyang-svail):
-    //   change the following to framework::CopyFrom
+    //   change the following to framework::Copy
     auto src_place = src.place();
     auto src_ptr = src.data<void>();
     auto size = src.numel() * SizeOfType(src.type());
