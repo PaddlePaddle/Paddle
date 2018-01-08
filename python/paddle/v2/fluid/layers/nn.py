@@ -151,7 +151,7 @@ def embedding(input, size, is_sparse=False, param_attr=None, dtype='float32'):
 
     Args:
        input(Variable): Input to the function
-       size(tuple|list|None): Shape of the look up table parameter 
+       size(tuple|list|None): Shape of the look up table parameter
        is_sparse(bool): Boolean flag that specifying whether the input is sparse
        param_attr(ParamAttr): Parameters for this layer
        dtype(np.dtype|core.DataType|str): The type of data : float32, float_16, int etc
@@ -366,9 +366,9 @@ def cross_entropy(input, label, **kwargs):
 
     1) One-hot cross-entropy:
 	`soft_label = False`, `Label[i, 0]` indicates the class index for sample i:
-        
+
         .. math::
-          
+
             Y[i] = -\log(X[i, Label[i]])
 
     2) Soft-label cross-entropy:
@@ -386,15 +386,15 @@ def cross_entropy(input, label, **kwargs):
 	 As a special case of 2), when each row of 'label' has only one
 	 non-zero element which is equal to 1, soft-label cross-entropy degenerates
          to a one-hot cross-entropy with one-hot label representation.
-    
+
     Args:
-        input (Variable|list):  a 2-D tensor with shape [N x D], where N is the 
-            batch size and D is the number of classes. This input is a probability 
+        input (Variable|list):  a 2-D tensor with shape [N x D], where N is the
+            batch size and D is the number of classes. This input is a probability
             computed by the previous operator, which is almost always the result
             of a softmax operator.
-        label (Variable|list): the ground truth which is a 2-D tensor. When 
-              `soft_label` is set to `False`, `label` is a tensor<int64> with shape 
-              [N x 1]. When `soft_label` is set to `True`, `label` is a 
+        label (Variable|list): the ground truth which is a 2-D tensor. When
+              `soft_label` is set to `False`, `label` is a tensor<int64> with shape
+              [N x 1]. When `soft_label` is set to `True`, `label` is a
               tensor<float/double> with shape [N x D].
         soft_label (bool, via `**kwargs`): a flag indicating whether to interpretate
               the given labels as soft labels, default `False`.
@@ -403,7 +403,7 @@ def cross_entropy(input, label, **kwargs):
          A 2-D tensor with shape [N x 1], the cross entropy loss.
 
     Raises:
-        `ValueError`: 1) the 1st dimension of `input` and `label` are not equal; 2) when \ 
+        `ValueError`: 1) the 1st dimension of `input` and `label` are not equal; 2) when \
               `soft_label == True`, and the 2nd dimension of `input` and `label` are not \
                equal; 3) when `soft_label == False`, and the 2nd dimension of `label` is not 1.
 
@@ -699,9 +699,9 @@ def conv2d(input,
 
 def sequence_pool(input, pool_type, **kwargs):
     """
-    This function add the operator for sequence pooling. 
-    It pools features of all time-steps of each instance, and is applied 
-    on top of the input using pool_type mentioned in the parameters. 
+    This function add the operator for sequence pooling.
+    It pools features of all time-steps of each instance, and is applied
+    on top of the input using pool_type mentioned in the parameters.
 
     It supports four pool_type:
 
@@ -730,7 +730,7 @@ def sequence_pool(input, pool_type, **kwargs):
 
     Args:
         input(variable): The input variable which is a LoDTensor.
-        pool_type (string): The pooling type of sequence_pool. 
+        pool_type (string): The pooling type of sequence_pool.
             It supports average, sum, sqrt and max.
 
     Returns:
@@ -740,7 +740,7 @@ def sequence_pool(input, pool_type, **kwargs):
 
         .. code-block:: python
 
-             x = fluid.layers.data(name='x', shape=[7, 1], 
+             x = fluid.layers.data(name='x', shape=[7, 1],
                               dtype='float32', lod_level=1)
              avg_x = fluid.layers.sequence_pool(input=x, pool_type='average')
              sum_x = fluid.layers.sequence_pool(input=x, pool_type='sum')
@@ -758,6 +758,11 @@ def sequence_pool(input, pool_type, **kwargs):
         outputs={"Out": pool_out,
                  "MaxIndex": max_index},
         attrs={"pooltype": pool_type.upper()})
+
+    # when pool_type is max, variable max_index is initialized,
+    # so we stop the gradient explicitly here
+    if pool_type == 'max':
+        max_index.stop_gradient = True
 
     return pool_out
 
@@ -788,7 +793,7 @@ def sequence_first_step(input, **kwargs):
 
         .. code-block:: python
 
-             x = fluid.layers.data(name='x', shape=[7, 1], 
+             x = fluid.layers.data(name='x', shape=[7, 1],
                               dtype='float32', lod_level=1)
              x_first_step = fluid.layers.sequence_first_step(input=x)
     """
@@ -821,7 +826,7 @@ def sequence_last_step(input, **kwargs):
 
         .. code-block:: python
 
-             x = fluid.layers.data(name='x', shape=[7, 1], 
+             x = fluid.layers.data(name='x', shape=[7, 1],
                               dtype='float32', lod_level=1)
              x_last_step = fluid.layers.sequence_last_step(input=x)
     """
@@ -1240,17 +1245,17 @@ def lstm_unit(x_t,
 
 def reduce_sum(input, dim=None, keep_dim=False):
     """
-    Computes the sum of tensor elements over the given dimension. 
+    Computes the sum of tensor elements over the given dimension.
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the sum is performed. If 
-            :attr:`None`, sum all elements of :attr:`input` and return a 
-            Tensor variable with a single element, otherwise must be in the 
-            range :math:`[-rank(input), rank(input))`. If :math:`dim < 0`, 
+        dim (int|None): The dimension along which the sum is performed. If
+            :attr:`None`, sum all elements of :attr:`input` and return a
+            Tensor variable with a single element, otherwise must be in the
+            range :math:`[-rank(input), rank(input))`. If :math:`dim < 0`,
             the dimension to reduce is :math:`rank + dim`.
-        keep_dim (bool): Whether to reserve the reduced dimension in the 
-            output Tensor. The result tensor will have one fewer dimension 
+        keep_dim (bool): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
 
     Returns:
@@ -1284,17 +1289,17 @@ def reduce_sum(input, dim=None, keep_dim=False):
 
 def reduce_mean(input, dim=None, keep_dim=False):
     """
-    Computes the mean of tensor elements over the given dimension. 
+    Computes the mean of tensor elements over the given dimension.
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the mean is computed. If 
-            :attr:`None`, compute the mean over all elements of :attr:`input` 
-            and return a Tensor variable with a single element, otherwise 
-            must be in the range :math:`[-rank(input), rank(input))`. If 
+        dim (int|None): The dimension along which the mean is computed. If
+            :attr:`None`, compute the mean over all elements of :attr:`input`
+            and return a Tensor variable with a single element, otherwise
+            must be in the range :math:`[-rank(input), rank(input))`. If
             :math:`dim < 0`, the dimension to reduce is :math:`rank + dim`.
-        keep_dim (bool): Whether to reserve the reduced dimension in the 
-            output Tensor. The result tensor will have one fewer dimension 
+        keep_dim (bool): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
 
     Returns:
@@ -1328,22 +1333,22 @@ def reduce_mean(input, dim=None, keep_dim=False):
 
 def reduce_max(input, dim=None, keep_dim=False):
     """
-    Computes the maximum of tensor elements over the given dimension. 
+    Computes the maximum of tensor elements over the given dimension.
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the maximum is computed. 
-            If :attr:`None`, compute the maximum over all elements of 
-            :attr:`input` and return a Tensor variable with a single element, 
-            otherwise must be in the range :math:`[-rank(input), rank(input))`. 
+        dim (int|None): The dimension along which the maximum is computed.
+            If :attr:`None`, compute the maximum over all elements of
+            :attr:`input` and return a Tensor variable with a single element,
+            otherwise must be in the range :math:`[-rank(input), rank(input))`.
             If :math:`dim < 0`, the dimension to reduce is :math:`rank + dim`.
-        keep_dim (bool): Whether to reserve the reduced dimension in the 
-            output Tensor. The result tensor will have one fewer dimension 
+        keep_dim (bool): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
 
     Returns:
         Variable: The reduced Tensor variable.
-    
+
     Examples:
         .. code-block:: python
 
@@ -1372,22 +1377,22 @@ def reduce_max(input, dim=None, keep_dim=False):
 
 def reduce_min(input, dim=None, keep_dim=False):
     """
-    Computes the minimum of tensor elements over the given dimension. 
+    Computes the minimum of tensor elements over the given dimension.
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the minimum is computed. 
-            If :attr:`None`, compute the minimum over all elements of 
-            :attr:`input` and return a Tensor variable with a single element, 
-            otherwise must be in the range :math:`[-rank(input), rank(input))`. 
+        dim (int|None): The dimension along which the minimum is computed.
+            If :attr:`None`, compute the minimum over all elements of
+            :attr:`input` and return a Tensor variable with a single element,
+            otherwise must be in the range :math:`[-rank(input), rank(input))`.
             If :math:`dim < 0`, the dimension to reduce is :math:`rank + dim`.
-        keep_dim (bool): Whether to reserve the reduced dimension in the 
-            output Tensor. The result tensor will have one fewer dimension 
+        keep_dim (bool): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
 
     Returns:
         Variable: The reduced Tensor variable.
-    
+
     Examples:
         .. code-block:: python
 
