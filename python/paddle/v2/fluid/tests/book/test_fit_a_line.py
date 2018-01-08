@@ -14,6 +14,9 @@ avg_cost = fluid.layers.mean(x=cost)
 sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
 sgd_optimizer.minimize(avg_cost)
 
+# memopt_program = fluid.memory_optimize(fluid.default_main_program())
+memopt_program = fluid.default_main_program()
+
 BATCH_SIZE = 20
 
 train_reader = paddle.batch(
@@ -32,10 +35,10 @@ for pass_id in range(PASS_NUM):
     fluid.io.save_persistables(exe, "./fit_a_line.model/")
     fluid.io.load_persistables(exe, "./fit_a_line.model/")
     for data in train_reader():
-        avg_loss_value, = exe.run(fluid.default_main_program(),
+        avg_loss_value, = exe.run(memopt_program,
                                   feed=feeder.feed(data),
                                   fetch_list=[avg_cost])
-
+        print avg_loss_value
         if avg_loss_value[0] < 10.0:
             exit(0)  # if avg cost less than 10.0, we think our code is good.
 exit(1)

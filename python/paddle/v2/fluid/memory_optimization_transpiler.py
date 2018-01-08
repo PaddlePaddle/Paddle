@@ -123,3 +123,10 @@ class ControlFlowGraph(object):
 
     def get_program(self):
         return self._program
+
+
+def memory_optimize(input_program):
+    graph = ControlFlowGraph(input_program)
+    graph.memory_optimize()
+    result_program = graph.get_program()
+    return result_program
