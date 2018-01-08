@@ -17,14 +17,14 @@ class TestSoftmaxOp(OpTest):
             'X': np.random.uniform(0.1, 1, [10, 10]).astype("float32")
         }
         self.outputs = {
-            'Y': np.apply_along_axis(stable_softmax, 1, self.inputs['X'])
+            'Out': np.apply_along_axis(stable_softmax, 1, self.inputs['X'])
         }
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y')
+        self.check_grad(['X'], 'Out')
 
 
 if __name__ == "__main__":

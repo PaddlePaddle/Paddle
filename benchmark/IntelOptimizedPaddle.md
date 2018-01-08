@@ -22,6 +22,7 @@ On each machine, we will test and compare the performance of training on single 
 
 #### Training
 Test on batch size 64, 128, 256 on Intel(R) Xeon(R) Gold 6148 CPU @ 2.40GHz
+Pay attetion that the speed below includes forward, backward and parameter update time. So we can not directly compare the data with the benchmark of caffe `time` [command](https://github.com/PaddlePaddle/Paddle/blob/develop/benchmark/caffe/image/run.sh#L9), which only contain forward and backward. The updating time of parameter would become very heavy when the weight size are large, especially on alexnet.
 
 Input image size - 3 * 224 * 224, Time: images/second
 
@@ -55,6 +56,16 @@ Input image size - 3 * 224 * 224, Time: images/second
 
 <img src="figs/googlenet-cpu-train.png" width="500">
 
+- Alexnet
+
+| BatchSize    | 64     | 128    | 256    |
+|--------------|--------| ------ | -------|
+| OpenBLAS     | 2.13   | 2.45   | 2.68   | 
+| MKLML        | 66.37  | 105.60 | 144.04 |
+| MKL-DNN      | 399.00 | 498.94 | 626.53 | 
+
+chart TBD
+
 #### Inference
 Test on batch size 1, 2, 4, 8, 16 on Intel(R) Xeon(R) Gold 6148 CPU @ 2.40GHz
 - VGG-19
@@ -82,6 +93,15 @@ Test on batch size 1, 2, 4, 8, 16 on Intel(R) Xeon(R) Gold 6148 CPU @ 2.40GHz
 | MKLML     | 22.74  | 41.56  | 81.22  | 133.47 | 210.53 |
 | MKL-DNN   | 175.10 | 272.92 | 450.70 | 512.00 | 600.94 |
 
+- Alexnet
+
+| BatchSize | 1      | 2      | 4      | 8      | 16     |
+|-----------|--------|--------|--------|--------|--------|
+| OpenBLAS  |    |   |   |   |    |
+| MKLML     | 21.32  | 36.55  | 73.06  | 131.15 | 192.77 |
+| MKL-DNN   | 442.91 | 656.41 | 719.10 | 847.68 | 850.51 |
+
+chart TBD
 
 ### Laptop
 TBD

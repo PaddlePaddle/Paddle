@@ -2,9 +2,9 @@ import unittest
 import paddle.v2.fluid.core as core
 import numpy as np
 import paddle.v2.fluid.layers as layers
-from paddle.v2.fluid.framework import Program
+from paddle.v2.fluid.framework import Program, program_guard
 from paddle.v2.fluid.executor import Executor
-from paddle.v2.fluid.backward import append_backward_ops
+from paddle.v2.fluid.backward import append_backward
 
 
 class TestCPULoDTensorArrayOps(unittest.TestCase):
@@ -75,26 +75,22 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
              level=0):
         place = self.place()
         program = Program()
-        x = layers.data(name='x', shape=[1], main_program=program)
-        x.persistable = True
+        with program_guard(program):
+            x = layers.data(name='x', shape=[1])
+            x.persistable = True
 
-        y = layers.data(name='y', shape=[1], main_program=program)
-        y.persistable = True
+            y = layers.data(name='y', shape=[1])
+            y.persistable = True
 
-        out_true, out_false = layers.split_lod_tensor(
-            input=x, mask=y, level=level, main_program=program)
-        out_true.persistable = True
-        out_false.persistable = True
+            out_true, out_false = layers.split_lod_tensor(
+                input=x, mask=y, level=level)
+            out_true.persistable = True
+            out_false.persistable = True
 
-        out = layers.merge_lod_tensor(
-            in_true=out_true,
-            in_false=out_false,
-            mask=y,
-            x=x,
-            level=level,
-            main_program=program)
+            out = layers.merge_lod_tensor(
+                in_true=out_true, in_false=out_false, mask=y, x=x, level=level)
 
-        out.persistable = True
+            out.persistable = True
 
         exe = Executor(place)
         scope = core.Scope()
@@ -123,34 +119,21 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
     def test_grad(self):
         place = core.CPUPlace()
         program = Program()
+        with program_guard(program):
+            x = layers.data(
+                name='x', shape=[1], dtype='float32', stop_gradient=False)
+            y = layers.data(
+                name='y', shape=[1], dtype='bool', stop_gradient=False)
 
-        x = layers.data(
-            name='x',
-            shape=[1],
-            dtype='float32',
-            main_program=program,
-            stop_gradient=False)
-        y = layers.data(
-            name='y',
-            shape=[1],
-            dtype='bool',
-            main_program=program,
-            stop_gradient=False)
+            level = 0
 
-        level = 0
+            out_true, out_false = layers.split_lod_tensor(
+                input=x, mask=y, level=level)
+            out = layers.merge_lod_tensor(
+                in_true=out_true, in_false=out_false, mask=y, x=x, level=level)
+            mean = layers.mean(x=out)
 
-        out_true, out_false = layers.split_lod_tensor(
-            input=x, mask=y, level=level, main_program=program)
-        out = layers.merge_lod_tensor(
-            in_true=out_true,
-            in_false=out_false,
-            mask=y,
-            x=x,
-            level=level,
-            main_program=program)
-        mean = layers.mean(x=out, main_program=program)
-
-        append_backward_ops(mean)
+            append_backward(mean)
 
         tensor = core.LoDTensor()
         tensor.set(np.arange(10).reshape(10, 1).astype('float32'), place)

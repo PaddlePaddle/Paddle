@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/cond_op.h"
-
 #include "paddle/operators/gather.h"
 #include "paddle/operators/scatter.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -193,20 +193,22 @@ void CondOp::MergeDataFromSubnet(const framework::Scope& scope,
   }
 }
 
-void CondOp::Run(const Scope& scope,
-                 const platform::DeviceContext& dev_ctx) const {
+void CondOp::Run(const Scope& scope, const platform::Place& place) const {
+  // get device context from pool
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto& dev_ctx = *pool.Get(place);
+
   PrepareDataForSubnet(scope, dev_ctx);
   std::vector<framework::Scope*>& sub_scopes = GetSubScopes(scope);
   for (int i = 0; i < BRANCH_NUM; ++i) {
-    sub_net_op_[i]->Run(*sub_scopes[i], dev_ctx);
+    sub_net_op_[i]->Run(*sub_scopes[i], place);
   }
   MergeDataFromSubnet(scope, dev_ctx);
 }
 
 class CondOpProtoAndCheckerMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CondOpProtoAndCheckerMaker(framework::OpProto* proto,
-                             framework::OpAttrChecker* op_checker)
+  CondOpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Cond", "The condition, which is a bool vector");
     AddInput("Xs", "Inputs of Subnets").AsDuplicable();

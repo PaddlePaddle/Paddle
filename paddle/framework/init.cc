@@ -1,21 +1,21 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 #include <algorithm>
 #include <string>
 
-#include "paddle/framework/executor.h"
 #include "paddle/framework/init.h"
+#include "paddle/platform/device_context.h"
 #include "paddle/platform/place.h"
 #include "paddle/string/piece.h"
 
@@ -48,13 +48,13 @@ bool InitDevices(const std::vector<std::string> &devices) {
   std::vector<platform::Place> places;
   for (auto &device : devices) {
     auto p = string::Piece(device);
-    if (string::Find(p, ':', 0) == string::Piece::npos) {
+    if (string::HasPrefix(p, "CPU")) {
       places.emplace_back(platform::CPUPlace());
     } else if (string::HasPrefix(p, "GPU")) {
 #ifdef PADDLE_WITH_CUDA
       auto pos = string::RFind(p, ':', string::Piece::npos);
       auto number = device.substr(pos + 1);
-      places.emplace_back(platform::GPUPlace(std::stoi(number)));
+      places.emplace_back(platform::CUDAPlace(std::stoi(number)));
 #else
       LOG(WARNING)
           << "'GPU' is not supported, Please re-compile with WITH_GPU option";
@@ -69,11 +69,15 @@ bool InitDevices(const std::vector<std::string> &devices) {
                      return platform::is_cpu_place(place);
                    }) == places.end()) {
     places.emplace_back(platform::CPUPlace());
-    LOG(WARNING) << "Not specified any device, use CPU by Default.";
+    LOG(WARNING) << "Not specified CPU device, create CPU by Default.";
   }
-  DeviceContextPool::Create(places);
+  platform::DeviceContextPool::Init(places);
   return true;
-  return true;
+}
+
+void InitGLOG(const std::string &prog_name) {
+  google::InitGoogleLogging(prog_name.c_str());
+  google::InstallFailureSignalHandler();
 }
 
 }  // namespace framework

@@ -36,7 +36,7 @@ def save_vars(executor, dirname, main_program=None, vars=None, predicate=None):
     :param executor: executor that save variable
     :param dirname: directory path
     :param main_program: program. If vars is None, then filter all variables in this
-    program which fit `predicate`. Default g_program.
+    program which fit `predicate`. Default default_main_program.
     :param predicate: The Predicate describes a callable that returns a variable
     as a bool. If it returns true, the variables will be saved.
     :param vars: variables need to be saved. If specify vars, program & predicate
@@ -180,10 +180,22 @@ def save_inference_model(dirname,
 
     :return: None
     """
+    if isinstance(feeded_var_names, basestring):
+        feeded_var_names = [feeded_var_names]
+    else:
+        if not (bool(feeded_var_names) and all(
+                isinstance(name, basestring) for name in feeded_var_names)):
+            raise ValueError("'feed_var_names' should be a list of str.")
+
+    if isinstance(target_vars, Variable):
+        target_vars = [target_vars]
+    else:
+        if not (bool(target_vars) and all(
+                isinstance(var, Variable) for var in target_vars)):
+            raise ValueError("'target_vars' should be a list of Variable.")
+
     if main_program is None:
         main_program = default_main_program()
-    if not isinstance(target_vars, list):
-        target_vars = [target_vars]
 
     if not os.path.isdir(dirname):
         os.makedirs(dirname)
