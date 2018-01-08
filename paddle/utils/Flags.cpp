@@ -27,6 +27,13 @@ DEFINE_bool(use_mkldnn, false, "Default still keep use CPU training");
 DEFINE_bool(use_mkldnn, false, "Only support CPU training");
 #endif
 
+#ifdef PADDLE_WITH_MKLML
+// TODO(TJ): change to true when fully confirmed
+DEFINE_bool(use_mkl_packed, false, "Whether to use MKL Packed Optimization");
+#else
+DEFINE_bool(use_mkl_packed, false, "Not to use MKL Packed Optimization");
+#endif
+
 DEFINE_bool(parallel_nn,
             false,
             "Whether to use multi-threads to calculate one neural network."

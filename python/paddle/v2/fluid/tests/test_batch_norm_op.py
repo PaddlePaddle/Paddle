@@ -296,8 +296,7 @@ class TestBatchNormOp(OpTest):
                 momentum=momentum,
                 epsilon=epsilon)
 
-            ctx = core.DeviceContext.create(place)
-            batch_norm_op.run(scope, ctx)
+            batch_norm_op.run(scope, place)
 
             # check forward result
             self.__assert_close(y_tensor, y_out, "y_out")
@@ -305,7 +304,7 @@ class TestBatchNormOp(OpTest):
             self.__assert_close(saved_variance_tensor, saved_variance,
                                 "saved_variance")
             self.__assert_close(mean_out_tensor, mean_out, "mean_out")
-            if isinstance(place, core.GPUPlace):
+            if isinstance(place, core.CUDAPlace):
                 atol = 5e-2
             else:
                 atol = 1e-4
@@ -320,7 +319,7 @@ class TestBatchNormOp(OpTest):
                 ["y_out", "mean", "variance", "saved_mean", "saved_variance"],
                 place,
                 feed_dict={"y_out": y_grad})
-            batch_norm_op_grad.run(scope, ctx)
+            batch_norm_op_grad.run(scope, place)
 
             x_grad_tensor = create_or_get_tensor(scope,
                                                  grad_var_name("x_val"), None,
@@ -340,7 +339,7 @@ class TestBatchNormOp(OpTest):
 
         places = [core.CPUPlace()]
         if core.is_compile_gpu() and core.op_support_gpu("batch_norm"):
-            places.append(core.GPUPlace(0))
+            places.append(core.CUDAPlace(0))
 
             core.init_devices(["CPU", "GPU:0"])
         else:

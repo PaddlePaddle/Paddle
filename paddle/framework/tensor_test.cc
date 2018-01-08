@@ -15,12 +15,13 @@
 #include <gtest/gtest.h>
 #include <string>
 
+namespace framework = paddle::framework;
+namespace platform = paddle::platform;
+
 TEST(Tensor, Dims) {
-  using namespace paddle::framework;
-  using namespace paddle::platform;
-  Tensor tt;
+  framework::Tensor tt;
   tt.Resize({2, 3, 4});
-  DDim dims = tt.dims();
+  framework::DDim dims = tt.dims();
   ASSERT_EQ(arity(dims), 3);
   for (int i = 0; i < 3; ++i) {
     EXPECT_EQ(i + 2, dims[i]);
@@ -28,12 +29,12 @@ TEST(Tensor, Dims) {
 }
 
 TEST(Tensor, DataAssert) {
-  paddle::framework::Tensor src_tensor;
+  framework::Tensor src_tensor;
 
   bool caught = false;
   try {
     src_tensor.data<double>();
-  } catch (paddle::platform::EnforceNotMet err) {
+  } catch (platform::EnforceNotMet err) {
     caught = true;
     std::string msg =
         "holder_ should not be null\nTensor holds no memory. Call "
@@ -50,61 +51,65 @@ TEST(Tensor, DataAssert) {
    because Memory::Alloc() and Memory::Free() have not been ready.
 */
 TEST(Tensor, MutableData) {
-  using namespace paddle::framework;
-  using namespace paddle::platform;
   {
-    Tensor src_tensor;
+    framework::Tensor src_tensor;
     float* p1 = nullptr;
     float* p2 = nullptr;
     // initialization
-    p1 = src_tensor.mutable_data<float>(make_ddim({1, 2, 3}), CPUPlace());
+    p1 = src_tensor.mutable_data<float>(framework::make_ddim({1, 2, 3}),
+                                        platform::CPUPlace());
     EXPECT_NE(p1, nullptr);
     // set src_tensor a new dim with large size
     // momery is supposed to be re-allocated
-    p2 = src_tensor.mutable_data<float>(make_ddim({3, 4}), CPUPlace());
+    p2 = src_tensor.mutable_data<float>(framework::make_ddim({3, 4}),
+                                        platform::CPUPlace());
     EXPECT_NE(p2, nullptr);
     EXPECT_NE(p1, p2);
     // set src_tensor a new dim with same size
     // momery block is supposed to be unchanged
-    p1 = src_tensor.mutable_data<float>(make_ddim({2, 2, 3}), CPUPlace());
+    p1 = src_tensor.mutable_data<float>(framework::make_ddim({2, 2, 3}),
+                                        platform::CPUPlace());
     EXPECT_EQ(p1, p2);
     // set src_tensor a new dim with smaller size
     // momery block is supposed to be unchanged
-    p2 = src_tensor.mutable_data<float>(make_ddim({2, 2}), CPUPlace());
+    p2 = src_tensor.mutable_data<float>(framework::make_ddim({2, 2}),
+                                        platform::CPUPlace());
     EXPECT_EQ(p1, p2);
   }
 
 #ifdef PADDLE_WITH_CUDA
   {
-    Tensor src_tensor;
+    framework::Tensor src_tensor;
     float* p1 = nullptr;
     float* p2 = nullptr;
     // initialization
-    p1 = src_tensor.mutable_data<float>(make_ddim({1, 2, 3}), GPUPlace());
+    p1 = src_tensor.mutable_data<float>(framework::make_ddim({1, 2, 3}),
+                                        platform::CUDAPlace());
     EXPECT_NE(p1, nullptr);
     // set src_tensor a new dim with large size
     // momery is supposed to be re-allocated
-    p2 = src_tensor.mutable_data<float>(make_ddim({3, 4}), GPUPlace());
+    p2 = src_tensor.mutable_data<float>(framework::make_ddim({3, 4}),
+                                        platform::CUDAPlace());
     EXPECT_NE(p2, nullptr);
     EXPECT_NE(p1, p2);
     // set src_tensor a new dim with same size
     // momery block is supposed to be unchanged
-    p1 = src_tensor.mutable_data<float>(make_ddim({2, 2, 3}), GPUPlace());
+    p1 = src_tensor.mutable_data<float>(framework::make_ddim({2, 2, 3}),
+                                        platform::CUDAPlace());
     EXPECT_EQ(p1, p2);
     // set src_tensor a new dim with smaller size
     // momery block is supposed to be unchanged
-    p2 = src_tensor.mutable_data<float>(make_ddim({2, 2}), GPUPlace());
+    p2 = src_tensor.mutable_data<float>(framework::make_ddim({2, 2}),
+                                        platform::CUDAPlace());
     EXPECT_EQ(p1, p2);
   }
 #endif
 }
 
 TEST(Tensor, ShareDataWith) {
-  using namespace paddle::framework;
-  using namespace paddle::platform;
   {
-    Tensor src_tensor;
-    Tensor dst_tensor;
+    framework::Tensor src_tensor;
+    framework::Tensor dst_tensor;
     // Try to share data form uninitialized tensor
     bool caught = false;
     try {
@@ -121,16 +126,18 @@ TEST(Tensor, ShareDataWith) {
     }
     ASSERT_TRUE(caught);
 
-    src_tensor.mutable_data<int>(make_ddim({2, 3, 4}), CPUPlace());
+    src_tensor.mutable_data<int>(framework::make_ddim({2, 3, 4}),
+                                 platform::CPUPlace());
     dst_tensor.ShareDataWith(src_tensor);
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
 
 #ifdef PADDLE_WITH_CUDA
   {
-    Tensor src_tensor;
-    Tensor dst_tensor;
-    src_tensor.mutable_data<int>(make_ddim({2, 3, 4}), GPUPlace());
+    framework::Tensor src_tensor;
+    framework::Tensor dst_tensor;
+    src_tensor.mutable_data<int>(framework::make_ddim({2, 3, 4}),
+                                 platform::CUDAPlace());
     dst_tensor.ShareDataWith(src_tensor);
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
@@ -138,13 +145,12 @@ TEST(Tensor, ShareDataWith) {
 }
 
 TEST(Tensor, Slice) {
-  using namespace paddle::framework;
-  using namespace paddle::platform;
   {
-    Tensor src_tensor;
-    src_tensor.mutable_data<int>(make_ddim({5, 3, 4}), CPUPlace());
-    Tensor slice_tensor = src_tensor.Slice(1, 3);
-    DDim slice_dims = slice_tensor.dims();
+    framework::Tensor src_tensor;
+    src_tensor.mutable_data<int>(framework::make_ddim({5, 3, 4}),
+                                 platform::CPUPlace());
+    framework::Tensor slice_tensor = src_tensor.Slice(1, 3);
+    framework::DDim slice_dims = slice_tensor.dims();
     ASSERT_EQ(arity(slice_dims), 3);
     EXPECT_EQ(slice_dims[0], 2);
     EXPECT_EQ(slice_dims[1], 3);
@@ -153,11 +159,12 @@ TEST(Tensor, Slice) {
     uintptr_t src_data_address =
         reinterpret_cast<uintptr_t>(src_tensor.data<int>());
     uintptr_t src_mutable_data_address = reinterpret_cast<uintptr_t>(
-        src_tensor.mutable_data<int>(src_tensor.dims(), CPUPlace()));
+        src_tensor.mutable_data<int>(src_tensor.dims(), platform::CPUPlace()));
     uintptr_t slice_data_address =
         reinterpret_cast<uintptr_t>(slice_tensor.data<int>());
-    uintptr_t slice_mutable_data_address = reinterpret_cast<uintptr_t>(
-        slice_tensor.mutable_data<int>(slice_tensor.dims(), CPUPlace()));
+    uintptr_t slice_mutable_data_address =
+        reinterpret_cast<uintptr_t>(slice_tensor.mutable_data<int>(
+            slice_tensor.dims(), platform::CPUPlace()));
     EXPECT_EQ(src_data_address, src_mutable_data_address);
     EXPECT_EQ(slice_data_address, slice_mutable_data_address);
     EXPECT_EQ(src_data_address + 3 * 4 * 1 * sizeof(int), slice_data_address);
@@ -165,22 +172,25 @@ TEST(Tensor, Slice) {
 
 #ifdef PADDLE_WITH_CUDA
   {
-    Tensor src_tensor;
-    src_tensor.mutable_data<double>(make_ddim({6, 9}), GPUPlace());
-    Tensor slice_tensor = src_tensor.Slice(2, 6);
-    DDim slice_dims = slice_tensor.dims();
+    framework::Tensor src_tensor;
+    src_tensor.mutable_data<double>(framework::make_ddim({6, 9}),
+                                    platform::CUDAPlace());
+    framework::Tensor slice_tensor = src_tensor.Slice(2, 6);
+    framework::DDim slice_dims = slice_tensor.dims();
     ASSERT_EQ(arity(slice_dims), 2);
     EXPECT_EQ(slice_dims[0], 4);
     EXPECT_EQ(slice_dims[1], 9);
 
     uintptr_t src_data_address =
         reinterpret_cast<uintptr_t>(src_tensor.data<double>());
-    uintptr_t src_mutable_data_address = reinterpret_cast<uintptr_t>(
-        src_tensor.mutable_data<double>(src_tensor.dims(), GPUPlace()));
+    uintptr_t src_mutable_data_address =
+        reinterpret_cast<uintptr_t>(src_tensor.mutable_data<double>(
+            src_tensor.dims(), platform::CUDAPlace()));
     uintptr_t slice_data_address =
         reinterpret_cast<uintptr_t>(slice_tensor.data<double>());
-    uintptr_t slice_mutable_data_address = reinterpret_cast<uintptr_t>(
-        slice_tensor.mutable_data<double>(slice_tensor.dims(), GPUPlace()));
+    uintptr_t slice_mutable_data_address =
+        reinterpret_cast<uintptr_t>(slice_tensor.mutable_data<double>(
+            slice_tensor.dims(), platform::CUDAPlace()));
     EXPECT_EQ(src_data_address, src_mutable_data_address);
     EXPECT_EQ(slice_data_address, slice_mutable_data_address);
     EXPECT_EQ(src_data_address + 9 * 2 * sizeof(double), slice_data_address);
@@ -189,14 +199,19 @@ TEST(Tensor, Slice) {
 }
 
 TEST(Tensor, ReshapeToMatrix) {
-  using namespace paddle::framework;
-  using namespace paddle::platform;
-  Tensor src;
-  int* src_ptr = src.mutable_data<int>({2, 3, 4, 9}, CPUPlace());
+  framework::Tensor src;
+  int* src_ptr = src.mutable_data<int>({2, 3, 4, 9}, platform::CPUPlace());
   for (int i = 0; i < 2 * 3 * 4 * 9; ++i) {
     src_ptr[i] = i;
   }
-  Tensor res = ReshapeToMatrix(src, 2);
+  framework::Tensor res = framework::ReshapeToMatrix(src, 2);
   ASSERT_EQ(res.dims()[0], 2 * 3);
   ASSERT_EQ(res.dims()[1], 4 * 9);
+}
+
+TEST(Tensor, Layout) {
+  framework::Tensor src;
+  ASSERT_EQ(src.layout(), framework::DataLayout::kNHWC);
+  src.set_layout(framework::DataLayout::kAnyLayout);
+  ASSERT_EQ(src.layout(), framework::DataLayout::kAnyLayout);
 }

@@ -37,11 +37,11 @@ class SumKernel : public framework::OpKernel<T> {
     bool in_place = out_var == in_vars[0];
 
     if (out_var->IsType<framework::LoDTensor>()) {
-      auto *out = context.Output<Tensor>("Out");
-      out->mutable_data<T>(context.GetPlace());
-
+      auto *out = context.Output<LoDTensor>("Out");
+      if (!in_place) {
+        out->mutable_data<T>(context.GetPlace());
+      }
       auto result = EigenVector<T>::Flatten(*out);
-
       if (!in_place) {
         math::SetConstant<DeviceContext, T> constant_functor;
         constant_functor(context.template device_context<DeviceContext>(), out,

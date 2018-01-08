@@ -1,22 +1,22 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 #include <string>
-#include "paddle/framework/executor.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/memory/memcpy.h"
+#include "paddle/platform/device_context.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 
@@ -63,24 +63,24 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
         auto *dst_ptr = static_cast<void *>(dst_tensor.mutable_data<CUR_TYPE>(
             tensor.dims(), platform::CPUPlace()));
 
-        framework::DeviceContextPool &pool =
-            framework::DeviceContextPool::Get();
+        platform::DeviceContextPool &pool =
+            platform::DeviceContextPool::Instance();
         auto dev_ctx = static_cast<const platform::CUDADeviceContext *>(
-            pool.Borrow(tensor.place()));
+            pool.Get(tensor.place()));
 
         paddle::platform::GpuMemcpyAsync(
             dst_ptr, src_ptr, sizeof(CUR_TYPE) * tensor.numel(),
             cudaMemcpyDeviceToHost, dev_ctx->stream());
 #else
-        PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
+        PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
 #endif
       } else if (paddle::platform::is_cpu_place(tensor.place())) {
         dst_tensor = tensor;
       }
-      return py::buffer_info(
-          dst_tensor.mutable_data<CUR_TYPE>(dst_tensor.place()),
-          sizeof(CUR_TYPE), py::format_descriptor<CUR_TYPE>::format(),
-          (size_t)framework::arity(dst_tensor.dims()), dims_outside, strides);
+      return py::buffer_info(dst_tensor.data<CUR_TYPE>(), sizeof(CUR_TYPE),
+                             py::format_descriptor<CUR_TYPE>::format(),
+                             (size_t)framework::arity(dst_tensor.dims()),
+                             dims_outside, strides);
     } else {
       constexpr bool less = I + 1 < std::tuple_size<std::tuple<ARGS...>>::value;
       return CastToPyBufferImpl<less, I + 1, ARGS...>()(tensor);
@@ -128,7 +128,7 @@ template <typename T>
 void PyCUDATensorSetFromArray(
     framework::Tensor &self,
     py::array_t<T, py::array::c_style | py::array::forcecast> array,
-    paddle::platform::GPUPlace &place) {
+    paddle::platform::CUDAPlace &place) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (size_t i = 0; i < array.ndim(); ++i) {
@@ -138,9 +138,9 @@ void PyCUDATensorSetFromArray(
   self.Resize(framework::make_ddim(dims));
   auto *dst = self.mutable_data<T>(place);
 
-  framework::DeviceContextPool &pool = framework::DeviceContextPool::Get();
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto dev_ctx =
-      static_cast<const platform::CUDADeviceContext *>(pool.Borrow(place));
+      static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
   paddle::platform::GpuMemcpyAsync(dst, array.data(), sizeof(T) * array.size(),
                                    cudaMemcpyHostToDevice, dev_ctx->stream());
 }

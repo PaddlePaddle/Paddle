@@ -1,20 +1,21 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
-#include <paddle/framework/lod_rank_table.h>
+#include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/detail/safe_ref.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -53,7 +54,7 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
                                   const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto &x =
         detail::Ref(scope.FindVar(Input("X")),
                     "Cannot find input lod tensor variable %s", Input("X"))
@@ -69,11 +70,11 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
 
     out.Resize(x.dims());
     out.mutable_data(x.place(), x.type());
-    this->process(dev_ctx, x, rank_table, &out);
+    this->process(place, x, rank_table, &out);
   }
 
  protected:
-  virtual void process(const platform::DeviceContext &dev_ctx,
+  virtual void process(const platform::Place &place,
                        const framework::LoDTensor &x,
                        const framework::LoDRankTable &rank_table,
                        framework::LoDTensor *out) const = 0;
@@ -104,7 +105,7 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
     return absolute_table;
   }
 
-  size_t CopyTensorAndLod(const platform::DeviceContext &dev_ctx,
+  size_t CopyTensorAndLod(const platform::Place &place,
                           const AbsoluteRankTableItem &item,
                           const framework::LoDTensor &x,
                           framework::LoDTensor *out, size_t out_offset) const {
@@ -130,6 +131,8 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
     auto x_sliced = x.Slice(x_offset, x_offset + len);
     auto out_sliced = out->Slice(out_offset, out_offset + len);
 
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place);
     framework::CopyFrom(x_sliced, out_sliced.place(), dev_ctx, &out_sliced);
     out_offset += len;
     return out_offset;
@@ -145,8 +148,7 @@ class ReorderLoDTensorByRankTableOp : public ReorderLoDTensorByRankTableBase {
       : ReorderLoDTensorByRankTableBase(type, inputs, outputs, attrs) {}
 
  protected:
-  void process(const platform::DeviceContext &dev_ctx,
-               const framework::LoDTensor &x,
+  void process(const platform::Place &place, const framework::LoDTensor &x,
                const framework::LoDRankTable &rank_table,
                framework::LoDTensor *out) const override {
     auto absolute_table = GetAbsoluteOffsetAndLengthByLoDRankTable(x);
@@ -154,7 +156,7 @@ class ReorderLoDTensorByRankTableOp : public ReorderLoDTensorByRankTableBase {
     out->mutable_lod()->clear();
     for (auto &item : rank_table.items()) {
       PADDLE_ENFORCE_LT(item.index, absolute_table.size());
-      out_offset = CopyTensorAndLod(dev_ctx, absolute_table[item.index], x, out,
+      out_offset = CopyTensorAndLod(place, absolute_table[item.index], x, out,
                                     out_offset);
     }
   }
@@ -192,8 +194,7 @@ class ReorderLoDTensorByRankGradOp : public ReorderLoDTensorByRankTableBase {
       : ReorderLoDTensorByRankTableBase(type, inputs, outputs, attrs) {}
 
  protected:
-  void process(const platform::DeviceContext &dev_ctx,
-               const framework::LoDTensor &x,
+  void process(const platform::Place &place, const framework::LoDTensor &x,
                const framework::LoDRankTable &rank_table,
                framework::LoDTensor *out) const override {
     auto absolute_table = GetAbsoluteOffsetAndLengthByLoDRankTable(x);
@@ -214,7 +215,7 @@ class ReorderLoDTensorByRankGradOp : public ReorderLoDTensorByRankTableBase {
     // Copy TensorAndLod
     size_t out_offset = 0;
     for (auto &offset : offsets) {
-      out_offset = this->CopyTensorAndLod(dev_ctx, absolute_table[offset.first],
+      out_offset = this->CopyTensorAndLod(place, absolute_table[offset.first],
                                           x, out, out_offset);
     }
   }

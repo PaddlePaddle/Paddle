@@ -76,7 +76,7 @@ class VarDesc {
 
   void SetLoDLevel(int32_t lod_level);
 
-  int32_t GetLodLevel() const;
+  int32_t GetLoDLevel() const;
 
   proto::VarDesc::VarType GetType() const;
 
