@@ -183,35 +183,35 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
   if (g_profiler_place == "") return;
 
   std::string sorted_domain;
-  std::function<bool(EventItem&, EventItem&)> sorted_func;
+  std::function<bool(const EventItem&, const EventItem&)> sorted_func;
   switch (sorted_by) {
     case EventSortingKey::kCalls:
       sorted_domain = "number of calls";
-      sorted_func = [](EventItem& a, EventItem& b) {
+      sorted_func = [](const EventItem& a, const EventItem& b) {
         return a.calls > b.calls;
       };
       break;
     case EventSortingKey::kTotal:
       sorted_domain = "total time";
-      sorted_func = [](EventItem& a, EventItem& b) {
+      sorted_func = [](const EventItem& a, const EventItem& b) {
         return a.total_time > b.total_time;
       };
       break;
     case EventSortingKey::kMin:
       sorted_domain = "minimum time";
-      sorted_func = [](EventItem& a, EventItem& b) {
+      sorted_func = [](const EventItem& a, const EventItem& b) {
         return a.min_time > b.min_time;
       };
       break;
     case EventSortingKey::kMax:
       sorted_domain = "maximum time";
-      sorted_func = [](EventItem& a, EventItem& b) {
+      sorted_func = [](const EventItem& a, const EventItem& b) {
         return a.max_time > b.max_time;
       };
       break;
     case EventSortingKey::kAve:
       sorted_domain = "average time";
-      sorted_func = [](EventItem& a, EventItem& b) {
+      sorted_func = [](const EventItem& a, const EventItem& b) {
         return a.ave_time > b.ave_time;
       };
       break;
