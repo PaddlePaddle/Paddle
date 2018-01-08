@@ -24,10 +24,13 @@ class TestControlFlowGraph(unittest.TestCase):
         self.program = program
 
     def test_control_flow_graph(self):
-        # print(str(self.program))
+        print("before optimization")
+        print(str(self.program))
         self.graph = ControlFlowGraph(self.program)
         self.graph.memory_optimize()
         result_program = self.graph.get_program()
+        print("after optimization")
+        print(str(result_program))
 
 
 if __name__ == "__main__":
