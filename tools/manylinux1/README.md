@@ -24,7 +24,7 @@ compatible with the cp27m Python ABI, some others with cp27.
 To build these wheels, please run the following commands:
 
 ```bash
-git clone https://github.com/paddlepaddle/buildtools
-cd buildtools/manylinux
+git clone https://github.com/paddlepaddle/paddle
+cd paddle/tools/manylinux1
 REPO=[yourrepo] ./build_all.sh
 ```
