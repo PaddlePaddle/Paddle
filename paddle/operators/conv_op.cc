@@ -127,7 +127,8 @@ Conv2DOpMaker::Conv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       "An optional string from: \"NHWC\", \"NCHW\". "
       "Defaults to \"NHWC\". Specify the data format of the output data, "
       "the input will be transformed automatically. ")
-      .SetDefault("NCHW");
+      .SetDefault("AnyLayout");
+  // TODO(dzhwinter): need to registered layout transform function
   AddAttr<int>("workspace_size_MB",
                "Only used in cudnn kernel. Need set use_cudnn to true."
                "workspace size for cudnn, in MB, "
