@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/platform/place.h"
 
 DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
@@ -49,10 +50,13 @@ static void CreateTensor(Variable* var, proto::VarDesc::VarType var_type) {
     var->GetMutable<LoDRankTable>();
   } else if (var_type == proto::VarDesc::LOD_TENSOR_ARRAY) {
     var->GetMutable<LoDTensorArray>();
+  } else if (var_type == proto::VarDesc::PLACE_LIST) {
+    var->GetMutable<platform::PlaceList>();
   } else {
     PADDLE_THROW(
         "Variable type %d is not in "
-        "[LoDTensor, SelectedRows, FEED_MINIBATCH, FETCH_LIST, LOD_RANK_TABLE]",
+        "[LoDTensor, SelectedRows, FEED_MINIBATCH, FETCH_LIST, LOD_RANK_TABLE,"
+        " PLACE_LIST]",
         var_type);
   }
 }

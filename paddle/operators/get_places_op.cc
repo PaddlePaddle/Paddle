@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <thread>
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/detail/safe_ref.h"
 #include "paddle/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/platform/gpu_info.h"
@@ -21,6 +23,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+static size_t CUDADevCount() {
+#ifdef PADDLE_WITH_CUDA
+  return platform::GetCUDADeviceCount();
+#else
+  return 0UL;
+#endif
+}
+
 class GetPlacesOp : public framework::OperatorBase {
  public:
   GetPlacesOp(const std::string &type, const framework::VariableNameMap &inputs,
@@ -28,28 +38,34 @@ class GetPlacesOp : public framework::OperatorBase {
               const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     std::string device_type = Attr<std::string>("device_type");
-    auto device_count = Attr<int>("device_count");
+    auto device_count = static_cast<size_t>(Attr<int>("device_count"));
+    if (device_count == 0) {
+      if (device_type == "CUDA") {
+        device_count = CUDADevCount();
+      } else if (device_type == "CPU") {
+        device_count = std::thread::hardware_concurrency();
+      }
+    }
+    PADDLE_ENFORCE_NE(device_count, 0, "Cannot indicate %s device count",
+                      device_type);
 
     auto out_var_name = Output("Out");
-    auto *out_var = scope.FindVar(out_var_name);
-    PADDLE_ENFORCE(out_var != nullptr, "Output variable %s cannot be found",
-                   out_var_name);
-
-    auto &places = *(out_var->GetMutable<std::vector<platform::Place>>());
-    places.resize(device_count);
+    auto &places =
+        *(detail::Ref(scope.FindVar(out_var_name),
+                      "Output variable %s cannot be found", out_var_name)
+              .GetMutable<platform::PlaceList>());
+    places.reserve(device_count);
     if (device_type == "CUDA") {
-#ifdef PADDLE_WITH_CUDA
-      PADDLE_ENFORCE_LT(device_count, platform::GetCUDADeviceCount());
-      for (int i = 0; i < device_count; i++) {
-        places.emplace_back(platform::GPUPlace(i));
+      PADDLE_ENFORCE_LE(device_count, CUDADevCount(),
+                        "Only %d CUDA devices found, cannot set to %d",
+                        CUDADevCount(), device_count);
+      for (size_t i = 0; i < device_count; ++i) {
+        places.emplace_back(platform::CUDAPlace(i));
       }
-#else
-      PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
-#endif
     } else if (device_type == "CPU") {
-      for (int i = 0; i < device_count; i++) {
+      for (size_t i = 0; i < device_count; ++i) {
         places.emplace_back(platform::CPUPlace());
       }
     }
@@ -61,18 +77,38 @@ class GetPlacesOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   GetPlacesOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddOutput("Out", "vector of Place");
-    AddAttr<int>("device_count", "(int)device count").SetDefault(1);
+    AddAttr<int>("device_count", "device count").SetDefault(1);
     AddAttr<std::string>("device_type",
-                         "(string), deivce type can be \"CPU\" and \"CUDA\"")
+                         R"(device type must be in ["CPU", "CUDA"])")
         .InEnum({"CPU", "CUDA"});
     AddComment(R"DOC(
-Returns a list of places based on flags. The list will be used for parallel execution.
-
+Returns a list of places based on flags. The list will be used for parallel
+execution.
 )DOC");
   }
 };
+
+class GetPlacesInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
+    for (auto &o_name : op_desc.Output("Out")) {
+      block->FindRecursiveOrCreateVar(o_name).SetType(
+          framework::proto::VarDesc::PLACE_LIST);
+    }
+  }
+};
+
+class GetPlacesInferShape : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext *context) const override {
+    // Do nothing
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(get_places, ops::GetPlacesOp, ops::GetPlacesOpProtoMaker);
+REGISTER_OPERATOR(get_places, ops::GetPlacesOp, ops::GetPlacesOpProtoMaker,
+                  ops::GetPlacesInferVarType, ops::GetPlacesInferShape);

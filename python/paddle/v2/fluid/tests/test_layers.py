@@ -200,6 +200,7 @@ class TestBook(unittest.TestCase):
         program = Program()
         with program_guard(program):
             x = layers.get_places(device_count=4)
+            self.assertIsNotNone(x)
         print(str(program))
 
 
