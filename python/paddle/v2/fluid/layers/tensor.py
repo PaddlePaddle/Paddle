@@ -1,5 +1,9 @@
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
+from ..framework import convert_np_dtype_to_dtype_
+from ..framework import Variable
+from ..core import DataType
+import numpy
 
 __all__ = [
     'create_tensor', 'create_parameter', 'cast', 'concat', 'sums', 'assign',
@@ -121,7 +125,7 @@ def assign(input, output):
     This function copies the *input* Variable to the *output* Variable.
 
     Args:
-        input(Variable): The source variable
+        input(Variable|numpy.ndarray): The source variable
         output(Variable): The destination variable
 
     Returns:
@@ -134,11 +138,32 @@ def assign(input, output):
           fluid.layers.assign(hidden, out)
     """
     helper = LayerHelper('assign', **locals())
-    helper.append_op(
-        type='scale',
-        inputs={'X': [input]},
-        outputs={'Out': [output]},
-        attrs={'scale': 1.0})
+    if isinstance(input, Variable):
+        helper.append_op(
+            type='scale',
+            inputs={'X': [input]},
+            outputs={'Out': [output]},
+            attrs={'scale': 1.0})
+    elif isinstance(input, numpy.ndarray):
+        dtype = convert_np_dtype_to_dtype_(input.dtype)
+        if dtype == DataType.FP32:
+            value_name = "fp32_values"
+        elif dtype == DataType.INT32:
+            value_name = "int32_values"
+        else:
+            raise ValueError("Unsupported dtype %s", input.dtype)
+
+        helper.append_op(
+            type='assign_value',
+            outputs={'Out': [output]},
+            attrs={
+                'dtype': dtype,
+                'shape': list(input.shape),
+                value_name: [float(v) for v in input.flat]
+            })
+    else:
+        raise ValueError("Wrong type for assign input: %s" % type(input))
+
     return output
 
 
