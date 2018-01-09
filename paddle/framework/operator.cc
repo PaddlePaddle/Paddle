@@ -74,9 +74,9 @@ void UseALL() {
 
 static DDim GetDims(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
-  if (var->IsType<LoDTensor>()) {
+  if (var && var->IsType<LoDTensor>()) {
     return var->Get<LoDTensor>().dims();
-  } else if (var->IsType<SelectedRows>()) {
+  } else if (var && var->IsType<SelectedRows>()) {
     return var->Get<SelectedRows>().GetCompleteDims();
   } else {
     return DDim({-1});
@@ -123,7 +123,7 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     ss << input.first << "[";
     for (size_t i = 0; i < input.second.size(); ++i) {
       ss << input.second[i];
-      if (scope && scope->FindVar(input.second[i])) {
+      if (scope) {
         ss << "(" << GetDims(*scope, input.second[i]) << ")";
       }
       if (i != input.second.size() - 1) {
