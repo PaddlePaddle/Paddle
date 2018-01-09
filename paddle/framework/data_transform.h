@@ -88,7 +88,7 @@ struct CastDataType {
       trans(*context, in_begin, in_end, out_begin,
             CastDataTypeFunctor<InType, OutType>());
     } else {
-      // TODO(dzhwinter): enhance CopyFrom CPU<->GPU with different data type?
+      // TODO(dzhwinter): enhance Copy CPU<->GPU with different data type?
       PADDLE_THROW("Unsupport CPU <-> GPU!");
     }
   }
