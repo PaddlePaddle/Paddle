@@ -6,16 +6,47 @@ import contextlib
 from ..registry import autodoc
 
 __all__ = [
-    'split_lod_tensor', 'merge_lod_tensor', 'BlockGuard', 'StaticRNNGuard',
-    'StaticRNNMemoryLink', 'WhileGuard', 'While', 'lod_rank_table',
-    'max_sequence_len', 'topk', 'lod_tensor_to_array', 'array_to_lod_tensor',
-    'increment', 'array_write', 'create_array', 'less_than', 'array_read',
-    'shrink_memory', 'array_length', 'IfElse', 'DynamicRNN', 'ConditionalBlock',
-    'StaticRNN', 'reorder_lod_tensor_by_rank'
+    'split_lod_tensor', 'merge_lod_tensor', 'BlockGuard',
+    'BlockGuardWithCompletion', 'StaticRNNMemoryLink', 'WhileGuard', 'While',
+    'lod_rank_table', 'max_sequence_len', 'topk', 'lod_tensor_to_array',
+    'array_to_lod_tensor', 'increment', 'array_write', 'create_array',
+    'less_than', 'array_read', 'shrink_memory', 'array_length', 'IfElse',
+    'DynamicRNN', 'ConditionalBlock', 'StaticRNN', 'reorder_lod_tensor_by_rank',
+    'ParallelDo'
 ]
 
 
 def split_lod_tensor(input, mask, level=0):
+    """
+    **split_lod_tensor**
+
+    This function takes in an input that contains the complete lod information,
+    and takes in a mask which is used to mask certain parts of the input.
+    The output is the true branch and the false branch with the mask applied to
+    the input at a certain level in the tensor.
+
+    Args:
+        input(tuple|list|None): The input tensor that contains complete
+                                lod information needed to construct the output.
+        mask(list): A bool column vector which masks the input.
+        level(int): The specific lod level to rank.
+
+    Returns:
+        Variable: The true branch of tensor as per the mask applied to input.
+        Variable: The false branch of tensor as per the mask applied to input.
+
+    Examples:
+        .. code-block:: python
+
+          x = layers.data(name='x', shape=[1])
+          x.persistable = True
+
+          y = layers.data(name='y', shape=[1])
+          y.persistable = True
+
+          out_true, out_false = layers.split_lod_tensor(
+                input=x, mask=y, level=level)
+    """
     helper = LayerHelper('split_lod_tensor', **locals())
     out_true = helper.create_tmp_variable(dtype=input.dtype)
     out_false = helper.create_tmp_variable(dtype=input.dtype)
@@ -32,6 +63,40 @@ def split_lod_tensor(input, mask, level=0):
 
 
 def merge_lod_tensor(in_true, in_false, x, mask, level=0):
+    """
+    **merge_lod_tensor**
+
+    This function takes in an input :math:`x`, the True branch, the False
+    branch and a binary :math:`mask`. Using this information, this function
+    merges the True and False branches of the tensor into a single Output
+    at a certain lod level indiacted by :math:`level`.
+
+    Args:
+        in_true(tuple|list|None): The True branch to be merged.
+        in_false(tuple|list|None): The False branch to be merged.
+        x(tuple|list|None): The input tensor that contains complete
+                            lod information needed to construct the output.
+        mask(list): A bool column vector which masks the input.
+        level(int): The specific lod level to rank.
+
+    Returns:
+        Variable: The merged output tensor.
+
+    Examples:
+        .. code-block:: python
+
+          x = layers.data(
+                      name='x', shape=[1], dtype='float32', stop_gradient=False)
+          y = layers.data(
+                name='y', shape=[1], dtype='bool', stop_gradient=False)
+
+          level = 0
+
+          out_true, out_false = layers.split_lod_tensor(
+                input=x, mask=y, level=level)
+          out = layers.merge_lod_tensor(
+                in_true=out_true, in_false=out_false, mask=y, x=x, level=level)
+    """
     helper = LayerHelper('merge_lod_tensor', **locals())
     out = helper.create_tmp_variable(dtype=in_true.dtype)
     helper.append_op(
@@ -68,29 +133,129 @@ class BlockGuard(object):
         return True
 
 
-class StaticRNNGuard(BlockGuard):
+class ParallelDo(object):
     """
-    StaticRNNGuard class.
+    ParallelDo class.
 
-    StaticRNNGuard class is used to create a StaticRNN block in a program.
+    ParallelDo class is used to create a ParallelDo.
+    """
+
+    def __init__(self, places, name=None):
+        self.helper = LayerHelper("parallel_do", name=name)
+        self.inputs = []
+        self.places = places
+        self.outputs = []
+        self.status = StaticRNN.BEFORE_RNN_BLOCK
+
+    def do(self):
+        return BlockGuardWithCompletion(self)
+
+    def parent_block(self):
+        prog = self.helper.main_program
+        parent_idx = prog.current_block().parent_idx
+        assert parent_idx >= 0
+        parent_block = prog.block(parent_idx)
+        return parent_block
+
+    def __call__(self, *args, **kwargs):
+        if self.status != StaticRNN.AFTER_RNN_BLOCK:
+            raise ValueError("RNN output can only be retrieved after rnn block")
+        if len(self.outputs) == 0:
+            raise ValueError("RNN has no output")
+        elif len(self.outputs) == 1:
+            return self.outputs[0]
+        else:
+            return self.outputs
+
+    def read_input(self, var):
+        self.inputs.append(var)
+        return var
+
+    def write_output(self, var):
+        self.outputs.append(var)
+
+    def get_parameters(self):
+        main_program = self.helper.main_program
+        current_block = main_program.current_block()
+        parent_block = self.parent_block()
+
+        local_inputs = set()
+
+        for op in current_block.ops:
+            for oname in op.output_names:
+                for out_var_name in op.output(oname):
+                    local_inputs.add(out_var_name)
+
+        for var in self.inputs:
+            local_inputs.add(var.name)
+
+        params = list()
+        for op in current_block.ops:
+            for iname in op.input_names:
+                for in_var_name in op.input(iname):
+                    if in_var_name not in local_inputs:
+                        params.append(in_var_name)
+
+        return [parent_block.var(name) for name in params]
+
+    def complete_op(self):
+        main_program = self.helper.main_program
+        current_block = main_program.current_block()
+        parent_block = self.parent_block()
+
+        step_scope = parent_block.create_var(
+            type=core.VarDesc.VarType.STEP_SCOPES)
+
+        self.outputs = [
+            parent_block.create_var(
+                name=o.name,
+                shape=o.shape,
+                dtype=o.dtype,
+                lod_level=o.lod_level,
+                persistable=o.persistable,
+                stop_gradient=o.stop_gradient) for o in self.outputs
+        ]
+
+        inputs = [parent_block.var(i.name) for i in self.inputs]
+        outputs = [parent_block.var(o.name) for o in self.outputs]
+
+        parent_block.append_op(
+            type='parallel_do',
+            inputs={
+                'inputs': inputs,
+                'parameters': self.get_parameters(),
+                'places': self.places
+            },
+            outputs={'outputs': outputs,
+                     'parallel_scopes': [step_scope]},
+            attrs={'sub_block': current_block})
+
+
+class BlockGuardWithCompletion(BlockGuard):
+    """
+    BlockGuardWithCompletion class.
+
+    BlockGuardWithCompletion class is used to create an op with a block in a program.
     """
 
     def __init__(self, rnn):
-        if not isinstance(rnn, StaticRNN):
-            raise TypeError("StaticRNNGuard takes a StaticRNN")
-        super(StaticRNNGuard, self).__init__(rnn.helper.main_program)
+        if not (isinstance(rnn, StaticRNN) or isinstance(rnn, ParallelDo)):
+            raise TypeError(
+                "BlockGuardWithCompletion takes a StaticRNN or ParallelDo")
+        super(BlockGuardWithCompletion, self).__init__(rnn.helper.main_program)
         self.rnn = rnn
 
     def __enter__(self):
         self.rnn.status = StaticRNN.IN_RNN_BLOCK
-        return super(StaticRNNGuard, self).__enter__()
+        return super(BlockGuardWithCompletion, self).__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
             return False
         self.rnn.status = StaticRNN.AFTER_RNN_BLOCK
-        self.rnn.complete_rnn_op()
-        return super(StaticRNNGuard, self).__exit__(exc_type, exc_val, exc_tb)
+        self.rnn.complete_op()
+        return super(BlockGuardWithCompletion, self).__exit__(exc_type, exc_val,
+                                                              exc_tb)
 
 
 class StaticRNNMemoryLink(object):
@@ -136,7 +301,7 @@ class StaticRNN(object):
         self.seq_len = None
 
     def step(self):
-        return StaticRNNGuard(self)
+        return BlockGuardWithCompletion(self)
 
     def _assert_in_rnn_block_(self, method):
         if self.status != StaticRNN.IN_RNN_BLOCK:
@@ -252,7 +417,7 @@ class StaticRNN(object):
         else:
             return self.outputs
 
-    def complete_rnn_op(self):
+    def complete_op(self):
         main_program = self.helper.main_program
         rnn_block = main_program.current_block()
         parent_block = self.parent_block()
@@ -397,9 +562,50 @@ class While(object):
 
 
 def lod_rank_table(x, level=0):
-    """
-    This function creates an operator for creating a LOD_RANK_TABLE
-    using the input x.
+    """LoD Rank Table Operator. Given an input variable **x** and a level number
+    of LoD, this layer creates a LodRankTable object. A LoDRankTable object
+    contains a list of bi-element tuples. Each tuple consists of an index and
+    a length, both of which are int type. Refering to specified level of LoD,
+    the index is the sequence index number and the length representes the
+    sequence length. Please note that the list is ranked in descending order by
+    the length. The following is an example:
+
+        .. code-block:: text
+
+            x is a LoDTensor:
+                x.lod = [[0,                2, 3],
+                         [0,             5, 6, 7]]
+                x.data = [a, b, c, d, e, f, g]
+
+            1. set level to 0:
+                Create lod rank table:
+                    lod_rank_table_obj = lod_rank_table(x, level=0)
+
+                Get:
+                    lod_rank_table_obj.items() = [(0, 2), (1, 1)]
+
+            2. set level to 1:
+                Create lod rank table:
+                    lod_rank_table_obj = lod_rank_table(x, level=1)
+
+                Get:
+                    lod_rank_table_obj.items() = [(0, 5), (1, 1), (2, 1)]
+
+    Args:
+        x (Variable): Input variable, a LoDTensor based which to create the lod
+            rank table.
+        level (int): Specify the LoD level, on which to create the lod rank
+            table.
+
+    Returns:
+        Variable: The created LoDRankTable object.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[10],
+                            dtype='float32', lod_level=1)
+            out = layers.lod_rank_table(x=x, level=0)
     """
     helper = LayerHelper("lod_rank_table", **locals())
     table = helper.create_variable(
@@ -414,9 +620,25 @@ def lod_rank_table(x, level=0):
 
 
 def max_sequence_len(rank_table):
-    """
-    This function creates an operator to calculate the length of
-    max seqence through input rank_table(should be a lod_rank_table)
+    """Max Sequence Len Operator. Given a LoDRankTable object, this layer
+    returns the max length of a batch of sequences. In fact, a LoDRankTable
+    object contains a list of tuples(<sequence index, sequence length>) and
+    the list is already sorted by sequence length in descending order, so the
+    operator just returns the sequence length of the first tuple element.
+
+    Args:
+        rank_table (Variable): Input variable which is a LoDRankTable object.
+
+    Returns:
+        Variable: The max length of sequence.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[10],
+                            dtype='float32', lod_level=1)
+            rank_table = layers.lod_rank_table(x=x, level=0)
+            max_seq_len = layers.max_sequence_len(rank_table)
     """
     helper = LayerHelper("max_seqence_len", **locals())
     res = helper.create_tmp_variable(dtype="int64")
@@ -428,6 +650,30 @@ def max_sequence_len(rank_table):
 
 
 def topk(input, k):
+    """
+    **topk**
+
+    This function performs the operation that selects the k entries in the input
+    vector and outputs their values and indices as vectors. Thus topk_out[j] is
+    the j-th largest entry in input, and its index is topk_indices[j]
+
+    Args:
+        input (Variable|list): The input tensor that has all the data.
+        k (int): The number of top elements that the function will pick.
+
+    Returns:
+        Variable: The variable of type array that contains the k largest entries
+                  from input.
+        Variable: The variable of type array that contains the indices of k
+                  largest entries from input.
+
+    Examples:
+        .. code-block:: python
+
+          x = fluid.layers.data(name='x', shape=[10])
+          k = 5
+          array = fluid.layers.topk(x, k)
+    """
     helper = LayerHelper('topk', **locals())
     topk_out = helper.create_tmp_variable(dtype=input.dtype)
     topk_indices = helper.create_tmp_variable(dtype='int64')
@@ -752,7 +998,7 @@ class ConditionalBlock(object):
 
         out_list = [
             parent_block.var(var_name) for var_name in parent_block.vars
-            if var_name not in intermediate
+            if var_name in intermediate
         ]
 
         step_scope = parent_block.create_var(

@@ -88,20 +88,33 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
   std::vector<AbsoluteRankTableItem> GetAbsoluteOffsetAndLengthByLoDRankTable(
       const framework::LoDTensor &x) const {
     std::vector<AbsoluteRankTableItem> absolute_table;
-    size_t level = 0;
-    size_t size = x.lod()[level].size();
 
-    for (size_t i = 0; i < size - 1; ++i) {
-      auto lod_offset =
-          framework::GetSubLoDAndAbsoluteOffset(x.lod(), i, i + 1, level);
+    if (x.lod().empty()) {
+      // For Tensor without lod, such as the output of sequence_pool_op
+      size_t size = x.dims()[0];
+      absolute_table.reserve(size);
+      for (size_t i = 0; i < size; ++i) {
+        absolute_table.emplace_back();
+        absolute_table.back().length = 1;
+        absolute_table.back().offset = i;
+      }
+    } else {
+      size_t level = 0;
+      size_t size = x.lod()[level].size();
 
-      auto &offset = lod_offset.second;
+      for (size_t i = 0; i < size - 1; ++i) {
+        auto lod_offset =
+            framework::GetSubLoDAndAbsoluteOffset(x.lod(), i, i + 1, level);
 
-      absolute_table.emplace_back();
-      absolute_table.back().length = offset.second - offset.first;
-      absolute_table.back().offset = offset.first;
-      absolute_table.back().lod = lod_offset.first;
+        auto &offset = lod_offset.second;
+
+        absolute_table.emplace_back();
+        absolute_table.back().length = offset.second - offset.first;
+        absolute_table.back().offset = offset.first;
+        absolute_table.back().lod = lod_offset.first;
+      }
     }
+
     return absolute_table;
   }
 

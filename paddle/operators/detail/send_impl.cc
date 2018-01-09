@@ -27,14 +27,8 @@ bool RPCClient::SendVariable(const framework::Scope& scope,
   auto ctx = platform::CPUDeviceContext();
   auto* var = scope.FindVar(inname);
   PADDLE_ENFORCE(var);
-  // TODO(typhoonzero): support SelectedRows
-  PADDLE_ENFORCE(var->IsType<framework::LoDTensor>(),
-                 "Only support LoDTensor, %s has wrong type", inname);
-  const framework::LoDTensor& tensor = var->Get<framework::LoDTensor>();
-  std::ostringstream oss;
-  framework::SerializeToStream(oss, tensor, ctx);
-  msg.set_varname(inname);
-  msg.set_serialized(oss.str());
+  SerializeToMessage(inname, var, ctx, &msg);
+
   Status status = stub_->SendVariable(&context, msg, &out_msg);
   if (!status.ok()) {
     LOG(ERROR) << "gRPC error: " << status.error_message();
@@ -50,19 +44,15 @@ bool RPCClient::GetVariable(const framework::Scope& scope,
   call_msg.set_varname(outname);
   auto ctx = platform::CPUDeviceContext();
   Status status = stub_->GetVariable(&context, call_msg, &ret_msg);
+  auto* outvar = scope.FindVar(outname);
   if (!status.ok()) {
     LOG(ERROR) << "gRPC error: " << status.error_message();
     return false;
   }
 
   std::istringstream iss(ret_msg.serialized());
+  DeserializeFromMessage(ret_msg, ctx, outvar);
 
-  framework::LoDTensor ret_tensor;
-  framework::DeserializeFromStream(iss, &ret_tensor);
-  auto* outvar = scope.FindVar(outname);
-  framework::LoDTensor* out_tensor = outvar->GetMutable<framework::LoDTensor>();
-  // FIXME(typhoonzero): do not copy.
-  framework::CopyFrom(ret_tensor, ctx.GetPlace(), ctx, out_tensor);
   return true;
 }
 
