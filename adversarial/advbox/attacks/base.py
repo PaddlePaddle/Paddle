@@ -18,22 +18,22 @@ class Attack(object):
     def __init__(self, model):
         self.model = model
 
-    def __call__(self, image_batch):
+    def __call__(self, image_label):
         """
         Generate the adversarial sample.
 
         Args:
-        image_batch(list): The image and label tuple list.
+        image_label(list): The image and label tuple list with one element.
         """
-        adv_img = self._apply(image_batch)
+        adv_img = self._apply(image_label)
         return adv_img
 
     @abstractmethod
-    def _apply(self, image_batch):
+    def _apply(self, image_label):
         """
         Search an adversarial example.
 
         Args:
-        image_batch(list): The image and label tuple list.
+        image_batch(list): The image and label tuple list with one element.
         """
         raise NotImplementedError

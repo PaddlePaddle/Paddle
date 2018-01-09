@@ -15,7 +15,6 @@ def mnist_cnn_model(img):
     Returns:
         Variable: the label prediction
     """
-    #conv1 = fluid.nets.conv2d()
     conv_pool_1 = fluid.nets.simple_img_conv_pool(
         input=img,
         num_filters=20,
@@ -73,19 +72,15 @@ def main():
             pass_acc = accuracy.eval(exe)
             print("pass_id=" + str(pass_id) + " acc=" + str(acc) + " pass_acc="
                   + str(pass_acc))
-            # print loss, acc
             if loss < LOSS_THRESHOLD and pass_acc > ACC_THRESHOLD:
-                # if avg cost less than 10.0 and accuracy is larger than 0.9, we think our code is good.
                 break
-
-#                exit(0)
 
         pass_acc = accuracy.eval(exe)
         print("pass_id=" + str(pass_id) + " pass_acc=" + str(pass_acc))
     fluid.io.save_params(
         exe, dirname='./mnist', main_program=fluid.default_main_program())
     print('train mnist done')
-    exit(1)
+
 
 if __name__ == '__main__':
     main()
