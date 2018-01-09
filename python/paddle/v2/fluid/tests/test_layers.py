@@ -196,6 +196,13 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(layers.sequence_softmax(x=seq))
         print(str(program))
 
+    def test_get_places(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.get_places(device_count=4)
+            self.assertIsNotNone(x)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()

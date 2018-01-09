@@ -188,7 +188,17 @@ def _append_backward_ops_(target,
         grad_to_var(dict)(output argument):
             key(str): grad variable name
             val(str): corresponding forward variable name
+        callback(callable object): a callable object used to decorate new generated grad ops
     """
+    if callback is None:
+
+        def empty_callback(block, context):
+            pass
+
+        callback = empty_callback
+    elif not hasattr(callback, '__call__'):
+        raise ValueError("'callback' must be a callable object.")
+
     # grad_op_descs holds created grad_op, and will be appended to target_block
     grad_op_descs = []
     program = block.program
@@ -226,6 +236,7 @@ def _append_backward_ops_(target,
     for op_desc in grad_op_descs:
         new_op_desc = target_block.desc.append_op()
         new_op_desc.copy_from(op_desc)
+        callback(block=target_block, context=grad_to_var)
 
 
 def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
@@ -268,7 +279,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                 _infer_var_data_type_(arg, block)
 
 
-def append_backward(loss, parameter_list=None, no_grad_set=None):
+def append_backward(loss, parameter_list=None, no_grad_set=None, callback=None):
     """
     Append backward part to main_program
 
@@ -312,7 +323,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None):
     grad_to_var = dict()
 
     _append_backward_ops_(loss, root_block, root_block, no_grad_dict,
-                          grad_to_var)
+                          grad_to_var, callback)
     _append_backward_vars_(root_block, fwd_op_num, grad_to_var, grad_info_map)
 
     program.current_block_idx = current_block_idx

@@ -72,7 +72,7 @@ bool InitDevices(const std::vector<std::string> &devices) {
     LOG(WARNING) << "Not specified CPU device, create CPU by Default.";
   }
   platform::DeviceContextPool::Init(places);
-  framework::UseALL();
+  // framework::UseALL();
   return true;
 }
 
