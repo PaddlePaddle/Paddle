@@ -44,6 +44,9 @@ TEST(BuddyAllocator, CPUAllocation) {
 
   EXPECT_NE(p, nullptr);
 
+  paddle::platform::Place place = cpu;
+  EXPECT_EQ(paddle::memory::Used(cpu), paddle::memory::memory_usage(place));
+
   paddle::memory::Free(cpu, p);
 }
 
@@ -98,6 +101,9 @@ TEST(BuddyAllocator, GPUAllocation) {
   p = paddle::memory::Alloc(gpu, 4096);
 
   EXPECT_NE(p, nullptr);
+
+  paddle::platform::Place place = gpu;
+  EXPECT_EQ(paddle::memory::Used(gpu), paddle::memory::memory_usage(place));
 
   paddle::memory::Free(gpu, p);
 }
