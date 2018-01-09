@@ -81,7 +81,6 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
   //    - will change to use multiple blocks for RNN op and Cond Op
   PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), pdesc.Size());
   auto& block = pdesc.Block(block_id);
-
   Scope* local_scope = scope;
   if (create_vars) {
     if (create_local_scope) {
@@ -116,6 +115,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
   for (auto& op_desc : block.AllOps()) {
     auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
     VLOG(3) << op->DebugStringEx(local_scope);
+    VLOG(3) << "Memory used " << memory::memory_usage(place_);
     op->Run(*local_scope, place_);
     if (FLAGS_check_nan_inf) {
       for (auto& vname : op->OutputVars(true)) {
@@ -127,9 +127,12 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
       }
     }
   }
+  VLOG(3) << "Memory used " << memory::memory_usage(place_);
   if (create_vars && create_local_scope) {
     scope->DeleteScope(local_scope);
   }
+  VLOG(3) << "Memory used after deleting local scope "
+          << memory::memory_usage(place_);
 }
 
 }  // namespace framework
