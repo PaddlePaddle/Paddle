@@ -195,13 +195,13 @@ class BeamSearchInferShape : public framework::InferShapeBase {
 
 class BeamSearchInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDescBind &op_desc,
-                  framework::BlockDescBind *block) const override {
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
     for (auto &o : op_desc.Output("selected_ids")) {
-      block->Var(o)->SetType(framework::VarDesc::LOD_TENSOR);
+      block->Var(o)->SetType(framework::proto::VarDesc::LOD_TENSOR);
     }
     for (auto &o : op_desc.Output("selected_scores")) {
-      block->Var(o)->SetType(framework::VarDesc::LOD_TENSOR);
+      block->Var(o)->SetType(framework::proto::VarDesc::LOD_TENSOR);
     }
   }
 };
