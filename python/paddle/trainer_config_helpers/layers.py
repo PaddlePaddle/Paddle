@@ -2545,12 +2545,18 @@ def img_conv_layer(input,
     num_filters.
 
     There are several groups of filters in PaddlePaddle implementation.
-    Each group will process some channels of the input. For example, if
-    num_channel = 256, group = 4, num_filter=32, the PaddlePaddle will create
-    32 filters to process the input. The input channels will be split into 4
-    pieces. First 256/4 = 64 channels will be processed by first 32/4 = 8 filters.
-    The rest channels will be processed by the rest groups of filters.
+    If the groups attribute is greater than 1, for example groups=2,
+    the input will be splitted into 2 parts along the channel axis, and
+    the filters will also be splitted into 2 parts. The first half of the filters 
+    is only connected to the first half of the input channels, while the second 
+    half of the filters is only connected to the second half of the input. After
+    the computation of convolution for each part of input,
+    the output will be obtained by concatenating the two results.
 
+    The details of grouped convolution, please refer to:
+    `ImageNet Classification with Deep Convolutional Neural Networks
+    <http://www.cs.toronto.edu/~kriz/imagenet_classification_with_deep_convolutional.pdf>`_
+    
     The example usage is:
 
     ..  code-block:: python
