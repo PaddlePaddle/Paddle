@@ -30,9 +30,7 @@ class GradientSignAttack(Attack):
                 gradient_sign.shape) + epsilon * gradient_sign
             adv_img = np.clip(adv_img, min_, max_)
             adv_label = np.argmax(self.model.predict([(adv_img, 0)]))
-            #print("pre_label="+str(pre_label)+ " adv_label="+str(adv_label))
             if pre_label != adv_label:
-                #print(epsilon, pre_label, adv_label)
                 return adv_img
 
 
