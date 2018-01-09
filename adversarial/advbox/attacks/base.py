@@ -1,11 +1,7 @@
 """
 The base model of the model.
 """
-from abc import ABCMeta
-#from advbox.base import Model
-import abc
-
-abstractmethod = abc.abstractmethod
+from abc import ABCMeta, abstractmethod
 
 
 class Attack(object):
