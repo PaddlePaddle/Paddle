@@ -60,14 +60,6 @@ using LoD = std::vector<Vector<size_t>>;
 std::ostream& operator<<(std::ostream& os, const LoD& lod);
 std::ostream& operator<<(std::ostream& os, const LoDTensor& t);
 
-/*
- * Slice levels from a LoD.
- * NOTE the lowest level should always be the absolute offsets of the underlying
- * tensor instances. So if higher layers are sliced without the lowest level,
- * the lower level of the sliced LoD will be transformed to the absolute offset.
- */
-LoD SliceLevels(const LoD& in, size_t level_begin, size_t level_end);
-
 LoD SliceInLevel(const LoD& in, size_t level, size_t elem_begin,
                  size_t elem_end);
 /*
@@ -115,35 +107,6 @@ class LoDTensor : public Tensor {
     // the last offset is the end of last element
     return (lod_)[level].size() - 1;
   }
-
-  /*
-   * Number of lower-level elements.
-   * For example, a 2-level lod-tensor
-   *
-   * 0-th level   |   |
-   * 1-th level   ||  |||
-   *
-   * NumElements(0, 0) get 2
-   * NumElements(0, 1) get 3
-   */
-  size_t NumElements(size_t level, size_t idx) const;
-
-  /*
-   * Get the number of instances in the underlying tensor in the `idx`-th
-   * element.
-   */
-  size_t NumInstancesInElement(size_t level, size_t idx) const;
-
-  /*
-   * Shrink levels[level_begin:level_end]
-   */
-  void ShrinkLevels(size_t level_begin, size_t level_end);
-
-  /*
-   * Shrink elements of a level, [elem_begin: elem_end]
-   * @note: low performance in slice lod_.
-   */
-  void ShrinkInLevel(size_t level, size_t elem_begin, size_t elem_end);
 
   std::vector<LoDTensor> SplitLoDTensor(
       const std::vector<platform::Place> places) const;
