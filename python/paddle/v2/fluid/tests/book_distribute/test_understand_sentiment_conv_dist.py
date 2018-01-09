@@ -1,4 +1,5 @@
 from __future__ import print_function
+import os
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
