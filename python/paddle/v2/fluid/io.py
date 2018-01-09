@@ -204,17 +204,9 @@ def save_inference_model(dirname,
     inference_program = pruned_program.inference_optimize()
     fetch_var_names = [v.name for v in target_vars]
 
-    #model_file_name = dirname + "/__model__"
-    #with open(model_file_name, "w") as f:
-    #    pickle.dump({
-    #        "program_desc_str": inference_program.desc.serialize_to_string(),
-    #        "feed_var_names": feeded_var_names,
-    #        "fetch_var_names": fetch_var_names
-    #    }, f, -1)
-
-    # Save the ProgramDesc of inference_program in binary format
     inference_program.desc.assign_feed_var_names(feeded_var_names)
     inference_program.desc.assign_fetch_var_names(fetch_var_names)
+
     model_file_name = dirname + "/__model__"
     with open(model_file_name, "wb") as f:
         f.write(inference_program.desc.serialize_to_string())
@@ -263,11 +255,6 @@ def load_inference_model(dirname, executor):
     feed_var_names = program.desc.get_feed_var_names()
     fetch_var_names = program.desc.get_fetch_var_names()
 
-    #model = pickle.load(open(model_file_name, "r"))
-    #program_desc_str = model["program_desc_str"]
-    #feed_var_names = model["feed_var_names"]
-    #fetch_var_names = model["fetch_var_names"]
-    #program = Program.parse_from_string(program_desc_str)
     load_persistables_if_exist(executor, dirname, program)
     fetch_vars = [program.global_block().var(name) for name in fetch_var_names]
 
