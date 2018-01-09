@@ -81,8 +81,7 @@ class Model(object):
         Calculate the gradient of the cross-entropy loss w.r.t the image.
 
         Args:
-            image(numpy.ndarray): image with shape (height, width, channel)
-            label(int): image label used to cal gradient.
+            image_batch(list): The image and label tuple list.
 
         Return:
             numpy.ndarray: gradient of the cross-entropy loss w.r.t the image with
