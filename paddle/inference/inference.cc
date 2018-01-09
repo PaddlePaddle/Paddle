@@ -26,7 +26,7 @@ limitations under the License. */
 namespace paddle {
 
 void InferenceEngine::LoadInferenceModel(const std::string& dirname) {
-  std::string model_filename = dirname + "/__model__.dat";
+  std::string model_filename = dirname + "/__model__";
   LOG(INFO) << "loading model from " << model_filename;
   std::ifstream inputfs(model_filename, std::ios::in | std::ios::binary);
   std::string program_desc_str;

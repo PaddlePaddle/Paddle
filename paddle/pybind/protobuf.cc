@@ -166,7 +166,24 @@ void BindProgramDesc(py::module &m) {
              for (auto var_name : var_names) {
                desc->add_fetch_var_names(var_name);
              }
-           });
+           })
+      .def("get_feed_var_names",
+           [](ProgramDesc &program_desc) {
+             proto::ProgramDesc *desc = program_desc.Proto();
+             std::vector<std::string> retv;
+             for (int i = 0; i < desc->feed_var_names_size(); ++i) {
+               retv.push_back(desc->feed_var_names(i));
+             }
+             return retv;
+           })
+      .def("get_fetch_var_names", [](ProgramDesc &program_desc) {
+        proto::ProgramDesc *desc = program_desc.Proto();
+        std::vector<std::string> retv;
+        for (int i = 0; i < desc->fetch_var_names_size(); ++i) {
+          retv.push_back(desc->fetch_var_names(i));
+        }
+        return retv;
+      });
 }
 
 void BindBlockDesc(py::module &m) {
