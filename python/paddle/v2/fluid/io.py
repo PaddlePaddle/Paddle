@@ -1,7 +1,7 @@
 import os
 import cPickle as pickle
 
-from paddle.v2.fluid.framework import Program, Parameter, default_main_program, Variable
+from paddle.v2.fluid.framework import Program, Parameter, default_main_program, Variable, Inference
 
 __all__ = [
     'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
@@ -204,13 +204,12 @@ def save_inference_model(dirname,
     inference_program = pruned_program.inference_optimize()
     fetch_var_names = [v.name for v in target_vars]
 
+    inference_engine = Inference(inference_program.desc, feeded_var_names,
+                                 fetch_var_names)
+
     model_file_name = dirname + "/__model__"
     with open(model_file_name, "w") as f:
-        pickle.dump({
-            "program_desc_str": inference_program.desc.serialize_to_string(),
-            "feed_var_names": feeded_var_names,
-            "fetch_var_names": fetch_var_names
-        }, f, -1)
+        f.write(inference_engine.desc.serialize_to_string())
 
     # Save only programDesc of inference_program in binary format
     # in another file: __model__.dat

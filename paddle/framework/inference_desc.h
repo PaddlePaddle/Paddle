@@ -14,22 +14,32 @@ limitations under the License. */
 
 #pragma once
 
-#include <Python.h>
-#include <fstream>
+#include <memory>
 #include <vector>
-#include "pybind11/numpy.h"
-#include "pybind11/pybind11.h"
-#include "pybind11/stl.h"
-
-namespace py = pybind11;
+#include "paddle/framework/framework.pb.h"
+#include "paddle/framework/proto_desc.h"
+#include "paddle/platform/macros.h"
 
 namespace paddle {
-namespace pybind {
+namespace framework {
 
-void BindProgramDesc(py::module& m);
-void BindBlockDesc(py::module& m);
-void BindVarDsec(py::module& m);
-void BindOpDesc(py::module& m);
-void BindInferenceDesc(py::module& m);
-}  // namespace pybind
+class ProgramDesc;
+
+class InferenceDesc {
+ public:
+  InferenceDesc();
+
+  explicit InferenceDesc(const ProgramDesc &prog,
+                         const std::vector<std::string> &feed_var_names,
+                         const std::vector<std::string> &fetch_var_names);
+
+  proto::InferenceDesc *Proto();
+
+ private:
+  proto::InferenceDesc desc_;
+  const ProgramDesc *prog_;  // not_own
+  std::vector<std::string> _feed_var_names;
+  std::vector<std::string> _fetch_var_names;
+};
+}  // namespace framework
 }  // namespace paddle

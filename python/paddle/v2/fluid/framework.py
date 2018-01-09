@@ -907,6 +907,15 @@ class Parameter(Variable):
         self.clip_attr = kwargs.get('clip_attr', None)
 
 
+class Inference(object):
+    def __init__(self, program, feed_var_names, fetch_var_names):
+        self.program = program
+        self.feed_var_names = feed_var_names
+        self.fetch_var_names = fetch_var_names
+        self.desc = core.InferenceDesc(self.program, self.feed_var_names,
+                                       self.fetch_var_names)
+
+
 # program is a global instance.
 _main_program_ = Program()
 _startup_program_ = Program()

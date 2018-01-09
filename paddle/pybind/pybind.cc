@@ -445,6 +445,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindVarDsec(m);
   BindOpDesc(m);
   BindConstValue(m);
+  BindInferenceDesc(m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
       .def("items", [](framework::LoDRankTable &table) {

@@ -17,6 +17,7 @@ limitations under the License. */
 #include <iostream>
 #include "paddle/framework/backward.h"
 #include "paddle/framework/block_desc.h"
+#include "paddle/framework/inference_desc.h"
 #include "paddle/framework/op_desc.h"
 #include "paddle/framework/program_desc.h"
 #include "paddle/framework/var_desc.h"
@@ -281,6 +282,13 @@ void BindOpDesc(py::module &m) {
       .def("infer_shape", &OpDesc::InferShape)
       .def("infer_var_type", &OpDesc::InferVarType)
       .def("serialize_to_string", SerializeMessage<OpDesc>);
+}
+
+void BindInferenceDesc(py::module &m) {
+  py::class_<InferenceDesc>(m, "InferenceDesc", "")
+      .def(py::init<const ProgramDesc &, const std::vector<std::string> &,
+                    const std::vector<std::string> &>())
+      .def("serialize_to_string", SerializeMessage<InferenceDesc>);
 }
 
 }  // namespace pybind
