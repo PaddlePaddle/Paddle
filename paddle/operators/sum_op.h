@@ -70,6 +70,7 @@ class SumKernel : public framework::OpKernel<T> {
     } else if (out_var->IsType<framework::SelectedRows>()) {
       PADDLE_ENFORCE(!in_place, "SelectedRows not support inplace sum now");
       auto *out = context.Output<SelectedRows>("Out");
+      out->mutable_rows()->clear();
       auto *out_value = out->mutable_value();
 
       // Runtime InferShape
