@@ -33,7 +33,8 @@ class RequestBase {
     status_ = PROCESS;
   }
   virtual ~RequestBase() {}
-  virtual void Proceed() = 0;
+  virtual void Process() { assert(false); }
+  virtual void RegisterNewOne() { assert(false); }
 
   CallStatus Status() { return status_; }
   void SetStatus(CallStatus status) { status_ = status; }
@@ -52,14 +53,16 @@ class RequestSend final : public RequestBase {
   explicit RequestSend(sendrecv::SendRecvService::AsyncService* service,
                        grpc::ServerCompletionQueue* cq,
                        SimpleBlockQueue<MessageWithName>* queue)
-      : RequestBase(service, cq), queue_(queue), responder_(&ctx_) {
-    service_->RequestSendVariable(&ctx_, &request_, &responder_, cq_, cq_,
-                                  this);
-  }
+      : RequestBase(service, cq), queue_(queue), responder_(&ctx_) {}
 
   virtual ~RequestSend() {}
 
-  virtual void Proceed() {
+  virtual void RegisterNewOne() {
+    RequestSend* n = new RequestSend(service_, cq_, queue_);
+    service_->RequestSendVariable(&ctx_, &request_, &responder_, cq_, cq_, n);
+  }
+
+  virtual void Process() {
     // proc request.
     MessageWithName msg_with_name =
         std::make_pair(request_.varname(), std::move(request_));
@@ -79,13 +82,16 @@ class RequestGet final : public RequestBase {
  public:
   explicit RequestGet(sendrecv::SendRecvService::AsyncService* service,
                       grpc::ServerCompletionQueue* cq, framework::Scope* scope)
-      : RequestBase(service, cq), responder_(&ctx_), scope_(scope) {
-    service_->RequestGetVariable(&ctx_, &request_, &responder_, cq_, cq_, this);
-  }
+      : RequestBase(service, cq), responder_(&ctx_), scope_(scope) {}
 
   virtual ~RequestGet() {}
 
-  virtual void Proceed() {
+  virtual void RegisterNewOne() {
+    RequestGet* n = new RequestGet(service_, cq_, scope_);
+    service_->RequestGetVariable(&ctx_, &request_, &responder_, cq_, cq_, n);
+  }
+
+  virtual void Process() {
     // proc request.
     std::string var_name = request_.varname();
     auto* var = scope_->FindVar(var_name);
@@ -112,10 +118,16 @@ void AsyncGRPCServer::RunSyncUpdate() {
   server_ = builder.BuildAndStart();
   LOG(INFO) << "Server listening on " << address_ << std::endl;
 
-  t_send_.reset(
-      new std::thread(std::bind(&AsyncGRPCServer::HandleReqSend, this)));
-  t_get_.reset(
-      new std::thread(std::bind(&AsyncGRPCServer::HandleReqGet, this, true)));
+  RequestSend req_send(&service_, cq_send_.get(), &var_recv_queue_);
+  req_send.RegisterNewOne();
+
+  RequestGet req_get(&service_, cq_get_.get(), scope_);
+  req_get.RegisterNewOne();
+
+  t_send_.reset(new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this,
+                                          false, cq_send_.get(), "cq_send")));
+  t_get_.reset(new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this,
+                                         true, cq_get_.get(), "cq_get")));
 
   // wait server
   server_->Wait();
@@ -123,16 +135,11 @@ void AsyncGRPCServer::RunSyncUpdate() {
   t_get_->join();
 }
 
-void AsyncGRPCServer::ShutdownGetQueue() {
-  std::unique_lock<std::mutex> lock(cq_get_mutex_);
-  cq_get_->Shutdown();
-  is_get_shut_down_ = true;
-}
-
-void AsyncGRPCServer::ShutdownSendQueue() {
-  std::unique_lock<std::mutex> lock(cq_send_mutex_);
+void AsyncGRPCServer::ShutdownQueue() {
+  std::unique_lock<std::mutex> lock(cq_mutex_);
   cq_send_->Shutdown();
-  is_send_shut_down_ = true;
+  cq_get_->Shutdown();
+  is_shut_down_ = true;
 }
 
 /*
@@ -141,70 +148,20 @@ void AsyncGRPCServer::ShutdownSendQueue() {
  */
 void AsyncGRPCServer::ShutDown() {
   server_->Shutdown();
-  ShutdownGetQueue();
-  ShutdownSendQueue();
+  ShutdownQueue();
 }
 
-void AsyncGRPCServer::HandleReqSend() {
-  RequestSend* req_send =
-      new RequestSend(&service_, cq_send_.get(), &var_recv_queue_);
-  VLOG(5) << "create req_send status:" << req_send->Status();
-
-  void* tag = NULL;
-  bool ok = false;
-  while (true) {
-    if (!cq_send_->Next(&tag, &ok)) {
-      LOG(INFO) << "send CompletionQueue shutdown!";
-      break;
-    }
-
-    RequestBase* base = (RequestBase*)tag;
-    if (!ok) {
-      TryToRegisterNewSend();
-      delete base;
-      continue;
-    }
-
-    switch (base->Status()) {
-      case PROCESS: {
-        VLOG(4) << "status:" << base->Status();
-        TryToRegisterNewSend();
-        base->Proceed();
-        SetSendFinishOrDelete(base);
-        break;
-      }
-      case FINISH: {
-        VLOG(4) << "status:" << base->Status();
-        delete base;
-        break;
-      }
-      default: { assert(false); }
-    }
-  }
-}
-
-void AsyncGRPCServer::TryToRegisterNewGet() {
-  std::unique_lock<std::mutex> lock(cq_get_mutex_);
-  if (is_get_shut_down_) {
+void AsyncGRPCServer::TryToRegisterNewOne(RequestBase* base) {
+  std::unique_lock<std::mutex> lock(cq_mutex_);
+  if (is_shut_down_) {
     return;
   }
-  RequestGet* req_get = new RequestGet(&service_, cq_get_.get(), scope_);
-  VLOG(5) << "create req_get status:" << req_get->Status();
+  base->RegisterNewOne();
 }
 
-void AsyncGRPCServer::TryToRegisterNewSend() {
-  std::unique_lock<std::mutex> lock(cq_send_mutex_);
-  if (is_send_shut_down_) {
-    return;
-  }
-  RequestSend* req_send =
-      new RequestSend(&service_, cq_send_.get(), &var_recv_queue_);
-  VLOG(5) << "create req_send status:" << req_send->Status();
-}
-
-void AsyncGRPCServer::SetGetFinishOrDelete(RequestBase*& last) {
-  std::unique_lock<std::mutex> lock(cq_get_mutex_);
-  if (is_get_shut_down_) {
+void AsyncGRPCServer::SetFinishOrDelete(RequestBase*& last) {
+  std::unique_lock<std::mutex> lock(cq_mutex_);
+  if (is_shut_down_) {
     delete last;
     last = NULL;
     return;
@@ -214,27 +171,13 @@ void AsyncGRPCServer::SetGetFinishOrDelete(RequestBase*& last) {
   return;
 }
 
-void AsyncGRPCServer::SetSendFinishOrDelete(RequestBase*& last) {
-  std::unique_lock<std::mutex> lock(cq_send_mutex_);
-  if (is_send_shut_down_) {
-    delete last;
-    last = NULL;
-    return;
-  }
-
-  last->SetStatus(FINISH);
-  return;
-}
-
-void AsyncGRPCServer::HandleReqGet(bool wait) {
-  RequestGet* req_get = new RequestGet(&service_, cq_get_.get(), scope_);
-  VLOG(5) << "create req_get status:" << req_get->Status();
-
+void AsyncGRPCServer::HandleRequest(bool wait, grpc::ServerCompletionQueue* cq,
+                                    std::string cq_name) {
   void* tag = NULL;
   bool ok = false;
   while (true) {
-    if (!cq_get_->Next(&tag, &ok)) {
-      LOG(INFO) << "get CompletionQueue shutdown!";
+    if (!cq->Next(&tag, &ok)) {
+      LOG(INFO) << cq_name << " get CompletionQueue shutdown!";
       break;
     }
 
@@ -244,22 +187,22 @@ void AsyncGRPCServer::HandleReqGet(bool wait) {
 
     RequestBase* base = (RequestBase*)tag;
     if (!ok) {
-      VLOG(4) << "recv no regular event";
-      TryToRegisterNewGet();
+      VLOG(4) << cq_name << " recv no regular event";
+      TryToRegisterNewOne(base);
       delete base;
       continue;
     }
 
     switch (base->Status()) {
       case PROCESS: {
-        VLOG(4) << "status:" << base->Status();
-        TryToRegisterNewGet();
-        base->Proceed();
-        SetGetFinishOrDelete(base);
+        VLOG(4) << cq_name << " status:" << base->Status();
+        TryToRegisterNewOne(base);
+        base->Process();
+        SetFinishOrDelete(base);
         break;
       }
       case FINISH: {
-        VLOG(4) << "status:" << base->Status();
+        VLOG(4) << cq_name << " status:" << base->Status();
         delete base;
         break;
       }

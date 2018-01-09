@@ -55,24 +55,16 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
 
  protected:
   void Wait();
-  void HandleReqSend();
-  void HandleReqGet(bool wait);
-  // void Proceed(void *tag, bool ok);
-  void TryToRegisterNewGet();
-  void TryToRegisterNewSend();
-  void SetGetFinishOrDelete(RequestBase *&last);
-  void SetSendFinishOrDelete(RequestBase *&last);
-
-  void ShutdownGetQueue();
-  void ShutdownSendQueue();
+  void HandleRequest(bool wait, grpc::ServerCompletionQueue *cq,
+                     std::string cq_name);
+  void TryToRegisterNewOne(RequestBase *base);
+  void SetFinishOrDelete(RequestBase *&last);
+  void ShutdownQueue();
 
  private:
-  std::mutex cq_send_mutex_;
-  mutable bool is_send_shut_down_ = false;
+  std::mutex cq_mutex_;
+  mutable bool is_shut_down_ = false;
   std::unique_ptr<grpc::ServerCompletionQueue> cq_send_;
-
-  std::mutex cq_get_mutex_;
-  mutable bool is_get_shut_down_ = false;
   std::unique_ptr<grpc::ServerCompletionQueue> cq_get_;
 
   sendrecv::SendRecvService::AsyncService service_;
