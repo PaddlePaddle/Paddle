@@ -40,7 +40,7 @@ void InitGflags(std::vector<std::string> &argv) {
   });
 }
 
-bool InitDevices() {
+void InitDevices() {
   /*Init all avaiable devices by default */
 
   std::vector<platform::Place> places;

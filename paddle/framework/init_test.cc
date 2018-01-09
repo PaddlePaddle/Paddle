@@ -14,6 +14,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 #include "paddle/framework/init.h"
+#include "paddle/platform/device_context.h"
 
 TEST(InitDevices, CPU) {
   using paddle::framework::InitDevices;
@@ -21,16 +22,5 @@ TEST(InitDevices, CPU) {
 
   InitDevices();
   DeviceContextPool& pool = DeviceContextPool::Instance();
-  ASSERT_EQ(pool.size(), 1U);
+  ASSERT_GE(pool.size(), 1U);
 }
-
-#ifdef PADDLE_WITH_CUDA
-TEST(InitDevices, GPU) {
-  using paddle::framework::InitDevices;
-  using paddle::platform::DeviceContextPool;
-
-  InitDevices();
-  DeviceContextPool& pool = DeviceContextPool::Instance();
-  ASSERT_GT(pool.size(), 2U);
-}
-#endif
