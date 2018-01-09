@@ -62,15 +62,10 @@ class ConvOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override;
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::OpKernelType& kernel) const override {
-    return framework::OpKernelType(kernel.data_type_, platform::CUDAPlace(0),
-                                   layout_, library_);
-  }
 
- private:
-  mutable framework::DataLayout layout_;
-  mutable framework::LibraryType library_;
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override;
 };
 
 class ConvOpGrad : public framework::OperatorWithKernel {
@@ -78,15 +73,9 @@ class ConvOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override;
 
+ protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::OpKernelType& kernel) const override {
-    return framework::OpKernelType(kernel.data_type_, platform::CUDAPlace(0),
-                                   layout_, library_);
-  }
-
- private:
-  mutable framework::DataLayout layout_;
-  mutable framework::LibraryType library_;
+      const framework::ExecutionContext& ctx) const override;
 };
 
 template <typename DeviceContext, typename T>

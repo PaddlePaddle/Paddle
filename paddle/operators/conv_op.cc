@@ -63,7 +63,14 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
     output_shape.push_back(OutputSize(in_dims[i + 2], filter_dims[i + 2],
                                       dilations[i], paddings[i], strides[i]));
   }
-  bool use_cudnn = ctx->Attrs().Get<bool>("use_cudnn");
+  ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
+  ctx->ShareLoD("Input", "Output");
+}
+
+framework::OpKernelType ConvOp::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  framework::LibraryType library_;
   if (use_cudnn) {
     library_ = framework::LibraryType::kCUDNN;
   } else {
@@ -71,9 +78,10 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   }
 
   std::string data_format = ctx->Attrs().Get<std::string>("data_format");
-  layout_ = framework::StringToDataLayout(data_format);
-  ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
-  ctx->ShareLoD("Input", "Output");
+  framework::LibraryType layout_ = framework::StringToDataLayout(data_format);
+  return framework::OpKernelType(
+      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
+      layout_, library_);
 }
 
 Conv2DOpMaker::Conv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
@@ -262,8 +270,12 @@ void ConvOpGrad::InferShape(framework::InferShapeContext* ctx) const {
   if (ctx->HasOutput(framework::GradVarName("Filter"))) {
     ctx->SetOutputDim(framework::GradVarName("Filter"), filter_dims);
   }
+}
 
-  bool use_cudnn = ctx->Attrs().Get<bool>("use_cudnn");
+framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  framework::LibraryType library_;
   if (use_cudnn) {
     library_ = framework::LibraryType::kCUDNN;
   } else {
@@ -271,7 +283,10 @@ void ConvOpGrad::InferShape(framework::InferShapeContext* ctx) const {
   }
 
   std::string data_format = ctx->Attrs().Get<std::string>("data_format");
-  layout_ = framework::StringToDataLayout(data_format);
+  framework::LibraryType layout_ = framework::StringToDataLayout(data_format);
+  return framework::OpKernelType(
+      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
+      layout_, library_);
 }
 
 }  // namespace operators

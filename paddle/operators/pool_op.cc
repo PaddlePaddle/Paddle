@@ -61,11 +61,45 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
   ctx->ShareLoD("X", "Out");
 }
 
+framework::OpKernelType PoolOp::GetExpectedKernelType(
+    const framework::ExecutionContext &ctx) const {
+  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  framework::LibraryType library_;
+  if (use_cudnn) {
+    library_ = framework::LibraryType::kCUDNN;
+  } else {
+    library_ = framework::LibraryType::kPlain;
+  }
+
+  std::string data_format = ctx->Attrs().Get<std::string>("data_format");
+  framework::LibraryType layout_ = framework::StringToDataLayout(data_format);
+  return framework::OpKernelType(
+      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
+      layout_, library_);
+}
+
 void PoolOpGrad::InferShape(framework::InferShapeContext *ctx) const {
   PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
   PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
                  "Input(X@GRAD) should not be null.");
   ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+}
+
+framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
+    const framework::ExecutionContext &ctx) const {
+  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  framework::LibraryType library_;
+  if (use_cudnn) {
+    library_ = framework::LibraryType::kCUDNN;
+  } else {
+    library_ = framework::LibraryType::kPlain;
+  }
+
+  std::string data_format = ctx->Attrs().Get<std::string>("data_format");
+  framework::LibraryType layout_ = framework::StringToDataLayout(data_format);
+  return framework::OpKernelType(
+      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
+      layout_, library_);
 }
 
 Pool2dOpMaker::Pool2dOpMaker(OpProto *proto, OpAttrChecker *op_checker)

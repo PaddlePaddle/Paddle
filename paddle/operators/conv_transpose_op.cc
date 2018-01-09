@@ -55,8 +55,12 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
     output_shape.push_back((in_dims[i + 2] - 1) * strides[i] - 2 * paddings[i] +
                            filter_extent);
   }
+}
 
-  bool use_cudnn = ctx->Attrs().Get<bool>("use_cudnn");
+framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  framework::LibraryType library_;
   if (use_cudnn) {
     library_ = framework::LibraryType::kCUDNN;
   } else {
@@ -64,8 +68,10 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   }
 
   std::string data_format = ctx->Attrs().Get<std::string>("data_format");
-  layout_ = framework::StringToDataLayout(data_format);
-  ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
+  framework::LibraryType layout_ = framework::StringToDataLayout(data_format);
+  return framework::OpKernelType(
+      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
+      layout_, library_);
 }
 
 Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(OpProto* proto,
@@ -235,6 +241,23 @@ void ConvTransposeOpGrad::InferShape(framework::InferShapeContext* ctx) const {
   if (ctx->HasOutput(framework::GradVarName("Filter"))) {
     ctx->SetOutputDim(framework::GradVarName("Filter"), filter_dims);
   }
+}
+
+framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  framework::LibraryType library_;
+  if (use_cudnn) {
+    library_ = framework::LibraryType::kCUDNN;
+  } else {
+    library_ = framework::LibraryType::kPlain;
+  }
+
+  std::string data_format = ctx->Attrs().Get<std::string>("data_format");
+  framework::LibraryType layout_ = framework::StringToDataLayout(data_format);
+  return framework::OpKernelType(
+      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
+      layout_, library_);
 }
 
 }  // namespace operators
