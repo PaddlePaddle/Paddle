@@ -93,17 +93,12 @@ class PriorBoxOp : public framework::OperatorWithKernel {
     const int layer_height = input_dims[2];
     const int layer_width = input_dims[3];
 
-    std::vector<int64_t> dim_vec(3);
-    // Since all images in a batch has same height and width, we only need to
-    // generate one set of priors which can be shared across all images.
-    dim_vec[0] = 1;
-    // 2 channels. First channel stores the mean of each prior coordinate.
-    // Second channel stores the variance of each prior coordinate.
-    dim_vec[1] = 2;
-    dim_vec[2] = layer_width * layer_height * num_priors * 4;
-    PADDLE_ENFORCE_GT(dim_vec[2], 0,
-                      "output_dim[2] must larger than 0."
-                      "check your data dims");
+    std::vector<int64_t> dim_vec(5);
+    dim_vec[0] = 2;
+    dim_vec[1] = layer_height;
+    dim_vec[2] = layer_width;
+    dim_vec[3] = num_priors;
+    dim_vec[4] = 4;
     auto output_dim = framework::make_ddim(dim_vec);
     ctx->SetOutputDim("Out", output_dim);
   }
@@ -130,7 +125,8 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
              "the input image data of PriorBoxOp, The format is NCHW.");
     AddOutput("Out",
               "(Tensor, default Tensor<float>), the output prior boxes of "
-              "PriorBoxOp.");
+              "PriorBoxOp. The format is [2, layer_height, layer_width, "
+              "num_priors, 4]");
     AddAttr<std::vector<int>>("min_sizes", "(vector<int>) ",
                               "List of min sizes of generated prior boxes.");
     AddAttr<std::vector<int>>("max_sizes", "(vector<int>) ",
