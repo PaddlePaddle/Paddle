@@ -93,6 +93,13 @@ class BlockDesc {
 
   ProgramDesc *Program() { return this->prog_; }
 
+  // Remove all operators and variables inside.
+  void Clear();
+
+  void CopyFrom(const BlockDesc &other);
+
+  void RemoveVar(const std::string &v_name);
+
  private:
   void ClearPBOps();
   void ClearPBVars();

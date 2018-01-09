@@ -191,7 +191,10 @@ void BindBlockDesc(py::module &m) {
       .def("all_vars", &BlockDesc::AllVars, py::return_value_policy::reference)
       .def("op_size", &BlockDesc::OpSize)
       .def("op", &BlockDesc::Op, py::return_value_policy::reference)
-      .def("serialize_to_string", SerializeMessage<BlockDesc>);
+      .def("serialize_to_string", SerializeMessage<BlockDesc>)
+      .def("clear", &BlockDesc::Clear)
+      .def("copy_from", &BlockDesc::CopyFrom)
+      .def("remove_var", &BlockDesc::RemoveVar);
 }
 
 void BindVarDsec(py::module &m) {

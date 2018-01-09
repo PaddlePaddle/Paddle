@@ -1,45 +1,44 @@
 import unittest
 
-import paddle.v2.fluid.layers as layers
+import decorators
 import paddle.v2.fluid as fluid
-from paddle.v2.fluid.framework import Program
-from paddle.v2.fluid.executor import Executor
-from paddle.v2.fluid.backward import append_backward
-import numpy as np
-import paddle.v2.fluid.core as core
+import numpy
 
 
 class ParallelOpTest(unittest.TestCase):
-    def setUp(self):
-        x = layers.data(
-            shape=[-1, 30, 40],
-            dtype='float32',
-            name='x',
-            append_batch_size=False,
-            stop_gradient=False)
+    @decorators.prog_scope()
+    def test_fc(self):
+        img = fluid.layers.data(name='img', shape=[784])
+        hidden = fluid.layers.fc(input=img, size=200, act='tanh')
+        hidden = fluid.layers.fc(input=hidden, size=200, act='tanh')
+        prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
+        loss = fluid.layers.cross_entropy(
+            input=prediction,
+            label=fluid.layers.data(
+                name='label', shape=[1], dtype='int64'))
+        loss = fluid.layers.mean(x=loss)
+        new_prog, outs = fluid.transpilers.multidev_transpile(
+            fluid.default_main_program(),
+            input_vars=['img', 'label'],
+            output_vars=[loss])
 
-        places = fluid.default_main_program().global_block().create_var()
-        pd = layers.ParallelDo(places=places)
+        with fluid.program_guard(main_program=new_prog):
+            loss = fluid.layers.mean(x=outs[0])
+            sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+            sgd.minimize(loss)
 
-        with pd.do():
-            data = pd.read_input(x)
-            hidden = layers.fc(input=data, size=7)
-            pd.write_output(hidden)
-        data = pd()
-        loss = layers.mean(x=data)
-        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
-        sgd_optimizer.minimize(loss)
-
-        exe = fluid.Executor(fluid.CPUPlace())
+        cpu = fluid.CPUPlace()
+        exe = fluid.Executor(cpu)
         exe.run(fluid.default_startup_program())
-        exe.run(fluid.default_main_program(),
-                feed={
-                    x.name: np.random.uniform(0.1, 0.6,
-                                              (20, 30, 40)).astype("float32")
-                })
-
-    def test_forward(self):
-        pass
+        img_np = numpy.random.random(size=(32, 784)).astype('float32').reshape(
+            (-1, 784))
+        label_np = numpy.random.randint(
+            low=0, high=9, size=32).astype('int64').reshape((-1, 1))
+        loss_np = exe.run(new_prog,
+                          feed={'img': img_np,
+                                'label': label_np},
+                          fetch_list=[loss])[0]
+        print loss_np
 
 
 if __name__ == '__main__':

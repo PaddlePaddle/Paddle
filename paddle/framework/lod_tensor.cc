@@ -218,7 +218,9 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
   //                 , "Disable parallel lod for now");
   PADDLE_ENFORCE(lod().empty(), "Disable parallel lod for now");
   PADDLE_ENFORCE(dims()[0] % places.size() == 0,
-                 "Batch size should be divided by places size");
+                 "Batch size should be divided by places size. Batch size = "
+                 "%d, places size = %d",
+                 dims()[0], places.size());
 
   std::vector<LoDTensor> lods;
   for (size_t place_idx = 0; place_idx < places.size(); ++place_idx) {

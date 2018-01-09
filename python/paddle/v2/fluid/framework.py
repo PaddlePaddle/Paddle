@@ -271,6 +271,21 @@ class Variable(object):
         uid = core.unique_integer(prefix)  # unique during whole process.
         return "_".join([prefix, str(uid)])
 
+    def _ctor_param_names_(self):
+        return [
+            'type', 'name', 'shape', 'dtype', 'lod_level', 'presistable',
+            'error_clip', 'stop_gradient'
+        ]
+
+    def to_ctor_kwargs(self):
+        kwargs = dict()
+        for key in self._ctor_param_names_():
+            try:
+                kwargs[key] = getattr(self, key)
+            except:
+                pass
+        return kwargs
+
 
 def get_all_op_protos():
     """
@@ -440,7 +455,7 @@ class Operator(object):
                 if isinstance(attrs[attr_name], Block):
                     self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
                 elif isinstance(attrs[attr_name], core.BlockDesc) or \
-                   isinstance(attrs[attr_name], core.ProgramDesc):
+                        isinstance(attrs[attr_name], core.ProgramDesc):
                     self.desc.set_serialized_attr(
                         attr_name, attrs[attr_name].serialize_to_string())
                 else:
@@ -648,6 +663,10 @@ class Block(object):
             kwargs['initializer'](var, self)
         return var
 
+    def clone_var(self, var):
+        assert isinstance(var, Variable)
+        return var.__class__(self, **var.to_ctor_kwargs())
+
     def has_var(self, name):
         return name in self.vars
 
@@ -673,6 +692,31 @@ class Block(object):
         except Exception, e:
             raise e
         self.desc.remove_op(start, end + 1)
+
+    def clear(self):
+        self.vars.clear()
+        self.ops.clear()
+        self.desc.clear()
+
+    def copy_from(self, other):
+        if not isinstance(other, Block):
+            raise TypeError("Block.copy_from can only take Block")
+
+        self.desc.copy_from(other.desc)  # make C++ struct correct
+        self.sync_with_cpp()
+        self.copy_param_info_from(other)
+
+    def remove_var(self, var):
+        if isinstance(var, Variable):
+            var = var.name
+        if not isinstance(var, basestring):
+            raise TypeError("Var must be string or Variable")
+
+        if var not in self.vars:
+            raise ValueError("Variable {0} not in this block".format(var))
+
+        self.desc.remove_var(var)
+        del self.vars[var]
 
     def prepend_op(self, *args, **kwargs):
         op_desc = self.desc.prepend_op()
@@ -919,6 +963,10 @@ class Parameter(Variable):
         self.regularizer = kwargs.get('regularizer', None)
 
         self.clip_attr = kwargs.get('clip_attr', None)
+
+    def _ctor_param_names_(self):
+        return super(Parameter, self)._ctor_param_names_(
+        ) + ['optimize_attr', 'trainable', 'regularizer', 'clip_attr']
 
 
 # program is a global instance.

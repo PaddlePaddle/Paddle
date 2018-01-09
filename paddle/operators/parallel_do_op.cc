@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/framework/executor.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/threadpool.h"
+#include "paddle/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {
@@ -70,11 +71,9 @@ class ParallelDoOp : public framework::OperatorBase {
 
     auto *block = Attr<framework::BlockDesc *>(kParallelBlock);
     auto *program = block->Program();
-
-    // TODO(tonyyang-svail): get places from input
-    std::vector<platform::Place> places;
-    places.emplace_back(platform::CPUPlace());
-    places.emplace_back(platform::CPUPlace());
+    auto &places = detail::Ref(scope.FindVar(Input(kPlaces)),
+                               "Cannot find places variables")
+                       .Get<platform::PlaceList>();
 
     auto &sub_scopes = *scope.FindVar(Output(kParallelScopes))
                             ->GetMutable<std::vector<framework::Scope *>>();
@@ -162,9 +161,9 @@ class ParallelDoGradOp : public OperatorBase {
                            ->Get<std::vector<framework::Scope *>>();
 
     // TODO(tonyyang-svail): get places from input
-    std::vector<platform::Place> places;
-    places.emplace_back(platform::CPUPlace());
-    places.emplace_back(platform::CPUPlace());
+    auto &places = detail::Ref(scope.FindVar(Input(kPlaces)),
+                               "Cannot find places variables")
+                       .Get<platform::PlaceList>();
 
     // feed output@grad
     SplitTensorAndMoveTensorToScopes(scope, sub_scopes, places,
@@ -234,8 +233,10 @@ class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {
     auto *grad = new framework::OpDesc();
     grad->SetType("parallel_do_grad");
     for (auto &input_param : this->InputNames()) {
-      VLOG(3) << input_param;
       grad->SetInput(input_param, this->Input(input_param));
+      if (input_param == kPlaces) {
+        break;
+      }
       grad->SetOutput(framework::GradVarName(input_param),
                       this->InputGrad(input_param, false));
     }

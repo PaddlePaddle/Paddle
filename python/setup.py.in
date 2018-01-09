@@ -69,6 +69,7 @@ packages=['paddle',
           'paddle.v2.fluid',
           'paddle.v2.fluid.proto',
           'paddle.v2.fluid.layers',
+          'paddle.v2.fluid.transpilers',
           'py_paddle']
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:

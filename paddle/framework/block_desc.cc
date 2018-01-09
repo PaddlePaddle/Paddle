@@ -160,15 +160,7 @@ BlockDesc::BlockDesc(ProgramDesc *prog, proto::BlockDesc *desc)
 BlockDesc::BlockDesc(const BlockDesc &other, proto::BlockDesc *desc,
                      ProgramDesc *prog)
     : prog_(prog), desc_(desc) {
-  need_update_ = true;
-  for (auto &op : other.ops_) {
-    ops_.emplace_back(new OpDesc(*op));
-  }
-
-  for (auto &it : other.vars_) {
-    auto *var = new VarDesc(*it.second);
-    vars_[it.first].reset(var);
-  }
+  CopyFrom(other);
 }
 
 void BlockDesc::ClearPBOps() {
@@ -185,6 +177,31 @@ void BlockDesc::ClearPBVars() {
     // we do not own the VarDesc, so release the ownership.
     vars->ReleaseLast();
   }
+}
+
+void BlockDesc::Clear() {
+  this->vars_.clear();
+  this->ops_.clear();
+  need_update_ = true;
+}
+
+void BlockDesc::CopyFrom(const BlockDesc &other) {
+  need_update_ = true;
+  for (auto &op : other.ops_) {
+    ops_.emplace_back(new OpDesc(*op));
+  }
+
+  for (auto &it : other.vars_) {
+    auto *var = new VarDesc(*it.second);
+    vars_[it.first].reset(var);
+  }
+}
+
+void BlockDesc::RemoveVar(const std::string &v_name) {
+  auto it = vars_.find(v_name);
+  PADDLE_ENFORCE(it != vars_.end());
+  vars_.erase(it);
+  need_update_ = true;
 }
 
 }  // namespace framework
