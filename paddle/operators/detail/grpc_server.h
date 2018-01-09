@@ -56,8 +56,10 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
  protected:
   void Wait();
   void HandleRequest(bool wait, grpc::ServerCompletionQueue *cq,
-                     std::string cq_name);
-  void TryToRegisterNewOne(RequestBase *base);
+                     std::string cq_name,
+                     std::function<void()> TryToRegisterNewOne);
+  void TryToRegisterNewSendOne();
+  void TryToRegisterNewGetOne();
   void SetFinishOrDelete(RequestBase *&last);
   void ShutdownQueue();
 
