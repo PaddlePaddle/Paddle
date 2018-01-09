@@ -62,13 +62,13 @@ void ColwiseSum<DeviceContext, T>::operator()(const DeviceContext& context,
 template <typename DeviceContext, typename T>
 void RowwiseSum<DeviceContext, T>::operator()(const DeviceContext& context,
                                               const framework::Tensor& input,
-                                              framework::Tensor* vector) {
+                                              framework::Tensor* out) {
   auto in_dims = input.dims();
   auto size = input.numel() / in_dims[1];
-  PADDLE_ENFORCE_EQ(vector->numel(), size);
+  PADDLE_ENFORCE_EQ(out->numel(), size);
 
-  auto in = framework::EigenMatrix<T, Eigen::ColMajor>::From(input);
-  auto vec = framework::EigenMatrix<T, Eigen::ColMajor>::From(*vector);
+  auto in = framework::EigenMatrix<T>::From(input);
+  auto vec = framework::EigenVector<T>::Flatten(*out);
 
   vec.device(*context.eigen_device()) = in.sum(Eigen::array<int, 1>({{1}}));
 }

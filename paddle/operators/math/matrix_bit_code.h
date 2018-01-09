@@ -63,46 +63,45 @@ struct SimpleCodeTable {
 template <typename T>
 class MatrixBitCodeFunctor {
  public:
+  explicit MatrixBitCodeFunctor(size_t num_classes, const int64_t* ids)
+      : num_classes_(num_classes), ids_(ids) {}
   /* For j < code_length
        tmat(i, j) += vec(0, index(i, j))
   */
-  void Add(size_t num_classes, const int64_t* codes, framework::Tensor& tmat,
-           const framework::Tensor& vec);
+  void Add(framework::Tensor& tmat, const framework::Tensor& vec);
 
   /* For j < code_length
        vec(0, index(i, j)) += tmat(i, j)
   */
-  void AddGrad(size_t num_classes, const int64_t* codes,
-               framework::Tensor& tmat, framework::Tensor& vec);
+  void AddGrad(framework::Tensor& tmat, framework::Tensor& vec);
 
   /* For j < code_length
     sum(i, 0) = \sum_j bit(i, j) * tmat(i, j)
   */
-  void Sum(size_t num_classes, const int64_t* codes, framework::Tensor& tmat,
-           framework::Tensor& sum, T scale_sum);
+  void Sum(framework::Tensor& tmat, framework::Tensor& sum, T scale_sum);
 
   /* For j < code_length
        tmat(i, j) -= bit(i, j)
   */
-  void Sub(size_t num_classes, const int64_t* codes, framework::Tensor& tmat);
+  void Sub(framework::Tensor& tmat);
   /* For j < code_length
        input.row(i) += tmat(i, j) * weight.row(index(i, j))
   */
-  void Mul(size_t num_classes, const int64_t* codes, framework::Tensor& tmat,
-           const framework::Tensor& weight, const framework::Tensor& input);
+  void Mul(framework::Tensor& tmat, const framework::Tensor& weight,
+           const framework::Tensor& input);
 
   /* For index(i, j) >= 0:
       weight.row(index(i, j)) += tmat(i, j) * input.row(i)
   */
-  void MulGradWeight(size_t num_classes, const int64_t* codes,
-                     const framework::Tensor& tmat, framework::Tensor& weight,
+  void MulGradWeight(const framework::Tensor& tmat, framework::Tensor& weight,
                      const framework::Tensor& input);
   /* For j < code_length
     input.row(i) += tmat(i, j) * weight.row(index(i, j))
   */
-  void MulGradError(size_t num_classes, const int64_t* codes,
-                    const framework::Tensor& tmat,
+  void MulGradError(const framework::Tensor& tmat,
                     const framework::Tensor& weight, framework::Tensor& input);
+  size_t num_classes_;
+  const int64_t* ids_;
 };
 }  // namespace math
 }  // namespace operators
