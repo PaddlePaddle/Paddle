@@ -81,8 +81,7 @@ class TestPriorBoxOp(OpTest):
              self.layer_h)).astype('float32')
 
     def init_test_output(self):
-        dim = self.layer_w * self.layer_h * self.num_priors * 4
-        out_dim = (1, 2, dim)
+        out_dim = (2, self.layer_h, self.layer_w, self.num_priors, 4)
         output = np.zeros(out_dim).astype('float32')
 
         idx = 0
@@ -90,24 +89,22 @@ class TestPriorBoxOp(OpTest):
             for w in range(self.layer_w):
                 center_x = (w + self.offset) * self.step_w
                 center_y = (h + self.offset) * self.step_h
+                idx = 0
                 for s in range(len(self.min_sizes)):
                     min_size = self.min_sizes[s]
                     # first prior: aspect_ratio = 1, size = min_size
                     box_width = box_height = min_size
                     # xmin
-                    output[0, 0, idx] = (
+                    output[0, h, w, idx, 0] = (
                         center_x - box_width / 2.) / self.image_w
-                    idx += 1
                     # ymin
-                    output[0, 0, idx] = (
+                    output[0, h, w, idx, 1] = (
                         center_y - box_height / 2.) / self.image_h
-                    idx += 1
                     # xmax
-                    output[0, 0, idx] = (
+                    output[0, h, w, idx, 2] = (
                         center_x + box_width / 2.) / self.image_w
-                    idx += 1
                     # ymax
-                    output[0, 0, idx] = (
+                    output[0, h, w, idx, 3] = (
                         center_y + box_height / 2.) / self.image_h
                     idx += 1
 
@@ -117,19 +114,16 @@ class TestPriorBoxOp(OpTest):
                         # size = sqrt(min_size * max_size)
                         box_width = box_height = math.sqrt(min_size * max_size)
                         # xmin
-                        output[0, 0, idx] = (
+                        output[0, h, w, idx, 0] = (
                             center_x - box_width / 2.) / self.image_w
-                        idx += 1
                         # ymin
-                        output[0, 0, idx] = (
+                        output[0, h, w, idx, 1] = (
                             center_y - box_height / 2.) / self.image_h
-                        idx += 1
                         # xmax
-                        output[0, 0, idx] = (
+                        output[0, h, w, idx, 2] = (
                             center_x + box_width / 2.) / self.image_w
-                        idx += 1
                         # ymax
-                        output[0, 0, idx] = (
+                        output[0, h, w, idx, 3] = (
                             center_y + box_height / 2.) / self.image_h
                         idx += 1
 
@@ -141,37 +135,35 @@ class TestPriorBoxOp(OpTest):
                         box_width = min_size * math.sqrt(ar)
                         box_height = min_size / math.sqrt(ar)
                         # xmin
-                        output[0, 0, idx] = (
+                        output[0, h, w, idx, 0] = (
                             center_x - box_width / 2.) / self.image_w
-                        idx += 1
                         # ymin
-                        output[0, 0, idx] = (
+                        output[0, h, w, idx, 1] = (
                             center_y - box_height / 2.) / self.image_h
-                        idx += 1
                         # xmax
-                        output[0, 0, idx] = (
+                        output[0, h, w, idx, 2] = (
                             center_x + box_width / 2.) / self.image_w
-                        idx += 1
                         # ymax
-                        output[0, 0, idx] = (
+                        output[0, h, w, idx, 3] = (
                             center_y + box_height / 2.) / self.image_h
                         idx += 1
         # clip the prior's coordidate such that it is within[0, 1]
         if self.clip:
-            for d in range(dim):
-                output[0, 0, d] = min(max(output[0, 0, d], 0), 1)
-        # set the variance.
-        if len(self.variances) == 1:
-            for i in range(dim):
-                output[0, 1, i] = self.variances[0]
-        else:
-            count = 0
             for h in range(self.layer_h):
                 for w in range(self.layer_w):
                     for i in range(self.num_priors):
                         for j in range(4):
-                            output[0, 1, count] = self.variances[j]
-                            count += 1
+                            output[0, h, w, i, j] = min(
+                                max(output[0, h, w, i, j], 0), 1)
+        # set the variance.
+        for h in range(self.layer_h):
+            for w in range(self.layer_w):
+                for i in range(self.num_priors):
+                    for j in range(4):
+                        if len(self.variances) == 1:
+                            output[1, h, w, i, j] = self.variances[0]
+                        else:
+                            output[1, h, w, i, j] = self.variances[j]
         self.output = output.astype('float32')
 
 

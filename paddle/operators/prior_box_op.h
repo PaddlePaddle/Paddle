@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/math/math_function.h"
-// #include "paddle/operators/strided_memcpy.h"
 
 namespace paddle {
 namespace operators {
@@ -94,50 +93,52 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
       num_priors += max_sizes.size();
     }
 
-    int dim = layer_height * layer_width * num_priors * 4;
-
     T* output_data = nullptr;
     framework::Tensor output_cpu;
+    framework::Tensor* output_tensor;
     out->mutable_data<T>(ctx.GetPlace());
     if (platform::is_gpu_place(ctx.GetPlace())) {
-      output_data =
-          output_cpu.mutable_data<T>(out->dims(), platform::CPUPlace());
+      output_cpu.mutable_data<T>(out->dims(), platform::CPUPlace());
+      output_tensor = &output_cpu;
     } else {
-      output_data = out->mutable_data<T>(ctx.GetPlace());
+      output_tensor = out;
     }
 
-    int idx = 0;
+    auto e_out = framework::EigenTensor<T, 5>::From(*output_tensor);
     for (int h = 0; h < layer_height; ++h) {
       for (int w = 0; w < layer_width; ++w) {
         float center_x = (w + offset) * step_width;
         float center_y = (h + offset) * step_height;
         float box_width, box_height;
+        int idx = 0;
         for (size_t s = 0; s < min_sizes.size(); ++s) {
           int min_size = min_sizes[s];
           // first prior: aspect_ratio = 1, size = min_size
           box_width = box_height = min_size;
           // xmin
-          output_data[idx++] = (center_x - box_width / 2.) / img_width;
+          e_out(0, h, w, idx, 0) = (center_x - box_width / 2.) / img_width;
           // ymin
-          output_data[idx++] = (center_y - box_height / 2.) / img_height;
+          e_out(0, h, w, idx, 1) = (center_y - box_height / 2.) / img_height;
           // xmax
-          output_data[idx++] = (center_x + box_width / 2.) / img_width;
+          e_out(0, h, w, idx, 2) = (center_x + box_width / 2.) / img_width;
           // ymax
-          output_data[idx++] = (center_y + box_height / 2.) / img_height;
+          e_out(0, h, w, idx, 3) = (center_y + box_height / 2.) / img_height;
 
+          idx++;
           if (max_sizes.size() > 0) {
             int max_size = max_sizes[s];
             // second prior: aspect_ratio = 1,
             // size = sqrt(min_size * max_size)
             box_width = box_height = sqrt(min_size * max_size);
             // xmin
-            output_data[idx++] = (center_x - box_width / 2.) / img_width;
+            e_out(0, h, w, idx, 0) = (center_x - box_width / 2.) / img_width;
             // ymin
-            output_data[idx++] = (center_y - box_height / 2.) / img_height;
+            e_out(0, h, w, idx, 1) = (center_y - box_height / 2.) / img_height;
             // xmax
-            output_data[idx++] = (center_x + box_width / 2.) / img_width;
+            e_out(0, h, w, idx, 2) = (center_x + box_width / 2.) / img_width;
             // ymax
-            output_data[idx++] = (center_y + box_height / 2.) / img_height;
+            e_out(0, h, w, idx, 3) = (center_y + box_height / 2.) / img_height;
+            idx++;
           }
 
           // rest of priors
@@ -149,13 +150,14 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
             box_width = min_size * sqrt(ar);
             box_height = min_size / sqrt(ar);
             // xmin
-            output_data[idx++] = (center_x - box_width / 2.) / img_width;
+            e_out(0, h, w, idx, 0) = (center_x - box_width / 2.) / img_width;
             // ymin
-            output_data[idx++] = (center_y - box_height / 2.) / img_height;
+            e_out(0, h, w, idx, 1) = (center_y - box_height / 2.) / img_height;
             // xmax
-            output_data[idx++] = (center_x + box_width / 2.) / img_width;
+            e_out(0, h, w, idx, 2) = (center_x + box_width / 2.) / img_width;
             // ymax
-            output_data[idx++] = (center_y + box_height / 2.) / img_height;
+            e_out(0, h, w, idx, 3) = (center_y + box_height / 2.) / img_height;
+            idx++;
           }
         }
       }
@@ -163,26 +165,31 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
 
     // clip the prior's coordidate such that it is within [0, 1]
     if (clip) {
-      for (int d = 0; d < dim; ++d) {
-        output_data[d] = std::min<T>(std::max<T>(output_data[d], 0.), 1.);
-      }
-    }
-
-    // set the variance.
-    auto output_stride = framework::stride(out->dims());
-    output_data += output_stride[1];
-    if (variances.size() == 1) {
-      for (int i = 0; i < dim; ++i) {
-        output_data[i] = variances[0];
-      }
-    } else {
-      int count = 0;
       for (int h = 0; h < layer_height; ++h) {
         for (int w = 0; w < layer_width; ++w) {
           for (int i = 0; i < num_priors; ++i) {
             for (int j = 0; j < 4; ++j) {
-              output_data[count] = variances[j];
-              ++count;
+              e_out(0, h, w, i, j) =
+                  std::min<T>(std::max<T>(e_out(0, h, w, i, j), 0.), 1.);
+            }
+          }
+        }
+      }
+
+      // set the variance.
+      auto output_stride = framework::stride(out->dims());
+      output_data += output_stride[1];
+      if (variances.size() == 1) {
+        variances.resize(4);
+        variances[1] = variances[0];
+        variances[2] = variances[0];
+        variances[3] = variances[0];
+      }
+      for (int h = 0; h < layer_height; ++h) {
+        for (int w = 0; w < layer_width; ++w) {
+          for (int i = 0; i < num_priors; ++i) {
+            for (int j = 0; j < 4; ++j) {
+              e_out(1, h, w, i, j) = variances[j];
             }
           }
         }
