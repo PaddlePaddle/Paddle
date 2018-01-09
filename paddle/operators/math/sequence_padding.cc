@@ -19,9 +19,9 @@ namespace operators {
 namespace math {
 
 template <typename T>
-class PaddingLoDTensorFunctor<platform::CPUPlace, T> {
+class PaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::LoDTensor& seq, framework::Tensor& padding,
                   bool norm_by_times) {
     auto lod = seq.lod();
@@ -80,9 +80,9 @@ class PaddingLoDTensorFunctor<platform::CPUPlace, T> {
 };
 
 template <typename T>
-class UnpaddingLoDTensorFunctor<platform::CPUPlace, T> {
+class UnpaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   framework::LoDTensor& seq, const framework::Tensor& padding,
                   bool norm_by_times) {
     auto lod = seq.lod();
@@ -136,8 +136,8 @@ class UnpaddingLoDTensorFunctor<platform::CPUPlace, T> {
   }
 };
 
-template class PaddingLoDTensorFunctor<platform::CPUPlace, float>;
-template class UnpaddingLoDTensorFunctor<platform::CPUPlace, float>;
+template class PaddingLoDTensorFunctor<platform::CPUDeviceContext, float>;
+template class UnpaddingLoDTensorFunctor<platform::CPUDeviceContext, float>;
 
 }  // namespace math
 }  // namespace operators

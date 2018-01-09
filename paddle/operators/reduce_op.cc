@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/reduce_op.h"
 #include "paddle/operators/net_op.h"
@@ -37,18 +37,23 @@ class ReduceOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_LT(
         dim, x_rank,
         "The dim should be in the range [-rank(input), rank(input)).");
-    bool keep_dim = ctx->Attrs().Get<bool>("keep_dim");
-    auto dims_vector = vectorize(x_dims);
-    if (keep_dim || x_rank == 1) {
-      dims_vector[dim] = 1;
+    bool reduce_all = ctx->Attrs().Get<bool>("reduce_all");
+    if (reduce_all) {
+      ctx->SetOutputDim("Out", {1});
     } else {
-      dims_vector.erase(dims_vector.begin() + dim);
-    }
-    auto out_dims = framework::make_ddim(dims_vector);
-    ctx->SetOutputDim("Out", out_dims);
-    if (dim != 0) {
-      // Only pass LoD when not reducing on the first dim.
-      ctx->ShareLoD("X", /*->*/ "Out");
+      bool keep_dim = ctx->Attrs().Get<bool>("keep_dim");
+      auto dims_vector = vectorize(x_dims);
+      if (keep_dim || x_rank == 1) {
+        dims_vector[dim] = 1;
+      } else {
+        dims_vector.erase(dims_vector.begin() + dim);
+      }
+      auto out_dims = framework::make_ddim(dims_vector);
+      ctx->SetOutputDim("Out", out_dims);
+      if (dim != 0) {
+        // Only pass LoD when not reducing on the first dim.
+        ctx->ShareLoD("X", /*->*/ "Out");
+      }
     }
   }
 };
@@ -72,13 +77,14 @@ class ReduceGradOp : public framework::OperatorWithKernel {
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
       ctx->SetOutputDim(x_grad_name, x_dims);
+      ctx->ShareLoD("X", /*->*/ x_grad_name);
     }
   }
 };
 
 class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ReduceOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  ReduceOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor) The input tensor. Tensors with rank at most 6 are "
@@ -95,11 +101,16 @@ class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) "
                   "If true, retain the reduced dimension with length 1.")
         .SetDefault(false);
+    AddAttr<bool>("reduce_all",
+                  "(bool, default false) "
+                  "If true, output a scalar reduced along all dimensions.")
+        .SetDefault(false);
     comment_ = R"DOC(
 {ReduceOp} Operator.
 
 This operator computes the {reduce} of input tensor along the given dimension. 
 The result tensor has 1 fewer dimension than the input unless keep_dim is true.
+If reduce_all is true, just reduce along all dimensions and output a scalar.
 
 )DOC";
     AddComment(comment_);
@@ -125,8 +136,7 @@ The result tensor has 1 fewer dimension than the input unless keep_dim is true.
 
 class ReduceSumOpMaker : public ReduceOpMaker {
  public:
-  ReduceSumOpMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  ReduceSumOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : ReduceOpMaker(proto, op_checker) {
     SetComment("ReduceSum", "sum");
     AddComment(comment_);
@@ -135,8 +145,7 @@ class ReduceSumOpMaker : public ReduceOpMaker {
 
 class ReduceMeanOpMaker : public ReduceOpMaker {
  public:
-  ReduceMeanOpMaker(framework::OpProto *proto,
-                    framework::OpAttrChecker *op_checker)
+  ReduceMeanOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : ReduceOpMaker(proto, op_checker) {
     SetComment("ReduceMean", "mean");
     AddComment(comment_);
@@ -145,8 +154,7 @@ class ReduceMeanOpMaker : public ReduceOpMaker {
 
 class ReduceMaxOpMaker : public ReduceOpMaker {
  public:
-  ReduceMaxOpMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  ReduceMaxOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : ReduceOpMaker(proto, op_checker) {
     SetComment("ReduceMax", "max");
     AddComment(comment_);
@@ -155,8 +163,7 @@ class ReduceMaxOpMaker : public ReduceOpMaker {
 
 class ReduceMinOpMaker : public ReduceOpMaker {
  public:
-  ReduceMinOpMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  ReduceMinOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : ReduceOpMaker(proto, op_checker) {
     SetComment("ReduceMin", "min");
     AddComment(comment_);
@@ -180,12 +187,13 @@ REGISTER_OP(reduce_max, ops::ReduceOp, ops::ReduceMaxOpMaker, reduce_max_grad,
 REGISTER_OP(reduce_min, ops::ReduceOp, ops::ReduceMinOpMaker, reduce_min_grad,
             ops::ReduceGradOp);
 
-#define REGISTER_REDUCE_CPU_KERNEL(reduce_type, functor, grad_functor)     \
-  REGISTER_OP_CPU_KERNEL(                                                  \
-      reduce_type,                                                         \
-      ops::ReduceKernel<paddle::platform::CPUPlace, float, ops::functor>); \
-  REGISTER_OP_CPU_KERNEL(reduce_type##_grad,                               \
-                         ops::ReduceGradKernel<paddle::platform::CPUPlace, \
-                                               float, ops::grad_functor>);
+#define REGISTER_REDUCE_CPU_KERNEL(reduce_type, functor, grad_functor)         \
+  REGISTER_OP_CPU_KERNEL(reduce_type,                                          \
+                         ops::ReduceKernel<paddle::platform::CPUDeviceContext, \
+                                           float, ops::functor>);              \
+  REGISTER_OP_CPU_KERNEL(                                                      \
+      reduce_type##_grad,                                                      \
+      ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, float,         \
+                            ops::grad_functor>);
 
 FOR_EACH_KERNEL_FUNCTOR(REGISTER_REDUCE_CPU_KERNEL);

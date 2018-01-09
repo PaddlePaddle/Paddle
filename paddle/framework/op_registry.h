@@ -37,8 +37,8 @@ class Registrar {
  public:
   // In our design, various kinds of classes, e.g., operators and kernels,
   // have their corresponding registry and registrar. The action of
-  // registration is in the constructor of a global registrar variable, which,
-  // however, are not used in the code that calls package framework, and would
+  // registration is in the constructor of a global registrar variable, which
+  // are not used in the code that calls package framework, and would
   // be removed from the generated binary file by the linker. To avoid such
   // removal, we add Touch to all registrar classes and make USE_OP macros to
   // call this method. So, as long as the callee code calls USE_OP, the global
@@ -61,25 +61,14 @@ struct OperatorRegistrar : public Registrar {
 
 class OpRegistry {
  public:
-  template <typename OpType, typename ProtoMakerType, typename GradOpType>
-  static void RegisterOp(const std::string& op_type,
-                         const std::string& grad_op_type) {
-    OperatorRegistrar<OpType, ProtoMakerType> reg(op_type.c_str());
-    reg.info.grad_op_type_ = grad_op_type;
-    // register gradient op
-    if (!grad_op_type.empty()) {
-      OperatorRegistrar<GradOpType> grad_reg(grad_op_type.c_str());
-    }
-  }
-
   static std::unique_ptr<OperatorBase> CreateOp(const std::string& type,
                                                 const VariableNameMap& inputs,
                                                 const VariableNameMap& outputs,
                                                 AttributeMap attrs);
 
-  static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
+  static std::unique_ptr<OperatorBase> CreateOp(const proto::OpDesc& op_desc);
 
-  static std::unique_ptr<OperatorBase> CreateOp(const OpDescBind& op_desc);
+  static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
 };
 
 template <typename PlaceType, bool at_end, size_t I, typename... KernelType>
@@ -90,30 +79,31 @@ struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
   using KERNEL_TYPE =
       typename std::tuple_element<I, std::tuple<KernelTypes...>>::type;
 
-  void operator()(const char* op_type) const {
+  void operator()(const char* op_type, const char* library_type) const {
     using T = typename KERNEL_TYPE::ELEMENT_TYPE;
-    OpKernelType key(ToDataType(std::type_index(typeid(T))), PlaceType());
+    OpKernelType key(ToDataType(std::type_index(typeid(T))), PlaceType(),
+                     DataLayout::kAnyLayout, StringToLibraryType(library_type));
     OperatorWithKernel::AllOpKernels()[op_type][key].reset(new KERNEL_TYPE);
 
     constexpr auto size = std::tuple_size<std::tuple<KernelTypes...>>::value;
     OpKernelRegistrarFunctor<PlaceType, I + 1 == size, I + 1, KernelTypes...>
         func;
-    func(op_type);
+    func(op_type, library_type);
   }
 };
 
 template <typename PlaceType, size_t I, typename... KernelType>
 struct OpKernelRegistrarFunctor<PlaceType, true, I, KernelType...> {
-  void operator()(const char* op_type) const {}
+  void operator()(const char* op_type, const char* library_type) const {}
 };
 
 // User can register many kernel in one place. The data type could be different.
 template <typename PlaceType, typename... KernelType>
 class OpKernelRegistrar : public Registrar {
  public:
-  explicit OpKernelRegistrar(const char* op_type) {
+  explicit OpKernelRegistrar(const char* op_type, const char* library_type) {
     OpKernelRegistrarFunctor<PlaceType, false, 0, KernelType...> func;
-    func(op_type);
+    func(op_type, library_type);
   }
 };
 
@@ -126,6 +116,14 @@ class OpKernelRegistrar : public Registrar {
                              __test_global_namespace_##uniq_name##__>::value, \
                 msg)
 
+/*
+  The variadic arguments should be class types derived from one of the
+  following classes:
+    OpProtoAndCheckerMaker
+    GradOpDescMakerBase
+    VarTypeInference
+    InferShapeBase
+*/
 #define REGISTER_OPERATOR(op_type, op_class, ...)                      \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                      \
       __reg_op__##op_type,                                             \
@@ -144,20 +142,29 @@ class OpKernelRegistrar : public Registrar {
   }
 
 /**
- * Macro to register Operator.
+ * Macro to register Operator. When the input is duplicable, you should
+ * use REGISTER_OP_EX with deop_empty_grad=false instead.
  */
-#define REGISTER_OP(op_type, op_class, op_maker_class, grad_op_type,       \
-                    grad_op_class)                                         \
-  REGISTER_OPERATOR(grad_op_type, grad_op_class);                          \
-  class _GradOpDescMaker_##grad_op_type##_                                 \
-      : public ::paddle::framework::DefaultGradOpDescMaker<true> {         \
-    using ::paddle::framework::DefaultGradOpDescMaker<                     \
-        true>::DefaultGradOpDescMaker;                                     \
-                                                                           \
-   protected:                                                              \
-    virtual std::string GradOpType() const { return #grad_op_type; }       \
-  };                                                                       \
-  REGISTER_OPERATOR(op_type, op_class, _GradOpDescMaker_##grad_op_type##_, \
+#define REGISTER_OP(op_type, op_class, op_maker_class, grad_op_type, \
+                    grad_op_class)                                   \
+  REGISTER_OP_EX(op_type, op_class, op_maker_class, grad_op_type,    \
+                 grad_op_class, true)
+
+// When an argument is duplicable, we need to use this version.
+// Perhaps we can omit DropEmptyIG template parameter and
+// only have one version of REGISTER_OP.
+#define REGISTER_OP_EX(op_type, op_class, op_maker_class, grad_op_type,       \
+                       grad_op_class, drop_empty_grad)                        \
+  REGISTER_OPERATOR(grad_op_type, grad_op_class);                             \
+  class _GradOpDescMaker_##grad_op_type##_                                    \
+      : public ::paddle::framework::DefaultGradOpDescMaker<drop_empty_grad> { \
+    using ::paddle::framework::DefaultGradOpDescMaker<                        \
+        drop_empty_grad>::DefaultGradOpDescMaker;                             \
+                                                                              \
+   protected:                                                                 \
+    virtual std::string GradOpType() const { return #grad_op_type; }          \
+  };                                                                          \
+  REGISTER_OPERATOR(op_type, op_class, _GradOpDescMaker_##grad_op_type##_,    \
                     op_maker_class);
 
 #define REGISTER_OP_WITH_KERNEL(op_type, ...)                         \
@@ -175,14 +182,15 @@ class OpKernelRegistrar : public Registrar {
       __reg_op_kernel_##op_type##_##DEVICE_TYPE##__,                      \
       "REGISTER_OP_KERNEL must be called in global namespace");           \
   static ::paddle::framework::OpKernelRegistrar<place_class, __VA_ARGS__> \
-      __op_kernel_registrar_##op_type##_##DEVICE_TYPE##__(#op_type);      \
+      __op_kernel_registrar_##op_type##_##DEVICE_TYPE##__(#op_type,       \
+                                                          #DEVICE_TYPE);  \
   int TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE() {                \
     __op_kernel_registrar_##op_type##_##DEVICE_TYPE##__.Touch();          \
     return 0;                                                             \
   }
 
-#define REGISTER_OP_GPU_KERNEL(op_type, ...) \
-  REGISTER_OP_KERNEL(op_type, GPU, ::paddle::platform::GPUPlace, __VA_ARGS__)
+#define REGISTER_OP_CUDA_KERNEL(op_type, ...) \
+  REGISTER_OP_KERNEL(op_type, CUDA, ::paddle::platform::CUDAPlace, __VA_ARGS__)
 
 #define REGISTER_OP_CPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)
@@ -217,7 +225,7 @@ class OpKernelRegistrar : public Registrar {
 #else
 #define USE_OP_KERNEL(op_type)        \
   USE_OP_DEVICE_KERNEL(op_type, CPU); \
-  USE_OP_DEVICE_KERNEL(op_type, GPU)
+  USE_OP_DEVICE_KERNEL(op_type, CUDA)
 #endif
 
 #define USE_NO_KERNEL_OP(op_type) USE_OP_ITSELF(op_type);
@@ -226,9 +234,9 @@ class OpKernelRegistrar : public Registrar {
   USE_OP_ITSELF(op_type);        \
   USE_OP_DEVICE_KERNEL(op_type, CPU);
 
-#define USE_GPU_ONLY_OP(op_type) \
-  USE_OP_ITSELF(op_type);        \
-  USE_OP_DEVICE_KERNEL(op_type, GPU)
+#define USE_CUDA_ONLY_OP(op_type) \
+  USE_OP_ITSELF(op_type);         \
+  USE_OP_DEVICE_KERNEL(op_type, CUDA)
 
 #define USE_OP(op_type)   \
   USE_OP_ITSELF(op_type); \

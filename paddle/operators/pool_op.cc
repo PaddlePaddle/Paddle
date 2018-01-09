@@ -58,6 +58,7 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
         OutputSizePool(in_x_dims[i + 2], ksize[i], paddings[i], strides[i]));
   }
   ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
+  ctx->ShareLoD("X", "Out");
 }
 
 void PoolOpGrad::InferShape(framework::InferShapeContext *ctx) const {
@@ -67,8 +68,7 @@ void PoolOpGrad::InferShape(framework::InferShapeContext *ctx) const {
   ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
 }
 
-Pool2dOpMaker::Pool2dOpMaker(framework::OpProto *proto,
-                             framework::OpAttrChecker *op_checker)
+Pool2dOpMaker::Pool2dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput(
       "X",
@@ -136,8 +136,7 @@ Example:
 )DOC");
 }
 
-Pool3dOpMaker::Pool3dOpMaker(framework::OpProto *proto,
-                             framework::OpAttrChecker *op_checker)
+Pool3dOpMaker::Pool3dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput("X",
            "(Tensor) The input tensor of pooling operator. "
@@ -216,19 +215,19 @@ namespace ops = paddle::operators;
 REGISTER_OP(pool2d, ops::PoolOp, ops::Pool2dOpMaker, pool2d_grad,
             ops::PoolOpGrad);
 
-REGISTER_OP_CPU_KERNEL(pool2d,
-                       ops::PoolKernel<paddle::platform::CPUPlace, float>,
-                       ops::PoolKernel<paddle::platform::CPUPlace, double>);
-REGISTER_OP_CPU_KERNEL(pool2d_grad,
-                       ops::PoolGradKernel<paddle::platform::CPUPlace, float>,
-                       ops::PoolGradKernel<paddle::platform::CPUPlace, double>)
+REGISTER_OP_CPU_KERNEL(
+    pool2d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PoolKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    pool2d_grad, ops::PoolGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>)
 
 REGISTER_OP(pool3d, ops::PoolOp, ops::Pool3dOpMaker, pool3d_grad,
             ops::PoolOpGrad);
 
-REGISTER_OP_CPU_KERNEL(pool3d,
-                       ops::PoolKernel<paddle::platform::CPUPlace, float>,
-                       ops::PoolKernel<paddle::platform::CPUPlace, double>);
-REGISTER_OP_CPU_KERNEL(pool3d_grad,
-                       ops::PoolGradKernel<paddle::platform::CPUPlace, float>,
-                       ops::PoolGradKernel<paddle::platform::CPUPlace, double>);
+REGISTER_OP_CPU_KERNEL(
+    pool3d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PoolKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    pool3d_grad, ops::PoolGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>);

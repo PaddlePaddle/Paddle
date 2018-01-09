@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/operators/math/sequence_padding.h"
 #include <gtest/gtest.h>
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename Place, typename T>
 void TestSequencePadding(const paddle::framework::LoD& lod,
                          const size_t sequence_width) {
   paddle::framework::LoDTensor cpu_seq;
@@ -36,23 +36,11 @@ void TestSequencePadding(const paddle::framework::LoD& lod,
   }
 
   auto* place = new Place();
-  paddle::platform::DeviceContext* context;
-  if (paddle::platform::is_cpu_place(*place)) {
-    context =
-        new paddle::platform::CPUDeviceContext(paddle::platform::CPUPlace());
-  } else {
-#ifdef PADDLE_WITH_CUDA
-    context =
-        new paddle::platform::CUDADeviceContext(paddle::platform::GPUPlace());
-#else
-    PADDLE_THROW("no CUDA support");
-#endif  // PADDLE_WITH_CUDA
-  }
-
+  DeviceContext* context = new DeviceContext(*place);
   if (paddle::platform::is_cpu_place(*place)) {
     seq = cpu_seq;
   } else {
-    CopyFrom(cpu_seq, paddle::platform::GPUPlace(), *context, &seq);
+    CopyFrom(cpu_seq, *place, *context, &seq);
     seq.set_lod(lod);
   }
 
@@ -64,12 +52,12 @@ void TestSequencePadding(const paddle::framework::LoD& lod,
                                     static_cast<int64_t>(num_sequences),
                                     static_cast<int64_t>(sequence_width)});
   padding.mutable_data<T>(padding_dims, *place);
-  paddle::operators::math::PaddingLoDTensorFunctor<Place, T>()(*context, seq,
-                                                               padding, false);
+  paddle::operators::math::PaddingLoDTensorFunctor<DeviceContext, T>()(
+      *context, seq, padding, false);
 
   seq_back.set_lod(lod);
   seq_back.mutable_data<T>(seq_dims, *place);
-  paddle::operators::math::UnpaddingLoDTensorFunctor<Place, T>()(
+  paddle::operators::math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
       *context, seq_back, padding, false);
 
   if (paddle::platform::is_cpu_place(*place)) {
@@ -92,21 +80,25 @@ void TestSequencePadding(const paddle::framework::LoD& lod,
 TEST(Seq2BatchPadding, CPU) {
   paddle::framework::LoD lod1;
   lod1.push_back(std::vector<size_t>{0, 10});
-  TestSequencePadding<paddle::platform::CPUPlace, float>(lod1, 16);
+  TestSequencePadding<paddle::platform::CPUDeviceContext,
+                      paddle::platform::CPUPlace, float>(lod1, 16);
 
   paddle::framework::LoD lod2;
   lod2.push_back(std::vector<size_t>{0, 2, 7, 10});
-  TestSequencePadding<paddle::platform::CPUPlace, float>(lod2, 128);
+  TestSequencePadding<paddle::platform::CPUDeviceContext,
+                      paddle::platform::CPUPlace, float>(lod2, 128);
 }
 
 #ifdef PADDLE_WITH_CUDA
 TEST(SequencePadding, CUDA) {
   paddle::framework::LoD lod1;
   lod1.push_back(std::vector<size_t>{0, 10});
-  TestSequencePadding<paddle::platform::GPUPlace, float>(lod1, 16);
+  TestSequencePadding<paddle::platform::CUDADeviceContext,
+                      paddle::platform::CUDAPlace, float>(lod1, 16);
 
   paddle::framework::LoD lod2;
   lod2.push_back(std::vector<size_t>{0, 2, 7, 10});
-  TestSequencePadding<paddle::platform::GPUPlace, float>(lod2, 128);
+  TestSequencePadding<paddle::platform::CUDADeviceContext,
+                      paddle::platform::CUDAPlace, float>(lod2, 128);
 }
 #endif

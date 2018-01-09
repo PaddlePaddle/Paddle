@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #define EIGEN_USE_GPU
 #include "paddle/operators/adagrad_op.h"
@@ -72,80 +72,48 @@ __global__ void SparseAdagradFunctorKernel(const T* grad, const int64_t* rows,
 }  // namespace
 
 template <typename T>
-struct SparseAdagradFunctor<platform::GPUPlace, T> {
-  void operator()(const platform::DeviceContext& context,
+struct SparseAdagradFunctor<platform::CUDADeviceContext, T> {
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::SelectedRows& grad,
                   const framework::Tensor& learning_rate, T epsilon,
                   framework::Tensor* moment, framework::Tensor* param) {
     // 1. g_m.rows = set(g.rows)
-    auto grad_rows = grad.rows();
-    std::set<int64_t> row_set(grad_rows.begin(), grad_rows.end());
-    std::vector<int64_t> merge_rows(row_set.begin(), row_set.end());
-
     auto grad_width = grad.value().dims()[1];
-    std::unique_ptr<framework::SelectedRows> grad_merge{
-        new framework::SelectedRows()};
-    grad_merge->set_rows(merge_rows);
-    grad_merge->set_height(grad.height());
-    grad_merge->mutable_value()->mutable_data<T>(
-        framework::make_ddim(
-            {static_cast<int64_t>(merge_rows.size()), grad_width}),
-        context.GetPlace());
-
-    math::SetConstant<platform::GPUPlace, T> constant_functor;
-    constant_functor(context, grad_merge->mutable_value(), 0.0);
-
-    auto* grad_merge_data = grad_merge->mutable_value()->data<T>();
-    auto* grad_data = grad.value().data<T>();
-
-    const int block_size = 256;
-    dim3 threads(block_size, 1);
-    dim3 grid1(1, grad_rows.size());
-
-    MergeGradKernel<
-        T, 256><<<grid1, threads, 0,
-                  reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                      .stream()>>>(grad_data, grad.rows().data(),
-                                   grad_merge_data, grad_merge->rows().data(),
-                                   grad_merge->rows().size(), grad_width);
-
+    math::scatter::MergeAdd<platform::CUDADeviceContext, T> merge_func;
+    auto grad_merge = merge_func(context, grad);
+    auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
+    auto& merge_rows = grad_merge.rows();
     // 2. m += g_m * g_m
-    std::unique_ptr<framework::SelectedRows> grad_square{
-        new framework::SelectedRows()};
-    grad_square->set_rows(grad_merge->rows());
-    grad_square->set_height(grad_merge->height());
-    grad_square->mutable_value()->mutable_data<T>(grad_merge->value().dims(),
-                                                  context.GetPlace());
-    auto gs =
-        framework::EigenVector<T>::Flatten(*(grad_square->mutable_value()));
-    auto gm = framework::EigenVector<T>::Flatten(grad_merge->value());
-    gs.device(*context.GetEigenDevice<platform::GPUPlace>()) = gm * gm;
+    math::scatter::Mul<platform::CUDADeviceContext, T> sqare_func;
+    auto grad_square = sqare_func(context, grad_merge, grad_merge);
 
-    math::SelectedRowsAddToTensor<platform::GPUPlace, T> functor;
-    functor(context, *grad_square, moment);
+    math::SelectedRowsAddToTensor<platform::CUDADeviceContext, T> functor;
+    functor(context, grad_square, moment);
 
     // 3. update parameter
     auto* lr = learning_rate.data<T>();
     auto* param_data = param->data<T>();
     auto* moment_data = moment->data<T>();
 
+    const int block_size = 256;
+    dim3 threads(block_size, 1);
     dim3 grid2(1, merge_rows.size());
     SparseAdagradFunctorKernel<
         T, 256><<<grid2, threads, 0,
                   reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                      .stream()>>>(grad_merge_data, grad_merge->rows().data(),
+                      .stream()>>>(grad_merge_data, grad_merge.rows().data(),
                                    lr, param_data, moment_data, grad_width,
                                    epsilon);
   }
 };
 
-template struct SparseAdagradFunctor<platform::GPUPlace, float>;
-template struct SparseAdagradFunctor<platform::GPUPlace, double>;
+template struct SparseAdagradFunctor<platform::CUDADeviceContext, float>;
+template struct SparseAdagradFunctor<platform::CUDADeviceContext, double>;
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
-    adagrad, ops::AdagradOpKernel<paddle::platform::GPUPlace, float>,
-    ops::AdagradOpKernel<paddle::platform::GPUPlace, double>);
+REGISTER_OP_CUDA_KERNEL(
+    adagrad, ops::AdagradOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::AdagradOpKernel<paddle::platform::CUDADeviceContext, double>);

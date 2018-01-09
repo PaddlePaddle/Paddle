@@ -25,7 +25,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-template <typename Place>
+template <typename DeviceContext>
 class WarpCTCFunctor {
  public:
   /*
@@ -76,7 +76,9 @@ class WarpCTCFunctor {
     float* workspace_data = workspace.mutable_data<float>(
         framework::make_ddim({static_cast<int64_t>(workspace_elements)}),
         ctx.GetPlace());
-    math::SetConstant<Place, float>()(ctx.device_context(), &workspace, 0.0);
+    math::SetConstant<DeviceContext, float>()(
+        ctx.template device_context<DeviceContext>(), &workspace,
+        static_cast<float>(0));
 
     // compute loss and gradient
     status = platform::dynload::compute_ctc_loss(
@@ -115,7 +117,7 @@ class WarpCTCFunctor {
   ctcOptions options_;
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class WarpCTCKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -157,8 +159,9 @@ class WarpCTCKernel : public framework::OpKernel<T> {
                               static_cast<int64_t>(num_sequences),
                               static_cast<int64_t>(sequence_width)});
     warpctc_logits.mutable_data<T>(warpctc_logits_dims, ctx.GetPlace());
-    math::PaddingLoDTensorFunctor<Place, T>()(ctx.device_context(), *logits,
-                                              warpctc_logits, false);
+    math::PaddingLoDTensorFunctor<DeviceContext, T>()(
+        ctx.template device_context<DeviceContext>(), *logits, warpctc_logits,
+        false);
     const T* warpctc_logits_data = warpctc_logits.data<T>();
 
     std::vector<int> warpctc_label_lengths(num_sequences);
@@ -188,17 +191,17 @@ class WarpCTCKernel : public framework::OpKernel<T> {
 
     const size_t blank = static_cast<size_t>(ctx.Attr<int>("blank"));
 
-    WarpCTCFunctor<Place>()(ctx, warpctc_logits_data, warpctc_grad_data,
-                            warpctc_label_data, warpctc_label_lengths.data(),
-                            warpctc_logits_lengths.data(), sequence_width,
-                            num_sequences, blank, warpctc_loss_data);
+    WarpCTCFunctor<DeviceContext>()(
+        ctx, warpctc_logits_data, warpctc_grad_data, warpctc_label_data,
+        warpctc_label_lengths.data(), warpctc_logits_lengths.data(),
+        sequence_width, num_sequences, blank, warpctc_loss_data);
 
     // Copy the loss back
     CopyFrom(warpctc_loss, ctx.GetPlace(), ctx.device_context(), loss);
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class WarpCTCGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -206,8 +209,9 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
     auto* logits_grad = ctx.Output<LoDTensor>(framework::GradVarName("Logits"));
 
     bool norm_by_times = ctx.Attr<bool>("norm_by_times");
-    math::UnpaddingLoDTensorFunctor<Place, T>()(
-        ctx.device_context(), *logits_grad, *warpctc_grad, norm_by_times);
+    math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
+        ctx.template device_context<DeviceContext>(), *logits_grad,
+        *warpctc_grad, norm_by_times);
   }
 };
 

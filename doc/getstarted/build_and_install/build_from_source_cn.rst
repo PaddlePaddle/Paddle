@@ -19,7 +19,7 @@ PaddlePaddle主要使用 `CMake <https://cmake.org>`_ 以及GCC, G++作为编译
    git clone https://github.com/PaddlePaddle/Paddle.git
    cd Paddle
    # 如果使用Docker编译环境，执行下面的命令编译CPU-Only的二进制
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x paddle/scripts/docker/build.sh
+   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x /paddle/paddle/scripts/docker/build.sh
    # 如果不使用Docker编译环境，执行下面的命令
    mkdir build
    cd build
@@ -30,7 +30,7 @@ PaddlePaddle主要使用 `CMake <https://cmake.org>`_ 以及GCC, G++作为编译
 
 .. code-block:: bash
 
-   pip install python/dist/*.whl
+   pip install build/python/dist/*.whl
 
 
 .. _run_test:
@@ -45,7 +45,7 @@ PaddlePaddle主要使用 `CMake <https://cmake.org>`_ 以及GCC, G++作为编译
 
 .. code-block:: bash
 
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=ON" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x paddle/scripts/docker/build.sh
+   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=ON" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x /paddle/paddle/scripts/docker/build.sh
 
 如果不使用Docker，可以执行ctest命令即可：
 
@@ -70,13 +70,13 @@ PaddlePaddle编译需要使用到下面的依赖（包含但不限于），其�
    :header: "依赖", "版本", "说明"
    :widths: 10, 15, 30
 
-   "CMake", ">=3.5", ""
+   "CMake", ">=3.2", ""
    "GCC", "4.8.2", "推荐使用CentOS的devtools2"
-   "Python", "2.7.x", "依赖libpython2.7.so"
-   "pip", ">=9.0", ""
-   "numpy", "", ""
+   "Python", "2.7.x", "依赖libpython2.7.so"
+   "pip", ">=9.0", ""
+   "numpy", "", ""
    "SWIG", ">=2.0", ""
-   "Go", ">=1.8", "可选"
+   "Go", ">=1.8", "可选"
 
 
 .. _build_options:

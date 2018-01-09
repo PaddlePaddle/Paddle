@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/data_type.h"
@@ -39,6 +39,22 @@ std::ostream &operator<<(std::ostream &os, const LoD &lod) {
     os << "}";
   }
   os << "}";
+
+  return os;
+}
+
+std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
+  PADDLE_ENFORCE(platform::is_cpu_place(t.place()));
+  PADDLE_ENFORCE(t.type().hash_code() == typeid(float).hash_code());
+
+  os << "dim: " << t.dims() << "\n";
+  os << "lod: " << t.lod() << "\n";
+
+  // only print first ten elements
+  int64_t size = t.numel() < 10 ? t.numel() : 10;
+  for (int64_t i = 0; i < size; ++i) {
+    os << t.data<float>()[i] << " ";
+  }
 
   return os;
 }
@@ -177,6 +193,9 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
       lod->empty() || lod->size() == lod_length.size(),
       "The lod_length should has the same size with the appended lod.");
   if (lod->empty()) {
+    for (size_t i = 0; i < lod_length.size(); ++i) {
+      lod->emplace_back(1, 0);  // size = 1, value = 0;
+    }
     *lod = LoD(lod_length.size(), std::vector<size_t>({0}));
   }
   for (size_t i = 0; i < lod->size(); ++i) {
@@ -189,62 +208,16 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
 
 void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
                        const platform::DeviceContext &dev_ctx) {
-  // TODO(typhoonzero): serialize to ostream
-  {  // the 1st field, uint32_t version
+  {  // the 1st field, uint32_t version for LoDTensor
     constexpr uint32_t version = 0;
     os.write(reinterpret_cast<const char *>(&version), sizeof(version));
   }
-  {  // the 2nd field, tensor description
-     // int32_t  size
-     // void*    protobuf message
-    framework::TensorDesc desc;
-    desc.set_data_type(framework::ToDataType(tensor.type()));
-    auto dims = framework::vectorize(tensor.dims());
-    auto *pb_dims = desc.mutable_dims();
-    pb_dims->Resize(static_cast<int>(dims.size()), 0);
-    std::copy(dims.begin(), dims.end(), pb_dims->begin());
-    int32_t size = desc.ByteSize();
-    os.write(reinterpret_cast<const char *>(&size), sizeof(size));
-    auto out = desc.SerializeAsString();
-    os.write(out.data(), size);
-  }
-  {  // the 3rd field, tensor data
-    uint64_t size = tensor.memory_size();
-    auto *data_ptr = tensor.data<void>();
-    PADDLE_ENFORCE(size < std::numeric_limits<std::streamsize>::max(),
-                   "Index overflow when writing tensor");
-    if (platform::is_gpu_place(tensor.place())) {
-#ifdef PADDLE_WITH_CUDA
-      constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
-      std::unique_ptr<char[]> buf(new char[kBufSize]);
-      auto &gpu_dev_ctx =
-          static_cast<const platform::CUDADeviceContext &>(dev_ctx);
-      platform::CPUPlace cpu;
-      uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
-      while (size != 0) {
-        size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
-        memory::Copy(cpu, buf.get(),
-                     boost::get<platform::GPUPlace>(tensor.place()),
-                     reinterpret_cast<const void *>(data), size_to_write,
-                     gpu_dev_ctx.stream());
-        gpu_dev_ctx.Wait();
-        os.write(buf.get(), size_to_write);
-        data += size_to_write;
-        size -= size_to_write;
-      }
-#else
-      PADDLE_THROW("Unexpected branch");
-#endif
-    } else {
-      os.write(static_cast<const char *>(data_ptr),
-               static_cast<std::streamsize>(size));
-    }
-  }
-  {  // the 4th field, lod information
-     // uint64_t lod_level
-     // uint64_t lod_level_1 size in byte.
-     // int*     lod_level_1 data
-     // ...
+  {
+    // the 2st field, LoD information
+    // uint64_t lod_level
+    // uint64_t lod_level_1 size in byte.
+    // int*     lod_level_1 data
+    // ...
     auto lod = tensor.lod();
     uint64_t size = lod.size();
     os.write(reinterpret_cast<const char *>(&size), sizeof(size));
@@ -256,49 +229,20 @@ void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
                static_cast<std::streamsize>(size));
     }
   }
+  // the 3st field, Tensor
+  SerializeToStream(os, static_cast<Tensor>(tensor), dev_ctx);
 }
 
-void DeserializeFromStream(std::istream &is, LoDTensor *tensor) {
-  uint32_t version;
-  is.read(reinterpret_cast<char *>(&version), sizeof(version));
-  PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
-  framework::TensorDesc desc;
-  {  // int32_t size
-     // proto buffer
-    int32_t size;
-    is.read(reinterpret_cast<char *>(&size), sizeof(size));
-    std::unique_ptr<char[]> buf(new char[size]);
-    is.read(reinterpret_cast<char *>(buf.get()), size);
-    PADDLE_ENFORCE(desc.ParseFromArray(buf.get(), size),
-                   "Cannot parse tensor desc");
+void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
+                           const platform::DeviceContext &dev_ctx) {
+  {
+    // the 1st field, unit32_t version for LoDTensor
+    uint32_t version;
+    is.read(reinterpret_cast<char *>(&version), sizeof(version));
+    PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
   }
-  {  // read tensor
-    std::vector<int64_t> dims;
-    dims.reserve(static_cast<size_t>(desc.dims().size()));
-    std::copy(desc.dims().begin(), desc.dims().end(), std::back_inserter(dims));
-    tensor->Resize(framework::make_ddim(dims));
-
-    void *buf;
-    platform::Place cpu = platform::CPUPlace();
-    switch (desc.data_type()) {
-      case framework::FP32:
-        buf = tensor->mutable_data<float>(cpu);
-        break;
-      case framework::FP64:
-        buf = tensor->mutable_data<double>(cpu);
-        break;
-      case framework::INT32:
-        buf = tensor->mutable_data<int>(cpu);
-        break;
-      case framework::INT64:
-        buf = tensor->mutable_data<int64_t>(cpu);
-        break;
-      default:
-        PADDLE_THROW("DataType %d not supported", desc.data_type());
-    }
-    is.read(static_cast<char *>(buf), tensor->memory_size());
-  }
-  {  // read lod
+  {
+    // the 2st field, LoD information
     uint64_t lod_level;
     is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
     auto &lod = *tensor->mutable_lod();
@@ -311,6 +255,72 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor) {
               static_cast<std::streamsize>(size));
       lod[i] = tmp;
     }
+  }
+  // the 3st filed, Tensor
+  DeserializeFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
+}
+
+std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
+    const std::vector<platform::Place> places) const {
+  check_memory_size();
+  //  PADDLE_ENFORCE(lod().empty() || (lod().size() == 1 && lod()[0].empty())
+  //                 , "Disable parallel lod for now");
+  PADDLE_ENFORCE(lod().empty(), "Disable parallel lod for now");
+  PADDLE_ENFORCE(dims()[0] % places.size() == 0,
+                 "Batch size should be divided by places size");
+
+  std::vector<LoDTensor> lods;
+  for (size_t place_idx = 0; place_idx < places.size(); ++place_idx) {
+    size_t begin = place_idx * dims()[0] / places.size();
+    size_t end = (place_idx + 1) * dims()[0] / places.size();
+    auto src = Slice(static_cast<int>(begin), static_cast<int>(end));
+
+    LoDTensor dst;
+    dst.Resize(src.dims());
+    auto &dst_place = places[place_idx];
+    auto dst_ptr = dst.mutable_data(dst_place, src.type());
+
+    // TODO(tonyyang-svail):
+    //   change the following to framework::CopyFrom
+    auto src_place = src.place();
+    auto src_ptr = src.data<void>();
+    auto size = src.numel() * SizeOfType(src.type());
+    if (platform::is_cpu_place(src_place) &&
+        platform::is_cpu_place(dst_place)) {
+      memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
+                   boost::get<platform::CPUPlace>(src_place), src_ptr, size);
+    } else {
+      PADDLE_THROW("Not Implemented");
+    }
+
+    lods.emplace_back(dst);
+  }
+
+  return lods;
+}
+
+void LoDTensor::MergeLoDTensor(
+    const std::vector<const LoDTensor *> &lod_tensors, platform::Place place) {
+  PADDLE_ENFORCE(platform::is_cpu_place(place));
+  PADDLE_ENFORCE(!lod_tensors.empty());
+
+  framework::DDim new_dim = lod_tensors[0]->dims();
+  std::type_index new_type = lod_tensors[0]->type();
+  for (auto *lod : lod_tensors) {
+    PADDLE_ENFORCE(new_dim == lod->dims());
+    PADDLE_ENFORCE(new_type == lod->type());
+    PADDLE_ENFORCE(platform::is_cpu_place(lod->place()));
+  }
+  new_dim[0] *= lod_tensors.size();
+  Resize(new_dim);
+
+  auto *dst_ptr = reinterpret_cast<uint8_t *>(mutable_data(place, new_type));
+  for (auto *src : lod_tensors) {
+    auto size = src->numel() * SizeOfType(src->type());
+    memory::Copy(boost::get<platform::CPUPlace>(place), dst_ptr,
+                 boost::get<platform::CPUPlace>(src->place()),
+                 src->data<void>(), size);
+    dst_ptr += size;
   }
 }
 

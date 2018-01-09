@@ -68,7 +68,7 @@ class ROIPoolOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
@@ -89,7 +89,7 @@ class ROIPoolGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
@@ -99,8 +99,7 @@ class ROIPoolGradOp : public framework::OperatorWithKernel {
 
 class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ROIPoolOpMaker(framework::OpProto* proto,
-                 framework::OpAttrChecker* op_checker)
+  ROIPoolOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor), "
@@ -157,9 +156,10 @@ namespace ops = paddle::operators;
 REGISTER_OP(roi_pool, ops::ROIPoolOp, ops::ROIPoolOpMaker, roi_pool_grad,
             ops::ROIPoolGradOp);
 REGISTER_OP_CPU_KERNEL(
-    roi_pool, ops::CPUROIPoolOpKernel<paddle::platform::CPUPlace, float>,
-    ops::CPUROIPoolOpKernel<paddle::platform::CPUPlace, double>);
+    roi_pool,
+    ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     roi_pool_grad,
-    ops::CPUROIPoolGradOpKernel<paddle::platform::CPUPlace, float>,
-    ops::CPUROIPoolOpKernel<paddle::platform::CPUPlace, double>);
+    ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, double>);

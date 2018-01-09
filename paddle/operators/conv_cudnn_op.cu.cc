@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
@@ -28,14 +28,15 @@ using ScopedFilterDescriptor = platform::ScopedFilterDescriptor;
 using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
 using DataLayout = platform::DataLayout;
 
-static constexpr size_t kCONV_CUDNN_WORKSPACE_LIMIT_BYTES = 1024 * 1024 * 1024;
+static constexpr size_t kCONV_CUDNN_WORKSPACE_LIMIT_BYTES =
+    static_cast<size_t>(1024) * 1024 * 1024;
 
 template <typename T>
 class CudnnConvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "It must use CUDAPlace.");
     auto* input = ctx.Input<Tensor>("Input");
     auto* filter = ctx.Input<Tensor>("Filter");
     auto* output = ctx.Output<Tensor>("Output");
@@ -44,7 +45,8 @@ class CudnnConvOpKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
-    int user_workspace_size = ctx.Attr<int>("workspace_size_MB");
+    int64_t user_workspace_size =
+        static_cast<size_t>(ctx.Attr<int>("workspace_size_MB"));
 
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
@@ -116,7 +118,8 @@ class CudnnConvOpKernel : public framework::OpKernel<T> {
     }
     // ------------------- cudnn conv algorithm ---------------------
     cudnnConvolutionFwdAlgo_t algo;
-    auto handle = ctx.cuda_device_context().cudnn_handle();
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto handle = dev_ctx.cudnn_handle();
 
     PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
         handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
@@ -127,7 +130,7 @@ class CudnnConvOpKernel : public framework::OpKernel<T> {
         handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
         cudnn_output_desc, algo, &workspace_size_in_bytes));
     // Allocate on GPU memory
-    platform::GPUPlace gpu = boost::get<platform::GPUPlace>(ctx.GetPlace());
+    platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
     // ------------------- cudnn conv forward ---------------------
     T alpha = 1.0f, beta = 0.0f;
@@ -148,7 +151,7 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "It must use CUDAPlace.");
     auto input = ctx.Input<Tensor>("Input");
     auto filter = ctx.Input<Tensor>("Filter");
     auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
@@ -163,7 +166,8 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
-    int user_workspace_size = ctx.Attr<int>("workspace_size_MB");
+    int64_t user_workspace_size =
+        static_cast<size_t>(ctx.Attr<int>("workspace_size_MB"));
 
     // ------------------- cudnn descriptors ---------------------
     ScopedTensorDescriptor input_desc;
@@ -235,7 +239,8 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
       workspace_size_limit = user_workspace_size * 1024 * 1024;
     }
 
-    auto handle = ctx.cuda_device_context().cudnn_handle();
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto handle = dev_ctx.cudnn_handle();
     if (input_grad) {
       PADDLE_ENFORCE(
           platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
@@ -272,7 +277,7 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
     // ------------------- cudnn conv workspace ---------------------
     // Already on GPU
     void* cudnn_workspace = nullptr;
-    platform::GPUPlace gpu = boost::get<platform::GPUPlace>(ctx.GetPlace());
+    platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
     // ------------------- cudnn conv backward data ---------------------
     T alpha = 1.0f, beta = 0.0f;
@@ -310,16 +315,17 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_GPU_KERNEL(conv2d_cudnn,
-                       paddle::operators::CudnnConvOpKernel<float>,
-                       paddle::operators::CudnnConvOpKernel<double>);
-REGISTER_OP_GPU_KERNEL(conv2d_cudnn_grad,
-                       paddle::operators::CudnnConvGradOpKernel<float>,
-                       paddle::operators::CudnnConvGradOpKernel<double>);
+// TODO(dzhwinter) : below register should be removed
+REGISTER_OP_CUDA_KERNEL(conv2d_cudnn,
+                        paddle::operators::CudnnConvOpKernel<float>,
+                        paddle::operators::CudnnConvOpKernel<double>);
+REGISTER_OP_CUDA_KERNEL(conv2d_cudnn_grad,
+                        paddle::operators::CudnnConvGradOpKernel<float>,
+                        paddle::operators::CudnnConvGradOpKernel<double>);
 
-REGISTER_OP_GPU_KERNEL(conv3d_cudnn,
-                       paddle::operators::CudnnConvOpKernel<float>,
-                       paddle::operators::CudnnConvOpKernel<double>);
-REGISTER_OP_GPU_KERNEL(conv3d_cudnn_grad,
-                       paddle::operators::CudnnConvGradOpKernel<float>,
-                       paddle::operators::CudnnConvGradOpKernel<double>);
+REGISTER_OP_CUDA_KERNEL(conv3d_cudnn,
+                        paddle::operators::CudnnConvOpKernel<float>,
+                        paddle::operators::CudnnConvOpKernel<double>);
+REGISTER_OP_CUDA_KERNEL(conv3d_cudnn_grad,
+                        paddle::operators::CudnnConvGradOpKernel<float>,
+                        paddle::operators::CudnnConvGradOpKernel<double>);

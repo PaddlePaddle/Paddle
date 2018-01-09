@@ -48,7 +48,7 @@ class SequenceSliceOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
@@ -69,7 +69,7 @@ class SequenceSliceGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
@@ -79,8 +79,7 @@ class SequenceSliceGradOp : public framework::OperatorWithKernel {
 
 class SequenceSliceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceSliceOpMaker(framework::OpProto* proto,
-                       framework::OpAttrChecker* op_checker)
+  SequenceSliceOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(LoDTensor), "
@@ -125,7 +124,7 @@ REGISTER_OP(sequence_slice, ops::SequenceSliceOp, ops::SequenceSliceOpMaker,
             sequence_slice_grad, ops::SequenceSliceGradOp);
 REGISTER_OP_CPU_KERNEL(
     sequence_slice,
-    ops::SequenceSliceOpKernel<paddle::platform::CPUPlace, float>);
+    ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     sequence_slice_grad,
-    ops::SequenceSliceGradOpKernel<paddle::platform::CPUPlace, float>);
+    ops::SequenceSliceGradOpKernel<paddle::platform::CPUDeviceContext, float>);

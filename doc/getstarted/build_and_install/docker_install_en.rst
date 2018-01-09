@@ -16,7 +16,7 @@ After you've read above tutorials you may proceed the following steps.
 Pull PaddlePaddle Docker Image
 ------------------------------
 
-Run the following command to download the latest Docker images:
+Run the following command to download the latest Docker images, the version is cpu_avx_mkl:
 
   .. code-block:: bash
 
@@ -28,7 +28,7 @@ For users in China, we provide a faster mirror:
 
      docker pull docker.paddlepaddle.org/paddle
 
-Download GPU version images:
+Download GPU version (cuda8.0_cudnn5_avx_mkl) images:
 
   .. code-block:: bash
 
@@ -58,7 +58,7 @@ and run:
 .. _docker_run:
 
 Launch your training program in Docker
-------------------------------
+--------------------------------------
 
 Assume that you have already written a PaddlePaddle program
 named :code:`train.py` under directory :code:`/home/work` (refer to 
@@ -122,7 +122,7 @@ GPU driver installed before move on.
 
   .. code-block:: bash
 
-     nvidia-docker run -it -v $PWD:/work paddledev/paddle:latest-gpu /bin/bash
+     nvidia-docker run -it -v $PWD:/work paddlepaddle/paddle:latest-gpu /bin/bash
 
 **NOTE: If you don't have nvidia-docker installed, try the following method to mount CUDA libs and devices into the container.**
 
@@ -130,14 +130,14 @@ GPU driver installed before move on.
 
      export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
      export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-     docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:latest-gpu
+     docker run ${CUDA_SO} ${DEVICES} -it paddlepaddle/paddle:latest-gpu
 
 **About AVX:**
 
 AVX is a kind of CPU instruction can accelerate PaddlePaddle's calculations.
 The latest PaddlePaddle Docker image turns AVX on by default, so, if your
 computer doesn't support AVX, you'll probably need to
-`build <./build_from_source_en.rst>`_ with :code:`WITH_AVX=OFF`.
+`build <./build_from_source_en.html>`_ with :code:`WITH_AVX=OFF`.
 
 The following command will tell you whether your computer supports AVX.
 

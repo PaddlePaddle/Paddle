@@ -25,12 +25,11 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class OpDescBind;
-class BlockDescBind;
+class OpDesc;
+class BlockDesc;
 class CompileTimeInferShapeContext : public InferShapeContext {
  public:
-  CompileTimeInferShapeContext(const OpDescBind &op,
-                               const BlockDescBind &block);
+  CompileTimeInferShapeContext(const OpDesc &op, const BlockDesc &block);
 
   bool HasInput(const std::string &name) const override;
 
@@ -58,31 +57,31 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     PADDLE_ENFORCE_LT(j, Outputs(out).size());
     auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
-    if (in_var->GetType() != VarDesc::LOD_TENSOR) {
-      VLOG(3) << "input " << in << "is not LodTensor";
+    if (in_var->GetType() != proto::VarDesc::LOD_TENSOR) {
+      VLOG(3) << "input " << in << " is not LodTensor";
       return;
     }
-    PADDLE_ENFORCE_EQ(in_var->GetType(), VarDesc::LOD_TENSOR,
+    PADDLE_ENFORCE_EQ(in_var->GetType(), proto::VarDesc::LOD_TENSOR,
                       "The %d-th output of Output(%s) must be LoDTensor.", j,
                       out);
-    out_var->SetLoDLevel(in_var->GetLodLevel());
+    out_var->SetLoDLevel(in_var->GetLoDLevel());
   }
+
   bool IsRuntime() const override;
 
  protected:
-  VarDesc::VarType GetVarType(const std::string &name) const override;
+  proto::VarDesc::VarType GetVarType(const std::string &name) const override;
 
   DDim GetDim(const std::string &name) const override;
 
   void SetDim(const std::string &name, const DDim &dim) override;
 
-  const OpDescBind &op_;
-  const BlockDescBind &block_;
+  const OpDesc &op_;
+  const BlockDesc &block_;
 };
 
-OpDescBind::OpDescBind(const std::string &type, const VariableNameMap &inputs,
-                       const VariableNameMap &outputs,
-                       const AttributeMap &attrs) {
+OpDesc::OpDesc(const std::string &type, const VariableNameMap &inputs,
+               const VariableNameMap &outputs, const AttributeMap &attrs) {
   desc_.set_type(type);
   inputs_ = inputs;
   outputs_ = outputs;
@@ -90,12 +89,20 @@ OpDescBind::OpDescBind(const std::string &type, const VariableNameMap &inputs,
   need_update_ = true;
 }
 
-OpDescBind::OpDescBind(const OpDesc &desc, ProgramDescBind *prog)
+void OpDesc::CopyFrom(const OpDesc &op_desc) {
+  desc_.set_type(op_desc.Type());
+  inputs_ = op_desc.inputs_;
+  outputs_ = op_desc.outputs_;
+  attrs_ = op_desc.attrs_;
+  need_update_ = true;
+}
+
+OpDesc::OpDesc(const proto::OpDesc &desc, ProgramDesc *prog)
     : desc_(desc), need_update_(false) {
   // restore inputs_
   int input_size = desc_.inputs_size();
   for (int i = 0; i < input_size; ++i) {
-    const OpDesc::Var &var = desc_.inputs(i);
+    const proto::OpDesc::Var &var = desc_.inputs(i);
     std::vector<std::string> &args = inputs_[var.parameter()];
     int argu_size = var.arguments_size();
     args.reserve(argu_size);
@@ -106,7 +113,7 @@ OpDescBind::OpDescBind(const OpDesc &desc, ProgramDescBind *prog)
   // restore outputs_
   int output_size = desc_.outputs_size();
   for (int i = 0; i < output_size; ++i) {
-    const OpDesc::Var &var = desc_.outputs(i);
+    const proto::OpDesc::Var &var = desc_.outputs(i);
     std::vector<std::string> &args = outputs_[var.parameter()];
     int argu_size = var.arguments_size();
     args.reserve(argu_size);
@@ -115,9 +122,9 @@ OpDescBind::OpDescBind(const OpDesc &desc, ProgramDescBind *prog)
     }
   }
   // restore attrs_
-  for (const OpDesc::Attr &attr : desc_.attrs()) {
+  for (const proto::OpDesc::Attr &attr : desc_.attrs()) {
     std::string attr_name = attr.name();
-    if (attr.type() != AttrType::BLOCK) {
+    if (attr.type() != proto::AttrType::BLOCK) {
       attrs_[attr_name] = GetAttrValue(attr);
     } else {
       auto bid = attr.block_idx();
@@ -126,20 +133,19 @@ OpDescBind::OpDescBind(const OpDesc &desc, ProgramDescBind *prog)
   }
 }
 
-OpDesc *OpDescBind::Proto() {
+proto::OpDesc *OpDesc::Proto() {
   Flush();
   return &desc_;
 }
 
-const std::vector<std::string> &OpDescBind::Input(
-    const std::string &name) const {
+const std::vector<std::string> &OpDesc::Input(const std::string &name) const {
   auto it = inputs_.find(name);
   PADDLE_ENFORCE(it != inputs_.end(), "Input %s cannot be found in Op %s", name,
                  Type());
   return it->second;
 }
 
-std::vector<std::string> OpDescBind::InputArgumentNames() const {
+std::vector<std::string> OpDesc::InputArgumentNames() const {
   std::vector<std::string> retv;
   for (auto &ipt : this->inputs_) {
     retv.insert(retv.end(), ipt.second.begin(), ipt.second.end());
@@ -147,21 +153,20 @@ std::vector<std::string> OpDescBind::InputArgumentNames() const {
   return retv;
 }
 
-void OpDescBind::SetInput(const std::string &param_name,
-                          const std::vector<std::string> &args) {
+void OpDesc::SetInput(const std::string &param_name,
+                      const std::vector<std::string> &args) {
   need_update_ = true;
   inputs_[param_name] = args;
 }
 
-const std::vector<std::string> &OpDescBind::Output(
-    const std::string &name) const {
+const std::vector<std::string> &OpDesc::Output(const std::string &name) const {
   auto it = outputs_.find(name);
   PADDLE_ENFORCE(it != outputs_.end(), "Output %s cannot be found in Op %s",
                  name, Type());
   return it->second;
 }
 
-std::vector<std::string> OpDescBind::OutputArgumentNames() const {
+std::vector<std::string> OpDesc::OutputArgumentNames() const {
   std::vector<std::string> retv;
   for (auto &ipt : this->outputs_) {
     retv.insert(retv.end(), ipt.second.begin(), ipt.second.end());
@@ -169,19 +174,19 @@ std::vector<std::string> OpDescBind::OutputArgumentNames() const {
   return retv;
 }
 
-void OpDescBind::SetOutput(const std::string &param_name,
-                           const std::vector<std::string> &args) {
+void OpDesc::SetOutput(const std::string &param_name,
+                       const std::vector<std::string> &args) {
   need_update_ = true;
   this->outputs_[param_name] = args;
 }
 
-AttrType OpDescBind::GetAttrType(const std::string &name) const {
+proto::AttrType OpDesc::GetAttrType(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
-  return static_cast<AttrType>(it->second.which() - 1);
+  return static_cast<proto::AttrType>(it->second.which() - 1);
 }
 
-std::vector<std::string> OpDescBind::AttrNames() const {
+std::vector<std::string> OpDesc::AttrNames() const {
   std::vector<std::string> retv;
   retv.reserve(attrs_.size());
   for (auto &attr : attrs_) {
@@ -190,41 +195,39 @@ std::vector<std::string> OpDescBind::AttrNames() const {
   return retv;
 }
 
-void OpDescBind::SetAttr(const std::string &name, const Attribute &v) {
+void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   this->attrs_[name] = v;
   need_update_ = true;
 }
 
-void OpDescBind::SetBlockAttr(const std::string &name, BlockDescBind &block) {
+void OpDesc::SetBlockAttr(const std::string &name, BlockDesc &block) {
   this->attrs_[name] = &block;
   need_update_ = true;
 }
 
-void OpDescBind::SetAttrMap(
+void OpDesc::SetAttrMap(
     const std::unordered_map<std::string, Attribute> &attr_map) {
   attrs_ = attr_map;
   need_update_ = true;
 }
 
-Attribute OpDescBind::GetAttr(const std::string &name) const {
+Attribute OpDesc::GetAttr(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
   return it->second;
 }
 
-int OpDescBind::GetBlockAttr(const std::string &name) const {
+int OpDesc::GetBlockAttr(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
-  return boost::get<BlockDescBind *>(it->second)->ID();
+  return boost::get<BlockDesc *>(it->second)->ID();
 }
 
-const std::unordered_map<std::string, Attribute> &OpDescBind::GetAttrMap()
-    const {
+const std::unordered_map<std::string, Attribute> &OpDesc::GetAttrMap() const {
   return attrs_;
 }
 
-void OpDescBind::Rename(const std::string &old_name,
-                        const std::string &new_name) {
+void OpDesc::Rename(const std::string &old_name, const std::string &new_name) {
   for (auto &input : inputs_) {
     std::replace(input.second.begin(), input.second.end(), old_name, new_name);
   }
@@ -235,8 +238,8 @@ void OpDescBind::Rename(const std::string &old_name,
   need_update_ = true;
 }
 
-void OpDescBind::RenameOutput(const std::string &old_name,
-                              const std::string &new_name) {
+void OpDesc::RenameOutput(const std::string &old_name,
+                          const std::string &new_name) {
   for (auto &output : outputs_) {
     std::replace(output.second.begin(), output.second.end(), old_name,
                  new_name);
@@ -244,8 +247,8 @@ void OpDescBind::RenameOutput(const std::string &old_name,
   need_update_ = true;
 }
 
-void OpDescBind::RenameInput(const std::string &old_name,
-                             const std::string &new_name) {
+void OpDesc::RenameInput(const std::string &old_name,
+                         const std::string &new_name) {
   for (auto &input : inputs_) {
     std::replace(input.second.begin(), input.second.end(), old_name, new_name);
   }
@@ -253,12 +256,18 @@ void OpDescBind::RenameInput(const std::string &old_name,
 }
 
 struct SetAttrDescVisitor : public boost::static_visitor<void> {
-  explicit SetAttrDescVisitor(OpDesc::Attr *attr) : attr_(attr) {}
-  mutable OpDesc::Attr *attr_;
+  explicit SetAttrDescVisitor(proto::OpDesc::Attr *attr) : attr_(attr) {}
+  mutable proto::OpDesc::Attr *attr_;
   void operator()(int v) const { attr_->set_i(v); }
   void operator()(float v) const { attr_->set_f(v); }
   void operator()(const std::string &v) const { attr_->set_s(v); }
-  void operator()(bool b) const { attr_->set_b(b); }
+
+  // Please refer to https://github.com/PaddlePaddle/Paddle/issues/7162
+  template <class T,
+            class = typename std::enable_if<std::is_same<bool, T>::value>::type>
+  void operator()(T b) const {
+    attr_->set_b(b);
+  }
 
   void operator()(const std::vector<int> &v) const {
     VectorToRepeated(v, attr_->mutable_ints());
@@ -272,11 +281,11 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
   void operator()(const std::vector<bool> &v) const {
     VectorToRepeated(v, attr_->mutable_bools());
   }
-  void operator()(BlockDesc *desc) const { attr_->set_block_idx(desc->idx()); }
+  void operator()(BlockDesc *desc) const { attr_->set_block_idx(desc->ID()); }
   void operator()(boost::blank) const { PADDLE_THROW("Unexpected branch"); }
 };
 
-void OpDescBind::Flush() {
+void OpDesc::Flush() {
   if (need_update_) {
     this->desc_.mutable_inputs()->Clear();
     for (auto &ipt : inputs_) {
@@ -297,7 +306,7 @@ void OpDescBind::Flush() {
       auto *attr_desc = desc_.add_attrs();
       attr_desc->set_name(attr.first);
       attr_desc->set_type(
-          static_cast<framework::AttrType>(attr.second.which() - 1));
+          static_cast<proto::AttrType>(attr.second.which() - 1));
       SetAttrDescVisitor visitor(attr_desc);
       boost::apply_visitor(visitor, attr.second);
     }
@@ -316,8 +325,8 @@ static void InitInferShapeFuncs() {
     for (auto &kern_pair : OperatorWithKernel::AllOpKernels()) {
       auto op_type = kern_pair.first;
       auto &op_info = info_map.at(op_type);
-      auto op =
-          static_cast<OperatorWithKernel *>(op_info.Creator()("", {}, {}, {}));
+      auto op = static_cast<OperatorWithKernel *>(op_info.Creator()(
+          "", VariableNameMap{}, VariableNameMap{}, AttributeMap{}));
       if (op_info.infer_shape_) {  // infer_shape has been registered.
         continue;
       }
@@ -328,7 +337,7 @@ static void InitInferShapeFuncs() {
   });
 }
 
-void OpDescBind::CheckAttrs() {
+void OpDesc::CheckAttrs() {
   PADDLE_ENFORCE(!Type().empty(),
                  "CheckAttr() can not be called before type is setted.");
   auto *checker = OpInfoMap::Instance().Get(Type()).Checker();
@@ -340,7 +349,7 @@ void OpDescBind::CheckAttrs() {
   checker->Check(attrs_);
 }
 
-void OpDescBind::InferShape(const BlockDescBind &block) const {
+void OpDesc::InferShape(const BlockDesc &block) const {
   VLOG(3) << "CompileTime infer shape on " << Type();
   InitInferShapeFuncs();
   auto &infer_shape = OpInfoMap::Instance().Get(this->Type()).infer_shape_;
@@ -363,7 +372,7 @@ void OpDescBind::InferShape(const BlockDescBind &block) const {
   infer_shape(&ctx);
 }
 
-void OpDescBind::InferVarType(BlockDescBind *block) const {
+void OpDesc::InferVarType(BlockDesc *block) const {
   auto &info = OpInfoMap::Instance().Get(this->Type());
   if (info.infer_var_type_) {
     info.infer_var_type_(*this, block);
@@ -375,14 +384,14 @@ void OpDescBind::InferVarType(BlockDescBind *block) const {
     for (auto &out_pair : this->outputs_) {
       for (auto &out_var_name : out_pair.second) {
         block->FindRecursiveOrCreateVar(out_var_name)
-            ->SetType(VarDesc::LOD_TENSOR);
+            .SetType(proto::VarDesc::LOD_TENSOR);
       }
     }
   }
 }
 
 CompileTimeInferShapeContext::CompileTimeInferShapeContext(
-    const OpDescBind &op, const BlockDescBind &block)
+    const OpDesc &op, const BlockDesc &block)
     : op_(op), block_(block) {}
 
 bool CompileTimeInferShapeContext::HasInput(const std::string &name) const {
@@ -484,7 +493,7 @@ void CompileTimeInferShapeContext::SetDim(const std::string &name,
 }
 bool CompileTimeInferShapeContext::IsRuntime() const { return false; }
 
-VarDesc::VarType CompileTimeInferShapeContext::GetVarType(
+proto::VarDesc::VarType CompileTimeInferShapeContext::GetVarType(
     const std::string &name) const {
   return block_.FindVarRecursive(name)->GetType();
 }

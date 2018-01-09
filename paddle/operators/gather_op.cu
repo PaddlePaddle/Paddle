@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "gather.cu.h"
 #include "paddle/framework/eigen.h"
@@ -49,7 +49,8 @@ class GatherGradOpCUDAKernel : public framework::OpKernel<T> {
 
     dX->mutable_data<T>(ctx.GetPlace());
     auto dxt = framework::EigenVector<T>::Flatten(*dX);
-    auto place = ctx.GetEigenDevice<platform::GPUPlace>();
+    auto &place = *ctx.template device_context<platform::CUDADeviceContext>()
+                       .eigen_device();
     dxt.device(place) = dxt.constant(static_cast<T>(0));
 
     GPUScatterAssign<T>(ctx.device_context(), *dO, *Index, dX);
@@ -60,5 +61,5 @@ class GatherGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(gather, ops::GatherOpCUDAKernel<float>);
-REGISTER_OP_GPU_KERNEL(gather_grad, ops::GatherGradOpCUDAKernel<float>);
+REGISTER_OP_CUDA_KERNEL(gather, ops::GatherOpCUDAKernel<float>);
+REGISTER_OP_CUDA_KERNEL(gather_grad, ops::GatherGradOpCUDAKernel<float>);

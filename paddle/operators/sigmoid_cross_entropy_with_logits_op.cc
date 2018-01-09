@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/sigmoid_cross_entropy_with_logits_op.h"
 
@@ -86,8 +86,8 @@ class SigmoidCrossEntropyWithLogitsGradOp
 class SigmoidCrossEntropyWithLogitsOpMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  SigmoidCrossEntropyWithLogitsOpMaker(framework::OpProto* proto,
-                                       framework::OpAttrChecker* op_checker)
+  SigmoidCrossEntropyWithLogitsOpMaker(OpProto* proto,
+                                       OpAttrChecker* op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor, default Tensor<float>), a 2-D tensor with shape N x D, "
@@ -142,7 +142,7 @@ REGISTER_OP(sigmoid_cross_entropy_with_logits,
             ops::SigmoidCrossEntropyWithLogitsGradOp);
 REGISTER_OP_CPU_KERNEL(sigmoid_cross_entropy_with_logits,
                        ops::SigmoidCrossEntropyWithLogitsKernel<
-                           paddle::platform::CPUPlace, float>);
+                           paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(sigmoid_cross_entropy_with_logits_grad,
                        ops::SigmoidCrossEntropyWithLogitsGradKernel<
-                           paddle::platform::CPUPlace, float>);
+                           paddle::platform::CPUDeviceContext, float>);

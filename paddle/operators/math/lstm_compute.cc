@@ -21,15 +21,15 @@ namespace operators {
 namespace math {
 
 template <class T>
-struct LstmUnitFunctor<platform::CPUPlace, T> {
-  static void compute(const platform::DeviceContext& context,
+struct LstmUnitFunctor<platform::CPUDeviceContext, T> {
+  static void compute(const platform::CPUDeviceContext& context,
                       LstmMetaValue<T> value, int frame_size, int batch_size,
-                      const std::string& gate_act, const std::string& cell_act,
-                      const std::string& cand_act) {
+                      const detail::ActivationType& gate_act,
+                      const detail::ActivationType& cell_act,
+                      const detail::ActivationType& cand_act) {
     for (int b = 0; b < batch_size; b++) {
       detail::cpu_lstm_forward(detail::forward::lstm<T>(), value, frame_size,
-                               ActiveType(cand_act), ActiveType(gate_act),
-                               ActiveType(cell_act));
+                               cand_act, gate_act, cell_act);
       value.gate_value += frame_size * 4;
       value.state_value += frame_size;
       value.state_active_value += frame_size;
@@ -42,16 +42,16 @@ struct LstmUnitFunctor<platform::CPUPlace, T> {
 };
 
 template <class T>
-struct LstmUnitGradFunctor<platform::CPUPlace, T> {
-  static void compute(const platform::DeviceContext& context,
+struct LstmUnitGradFunctor<platform::CPUDeviceContext, T> {
+  static void compute(const platform::CPUDeviceContext& context,
                       LstmMetaValue<T> value, LstmMetaGrad<T> grad,
                       int frame_size, int batch_size,
-                      const std::string& gate_act, const std::string& cell_act,
-                      const std::string& cand_act) {
+                      const detail::ActivationType& gate_act,
+                      const detail::ActivationType& cell_act,
+                      const detail::ActivationType& cand_act) {
     for (int b = 0; b < batch_size; b++) {
       detail::cpu_lstm_backward(detail::backward::lstm<T>(), value, grad,
-                                frame_size, ActiveType(cand_act),
-                                ActiveType(gate_act), ActiveType(cell_act));
+                                frame_size, cand_act, gate_act, cell_act);
 
       value.gate_value += frame_size * 4;
       value.state_value += frame_size;
@@ -72,10 +72,10 @@ struct LstmUnitGradFunctor<platform::CPUPlace, T> {
   }
 };
 
-template class LstmUnitFunctor<platform::CPUPlace, float>;
-template class LstmUnitFunctor<platform::CPUPlace, double>;
-template class LstmUnitGradFunctor<platform::CPUPlace, float>;
-template class LstmUnitGradFunctor<platform::CPUPlace, double>;
+template class LstmUnitFunctor<platform::CPUDeviceContext, float>;
+template class LstmUnitFunctor<platform::CPUDeviceContext, double>;
+template class LstmUnitGradFunctor<platform::CPUDeviceContext, float>;
+template class LstmUnitGradFunctor<platform::CPUDeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators

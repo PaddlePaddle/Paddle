@@ -58,9 +58,9 @@ __global__ void SequencePaddingKernel(T* padding, T* sequence,
 }
 
 template <typename T>
-class PaddingLoDTensorFunctor<platform::GPUPlace, T> {
+class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::LoDTensor& seq, framework::Tensor& padding,
                   bool norm_by_times) {
     auto lod = seq.lod();
@@ -118,29 +118,21 @@ class PaddingLoDTensorFunctor<platform::GPUPlace, T> {
     const T* seq_data = seq.data<T>();
     T* padding_data = padding.data<T>();
     if (norm_by_times) {
-      SequencePaddingKernel<
-          T, 1,
-          1><<<grid, threads, 0,
-               reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                   .stream()>>>(padding_data, const_cast<T*>(seq_data),
-                                abs_offset_lod[level].data(), sequence_width,
-                                max_sequence_length, num_sequences);
+      SequencePaddingKernel<T, 1, 1><<<grid, threads, 0, context.stream()>>>(
+          padding_data, const_cast<T*>(seq_data), abs_offset_lod[level].data(),
+          sequence_width, max_sequence_length, num_sequences);
     } else {
-      SequencePaddingKernel<
-          T, 0,
-          1><<<grid, threads, 0,
-               reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                   .stream()>>>(padding_data, const_cast<T*>(seq_data),
-                                abs_offset_lod[level].data(), sequence_width,
-                                max_sequence_length, num_sequences);
+      SequencePaddingKernel<T, 0, 1><<<grid, threads, 0, context.stream()>>>(
+          padding_data, const_cast<T*>(seq_data), abs_offset_lod[level].data(),
+          sequence_width, max_sequence_length, num_sequences);
     }
   }
 };
 
 template <typename T>
-class UnpaddingLoDTensorFunctor<platform::GPUPlace, T> {
+class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   framework::LoDTensor& seq, const framework::Tensor& padding,
                   bool norm_by_times) {
     auto lod = seq.lod();
@@ -198,27 +190,19 @@ class UnpaddingLoDTensorFunctor<platform::GPUPlace, T> {
     const T* padding_data = padding.data<T>();
     T* seq_data = seq.data<T>();
     if (norm_by_times) {
-      SequencePaddingKernel<
-          T, 1,
-          0><<<grid, threads, 0,
-               reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                   .stream()>>>(const_cast<T*>(padding_data), seq_data,
-                                abs_offset_lod[level].data(), sequence_width,
-                                max_sequence_length, num_sequences);
+      SequencePaddingKernel<T, 1, 0><<<grid, threads, 0, context.stream()>>>(
+          const_cast<T*>(padding_data), seq_data, abs_offset_lod[level].data(),
+          sequence_width, max_sequence_length, num_sequences);
     } else {
-      SequencePaddingKernel<
-          T, 0,
-          0><<<grid, threads, 0,
-               reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                   .stream()>>>(const_cast<T*>(padding_data), seq_data,
-                                abs_offset_lod[level].data(), sequence_width,
-                                max_sequence_length, num_sequences);
+      SequencePaddingKernel<T, 0, 0><<<grid, threads, 0, context.stream()>>>(
+          const_cast<T*>(padding_data), seq_data, abs_offset_lod[level].data(),
+          sequence_width, max_sequence_length, num_sequences);
     }
   }
 };
 
-template class PaddingLoDTensorFunctor<platform::GPUPlace, float>;
-template class UnpaddingLoDTensorFunctor<platform::GPUPlace, float>;
+template class PaddingLoDTensorFunctor<platform::CUDADeviceContext, float>;
+template class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, float>;
 
 }  // namespace math
 }  // namespace operators

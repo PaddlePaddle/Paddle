@@ -43,7 +43,7 @@ class WarpCTCOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("Logits")->type()),
@@ -53,8 +53,7 @@ class WarpCTCOp : public framework::OperatorWithKernel {
 
 class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  WarpCTCOpMaker(framework::OpProto* proto,
-                 framework::OpAttrChecker* op_checker)
+  WarpCTCOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Logits",
              "(LodTensor, default: LoDTensor<float>), the unscaled "
@@ -121,7 +120,7 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("Logits")->type()),
@@ -135,7 +134,8 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(warpctc, ops::WarpCTCOp, ops::WarpCTCOpMaker, warpctc_grad,
             ops::WarpCTCGradOp);
-REGISTER_OP_CPU_KERNEL(warpctc,
-                       ops::WarpCTCKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    warpctc_grad, ops::WarpCTCGradKernel<paddle::platform::CPUPlace, float>);
+    warpctc, ops::WarpCTCKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    warpctc_grad,
+    ops::WarpCTCGradKernel<paddle::platform::CPUDeviceContext, float>);

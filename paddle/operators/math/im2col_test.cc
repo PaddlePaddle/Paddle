@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/operators/math/im2col.h"
 #include <gtest/gtest.h>
 
-template <typename Place>
+template <typename DeviceContext, typename Place>
 void testIm2col() {
   paddle::framework::Tensor input_tmp;
   paddle::framework::Tensor input;
@@ -58,18 +58,7 @@ void testIm2col() {
   memcpy(input_ptr, arr, 6 * sizeof(float));
 
   auto* place = new Place();
-  paddle::platform::DeviceContext* context;
-  if (paddle::platform::is_cpu_place(*place)) {
-    context =
-        new paddle::platform::CPUDeviceContext(paddle::platform::CPUPlace());
-  } else {
-#ifdef PADDLE_WITH_CUDA
-    context =
-        new paddle::platform::CUDADeviceContext(paddle::platform::GPUPlace());
-#else
-    PADDLE_THROW("no GPU support");
-#endif  // PADDLE_WITH_CUDA
-  }
+  DeviceContext* context = new DeviceContext(*place);
   if (paddle::platform::is_cpu_place(*place)) {
     input = input_tmp;
   } else {
@@ -82,10 +71,10 @@ void testIm2col() {
 
   // Im2Col
   paddle::operators::math::Im2ColFunctor<
-      paddle::operators::math::ColFormat::kCFO, Place, float>
+      paddle::operators::math::ColFormat::kCFO, DeviceContext, float>
       im2col;
   paddle::operators::math::Im2ColFunctor<
-      paddle::operators::math::ColFormat::kOCF, Place, float>
+      paddle::operators::math::ColFormat::kOCF, DeviceContext, float>
       im2col_ocf;
 
   im2col(*context, input, dilation, stride, padding, &output_cfo);
@@ -119,10 +108,10 @@ void testIm2col() {
 
   // Col2Im: kCFO
   paddle::operators::math::Col2ImFunctor<
-      paddle::operators::math::ColFormat::kCFO, Place, float>
+      paddle::operators::math::ColFormat::kCFO, DeviceContext, float>
       col2im;
   paddle::operators::math::Col2ImFunctor<
-      paddle::operators::math::ColFormat::kOCF, Place, float>
+      paddle::operators::math::ColFormat::kOCF, DeviceContext, float>
       col2im_ocf;
   float col2im_data[] = {0, 2, 2, 3, 8, 5};
 
@@ -171,8 +160,9 @@ void testIm2col() {
 }
 
 TEST(math, im2col) {
-  testIm2col<paddle::platform::CPUPlace>();
+  testIm2col<paddle::platform::CPUDeviceContext, paddle::platform::CPUPlace>();
 #ifdef PADDLE_WITH_CUDA
-  testIm2col<paddle::platform::GPUPlace>();
+  testIm2col<paddle::platform::CUDADeviceContext,
+             paddle::platform::CUDAPlace>();
 #endif
 }

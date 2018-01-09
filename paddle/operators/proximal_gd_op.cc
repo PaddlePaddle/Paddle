@@ -47,8 +47,7 @@ class ProximalGDOp : public framework::OperatorWithKernel {
 
 class ProximalGDOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ProximalGDOpMaker(framework::OpProto *proto,
-                    framework::OpAttrChecker *op_checker)
+  ProximalGDOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param",
              "(Tensor, default Tensor<float>) "
@@ -94,4 +93,5 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(proximal_gd, ops::ProximalGDOp,
                              ops::ProximalGDOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    proximal_gd, ops::ProximalGDOpKernel<paddle::platform::CPUPlace, float>);
+    proximal_gd,
+    ops::ProximalGDOpKernel<paddle::platform::CPUDeviceContext, float>);
