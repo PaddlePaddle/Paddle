@@ -18,7 +18,7 @@ class ParallelOpTest(unittest.TestCase):
             append_batch_size=False,
             stop_gradient=False)
 
-        places = layers.get_places()
+        places = layers.get_places(device_count=4)
         pd = layers.ParallelDo(places=places)
 
         with pd.do():
