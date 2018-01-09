@@ -211,7 +211,7 @@ class ParallelDoGradOp : public OperatorBase {
         auto &tt = sub_scopes[place_idx]->FindVar(s)->Get<LoDTensor>();
         VLOG(3) << place_idx;
         VLOG(3) << tt;
-        framework::CopyFrom(tt, places[0], t_buf);
+        framework::Copy(tt, places[0], t_buf);
 
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {s, s_buf}}}, {{"Out", {s}}},
@@ -220,7 +220,7 @@ class ParallelDoGradOp : public OperatorBase {
       }
 
       VLOG(3) << t;
-      framework::CopyFrom(t, place, scope.FindVar(s)->GetMutable<LoDTensor>());
+      framework::Copy(t, place, scope.FindVar(s)->GetMutable<LoDTensor>());
     }
   }
 };

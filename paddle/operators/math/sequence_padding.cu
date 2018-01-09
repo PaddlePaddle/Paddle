@@ -96,7 +96,7 @@ class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
                       "width of sequence in LoDTensor seq.");
 
     if (!norm_by_times && num_sequences == 1UL) {
-      CopyFrom(seq, context.GetPlace(), context, &padding);
+      Copy(seq, context.GetPlace(), context, &padding);
       padding.Resize(padding_dims);
       return;
     }
@@ -168,7 +168,7 @@ class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
                       "width of sequence in LoDTensor seq.");
 
     if (!norm_by_times && num_sequences == 1UL) {
-      CopyFrom(padding, context.GetPlace(), context, &seq);
+      Copy(padding, context.GetPlace(), context, &seq);
       seq.Resize(seq_dims);
       return;
     }

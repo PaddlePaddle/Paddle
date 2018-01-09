@@ -8,6 +8,7 @@ function clock_to_seconds() {
 }
 
 function infer() {
+  export OPENBLAS_MAIN_FREE=1
   topology=$1
   layer_num=$2
   bs=$3
