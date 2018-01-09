@@ -81,10 +81,7 @@ class ParallelDoOp : public framework::OperatorBase {
     auto *block = Attr<framework::BlockDesc *>(kParallelBlock);
     auto *program = block->Program();
 
-    // TODO(tonyyang-svail): get places from input
-    std::vector<platform::Place> places;
-    places.emplace_back(platform::CUDAPlace(2));
-    places.emplace_back(platform::CUDAPlace(3));
+    auto &places = scope.FindVar(Input(kPlaces))->Get<platform::PlaceList>();
 
     auto &sub_scopes = *scope.FindVar(Output(kParallelScopes))
                             ->GetMutable<std::vector<framework::Scope *>>();
@@ -181,10 +178,7 @@ class ParallelDoGradOp : public OperatorBase {
     auto &sub_scopes = scope.FindVar(Input(kParallelScopes))
                            ->Get<std::vector<framework::Scope *>>();
 
-    // TODO(tonyyang-svail): get places from input
-    std::vector<platform::Place> places;
-    places.emplace_back(platform::CUDAPlace(2));
-    places.emplace_back(platform::CUDAPlace(3));
+    auto &places = scope.FindVar(Input(kPlaces))->Get<platform::PlaceList>();
 
     // feed output@grad
     SplitTensorAndMoveTensorToScopes(scope, sub_scopes, places,

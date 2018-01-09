@@ -18,7 +18,7 @@ class ParallelOpTest(unittest.TestCase):
             append_batch_size=False,
             stop_gradient=False)
 
-        places = fluid.default_main_program().global_block().create_var()
+        places = layers.get_places()
         pd = layers.ParallelDo(places=places)
 
         with pd.do():
