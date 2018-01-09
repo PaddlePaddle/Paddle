@@ -70,15 +70,18 @@ def sample(metric, sample_rate):
     return metric_sample
 
 
-def plot_metric(metric, batch_id, graph_title, line_style='b-',
-                                               line_label='y',
-                                               line_num=1):
+def plot_metric(metric,
+                batch_id,
+                graph_title,
+                line_style='b-',
+                line_label='y',
+                line_num=1):
     plt.figure()
     plt.title(graph_title)
     if line_num == 1:
         plt.plot(batch_id, metric, line_style, line_label)
     else:
-        for i in line_num:
+        for i in range(line_num):
             plt.plot(batch_id, metric[i], line_style[i], line_label[i])
     plt.xlabel('batch')
     plt.ylabel(graph_title)
@@ -99,7 +102,11 @@ def main():
     accuracy_sample = sample(accuracy, args.sample_rate)
 
     plot_metric(loss_sample, batch_sample, 'loss', line_label='loss')
-    plot_metric(accuracy_sample, batch_sample, 'accuracy', line_style='g-', line_label='accuracy')
+    plot_metric(accuracy_sample,
+                batch_sample,
+                'accuracy',
+                line_style='g-',
+                line_label='accuracy')
 
 
 if __name__ == '__main__':
