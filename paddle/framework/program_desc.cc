@@ -42,9 +42,6 @@ ProgramDesc::ProgramDesc() {
 
 ProgramDesc::ProgramDesc(const ProgramDesc &o) {
   desc_ = o.desc_;
-  //  feed_var_names_ = o.feed_var_names_;
-  //  fetch_var_names_ = o.fetch_var_names_;
-
   for (int i = 0; i < desc_.blocks_size(); ++i) {
     auto *block = desc_.mutable_blocks(i);
     blocks_.emplace_back(new BlockDesc(*o.blocks_[i], block, this));
@@ -53,14 +50,6 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
 
 ProgramDesc::ProgramDesc(const proto::ProgramDesc &desc) {
   desc_ = desc;
-  /*
-    for (int i = 0; i < desc_.feed_var_names_size(); i++) {
-      feed_var_names_.push_back(desc_.feed_var_names(i));
-    }
-    for (int i = 0; i < desc_.fetch_var_names_size(); i++) {
-      fetch_var_names_.push_back(desc_.fetch_var_names(i));
-    }
-  */
   for (auto &block_desc : *desc_.mutable_blocks()) {
     blocks_.emplace_back(new BlockDesc(this, &block_desc));
   }
@@ -69,14 +58,7 @@ ProgramDesc::ProgramDesc(const proto::ProgramDesc &desc) {
 ProgramDesc::ProgramDesc(const std::string &binary_str) {
   PADDLE_ENFORCE(desc_.ParseFromString(binary_str),
                  "Fail to parse program_desc from binary string.");
-  /*
-    for (int i = 0; i < desc_.feed_var_names_size(); i++) {
-      feed_var_names_.push_back(desc_.feed_var_names(i));
-    }
-    for (int i = 0; i < desc_.fetch_var_names_size(); i++) {
-      fetch_var_names_.push_back(desc_.fetch_var_names(i));
-    }
-  */
+
   for (auto &block_desc : *desc_.mutable_blocks()) {
     blocks_.emplace_back(new BlockDesc(this, &block_desc));
   }
@@ -85,33 +67,16 @@ ProgramDesc::ProgramDesc(const std::string &binary_str) {
 void ProgramDesc::GetFeedVarNames(std::vector<std::string> &var_names) {
   var_names.clear();
   for (int i = 0; i < desc_.feed_var_names_size(); i++) {
-    feed_var_names_.push_back(desc_.feed_var_names(i));
+    var_names.push_back(desc_.feed_var_names(i));
   }
 }
 
 void ProgramDesc::GetFetchVarNames(std::vector<std::string> &var_names) {
   var_names.clear();
   for (int i = 0; i < desc_.fetch_var_names_size(); i++) {
-    fetch_var_names_.push_back(desc_.fetch_var_names(i));
+    var_names.push_back(desc_.fetch_var_names(i));
   }
 }
 
-/*
-void ProgramDesc::ClearFeedVarNames() {
-  desc_.clear_feed_var_names();
-}
-
-void ProgramDesc::ClearFetchVarNames() {
-  desc_.clear_fetch_var_names();
-}
-
-void AppendFeedVarName(const std::string &var_name) {
-  desc_.add_feed_var_names(var_name);
-}
-
-void AppendFetchVarName(const std::string &var_name) {
-  desc_.add_fetch_var_names(var_name);
-}
-*/
 }  // namespace framework
 }  // namespace paddle

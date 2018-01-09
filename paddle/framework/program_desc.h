@@ -49,24 +49,10 @@ class ProgramDesc {
 
   void GetFetchVarNames(std::vector<std::string> &var_names);
 
-  /*
-    void ClearFeedVarNames();
-
-    void ClearFetchVarNames();
-
-    void AppendFeedVarName(const std::string &var_name);
-
-    void AppendFetchVarName(const std::string &var_name);
-  */
-
  private:
   proto::ProgramDesc desc_;
 
   std::vector<std::unique_ptr<BlockDesc>> blocks_;
-
-  //  std::vector<std::string> feed_var_names_;
-
-  //  std::vector<std::string> fetch_var_names_;
 };
 }  // namespace framework
 }  // namespace paddle
