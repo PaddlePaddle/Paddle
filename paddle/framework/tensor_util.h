@@ -29,11 +29,11 @@ namespace framework {
  * @param[in] dst_place  The dst place.
  * @param[in] ctx        The device context contains device resources.
  *
- * @note    CopyFrom supports CPU <-> GPU, GPU <-> GPU.
+ * @note    Copy supports CPU <-> GPU, GPU <-> GPU.
  */
 
-inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
-                     const platform::DeviceContext& ctx, Tensor* dst) {
+inline void Copy(const Tensor& src, const platform::Place& dst_place,
+                 const platform::DeviceContext& ctx, Tensor* dst) {
   src.check_memory_size();
 
   dst->Resize(src.dims());
@@ -88,10 +88,10 @@ inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
 }
 
 /**
- * @brief CopyFrom support CPU <-> CPU
+ * @brief Copy supports CPU <-> CPU
  */
-inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
-                     Tensor* dst) {
+inline void Copy(const Tensor& src, const platform::Place& dst_place,
+                 Tensor* dst) {
   src.check_memory_size();
   dst->Resize(src.dims());
   dst->set_layout(src.layout());
@@ -316,7 +316,7 @@ inline void DeserializeFromStream(std::istream& is, Tensor* tensor,
           DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));
       is.read(static_cast<char*>(buf), cpu_tensor.memory_size());
       auto cpu_place = new platform::CPUPlace();
-      framework::CopyFrom(cpu_tensor, *cpu_place, dev_ctx, tensor);
+      framework::Copy(cpu_tensor, *cpu_place, dev_ctx, tensor);
       delete cpu_place;
 #else
       PADDLE_THROW("Unexpected branch");
