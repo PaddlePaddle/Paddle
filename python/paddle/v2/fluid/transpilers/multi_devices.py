@@ -63,6 +63,23 @@ def transpile_to_multi_devices(program,
                                block_id=0,
                                device_type='CPU',
                                device_count=0):
+    """
+    Transpile the program to multiple devices by using `parallel.for` and 
+    `get_places_op`
+    
+    Args:
+        program(Program): The forwarding program 
+        input_vars(list): The input variable list. Could be name or Variable 
+            list. 
+        output_vars(list): The output variable list.
+        block_id(int): The block to be paralleled
+        device_type(str): CPU or GPU 
+        device_count(int): Device count 
+
+    Returns:
+        A tuple [Program, Output variable lists]
+
+    """
     # Get original block
     src_block = program.block(block_id)
     assert isinstance(src_block, Block)
