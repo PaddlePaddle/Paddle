@@ -14,7 +14,7 @@ avg_cost = fluid.layers.mean(x=cost)
 sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
 sgd_optimizer.minimize(avg_cost)
 
-BATCH_SIZE = 20
+BATCH_SIZE = 200
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
