@@ -38,10 +38,10 @@ class LoadOp : public framework::OperatorBase {
                    out_var_name);
 
     auto *tensor = out_var->GetMutable<framework::LoDTensor>();
-    DeserializeFromStream(fin, tensor);
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
+    DeserializeFromStream(fin, tensor, dev_ctx);
 
     if (platform::is_gpu_place(place)) {
       // copy CPU to GPU
@@ -53,7 +53,7 @@ class LoadOp : public framework::OperatorBase {
       out_var->Clear();
       tensor = out_var->GetMutable<framework::LoDTensor>();
       tensor->set_lod(cpu_tensor.lod());
-      CopyFrom(cpu_tensor, place, dev_ctx, tensor);
+      Copy(cpu_tensor, place, dev_ctx, tensor);
     }
   }
 };

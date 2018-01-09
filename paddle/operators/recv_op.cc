@@ -19,7 +19,6 @@ limitations under the License. */
 
 #include <unistd.h>
 
-#include "paddle/framework/data_type.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
@@ -32,6 +31,20 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
+static void CreateTensorFromMessageType(framework::Variable *var,
+                                        sendrecv::VarType var_type) {
+  if (var_type == sendrecv::VarType::LOD_TENSOR) {
+    var->GetMutable<framework::LoDTensor>();
+  } else if (var_type == sendrecv::VarType::SELECTED_ROWS) {
+    var->GetMutable<framework::SelectedRows>();
+  } else {
+    PADDLE_THROW(
+        "VraibleMessage type %d is not in "
+        "[LoDTensor, SelectedRows]",
+        var_type);
+  }
+}
 
 void RunServer(Server **rpc_server,
                std::shared_ptr<detail::SendRecvServerImpl> service,
@@ -60,7 +73,7 @@ class RecvOp : public framework::OperatorBase {
   }
 
   void Stop() override {
-    detail::TensorWithName term_msg;
+    detail::MessageWithName term_msg;
     term_msg.first = LISTEN_TERMINATE_MESSAGE;
     rpc_service_->Push(term_msg);
     rpc_server_->Shutdown();
@@ -94,7 +107,7 @@ class RecvOp : public framework::OperatorBase {
       // the gradient arrives, just add suffix 0~n then average the gradient.
       for (size_t i = 0; i < param_count * trainer_count; ++i) {
         // blocking get one var from client.
-        const detail::TensorWithName &v = rpc_service_->Get();
+        const detail::MessageWithName &v = rpc_service_->Get();
         auto grad_var_name = v.first;
         if (grad_var_name == LISTEN_TERMINATE_MESSAGE) {
           exit_flag = true;
@@ -111,9 +124,11 @@ class RecvOp : public framework::OperatorBase {
                 << " updating param: " << param_var_name;
         auto *merged_grad = recv_scope.FindVar(grad_var_name);
         if (merged_grad == nullptr) {
-          // create output of merged var.
-          auto merged_var = recv_scope.Var(grad_var_name);
-          merged_var->GetMutable<framework::LoDTensor>();
+          auto *ptr = recv_scope.Var(grad_var_name);
+          CreateTensorFromMessageType(ptr, v.second.type());
+          VLOG(3) << "Create Variable " << grad_var_name
+                  << " on recv scope, which pointer is " << ptr << " type is "
+                  << v.second.type();
         }
 
         if (trainer_count > 1) {
@@ -121,11 +136,10 @@ class RecvOp : public framework::OperatorBase {
         }
 
         auto *var = recv_scope.Var(grad_var_name);
-        auto *tensor = var->GetMutable<framework::LoDTensor>();
-        // FIXME(typhoonzero): do not copy
-        platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-        auto &dev_ctx = *pool.Borrow(dev_place);
-        framework::CopyFrom(v.second, dev_place, dev_ctx, tensor);
+        platform::DeviceContextPool &pool =
+            platform::DeviceContextPool::Instance();
+        auto &dev_ctx = *pool.Get(dev_place);
+        detail::DeserializeFromMessage(v.second, dev_ctx, var);
       }
       if (exit_flag) {
         break;

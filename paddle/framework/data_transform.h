@@ -19,6 +19,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/framework/op_kernel_type.h"
+#include "paddle/framework/selected_rows.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/framework/variable.h"
 #include "paddle/operators/math/math_function.h"
@@ -49,6 +50,13 @@ struct KernelTypePairHash {
   }
 };
 
+Tensor* DataTransform(const OpKernelType& expected_kernel_type,
+                      const OpKernelType& kernel_type_for_var,
+                      const Tensor& input_tensor);
+
+void CopyVariableWithTensor(const Variable& in_var, const Tensor& tensor,
+                            Variable& out_var);
+
 template <typename InType, typename OutType>
 struct CastDataTypeFunctor {
   HOSTDEVICE inline OutType operator()(InType in) const {
@@ -73,22 +81,23 @@ struct CastDataType {
     auto numel = in_.numel();
     auto* in_end = in_begin + numel;
     auto* out_begin = out_->mutable_data<OutType>(place);
+
     if (platform::is_cpu_place(place)) {
       platform::Transform<platform::CPUDeviceContext> trans;
       auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
       trans(*context, in_begin, in_end, out_begin,
             CastDataTypeFunctor<InType, OutType>());
     } else {
-      // TODO(dzhwinter): enhance CopyFrom CPU<->GPU with different data type?
+      // TODO(dzhwinter): enhance Copy CPU<->GPU with different data type?
       PADDLE_THROW("Unsupport CPU <-> GPU!");
     }
   }
 };
 
 struct CastDataLayout {
-  CastDataLayout(const framework::Tensor& in, framework::Tensor* out,
-                 const platform::DeviceContext* ctx,
-                 const std::vector<int>& axis)
+  CastDataLayout(const platform::DeviceContext* ctx,
+                 const std::vector<int>& axis, const framework::Tensor& in,
+                 framework::Tensor* out)
       : in_(in), out_(out), ctx_(ctx), axis_(axis) {}
   const framework::Tensor in_;
   framework::Tensor* out_;
@@ -98,6 +107,7 @@ struct CastDataLayout {
   template <typename T>
   void operator()() {
     auto place = ctx_->GetPlace();
+
     if (platform::is_cpu_place(place)) {
       operators::math::Transpose<platform::CPUDeviceContext, T, 4> trans4;
       auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
