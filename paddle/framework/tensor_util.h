@@ -29,13 +29,12 @@ namespace framework {
  * @param[in] dst_place  The dst place.
  * @param[in] ctx        The device context contains device resources.
  *
- * @note    CopyFrom supports CPU <-> GPU, GPU <-> GPU.
+ * @note    Copy supports CPU <-> GPU, GPU <-> GPU.
  */
-
-inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
-                     const platform::DeviceContext& ctx, Tensor* dst) {
-  VLOG(3) << "Copy " << src.dims() << " from "
-          << src.place() << " to " << dst_place;
+inline void Copy(const Tensor& src, const platform::Place& dst_place,
+                 const platform::DeviceContext& ctx, Tensor* dst) {
+  VLOG(3) << "Copy " << src.dims() << " from " << src.place() << " to "
+          << dst_place;
   src.check_memory_size();
 
   dst->Resize(src.dims());
@@ -91,25 +90,24 @@ inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
 
 /**
  * @brief Wrapper on
- *     CopyFrom(const Tensor& src, const platform::Place& dst_place,
+ *     Copy(const Tensor& src, const platform::Place& dst_place,
  *              const platform::DeviceContext& ctx, Tensor* dst);
  *
  * @param[in] src        The external tensor.
  * @param[in] dst_place  The dst place.
  *
- * @note    CopyFrom supports CPU <-> GPU, GPU <-> GPU.
+ * @note    Copy supports CPU <-> GPU, GPU <-> GPU.
  */
-inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
-                     Tensor* dst) {
-  platform::DeviceContextPool &pool =
-      platform::DeviceContextPool::Instance();
+inline void Copy(const Tensor& src, const platform::Place& dst_place,
+                 Tensor* dst) {
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx;
   if (platform::is_gpu_place(src.place())) {
     dev_ctx = pool.Get(src.place());
   } else {
     dev_ctx = pool.Get(dst_place);
   }
-  CopyFrom(src, dst_place, *dev_ctx, dst);
+  Copy(src, dst_place, *dev_ctx, dst);
 }
 
 /**
@@ -272,7 +270,23 @@ inline void SerializeToStream(std::ostream& os, const Tensor& tensor,
   }
 }
 
-inline void DeserializeFromStream(std::istream& is, Tensor* tensor) {
+struct DeserializedDataFunctor {
+  DeserializedDataFunctor(void** buf, Tensor* tensor,
+                          const platform::Place& place)
+      : buf_(buf), tensor_(tensor), place_(place) {}
+
+  template <typename T>
+  void operator()() {
+    *buf_ = tensor_->mutable_data<T>(place_);
+  }
+
+  void** buf_;
+  Tensor* tensor_;
+  platform::Place place_;
+};
+
+inline void DeserializeFromStream(std::istream& is, Tensor* tensor,
+                                  const platform::DeviceContext& dev_ctx) {
   uint32_t version;
   is.read(reinterpret_cast<char*>(&version), sizeof(version));
   PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
@@ -291,27 +305,28 @@ inline void DeserializeFromStream(std::istream& is, Tensor* tensor) {
     dims.reserve(static_cast<size_t>(desc.dims().size()));
     std::copy(desc.dims().begin(), desc.dims().end(), std::back_inserter(dims));
     tensor->Resize(framework::make_ddim(dims));
-
     void* buf;
-    platform::Place cpu = platform::CPUPlace();
-    // TODO(Yancey1989): use VisiterDataType instead of DataType switch
-    switch (desc.data_type()) {
-      case proto::FP32:
-        buf = tensor->mutable_data<float>(cpu);
-        break;
-      case proto::FP64:
-        buf = tensor->mutable_data<double>(cpu);
-        break;
-      case proto::INT32:
-        buf = tensor->mutable_data<int>(cpu);
-        break;
-      case proto::INT64:
-        buf = tensor->mutable_data<int64_t>(cpu);
-        break;
-      default:
-        PADDLE_THROW("DataType %d not supported", desc.data_type());
+    auto ctx = platform::CPUDeviceContext();
+    if (platform::is_gpu_place(dev_ctx.GetPlace())) {
+#ifdef PADDLE_WITH_CUDA
+      Tensor cpu_tensor;
+      cpu_tensor.Resize(framework::make_ddim(dims));
+      framework::VisitDataType(
+          desc.data_type(),
+          DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));
+      is.read(static_cast<char*>(buf), cpu_tensor.memory_size());
+      auto cpu_place = new platform::CPUPlace();
+      framework::Copy(cpu_tensor, *cpu_place, dev_ctx, tensor);
+      delete cpu_place;
+#else
+      PADDLE_THROW("Unexpected branch");
+#endif
+    } else {
+      framework::VisitDataType(
+          desc.data_type(),
+          DeserializedDataFunctor(&buf, tensor, ctx.GetPlace()));
+      is.read(static_cast<char*>(buf), tensor->memory_size());
     }
-    is.read(static_cast<char*>(buf), tensor->memory_size());
   }
 }
 

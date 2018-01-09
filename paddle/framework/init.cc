@@ -15,6 +15,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/framework/init.h"
+#include "paddle/framework/operator.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/place.h"
 #include "paddle/string/piece.h"
@@ -24,7 +25,6 @@ namespace framework {
 
 std::once_flag gflags_init_flag;
 
-// TODO(qijun) move init gflags to init.cc
 void InitGflags(std::vector<std::string> &argv) {
   std::call_once(gflags_init_flag, [&]() {
     int argc = argv.size();
@@ -72,7 +72,13 @@ bool InitDevices(const std::vector<std::string> &devices) {
     LOG(WARNING) << "Not specified CPU device, create CPU by Default.";
   }
   platform::DeviceContextPool::Init(places);
+  // framework::UseALL();
   return true;
+}
+
+void InitGLOG(const std::string &prog_name) {
+  google::InitGoogleLogging(prog_name.c_str());
+  google::InstallFailureSignalHandler();
 }
 
 }  // namespace framework

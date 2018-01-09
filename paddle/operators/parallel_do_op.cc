@@ -12,23 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <thread>
 #include <vector>
 
 #include "paddle/framework/executor.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/framework/threadpool.h"
 
 namespace paddle {
 namespace operators {
 
-constexpr char kInputs[] = "inputs";
-constexpr char kParameters[] = "parameters";
-constexpr char kPlaces[] = "places";
+static constexpr char kInputs[] = "inputs";
+static constexpr char kParameters[] = "parameters";
+static constexpr char kPlaces[] = "places";
 
-constexpr char kOutputs[] = "outputs";
-constexpr char kParallelScopes[] = "parallel_scopes";
+static constexpr char kOutputs[] = "outputs";
+static constexpr char kParallelScopes[] = "parallel_scopes";
 
-constexpr char kParallelBlock[] = "sub_block";
+static constexpr char kParallelBlock[] = "sub_block";
 
 // using ParallelScopeVar = std::vector<framework::Scope *>;
 using LoDTensor = framework::LoDTensor;
@@ -58,7 +58,7 @@ void SplitTensorAndMoveTensorToScopes(
 void WaitOnPlaces(const std::vector<platform::Place> places) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
 
-  for (auto& place : places) {
+  for (auto &place : places) {
     auto &dev_ctx = *pool.Get(place);
     dev_ctx.Wait();
   }
@@ -104,36 +104,36 @@ class ParallelDoOp : public framework::OperatorBase {
         auto &place = places[i];
         auto *sub_scope = sub_scopes[i];
         auto *dst = sub_scope->Var(param)->GetMutable<LoDTensor>();
-        framework::CopyFrom(src, place, dst);
+        framework::Copy(src, place, dst);
       }
     }
     WaitOnPlaces(places);
 
-    std::vector<std::thread> workers;
+    std::vector<std::future<void>> workers;
+    workers.reserve(places.size());
     for (size_t place_idx = 0; place_idx < places.size(); ++place_idx) {
       VLOG(3) << "Run " << place_idx;
 
       auto &place = places[place_idx];
       auto *cur_scope = sub_scopes[place_idx];
 
-
-      // execute
-      workers.push_back(std::thread([program, cur_scope, place, block] {
-        auto executor = framework::Executor(place);
+      workers.emplace_back(framework::Async([program, cur_scope, place, block] {
+        framework::Executor executor(place);
         executor.Run(*program, cur_scope, block->ID(),
                      false /*create_local_scope*/);
       }));
     }
     for (auto &worker : workers) {
-      worker.join();
+      worker.wait();
     }
     WaitOnPlaces(places);
 
     // merge output
     for (auto &o_name : Outputs(kOutputs)) {
       std::vector<const framework::LoDTensor *> lod_tensors;
+      lod_tensors.reserve(sub_scopes.size());
       for (auto *sub_scope : sub_scopes) {
-        lod_tensors.push_back(&sub_scope->FindVar(o_name)->Get<LoDTensor>());
+        lod_tensors.emplace_back(&sub_scope->FindVar(o_name)->Get<LoDTensor>());
       }
 
       auto *lod_tensor_to_be_merged =
@@ -201,7 +201,7 @@ class ParallelDoGradOp : public OperatorBase {
     }
 
     // exe run
-    std::vector<std::thread> workers;
+    std::vector<std::future<void>> workers;
     for (size_t place_idx = 0; place_idx < places.size(); ++place_idx) {
       VLOG(3) << "Run " << place_idx;
 
@@ -209,14 +209,14 @@ class ParallelDoGradOp : public OperatorBase {
       auto *cur_scope = sub_scopes[place_idx];
 
       // execute
-      workers.push_back(std::thread([program, cur_scope, place, block] {
-        auto executor = framework::Executor(place);
+      workers.emplace_back(framework::Async([program, cur_scope, place, block] {
+        framework::Executor executor(place);
         executor.Run(*program, cur_scope, block->ID(),
                      false /*create_local_scope*/);
       }));
     }
     for (auto &worker : workers) {
-      worker.join();
+      worker.wait();
     }
     WaitOnPlaces(places);
 
@@ -234,8 +234,7 @@ class ParallelDoGradOp : public OperatorBase {
         auto &tt = sub_scopes[place_idx]->FindVar(s)->Get<LoDTensor>();
         VLOG(3) << place_idx;
         VLOG(3) << tt;
-        framework::CopyFrom(tt, places[0], t_buf);
-        WaitOnPlaces(places);
+        framework::Copy(tt, places[0], t_buf);
 
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {s, s_buf}}}, {{"Out", {s}}},
@@ -245,7 +244,7 @@ class ParallelDoGradOp : public OperatorBase {
       }
 
       VLOG(3) << t;
-      framework::CopyFrom(t, place, scope.FindVar(s)->GetMutable<LoDTensor>());
+      framework::Copy(t, place, scope.FindVar(s)->GetMutable<LoDTensor>());
     }
   }
 };

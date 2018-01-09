@@ -48,7 +48,7 @@ std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
 
   if (!platform::is_cpu_place(t.place())) {
     LoDTensor tt;
-    framework::CopyFrom(t, platform::CPUPlace(), &tt);
+    framework::Copy(t, platform::CPUPlace(), &tt);
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(t.place());
     dev_ctx.Wait();
@@ -67,18 +67,6 @@ std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
   }
 
   return os;
-}
-
-LoD SliceLevels(const LoD &in, size_t level_begin, size_t level_end) {
-  LoD new_lod;
-  new_lod.reserve(level_end - level_begin);
-  for (size_t i = level_begin; i < level_end; i++) {
-    new_lod.emplace_back(in.at(i));
-  }
-  // transform the lowest level to absolute offset.
-  LoD abs_offset_lod = ToAbsOffset(in);
-  new_lod.back() = abs_offset_lod[level_end - 1];
-  return new_lod;
 }
 
 LoD SliceInLevel(const LoD &in, size_t level, size_t elem_begin,
@@ -141,43 +129,6 @@ bool operator==(const LoD &a, const LoD &b) {
   return true;
 }
 
-size_t LoDTensor::NumElements(size_t level, size_t idx) const {
-  PADDLE_ENFORCE_LT(level, NumLevels());
-  PADDLE_ENFORCE_LT(idx, NumElements(level));
-  return lod_[level][idx + 1] - lod_[level][idx];
-}
-
-size_t LoDTensor::NumInstancesInElement(size_t level, size_t idx) const {
-  PADDLE_ENFORCE_LT(level, NumLevels());
-  PADDLE_ENFORCE_LT(idx, NumElements(level));
-  auto abs_lod = ToAbsOffset(lod());
-  size_t begin = abs_lod[level][idx];
-  size_t end = abs_lod[level][idx + 1];
-  return end - begin;
-}
-
-void LoDTensor::ShrinkLevels(size_t level_begin, size_t level_end) {
-  auto new_lod = framework::SliceLevels(lod_, level_begin, level_end);
-  lod_ = new_lod;
-}
-
-void LoDTensor::ShrinkInLevel(size_t level, size_t elem_begin,
-                              size_t elem_end) {
-  PADDLE_ENFORCE_LT(level, NumLevels());
-  PADDLE_ENFORCE_LT(elem_begin, NumElements(level));
-  PADDLE_ENFORCE_LT(elem_end, NumElements(level) + 1);
-
-  auto abs_lod = framework::ToAbsOffset(lod());
-  auto new_lod = framework::SliceInLevel(lod_, level, elem_begin, elem_end);
-  lod_ = new_lod;
-
-  // slice the underlying tensor
-  size_t begin = abs_lod[level][elem_begin];
-  size_t end = abs_lod[level][elem_end];
-  PADDLE_ENFORCE_LT(begin, end, "Cannot shrink, the result tensor is empty.");
-  ShareDataWith(Slice(begin, end));
-}
-
 using LoDAndOffset = std::pair<LoD, std::pair<size_t, size_t>>;
 LoDAndOffset GetSubLoDAndAbsoluteOffset(const LoD &lod, size_t start_idx,
                                         size_t end_idx, size_t start_level) {
@@ -203,6 +154,9 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
       lod->empty() || lod->size() == lod_length.size(),
       "The lod_length should has the same size with the appended lod.");
   if (lod->empty()) {
+    for (size_t i = 0; i < lod_length.size(); ++i) {
+      lod->emplace_back(1, 0);  // size = 1, value = 0;
+    }
     *lod = LoD(lod_length.size(), std::vector<size_t>({0}));
   }
   for (size_t i = 0; i < lod->size(); ++i) {
@@ -240,9 +194,10 @@ void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
   SerializeToStream(os, static_cast<Tensor>(tensor), dev_ctx);
 }
 
-void DeserializeFromStream(std::istream &is, LoDTensor *tensor) {
+void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
+                           const platform::DeviceContext &dev_ctx) {
   {
-    // the 1st field, unit32_t version for SelectedRows
+    // the 1st field, unit32_t version for LoDTensor
     uint32_t version;
     is.read(reinterpret_cast<char *>(&version), sizeof(version));
     PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
@@ -263,9 +218,10 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor) {
     }
   }
   // the 3st filed, Tensor
-  DeserializeFromStream(is, static_cast<Tensor *>(tensor));
+  DeserializeFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
 }
 
+// TODO(tonyyang-svail): make this function support LoD
 std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     const std::vector<platform::Place> places) const {
   check_memory_size();
@@ -281,7 +237,7 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     auto src = Slice(begin, end);
     auto &dst_place = places[place_idx];
     LoDTensor dst;
-    framework::CopyFrom(src, dst_place, &dst);
+    framework::Copy(src, dst_place, &dst);
 
     lods.emplace_back(dst);
   }
@@ -311,7 +267,7 @@ void LoDTensor::MergeLoDTensor(
   for (auto *src : lod_tensors) {
     int end = begin + src->dims()[0];
     auto dst = Slice(begin, end);
-    framework::CopyFrom(*src, dst_place, &dst);
+    framework::Copy(*src, dst_place, &dst);
     begin = end;
   }
 }

@@ -7,11 +7,9 @@ PaddlePaddle每次发新的版本，遵循以下流程:
 1. 从`develop`分支派生出新的分支，分支名为`release/版本号`。例如，`release/0.10.0`
 1. 将新分支的版本打上tag，tag为`版本号rc.Patch号`。第一个tag为`0.10.0rc1`，第二个为`0.10.0rc2`，依次类推。
 1. 对这个版本的提交，做如下几个操作:
+  * 使用Regression Test List作为检查列表，测试本次release的正确性。
+	  * 如果失败，记录下所有失败的例子，在这个`release/版本号`分支中，修复所有bug后，Patch号加一，到第二步
 	* 修改`python/setup.py.in`中的版本信息,并将`istaged`字段设为`True`。
-	* 编译这个版本的Docker发行镜像，发布到dockerhub。如果失败，修复Docker编译镜像问题，Patch号加一，返回第二步
-	* 编译这个版本的Ubuntu Deb包。如果失败，修复Ubuntu Deb包编译问题，Patch号加一，返回第二步。
-	* 使用Regression Test List作为检查列表，测试Docker镜像/ubuntu安装包的功能正确性
-		* 如果失败，记录下所有失败的例子，在这个`release/版本号`分支中，修复所有bug后，Patch号加一，返回第二步
 	* 编译这个版本的python wheel包，并发布到pypi。
 		* 由于pypi.python.org目前遵循[严格的命名规范PEP 513](https://www.python.org/dev/peps/pep-0513)，在使用twine上传之前，需要重命名wheel包中platform相关的后缀，比如将`linux_x86_64`修改成`manylinux1_x86_64`。
 		* pypi上的package名称为paddlepaddle和paddlepaddle_gpu，如果要上传GPU版本的包，需要修改build/python/setup.py中，name: "paddlepaddle_gpu"并重新打包wheel包：`python setup.py bdist_wheel`。
@@ -21,8 +19,8 @@ PaddlePaddle每次发新的版本，遵循以下流程:
 			pip install twine
 			twine upload dist/[package to upload]
 			```
+		* 编译这个版本的Docker发行镜像，发布到dockerhub。如果失败，修复Docker编译镜像问题，Patch号加一，返回第二步
 1. 第三步完成后，将`release/版本号`分支合入master分支，并删除`release/版本号`分支。将master分支的合入commit打上tag，tag为`版本号`。同时再将`master`分支合入`develop`分支。最后删除`release/版本号`分支。
-1. 编译master分支的Docker发行镜像，发布到dockerhub。编译ubuntu的deb包，发布到github release页面
 1. 协同完成Release Note的书写
 
 
@@ -30,6 +28,30 @@ PaddlePaddle每次发新的版本，遵循以下流程:
 
 * `release/版本号`分支一旦建立，一般不允许再从`develop`分支合入`release/版本号`。这样保证`release/版本号`分支功能的封闭，方便测试人员测试PaddlePaddle的行为。
 * 在`release/版本号`分支存在的时候，如果有bugfix的行为，需要将bugfix的分支同时merge到`master`, `develop`和`release/版本号`这三个分支。
+
+## 发布wheel包到pypi
+
+使用[PaddlePaddle CI](https://paddleci.ngrok.io/project.html?projectId=Manylinux1&tab=projectOverview)
+完成自动化二进制编译，参考下图，选择需要发布的版本（通常包含一个CPU版本和一个GPU版本），点击"run"右侧的"..."按钮，可以
+弹出下面的选择框，在第二个tab (Changes)里选择需要发布的分支，这里选择0.11.0，然后点击"Run Build"按钮。等待编译完成后
+可以在此页面的"Artifacts"下拉框中找到生成的3个二进制文件，分别对应CAPI，`cp27m`和`cp27mu`的版本。然后按照上述的方法
+使用`twine`工具上传即可。
+
+<img src="ci_build_whl.png">
+
+* 注：CI环境使用 https://github.com/PaddlePaddle/buildtools 这里的DockerImage作为编译环境以支持更多的Linux
+  发型版，如果需要手动编译，也可以使用这些镜像。这些镜像也可以从 https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/ 下载得到。
+* pypi不支持覆盖上传，所以一个版本号的wheel包发布之后，不可以更改。下一个wheel包需要更新版本号才可以上传。
+
+## 发布Docker镜像
+
+上述PaddlePaddle CI编译wheel完成后会自动将Docker镜像push到DockerHub，所以，发布Docker镜像只需要对自动push的镜像打上
+版本号对应的tag即可：
+
+1. 进入 https://hub.docker.com/r/paddlepaddle/paddle/tags/ 查看latest tag的更新时间是否在上述编译wheel包完成后是否最新。
+1. 执行 `docker pull paddlepaddle/paddle:[latest tag]`，latest tag可以是latest或latest-gpu等。
+1. 执行 `docker tag paddlepaddle/paddle:[latest tag] paddlepaddle/paddle:[version]`
+1. 执行 `docker push paddlepaddle/paddle:[version]`
 
 ## PaddlePaddle 分支规范
 
