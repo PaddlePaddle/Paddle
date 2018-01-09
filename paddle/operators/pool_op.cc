@@ -71,8 +71,8 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
     library_ = framework::LibraryType::kPlain;
   }
 
-  std::string data_format = ctx->Attrs().Get<std::string>("data_format");
-  framework::LibraryType layout_ = framework::StringToDataLayout(data_format);
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
       layout_, library_);
@@ -95,8 +95,8 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
     library_ = framework::LibraryType::kPlain;
   }
 
-  std::string data_format = ctx->Attrs().Get<std::string>("data_format");
-  framework::LibraryType layout_ = framework::StringToDataLayout(data_format);
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
       layout_, library_);
