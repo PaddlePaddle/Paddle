@@ -34,6 +34,8 @@ namespace framework {
 
 inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
                      const platform::DeviceContext& ctx, Tensor* dst) {
+  VLOG(3) << "Copy " << src.dims() << " from "
+          << src.place() << " to " << dst_place;
   src.check_memory_size();
 
   dst->Resize(src.dims());
@@ -101,9 +103,13 @@ inline void CopyFrom(const Tensor& src, const platform::Place& dst_place,
                      Tensor* dst) {
   platform::DeviceContextPool &pool =
       platform::DeviceContextPool::Instance();
-  auto &dev_ctx = *pool.Get(dst_place);
-
-  CopyFrom(src, dst_place, dev_ctx, dst);
+  const platform::DeviceContext* dev_ctx;
+  if (platform::is_gpu_place(src.place())) {
+    dev_ctx = pool.Get(src.place());
+  } else {
+    dev_ctx = pool.Get(dst_place);
+  }
+  CopyFrom(src, dst_place, *dev_ctx, dst);
 }
 
 /**

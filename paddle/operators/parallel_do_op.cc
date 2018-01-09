@@ -39,6 +39,7 @@ void SplitTensorAndMoveTensorToScopes(
     const std::vector<framework::Scope *> &sub_scopes,
     const std::vector<platform::Place> &places,
     const std::vector<std::string> &names) {
+  PADDLE_ENFORCE_EQ(sub_scopes.size(), places.size());
   for (auto &argu : names) {
     auto *var = scope.FindVar(argu);
     const auto &tensor = var->Get<LoDTensor>();
@@ -82,16 +83,30 @@ class ParallelDoOp : public framework::OperatorBase {
 
     // TODO(tonyyang-svail): get places from input
     std::vector<platform::Place> places;
-    places.emplace_back(platform::CUDAPlace(0));
-    places.emplace_back(platform::CUDAPlace(1));
+    places.emplace_back(platform::CUDAPlace(2));
+    places.emplace_back(platform::CUDAPlace(3));
 
     auto &sub_scopes = *scope.FindVar(Output(kParallelScopes))
                             ->GetMutable<std::vector<framework::Scope *>>();
     for (size_t place_idx = 0; place_idx < places.size(); ++place_idx) {
       sub_scopes.push_back(&scope.NewScope());
     }
+
+    // split input
     SplitTensorAndMoveTensorToScopes(scope, sub_scopes, places,
                                      Inputs(kInputs));
+    // copy parameter
+    for (auto &param : Inputs(kParameters)) {
+      PADDLE_ENFORCE(scope.FindVar(param)->IsType<LoDTensor>(),
+                     "Only support parameter type as LoDTensor");
+      auto &src = scope.FindVar(param)->Get<LoDTensor>();
+      for (size_t i = 0; i < places.size(); ++i) {
+        auto &place = places[i];
+        auto *sub_scope = sub_scopes[i];
+        auto *dst = sub_scope->Var(param)->GetMutable<LoDTensor>();
+        framework::CopyFrom(src, place, dst);
+      }
+    }
     WaitOnPlaces(places);
 
     std::vector<std::thread> workers;
@@ -101,10 +116,6 @@ class ParallelDoOp : public framework::OperatorBase {
       auto &place = places[place_idx];
       auto *cur_scope = sub_scopes[place_idx];
 
-      // copy parameter
-      if (dev_ctx.GetPlace() != place) {
-        PADDLE_THROW("Not Implemented");
-      }
 
       // execute
       workers.push_back(std::thread([program, cur_scope, place, block] {
@@ -172,8 +183,8 @@ class ParallelDoGradOp : public OperatorBase {
 
     // TODO(tonyyang-svail): get places from input
     std::vector<platform::Place> places;
-    places.emplace_back(platform::CUDAPlace(0));
-    places.emplace_back(platform::CUDAPlace(1));
+    places.emplace_back(platform::CUDAPlace(2));
+    places.emplace_back(platform::CUDAPlace(3));
 
     // feed output@grad
     SplitTensorAndMoveTensorToScopes(scope, sub_scopes, places,
@@ -211,7 +222,7 @@ class ParallelDoGradOp : public OperatorBase {
 
     // merge grad
     for (auto &s : Outputs(framework::GradVarName(kParameters))) {
-      VLOG(3) << s;
+      VLOG(3) << "merge grad " << s;
 
       auto &t = sub_scopes[0]->FindVar(s)->Get<LoDTensor>();
       VLOG(3) << t;
@@ -229,7 +240,7 @@ class ParallelDoGradOp : public OperatorBase {
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {s, s_buf}}}, {{"Out", {s}}},
             framework::AttributeMap{});
-        sum_op->Run(*sub_scopes[0], place);
+        sum_op->Run(*sub_scopes[0], places[0]);
         WaitOnPlaces(places);
       }
 
