@@ -177,8 +177,8 @@ class TestBook(unittest.TestCase):
                 name='x_t_data', shape=[10, 10], dtype='float32')
             x_t = layers.fc(input=x_t_data, size=10)
             prev_hidden_data = layers.data(
-                name='prev_hidden_data', shape=[10, 20], dtype='float32')
-            prev_hidden = layers.fc(input=prev_hidden_data, size=20)
+                name='prev_hidden_data', shape=[10, 30], dtype='float32')
+            prev_hidden = layers.fc(input=prev_hidden_data, size=30)
             prev_cell_data = layers.data(
                 name='prev_cell', shape=[10, 30], dtype='float32')
             prev_cell = layers.fc(input=prev_cell_data, size=30)
@@ -194,6 +194,13 @@ class TestBook(unittest.TestCase):
                 name='seq_data', shape=[10, 10], dtype='float32', lod_level=1)
             seq = layers.fc(input=seq_data, size=20)
             self.assertIsNotNone(layers.sequence_softmax(x=seq))
+        print(str(program))
+
+    def test_get_places(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.get_places(device_count=4)
+            self.assertIsNotNone(x)
         print(str(program))
 
 

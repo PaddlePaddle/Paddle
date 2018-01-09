@@ -52,7 +52,7 @@ void VarDesc::SetLoDLevel(int32_t lod_level) {
   }
 }
 
-int32_t VarDesc::GetLodLevel() const {
+int32_t VarDesc::GetLoDLevel() const {
   switch (desc_.type()) {
     case proto::VarDesc::LOD_TENSOR:
       return desc_.lod_tensor().lod_level();
