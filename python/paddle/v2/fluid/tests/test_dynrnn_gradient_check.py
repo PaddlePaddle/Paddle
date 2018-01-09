@@ -221,7 +221,7 @@ class TestSimpleMul(unittest.TestCase):
             Out.out(numpy.matmul(X, W))
 
     # Test many times in local to ensure the random seed cannot breaks CI
-    # @many_times(10)
+    # @many_times(100)
     @prog_scope()
     def test_forward_backward(self):
         py_rnn = TestSimpleMul.SimpleMul()
@@ -256,11 +256,11 @@ class TestSimpleMul(unittest.TestCase):
         out_by_python = py_rnn.exe()[self.OUT_NAME]
         self.assertTrue(numpy.allclose(out, out_by_python))
         w_g_num = py_rnn.get_numeric_gradient_of_param(self.PARAM_NAME)
-        self.assertTrue(numpy.allclose(w_g_num, w_g, rtol=0.05))
+        self.assertTrue(numpy.allclose(w_g_num, w_g, rtol=0.1))
         i_g_num = py_rnn.get_numeric_gradient_of_input(
             input_name=self.DATA_NAME)
         i_g_num = i_g_num.reshape(i_g.shape)
-        self.assertTrue(numpy.allclose(i_g_num, i_g, rtol=0.05))
+        self.assertTrue(numpy.allclose(i_g_num, i_g, rtol=0.1))
 
 
 class TestSimpleMulWithMemory(unittest.TestCase):
@@ -295,7 +295,7 @@ class TestSimpleMulWithMemory(unittest.TestCase):
             Out.out(o)
 
     # many_times used locally for debug. Make sure the calculation is stable.
-    # @many_times(10)
+    # @many_times(100)
     @prog_scope()
     def test_forward_backward(self):
         py_rnn = TestSimpleMulWithMemory.SimpleMulWithMemory()
@@ -339,8 +339,7 @@ class TestSimpleMulWithMemory(unittest.TestCase):
         i_g_num = i_g_num.reshape(i_g.shape)
 
         # Since this RNN has many float add. The number could be not stable.
-        # rtol = 0.1
-        self.assertTrue(numpy.allclose(i_g_num, i_g, rtol=0.1))
+        self.assertTrue(numpy.allclose(i_g_num, i_g, rtol=0.2))
 
 
 if __name__ == '__main__':
