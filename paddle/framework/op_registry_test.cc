@@ -376,16 +376,16 @@ TEST(OperatorRegistrar, OpWithMultiKernel) {
   paddle::framework::UseCPU();
   op->Run(scope, cpu_place);
 
-  EXPECT_EQ(op_test_value, -20);
+  EXPECT_EQ(op_test_value, -9);
 
   // add cuda kernels
   paddle::framework::UseCUDA();
   op->Run(scope, cuda_place);
 
-  EXPECT_EQ(op_test_value, -30);
+  EXPECT_EQ(op_test_value, -10);
 
   // use cudnn kernel
   paddle::framework::UseCUDNN();
   op->Run(scope, cuda_place);
-  EXPECT_EQ(op_test_value, -40);
+  EXPECT_EQ(op_test_value, -20);
 }

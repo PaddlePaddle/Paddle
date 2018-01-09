@@ -79,6 +79,6 @@ cc_library(init SRCS init.cc DEPS gflags device_context place stringpiece operat
 cc_test(init_test SRCS init_test.cc DEPS init)
 
 cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto)
-
+cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
 nv_test(device_data_transform_test SRCS device_data_transform_test.cu
         DEPS operator op_registry init math_function)

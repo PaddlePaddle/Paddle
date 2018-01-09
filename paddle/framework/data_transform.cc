@@ -146,9 +146,6 @@ void TransDataLayout(const std::vector<int>& axis,
   auto* dst = out->GetMutable<Tensor>();
   PADDLE_ENFORCE(arity(src.dims()) == 4, "Input Arity Only Suppport 4!");
 
-  auto place = kernel_pair.second.place_;
-  CopyFrom(src, place, *ctx, dst);
-
   auto src_dim = src.dims();
   std::vector<int64_t> dst_dim;
 
@@ -158,6 +155,8 @@ void TransDataLayout(const std::vector<int>& axis,
   }
 
   dst->Resize(make_ddim(dst_dim));
+  auto place = kernel_pair.second.place_;
+  dst->mutable_data(place, src.type());
 
   auto src_type = kernel_pair.first.data_type_;
   framework::VisitDataType(src_type, CastDataLayout(ctx, axis, src, dst));

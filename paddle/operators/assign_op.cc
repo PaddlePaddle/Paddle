@@ -45,7 +45,7 @@ class AssignFunctor {
     out_rows.set_height(rows.height());
     auto &t = rows.value();
     auto *m = out_rows.mutable_value();
-    framework::CopyFrom(t, t.place(), dev_ctx_, m);
+    framework::Copy(t, t.place(), dev_ctx_, m);
   }
 
   template <typename T>
@@ -57,7 +57,7 @@ class AssignFunctor {
   void copy_tensor(const framework::LoDTensor &lod_tensor,
                    framework::LoDTensor *out) const {
     auto &out_tensor = *out;
-    CopyFrom(lod_tensor, lod_tensor.place(), dev_ctx_, &out_tensor);
+    Copy(lod_tensor, lod_tensor.place(), dev_ctx_, &out_tensor);
     out_tensor.set_lod(lod_tensor.lod());
   }
 

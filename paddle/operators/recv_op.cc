@@ -19,7 +19,6 @@ limitations under the License. */
 
 #include <unistd.h>
 
-#include "paddle/framework/data_type.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
@@ -32,6 +31,20 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
+static void CreateTensorFromMessageType(framework::Variable *var,
+                                        sendrecv::VarType var_type) {
+  if (var_type == sendrecv::VarType::LOD_TENSOR) {
+    var->GetMutable<framework::LoDTensor>();
+  } else if (var_type == sendrecv::VarType::SELECTED_ROWS) {
+    var->GetMutable<framework::SelectedRows>();
+  } else {
+    PADDLE_THROW(
+        "VraibleMessage type %d is not in "
+        "[LoDTensor, SelectedRows]",
+        var_type);
+  }
+}
 
 void RunServer(Server **rpc_server,
                std::shared_ptr<detail::SendRecvServerImpl> service,
@@ -111,9 +124,11 @@ class RecvOp : public framework::OperatorBase {
                 << " updating param: " << param_var_name;
         auto *merged_grad = recv_scope.FindVar(grad_var_name);
         if (merged_grad == nullptr) {
-          // create output of merged var.
-          auto merged_var = recv_scope.Var(grad_var_name);
-          merged_var->GetMutable<framework::LoDTensor>();
+          auto *ptr = recv_scope.Var(grad_var_name);
+          CreateTensorFromMessageType(ptr, v.second.type());
+          VLOG(3) << "Create Variable " << grad_var_name
+                  << " on recv scope, which pointer is " << ptr << " type is "
+                  << v.second.type();
         }
 
         if (trainer_count > 1) {

@@ -565,7 +565,7 @@ def lod_rank_table(x, level=0):
     """LoD Rank Table Operator. Given an input variable **x** and a level number
     of LoD, this layer creates a LodRankTable object. A LoDRankTable object
     contains a list of bi-element tuples. Each tuple consists of an index and
-    a length, both of which are int type. Reffering to specified level of LoD,
+    a length, both of which are int type. Refering to specified level of LoD,
     the index is the sequence index number and the length representes the
     sequence length. Please note that the list is ranked in descending order by
     the length. The following is an example:

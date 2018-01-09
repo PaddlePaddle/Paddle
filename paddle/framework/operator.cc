@@ -75,7 +75,9 @@ void UseALL() {
 
 static DDim GetDims(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
-  if (var->IsType<LoDTensor>()) {
+  if (var == nullptr) {
+    return DDim({-1});
+  } else if (var->IsType<LoDTensor>()) {
     return var->Get<LoDTensor>().dims();
   } else if (var->IsType<SelectedRows>()) {
     return var->Get<SelectedRows>().GetCompleteDims();
@@ -418,6 +420,25 @@ class RuntimeInferShapeContext : public InferShapeContext {
     auto in_tensor = in_var->Get<LoDTensor>();
     auto* out_tensor = out_var->GetMutable<LoDTensor>();
     out_tensor->set_lod(in_tensor.lod());
+
+    // TODO(dzhwinter) : reuse ShareLoD in most operators.
+    // Need to call ShareLayout explicitly in sequence related ops.
+    // Shall we have a better method to shared info between in/out Tensor?
+    out_tensor->set_layout(in_tensor.layout());
+  }
+
+  void ShareLayout(const std::string& in, const std::string& out, size_t i = 0,
+                   size_t j = 0) const {
+    PADDLE_ENFORCE_LT(i, Inputs(in).size());
+    PADDLE_ENFORCE_LT(j, Outputs(out).size());
+    Variable* in_var = scope_.FindVar(Inputs(in)[i]);
+    Variable* out_var = scope_.FindVar(Outputs(out)[j]);
+    if (!in_var->IsType<LoDTensor>()) return;
+    PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
+                   "The %d-th output of Output(%s) must be LoDTensor.", j, out);
+    auto in_tensor = in_var->Get<LoDTensor>();
+    auto* out_tensor = out_var->GetMutable<LoDTensor>();
+    out_tensor->set_layout(in_tensor.layout());
   }
 
   bool IsRuntime() const override { return true; }
@@ -475,6 +496,22 @@ void OperatorWithKernel::Run(const Scope& scope,
   ExecutionContext ctx(*this, scope, *dev_ctx);
   auto expected_kernel_key = this->GetExpectedKernelType(ctx);
 
+  OpKernelMap& kernels = kernels_iter->second;
+
+  for (auto& candidate : kKernelPriority) {
+    auto candidate_key =
+        OpKernelType(expected_kernel_key.data_type_, std::get<0>(candidate),
+                     expected_kernel_key.data_layout_, std::get<1>(candidate));
+
+    if ((candidate_key == expected_kernel_key) ||
+        (kernels.count(candidate_key))) {
+      expected_kernel_key = candidate_key;
+      break;
+    }
+  }
+
+  VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
+
   Scope& new_scope = scope.NewScope();
 
   for (auto& var_name_item : this->Inputs()) {
@@ -505,13 +542,10 @@ void OperatorWithKernel::Run(const Scope& scope,
     }
   }
 
-  VLOG(3) << "Actual kernel: " << actual_kernel_key << "\n"
-          << "Expected kernel: " << expected_kernel_key;
-
-  OpKernelMap& kernels = kernels_iter->second;
   auto kernel_iter = kernels.find(expected_kernel_key);
 
-  kernel_iter->second->Compute(ExecutionContext(*this, new_scope, *dev_ctx));
+  kernel_iter->second->Compute(ExecutionContext(
+      *this, new_scope, *pool.Get(expected_kernel_key.place_)));
 }
 
 proto::DataType OperatorWithKernel::IndicateDataType(

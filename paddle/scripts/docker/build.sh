@@ -197,18 +197,9 @@ function gen_capi_package() {
   if [[ ${WITH_C_API} == "ON" ]]; then
     install_prefix="/paddle/build/capi_output"
     rm -rf $install_prefix
-
     make DESTDIR="$install_prefix" install
-
-    if [[ ${WITH_MKL:-OFF} == "ON" ]]; then
-      find ./third_party/install -name 'libmklml_gnu.so' -exec cp {} $install_prefix/usr/local/lib \;
-      find ./third_party/install -name 'libmklml_intel.so' -exec cp {} $install_prefix/usr/local/lib \;
-      cp -P ./third_party/install/mkldnn/lib/* $install_prefix/usr/local/lib/
-    fi
-
-    find ./third_party/install -name 'libiomp5.so' -exec cp {} $install_prefix/usr/local/lib \;
     cd $install_prefix/usr/local
-    ls | egrep -v "^Found.*item$" | xargs tar /paddle/build/paddle.tgz
+    ls | egrep -v "^Found.*item$" | xargs tar -cf /paddle/build/paddle.tgz
   fi
 }
 
