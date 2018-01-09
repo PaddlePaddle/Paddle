@@ -15,17 +15,22 @@ limitations under the License. */
 
 #include "paddle/framework/init.h"
 
-TEST(Init, InitDevices) {
+TEST(InitDevices, CPU) {
   using paddle::framework::InitDevices;
-  std::vector<std::string> ds1 = {"CPU"};
-  ASSERT_EQ(InitDevices(ds1), true);
+  using paddle::platform::DeviceContextPool;
+
+  InitDevices();
+  DeviceContextPool& pool = DeviceContextPool::Instance();
+  ASSERT_EQ(pool.size(), 1U);
+}
 
 #ifdef PADDLE_WITH_CUDA
-  std::vector<std::string> ds2 = {"CPU", "GPU:0", "GPU:1"};
-  ASSERT_EQ(InitDevices(ds2), true);
+TEST(InitDevices, GPU) {
+  using paddle::framework::InitDevices;
+  using paddle::platform::DeviceContextPool;
 
-  // test re-init
-  std::vector<std::string> ds3 = {"GPU:0", "GPU:1"};
-  ASSERT_EQ(InitDevices(ds3), true);
-#endif
+  InitDevices();
+  DeviceContextPool& pool = DeviceContextPool::Instance();
+  ASSERT_GT(pool.size(), 2U);
 }
+#endif

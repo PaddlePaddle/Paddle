@@ -40,40 +40,23 @@ void InitGflags(std::vector<std::string> &argv) {
   });
 }
 
-bool InitDevices(const std::vector<std::string> &devices) {
-  // device format
-  // CPU
-  // GPU:1
-  // TODO(dzhwinter) : add device format annotation for users.
-  std::vector<platform::Place> places;
-  for (auto &device : devices) {
-    auto p = string::Piece(device);
-    if (string::HasPrefix(p, "CPU")) {
-      places.emplace_back(platform::CPUPlace());
-    } else if (string::HasPrefix(p, "GPU")) {
-#ifdef PADDLE_WITH_CUDA
-      auto pos = string::RFind(p, ':', string::Piece::npos);
-      auto number = device.substr(pos + 1);
-      places.emplace_back(platform::CUDAPlace(std::stoi(number)));
-#else
-      LOG(WARNING)
-          << "'GPU' is not supported, Please re-compile with WITH_GPU option";
-#endif
-    } else {
-      return false;
-    }
-  }
+bool InitDevices() {
+  /*Init all avaiable devices by default */
 
-  if (std::find_if(places.begin(), places.end(),
-                   [&](const platform::Place &place) {
-                     return platform::is_cpu_place(place);
-                   }) == places.end()) {
-    places.emplace_back(platform::CPUPlace());
-    LOG(WARNING) << "Not specified CPU device, create CPU by Default.";
+  std::vector<platform::Place> places;
+  places.emplace_back(platform::CPUPlace());
+
+#ifdef PADDLE_WITH_CUDA
+  int count = platform::GetCUDADeviceCount();
+  for (int i = 0; i < count; ++i) {
+    places.emplace_back(platform::CUDAPlace(i));
   }
+#else
+  LOG(WARNING)
+      << "'GPU' is not supported, Please re-compile with WITH_GPU option";
+#endif
+
   platform::DeviceContextPool::Init(places);
-  // framework::UseALL();
-  return true;
 }
 
 void InitGLOG(const std::string &prog_name) {
