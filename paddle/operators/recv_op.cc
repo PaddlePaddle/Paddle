@@ -19,7 +19,6 @@ limitations under the License. */
 
 #include <unistd.h>
 
-#include "paddle/framework/data_type.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
@@ -109,9 +108,11 @@ class RecvOp : public framework::OperatorBase {
 
         auto *merged_grad = recv_scope.FindVar(grad_var_name);
         if (merged_grad == nullptr) {
-          // create output of merged var.
-          auto merged_var = recv_scope.Var(grad_var_name);
-          merged_var->GetMutable<framework::LoDTensor>();
+          auto *ptr = recv_scope.Var(grad_var_name);
+          framework::CreateTensor(ptr,
+                                  framework::ToVarType(merged_grad->Type()));
+          VLOG(3) << "Create Variable " << grad_var_name
+                  << " on recv scope, which pointer is " << ptr;
         }
 
         if (trainer_count > 1) {

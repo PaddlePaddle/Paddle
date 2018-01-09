@@ -7,11 +7,11 @@ Machine:
 
 System: CentOS release 6.3 (Final), Docker 1.12.1.
 
-PaddlePaddle: (TODO: will rerun after 0.11.0)
-- paddlepaddle/paddle:latest (for MKLML and MKL-DNN)
+PaddlePaddle:
+- paddlepaddle/paddle:0.11.0 (for MKLML and MKL-DNN)
   - MKL-DNN tag v0.11
   - MKLML 2018.0.1.20171007
-- paddlepaddle/paddle:latest-openblas (for OpenBLAS)
+- paddlepaddle/paddle:0.11.0-openblas (for OpenBLAS)
   - OpenBLAS v0.2.20
 	 
 On each machine, we will test and compare the performance of training on single node using MKL-DNN / MKLML / OpenBLAS respectively.
@@ -56,15 +56,15 @@ Input image size - 3 * 224 * 224, Time: images/second
 
 <img src="figs/googlenet-cpu-train.png" width="500">
 
-- Alexnet
+- AlexNet
 
 | BatchSize    | 64     | 128    | 256    |
 |--------------|--------| ------ | -------|
-| OpenBLAS     | 2.13   | 2.45   | 2.68   | 
+| OpenBLAS     | 45.62  | 72.79  | 107.22 | 
 | MKLML        | 66.37  | 105.60 | 144.04 |
 | MKL-DNN      | 399.00 | 498.94 | 626.53 | 
 
-chart TBD
+<img src="figs/alexnet-cpu-train.png" width="500">
 
 #### Inference
 Test on batch size 1, 2, 4, 8, 16 on Intel(R) Xeon(R) Gold 6148 CPU @ 2.40GHz
@@ -72,36 +72,41 @@ Test on batch size 1, 2, 4, 8, 16 on Intel(R) Xeon(R) Gold 6148 CPU @ 2.40GHz
 
 | BatchSize | 1     | 2     | 4     | 8     | 16    |
 |-----------|-------|-------|-------|-------|-------|
-| OpenBLAS  | 1.07  | 1.08  | 1.06  | 0.88  | 0.65  |
+| OpenBLAS  | 1.10  | 1.96  | 3.62  | 3.63  | 2.25  |
 | MKLML     | 5.58  | 9.80  | 15.15 | 21.21 | 28.67 |
 | MKL-DNN   | 75.07 | 88.64 | 82.58 | 92.29 | 96.75 |
+
+<img src="figs/vgg-cpu-infer.png" width="500">
 
 - ResNet-50
 
 | BatchSize | 1     | 2      | 4      | 8      | 16     |
 |-----------|-------|--------|--------|--------|--------|
-| OpenBLAS  | 3.35  | 3.19   | 3.09   | 2.55   | 1.96   |
+| OpenBLAS  | 3.31  | 6.72   | 11.59  | 13.17  | 9.27   |
 | MKLML     | 6.33  | 12.02  | 22.88  | 40.53  | 63.09  |
 | MKL-DNN   | 107.83| 148.84 | 177.78 | 189.35 | 217.69 |
 
+<img src="figs/resnet-cpu-infer.png" width="500">
 
 - GoogLeNet
 
 | BatchSize | 1      | 2      | 4      | 8      | 16     |
 |-----------|--------|--------|--------|--------|--------|
-| OpenBLAS  | 12.04  | 11.31  | 10.00  | 9.07   | 4.34   |
+| OpenBLAS  | 12.06  | 23.56  | 34.48  | 36.45  | 23.12  |
 | MKLML     | 22.74  | 41.56  | 81.22  | 133.47 | 210.53 |
 | MKL-DNN   | 175.10 | 272.92 | 450.70 | 512.00 | 600.94 |
 
-- Alexnet
+<img src="figs/googlenet-cpu-infer.png" width="500">
+
+- AlexNet
 
 | BatchSize | 1      | 2      | 4      | 8      | 16     |
 |-----------|--------|--------|--------|--------|--------|
-| OpenBLAS  |    |   |   |   |    |
+| OpenBLAS  | 3.53   | 6.23   | 15.04  | 26.06  | 31.62  |
 | MKLML     | 21.32  | 36.55  | 73.06  | 131.15 | 192.77 |
 | MKL-DNN   | 442.91 | 656.41 | 719.10 | 847.68 | 850.51 |
 
-chart TBD
+<img src="figs/alexnet-cpu-infer.png" width="500">
 
 ### Laptop
 TBD

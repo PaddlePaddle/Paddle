@@ -55,6 +55,8 @@ class Tensor {
   template <typename T>
   inline const T* data() const;
 
+  inline bool IsInitialized() const;
+
   inline void switch_place(platform::Place new_place);
 
   /**

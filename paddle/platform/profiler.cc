@@ -13,12 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/platform/profiler.h"
+#include <iomanip>
+#include <map>
+#include "glog/logging.h"
 
 namespace paddle {
 namespace platform {
 
 // The profiler state, the initial value is ProfilerState::kDisabled
 static ProfilerState g_state = ProfilerState::kDisabled;
+// To record which timer the profiler used, CUDA or CPU.
+static std::string g_profiler_place = "";
 // The thread local event list only can be accessed by the specific thread
 // The thread index of each thread
 static thread_local int32_t g_thread_id;
@@ -43,10 +48,7 @@ inline uint64_t GetTimeInNsec() {
 
 Event::Event(EventKind kind, std::string name, uint32_t thread_id,
              DeviceContext* dev_ctx)
-    : kind_(kind),
-      name_(std::move(name)),
-      thread_id_(thread_id),
-      has_cuda_(false) {
+    : kind_(kind), name_(name), thread_id_(thread_id), has_cuda_(false) {
 #ifdef PADDLE_WITH_CUDA
   auto* cuda_dev_ctx = static_cast<const CUDADeviceContext*>(dev_ctx);
   if (cuda_dev_ctx) {
@@ -72,11 +74,11 @@ std::string Event::kind() const {
   PADDLE_THROW("Unknown EventKind.");
 }
 
-double Event::CpuElapsedUs(const Event& e) const {
-  return (e.cpu_ns_ - cpu_ns_) / (1000.0);
+double Event::CpuElapsedMs(const Event& e) const {
+  return (e.cpu_ns_ - cpu_ns_) / (1000000.0);
 }
 
-double Event::CudaElapsedUs(const Event& e) const {
+double Event::CudaElapsedMs(const Event& e) const {
 #ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE(e.has_cuda() && has_cuda());
   PADDLE_ENFORCE(e.device() == device());
@@ -84,7 +86,7 @@ double Event::CudaElapsedUs(const Event& e) const {
   PADDLE_ENFORCE(cudaEventSynchronize(e.event()));
   float ms;
   PADDLE_ENFORCE(cudaEventElapsedTime(&ms, event_, e.event()));
-  return ms * 1000.0;
+  return ms;
 #else
   PADDLE_THROW("CUDA is not enabled");
 #endif
@@ -113,21 +115,27 @@ inline EventList& GetEventList() {
 }
 
 void Mark(const std::string& name, DeviceContext* dev_ctx) {
-  GetEventList().Record(EventKind::kMark, std::move(name), g_thread_id,
-                        dev_ctx);
+  GetEventList().Record(EventKind::kMark, name, g_thread_id, dev_ctx);
+}
+
+void PushEvent(const std::string& name, DeviceContext* dev_ctx) {
+  GetEventList().Record(EventKind::kPushRange, name, g_thread_id, dev_ctx);
+}
+
+void PopEvent(const std::string& name, DeviceContext* dev_ctx) {
+  GetEventList().Record(EventKind::kPopRange, name, g_thread_id, dev_ctx);
 }
 
 RecordEvent::RecordEvent(const std::string& name, DeviceContext* dev_ctx) {
   if (g_state == ProfilerState::kDisabled) return;
   dev_ctx_ = dev_ctx;
-  GetEventList().Record(EventKind::kPushRange, std::move(name), g_thread_id,
-                        dev_ctx_);
+  name_ = name;
+  PushEvent(name_, dev_ctx_);
 }
 
 RecordEvent::~RecordEvent() {
   if (g_state == ProfilerState::kDisabled) return;
-  GetEventList().Record(EventKind::kPopRange, std::string(), g_thread_id,
-                        dev_ctx_);
+  PopEvent(name_, dev_ctx_);
 }
 
 void EnableProfiler(ProfilerState state) {
@@ -138,6 +146,7 @@ void EnableProfiler(ProfilerState state) {
                  "The profiling state should be disabled when calling ",
                  "EnableProfiler.");
   g_state = state;
+  g_profiler_place = (g_state == ProfilerState::kCUDA) ? "CUDA" : "CPU";
 #ifdef PADDLE_WITH_CUDA
   if (g_state == ProfilerState::kCUDA) {
     // Generate some dummy evenets first to reduce the startup overhead.
@@ -167,6 +176,153 @@ std::vector<std::vector<Event>> DisableProfiler() {
     result.emplace_back((*it)->Reduce());
   }
   return result;
+}
+
+void ParseEvents(std::vector<std::vector<Event>>& events,
+                 EventSortingKey sorted_by) {
+  if (g_profiler_place == "") return;
+
+  std::string sorted_domain;
+  std::function<bool(const EventItem&, const EventItem&)> sorted_func;
+  switch (sorted_by) {
+    case EventSortingKey::kCalls:
+      sorted_domain = "number of calls";
+      sorted_func = [](const EventItem& a, const EventItem& b) {
+        return a.calls > b.calls;
+      };
+      break;
+    case EventSortingKey::kTotal:
+      sorted_domain = "total time";
+      sorted_func = [](const EventItem& a, const EventItem& b) {
+        return a.total_time > b.total_time;
+      };
+      break;
+    case EventSortingKey::kMin:
+      sorted_domain = "minimum time";
+      sorted_func = [](const EventItem& a, const EventItem& b) {
+        return a.min_time > b.min_time;
+      };
+      break;
+    case EventSortingKey::kMax:
+      sorted_domain = "maximum time";
+      sorted_func = [](const EventItem& a, const EventItem& b) {
+        return a.max_time > b.max_time;
+      };
+      break;
+    case EventSortingKey::kAve:
+      sorted_domain = "average time";
+      sorted_func = [](const EventItem& a, const EventItem& b) {
+        return a.ave_time > b.ave_time;
+      };
+      break;
+    default:
+      sorted_domain = "event end time";
+  }
+
+  std::vector<std::vector<EventItem>> events_table;
+  size_t max_name_width = 0;
+  for (size_t i = 0; i < events.size(); i++) {
+    std::list<Event> pushed_events;
+    std::vector<EventItem> event_items;
+    std::unordered_map<std::string, int> event_idx;
+
+    for (size_t j = 0; j < events[i].size(); j++) {
+      if (events[i][j].kind() == "push") {
+        pushed_events.push_back(events[i][j]);
+      } else if (events[i][j].kind() == "pop") {
+        std::list<Event>::reverse_iterator rit = pushed_events.rbegin();
+        while (rit != pushed_events.rend() &&
+               rit->name() != events[i][j].name()) {
+          ++rit;
+        }
+
+        if (rit != pushed_events.rend()) {
+          double event_time = (g_profiler_place == "CUDA")
+                                  ? rit->CudaElapsedMs(events[i][j])
+                                  : rit->CpuElapsedMs(events[i][j]);
+          std::string event_name =
+              "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
+          max_name_width = std::max(max_name_width, event_name.size());
+
+          if (event_idx.find(event_name) == event_idx.end()) {
+            event_idx[event_name] = event_items.size();
+            EventItem event_item = {event_name, 1,          event_time,
+                                    event_time, event_time, event_time};
+            event_items.push_back(event_item);
+          } else {
+            int index = event_idx[event_name];
+            event_items[index].calls += 1;
+            // total time
+            event_items[index].total_time += event_time;
+            // min time
+            event_items[index].min_time =
+                std::min(event_time, event_items[index].min_time);
+            // max time
+            event_items[index].max_time =
+                std::max(event_time, event_items[index].max_time);
+          }
+
+          // remove the push marker from the list
+          pushed_events.erase((++rit).base());
+        } else {
+          LOG(WARNING) << "Cannot find the push marker of event \'"
+                       << events[i][j].name()
+                       << "\', which will be ignored in profiling report.";
+        }
+      }
+    }
+    // average time
+    for (auto& item : event_items) {
+      item.ave_time = item.total_time / item.calls;
+    }
+    // sort
+    if (sorted_by != EventSortingKey::kDefault) {
+      std::sort(event_items.begin(), event_items.end(), sorted_func);
+    }
+
+    events_table.push_back(event_items);
+    // log warning if there are events with `push` but without `pop`
+    std::list<Event>::reverse_iterator rit = pushed_events.rbegin();
+    while (rit != pushed_events.rend()) {
+      LOG(WARNING) << "Cannot find the pop marker of event \'" << rit->name()
+                   << "\', which will be ignored in profiling report.";
+      ++rit;
+    }
+  }
+
+  // Print report
+  PrintProfilingReport(events_table, sorted_domain, max_name_width + 4, 12);
+}
+
+void PrintProfilingReport(std::vector<std::vector<EventItem>>& events_table,
+                          std::string& sorted_domain, const size_t name_width,
+                          const size_t data_width) {
+  // Output header information
+  std::cout << "\n------------------------->"
+            << "     Profiling Report     "
+            << "<-------------------------\n\n";
+  std::cout << "Place: " << g_profiler_place << std::endl;
+  std::cout << "Time unit: ms" << std::endl;
+  std::cout << "Sorted by " << sorted_domain
+            << " in descending order in the same thread\n\n";
+  // Output events table
+  std::cout.setf(std::ios::left);
+  std::cout << std::setw(name_width) << "Event" << std::setw(data_width)
+            << "Calls" << std::setw(data_width) << "Total"
+            << std::setw(data_width) << "Min." << std::setw(data_width)
+            << "Max." << std::setw(data_width) << "Ave." << std::endl;
+  for (size_t i = 0; i < events_table.size(); ++i) {
+    for (size_t j = 0; j < events_table[i].size(); ++j) {
+      EventItem& event_item = events_table[i][j];
+      std::cout << std::setw(name_width) << event_item.name
+                << std::setw(data_width) << event_item.calls
+                << std::setw(data_width) << event_item.total_time
+                << std::setw(data_width) << event_item.min_time
+                << std::setw(data_width) << event_item.max_time
+                << std::setw(data_width) << event_item.ave_time << std::endl;
+    }
+  }
+  std::cout << std::endl;
 }
 
 }  // namespace platform

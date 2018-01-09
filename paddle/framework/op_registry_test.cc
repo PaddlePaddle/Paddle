@@ -218,7 +218,7 @@ class OpWithKernelTest : public OperatorWithKernel {
  protected:
   void InferShape(InferShapeContext* ctx) const override {}
 
-  framework::OpKernelType GetActualKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(proto::DataType::FP32, ctx.device_context());
   }
@@ -282,16 +282,11 @@ class OpWithMultiKernelTest : public OperatorWithKernel {
  protected:
   void InferShape(InferShapeContext* ctx) const override {}
 
-  framework::OpKernelType GetActualKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(proto::DataType::FP32, ctx.device_context());
-  }
-
   framework::OpKernelType GetExpectedKernelType(
-      const framework::OpKernelType& kernel) const override {
-    return framework::OpKernelType(kernel.data_type_, platform::CUDAPlace(0),
-                                   kernel.data_layout_,
-                                   framework::LibraryType::kCUDNN);
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        proto::DataType::FP32, platform::CUDAPlace(0), DataLayout::kAnyLayout,
+        framework::LibraryType::kCUDNN);
   }
 };
 
@@ -371,6 +366,7 @@ TEST(OperatorRegistrar, OpWithMultiKernel) {
   op_desc.set_type("op_with_multi_kernel");
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
 
+  // TODO(qiao) add priority back
   // use all available kernels
   paddle::framework::UseALL();
   op->Run(scope, cuda_place);
