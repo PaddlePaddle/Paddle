@@ -49,8 +49,6 @@ struct VarHandle {
   }
 };
 
-void ProcSendResponse(const VarHandle&, const sendrecv::VoidMessage& msg);
-
 void ProcGetResponse(const VarHandle& var_h,
                      const sendrecv::VariableMessage& msg);
 
@@ -72,7 +70,7 @@ struct ClientBase {
     context->set_deadline(deadline);
   }
 
-  virtual void Proceed() = 0;
+  virtual void Process() = 0;
 
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub;
   std::unique_ptr<grpc::ClientContext> context;
@@ -88,10 +86,14 @@ struct SendProcessor : public ClientBase {
 
   virtual ~SendProcessor() {}
 
-  virtual void Proceed() { response_call_back(var_h, reply); }
+  virtual void Process() {
+    if (response_call_back) {
+      response_call_back(var_h, reply);
+    }
+  }
 
   sendrecv::VoidMessage reply;
-  RequestSendCallBack response_call_back = ProcSendResponse;
+  RequestSendCallBack response_call_back = NULL;
 };
 
 typedef std::function<void(const VarHandle&, const sendrecv::VariableMessage&)>
@@ -102,7 +104,11 @@ struct GetProcessor : public ClientBase {
 
   virtual ~GetProcessor() {}
 
-  virtual void Proceed() { response_call_back(var_h, reply); }
+  virtual void Process() {
+    if (response_call_back) {
+      response_call_back(var_h, reply);
+    }
+  }
 
   sendrecv::VariableMessage reply;
   RequestGetCallBack response_call_back = ProcGetResponse;
@@ -112,13 +118,13 @@ class RPCClient {
  public:
   bool AsyncSendVariable(const std::string& ep,
                          const platform::DeviceContext& ctx,
-                         const framework::Scope* scope,
+                         const framework::Scope& scope,
                          const std::string& var_name,
                          int64_t time_out = 600 * 1000);
 
   bool AsyncGetVariable(const std::string& ep,
                         const platform::DeviceContext& ctx,
-                        const framework::Scope* scope,
+                        const framework::Scope& scope,
                         const std::string& var_name,
                         int64_t time_out = 600 * 1000);
   bool wait();

@@ -19,17 +19,17 @@ namespace detail {
 
 bool RPCClient::AsyncSendVariable(const std::string& ep,
                                   const platform::DeviceContext& ctx,
-                                  const framework::Scope* scope,
+                                  const framework::Scope& scope,
                                   const std::string& var_name,
                                   int64_t time_out) {
   sendrecv::VariableMessage req;
-  auto* var = scope->FindVar(var_name);
+  auto* var = scope.FindVar(var_name);
   SerializeToMessage(var_name, var, ctx, &req);
 
   // varhandle
   VarHandle var_h;
   var_h.ep = ep;
-  var_h.scope = scope;
+  var_h.scope = &scope;
   var_h.name = var_name;
   var_h.ctx = &ctx;
 
@@ -37,7 +37,7 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
   auto ch = GetChannel(ep);
   SendProcessor* s = new SendProcessor(ch);
   s->Prepare(var_h, time_out);
-  s->response_call_back = ProcSendResponse;
+  s->response_call_back = NULL;
 
   auto rpc = s->stub->AsyncSendVariable(s->context.get(), req, &cq_);
   rpc->Finish(&s->reply, &s->status, (void*)s);
@@ -46,8 +46,6 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
 
   return true;
 }
-
-void ProcSendResponse(const VarHandle&, const sendrecv::VoidMessage& msg) {}
 
 void ProcGetResponse(const VarHandle& var_h,
                      const sendrecv::VariableMessage& ret_msg) {
@@ -59,19 +57,19 @@ void ProcGetResponse(const VarHandle& var_h,
 
 bool RPCClient::AsyncGetVariable(const std::string& ep,
                                  const platform::DeviceContext& ctx,
-                                 const framework::Scope* scope,
+                                 const framework::Scope& scope,
                                  const std::string& var_name,
                                  int64_t time_out) {
   sendrecv::VariableMessage req;
   req.set_varname(var_name);
 
-  auto* var = scope->FindVar(var_name);
+  auto* var = scope.FindVar(var_name);
   SerializeToMessage(var_name, var, ctx, &req);
 
   // varhandle
   VarHandle var_h;
   var_h.ep = ep;
-  var_h.scope = scope;
+  var_h.scope = &scope;
   var_h.name = var_name;
   var_h.ctx = &ctx;
 
@@ -126,7 +124,7 @@ bool RPCClient::Proceed() {
     return true;
   }
 
-  c->Proceed();
+  c->Process();
   delete c;
   return true;
 }

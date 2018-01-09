@@ -59,13 +59,6 @@ class RequestSend final : public RequestBase {
 
   virtual ~RequestSend() {}
 
-  /*
-  virtual void RegistNewOne() {
-    auto* n = new RequestSend(service_, cq_, queue_);
-    service_->RequestSendVariable(&ctx_, &request_, &responder_, cq_, cq_, n);
-  }
-  */
-
   virtual void Proceed() {
     // proc request.
     MessageWithName msg_with_name =
@@ -147,9 +140,9 @@ void AsyncGRPCServer::ShutdownSendQueue() {
  * https://stackoverflow.com/questions/35708348/grpc-what-is-the-recommended-way-to-shut-down-an-asynchronous-server-in-c
  */
 void AsyncGRPCServer::ShutDown() {
+  server_->Shutdown();
   ShutdownGetQueue();
   ShutdownSendQueue();
-  server_->Shutdown();
 }
 
 void AsyncGRPCServer::HandleReqSend() {

@@ -41,11 +41,11 @@ class SendOp : public framework::OperatorBase {
     // FIXME(gongwb): DeviceContext?
     auto ctx = platform::CPUDeviceContext();
     for (size_t i = 0; i < ins.size(); i++) {
-      client_.AsyncSendVariable(epmap[i], ctx, &scope, ins[i]);
+      client_.AsyncSendVariable(epmap[i], ctx, scope, ins[i]);
     }
 
     for (size_t i = 0; i < outs.size(); i++) {
-      client_.AsyncGetVariable(epmap[i], ctx, &scope, outs[i]);
+      client_.AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
     }
 
     client_.wait();
