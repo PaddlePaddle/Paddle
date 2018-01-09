@@ -29,12 +29,9 @@ class RequestBase {
  public:
   explicit RequestBase(sendrecv::SendRecvService::AsyncService* service,
                        grpc::ServerCompletionQueue* cq)
-      : service_(service), cq_(cq) {
-    status_ = PROCESS;
-  }
+      : service_(service), cq_(cq), status_(PROCESS) {}
   virtual ~RequestBase() {}
   virtual void Process() { assert(false); }
-  // virtual void RegisterNewOne() { assert(false); }
 
   CallStatus Status() { return status_; }
   void SetStatus(CallStatus status) { status_ = status; }
@@ -59,13 +56,6 @@ class RequestSend final : public RequestBase {
   }
 
   virtual ~RequestSend() {}
-
-  /*
-  virtual void RegisterNewOne() {
-    RequestSend* n = new RequestSend(service_, cq_, queue_);
-    service_->RequestSendVariable(&ctx_, &request_, &responder_, cq_, cq_, n);
-  }
-  */
 
   virtual void Process() {
     // proc request.
@@ -93,18 +83,10 @@ class RequestGet final : public RequestBase {
 
   virtual ~RequestGet() {}
 
-  /*
-  virtual void RegisterNewOne() {
-    RequestGet* n = new RequestGet(service_, cq_, scope_);
-    service_->RequestGetVariable(&ctx_, &request_, &responder_, cq_, cq_, n);
-  }
-  */
-
   virtual void Process() {
     // proc request.
     std::string var_name = request_.varname();
     auto* var = scope_->FindVar(var_name);
-    // FIXME(gongwb): device context?
     SerializeToMessage(var_name, var, platform::CPUDeviceContext(), &reply_);
     // TODO(gongwb): check var's info.
     responder_.Finish(reply_, grpc::Status::OK, this);

@@ -29,8 +29,8 @@ limitations under the License. */
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/selected_rows.h"
+#include "paddle/operators/detail/sendrecvop_utils.h"
 #include "paddle/operators/detail/simple_block_queue.h"
-#include "paddle/operators/detail/utils.h"
 
 namespace paddle {
 namespace operators {
@@ -136,7 +136,7 @@ class RPCClient {
  private:
   grpc::CompletionQueue cq_;
   std::map<std::string, std::shared_ptr<grpc::Channel>> channels_;
-  int64_t count_ = 0;
+  int64_t req_count_ = 0;
 };
 
 }  // namespace detail

@@ -26,7 +26,7 @@ limitations under the License. */
 #include <grpc++/grpc++.h>
 #include <grpc/support/log.h>
 #include <thread>
-#include "paddle/operators/detail/utils.h"
+#include "paddle/operators/detail/sendrecvop_utils.h"
 
 namespace paddle {
 namespace operators {

@@ -25,8 +25,8 @@ limitations under the License. */
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/proto_desc.h"
 #include "paddle/operators/detail/grpc_server.h"
+#include "paddle/operators/detail/sendrecvop_utils.h"
 #include "paddle/operators/detail/simple_block_queue.h"
-#include "paddle/operators/detail/utils.h"
 
 #define LISTEN_TERMINATE_MESSAGE "TERMINATE@RECV"
 

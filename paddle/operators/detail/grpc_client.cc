@@ -42,7 +42,7 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
   auto rpc = s->stub->AsyncSendVariable(s->context.get(), req, &cq_);
   rpc->Finish(&s->reply, &s->status, (void*)s);
 
-  count_++;
+  req_count_++;
 
   return true;
 }
@@ -82,7 +82,7 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
   auto rpc = s->stub->AsyncGetVariable(s->context.get(), req, &cq_);
   rpc->Finish(&s->reply, &s->status, (void*)s);
 
-  count_++;
+  req_count_++;
 
   return true;
 }
@@ -91,7 +91,7 @@ bool RPCClient::wait() {
   bool ok = true;
 
   while (true) {
-    if (count_ <= 0) {
+    if (req_count_ <= 0) {
       break;
     }
 
@@ -112,13 +112,13 @@ bool RPCClient::Proceed() {
   if (!cq_.Next(&tag, &ok)) {
     return false;
   }
-  count_--;
+  req_count_--;
 
   GPR_ASSERT(ok);
   PADDLE_ENFORCE(tag);
 
   // TODO(gongwb): add more retries.
-  ClientBase* c = (ClientBase*)tag;
+  ClientBase* c = static_cast<ClientBase*>(tag);
   if (!c->status.ok()) {
     delete c;
     return true;
