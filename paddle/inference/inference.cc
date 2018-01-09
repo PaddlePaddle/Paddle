@@ -25,10 +25,7 @@ limitations under the License. */
 
 namespace paddle {
 
-void InferenceEngine::LoadInferenceModel(
-    const std::string& dirname,
-    const std::vector<std::string>& feed_var_names,
-    const std::vector<std::string>& fetch_var_names) {
+void InferenceEngine::LoadInferenceModel(const std::string& dirname) {
 #ifdef PADDLE_USE_PTOOLS
   std::string model_filename = dirname + "/__model__";
   LOG(INFO) << "Using PicklingTools, loading model from " << model_filename;
@@ -49,14 +46,21 @@ void InferenceEngine::LoadInferenceModel(
   inputfs.read(&program_desc_str[0], program_desc_str.size());
   inputfs.close();
 #endif
+  LOG(INFO) << "feed size: " << feed_var_names_.size();
+  LOG(INFO) << "fetch size: " << fetch_var_names_.size();
   program_ = new framework::ProgramDesc(program_desc_str);
+  program_->GetFeedVarNames(feed_var_names_);
+  program_->GetFetchVarNames(fetch_var_names_);
+
+  LOG(INFO) << "feed size: " << feed_var_names_.size();
+  LOG(INFO) << "fetch size: " << fetch_var_names_.size();
+
   GenerateLoadProgram(dirname);
 
-  if (feed_var_names.empty() || fetch_var_names.empty()) {
-    LOG(FATAL) << "Please specify the feed_var_names and fetch_var_names.";
+  if (feed_var_names_.empty() || fetch_var_names_.empty()) {
+    LOG(FATAL) << "Please specify the feed_var_names and fetch_var_names when "
+                  "saving inference models.";
   }
-  feed_var_names_ = feed_var_names;
-  fetch_var_names_ = fetch_var_names;
   PrependFeedOp();
   AppendFetchOp();
 }

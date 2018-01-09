@@ -23,6 +23,7 @@ DEFINE_string(fetch_var_names, "", "Names of fetching variables");
 
 int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
+  /*
   if (FLAGS_dirname.empty() || FLAGS_feed_var_names.empty() ||
       FLAGS_fetch_var_names.empty()) {
     // Example:
@@ -34,17 +35,23 @@ int main(int argc, char** argv) {
               << std::endl;
     exit(1);
   }
+  */
+  if (FLAGS_dirname.empty()) {
+    std::cout << "Usage: ./example --dirname=path/to/your/model" << std::endl;
+  }
 
   std::cout << "FLAGS_dirname: " << FLAGS_dirname << std::endl;
-  std::cout << "FLAGS_feed_var_names: " << FLAGS_feed_var_names << std::endl;
-  std::cout << "FLAGS_fetch_var_names: " << FLAGS_fetch_var_names << std::endl;
+  //  std::cout << "FLAGS_feed_var_names: " << FLAGS_feed_var_names <<
+  //  std::endl;
+  //  std::cout << "FLAGS_fetch_var_names: " << FLAGS_fetch_var_names <<
+  //  std::endl;
 
   std::string dirname = FLAGS_dirname;
-  std::vector<std::string> feed_var_names = {FLAGS_feed_var_names};
-  std::vector<std::string> fetch_var_names = {FLAGS_fetch_var_names};
+  //  std::vector<std::string> feed_var_names = {FLAGS_feed_var_names};
+  //  std::vector<std::string> fetch_var_names = {FLAGS_fetch_var_names};
 
   paddle::InferenceEngine* engine = new paddle::InferenceEngine();
-  engine->LoadInferenceModel(dirname, feed_var_names, fetch_var_names);
+  engine->LoadInferenceModel(dirname);
 
   paddle::framework::LoDTensor input;
   srand(time(0));

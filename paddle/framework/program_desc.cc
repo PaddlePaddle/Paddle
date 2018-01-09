@@ -81,6 +81,21 @@ ProgramDesc::ProgramDesc(const std::string &binary_str) {
     blocks_.emplace_back(new BlockDesc(this, &block_desc));
   }
 }
+
+void ProgramDesc::GetFeedVarNames(std::vector<std::string> &var_names) {
+  var_names.clear();
+  for (int i = 0; i < desc_.feed_var_names_size(); i++) {
+    feed_var_names_.push_back(desc_.feed_var_names(i));
+  }
+}
+
+void ProgramDesc::GetFetchVarNames(std::vector<std::string> &var_names) {
+  var_names.clear();
+  for (int i = 0; i < desc_.fetch_var_names_size(); i++) {
+    fetch_var_names_.push_back(desc_.fetch_var_names(i));
+  }
+}
+
 /*
 void ProgramDesc::ClearFeedVarNames() {
   desc_.clear_feed_var_names();
