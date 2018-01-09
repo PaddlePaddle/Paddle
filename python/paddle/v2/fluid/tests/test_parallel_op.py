@@ -17,7 +17,7 @@ class ParallelOpTest(unittest.TestCase):
             label=fluid.layers.data(
                 name='label', shape=[1], dtype='int64'))
         loss = fluid.layers.mean(x=loss)
-        new_prog, outs = fluid.transpilers.multidev_transpile(
+        new_prog, outs = fluid.transpilers.transpile_to_multi_devices(
             fluid.default_main_program(),
             input_vars=['img', 'label'],
             output_vars=[loss])

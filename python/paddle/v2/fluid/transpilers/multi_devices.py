@@ -1,7 +1,7 @@
 from ..framework import Variable, Program, Block, Operator, unique_name
 from .. import core
 
-__all__ = ['multidev_transpile']
+__all__ = ['transpile_to_multi_devices']
 
 
 def _vars_to_names_(vars):
@@ -57,12 +57,12 @@ def _var_lists_(var_names, block):
     return [block.var(var_name) for var_name in var_names]
 
 
-def multidev_transpile(program,
-                       input_vars,
-                       output_vars=None,
-                       block_id=0,
-                       device_type='CPU',
-                       device_count=0):
+def transpile_to_multi_devices(program,
+                               input_vars,
+                               output_vars=None,
+                               block_id=0,
+                               device_type='CPU',
+                               device_count=0):
     # Get original block
     src_block = program.block(block_id)
     assert isinstance(src_block, Block)
