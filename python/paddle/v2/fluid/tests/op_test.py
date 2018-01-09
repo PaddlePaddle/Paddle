@@ -49,6 +49,7 @@ def create_op(scope, op_type, inputs, outputs, attrs):
     for attr_name in Operator.get_op_attr_names(op_type):
         if attr_name in attrs:
             kwargs[attr_name] = attrs[attr_name]
+
     return Operator(op_type, **kwargs)
 
 
@@ -104,8 +105,6 @@ def get_numeric_gradient(scope,
         tensor_to_check_dtype = np.float32
     elif tensor_to_check_dtype == core.DataType.FP64:
         tensor_to_check_dtype = np.float64
-    elif tensor_to_check_dtype == core.DataType.INT64:
-        tensor_to_check_dtype = np.int64
     else:
         raise ValueError("Not supported data type " + str(
             tensor_to_check_dtype))
@@ -115,8 +114,6 @@ def get_numeric_gradient(scope,
     def __get_elem__(tensor, i):
         if tensor_to_check_dtype == np.float32:
             return tensor.get_float_element(i)
-        elif tensor_to_check_dtype == np.int64:
-            return tensor.get_int64_element(i)
         else:
             return tensor.get_double_element(i)
 
@@ -356,11 +353,13 @@ class OpTest(unittest.TestCase):
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
         self.op = create_op(self.scope, self.op_type, op_inputs, op_outputs,
                             op_attrs)
+
         if no_grad_set is None:
             no_grad_set = set()
 
         if not type(output_names) is list:
             output_names = [output_names]
+
         numeric_grads = user_defined_grads or [
             get_numeric_gradient(
                 self.scope,
@@ -456,7 +455,9 @@ class OpTest(unittest.TestCase):
         # infer variable type and infer shape in compile-time
         op.desc.infer_var_type(block.desc)
         op.desc.infer_shape(block.desc)
+
         mean_inputs = map(block.var, output_names)
+
         if len(mean_inputs) == 1:
             loss = block.create_var(dtype=mean_inputs[0].dtype, shape=[1])
             op = block.append_op(
