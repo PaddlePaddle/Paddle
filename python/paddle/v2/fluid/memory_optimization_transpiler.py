@@ -3,6 +3,17 @@ import framework
 from framework import Program, default_main_program, Parameter, Variable
 import backward
 from backward import _rename_arg_
+from . import core
+
+dtype_to_size = {
+    core.DataType.FP16: 2,
+    core.DataType.FP32: 4,
+    core.DataType.FP64: 8,
+    core.DataType.INT16: 2,
+    core.DataType.INT32: 4,
+    core.DataType.INT64: 8,
+    core.DataType.BOOL: 1
+}
 
 
 class ControlFlowGraph(object):
@@ -39,6 +50,21 @@ class ControlFlowGraph(object):
         for i in range(self.op_size):
             self._uses[i].update(self.ops[i].input_arg_names())
             self._defs[i].update(self.ops[i].output_arg_names())
+
+    def _update_graph(self, old_name, new_name, begin_idx=0):
+        for i in range(begin_idx, self.op_size):
+            if old_name in self._uses[i]:
+                self._uses[i].remove(old_name)
+                self._uses[i].add(new_name)
+            if old_name in self._defs[i]:
+                self._defs[i].remove(old_name)
+                self._defs[i].add(new_name)
+            if old_name in self._live_in[i]:
+                self._live_in[i].remove(old_name)
+                self._live_out[i].add(new_name)
+            if old_name in self._live_out[i]:
+                self._live_out[i].remove(old_name)
+                self._live_out[i].add(new_name)
 
     def _reach_fixed_point(self, live_in, live_out):
         if len(live_in) != len(self._live_in):
@@ -82,17 +108,28 @@ class ControlFlowGraph(object):
                 out_pair = [(x, self.global_block.var(str(x)).shape())
                             for x in self._defs[i]]
                 for x, x_shape in out_pair:
-                    for index, cache_pair in enumerate(self.pool):
-                        cache_var = cache_pair[0]
-                        cache_shape = cache_pair[1]
-                        if x_shape == cache_shape:
-                            print(
-                                "Hit Cache !!!! cache pool index is %d, var name is %s, cached var name is %s, var shape is %s "
-                                % (index, x, cache_var, str(cache_shape)))
-                            self.pool.pop(index)
-                            _rename_arg_(self.ops, x, cache_var, begin_idx=i)
-                            self._dataflow_analyze()
-                            break
+                    if not self.global_block.var(str(x)).persistable():
+                        for index, cache_pair in enumerate(self.pool):
+                            cache_var = cache_pair[0]
+                            cache_shape = cache_pair[1]
+                            if x_shape == cache_shape:
+                                x_dtype = self.global_block.var(str(x)).dtype()
+                                cache_dtype = self.global_block.var(
+                                    str(cache_var)).dtype()
+                                # TODO(qijun): actually, we should compare dtype_to_size[x_dtype]
+                                # and dtype_to_size[cache_dtype]
+                                if x_dtype == cache_dtype:
+                                    print(
+                                        "Hit Cache !!!! cache pool index is %d, var name is %s, cached var name is %s, var shape is %s "
+                                        %
+                                        (index, x, cache_var, str(cache_shape)))
+                                    self.pool.pop(index)
+                                    _rename_arg_(
+                                        self.ops, x, cache_var, begin_idx=i)
+                                    self._update_graph(
+                                        x, cache_var, begin_idx=i)
+                                    self.global_block.var(str(x))
+                                    break
 
             in_diff, out_diff = self._get_diff(self._live_in[i],
                                                self._live_out[i])
