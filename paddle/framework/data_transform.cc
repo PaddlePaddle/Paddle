@@ -101,8 +101,8 @@ void TransDataType(const platform::DeviceContext* ctx,
                                       kernel_pair.second.place_),
       "TransDataType Only Support DataType transform on same place!");
 
-  auto src = in.Get<Tensor>();
-  auto* dst = out->GetMutable<Tensor>();
+  auto src = in.Get<LoDTensor>();
+  auto* dst = out->GetMutable<LoDTensor>();
 
   auto dims = src.dims();
   dst->Resize(dims);
@@ -142,8 +142,8 @@ void TransDataLayout(const std::vector<int>& axis,
   PADDLE_ENFORCE(kernel_pair.first.data_type_ == kernel_pair.second.data_type_,
                  "TransDataLayout only support Datatype are same!");
 
-  auto src = in.Get<Tensor>();
-  auto* dst = out->GetMutable<Tensor>();
+  auto src = in.Get<LoDTensor>();
+  auto* dst = out->GetMutable<LoDTensor>();
   PADDLE_ENFORCE(arity(src.dims()) == 4, "Input Arity Only Suppport 4!");
 
   auto src_dim = src.dims();
