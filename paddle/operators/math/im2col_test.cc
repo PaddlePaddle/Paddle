@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/operators/math/im2col.h"
 #include <gtest/gtest.h>
-#include <iostream>
 
 template <typename DeviceContext, typename Place>
 void testIm2col() {
@@ -102,6 +101,7 @@ void testIm2col() {
     Copy(output_ocf, paddle::platform::CPUPlace(), *context, &output_tmp);
     out_ocf_ptr = output_tmp.data<float>();
   }
+
   for (int i = 0; i < 6; ++i) {
     EXPECT_EQ(out_ocf_ptr[i], out_ocf_data[i]);
   }
@@ -154,6 +154,9 @@ void testIm2col() {
   for (int i = 0; i < 6; ++i) {
     EXPECT_EQ(in_ptr[i], col2im_data[i]);
   }
+
+  delete place;
+  delete context;
 }
 
 TEST(math, im2col) {
