@@ -105,8 +105,7 @@ static void BuildVar(const std::string& param_name,
 TEST(Operator, CPUtoGPU) {
   using namespace paddle::framework;
   using namespace paddle::platform;
-
-  ASSERT_EQ(InitDevices({"CPU", "GPU:0"}), true);
+  InitDevices();
 
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace cpu_place;
