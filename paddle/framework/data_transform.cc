@@ -19,17 +19,12 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-Tensor* DataTransform(const OpKernelType& expected_kernel_type,
-                      const OpKernelType& kernel_type_for_var,
-                      const Tensor& input_tensor) {
-  Tensor* out = nullptr;
+void DataTransform(const OpKernelType& expected_kernel_type,
+                   const OpKernelType& kernel_type_for_var,
+                   const Tensor& input_tensor, Tensor* out) {
   if (expected_kernel_type.library_type_ != kernel_type_for_var.library_type_) {
-    if (platform::is_cpu_place(kernel_type_for_var.place_)) {
-      Copy(input_tensor, platform::CPUPlace(), out);
-    } else {
-      Copy(input_tensor, platform::CUDAPlace(0), out);
-    }
-    return out;
+    Copy(input_tensor, expected_kernel_type.place_, out);
+    return;
   }
 
   if (!platform::is_same_place(kernel_type_for_var.place_,
@@ -37,7 +32,6 @@ Tensor* DataTransform(const OpKernelType& expected_kernel_type,
     out = DeviceTransform(input_tensor, expected_kernel_type.place_);
   }
   PADDLE_ENFORCE_NOT_NULL(out, "out should not be null");
-  return out;
 }
 
 void CopyVariableWithTensor(const Variable& in_var, const Tensor& tensor,
