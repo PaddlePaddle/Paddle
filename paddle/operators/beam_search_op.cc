@@ -26,6 +26,7 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
                             framework::LoDTensor *selected_scores) {
   auto items = SelectTopBeamSizeItems();
   auto selected_items = ToMap(items);
+  PADDLE_ENFORCE_EQ(items.size(), selected_items.size());
   PruneEndidCandidates(pre_ids, &selected_items);
   // calculate the output tensor's height
   size_t num_instances = std::accumulate(
@@ -39,7 +40,7 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
 
   std::map<size_t /*offset*/, std::vector<Item>> hash;
   framework::LoD new_lod;
-  auto *ids_data = selected_ids->mutable_data<int>(platform::CPUPlace());
+  auto *ids_data = selected_ids->mutable_data<int64_t>(platform::CPUPlace());
   auto *scores_data =
       selected_scores->mutable_data<float>(platform::CPUPlace());
 
@@ -54,6 +55,7 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
       low_offset++;
     }
   }
+  low_level.push_back(low_offset);
   // fill lod
   auto abs_lod = framework::ToAbsOffset(ids_->lod());
   auto &high_level = abs_lod[lod_level_];
@@ -66,7 +68,7 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
 
 void BeamSearch::PruneEndidCandidates(const framework::LoDTensor &pre_ids,
                                       std::vector<std::vector<Item>> *items) {
-  auto *pre_ids_data = pre_ids.data<int>();
+  auto *pre_ids_data = pre_ids.data<int64_t>();
 
   for (size_t offset = 0; offset < items->size(); offset++) {
     auto prefix_id = pre_ids_data[offset];
@@ -109,11 +111,17 @@ BeamSearch::SelectTopBeamSizeItems() {
     }
     result.emplace_back(items);
   }
+  VLOG(3) << "SelectTopBeamSizeItems result size " << result.size();
+  for (auto &item : result) {
+    VLOG(3) << "item size " << item.size();
+  }
+
   return result;
 }
 
 // the candidates of a source
 bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
+  VLOG(3) << "NumElements: " << ids_->NumElements(lod_level_);
   if (sent_offset_ >= ids_->NumElements(lod_level_)) {
     return false;
   }
@@ -124,10 +132,16 @@ bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
   auto source_abs_two_level_lod = framework::SliceInLevel(
       ids.lod(), lod_level_, sent_offset_, sent_offset_ + 1);
   source_abs_two_level_lod = framework::ToAbsOffset(source_abs_two_level_lod);
-  auto abs_lod = framework::ToAbsOffset(ids.lod());
   PADDLE_ENFORCE_GE(source_abs_two_level_lod.size(), 2UL);
 
-  auto *ids_data = ids.data<int>();
+  VLOG(3) << "source_abs_two_level_lod"
+          << framework::lod_to_string(source_abs_two_level_lod);
+
+  VLOG(3) << "origin lod" << framework::lod_to_string(ids.lod());
+  auto abs_lod = framework::ToAbsOffset(ids.lod());
+  VLOG(3) << "abs_lod" << framework::lod_to_string(abs_lod);
+
+  auto *ids_data = ids.data<int64_t>();
   auto *scores_data = scores.data<float>();
 
   size_t instance_dim = 1;

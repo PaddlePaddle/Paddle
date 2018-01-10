@@ -115,8 +115,9 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
 
   for (auto& op_desc : block.AllOps()) {
     auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
-    VLOG(3) << op->DebugStringEx(local_scope);
+    VLOG(4) << op->DebugStringEx(local_scope);
     op->Run(*local_scope, place_);
+    VLOG(3) << op->DebugStringEx(local_scope);
     if (FLAGS_check_nan_inf) {
       for (auto& vname : op->OutputVars(true)) {
         auto* var = local_scope->FindVar(vname);

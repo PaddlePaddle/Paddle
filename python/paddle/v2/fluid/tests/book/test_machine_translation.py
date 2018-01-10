@@ -12,7 +12,7 @@ src_dict, trg_dict = paddle.dataset.wmt14.get_dict(dict_size)
 hidden_dim = 32
 word_dim = 16
 IS_SPARSE = True
-batch_size = 10
+batch_size = 2
 max_length = 8
 topk_size = 50
 trg_dic_size = 10000
@@ -67,17 +67,18 @@ def decoder_decode(context):
     init_state = context
     array_len = pd.fill_constant(shape=[1], dtype='int64', value=max_length)
     counter = pd.zeros(shape=[1], dtype='int64')
+
     # fill the first element with init_state
-    mem_array = pd.create_array('float32')
-    pd.array_write(init_state, array=mem_array, i=counter)
+    state_array = pd.create_array('float32')
+    pd.array_write(init_state, array=state_array, i=counter)
 
     # ids, scores as memory
     ids_array = pd.create_array('int64')
     scores_array = pd.create_array('float32')
 
-    init_ids = pd.data(name="init_ids", shape=[1], dtype="int64", lod_level=1)
+    init_ids = pd.data(name="init_ids", shape=[1], dtype="int64", lod_level=2)
     init_scores = pd.data(
-        name="init_scores", shape=[1], dtype="float32", lod_level=1)
+        name="init_scores", shape=[1], dtype="float32", lod_level=2)
 
     # init_ids = pd.ones(shape=[batch_size, 1], dtype='int64')
     # init_scores = pd.ones(shape=[batch_size, 1], dtype='float32')
@@ -91,37 +92,38 @@ def decoder_decode(context):
     while_op = pd.While(cond=cond)
     with while_op.block():
         pre_ids = pd.array_read(array=ids_array, i=counter)
-        pre_state = pd.array_read(array=scores_array, i=counter)
-        # id = pd.array_read(array=ids_array, i=counter)
-        target_word = pd.embedding(
+        pre_state = pd.array_read(array=state_array, i=counter)
+        pre_score = pd.array_read(array=scores_array, i=counter)
+
+        # pre_state_expanded = pd.sequence_expand(pre_state, pre_score)
+
+        pre_ids_emb = pd.embedding(
             input=pre_ids,
             size=[dict_size, word_dim],
             dtype='float32',
-            is_sparse=IS_SPARSE, )
-
-        # pre_state_expanded = pd.sequence_expand(pre_state, init_scores)
-        # print 'pre_state', pre_state
-        # print 'target_word', target_word
-        # print 'pre_state_expanded', pre_state_expanded
+            is_sparse=IS_SPARSE)
 
         # use rnn unit to update rnn
         # TODO share parameter with trainer
-        # updated_hidden = pd.fc(input=[target_word, pre_state_expanded],
-        #                        size=hidden_dim,
-        #                        act='tanh')
-        # scores = pd.fc(input=updated_hidden,
-        #                size=target_dict_dim,
-        #                act='softmax')
+        # current_state = pd.fc(input=[pre_ids_emb, pre_state_expanded],
+        current_state = pd.fc(input=[pre_ids_emb],
+                              size=decoder_size,
+                              act='tanh')
+        current_score = pd.fc(input=current_state,
+                              size=target_dict_dim,
+                              act='softmax')
 
-        # topk_scores, topk_indices = pd.topk(scores, k=50)
-        # selected_ids, selected_scores = pd.beam_search(
-        #     pre_ids, topk_indices, topk_scores, beam_size, end_id=1)
+        topk_scores, topk_indices = pd.topk(current_score, k=50)
+        selected_ids, selected_scores = pd.beam_search(
+            pre_ids, topk_indices, topk_scores, beam_size, end_id=10, level=0)
 
-        # # update the memories
-        # pd.array_write(updated_hidden, array=mem_array, i=counter)
-        # pd.array_write(selected_ids, array=ids_array, i=counter)
-        # pd.array_write(selected_scores, array=scores_array, i=counter)
         pd.increment(x=counter, value=1, in_place=True)
+
+        # update the memories
+        pd.array_write(current_state, array=state_array, i=counter)
+        pd.array_write(selected_ids, array=ids_array, i=counter)
+        pd.array_write(selected_scores, array=scores_array, i=counter)
+
         pd.less_than(x=counter, y=array_len, cond=cond)
 
     # translation_ids, translation_scores = pd.beam_search_decode(
@@ -135,7 +137,7 @@ def decoder_decode(context):
 def set_init_lod(data, lod, place):
     res = core.LoDTensor()
     res.set(data, place)
-    res.set_lod([lod])
+    res.set_lod(lod)
     return res
 
 
@@ -210,9 +212,10 @@ def decode_main():
     init_ids_data = init_ids_data.reshape((batch_size, 1))
     init_scores_data = init_scores_data.reshape((batch_size, 1))
     init_lod = [i for i in range(batch_size)] + [batch_size]
+    init_lod = [init_lod, init_lod]
 
-    # print 'init_ids', init_ids
-    # print 'init_scores', init_scores
+    print 'init_ids', init_ids_data
+    print 'init_scores', init_scores_data
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
@@ -228,8 +231,8 @@ def decode_main():
         print np.array(init_scores)
 
         word_data = to_lodtensor(map(lambda x: x[0], data), place)
-        trg_word = to_lodtensor(map(lambda x: x[1], data), place)
-        trg_word_next = to_lodtensor(map(lambda x: x[2], data), place)
+        # trg_word = to_lodtensor(map(lambda x: x[1], data), place)
+        # trg_word_next = to_lodtensor(map(lambda x: x[2], data), place)
         exe.run(
             framework.default_main_program(),
             feed={

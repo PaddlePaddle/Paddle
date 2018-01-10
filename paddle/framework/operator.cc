@@ -85,6 +85,18 @@ static DDim GetDims(const Scope& scope, const std::string& name) {
   }
 }
 
+static LoD GetLoD(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  auto default_lod = LoD({{}});
+  if (var == nullptr) {
+    return default_lod;
+  } else if (var->IsType<LoDTensor>()) {
+    return var->Get<LoDTensor>().lod();
+  } else {
+    return default_lod;
+  }
+}
+
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
   PADDLE_ENFORCE_LE(ins.size(), 1UL,
@@ -126,7 +138,8 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     for (size_t i = 0; i < input.second.size(); ++i) {
       ss << input.second[i];
       if (scope) {
-        ss << "(" << GetDims(*scope, input.second[i]) << ")";
+        ss << "[" << GetDims(*scope, input.second[i]) << "]";
+        ss << "(" << GetLoD(*scope, input.second[i]) << ")";
       }
       if (i != input.second.size() - 1) {
         ss << ", ";
@@ -145,7 +158,8 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     for (size_t i = 0; i < output.second.size(); ++i) {
       ss << output.second[i];
       if (scope) {
-        ss << "(" << GetDims(*scope, output.second[i]) << ")";
+        ss << "[" << GetDims(*scope, output.second[i]) << "]";
+        ss << "(" << GetLoD(*scope, output.second[i]) << ")";
       }
       if (i != output.second.size() - 1) {
         ss << ", ";

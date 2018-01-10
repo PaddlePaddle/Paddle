@@ -115,5 +115,33 @@ TEST(LoD, AppendLoD) {
   EXPECT_EQ(origin, expected);
 }
 
+TEST(LoD, ToAbsOffset) {
+  //  LoD relative_lod;
+  //  relative_lod.push_back(std::vector<size_t>({0, 2}));
+  //  relative_lod.push_back(std::vector<size_t>({0, 1, 3}));
+  //  relative_lod.push_back(std::vector<size_t>({0, 2, 4, 5}));
+  //
+  //  LoD abs_lod = paddle::framework::ToAbsOffset(relative_lod);
+  //
+  //  LoD expected;
+  //  expected.push_back(std::vector<size_t>({0, 5}));
+  //  expected.push_back(std::vector<size_t>({0, 2, 5}));
+  //  expected.push_back(std::vector<size_t>({0, 2, 4, 5}));
+  //
+  //  EXPECT_EQ(abs_lod, expected);
+
+  LoD relative_lod;
+  relative_lod.push_back(std::vector<size_t>({0, 2, 4}));
+  relative_lod.push_back(std::vector<size_t>({0, 0, 2, 2, 4}));
+
+  LoD abs_lod = paddle::framework::ToAbsOffset(relative_lod);
+
+  LoD expected;
+  expected.push_back(std::vector<size_t>({0, 2, 4}));
+  expected.push_back(std::vector<size_t>({0, 0, 2, 2, 4}));
+
+  EXPECT_EQ(abs_lod, expected);
+}
+
 }  // namespace framework
 }  // namespace paddle

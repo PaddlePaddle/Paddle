@@ -1192,7 +1192,7 @@ def sequence_expand(x, y):
     return tmp
 
 
-def beam_search(pre_ids, ids, scores, beam_size, end_id):
+def beam_search(pre_ids, ids, scores, beam_size, end_id, level=0):
     '''
     This function implements the beam search algorithm.
     '''
@@ -1216,7 +1216,7 @@ def beam_search(pre_ids, ids, scores, beam_size, end_id):
         },
         attrs={
             # TODO(ChunweiYan) to assure other value support
-            'level': 0,
+            'level': level,
             'beam_size': beam_size,
             'end_id': end_id,
         })
