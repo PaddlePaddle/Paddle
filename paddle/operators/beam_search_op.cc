@@ -26,7 +26,6 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
                             framework::LoDTensor *selected_scores) {
   auto items = SelectTopBeamSizeItems();
   auto selected_items = ToMap(items);
-  PADDLE_ENFORCE_EQ(items.size(), selected_items.size());
   PruneEndidCandidates(pre_ids, &selected_items);
   // calculate the output tensor's height
   size_t num_instances = std::accumulate(
