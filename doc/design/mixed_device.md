@@ -1,12 +1,12 @@
 ## Design Doc: mixed device support
 
 ### Problem
-One Paddle program is consturcted by many Operators, Most of them have kernels that can run on different devices such as CPU or CUDA. Most of the time, all operators will run on the same device, but in some condition, they need to run on different devices, such as:
+A Paddle program is consturcted by many Operators, many of them have kernels that can run on different devices. Most of the time, all operators will run on the same device, but in some condition, they need to run on different devices, such as:
 
-1. Some operator only has CPU kernel, but other operators can run CUDA place, we need to support other operators run on CUDA but this run on CPU.
-2. Some parameter is too large to put into GPU memory, like embedding table. It need to be put on Host memory, so the operator that use this memory need to run on CPU, like lookup_table_op.
+1. one operator only has CPU kernel, but other operators can run CUDA place, we need to support other operators run on CUDA but this run on CPU.
+2. Some parameter is too large to put into GPU memory, like embedding table. It need to be put on Host memory, and operatores that use this parameter need to run on CPU, like lookup_table_op.
 
-The input and output will be on the same place with the operators. If two related operators are on the same place, the output `op1_2_op2` can be used directly by OP2.
+The input and output is on the same place with the operators. If two related operators OP1 and OP2 are on the same place, the output `op1_2_op2` of OP1 can be used directly by OP2.
 
 ```
 OP1(CPUPlace)
@@ -16,7 +16,7 @@ OP1(CPUPlace)
 OP2(CPUPlace)
 ```
 
-But If OP1 and OP2 are on different devices, the `op1_2_op2` can not be used directly be OP2. The framework should be able to distinguish these kind of situation and do the data transform automatically.
+But If OP1 and OP2 are on different devices, the `op1_2_op2` can not be used directly be OP2. The framework should be able to distinguish this kind of situation and do the data transform automatically.
 
 
 ```
@@ -48,7 +48,7 @@ struct OpKernelType {
 
 1. find out expected_kernel that will be used this time.
 1. find out the actual OpKernelType info for each input. If one input tensor have different place with the expected_kernel then:
-1. do data transform for this input. the transformed input` will be put into a subscope of current running scope with the same name, so Op2 will get the transformed data with the same name. A Pseudo code is:
+1. do data transform for this input. the transformed input will be put into a subscope of current running scope with the same name, so Op2 will get the transformed data with the same name. A Pseudo code is:
 
 ```cpp
 void OperatorWithKernel::Run(
