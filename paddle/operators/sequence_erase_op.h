@@ -28,22 +28,27 @@ class SequenceEraseKernel : public framework::OpKernel<T> {
 
     auto lod = in->lod();
     PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
+    PADDLE_ENFORCE_EQ(lod[0].back(), (size_t)in->numel(),
+                      "The actual size mismatches with the LoD information.");
     auto tokens = ctx.Attr<std::vector<int>>("tokens");
     auto in_len = in->numel();
     auto in_dat = in->data<T>();
     auto lod0 = lod[0];
-    std::vector<size_t> num_erased(in_len + 1, 0);
-    for (int64_t i = 1; i < in_len + 1; ++i) {
-      num_erased[i] = num_erased[i - 1];
-      if (std::find(tokens.begin(), tokens.end(), in_dat[i - 1]) !=
-          tokens.end()) {
-        num_erased[i] += 1;
-      }
-    }
 
-    std::vector<size_t> out_lod0(lod0.size(), 0);
-    for (size_t i = 1; i < lod0.size(); ++i) {
-      out_lod0[i] = lod0[i] - num_erased[lod0[i]];
+    std::vector<size_t> num_erased(in_len + 1, 0);
+    std::vector<size_t> out_lod0(1, 0);
+    for (size_t i = 0; i < lod0.size() - 1; ++i) {
+      size_t num_out = 0;
+      for (auto j = lod0[i] + 1; j <= lod0[i + 1]; ++j) {
+        num_erased[j] = num_erased[j - 1];
+        if (std::find(tokens.begin(), tokens.end(), in_dat[j - 1]) !=
+            tokens.end()) {
+          num_erased[j] += 1;
+        } else {
+          num_out += 1;
+        }
+      }
+      out_lod0.push_back(out_lod0.back() + num_out);
     }
 
     auto out_len = in_len - num_erased[in_len];

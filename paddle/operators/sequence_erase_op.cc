@@ -50,7 +50,7 @@ class SequenceEraseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Sequence Erase Operator.
 
-Sequence erase operator erases tokens specified by Attr(tokens) in the input 
+Sequence erase operator erases tokens specified by Attr(tokens) from the input 
 sequences Input(X), and outputs the remaining data and modifies the LoD 
 information at the same time. For example, given a 2-D LoDTensor
 

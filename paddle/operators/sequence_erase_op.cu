@@ -70,6 +70,8 @@ class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
 
     auto lod = in->lod();
     PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
+    PADDLE_ENFORCE_EQ(lod[0].back(), (size_t)in->numel(),
+                      "The actual size mismatches with the LoD information.");
     auto tokens = ctx.Attr<std::vector<T>>("tokens");
     auto tokens_len = tokens.size();
     auto in_len = in->numel();
