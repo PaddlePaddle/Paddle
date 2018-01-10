@@ -18,6 +18,7 @@ limitations under the License. */
 #include <thread>
 
 #include <unistd.h>
+#include <limits>
 
 #include "paddle/framework/executor.h"
 #include "paddle/framework/framework.pb.h"
@@ -52,6 +53,8 @@ void RunServer(Server **rpc_server,
   ServerBuilder builder;
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   builder.RegisterService(service.get());
+  builder.SetMaxSendMessageSize(std::numeric_limits<int>::max());
+  builder.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
   std::unique_ptr<Server> server(builder.BuildAndStart());
   *rpc_server = server.get();
   LOG(INFO) << "Server listening on " << server_address;
