@@ -202,30 +202,26 @@ static bool VarIsTensor(const Variable* var) {
   return var->IsType<LoDTensor>() || var->IsType<SelectedRows>();
 }
 
-static const Tensor* GetTensorFromVar(const Variable* var) {
-  const Tensor* t = nullptr;
+static const Tensor GetTensorFromVar(const Variable* var) {
   if (var->IsType<LoDTensor>()) {
-    t = &(var->Get<LoDTensor>());
+    return var->Get<LoDTensor>();
   } else if (var->IsType<SelectedRows>()) {
-    t = &(var->Get<SelectedRows>().value());
+    return var->Get<SelectedRows>().value();
   } else {
     PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
                  var->Type().name());
   }
-  return t;
 }
 
 static Tensor* GetMutableTensorFromVar(Variable* var) {
-  Tensor* t = nullptr;
   if (var->IsType<LoDTensor>()) {
-    t = var->GetMutable<LoDTensor>();
+    return var->GetMutable<LoDTensor>();
   } else if (var->IsType<SelectedRows>()) {
-    t = var->GetMutable<SelectedRows>()->mutable_value();
+    return var->GetMutable<SelectedRows>()->mutable_value();
   } else {
     PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
                  var->Type().name());
   }
-  return t;
 }
 
 template <>
@@ -468,10 +464,10 @@ void OperatorWithKernel::Run(const Scope& scope,
     for (auto& var_name : var_name_item.second) {
       auto* var = scope.FindVar(var_name);
       if (var && VarIsTensor(var)) {
-        auto* tensor_in = GetTensorFromVar(var);
-        if (tensor_in->IsInitialized()) {
+        auto tensor_in = GetTensorFromVar(var);
+        if (tensor_in.IsInitialized()) {
           auto kernel_type_for_var = this->GetKernelTypeForVar(
-              var_name_item.first, *tensor_in, expected_kernel_key);
+              var_name_item.first, tensor_in, expected_kernel_key);
           if (kernel_type_for_var != expected_kernel_key) {
             auto out_var_names = OutputVars(true);
             if (std::find(out_var_names.begin(), out_var_names.end(),
@@ -484,7 +480,7 @@ void OperatorWithKernel::Run(const Scope& scope,
             VLOG(3) << "need to do transform for var " << var_name;
             auto* trans_var = new_scope.Var(var_name);
             Tensor* out = nullptr;
-            DataTransform(expected_kernel_key, kernel_type_for_var, *tensor_in,
+            DataTransform(expected_kernel_key, kernel_type_for_var, tensor_in,
                           out);
             CopyVariableWithTensor(*var, *out, *trans_var);
           }
