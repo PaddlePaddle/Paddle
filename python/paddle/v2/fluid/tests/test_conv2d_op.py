@@ -49,6 +49,8 @@ def conv2d_forward_naive(input, filter, group, conv_param):
 
 class TestConv2dOp(OpTest):
     def setUp(self):
+        self.use_cudnn = True
+        self.init_op_type()
         self.init_group()
         self.init_dilation()
         self.init_test_case()
@@ -68,26 +70,39 @@ class TestConv2dOp(OpTest):
             'strides': self.stride,
             'paddings': self.pad,
             'groups': self.groups,
-            'dilations': self.dilations
+            'dilations': self.dilations,
+            'use_cudnn': self.use_cudnn
         }
         self.outputs = {'Output': output}
 
-        self.init_op_type()
-        self.attrs.update({"use_cudnn": True})
-
     def test_check_output(self):
-        self.check_output()
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-5)
+        else:
+            self.check_output()
 
     # def test_check_grad(self):
-    #     self.check_grad(
-    #         set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
+    #     if self.use_cudnn:
+    #         place = core.CUDAPlace(0)
+    #         self.check_grad_with_place(place, set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
+    #     else:
+    #         self.check_grad(
+    #             set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
 
     # def test_check_grad_no_filter(self):
-    #     self.check_grad(
-    #         ['Input'],
-    #         'Output',
-    #         max_relative_error=0.02,
-    #         no_grad_set=set(['Filter']))
+    #     if self.use_cudnn:
+    #         place = core.CUDAPlace(0)
+    #         self.check_grad_with_place(                ['Input'],
+    #             'Output',
+    #             max_relative_error=0.02,
+    #             no_grad_set=set(['Filter']))
+    #     else:
+    #         self.check_grad(
+    #             ['Input'],
+    #             'Output',
+    #             max_relative_error=0.02,
+    #             no_grad_set=set(['Filter']))
 
     # def test_check_grad_no_input(self):
     #     self.check_grad(
@@ -166,8 +181,8 @@ class TestConv2dOp(OpTest):
 #----------------Conv2dCUDNN----------------
 # class TestCUDNN(TestConv2dOp):
 #     def init_op_type(self):
+#         self.use_cudnn = True
 #         self.op_type = "conv2d"
-#         self.attrs.update({"use_cudnn": True})
 
 # class TestCUDNNWithPad(TestWithPad):
 #     def init_op_type(self):

@@ -347,6 +347,21 @@ class OpTest(unittest.TestCase):
                    in_place=False,
                    max_relative_error=0.005,
                    user_defined_grads=None):
+        places = [core.CPUPlace()]
+        if core.is_compile_gpu() and core.op_support_gpu(self.op_type):
+            places.append(core.CUDAPlace(0))
+        for place in places:
+            self.check_output_with_place(place, atol)
+
+    def check_grad_with_place(self,
+                              place,
+                              inputs_to_check,
+                              output_names,
+                              no_grad_set=None,
+                              numeric_grad_delta=0.005,
+                              in_place=False,
+                              max_relative_error=0.005,
+                              user_defined_grads=None):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
@@ -370,22 +385,12 @@ class OpTest(unittest.TestCase):
                 delta=numeric_grad_delta,
                 in_place=in_place) for input_to_check in inputs_to_check
         ]
-        cpu_place = core.CPUPlace()
-        cpu_analytic_grads = self._get_gradient(inputs_to_check, cpu_place,
-                                                output_names, no_grad_set)
+        analytic_grads = self._get_gradient(inputs_to_check, place,
+                                            output_names, no_grad_set)
 
-        self.__assert_is_close(numeric_grads, cpu_analytic_grads,
-                               inputs_to_check, max_relative_error,
+        self.__assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
+                               max_relative_error,
                                "Gradient Check On %s" % str(cpu_place))
-
-        if core.is_compile_gpu() and self.op.support_gpu():
-            gpu_place = core.CUDAPlace(0)
-            gpu_analytic_grads = self._get_gradient(inputs_to_check, gpu_place,
-                                                    output_names, no_grad_set)
-
-            self.__assert_is_close(numeric_grads, gpu_analytic_grads,
-                                   inputs_to_check, max_relative_error,
-                                   "Gradient Check On %s" % str(gpu_place))
 
     @staticmethod
     def _create_var_descs_(block, var_dict):

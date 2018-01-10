@@ -27,52 +27,6 @@ namespace framework {
 
 std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
 
-void UseCPU() {
-  kKernelPriority.clear();
-  /*Plain CPU*/
-  auto pair0 = std::make_tuple(platform::CPUPlace(), LibraryType::kPlain);
-  kKernelPriority.insert(kKernelPriority.begin(), pair0);
-}
-
-void UseMKLDNN() {
-  UseCPU();
-#if PADDLE_WITH_MKLML
-  {
-    /*MKLDNN Kernel*/
-    auto pair0 = std::make_tuple(platform::CPUPlace(), LibraryType::kMKLDNN);
-    kKernelPriority.insert(kKernelPriority.begin(), pair0);
-  }
-#endif
-}
-
-void UseCUDA() {
-  UseMKLDNN();
-#if PADDLE_WITH_CUDA
-  /*Plain GPU*/
-  auto pair0 = std::make_tuple(platform::CUDAPlace(0), LibraryType::kPlain);
-  kKernelPriority.insert(kKernelPriority.begin(), pair0);
-#endif
-}
-
-void UseCUDNN() {
-  UseCUDA();
-#if PADDLE_WITH_CUDA
-  if (platform::dynload::HasCUDNN()) {
-    /*CUDNN Kernel*/
-    auto pair0 = std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN);
-
-    kKernelPriority.insert(kKernelPriority.begin(), pair0);
-  }
-#endif
-}
-
-void UseALL() {
-  UseCPU();
-  UseMKLDNN();
-  UseCUDA();
-  UseCUDNN();
-}
-
 static DDim GetDims(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
@@ -495,21 +449,17 @@ void OperatorWithKernel::Run(const Scope& scope,
   }
 
   ExecutionContext ctx(*this, scope, *dev_ctx);
-  auto expected_kernel_key = this->GetExpectedKernelType(ctx);
 
   OpKernelMap& kernels = kernels_iter->second;
 
-  for (auto& candidate : kKernelPriority) {
-    auto candidate_key =
-        OpKernelType(expected_kernel_key.data_type_, std::get<0>(candidate),
-                     expected_kernel_key.data_layout_, std::get<1>(candidate));
+  // TODO(dzhwinter) : kernel fallback mechanism will be added when all the
+  // transform functions are ready.
 
-    if ((candidate_key == expected_kernel_key) ||
-        (kernels.count(candidate_key))) {
-      expected_kernel_key = candidate_key;
-      break;
-    }
-  }
+  // for (auto& candidate : kKernelPriority) {
+  //   Do selection
+  // }
+
+  auto expected_kernel_key = this->GetExpectedKernelType(ctx);
 
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
