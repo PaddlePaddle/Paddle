@@ -131,6 +131,6 @@ for pass_id in range(PASS_NUM):
             pass_acc))
         i = i + 1
         # this model is slow, so if we can train two mini batch, we think it works properly.
-        if i > 20:
+        if i > 2:
             exit(0)
 exit(1)
