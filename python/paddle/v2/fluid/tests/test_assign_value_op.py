@@ -22,16 +22,18 @@ class TestAssignValueOp(op_test.OpTest):
         self.check_output()
 
     def test_assign(self):
-        val = numpy.random.random(size=(2, 5)).astype(numpy.float32)
+        val = (
+            -100 + 200 * numpy.random.random(size=(2, 5))).astype(numpy.int32)
         x = layers.create_tensor(dtype="float32")
         layers.assign(input=val, output=x)
         exe = fluid.Executor(fluid.CPUPlace())
         fetched_x = exe.run(fluid.default_main_program(),
                             feed={},
-                            fetch_list=[x])
+                            fetch_list=[x])[0]
         self.assertTrue(
-            numpy.allclose(fetched_x, val),
+            numpy.array_equal(fetched_x, val),
             "fetch_x=%s val=%s" % (fetched_x, val))
+        self.assertEqual(fetched_x.dtype, val.dtype)
 
 
 if __name__ == '__main__':
