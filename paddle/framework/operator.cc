@@ -543,8 +543,14 @@ void OperatorWithKernel::Run(const Scope& scope,
 
   auto kernel_iter = kernels.find(expected_kernel_key);
 
-  kernel_iter->second->Compute(ExecutionContext(
-      *this, new_scope, *pool.Get(expected_kernel_key.place_)));
+  auto* new_dev_ctx = pool.Get(expected_kernel_key.place_);
+  kernel_iter->second->Compute(
+      ExecutionContext(*this, new_scope, *new_dev_ctx));
+
+  /*For profiling/benchmark only*/
+  if (FLAGS_op_sync) {
+    new_dev_ctx->Wait();
+  }
 }
 
 proto::DataType OperatorWithKernel::IndicateDataType(
