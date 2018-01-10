@@ -38,7 +38,6 @@ cc_library(data_layout_transform SRCS data_layout_transform.cc DEPS tensor math_
 
 cc_library(data_transform SRCS data_transform.cc DEPS math_function tensor
         framework_proto selected_rows device_data_transform data_type_transform data_layout_transform)
-cc_test(data_transform_test SRCS data_transform_test.cc DEPS data_transform device_context)
 
 cc_library(attribute SRCS attribute.cc DEPS framework_proto)
 cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc

@@ -13,21 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <functional>
 
-#include "paddle/framework/data_layout_transform.h"
 #include "paddle/framework/data_transform.h"
+
+#include "paddle/framework/data_layout_transform.h"
 #include "paddle/framework/data_type_transform.h"
 #include "paddle/framework/device_data_transform.h"
-#include "paddle/framework/lod_tensor.h"
-#include "paddle/framework/selected_rows.h"
-#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
-
-DataTransformFnMap& DataTransformFnMap::Instance() {
-  static DataTransformFnMap data_transform_map;
-  return data_transform_map;
-}
 
 Tensor* DataTransform(const OpKernelType& expected_kernel_type,
                       const OpKernelType& kernel_type_for_var,
@@ -60,49 +53,5 @@ void CopyVariableWithTensor(const Variable& in_var, const Tensor& tensor,
   }
 }
 
-auto KernelFP32 = OpKernelType(proto::DataType::FP32, platform::CPUPlace(),
-                               DataLayout::kNHWC, LibraryType::kPlain);
-
-auto KernelFP64 = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
-                               DataLayout::kNHWC, LibraryType::kPlain);
-
-auto KernelNHWC = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
-                               DataLayout::kNHWC, LibraryType::kPlain);
-
-auto KernelNCHW = OpKernelType(proto::DataType::FP64, platform::CPUPlace(),
-                               DataLayout::kNCHW, LibraryType::kPlain);
-
-// TODO(dzhwinter): Only for testing multiple op kernel.
-// Dummy transform function for library_type
-// should be removed.
-auto KernelPlain = OpKernelType(proto::DataType::FP32, platform::CUDAPlace(0),
-                                DataLayout::kAnyLayout, LibraryType::kPlain);
-
-auto KernelCUDNN = OpKernelType(proto::DataType::FP32, platform::CUDAPlace(0),
-                                DataLayout::kAnyLayout, LibraryType::kCUDNN);
-
 }  // namespace framework
 }  // namespace paddle
-
-namespace f = paddle::framework;
-
-namespace {
-std::vector<int> NHWC2NCHW = {0, 3, 1, 2};
-std::vector<int> NCHW2NHWC = {0, 2, 3, 1};
-}
-
-REGISTER_DATA_TRANSFORM_FN(f::KernelFP32, f::KernelFP64, f::TransDataType);
-REGISTER_DATA_TRANSFORM_FN(f::KernelPlain, f::KernelCUDNN, f::DummyTrans);
-REGISTER_DATA_TRANSFORM_FN(f::KernelCUDNN, f::KernelPlain, f::DummyTrans);
-REGISTER_DATA_TRANSFORM_FN(f::KernelNHWC, f::KernelNCHW,
-                           std::bind(f::TransDataLayout, NHWC2NCHW,
-                                     std::placeholders::_1,
-                                     std::placeholders::_2,
-                                     std::placeholders::_3,
-                                     std::placeholders::_4));
-REGISTER_DATA_TRANSFORM_FN(f::KernelNCHW, f::KernelNHWC,
-                           std::bind(f::TransDataLayout, NCHW2NHWC,
-                                     std::placeholders::_1,
-                                     std::placeholders::_2,
-                                     std::placeholders::_3,
-                                     std::placeholders::_4));
