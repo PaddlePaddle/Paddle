@@ -43,18 +43,30 @@ void InitGflags(std::vector<std::string> &argv) {
 bool InitDevices(const std::vector<std::string> &devices) {
   // device format
   // CPU
+  // MKLDNN
   // GPU:1
   // TODO(dzhwinter) : add device format annotation for users.
-  std::vector<platform::Place> places;
+  std::vector<std::pair<platform::Place, framework::LibraryType>> pairs;
   for (auto &device : devices) {
     auto p = string::Piece(device);
     if (string::HasPrefix(p, "CPU")) {
-      places.emplace_back(platform::CPUPlace());
+      pairs.emplace_back(
+          std::make_pair(platform::CPUPlace(), LibraryType::kPlain));
+    } else if (string::HasPrefix(p, "MKLDNN")) {
+#ifdef PADDLE_WITH_MKLDNN
+      pairs.emplace_back(
+          std::make_pair(platform::CPUPlace(), LibraryType::kMKLDNN));
+#else
+      LOG(WARNING)
+          << "'MKLDNN' is not supported, Please re-compile with WITH_MKL"
+             " option and make sure AVX2 and above is supported.";
+#endif
     } else if (string::HasPrefix(p, "GPU")) {
 #ifdef PADDLE_WITH_CUDA
       auto pos = string::RFind(p, ':', string::Piece::npos);
       auto number = device.substr(pos + 1);
-      places.emplace_back(platform::CUDAPlace(std::stoi(number)));
+      pairs.emplace_back(std::make_pair(platform::CUDAPlace(std::stoi(number))),
+                         LibraryType::kPlain);
 #else
       LOG(WARNING)
           << "'GPU' is not supported, Please re-compile with WITH_GPU option";
@@ -64,14 +76,16 @@ bool InitDevices(const std::vector<std::string> &devices) {
     }
   }
 
-  if (std::find_if(places.begin(), places.end(),
-                   [&](const platform::Place &place) {
-                     return platform::is_cpu_place(place);
-                   }) == places.end()) {
-    places.emplace_back(platform::CPUPlace());
+  if (std::find_if(pairs.begin(), pairs.end(),
+                   [&](const std::pair<platform::Place, LibraryType> &pair) {
+                     return platform::is_cpu_place(pair.first) &&
+                            pair.second == LibraryType::kPlain;
+                   }) == pairs.end()) {
+    pairs.emplace_back(
+        std::make_pair(platform::CPUPlace(), LibraryType::kPlain));
     LOG(WARNING) << "Not specified CPU device, create CPU by Default.";
   }
-  platform::DeviceContextPool::Init(places);
+  platform::DeviceContextPool::Init(pairs);
   framework::UseALL();
   return true;
 }

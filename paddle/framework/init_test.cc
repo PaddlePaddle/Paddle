@@ -28,4 +28,12 @@ TEST(Init, InitDevices) {
   std::vector<std::string> ds3 = {"GPU:0", "GPU:1"};
   ASSERT_EQ(InitDevices(ds3), true);
 #endif
+#ifdef PADDLE_WITH_MKLDNN
+  std::vector<std::string> ds4 = {"CPU", "MKLDNN"};
+  ASSERT_EQ(InitDevices(ds4), true);
+
+  // test re-init
+  std::vector<std::string> ds5 = {"MKLDNN"};
+  ASSERT_EQ(InitDevices(ds5), true);
+#endif
 }
