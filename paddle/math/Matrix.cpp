@@ -2015,13 +2015,6 @@ void CpuMatrix::maxPoolForward(Matrix& inputMat,
     CHECK_EQ(channels * outLength, maskMatP->getWidth());
   }
 
-  /* initialize the data_ */
-  for (size_t i = 0; i < height_; i++) {
-    for (size_t j = 0; j < width_; j++) {
-      outData[i * outStride + j] = -(real)FLT_MAX;
-    }
-  }
-
   /* pool max one by one */
   for (size_t n = 0; n < num; ++n) {  // frame by frame
     if (!isContiguous()) {
@@ -2030,19 +2023,24 @@ void CpuMatrix::maxPoolForward(Matrix& inputMat,
     for (size_t c = 0; c < channels; ++c) {  // channel by channel
       for (size_t ph = 0; ph < outputH; ++ph) {
         int hstart = ph * strideH - paddingH;
-        int hend = std::min(hstart + sizeY, imgSizeH);
-        hstart = std::max(hstart, 0);
+        int hend = hstart + sizeY;
+        hstart = hstart < 0 ? 0 : hstart;
+        hend = hend < (int)imgSizeH ? hend : (int)imgSizeH;
         for (size_t pw = 0; pw < outputW; ++pw) {
           int wstart = pw * strideW - paddingW;
-          int wend = std::min(wstart + sizeX, imgSizeW);
-          wstart = std::max(wstart, 0);
+          int wend = wstart + sizeX;
+          wstart = wstart < 0 ? 0 : wstart;
+          wend = wend < (int)imgSizeW ? wend : (int)imgSizeW;
           if (maskData == NULL) {
+            real tmp = -(real)FLT_MAX;
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {
-                outData[ph * outputW + pw] = std::max(
-                    outData[ph * outputW + pw], inputData[h * imgSizeW + w]);
+                tmp = tmp < inputData[h * imgSizeW + w]
+                          ? inputData[h * imgSizeW + w]
+                          : tmp;
               }
             }
+            outData[ph * outputW + pw] = tmp;
           } else {
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {
