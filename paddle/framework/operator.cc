@@ -16,7 +16,6 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/framework/data_transform.h"
-#include "paddle/framework/device_data_transform.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/shape_inference.h"

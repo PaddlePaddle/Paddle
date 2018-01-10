@@ -39,17 +39,19 @@ class GetPlacesOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::Place &place) const override {
-    std::string device_type = Attr<std::string>("device_type");
+    bool is_gpu;
+    if (Attr<std::string>("device_type") == "AUTO") {
+      is_gpu = platform::is_gpu_place(place);
+    } else {
+      is_gpu = Attr<std::string>("device_type") == "CUDA";
+    }
     auto device_count = static_cast<size_t>(Attr<int>("device_count"));
     if (device_count == 0) {
-      if (device_type == "CUDA") {
-        device_count = CUDADevCount();
-      } else if (device_type == "CPU") {
-        device_count = std::thread::hardware_concurrency();
-      }
+      device_count =
+          is_gpu ? CUDADevCount() : std::thread::hardware_concurrency();
     }
     PADDLE_ENFORCE_NE(device_count, 0, "Cannot indicate %s device count",
-                      device_type);
+                      is_gpu ? "GPU" : "CPU");
 
     auto out_var_name = Output("Out");
     auto &places =
@@ -57,14 +59,14 @@ class GetPlacesOp : public framework::OperatorBase {
                       "Output variable %s cannot be found", out_var_name)
               .GetMutable<platform::PlaceList>());
     places.reserve(device_count);
-    if (device_type == "CUDA") {
+    if (is_gpu) {
       PADDLE_ENFORCE_LE(device_count, CUDADevCount(),
                         "Only %d CUDA devices found, cannot set to %d",
                         CUDADevCount(), device_count);
       for (size_t i = 0; i < device_count; ++i) {
-        places.emplace_back(platform::CUDAPlace(i));
+        places.emplace_back(platform::CUDAPlace(static_cast<int>(i)));
       }
-    } else if (device_type == "CPU") {
+    } else {
       for (size_t i = 0; i < device_count; ++i) {
         places.emplace_back(platform::CPUPlace());
       }
@@ -77,10 +79,10 @@ class GetPlacesOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   GetPlacesOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddOutput("Out", "vector of Place");
-    AddAttr<int>("device_count", "device count").SetDefault(1);
-    AddAttr<std::string>("device_type",
-                         R"(device type must be in ["CPU", "CUDA"])")
-        .InEnum({"CPU", "CUDA"});
+    AddAttr<int>("device_count", "device count").SetDefault(0);
+    AddAttr<std::string>("device_type", "device type")
+        .InEnum({"CUDA", "CPU", "AUTO"})
+        .SetDefault("AUTO");
     AddComment(R"DOC(
 Returns a list of places based on flags. The list will be used for parallel
 execution.
@@ -111,4 +113,5 @@ class GetPlacesInferShape : public framework::InferShapeBase {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(get_places, ops::GetPlacesOp, ops::GetPlacesOpProtoMaker,
-                  ops::GetPlacesInferVarType, ops::GetPlacesInferShape);
+                  ops::GetPlacesInferVarType, ops::GetPlacesInferShape,
+                  paddle::framework::EmptyGradOpMaker);
