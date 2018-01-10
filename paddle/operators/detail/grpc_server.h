@@ -65,7 +65,7 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
 
  private:
   std::mutex cq_mutex_;
-  mutable bool is_shut_down_ = false;
+  volatile bool is_shut_down_ = false;
   std::unique_ptr<grpc::ServerCompletionQueue> cq_send_;
   std::unique_ptr<grpc::ServerCompletionQueue> cq_get_;
 

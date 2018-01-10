@@ -52,66 +52,69 @@ struct VarHandle {
 void ProcGetResponse(const VarHandle& var_h,
                      const sendrecv::VariableMessage& msg);
 
-struct ClientBase {
+class ClientBase {
+ public:
   explicit ClientBase(std::shared_ptr<grpc::Channel> ch) {
-    stub = sendrecv::SendRecvService::NewStub(ch);
-    context = NULL;
+    stub_ = sendrecv::SendRecvService::NewStub(ch);
+    context_ = NULL;
   }
 
   virtual ~ClientBase() {}
 
   virtual void Prepare(const VarHandle& var_info, int64_t time_out) {
-    context.reset(new grpc::ClientContext());
-    var_h = var_info;
+    context_.reset(new grpc::ClientContext());
+    var_h_ = var_info;
 
     std::chrono::system_clock::time_point deadline =
         std::chrono::system_clock::now() + std::chrono::milliseconds(time_out);
 
-    context->set_deadline(deadline);
+    context_->set_deadline(deadline);
   }
 
   virtual void Process() = 0;
 
-  std::unique_ptr<sendrecv::SendRecvService::Stub> stub;
-  std::unique_ptr<grpc::ClientContext> context;
-  grpc::Status status;
-  VarHandle var_h;
+  std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
+  std::unique_ptr<grpc::ClientContext> context_;
+  grpc::Status status_;
+  VarHandle var_h_;
 };
 
 typedef std::function<void(const VarHandle&, const sendrecv::VoidMessage&)>
     RequestSendCallBack;
 
-struct SendProcessor : public ClientBase {
+class SendProcessor : public ClientBase {
+ public:
   explicit SendProcessor(std::shared_ptr<grpc::Channel> ch) : ClientBase(ch) {}
 
   virtual ~SendProcessor() {}
 
   virtual void Process() {
-    if (response_call_back) {
-      response_call_back(var_h, reply);
+    if (response_call_back_) {
+      response_call_back_(var_h_, reply_);
     }
   }
 
-  sendrecv::VoidMessage reply;
-  RequestSendCallBack response_call_back = NULL;
+  sendrecv::VoidMessage reply_;
+  RequestSendCallBack response_call_back_ = NULL;
 };
 
 typedef std::function<void(const VarHandle&, const sendrecv::VariableMessage&)>
     RequestGetCallBack;
 
-struct GetProcessor : public ClientBase {
+class GetProcessor : public ClientBase {
+ public:
   explicit GetProcessor(std::shared_ptr<grpc::Channel> ch) : ClientBase(ch) {}
 
   virtual ~GetProcessor() {}
 
   virtual void Process() {
-    if (response_call_back) {
-      response_call_back(var_h, reply);
+    if (response_call_back_) {
+      response_call_back_(var_h_, reply_);
     }
   }
 
-  sendrecv::VariableMessage reply;
-  RequestGetCallBack response_call_back = ProcGetResponse;
+  sendrecv::VariableMessage reply_;
+  RequestGetCallBack response_call_back_ = ProcGetResponse;
 };
 
 class RPCClient {

@@ -37,10 +37,10 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
   auto ch = GetChannel(ep);
   SendProcessor* s = new SendProcessor(ch);
   s->Prepare(var_h, time_out);
-  s->response_call_back = NULL;
+  s->response_call_back_ = NULL;
 
-  auto rpc = s->stub->AsyncSendVariable(s->context.get(), req, &cq_);
-  rpc->Finish(&s->reply, &s->status, (void*)s);
+  auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
+  rpc->Finish(&s->reply_, &s->status_, (void*)s);
 
   req_count_++;
 
@@ -77,10 +77,10 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
   auto ch = GetChannel(ep);
   GetProcessor* s = new GetProcessor(ch);
   s->Prepare(var_h, time_out);
-  s->response_call_back = ProcGetResponse;
+  s->response_call_back_ = ProcGetResponse;
 
-  auto rpc = s->stub->AsyncGetVariable(s->context.get(), req, &cq_);
-  rpc->Finish(&s->reply, &s->status, (void*)s);
+  auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
+  rpc->Finish(&s->reply_, &s->status_, (void*)s);
 
   req_count_++;
 
@@ -119,7 +119,7 @@ bool RPCClient::Proceed() {
 
   // TODO(gongwb): add more retries.
   ClientBase* c = static_cast<ClientBase*>(tag);
-  if (!c->status.ok()) {
+  if (!c->status_.ok()) {
     delete c;
     return true;
   }

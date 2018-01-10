@@ -58,7 +58,6 @@ class RequestSend final : public RequestBase {
   virtual ~RequestSend() {}
 
   virtual void Process() {
-    // proc request.
     MessageWithName msg_with_name =
         std::make_pair(request_.varname(), std::move(request_));
     queue_->Push(std::move(msg_with_name));
@@ -135,10 +134,8 @@ void AsyncGRPCServer::ShutdownQueue() {
   is_shut_down_ = true;
 }
 
-/*
- * This URL explains why shutdown is complicate:
- * https://stackoverflow.com/questions/35708348/grpc-what-is-the-recommended-way-to-shut-down-an-asynchronous-server-in-c
- */
+// This URL explains why shutdown is complicate:
+// https://stackoverflow.com/questions/35708348/grpc-what-is-the-recommended-way-to-shut-down-an-asynchronous-server-in-c
 void AsyncGRPCServer::ShutDown() {
   server_->Shutdown();
   ShutdownQueue();
@@ -149,10 +146,9 @@ void AsyncGRPCServer::TryToRegisterNewSendOne() {
   if (is_shut_down_) {
     return;
   }
-  // base->RegisterNewOne();
   RequestSend* send =
       new RequestSend(&service_, cq_send_.get(), &var_recv_queue_);
-  VLOG(5) << "create RequestSend status:" << send->Status();
+  VLOG(4) << "create RequestSend status:" << send->Status();
 }
 
 void AsyncGRPCServer::TryToRegisterNewGetOne() {
@@ -160,9 +156,8 @@ void AsyncGRPCServer::TryToRegisterNewGetOne() {
   if (is_shut_down_) {
     return;
   }
-  // base->RegisterNewOne();
   RequestGet* get = new RequestGet(&service_, cq_get_.get(), scope_);
-  VLOG(5) << "create Requestget status:" << get->Status();
+  VLOG(4) << "create Requestget status:" << get->Status();
 }
 
 void AsyncGRPCServer::SetFinishOrDelete(RequestBase*& last) {
