@@ -24,9 +24,9 @@ class CrossChannelNormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const framework::Tensor* in_x = context.Input<framework::Tensor>("X");
-    const framework::Tensor* scale = context.Input<framework::Tensor>("Scale");
     auto* out = context.Output<framework::Tensor>("Out");
     auto epsilon = static_cast<T>(context.Attr<AttrType>("epsilon"));
+    auto scale = static_cast<T>(context.Attr<AttrType>("scale"));
     out->mutable_data<T>(context.GetPlace());
     int batch_size = in_x->dims()[0];
     int channels = in_x->dims()[1];
@@ -45,9 +45,6 @@ class CrossChannelNormKernel : public framework::OpKernel<T> {
         framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
             x_square, framework::make_ddim({batch_size, fea_len * channels}));
     x_square_eigen.device(*place) = x.square();
-    auto scale_eigen =
-        framework::EigenVector<T, Eigen::RowMajor, Eigen::DenseIndex>::Flatten(
-            *scale);
     for (int n = 0; n < batch_size; ++n) {
       framework::Tensor in_x_batch = in_x->Slice(n, n + 1);
       auto in_x_batch_eigen =
@@ -70,16 +67,12 @@ class CrossChannelNormKernel : public framework::OpKernel<T> {
       auto dim = Eigen::array<int, 1>({{0}});
       tmp.device(*place) = x_square_batch_eigen.sum(dim);
       tmp.device(*place) = (tmp + epsilon).sqrt().inverse();
-      Eigen::array<int, 2> broadcast_dim_col;
-      broadcast_dim_col[1] = 1;
-      broadcast_dim_col[0] = channels;
-      out_batch_eigen.device(*place) =
-          in_x_batch_eigen * (tmp.broadcast(broadcast_dim_col));
-      Eigen::array<int, 2> broadcast_dim_row;
-      broadcast_dim_row[1] = fea_len;
-      broadcast_dim_row[0] = 1;
-      out_batch_eigen.device(*place) =
-          out_batch_eigen * (scale_eigen.broadcast(broadcast_dim_row));
+      auto tmp_broadcast =
+          tmp.broadcast(
+                 Eigen::array<int, 2>({{static_cast<int>(in_x->dims()[1]), 1}}))
+              .reshape(Eigen::DSizes<int, 2>(channels, fea_len));
+      out_batch_eigen.device(*place) = in_x_batch_eigen * tmp_broadcast;
+      out_batch_eigen.device(*place) = out_batch_eigen * scale;
     }
   }
 };
@@ -88,10 +81,10 @@ class CrossChannelNormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const framework::Tensor* in_x = context.Input<framework::Tensor>("X");
-    const framework::Tensor* scale = context.Input<framework::Tensor>("Scale");
     const framework::Tensor* out_grad =
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto epsilon = static_cast<T>(context.Attr<AttrType>("epsilon"));
+    auto scale = static_cast<T>(context.Attr<AttrType>("scale"));
     framework::Tensor* in_x_grad =
         context.Output<framework::Tensor>(framework::GradVarName("X"));
     in_x_grad->mutable_data<T>(context.GetPlace());
@@ -102,10 +95,6 @@ class CrossChannelNormGradKernel : public framework::OpKernel<T> {
     int fea_len = height * width;
     auto* place =
         context.template device_context<DeviceContext>().eigen_device();
-
-    auto scale_eigen =
-        framework::EigenVector<T, Eigen::RowMajor, Eigen::DenseIndex>::Flatten(
-            *scale);
     auto x =
         framework::EigenMatrix<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
             *in_x, framework::make_ddim({batch_size, fea_len * channels}));
@@ -155,19 +144,20 @@ class CrossChannelNormGradKernel : public framework::OpKernel<T> {
       broadcast_dim_col[1] = 1;
       broadcast_dim_col[0] = channels;
       in_g_batch_eigen.device(*place) =
-          in_x_batch_eigen * tmp_eigen.broadcast(broadcast_dim_col);
+          in_x_batch_eigen *
+          (tmp_eigen.broadcast(broadcast_dim_col)
+               .reshape(Eigen::DSizes<int, 2>(channels, fea_len)));
       in_g_batch_eigen.device(*place) =
           in_g_batch_eigen /
-          (norm_tmp_eigen * norm_tmp_eigen).broadcast(broadcast_dim_col);
+          ((norm_tmp_eigen * norm_tmp_eigen)
+               .broadcast(broadcast_dim_col)
+               .reshape(Eigen::DSizes<int, 2>(channels, fea_len)));
       in_g_batch_eigen.device(*place) = outg_batch_eigen - in_g_batch_eigen;
-      // outg_batch_eigen + (in_g_batch_eigen * -1);
       in_g_batch_eigen.device(*place) =
-          in_g_batch_eigen / norm_tmp_eigen.broadcast(broadcast_dim_col);
-      Eigen::array<int, 2> broadcast_dim_row;
-      broadcast_dim_row[1] = fea_len;
-      broadcast_dim_row[0] = 1;
-      in_g_batch_eigen.device(*place) =
-          in_g_batch_eigen * (scale_eigen.broadcast(broadcast_dim_row));
+          in_g_batch_eigen /
+          (norm_tmp_eigen.broadcast(broadcast_dim_col)
+               .reshape(Eigen::DSizes<int, 2>(channels, fea_len)));
+      in_g_batch_eigen.device(*place) = in_g_batch_eigen * scale;
     }
   }
 };

@@ -33,12 +33,9 @@ class TestCrossChannelNormOp(OpTest):
         self.op_type = "cross_channel_norm"
         self.init_test_case()
         input = np.random.random(self.shape).astype("float32")
-        scale = np.array([10, 10, 10])
-        self.inputs = {
-            'X': input.astype('float32'),
-            'Scale': scale.astype('float32')
-        }
-        self.attrs = {'epsilon': self.epsilon}
+        scale = np.array([[10], [10], [10], [10]])
+        self.inputs = {'X': input.astype('float32'), }
+        self.attrs = {'epsilon': self.epsilon, 'scale': 10.0}
         output = norm(input, scale, self.epsilon)
         self.outputs = {'Out': output.astype('float32')}
 
@@ -46,10 +43,10 @@ class TestCrossChannelNormOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', max_relative_error=0.05)
 
     def init_test_case(self):
-        self.shape = [2, 3, 2, 2]
+        self.shape = [2, 4, 2, 2]
         self.epsilon = 1e-6
 
 

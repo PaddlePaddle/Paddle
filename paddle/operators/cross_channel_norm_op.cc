@@ -26,9 +26,7 @@ class CrossChannelNormOpMaker : public framework::OpProtoAndCheckerMaker {
         "(Tensor) The input tensor of cross_channel_norm operator. "
         "The format of input tensor is NCHW. Where N is batch size, C is the "
         "number of channels, H and W is the height and width of feature.");
-    AddInput("Scale",
-             "(Tensor) The input tensor of cross_channel_norm operator. "
-             "The format of input tensor is C * 1.");
+    AddAttr<AttrType>("scale", "(float), increase or reduce");
     AddAttr<AttrType>("epsilon",
                       "(float, default 1e-10) Constant "
                       "for numerical stability.")
@@ -61,9 +59,6 @@ class CrossChannelNormOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of CrossChannelNormOp"
-                   "should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Scale"),
-                   "Input(Scale) of CrossChannelNormOp"
                    "should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of CrossChannelNormOp should not be null.");
