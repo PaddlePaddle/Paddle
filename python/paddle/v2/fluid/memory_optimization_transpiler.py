@@ -128,7 +128,6 @@ class ControlFlowGraph(object):
                                         self.ops, x, cache_var, begin_idx=i)
                                     self._update_graph(
                                         x, cache_var, begin_idx=i)
-                                    self.global_block.var(str(x))
                                     break
 
             in_diff, out_diff = self._get_diff(self._live_in[i],
