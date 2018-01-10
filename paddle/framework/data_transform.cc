@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <functional>
 
+#include "paddle/framework/data_layout_transform.h"
 #include "paddle/framework/data_transform.h"
 #include "paddle/framework/data_type_transform.h"
 #include "paddle/framework/device_data_transform.h"
@@ -79,40 +80,6 @@ auto KernelPlain = OpKernelType(proto::DataType::FP32, platform::CUDAPlace(0),
 
 auto KernelCUDNN = OpKernelType(proto::DataType::FP32, platform::CUDAPlace(0),
                                 DataLayout::kAnyLayout, LibraryType::kCUDNN);
-
-void TransDataLayout(const std::vector<int>& axis,
-                     const platform::DeviceContext* ctx,
-                     const KernelTypePair& kernel_pair, const Variable& in,
-                     Variable* out) {
-  PADDLE_ENFORCE(in.IsType<Tensor>(), "Only support Tensor transform!.");
-  PADDLE_ENFORCE(
-      platform::places_are_same_class(kernel_pair.first.place_,
-                                      kernel_pair.second.place_),
-      "TransDataLayout only support DataLayout transform on same place!");
-  PADDLE_ENFORCE(kernel_pair.first.data_type_ == kernel_pair.second.data_type_,
-                 "TransDataLayout only support Datatype are same!");
-
-  auto src = in.Get<Tensor>();
-  auto* dst = out->GetMutable<Tensor>();
-  PADDLE_ENFORCE(arity(src.dims()) == 4, "Input Arity Only Suppport 4!");
-
-  auto src_dim = src.dims();
-  std::vector<int64_t> dst_dim;
-
-  dst_dim.resize(axis.size());
-  for (size_t i = 0; i < axis.size(); i++) {
-    dst_dim[i] = src_dim[axis[i]];
-  }
-
-  dst->Resize(make_ddim(dst_dim));
-  auto place = kernel_pair.second.place_;
-  dst->mutable_data(place, src.type());
-
-  auto src_type = kernel_pair.first.data_type_;
-  framework::VisitDataType(src_type, CastDataLayout(ctx, axis, src, dst));
-
-  dst->set_layout(kernel_pair.second.data_layout_);
-}
 
 }  // namespace framework
 }  // namespace paddle
