@@ -57,43 +57,6 @@ Tensor* DataTransform(const OpKernelType& expected_kernel_type,
 void CopyVariableWithTensor(const Variable& in_var, const Tensor& tensor,
                             Variable& out_var);
 
-template <typename InType, typename OutType>
-struct CastDataTypeFunctor {
-  HOSTDEVICE inline OutType operator()(InType in) const {
-    return static_cast<OutType>(in);
-  }
-};
-
-template <typename InType>
-struct CastDataType {
-  CastDataType(const framework::Tensor& in, framework::Tensor* out,
-               const platform::DeviceContext* ctx)
-      : in_(in), out_(out), ctx_(ctx) {}
-  const framework::Tensor in_;
-  framework::Tensor* out_;
-  const platform::DeviceContext* ctx_;
-
-  template <typename OutType>
-  void operator()() {
-    auto place = ctx_->GetPlace();
-
-    auto* in_begin = in_.data<InType>();
-    auto numel = in_.numel();
-    auto* in_end = in_begin + numel;
-    auto* out_begin = out_->mutable_data<OutType>(place);
-
-    if (platform::is_cpu_place(place)) {
-      platform::Transform<platform::CPUDeviceContext> trans;
-      auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
-      trans(*context, in_begin, in_end, out_begin,
-            CastDataTypeFunctor<InType, OutType>());
-    } else {
-      // TODO(dzhwinter): enhance Copy CPU<->GPU with different data type?
-      PADDLE_THROW("Unsupport CPU <-> GPU!");
-    }
-  }
-};
-
 struct CastDataLayout {
   CastDataLayout(const platform::DeviceContext* ctx,
                  const std::vector<int>& axis, const framework::Tensor& in,

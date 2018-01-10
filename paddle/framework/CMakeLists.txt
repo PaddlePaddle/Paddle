@@ -33,8 +33,9 @@ cc_library(scope SRCS scope.cc DEPS glog threadpool)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)
 
 cc_library(device_data_transform SRCS device_data_transform.cc DEPS tensor)
+cc_library(data_type_transform SRCS data_type_transform.cc DEPS tensor)
 
-cc_library(data_transform SRCS data_transform.cc DEPS math_function tensor framework_proto selected_rows device_data_transform)
+cc_library(data_transform SRCS data_transform.cc DEPS math_function tensor framework_proto selected_rows device_data_transform data_type_transform)
 cc_test(data_transform_test SRCS data_transform_test.cc DEPS data_transform device_context)
 
 cc_library(attribute SRCS attribute.cc DEPS framework_proto)

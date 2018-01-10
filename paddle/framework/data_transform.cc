@@ -14,6 +14,7 @@ limitations under the License. */
 #include <functional>
 
 #include "paddle/framework/data_transform.h"
+#include "paddle/framework/data_type_transform.h"
 #include "paddle/framework/device_data_transform.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/selected_rows.h"
@@ -78,57 +79,6 @@ auto KernelPlain = OpKernelType(proto::DataType::FP32, platform::CUDAPlace(0),
 
 auto KernelCUDNN = OpKernelType(proto::DataType::FP32, platform::CUDAPlace(0),
                                 DataLayout::kAnyLayout, LibraryType::kCUDNN);
-
-void DummyTrans(const platform::DeviceContext* ctx,
-                const KernelTypePair& kernel_pair, const Variable& in,
-                Variable* out) {
-  PADDLE_ENFORCE(in.IsType<Tensor>(), "Only Support Tensor transform!.");
-  PADDLE_ENFORCE(
-      platform::places_are_same_class(kernel_pair.first.place_,
-                                      kernel_pair.second.place_),
-      "TransDataType Only Support DataType transform on same place!");
-  auto src = in.Get<Tensor>();
-  auto* dst = out->GetMutable<Tensor>();
-  *dst = src;
-}
-
-void TransDataType(const platform::DeviceContext* ctx,
-                   const KernelTypePair& kernel_pair, const Variable& in,
-                   Variable* out) {
-  PADDLE_ENFORCE(in.IsType<Tensor>(), "Only Support Tensor transform!.");
-  PADDLE_ENFORCE(
-      platform::places_are_same_class(kernel_pair.first.place_,
-                                      kernel_pair.second.place_),
-      "TransDataType Only Support DataType transform on same place!");
-
-  auto src = in.Get<Tensor>();
-  auto* dst = out->GetMutable<Tensor>();
-
-  auto dims = src.dims();
-  dst->Resize(dims);
-  auto dst_type = kernel_pair.second.data_type_;
-  auto src_type = kernel_pair.first.data_type_;
-
-  switch (src_type) {
-    case proto::DataType::FP32:
-      framework::VisitDataType(dst_type, CastDataType<float>(src, dst, ctx));
-      break;
-    case proto::DataType::FP64:
-      framework::VisitDataType(dst_type, CastDataType<double>(src, dst, ctx));
-      break;
-    case proto::DataType::INT32:
-      framework::VisitDataType(dst_type, CastDataType<int>(src, dst, ctx));
-      break;
-    case proto::DataType::INT64:
-      framework::VisitDataType(dst_type, CastDataType<int64_t>(src, dst, ctx));
-      break;
-    case proto::DataType::BOOL:
-      framework::VisitDataType(dst_type, CastDataType<bool>(src, dst, ctx));
-      break;
-    default:
-      PADDLE_THROW("Not support type %d", src_type);
-  }
-}
 
 void TransDataLayout(const std::vector<int>& axis,
                      const platform::DeviceContext* ctx,
