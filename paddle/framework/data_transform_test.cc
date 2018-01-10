@@ -113,7 +113,7 @@ TEST(DataTransform, DataLayout) {
   auto& instance = DataTransformFnMap::Instance();
   Variable in;
   Variable out;
-  Tensor* src = in.GetMutable<Tensor>();
+  LoDTensor* src = in.GetMutable<LoDTensor>();
   src->mutable_data<double>(make_ddim({2, 3, 1, 2}), CPUPlace());
   src->set_layout(DataLayout::kNHWC);
 
@@ -126,7 +126,7 @@ TEST(DataTransform, DataLayout) {
     instance.Get(pair0)(ctx, pair0, in, &out);
   }
 
-  Tensor dst = out.Get<Tensor>();
+  LoDTensor dst = out.Get<LoDTensor>();
 
   EXPECT_TRUE(dst.layout() == DataLayout::kNCHW);
   EXPECT_TRUE(dst.dims() == make_ddim({2, 2, 3, 1}));
@@ -151,7 +151,7 @@ TEST(DataTransform, DataType) {
 
   Variable in;
   Variable out;
-  Tensor* src = in.GetMutable<Tensor>();
+  LoDTensor* src = in.GetMutable<LoDTensor>();
   float* ptr = src->mutable_data<float>(make_ddim({2, 3}), CPUPlace());
   for (int i = 0; i < 6; ++i) {
     ptr[i] = i / 3;
@@ -163,6 +163,6 @@ TEST(DataTransform, DataType) {
     auto pair0 = std::make_pair(kernel1, kernel2);
     instance.Get(pair0)(ctx, pair0, in, &out);
   }
-  Tensor dst = out.Get<Tensor>();
+  LoDTensor dst = out.Get<LoDTensor>();
   EXPECT_TRUE(dst.data<double>() != nullptr);
 }
