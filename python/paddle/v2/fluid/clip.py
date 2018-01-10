@@ -3,7 +3,8 @@ import layers
 from . import core
 
 __all__ = [
-    'GradientClipByValue', 'append_gradient_clip_ops', 'error_clip_callback'
+    'GradientClipByValue', 'ErrorClipByValue', 'append_gradient_clip_ops',
+    'error_clip_callback'
 ]
 
 
@@ -23,12 +24,12 @@ class ErrorClipByValue(BaseErrorClipAttr):
         self.min = min
 
     def append_clip_op(self, block, grad_name):
-        block.append_op(
-            type="clip",
-            inputs={"X": grad_name},
-            outputs={"Out": grad_name},
-            attrs={"min": self.min,
-                   "max": self.max})
+        clip_op_desc = block.desc.append_op()
+        clip_op_desc.set_type("clip")
+        clip_op_desc.set_input("X", [grad_name])
+        clip_op_desc.set_output("Out", [grad_name])
+        clip_op_desc.set_attr("min", self.min)
+        clip_op_desc.set_attr("max", self.max)
 
 
 def error_clip_callback(block, context):
