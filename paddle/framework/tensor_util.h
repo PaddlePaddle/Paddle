@@ -31,9 +31,10 @@ namespace framework {
  *
  * @note    Copy supports CPU <-> GPU, GPU <-> GPU.
  */
-
 inline void Copy(const Tensor& src, const platform::Place& dst_place,
                  const platform::DeviceContext& ctx, Tensor* dst) {
+  VLOG(3) << "Copy " << src.dims() << " from " << src.place() << " to "
+          << dst_place;
   src.check_memory_size();
 
   dst->Resize(src.dims());
@@ -88,26 +89,25 @@ inline void Copy(const Tensor& src, const platform::Place& dst_place,
 }
 
 /**
- * @brief Copy supports CPU <-> CPU
+ * @brief Wrapper on
+ *     Copy(const Tensor& src, const platform::Place& dst_place,
+ *              const platform::DeviceContext& ctx, Tensor* dst);
+ *
+ * @param[in] src        The external tensor.
+ * @param[in] dst_place  The dst place.
+ *
+ * @note    Copy supports CPU <-> GPU, GPU <-> GPU.
  */
 inline void Copy(const Tensor& src, const platform::Place& dst_place,
                  Tensor* dst) {
-  src.check_memory_size();
-  dst->Resize(src.dims());
-  dst->set_layout(src.layout());
-
-  auto src_place = src.place();
-  auto src_ptr = src.data<void>();
-
-  auto dst_ptr = dst->mutable_data(dst_place, src.type());
-
-  auto size = src.numel() * SizeOfType(src.type());
-
-  PADDLE_ENFORCE(platform::is_cpu_place(src_place) &&
-                 platform::is_cpu_place(dst_place));
-
-  memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
-               boost::get<platform::CPUPlace>(src_place), src_ptr, size);
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  const platform::DeviceContext* dev_ctx;
+  if (platform::is_gpu_place(src.place())) {
+    dev_ctx = pool.Get(src.place());
+  } else {
+    dev_ctx = pool.Get(dst_place);
+  }
+  Copy(src, dst_place, *dev_ctx, dst);
 }
 
 /**

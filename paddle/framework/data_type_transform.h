@@ -14,28 +14,18 @@ limitations under the License. */
 
 #pragma once
 
-#include <functional>
-#include <utility>
-#include <vector>
-
 #include "paddle/framework/op_kernel_type.h"
-#include "paddle/framework/selected_rows.h"
-#include "paddle/framework/tensor.h"
 #include "paddle/framework/variable.h"
-#include "paddle/operators/math/math_function.h"
 #include "paddle/platform/device_context.h"
-#include "paddle/platform/macros.h"
-#include "paddle/platform/transform.h"
 
 namespace paddle {
 namespace framework {
 
-Tensor* DataTransform(const OpKernelType& expected_kernel_type,
-                      const OpKernelType& kernel_type_for_var,
-                      const Tensor& input_tensor);
+using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 
-void CopyVariableWithTensor(const Variable& in_var, const Tensor& tensor,
-                            Variable& out_var);
+void TransDataType(const platform::DeviceContext* ctx,
+                   const KernelTypePair& kernel_pair, const Variable& in,
+                   Variable* out);
 
 }  // namespace framework
 }  // namespace paddle
