@@ -17,17 +17,11 @@ limitations under the License. */
 #include "paddle/framework/op_kernel_type.h"
 #include "paddle/framework/variable.h"
 #include "paddle/platform/device_context.h"
-#include "paddle/platform/macros.h"
-#include "paddle/platform/transform.h"
 
 namespace paddle {
 namespace framework {
 
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
-
-void DummyTrans(const platform::DeviceContext* ctx,
-                const KernelTypePair& kernel_pair, const Variable& in,
-                Variable* out);
 
 void TransDataType(const platform::DeviceContext* ctx,
                    const KernelTypePair& kernel_pair, const Variable& in,

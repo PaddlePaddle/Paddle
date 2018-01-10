@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/framework/tensor.h"
 #include "paddle/operators/math/math_function.h"
-#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace framework {

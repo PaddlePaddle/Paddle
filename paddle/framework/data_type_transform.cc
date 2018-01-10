@@ -13,13 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/data_type_transform.h"
-#include "paddle/framework/op_kernel_type.h"
+
 #include "paddle/framework/selected_rows.h"
-#include "paddle/framework/tensor.h"
-#include "paddle/framework/variable.h"
-#include "paddle/operators/math/math_function.h"
-#include "paddle/platform/device_context.h"
-#include "paddle/platform/macros.h"
 #include "paddle/platform/transform.h"
 
 namespace paddle {
@@ -61,19 +56,6 @@ struct CastDataType {
     }
   }
 };
-
-void DummyTrans(const platform::DeviceContext* ctx,
-                const KernelTypePair& kernel_pair, const Variable& in,
-                Variable* out) {
-  PADDLE_ENFORCE(in.IsType<Tensor>(), "Only Support Tensor transform!.");
-  PADDLE_ENFORCE(
-      platform::places_are_same_class(kernel_pair.first.place_,
-                                      kernel_pair.second.place_),
-      "TransDataType Only Support DataType transform on same place!");
-  auto src = in.Get<Tensor>();
-  auto* dst = out->GetMutable<Tensor>();
-  *dst = src;
-}
 
 void TransDataType(const platform::DeviceContext* ctx,
                    const KernelTypePair& kernel_pair, const Variable& in,

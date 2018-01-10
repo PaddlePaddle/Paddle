@@ -11,13 +11,10 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include <functional>
 
 #include "paddle/framework/data_transform.h"
 
 #include "paddle/framework/data_device_transform.h"
-#include "paddle/framework/data_layout_transform.h"
-#include "paddle/framework/data_type_transform.h"
 
 namespace paddle {
 namespace framework {
