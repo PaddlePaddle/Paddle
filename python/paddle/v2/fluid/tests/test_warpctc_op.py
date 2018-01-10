@@ -185,16 +185,14 @@ class TestWarpCTCOp(OpTest):
             "Logits": (logits, logits_lod),
             "Label": (labels, labels_lod)
         }
-        self.outputs = {"Loss": loss}
+        self.outputs = {"Loss": loss, "WarpCTCGrad": gradient}
         self.attrs = {"blank": blank, "norm_by_times": norm_by_times}
 
-    def test_check_output(self):
-        self.check_output()
+#    def test_check_output(self):
+#        self.check_output()
 
-
-#    def test_check_grad(self):
-#        self.outputs["WarpCTCGrad"] = None
-#        self.check_grad(["Logits"], "Loss", max_relative_error=0.01)
+    def test_check_grad(self):
+        self.check_grad(["Logits"], "Loss", max_relative_error=0.01)
 
 if __name__ == "__main__":
     unittest.main()
