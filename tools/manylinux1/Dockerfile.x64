@@ -39,8 +39,6 @@ RUN yum install -y sqlite-devel zlib-devel openssl-devel boost boost-devel pcre-
 
 RUN wget -O /root/requirements.txt https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt
 
-COPY ./root/ /root/
-
 RUN LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH} /opt/python/cp27-cp27mu/bin/pip install -r /root/requirements.txt && \
     LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs2/lib:${LD_LIBRARY_PATH} /opt/python/cp27-cp27m/bin/pip install -r /root/requirements.txt && \
     go get github.com/Masterminds/glide && \
