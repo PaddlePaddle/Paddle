@@ -35,13 +35,15 @@ __all__ = [
 ]
 
 
-def create_tensor(dtype, name=None):
+def create_tensor(dtype, name=None, persistable=False):
     helper = LayerHelper("create_tensor", **locals())
-    return helper.create_variable(name=helper.name, dtype=dtype)
+    return helper.create_variable(
+        name=helper.name, dtype=dtype, persistable=persistable)
 
 
 def create_parameter(shape,
                      dtype,
+                     name=None,
                      attr=None,
                      is_bias=False,
                      default_initializer=None):
@@ -62,7 +64,7 @@ def create_parameter(shape,
     """
     helper = LayerHelper("create_parameter", **locals())
     if attr is None:
-        attr = ParamAttr()
+        attr = ParamAttr(name=name)
     return helper.create_parameter(attr, shape, dtype, is_bias,
                                    default_initializer)
 
