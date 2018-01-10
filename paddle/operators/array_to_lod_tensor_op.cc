@@ -106,11 +106,12 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
         }
         auto slice = out->Slice(out_offset, out_offset + len);
 
-        platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-        auto &dev_ctx = *pool.Borrow(place);
+        platform::DeviceContextPool &pool =
+            platform::DeviceContextPool::Instance();
+        auto &dev_ctx = *pool.Get(place);
 
-        framework::CopyFrom(x[x_idx].Slice(start_offset, end_offset), place,
-                            dev_ctx, &slice);
+        framework::Copy(x[x_idx].Slice(start_offset, end_offset), place,
+                        dev_ctx, &slice);
         out_offset += len;
       }
     }

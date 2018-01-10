@@ -11,14 +11,14 @@ PaddlePaddle可以使用常用的Python包管理工具
 ------------------------------
 
 
-执行下面的命令即可在当前机器上安装PaddlePaddle的运行时环境，并自动下载安装依赖软件。
+执行下面的命令即可在当前机器上安装PaddlePaddle的运行时环境，并自动下载安装依赖软件，版本为cpu_avx_openblas。
 
   .. code-block:: bash
 
      pip install paddlepaddle
 
 
-如果需要安装支持GPU的版本，需要执行：
+如果需要安装支持GPU的版本（cuda7.5_cudnn5_avx_openblas），需要执行：
 
   .. code-block:: bash
 

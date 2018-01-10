@@ -37,11 +37,11 @@ class SumKernel : public framework::OpKernel<T> {
     bool in_place = out_var == in_vars[0];
 
     if (out_var->IsType<framework::LoDTensor>()) {
-      auto *out = context.Output<Tensor>("Out");
-      out->mutable_data<T>(context.GetPlace());
-
+      auto *out = context.Output<LoDTensor>("Out");
+      if (!in_place) {
+        out->mutable_data<T>(context.GetPlace());
+      }
       auto result = EigenVector<T>::Flatten(*out);
-
       if (!in_place) {
         math::SetConstant<DeviceContext, T> constant_functor;
         constant_functor(context.template device_context<DeviceContext>(), out,
@@ -70,6 +70,7 @@ class SumKernel : public framework::OpKernel<T> {
     } else if (out_var->IsType<framework::SelectedRows>()) {
       PADDLE_ENFORCE(!in_place, "SelectedRows not support inplace sum now");
       auto *out = context.Output<SelectedRows>("Out");
+      out->mutable_rows()->clear();
       auto *out_value = out->mutable_value();
 
       // Runtime InferShape
@@ -107,8 +108,8 @@ class SumKernel : public framework::OpKernel<T> {
               out_array.resize(i + 1);
             }
             if (out_array[i].numel() == 0) {
-              framework::CopyFrom(in_array[i], in_array[i].place(),
-                                  context.device_context(), &out_array[i]);
+              framework::Copy(in_array[i], in_array[i].place(),
+                              context.device_context(), &out_array[i]);
               out_array[i].set_lod(in_array[i].lod());
             } else {
               PADDLE_ENFORCE(out_array[i].lod() == in_array[i].lod());

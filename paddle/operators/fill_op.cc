@@ -69,9 +69,10 @@ class FillOp : public framework::OperatorBase {
 
     if (!force_cpu && platform::is_gpu_place(place)) {
       // Copy tensor to out
-      platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-      auto &dev_ctx = *pool.Borrow(place);
-      framework::CopyFrom(tensor, place, dev_ctx, &out);
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto &dev_ctx = *pool.Get(place);
+      framework::Copy(tensor, place, dev_ctx, &out);
     }
   }
 };
