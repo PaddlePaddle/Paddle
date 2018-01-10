@@ -147,8 +147,8 @@ LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
   for (size_t ins = 0; ins < num_instances; ins++) {
     for (size_t elem = lod_level[ins]; elem < lod_level[ins + 1]; elem++) {
       auto slice = tensor.Slice(elem, elem + 1);
-      CopyFrom(source.Slice(ins, ins + 1), platform::CPUPlace(),
-               platform::CPUDeviceContext(), &slice);
+      Copy(source.Slice(ins, ins + 1), platform::CPUPlace(),
+           platform::CPUDeviceContext(), &slice);
     }
   }
   return tensor;

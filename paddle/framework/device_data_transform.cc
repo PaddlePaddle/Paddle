@@ -37,7 +37,7 @@ Tensor* DeviceTransform(const Tensor& in, const platform::Place& dst_place) {
   Tensor* out = new Tensor();
   auto* dev_ctx = GetDeviceContext(in.place(), dst_place);
   dev_ctx->Wait();
-  CopyFrom(in, dst_place, *dev_ctx, out);
+  Copy(in, dst_place, *dev_ctx, out);
   dev_ctx->Wait();
   return out;
 }
