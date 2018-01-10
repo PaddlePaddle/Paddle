@@ -44,6 +44,9 @@ TEST(BuddyAllocator, CPUAllocation) {
 
   EXPECT_NE(p, nullptr);
 
+  paddle::platform::Place place = cpu;
+  EXPECT_EQ(paddle::memory::Used(cpu), paddle::memory::memory_usage(place));
+
   paddle::memory::Free(cpu, p);
 }
 
@@ -82,7 +85,7 @@ TEST(BuddyAllocator, CPUMultAlloc) {
 
 #ifdef PADDLE_WITH_CUDA
 
-size_t align(size_t size, paddle::platform::GPUPlace place) {
+size_t align(size_t size, paddle::platform::CUDAPlace place) {
   size += sizeof(paddle::memory::detail::Metadata);
   size_t alignment = paddle::platform::GpuMinChunkSize();
   size_t remaining = size % alignment;
@@ -94,16 +97,19 @@ TEST(BuddyAllocator, GPUAllocation) {
 
   EXPECT_EQ(p, nullptr);
 
-  paddle::platform::GPUPlace gpu(0);
+  paddle::platform::CUDAPlace gpu(0);
   p = paddle::memory::Alloc(gpu, 4096);
 
   EXPECT_NE(p, nullptr);
+
+  paddle::platform::Place place = gpu;
+  EXPECT_EQ(paddle::memory::Used(gpu), paddle::memory::memory_usage(place));
 
   paddle::memory::Free(gpu, p);
 }
 
 TEST(BuddyAllocator, GPUMultAlloc) {
-  paddle::platform::GPUPlace gpu;
+  paddle::platform::CUDAPlace gpu;
 
   std::unordered_map<void *, size_t> ps;
 

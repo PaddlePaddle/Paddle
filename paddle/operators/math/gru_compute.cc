@@ -21,9 +21,9 @@ namespace math {
 template <typename T>
 struct GRUUnitFunctor<platform::CPUDeviceContext, T> {
   static void compute(const platform::CPUDeviceContext &context,
-                      hl_gru_value<T> value, int frame_size, int batch_size,
-                      activation_mode_t active_node,
-                      activation_mode_t active_gate) {
+                      GRUMetaValue<T> value, int frame_size, int batch_size,
+                      const detail::ActivationType active_node,
+                      const detail::ActivationType active_gate) {
 #ifndef __NVCC__
     if (value.prev_out_value) {
       math::gemm<platform::CPUDeviceContext, T>(
@@ -51,10 +51,10 @@ struct GRUUnitFunctor<platform::CPUDeviceContext, T> {
 template <typename T>
 struct GRUUnitGradFunctor<platform::CPUDeviceContext, T> {
   static void compute(const platform::CPUDeviceContext &context,
-                      hl_gru_value<T> value, hl_gru_grad<T> grad,
+                      GRUMetaValue<T> value, GRUMetaGrad<T> grad,
                       int frame_size, int batch_size,
-                      activation_mode_t active_node,
-                      activation_mode_t active_gate) {
+                      const detail::ActivationType active_node,
+                      const detail::ActivationType active_gate) {
 #ifndef __NVCC__
     detail::backward_state_grad(detail::backward::gru_stateGrad<T>(), value,
                                 grad, frame_size, batch_size, active_node);

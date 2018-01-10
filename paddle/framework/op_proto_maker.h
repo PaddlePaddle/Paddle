@@ -22,6 +22,8 @@ namespace framework {
 // this class not only make proto but also init attribute checkers.
 class OpProtoAndCheckerMaker {
  public:
+  using OpProto = proto::OpProto;
+  using OpAttrChecker = framework::OpAttrChecker;
   OpProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
       : proto_(proto), op_checker_(op_checker) {}
 
@@ -80,7 +82,7 @@ class OpProtoAndCheckerMaker {
 
 class NOPMaker : public OpProtoAndCheckerMaker {
  public:
-  NOPMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  NOPMaker(OpProto* proto, framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {}
 };
 

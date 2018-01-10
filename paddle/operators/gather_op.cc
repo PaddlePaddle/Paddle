@@ -40,7 +40,7 @@ class GatherOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()),
@@ -57,7 +57,7 @@ class GatherGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()),
@@ -67,7 +67,7 @@ class GatherGradOp : public framework::OperatorWithKernel {
 
 class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  GatherOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  GatherOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The source input of gather op");
     AddInput("Index", "The index input of gather op");

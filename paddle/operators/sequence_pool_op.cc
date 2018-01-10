@@ -37,8 +37,7 @@ class SequencePoolOp : public framework::OperatorWithKernel {
 
 class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequencePoolOpMaker(framework::OpProto* proto,
-                      framework::OpAttrChecker* op_checker)
+  SequencePoolOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(LoDTensor) The variable-length input of SequencePoolOp");
     AddOutput("Out",
@@ -50,7 +49,7 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddAttr<std::string>(
         "pooltype",
-        "(int, default AVERAGE) the pooling pooltype of SequencePoolOp.")
+        "(string, default 'AVERAGE') the pooling pooltype of SequencePoolOp.")
         .SetDefault("AVERAGE")
         .InEnum({"AVERAGE", "SUM", "SQRT", "LAST", "FIRST", "MAX"});
     AddComment(R"DOC(
@@ -108,7 +107,7 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()),

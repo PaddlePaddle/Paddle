@@ -65,9 +65,9 @@ class NetOp : public framework::OperatorBase {
    * will be used.
    */
   void Run(const framework::Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override {
+           const platform::Place& place) const override {
     for (auto& op : ops_) {
-      op->Run(scope, dev_ctx);
+      op->Run(scope, place);
     }
   }
 
@@ -106,7 +106,8 @@ class NetOp : public framework::OperatorBase {
 
   void CompleteAddOp(bool calculate = true);
 
-  std::string DebugString() const override;
+  std::string DebugStringEx(
+      const framework::Scope* scope = nullptr) const override;
 
   bool IsNetOp() const override;
   std::vector<std::string> OutputVars(bool has_intermediate) const override;

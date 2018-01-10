@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/op_registry.h"
@@ -28,7 +28,7 @@ class MaxSeqenceLenOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &dev_place) const override {
     auto &rank_table =
         scope.FindVar(Input("RankTable"))->Get<framework::LoDRankTable>();
     auto *out =
@@ -40,8 +40,7 @@ class MaxSeqenceLenOp : public framework::OperatorBase {
 
 class MaxSeqenceLenOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MaxSeqenceLenOpProtoMaker(framework::OpProto *proto,
-                            framework::OpAttrChecker *op_checker)
+  MaxSeqenceLenOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("RankTable", "The lod_rank_table.");
     AddOutput("Out", "The max sequence length.");

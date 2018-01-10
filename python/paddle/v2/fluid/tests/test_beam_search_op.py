@@ -14,7 +14,6 @@ def create_tensor(scope, name, np_data):
 class BeamSearchOpTester(unittest.TestCase):
     def setUp(self):
         self.scope = core.Scope()
-        self.ctx = core.DeviceContext.create(core.CPUPlace())
         self._create_ids()
         self._create_scores()
         self._create_pre_ids()
@@ -32,7 +31,7 @@ class BeamSearchOpTester(unittest.TestCase):
             level=0,
             beam_size=2,
             end_id=0, )
-        op.run(self.scope, self.ctx)
+        op.run(self.scope, core.CPUPlace())
         selected_ids = self.scope.find_var("selected_ids").get_tensor()
         print 'selected_ids', np.array(selected_ids)
         print 'lod', selected_ids.lod()

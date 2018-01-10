@@ -39,7 +39,7 @@ class AucOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("Out")->type()),
@@ -49,7 +49,7 @@ class AucOp : public framework::OperatorWithKernel {
 
 class AucOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AucOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  AucOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Out",
              "A floating point 2D tensor, values are in the range [0, 1]."

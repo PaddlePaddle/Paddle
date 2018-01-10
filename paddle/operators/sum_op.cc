@@ -29,7 +29,7 @@ class SumOp : public framework::OperatorWithKernel {
                    "Output(Out) of SumOp should not be null.");
     if (ctx->IsRuntime() &&
         ctx->GetOutputsVarType("Out")[0] ==
-            framework::VarDesc::LOD_TENSOR_ARRAY) {
+            framework::proto::VarDesc::LOD_TENSOR_ARRAY) {
       return;  // skip runtime infershape when is tensor array;
     }
 
@@ -53,7 +53,7 @@ class SumOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto x_vars = ctx.MultiInputVar("X");
     if (x_vars[0]->IsType<framework::LoDTensor>()) {
@@ -72,8 +72,8 @@ class SumOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_NE(dtype, -1,
                         "Sum operator should have at least one tensor");
 
-      return framework::OpKernelType(static_cast<framework::DataType>(dtype),
-                                     ctx.device_context());
+      return framework::OpKernelType(
+          static_cast<framework::proto::DataType>(dtype), ctx.device_context());
     } else if (x_vars[0]->IsType<framework::SelectedRows>()) {
       return framework::OpKernelType(
           framework::ToDataType(
@@ -98,7 +98,7 @@ class SumOp : public framework::OperatorWithKernel {
 
 class SumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SumOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  SumOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(vector<Tensor>) The input tensors of sum operator.")
         .AsDuplicable();
@@ -106,8 +106,8 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Sum operator.
 
-This operators sums the input tensors. All the inputs can carry the 
-LoD (Level of Details) information. However, the output only shares 
+This operators sums the input tensors. All the inputs can carry the
+LoD (Level of Details) information. However, the output only shares
 the LoD information with the first input.
 )DOC");
   }
@@ -115,25 +115,25 @@ the LoD information with the first input.
 
 class SumOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDescBind& op_desc,
-                  framework::BlockDescBind* block) const override {
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const override {
     auto& inputs = op_desc.Input("X");
-    auto var_type = framework::VarDesc::SELECTED_ROWS;
+    auto var_type = framework::proto::VarDesc::SELECTED_ROWS;
 
     for (auto& name : op_desc.Input("X")) {
       VLOG(10) << name << " "
-               << block->FindRecursiveOrCreateVar(name)->GetType();
+               << block->FindRecursiveOrCreateVar(name).GetType();
     }
 
     bool any_input_is_lod_tensor = std::any_of(
         inputs.begin(), inputs.end(), [block](const std::string& name) {
-          return block->FindRecursiveOrCreateVar(name)->GetType() ==
-                 framework::VarDesc::LOD_TENSOR;
+          return block->FindRecursiveOrCreateVar(name).GetType() ==
+                 framework::proto::VarDesc::LOD_TENSOR;
         });
 
     auto is_tensor_array = [block](const std::string& name) {
-      return detail::Ref(block->FindRecursiveOrCreateVar(name)).GetType() ==
-             framework::VarDesc::LOD_TENSOR_ARRAY;
+      return block->FindRecursiveOrCreateVar(name).GetType() ==
+             framework::proto::VarDesc::LOD_TENSOR_ARRAY;
     };
 
     bool any_input_is_tensor_array =
@@ -146,19 +146,18 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
         std::ostringstream os;
         for (auto& each : inputs) {
           os << "    " << each << " type is "
-             << detail::Ref(block->FindRecursiveOrCreateVar(each)).GetType()
-             << "\n";
+             << block->FindRecursiveOrCreateVar(each).GetType() << "\n";
         }
         PADDLE_ENFORCE(all_inputs_are_tensor_array,
                        "Not all inputs are tensor array:\n%s", os.str());
       }
-      var_type = framework::VarDesc::LOD_TENSOR_ARRAY;
+      var_type = framework::proto::VarDesc::LOD_TENSOR_ARRAY;
     } else if (any_input_is_lod_tensor) {
-      var_type = framework::VarDesc::LOD_TENSOR;
+      var_type = framework::proto::VarDesc::LOD_TENSOR;
     }
 
     auto out_var_name = op_desc.Output("Out").front();
-    auto& out_var = detail::Ref(block->FindRecursiveOrCreateVar(out_var_name));
+    auto& out_var = block->FindRecursiveOrCreateVar(out_var_name);
     out_var.SetType(var_type);
     auto& in_var = detail::Ref(block->FindVarRecursive(inputs.front()));
     out_var.SetDataType(in_var.GetDataType());
@@ -169,20 +168,19 @@ class SumGradMaker : public framework::GradOpDescMakerBase {
  public:
   using framework::GradOpDescMakerBase::GradOpDescMakerBase;
 
-  std::vector<std::unique_ptr<framework::OpDescBind>> operator()()
-      const override {
-    auto x_grads = InputGrad("X");
-    std::vector<std::unique_ptr<framework::OpDescBind>> grad_ops;
+  std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override {
+    auto x_grads = InputGrad("X", false);
+    std::vector<std::unique_ptr<framework::OpDesc>> grad_ops;
     grad_ops.reserve(x_grads.size());
     auto og = OutputGrad("Out");
     std::transform(x_grads.begin(), x_grads.end(), std::back_inserter(grad_ops),
                    [&og](const std::string& x_grad) {
-                     auto* grad_op = new framework::OpDescBind();
+                     auto* grad_op = new framework::OpDesc();
                      grad_op->SetType("scale");
                      grad_op->SetInput("X", og);
                      grad_op->SetOutput("Out", {x_grad});
                      grad_op->SetAttr("scale", 1.0f);
-                     return std::unique_ptr<framework::OpDescBind>(grad_op);
+                     return std::unique_ptr<framework::OpDesc>(grad_op);
                    });
     return grad_ops;
   }

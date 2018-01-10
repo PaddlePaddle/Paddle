@@ -48,7 +48,7 @@ class SequenceSliceOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
@@ -69,7 +69,7 @@ class SequenceSliceGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
@@ -79,8 +79,7 @@ class SequenceSliceGradOp : public framework::OperatorWithKernel {
 
 class SequenceSliceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceSliceOpMaker(framework::OpProto* proto,
-                       framework::OpAttrChecker* op_checker)
+  SequenceSliceOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(LoDTensor), "

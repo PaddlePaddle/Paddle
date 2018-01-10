@@ -16,5 +16,5 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    prior_box, ops::PriorBoxOpKernel<paddle::platform::GPUPlace, float>,
-    ops::PriorBoxOpKernel<paddle::platform::GPUPlace, double>);
+    prior_box, ops::PriorBoxOpKernel<paddle::platform::CUDAPlace, float>,
+    ops::PriorBoxOpKernel<paddle::platform::CUDAPlace, double>);
