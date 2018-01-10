@@ -40,54 +40,28 @@ void InitGflags(std::vector<std::string> &argv) {
   });
 }
 
-bool InitDevices(const std::vector<std::string> &devices) {
-  // device format
-  // CPU
-  // MKLDNN
-  // GPU:1
-  // TODO(dzhwinter) : add device format annotation for users.
+void InitDevices() {
+  /*Init all avaiable devices by default */
   std::vector<std::pair<platform::Place, framework::LibraryType>> pairs;
-  for (auto &device : devices) {
-    auto p = string::Piece(device);
-    if (string::HasPrefix(p, "CPU")) {
-      pairs.emplace_back(
-          std::make_pair(platform::CPUPlace(), LibraryType::kPlain));
-    } else if (string::HasPrefix(p, "MKLDNN")) {
-#ifdef PADDLE_WITH_MKLDNN
-      pairs.emplace_back(
-          std::make_pair(platform::CPUPlace(), LibraryType::kMKLDNN));
-#else
-      LOG(WARNING)
-          << "'MKLDNN' is not supported, Please re-compile with WITH_MKL"
-             " option and make sure AVX2 and above is supported.";
-#endif
-    } else if (string::HasPrefix(p, "GPU")) {
-#ifdef PADDLE_WITH_CUDA
-      auto pos = string::RFind(p, ':', string::Piece::npos);
-      auto number = device.substr(pos + 1);
-      pairs.emplace_back(std::make_pair(platform::CUDAPlace(std::stoi(number)),
-                                        LibraryType::kPlain));
-#else
-      LOG(WARNING)
-          << "'GPU' is not supported, Please re-compile with WITH_GPU option";
-#endif
-    } else {
-      return false;
-    }
-  }
+  pairs.emplace_back(std::make_pair(platform::CPUPlace(), LibraryType::kPlain));
 
-  if (std::find_if(pairs.begin(), pairs.end(),
-                   [&](const std::pair<platform::Place, LibraryType> &pair) {
-                     return platform::is_cpu_place(pair.first) &&
-                            pair.second == LibraryType::kPlain;
-                   }) == pairs.end()) {
-    pairs.emplace_back(
-        std::make_pair(platform::CPUPlace(), LibraryType::kPlain));
-    LOG(WARNING) << "Not specified CPU device, create CPU by Default.";
+#ifdef PADDLE_WITH_MKLDNN
+  pairs.emplace_back(
+      std::make_pair(platform::CPUPlace(), LibraryType::kMKLDNN));
+#endif
+
+#ifdef PADDLE_WITH_CUDA
+  int count = platform::GetCUDADeviceCount();
+  for (int i = 0; i < count; ++i) {
+    places.emplace_back(
+        std::make_pair(platform::CUDAPlace(i), LibraryType::kPlain));
   }
+#else
+  LOG(WARNING)
+      << "'GPU' is not supported, Please re-compile with WITH_GPU option";
+#endif
+
   platform::DeviceContextPool::Init(pairs);
-  framework::UseALL();
-  return true;
 }
 
 void InitGLOG(const std::string &prog_name) {
