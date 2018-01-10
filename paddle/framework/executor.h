@@ -45,7 +45,5 @@ class Executor {
   const platform::Place place_;
 };
 
-void CreateTensor(Variable* var, proto::VarDesc::VarType var_type);
-
 }  // namespace framework
 }  // namespace paddle

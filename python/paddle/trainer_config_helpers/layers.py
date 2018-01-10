@@ -2542,15 +2542,21 @@ def img_conv_layer(input,
     what-are-deconvolutional-layers/>`_ .
     The num_channel means input image's channel number. It may be 1 or 3 when
     input is raw pixels of image(mono or RGB), or it may be the previous layer's
-    num_filters * num_group.
+    num_filters.
 
     There are several groups of filters in PaddlePaddle implementation.
-    Each group will process some channels of the input. For example, if
-    num_channel = 256, group = 4, num_filter=32, the PaddlePaddle will create
-    32*4 = 128 filters to process the input. The channels will be split into 4
-    pieces. First 256/4 = 64 channels will be processed by first 32 filters. The
-    rest channels will be processed by the rest groups of filters.
+    If the groups attribute is greater than 1, for example groups=2,
+    the input will be splitted into 2 parts along the channel axis, and
+    the filters will also be splitted into 2 parts. The first half of the filters 
+    is only connected to the first half of the input channels, while the second 
+    half of the filters is only connected to the second half of the input. After
+    the computation of convolution for each part of input,
+    the output will be obtained by concatenating the two results.
 
+    The details of grouped convolution, please refer to:
+    `ImageNet Classification with Deep Convolutional Neural Networks
+    <http://www.cs.toronto.edu/~kriz/imagenet_classification_with_deep_convolutional.pdf>`_
+    
     The example usage is:
 
     ..  code-block:: python
@@ -2575,7 +2581,8 @@ def img_conv_layer(input,
     :param filter_size_y: The dimension of the filter kernel on the y axis. If the parameter
                           is not set, it will be set automatically according to filter_size.
     :type filter_size_y: int
-    :param num_filters: Each filter group's number of filter
+    :param num_filters: The number of filters. It is as same as the output image channel.
+    :type num_filters: int
     :param act: Activation type. ReluActivation is the default activation.
     :type act: BaseActivation
     :param groups: The group number. 1 is the default group number.
@@ -7177,7 +7184,7 @@ def img_conv3d_layer(input,
     :param filter_size: The dimensions of the filter kernel along three axises. If the parameter
                         is set to one integer, the three dimensions will be same.
     :type filter_size: int | tuple | list
-    :param num_filters: The number of filters in each group.
+    :param num_filters: The number of filters. It is as same as the output image channel.
     :type num_filters: int
     :param act: Activation type. ReluActivation is the default activation.
     :type act: BaseActivation

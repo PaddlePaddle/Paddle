@@ -6,7 +6,7 @@ from framework import unique_name, program_guard
 from initializer import Constant
 from layer_helper import LayerHelper
 from regularizer import append_regularization_ops
-from clip import append_gradient_clip_ops
+from clip import append_gradient_clip_ops, error_clip_callback
 
 __all__ = ['SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad']
 
@@ -197,7 +197,8 @@ class Optimizer(object):
         This method combines interface `append_backward()` and
         `create_optimization_pass()` into one.
         """
-        params_grads = append_backward(loss, parameter_list, no_grad_set)
+        params_grads = append_backward(loss, parameter_list, no_grad_set,
+                                       error_clip_callback)
 
         params_grads = append_gradient_clip_ops(params_grads)
 

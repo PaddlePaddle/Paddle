@@ -51,7 +51,7 @@ $ stdbuf -oL /usr/bin/nohup paddle pserver --port=7164 --ports_num=1 --ports_num
 
 - port：**必选，默认7164**，pserver监听的起始端口，根据ports_num决定总端口个数，从起始端口监听多个端口用于通信
 - ports_num：**必选，默认1**，监听的端口个数
-- ports_num_for_sparse：**必选，默认1**，用于稀疏类型参数通信的端口个数
+- ports_num_for_sparse：**必选，默认0**，用于稀疏类型参数通信的端口个数
 - num_gradient_servers：**必选，默认1**，当前训练任务pserver总数
 
 ### 启动计算节点
@@ -95,7 +95,7 @@ paddle.init(
 - trainer_count：**必选，默认1**，当前训练任务trainer总个数
 - port：**必选，默认7164**，连接到pserver的端口
 - ports_num：**必选，默认1**，连接到pserver的端口个数
-- ports_num_for_sparse：**必选，默认1**，和pserver之间用于稀疏类型参数通信的端口个数
+- ports_num_for_sparse：**必选，默认0**，和pserver之间用于稀疏类型参数通信的端口个数
 - num_gradient_servers：**必选，默认1**，当前训练任务pserver总数
 - trainer_id：**必选，默认0**，每个trainer的唯一ID，从0开始的整数
 - pservers：**必选，默认127.0.0.1**，当前训练任务启动的pserver的IP列表，多个IP使用“,”隔开
