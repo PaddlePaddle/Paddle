@@ -93,8 +93,6 @@ class ParallelOpTest(BaseParallelForTest):
     def test_simple_fc(self):
         def __network__():
             x = fluid.layers.data(shape=[784], dtype='float32', name='img')
-            # FIXME: This is a bug of parallel.do
-            x.stop_gradient = False
             x = yield x
             hidden = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
             loss = fluid.layers.mean(x=hidden)

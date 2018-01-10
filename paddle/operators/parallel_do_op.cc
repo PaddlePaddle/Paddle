@@ -243,6 +243,13 @@ class ParallelDoGradOp : public OperatorBase {
   }
 };
 
+std::ostream &operator<<(std::ostream &sout,
+                         const std::vector<std::string> &strs) {
+  std::copy(strs.begin(), strs.end(),
+            std::ostream_iterator<std::string>(sout, ","));
+  return sout;
+}
+
 class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
@@ -283,18 +290,30 @@ class ParallelDoGradOpShapeInference : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *ctx) const override {
     std::vector<std::string> input{kParameters, kInputs};
     std::vector<std::string> output{kOutputs};
-    for (auto &s : input) {
-      PADDLE_ENFORCE(ctx->HasInputs(s));
-      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(s)),
-                     "Cannot find the gradient variable %s",
-                     framework::GradVarName(s));
-    }
+
+    PADDLE_ENFORCE(ctx->HasInputs(kParameters));
+    PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(kParameters)));
+    PADDLE_ENFORCE(ctx->HasInput(kInputs));
+
     for (auto &s : output) {
       PADDLE_ENFORCE(ctx->HasInputs(s));
     }
-    for (auto &s : input) {
-      ctx->SetOutputsDim(framework::GradVarName(s), ctx->GetInputsDim(s));
+
+    ctx->SetOutputsDim(framework::GradVarName(kParameters),
+                       ctx->GetInputsDim(kParameters));
+
+    auto i_dims = ctx->GetInputsDim(kInputs);
+    auto ig_names = ctx->Outputs(framework::GradVarName(kInputs));
+
+    for (size_t i = 0; i < ig_names.size(); ++i) {
+      auto &ig_name = ig_names[i];
+      if (ig_name == framework::kEmptyVarName) {
+        continue;
+      }
+
+      ctx->SetDims({ig_name}, {i_dims[i]});
     }
+
     if (ctx->HasInputs(kParameters)) {
       PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(kParameters)));
       ctx->SetOutputsDim(framework::GradVarName(kParameters),
