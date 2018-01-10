@@ -145,15 +145,26 @@ class ParallelDoOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ParallelDoOpProtoMaker(OpProto *proto, framework::OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput(kInputs, "").AsDuplicable();
-    AddInput(kParameters, "").AsDuplicable();
-    AddInput(kPlaces, "");
+    AddInput(kInputs, "Inputs are split onto different devices").AsDuplicable();
+    AddInput(kParameters, "Parameters are duplicated over different devices")
+        .AsDuplicable();
+    AddInput(kPlaces, "Devices used for parallel processing");
     AddOutput(kOutputs, "").AsDuplicable();
-    AddOutput(kParallelScopes, "");
-    AddAttr<framework::BlockDesc *>(kParallelBlock, "");
-    AddComment(R"DOC(
-ParallelDo Operator.
-)DOC");
+    AddOutput(kParallelScopes,
+              "Container for all local variables in forward pass.");
+    AddAttr<framework::BlockDesc *>(kParallelBlock,
+                                    "The BlockDesc for be parallelled");
+    AddComment(string::Sprintf(
+        R"DOC(
+ParallelFor Operator implements data parallelism, which includes
+
+|      Split %s and copy %s
+|      Copy parameter to %s
+||||   Compute %s in parallel
+|      Merge %s
+
+)DOC",
+        kInputs, kParameters, kPlaces, kParallelBlock, kOutputs));
   }
 };
 
