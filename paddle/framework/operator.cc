@@ -202,11 +202,11 @@ static bool VarIsTensor(const Variable* var) {
   return var->IsType<LoDTensor>() || var->IsType<SelectedRows>();
 }
 
-static const Tensor GetTensorFromVar(const Variable* var) {
+static const Tensor* GetTensorFromVar(Variable* var) {
   if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>();
+    return var->GetMutable<LoDTensor>();
   } else if (var->IsType<SelectedRows>()) {
-    return var->Get<SelectedRows>().value();
+    return var->GetMutable<SelectedRows>()->mutable_value();
   } else {
     PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
                  var->Type().name());
@@ -227,7 +227,8 @@ static Tensor* GetMutableTensorFromVar(Variable* var) {
 template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
   auto* var = InputVar(name);
-  return var == nullptr ? nullptr : GetTensorFromVar(var);
+  return var == nullptr ? nullptr
+                        : GetTensorFromVar(const_cast<Variable*>(var));
 }
 
 template <>
@@ -464,10 +465,10 @@ void OperatorWithKernel::Run(const Scope& scope,
     for (auto& var_name : var_name_item.second) {
       auto* var = scope.FindVar(var_name);
       if (var && VarIsTensor(var)) {
-        auto tensor_in = GetTensorFromVar(var);
-        if (tensor_in.IsInitialized()) {
+        auto* tensor_in = GetTensorFromVar(var);
+        if (tensor_in->IsInitialized()) {
           auto kernel_type_for_var = this->GetKernelTypeForVar(
-              var_name_item.first, tensor_in, expected_kernel_key);
+              var_name_item.first, *tensor_in, expected_kernel_key);
           if (kernel_type_for_var != expected_kernel_key) {
             auto out_var_names = OutputVars(true);
             if (std::find(out_var_names.begin(), out_var_names.end(),
@@ -480,7 +481,7 @@ void OperatorWithKernel::Run(const Scope& scope,
             VLOG(3) << "need to do transform for var " << var_name;
             auto* trans_var = new_scope.Var(var_name);
             Tensor* out = nullptr;
-            DataTransform(expected_kernel_key, kernel_type_for_var, tensor_in,
+            DataTransform(expected_kernel_key, kernel_type_for_var, *tensor_in,
                           out);
             CopyVariableWithTensor(*var, *out, *trans_var);
           }
