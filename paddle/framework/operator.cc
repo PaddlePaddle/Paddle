@@ -163,7 +163,7 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     for (size_t i = 0; i < output.second.size(); ++i) {
       ss << output.second[i];
       if (scope) {
-        g ss << "[" << GetDims(*scope, output.second[i]) << "]";
+        ss << "[" << GetDims(*scope, output.second[i]) << "]";
         ss << "(" << GetLoD(*scope, output.second[i]) << ")";
       }
       if (i != output.second.size() - 1) {
