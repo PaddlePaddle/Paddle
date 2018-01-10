@@ -38,6 +38,20 @@ void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service) {
   VLOG(4) << "RunServer thread end";
 }
 
+static void CreateTensorFromMessageType(framework::Variable *var,
+                                        sendrecv::VarType var_type) {
+  if (var_type == sendrecv::VarType::LOD_TENSOR) {
+    var->GetMutable<framework::LoDTensor>();
+  } else if (var_type == sendrecv::VarType::SELECTED_ROWS) {
+    var->GetMutable<framework::SelectedRows>();
+  } else {
+    PADDLE_THROW(
+        "VraibleMessage type %d is not in "
+        "[LoDTensor, SelectedRows]",
+        var_type);
+  }
+}
+
 class RecvOp : public framework::OperatorBase {
  public:
   RecvOp(const std::string &type, const framework::VariableNameMap &inputs,
@@ -109,10 +123,10 @@ class RecvOp : public framework::OperatorBase {
         auto *merged_grad = recv_scope.FindVar(grad_var_name);
         if (merged_grad == nullptr) {
           auto *ptr = recv_scope.Var(grad_var_name);
-          framework::CreateTensor(ptr,
-                                  framework::ToVarType(merged_grad->Type()));
+          CreateTensorFromMessageType(ptr, v.second.type());
           VLOG(3) << "Create Variable " << grad_var_name
-                  << " on recv scope, which pointer is " << ptr;
+                  << " on recv scope, which pointer is " << ptr << " type is "
+                  << v.second.type();
         }
 
         if (trainer_count > 1) {

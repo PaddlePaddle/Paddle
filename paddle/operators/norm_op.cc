@@ -39,7 +39,7 @@ class NormOpMaker : public framework::OpProtoAndCheckerMaker {
               "M = C * H * W");
     AddComment(R"DOC(
        "Input shape: $(N, C, H, W)$
-        Sclae shape: $(C, 1)$
+        Scale shape: $(C, 1)$
         Output shape: $(N, C, H, W)$
         Where
         forward
