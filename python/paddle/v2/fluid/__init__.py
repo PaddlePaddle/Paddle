@@ -62,10 +62,12 @@ def __bootstrap__():
                      ["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])
 
+    init_list = ["CPU"]
     if core.is_compile_gpu():
-        core.init_devices(["CPU", "GPU:0"])
-    else:
-        core.init_devices(["CPU"])
+        init_list.append("GPU:0")
+    if core.is_compile_mkldnn():
+        init_list.append("MKLDNN")
+    core.init_devices(init_list)
 
 
 __bootstrap__()
