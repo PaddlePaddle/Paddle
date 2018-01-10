@@ -22,10 +22,6 @@ DEFINE_double(fraction_of_gpu_memory_to_use, 0.92,
               "Default use 92% of GPU memory for PaddlePaddle,"
               "reserve the rest for page tables, etc");
 
-DEFINE_bool(op_sync, false,
-            "Default cuda is asynchronous device, set to True will"
-            "force op run in synchronous mode.");
-
 namespace paddle {
 namespace platform {
 
