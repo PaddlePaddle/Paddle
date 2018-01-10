@@ -178,7 +178,7 @@ EOF
     # run paddle version to install python packages first
     RUN apt-get update &&\
         ${NCCL_DEPS}\
-        apt-get install -y wget python-pip dmidecode && pip install -U pip && \
+        apt-get install -y wget python-pip dmidecode python-tk && pip install -U pip && \
         pip install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
@@ -193,6 +193,16 @@ EOF
 EOF
 }
 
+function gen_capi_package() {
+  if [[ ${WITH_C_API} == "ON" ]]; then
+    install_prefix="/paddle/build/capi_output"
+    rm -rf $install_prefix
+    make DESTDIR="$install_prefix" install
+    cd $install_prefix/usr/local
+    ls | egrep -v "^Found.*item$" | xargs tar -cf /paddle/build/paddle.tgz
+  fi
+}
+
 set -xe
 
 cmake_gen ${PYTHON_ABI:-""}
@@ -200,6 +210,11 @@ run_build
 run_test
 gen_docs
 gen_dockerfile
+gen_capi_package
 
-printf "If you need to install PaddlePaddle in develop docker image,"
-printf "please make install or pip install build/python/dist/*.whl.\n"
+if [[ ${WITH_C_API:-OFF} == "ON" ]]; then
+  printf "PaddlePaddle C-API libraries was generated on build/paddle.tgz\n" 
+else
+  printf "If you need to install PaddlePaddle in develop docker image,"
+  printf "please make install or pip install build/python/dist/*.whl.\n"
+fi

@@ -21,6 +21,10 @@ limitations under the License. */
 #define EIGEN_USE_GPU
 #endif
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/platform/mkldnn_helper.h"
+#endif
+
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
@@ -50,6 +54,14 @@ class CPUDeviceContext : public DeviceContext {
  private:
   CPUPlace place_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+};
+
+template <typename Place>
+struct DefaultDeviceContextType;
+
+template <>
+struct DefaultDeviceContextType<platform::CPUPlace> {
+  using TYPE = CPUDeviceContext;
 };
 
 #ifdef PADDLE_WITH_CUDA
@@ -90,18 +102,59 @@ class CUDADeviceContext : public DeviceContext {
   cublasHandle_t cublas_handle_;
 };
 
-class CUDNNDeviceContext : public CUDADeviceContext {
- public:
-  explicit CUDNNDeviceContext(CUDAPlace place);
-  virtual ~CUDNNDeviceContext();
-
-  /*! \brief  Return cudnn  handle in the device context. */
-  cudnnHandle_t cudnn_handle() const;
-
- private:
-  cudnnHandle_t cudnn_handle_;
+template <>
+struct DefaultDeviceContextType<platform::CUDAPlace> {
+  using TYPE = CUDADeviceContext;
 };
 
+#endif
+
+#ifdef PADDLE_WITH_MKLDNN
+class MKLDNNDeviceContext : public CPUDeviceContext {
+ public:
+  explicit MKLDNNDeviceContext(CPUPlace place);
+
+  /* \brief  Add new element: memory, primitive or primitive desc */
+  template <typename T>
+  void AddElement(const std::string& op_key, const T& value);
+
+  /* \brief  Get existed element: memory, primitive or primitive desc */
+  template <typename T>
+  const T& GetElement(const std::string& op_key) const;
+
+  /* \brief  Get element pool: memory, primitive or primitive desc pool */
+  template <typename T>
+  const std::unordered_map<const std::string, const T, std::hash<std::string>>&
+  GetElementPool() const;
+
+  /* \brief  Get the active engine */
+  const MKLDNNEngine& engine() const { return *engine_; }
+
+  /* \brief  Submit primitive to pipeline */
+  void Submit(const MKLDNNPrimitivePtr& p) { pipeline_.push_back(*p); }
+
+  /*! \brief  Execute all submitted primitives in pipeline */
+  void Execute(bool block = true);
+
+ protected:
+  /*! \brief  Reset the stream to prepare next exectue */
+  void ResetStream();
+
+ private:
+  std::unordered_map<const std::string, const MKLDNNMemoryPtr,
+                     std::hash<std::string>>
+      memory_pool_;
+  std::unordered_map<const std::string, const MKLDNNPrimitivePtr,
+                     std::hash<std::string>>
+      primitive_pool_;
+  std::unordered_map<const std::string, const MKLDNNPrimitiveDescPtr,
+                     std::hash<std::string>>
+      primitive_desc_pool_;
+  std::vector<MKLDNNPrimitive> pipeline_;
+  MKLDNNStreamPtr stream_;
+  MKLDNNEnginePtr engine_;
+  bool ready_;
+};
 #endif
 
 /*! \brief device context pool singleton */
@@ -109,13 +162,13 @@ class DeviceContextPool {
  public:
   explicit DeviceContextPool(const std::vector<platform::Place>& places);
 
-  static DeviceContextPool& Get() {
+  static DeviceContextPool& Instance() {
     PADDLE_ENFORCE_NOT_NULL(pool, "Need to Create DeviceContextPool first!");
     return *pool;
   }
 
   /*! \brief  Create should only called by Init function */
-  static DeviceContextPool& Create(const std::vector<platform::Place>& places) {
+  static DeviceContextPool& Init(const std::vector<platform::Place>& places) {
     if (pool == nullptr) {
       pool = new DeviceContextPool(places);
     }
@@ -123,13 +176,16 @@ class DeviceContextPool {
   }
 
   /*! \brief  Return handle of single device context. */
-  const platform::DeviceContext* Borrow(const platform::Place& place);
+  const platform::DeviceContext* Get(const platform::Place& place);
 
-  /*! \brief  Return handle of multi-device context. */
-  std::vector<const platform::DeviceContext*> Borrow(
-      const std::vector<platform::Place>& places);
+  template <typename Place>
+  const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(
+      const Place& place) {
+    return reinterpret_cast<
+        const typename DefaultDeviceContextType<Place>::TYPE*>(Get(place));
+  }
 
-  ~DeviceContextPool() {}
+  size_t size() const { return device_contexts_.size(); }
 
  private:
   static DeviceContextPool* pool;
@@ -137,7 +193,7 @@ class DeviceContextPool {
   struct Hash {
     std::hash<int> hash_;
     size_t operator()(const platform::Place& place) const {
-      int pre_hash = place.which() + (1 << LEFT_SHIFT);
+      int pre_hash = place.which() << LEFT_SHIFT;
       if (platform::is_gpu_place(place)) {
         pre_hash += boost::get<platform::CUDAPlace>(place).GetDeviceId();
       }

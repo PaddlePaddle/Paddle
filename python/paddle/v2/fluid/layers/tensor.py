@@ -1,7 +1,8 @@
 from ..layer_helper import LayerHelper
+from ..param_attr import ParamAttr
 
 __all__ = [
-    'create_tensor', 'cast', 'concat', 'sums', 'assign',
+    'create_tensor', 'create_parameter', 'cast', 'concat', 'sums', 'assign',
     'fill_constant_batch_size_like', 'fill_constant', 'ones', 'zeros'
 ]
 
@@ -9,6 +10,33 @@ __all__ = [
 def create_tensor(dtype, name=None):
     helper = LayerHelper("create_tensor", **locals())
     return helper.create_variable(name=helper.name, dtype=dtype)
+
+
+def create_parameter(shape,
+                     dtype,
+                     attr=None,
+                     is_bias=False,
+                     default_initializer=None):
+    """
+    Create a parameter
+    Args:
+        shape(list[int]): shape of the parameter
+        dtype(string): element type of the parameter
+        attr(ParamAttr): attributes of the parameter
+        is_bias(bool): This can affect which default initializer is chosen
+                       when default_initializer is None. If is_bias,
+                       initializer.Constant(0.0) will be used. Otherwise,
+                       Xavier() will be used.
+        default_initializer(Initializer): initializer for the parameter
+
+    Returns:
+        Parameter: the created parameter
+    """
+    helper = LayerHelper("create_parameter")
+    if attr is None:
+        attr = ParamAttr()
+    return helper.create_parameter(attr, shape, dtype, is_bias,
+                                   default_initializer)
 
 
 def cast(x, dtype):
@@ -180,7 +208,8 @@ def fill_constant_batch_size_like(input,
     Examples:
         .. code-block:: python
 
-          data = fluid.layers.fill_constant(shape=[1], value=0, dtype='int64')
+          data = fluid.layers.fill_constant_batch_size_like(
+              input=like, shape=[1], value=0, dtype='int64')
     """
     helper = LayerHelper("fill_constant_batch_size_like", **locals())
     out = helper.create_tmp_variable(dtype=dtype)
@@ -201,15 +230,47 @@ def fill_constant_batch_size_like(input,
 
 def ones(shape, dtype):
     """
-    This function performs the same function as fill_constant() declared above
-    with the constant value being 1.0.
+    **ones**
+
+    This function creates a tensor of specified *shape* and
+    *dtype*, and initializes this with 1.
+
+    It also sets *stop_gradient* to True.
+
+    Args:
+        shape(tuple|list|None): Shape of output tensor
+        dtype(np.dtype|core.DataType|str): Data type of output tensor
+
+    Returns:
+        Variable: The tensor variable storing the output
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.ones(shape=[1], dtype='int64')
     """
     return fill_constant(value=1.0, **locals())
 
 
 def zeros(shape, dtype):
     """
-    This function performs the same function as fill_constant() declared above
-    with the constant value being 0.0.
+    **zeros**
+
+    This function creates a tensor of specified *shape* and
+    *dtype*, and initializes this with 0.
+
+    It also sets *stop_gradient* to True.
+
+    Args:
+        shape(tuple|list|None): Shape of output tensor
+        dtype(np.dtype|core.DataType|str): Data type of output tensor
+
+    Returns:
+        Variable: The tensor variable storing the output
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.zeros(shape=[1], dtype='int64')
     """
     return fill_constant(value=0.0, **locals())

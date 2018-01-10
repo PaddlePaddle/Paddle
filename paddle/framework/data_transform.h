@@ -19,18 +19,22 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/framework/op_kernel_type.h"
+#include "paddle/framework/selected_rows.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/framework/variable.h"
+#include "paddle/operators/math/math_function.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/macros.h"
+#include "paddle/platform/transform.h"
 
 namespace paddle {
 namespace framework {
 
-using DataTransformFN =
-    std::function<void(const std::vector<platform::DeviceContext*> ctx,
-                       const Variable& in, Variable* out)>;
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
+
+using DataTransformFn =
+    std::function<void(const platform::DeviceContext*, const KernelTypePair&,
+                       const Variable&, Variable*)>;
 
 struct KernelTypePairHash {
   static void HashCombine(const OpKernelType& t, std::size_t* seed) {
@@ -46,8 +50,76 @@ struct KernelTypePairHash {
   }
 };
 
+Tensor* DataTransform(const OpKernelType& expected_kernel_type,
+                      const OpKernelType& kernel_type_for_var,
+                      const Tensor& input_tensor);
+
+void CopyVariableWithTensor(const Variable& in_var, const Tensor& tensor,
+                            Variable& out_var);
+
+template <typename InType, typename OutType>
+struct CastDataTypeFunctor {
+  HOSTDEVICE inline OutType operator()(InType in) const {
+    return static_cast<OutType>(in);
+  }
+};
+
+template <typename InType>
+struct CastDataType {
+  CastDataType(const framework::Tensor& in, framework::Tensor* out,
+               const platform::DeviceContext* ctx)
+      : in_(in), out_(out), ctx_(ctx) {}
+  const framework::Tensor in_;
+  framework::Tensor* out_;
+  const platform::DeviceContext* ctx_;
+
+  template <typename OutType>
+  void operator()() {
+    auto place = ctx_->GetPlace();
+
+    auto* in_begin = in_.data<InType>();
+    auto numel = in_.numel();
+    auto* in_end = in_begin + numel;
+    auto* out_begin = out_->mutable_data<OutType>(place);
+
+    if (platform::is_cpu_place(place)) {
+      platform::Transform<platform::CPUDeviceContext> trans;
+      auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
+      trans(*context, in_begin, in_end, out_begin,
+            CastDataTypeFunctor<InType, OutType>());
+    } else {
+      // TODO(dzhwinter): enhance Copy CPU<->GPU with different data type?
+      PADDLE_THROW("Unsupport CPU <-> GPU!");
+    }
+  }
+};
+
+struct CastDataLayout {
+  CastDataLayout(const platform::DeviceContext* ctx,
+                 const std::vector<int>& axis, const framework::Tensor& in,
+                 framework::Tensor* out)
+      : in_(in), out_(out), ctx_(ctx), axis_(axis) {}
+  const framework::Tensor in_;
+  framework::Tensor* out_;
+  const platform::DeviceContext* ctx_;
+  const std::vector<int> axis_;
+
+  template <typename T>
+  void operator()() {
+    auto place = ctx_->GetPlace();
+
+    if (platform::is_cpu_place(place)) {
+      operators::math::Transpose<platform::CPUDeviceContext, T, 4> trans4;
+      auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
+      trans4(*context, in_, out_, axis_);
+    } else {
+      PADDLE_THROW("Unsupport CPU <-> GPU!");
+    }
+  }
+};
+
 using DataTransformMap =
-    std::unordered_map<KernelTypePair, DataTransformFN, KernelTypePairHash>;
+    std::unordered_map<KernelTypePair, DataTransformFn, KernelTypePairHash>;
 
 class DataTransformFnMap {
  public:
@@ -58,25 +130,25 @@ class DataTransformFnMap {
   }
 
   void Insert(const OpKernelType& left, const OpKernelType& right,
-              const DataTransformFN& data_tranform_fn) {
+              const DataTransformFn& data_tranform_fn) {
     Insert(std::make_pair(left, right), data_tranform_fn);
   }
 
   void Insert(const KernelTypePair& kernel_type_pair,
-              const DataTransformFN& data_tranform_fn) {
+              const DataTransformFn& data_tranform_fn) {
     PADDLE_ENFORCE(!Has(kernel_type_pair),
                    "KernelTypePair %s has been registered", "");
     map_.insert({kernel_type_pair, data_tranform_fn});
   }
 
-  const DataTransformFN& Get(const KernelTypePair& key_pair) const {
+  const DataTransformFn& Get(const KernelTypePair& key_pair) const {
     auto data_transformer = GetNullable(key_pair);
     PADDLE_ENFORCE_NOT_NULL(data_transformer,
-                            "DataTransformFN should not be NULL");
+                            "DataTransformFn should not be NULL");
     return *data_transformer;
   }
 
-  const DataTransformFN* GetNullable(const KernelTypePair& key_pair) const {
+  const DataTransformFn* GetNullable(const KernelTypePair& key_pair) const {
     auto it = map_.find(key_pair);
     if (it == map_.end()) {
       return nullptr;

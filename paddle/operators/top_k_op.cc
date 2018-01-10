@@ -41,6 +41,8 @@ class TopkOp : public framework::OperatorWithKernel {
     dims[dims.size() - 1] = k;
     ctx->SetOutputDim("Out", dims);
     ctx->SetOutputDim("Indices", dims);
+    ctx->ShareLoD("X", "Out");
+    ctx->ShareLoD("X", "Indices");
   }
 };
 

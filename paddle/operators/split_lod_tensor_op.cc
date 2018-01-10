@@ -45,15 +45,15 @@ class SplitLoDTensorOp : public framework::OperatorBase {
     auto &x_lod = x.lod();
     auto &mask_dim = mask.dims();
 
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-    auto &dev_ctx = *pool.Borrow(dev_place);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place);
 
     std::unique_ptr<framework::LoDTensor> cpu_mask{new framework::LoDTensor()};
     if (platform::is_cpu_place(mask.place())) {
       cpu_mask->ShareDataWith(mask);
     } else if (platform::is_gpu_place(mask.place())) {
 #ifdef PADDLE_WITH_CUDA
-      framework::CopyFrom(mask, platform::CPUPlace(), dev_ctx, cpu_mask.get());
+      framework::Copy(mask, platform::CPUPlace(), dev_ctx, cpu_mask.get());
 #else
       PADDLE_THROW("Not supported GPU, Please compile WITH_GPU option");
 #endif
@@ -111,9 +111,9 @@ class SplitLoDTensorOp : public framework::OperatorBase {
         // out[offset: offset+len] = x[each_range.begin: each_range.end]
         auto slice = out->Slice(static_cast<int>(offset),
                                 static_cast<int>(offset + len));
-        framework::CopyFrom(x.Slice(static_cast<int>(each_range.begin),
-                                    static_cast<int>(each_range.end)),
-                            x.place(), dev_ctx, &slice);
+        framework::Copy(x.Slice(static_cast<int>(each_range.begin),
+                                static_cast<int>(each_range.end)),
+                        x.place(), dev_ctx, &slice);
         offset += len;
       }
     }

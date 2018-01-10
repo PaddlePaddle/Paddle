@@ -68,12 +68,6 @@ scale
     :noindex:
 
 
-reshape
----------
-..  autofunction:: paddle.v2.fluid.layers.reshape
-    :noindex:
-
-
 transpose
 ---------
 ..  autofunction:: paddle.v2.fluid.layers.transpose
@@ -310,6 +304,12 @@ conv2d_transpose
 sequence_expand
 ---------------
 ..  autofunction:: paddle.v2.fluid.layers.sequence_expand
+    :noindex:
+
+
+gru_unit
+--------
+..  autofunction:: paddle.v2.fluid.layers.gru_unit
     :noindex:
 
 

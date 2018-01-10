@@ -272,8 +272,9 @@ class RecurrentOp : public RecurrentBase {
                    false /*create_local_scope*/);
 
       // get device context from pool
-      platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-      auto &dev_ctx = *pool.Borrow(place);
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto &dev_ctx = *pool.Get(place);
 
       // Copy inside::output -> outside::output
       //    outside::output[seq_offset: seq_offset + 1] = inside::output
@@ -289,7 +290,7 @@ class RecurrentOp : public RecurrentBase {
             auto dst_out = dst_tensor->Slice(seq_offset, seq_offset + 1);
             // Explicit copy output since the local RNN scope can be destroyed
             // early.
-            framework::CopyFrom(src_tensor, place, dev_ctx, &dst_out);
+            framework::Copy(src_tensor, place, dev_ctx, &dst_out);
           });
 
       scopes.Next();
@@ -326,8 +327,8 @@ class RecurrentGradOp : public RecurrentBase {
     auto *program = block->Program();
 
     // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-    auto &dev_ctx = *pool.Borrow(place);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place);
 
     for (size_t step_id = 0; step_id < seq_len; ++step_id) {
       size_t seq_offset = reverse ? step_id : seq_len - step_id - 1;
@@ -375,7 +376,7 @@ class RecurrentGradOp : public RecurrentBase {
           auto *cur_grad_var = cur_scope.Var(cur_grad);
           auto cur_grad_tensor =
               cur_grad_var->GetMutable<framework::LoDTensor>();
-          framework::CopyFrom(ex_tensor, place, dev_ctx, cur_grad_tensor);
+          framework::Copy(ex_tensor, place, dev_ctx, cur_grad_tensor);
         }
       }
 
@@ -449,7 +450,7 @@ class RecurrentGradOp : public RecurrentBase {
             }
 
             auto dst = outside->Slice(seq_offset, seq_offset + 1);
-            framework::CopyFrom(inside, place, dev_ctx, &dst);
+            framework::Copy(inside, place, dev_ctx, &dst);
           });
       VLOG(5) << "Link outside gradient finished ";
 
@@ -462,7 +463,7 @@ class RecurrentGradOp : public RecurrentBase {
                 framework::LoDTensor *outside) {
               outside->Resize(inside.dims());
               outside->mutable_data(place, inside.type());
-              framework::CopyFrom(inside, place, dev_ctx, outside);
+              framework::Copy(inside, place, dev_ctx, outside);
             });
         VLOG(5) << "Link initialize state gradient finished ";
       }

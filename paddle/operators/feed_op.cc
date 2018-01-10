@@ -49,10 +49,10 @@ class FeedOp : public framework::OperatorBase {
     auto *out_item = out_var->GetMutable<framework::FeedFetchType>();
 
     // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-    auto &dev_ctx = *pool.Borrow(place);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place);
 
-    framework::CopyFrom(feed_item, place, dev_ctx, out_item);
+    framework::Copy(feed_item, place, dev_ctx, out_item);
     out_item->set_lod(feed_item.lod());
   }
 };

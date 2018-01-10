@@ -8,15 +8,20 @@ function clock_to_seconds() {
 }
 
 function infer() {
-  unset OMP_NUM_THREADS MKL_NUM_THREADS OMP_DYNAMIC KMP_AFFINITY
+  export OPENBLAS_MAIN_FREE=1
   topology=$1
   layer_num=$2
   bs=$3
-  thread=`nproc`
-  if [ $thread -gt $bs ]; then
-    thread=$bs
+  trainers=`nproc`
+  if [ $trainers -gt $bs ]; then
+    trainers=$bs
   fi
-  log="logs/infer-${topology}-${layer_num}-${thread}openblas-${bs}.log"
+  log="logs/infer-${topology}-${layer_num}-${trainers}openblas-${bs}.log"
+  threads=$((`nproc` / trainers))
+  if [ $threads -eq 0 ]; then
+    threads=1
+  fi
+  export OPENBLAS_NUM_THREADS=$threads
 
   models_in="models/${topology}-${layer_num}/pass-00000/"
   if [ ! -d $models_in ]; then
@@ -28,7 +33,7 @@ function infer() {
     --config="${topology}.py" \
     --use_mkldnn=False \
     --use_gpu=False \
-    --trainer_count=$thread \
+    --trainer_count=$trainers \
     --log_period=$log_period \
     --config_args="batch_size=${bs},layer_num=${layer_num},is_infer=True,num_samples=256" \
     --init_model_path=$models_in \

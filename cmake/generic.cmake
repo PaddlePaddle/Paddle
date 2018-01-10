@@ -120,7 +120,7 @@ function(merge_static_libs TARGET_NAME)
       DEPENDS ${libs})
 
     # Generate dummy staic lib
-    file(WRITE ${target_SRCS} "const char *dummy = \"${target_SRCS}\";")
+    file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
     add_library(${TARGET_NAME} STATIC ${target_SRCS})
     target_link_libraries(${TARGET_NAME} ${libs_deps})
 
@@ -160,7 +160,7 @@ function(merge_static_libs TARGET_NAME)
       DEPENDS ${libs} ${target_OBJS})
 
     # Generate dummy staic lib
-    file(WRITE ${target_SRCS} "const char *dummy = \"${target_SRCS}\";")
+    file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
     add_library(${TARGET_NAME} STATIC ${target_SRCS})
     target_link_libraries(${TARGET_NAME} ${libs_deps})
 
@@ -324,7 +324,7 @@ function(go_library TARGET_NAME)
     )
 
   # Add dummy code to support `make target_name` under Terminal Command
-  file(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
+  file(WRITE ${dummyfile} "const char *dummy_${TARGET_NAME} = \"${dummyfile}\";")
   if (go_library_SHARED OR go_library_shared)
     add_library(${TARGET_NAME} SHARED ${dummyfile})
   else()

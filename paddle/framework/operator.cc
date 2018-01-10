@@ -11,19 +11,79 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <glog/logging.h>
 
 #include <algorithm>
-#include <atomic>
 
 #include "paddle/framework/data_transform.h"
+#include "paddle/framework/device_data_transform.h"
 #include "paddle/framework/executor.h"
-#include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/shape_inference.h"
 #include "paddle/framework/var_type.h"
 
 namespace paddle {
 namespace framework {
+
+std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
+
+void UseCPU() {
+  kKernelPriority.clear();
+  /*Plain CPU*/
+  auto pair0 = std::make_tuple(platform::CPUPlace(), LibraryType::kPlain);
+  kKernelPriority.insert(kKernelPriority.begin(), pair0);
+}
+
+void UseMKLDNN() {
+  UseCPU();
+#if PADDLE_WITH_MKLML
+  {
+    /*MKLDNN Kernel*/
+    auto pair0 = std::make_tuple(platform::CPUPlace(), LibraryType::kMKLDNN);
+    kKernelPriority.insert(kKernelPriority.begin(), pair0);
+  }
+#endif
+}
+
+void UseCUDA() {
+  UseMKLDNN();
+#if PADDLE_WITH_CUDA
+  /*Plain GPU*/
+  auto pair0 = std::make_tuple(platform::CUDAPlace(0), LibraryType::kPlain);
+  kKernelPriority.insert(kKernelPriority.begin(), pair0);
+#endif
+}
+
+void UseCUDNN() {
+  UseCUDA();
+#if PADDLE_WITH_CUDA
+  if (platform::dynload::HasCUDNN()) {
+    /*CUDNN Kernel*/
+    auto pair0 = std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN);
+    kKernelPriority.insert(kKernelPriority.begin(), pair0);
+  }
+#endif
+}
+
+void UseALL() {
+  UseCPU();
+  UseMKLDNN();
+  UseCUDA();
+  UseCUDNN();
+}
+
+static DDim GetDims(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return DDim({-1});
+  } else if (var->IsType<LoDTensor>()) {
+    return var->Get<LoDTensor>().dims();
+  } else if (var->IsType<SelectedRows>()) {
+    return var->Get<SelectedRows>().GetCompleteDims();
+  } else {
+    return DDim({-1});
+  }
+}
 
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
@@ -57,7 +117,7 @@ const std::vector<std::string>& OperatorBase::Outputs(
   return it->second;
 }
 
-std::string OperatorBase::DebugString() const {
+std::string OperatorBase::DebugStringEx(const Scope* scope) const {
   std::stringstream ss;
   ss << "Op(" << type_ << "), inputs:{";
   for (auto it = inputs_.begin(); it != inputs_.end();) {
@@ -65,6 +125,9 @@ std::string OperatorBase::DebugString() const {
     ss << input.first << "[";
     for (size_t i = 0; i < input.second.size(); ++i) {
       ss << input.second[i];
+      if (scope) {
+        ss << "(" << GetDims(*scope, input.second[i]) << ")";
+      }
       if (i != input.second.size() - 1) {
         ss << ", ";
       }
@@ -81,6 +144,9 @@ std::string OperatorBase::DebugString() const {
     ss << output.first << "[";
     for (size_t i = 0; i < output.second.size(); ++i) {
       ss << output.second[i];
+      if (scope) {
+        ss << "(" << GetDims(*scope, output.second[i]) << ")";
+      }
       if (i != output.second.size() - 1) {
         ss << ", ";
       }
@@ -178,6 +244,10 @@ void OperatorBase::GenerateTemporaryNames() {
   }
 }
 
+static bool VarIsTensor(const Variable* var) {
+  return var->IsType<LoDTensor>() || var->IsType<SelectedRows>();
+}
+
 static const Tensor* GetTensorFromVar(const Variable* var) {
   const Tensor* t = nullptr;
   if (var->IsType<LoDTensor>()) {
@@ -185,7 +255,8 @@ static const Tensor* GetTensorFromVar(const Variable* var) {
   } else if (var->IsType<SelectedRows>()) {
     t = &(var->Get<SelectedRows>().value());
   } else {
-    PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+    PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
+                 var->Type().name());
   }
   return t;
 }
@@ -197,7 +268,8 @@ static Tensor* GetMutableTensorFromVar(Variable* var) {
   } else if (var->IsType<SelectedRows>()) {
     t = var->GetMutable<SelectedRows>()->mutable_value();
   } else {
-    PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+    PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
+                 var->Type().name());
   }
   return t;
 }
@@ -347,6 +419,25 @@ class RuntimeInferShapeContext : public InferShapeContext {
     auto in_tensor = in_var->Get<LoDTensor>();
     auto* out_tensor = out_var->GetMutable<LoDTensor>();
     out_tensor->set_lod(in_tensor.lod());
+
+    // TODO(dzhwinter) : reuse ShareLoD in most operators.
+    // Need to call ShareLayout explicitly in sequence related ops.
+    // Shall we have a better method to shared info between in/out Tensor?
+    out_tensor->set_layout(in_tensor.layout());
+  }
+
+  void ShareLayout(const std::string& in, const std::string& out, size_t i = 0,
+                   size_t j = 0) const {
+    PADDLE_ENFORCE_LT(i, Inputs(in).size());
+    PADDLE_ENFORCE_LT(j, Outputs(out).size());
+    Variable* in_var = scope_.FindVar(Inputs(in)[i]);
+    Variable* out_var = scope_.FindVar(Outputs(out)[j]);
+    if (!in_var->IsType<LoDTensor>()) return;
+    PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
+                   "The %d-th output of Output(%s) must be LoDTensor.", j, out);
+    auto in_tensor = in_var->Get<LoDTensor>();
+    auto* out_tensor = out_var->GetMutable<LoDTensor>();
+    out_tensor->set_layout(in_tensor.layout());
   }
 
   bool IsRuntime() const override { return true; }
@@ -359,7 +450,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
     } else if (var->IsType<SelectedRows>()) {
       return var->Get<SelectedRows>().GetCompleteDims();
     } else {
-      PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+      PADDLE_THROW("Variable %s type_id %s, expect LoDTensor/SelectedRows.",
+                   name, var->Type().name());
     }
   }
 
@@ -370,7 +462,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
     } else if (var->IsType<SelectedRows>()) {
       var->GetMutable<SelectedRows>()->set_height(dim[0]);
     } else {
-      PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+      PADDLE_THROW("Variable %s type_id %s, expect LoDTensor/SelectedRows.",
+                   name, var->Type().name());
     }
   }
 
@@ -388,8 +481,8 @@ void OperatorWithKernel::Run(const Scope& scope,
                              const platform::Place& place) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
   this->InferShape(&infer_shape_ctx);
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Get();
-  auto dev_ctx = pool.Borrow(place);
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto dev_ctx = pool.Get(place);
 
   // check if op[type] has kernel registered.
   auto& all_op_kernels = AllOpKernels();
@@ -399,61 +492,59 @@ void OperatorWithKernel::Run(const Scope& scope,
         "There are no kernels which are registered in the %s operator.", type_);
   }
 
-  // check if op[type] have kernel for kernel_key
+  ExecutionContext ctx(*this, scope, *dev_ctx);
+  auto expected_kernel_key = this->GetExpectedKernelType(ctx);
+
   OpKernelMap& kernels = kernels_iter->second;
 
-  ExecutionContext ctx(*this, scope, *dev_ctx);
-  auto actual_kernel_key = GetActualKernelType(ctx);
-  auto expected_kernel_key = GetExpectedKernelType(actual_kernel_key);
+  for (auto& candidate : kKernelPriority) {
+    auto candidate_key =
+        OpKernelType(expected_kernel_key.data_type_, std::get<0>(candidate),
+                     expected_kernel_key.data_layout_, std::get<1>(candidate));
+
+    if ((candidate_key == expected_kernel_key) ||
+        (kernels.count(candidate_key))) {
+      expected_kernel_key = candidate_key;
+      break;
+    }
+  }
+
+  VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
+
+  Scope& new_scope = scope.NewScope();
+
+  for (auto& var_name_item : this->Inputs()) {
+    for (auto& var_name : var_name_item.second) {
+      auto* var = scope.FindVar(var_name);
+      if (var && VarIsTensor(var)) {
+        auto* tensor_in = GetTensorFromVar(var);
+        if (tensor_in->IsInitialized()) {
+          auto kernel_type_for_var = this->GetKernelTypeForVar(
+              var_name_item.first, *tensor_in, expected_kernel_key);
+          if (kernel_type_for_var != expected_kernel_key) {
+            auto out_var_names = OutputVars(true);
+            if (std::find(out_var_names.begin(), out_var_names.end(),
+                          var_name) != out_var_names.end()) {
+              PADDLE_THROW(
+                  "var %s is both input and output, "
+                  "does not support transform",
+                  var_name);
+            }
+            VLOG(3) << "need to do transform for var " << var_name;
+            auto* trans_var = new_scope.Var(var_name);
+            auto* out = DataTransform(expected_kernel_key, kernel_type_for_var,
+                                      *tensor_in);
+            CopyVariableWithTensor(*var, *out, *trans_var);
+          }
+        }
+      }
+    }
+  }
+
   auto kernel_iter = kernels.find(expected_kernel_key);
 
-  if (kernel_iter == kernels.end()) {
-    PADDLE_THROW("The operator %s does not support %s", type_,
-                 expected_kernel_key);
-  }
-
-  if (actual_kernel_key == expected_kernel_key) {
-    kernel_iter->second->Compute(ctx);
-  } else {
-    Scope& op_scope = scope.NewScope();
-    auto input_vars = this->InputVars();
-    for (auto var_name : input_vars) {
-      op_scope.Var(var_name);
-    }
-
-    // TODO(qijun) get appropriate DeviceContext from DeviceContext pool
-    platform::DeviceContext* trans_dev_ctx = nullptr;
-    std::vector<platform::DeviceContext*> trans_dev_ctx_vec{trans_dev_ctx};
-
-    // TODO(qijun) get appropriate DataTransformFN from global map
-    framework::DataTransformFN trans_fun = nullptr;
-
-    // Wait for transform starting
-    dev_ctx->Wait();
-
-    for (auto var_name : input_vars) {
-      trans_fun(trans_dev_ctx_vec, *(scope.FindVar(var_name)),
-                op_scope.FindVar(var_name));
-    }
-    // Wait for data transform finishing
-    for (auto ctx : trans_dev_ctx_vec) {
-      ctx->Wait();
-    }
-
-    // Create a new ExecutionContext
-    ExecutionContext op_ctx(*this, op_scope, *dev_ctx);
-    kernel_iter->second->Compute(op_ctx);
-  }
-}
-
-OpKernelType OperatorWithKernel::GetActualKernelType(
-    const ExecutionContext& ctx) const {
-  return OpKernelType(IndicateDataType(ctx), ctx.GetPlace());
-}
-
-OpKernelType OperatorWithKernel::GetExpectedKernelType(
-    const OpKernelType& actual_kernel_type) const {
-  return actual_kernel_type;
+  kernel_iter->second->Compute(ExecutionContext(
+      *this, new_scope, *pool.Get(expected_kernel_key.place_)));
 }
 
 proto::DataType OperatorWithKernel::IndicateDataType(
@@ -483,6 +574,17 @@ proto::DataType OperatorWithKernel::IndicateDataType(
   }
   PADDLE_ENFORCE(data_type != -1, "DataType should be indicated by input");
   return static_cast<proto::DataType>(data_type);
+}
+
+OpKernelType OperatorWithKernel::GetExpectedKernelType(
+    const ExecutionContext& ctx) const {
+  return OpKernelType(IndicateDataType(ctx), ctx.GetPlace());
+}
+
+OpKernelType OperatorWithKernel::GetKernelTypeForVar(
+    const std::string& var_name, const Tensor& tensor,
+    const OpKernelType& expected_kernel_type) const {
+  return OpKernelType(expected_kernel_type.data_type_, tensor.place());
 }
 
 }  // namespace framework

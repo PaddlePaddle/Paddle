@@ -63,9 +63,10 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
         auto *dst_ptr = static_cast<void *>(dst_tensor.mutable_data<CUR_TYPE>(
             tensor.dims(), platform::CPUPlace()));
 
-        platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+        platform::DeviceContextPool &pool =
+            platform::DeviceContextPool::Instance();
         auto dev_ctx = static_cast<const platform::CUDADeviceContext *>(
-            pool.Borrow(tensor.place()));
+            pool.Get(tensor.place()));
 
         paddle::platform::GpuMemcpyAsync(
             dst_ptr, src_ptr, sizeof(CUR_TYPE) * tensor.numel(),
@@ -76,10 +77,10 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
       } else if (paddle::platform::is_cpu_place(tensor.place())) {
         dst_tensor = tensor;
       }
-      return py::buffer_info(
-          dst_tensor.mutable_data<CUR_TYPE>(dst_tensor.place()),
-          sizeof(CUR_TYPE), py::format_descriptor<CUR_TYPE>::format(),
-          (size_t)framework::arity(dst_tensor.dims()), dims_outside, strides);
+      return py::buffer_info(dst_tensor.data<CUR_TYPE>(), sizeof(CUR_TYPE),
+                             py::format_descriptor<CUR_TYPE>::format(),
+                             (size_t)framework::arity(dst_tensor.dims()),
+                             dims_outside, strides);
     } else {
       constexpr bool less = I + 1 < std::tuple_size<std::tuple<ARGS...>>::value;
       return CastToPyBufferImpl<less, I + 1, ARGS...>()(tensor);
@@ -137,9 +138,9 @@ void PyCUDATensorSetFromArray(
   self.Resize(framework::make_ddim(dims));
   auto *dst = self.mutable_data<T>(place);
 
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto dev_ctx =
-      static_cast<const platform::CUDADeviceContext *>(pool.Borrow(place));
+      static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
   paddle::platform::GpuMemcpyAsync(dst, array.data(), sizeof(T) * array.size(),
                                    cudaMemcpyHostToDevice, dev_ctx->stream());
 }
