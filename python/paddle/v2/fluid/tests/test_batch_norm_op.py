@@ -341,9 +341,6 @@ class TestBatchNormOp(OpTest):
         if core.with_gpu() and core.op_support_gpu("batch_norm"):
             places.append(core.CUDAPlace(0))
 
-            core.init_devices(["CPU", "GPU:0"])
-        else:
-            core.init_devices(["CPU"])
         for place in places:
             for data_format in ["NCHW", "NHWC"]:
                 test_with_place(place, data_format, [2, 3, 4, 5])

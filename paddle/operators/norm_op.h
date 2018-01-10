@@ -66,7 +66,7 @@ class NormKernel : public framework::OpKernel<T> {
                                  context.GetPlace());
       auto tmp = framework::EigenVector<T, Eigen::RowMajor,
                                         Eigen::DenseIndex>::Flatten(tmp_tensor);
-      // get colsum  and sqrt , inverse
+      // get colsum and sqrt , inverse
       auto dim = Eigen::array<int, 1>({{0}});
       tmp.device(*place) = x_square_batch_eigen.sum(dim);
       tmp.device(*place) = (tmp + epsilon).sqrt().inverse();
