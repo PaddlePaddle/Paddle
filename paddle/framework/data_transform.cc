@@ -15,9 +15,9 @@ limitations under the License. */
 
 #include "paddle/framework/data_transform.h"
 
+#include "paddle/framework/data_device_transform.h"
 #include "paddle/framework/data_layout_transform.h"
 #include "paddle/framework/data_type_transform.h"
-#include "paddle/framework/device_data_transform.h"
 
 namespace paddle {
 namespace framework {
