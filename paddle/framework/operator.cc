@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <algorithm>
@@ -21,6 +22,10 @@ limitations under the License. */
 #include "paddle/framework/operator.h"
 #include "paddle/framework/shape_inference.h"
 #include "paddle/framework/var_type.h"
+
+DEFINE_bool(op_sync, false,
+            "Default cuda is asynchronous device, set to True will"
+            "force op run in synchronous mode.");
 
 namespace paddle {
 namespace framework {
