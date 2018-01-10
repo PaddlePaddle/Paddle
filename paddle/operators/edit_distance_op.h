@@ -46,15 +46,15 @@ class EditDistanceKernel : public framework::OpKernel<T> {
     out_t->mutable_data<float>(ctx.GetPlace());
     auto out = out_t->data<T>();
 
-    std::vector<T> distance(num_strs, 0.0);
+    T distance = 0.0;
     for (size_t num = 0; num < num_strs; ++num) {
       auto m = static_cast<int64_t>(hyp_lod[num + 1] - hyp_lod[num]);
       auto n = static_cast<int64_t>(ref_lod[num + 1] - ref_lod[num]);
 
       if (m == 0) {
-        distance[num] = n;
+        distance = n;
       } else if (n == 0) {
-        distance[num] = m;
+        distance = m;
       } else {
         framework::Tensor dist_t;
         dist_t.Resize({m + 1, n + 1});
@@ -77,7 +77,7 @@ class EditDistanceKernel : public framework::OpKernel<T> {
             dist[i * (n + 1) + j] = std::min(dels, std::min(ins, subs));
           }
         }
-        distance[num] = dist[m * (n + 1) + n];
+        distance = dist[m * (n + 1) + n];
       }
 
       if (normalized) {
@@ -85,9 +85,9 @@ class EditDistanceKernel : public framework::OpKernel<T> {
                        "The reference string (#%d) cannot be empty "
                        "when Attr(normalized) is enabled.",
                        n);
-        distance[num] = distance[num] / n;
+        distance = distance / n;
       }
-      out[num] = distance[num];
+      out[num] = distance;
     }
   }
 };

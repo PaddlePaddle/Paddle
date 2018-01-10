@@ -49,10 +49,10 @@ class EditDistanceOpMaker : public framework::OpProtoAndCheckerMaker {
   EditDistanceOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Hyps",
-             "(2-D LoDTensor, 2nd dim. equal to 1) "
+             "(2-D LoDTensor<int>, 2nd dim. equal to 1) "
              "The indices for hypothesis strings.");
     AddInput("Refs",
-             "(2-D LoDTensor, 2nd dim. equal to 1) "
+             "(2-D LoDTensor<int>, 2nd dim. equal to 1) "
              "The indices for reference strings.");
     AddAttr<bool>("normalized",
                   "(bool, default false) Indicated whether to normalize "
