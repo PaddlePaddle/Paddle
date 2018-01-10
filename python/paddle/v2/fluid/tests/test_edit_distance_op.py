@@ -34,7 +34,7 @@ def Levenshtein(hyp, ref):
     return dist[m][n]
 
 
-class TestCTCEditDistanceOp(OpTest):
+class TestEditDistanceOp(OpTest):
     def setUp(self):
         self.op_type = "edit_distance"
         normalized = False
@@ -62,7 +62,7 @@ class TestCTCEditDistanceOp(OpTest):
         self.check_output()
 
 
-class TestCTCEditDistanceOpNormalized(OpTest):
+class TestEditDistanceOpNormalized(OpTest):
     def setUp(self):
         self.op_type = "edit_distance"
         normalized = True
